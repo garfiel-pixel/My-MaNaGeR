@@ -3,7 +3,7 @@ import { Presence } from './src/cloud/presence.js';
 import { purgeStaleCloudProjects } from './src/cloud/projects.js';
 import { evaluateWebhooks } from './src/webhooks.js';
 
-export { Presence };  // wrangler requires DO classes in the entrypoint
+export { Presence }; // wrangler requires DO classes in the entrypoint
 
 /* ============================================================
    My MaNaGeR — Thin response-decorating Worker (OBSERVABILITY-
@@ -34,7 +34,7 @@ const INLINE_SCRIPT_HASHES = [
   "'sha256-7BIp3SE8LrjSq5puH0lRtmP51SnLzcmBy32sBq0Zcps='",
   "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='",
   "'sha256-O9lvE/vAuiMHUX3RQGR53K5h6w13/d2P16BoUBsYKAk='",
-  "'sha256-RRfvfvfDF+mK6rxe2qUNhCiwX62ax0C2HOMPHg0Oz0U='",
+  "'sha256-E+FJvv7YhbVSIX4QxNnBBC4PnFOTNkQfXQFZKHc/AbI='",
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='",
   "'sha256-pmiUsOqQa0BPAXsieggzTCopGA0jQO863MBE2hEoBb8='",
   "'sha256-7cQZf8bzyvMY1EwebBo5YuL3PZ9T/X5CTWFRXO3Aq5E='",
@@ -46,13 +46,13 @@ const INLINE_SCRIPT_HASHES = [
   "'sha256-O8tjgX8HAC3naABULMDuIYqJtVsk/JWqKAbIoD83O4I='",
   "'sha256-nsm9D+YbB4LQUmNXHf3kbpV7BWERupRhGClSKaU+DEo='",
   "'sha256-O8tjgX8HAC3naABULMDuIYqJtVsk/JWqKAbIoD83O4I='",
-  "'sha256-O8tjgX8HAC3naABULMDuIYqJtVsk/JWqKAbIoD83O4I='",
+  "'sha256-O8tjgX8HAC3naABULMDuIYqJtVsk/JWqKAbIoD83O4I='"
 ].join(' ');
-
 
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'wasm-unsafe-eval' https://unpkg.com https://accounts.google.com https://apis.google.com https://static.cloudflareinsights.com https://challenges.cloudflare.com https://cdn.paddle.com " + INLINE_SCRIPT_HASHES,
+  "script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com https://static.cloudflareinsights.com https://challenges.cloudflare.com https://cdn.paddle.com " +
+    INLINE_SCRIPT_HASHES,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com",
   "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com",
   "media-src 'self' data: blob:",
@@ -63,7 +63,7 @@ const CSP = [
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
-  "frame-src https://accounts.google.com https://challenges.cloudflare.com https://checkout.paddle.com https://cdn.paddle.com",
+  'frame-src https://accounts.google.com https://challenges.cloudflare.com https://checkout.paddle.com https://cdn.paddle.com',
   "frame-ancestors 'none'"
 ].join('; ');
 
@@ -129,7 +129,8 @@ const WHISPER_CSP = [
 // revenue analytics; it is not required for checkout, so it stays blocked.
 const PADDLE_CSP = [
   "default-src 'self'",
-  "script-src 'self' 'wasm-unsafe-eval' https://unpkg.com https://accounts.google.com https://apis.google.com https://static.cloudflareinsights.com https://challenges.cloudflare.com https://cdn.paddle.com " + INLINE_SCRIPT_HASHES,
+  "script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com https://static.cloudflareinsights.com https://challenges.cloudflare.com https://cdn.paddle.com " +
+    INLINE_SCRIPT_HASHES,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com https://cdn.paddle.com",
   "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com",
   "media-src 'self' data: blob:",
@@ -140,8 +141,8 @@ const PADDLE_CSP = [
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
-  "frame-src https://buy.paddle.com https://sandbox-buy.paddle.com https://checkout.paddle.com https://cdn.paddle.com https://accounts.google.com https://challenges.cloudflare.com",
-  "frame-ancestors 'self'",
+  'frame-src https://buy.paddle.com https://sandbox-buy.paddle.com https://checkout.paddle.com https://cdn.paddle.com https://accounts.google.com https://challenges.cloudflare.com',
+  "frame-ancestors 'self'"
 ].join('; ');
 
 // 8.3 (2026-10-06): extension-less paths that are NOT real pages must answer
@@ -152,14 +153,31 @@ const PADDLE_CSP = [
 // pricing.html by itself). /team/ is exempt because the RBAC invite link
 // (/team/accept/<token>) is a real app route awaiting its UI.
 const PAGE_ROUTES = new Set([
-  '/', '/index', '/about', '/admin', '/app', '/calculator', '/contact',
-  '/dashboard', '/features', '/mymanager-field-guide', '/pricing',
-  '/privacy', '/project', '/refund', '/reset', '/reviews', '/seed-test',
-  '/signin', '/terms', '/verify'
+  '/',
+  '/index',
+  '/about',
+  '/admin',
+  '/app',
+  '/calculator',
+  '/contact',
+  '/dashboard',
+  '/features',
+  '/mymanager-field-guide',
+  '/pricing',
+  '/privacy',
+  '/project',
+  '/refund',
+  '/reset',
+  '/reviews',
+  '/seed-test',
+  '/signin',
+  '/terms',
+  '/verify'
 ]);
 
 function notFoundPage() {
-  return '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+  return (
+    '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<title>Page not found | My MaNaGeR</title>' +
     '<style>html{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}' +
@@ -169,7 +187,8 @@ function notFoundPage() {
     'a{color:#B45309;font-weight:600}</style></head>' +
     '<body><main><h1>Page not found</h1>' +
     '<p>The page you asked for is not here. It may have moved, or the address may have a typo.</p>' +
-    '<p><a href="/">Go to the home page</a></p></main></body></html>';
+    '<p><a href="/">Go to the home page</a></p></main></body></html>'
+  );
 }
 
 // Collapse '.'/'..' path segments so traversal can never fool the
@@ -179,7 +198,10 @@ function normalizePathname(p) {
   const segs = String(p).split('/');
   for (const seg of segs) {
     if (seg === '.' || seg === '') continue;
-    if (seg === '..') { out.pop(); continue; }
+    if (seg === '..') {
+      out.pop();
+      continue;
+    }
     out.push(seg);
   }
   return '/' + out.join('/');
@@ -190,7 +212,9 @@ export default {
   async scheduled(event, env) {
     try {
       const result = await purgeStaleCloudProjects(env);
-      console.log('cloud orphan purge: checked=' + result.checked + ' purged=' + result.purged.length);
+      console.log(
+        'cloud orphan purge: checked=' + result.checked + ' purged=' + result.purged.length
+      );
     } catch (e) {
       console.error('cloud orphan purge failed:', e && e.message);
     }
@@ -203,27 +227,53 @@ export default {
     try {
       const s7 = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
       const s1 = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const sessSweep = await env.DB.prepare('DELETE FROM auth_sessions WHERE expires_at < ? OR (revoked_at IS NOT NULL AND revoked_at < ?)')
-        .bind(s7, s7).run();
-      const guardSweep = await env.DB.prepare('DELETE FROM auth_login_guard WHERE locked_until IS NOT NULL AND locked_until < ?')
-        .bind(s1).run();
-      const tokenSweep = await env.DB.prepare('DELETE FROM auth_tokens WHERE expires_at < ? OR (used_at IS NOT NULL AND used_at < ?) OR (revoked_at IS NOT NULL AND revoked_at < ?)')
-        .bind(s7, s7, s7).run();
+      const sessSweep = await env.DB.prepare(
+        'DELETE FROM auth_sessions WHERE expires_at < ? OR (revoked_at IS NOT NULL AND revoked_at < ?)'
+      )
+        .bind(s7, s7)
+        .run();
+      const guardSweep = await env.DB.prepare(
+        'DELETE FROM auth_login_guard WHERE locked_until IS NOT NULL AND locked_until < ?'
+      )
+        .bind(s1)
+        .run();
+      const tokenSweep = await env.DB.prepare(
+        'DELETE FROM auth_tokens WHERE expires_at < ? OR (used_at IS NOT NULL AND used_at < ?) OR (revoked_at IS NOT NULL AND revoked_at < ?)'
+      )
+        .bind(s7, s7, s7)
+        .run();
       // AREA G2: expired or long-consumed admin-recovery OTP rows (mirrors auth_tokens).
       let otpSweep = { meta: { changes: 0 } };
       try {
-        otpSweep = await env.DB.prepare('DELETE FROM admin_recovery_otp WHERE expires_at < ? OR (used_at IS NOT NULL AND used_at < ?)')
-          .bind(s7, s7).run();
-      } catch (e) { /* table may not exist yet (pre-migration) */ }
-      console.log('auth sweep: sessions=' + ((sessSweep.meta && sessSweep.meta.changes) || 0) + ' guards=' + ((guardSweep.meta && guardSweep.meta.changes) || 0) + ' tokens=' + ((tokenSweep.meta && tokenSweep.meta.changes) || 0) + ' otp=' + ((otpSweep.meta && otpSweep.meta.changes) || 0));
+        otpSweep = await env.DB.prepare(
+          'DELETE FROM admin_recovery_otp WHERE expires_at < ? OR (used_at IS NOT NULL AND used_at < ?)'
+        )
+          .bind(s7, s7)
+          .run();
+      } catch (e) {
+        /* table may not exist yet (pre-migration) */
+      }
+      console.log(
+        'auth sweep: sessions=' +
+          ((sessSweep.meta && sessSweep.meta.changes) || 0) +
+          ' guards=' +
+          ((guardSweep.meta && guardSweep.meta.changes) || 0) +
+          ' tokens=' +
+          ((tokenSweep.meta && tokenSweep.meta.changes) || 0) +
+          ' otp=' +
+          ((otpSweep.meta && otpSweep.meta.changes) || 0)
+      );
     } catch (e) {
       console.error('auth sweep failed:', e && e.message);
     }
     // IDEMPOTENCY SWEEP: clean up expired idempotency keys.
     try {
       const idemSweep = await env.DB.prepare('DELETE FROM idempotency_keys WHERE expires_at < ?')
-        .bind(new Date().toISOString()).run();
-      console.log('idempotency sweep: deleted=' + ((idemSweep.meta && idemSweep.meta.changes) || 0));
+        .bind(new Date().toISOString())
+        .run();
+      console.log(
+        'idempotency sweep: deleted=' + ((idemSweep.meta && idemSweep.meta.changes) || 0)
+      );
     } catch (e) {
       // Table may not exist yet (pre-migration) — that's fine.
     }
@@ -256,15 +306,25 @@ export default {
 
       // 8.2: source maps are build artifacts and must never be public.
       if (/\.map$/.test(normalized)) {
-        return new Response('Not Found', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' } });
+        return new Response('Not Found', {
+          status: 404,
+          headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }
+        });
       }
 
       // 8.3: a real 404 for unknown, extension-less paths (never the SPA
       // fallback). Paths with a file extension are left to the asset layer,
       // which already answers 404 for a genuinely missing asset.
       const lastSeg = normalized.slice(normalized.lastIndexOf('/') + 1);
-      if (lastSeg.indexOf('.') === -1 && normalized.indexOf('/team/') !== 0 && !PAGE_ROUTES.has(normalized)) {
-        const headers = Object.assign({ 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }, HEADERS);
+      if (
+        lastSeg.indexOf('.') === -1 &&
+        normalized.indexOf('/team/') !== 0 &&
+        !PAGE_ROUTES.has(normalized)
+      ) {
+        const headers = Object.assign(
+          { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
+          HEADERS
+        );
         return new Response(notFoundPage(), { status: 404, headers: headers });
       }
 
@@ -277,11 +337,14 @@ export default {
       // Cache-Control strategy
       const ext = normalized.replace(/.*\\./, '').toLowerCase();
       const IMMUTABLE = 'public, max-age=31536000, immutable';
-      const NO_CACHE  = 'no-cache';
+      const NO_CACHE = 'no-cache';
       const SHORT_TTL = 'public, max-age=3600';
       if (/\.html$/.test(normalized) || normalized === '/' || ext === normalized.replace('/', '')) {
         decorated.headers.set('Cache-Control', NO_CACHE);
-      } else if (['js', 'css', 'svg', 'png', 'ico', 'webp', 'woff', 'woff2', 'ttf', 'otf'].indexOf(ext) !== -1) {
+      } else if (
+        ['js', 'css', 'svg', 'png', 'ico', 'webp', 'woff', 'woff2', 'ttf', 'otf'].indexOf(ext) !==
+        -1
+      ) {
         decorated.headers.set('Cache-Control', IMMUTABLE);
       } else if (ext === 'json' || ext === 'webmanifest') {
         decorated.headers.set('Cache-Control', NO_CACHE);

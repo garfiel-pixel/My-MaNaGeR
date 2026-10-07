@@ -5,13 +5,15 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   const U = ns.Utils;
   const $ = U.$;
 
-  function _toast(msg, type) { if (ns.App && ns.App.showToast) ns.App.showToast(msg, type); }
+  function _toast(msg, type) {
+    if (ns.App && ns.App.showToast) ns.App.showToast(msg, type);
+  }
 
   // Background cloud auto-sync debounce
   let _cloudAutoTimer = null;
@@ -28,10 +30,16 @@ var MMGR = window.MMGR || {};
   function scheduleCloudAutoSave() {
     if (!cloudLinked()) return;
     if (_cloudAutoTimer) clearTimeout(_cloudAutoTimer);
-    _cloudAutoTimer = setTimeout(function() {
+    _cloudAutoTimer = setTimeout(function () {
       _cloudAutoTimer = null;
       const C = window.MMGR.Cloud;
-      if (C && C.autoSaveToCloud) { try { C.autoSaveToCloud(); } catch (e) { /* never throws */ } }
+      if (C && C.autoSaveToCloud) {
+        try {
+          C.autoSaveToCloud();
+        } catch (e) {
+          /* never throws */
+        }
+      }
     }, CLOUD_AUTO_IDLE_MS);
   }
 
@@ -41,7 +49,13 @@ var MMGR = window.MMGR || {};
     _cloudAutoTimer = null;
     if (!cloudLinked()) return;
     const C = window.MMGR.Cloud;
-    if (C && C.autoSaveToCloud) { try { C.autoSaveToCloud({ keepalive: true }); } catch (e) { /* never throws */ } }
+    if (C && C.autoSaveToCloud) {
+      try {
+        C.autoSaveToCloud({ keepalive: true });
+      } catch (e) {
+        /* never throws */
+      }
+    }
   }
   window.addEventListener('pagehide', flushCloudAutoSave);
 
@@ -70,11 +84,12 @@ var MMGR = window.MMGR || {};
     const el = $('bk-cloud-hint');
     if (!el) return;
     const C = window.MMGR.Cloud;
-    el.textContent = (C && C.getCode && C.getCode())
-      ? 'Cloud-backed project , snapshots auto-sync to the cloud as you work.'
-      : (C && C.getECode && C.getECode())
-        ? 'Cloud project via code , your scoped edits sync to the cloud (editor saves wait for the owner\u2019s review).'
-        : 'Sign in with Google to back this project up to the cloud , sign-in opens right after you click Backup to cloud. File backup stays optional either way.';
+    el.textContent =
+      C && C.getCode && C.getCode()
+        ? 'Cloud-backed project , snapshots auto-sync to the cloud as you work.'
+        : C && C.getECode && C.getECode()
+          ? 'Cloud project via code , your scoped edits sync to the cloud (editor saves wait for the owner\u2019s review).'
+          : 'Sign in with Google to back this project up to the cloud , sign-in opens right after you click Backup to cloud. File backup stays optional either way.';
   }
 
   function bkCloud() {
@@ -96,12 +111,18 @@ var MMGR = window.MMGR || {};
       // surface is visible. checkMe is chained AFTER the drawer render:
       // signIn() needs #cloud-gis-host, which only exists once the cloud
       // section has rendered.
-      openDrwToSave(function() {
+      openDrwToSave(function () {
         if (C && C.checkMe) {
-          Promise.resolve(C.checkMe(false)).then(function(signedIn) {
-            if (signedIn) { if (C.createProject) C.createProject(); }
-            else if (C.signIn) { Promise.resolve(C.signIn()).catch(function() {}); }
-          }, function() {});
+          Promise.resolve(C.checkMe(false)).then(
+            function (signedIn) {
+              if (signedIn) {
+                if (C.createProject) C.createProject();
+              } else if (C.signIn) {
+                Promise.resolve(C.signIn()).catch(function () {});
+              }
+            },
+            function () {}
+          );
         } else if (C && C.createProject) {
           C.createProject(); // no checkMe on this host - behave as before
         }
@@ -117,17 +138,33 @@ var MMGR = window.MMGR || {};
   function openDrwToSave(done) {
     if (ns.App && ns.App.openDrwToSaveMechanics) ns.App.openDrwToSaveMechanics();
     const C = window.MMGR.Cloud;
-    if (!C) { if (done) done(); return; }
-    const focusSignin = function() {
-      const btn = document.querySelector('#ctrl-share [data-action="cloudSignIn"]') ||
-                  document.querySelector('#cloud-section [data-action="cloudSignIn"]');
+    if (!C) {
+      if (done) done();
+      return;
+    }
+    const focusSignin = function () {
+      const btn =
+        document.querySelector('#ctrl-share [data-action="cloudSignIn"]') ||
+        document.querySelector('#cloud-section [data-action="cloudSignIn"]');
       if (btn) {
-        try { btn.scrollIntoView({ block: 'center', behavior: 'auto' }); }
-        catch (e) { try { btn.scrollIntoView(); } catch (e2) {} }
-        try { btn.focus(); } catch (e) {}
+        try {
+          btn.scrollIntoView({ block: 'center', behavior: 'auto' });
+        } catch (e) {
+          try {
+            btn.scrollIntoView();
+          } catch (e2) {}
+        }
+        try {
+          btn.focus();
+        } catch (e) {}
       }
     };
-    const settle = function() { requestAnimationFrame(function() { focusSignin(); if (done) done(focusSignin); }); };
+    const settle = function () {
+      requestAnimationFrame(function () {
+        focusSignin();
+        if (done) done(focusSignin);
+      });
+    };
     if (C.render) {
       Promise.resolve(C.render()).then(settle, settle);
     } else {

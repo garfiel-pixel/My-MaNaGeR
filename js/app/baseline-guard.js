@@ -20,11 +20,11 @@
    after the app sub-modules.
    ============================================================ */
 var MMGR = window.MMGR || {};
-(function(ns) {
+(function (ns) {
   'use strict';
 
   function isSchedulable(s) {
-    return (s.tasks || []).some(function(t) {
+    return (s.tasks || []).some(function (t) {
       return t && !t.isPhase && t.duration && t.startDate && t.endDate;
     });
   }
@@ -41,18 +41,25 @@ var MMGR = window.MMGR || {};
       // First-time gap never shows the dot: the auto-capture below resolves
       // it in the same pass (the toast is the signal there).
       const needDot = sched && !s.baseline && !!s.baselineAutoAt;
-      document.querySelectorAll('[data-baseline-dot]').forEach(function(el) {
+      document.querySelectorAll('[data-baseline-dot]').forEach(function (el) {
         el.hidden = !needDot;
       });
       // Auto-capture: only when truly missing and never yet auto-captured.
       if (!s.baseline && sched && !s.baselineAutoAt) {
         ns.State.saveBaseline();
-        ns.State.updateState(function(st) { st.baselineAutoAt = new Date().toISOString(); });
+        ns.State.updateState(function (st) {
+          st.baselineAutoAt = new Date().toISOString();
+        });
         if (ns.App && ns.App.showToast) {
-          ns.App.showToast('Baseline auto-captured - your schedule now has a reference point. You can recapture it anytime in Controls.', 'ok');
+          ns.App.showToast(
+            'Baseline auto-captured - your schedule now has a reference point. You can recapture it anytime in Controls.',
+            'ok'
+          );
         }
       }
-    } catch (e) { /* zero-throw */ }
+    } catch (e) {
+      /* zero-throw */
+    }
   }
 
   ns.BaselineGuard = { ensure: ensure, isSchedulable: isSchedulable };

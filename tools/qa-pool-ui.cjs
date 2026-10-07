@@ -20,39 +20,74 @@ const os = require('os');
 const path = require('path');
 const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('./chrome-launcher.cjs');
 const userDir = path.join(os.tmpdir(), 'chrome-poolui-' + Date.now());
-const delay = (ms) => new Promise(r => setTimeout(r, ms));
+const delay = ms => new Promise(r => setTimeout(r, ms));
 const results = [];
 function check(name, val, detail) {
   results.push({ name, val });
-  console.log((val ? '[PASS] ' : '[FAIL] ') + name + (val ? '' : '   <-- ' + JSON.stringify(detail === undefined ? null : detail).slice(0, 400)));
+  console.log(
+    (val ? '[PASS] ' : '[FAIL] ') +
+      name +
+      (val ? '' : '   <-- ' + JSON.stringify(detail === undefined ? null : detail).slice(0, 400))
+  );
 }
 
 (async function () {
-  const proc = spawn(CHROME, [
-    '--headless=new', '--disable-gpu', '--no-first-run', '--no-sandbox',
-    '--remote-allow-origins=*', '--remote-debugging-port=' + PORT,
-    '--user-data-dir=' + userDir, '--window-size=1280,900', '--disk-cache-size=0', 'about:blank'
-  ], { stdio: 'ignore' });
+  const proc = spawn(
+    CHROME,
+    [
+      '--headless=new',
+      '--disable-gpu',
+      '--no-first-run',
+      '--no-sandbox',
+      '--remote-allow-origins=*',
+      '--remote-debugging-port=' + PORT,
+      '--user-data-dir=' + userDir,
+      '--window-size=1280,900',
+      '--disk-cache-size=0',
+      'about:blank'
+    ],
+    { stdio: 'ignore' }
+  );
   try {
     for (let i = 0; i < 60; i++) {
-      try { const r = await fetch('http://127.0.0.1:' + PORT + '/json/version'); if (r.ok) break; } catch (e) {}
+      try {
+        const r = await fetch('http://127.0.0.1:' + PORT + '/json/version');
+        if (r.ok) break;
+      } catch (e) {}
       await delay(300);
     }
     const targets = await (await fetch('http://127.0.0.1:' + PORT + '/json')).json();
     const ws = new WebSocket(targets.find(t => t.type === 'page').webSocketDebuggerUrl);
     const pending = new Map();
     let id = 0;
-    ws.onmessage = (e) => {
+    ws.onmessage = e => {
       const m = JSON.parse(e.data);
-      if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); }
+      if (m.id && pending.has(m.id)) {
+        pending.get(m.id)(m);
+        pending.delete(m.id);
+      }
     };
-    await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error('ws fail')); });
-    const send = (method, params = {}) => new Promise(res => {
-      const mid = ++id; pending.set(mid, m => res(m.result || {})); ws.send(JSON.stringify({ id: mid, method, params }));
+    await new Promise((res, rej) => {
+      ws.onopen = res;
+      ws.onerror = () => rej(new Error('ws fail'));
     });
-    const ev = async (expr) => {
-      const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true });
-      return r && r.result && (r.result.value !== undefined ? r.result.value : (r.result.description || ''));
+    const send = (method, params = {}) =>
+      new Promise(res => {
+        const mid = ++id;
+        pending.set(mid, m => res(m.result || {}));
+        ws.send(JSON.stringify({ id: mid, method, params }));
+      });
+    const ev = async expr => {
+      const r = await send('Runtime.evaluate', {
+        expression: expr,
+        returnByValue: true,
+        awaitPromise: true
+      });
+      return (
+        r &&
+        r.result &&
+        (r.result.value !== undefined ? r.result.value : r.result.description || '')
+      );
     };
     await send('Page.enable');
 
@@ -94,8 +129,12 @@ function check(name, val, detail) {
     check('U2 bootMerge without a credential = silent no-op', u2 && u2.threw === false, u2);
 
     // U3: cross-project toggle ON -> the Shared Resource Pool button exists
-    await ev(`(function(){ try { localStorage.setItem('mmgr_cross_project', '1'); } catch(e){} return 1; })()`);
-    await ev(`(function(){ if (MMGR.Render && MMGR.Render.renderResources) MMGR.Render.renderResources(); return 1; })()`);
+    await ev(
+      `(function(){ try { localStorage.setItem('mmgr_cross_project', '1'); } catch(e){} return 1; })()`
+    );
+    await ev(
+      `(function(){ if (MMGR.Render && MMGR.Render.renderResources) MMGR.Render.renderResources(); return 1; })()`
+    );
     await delay(400);
     const u3 = await ev(`(function(){
       const btn = Array.prototype.slice.call(document.querySelectorAll('[data-action="poolOpenLibrary"]'));
@@ -105,10 +144,16 @@ function check(name, val, detail) {
         resRows: document.querySelectorAll('#res-body tr').length };
     })()`);
     check('U3 toggle ON renders Shared Resource Pool button', u3 && u3.btnCount >= 1, u3);
-    check('U5 linked row shows pool badge, unlinked row shows + pool', u3 && u3.badgeCount >= 1 && u3.addPoolCount >= 1, u3);
+    check(
+      'U5 linked row shows pool badge, unlinked row shows + pool',
+      u3 && u3.badgeCount >= 1 && u3.addPoolCount >= 1,
+      u3
+    );
 
     // U4: poolOpenLibrary opens the modal with the graceful state
-    await ev(`(function(){ const b = document.querySelector('[data-action="poolOpenLibrary"]'); if (b) b.click(); return 1; })()`);
+    await ev(
+      `(function(){ const b = document.querySelector('[data-action="poolOpenLibrary"]'); if (b) b.click(); return 1; })()`
+    );
     await delay(900);
     const u4 = await ev(`(function(){
       const m = document.getElementById('pool-modal');
@@ -116,8 +161,11 @@ function check(name, val, detail) {
       const list = m ? m.querySelector('#pool-list') : null;
       return { open: !!m, status: status ? status.textContent : null, listEmpty: list ? (list.innerHTML === '') : true };
     })()`);
-    check('U4 pool modal opens + graceful credential-needed state (no crash)',
-      u4 && u4.open && u4.status && u4.status.length > 0, u4);
+    check(
+      'U4 pool modal opens + graceful credential-needed state (no crash)',
+      u4 && u4.open && u4.status && u4.status.length > 0,
+      u4
+    );
 
     // U6: Escape closes the pool modal
     await ev(`(function(){
@@ -133,6 +181,8 @@ function check(name, val, detail) {
     console.log('\n' + (results.length - fails) + ' passed, ' + fails + ' failed');
     process.exitCode = fails ? 1 : 0;
   } finally {
-    try { proc.kill(); } catch (e) {}
+    try {
+      proc.kill();
+    } catch (e) {}
   }
 })();

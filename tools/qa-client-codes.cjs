@@ -39,37 +39,65 @@ const PORT = parseInt(process.env.QA_PORT || '8798', 10);
 const BASE = 'http://127.0.0.1:' + PORT;
 const ROOT = path.resolve(__dirname, '..');
 
-const log = (s) => { process.stdout.write('[cc] ' + s + '\n'); };
+const log = s => {
+  process.stdout.write('[cc] ' + s + '\n');
+};
 // Self-reporting (owner 2026-09-13, CI repair loop): CI job logs are
 // auth-gated for this repo, so every failed check emits a ::error
 // annotation naming the gate + its detail payload - readable via the
 // check-runs API without any token.
 function annotateFailure(name, detail) {
   let payload;
-  try { payload = String(JSON.stringify(detail || {})); } catch (e) { payload = '"(unserializable detail: ' + String(e && e.message || e) + ')"'; }
-  process.stdout.write('::error title=QA gate failed: ' + name.replace(/[:"\\]/g, ' ') + '::' + payload.slice(0, 600) + '\n');
+  try {
+    payload = String(JSON.stringify(detail || {}));
+  } catch (e) {
+    payload = '"(unserializable detail: ' + String((e && e.message) || e) + ')"';
+  }
+  process.stdout.write(
+    '::error title=QA gate failed: ' +
+      name.replace(/[:"\\]/g, ' ') +
+      '::' +
+      payload.slice(0, 600) +
+      '\n'
+  );
 }
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
 const results = [];
 const check = (name, val, detail) => {
   results.push({ name, val });
-  log((val ? 'PASS' : 'FAIL') + '  ' + name + (val ? '' : '   <-- ' + JSON.stringify(detail === undefined ? null : detail).slice(0, 400)));
+  log(
+    (val ? 'PASS' : 'FAIL') +
+      '  ' +
+      name +
+      (val ? '' : '   <-- ' + JSON.stringify(detail === undefined ? null : detail).slice(0, 400))
+  );
   if (!val) annotateFailure(name, detail);
 };
 
 let proc = null;
-setTimeout(() => { log('WATCHDOG — harness exceeded 360s'); try { proc && proc.kill(); } catch (e) {} process.exit(2); }, 360000).unref();
+setTimeout(() => {
+  log('WATCHDOG — harness exceeded 360s');
+  try {
+    proc && proc.kill();
+  } catch (e) {}
+  process.exit(2);
+}, 360000).unref();
 
 function globalWranglerJs() {
   const localP = path.join(ROOT, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
   if (fs.existsSync(localP)) return localP;
   try {
     const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-    const root = execFileSync(npmCmd, ['root', '-g'], { encoding: 'utf8', shell: process.platform === 'win32' }).trim();
+    const root = execFileSync(npmCmd, ['root', '-g'], {
+      encoding: 'utf8',
+      shell: process.platform === 'win32'
+    }).trim();
     const p = path.join(root, 'wrangler', 'bin', 'wrangler.js');
     if (fs.existsSync(p)) return p;
-  } catch (e) { /* fall through */ }
+  } catch (e) {
+    /* fall through */
+  }
   return null;
 }
 const WRANGLER_JS = globalWranglerJs();
@@ -78,23 +106,60 @@ const PERSIST_DIR = path.join(os.tmpdir(), 'mmgr-cc-wstate-' + Date.now());
 function startWrangler() {
   return new Promise((resolve, reject) => {
     try {
-      execFileSync(process.execPath, [WRANGLER_JS, 'd1', 'migrations', 'apply', 'my-manager-db', '--local', '--config', 'wrangler.ci.jsonc', '--persist-to', PERSIST_DIR], { cwd: ROOT, stdio: 'ignore' });
-    } catch (e) { /* migrations may already be applied */ }
-    proc = spawn(process.execPath, [WRANGLER_JS, 'dev', '--config', 'wrangler.ci.jsonc', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST_DIR], {
-      cwd: ROOT, stdio: 'ignore',
-      env: Object.assign({}, process.env, { ADMIN_CODE: 'QA-CC-ADMIN' })
+      execFileSync(
+        process.execPath,
+        [
+          WRANGLER_JS,
+          'd1',
+          'migrations',
+          'apply',
+          'my-manager-db',
+          '--local',
+          '--config',
+          'wrangler.ci.jsonc',
+          '--persist-to',
+          PERSIST_DIR
+        ],
+        { cwd: ROOT, stdio: 'ignore' }
+      );
+    } catch (e) {
+      /* migrations may already be applied */
+    }
+    proc = spawn(
+      process.execPath,
+      [
+        WRANGLER_JS,
+        'dev',
+        '--config',
+        'wrangler.ci.jsonc',
+        '--port',
+        String(PORT),
+        '--ip',
+        '127.0.0.1',
+        '--persist-to',
+        PERSIST_DIR
+      ],
+      {
+        cwd: ROOT,
+        stdio: 'ignore',
+        env: Object.assign({}, process.env, { ADMIN_CODE: 'QA-CC-ADMIN' })
+      }
+    );
+    proc.on('error', e => reject(new Error('wrangler spawn failed: ' + e.message)));
+    proc.on('exit', code => {
+      if (code !== 0 && code !== null) log('wrangler dev exited early (code ' + code + ')');
     });
-    proc.on('error', (e) => reject(new Error('wrangler spawn failed: ' + e.message)));
-    proc.on('exit', (code) => { if (code !== 0 && code !== null) log('wrangler dev exited early (code ' + code + ')'); });
     // NOTHING touches `proc` after this. The browser click below targets the
     // `code-entry-btn` button element directly via CDP page evaluation; it does
     // NOT invoke `proc.stdin.write` or any child_process control channel.
-    const poll = async (tries) => {
+    const poll = async tries => {
       if (tries <= 0) return reject(new Error('wrangler dev did not come up in 120s'));
       try {
         const r = await fetch(BASE + '/api/health');
         if (r.ok) return resolve();
-      } catch (e) { /* not up yet */ }
+      } catch (e) {
+        /* not up yet */
+      }
       await delay(2000);
       return poll(tries - 1);
     };
@@ -102,7 +167,13 @@ function startWrangler() {
   });
 }
 
-const j = async (res) => { try { return await res.json(); } catch (e) { return {}; } };
+const j = async res => {
+  try {
+    return await res.json();
+  } catch (e) {
+    return {};
+  }
+};
 
 (async function main() {
   try {
@@ -113,9 +184,14 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
     // create/list/revoke require a signed-in session matching the project
     // owner (google_sub), unlike editor codes which are owner-code-only.
     let r = await fetch(BASE + '/api/auth/register', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'cc-qa@example.com', password: 's3cure-pass-1', name: 'Client QA' })
+      body: JSON.stringify({
+        email: 'cc-qa@example.com',
+        password: 's3cure-pass-1',
+        name: 'Client QA'
+      })
     });
     let reg = await j(r);
     let cookie = '';
@@ -125,7 +201,8 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
     if (!cookie || !reg.ok) {
       // Fall back to login (account may exist from a previous run's WAL).
       r = await fetch(BASE + '/api/auth/login', {
-        method: 'POST', credentials: 'same-origin',
+        method: 'POST',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: 'cc-qa@example.com', password: 's3cure-pass-1' })
       });
@@ -136,22 +213,37 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
     }
     const authHeaders = { 'Content-Type': 'application/json' };
     if (cookie) authHeaders.Cookie = 'mmgr_session=' + cookie;
-    check('P0a email session minted (client-code create needs a signed-in owner)', !!cookie && !!reg.ok, { reg, hasCookie: !!cookie });
+    check(
+      'P0a email session minted (client-code create needs a signed-in owner)',
+      !!cookie && !!reg.ok,
+      { reg, hasCookie: !!cookie }
+    );
 
     // P0: create a cloud project WITH the session (so google_sub matches) +
     // save a snapshot so the launcher open can navigate (needs rd.state).
     r = await fetch(BASE + '/api/cloud/projects', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: authHeaders,
       body: JSON.stringify({ projectId: pid, name: 'Client Codes QA' })
     });
     const created = await j(r);
-    check('P0 create cloud project (session-linked)', r.ok && created.ok && !!created.ownerCode, created);
+    check(
+      'P0 create cloud project (session-linked)',
+      r.ok && created.ok && !!created.ownerCode,
+      created
+    );
     const ownerCode = created.ownerCode;
     const ownerHeaders = Object.assign({ 'X-Owner-Code': ownerCode }, authHeaders);
-    const snapshot = { name: 'Client Codes QA', tasks: [{ id: 't1', title: 'Client-visible task' }], wbs: [{ id: 'w1' }], def: { scope: 'x' } };
+    const snapshot = {
+      name: 'Client Codes QA',
+      tasks: [{ id: 't1', title: 'Client-visible task' }],
+      wbs: [{ id: 'w1' }],
+      def: { scope: 'x' }
+    };
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/save', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: ownerHeaders,
       body: JSON.stringify({ state: snapshot })
     });
@@ -163,27 +255,50 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
     // lookup; without `scope` the fresh-device editor saw "editor for
     // unknown" and zero granted panels).
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/editors', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: ownerHeaders,
       body: JSON.stringify({ label: 'HR Editor', scope: ['res', 'wbs'], role: 'editor' })
     });
     const ec = await j(r);
-    check('P0c create editor code (scope res+wbs)', r.ok && ec.ok && !!ec.editorCode && (ec.scope || []).join(',') === 'res,wbs', ec);
+    check(
+      'P0c create editor code (scope res+wbs)',
+      r.ok && ec.ok && !!ec.editorCode && (ec.scope || []).join(',') === 'res,wbs',
+      ec
+    );
     const editorCode = ec.editorCode;
     r = await fetch(BASE + '/api/cloud/codes/lookup', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code: editorCode })
     });
     const elk = await j(r);
-    check('P0d editor code lookup -> role editor + scope res+wbs (fix gate)', r.ok && elk.ok && elk.role === 'editor' && elk.projectId === pid && (elk.scope || []).join(',') === 'res,wbs', elk);
+    check(
+      'P0d editor code lookup -> role editor + scope res+wbs (fix gate)',
+      r.ok &&
+        elk.ok &&
+        elk.role === 'editor' &&
+        elk.projectId === pid &&
+        (elk.scope || []).join(',') === 'res,wbs',
+      elk
+    );
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/load', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', 'X-Editor-Code': editorCode },
       body: JSON.stringify({})
     });
     const eld = await j(r);
-    check('P0e load with X-Editor-Code -> role editor + scope (grant parity)', r.ok && eld.ok && eld.role === 'editor' && (eld.scope || []).join(',') === 'res,wbs' && !!eld.state, eld);
+    check(
+      'P0e load with X-Editor-Code -> role editor + scope (grant parity)',
+      r.ok &&
+        eld.ok &&
+        eld.role === 'editor' &&
+        (eld.scope || []).join(',') === 'res,wbs' &&
+        !!eld.state,
+      eld
+    );
 
     // ---- OWNER 2026-09-13 wave: either-auth client-code endpoints, claim
     // flow, editor-code session management ------------------------------
@@ -191,132 +306,216 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
     // either-auth fix - the endpoints used to demand a session, which made
     // the owner-code-only UI path impossible).
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/client-codes', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', 'X-Owner-Code': ownerCode },
       body: JSON.stringify({ sections: ['dash'] })
     });
     const ccNoSess = await j(r);
-    check('P0f client-code create with owner code, no session (either-auth fix)', r.ok && ccNoSess.ok && !!ccNoSess.code, ccNoSess);
+    check(
+      'P0f client-code create with owner code, no session (either-auth fix)',
+      r.ok && ccNoSess.ok && !!ccNoSess.code,
+      ccNoSess
+    );
     // P0g: editor-code create with NO session but the OWNER CODE.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/editors', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', 'X-Owner-Code': ownerCode },
       body: JSON.stringify({ label: 'No-sess Editor', scope: ['res', 'wbs'], role: 'editor' })
     });
     const ecNoSess = await j(r);
-    check('P0g editor-code create with owner code, no session (either-auth)', r.ok && ecNoSess.ok && !!ecNoSess.editorCode, ecNoSess);
+    check(
+      'P0g editor-code create with owner code, no session (either-auth)',
+      r.ok && ecNoSess.ok && !!ecNoSess.editorCode,
+      ecNoSess
+    );
 
     // P0h-j: CLAIM FLOW - a project created UNSIGNED has google_sub NULL;
     // the owner claims it with session + owner code together.
     const pid2 = 'cc-unlinked-' + Date.now().toString(36);
     r = await fetch(BASE + '/api/cloud/projects', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ projectId: pid2, name: 'Unlinked QA' })
     });
     const created2 = await j(r);
-    check('P0h create cloud project UNSIGNED (google_sub NULL)', r.ok && created2.ok && created2.linked === false && !!created2.ownerCode, created2);
+    check(
+      'P0h create cloud project UNSIGNED (google_sub NULL)',
+      r.ok && created2.ok && created2.linked === false && !!created2.ownerCode,
+      created2
+    );
     const uc = created2.ownerCode;
     // P0i: before claiming, the session is NOT the owner (meta probes 403).
     r = await fetch(BASE + '/api/cloud/projects/' + pid2 + '/meta', {
-      method: 'GET', credentials: 'same-origin', headers: authHeaders
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: authHeaders
     });
     const metaPre = await j(r);
-    check('P0i unlinked project: session meta before claim -> 403 (owner not recognized)', r.status === 403 && !metaPre.ok, { status: r.status, metaPre });
+    check(
+      'P0i unlinked project: session meta before claim -> 403 (owner not recognized)',
+      r.status === 403 && !metaPre.ok,
+      { status: r.status, metaPre }
+    );
     // P0j: claim with session + owner code links the project.
     r = await fetch(BASE + '/api/cloud/projects/' + pid2 + '/claim', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: authHeaders,
       body: JSON.stringify({ ownerCode: uc })
     });
     const claimed = await j(r);
-    check('P0j claim (session + owner code) -> linked', r.ok && claimed.ok && claimed.linked === true, claimed);
+    check(
+      'P0j claim (session + owner code) -> linked',
+      r.ok && claimed.ok && claimed.linked === true,
+      claimed
+    );
     // P0k: after claiming, the session IS the owner (meta 200, linked).
     r = await fetch(BASE + '/api/cloud/projects/' + pid2 + '/meta', {
-      method: 'GET', credentials: 'same-origin', headers: authHeaders
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: authHeaders
     });
     const metaPost = await j(r);
-    check('P0k claimed project: session meta -> owner (My Cloud Projects works)', r.ok && metaPost.ok && metaPost.linked === true, metaPost);
+    check(
+      'P0k claimed project: session meta -> owner (My Cloud Projects works)',
+      r.ok && metaPost.ok && metaPost.linked === true,
+      metaPost
+    );
     // P0l: claiming an ALREADY-LINKED project under another account is refused.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/claim', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: authHeaders,
       body: JSON.stringify({ ownerCode: ownerCode })
     });
     const reClaim = await j(r);
-    check('P0l re-claim of a linked project -> alreadyLinked (idempotent)', r.ok && reClaim.ok && reClaim.alreadyLinked === true, reClaim);
+    check(
+      'P0l re-claim of a linked project -> alreadyLinked (idempotent)',
+      r.ok && reClaim.ok && reClaim.alreadyLinked === true,
+      reClaim
+    );
     // P0m: claim with a WRONG owner code is refused.
     r = await fetch(BASE + '/api/cloud/projects/' + pid2 + '/claim', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', Cookie: 'nomatch=1' },
       body: JSON.stringify({ ownerCode: 'AAAA-BBBB-CCCC-DDDD' })
     });
     const badClaim = await j(r);
-    check('P0m claim without session -> refused (401)', r.status === 401 && !badClaim.ok, { status: r.status, badClaim });
+    check('P0m claim without session -> refused (401)', r.status === 401 && !badClaim.ok, {
+      status: r.status,
+      badClaim
+    });
     // P0n: editor-code create under SESSION (no code header) - the
     // createEditor de-gate fix.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/editors', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: authHeaders,
       body: JSON.stringify({ label: 'Session Editor', scope: ['res', 'wbs'], role: 'editor' })
     });
     const ecSess = await j(r);
-    check('P0n editor-code create under session (createEditor de-gate fix)', r.ok && ecSess.ok && !!ecSess.editorCode, ecSess);
+    check(
+      'P0n editor-code create under session (createEditor de-gate fix)',
+      r.ok && ecSess.ok && !!ecSess.editorCode,
+      ecSess
+    );
 
     // P1: create client code with sections + 30-day expiry.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/client-codes', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: ownerHeaders,
       body: JSON.stringify({ sections: ['wbs', 'bud'], expiresInDays: 30 })
     });
     const cc = await j(r);
     const futureOk = !!cc.expiresAt && new Date(cc.expiresAt).getTime() > Date.now();
-    check('P1 create client code (sections + 30d expiry)', r.ok && cc.ok && !!cc.code && cc.sections.join(',') === 'wbs,bud' && futureOk, cc);
+    check(
+      'P1 create client code (sections + 30d expiry)',
+      r.ok && cc.ok && !!cc.code && cc.sections.join(',') === 'wbs,bud' && futureOk,
+      cc
+    );
     const clientCode = cc.code;
 
     // P2: lookup resolves to role client + sections.
     r = await fetch(BASE + '/api/cloud/codes/lookup', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code: clientCode })
     });
     const lk = await j(r);
-    check('P2 client code lookup -> role client + sections', r.ok && lk.ok && lk.role === 'client' && lk.projectId === pid && (lk.sections || []).join(',') === 'wbs,bud', lk);
+    check(
+      'P2 client code lookup -> role client + sections',
+      r.ok &&
+        lk.ok &&
+        lk.role === 'client' &&
+        lk.projectId === pid &&
+        (lk.sections || []).join(',') === 'wbs,bud',
+      lk
+    );
 
     // P3: /load under X-Client-Code.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/load', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', 'X-Client-Code': clientCode },
       body: JSON.stringify({})
     });
     const cl = await j(r);
-    check('P3 load with X-Client-Code -> role client + sections + state', r.ok && cl.ok && cl.role === 'client' && (cl.sections || []).join(',') === 'wbs,bud' && cl.state && cl.state.name === 'Client Codes QA', cl);
+    check(
+      'P3 load with X-Client-Code -> role client + sections + state',
+      r.ok &&
+        cl.ok &&
+        cl.role === 'client' &&
+        (cl.sections || []).join(',') === 'wbs,bud' &&
+        cl.state &&
+        cl.state.name === 'Client Codes QA',
+      cl
+    );
 
     // P4: /meta under X-Client-Code (C1b refresh cadence probe) — GET only.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/meta', {
-      method: 'GET', credentials: 'same-origin',
+      method: 'GET',
+      credentials: 'same-origin',
       headers: { 'X-Client-Code': clientCode }
     });
     const cm = await j(r);
-    check('P4 meta with X-Client-Code -> role client + sections + updatedAt', r.ok && cm.ok && cm.role === 'client' && !!cm.updatedAt, cm);
+    check(
+      'P4 meta with X-Client-Code -> role client + sections + updatedAt',
+      r.ok && cm.ok && cm.role === 'client' && !!cm.updatedAt,
+      cm
+    );
 
     // P5: /save under X-Client-Code is refused (clients never write).
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/save', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', 'X-Client-Code': clientCode },
       body: JSON.stringify({ state: { hacked: true } })
     });
     const cs = await j(r);
-    check('P5 save with X-Client-Code -> refused (403)', r.status === 403 && !cs.ok, { status: r.status, cs });
+    check('P5 save with X-Client-Code -> refused (403)', r.status === 403 && !cs.ok, {
+      status: r.status,
+      cs
+    });
 
     // P6: never-expiring code (expiresInDays 0 / omitted).
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/client-codes', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: ownerHeaders,
       body: JSON.stringify({ sections: ['dash'], expiresInDays: 0 })
     });
     const cn = await j(r);
-    check('P6 create with expiresInDays 0 -> never expires (no expiresAt)', r.ok && cn.ok && !cn.expiresAt, cn);
+    check(
+      'P6 create with expiresInDays 0 -> never expires (no expiresAt)',
+      r.ok && cn.ok && !cn.expiresAt,
+      cn
+    );
     // P8 revokes THIS row (the create response carries codeId) - the old
     // list-selector ("sections dash, no expiry") became ambiguous when the
     // P0f either-auth gate created a second identical-signature code: local
@@ -326,58 +525,106 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
 
     // P7: expired code — expiresAt in the past -> lookup + load answer code_expired.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/client-codes', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: ownerHeaders,
-      body: JSON.stringify({ sections: ['risk'], expiresAt: new Date(Date.now() - 86400000).toISOString() })
+      body: JSON.stringify({
+        sections: ['risk'],
+        expiresAt: new Date(Date.now() - 86400000).toISOString()
+      })
     });
     const cx = await j(r);
     const expCode = cx.code;
     r = await fetch(BASE + '/api/cloud/codes/lookup', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code: expCode })
     });
     const exl = await j(r);
-    check('P7a expired code lookup -> code_expired', r.status === 403 && !exl.ok && exl.error === 'code_expired', { status: r.status, exl });
+    check(
+      'P7a expired code lookup -> code_expired',
+      r.status === 403 && !exl.ok && exl.error === 'code_expired',
+      { status: r.status, exl }
+    );
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/load', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', 'X-Client-Code': expCode },
       body: JSON.stringify({})
     });
     const exd = await j(r);
-    check('P7b expired code load -> code_expired (403)', r.status === 403 && exd.error === 'code_expired', { status: r.status, exd });
+    check(
+      'P7b expired code load -> code_expired (403)',
+      r.status === 403 && exd.error === 'code_expired',
+      { status: r.status, exd }
+    );
 
     // P8: revoked client code no longer resolves.
     const listRes = await fetch(BASE + '/api/cloud/projects/' + pid + '/client-codes', {
-      method: 'GET', credentials: 'same-origin', headers: ownerHeaders
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: ownerHeaders
     });
     const list = await j(listRes);
     const revokedId = { id: p6CodeId };
-    check('P8a list returns codes incl. expires_at field', listRes.ok && list.ok && (list.codes || []).length >= 3 && (list.codes || []).every(c => 'expires_at' in c), list);
-    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/client-codes/' + (revokedId && revokedId.id), {
-      method: 'DELETE', credentials: 'same-origin', headers: ownerHeaders
-    });
+    check(
+      'P8a list returns codes incl. expires_at field',
+      listRes.ok &&
+        list.ok &&
+        (list.codes || []).length >= 3 &&
+        (list.codes || []).every(c => 'expires_at' in c),
+      list
+    );
+    r = await fetch(
+      BASE + '/api/cloud/projects/' + pid + '/client-codes/' + (revokedId && revokedId.id),
+      {
+        method: 'DELETE',
+        credentials: 'same-origin',
+        headers: ownerHeaders
+      }
+    );
     const rv = await j(r);
     check('P8b revoke ok', r.ok && rv.ok, rv);
     r = await fetch(BASE + '/api/cloud/codes/lookup', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code: cn.code })
     });
     const rvl = await j(r);
-    check('P8c revoked client code lookup -> generic 403 (no match)', r.status === 403 && !rvl.ok, { status: r.status, rvl });
+    check('P8c revoked client code lookup -> generic 403 (no match)', r.status === 403 && !rvl.ok, {
+      status: r.status,
+      rvl
+    });
 
     // P10: headless Chrome — launcher cloudCodeOpen client branch + project
     // boot applyClientScope (grants visible, non-granted nav hidden).
     try {
       const { chromePath } = require('./chrome-launcher.cjs');
       const userDir = path.join(os.tmpdir(), 'chrome-cc-' + Date.now());
-      const chrome = spawn(chromePath, ['--headless=new', '--disable-gpu', '--no-first-run', '--no-sandbox',
-        '--remote-allow-origins=*', '--remote-debugging-port=9231',
-        '--user-data-dir=' + userDir, '--window-size=1280,900', '--disk-cache-size=0', 'about:blank'], { stdio: 'ignore' });
+      const chrome = spawn(
+        chromePath,
+        [
+          '--headless=new',
+          '--disable-gpu',
+          '--no-first-run',
+          '--no-sandbox',
+          '--remote-allow-origins=*',
+          '--remote-debugging-port=9231',
+          '--user-data-dir=' + userDir,
+          '--window-size=1280,900',
+          '--disk-cache-size=0',
+          'about:blank'
+        ],
+        { stdio: 'ignore' }
+      );
       let ws = null;
       for (let i = 0; i < 40; i++) {
-        try { const v = await (await fetch('http://127.0.0.1:9231/json/version')).json(); if (v.webSocketDebuggerUrl) break; } catch (e) {}
+        try {
+          const v = await (await fetch('http://127.0.0.1:9231/json/version')).json();
+          if (v.webSocketDebuggerUrl) break;
+        } catch (e) {}
         await delay(300);
       }
       // Poll for the page target: /json/version answers as soon as the DevTools
@@ -389,15 +636,39 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
         try {
           const targets = await (await fetch('http://127.0.0.1:9231/json')).json();
           tgt = (targets || []).find(t => t.type === 'page' && t.webSocketDebuggerUrl);
-        } catch (e) { /* not ready yet */ }
+        } catch (e) {
+          /* not ready yet */
+        }
         if (!tgt) await delay(300);
       }
       ws = new WebSocket(tgt.webSocketDebuggerUrl);
-      const pending = new Map(); let cid = 0;
-      ws.onmessage = (e) => { const m = JSON.parse(e.data); if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); } };
-      await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error('ws fail')); });
-      const send = (method, params = {}) => new Promise(res => { const mid = ++cid; pending.set(mid, m => res(m.result || {})); ws.send(JSON.stringify({ id: mid, method, params })); });
-      const ev = async (expr) => { const rr = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true }); return rr && rr.result && rr.result.value; };
+      const pending = new Map();
+      let cid = 0;
+      ws.onmessage = e => {
+        const m = JSON.parse(e.data);
+        if (m.id && pending.has(m.id)) {
+          pending.get(m.id)(m);
+          pending.delete(m.id);
+        }
+      };
+      await new Promise((res, rej) => {
+        ws.onopen = res;
+        ws.onerror = () => rej(new Error('ws fail'));
+      });
+      const send = (method, params = {}) =>
+        new Promise(res => {
+          const mid = ++cid;
+          pending.set(mid, m => res(m.result || {}));
+          ws.send(JSON.stringify({ id: mid, method, params }));
+        });
+      const ev = async expr => {
+        const rr = await send('Runtime.evaluate', {
+          expression: expr,
+          returnByValue: true,
+          awaitPromise: true
+        });
+        return rr && rr.result && rr.result.value;
+      };
       await send('Page.enable');
       const navReq = await send('Page.navigate', { url: BASE + '/app.html' });
       log('P10 Page.navigate result: ' + JSON.stringify(navReq));
@@ -441,11 +712,19 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
               cdSectionExists: !!document.getElementById('code-entry'),
             };
           } catch(e) { return { error: 'eval-threw: ' + String(e && e.message || e) }; } })()`);
-          if (s && s.error) { log('P10 poll eval error: ' + s.error); }            if (s && !s.error) {
-              if (s) pollReads.push({ i: pollI, t: Date.now(), s });
-              if (s.wired && !s.btnDisabled) { wiredUntil = s; break; }
+          if (s && s.error) {
+            log('P10 poll eval error: ' + s.error);
+          }
+          if (s && !s.error) {
+            if (s) pollReads.push({ i: pollI, t: Date.now(), s });
+            if (s.wired && !s.btnDisabled) {
+              wiredUntil = s;
+              break;
             }
-        } catch (e) { log('P10 poll eval error (outer): ' + String(e && e.message || e)); }
+          }
+        } catch (e) {
+          log('P10 poll eval error (outer): ' + String((e && e.message) || e));
+        }
         await delay(250);
       }
       log('P10 pollN=' + pollI + ' wiredUntil=' + JSON.stringify(wiredUntil));
@@ -501,17 +780,43 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
         if (navState && !navState.error) {
           navSamples.push(navState);
           // Production strips .html (project.html -> /project); accept both.
-          if (navState.href.indexOf('project.html?id=' + pid) > -1 || navState.href.indexOf('/project?id=' + pid) > -1) break;
+          if (
+            navState.href.indexOf('project.html?id=' + pid) > -1 ||
+            navState.href.indexOf('/project?id=' + pid) > -1
+          )
+            break;
           if (navState.btnText === 'Open from Cloud' && navState.status) break; // flow returned with an error message
         }
       }
-      const consoleErrors = (navSamples.length ? navSamples[navSamples.length - 1].errs : []);
-      const postClickPageState = navState ? { href: navState.href, btnTextAfter: navState.btnText, statusText: navState.status, inValueAfter: navState.inValue } : null;
-      const launcherState = navState ? { href: navState.href, escope: navState.escope, unlocked: navState.unlocked } : null;
+      const consoleErrors = navSamples.length ? navSamples[navSamples.length - 1].errs : [];
+      const postClickPageState = navState
+        ? {
+            href: navState.href,
+            btnTextAfter: navState.btnText,
+            statusText: navState.status,
+            inValueAfter: navState.inValue
+          }
+        : null;
+      const launcherState = navState
+        ? { href: navState.href, escope: navState.escope, unlocked: navState.unlocked }
+        : null;
       const esc = launcherState && launcherState.escope;
       // Production strips .html (project.html -> /project); accept both.
-      const navOk = launcherState && (launcherState.href.indexOf('project.html?id=' + pid) > -1 || launcherState.href.indexOf('/project?id=' + pid) > -1);
-      check('P10a launcher client open -> navigates to project + escope role client', navOk && esc && esc.role === 'client' && (esc.sections || []).join(',') === 'wbs,bud', { launcherState, consoleErrors, prepAndClick, postClickPageState, navSamples: navSamples.slice(-3) });
+      const navOk =
+        launcherState &&
+        (launcherState.href.indexOf('project.html?id=' + pid) > -1 ||
+          launcherState.href.indexOf('/project?id=' + pid) > -1);
+      check(
+        'P10a launcher client open -> navigates to project + escope role client',
+        navOk && esc && esc.role === 'client' && (esc.sections || []).join(',') === 'wbs,bud',
+        {
+          launcherState,
+          consoleErrors,
+          prepAndClick,
+          postClickPageState,
+          navSamples: navSamples.slice(-3)
+        }
+      );
       // Project boot: poll for applyClientScope's body class + banner instead of
       // sleeping (renders land inside requestAnimationFrame; re-reading beats a
       // fixed wait, and a fresh navigation needs its own boot time).
@@ -528,38 +833,60 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
         })()`);
         if (scopeState && scopeState.clientScope === true && scopeState.banner === true) break;
       }
-      check('P10b project boots client scope (readonly + banner)', scopeState && scopeState.clientScope === true && scopeState.banner === true, scopeState);
-      check('P10c granted section visible / non-granted hidden (applyClientScope)',
-        scopeState && scopeState.wbs && scopeState.wbs.hidden === false && scopeState.def && scopeState.def.hidden === true, scopeState);
+      check(
+        'P10b project boots client scope (readonly + banner)',
+        scopeState && scopeState.clientScope === true && scopeState.banner === true,
+        scopeState
+      );
+      check(
+        'P10c granted section visible / non-granted hidden (applyClientScope)',
+        scopeState &&
+          scopeState.wbs &&
+          scopeState.wbs.hidden === false &&
+          scopeState.def &&
+          scopeState.def.hidden === true,
+        scopeState
+      );
       // P10 done — close the CDP socket and Chrome exactly once, AFTER every page eval.
       log('P10 done; closing chrome + ws');
-      try { ws.close(); } catch (e) {}
-      try { chrome.kill(); } catch (e) {}
+      try {
+        ws.close();
+      } catch (e) {}
+      try {
+        chrome.kill();
+      } catch (e) {}
     } catch (e) {
-      check('P10 headless chrome section', false, { threw: String(e && e.message || e) });
+      check('P10 headless chrome section', false, { threw: String((e && e.message) || e) });
     }
-
 
     // P9: deleted project -> client lookup answers project_deleted.
     // Phase guard: a crash here (post-Chrome) would hit the outer catch
     // without a named phase; wrap so the annotation says where it died.
     try {
-    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/delete', {
-      method: 'POST', credentials: 'same-origin',
-      headers: ownerHeaders,
-      body: JSON.stringify({})
-    });
-    const del = await j(r);
-    check('P9a soft delete ok', r.ok && del.ok, del);
-    r = await fetch(BASE + '/api/cloud/codes/lookup', {
-      method: 'POST', credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: clientCode })
-    });
-    const dll = await j(r);
-    check('P9b client lookup after project delete -> project_deleted', r.status === 403 && dll.error === 'project_deleted', { status: r.status, dll });
+      r = await fetch(BASE + '/api/cloud/projects/' + pid + '/delete', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: ownerHeaders,
+        body: JSON.stringify({})
+      });
+      const del = await j(r);
+      check('P9a soft delete ok', r.ok && del.ok, del);
+      r = await fetch(BASE + '/api/cloud/codes/lookup', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: clientCode })
+      });
+      const dll = await j(r);
+      check(
+        'P9b client lookup after project delete -> project_deleted',
+        r.status === 403 && dll.error === 'project_deleted',
+        { status: r.status, dll }
+      );
     } catch (p9err) {
-      check('P9 phase (delete + lookup)', false, { threw: String(p9err && p9err.message || p9err) });
+      check('P9 phase (delete + lookup)', false, {
+        threw: String((p9err && p9err.message) || p9err)
+      });
     }
 
     const failed = results.filter(x => !x.val).length;
@@ -572,21 +899,36 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
       const summary = process.env.GITHUB_STEP_SUMMARY;
       if (summary) {
         const lines = ['## qa-client-codes gates', '', '| Gate | Result |', '|---|---|'];
-        results.forEach(function(x) { lines.push('| ' + x.name.replace(/\|/g, '\\|') + ' | ' + (x.val ? 'PASS' : 'FAIL') + ' |'); });
+        results.forEach(function (x) {
+          lines.push(
+            '| ' + x.name.replace(/\|/g, '\\|') + ' | ' + (x.val ? 'PASS' : 'FAIL') + ' |'
+          );
+        });
         fs2.appendFileSync(summary, lines.join('\n') + '\n');
       }
-    } catch (e) { /* summary is best-effort */ }
-    try { proc && proc.kill(); } catch (e) {}
+    } catch (e) {
+      /* summary is best-effort */
+    }
+    try {
+      proc && proc.kill();
+    } catch (e) {}
     process.exit(failed === 0 ? 0 : 1);
   } catch (e) {
-    log('HARNESS ERROR: ' + (e && e.stack || e));
+    log('HARNESS ERROR: ' + ((e && e.stack) || e));
     // Crash self-reporting: a throw between checks (fetch rejection, ws
     // error, anything) previously exited 1 with ZERO annotation - the CI
     // run showed only "exit code 1". Name the crash on the run page.
     try {
-      annotateFailure('HARNESS CRASHED (outer catch)', { error: String(e && e.message || e), stack: String(e && e.stack || '').slice(0, 400) });
-    } catch (x) { /* annotation is best-effort */ }
-    try { proc && proc.kill(); } catch (x) {}
+      annotateFailure('HARNESS CRASHED (outer catch)', {
+        error: String((e && e.message) || e),
+        stack: String((e && e.stack) || '').slice(0, 400)
+      });
+    } catch (x) {
+      /* annotation is best-effort */
+    }
+    try {
+      proc && proc.kill();
+    } catch (x) {}
     process.exit(1);
   }
 })();

@@ -5,13 +5,25 @@
    {id, name, since} per open WebSocket — never project content.
    OPT-IN, purely additive collaboration.
    ============================================================ */
-import { json, cloudForbidden, cloudTimingSink, readSession, hashOwnerCode, codesEqual, cloudAuthEditor } from '../lib/http.js';
+import {
+  json,
+  cloudForbidden,
+  cloudTimingSink,
+  readSession,
+  hashOwnerCode,
+  codesEqual,
+  cloudAuthEditor
+} from '../lib/http.js';
 
 // ---- crypto + manifest check ---------------------------------------------
 
 async function sha256Hex(str) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+  return Array.from(new Uint8Array(buf))
+    .map(function (b) {
+      return b.toString(16).padStart(2, '0');
+    })
+    .join('');
 }
 
 // Verify an access code against the PUBLISHED manifest (projects-data.js).
@@ -25,43 +37,73 @@ export async function cloudManifestCodeOk(env, projectId, code) {
     const end = text.lastIndexOf(']');
     if (start < 0 || end <= start) return false;
     const projects = JSON.parse(text.slice(start, end + 1));
-    const p = (projects || []).find(function(x) { return x && x.id === projectId; });
+    const p = (projects || []).find(function (x) {
+      return x && x.id === projectId;
+    });
     if (!p) return false;
-    const hash = await sha256Hex(String(code || '').trim().toUpperCase());
+    const hash = await sha256Hex(
+      String(code || '')
+        .trim()
+        .toUpperCase()
+    );
     // B12 (audit 2026-09-28): constant-time compare (codesEqual) for both
     // manifest hash checks - plain === was inconsistent with the codebase's
     // own timing-safe pattern for exactly this kind of check.
-    return codesEqual(hash, p.codeHash) || codesEqual(hash, (p.roCodeHash || p.readOnlyCodeHash || ''));
-  } catch (e) { return false; }
+    return (
+      codesEqual(hash, p.codeHash) || codesEqual(hash, p.roCodeHash || p.readOnlyCodeHash || '')
+    );
+  } catch (e) {
+    return false;
+  }
 }
 
 // ---- WebSocket upgrade handler -------------------------------------------
 
 export async function handlePresenceUpgrade(request, env, url) {
   const projectId = String(url.searchParams.get('project') || '').slice(0, 64);
-  if (!/^[A-Za-z0-9_-]{1,64}$/.test(projectId)) { await cloudTimingSink(); return cloudForbidden(); }
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(projectId)) {
+    await cloudTimingSink();
+    return cloudForbidden();
+  }
   let name = 'Viewer';
   let authed = false;
   // (a) Linked Google session — the cookie rides the handshake automatically.
   const session = await readSession(request, env);
   if (session && session.sub) {
-    const row = await env.DB.prepare('SELECT google_sub FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+    const row = await env.DB.prepare('SELECT google_sub FROM cloud_projects WHERE project_id = ?')
+      .bind(projectId)
+      .first();
     if (row) {
-      if (row.google_sub === session.sub) { authed = true; name = session.name || 'Owner'; }
-      else { await cloudTimingSink(); return cloudForbidden(); }
+      if (row.google_sub === session.sub) {
+        authed = true;
+        name = session.name || 'Owner';
+      } else {
+        await cloudTimingSink();
+        return cloudForbidden();
+      }
     }
   }
   // (b) Code-based auth: owner code in URL query string.
   try {
     const isUpgrade = (request.headers.get('Upgrade') || '').toLowerCase() === 'websocket';
-    if (!authed && !isUpgrade) { await cloudTimingSink(); return cloudForbidden(); }
+    if (!authed && !isUpgrade) {
+      await cloudTimingSink();
+      return cloudForbidden();
+    }
     if (!authed) {
       const code = String(url.searchParams.get('code') || '').trim();
       if (code) {
-        const projRow = await env.DB.prepare('SELECT owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+        const projRow = await env.DB.prepare(
+          'SELECT owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?'
+        )
+          .bind(projectId)
+          .first();
         if (projRow) {
           const hash = await hashOwnerCode(code, projRow.owner_code_salt);
-          if (codesEqual(hash, projRow.owner_code_hash)) { authed = true; name = 'Owner'; }
+          if (codesEqual(hash, projRow.owner_code_hash)) {
+            authed = true;
+            name = 'Owner';
+          }
         }
       }
     }
@@ -87,17 +129,24 @@ export async function handlePresenceUpgrade(request, env, url) {
 export async function presencePushRevChanged(env, projectId, revision) {
   try {
     const stub = env.PRESENCE.get(env.PRESENCE.idFromName(projectId));
-    await stub.fetch(new Request('https://presence.internal/broadcast', {
-      method: 'POST',
-      body: JSON.stringify({ type: 'rev-changed', revision: revision })
-    }));
-  } catch (e) { /* presence is additive — a failed push changes nothing */ }
+    await stub.fetch(
+      new Request('https://presence.internal/broadcast', {
+        method: 'POST',
+        body: JSON.stringify({ type: 'rev-changed', revision: revision })
+      })
+    );
+  } catch (e) {
+    /* presence is additive — a failed push changes nothing */
+  }
 }
 
 // ---- Presence Durable Object (WebSocket Collab, Hibernation API) ----------
 
 export class Presence {
-  constructor(state, env) { this.state = state; this.env = env; }
+  constructor(state, env) {
+    this.state = state;
+    this.env = env;
+  }
 
   async fetch(request) {
     const upgrade = (request.headers.get('Upgrade') || '').toLowerCase();
@@ -105,7 +154,9 @@ export class Presence {
       try {
         const msg = await request.text();
         if (msg) this.broadcast(msg);
-      } catch (e) { /* ignore malformed internal calls */ }
+      } catch (e) {
+        /* ignore malformed internal calls */
+      }
       return new Response('ok');
     }
     const name = decodeURIComponent(request.headers.get('X-Presence-Name') || 'Viewer');
@@ -114,7 +165,14 @@ export class Presence {
     const pair = new WebSocketPair();
     const id = crypto.randomUUID();
     const server = pair[1];
-    server.serializeAttachment({ id: id, name: name, since: Date.now(), lastSeen: Date.now(), authed: !needsAuth, authProject: authProject });
+    server.serializeAttachment({
+      id: id,
+      name: name,
+      since: Date.now(),
+      lastSeen: Date.now(),
+      authed: !needsAuth,
+      authProject: authProject
+    });
     this.state.acceptWebSocket(server);
     {
       const members = [];
@@ -156,27 +214,49 @@ export class Presence {
             const members = [];
             for (const w of this.state.getWebSockets()) {
               const a = w.deserializeAttachment();
-              if (a && a.authed && a.id !== att.id) members.push({ id: a.id, name: a.name, since: a.since });
+              if (a && a.authed && a.id !== att.id)
+                members.push({ id: a.id, name: a.name, since: a.since });
             }
             ws.send(JSON.stringify({ type: 'init', self: att.id, members: members }));
-            this.broadcast(JSON.stringify({ type: 'join', id: att.id, name: att.name, since: att.since }), att.id);
+            this.broadcast(
+              JSON.stringify({ type: 'join', id: att.id, name: att.name, since: att.since }),
+              att.id
+            );
           } else {
             ws.send(JSON.stringify({ type: 'auth_error', error: 'invalid_code' }));
-            try { ws.close(4001, 'auth failed'); } catch (e) { /* ignore */ }
+            try {
+              ws.close(4001, 'auth failed');
+            } catch (e) {
+              /* ignore */
+            }
           }
         } catch (e) {
           ws.send(JSON.stringify({ type: 'auth_error', error: 'auth_unavailable' }));
-          try { ws.close(4001, 'auth unavailable'); } catch (e2) { /* ignore */ }
+          try {
+            ws.close(4001, 'auth unavailable');
+          } catch (e2) {
+            /* ignore */
+          }
         }
         ws.serializeAttachment(att);
         return;
       }
-      if (data && data.type === 'ping') { ws.send(JSON.stringify({ type: 'pong' })); }
-    } catch (e) { /* non-JSON frames are ignored */ }
+      if (data && data.type === 'ping') {
+        ws.send(JSON.stringify({ type: 'pong' }));
+      }
+    } catch (e) {
+      /* non-JSON frames are ignored */
+    }
     ws.serializeAttachment(att);
     for (const w of this.state.getWebSockets()) {
       const a = w.deserializeAttachment();
-      if (a && now - (a.lastSeen || 0) > 75000) { try { w.close(4000, 'stale'); } catch (e2) { /* already gone */ } }
+      if (a && now - (a.lastSeen || 0) > 75000) {
+        try {
+          w.close(4000, 'stale');
+        } catch (e2) {
+          /* already gone */
+        }
+      }
     }
   }
 
@@ -195,7 +275,11 @@ export class Presence {
       const a = ws.deserializeAttachment();
       if (!a || !a.authed) continue;
       if (exceptId && a.id === exceptId) continue;
-      try { ws.send(message); } catch (e) { /* closing socket */ }
+      try {
+        ws.send(message);
+      } catch (e) {
+        /* closing socket */
+      }
     }
   }
 }

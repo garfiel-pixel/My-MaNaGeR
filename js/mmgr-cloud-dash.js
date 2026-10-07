@@ -13,7 +13,7 @@
    degrades silently , a static host without the Worker API, or a
    missing session, simply leaves the section hidden.
    ============================================================ */
-(function() {
+(function () {
   'use strict';
 
   const DASH = 'cloud-dash';
@@ -27,22 +27,36 @@
   const RAIL_UPGRADE = 'rail-upgrade';
   const RAIL_PLAN = 'rail-plan';
 
-  function $(id) { return document.getElementById(id); }
-  var escapeHtml = (MMGR.Utils && MMGR.Utils.escapeHtml) || function(s) {
-    return String(s === undefined || s === null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  };
+  function $(id) {
+    return document.getElementById(id);
+  }
+  var escapeHtml =
+    (MMGR.Utils && MMGR.Utils.escapeHtml) ||
+    function (s) {
+      return String(s === undefined || s === null ? '' : s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    };
   function fmtDate(iso) {
     if (!iso) return 'never synced';
     try {
       const d = new Date(iso);
-      return isNaN(d.getTime()) ? String(iso) : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    } catch (e) { return String(iso); }
+      return isNaN(d.getTime())
+        ? String(iso)
+        : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch (e) {
+      return String(iso);
+    }
   }
   function setStatus(msg, isErr) {
     const el = $(STATUS);
-    if (el) { el.textContent = msg || ''; el.style.color = isErr ? 'var(--danger)' : ''; }
+    if (el) {
+      el.textContent = msg || '';
+      el.style.color = isErr ? 'var(--danger)' : '';
+    }
   }
 
   // ---- HAVE A CODE? (owner 2026-09-20) -------------------------------------
@@ -58,13 +72,19 @@
   const CODE_STATUS = 'code-entry-status';
   function codeStatus(msg, isErr) {
     const el = $(CODE_STATUS);
-    if (el) { el.textContent = msg || ''; el.style.color = isErr ? 'var(--danger)' : ''; }
+    if (el) {
+      el.textContent = msg || '';
+      el.style.color = isErr ? 'var(--danger)' : '';
+    }
   }
   function normalizeCode(raw) {
-    const s = String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const s = String(raw || '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '');
     // Two valid shapes: 16-char owner/editor/viewer code (grouped) and the
     // 8-char client code (client-codes.js genCode) - pass 8 chars through.
-    if (s.length === 16) return s.slice(0, 4) + '-' + s.slice(4, 8) + '-' + s.slice(8, 12) + '-' + s.slice(12, 16);
+    if (s.length === 16)
+      return s.slice(0, 4) + '-' + s.slice(4, 8) + '-' + s.slice(8, 12) + '-' + s.slice(12, 16);
     return s;
   }
   function isCodeShape(code) {
@@ -85,66 +105,108 @@
       return;
     }
     const btn = $(CODE_BTN);
-    if (btn) { btn.disabled = true; btn.textContent = 'Checking\u2026'; }
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Checking\u2026';
+    }
     codeStatus('Checking the code\u2026', false);
     try {
       const lookRes = await fetch('/api/cloud/codes/lookup', {
-        method: 'POST', credentials: 'same-origin',
+        method: 'POST',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: code })
       });
-      const look = await lookRes.json().catch(function() { return {}; });
+      const look = await lookRes.json().catch(function () {
+        return {};
+      });
       if (!lookRes.ok || !look || !look.ok) {
         const err = look && look.error;
-        codeStatus(err === 'code_expired' ? 'This code expired' + (look.expiresAt ? ' on ' + String(look.expiresAt).slice(0, 10) : '') + '. Ask for a new one.'
-          : 'That code was not accepted. Check it and try again.', true);
+        codeStatus(
+          err === 'code_expired'
+            ? 'This code expired' +
+                (look.expiresAt ? ' on ' + String(look.expiresAt).slice(0, 10) : '') +
+                '. Ask for a new one.'
+            : 'That code was not accepted. Check it and try again.',
+          true
+        );
         return;
       }
-      if (look.deleted) { codeStatus('The project this code belongs to was deleted by its admin.', true); return; }
+      if (look.deleted) {
+        codeStatus('The project this code belongs to was deleted by its admin.', true);
+        return;
+      }
       const pid = look.projectId;
-      if (!pid || !/^[A-Za-z0-9_-]{1,64}$/.test(pid)) { codeStatus('That code was not accepted. Check it and try again.', true); return; }
+      if (!pid || !/^[A-Za-z0-9_-]{1,64}$/.test(pid)) {
+        codeStatus('That code was not accepted. Check it and try again.', true);
+        return;
+      }
       // Pull the snapshot with the code as the credential (owner codes
       // authenticate /load too - the server accepts either path).
       const loadRes = await fetch('/api/cloud/projects/' + encodeURIComponent(pid) + '/load', {
-        method: 'POST', credentials: 'same-origin',
+        method: 'POST',
+        credentials: 'same-origin',
         headers: Object.assign({ 'Content-Type': 'application/json' }, roleHeader(look.role, code)),
         body: JSON.stringify({})
       });
-      const data = await loadRes.json().catch(function() { return {}; });
+      const data = await loadRes.json().catch(function () {
+        return {};
+      });
       if (!loadRes.ok || !data || !data.ok) {
         const err = data && data.error;
-        codeStatus(err === 'code_revoked' ? 'This code was revoked by the project admin. Ask for a new one.'
-          : err === 'project_deleted' ? 'The project this code belongs to was deleted by its admin.'
-          : 'Could not open the project with this code. Try again in a moment.', true);
+        codeStatus(
+          err === 'code_revoked'
+            ? 'This code was revoked by the project admin. Ask for a new one.'
+            : err === 'project_deleted'
+              ? 'The project this code belongs to was deleted by its admin.'
+              : 'Could not open the project with this code. Try again in a moment.',
+          true
+        );
         return;
       }
       if (!data.state) {
-        codeStatus('This project has no cloud snapshot yet. Ask the owner to save it once, then use the code again.', true);
+        codeStatus(
+          'This project has no cloud snapshot yet. Ask the owner to save it once, then use the code again.',
+          true
+        );
         return;
       }
       try {
         localStorage.setItem('mmgr_unlocked_' + pid, '1');
         localStorage.setItem('mmgr_state_' + pid, JSON.stringify(data.state));
-        localStorage.setItem('mmgr_scope_' + pid, (look.role === 'view') ? 'readonly' : 'full');
+        localStorage.setItem('mmgr_scope_' + pid, look.role === 'view' ? 'readonly' : 'full');
         // Seed the SAME session slots mmgr-cloud.js reads, so the opened
         // project keeps the credential for Save/Load without re-entry.
         if (look.role === 'owner') {
           sessionStorage.setItem('mmgr_cloud_code_' + pid, code);
         } else {
           sessionStorage.setItem('mmgr_cloud_ecode_' + pid, code);
-          sessionStorage.setItem('mmgr_cloud_escope_' + pid, JSON.stringify({
-            label: (data.editorLabel || data.viewerLabel || (look.role === 'client' ? 'Client' : 'Editor')),
-            sections: data.scope || data.sections || [],
-            role: look.role
-          }));
+          sessionStorage.setItem(
+            'mmgr_cloud_escope_' + pid,
+            JSON.stringify({
+              label:
+                data.editorLabel ||
+                data.viewerLabel ||
+                (look.role === 'client' ? 'Client' : 'Editor'),
+              sections: data.scope || data.sections || [],
+              role: look.role
+            })
+          );
         }
-      } catch (e) { codeStatus('Storage is blocked in this browser , the project could not be opened.', true); return; }
+      } catch (e) {
+        codeStatus('Storage is blocked in this browser , the project could not be opened.', true);
+        return;
+      }
       codeStatus('Opening ' + pid + '\u2026', false);
       window.location.href = 'project.html?id=' + encodeURIComponent(pid);
     } catch (e) {
       codeStatus('Could not reach the cloud service , check your connection and try again.', true);
     } finally {
-      if (btn && document.body.contains(btn)) { btn.disabled = false; btn.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> Open project'; }
+      if (btn && document.body.contains(btn)) {
+        btn.disabled = false;
+        btn.innerHTML =
+          '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> Open project';
+      }
     }
   }
 
@@ -154,20 +216,33 @@
     const list = $(RAIL_CLOUD);
     if (!list) return;
     if (!projects || !projects.length) {
-      list.innerHTML = '<div class="db-sub-empty">No cloud projects yet. Link one from any project\'s Cloud section.</div>';
+      list.innerHTML =
+        '<div class="db-sub-empty">No cloud projects yet. Link one from any project\'s Cloud section.</div>';
       return;
     }
-    list.innerHTML = projects.map(function(p) {
-      const title = p.label || p.projectId || 'Unnamed project';
-      return '<button type="button" class="db-project" data-cd-load="' + escapeHtml(p.projectId) + '" title="Open ' + escapeHtml(title) + ' from the cloud">' +
-        '<span class="db-project-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg></span>' +
-        '<span class="db-project-name">' + escapeHtml(title) + '</span>' +
-        '</button>';
-    }).join('');
+    list.innerHTML = projects
+      .map(function (p) {
+        const title = p.label || p.projectId || 'Unnamed project';
+        return (
+          '<button type="button" class="db-project" data-cd-load="' +
+          escapeHtml(p.projectId) +
+          '" title="Open ' +
+          escapeHtml(title) +
+          ' from the cloud">' +
+          '<span class="db-project-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg></span>' +
+          '<span class="db-project-name">' +
+          escapeHtml(title) +
+          '</span>' +
+          '</button>'
+        );
+      })
+      .join('');
   }
   function setRailCloudEmpty(msg) {
     const list = $(RAIL_CLOUD);
-    if (list) list.innerHTML = '<div class="db-sub-empty">' + escapeHtml(msg || 'No cloud projects.') + '</div>';
+    if (list)
+      list.innerHTML =
+        '<div class="db-sub-empty">' + escapeHtml(msg || 'No cloud projects.') + '</div>';
   }
 
   // ---- Skeleton loading states (2026-09-29) ----
@@ -177,7 +252,8 @@
   function dashSkeleton(n) {
     let out = '';
     for (let i = 0; i < n; i++) {
-      out += '<div class="cd-card cd-skel" aria-hidden="true">' +
+      out +=
+        '<div class="cd-card cd-skel" aria-hidden="true">' +
         '<div class="skel-row"><span class="skel-box skel-avatar"></span>' +
         '<span class="skel-box skel-line skel-w-60"></span></div>' +
         '<div class="skel-box skel-line skel-w-40"></div>' +
@@ -186,9 +262,11 @@
     return out;
   }
   function railSkeleton() {
-    return '<div class="skel-row db-skel-row" aria-hidden="true">' +
+    return (
+      '<div class="skel-row db-skel-row" aria-hidden="true">' +
       '<span class="skel-box skel-avatar"></span>' +
-      '<span class="skel-box skel-line skel-w-60"></span></div>';
+      '<span class="skel-box skel-line skel-w-60"></span></div>'
+    );
   }
 
   // ---- fetch the session-gated project list ----
@@ -216,79 +294,151 @@
       setRailCloudEmpty('Cloud sync is unavailable on this host.');
       return;
     }
-    if (!res.ok) { dash.hidden = true; dash.removeAttribute('aria-busy'); setRailCloudEmpty('Sign in to see your cloud projects.'); return; }
+    if (!res.ok) {
+      dash.hidden = true;
+      dash.removeAttribute('aria-busy');
+      setRailCloudEmpty('Sign in to see your cloud projects.');
+      return;
+    }
     let data = null;
-    try { data = await res.json(); } catch (e) { dash.hidden = true; dash.removeAttribute('aria-busy'); setRailCloudEmpty('Could not load cloud projects.'); return; }
-    const projects = (data && data.ok && Array.isArray(data.projects)) ? data.projects : null;
-    if (!projects) { dash.hidden = true; dash.removeAttribute('aria-busy'); setRailCloudEmpty('Could not load cloud projects.'); return; }
+    try {
+      data = await res.json();
+    } catch (e) {
+      dash.hidden = true;
+      dash.removeAttribute('aria-busy');
+      setRailCloudEmpty('Could not load cloud projects.');
+      return;
+    }
+    const projects = data && data.ok && Array.isArray(data.projects) ? data.projects : null;
+    if (!projects) {
+      dash.hidden = true;
+      dash.removeAttribute('aria-busy');
+      setRailCloudEmpty('Could not load cloud projects.');
+      return;
+    }
     dash.hidden = false;
     dash.removeAttribute('aria-busy');
     setStatus('');
     loadPlan();
     renderRailCloud(projects);
     if (!projects.length) {
-      list.innerHTML = '<div class="cd-empty">No cloud-linked projects under this account yet. Link one from any project\'s Cloud section (Create Cloud Project).</div>';
+      list.innerHTML =
+        '<div class="cd-empty">No cloud-linked projects under this account yet. Link one from any project\'s Cloud section (Create Cloud Project).</div>';
       return;
     }
-    list.innerHTML = projects.map(function(p) {
-      const title = p.label || p.projectId || 'Unnamed project';
-      const when = p.updatedAt ? 'Last saved ' + fmtDate(p.updatedAt) : 'Created ' + fmtDate(p.createdAt);
-      const snap = p.hasSnapshot ? '' : '<div class="cd-meta">No snapshot saved yet. Open it to save the first one.</div>';
-      // PART F T9: adopted (shared) projects render a role chip so a
-      // recipient knows what a code grants before opening (read-only vs
-      // scoped edit). LAUNCHER DELETE (owner 2026-08-17): every card now
-      // carries the 3-dot menu , the OWNER gets "Delete project" (confirm +
-      // undo toast); a shared card gets "Remove from my list" (unpin , the
-      // owner's main version is never touched by anyone but the owner). A
-      // shared card whose owner deleted the project renders DISCONTINUED:
-      // no Load button, a notice that it can no longer be opened or
-      // updated, and a Remove action (the prompted cleanup).
-      const shared = p.accessRole && p.accessRole !== 'owner';
-      const disc = !!p.discontinued;
-      const chip = shared ? '<span class="cd-role">Shared ' + escapeHtml(p.accessRole === 'view' ? 'Viewer (read-only)' : 'Editor') + '</span>' : '';
-      // OWNER 2026-09-13: owner cards get a 3-dot menu again with TWO items:
-      // (1) Save offline copy - pulls the cloud snapshot into this device as
-      // a real, editable local project (appears in the launcher grid + admin
-      // panel; the old offline-copy feature was view-only and buried in the
-      // project drawer). (2) Delete project - the documented confirm+undo
-      // flow (openDeleteConfirm machinery existed but was never rendered).
-      // Shared cards keep unpin-only.
-      const ownerMenu = (!shared && !disc)
-        ? '<button type="button" class="cd-menu-item" role="menuitem" data-cd-copy="' + escapeHtml(p.projectId) + '">' +
-          '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Save offline copy</button>' +
-          '<button type="button" class="cd-menu-item" role="menuitem" data-cd-del="' + escapeHtml(p.projectId) + '" data-cd-del-name="' + escapeHtml(title) + '">' +
-          '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Delete project</button>'
-        : '';
-      const menuItem = shared
-        ? '<button type="button" class="cd-menu-item" role="menuitem" data-cd-unpin="' + escapeHtml(p.projectId) + '"' + (disc ? ' data-cd-disc="1"' : '') + '>' +
-          '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> ' + (disc ? 'Remove discontinued project' : 'Remove from my list') +
-          '</button>'
-        : ownerMenu;
-      const discBanner = disc
-        ? '<div class="cd-disc" role="note"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Discontinued , the admin deleted this project. It can no longer be opened or updated. Remove it from your list.</div>'
-        : '';
-      const loadBtn = disc ? '' : '<button type="button" class="btn btn-g btn-s" data-cd-load="' + escapeHtml(p.projectId) + '" title="Open this project from the cloud snapshot">Load</button>';
-      const discRemove = disc ? '<button type="button" class="btn btn-n btn-s" data-cd-unpin="' + escapeHtml(p.projectId) + '" data-cd-disc="1" title="Remove this discontinued project from your list">Remove</button>' : '';
-      const hasMenu = !!menuItem;
-      return '<div class="cd-card' + (disc ? ' cd-disc-card' : '') + '" role="listitem">' +
-        (hasMenu ? '<button type="button" class="cd-menu" data-cd-menu="' + escapeHtml(p.projectId) + '" aria-haspopup="menu" aria-expanded="false" aria-label="Project options for ' + escapeHtml(title) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-more"></use></svg></button>' +
-        '<div class="cd-menu-pop" hidden role="menu" data-cd-menu-pop="' + escapeHtml(p.projectId) + '" aria-label="Options for ' + escapeHtml(title) + '">' + menuItem + '</div>' : '') +
-        '<div class="cd-title">' + escapeHtml(title) + chip + '</div>' +
-        /* OWNER 2026-09-21 (declutter): the raw projectId under the title
+    list.innerHTML = projects
+      .map(function (p) {
+        const title = p.label || p.projectId || 'Unnamed project';
+        const when = p.updatedAt
+          ? 'Last saved ' + fmtDate(p.updatedAt)
+          : 'Created ' + fmtDate(p.createdAt);
+        const snap = p.hasSnapshot
+          ? ''
+          : '<div class="cd-meta">No snapshot saved yet. Open it to save the first one.</div>';
+        // PART F T9: adopted (shared) projects render a role chip so a
+        // recipient knows what a code grants before opening (read-only vs
+        // scoped edit). LAUNCHER DELETE (owner 2026-08-17): every card now
+        // carries the 3-dot menu , the OWNER gets "Delete project" (confirm +
+        // undo toast); a shared card gets "Remove from my list" (unpin , the
+        // owner's main version is never touched by anyone but the owner). A
+        // shared card whose owner deleted the project renders DISCONTINUED:
+        // no Load button, a notice that it can no longer be opened or
+        // updated, and a Remove action (the prompted cleanup).
+        const shared = p.accessRole && p.accessRole !== 'owner';
+        const disc = !!p.discontinued;
+        const chip = shared
+          ? '<span class="cd-role">Shared ' +
+            escapeHtml(p.accessRole === 'view' ? 'Viewer (read-only)' : 'Editor') +
+            '</span>'
+          : '';
+        // OWNER 2026-09-13: owner cards get a 3-dot menu again with TWO items:
+        // (1) Save offline copy - pulls the cloud snapshot into this device as
+        // a real, editable local project (appears in the launcher grid + admin
+        // panel; the old offline-copy feature was view-only and buried in the
+        // project drawer). (2) Delete project - the documented confirm+undo
+        // flow (openDeleteConfirm machinery existed but was never rendered).
+        // Shared cards keep unpin-only.
+        const ownerMenu =
+          !shared && !disc
+            ? '<button type="button" class="cd-menu-item" role="menuitem" data-cd-copy="' +
+              escapeHtml(p.projectId) +
+              '">' +
+              '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Save offline copy</button>' +
+              '<button type="button" class="cd-menu-item" role="menuitem" data-cd-del="' +
+              escapeHtml(p.projectId) +
+              '" data-cd-del-name="' +
+              escapeHtml(title) +
+              '">' +
+              '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Delete project</button>'
+            : '';
+        const menuItem = shared
+          ? '<button type="button" class="cd-menu-item" role="menuitem" data-cd-unpin="' +
+            escapeHtml(p.projectId) +
+            '"' +
+            (disc ? ' data-cd-disc="1"' : '') +
+            '>' +
+            '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> ' +
+            (disc ? 'Remove discontinued project' : 'Remove from my list') +
+            '</button>'
+          : ownerMenu;
+        const discBanner = disc
+          ? '<div class="cd-disc" role="note"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Discontinued , the admin deleted this project. It can no longer be opened or updated. Remove it from your list.</div>'
+          : '';
+        const loadBtn = disc
+          ? ''
+          : '<button type="button" class="btn btn-g btn-s" data-cd-load="' +
+            escapeHtml(p.projectId) +
+            '" title="Open this project from the cloud snapshot">Load</button>';
+        const discRemove = disc
+          ? '<button type="button" class="btn btn-n btn-s" data-cd-unpin="' +
+            escapeHtml(p.projectId) +
+            '" data-cd-disc="1" title="Remove this discontinued project from your list">Remove</button>'
+          : '';
+        const hasMenu = !!menuItem;
+        return (
+          '<div class="cd-card' +
+          (disc ? ' cd-disc-card' : '') +
+          '" role="listitem">' +
+          (hasMenu
+            ? '<button type="button" class="cd-menu" data-cd-menu="' +
+              escapeHtml(p.projectId) +
+              '" aria-haspopup="menu" aria-expanded="false" aria-label="Project options for ' +
+              escapeHtml(title) +
+              '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-more"></use></svg></button>' +
+              '<div class="cd-menu-pop" hidden role="menu" data-cd-menu-pop="' +
+              escapeHtml(p.projectId) +
+              '" aria-label="Options for ' +
+              escapeHtml(title) +
+              '">' +
+              menuItem +
+              '</div>'
+            : '') +
+          '<div class="cd-title">' +
+          escapeHtml(title) +
+          chip +
+          '</div>' +
+          /* OWNER 2026-09-21 (declutter): the raw projectId under the title
            repeated the heading and read as noise. The meta line now speaks
            people + time: owned cards say "Created by <account name>" and
            shared cards "Shared by <account name>" (the list API's linkedName
            is the OWNER's account name on both paths), followed by the
            existing Last saved / Created stamp. */
-        '<div class="cd-meta">' + (p.linkedName ? (shared ? 'Shared by ' : 'Created by ') + escapeHtml(p.linkedName) + '<br>' : '') + escapeHtml(when) + '</div>' +
-        discBanner +
-        snap +
-        '<div class="cd-actions">' +
-        loadBtn +
-        discRemove +
-        '</div>' +
-        '</div>';
-    }).join('');
+          '<div class="cd-meta">' +
+          (p.linkedName
+            ? (shared ? 'Shared by ' : 'Created by ') + escapeHtml(p.linkedName) + '<br>'
+            : '') +
+          escapeHtml(when) +
+          '</div>' +
+          discBanner +
+          snap +
+          '<div class="cd-actions">' +
+          loadBtn +
+          discRemove +
+          '</div>' +
+          '</div>'
+        );
+      })
+      .join('');
   }
 
   // ---- BILLING-UPGRADE-UI (app.html RAIL FOOTER, 2026-08-12/14) ----
@@ -309,13 +459,35 @@
     let res;
     try {
       res = await fetch('/api/billing/status', { method: 'GET', credentials: 'same-origin' });
-    } catch (e) { if (plan) plan.hidden = true; if (railUp) railUp.hidden = true; return; }
-    if (!res.ok) { if (plan) plan.hidden = true; if (railUp) railUp.hidden = true; return; }
+    } catch (e) {
+      if (plan) plan.hidden = true;
+      if (railUp) railUp.hidden = true;
+      return;
+    }
+    if (!res.ok) {
+      if (plan) plan.hidden = true;
+      if (railUp) railUp.hidden = true;
+      return;
+    }
     let data = null;
-    try { data = await res.json(); } catch (e) { if (plan) plan.hidden = true; if (railUp) railUp.hidden = true; return; }
-    if (!data || !data.ok || !data.configured) { if (plan) plan.hidden = true; if (railUp) railUp.hidden = true; return; }
+    try {
+      data = await res.json();
+    } catch (e) {
+      if (plan) plan.hidden = true;
+      if (railUp) railUp.hidden = true;
+      return;
+    }
+    if (!data || !data.ok || !data.configured) {
+      if (plan) plan.hidden = true;
+      if (railUp) railUp.hidden = true;
+      return;
+    }
     // Single source of truth for the active tier: the billing status fetch.
-    if (window.MMGR && MMGR.Entitlements && typeof MMGR.Entitlements.setBillingTier === 'function') {
+    if (
+      window.MMGR &&
+      MMGR.Entitlements &&
+      typeof MMGR.Entitlements.setBillingTier === 'function'
+    ) {
       MMGR.Entitlements.setBillingTier(data.plan || 'free');
     }
     const count = data.projectCount || 0;
@@ -324,7 +496,8 @@
     if (data.active) {
       // Paid plan -> Premium badge (visible whenever billing is on).
       if (plan) {
-        plan.innerHTML = '<span class="db-plan-badge"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Premium</span>';
+        plan.innerHTML =
+          '<span class="db-plan-badge"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Premium</span>';
         plan.hidden = false;
       }
       if (railUp) railUp.hidden = true;
@@ -334,7 +507,8 @@
       if (plan) plan.hidden = true;
       if (railUp) {
         railUp.hidden = false;
-        railUp.innerHTML = 'Upgrade to Premium' +
+        railUp.innerHTML =
+          'Upgrade to Premium' +
           (atLimit ? '<span class="db-upgrade-note">' + count + ' of ' + cap + ' used</span>' : '');
       }
     }
@@ -353,17 +527,40 @@
     // cannot reach back into this window.
     const tab = window.open('about:blank', '_blank');
     try {
-      const res = await fetch('/api/billing/checkout', { method: 'POST', credentials: 'same-origin' });
-      const data = await res.json().catch(function() { return {}; });
+      const res = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        credentials: 'same-origin'
+      });
+      const data = await res.json().catch(function () {
+        return {};
+      });
       if (!res.ok || !data.ok || !data.checkoutUrl) {
-        if (tab) { try { tab.close(); } catch (e) { /* already gone */ } }
-        if (res.status === 503) setStatus('Billing isn\u2019t configured on this server yet, so no upgrade is available.', true);
+        if (tab) {
+          try {
+            tab.close();
+          } catch (e) {
+            /* already gone */
+          }
+        }
+        if (res.status === 503)
+          setStatus(
+            'Billing isn\u2019t configured on this server yet, so no upgrade is available.',
+            true
+          );
         else setStatus((data && data.error) || 'Checkout failed (HTTP ' + res.status + ').', true);
         return;
       }
-      if (tab) { try { tab.opener = null; tab.location.replace(data.checkoutUrl); } catch (e) { window.open(data.checkoutUrl, '_blank', 'noopener'); } }
-      else window.open(data.checkoutUrl, '_blank', 'noopener');
-      setStatus('Checkout opened in a new tab , complete the purchase there, then refresh this page.');
+      if (tab) {
+        try {
+          tab.opener = null;
+          tab.location.replace(data.checkoutUrl);
+        } catch (e) {
+          window.open(data.checkoutUrl, '_blank', 'noopener');
+        }
+      } else window.open(data.checkoutUrl, '_blank', 'noopener');
+      setStatus(
+        'Checkout opened in a new tab , complete the purchase there, then refresh this page.'
+      );
     } catch (e) {
       setStatus('Could not reach the cloud service.', true);
     }
@@ -378,11 +575,17 @@
     let card = null;
     if (list) {
       for (let i = 0; i < list.children.length; i++) {
-        if (list.children[i].querySelector('[data-cd-load="' + projectId + '"]')) { card = list.children[i]; break; }
+        if (list.children[i].querySelector('[data-cd-load="' + projectId + '"]')) {
+          card = list.children[i];
+          break;
+        }
       }
     }
     const target = card ? card.querySelector('.btn') : null;
-    if (target) { target.disabled = true; target.textContent = 'Loading…'; }
+    if (target) {
+      target.disabled = true;
+      target.textContent = 'Loading…';
+    }
     setStatus('');
     try {
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(projectId) + '/load', {
@@ -391,18 +594,30 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
       });
-      if (!res.ok) { setStatus('Could not load , check that this project is linked to the signed-in account.', true); return; }
+      if (!res.ok) {
+        setStatus(
+          'Could not load , check that this project is linked to the signed-in account.',
+          true
+        );
+        return;
+      }
       const data = await res.json();
-      if (!data || !data.ok) { setStatus('Could not load that project right now.', true); return; }
+      if (!data || !data.ok) {
+        setStatus('Could not load that project right now.', true);
+        return;
+      }
       if (data.state) {
         try {
           // SAME-DEVICE LINK (owner 2026-09-21): only the OWNER role stamps
           // the registry link - an editor/viewer pinning a shared project has
           // no push credential and must never read as a pushable owner row.
           if (data.role === 'owner' || !data.role) {
-            stampCloudLinkInRegistry(projectId,
+            stampCloudLinkInRegistry(
+              projectId,
               (data.state && data.state.charter && data.state.charter.projectName) ||
-              (data.state && data.state.projectName) || projectId);
+                (data.state && data.state.projectName) ||
+                projectId
+            );
           }
           localStorage.setItem('mmgr_unlocked_' + projectId, '1');
           localStorage.setItem('mmgr_scope_' + projectId, 'full');
@@ -415,15 +630,26 @@
           // the client (the server still enforces, but the UI must match).
           if (data.role === 'view' || data.role === 'editor') {
             try {
-              sessionStorage.setItem('mmgr_cloud_escope_' + projectId, JSON.stringify({
-                label: data.editorLabel || data.viewerLabel || (data.role === 'view' ? 'Viewer' : 'Editor'),
-                sections: data.scope || [],
-                role: data.role === 'view' ? 'view' : 'editor'
-              }));
+              sessionStorage.setItem(
+                'mmgr_cloud_escope_' + projectId,
+                JSON.stringify({
+                  label:
+                    data.editorLabel ||
+                    data.viewerLabel ||
+                    (data.role === 'view' ? 'Viewer' : 'Editor'),
+                  sections: data.scope || [],
+                  role: data.role === 'view' ? 'view' : 'editor'
+                })
+              );
               if (data.role === 'view') localStorage.setItem('mmgr_scope_' + projectId, 'readonly');
-            } catch (e) { /* ignore , server still enforces */ }
+            } catch (e) {
+              /* ignore , server still enforces */
+            }
           }
-        } catch (e) { setStatus('Storage unavailable , could not open the project.', true); return; }
+        } catch (e) {
+          setStatus('Storage unavailable , could not open the project.', true);
+          return;
+        }
         // Opens the project viewer with the same ?id= entry the editor-code
         // unlock uses.
         window.location.href = 'project.html?id=' + encodeURIComponent(projectId);
@@ -433,13 +659,19 @@
       // once from "its Cloud section", which only makes sense for the OWNER.
       // A recipient who pinned a shared project has no Cloud section for
       // someone else's project , explain clearly instead of dead-ending.
-      setStatus(data.role === 'view' || data.role === 'editor'
-        ? 'This shared project has no cloud snapshot yet. The admin needs to save it once first, then it will open here.'
-        : 'This project has no cloud snapshot yet. Open it once from its Cloud section (Save to Cloud) and it will appear here.', true);
+      setStatus(
+        data.role === 'view' || data.role === 'editor'
+          ? 'This shared project has no cloud snapshot yet. The admin needs to save it once first, then it will open here.'
+          : 'This project has no cloud snapshot yet. Open it once from its Cloud section (Save to Cloud) and it will appear here.',
+        true
+      );
     } catch (e) {
       setStatus('Could not reach the cloud service.', true);
     } finally {
-      if (target) { target.disabled = false; target.textContent = 'Load'; }
+      if (target) {
+        target.disabled = false;
+        target.textContent = 'Load';
+      }
     }
   }
 
@@ -457,25 +689,46 @@
     setStatus('Saving offline copy…');
     try {
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(projectId) + '/load', {
-        method: 'POST', credentials: 'same-origin',
+        method: 'POST',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
       });
-      const data = await res.json().catch(function() { return {}; });
-      if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Could not fetch the cloud snapshot.', true); return; }
-      if (!data.state) { setStatus('No cloud snapshot yet. Open the project and save it once first.', true); return; }
+      const data = await res.json().catch(function () {
+        return {};
+      });
+      if (!res.ok || !data.ok) {
+        setStatus((data && data.error) || 'Could not fetch the cloud snapshot.', true);
+        return;
+      }
+      if (!data.state) {
+        setStatus('No cloud snapshot yet. Open the project and save it once first.', true);
+        return;
+      }
       // Never overwrite an existing local record of the same id.
       let list = [];
       try {
         const raw = localStorage.getItem('mmgr_admin_projects');
         list = raw ? JSON.parse(raw) : [];
         if (!Array.isArray(list)) list = [];
-      } catch (e) { list = []; }
-      if (list.some(function(p) { return p && p.id === projectId; })) {
-        setStatus('This project already exists on this device - opening it from the grid uses your local copy.', true);
+      } catch (e) {
+        list = [];
+      }
+      if (
+        list.some(function (p) {
+          return p && p.id === projectId;
+        })
+      ) {
+        setStatus(
+          'This project already exists on this device - opening it from the grid uses your local copy.',
+          true
+        );
         return;
       }
-      const title = data.label || (data.state && data.state.charter && data.state.charter.projectName) || projectId;
+      const title =
+        data.label ||
+        (data.state && data.state.charter && data.state.charter.projectName) ||
+        projectId;
       // SAME-DEVICE LINK (owner 2026-09-21): a copy drawn from the cloud is
       // linked to its cloud twin the moment it lands - the registry record
       // carries cloudId + the session marker, so admin/boot adopt sees it
@@ -498,8 +751,16 @@
         localStorage.setItem('mmgr_state_' + projectId, JSON.stringify(data.state));
         localStorage.setItem('mmgr_unlocked_' + projectId, '1');
         localStorage.setItem('mmgr_scope_' + projectId, 'full');
-      } catch (e) { setStatus('Storage unavailable - could not save the offline copy.', true); return; }
-      notify('"' + title + '" saved to this device, linked to its cloud copy. It opens from your project grid.', 'ok');
+      } catch (e) {
+        setStatus('Storage unavailable - could not save the offline copy.', true);
+        return;
+      }
+      notify(
+        '"' +
+          title +
+          '" saved to this device, linked to its cloud copy. It opens from your project grid.',
+        'ok'
+      );
       setStatus('');
       renderCardsIfPresent();
     } catch (e) {
@@ -523,13 +784,19 @@
           return;
         }
       }
-    } catch (e) { /* best-effort link stamping - never block the restore */ }
+    } catch (e) {
+      /* best-effort link stamping - never block the restore */
+    }
   }
 
   // The launcher grid lives in app.html's inline script; refresh it when we
   // are on that page (the cloud dash and the grid share the page).
   function renderCardsIfPresent() {
-    try { if (typeof window.renderCards === 'function') window.renderCards(); } catch (e) { /* grid not on this page */ }
+    try {
+      if (typeof window.renderCards === 'function') window.renderCards();
+    } catch (e) {
+      /* grid not on this page */
+    }
   }
 
   // ---- PART F T9: unpin an adopted (shared) project ----
@@ -546,12 +813,19 @@
         method: 'DELETE',
         credentials: 'same-origin'
       });
-      const data = await res.json().catch(function() { return {}; });
+      const data = await res.json().catch(function () {
+        return {};
+      });
       if (!res.ok || !data.ok) {
         setStatus((data && data.error) || 'Could not remove the project.', true);
         return;
       }
-      notify(discontinued ? 'Discontinued project removed from your list.' : 'Removed. The project is gone from your list.', 'ok');
+      notify(
+        discontinued
+          ? 'Discontinued project removed from your list.'
+          : 'Removed. The project is gone from your list.',
+        'ok'
+      );
       setStatus('');
       loadList();
     } catch (e) {
@@ -571,11 +845,17 @@
   function openDeleteConfirm(projectId, name) {
     _pendingDelete = { id: projectId, name: name || projectId };
     const d = document.getElementById('cdm-desc');
-    if (d) d.textContent = 'Deleting "' + (name || projectId) + '" removes it from the cloud backend. Every shared copy stops working (discontinued) and it disappears from your launcher. You can undo this for a few seconds after confirming. After that, you have 5 days to recover it from the Recover Deleted Projects section.';
+    if (d)
+      d.textContent =
+        'Deleting "' +
+        (name || projectId) +
+        '" removes it from the cloud backend. Every shared copy stops working (discontinued) and it disappears from your launcher. You can undo this for a few seconds after confirming. After that, you have 5 days to recover it from the Recover Deleted Projects section.';
     const err = document.getElementById('cdm-err');
     if (err) err.textContent = '';
     const m = document.getElementById('cdm');
-    if (m) { m.classList.add('open'); }
+    if (m) {
+      m.classList.add('open');
+    }
   }
   function closeDeleteConfirm() {
     _pendingDelete = null;
@@ -589,14 +869,21 @@
         method: 'POST',
         credentials: 'same-origin'
       });
-      const data = await res.json().catch(function() { return {}; });
+      const data = await res.json().catch(function () {
+        return {};
+      });
       if (!res.ok || !data.ok) {
         closeDeleteConfirm();
         setStatus((data && data.error) || 'Could not delete the project.', true);
         return;
       }
       closeDeleteConfirm();
-      notify('"' + (name || projectId) + '" deleted. You have 5 days to recover it.', 'ok', { label: 'Undo', fn: function() { restoreProject(projectId, name); } });
+      notify('"' + (name || projectId) + '" deleted. You have 5 days to recover it.', 'ok', {
+        label: 'Undo',
+        fn: function () {
+          restoreProject(projectId, name);
+        }
+      });
       setStatus('');
       loadList();
     } catch (e) {
@@ -611,7 +898,9 @@
         method: 'POST',
         credentials: 'same-origin'
       });
-      const data = await res.json().catch(function() { return {}; });
+      const data = await res.json().catch(function () {
+        return {};
+      });
       if (!res.ok || !data.ok) {
         setStatus((data && data.error) || 'Could not restore the project.', true);
         return;
@@ -659,7 +948,7 @@
   }
 
   // ---- events ----
-  document.addEventListener('click', function(e) {
+  document.addEventListener('click', function (e) {
     // HAVE A CODE? (owner 2026-09-20): the section's Open button + Enter key.
     if (e.target && e.target.closest && e.target.closest('#' + CODE_BTN)) {
       e.preventDefault();
@@ -734,16 +1023,24 @@
     // Click on the #cdm backdrop closes the confirm sheet (same as #om).
     if (e.target.id === 'cdm') closeDeleteConfirm();
   });
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') { closeMenus(); closeDeleteConfirm(); }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      closeMenus();
+      closeDeleteConfirm();
+    }
     // HAVE A CODE?: Enter in the code box opens, like every other form here.
     if (e.key === 'Enter') {
       const t = e.target;
-      if (t && t.id === CODE_IN) { e.preventDefault(); codeEntryOpen(); }
+      if (t && t.id === CODE_IN) {
+        e.preventDefault();
+        codeEntryOpen();
+      }
     }
   });
-  document.addEventListener('mmgr:google-signed-in', function() { loadList(); });
-  document.addEventListener('mmgr:google-signed-out', function() {
+  document.addEventListener('mmgr:google-signed-in', function () {
+    loadList();
+  });
+  document.addEventListener('mmgr:google-signed-out', function () {
     const dash = $(DASH);
     if (dash) dash.hidden = true;
     const rl = $(RAIL_CLOUD);
@@ -761,11 +1058,20 @@
   // surfaces cannot disagree about whether anyone is signed in.
   function hidePlan() {
     const plan = $(RAIL_PLAN);
-    if (plan) { plan.hidden = true; plan.innerHTML = ''; }
+    if (plan) {
+      plan.hidden = true;
+      plan.innerHTML = '';
+    }
     const railUp = $(RAIL_UPGRADE);
-    if (railUp) { railUp.hidden = true; railUp.innerHTML = ''; }
+    if (railUp) {
+      railUp.hidden = true;
+      railUp.innerHTML = '';
+    }
     const pills = document.querySelectorAll('[data-plan-badge]');
-    for (let i = 0; i < pills.length; i++) { pills[i].hidden = true; pills[i].innerHTML = ''; }
+    for (let i = 0; i < pills.length; i++) {
+      pills[i].hidden = true;
+      pills[i].innerHTML = '';
+    }
   }
 
   // ---- PROJECTS CAROUSEL (owner 2026-08-16) -----------------------------
@@ -785,7 +1091,9 @@
     const cards = Array.prototype.slice.call(grid.querySelectorAll('.pcard'));
     let nav = document.getElementById('pg-nav');
     if (cards.length <= PG_PER_PAGE) {
-      cards.forEach(function(c) { c.classList.remove('pg-off'); });
+      cards.forEach(function (c) {
+        c.classList.remove('pg-off');
+      });
       if (nav) nav.remove();
       return;
     }
@@ -794,17 +1102,18 @@
 
     function showPage(i) {
       pgCurrent = i;
-      cards.forEach(function(c, idx) {
+      cards.forEach(function (c, idx) {
         const on = Math.floor(idx / PG_PER_PAGE) === pgCurrent;
         c.classList.toggle('pg-off', !on);
-        if (on) c.classList.add('pg-on'); else c.classList.remove('pg-on');
+        if (on) c.classList.add('pg-on');
+        else c.classList.remove('pg-on');
       });
       const prev = document.getElementById('pg-prev');
       const next = document.getElementById('pg-next');
       const cnt = document.getElementById('pg-count');
       if (prev) prev.disabled = pgCurrent === 0;
       if (next) next.disabled = pgCurrent === pages - 1;
-      if (cnt) cnt.textContent = (pgCurrent + 1) + ' of ' + pages;
+      if (cnt) cnt.textContent = pgCurrent + 1 + ' of ' + pages;
       const dots = document.querySelectorAll('.pg-dot');
       for (let d = 0; d < dots.length; d++) dots[d].classList.toggle('is-on', d === pgCurrent);
     }
@@ -814,7 +1123,14 @@
       if (!dotsEl || dotsEl.children.length === pages) return;
       let html = '';
       for (let p = 0; p < pages; p++) {
-        html += '<button type="button" class="pg-dot" data-pg="' + p + '" aria-label="Go to page ' + (p + 1) + '" aria-pressed="' + (p === pgCurrent ? 'true' : 'false') + '"></button>';
+        html +=
+          '<button type="button" class="pg-dot" data-pg="' +
+          p +
+          '" aria-label="Go to page ' +
+          (p + 1) +
+          '" aria-pressed="' +
+          (p === pgCurrent ? 'true' : 'false') +
+          '"></button>';
       }
       dotsEl.innerHTML = html;
     }
@@ -830,9 +1146,13 @@
         '<span class="pg-dots" id="pg-dots" role="group" aria-label="Project pages"></span>' +
         '<button type="button" class="pg-btn" id="pg-next" aria-label="Next projects">Next <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>';
       grid.parentNode.insertBefore(nav, grid.nextSibling);
-      document.getElementById('pg-prev').addEventListener('click', function() { if (pgCurrent > 0) showPage(pgCurrent - 1); });
-      document.getElementById('pg-next').addEventListener('click', function() { if (pgCurrent < pages - 1) showPage(pgCurrent + 1); });
-      document.getElementById('pg-dots').addEventListener('click', function(e) {
+      document.getElementById('pg-prev').addEventListener('click', function () {
+        if (pgCurrent > 0) showPage(pgCurrent - 1);
+      });
+      document.getElementById('pg-next').addEventListener('click', function () {
+        if (pgCurrent < pages - 1) showPage(pgCurrent + 1);
+      });
+      document.getElementById('pg-dots').addEventListener('click', function (e) {
         const dot = e.target && e.target.closest ? e.target.closest('.pg-dot') : null;
         if (dot) showPage(parseInt(dot.getAttribute('data-pg'), 10) || 0);
       });
@@ -844,8 +1164,9 @@
   function initGridPager() {
     const grid = document.getElementById('grid');
     if (grid && window.MutationObserver) {
-      new MutationObserver(function() { paginateGrid(); })
-        .observe(grid, { childList: true });
+      new MutationObserver(function () {
+        paginateGrid();
+      }).observe(grid, { childList: true });
     }
     paginateGrid();
   }
@@ -865,62 +1186,115 @@
     var status = document.getElementById(RECOVER_STATUS);
     if (!dash || !list) return;
     // Only show if signed in
-    fetch('/api/auth/me', { credentials: 'same-origin' }).then(function(r) { return r.json(); }).then(function(me) {
-      if (!me || !me.ok || !me.user) { dash.hidden = true; return; }
-      return fetch('/api/cloud/projects/deleted', { method: 'GET', credentials: 'same-origin' });
-    }).then(function(res) {
-      if (!res) return;
-      if (!res.ok) { dash.hidden = true; return; }
-      return res.json();
-    }).then(function(data) {
-      if (!data || !data.ok) { dash.hidden = true; return; }
-      var deleted = data.deleted || [];
-      if (!deleted.length) { dash.hidden = true; return; }
-      dash.hidden = false;
-      list.innerHTML = deleted.map(function(p) {
-        var when = p.deletedAt ? fmtDate(p.deletedAt) : 'unknown';
-        return '<div class="cd-card" role="listitem">' +
-          '<div class="cd-title">' + escapeHtml(p.label || p.projectId) + '</div>' +
-          '<div class="cd-meta">' + escapeHtml(p.projectId || '') + '<br>Deleted ' + escapeHtml(when) + '</div>' +
-          '<div class="cd-actions">' +
-          '<button type="button" class="btn btn-g btn-s" data-cd-recover="' + escapeHtml(p.projectId) + '" data-cd-recover-name="' + escapeHtml(p.label || p.projectId) + '">Restore</button>' +
-          '</div>' +
-          '</div>';
-      }).join('');
-      // Also populate the rail recover section
-      var railRec = document.getElementById('rail-recover');
-      if (railRec) {
-        railRec.innerHTML = deleted.map(function(p) {
-          return '<button type="button" class="db-project" data-cd-recover="' + escapeHtml(p.projectId) + '" data-cd-recover-name="' + escapeHtml(p.label || p.projectId) + '" title="Restore ' + escapeHtml(p.label || p.projectId) + '">' +
-            '<span class="db-project-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg></span>' +
-            '<span class="db-project-name">' + escapeHtml(p.label || p.projectId) + '</span>' +
-            '</button>';
-        }).join('');
-      }
-    }).catch(function() { dash.hidden = true; });
+    fetch('/api/auth/me', { credentials: 'same-origin' })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (me) {
+        if (!me || !me.ok || !me.user) {
+          dash.hidden = true;
+          return;
+        }
+        return fetch('/api/cloud/projects/deleted', { method: 'GET', credentials: 'same-origin' });
+      })
+      .then(function (res) {
+        if (!res) return;
+        if (!res.ok) {
+          dash.hidden = true;
+          return;
+        }
+        return res.json();
+      })
+      .then(function (data) {
+        if (!data || !data.ok) {
+          dash.hidden = true;
+          return;
+        }
+        var deleted = data.deleted || [];
+        if (!deleted.length) {
+          dash.hidden = true;
+          return;
+        }
+        dash.hidden = false;
+        list.innerHTML = deleted
+          .map(function (p) {
+            var when = p.deletedAt ? fmtDate(p.deletedAt) : 'unknown';
+            return (
+              '<div class="cd-card" role="listitem">' +
+              '<div class="cd-title">' +
+              escapeHtml(p.label || p.projectId) +
+              '</div>' +
+              '<div class="cd-meta">' +
+              escapeHtml(p.projectId || '') +
+              '<br>Deleted ' +
+              escapeHtml(when) +
+              '</div>' +
+              '<div class="cd-actions">' +
+              '<button type="button" class="btn btn-g btn-s" data-cd-recover="' +
+              escapeHtml(p.projectId) +
+              '" data-cd-recover-name="' +
+              escapeHtml(p.label || p.projectId) +
+              '">Restore</button>' +
+              '</div>' +
+              '</div>'
+            );
+          })
+          .join('');
+        // Also populate the rail recover section
+        var railRec = document.getElementById('rail-recover');
+        if (railRec) {
+          railRec.innerHTML = deleted
+            .map(function (p) {
+              return (
+                '<button type="button" class="db-project" data-cd-recover="' +
+                escapeHtml(p.projectId) +
+                '" data-cd-recover-name="' +
+                escapeHtml(p.label || p.projectId) +
+                '" title="Restore ' +
+                escapeHtml(p.label || p.projectId) +
+                '">' +
+                '<span class="db-project-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg></span>' +
+                '<span class="db-project-name">' +
+                escapeHtml(p.label || p.projectId) +
+                '</span>' +
+                '</button>'
+              );
+            })
+            .join('');
+        }
+      })
+      .catch(function () {
+        dash.hidden = true;
+      });
   }
 
   function recoverProject(projectId, name) {
     var status = document.getElementById(RECOVER_STATUS);
     if (status) status.textContent = 'Restoring project...';
     fetch('/api/cloud/projects/' + encodeURIComponent(projectId) + '/restore', {
-      method: 'POST', credentials: 'same-origin'
-    }).then(function(r) { return r.json(); }).then(function(data) {
-      if (!data || !data.ok) {
-        if (status) status.textContent = (data && data.error) || 'Could not restore the project.';
-        return;
-      }
-      notify('"' + (name || projectId) + '" restored successfully.', 'ok');
-      if (status) status.textContent = '';
-      loadDeletedProjects();
-      loadList(); // refresh main cloud list too
-    }).catch(function() {
-      if (status) status.textContent = 'Could not reach the cloud service.';
-    });
+      method: 'POST',
+      credentials: 'same-origin'
+    })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (data) {
+        if (!data || !data.ok) {
+          if (status) status.textContent = (data && data.error) || 'Could not restore the project.';
+          return;
+        }
+        notify('"' + (name || projectId) + '" restored successfully.', 'ok');
+        if (status) status.textContent = '';
+        loadDeletedProjects();
+        loadList(); // refresh main cloud list too
+      })
+      .catch(function () {
+        if (status) status.textContent = 'Could not reach the cloud service.';
+      });
   }
 
   // ---- events for recover section ----
-  document.addEventListener('click', function(e) {
+  document.addEventListener('click', function (e) {
     var rec = e.target && e.target.closest ? e.target.closest('[data-cd-recover]') : null;
     if (rec) {
       e.preventDefault();
@@ -936,7 +1310,11 @@
   // session exists the list loads, otherwise the section stays hidden and
   // the sign-in event will reveal it.
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() { loadList(); initGridPager(); loadDeletedProjects(); });
+    document.addEventListener('DOMContentLoaded', function () {
+      loadList();
+      initGridPager();
+      loadDeletedProjects();
+    });
   } else {
     loadList();
     initGridPager();

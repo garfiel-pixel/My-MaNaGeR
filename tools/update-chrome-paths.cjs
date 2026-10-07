@@ -6,15 +6,31 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..');
 
 const scripts = [
-  'qa-ai-visual.cjs', 'qa-ai.cjs', 'qa-drive-smoke.cjs', 'qa-focus.cjs',
-  'qa-glass-visual.cjs', 'qa-glass.cjs', 'qa-oauth.cjs', 'qa-obs-verify.cjs',
-  'qa-r3.cjs', 'qa-restore-verify.cjs', 'qa-rhythm.cjs', 'qa-sync.cjs',
-  'qa-typing.cjs', 'qa-v11.cjs', 'qa-voice.cjs',
-  'tools/qa-ai-polish.cjs', 'tools/qa-cloud-phase1.cjs', 'tools/qa-cloud-phase2.cjs',
+  'qa-ai-visual.cjs',
+  'qa-ai.cjs',
+  'qa-drive-smoke.cjs',
+  'qa-focus.cjs',
+  'qa-glass-visual.cjs',
+  'qa-glass.cjs',
+  'qa-oauth.cjs',
+  'qa-obs-verify.cjs',
+  'qa-r3.cjs',
+  'qa-restore-verify.cjs',
+  'qa-rhythm.cjs',
+  'qa-sync.cjs',
+  'qa-typing.cjs',
+  'qa-v11.cjs',
+  'qa-voice.cjs',
+  'tools/qa-ai-polish.cjs',
+  'tools/qa-cloud-phase1.cjs',
+  'tools/qa-cloud-phase2.cjs',
   'tools/qa-market-features.cjs',
-  'tools/verify-cloud-autosave-signin.cjs', 'tools/verify-controls-admin.cjs',
-  'tools/verify-dynamic-labels.cjs', 'tools/verify-gates-themes.cjs',
-  'tools/verify-glass-preview-cdp.cjs', 'tools/verify-theme-cdp.cjs'
+  'tools/verify-cloud-autosave-signin.cjs',
+  'tools/verify-controls-admin.cjs',
+  'tools/verify-dynamic-labels.cjs',
+  'tools/verify-gates-themes.cjs',
+  'tools/verify-glass-preview-cdp.cjs',
+  'tools/verify-theme-cdp.cjs'
 ];
 
 let updated = 0;
@@ -26,12 +42,17 @@ for (const rel of scripts) {
   let content = fs.readFileSync(abs, 'utf8');
 
   // Check if already has the require
-  if (content.includes("require('./tools/chrome-launcher") || content.includes("require('./chrome-launcher")) {
+  if (
+    content.includes("require('./tools/chrome-launcher") ||
+    content.includes("require('./chrome-launcher")
+  ) {
     console.log('SKIP (already updated): ' + rel);
     continue;
   }
 
-  const requirePath = rel.startsWith('tools/') ? './chrome-launcher.cjs' : './tools/chrome-launcher.cjs';
+  const requirePath = rel.startsWith('tools/')
+    ? './chrome-launcher.cjs'
+    : './tools/chrome-launcher.cjs';
 
   // Remove all CHROME/PORT/BASE lines (various patterns)
   const lines = content.split('\n');
@@ -47,7 +68,9 @@ for (const rel of scripts) {
     if (isChromeLine) {
       chromeFound = true;
       if (!addedRequire) {
-        newLines.push("const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('" + requirePath + "');");
+        newLines.push(
+          "const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('" + requirePath + "');"
+        );
         addedRequire = true;
       }
       continue; // skip CHROME line

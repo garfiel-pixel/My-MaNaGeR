@@ -28,11 +28,19 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 // NOTE: no --disable-gpu here — the premium engine needs a real WebGL
 // context (SwiftShader in headless); the flag would silently fail every
 // boot scenario with no console error.
-const proc = spawn(CHROME, [
-  '--headless=new', '--no-sandbox',
-  '--remote-allow-origins=*', '--remote-debugging-port=' + PORT,
-  '--user-data-dir=' + userDir, '--window-size=1280,900', 'about:blank'
-], { stdio: 'ignore' });
+const proc = spawn(
+  CHROME,
+  [
+    '--headless=new',
+    '--no-sandbox',
+    '--remote-allow-origins=*',
+    '--remote-debugging-port=' + PORT,
+    '--user-data-dir=' + userDir,
+    '--window-size=1280,900',
+    'about:blank'
+  ],
+  { stdio: 'ignore' }
+);
 
 async function waitForPageTarget() {
   for (let i = 0; i < 60; i++) {
@@ -41,7 +49,9 @@ async function waitForPageTarget() {
       const list = await r.json();
       const page = list.find(t => t.type === 'page');
       if (page && page.webSocketDebuggerUrl) return page.webSocketDebuggerUrl;
-    } catch (e) { /* not up */ }
+    } catch (e) {
+      /* not up */
+    }
     await sleep(200);
   }
   throw new Error('CDP page target did not come up');
@@ -50,30 +60,60 @@ async function waitForPageTarget() {
 (async function () {
   const wsUrl = await waitForPageTarget();
   const ws = new WebSocket(wsUrl);
-  await new Promise(r => { ws.onopen = r; });
+  await new Promise(r => {
+    ws.onopen = r;
+  });
 
   let id = 0;
   const pending = new Map();
   const issues = [];
   ws.onmessage = ev => {
     const msg = JSON.parse(ev.data);
-    if (msg.id && pending.has(msg.id)) { pending.get(msg.id)(msg); pending.delete(msg.id); }
-    else if (msg.method === 'Runtime.exceptionThrown') {
-      issues.push('EXC: ' + ((msg.params.exceptionDetails.exception && msg.params.exceptionDetails.exception.description) || msg.params.exceptionDetails.text).slice(0, 160));
-    }
-    else if (msg.method === 'Runtime.consoleAPICalled' && (msg.params.type === 'error' || msg.params.type === 'warning')) {
-      issues.push(msg.params.type.toUpperCase() + ': ' + (msg.params.args || []).map(a => a.value || a.description || '').join(' ').slice(0, 160));
+    if (msg.id && pending.has(msg.id)) {
+      pending.get(msg.id)(msg);
+      pending.delete(msg.id);
+    } else if (msg.method === 'Runtime.exceptionThrown') {
+      issues.push(
+        'EXC: ' +
+          (
+            (msg.params.exceptionDetails.exception &&
+              msg.params.exceptionDetails.exception.description) ||
+            msg.params.exceptionDetails.text
+          ).slice(0, 160)
+      );
+    } else if (
+      msg.method === 'Runtime.consoleAPICalled' &&
+      (msg.params.type === 'error' || msg.params.type === 'warning')
+    ) {
+      issues.push(
+        msg.params.type.toUpperCase() +
+          ': ' +
+          (msg.params.args || [])
+            .map(a => a.value || a.description || '')
+            .join(' ')
+            .slice(0, 160)
+      );
     }
   };
-  const send = (method, params) => new Promise(resolve => {
-    const mid = ++id;
-    pending.set(mid, resolve);
-    ws.send(JSON.stringify({ id: mid, method, params: params || {} }));
-  });
+  const send = (method, params) =>
+    new Promise(resolve => {
+      const mid = ++id;
+      pending.set(mid, resolve);
+      ws.send(JSON.stringify({ id: mid, method, params: params || {} }));
+    });
   const evaluate = async expr => {
-    const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true });
+    const r = await send('Runtime.evaluate', {
+      expression: expr,
+      returnByValue: true,
+      awaitPromise: true
+    });
     if (r.error) return 'CDP_ERROR:' + JSON.stringify(r.error);
-    if (r.result && r.result.exceptionDetails) return 'EXC:' + ((r.result.exceptionDetails.exception && r.result.exceptionDetails.exception.description) || r.result.exceptionDetails.text);
+    if (r.result && r.result.exceptionDetails)
+      return (
+        'EXC:' +
+        ((r.result.exceptionDetails.exception && r.result.exceptionDetails.exception.description) ||
+          r.result.exceptionDetails.text)
+      );
     return r.result && r.result.result ? r.result.result.value : null;
   };
 
@@ -95,7 +135,8 @@ async function waitForPageTarget() {
     await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: pre.identifier });
     return startIdx;
   }
-  const state = () => evaluate(`(function(){ return JSON.stringify({
+  const state = () =>
+    evaluate(`(function(){ return JSON.stringify({
     glassClass: document.body.classList.contains('glass-premium'),
     canvas: !!document.getElementById('glass-canvas'),
     canvasZ: (function(){ var c=document.getElementById('glass-canvas'); return c ? getComputedStyle(c).zIndex : null; })(),
@@ -119,10 +160,12 @@ async function waitForPageTarget() {
   // only remaining control is the legacy stored preference, which must stay
   // honored). Fresh page seeded with mmgr_glass_mode='css': engine inert.
   const g2start = issues.length;
-  const pre2 = await send('Page.addScriptToEvaluateOnNewDocument', { source: `
+  const pre2 = await send('Page.addScriptToEvaluateOnNewDocument', {
+    source: `
     try{localStorage.setItem('mmgr_glass_mode','css');}catch(e){}
     try{window.__mmgrForceHighEnd=true;}catch(e){}
-  ` });
+  `
+  });
   await send('Page.navigate', { url: BASE + '/app.html' });
   await sleep(3000);
   const g2 = JSON.parse(await state());
@@ -135,14 +178,17 @@ async function waitForPageTarget() {
   // page, setup screen). Each scenario seeds its own prefs: cross-file://
   // localStorage sharing is unreliable, so nothing is inherited from G2.
   const g3start = issues.length;
-  const pre3 = await send('Page.addScriptToEvaluateOnNewDocument', { source: `
+  const pre3 = await send('Page.addScriptToEvaluateOnNewDocument', {
+    source: `
     try{localStorage.setItem('mmgr_glass_mode','premium');}catch(e){}
     try{localStorage.setItem('mmgr_perf_mode','off');}catch(e){}
     try{window.__mmgrForceHighEnd=true;}catch(e){}
-  ` });
+  `
+  });
   await send('Page.navigate', { url: BASE + '/admin.html' });
   await sleep(3000);
-  const g3before = JSON.parse(await evaluate(`(function(){ return JSON.stringify({
+  const g3before = JSON.parse(
+    await evaluate(`(function(){ return JSON.stringify({
     // OWNER 2026-09-06: the floating #app-dock is retired - appearance
     // controls live in each page's sidebar Customize accordion (.dock-inline).
     dockInlinePresent: !!document.querySelector('.dock.dock-inline'),
@@ -153,39 +199,65 @@ async function waitForPageTarget() {
     dockHasPerf: !!document.querySelector('.dock [data-action="tglPerfMode"]'),
     setupScreen: !document.getElementById('setup-screen').classList.contains('hidden'),
     pref: localStorage.getItem('mmgr_glass_mode')
-  }); })()`));
+  }); })()`)
+  );
   await sleep(5000); // engine boot (CDN fetch + first frames)
-  const g3boot = JSON.parse(await evaluate(`(function(){ return JSON.stringify({
+  const g3boot = JSON.parse(
+    await evaluate(`(function(){ return JSON.stringify({
     glassClass: document.body.classList.contains('glass-premium'),
     canvas: !!document.getElementById('glass-canvas'),
     gateAbove: (function(){ var w=document.querySelector('.gatewrap'); if(!w) return null; var s=getComputedStyle(w); return {pos:s.position, z:s.zIndex}; })()
-  }); })()`));
-  await evaluate(`(function(){ var g=document.querySelector('.dock [data-action="tglGlassMode"]'); if(g) g.click(); return 'clicked'; })()`);
+  }); })()`)
+  );
+  await evaluate(
+    `(function(){ var g=document.querySelector('.dock [data-action="tglGlassMode"]'); if(g) g.click(); return 'clicked'; })()`
+  );
   await sleep(1200);
-  const g3after = JSON.parse(await evaluate(`(function(){ return JSON.stringify({
+  const g3after = JSON.parse(
+    await evaluate(`(function(){ return JSON.stringify({
     glassClass: document.body.classList.contains('glass-premium'),
     canvas: !!document.getElementById('glass-canvas'),
     pref: localStorage.getItem('mmgr_glass_mode')
-  }); })()`));
+  }); })()`)
+  );
   await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: pre3.identifier });
-  out.push({ scenario: 'G3-admin-gate-dock', before: g3before, boot: g3boot, after: g3after, errors: issues.slice(g3start) });
+  out.push({
+    scenario: 'G3-admin-gate-dock',
+    before: g3before,
+    boot: g3boot,
+    after: g3after,
+    errors: issues.slice(g3start)
+  });
   // OWNER 2026-09-06: premium glass is app-only AND default-on (no toggle UI
   // anywhere). G1 + G2 are the app-side gates: boot healthy, stored 'css'
   // opt-out honored. G3 (admin gate) is informational: the dock carries the
   // theme segmented control, no glass toggle, engine boots by default.
   const appGlassHealthy =
-    g1.glassClass === true && g1.canvas === true && g1.pref === 'premium' &&
-    g1.wrapAbove && g1.wrapAbove.pos === 'relative' && g1.wrapAbove.z === '1' &&
-    g2 && g2.glassClass === false && g2.canvas === false && g2.pref === 'css';
+    g1.glassClass === true &&
+    g1.canvas === true &&
+    g1.pref === 'premium' &&
+    g1.wrapAbove &&
+    g1.wrapAbove.pos === 'relative' &&
+    g1.wrapAbove.z === '1' &&
+    g2 &&
+    g2.glassClass === false &&
+    g2.canvas === false &&
+    g2.pref === 'css';
   const pass =
     appGlassHealthy &&
-    g3before.dockInlinePresent === true && g3before.dockHasTheme === true &&
+    g3before.dockInlinePresent === true &&
+    g3before.dockHasTheme === true &&
     g3before.dockHasGlass === false &&
     g3before.setupScreen === true &&
-    g3boot.glassClass === true && g3boot.canvas === true &&
-    g3boot.gateAbove && g3boot.gateAbove.pos === 'relative' && g3boot.gateAbove.z === '1';
+    g3boot.glassClass === true &&
+    g3boot.canvas === true &&
+    g3boot.gateAbove &&
+    g3boot.gateAbove.pos === 'relative' &&
+    g3boot.gateAbove.z === '1';
   if (appGlassHealthy) {
-    console.log('GLASS PREVIEW OK (app-side) + G3 admin-gate dock reported for the record only (premium glass is app-only, default-on).');
+    console.log(
+      'GLASS PREVIEW OK (app-side) + G3 admin-gate dock reported for the record only (premium glass is app-only, default-on).'
+    );
   } else {
     console.log('GLASS PREVIEW FAILED (app-side glass probe).');
   }
@@ -194,4 +266,8 @@ async function waitForPageTarget() {
   console.log('RESULT:', pass ? 'GLASS PREVIEW OK' : 'GLASS PREVIEW FAILED');
   proc.kill();
   process.exit(pass ? 0 : 1);
-})().catch(e => { console.error('ERR', e && e.stack || e); proc.kill(); process.exit(1); });
+})().catch(e => {
+  console.error('ERR', (e && e.stack) || e);
+  proc.kill();
+  process.exit(1);
+});

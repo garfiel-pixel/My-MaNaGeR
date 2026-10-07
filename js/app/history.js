@@ -5,14 +5,18 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   const U = ns.Utils;
   const $ = U.$;
 
-  function _toast(msg, type) { if (ns.App && ns.App.showToast) ns.App.showToast(msg, type); }
-  function _R() { return ns.Render; }
+  function _toast(msg, type) {
+    if (ns.App && ns.App.showToast) ns.App.showToast(msg, type);
+  }
+  function _R() {
+    return ns.Render;
+  }
 
   // ---- Hold to Clear ----
   let holdTimer = null;
@@ -63,13 +67,24 @@ var MMGR = window.MMGR || {};
 
   function clearSection(section) {
     ns.State.pushUndo();
-    ns.State.updateState(function(s) {
-      switch(section) {
-        case 'wbs': s.tasks = []; break;
-        case 'risk': s.risks = []; s.issues = []; break;
-        case 'log': s.logEntries = []; break;
-        case 'kan': s.tasks = s.tasks.filter(t => t.status === 'completed'); break;
-        case 'comms': s.commsEntries = []; break;
+    ns.State.updateState(function (s) {
+      switch (section) {
+        case 'wbs':
+          s.tasks = [];
+          break;
+        case 'risk':
+          s.risks = [];
+          s.issues = [];
+          break;
+        case 'log':
+          s.logEntries = [];
+          break;
+        case 'kan':
+          s.tasks = s.tasks.filter(t => t.status === 'completed');
+          break;
+        case 'comms':
+          s.commsEntries = [];
+          break;
       }
     });
     _R().renderWbs();
@@ -79,7 +94,10 @@ var MMGR = window.MMGR || {};
     _R().renderComms();
     _R().renderDash();
     const ub = $('ub');
-    if (ub) { ub.classList.add('vis'); setTimeout(() => ub.classList.remove('vis'), 5000); }
+    if (ub) {
+      ub.classList.add('vis');
+      setTimeout(() => ub.classList.remove('vis'), 5000);
+    }
     const msg = $('ub-msg');
     if (msg) msg.textContent = HOLD_MSG_OFF;
     updateUndoUi();

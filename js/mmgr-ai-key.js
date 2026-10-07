@@ -19,7 +19,7 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   // Locked sessionStorage slot name (spec: architecture_lock).
@@ -33,10 +33,18 @@ var MMGR = window.MMGR || {};
   // Any malformed/absent entry is treated as disconnected (never throws).
   function read() {
     let raw;
-    try { raw = sessionStorage.getItem(KEY_NAME); } catch (e) { return null; }
+    try {
+      raw = sessionStorage.getItem(KEY_NAME);
+    } catch (e) {
+      return null;
+    }
     if (!raw) return null;
     let data;
-    try { data = JSON.parse(raw); } catch (e) { return null; }
+    try {
+      data = JSON.parse(raw);
+    } catch (e) {
+      return null;
+    }
     if (!data || typeof data !== 'object') return null;
     if (typeof data.key !== 'string' || !data.key.trim()) return null;
     return {
@@ -71,7 +79,11 @@ var MMGR = window.MMGR || {};
   }
 
   function clearKey() {
-    try { sessionStorage.removeItem(KEY_NAME); } catch (e) { /* noop */ }
+    try {
+      sessionStorage.removeItem(KEY_NAME);
+    } catch (e) {
+      /* noop */
+    }
   }
 
   function isConnected() {

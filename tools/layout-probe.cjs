@@ -8,28 +8,41 @@ const path = require('path');
 const fs = require('fs');
 
 const BASE = process.env.BASE || 'http://127.0.0.1:8765';
-const CHROME = process.env.CHROME || (() => {
-  const cands = [
-    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-    '/usr/bin/google-chrome', '/usr/bin/chromium', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-  ];
-  for (const c of cands) { if (fs.existsSync(c)) return c; }
-  return 'chrome';
-})();
+const CHROME =
+  process.env.CHROME ||
+  (() => {
+    const cands = [
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      '/usr/bin/google-chrome',
+      '/usr/bin/chromium',
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+    ];
+    for (const c of cands) {
+      if (fs.existsSync(c)) return c;
+    }
+    return 'chrome';
+  })();
 
 const VIEWPORTS = [
   { name: 'desktop', w: 1280, h: 900 },
-  { name: 'tablet',  w: 820,  h: 1180 },
-  { name: 'mobile',  w: 390,  h: 844 }
+  { name: 'tablet', w: 820, h: 1180 },
+  { name: 'mobile', w: 390, h: 844 }
 ];
 
-function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+function delay(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
 
 async function bootChrome(port, profile) {
   const args = [
-    `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`,
-    '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', '--disable-extensions'
+    `--remote-debugging-port=${port}`,
+    `--user-data-dir=${profile}`,
+    '--headless=new',
+    '--disable-gpu',
+    '--no-first-run',
+    '--no-default-browser-check',
+    '--disable-extensions'
   ];
   const proc = spawn(CHROME, args, { stdio: 'ignore' });
   let ws;
@@ -48,21 +61,31 @@ async function bootChrome(port, profile) {
       } catch (e) {
         throw e;
       }
-      await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
+      await new Promise((res, rej) => {
+        ws.onopen = res;
+        ws.onerror = rej;
+      });
       break;
-    } catch (e) { await delay(250); }
+    } catch (e) {
+      await delay(250);
+    }
   }
   if (!ws) throw new Error('chrome did not start');
   let id = 0;
   const pending = new Map();
-  ws.onmessage = (ev) => {
+  ws.onmessage = ev => {
     const m = JSON.parse(ev.data);
-    if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); }
+    if (m.id && pending.has(m.id)) {
+      pending.get(m.id)(m);
+      pending.delete(m.id);
+    }
   };
-  const send = (method, params) => new Promise((resolve) => {
-    const mid = ++id; pending.set(mid, resolve);
-    ws.send(JSON.stringify({ id: mid, method, params: params || {} }));
-  });
+  const send = (method, params) =>
+    new Promise(resolve => {
+      const mid = ++id;
+      pending.set(mid, resolve);
+      ws.send(JSON.stringify({ id: mid, method, params: params || {} }));
+    });
   await send('Page.enable');
   await send('Runtime.enable');
   return { proc, send, ws };
@@ -74,9 +97,22 @@ async function navigate(send, url) {
 }
 
 async function ev(send, expr) {
-  const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true });
-  if (r.result && r.result.exceptionDetails) return 'EXC: ' + (r.result.exceptionDetails.exception && r.result.exceptionDetails.exception.description || '').slice(0, 200);
-  return r.result && r.result.result ? r.result.result.value : 'RAW:' + JSON.stringify(r).slice(0, 300);
+  const r = await send('Runtime.evaluate', {
+    expression: expr,
+    returnByValue: true,
+    awaitPromise: true
+  });
+  if (r.result && r.result.exceptionDetails)
+    return (
+      'EXC: ' +
+      (
+        (r.result.exceptionDetails.exception && r.result.exceptionDetails.exception.description) ||
+        ''
+      ).slice(0, 200)
+    );
+  return r.result && r.result.result
+    ? r.result.result.value
+    : 'RAW:' + JSON.stringify(r).slice(0, 300);
 }
 
 // Probe: returns layout facts. Focused on things that read as "misaligned".
@@ -131,12 +167,21 @@ const PROBE = `(function(){
   const { proc, send } = await bootChrome(port, profile);
   const pages = [
     { name: 'launcher (app.html)', url: '/app.html', seed: null },
-    { name: 'workspace (project.html)', url: '/project.html?id=demo-project', seed: "localStorage.setItem('mmgr_unlocked_demo-project','1');localStorage.setItem('mmgr_scope_demo-project','full');" }
+    {
+      name: 'workspace (project.html)',
+      url: '/project.html?id=demo-project',
+      seed: "localStorage.setItem('mmgr_unlocked_demo-project','1');localStorage.setItem('mmgr_scope_demo-project','full');"
+    }
   ];
   try {
     for (const page of pages) {
       for (const vp of VIEWPORTS) {
-        await send('Emulation.setDeviceMetricsOverride', { width: vp.w, height: vp.h, deviceScaleFactor: 1, mobile: vp.w <= 420 });
+        await send('Emulation.setDeviceMetricsOverride', {
+          width: vp.w,
+          height: vp.h,
+          deviceScaleFactor: 1,
+          mobile: vp.w <= 420
+        });
         await navigate(send, BASE + page.url);
         if (page.seed) {
           await ev(send, page.seed);
@@ -148,8 +193,13 @@ const PROBE = `(function(){
       }
     }
   } finally {
-    try { await send('Browser.close'); } catch (e) {}
+    try {
+      await send('Browser.close');
+    } catch (e) {}
     proc.kill();
   }
   process.exit(0);
-})().catch(e => { console.error('PROBE FAIL:', e.message); process.exit(1); });
+})().catch(e => {
+  console.error('PROBE FAIL:', e.message);
+  process.exit(1);
+});

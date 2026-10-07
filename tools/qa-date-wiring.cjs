@@ -26,10 +26,20 @@ let BASE = 'http://127.0.0.1:' + PORT;
 const ROOT = path.resolve(__dirname, '..');
 const TMP = os.tmpdir();
 
-const log = (s) => { process.stdout.write('[date-wire] ' + s + '\n'); };
+const log = s => {
+  process.stdout.write('[date-wire] ' + s + '\n');
+};
 const delay = ms => new Promise(r => setTimeout(r, ms));
 const results = [];
-const check = (name, val, detail) => { results.push({ name, val }); log((val ? 'PASS' : 'FAIL') + '  ' + name + (val ? '' : '   <-- ' + JSON.stringify(detail === undefined ? null : detail).slice(0, 400))); };
+const check = (name, val, detail) => {
+  results.push({ name, val });
+  log(
+    (val ? 'PASS' : 'FAIL') +
+      '  ' +
+      name +
+      (val ? '' : '   <-- ' + JSON.stringify(detail === undefined ? null : detail).slice(0, 400))
+  );
+};
 
 // Local D1/R2 persistence MUST live OUTSIDE the project directory
 // (miniflare writes state -> asset watcher reloads -> infinite loop;
@@ -42,7 +52,9 @@ function globalWranglerJs() {
     const root = execFileSync(npmCmd, ['root', '-g'], { encoding: 'utf8' }).trim();
     const p = path.join(root, 'wrangler', 'bin', 'wrangler.js');
     if (fs.existsSync(p)) return p;
-  } catch (e) { /* fall through */ }
+  } catch (e) {
+    /* fall through */
+  }
   const lp = path.join(__dirname, '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
   return fs.existsSync(lp) ? lp : null;
 }
@@ -53,15 +65,51 @@ let devLog = '';
 async function startWrangler() {
   log('starting wrangler dev on :' + PORT + ' (persist ' + PERSIST_DIR + ')...');
   try {
-    execFileSync(process.execPath,
-      [WRANGLER_JS, 'd1', 'migrations', 'apply', 'my-manager-db', '--local', '--config', 'wrangler.ci.jsonc', '--persist-to', PERSIST_DIR],
-      { cwd: ROOT, stdio: 'ignore', timeout: 90000 });
-  } catch (e) { log('migrations (best-effort): ' + e.message); }
-  proc = spawn(process.execPath, [WRANGLER_JS, 'dev', '--config', 'wrangler.ci.jsonc', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST_DIR], {
-    cwd: ROOT, env: Object.assign({}, process.env, { WRANGLER_SEND_METRICS: 'false' }), stdio: ['ignore', 'pipe', 'pipe']
+    execFileSync(
+      process.execPath,
+      [
+        WRANGLER_JS,
+        'd1',
+        'migrations',
+        'apply',
+        'my-manager-db',
+        '--local',
+        '--config',
+        'wrangler.ci.jsonc',
+        '--persist-to',
+        PERSIST_DIR
+      ],
+      { cwd: ROOT, stdio: 'ignore', timeout: 90000 }
+    );
+  } catch (e) {
+    log('migrations (best-effort): ' + e.message);
+  }
+  proc = spawn(
+    process.execPath,
+    [
+      WRANGLER_JS,
+      'dev',
+      '--config',
+      'wrangler.ci.jsonc',
+      '--port',
+      String(PORT),
+      '--ip',
+      '127.0.0.1',
+      '--persist-to',
+      PERSIST_DIR
+    ],
+    {
+      cwd: ROOT,
+      env: Object.assign({}, process.env, { WRANGLER_SEND_METRICS: 'false' }),
+      stdio: ['ignore', 'pipe', 'pipe']
+    }
+  );
+  proc.stdout.on('data', d => {
+    devLog += d;
   });
-  proc.stdout.on('data', d => { devLog += d; });
-  proc.stderr.on('data', d => { devLog += d; });
+  proc.stderr.on('data', d => {
+    devLog += d;
+  });
   const t0 = Date.now();
   for (;;) {
     try {
@@ -70,37 +118,77 @@ async function startWrangler() {
       const r = await fetch(BASE + '/api/health', { signal: ctrl.signal });
       clearTimeout(timer);
       if (r.ok) return;
-    } catch (e) { /* not up yet */ }
+    } catch (e) {
+      /* not up yet */
+    }
     if (Date.now() - t0 > 120000) throw new Error('wrangler dev did not come up in 120s');
     await delay(1500);
   }
 }
-function stopWrangler() { try { proc && proc.kill(); } catch (e) {} }
+function stopWrangler() {
+  try {
+    proc && proc.kill();
+  } catch (e) {}
+}
 
 /* ---- headless Chrome + CDP (same pattern as qa-admin-recovery) ---- */
-function chromePath() { return require('./chrome-launcher.cjs').chromePath; }
+function chromePath() {
+  return require('./chrome-launcher.cjs').chromePath;
+}
 async function withChrome(fn) {
   const userDir = path.join(TMP, 'chrome-date-wire-' + Date.now());
   const port = 9335;
-  const chrome = spawn(chromePath(), [
-    '--headless=new', '--disable-gpu', '--no-first-run', '--no-sandbox',
-    '--remote-allow-origins=*', '--remote-debugging-port=' + port,
-    '--user-data-dir=' + userDir, '--window-size=1280,900', '--disk-cache-size=0', 'about:blank'
-  ], { stdio: 'ignore' });
+  const chrome = spawn(
+    chromePath(),
+    [
+      '--headless=new',
+      '--disable-gpu',
+      '--no-first-run',
+      '--no-sandbox',
+      '--remote-allow-origins=*',
+      '--remote-debugging-port=' + port,
+      '--user-data-dir=' + userDir,
+      '--window-size=1280,900',
+      '--disk-cache-size=0',
+      'about:blank'
+    ],
+    { stdio: 'ignore' }
+  );
   try {
     for (let i = 0; i < 60; i++) {
-      try { const r = await fetch('http://127.0.0.1:' + port + '/json/version'); if (r.ok) break; } catch (e) {}
+      try {
+        const r = await fetch('http://127.0.0.1:' + port + '/json/version');
+        if (r.ok) break;
+      } catch (e) {}
       await delay(300);
     }
     const targets = await (await fetch('http://127.0.0.1:' + port + '/json')).json();
     const ws = new WebSocket(targets.find(t => t.type === 'page').webSocketDebuggerUrl);
     const pending = new Map();
     let id = 0;
-    ws.onmessage = (e) => { const m = JSON.parse(e.data); if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); } };
-    await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error('ws fail')); });
-    const send = (method, params = {}) => new Promise(res => { const mid = ++id; pending.set(mid, m => res(m.result || {})); ws.send(JSON.stringify({ id: mid, method, params })); });
-    const ev = async (expr) => {
-      const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true });
+    ws.onmessage = e => {
+      const m = JSON.parse(e.data);
+      if (m.id && pending.has(m.id)) {
+        pending.get(m.id)(m);
+        pending.delete(m.id);
+      }
+    };
+    await new Promise((res, rej) => {
+      ws.onopen = res;
+      ws.onerror = () => rej(new Error('ws fail'));
+    });
+    const send = (method, params = {}) =>
+      new Promise(res => {
+        const mid = ++id;
+        pending.set(mid, m => res(m.result || {}));
+        ws.send(JSON.stringify({ id: mid, method, params }));
+      });
+    const ev = async expr => {
+      const r = await send('Runtime.evaluate', {
+        expression: expr,
+        returnByValue: true,
+        awaitPromise: true
+      });
       if (r && r.exceptionDetails) {
         log('EVAL EXCEPTION: ' + JSON.stringify(r.exceptionDetails).slice(0, 400));
         return null;
@@ -109,15 +197,25 @@ async function withChrome(fn) {
     };
     await send('Page.enable');
     await fn({ send, ev });
-  } finally { chrome.kill(); }
+  } finally {
+    chrome.kill();
+  }
 }
 // Two nested RAFs drain the render queue (AGENTS.md lesson 3).
 const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))`;
 
 (async function main() {
-  if (!WRANGLER_JS) { log('FATAL: wrangler not found'); process.exit(1); }
-  try { await startWrangler(); }
-  catch (e) { log('FATAL: ' + e.message); log(devLog.slice(-800)); process.exit(1); }
+  if (!WRANGLER_JS) {
+    log('FATAL: wrangler not found');
+    process.exit(1);
+  }
+  try {
+    await startWrangler();
+  } catch (e) {
+    log('FATAL: ' + e.message);
+    log(devLog.slice(-800));
+    process.exit(1);
+  }
 
   try {
     await withChrome(async ({ ev }) => {
@@ -139,8 +237,14 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
       await delay(3200);
 
       // S0b: the app actually booted (guard against silent gate bounces).
-      const booted = await ev(`(function(){ return { hasMMGR: typeof window.MMGR === 'object', hasTasks: !!(window.MMGR && MMGR.Tasks), href: location.href }; })()`);
-      check('S0b app booted (MMGR present, not gate-bounced)', booted && booted.hasMMGR && booted.hasTasks && String(booted.href).indexOf('dwire') > -1, booted);
+      const booted = await ev(
+        `(function(){ return { hasMMGR: typeof window.MMGR === 'object', hasTasks: !!(window.MMGR && MMGR.Tasks), href: location.href }; })()`
+      );
+      check(
+        'S0b app booted (MMGR present, not gate-bounced)',
+        booted && booted.hasMMGR && booted.hasTasks && String(booted.href).indexOf('dwire') > -1,
+        booted
+      );
 
       // Seed exactly one schedulable task through the app's own state API.
       const seed = await ev(`(function(){
@@ -159,19 +263,29 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
       await ev(`MMGR.Tasks.updTaskField('dw1','startDate','2026-08-17','change')`);
       await ev(`MMGR.Tasks.updTaskField('dw1','endDate','2026-08-21','change')`);
       await delay(250);
-      const d1 = await ev(`(function(){ const t = MMGR.State.getState().tasks.find(x=>x.id==='dw1'); return { dur: t.duration, end: t.endDate, start: t.startDate }; })()`);
+      const d1 = await ev(
+        `(function(){ const t = MMGR.State.getState().tasks.find(x=>x.id==='dw1'); return { dur: t.duration, end: t.endDate, start: t.startDate }; })()`
+      );
       check('D1 endDate edit back-computes duration=5 (Mon-Fri)', d1 && d1.dur === '5', d1);
 
       // D2: old direction intact - duration+start derives endDate.
       await ev(`MMGR.Tasks.updTaskField('dw1','duration','3','change')`);
       await delay(250);
-      const d2 = await ev(`(function(){ const t = MMGR.State.getState().tasks.find(x=>x.id==='dw1'); return { dur: t.duration, end: t.endDate }; })()`);
-      check('D2 duration+start derives endDate (3d -> 2026-08-19)', d2 && d2.dur === '3' && d2.end === '2026-08-19', d2);
+      const d2 = await ev(
+        `(function(){ const t = MMGR.State.getState().tasks.find(x=>x.id==='dw1'); return { dur: t.duration, end: t.endDate }; })()`
+      );
+      check(
+        'D2 duration+start derives endDate (3d -> 2026-08-19)',
+        d2 && d2.dur === '3' && d2.end === '2026-08-19',
+        d2
+      );
 
       // D3: endDate commit patches the Days cell in place, WBS not rebuilt.
       await ev(`MMGR.Render.renderWbs();`);
       await delay(300);
-      const mark = await ev(`(function(){ const r = document.querySelector('#wbs-body tr.wbs-row[data-id="dw1"]'); if(!r) return 'no-row'; r.setAttribute('data-wire-mark','1'); return true; })()`);
+      const mark = await ev(
+        `(function(){ const r = document.querySelector('#wbs-body tr.wbs-row[data-id="dw1"]'); if(!r) return 'no-row'; r.setAttribute('data-wire-mark','1'); return true; })()`
+      );
       await ev(`MMGR.Tasks.updTaskField('dw1','endDate','2026-08-28','change')`);
       await delay(250);
       const d3 = await ev(`(function(){
@@ -182,7 +296,11 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
           rowSame: !!(r && r.getAttribute('data-wire-mark')==='1'),
           cellPatched: !!(durInp && durInp.value === t.duration) };
       })()`);
-      check('D3 state: endDate -> duration=10 (crosses weekend)', d3 && d3.dur === '10' && d3.end === '2026-08-28', d3);
+      check(
+        'D3 state: endDate -> duration=10 (crosses weekend)',
+        d3 && d3.dur === '10' && d3.end === '2026-08-28',
+        d3
+      );
       check('D3 WBS row NOT rebuilt (same DOM node)', d3 && d3.rowSame === true, d3);
       check('D3 Days cell patched in place', d3 && d3.cellPatched === true, d3);
 
@@ -209,11 +327,21 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
         return { dur: t.duration, start: t.startDate, end: t.endDate,
                  want: MMGR.Tasks.durationFromDates('2026-09-14','2026-09-18') };
       })()`);
-      check('D3a start+end (no duration) -> Days fills (Mon-Fri = 5)', d3a && d3a.dur === String(d3a.want) && d3a.want === 5, d3a);
+      check(
+        'D3a start+end (no duration) -> Days fills (Mon-Fri = 5)',
+        d3a && d3a.dur === String(d3a.want) && d3a.want === 5,
+        d3a
+      );
       // D3b: the typed-duration direction still wins after the triad edit.
       await ev(`MMGR.Tasks.updTaskField('dw2','duration','3','change')`);
-      const d3b = await ev(`(function(){ const t = MMGR.State.getState().tasks.find(x=>x.id==='dw2'); return { dur: t.duration, end: t.endDate }; })()`);
-      check('D3b duration+start still derives endDate (3d -> 2026-09-16)', d3b && d3b.dur === '3' && d3b.end === '2026-09-16', d3b);
+      const d3b = await ev(
+        `(function(){ const t = MMGR.State.getState().tasks.find(x=>x.id==='dw2'); return { dur: t.duration, end: t.endDate }; })()`
+      );
+      check(
+        'D3b duration+start still derives endDate (3d -> 2026-09-16)',
+        d3b && d3b.dur === '3' && d3b.end === '2026-09-16',
+        d3b
+      );
       // D3c: end + duration with NO start -> start back-computes (inverse of
       // the forward convention), computed in-page with the app's own helpers.
       const seedTriad2 = await ev(`(function(){
@@ -226,15 +354,25 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
       })()`);
       check('D3c second probe task seeded', seedTriad2 === 1, seedTriad2);
       await ev(`MMGR.Tasks.updTaskField('dw3','duration','3','change')`);
-      const d3cGuard = await ev(`(function(){ const t = MMGR.State.getState().tasks.find(x=>x.id==='dw3'); return { start: t.startDate, end: t.endDate }; })()`);
-      check('D3c duration alone invents no dates (guard)', d3cGuard && d3cGuard.start === '' && d3cGuard.end === '', d3cGuard);
+      const d3cGuard = await ev(
+        `(function(){ const t = MMGR.State.getState().tasks.find(x=>x.id==='dw3'); return { start: t.startDate, end: t.endDate }; })()`
+      );
+      check(
+        'D3c duration alone invents no dates (guard)',
+        d3cGuard && d3cGuard.start === '' && d3cGuard.end === '',
+        d3cGuard
+      );
       await ev(`MMGR.Tasks.updTaskField('dw3','endDate','2026-09-18','change')`);
       const d3d = await ev(`(function(){
         const t = MMGR.State.getState().tasks.find(x=>x.id==='dw3');
         return { start: t.startDate, end: t.endDate, dur: t.duration,
                  want: MMGR.Utils.fmtDate(MMGR.Utils.addWorkingDays(MMGR.Utils.parseDL('2026-09-18'), -2)) };
       })()`);
-      check('D3d end+duration (no start) -> start back-computes (3d -> 2026-09-16)', d3d && d3d.start === d3d.want && d3d.want === '2026-09-16', d3d);
+      check(
+        'D3d end+duration (no start) -> start back-computes (3d -> 2026-09-16)',
+        d3d && d3d.start === d3d.want && d3d.want === '2026-09-16',
+        d3d
+      );
       // D3e: the back-computed start patches into the WBS row in place
       // (no rebuild - same picker-anchoring contract as D3).
       const markTriad = await ev(`(function(){
@@ -263,7 +401,11 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
         return { dur: t.duration, end: t.endDate,
                  want: MMGR.Tasks.durationFromDates(t.startDate, t.endDate) };
       })()`);
-      check('D3f endDate edit still back-computes days (D1 contract intact)', d3f && d3f.dur === String(d3f.want) && d3f.want === 10, d3f);
+      check(
+        'D3f endDate edit still back-computes days (D1 contract intact)',
+        d3f && d3f.dur === String(d3f.want) && d3f.want === 10,
+        d3f
+      );
       // D3g-i: SAME-DAY spans (owner 2026-09-26 "dates that have zero days").
       // durationFromDates double-counted a one-day span (0 between + 1 + 1 =
       // 2) and scored a weekend same-day pair 0. Same-day is always 1 day of
@@ -280,21 +422,33 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
         const t = MMGR.State.getState().tasks.find(x=>x.id==='dw4');
         return { dur: t.duration, start: t.startDate, end: t.endDate };
       })()`);
-      check('D3g same-day workday span -> duration 1 (was 2)', d3g && d3g.dur === '1' && d3g.start === d3g.end, d3g);
+      check(
+        'D3g same-day workday span -> duration 1 (was 2)',
+        d3g && d3g.dur === '1' && d3g.start === d3g.end,
+        d3g
+      );
       const d3h = await ev(`(function(){
         MMGR.Tasks.updTaskField('dw4','startDate','2026-09-19','change');   // Sat
         MMGR.Tasks.updTaskField('dw4','endDate','2026-09-19','change');     // same Sat
         const t = MMGR.State.getState().tasks.find(x=>x.id==='dw4');
         return { dur: t.duration, start: t.startDate, end: t.endDate };
       })()`);
-      check('D3h same-day weekend span -> duration 1 (was 0: the zero-days bug)', d3h && d3h.dur === '1' && d3h.start === d3h.end, d3h);
+      check(
+        'D3h same-day weekend span -> duration 1 (was 0: the zero-days bug)',
+        d3h && d3h.dur === '1' && d3h.start === d3h.end,
+        d3h
+      );
       const d3i = await ev(`(function(){
         MMGR.Tasks.updTaskField('dw4','startDate','2026-09-18','change');   // Fri
         MMGR.Tasks.updTaskField('dw4','endDate','2026-09-21','change');     // Mon
         const t = MMGR.State.getState().tasks.find(x=>x.id==='dw4');
         return { dur: t.duration, start: t.startDate, end: t.endDate };
       })()`);
-      check('D3i Fri to Mon cross-weekend still duration 2 (bonus path intact)', d3i && d3i.dur === '2', d3i);
+      check(
+        'D3i Fri to Mon cross-weekend still duration 2 (bonus path intact)',
+        d3i && d3i.dur === '2',
+        d3i
+      );
       // D6: CASCADE STATUS-AWARE WRITE-BACK (owner 2026-09-26 polish). A
       // completed task carries actual dates (history) - the cascade must not
       // rewrite them, while its todo successors still move. The preview
@@ -328,8 +482,16 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
                  succStart: succ.startDate, moved: succ.startDate !== '2026-09-15' };
       })()`);
       check('D6 cascade ran with actual-date tasks present', d6 && d6.ran === true, d6);
-      check('D6 completed task keeps its actual dates (never rewritten)', d6 && d6.completedDatesUntouched === true, d6);
-      check('D6 todo successor still schedules after the completed task', d6 && d6.moved === true && d6.succStart === '2026-09-21', d6 && { succStart: d6.succStart });
+      check(
+        'D6 completed task keeps its actual dates (never rewritten)',
+        d6 && d6.completedDatesUntouched === true,
+        d6
+      );
+      check(
+        'D6 todo successor still schedules after the completed task',
+        d6 && d6.moved === true && d6.succStart === '2026-09-21',
+        d6 && { succStart: d6.succStart }
+      );
       await ev(`MMGR.Render.renderWbs();`);
 
       // D7: PROJECT DEADLINE (owner 2026-09-27). The gantt toolbar date input
@@ -350,7 +512,14 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
         const t = MMGR.State.getState().tasks.find(x=>x.id==='dw8');
         return { ran: r === true, start: t.startDate, end: t.endDate, tf: t.totalFloat };
       })()`);
-      check('D7s deadline chain seeded and cascaded', d7seed && d7seed.ran === true && d7seed.start === '2026-09-17' && d7seed.end === '2026-09-18', d7seed);
+      check(
+        'D7s deadline chain seeded and cascaded',
+        d7seed &&
+          d7seed.ran === true &&
+          d7seed.start === '2026-09-17' &&
+          d7seed.end === '2026-09-18',
+        d7seed
+      );
 
       // D7a: the REAL DOM path - set the input, fire change, state updates.
       const d7a = await ev(`(function(){
@@ -360,7 +529,11 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
         inp.dispatchEvent(new Event('change', { bubbles: true }));
         return { found: true, state: MMGR.State.getState().projectDeadline };
       })()`);
-      check('D7a deadline input change event reaches state (whitelist+map+handler)', d7a && d7a.found === true && d7a.state === '2026-09-30', d7a);
+      check(
+        'D7a deadline input change event reaches state (whitelist+map+handler)',
+        d7a && d7a.found === true && d7a.state === '2026-09-30',
+        d7a
+      );
 
       // D7b: deadline AFTER completion - terminal tail earns float, dates untouched.
       const d7b = await ev(`(function(){
@@ -375,7 +548,11 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
           inputMirrors: (document.getElementById('deadline-input')||{}).value === '2026-09-30' };
       })()`);
       check('D7b deadline-after cascade ran', d7b && d7b.ran === true, d7b);
-      check('D7b terminal tail earns positive float under deadline', d7b && d7b.tf > 0 && d7b.crit === false, d7b && { tf: d7b.tf, crit: d7b.crit });
+      check(
+        'D7b terminal tail earns positive float under deadline',
+        d7b && d7b.tf > 0 && d7b.crit === false,
+        d7b && { tf: d7b.tf, crit: d7b.crit }
+      );
       check('D7b dates never rewritten by the deadline', d7b && d7b.datesUntouched === true, d7b);
       check('D7b toolbar input mirrors state after render', d7b && d7b.inputMirrors === true, d7b);
 
@@ -398,8 +575,20 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
         return { ran: r === true, endDefiner: endDefiner ? { name: endDefiner.name, tf: endDefiner.totalFloat, crit: endDefiner.critical } : null,
                  minTF: minTF === Infinity ? null : minTF };
       })()`);
-      check('D7c missed deadline clamps: end-defining task stays TF 0 critical (overrun surfaces)', d7c && d7c.ran === true && d7c.endDefiner && d7c.endDefiner.tf === 0 && d7c.endDefiner.crit === true, d7c);
-      check('D7c missed deadline: no negative float anywhere (clamp guard)', d7c && d7c.minTF !== null && d7c.minTF >= 0, d7c);
+      check(
+        'D7c missed deadline clamps: end-defining task stays TF 0 critical (overrun surfaces)',
+        d7c &&
+          d7c.ran === true &&
+          d7c.endDefiner &&
+          d7c.endDefiner.tf === 0 &&
+          d7c.endDefiner.crit === true,
+        d7c
+      );
+      check(
+        'D7c missed deadline: no negative float anywhere (clamp guard)',
+        d7c && d7c.minTF !== null && d7c.minTF >= 0,
+        d7c
+      );
       check('D7c missed deadline leaves dates alone', d7c && d7c.ran === true, d7c);
 
       // D7d: clearing restores the pure no-deadline plan (float back to baseline).
@@ -410,7 +599,11 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
         return { tf: t.totalFloat, state: MMGR.State.getState().projectDeadline,
                  inputCleared: (document.getElementById('deadline-input')||{}).value === '' };
       })()`);
-      check('D7d clearing the deadline restores baseline float', d7d && d7d.tf === d7seed.tf && d7d.state === '', d7d);
+      check(
+        'D7d clearing the deadline restores baseline float',
+        d7d && d7d.tf === d7seed.tf && d7d.state === '',
+        d7d
+      );
       check('D7d toolbar input clears with state', d7d && d7d.inputCleared === true, d7d);
 
       // D7e: persistence - FIELD_KEYS registration carries it through save/load.
@@ -420,7 +613,11 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
         const raw = JSON.parse(localStorage.getItem('mmgr_state_dwire') || '{}');
         return { saved: raw.projectDeadline === '2026-09-30' };
       })()`);
-      check('D7e projectDeadline persists through save (FIELD_KEYS)', d7e && d7e.saved === true, d7e);
+      check(
+        'D7e projectDeadline persists through save (FIELD_KEYS)',
+        d7e && d7e.saved === true,
+        d7e
+      );
 
       // D4: gantt drag commit keeps the invariant. Simulate the committed
       // move the same way the drag handler does (state-level), then verify
@@ -444,14 +641,24 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
         return { dur: MMGR.Tasks.durationFromDates('2026-09-02', s.endDate),
                  end: MMGR.Utils.fmtDate(MMGR.Utils.addWorkingDays(MMGR.Utils.parseDL('2026-09-02'), (MMGR.Tasks.durationFromDates('2026-09-02', s.endDate)) - 1)) };
       })()`);
-      check('D4 drag-commit invariant (forward move recomputes end, duration preserved)', d4 && d4x && d4.start === '2026-09-02' && d4.dur === String(d4x.dur) && d4.end === d4x.end, { got: d4, want: d4x });
+      check(
+        'D4 drag-commit invariant (forward move recomputes end, duration preserved)',
+        d4 && d4x && d4.start === '2026-09-02' && d4.dur === String(d4x.dur) && d4.end === d4x.end,
+        { got: d4, want: d4x }
+      );
 
       // D5: dashboard render + RAF flush leaves values intact.
       await ev(`MMGR.Render.renderDash();`);
       await ev(`await ${FLUSH_RAF}`);
       await delay(250);
-      const d5 = await ev(`(function(){ const t = MMGR.State.getState().tasks.find(x=>x.id==='dw1'); return { dur: t.duration, start: t.startDate, end: t.endDate }; })()`);
-      check('D5 dashboard render + RAF flush preserves wiring', d5 && d5.dur === d4.dur && d5.start === d4.start && d5.end === d4.end, { got: d5, want: d4 });
+      const d5 = await ev(
+        `(function(){ const t = MMGR.State.getState().tasks.find(x=>x.id==='dw1'); return { dur: t.duration, start: t.startDate, end: t.endDate }; })()`
+      );
+      check(
+        'D5 dashboard render + RAF flush preserves wiring',
+        d5 && d5.dur === d4.dur && d5.start === d4.start && d5.end === d4.end,
+        { got: d5, want: d4 }
+      );
 
       // ---- Task 2: baseline guard (auto-capture + nudge dot) ----
       // B1: the project is schedulable (Task 1 gave dw1 dates+days) and the
@@ -462,7 +669,11 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
                  autoAt: !!s.baselineAutoAt,
                  baseTasks: s.baseline ? (s.baseline.tasks||[]).length : -1 };
       })()`);
-      check('B1 baseline auto-captured on first schedulable render', b1 && b1.hasBaseline && b1.autoAt && b1.baseTasks === 1, b1);
+      check(
+        'B1 baseline auto-captured on first schedulable render',
+        b1 && b1.hasBaseline && b1.autoAt && b1.baseTasks === 1,
+        b1
+      );
 
       // B2: nudge dot hidden now that a baseline exists.
       const dbg = await ev(`(function(){
@@ -488,19 +699,30 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
         return { dotVisible: el1 ? !el1.hidden : 'missing',
                  notRecaptured: !MMGR.State.getState().baseline };
       })()`);
-      check('B3 cleared-after-capture: dot visible, no silent recapture',
-        b3v && b3v.dotVisible === true && b3v.notRecaptured === true, b3v);
+      check(
+        'B3 cleared-after-capture: dot visible, no silent recapture',
+        b3v && b3v.dotVisible === true && b3v.notRecaptured === true,
+        b3v
+      );
 
       // B4: restore capture via the real user path (dispatch through the
       // delegated click handler on the actual button element), then a dash
       // render (the manual path does not auto-render) hides the dot.
-      await ev(`(function(){ const el = document.querySelector('[data-action="saveBaseline"]'); el.click(); return true; })()`);
+      await ev(
+        `(function(){ const el = document.querySelector('[data-action="saveBaseline"]'); el.click(); return true; })()`
+      );
       await delay(400);
       await ev(`MMGR.Render.renderDash();`);
       await ev(`await ${FLUSH_RAF}`);
       await delay(250);
-      const b4 = await ev(`(function(){ const s = MMGR.State.getState(); const el = document.querySelector('[data-baseline-dot]');
-        return { hasBaseline: !!s.baseline, dotVisible: el ? !el.hidden : 'missing' }; })()`);      check('B4 manual Save Baseline hides dot', b4 && b4.hasBaseline && b4.dotVisible === false, b4);
+      const b4 =
+        await ev(`(function(){ const s = MMGR.State.getState(); const el = document.querySelector('[data-baseline-dot]');
+        return { hasBaseline: !!s.baseline, dotVisible: el ? !el.hidden : 'missing' }; })()`);
+      check(
+        'B4 manual Save Baseline hides dot',
+        b4 && b4.hasBaseline && b4.dotVisible === false,
+        b4
+      );
 
       // ---- Task 3 gates: AI-assisted import + mismatch flagging ----
       // NOTE: line breaks inside eval'd strings use String.fromCharCode(10) -
@@ -517,8 +739,15 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
         const errs = document.querySelectorAll('#id-mismatch [style*="var(--danger)"]').length;
         return { modalOpen: modal.classList.contains('on'), rows: rows, blockingRows: errs, commitDisabled: document.getElementById('id-commit-btn').disabled };
       })()`);
-      check('I1 valid strict lines: preview rows, no red rows, commit enabled',
-        idOk && idOk.modalOpen && idOk.rows === 2 && idOk.blockingRows === 0 && idOk.commitDisabled === false, idOk);
+      check(
+        'I1 valid strict lines: preview rows, no red rows, commit enabled',
+        idOk &&
+          idOk.modalOpen &&
+          idOk.rows === 2 &&
+          idOk.blockingRows === 0 &&
+          idOk.commitDisabled === false,
+        idOk
+      );
 
       const idGarbage = await ev(`(function(){
         const src = document.getElementById('id-source');
@@ -532,8 +761,14 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
         const after = JSON.stringify(MMGR.State.getState().tasks.map(t => t.name));
         return { errorCount: res.issues.filter(i => i.severity === 'error').length, redRows: errs, stateUnchanged: before === after };
       })()`);
-      check('I2 garbage + backwards dates: flagged error, Fill In refuses',
-        idGarbage && idGarbage.errorCount === 2 && idGarbage.redRows >= 2 && idGarbage.stateUnchanged === true, idGarbage);
+      check(
+        'I2 garbage + backwards dates: flagged error, Fill In refuses',
+        idGarbage &&
+          idGarbage.errorCount === 2 &&
+          idGarbage.redRows >= 2 &&
+          idGarbage.stateUnchanged === true,
+        idGarbage
+      );
 
       const idWarn = await ev(`(function(){
         const src = document.getElementById('id-source');
@@ -545,8 +780,11 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
         const t = MMGR.State.getState().tasks.find(x => x.name === 'Warn Task');
         return { amberRows: amber, created: !!t, daysCommitted: t ? t.duration : null, start: t ? t.startDate : null, end: t ? t.endDate : null };
       })()`);
-      check('I3 days-vs-dates disagreement: amber warn, commit reconciles (dates win, 5)',
-        idWarn && idWarn.amberRows >= 1 && idWarn.created === true && idWarn.daysCommitted === '5', idWarn);
+      check(
+        'I3 days-vs-dates disagreement: amber warn, commit reconciles (dates win, 5)',
+        idWarn && idWarn.amberRows >= 1 && idWarn.created === true && idWarn.daysCommitted === '5',
+        idWarn
+      );
 
       const idOffline = await ev(`(async function(){
         // Entitlement seam: signed-out device must see the AI button disabled
@@ -556,8 +794,14 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
         const allowed = MMGR.Entitlements && MMGR.Entitlements.aiAssistant();
         return { note: noteBefore, btnDisabled: btnDisabled, allowed: allowed };
       })()`);
-      check('I4 signed-out: AI button gated by Entitlements seam, note shown',
-        idOffline && idOffline.allowed === false && idOffline.btnDisabled === true && /signed-in/.test(idOffline.note), idOffline);
+      check(
+        'I4 signed-out: AI button gated by Entitlements seam, note shown',
+        idOffline &&
+          idOffline.allowed === false &&
+          idOffline.btnDisabled === true &&
+          /signed-in/.test(idOffline.note),
+        idOffline
+      );
 
       const idFile = await ev(`(function(){
         // File gate: only .txt/.md accepted; the real FileReader path is
@@ -573,7 +817,11 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
         MMGR.App.showToast = origToast;
         return { refusedPlain: refused };
       })()`);
-      check('I5 non-txt file refused in plain language', idFile && idFile.refusedPlain === true, idFile);
+      check(
+        'I5 non-txt file refused in plain language',
+        idFile && idFile.refusedPlain === true,
+        idFile
+      );
 
       await ev(`MMGR.Tasks.closeImportDates();`);
 
@@ -610,9 +858,21 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
           noBadgeOnC: !badgeC
         };
       })()`);
-      check('P1 parallelGroups: A<->B peers, C untouched', P4 && P4.aSeesB && P4.bSeesA && !P4.cFlagged, P4);
-      check('P2 WBS badge on A with count 1, none on C', P4 && P4.badgeOnA && P4.badgeCount === '1' && P4.noBadgeOnC, P4);
-      check('P3 hover/aria names the peer task + shared window', P4 && /Parallel B/.test(P4.aria) && /2026-08/.test(P4.title) && P4.badgeIcon, P4);
+      check(
+        'P1 parallelGroups: A<->B peers, C untouched',
+        P4 && P4.aSeesB && P4.bSeesA && !P4.cFlagged,
+        P4
+      );
+      check(
+        'P2 WBS badge on A with count 1, none on C',
+        P4 && P4.badgeOnA && P4.badgeCount === '1' && P4.noBadgeOnC,
+        P4
+      );
+      check(
+        'P3 hover/aria names the peer task + shared window',
+        P4 && /Parallel B/.test(P4.aria) && /2026-08/.test(P4.title) && P4.badgeIcon,
+        P4
+      );
 
       // ---- Task 6 gates: background assistant + mailbox ----
       const W1 = await ev(`(function(){
@@ -643,7 +903,11 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
       })()`);
       // Severity re-map (owner 2026-09-28): an imminent lead-time (<=2 days)
       // is CAUTION (yellow, act before it hurts); past-due stays attention.
-      check('W1 lead-time watcher fires (2 days left -> caution notice, signed-in)', W1 && W1.count >= 1 && W1.hasSteel && W1.sev === 'caution', W1);
+      check(
+        'W1 lead-time watcher fires (2 days left -> caution notice, signed-in)',
+        W1 && W1.count >= 1 && W1.hasSteel && W1.sev === 'caution',
+        W1
+      );
 
       const W2 = await ev(`(function(){
         const before = MMGR.Watch.unreadCount();
@@ -661,7 +925,11 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
         const dotHidden = document.querySelector('[data-bell-dot]').hidden; // opened => read => dot clears
         return { deduped: MMGR.State.getState().aiInbox.length === after, listed: listed, unreadAfterOpen: unreadAfterOpen, dotHidden: dotHidden, before: before };
       })()`);
-      check('W2 run() idempotent, mailbox lists notice, dot clears on open', W2 && W2.deduped && W2.listed && W2.dotHidden, W2);
+      check(
+        'W2 run() idempotent, mailbox lists notice, dot clears on open',
+        W2 && W2.deduped && W2.listed && W2.dotHidden,
+        W2
+      );
 
       const W3 = await ev(`(function(){
         const inbox = MMGR.State.getState().aiInbox;
@@ -675,7 +943,11 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
         const regen = (MMGR.State.getState().aiInbox || []).some(n => /Steel fixing lead time/.test(n.text));
         return { gone: gone, regenerated: regen };
       })()`);
-      check('W3 dismiss removes; persistent condition resurfaces (documented)', W3 && W3.gone && W3.regenerated, W3);
+      check(
+        'W3 dismiss removes; persistent condition resurfaces (documented)',
+        W3 && W3.gone && W3.regenerated,
+        W3
+      );
 
       // ---- Task 5 gates: field-report voice destination + action item ----
       const V1 = await ev(`(function(){
@@ -714,7 +986,11 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
         const seam = typeof MMGR.Entitlements.aiAssistant === 'function' && MMGR.Entitlements.aiAssistant() === false;
         return { noop: count === 0, hasCard: hasCard, hasSignInBtn: !!btn, seam: seam };
       })()`);
-      check('E1 signed-out: run() no-ops, mailbox shows sign-in card, seam denies', E1 && E1.noop && E1.hasCard && E1.hasSignInBtn && E1.seam, E1);
+      check(
+        'E1 signed-out: run() no-ops, mailbox shows sign-in card, seam denies',
+        E1 && E1.noop && E1.hasCard && E1.hasSignInBtn && E1.seam,
+        E1
+      );
 
       const E2 = await ev(`(function(){
         // Simulate sign-in by faking the auth seam (harness cannot do a real
@@ -732,7 +1008,11 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
         } finally { MMGR.GoogleAuth.isSignedIn = real; }
         return { seamAllows: ok, produced: produced };
       })()`);
-      check('E2 signed-in: seam allows, watchers produce notices', E2 && E2.seamAllows && E2.produced, E2);
+      check(
+        'E2 signed-in: seam allows, watchers produce notices',
+        E2 && E2.seamAllows && E2.produced,
+        E2
+      );
 
       const E3 = await ev(`(function(){
         // Weather watcher: seed a cached forecast day flagged by the
@@ -767,10 +1047,9 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
         return { silentOffline: !wx };
       })()`);
       check('E4 offline (no cache): no weather notice, no error', E4 && E4.silentOffline, E4);
-
     });
   } catch (e) {
-    log('FATAL harness exception: ' + (e && e.stack || e));
+    log('FATAL harness exception: ' + ((e && e.stack) || e));
   }
 
   const fails = results.filter(r => !r.val);
@@ -778,4 +1057,8 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
   log('RESULT: ' + (results.length - fails.length) + '/' + results.length + ' gates passed');
   stopWrangler();
   process.exit(fails.length ? 1 : 0);
-})().catch(e => { log('FATAL: ' + (e && e.stack || e)); stopWrangler(); process.exit(1); });
+})().catch(e => {
+  log('FATAL: ' + ((e && e.stack) || e));
+  stopWrangler();
+  process.exit(1);
+});

@@ -5,7 +5,7 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   const S = () => ns.State.getState();
@@ -27,12 +27,20 @@ var MMGR = window.MMGR || {};
   (function migrateSpacedProjectIds() {
     try {
       const id = ns.projectId;
-      if (!id || !/\s/.test(id)) return;                      // nothing to fix
-      const slug = id.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'project';
+      if (!id || !/\s/.test(id)) return; // nothing to fix
+      const slug =
+        id
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/(^-|-$)/g, '') || 'project';
       if (localStorage.getItem('mmgr_state_' + slug)) return; // target exists: never clobber
-      ['mmgr_state_', 'mmgr_unlocked_', 'mmgr_scope_'].forEach(function(prefix) {
+      ['mmgr_state_', 'mmgr_unlocked_', 'mmgr_scope_'].forEach(function (prefix) {
         const v = localStorage.getItem(prefix + id);
-        if (v !== null) { localStorage.setItem(prefix + slug, v); localStorage.removeItem(prefix + id); }
+        if (v !== null) {
+          localStorage.setItem(prefix + slug, v);
+          localStorage.removeItem(prefix + id);
+        }
       });
       try {
         const raw = localStorage.getItem('mmgr_admin_projects');
@@ -40,19 +48,29 @@ var MMGR = window.MMGR || {};
           const list = JSON.parse(raw);
           if (Array.isArray(list)) {
             let changed = false;
-            list.forEach(function(p) {
-              if (p && p.id === id) { p.id = slug; if (p.file) p.file = 'project.html?id=' + encodeURIComponent(slug); changed = true; }
+            list.forEach(function (p) {
+              if (p && p.id === id) {
+                p.id = slug;
+                if (p.file) p.file = 'project.html?id=' + encodeURIComponent(slug);
+                changed = true;
+              }
             });
             if (changed) localStorage.setItem('mmgr_admin_projects', JSON.stringify(list));
           }
         }
-      } catch (e) { /* admin list is optional */ }
+      } catch (e) {
+        /* admin list is optional */
+      }
       localStorage.setItem('mmgr_current_project', slug);
       localStorage.setItem('mmgr_cloud_id_' + slug, id); // keep the cloud twin reachable
       if (!urlParams.get('id')) {
-        window.location.replace('project.html?id=' + encodeURIComponent(slug) + window.location.hash);
+        window.location.replace(
+          'project.html?id=' + encodeURIComponent(slug) + window.location.hash
+        );
       }
-    } catch (e) { /* migration must never block boot */ }
+    } catch (e) {
+      /* migration must never block boot */
+    }
   })();
 
   // DEMO VIEW-ONLY: the filled demo project is always read-only.
@@ -80,8 +98,15 @@ var MMGR = window.MMGR || {};
       const raw = localStorage.getItem('mmgr_admin_projects');
       if (!raw) return false;
       const list = JSON.parse(raw);
-      return Array.isArray(list) && list.some(function(p) { return p && p.id === id; });
-    } catch (e) { return false; }
+      return (
+        Array.isArray(list) &&
+        list.some(function (p) {
+          return p && p.id === id;
+        })
+      );
+    } catch (e) {
+      return false;
+    }
   }
 
   function checkAccess() {
@@ -102,7 +127,11 @@ var MMGR = window.MMGR || {};
     if (projectId === 'demo-filled') {
       ns.scope = 'readonly';
     } else {
-      ns.scope = locallyOwned ? 'full' : (localStorage.getItem('mmgr_scope_' + projectId) === 'readonly' ? 'readonly' : 'full');
+      ns.scope = locallyOwned
+        ? 'full'
+        : localStorage.getItem('mmgr_scope_' + projectId) === 'readonly'
+          ? 'readonly'
+          : 'full';
     }
     // CLOUD-CODES-AND-DELETE: a cloud VIEWER code (session escope role
     // 'view', set when the code was entered on the launcher or in the Cloud
@@ -116,13 +145,18 @@ var MMGR = window.MMGR || {};
         // C19: a CLIENT code is read-only exactly like a viewer code - the
         // scope machinery (READONLY_SAFE_ACTIONS) treats both identically,
         // and the section grant is enforced by applyClientScope hiding nav.
-        if (es && Array.isArray(es.sections) && (es.role === 'view' || es.role === 'client')) ns.scope = 'readonly';
-      } catch (e) { /* ignore */ }
+        if (es && Array.isArray(es.sections) && (es.role === 'view' || es.role === 'client'))
+          ns.scope = 'readonly';
+      } catch (e) {
+        /* ignore */
+      }
     }
     return true;
   }
 
-  function isReadonly() { return ns.scope === 'readonly'; }
+  function isReadonly() {
+    return ns.scope === 'readonly';
+  }
 
   // PART F T9 (no-offline-copy guarantee): TRUE when this project was opened
   // with a cloud editor/viewer code (session escope role set , the same slot
@@ -135,17 +169,28 @@ var MMGR = window.MMGR || {};
       // C19: clients are recipients like editors/viewers - offline exports
       // stay blocked for them too.
       return !!(es && (es.role === 'editor' || es.role === 'view' || es.role === 'client'));
-    } catch (e) { return false; }
+    } catch (e) {
+      return false;
+    }
   }
   function cloudExportBlocked(action) {
     // openOM (export modal), cpOut (copy JSON), saveProjectFile (download
     // .json) and driveBackup (writes the workspace to the recipient's own
     // Drive) are the offline-copy surfaces , refused while a share code is
     // held. Everything else proceeds normally.
-    if (action !== 'openOM' && action !== 'cpOut' && action !== 'saveProjectFile' && action !== 'driveBackup') return false;
+    if (
+      action !== 'openOM' &&
+      action !== 'cpOut' &&
+      action !== 'saveProjectFile' &&
+      action !== 'driveBackup'
+    )
+      return false;
     if (!cloudCodeHeld()) return false;
     if (window.MMGR.App && typeof window.MMGR.App.showToast === 'function') {
-      window.MMGR.App.showToast('Shared projects can\u2019t be copied offline. This project was opened with a share code.', 'err');
+      window.MMGR.App.showToast(
+        'Shared projects can\u2019t be copied offline. This project was opened with a share code.',
+        'err'
+      );
     }
     return true;
   }
@@ -154,7 +199,7 @@ var MMGR = window.MMGR || {};
   // C21: @mention dropdown for task comments
   function initMentionDropdown() {
     let _mentionIdx = -1; // keyboard selection index
-    
+
     function selectMention(input, name) {
       const val = input.value;
       const atIdx = val.lastIndexOf('@');
@@ -163,22 +208,39 @@ var MMGR = window.MMGR || {};
       }
       input.focus();
       const dropdown = document.getElementById('mention-dropdown');
-      if (dropdown) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; }
+      if (dropdown) {
+        dropdown.style.display = 'none';
+        dropdown.innerHTML = '';
+      }
       _mentionIdx = -1;
     }
-    
+
     function renderMentionItems(dropdown, matches) {
       _mentionIdx = -1;
       // Stakeholder names are user-entered (RACI people) - escape fully so a
       // name containing markup can never inject HTML into the dropdown.
-      const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      dropdown.innerHTML = matches.map((n, i) =>
-        '<div class="mention-item" role="option" aria-selected="false" style="padding:7px 10px;cursor:pointer;font-size:.75rem;border-bottom:1px solid var(--border);transition:background .1s" data-name="' + esc(n) + '" data-idx="' + i + '">' +
-        '<span style="color:var(--gold);font-weight:600">@</span> ' + esc(n) + '</div>'
-      ).join('');
+      const esc = s =>
+        String(s)
+          .replace(/&/g, '&amp;')
+          .replace(/"/g, '&quot;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+      dropdown.innerHTML = matches
+        .map(
+          (n, i) =>
+            '<div class="mention-item" role="option" aria-selected="false" style="padding:7px 10px;cursor:pointer;font-size:.75rem;border-bottom:1px solid var(--border);transition:background .1s" data-name="' +
+            esc(n) +
+            '" data-idx="' +
+            i +
+            '">' +
+            '<span style="color:var(--gold);font-weight:600">@</span> ' +
+            esc(n) +
+            '</div>'
+        )
+        .join('');
     }
-    
-    document.addEventListener('input', function(e) {
+
+    document.addEventListener('input', function (e) {
       if (!e.target.id || !e.target.id.startsWith('comment-input-')) return;
       const input = e.target;
       const val = input.value;
@@ -203,15 +265,15 @@ var MMGR = window.MMGR || {};
       renderMentionItems(dropdown, matches);
       dropdown.style.display = 'block';
     });
-    
+
     // Keyboard navigation (arrow keys + Enter + Escape)
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', function (e) {
       if (!e.target.id || !e.target.id.startsWith('comment-input-')) return;
       const dropdown = document.getElementById('mention-dropdown');
       if (!dropdown || dropdown.style.display === 'none') return;
       const items = dropdown.querySelectorAll('.mention-item');
       if (!items.length) return;
-      
+
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         _mentionIdx = Math.min(_mentionIdx + 1, items.length - 1);
@@ -238,22 +300,31 @@ var MMGR = window.MMGR || {};
       }
     });
 
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', function (e) {
       if (e.target.classList.contains('mention-item')) {
         const name = e.target.getAttribute('data-name');
-        const input = e.target.closest('.card') ? e.target.closest('.card').querySelector('input[id^="comment-input-"]') : null;
+        const input = e.target.closest('.card')
+          ? e.target.closest('.card').querySelector('input[id^="comment-input-"]')
+          : null;
         if (input && name) selectMention(input, name);
       }
     });
 
-    document.addEventListener('blur', function(e) {
-      if (e.target.id && e.target.id.startsWith('comment-input-')) {
-        setTimeout(function() {
-          const dropdown = document.getElementById('mention-dropdown');
-          if (dropdown) { dropdown.style.display = 'none'; _mentionIdx = -1; }
-        }, 200);
-      }
-    }, true);
+    document.addEventListener(
+      'blur',
+      function (e) {
+        if (e.target.id && e.target.id.startsWith('comment-input-')) {
+          setTimeout(function () {
+            const dropdown = document.getElementById('mention-dropdown');
+            if (dropdown) {
+              dropdown.style.display = 'none';
+              _mentionIdx = -1;
+            }
+          }, 200);
+        }
+      },
+      true
+    );
   }
 
   function init() {
@@ -268,8 +339,16 @@ var MMGR = window.MMGR || {};
     // watchers read local state only. Premium gate lands inside the
     // Entitlements seam later - run() will consult it then.
     if (ns.Watch) {
-      try { ns.Watch.run(); } catch (e) { /* never block boot */ }
-      setInterval(function() { try { ns.Watch.run(); } catch (e) {} }, 60000);
+      try {
+        ns.Watch.run();
+      } catch (e) {
+        /* never block boot */
+      }
+      setInterval(function () {
+        try {
+          ns.Watch.run();
+        } catch (e) {}
+      }, 60000);
     }
 
     // ACTION-PLAN 4.1: view-only scope , reduced read-only view. The body
@@ -293,10 +372,16 @@ var MMGR = window.MMGR || {};
     // must stay dark here).
     const thmTgl = U.$('thm-tgl');
     let theme = s.theme || 'light';
-    try { theme = localStorage.getItem('mmgr_theme') || theme; } catch (e) { /* ignore */ }
+    try {
+      theme = localStorage.getItem('mmgr_theme') || theme;
+    } catch (e) {
+      /* ignore */
+    }
     const dark =
       theme === 'dark' ||
-      (theme === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      (theme === 'system' &&
+        window.matchMedia &&
+        window.matchMedia('(prefers-color-scheme: dark)').matches);
     document.body.classList.toggle('dark-mode', dark);
     if (thmTgl) thmTgl.checked = !dark;
     // Apply crosshair
@@ -311,7 +396,7 @@ var MMGR = window.MMGR || {};
     const cxEl = U.$('cx');
     const cyEl = U.$('cy');
     if (cxEl && cyEl) {
-      document.addEventListener('mousemove', function(ev) {
+      document.addEventListener('mousemove', function (ev) {
         cxEl.style.top = ev.clientY + 'px';
         cyEl.style.left = ev.clientX + 'px';
       });
@@ -368,15 +453,23 @@ var MMGR = window.MMGR || {};
     // so there is no feedback loop.
     if (ns.Viewport && ns.Viewport.syncHeaderStack) {
       ns.Viewport.syncHeaderStack();
-      window.addEventListener('resize', function() { ns.Viewport.syncHeaderStack(); });
-      window.addEventListener('load', function() { ns.Viewport.syncHeaderStack(); });
+      window.addEventListener('resize', function () {
+        ns.Viewport.syncHeaderStack();
+      });
+      window.addEventListener('load', function () {
+        ns.Viewport.syncHeaderStack();
+      });
       if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
-        document.fonts.ready.then(function() { ns.Viewport.syncHeaderStack(); });
+        document.fonts.ready.then(function () {
+          ns.Viewport.syncHeaderStack();
+        });
       }
       if (window.ResizeObserver) {
         var hdrStackEl = document.getElementById('app-header');
         if (hdrStackEl) {
-          var hdrRO = new ResizeObserver(function() { ns.Viewport.syncHeaderStack(); });
+          var hdrRO = new ResizeObserver(function () {
+            ns.Viewport.syncHeaderStack();
+          });
           hdrRO.observe(hdrStackEl);
         }
       }
@@ -388,36 +481,49 @@ var MMGR = window.MMGR || {};
     // Rank 4.2: crash-durability journal restore , if the IndexedDB journal
     // holds a NEWER state than localStorage (a hard kill happened mid-edit),
     // adopt it and re-render. Async best-effort; never blocks first paint.
-    ns.State.restoreFromJournal().then(function(restored) {
+    ns.State.restoreFromJournal().then(function (restored) {
       if (restored) R.renderAll();
     });
 
     // Populate weather region selector + set current value
     const regSel = U.$('weather-region-sel');
     if (regSel && ns.Weather && ns.Weather.getRegions) {
-      regSel.innerHTML = ns.Weather.getRegions().map(r =>
-        '<option value="' + r.id + '"' + (r.id === (s.weatherRegion || 'northern-temperate') ? ' selected' : '') + '>' + U.escapeHtml(r.name) + '</option>'
-      ).join('');
+      regSel.innerHTML = ns.Weather.getRegions()
+        .map(
+          r =>
+            '<option value="' +
+            r.id +
+            '"' +
+            (r.id === (s.weatherRegion || 'northern-temperate') ? ' selected' : '') +
+            '>' +
+            U.escapeHtml(r.name) +
+            '</option>'
+        )
+        .join('');
     }
 
     // Live dirty indicator: any state change (typing, toggles, imports)
     // updates the header badge immediately without a full re-render.
-    ns.State.onChange(function() { R.renderDirtyIndicator(); });
+    ns.State.onChange(function () {
+      R.renderDirtyIndicator();
+    });
 
     // OWNER 2026-08-15: background cloud auto-sync , once the user goes
     // idle (~25s), a cloud-linked project's snapshot is pushed silently so
     // the header's green "Cloud backed up" chip stays honest. No-op for
     // unlinked / editor-only / readonly projects (Cloud.autoSaveToCloud
     // guards on the owner credential). The timer resets on every edit.
-    ns.State.onChange(function() { scheduleCloudAutoSave(); });
+    ns.State.onChange(function () {
+      scheduleCloudAutoSave();
+    });
 
     // Multi-tab conflict detection: storage events fire in OTHER tabs, so
     // this tab is notified whenever a peer overwrites the shared key.
-    window.addEventListener('storage', function(e) {
+    window.addEventListener('storage', function (e) {
       if (!ns.State.getProjectKey || e.key !== ns.State.getProjectKey() || !e.newValue) return;
       try {
         onExternalChange(JSON.parse(e.newValue));
-      } catch(err) {
+      } catch (err) {
         console.warn('External change parse failed:', err);
       }
     });
@@ -432,7 +538,7 @@ var MMGR = window.MMGR || {};
     initMentionDropdown();
 
     // Keyboard shortcuts
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', function (e) {
       // Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z redo (not inside text inputs,
       // where the browser owns undo).
       if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
@@ -445,7 +551,11 @@ var MMGR = window.MMGR || {};
             showToast('View-only access: history is disabled.', 'err');
             return;
           }
-          if (e.shiftKey) { redo(); } else { undo(); }
+          if (e.shiftKey) {
+            redo();
+          } else {
+            undo();
+          }
           return;
         }
       }
@@ -462,13 +572,23 @@ var MMGR = window.MMGR || {};
         closeDrw();
         closeOM();
         closeModals();
-        const pm = document.getElementById('pool-modal'); if (pm) pm.remove();
-        const im = document.getElementById('import-modal'); if (im) im.remove();
+        const pm = document.getElementById('pool-modal');
+        if (pm) pm.remove();
+        const im = document.getElementById('import-modal');
+        if (im) im.remove();
         if (ns.Bids && ns.Bids.closeBidPkgModal) ns.Bids.closeBidPkgModal();
-        if (ns.Charter) { ns.Charter.closeChartUp(); }
-        if (ns.WbsImport) { ns.WbsImport.closeWbsImport(); }
-        if (ns.ImportDates) { ns.ImportDates.closeImportDates(); }
-        if (ns.AiWin) { ns.AiWin.close(); }
+        if (ns.Charter) {
+          ns.Charter.closeChartUp();
+        }
+        if (ns.WbsImport) {
+          ns.WbsImport.closeWbsImport();
+        }
+        if (ns.ImportDates) {
+          ns.ImportDates.closeImportDates();
+        }
+        if (ns.AiWin) {
+          ns.AiWin.close();
+        }
       }
     });
 
@@ -520,12 +640,18 @@ var MMGR = window.MMGR || {};
       console.warn('State validation issues:', issues);
     }
 
-    console.log('My MaNaGeR initialized. Project:', ns.projectId, '| Schema v' + ns.State.SCHEMA_VERSION);
+    console.log(
+      'My MaNaGeR initialized. Project:',
+      ns.projectId,
+      '| Schema v' + ns.State.SCHEMA_VERSION
+    );
   }
 
   // ---- Theme & Settings ----
   function setUserName(name) {
-    ns.State.updateState(function(s) { s.userName = name; });
+    ns.State.updateState(function (s) {
+      s.userName = name;
+    });
     R.renderGreeting();
   }
 
@@ -539,8 +665,15 @@ var MMGR = window.MMGR || {};
     // portable export still carries the theme for fresh devices , but that
     // project-state write is skipped in view-only (a read-only scope must not
     // mutate project state; the device pref + body class are enough there).
-    try { localStorage.setItem('mmgr_theme', theme); } catch (e) { /* ignore */ }
-    if (!isReadonly()) ns.State.updateState(function(s) { s.theme = theme; });
+    try {
+      localStorage.setItem('mmgr_theme', theme);
+    } catch (e) {
+      /* ignore */
+    }
+    if (!isReadonly())
+      ns.State.updateState(function (s) {
+        s.theme = theme;
+      });
     // Rank 3.5: keep the premium glass shader's dark flag in step with the
     // theme (a toggle between light/dark must not leave a stale backdrop).
     if (ns.Glass && ns.Glass.refreshTheme) ns.Glass.refreshTheme();
@@ -566,7 +699,7 @@ var MMGR = window.MMGR || {};
   let _navBound = false;
   function closeNav() {
     document.body.classList.remove('nav-open');
-    // OWNER 2026-08-15: on desktop the sidebar is the pinned primary nav , 
+    // OWNER 2026-08-15: on desktop the sidebar is the pinned primary nav ,
     // section clicks do NOT close it (only the hamburger / Escape does).
     const btn = U.$('nav-btn');
     if (btn) btn.setAttribute('aria-expanded', 'false');
@@ -585,7 +718,12 @@ var MMGR = window.MMGR || {};
       // Outside-click closes the backup popover (not on the indicator itself
       // or anything inside the popover).
       const pop = U.$('bk-pop');
-      if (pop && !pop.hidden && !(t && t.closest && (t.closest('#bk-pop') || t.closest('#dirty-ind')))) bkClose();
+      if (
+        pop &&
+        !pop.hidden &&
+        !(t && t.closest && (t.closest('#bk-pop') || t.closest('#dirty-ind')))
+      )
+        bkClose();
     });
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
@@ -593,7 +731,8 @@ var MMGR = window.MMGR || {};
       bkClose();
       // Escape also closes the desktop pinned rail , full-screen work, the
       // hamburger reopens it.
-      if (window.innerWidth > 768 && document.body.classList.contains('sidebar-open')) setSidebarOpen(false);
+      if (window.innerWidth > 768 && document.body.classList.contains('sidebar-open'))
+        setSidebarOpen(false);
     });
     window.addEventListener('resize', function () {
       closeNav();
@@ -635,16 +774,33 @@ var MMGR = window.MMGR || {};
   let _sidebarUserTouched = false;
 
   // ---- Sidebar delegation shims (extracted to js/app/sidebar.js) ----
-  function readDevicePref(key) { return ns.AppSidebar ? ns.AppSidebar.readDevicePref(key) : null; }
-  function writeDevicePref(key, v) { if (ns.AppSidebar) ns.AppSidebar.writeDevicePref(key, v); }
-  function sidebarEnabled() { return true; }
-  function syncSidebarChrome() { if (ns.AppSidebar) ns.AppSidebar.syncSidebarChrome(); }
-  function setSidebarOpen(open) { if (ns.AppSidebar) ns.AppSidebar.setSidebarOpen(open); }
-  function toggleSidebar() { if (ns.AppSidebar) ns.AppSidebar.toggleSidebar(); }
-  function pushSidebarBackend(on) { if (ns.AppSidebar) ns.AppSidebar.pushSidebarBackend(on); }
-  function pullSidebarBackend() { if (ns.AppSidebar) ns.AppSidebar.pullSidebarBackend(); }
-  function buildSidebar() { if (ns.AppSidebar) ns.AppSidebar.buildSidebar(); }
-
+  function readDevicePref(key) {
+    return ns.AppSidebar ? ns.AppSidebar.readDevicePref(key) : null;
+  }
+  function writeDevicePref(key, v) {
+    if (ns.AppSidebar) ns.AppSidebar.writeDevicePref(key, v);
+  }
+  function sidebarEnabled() {
+    return true;
+  }
+  function syncSidebarChrome() {
+    if (ns.AppSidebar) ns.AppSidebar.syncSidebarChrome();
+  }
+  function setSidebarOpen(open) {
+    if (ns.AppSidebar) ns.AppSidebar.setSidebarOpen(open);
+  }
+  function toggleSidebar() {
+    if (ns.AppSidebar) ns.AppSidebar.toggleSidebar();
+  }
+  function pushSidebarBackend(on) {
+    if (ns.AppSidebar) ns.AppSidebar.pushSidebarBackend(on);
+  }
+  function pullSidebarBackend() {
+    if (ns.AppSidebar) ns.AppSidebar.pullSidebarBackend();
+  }
+  function buildSidebar() {
+    if (ns.AppSidebar) ns.AppSidebar.buildSidebar();
+  }
 
   // ---- PLAN-OF-ACTION-AI-VOICE-SYNC-v1 4.5: optional Google identity ----
   function syncConnect() {
@@ -670,9 +826,15 @@ var MMGR = window.MMGR || {};
       try {
         const G = ns.GoogleAuth;
         if (G && G.ensureGisButton) G.ensureGisButton();
-      } catch (e) { /* GIS quirk - the fallback button still shows */ }
+      } catch (e) {
+        /* GIS quirk - the fallback button still shows */
+      }
       const f = m.querySelector('.email-auth-input');
-      if (f && f.focus) { try { f.focus(); } catch (e) {} }
+      if (f && f.focus) {
+        try {
+          f.focus();
+        } catch (e) {}
+      }
       return;
     }
     // SIGN-IN FALLBACK (owner 2026-09-20): project.html ships no #siom sheet,
@@ -686,16 +848,32 @@ var MMGR = window.MMGR || {};
     drw.classList.add('open');
     const tabBtn = document.querySelector('.dtab[data-tab="ctrl"]');
     if (tabBtn) swDtab('ctrl', tabBtn);
-    if (C && C.render) { try { C.render(); } catch (e) { /* section keeps its last state */ } }
-    const focusCloudSignin = function() {
+    if (C && C.render) {
+      try {
+        C.render();
+      } catch (e) {
+        /* section keeps its last state */
+      }
+    }
+    const focusCloudSignin = function () {
       const btn = document.querySelector('#ctrl-share [data-action="cloudSignIn"]');
       if (btn) {
-        try { btn.scrollIntoView({ block: 'center', behavior: 'auto' }); }
-        catch (e) { try { btn.scrollIntoView(); } catch (e2) {} }
-        try { btn.focus(); } catch (e) {}
+        try {
+          btn.scrollIntoView({ block: 'center', behavior: 'auto' });
+        } catch (e) {
+          try {
+            btn.scrollIntoView();
+          } catch (e2) {}
+        }
+        try {
+          btn.focus();
+        } catch (e) {}
       }
     };
-    requestAnimationFrame(function() { focusCloudSignin(); setTimeout(focusCloudSignin, 350); });
+    requestAnimationFrame(function () {
+      focusCloudSignin();
+      setTimeout(focusCloudSignin, 350);
+    });
   }
   function closeSignInModal() {
     const m = U.$('siom');
@@ -706,7 +884,9 @@ var MMGR = window.MMGR || {};
     const tgl = U.$('ch-tgl');
     const on = tgl && tgl.checked;
     document.body.classList.toggle('crosshair-on', on);
-    ns.State.updateState(function(s) { s.crosshairOn = on; });
+    ns.State.updateState(function (s) {
+      s.crosshairOn = on;
+    });
   }
 
   // ---- Phase 2: feature flags ----
@@ -717,8 +897,8 @@ var MMGR = window.MMGR || {};
   function tglFlag(el) {
     const flag = el.getAttribute('data-flag');
     if (!flag) return;
-    const on = el.type === 'checkbox' ? el.checked : (S().flags && S().flags[flag] !== false);
-    ns.State.updateState(function(s) {
+    const on = el.type === 'checkbox' ? el.checked : S().flags && S().flags[flag] !== false;
+    ns.State.updateState(function (s) {
       if (!s.flags || typeof s.flags !== 'object') s.flags = {};
       s.flags[flag] = on;
     });
@@ -738,14 +918,22 @@ var MMGR = window.MMGR || {};
     // Single source of truth: ns.Errors.formatEntry shares the drawer's ts
     // formatter (mmgr-errors.js fmtTs), so the exported log can never drift
     // from the on-screen log.
-    const entries = (ns.Errors && ns.Errors.getLog) ? ns.Errors.getLog() : [];
-    const fmt = (ns.Errors && ns.Errors.formatEntry) ? ns.Errors.formatEntry : function(en) { return String(en.msg); };
+    const entries = ns.Errors && ns.Errors.getLog ? ns.Errors.getLog() : [];
+    const fmt =
+      ns.Errors && ns.Errors.formatEntry
+        ? ns.Errors.formatEntry
+        : function (en) {
+            return String(en.msg);
+          };
     return entries.map(fmt).join('\n');
   }
 
   async function copyErrorLog() {
     const text = errLogText();
-    if (!text) { showToast('Error log is empty.', 'warn'); return; }
+    if (!text) {
+      showToast('Error log is empty.', 'warn');
+      return;
+    }
     // U.copyToClipboard never rejects (clipboard API + execCommand fallback
     // both resolve true), so no catch is needed , a successful copy is the
     // only path that reaches the success toast.
@@ -755,14 +943,21 @@ var MMGR = window.MMGR || {};
 
   function downloadErrorLog() {
     const text = errLogText();
-    if (!text) { showToast('Error log is empty.', 'warn'); return; }
+    if (!text) {
+      showToast('Error log is empty.', 'warn');
+      return;
+    }
     try {
       const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = 'mymanager-error-log-' + new Date().toISOString().slice(0, 10) + '.txt';
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(function() { URL.revokeObjectURL(a.href); }, 400);
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () {
+        URL.revokeObjectURL(a.href);
+      }, 400);
       showToast('Error log downloaded.', 'ok');
     } catch (e) {
       showToast('Could not download the error log.', 'err');
@@ -780,20 +975,37 @@ var MMGR = window.MMGR || {};
   function tglReportContext() {
     const tgl = U.$('report-ctx-tgl');
     _reportCtx = tgl ? tgl.checked : false;
-    showToast(_reportCtx
-      ? 'Report will include project context (names + budget totals).'
-      : 'Report is counts-only (sanitized).', _reportCtx ? 'warn' : 'ok');
+    showToast(
+      _reportCtx
+        ? 'Report will include project context (names + budget totals).'
+        : 'Report is counts-only (sanitized).',
+      _reportCtx ? 'warn' : 'ok'
+    );
   }
 
   async function reportIssueCopy() {
-    if (!ns.Report || typeof ns.Report.copyPackage !== 'function') { showToast('Report module unavailable.', 'err'); return; }
+    if (!ns.Report || typeof ns.Report.copyPackage !== 'function') {
+      showToast('Report module unavailable.', 'err');
+      return;
+    }
     const ok = await ns.Report.copyPackage(_reportCtx);
-    showToast(ok ? 'Report copied , paste it wherever you file the issue.' : 'Could not copy the report.', ok ? 'ok' : 'err');
+    showToast(
+      ok ? 'Report copied , paste it wherever you file the issue.' : 'Could not copy the report.',
+      ok ? 'ok' : 'err'
+    );
   }
 
   function reportIssueDownload() {
-    if (!ns.Report || typeof ns.Report.downloadPackage !== 'function') { showToast('Report module unavailable.', 'err'); return; }
-    showToast(ns.Report.downloadPackage(_reportCtx) ? 'Report downloaded.' : 'Could not download the report.', 'ok');
+    if (!ns.Report || typeof ns.Report.downloadPackage !== 'function') {
+      showToast('Report module unavailable.', 'err');
+      return;
+    }
+    showToast(
+      ns.Report.downloadPackage(_reportCtx)
+        ? 'Report downloaded.'
+        : 'Could not download the report.',
+      'ok'
+    );
   }
 
   // ---- DIR-1b: opt-in remote error reporting ----
@@ -804,10 +1016,12 @@ var MMGR = window.MMGR || {};
     const tgl = U.$('err-report-tgl');
     const on = tgl ? tgl.checked : false;
     if (ns.Errors && ns.Errors.setReportCfg) ns.Errors.setReportCfg({ enabled: on });
-    showToast(on
-      ? 'Remote error reporting ON , new errors are posted to your webhook.'
-      : 'Remote error reporting OFF , errors stay on this device only.',
-      on ? 'ok' : 'warn');
+    showToast(
+      on
+        ? 'Remote error reporting ON , new errors are posted to your webhook.'
+        : 'Remote error reporting OFF , errors stay on this device only.',
+      on ? 'ok' : 'warn'
+    );
   }
 
   function setErrWebhook(el) {
@@ -815,12 +1029,16 @@ var MMGR = window.MMGR || {};
   }
 
   function tglLock() {
-    ns.State.updateState(function(s) { s.methodologyLocked = !s.methodologyLocked; });
+    ns.State.updateState(function (s) {
+      s.methodologyLocked = !s.methodologyLocked;
+    });
     R.renderLock();
   }
 
   function setWorkWeek(val) {
-    ns.State.updateState(function(s) { s.workWeek = parseInt(val) || 5; });
+    ns.State.updateState(function (s) {
+      s.workWeek = parseInt(val) || 5;
+    });
   }
 
   // ---- Methodology ----
@@ -830,7 +1048,9 @@ var MMGR = window.MMGR || {};
       showToast('Methodology is locked. Unlock in Controls to switch.', 'err');
       return;
     }
-    ns.State.updateState(function(state) { state.methodology = meth; });
+    ns.State.updateState(function (state) {
+      state.methodology = meth;
+    });
     R.renderMethodology();
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');
@@ -845,7 +1065,9 @@ var MMGR = window.MMGR || {};
   function tglFocusMode() {
     // Monolith parity: the focus state persists so a hard refresh keeps the
     // focused workspace (S.focus in the monolith).
-    ns.State.updateState(function(s) { s.focusMode = !s.focusMode; });
+    ns.State.updateState(function (s) {
+      s.focusMode = !s.focusMode;
+    });
     document.body.classList.toggle('focus-mode', !!S().focusMode);
   }
 
@@ -878,19 +1100,30 @@ var MMGR = window.MMGR || {};
     swDtab('ctrl', document.querySelector('.dtab[data-tab="ctrl"]'));
     const el = U.$('adv-packs-section');
     if (el) {
-      requestAnimationFrame(function() {
-        try { el.scrollIntoView({ block: 'center', behavior: 'auto' }); }
-        catch (e) { el.scrollIntoView(); }
+      requestAnimationFrame(function () {
+        try {
+          el.scrollIntoView({ block: 'center', behavior: 'auto' });
+        } catch (e) {
+          el.scrollIntoView();
+        }
         // Keyboard users land on a focused control, not a blind tab-through.
         const firstPack = U.$('pk-schedule');
-        if (firstPack) { try { firstPack.focus({ preventScroll: true }); } catch (e2) { /* ignore */ } }
+        if (firstPack) {
+          try {
+            firstPack.focus({ preventScroll: true });
+          } catch (e2) {
+            /* ignore */
+          }
+        }
       });
     }
   }
 
   // DIR-3: dismiss the Core-Mode nudge forever for this project.
   function dismissPacksCallout() {
-    ns.State.updateState(function(s) { s.packsCalloutDismissed = true; });
+    ns.State.updateState(function (s) {
+      s.packsCalloutDismissed = true;
+    });
     if (ns.Render && ns.Render.renderCoreCallout) ns.Render.renderCoreCallout();
   }
 
@@ -903,7 +1136,9 @@ var MMGR = window.MMGR || {};
   // DELEGATE: real implementation lives in js/app/components.js (MMGR.Components.showToast).
   // This one-liner keeps the local call-site unchanged while the monolith shrinks.
   function showToast(msg, type, action) {
-    if (window.MMGR && MMGR.Components && MMGR.Components.showToast) { MMGR.Components.showToast(msg, type, action); }
+    if (window.MMGR && MMGR.Components && MMGR.Components.showToast) {
+      MMGR.Components.showToast(msg, type, action);
+    }
   }
 
   // ---- Methodology Learning Card ----
@@ -913,19 +1148,22 @@ var MMGR = window.MMGR || {};
       title: 'Waterfall Methodology',
       body: 'A linear, sequential approach where each phase must be completed before the next begins. Best for construction, manufacturing, and regulated environments where requirements are stable and changes are costly.',
       when: 'Best for: Fixed-price contracts, regulatory projects, and any project where the full scope is known upfront.',
-      example: 'Example: Building a bridge , design must be approved before steel is ordered, and steel must arrive before erection begins.'
+      example:
+        'Example: Building a bridge , design must be approved before steel is ordered, and steel must arrive before erection begins.'
     },
     agile: {
       title: 'Agile Methodology',
       body: 'An iterative approach that delivers work in small, time-boxed increments called sprints. Best for software, product development, and environments where requirements evolve rapidly.',
       when: 'Best for: Projects with evolving requirements, innovation work, and teams that benefit from rapid feedback loops.',
-      example: 'Example: Developing a mobile app , each 2-week sprint delivers a working feature set that users can test and provide feedback on.'
+      example:
+        'Example: Developing a mobile app , each 2-week sprint delivers a working feature set that users can test and provide feedback on.'
     },
     hybrid: {
       title: 'Hybrid Methodology',
       body: 'Combines the structure of Waterfall (planning, design, governance) with the flexibility of Agile (iterative delivery, continuous improvement). Best for complex projects that need both certainty and adaptability.',
       when: 'Best for: Large-scale digital transformations, capital projects with software components, and any project where parts are well-defined and parts are exploratory.',
-      example: 'Example: A factory automation project , the physical layout and equipment procurement follow Waterfall, while the control software is developed in Agile sprints.'
+      example:
+        'Example: A factory automation project , the physical layout and equipment procurement follow Waterfall, while the control software is developed in Agile sprints.'
     }
   };
 
@@ -956,18 +1194,38 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- Copy All / Export Text ---- (extracted to js/app/copy-text.js)
-  function cpAllPage(section) { if (ns.AppCopy) ns.AppCopy.cpAllPage(section); }
-  function buildDigest(s) { return ns.AppCopy ? ns.AppCopy.buildDigest(s) : ''; }
-  function copyAsText(kind) { return ns.AppCopy ? ns.AppCopy.copyAsText(kind) : ''; }
-  function renderCtrlPreviews() { if (ns.AppCopy) ns.AppCopy.renderCtrlPreviews(); }
-  function cpFormats(kind) { if (ns.AppCopy) ns.AppCopy.cpFormats(kind); }
-  function emailTplText(kind) { return ns.AppCopy ? ns.AppCopy.emailTplText(kind) : ''; }
-  function emailTpl(kind) { if (ns.AppCopy) ns.AppCopy.emailTpl(kind); }
+  function cpAllPage(section) {
+    if (ns.AppCopy) ns.AppCopy.cpAllPage(section);
+  }
+  function buildDigest(s) {
+    return ns.AppCopy ? ns.AppCopy.buildDigest(s) : '';
+  }
+  function copyAsText(kind) {
+    return ns.AppCopy ? ns.AppCopy.copyAsText(kind) : '';
+  }
+  function renderCtrlPreviews() {
+    if (ns.AppCopy) ns.AppCopy.renderCtrlPreviews();
+  }
+  function cpFormats(kind) {
+    if (ns.AppCopy) ns.AppCopy.cpFormats(kind);
+  }
+  function emailTplText(kind) {
+    return ns.AppCopy ? ns.AppCopy.emailTplText(kind) : '';
+  }
+  function emailTpl(kind) {
+    if (ns.AppCopy) ns.AppCopy.emailTpl(kind);
+  }
 
   // ---- 5.2 Definitions tooltips ---- (extracted to js/app/definitions.js)
-  function defTipFor(term) { return ns.AppDefs && ns.AppDefs.defTipFor ? ns.AppDefs.defTipFor(term) : null; }
-  function showDefTip(el, term) { if (ns.AppDefs && ns.AppDefs.showDefTip) ns.AppDefs.showDefTip(el, term); }
-  function hideDefTip() { if (ns.AppDefs && ns.AppDefs.hideDefTip) ns.AppDefs.hideDefTip(); }
+  function defTipFor(term) {
+    return ns.AppDefs && ns.AppDefs.defTipFor ? ns.AppDefs.defTipFor(term) : null;
+  }
+  function showDefTip(el, term) {
+    if (ns.AppDefs && ns.AppDefs.showDefTip) ns.AppDefs.showDefTip(el, term);
+  }
+  function hideDefTip() {
+    if (ns.AppDefs && ns.AppDefs.hideDefTip) ns.AppDefs.hideDefTip();
+  }
 
   // ---- 5.x Gantt high-res PNG export ----
   // Renders the CURRENT schedule to an offscreen 2x canvas and downloads it
@@ -980,10 +1238,14 @@ var MMGR = window.MMGR || {};
   // legend. Bars/critical/weather/baseline carry over unchanged.
   function exportGanttPNG() {
     const s = ns.State.getState();
-    const all = (s.tasks || []);
+    const all = s.tasks || [];
     const tasks = all.filter(t => t.startDate && t.endDate);
-    if (!tasks.length) { showToast('No dated tasks to export.', 'err'); return; }
-    let minDate = null, maxDate = null;
+    if (!tasks.length) {
+      showToast('No dated tasks to export.', 'err');
+      return;
+    }
+    let minDate = null,
+      maxDate = null;
     tasks.forEach(t => {
       if (!minDate || t.startDate < minDate) minDate = t.startDate;
       if (!maxDate || t.endDate > maxDate) maxDate = t.endDate;
@@ -995,22 +1257,50 @@ var MMGR = window.MMGR || {};
     const measureCtx = document.createElement('canvas').getContext('2d');
     measureCtx.font = '700 11px sans-serif';
     let maxLabelWidth = 0;
-    all.forEach(t => { const w = measureCtx.measureText(t.name || '').width; if (w > maxLabelWidth) maxLabelWidth = w; });
-    const dayWidth = 14, rowH = 26, headerH = 56;
+    all.forEach(t => {
+      const w = measureCtx.measureText(t.name || '').width;
+      if (w > maxLabelWidth) maxLabelWidth = w;
+    });
+    const dayWidth = 14,
+      rowH = 26,
+      headerH = 56;
     const padL = Math.min(Math.max(120, Math.ceil(maxLabelWidth) + 30), 340);
-    const padR = 20, padT = 16, padB = 44; // C7: 2-line legend wrap headroom
+    const padR = 20,
+      padT = 16,
+      padB = 44; // C7: 2-line legend wrap headroom
     const phaseGap = 7; // breathing room before each phase row (chunking)
     const totalDays = U.daysBetween(minDate, maxDate) + 1;
     // Row geometry pass: y per task + phase gap before isPhase rows + phase
     // ownership for the tab strips (nearest preceding phase row).
-    const rowY = new Map(); const rowPhase = new Map(); const rowById = new Map();
-    let curPhase = null, phaseIdx = -1;
-    const PHASE_TABS = ['#8b5cf6', '#f97316', '#0ea5e9', '#22c55e', '#eab308', '#ec4899', '#14b8a6', '#a855f7', '#64748b', '#d4af37'];
+    const rowY = new Map();
+    const rowPhase = new Map();
+    const rowById = new Map();
+    let curPhase = null,
+      phaseIdx = -1;
+    const PHASE_TABS = [
+      '#8b5cf6',
+      '#f97316',
+      '#0ea5e9',
+      '#22c55e',
+      '#eab308',
+      '#ec4899',
+      '#14b8a6',
+      '#a855f7',
+      '#64748b',
+      '#d4af37'
+    ];
     let y = padT + headerH;
     tasks.forEach(t => {
-      if (t.isPhase) { phaseIdx++; curPhase = t; y += (rowY.size ? phaseGap : 0); }
+      if (t.isPhase) {
+        phaseIdx++;
+        curPhase = t;
+        y += rowY.size ? phaseGap : 0;
+      }
       rowY.set(t.id, y);
-      rowPhase.set(t.id, { phase: curPhase, color: PHASE_TABS[Math.abs(phaseIdx) % PHASE_TABS.length] });
+      rowPhase.set(t.id, {
+        phase: curPhase,
+        color: PHASE_TABS[Math.abs(phaseIdx) % PHASE_TABS.length]
+      });
       rowById.set(t.id, t);
       y += rowH;
     });
@@ -1018,18 +1308,33 @@ var MMGR = window.MMGR || {};
     const H = y + padB;
     const scale = 2;
     const canvas = document.createElement('canvas');
-    canvas.width = W * scale; canvas.height = H * scale;
+    canvas.width = W * scale;
+    canvas.height = H * scale;
     const ctx = canvas.getContext('2d');
     ctx.scale(scale, scale);
     const X = d => padL + U.daysBetween(minDate, d) * dayWidth;
     // Background
-    ctx.fillStyle = '#0e1116'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#0e1116';
+    ctx.fillRect(0, 0, W, H);
     // Title block (owner review: project, window, export date, prepared by)
     ctx.textAlign = 'left';
-    ctx.fillStyle = '#f1f5f9'; ctx.font = '700 13px sans-serif';
+    ctx.fillStyle = '#f1f5f9';
+    ctx.font = '700 13px sans-serif';
     ctx.fillText((s.projectName || 'Project') + ' - Schedule Export', 8, padT + 12);
-    ctx.font = '10px sans-serif'; ctx.fillStyle = '#94a3b8';
-    ctx.fillText(minDate + ' to ' + maxDate + '  |  ' + tasks.length + ' rows  |  exported ' + new Date().toISOString().slice(0, 10) + (s.userName ? '  |  prepared by ' + s.userName : ''), 8, padT + 28);
+    ctx.font = '10px sans-serif';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(
+      minDate +
+        ' to ' +
+        maxDate +
+        '  |  ' +
+        tasks.length +
+        ' rows  |  exported ' +
+        new Date().toISOString().slice(0, 10) +
+        (s.userName ? '  |  prepared by ' + s.userName : ''),
+      8,
+      padT + 28
+    );
     // Chart-area header + weekend shading + week-start dividers + day labels
     // C2 (directive): weekend FILL is separate from the Monday week-start
     // LINE - the old code conflated them into one Monday-only fill.
@@ -1037,24 +1342,47 @@ var MMGR = window.MMGR || {};
       const d = U.addDays(minDate, i);
       const x = padL + i * dayWidth;
       const dow = d.getDay();
-      if (dow === 0 || dow === 6) { ctx.fillStyle = 'rgba(148,163,184,.10)'; ctx.fillRect(x, padT + headerH - 18, dayWidth, H - padT - headerH + 4); }
-      if (dow === 1) { ctx.strokeStyle = 'rgba(255,255,255,.10)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + .5, padT + headerH - 18); ctx.lineTo(x + .5, H - padB); ctx.stroke(); }
-      ctx.font = '10px sans-serif'; ctx.fillStyle = dow === 0 || dow === 6 ? '#64748b' : '#94a3b8';
+      if (dow === 0 || dow === 6) {
+        ctx.fillStyle = 'rgba(148,163,184,.10)';
+        ctx.fillRect(x, padT + headerH - 18, dayWidth, H - padT - headerH + 4);
+      }
+      if (dow === 1) {
+        ctx.strokeStyle = 'rgba(255,255,255,.10)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x + 0.5, padT + headerH - 18);
+        ctx.lineTo(x + 0.5, H - padB);
+        ctx.stroke();
+      }
+      ctx.font = '10px sans-serif';
+      ctx.fillStyle = dow === 0 || dow === 6 ? '#64748b' : '#94a3b8';
       ctx.fillText(String(d.getDate()), x + 1, padT + headerH - 22);
-      if (d.getDate() === 1) { ctx.fillStyle = '#cbd5e1'; ctx.font = '700 9px sans-serif'; ctx.fillText(d.toLocaleString('default', { month: 'short' }), x + 1, padT + headerH - 34); }
+      if (d.getDate() === 1) {
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = '700 9px sans-serif';
+        ctx.fillText(d.toLocaleString('default', { month: 'short' }), x + 1, padT + headerH - 34);
+      }
     }
     // C1 backstop: label truncation (binary search for the widest prefix
     // that fits) - static PNGs have no tooltips, so the full name stays
     // readable in the live view; the export stays unclipped.
     function truncateToWidth(c, text, maxWidth) {
       if (c.measureText(text).width <= maxWidth) return text;
-      let lo = 0, hi = text.length;
-      while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (c.measureText(text.slice(0, mid) + '...').width <= maxWidth) lo = mid; else hi = mid - 1; }
+      let lo = 0,
+        hi = text.length;
+      while (lo < hi) {
+        const mid = (lo + hi + 1) >> 1;
+        if (c.measureText(text.slice(0, mid) + '...').width <= maxWidth) lo = mid;
+        else hi = mid - 1;
+      }
       return text.slice(0, lo) + '...';
     }
     // Baseline map
     const baseMap = {};
-    if (s.baseline && s.baseline.tasks) (s.baseline.tasks || []).forEach(bt => { baseMap[bt.id] = bt; });
+    if (s.baseline && s.baseline.tasks)
+      (s.baseline.tasks || []).forEach(bt => {
+        baseMap[bt.id] = bt;
+      });
     const todayStr = U.todayStr();
     const midY = id => rowY.get(id) + rowH / 2;
     // Rows: bands, tabs, labels, bars
@@ -1062,33 +1390,77 @@ var MMGR = window.MMGR || {};
       const ry = rowY.get(t.id);
       const x0 = X(t.startDate);
       const bw = Math.max(3, U.daysBetween(t.startDate, t.endDate) * dayWidth + dayWidth * 0.2);
-      if (t.isPhase) { ctx.fillStyle = 'rgba(148,163,184,.08)'; ctx.fillRect(padL, ry, W - padL - padR, rowH); }
+      if (t.isPhase) {
+        ctx.fillStyle = 'rgba(148,163,184,.08)';
+        ctx.fillRect(padL, ry, W - padL - padR, rowH);
+      }
       const tab = rowPhase.get(t.id);
-      if (tab) { ctx.fillStyle = tab.color; ctx.globalAlpha = t.isPhase ? 0.9 : 0.55; ctx.fillRect(padL - 6, ry + 2, 3, rowH - 4); ctx.globalAlpha = 1; }
+      if (tab) {
+        ctx.fillStyle = tab.color;
+        ctx.globalAlpha = t.isPhase ? 0.9 : 0.55;
+        ctx.fillRect(padL - 6, ry + 2, 3, rowH - 4);
+        ctx.globalAlpha = 1;
+      }
       ctx.fillStyle = t.isPhase ? '#f8fafc' : '#e2e8f0';
       ctx.font = t.isPhase ? '700 11px sans-serif' : '600 10px sans-serif';
-      ctx.fillText(truncateToWidth(ctx, t.name || '', padL - 30), t.isPhase ? 8 : 20, ry + rowH / 2 + 3);
+      ctx.fillText(
+        truncateToWidth(ctx, t.name || '', padL - 30),
+        t.isPhase ? 8 : 20,
+        ry + rowH / 2 + 3
+      );
       const bt = baseMap[t.id];
       if (bt && bt.startDate && bt.endDate) {
         const bx = X(bt.startDate);
         const bww = Math.max(1, U.daysBetween(bt.startDate, bt.endDate)) * dayWidth;
-        ctx.fillStyle = 'rgba(148,163,184,.35)'; ctx.fillRect(bx, ry + 3, bww, rowH - 10);
+        ctx.fillStyle = 'rgba(148,163,184,.35)';
+        ctx.fillRect(bx, ry + 3, bww, rowH - 10);
       }
       if (t.weatherExposed) {
-        ctx.fillStyle = 'rgba(56,189,248,.25)'; ctx.fillRect(x0, ry, bw, rowH);
-        ctx.strokeStyle = 'rgba(56,189,248,.8)'; ctx.lineWidth = 1;
-        for (let hx = x0; hx < x0 + bw; hx += 7) { ctx.beginPath(); ctx.moveTo(hx, ry); ctx.lineTo(hx + 7, ry + rowH); ctx.stroke(); }
+        ctx.fillStyle = 'rgba(56,189,248,.25)';
+        ctx.fillRect(x0, ry, bw, rowH);
+        ctx.strokeStyle = 'rgba(56,189,248,.8)';
+        ctx.lineWidth = 1;
+        for (let hx = x0; hx < x0 + bw; hx += 7) {
+          ctx.beginPath();
+          ctx.moveTo(hx, ry);
+          ctx.lineTo(hx + 7, ry + rowH);
+          ctx.stroke();
+        }
       }
-      const col = t.critical ? '#d4af37' : t.status === 'completed' ? '#009b3a' : U.isOverdue(t.endDate) && t.status !== 'completed' ? '#D63A3A' : U.isDueSoon(t.endDate, 3) && t.status !== 'completed' ? '#f59e0b' : '#3b82f6';
+      const col = t.critical
+        ? '#d4af37'
+        : t.status === 'completed'
+          ? '#009b3a'
+          : U.isOverdue(t.endDate) && t.status !== 'completed'
+            ? '#D63A3A'
+            : U.isDueSoon(t.endDate, 3) && t.status !== 'completed'
+              ? '#f59e0b'
+              : '#3b82f6';
       ctx.fillStyle = col;
       if (t.milestone) {
         // Milestones read as diamonds (owner review: gates must not read as slivers)
-        const cx = x0 + bw / 2, cy = ry + rowH / 2, r = rowH / 2 - 4;
-        ctx.beginPath(); ctx.moveTo(cx, cy - r); ctx.lineTo(cx + r, cy); ctx.lineTo(cx, cy + r); ctx.lineTo(cx - r, cy); ctx.closePath(); ctx.fill();
-        if (t.critical) { ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1; ctx.stroke(); }
+        const cx = x0 + bw / 2,
+          cy = ry + rowH / 2,
+          r = rowH / 2 - 4;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - r);
+        ctx.lineTo(cx + r, cy);
+        ctx.lineTo(cx, cy + r);
+        ctx.lineTo(cx - r, cy);
+        ctx.closePath();
+        ctx.fill();
+        if (t.critical) {
+          ctx.strokeStyle = 'rgba(255,255,255,.6)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
       } else {
         ctx.fillRect(x0, ry + (t.critical ? 0 : 4), bw, rowH - (t.critical ? 0 : 8));
-        if (t.critical) { ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1; ctx.strokeRect(x0 + .5, ry + .5, bw - 1, rowH - 1); }
+        if (t.critical) {
+          ctx.strokeStyle = 'rgba(255,255,255,.6)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x0 + 0.5, ry + 0.5, bw - 1, rowH - 1);
+        }
       }
     });
     // Dependency connectors (owner: "no line as signaler to say this is this")
@@ -1096,78 +1468,169 @@ var MMGR = window.MMGR || {};
     // successor left edge. Critical-chain links draw gold on top; the rest
     // stay subtle so the eye can trace the story of the schedule.
     function connector(pid, sid, gold) {
-      const p = rowById.get(String(pid)), sRow = rowById.get(String(sid));
+      const p = rowById.get(String(pid)),
+        sRow = rowById.get(String(sid));
       if (!p || !sRow || !rowY.has(p.id) || !rowY.has(sRow.id)) return;
-      const x1 = X(p.endDate) + Math.max(3, U.daysBetween(p.startDate, p.endDate) * dayWidth + dayWidth * 0.2);
-      const y1 = midY(p.id), y2 = midY(sRow.id);
+      const x1 =
+        X(p.endDate) +
+        Math.max(3, U.daysBetween(p.startDate, p.endDate) * dayWidth + dayWidth * 0.2);
+      const y1 = midY(p.id),
+        y2 = midY(sRow.id);
       const x2 = X(sRow.startDate) - 3;
-      if (x2 <= x1 + 2) { // successor starts before pred ends (overlap/lag): route below
+      if (x2 <= x1 + 2) {
+        // successor starts before pred ends (overlap/lag): route below
         ctx.strokeStyle = gold ? 'rgba(212,175,55,.85)' : 'rgba(148,163,184,.28)';
         ctx.lineWidth = gold ? 1.4 : 1;
-        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 + 4, y1); ctx.lineTo(x1 + 4, y2 + (y2 > y1 ? 4 : -4)); ctx.lineTo(x2, y2 + (y2 > y1 ? 4 : -4)); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x1 + 4, y1);
+        ctx.lineTo(x1 + 4, y2 + (y2 > y1 ? 4 : -4));
+        ctx.lineTo(x2, y2 + (y2 > y1 ? 4 : -4));
+        ctx.stroke();
         return;
       }
       ctx.strokeStyle = gold ? 'rgba(212,175,55,.85)' : 'rgba(148,163,184,.28)';
       ctx.lineWidth = gold ? 1.4 : 1;
-      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 + 5, y1); ctx.lineTo(x1 + 5, y2); ctx.lineTo(x2, y2); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(x2, y2); ctx.lineTo(x2 - 4, y2 - 3); ctx.lineTo(x2 - 4, y2 + 3); ctx.closePath();
-      ctx.fillStyle = gold ? 'rgba(212,175,55,.9)' : 'rgba(148,163,184,.5)'; ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x1 + 5, y1);
+      ctx.lineTo(x1 + 5, y2);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - 4, y2 - 3);
+      ctx.lineTo(x2 - 4, y2 + 3);
+      ctx.closePath();
+      ctx.fillStyle = gold ? 'rgba(212,175,55,.9)' : 'rgba(148,163,184,.5)';
+      ctx.fill();
     }
-    tasks.forEach(t => (t.predecessors || []).forEach(pid => connector(pid, t.id, !!(rowById.get(String(pid)) || {}).critical && !!t.critical)));
+    tasks.forEach(t =>
+      (t.predecessors || []).forEach(pid =>
+        connector(pid, t.id, !!(rowById.get(String(pid)) || {}).critical && !!t.critical)
+      )
+    );
     // Today line (owner review: fastest way to see late vs upcoming)
     if (todayStr >= minDate && todayStr <= maxDate) {
       const tx = X(todayStr) + dayWidth / 2;
-      ctx.strokeStyle = 'rgba(214,58,58,.9)'; ctx.lineWidth = 1.5;
+      ctx.strokeStyle = 'rgba(214,58,58,.9)';
+      ctx.lineWidth = 1.5;
       ctx.setLineDash([5, 4]);
-      ctx.beginPath(); ctx.moveTo(tx, padT + headerH - 18); ctx.lineTo(tx, H - padB); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(tx, padT + headerH - 18);
+      ctx.lineTo(tx, H - padB);
+      ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle = '#D63A3A'; ctx.font = '700 9px sans-serif';
+      ctx.fillStyle = '#D63A3A';
+      ctx.font = '700 9px sans-serif';
       ctx.fillText('TODAY', tx + 4, padT + headerH - 20);
     }
     // C7: legend wraps upward when one line cannot fit it all; padB = 44
     // reserves the two-row headroom so it never collides with the last row.
     ctx.font = '11px sans-serif';
-    const legend = [['#d4af37', 'Critical'], ['#3b82f6', 'Task'], ['#009b3a', 'Done'], ['#f59e0b', 'Due soon'], ['#D63A3A', 'Overdue'], ['rgba(56,189,248,.6)', 'Weather-exposed'], ['rgba(148,163,184,.5)', 'Baseline'], ['rgba(212,175,55,.85)', 'Critical chain link'], ['rgba(148,163,184,.5)', 'Dependency'], ['#D63A3A', 'Today line'], ['#8b5cf6', 'Phase tab'], ['#009b3a', 'Milestone']];
-    let lx = padL, ly = H - 20;
+    const legend = [
+      ['#d4af37', 'Critical'],
+      ['#3b82f6', 'Task'],
+      ['#009b3a', 'Done'],
+      ['#f59e0b', 'Due soon'],
+      ['#D63A3A', 'Overdue'],
+      ['rgba(56,189,248,.6)', 'Weather-exposed'],
+      ['rgba(148,163,184,.5)', 'Baseline'],
+      ['rgba(212,175,55,.85)', 'Critical chain link'],
+      ['rgba(148,163,184,.5)', 'Dependency'],
+      ['#D63A3A', 'Today line'],
+      ['#8b5cf6', 'Phase tab'],
+      ['#009b3a', 'Milestone']
+    ];
+    let lx = padL,
+      ly = H - 20;
     legend.forEach(l => {
       const lw = ctx.measureText(l[1]).width;
-      if (lx + 24 + lw > W - padR) { lx = padL; ly -= 16; }
-      ctx.fillStyle = l[0]; ctx.fillRect(lx, ly, 16, 12);
-      ctx.fillStyle = '#cbd5e1'; ctx.fillText(l[1], lx + 20, ly + 10);
+      if (lx + 24 + lw > W - padR) {
+        lx = padL;
+        ly -= 16;
+      }
+      ctx.fillStyle = l[0];
+      ctx.fillRect(lx, ly, 16, 12);
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillText(l[1], lx + 20, ly + 10);
       lx += 24 + lw + 18;
     });
-    canvas.toBlob(function(blob) {
-      if (!blob) { showToast('Export failed.', 'err'); return; }
+    canvas.toBlob(function (blob) {
+      if (!blob) {
+        showToast('Export failed.', 'err');
+        return;
+      }
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = (s.projectName || 'project').replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-gantt-' + new Date().toISOString().slice(0, 10) + '.png';
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 400);
+      a.download =
+        (s.projectName || 'project').replace(/[^a-z0-9]+/gi, '-').toLowerCase() +
+        '-gantt-' +
+        new Date().toISOString().slice(0, 10) +
+        '.png';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () {
+        URL.revokeObjectURL(a.href);
+      }, 400);
       showToast('High-res Gantt exported (PNG).', 'ok');
     }, 'image/png');
   }
 
   // ---- Weather actions ---- (extracted to js/app/weather.js)
-  async function wxGeocode() { if (ns.AppWeather) ns.AppWeather.wxGeocode(); }
-  async function wxRefresh() { if (ns.AppWeather) ns.AppWeather.wxRefresh(); }
-  async function wxUseLocation() { if (ns.AppWeather) ns.AppWeather.wxUseLocation(); }
-  function wxLogToday() { if (ns.AppWeather) ns.AppWeather.wxLogToday(); }
-  function wxLogManual() { if (ns.AppWeather) ns.AppWeather.wxLogManual(); }
-  function wxCopyNotice() { if (ns.AppWeather) ns.AppWeather.wxCopyNotice(); }
-  function wxSetView(el) { if (ns.AppWeather) ns.AppWeather.wxSetView(el); }
-  function wxDelLogEntry(el) { if (ns.AppWeather) ns.AppWeather.wxDelLogEntry(el); }
+  async function wxGeocode() {
+    if (ns.AppWeather) ns.AppWeather.wxGeocode();
+  }
+  async function wxRefresh() {
+    if (ns.AppWeather) ns.AppWeather.wxRefresh();
+  }
+  async function wxUseLocation() {
+    if (ns.AppWeather) ns.AppWeather.wxUseLocation();
+  }
+  function wxLogToday() {
+    if (ns.AppWeather) ns.AppWeather.wxLogToday();
+  }
+  function wxLogManual() {
+    if (ns.AppWeather) ns.AppWeather.wxLogManual();
+  }
+  function wxCopyNotice() {
+    if (ns.AppWeather) ns.AppWeather.wxCopyNotice();
+  }
+  function wxSetView(el) {
+    if (ns.AppWeather) ns.AppWeather.wxSetView(el);
+  }
+  function wxDelLogEntry(el) {
+    if (ns.AppWeather) ns.AppWeather.wxDelLogEntry(el);
+  }
 
   // ---- Hold / Clear / Undo / Redo ---- (extracted to js/app/history.js)
-  function startHold(section) { if (ns.AppHistory) ns.AppHistory.startHold(section); }
-  function cancelHold() { if (ns.AppHistory) ns.AppHistory.cancelHold(); }
-  function clearSection(section) { if (ns.AppHistory) ns.AppHistory.clearSection(section); }
-  function undoClr() { if (ns.AppHistory) ns.AppHistory.undoClr(); }
-  function undo() { if (ns.AppHistory) ns.AppHistory.undo(); }
-  function redo() { if (ns.AppHistory) ns.AppHistory.redo(); }
-  function updateUndoUi() { if (ns.AppHistory) ns.AppHistory.updateUndoUi(); }
+  function startHold(section) {
+    if (ns.AppHistory) ns.AppHistory.startHold(section);
+  }
+  function cancelHold() {
+    if (ns.AppHistory) ns.AppHistory.cancelHold();
+  }
+  function clearSection(section) {
+    if (ns.AppHistory) ns.AppHistory.clearSection(section);
+  }
+  function undoClr() {
+    if (ns.AppHistory) ns.AppHistory.undoClr();
+  }
+  function undo() {
+    if (ns.AppHistory) ns.AppHistory.undo();
+  }
+  function redo() {
+    if (ns.AppHistory) ns.AppHistory.redo();
+  }
+  function updateUndoUi() {
+    if (ns.AppHistory) ns.AppHistory.updateUndoUi();
+  }
 
   // ---- Weather Region ---- (extracted to js/app/weather.js)
-  function setRegion(val) { if (ns.AppWeather && ns.AppWeather.setRegion) ns.AppWeather.setRegion(val); }
+  function setRegion(val) {
+    if (ns.AppWeather && ns.AppWeather.setRegion) ns.AppWeather.setRegion(val);
+  }
 
   // ---- Project Deadline (owner 2026-09-27) ----
   // Engine-side commitment date: the backward pass gives terminal chains
@@ -1178,7 +1641,9 @@ var MMGR = window.MMGR || {};
   // constraint. A cascade after the change re-stamps float/criticals; dates
   // are NEVER rewritten by the deadline itself.
   function setDeadline(val) {
-    ns.State.updateState(function(s) { s.projectDeadline = (val || '').trim(); });
+    ns.State.updateState(function (s) {
+      s.projectDeadline = (val || '').trim();
+    });
     const dl = (val || '').trim();
     if (ns.Schedule && ns.Schedule.annotateSchedule && ns.State.getState().tasks.length) {
       // B8 companion fix (audit 2026-09-28): this recompute silently no-oped
@@ -1191,17 +1656,29 @@ var MMGR = window.MMGR || {};
       // cascade-identical sequence, read-only: dates never move.
       ns.Schedule.annotateSchedule();
     }
-    if (ns.Render) { ns.Render.renderGantt(); if (ns.Render.renderDash) ns.Render.renderDash(); }
+    if (ns.Render) {
+      ns.Render.renderGantt();
+      if (ns.Render.renderDash) ns.Render.renderDash();
+    }
     if (ns.App && ns.App.showToast) {
-      ns.App.showToast(dl ? ('Deadline set: ' + dl + ' - cascade to refresh float.') : 'Deadline cleared.', 'ok');
+      ns.App.showToast(
+        dl ? 'Deadline set: ' + dl + ' - cascade to refresh float.' : 'Deadline cleared.',
+        'ok'
+      );
     }
   }
 
   // ---- Confirmation Dialog (replaces bare confirm() for destructive ops) ----
   // ---- Confirmation Dialog ---- (extracted to js/app/confirm.js)
-  function askConfirm(opts) { if (ns.AppConfirm) ns.AppConfirm.askConfirm(opts); }
-  function cfmOk() { if (ns.AppConfirm) ns.AppConfirm.cfmOk(); }
-  function cfmCancel() { if (ns.AppConfirm) ns.AppConfirm.cfmCancel(); }
+  function askConfirm(opts) {
+    if (ns.AppConfirm) ns.AppConfirm.askConfirm(opts);
+  }
+  function cfmOk() {
+    if (ns.AppConfirm) ns.AppConfirm.cfmOk();
+  }
+  function cfmCancel() {
+    if (ns.AppConfirm) ns.AppConfirm.cfmCancel();
+  }
 
   // ---- Multi-tab Conflict Resolution ----
   let _pendingExternal = null;
@@ -1215,7 +1692,8 @@ var MMGR = window.MMGR || {};
     if (modal) {
       const info = U.$('conflict-info');
       if (info) {
-        info.textContent = 'Another tab saved a newer version of this project (' +
+        info.textContent =
+          'Another tab saved a newer version of this project (' +
           new Date(parsed.updatedAt).toLocaleString() +
           '). Keep your current edits, or load their version.';
       }
@@ -1240,13 +1718,15 @@ var MMGR = window.MMGR || {};
       R.renderAll();
       if (ns.Charter) ns.Charter.loadCharterData();
       if (ns.Sprint) ns.Sprint.loadSprintData();
-      showToast('Loaded the other tab\'s version.', 'ok');
+      showToast("Loaded the other tab's version.", 'ok');
     }
   }
 
   // Close every custom modal we own (Escape key path).
   // (extracted to js/app/confirm.js)
-  function closeModals() { if (ns.AppConfirm) ns.AppConfirm.closeModals(); }
+  function closeModals() {
+    if (ns.AppConfirm) ns.AppConfirm.closeModals();
+  }
 
   // ---- Baseline Restore (undoable) ----
   function restoreBaseline() {
@@ -1257,14 +1737,17 @@ var MMGR = window.MMGR || {};
     }
     askConfirm({
       title: 'Restore Baseline?',
-      message: 'This copies the baseline start/end dates, durations and statuses back onto the current task list.',
+      message:
+        'This copies the baseline start/end dates, durations and statuses back onto the current task list.',
       danger: true,
       confirmLabel: 'Restore Baseline',
-      onOk: function() {
+      onOk: function () {
         ns.State.pushUndo();
-        ns.State.updateState(function(state) {
+        ns.State.updateState(function (state) {
           const baseMap = {};
-          (state.baseline.tasks || []).forEach(bt => { baseMap[bt.id] = bt; });
+          (state.baseline.tasks || []).forEach(bt => {
+            baseMap[bt.id] = bt;
+          });
           (state.tasks || []).forEach(t => {
             const bt = baseMap[t.id];
             if (bt) {
@@ -1300,7 +1783,9 @@ var MMGR = window.MMGR || {};
     // Monolith Critical Path Highlighter (S.cp): persisted state that dims
     // the non-critical chain in the Gantt. State-driven so the chip and the
     // bars can never drift apart across re-renders.
-    ns.State.updateState(function(st) { st.hlCritical = !st.hlCritical; });
+    ns.State.updateState(function (st) {
+      st.hlCritical = !st.hlCritical;
+    });
     R.renderGantt();
     R.renderWbs();
     if (btn) btn.classList.toggle('is-on', !!S().hlCritical);
@@ -1309,7 +1794,9 @@ var MMGR = window.MMGR || {};
   function tglLeadtimeLane(btn) {
     // Monolith kb-leadtime-tgl: dedicated Kanban swimlane for Lead-Time /
     // third-party tasks. Persisted so re-renders keep the lane state.
-    ns.State.updateState(function(st) { st.kbShowLeadtime = !st.kbShowLeadtime; });
+    ns.State.updateState(function (st) {
+      st.kbShowLeadtime = !st.kbShowLeadtime;
+    });
     R.renderKanban();
     if (btn) btn.classList.toggle('is-on', !!S().kbShowLeadtime);
   }
@@ -1334,7 +1821,11 @@ var MMGR = window.MMGR || {};
     // NOT the data-action delegation, so guardReadonly() never sees them.
     // Stop the drag at the source instead of letting dropCard silently no-op.
     if (isReadonly()) {
-      if (ev && ev.dataTransfer) { try { ev.dataTransfer.effectAllowed = 'none'; } catch (e) {} }
+      if (ev && ev.dataTransfer) {
+        try {
+          ev.dataTransfer.effectAllowed = 'none';
+        } catch (e) {}
+      }
       if (ev && ev.preventDefault) ev.preventDefault();
       showToast('View-only access: the board can be read but not changed.', 'err');
       dragTaskId = null;
@@ -1355,16 +1846,19 @@ var MMGR = window.MMGR || {};
     }
     if (dragTaskId) {
       const task = (S().tasks || []).find(t => t.id === dragTaskId);
-      // Monolith drop guard: lead-time cards belong in the Lead-Time lane , 
+      // Monolith drop guard: lead-time cards belong in the Lead-Time lane ,
       // WIP columns are for crew-driven work. Refuse the drop with a toast
       // instead of silently moving a third-party wait into a work column.
       if (task && task.leadTime) {
-        showToast('Lead-time cards belong in the Lead-Time lane , WIP columns are for crew-driven work.', 'err');
+        showToast(
+          'Lead-time cards belong in the Lead-Time lane , WIP columns are for crew-driven work.',
+          'err'
+        );
         dragTaskId = null;
         document.querySelectorAll('.kcol').forEach(c => c.classList.remove('dov'));
         return;
       }
-      ns.State.updateState(function(s) {
+      ns.State.updateState(function (s) {
         const task = (s.tasks || []).find(t => t.id === dragTaskId);
         if (task) task.status = status;
         // OWNER 2026-09-28: a card that enters a status column LEAVES the
@@ -1392,7 +1886,7 @@ var MMGR = window.MMGR || {};
       return;
     }
     if (dragTaskId) {
-      ns.State.updateState(function(s) {
+      ns.State.updateState(function (s) {
         const task = (s.tasks || []).find(t => t.id === dragTaskId);
         // OWNER 2026-09-28: idempotent add, no toggle. Toggling made the
         // out-and-back dance silently REMOVE the lead-time flag (the
@@ -1400,7 +1894,7 @@ var MMGR = window.MMGR || {};
         if (task) task.leadTime = true;
       });
       // Interaction re-audit: toggling lead-time changes the WBS row (LT badge
-      // + submitted/expected inputs) and the Dashboard's Lead-Time Tracker , 
+      // + submitted/expected inputs) and the Dashboard's Lead-Time Tracker ,
       // refresh all three surfaces, not just the board lane.
       R.renderKanban();
       R.renderWbs();
@@ -1421,9 +1915,15 @@ var MMGR = window.MMGR || {};
       showToast('No unstarted tasks to populate the sprint with.', 'err');
       return;
     }
-    const starts = unstarted.map(t => t.startDate).filter(Boolean).sort();
-    const ends = unstarted.map(t => t.endDate).filter(Boolean).sort();
-    ns.State.updateState(function(state) {
+    const starts = unstarted
+      .map(t => t.startDate)
+      .filter(Boolean)
+      .sort();
+    const ends = unstarted
+      .map(t => t.endDate)
+      .filter(Boolean)
+      .sort();
+    ns.State.updateState(function (state) {
       if (!state.sprint) state.sprint = { name: 'Sprint 1', start: '', end: '' };
       state.sprint.start = starts.length ? starts[0] : '';
       state.sprint.end = ends.length ? ends[ends.length - 1] : '';
@@ -1440,7 +1940,9 @@ var MMGR = window.MMGR || {};
     const modal = U.$('om');
     if (txt && modal) {
       txt.value = prompt;
-      U.$('om-title').innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-edit"></use></svg> Prompt , ' + type;
+      U.$('om-title').innerHTML =
+        '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-edit"></use></svg> Prompt , ' +
+        type;
       modal.classList.add('open');
     }
     // Monolith port: the Daily Field report gets a "Snapshot Now" button in
@@ -1458,8 +1960,9 @@ var MMGR = window.MMGR || {};
           b.className = 'btn btn-g btn-s';
           b.style.marginLeft = '10px';
           b.textContent = 'Snapshot Now';
-          b.title = 'Save current task statuses. Tomorrow\'s report will show what changed since this snapshot.';
-          b.addEventListener('click', function() {
+          b.title =
+            "Save current task statuses. Tomorrow's report will show what changed since this snapshot.";
+          b.addEventListener('click', function () {
             if (ns.FieldReport && ns.FieldReport.snapshotDaily) {
               ns.FieldReport.snapshotDaily();
             }
@@ -1474,8 +1977,9 @@ var MMGR = window.MMGR || {};
             v.className = 'btn btn-o btn-s';
             v.style.marginLeft = '10px';
             v.textContent = 'Capture audio';
-            v.title = 'One-voice capture: records one microphone. It cannot tell people apart - keep attendee names in the meeting header instead. The transcript lands in this report, hand-editable.';
-            v.addEventListener('click', function() {
+            v.title =
+              'One-voice capture: records one microphone. It cannot tell people apart - keep attendee names in the meeting header instead. The transcript lands in this report, hand-editable.';
+            v.addEventListener('click', function () {
               if (v.textContent === 'Capture audio') {
                 if (ns.Voice.startForFieldReport()) v.textContent = 'Stop capture';
               } else {
@@ -1490,8 +1994,9 @@ var MMGR = window.MMGR || {};
           a.className = 'btn btn-o btn-s';
           a.style.marginLeft = '10px';
           a.textContent = 'Add action item';
-          a.title = 'Adds an action to the Closure list, referenced to this report. It counts in the Decision Engine until done.';
-          a.addEventListener('click', function() {
+          a.title =
+            'Adds an action to the Closure list, referenced to this report. It counts in the Decision Engine until done.';
+          a.addEventListener('click', function () {
             if (ns.FieldReport && ns.FieldReport.addFieldAction) ns.FieldReport.addFieldAction();
           });
           title.parentNode.appendChild(a);
@@ -1507,16 +2012,32 @@ var MMGR = window.MMGR || {};
     swDtab('ctrl', null);
     openDrw();
   }
-  function openDrwToSave() { if (ns.AppBackup) ns.AppBackup.openDrwToSave(); }
+  function openDrwToSave() {
+    if (ns.AppBackup) ns.AppBackup.openDrwToSave();
+  }
 
   // ---- Backup & Cloud-Sync UI ---- (extracted to js/app/backup.js)
-  function cloudLinked() { return ns.AppBackup && ns.AppBackup.cloudLinked ? ns.AppBackup.cloudLinked() : false; }
-  function scheduleCloudAutoSave() { if (ns.AppBackup) ns.AppBackup.scheduleCloudAutoSave(); }
-  function flushCloudAutoSave() { if (ns.AppBackup) ns.AppBackup.flushCloudAutoSave(); }
-  function bkToggle() { if (ns.AppBackup) ns.AppBackup.bkToggle(); }
-  function bkClose() { if (ns.AppBackup) ns.AppBackup.bkClose(); }
-  function bkSyncHint() { if (ns.AppBackup) ns.AppBackup.bkSyncHint(); }
-  function bkCloud() { if (ns.AppBackup) ns.AppBackup.bkCloud(); }
+  function cloudLinked() {
+    return ns.AppBackup && ns.AppBackup.cloudLinked ? ns.AppBackup.cloudLinked() : false;
+  }
+  function scheduleCloudAutoSave() {
+    if (ns.AppBackup) ns.AppBackup.scheduleCloudAutoSave();
+  }
+  function flushCloudAutoSave() {
+    if (ns.AppBackup) ns.AppBackup.flushCloudAutoSave();
+  }
+  function bkToggle() {
+    if (ns.AppBackup) ns.AppBackup.bkToggle();
+  }
+  function bkClose() {
+    if (ns.AppBackup) ns.AppBackup.bkClose();
+  }
+  function bkSyncHint() {
+    if (ns.AppBackup) ns.AppBackup.bkSyncHint();
+  }
+  function bkCloud() {
+    if (ns.AppBackup) ns.AppBackup.bkCloud();
+  }
 
   function openDrwToPrompts(type) {
     swDtab('prompt', null);
@@ -1528,12 +2049,24 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- Export & File I/O ---- (extracted to js/app/export.js)
-  function openOM() { if (ns.AppExport) ns.AppExport.openOM(); }
-  function closeOM() { if (ns.AppExport) ns.AppExport.closeOM(); }
-  function cpOut() { if (ns.AppExport) ns.AppExport.cpOut(); }
-  function loadClip() { if (ns.AppExport) ns.AppExport.loadClip(); }
-  function saveProjectFile() { if (ns.AppExport) ns.AppExport.saveProjectFile(); }
-  function loadProjectFile(ev) { if (ns.AppExport) ns.AppExport.loadProjectFile(ev); }
+  function openOM() {
+    if (ns.AppExport) ns.AppExport.openOM();
+  }
+  function closeOM() {
+    if (ns.AppExport) ns.AppExport.closeOM();
+  }
+  function cpOut() {
+    if (ns.AppExport) ns.AppExport.cpOut();
+  }
+  function loadClip() {
+    if (ns.AppExport) ns.AppExport.loadClip();
+  }
+  function saveProjectFile() {
+    if (ns.AppExport) ns.AppExport.saveProjectFile();
+  }
+  function loadProjectFile(ev) {
+    if (ns.AppExport) ns.AppExport.loadProjectFile(ev);
+  }
 
   // Rank 4.4: field-level merge of an exported project file into the current
   // plan. Every tracked field keeps whichever side is newer (per-field
@@ -1543,29 +2076,52 @@ var MMGR = window.MMGR || {};
     const file = ev.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = function (e) {
       let parsed = null;
-      try { parsed = JSON.parse(e.target.result); }
-      catch (err) { showToast('Invalid project file.', 'err'); return; }
+      try {
+        parsed = JSON.parse(e.target.result);
+      } catch (err) {
+        showToast('Invalid project file.', 'err');
+        return;
+      }
       const out = ns.State.mergeExternal(parsed);
-      if (!out) { showToast('Invalid project file.', 'err'); return; }
+      if (!out) {
+        showToast('Invalid project file.', 'err');
+        return;
+      }
       R.renderAll();
       if (ns.Charter) ns.Charter.loadCharterData();
       if (ns.Sprint) ns.Sprint.loadSprintData();
       // Surface every two-way conflict by NAME , never silently resolved.
       // A conflict is a field present on BOTH sides; the newer stamp wins
       // and the loser is named in the toast so the user can verify it.
-      const conflicts = out.report.filter(r => r.reason === 'newer-timestamp' || r.reason === 'local-equal-or-newer');
+      const conflicts = out.report.filter(
+        r => r.reason === 'newer-timestamp' || r.reason === 'local-equal-or-newer'
+      );
       // Cap the named list , a full project import can conflict on dozens of
       // fields and would overflow the toast.
       const NAMED = 5;
-      const names = conflicts.slice(0, NAMED).map(r => r.field).join(', ');
+      const names = conflicts
+        .slice(0, NAMED)
+        .map(r => r.field)
+        .join(', ');
       const more = conflicts.length > NAMED ? ', +' + (conflicts.length - NAMED) + ' more' : '';
       const fromFile = out.report.filter(r => r.side === 'incoming').length;
       const keptLocal = out.report.length - fromFile;
       const summary = names
-        ? 'Merged ' + fromFile + ' field(s) from file, kept ' + keptLocal + ' local. Conflicting fields (newest edit won): ' + names + more + '.'
-        : 'Merged ' + fromFile + ' field(s) from file, kept ' + keptLocal + ' local. No field had edits on both sides.';
+        ? 'Merged ' +
+          fromFile +
+          ' field(s) from file, kept ' +
+          keptLocal +
+          ' local. Conflicting fields (newest edit won): ' +
+          names +
+          more +
+          '.'
+        : 'Merged ' +
+          fromFile +
+          ' field(s) from file, kept ' +
+          keptLocal +
+          ' local. No field had edits on both sides.';
       // Rank 4.5: after a merge (multi-device use detected), offer the
       // single dismissible optional-identity suggestion , if not signed in
       // and not already dismissed on this device. Never a modal, never spam.
@@ -1576,7 +2132,9 @@ var MMGR = window.MMGR || {};
     ev.target.value = '';
   }
 
-  function saveBaseline() { if (ns.AppExport) ns.AppExport.saveBaseline(); }
+  function saveBaseline() {
+    if (ns.AppExport) ns.AppExport.saveBaseline();
+  }
 
   // ---- Init ----
   // Explicit module-readiness gate. init() must not run until every module
@@ -1590,11 +2148,39 @@ var MMGR = window.MMGR || {};
   // above), so those two scripts must still load BEFORE app.js , the gate
   // guards the rest of the boot, not that specific parse-time capture.
   const REQUIRED_MODULES = [
-    'Utils', 'State', 'Render', 'Prompts', 'Weather', 'FieldReport', 'Schedule',
-    'Tasks', 'Sprint', 'WbsImport', 'ImportDates',
-    'Risks', 'Resources', 'Budget', 'Spend', 'Stakeholders', 'Changes', 'Log',
-    'Closure', 'Comms', 'Documents', 'Raci', 'Charter',
-    'Health', 'Evm', 'Dmaic', 'Meetings', 'Voice', 'Defs', 'Decisions', 'Forecast', 'Claim', 'Digest'
+    'Utils',
+    'State',
+    'Render',
+    'Prompts',
+    'Weather',
+    'FieldReport',
+    'Schedule',
+    'Tasks',
+    'Sprint',
+    'WbsImport',
+    'ImportDates',
+    'Risks',
+    'Resources',
+    'Budget',
+    'Spend',
+    'Stakeholders',
+    'Changes',
+    'Log',
+    'Closure',
+    'Comms',
+    'Documents',
+    'Raci',
+    'Charter',
+    'Health',
+    'Evm',
+    'Dmaic',
+    'Meetings',
+    'Voice',
+    'Defs',
+    'Decisions',
+    'Forecast',
+    'Claim',
+    'Digest'
   ];
 
   function modulesReady() {
@@ -1618,15 +2204,22 @@ var MMGR = window.MMGR || {};
         const missing = REQUIRED_MODULES.filter(m => !ns[m]);
         attempts++;
         if (attempts > MAX_ATTEMPTS) {
-          const msg = 'My MaNaGeR boot ABORTED , missing modules: ' + missing.join(', ') + '. Check the <script> load order in project.html.';
+          const msg =
+            'My MaNaGeR boot ABORTED , missing modules: ' +
+            missing.join(', ') +
+            '. Check the <script> load order in project.html.';
           console.error(msg);
           // Fail visibly for end users too , a silent blank page tells them
           // nothing about why nothing rendered.
           const sp = document.getElementById('boot-splash');
           if (sp) sp.classList.add('off');
           const el = document.createElement('div');
-          el.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#1a1a1a;color:#ff6b6b;font:14px/1.5 monospace;padding:40px;text-align:center;z-index:99999';
-          el.textContent = 'App failed to start , missing modules: ' + missing.join(', ') + '. Check the <script> load order.';
+          el.style.cssText =
+            'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#1a1a1a;color:#ff6b6b;font:14px/1.5 monospace;padding:40px;text-align:center;z-index:99999';
+          el.textContent =
+            'App failed to start , missing modules: ' +
+            missing.join(', ') +
+            '. Check the <script> load order.';
           document.body.appendChild(el);
           return;
         }
@@ -1655,7 +2248,9 @@ var MMGR = window.MMGR || {};
     tglGlassMode: tglGlassMode,
     tglNav: tglNav,
     tglSidebar: toggleSidebar,
-    tglSidebarOpen: function () { setSidebarOpen(!document.body.classList.contains('sidebar-open')); },
+    tglSidebarOpen: function () {
+      setSidebarOpen(!document.body.classList.contains('sidebar-open'));
+    },
     syncConnect: syncConnect,
     syncSignOut: syncSignOut,
     syncClientId: syncClientId,
@@ -1747,7 +2342,6 @@ var MMGR = window.MMGR || {};
 
   // Auto-boot
   _boot();
-
 })(MMGR);
 window.MMGR = MMGR;
 
@@ -1756,23 +2350,24 @@ window.MMGR = MMGR;
    Replaces all inline event handlers with data-action attributes.
    Usage: <button data-action="addTask">Add Task</button>
    ============================================================ */
-(function() {   const ACTION_MAP = {
+(function () {
+  const ACTION_MAP = {
     // App controller
-    'showSec': (el) => {
+    showSec: el => {
       const section = el.getAttribute('data-section');
       window.MMGR.App.showSec(section, el);
     },
-    'swMeth': (el) => {
+    swMeth: el => {
       const meth = el.getAttribute('data-meth');
       window.MMGR.App.swMeth(meth, el);
     },
-    'swDtab': (el) => {
+    swDtab: el => {
       window.MMGR.App.swDtab(el.getAttribute('data-tab'), el);
     },
-    'addTask': () => window.MMGR.Tasks.addTask(),
-    'delTask': (el) => window.MMGR.Tasks.delTask(el.getAttribute('data-id')),
-    'indentTask': (el) => window.MMGR.Tasks.indentTask(el.getAttribute('data-id')),
-    'addTaskComment': (el) => {
+    addTask: () => window.MMGR.Tasks.addTask(),
+    delTask: el => window.MMGR.Tasks.delTask(el.getAttribute('data-id')),
+    indentTask: el => window.MMGR.Tasks.indentTask(el.getAttribute('data-id')),
+    addTaskComment: el => {
       const taskId = el.getAttribute('data-id');
       const input = document.getElementById('comment-input-' + taskId);
       if (input && input.value.trim()) {
@@ -1780,22 +2375,29 @@ window.MMGR = MMGR;
         input.value = '';
       }
     },
-    'delTaskComment': (el) => window.MMGR.Tasks.delTaskComment(el.getAttribute('data-task-id'), el.getAttribute('data-comment-id')),
-    'setTaskFollowUp': (el) => {
+    delTaskComment: el =>
+      window.MMGR.Tasks.delTaskComment(
+        el.getAttribute('data-task-id'),
+        el.getAttribute('data-comment-id')
+      ),
+    setTaskFollowUp: el => {
       const taskId = el.getAttribute('data-id');
       const assignee = prompt('Follow-up assignee:');
       const dueDate = prompt('Due date (YYYY-MM-DD):');
       if (assignee) window.MMGR.Tasks.setTaskFollowUp(taskId, assignee, dueDate);
     },
-    'completeTaskFollowUp': (el) => window.MMGR.Tasks.completeTaskFollowUp(el.getAttribute('data-id')),
-    'clearTaskFollowUp': (el) => window.MMGR.Tasks.clearTaskFollowUp(el.getAttribute('data-id')),
+    completeTaskFollowUp: el => window.MMGR.Tasks.completeTaskFollowUp(el.getAttribute('data-id')),
+    clearTaskFollowUp: el => window.MMGR.Tasks.clearTaskFollowUp(el.getAttribute('data-id')),
     // B11 (audit 2026-09-28): this delegation IIFE has NO closure over the
     // App module's internals (see guardReadonly's note below) - bare ns/S/U/R/
     // showToast here threw ReferenceError and the feature died on click.
     // Every helper routes through the published window.MMGR.* API like the
     // neighboring handlers.
-    'toggleTaskComments': (el) => { if (window.MMGR.Render && window.MMGR.Render.toggleTaskComments) window.MMGR.Render.toggleTaskComments(el.getAttribute('data-id')); },
-    'importCrossProjectResources': () => {
+    toggleTaskComments: el => {
+      if (window.MMGR.Render && window.MMGR.Render.toggleTaskComments)
+        window.MMGR.Render.toggleTaskComments(el.getAttribute('data-id'));
+    },
+    importCrossProjectResources: () => {
       // Build a modal listing localStorage projects with their resources
       // (B11 2026-09-28: ns/S/U/showToast -> window.MMGR.* - see note above).
       const currentId = window.MMGR.projectId || '';
@@ -1808,46 +2410,94 @@ window.MMGR = MMGR;
             if (pid === currentId) continue;
             try {
               const st = JSON.parse(localStorage.getItem(k));
-              const res = (st && st.resources && st.resources.length) ? st.resources : [];
+              const res = st && st.resources && st.resources.length ? st.resources : [];
               if (res.length) {
-                projects.push({ id: pid, name: st.charter && st.charter.projectName ? st.charter.projectName : pid, resources: res });
+                projects.push({
+                  id: pid,
+                  name: st.charter && st.charter.projectName ? st.charter.projectName : pid,
+                  resources: res
+                });
               }
-            } catch(e) {}
+            } catch (e) {}
           }
         }
-      } catch(e) {}
-      if (!projects.length) { window.MMGR.App.showToast('No other projects with resources found on this device.', 'warn'); return; }
+      } catch (e) {}
+      if (!projects.length) {
+        window.MMGR.App.showToast('No other projects with resources found on this device.', 'warn');
+        return;
+      }
       // Show modal
-      let html = '<div class="card m0a" style="padding:16px;max-width:500px"><div style="font-weight:600;font-size:.85rem;margin-bottom:10px">Import Resources from Another Project</div>';
-      projects.forEach(function(p) {
-        const curRes = ((window.MMGR.State.getState().resources) || []).map(r => r.name.toLowerCase());
-        const newRes = p.resources.filter(r => r.name && curRes.indexOf(r.name.toLowerCase()) === -1);
-        html += '<div style="border:1px solid var(--border);border-radius:6px;padding:10px;margin-bottom:8px">';
-        html += '<div style="font-weight:600;font-size:.8rem">' + window.MMGR.Utils.escapeHtml(p.name) + ' <span style="color:var(--slate);font-size:.7rem">(' + p.resources.length + ' resources, ' + newRes.length + ' new)</span></div>';
+      let html =
+        '<div class="card m0a" style="padding:16px;max-width:500px"><div style="font-weight:600;font-size:.85rem;margin-bottom:10px">Import Resources from Another Project</div>';
+      projects.forEach(function (p) {
+        const curRes = (window.MMGR.State.getState().resources || []).map(r =>
+          r.name.toLowerCase()
+        );
+        const newRes = p.resources.filter(
+          r => r.name && curRes.indexOf(r.name.toLowerCase()) === -1
+        );
+        html +=
+          '<div style="border:1px solid var(--border);border-radius:6px;padding:10px;margin-bottom:8px">';
+        html +=
+          '<div style="font-weight:600;font-size:.8rem">' +
+          window.MMGR.Utils.escapeHtml(p.name) +
+          ' <span style="color:var(--slate);font-size:.7rem">(' +
+          p.resources.length +
+          ' resources, ' +
+          newRes.length +
+          ' new)</span></div>';
         if (newRes.length) {
-          html += '<div style="font-size:.72rem;color:var(--slate);margin:4px 0">New: ' + newRes.map(r => window.MMGR.Utils.escapeHtml(r.name)).join(', ') + '</div>';
-          html += '<button class="btn btn-g btn-s" style="font-size:.7rem" data-action="doImportResources" data-src-id="' + window.MMGR.Utils.escapeHtml(p.id) + '" data-count="' + newRes.length + '">Import ' + newRes.length + ' resource(s)</button>';
+          html +=
+            '<div style="font-size:.72rem;color:var(--slate);margin:4px 0">New: ' +
+            newRes.map(r => window.MMGR.Utils.escapeHtml(r.name)).join(', ') +
+            '</div>';
+          html +=
+            '<button class="btn btn-g btn-s" style="font-size:.7rem" data-action="doImportResources" data-src-id="' +
+            window.MMGR.Utils.escapeHtml(p.id) +
+            '" data-count="' +
+            newRes.length +
+            '">Import ' +
+            newRes.length +
+            ' resource(s)</button>';
         } else {
-          html += '<div style="font-size:.72rem;color:var(--slate)">All resources already in this project.</div>';
+          html +=
+            '<div style="font-size:.72rem;color:var(--slate)">All resources already in this project.</div>';
         }
         html += '</div>';
       });
-      html += '<button class="btn btn-n btn-s" style="font-size:.7rem;margin-top:4px" data-action="closeImportModal">Cancel</button>';
+      html +=
+        '<button class="btn btn-n btn-s" style="font-size:.7rem;margin-top:4px" data-action="closeImportModal">Cancel</button>';
       html += '</div>';
       const overlay = document.createElement('div');
       overlay.id = 'import-modal';
-      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:flex;align-items:center;justify-content:center';
+      overlay.style.cssText =
+        'position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:flex;align-items:center;justify-content:center';
       overlay.innerHTML = html;
-      overlay.addEventListener('click', function(e) {
-        if (e.target === overlay || e.target.getAttribute('data-action') === 'closeImportModal') overlay.remove();
+      overlay.addEventListener('click', function (e) {
+        if (e.target === overlay || e.target.getAttribute('data-action') === 'closeImportModal')
+          overlay.remove();
       });
       document.body.appendChild(overlay);
     },
-    'poolOpenLibrary': () => { if (window.MMGR.RenderResources && window.MMGR.RenderResources.poolOpenLibrary) window.MMGR.RenderResources.poolOpenLibrary(); },
-    'poolCloseLibrary': () => { const m = document.getElementById('pool-modal'); if (m) m.remove(); },
-    'poolAddRow': (el) => { if (window.MMGR.RenderResources && window.MMGR.RenderResources.poolAddRow) window.MMGR.RenderResources.poolAddRow(parseInt(el.getAttribute('data-idx'), 10)); },
-    'poolRefreshAndMerge': () => { if (window.MMGR.Pool) window.MMGR.Pool.refreshAndMerge().then(function() { if (window.MMGR.Render) window.MMGR.Render.renderResources(); }); },
-    'doImportResources': (el) => {
+    poolOpenLibrary: () => {
+      if (window.MMGR.RenderResources && window.MMGR.RenderResources.poolOpenLibrary)
+        window.MMGR.RenderResources.poolOpenLibrary();
+    },
+    poolCloseLibrary: () => {
+      const m = document.getElementById('pool-modal');
+      if (m) m.remove();
+    },
+    poolAddRow: el => {
+      if (window.MMGR.RenderResources && window.MMGR.RenderResources.poolAddRow)
+        window.MMGR.RenderResources.poolAddRow(parseInt(el.getAttribute('data-idx'), 10));
+    },
+    poolRefreshAndMerge: () => {
+      if (window.MMGR.Pool)
+        window.MMGR.Pool.refreshAndMerge().then(function () {
+          if (window.MMGR.Render) window.MMGR.Render.renderResources();
+        });
+    },
+    doImportResources: el => {
       // B11 (audit 2026-09-28): was bare ns/S/U/R/showToast - ReferenceError
       // on every click; routed through the published window.MMGR.* API.
       const srcId = el.getAttribute('data-src-id');
@@ -1855,16 +2505,28 @@ window.MMGR = MMGR;
       try {
         const srcState = JSON.parse(localStorage.getItem('mmgr_state_' + srcId));
         const srcRes = (srcState && srcState.resources) || [];
-        const curNames = ((window.MMGR.State.getState().resources) || []).map(r => r.name.toLowerCase());
-        const toImport = srcRes.filter(r => r.name && curNames.indexOf(r.name.toLowerCase()) === -1);
-        if (!toImport.length) { window.MMGR.App.showToast('All resources already imported.', 'warn'); return; }
-        window.MMGR.State.updateState(function(st) {
+        const curNames = (window.MMGR.State.getState().resources || []).map(r =>
+          r.name.toLowerCase()
+        );
+        const toImport = srcRes.filter(
+          r => r.name && curNames.indexOf(r.name.toLowerCase()) === -1
+        );
+        if (!toImport.length) {
+          window.MMGR.App.showToast('All resources already imported.', 'warn');
+          return;
+        }
+        window.MMGR.State.updateState(function (st) {
           if (!st.resources) st.resources = [];
-          toImport.forEach(function(r) {
+          toImport.forEach(function (r) {
             st.resources.push({
-              id: window.MMGR.Utils.genShortId('R'), name: r.name, type: r.type || 'Labor',
-              role: r.role || '', availability: r.availability || 100,
-              rate: r.rate || 0, hoursAllocated: r.hoursAllocated || 0, utilization: 0
+              id: window.MMGR.Utils.genShortId('R'),
+              name: r.name,
+              type: r.type || 'Labor',
+              role: r.role || '',
+              availability: r.availability || 100,
+              rate: r.rate || 0,
+              hoursAllocated: r.hoursAllocated || 0,
+              utilization: 0
             });
           });
         });
@@ -1872,12 +2534,15 @@ window.MMGR = MMGR;
         if (modal) modal.remove();
         window.MMGR.Render.renderResources();
         window.MMGR.App.showToast('Imported ' + toImport.length + ' resource(s).', 'ok');
-      } catch(e) {
+      } catch (e) {
         window.MMGR.App.showToast('Import failed: ' + e.message, 'err');
       }
     },
-    'closeImportModal': () => { const m = document.getElementById('import-modal'); if (m) m.remove(); },
-    'saveAsTemplate': () => {
+    closeImportModal: () => {
+      const m = document.getElementById('import-modal');
+      if (m) m.remove();
+    },
+    saveAsTemplate: () => {
       const name = prompt('Template name:');
       // OWNER 2026-09-24 (silent-errors wave): prompt-cancel or an empty name
       // fell through silently - no feedback at all. Name it, confirm with a
@@ -1885,196 +2550,327 @@ window.MMGR = MMGR;
       // #template-list until the next full render).
       if (name === null) return; // user cancelled
       const clean = name.trim();
-      if (!clean) { showToast('Give the template a name first.', 'warn'); return; }
+      if (!clean) {
+        showToast('Give the template a name first.', 'warn');
+        return;
+      }
       window.MMGR.Templates.saveAsTemplate(clean);
-      if (window.MMGR.Render && window.MMGR.Render.renderTemplates) window.MMGR.Render.renderTemplates();
+      if (window.MMGR.Render && window.MMGR.Render.renderTemplates)
+        window.MMGR.Render.renderTemplates();
       showToast('Template saved: ' + clean, 'ok');
     },
-    'applyTemplate': (el) => {
+    applyTemplate: el => {
       const tplId = el.getAttribute('data-tpl-id');
       if (tplId) window.MMGR.Templates.applyTemplate(tplId);
     },
-    'deleteTemplate': (el) => {
+    deleteTemplate: el => {
       const tplId = el.getAttribute('data-tpl-id');
       if (tplId && confirm('Delete this template?')) {
         window.MMGR.Templates.deleteTemplate(tplId);
-        if (window.MMGR.Render && window.MMGR.Render.renderTemplates) window.MMGR.Render.renderTemplates();
+        if (window.MMGR.Render && window.MMGR.Render.renderTemplates)
+          window.MMGR.Render.renderTemplates();
         showToast('Template deleted.', 'ok');
       }
     },
-    'outdentTask': (el) => window.MMGR.Tasks.outdentTask(el.getAttribute('data-id')),
-    'tglPhase': (el) => window.MMGR.Tasks.tglPhase(el.getAttribute('data-id')),
-    'tglWeather': (el) => window.MMGR.Tasks.tglWeather(el.getAttribute('data-id')),
-    'tglLeadTime': (el) => window.MMGR.Tasks.tglLeadTime(el.getAttribute('data-id')),
-    'openWbsImport': () => window.MMGR.Tasks.openWbsImport(),
-    'wiPreview': () => window.MMGR.Tasks.wiPreview(),
-    'wiCommit': () => window.MMGR.Tasks.wiCommit(),
-    'openImportDates': () => window.MMGR.Tasks.openImportDates(),
-    'idPreview': () => window.MMGR.Tasks.idPreview(),
-    'idCommit': () => window.MMGR.Tasks.idCommit(),
-    'idReadWithAi': () => window.MMGR.Tasks.idReadWithAi(),
-    'idFilePickTrigger': () => window.MMGR.Tasks.idFilePickTrigger(),
-    'idFilePick': (el) => window.MMGR.Tasks.idFilePick(el),
-    'openAiMailbox': () => window.MMGR.Watch.openMailbox(),
-    'closeAiMailbox': () => window.MMGR.Watch.closeMailbox(),
-    'closeAiMailboxBg': (el, e) => { if (e && e.target && e.target.id === 'ai-mailbox') window.MMGR.Watch.closeMailbox(); },
-    'dismissAiNote': (el) => window.MMGR.Watch.dismissNote(el.getAttribute('data-id')),
-    'clearAiMailbox': () => window.MMGR.Watch.clearMailbox(),
+    outdentTask: el => window.MMGR.Tasks.outdentTask(el.getAttribute('data-id')),
+    tglPhase: el => window.MMGR.Tasks.tglPhase(el.getAttribute('data-id')),
+    tglWeather: el => window.MMGR.Tasks.tglWeather(el.getAttribute('data-id')),
+    tglLeadTime: el => window.MMGR.Tasks.tglLeadTime(el.getAttribute('data-id')),
+    openWbsImport: () => window.MMGR.Tasks.openWbsImport(),
+    wiPreview: () => window.MMGR.Tasks.wiPreview(),
+    wiCommit: () => window.MMGR.Tasks.wiCommit(),
+    openImportDates: () => window.MMGR.Tasks.openImportDates(),
+    idPreview: () => window.MMGR.Tasks.idPreview(),
+    idCommit: () => window.MMGR.Tasks.idCommit(),
+    idReadWithAi: () => window.MMGR.Tasks.idReadWithAi(),
+    idFilePickTrigger: () => window.MMGR.Tasks.idFilePickTrigger(),
+    idFilePick: el => window.MMGR.Tasks.idFilePick(el),
+    openAiMailbox: () => window.MMGR.Watch.openMailbox(),
+    closeAiMailbox: () => window.MMGR.Watch.closeMailbox(),
+    closeAiMailboxBg: (el, e) => {
+      if (e && e.target && e.target.id === 'ai-mailbox') window.MMGR.Watch.closeMailbox();
+    },
+    dismissAiNote: el => window.MMGR.Watch.dismissNote(el.getAttribute('data-id')),
+    clearAiMailbox: () => window.MMGR.Watch.clearMailbox(),
     // MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-2: Import Dates 'Copy List'.
-    'copyIdTemplate': () => window.MMGR.Tasks.copyIdTemplate(),
-    'saveSprint': () => window.MMGR.Tasks.saveSprint(),
-    'addRisk': () => window.MMGR.Risks.addRisk(),
-    'delRisk': (el) => window.MMGR.Risks.delRisk(parseInt(el.getAttribute('data-idx'))),
-    'toggleRiskIssue': (el) => window.MMGR.Risks.toggleRiskIssue(parseInt(el.getAttribute('data-idx'))),
-    'delIssue': (el) => window.MMGR.Risks.delIssue(parseInt(el.getAttribute('data-idx'))),
+    copyIdTemplate: () => window.MMGR.Tasks.copyIdTemplate(),
+    saveSprint: () => window.MMGR.Tasks.saveSprint(),
+    addRisk: () => window.MMGR.Risks.addRisk(),
+    delRisk: el => window.MMGR.Risks.delRisk(parseInt(el.getAttribute('data-idx'))),
+    toggleRiskIssue: el => window.MMGR.Risks.toggleRiskIssue(parseInt(el.getAttribute('data-idx'))),
+    delIssue: el => window.MMGR.Risks.delIssue(parseInt(el.getAttribute('data-idx'))),
     // MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-1: risk matrix
     // click-to-filter (view-only , filtering the list, not mutating state).
-    'riskMatrixCell': (el) => window.MMGR.Render.riskMatrixCell(el.getAttribute('data-prob'), el.getAttribute('data-imp')),
-    'riskMatrixClear': () => window.MMGR.Render.clearRiskFilter(),
+    riskMatrixCell: el =>
+      window.MMGR.Render.riskMatrixCell(el.getAttribute('data-prob'), el.getAttribute('data-imp')),
+    riskMatrixClear: () => window.MMGR.Render.clearRiskFilter(),
     // MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-7: WBS schedule-issues
     // banner toggle (view-only).
-    'tglWbsIssues': () => window.MMGR.Render.toggleWbsIssues(),
-    'addResource': () => window.MMGR.Resources.addResource(),
-    'delResource': (el) => window.MMGR.Resources.delResource(parseInt(el.getAttribute('data-idx'))),
-    'pushResourcesToBudget': () => window.MMGR.Resources.pushResourcesToBudget(),
-    'addBudgetLine': () => window.MMGR.Budget.addBudgetLine(),
-    'delBudgetLine': (el) => window.MMGR.Budget.delBudgetLine(parseInt(el.getAttribute('data-idx'))),
-    'updEnvelope': (el, e) => window.MMGR.Budget.updEnvelope(el.value, e && e.type),
-    'addStake': () => window.MMGR.Stakeholders.addStake(),
-    'delStake': (el) => window.MMGR.Stakeholders.delStake(parseInt(el.getAttribute('data-idx'))),
+    tglWbsIssues: () => window.MMGR.Render.toggleWbsIssues(),
+    addResource: () => window.MMGR.Resources.addResource(),
+    delResource: el => window.MMGR.Resources.delResource(parseInt(el.getAttribute('data-idx'))),
+    pushResourcesToBudget: () => window.MMGR.Resources.pushResourcesToBudget(),
+    addBudgetLine: () => window.MMGR.Budget.addBudgetLine(),
+    delBudgetLine: el => window.MMGR.Budget.delBudgetLine(parseInt(el.getAttribute('data-idx'))),
+    updEnvelope: (el, e) => window.MMGR.Budget.updEnvelope(el.value, e && e.type),
+    addStake: () => window.MMGR.Stakeholders.addStake(),
+    delStake: el => window.MMGR.Stakeholders.delStake(parseInt(el.getAttribute('data-idx'))),
     // MARKET-FEATURE-ROADMAP A3/A4 (T8 REBUILD 2026-08-16): bid leveling +
     // Go/No-Go scoring actions , modal-created packages, leveled grid,
     // weighted star scorecard. State mutations are deliberately NOT in
     // READONLY_SAFE_ACTIONS; bidProposal/bidClarify open links (safe).
-    'bidAdd': () => window.MMGR.Bids.openBidPkgModal(),
-    'bidEdit': (el) => window.MMGR.Bids.openBidPkgModal(parseInt(el.getAttribute('data-pkg'))),
-    'bidModalAddItem': () => window.MMGR.Bids.bidModalAddItem(),
-    'bidModalDelItem': (el) => window.MMGR.Bids.bidModalDelItem(parseInt(el.getAttribute('data-idx'))),
-    'bidPkgSave': () => window.MMGR.Bids.bidPkgSave(),
-    'closeBidPkg': () => window.MMGR.Bids.closeBidPkgModal(),
-    'closeBidPkgBg': (el, e) => { if (e.target === el) window.MMGR.Bids.closeBidPkgModal(); },
-    'bidSubAdd': (el) => window.MMGR.Bids.addSub(parseInt(el.getAttribute('data-pkg'))),
-    'bidSubDel': (el) => window.MMGR.Bids.delSub(parseInt(el.getAttribute('data-pkg')), parseInt(el.getAttribute('data-sid'))),
-    'bidPkgUpd': (el, e) => window.MMGR.Bids.updPkg(parseInt(el.getAttribute('data-pkg')), el.getAttribute('data-field'), el.value, e && e.type),
-    'bidSubUpd': (el, e) => window.MMGR.Bids.updSub(parseInt(el.getAttribute('data-pkg')), parseInt(el.getAttribute('data-sid')), el.getAttribute('data-field'), el.value, e && e.type),
-    'bidLineUpd': (el, e) => window.MMGR.Bids.updLine(parseInt(el.getAttribute('data-pkg')), parseInt(el.getAttribute('data-lid')), el.getAttribute('data-field'), el.value, e && e.type),
-    'bidLineDel': (el) => window.MMGR.Bids.delLine(parseInt(el.getAttribute('data-pkg')), parseInt(el.getAttribute('data-lid'))),
-    'bidAmount': (el, e) => window.MMGR.Bids.updAmount(parseInt(el.getAttribute('data-pkg')), parseInt(el.getAttribute('data-sid')), parseInt(el.getAttribute('data-lid')), el.value, e && e.type),
-    'bidAddLine': (el) => window.MMGR.Bids.addLine(parseInt(el.getAttribute('data-pkg'))),
-    'bidAward': (el) => window.MMGR.Bids.awardSub(parseInt(el.getAttribute('data-pkg')), parseInt(el.getAttribute('data-sid'))),
-    'bidProposal': (el) => window.MMGR.Bids.openProposal(parseInt(el.getAttribute('data-pkg')), parseInt(el.getAttribute('data-sid'))),
-    'bidClarify': (el) => window.MMGR.Bids.clarifySub(parseInt(el.getAttribute('data-pkg')), parseInt(el.getAttribute('data-sid'))),
-    'bidDelPkg': (el) => window.MMGR.Bids.delBidPackage(parseInt(el.getAttribute('data-pkg'))),
-    'gonogoAdd': () => window.MMGR.Bids.addGoNoGo(),
-    'gonogoUpd': (el, e) => window.MMGR.Bids.updGoNoGo(parseInt(el.getAttribute('data-idx')), el.getAttribute('data-field'), el.value, e && e.type),
-    'gonogoCatUpd': (el, e) => window.MMGR.Bids.updGoNoGoCat(parseInt(el.getAttribute('data-idx')), parseInt(el.getAttribute('data-cidx')), el.getAttribute('data-field'), el.value, e && e.type),
-    'gonogoCritUpd': (el, e) => window.MMGR.Bids.updGoNoGoCrit(parseInt(el.getAttribute('data-idx')), parseInt(el.getAttribute('data-cidx')), parseInt(el.getAttribute('data-ridx')), el.getAttribute('data-field'), el.value, e && e.type),
-    'gonogoStar': (el) => window.MMGR.Bids.setGoNoGoStar(parseInt(el.getAttribute('data-idx')), parseInt(el.getAttribute('data-cidx')), parseInt(el.getAttribute('data-ridx')), parseInt(el.getAttribute('data-val'))),
-    'gonogoAddCat': (el) => window.MMGR.Bids.addGoNoGoCat(parseInt(el.getAttribute('data-idx'))),
-    'gonogoDelCat': (el) => window.MMGR.Bids.delGoNoGoCat(parseInt(el.getAttribute('data-idx')), parseInt(el.getAttribute('data-cidx'))),
-    'gonogoAddCrit': (el) => window.MMGR.Bids.addGoNoGoCriterion(parseInt(el.getAttribute('data-idx')), parseInt(el.getAttribute('data-cidx'))),
-    'gonogoDelCrit': (el) => window.MMGR.Bids.delGoNoGoCriterion(parseInt(el.getAttribute('data-idx')), parseInt(el.getAttribute('data-cidx')), parseInt(el.getAttribute('data-ridx'))),
-    'gonogoDel': (el) => window.MMGR.Bids.delGoNoGo(parseInt(el.getAttribute('data-idx'))),
-    'addChange': () => window.MMGR.Changes.addChange(),
-    'delChange': (el) => window.MMGR.Changes.delChange(parseInt(el.getAttribute('data-idx'))),
-    'addLog': () => window.MMGR.Log.addLog(),
-    'delLog': (el) => window.MMGR.Log.delLog(parseInt(el.getAttribute('data-idx'))),
-    'addCloseItem': () => window.MMGR.Closure.addCloseItem(),
-    'delCloseItem': (el) => window.MMGR.Closure.delCloseItem(parseInt(el.getAttribute('data-idx'))),
-    'addComms': () => window.MMGR.Comms.addComms(),
-    'delComms': (el) => window.MMGR.Comms.delComms(parseInt(el.getAttribute('data-idx'))),
-    'addDoc': () => window.MMGR.Documents.addDoc(),
-    'delDoc': (el) => window.MMGR.Documents.delDoc(parseInt(el.getAttribute('data-idx'))),
+    bidAdd: () => window.MMGR.Bids.openBidPkgModal(),
+    bidEdit: el => window.MMGR.Bids.openBidPkgModal(parseInt(el.getAttribute('data-pkg'))),
+    bidModalAddItem: () => window.MMGR.Bids.bidModalAddItem(),
+    bidModalDelItem: el => window.MMGR.Bids.bidModalDelItem(parseInt(el.getAttribute('data-idx'))),
+    bidPkgSave: () => window.MMGR.Bids.bidPkgSave(),
+    closeBidPkg: () => window.MMGR.Bids.closeBidPkgModal(),
+    closeBidPkgBg: (el, e) => {
+      if (e.target === el) window.MMGR.Bids.closeBidPkgModal();
+    },
+    bidSubAdd: el => window.MMGR.Bids.addSub(parseInt(el.getAttribute('data-pkg'))),
+    bidSubDel: el =>
+      window.MMGR.Bids.delSub(
+        parseInt(el.getAttribute('data-pkg')),
+        parseInt(el.getAttribute('data-sid'))
+      ),
+    bidPkgUpd: (el, e) =>
+      window.MMGR.Bids.updPkg(
+        parseInt(el.getAttribute('data-pkg')),
+        el.getAttribute('data-field'),
+        el.value,
+        e && e.type
+      ),
+    bidSubUpd: (el, e) =>
+      window.MMGR.Bids.updSub(
+        parseInt(el.getAttribute('data-pkg')),
+        parseInt(el.getAttribute('data-sid')),
+        el.getAttribute('data-field'),
+        el.value,
+        e && e.type
+      ),
+    bidLineUpd: (el, e) =>
+      window.MMGR.Bids.updLine(
+        parseInt(el.getAttribute('data-pkg')),
+        parseInt(el.getAttribute('data-lid')),
+        el.getAttribute('data-field'),
+        el.value,
+        e && e.type
+      ),
+    bidLineDel: el =>
+      window.MMGR.Bids.delLine(
+        parseInt(el.getAttribute('data-pkg')),
+        parseInt(el.getAttribute('data-lid'))
+      ),
+    bidAmount: (el, e) =>
+      window.MMGR.Bids.updAmount(
+        parseInt(el.getAttribute('data-pkg')),
+        parseInt(el.getAttribute('data-sid')),
+        parseInt(el.getAttribute('data-lid')),
+        el.value,
+        e && e.type
+      ),
+    bidAddLine: el => window.MMGR.Bids.addLine(parseInt(el.getAttribute('data-pkg'))),
+    bidAward: el =>
+      window.MMGR.Bids.awardSub(
+        parseInt(el.getAttribute('data-pkg')),
+        parseInt(el.getAttribute('data-sid'))
+      ),
+    bidProposal: el =>
+      window.MMGR.Bids.openProposal(
+        parseInt(el.getAttribute('data-pkg')),
+        parseInt(el.getAttribute('data-sid'))
+      ),
+    bidClarify: el =>
+      window.MMGR.Bids.clarifySub(
+        parseInt(el.getAttribute('data-pkg')),
+        parseInt(el.getAttribute('data-sid'))
+      ),
+    bidDelPkg: el => window.MMGR.Bids.delBidPackage(parseInt(el.getAttribute('data-pkg'))),
+    gonogoAdd: () => window.MMGR.Bids.addGoNoGo(),
+    gonogoUpd: (el, e) =>
+      window.MMGR.Bids.updGoNoGo(
+        parseInt(el.getAttribute('data-idx')),
+        el.getAttribute('data-field'),
+        el.value,
+        e && e.type
+      ),
+    gonogoCatUpd: (el, e) =>
+      window.MMGR.Bids.updGoNoGoCat(
+        parseInt(el.getAttribute('data-idx')),
+        parseInt(el.getAttribute('data-cidx')),
+        el.getAttribute('data-field'),
+        el.value,
+        e && e.type
+      ),
+    gonogoCritUpd: (el, e) =>
+      window.MMGR.Bids.updGoNoGoCrit(
+        parseInt(el.getAttribute('data-idx')),
+        parseInt(el.getAttribute('data-cidx')),
+        parseInt(el.getAttribute('data-ridx')),
+        el.getAttribute('data-field'),
+        el.value,
+        e && e.type
+      ),
+    gonogoStar: el =>
+      window.MMGR.Bids.setGoNoGoStar(
+        parseInt(el.getAttribute('data-idx')),
+        parseInt(el.getAttribute('data-cidx')),
+        parseInt(el.getAttribute('data-ridx')),
+        parseInt(el.getAttribute('data-val'))
+      ),
+    gonogoAddCat: el => window.MMGR.Bids.addGoNoGoCat(parseInt(el.getAttribute('data-idx'))),
+    gonogoDelCat: el =>
+      window.MMGR.Bids.delGoNoGoCat(
+        parseInt(el.getAttribute('data-idx')),
+        parseInt(el.getAttribute('data-cidx'))
+      ),
+    gonogoAddCrit: el =>
+      window.MMGR.Bids.addGoNoGoCriterion(
+        parseInt(el.getAttribute('data-idx')),
+        parseInt(el.getAttribute('data-cidx'))
+      ),
+    gonogoDelCrit: el =>
+      window.MMGR.Bids.delGoNoGoCriterion(
+        parseInt(el.getAttribute('data-idx')),
+        parseInt(el.getAttribute('data-cidx')),
+        parseInt(el.getAttribute('data-ridx'))
+      ),
+    gonogoDel: el => window.MMGR.Bids.delGoNoGo(parseInt(el.getAttribute('data-idx'))),
+    addChange: () => window.MMGR.Changes.addChange(),
+    delChange: el => window.MMGR.Changes.delChange(parseInt(el.getAttribute('data-idx'))),
+    addLog: () => window.MMGR.Log.addLog(),
+    delLog: el => window.MMGR.Log.delLog(parseInt(el.getAttribute('data-idx'))),
+    addCloseItem: () => window.MMGR.Closure.addCloseItem(),
+    delCloseItem: el => window.MMGR.Closure.delCloseItem(parseInt(el.getAttribute('data-idx'))),
+    addComms: () => window.MMGR.Comms.addComms(),
+    delComms: el => window.MMGR.Comms.delComms(parseInt(el.getAttribute('data-idx'))),
+    addDoc: () => window.MMGR.Documents.addDoc(),
+    delDoc: el => window.MMGR.Documents.delDoc(parseInt(el.getAttribute('data-idx'))),
     // MARKET-FEATURE-ROADMAP C1/C2/C3: RFI + Submittal + Punch List actions.
-    'addRfi': () => window.MMGR.Rfis.addRfi(),
-    'delRfi': (el) => window.MMGR.Rfis.delRfi(parseInt(el.getAttribute('data-idx'))),
-    'addSubmittal': () => window.MMGR.Submittals.addSubmittal(),
-    'delSubmittal': (el) => window.MMGR.Submittals.delSubmittal(parseInt(el.getAttribute('data-idx'))),
-    'addPunch': () => window.MMGR.PunchList.addPunch(),
-    'delPunch': (el) => window.MMGR.PunchList.delPunch(parseInt(el.getAttribute('data-idx'))),
+    addRfi: () => window.MMGR.Rfis.addRfi(),
+    delRfi: el => window.MMGR.Rfis.delRfi(parseInt(el.getAttribute('data-idx'))),
+    addSubmittal: () => window.MMGR.Submittals.addSubmittal(),
+    delSubmittal: el => window.MMGR.Submittals.delSubmittal(parseInt(el.getAttribute('data-idx'))),
+    addPunch: () => window.MMGR.PunchList.addPunch(),
+    delPunch: el => window.MMGR.PunchList.delPunch(parseInt(el.getAttribute('data-idx'))),
     // MARKET-FEATURE-ROADMAP Section C batch 2 (state mutations , never
     // READONLY_SAFE): pay applications, inspections, incidents, handover,
     // warranty, drawing distribution log, permits.
-    'addPayApp': () => window.MMGR.PayApps.addPayApp(true),
-    'genPayApp': () => window.MMGR.PayApps.genPayApp(),
-    'delPayApp': (el) => window.MMGR.PayApps.delPayApp(parseInt(el.getAttribute('data-idx'))),
-    'addInspection': () => window.MMGR.Inspections.addInspection(),
-    'delInspection': (el) => window.MMGR.Inspections.delInspection(parseInt(el.getAttribute('data-idx'))),
-    'addInspItem': (el) => window.MMGR.Inspections.addInspItem(parseInt(el.getAttribute('data-idx'))),
-    'delInspItem': (el) => window.MMGR.Inspections.delInspItem(parseInt(el.getAttribute('data-idx')), parseInt(el.getAttribute('data-iidx'))),
-    'inspItemToggle': (el) => window.MMGR.Inspections.toggleInspItem(parseInt(el.getAttribute('data-idx')), parseInt(el.getAttribute('data-iidx'))),
-    'updInspItem': (el) => window.MMGR.Inspections.updInspItem(parseInt(el.getAttribute('data-idx')), parseInt(el.getAttribute('data-iidx')), el.getAttribute('data-field'), el.value),
-    'addIncident': () => window.MMGR.Incidents.addIncident(),
-    'delIncident': (el) => window.MMGR.Incidents.delIncident(parseInt(el.getAttribute('data-idx'))),
-    'addHandoverItem': () => window.MMGR.Handover.addHandoverItem(),
-    'delHandoverItem': (el) => window.MMGR.Handover.delHandoverItem(parseInt(el.getAttribute('data-idx'))),
-    'addWarranty': () => window.MMGR.Warranty.addWarranty(),
-    'delWarranty': (el) => window.MMGR.Warranty.delWarranty(parseInt(el.getAttribute('data-idx'))),
-    'addDrawLog': () => window.MMGR.DrawingLog.addDrawLog(),
-    'delDrawLog': (el) => window.MMGR.DrawingLog.delDrawLog(parseInt(el.getAttribute('data-idx'))),
-    'addPermit': () => window.MMGR.Permits.addPermit(),
-    'delPermit': (el) => window.MMGR.Permits.delPermit(parseInt(el.getAttribute('data-idx'))),
-    'addProcurement': () => window.MMGR.Procurement.addProcurement(),
-    'delProcurement': (el) => window.MMGR.Procurement.delProcurement(parseInt(el.getAttribute('data-idx'))),
-    'addTimeEntry': () => window.MMGR.TimeTracking.addTimeEntry(),
-    'delTimeEntry': (el) => window.MMGR.TimeTracking.delTimeEntry(parseInt(el.getAttribute('data-idx'))),
-    'addEquipment': () => window.MMGR.Equipment.addEquipment(),
-    'delEquipment': (el) => window.MMGR.Equipment.delEquipment(parseInt(el.getAttribute('data-idx'))),
-    'addKPI': () => window.MMGR.Charter.addKPI(),
-    'delKPI': (el) => window.MMGR.Charter.delKPI(parseInt(el.getAttribute('data-idx'))),
-    'openChartUp': () => window.MMGR.Charter.openChartUp(),
-    'closeChartUp': () => window.MMGR.Charter.closeChartUp(),
-    'closeChartUpBg': (el, e) => { if (e.target === el) window.MMGR.Charter.closeChartUp(); },
-    'regenChartPrompt': () => window.MMGR.Charter.regenChartPrompt(),
-    'copyChartPrompt': () => window.MMGR.Charter.copyChartPrompt(),
-    'applyChartAIOutput': () => window.MMGR.Charter.applyChartAIOutput(),
+    addPayApp: () => window.MMGR.PayApps.addPayApp(true),
+    genPayApp: () => window.MMGR.PayApps.genPayApp(),
+    delPayApp: el => window.MMGR.PayApps.delPayApp(parseInt(el.getAttribute('data-idx'))),
+    addInspection: () => window.MMGR.Inspections.addInspection(),
+    delInspection: el =>
+      window.MMGR.Inspections.delInspection(parseInt(el.getAttribute('data-idx'))),
+    addInspItem: el => window.MMGR.Inspections.addInspItem(parseInt(el.getAttribute('data-idx'))),
+    delInspItem: el =>
+      window.MMGR.Inspections.delInspItem(
+        parseInt(el.getAttribute('data-idx')),
+        parseInt(el.getAttribute('data-iidx'))
+      ),
+    inspItemToggle: el =>
+      window.MMGR.Inspections.toggleInspItem(
+        parseInt(el.getAttribute('data-idx')),
+        parseInt(el.getAttribute('data-iidx'))
+      ),
+    updInspItem: el =>
+      window.MMGR.Inspections.updInspItem(
+        parseInt(el.getAttribute('data-idx')),
+        parseInt(el.getAttribute('data-iidx')),
+        el.getAttribute('data-field'),
+        el.value
+      ),
+    addIncident: () => window.MMGR.Incidents.addIncident(),
+    delIncident: el => window.MMGR.Incidents.delIncident(parseInt(el.getAttribute('data-idx'))),
+    addHandoverItem: () => window.MMGR.Handover.addHandoverItem(),
+    delHandoverItem: el =>
+      window.MMGR.Handover.delHandoverItem(parseInt(el.getAttribute('data-idx'))),
+    addWarranty: () => window.MMGR.Warranty.addWarranty(),
+    delWarranty: el => window.MMGR.Warranty.delWarranty(parseInt(el.getAttribute('data-idx'))),
+    addDrawLog: () => window.MMGR.DrawingLog.addDrawLog(),
+    delDrawLog: el => window.MMGR.DrawingLog.delDrawLog(parseInt(el.getAttribute('data-idx'))),
+    addPermit: () => window.MMGR.Permits.addPermit(),
+    delPermit: el => window.MMGR.Permits.delPermit(parseInt(el.getAttribute('data-idx'))),
+    addProcurement: () => window.MMGR.Procurement.addProcurement(),
+    delProcurement: el =>
+      window.MMGR.Procurement.delProcurement(parseInt(el.getAttribute('data-idx'))),
+    addTimeEntry: () => window.MMGR.TimeTracking.addTimeEntry(),
+    delTimeEntry: el =>
+      window.MMGR.TimeTracking.delTimeEntry(parseInt(el.getAttribute('data-idx'))),
+    addEquipment: () => window.MMGR.Equipment.addEquipment(),
+    delEquipment: el => window.MMGR.Equipment.delEquipment(parseInt(el.getAttribute('data-idx'))),
+    addKPI: () => window.MMGR.Charter.addKPI(),
+    delKPI: el => window.MMGR.Charter.delKPI(parseInt(el.getAttribute('data-idx'))),
+    openChartUp: () => window.MMGR.Charter.openChartUp(),
+    closeChartUp: () => window.MMGR.Charter.closeChartUp(),
+    closeChartUpBg: (el, e) => {
+      if (e.target === el) window.MMGR.Charter.closeChartUp();
+    },
+    regenChartPrompt: () => window.MMGR.Charter.regenChartPrompt(),
+    copyChartPrompt: () => window.MMGR.Charter.copyChartPrompt(),
+    applyChartAIOutput: () => window.MMGR.Charter.applyChartAIOutput(),
     // MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-5/6: Print Charter + Save
     // Charter (save mutates state and stays blocked in view-only; print is
     // view-only).
-    'printCharter': () => window.MMGR.Charter.printCharter(),
-    'saveCharter': () => window.MMGR.Charter.saveCharter(),
-    'cpAllPage': (el) => window.MMGR.App.cpAllPage(el.getAttribute('data-section')),
-    'cpFormats': (el) => window.MMGR.App.cpFormats(el.getAttribute('data-kind')),
+    printCharter: () => window.MMGR.Charter.printCharter(),
+    saveCharter: () => window.MMGR.Charter.saveCharter(),
+    cpAllPage: el => window.MMGR.App.cpAllPage(el.getAttribute('data-section')),
+    cpFormats: el => window.MMGR.App.cpFormats(el.getAttribute('data-kind')),
     // MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-3: one-click email template
     // generator (view-only , composes + copies, never mutates state).
-    'emailTpl': (el) => window.MMGR.App.emailTpl(el.getAttribute('data-kind')),
-    'exportGanttPNG': () => window.MMGR.App.exportGanttPNG(),
-    'wxGeocode': () => window.MMGR.App.wxGeocode(),
-    'wxUseLocation': () => window.MMGR.App.wxUseLocation(),
-    'wxRefresh': () => window.MMGR.App.wxRefresh(),
-    'wxSetView': (el) => window.MMGR.App.wxSetView(el),
-    'wxLogToday': () => window.MMGR.App.wxLogToday(),
-    'wxLogManual': () => window.MMGR.App.wxLogManual(),
-    'wxCopyNotice': () => window.MMGR.App.wxCopyNotice(),
-    'delWeatherLogEntry': (el) => window.MMGR.App.wxDelLogEntry(el),
+    emailTpl: el => window.MMGR.App.emailTpl(el.getAttribute('data-kind')),
+    exportGanttPNG: () => window.MMGR.App.exportGanttPNG(),
+    wxGeocode: () => window.MMGR.App.wxGeocode(),
+    wxUseLocation: () => window.MMGR.App.wxUseLocation(),
+    wxRefresh: () => window.MMGR.App.wxRefresh(),
+    wxSetView: el => window.MMGR.App.wxSetView(el),
+    wxLogToday: () => window.MMGR.App.wxLogToday(),
+    wxLogManual: () => window.MMGR.App.wxLogManual(),
+    wxCopyNotice: () => window.MMGR.App.wxCopyNotice(),
+    delWeatherLogEntry: el => window.MMGR.App.wxDelLogEntry(el),
     // MASTER-ACTION-PLAN-v3-STRICT Rank 1: claim package + slip cause tags.
-    'claimGenerate': () => window.MMGR.Claim.generate(),
-    'claimSetCause': (el) => window.MMGR.Claim.setCause(el.getAttribute('data-task'), el.value),
+    claimGenerate: () => window.MMGR.Claim.generate(),
+    claimSetCause: el => window.MMGR.Claim.setCause(el.getAttribute('data-task'), el.value),
     // MASTER-ACTION-PLAN-v3-STRICT Rank 2.1: digest generation is a read-only
     // compose; pinning writes the reference point into state.
-    'digestGenerate': () => window.MMGR.Digest.generate(),
-    'digestPin': () => window.MMGR.Digest.pin(),
-    'meetSentiment': (el) => window.MMGR.Meetings.recordSentiment(el.getAttribute('data-val')),
-    'tglLeadtimeReview': (el) => window.MMGR.Tasks.tglLeadtimeReview(el.getAttribute('data-id')),
-    'openAiWin': () => window.MMGR.AiWin.open(),
-    'closeAiWin': () => window.MMGR.AiWin.close(),
-    'closeAiWinBg': (el, e) => { if (e.target === el) window.MMGR.AiWin.close(); },
-    'aiPreset': (el) => window.MMGR.AiWin.preset(el.getAttribute('data-type')),
-    'aiAttachContext': () => window.MMGR.AiWin.attachContext(),
-    'aiCopy': () => window.MMGR.AiWin.copy(),
-    'aiClear': () => window.MMGR.AiWin.clear(),
+    digestGenerate: () => window.MMGR.Digest.generate(),
+    digestPin: () => window.MMGR.Digest.pin(),
+    meetSentiment: el => window.MMGR.Meetings.recordSentiment(el.getAttribute('data-val')),
+    tglLeadtimeReview: el => window.MMGR.Tasks.tglLeadtimeReview(el.getAttribute('data-id')),
+    openAiWin: () => window.MMGR.AiWin.open(),
+    closeAiWin: () => window.MMGR.AiWin.close(),
+    closeAiWinBg: (el, e) => {
+      if (e.target === el) window.MMGR.AiWin.close();
+    },
+    aiPreset: el => window.MMGR.AiWin.preset(el.getAttribute('data-type')),
+    aiAttachContext: () => window.MMGR.AiWin.attachContext(),
+    aiCopy: () => window.MMGR.AiWin.copy(),
+    aiClear: () => window.MMGR.AiWin.clear(),
     // Rank 2.3: real model wiring , run preset / run question / settings.
-    'aiRunPreset': (el) => window.MMGR.AiWin.runPreset(el.getAttribute('data-type')),
-    'aiRun': () => window.MMGR.AiWin.runQuestion(),
-    'aiCopyOut': () => window.MMGR.AiWin.copyOut(),
-    'aiSetTier': (el) => { window.MMGR.AiWin.setAiCfg({ tier: el.value }); window.MMGR.AiWin.syncSettingsUI(); },
-    'aiToggleMcp': (el) => { var pid = window.MMGR && MMGR.App && MMGR.App.projectId ? MMGR.App.projectId : ''; if (pid) { try { localStorage.setItem('mmgr_mcp_toggle_' + pid, el.checked ? '1' : '0'); } catch(e) {} } },
-    'aiVoiceToggle': () => { if (window.MMGR && MMGR.Voice) MMGR.Voice.toggleAiRecording(); },
+    aiRunPreset: el => window.MMGR.AiWin.runPreset(el.getAttribute('data-type')),
+    aiRun: () => window.MMGR.AiWin.runQuestion(),
+    aiCopyOut: () => window.MMGR.AiWin.copyOut(),
+    aiSetTier: el => {
+      window.MMGR.AiWin.setAiCfg({ tier: el.value });
+      window.MMGR.AiWin.syncSettingsUI();
+    },
+    aiToggleMcp: el => {
+      var pid = window.MMGR && MMGR.App && MMGR.App.projectId ? MMGR.App.projectId : '';
+      if (pid) {
+        try {
+          localStorage.setItem('mmgr_mcp_toggle_' + pid, el.checked ? '1' : '0');
+        } catch (e) {}
+      }
+    },
+    aiVoiceToggle: () => {
+      if (window.MMGR && MMGR.Voice) MMGR.Voice.toggleAiRecording();
+    },
     // MERGED-AI-CONTROL (audit 1.2): the drawer's AI Assistant switch is now
     // the single AI on/off control , it reads/writes state.config.ai.tier
     // directly (flags.aiWindow is dropped as a gate). OFF -> tier 'off'; ON
     // -> restore the last non-off tier (default 'local').
-    'tglAiTier': (el) => window.MMGR.AiWin.tglDrawerTier(el),
+    tglAiTier: el => window.MMGR.AiWin.tglDrawerTier(el),
     // AI-CLOUD-CONNECT-UI (DIR-2): no aiSetKey action , and no aiSetProvider /
     // aiSetEndpoint / aiSetModel actions either. The BYO provider select is
     // read directly by the Connect & Test flow, and the key is wired
@@ -2083,29 +2879,32 @@ window.MMGR = MMGR;
     // Rank 3.4: viewport prompt answers write a device-level preference only
     // (localStorage, never project state) , safe in view-only. toggleFull is
     // a pure DOM class toggle.
-    'vpAccept': (el) => window.MMGR.Viewport.accept(el.getAttribute('data-section')),
-    'vpDismiss': (el) => window.MMGR.Viewport.dismiss(el.getAttribute('data-section')),
-    'vpFull': (el) => window.MMGR.Viewport.toggleFull(el.getAttribute('data-section')),
-    // Rank 3.5 (PLAN-OF-ACTION-LIQUID-GLASS-UI): premium visual mode toggle , 
+    vpAccept: el => window.MMGR.Viewport.accept(el.getAttribute('data-section')),
+    vpDismiss: el => window.MMGR.Viewport.dismiss(el.getAttribute('data-section')),
+    vpFull: el => window.MMGR.Viewport.toggleFull(el.getAttribute('data-section')),
+    // Rank 3.5 (PLAN-OF-ACTION-LIQUID-GLASS-UI): premium visual mode toggle ,
     // writes a device-level preference only (localStorage, never project
     // state), so it is safe in view-only, exactly like the viewport prefs.
-    'tglGlassMode': () => window.MMGR.App.tglGlassMode(),
+    tglGlassMode: () => window.MMGR.App.tglGlassMode(),
     // Calculator toggle (floating draggable FAB).
-    'toggleCalc': () => { const C = window.MMGR.Calculator; if (C && C.toggle) C.toggle(); },
+    toggleCalc: () => {
+      const C = window.MMGR.Calculator;
+      if (C && C.toggle) C.toggle();
+    },
     // THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §4.2: mobile nav drawer toggle.
-    'tglNav': () => window.MMGR.App.tglNav(),
-    'tglSidebar': () => window.MMGR.App.tglSidebar(),
-    'tglSidebarOpen': () => window.MMGR.App.tglSidebarOpen(),
+    tglNav: () => window.MMGR.App.tglNav(),
+    tglSidebar: () => window.MMGR.App.tglSidebar(),
+    tglSidebarOpen: () => window.MMGR.App.tglSidebarOpen(),
     // Rank 4.5 (PLAN-OF-ACTION-AI-VOICE-SYNC-v1): optional Google identity
     // for sync , device-level label only, never a gate, safe in view-only.
-    'syncConnect': () => window.MMGR.App.syncConnect(),
-    'syncSignOut': () => window.MMGR.App.syncSignOut(),
-    'syncClientId': (el) => window.MMGR.App.syncClientId(el),
-    'syncDismissSuggest': () => window.MMGR.App.syncDismissSuggest(),
+    syncConnect: () => window.MMGR.App.syncConnect(),
+    syncSignOut: () => window.MMGR.App.syncSignOut(),
+    syncClientId: el => window.MMGR.App.syncClientId(el),
+    syncDismissSuggest: () => window.MMGR.App.syncDismissSuggest(),
     // OWNER 2026-09-06: sidebar-bottom sign-in. Opens the #siom sheet
     // (the GIS prompt stays a fallback); closeSignIn closes it.
-    'openSignIn': () => window.MMGR.App.openSignInModal(),
-    'closeSignIn': () => window.MMGR.App.closeSignInModal(),
+    openSignIn: () => window.MMGR.App.openSignInModal(),
+    closeSignIn: () => window.MMGR.App.closeSignInModal(),
     // GOOGLE-DRIVE-BACKUP: optional Drive backup/restore controls in the
     // Controls drawer (project.html). Backup is export-equivalent (reads the
     // workspace, writes Drive + a device pref), restore is import-equivalent
@@ -2115,152 +2914,355 @@ window.MMGR = MMGR;
     // PART F T9: driveBackup is an offline-copy surface , refused while a
     // cloud share code is held (the recipient must not copy the project to
     // their own Drive).
-    'driveBackup': () => { if (window.MMGR.App && window.MMGR.App.cloudExportBlocked('driveBackup')) return; const G = window.MMGR.GoogleAuth; if (G && G.triggerBackup) G.triggerBackup(); },
-    'driveRestore': () => { const G = window.MMGR.GoogleAuth; if (G && G.triggerRestore) G.triggerRestore(); },
-    'driveAutoInterval': (el) => { const G = window.MMGR.GoogleAuth; if (G && G.setAutoIntervalFrom) G.setAutoIntervalFrom(el); },
-    'driveSetPass': (el) => { const G = window.MMGR.GoogleAuth; if (G && G.setDrivePassFrom) G.setDrivePassFrom(el); },
+    driveBackup: () => {
+      if (window.MMGR.App && window.MMGR.App.cloudExportBlocked('driveBackup')) return;
+      const G = window.MMGR.GoogleAuth;
+      if (G && G.triggerBackup) G.triggerBackup();
+    },
+    driveRestore: () => {
+      const G = window.MMGR.GoogleAuth;
+      if (G && G.triggerRestore) G.triggerRestore();
+    },
+    driveAutoInterval: el => {
+      const G = window.MMGR.GoogleAuth;
+      if (G && G.setAutoIntervalFrom) G.setAutoIntervalFrom(el);
+    },
+    driveSetPass: el => {
+      const G = window.MMGR.GoogleAuth;
+      if (G && G.setDrivePassFrom) G.setDrivePassFrom(el);
+    },
     // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 1: optional Cloud Backup section
     // (owner-code create/save/load/recover + Google sign-in for recovery).
     // Same zero-throw pattern as the Drive entries above.
-    'cloudCreate': () => { const C = window.MMGR.Cloud; if (C && C.createProject) C.createProject(); },
-    'cloudClaim': () => { const C = window.MMGR.Cloud; if (C && C.claimProject) C.claimProject(); },
-    'cloudUpgrade': () => { const C = window.MMGR.Cloud; if (C && C.cloudUpgrade) C.cloudUpgrade(); },
-    'cloudResendVerify': () => { const C = window.MMGR.Cloud; if (C && C.cloudResendVerify) C.cloudResendVerify(); },
-    'cloudSave': () => { const C = window.MMGR.Cloud; if (C && C.saveToCloud) C.saveToCloud(); },
-    'cloudLoad': () => { const C = window.MMGR.Cloud; if (C && C.loadFromCloud) C.loadFromCloud(); },
-    'cloudRecover': () => { const C = window.MMGR.Cloud; if (C && C.recoverCode) C.recoverCode(); },
+    cloudCreate: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.createProject) C.createProject();
+    },
+    cloudClaim: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.claimProject) C.claimProject();
+    },
+    cloudUpgrade: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.cloudUpgrade) C.cloudUpgrade();
+    },
+    cloudResendVerify: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.cloudResendVerify) C.cloudResendVerify();
+    },
+    cloudSave: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.saveToCloud) C.saveToCloud();
+    },
+    cloudLoad: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.loadFromCloud) C.loadFromCloud();
+    },
+    cloudRecover: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.recoverCode) C.recoverCode();
+    },
     // GAP-AUDIT-CLOUD-31: unlink (owner-only, deletes the CLOUD copy, keeps
     // local data) + the shown-once editor-code banner's Copy/Done actions.
-    'cloudUnlink': () => { const C = window.MMGR.Cloud; if (C && C.unlinkProject) C.unlinkProject(); },
-    'cloudWebhookList': () => { const C = window.MMGR.Cloud; if (C && C.webhookList) C.webhookList(); },
-    'cloudWebhookAdd': () => { const C = window.MMGR.Cloud; if (C && C.webhookAdd) C.webhookAdd(); },
-    'cloudWebhookDel': (el) => { const C = window.MMGR.Cloud; if (C && C.webhookDel) C.webhookDel(el && el.getAttribute('data-id')); },
-    'cloudCopyEditorCode': (el) => { const C = window.MMGR.Cloud; if (C && C.copyEditorCode && el) C.copyEditorCode(el.getAttribute('data-code')); },
-    'cloudEditorCodeDone': () => { const C = window.MMGR.Cloud; if (C && C.editorCodeDone) C.editorCodeDone(); },
-    'cloudCopyCode': () => { const C = window.MMGR.Cloud; if (C && C.copyCode) C.copyCode(); },
-    'mcpCopyUrl': () => { var inp = document.getElementById('mcp-url'); if (inp && inp.value) { navigator.clipboard.writeText(inp.value).then(function() { var st = document.getElementById('mcp-status'); if (st) st.textContent = 'Copied to clipboard.'; setTimeout(function() { var s = document.getElementById('mcp-status'); if (s) s.textContent = ''; }, 2000); }).catch(function() { inp.select(); document.execCommand('copy'); }); } },
+    cloudUnlink: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.unlinkProject) C.unlinkProject();
+    },
+    cloudWebhookList: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.webhookList) C.webhookList();
+    },
+    cloudWebhookAdd: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.webhookAdd) C.webhookAdd();
+    },
+    cloudWebhookDel: el => {
+      const C = window.MMGR.Cloud;
+      if (C && C.webhookDel) C.webhookDel(el && el.getAttribute('data-id'));
+    },
+    cloudCopyEditorCode: el => {
+      const C = window.MMGR.Cloud;
+      if (C && C.copyEditorCode && el) C.copyEditorCode(el.getAttribute('data-code'));
+    },
+    cloudEditorCodeDone: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.editorCodeDone) C.editorCodeDone();
+    },
+    cloudCopyCode: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.copyCode) C.copyCode();
+    },
+    mcpCopyUrl: () => {
+      var inp = document.getElementById('mcp-url');
+      if (inp && inp.value) {
+        navigator.clipboard
+          .writeText(inp.value)
+          .then(function () {
+            var st = document.getElementById('mcp-status');
+            if (st) st.textContent = 'Copied to clipboard.';
+            setTimeout(function () {
+              var s = document.getElementById('mcp-status');
+              if (s) s.textContent = '';
+            }, 2000);
+          })
+          .catch(function () {
+            inp.select();
+            document.execCommand('copy');
+          });
+      }
+    },
     // REGULAR TERMINAL notifier (the non-cloud stdio connector card). Same
     // shape as mcpCopyUrl above: copy the config field, announce it through
     // the card's own role=status live region, then clear it. A copy is safe in
     // read-only mode (no state change) so it needs no readonly guard.
-    'terminalCopyUrl': () => { var inp = document.getElementById('terminal-mcp-url'); if (inp && inp.value) { navigator.clipboard.writeText(inp.value).then(function() { var st = document.getElementById('terminal-status'); if (st) st.textContent = 'Copied to clipboard. Remember to change the two placeholder paths to your own.'; setTimeout(function() { var s = document.getElementById('terminal-status'); if (s) s.textContent = ''; }, 4000); }).catch(function() { inp.select(); document.execCommand('copy'); if (document.getElementById('terminal-status')) document.getElementById('terminal-status').textContent = 'Copied to clipboard.'; }); } },
-    'cloudSignIn': () => { const C = window.MMGR.Cloud; if (C && C.signIn) C.signIn(); },
-    'cloudLoadWithCode': () => { const C = window.MMGR.Cloud; if (C && C.loadWithCode) C.loadWithCode(); },
+    terminalCopyUrl: () => {
+      var inp = document.getElementById('terminal-mcp-url');
+      if (inp && inp.value) {
+        navigator.clipboard
+          .writeText(inp.value)
+          .then(function () {
+            var st = document.getElementById('terminal-status');
+            if (st)
+              st.textContent =
+                'Copied to clipboard. Remember to change the two placeholder paths to your own.';
+            setTimeout(function () {
+              var s = document.getElementById('terminal-status');
+              if (s) s.textContent = '';
+            }, 4000);
+          })
+          .catch(function () {
+            inp.select();
+            document.execCommand('copy');
+            if (document.getElementById('terminal-status'))
+              document.getElementById('terminal-status').textContent = 'Copied to clipboard.';
+          });
+      }
+    },
+    cloudSignIn: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.signIn) C.signIn();
+    },
+    cloudLoadWithCode: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.loadWithCode) C.loadWithCode();
+    },
     // SYNC BOND (Task 13): explicit re-sync for bonded projects + the
     // one-time offer's Later dismiss (both are drawer actions, no mutation).
-    'cloudResync': () => { const C = window.MMGR.Cloud; if (C && C.cloudResync) C.cloudResync(); },
-    'cloudBondLater': () => { const C = window.MMGR.Cloud; if (C && C.cloudBondLater) C.cloudBondLater(); },
+    cloudResync: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.cloudResync) C.cloudResync();
+    },
+    cloudBondLater: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.cloudBondLater) C.cloudBondLater();
+    },
     // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2/3: editor-code management
     // (create/list/revoke , owner-only, enforced server-side) and the
     // changelog view/revert (owner-only). Same zero-throw pattern as the
     // Phase 1 entries above.
-    'cloudEditorCreate': () => { const C = window.MMGR.Cloud; if (C && C.createEditor) C.createEditor(); },
-    'cloudClientCreate': () => { const C = window.MMGR.Cloud; if (C && C.createClientCode) C.createClientCode(); },
-    'cloudClientList': () => { const C = window.MMGR.Cloud; if (C && C.listClientCodes) C.listClientCodes(); },
-    'cloudClientRevoke': (el) => { const C = window.MMGR.Cloud; if (C && C.revokeClientCode) C.revokeClientCode(el && el.getAttribute('data-id')); },
-    'cloudEditorList': () => { const C = window.MMGR.Cloud; if (C && C.listEditors) C.listEditors(); },
-    'cloudEditorRevoke': (el) => { const C = window.MMGR.Cloud; if (C && C.revokeEditor) C.revokeEditor(el && el.getAttribute('data-id')); },
+    cloudEditorCreate: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.createEditor) C.createEditor();
+    },
+    cloudClientCreate: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.createClientCode) C.createClientCode();
+    },
+    cloudClientList: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.listClientCodes) C.listClientCodes();
+    },
+    cloudClientRevoke: el => {
+      const C = window.MMGR.Cloud;
+      if (C && C.revokeClientCode) C.revokeClientCode(el && el.getAttribute('data-id'));
+    },
+    cloudEditorList: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.listEditors) C.listEditors();
+    },
+    cloudEditorRevoke: el => {
+      const C = window.MMGR.Cloud;
+      if (C && C.revokeEditor) C.revokeEditor(el && el.getAttribute('data-id'));
+    },
     // PROJECT API KEYS (owner 2026-09-15): same owner-only, cloud-only family.
-    'cloudApiKeyCreate': () => { const C = window.MMGR.Cloud; if (C && C.createApiKey) C.createApiKey(); },
-    'cloudApiKeyList': () => { const C = window.MMGR.Cloud; if (C && C.listApiKeys) C.listApiKeys(); },
-    'cloudApiKeyRevoke': (el) => { const C = window.MMGR.Cloud; if (C && C.revokeApiKey) C.revokeApiKey(el && el.getAttribute('data-id')); },
+    cloudApiKeyCreate: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.createApiKey) C.createApiKey();
+    },
+    cloudApiKeyList: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.listApiKeys) C.listApiKeys();
+    },
+    cloudApiKeyRevoke: el => {
+      const C = window.MMGR.Cloud;
+      if (C && C.revokeApiKey) C.revokeApiKey(el && el.getAttribute('data-id'));
+    },
     // Share & Access sub-tabs (owner 2026-09-15): switch without a re-render.
-    'cloudShareTab': (el) => {
+    cloudShareTab: el => {
       const tab = el && el.getAttribute('data-tab');
       if (!tab) return;
       const wrap = document.getElementById('ctrl-share');
       if (!wrap) return;
-      wrap.querySelectorAll('.share-subtab').forEach(function(b) {
+      wrap.querySelectorAll('.share-subtab').forEach(function (b) {
         const on = b.getAttribute('data-tab') === tab;
         b.classList.toggle('on', on);
         b.setAttribute('aria-selected', on ? 'true' : 'false');
       });
-      wrap.querySelectorAll('.share-subpane').forEach(function(p) {
+      wrap.querySelectorAll('.share-subpane').forEach(function (p) {
         p.hidden = p.getAttribute('data-pane') !== tab;
       });
     },
-    'cloudLogList': () => { const C = window.MMGR.Cloud; if (C && C.listLog) C.listLog(); },
-    'cloudLogRevert': (el) => { const C = window.MMGR.Cloud; if (C && C.revertLog) C.revertLog(el && el.getAttribute('data-id')); },
-    'cloudLogToggleDiffs': (el) => { const C = window.MMGR.Cloud; if (C && C.toggleDiffs) C.toggleDiffs(el && el.getAttribute('data-id')); },
-    'cloudDropEditor': () => { const C = window.MMGR.Cloud; if (C && C.dropEditor) C.dropEditor(); },
+    cloudLogList: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.listLog) C.listLog();
+    },
+    cloudLogRevert: el => {
+      const C = window.MMGR.Cloud;
+      if (C && C.revertLog) C.revertLog(el && el.getAttribute('data-id'));
+    },
+    cloudLogToggleDiffs: el => {
+      const C = window.MMGR.Cloud;
+      if (C && C.toggleDiffs) C.toggleDiffs(el && el.getAttribute('data-id'));
+    },
+    cloudDropEditor: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.dropEditor) C.dropEditor();
+    },
     // CLOUD-FIRST SYNC (PART 3, approved 2026-08-17): offline copies +
     // broadcast. cloudMakeCopy registers this device (view-only);
     // cloudUpdateCopy pulls the newest snapshot (no full reload);
     // cloudRemoveCopy unregisters; cloudBroadcast + cloudAutoBroadcast are
     // the owner's manual + automatic broadcast controls; cloudOfflineRemove
     // drops one registered copy from the owner's list.
-    'cloudMakeCopy': () => { const C = window.MMGR.Cloud; if (C && C.cloudMakeCopy) C.cloudMakeCopy(); },
-    'cloudUpdateCopy': () => { const C = window.MMGR.Cloud; if (C && C.cloudUpdateCopy) C.cloudUpdateCopy(); },
-    'cloudRemoveCopy': () => { const C = window.MMGR.Cloud; if (C && C.cloudRemoveCopy) C.cloudRemoveCopy(); },
-    'cloudBroadcast': () => { const C = window.MMGR.Cloud; if (C && C.cloudBroadcast) C.cloudBroadcast(); },
-    'cloudAutoBroadcast': () => { const C = window.MMGR.Cloud; if (C && C.cloudAutoBroadcast) C.cloudAutoBroadcast(); },
-    'cloudOfflineRemove': (el) => { const C = window.MMGR.Cloud; if (C && C.cloudOfflineRemove) C.cloudOfflineRemove(el && el.getAttribute('data-id')); },
+    cloudMakeCopy: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.cloudMakeCopy) C.cloudMakeCopy();
+    },
+    cloudUpdateCopy: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.cloudUpdateCopy) C.cloudUpdateCopy();
+    },
+    cloudRemoveCopy: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.cloudRemoveCopy) C.cloudRemoveCopy();
+    },
+    cloudBroadcast: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.cloudBroadcast) C.cloudBroadcast();
+    },
+    cloudAutoBroadcast: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.cloudAutoBroadcast) C.cloudAutoBroadcast();
+    },
+    cloudOfflineRemove: el => {
+      const C = window.MMGR.Cloud;
+      if (C && C.cloudOfflineRemove) C.cloudOfflineRemove(el && el.getAttribute('data-id'));
+    },
     // REVIEW QUEUE (2026-08-17, approved "always on"): owner review list +
     // accept/reject decisions; cloudReviewMine is the editor's own status.
-    'cloudReviewList': () => { const C = window.MMGR.Cloud; if (C && C.cloudReviewList) C.cloudReviewList(); },
-    'cloudReviewMine': () => { const C = window.MMGR.Cloud; if (C && C.cloudReviewMine) C.cloudReviewMine(); },
-    'cloudReviewAccept': (el) => { const C = window.MMGR.Cloud; if (C && C.cloudReviewAccept) C.cloudReviewAccept(el && el.getAttribute('data-id')); },
-    'cloudReviewReject': (el) => { const C = window.MMGR.Cloud; if (C && C.cloudReviewReject) C.cloudReviewReject(el && el.getAttribute('data-id')); },
-    'cloudReviewToggleDiffs': (el) => { const C = window.MMGR.Cloud; if (C && C.reviewToggleDiffs) C.reviewToggleDiffs(el && el.getAttribute('data-id')); },
+    cloudReviewList: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.cloudReviewList) C.cloudReviewList();
+    },
+    cloudReviewMine: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.cloudReviewMine) C.cloudReviewMine();
+    },
+    cloudReviewAccept: el => {
+      const C = window.MMGR.Cloud;
+      if (C && C.cloudReviewAccept) C.cloudReviewAccept(el && el.getAttribute('data-id'));
+    },
+    cloudReviewReject: el => {
+      const C = window.MMGR.Cloud;
+      if (C && C.cloudReviewReject) C.cloudReviewReject(el && el.getAttribute('data-id'));
+    },
+    cloudReviewToggleDiffs: el => {
+      const C = window.MMGR.Cloud;
+      if (C && C.reviewToggleDiffs) C.reviewToggleDiffs(el && el.getAttribute('data-id'));
+    },
     // IN-PROJECT DELETE (owner 2026-08-17): Settings > Controls > Danger
     // Zone , confirm modal + password verify + the owner-only soft delete.
-    'cloudDeleteOpen': () => { const C = window.MMGR.Cloud; if (C && C.cloudDeleteOpen) C.cloudDeleteOpen(); },
-    'cloudDeleteClose': () => { const C = window.MMGR.Cloud; if (C && C.cloudDeleteClose) C.cloudDeleteClose(); },
+    cloudDeleteOpen: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.cloudDeleteOpen) C.cloudDeleteOpen();
+    },
+    cloudDeleteClose: () => {
+      const C = window.MMGR.Cloud;
+      if (C && C.cloudDeleteClose) C.cloudDeleteClose();
+    },
     // HOLD-TO-DELETE (owner 2026-09-17): the danger-zone confirm fires from
     // the 10s hold listeners below, never from a click (a synthetic click
     // after a held pointerup must not double-fire the delete).
-    'cloudDeleteConfirm': () => {},
-    'cascadeGantt': () => window.MMGR.App.cascadeGantt(),
-    'toggleCritical': (el) => window.MMGR.App.toggleCritical(el),
-    'tglLeadtimeLane': (el) => window.MMGR.App.tglLeadtimeLane(el),
-    'populateSprint': () => window.MMGR.App.populateSprint(),
-    'openPrompt': (el) => window.MMGR.App.openPrompt(el.getAttribute('data-type')),
-    'openDrwToSave': () => window.MMGR.App.openDrwToSave(),
-    'openDrwToPrompts': (el) => window.MMGR.App.openDrwToPrompts(el.getAttribute('data-type')),
-    'bkToggle': () => window.MMGR.App.bkToggle(),
-    'bkCloud': () => window.MMGR.App.bkCloud(),
+    cloudDeleteConfirm: () => {},
+    cascadeGantt: () => window.MMGR.App.cascadeGantt(),
+    toggleCritical: el => window.MMGR.App.toggleCritical(el),
+    tglLeadtimeLane: el => window.MMGR.App.tglLeadtimeLane(el),
+    populateSprint: () => window.MMGR.App.populateSprint(),
+    openPrompt: el => window.MMGR.App.openPrompt(el.getAttribute('data-type')),
+    openDrwToSave: () => window.MMGR.App.openDrwToSave(),
+    openDrwToPrompts: el => window.MMGR.App.openDrwToPrompts(el.getAttribute('data-type')),
+    bkToggle: () => window.MMGR.App.bkToggle(),
+    bkCloud: () => window.MMGR.App.bkCloud(),
     // PART F T9 (no-offline-copy): export/download are refused while a cloud
     // share code is held , the recipient must not leave with the project file.
-    'saveProjectFile': () => { if (window.MMGR.App && window.MMGR.App.cloudExportBlocked('saveProjectFile')) return; window.MMGR.App.saveProjectFile(); },
-    'saveBaseline': () => window.MMGR.App.saveBaseline(),
-    'restoreBaseline': () => window.MMGR.App.restoreBaseline(),
-    'undo': () => window.MMGR.App.undo(),
-    'redo': () => window.MMGR.App.redo(),
-    'setRegion': (el) => window.MMGR.App.setRegion(el.value),
-    'setDeadline': (el) => window.MMGR.App.setDeadline(el.value),
-    'cfmOk': () => window.MMGR.App.cfmOk(),
-    'cfmCancel': () => window.MMGR.App.cfmCancel(),
-    'keepMine': () => window.MMGR.App.keepMine(),
-    'keepTheirs': () => window.MMGR.App.keepTheirs(),
-    'openOM': () => { if (window.MMGR.App && window.MMGR.App.cloudExportBlocked('openOM')) return; window.MMGR.App.openOM(); },
-    'closeOM': () => window.MMGR.App.closeOM(),
-    'cpOut': () => { if (window.MMGR.App && window.MMGR.App.cloudExportBlocked('cpOut')) return; window.MMGR.App.cpOut(); },
-    'loadClip': () => window.MMGR.App.loadClip(),
-    'openDrw': () => window.MMGR.App.openDrw(),
-    'closeDrw': () => window.MMGR.App.closeDrw(),
+    saveProjectFile: () => {
+      if (window.MMGR.App && window.MMGR.App.cloudExportBlocked('saveProjectFile')) return;
+      window.MMGR.App.saveProjectFile();
+    },
+    saveBaseline: () => window.MMGR.App.saveBaseline(),
+    restoreBaseline: () => window.MMGR.App.restoreBaseline(),
+    undo: () => window.MMGR.App.undo(),
+    redo: () => window.MMGR.App.redo(),
+    setRegion: el => window.MMGR.App.setRegion(el.value),
+    setDeadline: el => window.MMGR.App.setDeadline(el.value),
+    cfmOk: () => window.MMGR.App.cfmOk(),
+    cfmCancel: () => window.MMGR.App.cfmCancel(),
+    keepMine: () => window.MMGR.App.keepMine(),
+    keepTheirs: () => window.MMGR.App.keepTheirs(),
+    openOM: () => {
+      if (window.MMGR.App && window.MMGR.App.cloudExportBlocked('openOM')) return;
+      window.MMGR.App.openOM();
+    },
+    closeOM: () => window.MMGR.App.closeOM(),
+    cpOut: () => {
+      if (window.MMGR.App && window.MMGR.App.cloudExportBlocked('cpOut')) return;
+      window.MMGR.App.cpOut();
+    },
+    loadClip: () => window.MMGR.App.loadClip(),
+    openDrw: () => window.MMGR.App.openDrw(),
+    closeDrw: () => window.MMGR.App.closeDrw(),
     // DIR-3: Core-Mode onboarding callout , jump to the pack toggles / dismiss.
-    'openPacks': () => window.MMGR.App.openPacks(),
-    'dismissPacksCallout': () => window.MMGR.App.dismissPacksCallout(),
-    'undoClr': () => window.MMGR.App.undoClr(),
-    'closeMLC': () => window.MMGR.App.closeMLC(),
-    'closeWbsImport': () => window.MMGR.Tasks.closeWbsImport(),
-    'closeWbsImportBg': (el, e) => { if (e.target === el) window.MMGR.Tasks.closeWbsImport(); },
-    'closeImportDates': () => window.MMGR.Tasks.closeImportDates(),
-    'closeImportDatesBg': (el, e) => { if (e.target === el) window.MMGR.Tasks.closeImportDates(); },
-    'addRaciTaskFromPicker': (el) => { window.MMGR.Raci.addRaciTaskFromPicker(el.value); el.value = ''; },
-    'addRaciPersonFromPicker': (el) => { window.MMGR.Raci.addRaciPersonFromPicker(el.value); el.value = ''; },
-    'cycleRaci': (el, ev) => window.MMGR.Raci.cycleRaci(
-      el.getAttribute('data-task'),
-      el.getAttribute('data-person'),
-      ev
-    ),
+    openPacks: () => window.MMGR.App.openPacks(),
+    dismissPacksCallout: () => window.MMGR.App.dismissPacksCallout(),
+    undoClr: () => window.MMGR.App.undoClr(),
+    closeMLC: () => window.MMGR.App.closeMLC(),
+    closeWbsImport: () => window.MMGR.Tasks.closeWbsImport(),
+    closeWbsImportBg: (el, e) => {
+      if (e.target === el) window.MMGR.Tasks.closeWbsImport();
+    },
+    closeImportDates: () => window.MMGR.Tasks.closeImportDates(),
+    closeImportDatesBg: (el, e) => {
+      if (e.target === el) window.MMGR.Tasks.closeImportDates();
+    },
+    addRaciTaskFromPicker: el => {
+      window.MMGR.Raci.addRaciTaskFromPicker(el.value);
+      el.value = '';
+    },
+    addRaciPersonFromPicker: el => {
+      window.MMGR.Raci.addRaciPersonFromPicker(el.value);
+      el.value = '';
+    },
+    cycleRaci: (el, ev) =>
+      window.MMGR.Raci.cycleRaci(el.getAttribute('data-task'), el.getAttribute('data-person'), ev),
     // Settings panel
-    'setUserName': (el) => window.MMGR.App.setUserName(el.value),
-    'tglTheme': (el) => { window.MMGR.App.tglTheme(); },
+    setUserName: el => window.MMGR.App.setUserName(el.value),
+    tglTheme: el => {
+      window.MMGR.App.tglTheme();
+    },
     // Performance Mode toggle (owner 2026-09-06): trims heavy CSS blur/shadow
     // layers + 3D tilt. Mirrors mmgr-perf.js which owns the localStorage slot
     // and the [data-perf] attribute on <html>. Safe in view-only (device pref).
-    'tglPerfMode': (el) => {
+    tglPerfMode: el => {
       const P = window.MMGR.Perf;
       if (P && P.set) P.set(el.checked);
       // OWNER 2026-09-15: perf mode now also gates the starry WebGL shader.
@@ -2268,28 +3270,34 @@ window.MMGR = MMGR;
       // (and turning it ON brings the background back on capable machines).
       if (window.MMGR && MMGR.Glass && MMGR.Glass.sync) MMGR.Glass.sync();
     },
-    'tglCh': (el) => { window.MMGR.App.tglCh(); },
-    'tglFlag': (el) => window.MMGR.App.tglFlag(el),
-    'clearErrorLog': () => window.MMGR.App.clearErrorLog(),
+    tglCh: el => {
+      window.MMGR.App.tglCh();
+    },
+    tglFlag: el => window.MMGR.App.tglFlag(el),
+    clearErrorLog: () => window.MMGR.App.clearErrorLog(),
     // DIR-1a/1b: error log export (view-only) + remote-reporting toggle/URL
     // (device-level preference, not project state).
-    'copyErrorLog': () => window.MMGR.App.copyErrorLog(),
-    'downloadErrorLog': () => window.MMGR.App.downloadErrorLog(),
-    'tglErrReport': (el) => window.MMGR.App.tglErrReport(),
+    copyErrorLog: () => window.MMGR.App.copyErrorLog(),
+    downloadErrorLog: () => window.MMGR.App.downloadErrorLog(),
+    tglErrReport: el => window.MMGR.App.tglErrReport(),
     // MASTER-ACTION-PLAN Rank 6.1 , sanitized report package (read-only).
-    'reportIssueCopy': () => window.MMGR.App.reportIssueCopy(),
-    'reportIssueDownload': () => window.MMGR.App.reportIssueDownload(),
-    'tglReportContext': () => window.MMGR.App.tglReportContext(),
-    'setErrWebhook': (el) => window.MMGR.App.setErrWebhook(el),
+    reportIssueCopy: () => window.MMGR.App.reportIssueCopy(),
+    reportIssueDownload: () => window.MMGR.App.reportIssueDownload(),
+    tglReportContext: () => window.MMGR.App.tglReportContext(),
+    setErrWebhook: el => window.MMGR.App.setErrWebhook(el),
     // Rank 3.1: Core Mode vs Advanced Packs , toggling a pack mutates
     // state.packs (blocked in view-only, like every other write). Same
     // checkbox convention as tglFlag: Chrome has already flipped `checked`
     // before this runs, so read it as-is (no manual flip, no preventDefault).
-    'tglPack': (el) => {
+    tglPack: el => {
       const pack = el.getAttribute('data-pack');
       if (!pack) return;
-      const on = el.type === 'checkbox' ? el.checked : (window.MMGR.State.getState().packs && window.MMGR.State.getState().packs[pack] !== false);
-      window.MMGR.State.updateState(function(s) {
+      const on =
+        el.type === 'checkbox'
+          ? el.checked
+          : window.MMGR.State.getState().packs &&
+            window.MMGR.State.getState().packs[pack] !== false;
+      window.MMGR.State.updateState(function (s) {
         if (!s.packs) s.packs = {};
         s.packs[pack] = on;
         // DIR-3: once any pack has EVER been turned on, the Core-Mode nudge
@@ -2297,94 +3305,127 @@ window.MMGR = MMGR;
         if (on) s.packsEverEnabled = true;
       });
       if (window.MMGR.Render && window.MMGR.Render.renderPacks) window.MMGR.Render.renderPacks();
-      if (window.MMGR.Render && window.MMGR.Render.syncPackChips) window.MMGR.Render.syncPackChips();
+      if (window.MMGR.Render && window.MMGR.Render.syncPackChips)
+        window.MMGR.Render.syncPackChips();
       if (window.MMGR.App && window.MMGR.App.showToast) {
-        window.MMGR.App.showToast('Advanced pack ' + pack + ' turned ' + (on ? 'on' : 'off') + '.', 'ok');
+        window.MMGR.App.showToast(
+          'Advanced pack ' + pack + ' turned ' + (on ? 'on' : 'off') + '.',
+          'ok'
+        );
       }
     },
-    'tglLock': () => window.MMGR.App.tglLock(),
-    'setWorkWeek': (el) => window.MMGR.App.setWorkWeek(el.value),
-    'loadProjectFileClick': () => { document.getElementById('load-file').click(); },
-    'loadProjectFile': (el) => window.MMGR.App.loadProjectFile({ target: el }),
-    'mergeProjectFileClick': () => { document.getElementById('merge-file').click(); },
-    'mergeProjectFile': (el) => window.MMGR.App.mergeProjectFile({ target: el }),
-    'print': () => window.print(),
+    tglLock: () => window.MMGR.App.tglLock(),
+    setWorkWeek: el => window.MMGR.App.setWorkWeek(el.value),
+    loadProjectFileClick: () => {
+      document.getElementById('load-file').click();
+    },
+    loadProjectFile: el => window.MMGR.App.loadProjectFile({ target: el }),
+    mergeProjectFileClick: () => {
+      document.getElementById('merge-file').click();
+    },
+    mergeProjectFile: el => window.MMGR.App.mergeProjectFile({ target: el }),
+    print: () => window.print(),
     // Charter fields
-    'updCharter': (el) => {
+    updCharter: el => {
       const field = el.getAttribute('data-charter-field');
       window.MMGR.Charter.updCharter(field, el.value);
     },
     // Closure fields
-    'updClose': (el) => {
+    updClose: el => {
       const field = el.getAttribute('data-close-field');
       window.MMGR.Closure.updClose(field, el.value);
     },
     // Hold-to-clear is driven by pointerdown/pointerup delegation below,
     // NOT by click , a plain click must never start the hold countdown.
     // Drag and drop (Kanban)
-    'dragDrop': (el) => {
+    dragDrop: el => {
       // Handled by special drag/drop event listeners
     },
     // Hold-to-clear runs on pointerdown delegation (never click), so the
     // click path is an explicit no-op , enforced by the headless audit.
-    'startHold': () => {}, // pointerdown-only
+    startHold: () => {}, // pointerdown-only
     // Jump to timeline
-    'jumpToDashTimeline': () => window.MMGR.App.jumpToDashTimeline(),
+    jumpToDashTimeline: () => window.MMGR.App.jumpToDashTimeline(),
     // Generic field update for dynamic render templates (WBS, risks, etc.)
     // evtType ('input' vs 'change') is forwarded so table-rendering updaters
     // can save on keystroke but defer the re-render to blur/commit , a
     // re-render on every keystroke destroys the focused input (browser-verified).
-    'updTaskField': (el, e) => {
+    updTaskField: (el, e) => {
       const id = el.getAttribute('data-id');
       const field = el.getAttribute('data-field');
       window.MMGR.Tasks.updTaskField(id, field, el.value, e && e.type);
     },
-    'updKPI': (el) => {
+    updKPI: el => {
       const idx = parseInt(el.getAttribute('data-idx'));
       const field = el.getAttribute('data-field');
       window.MMGR.Charter.updKPI(idx, field, el.value);
     },
-    'updKPILink': (el) => window.MMGR.Charter.updKPILink(parseInt(el.getAttribute('data-idx')), el.value),
-    'updKPIDir': (el) => window.MMGR.Charter.updKPIDir(parseInt(el.getAttribute('data-idx')), el.value),
-    'updRaciTask': (el) => window.MMGR.Raci.updRaciTask(parseInt(el.getAttribute('data-idx')), el.value),
-    'updRaciPerson': (el) => window.MMGR.Raci.updRaciPerson(parseInt(el.getAttribute('data-idx')), el.getAttribute('data-field'), el.value),
-    'delRaciTask': (el) => window.MMGR.Raci.delRaciTask(parseInt(el.getAttribute('data-idx'))),
-    'delRaciPerson': (el) => window.MMGR.Raci.delRaciPerson(parseInt(el.getAttribute('data-idx'))),
-    'collapseAll': () => window.MMGR.Tasks.collapseAll(),
-    'expandAll': () => window.MMGR.Tasks.expandAll(),
-    'tglMilestone': (el) => window.MMGR.Tasks.tglMilestone(el.getAttribute('data-id')),
-    'runMonteCarlo': () => window.MMGR.Schedule.runMonteCarlo(),
-    'tglDMAICPhase': (el) => window.MMGR.Dmaic.tglDMAICPhase(el.getAttribute('data-phase')),
-    'updDMAIC': (el) => window.MMGR.Dmaic.updDMAIC(el.getAttribute('data-phase'), el.getAttribute('data-field'), el.value),
-    'uploadCharterDoc': () => window.MMGR.Charter.uploadCharterDoc(),
-    'handleCharterUpload': (el) => window.MMGR.Charter.handleCharterUpload({ target: el }),
-    'cuSwitchTab': (el) => window.MMGR.Charter.cuSwitchTab(el.getAttribute('data-which')),
-    'addSpendEntry': () => window.MMGR.Spend.addSpendEntry(),
-    'updSpendEntry': (el, e) => window.MMGR.Spend.updSpendEntry(parseInt(el.getAttribute('data-idx')), el.getAttribute('data-field'), el.value, e && e.type),
-    'delSpendEntry': (el) => window.MMGR.Spend.delSpendEntry(parseInt(el.getAttribute('data-idx'))),
+    updKPILink: el =>
+      window.MMGR.Charter.updKPILink(parseInt(el.getAttribute('data-idx')), el.value),
+    updKPIDir: el => window.MMGR.Charter.updKPIDir(parseInt(el.getAttribute('data-idx')), el.value),
+    updRaciTask: el =>
+      window.MMGR.Raci.updRaciTask(parseInt(el.getAttribute('data-idx')), el.value),
+    updRaciPerson: el =>
+      window.MMGR.Raci.updRaciPerson(
+        parseInt(el.getAttribute('data-idx')),
+        el.getAttribute('data-field'),
+        el.value
+      ),
+    delRaciTask: el => window.MMGR.Raci.delRaciTask(parseInt(el.getAttribute('data-idx'))),
+    delRaciPerson: el => window.MMGR.Raci.delRaciPerson(parseInt(el.getAttribute('data-idx'))),
+    collapseAll: () => window.MMGR.Tasks.collapseAll(),
+    expandAll: () => window.MMGR.Tasks.expandAll(),
+    tglMilestone: el => window.MMGR.Tasks.tglMilestone(el.getAttribute('data-id')),
+    runMonteCarlo: () => window.MMGR.Schedule.runMonteCarlo(),
+    tglDMAICPhase: el => window.MMGR.Dmaic.tglDMAICPhase(el.getAttribute('data-phase')),
+    updDMAIC: el =>
+      window.MMGR.Dmaic.updDMAIC(
+        el.getAttribute('data-phase'),
+        el.getAttribute('data-field'),
+        el.value
+      ),
+    uploadCharterDoc: () => window.MMGR.Charter.uploadCharterDoc(),
+    handleCharterUpload: el => window.MMGR.Charter.handleCharterUpload({ target: el }),
+    cuSwitchTab: el => window.MMGR.Charter.cuSwitchTab(el.getAttribute('data-which')),
+    addSpendEntry: () => window.MMGR.Spend.addSpendEntry(),
+    updSpendEntry: (el, e) =>
+      window.MMGR.Spend.updSpendEntry(
+        parseInt(el.getAttribute('data-idx')),
+        el.getAttribute('data-field'),
+        el.value,
+        e && e.type
+      ),
+    delSpendEntry: el => window.MMGR.Spend.delSpendEntry(parseInt(el.getAttribute('data-idx'))),
     // Meetings
-    'startMeeting': (el) => window.MMGR.Meetings.startMeeting(el.getAttribute('data-kind')),
-    'copyMeetingTemplate': (el) => window.MMGR.Meetings.copyMeetingTemplate(el.getAttribute('data-kind')),
-    'openMeetPrompt': () => window.MMGR.Meetings.openMeetPrompt(),
-    'tglMeetItem': (el) => window.MMGR.Meetings.tglMeetItem(parseInt(el.getAttribute('data-idx'))),
-    'updMeetItemNote': (el) => window.MMGR.Meetings.updMeetItemNote(parseInt(el.getAttribute('data-idx')), el.value),
-    'updMeetField': (el) => window.MMGR.Meetings.updMeetField(el.getAttribute('data-field'), el.value),
-    'endMeeting': () => window.MMGR.Meetings.endMeeting(),
-    'cancelActiveMeeting': () => window.MMGR.Meetings.cancelActiveMeeting(),
-    'copyMeetingMinutes': (el) => window.MMGR.Meetings.copyMeetingMinutes(parseInt(el.getAttribute('data-id'))),
-    // T6 (2026-08-16): delete a concluded meeting with undo. MUTATING , 
+    startMeeting: el => window.MMGR.Meetings.startMeeting(el.getAttribute('data-kind')),
+    copyMeetingTemplate: el =>
+      window.MMGR.Meetings.copyMeetingTemplate(el.getAttribute('data-kind')),
+    openMeetPrompt: () => window.MMGR.Meetings.openMeetPrompt(),
+    tglMeetItem: el => window.MMGR.Meetings.tglMeetItem(parseInt(el.getAttribute('data-idx'))),
+    updMeetItemNote: el =>
+      window.MMGR.Meetings.updMeetItemNote(parseInt(el.getAttribute('data-idx')), el.value),
+    updMeetField: el => window.MMGR.Meetings.updMeetField(el.getAttribute('data-field'), el.value),
+    endMeeting: () => window.MMGR.Meetings.endMeeting(),
+    cancelActiveMeeting: () => window.MMGR.Meetings.cancelActiveMeeting(),
+    copyMeetingMinutes: el =>
+      window.MMGR.Meetings.copyMeetingMinutes(parseInt(el.getAttribute('data-id'))),
+    // T6 (2026-08-16): delete a concluded meeting with undo. MUTATING ,
     // deliberately absent from READONLY_SAFE_ACTIONS (view-only scopes refuse).
-    'delMeeting': (el) => window.MMGR.Meetings.delMeeting(parseInt(el.getAttribute('data-id'))),
-    'undoDelMeeting': () => window.MMGR.Meetings.undoDelMeeting(),
-    'tglPromise': (el) => window.MMGR.Meetings.tglPromise(el.getAttribute('data-kind'), parseInt(el.getAttribute('data-idx'))),
+    delMeeting: el => window.MMGR.Meetings.delMeeting(parseInt(el.getAttribute('data-id'))),
+    undoDelMeeting: () => window.MMGR.Meetings.undoDelMeeting(),
+    tglPromise: el =>
+      window.MMGR.Meetings.tglPromise(
+        el.getAttribute('data-kind'),
+        parseInt(el.getAttribute('data-idx'))
+      ),
     // Rank 1.5: meeting voice capture (mutates state , NOT in READONLY_SAFE_ACTIONS)
-    'voiceStartCapture': () => window.MMGR.Voice.startCapture(),
-    'voiceStopCapture': () => window.MMGR.Voice.stopCapture(),
-    'voiceDiscardCapture': () => window.MMGR.Voice.discardCapture(false),
+    voiceStartCapture: () => window.MMGR.Voice.startCapture(),
+    voiceStopCapture: () => window.MMGR.Voice.stopCapture(),
+    voiceDiscardCapture: () => window.MMGR.Voice.discardCapture(false),
     // Tier 1: manual offline whisper transcription / retry (mutates state , blocked in view-only)
-    'voiceTranscribeOffline': () => window.MMGR.Voice.transcribeOffline(),
-    'voiceRecoverDismiss': () => window.MMGR.Voice.dismissRecovery(),
-    'updField': (el, e) => {
+    voiceTranscribeOffline: () => window.MMGR.Voice.transcribeOffline(),
+    voiceRecoverDismiss: () => window.MMGR.Voice.dismissRecovery(),
+    updField: (el, e) => {
       const module = el.getAttribute('data-module');
       const field = el.getAttribute('data-field');
       const idx = parseInt(el.getAttribute('data-idx'));
@@ -2392,39 +3433,45 @@ window.MMGR = MMGR;
       // Explicit module → { namespace, updater } map. No string surgery, so
       // a new module can never silently route to the wrong function.
       const MODULE_UPDATERS = {
-        'Risks':        { ns: 'Risks', fn: 'updRisk' },
-        'Issues':       { ns: 'Risks', fn: 'updIssue' }, // Issues live in Risks
-        'Resources':    { ns: 'Resources', fn: 'updResource' },
-        'Budget':       { ns: 'Budget', fn: 'updBudgetLine' },
-        'Stakeholders': { ns: 'Stakeholders', fn: 'updStake' },
-        'Changes':      { ns: 'Changes', fn: 'updChange' },
-        'Log':          { ns: 'Log', fn: 'updLog' },
+        Risks: { ns: 'Risks', fn: 'updRisk' },
+        Issues: { ns: 'Risks', fn: 'updIssue' }, // Issues live in Risks
+        Resources: { ns: 'Resources', fn: 'updResource' },
+        Budget: { ns: 'Budget', fn: 'updBudgetLine' },
+        Stakeholders: { ns: 'Stakeholders', fn: 'updStake' },
+        Changes: { ns: 'Changes', fn: 'updChange' },
+        Log: { ns: 'Log', fn: 'updLog' },
         // CloseItems' updater takes (index, done) , no field parameter.
-        'CloseItems':   { ns: 'Closure', fn: 'updCloseItem', doneOnly: true },
-        'Comms':        { ns: 'Comms', fn: 'updComms' },
-        'Documents':    { ns: 'Documents', fn: 'updDoc' },
+        CloseItems: { ns: 'Closure', fn: 'updCloseItem', doneOnly: true },
+        Comms: { ns: 'Comms', fn: 'updComms' },
+        Documents: { ns: 'Documents', fn: 'updDoc' },
         // MARKET-FEATURE-ROADMAP C1/C2/C3: RFI + Submittal + Punch List
         // registries (state mutations , never READONLY_SAFE).
-        'Rfis':         { ns: 'Rfis', fn: 'updRfi' },
-        'Submittals':   { ns: 'Submittals', fn: 'updSubmittal' },
-        'PunchList':    { ns: 'PunchList', fn: 'updPunch' },
+        Rfis: { ns: 'Rfis', fn: 'updRfi' },
+        Submittals: { ns: 'Submittals', fn: 'updSubmittal' },
+        PunchList: { ns: 'PunchList', fn: 'updPunch' },
         // MARKET-FEATURE-ROADMAP Section C batch 2 (state mutations , never
         // READONLY_SAFE).
-        'PayApps':      { ns: 'PayApps', fn: 'updPayApp' },
-        'Inspections':  { ns: 'Inspections', fn: 'updInspection' },
-        'Incidents':    { ns: 'Incidents', fn: 'updIncident' },
-        'Handover':     { ns: 'Handover', fn: 'updHandoverItem' },
-        'Warranty':     { ns: 'Warranty', fn: 'updWarranty' },
-        'DrawingLog':   { ns: 'DrawingLog', fn: 'updDrawLog' },
-        'Permits':      { ns: 'Permits', fn: 'updPermit' },
-        'Procurement':  { ns: 'Procurement', fn: 'updProcurement' },
-        'TimeTracking': { ns: 'TimeTracking', fn: 'updTimeEntry' },
-        'Equipment':    { ns: 'Equipment', fn: 'updEquipment' }
+        PayApps: { ns: 'PayApps', fn: 'updPayApp' },
+        Inspections: { ns: 'Inspections', fn: 'updInspection' },
+        Incidents: { ns: 'Incidents', fn: 'updIncident' },
+        Handover: { ns: 'Handover', fn: 'updHandoverItem' },
+        Warranty: { ns: 'Warranty', fn: 'updWarranty' },
+        DrawingLog: { ns: 'DrawingLog', fn: 'updDrawLog' },
+        Permits: { ns: 'Permits', fn: 'updPermit' },
+        Procurement: { ns: 'Procurement', fn: 'updProcurement' },
+        TimeTracking: { ns: 'TimeTracking', fn: 'updTimeEntry' },
+        Equipment: { ns: 'Equipment', fn: 'updEquipment' }
       };
       const target = MODULE_UPDATERS[module];
-      if (!target) { console.warn('updField: no updater mapped for module "' + module + '"'); return; }
+      if (!target) {
+        console.warn('updField: no updater mapped for module "' + module + '"');
+        return;
+      }
       const updater = window.MMGR[target.ns] && window.MMGR[target.ns][target.fn];
-      if (typeof updater !== 'function') { console.warn('updField: ' + target.ns + '.' + target.fn + ' is not a function'); return; }
+      if (typeof updater !== 'function') {
+        console.warn('updField: ' + target.ns + '.' + target.fn + ' is not a function');
+        return;
+      }
       // evtType forwarded (see 'updTaskField'): table-rendering updaters save
       // on `input` keystrokes and re-render on `change` so focus is kept.
       const evtType = e && e.type;
@@ -2440,121 +3487,189 @@ window.MMGR = MMGR;
   // view-only scope are non-mutating ones (navigation, copy, print, drawer
   // views, report generation). Everything else is refused with a toast.
   const READONLY_SAFE_ACTIONS = {
-    'showSec': 1, 'cpAllPage': 1, 'print': 1, 'openDrw': 1, 'closeDrw': 1,
+    showSec: 1,
+    cpAllPage: 1,
+    print: 1,
+    openDrw: 1,
+    closeDrw: 1,
     // OWNER 2026-09-06: the sign-in sheet is identity UI, never project
     // state - safe in view-only mode (same reasoning as syncConnect).
-    'openSignIn': 1, 'closeSignIn': 1,
+    openSignIn: 1,
+    closeSignIn: 1,
     // T8 bids rebuild: opening a proposal link / composing a clarification
     // email and dismissing the Add Bid Package modal never mutate state.
-    'bidProposal': 1, 'bidClarify': 1, 'closeBidPkg': 1, 'closeBidPkgBg': 1,
-    'swDtab': 1, 'openDrwToPrompts': 1, 'openDrwToSave': 1,
+    bidProposal: 1,
+    bidClarify: 1,
+    closeBidPkg: 1,
+    closeBidPkgBg: 1,
+    swDtab: 1,
+    openDrwToPrompts: 1,
+    openDrwToSave: 1,
     // C23 pool: opening the Library / refreshing the merge mutates NO
     // project state until the user explicitly links a row (poolLinkRow
     // etc. are mutating and stay read-only-blocked for viewers).
-    'poolOpenLibrary': 1, 'poolCloseLibrary': 1, 'poolRefreshAndMerge': 1,
-    'jumpToDashTimeline': 1, 'closeMLC': 1, 'openMeetPrompt': 1,
-    'copyMeetingMinutes': 1, 'runMonteCarlo': 1, 'undoClr': 1,
+    poolOpenLibrary: 1,
+    poolCloseLibrary: 1,
+    poolRefreshAndMerge: 1,
+    jumpToDashTimeline: 1,
+    closeMLC: 1,
+    openMeetPrompt: 1,
+    copyMeetingMinutes: 1,
+    runMonteCarlo: 1,
+    undoClr: 1,
     // MONOLITH-FEATURE-PARITY-DIRECTIVES restorations: risk matrix filtering,
     // WBS issues banner toggle, Import Dates Copy List, email templates, and
     // Print Charter are ALL view-only. saveCharter mutates state and stays
     // blocked in view-only (deliberately not listed here).
-    'riskMatrixCell': 1, 'riskMatrixClear': 1, 'tglWbsIssues': 1,
-    'copyIdTemplate': 1, 'emailTpl': 1, 'printCharter': 1,
+    riskMatrixCell: 1,
+    riskMatrixClear: 1,
+    tglWbsIssues: 1,
+    copyIdTemplate: 1,
+    emailTpl: 1,
+    printCharter: 1,
     // Task 3 AI import: preview, AI read, file load and the file dialog
     // never mutate state (only Fill In does) - safe in view-only mode.
-    'idReadWithAi': 1, 'idFilePickTrigger': 1, 'idFilePick': 1,
+    idReadWithAi: 1,
+    idFilePickTrigger: 1,
+    idFilePick: 1,
     // Task 6 mailbox: open/close/dismiss are view actions over s.aiInbox;
     // dismiss/clear DO mutate the inbox (local, reversible by the watcher
     // regenerating) - they stay blocked in view-only mode, open/close pass.
-    'openAiMailbox': 1, 'closeAiMailbox': 1, 'closeAiMailboxBg': 1,
+    openAiMailbox: 1,
+    closeAiMailbox: 1,
+    closeAiMailboxBg: 1,
     // Phase 7: wxRefresh (view the forecast) + wxCopyNotice (copy text) are
     // read-only; wxGeocode writes the site location config and wxLogToday /
     // wxLogManual write the LD-claim weather log , all stay blocked in
     // view-only mode. meetSentiment and tglLeadtimeReview mutate state too.
-    'wxRefresh': 1, 'wxCopyNotice': 1,
+    wxRefresh: 1,
+    wxCopyNotice: 1,
     // Rank 3.1: tglPack mutates state.packs -> stays blocked in view-only.
     // Rank 1.1: claimGenerate composes a read-only package; claimSetCause
     // mutates slip tags and stays blocked in view-only mode.
-    'claimGenerate': 1,
+    claimGenerate: 1,
     // Rank 2.1: digestGenerate composes a read-only summary; digestPin writes
     // the reference snapshot and stays blocked in view-only mode.
-    'digestGenerate': 1,
+    digestGenerate: 1,
     // AI window: open/close/load/copy/attach are read-only. Rank 2.3's
     // aiRunPreset/aiRun WRITE state.aiOutputs and aiSet* writes state.config
     // , all correctly stay BLOCKED in view-only mode.
-    'openAiWin': 1, 'closeAiWin': 1, 'closeAiWinBg': 1, 'aiPreset': 1,
-    'aiAttachContext': 1, 'aiCopy': 1, 'aiClear': 1, 'aiCopyOut': 1,
+    openAiWin: 1,
+    closeAiWin: 1,
+    closeAiWinBg: 1,
+    aiPreset: 1,
+    aiAttachContext: 1,
+    aiCopy: 1,
+    aiClear: 1,
+    aiCopyOut: 1,
     // Rank 1.5: dismissRecovery only hides a local chip (module flag + DOM)
     // , non-mutating, safe in view-only mode. The three capture actions
     // (voiceStartCapture/voiceStopCapture/voiceDiscardCapture) DO mutate
     // state and correctly stay blocked.
-    'voiceRecoverDismiss': 1,
+    voiceRecoverDismiss: 1,
     // Rank 3.4: viewport preference is a device-level screen choice, not
     // project state , allowed in view-only (like theme is a preference, but
     // this one intentionally stays out of project state entirely).
-    'vpAccept': 1, 'vpDismiss': 1, 'vpFull': 1,
+    vpAccept: 1,
+    vpDismiss: 1,
+    vpFull: 1,
     // Rank 3.5: glass preference is a device-level screen choice, not
     // project state , allowed in view-only like the viewport prefs.
-    'tglGlassMode': 1,
+    tglGlassMode: 1,
     // OWNER 2026-09-06: Performance Mode is a device-level screen choice, not
     // project state , allowed in view-only like glass mode + theme.
-    'tglPerfMode': 1,
+    tglPerfMode: 1,
     // Theme-persistence: the theme preference is a device-level choice too
-    // (localStorage mmgr_theme, the same slot the launcher + admin read) , 
+    // (localStorage mmgr_theme, the same slot the launcher + admin read) ,
     // allowed in view-only like glass mode. tglTheme writes only the device
     // pref + body class in view-only; the per-project state write is skipped.
-    'tglTheme': 1,
+    tglTheme: 1,
     // THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §4.2: the mobile nav drawer is
     // pure device-UI chrome (body.nav-open class only) , never project state.
     // SIDEBAR-HAMBURGER-TOGGLE-PLAN: the sidebar toggle is the same kind of
     // pure device-UI chrome (body.sidebar-on + localStorage pref).
-    'tglNav': 1, 'tglSidebar': 1, 'tglSidebarOpen': 1, 'bkToggle': 1, 'bkCloud': 1,
+    tglNav: 1,
+    tglSidebar: 1,
+    tglSidebarOpen: 1,
+    bkToggle: 1,
+    bkCloud: 1,
     // DIR-1a/1b: copying/downloading the error log is read-only; the
     // remote-reporting toggle + webhook URL are device-level preferences
     // (localStorage, like the glass mode toggle) , never project state.
-    'copyErrorLog': 1, 'downloadErrorLog': 1, 'tglErrReport': 1, 'setErrWebhook': 1,
+    copyErrorLog: 1,
+    downloadErrorLog: 1,
+    tglErrReport: 1,
+    setErrWebhook: 1,
     // MASTER-ACTION-PLAN Rank 6.1: building/copying/downloading the report
     // is read-only; the context toggle is a session-only UI pref.
-    'reportIssueCopy': 1, 'reportIssueDownload': 1, 'tglReportContext': 1,
+    reportIssueCopy: 1,
+    reportIssueDownload: 1,
+    tglReportContext: 1,
     // Rank 4.5: Google identity is a device-level label, never a gate to
     // project data , signing in/out/dismissing never mutates project state.
-    'syncConnect': 1, 'syncSignOut': 1, 'syncClientId': 1, 'syncDismissSuggest': 1,
+    syncConnect: 1,
+    syncSignOut: 1,
+    syncClientId: 1,
+    syncDismissSuggest: 1,
     // GOOGLE-DRIVE-BACKUP: backup is export-equivalent (reads the workspace,
     // writes Drive + a device pref) and the auto-interval + backup passphrase
     // are device-level preferences (localStorage / sessionStorage, never
     // project state) , safe in view-only, like claimGenerate / digestGenerate
     // / runMonteCarlo above. Restore is DELIBERATELY excluded: it overwrites
     // local workspace, exactly like import, so it stays blocked in view-only.
-    'driveBackup': 1, 'driveAutoInterval': 1, 'driveSetPass': 1,
+    driveBackup: 1,
+    driveAutoInterval: 1,
+    driveSetPass: 1,
     // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 1: cloud create/save/recover/
     // copy/sign-in never mutate the local workspace (they push to the server
     // or manage session-only credentials) , safe in view-only, exactly like
     // driveBackup above. Load is DELIBERATELY excluded: it overwrites the
     // local workspace like driveRestore/import, so it stays blocked in
     // view-only.
-    'cloudCreate': 1, 'cloudClaim': 1, 'cloudUpgrade': 1, 'cloudResendVerify': 1, 'cloudSave': 1, 'cloudRecover': 1, 'cloudCopyCode': 1, 'cloudSignIn': 1,
+    cloudCreate: 1,
+    cloudClaim: 1,
+    cloudUpgrade: 1,
+    cloudResendVerify: 1,
+    cloudSave: 1,
+    cloudRecover: 1,
+    cloudCopyCode: 1,
+    cloudSignIn: 1,
     // SYNC BOND (Task 13): re-sync pulls the cloud snapshot through the
     // per-field merge (newest-wins). A merge CAN overwrite local field
     // values with newer cloud ones - the same honesty contract as
     // cloudLoad/import, which are deliberately excluded here - so
     // cloudResync stays OUT of the view-only safe list (owners/editors
     // only). cloudBondLater is dismiss-only, safe in view-only.
-    'cloudBondLater': 1,
+    cloudBondLater: 1,
     // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2/3: editor-code management and
     // changelog view/revert never mutate the local workspace (owner-only
-    // server calls; a revert changes the CLOUD snapshot, not this device) , 
+    // server calls; a revert changes the CLOUD snapshot, not this device) ,
     // safe in view-only, like the Phase 1 cloud entries above.
-    'cloudEditorCreate': 1, 'cloudEditorList': 1, 'cloudEditorRevoke': 1,
-    'cloudClientCreate': 1, 'cloudClientList': 1, 'cloudClientRevoke': 1,
-    'cloudApiKeyCreate': 1, 'cloudApiKeyList': 1, 'cloudApiKeyRevoke': 1, 'cloudShareTab': 1,
-    'cloudLogList': 1, 'cloudLogRevert': 1, 'cloudLogToggleDiffs': 1, 'cloudDropEditor': 1,
+    cloudEditorCreate: 1,
+    cloudEditorList: 1,
+    cloudEditorRevoke: 1,
+    cloudClientCreate: 1,
+    cloudClientList: 1,
+    cloudClientRevoke: 1,
+    cloudApiKeyCreate: 1,
+    cloudApiKeyList: 1,
+    cloudApiKeyRevoke: 1,
+    cloudShareTab: 1,
+    cloudLogList: 1,
+    cloudLogRevert: 1,
+    cloudLogToggleDiffs: 1,
+    cloudDropEditor: 1,
     // GAP-AUDIT-CLOUD-31: unlink only mutates the CLOUD copy (like the other
     // cloud actions above), and the banner Copy/Done are clipboard/session
     // only , all safe in view-only.
-    'cloudUnlink': 1, 'cloudCopyEditorCode': 1, 'cloudEditorCodeDone': 1,
+    cloudUnlink: 1,
+    cloudCopyEditorCode: 1,
+    cloudEditorCodeDone: 1,
     // MASTER-ACTION-PLAN RANK 9.2: webhook CRUD only mutates the SERVER
     // subscription table (like the other cloud actions) , safe in view-only.
-    'cloudWebhookList': 1, 'cloudWebhookAdd': 1, 'cloudWebhookDel': 1,
+    cloudWebhookList: 1,
+    cloudWebhookAdd: 1,
+    cloudWebhookDel: 1,
     // CLOUD-FIRST SYNC (PART 3, approved 2026-08-17): offline copies +
     // broadcast. cloudMakeCopy registers this device server-side (view-only
     // by owner decision , the copy can never edit), cloudUpdateCopy pulls the
@@ -2563,27 +3678,41 @@ window.MMGR = MMGR;
     // unregisters, and the owner's broadcast/auto-broadcast/offline-list
     // controls only mutate SERVER state or the copy registry , all safe in
     // view-only mode, exactly like the other cloud actions above.
-    'cloudMakeCopy': 1, 'cloudUpdateCopy': 1, 'cloudRemoveCopy': 1,
-    'cloudBroadcast': 1, 'cloudAutoBroadcast': 1, 'cloudOfflineRemove': 1,
+    cloudMakeCopy: 1,
+    cloudUpdateCopy: 1,
+    cloudRemoveCopy: 1,
+    cloudBroadcast: 1,
+    cloudAutoBroadcast: 1,
+    cloudOfflineRemove: 1,
     // REVIEW QUEUE: the review list/accept/reject/mine actions only mutate
     // SERVER state (proposals + the cloud snapshot on accept) , never the
     // local workspace , so they stay safe in view-only mode like broadcast.
-    'cloudReviewList': 1, 'cloudReviewMine': 1, 'cloudReviewAccept': 1, 'cloudReviewReject': 1, 'cloudReviewToggleDiffs': 1
+    cloudReviewList: 1,
+    cloudReviewMine: 1,
+    cloudReviewAccept: 1,
+    cloudReviewReject: 1,
+    cloudReviewToggleDiffs: 1
   };
   function guardReadonly(action) {
     // The ACTION_MAP delegation IIFE has no closure over the App module's
     // isReadonly() , route through the published API (MMGR.App.isReadonly).
-    const ro = window.MMGR.App && typeof window.MMGR.App.isReadonly === 'function' && window.MMGR.App.isReadonly();
+    const ro =
+      window.MMGR.App &&
+      typeof window.MMGR.App.isReadonly === 'function' &&
+      window.MMGR.App.isReadonly();
     if (!ro) return true;
     if (READONLY_SAFE_ACTIONS[action]) return true;
     if (window.MMGR.App && typeof window.MMGR.App.showToast === 'function') {
-      window.MMGR.App.showToast('View-only mode , read-only access. Contact the admin for full access.', 'err');
+      window.MMGR.App.showToast(
+        'View-only mode , read-only access. Contact the admin for full access.',
+        'err'
+      );
     }
     return false;
   }
 
   // Click event delegation
-  document.addEventListener('click', function(e) {
+  document.addEventListener('click', function (e) {
     const el = e.target.closest('[data-action]');
     if (!el) return;
     // P0 ("the dates are fighting me" , real-click path): editable field
@@ -2597,8 +3726,11 @@ window.MMGR = MMGR;
     // is never prevented. Checkboxes keep their special-case handling below
     // (their click IS the action).
     const _tag = el.tagName;
-    if (_tag === 'SELECT' || _tag === 'TEXTAREA' ||
-        (_tag === 'INPUT' && el.type !== 'checkbox' && el.type !== 'radio' && el.type !== 'button')) {
+    if (
+      _tag === 'SELECT' ||
+      _tag === 'TEXTAREA' ||
+      (_tag === 'INPUT' && el.type !== 'checkbox' && el.type !== 'radio' && el.type !== 'button')
+    ) {
       return;
     }
     const action = el.getAttribute('data-action');
@@ -2629,7 +3761,7 @@ window.MMGR = MMGR;
   });
 
   // Change event delegation for input/select elements
-  document.addEventListener('change', function(e) {
+  document.addEventListener('change', function (e) {
     const el = e.target.closest('[data-action]');
     if (!el) return;
     const action = el.getAttribute('data-action');
@@ -2639,7 +3771,44 @@ window.MMGR = MMGR;
     // field (Google OAuth Client ID) , it was missing from this change
     // whitelist, so the value sat in the box but was never persisted.
     // `change` is the correct event for a one-time paste/type-then-blur field.
-    if (handler && (action === 'updEnvelope' || action === 'saveSprint' || action === 'setWorkWeek' || action === 'setRegion' || action === 'setDeadline' || action === 'loadProjectFile' || action === 'mergeProjectFile' || action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'addRaciTaskFromPicker' || action === 'addRaciPersonFromPicker' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updKPILink' || action === 'updKPIDir' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'claimSetCause' || action === 'aiSetTier' || action === 'setErrWebhook' || action === 'driveAutoInterval' || action === 'driveSetPass' || action === 'syncClientId' || action === 'bidPkgUpd' || action === 'bidSubUpd' || action === 'bidLineUpd' || action === 'bidAmount' || action === 'gonogoUpd' || action === 'gonogoCatUpd' || action === 'gonogoCritUpd' || action === 'updInspItem' || action === 'idFilePick')) {
+    if (
+      handler &&
+      (action === 'updEnvelope' ||
+        action === 'saveSprint' ||
+        action === 'setWorkWeek' ||
+        action === 'setRegion' ||
+        action === 'setDeadline' ||
+        action === 'loadProjectFile' ||
+        action === 'mergeProjectFile' ||
+        action === 'updCharter' ||
+        action === 'updClose' ||
+        action === 'setUserName' ||
+        action === 'addRaciTaskFromPicker' ||
+        action === 'addRaciPersonFromPicker' ||
+        action === 'updField' ||
+        action === 'updTaskField' ||
+        action === 'updKPI' ||
+        action === 'updKPILink' ||
+        action === 'updKPIDir' ||
+        action === 'updSpendEntry' ||
+        action === 'updRaciTask' ||
+        action === 'updRaciPerson' ||
+        action === 'claimSetCause' ||
+        action === 'aiSetTier' ||
+        action === 'setErrWebhook' ||
+        action === 'driveAutoInterval' ||
+        action === 'driveSetPass' ||
+        action === 'syncClientId' ||
+        action === 'bidPkgUpd' ||
+        action === 'bidSubUpd' ||
+        action === 'bidLineUpd' ||
+        action === 'bidAmount' ||
+        action === 'gonogoUpd' ||
+        action === 'gonogoCatUpd' ||
+        action === 'gonogoCritUpd' ||
+        action === 'updInspItem' ||
+        action === 'idFilePick')
+    ) {
       handler(el, e);
     }
   });
@@ -2649,41 +3818,73 @@ window.MMGR = MMGR;
   // state.packs. No change/input whitelist entry needed.
 
   // Input event delegation for textarea/input elements
-  document.addEventListener('input', function(e) {
+  document.addEventListener('input', function (e) {
     const el = e.target.closest('[data-action]');
     if (!el) return;
     const action = el.getAttribute('data-action');
     if (!guardReadonly(action)) return;
     const handler = ACTION_MAP[action];
-    if (handler && (action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'updEnvelope' || action === 'wiPreview' || action === 'idPreview' || action === 'regenChartPrompt' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'updDMAIC' || action === 'updMeetItemNote' || action === 'updMeetField' || action === 'handleCharterUpload' || action === 'setErrWebhook' || action === 'bidPkgUpd' || action === 'bidSubUpd' || action === 'bidLineUpd' || action === 'bidAmount' || action === 'gonogoUpd' || action === 'gonogoCatUpd' || action === 'gonogoCritUpd' || action === 'updInspItem')) {
+    if (
+      handler &&
+      (action === 'updCharter' ||
+        action === 'updClose' ||
+        action === 'setUserName' ||
+        action === 'updEnvelope' ||
+        action === 'wiPreview' ||
+        action === 'idPreview' ||
+        action === 'regenChartPrompt' ||
+        action === 'updField' ||
+        action === 'updTaskField' ||
+        action === 'updKPI' ||
+        action === 'updSpendEntry' ||
+        action === 'updRaciTask' ||
+        action === 'updRaciPerson' ||
+        action === 'updDMAIC' ||
+        action === 'updMeetItemNote' ||
+        action === 'updMeetField' ||
+        action === 'handleCharterUpload' ||
+        action === 'setErrWebhook' ||
+        action === 'bidPkgUpd' ||
+        action === 'bidSubUpd' ||
+        action === 'bidLineUpd' ||
+        action === 'bidAmount' ||
+        action === 'gonogoUpd' ||
+        action === 'gonogoCatUpd' ||
+        action === 'gonogoCritUpd' ||
+        action === 'updInspItem')
+    ) {
       handler(el, e);
     }
   });
 
   // 5.2 Definitions tooltips: any element with data-def="<term>" shows the
   // glossary entry on hover. Delegated mouseover/out , zero inline handlers.
-  document.addEventListener('mouseover', function(e) {
+  document.addEventListener('mouseover', function (e) {
     const el = e.target.closest && e.target.closest('[data-def]');
     if (el) window.MMGR.App.showDefTip(el, el.getAttribute('data-def'));
   });
-  document.addEventListener('mouseout', function(e) {
+  document.addEventListener('mouseout', function (e) {
     const el = e.target.closest && e.target.closest('[data-def]');
     if (el) window.MMGR.App.hideDefTip();
   });
 
   // RACI right-click cycles backward (feature 5) , contextmenu must be
   // prevented so the browser's menu never appears over the matrix.
-  document.addEventListener('contextmenu', function(e) {
+  document.addEventListener('contextmenu', function (e) {
     const cell = e.target.closest && e.target.closest('[data-action="cycleRaci"]');
     if (cell) {
       e.preventDefault();
-      window.MMGR.Raci.cycleRaci(cell.getAttribute('data-task'), cell.getAttribute('data-person'), { button: 2 });
+      window.MMGR.Raci.cycleRaci(cell.getAttribute('data-task'), cell.getAttribute('data-person'), {
+        button: 2
+      });
     }
   });
 
   // RACI picker refresh on mousedown
-  document.addEventListener('mousedown', function(e) {
-    const el = e.target.closest('[data-action="addRaciTaskFromPicker"], [data-action="addRaciPersonFromPicker"]');
+  document.addEventListener('mousedown', function (e) {
+    const el = e.target.closest(
+      '[data-action="addRaciTaskFromPicker"], [data-action="addRaciPersonFromPicker"]'
+    );
     if (el) {
       const action = el.getAttribute('data-action');
       if (action === 'addRaciTaskFromPicker') {
@@ -2695,37 +3896,53 @@ window.MMGR = MMGR;
   });
 
   // MLC hover handling (mouseenter/mouseleave on meth buttons)
-  // e.target can be the document node when synthetic/edge events fire , 
+  // e.target can be the document node when synthetic/edge events fire ,
   // guard every closest() so hover handling never throws.
-  document.addEventListener('mouseenter', function(e) {
-    const el = e.target && e.target.closest ? e.target.closest('[data-mlc]') : null;
-    if (el) {
-      window.MMGR.App.showMLC(el.getAttribute('data-mlc'));
-    }
-  }, true);
+  document.addEventListener(
+    'mouseenter',
+    function (e) {
+      const el = e.target && e.target.closest ? e.target.closest('[data-mlc]') : null;
+      if (el) {
+        window.MMGR.App.showMLC(el.getAttribute('data-mlc'));
+      }
+    },
+    true
+  );
 
-  document.addEventListener('mouseleave', function(e) {
-    const el = e.target && e.target.closest ? e.target.closest('[data-mlc]') : null;
-    if (el) {
-      window.MMGR.App.scheduleMLCClose();
-    }
-  }, true);
+  document.addEventListener(
+    'mouseleave',
+    function (e) {
+      const el = e.target && e.target.closest ? e.target.closest('[data-mlc]') : null;
+      if (el) {
+        window.MMGR.App.scheduleMLCClose();
+      }
+    },
+    true
+  );
 
   // MLC card hover , keep open
-  document.addEventListener('mouseenter', function(e) {
-    if (e.target && e.target.closest && e.target.closest('#meth-learn-card')) {
-      window.MMGR.App.clearMlcTimer();
-    }
-  }, true);
+  document.addEventListener(
+    'mouseenter',
+    function (e) {
+      if (e.target && e.target.closest && e.target.closest('#meth-learn-card')) {
+        window.MMGR.App.clearMlcTimer();
+      }
+    },
+    true
+  );
 
-  document.addEventListener('mouseleave', function(e) {
-    if (e.target && e.target.closest && e.target.closest('#meth-learn-card')) {
-      window.MMGR.App.scheduleMLCClose();
-    }
-  }, true);
+  document.addEventListener(
+    'mouseleave',
+    function (e) {
+      if (e.target && e.target.closest && e.target.closest('#meth-learn-card')) {
+        window.MMGR.App.scheduleMLCClose();
+      }
+    },
+    true
+  );
 
   // Kanban drag and drop
-  document.addEventListener('dragstart', function(e) {
+  document.addEventListener('dragstart', function (e) {
     const el = e.target.closest('[data-drag-id]');
     if (el) {
       window.MMGR.App.dragCard(e, el.getAttribute('data-drag-id'));
@@ -2740,13 +3957,13 @@ window.MMGR = MMGR;
     }
   });
 
-  document.addEventListener('dragend', function(e) {
+  document.addEventListener('dragend', function (e) {
     window.MMGR.App.endBoardDrag();
     const el = e.target && e.target.closest ? e.target.closest('[data-drag-id]') : null;
     if (el) el.classList.remove('drag');
   });
 
-  document.addEventListener('dragover', function(e) {
+  document.addEventListener('dragover', function (e) {
     const col = e.target.closest('[data-drop-status]');
     if (col) {
       e.preventDefault();
@@ -2754,14 +3971,14 @@ window.MMGR = MMGR;
     }
   });
 
-  document.addEventListener('dragleave', function(e) {
+  document.addEventListener('dragleave', function (e) {
     const col = e.target.closest('[data-drop-status]');
     if (col) {
       col.classList.remove('dov');
     }
   });
 
-  document.addEventListener('drop', function(e) {
+  document.addEventListener('drop', function (e) {
     const col = e.target.closest('[data-drop-status]');
     if (!col) return;
     e.preventDefault();
@@ -2779,7 +3996,7 @@ window.MMGR = MMGR;
   // VIEW-ONLY HARDENING (owner 2026-09-12): startHold runs on pointerdown,
   // NOT the guarded click delegation, and after a 10s hold it DELETES the
   // whole section (clearSection) - a viewer could wipe the WBS. Refuse it.
-  document.addEventListener('pointerdown', function(e) {
+  document.addEventListener('pointerdown', function (e) {
     const el = e.target.closest('[data-action="startHold"]');
     if (!el) return;
     if (window.MMGR.App && window.MMGR.App.isReadonly && window.MMGR.App.isReadonly()) {
@@ -2819,12 +4036,16 @@ window.MMGR = MMGR;
     const C = window.MMGR.Cloud;
     if (C && C.cloudDeleteHoldCancel) C.cloudDeleteHoldCancel();
   });
-  document.addEventListener('mouseleave', function (e) {
-    if (e.target.closest && e.target.closest('[data-action="cloudDeleteConfirm"]')) {
-      const C = window.MMGR.Cloud;
-      if (C && C.cloudDeleteHoldCancel) C.cloudDeleteHoldCancel();
-    }
-  }, true);
+  document.addEventListener(
+    'mouseleave',
+    function (e) {
+      if (e.target.closest && e.target.closest('[data-action="cloudDeleteConfirm"]')) {
+        const C = window.MMGR.Cloud;
+        if (C && C.cloudDeleteHoldCancel) C.cloudDeleteHoldCancel();
+      }
+    },
+    true
+  );
   window.addEventListener('blur', function () {
     const C = window.MMGR.Cloud;
     if (C && C.cloudDeleteHoldCancel) C.cloudDeleteHoldCancel();
@@ -2833,12 +4054,17 @@ window.MMGR = MMGR;
   // like a pointer hold; releasing the key cancels.
   document.addEventListener('keydown', function (e) {
     if (e.key !== ' ' && e.key !== 'Enter') return;
-    const el = document.activeElement && document.activeElement.closest
-      ? document.activeElement.closest('[data-action="cloudDeleteConfirm"]') : null;
+    const el =
+      document.activeElement && document.activeElement.closest
+        ? document.activeElement.closest('[data-action="cloudDeleteConfirm"]')
+        : null;
     if (!el || e.repeat) return;
     if (window.MMGR.App && window.MMGR.App.isReadonly && window.MMGR.App.isReadonly()) return;
     const C = window.MMGR.Cloud;
-    if (C && C.cloudDeleteHoldBegin) { e.preventDefault(); C.cloudDeleteHoldBegin(); }
+    if (C && C.cloudDeleteHoldBegin) {
+      e.preventDefault();
+      C.cloudDeleteHoldBegin();
+    }
   });
   document.addEventListener('keyup', function (e) {
     if (e.key !== ' ' && e.key !== 'Enter') return;
@@ -2848,9 +4074,14 @@ window.MMGR = MMGR;
 
   document.addEventListener('pointercancel', () => window.MMGR.App.cancelHold());
 
-  document.addEventListener('mouseleave', function(e) {
-    if (e.target.closest && e.target.closest('[data-action="startHold"]')) window.MMGR.App.cancelHold();
-  }, true);
+  document.addEventListener(
+    'mouseleave',
+    function (e) {
+      if (e.target.closest && e.target.closest('[data-action="startHold"]'))
+        window.MMGR.App.cancelHold();
+    },
+    true
+  );
 
   window.addEventListener('blur', () => window.MMGR.App.cancelHold());
 })();

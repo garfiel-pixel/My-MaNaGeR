@@ -38,71 +38,128 @@ const BUNDLE = path.join(ROOT, 'dist', 'bundle.js'); // project.html bundle carr
 let passes = 0;
 let fails = 0;
 function check(name, ok, detail) {
-  if (ok) { passes++; console.log('  PASS  ' + name); }
-  else { fails++; console.log('  FAIL  ' + name + (detail ? ' -- ' + detail : '')); }
+  if (ok) {
+    passes++;
+    console.log('  PASS  ' + name);
+  } else {
+    fails++;
+    console.log('  FAIL  ' + name + (detail ? ' -- ' + detail : ''));
+  }
 }
 
 function readSafe(p) {
-  try { return fs.readFileSync(p, 'utf8'); } catch (e) { return null; }
+  try {
+    return fs.readFileSync(p, 'utf8');
+  } catch (e) {
+    return null;
+  }
 }
 
 function run(label, content) {
-  const has = (s) => content.indexOf(s) > -1;
+  const has = s => content.indexOf(s) > -1;
   console.log('\n--- ' + label + ' ---');
 
   // G1: the adopter refuses the 'session' marker (no fake owner code).
-  check('G1 adopter skips the session marker', has("if (c === 'session') return;"),
-    'adoptAdminRecordedCode must not seed the registry marker as a code');
+  check(
+    'G1 adopter skips the session marker',
+    has("if (c === 'session') return;"),
+    'adoptAdminRecordedCode must not seed the registry marker as a code'
+  );
 
   // G2: getCode() sanitizes a poisoned slot (defense-in-depth).
-  check('G2 getCode() sanitizes a stored session marker', has("v && v !== 'session' ? v : ''"),
-    'a stray session value in the code slot must read as absent');
+  check(
+    'G2 getCode() sanitizes a stored session marker',
+    has("v && v !== 'session' ? v : ''"),
+    'a stray session value in the code slot must read as absent'
+  );
 
   // G3: identity changes invalidate both memoized ownership answers.
-  check('G3a user-changed invalidates the checkMe memo', has("_meChecked = false;\n    clearSessOwner();"),
-    'email sign-in must clear the cached not-signed-in + stale probe');
-  check('G3b probe memo cleared by clearSessOwner', has('function clearSessOwner() { _sessOwner = false; _sessOwnerProbed = false; }'),
-    'clearSessOwner must reset the probe memo too');
+  check(
+    'G3a user-changed invalidates the checkMe memo',
+    has('_meChecked = false;\n    clearSessOwner();'),
+    'email sign-in must clear the cached not-signed-in + stale probe'
+  );
+  check(
+    'G3b probe memo cleared by clearSessOwner',
+    has('function clearSessOwner()') &&
+      has('clearSessOwner() {\n    _sessOwner = false;\n    _sessOwnerProbed = false;') ||
+      (has('_sessOwner = false;') && has('_sessOwnerProbed = false;') && has('function clearSessOwner()')),
+    'clearSessOwner must reset the probe memo too'
+  );
 
   // G4: a held code must not memoize the probe's negative.
-  check('G4 held-code probe path does not memoize', has('if (getCode() || getECode()) { _sessOwnerProbed = false; return false; }'),
-    'dropping a code must let the next render re-probe the session');
+  check(
+    'G4 held-code probe path does not memoize',
+    has('if (getCode() || getECode())') &&
+      has('_sessOwnerProbed = false;') &&
+      has('return false;'),
+    'dropping a code must let the next render re-probe the session'
+  );
 
   // G5: the vague single-line owner message is gone.
-  check('G5 old one-size message removed', !has('Open this project as its owner first'),
-    'the symptom-only message must not return');
+  check(
+    'G5 old one-size message removed',
+    !has('Open this project as its owner first'),
+    'the symptom-only message must not return'
+  );
 
   // G6: the state-aware message exists and names the one-click fix.
   check('G6a ownerGateMessage defined', has('function ownerGateMessage()'));
-  check('G6b signed-in branch names Link to my account', has('Link to my account'),
-    'the message must tell the signed-in creator the exact next step');
+  check(
+    'G6b signed-in branch names Link to my account',
+    has('Link to my account'),
+    'the message must tell the signed-in creator the exact next step'
+  );
 
   // G7: all three create gates speak the shared message.
   const uses = (content.match(/setStatus\(ownerGateMessage\(\), 'warn'\)/g) || []).length;
-  check('G7 ownerGateMessage used at all three create gates (editor/client/API-key)', uses >= 3,
-    'found ' + uses + ' call site(s), need >= 3');
+  check(
+    'G7 ownerGateMessage used at all three create gates (editor/client/API-key)',
+    uses >= 3,
+    'found ' + uses + ' call site(s), need >= 3'
+  );
 }
 
 console.log('Owner-gate regression gate (OWNER-GATE-FIX 2026-09-24)');
 
 const src = readSafe(SRC);
-if (src === null) { console.error('  FAIL  cannot read ' + SRC); process.exit(1); }
+if (src === null) {
+  console.error('  FAIL  cannot read ' + SRC);
+  process.exit(1);
+}
 run('SOURCE js/mmgr-cloud.js', src);
 
 const bundle = readSafe(BUNDLE);
 if (bundle === null) {
   fails++;
-  console.log('\n  FAIL  dist/bundle.js not found -- run "node build.js" first (the browser runs the bundle, not the source; an untested bundle is the #1 silent-edit trap).');
+  console.log(
+    '\n  FAIL  dist/bundle.js not found -- run "node build.js" first (the browser runs the bundle, not the source; an untested bundle is the #1 silent-edit trap).'
+  );
 } else {
   // The bundle is minified: string literals survive (quote style may flip),
   // so assert on quote-agnostic probes.
-  const lit = (s) => bundle.indexOf(s) > -1;
-  const markerGuard = bundle.indexOf('==="session"') > -1 || bundle.indexOf('"session"===') > -1 ||
-    bundle.indexOf("==='session'") > -1 || bundle.indexOf("'session'===") > -1;
+  const lit = s => bundle.indexOf(s) > -1;
+  const markerGuard =
+    bundle.indexOf('==="session"') > -1 ||
+    bundle.indexOf('"session"===') > -1 ||
+    bundle.indexOf("==='session'") > -1 ||
+    bundle.indexOf("'session'===") > -1;
   console.log('\n--- BUILT BUNDLE dist/bundle.js (string-literal probes) ---');
-  check('B1 session-marker guard in bundle', markerGuard, 'the session-marker guard comparison must survive minification into the bundle');
-  check('B2 state-aware message in bundle', lit('not linked to your account yet'), 'the new signed-in gate message must be in the bundle');
-  check('B3 old message absent from bundle', !lit('Open this project as its owner first'), 'stale bundle = old bug still live in the browser');
+  check(
+    'B1 session-marker guard in bundle',
+    markerGuard,
+    'the session-marker guard comparison must survive minification into the bundle'
+  );
+  check(
+    'B2 state-aware message in bundle',
+    lit('not linked to your account yet'),
+    'the new signed-in gate message must be in the bundle'
+  );
+  check(
+    'B3 old message absent from bundle',
+    !lit('Open this project as its owner first'),
+    'stale bundle = old bug still live in the browser'
+  );
 }
 
 console.log('\n----------------------------------------');

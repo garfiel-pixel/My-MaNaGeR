@@ -85,9 +85,15 @@ export function trackError(env, event, error, context = {}) {
     try {
       env.ANALYTICS.writeDataPoint({
         indexes: ['error', event],
-        blobs: [error && error.message ? error.message : 'unknown', JSON.stringify(context).slice(0, 512), new Date().toISOString()]
+        blobs: [
+          error && error.message ? error.message : 'unknown',
+          JSON.stringify(context).slice(0, 512),
+          new Date().toISOString()
+        ]
       });
-    } catch (e) { /* telemetry must never block */ }
+    } catch (e) {
+      /* telemetry must never block */
+    }
   }
 }
 
@@ -103,7 +109,9 @@ export function trackEvent(env, event, context = {}) {
         indexes: ['info', event],
         blobs: [JSON.stringify(context).slice(0, 512), '', new Date().toISOString()]
       });
-    } catch (e) { /* telemetry must never block */ }
+    } catch (e) {
+      /* telemetry must never block */
+    }
   }
 }
 
@@ -151,7 +159,9 @@ export async function withIdempotency(request, env, handler, opts = {}) {
           headers: { 'Content-Type': 'application/json; charset=utf-8', 'X-Idempotent': 'true' }
         });
       }
-    } catch (e) { /* KV failure — fall through to D1 or skip */ }
+    } catch (e) {
+      /* KV failure — fall through to D1 or skip */
+    }
   }
 
   // Try D1 (persistent across isolate restarts)
@@ -159,7 +169,9 @@ export async function withIdempotency(request, env, handler, opts = {}) {
     try {
       const row = await env.DB.prepare(
         'SELECT response_body, response_status FROM idempotency_keys WHERE cache_key = ? AND expires_at > ?'
-      ).bind(cacheKey, new Date().toISOString()).first();
+      )
+        .bind(cacheKey, new Date().toISOString())
+        .first();
       if (row) {
         return new Response(row.response_body, {
           status: row.response_status,
@@ -183,7 +195,9 @@ export async function withIdempotency(request, env, handler, opts = {}) {
 
       // Try KV first
       if (env && env.KV) {
-        await env.KV.put(cacheKey, JSON.stringify({ body, status: response.status }), { expirationTtl: ttl });
+        await env.KV.put(cacheKey, JSON.stringify({ body, status: response.status }), {
+          expirationTtl: ttl
+        });
       }
 
       // Also try D1 (belt-and-suspenders)
@@ -191,10 +205,14 @@ export async function withIdempotency(request, env, handler, opts = {}) {
         try {
           await env.DB.prepare(
             'INSERT OR REPLACE INTO idempotency_keys (cache_key, response_body, response_status, created_at, expires_at) VALUES (?,?,?,?,?)'
-          ).bind(cacheKey, body, response.status, new Date().toISOString(), expiresAt).run();
+          )
+            .bind(cacheKey, body, response.status, new Date().toISOString(), expiresAt)
+            .run();
         } catch (e) {
           // Table might not exist — fine, KV has it
-          if (e && e.message && e.message.indexOf('no such table') !== -1) { /* skip */ }
+          if (e && e.message && e.message.indexOf('no such table') !== -1) {
+            /* skip */
+          }
         }
       }
 

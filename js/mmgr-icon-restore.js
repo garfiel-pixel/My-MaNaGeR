@@ -15,37 +15,39 @@
    Exposes MMGRIconRestore.restore() so harnesses can exercise
    the path directly.
    ============================================================ */
-(function() {
-'use strict';
+(function () {
+  'use strict';
 
-function restore() {
-  var uses = document.querySelectorAll('use');
-  var n = 0;
-  for (var i = 0; i < uses.length; i++) {
-    try {
-      var u = uses[i];
-      var href = u.getAttribute('href') || u.getAttribute('xlink:href');
-      if (!href || href.charAt(0) === '#') continue; // in-document refs are safe
-      var hadXlink = u.hasAttribute('xlink:href');
-      u.removeAttribute('href');
-      if (hadXlink) u.removeAttribute('xlink:href');
-      void u.getBoundingClientRect(); // force style/blur invalidation
-      u.setAttribute('href', href);
-      if (hadXlink) u.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', href);
-      n++;
-    } catch (e) { /* fail-soft per node; never block the page */ }
+  function restore() {
+    var uses = document.querySelectorAll('use');
+    var n = 0;
+    for (var i = 0; i < uses.length; i++) {
+      try {
+        var u = uses[i];
+        var href = u.getAttribute('href') || u.getAttribute('xlink:href');
+        if (!href || href.charAt(0) === '#') continue; // in-document refs are safe
+        var hadXlink = u.hasAttribute('xlink:href');
+        u.removeAttribute('href');
+        if (hadXlink) u.removeAttribute('xlink:href');
+        void u.getBoundingClientRect(); // force style/blur invalidation
+        u.setAttribute('href', href);
+        if (hadXlink) u.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', href);
+        n++;
+      } catch (e) {
+        /* fail-soft per node; never block the page */
+      }
+    }
+    api.lastCount = n; // observable contract for harnesses
+    return n;
   }
-  api.lastCount = n; // observable contract for harnesses
-  return n;
-}
 
-// Exposed before the listener is registered so restore() can always
-// stamp lastCount regardless of event timing.
-var api = { restore: restore, lastCount: 0 };
+  // Exposed before the listener is registered so restore() can always
+  // stamp lastCount regardless of event timing.
+  var api = { restore: restore, lastCount: 0 };
 
-window.addEventListener('pageshow', function(ev) {
-  if (ev && ev.persisted) restore();
-});
+  window.addEventListener('pageshow', function (ev) {
+    if (ev && ev.persisted) restore();
+  });
 
-window.MMGRIconRestore = api;
+  window.MMGRIconRestore = api;
 })();

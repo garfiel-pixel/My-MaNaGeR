@@ -7,35 +7,114 @@ const { spawn } = require('child_process');
 const path = require('path');
 const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('./chrome-launcher.cjs');
 const PROFILE = path.join(require('os').tmpdir(), 'mmgr-ai-polish-' + Date.now());
-let ws, msgId = 0; const pending = new Map();
-const log = (s) => process.stdout.write('[polish] ' + s + '\n');
+let ws,
+  msgId = 0;
+const pending = new Map();
+const log = s => process.stdout.write('[polish] ' + s + '\n');
 const delay = ms => new Promise(r => setTimeout(r, ms));
-setTimeout(() => { log('WATCHDOG'); try { ws && ws.close(); } catch (e) {} process.exit(2); }, 90000);
-function send(method, params) { return new Promise(res => { const id = ++msgId; pending.set(id, m => { pending.delete(id); res(m.result || {}); }); ws.send(JSON.stringify({ id, method, params: params || {} })); }); }
-async function ev(expr) { const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true }); if (r.exceptionDetails) return { __err: r.exceptionDetails.exception ? r.exceptionDetails.exception.description : r.exceptionDetails.text }; return r.result && r.result.value; }
+setTimeout(() => {
+  log('WATCHDOG');
+  try {
+    ws && ws.close();
+  } catch (e) {}
+  process.exit(2);
+}, 90000);
+function send(method, params) {
+  return new Promise(res => {
+    const id = ++msgId;
+    pending.set(id, m => {
+      pending.delete(id);
+      res(m.result || {});
+    });
+    ws.send(JSON.stringify({ id, method, params: params || {} }));
+  });
+}
+async function ev(expr) {
+  const r = await send('Runtime.evaluate', {
+    expression: expr,
+    returnByValue: true,
+    awaitPromise: true
+  });
+  if (r.exceptionDetails)
+    return {
+      __err: r.exceptionDetails.exception
+        ? r.exceptionDetails.exception.description
+        : r.exceptionDetails.text
+    };
+  return r.result && r.result.value;
+}
 
 (async () => {
-  const proc = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run', '--remote-debugging-port=' + PORT, '--user-data-dir=' + PROFILE, '--window-size=1440,1200', 'about:blank'], { stdio: 'ignore' });
-  for (let i = 0; i < 60; i++) { try { const r = await fetch('http://127.0.0.1:' + PORT + '/json/version'); if (r.ok) break; } catch (e) {} await delay(300); }
+  const proc = spawn(
+    CHROME,
+    [
+      '--headless=new',
+      '--disable-gpu',
+      '--no-first-run',
+      '--remote-debugging-port=' + PORT,
+      '--user-data-dir=' + PROFILE,
+      '--window-size=1440,1200',
+      'about:blank'
+    ],
+    { stdio: 'ignore' }
+  );
+  for (let i = 0; i < 60; i++) {
+    try {
+      const r = await fetch('http://127.0.0.1:' + PORT + '/json/version');
+      if (r.ok) break;
+    } catch (e) {}
+    await delay(300);
+  }
   const targets = await (await fetch('http://127.0.0.1:' + PORT + '/json')).json();
   ws = new WebSocket(targets.find(t => t.type === 'page').webSocketDebuggerUrl);
-  await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error('ws fail')); });
-  ws.onmessage = (ev) => { const m = JSON.parse(ev.data); if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); } };
-  await send('Runtime.enable'); await send('Page.enable');
-  try { await send('Browser.grantPermissions', { origin: BASE, permissions: ['clipboardReadWrite', 'clipboardSanitizedWrite'] }); } catch (e) {}
+  await new Promise((res, rej) => {
+    ws.onopen = res;
+    ws.onerror = () => rej(new Error('ws fail'));
+  });
+  ws.onmessage = ev => {
+    const m = JSON.parse(ev.data);
+    if (m.id && pending.has(m.id)) {
+      pending.get(m.id)(m);
+      pending.delete(m.id);
+    }
+  };
+  await send('Runtime.enable');
+  await send('Page.enable');
+  try {
+    await send('Browser.grantPermissions', {
+      origin: BASE,
+      permissions: ['clipboardReadWrite', 'clipboardSanitizedWrite']
+    });
+  } catch (e) {}
 
   const consoleErrors = [];
-  ws.onmessage = (ev) => {
+  ws.onmessage = ev => {
     const m = JSON.parse(ev.data);
-    if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error') consoleErrors.push((m.params.args || []).map(a => a.value || a.description || '').join(' '));
-    if (m.method === 'Runtime.exceptionThrown') consoleErrors.push('EXCEPTION: ' + (m.params.exceptionDetails && m.params.exceptionDetails.text));
-    if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); }
+    if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error')
+      consoleErrors.push((m.params.args || []).map(a => a.value || a.description || '').join(' '));
+    if (m.method === 'Runtime.exceptionThrown')
+      consoleErrors.push(
+        'EXCEPTION: ' + (m.params.exceptionDetails && m.params.exceptionDetails.text)
+      );
+    if (m.id && pending.has(m.id)) {
+      pending.get(m.id)(m);
+      pending.delete(m.id);
+    }
   };
 
   const results = [];
-  const check = (name, val, detail) => { results.push({ name, val }); log((val ? 'PASS' : 'FAIL') + ' ' + name + (val ? '' : '  <-- ' + JSON.stringify(detail === undefined ? null : detail))); };
+  const check = (name, val, detail) => {
+    results.push({ name, val });
+    log(
+      (val ? 'PASS' : 'FAIL') +
+        ' ' +
+        name +
+        (val ? '' : '  <-- ' + JSON.stringify(detail === undefined ? null : detail))
+    );
+  };
 
-  await send('Page.navigate', { url: BASE + '/app.html' }); await delay(2500);
+  await send('Page.navigate', { url: BASE + '/app.html' });
+  await delay(2500);
   await ev(`(function(){
     localStorage.setItem('mmgr_unlocked_demo','1');
     localStorage.setItem('mmgr_current_project','demo');
@@ -43,7 +122,8 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     localStorage.setItem('mmgr_state_demo', JSON.stringify({charter:{name:'Demo Tower', targetCompletion:'2026-12-01'}, tasks:[{id:'T1',name:'Foundations',status:'inprogress',endDate:'2026-09-01'},{id:'T2',name:'Steel',status:'todo',endDate:'2026-10-15'}], risks:[{id:'R1',description:'Weather delay',probability:'High',impact:'High'}], issues:[], budgetLines:[], config:{ai:{tier:'local'}} }));
     return true;
   })()`);
-  await send('Page.navigate', { url: BASE + '/project.html?id=demo' }); await delay(4000);
+  await send('Page.navigate', { url: BASE + '/project.html?id=demo' });
+  await delay(4000);
 
   // ---- 1. Polished layout assertions ----
   const lay = await ev(`(function(){
@@ -67,9 +147,17 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       secKept: !!sec && sec.textContent.indexOf('session only') > -1,
       tierSel: !!tier, engine: !!engine, api: !!api };
   })()`);
-  check('polish: header control cluster groups tier + engine pill + API pill', lay.rightExists && lay.rightHasTier && lay.rightHasEngine && lay.rightHasApi, lay);
+  check(
+    'polish: header control cluster groups tier + engine pill + API pill',
+    lay.rightExists && lay.rightHasTier && lay.rightHasEngine && lay.rightHasApi,
+    lay
+  );
   check('polish: verbose cloud-connection label removed', lay.labelGone === true, lay);
-  check('polish: cloud row hidden on local tier + .ai-byo-sec security copy kept', lay.connGoneWhenLocal && lay.secKept, lay);
+  check(
+    'polish: cloud row hidden on local tier + .ai-byo-sec security copy kept',
+    lay.connGoneWhenLocal && lay.secKept,
+    lay
+  );
 
   // ---- 2. Cloud tier reveals the compact row (no label) ----
   const cld = await ev(`(function(){
@@ -80,7 +168,11 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       chip: !!document.getElementById('ai-byo-status'),
       prov: (document.getElementById('ai-byo-provider')||{}).value };
   })()`);
-  check('polish: cloud tier shows compact connect row (no label, chip + provider intact)', cld.shown && cld.labelGone && cld.chip && cld.prov === 'openai', cld);
+  check(
+    'polish: cloud tier shows compact connect row (no label, chip + provider intact)',
+    cld.shown && cld.labelGone && cld.chip && cld.prov === 'openai',
+    cld
+  );
   await ev('MMGR.AiWin.setAiCfg({ tier: "local" }); MMGR.AiWin.syncSettingsUI();');
 
   // ---- 3a. Clipboard support: headless Chrome refuses the async Clipboard
@@ -88,7 +180,9 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   // (i) the API round-trips and (ii) the app hands it the EXACT answer text
   // (capture patch). The execCommand fallback is covered by the Copied-state
   // check. ----
-  try { await send('Emulation.setFocusEmulationEnabled', { enabled: true }); } catch (e) {}
+  try {
+    await send('Emulation.setFocusEmulationEnabled', { enabled: true });
+  } catch (e) {}
   const selfTest = await ev(`(async function(){
     try {
       await navigator.clipboard.writeText('probe-self-test-123');
@@ -96,7 +190,11 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       return { roundTrip: back === 'probe-self-test-123', back: back };
     } catch (e) { return { roundTrip: false, err: (e && e.message) || String(e) }; }
   })()`);
-  check('env: clipboard write->read round-trip works (focused page)', selfTest.roundTrip === true, selfTest);
+  check(
+    'env: clipboard write->read round-trip works (focused page)',
+    selfTest.roundTrip === true,
+    selfTest
+  );
 
   // ---- 3. Per-answer Copy flow ----
   const r = await ev(`(async function(){
@@ -136,24 +234,51 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       storedLen: stored ? stored.length : 0,
       clipHead: String(clip).slice(0, 60), storedHead: stored ? stored.slice(0, 60) : '' };
   })()`);
-  check('copy: bot bubble has a Copy button in its meta row', r.hasBubble && r.metaHasBtn && /Copy/.test(r.btnTxt || ''), r);
+  check(
+    'copy: bot bubble has a Copy button in its meta row',
+    r.hasBubble && r.metaHasBtn && /Copy/.test(r.btnTxt || ''),
+    r
+  );
   check('copy: stored text equals the exact AI answer', r.storedMatches === true, r);
-  check('copy: click flips button to green Copied state', r.feedback === true && /Copied/.test(r.feedbackTxt || ''), r);
-  check('copy: app routes the exact answer text to the clipboard API', r.capturedExact === true && r.capturedLen === r.storedLen, r);
+  check(
+    'copy: click flips button to green Copied state',
+    r.feedback === true && /Copied/.test(r.feedbackTxt || ''),
+    r
+  );
+  check(
+    'copy: app routes the exact answer text to the clipboard API',
+    r.capturedExact === true && r.capturedLen === r.storedLen,
+    r
+  );
   check('copy: clipboard holds the exact answer text', r.clipMatches === true, r);
 
-  await send('Page.captureScreenshot', { format: 'png' }).then(async (s) => {
+  await send('Page.captureScreenshot', { format: 'png' }).then(async s => {
     if (s && s.data) {
       const fs = require('fs');
-      fs.writeFileSync(path.join(require('os').tmpdir(), 'ai-polished.png'), Buffer.from(s.data, 'base64'));
+      fs.writeFileSync(
+        path.join(require('os').tmpdir(), 'ai-polished.png'),
+        Buffer.from(s.data, 'base64')
+      );
       log('screenshot -> ' + path.join(require('os').tmpdir(), 'ai-polished.png'));
     }
   });
 
   check('copy: no console errors', consoleErrors.length === 0, consoleErrors);
   const fails = results.filter(x => !x.val);
-  log('POLISH_PROBE ' + (fails.length ? 'FAIL ' + fails.length + '/' + results.length : 'PASS ' + results.length + '/' + results.length));
-  try { ws.close(); } catch (e) {}
-  try { proc.kill(); } catch (e) {}
+  log(
+    'POLISH_PROBE ' +
+      (fails.length
+        ? 'FAIL ' + fails.length + '/' + results.length
+        : 'PASS ' + results.length + '/' + results.length)
+  );
+  try {
+    ws.close();
+  } catch (e) {}
+  try {
+    proc.kill();
+  } catch (e) {}
   process.exit(fails.length ? 1 : 0);
-})().catch(e => { log('PROBE-ERROR: ' + (e && e.message)); process.exit(1); });
+})().catch(e => {
+  log('PROBE-ERROR: ' + (e && e.message));
+  process.exit(1);
+});

@@ -5,7 +5,7 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   const U = ns.Utils;
@@ -34,8 +34,10 @@ var MMGR = window.MMGR || {};
       const list = (opts && opts.items) || [];
       if (list.length) {
         items.classList.remove('is-hide');
-        items.innerHTML = '<div class="cfm-list-label">Affected task IDs:</div><div class="cfm-list">' +
-          list.map(id => '<code>' + U.escapeHtml(id) + '</code>').join('') + '</div>';
+        items.innerHTML =
+          '<div class="cfm-list-label">Affected task IDs:</div><div class="cfm-list">' +
+          list.map(id => '<code>' + U.escapeHtml(id) + '</code>').join('') +
+          '</div>';
       } else {
         items.classList.add('is-hide');
       }
@@ -82,7 +84,7 @@ var MMGR = window.MMGR || {};
   // confirmation dialog behaves exactly like Cancel - the onCancel callback
   // (e.g. a Gantt-drag rollback) must still run.
   function closeModals() {
-    ['cfm-modal', 'conflict-modal', 'del-modal'].forEach(function(id) {
+    ['cfm-modal', 'conflict-modal', 'del-modal'].forEach(function (id) {
       var el = U.$(id);
       if (el) el.classList.remove('on');
     });

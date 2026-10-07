@@ -23,14 +23,45 @@ const { spawn } = require('child_process');
 const path = require('path');
 const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('./tools/chrome-launcher.cjs');
 const PROFILE = path.join(require('os').tmpdir(), 'mmgr-rhythm-' + Date.now());
-let ws, msgId = 0;
+let ws,
+  msgId = 0;
 const pending = new Map();
 const results = [];
-const log = (s) => { process.stdout.write('[rhythm] ' + s + '\n'); };
+const log = s => {
+  process.stdout.write('[rhythm] ' + s + '\n');
+};
 const delay = ms => new Promise(r => setTimeout(r, ms));
-setTimeout(() => { log('WATCHDOG'); try { ws && ws.close(); } catch (e) {} process.exit(2); }, 300000);
-function send(method, params) { return new Promise(res => { const id = ++msgId; pending.set(id, m => { pending.delete(id); res(m.result || {}); }); ws.send(JSON.stringify({ id, method, params: params || {} })); }); }
-async function ev(expr) { const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true }); if (r.exceptionDetails) return { __err: r.exceptionDetails.exception ? r.exceptionDetails.exception.description : r.exceptionDetails.text }; return r.result && r.result.value; }
+setTimeout(() => {
+  log('WATCHDOG');
+  try {
+    ws && ws.close();
+  } catch (e) {}
+  process.exit(2);
+}, 300000);
+function send(method, params) {
+  return new Promise(res => {
+    const id = ++msgId;
+    pending.set(id, m => {
+      pending.delete(id);
+      res(m.result || {});
+    });
+    ws.send(JSON.stringify({ id, method, params: params || {} }));
+  });
+}
+async function ev(expr) {
+  const r = await send('Runtime.evaluate', {
+    expression: expr,
+    returnByValue: true,
+    awaitPromise: true
+  });
+  if (r.exceptionDetails)
+    return {
+      __err: r.exceptionDetails.exception
+        ? r.exceptionDetails.exception.description
+        : r.exceptionDetails.text
+    };
+  return r.result && r.result.value;
+}
 
 // Seeded project state: 5 tasks (one overdue + critical, one due soon, one
 // todo, one blocked, one completed), a High/High risk (feeds Today's
@@ -61,21 +92,51 @@ const SEED_STATE = `(function(){
 })()`;
 
 (async () => {
-  const proc = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run', '--remote-debugging-port=' + PORT, '--user-data-dir=' + PROFILE, '--window-size=1440,1200', 'about:blank'], { stdio: 'ignore' });
-  for (let i = 0; i < 60; i++) { try { const r = await fetch('http://127.0.0.1:' + PORT + '/json/version'); if (r.ok) break; } catch (e) {} await delay(300); }
+  const proc = spawn(
+    CHROME,
+    [
+      '--headless=new',
+      '--disable-gpu',
+      '--no-first-run',
+      '--remote-debugging-port=' + PORT,
+      '--user-data-dir=' + PROFILE,
+      '--window-size=1440,1200',
+      'about:blank'
+    ],
+    { stdio: 'ignore' }
+  );
+  for (let i = 0; i < 60; i++) {
+    try {
+      const r = await fetch('http://127.0.0.1:' + PORT + '/json/version');
+      if (r.ok) break;
+    } catch (e) {}
+    await delay(300);
+  }
   const targets = await (await fetch('http://127.0.0.1:' + PORT + '/json')).json();
   ws = new WebSocket(targets.find(t => t.type === 'page').webSocketDebuggerUrl);
-  ws.onmessage = (ev) => { const m = JSON.parse(ev.data); if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); } };
-  await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error('ws fail')); });
-  await send('Runtime.enable'); await send('Page.enable');
+  ws.onmessage = ev => {
+    const m = JSON.parse(ev.data);
+    if (m.id && pending.has(m.id)) {
+      pending.get(m.id)(m);
+      pending.delete(m.id);
+    }
+  };
+  await new Promise((res, rej) => {
+    ws.onopen = res;
+    ws.onerror = () => rej(new Error('ws fail'));
+  });
+  await send('Runtime.enable');
+  await send('Page.enable');
 
   // Seed unlock + scope + project state BEFORE every navigation so the gate
   // never redirects and the dashboard always boots with data.
-  await send('Page.addScriptToEvaluateOnNewDocument', { source: `
+  await send('Page.addScriptToEvaluateOnNewDocument', {
+    source: `
     localStorage.setItem('mmgr_unlocked_demo-project','1');
     localStorage.setItem('mmgr_scope_demo-project','full');
     localStorage.setItem('mmgr_state_demo-project', (${SEED_STATE.toString()}));
-  ` });
+  `
+  });
 
   await send('Page.navigate', { url: BASE + '/project.html?id=demo-project' });
   // Wait for boot: splash fade + render pipeline. Poll until panel-dash is
@@ -89,7 +150,10 @@ const SEED_STATE = `(function(){
   }
   await delay(500);
 
-  const check = (name, val, detail) => { results.push({ name, val, detail }); log((val ? 'PASS' : 'FAIL') + ' ' + name + (val ? '' : '  <-- ' + JSON.stringify(detail))); };
+  const check = (name, val, detail) => {
+    results.push({ name, val, detail });
+    log((val ? 'PASS' : 'FAIL') + ' ' + name + (val ? '' : '  <-- ' + JSON.stringify(detail)));
+  };
 
   // ---- R01 boot: dashboard active with the full status row set ----
   const b1 = await ev(`(function(){
@@ -100,7 +164,11 @@ const SEED_STATE = `(function(){
   // MARKET-FEATURE-ROADMAP A1 (2026-08-15) added a 7th row to the Project
   // Health card — "Compliance Expiring" (same .fb-sm pattern as the risk
   // counts, per the roadmap's own UI instruction). Expectations bumped 6→7.
-  check('R01 boot: dashboard active, 7 health rows + >=3 Next-3 rows present', b1.active && b1.healthRows === 7 && b1.n3Rows >= 3, b1);
+  check(
+    'R01 boot: dashboard active, 7 health rows + >=3 Next-3 rows present',
+    b1.active && b1.healthRows === 7 && b1.n3Rows >= 3,
+    b1
+  );
 
   // ---- R02 health rows: exactly 7, ONE consistent height, ~33px ----
   const m = await ev(`(function(){
@@ -124,21 +192,33 @@ const SEED_STATE = `(function(){
     const n3 = document.querySelector('#n3').getBoundingClientRect();
     return { ringTop: Math.round(ring.top), n3Top: Math.round(n3.top), drift: Math.round(ring.top - n3.top) };
   })()`);
-  check('R04 ring/list alignment: ring and Next-3 share the same top line (<=2px)', Math.abs(a1.drift) <= 2, a1);
+  check(
+    'R04 ring/list alignment: ring and Next-3 share the same top line (<=2px)',
+    Math.abs(a1.drift) <= 2,
+    a1
+  );
 
   // ---- R05 Today's Decision rows: consistent height, >= 33px ----
   const td = await ev(`(function(){
     const hs = [...document.querySelectorAll('#today-decision-body .tf-row')].map(r => Math.round(r.getBoundingClientRect().height));
     return { count: hs.length, heights: hs, allEqual: hs.length > 0 && hs.every(h => h === hs[0]), min: hs.length ? Math.min.apply(null, hs) : 0 };
   })()`);
-  check('R05 Today\'s Decision rows: consistent height, >= 33px', td.count >= 1 && td.allEqual && td.min >= 33, td);
+  check(
+    "R05 Today's Decision rows: consistent height, >= 33px",
+    td.count >= 1 && td.allEqual && td.min >= 33,
+    td
+  );
 
   // ---- R06 Schedule Confidence: 3 cells, all equal height, ~88px ----
   const sc = await ev(`(function(){
     const hs = [...document.querySelectorAll('#schedule-confidence-card .sc-cell')].map(c => Math.round(c.getBoundingClientRect().height));
     return { count: hs.length, heights: hs, allEqual: hs.length === 3 && hs.every(h => h === hs[0]), target: hs[0] };
   })()`);
-  check('R06 Schedule Confidence: 3 equal-height cells ~88px', sc.count === 3 && sc.allEqual && sc.target >= 86 && sc.target <= 90, sc);
+  check(
+    'R06 Schedule Confidence: 3 equal-height cells ~88px',
+    sc.count === 3 && sc.allEqual && sc.target >= 86 && sc.target <= 90,
+    sc
+  );
 
   // ---- R07 dashboard stat cards (g4): all equal height ----
   // (count bumped from 4 to >=4: the Cycle Time card joined the row.)
@@ -163,14 +243,20 @@ const SEED_STATE = `(function(){
   check('R09 no horizontal overflow', o1.ok, o1);
 
   // ---- R10 <=768px: Next-3 card spans the full row (no stubby orphan) ----
-  await send('Emulation.setDeviceMetricsOverride', { width: 768, height: 900, deviceScaleFactor: 1, mobile: false });
+  await send('Emulation.setDeviceMetricsOverride', {
+    width: 768,
+    height: 900,
+    deviceScaleFactor: 1,
+    mobile: false
+  });
   await delay(500);
   const mob = await ev(`(function(){
     const cards = [...document.querySelectorAll('#panel-dash .g3 > .card')].map(c => Math.round(c.getBoundingClientRect().width));
     return { widths: cards, n3Wide: cards.length === 3 ? cards[2] >= cards[0] * 1.9 : false };
   })()`);
   check('R10 <=768px: Next-3 card spans the full row', mob.n3Wide, mob);
-  await send('Emulation.clearDeviceMetricsOverride'); await delay(400);
+  await send('Emulation.clearDeviceMetricsOverride');
+  await delay(400);
 
   // ---- R11 dark parity: heights UNCHANGED + theme actually re-tints ----
   const before = await ev(`(function(){
@@ -188,11 +274,20 @@ const SEED_STATE = `(function(){
     const labelColor = getComputedStyle(document.querySelector('#health-card .fb-sm span:first-child')).color;
     return { h, s, badgeColor, labelColor };
   })()`);
-  const sameHeights = JSON.stringify(before.h) === JSON.stringify(after.h) && JSON.stringify(before.s) === JSON.stringify(after.s);
+  const sameHeights =
+    JSON.stringify(before.h) === JSON.stringify(after.h) &&
+    JSON.stringify(before.s) === JSON.stringify(after.s);
   const reTinted = after.badgeColor !== before.badgeColor || after.labelColor !== 'rgb(15, 23, 42)';
-  check('R11 dark parity: row/tile heights unchanged + tokens re-tint', sameHeights && reTinted, { before, after });
+  check('R11 dark parity: row/tile heights unchanged + tokens re-tint', sameHeights && reTinted, {
+    before,
+    after
+  });
 
   const failed = results.filter(r => !r.val);
   log('RHYTHM_GATE ' + (failed.length === 0 ? 'PASS' : 'FAIL (' + failed.length + ' broken)'));
-  proc.kill(); process.exit(failed.length === 0 ? 0 : 1);
-})().catch(e => { log('FATAL: ' + e.message); process.exit(1); });
+  proc.kill();
+  process.exit(failed.length === 0 ? 0 : 1);
+})().catch(e => {
+  log('FATAL: ' + e.message);
+  process.exit(1);
+});

@@ -38,16 +38,26 @@
 (function () {
   'use strict';
 
-  var MODE_KEY = 'mmgr_theme';       // 'light' | 'dark' | 'system'
+  var MODE_KEY = 'mmgr_theme'; // 'light' | 'dark' | 'system'
   // 'mmgr_theme_backend' flag: retired 2026-09-12 with the account-sync.
-  var KNOWN = { 'light': 1, 'dark': 1, 'system': 1 };
+  var KNOWN = { light: 1, dark: 1, system: 1 };
 
   // SYNC (data-sync="1" script tag) is vestigial since the 2026-09-12
   // device-only change; retained only so nothing else keys off the tag.
   var SYNC = !!(document.currentScript && document.currentScript.getAttribute('data-sync') === '1');
 
-  function read(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-  function write(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function read(k) {
+    try {
+      return localStorage.getItem(k);
+    } catch (e) {
+      return null;
+    }
+  }
+  function write(k, v) {
+    try {
+      localStorage.setItem(k, v);
+    } catch (e) {}
+  }
 
   /** Current stored mode (default: light - D12). */
   function currentMode() {
@@ -72,7 +82,11 @@
   function syncThemeColor(dark) {
     var c = dark ? '#1a1614' : '#F5EFE6';
     var meta = document.querySelector('meta[name="theme-color"]');
-    if (!meta) { meta = document.createElement('meta'); meta.name = 'theme-color'; document.head.appendChild(meta); }
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.name = 'theme-color';
+      document.head.appendChild(meta);
+    }
     meta.setAttribute('content', c);
   }
 
@@ -146,8 +160,11 @@
     var handler = function () {
       if (currentMode() === 'system') apply();
     };
-    if (mq.addEventListener) { mq.addEventListener('change', handler); }
-    else if (mq.addListener) { mq.addListener(handler); }
+    if (mq.addEventListener) {
+      mq.addEventListener('change', handler);
+    } else if (mq.addListener) {
+      mq.addListener(handler);
+    }
   }
 
   // --- Event delegation: one listener serves every picker on the page ---

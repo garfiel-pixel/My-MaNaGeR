@@ -5,7 +5,7 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   const S = () => ns.State.getState();
@@ -121,10 +121,12 @@ var MMGR = window.MMGR || {};
   function saveAsTemplate(name) {
     const s = S();
     if (!s) return;
-    ns.State.updateState(function(st) {
+    ns.State.updateState(function (st) {
       if (!st.projectTemplates) st.projectTemplates = [];
       // Remove built-in with same name if re-saving
-      st.projectTemplates = st.projectTemplates.filter(function(t) { return !t.builtin || t.name !== name; });
+      st.projectTemplates = st.projectTemplates.filter(function (t) {
+        return !t.builtin || t.name !== name;
+      });
       st.projectTemplates.push({
         id: U.genShortId('TPL'),
         name: name || 'My Template',
@@ -138,9 +140,11 @@ var MMGR = window.MMGR || {};
   }
 
   function deleteTemplate(tplId) {
-    ns.State.updateState(function(st) {
+    ns.State.updateState(function (st) {
       if (!st.projectTemplates) return;
-      st.projectTemplates = st.projectTemplates.filter(function(t) { return t.id !== tplId; });
+      st.projectTemplates = st.projectTemplates.filter(function (t) {
+        return t.id !== tplId;
+      });
     });
   }
 
@@ -148,22 +152,31 @@ var MMGR = window.MMGR || {};
     const s = S();
     if (!s) return;
     const allTemplates = BUILT_IN.concat(s.projectTemplates || []);
-    const tpl = allTemplates.find(function(t) { return t.id === tplId; });
+    const tpl = allTemplates.find(function (t) {
+      return t.id === tplId;
+    });
     if (!tpl) return;
     // Confirm before overwriting
     if (s.tasks && s.tasks.length > 0) {
-      if (!confirm('Apply "' + tpl.name + '"? This will add template tasks and budget lines to your current project.')) return;
+      if (
+        !confirm(
+          'Apply "' +
+            tpl.name +
+            '"? This will add template tasks and budget lines to your current project.'
+        )
+      )
+        return;
     }
-    ns.State.updateState(function(st) {
+    ns.State.updateState(function (st) {
       // Merge tasks (add template tasks after existing)
       if (tpl.tasks && tpl.tasks.length) {
         if (!st.tasks) st.tasks = [];
         let maxId = 0;
-        st.tasks.forEach(function(t) {
+        st.tasks.forEach(function (t) {
           const num = parseInt(String(t.id).replace(/\D/g, ''));
           if (num > maxId) maxId = num;
         });
-        tpl.tasks.forEach(function(t) {
+        tpl.tasks.forEach(function (t) {
           maxId++;
           st.tasks.push({
             id: 't' + maxId,
@@ -183,7 +196,7 @@ var MMGR = window.MMGR || {};
       // Merge budget lines
       if (tpl.budgetLines && tpl.budgetLines.length) {
         if (!st.budgetLines) st.budgetLines = [];
-        tpl.budgetLines.forEach(function(b) {
+        tpl.budgetLines.forEach(function (b) {
           st.budgetLines.push({
             id: U.genShortId('BL'),
             category: b.category,
@@ -212,6 +225,5 @@ var MMGR = window.MMGR || {};
     getAllTemplates: getAllTemplates,
     BUILT_IN: BUILT_IN
   };
-
 })(MMGR);
 window.MMGR = MMGR;

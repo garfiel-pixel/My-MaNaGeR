@@ -16,7 +16,8 @@ function readWav(file) {
   const buf = fs.readFileSync(file);
   if (buf.toString('ascii', 0, 4) !== 'RIFF') throw new Error(file + ': not RIFF');
   let off = 12;
-  let fmt = null, data = null;
+  let fmt = null,
+    data = null;
   while (off + 8 <= buf.length) {
     const id = buf.toString('ascii', off, off + 4);
     const sz = buf.readUInt32LE(off + 4);
@@ -57,7 +58,7 @@ function toMono(w) {
 
 function resample(s, fromRate, toRate) {
   if (fromRate === toRate) return s;
-  const out = new Float32Array(Math.max(1, Math.round(s.length * toRate / fromRate)));
+  const out = new Float32Array(Math.max(1, Math.round((s.length * toRate) / fromRate)));
   const ratio = fromRate / toRate;
   for (let i = 0; i < out.length; i++) {
     const pos = i * ratio;
@@ -95,9 +96,21 @@ function writeWav(file, samples, rate) {
 
 // ---- mix ----
 const RATE = 44100;
-const pm = resample(toMono(readWav(path.join(SAMPLES_DIR, 'tts-pm.wav'))), readWav(path.join(SAMPLES_DIR, 'tts-pm.wav')).rate, RATE);
-const fm = resample(toMono(readWav(path.join(SAMPLES_DIR, 'tts-fm.wav'))), readWav(path.join(SAMPLES_DIR, 'tts-fm.wav')).rate, RATE);
-const babble = resample(toMono(readWav(path.join(SAMPLES_DIR, 'tts-babble.wav'))), readWav(path.join(SAMPLES_DIR, 'tts-babble.wav')).rate, RATE);
+const pm = resample(
+  toMono(readWav(path.join(SAMPLES_DIR, 'tts-pm.wav'))),
+  readWav(path.join(SAMPLES_DIR, 'tts-pm.wav')).rate,
+  RATE
+);
+const fm = resample(
+  toMono(readWav(path.join(SAMPLES_DIR, 'tts-fm.wav'))),
+  readWav(path.join(SAMPLES_DIR, 'tts-fm.wav')).rate,
+  RATE
+);
+const babble = resample(
+  toMono(readWav(path.join(SAMPLES_DIR, 'tts-babble.wav'))),
+  readWav(path.join(SAMPLES_DIR, 'tts-babble.wav')).rate,
+  RATE
+);
 
 const total = Math.max(pm.length, fm.length, babble.length) + Math.round(RATE * 1.5);
 const mix = new Float32Array(total);
@@ -110,8 +123,8 @@ function add(dst, src, gain, startSample) {
   }
 }
 add(mix, pm, 0.9, 0);
-add(mix, fm, 0.7, Math.round(RATE * 0.2));         // foreman starts as PM trails (overlap)
-add(mix, babble, 0.18, Math.round(RATE * 0.45));    // background babble mid-meeting
+add(mix, fm, 0.7, Math.round(RATE * 0.2)); // foreman starts as PM trails (overlap)
+add(mix, babble, 0.18, Math.round(RATE * 0.45)); // background babble mid-meeting
 
 // White noise (jobsite background) at low level
 const noise = new Float32Array(total);
@@ -138,4 +151,12 @@ for (let i = 0; i < total; i++) {
 
 const outFile = path.join(SAMPLES_DIR, 'messy-meeting.wav');
 writeWav(outFile, mix, RATE);
-console.log('WROTE ' + outFile + ' (' + fs.statSync(outFile).size + ' bytes, ' + (total / RATE).toFixed(1) + 's)');
+console.log(
+  'WROTE ' +
+    outFile +
+    ' (' +
+    fs.statSync(outFile).size +
+    ' bytes, ' +
+    (total / RATE).toFixed(1) +
+    's)'
+);

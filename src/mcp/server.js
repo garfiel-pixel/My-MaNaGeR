@@ -34,8 +34,18 @@
      apply_changes        — write diffs (goes through review queue)
    ============================================================ */
 
-import { json, cloudAuthOwnerEither, cloudAuthApiKey, cloudReadState, readCloudBody,
-  cloudScopeState, cloudScopeMerge, cloudDiffState, CLOUD_SECTIONS, CLOUD_KEY_TO_SECTION } from '../lib/http.js';
+import {
+  json,
+  cloudAuthOwnerEither,
+  cloudAuthApiKey,
+  cloudReadState,
+  readCloudBody,
+  cloudScopeState,
+  cloudScopeMerge,
+  cloudDiffState,
+  CLOUD_SECTIONS,
+  CLOUD_KEY_TO_SECTION
+} from '../lib/http.js';
 import { API_SHAPES } from '../api/shapes.js';
 
 // ---- MCP protocol constants ----
@@ -49,7 +59,8 @@ const SERVER_INFO = {
 // PATH-A (2026-09-16): the single tool-layer auth refusal. serve.cjs's dev
 // mirror carries a byte-identical copy (it cannot import this ESM module)
 // and the QA harnesses assert this exact text.
-export const MCP_AUTH_REFUSAL = 'This endpoint needs its own credential before it will share project data or accept changes. Supply the project API key as Authorization: Bearer <key> or X-API-Key, or the owner code as Authorization: Bearer <owner-code>.';
+export const MCP_AUTH_REFUSAL =
+  'This endpoint needs its own credential before it will share project data or accept changes. Supply the project API key as Authorization: Bearer <key> or X-API-Key, or the owner code as Authorization: Bearer <owner-code>.';
 
 // ---- Tool definitions (MCP schema format) ----
 
@@ -66,7 +77,8 @@ const TOOLS = [
   },
   {
     name: 'get_budget',
-    description: 'Get budget lines with planned vs actual costs, EVM metrics (SPI, CPI, EAC, ETC, VAC).',
+    description:
+      'Get budget lines with planned vs actual costs, EVM metrics (SPI, CPI, EAC, ETC, VAC).',
     inputSchema: { type: 'object', properties: {}, required: [] }
   },
   {
@@ -76,7 +88,8 @@ const TOOLS = [
   },
   {
     name: 'get_weather',
-    description: 'Get weather forecast risk days (precip >= 60%, temp >= 32C or <= 0C) and delay log.',
+    description:
+      'Get weather forecast risk days (precip >= 60%, temp >= 32C or <= 0C) and delay log.',
     inputSchema: { type: 'object', properties: {}, required: [] }
   },
   {
@@ -86,7 +99,8 @@ const TOOLS = [
   },
   {
     name: 'apply_changes',
-    description: 'Submit changes to the project: edit existing records with diffs, or create new records with creates. Everything goes through the owner review queue - never auto-applied. diffs: array of {path, recordId, field, before, after}. creates: array of {path, record} where record needs at least {name} (tasks also accept startDate/endDate/assignee/status; resources accept name/role/rate/type).',
+    description:
+      'Submit changes to the project: edit existing records with diffs, or create new records with creates. Everything goes through the owner review queue - never auto-applied. diffs: array of {path, recordId, field, before, after}. creates: array of {path, record} where record needs at least {name} (tasks also accept startDate/endDate/assignee/status; resources accept name/role/rate/type).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -107,12 +121,20 @@ const TOOLS = [
         },
         creates: {
           type: 'array',
-          description: 'Array of NEW records to propose (e.g. add a task or a resource). Queued for owner review like diffs.',
+          description:
+            'Array of NEW records to propose (e.g. add a task or a resource). Queued for owner review like diffs.',
           items: {
             type: 'object',
             properties: {
-              path: { type: 'string', description: 'List to append to (e.g. "tasks", "resources", "risks", "logEntries")' },
-              record: { type: 'object', description: 'The new record. Must carry at least a "name" field. Unknown fields are kept; missing fields get list-appropriate defaults so the record renders correctly in the app.' }
+              path: {
+                type: 'string',
+                description: 'List to append to (e.g. "tasks", "resources", "risks", "logEntries")'
+              },
+              record: {
+                type: 'object',
+                description:
+                  'The new record. Must carry at least a "name" field. Unknown fields are kept; missing fields get list-appropriate defaults so the record renders correctly in the app.'
+              }
             },
             required: ['path', 'record']
           }
@@ -133,8 +155,36 @@ const TOOLS = [
 // the create lands only if the section is granted, and the whole proposal
 // waits in the review queue regardless.
 const CREATE_DEFAULTS = {
-  tasks: { id: null, name: 'New Task', level: 0, indent: 0, isPhase: false, status: 'todo', startDate: '', endDate: '', duration: '', assignee: '', critical: false, leadTime: false, recurring: false, weatherExposed: false, confidence: 'high', predecessors: [], notes: '', weatherSensitive: false },
-  resources: { id: null, name: '', type: 'Labor', role: '', availability: 100, rate: 0, hoursAllocated: 0, utilization: 0 },
+  tasks: {
+    id: null,
+    name: 'New Task',
+    level: 0,
+    indent: 0,
+    isPhase: false,
+    status: 'todo',
+    startDate: '',
+    endDate: '',
+    duration: '',
+    assignee: '',
+    critical: false,
+    leadTime: false,
+    recurring: false,
+    weatherExposed: false,
+    confidence: 'high',
+    predecessors: [],
+    notes: '',
+    weatherSensitive: false
+  },
+  resources: {
+    id: null,
+    name: '',
+    type: 'Labor',
+    role: '',
+    availability: 100,
+    rate: 0,
+    hoursAllocated: 0,
+    utilization: 0
+  },
   risks: { id: null, name: '', probability: 'Low', impact: 'Medium', status: 'Open', notes: '' },
   issues: { id: null, name: '', status: 'Open', notes: '' },
   logEntries: { id: null, title: '', decision: '', date: '' },
@@ -149,7 +199,11 @@ const CREATE_DEFAULTS = {
 function buildCreatedRecord(path, record, nowMs, counterRef) {
   const base = CREATE_DEFAULTS[path] || { id: null, name: '' };
   const rec = JSON.parse(JSON.stringify(base));
-  rec.id = (path === 'tasks' ? 't_' : (path === 'resources' ? 'R' : 'mcp_')) + nowMs.toString(36) + '_' + (++counterRef.n);
+  rec.id =
+    (path === 'tasks' ? 't_' : path === 'resources' ? 'R' : 'mcp_') +
+    nowMs.toString(36) +
+    '_' +
+    ++counterRef.n;
   if (record && typeof record === 'object') {
     for (const k of Object.keys(record)) {
       if (k === 'id') continue; // ids are server-assigned, never client-supplied
@@ -167,13 +221,23 @@ function buildCreatedRecord(path, record, nowMs, counterRef) {
 // projects its output through cloudScopeState or refuses with a clear
 // message when its whole section is not granted. Weather is not a grantable
 // section at all, so scoped keys are refused there outright.
-function sectionAllowed(scope, sec) { return !Array.isArray(scope) || scope.indexOf(sec) !== -1; }
+function sectionAllowed(scope, sec) {
+  return !Array.isArray(scope) || scope.indexOf(sec) !== -1;
+}
 function sectionRefusal(scope) {
-  return 'This API key does not include that section. The owner granted it: ' + (Array.isArray(scope) && scope.length ? scope.join(', ') : '(no sections)') + '. Ask the project owner to tick more sections for this key.';
+  return (
+    'This API key does not include that section. The owner granted it: ' +
+    (Array.isArray(scope) && scope.length ? scope.join(', ') : '(no sections)') +
+    '. Ask the project owner to tick more sections for this key.'
+  );
 }
 
 function executeTool(name, state, projectId, label, scope) {
-  if (!state) return { content: [{ type: 'text', text: 'No project data available. Save a snapshot first.' }], isError: true };
+  if (!state)
+    return {
+      content: [{ type: 'text', text: 'No project data available. Save a snapshot first.' }],
+      isError: true
+    };
   if (Array.isArray(scope)) state = cloudScopeState(state, scope);
 
   switch (name) {
@@ -184,56 +248,85 @@ function executeTool(name, state, projectId, label, scope) {
       const risks = Array.isArray(state.risks) ? state.risks : [];
       const openRisks = risks.filter(r => !r.issueId).length;
       return {
-        content: [{
-          type: 'text',
-          text: JSON.stringify({
-            projectId,
-            name: state.charter && state.charter.name ? state.charter.name : projectId,
-            description: state.charter && state.charter.description ? state.charter.description : '',
-            completion: total ? Math.round(done / total * 100) : 0,
-            totalTasks: total,
-            completedTasks: done,
-            openRisks,
-            charter: state.charter || null
-          }, null, 2)
-        }]
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                projectId,
+                name: state.charter && state.charter.name ? state.charter.name : projectId,
+                description:
+                  state.charter && state.charter.description ? state.charter.description : '',
+                completion: total ? Math.round((done / total) * 100) : 0,
+                totalTasks: total,
+                completedTasks: done,
+                openRisks,
+                charter: state.charter || null
+              },
+              null,
+              2
+            )
+          }
+        ]
       };
     }
     case 'get_tasks': {
-      if (!sectionAllowed(scope, 'wbs')) return { content: [{ type: 'text', text: sectionRefusal(scope) }], isError: true };
+      if (!sectionAllowed(scope, 'wbs'))
+        return { content: [{ type: 'text', text: sectionRefusal(scope) }], isError: true };
       const tasks = Array.isArray(state.tasks) ? state.tasks : [];
       return {
-        content: [{
-          type: 'text',
-          text: JSON.stringify({
-            count: tasks.length,
-            tasks: tasks.map(t => ({
-              id: t.id, name: t.name || t.id, status: t.status || 'todo',
-              startDate: t.startDate || null, endDate: t.endDate || null,
-              critical: !!t.critical,
-              // B16 (audit 2026-09-28): the app's dependency field is
-              // `predecessors` (mmgr-tasks.js defaults, mmgr-schedule.js
-              // engine) - the old read of t.dependencies ALWAYS produced [],
-              // so every AI client saw an unlinked schedule with no critical
-              // path. Output field name stays `dependencies` (the published
-              // MCP shape qa-engine-parity asserts); the source is corrected.
-              dependencies: (Array.isArray(t.predecessors) && t.predecessors.length) ? t.predecessors : (Array.isArray(t.dependencies) ? t.dependencies : []),
-              assignee: t.assignee || null, notes: t.notes || null
-            }))
-          }, null, 2)
-        }]
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                count: tasks.length,
+                tasks: tasks.map(t => ({
+                  id: t.id,
+                  name: t.name || t.id,
+                  status: t.status || 'todo',
+                  startDate: t.startDate || null,
+                  endDate: t.endDate || null,
+                  critical: !!t.critical,
+                  // B16 (audit 2026-09-28): the app's dependency field is
+                  // `predecessors` (mmgr-tasks.js defaults, mmgr-schedule.js
+                  // engine) - the old read of t.dependencies ALWAYS produced [],
+                  // so every AI client saw an unlinked schedule with no critical
+                  // path. Output field name stays `dependencies` (the published
+                  // MCP shape qa-engine-parity asserts); the source is corrected.
+                  dependencies:
+                    Array.isArray(t.predecessors) && t.predecessors.length
+                      ? t.predecessors
+                      : Array.isArray(t.dependencies)
+                        ? t.dependencies
+                        : [],
+                  assignee: t.assignee || null,
+                  notes: t.notes || null
+                }))
+              },
+              null,
+              2
+            )
+          }
+        ]
       };
     }
     case 'get_budget': {
-      if (!sectionAllowed(scope, 'bud')) return { content: [{ type: 'text', text: sectionRefusal(scope) }], isError: true };
+      if (!sectionAllowed(scope, 'bud'))
+        return { content: [{ type: 'text', text: sectionRefusal(scope) }], isError: true };
       const lines = Array.isArray(state.budgetLines) ? state.budgetLines : [];
       const spendLog = Array.isArray(state.spendLog) ? state.spendLog : [];
       const enriched = lines.map(line => {
         const log = spendLog.filter(e => e.budgetLineId === line.id);
-        const actual = log.length ? log.reduce((s, e) => s + (+e.amount || 0), 0) : (+line.actual || 0);
+        const actual = log.length
+          ? log.reduce((s, e) => s + (+e.amount || 0), 0)
+          : +line.actual || 0;
         return {
-          id: line.id, name: line.name || line.id, category: line.category || null,
-          planned: +line.planned || 0, actual,
+          id: line.id,
+          name: line.name || line.id,
+          category: line.category || null,
+          planned: +line.planned || 0,
+          actual,
           variance: (+line.planned || 0) - actual,
           linkedTaskId: line.linkedTaskId || line.taskId || null
         };
@@ -241,77 +334,129 @@ function executeTool(name, state, projectId, label, scope) {
       const totalPlanned = enriched.reduce((s, l) => s + l.planned, 0);
       const totalActual = enriched.reduce((s, l) => s + l.actual, 0);
       return {
-        content: [{
-          type: 'text',
-          text: JSON.stringify({
-            totalPlanned, totalActual, variance: totalPlanned - totalActual,
-            lineCount: enriched.length, lines: enriched
-          }, null, 2)
-        }]
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                totalPlanned,
+                totalActual,
+                variance: totalPlanned - totalActual,
+                lineCount: enriched.length,
+                lines: enriched
+              },
+              null,
+              2
+            )
+          }
+        ]
       };
     }
     case 'get_risks': {
-      if (!sectionAllowed(scope, 'risk')) return { content: [{ type: 'text', text: sectionRefusal(scope) }], isError: true };
+      if (!sectionAllowed(scope, 'risk'))
+        return { content: [{ type: 'text', text: sectionRefusal(scope) }], isError: true };
       const risks = Array.isArray(state.risks) ? state.risks : [];
       const issues = Array.isArray(state.issues) ? state.issues : [];
       return {
-        content: [{
-          type: 'text',
-          text: JSON.stringify({
-            riskCount: risks.length, issueCount: issues.length,
-            risks: risks.map(r => ({
-              id: r.id, description: r.description || '(untitled)',
-              probability: r.probability || null, impact: r.impact || null,
-              status: r.status || 'open', promoted: !!r.issueId,
-              mitigation: r.mitigation || null
-            })),
-            issues: issues.map(i => ({
-              id: i.id, description: i.description || '(untitled)',
-              status: i.status || 'open', owner: i.owner || null
-            }))
-          }, null, 2)
-        }]
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                riskCount: risks.length,
+                issueCount: issues.length,
+                risks: risks.map(r => ({
+                  id: r.id,
+                  description: r.description || '(untitled)',
+                  probability: r.probability || null,
+                  impact: r.impact || null,
+                  status: r.status || 'open',
+                  promoted: !!r.issueId,
+                  mitigation: r.mitigation || null
+                })),
+                issues: issues.map(i => ({
+                  id: i.id,
+                  description: i.description || '(untitled)',
+                  status: i.status || 'open',
+                  owner: i.owner || null
+                }))
+              },
+              null,
+              2
+            )
+          }
+        ]
       };
     }
     case 'get_weather': {
-      if (Array.isArray(scope)) return { content: [{ type: 'text', text: 'Weather data is not a grantable section, so API keys cannot read it. The project owner can read it inside the app.' }], isError: true };
+      if (Array.isArray(scope))
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'Weather data is not a grantable section, so API keys cannot read it. The project owner can read it inside the app.'
+            }
+          ],
+          isError: true
+        };
       const cache = state.wxCache || null;
-      const days = (cache && Array.isArray(cache.days)) ? cache.days : [];
+      const days = cache && Array.isArray(cache.days) ? cache.days : [];
       const log = Array.isArray(state.weatherLog) ? state.weatherLog : [];
       return {
-        content: [{
-          type: 'text',
-          text: JSON.stringify({
-            cachedAt: cache && cache.at ? new Date(cache.at).toISOString() : null,
-            forecastDays: days.length,
-            forecast: days.slice(0, 14).map(d => ({
-              date: d.date, precip: +d.precip || 0,
-              tMax: +d.tMax || 0, tMin: +d.tMin || 0
-            })),
-            delayLogCount: log.length,
-            delayLog: log.slice(-20).map(w => ({
-              date: w.date || null, condition: w.condition || null,
-              delayDays: +w.delayDays || 0, cause: w.cause || null
-            }))
-          }, null, 2)
-        }]
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                cachedAt: cache && cache.at ? new Date(cache.at).toISOString() : null,
+                forecastDays: days.length,
+                forecast: days.slice(0, 14).map(d => ({
+                  date: d.date,
+                  precip: +d.precip || 0,
+                  tMax: +d.tMax || 0,
+                  tMin: +d.tMin || 0
+                })),
+                delayLogCount: log.length,
+                delayLog: log.slice(-20).map(w => ({
+                  date: w.date || null,
+                  condition: w.condition || null,
+                  delayDays: +w.delayDays || 0,
+                  cause: w.cause || null
+                }))
+              },
+              null,
+              2
+            )
+          }
+        ]
       };
     }
     case 'get_meetings': {
-      if (!sectionAllowed(scope, 'meet')) return { content: [{ type: 'text', text: sectionRefusal(scope) }], isError: true };
+      if (!sectionAllowed(scope, 'meet'))
+        return { content: [{ type: 'text', text: sectionRefusal(scope) }], isError: true };
       const meetings = Array.isArray(state.meetings) ? state.meetings : [];
       return {
-        content: [{
-          type: 'text',
-          text: JSON.stringify({
-            count: meetings.length,
-            meetings: meetings.map(m => ({
-              id: m.id, date: m.date || null, title: m.title || m.name || '(untitled)',
-              attendees: m.attendees || [], decisions: m.decisions || [],
-              actions: m.actions || m.actionItems || [], notes: m.notes || null
-            }))
-          }, null, 2)
-        }]
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                count: meetings.length,
+                meetings: meetings.map(m => ({
+                  id: m.id,
+                  date: m.date || null,
+                  title: m.title || m.name || '(untitled)',
+                  attendees: m.attendees || [],
+                  decisions: m.decisions || [],
+                  actions: m.actions || m.actionItems || [],
+                  notes: m.notes || null
+                }))
+              },
+              null,
+              2
+            )
+          }
+        ]
       };
     }
     case 'apply_changes': {
@@ -336,7 +481,8 @@ async function handleMcpRequest(body, projectId, env, auth) {
 
   if (method === 'initialize') {
     return {
-      jsonrpc: '2.0', id,
+      jsonrpc: '2.0',
+      id,
       result: {
         protocolVersion: MCP_PROTOCOL_VERSION,
         capabilities: {
@@ -354,7 +500,8 @@ async function handleMcpRequest(body, projectId, env, auth) {
 
   if (method === 'tools/list') {
     return {
-      jsonrpc: '2.0', id,
+      jsonrpc: '2.0',
+      id,
       result: { tools: TOOLS }
     };
   }
@@ -373,7 +520,8 @@ async function handleMcpRequest(body, projectId, env, auth) {
     // isError result, never an HTTP 401. No credential, no data, no writes.
     if (!auth) {
       return {
-        jsonrpc: '2.0', id,
+        jsonrpc: '2.0',
+        id,
         result: { content: [{ type: 'text', text: MCP_AUTH_REFUSAL }], isError: true }
       };
     }
@@ -382,14 +530,23 @@ async function handleMcpRequest(body, projectId, env, auth) {
     const key = 'projects/' + projectId + '/latest.json';
     const row = await env.DB.prepare(
       'SELECT latest_r2_key, owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?'
-    ).bind(projectId).first();
-    const state = row && row.latest_r2_key
-      ? await cloudReadState(env, key, row.owner_code_hash, row.owner_code_salt)
-      : null;
+    )
+      .bind(projectId)
+      .first();
+    const state =
+      row && row.latest_r2_key
+        ? await cloudReadState(env, key, row.owner_code_hash, row.owner_code_salt)
+        : null;
 
     // Execute the tool. API-KEY-AUDIT F4: a scoped key's reads are filtered
     // to its granted sections; an owner-code caller gets scope=null (full).
-    const result = executeTool(toolName, state, projectId, auth.label || 'MCP AI', auth.role === 'api' ? auth.scope : null);
+    const result = executeTool(
+      toolName,
+      state,
+      projectId,
+      auth.label || 'MCP AI',
+      auth.role === 'api' ? auth.scope : null
+    );
 
     // Handle apply_changes - queue a pending review proposal (API-KEY-AUDIT
     // F3, 2026-09-16). Field-level diffs are materialized onto a copy of the
@@ -402,8 +559,17 @@ async function handleMcpRequest(body, projectId, env, auth) {
       const creates = Array.isArray(toolArgs.creates) ? toolArgs.creates : [];
       if (diffs.length === 0 && creates.length === 0) {
         return {
-          jsonrpc: '2.0', id,
-          result: { content: [{ type: 'text', text: 'Nothing provided. Supply diffs as {path, recordId, field, after} and/or creates as {path, record} objects.' }], isError: true }
+          jsonrpc: '2.0',
+          id,
+          result: {
+            content: [
+              {
+                type: 'text',
+                text: 'Nothing provided. Supply diffs as {path, recordId, field, after} and/or creates as {path, record} objects.'
+              }
+            ],
+            isError: true
+          }
         };
       }
 
@@ -418,8 +584,17 @@ async function handleMcpRequest(body, projectId, env, auth) {
       }
       if (!prev) {
         return {
-          jsonrpc: '2.0', id,
-          result: { content: [{ type: 'text', text: 'No project data available. Save a snapshot first, or use creates to add new records to the empty project.' }], isError: true }
+          jsonrpc: '2.0',
+          id,
+          result: {
+            content: [
+              {
+                type: 'text',
+                text: 'No project data available. Save a snapshot first, or use creates to add new records to the empty project.'
+              }
+            ],
+            isError: true
+          }
         };
       }
       const base = JSON.parse(JSON.stringify(prev));
@@ -427,21 +602,42 @@ async function handleMcpRequest(body, projectId, env, auth) {
       const refused = [];
       for (let i = 0; i < diffs.length; i++) {
         const d = diffs[i];
-        if (!d || typeof d !== 'object') { refused.push('diff ' + i + ': invalid'); continue; }
+        if (!d || typeof d !== 'object') {
+          refused.push('diff ' + i + ': invalid');
+          continue;
+        }
         const path = String(d.path || '');
         const rec = String(d.recordId || '');
         const field = String(d.field || '');
         const sec = CLOUD_KEY_TO_SECTION[path];
-        if (!sec) { refused.push((path || '(empty)') + ': not a project section'); continue; }
-        if (granted.indexOf(sec) === -1) { refused.push(path + ': outside the granted sections'); continue; }
+        if (!sec) {
+          refused.push((path || '(empty)') + ': not a project section');
+          continue;
+        }
+        if (granted.indexOf(sec) === -1) {
+          refused.push(path + ': outside the granted sections');
+          continue;
+        }
         const arr = base[path];
-        if (!Array.isArray(arr)) { refused.push(path + ': not an editable list'); continue; }
+        if (!Array.isArray(arr)) {
+          refused.push(path + ': not an editable list');
+          continue;
+        }
         let item = null;
         for (let j = 0; j < arr.length; j++) {
-          if (arr[j] && String(arr[j].id) === rec) { item = arr[j]; break; }
+          if (arr[j] && String(arr[j].id) === rec) {
+            item = arr[j];
+            break;
+          }
         }
-        if (!item) { refused.push((rec || '(no record id)') + ': not found in ' + path); continue; }
-        if (!field) { refused.push('diff ' + i + ': missing field'); continue; }
+        if (!item) {
+          refused.push((rec || '(no record id)') + ': not found in ' + path);
+          continue;
+        }
+        if (!field) {
+          refused.push('diff ' + i + ': missing field');
+          continue;
+        }
         item[field] = d.after !== undefined ? d.after : null;
         submitted[path] = arr;
       }
@@ -453,23 +649,50 @@ async function handleMcpRequest(body, projectId, env, auth) {
       const nowMs = Date.now();
       for (let i = 0; i < creates.length; i++) {
         const c = creates[i];
-        if (!c || typeof c !== 'object') { refusedCreates.push('create ' + i + ': invalid'); continue; }
+        if (!c || typeof c !== 'object') {
+          refusedCreates.push('create ' + i + ': invalid');
+          continue;
+        }
         const cpath = String(c.path || '');
         const recInput = c.record;
         const csec = CLOUD_KEY_TO_SECTION[cpath];
-        if (!csec) { refusedCreates.push((cpath || '(empty)') + ': not a project section'); continue; }
-        if (granted.indexOf(csec) === -1) { refusedCreates.push(cpath + ': outside the granted sections'); continue; }
-        if (!recInput || typeof recInput !== 'object') { refusedCreates.push('create ' + i + ': missing record'); continue; }
+        if (!csec) {
+          refusedCreates.push((cpath || '(empty)') + ': not a project section');
+          continue;
+        }
+        if (granted.indexOf(csec) === -1) {
+          refusedCreates.push(cpath + ': outside the granted sections');
+          continue;
+        }
+        if (!recInput || typeof recInput !== 'object') {
+          refusedCreates.push('create ' + i + ': missing record');
+          continue;
+        }
         // TITLE-KEYED LISTS (2026-09-26): meetings, logEntries and commsEntries
         // are title-keyed by the app's own creators (mmgr-meetings.js,
         // mmgr-decisions.js, mmgr-closure.js) AND by CREATE_DEFAULTS below, so
         // the gate must accept name OR title. A title-only create used to be
         // refused with 'record needs at least a name', silently shrinking the
         // queued proposal (found via the bank-renovation #20 field-count gap).
-        const titleVal = recInput.title !== undefined && recInput.title !== null ? String(recInput.title).trim() : '';
-        const hasName = (recInput.name !== undefined && recInput.name !== null && String(recInput.name).trim() !== '') || titleVal !== '';
-        if (!hasName) { refusedCreates.push('create ' + i + ' (' + cpath + '): record needs at least a name or title'); continue; }
-        if (!CREATE_DEFAULTS[cpath]) { refusedCreates.push(cpath + ': not a list that accepts new records'); continue; }
+        const titleVal =
+          recInput.title !== undefined && recInput.title !== null
+            ? String(recInput.title).trim()
+            : '';
+        const hasName =
+          (recInput.name !== undefined &&
+            recInput.name !== null &&
+            String(recInput.name).trim() !== '') ||
+          titleVal !== '';
+        if (!hasName) {
+          refusedCreates.push(
+            'create ' + i + ' (' + cpath + '): record needs at least a name or title'
+          );
+          continue;
+        }
+        if (!CREATE_DEFAULTS[cpath]) {
+          refusedCreates.push(cpath + ': not a list that accepts new records');
+          continue;
+        }
         const arr2 = Array.isArray(base[cpath]) ? base[cpath] : (base[cpath] = []);
         arr2.push(buildCreatedRecord(cpath, recInput, nowMs, counterRef));
         submitted[cpath] = arr2;
@@ -477,40 +700,93 @@ async function handleMcpRequest(body, projectId, env, auth) {
       const allRefused = refused.concat(refusedCreates);
       if (!Object.keys(submitted).length) {
         return {
-          jsonrpc: '2.0', id,
-          result: { content: [{ type: 'text', text: 'Nothing to propose. ' + (allRefused.length ? 'Refused: ' + allRefused.join('; ') + '.' : '') }], isError: true }
+          jsonrpc: '2.0',
+          id,
+          result: {
+            content: [
+              {
+                type: 'text',
+                text:
+                  'Nothing to propose. ' +
+                  (allRefused.length ? 'Refused: ' + allRefused.join('; ') + '.' : '')
+              }
+            ],
+            isError: true
+          }
         };
       }
       const merged = cloudScopeMerge(prev, submitted, granted);
       if (!merged.applied.length) {
         return {
-          jsonrpc: '2.0', id,
-          result: { content: [{ type: 'text', text: 'No changes were within the granted sections.' + (refused.length ? ' Refused: ' + refused.join('; ') + '.' : '') }], isError: true }
+          jsonrpc: '2.0',
+          id,
+          result: {
+            content: [
+              {
+                type: 'text',
+                text:
+                  'No changes were within the granted sections.' +
+                  (refused.length ? ' Refused: ' + refused.join('; ') + '.' : '')
+              }
+            ],
+            isError: true
+          }
         };
       }
       const now = new Date().toISOString();
-      const diffsJson = (cloudDiffState(prev, merged.next) || []).filter(function(d) { return String(d.path).indexOf('fieldTs') !== 0; });
+      const diffsJson = (cloudDiffState(prev, merged.next) || []).filter(function (d) {
+        return String(d.path).indexOf('fieldTs') !== 0;
+      });
       let res;
       try {
         res = await env.DB.prepare(
           'INSERT INTO cloud_reviews (project_id, proposal_type, source_type, source_label, editor_code_id, scope, submitted_json, diffs_json, status, proposed_at) VALUES (?,?,?,?,?,?,?,?,?,?)'
-        ).bind(projectId, 'mcp', 'api', auth.label || 'MCP AI', null, JSON.stringify(granted),
-          JSON.stringify(submitted), JSON.stringify(diffsJson), 'pending', now).run();
+        )
+          .bind(
+            projectId,
+            'mcp',
+            'api',
+            auth.label || 'MCP AI',
+            null,
+            JSON.stringify(granted),
+            JSON.stringify(submitted),
+            JSON.stringify(diffsJson),
+            'pending',
+            now
+          )
+          .run();
       } catch (e) {
         return {
-          jsonrpc: '2.0', id,
-          result: { content: [{ type: 'text', text: 'Could not queue the proposal: ' + (e.message || 'database error') }], isError: true }
+          jsonrpc: '2.0',
+          id,
+          result: {
+            content: [
+              {
+                type: 'text',
+                text: 'Could not queue the proposal: ' + (e.message || 'database error')
+              }
+            ],
+            isError: true
+          }
         };
       }
       return {
-        jsonrpc: '2.0', id,
+        jsonrpc: '2.0',
+        id,
         result: {
-          content: [{
-            type: 'text',
-            text: 'Queued ' + diffsJson.length + ' field change(s) for owner review (proposal #' + res.meta.last_row_id + ').'
-              + (refused.length ? ' Refused: ' + refused.join('; ') + '.' : '')
-              + ' Nothing changes until the owner accepts it inside the project.'
-          }]
+          content: [
+            {
+              type: 'text',
+              text:
+                'Queued ' +
+                diffsJson.length +
+                ' field change(s) for owner review (proposal #' +
+                res.meta.last_row_id +
+                ').' +
+                (refused.length ? ' Refused: ' + refused.join('; ') + '.' : '') +
+                ' Nothing changes until the owner accepts it inside the project.'
+            }
+          ]
         }
       };
     }
@@ -519,7 +795,8 @@ async function handleMcpRequest(body, projectId, env, auth) {
   }
 
   return {
-    jsonrpc: '2.0', id,
+    jsonrpc: '2.0',
+    id,
     error: { code: -32601, message: 'Method not found: ' + method }
   };
 }
@@ -555,7 +832,11 @@ export async function handleMcpServer(request, env, projectId) {
   if (!auth && bearer && bearer.lastIndexOf('sk-mmgr-', 0) !== 0) {
     const authHeaders = new Headers(request.headers);
     authHeaders.set('X-Owner-Code', bearer);
-    const authReq = new Request(request.url, { method: 'POST', headers: authHeaders, body: request.body });
+    const authReq = new Request(request.url, {
+      method: 'POST',
+      headers: authHeaders,
+      body: request.body
+    });
     auth = await cloudAuthOwnerEither(authReq, env, projectId);
   }
 
@@ -573,10 +854,13 @@ export async function handleMcpServer(request, env, projectId) {
     return json(response, 200);
   } catch (e) {
     console.error('MCP error:', e && e.message);
-    return json({
-      jsonrpc: '2.0',
-      id: body && body.id,
-      error: { code: -32603, message: 'Internal error: ' + (e.message || 'unknown') }
-    }, 500);
+    return json(
+      {
+        jsonrpc: '2.0',
+        id: body && body.id,
+        error: { code: -32603, message: 'Internal error: ' + (e.message || 'unknown') }
+      },
+      500
+    );
   }
 }

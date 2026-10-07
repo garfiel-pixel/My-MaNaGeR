@@ -23,8 +23,13 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 
 let failures = 0;
-function fail(msg) { failures++; console.error('  FAIL: ' + msg); }
-function pass(msg) { console.log('  PASS: ' + msg); }
+function fail(msg) {
+  failures++;
+  console.error('  FAIL: ' + msg);
+}
+function pass(msg) {
+  console.log('  PASS: ' + msg);
+}
 
 // ---- helpers ----
 
@@ -61,7 +66,7 @@ function findDefinition(src, name) {
   // Match `function name(`, `const name =`, `let name =`, `var name =`
   const patterns = [
     new RegExp('function\\s+' + name + '\\s*\\('),
-    new RegExp('(const|let|var)\\s+' + name + '\\s*[=;,]'),
+    new RegExp('(const|let|var)\\s+' + name + '\\s*[=;,]')
   ];
   for (const p of patterns) {
     const m = src.match(p);
@@ -124,9 +129,10 @@ for (const file of renderFiles) {
     // (b) a delegation wrapper that forwards to ns.RenderXxx.key()
     const hasFunc = findDefinition(renderSrc, key);
     const hasWrapper = findDelegationWrapper(renderSrc, key);
-    const hasFallback = renderSrc.includes('function ' + key + '(') &&
-                        (renderSrc.includes('ns.RenderWeather') || renderSrc.includes('ns.' + nsName)) &&
-                        findDelegationWrapper(renderSrc, key);
+    const hasFallback =
+      renderSrc.includes('function ' + key + '(') &&
+      (renderSrc.includes('ns.RenderWeather') || renderSrc.includes('ns.' + nsName)) &&
+      findDelegationWrapper(renderSrc, key);
 
     if (!hasFunc && !hasWrapper && !hasFallback) {
       fail(nsName + '.' + key + ' (from ' + file + ':' + line + ') — no wrapper in mmgr-render.js');

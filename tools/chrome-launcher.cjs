@@ -47,12 +47,7 @@ function findChrome() {
     );
   } else {
     // Linux
-    candidates.push(
-      'google-chrome',
-      'google-chrome-stable',
-      'chromium-browser',
-      'chromium'
-    );
+    candidates.push('google-chrome', 'google-chrome-stable', 'chromium-browser', 'chromium');
   }
 
   // 3. Try each candidate
@@ -64,10 +59,15 @@ function findChrome() {
       // real file path and throws instantly on 'google-chrome' (CI incident
       // 2026-10-01: qa-calc-trade-coverage died 0s into the step).
       try {
-        const out = execSync('which ' + JSON.stringify(c), { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim().split(/\r?\n/)[0];
+        const out = execSync('which ' + JSON.stringify(c), { stdio: ['ignore', 'pipe', 'ignore'] })
+          .toString()
+          .trim()
+          .split(/\r?\n/)[0];
         if (out && fs.existsSync(out)) return out;
         return c; // which agreed the candidate exists - keep prior behavior
-      } catch (e) { /* not in PATH */ }
+      } catch (e) {
+        /* not in PATH */
+      }
     } else {
       // On Windows, check file existence
       if (fs.existsSync(c)) return c;
@@ -82,7 +82,7 @@ function findChrome() {
 const CHROME = findChrome();
 const PORT = parseInt(process.env.QA_PORT || '8765', 10);
 const DEBUG_PORT = parseInt(process.env.CHROME_DEBUG_PORT || '9228', 10);
-const BASE = process.env.QA_BASE || ('http://127.0.0.1:' + PORT);
+const BASE = process.env.QA_BASE || 'http://127.0.0.1:' + PORT;
 
 // ---- Chrome launch arguments (headless, no-sandbox for CI) ----
 function chromeArgs(extraArgs = []) {

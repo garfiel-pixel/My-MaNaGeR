@@ -12,13 +12,15 @@
 (function () {
   'use strict';
 
-  function $(id) { return document.getElementById(id); }
+  function $(id) {
+    return document.getElementById(id);
+  }
 
   var STATES = ['st-loading', 'st-ok', 'st-err', 'st-sent'];
   function show(id) {
     for (var i = 0; i < STATES.length; i++) {
       var el = $(STATES[i]);
-      if (el) el.hidden = (STATES[i] !== id);
+      if (el) el.hidden = STATES[i] !== id;
     }
   }
 
@@ -31,23 +33,39 @@
   }
 
   if (!token) {
-    fail('This confirmation link is incomplete. Use the full link from your email, or request a fresh one below.');
+    fail(
+      'This confirmation link is incomplete. Use the full link from your email, or request a fresh one below.'
+    );
   } else {
     fetch('/api/auth/verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token: token })
-    }).then(function (r) {
-      return r.json().catch(function () { return null; }).then(function (b) { return { status: r.status, body: b }; });
-    }).then(function (res) {
-      if (res.status === 200 && res.body && res.body.ok) {
-        show('st-ok');
-      } else {
-        fail('This confirmation link is invalid, expired, or has already been used. Request a fresh one below, or contact support if it keeps failing.');
-      }
-    }).catch(function () {
-      fail('Something went wrong while confirming your email. Check your connection and try again, or contact support.');
-    });
+    })
+      .then(function (r) {
+        return r
+          .json()
+          .catch(function () {
+            return null;
+          })
+          .then(function (b) {
+            return { status: r.status, body: b };
+          });
+      })
+      .then(function (res) {
+        if (res.status === 200 && res.body && res.body.ok) {
+          show('st-ok');
+        } else {
+          fail(
+            'This confirmation link is invalid, expired, or has already been used. Request a fresh one below, or contact support if it keeps failing.'
+          );
+        }
+      })
+      .catch(function () {
+        fail(
+          'Something went wrong while confirming your email. Check your connection and try again, or contact support.'
+        );
+      });
   }
 
   // Fresh-link recovery (recoverable error path). The server answers the
@@ -61,7 +79,10 @@
       e.preventDefault();
       var email = String($('recover-email').value || '').trim();
       if (!email) {
-        if (errEl) { errEl.textContent = 'Enter your email address.'; errEl.hidden = false; }
+        if (errEl) {
+          errEl.textContent = 'Enter your email address.';
+          errEl.hidden = false;
+        }
         return;
       }
       if (btn) btn.disabled = true;
@@ -70,14 +91,23 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email })
-      }).then(function (r) {
-        return r.json().catch(function () { return null; });
-      }).then(function () {
-        show('st-sent');
-      }).catch(function () {
-        if (btn) btn.disabled = false;
-        if (errEl) { errEl.textContent = 'Could not send the link right now. Check your connection and try again.'; errEl.hidden = false; }
-      });
+      })
+        .then(function (r) {
+          return r.json().catch(function () {
+            return null;
+          });
+        })
+        .then(function () {
+          show('st-sent');
+        })
+        .catch(function () {
+          if (btn) btn.disabled = false;
+          if (errEl) {
+            errEl.textContent =
+              'Could not send the link right now. Check your connection and try again.';
+            errEl.hidden = false;
+          }
+        });
     });
   }
 })();

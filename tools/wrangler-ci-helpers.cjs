@@ -46,7 +46,9 @@ function externalWranglerGuard(log) {
  */
 function stopWranglerIfLocal(proc) {
   if (USE_EXTERNAL) return;
-  try { proc && proc.kill(); } catch (e) {}
+  try {
+    proc && proc.kill();
+  } catch (e) {}
 }
 
 module.exports = { USE_EXTERNAL, externalWranglerGuard, stopWranglerIfLocal };

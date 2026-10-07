@@ -14,7 +14,7 @@
    Every lookup is null-guarded and every fetch is caught , this
    file must never throw.
    ============================================================ */
-(function(){
+(function () {
   'use strict';
 
   var listEl = document.getElementById('reviews-list');
@@ -41,7 +41,8 @@
   //     src/reviews.js handleReviewsCreate BEFORE anything is written
   // While no key is configured the widget simply never renders and the Worker
   // accepts posts as before, so the page stays usable in local dev and CI.
-  var TS_SCRIPT = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=mmgrTurnstileOnload';
+  var TS_SCRIPT =
+    'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=mmgrTurnstileOnload';
   var tsLoaded = false;
 
   window.mmgrTurnstileOnload = function () {
@@ -51,9 +52,15 @@
         sitekey: turnstileDiv.getAttribute('data-sitekey') || '',
         theme: 'auto',
         size: 'normal',
-        callback: function (token) { turnstileToken = token; },
-        'expired-callback': function () { turnstileToken = null; },
-        'error-callback': function () { turnstileToken = null; }
+        callback: function (token) {
+          turnstileToken = token;
+        },
+        'expired-callback': function () {
+          turnstileToken = null;
+        },
+        'error-callback': function () {
+          turnstileToken = null;
+        }
       });
     } catch (e) {
       turnstileWidget = null;
@@ -67,7 +74,9 @@
     s.src = TS_SCRIPT;
     s.async = true;
     s.defer = true;
-    s.onerror = function () { tsLoaded = false; };
+    s.onerror = function () {
+      tsLoaded = false;
+    };
     document.head.appendChild(s);
   }
 
@@ -77,14 +86,18 @@
   function initTurnstile() {
     if (!turnstileDiv) return;
     fetch('/api/turnstile-config', { credentials: 'same-origin' })
-      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (r) {
+        return r.ok ? r.json() : null;
+      })
       .then(function (d) {
         if (!d || !d.ok || !d.sitekey) return;
         turnstileRequired = true;
         turnstileDiv.setAttribute('data-sitekey', d.sitekey);
         loadTurnstileScript();
       })
-      .catch(function () { /* offline or no Worker: leave the form as-is */ });
+      .catch(function () {
+        /* offline or no Worker: leave the form as-is */
+      });
   }
 
   // Reset after every submit attempt: Turnstile tokens are single-use, so a
@@ -95,14 +108,16 @@
       if (window.turnstile && turnstileWidget && typeof window.turnstile.reset === 'function') {
         window.turnstile.reset(turnstileWidget);
       }
-    } catch (e) { /* widget already gone */ }
+    } catch (e) {
+      /* widget already gone */
+    }
   }
 
   function selectedStars() {
     if (!pickRow) return 0;
     var checked = pickRow.querySelector('input[name="stars"]:checked');
     var n = checked ? parseInt(checked.value, 10) : 0;
-    return (n >= 1 && n <= 5) ? n : 0;
+    return n >= 1 && n <= 5 ? n : 0;
   }
   function syncPickFill() {
     if (pickRow) pickRow.setAttribute('data-val', String(selectedStars()));
@@ -158,7 +173,7 @@
 
     var name = document.createElement('span');
     name.className = 'rv-name';
-    name.textContent = (r && r.name && r.name.trim()) ? r.name : 'Anonymous';
+    name.textContent = r && r.name && r.name.trim() ? r.name : 'Anonymous';
     head.appendChild(name);
 
     var when = document.createElement('time');
@@ -173,7 +188,7 @@
 
     var body = document.createElement('p');
     body.className = 'rv-text';
-    body.textContent = (r && r.review) ? r.review : '';
+    body.textContent = r && r.review ? r.review : '';
     card.appendChild(body);
 
     return card;
@@ -188,9 +203,12 @@
     if (!listEl) return;
     listEl.textContent = '';
     var list = Array.isArray(reviews) ? reviews : [];
-    if (!list.length) { showEmpty(true); return; }
+    if (!list.length) {
+      showEmpty(true);
+      return;
+    }
     showEmpty(false);
-    list.forEach(function(r) {
+    list.forEach(function (r) {
       listEl.appendChild(reviewCard(r));
     });
   }
@@ -198,7 +216,10 @@
   async function loadReviews() {
     try {
       var res = await fetch('/api/reviews', { credentials: 'same-origin' });
-      if (!res.ok) { showEmpty(true); return; }
+      if (!res.ok) {
+        showEmpty(true);
+        return;
+      }
       var data = await res.json();
       renderList(data && data.ok ? data.reviews : []);
     } catch (e) {
@@ -209,12 +230,18 @@
   }
 
   if (formEl && textIn) {
-    formEl.addEventListener('submit', async function(ev) {
+    formEl.addEventListener('submit', async function (ev) {
       ev.preventDefault();
       setStatus('');
       var review = textIn.value.replace(/\s+/g, ' ').trim();
-      if (!review) { setStatus('Please write a short review before sending.', true); return; }
-      if (review.length > 2000) { setStatus('That review is too long , keep it under 2000 characters.', true); return; }
+      if (!review) {
+        setStatus('Please write a short review before sending.', true);
+        return;
+      }
+      if (review.length > 2000) {
+        setStatus('That review is too long , keep it under 2000 characters.', true);
+        return;
+      }
       if (/[<>]/.test(review) || /https?:\/\/|www\./i.test(review)) {
         setStatus('Plain text only, please , no HTML or links in reviews.', true);
         return;
@@ -241,9 +268,14 @@
           credentials: 'same-origin',
           body: JSON.stringify(payload)
         });
-        var data = await res.json().catch(function() { return null; });
+        var data = await res.json().catch(function () {
+          return null;
+        });
         if (!res.ok || !data || !data.ok) {
-          setStatus((data && data.error) ? data.error : 'Could not post your review. Please try again.', true);
+          setStatus(
+            data && data.error ? data.error : 'Could not post your review. Please try again.',
+            true
+          );
           return;
         }
         if (nameIn) nameIn.value = '';

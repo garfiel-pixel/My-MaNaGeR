@@ -77,7 +77,13 @@ function extractHardcodedHashes(file) {
   const bare = src.match(/(?<!["'])'sha256-[A-Za-z0-9+/=]+'(?!["'])/g);
   if (bare && bare.length) {
     fail = true;
-    console.error('[verify-csp-hashes] FAIL: ' + file + ' carries ' + bare.length + ' BARE sha256 token(s) (no CSP quotes). Joined into script-src they are invalid and Chrome blocks every inline script silently. Regenerate with node tools/regen-csp-hashes.cjs.');
+    console.error(
+      '[verify-csp-hashes] FAIL: ' +
+        file +
+        ' carries ' +
+        bare.length +
+        ' BARE sha256 token(s) (no CSP quotes). Joined into script-src they are invalid and Chrome blocks every inline script silently. Regenerate with node tools/regen-csp-hashes.cjs.'
+    );
   }
   return hashes;
 }
@@ -91,7 +97,11 @@ for (const hf of ['worker.js', 'serve.cjs']) {
   const src = fs.readFileSync(path.join(ROOT, hf), 'utf8');
   if (/INLINE_SCRIPT_HASHES\s*=[\s\S]*?\.join\(/.test(src) && src.indexOf('"\'sha256-') === -1) {
     fail = true;
-    console.error('[verify-csp-hashes] FAIL: ' + hf + ' never writes the CSP-quoted form (\'sha256-…\') — hash sources in the joined policy would be unquoted/invalid.');
+    console.error(
+      '[verify-csp-hashes] FAIL: ' +
+        hf +
+        " never writes the CSP-quoted form ('sha256-…') — hash sources in the joined policy would be unquoted/invalid."
+    );
   }
 }
 
@@ -106,7 +116,9 @@ const computedFlat = computed.reduce((acc, c) => acc.concat(c.hashes), []);
 // them; this guards a future edit that drops them at the source).
 if (computedFlat.some(h => !(h.startsWith("'") && h.endsWith("'")))) {
   fail = true;
-  console.error('[verify-csp-hashes] FAIL: computed hash tokens are not CSP-quoted (expected \'sha256-…\' form).');
+  console.error(
+    "[verify-csp-hashes] FAIL: computed hash tokens are not CSP-quoted (expected 'sha256-…' form)."
+  );
 }
 
 for (const hf of HARDCODED_FILES) {
@@ -115,7 +127,9 @@ for (const hf of HARDCODED_FILES) {
   const b = JSON.stringify(hardcoded);
   if (a !== b) {
     fail = true;
-    console.error('[verify-csp-hashes] FAIL: computed hashes do not match the hardcoded list in ' + hf + '.');
+    console.error(
+      '[verify-csp-hashes] FAIL: computed hashes do not match the hardcoded list in ' + hf + '.'
+    );
     console.error('    computed  (' + computedFlat.length + '):');
     computed.forEach(c => c.hashes.forEach(h => console.error('      ' + c.file + '  ' + h)));
     console.error('    hardcoded (' + hardcoded.length + '):');
@@ -128,7 +142,9 @@ const w = JSON.stringify(extractHardcodedHashes('worker.js'));
 const s = JSON.stringify(extractHardcodedHashes('serve.cjs'));
 if (w !== s) {
   fail = true;
-  console.error('[verify-csp-hashes] FAIL: worker.js and serve.cjs hardcoded hash lists have drifted from each other.');
+  console.error(
+    '[verify-csp-hashes] FAIL: worker.js and serve.cjs hardcoded hash lists have drifted from each other.'
+  );
 }
 
 // 3) AUDIT FINDING (2026-08): a page META CSP is enforced IN ADDITION to the
@@ -154,8 +170,18 @@ function checkMetaCsp(file, hashes) {
     for (const h of hashes) {
       if (allow.indexOf(h) === -1) {
         fail = true;
-        console.error('[verify-csp-hashes] FAIL: ' + file + ' meta CSP is missing its own inline-script hash ' + h + ' — that inline <script> is silently blocked in production (CSP intersection).');
-        console.error('    Fix: add ' + h + ' to the page\u2019s <meta http-equiv="Content-Security-Policy"> script-src (the header policy in worker.js/serve.cjs already lists it).');
+        console.error(
+          '[verify-csp-hashes] FAIL: ' +
+            file +
+            ' meta CSP is missing its own inline-script hash ' +
+            h +
+            ' — that inline <script> is silently blocked in production (CSP intersection).'
+        );
+        console.error(
+          '    Fix: add ' +
+            h +
+            ' to the page\u2019s <meta http-equiv="Content-Security-Policy"> script-src (the header policy in worker.js/serve.cjs already lists it).'
+        );
       }
     }
   }
@@ -168,5 +194,15 @@ if (fail) {
   process.exit(1);
 }
 
-const perFile = computed.map(c => c.file + ' (' + c.hashes.length + ' inline script' + (c.hashes.length === 1 ? '' : 's') + ')').join(', ');
-console.log('[verify-csp-hashes] OK — ' + computedFlat.length + ' inline-script hashes match worker.js and serve.cjs: ' + perFile);
+const perFile = computed
+  .map(
+    c =>
+      c.file + ' (' + c.hashes.length + ' inline script' + (c.hashes.length === 1 ? '' : 's') + ')'
+  )
+  .join(', ');
+console.log(
+  '[verify-csp-hashes] OK — ' +
+    computedFlat.length +
+    ' inline-script hashes match worker.js and serve.cjs: ' +
+    perFile
+);

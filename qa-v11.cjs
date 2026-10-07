@@ -8,26 +8,93 @@ const { spawn } = require('child_process');
 const path = require('path');
 const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('./tools/chrome-launcher.cjs');
 const PROFILE = path.join(require('os').tmpdir(), 'mmgr-v11-' + Date.now());
-let ws, msgId = 0; const pending = new Map();
-const log = (s) => { process.stdout.write('[v11] ' + s + '\n'); };
+let ws,
+  msgId = 0;
+const pending = new Map();
+const log = s => {
+  process.stdout.write('[v11] ' + s + '\n');
+};
 const delay = ms => new Promise(r => setTimeout(r, ms));
-setTimeout(() => { log('WATCHDOG'); try { ws && ws.close(); } catch (e) {} process.exit(2); }, 240000);
-function send(method, params) { return new Promise(res => { const id = ++msgId; pending.set(id, m => { pending.delete(id); res(m.result || {}); }); ws.send(JSON.stringify({ id, method, params: params || {} })); }); }
-async function ev(expr) { const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true }); if (r.exceptionDetails) return { __err: r.exceptionDetails.exception ? r.exceptionDetails.exception.description : r.exceptionDetails.text }; return r.result && r.result.value; }
+setTimeout(() => {
+  log('WATCHDOG');
+  try {
+    ws && ws.close();
+  } catch (e) {}
+  process.exit(2);
+}, 240000);
+function send(method, params) {
+  return new Promise(res => {
+    const id = ++msgId;
+    pending.set(id, m => {
+      pending.delete(id);
+      res(m.result || {});
+    });
+    ws.send(JSON.stringify({ id, method, params: params || {} }));
+  });
+}
+async function ev(expr) {
+  const r = await send('Runtime.evaluate', {
+    expression: expr,
+    returnByValue: true,
+    awaitPromise: true
+  });
+  if (r.exceptionDetails)
+    return {
+      __err: r.exceptionDetails.exception
+        ? r.exceptionDetails.exception.description
+        : r.exceptionDetails.text
+    };
+  return r.result && r.result.value;
+}
 
 (async () => {
-  const proc = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run', '--remote-debugging-port=' + PORT, '--user-data-dir=' + PROFILE, '--window-size=1440,1200', 'about:blank'], { stdio: 'ignore' });
-  for (let i = 0; i < 60; i++) { try { const r = await fetch('http://127.0.0.1:' + PORT + '/json/version'); if (r.ok) break; } catch (e) {} await delay(300); }
+  const proc = spawn(
+    CHROME,
+    [
+      '--headless=new',
+      '--disable-gpu',
+      '--no-first-run',
+      '--remote-debugging-port=' + PORT,
+      '--user-data-dir=' + PROFILE,
+      '--window-size=1440,1200',
+      'about:blank'
+    ],
+    { stdio: 'ignore' }
+  );
+  for (let i = 0; i < 60; i++) {
+    try {
+      const r = await fetch('http://127.0.0.1:' + PORT + '/json/version');
+      if (r.ok) break;
+    } catch (e) {}
+    await delay(300);
+  }
   const targets = await (await fetch('http://127.0.0.1:' + PORT + '/json')).json();
   ws = new WebSocket(targets.find(t => t.type === 'page').webSocketDebuggerUrl);
-  ws.onmessage = (ev) => { const m = JSON.parse(ev.data); if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); } };
-  await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error('ws fail')); });
-  await send('Runtime.enable'); await send('Page.enable');
-  await send('Page.navigate', { url: BASE + '/seed-test.html' }); await delay(4000);
-  await ev('window.MMGR.Schedule.cascade("northern-temperate",{threshold:999}); window.MMGR.Render.renderAll();'); await delay(300);
+  ws.onmessage = ev => {
+    const m = JSON.parse(ev.data);
+    if (m.id && pending.has(m.id)) {
+      pending.get(m.id)(m);
+      pending.delete(m.id);
+    }
+  };
+  await new Promise((res, rej) => {
+    ws.onopen = res;
+    ws.onerror = () => rej(new Error('ws fail'));
+  });
+  await send('Runtime.enable');
+  await send('Page.enable');
+  await send('Page.navigate', { url: BASE + '/seed-test.html' });
+  await delay(4000);
+  await ev(
+    'window.MMGR.Schedule.cascade("northern-temperate",{threshold:999}); window.MMGR.Render.renderAll();'
+  );
+  await delay(300);
 
   const results = [];
-  const check = (name, val, detail) => { results.push({ name, val }); log((val ? 'PASS' : 'FAIL') + ' ' + name + (val ? '' : '  <-- ' + JSON.stringify(detail))); };
+  const check = (name, val, detail) => {
+    results.push({ name, val });
+    log((val ? 'PASS' : 'FAIL') + ' ' + name + (val ? '' : '  <-- ' + JSON.stringify(detail)));
+  };
 
   // ---- FLAGS --------------------------------------------------------------
   const f1 = await ev(`(function(){
@@ -49,7 +116,11 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       labels: chips.map(function(c){ return c.getAttribute('data-flag'); }).join(','),
       aiSwitch: !!ai && ai.type === 'checkbox' && !ai.getAttribute('data-flag') };
   })()`);
-  check('02 flags: 4 chips render in Controls (AI is a tier switch, not a flag)', f2.count === 4 && f2.checked && f2.labels.indexOf('weatherForecast') > -1 && f2.aiSwitch, f2);
+  check(
+    '02 flags: 4 chips render in Controls (AI is a tier switch, not a flag)',
+    f2.count === 4 && f2.checked && f2.labels.indexOf('weatherForecast') > -1 && f2.aiSwitch,
+    f2
+  );
 
   // MERGED-AI-CONTROL: the drawer switch is the single AI on/off. OWNER
   // 2026-09-15: AI is ON by default (tier 'local', zero-key engine) -> switch
@@ -63,9 +134,14 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       fabHidden: !!fab && fab.classList.contains('is-hide'),
       chipChecked: !!ai && ai.checked };
   })()`);
-  check('03a flags: default AI state = tier local (on by default), switch checked, FAB visible', f3a.tier === 'local' && !f3a.fabHidden && f3a.chipChecked, f3a);
+  check(
+    '03a flags: default AI state = tier local (on by default), switch checked, FAB visible',
+    f3a.tier === 'local' && !f3a.fabHidden && f3a.chipChecked,
+    f3a
+  );
 
-  await ev(`document.querySelector('[data-action="tglAiTier"]').click()`); await delay(300);
+  await ev(`document.querySelector('[data-action="tglAiTier"]').click()`);
+  await delay(300);
   const f3b = await ev(`(function(){
     var fab = document.getElementById('ai-fab');
     var ai = document.querySelector('[data-action="tglAiTier"]');
@@ -73,9 +149,14 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       fabVisible: !!fab && !fab.classList.contains('is-hide'),
       chipChecked: !!ai && ai.checked };
   })()`);
-  check('03b flags: AI switch OFF -> tier off, switch unchecked, FAB hidden', f3b.tier === 'off' && !f3b.fabVisible && !f3b.chipChecked, f3b);
+  check(
+    '03b flags: AI switch OFF -> tier off, switch unchecked, FAB hidden',
+    f3b.tier === 'off' && !f3b.fabVisible && !f3b.chipChecked,
+    f3b
+  );
 
-  await ev(`document.querySelector('[data-action="tglAiTier"]').click()`); await delay(300);
+  await ev(`document.querySelector('[data-action="tglAiTier"]').click()`);
+  await delay(300);
   const f3c = await ev(`(function(){
     var fab = document.getElementById('ai-fab');
     var ai = document.querySelector('[data-action="tglAiTier"]');
@@ -83,28 +164,39 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       fabHidden: !!fab && fab.classList.contains('is-hide'),
       chipChecked: !!ai && ai.checked };
   })()`);
-  check('03c flags: AI switch back ON -> tier local (lastTier restored), FAB visible', f3c.tier === 'local' && !f3c.fabHidden && f3c.chipChecked, f3c);
+  check(
+    '03c flags: AI switch back ON -> tier local (lastTier restored), FAB visible',
+    f3c.tier === 'local' && !f3c.fabHidden && f3c.chipChecked,
+    f3c
+  );
 
-  await ev(`document.querySelector('[data-action="tglFlag"][data-flag="monteCarlo"]').click()`); await delay(300);
+  await ev(`document.querySelector('[data-action="tglFlag"][data-flag="monteCarlo"]').click()`);
+  await delay(300);
   const f4 = await ev(`(function(){
     var btn = document.querySelector('[data-action="runMonteCarlo"]');
     return { off: MMGR.State.getState().flags.monteCarlo === false && !!btn && btn.classList.contains('is-hide') };
   })()`);
-  await ev(`document.querySelector('[data-action="tglFlag"][data-flag="monteCarlo"]').click()`); await delay(300);
+  await ev(`document.querySelector('[data-action="tglFlag"][data-flag="monteCarlo"]').click()`);
+  await delay(300);
   const f4b = await ev(`(function(){
     var btn = document.querySelector('[data-action="runMonteCarlo"]');
     return { on: MMGR.State.getState().flags.monteCarlo === true && !!btn && !btn.classList.contains('is-hide') };
   })()`);
-  check('04 flags: monteCarlo toggle hides + restores Run Simulation', f4.off && f4b.on, { off: f4, on: f4b });
+  check('04 flags: monteCarlo toggle hides + restores Run Simulation', f4.off && f4b.on, {
+    off: f4,
+    on: f4b
+  });
 
-  await ev(`document.querySelector('[data-action="tglFlag"][data-flag="ganttExport"]').click()`); await delay(250);
+  await ev(`document.querySelector('[data-action="tglFlag"][data-flag="ganttExport"]').click()`);
+  await delay(250);
   const f5 = await ev(`(function(){
     var btn = document.querySelector('[data-action="exportGanttPNG"]');
     return { off: MMGR.State.getState().flags.ganttExport === false && !!btn && btn.classList.contains('is-hide') };
   })()`);
   check('05 flags: ganttExport off -> Export Chart hidden', f5.off, f5);
 
-  await ev(`document.querySelector('[data-action="tglFlag"][data-flag="leadtimeLane"]').click()`); await delay(250);
+  await ev(`document.querySelector('[data-action="tglFlag"][data-flag="leadtimeLane"]').click()`);
+  await delay(250);
   const f6 = await ev(`(function(){
     var chip = document.querySelector('[data-action="tglLeadtimeLane"]');
     var lane = document.getElementById('col-leadtime');
@@ -113,7 +205,10 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   })()`);
   check('06 flags: leadtimeLane off -> chip + lane hidden even with kbShowLeadtime', f6.off, f6);
 
-  await ev(`document.querySelector('[data-action="tglFlag"][data-flag="weatherForecast"]').click()`); await delay(250);
+  await ev(
+    `document.querySelector('[data-action="tglFlag"][data-flag="weatherForecast"]').click()`
+  );
+  await delay(250);
   const f7 = await ev(`(function(){
     var card = document.getElementById('weather-forecast-card');
     return { off: MMGR.State.getState().flags.weatherForecast === false && !!card && card.classList.contains('is-hide') };
@@ -124,9 +219,14 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   // explicitly (deterministic, no timing bet on the 300ms save timer).
   // AI is ON by default (owner 2026-09-15): flip it OFF explicitly so the
   // persisted-'off' arm of check 08 still means something.
-  await ev(`(function(){ var ai=document.querySelector('[data-action="tglAiTier"]'); if (ai && ai.checked) ai.click(); return true; })()`); await delay(300);
-  await ev('MMGR.State.save(true); true;'); await delay(200);
-  await send('Page.navigate', { url: BASE + '/project.html?id=demo-project' }); await delay(4000);
+  await ev(
+    `(function(){ var ai=document.querySelector('[data-action="tglAiTier"]'); if (ai && ai.checked) ai.click(); return true; })()`
+  );
+  await delay(300);
+  await ev('MMGR.State.save(true); true;');
+  await delay(200);
+  await send('Page.navigate', { url: BASE + '/project.html?id=demo-project' });
+  await delay(4000);
   const f8 = await ev(`(function(){
     var s = MMGR.State.getState();
     var fab = document.getElementById('ai-fab');
@@ -145,7 +245,18 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
         var want = s.flags[c.getAttribute('data-flag')] !== false; return c.checked === want;
       }) };
   })()`);
-  check('08 flags: off-flags persist + gates + chips sync after hard refresh', f8.aiOff && f8.wxOff && f8.ltOff && f8.fabHidden && f8.cardHidden && f8.laneHidden && f8.aiChipSynced && f8.chipsSynced, f8);
+  check(
+    '08 flags: off-flags persist + gates + chips sync after hard refresh',
+    f8.aiOff &&
+      f8.wxOff &&
+      f8.ltOff &&
+      f8.fabHidden &&
+      f8.cardHidden &&
+      f8.laneHidden &&
+      f8.aiChipSynced &&
+      f8.chipsSynced,
+    f8
+  );
 
   // ---- ERROR LOG -----------------------------------------------------------
   const e1 = await ev(`(async function(){
@@ -158,7 +269,11 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     return { len: (s.errorLog || []).length, hasTs: !!last && !!last.ts, hasMsg: last.msg === 'probe failure one',
       hasAction: last.action === 'probeAction', rendered: !!body && body.textContent.indexOf('probe failure one') > -1 };
   })()`);
-  check('09 errors: log() persists ts/msg/action + renders', e1.len >= 1 && e1.hasTs && e1.hasMsg && e1.hasAction && e1.rendered, e1);
+  check(
+    '09 errors: log() persists ts/msg/action + renders',
+    e1.len >= 1 && e1.hasTs && e1.hasMsg && e1.hasAction && e1.rendered,
+    e1
+  );
 
   const e2 = await ev(`(async function(){
     for (var i = 0; i < 25; i++) MMGR.Errors.log('spam ' + i, 'spam');
@@ -170,7 +285,8 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   })()`);
   check('10 errors: capped at last 20', e2.len === 20 && e2.capped && e2.newest, e2);
 
-  await ev(`document.querySelector('[data-action="clearErrorLog"]').click()`); await delay(250);
+  await ev(`document.querySelector('[data-action="clearErrorLog"]').click()`);
+  await delay(250);
   const e3 = await ev(`(function(){
     var s = MMGR.State.getState();
     var body = document.getElementById('errlog-body');
@@ -204,7 +320,11 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       defaults: MMGR.Net.DEFAULTS.timeoutMs === 10000 && MMGR.Net.DEFAULTS.maxRetries === 3 && MMGR.Net.DEFAULTS.baseDelayMs === 800
     };
   })()`);
-  check('14 net: MMGR.Net + MMGR.Config exist with documented defaults', n1.net && n1.cfg && n1.defaults, n1);
+  check(
+    '14 net: MMGR.Net + MMGR.Config exist with documented defaults',
+    n1.net && n1.cfg && n1.defaults,
+    n1
+  );
 
   const n2 = await ev(`(async function(){
     var calls = 0;
@@ -220,7 +340,11 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       return { resolved: res.ok && text === 'ok-body', calls: calls };
     } finally { window.fetch = orig; }
   })()`);
-  check('15 net: get() retries transient failures with backoff (3 calls)', n2.resolved && n2.calls === 3, n2);
+  check(
+    '15 net: get() retries transient failures with backoff (3 calls)',
+    n2.resolved && n2.calls === 3,
+    n2
+  );
 
   const n3 = await ev(`(async function(){
     var calls = 0;
@@ -264,7 +388,11 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     return { added3: after1 === before + 3 && count1 === 3, secondIsZero: after2 === after1 && count2 === 3,
       toastMentionsSkipped: !!toast && toast.textContent.indexOf('already present') > -1 };
   })()`);
-  check('18 import: same outline twice -> no duplicates, second run all skipped', i1.added3 && i1.secondIsZero && i1.toastMentionsSkipped, i1);
+  check(
+    '18 import: same outline twice -> no duplicates, second run all skipped',
+    i1.added3 && i1.secondIsZero && i1.toastMentionsSkipped,
+    i1
+  );
 
   const i2 = await ev(`(async function(){
     var src = document.getElementById('id-source');
@@ -285,7 +413,11 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     MMGR.Render.renderAll();
     return { first: c1 === 1, secondStillOne: c2 === 1, updatedInPlace: upd };
   })()`);
-  check('19 import: dated re-import updates in place (dates win, working days), no duplicate', i2.first && i2.secondStillOne && i2.updatedInPlace, i2);
+  check(
+    '19 import: dated re-import updates in place (dates win, working days), no duplicate',
+    i2.first && i2.secondStillOne && i2.updatedInPlace,
+    i2
+  );
 
   // ---- CONFIG + AI CONTEXT ---------------------------------------------------
   const c1 = await ev(`(function(){
@@ -294,7 +426,11 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     return { aiEmpty: cfg.ai.endpoint === '' && cfg.ai.apiKey === '',
       mergeWorks: merged.ai.endpoint === 'https://future.example/ai' && merged.net.timeoutMs === 5000 && merged.net.maxRetries === 3 };
   })()`);
-  check('20 config: MMGR.Config empty by default + getConfig merges state overrides', c1.aiEmpty && c1.mergeWorks, c1);
+  check(
+    '20 config: MMGR.Config empty by default + getConfig merges state overrides',
+    c1.aiEmpty && c1.mergeWorks,
+    c1
+  );
 
   const a1 = await ev(`(function(){
     var text = MMGR.AiWin.buildContext();
@@ -302,7 +438,11 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     var missing = schema.sections.filter(function(sec){ return text.indexOf('## ' + sec) === -1; });
     return { hasText: text.length > 50, sectionsOk: missing.length === 0, schemaSections: schema.sections.length === 7 };
   })()`);
-  check('21 ai: buildContext emits every CONTEXT_SCHEMA section', a1.hasText && a1.sectionsOk && a1.schemaSections, a1);
+  check(
+    '21 ai: buildContext emits every CONTEXT_SCHEMA section',
+    a1.hasText && a1.sectionsOk && a1.schemaSections,
+    a1
+  );
 
   const a2 = await ev(`(function(){
     MMGR.AiWin.attachContext();
@@ -312,8 +452,11 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   check('22 ai: attachContext fills the context textarea', a2.filled, a2);
 
   // ---- READONLY GATING OF NEW ACTIONS ----------------------------------------
-  await ev(`(function(){ localStorage.setItem('mmgr_scope_demo-project','readonly'); return true; })()`);
-  await send('Page.navigate', { url: BASE + '/project.html?id=demo-project' }); await delay(4000);
+  await ev(
+    `(function(){ localStorage.setItem('mmgr_scope_demo-project','readonly'); return true; })()`
+  );
+  await send('Page.navigate', { url: BASE + '/project.html?id=demo-project' });
+  await delay(4000);
   const r1 = await ev(`(function(){
     // MERGED-AI-CONTROL: the drawer switch mutates state.config.ai.tier, so
     // like every other write it must be refused in view-only mode.
@@ -326,12 +469,23 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     // the tier's own value is no longer pinned to 'off' (AI is on by default).
     return { blocked: before === after, tier: before, toastShown: !!toast && toast.textContent.indexOf('View-only') > -1 };
   })()`);
-  check('23 readonly: AI master switch refused with toast, tier unchanged', r1.blocked && r1.toastShown, r1);
+  check(
+    '23 readonly: AI master switch refused with toast, tier unchanged',
+    r1.blocked && r1.toastShown,
+    r1
+  );
 
-  await ev(`(function(){ localStorage.setItem('mmgr_scope_demo-project','full'); return true; })()`);
-  await send('Page.navigate', { url: BASE + '/project.html?id=demo-project' }); await delay(3500);
+  await ev(
+    `(function(){ localStorage.setItem('mmgr_scope_demo-project','full'); return true; })()`
+  );
+  await send('Page.navigate', { url: BASE + '/project.html?id=demo-project' });
+  await delay(3500);
 
   const failed = results.filter(r => !r.val);
   log('V11_GATE ' + (failed.length === 0 ? 'PASS' : 'FAIL (' + failed.length + ' broken)'));
-  proc.kill(); process.exit(failed.length === 0 ? 0 : 1);
-})().catch(e => { log('FATAL: ' + e.message); process.exit(1); });
+  proc.kill();
+  process.exit(failed.length === 0 ? 0 : 1);
+})().catch(e => {
+  log('FATAL: ' + e.message);
+  process.exit(1);
+});

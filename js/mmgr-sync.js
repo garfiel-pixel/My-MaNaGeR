@@ -44,14 +44,14 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   const U = ns.Utils;
 
   // Device-level slots (localStorage, NOT project state).
-  const IDENTITY_KEY = 'mmgr_sync_identity';      // { sub, email, name, picture, at }
-  const SUGGEST_KEY = 'mmgr_sync_suggest';         // '1' = suggestion dismissed on this device
+  const IDENTITY_KEY = 'mmgr_sync_identity'; // { sub, email, name, picture, at }
+  const SUGGEST_KEY = 'mmgr_sync_suggest'; // '1' = suggestion dismissed on this device
   const GIS_URL = 'https://accounts.google.com/gsi/client';
 
   // ---- Identity (device label) -------------------------------------------
@@ -59,7 +59,9 @@ var MMGR = window.MMGR || {};
     try {
       const raw = localStorage.getItem(IDENTITY_KEY);
       return raw ? JSON.parse(raw) : null;
-    } catch (e) { return null; }
+    } catch (e) {
+      return null;
+    }
   }
   function isSignedIn() {
     const id = getIdentity();
@@ -71,10 +73,18 @@ var MMGR = window.MMGR || {};
     return id.name || id.email || id.sub || 'this device';
   }
   function setIdentity(id) {
-    try { localStorage.setItem(IDENTITY_KEY, JSON.stringify(id)); } catch (e) { /* ignore */ }
+    try {
+      localStorage.setItem(IDENTITY_KEY, JSON.stringify(id));
+    } catch (e) {
+      /* ignore */
+    }
   }
   function clearIdentity() {
-    try { localStorage.removeItem(IDENTITY_KEY); } catch (e) { /* ignore */ }
+    try {
+      localStorage.removeItem(IDENTITY_KEY);
+    } catch (e) {
+      /* ignore */
+    }
   }
 
   // ---- GIS lazy-load (opt-in, circuit-broken) ----------------------------
@@ -84,22 +94,27 @@ var MMGR = window.MMGR || {};
       _gisLoaded = true;
       return Promise.resolve(true);
     }
-    return new Promise(function(resolve) {
+    return new Promise(function (resolve) {
       try {
         const s = document.createElement('script');
         s.src = GIS_URL;
         s.async = true;
-        s.onload = function() {
+        s.onload = function () {
           _gisLoaded = true;
           resolve(!!(window.google && window.google.accounts && window.google.accounts.id));
         };
-        s.onerror = function() { _gisLoaded = false; resolve(false); };
+        s.onerror = function () {
+          _gisLoaded = false;
+          resolve(false);
+        };
         document.head.appendChild(s);
-      } catch (e) { resolve(false); }
+      } catch (e) {
+        resolve(false);
+      }
     });
   }
 
-  // Client-side ID-token decode (JWT payload, base64url). Purely a label , 
+  // Client-side ID-token decode (JWT payload, base64url). Purely a label ,
   // no signature verification, because the token is never used to authorize
   // anything. If the shape ever changes, degrade to a null label, never crash.
   function decodeIdToken(token) {
@@ -107,18 +122,25 @@ var MMGR = window.MMGR || {};
       const parts = String(token || '').split('.');
       if (parts.length < 2) return null;
       const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-      const json = decodeURIComponent(Array.prototype.map.call(atob(b64), function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-      }).join(''));
+      const json = decodeURIComponent(
+        Array.prototype.map
+          .call(atob(b64), function (c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+          })
+          .join('')
+      );
       return JSON.parse(json);
-    } catch (e) { return null; }
+    } catch (e) {
+      return null;
+    }
   }
 
   // GIS credential callback. Extracts ONLY the pairing label fields.
   function handleCredential(resp) {
     const payload = resp && resp.credential ? decodeIdToken(resp.credential) : null;
     if (!payload || !payload.sub) {
-      if (ns.App && ns.App.showToast) ns.App.showToast('Google sign-in returned no usable identity.', 'err');
+      if (ns.App && ns.App.showToast)
+        ns.App.showToast('Google sign-in returned no usable identity.', 'err');
       return;
     }
     setIdentity({
@@ -130,7 +152,12 @@ var MMGR = window.MMGR || {};
     });
     renderSyncSection();
     if (ns.App && ns.App.showToast) {
-      ns.App.showToast('Signed in as ' + (payload.email || payload.sub) + ' , this device is signed in across the app; optional, nothing is gated.', 'ok');
+      ns.App.showToast(
+        'Signed in as ' +
+          (payload.email || payload.sub) +
+          ' , this device is signed in across the app; optional, nothing is gated.',
+        'ok'
+      );
     }
   }
 
@@ -148,7 +175,11 @@ var MMGR = window.MMGR || {};
   function onConnectCredential(resp) {
     handleCredential(resp);
     if (ns.GoogleAuth && ns.GoogleAuth.handleCredentialResponse) {
-      try { ns.GoogleAuth.handleCredentialResponse(resp); } catch (e) { /* label already saved , session is optional */ }
+      try {
+        ns.GoogleAuth.handleCredentialResponse(resp);
+      } catch (e) {
+        /* label already saved , session is optional */
+      }
     }
   }
 
@@ -158,22 +189,37 @@ var MMGR = window.MMGR || {};
   async function connect() {
     const ok = await loadGIS();
     if (!ok || !window.google || !window.google.accounts || !window.google.accounts.id) {
-      if (ns.App && ns.App.showToast) ns.App.showToast('Google sign-in unavailable (offline?) , file export/import sync still works.', 'err');
+      if (ns.App && ns.App.showToast)
+        ns.App.showToast(
+          'Google sign-in unavailable (offline?) , file export/import sync still works.',
+          'err'
+        );
       return false;
     }
     const clientId = getClientId() || sharedClientId();
     if (!clientId) {
-      if (ns.App && ns.App.showToast) ns.App.showToast('Google sign-in is not configured on this host.', 'err');
+      if (ns.App && ns.App.showToast)
+        ns.App.showToast('Google sign-in is not configured on this host.', 'err');
       return false;
     }
     try {
       window.google.accounts.id.initialize({ client_id: clientId, callback: onConnectCredential });
       const btn = U.$('sync-gis-btn');
-      if (btn) window.google.accounts.id.renderButton(btn, { theme: 'outline', size: 'medium', shape: 'circle', text: 'continue_with' });
-      // OWNER 2026-08-15: pop the Google prompt immediately (one motion , 
+      if (btn)
+        window.google.accounts.id.renderButton(btn, {
+          theme: 'outline',
+          size: 'medium',
+          shape: 'circle',
+          text: 'continue_with'
+        });
+      // OWNER 2026-08-15: pop the Google prompt immediately (one motion ,
       // the rendered button is the fallback when the prompt API is blocked).
       if (window.google.accounts.id && typeof window.google.accounts.id.prompt === 'function') {
-        try { window.google.accounts.id.prompt(); } catch (e) { /* button stays rendered */ }
+        try {
+          window.google.accounts.id.prompt();
+        } catch (e) {
+          /* button stays rendered */
+        }
       }
       return true;
     } catch (e) {
@@ -183,38 +229,68 @@ var MMGR = window.MMGR || {};
   }
 
   function getClientId() {
-    try { return localStorage.getItem('mmgr_sync_clientid') || ''; } catch (e) { return ''; }
+    try {
+      return localStorage.getItem('mmgr_sync_clientid') || '';
+    } catch (e) {
+      return '';
+    }
   }
   // Accepts either a raw string ('xxxx.apps.googleusercontent.com') or an
   // input element (the data-action path passes the el). Normalizes both.
   function setClientId(v) {
-    const raw = (typeof v === 'string') ? v : ((v && v.value != null) ? v.value : '');
-    try { localStorage.setItem('mmgr_sync_clientid', String(raw || '').trim()); } catch (e) { /* ignore */ }
+    const raw = typeof v === 'string' ? v : v && v.value != null ? v.value : '';
+    try {
+      localStorage.setItem('mmgr_sync_clientid', String(raw || '').trim());
+    } catch (e) {
+      /* ignore */
+    }
   }
 
   function signOut() {
     clearIdentity();
     // When the identity came from a real site-wide session, sign THAT out
     // too so the whole site flips back to signed-out together.
-    if (ns.GoogleAuth && ns.GoogleAuth.isSignedIn && ns.GoogleAuth.isSignedIn() && ns.GoogleAuth.signOut) {
-      try { ns.GoogleAuth.signOut(); } catch (e) { /* device label already cleared */ }
+    if (
+      ns.GoogleAuth &&
+      ns.GoogleAuth.isSignedIn &&
+      ns.GoogleAuth.isSignedIn() &&
+      ns.GoogleAuth.signOut
+    ) {
+      try {
+        ns.GoogleAuth.signOut();
+      } catch (e) {
+        /* device label already cleared */
+      }
     }
     renderSyncSection();
-    if (ns.App && ns.App.showToast) ns.App.showToast('Signed out , device label removed. All features still work.', 'ok');
+    if (ns.App && ns.App.showToast)
+      ns.App.showToast('Signed out , device label removed. All features still work.', 'ok');
   }
 
   // ---- Single dismissible suggestion (no spam, never a modal) ------------
   function suggestionDismissed() {
-    try { return localStorage.getItem(SUGGEST_KEY) === '1'; } catch (e) { return false; }
+    try {
+      return localStorage.getItem(SUGGEST_KEY) === '1';
+    } catch (e) {
+      return false;
+    }
   }
   // Multi-device use flag: set only by noteMultiDeviceUse() when a merge
   // actually happens. The suggestion is NOT shown at boot , it appears only
   // once multi-device use is DETECTED, per the plan's no-spam rule.
   function multiDeviceDetected() {
-    try { return localStorage.getItem('mmgr_sync_mdu') === '1'; } catch (e) { return false; }
+    try {
+      return localStorage.getItem('mmgr_sync_mdu') === '1';
+    } catch (e) {
+      return false;
+    }
   }
   function dismissSuggestion() {
-    try { localStorage.setItem(SUGGEST_KEY, '1'); } catch (e) { /* ignore */ }
+    try {
+      localStorage.setItem(SUGGEST_KEY, '1');
+    } catch (e) {
+      /* ignore */
+    }
     renderSyncSection();
   }
 
@@ -222,7 +298,11 @@ var MMGR = window.MMGR || {};
   // the single dismissible suggestion if the user isn't signed in and hasn't
   // dismissed it before on this device. Never a modal, never re-prompted.
   function noteMultiDeviceUse() {
-    try { localStorage.setItem('mmgr_sync_mdu', '1'); } catch (e) { /* ignore */ }
+    try {
+      localStorage.setItem('mmgr_sync_mdu', '1');
+    } catch (e) {
+      /* ignore */
+    }
     if (isSignedIn() || suggestionDismissed()) return;
     renderSyncSection();
   }
@@ -238,21 +318,29 @@ var MMGR = window.MMGR || {};
     let html = '';
 
     // Status line.
-    html += '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Sign-in</span></div>';
-    html += '<div class="sr-hint">Optional , sign in once and the whole app (launcher, admin, every project) shares the same signed-in state. It never gates a feature and never leaves this device.</div>';
+    html +=
+      '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Sign-in</span></div>';
+    html +=
+      '<div class="sr-hint">Optional , sign in once and the whole app (launcher, admin, every project) shares the same signed-in state. It never gates a feature and never leaves this device.</div>';
 
     if (signedIn && id) {
-      html += '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Already signed in as <strong>' + U.escapeHtml(id.email || id.name || id.sub) + '</strong></span>' +
+      html +=
+        '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Already signed in as <strong>' +
+        U.escapeHtml(id.email || id.name || id.sub) +
+        '</strong></span>' +
         '<button class="btn btn-n btn-s" data-action="syncSignOut"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Sign Out</button></div>';
     } else {
-      html += '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Not signed in , works fully without an account</span></div>';
-      html += '<div class="exp-row"><button class="btn btn-n btn-s" data-action="syncConnect"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Sign in with Google (optional)</button></div>';
+      html +=
+        '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Not signed in , works fully without an account</span></div>';
+      html +=
+        '<div class="exp-row"><button class="btn btn-n btn-s" data-action="syncConnect"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Sign in with Google (optional)</button></div>';
       html += '<div id="sync-gis-btn" class="sync-gis-btn"></div>';
 
       // Single dismissible suggestion , ONLY after multi-device use was
       // detected (a merge happened), and never again after dismissal.
       if (multiDeviceDetected() && !suggestionDismissed()) {
-        html += '<div class="sync-suggest"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Merging projects across devices? Sign in to label this device , optional, dismissible, never required. ' +
+        html +=
+          '<div class="sync-suggest"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Merging projects across devices? Sign in to label this device , optional, dismissible, never required. ' +
           '<button class="btn btn-n btn-s" data-action="syncDismissSuggest">Dismiss</button></div>';
       }
     }
@@ -264,19 +352,27 @@ var MMGR = window.MMGR || {};
   // identity so merge labeling + this section stay consistent everywhere.
   // Signing out clears it again. Registers at module load (project.html);
   // render no-ops without #sync-section.
-  document.addEventListener('mmgr:user-changed', function(e) {
+  document.addEventListener('mmgr:user-changed', function (e) {
     const u = e && e.detail;
     if (u && u.sub) {
-      setIdentity({ sub: u.sub, email: u.email || '', name: u.name || '', picture: u.picture || '', at: new Date().toISOString() });
+      setIdentity({
+        sub: u.sub,
+        email: u.email || '',
+        name: u.name || '',
+        picture: u.picture || '',
+        at: new Date().toISOString()
+      });
     }
     renderSyncSection();
   });
-  document.addEventListener('mmgr:google-signed-out', function() {
+  document.addEventListener('mmgr:google-signed-out', function () {
     clearIdentity();
     renderSyncSection();
   });
 
-  function setClientIdFrom(el) { setClientId(el); }
+  function setClientIdFrom(el) {
+    setClientId(el);
+  }
 
   // ---- API ----
   ns.Sync = {

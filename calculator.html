@@ -506,10 +506,10 @@
         <!-- W3 (owner 2026-10-01) per-document fields: who it is for and
              which document number/date it carries. They ride the saved
              estimate so recall restores the whole document. -->
-        <input type="text" id="calc-client-name" maxlength="80" placeholder="Client / bill to (e.g. Smith - 12 Church Rd)">
-        <input type="text" id="calc-client-addr" maxlength="120" placeholder="Project address (optional)">
+        <input type="text" id="calc-client-name" maxlength="80" placeholder="Client / bill to (e.g. Smith - 12 Church Rd)" aria-label="Client or bill-to name">
+        <input type="text" id="calc-client-addr" maxlength="120" placeholder="Project address (optional)" aria-label="Project address (optional)">
         <span class="bcp-doc-row">
-          <input type="text" id="calc-doc-no" maxlength="24" placeholder="Doc no (e.g. INV-0001)">
+          <input type="text" id="calc-doc-no" maxlength="24" placeholder="Doc no (e.g. INV-0001)" aria-label="Document number">
           <input type="date" id="calc-doc-date" aria-label="Document date">
           <input type="date" id="calc-doc-due" aria-label="Due date (optional)">
         </span>
@@ -535,15 +535,15 @@
               <span class="bcp-logo-note" id="calc-logo-note" role="status"></span>
             </div>
             <div class="bcp-brand-fields">
-              <input type="text" id="calc-brand-name" maxlength="60" placeholder="Business name (was on the export row)">
-              <input type="text" id="calc-brand-phone" maxlength="40" placeholder="Phone">
-              <input type="text" id="calc-brand-email" maxlength="80" placeholder="Email">
-              <input type="text" id="calc-brand-addr" maxlength="120" placeholder="Address">
-              <input type="text" id="calc-brand-trn" maxlength="40" placeholder="TRN / registration no. (optional)">
+              <input type="text" id="calc-brand-name" maxlength="60" placeholder="Business name (was on the export row)" aria-label="Business name">
+              <input type="text" id="calc-brand-phone" maxlength="40" placeholder="Phone" aria-label="Business phone number">
+              <input type="text" id="calc-brand-email" maxlength="80" placeholder="Email" aria-label="Business email address">
+              <input type="text" id="calc-brand-addr" maxlength="120" placeholder="Address" aria-label="Business address">
+              <input type="text" id="calc-brand-trn" maxlength="40" placeholder="TRN / registration no. (optional)" aria-label="TRN or registration number (optional)">
             </div>
             <div class="bcp-brand-sig">
-              <input type="text" id="calc-brand-signame" maxlength="60" placeholder="Signature - full name">
-              <input type="text" id="calc-brand-sigtitle" maxlength="60" placeholder="Signature - title (e.g. Managing Director)">
+              <input type="text" id="calc-brand-signame" maxlength="60" placeholder="Signature - full name" aria-label="Signature: full name">
+              <input type="text" id="calc-brand-sigtitle" maxlength="60" placeholder="Signature - title (e.g. Managing Director)" aria-label="Signature: job title">
             </div>
           </div>
         </div>

@@ -16,7 +16,7 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   const U = ns.Utils;
@@ -33,17 +33,24 @@ var MMGR = window.MMGR || {};
 
   function openActionItemCount(s) {
     let n = 0;
-    (s.commsEntries || []).forEach(c => { if ((c.actionItems || '').trim()) n++; });
-    (s.logEntries || []).forEach(l => { if ((l.actionItems || '').trim()) n++; });
+    (s.commsEntries || []).forEach(c => {
+      if ((c.actionItems || '').trim()) n++;
+    });
+    (s.logEntries || []).forEach(l => {
+      if ((l.actionItems || '').trim()) n++;
+    });
     const promises = s.meetingPromises || {};
-    Object.keys(promises).forEach(k => { n += promises[k].filter(p => !p.done).length; });
+    Object.keys(promises).forEach(k => {
+      n += promises[k].filter(p => !p.done).length;
+    });
     return n;
   }
 
   function computeTodayDecisions(state) {
     const s = state || (ns.State ? ns.State.getState() : null);
     if (!s) return [];
-    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const W = { schedule: 4, stalled: 2, risk: 6, budget: 8, action: 3 };
     const items = [];
 
@@ -99,7 +106,7 @@ var MMGR = window.MMGR || {};
     const planned = (s.budgetLines || []).reduce((sum, l) => sum + (+l.planned || 0), 0);
     const actual = (s.budgetLines || []).reduce((sum, l) => sum + (+l.actual || 0), 0);
     if (planned > 0 && actual > planned) {
-      const pct = Math.min(60, Math.round((actual - planned) / planned * 100));
+      const pct = Math.min(60, Math.round(((actual - planned) / planned) * 100));
       items.push({
         src: 'Budget',
         title: 'Budget overrun',
@@ -115,7 +122,11 @@ var MMGR = window.MMGR || {};
       items.push({
         src: 'Action',
         title: 'Open action items',
-        detail: open + ' unresolved action item' + (open !== 1 ? 's' : '') + ' in Comms, Decision Log, or last meeting',
+        detail:
+          open +
+          ' unresolved action item' +
+          (open !== 1 ? 's' : '') +
+          ' in Comms, Decision Log, or last meeting',
         impact: W.action * Math.min(open, 10),
         reason: open + ' open'
       });
@@ -126,16 +137,27 @@ var MMGR = window.MMGR || {};
     // mmgr-forecast.js (precip>=60 / heat>=32C / cold<=0C); the engine just
     // surfaces the nearest flagged day. Impact is fixed (12) so a weather
     // signal ranks above routine action items but below a High/High risk.
-    if (ns.Forecast && ns.Forecast.riskDays && s.wxCache && s.wxCache.days && s.wxCache.days.length) {
-      const wxToday = new Date(); wxToday.setHours(0, 0, 0, 0);
-      const wxDays = (ns.Forecast.riskDays(s) || [])
-        .filter(d => (U.parseDL(d.date) || new Date(d.date + 'T00:00:00')) >= wxToday);
+    if (
+      ns.Forecast &&
+      ns.Forecast.riskDays &&
+      s.wxCache &&
+      s.wxCache.days &&
+      s.wxCache.days.length
+    ) {
+      const wxToday = new Date();
+      wxToday.setHours(0, 0, 0, 0);
+      const wxDays = (ns.Forecast.riskDays(s) || []).filter(
+        d => (U.parseDL(d.date) || new Date(d.date + 'T00:00:00')) >= wxToday
+      );
       if (wxDays.length) {
         const first = wxDays[0];
         items.push({
           src: 'Weather',
           title: 'Weather risk ahead',
-          detail: first.date + ' , ' + first.alerts.join(', ') +
+          detail:
+            first.date +
+            ' , ' +
+            first.alerts.join(', ') +
             (first.affected.length ? ' (affects ' + first.affected.join(', ') + ')' : ''),
           impact: 12,
           reason: first.alerts.join(', ') + ' on ' + first.date
@@ -154,13 +176,28 @@ var MMGR = window.MMGR || {};
     if (!el) return;
     const items = computeTodayDecisions();
     if (!items.length) {
-      el.innerHTML = '<div class="es es-ok"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Nothing needs you right now , all tracked signals are clear.</div>';
+      el.innerHTML =
+        '<div class="es es-ok"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Nothing needs you right now , all tracked signals are clear.</div>';
       return;
     }
-    el.innerHTML = items.map(it => {
-      const cls = it.impact >= 20 ? 'br' : it.impact >= 10 ? 'ba' : 'bg';
-      return '<div class="tf-row"><div><span class="badge ' + cls + '" title="Impact score: ' + U.escapeHtml(it.reason) + '">' + it.impact + '</span> <span class="tf-name">' + U.escapeHtml(it.title) + '</span></div><span class="tf-due">' + U.escapeHtml(it.detail) + '</span></div>';
-    }).join('');
+    el.innerHTML = items
+      .map(it => {
+        const cls = it.impact >= 20 ? 'br' : it.impact >= 10 ? 'ba' : 'bg';
+        return (
+          '<div class="tf-row"><div><span class="badge ' +
+          cls +
+          '" title="Impact score: ' +
+          U.escapeHtml(it.reason) +
+          '">' +
+          it.impact +
+          '</span> <span class="tf-name">' +
+          U.escapeHtml(it.title) +
+          '</span></div><span class="tf-due">' +
+          U.escapeHtml(it.detail) +
+          '</span></div>'
+        );
+      })
+      .join('');
   }
 
   // ---- API ----

@@ -3,7 +3,7 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   // ---- Date Parsing ----
@@ -12,7 +12,7 @@ var MMGR = window.MMGR || {};
     // YYYY-MM-DD
     if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
       const parts = str.split('-').map(Number);
-      return new Date(parts[0], parts[1]-1, parts[2]);
+      return new Date(parts[0], parts[1] - 1, parts[2]);
     }
     // DD/MM/YYYY or MM/DD/YYYY , distinguished by magnitude, since the two
     // digit-only patterns are otherwise indistinguishable:
@@ -21,12 +21,25 @@ var MMGR = window.MMGR || {};
     //   both ≤ 12        → ambiguous; documented default is DD/MM/YYYY
     if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(str)) {
       const parts = str.split('/').map(Number);
-      if (parts[0] > 12) return new Date(parts[2], parts[1]-1, parts[0]);  // DD/MM
-      if (parts[1] > 12) return new Date(parts[2], parts[0]-1, parts[1]);  // MM/DD
-      return new Date(parts[2], parts[1]-1, parts[0]);                     // ambiguous → DD/MM
+      if (parts[0] > 12) return new Date(parts[2], parts[1] - 1, parts[0]); // DD/MM
+      if (parts[1] > 12) return new Date(parts[2], parts[0] - 1, parts[1]); // MM/DD
+      return new Date(parts[2], parts[1] - 1, parts[0]); // ambiguous → DD/MM
     }
     // DD-Mon-YYYY
-    const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+    const months = {
+      jan: 0,
+      feb: 1,
+      mar: 2,
+      apr: 3,
+      may: 4,
+      jun: 5,
+      jul: 6,
+      aug: 7,
+      sep: 8,
+      oct: 9,
+      nov: 10,
+      dec: 11
+    };
     const m = str.match(/^(\d{1,2})-([a-zA-Z]{3})-(\d{4})$/);
     if (m) {
       const month = months[m[2].toLowerCase()];
@@ -43,8 +56,8 @@ var MMGR = window.MMGR || {};
     if (typeof d === 'string') d = parseDL(d);
     if (!d || isNaN(d.getTime())) return '';
     const y = d.getFullYear();
-    const m = String(d.getMonth()+1).padStart(2,'0');
-    const day = String(d.getDate()).padStart(2,'0');
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${day}`;
   }
 
@@ -52,7 +65,20 @@ var MMGR = window.MMGR || {};
     if (!d) return '';
     if (typeof d === 'string') d = parseDL(d);
     if (!d || isNaN(d.getTime())) return '';
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
     return `${d.getDate()} ${months[d.getMonth()]}`;
   }
 
@@ -80,7 +106,7 @@ var MMGR = window.MMGR || {};
     if (!endDate) return false;
     const end = parseDL(endDate);
     const today = new Date();
-    today.setHours(0,0,0,0);
+    today.setHours(0, 0, 0, 0);
     return end && end < today;
   }
 
@@ -88,7 +114,7 @@ var MMGR = window.MMGR || {};
     if (!endDate) return false;
     const end = parseDL(endDate);
     const today = new Date();
-    today.setHours(0,0,0,0);
+    today.setHours(0, 0, 0, 0);
     const limit = addDays(today, days || 3);
     return end && end >= today && end <= limit;
   }
@@ -119,7 +145,7 @@ var MMGR = window.MMGR || {};
     if (!d || isNaN(d.getTime())) return new Date();
     const ww = parseInt(workWeek) || getWorkWeek();
     const r = new Date(d);
-    r.setHours(0,0,0,0);
+    r.setHours(0, 0, 0, 0);
     let steps = Math.abs(n);
     const dir = n >= 0 ? 1 : -1;
     while (steps > 0) {
@@ -143,7 +169,7 @@ var MMGR = window.MMGR || {};
     const hi = forward ? b : a;
     let count = 0;
     const cur = new Date(lo);
-    cur.setHours(0,0,0,0);
+    cur.setHours(0, 0, 0, 0);
     cur.setDate(cur.getDate() + 1);
     while (cur < hi) {
       if (isWorkDay(cur, ww)) count++;
@@ -161,17 +187,24 @@ var MMGR = window.MMGR || {};
 
   function genShortId(prefix) {
     _idCounter++;
-    return (prefix || 'x') + String(_idCounter).padStart(3,'0');
+    return (prefix || 'x') + String(_idCounter).padStart(3, '0');
   }
 
   // ---- Hashing (for access codes) ----
   async function sha256(str) {
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str.trim().toUpperCase()));
-    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+    const buf = await crypto.subtle.digest(
+      'SHA-256',
+      new TextEncoder().encode(str.trim().toUpperCase())
+    );
+    return Array.from(new Uint8Array(buf))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
   }
 
   // ---- DOM Helpers ----
-  function $(id) { return document.getElementById(id); }
+  function $(id) {
+    return document.getElementById(id);
+  }
 
   function escapeHtml(str) {
     const d = document.createElement('div');
@@ -197,7 +230,7 @@ var MMGR = window.MMGR || {};
   // ---- Debounce ----
   function debounce(fn, ms) {
     let timer;
-    return function(...args) {
+    return function (...args) {
       clearTimeout(timer);
       timer = setTimeout(() => fn.apply(this, args), ms || 200);
     };
@@ -206,7 +239,7 @@ var MMGR = window.MMGR || {};
   // ---- Throttle ----
   function throttle(fn, ms) {
     let last = 0;
-    return function(...args) {
+    return function (...args) {
       const now = Date.now();
       if (now - last >= (ms || 100)) {
         last = now;
@@ -218,7 +251,9 @@ var MMGR = window.MMGR || {};
   // ---- Sanitize ----
   function sanitize(str) {
     if (!str) return '';
-    return String(str).replace(/<[^>]*>/g, '').trim();
+    return String(str)
+      .replace(/<[^>]*>/g, '')
+      .trim();
   }
 
   // ---- Copy to Clipboard ----
@@ -226,7 +261,7 @@ var MMGR = window.MMGR || {};
     try {
       await navigator.clipboard.writeText(text);
       return true;
-    } catch(e) {
+    } catch (e) {
       // Fallback
       const ta = document.createElement('textarea');
       ta.value = text;
@@ -250,7 +285,7 @@ var MMGR = window.MMGR || {};
   //  3. runs the render callback
   //  4. restores focus + caret on the re-rendered twin of that same field
   function rerenderPreservingFocus(renderFn) {
-    setTimeout(function() {
+    setTimeout(function () {
       const ae = document.activeElement;
       let rec = null;
       if (ae && ae.getAttribute && ae.getAttribute('data-action') && ae !== document.body) {
@@ -259,8 +294,8 @@ var MMGR = window.MMGR || {};
           id: ae.getAttribute('data-id'),
           field: ae.getAttribute('data-field'),
           idx: ae.getAttribute('data-idx'),
-          selStart: (typeof ae.selectionStart === 'number') ? ae.selectionStart : null,
-          selEnd: (typeof ae.selectionEnd === 'number') ? ae.selectionEnd : null
+          selStart: typeof ae.selectionStart === 'number' ? ae.selectionStart : null,
+          selEnd: typeof ae.selectionEnd === 'number' ? ae.selectionEnd : null
         };
       }
       renderFn();
@@ -278,13 +313,21 @@ var MMGR = window.MMGR || {};
           // Callers already skip rebuilding the WBS row when a date input has
           // focus (see updTaskField), so this is belt-and-suspenders for any
           // future caller that re-renders a table containing date inputs.
-          const pickerType = el.type === 'date' || el.type === 'time' ||
-            el.type === 'month' || el.type === 'week' || el.type === 'datetime-local';
+          const pickerType =
+            el.type === 'date' ||
+            el.type === 'time' ||
+            el.type === 'month' ||
+            el.type === 'week' ||
+            el.type === 'datetime-local';
           if (!pickerType) {
-            try { el.focus(); } catch (e) {}
+            try {
+              el.focus();
+            } catch (e) {}
           }
           if (el.setSelectionRange && rec.selStart != null && el.type === 'text') {
-            try { el.setSelectionRange(rec.selStart, rec.selEnd); } catch (e2) {}
+            try {
+              el.setSelectionRange(rec.selStart, rec.selEnd);
+            } catch (e2) {}
           }
         }
       }
@@ -320,15 +363,24 @@ var MMGR = window.MMGR || {};
     copyToClipboard: copyToClipboard,
 
     /* BUG #1: safe JSON.parse - prevents app crash on corrupt localStorage */
-    safeParse: function(raw, fallback) {
+    safeParse: function (raw, fallback) {
       if (fallback === undefined) fallback = null;
-      try { return JSON.parse(raw); } catch (e) { return fallback; }
+      try {
+        return JSON.parse(raw);
+      } catch (e) {
+        return fallback;
+      }
     },
 
     /* BUG #3: truncate list with overflow indicator */
-    truncateList: function(arr, limit, fmt) {
+    truncateList: function (arr, limit, fmt) {
       if (!arr || !arr.length) return '';
-      var shown = arr.slice(0, limit).map(fmt || function(x) { return String(x); });
+      var shown = arr.slice(0, limit).map(
+        fmt ||
+          function (x) {
+            return String(x);
+          }
+      );
       var hidden = Math.max(0, arr.length - limit);
       var result = shown.join('; ');
       return hidden > 0 ? result + ' (and ' + hidden + ' more)' : result;
@@ -337,11 +389,13 @@ var MMGR = window.MMGR || {};
     /* BUG #7: time constants - single source of truth for ms/day */
     MS_PER_DAY: 86400000,
 
-    fmtDateLocal: function(d) {
+    fmtDateLocal: function (d) {
       d = d instanceof Date ? d : new Date(d);
-      return isNaN(d) ? '' : d.toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'});
+      return isNaN(d)
+        ? ''
+        : d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     },
-    fmtMoney: function(n) {
+    fmtMoney: function (n) {
       return n != null ? '$' + Number(n).toLocaleString() : '$0';
     }
   };

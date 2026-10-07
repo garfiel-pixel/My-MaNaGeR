@@ -35,7 +35,7 @@
       <span class="brand-mark" aria-hidden="true">
         <svg class="ico" aria-hidden="true" style="width:21px;height:21px;"><use href="css/mmgr-icons.svg#i-mpw"></use></svg>
       </span>
-      <span><b>My <span>MaNaGeR</span></b><small>Project Workspace</small></span>
+      <span><b>MY MANAGER</b><small>Project Workspace</small></span>
     </a>
 
     <nav class="site-nav" aria-label="Primary">
@@ -80,8 +80,7 @@
 
 <!-- Mobile menu (Liquid Glass sheet , functional layer) -->
 <nav class="mobile-menu" id="mobile-menu" aria-label="Mobile">
-  <a href="#top">Back to top</a>
-  <a href="#builtfor">Built For</a>
+  <a href="#top">Back to top</a>      <a href="#builtfor" data-spy-scheme="light">Built For</a>
   <a href="#features">Key Features</a>
   <a href="#how">How It Works</a>
   <a href="#data">Data &amp; Backup</a>
@@ -94,14 +93,81 @@
   <a class="btn btn-gold" href="app.html">Get Started</a>
 </nav>
 
-<!-- Slim edge scroll-spy , transparent, functional layer only (never a panel) -->
-<nav class="scroll-spy" aria-label="On this page">
-  <a href="#builtfor"><span class="spy-stick"></span><span class="spy-subdots" aria-hidden="true"><i></i><i></i><i></i></span><span class="spy-label">Built For</span></a>
-  <a href="#features"><span class="spy-stick"></span><span class="spy-subdots" aria-hidden="true"><i></i><i></i><i></i></span><span class="spy-label">Key Features</span></a>
-  <a href="#how"><span class="spy-stick"></span><span class="spy-subdots" aria-hidden="true"><i></i><i></i><i></i></span><span class="spy-label">How It Works</span></a>
-  <a href="#data"><span class="spy-stick"></span><span class="spy-subdots" aria-hidden="true"><i></i><i></i><i></i></span><span class="spy-label">Data &amp; Backup</span></a>
-  <a href="#guide"><span class="spy-stick"></span><span class="spy-subdots" aria-hidden="true"><i></i><i></i><i></i></span><span class="spy-label">Field Guide</span></a>
-  <a href="#faq"><span class="spy-stick"></span><span class="spy-subdots" aria-hidden="true"><i></i><i></i><i></i></span><span class="spy-label">FAQ</span></a>
+<!-- Dot-only rail. Big dots = major sections. Small dots between the big ones = the topics under each major section, prefilled as the page scrolls. Labels are hidden by default and show on hover/focus so you can tell what a dot points at; click a dot to jump back to that area. Subsection destinations: #features section maps to its feature cards (#f-wbs ... #f-lookahead); other majors have no subsection anchors, so they get only their one big dot. -->
+<nav class="dot-rail-navigation" aria-label="Page sections">
+  <div class="rail-line" aria-hidden="true"></div>
+  <ul class="dot-list" role="list">
+    <li class="dot-item major" data-target="#builtfor" data-label="Built For">
+      <a href="#builtfor" class="dot-link" aria-label="Built For">
+        <span class="dot" aria-hidden="true"></span>
+      </a>
+      <span class="tooltip" role="tooltip">Built For</span>
+    </li>
+    <li class="dot-group" data-major="#features">
+      <li class="dot-item major" data-target="#features" data-label="Key Features">
+        <a href="#features" class="dot-link" aria-label="Key Features">
+          <span class="dot" aria-hidden="true"></span>
+        </a>
+        <span class="tooltip" role="tooltip">Key Features</span>
+      </li>
+      <li class="dot-group-children" aria-hidden="true">
+        <a class="dot-item minor" href="#f-wbs" data-label="WBS + Gantt"><span class="dot" aria-hidden="true"></span>
+          <span class="tooltip" role="tooltip">WBS + Gantt</span></a>
+        <a class="dot-item minor" href="#f-kanban" data-label="Kanban Board"><span class="dot" aria-hidden="true"></span>
+          <span class="tooltip" role="tooltip">Kanban Board</span></a>
+        <a class="dot-item minor" href="#f-raci" data-label="RACI Matrix"><span class="dot" aria-hidden="true"></span>
+          <span class="tooltip" role="tooltip">RACI Matrix</span></a>
+        <a class="dot-item minor" href="#f-risk" data-label="Risk + Monte Carlo"><span class="dot" aria-hidden="true"></span>
+          <span class="tooltip" role="tooltip">Risk + Monte Carlo</span></a>
+        <a class="dot-item minor" href="#f-budget" data-label="Budget / EVM"><span class="dot" aria-hidden="true"></span>
+          <span class="tooltip" role="tooltip">Budget / EVM</span></a>
+        <a class="dot-item minor" href="#f-ai" data-label="Built-In AI"><span class="dot" aria-hidden="true"></span>
+          <span class="tooltip" role="tooltip">Built-In AI</span></a>
+        <a class="dot-item minor" href="#f-voice" data-label="Voice to Notes &amp; Claims"><span class="dot" aria-hidden="true"></span>
+          <span class="tooltip" role="tooltip">Voice to Notes &amp; Claims</span></a>
+        <a class="dot-item minor" href="#f-weather" data-label="Weather-Aware"><span class="dot" aria-hidden="true"></span>
+          <span class="tooltip" role="tooltip">Weather-Aware</span></a>
+        <a class="dot-item minor" href="#f-offline" data-label="Offline-First"><span class="dot" aria-hidden="true"></span>
+          <span class="tooltip" role="tooltip">Offline-First</span></a>
+        <a class="dot-item minor" href="#f-health" data-label="Health &amp; Portfolio"><span class="dot" aria-hidden="true"></span>
+          <span class="tooltip" role="tooltip">Health &amp; Portfolio</span></a>
+        <a class="dot-item minor" href="#f-meetings" data-label="Meetings &amp; Decisions"><span class="dot" aria-hidden="true"></span>
+          <span class="tooltip" role="tooltip">Meetings &amp; Decisions</span></a>
+        <a class="dot-item minor" href="#f-claims" data-label="Claims &amp; Digests"><span class="dot" aria-hidden="true"></span>
+          <span class="tooltip" role="tooltip">Claims &amp; Digests</span></a>
+        <a class="dot-item minor" href="#f-registers" data-label="Registers &amp; Compliance"><span class="dot" aria-hidden="true"></span>
+          <span class="tooltip" role="tooltip">Registers &amp; Compliance</span></a>
+        <a class="dot-item minor" href="#f-gonogo" data-label="Bid Leveling &amp; Go/No-Go"><span class="dot" aria-hidden="true"></span>
+          <span class="tooltip" role="tooltip">Bid Leveling &amp; Go/No-Go</span></a>
+        <a class="dot-item minor" href="#f-lookahead" data-label="Lookahead &amp; Field Metrics"><span class="dot" aria-hidden="true"></span>
+          <span class="tooltip" role="tooltip">Lookahead &amp; Field Metrics</span></a>
+      </li>
+    </li>
+    <li class="dot-item major" data-target="#how" data-label="How It Works">
+      <a href="#how" class="dot-link" aria-label="How It Works">
+        <span class="dot" aria-hidden="true"></span>
+      </a>
+      <span class="tooltip" role="tooltip">How It Works</span>
+    </li>
+    <li class="dot-item major" data-target="#data" data-label="Data &amp; Backup">
+      <a href="#data" class="dot-link" aria-label="Data &amp; Backup">
+        <span class="dot" aria-hidden="true"></span>
+      </a>
+      <span class="tooltip" role="tooltip">Data &amp; Backup</span>
+    </li>
+    <li class="dot-item major" data-target="#guide" data-label="Field Guide">
+      <a href="#guide" class="dot-link" aria-label="Field Guide">
+        <span class="dot" aria-hidden="true"></span>
+      </a>
+      <span class="tooltip" role="tooltip">Field Guide</span>
+    </li>
+    <li class="dot-item major" data-target="#faq" data-label="FAQ">
+      <a href="#faq" class="dot-link" aria-label="FAQ">
+        <span class="dot" aria-hidden="true"></span>
+      </a>
+      <span class="tooltip" role="tooltip">FAQ</span>
+    </li>
+  </ul>
 </nav>
 
 <main id="main">
@@ -114,7 +180,7 @@
       <div>
         <!-- OWNER 2026-08-17: no tagline tangles , the eyebrow that repeated the
              headline was removed. The hero is one clean sentence. -->
-        <h1>Run your project like a <span class="gold">pro</span>, in <span class="teal">one workspace</span>.</h1>
+        <h1>Run your project like a pro, in <span class="gold">one workspace</span>.</h1>
         <!-- Phase 2 copy: real product story, concise. FINAL-PRE-DEPLOY-DIRECTIVE
              DIR-5 (2026-08-11): AI promoted to a headline capability , its own
              sentence, not a clause buried between voice and offline claims. -->
@@ -519,7 +585,7 @@
           <span class="brand-mark" aria-hidden="true">
             <svg class="ico" aria-hidden="true" style="width:21px;height:21px;"><use href="css/mmgr-icons.svg#i-mpw"></use></svg>
           </span>
-          <span><b>My <span>MaNaGeR</span></b></span>
+          <span><b>MY MANAGER</b></span>
         </a>
         <p>One workspace for construction &amp; project management, from charters through closeout, entirely in your browser.</p>
         <a class="btn btn-gold btn-sm" href="app.html">

@@ -25,9 +25,10 @@ for (const f of jsFiles) {
   // In template strings like "text \u2014 text" -> "text, text"
   // In placeholder like '\u2014' -> '-' (no-data placeholder)
   // In empty state like "\u2014" -> "-"
-  
+
   // Count before
-  const countBefore = (content.match(/\\u2014/g) || []).length + (content.match(/\\u2013/g) || []).length;
+  const countBefore =
+    (content.match(/\\u2014/g) || []).length + (content.match(/\\u2013/g) || []).length;
 
   // Replace \u2014 (em-dash) with a plain comma-space or dash depending on context
   // Most common: "X \u2014 Y" in strings -> "X, Y"
@@ -36,7 +37,7 @@ for (const f of jsFiles) {
     // Check surrounding context
     const before = content.substring(Math.max(0, offset - 3), offset);
     const after = content.substring(offset + 6, offset + 9);
-    
+
     // If it's a standalone placeholder like '\\u2014' or just "\\u2014" in a ternary
     // Replace with a simple dash
     if (before.match(/['"(|,]\s*$/) || after.match(/^\s*[')]|$/)) {
@@ -50,13 +51,14 @@ for (const f of jsFiles) {
   content = content.replace(/\\u2013/g, (match, offset) => {
     const before = content.substring(Math.max(0, offset - 3), offset);
     const after = content.substring(offset + 6, offset + 9);
-    
+
     // Placeholder or range: keep as hyphen
     return '-';
   });
 
   if (content !== original) {
-    const countAfter = (content.match(/\\u2014/g) || []).length + (content.match(/\\u2013/g) || []).length;
+    const countAfter =
+      (content.match(/\\u2014/g) || []).length + (content.match(/\\u2013/g) || []).length;
     const replaced = countBefore - countAfter;
     totalReplacements += replaced;
     filesChanged++;

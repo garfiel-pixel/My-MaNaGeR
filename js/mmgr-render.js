@@ -4,10 +4,10 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
-  const S = () => ns.State ? ns.State.getState() : null;
+  const S = () => (ns.State ? ns.State.getState() : null);
   const U = ns.Utils;
   const $ = U.$;
 
@@ -16,10 +16,16 @@ var MMGR = window.MMGR || {};
   // action (an EXISTING data-action, surfaced prominently), and keep the
   // chrome quiet. Used by every panel that renders a table from state data.
   function emptyStateRow(colspan, text, actionsHtml) {
-    return '<tr><td colspan="' + colspan + '"><div class="es es-row">' +
-      '<div>' + text + '</div>' +
+    return (
+      '<tr><td colspan="' +
+      colspan +
+      '"><div class="es es-row">' +
+      '<div>' +
+      text +
+      '</div>' +
       (actionsHtml ? '<div class="es-actions">' + actionsHtml + '</div>' : '') +
-      '</div></td></tr>';
+      '</div></td></tr>'
+    );
   }
 
   // ---- Render Queue (batched updates) ----
@@ -53,11 +59,23 @@ var MMGR = window.MMGR || {};
     if (!g) return;
     const s = S();
     const hour = new Date().getHours();
-    let icon = 'i-moon', timeLabel = 'Good Evening';
-    if (hour < 12) { icon = 'i-sun'; timeLabel = 'Good Morning'; }
-    else if (hour < 18) { icon = 'i-sun'; timeLabel = 'Good Afternoon'; }
-    const nameSuffix = (s && s.userName) ? ', ' + U.escapeHtml(String(s.userName)) : '';
-    g.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#' + icon + '"></use></svg> <span id="greeting-text">' + timeLabel + nameSuffix + '</span>';
+    let icon = 'i-moon',
+      timeLabel = 'Good Evening';
+    if (hour < 12) {
+      icon = 'i-sun';
+      timeLabel = 'Good Morning';
+    } else if (hour < 18) {
+      icon = 'i-sun';
+      timeLabel = 'Good Afternoon';
+    }
+    const nameSuffix = s && s.userName ? ', ' + U.escapeHtml(String(s.userName)) : '';
+    g.innerHTML =
+      '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#' +
+      icon +
+      '"></use></svg> <span id="greeting-text">' +
+      timeLabel +
+      nameSuffix +
+      '</span>';
   }
 
   // ---- Methodology ----
@@ -91,7 +109,9 @@ var MMGR = window.MMGR || {};
     const ind = $('lk-ind');
     if (ind) {
       ind.classList.toggle('on', !!locked);
-      $('lk-lbl').textContent = s.methodology ? s.methodology.charAt(0).toUpperCase() + s.methodology.slice(1) : '';
+      $('lk-lbl').textContent = s.methodology
+        ? s.methodology.charAt(0).toUpperCase() + s.methodology.slice(1)
+        : '';
     }
     // Glass §5: the Lock button is a binary chip, solid when locked.
     const lockBtn = document.querySelector('[data-action="tglLock"]');
@@ -113,14 +133,16 @@ var MMGR = window.MMGR || {};
     const blocked = tasks.filter(t => t.status === 'blocked').length;
     const overdue = tasks.filter(t => U.isOverdue(t.endDate) && t.status !== 'completed').length;
     const atRisk = tasks.filter(t => U.isDueSoon(t.endDate, 3) && t.status !== 'completed').length;
-    const issues = (Array.isArray(s.issues) ? s.issues : []).filter(i => i.status !== 'resolved' && i.status !== 'closed').length;
+    const issues = (Array.isArray(s.issues) ? s.issues : []).filter(
+      i => i.status !== 'resolved' && i.status !== 'closed'
+    ).length;
 
     // Ring (STRUCTURAL-IA §1: brand-new project != 0%, quiet the empty zero)
     // circ = 2pi*r with r=39, matches the ring markup (thicker 18px stroke,
     // owner 2026-08-15).
     const pct = total ? Math.round((done / total) * 100) : 0;
     const circ = 245;
-    const offset = circ - (circ * pct / 100);
+    const offset = circ - (circ * pct) / 100;
     const rf = $('rf');
     if (rf) rf.style.strokeDashoffset = offset;
     // OWNER 2026-09-15 (ring polish): one quarter-turn entry sweep per page
@@ -134,22 +156,36 @@ var MMGR = window.MMGR || {};
     // a percent naturally; the beside stat keeps its 'Completed' label.
     if (rt) rt.textContent = total === 0 ? '0%' : pct + '%';
     const dc = $('dc');
-    if (dc) { dc.textContent = done; dc.style.color = total === 0 ? 'var(--slate)' : ''; }
+    if (dc) {
+      dc.textContent = done;
+      dc.style.color = total === 0 ? 'var(--slate)' : '';
+    }
     const tc = $('tc');
-    if (tc) { tc.textContent = total; tc.style.color = total === 0 ? 'var(--slate)' : ''; }
+    if (tc) {
+      tc.textContent = total;
+      tc.style.color = total === 0 ? 'var(--slate)' : '';
+    }
 
     // Health
-    const setVal = (id, val) => { const el = $(id); if (el) el.textContent = val; };
-    setVal('h-ip', ip); setVal('h-ar', atRisk); setVal('h-bl', blocked);
-    setVal('h-dn', done); setVal('h-od', overdue); setVal('h-is', issues);
+    const setVal = (id, val) => {
+      const el = $(id);
+      if (el) el.textContent = val;
+    };
+    setVal('h-ip', ip);
+    setVal('h-ar', atRisk);
+    setVal('h-bl', blocked);
+    setVal('h-dn', done);
+    setVal('h-od', overdue);
+    setVal('h-is', issues);
     // MARKET-FEATURE-ROADMAP A1: subcontractor compliance count on the
     // Dashboard Project Health card (same badge pattern as the risk counts).
     // renderDash runs on every renderAll, so this is ALSO where the
     // Stakeholders nav-badge count stays fresh, the nav pill must reflect
     // compliance even before the Stakeholders section is ever opened.
-    const stkCmp = (ns.Stakeholders && ns.Stakeholders.getExpiringCompliance)
-      ? ns.Stakeholders.getExpiringCompliance(s.stakeholders || [], 30).length
-      : 0;
+    const stkCmp =
+      ns.Stakeholders && ns.Stakeholders.getExpiringCompliance
+        ? ns.Stakeholders.getExpiringCompliance(s.stakeholders || [], 30).length
+        : 0;
     syncStakeComplianceBadges(stkCmp);
     // §4 tiering: a non-zero Blocked/Overdue/Live-Issues count gets the
     // strongest static treatment, existing --danger token, no motion.
@@ -166,7 +202,8 @@ var MMGR = window.MMGR || {};
       if (total === 0) {
         // STRUCTURAL-IA §1: a brand-new project (no tasks at all) is NOT the
         // same state as "all tasks complete", give it a real empty state.
-        n3.innerHTML = '<li class="txt-sl">No tasks yet, add your first task to see prioritized next steps.</li>' +
+        n3.innerHTML =
+          '<li class="txt-sl">No tasks yet, add your first task to see prioritized next steps.</li>' +
           '<li class="txt-sl"><button class="btn btn-g btn-s" data-action="showSec" data-section="wbs">+ Add Task</button></li>';
       } else if (done === total) {
         n3.innerHTML = `<li class="n3-done"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> ${done} of ${total} tasks complete, nothing pending.</li>`;
@@ -187,7 +224,12 @@ var MMGR = window.MMGR || {};
         // the health-row labels) so a long priority name can never wrap and
         // break the 33px row rhythm, at any sidebar width (OWNER 2026-08-15
         // sidebar-only view narrowed the content column).
-        n3.innerHTML = sorted.map(t => `<li><span title="${U.escapeHtml(t.name)}">${U.escapeHtml(t.name)}${t.critical ? ' <svg class="ico" aria-hidden="true" style="color:var(--gold)"><use href="css/mmgr-icons.svg#i-target"></use></svg>' : ''}${t.endDate ? ', due ' + U.fmtDateShort(t.endDate) : ''}</span></li>`).join('');
+        n3.innerHTML = sorted
+          .map(
+            t =>
+              `<li><span title="${U.escapeHtml(t.name)}">${U.escapeHtml(t.name)}${t.critical ? ' <svg class="ico" aria-hidden="true" style="color:var(--gold)"><use href="css/mmgr-icons.svg#i-target"></use></svg>' : ''}${t.endDate ? ', due ' + U.fmtDateShort(t.endDate) : ''}</span></li>`
+          )
+          .join('');
       }
     }
 
@@ -201,9 +243,10 @@ var MMGR = window.MMGR || {};
     // without this the dashboard card showed Actual: $0 on projects with a
     // real spend log (owner go-ahead 2026-09-28).
     const SpendMod = ns.Spend;
-    const actual = SpendMod && SpendMod.budgetLineActual
-      ? bud.reduce((sum, l) => sum + SpendMod.budgetLineActual(l, s), 0)
-      : bud.reduce((sum, l) => sum + (+l.actual || 0), 0);
+    const actual =
+      SpendMod && SpendMod.budgetLineActual
+        ? bud.reduce((sum, l) => sum + SpendMod.budgetLineActual(l, s), 0)
+        : bud.reduce((sum, l) => sum + (+l.actual || 0), 0);
     const variance = planned - actual;
     const budEl = $('dw-bud');
     const budCard = $('dw-bud-card');
@@ -222,12 +265,24 @@ var MMGR = window.MMGR || {};
     const budSub = $('dw-bud-sub');
     if (budSub) {
       if (bud.length === 0) budSub.innerHTML = 'No budget lines yet, add one in Budget';
-      else budSub.textContent = `Planned: $${planned.toLocaleString()} | Actual: $${actual.toLocaleString()}`;
+      else
+        budSub.textContent = `Planned: $${planned.toLocaleString()} | Actual: $${actual.toLocaleString()}`;
     }
 
     // Resource Utilization
     const resources = Array.isArray(s.resources) ? s.resources : [];
-    const avgUtil = resources.length ? Math.round(resources.reduce((sum, r) => sum + (ns.Resources && ns.Resources.resUtil ? ns.Resources.resUtil(r) : (+r.utilization || 0)), 0) / resources.length) : 0;
+    const avgUtil = resources.length
+      ? Math.round(
+          resources.reduce(
+            (sum, r) =>
+              sum +
+              (ns.Resources && ns.Resources.resUtil
+                ? ns.Resources.resUtil(r)
+                : +r.utilization || 0),
+            0
+          ) / resources.length
+        )
+      : 0;
     const utilEl = $('dw-util');
     const utilCard = $('dw-util-card');
     if (utilEl) {
@@ -241,7 +296,12 @@ var MMGR = window.MMGR || {};
         if (utilCard) utilCard.classList.remove('tier3');
       }
     }
-    setVal('dw-util-sub', resources.length ? `Avg across ${resources.length} resources` : 'No resources added, add them in Resources');
+    setVal(
+      'dw-util-sub',
+      resources.length
+        ? `Avg across ${resources.length} resources`
+        : 'No resources added, add them in Resources'
+    );
 
     // Pending Changes + Change Rollup (C15)
     const changes = Array.isArray(s.changes) ? s.changes : [];
@@ -265,10 +325,15 @@ var MMGR = window.MMGR || {};
     }
     if (chgSub) {
       if (approved.length === 0) {
-        chgSub.textContent = changes.length > 0 ? pending + ' awaiting approval' : 'No changes logged';
+        chgSub.textContent =
+          changes.length > 0 ? pending + ' awaiting approval' : 'No changes logged';
       } else {
-        const costStr = totalCostImpact !== 0 ? (totalCostImpact > 0 ? '+' : '') + '$' + Math.abs(totalCostImpact).toLocaleString() : '';
-        const schedStr = totalSchedImpact !== 0 ? (totalSchedImpact > 0 ? '+' : '') + totalSchedImpact + 'd' : '';
+        const costStr =
+          totalCostImpact !== 0
+            ? (totalCostImpact > 0 ? '+' : '') + '$' + Math.abs(totalCostImpact).toLocaleString()
+            : '';
+        const schedStr =
+          totalSchedImpact !== 0 ? (totalSchedImpact > 0 ? '+' : '') + totalSchedImpact + 'd' : '';
         const parts = [approved.length + ' approved'];
         if (costStr) parts.push('Cost: ' + costStr);
         if (schedStr) parts.push('Schedule: ' + schedStr);
@@ -294,7 +359,9 @@ var MMGR = window.MMGR || {};
     } else if (baseEl) {
       baseEl.textContent = '';
       baseEl.style.color = 'var(--slate)';
-      if (baseSub) baseSub.textContent = 'No baseline yet - one is captured automatically once a task has dates and days, or use Save Baseline in Controls.';
+      if (baseSub)
+        baseSub.textContent =
+          'No baseline yet - one is captured automatically once a task has dates and days, or use Save Baseline in Controls.';
       if (baseCard) baseCard.classList.add('tier3');
     }
     // Baseline guard (owner 2026-09-19): idempotent - auto-captures the first
@@ -306,10 +373,15 @@ var MMGR = window.MMGR || {};
     const bvt = $('base-var-body');
     if (bvt) {
       const currentMap = {};
-      (Array.isArray(s.tasks) ? s.tasks : []).forEach(t => { currentMap[t.id] = t; });
+      (Array.isArray(s.tasks) ? s.tasks : []).forEach(t => {
+        currentMap[t.id] = t;
+      });
       let costVar = null;
       if (base && base.tasks) {
-        const basePlanned = (Array.isArray(base.budgetLines) ? base.budgetLines : []).reduce((sum, l) => sum + (+l.planned || 0), 0);
+        const basePlanned = (Array.isArray(base.budgetLines) ? base.budgetLines : []).reduce(
+          (sum, l) => sum + (+l.planned || 0),
+          0
+        );
         const curPlanned = bud.reduce((sum, l) => sum + (+l.planned || 0), 0);
         if (basePlanned > 0 || curPlanned > 0) costVar = curPlanned - basePlanned;
         const rows = [];
@@ -318,24 +390,57 @@ var MMGR = window.MMGR || {};
           if (!cur) return;
           let schedVar = null;
           if (bt.endDate && cur.endDate) schedVar = U.daysBetween(bt.endDate, cur.endDate);
-          rows.push({ name: bt.name, bEnd: bt.endDate || '', cEnd: cur.endDate || '', schedVar: schedVar });
+          rows.push({
+            name: bt.name,
+            bEnd: bt.endDate || '',
+            cEnd: cur.endDate || '',
+            schedVar: schedVar
+          });
         });
         if (rows.length === 0) {
-          bvt.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--slate);padding:14px">Save a baseline to see per-task schedule variance.</td></tr>';
+          bvt.innerHTML =
+            '<tr><td colspan="4" style="text-align:center;color:var(--slate);padding:14px">Save a baseline to see per-task schedule variance.</td></tr>';
         } else {
-          bvt.innerHTML = rows.map(r =>
-            '<tr><td>' + U.escapeHtml(r.name) + '</td><td>' + U.escapeHtml(r.bEnd || '') + '</td><td>' + U.escapeHtml(r.cEnd || '') + '</td>' +
-            '<td style="' + (r.schedVar === null ? '' : (r.schedVar > 0 ? 'color:var(--danger)' : r.schedVar < 0 ? 'color:var(--green)' : '')) + '">' +
-            (r.schedVar === null ? '' : (r.schedVar > 0 ? '+' + r.schedVar + 'd' : r.schedVar + 'd')) + '</td></tr>'
-          ).join('');
+          bvt.innerHTML = rows
+            .map(
+              r =>
+                '<tr><td>' +
+                U.escapeHtml(r.name) +
+                '</td><td>' +
+                U.escapeHtml(r.bEnd || '') +
+                '</td><td>' +
+                U.escapeHtml(r.cEnd || '') +
+                '</td>' +
+                '<td style="' +
+                (r.schedVar === null
+                  ? ''
+                  : r.schedVar > 0
+                    ? 'color:var(--danger)'
+                    : r.schedVar < 0
+                      ? 'color:var(--green)'
+                      : '') +
+                '">' +
+                (r.schedVar === null
+                  ? ''
+                  : r.schedVar > 0
+                    ? '+' + r.schedVar + 'd'
+                    : r.schedVar + 'd') +
+                '</td></tr>'
+            )
+            .join('');
         }
       } else {
-        bvt.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--slate);padding:14px">No baseline captured yet - one is captured automatically once a task has dates and days. Use Save Baseline in Controls to set one now.</td></tr>';
+        bvt.innerHTML =
+          '<tr><td colspan="4" style="text-align:center;color:var(--slate);padding:14px">No baseline captured yet - one is captured automatically once a task has dates and days. Use Save Baseline in Controls to set one now.</td></tr>';
       }
       const costEl = $('base-var-cost');
       if (costEl) {
-        costEl.textContent = costVar === null ? 'n/a' : ((costVar >= 0 ? '+' : '') + '$' + Math.abs(costVar).toLocaleString());
-        costEl.style.color = costVar === null ? 'var(--slate)' : (costVar > 0 ? 'var(--danger)' : 'var(--green)');
+        costEl.textContent =
+          costVar === null
+            ? 'n/a'
+            : (costVar >= 0 ? '+' : '') + '$' + Math.abs(costVar).toLocaleString();
+        costEl.style.color =
+          costVar === null ? 'var(--slate)' : costVar > 0 ? 'var(--danger)' : 'var(--green)';
       }
     }
 
@@ -344,7 +449,9 @@ var MMGR = window.MMGR || {};
     const cycleSub = $('dw-cycle-sub');
     const cycleCard = $('dw-cycle-card');
     if (cycleEl) {
-      const completedTasks = tasks.filter(t => t.startDate && t.endDate && t.status === 'completed');
+      const completedTasks = tasks.filter(
+        t => t.startDate && t.endDate && t.status === 'completed'
+      );
       if (completedTasks.length === 0) {
         cycleEl.textContent = '-';
         cycleEl.style.color = 'var(--slate)';
@@ -368,11 +475,15 @@ var MMGR = window.MMGR || {};
         if (validTasks.length === 0) {
           cycleEl.textContent = '--';
           cycleEl.style.color = 'var(--danger)';
-          if (cycleSub) cycleSub.textContent = 'Completed task dates run backwards - fix the task start/end dates to see cycle time';
+          if (cycleSub)
+            cycleSub.textContent =
+              'Completed task dates run backwards - fix the task start/end dates to see cycle time';
           if (cycleCard) cycleCard.classList.remove('tier3');
         } else {
           const plannedDurs = validTasks.map(t => U.daysBetween(t.startDate, t.endDate));
-          const avgPlanned = Math.round(plannedDurs.reduce((a, b) => a + b, 0) / plannedDurs.length);
+          const avgPlanned = Math.round(
+            plannedDurs.reduce((a, b) => a + b, 0) / plannedDurs.length
+          );
           // Actual duration: from startDate to completedDate (or today if no completedDate)
           const actualDurs = validTasks.map(t => {
             const start = t.startDate;
@@ -382,8 +493,19 @@ var MMGR = window.MMGR || {};
           const avgActual = Math.round(actualDurs.reduce((a, b) => a + b, 0) / actualDurs.length);
           const diff = avgActual - avgPlanned;
           cycleEl.textContent = avgActual + 'd';
-          cycleEl.style.color = diff <= 0 ? 'var(--green)' : diff <= 3 ? 'var(--amber)' : 'var(--danger)';
-          let subTxt = 'Planned avg: ' + avgPlanned + 'd | Variance: ' + (diff >= 0 ? '+' : '') + diff + 'd (' + validTasks.length + ' task' + (validTasks.length === 1 ? '' : 's') + ')';
+          cycleEl.style.color =
+            diff <= 0 ? 'var(--green)' : diff <= 3 ? 'var(--amber)' : 'var(--danger)';
+          let subTxt =
+            'Planned avg: ' +
+            avgPlanned +
+            'd | Variance: ' +
+            (diff >= 0 ? '+' : '') +
+            diff +
+            'd (' +
+            validTasks.length +
+            ' task' +
+            (validTasks.length === 1 ? '' : 's') +
+            ')';
           if (dropped > 0) subTxt += ' | ' + dropped + ' excluded for date errors';
           if (cycleSub) cycleSub.textContent = subTxt;
           if (cycleCard) cycleCard.classList.remove('tier3');
@@ -395,14 +517,23 @@ var MMGR = window.MMGR || {};
     const rwWrap = $('res-warn-wrap');
     const rw = $('res-warn');
     if (rw && rwWrap) {
-      const conflicts = (ns.Schedule && ns.Schedule.findResourceConflicts) ? ns.Schedule.findResourceConflicts() : [];
+      const conflicts =
+        ns.Schedule && ns.Schedule.findResourceConflicts ? ns.Schedule.findResourceConflicts() : [];
       if (conflicts.length) {
         rwWrap.classList.remove('is-hide');
-        rw.innerHTML = conflicts.map(c =>
-          '<div style="padding:5px 0"><span class="badge br" style="font-size:.62rem">OVER-ALLOC</span> ' +
-          U.escapeHtml(c.assignee) + ' is assigned to overlapping critical tasks ' +
-          '<code>' + U.escapeHtml(c.a) + '</code> and <code>' + U.escapeHtml(c.b) + '</code></div>'
-        ).join('');
+        rw.innerHTML = conflicts
+          .map(
+            c =>
+              '<div style="padding:5px 0"><span class="badge br" style="font-size:.62rem">OVER-ALLOC</span> ' +
+              U.escapeHtml(c.assignee) +
+              ' is assigned to overlapping critical tasks ' +
+              '<code>' +
+              U.escapeHtml(c.a) +
+              '</code> and <code>' +
+              U.escapeHtml(c.b) +
+              '</code></div>'
+          )
+          .join('');
       } else {
         rwWrap.classList.add('is-hide');
       }
@@ -411,11 +542,18 @@ var MMGR = window.MMGR || {};
     // Active Issues
     const issEl = $('d-iss');
     if (issEl) {
-      const activeIssues = (s.issues || []).filter(i => i.status !== 'resolved' && i.status !== 'closed');
+      const activeIssues = (s.issues || []).filter(
+        i => i.status !== 'resolved' && i.status !== 'closed'
+      );
       if (activeIssues.length === 0) {
         issEl.innerHTML = 'No active issues logged.';
       } else {
-        issEl.innerHTML = activeIssues.map(i => `<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">${U.escapeHtml(i.description)} <span class="badge br" style="font-size:.65rem">${i.status || 'open'}</span></div>`).join('');
+        issEl.innerHTML = activeIssues
+          .map(
+            i =>
+              `<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">${U.escapeHtml(i.description)} <span class="badge br" style="font-size:.65rem">${i.status || 'open'}</span></div>`
+          )
+          .join('');
       }
     }
 
@@ -429,26 +567,58 @@ var MMGR = window.MMGR || {};
     const attnEl = $('attention-body');
     if (attnEl) {
       const attnItems = [];
-      if (overdue > 0) attnItems.push({ label: overdue + ' task' + (overdue > 1 ? 's' : '') + ' overdue', cls: 'br' });
-      if (blocked > 0) attnItems.push({ label: blocked + ' task' + (blocked > 1 ? 's' : '') + ' blocked', cls: 'br' });
-      if (issues > 0) attnItems.push({ label: issues + ' live issue' + (issues > 1 ? 's' : ''), cls: 'br' });
-      if (atRisk > 0) attnItems.push({ label: atRisk + ' task' + (atRisk > 1 ? 's' : '') + ' due soon', cls: 'ba' });
-      const expiringCompliance = (ns.Stakeholders && ns.Stakeholders.getExpiringCompliance)
-        ? ns.Stakeholders.getExpiringCompliance(s.stakeholders || [], 30).length : 0;
-      if (expiringCompliance > 0) attnItems.push({ label: expiringCompliance + ' compliance item' + (expiringCompliance > 1 ? 's' : '') + ' expiring', cls: 'ba' });
+      if (overdue > 0)
+        attnItems.push({
+          label: overdue + ' task' + (overdue > 1 ? 's' : '') + ' overdue',
+          cls: 'br'
+        });
+      if (blocked > 0)
+        attnItems.push({
+          label: blocked + ' task' + (blocked > 1 ? 's' : '') + ' blocked',
+          cls: 'br'
+        });
+      if (issues > 0)
+        attnItems.push({ label: issues + ' live issue' + (issues > 1 ? 's' : ''), cls: 'br' });
+      if (atRisk > 0)
+        attnItems.push({
+          label: atRisk + ' task' + (atRisk > 1 ? 's' : '') + ' due soon',
+          cls: 'ba'
+        });
+      const expiringCompliance =
+        ns.Stakeholders && ns.Stakeholders.getExpiringCompliance
+          ? ns.Stakeholders.getExpiringCompliance(s.stakeholders || [], 30).length
+          : 0;
+      if (expiringCompliance > 0)
+        attnItems.push({
+          label:
+            expiringCompliance +
+            ' compliance item' +
+            (expiringCompliance > 1 ? 's' : '') +
+            ' expiring',
+          cls: 'ba'
+        });
       const attnCard = $('attention-card');
       if (attnCard) attnCard.classList.toggle('has-items', attnItems.length > 0);
       if (attnItems.length === 0) {
-        attnEl.innerHTML = '<div class="fb-sm"><span>Everything looks clear.</span><span class="dotstat zero"><span class="sdot"></span><span class="ds-num">0</span></span></div>';
+        attnEl.innerHTML =
+          '<div class="fb-sm"><span>Everything looks clear.</span><span class="dotstat zero"><span class="sdot"></span><span class="ds-num">0</span></span></div>';
       } else {
         // OWNER 2026-09-15 (dot mechanism): the old circular "!" badge
         // spheres jumbled together when several alerts were live. A red dot
         // + the count + the label reads cleanly at any density. cls maps
         // br->red dot, ba->amber dot (the two attention severities).
-        const dot = it => it.cls === 'ba' ? 'a' : 'r';
-        attnEl.innerHTML = attnItems.map(function(it) {
-          return '<div class="fb-sm"><span>' + it.label + '</span><span class="dotstat"><span class="sdot ' + dot(it) + '"></span><span class="ds-num">!</span></span></div>';
-        }).join('');
+        const dot = it => (it.cls === 'ba' ? 'a' : 'r');
+        attnEl.innerHTML = attnItems
+          .map(function (it) {
+            return (
+              '<div class="fb-sm"><span>' +
+              it.label +
+              '</span><span class="dotstat"><span class="sdot ' +
+              dot(it) +
+              '"></span><span class="ds-num">!</span></span></div>'
+            );
+          })
+          .join('');
       }
     }
 
@@ -464,26 +634,35 @@ var MMGR = window.MMGR || {};
         weekStart.setHours(0, 0, 0, 0);
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekStart.getDate() + 7);
-        const thisWeekPlanned = tasks.filter(function(t) {
+        const thisWeekPlanned = tasks.filter(function (t) {
           if (t.status === 'completed' || !t.endDate) return false;
           const d = new Date(t.endDate);
           return d >= weekStart && d < weekEnd;
         }).length;
-        const thisWeekDone = tasks.filter(function(t) {
+        const thisWeekDone = tasks.filter(function (t) {
           if (t.status !== 'completed' || !t.endDate) return false;
           const d = new Date(t.endDate);
           return d >= weekStart && d < weekEnd;
         }).length;
-        const carryover = tasks.filter(function(t) {
+        const carryover = tasks.filter(function (t) {
           return t.status !== 'completed' && t.endDate && new Date(t.endDate) < weekStart;
         }).length;
         // OWNER 2026-09-15 (dot mechanism): dot + number instead of badge
         // pills. Colors: amber (planned), green (done), red only when
         // carryover is non-zero (slate-neutral at zero). Three status
         // colors total - no extra palette on the dashboard.
-        twEl.innerHTML = '<div class="fb-sm"><span>Planned this week</span><span class="dotstat"><span class="sdot a"></span><span class="ds-num">' + thisWeekPlanned + '</span></span></div>' +
-          '<div class="fb-sm"><span>Completed this week</span><span class="dotstat"><span class="sdot g"></span><span class="ds-num">' + thisWeekDone + '</span></span></div>' +
-          '<div class="fb-sm"><span>Carryover (past due)</span><span class="dotstat' + (carryover > 0 ? '"><span class="sdot r"></span>' : ' zero"><span class="sdot"></span>') + '<span class="ds-num">' + carryover + '</span></span></div>';
+        twEl.innerHTML =
+          '<div class="fb-sm"><span>Planned this week</span><span class="dotstat"><span class="sdot a"></span><span class="ds-num">' +
+          thisWeekPlanned +
+          '</span></span></div>' +
+          '<div class="fb-sm"><span>Completed this week</span><span class="dotstat"><span class="sdot g"></span><span class="ds-num">' +
+          thisWeekDone +
+          '</span></span></div>' +
+          '<div class="fb-sm"><span>Carryover (past due)</span><span class="dotstat' +
+          (carryover > 0 ? '"><span class="sdot r"></span>' : ' zero"><span class="sdot"></span>') +
+          '<span class="ds-num">' +
+          carryover +
+          '</span></span></div>';
       }
     }
 
@@ -491,7 +670,7 @@ var MMGR = window.MMGR || {};
     // lands fast. requestAnimationFrame yields to the browser's paint cycle
     // before running the analytics panels (Today's Focus, Lookahead, PPC,
     // Decision Engine, Lead-Time, Weather, Meetings, Digest, etc.).
-    requestAnimationFrame(function() {
+    requestAnimationFrame(function () {
       // Today's Focus (feature 10)
       renderTodayView();
       // MARKET-FEATURE-ROADMAP C7/C8: 2-week Lookahead + Percent Plan Complete
@@ -536,21 +715,52 @@ var MMGR = window.MMGR || {};
     const el = $('today-body');
     if (!el) return;
     const lbl = $('today-date-lbl');
-    if (lbl) lbl.textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const in7 = new Date(today); in7.setDate(today.getDate() + 7);
+    if (lbl)
+      lbl.textContent = new Date().toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric'
+      });
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const in7 = new Date(today);
+    in7.setDate(today.getDate() + 7);
     const tasks = s.tasks || [];
     const overdue = tasks.filter(t => U.isOverdue(t.endDate) && t.status !== 'completed');
-    const dueToday = tasks.filter(t => !U.isOverdue(t.endDate) && t.endDate && t.status !== 'completed' && U.parseDL(t.endDate) && U.parseDL(t.endDate).getTime() === today.getTime());
-    const thisWeek = tasks.filter(t => !U.isOverdue(t.endDate) && t.endDate && t.status !== 'completed' && U.parseDL(t.endDate) && U.parseDL(t.endDate).getTime() > today.getTime() && U.parseDL(t.endDate) <= in7);
-    const inProgress = tasks.filter(t => t.status === 'inprogress' && !U.isOverdue(t.endDate) && !(t.endDate && U.parseDL(t.endDate) <= in7));
+    const dueToday = tasks.filter(
+      t =>
+        !U.isOverdue(t.endDate) &&
+        t.endDate &&
+        t.status !== 'completed' &&
+        U.parseDL(t.endDate) &&
+        U.parseDL(t.endDate).getTime() === today.getTime()
+    );
+    const thisWeek = tasks.filter(
+      t =>
+        !U.isOverdue(t.endDate) &&
+        t.endDate &&
+        t.status !== 'completed' &&
+        U.parseDL(t.endDate) &&
+        U.parseDL(t.endDate).getTime() > today.getTime() &&
+        U.parseDL(t.endDate) <= in7
+    );
+    const inProgress = tasks.filter(
+      t =>
+        t.status === 'inprogress' &&
+        !U.isOverdue(t.endDate) &&
+        !(t.endDate && U.parseDL(t.endDate) <= in7)
+    );
     const renderGroup = (title, list, color, icon) => {
       if (!list.length) return '';
       const head = `<div class="tf-head" style="color:${color}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#${icon}"></use></svg> ${title} (${list.length})</div>`;
-      const rows = list.map(t => `<div class="tf-row" style="border-left-color:${color}">
+      const rows = list
+        .map(
+          t => `<div class="tf-row" style="border-left-color:${color}">
         <div><span class="tf-name">${U.escapeHtml(t.name)}</span>${t.endDate ? `<span class="tf-due"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> ${t.endDate}</span>` : ''}</div>
         <select class="tf-status" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="status"><option value="todo" ${t.status === 'todo' ? 'selected' : ''}>To Do</option><option value="inprogress" ${t.status === 'inprogress' ? 'selected' : ''}>In Progress</option><option value="blocked" ${t.status === 'blocked' ? 'selected' : ''}>Blocked</option><option value="completed" ${t.status === 'completed' ? 'selected' : ''}>Completed</option></select>
-      </div>`).join('');
+      </div>`
+        )
+        .join('');
       return `<div class="tf-group">${head}${rows}</div>`;
     };
     const content = [
@@ -559,7 +769,9 @@ var MMGR = window.MMGR || {};
       renderGroup('Due This Week', thisWeek, 'var(--gold)', 'i-calendar'),
       renderGroup('In Progress', inProgress, 'var(--green)', 'i-tool')
     ].join('');
-    el.innerHTML = content || '<div class="es es-ok"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Nothing urgent. All tasks on track.</div>';
+    el.innerHTML =
+      content ||
+      '<div class="es es-ok"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Nothing urgent. All tasks on track.</div>';
   }
 
   // ---- Lookahead (MARKET-FEATURE-ROADMAP C7) ----
@@ -572,27 +784,42 @@ var MMGR = window.MMGR || {};
     if (!s) return;
     const el = $('lookahead-body');
     if (!el) return;
-    const tasks = (ns.Schedule && ns.Schedule.lookaheadTasks) ? ns.Schedule.lookaheadTasks(s.tasks || [], 14) : [];
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const wkLabel = (d) => 'Week of ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const tasks =
+      ns.Schedule && ns.Schedule.lookaheadTasks
+        ? ns.Schedule.lookaheadTasks(s.tasks || [], 14)
+        : [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const wkLabel = d =>
+      'Week of ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const group = (label, list, color) => {
       if (!list.length) return '';
-      const rows = list.map(t => `<div class="tf-row" style="border-left-color:${color}">
+      const rows = list
+        .map(
+          t => `<div class="tf-row" style="border-left-color:${color}">
         <div><span class="tf-name">${U.escapeHtml(t.name)}</span><span class="tf-due">${t.startDate ? U.fmtDateShort(t.startDate) : '?'} -> ${t.endDate ? U.fmtDateShort(t.endDate) : '?'}${t.assignee ? ' · ' + U.escapeHtml(t.assignee) : ''}${t.weatherExposed ? ' <svg class="ico" aria-hidden="true" style="color:var(--blue)"><use href="css/mmgr-icons.svg#i-cloud"></use></svg>' : ''}</span></div>
         <select class="tf-status" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="status"><option value="todo" ${t.status === 'todo' ? 'selected' : ''}>To Do</option><option value="inprogress" ${t.status === 'inprogress' ? 'selected' : ''}>In Progress</option><option value="blocked" ${t.status === 'blocked' ? 'selected' : ''}>Blocked</option><option value="completed" ${t.status === 'completed' ? 'selected' : ''}>Completed</option></select>
-      </div>`).join('');
+      </div>`
+        )
+        .join('');
       return `<div class="tf-group"><div class="tf-head" style="color:${color}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> ${label} (${list.length})</div>${rows}</div>`;
     };
     const overdue = tasks.filter(t => t.endDate && new Date(t.endDate) < today);
-    const wkStart = new Date(today); wkStart.setDate(today.getDate() + (7 - ((today.getDay() + 6) % 7)) % 7); // next Monday
-    const thisWk = tasks.filter(t => t.endDate && new Date(t.endDate) >= today && new Date(t.endDate) < wkStart);
+    const wkStart = new Date(today);
+    wkStart.setDate(today.getDate() + ((7 - ((today.getDay() + 6) % 7)) % 7)); // next Monday
+    const thisWk = tasks.filter(
+      t => t.endDate && new Date(t.endDate) >= today && new Date(t.endDate) < wkStart
+    );
     const nextWk = tasks.filter(t => t.endDate && new Date(t.endDate) >= wkStart);
     const noEnd = tasks.filter(t => !t.endDate);
-    const content = group('Overdue Carryover', overdue, 'var(--danger)')
-      + group('This Week', thisWk, 'var(--gold)')
-      + group('Next Week', nextWk, 'var(--green)')
-      + (noEnd.length ? group('Starting Soon (no end date)', noEnd, 'var(--slate)') : '');
-    el.innerHTML = content || '<div class="es" style="padding:14px;font-size:.78rem">No tasks starting or finishing in the next 2 weeks, the schedule ahead is clear.</div>';
+    const content =
+      group('Overdue Carryover', overdue, 'var(--danger)') +
+      group('This Week', thisWk, 'var(--gold)') +
+      group('Next Week', nextWk, 'var(--green)') +
+      (noEnd.length ? group('Starting Soon (no end date)', noEnd, 'var(--slate)') : '');
+    el.innerHTML =
+      content ||
+      '<div class="es" style="padding:14px;font-size:.78rem">No tasks starting or finishing in the next 2 weeks, the schedule ahead is clear.</div>';
   }
 
   // ---- Percent Plan Complete (MARKET-FEATURE-ROADMAP C8) ----
@@ -608,20 +835,42 @@ var MMGR = window.MMGR || {};
     const hist = [1, 2, 3, 4].map(o => computePpcSafe(tasks, o)).reverse();
     const head = $('ppc-head');
     if (head) {
-      if (now.planned === 0) head.textContent = 'No tasks planned to finish this week, add end dates to schedule work.';
-      else head.textContent = now.completed + ' of ' + now.planned + ' tasks planned this week completed (' + now.pct + '%)';
+      if (now.planned === 0)
+        head.textContent = 'No tasks planned to finish this week, add end dates to schedule work.';
+      else
+        head.textContent =
+          now.completed +
+          ' of ' +
+          now.planned +
+          ' tasks planned this week completed (' +
+          now.pct +
+          '%)';
     }
     const overdue = tasks.filter(t => U.isOverdue(t.endDate) && t.status !== 'completed').length;
-    const bars = hist.map(h => {
-      const lbl = h.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      const pct = h.pct === null ? 0 : h.pct;
-      const w = h.planned ? pct : 2;
-      const col = h.pct === null ? 'var(--border)' : pct >= 80 ? 'var(--green)' : pct >= 50 ? 'var(--amber)' : 'var(--danger)';
-      return `<div class="ppc-bar-row"><span class="ppc-bar-lbl">${lbl}</span><div class="ppc-bar-track"><div class="ppc-bar-fill" style="width:${Math.max(2, w)}%;background:${col}"></div></div><span class="ppc-bar-val">${h.pct === null ? '' : pct + '%'}${h.planned ? ' (' + h.completed + '/' + h.planned + ')' : ''}</span></div>`;
-    }).join('');
-    el.innerHTML = `<div class="ppc-now">${now.planned ? `<span class="stat-xl" style="font-size:1.6rem;color:${now.pct >= 80 ? 'var(--green)' : now.pct >= 50 ? 'var(--amber)' : 'var(--danger)'}">${now.pct}%</span>` : '<span class="stat-xl" style="font-size:1.2rem;color:var(--slate)"></span>'}</div>` +
-      '<div class="ppc-bars">' + bars + '</div>' +
-      (overdue ? `<div class="ppc-note"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> ${overdue} task${overdue === 1 ? ' is' : 's are'} overdue from earlier weeks.</div>` : '') +
+    const bars = hist
+      .map(h => {
+        const lbl = h.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const pct = h.pct === null ? 0 : h.pct;
+        const w = h.planned ? pct : 2;
+        const col =
+          h.pct === null
+            ? 'var(--border)'
+            : pct >= 80
+              ? 'var(--green)'
+              : pct >= 50
+                ? 'var(--amber)'
+                : 'var(--danger)';
+        return `<div class="ppc-bar-row"><span class="ppc-bar-lbl">${lbl}</span><div class="ppc-bar-track"><div class="ppc-bar-fill" style="width:${Math.max(2, w)}%;background:${col}"></div></div><span class="ppc-bar-val">${h.pct === null ? '' : pct + '%'}${h.planned ? ' (' + h.completed + '/' + h.planned + ')' : ''}</span></div>`;
+      })
+      .join('');
+    el.innerHTML =
+      `<div class="ppc-now">${now.planned ? `<span class="stat-xl" style="font-size:1.6rem;color:${now.pct >= 80 ? 'var(--green)' : now.pct >= 50 ? 'var(--amber)' : 'var(--danger)'}">${now.pct}%</span>` : '<span class="stat-xl" style="font-size:1.2rem;color:var(--slate)"></span>'}</div>` +
+      '<div class="ppc-bars">' +
+      bars +
+      '</div>' +
+      (overdue
+        ? `<div class="ppc-note"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> ${overdue} task${overdue === 1 ? ' is' : 's are'} overdue from earlier weeks.</div>`
+        : '') +
       '<div class="ppc-basis">Basis: tasks whose end date falls in each week, by completion status.</div>';
   }
 
@@ -641,25 +890,51 @@ var MMGR = window.MMGR || {};
     const el = $('expiry-body');
     if (!el) return;
     const wrap = $('expiry-card');
-    const list = (ns.Compliance && ns.Compliance.getExpiryRollup)
-      ? ns.Compliance.getExpiryRollup(60) : [];
+    const list =
+      ns.Compliance && ns.Compliance.getExpiryRollup ? ns.Compliance.getExpiryRollup(60) : [];
     if (list.length === 0) {
       if (wrap) wrap.classList.add('is-hide');
       return;
     }
     if (wrap) wrap.classList.remove('is-hide');
-    const setVal = (id, val) => { const x = $(id); if (x) x.textContent = val; };
+    const setVal = (id, val) => {
+      const x = $(id);
+      if (x) x.textContent = val;
+    };
     setVal('expiry-count', list.length + (list.length === 1 ? ' item' : ' items') + ' due');
-    const kindColor = (k) => k === 'COI' || k === 'License' ? 'var(--gold)' : k === 'Warranty' ? 'var(--cyan)' : k === 'Permit' ? 'var(--amber)' : 'var(--danger)';
-    el.innerHTML = list.map(x => {
-      const dlTxt = x.daysLeft === null ? 'overdue' : x.daysLeft < 0 ? Math.abs(x.daysLeft) + 'd overdue' : x.daysLeft === 0 ? 'today' : x.daysLeft + 'd left';
-      const dlColor = x.daysLeft === null || x.daysLeft < 0 ? 'var(--danger)' : x.daysLeft <= 14 ? 'var(--danger)' : x.daysLeft <= 30 ? 'var(--amber)' : 'var(--slate)';
-      return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+    const kindColor = k =>
+      k === 'COI' || k === 'License'
+        ? 'var(--gold)'
+        : k === 'Warranty'
+          ? 'var(--cyan)'
+          : k === 'Permit'
+            ? 'var(--amber)'
+            : 'var(--danger)';
+    el.innerHTML = list
+      .map(x => {
+        const dlTxt =
+          x.daysLeft === null
+            ? 'overdue'
+            : x.daysLeft < 0
+              ? Math.abs(x.daysLeft) + 'd overdue'
+              : x.daysLeft === 0
+                ? 'today'
+                : x.daysLeft + 'd left';
+        const dlColor =
+          x.daysLeft === null || x.daysLeft < 0
+            ? 'var(--danger)'
+            : x.daysLeft <= 14
+              ? 'var(--danger)'
+              : x.daysLeft <= 30
+                ? 'var(--amber)'
+                : 'var(--slate)';
+        return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">
         <span class="badge" style="color:${kindColor(x.kind)};border-color:${kindColor(x.kind)}">${x.kind}</span>
         <span style="flex:1;font-size:.8rem">${U.escapeHtml(x.label)}${x.date ? ' <span style="color:var(--slate)">' + U.escapeHtml(x.date) + '</span>' : ''}</span>
         <span class="badge" style="color:${dlColor};border-color:${dlColor}">${dlTxt}</span>
       </div>`;
-    }).join('');
+      })
+      .join('');
   }
 
   // ---- Timeline Target status (feature 11) ----
@@ -676,16 +951,37 @@ var MMGR = window.MMGR || {};
     if (!dated.length) return null;
     const targetDate = f.targetCompletion || f.end;
     const target = new Date(targetDate);
-    const projected = new Date(Math.max.apply(null, dated.map(t => new Date(t.endDate || t.end).getTime())));
+    const projected = new Date(
+      Math.max.apply(
+        null,
+        dated.map(t => new Date(t.endDate || t.end).getTime())
+      )
+    );
     const msPerDay = 86400000;
     const overrunDays = Math.round((projected - target) / msPerDay);
-    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const daysToTarget = Math.round((target - today) / msPerDay);
     let status, cls;
-    if (overrunDays <= 0) { status = overrunDays < 0 ? `Ahead of Target by ${Math.abs(overrunDays)}d` : 'On Target'; cls = 'bg'; }
-    else if (overrunDays <= 14) { status = `At Risk, ${overrunDays}d over target`; cls = 'ba'; }
-    else { status = `Over Target, ${overrunDays}d over`; cls = 'br'; }
-    return { target: targetDate, start: (f.targetStart || f.start) || null, projected: projected.toISOString().slice(0, 10), overrunDays: overrunDays, daysToTarget: daysToTarget, status: status, cls: cls };
+    if (overrunDays <= 0) {
+      status = overrunDays < 0 ? `Ahead of Target by ${Math.abs(overrunDays)}d` : 'On Target';
+      cls = 'bg';
+    } else if (overrunDays <= 14) {
+      status = `At Risk, ${overrunDays}d over target`;
+      cls = 'ba';
+    } else {
+      status = `Over Target, ${overrunDays}d over`;
+      cls = 'br';
+    }
+    return {
+      target: targetDate,
+      start: f.targetStart || f.start || null,
+      projected: projected.toISOString().slice(0, 10),
+      overrunDays: overrunDays,
+      daysToTarget: daysToTarget,
+      status: status,
+      cls: cls
+    };
   }
 
   function renderTimelineStatus() {
@@ -697,14 +993,16 @@ var MMGR = window.MMGR || {};
     const hdrBadge = $('timeline-ind');
     if (!t) {
       const f = s.charter || {};
-      const msg = (!f.targetCompletion && !f.end)
-        ? 'Set a <strong>Target Completion Date</strong> in the Charter tab to activate timeline tracking.'
-        : 'Schedule at least one task with an end date (WBS/Gantt) to compare it against your Target Completion Date.';
+      const msg =
+        !f.targetCompletion && !f.end
+          ? 'Set a <strong>Target Completion Date</strong> in the Charter tab to activate timeline tracking.'
+          : 'Schedule at least one task with an end date (WBS/Gantt) to compare it against your Target Completion Date.';
       wrap.innerHTML = `<div class="es" style="padding:14px;font-size:.78rem">${msg}</div>`;
       if (hdrBadge) hdrBadge.classList.remove('on');
       return;
     }
-    const color = t.overrunDays <= 0 ? 'var(--green)' : t.overrunDays <= 14 ? 'var(--amber)' : 'var(--danger)';
+    const color =
+      t.overrunDays <= 0 ? 'var(--green)' : t.overrunDays <= 14 ? 'var(--amber)' : 'var(--danger)';
     wrap.innerHTML = `<div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
     <div style="text-align:center"><div style="font-size:1.9rem;font-weight:900;color:${color}">${t.overrunDays > 0 ? '+' : ''}${t.overrunDays}d</div><div style="font-size:.66rem;color:var(--slate)">vs Target Completion</div></div>
     <div style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:5px;font-size:.76rem">
@@ -716,7 +1014,8 @@ var MMGR = window.MMGR || {};
   </div>`;
     if (hdrBadge) {
       if (t.overrunDays > 0) {
-        hdrBadge.textContent = (t.overrunDays <= 14 ? 'At risk, ' : 'Over, ') + t.overrunDays + 'd over target';
+        hdrBadge.textContent =
+          (t.overrunDays <= 14 ? 'At risk, ' : 'Over, ') + t.overrunDays + 'd over target';
         hdrBadge.className = 'timeline-ind on ' + (t.overrunDays <= 14 ? 'ti-ba' : 'ti-br');
       } else {
         hdrBadge.classList.remove('on');
@@ -732,20 +1031,31 @@ var MMGR = window.MMGR || {};
     if (!s) return;
     const el = $('milestone-timeline');
     if (!el) return;
-    const milestones = (s.tasks || []).filter(t => t.milestone && t.endDate).sort((a, b) => new Date(a.endDate) - new Date(b.endDate));
+    const milestones = (s.tasks || [])
+      .filter(t => t.milestone && t.endDate)
+      .sort((a, b) => new Date(a.endDate) - new Date(b.endDate));
     if (!milestones.length) {
-      el.innerHTML = '<div class="es" style="padding:10px;font-size:.72rem">No milestones set. Tick the milestone box in WBS to mark milestones.</div>';
+      el.innerHTML =
+        '<div class="es" style="padding:10px;font-size:.72rem">No milestones set. Tick the milestone box in WBS to mark milestones.</div>';
       return;
     }
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    el.innerHTML = `<div style="display:flex;align-items:center;gap:0;overflow-x:auto;padding:8px 0">${milestones.map((m, i) => {
-      const due = new Date(m.endDate); due.setHours(0, 0, 0, 0);
-      const done = m.status === 'completed';
-      const overdue = due < today && !done;
-      const color = done ? 'var(--green)' : overdue ? 'var(--danger)' : 'var(--gold)';
-      const icon = done ? '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg>' : overdue ? '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg>' : '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-diamond"></use></svg>';
-      return `${i > 0 ? '<div style="height:2px;min-width:40px;background:var(--border);flex:1"></div>' : ''}<div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:100px;text-align:center"><div style="width:28px;height:28px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:.8rem;color:#0b0c10;font-weight:700;flex-shrink:0">${icon}</div><div style="font-size:.68rem;font-weight:700;color:${color};max-width:90px">${U.escapeHtml(m.name)}</div><div style="font-size:.62rem;color:var(--slate)">${m.endDate}</div>${overdue ? '<div style="font-size:.6rem;color:var(--danger)">OVERDUE</div>' : ''}</div>`;
-    }).join('')}</div>`;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    el.innerHTML = `<div style="display:flex;align-items:center;gap:0;overflow-x:auto;padding:8px 0">${milestones
+      .map((m, i) => {
+        const due = new Date(m.endDate);
+        due.setHours(0, 0, 0, 0);
+        const done = m.status === 'completed';
+        const overdue = due < today && !done;
+        const color = done ? 'var(--green)' : overdue ? 'var(--danger)' : 'var(--gold)';
+        const icon = done
+          ? '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg>'
+          : overdue
+            ? '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg>'
+            : '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-diamond"></use></svg>';
+        return `${i > 0 ? '<div style="height:2px;min-width:40px;background:var(--border);flex:1"></div>' : ''}<div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:100px;text-align:center"><div style="width:28px;height:28px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:.8rem;color:#0b0c10;font-weight:700;flex-shrink:0">${icon}</div><div style="font-size:.68rem;font-weight:700;color:${color};max-width:90px">${U.escapeHtml(m.name)}</div><div style="font-size:.62rem;color:var(--slate)">${m.endDate}</div>${overdue ? '<div style="font-size:.6rem;color:var(--danger)">OVERDUE</div>' : ''}</div>`;
+      })
+      .join('')}</div>`;
   }
 
   // ---- Timeline Indicator ----
@@ -755,24 +1065,37 @@ var MMGR = window.MMGR || {};
     const ind = $('timeline-ind');
     if (!ind) return;
     const target = s.charter && s.charter.targetCompletion;
-    if (!target) { ind.classList.remove('on'); return; }
+    if (!target) {
+      ind.classList.remove('on');
+      return;
+    }
     // Find the latest end date among tasks
     const tasks = s.tasks || [];
     let latestEnd = null;
     for (const t of tasks) {
       if (t.endDate && (!latestEnd || t.endDate > latestEnd)) latestEnd = t.endDate;
     }
-    if (!latestEnd) { ind.classList.remove('on'); return; }
+    if (!latestEnd) {
+      ind.classList.remove('on');
+      return;
+    }
     const diff = U.daysBetween(target, latestEnd);
     if (diff > 0) {
       ind.classList.add('on', 'ti-br');
-      ind.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Over target by ' + diff + 'd';
+      ind.innerHTML =
+        '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Over target by ' +
+        diff +
+        'd';
     } else if (diff < 0) {
       ind.classList.add('on', 'ti-ba');
-      ind.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clock"></use></svg> ' + Math.abs(diff) + 'd ahead of target';
+      ind.innerHTML =
+        '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clock"></use></svg> ' +
+        Math.abs(diff) +
+        'd ahead of target';
     } else {
       ind.classList.add('on', 'ti-ba');
-      ind.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> On target';
+      ind.innerHTML =
+        '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> On target';
     }
   }
 
@@ -788,23 +1111,47 @@ var MMGR = window.MMGR || {};
   // ==================================================================
 
   // ---- Weather rendering ---- (extracted to js/render/weather.js)
-  function getNearCritical() { return ns.RenderWeather ? ns.RenderWeather.getNearCritical() : []; }
-  function crashCandidates() { return ns.RenderWeather ? ns.RenderWeather.crashCandidates() : []; }
+  function getNearCritical() {
+    return ns.RenderWeather ? ns.RenderWeather.getNearCritical() : [];
+  }
+  function crashCandidates() {
+    return ns.RenderWeather ? ns.RenderWeather.crashCandidates() : [];
+  }
 
   // ---- Lead-Time Tracker (monolith renderLeadtimeTracker) ----
   // Lead-time tasks tracked by Submitted/Expected dates instead of % done:
   // days remaining (or overdue) vs the Expected Date.
   // ---- Weather rendering ---- (extracted to js/render/weather.js)
-  function renderLeadtimeTracker() { if (ns.RenderWeather) ns.RenderWeather.renderLeadtimeTracker(); }
-  function renderFloatWatch() { if (ns.RenderWeather) ns.RenderWeather.renderFloatWatch(); }
-  function renderWeatherVariance() { if (ns.RenderWeather) ns.RenderWeather.renderWeatherVariance(); }
-  function updWxWindow() { if (ns.RenderWeather) ns.RenderWeather.updWxWindow(); }
-  function updWxBuffer() { if (ns.RenderWeather) ns.RenderWeather.updWxBuffer(); }
-  function updLdRate() { if (ns.RenderWeather) ns.RenderWeather.updLdRate(); }
-  function renderScheduleConfidence() { if (ns.RenderWeather) ns.RenderWeather.renderScheduleConfidence(); }
-  function renderWeatherForecast() { if (ns.RenderWeather) ns.RenderWeather.renderWeatherForecast(); }
-  function renderWeatherLog() { if (ns.RenderWeather) ns.RenderWeather.renderWeatherLog(); }
-  function renderSafetyBanner() { if (ns.RenderWeather) ns.RenderWeather.renderSafetyBanner(); }
+  function renderLeadtimeTracker() {
+    if (ns.RenderWeather) ns.RenderWeather.renderLeadtimeTracker();
+  }
+  function renderFloatWatch() {
+    if (ns.RenderWeather) ns.RenderWeather.renderFloatWatch();
+  }
+  function renderWeatherVariance() {
+    if (ns.RenderWeather) ns.RenderWeather.renderWeatherVariance();
+  }
+  function updWxWindow() {
+    if (ns.RenderWeather) ns.RenderWeather.updWxWindow();
+  }
+  function updWxBuffer() {
+    if (ns.RenderWeather) ns.RenderWeather.updWxBuffer();
+  }
+  function updLdRate() {
+    if (ns.RenderWeather) ns.RenderWeather.updLdRate();
+  }
+  function renderScheduleConfidence() {
+    if (ns.RenderWeather) ns.RenderWeather.renderScheduleConfidence();
+  }
+  function renderWeatherForecast() {
+    if (ns.RenderWeather) ns.RenderWeather.renderWeatherForecast();
+  }
+  function renderWeatherLog() {
+    if (ns.RenderWeather) ns.RenderWeather.renderWeatherLog();
+  }
+  function renderSafetyBanner() {
+    if (ns.RenderWeather) ns.RenderWeather.renderSafetyBanner();
+  }
 
   // ==================================================================
   // ACTION-PLAN Phase 3, retention, professional and non-blocking
@@ -825,28 +1172,41 @@ var MMGR = window.MMGR || {};
     const s = state || S();
     if (!s) return [];
     const items = [];
-    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const dayMs = 86400000;
-    const daysFrom = (d) => d ? Math.round((today - d) / dayMs) : null;
+    const daysFrom = d => (d ? Math.round((today - d) / dayMs) : null);
     // Meeting promises (source of truth for the closed loop)
     const promises = s.meetingPromises || {};
     Object.keys(promises).forEach(kind => {
       (Array.isArray(promises[kind]) ? promises[kind] : []).forEach(p => {
         if (p.done) return;
         const created = p.createdAt ? U.parseDL(p.createdAt.slice(0, 10)) : null;
-        items.push({ text: p.text, src: 'Meeting promise', kind: kind, age: daysFrom(created), due: created });
+        items.push({
+          text: p.text,
+          src: 'Meeting promise',
+          kind: kind,
+          age: daysFrom(created),
+          due: created
+        });
       });
     });
     // Comms-log action items (follow-up date is the due date when present)
-    ((s.commsEntries) || []).forEach(c => {
+    (s.commsEntries || []).forEach(c => {
       const txt = (c.actionItems || '').trim();
       if (!txt) return;
       const due = U.parseDL(c.followUp);
       const base = due || U.parseDL(c.date);
-      items.push({ text: txt, src: 'Comms ' + (c.type || ''), kind: 'comms', age: daysFrom(base), due: due });
+      items.push({
+        text: txt,
+        src: 'Comms ' + (c.type || ''),
+        kind: 'comms',
+        age: daysFrom(base),
+        due: due
+      });
     });
     // Decision-log action items
-    ((s.logEntries) || []).forEach(l => {
+    (s.logEntries || []).forEach(l => {
       const txt = (l.actionItems || '').trim();
       if (!txt) return;
       const base = U.parseDL(String(l.date || '').slice(0, 10)) || null;
@@ -863,7 +1223,8 @@ var MMGR = window.MMGR || {};
 
   function agingTier(age) {
     if (age === null) return { cls: 'ba', label: 'no due date' };
-    if (age <= 0) return { cls: 'bg', label: age === 0 ? 'due today' : 'due in ' + Math.abs(age) + 'd' };
+    if (age <= 0)
+      return { cls: 'bg', label: age === 0 ? 'due today' : 'due in ' + Math.abs(age) + 'd' };
     if (age <= 7) return { cls: 'ba', label: age + 'd overdue' };
     if (age <= 21) return { cls: 'br', label: age + 'd overdue' };
     return { cls: 'br', label: age + 'd, STALE', stale: true };
@@ -874,18 +1235,29 @@ var MMGR = window.MMGR || {};
     if (!el) return;
     const items = computeAgingActions();
     if (!items.length) {
-      el.innerHTML = '<div class="es es-ok"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> No open action items. Everything carried is either resolved or ticked off.</div>';
+      el.innerHTML =
+        '<div class="es es-ok"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> No open action items. Everything carried is either resolved or ticked off.</div>';
       return;
     }
-    const rows = items.slice(0, 8).map(it => {
-      const tier = agingTier(it.age);
-      return `<div class="aa-row${tier.stale ? ' aa-stale' : ''}">
+    const rows = items
+      .slice(0, 8)
+      .map(it => {
+        const tier = agingTier(it.age);
+        return `<div class="aa-row${tier.stale ? ' aa-stale' : ''}">
         <div class="aa-txt">${U.escapeHtml(it.text)}<span class="aa-src">${U.escapeHtml(it.src)}${it.kind && it.kind !== 'comms' && it.kind !== 'log' ? ' · ' + U.escapeHtml(it.kind) : ''}</span></div>
         <span class="badge ${tier.cls}" style="font-size:.62rem;white-space:nowrap">${tier.label}</span>
       </div>`;
-    }).join('');
+      })
+      .join('');
     const overdue = items.filter(i => (i.age || 0) > 0).length;
-    el.innerHTML = (overdue > 0 ? '<div class="aa-overdue-note">' + overdue + ' of ' + items.length + ' open action items are past due.</div>' : '') + rows;
+    el.innerHTML =
+      (overdue > 0
+        ? '<div class="aa-overdue-note">' +
+          overdue +
+          ' of ' +
+          items.length +
+          ' open action items are past due.</div>'
+        : '') + rows;
   }
 
   // ---- 3.3 PM consistency streak (quiet, non-guilt) ----
@@ -899,9 +1271,17 @@ var MMGR = window.MMGR || {};
     const st = (s && s.streak) || { count: 0, lastDate: null };
     const count = st.count || 0;
     const last = st.lastDate ? String(st.lastDate) : null;
-    el.innerHTML = '<div class="stk-row"><div class="stk-num">' + count + (count === 1 ? ' day' : ' days') + '</div>' +
-      '<div class="stk-meta">consecutive working days on this project' + (last ? ' · last activity ' + U.escapeHtml(last) : '') + '</div></div>' +
-      (count === 0 ? '<div class="stk-hint">The streak builds quietly as you update the plan, no pressure, no fuss.</div>' : '');
+    el.innerHTML =
+      '<div class="stk-row"><div class="stk-num">' +
+      count +
+      (count === 1 ? ' day' : ' days') +
+      '</div>' +
+      '<div class="stk-meta">consecutive working days on this project' +
+      (last ? ' · last activity ' + U.escapeHtml(last) : '') +
+      '</div></div>' +
+      (count === 0
+        ? '<div class="stk-hint">The streak builds quietly as you update the plan, no pressure, no fuss.</div>'
+        : '');
   }
 
   // ---- 3.4 Weekly baseline narrative ----
@@ -913,11 +1293,18 @@ var MMGR = window.MMGR || {};
     if (!s || !s.baseline || !s.baseline.tasks) return null;
     const base = s.baseline.tasks || [];
     const cur = s.tasks || [];
-    const curMap = {}; cur.forEach(t => { curMap[t.id] = t; });
-    const baseMap = {}; base.forEach(t => { baseMap[t.id] = t; });
+    const curMap = {};
+    cur.forEach(t => {
+      curMap[t.id] = t;
+    });
+    const baseMap = {};
+    base.forEach(t => {
+      baseMap[t.id] = t;
+    });
     const sentences = [];
     // Schedule shifts
-    const slipped = []; const gained = [];
+    const slipped = [];
+    const gained = [];
     base.forEach(bt => {
       const ct = curMap[bt.id];
       if (!ct || !bt.endDate || !ct.endDate) return;
@@ -928,27 +1315,68 @@ var MMGR = window.MMGR || {};
     if (slipped.length) {
       slipped.sort((a, b) => b.days - a.days);
       const total = slipped.reduce((n, t) => n + t.days, 0);
-      sentences.push(slipped.length + ' task' + (slipped.length > 1 ? 's' : '') + ' slipped by an average of ' + Math.round(total / slipped.length) + 'd since baseline' + (slipped[0] ? ', worst: ' + slipped[0].name + ' (+' + slipped[0].days + 'd)' : '') + '.');
+      sentences.push(
+        slipped.length +
+          ' task' +
+          (slipped.length > 1 ? 's' : '') +
+          ' slipped by an average of ' +
+          Math.round(total / slipped.length) +
+          'd since baseline' +
+          (slipped[0] ? ', worst: ' + slipped[0].name + ' (+' + slipped[0].days + 'd)' : '') +
+          '.'
+      );
     }
     if (gained.length) {
       const total = gained.reduce((n, t) => n + t.days, 0);
-      sentences.push(gained.length + ' task' + (gained.length > 1 ? 's' : '') + ' pulled in by an average of ' + Math.round(total / gained.length) + 'd.');
+      sentences.push(
+        gained.length +
+          ' task' +
+          (gained.length > 1 ? 's' : '') +
+          ' pulled in by an average of ' +
+          Math.round(total / gained.length) +
+          'd.'
+      );
     }
     // Scope drift
     const added = cur.filter(t => !baseMap[t.id]);
     const removed = base.filter(t => !curMap[t.id]);
-    if (added.length) sentences.push(added.length + ' task' + (added.length > 1 ? 's' : '') + ' added since baseline (' + added.slice(0, 3).map(t => t.name).join(', ') + (added.length > 3 ? '...' : '') + ').');
-    if (removed.length) sentences.push(removed.length + ' task' + (removed.length > 1 ? 's' : '') + ' removed since baseline.');
+    if (added.length)
+      sentences.push(
+        added.length +
+          ' task' +
+          (added.length > 1 ? 's' : '') +
+          ' added since baseline (' +
+          added
+            .slice(0, 3)
+            .map(t => t.name)
+            .join(', ') +
+          (added.length > 3 ? '...' : '') +
+          ').'
+      );
+    if (removed.length)
+      sentences.push(
+        removed.length + ' task' + (removed.length > 1 ? 's' : '') + ' removed since baseline.'
+      );
     // Completion movement
     const baseDone = base.filter(t => t.status === 'completed').length;
     const curDone = cur.filter(t => t.status === 'completed').length;
-    if (curDone !== baseDone) sentences.push('Completed tasks moved from ' + baseDone + ' to ' + curDone + ' since baseline.');
+    if (curDone !== baseDone)
+      sentences.push(
+        'Completed tasks moved from ' + baseDone + ' to ' + curDone + ' since baseline.'
+      );
     // Cost movement (planned $ only, actuals are live, not baseline)
     const basePlanned = (s.baseline.budgetLines || []).reduce((n, l) => n + (+l.planned || 0), 0);
     const curPlanned = (s.budgetLines || []).reduce((n, l) => n + (+l.planned || 0), 0);
     if (basePlanned !== curPlanned) {
       const delta = curPlanned - basePlanned;
-      sentences.push('Planned budget ' + (delta > 0 ? 'increased' : 'decreased') + ' by $' + Math.abs(delta).toLocaleString() + ' since baseline' + (delta > 0 ? '.' : '.'));
+      sentences.push(
+        'Planned budget ' +
+          (delta > 0 ? 'increased' : 'decreased') +
+          ' by $' +
+          Math.abs(delta).toLocaleString() +
+          ' since baseline' +
+          (delta > 0 ? '.' : '.')
+      );
     }
     return sentences.length ? sentences : ['No material changes since the baseline was captured.'];
   }
@@ -958,10 +1386,18 @@ var MMGR = window.MMGR || {};
     if (!el) return;
     const narr = computeBaselineNarrative();
     if (!narr) {
-      el.innerHTML = '<div class="es" style="padding:12px;font-size:.76rem">Save a baseline (Settings &gt; Controls &gt; Save Baseline) to see a plain-English week-over-week diff here, and copy it into reports via Copy All.</div>';
+      el.innerHTML =
+        '<div class="es" style="padding:12px;font-size:.76rem">Save a baseline (Settings &gt; Controls &gt; Save Baseline) to see a plain-English week-over-week diff here, and copy it into reports via Copy All.</div>';
       return;
     }
-    el.innerHTML = narr.map(n => '<div class="bn-item"><svg class="ico" aria-hidden="true" style="font-size:.7rem"><use href="css/mmgr-icons.svg#i-dot"></use></svg> ' + U.escapeHtml(n) + '</div>').join('');
+    el.innerHTML = narr
+      .map(
+        n =>
+          '<div class="bn-item"><svg class="ico" aria-hidden="true" style="font-size:.7rem"><use href="css/mmgr-icons.svg#i-dot"></use></svg> ' +
+          U.escapeHtml(n) +
+          '</div>'
+      )
+      .join('');
   }
 
   // ---- Dirty Indicator ----
@@ -986,7 +1422,12 @@ var MMGR = window.MMGR || {};
     // an editor-code device (its saves ride the owner-review path) and the
     // signed-in owner (session cookie authenticates, no code on device).
     // Any active credential IS a live cloud link , the chip must say so.
-    const linked = !!(C && ((C.getCode && C.getCode()) || (C.getECode && C.getECode()) || (C._isSessionOwner && C._isSessionOwner())));
+    const linked = !!(
+      C &&
+      ((C.getCode && C.getCode()) ||
+        (C.getECode && C.getECode()) ||
+        (C._isSessionOwner && C._isSessionOwner()))
+    );
     // OWNER 2026-09-09: the backup popover carries the sign-in nudge when
     // the project is not cloud-linked. Hidden once linked (the green chip
     // state) or when the visitor is already signed in. The GAuth session
@@ -1005,23 +1446,38 @@ var MMGR = window.MMGR || {};
       // OWNER 2026-09-19 (two-way sync): the link is a live SYNC, not a one
       // time backup - local edits flow up (debounced auto-save) and cloud
       // edits flow down (the pull watcher). Say exactly that.
-      const viewOnly = !!(C.getECode && C.getECode() && C.getEScope && C.getEScope() && (C.getEScope().role === 'view' || C.getEScope().role === 'client'));
+      const viewOnly = !!(
+        C.getECode &&
+        C.getECode() &&
+        C.getEScope &&
+        C.getEScope() &&
+        (C.getEScope().role === 'view' || C.getEScope().role === 'client')
+      );
       ind.classList.add('on', 'ci-cloud');
       ind.innerHTML = viewOnly ? 'Viewing cloud copy' : 'Synced to cloud';
-      ind.setAttribute('title', viewOnly
-        ? 'You are viewing this project through a read-only cloud code - it refreshes from the cloud automatically. Click for backup options.'
-        : 'This project is synced with its cloud copy: edits here flow up automatically, and edits saved elsewhere flow down. Click for backup options (cloud or a portable .json file).');
+      ind.setAttribute(
+        'title',
+        viewOnly
+          ? 'You are viewing this project through a read-only cloud code - it refreshes from the cloud automatically. Click for backup options.'
+          : 'This project is synced with its cloud copy: edits here flow up automatically, and edits saved elsewhere flow down. Click for backup options (cloud or a portable .json file).'
+      );
     } else {
       ind.classList.remove('ci-cloud');
       backedUp = !!(s.lastBackedUpAt && s.updatedAt && s.lastBackedUpAt >= s.updatedAt);
       if (!backedUp) {
         ind.classList.add('on');
         ind.innerHTML = 'Not backed up';
-        ind.setAttribute('title', 'Your changes are safe in this browser (autosave). A file backup is optional, save one whenever you\'re ready, e.g. at the end of a task. Click for backup options.');
+        ind.setAttribute(
+          'title',
+          "Your changes are safe in this browser (autosave). A file backup is optional, save one whenever you're ready, e.g. at the end of a task. Click for backup options."
+        );
       } else {
         ind.classList.remove('on');
         ind.innerHTML = 'Not backed up';
-        ind.setAttribute('title', 'Changes save to this browser automatically. Click for backup options (cloud or a .json file).');
+        ind.setAttribute(
+          'title',
+          'Changes save to this browser automatically. Click for backup options (cloud or a .json file).'
+        );
       }
     }
     // Backup popover footer (OWNER 2026-08-15).
@@ -1029,18 +1485,25 @@ var MMGR = window.MMGR || {};
     if (foot) {
       foot.textContent = linked
         ? 'Synced with the cloud copy: edits here and edits saved elsewhere reconcile automatically. A .json file copy is optional.'
-        : (backedUp && s.lastBackedUpAt
-          ? 'Last file backup: ' + new Date(s.lastBackedUpAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + '.'
-          : 'No file backup yet, autosave keeps your changes on this device.');
+        : backedUp && s.lastBackedUpAt
+          ? 'Last file backup: ' +
+            new Date(s.lastBackedUpAt).toLocaleDateString(undefined, {
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            }) +
+            '.'
+          : 'No file backup yet, autosave keeps your changes on this device.';
     }
   }
 
   // Re-render the indicator when the sign-in state changes (arriving or
   // leaving) so #bk-signin matches the session immediately.
-  document.addEventListener('mmgr:user-changed', function(){
+  document.addEventListener('mmgr:user-changed', function () {
     if (ns.Render && ns.Render.renderDirtyIndicator) ns.Render.renderDirtyIndicator();
   });
-  document.addEventListener('mmgr:google-signed-out', function(){
+  document.addEventListener('mmgr:google-signed-out', function () {
     if (ns.Render && ns.Render.renderDirtyIndicator) ns.Render.renderDirtyIndicator();
   });
 
@@ -1048,12 +1511,25 @@ var MMGR = window.MMGR || {};
   // Single lookup used by both showSection and renderAll so the active
   // panel can be re-rendered after any state change.
   const SECTION_RENDERERS = {
-    dash: renderDash, def: renderDefs, wbs: renderWbs, gantt: renderGantt, kan: renderKanban,
-    risk: renderRisks, res: renderResources, bud: renderBudget,
-    stk: renderStakeholders, chg: renderChanges, log: renderLog,
-    close: renderClosure, raci: renderRaci, comms: renderComms,
-    docs: renderDocuments, dmaic: renderDmaic, meet: renderMeetingsPanel,
-    charter: renderCharter, claim: renderClaimPanel
+    dash: renderDash,
+    def: renderDefs,
+    wbs: renderWbs,
+    gantt: renderGantt,
+    kan: renderKanban,
+    risk: renderRisks,
+    res: renderResources,
+    bud: renderBudget,
+    stk: renderStakeholders,
+    chg: renderChanges,
+    log: renderLog,
+    close: renderClosure,
+    raci: renderRaci,
+    comms: renderComms,
+    docs: renderDocuments,
+    dmaic: renderDmaic,
+    meet: renderMeetingsPanel,
+    charter: renderCharter,
+    claim: renderClaimPanel
   };
 
   // Definitions glossary (data + render live in js/mmgr-defs.js).
@@ -1084,14 +1560,27 @@ var MMGR = window.MMGR || {};
     // C19: a CLIENT section outside the grant redirects to the first granted
     // section instead of silently no-op'ing (the nav is hidden, but in-panel
     // jump buttons still call showSection directly).
-    if (window.MMGR && window.MMGR.Cloud && window.MMGR.Cloud.isClientSectionHidden && window.MMGR.Cloud.isClientSectionHidden(section)) {
-      const fb = window.MMGR.Cloud.clientFirstSection ? window.MMGR.Cloud.clientFirstSection() : 'dash';
+    if (
+      window.MMGR &&
+      window.MMGR.Cloud &&
+      window.MMGR.Cloud.isClientSectionHidden &&
+      window.MMGR.Cloud.isClientSectionHidden(section)
+    ) {
+      const fb = window.MMGR.Cloud.clientFirstSection
+        ? window.MMGR.Cloud.clientFirstSection()
+        : 'dash';
       const fbBtn = document.querySelector('.sec-btn[data-section="' + fb + '"]');
       showSection(fb, fbBtn);
       return;
     }
-    if (window.MMGR && window.MMGR.Cloud && window.MMGR.Cloud.isSectionBlocked && window.MMGR.Cloud.isSectionBlocked(section)) {
-      if (ns.App && ns.App.showToast) ns.App.showToast('That section is outside this editor code\'s scope. Locked.', 'warn');
+    if (
+      window.MMGR &&
+      window.MMGR.Cloud &&
+      window.MMGR.Cloud.isSectionBlocked &&
+      window.MMGR.Cloud.isSectionBlocked(section)
+    ) {
+      if (ns.App && ns.App.showToast)
+        ns.App.showToast("That section is outside this editor code's scope. Locked.", 'warn');
       return;
     }
     // PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE DIR-2: every section switch
@@ -1139,21 +1628,27 @@ var MMGR = window.MMGR || {};
     const tasks = s.tasks || [];
     const defExpanded = s.defExpanded || {};
     if (tasks.length === 0) {
-      body.innerHTML = '<tr><td colspan="8" class="wbs-empty"><div>No tasks yet.</div><div style="display:flex;gap:6px;justify-content:center"><button class="btn btn-g btn-s" data-action="addTask">+ Add Task</button><button class="btn btn-n btn-s" data-action="openWbsImport">Import from text</button></div></td></tr>';
+      body.innerHTML =
+        '<tr><td colspan="8" class="wbs-empty"><div>No tasks yet.</div><div style="display:flex;gap:6px;justify-content:center"><button class="btn btn-g btn-s" data-action="addTask">+ Add Task</button><button class="btn btn-n btn-s" data-action="openWbsImport">Import from text</button></div></td></tr>';
       return;
     }
     // Skip rows whose phase ancestor is collapsed.
     // Semantics: defExpanded[id] === false  ->  phase is collapsed (true/undefined = expanded).
     const collapsedIds = new Set();
-    Object.keys(defExpanded).forEach(id => { if (defExpanded[id] === false) collapsedIds.add(id); });
+    Object.keys(defExpanded).forEach(id => {
+      if (defExpanded[id] === false) collapsedIds.add(id);
+    });
     // 2.1 dependency-aware risk propagation: any task with an overdue
     // predecessor is downstream of a slip, flagged inline, live.
-    const overdueIds = new Set(tasks.filter(t => t.status !== 'completed' && U.isOverdue(t.endDate)).map(t => String(t.id)));
+    const overdueIds = new Set(
+      tasks.filter(t => t.status !== 'completed' && U.isOverdue(t.endDate)).map(t => String(t.id))
+    );
     const visibleTasks = [];
     const phaseStack = []; // open phase ancestors: { indent, id }
     for (const t of tasks) {
-      const indent = t.indent !== undefined ? t.indent : (t.level || 0);
-      while (phaseStack.length && phaseStack[phaseStack.length - 1].indent >= indent) phaseStack.pop();
+      const indent = t.indent !== undefined ? t.indent : t.level || 0;
+      while (phaseStack.length && phaseStack[phaseStack.length - 1].indent >= indent)
+        phaseStack.pop();
       const hidden = phaseStack.some(p => collapsedIds.has(p.id));
       // A row counts as a phase container when it is a phase OR a top-level
       // task (level 0), matching the row template's `isPhase || level === 0`.
@@ -1163,18 +1658,20 @@ var MMGR = window.MMGR || {};
     // Task 4 (2026-09-19): parallel groups computed ONCE per render (the
     // pairwise overlap predicate matches audit() exactly). Badge markup is
     // rendered per-row from this map.
-    const parGroups = ns.Schedule && ns.Schedule.parallelGroups ? ns.Schedule.parallelGroups(visibleTasks) : null;
-    body.innerHTML = visibleTasks.map(t => {
-      const level = t.level || 0;
-      const isPhase = t.isPhase || level === 0;
-      const indent = t.indent !== undefined ? t.indent : level;
-      const cls = 'wl' + Math.min(indent, 3);
-      const overdue = t.status !== 'completed' && U.isOverdue(t.endDate) ? 'overdue' : '';
-      const lowConf = t.confidence === 'low' ? 'wbs-lowconf' : '';
-      const chainRisk = (t.predecessors || []).some(p => overdueIds.has(String(p)));
-      // Apply collapse state from defExpanded
-      const collapsed = defExpanded[t.id] === false ? 'collapsed' : '';
-      return `<tr class="wbs-row ${cls} ${overdue} ${lowConf} ${collapsed}" data-id="${U.escapeHtml(t.id)}" tabindex="0">
+    const parGroups =
+      ns.Schedule && ns.Schedule.parallelGroups ? ns.Schedule.parallelGroups(visibleTasks) : null;
+    body.innerHTML = visibleTasks
+      .map(t => {
+        const level = t.level || 0;
+        const isPhase = t.isPhase || level === 0;
+        const indent = t.indent !== undefined ? t.indent : level;
+        const cls = 'wl' + Math.min(indent, 3);
+        const overdue = t.status !== 'completed' && U.isOverdue(t.endDate) ? 'overdue' : '';
+        const lowConf = t.confidence === 'low' ? 'wbs-lowconf' : '';
+        const chainRisk = (t.predecessors || []).some(p => overdueIds.has(String(p)));
+        // Apply collapse state from defExpanded
+        const collapsed = defExpanded[t.id] === false ? 'collapsed' : '';
+        return `<tr class="wbs-row ${cls} ${overdue} ${lowConf} ${collapsed}" data-id="${U.escapeHtml(t.id)}" tabindex="0">
         <td>${U.escapeHtml(t.id || '')}</td>
         <td>
           <button class="cbtn ${isPhase ? '' : 'cls'}" data-action="tglPhase" data-id="${U.escapeHtml(t.id)}">&#9660;</button>
@@ -1182,26 +1679,49 @@ var MMGR = window.MMGR || {};
           <label class="wb-milestone" title="Mark as Milestone"><input type="checkbox" ${t.milestone ? 'checked' : ''} data-action="tglMilestone" data-id="${U.escapeHtml(t.id)}"> <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-flag"></use></svg></label>
           ${t.critical ? '<span class="badge bo" style="font-size:.6rem;padding:1px 4px;margin-left:4px">CP</span>' : ''}
           ${chainRisk ? '<span class="badge br" style="font-size:.6rem;padding:1px 4px;margin-left:4px" title="A predecessor is overdue, this downstream chain is at risk (2.1)">CHAIN</span>' : ''}
-          ${parGroups && parGroups.has(t.id) ? (() => {
-            const g = parGroups.get(t.id);
-            const names = g.peers.map(pid => { const p = visibleTasks.find(x => String(x.id) === String(pid)); return p ? p.name : pid; }).join(', ');
-            const when = g.window.start + ' to ' + g.window.end;
-            return '<span class="badge bo" tabindex="0" role="img" aria-label="Runs in parallel with ' + U.escapeHtml(names) + ' (' + when + ')" title="Parallel with: ' + U.escapeHtml(names) + ' (' + when + ')" style="font-size:.6rem;padding:1px 4px;margin-left:4px;cursor:help"><svg class="ico" aria-hidden="true" style="font-size:.62rem"><use href="css/mmgr-icons.svg#i-parallel"></use></svg> ' + g.peers.length + '</span>';
-          })() : ''}
+          ${
+            parGroups && parGroups.has(t.id)
+              ? (() => {
+                  const g = parGroups.get(t.id);
+                  const names = g.peers
+                    .map(pid => {
+                      const p = visibleTasks.find(x => String(x.id) === String(pid));
+                      return p ? p.name : pid;
+                    })
+                    .join(', ');
+                  const when = g.window.start + ' to ' + g.window.end;
+                  return (
+                    '<span class="badge bo" tabindex="0" role="img" aria-label="Runs in parallel with ' +
+                    U.escapeHtml(names) +
+                    ' (' +
+                    when +
+                    ')" title="Parallel with: ' +
+                    U.escapeHtml(names) +
+                    ' (' +
+                    when +
+                    ')" style="font-size:.6rem;padding:1px 4px;margin-left:4px;cursor:help"><svg class="ico" aria-hidden="true" style="font-size:.62rem"><use href="css/mmgr-icons.svg#i-parallel"></use></svg> ' +
+                    g.peers.length +
+                    '</span>'
+                  );
+                })()
+              : ''
+          }
           ${t.leadTime ? '<span class="tt-lead-badge">LT</span>' : ''}
           ${t.recurring ? '<span class="tt-rec-badge"><svg class="ico" aria-hidden="true" style="font-size:.6rem"><use href="css/mmgr-icons.svg#i-refresh"></use></svg></span>' : ''}
           ${t.weatherExposed ? '<svg class="ico" aria-hidden="true" style="color:#38bdf8;font-size:.7rem" title="Weather-exposed"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg>' : ''}
-          ${(t.comments && t.comments.length) ? '<span class="badge" style="font-size:.6rem;padding:1px 5px;margin-left:4px;background:var(--gold);color:#fff;cursor:pointer" title="' + t.comments.length + ' comment(s)" data-action="toggleTaskComments" data-id="' + U.escapeHtml(t.id) + '">' + t.comments.length + ' cmnts</span>' : ''}
+          ${t.comments && t.comments.length ? '<span class="badge" style="font-size:.6rem;padding:1px 5px;margin-left:4px;background:var(--gold);color:#fff;cursor:pointer" title="' + t.comments.length + ' comment(s)" data-action="toggleTaskComments" data-id="' + U.escapeHtml(t.id) + '">' + t.comments.length + ' cmnts</span>' : ''}
           ${t.followUp ? '<span class="badge ' + (t.followUp.status === 'completed' ? 'bg' : 'bo') + '" style="font-size:.6rem;padding:1px 5px;margin-left:4px" title="Follow-up: ' + U.escapeHtml(t.followUp.assignee) + ' by ' + (t.followUp.dueDate || 'no date') + '"><svg class="ico" aria-hidden="true" style="font-size:.55rem"><use href="css/mmgr-icons.svg#i-flag"></use></svg> ' + U.escapeHtml(t.followUp.assignee) + '</span>' : ''}
         </td>
         <td><input type="text" value="${U.escapeHtml(t.assignee || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="assignee" placeholder="--"></td>
-        ${t.leadTime
-          ? `<td><label class="wbs-lt-lbl">Submitted</label><input type="date" value="${t.submittedDate || ''}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="submittedDate"></td>
+        ${
+          t.leadTime
+            ? `<td><label class="wbs-lt-lbl">Submitted</label><input type="date" value="${t.submittedDate || ''}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="submittedDate"></td>
              <td><label class="wbs-lt-lbl">Expected</label><input type="date" value="${t.expectedDate || ''}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="expectedDate"></td>
              <td><span class="wbs-lt-note">Lead-time task, tracked by dates, not % done</span></td>`
-          : `<td><input type="text" value="${U.escapeHtml(t.duration || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="duration" placeholder="days" style="width:60px"></td>
+            : `<td><input type="text" value="${U.escapeHtml(t.duration || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="duration" placeholder="days" style="width:60px"></td>
              <td><input type="date" value="${t.startDate || ''}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="startDate"></td>
-             <td><input type="date" value="${t.endDate || ''}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="endDate"></td>`}
+             <td><input type="date" value="${t.endDate || ''}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="endDate"></td>`
+        }
         <td>
           <select data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="status">
             <option value="todo" ${t.status === 'todo' ? 'selected' : ''}>To Do</option>
@@ -1218,7 +1738,8 @@ var MMGR = window.MMGR || {};
           <button class="btn btn-s btn-d" data-action="delTask" data-id="${U.escapeHtml(t.id)}" title="Delete">&times;</button>
         </td>
       </tr>`;
-    }).join('');
+      })
+      .join('');
     // Render comment section for selected task
     renderTaskComments();
   }
@@ -1226,34 +1747,60 @@ var MMGR = window.MMGR || {};
   // ---- Task Comments (C21) ----
   let _selectedTaskId = null;
   function toggleTaskComments(taskId) {
-    _selectedTaskId = (_selectedTaskId === taskId) ? null : taskId;
+    _selectedTaskId = _selectedTaskId === taskId ? null : taskId;
     renderTaskComments();
   }
 
   function renderTaskComments() {
     const el = $('task-comments');
     if (!el) return;
-    if (!_selectedTaskId) { el.innerHTML = ''; el.hidden = true; return; }
+    if (!_selectedTaskId) {
+      el.innerHTML = '';
+      el.hidden = true;
+      return;
+    }
     const s = S();
     if (!s) return;
     const task = (s.tasks || []).find(t => t.id === _selectedTaskId);
-    if (!task) { el.innerHTML = ''; el.hidden = true; return; }
+    if (!task) {
+      el.innerHTML = '';
+      el.hidden = true;
+      return;
+    }
     el.hidden = false;
     const comments = task.comments || [];
-    const stakeholders = (ns.Tasks && ns.Tasks.getStakeholderNames) ? ns.Tasks.getStakeholderNames() : [];
+    const stakeholders =
+      ns.Tasks && ns.Tasks.getStakeholderNames ? ns.Tasks.getStakeholderNames() : [];
     const mentionList = stakeholders.map(n => '<option value="' + U.escapeHtml(n) + '">').join('');
     let html = '<div class="card m0a mt8" style="padding:12px">';
-    html += '<div style="font-size:.78rem;font-weight:600;margin-bottom:8px">Comments for: ' + U.escapeHtml(task.name) + ' <button class="btn btn-s btn-n" style="float:right" data-action="toggleTaskComments" data-id="' + U.escapeHtml(task.id) + '">Close</button></div>';
+    html +=
+      '<div style="font-size:.78rem;font-weight:600;margin-bottom:8px">Comments for: ' +
+      U.escapeHtml(task.name) +
+      ' <button class="btn btn-s btn-n" style="float:right" data-action="toggleTaskComments" data-id="' +
+      U.escapeHtml(task.id) +
+      '">Close</button></div>';
     // Comment list
     if (comments.length) {
       html += '<div style="max-height:200px;overflow-y:auto;margin-bottom:8px">';
-      comments.forEach(function(c) {
+      comments.forEach(function (c) {
         // Highlight @mentions
-        let text = U.escapeHtml(c.text).replace(/@(\w+(?:\s+\w+)?)/g, '<span style="color:var(--gold);font-weight:600">@$1</span>');
-        html += '<div style="padding:6px 8px;border-bottom:1px solid var(--border);font-size:.75rem">';
+        let text = U.escapeHtml(c.text).replace(
+          /@(\w+(?:\s+\w+)?)/g,
+          '<span style="color:var(--gold);font-weight:600">@$1</span>'
+        );
+        html +=
+          '<div style="padding:6px 8px;border-bottom:1px solid var(--border);font-size:.75rem">';
         html += '<span style="font-weight:600">' + U.escapeHtml(c.author) + '</span> ';
-        html += '<span style="color:var(--slate);font-size:.65rem">' + new Date(c.timestamp).toLocaleString() + '</span> ';
-        html += '<button class="btn btn-s btn-d" style="font-size:.6rem;padding:1px 4px;float:right" data-action="delTaskComment" data-task-id="' + U.escapeHtml(task.id) + '" data-comment-id="' + U.escapeHtml(c.id) + '">x</button>';
+        html +=
+          '<span style="color:var(--slate);font-size:.65rem">' +
+          new Date(c.timestamp).toLocaleString() +
+          '</span> ';
+        html +=
+          '<button class="btn btn-s btn-d" style="font-size:.6rem;padding:1px 4px;float:right" data-action="delTaskComment" data-task-id="' +
+          U.escapeHtml(task.id) +
+          '" data-comment-id="' +
+          U.escapeHtml(c.id) +
+          '">x</button>';
         html += '<div style="margin-top:2px">' + text + '</div>';
         html += '</div>';
       });
@@ -1262,26 +1809,48 @@ var MMGR = window.MMGR || {};
     // Comment input with @mention dropdown
     html += '<div style="position:relative">';
     html += '<div style="display:flex;gap:6px">';
-    html += '<input type="text" id="comment-input-' + U.escapeHtml(task.id) + '" placeholder="Type @ to mention a stakeholder..." style="flex:1;font-size:.75rem;padding:4px 8px;border:1px solid var(--border);border-radius:4px" autocomplete="off">';
-    html += '<button class="btn btn-g btn-s" data-action="addTaskComment" data-id="' + U.escapeHtml(task.id) + '">Post</button>';
+    html +=
+      '<input type="text" id="comment-input-' +
+      U.escapeHtml(task.id) +
+      '" placeholder="Type @ to mention a stakeholder..." style="flex:1;font-size:.75rem;padding:4px 8px;border:1px solid var(--border);border-radius:4px" autocomplete="off">';
+    html +=
+      '<button class="btn btn-g btn-s" data-action="addTaskComment" data-id="' +
+      U.escapeHtml(task.id) +
+      '">Post</button>';
     html += '</div>';
     // Mention dropdown (hidden by default)
-    html += '<div id="mention-dropdown" class="mention-dropdown" role="listbox" style="display:none;position:absolute;bottom:100%;left:0;right:0;background:var(--color-surface, var(--glass-fill-dark));border:1px solid var(--border);border-radius:6px;max-height:160px;overflow-y:auto;z-index:100;box-shadow:0 -4px 16px rgba(0,0,0,.18);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)"></div>';
+    html +=
+      '<div id="mention-dropdown" class="mention-dropdown" role="listbox" style="display:none;position:absolute;bottom:100%;left:0;right:0;background:var(--color-surface, var(--glass-fill-dark));border:1px solid var(--border);border-radius:6px;max-height:160px;overflow-y:auto;z-index:100;box-shadow:0 -4px 16px rgba(0,0,0,.18);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)"></div>';
     html += '</div>';
     // Follow-up section
     if (task.followUp) {
       const fu = task.followUp;
-      html += '<div style="margin-top:8px;padding:6px 8px;background:var(--tile-bg);border-radius:4px;font-size:.75rem">';
+      html +=
+        '<div style="margin-top:8px;padding:6px 8px;background:var(--tile-bg);border-radius:4px;font-size:.75rem">';
       html += '<strong>Follow-up:</strong> ' + U.escapeHtml(fu.assignee);
       if (fu.dueDate) html += ' by ' + fu.dueDate;
-      html += ' <span class="badge ' + (fu.status === 'completed' ? 'bg' : 'bo') + '" style="font-size:.6rem">' + fu.status + '</span> ';
+      html +=
+        ' <span class="badge ' +
+        (fu.status === 'completed' ? 'bg' : 'bo') +
+        '" style="font-size:.6rem">' +
+        fu.status +
+        '</span> ';
       if (fu.status === 'pending') {
-        html += '<button class="btn btn-s btn-g" style="font-size:.65rem" data-action="completeTaskFollowUp" data-id="' + U.escapeHtml(task.id) + '">Complete</button> ';
+        html +=
+          '<button class="btn btn-s btn-g" style="font-size:.65rem" data-action="completeTaskFollowUp" data-id="' +
+          U.escapeHtml(task.id) +
+          '">Complete</button> ';
       }
-      html += '<button class="btn btn-s btn-d" style="font-size:.65rem" data-action="clearTaskFollowUp" data-id="' + U.escapeHtml(task.id) + '">Remove</button>';
+      html +=
+        '<button class="btn btn-s btn-d" style="font-size:.65rem" data-action="clearTaskFollowUp" data-id="' +
+        U.escapeHtml(task.id) +
+        '">Remove</button>';
       html += '</div>';
     } else {
-      html += '<div style="margin-top:8px"><button class="btn btn-n btn-s" style="font-size:.7rem" data-action="setTaskFollowUp" data-id="' + U.escapeHtml(task.id) + '">+ Set Follow-up</button></div>';
+      html +=
+        '<div style="margin-top:8px"><button class="btn btn-n btn-s" style="font-size:.7rem" data-action="setTaskFollowUp" data-id="' +
+        U.escapeHtml(task.id) +
+        '">+ Set Follow-up</button></div>';
     }
     html += '</div>';
     el.innerHTML = html;
@@ -1301,38 +1870,70 @@ var MMGR = window.MMGR || {};
   // Shared read-only count of banner-worthy schedule issues (used by both the
   // visible banner and the hidden-state restore pill).
   function wbsIssueCounts(s) {
-    const cycles = (ns.Schedule && ns.Schedule.findCycles) ? ns.Schedule.findCycles(s.tasks) : [];
+    const cycles = ns.Schedule && ns.Schedule.findCycles ? ns.Schedule.findCycles(s.tasks) : [];
     const ids = {};
     let dupCount = 0;
-    s.tasks.forEach(function (t) { if (ids[t.id]) dupCount++; ids[t.id] = true; });
+    s.tasks.forEach(function (t) {
+      if (ids[t.id]) dupCount++;
+      ids[t.id] = true;
+    });
     return { cycles: cycles.length, dups: dupCount };
   }
   function renderWbsAlerts() {
     const el = $('wbs-alerts');
     if (!el) return;
     const s = S();
-    if (!s || !s.tasks || s.tasks.length === 0) { el.innerHTML = ''; return; }
+    if (!s || !s.tasks || s.tasks.length === 0) {
+      el.innerHTML = '';
+      return;
+    }
     const counts = wbsIssueCounts(s);
     const total = counts.cycles + counts.dups;
     // Hidden state: a quiet one-click pill restores the warnings (a dismiss
     // that can never be undone is a trap), and stays silent while healthy.
     if (!_wbsIssuesVisible) {
-      if (total === 0) { el.innerHTML = ''; return; }
-      el.innerHTML = '<button class="btn btn-n btn-s wbs-alert-show" data-action="tglWbsIssues" aria-label="Show schedule warnings"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg> Show ' + total + ' schedule warning' + (total === 1 ? '' : 's') + '</button>';
+      if (total === 0) {
+        el.innerHTML = '';
+        return;
+      }
+      el.innerHTML =
+        '<button class="btn btn-n btn-s wbs-alert-show" data-action="tglWbsIssues" aria-label="Show schedule warnings"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg> Show ' +
+        total +
+        ' schedule warning' +
+        (total === 1 ? '' : 's') +
+        '</button>';
       return;
     }
     const alerts = [];
     if (total > 0) {
-      alerts.push('<div class="wbs-alert-head"><span class="wbs-alert-count">' + total + ' schedule warning' + (total === 1 ? '' : 's') + '</span><button class="btn btn-n btn-s" data-action="tglWbsIssues" aria-label="Hide schedule warnings"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye-off"></use></svg> Hide</button></div>');
+      alerts.push(
+        '<div class="wbs-alert-head"><span class="wbs-alert-count">' +
+          total +
+          ' schedule warning' +
+          (total === 1 ? '' : 's') +
+          '</span><button class="btn btn-n btn-s" data-action="tglWbsIssues" aria-label="Hide schedule warnings"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye-off"></use></svg> Hide</button></div>'
+      );
     }
     // Circular predecessors
-    const cycles = (ns.Schedule && ns.Schedule.findCycles) ? ns.Schedule.findCycles(s.tasks) : [];
+    const cycles = ns.Schedule && ns.Schedule.findCycles ? ns.Schedule.findCycles(s.tasks) : [];
     if (cycles.length) {
-      alerts.push('<div class="wbs-alert-item"><svg class="ico" aria-hidden="true" style="color:var(--danger)"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> ' + cycles.length + ' circular predecessor chain' + (cycles.length > 1 ? 's' : '') + ' detected. Break a dependency to restore a valid schedule.</div>');
+      alerts.push(
+        '<div class="wbs-alert-item"><svg class="ico" aria-hidden="true" style="color:var(--danger)"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> ' +
+          cycles.length +
+          ' circular predecessor chain' +
+          (cycles.length > 1 ? 's' : '') +
+          ' detected. Break a dependency to restore a valid schedule.</div>'
+      );
     }
     // Duplicate IDs
     if (counts.dups) {
-      alerts.push('<div class="wbs-alert-item"><svg class="ico" aria-hidden="true" style="color:var(--amber)"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> ' + counts.dups + ' duplicate task ID' + (counts.dups > 1 ? 's' : '') + '. Check WBS for naming conflicts.</div>');
+      alerts.push(
+        '<div class="wbs-alert-item"><svg class="ico" aria-hidden="true" style="color:var(--amber)"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> ' +
+          counts.dups +
+          ' duplicate task ID' +
+          (counts.dups > 1 ? 's' : '') +
+          '. Check WBS for naming conflicts.</div>'
+      );
     }
     el.innerHTML = alerts.join('');
   }
@@ -1386,24 +1987,30 @@ var MMGR = window.MMGR || {};
 
     const tasks = s.tasks.filter(t => t.startDate && t.endDate);
     if (tasks.length === 0) {
-      gc.innerHTML = '<div class="es"><div class="ic"><svg class="ico" style="font-size:2rem" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg></div><div>Add tasks with dates to see the Gantt chart.</div><button class="btn btn-g btn-s" data-action="showSec" data-section="wbs">+ Add Task</button></div>';
+      gc.innerHTML =
+        '<div class="es"><div class="ic"><svg class="ico" style="font-size:2rem" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg></div><div>Add tasks with dates to see the Gantt chart.</div><button class="btn btn-g btn-s" data-action="showSec" data-section="wbs">+ Add Task</button></div>';
       if (gl) gl.innerHTML = '';
       _ganttMeta = null;
       return;
     }
 
     // Find date range (no hard limit)
-    let minDate = null, maxDate = null;
+    let minDate = null,
+      maxDate = null;
     for (const t of tasks) {
       if (!minDate || t.startDate < minDate) minDate = t.startDate;
       if (!maxDate || t.endDate > maxDate) maxDate = t.endDate;
     }
-    if (!minDate || !maxDate) { gc.innerHTML = '<div class="es">No valid date range.</div>'; return; }
+    if (!minDate || !maxDate) {
+      gc.innerHTML = '<div class="es">No valid date range.</div>';
+      return;
+    }
 
     // Parallel groups (owner go-ahead 2026-09-28): same source as the WBS
     // name-cell badges (Schedule.parallelGroups), computed once per render.
     // Surfaces as a badge on the label row + a tooltip line on the bar.
-    const parGroups = ns.Schedule && ns.Schedule.parallelGroups ? ns.Schedule.parallelGroups(tasks) : null;
+    const parGroups =
+      ns.Schedule && ns.Schedule.parallelGroups ? ns.Schedule.parallelGroups(tasks) : null;
 
     const totalDays = U.daysBetween(minDate, maxDate) + 1;
     const dayWidth = 28;
@@ -1414,7 +2021,9 @@ var MMGR = window.MMGR || {};
     // Baseline overlay: grey bars under the current plan (same row alignment)
     const baseMap = {};
     if (s.baseline && s.baseline.tasks) {
-      (s.baseline.tasks || []).forEach(bt => { baseMap[bt.id] = bt; });
+      (s.baseline.tasks || []).forEach(bt => {
+        baseMap[bt.id] = bt;
+      });
     }
 
     // Critical Path Highlighter (monolith S.cp): when on, the non-critical
@@ -1435,7 +2044,8 @@ var MMGR = window.MMGR || {};
       const isFirst = i === 0;
       const isWeekend = d.getDay() === 0 || d.getDay() === 6;
       headerHtml += `<div class="gd${isMonday || isFirst ? ' gd-hl' : ''}${isWeekend ? ' gd-wknd' : ''}">${d.getDate()}</div>`;
-      if (isWeekend) weekendBandsHtml += `<div class="gantt-wknd-band" style="left:${i * dayWidth}px;width:${dayWidth}px"></div>`;
+      if (isWeekend)
+        weekendBandsHtml += `<div class="gantt-wknd-band" style="left:${i * dayWidth}px;width:${dayWidth}px"></div>`;
     }
     headerHtml += '</div>';
     gc.innerHTML = headerHtml;
@@ -1443,8 +2053,10 @@ var MMGR = window.MMGR || {};
     // C1: today marker offset (null when today is outside the range -
     // no marker, no error for all-past/all-future projects)
     const todayStr = U.todayStr();
-    const todayLeft = (todayStr >= minDate && todayStr <= maxDate)
-      ? U.daysBetween(minDate, todayStr) * dayWidth : null;
+    const todayLeft =
+      todayStr >= minDate && todayStr <= maxDate
+        ? U.daysBetween(minDate, todayStr) * dayWidth
+        : null;
 
     // Build task bars (baseline grey bar under the live bar per row)
     let barsHtml = '';
@@ -1479,9 +2091,10 @@ var MMGR = window.MMGR || {};
       if (t.weatherExposed) classes.push('wex');
 
       // Float indicator
-      const floatStr = t.totalFloat !== null && t.totalFloat !== undefined
-        ? `<span class="float-badge ${t.totalFloat <= 0 ? 'float-critical' : t.totalFloat <= 5 ? 'float-consumed' : ''}">TF:${t.totalFloat}d</span>`
-        : '';
+      const floatStr =
+        t.totalFloat !== null && t.totalFloat !== undefined
+          ? `<span class="float-badge ${t.totalFloat <= 0 ? 'float-critical' : t.totalFloat <= 5 ? 'float-consumed' : ''}">TF:${t.totalFloat}d</span>`
+          : '';
 
       // Parallel badge on the label row (same data + look as the WBS badge):
       // names/peers from the shared parallelGroups map, aria-label carries
@@ -1489,13 +2102,31 @@ var MMGR = window.MMGR || {};
       let parBadge = '';
       if (parGroups && parGroups.has(t.id)) {
         const g = parGroups.get(t.id);
-        const names = g.peers.map(pid => { const p = tasks.find(x => String(x.id) === String(pid)); return p ? p.name : pid; }).join(', ');
+        const names = g.peers
+          .map(pid => {
+            const p = tasks.find(x => String(x.id) === String(pid));
+            return p ? p.name : pid;
+          })
+          .join(', ');
         const when = g.window.start + ' to ' + g.window.end;
-        parBadge = '<span class="badge bo gantt-par" tabindex="0" role="img" aria-label="Runs in parallel with ' + U.escapeHtml(names) + ' (' + when + ')" title="Parallel with: ' + U.escapeHtml(names) + ' (' + when + ')"><svg class="ico" aria-hidden="true" style="font-size:.62rem"><use href="css/mmgr-icons.svg#i-parallel"></use></svg> ' + g.peers.length + '</span>';
+        parBadge =
+          '<span class="badge bo gantt-par" tabindex="0" role="img" aria-label="Runs in parallel with ' +
+          U.escapeHtml(names) +
+          ' (' +
+          when +
+          ')" title="Parallel with: ' +
+          U.escapeHtml(names) +
+          ' (' +
+          when +
+          ')"><svg class="ico" aria-hidden="true" style="font-size:.62rem"><use href="css/mmgr-icons.svg#i-parallel"></use></svg> ' +
+          g.peers.length +
+          '</span>';
       }
 
       // Weather icon
-      const weatherIcon = t.weatherExposed ? '<svg class="ico" aria-hidden="true" style="font-size:.6rem"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg>' : '';
+      const weatherIcon = t.weatherExposed
+        ? '<svg class="ico" aria-hidden="true" style="font-size:.6rem"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg>'
+        : '';
 
       // C4: phase rows band in BOTH columns (chart chunking on long charts)
       const isPhaseRow = !!(t.isPhase || (t.level || 0) === 0);
@@ -1504,7 +2135,21 @@ var MMGR = window.MMGR || {};
       // diamond is a different class, so no ambiguous drag on a diamond.
       const barInner = t.milestone
         ? `<div class="gb-milestone ${t.critical ? 'crit' : ''}" data-id="${U.escapeHtml(t.id)}" style="left:${left + width / 2 - 8}px" title="${U.escapeHtml(t.name)} [Milestone]${t.critical ? ' [Critical Path]' : ''}"></div>`
-        : `<div class="gb ${classes.join(' ')}" data-id="${U.escapeHtml(t.id)}" style="left:${left}px;width:${width}px" title="${U.escapeHtml(t.name)}${t.weatherExposed ? ' [Weather-exposed]' : ''}${t.critical ? ' [Critical Path]' : ''}${t.totalFloat !== null ? ' [Float: ' + t.totalFloat + 'd]' : ''}${parGroups && parGroups.has(t.id) ? ' [Parallel with: ' + U.escapeHtml(parGroups.get(t.id).peers.map(pid => { const p = tasks.find(x => String(x.id) === String(pid)); return p ? p.name : pid; }).join(', ')) + ']' : ''}">
+        : `<div class="gb ${classes.join(' ')}" data-id="${U.escapeHtml(t.id)}" style="left:${left}px;width:${width}px" title="${U.escapeHtml(t.name)}${t.weatherExposed ? ' [Weather-exposed]' : ''}${t.critical ? ' [Critical Path]' : ''}${t.totalFloat !== null ? ' [Float: ' + t.totalFloat + 'd]' : ''}${
+            parGroups && parGroups.has(t.id)
+              ? ' [Parallel with: ' +
+                U.escapeHtml(
+                  parGroups
+                    .get(t.id)
+                    .peers.map(pid => {
+                      const p = tasks.find(x => String(x.id) === String(pid));
+                      return p ? p.name : pid;
+                    })
+                    .join(', ')
+                ) +
+                ']'
+              : ''
+          }">
           ${weatherIcon}${U.escapeHtml(t.name)}
         </div>`;
       barsHtml += `<div class="gr ${isPhaseRow ? 'gr-phase' : ''}">
@@ -1516,7 +2161,7 @@ var MMGR = window.MMGR || {};
       // Static label-row layout (padding/gap/font-size) lives in CSS
       // (#gantt-labels .gr) - keeps the whole-document inline-style census
       // (qa-full 38) honest; dynamic geometry stays inline.
-      labelsHtml += `<div class="gr ${isPhaseRow ? 'gr-phase' : ''} ${(hlOn && !t.critical) ? 'hl-dim' : ''}">
+      labelsHtml += `<div class="gr ${isPhaseRow ? 'gr-phase' : ''} ${hlOn && !t.critical ? 'hl-dim' : ''}">
         ${t.milestone ? '<span class="ms-diamond" aria-hidden="true">&#9670;</span>' : ''}
         <span class="${t.critical ? 'cp-lbl' : ''}" style="${isPhaseRow ? 'font-weight:700;font-size:.78rem;' : ''}${t.critical ? 'color:var(--gold);font-weight:700' : ''}">${U.escapeHtml(t.name)}</span>
         ${floatStr}
@@ -1528,8 +2173,15 @@ var MMGR = window.MMGR || {};
 
     // C2: weekend bands render BEHIND the bars (DOM order + z-index),
     // inside the same scroll coordinate space as the bars.
-    gc.innerHTML = headerHtml + '<div class="gantt-wknd-layer">' + weekendBandsHtml + '</div>' + barsHtml
-      + (todayLeft !== null ? `<div class="gantt-today" style="left:${todayLeft}px" title="Today: ${todayStr}"></div>` : '');
+    gc.innerHTML =
+      headerHtml +
+      '<div class="gantt-wknd-layer">' +
+      weekendBandsHtml +
+      '</div>' +
+      barsHtml +
+      (todayLeft !== null
+        ? `<div class="gantt-today" style="left:${todayLeft}px" title="Today: ${todayStr}"></div>`
+        : '');
     if (gl) gl.innerHTML = labelsHtml;
 
     // Draw dependency arrows (SVG overlay)
@@ -1635,8 +2287,10 @@ var MMGR = window.MMGR || {};
         line.style.cursor = 'pointer';
         // Transparent wide hit target so tiny links are still clickable
         const hit = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        hit.setAttribute('x1', x1); hit.setAttribute('y1', y1);
-        hit.setAttribute('x2', x2); hit.setAttribute('y2', y2);
+        hit.setAttribute('x1', x1);
+        hit.setAttribute('y1', y1);
+        hit.setAttribute('x2', x2);
+        hit.setAttribute('y2', y2);
         hit.setAttribute('stroke', 'transparent');
         hit.setAttribute('stroke-width', '12');
         hit.setAttribute('class', 'gan-link');
@@ -1679,75 +2333,163 @@ var MMGR = window.MMGR || {};
   // Scroll events don't bubble, so catch them in the capture phase. Redraw
   // when the scroll originates on the chart, anything inside it, or its
   // .gw wrapper (the grid can also scroll on narrow layouts).
-  document.addEventListener('scroll', function(e) {
-    const t = e.target;
-    const gc = document.getElementById('gantt-chart');
-    if (t && gc && (gc.contains(t) || t.contains(gc))) redrawGanttArrows();
-  }, true);
+  document.addEventListener(
+    'scroll',
+    function (e) {
+      const t = e.target;
+      const gc = document.getElementById('gantt-chart');
+      if (t && gc && (gc.contains(t) || t.contains(gc))) redrawGanttArrows();
+    },
+    true
+  );
   window.addEventListener('resize', redrawGanttArrows);
 
   // ---- Kanban ----
   // Card markup shared by the four status columns and the Lead-Time lane so
   // a card never looks different depending on where it sits.
   // ---- Kanban ---- (extracted to js/render/kanban.js)
-  function kanbanCard(t) { return ns.RenderKanban ? ns.RenderKanban.kanbanCard(t) : ""; }
-  function kanbanLeadtimeCard(t) { return ns.RenderKanban ? ns.RenderKanban.kanbanLeadtimeCard(t) : ""; }
-  function renderKanban() { if (ns.RenderKanban) ns.RenderKanban.renderKanban(); }
+  function kanbanCard(t) {
+    return ns.RenderKanban ? ns.RenderKanban.kanbanCard(t) : '';
+  }
+  function kanbanLeadtimeCard(t) {
+    return ns.RenderKanban ? ns.RenderKanban.kanbanLeadtimeCard(t) : '';
+  }
+  function renderKanban() {
+    if (ns.RenderKanban) ns.RenderKanban.renderKanban();
+  }
 
   // ---- Risks ---- (extracted to js/render/risks.js)
-  function parseImpactDays(text) { return ns.RenderRisks ? ns.RenderRisks.parseImpactDays(text) : 0; }
-  function parseImpactCost(text) { return ns.RenderRisks ? ns.RenderRisks.parseImpactCost(text) : 0; }
-  function riskExposure(state) { return ns.RenderRisks ? ns.RenderRisks.riskExposure(state) : 0; }
-  function contingencyTotal(state) { return ns.RenderRisks ? ns.RenderRisks.contingencyTotal(state) : 0; }
-  function riskMatrixCell(prob, imp) { if (ns.RenderRisks) ns.RenderRisks.riskMatrixCell(prob, imp); }
-  function clearRiskFilter() { if (ns.RenderRisks) ns.RenderRisks.clearRiskFilter(); }
-  function renderRiskMatrix() { if (ns.RenderRisks) ns.RenderRisks.renderRiskMatrix(); }
-  function renderRisks() { if (ns.RenderRisks) ns.RenderRisks.renderRisks(); }
+  function parseImpactDays(text) {
+    return ns.RenderRisks ? ns.RenderRisks.parseImpactDays(text) : 0;
+  }
+  function parseImpactCost(text) {
+    return ns.RenderRisks ? ns.RenderRisks.parseImpactCost(text) : 0;
+  }
+  function riskExposure(state) {
+    return ns.RenderRisks ? ns.RenderRisks.riskExposure(state) : 0;
+  }
+  function contingencyTotal(state) {
+    return ns.RenderRisks ? ns.RenderRisks.contingencyTotal(state) : 0;
+  }
+  function riskMatrixCell(prob, imp) {
+    if (ns.RenderRisks) ns.RenderRisks.riskMatrixCell(prob, imp);
+  }
+  function clearRiskFilter() {
+    if (ns.RenderRisks) ns.RenderRisks.clearRiskFilter();
+  }
+  function renderRiskMatrix() {
+    if (ns.RenderRisks) ns.RenderRisks.renderRiskMatrix();
+  }
+  function renderRisks() {
+    if (ns.RenderRisks) ns.RenderRisks.renderRisks();
+  }
 
   // ---- Resources ---- (extracted to js/render/resources.js)
-  function renderResources() { if (ns.RenderResources) ns.RenderResources.renderResources(); }
-  function renderResourceLeveling() { if (ns.RenderResources) ns.RenderResources.renderResourceLeveling(); }
-  function renderTimeTracking() { if (ns.RenderResources) ns.RenderResources.renderTimeTracking(); }
-  function renderEquipment() { if (ns.RenderResources) ns.RenderResources.renderEquipment(); }
+  function renderResources() {
+    if (ns.RenderResources) ns.RenderResources.renderResources();
+  }
+  function renderResourceLeveling() {
+    if (ns.RenderResources) ns.RenderResources.renderResourceLeveling();
+  }
+  function renderTimeTracking() {
+    if (ns.RenderResources) ns.RenderResources.renderTimeTracking();
+  }
+  function renderEquipment() {
+    if (ns.RenderResources) ns.RenderResources.renderEquipment();
+  }
   // C23 Shared Resource Pool (Phase 6) delegates - mirror the pattern above.
-  function poolOpenLibrary() { if (ns.RenderResources) ns.RenderResources.poolOpenLibrary(); }
-  function poolAddRow() { if (ns.RenderResources) ns.RenderResources.poolAddRow.apply(null, arguments); }
-  function poolBootMergeIfLinked() { if (ns.RenderResources) ns.RenderResources.poolBootMergeIfLinked(); }
+  function poolOpenLibrary() {
+    if (ns.RenderResources) ns.RenderResources.poolOpenLibrary();
+  }
+  function poolAddRow() {
+    if (ns.RenderResources) ns.RenderResources.poolAddRow.apply(null, arguments);
+  }
+  function poolBootMergeIfLinked() {
+    if (ns.RenderResources) ns.RenderResources.poolBootMergeIfLinked();
+  }
 
   // ---- Financials ---- (extracted to js/render/financials.js)
-  function fmt$(n) { return ns.RenderFinancials ? ns.RenderFinancials.fmt$(n) : ""; }
-  function renderSpendLog() { if (ns.RenderFinancials) ns.RenderFinancials.renderSpendLog(); }
-  function renderCashFlowChart() { if (ns.RenderFinancials) ns.RenderFinancials.renderCashFlowChart(); }
-  function renderBudget() { if (ns.RenderFinancials) ns.RenderFinancials.renderBudget(); }
-  function renderPayApps() { if (ns.RenderFinancials) ns.RenderFinancials.renderPayApps(); }
+  function fmt$(n) {
+    return ns.RenderFinancials ? ns.RenderFinancials.fmt$(n) : '';
+  }
+  function renderSpendLog() {
+    if (ns.RenderFinancials) ns.RenderFinancials.renderSpendLog();
+  }
+  function renderCashFlowChart() {
+    if (ns.RenderFinancials) ns.RenderFinancials.renderCashFlowChart();
+  }
+  function renderBudget() {
+    if (ns.RenderFinancials) ns.RenderFinancials.renderBudget();
+  }
+  function renderPayApps() {
+    if (ns.RenderFinancials) ns.RenderFinancials.renderPayApps();
+  }
 
   // ---- People ---- (extracted to js/render/people.js)
-  function renderStakeholders() { if (ns.RenderPeople) ns.RenderPeople.renderStakeholders(); }
-  function syncStakeComplianceBadges(count) { if (ns.RenderPeople) ns.RenderPeople.syncStakeComplianceBadges(count); }
-  function renderChanges() { if (ns.RenderPeople) ns.RenderPeople.renderChanges(); }
-  function renderLog() { if (ns.RenderPeople) ns.RenderPeople.renderLog(); }
+  function renderStakeholders() {
+    if (ns.RenderPeople) ns.RenderPeople.renderStakeholders();
+  }
+  function syncStakeComplianceBadges(count) {
+    if (ns.RenderPeople) ns.RenderPeople.syncStakeComplianceBadges(count);
+  }
+  function renderChanges() {
+    if (ns.RenderPeople) ns.RenderPeople.renderChanges();
+  }
+  function renderLog() {
+    if (ns.RenderPeople) ns.RenderPeople.renderLog();
+  }
 
   // ---- Closure ---- (extracted to js/render/closure.js)
-  function renderPunchList() { if (ns.RenderClosure) ns.RenderClosure.renderPunchList(); }
-  function renderHandover() { if (ns.RenderClosure) ns.RenderClosure.renderHandover(); }
-  function renderWarranty() { if (ns.RenderClosure) ns.RenderClosure.renderWarranty(); }
-  function renderClosure() { if (ns.RenderClosure) ns.RenderClosure.renderClosure(); }
+  function renderPunchList() {
+    if (ns.RenderClosure) ns.RenderClosure.renderPunchList();
+  }
+  function renderHandover() {
+    if (ns.RenderClosure) ns.RenderClosure.renderHandover();
+  }
+  function renderWarranty() {
+    if (ns.RenderClosure) ns.RenderClosure.renderWarranty();
+  }
+  function renderClosure() {
+    if (ns.RenderClosure) ns.RenderClosure.renderClosure();
+  }
 
   // ---- RACI + Comms ---- (extracted to js/render/people.js)
-  function renderRaci() { if (ns.RenderPeople) ns.RenderPeople.renderRaci(); }
-  function renderRaciHeatmap() { if (ns.RenderPeople) ns.RenderPeople.renderRaciHeatmap(); }
-  function renderRaciAlerts() { if (ns.RenderPeople) ns.RenderPeople.renderRaciAlerts(); }
-  function renderComms() { if (ns.RenderPeople) ns.RenderPeople.renderComms(); }
+  function renderRaci() {
+    if (ns.RenderPeople) ns.RenderPeople.renderRaci();
+  }
+  function renderRaciHeatmap() {
+    if (ns.RenderPeople) ns.RenderPeople.renderRaciHeatmap();
+  }
+  function renderRaciAlerts() {
+    if (ns.RenderPeople) ns.RenderPeople.renderRaciAlerts();
+  }
+  function renderComms() {
+    if (ns.RenderPeople) ns.RenderPeople.renderComms();
+  }
 
   // ---- Documents ---- (extracted to js/render/documents.js)
   // Shims delegate to ns.RenderDocs for backward compatibility.
-  function renderRfis() { if (ns.RenderDocs) ns.RenderDocs.renderRfis(); }
-  function renderSubmittals() { if (ns.RenderDocs) ns.RenderDocs.renderSubmittals(); }
-  function renderBallInCourt() { if (ns.RenderDocs) ns.RenderDocs.renderBallInCourt(); }
-  function renderDrawLog() { if (ns.RenderDocs) ns.RenderDocs.renderDrawLog(); }
-  function renderPermits() { if (ns.RenderDocs) ns.RenderDocs.renderPermits(); }
-  function renderProcurement() { if (ns.RenderDocs) ns.RenderDocs.renderProcurement(); }
-  function renderDocuments() { if (ns.RenderDocs) ns.RenderDocs.renderDocuments(); }
+  function renderRfis() {
+    if (ns.RenderDocs) ns.RenderDocs.renderRfis();
+  }
+  function renderSubmittals() {
+    if (ns.RenderDocs) ns.RenderDocs.renderSubmittals();
+  }
+  function renderBallInCourt() {
+    if (ns.RenderDocs) ns.RenderDocs.renderBallInCourt();
+  }
+  function renderDrawLog() {
+    if (ns.RenderDocs) ns.RenderDocs.renderDrawLog();
+  }
+  function renderPermits() {
+    if (ns.RenderDocs) ns.RenderDocs.renderPermits();
+  }
+  function renderProcurement() {
+    if (ns.RenderDocs) ns.RenderDocs.renderProcurement();
+  }
+  function renderDocuments() {
+    if (ns.RenderDocs) ns.RenderDocs.renderDocuments();
+  }
 
   // ---- DMAIC ----
   // Full interactive renderer lives in js/mmgr-dmaic.js (feature 8); this
@@ -1793,14 +2535,14 @@ var MMGR = window.MMGR || {};
     const s = S();
     if (!s) return;
     const fl = s.flags || {};
-    document.querySelectorAll('[data-action="tglFlag"]').forEach(function(chip) {
+    document.querySelectorAll('[data-action="tglFlag"]').forEach(function (chip) {
       const f = chip.getAttribute('data-flag');
       const on = !f || fl[f] !== false;
       chip.checked = on;
       chip.classList.toggle('is-on', on);
     });
-    const gate = function(sel, flag) {
-      document.querySelectorAll(sel).forEach(function(el) {
+    const gate = function (sel, flag) {
+      document.querySelectorAll(sel).forEach(function (el) {
         el.classList.toggle('is-hide', fl[flag] === false);
       });
     };
@@ -1808,13 +2550,16 @@ var MMGR = window.MMGR || {};
     // drawer AI switch now both follow state.config.ai.tier, one control,
     // one meaning. The fab is hidden only when the engine is fully off, so
     // the entry point can never disagree with the tier value.
-    const aiCfg = (ns.AiWin && ns.AiWin.getAiCfg) ? ns.AiWin.getAiCfg() : null;
+    const aiCfg = ns.AiWin && ns.AiWin.getAiCfg ? ns.AiWin.getAiCfg() : null;
     const aiOn = aiCfg ? (aiCfg.tier || 'off') !== 'off' : false;
-    document.querySelectorAll('#ai-fab').forEach(function(el) {
+    document.querySelectorAll('#ai-fab').forEach(function (el) {
       el.classList.toggle('is-hide', !aiOn);
     });
     const aiChip = document.querySelector('[data-action="tglAiTier"]');
-    if (aiChip) { aiChip.checked = aiOn; aiChip.classList.toggle('is-on', aiOn); }
+    if (aiChip) {
+      aiChip.checked = aiOn;
+      aiChip.classList.toggle('is-on', aiOn);
+    }
     gate('[data-action="runMonteCarlo"]', 'monteCarlo');
     gate('[data-action="exportGanttPNG"]', 'ganttExport');
     gate('[data-action="tglLeadtimeLane"]', 'leadtimeLane');
@@ -1841,7 +2586,8 @@ var MMGR = window.MMGR || {};
   const PACK_LABELS = {
     schedule: 'Schedule Science (Gantt / critical path / Monte Carlo)',
     money: 'Money (Budget / Resources / EVM)',
-    governance: 'Governance (RACI / Risk / Changes / Log / Comms / Docs / Closure / Stakeholders / Claim)',
+    governance:
+      'Governance (RACI / Risk / Changes / Log / Comms / Docs / Closure / Stakeholders / Claim)',
     field: 'Field (Meetings / Claim)',
     quality: 'Quality (DMAIC)'
   };
@@ -1863,7 +2609,7 @@ var MMGR = window.MMGR || {};
     const s = S();
     if (!s) return;
     const packs = s.packs || {};
-    document.querySelectorAll('.sec-btn[data-pack]').forEach(function(btn) {
+    document.querySelectorAll('.sec-btn[data-pack]').forEach(function (btn) {
       const pack = btn.getAttribute('data-pack');
       const on = packs[pack] !== false;
       // SIDEBAR-HAMBURGER-TOGGLE-PLAN: gate by the data attribute (carried by
@@ -1895,7 +2641,9 @@ var MMGR = window.MMGR || {};
     const el = $('core-callout');
     if (!s || !el) return;
     const packs = s.packs || {};
-    const anyOn = PACK_ORDER.some(function(p) { return packs[p] !== false; });
+    const anyOn = PACK_ORDER.some(function (p) {
+      return packs[p] !== false;
+    });
     const show = !anyOn && !s.packsEverEnabled && !s.packsCalloutDismissed;
     el.classList.toggle('is-hide', !show);
   }
@@ -1914,7 +2662,9 @@ var MMGR = window.MMGR || {};
   // never leaves a stale derived label behind (review finding, 2026-08-11).
   function columnHeaderFor(row, inp) {
     const cells = Array.prototype.slice.call(row.cells || []);
-    const idx = cells.findIndex(function(c) { return c.contains(inp); });
+    const idx = cells.findIndex(function (c) {
+      return c.contains(inp);
+    });
     if (idx < 0) return null;
     const table = row.closest('table');
     const thead = table && table.querySelector('thead');
@@ -1941,52 +2691,63 @@ var MMGR = window.MMGR || {};
   }
 
   function labelDynamicFields() {
-    document.querySelectorAll(
-      'input[data-action="updField"], select[data-action="updField"], ' +
-      'input[data-action="updSpendEntry"], select[data-action="updSpendEntry"]'
-    ).forEach(function(inp) {
-      // Skip EXTERNAL accessible names only (truthy aria-label WITHOUT our
-      // marker, or any title). A label this pass wrote itself carries
-      // data-a11y-auto="1", so it is re-derived on the next pass instead of
-      // going stale when the row's text changes in place. Truthy check on
-      // aria-label keeps parity with verify-dynamic-labels' "named" rule and
-      // the old behaviour: an empty-string aria-label is NOT a name and may
-      // be (re)derived (review finding, 2026-08-11).
-      const external = (inp.getAttribute('aria-label') && inp.getAttribute('data-a11y-auto') === null) || !!inp.getAttribute('title');
-      if (external) return;
-      const own = inp.getAttribute('data-a11y-auto') !== null;
-      const setLabel = function(label) {
-        inp.setAttribute('aria-label', label);
-        inp.setAttribute('data-a11y-auto', '1');
-      };
-      const clearLabel = function() {
-        inp.removeAttribute('aria-label');
-        inp.removeAttribute('data-a11y-auto');
-      };
-      const id = inp.id;
-      if (id && /^[A-Za-z][A-Za-z0-9:_-]*$/.test(id) && document.querySelector('label[for="' + id + '"]')) return;
-      const row = inp.closest('tr');
-      if (!row) {
-        // Non-table row layouts (e.g. closure items render as flex rows): name
-        // the control from its container's own non-interactive text (the item
-        // label), never from buttons/inputs it sits beside.
-        const container = inp.parentElement;
-        if (!container) return;
-        const clone = container.cloneNode(true);
-        clone.querySelectorAll('input,select,textarea,button').forEach(function(n) { n.remove(); });
-        const t = (clone.textContent || '').replace(/\s+/g, ' ').trim();
-        if (t) setLabel(t.slice(0, 80));
-        else if (own) clearLabel(); // row lost its labelable text, drop the stale name
-        return;
-      }
-      const parts = [];
-      const th = columnHeaderFor(row, inp);
-      if (th) parts.push(th);
-      const rl = rowLabelFor(row, inp);
-      if (rl) parts.push(rl);
-      if (parts.length) setLabel(parts.join(', '));
-      else if (own) clearLabel(); // nothing derivable now, drop the stale name
-    });
+    document
+      .querySelectorAll(
+        'input[data-action="updField"], select[data-action="updField"], ' +
+          'input[data-action="updSpendEntry"], select[data-action="updSpendEntry"]'
+      )
+      .forEach(function (inp) {
+        // Skip EXTERNAL accessible names only (truthy aria-label WITHOUT our
+        // marker, or any title). A label this pass wrote itself carries
+        // data-a11y-auto="1", so it is re-derived on the next pass instead of
+        // going stale when the row's text changes in place. Truthy check on
+        // aria-label keeps parity with verify-dynamic-labels' "named" rule and
+        // the old behaviour: an empty-string aria-label is NOT a name and may
+        // be (re)derived (review finding, 2026-08-11).
+        const external =
+          (inp.getAttribute('aria-label') && inp.getAttribute('data-a11y-auto') === null) ||
+          !!inp.getAttribute('title');
+        if (external) return;
+        const own = inp.getAttribute('data-a11y-auto') !== null;
+        const setLabel = function (label) {
+          inp.setAttribute('aria-label', label);
+          inp.setAttribute('data-a11y-auto', '1');
+        };
+        const clearLabel = function () {
+          inp.removeAttribute('aria-label');
+          inp.removeAttribute('data-a11y-auto');
+        };
+        const id = inp.id;
+        if (
+          id &&
+          /^[A-Za-z][A-Za-z0-9:_-]*$/.test(id) &&
+          document.querySelector('label[for="' + id + '"]')
+        )
+          return;
+        const row = inp.closest('tr');
+        if (!row) {
+          // Non-table row layouts (e.g. closure items render as flex rows): name
+          // the control from its container's own non-interactive text (the item
+          // label), never from buttons/inputs it sits beside.
+          const container = inp.parentElement;
+          if (!container) return;
+          const clone = container.cloneNode(true);
+          clone.querySelectorAll('input,select,textarea,button').forEach(function (n) {
+            n.remove();
+          });
+          const t = (clone.textContent || '').replace(/\s+/g, ' ').trim();
+          if (t) setLabel(t.slice(0, 80));
+          else if (own) clearLabel(); // row lost its labelable text, drop the stale name
+          return;
+        }
+        const parts = [];
+        const th = columnHeaderFor(row, inp);
+        if (th) parts.push(th);
+        const rl = rowLabelFor(row, inp);
+        if (rl) parts.push(rl);
+        if (parts.length) setLabel(parts.join(', '));
+        else if (own) clearLabel(); // nothing derivable now, drop the stale name
+      });
   }
 
   // Sync the Controls drawer pack toggle chips with state.
@@ -1994,7 +2755,7 @@ var MMGR = window.MMGR || {};
     const s = S();
     if (!s) return;
     const packs = s.packs || {};
-    document.querySelectorAll('[data-action="tglPack"]').forEach(function(chip) {
+    document.querySelectorAll('[data-action="tglPack"]').forEach(function (chip) {
       const p = chip.getAttribute('data-pack');
       const on = packs[p] !== false;
       chip.checked = on;
@@ -2032,8 +2793,6 @@ var MMGR = window.MMGR || {};
     // C24: Template Library list
     renderTemplates();
   }
-
-
 
   // ==================================================================
   // Phase C, Gantt interactions: drag-to-reschedule, clickable
@@ -2115,8 +2874,14 @@ var MMGR = window.MMGR || {};
     const tip = $('gantt-tip');
     if (tip) {
       tip.classList.add('vis');
-      tip.innerHTML = '<strong>' + U.escapeHtml(task.name) + '</strong><br>Start: ' + U.fmtDate(newStart) +
-        (constrained ? '<br><span style="color:var(--danger)">Constrained by predecessor / chart start</span>' : '');
+      tip.innerHTML =
+        '<strong>' +
+        U.escapeHtml(task.name) +
+        '</strong><br>Start: ' +
+        U.fmtDate(newStart) +
+        (constrained
+          ? '<br><span style="color:var(--danger)">Constrained by predecessor / chart start</span>'
+          : '');
       positionGanttTip(e);
     }
     redrawGanttArrows();
@@ -2142,7 +2907,7 @@ var MMGR = window.MMGR || {};
     // rest of the project.
     ns.State.pushUndo();
     const dur = parseInt(task.duration) || 1;
-    ns.State.updateState(function(state) {
+    ns.State.updateState(function (state) {
       const t = (state.tasks || []).find(x => x.id === d.taskId);
       if (t) {
         t.startDate = newStart;
@@ -2152,8 +2917,10 @@ var MMGR = window.MMGR || {};
         // WBS Days cell (owner 2026-09-19). For a move-drag this recomputes
         // to the same value (duration is preserved); it keeps start+end
         // authoritative if the two ever drift.
-        const dd = ns.Tasks && ns.Tasks.durationFromDates
-          ? ns.Tasks.durationFromDates(t.startDate, t.endDate) : null;
+        const dd =
+          ns.Tasks && ns.Tasks.durationFromDates
+            ? ns.Tasks.durationFromDates(t.startDate, t.endDate)
+            : null;
         if (dd !== null) t.duration = String(dd);
       }
     });
@@ -2177,7 +2944,7 @@ var MMGR = window.MMGR || {};
 
   function removeDependency(predId, succId) {
     ns.State.pushUndo();
-    ns.State.updateState(function(state) {
+    ns.State.updateState(function (state) {
       const succ = (state.tasks || []).find(t => t.id === succId);
       if (succ && succ.predecessors) {
         succ.predecessors = succ.predecessors.filter(p => p !== predId);
@@ -2196,10 +2963,22 @@ var MMGR = window.MMGR || {};
       pad = ns.Schedule.calculateWeatherBuffer(task, region, 5);
     }
     let html = '<strong>' + U.escapeHtml(task.name) + '</strong><br>';
-    html += U.escapeHtml(task.startDate || '?') + ' to ' + U.escapeHtml(task.endDate || '?') + '<br>';
-    html += 'Total float: ' + (task.totalFloat === null || task.totalFloat === undefined ? 'n/a' : task.totalFloat + 'd') + '<br>';
-    html += 'Free float: ' + (task.freeFloat === null || task.freeFloat === undefined ? 'n/a' : task.freeFloat + 'd') + '<br>';
-    const schedPad = (task._schedPad !== undefined && task._schedPad !== null) ? task._schedPad : (task.weatherSensitive ? pad : 0);
+    html +=
+      U.escapeHtml(task.startDate || '?') + ' to ' + U.escapeHtml(task.endDate || '?') + '<br>';
+    html +=
+      'Total float: ' +
+      (task.totalFloat === null || task.totalFloat === undefined ? 'n/a' : task.totalFloat + 'd') +
+      '<br>';
+    html +=
+      'Free float: ' +
+      (task.freeFloat === null || task.freeFloat === undefined ? 'n/a' : task.freeFloat + 'd') +
+      '<br>';
+    const schedPad =
+      task._schedPad !== undefined && task._schedPad !== null
+        ? task._schedPad
+        : task.weatherSensitive
+          ? pad
+          : 0;
     html += 'Weather pad: ' + (task.weatherSensitive ? schedPad + 'd (weather-sensitive)' : 'none');
     return html;
   }
@@ -2214,19 +2993,19 @@ var MMGR = window.MMGR || {};
   }
 
   // Drag via pointer events (delegated, no inline handlers)
-  document.addEventListener('pointerdown', function(e) {
+  document.addEventListener('pointerdown', function (e) {
     const gc = $('gantt-chart');
     if (gc && e.target.closest && e.target.closest('.gb') && gc.contains(e.target)) {
       ganttDragStart(e);
     }
   });
-  document.addEventListener('pointermove', function(e) {
+  document.addEventListener('pointermove', function (e) {
     if (_ganttDrag) ganttDragMove(e);
   });
-  document.addEventListener('pointerup', function(e) {
+  document.addEventListener('pointerup', function (e) {
     if (_ganttDrag) ganttDragEnd(e);
   });
-  document.addEventListener('pointercancel', function() {
+  document.addEventListener('pointercancel', function () {
     if (_ganttDrag) {
       _ganttDrag = null;
       document.body.classList.remove('gantt-dragging');
@@ -2237,7 +3016,7 @@ var MMGR = window.MMGR || {};
   });
 
   // Click a dependency arrow to edit / remove the link
-  document.addEventListener('click', function(e) {
+  document.addEventListener('click', function (e) {
     const gc = $('gantt-chart');
     if (!gc) return;
     const link = e.target.closest && e.target.closest('.gan-link');
@@ -2256,7 +3035,9 @@ var MMGR = window.MMGR || {};
         message: 'Remove the dependency ' + label + '?',
         danger: true,
         confirmLabel: 'Remove Link',
-        onOk: function() { removeDependency(fromId, toId); }
+        onOk: function () {
+          removeDependency(fromId, toId);
+        }
       });
     } else {
       removeDependency(fromId, toId);
@@ -2264,22 +3045,26 @@ var MMGR = window.MMGR || {};
   });
 
   // Hover tooltip with float / weather pad info
-  document.addEventListener('mouseover', function(e) {
-    const bar = e.target.closest && e.target.closest('.gb');
-    if (!bar || bar.classList.contains('gb-base')) return;
-    const gc = $('gantt-chart');
-    if (!gc || !gc.contains(bar)) return;
-    const s = S();
-    const task = (s.tasks || []).find(t => t.id === bar.getAttribute('data-id'));
-    if (!task) return;
-    const tip = $('gantt-tip');
-    if (tip) {
-      tip.innerHTML = ganttTipFor(task);
-      tip.classList.add('vis');
-    }
-  }, true);
+  document.addEventListener(
+    'mouseover',
+    function (e) {
+      const bar = e.target.closest && e.target.closest('.gb');
+      if (!bar || bar.classList.contains('gb-base')) return;
+      const gc = $('gantt-chart');
+      if (!gc || !gc.contains(bar)) return;
+      const s = S();
+      const task = (s.tasks || []).find(t => t.id === bar.getAttribute('data-id'));
+      if (!task) return;
+      const tip = $('gantt-tip');
+      if (tip) {
+        tip.innerHTML = ganttTipFor(task);
+        tip.classList.add('vis');
+      }
+    },
+    true
+  );
 
-  document.addEventListener('mousemove', function(e) {
+  document.addEventListener('mousemove', function (e) {
     // OWNER 2026-09-28: only track while a gantt bar is hovered (or a bar
     // drag preview is up). The un-gated version chased the cursor page-wide
     // after the pointer had left the chart.
@@ -2288,17 +3073,21 @@ var MMGR = window.MMGR || {};
     if (tip && tip.classList.contains('vis')) positionGanttTip(e);
   });
 
-  document.addEventListener('mouseout', function(e) {
-    const gc = $('gantt-chart');
-    if (!gc) return;
-    const bar = e.target.closest && e.target.closest('.gb');
-    if (!bar) return;
-    // OWNER 2026-09-28: leave the BAR, lose the tip. The old check demanded
-    // the pointer land outside the whole chart, so gliding from a bar onto
-    // the grid kept the description following the cursor across the page.
-    const tip = $('gantt-tip');
-    if (tip) tip.classList.remove('vis');
-  }, true);
+  document.addEventListener(
+    'mouseout',
+    function (e) {
+      const gc = $('gantt-chart');
+      if (!gc) return;
+      const bar = e.target.closest && e.target.closest('.gb');
+      if (!bar) return;
+      // OWNER 2026-09-28: leave the BAR, lose the tip. The old check demanded
+      // the pointer land outside the whole chart, so gliding from a bar onto
+      // the grid kept the description following the cursor across the page.
+      const tip = $('gantt-tip');
+      if (tip) tip.classList.remove('vis');
+    },
+    true
+  );
 
   // ==================================================================
   // Phase F, Keyboard-first WBS: arrow navigation, Enter to edit name,
@@ -2338,7 +3127,7 @@ var MMGR = window.MMGR || {};
     input.focus();
     input.select();
     let done = false;
-    const commit = function() {
+    const commit = function () {
       if (done) return;
       done = true;
       const val = input.value.trim();
@@ -2354,14 +3143,20 @@ var MMGR = window.MMGR || {};
       });
     };
     input.addEventListener('blur', commit);
-    input.addEventListener('keydown', function(ev) {
+    input.addEventListener('keydown', function (ev) {
       ev.stopPropagation();
-      if (ev.key === 'Enter') { ev.preventDefault(); commit(); }
-      if (ev.key === 'Escape') { done = true; ns.Render.renderWbs(); }
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        commit();
+      }
+      if (ev.key === 'Escape') {
+        done = true;
+        ns.Render.renderWbs();
+      }
     });
   }
 
-  document.addEventListener('keydown', function(e) {
+  document.addEventListener('keydown', function (e) {
     const body = $('wbs-body');
     if (!body || !body.contains(e.target)) return;
     if (e.target.closest && e.target.closest('input,select,textarea')) return; // native editing
@@ -2380,7 +3175,7 @@ var MMGR = window.MMGR || {};
     }
   });
 
-  document.addEventListener('click', function(e) {
+  document.addEventListener('click', function (e) {
     const body = $('wbs-body');
     if (!body || !body.contains(e.target)) return;
     if (e.target.closest && e.target.closest('input,select,button,a,svg')) return;
@@ -2388,7 +3183,11 @@ var MMGR = window.MMGR || {};
     const nameTarget = e.target.closest ? e.target.closest('.wbs-name') : null;
     if (nameTarget) {
       const nameRow = nameTarget.closest('tr.wbs-row');
-      if (nameRow) { e.preventDefault(); startWbsNameEdit(nameRow); return; }
+      if (nameRow) {
+        e.preventDefault();
+        startWbsNameEdit(nameRow);
+        return;
+      }
     }
     const row = e.target.closest('tr.wbs-row');
     if (row) selectWbsRow(row);
@@ -2399,7 +3198,9 @@ var MMGR = window.MMGR || {};
   // render so the card's inputs are always wired regardless of where or
   // when the scripts load; stub elements in tests simply no-op.
   let _wxBound = false;
-  function bindWxInputs() { if (ns.RenderWeather) ns.RenderWeather.bindWxInputs(); }
+  function bindWxInputs() {
+    if (ns.RenderWeather) ns.RenderWeather.bindWxInputs();
+  }
 
   // ---- API ----
   ns.Render = {
@@ -2489,21 +3290,46 @@ var MMGR = window.MMGR || {};
     if (!el) return;
     const s = S();
     const Templates = ns.Templates;
-    if (!Templates) { el.innerHTML = ''; return; }
+    if (!Templates) {
+      el.innerHTML = '';
+      return;
+    }
     const all = Templates.getAllTemplates();
-    if (!all.length) { el.innerHTML = '<div style="font-size:.75rem;color:var(--slate);padding:8px">No templates yet. Save your current project as a template to reuse it.</div>'; return; }
-    el.innerHTML = all.map(function(t) {
-      const taskCount = (t.tasks || []).length;
-      const budgetCount = (t.budgetLines || []).length;
-      const dateStr = t.createdAt ? new Date(t.createdAt).toLocaleDateString() : 'Built-in';
-      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--border);border-radius:4px;margin-bottom:4px;font-size:.75rem">' +
-        '<div style="flex:1"><strong>' + U.escapeHtml(t.name) + '</strong> ' +
-        '<span style="color:var(--slate)">' + taskCount + ' tasks, ' + budgetCount + ' budget lines</span> ' +
-        '<span style="color:var(--slate);font-size:.65rem">' + dateStr + '</span></div>' +
-        '<button class="btn btn-g btn-s" style="font-size:.65rem" data-action="applyTemplate" data-tpl-id="' + U.escapeHtml(t.id) + '">Apply</button>' +
-        (t.builtin ? '' : ' <button class="btn btn-s btn-d" style="font-size:.65rem" data-action="deleteTemplate" data-tpl-id="' + U.escapeHtml(t.id) + '">x</button>') +
-        '</div>';
-    }).join('');
+    if (!all.length) {
+      el.innerHTML =
+        '<div style="font-size:.75rem;color:var(--slate);padding:8px">No templates yet. Save your current project as a template to reuse it.</div>';
+      return;
+    }
+    el.innerHTML = all
+      .map(function (t) {
+        const taskCount = (t.tasks || []).length;
+        const budgetCount = (t.budgetLines || []).length;
+        const dateStr = t.createdAt ? new Date(t.createdAt).toLocaleDateString() : 'Built-in';
+        return (
+          '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--border);border-radius:4px;margin-bottom:4px;font-size:.75rem">' +
+          '<div style="flex:1"><strong>' +
+          U.escapeHtml(t.name) +
+          '</strong> ' +
+          '<span style="color:var(--slate)">' +
+          taskCount +
+          ' tasks, ' +
+          budgetCount +
+          ' budget lines</span> ' +
+          '<span style="color:var(--slate);font-size:.65rem">' +
+          dateStr +
+          '</span></div>' +
+          '<button class="btn btn-g btn-s" style="font-size:.65rem" data-action="applyTemplate" data-tpl-id="' +
+          U.escapeHtml(t.id) +
+          '">Apply</button>' +
+          (t.builtin
+            ? ''
+            : ' <button class="btn btn-s btn-d" style="font-size:.65rem" data-action="deleteTemplate" data-tpl-id="' +
+              U.escapeHtml(t.id) +
+              '">x</button>') +
+          '</div>'
+        );
+      })
+      .join('');
   }
 })(MMGR);
 window.MMGR = MMGR;

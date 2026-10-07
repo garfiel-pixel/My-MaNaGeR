@@ -12,7 +12,7 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
   const U = ns.Utils;
 
@@ -21,13 +21,21 @@ var MMGR = window.MMGR || {};
   // time - two days left, signal the PM."
   function watchLeadTimes(s, today) {
     const out = [];
-    for (const t of (s.tasks || [])) {
+    for (const t of s.tasks || []) {
       if (!t.leadTime || !t.expectedDate || t.delivered) continue;
       const d = U.daysBetween(today, t.expectedDate); // negative = overdue
       if (d <= 2) {
-        out.push({ kind: 'leadtime', severity: d < 0 ? 'attention' : 'caution',
-          text: t.name + ' lead time: ' + (d < 0 ? Math.abs(d) + ' day(s) past' : d + ' day(s) left') +
-                ' (expected ' + t.expectedDate + '). Check on the vendor.' });
+        out.push({
+          kind: 'leadtime',
+          severity: d < 0 ? 'attention' : 'caution',
+          text:
+            t.name +
+            ' lead time: ' +
+            (d < 0 ? Math.abs(d) + ' day(s) past' : d + ' day(s) left') +
+            ' (expected ' +
+            t.expectedDate +
+            '). Check on the vendor.'
+        });
       }
     }
     return out;
@@ -41,18 +49,28 @@ var MMGR = window.MMGR || {};
   function watchBudget(s) {
     const out = [];
     const byCat = {};
-    for (const b of (s.budgetLines || [])) {
+    for (const b of s.budgetLines || []) {
       const cat = b.category || 'Uncategorized';
       if (!byCat[cat]) byCat[cat] = { planned: 0, actual: 0 };
-      byCat[cat].planned += (+b.planned || 0);
+      byCat[cat].planned += +b.planned || 0;
       byCat[cat].actual += (+b.actual || 0) + (+b.committed || 0);
     }
     for (const cat in byCat) {
       const c = byCat[cat];
-      if (c.planned > 0 && c.actual > c.planned * 1.10) {
-        out.push({ kind: 'budget', severity: 'caution',
-          text: cat + ' is running ' + Math.round((c.actual / c.planned - 1) * 100) + '% over plan (' +
-                Math.round(c.actual).toLocaleString() + ' of ' + Math.round(c.planned).toLocaleString() + ').' });
+      if (c.planned > 0 && c.actual > c.planned * 1.1) {
+        out.push({
+          kind: 'budget',
+          severity: 'caution',
+          text:
+            cat +
+            ' is running ' +
+            Math.round((c.actual / c.planned - 1) * 100) +
+            '% over plan (' +
+            Math.round(c.actual).toLocaleString() +
+            ' of ' +
+            Math.round(c.planned).toLocaleString() +
+            ').'
+        });
       }
     }
     return out;
@@ -61,10 +79,14 @@ var MMGR = window.MMGR || {};
   // Resource watchdog: any resource allocated above 100%.
   function watchResources(s) {
     const out = [];
-    for (const r of (s.resources || [])) {
+    for (const r of s.resources || []) {
       if ((+r.allocation || 0) > 100) {
-        out.push({ kind: 'resource', severity: 'info',
-          text: r.name + ' is allocated ' + r.allocation + '% - over capacity. Consider rebalancing.' });
+        out.push({
+          kind: 'resource',
+          severity: 'info',
+          text:
+            r.name + ' is allocated ' + r.allocation + '% - over capacity. Consider rebalancing.'
+        });
       }
     }
     return out;
@@ -80,13 +102,26 @@ var MMGR = window.MMGR || {};
     const risky = ns.Forecast.riskDays(s);
     if (!risky || !risky.length) return [];
     const out = [];
-    for (const t of (s.tasks || [])) {
+    for (const t of s.tasks || []) {
       if (!t.weatherExposed || !t.startDate || !t.endDate) continue;
       for (const d of risky) {
         if (d.date >= t.startDate && d.date <= t.endDate) {
-          const why = (d.alerts && d.alerts.length) ? d.alerts.join(', ') : 'weather risk';
-          out.push({ kind: 'weather', severity: 'info',
-            text: t.name + ' runs ' + t.startDate + ' to ' + t.endDate + ' - forecast flags ' + d.date + ' (' + why + '). Check the window.' });
+          const why = d.alerts && d.alerts.length ? d.alerts.join(', ') : 'weather risk';
+          out.push({
+            kind: 'weather',
+            severity: 'info',
+            text:
+              t.name +
+              ' runs ' +
+              t.startDate +
+              ' to ' +
+              t.endDate +
+              ' - forecast flags ' +
+              d.date +
+              ' (' +
+              why +
+              '). Check the window.'
+          });
           break; // one notice per task, not per day
         }
       }
@@ -106,9 +141,17 @@ var MMGR = window.MMGR || {};
     // next phase. Gates on the critical path with no float deserve reserve.
     const gates = (s.tasks || []).filter(t => /gate/i.test(t.name || '') && !t.isPhase);
     gates.forEach(g => {
-      if (g.critical && (g.totalFloat === 0 || g.totalFloat === null || g.totalFloat === undefined)) {
-        out.push({ kind: 'schedule', severity: 'info',
-          text: g.name + ' sits on the critical path with no slack. Best practice is 2-3 days of management reserve before a gate so one failed inspection does not cascade into the next phase.' });
+      if (
+        g.critical &&
+        (g.totalFloat === 0 || g.totalFloat === null || g.totalFloat === undefined)
+      ) {
+        out.push({
+          kind: 'schedule',
+          severity: 'info',
+          text:
+            g.name +
+            ' sits on the critical path with no slack. Best practice is 2-3 days of management reserve before a gate so one failed inspection does not cascade into the next phase.'
+        });
       }
     });
     // 2. Long-lead items that finish well before their successor needs them:
@@ -116,16 +159,33 @@ var MMGR = window.MMGR || {};
     const byId = new Map((s.tasks || []).map(t => [t.id, t]));
     for (const t of tasks) {
       if (!t.leadTime || !t.expectedDate) continue;
-      let minSuccessorStart = null, succName = '';
+      let minSuccessorStart = null,
+        succName = '';
       for (const c of tasks) {
         if (!(c.predecessors || []).some(p => String(p) === String(t.id))) continue;
-        if (minSuccessorStart === null || c.startDate < minSuccessorStart) { minSuccessorStart = c.startDate; succName = c.name; }
+        if (minSuccessorStart === null || c.startDate < minSuccessorStart) {
+          minSuccessorStart = c.startDate;
+          succName = c.name;
+        }
       }
       if (!minSuccessorStart) continue;
       const slack = U.daysBetween(t.expectedDate, minSuccessorStart);
       if (slack >= 7) {
-        out.push({ kind: 'schedule', severity: 'info',
-          text: t.name + ' is expected ' + t.expectedDate + ' but its first successor (' + succName + ') does not start until ' + minSuccessorStart + ' - ' + slack + ' days of idle lead time. Staggering this order frees cash without moving the schedule.' });
+        out.push({
+          kind: 'schedule',
+          severity: 'info',
+          text:
+            t.name +
+            ' is expected ' +
+            t.expectedDate +
+            ' but its first successor (' +
+            succName +
+            ') does not start until ' +
+            minSuccessorStart +
+            ' - ' +
+            slack +
+            ' days of idle lead time. Staggering this order frees cash without moving the schedule.'
+        });
       }
     }
     // 3. Weather-sensitive tasks with zero buffer: resequence or add float
@@ -134,8 +194,15 @@ var MMGR = window.MMGR || {};
       if (!t.weatherSensitive) continue;
       const dur = parseInt(t.duration) || 0;
       if (t.critical && dur >= 3 && !t._schedPad) {
-        out.push({ kind: 'schedule', severity: 'info',
-          text: t.name + ' is weather-sensitive, critical, and runs ' + dur + ' working days with no buffer. Check the window against the rainy season or resequence it off the chain.' });
+        out.push({
+          kind: 'schedule',
+          severity: 'info',
+          text:
+            t.name +
+            ' is weather-sensitive, critical, and runs ' +
+            dur +
+            ' working days with no buffer. Check the window against the rainy season or resequence it off the chain.'
+        });
       }
     }
     // 4. Early drift: completed/started tasks that ended after their plan
@@ -143,11 +210,27 @@ var MMGR = window.MMGR || {};
     const today = U.todayStr();
     for (const t of tasks) {
       if (t.status === 'completed' && t.completedDate && t.endDate && t.completedDate > t.endDate) {
-        out.push({ kind: 'schedule', severity: 'attention',
-          text: t.name + ' finished ' + t.completedDate + ' but was planned to finish ' + t.endDate + ' - actual slip already on the record. Check whether its successors absorbed it or inherited it.' });
+        out.push({
+          kind: 'schedule',
+          severity: 'attention',
+          text:
+            t.name +
+            ' finished ' +
+            t.completedDate +
+            ' but was planned to finish ' +
+            t.endDate +
+            ' - actual slip already on the record. Check whether its successors absorbed it or inherited it.'
+        });
       } else if (t.status === 'inprogress' && t.endDate && t.endDate < today) {
-        out.push({ kind: 'schedule', severity: 'attention',
-          text: t.name + ' is still in progress past its ' + t.endDate + ' end date. Update the plan or the end date before the slip cascades.' });
+        out.push({
+          kind: 'schedule',
+          severity: 'attention',
+          text:
+            t.name +
+            ' is still in progress past its ' +
+            t.endDate +
+            ' end date. Update the plan or the end date before the slip cascades.'
+        });
       }
     }
     return out;
@@ -169,10 +252,14 @@ var MMGR = window.MMGR || {};
     const out = [];
     const tasks = (s.tasks || []).filter(t => !t.isPhase && t.startDate && t.endDate);
     if (tasks.length < 2) return out;
-    const groups = ns.Schedule && ns.Schedule.parallelGroups ? ns.Schedule.parallelGroups(s.tasks) : null;
+    const groups =
+      ns.Schedule && ns.Schedule.parallelGroups ? ns.Schedule.parallelGroups(s.tasks) : null;
     if (!groups) return out;
     const byId = new Map((s.tasks || []).map(t => [t.id, t]));
-    const nameOf = id => { const t = byId.get(id); return t ? (t.name || id) : id; };
+    const nameOf = id => {
+      const t = byId.get(id);
+      return t ? t.name || id : id;
+    };
 
     // 1. Kickoff nudges: in-progress tasks with ready-to-run peers.
     const running = tasks.filter(t => t.status === 'inprogress');
@@ -186,11 +273,24 @@ var MMGR = window.MMGR || {};
       // starting both needs a crew decision, which is the actionable point.
       const sameCrew = a.assignee && peer.assignee && a.assignee === peer.assignee;
       const need = sameCrew
-        ? 'Both name ' + peer.assignee + ' - split the crew or sequence them before kicking off both.'
+        ? 'Both name ' +
+          peer.assignee +
+          ' - split the crew or sequence them before kicking off both.'
         : 'Different crews, no shared predecessor - it can start alongside.';
-      out.push({ kind: 'parallel', severity: 'info',
-        text: nameOf(a.id) + ' is running, and ' + nameOf(peer.id) + ' shares its window (' +
-              peer.startDate + ' to ' + peer.endDate + '). ' + need });
+      out.push({
+        kind: 'parallel',
+        severity: 'info',
+        text:
+          nameOf(a.id) +
+          ' is running, and ' +
+          nameOf(peer.id) +
+          ' shares its window (' +
+          peer.startDate +
+          ' to ' +
+          peer.endDate +
+          '). ' +
+          need
+      });
       break; // one kickoff nudge per run - the mailbox must stay quiet
     }
 
@@ -204,7 +304,9 @@ var MMGR = window.MMGR || {};
       byStart.get(t.startDate).push(t);
     }
     const today = U.todayStr();
-    const starts = Array.from(byStart.keys()).filter(d => d >= today).sort();
+    const starts = Array.from(byStart.keys())
+      .filter(d => d >= today)
+      .sort();
     for (const day of starts) {
       const group = byStart.get(day);
       if (group.length < 3) continue;
@@ -213,9 +315,18 @@ var MMGR = window.MMGR || {};
       if (linked) continue; // a dependency inside the group = not independent
       const names = group.slice(0, 4).map(t => t.name);
       const more = group.length > 4 ? ' and ' + (group.length - 4) + ' more' : '';
-      out.push({ kind: 'parallel', severity: 'info',
-        text: group.length + ' tasks can start together on ' + day + ' with no handoffs between them: ' +
-              names.join(', ') + more + '. Worth a crew check before they queue single-file.' });
+      out.push({
+        kind: 'parallel',
+        severity: 'info',
+        text:
+          group.length +
+          ' tasks can start together on ' +
+          day +
+          ' with no handoffs between them: ' +
+          names.join(', ') +
+          more +
+          '. Worth a crew check before they queue single-file.'
+      });
       break; // one cluster notice per run
     }
     return out;
@@ -233,20 +344,36 @@ var MMGR = window.MMGR || {};
   // so a persistent condition resurfaces as a NEW notice later - by design.
   function run() {
     try {
-      if (!assistantActive()) { renderBell(); return; }
+      if (!assistantActive()) {
+        renderBell();
+        return;
+      }
       const s = ns.State.getState();
       if (!s || !s.tasks) return;
       const today = U.todayStr();
-      const found = [].concat(watchLeadTimes(s, today), watchBudget(s), watchResources(s), watchWeather(s), watchSchedule(s), watchParallel(s));
+      const found = [].concat(
+        watchLeadTimes(s, today),
+        watchBudget(s),
+        watchResources(s),
+        watchWeather(s),
+        watchSchedule(s),
+        watchParallel(s)
+      );
       if (!found.length) return;
       let added = 0;
-      ns.State.updateState(function(st) {
+      ns.State.updateState(function (st) {
         if (!Array.isArray(st.aiInbox)) st.aiInbox = [];
         const seen = new Set(st.aiInbox.map(n => n.kind + '|' + n.text));
         for (const f of found) {
           if (seen.has(f.kind + '|' + f.text)) continue;
-          st.aiInbox.unshift({ id: U.genId('n'), at: new Date().toISOString(),
-            kind: f.kind, severity: f.severity, text: f.text, read: false });
+          st.aiInbox.unshift({
+            id: U.genId('n'),
+            at: new Date().toISOString(),
+            kind: f.kind,
+            severity: f.severity,
+            text: f.text,
+            read: false
+          });
           added++;
         }
         st.aiInbox = st.aiInbox.slice(0, 50); // hard cap, newest first
@@ -255,12 +382,14 @@ var MMGR = window.MMGR || {};
         ns.App.showToast('Assistant spotted ' + added + ' thing(s) - check the bell.', 'ok');
       }
       renderBell();
-    } catch (e) { /* zero-throw: a watcher must never break the app */ }
+    } catch (e) {
+      /* zero-throw: a watcher must never break the app */
+    }
   }
 
   function unreadCount() {
     const s = ns.State.getState();
-    return (s && Array.isArray(s.aiInbox)) ? s.aiInbox.filter(n => !n.read).length : 0;
+    return s && Array.isArray(s.aiInbox) ? s.aiInbox.filter(n => !n.read).length : 0;
   }
 
   function renderBell() {
@@ -279,9 +408,10 @@ var MMGR = window.MMGR || {};
     // Task 9: locked card for signed-out users - plain language, one route
     // to the existing sign-in sheet. No notices are computed or shown.
     if (!assistantActive()) {
-      if (list) list.innerHTML =
-        '<div class="ai-note"><div class="ai-note-tx">The background assistant is part of the signed-in experience. Sign in and it starts watching lead times, budget and resources on this project - everything stays on this machine either way.</div>' +
-        '<div style="margin-top:6px"><button class="btn btn-g btn-s" data-action="openSignIn">Sign in</button></div></div>';
+      if (list)
+        list.innerHTML =
+          '<div class="ai-note"><div class="ai-note-tx">The background assistant is part of the signed-in experience. Sign in and it starts watching lead times, budget and resources on this project - everything stays on this machine either way.</div>' +
+          '<div style="margin-top:6px"><button class="btn btn-g btn-s" data-action="openSignIn">Sign in</button></div></div>';
       renderBell();
       box.classList.add('on');
       return;
@@ -298,20 +428,41 @@ var MMGR = window.MMGR || {};
       // below it. aiInbox is stored newest-first, so a stable sort keeps
       // recency order inside each tier; unknown severities sort last.
       const SEV_ORDER = { attention: 0, caution: 1, info: 2 };
-      const sorted = (s.aiInbox || []).slice().sort((a, b) =>
-        (SEV_ORDER[a.severity] !== undefined ? SEV_ORDER[a.severity] : 99) -
-        (SEV_ORDER[b.severity] !== undefined ? SEV_ORDER[b.severity] : 99));
-      const items = sorted.map(n =>
-        '<div class="ai-note ' + (SEV[n.severity] || 'ai-note-info') + '">' +
-        '<div class="ai-note-tx"><svg class="ico ai-sev-dot" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dot"></use></svg>' + U.escapeHtml(n.text) + '</div>' +
-        '<div class="ai-note-meta">' + U.escapeHtml((n.at || '').slice(0, 10)) + '</div>' +
-        '<button class="btn btn-s btn-n" data-action="dismissAiNote" data-id="' + U.escapeHtml(n.id) + '">Dismiss</button>' +
-        '</div>').join('') ||
+      const sorted = (s.aiInbox || [])
+        .slice()
+        .sort(
+          (a, b) =>
+            (SEV_ORDER[a.severity] !== undefined ? SEV_ORDER[a.severity] : 99) -
+            (SEV_ORDER[b.severity] !== undefined ? SEV_ORDER[b.severity] : 99)
+        );
+      const items =
+        sorted
+          .map(
+            n =>
+              '<div class="ai-note ' +
+              (SEV[n.severity] || 'ai-note-info') +
+              '">' +
+              '<div class="ai-note-tx"><svg class="ico ai-sev-dot" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dot"></use></svg>' +
+              U.escapeHtml(n.text) +
+              '</div>' +
+              '<div class="ai-note-meta">' +
+              U.escapeHtml((n.at || '').slice(0, 10)) +
+              '</div>' +
+              '<button class="btn btn-s btn-n" data-action="dismissAiNote" data-id="' +
+              U.escapeHtml(n.id) +
+              '">Dismiss</button>' +
+              '</div>'
+          )
+          .join('') ||
         '<div class="ai-note ai-note-empty">Nothing right now - the assistant pings you here when it spots something.</div>';
       list.innerHTML = items;
     }
     // Opening the mailbox reads everything: unread dot clears.
-    ns.State.updateState(function(st) { (st.aiInbox || []).forEach(n => { n.read = true; }); });
+    ns.State.updateState(function (st) {
+      (st.aiInbox || []).forEach(n => {
+        n.read = true;
+      });
+    });
     renderBell();
     box.classList.add('on');
   }
@@ -322,18 +473,31 @@ var MMGR = window.MMGR || {};
   }
 
   function dismissNote(id) {
-    ns.State.updateState(function(st) { st.aiInbox = (st.aiInbox || []).filter(n => n.id !== id); });
+    ns.State.updateState(function (st) {
+      st.aiInbox = (st.aiInbox || []).filter(n => n.id !== id);
+    });
     openMailbox(); // re-render open panel
   }
 
   function clearMailbox() {
-    ns.State.updateState(function(st) { st.aiInbox = []; });
+    ns.State.updateState(function (st) {
+      st.aiInbox = [];
+    });
     openMailbox();
   }
 
-  ns.Watch = { run: run, openMailbox: openMailbox, closeMailbox: closeMailbox,
-    dismissNote: dismissNote, clearMailbox: clearMailbox, unreadCount: unreadCount,
-    renderBell: renderBell, watchLeadTimes: watchLeadTimes, watchBudget: watchBudget,
-    watchResources: watchResources, watchWeather: watchWeather };
+  ns.Watch = {
+    run: run,
+    openMailbox: openMailbox,
+    closeMailbox: closeMailbox,
+    dismissNote: dismissNote,
+    clearMailbox: clearMailbox,
+    unreadCount: unreadCount,
+    renderBell: renderBell,
+    watchLeadTimes: watchLeadTimes,
+    watchBudget: watchBudget,
+    watchResources: watchResources,
+    watchWeather: watchWeather
+  };
 })(MMGR);
 window.MMGR = MMGR;

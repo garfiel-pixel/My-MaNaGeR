@@ -53,7 +53,9 @@ console.log('--- MISSING (markup action with NO handler anywhere) ---');
 console.log(missing.length ? JSON.stringify(missing, null, 0) : '(none)');
 // Informational only — actions rendered dynamically by JS (delTask, aiPreset,
 // cloudSignIn, vpAccept, …) legitimately never appear in static markup.
-console.log('--- NOT STATICALLY REFERENCED (map key absent from project.html markup; includes JS-rendered actions) ---');
+console.log(
+  '--- NOT STATICALLY REFERENCED (map key absent from project.html markup; includes JS-rendered actions) ---'
+);
 console.log(JSON.stringify(unused, null, 0));
 
 process.exit(missing.length ? 1 : 0);

@@ -42,29 +42,49 @@ const ROOT = path.resolve(__dirname, '..');
 const SECRET = 'qa-t9-adoption-secret-7f1a9c3e';
 const ADMIN_CODE = 'qa-admin-t9-53d2';
 
-const log = (s) => { process.stdout.write('[t9] ' + s + '\n'); };
+const log = s => {
+  process.stdout.write('[t9] ' + s + '\n');
+};
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
 const results = [];
 const check = (name, val, detail) => {
   results.push({ name, val });
-  log((val ? 'PASS' : 'FAIL') + '  ' + name + (val ? '' : '   <-- ' + JSON.stringify(detail === undefined ? null : detail).slice(0, 500)));
+  log(
+    (val ? 'PASS' : 'FAIL') +
+      '  ' +
+      name +
+      (val ? '' : '   <-- ' + JSON.stringify(detail === undefined ? null : detail).slice(0, 500))
+  );
 };
 
-setTimeout(() => { log('WATCHDOG — harness exceeded 300s'); try { proc && proc.kill(); } catch (e) {} process.exit(2); }, 300000).unref();
+setTimeout(() => {
+  log('WATCHDOG — harness exceeded 300s');
+  try {
+    proc && proc.kill();
+  } catch (e) {}
+  process.exit(2);
+}, 300000).unref();
 
 function globalWranglerJs() {
   try {
     const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-    const root = execFileSync(npmCmd, ['root', '-g'], { encoding: 'utf8', shell: process.platform === 'win32' }).trim();
+    const root = execFileSync(npmCmd, ['root', '-g'], {
+      encoding: 'utf8',
+      shell: process.platform === 'win32'
+    }).trim();
     const p = path.join(root, 'wrangler', 'bin', 'wrangler.js');
     if (fs.existsSync(p)) return p;
-  } catch (e) { /* fall through */ }
+  } catch (e) {
+    /* fall through */
+  }
   // Fallback: local node_modules (CI, no global wrangler)
   try {
     const lp = path.join(__dirname, '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
     if (fs.existsSync(lp)) return lp;
-  } catch (e) { /* fall through */ }
+  } catch (e) {
+    /* fall through */
+  }
   return null;
 }
 const WRANGLER_JS = globalWranglerJs();
@@ -77,41 +97,97 @@ function startWrangler() {
   return new Promise((resolve, reject) => {
     log('starting wrangler dev on :' + PORT + ' (local D1 + R2, migration 0011)…');
     try {
-      execFileSync(process.execPath,
-        [WRANGLER_JS, 'd1', 'migrations', 'apply', 'my-manager-db', '--local', '--config', 'wrangler.ci.jsonc', '--persist-to', PERSIST_DIR],
-        { cwd: ROOT, stdio: 'ignore', timeout: 120000 });
-    } catch (e) { log('migrations apply (best-effort): ' + e.message); }
-    proc = spawn(process.execPath, [WRANGLER_JS, 'dev', '--config', 'wrangler.ci.jsonc', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST_DIR,
-      '--var', 'GOOGLE_CLIENT_SECRET:' + SECRET,
-      '--var', 'ADMIN_CODE:' + ADMIN_CODE], {
-      cwd: ROOT,
-      env: Object.assign({}, process.env, { WRANGLER_SEND_METRICS: 'false' }),
-      stdio: ['ignore', 'pipe', 'pipe']
+      execFileSync(
+        process.execPath,
+        [
+          WRANGLER_JS,
+          'd1',
+          'migrations',
+          'apply',
+          'my-manager-db',
+          '--local',
+          '--config',
+          'wrangler.ci.jsonc',
+          '--persist-to',
+          PERSIST_DIR
+        ],
+        { cwd: ROOT, stdio: 'ignore', timeout: 120000 }
+      );
+    } catch (e) {
+      log('migrations apply (best-effort): ' + e.message);
+    }
+    proc = spawn(
+      process.execPath,
+      [
+        WRANGLER_JS,
+        'dev',
+        '--config',
+        'wrangler.ci.jsonc',
+        '--port',
+        String(PORT),
+        '--ip',
+        '127.0.0.1',
+        '--persist-to',
+        PERSIST_DIR,
+        '--var',
+        'GOOGLE_CLIENT_SECRET:' + SECRET,
+        '--var',
+        'ADMIN_CODE:' + ADMIN_CODE
+      ],
+      {
+        cwd: ROOT,
+        env: Object.assign({}, process.env, { WRANGLER_SEND_METRICS: 'false' }),
+        stdio: ['ignore', 'pipe', 'pipe']
+      }
+    );
+    proc.stdout.on('data', d => {
+      devLog += d;
     });
-    proc.stdout.on('data', d => { devLog += d; });
-    proc.stderr.on('data', d => { devLog += d; });
-    proc.on('error', (e) => reject(new Error('wrangler spawn failed: ' + e.message)));
-    proc.on('exit', (code) => { if (code !== 0 && code !== null) log('wrangler dev exited early (code ' + code + ')'); });
+    proc.stderr.on('data', d => {
+      devLog += d;
+    });
+    proc.on('error', e => reject(new Error('wrangler spawn failed: ' + e.message)));
+    proc.on('exit', code => {
+      if (code !== 0 && code !== null) log('wrangler dev exited early (code ' + code + ')');
+    });
     const t0 = Date.now();
     const poll = async () => {
       try {
         const ctrl = new AbortController();
-        const timer = setTimeout(function() { ctrl.abort(); }, 3000);
+        const timer = setTimeout(function () {
+          ctrl.abort();
+        }, 3000);
         const r = await fetch(BASE + '/api/health', { signal: ctrl.signal });
         clearTimeout(timer);
         if (r.ok) return resolve();
-      } catch (e) { /* not up yet */ }
-      if (Date.now() - t0 > 120000) return reject(new Error('wrangler dev did not come up in 120s'));
+      } catch (e) {
+        /* not up yet */
+      }
+      if (Date.now() - t0 > 120000)
+        return reject(new Error('wrangler dev did not come up in 120s'));
       setTimeout(poll, 1500);
     };
     poll();
   });
 }
-function stopWrangler() { try { proc && proc.kill(); } catch(e) {} }
+function stopWrangler() {
+  try {
+    proc && proc.kill();
+  } catch (e) {}
+}
 
-const j = async (res) => { try { return await res.json(); } catch (e) { return {}; } };
+const j = async res => {
+  try {
+    return await res.json();
+  } catch (e) {
+    return {};
+  }
+};
 const jsonHeaders = { 'Content-Type': 'application/json' };
-const cookieHeader = (cookie) => ({ 'Cookie': 'mmgr_session=' + cookie, 'Content-Type': 'application/json' });
+const cookieHeader = cookie => ({
+  Cookie: 'mmgr_session=' + cookie,
+  'Content-Type': 'application/json'
+});
 function extractSessionCookie(res) {
   const sc = res.headers.get('Set-Cookie') || '';
   const m = sc.match(/mmgr_session=([^;]+)/);
@@ -125,7 +201,8 @@ function extractSessionCookie(res) {
 
     // T9-0 create a cloud project (no session — code-only create).
     let r = await fetch(BASE + '/api/cloud/projects', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: jsonHeaders,
       body: JSON.stringify({ projectId: pid, name: 'T9 Adoption QA' })
     });
@@ -135,7 +212,8 @@ function extractSessionCookie(res) {
 
     // Seed a snapshot so loads return real state.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/save', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
       body: JSON.stringify({ state: { tasks: [{ id: 't1', name: 'Adoption seed' }] } })
     });
@@ -144,7 +222,8 @@ function extractSessionCookie(res) {
 
     // T9-1 editor code for the recipient.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/editors', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
       body: JSON.stringify({ label: 'Recipient Editor', scope: ['wbs', 'bud'], role: 'editor' })
     });
@@ -154,50 +233,99 @@ function extractSessionCookie(res) {
 
     // T9-2 register two signed-in identities: the recipient + an unrelated user.
     r = await fetch(BASE + '/api/auth/register', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: jsonHeaders,
-      body: JSON.stringify({ email: 'recipient.t9@example.com', password: 's3cure-pass!', name: 'T9 Recipient' })
+      body: JSON.stringify({
+        email: 'recipient.t9@example.com',
+        password: 's3cure-pass!',
+        name: 'T9 Recipient'
+      })
     });
     const reg = await j(r);
     const recipientCookie = extractSessionCookie(r);
-    check('A1b recipient session created', r.ok && reg.ok && !!recipientCookie, { status: r.status, reg });
+    check('A1b recipient session created', r.ok && reg.ok && !!recipientCookie, {
+      status: r.status,
+      reg
+    });
     r = await fetch(BASE + '/api/auth/register', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: jsonHeaders,
-      body: JSON.stringify({ email: 'stranger.t9@example.com', password: 's3cure-pass!', name: 'T9 Stranger' })
+      body: JSON.stringify({
+        email: 'stranger.t9@example.com',
+        password: 's3cure-pass!',
+        name: 'T9 Stranger'
+      })
     });
     const reg2 = await j(r);
     const strangerCookie = extractSessionCookie(r);
-    check('A1c stranger session created', r.ok && reg2.ok && !!strangerCookie, { status: r.status, reg2 });
+    check('A1c stranger session created', r.ok && reg2.ok && !!strangerCookie, {
+      status: r.status,
+      reg2
+    });
 
     // T9-3 recipient loads WITH the editor code + session -> adoption row.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/load', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: Object.assign({}, cookieHeader(recipientCookie), { 'X-Editor-Code': editorCode }),
       body: JSON.stringify({})
     });
     const aload = await j(r);
-    check('A2a code load by signed-in recipient -> role editor + scope', r.ok && aload.ok && aload.role === 'editor' && Array.isArray(aload.scope) && aload.scope.indexOf('wbs') !== -1, aload);
+    check(
+      'A2a code load by signed-in recipient -> role editor + scope',
+      r.ok &&
+        aload.ok &&
+        aload.role === 'editor' &&
+        Array.isArray(aload.scope) &&
+        aload.scope.indexOf('wbs') !== -1,
+      aload
+    );
 
     // A2b the pinned project shows in the recipient's OWN list.
-    r = await fetch(BASE + '/api/cloud/projects', { method: 'GET', credentials: 'same-origin', headers: cookieHeader(recipientCookie) });
+    r = await fetch(BASE + '/api/cloud/projects', {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: cookieHeader(recipientCookie)
+    });
     const rlist = await j(r);
-    const rrow = (rlist.projects || []).find(function(p) { return p.projectId === pid; });
-    check('A2b adopted project in recipient list with accessRole editor + adoptedAt',
-      r.ok && rlist.ok && !!rrow && rrow.accessRole === 'editor' && !!rrow.adoptedAt && rrow.hasSnapshot === true, rrow);
+    const rrow = (rlist.projects || []).find(function (p) {
+      return p.projectId === pid;
+    });
+    check(
+      'A2b adopted project in recipient list with accessRole editor + adoptedAt',
+      r.ok &&
+        rlist.ok &&
+        !!rrow &&
+        rrow.accessRole === 'editor' &&
+        !!rrow.adoptedAt &&
+        rrow.hasSnapshot === true,
+      rrow
+    );
 
     // T9-4 session-only load (no code) -> adoption fallback.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/load', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: cookieHeader(recipientCookie),
       body: JSON.stringify({})
     });
     const sload = await j(r);
-    check('A3a session-only load falls back to adoption (role editor, live scope)', r.ok && sload.ok && sload.role === 'editor' && sload.scope.indexOf('bud') !== -1 && !!sload.state, sload);
+    check(
+      'A3a session-only load falls back to adoption (role editor, live scope)',
+      r.ok &&
+        sload.ok &&
+        sload.role === 'editor' &&
+        sload.scope.indexOf('bud') !== -1 &&
+        !!sload.state,
+      sload
+    );
 
     // T9-5 session-only SAVE by the adopted editor succeeds (scoped merge).
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/save', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: cookieHeader(recipientCookie),
       body: JSON.stringify({ state: { wbs: { items: [{ id: 'w1', name: 'Editor wrote this' }] } } })
     });
@@ -206,7 +334,8 @@ function extractSessionCookie(res) {
 
     // T9-6 viewer adoption.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/editors', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
       body: JSON.stringify({ label: 'Recipient Viewer', scope: ['meet'], role: 'view' })
     });
@@ -215,41 +344,74 @@ function extractSessionCookie(res) {
     const viewCode = vw.editorCode;
 
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/load', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: Object.assign({}, cookieHeader(recipientCookie), { 'X-View-Code': viewCode }),
       body: JSON.stringify({})
     });
     const vload = await j(r);
-    check('A5b viewer code load by signed-in recipient -> role view', r.ok && vload.ok && vload.role === 'view', vload);
+    check(
+      'A5b viewer code load by signed-in recipient -> role view',
+      r.ok && vload.ok && vload.role === 'view',
+      vload
+    );
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/load', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: cookieHeader(recipientCookie),
       body: JSON.stringify({})
     });
     const vsload = await j(r);
-    check('A5c session-only load now answers role view (adoption upserted to viewer)', r.ok && vsload.ok && vsload.role === 'view', vsload);
+    check(
+      'A5c session-only load now answers role view (adoption upserted to viewer)',
+      r.ok && vsload.ok && vsload.role === 'view',
+      vsload
+    );
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/save', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: cookieHeader(recipientCookie),
       body: JSON.stringify({ state: { meet: { items: [] } } })
     });
     const vsave = await j(r);
-    check('A5d session-only SAVE by adopted VIEWER -> refused (403)', r.status === 403 && !vsave.ok, { status: r.status, vsave });
+    check(
+      'A5d session-only SAVE by adopted VIEWER -> refused (403)',
+      r.status === 403 && !vsave.ok,
+      { status: r.status, vsave }
+    );
 
     // A5e list row now says viewer.
-    r = await fetch(BASE + '/api/cloud/projects', { method: 'GET', credentials: 'same-origin', headers: cookieHeader(recipientCookie) });
+    r = await fetch(BASE + '/api/cloud/projects', {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: cookieHeader(recipientCookie)
+    });
     const rlist2 = await j(r);
-    const rrow2 = (rlist2.projects || []).find(function(p) { return p.projectId === pid; });
-    check('A5e list reflects the viewer adoption', r.ok && !!rrow2 && rrow2.accessRole === 'view', rrow2);
+    const rrow2 = (rlist2.projects || []).find(function (p) {
+      return p.projectId === pid;
+    });
+    check(
+      'A5e list reflects the viewer adoption',
+      r.ok && !!rrow2 && rrow2.accessRole === 'view',
+      rrow2
+    );
 
     // T9-7 revoke -> session-only load answers code_revoked.
-    const editorList = await j(await fetch(BASE + '/api/cloud/projects/' + pid + '/editors', {
-      method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': ownerCode }
-    }));
-    const viewerRow = (editorList.editors || []).find(function(e) { return e.role === 'view'; });
+    const editorList = await j(
+      await fetch(BASE + '/api/cloud/projects/' + pid + '/editors', {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: { 'X-Owner-Code': ownerCode }
+      })
+    );
+    const viewerRow = (editorList.editors || []).find(function (e) {
+      return e.role === 'view';
+    });
     if (viewerRow) {
       r = await fetch(BASE + '/api/cloud/projects/' + pid + '/editors/' + viewerRow.id, {
-        method: 'DELETE', credentials: 'same-origin', headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode })
+        method: 'DELETE',
+        credentials: 'same-origin',
+        headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode })
       });
       const rv = await j(r);
       check('A6a viewer code revoked', r.ok && rv.ok, rv);
@@ -257,23 +419,30 @@ function extractSessionCookie(res) {
       check('A6a viewer code revoked', false, editorList);
     }
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/load', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: cookieHeader(recipientCookie),
       body: JSON.stringify({})
     });
     const revload = await j(r);
-    check('A6b session-only load after revoke -> code_revoked', r.status === 403 && revload.error === 'code_revoked', { status: r.status, revload });
+    check(
+      'A6b session-only load after revoke -> code_revoked',
+      r.status === 403 && revload.error === 'code_revoked',
+      { status: r.status, revload }
+    );
 
     // Re-adopt as editor for the remaining checks (new editor code + load).
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/editors', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
       body: JSON.stringify({ label: 'Recipient Editor 2', scope: ['wbs'], role: 'editor' })
     });
     const ed2 = await j(r);
     const editorCode2 = ed2.editorCode;
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/load', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: Object.assign({}, cookieHeader(recipientCookie), { 'X-Editor-Code': editorCode2 }),
       body: JSON.stringify({})
     });
@@ -281,46 +450,82 @@ function extractSessionCookie(res) {
 
     // T9-8 unpin.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/adopt', {
-      method: 'DELETE', credentials: 'same-origin', headers: cookieHeader(recipientCookie)
+      method: 'DELETE',
+      credentials: 'same-origin',
+      headers: cookieHeader(recipientCookie)
     });
     const unpin = await j(r);
     check('A7a unpin ok', r.ok && unpin.ok, unpin);
-    r = await fetch(BASE + '/api/cloud/projects', { method: 'GET', credentials: 'same-origin', headers: cookieHeader(recipientCookie) });
+    r = await fetch(BASE + '/api/cloud/projects', {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: cookieHeader(recipientCookie)
+    });
     const rlist3 = await j(r);
-    const stillThere = (rlist3.projects || []).some(function(p) { return p.projectId === pid; });
+    const stillThere = (rlist3.projects || []).some(function (p) {
+      return p.projectId === pid;
+    });
     check('A7b unpinned project gone from recipient list', r.ok && !stillThere, rlist3);
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/load', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: cookieHeader(recipientCookie),
       body: JSON.stringify({})
     });
     const unload = await j(r);
-    check('A7c session-only load after unpin -> forbidden (403)', r.status === 403 && !unload.ok, { status: r.status, unload });
-    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/adopt', {
-      method: 'DELETE', credentials: 'same-origin', headers: cookieHeader(recipientCookie)
+    check('A7c session-only load after unpin -> forbidden (403)', r.status === 403 && !unload.ok, {
+      status: r.status,
+      unload
     });
-    check('A7d second unpin -> 404 not adopted', r.status === 404, { status: r.status, body: await j(r) });
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/adopt', {
+      method: 'DELETE',
+      credentials: 'same-origin',
+      headers: cookieHeader(recipientCookie)
+    });
+    check('A7d second unpin -> 404 not adopted', r.status === 404, {
+      status: r.status,
+      body: await j(r)
+    });
 
     // T9-9 the stranger never saw it. Re-pin first so the list has a row.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/load', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: Object.assign({}, cookieHeader(recipientCookie), { 'X-Editor-Code': editorCode2 }),
       body: JSON.stringify({})
     });
     await j(r);
-    r = await fetch(BASE + '/api/cloud/projects', { method: 'GET', credentials: 'same-origin', headers: cookieHeader(strangerCookie) });
+    r = await fetch(BASE + '/api/cloud/projects', {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: cookieHeader(strangerCookie)
+    });
     const slist = await j(r);
-    const leaked = (slist.projects || []).some(function(p) { return p.projectId === pid; });
-    check('A8 unrelated session never sees the adopted project', r.ok && slist.ok && !leaked, slist);
+    const leaked = (slist.projects || []).some(function (p) {
+      return p.projectId === pid;
+    });
+    check(
+      'A8 unrelated session never sees the adopted project',
+      r.ok && slist.ok && !leaked,
+      slist
+    );
 
     // T9-10 the owner's own list still shows it as OWNER (dedup win).
     r = await fetch(BASE + '/api/cloud/projects', { method: 'GET', credentials: 'same-origin' });
     // No session cookie here — the owner row is not session-listed; instead
     // verify via the owner code's own meta that the project is untouched.
-    const meta = await j(await fetch(BASE + '/api/cloud/projects/' + pid + '/meta', {
-      method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': ownerCode }
-    }));
-    check('A9 owner meta still resolves (project untouched by adoption)', meta.ok === true && !!meta.label, meta);
+    const meta = await j(
+      await fetch(BASE + '/api/cloud/projects/' + pid + '/meta', {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: { 'X-Owner-Code': ownerCode }
+      })
+    );
+    check(
+      'A9 owner meta still resolves (project untouched by adoption)',
+      meta.ok === true && !!meta.label,
+      meta
+    );
 
     // LAUNCHER DELETE (owner 2026-08-17): when the owner deletes the main
     // version, the recipient's adopted row must NOT vanish silently — it
@@ -329,33 +534,74 @@ function extractSessionCookie(res) {
     // project_deleted ("there is no continuation, no update — it will not
     // work for them", per the owner). The recipient can still unpin it.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/delete', {
-      method: 'POST', credentials: 'same-origin', headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode })
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode })
     });
     const del = await j(r);
     check('A10a owner deletes the main version (soft delete)', r.ok && del.ok, del);
-    r = await fetch(BASE + '/api/cloud/projects', { method: 'GET', credentials: 'same-origin', headers: cookieHeader(recipientCookie) });
+    r = await fetch(BASE + '/api/cloud/projects', {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: cookieHeader(recipientCookie)
+    });
     const discList = await j(r);
-    const discRow = (discList.projects || []).find(function(p) { return p.projectId === pid; });
-    check('A10b adopted row STILL listed after owner delete, flagged discontinued + deletedAt',
-      r.ok && discList.ok && !!discRow && discRow.discontinued === true && !!discRow.deletedAt, discRow);
+    const discRow = (discList.projects || []).find(function (p) {
+      return p.projectId === pid;
+    });
+    check(
+      'A10b adopted row STILL listed after owner delete, flagged discontinued + deletedAt',
+      r.ok && discList.ok && !!discRow && discRow.discontinued === true && !!discRow.deletedAt,
+      discRow
+    );
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/load', {
-      method: 'POST', credentials: 'same-origin', headers: cookieHeader(recipientCookie), body: JSON.stringify({})
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: cookieHeader(recipientCookie),
+      body: JSON.stringify({})
     });
     const discLoad = await j(r);
-    check('A10c session-only load of the discontinued project -> project_deleted', r.status === 410 && discLoad.error === 'project_deleted', { status: r.status, discLoad });
+    check(
+      'A10c session-only load of the discontinued project -> project_deleted',
+      r.status === 410 && discLoad.error === 'project_deleted',
+      { status: r.status, discLoad }
+    );
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/adopt', {
-      method: 'DELETE', credentials: 'same-origin', headers: cookieHeader(recipientCookie)
+      method: 'DELETE',
+      credentials: 'same-origin',
+      headers: cookieHeader(recipientCookie)
     });
     const discUnpin = await j(r);
-    check('A10d recipient removes the discontinued project (unpin still works)', r.ok && discUnpin.ok, discUnpin);
-    r = await fetch(BASE + '/api/cloud/projects', { method: 'GET', credentials: 'same-origin', headers: cookieHeader(recipientCookie) });
+    check(
+      'A10d recipient removes the discontinued project (unpin still works)',
+      r.ok && discUnpin.ok,
+      discUnpin
+    );
+    r = await fetch(BASE + '/api/cloud/projects', {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: cookieHeader(recipientCookie)
+    });
     const discList2 = await j(r);
-    const discGone = !(discList2.projects || []).some(function(p) { return p.projectId === pid; });
-    check('A10e discontinued project gone from recipient list after removal', r.ok && discGone, discList2);
+    const discGone = !(discList2.projects || []).some(function (p) {
+      return p.projectId === pid;
+    });
+    check(
+      'A10e discontinued project gone from recipient list after removal',
+      r.ok && discGone,
+      discList2
+    );
 
     log('\n===== SUMMARY =====');
     const fails = results.filter(r2 => !r2.val);
-    log('checks: ' + results.length + ', passed: ' + (results.length - fails.length) + ', failed: ' + fails.length);
+    log(
+      'checks: ' +
+        results.length +
+        ', passed: ' +
+        (results.length - fails.length) +
+        ', failed: ' +
+        fails.length
+    );
     if (fails.length) {
       log('FAILED: ' + fails.map(f => f.name).join(' | '));
       stopWrangler();
@@ -364,7 +610,7 @@ function extractSessionCookie(res) {
     stopWrangler();
     process.exit(0);
   } catch (e) {
-    log('FATAL: ' + (e && e.stack || e));
+    log('FATAL: ' + ((e && e.stack) || e));
     stopWrangler();
     process.exit(1);
   }

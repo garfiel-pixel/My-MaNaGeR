@@ -15,7 +15,7 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   const U = ns.Utils;
@@ -33,7 +33,9 @@ var MMGR = window.MMGR || {};
 
   function toSchedMap(sched) {
     const map = {};
-    (sched || []).forEach(rec => { map[rec.id] = rec; });
+    (sched || []).forEach(rec => {
+      map[rec.id] = rec;
+    });
     return map;
   }
 
@@ -41,7 +43,9 @@ var MMGR = window.MMGR || {};
   // PURE: orders a task array without mutating it.
   function topologicalSort(tasks) {
     const taskMap = {};
-    tasks.forEach(t => { taskMap[t.id] = t; });
+    tasks.forEach(t => {
+      taskMap[t.id] = t;
+    });
 
     const inDegree = {};
     const adj = {}; // successor adjacency
@@ -65,7 +69,7 @@ var MMGR = window.MMGR || {};
     while (queue.length) {
       const id = queue.shift();
       sorted.push(id);
-      for (const succId of (adj[id] || [])) {
+      for (const succId of adj[id] || []) {
         inDegree[succId]--;
         if (inDegree[succId] === 0) queue.push(succId);
       }
@@ -80,7 +84,9 @@ var MMGR = window.MMGR || {};
   // cascade , Kahn's sort silently drops cycle members.
   function findCycles(tasks) {
     const taskMap = {};
-    tasks.forEach(t => { taskMap[t.id] = t; });
+    tasks.forEach(t => {
+      taskMap[t.id] = t;
+    });
     const visited = new Set();
     const path = [];
     const inPath = new Set();
@@ -120,10 +126,13 @@ var MMGR = window.MMGR || {};
   function forwardPass(tasks) {
     const sorted = topologicalSort(tasks);
     const taskMap = {};
-    sorted.forEach(t => { taskMap[t.id] = t; });
+    sorted.forEach(t => {
+      taskMap[t.id] = t;
+    });
     let earliestStart = null;
     sorted.forEach(t => {
-      if (t.startDate && (!earliestStart || t.startDate < earliestStart)) earliestStart = t.startDate;
+      if (t.startDate && (!earliestStart || t.startDate < earliestStart))
+        earliestStart = t.startDate;
     });
     const sched = [];
     const schedMap = {};
@@ -157,7 +166,11 @@ var MMGR = window.MMGR || {};
             if (ps && (!maxPredEF || ps > maxPredEF)) maxPredEF = ps;
           }
         }
-        const anchor = t.startDate ? U.parseDL(t.startDate) : (earliestStart ? U.parseDL(earliestStart) : null);
+        const anchor = t.startDate
+          ? U.parseDL(t.startDate)
+          : earliestStart
+            ? U.parseDL(earliestStart)
+            : null;
         if (maxPredEF) {
           // Successor starts on the NEXT WORKING DAY after the predecessor's
           // early finish (skips weekends when the work week is < 7).
@@ -199,7 +212,9 @@ var MMGR = window.MMGR || {};
     const dlStr = U.fmtDate(dl);
     const hasSucc = {};
     (tasks || []).forEach(t => {
-      (t.predecessors || []).forEach(p => { hasSucc[p] = true; });
+      (t.predecessors || []).forEach(p => {
+        hasSucc[p] = true;
+      });
     });
     let terminalEF = null;
     sched.forEach(rec => {
@@ -243,8 +258,11 @@ var MMGR = window.MMGR || {};
           if (os && os.ls && (!minSuccLS || os.ls < minSuccLS)) minSuccLS = os.ls;
         }
       }
-      const lf = minSuccLS ? U.addWorkingDays(minSuccLS, -1)
-        : (dlDate && !hasSuccessor(schedMap, tasks, t.id) && rec.ef < dlDate ? dlDate : projectEnd);
+      const lf = minSuccLS
+        ? U.addWorkingDays(minSuccLS, -1)
+        : dlDate && !hasSuccessor(schedMap, tasks, t.id) && rec.ef < dlDate
+          ? dlDate
+          : projectEnd;
       rec.lf = lf;
       rec.ls = U.addWorkingDays(lf, -(dur - 1));
     });
@@ -254,7 +272,8 @@ var MMGR = window.MMGR || {};
   // Any successor references this task id? (deadline float is terminal-only)
   function hasSuccessor(schedMap, tasks, id) {
     for (const other of tasks) {
-      if (other.predecessors && other.predecessors.length && other.predecessors.includes(id)) return true;
+      if (other.predecessors && other.predecessors.length && other.predecessors.includes(id))
+        return true;
     }
     return false;
   }
@@ -266,10 +285,13 @@ var MMGR = window.MMGR || {};
   function calcFloat(tasks, sched) {
     const schedMap = toSchedMap(sched);
     sched.forEach(rec => {
-      rec.totalFloat = (rec.lf && rec.ef) ? signAwareFloat(rec.ef, rec.lf) : null;
+      rec.totalFloat = rec.lf && rec.ef ? signAwareFloat(rec.ef, rec.lf) : null;
     });
     sched.forEach(rec => {
-      if (!rec.ef) { rec.freeFloat = null; return; }
+      if (!rec.ef) {
+        rec.freeFloat = null;
+        return;
+      }
       let minSuccES = null;
       for (const other of tasks) {
         if (other.predecessors && other.predecessors.includes(rec.id)) {
@@ -277,7 +299,7 @@ var MMGR = window.MMGR || {};
           if (os && os.es && (!minSuccES || os.es < minSuccES)) minSuccES = os.es;
         }
       }
-      rec.freeFloat = minSuccES ? (U.workingDaysBetween(rec.ef, minSuccES) - 1) : rec.totalFloat;
+      rec.freeFloat = minSuccES ? U.workingDaysBetween(rec.ef, minSuccES) - 1 : rec.totalFloat;
     });
     return sched;
   }
@@ -331,7 +353,8 @@ var MMGR = window.MMGR || {};
   }
 
   function getTaskWeatherExposure(task, regionId) {
-    if (!ns.Weather || !task || !task.startDate || !task.endDate) return { exposed: false, reason: '' };
+    if (!ns.Weather || !task || !task.startDate || !task.endDate)
+      return { exposed: false, reason: '' };
     return ns.Weather.getTaskWeatherExposure(task, regionId);
   }
 
@@ -350,8 +373,9 @@ var MMGR = window.MMGR || {};
         // Weather Exposure card). This is front-loaded float at the exact
         // weather-vulnerable point in the schedule, on top of the auto
         // regional pad, not a single buffer stacked at the project end.
-        const manual = (parseInt(t.wxFloatPad, 10) || 0);
-        const pad = calculateWeatherBuffer(t, regionId, bufferDays) + Math.max(0, Math.min(manual, 60));
+        const manual = parseInt(t.wxFloatPad, 10) || 0;
+        const pad =
+          calculateWeatherBuffer(t, regionId, bufferDays) + Math.max(0, Math.min(manual, 60));
         t._sched = t._sched || {};
         t._sched.paddedDuration = baseDur + pad;
         t._sched.weatherPad = pad;
@@ -382,20 +406,23 @@ var MMGR = window.MMGR || {};
 
     // Phase roll-up: phase spans derive from their children's plan.
     const schedMap = toSchedMap(sched);
-    live.filter(t => t.isPhase).forEach(phase => {
-      const children = live.filter(c => c.parentName === phase.name || c.parentId === phase.id);
-      const childRecs = children.map(c => schedMap[c.id]).filter(r => r && r.es && r.ef);
-      if (childRecs.length) {
-        let minES = null, maxEF = null;
-        childRecs.forEach(r => {
-          if (!minES || r.es < minES) minES = r.es;
-          if (!maxEF || r.ef > maxEF) maxEF = r.ef;
-        });
-        const rec = schedMap[phase.id] || (schedMap[phase.id] = { id: phase.id });
-        rec.es = minES;
-        rec.ef = maxEF;
-      }
-    });
+    live
+      .filter(t => t.isPhase)
+      .forEach(phase => {
+        const children = live.filter(c => c.parentName === phase.name || c.parentId === phase.id);
+        const childRecs = children.map(c => schedMap[c.id]).filter(r => r && r.es && r.ef);
+        if (childRecs.length) {
+          let minES = null,
+            maxEF = null;
+          childRecs.forEach(r => {
+            if (!minES || r.es < minES) minES = r.es;
+            if (!maxEF || r.ef > maxEF) maxEF = r.ef;
+          });
+          const rec = schedMap[phase.id] || (schedMap[phase.id] = { id: phase.id });
+          rec.es = minES;
+          rec.ef = maxEF;
+        }
+      });
 
     // Which live tasks would actually change? Status-aware (owner 2026-09-26
     // cascade-polish): completed and in-progress tasks carry ACTUAL dates -
@@ -418,7 +445,13 @@ var MMGR = window.MMGR || {};
         return;
       }
       if (newStart !== t.startDate || newEnd !== t.endDate) {
-        changes.push({ id: t.id, fromStart: t.startDate, toStart: newStart, fromEnd: t.endDate, toEnd: newEnd });
+        changes.push({
+          id: t.id,
+          fromStart: t.startDate,
+          toStart: newStart,
+          fromEnd: t.endDate,
+          toEnd: newEnd
+        });
       }
     });
 
@@ -470,19 +503,28 @@ var MMGR = window.MMGR || {};
   // write-back is gated behind a confirmation dialog listing the affected ids.
   function cascade(regionId, opts) {
     const tasks = getTasks();
-    if (!tasks.length) { ns.App.showToast('No tasks to cascade.', 'err'); return false; }
+    if (!tasks.length) {
+      ns.App.showToast('No tasks to cascade.', 'err');
+      return false;
+    }
 
     // Check for tasks without durations
     const noDuration = tasks.filter(t => !t.duration && !t.isPhase);
     if (noDuration.length > 0) {
-      ns.App.showToast(noDuration.length + ' task(s) have no duration. Set durations first.', 'err');
+      ns.App.showToast(
+        noDuration.length + ' task(s) have no duration. Set durations first.',
+        'err'
+      );
       return false;
     }
 
     // Cycle check BEFORE any computation , never allow a partial plan.
     const cyclic = findCycles(tasks);
     if (cyclic.length > 0) {
-      ns.App.showToast('Cyclic predecessor links detected: ' + cyclic.join(', ') + '. Break the loop to cascade.', 'err');
+      ns.App.showToast(
+        'Cyclic predecessor links detected: ' + cyclic.join(', ') + '. Break the loop to cascade.',
+        'err'
+      );
       console.warn('Schedule cascade aborted , cycle involving:', cyclic);
       return false;
     }
@@ -494,7 +536,7 @@ var MMGR = window.MMGR || {};
     const plan = computePlan(region, 5);
     const affected = plan.changes;
 
-    const proceed = function() {
+    const proceed = function () {
       // Capture the pre-cascade plan so the whole rewrite is undoable.
       ns.State.pushUndo();
       applyPlan(region);
@@ -504,17 +546,29 @@ var MMGR = window.MMGR || {};
       ns.Render.renderDash();
       const critTasks = tasks.filter(t => t.critical && !t.isPhase);
       const skippedN = (plan.skipped || []).length;
-      ns.App.showToast('Cascade complete. ' + critTasks.length + ' tasks on critical path.'
-        + (skippedN ? ' ' + skippedN + ' completed or in-progress task(s) left untouched.' : ''), 'ok');
+      ns.App.showToast(
+        'Cascade complete. ' +
+          critTasks.length +
+          ' tasks on critical path.' +
+          (skippedN ? ' ' + skippedN + ' completed or in-progress task(s) left untouched.' : ''),
+        'ok'
+      );
       return true;
     };
 
-    const threshold = (opts && typeof opts.threshold === 'number') ? opts.threshold : CASCADE_CONFIRM_THRESHOLD;
+    const threshold =
+      opts && typeof opts.threshold === 'number' ? opts.threshold : CASCADE_CONFIRM_THRESHOLD;
     if (affected.length > threshold) {
       ns.App.askConfirm({
         title: 'Confirm Schedule Cascade',
-        message: affected.length + ' task(s) will have their start/end dates rewritten by this cascade.'
-          + ((plan.skipped || []).length ? ' ' + plan.skipped.length + ' completed or in-progress task(s) keep their actual dates.' : ''),
+        message:
+          affected.length +
+          ' task(s) will have their start/end dates rewritten by this cascade.' +
+          ((plan.skipped || []).length
+            ? ' ' +
+              plan.skipped.length +
+              ' completed or in-progress task(s) keep their actual dates.'
+            : ''),
         items: affected.map(c => c.id),
         danger: true,
         confirmLabel: 'Cascade Dates',
@@ -582,7 +636,9 @@ var MMGR = window.MMGR || {};
       sched = backwardPass(work, sched, deadline);
       sched = calcFloat(work, sched);
       markCritical(sched);
-    } catch (e) { /* zero-throw like the watchers */ }
+    } catch (e) {
+      /* zero-throw like the watchers */
+    }
   }
 
   // ---- Weather Exposure Check ----
@@ -601,14 +657,15 @@ var MMGR = window.MMGR || {};
   // only, ranked by realistic recoverable days (≈28% of duration), with
   // regulatory / curing / waiting-time work excluded since adding labor
   // cannot compress it. Returns { task, duration, recoverable } records.
-  const CRASH_EXCLUDE_RE = /\b(cure|curing|clearance|approval|sign.?off|inspection|certificate|permit|wait|review|dry(ing)?|set(ting)?)\b/i;
+  const CRASH_EXCLUDE_RE =
+    /\b(cure|curing|clearance|approval|sign.?off|inspection|certificate|permit|wait|review|dry(ing)?|set(ting)?)\b/i;
   function crashCandidates() {
     const tasks = getTasks();
     const crit = tasks.filter((t, i) => {
       if (t.totalFloat !== 0 || !t.startDate || !t.endDate) return false;
       const next = tasks[i + 1];
-      const tLvl = t.indent !== undefined ? t.indent : (t.level || 0);
-      const nLvl = next ? (next.indent !== undefined ? next.indent : (next.level || 0)) : 0;
+      const tLvl = t.indent !== undefined ? t.indent : t.level || 0;
+      const nLvl = next ? (next.indent !== undefined ? next.indent : next.level || 0) : 0;
       return !(next && nLvl > tLvl); // leaf tasks only , not phase rollups
     });
     return crit
@@ -622,7 +679,7 @@ var MMGR = window.MMGR || {};
         const dur = Math.max(1, U.daysBetween(t.startDate, t.endDate) + 1);
         // Rough, conservative guideline: labor-intensive critical-path work
         // can often absorb ~25-30% compression with added crews/shifts before
-        // hitting real diminishing returns. Planning-level estimate only , 
+        // hitting real diminishing returns. Planning-level estimate only ,
         // always confirm with whoever actually runs that crew.
         const recoverable = Math.max(1, Math.round(dur * 0.28));
         return { task: t, duration: dur, recoverable: recoverable };
@@ -655,7 +712,7 @@ var MMGR = window.MMGR || {};
       if (t.totalFloat <= 10) return true;
       if (t.floatBaseline && t.floatBaseline > 0) {
         const consumed = (t.floatBaseline - t.totalFloat) / t.floatBaseline;
-        if (consumed > 0.30) return true;
+        if (consumed > 0.3) return true;
       }
       return false;
     });
@@ -669,8 +726,8 @@ var MMGR = window.MMGR || {};
   // ---- Resource Over-Allocation (warning only) ----
   // Same person assigned to overlapping critical-path tasks. No levelling.
   function findResourceConflicts() {
-    const tasks = getTasks().filter(t =>
-      !t.isPhase && t.assignee && t.critical && t.startDate && t.endDate
+    const tasks = getTasks().filter(
+      t => !t.isPhase && t.assignee && t.critical && t.startDate && t.endDate
     );
     const byPerson = {};
     tasks.forEach(t => {
@@ -682,8 +739,11 @@ var MMGR = window.MMGR || {};
       const list = byPerson[person];
       for (let i = 0; i < list.length; i++) {
         for (let j = i + 1; j < list.length; j++) {
-          const a = list[i], b = list[j];
-          const overlaps = U.daysBetween(b.startDate, a.endDate) >= 0 && U.daysBetween(a.startDate, b.endDate) >= 0;
+          const a = list[i],
+            b = list[j];
+          const overlaps =
+            U.daysBetween(b.startDate, a.endDate) >= 0 &&
+            U.daysBetween(a.startDate, b.endDate) >= 0;
           if (overlaps) {
             conflicts.push({ assignee: person, a: a.id, b: b.id });
           }
@@ -703,7 +763,11 @@ var MMGR = window.MMGR || {};
     // cascade, so the audit and the live path never disagree).
     const cyclic = findCycles(tasks);
     if (cyclic.length > 0) {
-      issues.push({ severity: 'error', task: cyclic.join(', '), message: 'Cyclic predecessor links detected , these tasks cannot be scheduled' });
+      issues.push({
+        severity: 'error',
+        task: cyclic.join(', '),
+        message: 'Cyclic predecessor links detected , these tasks cannot be scheduled'
+      });
     }
 
     // Pure computation on transient clones , live tasks stay untouched.
@@ -717,24 +781,40 @@ var MMGR = window.MMGR || {};
     for (const t of tasks) {
       const rec = schedMap[t.id] || {};
       if (t.startDate && t.endDate && t.startDate > t.endDate) {
-        issues.push({ severity: 'error', task: t.id, message: 'End date ' + t.endDate + ' is before start date ' + t.startDate });
+        issues.push({
+          severity: 'error',
+          task: t.id,
+          message: 'End date ' + t.endDate + ' is before start date ' + t.startDate
+        });
       }
       if (t.predecessors && rec.es) {
         for (const predId of t.predecessors) {
           const pred = tasks.find(p => p.id === predId);
           const predRec = schedMap[predId];
           if (pred && predRec && predRec.ef && U.daysBetween(predRec.ef, rec.es) < 0) {
-            issues.push({ severity: 'warning', task: t.id, message: 'Starts before predecessor ' + predId + ' finishes' });
+            issues.push({
+              severity: 'warning',
+              task: t.id,
+              message: 'Starts before predecessor ' + predId + ' finishes'
+            });
           }
         }
       }
       if (t.parentId) {
         const parent = tasks.find(p => p.id === t.parentId);
         if (parent && parent.startDate && t.startDate && parent.startDate > t.startDate) {
-          issues.push({ severity: 'warning', task: t.id, message: 'Starts before parent ' + parent.id });
+          issues.push({
+            severity: 'warning',
+            task: t.id,
+            message: 'Starts before parent ' + parent.id
+          });
         }
         if (parent && parent.endDate && t.endDate && t.endDate > parent.endDate) {
-          issues.push({ severity: 'warning', task: t.id, message: 'Ends after parent ' + parent.id });
+          issues.push({
+            severity: 'warning',
+            task: t.id,
+            message: 'Ends after parent ' + parent.id
+          });
         }
       }
       if (!t.duration && !t.isPhase) {
@@ -748,7 +828,8 @@ var MMGR = window.MMGR || {};
       issues.push({
         severity: 'warning',
         task: c.a + ' / ' + c.b,
-        message: c.assignee + ' is assigned to overlapping critical-path tasks (' + c.a + ', ' + c.b + ')'
+        message:
+          c.assignee + ' is assigned to overlapping critical-path tasks (' + c.a + ', ' + c.b + ')'
       });
     });
 
@@ -761,7 +842,17 @@ var MMGR = window.MMGR || {};
       if (rec && rec.totalFloat !== null && rec.totalFloat <= 0) criticalCount++;
       if (rec && rec.totalFloat !== null && rec.totalFloat > 0 && rec.totalFloat <= 5) lowFloat++;
     });
-    issues.push({ severity: 'info', task: 'all', message: criticalCount + '/' + totalTasks + ' tasks on critical path. ' + lowFloat + ' tasks with low float (≤5d).' });
+    issues.push({
+      severity: 'info',
+      task: 'all',
+      message:
+        criticalCount +
+        '/' +
+        totalTasks +
+        ' tasks on critical path. ' +
+        lowFloat +
+        ' tasks with low float (≤5d).'
+    });
 
     return issues;
   }
@@ -787,7 +878,8 @@ var MMGR = window.MMGR || {};
       const simDur = {};
       tasks.forEach(t => {
         const baseDur = Math.max(1, U.daysBetween(t.startDate, t.endDate));
-        let taskRiskFactor = riskFactor, taskRiskAdder = riskAdder;
+        let taskRiskFactor = riskFactor,
+          taskRiskAdder = riskAdder;
         if (t.confidenceLevel === 'high' || t.confidence === 'high') {
           taskRiskFactor = Math.min(riskFactor, 1.1);
           taskRiskAdder = Math.min(riskAdder, 1);
@@ -797,9 +889,14 @@ var MMGR = window.MMGR || {};
         }
         simDur[t.id] = triSample(baseDur * 0.8, baseDur, baseDur * taskRiskFactor + taskRiskAdder);
       });
-      const startDates = {}, endDates = {};
-      let changed = true, passes = 0;
-      tasks.forEach(t => { startDates[t.id] = new Date(t.startDate); endDates[t.id] = new Date(t.startDate); });
+      const startDates = {},
+        endDates = {};
+      let changed = true,
+        passes = 0;
+      tasks.forEach(t => {
+        startDates[t.id] = new Date(t.startDate);
+        endDates[t.id] = new Date(t.startDate);
+      });
       while (changed && passes < 50) {
         changed = false;
         passes++;
@@ -813,13 +910,26 @@ var MMGR = window.MMGR || {};
           });
           let sd = new Date(t.startDate);
           if (minStart && minStart > sd) sd = minStart;
-          if (!startDates[t.id] || sd > startDates[t.id]) { startDates[t.id] = sd; changed = true; }
+          if (!startDates[t.id] || sd > startDates[t.id]) {
+            startDates[t.id] = sd;
+            changed = true;
+          }
           const se = new Date(sd);
           se.setDate(se.getDate() + Math.round(simDur[t.id]));
-          if (!endDates[t.id] || se > endDates[t.id]) { endDates[t.id] = se; changed = true; }
+          if (!endDates[t.id] || se > endDates[t.id]) {
+            endDates[t.id] = se;
+            changed = true;
+          }
         });
       }
-      results.push(new Date(Math.max.apply(null, Object.keys(endDates).map(k => endDates[k].getTime()))));
+      results.push(
+        new Date(
+          Math.max.apply(
+            null,
+            Object.keys(endDates).map(k => endDates[k].getTime())
+          )
+        )
+      );
     }
     results.sort((a, b) => a - b);
     return { results: results, tasks: tasks };
@@ -831,23 +941,31 @@ var MMGR = window.MMGR || {};
     const s = ns.State.getState();
     const targetStr = (U.$('mc-target') || {}).value || '';
     const riskFactor = parseFloat((U.$('mc-risk-factor') || {}).value) || 1.2;
-    const highRiskCount = (s.risks || []).filter(r => !r.issueId && r.probability === 'High' && r.impact === 'High').length;
+    const highRiskCount = (s.risks || []).filter(
+      r => !r.issueId && r.probability === 'High' && r.impact === 'High'
+    ).length;
     const riskAdder = highRiskCount * 2;
     const sim = simulateSchedule(1000, riskFactor, riskAdder);
     if (!sim) {
       const err = U.$('mc-error');
-      if (err) { err.classList.remove('is-hide'); err.textContent = 'Need at least 2 scheduled tasks to simulate.'; }
+      if (err) {
+        err.classList.remove('is-hide');
+        err.textContent = 'Need at least 2 scheduled tasks to simulate.';
+      }
       return;
     }
     const errEl = U.$('mc-error');
     if (errEl) errEl.classList.add('is-hide');
     const { results, tasks } = sim;
     const N = results.length;
-    const p10 = results[Math.floor(N * 0.10)], p50 = results[Math.floor(N * 0.50)], p80 = results[Math.floor(N * 0.80)], p90 = results[Math.floor(N * 0.90)];
+    const p10 = results[Math.floor(N * 0.1)],
+      p50 = results[Math.floor(N * 0.5)],
+      p80 = results[Math.floor(N * 0.8)],
+      p90 = results[Math.floor(N * 0.9)];
     let targetPct = 0;
     if (targetStr) {
       const td = new Date(targetStr);
-      targetPct = Math.round(results.filter(d => d <= td).length / N * 100);
+      targetPct = Math.round((results.filter(d => d <= td).length / N) * 100);
     }
     const res = U.$('mc-result');
     if (res) res.classList.remove('is-hide');
@@ -855,29 +973,46 @@ var MMGR = window.MMGR || {};
     if (hl) {
       if (targetStr) {
         hl.textContent = `${targetPct}% probability of completing by ${new Date(targetStr).toLocaleDateString()}`;
-        hl.style.color = targetPct >= 80 ? 'var(--green)' : targetPct >= 50 ? 'var(--amber)' : 'var(--danger)';
+        hl.style.color =
+          targetPct >= 80 ? 'var(--green)' : targetPct >= 50 ? 'var(--amber)' : 'var(--danger)';
       } else {
         hl.textContent = '50th percentile (median) completion: ' + p50.toLocaleDateString();
         hl.style.color = 'var(--gold)';
       }
     }
-    const confHighN = tasks.filter(t => t.confidenceLevel === 'high' || t.confidence === 'high').length;
-    const confLowN = tasks.filter(t => t.confidenceLevel === 'low' || t.confidence === 'low').length;
+    const confHighN = tasks.filter(
+      t => t.confidenceLevel === 'high' || t.confidence === 'high'
+    ).length;
+    const confLowN = tasks.filter(
+      t => t.confidenceLevel === 'low' || t.confidence === 'low'
+    ).length;
     const det = U.$('mc-detail');
     if (det) {
-      det.textContent = `Based on ${N} simulations | ${tasks.length} tasks | ${highRiskCount} high×high risks detected${(confHighN || confLowN) ? ` | ${confHighN} conf:high (tighter spread), ${confLowN} conf:low (wider spread)` : ''}`;
+      det.textContent = `Based on ${N} simulations | ${tasks.length} tasks | ${highRiskCount} high×high risks detected${confHighN || confLowN ? ` | ${confHighN} conf:high (tighter spread), ${confLowN} conf:low (wider spread)` : ''}`;
     }
     const pctEl = U.$('mc-percentiles');
     if (pctEl) {
       pctEl.innerHTML = `P10 (optimistic): ${p10.toLocaleDateString()} &nbsp;|&nbsp; P50 (median): ${p50.toLocaleDateString()} &nbsp;|&nbsp; P80 (safe): ${p80.toLocaleDateString()} &nbsp;|&nbsp; P90 (conservative): ${p90.toLocaleDateString()}`;
     }
     const buckets = {};
-    results.forEach(d => { const key = d.toLocaleString('default', { month: 'short', year: '2-digit' }); buckets[key] = (buckets[key] || 0) + 1; });
-    const maxC = Math.max.apply(null, Object.keys(buckets).map(k => buckets[k]));
+    results.forEach(d => {
+      const key = d.toLocaleString('default', { month: 'short', year: '2-digit' });
+      buckets[key] = (buckets[key] || 0) + 1;
+    });
+    const maxC = Math.max.apply(
+      null,
+      Object.keys(buckets).map(k => buckets[k])
+    );
     const dist = U.$('mc-dist-bar');
     if (dist) {
-      dist.innerHTML = '<div style="font-size:.7rem;color:var(--slate);margin-bottom:5px">Simulation distribution:</div>' +
-        Object.keys(buckets).map(k => `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;font-size:.68rem"><span style="min-width:55px;color:var(--slate)">${k}</span><div style="height:12px;background:var(--green);border-radius:2px;width:${Math.round(buckets[k] / maxC * 200)}px;opacity:.8"></div><span style="color:var(--slate)">${buckets[k]}</span></div>`).join('');
+      dist.innerHTML =
+        '<div style="font-size:.7rem;color:var(--slate);margin-bottom:5px">Simulation distribution:</div>' +
+        Object.keys(buckets)
+          .map(
+            k =>
+              `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;font-size:.68rem"><span style="min-width:55px;color:var(--slate)">${k}</span><div style="height:12px;background:var(--green);border-radius:2px;width:${Math.round((buckets[k] / maxC) * 200)}px;opacity:.8"></div><span style="color:var(--slate)">${buckets[k]}</span></div>`
+          )
+          .join('');
     }
   }
 
@@ -886,51 +1021,65 @@ var MMGR = window.MMGR || {};
   // that starts or finishes inside the horizon, PLUS overdue carryover that
   // should already have finished. Pure function of tasks , no new state.
   function lookaheadTasks(tasks, days) {
-    const d = (days === undefined || days === null) ? 14 : +days;
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const horizon = new Date(today); horizon.setDate(today.getDate() + d);
+    const d = days === undefined || days === null ? 14 : +days;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const horizon = new Date(today);
+    horizon.setDate(today.getDate() + d);
     // U.parseDL is the app's canonical date parser (local midnight for
     // YYYY-MM-DD) , never new Date('YYYY-MM-DD'), which is UTC and drifts
     // across midnight boundaries on non-UTC machines.
-    const p = (str) => U.parseDL(str);
-    return (tasks || []).filter(function(t) {
-      if (t.status === 'completed') return false;
-      const s = t.startDate ? p(t.startDate) : null;
-      const e = t.endDate ? p(t.endDate) : null;
-      if (!e && !s) return false;
-      if (e && e < today) return true;    // overdue carryover
-      if (e && e <= horizon) return true; // finishing within horizon
-      if (s && s <= horizon) return true; // starting within horizon
-      return false;
-    }).sort(function(a, b) {
-      return p(a.endDate || a.startDate) - p(b.endDate || b.startDate);
-    });
+    const p = str => U.parseDL(str);
+    return (tasks || [])
+      .filter(function (t) {
+        if (t.status === 'completed') return false;
+        const s = t.startDate ? p(t.startDate) : null;
+        const e = t.endDate ? p(t.endDate) : null;
+        if (!e && !s) return false;
+        if (e && e < today) return true; // overdue carryover
+        if (e && e <= horizon) return true; // finishing within horizon
+        if (s && s <= horizon) return true; // starting within horizon
+        return false;
+      })
+      .sort(function (a, b) {
+        return p(a.endDate || a.startDate) - p(b.endDate || b.startDate);
+      });
   }
 
   // ---- MARKET-FEATURE-ROADMAP C8: Percent Plan Complete (PPC) ----
   // Lean metric: of the tasks planned to finish in a given ISO week (Mon-Sun,
   // by endDate), how many are actually completed. weekOffset 0 = current week,
-  // -1 = last week, etc. pct is null when nothing was planned that week , 
+  // -1 = last week, etc. pct is null when nothing was planned that week ,
   // never a fabricated 0%. Zero new state; pure function of task dates.
   function isoWeekStart(offset) {
-    const d = new Date(); d.setHours(0, 0, 0, 0);
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
     const day = (d.getDay() + 6) % 7; // Monday = 0
-    d.setDate(d.getDate() - day - ((offset || 0) * 7));
+    d.setDate(d.getDate() - day - (offset || 0) * 7);
     return d;
   }
 
   function computePpc(tasks, weekOffset) {
     const start = isoWeekStart(weekOffset);
-    const end = new Date(start); end.setDate(start.getDate() + 6);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
     // Same parseDL discipline as lookaheadTasks , local-midnight parsing.
-    const due = (tasks || []).filter(function(t) {
+    const due = (tasks || []).filter(function (t) {
       if (!t.endDate) return false;
       const e = U.parseDL(t.endDate);
       return e && e >= start && e <= end;
     });
     if (!due.length) return { planned: 0, completed: 0, pct: null, start: start, end: end };
-    const completed = due.filter(function(t) { return t.status === 'completed'; }).length;
-    return { planned: due.length, completed: completed, pct: Math.round((completed / due.length) * 100), start: start, end: end };
+    const completed = due.filter(function (t) {
+      return t.status === 'completed';
+    }).length;
+    return {
+      planned: due.length,
+      completed: completed,
+      pct: Math.round((completed / due.length) * 100),
+      start: start,
+      end: end
+    };
   }
 
   // ---- API ----
@@ -945,10 +1094,16 @@ var MMGR = window.MMGR || {};
     const list = (tasks || []).filter(t => !t.isPhase && !t.leadTime && t.startDate && t.endDate);
     for (let i = 0; i < list.length; i++) {
       for (let j = i + 1; j < list.length; j++) {
-        const a = list[i], b = list[j];
-        if (U.daysBetween(b.startDate, a.endDate) >= 0 && U.daysBetween(a.startDate, b.endDate) >= 0) {
-          if (!map.has(a.id)) map.set(a.id, { peers: [], window: { start: a.startDate, end: a.endDate } });
-          if (!map.has(b.id)) map.set(b.id, { peers: [], window: { start: b.startDate, end: b.endDate } });
+        const a = list[i],
+          b = list[j];
+        if (
+          U.daysBetween(b.startDate, a.endDate) >= 0 &&
+          U.daysBetween(a.startDate, b.endDate) >= 0
+        ) {
+          if (!map.has(a.id))
+            map.set(a.id, { peers: [], window: { start: a.startDate, end: a.endDate } });
+          if (!map.has(b.id))
+            map.set(b.id, { peers: [], window: { start: b.startDate, end: b.endDate } });
           map.get(a.id).peers.push(b.id);
           map.get(b.id).peers.push(a.id);
         }
@@ -984,6 +1139,5 @@ var MMGR = window.MMGR || {};
     simulateSchedule: simulateSchedule,
     runMonteCarlo: runMonteCarlo
   };
-
 })(MMGR);
 window.MMGR = MMGR;

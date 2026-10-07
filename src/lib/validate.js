@@ -29,8 +29,14 @@ import { json } from './http.js';
  * @returns {string|{error: Response}} - The validated string or error Response
  */
 export function validateString(value, rules = {}) {
-  const { required = false, minLength = 0, maxLength = Infinity,
-          pattern = null, trim = true, fallback = '' } = rules;
+  const {
+    required = false,
+    minLength = 0,
+    maxLength = Infinity,
+    pattern = null,
+    trim = true,
+    fallback = ''
+  } = rules;
 
   if (value === undefined || value === null) {
     if (required) return errorResponse('field is required');
@@ -45,7 +51,8 @@ export function validateString(value, rules = {}) {
   let s = trim ? value.trim() : value;
 
   if (required && s.length === 0) return errorResponse('field is required');
-  if (s.length > 0 && s.length < minLength) return errorResponse('too short (min ' + minLength + ' chars)');
+  if (s.length > 0 && s.length < minLength)
+    return errorResponse('too short (min ' + minLength + ' chars)');
   if (s.length > maxLength) return errorResponse('too long (max ' + maxLength + ' chars)');
   if (pattern && s.length > 0 && !pattern.test(s)) return errorResponse('invalid format');
 
@@ -59,8 +66,13 @@ export function validateString(value, rules = {}) {
  * @returns {number|{error: Response}} - The validated number or error Response
  */
 export function validateNumber(value, rules = {}) {
-  const { required = false, min = -Infinity, max = Infinity,
-          integer = false, fallback = 0 } = rules;
+  const {
+    required = false,
+    min = -Infinity,
+    max = Infinity,
+    integer = false,
+    fallback = 0
+  } = rules;
 
   if (value === undefined || value === null) {
     if (required) return errorResponse('field is required');
@@ -87,8 +99,7 @@ export function validateNumber(value, rules = {}) {
  * @returns {Array|{error: Response}} - The validated array or error Response
  */
 export function validateArray(value, rules = {}) {
-  const { required = false, minItems = 0, maxItems = Infinity,
-          of = null, fallback = [] } = rules;
+  const { required = false, minItems = 0, maxItems = Infinity, of = null, fallback = [] } = rules;
 
   if (value === undefined || value === null) {
     if (required) return errorResponse('field is required');
@@ -138,7 +149,9 @@ export function validateObject(value, schema = {}) {
  */
 export async function validateBody(request, schema = {}, maxSize = 1048576) {
   let body;
-  try { body = await request.json(); } catch (e) {
+  try {
+    body = await request.json();
+  } catch (e) {
     return { error: errorResponse('invalid JSON body', 400) };
   }
 

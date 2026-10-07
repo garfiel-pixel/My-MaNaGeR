@@ -37,21 +37,35 @@ const ESCROW_VERSION = 1;
 
 async function sha256Hex(text) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-  return Array.from(new Uint8Array(buf)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+  return Array.from(new Uint8Array(buf))
+    .map(function (b) {
+      return b.toString(16).padStart(2, '0');
+    })
+    .join('');
 }
 
 function escrowKeyMaterial(env) {
-  const secret = env && typeof env.GOOGLE_CLIENT_SECRET === 'string' && env.GOOGLE_CLIENT_SECRET.length
-    ? env.GOOGLE_CLIENT_SECRET : 'mmgr-escrow-fallback';
+  const secret =
+    env && typeof env.GOOGLE_CLIENT_SECRET === 'string' && env.GOOGLE_CLIENT_SECRET.length
+      ? env.GOOGLE_CLIENT_SECRET
+      : 'mmgr-escrow-fallback';
   return crypto.subtle.importKey(
-    'raw', new TextEncoder().encode('mmgr-admin-code-escrow:' + secret),
-    'PBKDF2', false, ['deriveKey']
+    'raw',
+    new TextEncoder().encode('mmgr-admin-code-escrow:' + secret),
+    'PBKDF2',
+    false,
+    ['deriveKey']
   );
 }
 
 async function escrowCipherKey(env) {
   return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt: new TextEncoder().encode('mmgr-admin-code-escrow-v1'), iterations: 100000, hash: 'SHA-256' },
+    {
+      name: 'PBKDF2',
+      salt: new TextEncoder().encode('mmgr-admin-code-escrow-v1'),
+      iterations: 100000,
+      hash: 'SHA-256'
+    },
     await escrowKeyMaterial(env),
     { name: 'AES-GCM', length: 256 },
     false,
@@ -61,7 +75,8 @@ async function escrowCipherKey(env) {
 
 function b64(bytes) {
   let s = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  for (let i = 0; i < bytes.length; i += 0x8000)
+    s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
   return btoa(s);
 }
 
@@ -75,7 +90,11 @@ function unb64(str) {
 async function sealAdminHash(env, hashHex) {
   const key = await escrowCipherKey(env);
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(hashHex));
+  const ct = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    new TextEncoder().encode(hashHex)
+  );
   return JSON.stringify({ v: ESCROW_VERSION, iv: b64(iv), data: b64(new Uint8Array(ct)) });
 }
 
@@ -107,7 +126,8 @@ async function accountVerified(env, session) {
   if (!env || !env.DB) return false;
   try {
     const row = await env.DB.prepare('SELECT email_verified FROM auth_users WHERE email = ?')
-      .bind(session.sub.slice('email:'.length)).first();
+      .bind(session.sub.slice('email:'.length))
+      .first();
     return !!(row && row.email_verified);
   } catch (e) {
     return false;
@@ -116,7 +136,11 @@ async function accountVerified(env, session) {
 
 export async function handleAdminCodePut(request, env) {
   let body;
-  try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
+  try {
+    body = await request.json();
+  } catch (e) {
+    return json({ ok: false, error: 'bad request' }, 400);
+  }
   const code = String((body && body.code) || '').trim();
   if (code.length < 8 || code.length > 128) return json({ ok: false, error: 'bad request' }, 400);
   const session = await readSession(request, env);
@@ -129,8 +153,10 @@ export async function handleAdminCodePut(request, env) {
   try {
     await env.DB.prepare(
       'INSERT INTO admin_code_escrow (sub, envelope, updated_at) VALUES (?,?,?) ' +
-      'ON CONFLICT(sub) DO UPDATE SET envelope = excluded.envelope, updated_at = excluded.updated_at'
-    ).bind(session.sub, envelope, now).run();
+        'ON CONFLICT(sub) DO UPDATE SET envelope = excluded.envelope, updated_at = excluded.updated_at'
+    )
+      .bind(session.sub, envelope, now)
+      .run();
   } catch (e) {
     return json({ ok: false, error: 'could not back up the code' }, 500);
   }
@@ -145,8 +171,11 @@ export async function handleAdminCodeGet(request, env) {
   let row = null;
   try {
     row = await env.DB.prepare('SELECT envelope, updated_at FROM admin_code_escrow WHERE sub = ?')
-      .bind(session.sub).first();
-  } catch (e) { row = null; }
+      .bind(session.sub)
+      .first();
+  } catch (e) {
+    row = null;
+  }
   if (!row) return json({ ok: true, hasCode: false });
   const verified = await accountVerified(env, session);
   if (!verified) {
@@ -157,7 +186,20 @@ export async function handleAdminCodeGet(request, env) {
   if (!hashHex) {
     // Corrupt/undecryptable (e.g. secret rotated): say so honestly instead
     // of returning garbage.
-    return json({ ok: true, hasCode: true, verified: true, readable: false, updatedAt: row.updated_at });
+    return json({
+      ok: true,
+      hasCode: true,
+      verified: true,
+      readable: false,
+      updatedAt: row.updated_at
+    });
   }
-  return json({ ok: true, hasCode: true, verified: true, readable: true, hash: hashHex, updatedAt: row.updated_at });
+  return json({
+    ok: true,
+    hasCode: true,
+    verified: true,
+    readable: true,
+    hash: hashHex,
+    updatedAt: row.updated_at
+  });
 }

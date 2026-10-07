@@ -18,6 +18,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { execSync } = require('child_process');
 
 const ROOT = __dirname;
@@ -26,10 +27,30 @@ const DIST = path.join(ROOT, 'dist');
 // ---- Ensure dist/ exists ----
 if (!fs.existsSync(DIST)) fs.mkdirSync(DIST, { recursive: true });
 
+/**
+ * Compute a short content hash for a file.
+ * Returns a 8-char hex hash of the file contents.
+ */
+function contentHash(filePath) {
+  const buf = fs.readFileSync(filePath);
+  return crypto.createHash('sha256').update(buf).digest('hex').slice(0, 8);
+}
+
+/**
+ * Write a manifest mapping logical bundle names to hashed filenames.
+ * Used by HTML processors and service worker to find the current build.
+ */
+function writeManifest(manifest) {
+  const manifestPath = path.join(DIST, 'manifest.json');
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+  console.log('  manifest:  dist/manifest.json');
+}
+
 // ---- Project.html bundle (55 modules) ----
 // Order must match the <script> tags in project.html - each module
 // extends the global MMGR namespace created by mmgr-state.js.
-const APP_MODULES = [   // Core (loaded first - defines MMGR namespace + utilities)
+const APP_MODULES = [
+  // Core (loaded first - defines MMGR namespace + utilities)
   'js/mmgr-state.js',
   'js/mmgr-utils.js',
   'js/mmgr-net.js',
@@ -119,16 +140,11 @@ const APP_MODULES = [   // Core (loaded first - defines MMGR namespace + utiliti
   // bfcache sprite restore (2026-09-30): icons vanish after Back when
   // Chrome restores the page from the back/forward cache; load-order
   // independent, DOM-only, so it sits last.
-  'js/mmgr-icon-restore.js',
+  'js/mmgr-icon-restore.js'
 ];
 
 // ---- Marketing pages bundle ----
-const MARKETING_MODULES = [
-  'js/marketing.js',
-  'js/reviews.js',
-  'js/verify.js',
-  'js/reset.js',
-];
+const MARKETING_MODULES = ['js/marketing.js', 'js/reviews.js', 'js/verify.js', 'js/reset.js'];
 
 // ---- app.html bundle (launcher / project list) ----
 const APP_LAUNCHER_MODULES = [
@@ -143,7 +159,7 @@ const APP_LAUNCHER_MODULES = [
   'js/mmgr-glass.js',
   // bfcache sprite restore (2026-09-30): same module as the project
   // bundle - load-order independent, DOM-only, sits last.
-  'js/mmgr-icon-restore.js',
+  'js/mmgr-icon-restore.js'
 ];
 
 // ---- admin.html bundle ----
@@ -152,6 +168,10 @@ const ADMIN_MODULES = [
   'js/mmgr-perf.js',
   'js/mmgr-viewport.js',
   'js/mmgr-glass.js',
+  // Wave 8.10 (owner 2026-10-06): the admin rail's Manage-subscription strip.
+  // Self-contained (delegated clicks, no inline script) so adding it changes
+  // no CSP hash.
+  'js/mmgr-billing-manage.js'
 ];
 
 // ---- Banner: ensures MMGR namespace exists before any module runs ----
@@ -182,9 +202,18 @@ function buildBundle(modules, outputFile, label) {
   const tmpIn = path.join(DIST, '.tmp-build-input.js');
   fs.writeFileSync(tmpIn, BANNER + '\n' + combined);
 
+  const baseName = path.basename(outputFile, path.extname(outputFile));
+  const ext = path.extname(outputFile);
+
   try {
     execSync(
-      'npx esbuild "' + tmpIn + '" --minify --sourcemap --banner:js="' + BANNER.replace(/"/g, '\\"') + '" --outfile="' + path.join(DIST, path.basename(outputFile)) + '"',
+      'npx esbuild "' +
+        tmpIn +
+        '" --minify --sourcemap --banner:js="' +
+        BANNER.replace(/"/g, '\\"') +
+        '" --outfile="' +
+        path.join(DIST, path.basename(outputFile)) +
+        '"',
       { stdio: 'pipe', cwd: ROOT }
     );
   } catch (e) {
@@ -192,7 +221,9 @@ function buildBundle(modules, outputFile, label) {
     process.exit(1);
   } finally {
     // Clean up temp file
-    try { fs.unlinkSync(tmpIn); } catch (_) {}
+    try {
+      fs.unlinkSync(tmpIn);
+    } catch (_) {}
   }
 
   const outPath = path.join(DIST, path.basename(outputFile));
@@ -201,12 +232,20 @@ function buildBundle(modules, outputFile, label) {
   const ratio = ((1 - minSize / rawSize) * 100).toFixed(1);
   const elapsed = Date.now() - start;
 
+  // Compute content hash and write hashed copy
+  const hash = contentHash(outPath);
+  const hashedName = baseName + '.' + hash + ext;
+  const hashedPath = path.join(DIST, hashedName);
+  fs.copyFileSync(outPath, hashedPath);
+
   console.log('  ' + label + ':');
   console.log('    modules:  ' + modules.length);
   console.log('    raw:      ' + (rawSize / 1024).toFixed(0) + ' KB');
   console.log('    minified: ' + (minSize / 1024).toFixed(0) + ' KB (' + ratio + '% reduction)');
-  console.log('    output:   dist/' + path.basename(outputFile));
+  console.log('    output:   dist/' + path.basename(outputFile) + ' -> dist/' + hashedName);
   console.log('    time:     ' + elapsed + 'ms');
+
+  return { name: path.basename(outputFile), hashed: hashedName, hash: hash };
 }
 
 // ---- CSS minification ----
@@ -220,7 +259,11 @@ function buildCSS(inputFile, outputFile, label) {
   const rawSize = fs.statSync(absIn).size;
   try {
     execSync(
-      'npx esbuild "' + absIn + '" --minify --outfile="' + path.join(DIST, path.basename(outputFile)) + '"',
+      'npx esbuild "' +
+        absIn +
+        '" --minify --outfile="' +
+        path.join(DIST, path.basename(outputFile)) +
+        '"',
       { stdio: 'pipe', cwd: ROOT }
     );
   } catch (e) {
@@ -231,11 +274,22 @@ function buildCSS(inputFile, outputFile, label) {
   const minSize = fs.statSync(outPath).size;
   const ratio = ((1 - minSize / rawSize) * 100).toFixed(1);
   const elapsed = Date.now() - start;
+
+  // Compute content hash and write hashed copy
+  const hash = contentHash(outPath);
+  const baseName = path.basename(outputFile, path.extname(outputFile));
+  const ext = path.extname(outputFile);
+  const hashedName = baseName + '.' + hash + ext;
+  const hashedPath = path.join(DIST, hashedName);
+  fs.copyFileSync(outPath, hashedPath);
+
   console.log('  ' + label + ':');
-    console.log('    raw:      ' + (rawSize / 1024).toFixed(0) + ' KB');
-    console.log('    minified: ' + (minSize / 1024).toFixed(0) + ' KB (' + ratio + '% reduction)');
-    console.log('    output:   dist/' + path.basename(outputFile));
-    console.log('    time:     ' + elapsed + 'ms');
+  console.log('    raw:      ' + (rawSize / 1024).toFixed(0) + ' KB');
+  console.log('    minified: ' + (minSize / 1024).toFixed(0) + ' KB (' + ratio + '% reduction)');
+  console.log('    output:   dist/' + path.basename(outputFile) + ' -> dist/' + hashedName);
+  console.log('    time:     ' + elapsed + 'ms');
+
+  return { name: path.basename(outputFile), hashed: hashedName, hash: hash };
 }
 
 // ---- Main ----
@@ -258,6 +312,20 @@ if (buildCss) {
 }
 
 console.log('\nDone.');
+
+// Write manifest mapping logical names to hashed filenames.
+// The manifest is used by sw.js and any HTML processors to find
+// the current content-addressed build artifacts.
+const manifest = {};
+if (buildApp) manifest['bundle.js'] = 'bundle.' + contentHash(path.join(DIST, 'bundle.js')) + '.js';
+if (buildLauncher) manifest['app-bundle.js'] = 'app-bundle.' + contentHash(path.join(DIST, 'app-bundle.js')) + '.js';
+if (buildAdmin) manifest['admin-bundle.js'] = 'admin-bundle.' + contentHash(path.join(DIST, 'admin-bundle.js')) + '.js';
+if (buildMkt) manifest['marketing-bundle.js'] = 'marketing-bundle.' + contentHash(path.join(DIST, 'marketing-bundle.js')) + '.js';
+if (buildCss) {
+  manifest['mmgr.min.css'] = 'mmgr.min.' + contentHash(path.join(DIST, 'mmgr.min.css')) + '.css';
+  manifest['marketing.min.css'] = 'marketing.min.' + contentHash(path.join(DIST, 'marketing.min.css')) + '.css';
+}
+writeManifest(manifest);
 
 // Touch sw.js so its mtime is always newer than dist/ files.
 // This keeps verify:sw happy - the SW cache version must be the

@@ -42,7 +42,10 @@ function collectCss() {
       }
     }
   }
-  const htmlFiles = fs.readdirSync(ROOT).filter(f => /\.html$/i.test(f)).sort();
+  const htmlFiles = fs
+    .readdirSync(ROOT)
+    .filter(f => /\.html$/i.test(f))
+    .sort();
   for (const f of htmlFiles) {
     const text = fs.readFileSync(path.join(ROOT, f), 'utf8');
     const styleRe = /<style[^>]*>([\s\S]*?)<\/style>/gi;
@@ -75,7 +78,10 @@ function parseCss(text) {
         if (ch === inStr) inStr = null;
         continue;
       }
-      if (ch === '"' || ch === "'") { inStr = ch; continue; }
+      if (ch === '"' || ch === "'") {
+        inStr = ch;
+        continue;
+      }
       if (ch === '{') depth++;
       else if (ch === '}') {
         depth--;
@@ -96,7 +102,13 @@ function parseCss(text) {
       const { body, end } = readBlock(braceIdx);
       if (prelude.startsWith('@')) {
         const at = prelude.split(/\s+/)[0];
-        if (at === '@media' || at === '@supports' || at === '@layer' || at === '@container' || at === '@scope') {
+        if (
+          at === '@media' ||
+          at === '@supports' ||
+          at === '@layer' ||
+          at === '@container' ||
+          at === '@scope'
+        ) {
           scan(braceIdx + 1, end, out); // recurse into wrapping at-rules only
         }
         // keyframes/font-face/page/import/charset etc: skip
@@ -121,8 +133,10 @@ function splitSelectors(selector) {
     const ch = selector[i];
     if (ch === '[' || ch === '(') depth++;
     else if (ch === ']' || ch === ')') depth--;
-    if (ch === ',' && depth === 0) { parts.push(cur.trim()); cur = ''; }
-    else cur += ch;
+    if (ch === ',' && depth === 0) {
+      parts.push(cur.trim());
+      cur = '';
+    } else cur += ch;
   }
   parts.push(cur.trim());
   return parts.filter(Boolean);
@@ -134,8 +148,14 @@ function lastCompound(selector) {
   let depth = 0;
   for (let i = selector.length - 1; i >= 0; i--) {
     const ch = selector[i];
-    if (ch === ']' || ch === ')') { depth++; continue; }
-    if (ch === '[' || ch === '(') { depth--; continue; }
+    if (ch === ']' || ch === ')') {
+      depth++;
+      continue;
+    }
+    if (ch === '[' || ch === '(') {
+      depth--;
+      continue;
+    }
     if (depth === 0 && (ch === ' ' || ch === '>' || ch === '+' || ch === '~' || ch === ',')) {
       return selector.slice(i + 1).trim();
     }
@@ -144,12 +164,14 @@ function lastCompound(selector) {
 }
 
 function specificity(selector) {
-  let a = 0, b = 0, c = 0;
-  a += (selector.match(/#[\w-]+/g) || []).length;                                       // ids
-  b += (selector.match(/\.[\w-]+/g) || []).length;                                      // classes
-  b += (selector.match(/\[[^\]]+\]/g) || []).length;                                    // attributes ([hidden] counts)
-  b += (selector.replace(/::[\w-]+/g, '').match(/:[-\w]+/g) || []).length;              // pseudo-classes, not ::pseudo-elements
-  c += (selector.match(/(^|[\s>+~,(])([a-z][\w-]*)/g) || []).length;                    // type selectors
+  let a = 0,
+    b = 0,
+    c = 0;
+  a += (selector.match(/#[\w-]+/g) || []).length; // ids
+  b += (selector.match(/\.[\w-]+/g) || []).length; // classes
+  b += (selector.match(/\[[^\]]+\]/g) || []).length; // attributes ([hidden] counts)
+  b += (selector.replace(/::[\w-]+/g, '').match(/:[-\w]+/g) || []).length; // pseudo-classes, not ::pseudo-elements
+  c += (selector.match(/(^|[\s>+~,(])([a-z][\w-]*)/g) || []).length; // type selectors
   return [a, b, c];
 }
 
@@ -160,7 +182,9 @@ function compareSpec(s1, s2) {
   return 0;
 }
 
-function esc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+function esc(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 // Does the LAST compound of this selector match the element?
 // Conservative by design, to avoid false positives from selectors whose
@@ -190,7 +214,8 @@ function parseAttrs(attrText) {
   const re = /([^\s"'<>\/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
   let m;
   while ((m = re.exec(attrText)) !== null) {
-    attrs[m[1].toLowerCase()] = m[2] !== undefined ? m[2] : (m[3] !== undefined ? m[3] : (m[4] !== undefined ? m[4] : ''));
+    attrs[m[1].toLowerCase()] =
+      m[2] !== undefined ? m[2] : m[3] !== undefined ? m[3] : m[4] !== undefined ? m[4] : '';
   }
   return attrs;
 }
@@ -205,7 +230,18 @@ function findHiddenElements(htmlFile, text) {
     if (!('hidden' in attrs)) continue;
     const id = attrs.id || null;
     const classes = (attrs.class || '').trim().split(/\s+/).filter(Boolean);
-    els.push({ file: htmlFile, tag, id, classes, raw: '<' + tag + (id ? ' id="' + id + '"' : '') + (classes.length ? ' class="' + classes.join(' ') + '"' : '') + ' hidden>' });
+    els.push({
+      file: htmlFile,
+      tag,
+      id,
+      classes,
+      raw:
+        '<' +
+        tag +
+        (id ? ' id="' + id + '"' : '') +
+        (classes.length ? ' class="' + classes.join(' ') + '"' : '') +
+        ' hidden>'
+    });
   }
   return els;
 }
@@ -214,7 +250,8 @@ function findHiddenElements(htmlFile, text) {
 const cssSources = collectCss();
 const allRules = [];
 for (const s of cssSources) {
-  for (const r of parseCss(s.text)) allRules.push({ selector: r.selector, body: r.body, src: s.src });
+  for (const r of parseCss(s.text))
+    allRules.push({ selector: r.selector, body: r.body, src: s.src });
 }
 
 const DISPLAY_RE = /display\s*:\s*([^;{}]+)/g;
@@ -226,22 +263,28 @@ function displayVals(body) {
     const raw = (m[1] || '').trim();
     if (!raw) continue;
     const important = /!important\s*$/i.test(raw);
-    const value = raw.replace(/!important\s*$/i, '').trim().toLowerCase();
+    const value = raw
+      .replace(/!important\s*$/i, '')
+      .trim()
+      .toLowerCase();
     vals.push({ value, important });
   }
   return vals;
 }
 
 const findings = [];
-const htmlFiles = fs.readdirSync(ROOT).filter(f => /\.html$/i.test(f)).sort();
+const htmlFiles = fs
+  .readdirSync(ROOT)
+  .filter(f => /\.html$/i.test(f))
+  .sort();
 for (const f of htmlFiles) {
   const text = fs.readFileSync(path.join(ROOT, f), 'utf8');
   for (const el of findHiddenElements(f, text)) {
     const defeat = []; // non-none display rules matching el
-    const guard = [];  // display:none rules matching el whose selector contains [hidden]
+    const guard = []; // display:none rules matching el whose selector contains [hidden]
     for (const rule of allRules) {
-      if (/:not\(/.test(rule.selector)) continue;             // :not() selectors: cannot statically prove they apply
-      if (/::/.test(rule.selector)) continue;                 // ::pseudo-element rules never style the element itself
+      if (/:not\(/.test(rule.selector)) continue; // :not() selectors: cannot statically prove they apply
+      if (/::/.test(rule.selector)) continue; // ::pseudo-element rules never style the element itself
       const matchesEl = splitSelectors(rule.selector).some(sel => canMatch(sel, el));
       if (!matchesEl) continue;
       for (const v of displayVals(rule.body)) {
@@ -257,37 +300,75 @@ for (const f of htmlFiles) {
     if (!defeat.length) continue;
     const guardImportant = guard.some(g => g.v.important);
     const defeatImportant = defeat.some(d => d.v.important);
-    const bestDefeatSpec = defeat.reduce(function (best, d) {
-      const s = specificity(d.selector);
-      return compareSpec(s, best) > 0 ? s : best;
-    }, [0, 0, 0]);
-    const bestGuardSpec = guard.reduce(function (best, g) {
-      const s = specificity(g.selector);
-      return compareSpec(s, best) > 0 ? s : best;
-    }, [0, 0, 0]);
+    const bestDefeatSpec = defeat.reduce(
+      function (best, d) {
+        const s = specificity(d.selector);
+        return compareSpec(s, best) > 0 ? s : best;
+      },
+      [0, 0, 0]
+    );
+    const bestGuardSpec = guard.reduce(
+      function (best, g) {
+        const s = specificity(g.selector);
+        return compareSpec(s, best) > 0 ? s : best;
+      },
+      [0, 0, 0]
+    );
     const noWinningGuard =
-      !guardImportant && (defeatImportant || !guard.length || compareSpec(bestGuardSpec, bestDefeatSpec) < 0);
+      !guardImportant &&
+      (defeatImportant || !guard.length || compareSpec(bestGuardSpec, bestDefeatSpec) < 0);
 
     if (noWinningGuard) {
-      const ruleDesc = defeat.map(d =>
-        "'" + d.selector + " { display:" + d.v.value + (d.v.important ? ' !important' : '') + " }' (" + d.src + ')'
-      ).join('; ');
-      const fixSel = defeat.map(d => lastCompound(d.selector)).filter(function (v, i, a) { return a.indexOf(v) === i; });
-      findings.push({ file: f, el: el.raw, rules: ruleDesc, fix: fixSel.map(s => s + '[hidden]{display:none;}').join('  ') });
+      const ruleDesc = defeat
+        .map(
+          d =>
+            "'" +
+            d.selector +
+            ' { display:' +
+            d.v.value +
+            (d.v.important ? ' !important' : '') +
+            " }' (" +
+            d.src +
+            ')'
+        )
+        .join('; ');
+      const fixSel = defeat
+        .map(d => lastCompound(d.selector))
+        .filter(function (v, i, a) {
+          return a.indexOf(v) === i;
+        });
+      findings.push({
+        file: f,
+        el: el.raw,
+        rules: ruleDesc,
+        fix: fixSel.map(s => s + '[hidden]{display:none;}').join('  ')
+      });
     }
   }
 }
 
 if (findings.length) {
-  console.error('[verify-hidden] FAIL: ' + findings.length + ' [hidden] element(s) would still be painted by the CSS:');
+  console.error(
+    '[verify-hidden] FAIL: ' +
+      findings.length +
+      ' [hidden] element(s) would still be painted by the CSS:'
+  );
   for (const fn of findings) {
     console.error('  ' + fn.file + ' — ' + fn.el);
     console.error('    non-none display rule(s): ' + fn.rules);
     console.error('    fix: add a guard, e.g. ' + fn.fix);
   }
-  console.error('[verify-hidden] The `hidden` attribute is only display:none via the UA stylesheet; any author display rule overrides it.');
+  console.error(
+    '[verify-hidden] The `hidden` attribute is only display:none via the UA stylesheet; any author display rule overrides it.'
+  );
   process.exit(1);
 }
 
-console.log('[verify-hidden] OK — every [hidden] element in ' + htmlFiles.length + ' page(s) is matched by no unguarded non-none display rule (' + allRules.length + ' CSS rules checked).');
+console.log(
+  '[verify-hidden] OK — every [hidden] element in ' +
+    htmlFiles.length +
+    ' page(s) is matched by no unguarded non-none display rule (' +
+    allRules.length +
+    ' CSS rules checked).'
+);
 process.exit(0);

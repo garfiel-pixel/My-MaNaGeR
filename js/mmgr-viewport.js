@@ -18,7 +18,7 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   const U = ns.Utils;
@@ -55,7 +55,9 @@ var MMGR = window.MMGR || {};
     try {
       const c = document.createElement('canvas');
       return !!(c.getContext('webgl2') || c.getContext('webgl'));
-    } catch (e) { return false; }
+    } catch (e) {
+      return false;
+    }
   }
   function isHighEnd() {
     // Test hook (same convention as qa-voice's forcedModelUrl): a QA gate
@@ -68,11 +70,18 @@ var MMGR = window.MMGR || {};
 
   function getGlassMode() {
     // Default premium (owner 2026-09-06); legacy stored 'css' opts out.
-    try { return localStorage.getItem(GLASS_KEY) === 'css' ? 'css' : 'premium'; }
-    catch (e) { return 'premium'; }
+    try {
+      return localStorage.getItem(GLASS_KEY) === 'css' ? 'css' : 'premium';
+    } catch (e) {
+      return 'premium';
+    }
   }
   function setGlassMode(mode) {
-    try { localStorage.setItem(GLASS_KEY, mode === 'premium' ? 'premium' : 'css'); } catch (e) { /* ignore */ }
+    try {
+      localStorage.setItem(GLASS_KEY, mode === 'premium' ? 'premium' : 'css');
+    } catch (e) {
+      /* ignore */
+    }
   }
   // The single decision both consumers read. Premium requires: capability
   // floor AND a wide viewport AND no legacy opt-out. Performance Mode does
@@ -85,25 +94,37 @@ var MMGR = window.MMGR || {};
     if (ns.Perf && ns.Perf.blocksHeavyLayers && ns.Perf.blocksHeavyLayers()) return 'css';
     if (getGlassMode() !== 'premium') return 'css';
     if (!isHighEnd()) return 'css'; // capability floor overrides preference
-    if (isNarrow()) return 'css';   // shared detection: narrow => CSS only
+    if (isNarrow()) return 'css'; // shared detection: narrow => CSS only
     return 'premium';
   }
 
-  function prefKey(section) { return PREF_PREFIX + section; }
+  function prefKey(section) {
+    return PREF_PREFIX + section;
+  }
 
   function getPref(section) {
-    try { return localStorage.getItem(prefKey(section)); } catch (e) { return null; }
+    try {
+      return localStorage.getItem(prefKey(section));
+    } catch (e) {
+      return null;
+    }
   }
 
   function setPref(section, val) {
-    try { localStorage.setItem(prefKey(section), val); } catch (e) { /* ignore */ }
+    try {
+      localStorage.setItem(prefKey(section), val);
+    } catch (e) {
+      /* ignore */
+    }
   }
 
   // ---- Detection (viewport facts only, no UA sniffing) ----
   function isNarrow() {
     const w = window.innerWidth || document.documentElement.clientWidth || 0;
     const h = window.innerHeight || document.documentElement.clientHeight || 0;
-    const portrait = (typeof window.matchMedia === 'function') && window.matchMedia('(orientation: portrait)').matches;
+    const portrait =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(orientation: portrait)').matches;
     // Portrait ratio (w < h) OR a hard small-width cutoff , a phone held in
     // landscape still has a small width and gets the prompt.
     return portrait || w <= 640;
@@ -131,7 +152,8 @@ var MMGR = window.MMGR || {};
       b.setAttribute('data-action', 'vpFull');
       b.setAttribute('data-section', section);
       b.title = 'Temporarily show the full wide layout for this panel';
-      b.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> View full table';
+      b.innerHTML =
+        '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> View full table';
       panel.insertBefore(b, panel.firstChild);
     } else if (!on && btn) {
       btn.remove();
@@ -154,8 +176,14 @@ var MMGR = window.MMGR || {};
     const panel = U.$('panel-' + section);
     if (!panel || !isDense(section)) return;
     const pref = getPref(section);
-    if (pref === 'simple') { applySimple(section, true); return; }
-    if (pref === 'dismiss') { applySimple(section, false); return; }
+    if (pref === 'simple') {
+      applySimple(section, true);
+      return;
+    }
+    if (pref === 'dismiss') {
+      applySimple(section, false);
+      return;
+    }
     if (!isNarrow()) return; // wide viewport: nothing to offer
     // First time on this device for a dense section on a narrow screen.
     let bar = panel.querySelector('.vp-prompt');
@@ -165,8 +193,12 @@ var MMGR = window.MMGR || {};
     bar.innerHTML =
       '<span class="vp-prompt-txt">This view is built for a wide screen. Switch to a simplified stacked view for this screen?</span>' +
       '<span class="vp-prompt-actions">' +
-      '<button class="btn btn-g btn-s" data-action="vpAccept" data-section="' + U.escapeHtml(section) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Switch</button>' +
-      '<button class="btn btn-n btn-s" data-action="vpDismiss" data-section="' + U.escapeHtml(section) + '">Not now</button>' +
+      '<button class="btn btn-g btn-s" data-action="vpAccept" data-section="' +
+      U.escapeHtml(section) +
+      '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Switch</button>' +
+      '<button class="btn btn-n btn-s" data-action="vpDismiss" data-section="' +
+      U.escapeHtml(section) +
+      '">Not now</button>' +
       '</span>';
     panel.insertBefore(bar, panel.firstChild);
   }
@@ -176,7 +208,11 @@ var MMGR = window.MMGR || {};
     setPref(section, 'simple');
     applySimple(section, true);
     removePrompt(section);
-    if (ns.App && ns.App.showToast) ns.App.showToast('Simplified view on for this screen , toggle full table anytime from the panel.', 'ok');
+    if (ns.App && ns.App.showToast)
+      ns.App.showToast(
+        'Simplified view on for this screen , toggle full table anytime from the panel.',
+        'ok'
+      );
   }
 
   // User dismissed: remember so it is never re-prompted on this device.
@@ -195,7 +231,11 @@ var MMGR = window.MMGR || {};
 
   // Clear a stored preference (used by tests / reset).
   function clearPref(section) {
-    try { localStorage.removeItem(prefKey(section)); } catch (e) { /* ignore */ }
+    try {
+      localStorage.removeItem(prefKey(section));
+    } catch (e) {
+      /* ignore */
+    }
     removePrompt(section);
   }
 
@@ -212,7 +252,9 @@ var MMGR = window.MMGR || {};
       const root = document.documentElement;
       if (!hdr || !root) return;
       root.style.setProperty('--hdr-h', Math.ceil(hdr.getBoundingClientRect().height) + 'px');
-    } catch (e) { /* measurement must never throw */ }
+    } catch (e) {
+      /* measurement must never throw */
+    }
   }
 
   // ---- API ----

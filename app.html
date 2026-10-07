@@ -534,7 +534,7 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
      project grid or access-code unlock. -->
 <div id="siom" role="dialog" aria-modal="true" aria-label="Sign in">
   <div class="mb">
-    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Sign in</span><button type="button" class="dc" data-action="closeSignIn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></div>
+    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Sign in</span><button type="button" class="dc" data-action="closeSignIn" aria-label="Close sign-in"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></div>
     <div class="mbody">
       <p class="si-hint">Welcome back. Sign in to reach your cloud projects, backups, and sync. It is optional, the app works without an account.</p>
       <div id="google-signin-button"></div>
@@ -546,7 +546,7 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
 <!-- Access code modal -->
 <div id="om">
   <div class="mb" id="mb">
-    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> <span id="om-title-text">Enter Access Code</span></span><button class="dc" data-action="closeModal"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
+    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> <span id="om-title-text">Enter Access Code</span></span><button class="dc" data-action="closeModal" aria-label="Close access code dialog"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
     <div class="mbody">
       <p id="om-desc">Enter the access code your admin shared with you.</p>
       <input id="code-input" type="text" maxlength="16" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ACCESS CODE" aria-label="Access code">
@@ -567,7 +567,7 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
      card's 3-dot menu opens it with the project name filled in. -->
 <div id="cdm" role="dialog" aria-modal="true" aria-label="Delete cloud project">
   <div class="mb" id="cdm-mb">
-    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete cloud project?</span><button type="button" class="dc" data-cdm-close><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></div>
+    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete cloud project?</span><button type="button" class="dc" data-cdm-close aria-label="Close delete project dialog"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></div>
     <div class="mbody">
       <p id="cdm-desc"></p>
       <div class="gerr" id="cdm-err" aria-live="polite"></div>
@@ -585,7 +585,7 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
      action that cannot be undone. Same sheet pattern as #cdm. -->
 <div id="dam" role="dialog" aria-modal="true" aria-label="Delete my account">
   <div class="mb" id="dam-mb">
-    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete my account?</span><button type="button" class="dc" id="dam-close"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></div>
+    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete my account?</span><button type="button" class="dc" id="dam-close" aria-label="Close delete account dialog"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></div>
     <div class="mbody">
       <p id="dam-desc">This deletes your account for good. Everything saved under it goes with it:</p>
       <ul id="dam-list">
@@ -1946,9 +1946,9 @@ if ('serviceWorker' in navigator &&
 <!-- PROJECT SEARCH modal -->
 <div id="ps-modal" role="dialog" aria-modal="true" aria-label="Search projects">
   <div class="mb" style="max-width:520px;width:95%;">
-    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg> Search Projects</span><button type="button" class="dc" data-action="closeProjectSearch"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></div>
+    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg> Search Projects</span><button type="button" class="dc" data-action="closeProjectSearch" aria-label="Close project search"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></div>
     <div class="mbody">
-      <input id="ps-input" type="text" placeholder="Type a project name or keyword..." autocomplete="off" autofocus style="margin-bottom:12px;">
+      <input id="ps-input" type="text" placeholder="Type a project name or keyword..." aria-label="Search projects" autocomplete="off" autofocus style="margin-bottom:12px;">
       <div id="ps-list" style="max-height:50vh;overflow-y:auto;"></div>
     </div>
   </div>

@@ -52,38 +52,61 @@ async function probeServerIdentity() {
     if (!r.ok) return 'health ' + r.status;
     const body = await r.text();
     // Our worker answers {"ok":true,"status":"ok","app":"my-manager",...}.
-    if (body.indexOf('my-manager') === -1) return 'health body is not this worker: ' + body.slice(0, 120);
+    if (body.indexOf('my-manager') === -1)
+      return 'health body is not this worker: ' + body.slice(0, 120);
     return null;
-  } catch (e) { return null; } // not up yet - the readiness poll handles it
+  } catch (e) {
+    return null;
+  } // not up yet - the readiness poll handles it
 }
 const ROOT = path.resolve(__dirname, '..');
 
 const SECRET = 'qa-offline-copies-secret-4c8b2f1d';
 const ADMIN_CODE = 'qa-admin-oc-71e9';
 
-const log = (s) => { process.stdout.write('[oc] ' + s + '\n'); };
+const log = s => {
+  process.stdout.write('[oc] ' + s + '\n');
+};
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
 const results = [];
 const check = (name, val, detail) => {
   results.push({ name, val });
-  log((val ? 'PASS' : 'FAIL') + '  ' + name + (val ? '' : '   <-- ' + JSON.stringify(detail === undefined ? null : detail).slice(0, 500)));
+  log(
+    (val ? 'PASS' : 'FAIL') +
+      '  ' +
+      name +
+      (val ? '' : '   <-- ' + JSON.stringify(detail === undefined ? null : detail).slice(0, 500))
+  );
 };
 
-setTimeout(() => { log('WATCHDOG — harness exceeded 300s'); try { proc && proc.kill(); } catch (e) {} process.exit(2); }, 300000).unref();
+setTimeout(() => {
+  log('WATCHDOG — harness exceeded 300s');
+  try {
+    proc && proc.kill();
+  } catch (e) {}
+  process.exit(2);
+}, 300000).unref();
 
 function globalWranglerJs() {
   try {
     const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-    const root = execFileSync(npmCmd, ['root', '-g'], { encoding: 'utf8', shell: process.platform === 'win32' }).trim();
+    const root = execFileSync(npmCmd, ['root', '-g'], {
+      encoding: 'utf8',
+      shell: process.platform === 'win32'
+    }).trim();
     const p = path.join(root, 'wrangler', 'bin', 'wrangler.js');
     if (fs.existsSync(p)) return p;
-  } catch (e) { /* fall through */ }
+  } catch (e) {
+    /* fall through */
+  }
   // Fallback: local node_modules (CI, no global wrangler)
   try {
     const lp = path.join(__dirname, '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
     if (fs.existsSync(lp)) return lp;
-  } catch (e) { /* fall through */ }
+  } catch (e) {
+    /* fall through */
+  }
   return null;
 }
 const WRANGLER_JS = globalWranglerJs();
@@ -96,39 +119,92 @@ function startWrangler() {
   return new Promise((resolve, reject) => {
     log('starting wrangler dev on :' + PORT + ' (local D1 + R2, migration 0014)…');
     try {
-      execFileSync(process.execPath,
-        [WRANGLER_JS, 'd1', 'migrations', 'apply', 'my-manager-db', '--local', '--config', 'wrangler.ci.jsonc', '--persist-to', PERSIST_DIR],
-        { cwd: ROOT, stdio: 'ignore', timeout: 120000 });
-    } catch (e) { log('migrations apply (best-effort): ' + e.message); }
-    proc = spawn(process.execPath, [WRANGLER_JS, 'dev', '--config', 'wrangler.ci.jsonc', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST_DIR,
-      '--var', 'GOOGLE_CLIENT_SECRET:' + SECRET,
-      '--var', 'ADMIN_CODE:' + ADMIN_CODE], {
-      cwd: ROOT,
-      env: Object.assign({}, process.env, { WRANGLER_SEND_METRICS: 'false' }),
-      stdio: ['ignore', 'pipe', 'pipe']
+      execFileSync(
+        process.execPath,
+        [
+          WRANGLER_JS,
+          'd1',
+          'migrations',
+          'apply',
+          'my-manager-db',
+          '--local',
+          '--config',
+          'wrangler.ci.jsonc',
+          '--persist-to',
+          PERSIST_DIR
+        ],
+        { cwd: ROOT, stdio: 'ignore', timeout: 120000 }
+      );
+    } catch (e) {
+      log('migrations apply (best-effort): ' + e.message);
+    }
+    proc = spawn(
+      process.execPath,
+      [
+        WRANGLER_JS,
+        'dev',
+        '--config',
+        'wrangler.ci.jsonc',
+        '--port',
+        String(PORT),
+        '--ip',
+        '127.0.0.1',
+        '--persist-to',
+        PERSIST_DIR,
+        '--var',
+        'GOOGLE_CLIENT_SECRET:' + SECRET,
+        '--var',
+        'ADMIN_CODE:' + ADMIN_CODE
+      ],
+      {
+        cwd: ROOT,
+        env: Object.assign({}, process.env, { WRANGLER_SEND_METRICS: 'false' }),
+        stdio: ['ignore', 'pipe', 'pipe']
+      }
+    );
+    proc.stdout.on('data', d => {
+      devLog += d;
     });
-    proc.stdout.on('data', d => { devLog += d; });
-    proc.stderr.on('data', d => { devLog += d; });
-    proc.on('error', (e) => reject(new Error('wrangler spawn failed: ' + e.message)));
-    proc.on('exit', (code) => { if (code !== 0 && code !== null) log('wrangler dev exited early (code ' + code + ')'); });
+    proc.stderr.on('data', d => {
+      devLog += d;
+    });
+    proc.on('error', e => reject(new Error('wrangler spawn failed: ' + e.message)));
+    proc.on('exit', code => {
+      if (code !== 0 && code !== null) log('wrangler dev exited early (code ' + code + ')');
+    });
     const t0 = Date.now();
     const poll = async () => {
       try {
         const ctrl = new AbortController();
-        const timer = setTimeout(function() { ctrl.abort(); }, 3000);
+        const timer = setTimeout(function () {
+          ctrl.abort();
+        }, 3000);
         const r = await fetch(BASE + '/api/health', { signal: ctrl.signal });
         clearTimeout(timer);
         if (r.ok) return resolve();
-      } catch (e) { /* not up yet */ }
-      if (Date.now() - t0 > 120000) return reject(new Error('wrangler dev did not come up in 120s'));
+      } catch (e) {
+        /* not up yet */
+      }
+      if (Date.now() - t0 > 120000)
+        return reject(new Error('wrangler dev did not come up in 120s'));
       setTimeout(poll, 1500);
     };
     poll();
   });
 }
-function stopWrangler() { try { proc && proc.kill(); } catch(e) {} }
+function stopWrangler() {
+  try {
+    proc && proc.kill();
+  } catch (e) {}
+}
 
-const j = async (res) => { try { return await res.json(); } catch (e) { return {}; } };
+const j = async res => {
+  try {
+    return await res.json();
+  } catch (e) {
+    return {};
+  }
+};
 const jsonHeaders = { 'Content-Type': 'application/json' };
 
 (async function main() {
@@ -147,7 +223,8 @@ const jsonHeaders = { 'Content-Type': 'application/json' };
 
     // C0 create a cloud project (code-only create) + seed a snapshot.
     let r = await fetch(BASE + '/api/cloud/projects', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: jsonHeaders,
       body: JSON.stringify({ projectId: pid, name: 'Offline Copies QA' })
     });
@@ -156,7 +233,8 @@ const jsonHeaders = { 'Content-Type': 'application/json' };
     const ownerCode = created.ownerCode;
 
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/save', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
       body: JSON.stringify({ state: { tasks: [{ id: 't1', name: 'Seed task' }] } })
     });
@@ -165,7 +243,8 @@ const jsonHeaders = { 'Content-Type': 'application/json' };
 
     // A viewer code for the recipient device.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/editors', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
       body: JSON.stringify({ label: 'Copy Recipient', scope: ['wbs'], role: 'view' })
     });
@@ -176,27 +255,37 @@ const jsonHeaders = { 'Content-Type': 'application/json' };
     // C1 register an offline copy with the viewer code.
     const deviceId = 'dev-' + Date.now().toString(36) + '-aa11';
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/offline-copies', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: Object.assign({}, jsonHeaders, { 'X-View-Code': viewCode }),
       body: JSON.stringify({ deviceId: deviceId })
     });
     const reg = await j(r);
-    check('C1 register offline copy via viewer code -> ok + copyId',
-      r.ok && reg.ok && !!reg.copyId && reg.deviceId === deviceId, reg);
+    check(
+      'C1 register offline copy via viewer code -> ok + copyId',
+      r.ok && reg.ok && !!reg.copyId && reg.deviceId === deviceId,
+      reg
+    );
     const copyId = reg.copyId;
 
     // C2 idempotent re-register of the same device.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/offline-copies', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: Object.assign({}, jsonHeaders, { 'X-View-Code': viewCode }),
       body: JSON.stringify({ deviceId: deviceId })
     });
     const reg2 = await j(r);
-    check('C2 re-register same device is idempotent (same copyId)', r.ok && reg2.ok && reg2.copyId === copyId, { first: copyId, second: reg2.copyId });
+    check(
+      'C2 re-register same device is idempotent (same copyId)',
+      r.ok && reg2.ok && reg2.copyId === copyId,
+      { first: copyId, second: reg2.copyId }
+    );
 
     // C3 no credential -> generic 403.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/offline-copies', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: jsonHeaders,
       body: JSON.stringify({ deviceId: 'dev-nobody-0000' })
     });
@@ -204,116 +293,170 @@ const jsonHeaders = { 'Content-Type': 'application/json' };
 
     // C4 owner list shows the single copy + autoBroadcast false.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/offline-copies', {
-      method: 'GET', credentials: 'same-origin',
+      method: 'GET',
+      credentials: 'same-origin',
       headers: { 'X-Owner-Code': ownerCode }
     });
     const list = await j(r);
     const one = (list.copies || []).length === 1 ? list.copies[0] : null;
-    check('C4 owner list: 1 copy with deviceId + freshness fields, autoBroadcast false',
-      r.ok && list.ok && (list.copies || []).length === 1 && !!one && one.deviceId === deviceId && list.autoBroadcast === false &&
-      one.id === copyId, list);
+    check(
+      'C4 owner list: 1 copy with deviceId + freshness fields, autoBroadcast false',
+      r.ok &&
+        list.ok &&
+        (list.copies || []).length === 1 &&
+        !!one &&
+        one.deviceId === deviceId &&
+        list.autoBroadcast === false &&
+        one.id === copyId,
+      list
+    );
 
     // C5 a non-owner listing -> 403.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/offline-copies', {
-      method: 'GET', credentials: 'same-origin',
+      method: 'GET',
+      credentials: 'same-origin',
       headers: { 'X-View-Code': viewCode }
     });
     check('C5 viewer listing -> 403', r.status === 403, { status: r.status });
 
     // C6 load with X-Device-Id stamps freshness.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/load', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: Object.assign({}, jsonHeaders, { 'X-View-Code': viewCode, 'X-Device-Id': deviceId }),
       body: JSON.stringify({})
     });
     const load1 = await j(r);
-    check('C6a copy pull with X-Device-Id succeeds', r.ok && load1.ok && !!load1.state && load1.state.tasks.length === 1, load1);
+    check(
+      'C6a copy pull with X-Device-Id succeeds',
+      r.ok && load1.ok && !!load1.state && load1.state.tasks.length === 1,
+      load1
+    );
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/offline-copies', {
-      method: 'GET', credentials: 'same-origin',
+      method: 'GET',
+      credentials: 'same-origin',
       headers: { 'X-Owner-Code': ownerCode }
     });
     const list2 = await j(r);
     const c2 = (list2.copies || [])[0];
-    check('C6b owner list shows last_pulled_at + last_cloud_rev stamped',
-      r.ok && !!c2 && !!c2.lastPulledAt && !!c2.lastCloudRev, c2);
+    check(
+      'C6b owner list shows last_pulled_at + last_cloud_rev stamped',
+      r.ok && !!c2 && !!c2.lastPulledAt && !!c2.lastCloudRev,
+      c2
+    );
 
     // C7 manual broadcast: owner ok + changelog entry; viewer 403.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/broadcast', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
       body: JSON.stringify({})
     });
     const bc = await j(r);
-    check('C7a owner broadcast -> ok with copies count 1', r.ok && bc.ok && bc.copies === 1 && !!bc.broadcastAt, bc);
+    check(
+      'C7a owner broadcast -> ok with copies count 1',
+      r.ok && bc.ok && bc.copies === 1 && !!bc.broadcastAt,
+      bc
+    );
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/broadcast', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: Object.assign({}, jsonHeaders, { 'X-View-Code': viewCode }),
       body: JSON.stringify({})
     });
     check('C7b viewer broadcast -> 403', r.status === 403, { status: r.status });
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/changelog', {
-      method: 'GET', credentials: 'same-origin',
+      method: 'GET',
+      credentials: 'same-origin',
       headers: { 'X-Owner-Code': ownerCode }
     });
     const clog = await j(r);
-    const bcEntries = (clog.entries || []).filter(function(e) { return e.type === 'broadcast'; });
-    check('C7c changelog has a broadcast entry after manual broadcast', r.ok && bcEntries.length >= 1, bcEntries);
+    const bcEntries = (clog.entries || []).filter(function (e) {
+      return e.type === 'broadcast';
+    });
+    check(
+      'C7c changelog has a broadcast entry after manual broadcast',
+      r.ok && bcEntries.length >= 1,
+      bcEntries
+    );
 
     // C8 auto-broadcast on: a save then ALSO logs a broadcast entry.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/auto-broadcast', {
-      method: 'PUT', credentials: 'same-origin',
+      method: 'PUT',
+      credentials: 'same-origin',
       headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
       body: JSON.stringify({ enabled: true })
     });
     const abOn = await j(r);
     check('C8a auto-broadcast enabled', r.ok && abOn.ok && abOn.enabled === true, abOn);
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/save', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
       body: JSON.stringify({ state: { tasks: [{ id: 't1', name: 'Seed task', done: true }] } })
     });
     const save2 = await j(r);
-    check('C8b save with auto-broadcast on still succeeds', r.ok && save2.ok && !!save2.savedAt, save2);
+    check(
+      'C8b save with auto-broadcast on still succeeds',
+      r.ok && save2.ok && !!save2.savedAt,
+      save2
+    );
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/changelog', {
-      method: 'GET', credentials: 'same-origin',
+      method: 'GET',
+      credentials: 'same-origin',
       headers: { 'X-Owner-Code': ownerCode }
     });
     const log2 = await j(r);
-    const bc2 = (log2.entries || []).filter(function(e) { return e.type === 'broadcast'; });
+    const bc2 = (log2.entries || []).filter(function (e) {
+      return e.type === 'broadcast';
+    });
     check('C8c auto-broadcast save logged a broadcast entry', r.ok && bc2.length >= 2, bc2.length);
 
     // C9 auto-broadcast off: the next save logs NO new broadcast entry.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/auto-broadcast', {
-      method: 'PUT', credentials: 'same-origin',
+      method: 'PUT',
+      credentials: 'same-origin',
       headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
       body: JSON.stringify({ enabled: false })
     });
     const abOff = await j(r);
     check('C9a auto-broadcast disabled', r.ok && abOff.ok && abOff.enabled === false, abOff);
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/save', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
-      body: JSON.stringify({ state: { tasks: [{ id: 't1', name: 'Seed task', done: true, note: 'x' }] } })
+      body: JSON.stringify({
+        state: { tasks: [{ id: 't1', name: 'Seed task', done: true, note: 'x' }] }
+      })
     });
     const save3 = await j(r);
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/changelog', {
-      method: 'GET', credentials: 'same-origin',
+      method: 'GET',
+      credentials: 'same-origin',
       headers: { 'X-Owner-Code': ownerCode }
     });
     const log3 = await j(r);
-    const bc3 = (log3.entries || []).filter(function(e) { return e.type === 'broadcast'; });
-    check('C9b save with auto-broadcast off logs no new broadcast entry', r.ok && bc3.length === 2, bc3.length);
+    const bc3 = (log3.entries || []).filter(function (e) {
+      return e.type === 'broadcast';
+    });
+    check(
+      'C9b save with auto-broadcast off logs no new broadcast entry',
+      r.ok && bc3.length === 2,
+      bc3.length
+    );
 
     // C10 self-removal + owner removal.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/offline-copies/' + copyId, {
-      method: 'DELETE', credentials: 'same-origin',
+      method: 'DELETE',
+      credentials: 'same-origin',
       headers: Object.assign({}, jsonHeaders, { 'X-View-Code': viewCode }),
       body: JSON.stringify({ deviceId: deviceId })
     });
     const selfDel = await j(r);
     check('C10a device can delete its own copy', r.ok && selfDel.ok, selfDel);
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/offline-copies/' + copyId, {
-      method: 'DELETE', credentials: 'same-origin',
+      method: 'DELETE',
+      credentials: 'same-origin',
       headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
       body: JSON.stringify({})
     });
@@ -322,51 +465,77 @@ const jsonHeaders = { 'Content-Type': 'application/json' };
     // A fresh copy so the owner-removal path is exercised.
     const dev2 = 'dev-' + Date.now().toString(36) + '-bb22';
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/offline-copies', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST',
+      credentials: 'same-origin',
       headers: Object.assign({}, jsonHeaders, { 'X-View-Code': viewCode }),
       body: JSON.stringify({ deviceId: dev2 })
     });
     const reg3 = await j(r);
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/offline-copies/' + reg3.copyId, {
-      method: 'DELETE', credentials: 'same-origin',
+      method: 'DELETE',
+      credentials: 'same-origin',
       headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
       body: JSON.stringify({})
     });
     const ownerDel = await j(r);
-    check('C10c owner can delete any copy', r.ok && ownerDel.ok && ownerDel.removed === reg3.copyId, ownerDel);
+    check(
+      'C10c owner can delete any copy',
+      r.ok && ownerDel.ok && ownerDel.removed === reg3.copyId,
+      ownerDel
+    );
 
     // C11 unlink (hard delete) cascades offline_copies: the project row is
     // gone, so the owner listing now answers the generic 403.
     r = await fetch(BASE + '/api/cloud/projects/' + pid, {
-      method: 'DELETE', credentials: 'same-origin',
+      method: 'DELETE',
+      credentials: 'same-origin',
       headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
       body: JSON.stringify({})
     });
     const unlink = await j(r);
     check('C11a unlink succeeds', r.ok && unlink.ok && unlink.unlinked === pid, unlink);
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/offline-copies', {
-      method: 'GET', credentials: 'same-origin',
+      method: 'GET',
+      credentials: 'same-origin',
       headers: { 'X-Owner-Code': ownerCode }
     });
     const afterUnlink = await j(r);
-    check('C11b offline-copies list after unlink -> generic 403', r.status === 403, { status: r.status, body: afterUnlink });
+    check('C11b offline-copies list after unlink -> generic 403', r.status === 403, {
+      status: r.status,
+      body: afterUnlink
+    });
 
     // Summary.
-    const fails = results.filter(function(x) { return !x.val; });
+    const fails = results.filter(function (x) {
+      return !x.val;
+    });
     log('========================================');
-    log('offline-copies gate: ' + (results.length - fails.length) + '/' + results.length + ' checks passed');
+    log(
+      'offline-copies gate: ' +
+        (results.length - fails.length) +
+        '/' +
+        results.length +
+        ' checks passed'
+    );
     if (fails.length) {
-      log('FAILED: ' + fails.map(function(f) { return f.name; }).join(' | '));
+      log(
+        'FAILED: ' +
+          fails
+            .map(function (f) {
+              return f.name;
+            })
+            .join(' | ')
+      );
       stopWrangler();
       process.exit(1);
     }
     stopWrangler();
     process.exit(0);
   } catch (e) {
-    log('HARNESS ERROR: ' + (e && e.stack || e));
+    log('HARNESS ERROR: ' + ((e && e.stack) || e));
     log('--- wrangler dev log tail ---');
     log(devLog.slice(-2000));
-    console.error('::error::qa-offline-copies harness error: ' + String(e && e.message || e));
+    console.error('::error::qa-offline-copies harness error: ' + String((e && e.message) || e));
     stopWrangler();
     process.exit(1);
   }

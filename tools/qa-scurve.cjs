@@ -32,26 +32,40 @@ ok('the earned curve is addressable (#evm-earned)', /id="evm-earned"/.test(svg))
 const paths = [...svg.matchAll(/points="([^"]+)"[\s\S]{0,400}?stroke-dasharray="(\d+)"/g)];
 ok('both curves carry a dasharray', paths.length === 2, paths.length + ' found');
 for (const m of paths) {
-  const pts = m[1].trim().split(/\s+/).map((s) => s.split(',').map(Number));
+  const pts = m[1]
+    .trim()
+    .split(/\s+/)
+    .map(s => s.split(',').map(Number));
   let len = 0;
-  for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+  for (let i = 1; i < pts.length; i++)
+    len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
   const dash = Number(m[2]);
-  ok('dasharray ' + dash + ' covers the path length ' + Math.round(len),
-     dash >= len, dash >= len ? '' : 'SHORT by ' + Math.round(len - dash) + ' -> curve would be invisible');
+  ok(
+    'dasharray ' + dash + ' covers the path length ' + Math.round(len),
+    dash >= len,
+    dash >= len ? '' : 'SHORT by ' + Math.round(len - dash) + ' -> curve would be invisible'
+  );
 }
 
 // A renderer that ignores SMIL must still render a FINISHED curve, never a
 // blank one: the resting stroke-dashoffset has to be 0.
 const offsets = [...svg.matchAll(/stroke-dasharray="\d+"\s+stroke-dashoffset="(\d+)"/g)];
-ok('resting dashoffset is 0 (static fallback shows the finished curve)',
-   offsets.length === 2 && offsets.every((m) => m[1] === '0'),
-   offsets.map((m) => m[1]).join(','));
+ok(
+  'resting dashoffset is 0 (static fallback shows the finished curve)',
+  offsets.length === 2 && offsets.every(m => m[1] === '0'),
+  offsets.map(m => m[1]).join(',')
+);
 
 const anims = [...svg.matchAll(/<animate attributeName="stroke-dashoffset"[^>]*>/g)];
 ok('both curves animate stroke-dashoffset', anims.length === 2, anims.length + ' found');
-ok('every animate freezes at its end state (fill="freeze")',
-   anims.every((m) => /fill="freeze"/.test(m[0])));
-ok('every animate lands on dashoffset 0', anims.every((m) => /to="0"/.test(m[0])));
+ok(
+  'every animate freezes at its end state (fill="freeze")',
+  anims.every(m => /fill="freeze"/.test(m[0]))
+);
+ok(
+  'every animate lands on dashoffset 0',
+  anims.every(m => /to="0"/.test(m[0]))
+);
 
 // The earned curve is the one with a dasharray already; make sure we did not
 // destroy its original rendering intent.
@@ -63,7 +77,7 @@ ok('the planned curve keeps its gold stroke', /stroke="#E8923A"/.test(svg));
   const browser = await chromium.launch({ channel: 'chrome', args: ['--disk-cache-size=0'] });
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   const errs = [];
-  page.on('pageerror', (e) => errs.push(e.message.slice(0, 90)));
+  page.on('pageerror', e => errs.push(e.message.slice(0, 90)));
 
   await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded', timeout: 45000 });
 
@@ -78,34 +92,52 @@ ok('the planned curve keeps its gold stroke', /stroke="#E8923A"/.test(svg));
     host.style.cssText = 'position:fixed;left:-9999px;top:0;width:900px;height:491px';
     host.innerHTML = text;
     document.body.appendChild(host);
-    const read = () => Array.from(host.querySelectorAll('polyline[id^=evm-]'))
-      .map((p) => ({
+    const read = () =>
+      Array.from(host.querySelectorAll('polyline[id^=evm-]')).map(p => ({
         id: p.id,
         offset: parseFloat(getComputedStyle(p).strokeDashoffset),
-        total: parseFloat(getComputedStyle(p).strokeDashoffset) + p.getTotalLength(),
+        total: parseFloat(getComputedStyle(p).strokeDashoffset) + p.getTotalLength()
       }));
     const samples = [];
     for (let i = 0; i < 14; i++) {
-      samples.push(read().map((s) => s.offset));
-      await new Promise((r) => setTimeout(r, 200));
+      samples.push(read().map(s => s.offset));
+      await new Promise(r => setTimeout(r, 200));
     }
     host.remove();
     return samples;
   });
 
-  const planned = run.map((s) => s[0]);
-  const earned = run.map((s) => s[1]);
+  const planned = run.map(s => s[0]);
+  const earned = run.map(s => s[1]);
   const plannedMoved = planned.some((v, i) => i > 0 && v !== planned[i - 1]);
   const earnedMoved = earned.some((v, i) => i > 0 && v !== earned[i - 1]);
 
-  ok('the planned curve animates (dashoffset changes over time)', plannedMoved,
-     planned.slice(0, 5).map((v) => Math.round(v)).join(' -> '));
-  ok('the earned curve animates too', earnedMoved,
-     earned.slice(0, 5).map((v) => Math.round(v)).join(' -> '));
-  ok('the planned curve settles fully drawn (offset ~0)', Math.abs(planned[planned.length - 1]) < 1,
-     'final=' + planned[planned.length - 1].toFixed(2));
-  ok('the earned curve settles fully drawn (offset ~0)', Math.abs(earned[earned.length - 1]) < 1,
-     'final=' + earned[earned.length - 1].toFixed(2));
+  ok(
+    'the planned curve animates (dashoffset changes over time)',
+    plannedMoved,
+    planned
+      .slice(0, 5)
+      .map(v => Math.round(v))
+      .join(' -> ')
+  );
+  ok(
+    'the earned curve animates too',
+    earnedMoved,
+    earned
+      .slice(0, 5)
+      .map(v => Math.round(v))
+      .join(' -> ')
+  );
+  ok(
+    'the planned curve settles fully drawn (offset ~0)',
+    Math.abs(planned[planned.length - 1]) < 1,
+    'final=' + planned[planned.length - 1].toFixed(2)
+  );
+  ok(
+    'the earned curve settles fully drawn (offset ~0)',
+    Math.abs(earned[earned.length - 1]) < 1,
+    'final=' + earned[earned.length - 1].toFixed(2)
+  );
 
   // The card must still be solid, and the artwork must still be visible.
   const card = await page.evaluate(() => {
@@ -115,12 +147,19 @@ ok('the planned curve keeps its gold stroke', /stroke="#E8923A"/.test(svg));
       blur: c ? getComputedStyle(c).backdropFilter : '',
       imgW: img ? img.getBoundingClientRect().width : 0,
       natural: img ? img.naturalWidth : 0,
-      src: img ? img.getAttribute('src') : null,
+      src: img ? img.getAttribute('src') : null
     };
   });
-  ok('the hero card is still SOLID (no glass on content)', /blur\(none\)|none/.test(card.blur), card.blur);
-  ok('the EVM artwork still loads', card.natural > 0 && card.imgW > 100,
-     'natural=' + card.natural + ' rendered=' + Math.round(card.imgW));
+  ok(
+    'the hero card is still SOLID (no glass on content)',
+    /blur\(none\)|none/.test(card.blur),
+    card.blur
+  );
+  ok(
+    'the EVM artwork still loads',
+    card.natural > 0 && card.imgW > 100,
+    'natural=' + card.natural + ' rendered=' + Math.round(card.imgW)
+  );
   ok('zero page errors', errs.length === 0, errs.join(' | '));
 
   await browser.close();

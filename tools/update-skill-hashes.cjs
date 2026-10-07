@@ -41,7 +41,9 @@ for (const [name, entry] of Object.entries(lock.skills || {})) {
     const newHash = hashFolder(skillDir);
     const oldHash = entry.computedHash || entry.hash || '';
     if (newHash && oldHash !== newHash) {
-      console.log('Updating ' + name + ': ' + oldHash.substring(0,8) + ' -> ' + newHash.substring(0,8));
+      console.log(
+        'Updating ' + name + ': ' + oldHash.substring(0, 8) + ' -> ' + newHash.substring(0, 8)
+      );
       if (entry.computedHash) entry.computedHash = newHash;
       if (entry.hash) entry.hash = newHash;
       updated++;
@@ -49,5 +51,8 @@ for (const [name, entry] of Object.entries(lock.skills || {})) {
   }
 }
 
-fs.writeFileSync(path.join(__dirname, '..', 'skills-lock.json'), JSON.stringify(lock, null, 2) + '\n');
+fs.writeFileSync(
+  path.join(__dirname, '..', 'skills-lock.json'),
+  JSON.stringify(lock, null, 2) + '\n'
+);
 console.log('Updated ' + updated + ' skill hashes');

@@ -32,7 +32,7 @@ const HOSTILE = [
   'data:text/html,<script>1</script>',
   'evil.example',
   'HTTPS://EVIL.EXAMPLE',
-  '',
+  ''
 ];
 const VALID = ['/app.html', '/project.html?id=demo', '/index.html#faq', '/dashboard.html'];
 
@@ -40,16 +40,22 @@ const VALID = ['/app.html', '/project.html?id=demo', '/index.html#faq', '/dashbo
   const browser = await chromium.launch({ channel: 'chrome', args: ['--disk-cache-size=0'] });
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   const errs = [];
-  page.on('console', (m) => { if (m.type() === 'error' && !/404 \(Not Found\)/.test(m.text())) errs.push(m.text().slice(0, 90)); });
-  page.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message.slice(0, 90)));
+  page.on('console', m => {
+    if (m.type() === 'error' && !/404 \(Not Found\)/.test(m.text()))
+      errs.push(m.text().slice(0, 90));
+  });
+  page.on('pageerror', e => errs.push('PAGEERROR ' + e.message.slice(0, 90)));
 
   await page.goto(BASE + '/signin.html', { waitUntil: 'networkidle', timeout: 45000 });
   await page.waitForTimeout(1000);
 
   console.log('=== ARM 1: structure and the two doors ===\n');
   const s = await page.evaluate(() => {
-    const q = (sel) => document.querySelector(sel);
-    const rect = (sel) => { const e = q(sel); return e ? e.getBoundingClientRect() : null; };
+    const q = sel => document.querySelector(sel);
+    const rect = sel => {
+      const e = q(sel);
+      return e ? e.getBoundingClientRect() : null;
+    };
     return {
       title: document.title,
       google: !!q('#google-signin-button'),
@@ -62,35 +68,55 @@ const VALID = ['/app.html', '/project.html?id=demo', '/index.html#faq', '/dashbo
       cardW: rect('.signin-card') ? Math.round(rect('.signin-card').width) : null,
       cardLeft: rect('.signin-card') ? Math.round(rect('.signin-card').left) : null,
       sky: !!q('.signin-sky'),
-      ariaExpanded: q('#signin-email-toggle') ? q('#signin-email-toggle').getAttribute('aria-expanded') : null,
-      controls: q('#signin-email-toggle') ? q('#signin-email-toggle').getAttribute('aria-controls') : null,
+      ariaExpanded: q('#signin-email-toggle')
+        ? q('#signin-email-toggle').getAttribute('aria-expanded')
+        : null,
+      controls: q('#signin-email-toggle')
+        ? q('#signin-email-toggle').getAttribute('aria-controls')
+        : null
     };
   });
 
   ok('the page has a real title', /sign in/i.test(s.title), s.title);
   ok('the Google door renders', s.google);
   ok('the email door is a disclosure, collapsed at rest', s.toggle && s.panelHidden === true);
-  ok('the disclosure is a real ARIA disclosure pattern',
-     s.ariaExpanded === 'false' && s.controls === 'signin-email-panel',
-     'aria-expanded=' + s.ariaExpanded + ' aria-controls=' + s.controls);
+  ok(
+    'the disclosure is a real ARIA disclosure pattern',
+    s.ariaExpanded === 'false' && s.controls === 'signin-email-panel',
+    'aria-expanded=' + s.ariaExpanded + ' aria-controls=' + s.controls
+  );
   ok('the star field is present', s.sky);
 
   console.log('\n=== ARM 2: the measured layout order ===\n');
-  ok('Google sits ABOVE the email door', s.googleY !== null && s.toggleY !== null && s.googleY < s.toggleY,
-     'google@' + s.googleY + ' email@' + s.toggleY);
-  ok('the legal line sits BELOW the doors', s.legalY !== null && s.googleY !== null && s.legalY > s.toggleY,
-     'legal@' + s.legalY);
-  ok('the card is centred', s.cardLeft > 380 && s.cardLeft < 520, 'left=' + s.cardLeft + ' w=' + s.cardW);
+  ok(
+    'Google sits ABOVE the email door',
+    s.googleY !== null && s.toggleY !== null && s.googleY < s.toggleY,
+    'google@' + s.googleY + ' email@' + s.toggleY
+  );
+  ok(
+    'the legal line sits BELOW the doors',
+    s.legalY !== null && s.googleY !== null && s.legalY > s.toggleY,
+    'legal@' + s.legalY
+  );
+  ok(
+    'the card is centred',
+    s.cardLeft > 380 && s.cardLeft < 520,
+    'left=' + s.cardLeft + ' w=' + s.cardW
+  );
 
   console.log('\n=== ARM 3: OPEN REDIRECT DEFENCE ===\n');
   for (const bad of HOSTILE) {
-    await page.goto(BASE + '/signin.html?next=' + encodeURIComponent(bad), { waitUntil: 'domcontentloaded' });
+    await page.goto(BASE + '/signin.html?next=' + encodeURIComponent(bad), {
+      waitUntil: 'domcontentloaded'
+    });
     await page.waitForTimeout(320);
     const got = await page.evaluate(() => document.body.getAttribute('data-signin-next'));
     ok('rejects next=' + JSON.stringify(bad), got === '', 'resolved to ' + JSON.stringify(got));
   }
   for (const good of VALID) {
-    await page.goto(BASE + '/signin.html?next=' + encodeURIComponent(good), { waitUntil: 'domcontentloaded' });
+    await page.goto(BASE + '/signin.html?next=' + encodeURIComponent(good), {
+      waitUntil: 'domcontentloaded'
+    });
     await page.waitForTimeout(320);
     const got = await page.evaluate(() => document.body.getAttribute('data-signin-next'));
     ok('honours same-site next=' + good, got === good, 'resolved to ' + JSON.stringify(got));
@@ -104,10 +130,13 @@ const VALID = ['/app.html', '/project.html?id=demo', '/index.html#faq', '/dashbo
   const opened = await page.evaluate(() => ({
     hidden: document.getElementById('signin-email-panel').hidden,
     exp: document.getElementById('signin-email-toggle').getAttribute('aria-expanded'),
-    fields: document.querySelectorAll('#marketing-email-auth input').length,
+    fields: document.querySelectorAll('#marketing-email-auth input').length
   }));
-  ok('clicking the disclosure reveals the email form', opened.hidden === false && opened.exp === 'true',
-     JSON.stringify(opened));
+  ok(
+    'clicking the disclosure reveals the email form',
+    opened.hidden === false && opened.exp === 'true',
+    JSON.stringify(opened)
+  );
   ok('the email form actually mounted fields', opened.fields > 0, opened.fields + ' inputs');
 
   await page.keyboard.press('Escape');
@@ -125,8 +154,8 @@ const VALID = ['/app.html', '/project.html?id=demo', '/index.html#faq', '/dashbo
     const input = document.querySelector('#marketing-email-auth input');
     // Relative luminance of the copy, so "is it light enough to read on the
     // dark sky" is measured rather than pattern-matched.
-    const rgb = (c) => (c.match(/\d+/g) || []).map(Number);
-    const lum = (c) => {
+    const rgb = c => (c.match(/\d+/g) || []).map(Number);
+    const lum = c => {
       const [r, g, b] = rgb(c);
       return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
     };
@@ -136,19 +165,28 @@ const VALID = ['/app.html', '/project.html?id=demo', '/index.html#faq', '/dashbo
       ledeLum: +lum(getComputedStyle(lede).color).toFixed(3),
       innerBg: getComputedStyle(inner).backgroundColor,
       innerLum: +lum(getComputedStyle(inner).backgroundColor).toFixed(3),
-      inputBg: input ? getComputedStyle(input).backgroundColor : null,
+      inputBg: input ? getComputedStyle(input).backgroundColor : null
     };
   });
   ok('the card is a glass surface', /blur/.test(leg.cardBlur), leg.cardBlur.slice(0, 30));
   // Light text over a dark sky: measure luminance instead of matching a hex.
-  ok('body copy over the sky is LIGHT enough to read (luminance > 0.5)',
-     leg.ledeLum > 0.5, 'luminance=' + leg.ledeLum + ' ' + leg.ledeColor);
+  ok(
+    'body copy over the sky is LIGHT enough to read (luminance > 0.5)',
+    leg.ledeLum > 0.5,
+    'luminance=' + leg.ledeLum + ' ' + leg.ledeColor
+  );
   // Glass law: the card may be glass, but the form layer inside it must be a
   // DARK, near-opaque fill so labels and inputs stay readable.
-  ok('the form layer is DARK and opaque enough to read (luminance < 0.3)',
-     leg.innerLum < 0.3, 'luminance=' + leg.innerLum + ' ' + leg.innerBg);
-  ok('the email inputs carry a solid fill of their own',
-     !!leg.inputBg && leg.inputBg !== 'rgba(0, 0, 0, 0)', String(leg.inputBg));
+  ok(
+    'the form layer is DARK and opaque enough to read (luminance < 0.3)',
+    leg.innerLum < 0.3,
+    'luminance=' + leg.innerLum + ' ' + leg.innerBg
+  );
+  ok(
+    'the email inputs carry a solid fill of their own',
+    !!leg.inputBg && leg.inputBg !== 'rgba(0, 0, 0, 0)',
+    String(leg.inputBg)
+  );
 
   console.log('\n=== ARM 6: measured WCAG contrast (composited, not assumed) ===\n');
   // Open the disclosure so the real fields exist, then composite every text
@@ -156,20 +194,33 @@ const VALID = ['/app.html', '/project.html?id=demo', '/index.html#faq', '/dashbo
   await page.click('#signin-email-toggle');
   await page.waitForTimeout(500);
   const cr = await page.evaluate(() => {
-    const lum = (c) => {
-      const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    const lum = c => {
+      const f = v => {
+        v /= 255;
+        return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+      };
       return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
     };
-    const parse = (s) => { const m = (String(s).match(/[\d.]+/g) || []).map(Number); return { c: [m[0], m[1], m[2]], a: m.length > 3 ? m[3] : 1 }; };
+    const parse = s => {
+      const m = (String(s).match(/[\d.]+/g) || []).map(Number);
+      return { c: [m[0], m[1], m[2]], a: m.length > 3 ? m[3] : 1 };
+    };
     const over = (fg, bg) => ({ c: fg.c.map((v, i) => v * fg.a + bg.c[i] * (1 - fg.a)) });
-    const ratio = (a, b) => { const l1 = Math.max(lum(a.c), lum(b.c)), l2 = Math.min(lum(a.c), lum(b.c)); return +((l1 + 0.05) / (l2 + 0.05)).toFixed(2); };
+    const ratio = (a, b) => {
+      const l1 = Math.max(lum(a.c), lum(b.c)),
+        l2 = Math.min(lum(a.c), lum(b.c));
+      return +((l1 + 0.05) / (l2 + 0.05)).toFixed(2);
+    };
     const sky = { c: [11, 18, 32] };
     const cardFill = over({ c: [255, 255, 255], a: 0.07 }, sky);
     const innerFill = over({ c: [8, 14, 26], a: 0.55 }, cardFill);
     const input = document.querySelector('#marketing-email-auth input');
     const ib = input ? parse(getComputedStyle(input).backgroundColor) : { c: [17, 17, 20], a: 1 };
     const out = {};
-    const g = (sel, bg, key) => { const e = document.querySelector(sel); if (e) out[key] = ratio(over(parse(getComputedStyle(e).color), bg), bg); };
+    const g = (sel, bg, key) => {
+      const e = document.querySelector(sel);
+      if (e) out[key] = ratio(over(parse(getComputedStyle(e).color), bg), bg);
+    };
     g('.signin-card h1', cardFill, 'h1');
     g('.signin-lede', cardFill, 'lede');
     g('.signin-legal', cardFill, 'legal');
@@ -186,15 +237,17 @@ const VALID = ['/app.html', '/project.html?id=demo', '/index.html#faq', '/dashbo
   }
 
   const emoji = await page.evaluate(() => {
-    const re = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{1F1E6}-\u{1F1FF}]/gu;
+    const re =
+      /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{1F1E6}-\u{1F1FF}]/gu;
     return (document.body.innerText.match(re) || []).length;
   });
   ok('zero emoji on the page', emoji === 0, emoji + ' found');
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(450);
-  const mob = await page.evaluate(() =>
-    document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  const mob = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth
+  );
   ok('no horizontal overflow at 390', mob <= 1, 'overflow=' + mob);
   await page.setViewportSize({ width: 1280, height: 900 });
 

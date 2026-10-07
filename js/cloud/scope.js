@@ -5,11 +5,13 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   const C = ns.Cloud;
-  const $ = function(id) { return document.getElementById(id); };
+  const $ = function (id) {
+    return document.getElementById(id);
+  };
 
   const VIEW_ONLY_PANELS = ['dash', 'def', 'kan', 'gantt', 'claim', 'digest', 'baselinen', 'wxlog'];
 

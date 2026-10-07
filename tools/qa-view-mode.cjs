@@ -32,50 +32,83 @@ const os = require('os');
 const path = require('path');
 const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('./chrome-launcher.cjs');
 const userDir = path.join(os.tmpdir(), 'chrome-viewmode-' + Date.now());
-const delay = (ms) => new Promise(r => setTimeout(r, ms));
+const delay = ms => new Promise(r => setTimeout(r, ms));
 const results = [];
 function check(name, val, detail) {
   results.push({ name, val });
-  console.log((val ? '[PASS] ' : '[FAIL] ') + name + (val ? '' : '   <-- ' + JSON.stringify(detail === undefined ? null : detail).slice(0, 400)));
+  console.log(
+    (val ? '[PASS] ' : '[FAIL] ') +
+      name +
+      (val ? '' : '   <-- ' + JSON.stringify(detail === undefined ? null : detail).slice(0, 400))
+  );
 }
 // WCAG relative-luminance contrast for the measured pairs.
 function lum(hex) {
   const c = hex.replace('#', '').slice(0, 6);
   const ch = [0, 2, 4].map(i => parseInt(c.slice(i, i + 2), 16) / 255);
-  const lin = ch.map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+  const lin = ch.map(v => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
   return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
 }
 function contrast(a, b) {
-  const l1 = lum(a), l2 = lum(b);
-  const hi = Math.max(l1, l2), lo = Math.min(l1, l2);
+  const l1 = lum(a),
+    l2 = lum(b);
+  const hi = Math.max(l1, l2),
+    lo = Math.min(l1, l2);
   return (hi + 0.05) / (lo + 0.05);
 }
 
 (async function () {
-  const proc = spawn(CHROME, [
-    '--headless=new', '--disable-gpu', '--no-first-run', '--no-sandbox',
-    '--remote-allow-origins=*', '--remote-debugging-port=' + PORT,
-    '--user-data-dir=' + userDir, '--window-size=1280,900', '--disk-cache-size=0', 'about:blank'
-  ], { stdio: 'ignore' });
+  const proc = spawn(
+    CHROME,
+    [
+      '--headless=new',
+      '--disable-gpu',
+      '--no-first-run',
+      '--no-sandbox',
+      '--remote-allow-origins=*',
+      '--remote-debugging-port=' + PORT,
+      '--user-data-dir=' + userDir,
+      '--window-size=1280,900',
+      '--disk-cache-size=0',
+      'about:blank'
+    ],
+    { stdio: 'ignore' }
+  );
   try {
     for (let i = 0; i < 60; i++) {
-      try { const r = await fetch('http://127.0.0.1:' + PORT + '/json/version'); if (r.ok) break; } catch (e) {}
+      try {
+        const r = await fetch('http://127.0.0.1:' + PORT + '/json/version');
+        if (r.ok) break;
+      } catch (e) {}
       await delay(300);
     }
     const targets = await (await fetch('http://127.0.0.1:' + PORT + '/json')).json();
     const ws = new WebSocket(targets.find(t => t.type === 'page').webSocketDebuggerUrl);
     const pending = new Map();
     let id = 0;
-    ws.onmessage = (e) => {
+    ws.onmessage = e => {
       const m = JSON.parse(e.data);
-      if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); }
+      if (m.id && pending.has(m.id)) {
+        pending.get(m.id)(m);
+        pending.delete(m.id);
+      }
     };
-    await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error('ws fail')); });
-    const send = (method, params = {}) => new Promise(res => {
-      const mid = ++id; pending.set(mid, m => res(m.result || {})); ws.send(JSON.stringify({ id: mid, method, params }));
+    await new Promise((res, rej) => {
+      ws.onopen = res;
+      ws.onerror = () => rej(new Error('ws fail'));
     });
-    const ev = async (expr) => {
-      const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true });
+    const send = (method, params = {}) =>
+      new Promise(res => {
+        const mid = ++id;
+        pending.set(mid, m => res(m.result || {}));
+        ws.send(JSON.stringify({ id: mid, method, params }));
+      });
+    const ev = async expr => {
+      const r = await send('Runtime.evaluate', {
+        expression: expr,
+        returnByValue: true,
+        awaitPromise: true
+      });
       return r && r.result && r.result.value;
     };
     await send('Page.enable');
@@ -98,12 +131,23 @@ function contrast(a, b) {
         view3d: document.body.classList.contains('view-3d'),
         deckExists: !!document.querySelector('.view-deck') };
     })()`);
-    check('V1 default: gold palette, flat, no data-theme, dock has Theme+Perf only (palette/view UI retired)',
-      v1.dataTheme === null && v1.dockHasTheme === true && v1.dockHasPerf === true && v1.dockHasPalette === false && v1.dockHasView === false && !v1.view3d && v1.deckExists, v1);
+    check(
+      'V1 default: gold palette, flat, no data-theme, dock has Theme+Perf only (palette/view UI retired)',
+      v1.dataTheme === null &&
+        v1.dockHasTheme === true &&
+        v1.dockHasPerf === true &&
+        v1.dockHasPalette === false &&
+        v1.dockHasView === false &&
+        !v1.view3d &&
+        v1.deckExists,
+      v1
+    );
 
     // V2 (stale-rose scrub, OWNER 2026-09-12): a stored rose pref from the
     // retired picker is REMOVED at boot and data-theme can never re-appear.
-    await send('Page.addScriptToEvaluateOnNewDocument', { source: `try{localStorage.setItem('mmgr_palette','rose');}catch(e){}` });
+    await send('Page.addScriptToEvaluateOnNewDocument', {
+      source: `try{localStorage.setItem('mmgr_palette','rose');}catch(e){}`
+    });
     await send('Page.navigate', { url: BASE + '/app.html' });
     await delay(3000);
     const v2 = await ev(`(function(){
@@ -112,8 +156,11 @@ function contrast(a, b) {
         gold: getComputedStyle(document.body).getPropertyValue('--gold').trim(),
         text: getComputedStyle(document.body).getPropertyValue('--text').trim() };
     })()`);
-    check('V2 stale rose pref scrubbed: mmgr_palette removed + data-theme never applied (no resurrection)',
-      v2.dataTheme === null && v2.stored === null && !!v2.gold && !!v2.text, v2);
+    check(
+      'V2 stale rose pref scrubbed: mmgr_palette removed + data-theme never applied (no resurrection)',
+      v2.dataTheme === null && v2.stored === null && !!v2.gold && !!v2.text,
+      v2
+    );
 
     // V7/V8 (retired with the palette axis): keep a live token read so the
     // surface still resolves defaults in both scopes without rose.
@@ -130,7 +177,11 @@ function contrast(a, b) {
       return { dt: document.documentElement.getAttribute('data-theme'),
         stored: localStorage.getItem('mmgr_palette') };
     })()`);
-    check('V2b reload keeps data-theme gone + scrubbed key absent', v2b.dt === null && v2b.stored === null, v2b);
+    check(
+      'V2b reload keeps data-theme gone + scrubbed key absent',
+      v2b.dt === null && v2b.stored === null,
+      v2b
+    );
 
     // V3 (pref-driven): stored 3d view tilts the deck. Both prefs are set
     // on the LIVE page (a new-document script only affects future loads);
@@ -154,7 +205,10 @@ function contrast(a, b) {
     let v3 = null;
     for (let i = 0; i < 10; i++) {
       await delay(300);
-      if (i === 4) await ev(`window.dispatchEvent(new Event('resize')); try{ if(window.MMGR&&MMGR.Perf&&MMGR.Perf.apply) MMGR.Perf.apply(); }catch(e){}`);
+      if (i === 4)
+        await ev(
+          `window.dispatchEvent(new Event('resize')); try{ if(window.MMGR&&MMGR.Perf&&MMGR.Perf.apply) MMGR.Perf.apply(); }catch(e){}`
+        );
       v3 = await ev(`(function(){
       const deck = document.querySelector('.view-deck');
       const cs = deck ? getComputedStyle(deck) : null;
@@ -169,10 +223,23 @@ function contrast(a, b) {
     })()`);
       if (v3 && /matrix3d|perspective|rotate/.test(String(v3.deckTr))) break;
     }
-    const tilting = v3.view3d && v3.stored === '3d' && v3.deckTr && v3.deckTr !== 'none' && /matrix3d|perspective|rotate/.test(v3.deckTr);
+    const tilting =
+      v3.view3d &&
+      v3.stored === '3d' &&
+      v3.deckTr &&
+      v3.deckTr !== 'none' &&
+      /matrix3d|perspective|rotate/.test(v3.deckTr);
     check('V3 stored 3d pref: body.view-3d + deck tilted (matrix3d)', tilting, v3);
-    check('V3 WebKit blur-free tilt: deck --glass-blur is 0px while tilted', v3.view3d && v3.deckBlur === '0px', v3);
-    check('V3 overlays stay flat: body + unlock modal have NO transform', v3.bodyTr === 'none' && (!v3.modalTr || v3.modalTr === 'none'), v3);
+    check(
+      'V3 WebKit blur-free tilt: deck --glass-blur is 0px while tilted',
+      v3.view3d && v3.deckBlur === '0px',
+      v3
+    );
+    check(
+      'V3 overlays stay flat: body + unlock modal have NO transform',
+      v3.bodyTr === 'none' && (!v3.modalTr || v3.modalTr === 'none'),
+      v3
+    );
 
     // V4: view preference survives reload.
     await send('Page.navigate', { url: BASE + '/app.html' });
@@ -184,21 +251,32 @@ function contrast(a, b) {
     check('V4 reload keeps 3D (class + stored pref)', v4.view3d && v4.stored === '3d', v4);
 
     // V5: mobile auto-flat — stored 3d but 640px viewport.
-    await send('Emulation.setDeviceMetricsOverride', { width: 640, height: 900, deviceScaleFactor: 1, mobile: false });
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: 640,
+      height: 900,
+      deviceScaleFactor: 1,
+      mobile: false
+    });
     await delay(800);
     const v5 = await ev(`(function(){
       return { view3d: document.body.classList.contains('view-3d'),
         innerW: window.innerWidth,
         stored: localStorage.getItem('mmgr_view_mode') };
     })()`);
-    check('V5 mobile auto-flat: stored 3d at 640px -> no body.view-3d', v5.stored === '3d' && !v5.view3d && v5.innerW === 640, v5);
+    check(
+      'V5 mobile auto-flat: stored 3d at 640px -> no body.view-3d',
+      v5.stored === '3d' && !v5.view3d && v5.innerW === 640,
+      v5
+    );
     await send('Emulation.clearDeviceMetricsOverride');
     await delay(600);
     const v5b = await ev(`document.body.classList.contains('view-3d')`);
     check('V5b widening back past 769 re-enables stored 3D', v5b === true, v5b);
 
     // V6: reduced motion forces flat even at desktop width.
-    await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+    await send('Emulation.setEmulatedMedia', {
+      features: [{ name: 'prefers-reduced-motion', value: 'reduce' }]
+    });
     await delay(800);
     const v6 = await ev(`(function(){
       const cs = document.querySelector('.view-deck') ? getComputedStyle(document.querySelector('.view-deck')) : null;
@@ -206,7 +284,11 @@ function contrast(a, b) {
         deckTr: cs ? cs.transform : null,
         rm: matchMedia('(prefers-reduced-motion: reduce)').matches };
     })()`);
-    check('V6 reduced motion: deck transform none despite stored 3D', v6.rm === true && v6.view3d === true && v6.deckTr === 'none', v6);
+    check(
+      'V6 reduced motion: deck transform none despite stored 3D',
+      v6.rm === true && v6.view3d === true && v6.deckTr === 'none',
+      v6
+    );
     await send('Emulation.setEmulatedMedia', { features: [] });
 
     // V7/V8 (retired with the palette axis): dark-scope token read via the
@@ -221,14 +303,20 @@ function contrast(a, b) {
       return { gold: cs.getPropertyValue('--gold').trim(), on: cs.getPropertyValue('--on-gold').trim(),
         text: cs.getPropertyValue('--text').trim() };
     })()`);
-    check('V8 dark tokens resolve (palette retired, device-pref dark)', !!v7d.gold && !!v7d.text, v7d);
+    check(
+      'V8 dark tokens resolve (palette retired, device-pref dark)',
+      !!v7d.gold && !!v7d.text,
+      v7d
+    );
 
     // V9: project + admin carry .view-deck wrappers. The workspace page only
     // boots for an unlocked project; seed demo-project like the other harnesses.
-    await send('Page.addScriptToEvaluateOnNewDocument', { source: `
+    await send('Page.addScriptToEvaluateOnNewDocument', {
+      source: `
       try{ localStorage.setItem('mmgr_unlocked_demo-project','1');
         localStorage.setItem('mmgr_scope_demo-project','full'); }catch(e){}
-    ` });
+    `
+    });
     await send('Page.navigate', { url: BASE + '/project.html?id=demo-project' });
     await delay(4000);
     const v9p = await ev(`(function(){
@@ -236,7 +324,11 @@ function contrast(a, b) {
       return { deck: m ? m.classList.contains('view-deck') : false,
         view3d: document.body.classList.contains('view-3d') };
     })()`);
-    check('V9 project.html deck: main#app-main.view-deck + tilt applies', v9p.deck === true && v9p.view3d === true, v9p);
+    check(
+      'V9 project.html deck: main#app-main.view-deck + tilt applies',
+      v9p.deck === true && v9p.view3d === true,
+      v9p
+    );
     await send('Page.navigate', { url: BASE + '/admin.html' });
     await delay(3000);
     const v9a = await ev(`(function(){
@@ -250,7 +342,7 @@ function contrast(a, b) {
     proc.kill();
     process.exit(failed === 0 ? 0 : 1);
   } catch (e) {
-    console.error('harness error:', e && e.stack || e);
+    console.error('harness error:', (e && e.stack) || e);
     proc.kill();
     process.exit(1);
   }

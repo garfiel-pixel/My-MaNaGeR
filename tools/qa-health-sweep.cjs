@@ -60,17 +60,30 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 
-const BASE = process.argv[2] || process.env.QA_BASE || 'http://127.0.0.1:' + (process.env.QA_PORT || '8765');
+const BASE =
+  process.argv[2] || process.env.QA_BASE || 'http://127.0.0.1:' + (process.env.QA_PORT || '8765');
 
 const PAGES = [
-  'index.html', 'features.html', 'about.html', 'contact.html', 'reviews.html',
-  'privacy.html', 'terms.html', 'mymanager-field-guide.html',
-  'dashboard.html', 'app.html', 'project.html?id=demo-project',
-  'admin.html', 'verify.html', 'reset.html', 'seed-test.html'
+  'index.html',
+  'features.html',
+  'about.html',
+  'contact.html',
+  'reviews.html',
+  'privacy.html',
+  'terms.html',
+  'mymanager-field-guide.html',
+  'dashboard.html',
+  'app.html',
+  'project.html?id=demo-project',
+  'admin.html',
+  'verify.html',
+  'reset.html',
+  'seed-test.html'
 ];
 
 // Owner hard gate: no emoji glyph on any served page.
-const EMOJI_RE = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{1F1E6}-\u{1F1FF}]/u;
+const EMOJI_RE =
+  /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{1F1E6}-\u{1F1FF}]/u;
 const LEAK_RE = /\bundefined\b|\bNaN\b|\[object Object\]/;
 
 // The static dev server (serve.cjs) mirrors only part of the Worker API.
@@ -80,10 +93,10 @@ function isExpectedOnLocalhost(url, status) {
   const u = String(url || '');
   if (/accounts\.google\.com\/gsi\//.test(u) || /googleusercontent\.com/.test(u)) return true;
   if (/\/api\//.test(u)) {
-    if (status === 401 || status === 403) return true;           // signed-out gate
+    if (status === 401 || status === 403) return true; // signed-out gate
     if (IS_DEV_SERVER && (status === 404 || status === 0)) return true; // no route mirror
   }
-  if (IS_DEV_SERVER && /\/api\/cloud\/presence/.test(u)) return true;   // no Durable Object locally
+  if (IS_DEV_SERVER && /\/api\/cloud\/presence/.test(u)) return true; // no Durable Object locally
   return false;
 }
 
@@ -108,7 +121,11 @@ function resolvePlaywright() {
   if (process.env.PLAYWRIGHT_MODULE && fs.existsSync(process.env.PLAYWRIGHT_MODULE)) {
     return require(process.env.PLAYWRIGHT_MODULE);
   }
-  try { return require('playwright'); } catch (e) { /* not a local dependency */ }
+  try {
+    return require('playwright');
+  } catch (e) {
+    /* not a local dependency */
+  }
   const roots = [
     path.join(os.homedir(), 'AppData', 'Local', 'npm-cache', '_npx'),
     path.join(os.homedir(), '.npm', '_npx')
@@ -120,7 +137,9 @@ function resolvePlaywright() {
       if (fs.existsSync(path.join(p, 'index.js'))) return require(p);
     }
   }
-  throw new Error('playwright library not found - `npm i -D playwright` or set PLAYWRIGHT_MODULE to its path');
+  throw new Error(
+    'playwright library not found - `npm i -D playwright` or set PLAYWRIGHT_MODULE to its path'
+  );
 }
 
 // Playwright demands an ABSOLUTE executablePath. chrome-launcher returns an
@@ -138,9 +157,13 @@ function absolutizeChrome(p) {
   try {
     const out = require('child_process')
       .execSync(finder + ' ' + JSON.stringify(p), { stdio: ['ignore', 'pipe', 'ignore'] })
-      .toString().trim().split(/\r?\n/)[0];
+      .toString()
+      .trim()
+      .split(/\r?\n/)[0];
     if (out && fs.existsSync(out)) return out;
-  } catch (e) { /* not on PATH - let Playwright try its own browser */ }
+  } catch (e) {
+    /* not on PATH - let Playwright try its own browser */
+  }
   return undefined;
 }
 
@@ -163,7 +186,11 @@ function diskHashes(file) {
 (async () => {
   const { chromium } = resolvePlaywright();
   let executablePath;
-  try { executablePath = require('./chrome-launcher.cjs').chromePath || undefined; } catch (e) { /* fall back to playwright's browser */ }
+  try {
+    executablePath = require('./chrome-launcher.cjs').chromePath || undefined;
+  } catch (e) {
+    /* fall back to playwright's browser */
+  }
   executablePath = absolutizeChrome(executablePath);
   const browser = await chromium.launch({ headless: true, executablePath });
   const rows = [];
@@ -187,15 +214,19 @@ function diskHashes(file) {
     const badResponses = [];
     const failed = [];
 
-    page.on('console', (m) => {
+    page.on('console', m => {
       const t = m.type();
       const txt = m.text();
       if (/Content Security Policy|Refused to/i.test(txt)) cspViolations.push(txt);
       else if (t === 'error') consoleErrors.push(txt);
     });
-    page.on('pageerror', (e) => exceptions.push(String((e && e.message) || e)));
-    page.on('response', (r) => { if (r.status() >= 400) badResponses.push(r.status() + ' ' + r.url()); });
-    page.on('requestfailed', (r) => failed.push(((r.failure() && r.failure().errorText) || 'failed') + ' ' + r.url()));
+    page.on('pageerror', e => exceptions.push(String((e && e.message) || e)));
+    page.on('response', r => {
+      if (r.status() >= 400) badResponses.push(r.status() + ' ' + r.url());
+    });
+    page.on('requestfailed', r =>
+      failed.push(((r.failure() && r.failure().errorText) || 'failed') + ' ' + r.url())
+    );
 
     // One retry per page (repo law, 2026-09-20 tracker entry: "every boot path
     // needs one retry - runners flake, the run is the truth"). Without it a
@@ -210,9 +241,15 @@ function diskHashes(file) {
         res = await page.goto(BASE + '/' + file, { waitUntil: 'load', timeout: 25000 });
         break;
       } catch (e) {
-        if (attempt === 2) { exceptions.push('navigation: ' + e.message); break; }
+        if (attempt === 2) {
+          exceptions.push('navigation: ' + e.message);
+          break;
+        }
         res = null;
-        consoleErrors.length = 0; cspViolations.length = 0; badResponses.length = 0; failed.length = 0;
+        consoleErrors.length = 0;
+        cspViolations.length = 0;
+        badResponses.length = 0;
+        failed.length = 0;
         await page.waitForTimeout(1500);
       }
     }
@@ -224,35 +261,47 @@ function diskHashes(file) {
         title: document.title || '',
         lang: document.documentElement.getAttribute('lang') || '',
         viewport: (document.querySelector('meta[name="viewport"]') || {}).content || '',
-        sheets: Array.from(document.querySelectorAll('link[rel=stylesheet]')).map((l) => l.getAttribute('href') || ''),
+        sheets: Array.from(document.querySelectorAll('link[rel=stylesheet]')).map(
+          l => l.getAttribute('href') || ''
+        ),
         bodyText: (document.body ? document.body.innerText : '').slice(0, 200000),
         // Cloudflare's edge-injected bot-detection script marker (see the
         // classification below). One document scan, no network.
         cfInjected: /__CF\$cv\$params/.test(document.documentElement.outerHTML || '')
       }));
-    } catch (e) { /* page died during evaluate */ }
+    } catch (e) {
+      /* page died during evaluate */
+    }
 
     const onDiskHashes = diskHashes(file) || [];
     let cspNote = '';
     let cspMissing = 0;
     try {
       const header = (res && res.headers()['content-security-policy']) || '';
-      const declared = (header.match(/sha256-[A-Za-z0-9+/=]+/g) || []).map((s) => s.slice(7));
+      const declared = (header.match(/sha256-[A-Za-z0-9+/=]+/g) || []).map(s => s.slice(7));
       const onDisk = onDiskHashes;
-      cspMissing = onDisk.filter((h) => declared.indexOf(h) === -1).length;
+      cspMissing = onDisk.filter(h => declared.indexOf(h) === -1).length;
       if (!header) cspNote = 'NO CSP HEADER';
       else if (cspMissing) cspNote = 'MISSING-FROM-LIVE-CSP x' + cspMissing;
       else cspNote = 'live list superset of this page (' + declared.length + ' hashes, site-wide)';
-    } catch (e) { cspNote = 'probe failed: ' + e.message; }
+    } catch (e) {
+      cspNote = 'probe failed: ' + e.message;
+    }
 
     const emoji = EMOJI_RE.test(info.bodyText);
     const leak = LEAK_RE.test(info.bodyText);
 
     // Split expected-on-localhost noise from real findings (see header).
-    const parse = (s) => { const m = String(s).match(/^(\d+)\s+(.*)$/); return m ? { status: Number(m[1]), url: m[2] } : { status: 0, url: String(s) }; };
-    const unexpectedResponses = badResponses.filter((s) => { const p = parse(s); return !isExpectedOnLocalhost(p.url, p.status); });
-    const unexpectedFailed = failed.filter((s) => !isExpectedOnLocalhost(s, 0));
-    const realConsoleErrors = consoleErrors.filter((t) => !isExpectedConsoleMessage(t));
+    const parse = s => {
+      const m = String(s).match(/^(\d+)\s+(.*)$/);
+      return m ? { status: Number(m[1]), url: m[2] } : { status: 0, url: String(s) };
+    };
+    const unexpectedResponses = badResponses.filter(s => {
+      const p = parse(s);
+      return !isExpectedOnLocalhost(p.url, p.status);
+    });
+    const unexpectedFailed = failed.filter(s => !isExpectedOnLocalhost(s, 0));
+    const realConsoleErrors = consoleErrors.filter(t => !isExpectedConsoleMessage(t));
 
     // Cloudflare injects its own bot-detection script at the edge
     // (__CF$cv$params -> /cdn-cgi/challenge-platform/scripts/jsd/main.js) on
@@ -272,20 +321,23 @@ function diskHashes(file) {
     // listing echoes the whole site-wide allowlist, which IS on disk by
     // definition; matching all of them made every edge violation look real -
     // found live against mymanagerworkspace.com 2026-09-23).
-    const requiredHashes = (v) => {
+    const requiredHashes = v => {
       const m = String(v).match(/hash \('sha256-([A-Za-z0-9+/=]+)'\)/);
       return m ? [m[1]] : [];
     };
-    const isEdgeInjection = (v) => {
+    const isEdgeInjection = v => {
       if (!info.cfInjected) return false;
       if (!/(Executing|Refused to execute) inline script/.test(String(v))) return false;
       const req = requiredHashes(v);
-      return req.length > 0 && req.every((h) => onDiskHashes.indexOf(h) === -1);
+      return req.length > 0 && req.every(h => onDiskHashes.indexOf(h) === -1);
     };
-    const realCspViolations = cspViolations.filter((v) => !isEdgeInjection(v));
+    const realCspViolations = cspViolations.filter(v => !isEdgeInjection(v));
     const expectedEdgeCsp = cspViolations.length - realCspViolations.length;
-    const expectedCount = badResponses.length - unexpectedResponses.length +
-      (failed.length - unexpectedFailed.length) + expectedEdgeCsp;
+    const expectedCount =
+      badResponses.length -
+      unexpectedResponses.length +
+      (failed.length - unexpectedFailed.length) +
+      expectedEdgeCsp;
 
     const problems = [];
     if (realConsoleErrors.length) problems.push('console-errors:' + realConsoleErrors.length);
@@ -303,14 +355,25 @@ function diskHashes(file) {
 
     loadedSheets[file] = info.sheets || [];
     rows.push({
-      file, status: res ? res.status() : 'n/a', problems, cspNote, expectedCount,
-      consoleErrors: realConsoleErrors, cspViolations: realCspViolations, exceptions,
-      badResponses: unexpectedResponses, failed: unexpectedFailed,
+      file,
+      status: res ? res.status() : 'n/a',
+      problems,
+      cspNote,
+      expectedCount,
+      consoleErrors: realConsoleErrors,
+      cspViolations: realCspViolations,
+      exceptions,
+      badResponses: unexpectedResponses,
+      failed: unexpectedFailed,
       emojiSample: emoji ? (info.bodyText.match(EMOJI_RE) || [''])[0] : '',
       leakSample: leak ? (info.bodyText.match(LEAK_RE) || [''])[0] : ''
     });
-    console.log((problems.length ? 'FAIL ' : 'ok   ') + file + (problems.length ? '  :: ' + problems.join(' ') : '') +
-      (expectedCount ? '  [' + expectedCount + ' expected local-only]' : ''));
+    console.log(
+      (problems.length ? 'FAIL ' : 'ok   ') +
+        file +
+        (problems.length ? '  :: ' + problems.join(' ') : '') +
+        (expectedCount ? '  [' + expectedCount + ' expected local-only]' : '')
+    );
     await ctx.close();
   }
 
@@ -324,12 +387,19 @@ function diskHashes(file) {
   ];
   console.log('\n===== CSS RULE COVERAGE (live CSSOM vs source) =====');
   for (const pair of SHEET_PAIRS) {
-    const hostPage = Object.keys(loadedSheets).find((p) => (loadedSheets[p] || []).some((h) => h.indexOf(pair.dist) > -1));
-    if (!hostPage) { console.log('  SKIP  ' + pair.dist + ' - no swept page loads it'); continue; }
+    const hostPage = Object.keys(loadedSheets).find(p =>
+      (loadedSheets[p] || []).some(h => h.indexOf(pair.dist) > -1)
+    );
+    if (!hostPage) {
+      console.log('  SKIP  ' + pair.dist + ' - no swept page loads it');
+      continue;
+    }
     const srcCss = fs.readFileSync(pair.src, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
     const srcClasses = new Set();
     for (const m of srcCss.matchAll(/([^{}]+)\{/g)) {
-      for (const s of m[1].split(',')) for (const c of (s.trim().match(/\.([A-Za-z][A-Za-z0-9_-]*)/g) || [])) srcClasses.add(c.slice(1));
+      for (const s of m[1].split(','))
+        for (const c of s.trim().match(/\.([A-Za-z][A-Za-z0-9_-]*)/g) || [])
+          srcClasses.add(c.slice(1));
     }
     const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const p = await ctx.newPage();
@@ -337,24 +407,50 @@ function diskHashes(file) {
     await p.waitForTimeout(2500);
     const live = await p.evaluate(() => {
       const seen = {};
-      const walk = (rules) => {
+      const walk = rules => {
         for (const r of rules) {
-          if (r.cssRules && r.cssRules.length) { walk(r.cssRules); continue; }
-          if (r.selectorText) for (const c of (r.selectorText.match(/\.([A-Za-z][A-Za-z0-9_-]*)/g) || [])) seen[c.slice(1)] = true;
+          if (r.cssRules && r.cssRules.length) {
+            walk(r.cssRules);
+            continue;
+          }
+          if (r.selectorText)
+            for (const c of r.selectorText.match(/\.([A-Za-z][A-Za-z0-9_-]*)/g) || [])
+              seen[c.slice(1)] = true;
         }
       };
-      for (const sheet of document.styleSheets) { try { walk(sheet.cssRules); } catch (e) {} }
+      for (const sheet of document.styleSheets) {
+        try {
+          walk(sheet.cssRules);
+        } catch (e) {}
+      }
       return Object.keys(seen);
     });
     await ctx.close();
     const liveSet = {};
-    live.forEach((c) => { liveSet[c] = true; });
-    const dropped = Array.from(srcClasses).filter((c) => !liveSet[c]);
+    live.forEach(c => {
+      liveSet[c] = true;
+    });
+    const dropped = Array.from(srcClasses).filter(c => !liveSet[c]);
     if (dropped.length) {
-      console.log('  FAIL  ' + pair.src + ': ' + dropped.length + ' rule(s) have no live rule in the browser -> ' + dropped.slice(0, 12).join(', '));
+      console.log(
+        '  FAIL  ' +
+          pair.src +
+          ': ' +
+          dropped.length +
+          ' rule(s) have no live rule in the browser -> ' +
+          dropped.slice(0, 12).join(', ')
+      );
       flagged++;
     } else {
-      console.log('  PASS  ' + pair.src + ': all ' + srcClasses.size + ' rules live (checked on ' + hostPage + ')');
+      console.log(
+        '  PASS  ' +
+          pair.src +
+          ': all ' +
+          srcClasses.size +
+          ' rules live (checked on ' +
+          hostPage +
+          ')'
+      );
     }
   }
 
@@ -365,13 +461,30 @@ function diskHashes(file) {
     if (!r.problems.length) continue;
     console.log('\n--- ' + r.file + ' (status ' + r.status + ')');
     for (const key of ['consoleErrors', 'cspViolations', 'exceptions', 'badResponses', 'failed']) {
-      if (r[key].length) console.log('  ' + key + ': ' + JSON.stringify(r[key].slice(0, 5), null, 2));
+      if (r[key].length)
+        console.log('  ' + key + ': ' + JSON.stringify(r[key].slice(0, 5), null, 2));
     }
     if (r.emojiSample) console.log('  emoji glyph: ' + JSON.stringify(r.emojiSample));
     if (r.leakSample) console.log('  leaked value: ' + JSON.stringify(r.leakSample));
     console.log('  csp: ' + r.cspNote);
-    if (r.expectedCount) console.log('  (plus ' + r.expectedCount + ' expected local-only event(s): signed-out /api 401-403, GSI origin, dev-server 404s)');
+    if (r.expectedCount)
+      console.log(
+        '  (plus ' +
+          r.expectedCount +
+          ' expected local-only event(s): signed-out /api 401-403, GSI origin, dev-server 404s)'
+      );
   }
-  console.log('\n===== HEALTH SWEEP: ' + (PAGES.length - flagged) + ' clean / ' + flagged + ' with findings of ' + PAGES.length + ' pages =====');
+  console.log(
+    '\n===== HEALTH SWEEP: ' +
+      (PAGES.length - flagged) +
+      ' clean / ' +
+      flagged +
+      ' with findings of ' +
+      PAGES.length +
+      ' pages ====='
+  );
   process.exit(flagged ? 1 : 0);
-})().catch((e) => { console.error('ERR', (e && e.stack) || e); process.exit(2); });
+})().catch(e => {
+  console.error('ERR', (e && e.stack) || e);
+  process.exit(2);
+});

@@ -3,11 +3,11 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   const U = ns.Utils;
-  const S = () => ns.State ? ns.State.getState() : null;
+  const S = () => (ns.State ? ns.State.getState() : null);
 
   // ---- Snapshot Compare ----
   function takeSnapshot() {
@@ -67,7 +67,9 @@ var MMGR = window.MMGR || {};
     const s = S();
     if (!s) return null;
     const states = {};
-    (s.tasks || []).forEach(t => { states[t.id] = t.status || 'todo'; });
+    (s.tasks || []).forEach(t => {
+      states[t.id] = t.status || 'todo';
+    });
     s.dailySnapshot = { date: U.todayStr(), taskStates: states };
     ns.State.save(true);
     if (ns.App && ns.App.showToast) {
@@ -130,7 +132,12 @@ Safety observations: (enter)
 Materials received: (enter)
 
 === ISSUES ENCOUNTERED ===
-${(s.issues || []).filter(i => i.status !== 'resolved' && i.status !== 'closed').map(i => `- ${i.description} | Owner: ${i.owner || 'unassigned'}`).join('\n') || '(None)'}
+${
+  (s.issues || [])
+    .filter(i => i.status !== 'resolved' && i.status !== 'closed')
+    .map(i => `- ${i.description} | Owner: ${i.owner || 'unassigned'}`)
+    .join('\n') || '(None)'
+}
 
 === PLAN FOR NEXT PERIOD ===
 (enter planned work)
@@ -151,11 +158,23 @@ Generate a structured field report suitable for email or print. Include a header
     const today = U.todayStr();
     if (!Array.isArray(s.fieldReportNotes)) s.fieldReportNotes = [];
     let entry = s.fieldReportNotes.find(n => n.date === today);
-    if (!entry) { entry = { date: today, text: '' }; s.fieldReportNotes.push(entry); }
-    entry.text = (entry.text ? entry.text + '\n\n' : '') + '[Voice capture ' + new Date().toLocaleTimeString() + ']\n' + text;
+    if (!entry) {
+      entry = { date: today, text: '' };
+      s.fieldReportNotes.push(entry);
+    }
+    entry.text =
+      (entry.text ? entry.text + '\n\n' : '') +
+      '[Voice capture ' +
+      new Date().toLocaleTimeString() +
+      ']\n' +
+      text;
     if (s.fieldReportNotes.length > 60) s.fieldReportNotes = s.fieldReportNotes.slice(-60);
     ns.State.save(true);
-    if (ns.App && ns.App.showToast) ns.App.showToast('Transcript captured - it lands in the Daily Field Report prompt. Review before you trust it.', 'ok');
+    if (ns.App && ns.App.showToast)
+      ns.App.showToast(
+        'Transcript captured - it lands in the Daily Field Report prompt. Review before you trust it.',
+        'ok'
+      );
   }
 
   function getFieldNotes(date) {
@@ -172,13 +191,17 @@ Generate a structured field report suitable for email or print. Include a header
     const s = S();
     if (!s) return;
     const ref = 'Field report ' + U.todayStr();
-    ns.State.updateState(function(st) {
+    ns.State.updateState(function (st) {
       if (!st.closure) st.closure = { items: [], well: '', imp: '', rec: '' };
       if (!st.closure.items) st.closure.items = [];
       st.closure.items.push({ text: '[' + ref + '] ', done: false });
     });
     if (ns.Render && ns.Render.renderClosure) ns.Render.renderClosure();
-    if (ns.App && ns.App.showToast) ns.App.showToast('Action item added in Closure - it counts in the Decision Engine until done.', 'ok');
+    if (ns.App && ns.App.showToast)
+      ns.App.showToast(
+        'Action item added in Closure - it counts in the Decision Engine until done.',
+        'ok'
+      );
   }
 
   // ---- API ----

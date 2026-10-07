@@ -35,18 +35,37 @@ const { spawn } = require('child_process');
 const PORT = 8765;
 const BASE = 'http://127.0.0.1:' + PORT;
 const ROOT = path.resolve(__dirname, '..');
-const log = (s) => process.stdout.write('[pw-audit] ' + s + '\n');
+const log = s => process.stdout.write('[pw-audit] ' + s + '\n');
 const delay = ms => new Promise(r => setTimeout(r, ms));
-let passed = 0, failed = 0;
+let passed = 0,
+  failed = 0;
 const check = (name, ok, detail) => {
-  if (ok) { passed++; log('PASS  ' + name); }
-  else { failed++; log('FAIL  ' + name + '  <-- ' + JSON.stringify(detail === undefined ? null : detail).slice(0, 300)); }
+  if (ok) {
+    passed++;
+    log('PASS  ' + name);
+  } else {
+    failed++;
+    log(
+      'FAIL  ' +
+        name +
+        '  <-- ' +
+        JSON.stringify(detail === undefined ? null : detail).slice(0, 300)
+    );
+  }
 };
 
 function resolvePlaywright() {
-  if (process.env.PLAYWRIGHT_MODULE && fs.existsSync(process.env.PLAYWRIGHT_MODULE)) return require(process.env.PLAYWRIGHT_MODULE);
-  try { return require('playwright'); } catch (e) { /* fall through */ }
-  const roots = [path.join(os.homedir(), 'AppData', 'Local', 'npm-cache', '_npx'), path.join(os.homedir(), '.npm', '_npx')];
+  if (process.env.PLAYWRIGHT_MODULE && fs.existsSync(process.env.PLAYWRIGHT_MODULE))
+    return require(process.env.PLAYWRIGHT_MODULE);
+  try {
+    return require('playwright');
+  } catch (e) {
+    /* fall through */
+  }
+  const roots = [
+    path.join(os.homedir(), 'AppData', 'Local', 'npm-cache', '_npx'),
+    path.join(os.homedir(), '.npm', '_npx')
+  ];
   for (const root of roots) {
     if (!fs.existsSync(root)) continue;
     for (const dir of fs.readdirSync(root)) {
@@ -62,9 +81,15 @@ function absolutizeChrome(p) {
   if (path.isAbsolute(p)) return fs.existsSync(p) ? p : undefined;
   const finder = os.platform() === 'win32' ? 'where' : 'command -v';
   try {
-    const out = require('child_process').execSync(finder + ' ' + JSON.stringify(p), { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim().split(/\r?\n/)[0];
+    const out = require('child_process')
+      .execSync(finder + ' ' + JSON.stringify(p), { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim()
+      .split(/\r?\n/)[0];
     if (out && fs.existsSync(out)) return out;
-  } catch (e) { /* fall back */ }
+  } catch (e) {
+    /* fall back */
+  }
   return undefined;
 }
 
@@ -72,16 +97,22 @@ async function walkFocus(page) {
   // Keyboard-walk the form; count focusable controls that show NO visible
   // focus indicator (outline none/0 and no outline on the element).
   return page.evaluate(() => {
-    const els = Array.from(document.querySelectorAll('button, input, select, [tabindex]'))
-      .filter(e => e.offsetParent !== null && !e.disabled);
+    const els = Array.from(document.querySelectorAll('button, input, select, [tabindex]')).filter(
+      e => e.offsetParent !== null && !e.disabled
+    );
     let bad = 0;
     const names = [];
     for (const el of els) {
       el.focus();
       const cs = getComputedStyle(el);
-      const visible = (cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0) || el.matches(':focus-visible');
+      const visible =
+        (cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0) ||
+        el.matches(':focus-visible');
       // :focus-visible is the modern gate; outline must exist for keyboard.
-      if (!visible && cs.outlineStyle === 'none') { bad++; names.push(el.id || el.getAttribute('data-action') || el.tagName); }
+      if (!visible && cs.outlineStyle === 'none') {
+        bad++;
+        names.push(el.id || el.getAttribute('data-action') || el.tagName);
+      }
     }
     return { total: els.length, bad, names: names.slice(0, 6) };
   });
@@ -89,22 +120,43 @@ async function walkFocus(page) {
 
 (async () => {
   let served = false;
-  try { const h = await fetch(BASE + '/calculator.html'); served = h.ok; } catch (e) {}
+  try {
+    const h = await fetch(BASE + '/calculator.html');
+    served = h.ok;
+  } catch (e) {}
   let srv;
   if (!served) {
     log('starting serve.cjs for this run');
     srv = spawn(process.execPath, ['serve.cjs'], { cwd: ROOT, stdio: 'ignore' });
-    for (let i = 0; i < 30; i++) { await delay(1000); try { const h = await fetch(BASE + '/calculator.html'); if (h.ok) { served = true; break; } } catch (e) {} }
+    for (let i = 0; i < 30; i++) {
+      await delay(1000);
+      try {
+        const h = await fetch(BASE + '/calculator.html');
+        if (h.ok) {
+          served = true;
+          break;
+        }
+      } catch (e) {}
+    }
   }
-  if (!served) { log('FATAL: serve.cjs did not come up'); process.exit(1); }
+  if (!served) {
+    log('FATAL: serve.cjs did not come up');
+    process.exit(1);
+  }
 
   const { chromium } = resolvePlaywright();
   let executablePath;
-  try { executablePath = require('./chrome-launcher.cjs').chromePath || undefined; } catch (e) {}
+  try {
+    executablePath = require('./chrome-launcher.cjs').chromePath || undefined;
+  } catch (e) {}
   executablePath = absolutizeChrome(executablePath);
   const browser = await chromium.launch({ headless: true, executablePath });
 
-  const VIEWPORTS = [{ w: 390, h: 844, n: '390' }, { w: 768, h: 1024, n: '768' }, { w: 1280, h: 900, n: '1280' }];
+  const VIEWPORTS = [
+    { w: 390, h: 844, n: '390' },
+    { w: 768, h: 1024, n: '768' },
+    { w: 1280, h: 900, n: '1280' }
+  ];
 
   try {
     // ============ PAGE: calculator.html ============
@@ -120,52 +172,82 @@ async function walkFocus(page) {
       // it starts on-screen.
       const layout = await page.evaluate(() => ({
         hscroll: document.documentElement.scrollWidth > window.innerWidth + 1,
-        runVisible: (() => { const r = document.querySelector('[data-action=calcRun]').getBoundingClientRect(); return r.width > 0 && r.right <= window.innerWidth + 1; })()
+        runVisible: (() => {
+          const r = document.querySelector('[data-action=calcRun]').getBoundingClientRect();
+          return r.width > 0 && r.right <= window.innerWidth + 1;
+        })()
       }));
       check('L1 [' + vp.n + '] no horizontal scroll', !layout.hscroll, layout);
       check('L2 [' + vp.n + '] Calculate button fully in viewport', layout.runVisible, layout);
-      await page.evaluate(() => document.getElementById('calc-output').scrollIntoView({ block: 'start' }));
+      await page.evaluate(() =>
+        document.getElementById('calc-output').scrollIntoView({ block: 'start' })
+      );
       await page.waitForTimeout(600);
       const reachable = await page.evaluate(() => {
         const r = document.getElementById('calc-output').getBoundingClientRect();
         // 1px tolerance: smooth scrolling can settle a hair past the target
         // (top -0.0001 rounds to 0 but fails a naive >= 0).
-        return { w: Math.round(r.width), top: Math.round(r.top * 100) / 100, vh: window.innerHeight,
-                 ok: r.width > 0 && r.top > -1 && r.top < window.innerHeight };
+        return {
+          w: Math.round(r.width),
+          top: Math.round(r.top * 100) / 100,
+          vh: window.innerHeight,
+          ok: r.width > 0 && r.top > -1 && r.top < window.innerHeight
+        };
       });
       check('L3 [' + vp.n + '] estimate card reachable by scroll', reachable.ok, reachable);
 
       // F: focus visibility (keyboard).
       const focus = await walkFocus(page);
-      check('F1 [' + vp.n + '] every control shows keyboard focus (' + focus.total + ' controls)', focus.bad === 0, focus);
+      check(
+        'F1 [' + vp.n + '] every control shows keyboard focus (' + focus.total + ' controls)',
+        focus.bad === 0,
+        focus
+      );
 
       // V: live recompute + error guidance + actions row gating.
       await page.selectOption('#calc-work', 'slab');
       await page.fill('#calc-d1', '10');
       await page.fill('#calc-d2', '8');
       const live = await page.evaluate(() => document.getElementById('calc-output').textContent);
-      check('V1 [' + vp.n + '] typing recomputes live (partial -> guidance)', live.indexOf('Enter the dimensions') > -1, live.slice(0, 60));
+      check(
+        'V1 [' + vp.n + '] typing recomputes live (partial -> guidance)',
+        live.indexOf('Enter the dimensions') > -1,
+        live.slice(0, 60)
+      );
       await page.fill('#calc-d3', '150');
       await page.waitForTimeout(120);
       const valid = await page.evaluate(() => ({
-        hasTotal: document.getElementById('calc-output').textContent.indexOf('Estimated total') > -1,
+        hasTotal:
+          document.getElementById('calc-output').textContent.indexOf('Estimated total') > -1,
         actionsShown: !document.getElementById('calc-out-actions').classList.contains('is-hide')
       }));
-      check('V2 [' + vp.n + '] complete dims -> total + export actions appear', valid.hasTotal && valid.actionsShown, valid);
+      check(
+        'V2 [' + vp.n + '] complete dims -> total + export actions appear',
+        valid.hasTotal && valid.actionsShown,
+        valid
+      );
       await page.click('[data-action=calcRatesReset]');
       await page.fill('#calc-d3', '');
       await page.waitForTimeout(120);
       const errState = await page.evaluate(() => ({
-        guidance: document.getElementById('calc-output').textContent.indexOf('Enter the dimensions') > -1,
+        guidance:
+          document.getElementById('calc-output').textContent.indexOf('Enter the dimensions') > -1,
         actionsHidden: document.getElementById('calc-out-actions').classList.contains('is-hide'),
         noThrow: true
       }));
-      check('V3 [' + vp.n + '] clearing a dim -> guidance, actions hide, no crash', errState.guidance && errState.actionsHidden && errState.noThrow && errors.length === 0, { errState, errors });
+      check(
+        'V3 [' + vp.n + '] clearing a dim -> guidance, actions hide, no crash',
+        errState.guidance && errState.actionsHidden && errState.noThrow && errors.length === 0,
+        { errState, errors }
+      );
       await ctx.close();
     }
 
     // T + R + M at the desktop/mobile pair.
-    for (const vp of [{ w: 1280, h: 900, n: '1280' }, { w: 390, h: 844, n: '390' }]) {
+    for (const vp of [
+      { w: 1280, h: 900, n: '1280' },
+      { w: 390, h: 844, n: '390' }
+    ]) {
       const ctx = await browser.newContext({ viewport: { width: vp.w, height: vp.h } });
       const page = await ctx.newPage();
       await page.goto(BASE + '/calculator.html', { waitUntil: 'networkidle' });
@@ -176,9 +258,14 @@ async function walkFocus(page) {
       const dark = await page.evaluate(() => ({
         isDark: document.body.classList.contains('dark-mode'),
         hscroll: document.documentElement.scrollWidth > window.innerWidth + 1,
-        runVisible: document.querySelector('[data-action=calcRun]').getBoundingClientRect().width > 0
+        runVisible:
+          document.querySelector('[data-action=calcRun]').getBoundingClientRect().width > 0
       }));
-      check('T1 [' + vp.n + '] dark theme flips + stays usable', dark.isDark && !dark.hscroll && dark.runVisible, dark);
+      check(
+        'T1 [' + vp.n + '] dark theme flips + stays usable',
+        dark.isDark && !dark.hscroll && dark.runVisible,
+        dark
+      );
       await page.click('[data-action=tglTheme]');
       await page.waitForTimeout(150);
       const light = await page.evaluate(() => !document.body.classList.contains('dark-mode'));
@@ -196,8 +283,14 @@ async function walkFocus(page) {
       await page.click('[data-action=calcRun]');
       await page.click('[data-action="calcUnits"][data-units="imperial"]');
       await page.waitForTimeout(120);
-      const disturbed = await page.evaluate(() => document.getElementById('calc-d1-label').textContent);
-      check('R1 [' + vp.n + '] disturbed to imperial (' + disturbed + ')', disturbed === 'Length (ft)', disturbed);
+      const disturbed = await page.evaluate(
+        () => document.getElementById('calc-d1-label').textContent
+      );
+      check(
+        'R1 [' + vp.n + '] disturbed to imperial (' + disturbed + ')',
+        disturbed === 'Length (ft)',
+        disturbed
+      );
       await page.click('[data-action=calcRestore]');
       await page.waitForTimeout(150);
       const recalled = await page.evaluate(() => ({
@@ -208,7 +301,16 @@ async function walkFocus(page) {
         units: localStorage.getItem('mmgr_calc_units'),
         total: document.getElementById('calc-output').textContent.indexOf('Estimated total') > -1
       }));
-      check('R2 [' + vp.n + '] recall returns the exact settings (metric, JMD, dims)', recalled.lbl === 'Length (m)' && recalled.d1 === '10' && recalled.d3 === '150' && recalled.cur === 'JMD' && recalled.units === 'metric' && recalled.total, recalled);
+      check(
+        'R2 [' + vp.n + '] recall returns the exact settings (metric, JMD, dims)',
+        recalled.lbl === 'Length (m)' &&
+          recalled.d1 === '10' &&
+          recalled.d3 === '150' &&
+          recalled.cur === 'JMD' &&
+          recalled.units === 'metric' &&
+          recalled.total,
+        recalled
+      );
 
       // M: mobile reachability + tap sizes.
       const m = await page.evaluate(() => {
@@ -232,28 +334,44 @@ async function walkFocus(page) {
           runTap: run.height >= 34
         };
       });
-      check('M1 [' + vp.n + '] controls inside viewport + tap-sized', m.segIn && m.rateIn && m.pieceReachable && m.runTap, m);
+      check(
+        'M1 [' + vp.n + '] controls inside viewport + tap-sized',
+        m.segIn && m.rateIn && m.pieceReachable && m.runTap,
+        m
+      );
       // M9/M10 (owner 2026-09-30 mobile pass) on the phone viewport only.
       if (vp.n === '390') {
         const m9 = await page.evaluate(() => {
           const b = document.querySelector('.bcp-run');
           window.scrollTo(0, 800);
           const r = b.getBoundingClientRect();
-          return { pos: getComputedStyle(b).position,
-                   inThumb: r.bottom > window.innerHeight - 160 && r.top < window.innerHeight,
-                   noHScroll: document.documentElement.scrollWidth <= window.innerWidth + 1 };
+          return {
+            pos: getComputedStyle(b).position,
+            inThumb: r.bottom > window.innerHeight - 160 && r.top < window.innerHeight,
+            noHScroll: document.documentElement.scrollWidth <= window.innerWidth + 1
+          };
         });
-        check('M9 [390] Calculate sticks within thumb reach after scroll', m9 && m9.pos === 'sticky' && m9.inThumb, m9);
-        const m10 = await page.evaluate(() => parseFloat(getComputedStyle(document.getElementById('calc-d1')).fontSize));
+        check(
+          'M9 [390] Calculate sticks within thumb reach after scroll',
+          m9 && m9.pos === 'sticky' && m9.inThumb,
+          m9
+        );
+        const m10 = await page.evaluate(() =>
+          parseFloat(getComputedStyle(document.getElementById('calc-d1')).fontSize)
+        );
         check('M10 [390] dimension inputs render 16px (no iOS zoom-jump)', m10 === 16, m10);
-        const m11 = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
+        const m11 = await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth + 1
+        );
         check('M11 [390] no horizontal scroll at 390px (bar + form)', m11, m11);
         // M12 (estimating-depth waves W2/W4): the new measuring surfaces hold
         // the same mobile contract - instance rows + prelims rows stay inside
         // the viewport with the bill populated.
         const m12 = await page.evaluate(() => {
           document.getElementById('calc-work').value = 'blockwall';
-          document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+          document
+            .getElementById('calc-work')
+            .dispatchEvent(new Event('change', { bubbles: true }));
           document.getElementById('calc-d1').value = '10';
           document.getElementById('calc-d2').value = '2.4';
           document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
@@ -274,10 +392,15 @@ async function walkFocus(page) {
             lines: JSON.parse(localStorage.getItem('mmgr_calc_boq') || '[]').length
           };
         });
-        check('M12 [390] instance rows + prelims + bill stay inside the phone viewport',
-          m12 && m12.instIn && m12.prelimIn && m12.noHScroll && m12.lines === 2, m12);
+        check(
+          'M12 [390] instance rows + prelims + bill stay inside the phone viewport',
+          m12 && m12.instIn && m12.prelimIn && m12.noHScroll && m12.lines === 2,
+          m12
+        );
         await page.evaluate(() => {
-          try { localStorage.removeItem('mmgr_calc_boq'); } catch (e) {}
+          try {
+            localStorage.removeItem('mmgr_calc_boq');
+          } catch (e) {}
           if (window.renderBoq) renderBoq();
         });
         // M13 (client-docs W3): a real logo upload through the file input
@@ -285,8 +408,15 @@ async function walkFocus(page) {
         // and the brand card stays inside the phone viewport with it.
         const pngB64 =
           'iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAFUlEQVR42mP8z8AARIQBEwMDAwMDAwAkBgMBJoEaPAAAAABJRU5ErkJggg==';
-        fs.writeFileSync(path.join(os.tmpdir(), 'mmgr-m13-logo.png'), Buffer.from(pngB64, 'base64'));
-        await page.evaluate(() => { try { localStorage.removeItem('mmgr_calc_brand'); } catch (e) {} });
+        fs.writeFileSync(
+          path.join(os.tmpdir(), 'mmgr-m13-logo.png'),
+          Buffer.from(pngB64, 'base64')
+        );
+        await page.evaluate(() => {
+          try {
+            localStorage.removeItem('mmgr_calc_brand');
+          } catch (e) {}
+        });
         await page.setInputFiles('#calc-logo-file', path.join(os.tmpdir(), 'mmgr-m13-logo.png'));
         await page.waitForTimeout(600);
         const m13 = await page.evaluate(() => {
@@ -296,13 +426,23 @@ async function walkFocus(page) {
           return {
             stored: typeof b.logo === 'string' && b.logo.indexOf('data:image/') === 0,
             fits: window.__calcEngine.logoFitsCap(b.logo || ''),
-            prevShown: !!prev && !prev.hidden && (prev.getAttribute('src') || '').indexOf('data:image/') === 0,
+            prevShown:
+              !!prev &&
+              !prev.hidden &&
+              (prev.getAttribute('src') || '').indexOf('data:image/') === 0,
             cardIn: card.left >= -1 && card.right <= window.innerWidth + 1
           };
         });
-        check('M13 [390] logo upload stores a capped dataURL, preview shows, card stays in viewport',
-          m13 && m13.stored && m13.fits && m13.prevShown && m13.cardIn, m13);
-        await page.evaluate(() => { try { localStorage.removeItem('mmgr_calc_brand'); } catch (e) {} });
+        check(
+          'M13 [390] logo upload stores a capped dataURL, preview shows, card stays in viewport',
+          m13 && m13.stored && m13.fits && m13.prevShown && m13.cardIn,
+          m13
+        );
+        await page.evaluate(() => {
+          try {
+            localStorage.removeItem('mmgr_calc_brand');
+          } catch (e) {}
+        });
         // M14 (client-docs W6): the W3/W2 surfaces hold the no-overflow +
         // 16px contract with the brand card OPEN and companions VISIBLE -
         // the exact states a phone user reaches in normal use.
@@ -321,20 +461,45 @@ async function walkFocus(page) {
           const cp = document.getElementById('calc-companions');
           const noHScroll = document.documentElement.scrollWidth <= window.innerWidth + 1;
           // 16px inputs: iOS zoom-jump contract (doc fields + brand fields).
-          const ids = ['calc-client-name', 'calc-client-addr', 'calc-doc-no', 'calc-brand-name', 'calc-brand-phone'];
-          const sizes = ids.map(id2 => { const el = document.getElementById(id2); return el ? parseFloat(getComputedStyle(el).fontSize) : null; });
-          return { bodyOpen: !body.hidden, companionsShown: !cp.hidden,
-                   noHScroll: noHScroll, minFont: Math.min.apply(null, sizes.filter(s => s !== null)) };
+          const ids = [
+            'calc-client-name',
+            'calc-client-addr',
+            'calc-doc-no',
+            'calc-brand-name',
+            'calc-brand-phone'
+          ];
+          const sizes = ids.map(id2 => {
+            const el = document.getElementById(id2);
+            return el ? parseFloat(getComputedStyle(el).fontSize) : null;
+          });
+          return {
+            bodyOpen: !body.hidden,
+            companionsShown: !cp.hidden,
+            noHScroll: noHScroll,
+            minFont: Math.min.apply(
+              null,
+              sizes.filter(s => s !== null)
+            )
+          };
         });
-        check('M14 [390] brand card open + companions visible -> no horizontal scroll; doc/brand inputs 16px',
-          m14 && m14.bodyOpen && m14.companionsShown && m14.noHScroll && m14.minFont === 16, m14);
-        await page.evaluate(() => { try { localStorage.removeItem('mmgr_calc_boq'); } catch (e) {} });
+        check(
+          'M14 [390] brand card open + companions visible -> no horizontal scroll; doc/brand inputs 16px',
+          m14 && m14.bodyOpen && m14.companionsShown && m14.noHScroll && m14.minFont === 16,
+          m14
+        );
+        await page.evaluate(() => {
+          try {
+            localStorage.removeItem('mmgr_calc_boq');
+          } catch (e) {}
+        });
         // T5 (client-docs W6): the tour's final centered card must sit fully
         // inside a phone viewport - the mobile dock rule (left/right 12px
         // !important) used to fight the inline translate(-50%,-50%) and shove
         // the card half off-screen (probe caught left:-171px at 390px).
         const t5 = await page.evaluate(async () => {
-          try { localStorage.removeItem('mmgr_calc_tour_done'); } catch (e) {}
+          try {
+            localStorage.removeItem('mmgr_calc_tour_done');
+          } catch (e) {}
           window.__calcTour.start();
           for (let i = 0; i < 12; i++) {
             document.querySelector('[data-action="calcTourNext"]').click();
@@ -343,14 +508,24 @@ async function walkFocus(page) {
           await new Promise(r => setTimeout(r, 250));
           const pop = document.getElementById('calc-tour-pop');
           const r = pop.getBoundingClientRect();
-          const out = { final: pop.classList.contains('is-final'),
-            inVp: r.left >= -1 && r.right <= window.innerWidth + 1 && r.top >= -1 && r.bottom <= window.innerHeight + 1,
-            left: Math.round(r.left), right: Math.round(r.right) };
+          const out = {
+            final: pop.classList.contains('is-final'),
+            inVp:
+              r.left >= -1 &&
+              r.right <= window.innerWidth + 1 &&
+              r.top >= -1 &&
+              r.bottom <= window.innerHeight + 1,
+            left: Math.round(r.left),
+            right: Math.round(r.right)
+          };
           window.__calcTour.skip();
           return out;
         });
-        check('T5 [390] tour final card centers fully inside the phone viewport (dock-rule fix)',
-          t5 && t5.final && t5.inVp, t5);
+        check(
+          'T5 [390] tour final card centers fully inside the phone viewport (dock-rule fix)',
+          t5 && t5.final && t5.inVp,
+          t5
+        );
       }
       await ctx.close();
     }
@@ -365,7 +540,8 @@ async function walkFocus(page) {
       const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
       await page.goto(BASE + '/calculator.html', { waitUntil: 'networkidle' });
       const ir1 = await page.evaluate(() => {
-        if (!window.MMGRIconRestore || !MMGRIconRestore.restore) return { err: 'module missing on calculator' };
+        if (!window.MMGRIconRestore || !MMGRIconRestore.restore)
+          return { err: 'module missing on calculator' };
         const u = document.querySelector('svg.ico use[href^="css/mmgr-icons.svg"]');
         if (!u) return { err: 'no external sprite use found' };
         const before = u.getAttribute('href');
@@ -380,14 +556,22 @@ async function walkFocus(page) {
         const uses = Array.from(document.querySelectorAll('use[href^="css/mmgr-icons.svg"]'));
         if (!uses.length) return { err: 'no external sprite uses' };
         window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
-        return { ok: MMGRIconRestore.lastCount >= uses.length, n: uses.length, restored: MMGRIconRestore.lastCount };
+        return {
+          ok: MMGRIconRestore.lastCount >= uses.length,
+          n: uses.length,
+          restored: MMGRIconRestore.lastCount
+        };
       });
       check('IR2 app: persisted pageshow restores all dropped sprite hrefs', ir2.ok === true, ir2);
       await page.close();
     }
   } finally {
     await browser.close().catch(() => {});
-    if (srv) { try { srv.kill(); } catch (e) {} }
+    if (srv) {
+      try {
+        srv.kill();
+      } catch (e) {}
+    }
   }
 
   log('==== PLAYWRIGHT UX AUDIT: ' + passed + ' passed / ' + failed + ' failed ====');

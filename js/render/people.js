@@ -6,18 +6,24 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
-  const S = () => ns.State ? ns.State.getState() : null;
+  const S = () => (ns.State ? ns.State.getState() : null);
   const U = ns.Utils;
   const $ = U.$;
 
   function emptyStateRow(colspan, text, actionsHtml) {
-    return '<tr><td colspan="' + colspan + '"><div class="es es-row">' +
-      '<div>' + text + '</div>' +
+    return (
+      '<tr><td colspan="' +
+      colspan +
+      '"><div class="es es-row">' +
+      '<div>' +
+      text +
+      '</div>' +
       (actionsHtml ? '<div class="es-actions">' + actionsHtml + '</div>' : '') +
-      '</div></td></tr>';
+      '</div></td></tr>'
+    );
   }
 
   // ---- Stakeholders ----
@@ -28,14 +34,20 @@ var MMGR = window.MMGR || {};
     if (!body) return;
     const stks = s.stakeholders || [];
     const soon = 30;
-    const expiring = (ns.Stakeholders && ns.Stakeholders.getExpiringCompliance)
-      ? ns.Stakeholders.getExpiringCompliance(stks, soon)
-      : [];
+    const expiring =
+      ns.Stakeholders && ns.Stakeholders.getExpiringCompliance
+        ? ns.Stakeholders.getExpiringCompliance(stks, soon)
+        : [];
     const banner = $('stk-compliance');
     if (banner) {
       const n = expiring.length;
       const txt = n
-        ? n + ' stakeholder' + (n === 1 ? ' has' : 's have') + ' COI or license documentation expiring within ' + soon + ' days , see the Compliance columns below.'
+        ? n +
+          ' stakeholder' +
+          (n === 1 ? ' has' : 's have') +
+          ' COI or license documentation expiring within ' +
+          soon +
+          ' days , see the Compliance columns below.'
         : '';
       banner.classList.toggle('is-hide', !n);
       const btxt = banner.querySelector('.stk-cmp-txt');
@@ -47,24 +59,30 @@ var MMGR = window.MMGR || {};
       if (ns.Bids.renderGoNoGo) ns.Bids.renderGoNoGo();
     }
     if (stks.length === 0) {
-      body.innerHTML = emptyStateRow(12, 'No stakeholders registered yet.', '<button class="btn btn-g btn-s" data-action="addStake">+ Add Stakeholder</button>');
+      body.innerHTML = emptyStateRow(
+        12,
+        'No stakeholders registered yet.',
+        '<button class="btn btn-g btn-s" data-action="addStake">+ Add Stakeholder</button>'
+      );
       return;
     }
-    body.innerHTML = stks.map((stk, i) => {
-      const coi = stk.coiExpiry ? new Date(stk.coiExpiry) : null;
-      const lic = stk.licenseExpiry ? new Date(stk.licenseExpiry) : null;
-      const coiBad = coi && coi <= new Date(Date.now() + soon * 86400000);
-      const licBad = lic && lic <= new Date(Date.now() + soon * 86400000);
-      const emrStale = ns.Stakeholders && ns.Stakeholders.isEmrStale ? ns.Stakeholders.isEmrStale(stk) : false;
-      const coiCell = `<input type="date" value="${U.escapeHtml(stk.coiExpiry || '')}" class="${coiBad ? 'stk-exp-bad' : ''}" data-action="updField" data-module="Stakeholders" data-field="coiExpiry" data-idx="${i}" title="COI expiry${coiBad ? ' , expires within ' + soon + ' days' : ''}">${coiBad ? `<span class="badge br" title="Expires within ${soon} days">soon</span>` : ''}`;
-      const licCell = `<input type="date" value="${U.escapeHtml(stk.licenseExpiry || '')}" class="${licBad ? 'stk-exp-bad' : ''}" data-action="updField" data-module="Stakeholders" data-field="licenseExpiry" data-idx="${i}" title="Trade license expiry${licBad ? ' , expires within ' + soon + ' days' : ''}">${licBad ? `<span class="badge br" title="Expires within ${soon} days">soon</span>` : ''}`;
-      const emrCell = `<input type="text" value="${U.escapeHtml(stk.emr || '')}" data-action="updField" data-module="Stakeholders" data-field="emr" data-idx="${i}" style="width:52px" placeholder="0.00">${emrStale ? `<span class="badge br" title="EMR stale , verify or set a verification date">stale</span>` : ''}`;
-      return `<tr>
-      <td>${U.escapeHtml(stk.id || 'S' + (i+1))}</td>
+    body.innerHTML = stks
+      .map((stk, i) => {
+        const coi = stk.coiExpiry ? new Date(stk.coiExpiry) : null;
+        const lic = stk.licenseExpiry ? new Date(stk.licenseExpiry) : null;
+        const coiBad = coi && coi <= new Date(Date.now() + soon * 86400000);
+        const licBad = lic && lic <= new Date(Date.now() + soon * 86400000);
+        const emrStale =
+          ns.Stakeholders && ns.Stakeholders.isEmrStale ? ns.Stakeholders.isEmrStale(stk) : false;
+        const coiCell = `<input type="date" value="${U.escapeHtml(stk.coiExpiry || '')}" class="${coiBad ? 'stk-exp-bad' : ''}" data-action="updField" data-module="Stakeholders" data-field="coiExpiry" data-idx="${i}" title="COI expiry${coiBad ? ' , expires within ' + soon + ' days' : ''}">${coiBad ? `<span class="badge br" title="Expires within ${soon} days">soon</span>` : ''}`;
+        const licCell = `<input type="date" value="${U.escapeHtml(stk.licenseExpiry || '')}" class="${licBad ? 'stk-exp-bad' : ''}" data-action="updField" data-module="Stakeholders" data-field="licenseExpiry" data-idx="${i}" title="Trade license expiry${licBad ? ' , expires within ' + soon + ' days' : ''}">${licBad ? `<span class="badge br" title="Expires within ${soon} days">soon</span>` : ''}`;
+        const emrCell = `<input type="text" value="${U.escapeHtml(stk.emr || '')}" data-action="updField" data-module="Stakeholders" data-field="emr" data-idx="${i}" style="width:52px" placeholder="0.00">${emrStale ? `<span class="badge br" title="EMR stale , verify or set a verification date">stale</span>` : ''}`;
+        return `<tr>
+      <td>${U.escapeHtml(stk.id || 'S' + (i + 1))}</td>
       <td><input type="text" value="${U.escapeHtml(stk.name)}" data-action="updField" data-module="Stakeholders" data-field="name" data-idx="${i}"></td>
       <td><input type="text" value="${U.escapeHtml(stk.role || '')}" data-action="updField" data-module="Stakeholders" data-field="role" data-idx="${i}"></td>
-      <td><select data-action="updField" data-module="Stakeholders" data-field="influence" data-idx="${i}">${['Low','Medium','High'].map(v => `<option ${stk.influence === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
-      <td><select data-action="updField" data-module="Stakeholders" data-field="interest" data-idx="${i}">${['Low','Medium','High'].map(v => `<option ${stk.interest === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+      <td><select data-action="updField" data-module="Stakeholders" data-field="influence" data-idx="${i}">${['Low', 'Medium', 'High'].map(v => `<option ${stk.influence === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+      <td><select data-action="updField" data-module="Stakeholders" data-field="interest" data-idx="${i}">${['Low', 'Medium', 'High'].map(v => `<option ${stk.interest === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
       <td><input type="text" value="${U.escapeHtml(stk.strategy || '')}" data-action="updField" data-module="Stakeholders" data-field="strategy" data-idx="${i}"></td>
       <td><input type="text" value="${U.escapeHtml(stk.contact || '')}" data-action="updField" data-module="Stakeholders" data-field="contact" data-idx="${i}"></td>
       <td>${coiCell}</td>
@@ -73,17 +91,22 @@ var MMGR = window.MMGR || {};
       <td><input type="date" value="${U.escapeHtml(stk.emrVerifiedAt || '')}" data-action="updField" data-module="Stakeholders" data-field="emrVerifiedAt" data-idx="${i}" title="EMR verification date"></td>
       <td><button class="btn btn-s btn-d" data-action="delStake" data-idx="${i}">×</button></td>
     </tr>`;
-    }).join('');
+      })
+      .join('');
   }
 
   function syncStakeComplianceBadges(count) {
     // OWNER 2026-09-15 (dot mechanism): the health row is a .dotstat now -
     // only the number inside .ds-num changes, the dot is static markup.
     const h = $('h-coi');
-    if (h) { const n = h.querySelector('.ds-num'); if (n) n.textContent = count; else h.textContent = count; }
+    if (h) {
+      const n = h.querySelector('.ds-num');
+      if (n) n.textContent = count;
+      else h.textContent = count;
+    }
     const card = $('health-card');
     if (card) card.classList.toggle('has-compliance', count > 0);
-    document.querySelectorAll('[data-section="stk"] .sec-badge').forEach(function(b) {
+    document.querySelectorAll('[data-section="stk"] .sec-badge').forEach(function (b) {
       b.textContent = count;
       b.classList.toggle('is-hide', count === 0);
     });
@@ -97,35 +120,51 @@ var MMGR = window.MMGR || {};
     if (!body) return;
     const changes = s.changes || [];
     if (changes.length === 0) {
-      body.innerHTML = emptyStateRow(11, 'No change requests logged yet.', '<button class="btn btn-g btn-s" data-action="addChange">+ Add Change Request</button>');
+      body.innerHTML = emptyStateRow(
+        11,
+        'No change requests logged yet.',
+        '<button class="btn btn-g btn-s" data-action="addChange">+ Add Change Request</button>'
+      );
       return;
     }
     const Render = ns.Render || {};
-    const parseImpactDays = Render.parseImpactDays || function() { return 0; };
-    const parseImpactCost = Render.parseImpactCost || function() { return 0; };
+    const parseImpactDays =
+      Render.parseImpactDays ||
+      function () {
+        return 0;
+      };
+    const parseImpactCost =
+      Render.parseImpactCost ||
+      function () {
+        return 0;
+      };
     const exposedLines = (s.budgetLines || []).length;
-    const downstreamTasks = (s.tasks || []).filter(t => t.status !== 'completed' && t.endDate && !U.isOverdue(t.endDate)).length;
-    body.innerHTML = changes.map((c, i) => {
-      const days = parseImpactDays(c.schedImpact);
-      const cost = parseImpactCost(c.costImpact);
-      const hasRipple = days > 0 || cost > 0 || exposedLines > 0;
-      const rippleHtml = hasRipple
-        ? `<span style="color:${c.status === 'approved' ? 'var(--green)' : 'var(--amber)'}">~${days}d · ${exposedLines} lines${cost ? ' · $' + cost.toLocaleString() : ''}${downstreamTasks ? ' · ' + downstreamTasks + ' tasks' : ''}</span>`
-        : '-';
-      return `<tr>
-      <td>${U.escapeHtml(c.id || 'C' + (i+1))}</td>
+    const downstreamTasks = (s.tasks || []).filter(
+      t => t.status !== 'completed' && t.endDate && !U.isOverdue(t.endDate)
+    ).length;
+    body.innerHTML = changes
+      .map((c, i) => {
+        const days = parseImpactDays(c.schedImpact);
+        const cost = parseImpactCost(c.costImpact);
+        const hasRipple = days > 0 || cost > 0 || exposedLines > 0;
+        const rippleHtml = hasRipple
+          ? `<span style="color:${c.status === 'approved' ? 'var(--green)' : 'var(--amber)'}">~${days}d · ${exposedLines} lines${cost ? ' · $' + cost.toLocaleString() : ''}${downstreamTasks ? ' · ' + downstreamTasks + ' tasks' : ''}</span>`
+          : '-';
+        return `<tr>
+      <td>${U.escapeHtml(c.id || 'C' + (i + 1))}</td>
       <td><input type="date" value="${c.date || ''}" data-action="updField" data-module="Changes" data-field="date" data-idx="${i}"></td>
       <td><input type="text" value="${U.escapeHtml(c.title)}" data-action="updField" data-module="Changes" data-field="title" data-idx="${i}"></td>
       <td><input type="text" value="${U.escapeHtml(c.requester || '')}" data-action="updField" data-module="Changes" data-field="requester" data-idx="${i}"></td>
       <td><input type="text" value="${U.escapeHtml(c.schedImpact || '')}" data-action="updField" data-module="Changes" data-field="schedImpact" data-idx="${i}" style="width:100px" title="e.g. +10 days / 2 weeks"></td>
       <td><input type="text" value="${U.escapeHtml(c.costImpact || '')}" data-action="updField" data-module="Changes" data-field="costImpact" data-idx="${i}" style="width:100px" title="e.g. $25,000"></td>
-      <td><select data-action="updField" data-module="Changes" data-field="status" data-idx="${i}">${['submitted','review','approved','rejected','cancelled'].map(s => `<option ${c.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></td>
+      <td><select data-action="updField" data-module="Changes" data-field="status" data-idx="${i}">${['submitted', 'review', 'approved', 'rejected', 'cancelled'].map(s => `<option ${c.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></td>
       <td class="chg-ripple">${rippleHtml}</td>
       <td><input type="text" value="${U.escapeHtml(c.approvedBy || '')}" data-action="updField" data-module="Changes" data-field="approvedBy" data-idx="${i}"></td>
       <td><input type="text" value="${U.escapeHtml(c.notes || '')}" data-action="updField" data-module="Changes" data-field="notes" data-idx="${i}"></td>
       <td><button class="btn btn-s btn-d" data-action="delChange" data-idx="${i}">×</button></td>
     </tr>`;
-    }).join('');
+      })
+      .join('');
   }
 
   // ---- Log ----
@@ -136,16 +175,24 @@ var MMGR = window.MMGR || {};
     if (!body) return;
     const entries = s.logEntries || [];
     if (entries.length === 0) {
-      body.innerHTML = emptyStateRow(5, 'No decision log entries yet.', '<button class="btn btn-g btn-s" data-action="addLog">+ Add Entry</button>');
+      body.innerHTML = emptyStateRow(
+        5,
+        'No decision log entries yet.',
+        '<button class="btn btn-g btn-s" data-action="addLog">+ Add Entry</button>'
+      );
       return;
     }
-    body.innerHTML = entries.map((e, i) => `<tr>
+    body.innerHTML = entries
+      .map(
+        (e, i) => `<tr>
       <td style="font-size:.7rem;white-space:nowrap">${U.escapeHtml(e.date || e.timestamp || '')}</td>
       <td><input type="text" value="${U.escapeHtml(e.decision || e.text || '')}" data-action="updField" data-module="Log" data-field="decision" data-idx="${i}" style="min-width:200px"></td>
       <td><input type="text" value="${U.escapeHtml(e.by || e.person || '')}" data-action="updField" data-module="Log" data-field="by" data-idx="${i}"></td>
       <td><input type="text" value="${U.escapeHtml(e.actionItems || '')}" data-action="updField" data-module="Log" data-field="actionItems" data-idx="${i}"></td>
       <td><button class="btn btn-s btn-d" data-action="delLog" data-idx="${i}">×</button></td>
-    </tr>`).join('');
+    </tr>`
+      )
+      .join('');
   }
 
   // ---- RACI ----
@@ -159,27 +206,41 @@ var MMGR = window.MMGR || {};
     const persons = raci.persons || [];
     const matrix = raci.matrix || {};
     const Raci = ns.Raci;
-    if (!Raci) { con.innerHTML = ''; return; }
+    if (!Raci) {
+      con.innerHTML = '';
+      return;
+    }
     if (Raci.refreshRaciPersonPicker) Raci.refreshRaciPersonPicker();
     if (Raci.refreshRaciTaskPicker) Raci.refreshRaciTaskPicker();
     if (tasks.length === 0 && persons.length === 0) {
-      con.innerHTML = '<div class="es"><div class="ic"><svg class="ico" style="font-size:2rem" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg></div>' +
+      con.innerHTML =
+        '<div class="es"><div class="ic"><svg class="ico" style="font-size:2rem" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg></div>' +
         '<div>No RACI matrix yet , add a task row and a person column using the two pickers above.</div></div>';
       renderRaciAlerts();
       return;
     }
     if (tasks.length === 0 || persons.length === 0) {
-      con.innerHTML = '<div style="font-size:.78rem;color:var(--slate);padding:20px;text-align:center">' +
-        (tasks.length === 0 ? 'Add a task row to build the matrix.' : 'Add a person column to build the matrix.') +
+      con.innerHTML =
+        '<div style="font-size:.78rem;color:var(--slate);padding:20px;text-align:center">' +
+        (tasks.length === 0
+          ? 'Add a task row to build the matrix.'
+          : 'Add a person column to build the matrix.') +
         '</div>';
       renderRaciAlerts();
       return;
     }
-    const esc = (s2) => (s2 || '').replace(/"/g, '&quot;');
-    const legend = '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:12px;font-size:.7rem;color:var(--slate)">' +
-      Raci.RACI_CYCLE_FILTERED().map(k => `<span><span style="display:inline-block;width:18px;height:18px;line-height:18px;text-align:center;border-radius:4px;font-weight:800;background:${Raci.raciCellBg(k)};color:${Raci.raciCellFg(k)};border:1px solid ${Raci.raciCellFg(k)}">${k}</span> ${Raci.RACI_LABELS[k].split(' , ')[0]}</span>`).join('') +
+    const esc = s2 => (s2 || '').replace(/"/g, '&quot;');
+    const legend =
+      '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:12px;font-size:.7rem;color:var(--slate)">' +
+      Raci.RACI_CYCLE_FILTERED()
+        .map(
+          k =>
+            `<span><span style="display:inline-block;width:18px;height:18px;line-height:18px;text-align:center;border-radius:4px;font-weight:800;background:${Raci.raciCellBg(k)};color:${Raci.raciCellFg(k)};border:1px solid ${Raci.raciCellFg(k)}">${k}</span> ${Raci.RACI_LABELS[k].split(' , ')[0]}</span>`
+        )
+        .join('') +
       '<span style="margin-left:auto">Click a cell to cycle R → A → C → I → blank · Right-click to go back</span></div>';
-    let html = legend + '<table class="dt"><thead><tr><th style="min-width:200px">Task / Deliverable</th>';
+    let html =
+      legend + '<table class="dt"><thead><tr><th style="min-width:200px">Task / Deliverable</th>';
     persons.forEach((p, pi) => {
       const info = Raci.raciPersonInfo(p);
       const head = info.live
@@ -220,18 +281,30 @@ var MMGR = window.MMGR || {};
       return;
     }
     const rows = ns.Raci.raciWorkload(s);
-    const heat = (pct) => pct >= 75 ? 'var(--danger)' : pct >= 50 ? 'var(--amber)' : pct >= 25 ? 'var(--gold)' : 'var(--green)';
-    el.innerHTML = '<div class="rst" style="margin-top:18px"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> Team Workload (4.2)</div>' +
-      '<div class="rw-grid">' + rows.map(r => {
-        const nm = r.info.name || '-';
-        const c = r.counts;
-        const barColor = heat(r.pct);
-        return `<div class="rw-cell">
+    const heat = pct =>
+      pct >= 75
+        ? 'var(--danger)'
+        : pct >= 50
+          ? 'var(--amber)'
+          : pct >= 25
+            ? 'var(--gold)'
+            : 'var(--green)';
+    el.innerHTML =
+      '<div class="rst" style="margin-top:18px"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> Team Workload (4.2)</div>' +
+      '<div class="rw-grid">' +
+      rows
+        .map(r => {
+          const nm = r.info.name || '-';
+          const c = r.counts;
+          const barColor = heat(r.pct);
+          return `<div class="rw-cell">
           <div class="rw-head"><span class="rw-name">${U.escapeHtml(nm)}</span><span class="rw-load" style="color:${barColor}">${r.load.toFixed(1)}</span></div>
           <div class="rw-bar"><div class="rw-fill" style="width:${Math.max(4, r.pct)}%;background:${barColor}"></div></div>
           <div class="rw-counts"><span class="rw-r">R ${c.R}</span><span class="rw-a">A ${c.A}</span><span class="rw-c">C ${c.C}</span><span class="rw-i">I ${c.I}</span></div>
         </div>`;
-      }).join('') + '</div>';
+        })
+        .join('') +
+      '</div>';
   }
 
   // ---- RACI alerts (feature 5) ----
@@ -242,7 +315,10 @@ var MMGR = window.MMGR || {};
     const raci = (s && s.raci) || { tasks: [], persons: [], matrix: {} };
     const { tasks, persons, matrix } = raci;
     const Raci = ns.Raci;
-    if (!Raci) { el.innerHTML = ''; return; }
+    if (!Raci) {
+      el.innerHTML = '';
+      return;
+    }
     const alerts = [];
     tasks.forEach(t => {
       const hasA = persons.some(p => matrix[t.id + '_' + p.id] === 'A');
@@ -263,7 +339,9 @@ var MMGR = window.MMGR || {};
         alerts.push(`${pi.name} is Accountable for ${aCount} tasks , consider redistributing.`);
       }
     });
-    el.innerHTML = alerts.map(a => `<div style="font-size:.72rem;color:var(--amber);margin-bottom:3px">${a}</div>`).join('');
+    el.innerHTML = alerts
+      .map(a => `<div style="font-size:.72rem;color:var(--amber);margin-bottom:3px">${a}</div>`)
+      .join('');
   }
 
   // ---- Comms ----
@@ -274,19 +352,27 @@ var MMGR = window.MMGR || {};
     if (!body) return;
     const entries = s.commsEntries || [];
     if (entries.length === 0) {
-      body.innerHTML = emptyStateRow(8, 'No communications logged yet.', '<button class="btn btn-g btn-s" data-action="addComms">+ Add Entry</button>');
+      body.innerHTML = emptyStateRow(
+        8,
+        'No communications logged yet.',
+        '<button class="btn btn-g btn-s" data-action="addComms">+ Add Entry</button>'
+      );
       return;
     }
-    body.innerHTML = entries.map((e, i) => `<tr>
-      <td>${U.escapeHtml(e.id || 'C' + (i+1))}</td>
+    body.innerHTML = entries
+      .map(
+        (e, i) => `<tr>
+      <td>${U.escapeHtml(e.id || 'C' + (i + 1))}</td>
       <td><input type="date" value="${e.date || ''}" data-action="updField" data-module="Comms" data-field="date" data-idx="${i}"></td>
-      <td><select data-action="updField" data-module="Comms" data-field="type" data-idx="${i}">${['Meeting','Call','Email','Site Visit','Letter'].map(t => `<option ${e.type === t ? 'selected' : ''}>${t}</option>`).join('')}</select></td>
+      <td><select data-action="updField" data-module="Comms" data-field="type" data-idx="${i}">${['Meeting', 'Call', 'Email', 'Site Visit', 'Letter'].map(t => `<option ${e.type === t ? 'selected' : ''}>${t}</option>`).join('')}</select></td>
       <td><input type="text" value="${U.escapeHtml(e.attendees || '')}" data-action="updField" data-module="Comms" data-field="attendees" data-idx="${i}"></td>
       <td><input type="text" value="${U.escapeHtml(e.summary || '')}" data-action="updField" data-module="Comms" data-field="summary" data-idx="${i}" style="min-width:150px"></td>
       <td><input type="text" value="${U.escapeHtml(e.actionItems || '')}" data-action="updField" data-module="Comms" data-field="actionItems" data-idx="${i}"></td>
       <td><input type="text" value="${U.escapeHtml(e.followUp || '')}" data-action="updField" data-module="Comms" data-field="followUp" data-idx="${i}"></td>
       <td><button class="btn btn-s btn-d" data-action="delComms" data-idx="${i}">×</button></td>
-    </tr>`).join('');
+    </tr>`
+      )
+      .join('');
   }
 
   ns.RenderPeople = {

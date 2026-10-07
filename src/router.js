@@ -22,39 +22,136 @@
     14. AI relay
     15. 404 fallback
    ============================================================ */
-import { json, sameOriginOnly, cloudRateCheck, cloudRateLimited, readSession, cloudForbidden } from './lib/http.js';
+import {
+  json,
+  sameOriginOnly,
+  cloudRateCheck,
+  cloudRateLimited,
+  readSession,
+  cloudForbidden
+} from './lib/http.js';
 import { trackError, structuredLog } from './lib/observe.js';
-import { handleBillingWebhook, handleBillingStatus, handleBillingCheckout } from './billing.js';
-import { handleCloudProjectList, handleCloudCreate, handleCloudSave, handleCloudLoad, handleCloudProjectClaim,
-  handleCloudRecover, handleCloudMeta, handleCloudUnlink, handleCloudCodeLookup,
-  handleCloudProjectDelete, handleCloudProjectRestore, handleCloudProjectPurge,
-  handleCloudUnadopt, cloudPushRevChangedIfCopies } from './cloud/projects.js';
-import { handleCloudEditorCreate, handleCloudEditorList, handleCloudEditorRevoke } from './cloud/editors.js';
-import { handleCloudApiKeyCreate, handleCloudApiKeyList, handleCloudApiKeyRevoke } from './cloud/api-keys.js';
-import { handleCloudClientCodeCreate, handleCloudClientCodeList, handleCloudClientCodeRevoke, verifyClientCode, CLIENT_SECTIONS, SECTION_LABELS } from './cloud/client-codes.js';
-import { handlePoolItemsList, handlePoolItemCreate, handlePoolItemUpdate, handlePoolItemDelete, handlePoolLinkCreate, handlePoolLinkDelete } from './cloud/pool.js';
-import { handleCloudChangelogList, handleCloudChangelogRevert, handleCloudChangelogImport } from './cloud/changelog.js';
-import { handleCloudPrefsGet, handleCloudPrefsPut, handleCloudBroadcast, handleCloudAutoBroadcast,
-  handleOfflineCopyRegister, handleOfflineCopyList, handleOfflineCopyDelete } from './cloud/sync.js';
-import { handlePresenceUpgrade, presencePushRevChanged, cloudManifestCodeOk } from './cloud/presence.js';
+import {
+  handleBillingWebhook,
+  handleBillingStatus,
+  handleBillingCheckout,
+  handleBillingCancel
+} from './billing.js';
+import {
+  handleCloudProjectList,
+  handleCloudCreate,
+  handleCloudSave,
+  handleCloudLoad,
+  handleCloudProjectClaim,
+  handleCloudRecover,
+  handleCloudMeta,
+  handleCloudUnlink,
+  handleCloudCodeLookup,
+  handleCloudProjectDelete,
+  handleCloudProjectRestore,
+  handleCloudProjectPurge,
+  handleCloudUnadopt,
+  cloudPushRevChangedIfCopies
+} from './cloud/projects.js';
+import {
+  handleCloudEditorCreate,
+  handleCloudEditorList,
+  handleCloudEditorRevoke
+} from './cloud/editors.js';
+import {
+  handleCloudApiKeyCreate,
+  handleCloudApiKeyList,
+  handleCloudApiKeyRevoke
+} from './cloud/api-keys.js';
+import {
+  handleCloudClientCodeCreate,
+  handleCloudClientCodeList,
+  handleCloudClientCodeRevoke,
+  verifyClientCode,
+  CLIENT_SECTIONS,
+  SECTION_LABELS
+} from './cloud/client-codes.js';
+import {
+  handlePoolItemsList,
+  handlePoolItemCreate,
+  handlePoolItemUpdate,
+  handlePoolItemDelete,
+  handlePoolLinkCreate,
+  handlePoolLinkDelete
+} from './cloud/pool.js';
+import {
+  handleCloudChangelogList,
+  handleCloudChangelogRevert,
+  handleCloudChangelogImport
+} from './cloud/changelog.js';
+import {
+  handleCloudPrefsGet,
+  handleCloudPrefsPut,
+  handleCloudBroadcast,
+  handleCloudAutoBroadcast,
+  handleOfflineCopyRegister,
+  handleOfflineCopyList,
+  handleOfflineCopyDelete
+} from './cloud/sync.js';
+import {
+  handlePresenceUpgrade,
+  presencePushRevChanged,
+  cloudManifestCodeOk
+} from './cloud/presence.js';
 import { handleCalcWorkspaceGet, handleCalcWorkspacePut } from './cloud/calc-workspace.js';
 import { API_SHAPES, handleApiShape } from './api/shapes.js';
 import { handleWebhookCreate, handleWebhookList, handleWebhookDelete } from './webhooks.js';
-import { handleTeamInvite, handleTeamList, handleTeamUpdate, handleTeamRevoke, handleTeamAccept } from './cloud/team.js';
+import {
+  handleTeamInvite,
+  handleTeamList,
+  handleTeamUpdate,
+  handleTeamRevoke,
+  handleTeamAccept
+} from './cloud/team.js';
 import { handleAdminCloudList } from './admin.js';
-import { handleReviewsCreate, handleReviewsList, handleReviewList,
-  handleReviewAccept, handleReviewReject, handleTurnstileConfig } from './reviews.js';
+import {
+  handleReviewsCreate,
+  handleReviewsList,
+  handleReviewList,
+  handleReviewAccept,
+  handleReviewReject,
+  handleTurnstileConfig
+} from './reviews.js';
 import { handleContactCreate } from './contact.js';
 import { handleAiChat } from './ai-proxy.js';
 import { handleMcpServer } from './mcp/server.js';
-import { handleAuthGoogle, handleAuthMe, handleAuthLogout, handleAuthLogoutAll, mintSession } from './auth/google.js';
-import { handleAdminRecoveryStatus, handleAdminRecoverySend, handleAdminRecoveryVerify } from './auth/recovery.js';
+import {
+  handleAuthGoogle,
+  handleAuthMe,
+  handleAuthLogout,
+  handleAuthLogoutAll,
+  mintSession
+} from './auth/google.js';
+import {
+  handleAdminRecoveryStatus,
+  handleAdminRecoverySend,
+  handleAdminRecoveryVerify
+} from './auth/recovery.js';
 import { handleAdminCodePut, handleAdminCodeGet } from './auth/admin-code.js';
-import { handleAuthRegister, handleAuthLogin, handleAuthPasswordChange,
-  handleAuthVerifyPassword, handleAuthVerify, handleAuthForgot,
-  handleAuthReset, handleAuthResendVerify, handleAuthDeleteAccount } from './auth/session.js';
-import { hashOwnerCode, codesEqual, cloudDummyHash, cloudTimingSink,
-  cloudAuthEditor, handleCloudSections } from './lib/http.js';
+import {
+  handleAuthRegister,
+  handleAuthLogin,
+  handleAuthPasswordChange,
+  handleAuthVerifyPassword,
+  handleAuthVerify,
+  handleAuthForgot,
+  handleAuthReset,
+  handleAuthResendVerify,
+  handleAuthDeleteAccount
+} from './auth/session.js';
+import {
+  hashOwnerCode,
+  codesEqual,
+  cloudDummyHash,
+  cloudTimingSink,
+  cloudAuthEditor,
+  handleCloudSections
+} from './lib/http.js';
 
 // Presence push rev + fallback for review accept broadcasts
 const _cloudPushRev = cloudPushRevChangedIfCopies;
@@ -69,7 +166,9 @@ function trackEvent(env, idx1, idx2, blob1, blob2) {
       indexes: [String(idx1 || ''), String(idx2 || '')],
       blobs: [String(blob1 || ''), String(blob2 || ''), new Date().toISOString()]
     });
-  } catch (e) { /* telemetry must never block the request */ }
+  } catch (e) {
+    /* telemetry must never block the request */
+  }
 }
 
 /* ============================================================
@@ -83,9 +182,19 @@ async function handlePresenceAuth(request, env) {
     const body = await request.json();
     const projectId = String(body.projectId || '').slice(0, 64);
     const code = String(body.code || '').trim();
-    if (!projectId || !code) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return json({ ok: false }); }
-    const row = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash, google_sub FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
-    if (!row) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return json({ ok: false }); }
+    if (!projectId || !code) {
+      await Promise.all([cloudDummyHash(), cloudTimingSink()]);
+      return json({ ok: false });
+    }
+    const row = await env.DB.prepare(
+      'SELECT owner_code_salt, owner_code_hash, google_sub FROM cloud_projects WHERE project_id = ?'
+    )
+      .bind(projectId)
+      .first();
+    if (!row) {
+      await Promise.all([cloudDummyHash(), cloudTimingSink()]);
+      return json({ ok: false });
+    }
     const hash = await hashOwnerCode(code, row.owner_code_salt);
     if (codesEqual(hash, row.owner_code_hash)) return json({ ok: true, name: 'Owner' });
     const ed = await cloudAuthEditor(request, env, projectId, code);
@@ -93,7 +202,10 @@ async function handlePresenceAuth(request, env) {
     if (await cloudManifestCodeOk(env, projectId, code)) return json({ ok: true, name: 'Viewer' });
     await Promise.all([cloudDummyHash(), cloudTimingSink()]);
     return json({ ok: false });
-  } catch (e) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return json({ ok: false }); }
+  } catch (e) {
+    await Promise.all([cloudDummyHash(), cloudTimingSink()]);
+    return json({ ok: false });
+  }
 }
 
 /* ============================================================
@@ -133,24 +245,43 @@ export async function routeApi(request, env, url) {
     if (path === '/api/cloud/projects') {
       const r = await rl(request, 'general', env);
       if (r) return r;
-      if (request.method === 'POST') { trackEvent(env, 'api', 'cloud-create'); structuredLog(env, 'info', 'cloud-create-start'); return handleCloudCreate(request, env); }
+      if (request.method === 'POST') {
+        trackEvent(env, 'api', 'cloud-create');
+        structuredLog(env, 'info', 'cloud-create-start');
+        return handleCloudCreate(request, env);
+      }
       if (request.method === 'GET') return handleCloudProjectList(request, env);
     }
 
-    const cloudMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/(save|load|recover|meta|delete|restore|purge|claim)$/);
+    const cloudMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/(save|load|recover|meta|delete|restore|purge|claim)$/
+    );
     if (cloudMatch) {
       const pid = cloudMatch[1];
       const op = cloudMatch[2];
       const r = await rl(request, op === 'recover' ? 'recover' : 'general', env);
       if (r) return r;
       if (op === 'meta' && request.method === 'GET') return handleCloudMeta(request, env, pid);
-      if (op === 'save' && request.method === 'POST') { trackEvent(env, 'api', 'cloud-save', pid); structuredLog(env, 'info', 'cloud-save-start', { projectId: pid }); return handleCloudSave(request, env, pid, async function(env, projectId, now, actor) { await _cloudPushRev(env, projectId, now, actor); }); }
+      if (op === 'save' && request.method === 'POST') {
+        trackEvent(env, 'api', 'cloud-save', pid);
+        structuredLog(env, 'info', 'cloud-save-start', { projectId: pid });
+        return handleCloudSave(request, env, pid, async function (env, projectId, now, actor) {
+          await _cloudPushRev(env, projectId, now, actor);
+        });
+      }
       if (op === 'load' && request.method === 'POST') return handleCloudLoad(request, env, pid);
-      if (op === 'recover' && request.method === 'POST') return handleCloudRecover(request, env, pid);
-      if (op === 'delete' && request.method === 'POST') return handleCloudProjectDelete(request, env, pid);
-      if (op === 'restore' && request.method === 'POST') return handleCloudProjectRestore(request, env, pid);
-      if (op === 'claim' && request.method === 'POST') { trackEvent(env, 'api', 'cloud-claim', pid); return handleCloudProjectClaim(request, env, pid); }
-      if (op === 'purge' && request.method === 'POST') return handleCloudProjectPurge(request, env, pid);
+      if (op === 'recover' && request.method === 'POST')
+        return handleCloudRecover(request, env, pid);
+      if (op === 'delete' && request.method === 'POST')
+        return handleCloudProjectDelete(request, env, pid);
+      if (op === 'restore' && request.method === 'POST')
+        return handleCloudProjectRestore(request, env, pid);
+      if (op === 'claim' && request.method === 'POST') {
+        trackEvent(env, 'api', 'cloud-claim', pid);
+        return handleCloudProjectClaim(request, env, pid);
+      }
+      if (op === 'purge' && request.method === 'POST')
+        return handleCloudProjectPurge(request, env, pid);
     }
 
     // DELETED PROJECTS LIST (for Recover UI)
@@ -164,9 +295,15 @@ export async function routeApi(request, env, url) {
         const cutoff = new Date(Date.now() - graceMs).toISOString();
         const rows = await env.DB.prepare(
           'SELECT project_id, owner_label, deleted_at FROM cloud_projects WHERE google_sub = ? AND deleted_at IS NOT NULL AND deleted_at > ? ORDER BY deleted_at DESC'
-        ).bind(session.sub, cutoff).all();
-        const deleted = (rows.results || []).map(function(r) {
-          return { projectId: r.project_id, label: r.owner_label || r.project_id, deletedAt: r.deleted_at };
+        )
+          .bind(session.sub, cutoff)
+          .all();
+        const deleted = (rows.results || []).map(function (r) {
+          return {
+            projectId: r.project_id,
+            label: r.owner_label || r.project_id,
+            deletedAt: r.deleted_at
+          };
         });
         return json({ ok: true, deleted: deleted });
       } catch (e) {
@@ -197,24 +334,37 @@ export async function routeApi(request, env, url) {
     }
 
     // API SHAPES (read-only resource projections)
-    const apiShapeMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/api\/([a-z]+)$/);
+    const apiShapeMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/api\/([a-z]+)$/
+    );
     if (apiShapeMatch && request.method === 'GET') {
       const r = await rl(request, 'general', env);
       if (r) return r;
       const shape = apiShapeMatch[2];
-      if (!API_SHAPES[shape]) return json({ ok: false, error: 'unknown shape - use tasks, baseline, risks, weather, evm or portfolio' }, 404);
+      if (!API_SHAPES[shape])
+        return json(
+          {
+            ok: false,
+            error: 'unknown shape - use tasks, baseline, risks, weather, evm or portfolio'
+          },
+          404
+        );
       return handleApiShape(request, env, apiShapeMatch[1], shape);
     }
 
     // WEBHOOKS
-    const webhookListMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/webhooks$/);
+    const webhookListMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/webhooks$/
+    );
     if (webhookListMatch) {
       const r = await rl(request, 'general', env);
       if (r) return r;
       if (request.method === 'POST') return handleWebhookCreate(request, env, webhookListMatch[1]);
       if (request.method === 'GET') return handleWebhookList(request, env, webhookListMatch[1]);
     }
-    const webhookDelMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/webhooks\/(\d+)$/);
+    const webhookDelMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/webhooks\/(\d+)$/
+    );
     if (webhookDelMatch && request.method === 'DELETE') {
       const r = await rl(request, 'general', env);
       if (r) return r;
@@ -229,12 +379,16 @@ export async function routeApi(request, env, url) {
       if (request.method === 'POST') return handleTeamInvite(request, env, teamListMatch[1]);
       if (request.method === 'GET') return handleTeamList(request, env, teamListMatch[1]);
     }
-    const teamMemberMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/team\/(\d+)$/);
+    const teamMemberMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/team\/(\d+)$/
+    );
     if (teamMemberMatch) {
       const r = await rl(request, 'general', env);
       if (r) return r;
-      if (request.method === 'PUT') return handleTeamUpdate(request, env, teamMemberMatch[1], teamMemberMatch[2]);
-      if (request.method === 'DELETE') return handleTeamRevoke(request, env, teamMemberMatch[1], teamMemberMatch[2]);
+      if (request.method === 'PUT')
+        return handleTeamUpdate(request, env, teamMemberMatch[1], teamMemberMatch[2]);
+      if (request.method === 'DELETE')
+        return handleTeamRevoke(request, env, teamMemberMatch[1], teamMemberMatch[2]);
     }
     if (path === '/api/team/accept' && request.method === 'POST') {
       const r = await rl(request, 'general', env);
@@ -264,14 +418,19 @@ export async function routeApi(request, env, url) {
     }
 
     // 6. CLOUD SYNC (offline copies, broadcast)
-    const offlineListMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/offline-copies$/);
+    const offlineListMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/offline-copies$/
+    );
     if (offlineListMatch) {
       const r = await rl(request, 'general', env);
       if (r) return r;
-      if (request.method === 'POST') return handleOfflineCopyRegister(request, env, offlineListMatch[1]);
+      if (request.method === 'POST')
+        return handleOfflineCopyRegister(request, env, offlineListMatch[1]);
       if (request.method === 'GET') return handleOfflineCopyList(request, env, offlineListMatch[1]);
     }
-    const offlineDelMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/offline-copies\/([A-Za-z0-9-]{1,64})$/);
+    const offlineDelMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/offline-copies\/([A-Za-z0-9-]{1,64})$/
+    );
     if (offlineDelMatch && request.method === 'DELETE') {
       const r = await rl(request, 'general', env);
       if (r) return r;
@@ -283,15 +442,30 @@ export async function routeApi(request, env, url) {
     if (reviewListMatch && request.method === 'GET') {
       const r = await rl(request, 'general', env);
       if (r) return r;
-      return handleReviewList(request, env, reviewListMatch[1], url.searchParams.get('mine') === '1');
+      return handleReviewList(
+        request,
+        env,
+        reviewListMatch[1],
+        url.searchParams.get('mine') === '1'
+      );
     }
-    const reviewAcceptMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/reviews\/(\d+)\/accept$/);
+    const reviewAcceptMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/reviews\/(\d+)\/accept$/
+    );
     if (reviewAcceptMatch && request.method === 'POST') {
       const r = await rl(request, 'general', env);
       if (r) return r;
-      return handleReviewAccept(request, env, reviewAcceptMatch[1], Number(reviewAcceptMatch[2]), _cloudPushRev);
+      return handleReviewAccept(
+        request,
+        env,
+        reviewAcceptMatch[1],
+        Number(reviewAcceptMatch[2]),
+        _cloudPushRev
+      );
     }
-    const reviewRejectMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/reviews\/(\d+)\/reject$/);
+    const reviewRejectMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/reviews\/(\d+)\/reject$/
+    );
     if (reviewRejectMatch && request.method === 'POST') {
       const r = await rl(request, 'general', env);
       if (r) return r;
@@ -305,7 +479,9 @@ export async function routeApi(request, env, url) {
       if (r) return r;
       return handleCloudBroadcast(request, env, broadcastMatch[1], presencePushRevChanged);
     }
-    const autoBcMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/auto-broadcast$/);
+    const autoBcMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/auto-broadcast$/
+    );
     if (autoBcMatch && request.method === 'PUT') {
       const r = await rl(request, 'general', env);
       if (r) return r;
@@ -323,14 +499,20 @@ export async function routeApi(request, env, url) {
     if (path === '/api/cloud/sections' && request.method === 'GET') {
       return handleCloudSections();
     }
-    const cloudEditorsMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/editors$/);
+    const cloudEditorsMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/editors$/
+    );
     if (cloudEditorsMatch) {
       const r = await rl(request, 'general', env);
       if (r) return r;
-      if (request.method === 'POST') return handleCloudEditorCreate(request, env, cloudEditorsMatch[1]);
-      if (request.method === 'GET') return handleCloudEditorList(request, env, cloudEditorsMatch[1]);
+      if (request.method === 'POST')
+        return handleCloudEditorCreate(request, env, cloudEditorsMatch[1]);
+      if (request.method === 'GET')
+        return handleCloudEditorList(request, env, cloudEditorsMatch[1]);
     }
-    const cloudEditorDelMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/editors\/(\d+)$/);
+    const cloudEditorDelMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/editors\/(\d+)$/
+    );
     if (cloudEditorDelMatch && request.method === 'DELETE') {
       const r = await rl(request, 'general', env);
       if (r) return r;
@@ -339,55 +521,82 @@ export async function routeApi(request, env, url) {
     // PROJECT API KEYS (owner directive 2026-09-15): scoped, expiring keys
     // minted INSIDE a project. Owner-only management; key USE authenticates
     // via X-API-Key in cloudAuthApiKey (wired at P4).
-    const cloudApiKeysMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/api-keys$/);
+    const cloudApiKeysMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/api-keys$/
+    );
     if (cloudApiKeysMatch) {
       const r = await rl(request, 'general', env);
       if (r) return r;
-      if (request.method === 'POST') return handleCloudApiKeyCreate(request, env, cloudApiKeysMatch[1]);
-      if (request.method === 'GET') return handleCloudApiKeyList(request, env, cloudApiKeysMatch[1]);
+      if (request.method === 'POST')
+        return handleCloudApiKeyCreate(request, env, cloudApiKeysMatch[1]);
+      if (request.method === 'GET')
+        return handleCloudApiKeyList(request, env, cloudApiKeysMatch[1]);
     }
-    const cloudApiKeyDelMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/api-keys\/(\d+)$/);
+    const cloudApiKeyDelMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/api-keys\/(\d+)$/
+    );
     if (cloudApiKeyDelMatch && request.method === 'DELETE') {
       const r = await rl(request, 'general', env);
       if (r) return r;
       return handleCloudApiKeyRevoke(request, env, cloudApiKeyDelMatch[1], cloudApiKeyDelMatch[2]);
     }
     // C19: Client Codes (read-only, section-filtered access)
-    const cloudClientMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/client-codes$/);
+    const cloudClientMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/client-codes$/
+    );
     if (cloudClientMatch) {
       const r = await rl(request, 'general', env);
       if (r) return r;
-      if (request.method === 'POST') return handleCloudClientCodeCreate(request, env, cloudClientMatch[1]);
-      if (request.method === 'GET') return handleCloudClientCodeList(request, env, cloudClientMatch[1]);
+      if (request.method === 'POST')
+        return handleCloudClientCodeCreate(request, env, cloudClientMatch[1]);
+      if (request.method === 'GET')
+        return handleCloudClientCodeList(request, env, cloudClientMatch[1]);
     }
-    const cloudClientDelMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/client-codes\/(\d+)$/);
+    const cloudClientDelMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/client-codes\/(\d+)$/
+    );
     if (cloudClientDelMatch && request.method === 'DELETE') {
       const r = await rl(request, 'general', env);
       if (r) return r;
-      return handleCloudClientCodeRevoke(request, env, cloudClientDelMatch[1], cloudClientDelMatch[2]);
+      return handleCloudClientCodeRevoke(
+        request,
+        env,
+        cloudClientDelMatch[1],
+        cloudClientDelMatch[2]
+      );
     }
     // C23: Cloud Shared Resource Pool (account-scoped items + project links)
-    const poolItemsMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/pool\/items$/);
+    const poolItemsMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/pool\/items$/
+    );
     if (poolItemsMatch) {
       const r = await rl(request, 'general', env);
       if (r) return r;
       if (request.method === 'GET') return handlePoolItemsList(request, env, poolItemsMatch[1]);
       if (request.method === 'POST') return handlePoolItemCreate(request, env, poolItemsMatch[1]);
     }
-    const poolItemMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/pool\/items\/([A-Za-z0-9_-]{1,80})$/);
+    const poolItemMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/pool\/items\/([A-Za-z0-9_-]{1,80})$/
+    );
     if (poolItemMatch) {
       const r = await rl(request, 'general', env);
       if (r) return r;
-      if (request.method === 'PUT') return handlePoolItemUpdate(request, env, poolItemMatch[1], poolItemMatch[2]);
-      if (request.method === 'DELETE') return handlePoolItemDelete(request, env, poolItemMatch[1], poolItemMatch[2]);
+      if (request.method === 'PUT')
+        return handlePoolItemUpdate(request, env, poolItemMatch[1], poolItemMatch[2]);
+      if (request.method === 'DELETE')
+        return handlePoolItemDelete(request, env, poolItemMatch[1], poolItemMatch[2]);
     }
-    const poolLinkMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/pool\/links$/);
+    const poolLinkMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/pool\/links$/
+    );
     if (poolLinkMatch && request.method === 'POST') {
       const r = await rl(request, 'general', env);
       if (r) return r;
       return handlePoolLinkCreate(request, env, poolLinkMatch[1]);
     }
-    const poolLinkDelMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/pool\/links\/([A-Za-z0-9_-]{1,80})$/);
+    const poolLinkDelMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/pool\/links\/([A-Za-z0-9_-]{1,80})$/
+    );
     if (poolLinkDelMatch && request.method === 'DELETE') {
       const r = await rl(request, 'general', env);
       if (r) return r;
@@ -399,13 +608,17 @@ export async function routeApi(request, env, url) {
       if (r) return r;
       return handleCloudChangelogList(request, env, cloudLogMatch[1]);
     }
-    const cloudImportMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/changelog\/import$/);
+    const cloudImportMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/changelog\/import$/
+    );
     if (cloudImportMatch && request.method === 'POST') {
       const r = await rl(request, 'general', env);
       if (r) return r;
       return handleCloudChangelogImport(request, env, cloudImportMatch[1]);
     }
-    const cloudRevertMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/changelog\/(\d+)\/revert$/);
+    const cloudRevertMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/changelog\/(\d+)\/revert$/
+    );
     if (cloudRevertMatch && request.method === 'POST') {
       const r = await rl(request, 'general', env);
       if (r) return r;
@@ -544,6 +757,14 @@ export async function routeApi(request, env, url) {
       const r = await rl(request, 'general', env);
       if (r) return r;
       return handleBillingCheckout(request, env);
+    }
+    // WAVE 8.10 (owner 2026-10-06): manage / cancel the signed-in owner's
+    // subscription. DELETE schedules a cancel-at-period-end on Paddle; access
+    // runs to the end of the paid period. Owner-only (session-gated).
+    if (path === '/api/billing/subscription' && request.method === 'DELETE') {
+      const r = await rl(request, 'general', env);
+      if (r) return r;
+      return handleBillingCancel(request, env);
     }
 
     // 14. AI RELAY

@@ -8,11 +8,20 @@ const { chromePath: chrome } = require('./chrome-launcher.cjs');
 const port = 9334;
 const userDir = 'C:/tmp/chrome-cdp-' + Date.now();
 const root = 'C:/Users/Garfield/Downloads/mymanager-fixed';
-const proc = spawn(chrome, [
-  '--headless=new', '--disable-gpu', '--no-sandbox',
-  '--remote-allow-origins=*', '--remote-debugging-port=' + port,
-  '--user-data-dir=' + userDir, '--window-size=1280,900', 'about:blank'
-], { stdio: 'ignore' });
+const proc = spawn(
+  chrome,
+  [
+    '--headless=new',
+    '--disable-gpu',
+    '--no-sandbox',
+    '--remote-allow-origins=*',
+    '--remote-debugging-port=' + port,
+    '--user-data-dir=' + userDir,
+    '--window-size=1280,900',
+    'about:blank'
+  ],
+  { stdio: 'ignore' }
+);
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -23,7 +32,9 @@ async function waitForPageTarget() {
       const list = await r.json();
       const page = list.find(t => t.type === 'page');
       if (page && page.webSocketDebuggerUrl) return page.webSocketDebuggerUrl;
-    } catch (e) { /* not up */ }
+    } catch (e) {
+      /* not up */
+    }
     await sleep(200);
   }
   throw new Error('CDP page target did not come up');
@@ -32,30 +43,56 @@ async function waitForPageTarget() {
 (async function () {
   const wsUrl = await waitForPageTarget();
   const ws = new WebSocket(wsUrl);
-  await new Promise(r => { ws.onopen = r; });
+  await new Promise(r => {
+    ws.onopen = r;
+  });
 
   let id = 0;
   const pending = new Map();
   const consoleIssues = [];
   ws.onmessage = ev => {
     const msg = JSON.parse(ev.data);
-    if (msg.id && pending.has(msg.id)) { pending.get(msg.id)(msg); pending.delete(msg.id); }
-    else if (msg.method === 'Runtime.exceptionThrown') {
-      consoleIssues.push('EXC: ' + (msg.params.exceptionDetails.exception && msg.params.exceptionDetails.exception.description || msg.params.exceptionDetails.text).slice(0, 200));
-    }
-    else if (msg.method === 'Runtime.consoleAPICalled' && (msg.params.type === 'error' || msg.params.type === 'warning')) {
-      consoleIssues.push(msg.params.type.toUpperCase() + ': ' + (msg.params.args || []).map(a => a.value || a.description || '').join(' ').slice(0, 200));
+    if (msg.id && pending.has(msg.id)) {
+      pending.get(msg.id)(msg);
+      pending.delete(msg.id);
+    } else if (msg.method === 'Runtime.exceptionThrown') {
+      consoleIssues.push(
+        'EXC: ' +
+          (
+            (msg.params.exceptionDetails.exception &&
+              msg.params.exceptionDetails.exception.description) ||
+            msg.params.exceptionDetails.text
+          ).slice(0, 200)
+      );
+    } else if (
+      msg.method === 'Runtime.consoleAPICalled' &&
+      (msg.params.type === 'error' || msg.params.type === 'warning')
+    ) {
+      consoleIssues.push(
+        msg.params.type.toUpperCase() +
+          ': ' +
+          (msg.params.args || [])
+            .map(a => a.value || a.description || '')
+            .join(' ')
+            .slice(0, 200)
+      );
     }
   };
-  const send = (method, params) => new Promise(resolve => {
-    const mid = ++id;
-    pending.set(mid, resolve);
-    ws.send(JSON.stringify({ id: mid, method, params: params || {} }));
-  });
+  const send = (method, params) =>
+    new Promise(resolve => {
+      const mid = ++id;
+      pending.set(mid, resolve);
+      ws.send(JSON.stringify({ id: mid, method, params: params || {} }));
+    });
   const evaluate = async expr => {
     const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true });
     if (r.error) return 'CDP_ERROR:' + JSON.stringify(r.error);
-    if (r.result && r.result.exceptionDetails) return 'EXC:' + (r.result.exceptionDetails.exception && r.result.exceptionDetails.exception.description || r.result.exceptionDetails.text);
+    if (r.result && r.result.exceptionDetails)
+      return (
+        'EXC:' +
+        ((r.result.exceptionDetails.exception && r.result.exceptionDetails.exception.description) ||
+          r.result.exceptionDetails.text)
+      );
     return r.result && r.result.result ? r.result.result.value : null;
   };
 
@@ -114,8 +151,14 @@ async function waitForPageTarget() {
     out.push('admin_screenshot=tools/gate-admin.png');
   }
 
-  out.push('console_issues=' + (consoleIssues.length ? JSON.stringify(consoleIssues.slice(0, 10)) : 'none'));
+  out.push(
+    'console_issues=' + (consoleIssues.length ? JSON.stringify(consoleIssues.slice(0, 10)) : 'none')
+  );
   console.log('RESULT:', JSON.stringify(out, null, 2));
   proc.kill();
   process.exit(0);
-})().catch(e => { console.error('ERR', e && e.message); proc.kill(); process.exit(1); });
+})().catch(e => {
+  console.error('ERR', e && e.message);
+  proc.kill();
+  process.exit(1);
+});

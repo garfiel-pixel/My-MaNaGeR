@@ -17,13 +17,18 @@ const fs = require('fs');
 const os = require('os');
 
 const ROOT = path.resolve(__dirname, '..');
-const log = (s) => process.stdout.write(s + '\n');
+const log = s => process.stdout.write(s + '\n');
 
 // ---- Wrangler startup (self-contained, like other T2 harnesses) ----
 const WRANGLER_JS = (function () {
   const local = path.join(ROOT, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
   if (fs.existsSync(local)) return local;
-  try { return execFileSync(process.execPath, ['npm', 'root', '-g'], { encoding: 'utf8' }).trim() + '/wrangler/bin/wrangler.js'; } catch (e) {}
+  try {
+    return (
+      execFileSync(process.execPath, ['npm', 'root', '-g'], { encoding: 'utf8' }).trim() +
+      '/wrangler/bin/wrangler.js'
+    );
+  } catch (e) {}
   return local;
 })();
 const PORT = parseInt(process.env.QA_PORT || '8797', 10);
@@ -33,18 +38,59 @@ let wranglerProc = null;
 async function startWrangler() {
   log('[cas] starting wrangler dev on :' + PORT + '...');
   try {
-    execFileSync(process.execPath, [WRANGLER_JS, 'd1', 'migrations', 'apply', 'my-manager-db', '--local', '--config', 'wrangler.ci.jsonc', '--persist-to', PERSIST_DIR], { cwd: ROOT, stdio: 'ignore' });
-  } catch (e) { /* migrations may already be applied */ }
-  wranglerProc = spawn(process.execPath, [WRANGLER_JS, 'dev', '--config', 'wrangler.ci.jsonc', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST_DIR], {
-    cwd: ROOT, stdio: 'ignore',
-    env: Object.assign({}, process.env, { ADMIN_CODE: 'QA-CAS-ADMIN' })
+    execFileSync(
+      process.execPath,
+      [
+        WRANGLER_JS,
+        'd1',
+        'migrations',
+        'apply',
+        'my-manager-db',
+        '--local',
+        '--config',
+        'wrangler.ci.jsonc',
+        '--persist-to',
+        PERSIST_DIR
+      ],
+      { cwd: ROOT, stdio: 'ignore' }
+    );
+  } catch (e) {
+    /* migrations may already be applied */
+  }
+  wranglerProc = spawn(
+    process.execPath,
+    [
+      WRANGLER_JS,
+      'dev',
+      '--config',
+      'wrangler.ci.jsonc',
+      '--port',
+      String(PORT),
+      '--ip',
+      '127.0.0.1',
+      '--persist-to',
+      PERSIST_DIR
+    ],
+    {
+      cwd: ROOT,
+      stdio: 'ignore',
+      env: Object.assign({}, process.env, { ADMIN_CODE: 'QA-CAS-ADMIN' })
+    }
+  );
+  wranglerProc.on('error', e => {
+    log('[cas] wrangler spawn error: ' + e.message);
   });
-  wranglerProc.on('error', (e) => { log('[cas] wrangler spawn error: ' + e.message); });
-  wranglerProc.on('exit', (code) => { log('[cas] wrangler exited code=' + code); wranglerProc = null; });
+  wranglerProc.on('exit', code => {
+    log('[cas] wrangler exited code=' + code);
+    wranglerProc = null;
+  });
   for (let i = 0; i < 40; i++) {
     try {
       const r = await fetch('http://127.0.0.1:' + PORT + '/api/health');
-      if (r.ok) { log('[cas] wrangler ready on :' + PORT); return; }
+      if (r.ok) {
+        log('[cas] wrangler ready on :' + PORT);
+        return;
+      }
     } catch (e) {}
     await delay(2000);
   }
@@ -52,7 +98,12 @@ async function startWrangler() {
 }
 
 function stopWrangler() {
-  if (wranglerProc) { try { wranglerProc.kill(); } catch (e) {} wranglerProc = null; }
+  if (wranglerProc) {
+    try {
+      wranglerProc.kill();
+    } catch (e) {}
+    wranglerProc = null;
+  }
 }
 
 // ---- Chrome launcher ----
@@ -64,13 +115,27 @@ const userDir = path.join(os.tmpdir(), 'chrome-cas-' + Date.now());
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
 // Watchdog
-setTimeout(() => { log('WATCHDOG TIMEOUT'); stopWrangler(); process.exit(2); }, 180000);
+setTimeout(() => {
+  log('WATCHDOG TIMEOUT');
+  stopWrangler();
+  process.exit(2);
+}, 180000);
 
-const proc = spawn(CHROME, [
-  '--headless=new', '--disable-gpu', '--no-first-run', '--no-sandbox',
-  '--remote-allow-origins=*', '--remote-debugging-port=' + CHROME_PORT,
-  '--user-data-dir=' + userDir, '--window-size=1280,900', 'about:blank'
-], { stdio: 'ignore' });
+const proc = spawn(
+  CHROME,
+  [
+    '--headless=new',
+    '--disable-gpu',
+    '--no-first-run',
+    '--no-sandbox',
+    '--remote-allow-origins=*',
+    '--remote-debugging-port=' + CHROME_PORT,
+    '--user-data-dir=' + userDir,
+    '--window-size=1280,900',
+    'about:blank'
+  ],
+  { stdio: 'ignore' }
+);
 
 const results = [];
 function check(name, val, detail) {
@@ -93,28 +158,43 @@ function annotateFailure() {
 
   // Wait for Chrome
   for (let i = 0; i < 60; i++) {
-    try { const r = await fetch('http://127.0.0.1:' + CHROME_PORT + '/json/version'); if (r.ok) break; } catch (e) {}
+    try {
+      const r = await fetch('http://127.0.0.1:' + CHROME_PORT + '/json/version');
+      if (r.ok) break;
+    } catch (e) {}
     await delay(300);
   }
   const targets = await (await fetch('http://127.0.0.1:' + CHROME_PORT + '/json')).json();
   const ws = new WebSocket(targets.find(t => t.type === 'page').webSocketDebuggerUrl);
   const pending = new Map();
   let id = 0;
-  ws.onmessage = (e) => {
+  ws.onmessage = e => {
     const m = JSON.parse(e.data);
-    if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); }
+    if (m.id && pending.has(m.id)) {
+      pending.get(m.id)(m);
+      pending.delete(m.id);
+    }
   };
-  await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error('ws fail')); });
-  const send = (method, params = {}) => new Promise(res => {
-    const mid = ++id;
-    pending.set(mid, res);
-    ws.send(JSON.stringify({ id: mid, method, params }));
+  await new Promise((res, rej) => {
+    ws.onopen = res;
+    ws.onerror = () => rej(new Error('ws fail'));
   });
+  const send = (method, params = {}) =>
+    new Promise(res => {
+      const mid = ++id;
+      pending.set(mid, res);
+      ws.send(JSON.stringify({ id: mid, method, params }));
+    });
   const ev = async expr => {
-    const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true });
+    const r = await send('Runtime.evaluate', {
+      expression: expr,
+      returnByValue: true,
+      awaitPromise: true
+    });
     return r.result && r.result.result ? r.result.result.value : undefined;
   };
-  await send('Runtime.enable'); await send('Page.enable');
+  await send('Runtime.enable');
+  await send('Page.enable');
 
   // ---- C1: editor-session auto-save fires with X-Editor-Code ---------------
   await send('Page.navigate', { url: BASE + '/project.html?id=qa-edit' });
@@ -128,11 +208,16 @@ function annotateFailure() {
   // take longer than 3.5s to evaluate the 732KB bundle.
   let cloudReady = null;
   for (let i = 0; i < 40; i++) {
-    cloudReady = await ev(`(function(){ try { return { cloud: !!(window.MMGR && window.MMGR.Cloud) }; } catch(e) { return { cloud: false }; } })()`);
+    cloudReady = await ev(
+      `(function(){ try { return { cloud: !!(window.MMGR && window.MMGR.Cloud) }; } catch(e) { return { cloud: false }; } })()`
+    );
     if (cloudReady && cloudReady.cloud) break;
     await delay(500);
   }
-  if (!cloudReady || !cloudReady.cloud) log('[cas] C1 WARNING: MMGR.Cloud still absent after 20s (stale CSP hash is the classic cause)');
+  if (!cloudReady || !cloudReady.cloud)
+    log(
+      '[cas] C1 WARNING: MMGR.Cloud still absent after 20s (stale CSP hash is the classic cause)'
+    );
   const c1 = await ev(`(async function(){
     try {
       if (!(window.MMGR && window.MMGR.Cloud)) return { cloudMissing: true };
@@ -153,7 +238,11 @@ function annotateFailure() {
       }
     } catch (e) { return { threw: String(e && e.message || e) }; }
   })()`);
-  check('C1 editor auto-save fires with X-Editor-Code header', c1 && c1.ok && c1.saveUrl && c1.editorHeader && c1.noOwnerHeader, c1);
+  check(
+    'C1 editor auto-save fires with X-Editor-Code header',
+    c1 && c1.ok && c1.saveUrl && c1.editorHeader && c1.noOwnerHeader,
+    c1
+  );
   check('C1 keepalive flag passed through', c1 && c1.keepalive === true, c1);
   if (!(c1 && c1.ok)) annotateFailure();
 
@@ -204,8 +293,19 @@ function annotateFailure() {
   })()`);
   check('C2 unsigned recover pops the sign-in prompt', c2 && c2.prompted === true, c2);
   check('C2 status says sign in to continue', c2 && c2.statusMentionsSignIn === true, c2);
-  check('C2 recovery auto-resumes and succeeds after sign-in', c2 && c2.recoverFiredAfter === true && c2.recoverSucceeded === true, c2);
-  if (!(c2 && c2.prompted && c2.statusMentionsSignIn && c2.recoverFiredAfter && c2.recoverSucceeded)) annotateFailure();
+  check(
+    'C2 recovery auto-resumes and succeeds after sign-in',
+    c2 && c2.recoverFiredAfter === true && c2.recoverSucceeded === true,
+    c2
+  );
+  if (!(
+    c2 &&
+    c2.prompted &&
+    c2.statusMentionsSignIn &&
+    c2.recoverFiredAfter &&
+    c2.recoverSucceeded
+  ))
+    annotateFailure();
 
   // ---- C3: admin Publish to Cloud while unsigned ---------------------------
   await send('Page.navigate', { url: BASE + '/admin.html' });
@@ -235,7 +335,10 @@ function annotateFailure() {
       }
       return 'waiting';
     })()`);
-    if (done === 'unlocked') { unlocked = true; break; }
+    if (done === 'unlocked') {
+      unlocked = true;
+      break;
+    }
     await delay(500);
   }
   if (!unlocked) log('[cas] C3 WARNING: admin never unlocked in 60s (rc-om poll exhausted)');
@@ -281,9 +384,14 @@ function annotateFailure() {
     } catch (e) { return { threw: String(e && e.message || e) }; }
   })()`);
   check('C3 admin publish blocked while unsigned', c3 && c3.publishBlocked === true, c3);
-  check('C3 admin publish pops the sign-in prompt + toast', c3 && c3.prompted === true && c3.toastMentionsSignIn === true, c3);
+  check(
+    'C3 admin publish pops the sign-in prompt + toast',
+    c3 && c3.prompted === true && c3.toastMentionsSignIn === true,
+    c3
+  );
   check('C3 admin publish auto-resumes after sign-in', c3 && c3.publishedAfter === true, c3);
-  if (!(c3 && c3.publishBlocked && c3.prompted && c3.toastMentionsSignIn && c3.publishedAfter)) annotateFailure();
+  if (!(c3 && c3.publishBlocked && c3.prompted && c3.toastMentionsSignIn && c3.publishedAfter))
+    annotateFailure();
 
   // ---- C4: review-queue accept failure surfaces (2026-09-25) --------------
   // The owner's live incident, made testable: an accept whose merge applied
@@ -292,8 +400,13 @@ function annotateFailure() {
   // missable. Both client contracts changed; this gate locks them.
   await send('Page.navigate', { url: BASE + '/project.html?id=qa-edit' });
   await delay(2500);
-  const cloudMod = await ev(`(function(){ try { return { cloud: !!(window.MMGR && window.MMGR.Cloud && window.MMGR.CloudReview) }; } catch (e) { return { cloud: false }; } })()`);
-  if (!(cloudMod && cloudMod.cloud)) log('[cas] C4 WARNING: CloudReview unavailable on the project page (stale bundle / CSP hash is the classic cause)');
+  const cloudMod = await ev(
+    `(function(){ try { return { cloud: !!(window.MMGR && window.MMGR.Cloud && window.MMGR.CloudReview) }; } catch (e) { return { cloud: false }; } })()`
+  );
+  if (!(cloudMod && cloudMod.cloud))
+    log(
+      '[cas] C4 WARNING: CloudReview unavailable on the project page (stale bundle / CSP hash is the classic cause)'
+    );
   const c4 = await ev(`(async function(){
     try {
       const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -328,17 +441,36 @@ function annotateFailure() {
       } finally { window.fetch = origFetch; }
     } catch (e) { return { threw: String(e && e.message || e) }; }
   })()`);
-  check('C4a zero-applied accept warns nothing-left-to-apply (no false success)', c4 && c4.zeroWarn === true, c4);
+  check(
+    'C4a zero-applied accept warns nothing-left-to-apply (no false success)',
+    c4 && c4.zeroWarn === true,
+    c4
+  );
   check('C4b real accept still reports success', c4 && c4.realOk === true, c4);
   check('C4c server accept error surfaces its exact text', c4 && c4.errShown === true, c4);
-  check('C4d all three messages reached the toast with #cloud-status missing', c4 && c4.toastCount >= 3, c4);
+  check(
+    'C4d all three messages reached the toast with #cloud-status missing',
+    c4 && c4.toastCount >= 3,
+    c4
+  );
   if (!(c4 && c4.zeroWarn && c4.realOk && c4.errShown && c4.toastCount >= 3)) annotateFailure();
 
-  try { await send('Page.close'); } catch (e) {}
-  try { proc.kill(); } catch (e) {}
+  try {
+    await send('Page.close');
+  } catch (e) {}
+  try {
+    proc.kill();
+  } catch (e) {}
   stopWrangler();
   const failed = results.filter(r => !r.val);
   log('========================================');
   log(results.length + ' checks, ' + failed.length + ' failed');
   process.exit(failed.length ? 1 : 0);
-})().catch(e => { log('HARNESS ERROR: ' + (e && e.stack || e)); try { proc.kill(); } catch (x) {} stopWrangler(); process.exit(1); });
+})().catch(e => {
+  log('HARNESS ERROR: ' + ((e && e.stack) || e));
+  try {
+    proc.kill();
+  } catch (x) {}
+  stopWrangler();
+  process.exit(1);
+});

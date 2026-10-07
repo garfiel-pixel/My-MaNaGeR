@@ -22,13 +22,22 @@
    Google-only address cannot be resolved to a sub and is reported as
    user_not_found rather than fabricating an identity.
    ============================================================ */
-import { json, cloudForbidden, readSession,
-  cloudAuthOwnerEither, authEmailConfigured, sendAuthEmail, CLOUD_SECTIONS } from '../lib/http.js';
+import {
+  json,
+  cloudForbidden,
+  readSession,
+  cloudAuthOwnerEither,
+  authEmailConfigured,
+  sendAuthEmail,
+  CLOUD_SECTIONS
+} from '../lib/http.js';
 import { billingStatusActive } from '../billing.js';
 
 const TEAM_ROLES = ['manager', 'supervisor', 'contractor', 'client'];
 
-function nowIso() { return new Date().toISOString(); }
+function nowIso() {
+  return new Date().toISOString();
+}
 
 function randomInviteToken() {
   const bytes = crypto.getRandomValues(new Uint8Array(16));
@@ -39,7 +48,11 @@ function randomInviteToken() {
 
 // Owner tier from the entitlement row. No active row (or no row) is 'free'.
 async function ownerTier(env, ownerSub) {
-  const sub = await env.DB.prepare('SELECT status, tier, plan FROM cloud_subscriptions WHERE owner_sub = ?').bind(ownerSub).first();
+  const sub = await env.DB.prepare(
+    'SELECT status, tier, plan FROM cloud_subscriptions WHERE owner_sub = ?'
+  )
+    .bind(ownerSub)
+    .first();
   if (!sub || !billingStatusActive(sub.status)) return 'free';
   return sub.tier || sub.plan || 'contractor';
 }
@@ -48,20 +61,30 @@ async function ownerTier(env, ownerSub) {
 async function activeMemberCount(env, projectId) {
   const row = await env.DB.prepare(
     "SELECT COUNT(*) AS c FROM cloud_team_members WHERE project_id = ? AND status != 'revoked'"
-  ).bind(projectId).first();
+  )
+    .bind(projectId)
+    .first();
   return (row && row.c) || 0;
 }
 
 function cleanScope(role, scope) {
   if (role !== 'client') return null;
   if (!Array.isArray(scope)) return null;
-  const out = scope.filter(function(s) { return typeof s === 'string' && !!CLOUD_SECTIONS[s]; });
+  const out = scope.filter(function (s) {
+    return typeof s === 'string' && !!CLOUD_SECTIONS[s];
+  });
   return out.length ? JSON.stringify(out) : null;
 }
 
 function serializeMember(row) {
   let scope = null;
-  if (row.scope) { try { scope = JSON.parse(row.scope); } catch (e) { scope = null; } }
+  if (row.scope) {
+    try {
+      scope = JSON.parse(row.scope);
+    } catch (e) {
+      scope = null;
+    }
+  }
   return {
     id: row.id,
     userSub: row.user_sub,
@@ -78,10 +101,17 @@ export async function handleTeamInvite(request, env, projectId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
   if (!auth) return cloudForbidden();
   let body;
-  try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
-  const email = String((body && body.email) || '').trim().toLowerCase();
+  try {
+    body = await request.json();
+  } catch (e) {
+    return json({ ok: false, error: 'bad request' }, 400);
+  }
+  const email = String((body && body.email) || '')
+    .trim()
+    .toLowerCase();
   const role = String((body && body.role) || 'contractor');
-  if (!email || email.indexOf('@') < 0) return json({ ok: false, error: 'a valid email is required' }, 400);
+  if (!email || email.indexOf('@') < 0)
+    return json({ ok: false, error: 'a valid email is required' }, 400);
   if (TEAM_ROLES.indexOf(role) === -1) return json({ ok: false, error: 'unknown role' }, 400);
 
   // Resolve the owner identity that carries the entitlement.
@@ -101,13 +131,17 @@ export async function handleTeamInvite(request, env, projectId) {
   }
 
   // The invited address must already own an account; we never create one.
-  const userRow = await env.DB.prepare('SELECT email, provider FROM auth_users WHERE email = ?').bind(email).first();
+  const userRow = await env.DB.prepare('SELECT email, provider FROM auth_users WHERE email = ?')
+    .bind(email)
+    .first();
   if (!userRow) return json({ ok: false, error: 'user_not_found' }, 404);
   const userSub = 'email:' + email;
 
   const existing = await env.DB.prepare(
     'SELECT id, status FROM cloud_team_members WHERE project_id = ? AND user_sub = ?'
-  ).bind(projectId, userSub).first();
+  )
+    .bind(projectId, userSub)
+    .first();
   if (existing && existing.status !== 'revoked') {
     return json({ ok: false, error: 'already_member' }, 409);
   }
@@ -120,28 +154,43 @@ export async function handleTeamInvite(request, env, projectId) {
     // Re-inviting a revoked member revives the same row (UNIQUE project_id,user_sub).
     await env.DB.prepare(
       "UPDATE cloud_team_members SET role = ?, invited_by = ?, status = 'pending', scope = ?, invite_token = ?, created_at = ?, accepted_at = NULL WHERE id = ?"
-    ).bind(role, actor, scope, token, ts, existing.id).run();
+    )
+      .bind(role, actor, scope, token, ts, existing.id)
+      .run();
   } else {
     await env.DB.prepare(
       "INSERT INTO cloud_team_members (project_id, user_sub, role, invited_by, status, scope, invite_token, created_at) VALUES (?,?,?,?,'pending',?,?,?)"
-    ).bind(projectId, userSub, role, actor, scope, token, ts).run();
+    )
+      .bind(projectId, userSub, role, actor, scope, token, ts)
+      .run();
   }
 
   if (authEmailConfigured(env)) {
     const origin = new URL(request.url).origin;
     const link = origin + '/team/accept/' + token;
     try {
-      await sendAuthEmail(env, email,
+      await sendAuthEmail(
+        env,
+        email,
         'You have been invited to a My MaNaGeR project',
-        'You have been invited to collaborate on a My MaNaGeR project as a ' + role + '.\n\n' +
-        'Open this link while signed in to accept the invitation:\n' + link + '\n\n' +
-        'If you were not expecting this invitation, you can ignore this email.');
-    } catch (e) { /* a mail failure must not fail the invite */ }
+        'You have been invited to collaborate on a My MaNaGeR project as a ' +
+          role +
+          '.\n\n' +
+          'Open this link while signed in to accept the invitation:\n' +
+          link +
+          '\n\n' +
+          'If you were not expecting this invitation, you can ignore this email.'
+      );
+    } catch (e) {
+      /* a mail failure must not fail the invite */
+    }
   }
 
   const row = await env.DB.prepare(
     'SELECT id, user_sub, role, status, scope, created_at, accepted_at FROM cloud_team_members WHERE project_id = ? AND user_sub = ?'
-  ).bind(projectId, userSub).first();
+  )
+    .bind(projectId, userSub)
+    .first();
   const m = serializeMember(row);
   return json({ ok: true, memberId: m.id, role: m.role, status: m.status });
 }
@@ -152,7 +201,9 @@ export async function handleTeamList(request, env, projectId) {
   if (!auth) return cloudForbidden();
   const rows = await env.DB.prepare(
     "SELECT id, user_sub, role, status, scope, created_at, accepted_at FROM cloud_team_members WHERE project_id = ? AND status != 'revoked' ORDER BY created_at ASC"
-  ).bind(projectId).all();
+  )
+    .bind(projectId)
+    .all();
   const members = (rows.results || []).map(serializeMember);
   return json({ ok: true, members: members });
 }
@@ -162,17 +213,25 @@ export async function handleTeamUpdate(request, env, projectId, memberId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
   if (!auth) return cloudForbidden();
   let body;
-  try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
+  try {
+    body = await request.json();
+  } catch (e) {
+    return json({ ok: false, error: 'bad request' }, 400);
+  }
   const row = await env.DB.prepare(
     'SELECT id, role, scope FROM cloud_team_members WHERE id = ? AND project_id = ?'
-  ).bind(memberId, projectId).first();
+  )
+    .bind(memberId, projectId)
+    .first();
   if (!row) return json({ ok: false, error: 'member_not_found' }, 404);
   const role = body && body.role !== undefined ? String(body.role) : row.role;
   if (TEAM_ROLES.indexOf(role) === -1) return json({ ok: false, error: 'unknown role' }, 400);
-  const scope = (body && body.scope !== undefined) ? cleanScope(role, body.scope) : row.scope;
+  const scope = body && body.scope !== undefined ? cleanScope(role, body.scope) : row.scope;
   await env.DB.prepare(
     'UPDATE cloud_team_members SET role = ?, scope = ? WHERE id = ? AND project_id = ?'
-  ).bind(role, scope, memberId, projectId).run();
+  )
+    .bind(role, scope, memberId, projectId)
+    .run();
   return json({ ok: true, memberId: Number(memberId), role: role });
 }
 
@@ -182,11 +241,15 @@ export async function handleTeamRevoke(request, env, projectId, memberId) {
   if (!auth) return cloudForbidden();
   const row = await env.DB.prepare(
     'SELECT id FROM cloud_team_members WHERE id = ? AND project_id = ?'
-  ).bind(memberId, projectId).first();
+  )
+    .bind(memberId, projectId)
+    .first();
   if (!row) return json({ ok: false, error: 'member_not_found' }, 404);
   await env.DB.prepare(
     "UPDATE cloud_team_members SET status = 'revoked', invite_token = NULL WHERE id = ? AND project_id = ?"
-  ).bind(memberId, projectId).run();
+  )
+    .bind(memberId, projectId)
+    .run();
   return json({ ok: true, memberId: Number(memberId), status: 'revoked' });
 }
 
@@ -195,17 +258,26 @@ export async function handleTeamAccept(request, env) {
   const session = await readSession(request, env);
   if (!session || !session.sub) return cloudForbidden();
   let body;
-  try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
+  try {
+    body = await request.json();
+  } catch (e) {
+    return json({ ok: false, error: 'bad request' }, 400);
+  }
   const token = String((body && body.token) || '').trim();
   if (!token) return json({ ok: false, error: 'missing token' }, 400);
   const row = await env.DB.prepare(
     "SELECT id, project_id, user_sub, role, status FROM cloud_team_members WHERE invite_token = ? AND status = 'pending'"
-  ).bind(token).first();
+  )
+    .bind(token)
+    .first();
   if (!row) return json({ ok: false, error: 'invalid or expired invitation' }, 404);
-  if (row.user_sub !== session.sub) return json({ ok: false, error: 'this invitation is for a different account' }, 403);
+  if (row.user_sub !== session.sub)
+    return json({ ok: false, error: 'this invitation is for a different account' }, 403);
   await env.DB.prepare(
     "UPDATE cloud_team_members SET status = 'active', accepted_at = ?, invite_token = NULL WHERE id = ?"
-  ).bind(nowIso(), row.id).run();
+  )
+    .bind(nowIso(), row.id)
+    .run();
   return json({ ok: true, projectId: row.project_id, role: row.role });
 }
 

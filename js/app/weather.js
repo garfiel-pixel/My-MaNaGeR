@@ -5,7 +5,7 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   const S = () => ns.State.getState();
@@ -14,20 +14,34 @@ var MMGR = window.MMGR || {};
 
   // showToast + Render refs resolved at call time (they live in mmgr-app.js
   // and mmgr-render.js which load first).
-  function _toast(msg, type) { if (ns.App && ns.App.showToast) ns.App.showToast(msg, type); }
-  function _R() { return ns.Render; }
+  function _toast(msg, type) {
+    if (ns.App && ns.App.showToast) ns.App.showToast(msg, type);
+  }
+  function _R() {
+    return ns.Render;
+  }
 
   async function wxGeocode() {
     const place = ($('wx-place-in') || {}).value || '';
-    if (!place.trim()) { _toast('Enter a site city first.', 'err'); return; }
+    if (!place.trim()) {
+      _toast('Enter a site city first.', 'err');
+      return;
+    }
     const ok = await ns.Forecast.geocode(place.trim());
-    if (ok) { _toast('Site located , refresh for the forecast.', 'ok'); _R().renderAll(); }
-    else { _toast('Could not find that location , check the city name.', 'err'); }
+    if (ok) {
+      _toast('Site located , refresh for the forecast.', 'ok');
+      _R().renderAll();
+    } else {
+      _toast('Could not find that location , check the city name.', 'err');
+    }
   }
 
   async function wxRefresh() {
     const s = S();
-    if (s.siteLat === null || s.siteLon === null) { _toast('Locate the site city first.', 'err'); return; }
+    if (s.siteLat === null || s.siteLon === null) {
+      _toast('Locate the site city first.', 'err');
+      return;
+    }
     try {
       await ns.Forecast.fetchForecast(s.siteLat, s.siteLon);
       _toast('Forecast refreshed.', 'ok');
@@ -39,35 +53,54 @@ var MMGR = window.MMGR || {};
 
   async function wxUseLocation() {
     if (!navigator.geolocation) {
-      _toast('Location lookup is unavailable in this browser , type your site city instead.', 'err');
+      _toast(
+        'Location lookup is unavailable in this browser , type your site city instead.',
+        'err'
+      );
       return;
     }
     _toast('Locating you…', 'ok');
     let pos;
     try {
-      pos = await new Promise(function(res, rej) {
-        navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 15000, maximumAge: 300000 });
+      pos = await new Promise(function (res, rej) {
+        navigator.geolocation.getCurrentPosition(res, rej, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 300000
+        });
       });
     } catch (e) {
-      _toast('Could not get your location (permission or coverage) , type your site city instead.', 'err');
+      _toast(
+        'Could not get your location (permission or coverage) , type your site city instead.',
+        'err'
+      );
       return;
     }
     const lat = pos.coords.latitude;
     const lon = pos.coords.longitude;
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       s.siteLat = lat;
       s.siteLon = lon;
       s.sitePlace = '';
     });
     let place = '';
-    try { place = (await ns.Forecast.reverseGeocode(lat, lon)) || ''; } catch (e) { place = ''; }
+    try {
+      place = (await ns.Forecast.reverseGeocode(lat, lon)) || '';
+    } catch (e) {
+      place = '';
+    }
     if (!place) place = lat.toFixed(2) + ', ' + lon.toFixed(2);
-    ns.State.updateState(function(s) { s.sitePlace = place; });
+    ns.State.updateState(function (s) {
+      s.sitePlace = place;
+    });
     try {
       await ns.Forecast.fetchForecast(lat, lon);
       _toast('Forecast set for your current location' + (place ? ' , ' + place : '') + '.', 'ok');
     } catch (e) {
-      _toast('Location saved, but the forecast could not be fetched (offline?) , regional windows remain.', 'err');
+      _toast(
+        'Location saved, but the forecast could not be fetched (offline?) , regional windows remain.',
+        'err'
+      );
     }
     _R().renderAll();
   }
@@ -75,8 +108,16 @@ var MMGR = window.MMGR || {};
   function wxLogToday() {
     const s = S();
     const today = U.todayStr();
-    const affected = (s.tasks || []).filter(t => t.weatherSensitive && t.startDate && t.endDate &&
-      U.parseDL(t.startDate) <= new Date() && U.parseDL(t.endDate) >= new Date()).map(t => t.id);
+    const affected = (s.tasks || [])
+      .filter(
+        t =>
+          t.weatherSensitive &&
+          t.startDate &&
+          t.endDate &&
+          U.parseDL(t.startDate) <= new Date() &&
+          U.parseDL(t.endDate) >= new Date()
+      )
+      .map(t => t.id);
     ns.Forecast.logWeatherDay(s, { note: '', affectedTaskIds: affected });
     _toast('Weather day logged.', 'ok');
     _R().renderAll();
@@ -87,11 +128,27 @@ var MMGR = window.MMGR || {};
     const condEl = $('wx-manual-cond');
     const noteEl = $('wx-manual-note');
     const condition = (condEl && condEl.value.trim()) || '';
-    if (!condition) { _toast('Enter the manual conditions first.', 'err'); return; }
+    if (!condition) {
+      _toast('Enter the manual conditions first.', 'err');
+      return;
+    }
     const note = (noteEl && noteEl.value.trim()) || '';
-    const affected = (s.tasks || []).filter(t => t.weatherSensitive && t.startDate && t.endDate &&
-      U.parseDL(t.startDate) <= new Date() && U.parseDL(t.endDate) >= new Date()).map(t => t.id);
-    ns.Forecast.logWeatherDay(s, { note: note, affectedTaskIds: affected, manual: true, condition: condition });
+    const affected = (s.tasks || [])
+      .filter(
+        t =>
+          t.weatherSensitive &&
+          t.startDate &&
+          t.endDate &&
+          U.parseDL(t.startDate) <= new Date() &&
+          U.parseDL(t.endDate) >= new Date()
+      )
+      .map(t => t.id);
+    ns.Forecast.logWeatherDay(s, {
+      note: note,
+      affectedTaskIds: affected,
+      manual: true,
+      condition: condition
+    });
     if (condEl) condEl.value = '';
     if (noteEl) noteEl.value = '';
     _toast('Manual weather day logged.', 'ok');
@@ -105,7 +162,9 @@ var MMGR = window.MMGR || {};
 
   function wxSetView(el) {
     const days = parseInt((el && el.getAttribute('data-days')) || '7', 10);
-    ns.State.updateState(function(s) { s.wxViewDays = days === 16 ? 16 : 7; });
+    ns.State.updateState(function (s) {
+      s.wxViewDays = days === 16 ? 16 : 7;
+    });
     _R().renderAll();
   }
 
@@ -115,9 +174,11 @@ var MMGR = window.MMGR || {};
   }
 
   function setRegion(val) {
-    ns.State.updateState(function(s) { s.weatherRegion = val; });
+    ns.State.updateState(function (s) {
+      s.weatherRegion = val;
+    });
     if (ns.Schedule && ns.Schedule.checkWeatherExposure) {
-      ns.Schedule.checkWeatherExposure((S().tasks || []), val);
+      ns.Schedule.checkWeatherExposure(S().tasks || [], val);
     }
     _R().renderWbs();
     _R().renderGantt();

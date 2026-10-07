@@ -9,9 +9,17 @@
    key is returned exactly once at create; the Worker stores only
    PBKDF2(salt, key) plus a sha256 fingerprint for O(1) lookup.
    ============================================================ */
-import { json, cloudForbidden, readCloudBody,
-  cloudAuthOwnerEither, randomSaltHex,
-  hashOwnerCode, fingerprintOf, CLOUD_SECTIONS, CLOUD_CODE_ALPHABET as CLOUD_KEY_ALPHABET } from '../lib/http.js';
+import {
+  json,
+  cloudForbidden,
+  readCloudBody,
+  cloudAuthOwnerEither,
+  randomSaltHex,
+  hashOwnerCode,
+  fingerprintOf,
+  CLOUD_SECTIONS,
+  CLOUD_CODE_ALPHABET as CLOUD_KEY_ALPHABET
+} from '../lib/http.js';
 
 const CLOUD_MAX_API_KEYS = 10;
 const API_KEY_PREFIX_LEN = 8;
@@ -26,21 +34,41 @@ const API_KEY_BODY_GROUP_LEN = 6;
 export async function handleCloudApiKeyCreate(request, env, projectId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
   if (!auth) return cloudForbidden();
-  const activeRows = await env.DB.prepare('SELECT COUNT(*) AS n FROM cloud_api_keys WHERE project_id = ? AND active = 1').bind(projectId).first();
+  const activeRows = await env.DB.prepare(
+    'SELECT COUNT(*) AS n FROM cloud_api_keys WHERE project_id = ? AND active = 1'
+  )
+    .bind(projectId)
+    .first();
   if (activeRows && Number(activeRows.n) >= CLOUD_MAX_API_KEYS) {
-    return json({ ok: false, error: 'too many active API keys (max ' + CLOUD_MAX_API_KEYS + ') - revoke unused keys first' }, 400);
+    return json(
+      {
+        ok: false,
+        error:
+          'too many active API keys (max ' + CLOUD_MAX_API_KEYS + ') - revoke unused keys first'
+      },
+      400
+    );
   }
   const read = await readCloudBody(request);
   if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
-  if (read.bad || !read.body || typeof read.body !== 'object') return json({ ok: false, error: 'bad request' }, 400);
+  if (read.bad || !read.body || typeof read.body !== 'object')
+    return json({ ok: false, error: 'bad request' }, 400);
   const label = typeof read.body.label === 'string' ? read.body.label.trim().slice(0, 60) : '';
   // Section scope: same allowlist as editor codes. At least one section -
   // a key that can touch nothing is never issued.
   const scope = Array.isArray(read.body.scope)
-    ? read.body.scope.filter(function(s) { return typeof s === 'string' && !!CLOUD_SECTIONS[s]; })
+    ? read.body.scope.filter(function (s) {
+        return typeof s === 'string' && !!CLOUD_SECTIONS[s];
+      })
     : [];
-  const seen = {}; const unique = scope.filter(function(s) { if (seen[s]) return false; seen[s] = 1; return true; });
-  if (unique.length === 0) return json({ ok: false, error: 'at least one section is required' }, 400);
+  const seen = {};
+  const unique = scope.filter(function (s) {
+    if (seen[s]) return false;
+    seen[s] = 1;
+    return true;
+  });
+  if (unique.length === 0)
+    return json({ ok: false, error: 'at least one section is required' }, 400);
   // Expiry: owner-chosen. Accept an ISO string or days-from-now number;
   // must be in the future when provided. Empty/null = no expiry.
   // expiresInDays is accepted as an alias (the client-code/editor-code
@@ -51,17 +79,21 @@ export async function handleCloudApiKeyCreate(request, env, projectId) {
     expiresAt = new Date(Date.now() + rawExp * 86400000).toISOString();
   } else if (typeof rawExp === 'string' && rawExp.trim()) {
     const t = Date.parse(rawExp.trim());
-    if (isNaN(t) || t <= Date.now()) return json({ ok: false, error: 'expiry must be a future date' }, 400);
+    if (isNaN(t) || t <= Date.now())
+      return json({ ok: false, error: 'expiry must be a future date' }, 400);
     expiresAt = new Date(t).toISOString();
   }
   const salt = randomSaltHex();
   // Build the key body from the same 32-char base32 alphabet (no I, L, O, 0,
   // 1 confusion) as owner codes, then wrap it in the standard sk- prefix.
-  const bytes = crypto.getRandomValues(new Uint8Array(API_KEY_BODY_GROUPS * API_KEY_BODY_GROUP_LEN));
+  const bytes = crypto.getRandomValues(
+    new Uint8Array(API_KEY_BODY_GROUPS * API_KEY_BODY_GROUP_LEN)
+  );
   const groups = [];
   for (let g = 0; g < API_KEY_BODY_GROUPS; g++) {
     let grp = '';
-    for (let i = 0; i < API_KEY_BODY_GROUP_LEN; i++) grp += CLOUD_KEY_ALPHABET[bytes[g * API_KEY_BODY_GROUP_LEN + i] % 32];
+    for (let i = 0; i < API_KEY_BODY_GROUP_LEN; i++)
+      grp += CLOUD_KEY_ALPHABET[bytes[g * API_KEY_BODY_GROUP_LEN + i] % 32];
     groups.push(grp);
   }
   const apiKey = API_KEY_PREFIX_TOKEN + groups.join('-');
@@ -70,21 +102,61 @@ export async function handleCloudApiKeyCreate(request, env, projectId) {
   const now = new Date().toISOString();
   const res = await env.DB.prepare(
     'INSERT INTO cloud_api_keys (project_id, label, scope, key_salt, key_hash, key_fingerprint, key_prefix, expires_at, active, created_at) VALUES (?,?,?,?,?,?,?,?,1,?)'
-  ).bind(projectId, label, JSON.stringify(unique), salt, hash, fp, apiKey.slice(0, API_KEY_PREFIX_LEN), expiresAt, now).run();
-  return json({ ok: true, apiKey: apiKey, keyId: res.meta.last_row_id, label: label, scope: unique, expiresAt: expiresAt, createdAt: now });
+  )
+    .bind(
+      projectId,
+      label,
+      JSON.stringify(unique),
+      salt,
+      hash,
+      fp,
+      apiKey.slice(0, API_KEY_PREFIX_LEN),
+      expiresAt,
+      now
+    )
+    .run();
+  return json({
+    ok: true,
+    apiKey: apiKey,
+    keyId: res.meta.last_row_id,
+    label: label,
+    scope: unique,
+    expiresAt: expiresAt,
+    createdAt: now
+  });
 }
 
 export async function handleCloudApiKeyList(request, env, projectId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
   if (!auth) return cloudForbidden();
-  const rows = await env.DB.prepare('SELECT id, label, scope, key_prefix, expires_at, active, created_at, last_used_at FROM cloud_api_keys WHERE project_id = ? ORDER BY id DESC').bind(projectId).all();
-  const keys = (rows.results || []).map(function(r) {
+  const rows = await env.DB.prepare(
+    'SELECT id, label, scope, key_prefix, expires_at, active, created_at, last_used_at FROM cloud_api_keys WHERE project_id = ? ORDER BY id DESC'
+  )
+    .bind(projectId)
+    .all();
+  const keys = (rows.results || []).map(function (r) {
     let scope = [];
-    try { const p = JSON.parse(r.scope); if (Array.isArray(p)) scope = p; } catch (e) { scope = []; }
+    try {
+      const p = JSON.parse(r.scope);
+      if (Array.isArray(p)) scope = p;
+    } catch (e) {
+      scope = [];
+    }
     let expired = false;
-    if (r.expires_at) { const t = Date.parse(r.expires_at); expired = !isNaN(t) && t <= Date.now(); }
-    return { id: r.id, label: r.label, scope: scope, prefix: r.key_prefix, expiresAt: r.expires_at,
-      active: r.active === 1 && !expired, created_at: r.created_at, last_used_at: r.last_used_at };
+    if (r.expires_at) {
+      const t = Date.parse(r.expires_at);
+      expired = !isNaN(t) && t <= Date.now();
+    }
+    return {
+      id: r.id,
+      label: r.label,
+      scope: scope,
+      prefix: r.key_prefix,
+      expiresAt: r.expires_at,
+      active: r.active === 1 && !expired,
+      created_at: r.created_at,
+      last_used_at: r.last_used_at
+    };
   });
   return json({ ok: true, keys: keys });
 }
@@ -92,7 +164,11 @@ export async function handleCloudApiKeyList(request, env, projectId) {
 export async function handleCloudApiKeyRevoke(request, env, projectId, keyId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
   if (!auth) return cloudForbidden();
-  const res = await env.DB.prepare('UPDATE cloud_api_keys SET active = 0 WHERE id = ? AND project_id = ? AND active = 1').bind(keyId, projectId).run();
+  const res = await env.DB.prepare(
+    'UPDATE cloud_api_keys SET active = 0 WHERE id = ? AND project_id = ? AND active = 1'
+  )
+    .bind(keyId, projectId)
+    .run();
   if (!res.meta.changes) return json({ ok: false, error: 'API key not found' }, 404);
   return json({ ok: true, revokedKeyId: Number(keyId) });
 }

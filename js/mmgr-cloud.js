@@ -51,10 +51,10 @@
    the readonly guard and ACTION_MAP delegation apply (mmgr-app.js).
    ============================================================ */
 var MMGR = window.MMGR || {};
-(function(ns) {
+(function (ns) {
   'use strict';
 
-  /** 
+  /**
    * ns.Cloud public API  (what a new engineer reaches for first)
    *   render()                 -> draws the Cloud Backup section (idempotent)
    *   _startSyncWatcher()      -> TWO-WAY sync watcher (internal, but QA-facing)
@@ -67,11 +67,13 @@ var MMGR = window.MMGR || {};
   const CLIENT_ID = '297970704704-m05hgt93lfaq286q90br8c96ffg1aph3.apps.googleusercontent.com';
   const GIS_SRC = 'https://accounts.google.com/gsi/client';
 
-  let _meChecked = false;   // /api/auth/me consulted at most once per boot
-  let _signedIn = false;    // last known sign-in state (display only)
-  let _sections = null;     // cached GET /api/cloud/sections payload
+  let _meChecked = false; // /api/auth/me consulted at most once per boot
+  let _signedIn = false; // last known sign-in state (display only)
+  let _sections = null; // cached GET /api/cloud/sections payload
 
-  function $(id) { return document.getElementById(id); }
+  function $(id) {
+    return document.getElementById(id);
+  }
   // Cloud id resolution (OWNER 2026-09-17 id-mismatch fix): every cloud
   // route and key is namespaced by this value. A project whose id had to be
   // renamed locally (the spaced-id boot migration) records its original
@@ -79,23 +81,34 @@ var MMGR = window.MMGR || {};
   // stays reachable without moving anything server-side.
   function cloudPid() {
     const id = ns.projectId || 'default';
-    try { return localStorage.getItem('mmgr_cloud_id_' + id) || id; }
-    catch (e) { return id; }
+    try {
+      return localStorage.getItem('mmgr_cloud_id_' + id) || id;
+    } catch (e) {
+      return id;
+    }
   }
-  function pid() { return cloudPid(); }
+  function pid() {
+    return cloudPid();
+  }
   // Local escape , the module cannot depend on mmgr-utils.js being loaded
   // first, and the owner code / name interpolations into innerHTML must be
   // escaped regardless (XSS hygiene, same rule as mmgr-render.js).
   function esc(v) {
-    return String(v == null ? '' : v).replace(/[&<>"']/g, function(c) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
 
   // ---- session-only code stores (never localStorage) ----------------
-  function codeKey() { return 'mmgr_cloud_code_' + cloudPid(); }
-  function ecodeKey() { return 'mmgr_cloud_ecode_' + cloudPid(); }
-  function escopeKey() { return 'mmgr_cloud_escope_' + cloudPid(); }
+  function codeKey() {
+    return 'mmgr_cloud_code_' + cloudPid();
+  }
+  function ecodeKey() {
+    return 'mmgr_cloud_ecode_' + cloudPid();
+  }
+  function escopeKey() {
+    return 'mmgr_cloud_escope_' + cloudPid();
+  }
   function getCode() {
     try {
       const v = sessionStorage.getItem(codeKey()) || '';
@@ -104,22 +117,45 @@ var MMGR = window.MMGR || {};
       // the slot (pre-fix adopter), treat it as absent so the session-owner
       // probe answers instead of a guaranteed-403 fake header.
       return v && v !== 'session' ? v : '';
-    } catch (e) { return ''; }
+    } catch (e) {
+      return '';
+    }
   }
   function setCode(code) {
-    try { sessionStorage.setItem(codeKey(), String(code || '')); } catch (e) { /* ignore */ }
+    try {
+      sessionStorage.setItem(codeKey(), String(code || ''));
+    } catch (e) {
+      /* ignore */
+    }
   }
   function clearCode() {
-    try { sessionStorage.removeItem(codeKey()); } catch (e) { /* ignore */ }
+    try {
+      sessionStorage.removeItem(codeKey());
+    } catch (e) {
+      /* ignore */
+    }
   }
   function getECode() {
-    try { return sessionStorage.getItem(ecodeKey()) || ''; } catch (e) { return ''; }
+    try {
+      return sessionStorage.getItem(ecodeKey()) || '';
+    } catch (e) {
+      return '';
+    }
   }
   function setECode(code) {
-    try { sessionStorage.setItem(ecodeKey(), String(code || '')); } catch (e) { /* ignore */ }
+    try {
+      sessionStorage.setItem(ecodeKey(), String(code || ''));
+    } catch (e) {
+      /* ignore */
+    }
   }
   function clearECode() {
-    try { sessionStorage.removeItem(ecodeKey()); sessionStorage.removeItem(escopeKey()); } catch (e) { /* ignore */ }
+    try {
+      sessionStorage.removeItem(ecodeKey());
+      sessionStorage.removeItem(escopeKey());
+    } catch (e) {
+      /* ignore */
+    }
   }
   function getEScope() {
     try {
@@ -132,10 +168,23 @@ var MMGR = window.MMGR || {};
       // so no caller ever reads an undefined role.
       if (p.role !== 'view' && p.role !== 'client') p.role = 'editor';
       return p;
-    } catch (e) { return null; }
+    } catch (e) {
+      return null;
+    }
   }
   function setEScope(label, sections, role) {
-    try { sessionStorage.setItem(escopeKey(), JSON.stringify({ label: label || '', sections: sections || [], role: (role === 'view' || role === 'client') ? role : 'editor' })); } catch (e) { /* ignore */ }
+    try {
+      sessionStorage.setItem(
+        escopeKey(),
+        JSON.stringify({
+          label: label || '',
+          sections: sections || [],
+          role: role === 'view' || role === 'client' ? role : 'editor'
+        })
+      );
+    } catch (e) {
+      /* ignore */
+    }
   }
 
   // ---- CLOUD-FIRST SYNC (PART 3, approved 2026-08-17): offline copies ---
@@ -148,7 +197,9 @@ var MMGR = window.MMGR || {};
     try {
       let id = localStorage.getItem('mmgr_device_id');
       if (!id) {
-        id = (crypto.randomUUID ? crypto.randomUUID() : ('dev-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10)));
+        id = crypto.randomUUID
+          ? crypto.randomUUID()
+          : 'dev-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
         localStorage.setItem('mmgr_device_id', id);
       }
       return id;
@@ -156,32 +207,54 @@ var MMGR = window.MMGR || {};
       return 'dev-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
     }
   }
-  function copyKey() { return 'mmgr_offline_copy_' + pid(); }
+  function copyKey() {
+    return 'mmgr_offline_copy_' + pid();
+  }
   function getCopyRecord() {
     try {
       const raw = localStorage.getItem(copyKey());
       if (!raw) return null;
       const p = JSON.parse(raw);
-      return (p && p.copyId && p.deviceId) ? p : null;
-    } catch (e) { return null; }
+      return p && p.copyId && p.deviceId ? p : null;
+    } catch (e) {
+      return null;
+    }
   }
   function setCopyRecord(rec) {
-    try { localStorage.setItem(copyKey(), JSON.stringify(rec)); } catch (e) { /* ignore */ }
+    try {
+      localStorage.setItem(copyKey(), JSON.stringify(rec));
+    } catch (e) {
+      /* ignore */
+    }
   }
   function clearCopyRecord() {
-    try { localStorage.removeItem(copyKey()); } catch (e) { /* ignore */ }
+    try {
+      localStorage.removeItem(copyKey());
+    } catch (e) {
+      /* ignore */
+    }
   }
 
   // ---- last-seen cloud time (gap-audit B8/B9: last-synced indicator +
   // conflict heads-up). The server stamps updatedAt on every save; keeping
   // the most recent value here lets the app warn when a save we just made
   // overwrote a snapshot another device wrote since our last sync.
-  function lastSeenKey() { return 'mmgr_cloud_last_seen_' + pid(); }
+  function lastSeenKey() {
+    return 'mmgr_cloud_last_seen_' + pid();
+  }
   function getLastSeen() {
-    try { return sessionStorage.getItem(lastSeenKey()) || ''; } catch (e) { return ''; }
+    try {
+      return sessionStorage.getItem(lastSeenKey()) || '';
+    } catch (e) {
+      return '';
+    }
   }
   function setLastSeen(t) {
-    try { sessionStorage.setItem(lastSeenKey(), String(t || '')); } catch (e) { /* ignore */ }
+    try {
+      sessionStorage.setItem(lastSeenKey(), String(t || ''));
+    } catch (e) {
+      /* ignore */
+    }
   }
 
   // ---- SYNC BOND (Task 13, owner 2026-09-19) ------------------------------
@@ -193,20 +266,34 @@ var MMGR = window.MMGR || {};
   // Keyed by the LOCAL project id (mmgr_cloud_bond_<localId>): the local id
   // is what this device addresses the project by; the cloud twin id lives
   // INSIDE the record (cloudProjectId).
-  function bondKey() { return 'mmgr_cloud_bond_' + (ns.projectId || 'default'); }
+  function bondKey() {
+    return 'mmgr_cloud_bond_' + (ns.projectId || 'default');
+  }
   function getBond() {
     try {
       const raw = localStorage.getItem(bondKey());
       if (!raw) return null;
       const p = JSON.parse(raw);
-      return (p && typeof p.cloudProjectId === 'string' && /^[A-Za-z0-9_-]+$/.test(p.cloudProjectId)) ? p : null;
-    } catch (e) { return null; }
+      return p && typeof p.cloudProjectId === 'string' && /^[A-Za-z0-9_-]+$/.test(p.cloudProjectId)
+        ? p
+        : null;
+    } catch (e) {
+      return null;
+    }
   }
   function setBond(b) {
-    try { localStorage.setItem(bondKey(), JSON.stringify(b)); } catch (e) { /* ignore */ }
+    try {
+      localStorage.setItem(bondKey(), JSON.stringify(b));
+    } catch (e) {
+      /* ignore */
+    }
   }
   function clearBond() {
-    try { localStorage.removeItem(bondKey()); } catch (e) { /* ignore */ }
+    try {
+      localStorage.removeItem(bondKey());
+    } catch (e) {
+      /* ignore */
+    }
   }
   // Sync (non-async) link check for State.exportState: a held credential or
   // a stored bond means the exported file should carry the twin pointer.
@@ -223,10 +310,18 @@ var MMGR = window.MMGR || {};
   // project id (State.importState writes the bond + raises the flag; the
   // boot render surfaces the offer card once, then clears the flag).
   function bondOfferPending() {
-    try { return !!(ns.State && ns.State.isBondPending && ns.State.isBondPending()); } catch (e) { return false; }
+    try {
+      return !!(ns.State && ns.State.isBondPending && ns.State.isBondPending());
+    } catch (e) {
+      return false;
+    }
   }
   function bondOfferDone() {
-    try { if (ns.State && ns.State.markBondPending) ns.State.markBondPending(false); } catch (e) { /* ignore */ }
+    try {
+      if (ns.State && ns.State.markBondPending) ns.State.markBondPending(false);
+    } catch (e) {
+      /* ignore */
+    }
   }
   // Resolve the bond: if the local id and the bonded cloud id differ, adopt
   // the cloud twin's id as this device's cloud-facing id (the same
@@ -239,7 +334,9 @@ var MMGR = window.MMGR || {};
     try {
       localStorage.setItem('mmgr_cloud_id_' + (ns.projectId || 'default'), b.cloudProjectId);
       return true;
-    } catch (e) { return false; }
+    } catch (e) {
+      return false;
+    }
   }
   // Re-sync now: bonded projects pull the twin's snapshot through the same
   // load+merge path cloud-first sync uses (per-field newest-wins, never a
@@ -248,7 +345,10 @@ var MMGR = window.MMGR || {};
   // the bond for retry on failure.
   async function resyncNow() {
     const b = getBond();
-    if (!b) { setStatus('No cloud bond stored for this project.', 'warn'); return; }
+    if (!b) {
+      setStatus('No cloud bond stored for this project.', 'warn');
+      return;
+    }
     const cred = activeCredential();
     if (!cred) {
       queueAfterSignIn('re-sync with the cloud copy', resyncNow);
@@ -259,42 +359,82 @@ var MMGR = window.MMGR || {};
       const headers = { 'Content-Type': 'application/json' };
       if (cred.header) headers[cred.header] = cred.code;
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/load', {
-        method: 'POST', credentials: 'same-origin', headers: headers, body: JSON.stringify({})
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: headers,
+        body: JSON.stringify({})
       });
-      const data = await res.json().catch(function() { return {}; });
+      const data = await res.json().catch(function () {
+        return {};
+      });
       if (!res.ok || !data.ok) {
         const raw = (data && data.error) || '';
-        const msg = raw === 'code_revoked' ? 'The code this project travelled with was revoked by the admin - ask for a new one.'
-          : raw === 'project_deleted' ? 'The cloud copy this project was bonded to was deleted.'
-          : (data && data.error) || ('Re-sync failed (HTTP ' + res.status + ').');
+        const msg =
+          raw === 'code_revoked'
+            ? 'The code this project travelled with was revoked by the admin - ask for a new one.'
+            : raw === 'project_deleted'
+              ? 'The cloud copy this project was bonded to was deleted.'
+              : (data && data.error) || 'Re-sync failed (HTTP ' + res.status + ').';
         setStatus(msg + ' The bond is kept - try Re-sync again once you have access.', 'err');
         return;
       }
-      if (!data.state) { setStatus('The cloud copy has no snapshot yet - save it once from its home device first.', 'warn'); return; }
+      if (!data.state) {
+        setStatus(
+          'The cloud copy has no snapshot yet - save it once from its home device first.',
+          'warn'
+        );
+        return;
+      }
       // Per-field merge through the state layer (newest-wins per field),
       // NOT a whole-file overwrite - side-by-side edits reconcile.
       const report = ns.State.mergeExternal(data.state);
-      if (!report) { setStatus('Cloud snapshot could not be merged - it is not a valid project file.', 'err'); return; }
+      if (!report) {
+        setStatus('Cloud snapshot could not be merged - it is not a valid project file.', 'err');
+        return;
+      }
       setLastSeen(data.savedAt || '');
       setBond({ cloudProjectId: b.cloudProjectId, lastSyncedAt: new Date().toISOString() });
       bondOfferDone(); // a successful re-sync IS the offer's answer
       if (ns.Render && ns.Render.renderAll) ns.Render.renderAll();
-      setStatus('Re-synced ' + report.adopted + ' update' + (report.adopted === 1 ? '' : 's') + ' from the cloud copy' + (report.adopted ? '' : ' - already up to date') + '.', 'ok');
+      setStatus(
+        'Re-synced ' +
+          report.adopted +
+          ' update' +
+          (report.adopted === 1 ? '' : 's') +
+          ' from the cloud copy' +
+          (report.adopted ? '' : ' - already up to date') +
+          '.',
+        'ok'
+      );
     } catch (e) {
       var _detail = (e && (e.message || e.name || String(e))) || 'unknown';
-      setStatus('Cloud is unavailable on this host (needs the Worker API). [' + _detail + ']', 'err');
+      setStatus(
+        'Cloud is unavailable on this host (needs the Worker API). [' + _detail + ']',
+        'err'
+      );
     }
   }
-  function bondLater() { bondOfferDone(); render(); }
+  function bondLater() {
+    bondOfferDone();
+    render();
+  }
 
   // ---- pending just-created editor code (shown-once banner, gap-audit G23) --
   // Delegates to the extracted CloudShare module (2026-09-05 collapse). The
   // canonical trio lives in js/cloud/share.js; these shims exist so the two
   // copies could never drift again. Each call is null-guarded: the module only
   // loads on project.html, so other pages fall back to the empty behavior.
-  function getPendingEditorCode() { return ns.CloudShare ? ns.CloudShare.getPendingEditorCode() : null; }
-  function setPendingEditorCode(code, label, scope, role) { if (ns.CloudShare && ns.CloudShare.setPendingEditorCode) ns.CloudShare.setPendingEditorCode(code, label, scope, role); }
-  function clearPendingEditorCode() { if (ns.CloudShare && ns.CloudShare.clearPendingEditorCode) ns.CloudShare.clearPendingEditorCode(); }
+  function getPendingEditorCode() {
+    return ns.CloudShare ? ns.CloudShare.getPendingEditorCode() : null;
+  }
+  function setPendingEditorCode(code, label, scope, role) {
+    if (ns.CloudShare && ns.CloudShare.setPendingEditorCode)
+      ns.CloudShare.setPendingEditorCode(code, label, scope, role);
+  }
+  function clearPendingEditorCode() {
+    if (ns.CloudShare && ns.CloudShare.clearPendingEditorCode)
+      ns.CloudShare.clearPendingEditorCode();
+  }
 
   // ---- status line (reuses the drive-status classes already in mmgr.css) --
   // OWNER 2026-09-24 (silent-errors wave): the status line lives at the bottom
@@ -347,7 +487,9 @@ var MMGR = window.MMGR || {};
         const data = await res.json();
         _signedIn = !!(data && data.ok && data.user);
       }
-    } catch (e) { /* static host / offline , stays false */ }
+    } catch (e) {
+      /* static host / offline , stays false */
+    }
     return _signedIn;
   }
 
@@ -360,21 +502,29 @@ var MMGR = window.MMGR || {};
       const data = await res.json();
       if (data && data.ok && Array.isArray(data.sections)) _sections = data.sections;
       return _sections;
-    } catch (e) { return null; }
+    } catch (e) {
+      return null;
+    }
   }
-  function sectionLabel(key) { return ns.CloudShare ? ns.CloudShare.sectionLabel(key) : key; }
+  function sectionLabel(key) {
+    return ns.CloudShare ? ns.CloudShare.sectionLabel(key) : key;
+  }
 
   // ---- GIS lazy load + render (sign-in for recovery) ----------------------
   function ensureGIS() {
     if (window.google && window.google.accounts && window.google.accounts.id) {
       return Promise.resolve(true);
     }
-    return new Promise(function(resolve) {
+    return new Promise(function (resolve) {
       const s = document.createElement('script');
       s.src = GIS_SRC;
       s.async = true;
-      s.onload = function() { resolve(true); };
-      s.onerror = function() { resolve(false); };
+      s.onload = function () {
+        resolve(true);
+      };
+      s.onerror = function () {
+        resolve(false);
+      };
       document.head.appendChild(s);
     });
   }
@@ -383,19 +533,34 @@ var MMGR = window.MMGR || {};
     const host = $('cloud-gis-host');
     if (!host) return false;
     const ok = await ensureGIS();
-    if (!ok || !(window.google && window.google.accounts && window.google.accounts.id)) return false;
+    if (!ok || !(window.google && window.google.accounts && window.google.accounts.id))
+      return false;
     try {
       if (!ns.GoogleAuth || !ns.GoogleAuth.initGIS || !ns.GoogleAuth.initGIS()) {
-        window.google.accounts.id.initialize({ client_id: CLIENT_ID, callback: function(resp) {
-          if (resp && resp.credential && ns.GoogleAuth && ns.GoogleAuth.handleCredentialResponse) {
-            ns.GoogleAuth.handleCredentialResponse(resp);
+        window.google.accounts.id.initialize({
+          client_id: CLIENT_ID,
+          callback: function (resp) {
+            if (
+              resp &&
+              resp.credential &&
+              ns.GoogleAuth &&
+              ns.GoogleAuth.handleCredentialResponse
+            ) {
+              ns.GoogleAuth.handleCredentialResponse(resp);
+            }
           }
-        } });
+        });
       }
-      window.google.accounts.id.renderButton(host, { theme: 'outline', size: 'medium', shape: 'circle', text: 'signin_with' });
+      window.google.accounts.id.renderButton(host, {
+        theme: 'outline',
+        size: 'medium',
+        shape: 'circle',
+        text: 'signin_with'
+      });
       return true;
     } catch (e) {
-      if (window.console && window.console.warn) window.console.warn('mmgr-cloud: GIS render failed (optional)', e);
+      if (window.console && window.console.warn)
+        window.console.warn('mmgr-cloud: GIS render failed (optional)', e);
       return false;
     }
   }
@@ -406,7 +571,9 @@ var MMGR = window.MMGR || {};
       const raw = localStorage.getItem('mmgr_state_' + pid());
       if (!raw) return null;
       return JSON.parse(raw);
-    } catch (e) { return null; }
+    } catch (e) {
+      return null;
+    }
   }
   function projectName(state) {
     return (state && (state.projectName || (state.charter && state.charter.name))) || '';
@@ -430,7 +597,10 @@ var MMGR = window.MMGR || {};
 
   async function createProject() {
     if (_createInFlight) return; // BUG-1: debounce rapid clicks
-    if (getCode() || _sessOwner) { setStatus('This project is already linked to the cloud , use Save / Load below.', 'warn'); return; }
+    if (getCode() || _sessOwner) {
+      setStatus('This project is already linked to the cloud , use Save / Load below.', 'warn');
+      return;
+    }
     // SYNC BOND (Task 13): an offline copy that later becomes a cloud copy
     // must LINK to its existing twin, not create a duplicate. If a bond is
     // stored, probe the twin first: reachable -> claim/adopt it; gone ->
@@ -453,8 +623,14 @@ var MMGR = window.MMGR || {};
         }
         const probeHeaders = { 'Content-Type': 'application/json' };
         if (heldCred && heldCred.header) probeHeaders[heldCred.header] = heldCred.code;
-        const metaRes = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/meta', { method: 'GET', credentials: 'same-origin', headers: probeHeaders });
-        const metaData = await metaRes.json().catch(function() { return {}; });
+        const metaRes = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/meta', {
+          method: 'GET',
+          credentials: 'same-origin',
+          headers: probeHeaders
+        });
+        const metaData = await metaRes.json().catch(function () {
+          return {};
+        });
         if (metaRes.ok && metaData && metaData.ok) {
           // Twin alive and this session can see it. If the session is the
           // owner, the ordinary session-owner path now answers; otherwise
@@ -462,18 +638,35 @@ var MMGR = window.MMGR || {};
           clearSessOwner();
           await render();
           if (metaData.linked && (await probeOwnerSession(true))) {
-            setStatus('Reconnected to the existing cloud copy , it was already in your account. Save / Load are ready below.', 'ok');
+            setStatus(
+              'Reconnected to the existing cloud copy , it was already in your account. Save / Load are ready below.',
+              'ok'
+            );
           } else {
-            setStatus('This project\u2019s cloud copy exists , enter its owner code (or sign in as its owner) to sync with it.', 'warn');
+            setStatus(
+              'This project\u2019s cloud copy exists , enter its owner code (or sign in as its owner) to sync with it.',
+              'warn'
+            );
           }
         } else if (metaRes.status === 404) {
-          setStatus('The cloud copy this project came from no longer exists , the bond was cleared, so Create makes a fresh cloud project now.', 'warn');
+          setStatus(
+            'The cloud copy this project came from no longer exists , the bond was cleared, so Create makes a fresh cloud project now.',
+            'warn'
+          );
           clearBond();
         } else {
-          setStatus('Could not reach the bonded cloud copy (HTTP ' + metaRes.status + ') , the bond is kept; try Create again later.', 'err');
+          setStatus(
+            'Could not reach the bonded cloud copy (HTTP ' +
+              metaRes.status +
+              ') , the bond is kept; try Create again later.',
+            'err'
+          );
         }
       } catch (e) {
-        setStatus('Cloud is unavailable on this host (needs the Worker API) , the bond is kept for retry.', 'err');
+        setStatus(
+          'Cloud is unavailable on this host (needs the Worker API) , the bond is kept for retry.',
+          'err'
+        );
       }
       return; // a bonded project never falls through to a blind create
     }
@@ -489,7 +682,12 @@ var MMGR = window.MMGR || {};
     // ids are always conformed - the same slugify rules created them.)
     const rawId = cloudPid();
     if (/[^A-Za-z0-9_-]/.test(rawId)) {
-      setStatus('This project\u2019s id "' + rawId + '" cannot be linked to the cloud , ids can only use letters, numbers, dashes and underscores. Re-import the project (the new import fixes ids automatically) or create it fresh in Admin.', 'err');
+      setStatus(
+        'This project\u2019s id "' +
+          rawId +
+          '" cannot be linked to the cloud , ids can only use letters, numbers, dashes and underscores. Re-import the project (the new import fixes ids automatically) or create it fresh in Admin.',
+        'err'
+      );
       return;
     }
     _createInFlight = true;
@@ -501,21 +699,30 @@ var MMGR = window.MMGR || {};
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ projectId: pid(), name: projectName(readProjectState()) || pid() })
       });
-      const data = await res.json().catch(function() { return {}; });
+      const data = await res.json().catch(function () {
+        return {};
+      });
       if (!res.ok || !data.ok || !data.ownerCode) {
         if (res.status === 402 && data && data.upgrade) {
           // Over the free linked-project cap: surface the upgrade affordance
           // instead of a bare error (the client half of the billing tier).
           _upgradePending = true;
           await render();
-          setStatus((data && data.error) || 'Free plan limit reached , upgrade to link more projects.', 'err');
+          setStatus(
+            (data && data.error) || 'Free plan limit reached , upgrade to link more projects.',
+            'err'
+          );
         } else if (res.status === 403 && data && data.verifyRequired) {
           // AUTH MAINFRAME v2: the email account has not clicked its
           // confirmation link. Surface the inbox guidance + a resend
           // affordance instead of a bare error (mirrors the 402 pattern).
           _verifyPending = true;
           await render();
-          setStatus((data && data.error) || 'Verify your email to enable cloud projects , check your inbox for the confirmation link.', 'err');
+          setStatus(
+            (data && data.error) ||
+              'Verify your email to enable cloud projects , check your inbox for the confirmation link.',
+            'err'
+          );
         } else if (res.status === 409) {
           // BUG-1: project already linked , reload the drawer to show the
           // existing code instead of a confusing error. P1-6 refinement
@@ -527,13 +734,19 @@ var MMGR = window.MMGR || {};
             _upgradePending = false;
             _verifyPending = false;
             await render();
-            setStatus('This project is already linked to the cloud - you are signed in as its owner, Save / Load are ready below.', 'ok');
+            setStatus(
+              'This project is already linked to the cloud - you are signed in as its owner, Save / Load are ready below.',
+              'ok'
+            );
           } else {
             setStatus('This project is already linked to the cloud.', 'warn');
             await render();
           }
         } else {
-          setStatus((data && data.error) || 'Cloud create failed (HTTP ' + res.status + ').', 'err');
+          setStatus(
+            (data && data.error) || 'Cloud create failed (HTTP ' + res.status + ').',
+            'err'
+          );
         }
         return;
       }
@@ -541,10 +754,18 @@ var MMGR = window.MMGR || {};
       _verifyPending = false;
       setCode(data.ownerCode);
       await render();
-      setStatus('Cloud project linked , owner/recovery code: ' + data.ownerCode + '. Store it somewhere safe: if lost, only the linked Google account can recover it.', 'ok');
+      setStatus(
+        'Cloud project linked , owner/recovery code: ' +
+          data.ownerCode +
+          '. Store it somewhere safe: if lost, only the linked Google account can recover it.',
+        'ok'
+      );
     } catch (e) {
       var _detail = (e && (e.message || e.name || String(e))) || 'unknown';
-      setStatus('Cloud is unavailable on this host (needs the Worker API). [' + _detail + ']', 'err');
+      setStatus(
+        'Cloud is unavailable on this host (needs the Worker API). [' + _detail + ']',
+        'err'
+      );
       console.error('[cloud] createProject failed:', e);
     } finally {
       _createInFlight = false;
@@ -559,10 +780,15 @@ var MMGR = window.MMGR || {};
     setStatus('Sending confirmation link…', 'busy');
     try {
       const meRes = await fetch('/api/auth/me', { credentials: 'same-origin' });
-      const me = await meRes.json().catch(function() { return null; });
-      const email = (me && me.ok && me.user && me.user.email) ? me.user.email : '';
+      const me = await meRes.json().catch(function () {
+        return null;
+      });
+      const email = me && me.ok && me.user && me.user.email ? me.user.email : '';
       if (!email) {
-        setStatus('You are not signed in with an email account , sign in to request a new link.', 'warn');
+        setStatus(
+          'You are not signed in with an email account , sign in to request a new link.',
+          'warn'
+        );
         return;
       }
       const res = await fetch('/api/auth/resend-verify', {
@@ -571,11 +797,20 @@ var MMGR = window.MMGR || {};
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email })
       });
-      const data = await res.json().catch(function() { return {}; });
+      const data = await res.json().catch(function () {
+        return {};
+      });
       if (res.ok && data && data.ok) {
-        setStatus((data && data.message) || 'If an account needs verification, a new confirmation link is on its way , check your inbox.', 'ok');
+        setStatus(
+          (data && data.message) ||
+            'If an account needs verification, a new confirmation link is on its way , check your inbox.',
+          'ok'
+        );
       } else {
-        setStatus((data && data.error) || 'Could not send the link (HTTP ' + res.status + ').', 'err');
+        setStatus(
+          (data && data.error) || 'Could not send the link (HTTP ' + res.status + ').',
+          'err'
+        );
       }
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
@@ -595,22 +830,45 @@ var MMGR = window.MMGR || {};
     // exists; opener is nulled after we take the reference.
     const tab = window.open('about:blank', '_blank');
     try {
-      const res = await fetch('/api/billing/checkout', { method: 'POST', credentials: 'same-origin' });
-      const data = await res.json().catch(function() { return {}; });
+      const res = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        credentials: 'same-origin'
+      });
+      const data = await res.json().catch(function () {
+        return {};
+      });
       if (!res.ok || !data.ok || !data.checkoutUrl) {
-        if (tab) { try { tab.close(); } catch (e) { /* already gone */ } }
+        if (tab) {
+          try {
+            tab.close();
+          } catch (e) {
+            /* already gone */
+          }
+        }
         if (res.status === 503) {
           _upgradePending = false;
           await render();
-          setStatus('Billing isn\u2019t configured on this server yet , no upgrade is available.', 'warn');
+          setStatus(
+            'Billing isn\u2019t configured on this server yet , no upgrade is available.',
+            'warn'
+          );
         } else {
           setStatus((data && data.error) || 'Checkout failed (HTTP ' + res.status + ').', 'err');
         }
         return;
       }
-      if (tab) { try { tab.opener = null; tab.location.replace(data.checkoutUrl); } catch (e) { window.open(data.checkoutUrl, '_blank', 'noopener'); } }
-      else window.open(data.checkoutUrl, '_blank', 'noopener');
-      setStatus('Checkout opened in a new tab , complete the purchase there, then create the project again.', 'ok');
+      if (tab) {
+        try {
+          tab.opener = null;
+          tab.location.replace(data.checkoutUrl);
+        } catch (e) {
+          window.open(data.checkoutUrl, '_blank', 'noopener');
+        }
+      } else window.open(data.checkoutUrl, '_blank', 'noopener');
+      setStatus(
+        'Checkout opened in a new tab , complete the purchase there, then create the project again.',
+        'ok'
+      );
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
     }
@@ -629,7 +887,10 @@ var MMGR = window.MMGR || {};
   // header at all (the server's session fallback authenticates them).
   let _sessOwner = false;
   let _sessOwnerProbed = false;
-  function clearSessOwner() { _sessOwner = false; _sessOwnerProbed = false; }
+  function clearSessOwner() {
+    _sessOwner = false;
+    _sessOwnerProbed = false;
+  }
   async function probeOwnerSession(force) {
     if (_sessOwnerProbed && !force) return _sessOwner;
     _sessOwner = false;
@@ -638,16 +899,26 @@ var MMGR = window.MMGR || {};
     // code is dropped (Use owner code instead, sign-out, a 403 cleanup) the
     // next render has to re-probe the session, or a signed-in owner stays
     // unrecognized on their own project.
-    if (getCode() || getECode()) { _sessOwnerProbed = false; return false; }
+    if (getCode() || getECode()) {
+      _sessOwnerProbed = false;
+      return false;
+    }
     _sessOwnerProbed = true;
-    if (!(await checkMe())) return _sessOwner;      // not signed in - no session credential
+    if (!(await checkMe())) return _sessOwner; // not signed in - no session credential
     try {
-      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/meta', { method: 'GET', credentials: 'same-origin' });
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/meta', {
+        method: 'GET',
+        credentials: 'same-origin'
+      });
       if (res.ok) {
-        const data = await res.json().catch(function() { return {}; });
+        const data = await res.json().catch(function () {
+          return {};
+        });
         _sessOwner = !!(data && data.ok && data.linked);
       }
-    } catch (e) { /* offline / static host - stays false */ }
+    } catch (e) {
+      /* offline / static host - stays false */
+    }
     return _sessOwner;
   }
   // OWNER 2026-09-24 (owner-gate bug): one owner-gate message for every
@@ -680,7 +951,10 @@ var MMGR = window.MMGR || {};
       // C19: a CLIENT code travels under X-Client-Code (role='client'), also
       // read-only everywhere.
       const r = es && es.role;
-      return { code: ec, header: r === 'view' ? 'X-View-Code' : (r === 'client' ? 'X-Client-Code' : 'X-Editor-Code') };
+      return {
+        code: ec,
+        header: r === 'view' ? 'X-View-Code' : r === 'client' ? 'X-Client-Code' : 'X-Editor-Code'
+      };
     }
     if (_sessOwner) return { code: '', header: null }; // signed-in account owner: no code header, the cookie authenticates
     return null;
@@ -689,18 +963,39 @@ var MMGR = window.MMGR || {};
   // ---- save ---------------------------------------------------------------
   async function saveToCloud() {
     /* DEMO GUARD: demo projects are code-based, non-cloud. */
-    if (ns.projectId === 'demo-filled' || ns.projectId === 'demo-empty') { setStatus('Demo projects cannot be saved to the cloud.', 'warn'); return; }
+    if (ns.projectId === 'demo-filled' || ns.projectId === 'demo-empty') {
+      setStatus('Demo projects cannot be saved to the cloud.', 'warn');
+      return;
+    }
     const cred = activeCredential();
-    if (!cred) { setStatus('Create a cloud project first (button above).', 'warn'); return; }
+    if (!cred) {
+      setStatus('Create a cloud project first (button above).', 'warn');
+      return;
+    }
     // CLOUD-CODES-AND-DELETE: a viewer code is read-only everywhere , the
     // server would refuse the save (X-View-Code is never accepted by /save),
     // so refuse it here with a plain explanation instead of a confusing 403.
-    if (cred.header === 'X-View-Code') { setStatus('Viewer codes are read-only. You cannot save changes to the cloud. Ask the admin for an editor or owner code to edit.', 'warn'); return; }
+    if (cred.header === 'X-View-Code') {
+      setStatus(
+        'Viewer codes are read-only. You cannot save changes to the cloud. Ask the admin for an editor or owner code to edit.',
+        'warn'
+      );
+      return;
+    }
     // C19: client codes are read-only too - the server would refuse /save
     // with no client path at all, so refuse it here with plain copy.
-    if (cred.header === 'X-Client-Code') { setStatus('Client codes are read-only. You can view the granted sections but cannot change anything. Ask the admin for an editor code to edit.', 'warn'); return; }
+    if (cred.header === 'X-Client-Code') {
+      setStatus(
+        'Client codes are read-only. You can view the granted sections but cannot change anything. Ask the admin for an editor code to edit.',
+        'warn'
+      );
+      return;
+    }
     const state = readProjectState();
-    if (!state) { setStatus('No local project state to save yet.', 'warn'); return; }
+    if (!state) {
+      setStatus('No local project state to save yet.', 'warn');
+      return;
+    }
     setStatus('Saving to cloud…', 'busy');
     try {
       const headers = { 'Content-Type': 'application/json' };
@@ -711,34 +1006,61 @@ var MMGR = window.MMGR || {};
         headers: headers,
         body: JSON.stringify({ state: state })
       });
-      const data = await res.json().catch(function() { return {}; });
+      const data = await res.json().catch(function () {
+        return {};
+      });
       if (!res.ok || !data.ok) {
         let msg = (data && data.error) || 'Cloud save failed (HTTP ' + res.status + ').';
         // gap-audit H29: the 8 MB cap deserves a friendly message, not a bare 413.
-        if (res.status === 413) msg = 'Project too large for cloud (8 MB cap) , trim voice/claim data or use export/import instead.';
-        if (res.status === 403) { if (cred.header === 'X-Owner-Code') clearCode(); else if (cred.header) clearECode(); else clearSessOwner(); }
+        if (res.status === 413)
+          msg =
+            'Project too large for cloud (8 MB cap) , trim voice/claim data or use export/import instead.';
+        if (res.status === 403) {
+          if (cred.header === 'X-Owner-Code') clearCode();
+          else if (cred.header) clearECode();
+          else clearSessOwner();
+        }
         await render();
         setStatus(msg, 'err');
         return;
       }
       const prevSeen = getLastSeen();
       if (data.savedAt) setLastSeen(data.savedAt);
-      let statusMsg = 'Saved to cloud , ' + (data.savedAt || '').slice(0, 19).replace('T', ' ') + '.';
+      let statusMsg =
+        'Saved to cloud , ' + (data.savedAt || '').slice(0, 19).replace('T', ' ') + '.';
       if (data.actor === 'editor') {
         const scopeTxt = (data.scope || []).map(sectionLabel).join(', ');
         // REVIEW QUEUE (approved 2026-08-17, always on): an editor save is a
         // PROPOSAL , the cloud does not move until the owner accepts it.
         // Say exactly that instead of claiming the save landed.
         if (data.review === 'pending') {
-          statusMsg = 'Saved for owner review (' + (data.editorLabel || 'editor') + ') , your change is pending acceptance before it reaches the cloud. Scope: ' + scopeTxt + '.';
-          if (data.blocked && data.blocked.length) statusMsg += ' Outside this code\u2019s scope: ' + data.blocked.map(sectionLabel).join(', ') + '.';
+          statusMsg =
+            'Saved for owner review (' +
+            (data.editorLabel || 'editor') +
+            ') , your change is pending acceptance before it reaches the cloud. Scope: ' +
+            scopeTxt +
+            '.';
+          if (data.blocked && data.blocked.length)
+            statusMsg +=
+              ' Outside this code\u2019s scope: ' + data.blocked.map(sectionLabel).join(', ') + '.';
         } else if (data.review === 'noop') {
-          statusMsg = 'Saved as editor (' + (data.editorLabel || 'editor') + ') , nothing new within this code\u2019s scope to send for review.';
-          if (data.blocked && data.blocked.length) statusMsg += ' Outside this code\u2019s scope: ' + data.blocked.map(sectionLabel).join(', ') + '.';
+          statusMsg =
+            'Saved as editor (' +
+            (data.editorLabel || 'editor') +
+            ') , nothing new within this code\u2019s scope to send for review.';
+          if (data.blocked && data.blocked.length)
+            statusMsg +=
+              ' Outside this code\u2019s scope: ' + data.blocked.map(sectionLabel).join(', ') + '.';
         } else {
-          statusMsg = 'Saved as editor (' + (data.editorLabel || 'editor') + ') , scope: ' + scopeTxt + '.';
-          if (data.applied && data.applied.length) statusMsg += ' Applied: ' + data.applied.map(sectionLabel).join(', ') + '.';
-          if (data.blocked && data.blocked.length) statusMsg += ' NOT saved (outside this code\u2019s scope): ' + data.blocked.map(sectionLabel).join(', ') + '.';
+          statusMsg =
+            'Saved as editor (' + (data.editorLabel || 'editor') + ') , scope: ' + scopeTxt + '.';
+          if (data.applied && data.applied.length)
+            statusMsg += ' Applied: ' + data.applied.map(sectionLabel).join(', ') + '.';
+          if (data.blocked && data.blocked.length)
+            statusMsg +=
+              ' NOT saved (outside this code\u2019s scope): ' +
+              data.blocked.map(sectionLabel).join(', ') +
+              '.';
         }
       } else {
         statusMsg += ' Snapshot ' + (data.key || '').split('/').pop() + '.';
@@ -752,7 +1074,10 @@ var MMGR = window.MMGR || {};
       setStatus(statusMsg, 'ok');
     } catch (e) {
       var _detail = (e && (e.message || e.name || String(e))) || 'unknown';
-      setStatus('Cloud is unavailable on this host (needs the Worker API). [' + _detail + ']', 'err');
+      setStatus(
+        'Cloud is unavailable on this host (needs the Worker API). [' + _detail + ']',
+        'err'
+      );
       console.error('[cloud] saveToCloud failed:', e);
     }
   }
@@ -791,9 +1116,15 @@ var MMGR = window.MMGR || {};
         body: body,
         keepalive: useKeepalive
       });
-      const data = await res.json().catch(function() { return {}; });
+      const data = await res.json().catch(function () {
+        return {};
+      });
       if (!res.ok || !data.ok) {
-        if (res.status === 403) { if (cred.header === 'X-Owner-Code') clearCode(); else if (cred.header) clearECode(); else clearSessOwner(); } // stale credential - drop the link
+        if (res.status === 403) {
+          if (cred.header === 'X-Owner-Code') clearCode();
+          else if (cred.header) clearECode();
+          else clearSessOwner();
+        } // stale credential - drop the link
         setStatus('Auto cloud backup failed , open Cloud Backup and Save manually.', 'err:quiet'); // background path - the dirty indicator already flags it; a toast on every failed auto-save would spam
         return false;
       }
@@ -810,8 +1141,16 @@ var MMGR = window.MMGR || {};
   // ---- load (uses whichever credential is in session) ---------------------
   async function loadFromCloud() {
     const cred = activeCredential();
-    if (!cred) { setStatus('Create a cloud project first (button above).', 'warn'); return; }
-    if (!window.confirm('Replace this device\u2019s local workspace with the cloud snapshot for this project? Current local data will be overwritten.')) return;
+    if (!cred) {
+      setStatus('Create a cloud project first (button above).', 'warn');
+      return;
+    }
+    if (
+      !window.confirm(
+        'Replace this device\u2019s local workspace with the cloud snapshot for this project? Current local data will be overwritten.'
+      )
+    )
+      return;
     setStatus('Loading from cloud…', 'busy');
     try {
       const headers = { 'Content-Type': 'application/json' };
@@ -822,31 +1161,51 @@ var MMGR = window.MMGR || {};
         headers: headers,
         body: JSON.stringify({})
       });
-      const data = await res.json().catch(function() { return {}; });
+      const data = await res.json().catch(function () {
+        return {};
+      });
       if (!res.ok || !data.ok) {
         const raw = (data && data.error) || '';
-        const msg = raw === 'code_revoked' ? 'This code was revoked by the project admin. Contact them for a new one.'
-          : raw === 'project_deleted' ? 'This project was deleted by the admin. It is no longer available from the cloud.'
-          : raw || 'Cloud load failed (HTTP ' + res.status + ').';
-        if (res.status === 403) { if (cred.header === 'X-Owner-Code') clearCode(); else if (cred.header) clearECode(); else clearSessOwner(); }
+        const msg =
+          raw === 'code_revoked'
+            ? 'This code was revoked by the project admin. Contact them for a new one.'
+            : raw === 'project_deleted'
+              ? 'This project was deleted by the admin. It is no longer available from the cloud.'
+              : raw || 'Cloud load failed (HTTP ' + res.status + ').';
+        if (res.status === 403) {
+          if (cred.header === 'X-Owner-Code') clearCode();
+          else if (cred.header) clearECode();
+          else clearSessOwner();
+        }
         await render();
         setStatus(msg, 'err');
         return;
       }
-      if (!data.state) { setStatus('No cloud snapshot saved for this project yet , save once from another device first.', 'warn'); return; }
+      if (!data.state) {
+        setStatus(
+          'No cloud snapshot saved for this project yet , save once from another device first.',
+          'warn'
+        );
+        return;
+      }
       try {
         localStorage.setItem('mmgr_state_' + pid(), JSON.stringify(data.state));
         localStorage.setItem('mmgr_unlocked_' + pid(), '1');
         localStorage.setItem('mmgr_scope_' + pid(), 'full');
         localStorage.setItem('mmgr_current_project', pid());
-      } catch (e) { /* storage blocked , status below still reports the outcome */ }
-      if (data.role === 'view') setEScope(data.viewerLabel || data.editorLabel, data.scope || [], 'view');
+      } catch (e) {
+        /* storage blocked , status below still reports the outcome */
+      }
+      if (data.role === 'view')
+        setEScope(data.viewerLabel || data.editorLabel, data.scope || [], 'view');
       else if (data.role === 'editor') setEScope(data.editorLabel, data.scope || []);
       else if (data.role === 'client') setEScope('Client', data.sections || [], 'client');
       if (data.savedAt) setLastSeen(data.savedAt);
       setStatus('Cloud snapshot restored , reloading.', 'ok');
       startClientRefresh();
-      setTimeout(function() { window.location.reload(); }, 1200);
+      setTimeout(function () {
+        window.location.reload();
+      }, 1200);
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
     }
@@ -867,7 +1226,10 @@ var MMGR = window.MMGR || {};
   let _resumingAfterSignIn = false;
   function queueAfterSignIn(label, action) {
     _pendingSignInAction = { label: label, action: action };
-    setStatus('Sign in to continue , ' + label + ' runs automatically once you are signed in.', 'warn');
+    setStatus(
+      'Sign in to continue , ' + label + ' runs automatically once you are signed in.',
+      'warn'
+    );
     const GA = window.MMGR.GoogleAuth;
     if (GA && typeof GA.openSignInPrompt === 'function') {
       if (GA.openSignInPrompt()) return;
@@ -880,8 +1242,14 @@ var MMGR = window.MMGR || {};
     _pendingSignInAction = null;
     _meChecked = false; // checkMe cached "not signed in" , re-query the session
     _resumingAfterSignIn = true;
-    try { p.action(); } catch (e) { /* the action guards itself */ }
-    Promise.resolve().then(function() { _resumingAfterSignIn = false; });
+    try {
+      p.action();
+    } catch (e) {
+      /* the action guards itself */
+    }
+    Promise.resolve().then(function () {
+      _resumingAfterSignIn = false;
+    });
   }
   document.addEventListener('mmgr:google-signed-in', resumePendingSignIn);
   document.addEventListener('mmgr:user-changed', resumePendingSignIn);
@@ -892,7 +1260,7 @@ var MMGR = window.MMGR || {};
   // answered "open as its owner" until a full reload. Invalidate both
   // memos on ANY identity change; the next render re-probes. (Sign-out
   // dispatches the same event - re-probing false there is equally correct.)
-  document.addEventListener('mmgr:user-changed', function() {
+  document.addEventListener('mmgr:user-changed', function () {
     _meChecked = false;
     clearSessOwner();
     // OWNER 2026-09-25 (v316 follow-up): restoring a session on boot fires
@@ -902,7 +1270,9 @@ var MMGR = window.MMGR || {};
     // "Owner access required" on their own review queue until the next
     // full render. Kick one immediately; it is memoized, so the repeat
     // probe in the next render reuses this result instead of refetching.
-    probeOwnerSession(true).then(function() { if (!_resumingAfterSignIn) render(); });
+    probeOwnerSession(true).then(function () {
+      if (!_resumingAfterSignIn) render();
+    });
   });
 
   // ---- recover owner code -------------------------------------------------
@@ -920,7 +1290,9 @@ var MMGR = window.MMGR || {};
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
       });
-      const data = await res.json().catch(function() { return {}; });
+      const data = await res.json().catch(function () {
+        return {};
+      });
       if (!res.ok || !data.ok || !data.ownerCode) {
         setStatus((data && data.error) || 'Recovery failed (HTTP ' + res.status + ').', 'err');
         return;
@@ -928,18 +1300,31 @@ var MMGR = window.MMGR || {};
       setCode(data.ownerCode);
       clearECode();
       await render();
-      setStatus('New owner code issued: ' + data.ownerCode + ' , also below + Copy Code. The previous code no longer works.', 'ok');
+      setStatus(
+        'New owner code issued: ' +
+          data.ownerCode +
+          ' , also below + Copy Code. The previous code no longer works.',
+        'ok'
+      );
       if (data.recoveredAt) setLastSeen(data.recoveredAt);
     } catch (e) {
       console.error('[recoverCode] catch:', e && e.message, e && e.stack);
-      setStatus('Cloud is unavailable on this host (needs the Worker API). [' + (e && e.message || 'unknown') + ']', 'err');
+      setStatus(
+        'Cloud is unavailable on this host (needs the Worker API). [' +
+          ((e && e.message) || 'unknown') +
+          ']',
+        'err'
+      );
     }
   }
 
   // ---- normalize a user-typed code ----------------------------------------
   function normalizeCode(raw) {
-    const s = String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (s.length === 16) return s.slice(0, 4) + '-' + s.slice(4, 8) + '-' + s.slice(8, 12) + '-' + s.slice(12, 16);
+    const s = String(raw || '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '');
+    if (s.length === 16)
+      return s.slice(0, 4) + '-' + s.slice(4, 8) + '-' + s.slice(8, 12) + '-' + s.slice(12, 16);
     return s;
   }
   function isCodeShape(code) {
@@ -957,14 +1342,24 @@ var MMGR = window.MMGR || {};
       setStatus('Enter the full 16-character code (XXXX-XXXX-XXXX-XXXX).', 'warn');
       return;
     }
-    if (!window.confirm('Replace this device\u2019s local workspace with the cloud snapshot for this project? Current local data will be overwritten.')) return;
+    if (
+      !window.confirm(
+        'Replace this device\u2019s local workspace with the cloud snapshot for this project? Current local data will be overwritten.'
+      )
+    )
+      return;
     setStatus('Checking code…', 'busy');
     const result = await probeLoad(code);
     if (!result || !result.ok) {
       const err = result && result.error;
-      setStatus(err === 'code_revoked' ? 'This code was revoked by the project admin. Contact them for a new one.'
-        : err === 'project_deleted' ? 'This project was deleted by the admin. It is no longer available from the cloud.'
-        : 'That code was not accepted for this project. Check it and try again.', 'err');
+      setStatus(
+        err === 'code_revoked'
+          ? 'This code was revoked by the project admin. Contact them for a new one.'
+          : err === 'project_deleted'
+            ? 'This project was deleted by the admin. It is no longer available from the cloud.'
+            : 'That code was not accepted for this project. Check it and try again.',
+        'err'
+      );
       return;
     }
     const r = result.data;
@@ -996,12 +1391,19 @@ var MMGR = window.MMGR || {};
         const headers = { 'Content-Type': 'application/json' };
         headers[headersOrder[i]] = code;
         const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/load', {
-          method: 'POST', credentials: 'same-origin', headers: headers, body: JSON.stringify({})
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: headers,
+          body: JSON.stringify({})
         });
-        const data = await res.json().catch(function() { return {}; });
+        const data = await res.json().catch(function () {
+          return {};
+        });
         if (res.ok && data && data.ok) return { ok: true, data: data };
         if (data && data.error) lastErr = data.error;
-      } catch (e) { /* try the next header, then give up */ }
+      } catch (e) {
+        /* try the next header, then give up */
+      }
     }
     return { ok: false, error: lastErr };
   }
@@ -1009,8 +1411,17 @@ var MMGR = window.MMGR || {};
   // ---- copy code ----------------------------------------------------------
   async function copyCode() {
     const cred = activeCredential();
-    if (!cred || (cred.header && !cred.code) || (!cred.header && !_sessOwner)) { setStatus('No code stored for this session.', 'warn'); return; }
-    if (!cred.header) { setStatus('No owner code on this device - you are signed in as the owner. Use Recover Owner Code to put a code in hand, then copy it.', 'warn'); return; }
+    if (!cred || (cred.header && !cred.code) || (!cred.header && !_sessOwner)) {
+      setStatus('No code stored for this session.', 'warn');
+      return;
+    }
+    if (!cred.header) {
+      setStatus(
+        'No owner code on this device - you are signed in as the owner. Use Recover Owner Code to put a code in hand, then copy it.',
+        'warn'
+      );
+      return;
+    }
     try {
       await navigator.clipboard.writeText(cred.code);
       setStatus('Code copied to the clipboard.', 'ok');
@@ -1030,14 +1441,25 @@ var MMGR = window.MMGR || {};
   // with only the granted sections visible/enabled.
   async function createEditor() {
     const labelIn = $('cloud-editor-label-in');
-    const label = (labelIn && labelIn.value || '').trim().slice(0, 60);
-    if (!label) { setStatus('Give this code a label first (e.g. \u201CSite Super , Riverside\u201D).', 'warn'); return; }
+    const label = ((labelIn && labelIn.value) || '').trim().slice(0, 60);
+    if (!label) {
+      setStatus('Give this code a label first (e.g. \u201CSite Super , Riverside\u201D).', 'warn');
+      return;
+    }
     const roleIn = $('cloud-editor-role');
     const role = roleIn && roleIn.value === 'view' ? 'view' : 'editor';
     const scope = [];
     const boxes = document.querySelectorAll('#cloud-editor-scope-box input[type=checkbox]:checked');
     for (let i = 0; i < boxes.length; i++) scope.push(boxes[i].value);
-    if (scope.length === 0) { setStatus(role === 'view' ? 'Tick at least one section this code may see.' : 'Tick at least one section this code may edit.', 'warn'); return; }
+    if (scope.length === 0) {
+      setStatus(
+        role === 'view'
+          ? 'Tick at least one section this code may see.'
+          : 'Tick at least one section this code may edit.',
+        'warn'
+      );
+      return;
+    }
     // P1-6 FOLLOW-UP (owner 2026-09-13): the server authenticates code
     // creation with cloudAuthOwnerEither - owner code OR the signed-in
     // session. The old local-code gate ('Owner code required to manage
@@ -1045,8 +1467,14 @@ var MMGR = window.MMGR || {};
     // was loaded through My Cloud Projects (session owner, no code in
     // hand). Send no header for a session owner; the cookie authenticates.
     const cred = activeCredential();
-    if (!cred || (!cred.header && !_sessOwner)) { setStatus(ownerGateMessage(), 'warn'); return; }
-    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') { setStatus('Viewer and client codes are read-only , they cannot manage codes.', 'warn'); return; }
+    if (!cred || (!cred.header && !_sessOwner)) {
+      setStatus(ownerGateMessage(), 'warn');
+      return;
+    }
+    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') {
+      setStatus('Viewer and client codes are read-only , they cannot manage codes.', 'warn');
+      return;
+    }
     setStatus('Creating code…', 'busy');
     try {
       const headers = { 'Content-Type': 'application/json' };
@@ -1057,7 +1485,9 @@ var MMGR = window.MMGR || {};
         headers: headers,
         body: JSON.stringify({ label: label, scope: scope, role: role })
       });
-      const data = await res.json().catch(function() { return {}; });
+      const data = await res.json().catch(function () {
+        return {};
+      });
       if (!res.ok || !data.ok || !data.editorCode) {
         setStatus((data && data.error) || 'Code creation failed (HTTP ' + res.status + ').', 'err');
         return;
@@ -1067,7 +1497,15 @@ var MMGR = window.MMGR || {};
       // "copy this now" seriousness.
       setPendingEditorCode(data.editorCode, data.label, data.scope || [], data.role || 'editor');
       await render();
-      setStatus((data.role === 'view' ? 'Viewer' : 'Editor') + ' code created for \u201C' + data.label + '\u201D (scope: ' + (data.scope || []).map(sectionLabel).join(', ') + '). Copy it from the banner, it is shown once.', 'ok');
+      setStatus(
+        (data.role === 'view' ? 'Viewer' : 'Editor') +
+          ' code created for \u201C' +
+          data.label +
+          '\u201D (scope: ' +
+          (data.scope || []).map(sectionLabel).join(', ') +
+          '). Copy it from the banner, it is shown once.',
+        'ok'
+      );
       if (listEditors) listEditors();
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
@@ -1081,29 +1519,67 @@ var MMGR = window.MMGR || {};
     const wrap = $('cloud-editor-list');
     if (!wrap) return;
     const cred = activeCredential();
-    if (!cred || (!cred.header && !_sessOwner)) { wrap.innerHTML = '<div class="sr-hint">Owner access required.</div>'; return; }
-    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') { wrap.innerHTML = '<div class="sr-hint">Viewer and client codes are read-only.</div>'; return; }
+    if (!cred || (!cred.header && !_sessOwner)) {
+      wrap.innerHTML = '<div class="sr-hint">Owner access required.</div>';
+      return;
+    }
+    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') {
+      wrap.innerHTML = '<div class="sr-hint">Viewer and client codes are read-only.</div>';
+      return;
+    }
     try {
       const headers = {};
       if (cred.header) headers[cred.header] = cred.code;
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/editors', {
-        method: 'GET', credentials: 'same-origin', headers: headers
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: headers
       });
-      const data = await res.json().catch(function() { return {}; });
-      if (!res.ok || !data.ok) { wrap.innerHTML = '<div class="sr-hint">Could not load editor codes.</div>'; return; }
+      const data = await res.json().catch(function () {
+        return {};
+      });
+      if (!res.ok || !data.ok) {
+        wrap.innerHTML = '<div class="sr-hint">Could not load editor codes.</div>';
+        return;
+      }
       const eds = data.editors || [];
-      if (!eds.length) { wrap.innerHTML = '<div class="sr-hint">No codes yet , create one above.</div>'; return; }
-      wrap.innerHTML = eds.map(function(e) {
-        const isView = e.role === 'view';
-        const storedCode = getPendingEditorCode();
-        const codeVal = (storedCode && storedCode.code && storedCode.label === e.label) ? storedCode.code : null;
-        return '<div class="sr" style="font-size:.72rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
-          '<span style="color:var(--gold)">' + esc(e.label || (isView ? 'Viewer' : 'Editor')) + '</span>' +
-          '<span class="sr-hint" style="margin:0">' + (isView ? 'viewer · ' : 'editor · ') + esc((e.scope || []).map(sectionLabel).join(', ')) + ' · ' + esc(String(e.createdAt || '').slice(0, 10)) + '</span>' +
-          (codeVal ? '<code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold);font-size:.82rem;font-weight:700">' + esc(codeVal) + '</code><button class="btn btn-g btn-s" data-action="cloudCopyEditorCode" data-code="' + esc(codeVal) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>' : '') +
-          (e.active ? '<button class="btn btn-d btn-s" data-action="cloudEditorRevoke" data-id="' + e.id + '">Revoke</button>' : '<span class="sr-hint" style="margin:0">revoked</span>') +
-          '</div>';
-      }).join('');
+      if (!eds.length) {
+        wrap.innerHTML = '<div class="sr-hint">No codes yet , create one above.</div>';
+        return;
+      }
+      wrap.innerHTML = eds
+        .map(function (e) {
+          const isView = e.role === 'view';
+          const storedCode = getPendingEditorCode();
+          const codeVal =
+            storedCode && storedCode.code && storedCode.label === e.label ? storedCode.code : null;
+          return (
+            '<div class="sr" style="font-size:.72rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+            '<span style="color:var(--gold)">' +
+            esc(e.label || (isView ? 'Viewer' : 'Editor')) +
+            '</span>' +
+            '<span class="sr-hint" style="margin:0">' +
+            (isView ? 'viewer · ' : 'editor · ') +
+            esc((e.scope || []).map(sectionLabel).join(', ')) +
+            ' · ' +
+            esc(String(e.createdAt || '').slice(0, 10)) +
+            '</span>' +
+            (codeVal
+              ? '<code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold);font-size:.82rem;font-weight:700">' +
+                esc(codeVal) +
+                '</code><button class="btn btn-g btn-s" data-action="cloudCopyEditorCode" data-code="' +
+                esc(codeVal) +
+                '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>'
+              : '') +
+            (e.active
+              ? '<button class="btn btn-d btn-s" data-action="cloudEditorRevoke" data-id="' +
+                e.id +
+                '">Revoke</button>'
+              : '<span class="sr-hint" style="margin:0">revoked</span>') +
+            '</div>'
+          );
+        })
+        .join('');
     } catch (e) {
       wrap.innerHTML = '<div class="sr-hint">Cloud unavailable here.</div>';
     }
@@ -1112,19 +1588,36 @@ var MMGR = window.MMGR || {};
   // Revoke an editor code (owner-only) , the code stops working immediately.
   async function revokeEditor(id) {
     if (!id) return;
-    if (!window.confirm('Revoke this code? It stops working immediately and cannot be restored.')) return;
+    if (!window.confirm('Revoke this code? It stops working immediately and cannot be restored.'))
+      return;
     const cred = activeCredential();
-    if (!cred || (!cred.header && !_sessOwner)) { setStatus('Owner access required to revoke codes.', 'warn'); return; }
-    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') { setStatus('Viewer and client codes are read-only , they cannot manage codes.', 'warn'); return; }
+    if (!cred || (!cred.header && !_sessOwner)) {
+      setStatus('Owner access required to revoke codes.', 'warn');
+      return;
+    }
+    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') {
+      setStatus('Viewer and client codes are read-only , they cannot manage codes.', 'warn');
+      return;
+    }
     setStatus('Revoking code…', 'busy');
     try {
       const headers = {};
       if (cred.header) headers[cred.header] = cred.code;
-      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/editors/' + encodeURIComponent(id), {
-        method: 'DELETE', credentials: 'same-origin', headers: headers
+      const res = await fetch(
+        '/api/cloud/projects/' + encodeURIComponent(pid()) + '/editors/' + encodeURIComponent(id),
+        {
+          method: 'DELETE',
+          credentials: 'same-origin',
+          headers: headers
+        }
+      );
+      const data = await res.json().catch(function () {
+        return {};
       });
-      const data = await res.json().catch(function() { return {}; });
-      if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Revoke failed (HTTP ' + res.status + ').', 'err'); return; }
+      if (!res.ok || !data.ok) {
+        setStatus((data && data.error) || 'Revoke failed (HTTP ' + res.status + ').', 'err');
+        return;
+      }
       clearPendingEditorCode();
       await render();
       setStatus('Editor code revoked.', 'ok');
@@ -1143,26 +1636,54 @@ var MMGR = window.MMGR || {};
     const scope = [];
     const boxes = document.querySelectorAll('#cloud-client-scope-box input[type=checkbox]:checked');
     for (let i = 0; i < boxes.length; i++) scope.push(boxes[i].value);
-    if (scope.length === 0) { setStatus('Tick at least one section the client may see.', 'warn'); return; }
+    if (scope.length === 0) {
+      setStatus('Tick at least one section the client may see.', 'warn');
+      return;
+    }
     const expiryIn = $('cloud-client-expiry');
     const days = expiryIn ? parseInt(expiryIn.value, 10) : 0;
     const cred = activeCredential();
-    if (!cred || (!cred.header && !_sessOwner)) { setStatus(ownerGateMessage(), 'warn'); return; }
-    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') { setStatus('Viewer and client codes are read-only , they cannot manage codes.', 'warn'); return; }
+    if (!cred || (!cred.header && !_sessOwner)) {
+      setStatus(ownerGateMessage(), 'warn');
+      return;
+    }
+    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') {
+      setStatus('Viewer and client codes are read-only , they cannot manage codes.', 'warn');
+      return;
+    }
     setStatus('Creating client code…', 'busy');
     try {
       const headers = { 'Content-Type': 'application/json' };
       if (cred.header) headers[cred.header] = cred.code;
       const body = { sections: scope };
       if (Number.isFinite(days) && days > 0) body.expiresInDays = days;
-      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/client-codes', {
-        method: 'POST', credentials: 'same-origin', headers: headers, body: JSON.stringify(body)
+      const res = await fetch(
+        '/api/cloud/projects/' + encodeURIComponent(pid()) + '/client-codes',
+        {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: headers,
+          body: JSON.stringify(body)
+        }
+      );
+      const data = await res.json().catch(function () {
+        return {};
       });
-      const data = await res.json().catch(function() { return {}; });
-      if (!res.ok || !data.ok || !data.code) { setStatus((data && data.error) || 'Client code creation failed (HTTP ' + res.status + ').', 'err'); return; }
+      if (!res.ok || !data.ok || !data.code) {
+        setStatus(
+          (data && data.error) || 'Client code creation failed (HTTP ' + res.status + ').',
+          'err'
+        );
+        return;
+      }
       setPendingEditorCode(data.code, 'client', data.sections || scope, 'client');
       await render();
-      setStatus('Client code created (sections: ' + (data.sections || scope).map(sectionLabel).join(', ') + '). Copy it from the banner, it is shown once.', 'ok');
+      setStatus(
+        'Client code created (sections: ' +
+          (data.sections || scope).map(sectionLabel).join(', ') +
+          '). Copy it from the banner, it is shown once.',
+        'ok'
+      );
       listClientCodes();
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
@@ -1173,26 +1694,61 @@ var MMGR = window.MMGR || {};
     const wrap = $('cloud-client-list');
     if (!wrap) return;
     const cred = activeCredential();
-    if (!cred || (!cred.header && !_sessOwner)) { wrap.innerHTML = '<div class="sr-hint">Owner access required.</div>'; return; }
-    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') { wrap.innerHTML = '<div class="sr-hint">Read-only access.</div>'; return; }
+    if (!cred || (!cred.header && !_sessOwner)) {
+      wrap.innerHTML = '<div class="sr-hint">Owner access required.</div>';
+      return;
+    }
+    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') {
+      wrap.innerHTML = '<div class="sr-hint">Read-only access.</div>';
+      return;
+    }
     try {
       const headers = {};
       if (cred.header) headers[cred.header] = cred.code;
-      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/client-codes', {
-        method: 'GET', credentials: 'same-origin', headers: headers
+      const res = await fetch(
+        '/api/cloud/projects/' + encodeURIComponent(pid()) + '/client-codes',
+        {
+          method: 'GET',
+          credentials: 'same-origin',
+          headers: headers
+        }
+      );
+      const data = await res.json().catch(function () {
+        return {};
       });
-      const data = await res.json().catch(function() { return {}; });
-      if (!res.ok || !data.ok) { wrap.innerHTML = '<div class="sr-hint">Could not load client codes.</div>'; return; }
+      if (!res.ok || !data.ok) {
+        wrap.innerHTML = '<div class="sr-hint">Could not load client codes.</div>';
+        return;
+      }
       const codes = data.codes || [];
-      if (!codes.length) { wrap.innerHTML = '<div class="sr-hint">No client codes yet , create one above.</div>'; return; }
-      wrap.innerHTML = codes.map(function(c) {
-        const expired = !!(c.expires_at && new Date(c.expires_at).getTime() < Date.now());
-        const expiryTxt = c.expires_at ? (expired ? 'EXPIRED' : 'expires ' + String(c.expires_at).slice(0, 10)) : 'never expires';
-        return '<div class="sr" style="font-size:.72rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
-          '<span class="sr-hint" style="margin:0">' + esc((c.sections || []).map(sectionLabel).join(', ')) + ' \u00b7 created ' + esc(String(c.created_at || '').slice(0, 10)) + ' \u00b7 ' + expiryTxt + '</span>' +
-          '<button class="btn btn-d btn-s" data-action="cloudClientRevoke" data-id="' + esc(String(c.id)) + '">Revoke</button>' +
-          '</div>';
-      }).join('');
+      if (!codes.length) {
+        wrap.innerHTML = '<div class="sr-hint">No client codes yet , create one above.</div>';
+        return;
+      }
+      wrap.innerHTML = codes
+        .map(function (c) {
+          const expired = !!(c.expires_at && new Date(c.expires_at).getTime() < Date.now());
+          const expiryTxt = c.expires_at
+            ? expired
+              ? 'EXPIRED'
+              : 'expires ' + String(c.expires_at).slice(0, 10)
+            : 'never expires';
+          return (
+            '<div class="sr" style="font-size:.72rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+            '<span class="sr-hint" style="margin:0">' +
+            esc((c.sections || []).map(sectionLabel).join(', ')) +
+            ' \u00b7 created ' +
+            esc(String(c.created_at || '').slice(0, 10)) +
+            ' \u00b7 ' +
+            expiryTxt +
+            '</span>' +
+            '<button class="btn btn-d btn-s" data-action="cloudClientRevoke" data-id="' +
+            esc(String(c.id)) +
+            '">Revoke</button>' +
+            '</div>'
+          );
+        })
+        .join('');
     } catch (e) {
       wrap.innerHTML = '<div class="sr-hint">Cloud unavailable here.</div>';
     }
@@ -1200,19 +1756,43 @@ var MMGR = window.MMGR || {};
 
   async function revokeClientCode(id) {
     if (!id) return;
-    if (!window.confirm('Revoke this client code? It stops working immediately and cannot be restored.')) return;
+    if (
+      !window.confirm(
+        'Revoke this client code? It stops working immediately and cannot be restored.'
+      )
+    )
+      return;
     const cred = activeCredential();
-    if (!cred || (!cred.header && !_sessOwner)) { setStatus('Owner access required to revoke codes.', 'warn'); return; }
-    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') { setStatus('Viewer and client codes are read-only , they cannot manage codes.', 'warn'); return; }
+    if (!cred || (!cred.header && !_sessOwner)) {
+      setStatus('Owner access required to revoke codes.', 'warn');
+      return;
+    }
+    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') {
+      setStatus('Viewer and client codes are read-only , they cannot manage codes.', 'warn');
+      return;
+    }
     setStatus('Revoking client code…', 'busy');
     try {
       const headers = {};
       if (cred.header) headers[cred.header] = cred.code;
-      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/client-codes/' + encodeURIComponent(id), {
-        method: 'DELETE', credentials: 'same-origin', headers: headers
+      const res = await fetch(
+        '/api/cloud/projects/' +
+          encodeURIComponent(pid()) +
+          '/client-codes/' +
+          encodeURIComponent(id),
+        {
+          method: 'DELETE',
+          credentials: 'same-origin',
+          headers: headers
+        }
+      );
+      const data = await res.json().catch(function () {
+        return {};
       });
-      const data = await res.json().catch(function() { return {}; });
-      if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Revoke failed (HTTP ' + res.status + ').', 'err'); return; }
+      if (!res.ok || !data.ok) {
+        setStatus((data && data.error) || 'Revoke failed (HTTP ' + res.status + ').', 'err');
+        return;
+      }
       clearPendingEditorCode();
       setStatus('Client code revoked.', 'ok');
       listClientCodes();
@@ -1230,31 +1810,62 @@ var MMGR = window.MMGR || {};
   // =========================================================================
   async function createApiKey() {
     const labelIn = $('cloud-apikey-label-in');
-    const label = (labelIn && labelIn.value || '').trim().slice(0, 60);
-    if (!label) { setStatus('Give this key a label first (e.g. \u201CSite assistant\u201D).', 'warn'); return; }
+    const label = ((labelIn && labelIn.value) || '').trim().slice(0, 60);
+    if (!label) {
+      setStatus('Give this key a label first (e.g. \u201CSite assistant\u201D).', 'warn');
+      return;
+    }
     const scope = [];
     const boxes = document.querySelectorAll('#cloud-apikey-scope-box input[type=checkbox]:checked');
     for (let i = 0; i < boxes.length; i++) scope.push(boxes[i].value);
-    if (scope.length === 0) { setStatus('Tick at least one section this key may touch.', 'warn'); return; }
+    if (scope.length === 0) {
+      setStatus('Tick at least one section this key may touch.', 'warn');
+      return;
+    }
     const expiryIn = $('cloud-apikey-expiry');
     const days = expiryIn && expiryIn.value ? parseInt(expiryIn.value, 10) : 0;
     const cred = activeCredential();
-    if (!cred || (!cred.header && !_sessOwner)) { setStatus(ownerGateMessage(), 'warn'); return; }
-    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') { setStatus('Viewer and client codes are read-only , they cannot manage keys.', 'warn'); return; }
+    if (!cred || (!cred.header && !_sessOwner)) {
+      setStatus(ownerGateMessage(), 'warn');
+      return;
+    }
+    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') {
+      setStatus('Viewer and client codes are read-only , they cannot manage keys.', 'warn');
+      return;
+    }
     setStatus('Creating API key\u2026', 'busy');
     try {
       const headers = { 'Content-Type': 'application/json' };
       if (cred.header) headers[cred.header] = cred.code;
       const body = { label: label, scope: scope };
-      if (Number.isFinite(days) && days > 0) body.expiresAt = new Date(Date.now() + days * 86400000).toISOString();
+      if (Number.isFinite(days) && days > 0)
+        body.expiresAt = new Date(Date.now() + days * 86400000).toISOString();
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/api-keys', {
-        method: 'POST', credentials: 'same-origin', headers: headers, body: JSON.stringify(body)
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: headers,
+        body: JSON.stringify(body)
       });
-      const data = await res.json().catch(function() { return {}; });
-      if (!res.ok || !data.ok || !data.apiKey) { setStatus((data && data.error) || 'API key creation failed (HTTP ' + res.status + ').', 'err'); return; }
+      const data = await res.json().catch(function () {
+        return {};
+      });
+      if (!res.ok || !data.ok || !data.apiKey) {
+        setStatus(
+          (data && data.error) || 'API key creation failed (HTTP ' + res.status + ').',
+          'err'
+        );
+        return;
+      }
       setPendingEditorCode(data.apiKey, data.label || 'API key', data.scope || [], 'api');
       await render();
-      setStatus('API key created for \u201C' + data.label + '\u201D (scope: ' + (data.scope || []).map(sectionLabel).join(', ') + '). Copy it from the banner, it is shown once.', 'ok');
+      setStatus(
+        'API key created for \u201C' +
+          data.label +
+          '\u201D (scope: ' +
+          (data.scope || []).map(sectionLabel).join(', ') +
+          '). Copy it from the banner, it is shown once.',
+        'ok'
+      );
       listApiKeys();
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
@@ -1265,30 +1876,75 @@ var MMGR = window.MMGR || {};
     const wrap = $('cloud-apikey-list');
     if (!wrap) return;
     const cred = activeCredential();
-    if (!cred || (!cred.header && !_sessOwner)) { wrap.innerHTML = '<div class="sr-hint">Owner access required.</div>'; return; }
-    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') { wrap.innerHTML = '<div class="sr-hint">Viewer and client codes are read-only.</div>'; return; }
+    if (!cred || (!cred.header && !_sessOwner)) {
+      wrap.innerHTML = '<div class="sr-hint">Owner access required.</div>';
+      return;
+    }
+    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') {
+      wrap.innerHTML = '<div class="sr-hint">Viewer and client codes are read-only.</div>';
+      return;
+    }
     try {
       const headers = {};
       if (cred.header) headers[cred.header] = cred.code;
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/api-keys', {
-        method: 'GET', credentials: 'same-origin', headers: headers
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: headers
       });
-      const data = await res.json().catch(function() { return {}; });
-      if (!res.ok || !data.ok) { wrap.innerHTML = '<div class="sr-hint">Could not load API keys.</div>'; return; }
+      const data = await res.json().catch(function () {
+        return {};
+      });
+      if (!res.ok || !data.ok) {
+        wrap.innerHTML = '<div class="sr-hint">Could not load API keys.</div>';
+        return;
+      }
       const keys = data.keys || [];
-      if (!keys.length) { wrap.innerHTML = '<div class="sr-hint">No API keys yet , create one above.</div>'; return; }
-      wrap.innerHTML = keys.map(function(k) {
-        const expiryTxt = k.expiresAt ? (k.active ? 'expires ' + String(k.expiresAt).slice(0, 10) : 'EXPIRED') : 'never expires';
-        const storedCode = getPendingEditorCode();
-        const codeVal = (storedCode && storedCode.code && storedCode.label === (k.label || 'API key')) ? storedCode.code : null;
-        return '<div class="sr" style="font-size:.72rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
-          '<span style="color:var(--gold)">' + esc(k.label || 'API key') + '</span>' +
-          '<span class="sr-hint" style="margin:0">' + esc((k.scope || []).map(sectionLabel).join(', ')) + ' \u00b7 ' + esc(expiryTxt) +
-          (k.last_used_at ? ' \u00b7 last used ' + esc(String(k.last_used_at).slice(0, 10)) : '') + '</span>' +
-          (codeVal ? '<code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold);font-size:.82rem;font-weight:700">' + esc(codeVal) + '</code><button class="btn btn-g btn-s" data-action="cloudCopyEditorCode" data-code="' + esc(codeVal) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>' : '') +
-          (k.active ? '<button class="btn btn-d btn-s" data-action="cloudApiKeyRevoke" data-id="' + esc(String(k.id)) + '">Revoke</button>' : '<span class="sr-hint" style="margin:0">revoked</span>') +
-          '</div>';
-      }).join('');
+      if (!keys.length) {
+        wrap.innerHTML = '<div class="sr-hint">No API keys yet , create one above.</div>';
+        return;
+      }
+      wrap.innerHTML = keys
+        .map(function (k) {
+          const expiryTxt = k.expiresAt
+            ? k.active
+              ? 'expires ' + String(k.expiresAt).slice(0, 10)
+              : 'EXPIRED'
+            : 'never expires';
+          const storedCode = getPendingEditorCode();
+          const codeVal =
+            storedCode && storedCode.code && storedCode.label === (k.label || 'API key')
+              ? storedCode.code
+              : null;
+          return (
+            '<div class="sr" style="font-size:.72rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+            '<span style="color:var(--gold)">' +
+            esc(k.label || 'API key') +
+            '</span>' +
+            '<span class="sr-hint" style="margin:0">' +
+            esc((k.scope || []).map(sectionLabel).join(', ')) +
+            ' \u00b7 ' +
+            esc(expiryTxt) +
+            (k.last_used_at
+              ? ' \u00b7 last used ' + esc(String(k.last_used_at).slice(0, 10))
+              : '') +
+            '</span>' +
+            (codeVal
+              ? '<code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold);font-size:.82rem;font-weight:700">' +
+                esc(codeVal) +
+                '</code><button class="btn btn-g btn-s" data-action="cloudCopyEditorCode" data-code="' +
+                esc(codeVal) +
+                '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>'
+              : '') +
+            (k.active
+              ? '<button class="btn btn-d btn-s" data-action="cloudApiKeyRevoke" data-id="' +
+                esc(String(k.id)) +
+                '">Revoke</button>'
+              : '<span class="sr-hint" style="margin:0">revoked</span>') +
+            '</div>'
+          );
+        })
+        .join('');
     } catch (e) {
       wrap.innerHTML = '<div class="sr-hint">Cloud unavailable here.</div>';
     }
@@ -1296,19 +1952,40 @@ var MMGR = window.MMGR || {};
 
   async function revokeApiKey(id) {
     if (!id) return;
-    if (!window.confirm('Revoke this API key? Anything using it stops working immediately and cannot be restored.')) return;
+    if (
+      !window.confirm(
+        'Revoke this API key? Anything using it stops working immediately and cannot be restored.'
+      )
+    )
+      return;
     const cred = activeCredential();
-    if (!cred || (!cred.header && !_sessOwner)) { setStatus('Owner access required to revoke keys.', 'warn'); return; }
-    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') { setStatus('Viewer and client codes are read-only , they cannot manage keys.', 'warn'); return; }
+    if (!cred || (!cred.header && !_sessOwner)) {
+      setStatus('Owner access required to revoke keys.', 'warn');
+      return;
+    }
+    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') {
+      setStatus('Viewer and client codes are read-only , they cannot manage keys.', 'warn');
+      return;
+    }
     setStatus('Revoking API key\u2026', 'busy');
     try {
       const headers = {};
       if (cred.header) headers[cred.header] = cred.code;
-      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/api-keys/' + encodeURIComponent(id), {
-        method: 'DELETE', credentials: 'same-origin', headers: headers
+      const res = await fetch(
+        '/api/cloud/projects/' + encodeURIComponent(pid()) + '/api-keys/' + encodeURIComponent(id),
+        {
+          method: 'DELETE',
+          credentials: 'same-origin',
+          headers: headers
+        }
+      );
+      const data = await res.json().catch(function () {
+        return {};
       });
-      const data = await res.json().catch(function() { return {}; });
-      if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Revoke failed (HTTP ' + res.status + ').', 'err'); return; }
+      if (!res.ok || !data.ok) {
+        setStatus((data && data.error) || 'Revoke failed (HTTP ' + res.status + ').', 'err');
+        return;
+      }
       clearPendingEditorCode();
       setStatus('API key revoked.', 'ok');
       listApiKeys();
@@ -1325,63 +2002,129 @@ var MMGR = window.MMGR || {};
     const wrap = $('cloud-log-list');
     if (!wrap) return;
     const code = getCode();
-    if (!code) { wrap.innerHTML = '<div class="sr-hint">Owner code required.</div>'; return; }
+    if (!code) {
+      wrap.innerHTML = '<div class="sr-hint">Owner code required.</div>';
+      return;
+    }
     try {
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/changelog', {
-        method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: { 'X-Owner-Code': code }
       });
-      const data = await res.json().catch(function() { return {}; });
-      if (!res.ok || !data.ok) { wrap.innerHTML = '<div class="sr-hint">Could not load the changelog.</div>'; return; }
+      const data = await res.json().catch(function () {
+        return {};
+      });
+      if (!res.ok || !data.ok) {
+        wrap.innerHTML = '<div class="sr-hint">Could not load the changelog.</div>';
+        return;
+      }
       const entries = data.entries || [];
-      if (!entries.length) { wrap.innerHTML = '<div class="sr-hint">No cloud changes logged yet , save once from any device to start the log.</div>'; return; }
-      wrap.innerHTML = entries.map(function(en) {
-        // MCP-CHANGELOG-UI (backlog, 2026-08-12): entries imported from the MCP
-        // AI sidecar (source === 'mcp', set server-side from import_key) render
-        // with a distinct purple AI badge + "MCP AI" actor so AI-made changes
-        // never masquerade as the owner. Revert stays available , recordId
-        // reverts were the whole point of the import pipeline.
-        const isMCP = en.source === 'mcp';
-        const hasDiffs = Array.isArray(en.diffs) && en.diffs.length > 0;
-        const who = (isMCP ? 'MCP AI' : (en.actorType === 'editor' ? 'Editor \u201C' + esc(en.actorLabel || '?') + '\u201D' : 'Owner')) + ' · ' + esc(String(en.createdAt || '').slice(0, 19).replace('T', ' '));
-        let what = '';
-        let revertBtn = '<button class="btn btn-o btn-s" data-action="cloudLogRevert" data-id="' + en.id + '">Revert</button>';
-        if (en.type === 'bulk') what = 'Full-state change (snapshot)';
-        else if (en.type === 'revert') what = 'Revert of a previous change';
-        else if (en.type === 'recovery') { what = 'Owner code reissued (recovery)'; revertBtn = ''; } // not a content change , not revertible
-        // CLOUD-FIRST SYNC (2026-08-17): a 'broadcast' entry means the owner
-        // pushed the current snapshot to all registered offline copies (or
-        // auto-broadcast fired on save). A push is not a content change, so
-        // it is not revertible , exactly like 'recovery'.
-        else if (en.type === 'broadcast') { what = 'Broadcast to offline copies'; revertBtn = ''; }
-        // REVIEW QUEUE (2026-08-17): 'accepted' = the owner approved an
-        // inbound change (editor save applied or AI import acknowledged) , 
-        // carries the same leaf diffs as an 'edit', so it stays revertible.
-        // 'rejected' = the owner declined , nothing changed, not revertible.
-        else if (en.type === 'accepted') {
-          what = (isMCP ? 'Accepted AI change (MCP)' : 'Accepted change from review') + (en.diffs && en.diffs.length ? ' , ' + en.diffs.length + ' field(s) changed' : '');
-        }
-        else if (en.type === 'rejected') { what = (isMCP ? 'Rejected AI change (MCP)' : 'Rejected change from review'); revertBtn = ''; }
-        else what = (en.diffs ? en.diffs.length : 0) + ' field(s) changed' + (en.section ? ' · ' + esc(sectionLabel(en.section)) : '');
-        if (isMCP && en.type !== 'accepted' && en.type !== 'rejected') what = 'Imported from AI (MCP) , ' + what;
-        // Click-to-expand diffs (backlog, 2026-08-12): any entry carrying
-        // field-level diffs (edit + revert entries; bulk rows only hold a
-        // snapshot key) gets a caret that reveals the before/after panel , 
-        // pure DOM, view-only, never a server call.
-        const toggleBtn = hasDiffs
-          ? '<button type="button" class="cl-toggle" data-action="cloudLogToggleDiffs" data-id="' + en.id + '" aria-expanded="false" aria-controls="cl-diffs-' + en.id + '" aria-label="Show field diffs for entry ' + en.id + '" title="Show field-level before/after values"></button>'
-          : '';
-        const panelHtml = hasDiffs
-          ? '<div id="cl-diffs-' + en.id + '" class="cl-diffs is-hide" role="region" aria-label="Field-level diffs for entry ' + en.id + '">' + renderDiffPanel(en) + '</div>'
-          : '';
-        return '<div class="sr" style="font-size:.72rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
-          '<span style="color:var(--gold)">' + esc(String(en.id)) + '</span>' +
-          (isMCP ? '<span class="badge-ai" title="Imported from the MCP AI changelog , reverts resolve by stable record id"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI · MCP</span>' : '') +
-          '<span>' + esc(who) + '</span><span class="sr-hint" style="margin:0">' + what + '</span>' +
-          toggleBtn +
-          revertBtn +
-          panelHtml +
-          '</div>';
-      }).join('');
+      if (!entries.length) {
+        wrap.innerHTML =
+          '<div class="sr-hint">No cloud changes logged yet , save once from any device to start the log.</div>';
+        return;
+      }
+      wrap.innerHTML = entries
+        .map(function (en) {
+          // MCP-CHANGELOG-UI (backlog, 2026-08-12): entries imported from the MCP
+          // AI sidecar (source === 'mcp', set server-side from import_key) render
+          // with a distinct purple AI badge + "MCP AI" actor so AI-made changes
+          // never masquerade as the owner. Revert stays available , recordId
+          // reverts were the whole point of the import pipeline.
+          const isMCP = en.source === 'mcp';
+          const hasDiffs = Array.isArray(en.diffs) && en.diffs.length > 0;
+          const who =
+            (isMCP
+              ? 'MCP AI'
+              : en.actorType === 'editor'
+                ? 'Editor \u201C' + esc(en.actorLabel || '?') + '\u201D'
+                : 'Owner') +
+            ' · ' +
+            esc(
+              String(en.createdAt || '')
+                .slice(0, 19)
+                .replace('T', ' ')
+            );
+          let what = '';
+          let revertBtn =
+            '<button class="btn btn-o btn-s" data-action="cloudLogRevert" data-id="' +
+            en.id +
+            '">Revert</button>';
+          if (en.type === 'bulk') what = 'Full-state change (snapshot)';
+          else if (en.type === 'revert') what = 'Revert of a previous change';
+          else if (en.type === 'recovery') {
+            what = 'Owner code reissued (recovery)';
+            revertBtn = '';
+          } // not a content change , not revertible
+          // CLOUD-FIRST SYNC (2026-08-17): a 'broadcast' entry means the owner
+          // pushed the current snapshot to all registered offline copies (or
+          // auto-broadcast fired on save). A push is not a content change, so
+          // it is not revertible , exactly like 'recovery'.
+          else if (en.type === 'broadcast') {
+            what = 'Broadcast to offline copies';
+            revertBtn = '';
+          }
+          // REVIEW QUEUE (2026-08-17): 'accepted' = the owner approved an
+          // inbound change (editor save applied or AI import acknowledged) ,
+          // carries the same leaf diffs as an 'edit', so it stays revertible.
+          // 'rejected' = the owner declined , nothing changed, not revertible.
+          else if (en.type === 'accepted') {
+            what =
+              (isMCP ? 'Accepted AI change (MCP)' : 'Accepted change from review') +
+              (en.diffs && en.diffs.length ? ' , ' + en.diffs.length + ' field(s) changed' : '');
+          } else if (en.type === 'rejected') {
+            what = isMCP ? 'Rejected AI change (MCP)' : 'Rejected change from review';
+            revertBtn = '';
+          } else
+            what =
+              (en.diffs ? en.diffs.length : 0) +
+              ' field(s) changed' +
+              (en.section ? ' · ' + esc(sectionLabel(en.section)) : '');
+          if (isMCP && en.type !== 'accepted' && en.type !== 'rejected')
+            what = 'Imported from AI (MCP) , ' + what;
+          // Click-to-expand diffs (backlog, 2026-08-12): any entry carrying
+          // field-level diffs (edit + revert entries; bulk rows only hold a
+          // snapshot key) gets a caret that reveals the before/after panel ,
+          // pure DOM, view-only, never a server call.
+          const toggleBtn = hasDiffs
+            ? '<button type="button" class="cl-toggle" data-action="cloudLogToggleDiffs" data-id="' +
+              en.id +
+              '" aria-expanded="false" aria-controls="cl-diffs-' +
+              en.id +
+              '" aria-label="Show field diffs for entry ' +
+              en.id +
+              '" title="Show field-level before/after values"></button>'
+            : '';
+          const panelHtml = hasDiffs
+            ? '<div id="cl-diffs-' +
+              en.id +
+              '" class="cl-diffs is-hide" role="region" aria-label="Field-level diffs for entry ' +
+              en.id +
+              '">' +
+              renderDiffPanel(en) +
+              '</div>'
+            : '';
+          return (
+            '<div class="sr" style="font-size:.72rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+            '<span style="color:var(--gold)">' +
+            esc(String(en.id)) +
+            '</span>' +
+            (isMCP
+              ? '<span class="badge-ai" title="Imported from the MCP AI changelog , reverts resolve by stable record id"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI · MCP</span>'
+              : '') +
+            '<span>' +
+            esc(who) +
+            '</span><span class="sr-hint" style="margin:0">' +
+            what +
+            '</span>' +
+            toggleBtn +
+            revertBtn +
+            panelHtml +
+            '</div>'
+          );
+        })
+        .join('');
     } catch (e) {
       wrap.innerHTML = '<div class="sr-hint">Cloud unavailable here.</div>';
     }
@@ -1398,13 +2141,19 @@ var MMGR = window.MMGR || {};
     if (v === undefined) v = null;
     if (v === null) s = 'null';
     else if (typeof v === 'object') {
-      try { s = JSON.stringify(v); } catch (e) { s = String(v); }
+      try {
+        s = JSON.stringify(v);
+      } catch (e) {
+        s = String(v);
+      }
     } else s = String(v);
     const title = s.length > 140 ? ' title="' + esc(s) + '"' : '';
     const shown = s.length > 140 ? s.slice(0, 137) + '…' : s;
     return '<code class="cl-val ' + cls + '"' + title + '>' + esc(shown) + '</code>';
   }
-  function clVal(v, absent, cls) { return ns.CloudDiffs ? ns.CloudDiffs.clVal(v, absent, cls) : _clValImpl(v, absent, cls); }
+  function clVal(v, absent, cls) {
+    return ns.CloudDiffs ? ns.CloudDiffs.clVal(v, absent, cls) : _clValImpl(v, absent, cls);
+  }
 
   // Build the field-level before/after panel markup for one entry (pure
   // string builder , no DOM access, exposed as a test hook). Capped at 60
@@ -1418,40 +2167,74 @@ var MMGR = window.MMGR || {};
     let rows = '';
     for (let i = 0; i < diffs.length; i++) {
       const d = diffs[i] || {};
-      rows += '<div class="cl-diff">' +
-        '<code class="cl-diff-path" title="' + esc(String(d.path || '')) + '">' + esc(String(d.path || '?')) + '</code>' +
+      rows +=
+        '<div class="cl-diff">' +
+        '<code class="cl-diff-path" title="' +
+        esc(String(d.path || '')) +
+        '">' +
+        esc(String(d.path || '?')) +
+        '</code>' +
         _clValImpl(d.before, d.beforeAbsent === true, 'cl-old', 'not set yet') +
         '<span class="cl-arr">→</span>' +
         _clValImpl(d.after, d.afterAbsent === true, 'cl-new', 'removed') +
         '</div>';
     }
-    if (n > diffs.length) rows += '<div class="cl-more">… and ' + (n - diffs.length) + ' more field(s)</div>';
-    return '<div class="cl-diffs-head"><span>Field</span><span>Before</span><span></span><span>After</span></div>' + rows;
+    if (n > diffs.length)
+      rows += '<div class="cl-more">… and ' + (n - diffs.length) + ' more field(s)</div>';
+    return (
+      '<div class="cl-diffs-head"><span>Field</span><span>Before</span><span></span><span>After</span></div>' +
+      rows
+    );
   }
-  function renderDiffPanel(en) { return ns.CloudDiffs ? ns.CloudDiffs.renderDiffPanel(en) : _renderDiffPanelImpl(en); }
+  function renderDiffPanel(en) {
+    return ns.CloudDiffs ? ns.CloudDiffs.renderDiffPanel(en) : _renderDiffPanelImpl(en);
+  }
 
   // Toggle an entry's diff panel open/closed (no server call, nothing
   // mutated , safe in view-only mode, hence in READONLY_SAFE_ACTIONS).
-  function toggleDiffs(id) { if (ns.CloudDiffs) ns.CloudDiffs.toggleDiffs(id); }
+  function toggleDiffs(id) {
+    if (ns.CloudDiffs) ns.CloudDiffs.toggleDiffs(id);
+  }
 
   async function revertLog(id) {
     if (!id) return;
-    if (!window.confirm('Revert this change? The recorded before-values will be written back (or the snapshot restored), and the revert itself is logged.')) return;
+    if (
+      !window.confirm(
+        'Revert this change? The recorded before-values will be written back (or the snapshot restored), and the revert itself is logged.'
+      )
+    )
+      return;
     const code = getCode();
-    if (!code) { setStatus('Owner code required to revert.', 'warn'); return; }
+    if (!code) {
+      setStatus('Owner code required to revert.', 'warn');
+      return;
+    }
     setStatus('Reverting…', 'busy');
     try {
-      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/changelog/' + encodeURIComponent(id) + '/revert', {
-        method: 'POST', credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
-        body: JSON.stringify({})
+      const res = await fetch(
+        '/api/cloud/projects/' +
+          encodeURIComponent(pid()) +
+          '/changelog/' +
+          encodeURIComponent(id) +
+          '/revert',
+        {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
+          body: JSON.stringify({})
+        }
+      );
+      const data = await res.json().catch(function () {
+        return {};
       });
-      const data = await res.json().catch(function() { return {}; });
       if (!res.ok || !data.ok) {
         setStatus((data && data.error) || 'Revert failed (HTTP ' + res.status + ').', 'err');
         return;
       }
-      setStatus('Reverted , the change is now undone on the cloud snapshot. Load from Cloud to pull it into this workspace.', 'ok');
+      setStatus(
+        'Reverted , the change is now undone on the cloud snapshot. Load from Cloud to pull it into this workspace.',
+        'ok'
+      );
       listLog();
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
@@ -1471,16 +2254,24 @@ var MMGR = window.MMGR || {};
   // vocabulary, so the two can never drift; the static mirror below only
   // applies where no editor session can exist anyway (static host).
   const VIEW_ONLY_PANELS = ['dash', 'def', 'kan', 'gantt', 'claim', 'digest', 'baselinen', 'wxlog'];
-  function isWritableSection(key) { return ns.CloudScope ? ns.CloudScope.isWritableSection(key) : true; }
+  function isWritableSection(key) {
+    return ns.CloudScope ? ns.CloudScope.isWritableSection(key) : true;
+  }
   // Is this section off-limits for the current session's scoped editor code?
   // Mirrors applyEditorScope's block list exactly so the nav grey-out and the
   // section-switch guard (mmgr-render.js showSection) can never drift apart.
   // View-only panels (dash/def/kan/gantt/claim/digest/baselinen/wxlog) are
   // never blocked , they read derived data and the server blocks their writes
   // by construction (B11).
-  function isSectionBlocked(section) { return ns.CloudScope ? ns.CloudScope.isSectionBlocked(section) : false; }
-  function isClientSectionHidden(section) { return ns.CloudScope ? !!ns.CloudScope.isClientSectionHidden(section) : false; }
-  function applyClientScope() { if (ns.CloudScope && ns.CloudScope.applyClientScope) ns.CloudScope.applyClientScope(); }
+  function isSectionBlocked(section) {
+    return ns.CloudScope ? ns.CloudScope.isSectionBlocked(section) : false;
+  }
+  function isClientSectionHidden(section) {
+    return ns.CloudScope ? !!ns.CloudScope.isClientSectionHidden(section) : false;
+  }
+  function applyClientScope() {
+    if (ns.CloudScope && ns.CloudScope.applyClientScope) ns.CloudScope.applyClientScope();
+  }
   function applyEditorScope() {
     // C19: client nav-hiding runs on the SAME pass - mutually exclusive with
     // the editor grey-out (a session is either editor/view or client).
@@ -1504,24 +2295,37 @@ var MMGR = window.MMGR || {};
     try {
       const headers = {};
       if (cred.header) headers[cred.header] = cred.code;
-      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/meta', { credentials: 'same-origin', headers: headers });
-      const data = await res.json().catch(function() { return {}; });
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/meta', {
+        credentials: 'same-origin',
+        headers: headers
+      });
+      const data = await res.json().catch(function () {
+        return {};
+      });
       if (!res.ok || !data.ok) return '';
       if (data.updatedAt) setLastSeen(data.updatedAt);
-      const t = String(data.updatedAt || '').slice(0, 19).replace('T', ' ');
-      return t ? ('Last saved to cloud: ' + t) : 'No cloud snapshot yet , save once to start.';
-    } catch (e) { return ''; }
+      const t = String(data.updatedAt || '')
+        .slice(0, 19)
+        .replace('T', ' ');
+      return t ? 'Last saved to cloud: ' + t : 'No cloud snapshot yet , save once to start.';
+    } catch (e) {
+      return '';
+    }
   }
 
   // ---- shown-once NEW-editor-code banner (gap-audit G23) -----------------
-  function pendingBannerHtml(pendingCode) { return ns.CloudShare ? ns.CloudShare.pendingBannerHtml(pendingCode) : ""; }
+  function pendingBannerHtml(pendingCode) {
+    return ns.CloudShare ? ns.CloudShare.pendingBannerHtml(pendingCode) : '';
+  }
 
   // OWNER 2026-08-15: Share & Access card in the Controls tab (#ctrl-share).
   // Single home for the owner code + editor-code manager (moved out of the
   // cloud section so the sharing feature is visible and not buried). The ids
   // cloud-editor-* stay unchanged , createEditor/listEditors/revokeEditor
   // keep working against them wherever they live.
-  function renderShare() { if (ns.CloudShare) ns.CloudShare.renderShare(); }
+  function renderShare() {
+    if (ns.CloudShare) ns.CloudShare.renderShare();
+  }
 
   // OWNER 2026-09-07: MCP Server settings card in the Controls tab (#ctrl-mcp).
   // Only rendered for cloud-linked projects (owner OR editor code held in the
@@ -1540,15 +2344,23 @@ var MMGR = window.MMGR || {};
   //   it cannot connect a header-authenticated server - stated honestly, not
   //   guessed. The field guide carries the full walkthrough.
   function _mcpConnectHtml(mcpUrl) {
-    return '<details class="fmt-more mcp-how"><summary>How to connect an AI tool</summary>' +
+    return (
+      '<details class="fmt-more mcp-how"><summary>How to connect an AI tool</summary>' +
       '<div class="mcp-how-body">' +
       '<p><strong>Terminal tools (Claude Code)</strong> - run:</p>' +
-      '<pre class="fmt-preview">claude mcp add --transport http my-manager \\\n  ' + esc(mcpUrl) + ' \\\n  --header "Authorization: Bearer YOUR-KEY"</pre>' +
+      '<pre class="fmt-preview">claude mcp add --transport http my-manager \\\n  ' +
+      esc(mcpUrl) +
+      ' \\\n  --header "Authorization: Bearer YOUR-KEY"</pre>' +
       '<p><strong>Editor clients (VS Code, Cursor)</strong> - add to mcp.json:</p>' +
-      '<pre class="fmt-preview">{ "servers": { "my-manager": { "type": "http", "url": "' + esc(mcpUrl) + '", "headers": { "Authorization": "Bearer YOUR-KEY" } } } }</pre>' +
-      '<p>' + _mcpSignInHint() + '</p>' +
+      '<pre class="fmt-preview">{ "servers": { "my-manager": { "type": "http", "url": "' +
+      esc(mcpUrl) +
+      '", "headers": { "Authorization": "Bearer YOUR-KEY" } } } }</pre>' +
+      '<p>' +
+      _mcpSignInHint() +
+      '</p>' +
       '<p>The claude.ai web panel (Add custom connector) has no place to paste a key today - use Claude Code or an editor client. Full walkthrough: <a href="mymanager-field-guide.html#connect-ai" target="_blank" rel="noopener">field guide, Connect an Outside AI</a>.</p>' +
-      '</div></details>';
+      '</div></details>'
+    );
   }
   function renderMcp(sessOwner) {
     const host = $('ctrl-mcp');
@@ -1557,24 +2369,27 @@ var MMGR = window.MMGR || {};
     const ecode = getECode();
     const linked = !!(code || ecode || sessOwner);
     host.innerHTML = linked
-      ? (function() {
+      ? (function () {
           var mcpUrl = window.location.origin + '/api/mcp/' + encodeURIComponent(pid());
-          return '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> MCP Server</span></div>' +
+          return (
+            '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> MCP Server</span></div>' +
             '<div class="sr-hint">Connect an outside AI to this project. It can read your data and suggest changes - every change waits for you in Review.</div>' +
             '<div class="exp-row" style="flex-wrap:wrap;align-items:center;gap:8px">' +
-            '<input type="text" id="mcp-url" class="ctl-in" readonly style="flex:1;min-width:200px;font-family:ui-monospace,monospace;font-size:.72rem;letter-spacing:.02em;background:var(--tile-bg)" value="' + esc(mcpUrl) + '" aria-label="MCP Server URL">' +
+            '<input type="text" id="mcp-url" class="ctl-in" readonly style="flex:1;min-width:200px;font-family:ui-monospace,monospace;font-size:.72rem;letter-spacing:.02em;background:var(--tile-bg)" value="' +
+            esc(mcpUrl) +
+            '" aria-label="MCP Server URL">' +
             '<button class="btn btn-n btn-s" data-action="mcpCopyUrl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>' +
             '</div>' +
             '<div class="sr-hint" style="margin-top:4px">Use a project API key (Settings ▸ API Keys) as the key - it is scoped and revocable. Your owner code works too but grants full access; treat it as a last resort. The AI reads your project deadline along with the task dates, so it plans around the same commitment you do.</div>' +
-            (!code && !sessOwner
-              ? ''
-              : _mcpConnectHtml(mcpUrl)) +
-            '<div id="mcp-status" class="sr-hint" role="status" aria-live="polite"></div>';
+            (!code && !sessOwner ? '' : _mcpConnectHtml(mcpUrl)) +
+            '<div id="mcp-status" class="sr-hint" role="status" aria-live="polite"></div>'
+          );
         })()
       : '<div class="sr-hint">This project is not linked to the cloud , the MCP server is not available until a cloud link exists (Controls ▸ Share &amp; Access).</div>';
     if (linked) {
       var mcpUrlInput = $('mcp-url');
-      if (mcpUrlInput) mcpUrlInput.value = window.location.origin + '/api/mcp/' + encodeURIComponent(pid());
+      if (mcpUrlInput)
+        mcpUrlInput.value = window.location.origin + '/api/mcp/' + encodeURIComponent(pid());
     }
   }
 
@@ -1594,18 +2409,22 @@ var MMGR = window.MMGR || {};
   // because the browser cannot know the checkout path or the exported file
   // name , and guessing them would read as a working config when it is not.
   function _terminalConfigJson() {
-    return JSON.stringify({
-      mcpServers: {
-        mymanager: {
-          command: 'node',
-          args: ['C:/path/to/mymanager/mcp/server.mjs'],
-          env: {
-            MMGR_MCP_DIR: 'C:/path/to/mymanager/mcp/projects',
-            MMGR_MCP_PROJECT: 'my-project.json'
+    return JSON.stringify(
+      {
+        mcpServers: {
+          mymanager: {
+            command: 'node',
+            args: ['C:/path/to/mymanager/mcp/server.mjs'],
+            env: {
+              MMGR_MCP_DIR: 'C:/path/to/mymanager/mcp/projects',
+              MMGR_MCP_PROJECT: 'my-project.json'
+            }
           }
         }
-      }
-    }, null, 2);
+      },
+      null,
+      2
+    );
   }
   function renderTerminal() {
     const host = $('ctrl-terminal');
@@ -1615,7 +2434,9 @@ var MMGR = window.MMGR || {};
       '<div class="sr-hint term-step"><strong>1. Export this project</strong> to a <code>.json</code> file, and put it in a folder (for example <code>mcp/projects</code>).</div>' +
       '<div class="sr-hint term-step-sm"><strong>2. Copy this</strong> into your AI tool\u2019s MCP servers list:</div>' +
       '<div class="term-row">' +
-      '<input type="text" id="terminal-mcp-url" class="ctl-in term-url" readonly value="' + esc(_terminalConfigJson()) + '" aria-label="Regular Terminal MCP server configuration">' +
+      '<input type="text" id="terminal-mcp-url" class="ctl-in term-url" readonly value="' +
+      esc(_terminalConfigJson()) +
+      '" aria-label="Regular Terminal MCP server configuration">' +
       '<button class="btn btn-n btn-s" data-action="terminalCopyUrl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>' +
       '</div>' +
       '<div class="sr-hint term-step-sm">Or start it by hand to test it: <code>node mcp/server.mjs</code> with <code>MMGR_MCP_DIR</code> and <code>MMGR_MCP_PROJECT</code> set. Changes an AI proposes are never applied straight away , each one waits for you to approve it.</div>' +
@@ -1671,7 +2492,8 @@ var MMGR = window.MMGR || {};
   async function cloudDeleteOpen() {
     const modal = $('del-modal');
     if (!modal) return;
-    const err = $('del-err'); if (err) err.textContent = '';
+    const err = $('del-err');
+    if (err) err.textContent = '';
     const wrap = $('del-pw-wrap');
     // Decide the field's visibility from the LIVE session: email account ->
     // password gate; Google/absent -> no field (session is the verification).
@@ -1680,19 +2502,34 @@ var MMGR = window.MMGR || {};
       const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
       if (res.ok) {
         const data = await res.json();
-        emailAccount = !!(data && data.ok && data.user && String(data.user.sub).indexOf('email:') === 0);
+        emailAccount = !!(
+          data &&
+          data.ok &&
+          data.user &&
+          String(data.user.sub).indexOf('email:') === 0
+        );
       }
-    } catch (e) { /* static host / offline , no field */ }
+    } catch (e) {
+      /* static host / offline , no field */
+    }
     if (wrap) wrap.hidden = !emailAccount;
     modal.classList.add('on');
     // Reopen must show the resting label (an Escape mid-hold can leave a
     // countdown label behind; cancel() only restores it while the modal is
     // still on, by design, so the reopen reset lives here).
     const okBtn = $('del-ok');
-    if (okBtn) { okBtn.textContent = 'Delete project'; okBtn.disabled = false; }
+    if (okBtn) {
+      okBtn.textContent = 'Delete project';
+      okBtn.disabled = false;
+    }
     if (emailAccount) {
       const pw = _ensureDelPwField();
-      if (pw) { pw.value = ''; setTimeout(function () { pw.focus(); }, 60); }
+      if (pw) {
+        pw.value = '';
+        setTimeout(function () {
+          pw.focus();
+        }, 60);
+      }
     }
   }
   function cloudDeleteClose() {
@@ -1700,8 +2537,13 @@ var MMGR = window.MMGR || {};
     if (modal) modal.classList.remove('on');
     _delBusy = false;
     _holdDelete.cancel();
-    const ok = $('del-ok'); if (ok) { ok.disabled = false; ok.textContent = 'Delete project'; }
-    const err = $('del-err'); if (err) err.textContent = '';
+    const ok = $('del-ok');
+    if (ok) {
+      ok.disabled = false;
+      ok.textContent = 'Delete project';
+    }
+    const err = $('del-err');
+    if (err) err.textContent = '';
     _removeDelPwField();
   }
   // HOLD-TO-DELETE (owner 2026-09-17): the danger-zone confirm becomes a
@@ -1735,9 +2577,15 @@ var MMGR = window.MMGR || {};
         // HARD SAFETY: if the modal was closed while holding (Escape, Cancel,
         // any programmatic close) the hold is dead - never confirm from a
         // ghost timer, whatever the browser did with the pointer events.
-        if (!modalOn()) { cancel(); return; }
+        if (!modalOn()) {
+          cancel();
+          return;
+        }
         left -= 1;
-        if (left > 0) { label('Hold to delete - ' + left); return; }
+        if (left > 0) {
+          label('Hold to delete - ' + left);
+          return;
+        }
         finish();
       }, 1000);
     }
@@ -1755,73 +2603,110 @@ var MMGR = window.MMGR || {};
     }
     return { begin: begin, cancel: cancel };
   })();
-  function cloudDeleteHoldBegin() { _holdDelete.begin(); }
-  function cloudDeleteHoldCancel() { _holdDelete.cancel(); }
+  function cloudDeleteHoldBegin() {
+    _holdDelete.begin();
+  }
+  function cloudDeleteHoldCancel() {
+    _holdDelete.cancel();
+  }
   async function cloudDeleteConfirm() {
     if (_delBusy) return;
     const err = $('del-err');
     const code = getCode();
-    if (!code) { if (err) err.textContent = 'The owner code is missing from this session. Re-open the project with your owner code and try again.'; return; }
+    if (!code) {
+      if (err)
+        err.textContent =
+          'The owner code is missing from this session. Re-open the project with your owner code and try again.';
+      return;
+    }
     const wrap = $('del-pw-wrap');
     const needsPw = !!(wrap && !wrap.hidden);
     const pwInp = $('del-pw');
     const pw = needsPw && pwInp ? pwInp.value : '';
     _delBusy = true;
-    const ok = $('del-ok'); if (ok) { ok.disabled = true; ok.textContent = 'Deleting…'; }
+    const ok = $('del-ok');
+    if (ok) {
+      ok.disabled = true;
+      ok.textContent = 'Deleting…';
+    }
     const reset = function () {
       _delBusy = false;
-      if (ok) { ok.disabled = false; ok.textContent = 'Delete project'; }
+      if (ok) {
+        ok.disabled = false;
+        ok.textContent = 'Delete project';
+      }
     };
     try {
       // 1) Password gate (email accounts only).
       if (needsPw) {
         const vr = await fetch('/api/auth/verify-password', {
-          method: 'POST', credentials: 'same-origin',
+          method: 'POST',
+          credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ password: pw })
         });
-        const vd = await vr.json().catch(function () { return {}; });
+        const vd = await vr.json().catch(function () {
+          return {};
+        });
         if (!vr.ok || !vd.ok) {
           reset();
-          if (err) err.textContent = (vd && vd.error === 'password is incorrect')
-            ? 'The password is incorrect.'
-            : ((vd && vd.error) || 'Could not verify your password. Try again.');
+          if (err)
+            err.textContent =
+              vd && vd.error === 'password is incorrect'
+                ? 'The password is incorrect.'
+                : (vd && vd.error) || 'Could not verify your password. Try again.';
           return;
         }
       }
       // 2) Owner-only soft delete (same route as the launcher/admin).
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/delete', {
-        method: 'POST', credentials: 'same-origin',
+        method: 'POST',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
         body: JSON.stringify({})
       });
-      const data = await res.json().catch(function () { return {}; });
+      const data = await res.json().catch(function () {
+        return {};
+      });
       if (!res.ok || !data.ok) {
         reset();
-        if (err) err.textContent = (data && data.error === 'project_deleted')
-          ? 'This project was already deleted.'
-          : ((data && data.error) || 'Could not delete the project (HTTP ' + res.status + ').');
+        if (err)
+          err.textContent =
+            data && data.error === 'project_deleted'
+              ? 'This project was already deleted.'
+              : (data && data.error) || 'Could not delete the project (HTTP ' + res.status + ').';
         return;
       }
       // 3) Success: drop the local copy (admin list entry) + cloud session
       // codes so nothing re-syncs, then go home. Everyone else already sees
       // the project as discontinued server-side.
-      clearCode(); clearECode();
+      clearCode();
+      clearECode();
       try {
         const raw = localStorage.getItem('mmgr_admin_projects');
         if (raw) {
           const recs = JSON.parse(raw);
           if (Array.isArray(recs)) {
-            const idx = recs.findIndex(function (r) { return r && (String(r.id) === pid() || String(r.cloudId || '') === pid()); });
-            if (idx !== -1) { recs.splice(idx, 1); localStorage.setItem('mmgr_admin_projects', JSON.stringify(recs)); }
+            const idx = recs.findIndex(function (r) {
+              return r && (String(r.id) === pid() || String(r.cloudId || '') === pid());
+            });
+            if (idx !== -1) {
+              recs.splice(idx, 1);
+              localStorage.setItem('mmgr_admin_projects', JSON.stringify(recs));
+            }
           }
         }
-      } catch (e) { /* best-effort , cloud delete is the source of truth */ }
+      } catch (e) {
+        /* best-effort , cloud delete is the source of truth */
+      }
       _holdDelete.cancel(); // safety no-op after success
       cloudDeleteClose();
       const App = window.MMGR.App;
-      if (App && App.showToast) App.showToast('Project deleted. Every shared copy now shows as discontinued.', 'ok');
-      setTimeout(function () { window.location.href = 'app.html'; }, 900);
+      if (App && App.showToast)
+        App.showToast('Project deleted. Every shared copy now shows as discontinued.', 'ok');
+      setTimeout(function () {
+        window.location.href = 'app.html';
+      }, 900);
     } catch (e) {
       reset();
       if (err) err.textContent = 'Could not reach the cloud service.';
@@ -1843,7 +2728,9 @@ var MMGR = window.MMGR || {};
       if (!raw) return;
       const recs = JSON.parse(raw);
       if (!Array.isArray(recs)) return;
-      const rec = recs.find(function (r) { return r && String(r.id) === pid(); });
+      const rec = recs.find(function (r) {
+        return r && String(r.id) === pid();
+      });
       if (!rec || !rec.cloudOwnerCode) return;
       // OWNER 2026-09-24 (owner-gate bug): the admin registry stores the
       // marker 'session' for projects linked by signed-in session with no
@@ -1855,7 +2742,9 @@ var MMGR = window.MMGR || {};
       const c = String(rec.cloudOwnerCode);
       if (c === 'session') return; // session-linked: the probe answers, no code exists
       setCode(c);
-    } catch (e) { /* read-only best effort , never throws */ }
+    } catch (e) {
+      /* read-only best effort , never throws */
+    }
   }
 
   async function render() {
@@ -1914,7 +2803,9 @@ var MMGR = window.MMGR || {};
             '<button class="btn btn-n btn-s" data-action="cloudBondLater"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Later</button>' +
             '</div>'
           : '') +
-        '<div class="exp-row" style="margin-top:6px"><button class="btn btn-g btn-s" data-action="cloudCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> ' + (offer ? 'Create anyway (checks the cloud copy first)' : 'Create Cloud Project') + '</button></div>' +
+        '<div class="exp-row" style="margin-top:6px"><button class="btn btn-g btn-s" data-action="cloudCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> ' +
+        (offer ? 'Create anyway (checks the cloud copy first)' : 'Create Cloud Project') +
+        '</button></div>' +
         '<div class="sr" style="margin-top:6px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> On another device?</span></div>' +
         '<div class="sr-hint">Enter the owner code you copied when this project was first linked, or an editor code you were given (the code lives only in the creator\u2019s session, so a new device needs it typed in here):</div>' +
         '<div class="exp-row">' +
@@ -1927,15 +2818,30 @@ var MMGR = window.MMGR || {};
       // copy, no review queue; just Load + Copy + a live last-sync line.
       const isView = !!(escope && escope.role === 'view');
       const isClient = !!(escope && escope.role === 'client');
-      const roleName = isClient ? 'Client' : (isView ? 'Viewer' : 'Editor');
-      const scopeTxt = escope && escope.sections && escope.sections.length
-        ? escope.sections.map(sectionLabel).join(', ')
-        : 'unknown';
+      const roleName = isClient ? 'Client' : isView ? 'Viewer' : 'Editor';
+      const scopeTxt =
+        escope && escope.sections && escope.sections.length
+          ? escope.sections.map(sectionLabel).join(', ')
+          : 'unknown';
       body =
-        '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Cloud Backup: ' + (isClient ? 'viewing as client' : (isView ? 'viewing as viewer' : 'editing as editor')) + '</span></div>' +
-        '<div class="sr-hint">' + roleName + ' code active: <code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold)">' + esc(escope && escope.label || roleName.toLowerCase()) + '</code>. You can see: <strong>' + esc(scopeTxt) + '</strong>. ' + (isClient || isView ? 'Read-only: nothing here can be changed.' : 'Other panels are locked for this code (enforced by the server, not just greyed out).') + '</div>' +
+        '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Cloud Backup: ' +
+        (isClient ? 'viewing as client' : isView ? 'viewing as viewer' : 'editing as editor') +
+        '</span></div>' +
+        '<div class="sr-hint">' +
+        roleName +
+        ' code active: <code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold)">' +
+        esc((escope && escope.label) || roleName.toLowerCase()) +
+        '</code>. You can see: <strong>' +
+        esc(scopeTxt) +
+        '</strong>. ' +
+        (isClient || isView
+          ? 'Read-only: nothing here can be changed.'
+          : 'Other panels are locked for this code (enforced by the server, not just greyed out).') +
+        '</div>' +
         '<div class="exp-row">' +
-        (isClient || isView ? '' : '<button class="btn btn-n btn-s" data-action="cloudSave"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Save to Cloud</button>') +
+        (isClient || isView
+          ? ''
+          : '<button class="btn btn-n btn-s" data-action="cloudSave"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Save to Cloud</button>') +
         '<button class="btn btn-n btn-s" data-action="cloudLoad"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Load from Cloud</button>' +
         '<button class="btn btn-n btn-s" data-action="cloudCopyCode"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy Code</button>' +
         '<button class="btn btn-o btn-s" data-action="cloudDropEditor"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Use owner code instead</button>' +
@@ -1946,13 +2852,20 @@ var MMGR = window.MMGR || {};
         // overwrite is always safe (approved reconcile: copies never fight
         // the cloud , the local auto-syncs up, the admin broadcasts down).
         // C19: clients get neither the copy machinery nor the review line.
-        (isClient ? '' :
-        '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Offline copy</span></div>' +
-        '<div id="cloud-offline-copy-box"></div>' +
-        // REVIEW QUEUE: the editor's own proposal status line (pending /
-        // accepted / rejected) , filled by cloudReviewMine() on render.
-        '<div id="cloud-review-mine"></div>') +
-        '<div class="sr-hint">' + (isClient ? 'Read-only. This view refreshes automatically when the admin saves.' : (isView ? 'Nothing you do here changes the cloud copy , reload anytime to see fresh data.' : 'Changes you save wait for the owner\u2019s review before they reach the cloud project , accepted edits are logged in the changelog.')) + '</div>' +
+        (isClient
+          ? ''
+          : '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Offline copy</span></div>' +
+            '<div id="cloud-offline-copy-box"></div>' +
+            // REVIEW QUEUE: the editor's own proposal status line (pending /
+            // accepted / rejected) , filled by cloudReviewMine() on render.
+            '<div id="cloud-review-mine"></div>') +
+        '<div class="sr-hint">' +
+        (isClient
+          ? 'Read-only. This view refreshes automatically when the admin saves.'
+          : isView
+            ? 'Nothing you do here changes the cloud copy , reload anytime to see fresh data.'
+            : 'Changes you save wait for the owner\u2019s review before they reach the cloud project , accepted edits are logged in the changelog.') +
+        '</div>' +
         '<div id="cloud-last-sync" class="sr-hint" role="status" aria-live="polite"></div>';
     } else if (!code && !ecode && sessOwner) {
       // SESSION-OWNER MODE (P1-6, owner 2026-09-12): a cloud-linked project
@@ -1973,8 +2886,12 @@ var MMGR = window.MMGR || {};
         '<button class="btn btn-n btn-s" data-action="cloudRecover"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Recover Owner Code</button>' +
         '<button class="btn btn-n btn-s" data-action="cloudClaim"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Link to my account</button>' +
         '</div>' +
-        (sb ? '<div class="exp-row"><button class="btn btn-n btn-s" data-action="cloudResync"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Re-sync with bonded cloud copy</button>' +
-              '<span class="sr-hint" style="margin:0">Last re-sync: ' + esc((sb.lastSyncedAt || '').slice(0, 19).replace('T', ' ') || 'never') + '</span></div>' : '') +
+        (sb
+          ? '<div class="exp-row"><button class="btn btn-n btn-s" data-action="cloudResync"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Re-sync with bonded cloud copy</button>' +
+            '<span class="sr-hint" style="margin:0">Last re-sync: ' +
+            esc((sb.lastSyncedAt || '').slice(0, 19).replace('T', ' ') || 'never') +
+            '</span></div>'
+          : '') +
         '<div class="exp-row"><button class="btn btn-o btn-s" data-action="cloudUnlink"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Unlink from Cloud (delete cloud copy)</button></div>' +
         // P3-17 (owner 2026-09-12): the offline-copy machinery works for the
         // session owner too - the register route accepts the session
@@ -2007,8 +2924,12 @@ var MMGR = window.MMGR || {};
         '</div>' +
         // SYNC BOND (Task 13): explicit re-sync when this device's project
         // carries a bond (e.g. it was restored from a file backup).
-        (getBond() ? '<div class="exp-row"><button class="btn btn-n btn-s" data-action="cloudResync"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Re-sync with bonded cloud copy</button>' +
-              '<span class="sr-hint" style="margin:0">Last re-sync: ' + esc((getBond().lastSyncedAt || '').slice(0, 19).replace('T', ' ') || 'never') + '</span></div>' : '') +
+        (getBond()
+          ? '<div class="exp-row"><button class="btn btn-n btn-s" data-action="cloudResync"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Re-sync with bonded cloud copy</button>' +
+            '<span class="sr-hint" style="margin:0">Last re-sync: ' +
+            esc((getBond().lastSyncedAt || '').slice(0, 19).replace('T', ' ') || 'never') +
+            '</span></div>'
+          : '') +
         // gap-audit B10: deliberate unlink (keep local copy, stop syncing).
         '<div class="exp-row"><button class="btn btn-o btn-s" data-action="cloudUnlink"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Unlink from Cloud (delete cloud copy)</button></div>' +
         '<div id="cloud-last-sync" class="sr-hint" role="status" aria-live="polite"></div>' +
@@ -2056,14 +2977,17 @@ var MMGR = window.MMGR || {};
     }
 
     // Google sign-in strip (recovery only; create/save/load never need it).
-    body += '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Google</span></div>';
+    body +=
+      '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Google</span></div>';
     if (signedIn) {
-      // Provider-neutral: the session may be Google OR email+password , 
+      // Provider-neutral: the session may be Google OR email+password ,
       // both issue the same mmgr_session cookie (sub='email:…' vs a
       // numeric Google sub), and recovery is gated on the sub match alone.
-      body += '<div class="sr-hint">Signed in , owner-code recovery is available for a linked project.</div>';
+      body +=
+        '<div class="sr-hint">Signed in , owner-code recovery is available for a linked project.</div>';
     } else {
-      body += '<div class="sr-hint">Optional , sign in with Google to enable owner-code recovery if the code is ever lost.</div>' +
+      body +=
+        '<div class="sr-hint">Optional , sign in with Google to enable owner-code recovery if the code is ever lost.</div>' +
         '<div class="exp-row"><button class="btn btn-n btn-s" data-action="cloudSignIn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Sign in with Google</button></div>' +
         '<div id="cloud-gis-host" class="is-hide"></div>';
     }
@@ -2071,7 +2995,8 @@ var MMGR = window.MMGR || {};
     // recover/unlink outcomes are announced to screen-reader users.
     // Billing upgrade banner (only set by a real server 402 , see above).
     if (_upgradePending) {
-      body += '<div class="sr" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:6px 0" role="status">' +
+      body +=
+        '<div class="sr" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:6px 0" role="status">' +
         '<div class="sr-hint" style="margin:0 0 6px"><strong>Free plan limit reached</strong> , you\u2019ve used all the linked cloud projects on the free plan. Upgrade to keep linking projects to the cloud.</div>' +
         '<button class="btn btn-g btn-s" data-action="cloudUpgrade"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Upgrade plan</button>' +
         '</div>';
@@ -2079,7 +3004,8 @@ var MMGR = window.MMGR || {};
     // AUTH MAINFRAME v2 , verified-email gate banner (only set by a real
     // server 403 {verifyRequired:true} , see createProject above).
     if (_verifyPending) {
-      body += '<div class="sr" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:6px 0" role="status">' +
+      body +=
+        '<div class="sr" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:6px 0" role="status">' +
         '<div class="sr-hint" style="margin:0 0 6px"><strong>Confirm your email</strong> , cloud projects unlock once you click the confirmation link we emailed you.</div>' +
         '<button class="btn btn-n btn-s" data-action="cloudResendVerify"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg> Resend confirmation link</button>' +
         '</div>';
@@ -2094,7 +3020,7 @@ var MMGR = window.MMGR || {};
       const ls = $('cloud-last-sync');
       if (ls) {
         ls.textContent = 'Checking cloud sync status…';
-        cloudMetaStatus().then(function(txt) {
+        cloudMetaStatus().then(function (txt) {
           const el = $('cloud-last-sync');
           if (el && txt) el.textContent = txt;
         });
@@ -2110,12 +3036,14 @@ var MMGR = window.MMGR || {};
     if (copyBox && (code || sessOwner)) {
       const rec = getCopyRecord();
       if (!rec) {
-        copyBox.innerHTML = '<div class="exp-row">' +
+        copyBox.innerHTML =
+          '<div class="exp-row">' +
           '<button class="btn btn-n btn-s" data-action="cloudMakeCopy"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Create offline version</button>' +
           '</div>' +
           '<div class="sr-hint">Keep a view-only snapshot of this project on this device - it opens even with no internet, and updates automatically when the project changes or the admin broadcasts.</div>';
       } else {
-        copyBox.innerHTML = '<div class="sr" style="font-size:.72rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+        copyBox.innerHTML =
+          '<div class="sr" style="font-size:.72rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
           '<span class="sr-hint" style="margin:0">Offline version on this device - it opens with no internet.</span>' +
           '<button class="btn btn-n btn-s" data-action="cloudUpdateCopy"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Update offline version</button>' +
           '<button class="btn btn-o btn-s" data-action="cloudRemoveCopy"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Remove</button>' +
@@ -2153,7 +3081,7 @@ var MMGR = window.MMGR || {};
         const loadEl = $('cloud-editor-scope-load');
         if (loadEl) loadEl.remove();
         if (secs && secs.length) {
-          secs.forEach(function(sec) {
+          secs.forEach(function (sec) {
             const label = document.createElement('label');
             label.className = 'pref';
             label.style.margin = '0';
@@ -2182,7 +3110,7 @@ var MMGR = window.MMGR || {};
         const cLoad = $('cloud-client-scope-load');
         if (cLoad) cLoad.remove();
         if (secs && secs.length) {
-          secs.forEach(function(sec) {
+          secs.forEach(function (sec) {
             const clabel = document.createElement('label');
             clabel.className = 'pref';
             clabel.style.margin = '0';
@@ -2211,7 +3139,7 @@ var MMGR = window.MMGR || {};
         const kLoad = $('cloud-apikey-scope-load');
         if (kLoad) kLoad.remove();
         if (secs && secs.length) {
-          secs.forEach(function(sec) {
+          secs.forEach(function (sec) {
             const klabel = document.createElement('label');
             klabel.className = 'pref';
             klabel.style.margin = '0';
@@ -2257,7 +3185,11 @@ var MMGR = window.MMGR || {};
     }
     const GA = window.MMGR.GoogleAuth;
     if (GA && typeof GA.openSignInPrompt === 'function') {
-      try { GA.openSignInPrompt(); } catch (e) { /* button stays rendered */ }
+      try {
+        GA.openSignInPrompt();
+      } catch (e) {
+        /* button stays rendered */
+      }
     }
   }
 
@@ -2265,7 +3197,10 @@ var MMGR = window.MMGR || {};
   async function dropEditor() {
     clearECode();
     await render();
-    setStatus('Editor credential cleared , use the owner code (or Create) to link as owner.', 'warn');
+    setStatus(
+      'Editor credential cleared , use the owner code (or Create) to link as owner.',
+      'warn'
+    );
   }
 
   // ---- CLAIM FLOW (owner 2026-09-13) ------------------------------------
@@ -2279,15 +3214,21 @@ var MMGR = window.MMGR || {};
   // project. Linked projects are never touched (server refuses 409).
   async function claimProject() {
     const code = getCode();
-    if (!code) { setStatus('Enter the owner code in Cloud & Sync first, then claim.', 'warn'); return; }
+    if (!code) {
+      setStatus('Enter the owner code in Cloud & Sync first, then claim.', 'warn');
+      return;
+    }
     setStatus('Linking project to your account…', 'busy');
     try {
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/claim', {
-        method: 'POST', credentials: 'same-origin',
+        method: 'POST',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ownerCode: code })
       });
-      const data = await res.json().catch(function() { return {}; });
+      const data = await res.json().catch(function () {
+        return {};
+      });
       if (!res.ok || !data.ok) {
         let msg = (data && data.error) || 'Claim failed (HTTP ' + res.status + ').';
         if (res.status === 401) msg = 'Sign in with Google (or email) first, then claim again.';
@@ -2297,7 +3238,12 @@ var MMGR = window.MMGR || {};
       }
       clearSessOwner(); // force the /meta probe to re-run: the project is linked now
       await render();
-      setStatus(data.alreadyLinked ? 'This project is already linked to your account.' : 'Project linked to your account - it now appears under My Cloud Projects on every device you sign in on.', 'ok');
+      setStatus(
+        data.alreadyLinked
+          ? 'This project is already linked to your account.'
+          : 'Project linked to your account - it now appears under My Cloud Projects on every device you sign in on.',
+        'ok'
+      );
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
     }
@@ -2309,17 +3255,41 @@ var MMGR = window.MMGR || {};
   // syncing". Owner-only, explicit confirm since it is irreversible.
   async function unlinkProject() {
     const cred = activeCredential();
-    if (!cred) { setStatus('No cloud credential in this session.', 'warn'); return; }
-    if (cred.header !== 'X-Owner-Code' && !(!cred.header && _sessOwner)) { setStatus('Only the owner can unlink the project from cloud.', 'warn'); return; }
-    if (!window.confirm('Delete the CLOUD copy of this project? Your local data on this device stays , only the cloud snapshot, editor codes, and changelog are removed. This cannot be undone.')) return;
+    if (!cred) {
+      setStatus('No cloud credential in this session.', 'warn');
+      return;
+    }
+    if (cred.header !== 'X-Owner-Code' && !(!cred.header && _sessOwner)) {
+      setStatus('Only the owner can unlink the project from cloud.', 'warn');
+      return;
+    }
+    if (
+      !window.confirm(
+        'Delete the CLOUD copy of this project? Your local data on this device stays , only the cloud snapshot, editor codes, and changelog are removed. This cannot be undone.'
+      )
+    )
+      return;
     setStatus('Unlinking from cloud…', 'busy');
     try {
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()), {
-        method: 'DELETE', credentials: 'same-origin', headers: cred.header ? { 'X-Owner-Code': cred.code } : { 'Content-Type': 'application/json' }
+        method: 'DELETE',
+        credentials: 'same-origin',
+        headers: cred.header
+          ? { 'X-Owner-Code': cred.code }
+          : { 'Content-Type': 'application/json' }
       });
-      const data = await res.json().catch(function() { return {}; });
-      if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Unlink failed (HTTP ' + res.status + ').', 'err'); return; }
-      clearCode(); clearECode(); clearSessOwner(); setLastSeen(''); clearPendingEditorCode();
+      const data = await res.json().catch(function () {
+        return {};
+      });
+      if (!res.ok || !data.ok) {
+        setStatus((data && data.error) || 'Unlink failed (HTTP ' + res.status + ').', 'err');
+        return;
+      }
+      clearCode();
+      clearECode();
+      clearSessOwner();
+      setLastSeen('');
+      clearPendingEditorCode();
       stopSyncWatcher();
       await render();
       setStatus('Unlinked , the cloud copy is deleted. This device keeps its local data.', 'ok');
@@ -2340,24 +3310,47 @@ var MMGR = window.MMGR || {};
   // =========================================================================
   async function cloudMakeCopy() {
     const cred = activeCredential();
-    if (!cred) { setStatus('No cloud credential in this session.', 'warn'); return; }
-    if (getCopyRecord()) { setStatus('This device already has an offline copy of this project.', 'warn'); return; }
+    if (!cred) {
+      setStatus('No cloud credential in this session.', 'warn');
+      return;
+    }
+    if (getCopyRecord()) {
+      setStatus('This device already has an offline copy of this project.', 'warn');
+      return;
+    }
     setStatus('Registering offline copy…', 'busy');
     try {
       const headers = { 'Content-Type': 'application/json' };
       if (cred.header) headers[cred.header] = cred.code;
-      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/offline-copies', {
-        method: 'POST', credentials: 'same-origin', headers: headers,
-        body: JSON.stringify({ deviceId: deviceId() })
+      const res = await fetch(
+        '/api/cloud/projects/' + encodeURIComponent(pid()) + '/offline-copies',
+        {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: headers,
+          body: JSON.stringify({ deviceId: deviceId() })
+        }
+      );
+      const data = await res.json().catch(function () {
+        return {};
       });
-      const data = await res.json().catch(function() { return {}; });
       if (!res.ok || !data.ok || !data.copyId) {
-        setStatus((data && data.error) || 'Offline copy registration failed (HTTP ' + res.status + ').', 'err');
+        setStatus(
+          (data && data.error) || 'Offline copy registration failed (HTTP ' + res.status + ').',
+          'err'
+        );
         return;
       }
-      setCopyRecord({ copyId: data.copyId, deviceId: deviceId(), lastCloudRev: data.revision || null });
+      setCopyRecord({
+        copyId: data.copyId,
+        deviceId: deviceId(),
+        lastCloudRev: data.revision || null
+      });
       await render();
-      setStatus('Offline copy registered on this device , it updates when the project changes or the admin broadcasts. View-only.', 'ok');
+      setStatus(
+        'Offline copy registered on this device , it updates when the project changes or the admin broadcasts. View-only.',
+        'ok'
+      );
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
     }
@@ -2372,40 +3365,72 @@ var MMGR = window.MMGR || {};
   async function cloudUpdateCopy(silent) {
     const cred = activeCredential();
     const rec = getCopyRecord();
-    if (!cred || !rec) { setStatus('No offline copy registered on this device yet , use Make offline copy first.', 'warn'); return; }
+    if (!cred || !rec) {
+      setStatus(
+        'No offline copy registered on this device yet , use Make offline copy first.',
+        'warn'
+      );
+      return;
+    }
     if (!silent) setStatus('Updating offline copy…', 'busy');
     try {
       const headers = { 'Content-Type': 'application/json', 'X-Device-Id': rec.deviceId };
       if (cred.header) headers[cred.header] = cred.code;
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/load', {
-        method: 'POST', credentials: 'same-origin', headers: headers, body: JSON.stringify({})
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: headers,
+        body: JSON.stringify({})
       });
-      const data = await res.json().catch(function() { return {}; });
+      const data = await res.json().catch(function () {
+        return {};
+      });
       if (!res.ok || !data.ok) {
         const raw = (data && data.error) || '';
-        const msg = raw === 'code_revoked' ? 'This code was revoked by the project admin. Contact them for a new one.'
-          : raw === 'project_deleted' ? 'This project was deleted by the admin. It is no longer available from the cloud.'
-          : raw || 'Offline copy update failed (HTTP ' + res.status + ').';
+        const msg =
+          raw === 'code_revoked'
+            ? 'This code was revoked by the project admin. Contact them for a new one.'
+            : raw === 'project_deleted'
+              ? 'This project was deleted by the admin. It is no longer available from the cloud.'
+              : raw || 'Offline copy update failed (HTTP ' + res.status + ').';
         if (!silent) setStatus(msg, 'err');
         return;
       }
-      if (!data.state) { if (!silent) setStatus('No cloud snapshot to pull yet , the admin needs to save once first.', 'warn'); return; }
+      if (!data.state) {
+        if (!silent)
+          setStatus('No cloud snapshot to pull yet , the admin needs to save once first.', 'warn');
+        return;
+      }
       try {
         localStorage.setItem('mmgr_state_' + pid(), JSON.stringify(data.state));
         localStorage.setItem('mmgr_unlocked_' + pid(), '1');
         localStorage.setItem('mmgr_scope_' + pid(), 'full');
         localStorage.setItem('mmgr_current_project', pid());
-      } catch (e) { /* storage blocked , in-memory adopt below still applies */ }
+      } catch (e) {
+        /* storage blocked , in-memory adopt below still applies */
+      }
       const S = window.MMGR.State;
       if (S && typeof S.adoptExternal === 'function') S.adoptExternal(data.state);
       const R = window.MMGR.Render;
-      if (R && typeof R.renderAll === 'function') { try { R.renderAll(); } catch (e) { /* render is best-effort */ } }
+      if (R && typeof R.renderAll === 'function') {
+        try {
+          R.renderAll();
+        } catch (e) {
+          /* render is best-effort */
+        }
+      }
       if (data.savedAt) {
         setLastSeen(data.savedAt);
         rec.lastCloudRev = data.savedAt;
         setCopyRecord(rec);
       }
-      if (!silent) setStatus('Offline copy updated , this device now matches the cloud (' + (data.savedAt || '').slice(0, 19).replace('T', ' ') + ').', 'ok');
+      if (!silent)
+        setStatus(
+          'Offline copy updated , this device now matches the cloud (' +
+            (data.savedAt || '').slice(0, 19).replace('T', ' ') +
+            ').',
+          'ok'
+        );
     } catch (e) {
       if (!silent) setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
     }
@@ -2415,19 +3440,37 @@ var MMGR = window.MMGR || {};
   async function cloudRemoveCopy() {
     const rec = getCopyRecord();
     const cred = activeCredential();
-    if (!rec) { setStatus('No offline copy registered on this device.', 'warn'); return; }
-    if (!window.confirm('Remove this device\u2019s offline copy? It stops receiving updates; the cloud project and other copies are untouched.')) return;
+    if (!rec) {
+      setStatus('No offline copy registered on this device.', 'warn');
+      return;
+    }
+    if (
+      !window.confirm(
+        'Remove this device\u2019s offline copy? It stops receiving updates; the cloud project and other copies are untouched.'
+      )
+    )
+      return;
     try {
       if (cred) {
         const headers = { 'Content-Type': 'application/json', 'X-Device-Id': rec.deviceId };
         if (cred.header) headers[cred.header] = cred.code;
-        const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/offline-copies/' + encodeURIComponent(rec.copyId), {
-          method: 'DELETE', credentials: 'same-origin', headers: headers,
-          body: JSON.stringify({ deviceId: rec.deviceId })
-        });
+        const res = await fetch(
+          '/api/cloud/projects/' +
+            encodeURIComponent(pid()) +
+            '/offline-copies/' +
+            encodeURIComponent(rec.copyId),
+          {
+            method: 'DELETE',
+            credentials: 'same-origin',
+            headers: headers,
+            body: JSON.stringify({ deviceId: rec.deviceId })
+          }
+        );
         // 404/403 on an already-gone copy is fine , the local record is the
         // source of truth for "this device has a copy" going forward.
-        if (!res.ok) { /* keep going , clear the local record either way */ }
+        if (!res.ok) {
+          /* keep going , clear the local record either way */
+        }
       }
       clearCopyRecord();
       await render();
@@ -2444,28 +3487,54 @@ var MMGR = window.MMGR || {};
     const wrap = $('cloud-offline-list');
     if (!wrap) return;
     const code = getCode();
-    if (!code) { wrap.innerHTML = '<div class="sr-hint">Owner code required.</div>'; return; }
+    if (!code) {
+      wrap.innerHTML = '<div class="sr-hint">Owner code required.</div>';
+      return;
+    }
     try {
-      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/offline-copies', {
-        method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
+      const res = await fetch(
+        '/api/cloud/projects/' + encodeURIComponent(pid()) + '/offline-copies',
+        {
+          method: 'GET',
+          credentials: 'same-origin',
+          headers: { 'X-Owner-Code': code }
+        }
+      );
+      const data = await res.json().catch(function () {
+        return {};
       });
-      const data = await res.json().catch(function() { return {}; });
-      if (!res.ok || !data.ok) { wrap.innerHTML = '<div class="sr-hint">Could not load offline copies.</div>'; return; }
+      if (!res.ok || !data.ok) {
+        wrap.innerHTML = '<div class="sr-hint">Could not load offline copies.</div>';
+        return;
+      }
       const copies = data.copies || [];
       const toggle = $('cloud-auto-broadcast');
       if (toggle) toggle.checked = !!data.autoBroadcast;
       if (!copies.length) {
-        wrap.innerHTML = '<div class="sr-hint">No offline copies registered yet , recipients click Make offline copy inside their view.</div>';
+        wrap.innerHTML =
+          '<div class="sr-hint">No offline copies registered yet , recipients click Make offline copy inside their view.</div>';
         return;
       }
-      wrap.innerHTML = copies.map(function(c) {
-        const pulled = c.lastPulledAt ? String(c.lastPulledAt).slice(0, 19).replace('T', ' ') : 'never';
-        return '<div class="sr" style="font-size:.72rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
-          '<span class="sr-hint" style="margin:0">' + esc(String(c.deviceId).slice(0, 24)) + '</span>' +
-          '<span class="sr-hint" style="margin:0">last pulled ' + esc(pulled) + '</span>' +
-          '<button class="btn btn-o btn-s" data-action="cloudOfflineRemove" data-id="' + esc(c.id) + '">Remove</button>' +
-          '</div>';
-      }).join('');
+      wrap.innerHTML = copies
+        .map(function (c) {
+          const pulled = c.lastPulledAt
+            ? String(c.lastPulledAt).slice(0, 19).replace('T', ' ')
+            : 'never';
+          return (
+            '<div class="sr" style="font-size:.72rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+            '<span class="sr-hint" style="margin:0">' +
+            esc(String(c.deviceId).slice(0, 24)) +
+            '</span>' +
+            '<span class="sr-hint" style="margin:0">last pulled ' +
+            esc(pulled) +
+            '</span>' +
+            '<button class="btn btn-o btn-s" data-action="cloudOfflineRemove" data-id="' +
+            esc(c.id) +
+            '">Remove</button>' +
+            '</div>'
+          );
+        })
+        .join('');
     } catch (e) {
       wrap.innerHTML = '<div class="sr-hint">Cloud unavailable here.</div>';
     }
@@ -2476,17 +3545,37 @@ var MMGR = window.MMGR || {};
   // the Presence DO) and records a changelog 'broadcast' entry.
   async function cloudBroadcast() {
     const code = getCode();
-    if (!code) { setStatus('Owner code required to broadcast.', 'warn'); return; }
-    if (!window.confirm('Broadcast to other projects now? Every registered offline copy is told the cloud moved and will pull the latest snapshot. View-only copies cannot edit, so nothing is lost.')) return;
+    if (!code) {
+      setStatus('Owner code required to broadcast.', 'warn');
+      return;
+    }
+    if (
+      !window.confirm(
+        'Broadcast to other projects now? Every registered offline copy is told the cloud moved and will pull the latest snapshot. View-only copies cannot edit, so nothing is lost.'
+      )
+    )
+      return;
     setStatus('Broadcasting…', 'busy');
     try {
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/broadcast', {
-        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
         body: JSON.stringify({})
       });
-      const data = await res.json().catch(function() { return {}; });
-      if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Broadcast failed (HTTP ' + res.status + ').', 'err'); return; }
-      setStatus('Broadcast sent , ' + (data.copies || 0) + ' registered copy/copies will update to the current snapshot.', 'ok');
+      const data = await res.json().catch(function () {
+        return {};
+      });
+      if (!res.ok || !data.ok) {
+        setStatus((data && data.error) || 'Broadcast failed (HTTP ' + res.status + ').', 'err');
+        return;
+      }
+      setStatus(
+        'Broadcast sent , ' +
+          (data.copies || 0) +
+          ' registered copy/copies will update to the current snapshot.',
+        'ok'
+      );
       cloudOfflineList();
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
@@ -2496,21 +3585,39 @@ var MMGR = window.MMGR || {};
   // Owner: toggle per-project auto-broadcast (every save also broadcasts).
   async function cloudAutoBroadcast() {
     const code = getCode();
-    if (!code) { setStatus('Owner code required.', 'warn'); return; }
+    if (!code) {
+      setStatus('Owner code required.', 'warn');
+      return;
+    }
     const toggle = $('cloud-auto-broadcast');
     const enabled = !!(toggle && toggle.checked);
     try {
-      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/auto-broadcast', {
-        method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
-        body: JSON.stringify({ enabled: enabled })
+      const res = await fetch(
+        '/api/cloud/projects/' + encodeURIComponent(pid()) + '/auto-broadcast',
+        {
+          method: 'PUT',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
+          body: JSON.stringify({ enabled: enabled })
+        }
+      );
+      const data = await res.json().catch(function () {
+        return {};
       });
-      const data = await res.json().catch(function() { return {}; });
       if (!res.ok || !data.ok) {
         if (toggle) toggle.checked = !enabled; // revert the checkbox on failure
-        setStatus((data && data.error) || 'Auto-broadcast toggle failed (HTTP ' + res.status + ').', 'err');
+        setStatus(
+          (data && data.error) || 'Auto-broadcast toggle failed (HTTP ' + res.status + ').',
+          'err'
+        );
         return;
       }
-      setStatus(enabled ? 'Auto-broadcast ON , every save also broadcasts to registered copies.' : 'Auto-broadcast OFF , broadcast manually when you want to push.', 'ok');
+      setStatus(
+        enabled
+          ? 'Auto-broadcast ON , every save also broadcasts to registered copies.'
+          : 'Auto-broadcast OFF , broadcast manually when you want to push.',
+        'ok'
+      );
     } catch (e) {
       if (toggle) toggle.checked = !enabled;
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
@@ -2521,13 +3628,31 @@ var MMGR = window.MMGR || {};
   async function cloudOfflineRemove(id) {
     const code = getCode();
     if (!code || !id) return;
-    if (!window.confirm('Remove this offline copy? The device stops receiving updates; the cloud project and its other copies are untouched.')) return;
+    if (
+      !window.confirm(
+        'Remove this offline copy? The device stops receiving updates; the cloud project and its other copies are untouched.'
+      )
+    )
+      return;
     try {
-      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/offline-copies/' + encodeURIComponent(id), {
-        method: 'DELETE', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code }
+      const res = await fetch(
+        '/api/cloud/projects/' +
+          encodeURIComponent(pid()) +
+          '/offline-copies/' +
+          encodeURIComponent(id),
+        {
+          method: 'DELETE',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code }
+        }
+      );
+      const data = await res.json().catch(function () {
+        return {};
       });
-      const data = await res.json().catch(function() { return {}; });
-      if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Remove failed (HTTP ' + res.status + ').', 'err'); return; }
+      if (!res.ok || !data.ok) {
+        setStatus((data && data.error) || 'Remove failed (HTTP ' + res.status + ').', 'err');
+        return;
+      }
       setStatus('Offline copy removed.', 'ok');
       cloudOfflineList();
     } catch (e) {
@@ -2540,41 +3665,69 @@ var MMGR = window.MMGR || {};
   // row shows the source (editor label or MCP AI), proposed time, an
   // expandable before/after diff panel, and Accept / Reject for pending
   // ones; decided rows show their status. Zero-throw.
-  function cloudReviewList() { if (ns.CloudReview) ns.CloudReview.cloudReviewList(); }
+  function cloudReviewList() {
+    if (ns.CloudReview) ns.CloudReview.cloudReviewList();
+  }
 
   // Editor: their own proposal status (pending / accepted / rejected) , the
   // "review list with status" visibility approved for the source side.
-  function cloudReviewMine() { if (ns.CloudReview) ns.CloudReview.cloudReviewMine(); }
+  function cloudReviewMine() {
+    if (ns.CloudReview) ns.CloudReview.cloudReviewMine();
+  }
 
   // Toggle a proposal's diff panel (mirror of toggleDiffs, review list).
-  function reviewToggleDiffs(id) { if (ns.CloudReview) ns.CloudReview.reviewToggleDiffs(id); }
+  function reviewToggleDiffs(id) {
+    if (ns.CloudReview) ns.CloudReview.reviewToggleDiffs(id);
+  }
 
   // Owner: accept a proposal , the scoped merge applies to the cloud
   // snapshot (or the MCP audit row is written), changelog 'accepted'.
-  function cloudReviewAccept(id) { if (ns.CloudReview) ns.CloudReview.cloudReviewAccept(id); }
+  function cloudReviewAccept(id) {
+    if (ns.CloudReview) ns.CloudReview.cloudReviewAccept(id);
+  }
 
   // Owner: reject a proposal , discarded, changelog 'rejected', no state change.
-  function cloudReviewReject(id) { if (ns.CloudReview) ns.CloudReview.cloudReviewReject(id); }
+  function cloudReviewReject(id) {
+    if (ns.CloudReview) ns.CloudReview.cloudReviewReject(id);
+  }
 
   // ---- copy the just-created editor code (shown-once banner, G23) ---------
-  function copyEditorCode(code) { if (ns.CloudReview) ns.CloudReview.copyEditorCode(code); }
-  function editorCodeDone() { if (ns.CloudReview) ns.CloudReview.editorCodeDone(); }
+  function copyEditorCode(code) {
+    if (ns.CloudReview) ns.CloudReview.copyEditorCode(code);
+  }
+  function editorCodeDone() {
+    if (ns.CloudReview) ns.CloudReview.editorCodeDone();
+  }
 
   // ---- MASTER-ACTION-PLAN RANK 9.2: webhook management (owner-only) ------
   // Opt-in notification endpoints (off by default , nothing exists until the
   // owner adds one). All three mirror the editor/changelog patterns: owner
   // code in session, fetch, escape, render into a dedicated container.
-  function webhookList() { if (ns.CloudWebhooks) ns.CloudWebhooks.webhookList(); }
+  function webhookList() {
+    if (ns.CloudWebhooks) ns.CloudWebhooks.webhookList();
+  }
 
-  function webhookAdd() { if (ns.CloudWebhooks) ns.CloudWebhooks.webhookAdd(); }
+  function webhookAdd() {
+    if (ns.CloudWebhooks) ns.CloudWebhooks.webhookAdd();
+  }
 
-  function webhookDel(id) { if (ns.CloudWebhooks) ns.CloudWebhooks.webhookDel(id); }
+  function webhookDel(id) {
+    if (ns.CloudWebhooks) ns.CloudWebhooks.webhookDel(id);
+  }
 
   // ---- keep the sign-in state fresh after sign-in/sign-out ----------------
   // P1-6 (2026-09-12): sign-in/out changes the session credential, so the
   // memoized owner-session probe must re-run on the next render.
-  document.addEventListener('mmgr:google-signed-in', function() { _signedIn = true; clearSessOwner(); if (!_resumingAfterSignIn) render(); });
-  document.addEventListener('mmgr:google-signed-out', function() { _signedIn = false; clearSessOwner(); render(); });
+  document.addEventListener('mmgr:google-signed-in', function () {
+    _signedIn = true;
+    clearSessOwner();
+    if (!_resumingAfterSignIn) render();
+  });
+  document.addEventListener('mmgr:google-signed-out', function () {
+    _signedIn = false;
+    clearSessOwner();
+    render();
+  });
 
   // ---- CLOUD-FIRST SYNC: live refresh on save (approved scope) -----------
   // The Presence WebSocket delivers `{type:'rev-changed', revision}` when the
@@ -2586,16 +3739,24 @@ var MMGR = window.MMGR || {};
   // local changes up first, then pulls, per the owner's auto-sync-up model).
   // C19: a CLIENT session (no copy record) refreshes via the meta-poll below.
   let _revPullBusy = false;
-  document.addEventListener('mmgr:rev-changed', function(ev) {
-    if (isClientSession()) { clientPollTick(true); return; }
+  document.addEventListener('mmgr:rev-changed', function (ev) {
+    if (isClientSession()) {
+      clientPollTick(true);
+      return;
+    }
     const rec = getCopyRecord();
     if (!rec) return; // no copy on this device , nothing to refresh
     if (_revPullBusy) return;
     const escope = getEScope();
     const isView = !!(getECode() && !getCode() && escope && escope.role === 'view');
-    if (!isView) { render(); return; } // editor copy: just refresh the box (manual Update)
+    if (!isView) {
+      render();
+      return;
+    } // editor copy: just refresh the box (manual Update)
     _revPullBusy = true;
-    cloudUpdateCopy(true).then(function() { _revPullBusy = false; });
+    cloudUpdateCopy(true).then(function () {
+      _revPullBusy = false;
+    });
   });
 
   // ---- C19 CLIENT REFRESH CADENCE (C1b, 2026-09-04) ----------------------
@@ -2615,10 +3776,17 @@ var MMGR = window.MMGR || {};
     try {
       const headers = {};
       if (cred.header) headers[cred.header] = cred.code;
-      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/meta', { credentials: 'same-origin', headers: headers });
-      const data = await res.json().catch(function() { return {}; });
-      return (res.ok && data && data.ok && data.updatedAt) ? data.updatedAt : null;
-    } catch (e) { return null; }
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/meta', {
+        credentials: 'same-origin',
+        headers: headers
+      });
+      const data = await res.json().catch(function () {
+        return {};
+      });
+      return res.ok && data && data.ok && data.updatedAt ? data.updatedAt : null;
+    } catch (e) {
+      return null;
+    }
   }
   async function clientLoadState() {
     const cred = activeCredential();
@@ -2626,10 +3794,19 @@ var MMGR = window.MMGR || {};
     try {
       const headers = {};
       if (cred.header) headers[cred.header] = cred.code;
-      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/load', { method: 'POST', credentials: 'same-origin', headers: headers, body: JSON.stringify({}) });
-      const data = await res.json().catch(function() { return {}; });
-      return (res.ok && data && data.ok && data.state) ? data.state : null;
-    } catch (e) { return null; }
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/load', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: headers,
+        body: JSON.stringify({})
+      });
+      const data = await res.json().catch(function () {
+        return {};
+      });
+      return res.ok && data && data.ok && data.state ? data.state : null;
+    } catch (e) {
+      return null;
+    }
   }
   async function clientPollTick(force) {
     if (!isClientSession()) return;
@@ -2642,20 +3819,28 @@ var MMGR = window.MMGR || {};
     if (!changed && !force) return;
     const state = await clientLoadState();
     if (!state) return;
-    try { localStorage.setItem('mmgr_state_' + pid(), JSON.stringify(state)); } catch (e) { /* storage blocked - reload would lose nothing */ }
+    try {
+      localStorage.setItem('mmgr_state_' + pid(), JSON.stringify(state));
+    } catch (e) {
+      /* storage blocked - reload would lose nothing */
+    }
     // Full reload is the honest refresh: read-only workspace, no local edits
     // to lose, and every renderer picks the new state up at boot.
     if (changed) window.location.reload();
   }
   function startClientRefresh() {
     if (!isClientSession() || _clientPoll) return;
-    _clientPoll = setInterval(function() { clientPollTick(false); }, 60000);
-    document.addEventListener('visibilitychange', function() {
+    _clientPoll = setInterval(function () {
+      clientPollTick(false);
+    }, 60000);
+    document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'visible') clientPollTick(false);
     });
     // First tick soon after boot so a code created moments before opening
     // still gets the freshest snapshot without waiting a minute.
-    setTimeout(function() { clientPollTick(false); }, 4000);
+    setTimeout(function () {
+      clientPollTick(false);
+    }, 4000);
   }
 
   // =========================================================================
@@ -2678,7 +3863,14 @@ var MMGR = window.MMGR || {};
     // pending-path still pulls: their /load is read-authorized via the
     // adoption record, so a rebroadcast edit reaches them too.
     if (getCode()) return { header: 'X-Owner-Code', code: getCode() };
-    if (getECode()) return { header: (getEScope() && getEScope().role !== 'view' && getEScope().role !== 'client') ? 'X-Editor-Code' : 'X-View-Code', code: getECode() };
+    if (getECode())
+      return {
+        header:
+          getEScope() && getEScope().role !== 'view' && getEScope().role !== 'client'
+            ? 'X-Editor-Code'
+            : 'X-View-Code',
+        code: getECode()
+      };
     if (_sessOwner) return { header: null, code: '' }; // cookie authenticates
     return null;
   }
@@ -2687,8 +3879,10 @@ var MMGR = window.MMGR || {};
       const a = document.activeElement;
       if (!a) return false;
       const t = a.tagName;
-      return (t === 'INPUT' || t === 'TEXTAREA' || a.isContentEditable);
-    } catch (e) { return false; }
+      return t === 'INPUT' || t === 'TEXTAREA' || a.isContentEditable;
+    } catch (e) {
+      return false;
+    }
   }
   async function syncPollTick() {
     if (_syncBusy) return;
@@ -2699,39 +3893,79 @@ var MMGR = window.MMGR || {};
     try {
       const headers = {};
       if (cred.header) headers[cred.header] = cred.code;
-      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/meta', { method: 'GET', credentials: 'same-origin', headers: headers });
-      const meta = await res.json().catch(function() { return {}; });
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/meta', {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: headers
+      });
+      const meta = await res.json().catch(function () {
+        return {};
+      });
       if (!res.ok || !meta || !meta.ok) return; // quiet: watcher never shouts
       const cloudStamp = meta.updatedAt || '';
       const last = getLastSeen();
-      if (!last || cloudStamp === last) { if (cloudStamp) setLastSeen(cloudStamp); return; }
+      if (!last || cloudStamp === last) {
+        if (cloudStamp) setLastSeen(cloudStamp);
+        return;
+      }
       // Cloud changed since our last sync , pull. Mid-edit safety: typing
       // into a field wins for now; the next tick (or tab refocus) merges it.
       if (userMidEdit()) return;
-      const loadRes = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/load', { method: 'POST', credentials: 'same-origin', headers: Object.assign({ 'Content-Type': 'application/json' }, headers), body: JSON.stringify({}) });
-      const data = await loadRes.json().catch(function() { return {}; });
+      const loadRes = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/load', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, headers),
+        body: JSON.stringify({})
+      });
+      const data = await loadRes.json().catch(function () {
+        return {};
+      });
       if (!loadRes.ok || !data.ok || !data.state) return;
       const report = ns.State.mergeExternal(data.state);
       if (!report) return;
       setLastSeen(data.savedAt || cloudStamp);
       if (report.adopted > 0) {
-        if (ns.Render && ns.Render.renderAll) { try { ns.Render.renderAll(); } catch (e) { /* best-effort */ } }
-        if (ns.App && ns.App.showToast) ns.App.showToast('Synced ' + report.adopted + ' update' + (report.adopted === 1 ? '' : 's') + ' from the cloud copy.', 'ok');
+        if (ns.Render && ns.Render.renderAll) {
+          try {
+            ns.Render.renderAll();
+          } catch (e) {
+            /* best-effort */
+          }
+        }
+        if (ns.App && ns.App.showToast)
+          ns.App.showToast(
+            'Synced ' +
+              report.adopted +
+              ' update' +
+              (report.adopted === 1 ? '' : 's') +
+              ' from the cloud copy.',
+            'ok'
+          );
       }
-    } catch (e) { /* offline / static host , silent, retried next tick */ }
-    finally { _syncBusy = false; }
+    } catch (e) {
+      /* offline / static host , silent, retried next tick */
+    } finally {
+      _syncBusy = false;
+    }
   }
   function startSyncWatcher() {
     if (_syncPoll) return;
     if (!syncWatcherCred()) return; // read-only codes + unlinked: no watcher
-    _syncPoll = setInterval(function() { syncPollTick(); }, 60000);
-    document.addEventListener('visibilitychange', function() {
+    _syncPoll = setInterval(function () {
+      syncPollTick();
+    }, 60000);
+    document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'visible') syncPollTick();
     });
-    setTimeout(function() { syncPollTick(); }, 6000);
+    setTimeout(function () {
+      syncPollTick();
+    }, 6000);
   }
   function stopSyncWatcher() {
-    if (_syncPoll) { clearInterval(_syncPoll); _syncPoll = null; }
+    if (_syncPoll) {
+      clearInterval(_syncPoll);
+      _syncPoll = null;
+    }
   }
 
   // ---- public API ---------------------------------------------------------
@@ -2739,7 +3973,9 @@ var MMGR = window.MMGR || {};
     checkMe: checkMe,
     render: render,
     createProject: createProject,
-    _isSessionOwner: function() { return _sessOwner; }, // P1-6 (2026-09-12): share.js mirrors the linked gate
+    _isSessionOwner: function () {
+      return _sessOwner;
+    }, // P1-6 (2026-09-12): share.js mirrors the linked gate
     _probeOwnerSession: probeOwnerSession,
     cloudUpgrade: cloudUpgrade,
     cloudResendVerify: cloudResendVerify,
@@ -2781,12 +4017,12 @@ var MMGR = window.MMGR || {};
     // the render branch; clientFirstSection()/isClientSectionHidden() drive
     // the nav hiding + showSection redirect in js/cloud/scope.js.
     isClientSession: isClientSession,
-    clientFirstSection: function() {
+    clientFirstSection: function () {
       const es = getEScope();
       if (es && Array.isArray(es.sections) && es.sections.length) return es.sections[0];
       return 'dash';
     },
-    isClientSectionHidden: function(section) {
+    isClientSectionHidden: function (section) {
       if (!isClientSession()) return false;
       const es = getEScope();
       return !(es && Array.isArray(es.sections) && es.sections.indexOf(section) > -1);
@@ -2851,13 +4087,17 @@ var MMGR = window.MMGR || {};
     clearPendingEditorCode: clearPendingEditorCode,
     _listLog: listLog,
     _activeCredential: activeCredential,
-    _getSections: function() { return _sections; },
+    _getSections: function () {
+      return _sections;
+    },
     // Session-owner flag (filled by render's probe; review.js reads it so a
     // signed-in owner with no held code can still open the review queue).
     // GETTER, not a value copy: _sessOwner flips true after the probe runs,
     // and a plain property would snapshot the initial false forever (the
     // exact bug that left the owner's review queue refusing to load).
-    get _sessOwner() { return _sessOwner; }
+    get _sessOwner() {
+      return _sessOwner;
+    }
   };
 
   // Render on boot (App.init calls this too via the guarded hook; the

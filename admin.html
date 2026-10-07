@@ -414,7 +414,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
     <div class="card" id="cloud-admin-section" style="margin-top:16px">
       <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud Projects</div>
       <div class="field">
-        <label>Site admin code</label>
+        <label for="cloud-admin-code">Site admin code</label>
         <div class="code-row">
           <input id="cloud-admin-code" type="password" autocomplete="off" placeholder="Site admin code" style="flex:1">
           <button class="btn btn-g" data-action="cloudAdminList"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Load</button>
@@ -480,7 +480,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
      sits after the divider. Backdrop click + Escape close it. -->
 <div id="siom" role="dialog" aria-modal="true" aria-label="Sign in">
   <div class="mb">
-    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Sign in</span><button type="button" class="dc" data-action="closeSignIn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></div>
+    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Sign in</span><button type="button" class="dc" data-action="closeSignIn" aria-label="Close sign-in"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></div>
     <div class="mbody">
       <p class="si-hint">Welcome back. Sign in to reach your cloud projects, backups, and sync. It is optional, the app works without an account.</p>
       <div id="google-signin-button"></div>
@@ -491,18 +491,18 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
 
 <div id="om">
   <div class="mb">
-    <div class="mh"><span class="mt" id="pm-title">Add Project</span><button class="dc" data-action="closeProjectModal"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
+    <div class="mh"><span class="mt" id="pm-title">Add Project</span><button class="dc" data-action="closeProjectModal" aria-label="Close add-project dialog"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
     <div class="mbody">
       <div class="field">
-        <label>Project Title</label>
+        <label for="pf-title">Project Title</label>
         <input id="pf-title" type="text" placeholder="e.g. Riverside Tower Renovation" data-action="syncSlug">
       </div>
       <div class="field">
-        <label>Description <span class="t-mut">(shown on the dashboard card)</span></label>
+        <label for="pf-desc">Description <span class="t-mut">(shown on the dashboard card)</span></label>
         <textarea id="pf-desc" placeholder="One or two sentences a client would recognize their project by."></textarea>
       </div>
       <div class="field">
-        <label>Status</label>
+        <label for="pf-status">Status</label>
         <select id="pf-status">
           <option value="active">Active</option>
           <option value="on-hold">On Hold</option>
@@ -511,20 +511,20 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
         </select>
       </div>
       <div class="field">
-        <label>Project ID <span class="t-mut">(url-safe, unique; auto-filled from title)</span></label>
+        <label for="pf-id">Project ID <span class="t-mut">(url-safe, unique; auto-filled from title)</span></label>
         <input id="pf-id" type="text" placeholder="riverside-tower" data-action="pfIdManual">
         <div class="hint">Used in the file path and to keep this project's saved data separate from others. Avoid changing it once you've shared a code, or treat it as a new project.</div>
       </div>
       <div class="field">
-        <label>Project File <span class="t-mut">(relative path to the project page)</span></label>
+        <label for="pf-file">Project File <span class="t-mut">(relative path to the project page)</span></label>
         <input id="pf-file" type="text" placeholder="project.html?id=riverside-tower">
         <div class="hint">Used as the link on the public dashboard. Defaults to <code>project.html?id=&lt;id&gt;</code>. Change it only if you host per-project pages elsewhere.</div>
       </div>
       <div class="field">
-        <label>Access Code</label>
+        <label for="pf-code">Access Code</label>
         <div class="code-row">
           <input id="pf-code" type="text" maxlength="16" placeholder="Click Generate">
-          <select id="pf-codelen" style="width:auto">
+          <select id="pf-codelen" aria-label="Access code length" style="width:auto">
             <option value="8">8 chars</option>
             <option value="10" selected>10 chars</option>
             <option value="12">12 chars</option>
@@ -534,10 +534,10 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
         <div class="hint" id="pf-code-hint">This is the code you'll share with the client. It's only ever stored in plaintext on this device. Write it down somewhere safe.</div>
       </div>
       <div class="field">
-        <label>View-Only Code <span class="t-mut">(optional; opens the project read-only)</span></label>
+        <label for="pf-rocode">View-Only Code <span class="t-mut">(optional; opens the project read-only)</span></label>
         <div class="code-row">
           <input id="pf-rocode" type="text" maxlength="16" placeholder="Leave blank to disable view-only access">
-          <select id="pf-rocodelen" style="width:auto">
+          <select id="pf-rocodelen" aria-label="View-only code length" style="width:auto">
             <option value="8">8 chars</option>
             <option value="10" selected>10 chars</option>
             <option value="12">12 chars</option>
@@ -561,12 +561,12 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
      updateCloudSnapshot uses. A created code is shown EXACTLY ONCE. -->
 <div id="codes-om">
   <div class="mb">
-    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> <span id="codes-om-title">Codes</span></span><button class="dc" data-action="closeCodesModal"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
+    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> <span id="codes-om-title">Codes</span></span><button class="dc" data-action="closeCodesModal" aria-label="Close codes dialog"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
     <div class="mbody">
       <p style="font-size:.76rem;color:var(--slate);margin:0 0 10px;line-height:1.5">Owner code: <code class="code-box" id="codes-om-owner"></code>. Anyone with it opens the project as owner on any device.</p>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-        <input id="codes-label" type="text" maxlength="60" placeholder="Label, e.g. Site Super , Riverside" style="flex:1;min-width:180px" autocomplete="off">
-        <select id="codes-role" style="width:auto"><option value="editor">Editor (can edit the sections below)</option><option value="view">Viewer (read-only, can see them)</option></select>
+        <input id="codes-label" type="text" maxlength="60" placeholder="Label, e.g. Site Super , Riverside" aria-label="Code label" style="flex:1;min-width:180px" autocomplete="off">
+        <select id="codes-role" aria-label="Code role" style="width:auto"><option value="editor">Editor (can edit the sections below)</option><option value="view">Viewer (read-only, can see them)</option></select>
         <button class="btn btn-g btn-s" data-action="codesCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Create Code</button>
       </div>
       <div class="t-xs mb10 lh16" id="codes-scope"><span style="margin:0">Sections this code may edit (or see, for a viewer):</span><span id="codes-scope-load" style="margin:0"> loading…</span></div>
@@ -601,9 +601,11 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
           <input id="team-invite-email" type="email" maxlength="160" placeholder="name@example.com" style="flex:1;min-width:180px" autocomplete="off" aria-label="Team member email address">
           <select id="team-invite-role" style="width:auto" aria-label="Team member role"><option value="manager">Manager</option><option value="supervisor">Supervisor</option><option value="contractor">Contractor</option><option value="client">Client</option></select>
           <button class="btn btn-g btn-s" data-action="teamInvite"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Invite</button>
+          <select id="team-update-role" style="width:auto;display:none" aria-label="Update role"><option value="manager">Manager</option><option value="supervisor">Supervisor</option><option value="contractor">Contractor</option><option value="client">Client</option></select>
         </div>
         <div class="t-xs lh18 mb8" id="team-scope" hidden></div>
         <div class="t-xs" id="team-list">Loading team…</div>
+        <div id="team-update-scope" hidden style="margin-top:6px"></div>
       </div>
       <!-- C23: Shared Resource Pool (Phase 6) -->
       <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
@@ -624,7 +626,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
 <!-- ═══ Access URL modal ═══ -->
 <div id="snip-om">
   <div class="mb">
-    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Access URL</span><button class="dc" data-action="closeSnippetModal"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
+    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Access URL</span><button class="dc" data-action="closeSnippetModal" aria-label="Close access URL dialog"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
     <div class="mbody">
       <p class="t-body mb12 lh15">
         This is the direct URL for this project. Share it with the project team.<br>
@@ -642,7 +644,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
 <!-- ═══ Confirm modal (replaces native confirm() , same standard as the project viewer) ═══ -->
 <div id="adm-cfm">
   <div class="mb">
-    <div class="mh"><span class="mt" id="adm-cfm-title">Confirm</span><button class="dc" data-action="admCfmCancel"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
+    <div class="mh"><span class="mt" id="adm-cfm-title">Confirm</span><button class="dc" data-action="admCfmCancel" aria-label="Close confirm dialog"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
     <div class="mbody">
       <p class="modal-txt" id="adm-cfm-msg"></p>
     </div>
@@ -656,18 +658,18 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
 <!-- ═══ Password change modal (replaces native prompt()) ═══ -->
 <div id="pw-om">
   <div class="mb pw-box">
-    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Change Admin Password</span><button class="dc" data-action="closePwModal"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
+    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Change Admin Password</span><button class="dc" data-action="closePwModal" aria-label="Close change-password dialog"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
     <div class="mbody">
       <div class="field">
-        <label>Current password</label>
+        <label for="pw-current">Current password</label>
         <input id="pw-current" type="password" autocomplete="current-password">
       </div>
       <div class="field">
-        <label>New password <span class="t-mut">(min 8 characters)</span></label>
+        <label for="pw-new">New password <span class="t-mut">(min 8 characters)</span></label>
         <input id="pw-new" type="password" autocomplete="new-password">
       </div>
       <div class="field">
-        <label>Confirm new password</label>
+        <label for="pw-new2">Confirm new password</label>
         <input id="pw-new2" type="password" autocomplete="new-password">
       </div>
       <div class="gerr" id="pw-err"></div>
@@ -1475,11 +1477,21 @@ function admCfmOk(){
   document.getElementById('adm-cfm').classList.remove('show');
   const cb = _admCfmCb;
   _admCfmCb = null;
-  if (cb) cb();
+  if (cb) cb(function(noAction){
+    if (noAction) return;
+    const roleSel = document.getElementById('team-update-role');
+    if (roleSel) roleSel.style.display = '';
+    const box = document.getElementById('team-update-scope');
+    if (box) box.style.display = '';
+  });
 }
 function admCfmCancel(){
   document.getElementById('adm-cfm').classList.remove('show');
   _admCfmCb = null;
+  const roleSel = document.getElementById('team-update-role');
+  if (roleSel) roleSel.style.display = '';
+  const box = document.getElementById('team-update-scope');
+  if (box) box.style.display = '';
 }
 
 function openPasswordModal(){
@@ -2579,6 +2591,7 @@ async function teamList(){
         '<span style="color:var(--title,var(--text));font-weight:600">' + escapeHtml(m.userSub.replace(/^email:/,'')) + '</span>' +
         '<span style="color:var(--slate)">' + escapeHtml(teamRoleLabel(m.role)) + ' · ' + escapeHtml(m.status) + scopeTxt + '</span>' +
         (m.status === 'revoked' ? '' : '<button class="btn btn-n btn-s" data-action="teamRevoke" data-id="' + m.id + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Revoke</button>') +
+        '<button class="btn btn-n btn-s" data-action="teamUpdate" data-id="' + m.id + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-pencil"></use></svg> Edit</button>' +
         '</div>';
     }).join('');
   }catch(e){
@@ -2619,6 +2632,7 @@ async function teamInvite(){
     }
     if (res.status === 404 && data && data.error === 'user_not_found'){ toast('That email has no My MaNaGeR account yet. Ask them to sign up first.', 'warn'); return; }
     if (res.status === 409){ toast('That person is already on this project.', 'warn'); return; }
+
     if (!res.ok || !data.ok){ toast((data && data.error) || 'Invite failed.', 'error'); return; }
     document.getElementById('team-invite-email').value = '';
     toast('Invitation sent to ' + email + '.');
@@ -2627,10 +2641,65 @@ async function teamInvite(){
     toast('Cloud API unreachable on this host.', 'error');
   }
 }
+async function teamCurrentMemberById(id){
+  const p = teamCurrentProject();
+  const code = teamOwnerCode();
+  if (!p || !code || !id) return null;
+  const wrap = document.getElementById('team-list');
+  if (!wrap) return null;
+  try{
+    const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/team', {
+      method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
+    });
+    const data = await res.json().catch(()=>({}));
+    const members = (data && data.ok && Array.isArray(data.members)) ? data.members : [];
+    return members.find(function(x){ return String(x.id) === String(id); }) || null;
+  }catch(e){ return null; }
+}
+async function teamUpdate(id){
+  const p = teamCurrentProject();
+  const code = teamOwnerCode();
+  if (!p || !code || !id){ toast('No valid project or owner code for this edit.', 'error'); return; }
+  const m = await teamCurrentMemberById(id);
+  if (!m){ toast('Member not found.', 'error'); return; }
+  document.getElementById('adm-cfm-title').textContent = 'Edit Team Member';
+  document.getElementById('adm-cfm-msg').textContent = 'Update the role or client sections for ' + escapeHtml(m.userSub.replace(/^email:/,'')) + '.';
+  _teamUpdateScopePending = {
+    currentRole: m.role,
+    currentScope: Array.isArray(m.scope) ? m.scope.slice() : m.scope
+  };
+  initTeamUpdateScopeIfPending();
+  _admCfmCb = function(onOk){
+    const roleSel = document.getElementById('team-update-role');
+    const newRole = roleSel ? roleSel.value : m.role;
+    let newScope = _teamUpdateScopePending.currentScope;
+    if (m.role === 'client'){
+      const scope = [];
+      document.querySelectorAll('#team-update-scope input[type=checkbox]:checked').forEach(function(cb){ scope.push(cb.value); });
+      newScope = scope.length ? scope : null;
+    }
+    if (JSON.stringify(newScope) === JSON.stringify(m.scope) && newRole === m.role){
+      onOk(false); return;
+    }
+    (async function(){
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/team/' + encodeURIComponent(id), {
+        method: 'PUT', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
+        body: JSON.stringify({ role: newRole, scope: newScope })
+      });
+      const data = await res.json().catch(()=>({}));
+      if (!res.ok || !data.ok){ toast((data && data.error) || 'Update failed.', 'error'); return; }
+      toast('Member updated.');
+      teamList();
+      onOk(true);
+    })();
+  };
+  document.getElementById('adm-cfm').classList.add('show');
+}
 async function teamRevoke(id){
   const p = teamCurrentProject();
   const code = teamOwnerCode();
-  if (!p || !code || !id) return;
+  if (!p || !code || !id){ toast('No valid project or owner code for this revoke.', 'error'); return; }
   try{
     const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/team/' + encodeURIComponent(id), {
       method: 'DELETE', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
@@ -2835,6 +2904,7 @@ const CLIENT_SECTIONS = [
 function initTeamSections(){
   const box = document.getElementById('team-scope');
   if (!box || box.children.length) return;
+  initTeamUpdateScopeIfPending();
   box.appendChild(document.createTextNode('Sections this client may see: '));
   CLIENT_SECTIONS.forEach(function(s){
     const lbl = document.createElement('label');
@@ -2852,6 +2922,28 @@ function initTeamSections(){
       box.hidden = roleSel.value !== 'client';
     });
   }
+}
+let _teamUpdateScopePending = null;
+function initTeamUpdateScopeIfPending(){
+  const payload = _teamUpdateScopePending;
+  _teamUpdateScopePending = null;
+  if (!payload) return;
+  const box = document.getElementById('team-update-scope');
+  if (!box) return;
+  const roleSel = document.getElementById('team-update-role');
+  const showClientScope = roleSel && roleSel.value === 'client';
+  box.hidden = !showClientScope;
+  if (!showClientScope) { box.innerHTML = ''; return; }
+  CLIENT_SECTIONS.forEach(function(s){
+    const lbl = document.createElement('label');
+    lbl.style.cssText = 'display:inline-flex;align-items:center;gap:4px;margin:2px 10px 2px 0;font-size:.72rem;color:var(--text)';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.value = s.key;
+    cb.checked = Array.isArray(payload.currentScope) && payload.currentScope.indexOf(s.key) !== -1;
+    lbl.appendChild(cb);
+    lbl.appendChild(document.createTextNode(s.label));
+    box.appendChild(lbl);
+  });
 }
 function initClientSections(){
   const box = document.getElementById('client-sections');
@@ -3115,7 +3207,8 @@ const ADMIN_ACTION_MAP = {
   },
   'codesCopyReveal': (el) => { const c = el.getAttribute('data-code'); if (c && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(c).then(()=>toast('Code copied.')).catch(()=>toast('Copy manually.','warn')); },
   'teamInvite': () => teamInvite(),
-  'teamRevoke': (el) => teamRevoke(el.getAttribute('data-id'))
+  'teamRevoke': (el) => teamRevoke(el.getAttribute('data-id')),
+  'teamUpdate': (el) => teamUpdate(el.getAttribute('data-id'))
 };
 document.addEventListener('click', function(e){
   const el = e.target.closest('[data-action]');

@@ -21,8 +21,11 @@ const DOC = 'docs/CI-TEST-COVERAGE.md';
 const TOKENS = ['CI', 'EXTENDED', 'TRIAGE', 'MANUAL'];
 
 let failed = 0;
-const fail = (m) => { console.log('  FAIL  ' + m); failed++; };
-const pass = (m) => console.log('  PASS  ' + m);
+const fail = m => {
+  console.log('  FAIL  ' + m);
+  failed++;
+};
+const pass = m => console.log('  PASS  ' + m);
 
 console.log('\n=== TEST REGISTRY: every harness is accounted for ===');
 
@@ -34,10 +37,20 @@ if (!fs.existsSync(DOC)) {
 const doc = fs.readFileSync(DOC, 'utf8');
 
 // harness files: qa-*/verify-*/audit-* in the repo root and in tools/
-const isHarness = (f) => /^(qa|verify|audit)-[a-z0-9-]+\.cjs$/.test(f);
+const isHarness = f => /^(qa|verify|audit)-[a-z0-9-]+\.cjs$/.test(f);
 const files = []
-  .concat(fs.readdirSync('.').filter(isHarness).map((f) => ({ name: f, where: 'root' })))
-  .concat(fs.readdirSync('tools').filter(isHarness).map((f) => ({ name: f, where: 'tools' })));
+  .concat(
+    fs
+      .readdirSync('.')
+      .filter(isHarness)
+      .map(f => ({ name: f, where: 'root' }))
+  )
+  .concat(
+    fs
+      .readdirSync('tools')
+      .filter(isHarness)
+      .map(f => ({ name: f, where: 'tools' }))
+  );
 
 const unregistered = [];
 const untagged = [];
@@ -47,27 +60,39 @@ for (const f of files) {
     continue;
   }
   // the line carrying the filename must also carry a status token
-  const line = doc.split('\n').find((l) => l.indexOf(f.name) > -1) || '';
-  if (!TOKENS.some((t) => new RegExp('\\b' + t + '\\b').test(line))) untagged.push(f.name);
+  const line = doc.split('\n').find(l => l.indexOf(f.name) > -1) || '';
+  if (!TOKENS.some(t => new RegExp('\\b' + t + '\\b').test(line))) untagged.push(f.name);
 }
 
-if (unregistered.length) fail(unregistered.length + ' harness(es) missing from ' + DOC + ': ' + unregistered.join(', '));
+if (unregistered.length)
+  fail(unregistered.length + ' harness(es) missing from ' + DOC + ': ' + unregistered.join(', '));
 else pass('all ' + files.length + ' harnesses are registered in ' + DOC);
 
-if (untagged.length) fail(untagged.length + ' harness row(s) carry no status token (' + TOKENS.join('/') + '): ' + untagged.join(', '));
+if (untagged.length)
+  fail(
+    untagged.length +
+      ' harness row(s) carry no status token (' +
+      TOKENS.join('/') +
+      '): ' +
+      untagged.join(', ')
+  );
 else pass('every registered row declares where it runs');
 
 // a registered harness that no longer exists is stale documentation
-const referenced = Array.from(doc.matchAll(/`((?:tools\/)?(?:qa|verify|audit)-[a-z0-9-]+\.cjs)`/g)).map((m) => m[1]);
+const referenced = Array.from(
+  doc.matchAll(/`((?:tools\/)?(?:qa|verify|audit)-[a-z0-9-]+\.cjs)`/g)
+).map(m => m[1]);
 const seen = new Set();
 const stale = [];
 for (const r of referenced) {
   if (seen.has(r)) continue;
   seen.add(r);
   const bare = path.basename(r);
-  if (!fs.existsSync(r) && !fs.existsSync(bare) && !fs.existsSync(path.join('tools', bare))) stale.push(r);
+  if (!fs.existsSync(r) && !fs.existsSync(bare) && !fs.existsSync(path.join('tools', bare)))
+    stale.push(r);
 }
-if (stale.length) fail(stale.length + ' registry entr(ies) point at files that do not exist: ' + stale.join(', '));
+if (stale.length)
+  fail(stale.length + ' registry entr(ies) point at files that do not exist: ' + stale.join(', '));
 else pass('no stale registry entries');
 
 console.log('\n' + (failed ? 'TEST REGISTRY FAIL (' + failed + ')' : 'TEST REGISTRY PASS'));

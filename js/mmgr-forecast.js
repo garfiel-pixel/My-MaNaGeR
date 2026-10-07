@@ -26,16 +26,16 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   const U = ns.Utils;
   const API = 'https://api.open-meteo.com/v1/forecast';
   const GEO = 'https://geocoding-api.open-meteo.com/v1/search';
   const CACHE_TTL_MS = 3 * 60 * 60 * 1000; // 3 hours
-  const RISK_PRECIP = 60;   // precipitation probability threshold %
-  const HEAT_C = 32;        // heat alert threshold
-  const COLD_C = 0;         // cold alert threshold
+  const RISK_PRECIP = 60; // precipitation probability threshold %
+  const HEAT_C = 32; // heat alert threshold
+  const COLD_C = 0; // cold alert threshold
 
   // ---- Geocode a place name ONCE and store lat/lon in state ----
   // Client-side, on-request. Fails quietly (returns false) when offline
@@ -50,7 +50,7 @@ var MMGR = window.MMGR || {};
       const data = await res.json();
       const hit = data && data.results && data.results[0];
       if (!hit) return false;
-      ns.State.updateState(function(s) {
+      ns.State.updateState(function (s) {
         s.siteLat = hit.latitude;
         s.siteLon = hit.longitude;
         s.sitePlace = hit.name || place;
@@ -68,7 +68,12 @@ var MMGR = window.MMGR || {};
   // API family as geocode(). Fails quietly -> '' (caller keeps a plain label).
   async function reverseGeocode(lat, lon) {
     try {
-      const url = GEO + '?latitude=' + encodeURIComponent(lat) + '&longitude=' + encodeURIComponent(lon) +
+      const url =
+        GEO +
+        '?latitude=' +
+        encodeURIComponent(lat) +
+        '&longitude=' +
+        encodeURIComponent(lon) +
         '&count=1&language=en&format=json';
       const res = await ns.Net.get(url, { maxRetries: 2 });
       if (!res.ok) return '';
@@ -86,21 +91,28 @@ var MMGR = window.MMGR || {};
   // Pure on-request: never called on load; the dashboard triggers it on
   // demand or after geocode. localStorage cache keyed by lat,lon.
   async function fetchForecast(lat, lon) {
-    const url = API + '?latitude=' + encodeURIComponent(lat) + '&longitude=' + encodeURIComponent(lon) +
+    const url =
+      API +
+      '?latitude=' +
+      encodeURIComponent(lat) +
+      '&longitude=' +
+      encodeURIComponent(lon) +
       '&daily=weathercode,precipitation_probability_max,temperature_2m_max,temperature_2m_min' +
       '&timezone=auto&forecast_days=16';
     // Phase 2: MMGR.Net handles the timeout + exponential backoff (max 3).
     const res = await ns.Net.get(url, { maxRetries: 3 });
     if (!res.ok) throw new Error('forecast ' + res.status);
     const data = await res.json();
-    const days = (data.daily || {}).time ? data.daily.time.map((date, i) => ({
-      date: date,
-      code: (data.daily.weathercode || [])[i],
-      precip: (data.daily.precipitation_probability_max || [])[i] || 0,
-      tMax: (data.daily.temperature_2m_max || [])[i],
-      tMin: (data.daily.temperature_2m_min || [])[i]
-    })) : [];
-    ns.State.updateState(function(s) {
+    const days = (data.daily || {}).time
+      ? data.daily.time.map((date, i) => ({
+          date: date,
+          code: (data.daily.weathercode || [])[i],
+          precip: (data.daily.precipitation_probability_max || [])[i] || 0,
+          tMax: (data.daily.temperature_2m_max || [])[i],
+          tMin: (data.daily.temperature_2m_min || [])[i]
+        }))
+      : [];
+    ns.State.updateState(function (s) {
       s.wxCache = { at: Date.now(), lat: lat, lon: lon, days: days };
     });
     return days;
@@ -124,25 +136,38 @@ var MMGR = window.MMGR || {};
     const days = getForecast(s);
     if (!days) return [];
     const wxTasks = (s.tasks || []).filter(t => t.weatherSensitive && t.startDate && t.endDate);
-    const dayStr = (d) => d.toISOString().slice(0, 10);
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    return days.map(d => {
-      const risky = d.precip >= RISK_PRECIP || d.tMax >= HEAT_C || d.tMin <= COLD_C;
-      if (!risky) return null;
-      const dateObj = U.parseDL(d.date) || new Date(d.date + 'T00:00:00');
-      const within7 = dateObj >= today && dateObj <= new Date(today.getTime() + 7 * MMGR.Utils.MS_PER_DAY);
-      const affected = wxTasks.filter(t => {
-        const ts = U.parseDL(t.startDate), te = U.parseDL(t.endDate);
-        if (!ts || !te) return false;
-        return dateObj >= ts && dateObj <= te;
-      });
-      if (!within7 && !affected.length) return null;
-      const alerts = [];
-      if (d.precip >= RISK_PRECIP) alerts.push('precip ' + d.precip + '%');
-      if (d.tMax >= HEAT_C) alerts.push('heat ' + d.tMax + 'C');
-      if (d.tMin <= COLD_C) alerts.push('cold ' + d.tMin + 'C');
-      return { date: d.date, code: d.code, precip: d.precip, tMax: d.tMax, tMin: d.tMin, alerts: alerts, affected: affected.map(t => t.name) };
-    }).filter(Boolean);
+    const dayStr = d => d.toISOString().slice(0, 10);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return days
+      .map(d => {
+        const risky = d.precip >= RISK_PRECIP || d.tMax >= HEAT_C || d.tMin <= COLD_C;
+        if (!risky) return null;
+        const dateObj = U.parseDL(d.date) || new Date(d.date + 'T00:00:00');
+        const within7 =
+          dateObj >= today && dateObj <= new Date(today.getTime() + 7 * MMGR.Utils.MS_PER_DAY);
+        const affected = wxTasks.filter(t => {
+          const ts = U.parseDL(t.startDate),
+            te = U.parseDL(t.endDate);
+          if (!ts || !te) return false;
+          return dateObj >= ts && dateObj <= te;
+        });
+        if (!within7 && !affected.length) return null;
+        const alerts = [];
+        if (d.precip >= RISK_PRECIP) alerts.push('precip ' + d.precip + '%');
+        if (d.tMax >= HEAT_C) alerts.push('heat ' + d.tMax + 'C');
+        if (d.tMin <= COLD_C) alerts.push('cold ' + d.tMin + 'C');
+        return {
+          date: d.date,
+          code: d.code,
+          precip: d.precip,
+          tMax: d.tMax,
+          tMin: d.tMin,
+          alerts: alerts,
+          affected: affected.map(t => t.name)
+        };
+      })
+      .filter(Boolean);
   }
 
   // ---- Heat/Cold safety alert (visually distinct) ----
@@ -150,8 +175,26 @@ var MMGR = window.MMGR || {};
     const days = riskDays(state);
     const heat = days.filter(d => d.alerts.indexOf('heat ' + d.tMax + 'C') > -1)[0];
     const cold = days.filter(d => d.alerts.some(a => a.indexOf('cold') === 0))[0];
-    if (heat) return { kind: 'heat', text: 'Heat alert: ' + heat.tMax + 'C on ' + heat.date + ' , schedule outdoor work for early hours.' };
-    if (cold) return { kind: 'cold', text: 'Cold alert: ' + cold.tMin + 'C on ' + cold.date + ' , concrete/water work at freeze risk.' };
+    if (heat)
+      return {
+        kind: 'heat',
+        text:
+          'Heat alert: ' +
+          heat.tMax +
+          'C on ' +
+          heat.date +
+          ' , schedule outdoor work for early hours.'
+      };
+    if (cold)
+      return {
+        kind: 'cold',
+        text:
+          'Cold alert: ' +
+          cold.tMin +
+          'C on ' +
+          cold.date +
+          ' , concrete/water work at freeze risk.'
+      };
     return null;
   }
 
@@ -167,12 +210,14 @@ var MMGR = window.MMGR || {};
     const todayFc = days ? days.find(d => d.date === today) : null;
     const entry = {
       date: o.date || today,
-      condition: o.condition || (todayFc ? 'precip ' + todayFc.precip + '% / ' + todayFc.tMax + 'C' : 'manual entry'),
+      condition:
+        o.condition ||
+        (todayFc ? 'precip ' + todayFc.precip + '% / ' + todayFc.tMax + 'C' : 'manual entry'),
       note: o.note || '',
       affectedTaskIds: o.affectedTaskIds || [],
       manual: !!o.manual
     };
-    ns.State.updateState(function(st) {
+    ns.State.updateState(function (st) {
       if (!st.weatherLog) st.weatherLog = [];
       st.weatherLog.push(entry);
     });
@@ -180,7 +225,7 @@ var MMGR = window.MMGR || {};
   }
 
   function delWeatherLogEntry(index) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (s.weatherLog && s.weatherLog[index]) s.weatherLog.splice(index, 1);
     });
   }
@@ -190,8 +235,8 @@ var MMGR = window.MMGR || {};
   // Pure read; only counts days, never double-counts a logged day.
   function ldExposure(state) {
     const s = state || ns.State.getState();
-    const rate = +((s && (s.ldRate !== undefined ? s.ldRate : (s.charter && s.charter.ldRate))) || 0);
-    const days = (s && s.weatherLog) ? s.weatherLog.length : 0;
+    const rate = +((s && (s.ldRate !== undefined ? s.ldRate : s.charter && s.charter.ldRate)) || 0);
+    const days = s && s.weatherLog ? s.weatherLog.length : 0;
     return { days: days, rate: rate, exposure: days * rate };
   }
 
@@ -203,8 +248,18 @@ var MMGR = window.MMGR || {};
     const tasks = (s && s.tasks) || [];
     const dated = tasks.filter(t => t.startDate && t.endDate);
     if (!dated.length) return null;
-    const minStart = new Date(Math.min.apply(null, dated.map(t => new Date(t.startDate).getTime())));
-    const maxEnd = new Date(Math.max.apply(null, dated.map(t => new Date(t.endDate).getTime())));
+    const minStart = new Date(
+      Math.min.apply(
+        null,
+        dated.map(t => new Date(t.startDate).getTime())
+      )
+    );
+    const maxEnd = new Date(
+      Math.max.apply(
+        null,
+        dated.map(t => new Date(t.endDate).getTime())
+      )
+    );
     const elapsed = Math.max(1, Math.round((maxEnd - minStart) / MMGR.Utils.MS_PER_DAY) + 1);
     const wxDays = ((s && s.weatherLog) || []).length;
     const idx = Math.max(0, Math.round((1 - wxDays / elapsed) * 100));
@@ -215,12 +270,21 @@ var MMGR = window.MMGR || {};
   // Copy-paste text: next 3 risk days + affected weather-sensitive tasks.
   function subcontractorNotice(state) {
     const s = state || ns.State.getState();
-    const days = riskDays(s).filter(d => U.parseDL(d.date) >= new Date()).slice(0, 3);
+    const days = riskDays(s)
+      .filter(d => U.parseDL(d.date) >= new Date())
+      .slice(0, 3);
     const proj = (s && (s.projectName || (s.charter && s.charter.name))) || 'Project';
     if (!days.length) return 'No weather risk days in the current forecast for ' + proj + '.';
     const lines = ['SUBCONTRACTOR WEATHER NOTICE , ' + proj, '='.repeat(40)];
     days.forEach(d => {
-      lines.push(d.date + ' , ' + d.alerts.join(', ') + (d.affected.length ? ' | Affects: ' + d.affected.join(', ') : ' | No weather-sensitive tasks mapped'));
+      lines.push(
+        d.date +
+          ' , ' +
+          d.alerts.join(', ') +
+          (d.affected.length
+            ? ' | Affects: ' + d.affected.join(', ')
+            : ' | No weather-sensitive tasks mapped')
+      );
     });
     lines.push('Prepared by My MaNaGeR. Confirm with the site foreman before acting.');
     return lines.join('\n');

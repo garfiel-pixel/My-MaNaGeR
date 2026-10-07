@@ -11,7 +11,7 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   const MAX = 20;
@@ -30,16 +30,27 @@ var MMGR = window.MMGR || {};
   function getReportCfg() {
     let enabled = false;
     let url = '';
-    try { enabled = localStorage.getItem(REPORT_KEY) === '1'; } catch (e) { /* ignored */ }
-    try { url = (localStorage.getItem(WEBHOOK_KEY) || '').trim(); } catch (e) { /* ignored */ }
+    try {
+      enabled = localStorage.getItem(REPORT_KEY) === '1';
+    } catch (e) {
+      /* ignored */
+    }
+    try {
+      url = (localStorage.getItem(WEBHOOK_KEY) || '').trim();
+    } catch (e) {
+      /* ignored */
+    }
     return { enabled: enabled, url: url };
   }
 
   function setReportCfg(cfg) {
     try {
-      if (cfg && typeof cfg.enabled === 'boolean') localStorage.setItem(REPORT_KEY, cfg.enabled ? '1' : '0');
+      if (cfg && typeof cfg.enabled === 'boolean')
+        localStorage.setItem(REPORT_KEY, cfg.enabled ? '1' : '0');
       if (cfg && typeof cfg.url === 'string') localStorage.setItem(WEBHOOK_KEY, cfg.url.trim());
-    } catch (e) { /* ignored */ }
+    } catch (e) {
+      /* ignored */
+    }
   }
 
   // Fire-and-forget remote report. Routed through MMGR.Net's circuit-breaker
@@ -55,13 +66,19 @@ var MMGR = window.MMGR || {};
       if (!cfg.enabled || !cfg.url) return;
       if (!/^https:\/\//i.test(cfg.url)) return;
       if (!ns.Net || typeof ns.Net.post !== 'function') return;
-      await ns.Net.post(cfg.url, {
-        app: 'My MaNaGeR',
-        ts: entry.ts,
-        action: entry.action || 'app',
-        msg: entry.msg
-      }, { maxRetries: 0 });
-    } catch (e) { /* silent , the entry stays logged locally only */ }
+      await ns.Net.post(
+        cfg.url,
+        {
+          app: 'My MaNaGeR',
+          ts: entry.ts,
+          action: entry.action || 'app',
+          msg: entry.msg
+        },
+        { maxRetries: 0 }
+      );
+    } catch (e) {
+      /* silent , the entry stays logged locally only */
+    }
   }
 
   // Plain-text line for the export path (DIR-1a Copy/Download). Shares the
@@ -91,7 +108,9 @@ var MMGR = window.MMGR || {};
       // stops recursion; a direct synchronous save keeps the log side-channel
       // invisible to the rest of the app.
       ns.State.save(true);
-    } catch (e) { /* never throw from the error surface */ }
+    } catch (e) {
+      /* never throw from the error surface */
+    }
     _busy = false;
     // DIR-1b: the only hook that may leave this module. No-op when the
     // toggle is off (default) , the log() behavior above is unchanged.
@@ -100,24 +119,33 @@ var MMGR = window.MMGR || {};
 
   function clear() {
     try {
-      ns.State.updateState(function(s) { s.errorLog = []; });
-    } catch (e) { /* ignored */ }
+      ns.State.updateState(function (s) {
+        s.errorLog = [];
+      });
+    } catch (e) {
+      /* ignored */
+    }
     render();
   }
 
   function getLog() {
     const s = ns.State.getState();
-    return (s && Array.isArray(s.errorLog)) ? s.errorLog : [];
+    return s && Array.isArray(s.errorLog) ? s.errorLog : [];
   }
 
   function hookGlobals() {
     if (typeof window === 'undefined' || !window.addEventListener) return;
-    window.addEventListener('error', function(e) {
+    window.addEventListener('error', function (e) {
       log((e && e.message) || 'window error', 'global');
     });
-    window.addEventListener('unhandledrejection', function(e) {
+    window.addEventListener('unhandledrejection', function (e) {
       const r = e && e.reason;
-      log(r && r.message ? r.message : String(r === undefined || r === null ? 'unhandled rejection' : r), 'promise');
+      log(
+        r && r.message
+          ? r.message
+          : String(r === undefined || r === null ? 'unhandled rejection' : r),
+        'promise'
+      );
     });
   }
 
@@ -125,11 +153,22 @@ var MMGR = window.MMGR || {};
     const d = new Date(iso);
     if (isNaN(d.getTime())) return String(iso || '');
     const p = n => String(n).padStart(2, '0');
-    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
-      ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+    return (
+      d.getFullYear() +
+      '-' +
+      p(d.getMonth() + 1) +
+      '-' +
+      p(d.getDate()) +
+      ' ' +
+      p(d.getHours()) +
+      ':' +
+      p(d.getMinutes()) +
+      ':' +
+      p(d.getSeconds())
+    );
   }
 
-  // Renders into #errlog-body (Controls drawer). Zero inline styles , 
+  // Renders into #errlog-body (Controls drawer). Zero inline styles ,
   // classes come from css/mmgr.css (.errlog/.el-row/.el-ts/.el-act/...).
   function render() {
     const body = U.$('errlog-body');
@@ -139,13 +178,24 @@ var MMGR = window.MMGR || {};
       body.innerHTML = '<div class="el-empty">No client errors recorded.</div>';
       return;
     }
-    body.innerHTML = entries.slice(0, MAX).map(function(en) {
-      return '<div class="el-row">' +
-        '<span class="el-ts">' + U.escapeHtml(fmtTs(en.ts)) + '</span>' +
-        '<span class="el-act">' + U.escapeHtml(en.action || 'app') + '</span>' +
-        '<span class="el-msg">' + U.escapeHtml(en.msg) + '</span>' +
-        '</div>';
-    }).join('');
+    body.innerHTML = entries
+      .slice(0, MAX)
+      .map(function (en) {
+        return (
+          '<div class="el-row">' +
+          '<span class="el-ts">' +
+          U.escapeHtml(fmtTs(en.ts)) +
+          '</span>' +
+          '<span class="el-act">' +
+          U.escapeHtml(en.action || 'app') +
+          '</span>' +
+          '<span class="el-msg">' +
+          U.escapeHtml(en.msg) +
+          '</span>' +
+          '</div>'
+        );
+      })
+      .join('');
   }
 
   // ---- API ----

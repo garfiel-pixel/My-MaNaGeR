@@ -3,7 +3,7 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   const U = ns.Utils;
@@ -13,7 +13,10 @@ var MMGR = window.MMGR || {};
   function loadCharterData() {
     const s = S();
     const c = s.charter || {};
-    const setVal = (id, val) => { const el = U.$(id); if (el) el.value = val || ''; };
+    const setVal = (id, val) => {
+      const el = U.$(id);
+      if (el) el.value = val || '';
+    };
     setVal('ch-name', c.name);
     setVal('ch-sponsor', c.sponsor);
     setVal('ch-target-start', c.targetStart);
@@ -29,7 +32,7 @@ var MMGR = window.MMGR || {};
   }
 
   function updCharter(field, value) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (!s.charter) s.charter = {};
       s.charter[field] = value;
     });
@@ -77,7 +80,9 @@ var MMGR = window.MMGR || {};
     const tasks = (s && s.tasks) || [];
     const qsSafety = tasks.filter(t => hasBranch(t, /quality|safety/i));
     const done = qsSafety.filter(t => t.status === 'completed').length;
-    const openRisks = (s.risks || []).filter(r => r.issueId || (r.probability === 'High' && r.impact === 'High')).length;
+    const openRisks = (s.risks || []).filter(
+      r => r.issueId || (r.probability === 'High' && r.impact === 'High')
+    ).length;
     const total = qsSafety.length;
     return total ? Math.round((done / total) * 100) - openRisks * 5 : null;
   }
@@ -90,25 +95,52 @@ var MMGR = window.MMGR || {};
 
   function computeNepaRollup() {
     const s = S();
-    const branches = ((s && s.tasks) || []).filter(t => hasBranch(t, /preconstruction|precon|quality|safety/i));
-    return branches.filter(t => t.status === 'blocked' || (t.notes || '').match(/nepa|municipal|permit|finding/i)).length;
+    const branches = ((s && s.tasks) || []).filter(t =>
+      hasBranch(t, /preconstruction|precon|quality|safety/i)
+    );
+    return branches.filter(
+      t => t.status === 'blocked' || (t.notes || '').match(/nepa|municipal|permit|finding/i)
+    ).length;
   }
 
   // Live value for a linked metric key (null when not enough data).
   function kpiLiveValue(metric) {
     const s = S();
     switch (metric) {
-      case 'spi': { const e = (ns.Evm && ns.Evm.compute) ? ns.Evm.compute(s) : null; return (e && e.spi != null) ? +e.spi.toFixed(2) : null; }
-      case 'cpi': { const e = (ns.Evm && ns.Evm.compute) ? ns.Evm.compute(s) : null; return (e && e.cpi != null) ? +e.cpi.toFixed(2) : null; }
-      case 'pctComplete': { const tot = (s.tasks || []).length; return tot ? Math.round(s.tasks.filter(t => t.status === 'completed').length / tot * 100) : null; }
-      case 'overdueTasks': return (s.tasks || []).filter(t => U.isOverdue(t.endDate) && t.status !== 'completed').length;
-      case 'openRisks': return (s.risks || []).filter(r => !(r.issueId && (r.status === 'resolved'))).length;
-      case 'healthScore': return (ns.Health && ns.Health.get) ? ns.Health.get() : null;
-      case 'timelineVarianceDays': { const t = (ns.Render && ns.Render.computeTimelineStatus) ? ns.Render.computeTimelineStatus(s) : null; return t ? t.overrunDays : null; }
-      case 'ltifrRollup': return computeLtifrRollup();
-      case 'defectsHandoverRollup': return computeDefectsRollup();
-      case 'nepaFindingsRollup': return computeNepaRollup();
-      default: return null;
+      case 'spi': {
+        const e = ns.Evm && ns.Evm.compute ? ns.Evm.compute(s) : null;
+        return e && e.spi != null ? +e.spi.toFixed(2) : null;
+      }
+      case 'cpi': {
+        const e = ns.Evm && ns.Evm.compute ? ns.Evm.compute(s) : null;
+        return e && e.cpi != null ? +e.cpi.toFixed(2) : null;
+      }
+      case 'pctComplete': {
+        const tot = (s.tasks || []).length;
+        return tot
+          ? Math.round((s.tasks.filter(t => t.status === 'completed').length / tot) * 100)
+          : null;
+      }
+      case 'overdueTasks':
+        return (s.tasks || []).filter(t => U.isOverdue(t.endDate) && t.status !== 'completed')
+          .length;
+      case 'openRisks':
+        return (s.risks || []).filter(r => !(r.issueId && r.status === 'resolved')).length;
+      case 'healthScore':
+        return ns.Health && ns.Health.get ? ns.Health.get() : null;
+      case 'timelineVarianceDays': {
+        const t =
+          ns.Render && ns.Render.computeTimelineStatus ? ns.Render.computeTimelineStatus(s) : null;
+        return t ? t.overrunDays : null;
+      }
+      case 'ltifrRollup':
+        return computeLtifrRollup();
+      case 'defectsHandoverRollup':
+        return computeDefectsRollup();
+      case 'nepaFindingsRollup':
+        return computeNepaRollup();
+      default:
+        return null;
     }
   }
 
@@ -124,21 +156,22 @@ var MMGR = window.MMGR || {};
     const lower = k.dir === 'lower';
     const good = lower ? live <= num : live >= num;
     const band = lower ? num * 1.1 : num * 0.9;
-    const near = lower ? (live <= band) : (live >= band);
-    const cls = good ? 'bg' : (near ? 'ba' : 'br');
-    const txt = good ? 'On track' : (near ? 'At risk' : 'Off track');
+    const near = lower ? live <= band : live >= band;
+    const cls = good ? 'bg' : near ? 'ba' : 'br';
+    const txt = good ? 'On track' : near ? 'At risk' : 'Off track';
     return { live: live, cls: cls, txt: txt, num: num };
   }
 
   function updKPILink(i, metric) {
-    ns.State.updateState(function(s) {
-      if (s.charter && s.charter.kpis && s.charter.kpis[i]) s.charter.kpis[i].linkedMetric = metric || null;
+    ns.State.updateState(function (s) {
+      if (s.charter && s.charter.kpis && s.charter.kpis[i])
+        s.charter.kpis[i].linkedMetric = metric || null;
     });
     renderKpiList();
   }
 
   function updKPIDir(i, dir) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (s.charter && s.charter.kpis && s.charter.kpis[i]) s.charter.kpis[i].dir = dir;
     });
     renderKpiList();
@@ -170,13 +203,17 @@ var MMGR = window.MMGR || {};
     const s = S();
     const kpis = (s.charter && s.charter.kpis) || [];
     if (kpis.length === 0) {
-      container.innerHTML = '<div style="font-size:.78rem;color:var(--slate)">No KPIs defined. Add one below.</div>';
+      container.innerHTML =
+        '<div style="font-size:.78rem;color:var(--slate)">No KPIs defined. Add one below.</div>';
       return;
     }
-    container.innerHTML = kpis.map((kpi, i) => {
-      const st = kpiStatus(kpi);
-      const statusBadge = st ? `<span class="badge ${st.cls}" style="font-size:.6rem;padding:2px 7px">${st.txt}${st.live !== null ? ' · ' + st.live : ''}</span>` : '';
-      return `<div class="kpi-row-wrap">
+    container.innerHTML = kpis
+      .map((kpi, i) => {
+        const st = kpiStatus(kpi);
+        const statusBadge = st
+          ? `<span class="badge ${st.cls}" style="font-size:.6rem;padding:2px 7px">${st.txt}${st.live !== null ? ' · ' + st.live : ''}</span>`
+          : '';
+        return `<div class="kpi-row-wrap">
         <div class="kpi-row">
           <input type="text" value="${U.escapeHtml(kpi.name)}" data-action="updKPI" data-idx="${i}" data-field="name" placeholder="KPI name">
           <input type="text" value="${U.escapeHtml(kpi.target)}" data-action="updKPI" data-idx="${i}" data-field="target" placeholder="Target">
@@ -192,26 +229,36 @@ var MMGR = window.MMGR || {};
         </div>
         <div class="kpi-link-row">
           <span class="kpi-trace"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-link"></use></svg> Trace to live data:</span>
-          <select data-action="updKPILink" data-idx="${i}">${KPI_METRICS.map(m => `<option value="${m.key}" ${((kpi.linkedMetric || '') === m.key) ? 'selected' : ''}>${m.label}</option>`).join('')}</select>
+          <select data-action="updKPILink" data-idx="${i}">${KPI_METRICS.map(m => `<option value="${m.key}" ${(kpi.linkedMetric || '') === m.key ? 'selected' : ''}>${m.label}</option>`).join('')}</select>
           <span style="font-size:.64rem;color:var(--slate)">Direction:</span>
           <select data-action="updKPIDir" data-idx="${i}"><option value="higher" ${kpi.dir !== 'lower' ? 'selected' : ''}>Higher is better</option><option value="lower" ${kpi.dir === 'lower' ? 'selected' : ''}>Lower is better</option></select>
           ${statusBadge}
         </div>
       </div>`;
-    }).join('');
+      })
+      .join('');
   }
 
   function addKPI() {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (!s.charter) s.charter = {};
       if (!s.charter.kpis) s.charter.kpis = [];
-      s.charter.kpis.push({ name: '', target: '', status: '', category: '', measure: '', linkedMetric: null, dir: 'higher', suggestedLinks: [] });
+      s.charter.kpis.push({
+        name: '',
+        target: '',
+        status: '',
+        category: '',
+        measure: '',
+        linkedMetric: null,
+        dir: 'higher',
+        suggestedLinks: []
+      });
     });
     renderKpiList();
   }
 
   function updKPI(index, field, value) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (s.charter && s.charter.kpis && s.charter.kpis[index]) {
         s.charter.kpis[index][field] = value;
         // Auto-link when a name matches a known metric and nothing is linked.
@@ -219,7 +266,8 @@ var MMGR = window.MMGR || {};
           const sug = kpiSuggestLink(value);
           if (sug) {
             s.charter.kpis[index].linkedMetric = sug;
-            if (ns.App && ns.App.showToast) ns.App.showToast('Auto-linked KPI to ' + kpiMetricLabel(sug), 'ok');
+            if (ns.App && ns.App.showToast)
+              ns.App.showToast('Auto-linked KPI to ' + kpiMetricLabel(sug), 'ok');
           }
         }
       }
@@ -227,7 +275,7 @@ var MMGR = window.MMGR || {};
   }
 
   function delKPI(index) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (s.charter && s.charter.kpis) s.charter.kpis.splice(index, 1);
     });
     renderKpiList();
@@ -252,15 +300,20 @@ var MMGR = window.MMGR || {};
 
   // V3.1 , modal tab switcher (Upload File vs Paste Text).
   function cuSwitchTab(which) {
-    const tf = U.$('cu-tab-file'), tp = U.$('cu-tab-paste');
-    const pf = U.$('cu-pane-file'), pp = U.$('cu-pane-paste');
+    const tf = U.$('cu-tab-file'),
+      tp = U.$('cu-tab-paste');
+    const pf = U.$('cu-pane-file'),
+      pp = U.$('cu-pane-paste');
     if (tf && tp) {
       tf.classList.toggle('active', which === 'file');
       tp.classList.toggle('active', which === 'paste');
     }
     if (pf) pf.classList.toggle('is-hide', which !== 'file');
     if (pp) pp.classList.toggle('is-hide', which !== 'paste');
-    if (which === 'paste') { const s = U.$('cu-source'); if (s) setTimeout(() => s.focus(), 50); }
+    if (which === 'paste') {
+      const s = U.$('cu-source');
+      if (s) setTimeout(() => s.focus(), 50);
+    }
   }
 
   function uploadCharterDoc() {
@@ -284,45 +337,55 @@ var MMGR = window.MMGR || {};
       } else if (name.endsWith('.docx')) {
         // Client-side .docx parsing needs the mammoth library, which this
         // CSP-safe build does not vendor. Fall through to the manual path.
-        throw new Error('DOCX files can\'t be parsed in-browser under this app\'s security policy. Open it in Word, select all, copy, and use Paste Text instead.');
+        throw new Error(
+          "DOCX files can't be parsed in-browser under this app's security policy. Open it in Word, select all, copy, and use Paste Text instead."
+        );
       } else if (name.endsWith('.pdf')) {
-        throw new Error('PDF files can\'t be parsed in-browser under this app\'s security policy. Open it in a PDF reader, select all, copy, and use Paste Text instead.');
+        throw new Error(
+          "PDF files can't be parsed in-browser under this app's security policy. Open it in a PDF reader, select all, copy, and use Paste Text instead."
+        );
       } else {
         throw new Error('Unsupported file type. Use .txt or .md , or paste the text directly.');
       }
       openChartUp(text.trim());
-      if (ns.App && ns.App.showToast) ns.App.showToast('Text extracted , review, generate prompt, then paste AI output', 'ok');
+      if (ns.App && ns.App.showToast)
+        ns.App.showToast('Text extracted , review, generate prompt, then paste AI output', 'ok');
     } catch (err) {
       console.error('Charter upload:', err);
       openChartUp('');
       // Unsupported binary formats land the user on the Paste tab with the
       // cursor ready , one paste away from continuing the workflow.
       cuSwitchTab('paste');
-      if (ns.App && ns.App.showToast) ns.App.showToast(err.message || 'Could not extract text.', 'err');
+      if (ns.App && ns.App.showToast)
+        ns.App.showToast(err.message || 'Could not extract text.', 'err');
     }
   }
 
   function generateCharterFillPrompt(textContent) {
-    return 'You are an expert Project Manager. Read the charter document below and extract the information into STRICT valid JSON (no prose, no code fences, no comments). Use these exact keys and types:\n'
-      + '{\n'
-      + '  "name": string, // Project name\n'
-      + '  "sponsor": string, // Executive sponsor\n'
-      + '  "targetStart": "YYYY-MM-DD", // Planned start date\n'
-      + '  "targetCompletion": "YYYY-MM-DD", // Planned end date\n'
-      + '  "budgetEnvelope": number, // Planned budget in dollars (numeric only)\n'
-      + '  "objective": string, // Business objective / quantifiable outcome\n'
-      + '  "scope": string, // In-scope items\n'
-      + '  "deliverables": string, // Key deliverables\n'
-      + '  "constraints": string, // Constraints\n'
-      + '  "assumptions": string, // Assumptions\n'
-      + '  "exclusions": string, // Out-of-scope items\n'
-      + '  "kpis": [ { "name": string, "target": string, "category": "financial|schedule|quality|safety|environmental" } ]\n'
-      + '}\n'
-      + 'Rules:\n'
-      + '- Return ONLY the JSON object. No markdown, no explanations.\n'
-      + '- If a field is not present in the document, use "" or 0 or [] as appropriate.\n'
-      + '- Preserve original wording where possible; consolidate bullet lists into newline-separated strings.\n\n'
-      + 'DOCUMENT CONTENT:\n"""\n' + textContent + '\n"""';
+    return (
+      'You are an expert Project Manager. Read the charter document below and extract the information into STRICT valid JSON (no prose, no code fences, no comments). Use these exact keys and types:\n' +
+      '{\n' +
+      '  "name": string, // Project name\n' +
+      '  "sponsor": string, // Executive sponsor\n' +
+      '  "targetStart": "YYYY-MM-DD", // Planned start date\n' +
+      '  "targetCompletion": "YYYY-MM-DD", // Planned end date\n' +
+      '  "budgetEnvelope": number, // Planned budget in dollars (numeric only)\n' +
+      '  "objective": string, // Business objective / quantifiable outcome\n' +
+      '  "scope": string, // In-scope items\n' +
+      '  "deliverables": string, // Key deliverables\n' +
+      '  "constraints": string, // Constraints\n' +
+      '  "assumptions": string, // Assumptions\n' +
+      '  "exclusions": string, // Out-of-scope items\n' +
+      '  "kpis": [ { "name": string, "target": string, "category": "financial|schedule|quality|safety|environmental" } ]\n' +
+      '}\n' +
+      'Rules:\n' +
+      '- Return ONLY the JSON object. No markdown, no explanations.\n' +
+      '- If a field is not present in the document, use "" or 0 or [] as appropriate.\n' +
+      '- Preserve original wording where possible; consolidate bullet lists into newline-separated strings.\n\n' +
+      'DOCUMENT CONTENT:\n"""\n' +
+      textContent +
+      '\n"""'
+    );
   }
 
   function regenChartPrompt() {
@@ -344,20 +407,35 @@ var MMGR = window.MMGR || {};
   function tryParseCharterJSON(raw) {
     if (!raw) return null;
     let t = raw.trim();
-    t = t.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+    t = t
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/```\s*$/, '')
+      .trim();
     const m = t.match(/\{[\s\S]*\}$/) || t.match(/\{[\s\S]*\}/);
     if (m) t = m[0];
-    try { return JSON.parse(t); } catch (e) { return null; }
+    try {
+      return JSON.parse(t);
+    } catch (e) {
+      return null;
+    }
   }
 
   // Regex fallback for plain-text charters when the AI output isn't JSON.
   function regexExtractCharter(txt) {
-    const grab = (label) => {
-      const re = new RegExp('(?:^|\n)\s*' + label + '\s*[:\--]\s*(.+?)(?=\n\s*[A-Z][A-Za-z /]{2,30}\s*[:\--]|\n\s*\n|$)', 'is');
+    const grab = label => {
+      const re = new RegExp(
+        '(?:^|\n)\s*' +
+          label +
+          '\s*[:\--]\s*(.+?)(?=\n\s*[A-Z][A-Za-z /]{2,30}\s*[:\--]|\n\s*\n|$)',
+        'is'
+      );
       const m = txt.match(re);
       return m ? m[1].trim() : '';
     };
-    const budget = (() => { const m = txt.match(/budget\s*[:\--]\s*\$?\s*([\d,]+(?:\.\d+)?)/i); return m ? +m[1].replace(/,/g, '') : 0; })();
+    const budget = (() => {
+      const m = txt.match(/budget\s*[:\--]\s*\$?\s*([\d,]+(?:\.\d+)?)/i);
+      return m ? +m[1].replace(/,/g, '') : 0;
+    })();
     return {
       name: grab('Project Name') || grab('Project Title') || grab('Project'),
       sponsor: grab('Sponsor') || grab('Executive Sponsor'),
@@ -387,17 +465,30 @@ var MMGR = window.MMGR || {};
       if (raw.trim() === '' && src.trim()) data = regexExtractCharter(src);
     }
     if (!data) {
-      ns.App.showToast('Could not parse AI output as JSON. Make sure the AI returned a valid JSON object (no markdown fences).', 'err');
+      ns.App.showToast(
+        'Could not parse AI output as JSON. Make sure the AI returned a valid JSON object (no markdown fences).',
+        'err'
+      );
       return;
     }
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (!s.charter) s.charter = {};
       const f = s.charter;
-      const put = (k, v) => { if (v !== undefined && v !== null && v !== '') f[k] = v; };
-      put('name', data.name); put('sponsor', data.sponsor);
+      const put = (k, v) => {
+        if (v !== undefined && v !== null && v !== '') f[k] = v;
+      };
+      put('name', data.name);
+      put('sponsor', data.sponsor);
       put('targetStart', data.targetStart || data.start);
       put('targetCompletion', data.targetCompletion || data.end);
-      put('budgetEnvelope', data.budgetEnvelope !== undefined ? +data.budgetEnvelope : (data.budget !== undefined ? +data.budget : undefined));
+      put(
+        'budgetEnvelope',
+        data.budgetEnvelope !== undefined
+          ? +data.budgetEnvelope
+          : data.budget !== undefined
+            ? +data.budget
+            : undefined
+      );
       put('objective', data.objective || data.qo || data.req);
       put('scope', data.scope || data.ins);
       put('deliverables', data.deliverables || data.del);
@@ -408,7 +499,16 @@ var MMGR = window.MMGR || {};
         if (!s.charter.kpis) s.charter.kpis = [];
         data.kpis.forEach(k => {
           if (!k) return;
-          s.charter.kpis.push({ name: k.name || '', target: k.target || '', status: '', category: k.category || '', measure: k.unit || '', linkedMetric: null, dir: 'higher', suggestedLinks: [] });
+          s.charter.kpis.push({
+            name: k.name || '',
+            target: k.target || '',
+            status: '',
+            category: k.category || '',
+            measure: k.unit || '',
+            linkedMetric: null,
+            dir: 'higher',
+            suggestedLinks: []
+          });
         });
       }
     });
@@ -426,12 +526,18 @@ var MMGR = window.MMGR || {};
     document.body.classList.add('print-charter');
     const tas = document.querySelectorAll('.charter-print-root textarea');
     const restore = [];
-    tas.forEach(t => { restore.push([t, t.style.height]); t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; });
+    tas.forEach(t => {
+      restore.push([t, t.style.height]);
+      t.style.height = 'auto';
+      t.style.height = t.scrollHeight + 'px';
+    });
     setTimeout(() => {
       window.print();
       setTimeout(() => {
         document.body.classList.remove('print-charter');
-        restore.forEach(([t, h]) => { t.style.height = h; });
+        restore.forEach(([t, h]) => {
+          t.style.height = h;
+        });
       }, 500);
     }, 100);
   }
@@ -441,7 +547,10 @@ var MMGR = window.MMGR || {};
   // the silent debounced autosave, with a confirming toast so the user gets
   // positive, visible confirmation the charter was persisted.
   function saveCharter() {
-    const read = (id) => { const el = U.$(id); return el ? el.value : undefined; };
+    const read = id => {
+      const el = U.$(id);
+      return el ? el.value : undefined;
+    };
     const vals = {
       name: read('ch-name'),
       sponsor: read('ch-sponsor'),
@@ -455,11 +564,14 @@ var MMGR = window.MMGR || {};
       exclusions: read('ch-exclusions'),
       // budgetEnvelope is numeric everywhere else in state , coerce on save
       // so downstream math (buildBudgetSummary, EVM) never sees a string.
-      budgetEnvelope: read('ch-budget') !== undefined && read('ch-budget') !== '' ? +read('ch-budget') : undefined
+      budgetEnvelope:
+        read('ch-budget') !== undefined && read('ch-budget') !== '' ? +read('ch-budget') : undefined
     };
-    ns.State.updateState(function(st) {
+    ns.State.updateState(function (st) {
       if (!st.charter) st.charter = {};
-      Object.keys(vals).forEach(k => { if (vals[k] !== undefined) st.charter[k] = vals[k]; });
+      Object.keys(vals).forEach(k => {
+        if (vals[k] !== undefined) st.charter[k] = vals[k];
+      });
     });
     ns.State.save(true);
     if (ns.App && ns.App.showToast) ns.App.showToast('Charter saved!', 'ok');
@@ -494,6 +606,5 @@ var MMGR = window.MMGR || {};
     printCharter: printCharter,
     saveCharter: saveCharter
   };
-
 })(MMGR);
 window.MMGR = MMGR;

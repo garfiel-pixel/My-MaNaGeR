@@ -42,40 +42,105 @@ const { spawn } = require('child_process');
 const path = require('path');
 const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('./tools/chrome-launcher.cjs');
 const PROFILE = path.join(require('os').tmpdir(), 'mmgr-glass-' + Date.now());
-let ws, msgId = 0;
+let ws,
+  msgId = 0;
 const pending = new Map();
 const results = [];
-const log = (s) => { process.stdout.write('[glass35] ' + s + '\n'); };
+const log = s => {
+  process.stdout.write('[glass35] ' + s + '\n');
+};
 const delay = ms => new Promise(r => setTimeout(r, ms));
-setTimeout(() => { log('WATCHDOG'); try { ws && ws.close(); } catch (e) {} process.exit(2); }, 300000);
-function send(method, params) { return new Promise(res => { const id = ++msgId; pending.set(id, m => { pending.delete(id); res(m.result || {}); }); ws.send(JSON.stringify({ id, method, params: params || {} })); }); }
-async function ev(expr) { const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true }); if (r.exceptionDetails) return { __err: r.exceptionDetails.exception ? r.exceptionDetails.exception.description : r.exceptionDetails.text }; return r.result && r.result.value; }
+setTimeout(() => {
+  log('WATCHDOG');
+  try {
+    ws && ws.close();
+  } catch (e) {}
+  process.exit(2);
+}, 300000);
+function send(method, params) {
+  return new Promise(res => {
+    const id = ++msgId;
+    pending.set(id, m => {
+      pending.delete(id);
+      res(m.result || {});
+    });
+    ws.send(JSON.stringify({ id, method, params: params || {} }));
+  });
+}
+async function ev(expr) {
+  const r = await send('Runtime.evaluate', {
+    expression: expr,
+    returnByValue: true,
+    awaitPromise: true
+  });
+  if (r.exceptionDetails)
+    return {
+      __err: r.exceptionDetails.exception
+        ? r.exceptionDetails.exception.description
+        : r.exceptionDetails.text
+    };
+  return r.result && r.result.value;
+}
 
 (async () => {
-  const proc = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run', '--remote-debugging-port=' + PORT, '--user-data-dir=' + PROFILE, '--window-size=1440,1200', 'about:blank'], { stdio: 'ignore' });
-  for (let i = 0; i < 60; i++) { try { const r = await fetch('http://127.0.0.1:' + PORT + '/json/version'); if (r.ok) break; } catch (e) {} await delay(300); }
+  const proc = spawn(
+    CHROME,
+    [
+      '--headless=new',
+      '--disable-gpu',
+      '--no-first-run',
+      '--remote-debugging-port=' + PORT,
+      '--user-data-dir=' + PROFILE,
+      '--window-size=1440,1200',
+      'about:blank'
+    ],
+    { stdio: 'ignore' }
+  );
+  for (let i = 0; i < 60; i++) {
+    try {
+      const r = await fetch('http://127.0.0.1:' + PORT + '/json/version');
+      if (r.ok) break;
+    } catch (e) {}
+    await delay(300);
+  }
   const targets = await (await fetch('http://127.0.0.1:' + PORT + '/json')).json();
   ws = new WebSocket(targets.find(t => t.type === 'page').webSocketDebuggerUrl);
-  ws.onmessage = (ev) => { const m = JSON.parse(ev.data); if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); } };
-  await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error('ws fail')); });
-  await send('Runtime.enable'); await send('Page.enable');
+  ws.onmessage = ev => {
+    const m = JSON.parse(ev.data);
+    if (m.id && pending.has(m.id)) {
+      pending.get(m.id)(m);
+      pending.delete(m.id);
+    }
+  };
+  await new Promise((res, rej) => {
+    ws.onopen = res;
+    ws.onerror = () => rej(new Error('ws fail'));
+  });
+  await send('Runtime.enable');
+  await send('Page.enable');
 
   // Fresh-device discipline: wipe every pref slot the engine family reads so
   // nothing counts as a stored choice (mmgr-perf's pretty default then
   // governs, and each gate sets exactly the state it asserts).
-  await send('Page.addScriptToEvaluateOnNewDocument', { source: `
+  await send('Page.addScriptToEvaluateOnNewDocument', {
+    source: `
     (function() {
       ['mmgr_perf_mode', 'mmgr_glass_mode', 'mmgr_view_mode', 'mmgr_perf_nudge'].forEach(function(k) {
         try { localStorage.removeItem(k); } catch (e) {}
       });
     })();
-  ` });
+  `
+  });
 
   // TRIAGE RESOLUTION: host on app.html — glass-allowed (activate() excludes
   // only project* paths), full bundle, real boot sequence.
-  await send('Page.navigate', { url: BASE + '/app.html' }); await delay(4500);
+  await send('Page.navigate', { url: BASE + '/app.html' });
+  await delay(4500);
 
-  const check = (name, val, detail) => { results.push({ name, val, detail }); log((val ? 'PASS' : 'FAIL') + ' ' + name + (val ? '' : '  <-- ' + JSON.stringify(detail))); };
+  const check = (name, val, detail) => {
+    results.push({ name, val, detail });
+    log((val ? 'PASS' : 'FAIL') + ' ' + name + (val ? '' : '  <-- ' + JSON.stringify(detail)));
+  };
 
   // ---- 0. boot: modules present + pinned CDN verified at implementation ----
   const b1 = await ev(`(function(){
@@ -83,7 +148,11 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       cdn: window.MMGR.Glass && window.MMGR.Glass.THREE_CDN,
       pinned: /unpkg\\.com\\/three@\\d+\\.\\d+\\.\\d+\\/build\\/three\\.module\\.js/.test(window.MMGR.Glass ? window.MMGR.Glass.THREE_CDN : '') };
   })()`);
-  check('G01 boot: Glass module + Viewport present, CDN pinned to real three URL', !!(b1.glass && b1.viewport && b1.pinned), b1);
+  check(
+    'G01 boot: Glass module + Viewport present, CDN pinned to real three URL',
+    !!(b1.glass && b1.viewport && b1.pinned),
+    b1
+  );
 
   // 3.5.1: CSS glass default — .card uses the glass recipe (blur var present
   // in the rule), zero JS class needed.
@@ -106,7 +175,11 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
         canvasPresent: !!document.getElementById('glass-canvas') };
     })()`);
   }
-  check('G02 pretty-default: .card keeps the CSS recipe AND the engine boots unprompted on capable devices', g1.hasBackdrop && g1.premiumOn && g1.canvasPresent, g1);
+  check(
+    'G02 pretty-default: .card keeps the CSS recipe AND the engine boots unprompted on capable devices',
+    g1.hasBackdrop && g1.premiumOn && g1.canvasPresent,
+    g1
+  );
 
   // ---- 3.5.2 capability detection ---------------------------------------
   // Force high-end via the documented test hook, set pref premium. Perf is
@@ -117,7 +190,11 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     localStorage.setItem('mmgr_perf_mode', 'off');
     return { highEnd: window.MMGR.Viewport.isHighEnd(), pref: window.MMGR.Viewport.getGlassMode(), eff: window.MMGR.Viewport.effectiveGlassMode() };
   })()`);
-  check('G03 detect: high-end + premium pref (+ perf off) -> effective premium', c1.highEnd && c1.pref === 'premium' && c1.eff === 'premium', c1);
+  check(
+    'G03 detect: high-end + premium pref (+ perf off) -> effective premium',
+    c1.highEnd && c1.pref === 'premium' && c1.eff === 'premium',
+    c1
+  );
 
   // G03b (owner 2026-09-15, re-baselined 2026-09-29): Performance Mode DOES
   // gate the shader now (perf must guarantee a lag-free page on weak
@@ -131,7 +208,11 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     localStorage.removeItem('mmgr_perf_mode'); // back to the pretty default
     return { effPerfOn: effPerfOn, effPerfOff: effPerfOff };
   })()`);
-  check('G03b perf-mode: Performance ON gates the shader to css, OFF (pretty default) restores premium', c1b.effPerfOn === 'css' && c1b.effPerfOff === 'premium', c1b);
+  check(
+    'G03b perf-mode: Performance ON gates the shader to css, OFF (pretty default) restores premium',
+    c1b.effPerfOn === 'css' && c1b.effPerfOff === 'premium',
+    c1b
+  );
 
   // Capability floor: force low-end while pref stays premium -> CSS wins.
   const c2 = await ev(`(function(){
@@ -140,16 +221,30 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     window.__mmgrForceHighEnd = true;
     return { eff: eff };
   })()`);
-  check('G04 detect: low-end profile -> CSS even with stored premium pref (floor overrides)', c2.eff === 'css', c2);
+  check(
+    'G04 detect: low-end profile -> CSS even with stored premium pref (floor overrides)',
+    c2.eff === 'css',
+    c2
+  );
 
   // Shared detection: narrow viewport + premium pref -> CSS (plan §2).
-  await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  await send('Emulation.setDeviceMetricsOverride', {
+    width: 390,
+    height: 844,
+    deviceScaleFactor: 2,
+    mobile: true
+  });
   await delay(300);
   const c3 = await ev(`(function(){
     return { narrow: window.MMGR.Viewport.isNarrow(), eff: window.MMGR.Viewport.effectiveGlassMode() };
   })()`);
-  check('G05 detect: narrow viewport + premium pref -> CSS (shared signal)', c3.narrow && c3.eff === 'css', c3);
-  await send('Emulation.clearDeviceMetricsOverride'); await delay(300);
+  check(
+    'G05 detect: narrow viewport + premium pref -> CSS (shared signal)',
+    c3.narrow && c3.eff === 'css',
+    c3
+  );
+  await send('Emulation.clearDeviceMetricsOverride');
+  await delay(300);
 
   // ---- 3.5.4 premium engine: zero network until opt-in ------------------
   // Track import calls; with the toggle off, Glass.sync must not import.
@@ -164,7 +259,11 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     return { calls: window.__mmgrGlassImportCalls, active: window.MMGR.Glass.active() };
   })()`);
   await delay(300);
-  check('G06 zero-net: toggle off -> sync() makes ZERO three import calls (hard gate)', n1.calls === 0 && n1.active === false, n1);
+  check(
+    'G06 zero-net: toggle off -> sync() makes ZERO three import calls (hard gate)',
+    n1.calls === 0 && n1.active === false,
+    n1
+  );
 
   // Opt in on a high-end device with a MOCKED THREE module: activate builds
   // a canvas, sets the body class, and starts rendering.
@@ -207,7 +306,11 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       calls: window.__mmgrGlassImportCalls };
   })()`);
   await delay(200);
-  check('G07 premium: activate() with mock three -> active + body class + canvas + exactly one import', n2.ok && n2.active && n2.cls && n2.canvas && n2.calls === 1, n2);
+  check(
+    'G07 premium: activate() with mock three -> active + body class + canvas + exactly one import',
+    n2.ok && n2.active && n2.cls && n2.canvas && n2.calls === 1,
+    n2
+  );
 
   // ---- 3.5.5 shared teardown: no leaked contexts -------------------------
   const t1 = await ev(`(function(){
@@ -218,7 +321,11 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       glow: !!document.querySelector('.mouse-glow'),
       disposed: window.__glassDisposed, lost: window.__glassLost };
   })()`);
-  check('G08 teardown: deactivate -> renderer.dispose + WEBGL_lose_context, canvas + mouse-glow removed', !t1.active && !t1.cls && !t1.canvas && !t1.glow && t1.disposed === 1 && t1.lost === 1, t1);
+  check(
+    'G08 teardown: deactivate -> renderer.dispose + WEBGL_lose_context, canvas + mouse-glow removed',
+    !t1.active && !t1.cls && !t1.canvas && !t1.glow && t1.disposed === 1 && t1.lost === 1,
+    t1
+  );
 
   // Toggle on/off repeatedly — dispose count must track activations exactly
   // (one context created per activate, one disposed per deactivate: no leak).
@@ -232,7 +339,11 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     }
     return { disposed: window.__glassDisposed - beforeDisposed, active: window.MMGR.Glass.active(), canvas: !!document.getElementById('glass-canvas'), glow: !!document.querySelector('.mouse-glow') };
   })()`);
-  check('G09 teardown: 4 on/off cycles -> 4 disposes, 0 active, 0 canvas + 0 mouse-glow left (no leak)', t2.disposed === 4 && !t2.active && !t2.canvas && !t2.glow, t2);
+  check(
+    'G09 teardown: 4 on/off cycles -> 4 disposes, 0 active, 0 canvas + 0 mouse-glow left (no leak)',
+    t2.disposed === 4 && !t2.active && !t2.canvas && !t2.glow,
+    t2
+  );
 
   // Settings-toggle path (owner 2026-09-06): the checkbox UI is retired;
   // Performance Mode now owns the heavy-layer decision. This gate verifies
@@ -251,13 +362,25 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   })()`);
   await delay(250);
   const u2 = await ev(`(function(){ return window.MMGR.Glass.active(); })()`);
-  check('G10 toggle: premium pref (+ perf off) -> effective premium + engine active', u1 && u1.pref === 'css' && u1.eff === 'css' && u2 === true, { u1, u2 });
+  check(
+    'G10 toggle: premium pref (+ perf off) -> effective premium + engine active',
+    u1 && u1.pref === 'css' && u1.eff === 'css' && u2 === true,
+    { u1, u2 }
+  );
 
   // Back off via the preference path (setGlassMode('css') + sync).
-  await ev(`(function(){ window.MMGR.Viewport.setGlassMode('css'); window.MMGR.Glass.sync(); return true; })()`);
+  await ev(
+    `(function(){ window.MMGR.Viewport.setGlassMode('css'); window.MMGR.Glass.sync(); return true; })()`
+  );
   await delay(250);
-  const u3 = await ev(`(function(){ return { active: window.MMGR.Glass.active(), pref: window.MMGR.Viewport.getGlassMode() }; })()`);
-  check('G11 toggle: css pref -> engine disposed, pref css', u3.active === false && u3.pref === 'css', u3);
+  const u3 = await ev(
+    `(function(){ return { active: window.MMGR.Glass.active(), pref: window.MMGR.Viewport.getGlassMode() }; })()`
+  );
+  check(
+    'G11 toggle: css pref -> engine disposed, pref css',
+    u3.active === false && u3.pref === 'css',
+    u3
+  );
 
   // Preference is device-level, not project state (never in the export).
   // Static check: the launcher bundle (this page) ships no State module BY
@@ -274,14 +397,27 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     return { ls: ls, stateHasGlass: stateHasGlass, statePresent: !!window.MMGR.State };
   })()`);
   const fsMod = require('fs');
-  const stateSrc = fsMod.readFileSync(require('path').join(__dirname, 'js', 'mmgr-state.js'), 'utf8');
+  const stateSrc = fsMod.readFileSync(
+    require('path').join(__dirname, 'js', 'mmgr-state.js'),
+    'utf8'
+  );
   const stateClean = !/glassMode|glassPref|glass_mode/.test(stateSrc);
-  check('G12 pref: glass mode lives in the device slot, NOT project state', u4.ls === 'css' && u4.stateHasGlass === false && stateClean, { u4, stateClean });
+  check(
+    'G12 pref: glass mode lives in the device slot, NOT project state',
+    u4.ls === 'css' && u4.stateHasGlass === false && stateClean,
+    { u4, stateClean }
+  );
 
   // Reset for other gates.
-  await ev(`(function(){ localStorage.removeItem('mmgr_glass_mode'); localStorage.setItem('mmgr_perf_mode', 'on'); window.__mmgrForceHighEnd = undefined; return true; })()`);
+  await ev(
+    `(function(){ localStorage.removeItem('mmgr_glass_mode'); localStorage.setItem('mmgr_perf_mode', 'on'); window.__mmgrForceHighEnd = undefined; return true; })()`
+  );
 
   const failed = results.filter(r => !r.val);
   log('GLASS35_GATE ' + (failed.length === 0 ? 'PASS' : 'FAIL (' + failed.length + ' broken)'));
-  proc.kill(); process.exit(failed.length === 0 ? 0 : 1);
-})().catch(e => { log('FATAL: ' + e.message); process.exit(1); });
+  proc.kill();
+  process.exit(failed.length === 0 ? 0 : 1);
+})().catch(e => {
+  log('FATAL: ' + e.message);
+  process.exit(1);
+});

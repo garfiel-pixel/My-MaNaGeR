@@ -32,13 +32,16 @@ const PAIRS = [
 ];
 
 let failed = 0;
-const fail = (msg) => { console.log('  FAIL  ' + msg); failed++; };
-const pass = (msg) => console.log('  PASS  ' + msg);
+const fail = msg => {
+  console.log('  FAIL  ' + msg);
+  failed++;
+};
+const pass = msg => console.log('  PASS  ' + msg);
 
 function stripComments(text) {
   // Replace each real comment with spaces, preserving offsets so reported
   // line numbers still point at the original file.
-  return text.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '));
+  return text.replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' '));
 }
 
 function lineOf(text, index) {
@@ -47,11 +50,15 @@ function lineOf(text, index) {
 
 console.log('\n=== CSS integrity: ARM 1 stray comment closers ===');
 
-const HTML_PAGES = fs.readdirSync('.').filter((f) => f.endsWith('.html'));
-const targets = PAIRS.map((p) => p.src).concat(
-  PAIRS.map((p) => p.dist).filter((f) => fs.existsSync(f)),
-  HTML_PAGES.filter((f) => {
-    try { return /<style[\s>]/i.test(fs.readFileSync(f, 'utf8')); } catch (e) { return false; }
+const HTML_PAGES = fs.readdirSync('.').filter(f => f.endsWith('.html'));
+const targets = PAIRS.map(p => p.src).concat(
+  PAIRS.map(p => p.dist).filter(f => fs.existsSync(f)),
+  HTML_PAGES.filter(f => {
+    try {
+      return /<style[\s>]/i.test(fs.readFileSync(f, 'utf8'));
+    } catch (e) {
+      return false;
+    }
   })
 );
 
@@ -80,7 +87,13 @@ for (const file of targets) {
       console.log('    ' + file + ':' + lineOf(raw, i));
     }
   }
-  if (stray) fail(file + ': ' + stray + ' stray comment closer(s) - the prose after one is parsed as CSS and kills the next rule');
+  if (stray)
+    fail(
+      file +
+        ': ' +
+        stray +
+        ' stray comment closer(s) - the prose after one is parsed as CSS and kills the next rule'
+    );
   else pass(file + ': no stray comment closer');
 }
 
@@ -96,7 +109,7 @@ for (const pair of PAIRS) {
   const classes = new Set();
   for (const m of srcCss.matchAll(/([^{}]+)\{/g)) {
     for (const s of m[1].split(',')) {
-      for (const c of (s.trim().match(/\.([A-Za-z][A-Za-z0-9_-]*)/g) || [])) classes.add(c.slice(1));
+      for (const c of s.trim().match(/\.([A-Za-z][A-Za-z0-9_-]*)/g) || []) classes.add(c.slice(1));
     }
   }
   // Collect the SELECTOR segments of the bundle (the text before each `{`),
@@ -110,8 +123,18 @@ for (const pair of PAIRS) {
   for (const c of classes) {
     if (!new RegExp('\\.' + c + '(?![A-Za-z0-9_-])').test(selectors)) missing.push(c);
   }
-  if (missing.length) fail(pair.src + ': ' + missing.length + ' class rule(s) absent from ' + pair.dist + ' -> ' + missing.slice(0, 12).join(', '));
-  else pass(pair.src + ': all ' + classes.size + ' class rules survive the build into ' + pair.dist);
+  if (missing.length)
+    fail(
+      pair.src +
+        ': ' +
+        missing.length +
+        ' class rule(s) absent from ' +
+        pair.dist +
+        ' -> ' +
+        missing.slice(0, 12).join(', ')
+    );
+  else
+    pass(pair.src + ': all ' + classes.size + ' class rules survive the build into ' + pair.dist);
 }
 
 console.log('\n' + (failed ? 'CSS INTEGRITY FAIL (' + failed + ')' : 'CSS INTEGRITY PASS'));

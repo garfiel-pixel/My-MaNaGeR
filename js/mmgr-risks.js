@@ -3,39 +3,42 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   const U = ns.Utils;
   const R = ns.Render;
 
   function addRisk() {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (!s.risks) s.risks = [];
       s.risks.push({
-        id: U.genShortId('R'), description: '',
-        probability: 'Medium', impact: 'Medium',
-        mitigation: '', issueId: null
+        id: U.genShortId('R'),
+        description: '',
+        probability: 'Medium',
+        impact: 'Medium',
+        mitigation: '',
+        issueId: null
       });
     });
     R.renderRisks();
   }
 
   function updRisk(index, field, value) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (s.risks && s.risks[index]) s.risks[index][field] = value;
     });
   }
 
   function delRisk(index) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (s.risks) s.risks.splice(index, 1);
     });
     R.renderRisks();
   }
 
   function toggleRiskIssue(index) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (!s.risks || !s.risks[index]) return;
       const risk = s.risks[index];
       if (risk.issueId) {
@@ -43,8 +46,12 @@ var MMGR = window.MMGR || {};
       } else {
         if (!s.issues) s.issues = [];
         s.issues.push({
-          id: U.genShortId('I'), description: risk.description,
-          owner: '', targetDate: '', status: 'open', sourceRiskId: risk.id
+          id: U.genShortId('I'),
+          description: risk.description,
+          owner: '',
+          targetDate: '',
+          status: 'open',
+          sourceRiskId: risk.id
         });
         risk.issueId = s.issues[s.issues.length - 1].id;
       }
@@ -53,13 +60,13 @@ var MMGR = window.MMGR || {};
   }
 
   function updIssue(index, field, value) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (s.issues && s.issues[index]) s.issues[index][field] = value;
     });
   }
 
   function delIssue(index) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (s.issues) s.issues.splice(index, 1);
     });
     R.renderRisks();
@@ -70,18 +77,24 @@ var MMGR = window.MMGR || {};
   // (continuous improvement) and from the general task list. Each inspection
   // holds a pass/fail item checklist; status rolls up from item passes.
   function addInspection() {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (!s.inspections) s.inspections = [];
       s.inspections.push({
-        id: U.genShortId('INSP'), title: '', trade: '', area: '', date: U.todayStr(),
-        status: 'open', items: [{ text: '', pass: false, notes: '' }], notes: ''
+        id: U.genShortId('INSP'),
+        title: '',
+        trade: '',
+        area: '',
+        date: U.todayStr(),
+        status: 'open',
+        items: [{ text: '', pass: false, notes: '' }],
+        notes: ''
       });
     });
     R.renderClosure();
   }
 
   function updInspection(index, field, value, evtType) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       const insp = s.inspections && s.inspections[index];
       if (!insp) return;
       insp[field] = value;
@@ -97,7 +110,7 @@ var MMGR = window.MMGR || {};
   // Item pass/fail toggle. Closing rule: when all items pass, the inspection
   // auto-advances to 'passed'; a failed item reopens it.
   function toggleInspItem(index, itemIdx) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       const insp = s.inspections && s.inspections[index];
       if (!insp || !insp.items || !insp.items[itemIdx]) return;
       insp.items[itemIdx].pass = !insp.items[itemIdx].pass;
@@ -110,7 +123,7 @@ var MMGR = window.MMGR || {};
   }
 
   function updInspItem(index, itemIdx, field, value, evtType) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       const insp = s.inspections && s.inspections[index];
       if (insp && insp.items && insp.items[itemIdx]) insp.items[itemIdx][field] = value;
     });
@@ -120,7 +133,7 @@ var MMGR = window.MMGR || {};
   }
 
   function addInspItem(index) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       const insp = s.inspections && s.inspections[index];
       if (!insp) return;
       if (!insp.items) insp.items = [];
@@ -130,7 +143,7 @@ var MMGR = window.MMGR || {};
   }
 
   function delInspItem(index, itemIdx) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       const insp = s.inspections && s.inspections[index];
       if (insp && insp.items) insp.items.splice(itemIdx, 1);
     });
@@ -138,7 +151,7 @@ var MMGR = window.MMGR || {};
   }
 
   function delInspection(index) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (s.inspections) s.inspections.splice(index, 1);
     });
     R.renderClosure();
@@ -152,19 +165,26 @@ var MMGR = window.MMGR || {};
   const INCIDENT_STATUSES = ['open', 'investigation', 'action', 'closed'];
 
   function addIncident() {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (!s.incidents) s.incidents = [];
       s.incidents.push({
-        id: U.genShortId('INC'), date: U.todayStr(), type: 'Safety', severity: 'Medium',
-        description: '', owner: '', status: 'open',
-        rootCause: '', correctiveAction: '', closedDate: ''
+        id: U.genShortId('INC'),
+        date: U.todayStr(),
+        type: 'Safety',
+        severity: 'Medium',
+        description: '',
+        owner: '',
+        status: 'open',
+        rootCause: '',
+        correctiveAction: '',
+        closedDate: ''
       });
     });
     R.renderClosure();
   }
 
   function updIncident(index, field, value, evtType) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       const inc = s.incidents && s.incidents[index];
       if (!inc) return;
       inc[field] = value;
@@ -179,7 +199,7 @@ var MMGR = window.MMGR || {};
   }
 
   function delIncident(index) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (s.incidents) s.incidents.splice(index, 1);
     });
     R.renderClosure();
@@ -211,6 +231,5 @@ var MMGR = window.MMGR || {};
     delIncident: delIncident,
     statuses: INCIDENT_STATUSES
   };
-
 })(MMGR);
 window.MMGR = MMGR;

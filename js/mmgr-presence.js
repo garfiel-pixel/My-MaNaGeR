@@ -10,23 +10,23 @@
    since} per viewer, never project content. Handshake rejections
    (403) give up after 3 tries , auth/availability won't self-heal.
    ============================================================ */
-(function(ns) {
+(function (ns) {
   'use strict';
   var U = ns.Utils;
 
   var ws = null;
   var selfId = null;
-  var members = {};        // id -> { name, since }
+  var members = {}; // id -> { name, since }
   var reconnectDelay = 1000;
   var closedByUs = false;
   var failedOpens = 0;
   var pingTimer = null;
 
   function pid() {
-    return ns.projectId || (new URLSearchParams(window.location.search).get('id') || '');
+    return ns.projectId || new URLSearchParams(window.location.search).get('id') || '';
   }
   function chip() {
-    return (U && U.$) ? U.$('presence-chip') : document.getElementById('presence-chip');
+    return U && U.$ ? U.$('presence-chip') : document.getElementById('presence-chip');
   }
 
   // Access evidence for the handshake: the stored cloud owner/editor code if
@@ -37,8 +37,13 @@
     if (!p) return null;
     var code = '';
     try {
-      code = sessionStorage.getItem('mmgr_cloud_code_' + p) || sessionStorage.getItem('mmgr_cloud_ecode_' + p) || '';
-    } catch (e) { code = ''; }
+      code =
+        sessionStorage.getItem('mmgr_cloud_code_' + p) ||
+        sessionStorage.getItem('mmgr_cloud_ecode_' + p) ||
+        '';
+    } catch (e) {
+      code = '';
+    }
     return code || null;
   }
 
@@ -49,24 +54,39 @@
     var code = accessEvidence();
     var url = proto + window.location.host + '/api/cloud/presence?project=' + encodeURIComponent(p);
     var socket;
-    try { socket = new WebSocket(url); } catch (e) { scheduleReconnect(); return; }
+    try {
+      socket = new WebSocket(url);
+    } catch (e) {
+      scheduleReconnect();
+      return;
+    }
     ws = socket;
-    socket.onopen = function() {
+    socket.onopen = function () {
       failedOpens = 0;
       reconnectDelay = 1000;
       // Send auth as first message (code never appears in the URL query string).
       if (code) {
-        try { socket.send(JSON.stringify({ type: 'auth', code: code })); } catch (e) { /* ignore */ }
+        try {
+          socket.send(JSON.stringify({ type: 'auth', code: code }));
+        } catch (e) {
+          /* ignore */
+        }
       }
       startPing();
     };
-    socket.onmessage = function(ev) {
+    socket.onmessage = function (ev) {
       var msg;
-      try { msg = JSON.parse(ev.data); } catch (e) { return; }
+      try {
+        msg = JSON.parse(ev.data);
+      } catch (e) {
+        return;
+      }
       if (msg.type === 'init') {
         selfId = msg.self;
         members = {};
-        (msg.members || []).forEach(function(m) { members[m.id] = { name: m.name, since: m.since }; });
+        (msg.members || []).forEach(function (m) {
+          members[m.id] = { name: m.name, since: m.since };
+        });
         render();
       } else if (msg.type === 'join') {
         members[msg.id] = { name: msg.name, since: msg.since };
@@ -80,17 +100,23 @@
         // revision over the socket , never project content , and the
         // registered-copy logic in mmgr-cloud.js listens for this event and
         // pulls the fresh snapshot. Non-copy viewers simply ignore it.
-        document.dispatchEvent(new CustomEvent('mmgr:rev-changed', {
-          detail: { revision: msg.revision || null }
-        }));
+        document.dispatchEvent(
+          new CustomEvent('mmgr:rev-changed', {
+            detail: { revision: msg.revision || null }
+          })
+        );
       } else if (msg.type === 'auth_error') {
         // Auth rejected by server , close and don't retry.
         closedByUs = true;
-        try { socket.close(); } catch (e) { /* ignore */ }
+        try {
+          socket.close();
+        } catch (e) {
+          /* ignore */
+        }
       }
       // 'pong' is a keepalive ack , nothing to render.
     };
-    socket.onclose = function() {
+    socket.onclose = function () {
       stopPing();
       ws = null;
       if (closedByUs) return;
@@ -98,7 +124,9 @@
       failedOpens++;
       scheduleReconnect();
     };
-    socket.onerror = function() { /* onclose handles reconnect */ };
+    socket.onerror = function () {
+      /* onclose handles reconnect */
+    };
   }
 
   function scheduleReconnect() {
@@ -109,23 +137,42 @@
 
   function startPing() {
     stopPing();
-    pingTimer = setInterval(function() {
-      if (ws && ws.readyState === 1) { try { ws.send(JSON.stringify({ type: 'ping' })); } catch (e) { /* ignore */ } }
+    pingTimer = setInterval(function () {
+      if (ws && ws.readyState === 1) {
+        try {
+          ws.send(JSON.stringify({ type: 'ping' }));
+        } catch (e) {
+          /* ignore */
+        }
+      }
     }, 25000);
   }
   function stopPing() {
-    if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
+    if (pingTimer) {
+      clearInterval(pingTimer);
+      pingTimer = null;
+    }
   }
 
   function render() {
     var el = chip();
     if (!el) return;
-    var others = Object.keys(members).filter(function(id) { return id !== selfId; });
-    if (!others.length) { el.hidden = true; return; }
-    var names = others.map(function(id) { return members[id].name || 'Viewer'; });
+    var others = Object.keys(members).filter(function (id) {
+      return id !== selfId;
+    });
+    if (!others.length) {
+      el.hidden = true;
+      return;
+    }
+    var names = others.map(function (id) {
+      return members[id].name || 'Viewer';
+    });
     var label = el.querySelector('[data-presence-label]');
     if (label) label.textContent = others.length + ' online , ' + names.join(', ');
-    el.setAttribute('title', names.join(', ') + (names.length > 1 ? ' are viewing' : ' is viewing') + ' this project');
+    el.setAttribute(
+      'title',
+      names.join(', ') + (names.length > 1 ? ' are viewing' : ' is viewing') + ' this project'
+    );
     el.hidden = false;
   }
 
@@ -135,14 +182,31 @@
       return;
     }
     connect();
-    document.addEventListener('visibilitychange', function() {
-      if (document.hidden) { closedByUs = true; if (ws) { try { ws.close(); } catch (e) { /* ignore */ } } }
-      else { closedByUs = false; if (!ws) connect(); }
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) {
+        closedByUs = true;
+        if (ws) {
+          try {
+            ws.close();
+          } catch (e) {
+            /* ignore */
+          }
+        }
+      } else {
+        closedByUs = false;
+        if (!ws) connect();
+      }
     });
-    window.addEventListener('pagehide', function() {
+    window.addEventListener('pagehide', function () {
       closedByUs = true;
       stopPing();
-      if (ws) { try { ws.close(); } catch (e) { /* ignore */ } }
+      if (ws) {
+        try {
+          ws.close();
+        } catch (e) {
+          /* ignore */
+        }
+      }
     });
   }
 

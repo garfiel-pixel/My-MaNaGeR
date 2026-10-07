@@ -17,9 +17,20 @@ const fs = require('fs');
 const path = require('path');
 
 const HTML_FILES = [
-  'index.html','features.html','about.html','contact.html','legal.html',
-  'field-guide.html','reviews.html','admin.html','app.html','project.html',
-  'projects.html','setup.html','signin.html','report-issue.html'
+  'index.html',
+  'features.html',
+  'about.html',
+  'contact.html',
+  'legal.html',
+  'field-guide.html',
+  'reviews.html',
+  'admin.html',
+  'app.html',
+  'project.html',
+  'projects.html',
+  'setup.html',
+  'signin.html',
+  'report-issue.html'
 ];
 
 const JS_DIRS = ['js', 'js/app', 'js/render', 'js/cloud', 'src'];

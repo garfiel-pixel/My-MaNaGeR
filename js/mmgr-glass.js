@@ -13,9 +13,8 @@
      BOTH 3.5.2's detection (Viewport.isHighEnd + preference) and
      3.5.3's settings toggle allow it. With the toggle off, zero
      network request is made , verified by qa-glass.cjs.
-   - The CDN URL is a real, verified Three.js link (unpkg,
-     three@0.160.0), NOT the placeholder cloudflare.com reference
-     from the source document.
+   - Three.js is VENDORED same-origin (vendor/three/three.module.js,
+     pinned r160) - no third-party CDN, so unpkg.com is not in the CSP.
    - 3.5.5 shared teardown: switching back to CSS (toggle, resize
      into a narrow viewport, capability re-check) disposes the
      renderer AND forces WebGL context loss , no leaked contexts.
@@ -25,12 +24,14 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
-  // Pinned, verified Three.js CDN (checked live at implementation time:
-  // https://unpkg.com/three@0.160.0/build/three.module.js returns 200).
-  const THREE_CDN = 'https://unpkg.com/three@0.160.0/build/three.module.js';
+  // Wave 8.4 (owner 2026-10-06): Three.js is VENDORED, not fetched from a
+  // third-party CDN. vendor/three/three.module.js is the pinned r160 build,
+  // served same-origin, so unpkg.com was removed from the CSP. The dynamic
+  // import below is the ONLY place it is pulled in (never at boot).
+  const THREE_MODULE = '/vendor/three/three.module.js';
 
   // Fresh engine state , reset by deactivate() so a re-activate never sees
   // stale refs from a previous session.
@@ -50,7 +51,9 @@ var MMGR = window.MMGR || {};
   }
   let _state = freshState();
 
-  function active() { return _state.active; }
+  function active() {
+    return _state.active;
+  }
 
   // Test seam (same convention as qa-voice's forcedModelUrl / the viewport
   // __mmgrForceHighEnd hook): a QA gate injects a fake THREE module here to
@@ -59,7 +62,7 @@ var MMGR = window.MMGR || {};
   function _importThree() {
     if (typeof window.__mmgrThreeImport === 'function') return window.__mmgrThreeImport();
     if (typeof window.__mmgrGlassImportCalls === 'number') window.__mmgrGlassImportCalls++;
-    return import(THREE_CDN);
+    return import(THREE_MODULE);
   }
 
   // ---- Shaders: liquid-glass refraction (FIX-1, Option B) ----
@@ -76,11 +79,7 @@ var MMGR = window.MMGR || {};
   // no new THREE API surface , the qa-glass.cjs fake-THREE mock stays valid and
   // the lifecycle gate is untouched. One full-screen quad, one draw call,
   // theme-aware (uDark switches base + tint strength).
-  const VERT = [
-    'void main() {',
-    '  gl_Position = vec4(position.xy, 0.0, 1.0);',
-    '}'
-  ].join('\n');
+  const VERT = ['void main() {', '  gl_Position = vec4(position.xy, 0.0, 1.0);', '}'].join('\n');
 
   const FRAG = [
     'precision highp float;',
@@ -167,7 +166,7 @@ var MMGR = window.MMGR || {};
     '  // Chromatic aberration , light bends through the surface: sample the',
     '  // background at RGB-offset UVs along a slowly drifting distortion vector.',
     '  // Kept deliberately small (0.004) so edges refract without rainbow fringing.',
-    '  vec2 ca = 0.004 * vec2(sin(t * 0.7), cos(t * 0.6));', 
+    '  vec2 ca = 0.004 * vec2(sin(t * 0.7), cos(t * 0.6));',
     '  float r = field((uv + ca + w) * 3.0);',
     '  float g = field((uv + w) * 3.0);',
     '  float b = field((uv - ca + w) * 3.0);',
@@ -211,7 +210,7 @@ var MMGR = window.MMGR || {};
 
   function _onMouseMove(e) {
     if (_glowRaf) return;
-    _glowRaf = requestAnimationFrame(function() {
+    _glowRaf = requestAnimationFrame(function () {
       _glowRaf = 0;
       const de = document.documentElement;
       if (!de) return;
@@ -231,7 +230,10 @@ var MMGR = window.MMGR || {};
   }
 
   function _unmountGlow() {
-    if (_glowRaf) { cancelAnimationFrame(_glowRaf); _glowRaf = 0; }
+    if (_glowRaf) {
+      cancelAnimationFrame(_glowRaf);
+      _glowRaf = 0;
+    }
     window.removeEventListener('mousemove', _onMouseMove);
     if (_glowEl && _glowEl.parentNode) _glowEl.parentNode.removeChild(_glowEl);
     _glowEl = null;
@@ -258,7 +260,10 @@ var MMGR = window.MMGR || {};
   function _onVisibility() {
     if (!_state.active) return;
     if (document.hidden || document.visibilityState === 'hidden') {
-      if (_state.rafId) { cancelAnimationFrame(_state.rafId); _state.rafId = 0; }
+      if (_state.rafId) {
+        cancelAnimationFrame(_state.rafId);
+        _state.rafId = 0;
+      }
     } else if (!_state.rafId) {
       _frame();
     }
@@ -269,7 +274,9 @@ var MMGR = window.MMGR || {};
     try {
       _state.renderer.setSize(window.innerWidth, window.innerHeight);
       _state.uniforms.uRes.value.set(window.innerWidth, window.innerHeight);
-    } catch (e) { /* resize is cosmetic */ }
+    } catch (e) {
+      /* resize is cosmetic */
+    }
     // Shared detection: resize into a narrow viewport must tear the engine
     // down (same signal that switches dense layouts to simplified cards).
     if (ns.Viewport && ns.Viewport.effectiveGlassMode() !== 'premium') sync();
@@ -316,8 +323,13 @@ var MMGR = window.MMGR || {};
       canvas.setAttribute('aria-hidden', 'true');
       document.body.appendChild(canvas);
       _mountGlow(); // mouse-tracking glow above the canvas, below the app
-      const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: false, antialias: false, powerPreference: 'high-performance' });
-      // PERF (owner 2026-08-15): cap the render scale at 1.25 instead of 1.5 , 
+      const renderer = new THREE.WebGLRenderer({
+        canvas: canvas,
+        alpha: false,
+        antialias: false,
+        powerPreference: 'high-performance'
+      });
+      // PERF (owner 2026-08-15): cap the render scale at 1.25 instead of 1.5 ,
       // a 44% fragment reduction on high-DPI screens with no perceptible
       // softness for a blurred backdrop; the shader is the single most
       // expensive thing on the page, and the owner's machine lagged with it on.
@@ -330,20 +342,43 @@ var MMGR = window.MMGR || {};
       const uniforms = {
         uTime: { value: 0 },
         uRes: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
-        uDark: { value: (document.body.classList.contains('dark-mode') ? 1 : 0) },
-        uCyan: { value: (document.documentElement.getAttribute('data-theme') === 'cyan' ? 1 : 0) },
-        uRose: { value: (document.documentElement.getAttribute('data-theme') === 'rose-gold' ? 1 : 0) }
+        uDark: { value: document.body.classList.contains('dark-mode') ? 1 : 0 },
+        uCyan: { value: document.documentElement.getAttribute('data-theme') === 'cyan' ? 1 : 0 },
+        uRose: {
+          value: document.documentElement.getAttribute('data-theme') === 'rose-gold' ? 1 : 0
+        }
       };
-      const mat = new THREE.ShaderMaterial({ uniforms: uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false });
+      const mat = new THREE.ShaderMaterial({
+        uniforms: uniforms,
+        vertexShader: VERT,
+        fragmentShader: FRAG,
+        transparent: true,
+        depthWrite: false
+      });
       const mesh = new THREE.Mesh(geo, mat);
       scene.add(mesh);
       // WebGL context loss must not strand a zombie canvas , tear down.
-      canvas.addEventListener('webglcontextlost', function(e) {
-        e.preventDefault();
-        _state.ctxLost = true;
-        deactivate();
-      }, false);
-      _state = { active: true, renderer: renderer, scene: scene, camera: camera, mesh: mesh, uniforms: uniforms, clock: new THREE.Clock(), canvas: canvas, rafId: 0, ctxLost: false };
+      canvas.addEventListener(
+        'webglcontextlost',
+        function (e) {
+          e.preventDefault();
+          _state.ctxLost = true;
+          deactivate();
+        },
+        false
+      );
+      _state = {
+        active: true,
+        renderer: renderer,
+        scene: scene,
+        camera: camera,
+        mesh: mesh,
+        uniforms: uniforms,
+        clock: new THREE.Clock(),
+        canvas: canvas,
+        rafId: 0,
+        ctxLost: false
+      };
       window.addEventListener('resize', _onResize);
       document.addEventListener('visibilitychange', _onVisibility);
       document.body.classList.add('glass-premium');
@@ -360,10 +395,14 @@ var MMGR = window.MMGR || {};
   function _fallback(why, err) {
     _unmountGlow();
     try {
-      if (_state.canvas && _state.canvas.parentNode) _state.canvas.parentNode.removeChild(_state.canvas);
-    } catch (e) { /* ignore */ }
+      if (_state.canvas && _state.canvas.parentNode)
+        _state.canvas.parentNode.removeChild(_state.canvas);
+    } catch (e) {
+      /* ignore */
+    }
     document.body.classList.remove('glass-premium');
-    if (ns.Errors && ns.Errors.log) ns.Errors.log('glass: premium unavailable (' + why + ') , CSS glass stays on', 'glass');
+    if (ns.Errors && ns.Errors.log)
+      ns.Errors.log('glass: premium unavailable (' + why + ') , CSS glass stays on', 'glass');
     // OWNER 2026-09-06: silent fallback - no toast announcing the glass mode.
     _state = freshState();
   }
@@ -385,10 +424,15 @@ var MMGR = window.MMGR || {};
           if (ext && ext.loseContext) ext.loseContext();
         }
       }
-    } catch (e) { /* teardown is best-effort */ }
+    } catch (e) {
+      /* teardown is best-effort */
+    }
     try {
-      if (_state.canvas && _state.canvas.parentNode) _state.canvas.parentNode.removeChild(_state.canvas);
-    } catch (e) { /* ignore */ }
+      if (_state.canvas && _state.canvas.parentNode)
+        _state.canvas.parentNode.removeChild(_state.canvas);
+    } catch (e) {
+      /* ignore */
+    }
     document.body.classList.remove('glass-premium');
     _state = freshState();
   }
@@ -397,7 +441,8 @@ var MMGR = window.MMGR || {};
   // toggle, and from showSection() so the shared viewport signal drives
   // both layout simplification and the glass engine (plan §2).
   function sync() {
-    const mode = (ns.Viewport && ns.Viewport.effectiveGlassMode) ? ns.Viewport.effectiveGlassMode() : 'css';
+    const mode =
+      ns.Viewport && ns.Viewport.effectiveGlassMode ? ns.Viewport.effectiveGlassMode() : 'css';
     if (mode === 'premium' && !_state.active) {
       activate();
     } else if (mode !== 'premium' && _state.active) {
@@ -410,14 +455,16 @@ var MMGR = window.MMGR || {};
   // active palette, exactly like uDark follows body.dark-mode).
   function refreshTheme() {
     if (_state.active && _state.uniforms) {
-      _state.uniforms.uDark.value = (document.body.classList.contains('dark-mode') ? 1 : 0);
-      _state.uniforms.uCyan.value = (document.documentElement.getAttribute('data-theme') === 'cyan' ? 1 : 0);
-      _state.uniforms.uRose.value = (document.documentElement.getAttribute('data-theme') === 'rose-gold' ? 1 : 0);
+      _state.uniforms.uDark.value = document.body.classList.contains('dark-mode') ? 1 : 0;
+      _state.uniforms.uCyan.value =
+        document.documentElement.getAttribute('data-theme') === 'cyan' ? 1 : 0;
+      _state.uniforms.uRose.value =
+        document.documentElement.getAttribute('data-theme') === 'rose-gold' ? 1 : 0;
     }
   }
 
   ns.Glass = {
-    THREE_CDN: THREE_CDN,
+    THREE_MODULE: THREE_MODULE,
     active: active,
     activate: activate,
     deactivate: deactivate,

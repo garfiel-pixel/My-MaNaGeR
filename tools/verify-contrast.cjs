@@ -36,8 +36,12 @@ function contrastRatio(rgb1, rgb2) {
 
 function parseHex(hex) {
   hex = hex.replace('#', '');
-  if (hex.length === 3) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
-  return [parseInt(hex.slice(0,2),16), parseInt(hex.slice(2,4),16), parseInt(hex.slice(4,6),16)];
+  if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+  return [
+    parseInt(hex.slice(0, 2), 16),
+    parseInt(hex.slice(2, 4), 16),
+    parseInt(hex.slice(4, 6), 16)
+  ];
 }
 
 function parseRGB(str) {
@@ -68,7 +72,11 @@ function extractTokens(cssContent) {
       // Extract rgb(r,g,b) — strip alpha
       const rgbMatch = val.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
       if (rgbMatch) {
-        tokens[prefix + name] = [parseInt(rgbMatch[1]), parseInt(rgbMatch[2]), parseInt(rgbMatch[3])];
+        tokens[prefix + name] = [
+          parseInt(rgbMatch[1]),
+          parseInt(rgbMatch[2]),
+          parseInt(rgbMatch[3])
+        ];
       }
     }
   }
@@ -94,7 +102,10 @@ console.log('WCAG 2.2 AA Contrast Checker\n');
 
 for (const cssFile of ['css/mmgr.css', 'css/marketing.css']) {
   const absPath = path.join(ROOT, cssFile);
-  if (!fs.existsSync(absPath)) { console.log('SKIP: ' + cssFile + ' not found'); continue; }
+  if (!fs.existsSync(absPath)) {
+    console.log('SKIP: ' + cssFile + ' not found');
+    continue;
+  }
 
   const css = fs.readFileSync(absPath, 'utf8');
   const tokens = extractTokens(css);
@@ -118,7 +129,7 @@ for (const cssFile of ['css/mmgr.css', 'css/marketing.css']) {
     ['dark: gold on card', tokens['dark.gold'], tokens['dark.card'], 3.0],
     ['dark: green on card', tokens['dark.green'], tokens['dark.card'], 3.0],
     ['dark: danger on card', tokens['dark.danger'], tokens['dark.card'], 3.0],
-    ['dark: blue on card', tokens['dark.blue'], tokens['dark.card'], 3.0],
+    ['dark: blue on card', tokens['dark.blue'], tokens['dark.card'], 3.0]
   ];
 
   for (const [label, fg, bg, min] of pairs) {

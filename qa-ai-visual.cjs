@@ -9,36 +9,100 @@ const path = require('path');
 const fs = require('fs');
 const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('./tools/chrome-launcher.cjs');
 const PROFILE = path.join(require('os').tmpdir(), 'mmgr-ai-v-' + Date.now());
-let ws, msgId = 0; const pending = new Map();
-const log = (s) => process.stdout.write('[aivis] ' + s + '\n');
+let ws,
+  msgId = 0;
+const pending = new Map();
+const log = s => process.stdout.write('[aivis] ' + s + '\n');
 const delay = ms => new Promise(r => setTimeout(r, ms));
-setTimeout(() => { log('WATCHDOG'); try { ws && ws.close(); } catch (e) {} process.exit(2); }, 90000);
-function send(method, params) { return new Promise(res => { const id = ++msgId; pending.set(id, m => { pending.delete(id); res(m.result || {}); }); ws.send(JSON.stringify({ id, method, params: params || {} })); }); }
-async function ev(expr) { const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true }); if (r.exceptionDetails) return { __err: r.exceptionDetails.exception ? r.exceptionDetails.exception.description : r.exceptionDetails.text }; return r.result && r.result.value; }
+setTimeout(() => {
+  log('WATCHDOG');
+  try {
+    ws && ws.close();
+  } catch (e) {}
+  process.exit(2);
+}, 90000);
+function send(method, params) {
+  return new Promise(res => {
+    const id = ++msgId;
+    pending.set(id, m => {
+      pending.delete(id);
+      res(m.result || {});
+    });
+    ws.send(JSON.stringify({ id, method, params: params || {} }));
+  });
+}
+async function ev(expr) {
+  const r = await send('Runtime.evaluate', {
+    expression: expr,
+    returnByValue: true,
+    awaitPromise: true
+  });
+  if (r.exceptionDetails)
+    return {
+      __err: r.exceptionDetails.exception
+        ? r.exceptionDetails.exception.description
+        : r.exceptionDetails.text
+    };
+  return r.result && r.result.value;
+}
 
 (async () => {
-  const proc = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run', '--remote-debugging-port=' + PORT, '--user-data-dir=' + PROFILE, '--window-size=1440,1200', 'about:blank'], { stdio: 'ignore' });
-  for (let i = 0; i < 60; i++) { try { const r = await fetch('http://127.0.0.1:' + PORT + '/json/version'); if (r.ok) break; } catch (e) {} await delay(300); }
+  const proc = spawn(
+    CHROME,
+    [
+      '--headless=new',
+      '--disable-gpu',
+      '--no-first-run',
+      '--remote-debugging-port=' + PORT,
+      '--user-data-dir=' + PROFILE,
+      '--window-size=1440,1200',
+      'about:blank'
+    ],
+    { stdio: 'ignore' }
+  );
+  for (let i = 0; i < 60; i++) {
+    try {
+      const r = await fetch('http://127.0.0.1:' + PORT + '/json/version');
+      if (r.ok) break;
+    } catch (e) {}
+    await delay(300);
+  }
   const targets = await (await fetch('http://127.0.0.1:' + PORT + '/json')).json();
   ws = new WebSocket(targets.find(t => t.type === 'page').webSocketDebuggerUrl);
-  ws.onmessage = (ev) => { const m = JSON.parse(ev.data); if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); } };
-  await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error('ws fail')); });
-  await send('Runtime.enable'); await send('Page.enable');
+  ws.onmessage = ev => {
+    const m = JSON.parse(ev.data);
+    if (m.id && pending.has(m.id)) {
+      pending.get(m.id)(m);
+      pending.delete(m.id);
+    }
+  };
+  await new Promise((res, rej) => {
+    ws.onopen = res;
+    ws.onerror = () => rej(new Error('ws fail'));
+  });
+  await send('Runtime.enable');
+  await send('Page.enable');
 
   const consoleErrors = [];
-  ws.onmessage = (ev) => {
+  ws.onmessage = ev => {
     const m = JSON.parse(ev.data);
     if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error') {
       consoleErrors.push((m.params.args || []).map(a => a.value || a.description || '').join(' '));
     }
     if (m.method === 'Runtime.exceptionThrown') {
-      consoleErrors.push('EXCEPTION: ' + (m.params.exceptionDetails && m.params.exceptionDetails.text));
+      consoleErrors.push(
+        'EXCEPTION: ' + (m.params.exceptionDetails && m.params.exceptionDetails.text)
+      );
     }
-    if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); }
+    if (m.id && pending.has(m.id)) {
+      pending.get(m.id)(m);
+      pending.delete(m.id);
+    }
   };
 
   // Seed the unlock + a small demo project, then load the project page.
-  await send('Page.navigate', { url: BASE + '/app.html' }); await delay(2500);
+  await send('Page.navigate', { url: BASE + '/app.html' });
+  await delay(2500);
   await ev(`(function(){
     localStorage.setItem('mmgr_unlocked_demo','1');
     localStorage.setItem('mmgr_current_project','demo');
@@ -49,10 +113,14 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     localStorage.setItem('mmgr_state_demo', JSON.stringify({charter:{name:'Demo Tower', targetCompletion:'2026-12-01'}, tasks:[{id:'T1',name:'Foundations',status:'inprogress',endDate:'2026-09-01'},{id:'T2',name:'Steel',status:'todo',endDate:'2026-10-15'}], risks:[{id:'R1',description:'Weather delay',probability:'High',impact:'High'}], issues:[], budgetLines:[], config:{ai:{tier:'local'}} }));
     return true;
   })()`);
-  await send('Page.navigate', { url: BASE + '/project.html?id=demo' }); await delay(4000);
+  await send('Page.navigate', { url: BASE + '/project.html?id=demo' });
+  await delay(4000);
 
   const results = [];
-  const check = (name, val, detail) => { results.push({ name, val, detail }); log((val ? 'PASS' : 'FAIL') + ' ' + name + (val ? '' : '  <-- ' + JSON.stringify(detail))); };
+  const check = (name, val, detail) => {
+    results.push({ name, val, detail });
+    log((val ? 'PASS' : 'FAIL') + ' ' + name + (val ? '' : '  <-- ' + JSON.stringify(detail)));
+  };
 
   // Open the AI window.
   const o = await ev(`(function(){
@@ -61,7 +129,8 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   })()`);
   // MERGED-AI-CONTROL: with tier seeded 'local' the fab must be genuinely
   // visible before we click it — no display:none workaround.
-  await ev(`document.getElementById('ai-fab').click(); true;`); await delay(600);
+  await ev(`document.getElementById('ai-fab').click(); true;`);
+  await delay(600);
   const oOpen = await ev(`(function(){
     return { open: document.getElementById('ai-win').classList.contains('open') };
   })()`);
@@ -83,9 +152,16 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       advCollapsed: !!adv && !adv.open
     };
   })()`);
-  check('AI window opens with chat layout', o.fabVisible === true && oOpen.open === true, { fabVisible: o.fabVisible, open: oOpen.open });
+  check('AI window opens with chat layout', o.fabVisible === true && oOpen.open === true, {
+    fabVisible: o.fabVisible,
+    open: oOpen.open
+  });
   check('Welcome bubble visible + thread present', a.thread && a.welcome, a);
-  check('Preset chips rendered (>=10) + engine pill + input bar + collapsed advanced', a.chips >= 10 && a.pill && a.inputBar && a.advCollapsed, a);
+  check(
+    'Preset chips rendered (>=10) + engine pill + input bar + collapsed advanced',
+    a.chips >= 10 && a.pill && a.inputBar && a.advCollapsed,
+    a
+  );
 
   // Switch to the local tier, send a free-form question, verify bubbles.
   const r = await ev(`(async function(){
@@ -119,14 +195,25 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     };
   })()`);
   check('Send: typing indicator appeared', r.typing === true, r);
-  check('Send: user + assistant bubbles rendered with trace', r.user === true && r.bot === true && r.trace === true, r);
+  check(
+    'Send: user + assistant bubbles rendered with trace',
+    r.user === true && r.bot === true && r.trace === true,
+    r
+  );
   check('Engine pill reflects Local tier', (r.pill || '').indexOf('Local') > -1, r);
-  check('Bot answer contains real state data', (r.botTxt || '').length > 10 && /Completion|Risks|complete/i.test(r.botTxt || ''), r);
+  check(
+    'Bot answer contains real state data',
+    (r.botTxt || '').length > 10 && /Completion|Risks|complete/i.test(r.botTxt || ''),
+    r
+  );
 
   // Screenshot for the visual record.
   const shot = await send('Page.captureScreenshot', { format: 'png' });
   if (shot && shot.data) {
-    fs.writeFileSync(path.join(require('os').tmpdir(), 'ai-window.png'), Buffer.from(shot.data, 'base64'));
+    fs.writeFileSync(
+      path.join(require('os').tmpdir(), 'ai-window.png'),
+      Buffer.from(shot.data, 'base64')
+    );
     log('screenshot -> ' + path.join(require('os').tmpdir(), 'ai-window.png'));
   }
 
@@ -144,5 +231,9 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
 
   const failed = results.filter(r2 => !r2.val);
   log('AIVIS ' + (failed.length === 0 ? 'PASS' : 'FAIL (' + failed.length + ' broken)'));
-  proc.kill(); process.exit(failed.length === 0 ? 0 : 1);
-})().catch(e => { log('FATAL: ' + e.message); process.exit(1); });
+  proc.kill();
+  process.exit(failed.length === 0 ? 0 : 1);
+})().catch(e => {
+  log('FATAL: ' + e.message);
+  process.exit(1);
+});

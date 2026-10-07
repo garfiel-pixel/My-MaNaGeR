@@ -32,10 +32,20 @@ const TMP = os.tmpdir();
 const STATE_FILE = path.join(TMP, 'mmgr-ai-e2e-state.json');
 const STOP_FILE = path.join(TMP, 'mmgr-ai-e2e-stop');
 
-const log = (s) => { process.stdout.write('[ai-e2e] ' + s + '\n'); };
+const log = s => {
+  process.stdout.write('[ai-e2e] ' + s + '\n');
+};
 const delay = ms => new Promise(r => setTimeout(r, ms));
 const results = [];
-const check = (name, val, detail) => { results.push({ name, val }); log((val ? 'PASS' : 'FAIL') + '  ' + name + (val ? '' : '   <-- ' + JSON.stringify(detail === undefined ? null : detail).slice(0, 500))); };
+const check = (name, val, detail) => {
+  results.push({ name, val });
+  log(
+    (val ? 'PASS' : 'FAIL') +
+      '  ' +
+      name +
+      (val ? '' : '   <-- ' + JSON.stringify(detail === undefined ? null : detail).slice(0, 500))
+  );
+};
 
 let proc = null;
 let devLog = '';
@@ -44,57 +54,111 @@ let devLog = '';
 function globalWranglerJs() {
   try {
     const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-    const root = execFileSync(npmCmd, ['root', '-g'], { encoding: 'utf8', shell: process.platform === 'win32' }).trim();
+    const root = execFileSync(npmCmd, ['root', '-g'], {
+      encoding: 'utf8',
+      shell: process.platform === 'win32'
+    }).trim();
     const p = path.join(root, 'wrangler', 'bin', 'wrangler.js');
     if (fs.existsSync(p)) return p;
-  } catch (e) { /* fall through */ }
+  } catch (e) {
+    /* fall through */
+  }
   // Fallback: local node_modules (CI, no global wrangler)
   try {
     const lp = path.join(__dirname, '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
     if (fs.existsSync(lp)) return lp;
-  } catch (e) { /* fall through */ }
+  } catch (e) {
+    /* fall through */
+  }
   return null;
 }
 const WRANGLER_JS = globalWranglerJs();
 const PERSIST_DIR = path.join(TMP, 'mmgr-ai-e2e-wstate-' + Date.now());
 
-const { USE_EXTERNAL, externalWranglerGuard, stopWranglerIfLocal } = require('./wrangler-ci-helpers.cjs');
+const {
+  USE_EXTERNAL,
+  externalWranglerGuard,
+  stopWranglerIfLocal
+} = require('./wrangler-ci-helpers.cjs');
 if (USE_EXTERNAL && process.env.WRANGLER_DEV_URL) BASE = process.env.WRANGLER_DEV_URL;
 async function startWrangler() {
-  const ext = externalWranglerGuard(log); if (ext) return ext;
+  const ext = externalWranglerGuard(log);
+  if (ext) return ext;
   try {
     fs.rmSync(STOP_FILE, { force: true });
     fs.rmSync(STATE_FILE, { force: true });
   } catch (e) {}
   log('starting wrangler dev on :' + PORT + ' (local D1 + R2, migrations incl. 0005)…');
   try {
-    execFileSync(process.execPath,
-      [WRANGLER_JS, 'd1', 'migrations', 'apply', 'my-manager-db', '--local', '--config', 'wrangler.ci.jsonc', '--persist-to', PERSIST_DIR],
-      { cwd: ROOT, stdio: 'ignore', timeout: 90000 });
-  } catch (e) { log('migrations apply (best-effort): ' + e.message); }
-  proc = spawn(process.execPath, [WRANGLER_JS, 'dev', '--config', 'wrangler.ci.jsonc', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST_DIR], {
-    cwd: ROOT,
-    env: Object.assign({}, process.env, { WRANGLER_SEND_METRICS: 'false' }),
-    stdio: ['ignore', 'pipe', 'pipe']
+    execFileSync(
+      process.execPath,
+      [
+        WRANGLER_JS,
+        'd1',
+        'migrations',
+        'apply',
+        'my-manager-db',
+        '--local',
+        '--config',
+        'wrangler.ci.jsonc',
+        '--persist-to',
+        PERSIST_DIR
+      ],
+      { cwd: ROOT, stdio: 'ignore', timeout: 90000 }
+    );
+  } catch (e) {
+    log('migrations apply (best-effort): ' + e.message);
+  }
+  proc = spawn(
+    process.execPath,
+    [
+      WRANGLER_JS,
+      'dev',
+      '--config',
+      'wrangler.ci.jsonc',
+      '--port',
+      String(PORT),
+      '--ip',
+      '127.0.0.1',
+      '--persist-to',
+      PERSIST_DIR
+    ],
+    {
+      cwd: ROOT,
+      env: Object.assign({}, process.env, { WRANGLER_SEND_METRICS: 'false' }),
+      stdio: ['ignore', 'pipe', 'pipe']
+    }
+  );
+  proc.stdout.on('data', d => {
+    devLog += d;
   });
-  proc.stdout.on('data', d => { devLog += d; });
-  proc.stderr.on('data', d => { devLog += d; });
-  proc.on('error', (e) => { throw new Error('wrangler spawn failed: ' + e.message); });
+  proc.stderr.on('data', d => {
+    devLog += d;
+  });
+  proc.on('error', e => {
+    throw new Error('wrangler spawn failed: ' + e.message);
+  });
   const t0 = Date.now();
   for (;;) {
     try {
       const ctrl = new AbortController();
-      const timer = setTimeout(function() { ctrl.abort(); }, 3000);
+      const timer = setTimeout(function () {
+        ctrl.abort();
+      }, 3000);
       const r = await fetch(BASE + '/api/health', { signal: ctrl.signal });
       clearTimeout(timer);
       if (r.ok) return;
-    } catch (e) { /* not up yet */ }
+    } catch (e) {
+      /* not up yet */
+    }
     if (Date.now() - t0 > 120000) throw new Error('wrangler dev did not come up in 120s');
     await delay(1500);
   }
 }
 function stopWrangler() {
-  try { fs.rmSync(STOP_FILE, { force: true }); } catch (e) {}
+  try {
+    fs.rmSync(STOP_FILE, { force: true });
+  } catch (e) {}
   stopWranglerIfLocal(proc);
 }
 
@@ -103,7 +167,8 @@ async function api(pathname, opts) {
   // just-restarted wrangler used to fail the whole step (any throw lands in
   // the FATAL catch -> exit 1). Retry transport errors and 5xx only; real
   // gate failures (4xx / ok:false) are final and still fail the gate.
-  let res = null, lastErr = null;
+  let res = null,
+    lastErr = null;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       res = await fetch(BASE + pathname, Object.assign({}, opts || {}));
@@ -117,7 +182,11 @@ async function api(pathname, opts) {
   }
   if (!res) throw lastErr;
   let body = null;
-  try { body = await res.json(); } catch (e) { body = null; }
+  try {
+    body = await res.json();
+  } catch (e) {
+    body = null;
+  }
   return { status: res.status, body, text: res.status + '|' + JSON.stringify(body) };
 }
 
@@ -127,7 +196,10 @@ async function api(pathname, opts) {
 function baseState(pid, name) {
   const now = new Date().toISOString();
   return {
-    schemaVersion: 17, projectId: pid, projectName: name, updatedAt: now,
+    schemaVersion: 17,
+    projectId: pid,
+    projectName: name,
+    updatedAt: now,
     charter: { name: name, sponsor: 'Sponsor' },
     tasks: [
       { id: 't1', name: 'Task One', status: 'done', start: '2026-01-01', end: '2026-01-05' },
@@ -136,54 +208,158 @@ function baseState(pid, name) {
     risks: [],
     closure: { status: 'open', handoverNotes: 'Initial handover' },
     raci: { tasks: [], persons: [], matrix: {} },
-    resources: [], budgetLines: [], budgetEnvelope: 0, spendLog: [], stakeholders: [],
+    resources: [],
+    budgetLines: [],
+    budgetEnvelope: 0,
+    spendLog: [],
+    stakeholders: [],
     fieldTs: { charter: now, tasks: now, risks: now, closure: now },
-    config: {}, flags: {}, errorLog: []
+    config: {},
+    flags: {},
+    errorLog: []
   };
 }
 
 (async () => {
-  if (!WRANGLER_JS) { log('FATAL: global wrangler not found (npm root -g)'); process.exit(1); }
-  try { await startWrangler(); }
-  catch (e) { log('FATAL: ' + e.message); log(devLog.slice(-1500)); process.exit(1); }
+  if (!WRANGLER_JS) {
+    log('FATAL: global wrangler not found (npm root -g)');
+    process.exit(1);
+  }
+  try {
+    await startWrangler();
+  } catch (e) {
+    log('FATAL: ' + e.message);
+    log(devLog.slice(-1500));
+    process.exit(1);
+  }
 
   try {
     // ---- create project + blob -------------------------------------------
     const PID = 'ai-e2e-' + Date.now().toString(36);
     const NAME = 'AI Badge E2E';
-    const create = await api('/api/cloud/projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ projectId: PID, name: NAME }) });
-    check('A1 project create ok + owner code', create.status === 200 && create.body && create.body.ok === true && typeof create.body.ownerCode === 'string', create.text);
+    const create = await api('/api/cloud/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId: PID, name: NAME })
+    });
+    check(
+      'A1 project create ok + owner code',
+      create.status === 200 &&
+        create.body &&
+        create.body.ok === true &&
+        typeof create.body.ownerCode === 'string',
+      create.text
+    );
     const OC = create.body ? create.body.ownerCode : '';
     const state1 = baseState(PID, NAME);
     const save = await api('/api/cloud/projects/' + PID + '/save', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC },
       body: JSON.stringify({ state: state1 })
     });
-    check('A2 owner save ok (blob in place for the honesty gate)', save.status === 200 && save.body && save.body.ok === true, save.text);
+    check(
+      'A2 owner save ok (blob in place for the honesty gate)',
+      save.status === 200 && save.body && save.body.ok === true,
+      save.text
+    );
 
     // ---- import ONE MCP entry (recordId add/delete/field) ------------------
     const ISO = new Date().toISOString();
     const d = [
-      { path: 'tasks[1]', recordId: 't9', after: { id: 't9', name: 'AI Added', status: 'planned', start: '2026-02-01', end: '2026-02-05' }, beforeAbsent: true, afterAbsent: false },
-      { path: 'risks[0]', recordId: 'r1', before: { id: 'r1', name: 'Risk One', prob: 3 }, beforeAbsent: false, afterAbsent: true },
-      { path: 'tasks[0].status', recordId: 't1', before: 'todo', after: 'done', beforeAbsent: false, afterAbsent: false }
+      {
+        path: 'tasks[1]',
+        recordId: 't9',
+        after: {
+          id: 't9',
+          name: 'AI Added',
+          status: 'planned',
+          start: '2026-02-01',
+          end: '2026-02-05'
+        },
+        beforeAbsent: true,
+        afterAbsent: false
+      },
+      {
+        path: 'risks[0]',
+        recordId: 'r1',
+        before: { id: 'r1', name: 'Risk One', prob: 3 },
+        beforeAbsent: false,
+        afterAbsent: true
+      },
+      {
+        path: 'tasks[0].status',
+        recordId: 't1',
+        before: 'todo',
+        after: 'done',
+        beforeAbsent: false,
+        afterAbsent: false
+      }
     ];
     const imp = await api('/api/cloud/projects/' + PID + '/changelog/import', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC },
-      body: JSON.stringify({ entries: [{ localId: 1, entry_type: 'edit', actor_type: 'owner', actor_label: 'mcp-ai', diffs_json: d, created_at: ISO }] })
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC },
+      body: JSON.stringify({
+        entries: [
+          {
+            localId: 1,
+            entry_type: 'edit',
+            actor_type: 'owner',
+            actor_label: 'mcp-ai',
+            diffs_json: d,
+            created_at: ISO
+          }
+        ]
+      })
     });
     // API shape: { imported: count, skipped: count, importedEntries: [...], skippedEntries: [...] }
-    check('A3 MCP entry imported', imp.status === 200 && imp.body && imp.body.imported === 1 && imp.body.skipped === 0 && Array.isArray(imp.body.importedEntries) && imp.body.importedEntries.length === 1 && imp.body.importedEntries[0].entryType === 'edit', imp.text);
+    check(
+      'A3 MCP entry imported',
+      imp.status === 200 &&
+        imp.body &&
+        imp.body.imported === 1 &&
+        imp.body.skipped === 0 &&
+        Array.isArray(imp.body.importedEntries) &&
+        imp.body.importedEntries.length === 1 &&
+        imp.body.importedEntries[0].entryType === 'edit',
+      imp.text
+    );
 
     // ---- changelog list carries the badge data ------------------------------
-    const list = await api('/api/cloud/projects/' + PID + '/changelog', { method: 'GET', headers: { 'X-Owner-Code': OC } });
+    const list = await api('/api/cloud/projects/' + PID + '/changelog', {
+      method: 'GET',
+      headers: { 'X-Owner-Code': OC }
+    });
     const top = list.body && list.body.entries && list.body.entries[0];
     const ENTRY_ID = top && top.id ? top.id : null;
-    check('A4 list exposes the imported entry with source mcp + mcp-ai actor', list.status === 200 && top && top.source === 'mcp' && top.actorLabel === 'mcp-ai' && top.type === 'edit' && Array.isArray(top.diffs) && top.diffs.length === 3, top);
-    check('A5 entry carries recordId diffs (add/delete/field)', top && top.diffs[0].recordId === 't9' && top.diffs[0].beforeAbsent === true && top.diffs[1].recordId === 'r1' && top.diffs[1].afterAbsent === true && top.diffs[2].recordId === 't1', top && top.diffs);
+    check(
+      'A4 list exposes the imported entry with source mcp + mcp-ai actor',
+      list.status === 200 &&
+        top &&
+        top.source === 'mcp' &&
+        top.actorLabel === 'mcp-ai' &&
+        top.type === 'edit' &&
+        Array.isArray(top.diffs) &&
+        top.diffs.length === 3,
+      top
+    );
+    check(
+      'A5 entry carries recordId diffs (add/delete/field)',
+      top &&
+        top.diffs[0].recordId === 't9' &&
+        top.diffs[0].beforeAbsent === true &&
+        top.diffs[1].recordId === 'r1' &&
+        top.diffs[1].afterAbsent === true &&
+        top.diffs[2].recordId === 't1',
+      top && top.diffs
+    );
 
     // ---- hand off to the browser phase ---------------------------------------
-    try { fs.writeFileSync(STATE_FILE, JSON.stringify({ pid: PID, ownerCode: OC, port: PORT, entryId: ENTRY_ID, name: NAME })); } catch (e) {}
+    try {
+      fs.writeFileSync(
+        STATE_FILE,
+        JSON.stringify({ pid: PID, ownerCode: OC, port: PORT, entryId: ENTRY_ID, name: NAME })
+      );
+    } catch (e) {}
     log('READY pid=' + PID + ' code=' + OC + ' port=' + PORT + ' entry=' + ENTRY_ID);
     log('browser: http://127.0.0.1:' + PORT + '/project.html?id=' + PID);
     if (!process.env.MMGR_QA_NO_BROWSER) {
@@ -196,13 +372,19 @@ function baseState(pid, name) {
       }
     }
   } catch (e) {
-    log('FATAL harness exception: ' + (e && e.stack || e));
+    log('FATAL harness exception: ' + ((e && e.stack) || e));
   }
 
   const fails = results.filter(r => !r.val);
   log('----------------------------------------');
-  log('API PHASE RESULT: ' + (results.length - fails.length) + '/' + results.length + ' gates passed');
+  log(
+    'API PHASE RESULT: ' + (results.length - fails.length) + '/' + results.length + ' gates passed'
+  );
   log('STOPPED — wrangler dev torn down.');
   stopWrangler();
   process.exit(fails.length ? 1 : 0);
-})().catch(e => { log('FATAL: ' + (e && e.stack || e)); stopWrangler(); process.exit(1); });
+})().catch(e => {
+  log('FATAL: ' + ((e && e.stack) || e));
+  stopWrangler();
+  process.exit(1);
+});

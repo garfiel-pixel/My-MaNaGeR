@@ -5,14 +5,18 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   const U = ns.Utils;
   const $ = U.$;
 
-  function _toast(msg, type) { if (ns.App && ns.App.showToast) ns.App.showToast(msg, type); }
-  function _R() { return ns.Render; }
+  function _toast(msg, type) {
+    if (ns.App && ns.App.showToast) ns.App.showToast(msg, type);
+  }
+  function _R() {
+    return ns.Render;
+  }
 
   // ---- Export Modal ----
   function openOM() {
@@ -30,20 +34,28 @@ var MMGR = window.MMGR || {};
 
   function cpOut() {
     const txt = $('om-txt');
-    if (txt) { U.copyToClipboard(txt.value); _toast('Copied to clipboard!', 'ok'); }
+    if (txt) {
+      U.copyToClipboard(txt.value);
+      _toast('Copied to clipboard!', 'ok');
+    }
   }
 
   function loadClip() {
-    navigator.clipboard.readText().then(text => {
-      if (text && ns.State.importState(text)) {
-        _R().renderAll();
-        if (ns.Charter) ns.Charter.loadCharterData();
-        if (ns.Sprint) ns.Sprint.loadSprintData();
-        _toast('State loaded from clipboard!', 'ok');
-      } else {
-        _toast('Invalid state data in clipboard.', 'err');
-      }
-    }).catch(() => { _toast('Cannot read clipboard. Paste manually.', 'err'); });
+    navigator.clipboard
+      .readText()
+      .then(text => {
+        if (text && ns.State.importState(text)) {
+          _R().renderAll();
+          if (ns.Charter) ns.Charter.loadCharterData();
+          if (ns.Sprint) ns.Sprint.loadSprintData();
+          _toast('State loaded from clipboard!', 'ok');
+        } else {
+          _toast('Invalid state data in clipboard.', 'err');
+        }
+      })
+      .catch(() => {
+        _toast('Cannot read clipboard. Paste manually.', 'err');
+      });
   }
 
   // ---- File Import/Export ----
@@ -65,7 +77,7 @@ var MMGR = window.MMGR || {};
     const file = ev.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = function (e) {
       if (ns.State.importState(e.target.result)) {
         _R().renderAll();
         if (ns.Charter) ns.Charter.loadCharterData();

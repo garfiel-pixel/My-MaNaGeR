@@ -5,187 +5,266 @@
  ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   const C = ns.Cloud;
-  const $ = function(id) { return document.getElementById(id); };
-  function esc(v) { return C._esc(v); }
+  const $ = function (id) {
+    return document.getElementById(id);
+  };
+  function esc(v) {
+    return C._esc(v);
+  }
 
   // ---- pending just-created editor code (shown-once banner, gap-audit G23) --
   // Canonical implementation (2026-09-05): mmgr-cloud.js delegates here so the
   // trio can never drift. Validates the stored object actually carries a code
   // (mirrors the old mmgr-cloud.js behavior).
-  function pendingCodeKey() { return 'mmgr_cloud_pending_ecode_' + C._pid(); }
+  function pendingCodeKey() {
+    return 'mmgr_cloud_pending_ecode_' + C._pid();
+  }
   function getPendingEditorCode() {
- try {
- const raw = localStorage.getItem(pendingCodeKey());
- if (!raw) return null;
- const p = JSON.parse(raw);
- return (p && p.code) ? p : null;
- } catch (e) { return null; }
+    try {
+      const raw = localStorage.getItem(pendingCodeKey());
+      if (!raw) return null;
+      const p = JSON.parse(raw);
+      return p && p.code ? p : null;
+    } catch (e) {
+      return null;
+    }
   }
   function setPendingEditorCode(code, label, scope, role) {
- try {
- localStorage.setItem(pendingCodeKey(), JSON.stringify({ code: code, label: label || '', scope: scope || [], role: (role === 'view' || role === 'client' || role === 'api') ? role : 'editor' }));
- } catch (e) { /* ignore */ }
+    try {
+      localStorage.setItem(
+        pendingCodeKey(),
+        JSON.stringify({
+          code: code,
+          label: label || '',
+          scope: scope || [],
+          role: role === 'view' || role === 'client' || role === 'api' ? role : 'editor'
+        })
+      );
+    } catch (e) {
+      /* ignore */
+    }
   }
   function clearPendingEditorCode() {
- try { localStorage.removeItem(pendingCodeKey()); } catch (e) { /* ignore */ }
+    try {
+      localStorage.removeItem(pendingCodeKey());
+    } catch (e) {
+      /* ignore */
+    }
   }
 
   function sectionLabel(key) {
- const sections = C._getSections();
- if (!sections) return key;
- for (let i = 0; i < sections.length; i++) {
- if (sections[i].key === key) return sections[i].label || key;
- }
- return key;
+    const sections = C._getSections();
+    if (!sections) return key;
+    for (let i = 0; i < sections.length; i++) {
+      if (sections[i].key === key) return sections[i].label || key;
+    }
+    return key;
   }
 
   function pendingBannerHtml(pendingCode) {
- if (!pendingCode) return '';
- const isView = pendingCode.role === 'view';
- const isClient = pendingCode.role === 'client';
- const isApi = pendingCode.role === 'api';
- const kind = isApi ? 'API key' : (isClient ? 'client' : (isView ? 'viewer' : 'editor'));
- const kindCopy = isApi ? 'copy it into your AI tool. Shown once, stays until revoked or expired. Your AI uses it as a bearer header: X-API-Key: <the key> against this project\u2019s cloud load/save endpoints' : 'copy it and share. Stays until revoked';
- // OWNER 2026-09-16: the API-key banner now shows BOTH ways to connect (MCP
- // client or plain REST header) in plain language, with the field-guide
- // link - the owner's live test showed a key alone is not self-explanatory.
- const apiFine = isApi
-  ? '<div class="sr-hint" style="margin:8px 0 0">Two ways to use it: (1) In an AI tool that supports MCP connectors (Claude Desktop, Cursor), set the server address to <code style="font-family:ui-monospace,monospace">' + esc(mcpServerUrl()) + '</code> and give it this key as the access token. (2) In your own scripts, send it as the header <code style="font-family:ui-monospace,monospace">X-API-Key: ' + esc(pendingCode.code) + '</code>. The AI can only read and propose changes to the sections you ticked - every change waits in Review until you accept it. Revoke it any time from the API Keys list. <a href="mymanager-field-guide.html#connect-ai" target="_blank" rel="noopener">Full walkthrough in the field guide</a>.</div>'
-  : '';
- return '<div class="sr cloud-new-code" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:10px 0 4px" role="status">' +
- '<div class="sr-hint" style="margin:0 0 4px"><strong>NEW ' + kind + ' for \u201C' + esc(pendingCode.label || kind) + '\u201D - ' + kindCopy + ':</strong></div>' +
- '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
- '<code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold);font-size:1rem;font-weight:700">' + esc(pendingCode.code) + '</code>' +
- '<button class="btn btn-g btn-s" data-action="cloudCopyEditorCode" data-code="' + esc(pendingCode.code) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy code</button>' +
- '<button class="btn btn-g btn-s" data-action="cloudEditorCodeDone" title="Copy it one last time, dismiss this banner, and close settings"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Confirm</button>' +
- '</div>' + apiFine + '</div>';
+    if (!pendingCode) return '';
+    const isView = pendingCode.role === 'view';
+    const isClient = pendingCode.role === 'client';
+    const isApi = pendingCode.role === 'api';
+    const kind = isApi ? 'API key' : isClient ? 'client' : isView ? 'viewer' : 'editor';
+    const kindCopy = isApi
+      ? 'copy it into your AI tool. Shown once, stays until revoked or expired. Your AI uses it as a bearer header: X-API-Key: <the key> against this project\u2019s cloud load/save endpoints'
+      : 'copy it and share. Stays until revoked';
+    // OWNER 2026-09-16: the API-key banner now shows BOTH ways to connect (MCP
+    // client or plain REST header) in plain language, with the field-guide
+    // link - the owner's live test showed a key alone is not self-explanatory.
+    const apiFine = isApi
+      ? '<div class="sr-hint" style="margin:8px 0 0">Two ways to use it: (1) In an AI tool that supports MCP connectors (Claude Desktop, Cursor), set the server address to <code style="font-family:ui-monospace,monospace">' +
+        esc(mcpServerUrl()) +
+        '</code> and give it this key as the access token. (2) In your own scripts, send it as the header <code style="font-family:ui-monospace,monospace">X-API-Key: ' +
+        esc(pendingCode.code) +
+        '</code>. The AI can only read and propose changes to the sections you ticked - every change waits in Review until you accept it. Revoke it any time from the API Keys list. <a href="mymanager-field-guide.html#connect-ai" target="_blank" rel="noopener">Full walkthrough in the field guide</a>.</div>'
+      : '';
+    return (
+      '<div class="sr cloud-new-code" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:10px 0 4px" role="status">' +
+      '<div class="sr-hint" style="margin:0 0 4px"><strong>NEW ' +
+      kind +
+      ' for \u201C' +
+      esc(pendingCode.label || kind) +
+      '\u201D - ' +
+      kindCopy +
+      ':</strong></div>' +
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+      '<code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold);font-size:1rem;font-weight:700">' +
+      esc(pendingCode.code) +
+      '</code>' +
+      '<button class="btn btn-g btn-s" data-action="cloudCopyEditorCode" data-code="' +
+      esc(pendingCode.code) +
+      '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy code</button>' +
+      '<button class="btn btn-g btn-s" data-action="cloudEditorCodeDone" title="Copy it one last time, dismiss this banner, and close settings"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Confirm</button>' +
+      '</div>' +
+      apiFine +
+      '</div>'
+    );
   }
 
   // OWNER 2026-09-16: the per-project MCP server address, shown in the API
   // key banner and panel so a minted key comes with its connection point.
   function mcpServerUrl() {
-   try { return location.origin + '/api/mcp/' + encodeURIComponent(C._pid()); } catch (e) { return '/api/mcp/' + encodeURIComponent(C._pid()); }
+    try {
+      return location.origin + '/api/mcp/' + encodeURIComponent(C._pid());
+    } catch (e) {
+      return '/api/mcp/' + encodeURIComponent(C._pid());
+    }
   }
 
- // OWNER 2026-09-15: sub-tabs instead of three stacked panels - Share &
- // Access was too crowded. Editor Codes shows first (the default everyone
- // uses); Client Codes and API Keys collapse into a click-to-reveal tab bar.
- // A pending shown-once banner always stays visible on top, whichever tab is
- // open, so a freshly created key/code is never hidden behind a tab switch.
- let shareSubTab = 'editor';
- function shareSubTabsHtml() {
-  const tabs = [
-   ['editor', 'Editor codes'],
-   ['client', 'Client codes'],
-   ['api', 'API keys']
-  ];
-  let bar = '<div class="share-subtabs" role="tablist" aria-label="Sharing panels">';
-  for (let i = 0; i < tabs.length; i++) {
-   const on = shareSubTab === tabs[i][0];
-   bar += '<button type="button" class="share-subtab' + (on ? ' on' : '') + '" role="tab" aria-selected="' + on + '" data-action="cloudShareTab" data-tab="' + tabs[i][0] + '">' + tabs[i][1] + '</button>';
+  // OWNER 2026-09-15: sub-tabs instead of three stacked panels - Share &
+  // Access was too crowded. Editor Codes shows first (the default everyone
+  // uses); Client Codes and API Keys collapse into a click-to-reveal tab bar.
+  // A pending shown-once banner always stays visible on top, whichever tab is
+  // open, so a freshly created key/code is never hidden behind a tab switch.
+  let shareSubTab = 'editor';
+  function shareSubTabsHtml() {
+    const tabs = [
+      ['editor', 'Editor codes'],
+      ['client', 'Client codes'],
+      ['api', 'API keys']
+    ];
+    let bar = '<div class="share-subtabs" role="tablist" aria-label="Sharing panels">';
+    for (let i = 0; i < tabs.length; i++) {
+      const on = shareSubTab === tabs[i][0];
+      bar +=
+        '<button type="button" class="share-subtab' +
+        (on ? ' on' : '') +
+        '" role="tab" aria-selected="' +
+        on +
+        '" data-action="cloudShareTab" data-tab="' +
+        tabs[i][0] +
+        '">' +
+        tabs[i][1] +
+        '</button>';
+    }
+    return bar + '</div>';
   }
-  return bar + '</div>';
- }
- function sharePane() {
-  const show = function(t) { return shareSubTab === t; };
-  return shareSubTabsHtml() +
-   '<div class="share-subpane" data-pane="editor"' + (show('editor') ? '' : ' hidden') + '></div>' +
-   '<div class="share-subpane" data-pane="client"' + (show('client') ? '' : ' hidden') + '></div>' +
-   '<div class="share-subpane" data-pane="api"' + (show('api') ? '' : ' hidden') + '></div>';
- }
+  function sharePane() {
+    const show = function (t) {
+      return shareSubTab === t;
+    };
+    return (
+      shareSubTabsHtml() +
+      '<div class="share-subpane" data-pane="editor"' +
+      (show('editor') ? '' : ' hidden') +
+      '></div>' +
+      '<div class="share-subpane" data-pane="client"' +
+      (show('client') ? '' : ' hidden') +
+      '></div>' +
+      '<div class="share-subpane" data-pane="api"' +
+      (show('api') ? '' : ' hidden') +
+      '></div>'
+    );
+  }
 
   function renderShare() {
- const wrap = $('ctrl-share');
- if (!wrap) return;
- const code = C.getCode();
- const ecode = C.getECode();
- const escope = C.getEScope();
- const pendingCode = getPendingEditorCode();
- let body = '';
- if (!code && !ecode && C._isSessionOwner && C._isSessionOwner()) {
- // P1-6 (owner 2026-09-12): the project is cloud-linked and this session IS
- // the owner (My Cloud Projects load path holds no local code). Show the
- // linked state honestly instead of the 'link this project' pitch.
- // OWNER 2026-09-13: this branch now carries the FULL sharing panel - the
- // server authenticates code management via session or code, so a signed-in
- // owner on a new device creates and revokes codes right here (the old
- // copy only pointed at Recover Owner Code, which made sharing impossible
- // on any fresh device until a code was recovered).
- body =
- '<div class="share-card">' +
- '<div class="sr" style="border:none;padding:0 0 6px"><span class="sl" style="font-size:.8rem;font-weight:800"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Linked to your account</span></div>' +
- '<div class="sr-hint" style="margin:0 0 8px">You are signed in as this project\u2019s owner - backup and sharing run against your cloud copy. Want the portable owner code on this device? Use <strong>Recover Owner Code</strong> in Cloud &amp; Sync (the previous code stops working, by design).</div>' +
- pendingBannerHtml(pendingCode) +
- sharePane() +
- '</div>';
- } else if (!code && !ecode) {
- body =
- '<div class="share-card">' +
- '<div class="sr" style="border:none;padding:0 0 6px"><span class="sl" style="font-size:.8rem;font-weight:800">Link this project to the cloud to share it</span></div>' +
- '<div class="sr-hint" style="margin:0 0 10px">Sharing runs through the cloud backend: link the project once, get an <strong>owner code</strong>, then hand out <strong>editor codes</strong> that can only edit the sections you tick (view-only, budget-only, etc.). Codes work on any device - a colleague just opens this project and enters the code.</div>' +
- '<div class="exp-row"><button class="btn btn-g btn-s" data-action="cloudCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Create Cloud Project</button></div>' +
- '<div class="sr-hint" style="margin:8px 0 0">Already have a code from someone? Open <strong>Cloud &amp; Sync \u2518 Cloud Backup</strong> and enter it under \u201cOn another device?\u201d.</div>' +
- '</div>';
- } else if (ecode && !code) {
- const isView = !!(escope && escope.role === 'view');
- const scopeTxt = escope && escope.sections && escope.sections.length
- ? escope.sections.map(sectionLabel).join(', ')
- : 'unknown';
- body =
- '<div class="share-card">' +
- '<div class="sr" style="border:none;padding:0 0 6px"><span class="sl" style="font-size:.8rem;font-weight:800">' + (isView ? 'You are a viewer' : 'You are an editor') + '</span></div>' +
- '<div class="sr-hint" style="margin:0">' + (isView
- ? 'Viewer code active: <code class="share-code">' + esc(escope && escope.label || 'viewer') + '</code>. You can see: <strong>' + esc(scopeTxt) + '</strong>. Read-only: nothing here can be edited. Ask the admin for an editor or owner code to change things.'
- : 'Editor code active: <code class="share-code">' + esc(escope && escope.label || 'editor') + '</code>. You can edit: <strong>' + esc(scopeTxt) + '</strong>. Codes can only touch what the owner granted; generating and revoking codes is owner-only.') + '</div>' +
- '</div>';
- } else {
- body =
- '<div class="share-card">' +
- '<div class="sr" style="border:none;padding:0 0 6px"><span class="sl" style="font-size:.8rem;font-weight:800"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Owner code</span><button class="btn btn-n btn-s" data-action="cloudCopyCode"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy code</button></div>' +
- '<div class="sr-hint" style="margin:0 0 8px">Anyone with this code opens the project as <strong>owner</strong> on any device. Keep it safe - if lost, only the linked Google account can recover it.</div>' +
- '<code class="share-code">' + esc(code) + '</code>' +
- pendingBannerHtml(pendingCode) +
- sharePane() +
- '</div>';
- }
- wrap.innerHTML = body;
- // Panes carry the SAME ids as the old stacked panels did (each pane renders
- // once and hidden panes keep their markup), so every existing id-based
- // handler - scope boxes, list refreshes, create flows - works unchanged.
- const paneEd = wrap.querySelector('.share-subpane[data-pane="editor"]');
- const paneCl = wrap.querySelector('.share-subpane[data-pane="client"]');
- const paneAk = wrap.querySelector('.share-subpane[data-pane="api"]');
- if (paneEd) paneEd.innerHTML = editorPaneInner();
- if (paneCl) paneCl.innerHTML = clientCodesHtml();
- if (paneAk) paneAk.innerHTML = apiKeysHtml();
+    const wrap = $('ctrl-share');
+    if (!wrap) return;
+    const code = C.getCode();
+    const ecode = C.getECode();
+    const escope = C.getEScope();
+    const pendingCode = getPendingEditorCode();
+    let body = '';
+    if (!code && !ecode && C._isSessionOwner && C._isSessionOwner()) {
+      // P1-6 (owner 2026-09-12): the project is cloud-linked and this session IS
+      // the owner (My Cloud Projects load path holds no local code). Show the
+      // linked state honestly instead of the 'link this project' pitch.
+      // OWNER 2026-09-13: this branch now carries the FULL sharing panel - the
+      // server authenticates code management via session or code, so a signed-in
+      // owner on a new device creates and revokes codes right here (the old
+      // copy only pointed at Recover Owner Code, which made sharing impossible
+      // on any fresh device until a code was recovered).
+      body =
+        '<div class="share-card">' +
+        '<div class="sr" style="border:none;padding:0 0 6px"><span class="sl" style="font-size:.8rem;font-weight:800"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Linked to your account</span></div>' +
+        '<div class="sr-hint" style="margin:0 0 8px">You are signed in as this project\u2019s owner - backup and sharing run against your cloud copy. Want the portable owner code on this device? Use <strong>Recover Owner Code</strong> in Cloud &amp; Sync (the previous code stops working, by design).</div>' +
+        pendingBannerHtml(pendingCode) +
+        sharePane() +
+        '</div>';
+    } else if (!code && !ecode) {
+      body =
+        '<div class="share-card">' +
+        '<div class="sr" style="border:none;padding:0 0 6px"><span class="sl" style="font-size:.8rem;font-weight:800">Link this project to the cloud to share it</span></div>' +
+        '<div class="sr-hint" style="margin:0 0 10px">Sharing runs through the cloud backend: link the project once, get an <strong>owner code</strong>, then hand out <strong>editor codes</strong> that can only edit the sections you tick (view-only, budget-only, etc.). Codes work on any device - a colleague just opens this project and enters the code.</div>' +
+        '<div class="exp-row"><button class="btn btn-g btn-s" data-action="cloudCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Create Cloud Project</button></div>' +
+        '<div class="sr-hint" style="margin:8px 0 0">Already have a code from someone? Open <strong>Cloud &amp; Sync \u2518 Cloud Backup</strong> and enter it under \u201cOn another device?\u201d.</div>' +
+        '</div>';
+    } else if (ecode && !code) {
+      const isView = !!(escope && escope.role === 'view');
+      const scopeTxt =
+        escope && escope.sections && escope.sections.length
+          ? escope.sections.map(sectionLabel).join(', ')
+          : 'unknown';
+      body =
+        '<div class="share-card">' +
+        '<div class="sr" style="border:none;padding:0 0 6px"><span class="sl" style="font-size:.8rem;font-weight:800">' +
+        (isView ? 'You are a viewer' : 'You are an editor') +
+        '</span></div>' +
+        '<div class="sr-hint" style="margin:0">' +
+        (isView
+          ? 'Viewer code active: <code class="share-code">' +
+            esc((escope && escope.label) || 'viewer') +
+            '</code>. You can see: <strong>' +
+            esc(scopeTxt) +
+            '</strong>. Read-only: nothing here can be edited. Ask the admin for an editor or owner code to change things.'
+          : 'Editor code active: <code class="share-code">' +
+            esc((escope && escope.label) || 'editor') +
+            '</code>. You can edit: <strong>' +
+            esc(scopeTxt) +
+            '</strong>. Codes can only touch what the owner granted; generating and revoking codes is owner-only.') +
+        '</div>' +
+        '</div>';
+    } else {
+      body =
+        '<div class="share-card">' +
+        '<div class="sr" style="border:none;padding:0 0 6px"><span class="sl" style="font-size:.8rem;font-weight:800"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Owner code</span><button class="btn btn-n btn-s" data-action="cloudCopyCode"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy code</button></div>' +
+        '<div class="sr-hint" style="margin:0 0 8px">Anyone with this code opens the project as <strong>owner</strong> on any device. Keep it safe - if lost, only the linked Google account can recover it.</div>' +
+        '<code class="share-code">' +
+        esc(code) +
+        '</code>' +
+        pendingBannerHtml(pendingCode) +
+        sharePane() +
+        '</div>';
+    }
+    wrap.innerHTML = body;
+    // Panes carry the SAME ids as the old stacked panels did (each pane renders
+    // once and hidden panes keep their markup), so every existing id-based
+    // handler - scope boxes, list refreshes, create flows - works unchanged.
+    const paneEd = wrap.querySelector('.share-subpane[data-pane="editor"]');
+    const paneCl = wrap.querySelector('.share-subpane[data-pane="client"]');
+    const paneAk = wrap.querySelector('.share-subpane[data-pane="api"]');
+    if (paneEd) paneEd.innerHTML = editorPaneInner();
+    if (paneCl) paneCl.innerHTML = clientCodesHtml();
+    if (paneAk) paneAk.innerHTML = apiKeysHtml();
   }
- // Editor pane body: the editor-codes section (header row, create row, scope
- // box, list) extracted from the branch bodies above so sharePane() can slot
- // it into its pane wrapper - ids stay identical to the pre-tabs UI.
- function editorPaneInner() {
-  return '<div class="sr" style="margin-top:12px;padding:0 0 4px"><span class="sl" style="font-size:.72rem;font-weight:700"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Editor Codes</span><button class="btn btn-n btn-s" data-action="cloudEditorList" style="margin-left:auto"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Refresh</button></div>' +
-   '<div class="sr-hint" style="margin:0 0 6px">Create a code for a colleague. They enter it on any device to access this project. Scope is enforced server-side.</div>' +
-   '<div class="exp-row" style="flex-wrap:wrap">' +
-   '<input type="text" id="cloud-editor-label-in" class="ctl-in" placeholder="Label, e.g. Site Super - Riverside" style="min-width:200px" autocomplete="off">' +
-   '<select id="cloud-editor-role" class="ctl-in" style="width:auto" aria-label="Code type">' +
-   '<option value="editor">Editor - can edit the sections below</option>' +
-   '<option value="view">Viewer - can see them, read-only</option>' +
-   '</select>' +
-   '<button class="btn btn-g btn-s" data-action="cloudEditorCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Create Code</button>' +
-   '</div>' +
-   '<div id="cloud-editor-scope-box" class="share-scope">' +
-   '<span class="sr-hint" style="margin:0">Sections this code may edit (or see, for a viewer):</span>' +
-   '<span id="cloud-editor-scope-load" class="sr-hint" style="margin:0">loading\u2026</span>' +
-   '</div>' +
-   '<div id="cloud-editor-list"></div>';
- }
-
-
-
+  // Editor pane body: the editor-codes section (header row, create row, scope
+  // box, list) extracted from the branch bodies above so sharePane() can slot
+  // it into its pane wrapper - ids stay identical to the pre-tabs UI.
+  function editorPaneInner() {
+    return (
+      '<div class="sr" style="margin-top:12px;padding:0 0 4px"><span class="sl" style="font-size:.72rem;font-weight:700"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Editor Codes</span><button class="btn btn-n btn-s" data-action="cloudEditorList" style="margin-left:auto"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Refresh</button></div>' +
+      '<div class="sr-hint" style="margin:0 0 6px">Create a code for a colleague. They enter it on any device to access this project. Scope is enforced server-side.</div>' +
+      '<div class="exp-row" style="flex-wrap:wrap">' +
+      '<input type="text" id="cloud-editor-label-in" class="ctl-in" placeholder="Label, e.g. Site Super - Riverside" style="min-width:200px" autocomplete="off">' +
+      '<select id="cloud-editor-role" class="ctl-in" style="width:auto" aria-label="Code type">' +
+      '<option value="editor">Editor - can edit the sections below</option>' +
+      '<option value="view">Viewer - can see them, read-only</option>' +
+      '</select>' +
+      '<button class="btn btn-g btn-s" data-action="cloudEditorCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Create Code</button>' +
+      '</div>' +
+      '<div id="cloud-editor-scope-box" class="share-scope">' +
+      '<span class="sr-hint" style="margin:0">Sections this code may edit (or see, for a viewer):</span>' +
+      '<span id="cloud-editor-scope-load" class="sr-hint" style="margin:0">loading\u2026</span>' +
+      '</div>' +
+      '<div id="cloud-editor-list"></div>'
+    );
+  }
 
   // C19 OWNER UI (owner 2026-09-13): the client-code backend (create, list,
   // revoke, verify, read-only section grant) shipped complete with NO door -
@@ -193,23 +272,25 @@ var MMGR = window.MMGR || {};
   // editor-codes panel. A client code opens the project read-only on any
   // device, showing only the ticked sections.
   function clientCodesHtml() {
- return '<div class="sr" style="margin-top:12px;padding:0 0 4px"><span class="sl" style="font-size:.72rem;font-weight:700"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Client Codes</span><button class="btn btn-n btn-s" data-action="cloudClientList" style="margin-left:auto"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Refresh</button></div>' +
- '<div class="sr-hint" style="margin:0 0 6px">A client code opens this project read-only on any device and shows only the sections you tick. Good for clients who just need to look.</div>' +
- '<div class="exp-row" style="flex-wrap:wrap">' +
- '<input type="text" id="cloud-client-label-in" class="ctl-in" placeholder="Label, e.g. Client - Riverside" style="min-width:180px" autocomplete="off">' +
- '<select id="cloud-client-expiry" class="ctl-in" style="width:auto" aria-label="Code expiry">' +
- '<option value="">Never expires</option>' +
- '<option value="7">Expires in 7 days</option>' +
- '<option value="30">Expires in 30 days</option>' +
- '<option value="90">Expires in 90 days</option>' +
- '</select>' +
- '<button class="btn btn-g btn-s" data-action="cloudClientCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Create Client Code</button>' +
- '</div>' +
- '<div id="cloud-client-scope-box" class="share-scope">' +
- '<span class="sr-hint" style="margin:0">Sections the client can see:</span>' +
- '<span id="cloud-client-scope-load" class="sr-hint" style="margin:0">loading\u2026</span>' +
- '</div>' +
- '<div id="cloud-client-list"></div>';
+    return (
+      '<div class="sr" style="margin-top:12px;padding:0 0 4px"><span class="sl" style="font-size:.72rem;font-weight:700"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Client Codes</span><button class="btn btn-n btn-s" data-action="cloudClientList" style="margin-left:auto"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Refresh</button></div>' +
+      '<div class="sr-hint" style="margin:0 0 6px">A client code opens this project read-only on any device and shows only the sections you tick. Good for clients who just need to look.</div>' +
+      '<div class="exp-row" style="flex-wrap:wrap">' +
+      '<input type="text" id="cloud-client-label-in" class="ctl-in" placeholder="Label, e.g. Client - Riverside" style="min-width:180px" autocomplete="off">' +
+      '<select id="cloud-client-expiry" class="ctl-in" style="width:auto" aria-label="Code expiry">' +
+      '<option value="">Never expires</option>' +
+      '<option value="7">Expires in 7 days</option>' +
+      '<option value="30">Expires in 30 days</option>' +
+      '<option value="90">Expires in 90 days</option>' +
+      '</select>' +
+      '<button class="btn btn-g btn-s" data-action="cloudClientCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Create Client Code</button>' +
+      '</div>' +
+      '<div id="cloud-client-scope-box" class="share-scope">' +
+      '<span class="sr-hint" style="margin:0">Sections the client can see:</span>' +
+      '<span id="cloud-client-scope-load" class="sr-hint" style="margin:0">loading\u2026</span>' +
+      '</div>' +
+      '<div id="cloud-client-list"></div>'
+    );
   }
 
   // PROJECT API KEYS (owner directive 2026-09-15): the third sharing panel,
@@ -219,33 +300,37 @@ var MMGR = window.MMGR || {};
   // (field-level diffs) and accepts or rejects it inside the project, so a
   // machine never edits anything a human did not approve.
   function apiKeysHtml() {
- return '<div class="sr" style="margin-top:12px;padding:0 0 4px"><span class="sl" style="font-size:.72rem;font-weight:700"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-key"></use></svg> API Keys</span><button class="btn btn-n btn-s" data-action="cloudApiKeyList" style="margin-left:auto"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Refresh</button></div>' +
- '<div class="sr-hint" style="margin:0 0 6px">Give an external AI assistant its own key for THIS project. It can only touch the sections you tick, it stops on the date you pick, and every change it makes waits for your approval in the review queue.</div>' +
- '<div class="sr-hint" style="margin:4px 0 6px">Fine print, in plain words: the AI connects to <code style="font-family:ui-monospace,monospace">' + esc(mcpServerUrl()) + '</code> with the key pasted as its access token (MCP connectors), or calls the cloud API with <code style="font-family:ui-monospace,monospace">X-API-Key</code>. Leave the connector\u2019s sign-in setting on <b>No sign-in</b> - the server only checks the key when a tool actually asks for data. It reads only what you tick, and nothing it proposes changes the project until you accept it in Review. Treat a key like a key to the site office - anyone holding it can do what you ticked. <a href="mymanager-field-guide.html#connect-ai" target="_blank" rel="noopener">Step-by-step in the field guide</a>.</div>' +
- '<div class="exp-row" style="flex-wrap:wrap">' +
- '<input type="text" id="cloud-apikey-label-in" class="ctl-in" placeholder="Label, e.g. Site assistant" style="min-width:180px" autocomplete="off">' +
- '<select id="cloud-apikey-expiry" class="ctl-in" style="width:auto" aria-label="Key expiry">' +
- '<option value="30">Expires in 30 days</option>' +
- '<option value="90">Expires in 90 days</option>' +
- '<option value="365">Expires in 1 year</option>' +
- '<option value="">Never expires</option>' +
- '</select>' +
- '<button class="btn btn-g btn-s" data-action="cloudApiKeyCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Create API Key</button>' +
- '</div>' +
- '<div id="cloud-apikey-scope-box" class="share-scope">' +
- '<span class="sr-hint" style="margin:0">Sections the key may read and propose changes to:</span>' +
- '<span id="cloud-apikey-scope-load" class="sr-hint" style="margin:0">loading\u2026</span>' +
- '</div>' +
- '<div id="cloud-apikey-list"></div>';
+    return (
+      '<div class="sr" style="margin-top:12px;padding:0 0 4px"><span class="sl" style="font-size:.72rem;font-weight:700"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-key"></use></svg> API Keys</span><button class="btn btn-n btn-s" data-action="cloudApiKeyList" style="margin-left:auto"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Refresh</button></div>' +
+      '<div class="sr-hint" style="margin:0 0 6px">Give an external AI assistant its own key for THIS project. It can only touch the sections you tick, it stops on the date you pick, and every change it makes waits for your approval in the review queue.</div>' +
+      '<div class="sr-hint" style="margin:4px 0 6px">Fine print, in plain words: the AI connects to <code style="font-family:ui-monospace,monospace">' +
+      esc(mcpServerUrl()) +
+      '</code> with the key pasted as its access token (MCP connectors), or calls the cloud API with <code style="font-family:ui-monospace,monospace">X-API-Key</code>. Leave the connector\u2019s sign-in setting on <b>No sign-in</b> - the server only checks the key when a tool actually asks for data. It reads only what you tick, and nothing it proposes changes the project until you accept it in Review. Treat a key like a key to the site office - anyone holding it can do what you ticked. <a href="mymanager-field-guide.html#connect-ai" target="_blank" rel="noopener">Step-by-step in the field guide</a>.</div>' +
+      '<div class="exp-row" style="flex-wrap:wrap">' +
+      '<input type="text" id="cloud-apikey-label-in" class="ctl-in" placeholder="Label, e.g. Site assistant" style="min-width:180px" autocomplete="off">' +
+      '<select id="cloud-apikey-expiry" class="ctl-in" style="width:auto" aria-label="Key expiry">' +
+      '<option value="30">Expires in 30 days</option>' +
+      '<option value="90">Expires in 90 days</option>' +
+      '<option value="365">Expires in 1 year</option>' +
+      '<option value="">Never expires</option>' +
+      '</select>' +
+      '<button class="btn btn-g btn-s" data-action="cloudApiKeyCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Create API Key</button>' +
+      '</div>' +
+      '<div id="cloud-apikey-scope-box" class="share-scope">' +
+      '<span class="sr-hint" style="margin:0">Sections the key may read and propose changes to:</span>' +
+      '<span id="cloud-apikey-scope-load" class="sr-hint" style="margin:0">loading\u2026</span>' +
+      '</div>' +
+      '<div id="cloud-apikey-list"></div>'
+    );
   }
 
   ns.CloudShare = {
- renderShare: renderShare,
- pendingBannerHtml: pendingBannerHtml,
- sectionLabel: sectionLabel,
- getPendingEditorCode: getPendingEditorCode,
- setPendingEditorCode: setPendingEditorCode,
- clearPendingEditorCode: clearPendingEditorCode
+    renderShare: renderShare,
+    pendingBannerHtml: pendingBannerHtml,
+    sectionLabel: sectionLabel,
+    getPendingEditorCode: getPendingEditorCode,
+    setPendingEditorCode: setPendingEditorCode,
+    clearPendingEditorCode: clearPendingEditorCode
   };
 })(MMGR);
 window.MMGR = MMGR;

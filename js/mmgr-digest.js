@@ -23,7 +23,7 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   const U = ns.Utils;
@@ -34,16 +34,24 @@ var MMGR = window.MMGR || {};
     return {
       at: new Date().toISOString(),
       tasks: (s.tasks || []).map(t => ({
-        id: String(t.id), name: t.name || '', status: t.status || 'todo',
-        startDate: t.startDate || '', endDate: t.endDate || '', duration: t.duration || ''
+        id: String(t.id),
+        name: t.name || '',
+        status: t.status || 'todo',
+        startDate: t.startDate || '',
+        endDate: t.endDate || '',
+        duration: t.duration || ''
       })),
       risks: (s.risks || []).map(r => ({
-        id: String(r.id), probability: r.probability || '',
-        impact: r.impact || '', issueId: r.issueId || null
+        id: String(r.id),
+        probability: r.probability || '',
+        impact: r.impact || '',
+        issueId: r.issueId || null
       })),
       issues: (s.issues || []).map(i => ({ id: String(i.id), status: i.status || '' })),
       budgetLines: (s.budgetLines || []).map(b => ({
-        id: String(b.id), planned: +b.planned || 0, actual: +b.actual || 0
+        id: String(b.id),
+        planned: +b.planned || 0,
+        actual: +b.actual || 0
       })),
       budgetEnvelope: +s.budgetEnvelope || 0,
       spendCount: (s.spendLog || []).length,
@@ -62,41 +70,62 @@ var MMGR = window.MMGR || {};
     const baseTasks = (s.baseline && s.baseline.tasks) || null;
     const curTasks = s.tasks || [];
     const curMap = {};
-    curTasks.forEach(t => { curMap[String(t.id)] = t; });
+    curTasks.forEach(t => {
+      curMap[String(t.id)] = t;
+    });
 
     const d = {
-      mode: snap ? 'snapshot' : (baseTasks ? 'baseline' : 'none'),
+      mode: snap ? 'snapshot' : baseTasks ? 'baseline' : 'none',
       referenceAt: snap ? snap.at : (s.baseline && s.baseline.capturedAt) || null,
       generatedAt: new Date().toLocaleString(),
       project: s.projectName || (s.charter && s.charter.name) || 'Project',
-      completed: [], slipped: [], recovered: [], added: [], removed: [],
-      newHighRisks: [], risksPromoted: [], issuesResolved: [],
-      budget: null, openActions: [], weatherDaysLogged: 0,
-      changeChanges: [], spendAdded: 0
+      completed: [],
+      slipped: [],
+      recovered: [],
+      added: [],
+      removed: [],
+      newHighRisks: [],
+      risksPromoted: [],
+      issuesResolved: [],
+      budget: null,
+      openActions: [],
+      weatherDaysLogged: 0,
+      changeChanges: [],
+      spendAdded: 0
     };
 
     if (snap) {
       const snapTaskMap = {};
-      snap.tasks.forEach(t => { snapTaskMap[t.id] = t; });
+      snap.tasks.forEach(t => {
+        snapTaskMap[t.id] = t;
+      });
       curTasks.forEach(t => {
         const pt = snapTaskMap[String(t.id)];
-        if (pt && pt.status !== 'completed' && t.status === 'completed') d.completed.push(t.name || t.id);
+        if (pt && pt.status !== 'completed' && t.status === 'completed')
+          d.completed.push(t.name || t.id);
       });
       Object.keys(snapTaskMap).forEach(id => {
         const pt = snapTaskMap[id];
         const ct = curMap[id];
-        if (!ct) { d.removed.push(pt.name || id); return; }
+        if (!ct) {
+          d.removed.push(pt.name || id);
+          return;
+        }
         if (pt.endDate && ct.endDate) {
           const diff = U.daysBetween(pt.endDate, ct.endDate);
           if (diff > 0) d.slipped.push({ name: ct.name || id, days: diff });
           else if (diff < 0) d.recovered.push({ name: ct.name || id, days: Math.abs(diff) });
         }
       });
-      curTasks.forEach(t => { if (!snapTaskMap[String(t.id)]) d.added.push(t.name || t.id); });
+      curTasks.forEach(t => {
+        if (!snapTaskMap[String(t.id)]) d.added.push(t.name || t.id);
+      });
 
       // Risks
       const snapRiskMap = {};
-      snap.risks.forEach(r => { snapRiskMap[r.id] = r; });
+      snap.risks.forEach(r => {
+        snapRiskMap[r.id] = r;
+      });
       (s.risks || []).forEach(r => {
         const id = String(r.id);
         const pr = snapRiskMap[id];
@@ -109,28 +138,49 @@ var MMGR = window.MMGR || {};
       });
       // Issues resolved
       const snapIssueMap = {};
-      snap.issues.forEach(i => { snapIssueMap[i.id] = i; });
+      snap.issues.forEach(i => {
+        snapIssueMap[i.id] = i;
+      });
       (s.issues || []).forEach(i => {
         const pi = snapIssueMap[String(i.id)];
-        if (pi && pi.status !== 'resolved' && pi.status !== 'closed' &&
-            (i.status === 'resolved' || i.status === 'closed')) d.issuesResolved.push(i.description || i.id);
+        if (
+          pi &&
+          pi.status !== 'resolved' &&
+          pi.status !== 'closed' &&
+          (i.status === 'resolved' || i.status === 'closed')
+        )
+          d.issuesResolved.push(i.description || i.id);
       });
       // Budget movement
       const snapBudMap = {};
-      snap.budgetLines.forEach(b => { snapBudMap[b.id] = b; });
+      snap.budgetLines.forEach(b => {
+        snapBudMap[b.id] = b;
+      });
       const curPlanned = (s.budgetLines || []).reduce((n, l) => n + (+l.planned || 0), 0);
       const curActual = (s.budgetLines || []).reduce((n, l) => n + (+l.actual || 0), 0);
       const snapPlanned = snap.budgetLines.reduce((n, b) => n + b.planned, 0);
       const snapActual = snap.budgetLines.reduce((n, b) => n + b.actual, 0);
-      if (curPlanned !== snapPlanned || curActual !== snapActual || (s.budgetLines || []).length !== snap.budgetLines.length) {
-        d.budget = { plannedBefore: snapPlanned, plannedAfter: curPlanned, actualBefore: snapActual, actualAfter: curActual };
+      if (
+        curPlanned !== snapPlanned ||
+        curActual !== snapActual ||
+        (s.budgetLines || []).length !== snap.budgetLines.length
+      ) {
+        d.budget = {
+          plannedBefore: snapPlanned,
+          plannedAfter: curPlanned,
+          actualBefore: snapActual,
+          actualAfter: curActual
+        };
       }
       // Change-control status moves
       const snapChgMap = {};
-      snap.changes.forEach(c => { snapChgMap[c.id] = c; });
+      snap.changes.forEach(c => {
+        snapChgMap[c.id] = c;
+      });
       (s.changes || []).forEach(c => {
         const pc = snapChgMap[String(c.id)];
-        if (pc && pc.status !== (c.status || '')) d.changeChanges.push({ title: c.title || c.id, from: pc.status, to: c.status || '' });
+        if (pc && pc.status !== (c.status || ''))
+          d.changeChanges.push({ title: c.title || c.id, from: pc.status, to: c.status || '' });
       });
       // Spend + weather deltas
       d.spendAdded = (s.spendLog || []).length - snap.spendCount;
@@ -138,11 +188,16 @@ var MMGR = window.MMGR || {};
     } else if (baseTasks) {
       // First run (no pin): report schedule + budget movement vs the baseline
       const baseMap = {};
-      baseTasks.forEach(t => { baseMap[String(t.id)] = t; });
+      baseTasks.forEach(t => {
+        baseMap[String(t.id)] = t;
+      });
       Object.keys(baseMap).forEach(id => {
         const bt = baseMap[id];
         const ct = curMap[id];
-        if (!ct) { d.removed.push(bt.name || id); return; }
+        if (!ct) {
+          d.removed.push(bt.name || id);
+          return;
+        }
         if (bt.status !== 'completed' && ct.status === 'completed') d.completed.push(ct.name || id);
         if (bt.endDate && ct.endDate) {
           const diff = U.daysBetween(bt.endDate, ct.endDate);
@@ -150,7 +205,9 @@ var MMGR = window.MMGR || {};
           else if (diff < 0) d.recovered.push({ name: ct.name || id, days: Math.abs(diff) });
         }
       });
-      curTasks.forEach(t => { if (!baseMap[String(t.id)]) d.added.push(t.name || t.id); });
+      curTasks.forEach(t => {
+        if (!baseMap[String(t.id)]) d.added.push(t.name || t.id);
+      });
       const basePlanned = (s.baseline.budgetLines || []).reduce((n, l) => n + (+l.planned || 0), 0);
       const baseActual = (s.baseline.budgetLines || []).reduce((n, l) => n + (+l.actual || 0), 0);
       const curPlanned = (s.budgetLines || []).reduce((n, l) => n + (+l.planned || 0), 0);
@@ -159,20 +216,30 @@ var MMGR = window.MMGR || {};
       // full budgetLines snapshot) , never a hardcoded zero, which would turn
       // any spend into a phantom "movement" even when nothing changed.
       if (basePlanned !== curPlanned || baseActual !== curActual) {
-        d.budget = { plannedBefore: basePlanned, plannedAfter: curPlanned, actualBefore: baseActual, actualAfter: curActual };
+        d.budget = {
+          plannedBefore: basePlanned,
+          plannedAfter: curPlanned,
+          actualBefore: baseActual,
+          actualAfter: curActual
+        };
       }
     }
 
     // Open decisions / promises , always live
     (s.commsEntries || []).forEach(c => {
-      if ((c.actionItems || '').trim()) d.openActions.push({ kind: 'Comms', date: c.date || '', text: c.actionItems });
+      if ((c.actionItems || '').trim())
+        d.openActions.push({ kind: 'Comms', date: c.date || '', text: c.actionItems });
     });
     (s.logEntries || []).forEach(l => {
-      if ((l.actionItems || '').trim()) d.openActions.push({ kind: 'Decision Log', date: l.date || '', text: l.actionItems });
+      if ((l.actionItems || '').trim())
+        d.openActions.push({ kind: 'Decision Log', date: l.date || '', text: l.actionItems });
     });
     const promises = s.meetingPromises || {};
     Object.keys(promises).forEach(k => {
-      (promises[k] || []).forEach(p => { if (!p.done && (p.text || '').trim()) d.openActions.push({ kind: 'Promise (' + k + ')', date: '', text: p.text }); });
+      (promises[k] || []).forEach(p => {
+        if (!p.done && (p.text || '').trim())
+          d.openActions.push({ kind: 'Promise (' + k + ')', date: '', text: p.text });
+      });
     });
 
     return d;
@@ -181,7 +248,10 @@ var MMGR = window.MMGR || {};
   // ---- Reference-point label (snapshot date / baseline / none) ----
   function referenceLabel(d) {
     if (d.mode === 'snapshot') return 'pinned ' + new Date(d.referenceAt).toLocaleString();
-    if (d.mode === 'baseline') return 'baseline' + (d.referenceAt ? ' (' + new Date(d.referenceAt).toLocaleString() + ')' : '');
+    if (d.mode === 'baseline')
+      return (
+        'baseline' + (d.referenceAt ? ' (' + new Date(d.referenceAt).toLocaleString() + ')' : '')
+      );
     return 'none , pin a reference point to start the weekly loop';
   }
 
@@ -195,37 +265,88 @@ var MMGR = window.MMGR || {};
       else secs.push({ title: title, lines: [noneText || '(none)'] });
     };
 
-    add('Completed', d.completed.map(n => '• ' + n), '(nothing completed since reference)');
+    add(
+      'Completed',
+      d.completed.map(n => '• ' + n),
+      '(nothing completed since reference)'
+    );
 
-    const slipLines = d.slipped.sort((a, b) => b.days - a.days).map(x => '• ' + x.name + ' slipped by ' + x.days + 'd');
-    const recLines = d.recovered.sort((a, b) => b.days - a.days).map(x => '• ' + x.name + ' recovered ' + x.days + 'd');
+    const slipLines = d.slipped
+      .sort((a, b) => b.days - a.days)
+      .map(x => '• ' + x.name + ' slipped by ' + x.days + 'd');
+    const recLines = d.recovered
+      .sort((a, b) => b.days - a.days)
+      .map(x => '• ' + x.name + ' recovered ' + x.days + 'd');
     add('Schedule movement', slipLines.concat(recLines), '(no schedule movement since reference)');
-    add('Scope', d.added.map(n => '• added: ' + n).concat(d.removed.map(n => '• removed: ' + n)), '(no scope change)');
+    add(
+      'Scope',
+      d.added.map(n => '• added: ' + n).concat(d.removed.map(n => '• removed: ' + n)),
+      '(no scope change)'
+    );
 
-    add('New high-severity risks', d.newHighRisks.map(r => '• ' + r), '(no new high-severity risks)');
-    add('Risk promotions & resolutions', d.risksPromoted.map(r => '• promoted to issue: ' + r).concat(d.issuesResolved.map(i => '• resolved: ' + i)), '(no risk/issue status changes)');
+    add(
+      'New high-severity risks',
+      d.newHighRisks.map(r => '• ' + r),
+      '(no new high-severity risks)'
+    );
+    add(
+      'Risk promotions & resolutions',
+      d.risksPromoted
+        .map(r => '• promoted to issue: ' + r)
+        .concat(d.issuesResolved.map(i => '• resolved: ' + i)),
+      '(no risk/issue status changes)'
+    );
 
     if (d.budget) {
       const b = d.budget;
-      const fmt = (n) => '$' + Number(n).toLocaleString();
+      const fmt = n => '$' + Number(n).toLocaleString();
       const varBefore = b.actualBefore - b.plannedBefore;
       const varAfter = b.actualAfter - b.plannedAfter;
       const mv = varAfter - varBefore;
       add('Budget variance movement', [
         '• planned ' + fmt(b.plannedBefore) + ' → ' + fmt(b.plannedAfter),
         '• actual ' + fmt(b.actualBefore) + ' → ' + fmt(b.actualAfter),
-        '• variance ' + fmt(varBefore) + ' → ' + fmt(varAfter) + (mv ? ' (Δ ' + (mv > 0 ? '+' : '') + fmt(mv) + ')' : '')
+        '• variance ' +
+          fmt(varBefore) +
+          ' → ' +
+          fmt(varAfter) +
+          (mv ? ' (Δ ' + (mv > 0 ? '+' : '') + fmt(mv) + ')' : '')
       ]);
     } else {
       add('Budget variance movement', [], '(no budget movement since reference)');
     }
 
-    add('Open decisions / promises', d.openActions.map(a => '• [' + a.kind + '] ' + (a.date ? a.date + ' , ' : '') + a.text), '(no open decisions or promises)');
-    add('Change control', d.changeChanges.map(c => '• ' + c.title + ': ' + c.from + ' → ' + c.to), '(no change-control status moves)');
-    add('Weather & spend', []
-      .concat(d.weatherDaysLogged ? ['• ' + d.weatherDaysLogged + ' weather delay day' + (d.weatherDaysLogged > 1 ? 's' : '') + ' logged'] : [])
-      .concat(d.spendAdded ? ['• ' + d.spendAdded + ' new spend entr' + (d.spendAdded > 1 ? 'ies' : 'y')] : []),
-      '(no new weather days or spend entries)');
+    add(
+      'Open decisions / promises',
+      d.openActions.map(a => '• [' + a.kind + '] ' + (a.date ? a.date + ' , ' : '') + a.text),
+      '(no open decisions or promises)'
+    );
+    add(
+      'Change control',
+      d.changeChanges.map(c => '• ' + c.title + ': ' + c.from + ' → ' + c.to),
+      '(no change-control status moves)'
+    );
+    add(
+      'Weather & spend',
+      []
+        .concat(
+          d.weatherDaysLogged
+            ? [
+                '• ' +
+                  d.weatherDaysLogged +
+                  ' weather delay day' +
+                  (d.weatherDaysLogged > 1 ? 's' : '') +
+                  ' logged'
+              ]
+            : []
+        )
+        .concat(
+          d.spendAdded
+            ? ['• ' + d.spendAdded + ' new spend entr' + (d.spendAdded > 1 ? 'ies' : 'y')]
+            : []
+        ),
+      '(no new weather days or spend entries)'
+    );
 
     return secs;
   }
@@ -235,9 +356,20 @@ var MMGR = window.MMGR || {};
     // a delta) , they must not count as "changes", or the honest
     // 'No changes detected' empty state would be unreachable for any project
     // with an open item.
-    return !!(d.completed.length || d.slipped.length || d.recovered.length || d.added.length ||
-      d.removed.length || d.newHighRisks.length || d.risksPromoted.length || d.issuesResolved.length ||
-      d.budget || d.changeChanges.length || d.weatherDaysLogged || d.spendAdded);
+    return !!(
+      d.completed.length ||
+      d.slipped.length ||
+      d.recovered.length ||
+      d.added.length ||
+      d.removed.length ||
+      d.newHighRisks.length ||
+      d.risksPromoted.length ||
+      d.issuesResolved.length ||
+      d.budget ||
+      d.changeChanges.length ||
+      d.weatherDaysLogged ||
+      d.spendAdded
+    );
   }
 
   // ---- buildDigestText: Copy All / print rendering ----
@@ -247,7 +379,9 @@ var MMGR = window.MMGR || {};
     L.push('Generated: ' + d.generatedAt + ' | Reference: ' + referenceLabel(d));
     L.push('='.repeat(40));
     if (!hasAnyChange(d)) {
-      L.push('No changes detected since the reference point , everything matches the pinned state.');
+      L.push(
+        'No changes detected since the reference point , everything matches the pinned state.'
+      );
     }
     digestSections(d).forEach(sec => {
       L.push('');
@@ -265,15 +399,28 @@ var MMGR = window.MMGR || {};
     const el = U.$('digest-body');
     if (!el) return;
     const esc = U.escapeHtml;
-    let html = '<div class="digest-meta">Generated ' + esc(d.generatedAt) + ' · Reference: <strong>' + esc(referenceLabel(d)) + '</strong></div>';
+    let html =
+      '<div class="digest-meta">Generated ' +
+      esc(d.generatedAt) +
+      ' · Reference: <strong>' +
+      esc(referenceLabel(d)) +
+      '</strong></div>';
     if (d.mode === 'none') {
-      html += '<div class="es" style="padding:12px;font-size:.76rem">No baseline and no pinned reference point yet. <strong>Pin Reference</strong> to capture the current state , from then on, every digest lists exactly what changed since this moment. (Until then the digest shows the live open-decision list below.)</div>';
+      html +=
+        '<div class="es" style="padding:12px;font-size:.76rem">No baseline and no pinned reference point yet. <strong>Pin Reference</strong> to capture the current state , from then on, every digest lists exactly what changed since this moment. (Until then the digest shows the live open-decision list below.)</div>';
     } else if (!hasAnyChange(d)) {
-      html += '<div class="es es-ok" style="padding:12px;font-size:.76rem"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> No changes detected since the reference point , everything matches.</div>';
+      html +=
+        '<div class="es es-ok" style="padding:12px;font-size:.76rem"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> No changes detected since the reference point , everything matches.</div>';
     }
     digestSections(d).forEach(sec => {
-      html += '<div class="digest-sec"><div class="digest-sec-title">' + esc(sec.title) + '</div>' +
-        sec.lines.map(l => '<div class="bn-item">' + esc(l.replace(/^• /, '')) + '</div>').join('') + '</div>';
+      html +=
+        '<div class="digest-sec"><div class="digest-sec-title">' +
+        esc(sec.title) +
+        '</div>' +
+        sec.lines
+          .map(l => '<div class="bn-item">' + esc(l.replace(/^• /, '')) + '</div>')
+          .join('') +
+        '</div>';
     });
     el.innerHTML = html;
   }
@@ -286,11 +433,12 @@ var MMGR = window.MMGR || {};
 
   // ---- pin: capture the reference point (mutating , blocked in readonly) ----
   function pin() {
-    ns.State.updateState(function(st) {
+    ns.State.updateState(function (st) {
       st.digestSnapshot = captureSnapshot(st);
     });
     render();
-    if (ns.App && ns.App.showToast) ns.App.showToast('Reference pinned , future digests show what changed from now.', 'ok');
+    if (ns.App && ns.App.showToast)
+      ns.App.showToast('Reference pinned , future digests show what changed from now.', 'ok');
   }
 
   function render() {

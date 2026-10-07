@@ -23,7 +23,7 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   // ---- MMGR.Config ----
@@ -45,8 +45,16 @@ var MMGR = window.MMGR || {};
     // gpt-5-nano are the active cheaper siblings (gpt-4.1-nano is deprecated
     // and was NOT used). Anthropic , claude-3-5-sonnet-latest ->
     // claude-3-5-haiku-latest -> claude-3-haiku.
-    openai: { endpoint: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini', fallbackModels: ['gpt-5-mini', 'gpt-5-nano'] },
-    anthropic: { endpoint: 'https://api.anthropic.com/v1/messages', model: 'claude-3-5-sonnet-latest', fallbackModels: ['claude-3-5-haiku-latest', 'claude-3-haiku'] },
+    openai: {
+      endpoint: 'https://api.openai.com/v1/chat/completions',
+      model: 'gpt-4o-mini',
+      fallbackModels: ['gpt-5-mini', 'gpt-5-nano']
+    },
+    anthropic: {
+      endpoint: 'https://api.anthropic.com/v1/messages',
+      model: 'claude-3-5-sonnet-latest',
+      fallbackModels: ['claude-3-5-haiku-latest', 'claude-3-haiku']
+    },
     // BYO-AI-KEY-SESSION-ONLY-v1: Google Gemini joins the v1 provider set.
     // ANTHROPIC-CONNECTABLE fast-follow: Anthropic is now a full Connect-flow
     // provider too (vault whitelist + provider select + live probe), so the
@@ -75,7 +83,8 @@ var MMGR = window.MMGR || {};
     // ladder rung builds its own via geminiEndpointFor(modelId) because the
     // model name lives in the URL path.
     'google-gemini': {
-      endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent',
+      endpoint:
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent',
       model: 'gemini-flash-latest',
       fallbackModels: ['gemini-flash-lite-latest']
     }
@@ -87,7 +96,9 @@ var MMGR = window.MMGR || {};
   // This is the single builder both the direct call (mmgr-ai.js) and the
   // Worker relay (worker.js) use for whichever model is being tried.
   function geminiEndpointFor(modelId) {
-    return 'https://generativelanguage.googleapis.com/v1beta/models/' + modelId + ':generateContent';
+    return (
+      'https://generativelanguage.googleapis.com/v1beta/models/' + modelId + ':generateContent'
+    );
   }
 
   const Config = {
@@ -100,7 +111,7 @@ var MMGR = window.MMGR || {};
       provider: 'openai',
       endpoint: '', // empty -> provider default above
       apiKey: '', // BYO key; never sent for local/off tiers
-      model: ''       // empty -> provider default above
+      model: '' // empty -> provider default above
     },
     // Future general API endpoints/keys (e.g. push sync, backup).
     api: { endpoints: {}, keys: {} },
@@ -124,11 +135,15 @@ var MMGR = window.MMGR || {};
     return merged;
   }
 
-  function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+  function delay(ms) {
+    return new Promise(r => setTimeout(r, ms));
+  }
 
   async function fetchWithTimeout(url, opts) {
     const ctrl = new AbortController();
-    const t = setTimeout(function() { ctrl.abort(); }, opts.timeoutMs);
+    const t = setTimeout(function () {
+      ctrl.abort();
+    }, opts.timeoutMs);
     try {
       return await fetch(url, Object.assign({}, opts, { signal: ctrl.signal }));
     } finally {
@@ -146,17 +161,24 @@ var MMGR = window.MMGR || {};
   // exhausted for network errors, timeouts, 408/429 (rate limiting) and 5xx.
   async function get(url, opts) {
     const cfg = getConfig();
-    const o = Object.assign({
-      timeoutMs: cfg.net.timeoutMs,
-      maxRetries: cfg.net.maxRetries,
-      baseDelayMs: cfg.net.baseDelayMs,
-      headers: {}
-    }, opts || {});
+    const o = Object.assign(
+      {
+        timeoutMs: cfg.net.timeoutMs,
+        maxRetries: cfg.net.maxRetries,
+        baseDelayMs: cfg.net.baseDelayMs,
+        headers: {}
+      },
+      opts || {}
+    );
     const maxRetries = Math.max(0, parseInt(o.maxRetries, 10) || 0);
     let lastErr = null;
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        const res = await fetchWithTimeout(url, { method: 'GET', headers: o.headers, timeoutMs: o.timeoutMs });
+        const res = await fetchWithTimeout(url, {
+          method: 'GET',
+          headers: o.headers,
+          timeoutMs: o.timeoutMs
+        });
         // Retry transient server/rate-limit statuses; let 3xx/4xx (except
         // 408/429) pass through so the caller can surface them directly.
         const retriable = res.status >= 500 || res.status === 429 || res.status === 408;
@@ -175,7 +197,7 @@ var MMGR = window.MMGR || {};
         await delay(o.baseDelayMs * Math.pow(2, attempt));
       }
     }
-    throw (lastErr || new Error('request failed: ' + url));
+    throw lastErr || new Error('request failed: ' + url);
   }
 
   async function getJSON(url, opts) {
@@ -192,12 +214,15 @@ var MMGR = window.MMGR || {};
   // failures.
   async function post(url, body, opts) {
     const cfg = getConfig();
-    const o = Object.assign({
-      timeoutMs: cfg.net.timeoutMs,
-      maxRetries: cfg.net.maxRetries,
-      baseDelayMs: cfg.net.baseDelayMs,
-      headers: { 'Content-Type': 'application/json' }
-    }, opts || {});
+    const o = Object.assign(
+      {
+        timeoutMs: cfg.net.timeoutMs,
+        maxRetries: cfg.net.maxRetries,
+        baseDelayMs: cfg.net.baseDelayMs,
+        headers: { 'Content-Type': 'application/json' }
+      },
+      opts || {}
+    );
     const maxRetries = Math.max(0, parseInt(o.maxRetries, 10) || 0);
     let lastErr = null;
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -223,7 +248,7 @@ var MMGR = window.MMGR || {};
         await delay(o.baseDelayMs * Math.pow(2, attempt));
       }
     }
-    throw (lastErr || new Error('request failed: ' + url));
+    throw lastErr || new Error('request failed: ' + url);
   }
 
   async function postJSON(url, body, opts) {

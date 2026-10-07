@@ -21,7 +21,7 @@
      The global is window.MMGR.GoogleAuth - the same handle js/marketing.js
      reads - NOT window.GA. If the bundle ever fails to load we degrade to a
      readable page rather than throwing. */
-  var GA = (window.MMGR && window.MMGR.GoogleAuth) ? window.MMGR.GoogleAuth : null;
+  var GA = window.MMGR && window.MMGR.GoogleAuth ? window.MMGR.GoogleAuth : null;
 
   /* Where to send people when they have nothing to return to. */
   var DEFAULT_NEXT = 'app.html';
@@ -72,14 +72,20 @@
      and so the UI can tell the user. Session-scoped, not persisted: a stale
      return target from an hour ago is a surprise, not a feature. */
   var RETURN_TO = '';
-  try { RETURN_TO = sessionStorage.getItem('mmgr_signin_next') || ''; } catch (e) { RETURN_TO = ''; }
+  try {
+    RETURN_TO = sessionStorage.getItem('mmgr_signin_next') || '';
+  } catch (e) {
+    RETURN_TO = '';
+  }
 
   function setReturn(v) {
     RETURN_TO = v;
     try {
       if (v) sessionStorage.setItem('mmgr_signin_next', v);
       else sessionStorage.removeItem('mmgr_signin_next');
-    } catch (e) { /* private mode: the query param still works this visit */ }
+    } catch (e) {
+      /* private mode: the query param still works this visit */
+    }
   }
 
   var qNext = nextFromQuery();
@@ -111,7 +117,9 @@
     /* GIS measures its host at render time; after a layout change the
        button can be stale, so re-render once the panel settles. */
     if (GA && typeof GA.ensureGisButton === 'function') {
-      window.setTimeout(function () { GA.ensureGisButton(); }, 60);
+      window.setTimeout(function () {
+        GA.ensureGisButton();
+      }, 60);
     }
   }
 
@@ -162,7 +170,9 @@
       var div = document.querySelector('.signin-divider');
       var tgl = document.querySelector('.signin-email-toggle');
       var ret = document.getElementById('signin-return');
-      [g, div, tgl, ret].forEach(function (el) { if (el) el.hidden = signedIn; });
+      [g, div, tgl, ret].forEach(function (el) {
+        if (el) el.hidden = signedIn;
+      });
       if (panel) panel.hidden = true;
       var h1 = card.querySelector('h1');
       if (h1) h1.hidden = signedIn;
@@ -172,7 +182,7 @@
     var nameEl = document.getElementById('signin-done-name');
     if (nameEl && signedIn) {
       var nm = (user && (user.name || user.email)) || '';
-      nameEl.textContent = nm ? ('Signed in as ' + nm + '.') : 'Your projects are ready.';
+      nameEl.textContent = nm ? 'Signed in as ' + nm + '.' : 'Your projects are ready.';
     }
     if (cont) cont.href = safeNext(RETURN_TO) || DEFAULT_NEXT;
     if (signedIn && RETURN_TO) {
@@ -186,8 +196,12 @@
     renderSignedIn(null);
   }
 
-  document.addEventListener('mmgr:user-changed', function (e) { renderSignedIn(e.detail); });
-  document.addEventListener('mmgr:google-signed-out', function () { renderSignedOut(); });
+  document.addEventListener('mmgr:user-changed', function (e) {
+    renderSignedIn(e.detail);
+  });
+  document.addEventListener('mmgr:google-signed-out', function () {
+    renderSignedOut();
+  });
 
   /* Sign out from the confirmation block. */
   var out = document.getElementById('signin-out');

@@ -3,7 +3,7 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   const U = ns.Utils;
@@ -28,7 +28,7 @@ var MMGR = window.MMGR || {};
       monsoon: null,
       hurricane: null
     },
-    'tropical': {
+    tropical: {
       name: 'Tropical',
       winter: null,
       spring: null,
@@ -75,17 +75,26 @@ var MMGR = window.MMGR || {};
     const reasons = [];
     // Check winter
     const winter = region.winter;
-    if (winter && (isDateInWindow(task.startDate, winter) || isDateInWindow(task.endDate, winter))) {
+    if (
+      winter &&
+      (isDateInWindow(task.startDate, winter) || isDateInWindow(task.endDate, winter))
+    ) {
       reasons.push('Winter conditions');
     }
     // Check monsoon
     const monsoon = region.monsoon;
-    if (monsoon && (isDateInWindow(task.startDate, monsoon) || isDateInWindow(task.endDate, monsoon))) {
+    if (
+      monsoon &&
+      (isDateInWindow(task.startDate, monsoon) || isDateInWindow(task.endDate, monsoon))
+    ) {
       reasons.push('Monsoon/rainy season');
     }
     // Check hurricane
     const hurricane = region.hurricane;
-    if (hurricane && (isDateInWindow(task.startDate, hurricane) || isDateInWindow(task.endDate, hurricane))) {
+    if (
+      hurricane &&
+      (isDateInWindow(task.startDate, hurricane) || isDateInWindow(task.endDate, hurricane))
+    ) {
       reasons.push('Hurricane season');
     }
     return {
@@ -109,14 +118,24 @@ var MMGR = window.MMGR || {};
     const endParts = hurricane.end.split('-').map(Number);
     const hurricaneEnd = new Date();
     hurricaneEnd.setMonth(endParts[0] - 1, endParts[1]);
-    hurricaneEnd.setFullYear(hurricaneEnd.getMonth() < 6 ? hurricaneEnd.getFullYear() + 1 : hurricaneEnd.getFullYear());
+    hurricaneEnd.setFullYear(
+      hurricaneEnd.getMonth() < 6 ? hurricaneEnd.getFullYear() + 1 : hurricaneEnd.getFullYear()
+    );
     const target = U.parseDL(targetEndDate);
     if (!target) return { overlap: false, daysUntilWindow: null, message: '' };
     const days = U.daysBetween(target, hurricaneEnd);
     if (days < 0) {
-      return { overlap: true, daysUntilWindow: Math.abs(days), message: `Project ends ${Math.abs(days)} days into hurricane season` };
+      return {
+        overlap: true,
+        daysUntilWindow: Math.abs(days),
+        message: `Project ends ${Math.abs(days)} days into hurricane season`
+      };
     } else {
-      return { overlap: false, daysUntilWindow: days, message: `${days} days of buffer before hurricane season` };
+      return {
+        overlap: false,
+        daysUntilWindow: days,
+        message: `${days} days of buffer before hurricane season`
+      };
     }
   }
 

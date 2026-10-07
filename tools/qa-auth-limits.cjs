@@ -29,21 +29,30 @@ console.log('=== ARM 1: reset cap + lockout ladder ===\n');
 // whole RHS expression and EVALUATE it. Matching only the leading digits
 // silently read 2 * 60 * 60 * 1000 as 2, which is how this harness first
 // reported a correct source as broken.
-const num = (name) => {
+const num = name => {
   const m = src.match(new RegExp('const ' + name + '\\s*=\\s*([^;\\n]+)'));
   if (!m) return null;
   const expr = m[1].trim();
-  if (!/^[0-9\s*+()]+$/.test(expr)) return null;   // never eval arbitrary source
-  try { return Function('"use strict";return (' + expr + ')')(); } catch (e) { return null; }
+  if (!/^[0-9\s*+()]+$/.test(expr)) return null; // never eval arbitrary source
+  try {
+    return Function('"use strict";return (' + expr + ')')();
+  } catch (e) {
+    return null;
+  }
 };
 
 const maxPerDay = num('AUTH_RESET_MAX_PER_DAY');
 ok('AUTH_RESET_MAX_PER_DAY is 1 (owner: one reset a day)', maxPerDay === 1, 'got ' + maxPerDay);
-ok('the old 5-per-hour reset cap is gone',
-   !/AUTH_RESET_MAX_PER_EMAIL_H/.test(src), 'no stale constant');
-ok('resend-verify kept its OWN budget, not the reset one',
-   /AUTH_VERIFY_MAX_PER_EMAIL_H\s*=\s*\d+/.test(src) &&
-   !/AUTH_VERIFY_MAX_PER_EMAIL_H\s*=\s*AUTH_RESET/.test(src));
+ok(
+  'the old 5-per-hour reset cap is gone',
+  !/AUTH_RESET_MAX_PER_EMAIL_H/.test(src),
+  'no stale constant'
+);
+ok(
+  'resend-verify kept its OWN budget, not the reset one',
+  /AUTH_VERIFY_MAX_PER_EMAIL_H\s*=\s*\d+/.test(src) &&
+    !/AUTH_VERIFY_MAX_PER_EMAIL_H\s*=\s*AUTH_RESET/.test(src)
+);
 
 const failsAt = num('AUTH_LOCK_FAILS');
 const windowMs = num('AUTH_LOCK_WINDOW_MS');
@@ -65,15 +74,19 @@ function lockMs(n) {
   return Math.min(windowMs * Math.pow(mult, tiers), maxMs);
 }
 ok('4 failures never lock', lockMs(4) === 0);
-ok('5 failures lock for exactly 2h', lockMs(5) === 2 * 3600 * 1000, (lockMs(5) / 3600000) + 'h');
+ok('5 failures lock for exactly 2h', lockMs(5) === 2 * 3600 * 1000, lockMs(5) / 3600000 + 'h');
 ok('9 failures still 2h (tier not yet doubled)', lockMs(9) === 2 * 3600 * 1000);
-ok('15 failures double to 4h', lockMs(15) === 4 * 3600 * 1000, (lockMs(15) / 3600000) + 'h');
-ok('25 failures double again to 8h', lockMs(25) === 8 * 3600 * 1000, (lockMs(25) / 3600000) + 'h');
-ok('the ladder is monotonically non-decreasing',
-   [1, 5, 10, 15, 20, 25, 40, 100].every((n, i, a) => i === 0 || lockMs(n) >= lockMs(a[i - 1])));
-ok('the ladder never exceeds the 24h cap', lockMs(500) <= maxMs, (lockMs(500) / 3600000) + 'h');
-ok('the ladder never returns a negative or NaN lock',
-   [1, 5, 6, 14, 15, 99].every((n) => Number.isFinite(lockMs(n)) && lockMs(n) >= 0));
+ok('15 failures double to 4h', lockMs(15) === 4 * 3600 * 1000, lockMs(15) / 3600000 + 'h');
+ok('25 failures double again to 8h', lockMs(25) === 8 * 3600 * 1000, lockMs(25) / 3600000 + 'h');
+ok(
+  'the ladder is monotonically non-decreasing',
+  [1, 5, 10, 15, 20, 25, 40, 100].every((n, i, a) => i === 0 || lockMs(n) >= lockMs(a[i - 1]))
+);
+ok('the ladder never exceeds the 24h cap', lockMs(500) <= maxMs, lockMs(500) / 3600000 + 'h');
+ok(
+  'the ladder never returns a negative or NaN lock',
+  [1, 5, 6, 14, 15, 99].every(n => Number.isFinite(lockMs(n)) && lockMs(n) >= 0)
+);
 
 // ---- ARM 2: collision message discloses nothing ------------------------
 console.log('\n=== ARM 2: collision message is generic ===\n');
@@ -81,25 +94,47 @@ const taken = (src.match(/const AUTH_ACCOUNT_TAKEN\s*=\s*'([^']*)'/) || [])[1] |
 ok('AUTH_ACCOUNT_TAKEN exists', !!taken);
 ok('it does NOT name Google', !/google/i.test(taken), taken);
 ok('it does NOT name password', !/password/i.test(taken), taken);
-ok('it does NOT say which provider owns the address', !/provider|already signed in with/i.test(taken));
-ok('every collision path uses the one constant',
-   (src.match(/AUTH_ACCOUNT_TAKEN/g) || []).length >= 3, 'register + race + reuse');
-ok('the old provider-neutral copy is fully gone', !/account already exists - sign in instead/.test(src));
+ok(
+  'it does NOT say which provider owns the address',
+  !/provider|already signed in with/i.test(taken)
+);
+ok(
+  'every collision path uses the one constant',
+  (src.match(/AUTH_ACCOUNT_TAKEN/g) || []).length >= 3,
+  'register + race + reuse'
+);
+ok(
+  'the old provider-neutral copy is fully gone',
+  !/account already exists - sign in instead/.test(src)
+);
 
 // ---- ARM 3: E11 (no account enumeration on reset) ----------------------
 console.log('\n=== ARM 3: reset endpoint cannot enumerate accounts ===\n');
-ok('forgot still returns ONE generic message object',
-   /const generic = \{ ok: true, message: 'If an account exists for that email/.test(src));
-ok('the day-window query replaced the hour window for reset',
-   /'reset', dayAgo\)/.test(src), 'reset now counts 24h');
-ok('the verify path still counts an hour window',
-   /'verify', hourAgo\)/.test(src), 'verify unchanged');
-ok('a capped reset still returns the generic message, never a 429',
-   /if \(rl\.limited\) return json\(generic\)/.test(src));
+ok(
+  'forgot still returns ONE generic message object',
+  /const generic = \{ ok: true, message: 'If an account exists for that email/.test(src)
+);
+ok(
+  'the day-window query replaced the hour window for reset',
+  /'reset', dayAgo\)/.test(src),
+  'reset now counts 24h'
+);
+ok(
+  'the verify path still counts an hour window',
+  /'verify', hourAgo\)/.test(src),
+  'verify unchanged'
+);
+ok(
+  'a capped reset still returns the generic message, never a 429',
+  /if \(rl\.limited\) return json\(generic\)/.test(src)
+);
 ok('the login 429 still sends Retry-After', /'Retry-After': String\(retryAfter\)/.test(src));
-ok('the login 429 does not confirm the password was wrong',
-   !/invalid email or password[\s\S]{0,200}429/.test(src.slice(src.indexOf('locked_until') - 200, src.indexOf('locked_until') + 400)) ||
-   /Too many failed attempts/.test(src));
+ok(
+  'the login 429 does not confirm the password was wrong',
+  !/invalid email or password[\s\S]{0,200}429/.test(
+    src.slice(src.indexOf('locked_until') - 200, src.indexOf('locked_until') + 400)
+  ) || /Too many failed attempts/.test(src)
+);
 
 // ---- ARM 4: migration ---------------------------------------------------
 console.log('\n=== ARM 4: provider migration ===\n');
@@ -108,8 +143,10 @@ ok('migrations/0022_auth_provider.sql exists', fs.existsSync(mig));
 if (fs.existsSync(mig)) {
   const m = fs.readFileSync(mig, 'utf8');
   ok('it adds auth_users.provider', /ALTER TABLE auth_users ADD COLUMN provider/.test(m));
-  ok("it defaults to 'email' so existing rows and direct inserts keep working",
-     /DEFAULT 'email'/.test(m));
+  ok(
+    "it defaults to 'email' so existing rows and direct inserts keep working",
+    /DEFAULT 'email'/.test(m)
+  );
   ok('it is a NOT NULL column', /provider TEXT NOT NULL/.test(m));
 }
 

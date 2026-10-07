@@ -33,57 +33,106 @@ const serve = read('serve.cjs');
 let fails = 0;
 let passes = 0;
 function check(name, ok, detail) {
-  if (ok) { passes++; console.log('  PASS  ' + name); }
-  else { fails++; console.log('  FAIL  ' + name + (detail ? ' — ' + detail : '')); }
+  if (ok) {
+    passes++;
+    console.log('  PASS  ' + name);
+  } else {
+    fails++;
+    console.log('  FAIL  ' + name + (detail ? ' — ' + detail : ''));
+  }
 }
 
 console.log('DASHBOARD-UI-REFRESH-SPEC gate');
 console.log('--- 1. CSS tokens + component rules (dark-scoped) ---');
-const tokens = ['--db-gold', '--db-gold-soft', '--db-jet-black', '--db-canvas',
-  '--db-surface', '--db-surface-raised', '--db-accent', '--db-accent-soft',
-  '--db-border', '--db-text-secondary'];
+const tokens = [
+  '--db-gold',
+  '--db-gold-soft',
+  '--db-jet-black',
+  '--db-canvas',
+  '--db-surface',
+  '--db-surface-raised',
+  '--db-accent',
+  '--db-accent-soft',
+  '--db-border',
+  '--db-text-secondary'
+];
 for (const t of tokens) check('token ' + t, css.includes(t + ':'), t);
-for (const sel of ['body.dark-mode.db-page .db-side{',
-  '.db-side,.db-hamb,.db-scrim{display:none;}',
-  'body.dark-mode.db-page .pcard,']) {
-  check('rule ' + sel.slice(0, 45), css.includes(sel));
+for (const sel of [
+  'body.dark-mode.db-page .db-side {',
+  '.db-side,\n.db-hamb,\n.db-scrim {\n  display: none;\n}',
+  'body.dark-mode.db-page .pcard,'
+]) {
+  check('rule ' + sel.slice(0, 45).replace(/\n/g, ' '), css.includes(sel));
 }
-check('mobile drawer media query', css.includes('@media(max-width:768px)') && css.includes('.db-side{') && css.includes('translateX(-100%)'));
-check('reduced-transparency fallback', css.includes('prefers-reduced-transparency') && css.includes('body.dark-mode.db-page .top'));
-check('no-backdrop-filter fallback', css.includes('@supports not (backdrop-filter:blur(1px))') && css.includes('body.dark-mode.db-page .db-side'));
-check('reduced-motion fallback', css.includes('prefers-reduced-motion') && css.includes('body.dark-mode.db-page .db-side'));
+check(
+  'mobile drawer media query',
+  css.includes('@media (max-width: 768px)') &&
+    css.includes('.db-side {') &&
+    css.includes('translateX(-100%)')
+);
+check(
+  'reduced-transparency fallback',
+  css.includes('prefers-reduced-transparency') && css.includes('body.dark-mode.db-page .top')
+);
+check(
+  'no-backdrop-filter fallback',
+  css.includes('@supports not (backdrop-filter: blur(1px))') &&
+    css.includes('body.dark-mode.db-page .db-side')
+);
+check(
+  'reduced-motion fallback',
+  css.includes('prefers-reduced-motion') && css.includes('body.dark-mode.db-page .db-side')
+);
 
 console.log('--- 2. app.html markup + wiring (no dead links) ---');
 // Phase-1 dock wave added has-dock to the same body tag; the gate is that
 // db-page is present, not that it is the ONLY class.
 check('body class db-page', /<body class="[^"]*\bdb-page\b[^"]*">/.test(appHtml));
-check('#db-sidebar rail', appHtml.includes('id="db-sidebar"') && appHtml.includes('class="db-side"'));
-check('#db-nav-btn hamburger', appHtml.includes('id="db-nav-btn"') && appHtml.includes('data-action="toggleSidebar"'));
+check(
+  '#db-sidebar rail',
+  appHtml.includes('id="db-sidebar"') && appHtml.includes('class="db-side"')
+);
+check(
+  '#db-nav-btn hamburger',
+  appHtml.includes('id="db-nav-btn"') && appHtml.includes('data-action="toggleSidebar"')
+);
 check('#db-scrim', appHtml.includes('id="db-scrim"'));
 check('#top anchor exists', appHtml.includes('id="top"'));
 check('#grid anchor exists', appHtml.includes('id="grid"'));
-check('toggleSidebar in DASH_ACTION_MAP', /'toggleSidebar':\s*\(\)\s*=>\s*toggleSidebar\(\)/.test(appHtml));
+check(
+  'toggleSidebar in DASH_ACTION_MAP',
+  /'toggleSidebar':\s*\(\)\s*=>\s*toggleSidebar\(\)/.test(appHtml)
+);
 check('toggleSidebar() defined', /function toggleSidebar\(\)/.test(appHtml));
 check('aria-expanded sync', /syncSidebarAria/.test(appHtml));
 check('Escape closes drawer', /Escape/.test(appHtml) && /side-open/.test(appHtml));
 // every dashboard anchor target must resolve to a real element or page
 const anchorTargets = [...appHtml.matchAll(/class="db-link" href="([^"]+)"/g)].map(m => m[1]);
 for (const href of anchorTargets) {
-  if (href.startsWith('#')) check('anchor #' + href.slice(1) + ' exists', appHtml.includes('id="' + href.slice(1) + '"'), href);
+  if (href.startsWith('#'))
+    check(
+      'anchor #' + href.slice(1) + ' exists',
+      appHtml.includes('id="' + href.slice(1) + '"'),
+      href
+    );
   else check('link ' + href + ' is a real page', fs.existsSync(path.join(ROOT, href)), href);
 }
 check('at least 3 sidebar links', anchorTargets.length >= 3);
 
 console.log('--- 3. Icon refs in dashboard markup exist in sprite ---');
 // grab the dashboard-specific block: everything between the DASHBOARD comment and <div class="wrap">
-const dashBlock = appHtml.slice(appHtml.indexOf('DASHBOARD-UI-REFRESH-SPEC: dark-dashboard nav rail'), appHtml.indexOf('<div class="wrap">'));
+const dashBlock = appHtml.slice(
+  appHtml.indexOf('DASHBOARD-UI-REFRESH-SPEC: dark-dashboard nav rail'),
+  appHtml.indexOf('<div class="wrap">')
+);
 const iconRefs = [...dashBlock.matchAll(/use href="css\/mmgr-icons\.svg#([^"]+)"/g)].map(m => m[1]);
 for (const id of iconRefs) check('icon #' + id, new RegExp('id="' + id + '"').test(sprite), id);
 
 console.log('--- 4. WCAG 2.2 contrast on recorded pairs (Gate 4.1/4.3) ---');
 function lum(hex) {
-  const c = [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
-    .map(v => v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+  const c = [0, 2, 4]
+    .map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
+    .map(v => (v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
   return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
 }
 function ratio(a, b) {
@@ -108,32 +157,64 @@ console.log('--- 5. app.html CSP hashes match worker.js + serve.cjs ---');
 const inlineScripts = [];
 const re = /<script>([\s\S]*?)<\/script>/g;
 let m;
-while ((m = re.exec(appHtml)) !== null) inlineScripts.push('sha256-' + crypto.createHash('sha256').update(m[1]).digest('base64'));
+while ((m = re.exec(appHtml)) !== null)
+  inlineScripts.push('sha256-' + crypto.createHash('sha256').update(m[1]).digest('base64'));
 for (const h of inlineScripts) {
   check('hash ' + h.slice(7, 20) + '… in worker.js', worker.includes("'" + h + "'"));
   check('hash ' + h.slice(7, 20) + '… in serve.cjs', serve.includes("'" + h + "'"));
 }
-check('app.html inline scripts are CSP-hashed', inlineScripts.length >= 2, inlineScripts.length + ' found');
+check(
+  'app.html inline scripts are CSP-hashed',
+  inlineScripts.length >= 2,
+  inlineScripts.length + ' found'
+);
 
 console.log('--- 6. Skeleton loading states (boot splash + cloud dash, 2026-09-29) ---');
 // Skeleton primitives + sheen live once in css/mmgr.css; the reduced-motion
 // path must kill the sheen (accessibility gate, mirrors the .db-side rule).
-for (const frag of ['.skel-box', '@keyframes skel-sheen', '.skel-card', '.skel-line',
-  '.cd-skel{pointer-events:none;}', '.bs-skel']) {
+for (const frag of [
+  '.skel-box',
+  '@keyframes skel-sheen',
+  '.skel-card',
+  '.skel-line',
+  '.cd-skel {\n  pointer-events: none;\n}',
+  '.bs-skel'
+]) {
   check('skeleton css ' + frag, css.includes(frag));
 }
 const rmBlock = css.slice(css.indexOf('prefers-reduced-motion'));
-check('skeleton sheen killed under reduced motion', /prefers-reduced-motion[\s\S]{0,600}animation:\s*none/.test(rmBlock.slice(0, 600)), 'no animation:none near the reduced-motion block');
+check(
+  'skeleton sheen killed under reduced motion',
+  /prefers-reduced-motion[\s\S]{0,600}animation:\s*none/.test(rmBlock.slice(0, 600)),
+  'no animation:none near the reduced-motion block'
+);
 // project.html boot skeleton: status-role placeholder, no inline scripts added.
 const projHtml = read('project.html');
-check('boot skeleton markup in project.html', projHtml.includes('class="bs-skel"') && projHtml.includes('aria-busy="true"'));
-check('boot splash is a status region', /id="boot-splash"[^>]*role="status"/.test(projHtml) || /role="status"[^>]*id="boot-splash"/.test(projHtml));
+check(
+  'boot skeleton markup in project.html',
+  projHtml.includes('class="bs-skel"') && projHtml.includes('aria-busy="true"')
+);
+check(
+  'boot splash is a status region',
+  /id="boot-splash"[^>]*role="status"/.test(projHtml) ||
+    /role="status"[^>]*id="boot-splash"/.test(projHtml)
+);
 // cloud dash: skeleton builders + aria-busy lifecycle in the source module.
 const cloudDash = read('js/mmgr-cloud-dash.js');
-check('cloud dash paints cd-skel cards', cloudDash.includes('cd-card cd-skel') && cloudDash.includes('function dashSkeleton'));
+check(
+  'cloud dash paints cd-skel cards',
+  cloudDash.includes('cd-card cd-skel') && cloudDash.includes('function dashSkeleton')
+);
 check('cloud dash rail skeleton builder', cloudDash.includes('function railSkeleton'));
-check('cloud dash aria-busy lifecycle', /setAttribute\('aria-busy',\s*'true'\)/.test(cloudDash) && /removeAttribute\('aria-busy'\)/.test(cloudDash));
-check('cloud dash skeleton ships in dist bundle', fs.readFileSync(path.join(ROOT, 'dist/app-bundle.js'), 'utf8').includes('cd-skel'));
+check(
+  'cloud dash aria-busy lifecycle',
+  /setAttribute\('aria-busy',\s*'true'\)/.test(cloudDash) &&
+    /removeAttribute\('aria-busy'\)/.test(cloudDash)
+);
+check(
+  'cloud dash skeleton ships in dist bundle',
+  fs.readFileSync(path.join(ROOT, 'dist/app-bundle.js'), 'utf8').includes('cd-skel')
+);
 
 console.log('---');
 console.log((fails ? 'FAIL ' : 'PASS ') + passes + ' passed, ' + fails + ' failed');

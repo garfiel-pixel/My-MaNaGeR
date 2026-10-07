@@ -7,17 +7,29 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   const U = ns.Utils;
   const SIDEBAR_KEY = 'mmgr_sidebar';
   let _sidebarUserTouched = false;
 
-  function readDevicePref(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
-  function writeDevicePref(key, v) { try { localStorage.setItem(key, v); } catch (e) {} }
+  function readDevicePref(key) {
+    try {
+      return localStorage.getItem(key);
+    } catch (e) {
+      return null;
+    }
+  }
+  function writeDevicePref(key, v) {
+    try {
+      localStorage.setItem(key, v);
+    } catch (e) {}
+  }
 
-  function sidebarEnabled() { return true; }
+  function sidebarEnabled() {
+    return true;
+  }
 
   function syncSidebarChrome() {
     const on = sidebarEnabled();
@@ -29,7 +41,10 @@ var MMGR = window.MMGR || {};
     const btn = U.$('nav-btn');
     if (btn) {
       const mobile = window.innerWidth <= 768;
-      btn.setAttribute('aria-expanded', mobile ? 'false' : (document.body.classList.contains('sidebar-open') ? 'true' : 'false'));
+      btn.setAttribute(
+        'aria-expanded',
+        mobile ? 'false' : document.body.classList.contains('sidebar-open') ? 'true' : 'false'
+      );
       btn.setAttribute('aria-controls', mobile ? 'sec-nav' : 'app-sidebar');
     }
     const tgl = U.$('sb-tgl');
@@ -56,10 +71,16 @@ var MMGR = window.MMGR || {};
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sidebar: on ? 'on' : 'off' })
-      }).then(function (r) {
-        if (r.ok) writeDevicePref('mmgr_sidebar_backend', '1');
-      }).catch(function () { /* offline / no worker, localStorage is the cache */ });
-    } catch (e) { /* ignore */ }
+      })
+        .then(function (r) {
+          if (r.ok) writeDevicePref('mmgr_sidebar_backend', '1');
+        })
+        .catch(function () {
+          /* offline / no worker, localStorage is the cache */
+        });
+    } catch (e) {
+      /* ignore */
+    }
   }
 
   function pullSidebarBackend() {
@@ -67,8 +88,10 @@ var MMGR = window.MMGR || {};
     if (readDevicePref('mmgr_sidebar_backend') !== '1') return;
     if (readDevicePref(SIDEBAR_KEY) != null) return;
     try {
-      fetch('/api/cloud/prefs/theme', { headers: { 'Accept': 'application/json' } })
-        .then(function (r) { return r.ok ? r.json() : null; })
+      fetch('/api/cloud/prefs/theme', { headers: { Accept: 'application/json' } })
+        .then(function (r) {
+          return r.ok ? r.json() : null;
+        })
         .then(function (d) {
           if (!d || !d.ok || !d.theme) return;
           if (_sidebarUserTouched) return;
@@ -77,8 +100,13 @@ var MMGR = window.MMGR || {};
           writeDevicePref(SIDEBAR_KEY, v);
           document.body.classList.toggle('sidebar-open', v === 'on');
           syncSidebarChrome();
-        }).catch(function () { /* backend unreachable, keep local cache */ });
-    } catch (e) { /* ignore */ }
+        })
+        .catch(function () {
+          /* backend unreachable, keep local cache */
+        });
+    } catch (e) {
+      /* ignore */
+    }
   }
 
   function buildSidebar() {
@@ -88,7 +116,9 @@ var MMGR = window.MMGR || {};
     const groups = nav.querySelectorAll('.nav-group');
     for (let i = 0; i < groups.length; i++) {
       const c = groups[i].cloneNode(true);
-      c.querySelectorAll('[id]').forEach(function (el) { el.removeAttribute('id'); });
+      c.querySelectorAll('[id]').forEach(function (el) {
+        el.removeAttribute('id');
+      });
       sb.appendChild(c);
     }
     const mo = new MutationObserver(function (muts) {
@@ -117,5 +147,4 @@ var MMGR = window.MMGR || {};
     pullSidebarBackend: pullSidebarBackend,
     buildSidebar: buildSidebar
   };
-
 })(MMGR);

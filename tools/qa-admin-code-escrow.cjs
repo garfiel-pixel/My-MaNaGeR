@@ -40,26 +40,44 @@ const PORT = 8797;
 const BASE = 'http://127.0.0.1:' + PORT;
 const ROOT = path.resolve(__dirname, '..');
 
-const log = (s) => { process.stdout.write('[escrow] ' + s + '\n'); };
+const log = s => {
+  process.stdout.write('[escrow] ' + s + '\n');
+};
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
 const results = [];
 const check = (name, val, detail) => {
   results.push({ name, val });
-  log((val ? 'PASS' : 'FAIL') + '  ' + name + (val ? '' : '   <-- ' + JSON.stringify(detail === undefined ? null : detail).slice(0, 400)));
+  log(
+    (val ? 'PASS' : 'FAIL') +
+      '  ' +
+      name +
+      (val ? '' : '   <-- ' + JSON.stringify(detail === undefined ? null : detail).slice(0, 400))
+  );
 };
 
-setTimeout(() => { log('WATCHDOG — harness exceeded 300s'); try { proc && proc.kill(); } catch (e) {} process.exit(2); }, 300000).unref();
+setTimeout(() => {
+  log('WATCHDOG — harness exceeded 300s');
+  try {
+    proc && proc.kill();
+  } catch (e) {}
+  process.exit(2);
+}, 300000).unref();
 
 function globalWranglerJs() {
   const localP = path.join(__dirname, '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
   if (fs.existsSync(localP)) return localP;
   try {
     const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-    const root = execFileSync(npmCmd, ['root', '-g'], { encoding: 'utf8', shell: process.platform === 'win32' }).trim();
+    const root = execFileSync(npmCmd, ['root', '-g'], {
+      encoding: 'utf8',
+      shell: process.platform === 'win32'
+    }).trim();
     const p = path.join(root, 'wrangler', 'bin', 'wrangler.js');
     if (fs.existsSync(p)) return p;
-  } catch (e) { /* fall through */ }
+  } catch (e) {
+    /* fall through */
+  }
   return null;
 }
 const WRANGLER_JS = globalWranglerJs();
@@ -72,43 +90,92 @@ function startWrangler() {
   return new Promise((resolve, reject) => {
     log('starting wrangler dev on :' + PORT + ' (local D1, migration 0021)…');
     try {
-      execFileSync(process.execPath,
-        [WRANGLER_JS, 'd1', 'migrations', 'apply', 'my-manager-db', '--local', '--config', 'wrangler.ci.jsonc', '--persist-to', PERSIST_DIR],
-        { cwd: ROOT, stdio: 'ignore', timeout: 120000 });
-    } catch (e) { log('migrations apply (best-effort): ' + e.message); }
-    proc = spawn(process.execPath, [WRANGLER_JS, 'dev', '--config', 'wrangler.ci.jsonc', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST_DIR,
-      // Dormant mail config: keeps the verified-email gate code path from
-      // attempting real sends; local accounts are pre-verified regardless.
-      '--var', 'RESEND_API_KEY:', '--var', 'RESEND_FROM_EMAIL:'], {
-      cwd: ROOT,
-      env: Object.assign({}, process.env, { WRANGLER_SEND_METRICS: 'false' }),
-      stdio: ['ignore', 'pipe', 'pipe']
+      execFileSync(
+        process.execPath,
+        [
+          WRANGLER_JS,
+          'd1',
+          'migrations',
+          'apply',
+          'my-manager-db',
+          '--local',
+          '--config',
+          'wrangler.ci.jsonc',
+          '--persist-to',
+          PERSIST_DIR
+        ],
+        { cwd: ROOT, stdio: 'ignore', timeout: 120000 }
+      );
+    } catch (e) {
+      log('migrations apply (best-effort): ' + e.message);
+    }
+    proc = spawn(
+      process.execPath,
+      [
+        WRANGLER_JS,
+        'dev',
+        '--config',
+        'wrangler.ci.jsonc',
+        '--port',
+        String(PORT),
+        '--ip',
+        '127.0.0.1',
+        '--persist-to',
+        PERSIST_DIR,
+        // Dormant mail config: keeps the verified-email gate code path from
+        // attempting real sends; local accounts are pre-verified regardless.
+        '--var',
+        'RESEND_API_KEY:',
+        '--var',
+        'RESEND_FROM_EMAIL:'
+      ],
+      {
+        cwd: ROOT,
+        env: Object.assign({}, process.env, { WRANGLER_SEND_METRICS: 'false' }),
+        stdio: ['ignore', 'pipe', 'pipe']
+      }
+    );
+    proc.stdout.on('data', d => {
+      devLog += d;
     });
-    proc.stdout.on('data', d => { devLog += d; });
-    proc.stderr.on('data', d => { devLog += d; });
-    proc.on('error', (e) => reject(new Error('wrangler spawn failed: ' + e.message)));
-    proc.on('exit', (code) => { if (code !== 0 && code !== null) log('wrangler dev exited early (code ' + code + ')'); });
+    proc.stderr.on('data', d => {
+      devLog += d;
+    });
+    proc.on('error', e => reject(new Error('wrangler spawn failed: ' + e.message)));
+    proc.on('exit', code => {
+      if (code !== 0 && code !== null) log('wrangler dev exited early (code ' + code + ')');
+    });
     const t0 = Date.now();
     const poll = async () => {
       try {
         const ctrl = new AbortController();
-        const timer = setTimeout(function() { ctrl.abort(); }, 3000);
+        const timer = setTimeout(function () {
+          ctrl.abort();
+        }, 3000);
         const r = await fetch(BASE + '/api/health', { signal: ctrl.signal });
         clearTimeout(timer);
         if (r.ok) return resolve();
-      } catch (e) { /* not up yet */ }
-      if (Date.now() - t0 > 120000) return reject(new Error('wrangler dev did not come up in 120s'));
+      } catch (e) {
+        /* not up yet */
+      }
+      if (Date.now() - t0 > 120000)
+        return reject(new Error('wrangler dev did not come up in 120s'));
       setTimeout(poll, 1500);
     };
     poll();
   });
 }
 function stopWrangler() {
-  try { proc && proc.kill(); } catch (e) {}
+  try {
+    proc && proc.kill();
+  } catch (e) {}
 }
 
 const jsonHeaders = { 'Content-Type': 'application/json' };
-const cookieHeader = (cookie) => ({ 'Cookie': 'mmgr_session=' + cookie, 'Content-Type': 'application/json' });
+const cookieHeader = cookie => ({
+  Cookie: 'mmgr_session=' + cookie,
+  'Content-Type': 'application/json'
+});
 
 // Locate the local D1 sqlite file inside the wrangler persist dir
 // (miniflare v3 layout: <persist>/v3/d1/miniflare-D1DatabaseObject/<sha>.sqlite).
@@ -135,8 +202,9 @@ async function verifyAccountLocally(email) {
     const jti = crypto.randomUUID();
     const now = new Date();
     const exp = new Date(now.getTime() + 30 * 60 * 1000);
-    db.prepare("INSERT INTO auth_tokens (id, email, purpose, created_at, expires_at) VALUES (?,?,?,?,?)")
-      .run(jti, email, 'verify', now.toISOString(), exp.toISOString());
+    db.prepare(
+      'INSERT INTO auth_tokens (id, email, purpose, created_at, expires_at) VALUES (?,?,?,?,?)'
+    ).run(jti, email, 'verify', now.toISOString(), exp.toISOString());
     // 2. Flip the account to verified directly in the local D1 file — the
     //    exact database outcome the real confirm link produces (the signed
     //    token path itself is covered by the qa-email-auth harness; with no
@@ -172,7 +240,9 @@ async function sha256Hex(text) {
 
     // Register a (dev-pre-verified) account to hold the session.
     const reg = await fetch(BASE + '/api/auth/register', {
-      method: 'POST', credentials: 'same-origin', headers: jsonHeaders,
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: jsonHeaders,
       body: JSON.stringify({ email: EMAIL, password: 'Reg-Passw0rd!x', name: 'Escrow QA' })
     });
     const cookie = extractSessionCookie(reg);
@@ -180,7 +250,9 @@ async function sha256Hex(text) {
 
     // E1 — PUT without a session.
     let r = await fetch(BASE + '/api/auth/admin-code', {
-      method: 'PUT', credentials: 'same-origin', headers: jsonHeaders,
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers: jsonHeaders,
       body: JSON.stringify({ code: CODE_A })
     });
     check('E1 PUT with NO session -> 401', r.status === 401, r.status);
@@ -190,77 +262,126 @@ async function sha256Hex(text) {
     check('E2 GET with NO session -> 401', r.status === 401, r.status);
 
     // E5 — GET with a forged cookie.
-    r = await fetch(BASE + '/api/auth/admin-code', { credentials: 'same-origin', headers: { 'Cookie': 'mmgr_session=forged.deadbeef' } });
+    r = await fetch(BASE + '/api/auth/admin-code', {
+      credentials: 'same-origin',
+      headers: { Cookie: 'mmgr_session=forged.deadbeef' }
+    });
     check('E5 GET with forged cookie -> 401', r.status === 401, r.status);
 
     // E7 — PUT validation (with session).
     r = await fetch(BASE + '/api/auth/admin-code', {
-      method: 'PUT', credentials: 'same-origin', headers: cookieHeader(cookie),
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers: cookieHeader(cookie),
       body: JSON.stringify({ code: 'short' })
     });
     check('E7a PUT short code -> 400', r.status === 400, r.status);
     r = await fetch(BASE + '/api/auth/admin-code', {
-      method: 'PUT', credentials: 'same-origin', headers: cookieHeader(cookie),
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers: cookieHeader(cookie),
       body: JSON.stringify({ code: 'x'.repeat(200) })
     });
     check('E7b PUT oversized code -> 400', r.status === 400, r.status);
     r = await fetch(BASE + '/api/auth/admin-code', {
-      method: 'PUT', credentials: 'same-origin', headers: cookieHeader(cookie),
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers: cookieHeader(cookie),
       body: JSON.stringify({})
     });
     check('E7c PUT missing code -> 400', r.status === 400, r.status);
 
     // E8 — cross-origin PUT is refused by the same-origin gate.
     r = await fetch(BASE + '/api/auth/admin-code', {
-      method: 'PUT', credentials: 'same-origin', headers: Object.assign({}, cookieHeader(cookie), { 'Origin': 'https://evil.example' }),
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers: Object.assign({}, cookieHeader(cookie), { Origin: 'https://evil.example' }),
       body: JSON.stringify({ code: CODE_A })
     });
     check('E8 cross-origin PUT -> 403', r.status === 403, r.status);
 
     // E3 — real PUT.
     r = await fetch(BASE + '/api/auth/admin-code', {
-      method: 'PUT', credentials: 'same-origin', headers: cookieHeader(cookie),
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers: cookieHeader(cookie),
       body: JSON.stringify({ code: CODE_A })
     });
     const putBody = await r.json().catch(() => ({}));
-    check('E3 PUT stores escrow -> ok', r.status === 200 && putBody.ok === true, r.status + '|' + JSON.stringify(putBody));
+    check(
+      'E3 PUT stores escrow -> ok',
+      r.status === 200 && putBody.ok === true,
+      r.status + '|' + JSON.stringify(putBody)
+    );
 
     // E9 — the account is registered but NOT email-verified: the escrow
     // answers status-only (hasCode, no hash) — the exact refusal a stranger
     // with a stolen session cookie would hit.
-    r = await fetch(BASE + '/api/auth/admin-code', { credentials: 'same-origin', headers: { 'Cookie': 'mmgr_session=' + cookie } });
+    r = await fetch(BASE + '/api/auth/admin-code', {
+      credentials: 'same-origin',
+      headers: { Cookie: 'mmgr_session=' + cookie }
+    });
     const unverified = await r.json().catch(() => ({}));
-    check('E9 unverified account: status only, NO hash', r.status === 200 && unverified.hasCode === true && unverified.verified === false && unverified.hash === undefined, JSON.stringify(unverified));
+    check(
+      'E9 unverified account: status only, NO hash',
+      r.status === 200 &&
+        unverified.hasCode === true &&
+        unverified.verified === false &&
+        unverified.hash === undefined,
+      JSON.stringify(unverified)
+    );
 
     // E10 — verify the account through the real token flow, then the hash
     // becomes available.
     const verifiedOk = await verifyAccountLocally(EMAIL);
     check('E10a verify flow completed', verifiedOk === true, verifiedOk);
-    r = await fetch(BASE + '/api/auth/admin-code', { credentials: 'same-origin', headers: { 'Cookie': 'mmgr_session=' + cookie } });
+    r = await fetch(BASE + '/api/auth/admin-code', {
+      credentials: 'same-origin',
+      headers: { Cookie: 'mmgr_session=' + cookie }
+    });
     const got = await r.json().catch(() => ({}));
     const expectedHash = await sha256Hex(CODE_A);
-    check('E10b GET verified:true + hash matches the local gate sha256 (plaintext never returned)', got.verified === true && got.hash === expectedHash && got.code === undefined, JSON.stringify({ hash: got.hash, codeLeak: got.code }));
+    check(
+      'E10b GET verified:true + hash matches the local gate sha256 (plaintext never returned)',
+      got.verified === true && got.hash === expectedHash && got.code === undefined,
+      JSON.stringify({ hash: got.hash, codeLeak: got.code })
+    );
 
     // E6 — upsert: latest code wins, hash rotates.
     r = await fetch(BASE + '/api/auth/admin-code', {
-      method: 'PUT', credentials: 'same-origin', headers: cookieHeader(cookie),
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers: cookieHeader(cookie),
       body: JSON.stringify({ code: CODE_B })
     });
     check('E6a second PUT ok (upsert)', r.status === 200, r.status);
-    r = await fetch(BASE + '/api/auth/admin-code', { credentials: 'same-origin', headers: { 'Cookie': 'mmgr_session=' + cookie } });
+    r = await fetch(BASE + '/api/auth/admin-code', {
+      credentials: 'same-origin',
+      headers: { Cookie: 'mmgr_session=' + cookie }
+    });
     const got2 = await r.json().catch(() => ({}));
-    check('E6b GET returns the NEW hash (latest wins)', got2.hash === (await sha256Hex(CODE_B)) && got2.hash !== expectedHash, JSON.stringify(got2));
+    check(
+      'E6b GET returns the NEW hash (latest wins)',
+      got2.hash === (await sha256Hex(CODE_B)) && got2.hash !== expectedHash,
+      JSON.stringify(got2)
+    );
 
     // E4c — response never carries the envelope or internal ids.
-    check('E4c response shape is minimal (no envelope, no sub)', !('envelope' in got2) && !('sub' in got2), JSON.stringify(Object.keys(got2)));
+    check(
+      'E4c response shape is minimal (no envelope, no sub)',
+      !('envelope' in got2) && !('sub' in got2),
+      JSON.stringify(Object.keys(got2))
+    );
   } catch (e) {
-    check('harness completed without throwing', false, String(e && e.message || e));
+    check('harness completed without throwing', false, String((e && e.message) || e));
     log('dev log tail:\n' + devLog.split('\n').slice(-30).join('\n'));
   } finally {
     stopWrangler();
     failed = results.filter(r => !r.val).length;
     log('RESULT: ' + (results.length - failed) + '/' + results.length + ' checks passed');
-    try { fs.rmSync(PERSIST_DIR, { recursive: true, force: true }); } catch (e) {}
+    try {
+      fs.rmSync(PERSIST_DIR, { recursive: true, force: true });
+    } catch (e) {}
   }
   process.exit(failed ? 1 : 0);
 })();

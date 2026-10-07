@@ -38,8 +38,11 @@ const ROOT = path.resolve(__dirname, '..');
 const STAGE_ONLY = process.argv.includes('--stage-only');
 const STAGE = path.resolve(process.env.STAGE_DIR || path.join(os.homedir(), 'mmgr-deploy'));
 
-const fail = (msg) => { console.error('\nDEPLOY ABORTED: ' + msg); process.exit(1); };
-const step = (msg) => console.log('\n== ' + msg);
+const fail = msg => {
+  console.error('\nDEPLOY ABORTED: ' + msg);
+  process.exit(1);
+};
+const step = msg => console.log('\n== ' + msg);
 
 // ---- Stage-path safety ------------------------------------------------
 // Both of these were real failure modes, not hypotheticals: a literal "$HOME"
@@ -57,16 +60,32 @@ if (STAGE === ROOT || STAGE.startsWith(ROOT + path.sep)) {
 // those two files - deploy.cjs is the staging mirror, not the source of
 // truth.
 const SKIP_DIRS = new Set([
-  '.git', '.wrangler', 'node_modules', '.agents', '_archive', 'tmp',
-  'screenshots', 'web-research', 'dogfood-output'
+  '.git',
+  '.wrangler',
+  'node_modules',
+  '.agents',
+  '_archive',
+  'tmp',
+  'screenshots',
+  'web-research',
+  'dogfood-output'
 ]);
 const SKIP_FILE_RE = [
-  /\.dev\.vars/, /\.gitattributes$/, /\.gitignore$/, /\.md$/i, /\.json$/i,
+  /\.dev\.vars/,
+  /\.gitattributes$/,
+  /\.gitignore$/,
+  /\.md$/i,
+  /\.json$/i,
   // v316 follow-up (2026-09-24): the v316 deploy uploaded .github/workflows/ci.yml
   // as a public static asset - no secrets inside, but repo internals do not
   // belong in the asset bundle. Same rule for .assetsignore below.
-  /\.ya?ml$/i, /\.gitleaks\.toml$/i,
-  /\.txt$/i, /^(robots|planners|reflection|SECURITY)\.txt$/i, /favicon/i, /\.claude$/i, /\.codebuff$/i,
+  /\.ya?ml$/i,
+  /\.gitleaks\.toml$/i,
+  /\.txt$/i,
+  /^(robots|planners|reflection|SECURITY)\.txt$/i,
+  /favicon/i,
+  /\.claude$/i,
+  /\.codebuff$/i,
   // 2026-10-03: a stray claude-cli-1.0.5.tgz sat untracked in the repo root and
   // was being staged as a public static asset. Same class as the v316 .yml leak.
   /\.tgz$/i,
@@ -74,13 +93,19 @@ const SKIP_FILE_RE = [
   // mcp/README.md.orig - that file's suffix is .orig, so it failed the regex and
   // would have shipped as a public asset the moment anyone restored it. Same
   // class as the .tgz leak. Must stay in parity with .assetsignore.
-  /\.orig$/i, /\.head$/i, /~$/,
+  /\.orig$/i,
+  /\.head$/i,
+  /~$/,
   // 2026-10-04: local secret files. .dev.vars was already excluded (the
   // SKIP_FILE_RE / .dev.vars entry), but .env*, *.pem and *.key had no
   // exclude on either side - git-ignoring them alone would have made them
   // invisible to git while still publishing them to the internet. Mirrors
   // the new .gitignore + .assetsignore entries; keep all three in parity.
-  /^\.env$/, /^\.env\./, /\.pem$/i, /\.key$/i, /^secrets\.json$/
+  /^\.env$/,
+  /^\.env\./,
+  /\.pem$/i,
+  /\.key$/i,
+  /^secrets\.json$/
 ];
 // Files excluded by SKIP_FILE_RE that wrangler still NEEDS: package.json and
 // wrangler.jsonc (both *.json, so the excludes above would drop them and
@@ -92,9 +117,18 @@ const SKIP_FILE_RE = [
 const COPY_BACK = ['package.json', 'wrangler.jsonc'];
 // Files whose staged bytes must match the working tree before shipping.
 const MUST_MATCH = [
-  'index.html', 'app.html', 'project.html', 'admin.html', 'dashboard.html',
-  'sw.js', 'manifest.webmanifest', 'css/mmgr.css', 'dist/mmgr.min.css',
-  'dist/bundle.js', 'dist/app-bundle.js', 'worker.js'
+  'index.html',
+  'app.html',
+  'project.html',
+  'admin.html',
+  'dashboard.html',
+  'sw.js',
+  'manifest.webmanifest',
+  'css/mmgr.css',
+  'dist/mmgr.min.css',
+  'dist/bundle.js',
+  'dist/app-bundle.js',
+  'worker.js'
 ];
 
 // Two call shapes: run(bin, [args]) spawns directly; run('full command line')
@@ -103,7 +137,11 @@ const MUST_MATCH = [
 // DEP0190 warning, which would be noise on every deploy.
 function run(cmd, args, opts) {
   const useShell = !Array.isArray(args);
-  const r = spawnSync(cmd, useShell ? undefined : args, Object.assign({ stdio: 'inherit', shell: useShell }, opts || {}));
+  const r = spawnSync(
+    cmd,
+    useShell ? undefined : args,
+    Object.assign({ stdio: 'inherit', shell: useShell }, opts || {})
+  );
   if (r.error) fail(cmd + ' failed to start: ' + r.error.message);
   if (r.status !== 0) fail(cmd + ' exited ' + r.status);
 }
@@ -117,7 +155,7 @@ function copyTree(src, dest) {
       if (SKIP_DIRS.has(entry.name)) continue;
       copyTree(from, to);
     } else if (entry.isFile()) {
-      if (SKIP_FILE_RE.some((re) => re.test(entry.name))) continue;
+      if (SKIP_FILE_RE.some(re => re.test(entry.name))) continue;
       fs.copyFileSync(from, to);
     }
   }
@@ -148,7 +186,8 @@ for (const f of COPY_BACK) {
 const staged = fs.readdirSync(STAGE).length;
 console.log('   staged ' + staged + ' entries into ' + STAGE);
 if (fs.existsSync(path.join(STAGE, '.git'))) fail('.git was staged - the excludes are wrong');
-if (fs.existsSync(path.join(STAGE, 'node_modules'))) fail('node_modules was staged - the excludes are wrong');
+if (fs.existsSync(path.join(STAGE, 'node_modules')))
+  fail('node_modules was staged - the excludes are wrong');
 
 // ---- 4. prove the staged copy is the current code ---------------------
 step('Verifying the staged copy carries the current bytes');
@@ -156,10 +195,17 @@ let stale = 0;
 for (const rel of MUST_MATCH) {
   const a = path.join(ROOT, rel);
   const b = path.join(STAGE, rel);
-  if (!fs.existsSync(a)) { console.log('   (not present in the repo) ' + rel); continue; }
-  if (!sameBytes(a, b)) { console.log('   STALE  ' + rel); stale++; }
+  if (!fs.existsSync(a)) {
+    console.log('   (not present in the repo) ' + rel);
+    continue;
+  }
+  if (!sameBytes(a, b)) {
+    console.log('   STALE  ' + rel);
+    stale++;
+  }
 }
-if (stale) fail(stale + ' staged file(s) differ from the working tree - refusing to deploy stale code');
+if (stale)
+  fail(stale + ' staged file(s) differ from the working tree - refusing to deploy stale code');
 console.log('   all ' + MUST_MATCH.length + ' tracked deploy files byte-identical');
 
 // ---- 5. deploy --------------------------------------------------------

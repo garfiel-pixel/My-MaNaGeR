@@ -27,7 +27,7 @@ export function cloudProjectDeleted() {
 
 const CLOUD_TIMING_FLOOR_MS = 15;
 export function cloudTimingSink() {
-  return new Promise(function(resolve) {
+  return new Promise(function (resolve) {
     setTimeout(resolve, CLOUD_TIMING_FLOOR_MS);
   });
 }
@@ -76,16 +76,30 @@ export const SESSION_MAX_AGE = 604800; // 7 days, seconds
 let _fallbackSessionKeyPromise = null;
 
 export async function sessionKey(env) {
-  const secret = env && typeof env.GOOGLE_CLIENT_SECRET === 'string' && env.GOOGLE_CLIENT_SECRET.length
-    ? env.GOOGLE_CLIENT_SECRET : null;
+  const secret =
+    env && typeof env.GOOGLE_CLIENT_SECRET === 'string' && env.GOOGLE_CLIENT_SECRET.length
+      ? env.GOOGLE_CLIENT_SECRET
+      : null;
   if (secret) {
-    return crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    return crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
   }
   if (!_fallbackSessionKeyPromise) {
     const raw = crypto.getRandomValues(new Uint8Array(32));
     let bin = '';
     for (let i = 0; i < raw.length; i++) bin += String.fromCharCode(raw[i]);
-    _fallbackSessionKeyPromise = crypto.subtle.importKey('raw', new TextEncoder().encode(bin), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    _fallbackSessionKeyPromise = crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(bin),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
   }
   return _fallbackSessionKeyPromise;
 }
@@ -99,7 +113,7 @@ export async function signSession(payload, key) {
 export async function readSession(request, env) {
   const cookieHeader = request.headers.get('Cookie') || '';
   let raw = null;
-  cookieHeader.split(';').forEach(function(part) {
+  cookieHeader.split(';').forEach(function (part) {
     const idx = part.indexOf('=');
     if (idx < 0) return;
     if (part.slice(0, idx).trim() === SESSION_COOKIE) raw = part.slice(idx + 1).trim();
@@ -111,14 +125,24 @@ export async function readSession(request, env) {
   try {
     payloadStr = base64UrlDecode(raw.slice(0, dot));
     sigBytes = base64UrlToBytes(raw.slice(dot + 1));
-  } catch (e) { return null; }
+  } catch (e) {
+    return null;
+  }
   let payload;
-  try { payload = JSON.parse(payloadStr); } catch (e) { return null; }
+  try {
+    payload = JSON.parse(payloadStr);
+  } catch (e) {
+    return null;
+  }
   if (!payload || typeof payload !== 'object' || !payload.sub) return null;
   let expected;
   try {
-    expected = new Uint8Array(await crypto.subtle.sign('HMAC', await sessionKey(env), new TextEncoder().encode(payloadStr)));
-  } catch (e) { return null; }
+    expected = new Uint8Array(
+      await crypto.subtle.sign('HMAC', await sessionKey(env), new TextEncoder().encode(payloadStr))
+    );
+  } catch (e) {
+    return null;
+  }
   if (expected.length !== sigBytes.length) return null;
   let diff = 0;
   for (let i = 0; i < expected.length; i++) diff |= expected[i] ^ sigBytes[i];
@@ -136,22 +160,38 @@ export async function readSession(request, env) {
         if (cached === 'revoked') return null;
         if (cached === 'valid') return payload;
       }
-    } catch (e) { /* KV failure must not block auth */ }
+    } catch (e) {
+      /* KV failure must not block auth */
+    }
     let sessRow;
     try {
-      sessRow = await env.DB.prepare('SELECT revoked_at FROM auth_sessions WHERE jti = ?').bind(payload.jti).first();
-    } catch (e) { return null; }
-    if (!sessRow || sessRow.revoked_at) {
-      try { if (env.KV) await env.KV.put(kvKey, 'revoked', { expirationTtl: 300 }); } catch (e) {}
+      sessRow = await env.DB.prepare('SELECT revoked_at FROM auth_sessions WHERE jti = ?')
+        .bind(payload.jti)
+        .first();
+    } catch (e) {
       return null;
     }
-    try { if (env.KV) await env.KV.put(kvKey, 'valid', { expirationTtl: 60 }); } catch (e) {}
+    if (!sessRow || sessRow.revoked_at) {
+      try {
+        if (env.KV) await env.KV.put(kvKey, 'revoked', { expirationTtl: 300 });
+      } catch (e) {}
+      return null;
+    }
+    try {
+      if (env.KV) await env.KV.put(kvKey, 'valid', { expirationTtl: 60 });
+    } catch (e) {}
   }
   return payload;
 }
 
 export function sessionSetCookie(token) {
-  return SESSION_COOKIE + '=' + token + '; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=' + SESSION_MAX_AGE;
+  return (
+    SESSION_COOKIE +
+    '=' +
+    token +
+    '; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=' +
+    SESSION_MAX_AGE
+  );
 }
 
 // ---- Auth email (Resend integration) --------------------------------------
@@ -169,16 +209,20 @@ export function authEmailFrom(env) {
 export async function sendAuthEmail(env, to, subject, textBody) {
   if (!authEmailConfigured(env)) return false;
   try {
-    const base = (env && typeof env.RESEND_API_BASE === 'string' && env.RESEND_API_BASE) || AUTH_RESEND_BASE;
+    const base =
+      (env && typeof env.RESEND_API_BASE === 'string' && env.RESEND_API_BASE) || AUTH_RESEND_BASE;
     const res = await fetch(base + '/emails', {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer ' + env.RESEND_API_KEY,
+        Authorization: 'Bearer ' + env.RESEND_API_KEY,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ from: authEmailFrom(env), to: [to], subject: subject, text: textBody })
     });
-    if (!res.ok) console.error('resend email rejected: ' + res.status + ' ' + (await res.text()).slice(0, 200));
+    if (!res.ok)
+      console.error(
+        'resend email rejected: ' + res.status + ' ' + (await res.text()).slice(0, 200)
+      );
     return res.ok;
   } catch (e) {
     console.error('resend email failed:', e && e.message);
@@ -195,12 +239,29 @@ export async function sendAuthEmail(env, to, subject, textBody) {
 export async function mintAuthToken(env, email, purpose, ttlMs) {
   const nowSec = Math.floor(Date.now() / 1000);
   const jti = crypto.randomUUID();
-  const payload = { t: purpose, e: email, j: jti, iat: nowSec, exp: nowSec + Math.floor(ttlMs / 1000) };
+  const payload = {
+    t: purpose,
+    e: email,
+    j: jti,
+    iat: nowSec,
+    exp: nowSec + Math.floor(ttlMs / 1000)
+  };
   const token = await signSession(payload, await sessionKey(env));
   try {
-    await env.DB.prepare('INSERT INTO auth_tokens (id, email, purpose, created_at, expires_at) VALUES (?,?,?,?,?)')
-      .bind(jti, email, purpose, new Date(nowSec * 1000).toISOString(), new Date(nowSec * 1000 + ttlMs).toISOString()).run();
-  } catch (e) { /* best-effort */ }
+    await env.DB.prepare(
+      'INSERT INTO auth_tokens (id, email, purpose, created_at, expires_at) VALUES (?,?,?,?,?)'
+    )
+      .bind(
+        jti,
+        email,
+        purpose,
+        new Date(nowSec * 1000).toISOString(),
+        new Date(nowSec * 1000 + ttlMs).toISOString()
+      )
+      .run();
+  } catch (e) {
+    /* best-effort */
+  }
   return token;
 }
 
@@ -220,13 +281,19 @@ export async function consumeAuthToken(env, rawToken, purpose) {
     payloadStr = base64UrlDecode(raw.slice(0, dot));
     sigBytes = base64UrlToBytes(raw.slice(dot + 1));
     payload = JSON.parse(payloadStr);
-  } catch (e) { return null; }
+  } catch (e) {
+    return null;
+  }
   if (!payload || typeof payload !== 'object') return null;
   // 1. HMAC over the exact payload segment (same scheme as readSession).
   let expected;
   try {
-    expected = new Uint8Array(await crypto.subtle.sign('HMAC', await sessionKey(env), new TextEncoder().encode(payloadStr)));
-  } catch (e) { return null; }
+    expected = new Uint8Array(
+      await crypto.subtle.sign('HMAC', await sessionKey(env), new TextEncoder().encode(payloadStr))
+    );
+  } catch (e) {
+    return null;
+  }
   if (expected.length !== sigBytes.length) return null;
   let diff = 0;
   for (let i = 0; i < expected.length; i++) diff |= expected[i] ^ sigBytes[i];
@@ -240,38 +307,70 @@ export async function consumeAuthToken(env, rawToken, purpose) {
   try {
     // 2. Bind the ledger row to the token's own email + purpose, so a token
     //    can only ever act on the account it was minted for.
-    const row = await env.DB.prepare('SELECT used_at FROM auth_tokens WHERE id = ? AND email = ? AND purpose = ?')
-      .bind(jti, email, purpose).first();
+    const row = await env.DB.prepare(
+      'SELECT used_at FROM auth_tokens WHERE id = ? AND email = ? AND purpose = ?'
+    )
+      .bind(jti, email, purpose)
+      .first();
     if (!row) return null;
     if (row.used_at) return null;
     // 3. Race-safe single use: the winner of the UPDATE is the only one that
     //    may proceed (mirrors the admin-recovery OTP contract).
-    const up = await env.DB.prepare('UPDATE auth_tokens SET used_at = ? WHERE id = ? AND used_at IS NULL')
-      .bind(new Date().toISOString(), jti).run();
+    const up = await env.DB.prepare(
+      'UPDATE auth_tokens SET used_at = ? WHERE id = ? AND used_at IS NULL'
+    )
+      .bind(new Date().toISOString(), jti)
+      .run();
     if (!up || !up.meta || up.meta.changes !== 1) return null;
-  } catch (e) { return null; }
+  } catch (e) {
+    return null;
+  }
   return email;
 }
 
 export function authVerifyEmailBody(name, origin, token) {
-  return (name ? 'Hello ' + name + ',\n\n' : 'Hello,\n\n') +
+  return (
+    (name ? 'Hello ' + name + ',\n\n' : 'Hello,\n\n') +
     'Confirm your email to activate your My MaNaGeR account and enable cloud projects:\n\n' +
-    origin + '/verify.html?token=' + encodeURIComponent(token) + '\n\n' +
-    'This link expires in 24 hours. If you did not create this account, you can ignore this email.';
+    origin +
+    '/verify.html?token=' +
+    encodeURIComponent(token) +
+    '\n\n' +
+    'This link expires in 24 hours. If you did not create this account, you can ignore this email.'
+  );
 }
 
 export async function authSessionResponse(user, env, emailSent) {
   const jti = crypto.randomUUID();
   const expSec = Math.floor(Date.now() / 1000) + 604800;
-  const token = await signSession({ sub: user.sub, email: user.email || '', name: user.name || '', jti: jti, exp: expSec }, await sessionKey(env));
+  const token = await signSession(
+    { sub: user.sub, email: user.email || '', name: user.name || '', jti: jti, exp: expSec },
+    await sessionKey(env)
+  );
   try {
-    await env.DB.prepare('INSERT INTO auth_sessions (jti, sub, created_at, expires_at) VALUES (?,?,?,?)')
-      .bind(jti, user.sub, new Date().toISOString(), new Date(expSec * 1000).toISOString()).run();
-  } catch (e) { /* session write must never break login */ }
-  return new Response(JSON.stringify({ ok: true, user: { sub: user.sub, email: user.email || '', name: user.name || '' }, emailSent: !!emailSent }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Set-Cookie': sessionSetCookie(token) }
-  });
+    await env.DB.prepare(
+      'INSERT INTO auth_sessions (jti, sub, created_at, expires_at) VALUES (?,?,?,?)'
+    )
+      .bind(jti, user.sub, new Date().toISOString(), new Date(expSec * 1000).toISOString())
+      .run();
+  } catch (e) {
+    /* session write must never break login */
+  }
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      user: { sub: user.sub, email: user.email || '', name: user.name || '' },
+      emailSent: !!emailSent
+    }),
+    {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'Set-Cookie': sessionSetCookie(token)
+      }
+    }
+  );
 }
 
 // ---- Cloud code utilities --------------------------------------------------
@@ -283,7 +382,9 @@ export function randomOwnerCode() {
   const bytes = crypto.getRandomValues(new Uint8Array(16));
   let code = '';
   for (let i = 0; i < bytes.length; i++) code += CLOUD_CODE_ALPHABET[bytes[i] % 32];
-  return code.slice(0, 4) + '-' + code.slice(4, 8) + '-' + code.slice(8, 12) + '-' + code.slice(12, 16);
+  return (
+    code.slice(0, 4) + '-' + code.slice(4, 8) + '-' + code.slice(8, 12) + '-' + code.slice(12, 16)
+  );
 }
 
 export function sanitizeProjectId(raw) {
@@ -299,10 +400,22 @@ export function randomSaltHex() {
 }
 
 export async function hashOwnerCode(code, saltHex) {
-  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(code), 'PBKDF2', false, ['deriveBits']);
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(code),
+    'PBKDF2',
+    false,
+    ['deriveBits']
+  );
   const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt: new TextEncoder().encode(saltHex), iterations: CLOUD_PBKDF2_ITERS, hash: 'SHA-256' },
-    key, 256
+    {
+      name: 'PBKDF2',
+      salt: new TextEncoder().encode(saltHex),
+      iterations: CLOUD_PBKDF2_ITERS,
+      hash: 'SHA-256'
+    },
+    key,
+    256
   );
   const bytes = new Uint8Array(bits);
   let hex = '';
@@ -324,7 +437,8 @@ const CLOUD_DUMMY_CODE = 'ZZZZ-ZZZZ-ZZZZ-ZZZZ';
 export const CLOUD_DUMMY_SALT = '00000000000000000000000000000000';
 let _cloudDummyHashPromise = null;
 export async function cloudDummyHash() {
-  if (!_cloudDummyHashPromise) _cloudDummyHashPromise = hashOwnerCode(CLOUD_DUMMY_CODE, CLOUD_DUMMY_SALT);
+  if (!_cloudDummyHashPromise)
+    _cloudDummyHashPromise = hashOwnerCode(CLOUD_DUMMY_CODE, CLOUD_DUMMY_SALT);
   return _cloudDummyHashPromise;
 }
 
@@ -353,7 +467,9 @@ export async function cloudRateKey(request, headerNames) {
         let hex = '';
         for (let j = 0; j < bytes.length; j++) hex += bytes[j].toString(16).padStart(2, '0');
         return 'code:' + hex;
-      } catch (e) { return 'anon'; }
+      } catch (e) {
+        return 'anon';
+      }
     }
   }
   const ip = request.headers.get('CF-Connecting-IP');
@@ -370,15 +486,23 @@ export async function cloudRateCheck(request, bucket, env) {
       const { success } = await env.RATE_LIMITER.limit({ key: ns });
       if (!success) return { limited: true, retryAfter: 60 };
       return { limited: false };
-    } catch (e) { /* binding unavailable — fall through to in-memory */ }
+    } catch (e) {
+      /* binding unavailable — fall through to in-memory */
+    }
   }
   const cfg = CLOUD_RATE[bucket] || CLOUD_RATE.general;
   const now = Date.now();
   let list = _cloudBuckets.get(ns);
-  if (!list) { list = []; _cloudBuckets.set(ns, list); }
+  if (!list) {
+    list = [];
+    _cloudBuckets.set(ns, list);
+  }
   while (list.length && list[0] <= now - cfg.windowMs) list.shift();
   if (list.length >= cfg.max) {
-    return { limited: true, retryAfter: Math.max(1, Math.ceil((list[0] + cfg.windowMs - now) / 1000)) };
+    return {
+      limited: true,
+      retryAfter: Math.max(1, Math.ceil((list[0] + cfg.windowMs - now) / 1000))
+    };
   }
   list.push(now);
   if (_cloudBuckets.size > 10000) {
@@ -410,7 +534,10 @@ export async function cloudRateRecord(request, bucket, env) {
   const cfg = CLOUD_RATE[bucket] || CLOUD_RATE.general;
   const now = Date.now();
   let list = _cloudBuckets.get(ns);
-  if (!list) { list = []; _cloudBuckets.set(ns, list); }
+  if (!list) {
+    list = [];
+    _cloudBuckets.set(ns, list);
+  }
   while (list.length && list[0] <= now - cfg.windowMs) list.shift();
   list.push(now);
   if (_cloudBuckets.size > 10000) {
@@ -421,14 +548,17 @@ export async function cloudRateRecord(request, bucket, env) {
 }
 
 export function cloudRateLimited(retryAfter) {
-  return new Response(JSON.stringify({ ok: false, error: 'too many requests - slow down and try again in a minute' }), {
-    status: 429,
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Cache-Control': 'no-store',
-      'Retry-After': String(retryAfter || 60)
+  return new Response(
+    JSON.stringify({ ok: false, error: 'too many requests - slow down and try again in a minute' }),
+    {
+      status: 429,
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'Retry-After': String(retryAfter || 60)
+      }
     }
-  });
+  );
 }
 
 // ---- Cloud body reader -----------------------------------------------------
@@ -438,7 +568,11 @@ export async function readCloudBody(request) {
   const cl = Number(request.headers.get('Content-Length') || 0);
   if (cl > CLOUD_BODY_LIMIT_BYTES) return { tooLarge: true };
   if (!request.body) {
-    try { return { body: await request.json() }; } catch (e) { return { bad: true }; }
+    try {
+      return { body: await request.json() };
+    } catch (e) {
+      return { bad: true };
+    }
   }
   const reader = request.body.getReader();
   const chunks = [];
@@ -455,9 +589,16 @@ export async function readCloudBody(request) {
   }
   const bytes = new Uint8Array(total);
   let off = 0;
-  for (const c of chunks) { bytes.set(c, off); off += c.byteLength; }
+  for (const c of chunks) {
+    bytes.set(c, off);
+    off += c.byteLength;
+  }
   const text = new TextDecoder().decode(bytes);
-  try { return { body: JSON.parse(text) }; } catch (e) { return { bad: true }; }
+  try {
+    return { body: JSON.parse(text) };
+  } catch (e) {
+    return { bad: true };
+  }
 }
 
 // ---- Same-origin check -----------------------------------------------------
@@ -469,7 +610,9 @@ export function sameOriginOnly(request) {
     const u = new URL(request.url);
     const o = new URL(origin);
     return o.origin === u.origin;
-  } catch (e) { return false; }
+  } catch (e) {
+    return false;
+  }
 }
 
 // ---- Cloud owner touch (maintenance stamp) --------------------------------
@@ -477,8 +620,11 @@ export function sameOriginOnly(request) {
 export async function cloudTouchOwner(env, projectId) {
   try {
     await env.DB.prepare('UPDATE cloud_projects SET last_owner_seen_at = ? WHERE project_id = ?')
-      .bind(new Date().toISOString(), projectId).run();
-  } catch (e) { /* maintenance stamp must never fail a user request */ }
+      .bind(new Date().toISOString(), projectId)
+      .run();
+  } catch (e) {
+    /* maintenance stamp must never fail a user request */
+  }
 }
 
 // ---- Cloud state encryption (R2 envelope) ---------------------------------
@@ -494,10 +640,19 @@ async function r2DeriveKey(ownerCodeHash, saltHex) {
   // The owner_code_hash is a hex string derived from PBKDF2. Use it as
   // key material for a second PBKDF2 derivation with a fresh salt.
   const material = await crypto.subtle.importKey(
-    'raw', new TextEncoder().encode(ownerCodeHash), 'PBKDF2', false, ['deriveKey']
+    'raw',
+    new TextEncoder().encode(ownerCodeHash),
+    'PBKDF2',
+    false,
+    ['deriveKey']
   );
   return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt: new TextEncoder().encode(saltHex), iterations: R2_ENC_KDF_ITERS, hash: 'SHA-256' },
+    {
+      name: 'PBKDF2',
+      salt: new TextEncoder().encode(saltHex),
+      iterations: R2_ENC_KDF_ITERS,
+      hash: 'SHA-256'
+    },
     material,
     { name: 'AES-GCM', length: 256 },
     false,
@@ -562,10 +717,18 @@ export async function cloudReadState(env, key, ownerCodeHash, ownerCodeSalt) {
   if (!obj) return null;
   const text = await obj.text();
   let parsed;
-  try { parsed = JSON.parse(text); } catch (e) { return null; }
+  try {
+    parsed = JSON.parse(text);
+  } catch (e) {
+    return null;
+  }
   // If encryption credentials provided and blob is encrypted, decrypt
   if (ownerCodeHash && ownerCodeSalt && parsed && parsed.v === R2_ENC_VERSION) {
-    try { return await cloudDecryptState(parsed, ownerCodeHash, ownerCodeSalt); } catch (e) { return null; }
+    try {
+      return await cloudDecryptState(parsed, ownerCodeHash, ownerCodeSalt);
+    } catch (e) {
+      return null;
+    }
   }
   return parsed;
 }
@@ -578,8 +741,8 @@ export async function cloudReadState(env, key, ownerCodeHash, ownerCodeSalt) {
 export function cloudScopeState(state, scope) {
   if (!state || typeof state !== 'object' || Array.isArray(state)) return null;
   const out = {};
-  scope.forEach(function(sec) {
-    (CLOUD_SECTIONS[sec] || { keys: [] }).keys.forEach(function(k) {
+  scope.forEach(function (sec) {
+    (CLOUD_SECTIONS[sec] || { keys: [] }).keys.forEach(function (k) {
       out[k] = state[k] !== undefined ? state[k] : null;
     });
   });
@@ -589,43 +752,77 @@ export function cloudScopeState(state, scope) {
 // ---- Deep equal (for cloud state comparison) -------------------------------
 
 export function cloudDeepEqual(a, b) {
-  try { return JSON.stringify(a) === JSON.stringify(b); } catch (e) { return a === b; }
+  try {
+    return JSON.stringify(a) === JSON.stringify(b);
+  } catch (e) {
+    return a === b;
+  }
 }
 
 // ---- Cloud sections (scope enforcement) -----------------------------------
 
 export const CLOUD_SECTIONS = {
-  charter: { label: 'Charter', keys: ['projectName', 'methodology', 'methodologyLocked', 'charter'] },
-  wbs:     { label: 'WBS / Tasks', keys: ['tasks', 'projectDeadline'] },
-  res:     { label: 'Resources', keys: ['resources'] },
-  bud:     { label: 'Budget', keys: ['budgetLines', 'budgetEnvelope', 'spendLog', 'nspid'] },
-  stk:     { label: 'Stakeholders', keys: ['stakeholders'] },
-  chg:     { label: 'Changes', keys: ['changes'] },
-  log:     { label: 'Decision Log', keys: ['logEntries'] },
-  risk:    { label: 'Risk / Issues', keys: ['risks', 'issues'] },
-  close:   { label: 'Closure', keys: ['closure'] },
-  raci:    { label: 'RACI', keys: ['raci'] },
-  comms:   { label: 'Comms Log', keys: ['commsEntries'] },
-  docs:    { label: 'Documents', keys: ['documents'] },
-  dmaic:   { label: 'DMAIC', keys: ['dmaic'] },
-  meet:    { label: 'Meetings', keys: ['meetings', 'meetingPromises', 'activeMeeting', 'nmeetid', 'sentimentHistory'] }
+  charter: {
+    label: 'Charter',
+    keys: ['projectName', 'methodology', 'methodologyLocked', 'charter']
+  },
+  wbs: { label: 'WBS / Tasks', keys: ['tasks', 'projectDeadline'] },
+  res: { label: 'Resources', keys: ['resources'] },
+  bud: { label: 'Budget', keys: ['budgetLines', 'budgetEnvelope', 'spendLog', 'nspid'] },
+  stk: { label: 'Stakeholders', keys: ['stakeholders'] },
+  chg: { label: 'Changes', keys: ['changes'] },
+  log: { label: 'Decision Log', keys: ['logEntries'] },
+  risk: { label: 'Risk / Issues', keys: ['risks', 'issues'] },
+  close: { label: 'Closure', keys: ['closure'] },
+  raci: { label: 'RACI', keys: ['raci'] },
+  comms: { label: 'Comms Log', keys: ['commsEntries'] },
+  docs: { label: 'Documents', keys: ['documents'] },
+  dmaic: { label: 'DMAIC', keys: ['dmaic'] },
+  meet: {
+    label: 'Meetings',
+    keys: ['meetings', 'meetingPromises', 'activeMeeting', 'nmeetid', 'sentimentHistory']
+  }
 };
 export const CLOUD_KEY_TO_SECTION = {};
 export const CLOUD_CONTENT_KEYS = [];
-Object.keys(CLOUD_SECTIONS).forEach(function(sec) {
-  CLOUD_SECTIONS[sec].keys.forEach(function(k) {
+Object.keys(CLOUD_SECTIONS).forEach(function (sec) {
+  CLOUD_SECTIONS[sec].keys.forEach(function (k) {
     CLOUD_KEY_TO_SECTION[k] = sec;
     CLOUD_CONTENT_KEYS.push(k);
   });
 });
 export const CLOUD_CONTENT_KEY_SET = {};
-CLOUD_CONTENT_KEYS.forEach(function(k) { CLOUD_CONTENT_KEY_SET[k] = 1; });
+CLOUD_CONTENT_KEYS.forEach(function (k) {
+  CLOUD_CONTENT_KEY_SET[k] = 1;
+});
+
+// ---- Named-team role matrix (Wave 7, owner 2026-10-06) -------------------
+// The ONE place a role's visible sections are defined. /load projects state
+// through this, and the Wave 7 read routes (api shapes, changelog) narrow by
+// it too, so a route can never disagree with what /load would have handed the
+// same member. manager = the whole project (minus owner-only routes);
+// supervisor = the field panels; contractor = the task list; client = the
+// owner-chosen scope stored on the membership row.
+export const TEAM_FIELD_SECTIONS = ['wbs', 'res', 'risk', 'meet'];
+export function teamScopeForRole(role, memberScope) {
+  if (role === 'manager') return Object.keys(CLOUD_SECTIONS);
+  if (role === 'supervisor')
+    return TEAM_FIELD_SECTIONS.filter(function (k) {
+      return !!CLOUD_SECTIONS[k];
+    });
+  if (role === 'contractor')
+    return ['wbs'].filter(function (k) {
+      return !!CLOUD_SECTIONS[k];
+    });
+  if (role === 'client') return Array.isArray(memberScope) ? memberScope : [];
+  return [];
+}
 
 // Changelog leaf-diff cap
 export const CLOUD_MAX_LEAF_DIFFS = 40;
 
 export function handleCloudSections() {
-  const sections = Object.keys(CLOUD_SECTIONS).map(function(k) {
+  const sections = Object.keys(CLOUD_SECTIONS).map(function (k) {
     return { key: k, label: CLOUD_SECTIONS[k].label, keys: CLOUD_SECTIONS[k].keys.slice() };
   });
   return json({ ok: true, sections: sections });
@@ -634,14 +831,19 @@ export function handleCloudSections() {
 // ---- Server-side scope enforcement ----------------------------------------
 
 export function cloudScopeMerge(prev, submitted, scope) {
-  const base = prev && typeof prev === 'object' && !Array.isArray(prev)
-    ? JSON.parse(JSON.stringify(prev)) : {};
+  const base =
+    prev && typeof prev === 'object' && !Array.isArray(prev)
+      ? JSON.parse(JSON.stringify(prev))
+      : {};
   const writable = {};
-  scope.forEach(function(sec) {
-    (CLOUD_SECTIONS[sec] || { keys: [] }).keys.forEach(function(k) { writable[k] = 1; });
+  scope.forEach(function (sec) {
+    (CLOUD_SECTIONS[sec] || { keys: [] }).keys.forEach(function (k) {
+      writable[k] = 1;
+    });
   });
-  const applied = []; const blocked = [];
-  Object.keys(submitted || {}).forEach(function(k) {
+  const applied = [];
+  const blocked = [];
+  Object.keys(submitted || {}).forEach(function (k) {
     if (writable[k]) {
       base[k] = submitted[k];
       if (prev === null || prev === undefined || !cloudDeepEqual(prev[k], submitted[k])) {
@@ -649,9 +851,10 @@ export function cloudScopeMerge(prev, submitted, scope) {
         if (sec && applied.indexOf(sec) === -1) applied.push(sec);
       }
     } else if (CLOUD_CONTENT_KEY_SET[k]) {
-      const differs = (prev === null || prev === undefined)
-        ? submitted[k] !== undefined
-        : !cloudDeepEqual(prev[k], submitted[k]);
+      const differs =
+        prev === null || prev === undefined
+          ? submitted[k] !== undefined
+          : !cloudDeepEqual(prev[k], submitted[k]);
       if (differs) {
         const sec = CLOUD_KEY_TO_SECTION[k];
         if (sec && blocked.indexOf(sec) === -1) blocked.push(sec);
@@ -662,8 +865,8 @@ export function cloudScopeMerge(prev, submitted, scope) {
     base.fieldTs = JSON.parse(JSON.stringify(prev.fieldTs));
   }
   const now = new Date().toISOString();
-  applied.forEach(function(sec) {
-    (CLOUD_SECTIONS[sec] || { keys: [] }).keys.forEach(function(k) {
+  applied.forEach(function (sec) {
+    (CLOUD_SECTIONS[sec] || { keys: [] }).keys.forEach(function (k) {
       if (base.fieldTs && typeof base.fieldTs === 'object') base.fieldTs[k] = now;
     });
   });
@@ -674,30 +877,49 @@ export function cloudScopeMerge(prev, submitted, scope) {
 // ---- Diff utilities --------------------------------------------------------
 
 export function cloudWalkLeaves(path, v, out) {
-  if (v === null || typeof v !== 'object') { out[path] = v; return; }
+  if (v === null || typeof v !== 'object') {
+    out[path] = v;
+    return;
+  }
   if (Array.isArray(v)) {
-    if (v.length === 0) { out[path] = []; return; }
-    v.forEach(function(item, i) { cloudWalkLeaves(path + '[' + i + ']', item, out); });
+    if (v.length === 0) {
+      out[path] = [];
+      return;
+    }
+    v.forEach(function (item, i) {
+      cloudWalkLeaves(path + '[' + i + ']', item, out);
+    });
     return;
   }
   const keys = Object.keys(v);
-  if (keys.length === 0) { out[path] = {}; return; }
-  keys.forEach(function(k) { cloudWalkLeaves(path + '.' + k, v[k], out); });
+  if (keys.length === 0) {
+    out[path] = {};
+    return;
+  }
+  keys.forEach(function (k) {
+    cloudWalkLeaves(path + '.' + k, v[k], out);
+  });
 }
 export function cloudFlattenLeaves(obj, out) {
-  CLOUD_CONTENT_KEYS.forEach(function(k) { cloudWalkLeaves(k, obj ? obj[k] : undefined, out); });
+  CLOUD_CONTENT_KEYS.forEach(function (k) {
+    cloudWalkLeaves(k, obj ? obj[k] : undefined, out);
+  });
 }
 export function cloudDiffState(prev, next) {
   if (!prev || typeof prev !== 'object') return null;
-  const before = {}; const after = {};
+  const before = {};
+  const after = {};
   cloudFlattenLeaves(prev, before);
   cloudFlattenLeaves(next, after);
   const paths = Object.keys(before);
-  Object.keys(after).forEach(function(p) { if (paths.indexOf(p) === -1) paths.push(p); });
+  Object.keys(after).forEach(function (p) {
+    if (paths.indexOf(p) === -1) paths.push(p);
+  });
   const diffs = [];
   for (let i = 0; i < paths.length; i++) {
     const p = paths[i];
-    const a = before[p]; const b = after[p];
+    const a = before[p];
+    const b = after[p];
     if (a === b || cloudDeepEqual(a, b)) continue;
     diffs.push({
       path: p,
@@ -727,24 +949,48 @@ export async function cloudLogSave(env, projectId, prev, next, actor, entryType)
   if (diffs === null || diffs.length === 0) return null;
   const now = new Date().toISOString();
   if (diffs.length > CLOUD_MAX_LEAF_DIFFS) {
-    const snapKey = 'projects/' + projectId + '/changelog/' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8) + '.json';
-    await env.R2.put(snapKey, JSON.stringify(prev), { httpMetadata: { contentType: 'application/json' } });
+    const snapKey =
+      'projects/' +
+      projectId +
+      '/changelog/' +
+      Date.now().toString(36) +
+      '-' +
+      Math.random().toString(36).slice(2, 8) +
+      '.json';
+    await env.R2.put(snapKey, JSON.stringify(prev), {
+      httpMetadata: { contentType: 'application/json' }
+    });
     const res = await env.DB.prepare(
       'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at) VALUES (?,?,?,?,?,?,?,?)'
-    ).bind(projectId, entryType || 'bulk', actor.type, actor.label, null, null, snapKey, now).run();
+    )
+      .bind(projectId, entryType || 'bulk', actor.type, actor.label, null, null, snapKey, now)
+      .run();
     return { id: res.meta.last_row_id, type: entryType || 'bulk' };
   }
   const sec = cloudSectionOfDiffs(diffs);
   const res = await env.DB.prepare(
     'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at) VALUES (?,?,?,?,?,?,?,?)'
-  ).bind(projectId, entryType || 'edit', actor.type, actor.label, sec, JSON.stringify(diffs), null, now).run();
+  )
+    .bind(
+      projectId,
+      entryType || 'edit',
+      actor.type,
+      actor.label,
+      sec,
+      JSON.stringify(diffs),
+      null,
+      now
+    )
+    .run();
   return { id: res.meta.last_row_id, type: entryType || 'edit' };
 }
 
 // ---- State-path utilities (revert) ----------------------------------------
 
 export function cloudPathSegments(p) {
-  const segs = []; const s = String(p); let i = 0;
+  const segs = [];
+  const s = String(p);
+  let i = 0;
   while (i < s.length) {
     if (s[i] === '[') {
       const j = s.indexOf(']', i);
@@ -754,7 +1000,8 @@ export function cloudPathSegments(p) {
     } else if (s[i] === '.') {
       i++;
     } else {
-      let j = s.indexOf('.', i); let k = s.indexOf('[', i);
+      let j = s.indexOf('.', i);
+      let k = s.indexOf('[', i);
       let end = s.length;
       if (j >= 0 && j < end) end = j;
       if (k >= 0 && k < end) end = k;
@@ -810,7 +1057,8 @@ export function cloudPathDelete(obj, p) {
   const last = segs[segs.length - 1];
   if (cur === null || cur === undefined) return;
   if (last.idx !== undefined && Array.isArray(cur)) cur.splice(last.idx, 1);
-  else if (last.key !== undefined && typeof cur === 'object' && !Array.isArray(cur)) delete cur[last.key];
+  else if (last.key !== undefined && typeof cur === 'object' && !Array.isArray(cur))
+    delete cur[last.key];
 }
 
 // ---- RecordId-aware diff revert -------------------------------------------
@@ -823,13 +1071,18 @@ export function cloudRevertDiff(s, d) {
   const field = m[3];
   const list = s[listKey];
   if (!Array.isArray(list) || (field !== undefined && field.indexOf('.') !== -1)) {
-    if (d.beforeAbsent) { cloudPathDelete(s, d.path); return true; }
+    if (d.beforeAbsent) {
+      cloudPathDelete(s, d.path);
+      return true;
+    }
     return cloudPathSet(s, d.path, d.before);
   }
   const isDeleteRestore = d.afterAbsent === true && d.beforeAbsent !== true && !field;
   let idx = -1;
   if (!isDeleteRestore && d.recordId !== undefined) {
-    idx = list.findIndex(function(r) { return r && String(r.id) === String(d.recordId); });
+    idx = list.findIndex(function (r) {
+      return r && String(r.id) === String(d.recordId);
+    });
     if (idx < 0) return false;
   } else if (idxStr !== undefined) {
     idx = Number(idxStr);
@@ -872,19 +1125,42 @@ export function cloudRevertDiff(s, d) {
 export const CLOUD_EDITOR_AUTH_SLOTS = 4;
 
 export async function cloudAuthOwnerByCode(request, env, projectId, code) {
-  if (!code) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return null; }
-  const row = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash, google_sub, google_name, deleted_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
-  if (!row) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return null; }
+  if (!code) {
+    await Promise.all([cloudDummyHash(), cloudTimingSink()]);
+    return null;
+  }
+  const row = await env.DB.prepare(
+    'SELECT owner_code_salt, owner_code_hash, google_sub, google_name, deleted_at FROM cloud_projects WHERE project_id = ?'
+  )
+    .bind(projectId)
+    .first();
+  if (!row) {
+    await Promise.all([cloudDummyHash(), cloudTimingSink()]);
+    return null;
+  }
   const hash = await hashOwnerCode(code, row.owner_code_salt);
-  if (!codesEqual(hash, row.owner_code_hash)) { await cloudTimingSink(); return null; }
+  if (!codesEqual(hash, row.owner_code_hash)) {
+    await cloudTimingSink();
+    return null;
+  }
   return { role: 'owner', label: row.google_name || 'Owner', row: row };
 }
 
 export async function cloudAuthOwnerSession(request, env, projectId) {
   const session = await readSession(request, env);
-  if (!session || !session.sub) { await cloudTimingSink(); return null; }
-  const row = await env.DB.prepare('SELECT google_sub, google_name FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
-  if (!row || !row.google_sub || row.google_sub !== session.sub) { await cloudTimingSink(); return null; }
+  if (!session || !session.sub) {
+    await cloudTimingSink();
+    return null;
+  }
+  const row = await env.DB.prepare(
+    'SELECT google_sub, google_name FROM cloud_projects WHERE project_id = ?'
+  )
+    .bind(projectId)
+    .first();
+  if (!row || !row.google_sub || row.google_sub !== session.sub) {
+    await cloudTimingSink();
+    return null;
+  }
   return { role: 'owner', label: row.google_name || session.name || 'Owner', row: row };
 }
 
@@ -913,16 +1189,52 @@ export async function cloudAuthWithRole(request, env, projectId) {
   if (!session || !session.sub) return null;
   const member = await env.DB.prepare(
     'SELECT role, scope FROM cloud_team_members WHERE project_id = ? AND user_sub = ? AND status = ?'
-  ).bind(projectId, session.sub, 'active').first();
-  if (!member) { await cloudTimingSink(); return null; }
+  )
+    .bind(projectId, session.sub, 'active')
+    .first();
+  if (!member) {
+    await cloudTimingSink();
+    return null;
+  }
   let scope = null;
-  if (member.scope) { try { const s = JSON.parse(member.scope); if (Array.isArray(s)) scope = s; } catch (e) { scope = null; } }
+  if (member.scope) {
+    try {
+      const s = JSON.parse(member.scope);
+      if (Array.isArray(s)) scope = s;
+    } catch (e) {
+      scope = null;
+    }
+  }
   return { sub: session.sub, role: member.role, source: 'team', scope: scope, session: session };
 }
 
+// Wave 7 read gate (owner 2026-10-06): READ access to a project data route for
+// the owner OR an active named team member whose role appears in `teamRoles`.
+// The owner always qualifies. This is the read-side counterpart of the
+// owner-first rule in cloudAuthWithRole: a qualifying team member keeps their
+// section grant on the returned `scope`, and callers whose payload cannot be
+// narrowed by section (the aggregate shapes, the cross-section changelog) list
+// only 'manager' here - matching /load, where a manager reads the whole
+// project and the other roles a slice. Returns { sub, role, source, scope } or
+// null; the caller answers 403.
+export async function cloudAuthProjectRead(request, env, projectId, teamRoles) {
+  const auth = await cloudAuthWithRole(request, env, projectId);
+  if (!auth) return null;
+  if (auth.source === 'owner') return auth;
+  if (Array.isArray(teamRoles) && teamRoles.indexOf(auth.role) === -1) return null;
+  return auth;
+}
+
 export async function cloudAuthSharedCode(request, env, projectId, code, role) {
-  if (!code) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return null; }
-  const rows = await env.DB.prepare('SELECT e.id, e.code_salt, e.code_hash, e.label, e.scope, p.deleted_at FROM cloud_editor_codes e JOIN cloud_projects p ON p.project_id = e.project_id WHERE e.project_id = ? AND e.active = 1 AND e.role = ?').bind(projectId, role).all();
+  if (!code) {
+    await Promise.all([cloudDummyHash(), cloudTimingSink()]);
+    return null;
+  }
+  const rows = await env.DB.prepare(
+    'SELECT e.id, e.code_salt, e.code_hash, e.label, e.scope, p.deleted_at FROM cloud_editor_codes e JOIN cloud_projects p ON p.project_id = e.project_id WHERE e.project_id = ? AND e.active = 1 AND e.role = ?'
+  )
+    .bind(projectId, role)
+    .all();
   const active = (rows && rows.results) || [];
   const slots = Math.max(active.length, CLOUD_EDITOR_AUTH_SLOTS);
   for (let i = 0; i < slots; i++) {
@@ -931,8 +1243,22 @@ export async function cloudAuthSharedCode(request, env, projectId, code, role) {
     const hash = await hashOwnerCode(code, salt);
     if (row && codesEqual(hash, row.code_hash)) {
       let scope = [];
-      try { const p = JSON.parse(row.scope); if (Array.isArray(p)) scope = p.filter(function(x) { return !!CLOUD_SECTIONS[x]; }); } catch (e) { scope = []; }
-      return { role: role, editorId: row.id, label: row.label || (role === 'view' ? 'Viewer' : 'Editor'), scope: scope, row: row };
+      try {
+        const p = JSON.parse(row.scope);
+        if (Array.isArray(p))
+          scope = p.filter(function (x) {
+            return !!CLOUD_SECTIONS[x];
+          });
+      } catch (e) {
+        scope = [];
+      }
+      return {
+        role: role,
+        editorId: row.id,
+        label: row.label || (role === 'view' ? 'Viewer' : 'Editor'),
+        scope: scope,
+        row: row
+      };
     }
   }
   await cloudTimingSink();
@@ -961,13 +1287,18 @@ export async function cloudAuthApiKey(request, env, projectId, apiKey) {
   // exact minted form, so normalize before hashing.
   let key = String(apiKey || '').trim();
   if (key.toLowerCase().lastIndexOf('sk-mmgr-', 0) === 0) key = 'sk-mmgr-' + key.slice(8);
-  if (!key) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return null; }
+  if (!key) {
+    await Promise.all([cloudDummyHash(), cloudTimingSink()]);
+    return null;
+  }
   const fp = await fingerprintOf(key);
   const row = await env.DB.prepare(
     'SELECT k.id, k.key_salt, k.key_hash, k.label, k.scope, k.expires_at, p.deleted_at ' +
-    'FROM cloud_api_keys k JOIN cloud_projects p ON p.project_id = k.project_id ' +
-    'WHERE k.key_fingerprint = ? AND k.project_id = ? AND k.active = 1'
-  ).bind(fp, projectId).first();
+      'FROM cloud_api_keys k JOIN cloud_projects p ON p.project_id = k.project_id ' +
+      'WHERE k.key_fingerprint = ? AND k.project_id = ? AND k.active = 1'
+  )
+    .bind(fp, projectId)
+    .first();
   if (!row) {
     // Unknown fingerprint: burn the same PBKDF2 work so timing cannot
     // distinguish a wrong key from a right one.
@@ -976,19 +1307,43 @@ export async function cloudAuthApiKey(request, env, projectId, apiKey) {
     return null;
   }
   const hash = await hashOwnerCode(key, row.key_salt);
-  if (!codesEqual(hash, row.key_hash)) { await cloudTimingSink(); return null; }
+  if (!codesEqual(hash, row.key_hash)) {
+    await cloudTimingSink();
+    return null;
+  }
   // API-KEY-AUDIT F5 (2026-09-16): expired and deleted-project rejections
   // used to return immediately, measurably faster than the wrong-hash branch
   // above - a timing leak against this function's own documented invariant
   // ("all rejections collapse into the SAME generic 403"). Burn the same
   // timing sink so every rejection path costs the same.
-  if (row.expires_at) { const t = Date.parse(row.expires_at); if (!isNaN(t) && t <= Date.now()) { await cloudTimingSink(); return null; } }
-  if (row.deleted_at) { await cloudTimingSink(); return null; }
+  if (row.expires_at) {
+    const t = Date.parse(row.expires_at);
+    if (!isNaN(t) && t <= Date.now()) {
+      await cloudTimingSink();
+      return null;
+    }
+  }
+  if (row.deleted_at) {
+    await cloudTimingSink();
+    return null;
+  }
   let scope = [];
-  try { const p = JSON.parse(row.scope); if (Array.isArray(p)) scope = p.filter(function(x) { return !!CLOUD_SECTIONS[x]; }); } catch (e) { scope = []; }
   try {
-    await env.DB.prepare('UPDATE cloud_api_keys SET last_used_at = ? WHERE id = ?').bind(new Date().toISOString(), row.id).run();
-  } catch (e) { /* stamping usage is best-effort */ }
+    const p = JSON.parse(row.scope);
+    if (Array.isArray(p))
+      scope = p.filter(function (x) {
+        return !!CLOUD_SECTIONS[x];
+      });
+  } catch (e) {
+    scope = [];
+  }
+  try {
+    await env.DB.prepare('UPDATE cloud_api_keys SET last_used_at = ? WHERE id = ?')
+      .bind(new Date().toISOString(), row.id)
+      .run();
+  } catch (e) {
+    /* stamping usage is best-effort */
+  }
   return { role: 'api', apiKeyId: row.id, label: row.label || 'API key', scope: scope };
 }
 
@@ -997,8 +1352,10 @@ export async function cloudAdopt(env, projectId, sub, editorCodeId, role) {
   const now = new Date().toISOString();
   await env.DB.prepare(
     'INSERT INTO cloud_adoptions (project_id, recipient_sub, editor_code_id, role, created_at, updated_at) VALUES (?,?,?,?,?,?) ' +
-    'ON CONFLICT(project_id, recipient_sub) DO UPDATE SET editor_code_id = excluded.editor_code_id, role = excluded.role, updated_at = excluded.updated_at'
-  ).bind(projectId, sub, editorCodeId, role, now, now).run();
+      'ON CONFLICT(project_id, recipient_sub) DO UPDATE SET editor_code_id = excluded.editor_code_id, role = excluded.role, updated_at = excluded.updated_at'
+  )
+    .bind(projectId, sub, editorCodeId, role, now, now)
+    .run();
 }
 
 export async function cloudAuthAdoption(request, env, projectId) {
@@ -1006,16 +1363,34 @@ export async function cloudAuthAdoption(request, env, projectId) {
   if (!session || !session.sub) return null;
   const ad = await env.DB.prepare(
     'SELECT editor_code_id, role FROM cloud_adoptions WHERE project_id = ? AND recipient_sub = ?'
-  ).bind(projectId, session.sub).first();
+  )
+    .bind(projectId, session.sub)
+    .first();
   if (!ad) return null;
   const row = await env.DB.prepare(
     'SELECT e.id, e.code_salt, e.code_hash, e.label, e.scope, e.active, e.role, p.deleted_at FROM cloud_editor_codes e JOIN cloud_projects p ON p.project_id = e.project_id WHERE e.id = ?'
-  ).bind(ad.editor_code_id).first();
+  )
+    .bind(ad.editor_code_id)
+    .first();
   if (!row || row.active !== 1) return { revoked: true };
   if (row.deleted_at) return { deleted: true };
   let scope = [];
-  try { const p = JSON.parse(row.scope); if (Array.isArray(p)) scope = p.filter(function(x) { return !!CLOUD_SECTIONS[x]; }); } catch (e) { scope = []; }
-  return { role: row.role === 'view' ? 'view' : 'editor', editorId: row.id, label: row.label || (row.role === 'view' ? 'Viewer' : 'Editor'), scope: scope, row: row };
+  try {
+    const p = JSON.parse(row.scope);
+    if (Array.isArray(p))
+      scope = p.filter(function (x) {
+        return !!CLOUD_SECTIONS[x];
+      });
+  } catch (e) {
+    scope = [];
+  }
+  return {
+    role: row.role === 'view' ? 'view' : 'editor',
+    editorId: row.id,
+    label: row.label || (row.role === 'view' ? 'Viewer' : 'Editor'),
+    scope: scope,
+    row: row
+  };
 }
 
 export async function cloudAuthAnyAccess(request, env, projectId) {
@@ -1055,11 +1430,16 @@ export const CLOUD_ORPHAN_WARN_MS = 14 * 24 * 60 * 60 * 1000;
 export async function sendOrphanWarningEmail(env, projectId, ownerEmail, daysLeft) {
   if (!ownerEmail) return false;
   const subject = 'My MaNaGeR: Your project will be archived in ' + daysLeft + ' days';
-  const body = 'Hi,\n\n'
-    + 'Your cloud project "' + projectId + '" has not been accessed for a while '
-    + 'and will be permanently archived in ' + daysLeft + ' days.\n\n'
-    + 'To keep it active, open the project in My MaNaGeR before the deadline.\n\n'
-    + 'If you no longer need this project, no action is required.\n\n'
-    + '- My MaNaGeR';
+  const body =
+    'Hi,\n\n' +
+    'Your cloud project "' +
+    projectId +
+    '" has not been accessed for a while ' +
+    'and will be permanently archived in ' +
+    daysLeft +
+    ' days.\n\n' +
+    'To keep it active, open the project in My MaNaGeR before the deadline.\n\n' +
+    'If you no longer need this project, no action is required.\n\n' +
+    '- My MaNaGeR';
   return await sendAuthEmail(env, ownerEmail, subject, body);
 }

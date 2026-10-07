@@ -42,7 +42,9 @@ const LIVE = process.env.MMGR_QA_NO_BROWSER !== '1';
 // Production 307s /pricing.html -> /pricing and carries the query string over
 // (verified), so the .html form is correct on a local serve.cjs origin and
 // harmless on a deployed one.
-const PRICING_PATH = /^https?:\/\/(127\.0\.0\.1|localhost)/.test(SITE) ? '/pricing.html' : '/pricing';
+const PRICING_PATH = /^https?:\/\/(127\.0\.0\.1|localhost)/.test(SITE)
+  ? '/pricing.html'
+  : '/pricing';
 
 let fails = 0;
 function ok(label, cond, extra) {
@@ -95,24 +97,37 @@ function directive(policySrc, name) {
     // The security invariant: script-src stays HASH-ONLY. This is the whole
     // reason the fix is a scoped policy rather than a global 'unsafe-inline'.
     const scriptSrc = directive(wPaddle, 'script-src');
-    ok("PADDLE_CSP script-src has no 'unsafe-inline'",
-       !!scriptSrc && scriptSrc.indexOf("'unsafe-inline'") === -1,
-       'the hash gate must stay strict');
-    ok('PADDLE_CSP script-src still appends INLINE_SCRIPT_HASHES',
-       /\+\s*INLINE_SCRIPT_HASHES/.test(scriptSrc),
-       'the real hashes live in that shared list');
+    ok(
+      "PADDLE_CSP script-src has no 'unsafe-inline'",
+      !!scriptSrc && scriptSrc.indexOf("'unsafe-inline'") === -1,
+      'the hash gate must stay strict'
+    );
+    ok(
+      'PADDLE_CSP script-src still appends INLINE_SCRIPT_HASHES',
+      /\+\s*INLINE_SCRIPT_HASHES/.test(scriptSrc),
+      'the real hashes live in that shared list'
+    );
 
     const styleSrc = directive(wPaddle, 'style-src');
-    ok('style-src allows cdn.paddle.com', /https:\/\/cdn\.paddle\.com/.test(styleSrc),
-       'paddle.css = overlay styling');
+    ok(
+      'style-src allows cdn.paddle.com',
+      /https:\/\/cdn\.paddle\.com/.test(styleSrc),
+      'paddle.css = overlay styling'
+    );
 
     const frameSrc = directive(wPaddle, 'frame-src');
-    ok('frame-src allows buy.paddle.com', /https:\/\/buy\.paddle\.com/.test(frameSrc),
-       'the overlay iframe itself - this was the blocker');
+    ok(
+      'frame-src allows buy.paddle.com',
+      /https:\/\/buy\.paddle\.com/.test(frameSrc),
+      'the overlay iframe itself - this was the blocker'
+    );
 
     const ancestors = directive(wPaddle, 'frame-ancestors');
-    ok("frame-ancestors is not 'none'", !!ancestors && ancestors.indexOf("'none'") === -1,
-       "'none' also vetoed the overlay iframe");
+    ok(
+      "frame-ancestors is not 'none'",
+      !!ancestors && ancestors.indexOf("'none'") === -1,
+      "'none' also vetoed the overlay iframe"
+    );
 
     // profitwell must stay out: revenue analytics, not checkout.
     ok('public.profitwell.com stays blocked', wPaddle.indexOf('profitwell') === -1);
@@ -120,21 +135,33 @@ function directive(policySrc, name) {
     // The scoped policy must not have drifted from the global one in the
     // directives it shares: anything Paddle did not need stays as it was.
     const globalSrc = policy(workerSrc, 'CSP');
-    ok('global CSP is untouched and still hash-only', !!globalSrc &&
-       /INLINE_SCRIPT_HASHES/.test(globalSrc) &&
-       directive(globalSrc, 'script-src').indexOf("'unsafe-inline'") === -1,
-       'site-wide XSS gate must not be widened');
+    ok(
+      'global CSP is untouched and still hash-only',
+      !!globalSrc &&
+        /INLINE_SCRIPT_HASHES/.test(globalSrc) &&
+        directive(globalSrc, 'script-src').indexOf("'unsafe-inline'") === -1,
+      'site-wide XSS gate must not be widened'
+    );
   }
 
   // Scoping: only pricing.html may receive PADDLE_CSP.
   const wScope = workerSrc.slice(workerSrc.indexOf('const PADDLE_CSP'));
-  ok('worker.js scopes PADDLE_CSP to pricing only',
-     /normalized === '\/pricing' \|\| normalized === '\/pricing\.html'/.test(
-       wScope.slice(wScope.indexOf("normalized === '/pricing'") - 200)));
-  ok("worker.js does not apply PADDLE_CSP to '/'",
-     !/normalized === '\/pricing'\s*\|\s*normalized === '\/pricing\.html'\s*\|\s*normalized === '\/'/.test(workerSrc));
-  ok('serve.cjs scopes PADDLE_CSP by pricing.html basename',
-     /path\.basename\(file\) === 'pricing\.html'/.test(serveSrc));
+  ok(
+    'worker.js scopes PADDLE_CSP to pricing only',
+    /normalized === '\/pricing' \|\| normalized === '\/pricing\.html'/.test(
+      wScope.slice(wScope.indexOf("normalized === '/pricing'") - 200)
+    )
+  );
+  ok(
+    "worker.js does not apply PADDLE_CSP to '/'",
+    !/normalized === '\/pricing'\s*\|\s*normalized === '\/pricing\.html'\s*\|\s*normalized === '\/'/.test(
+      workerSrc
+    )
+  );
+  ok(
+    'serve.cjs scopes PADDLE_CSP by pricing.html basename',
+    /path\.basename\(file\) === 'pricing\.html'/.test(serveSrc)
+  );
 
   // ---- ARM 1b: PADDLE OWNS _ptxn (regression gate, owner 2026-10-05) -----
   // The dead-checkout bug was self-inflicted and invisible: handlePaddleReturn()
@@ -147,37 +174,54 @@ function directive(policySrc, name) {
   const marketing = fs.readFileSync(path.join(ROOT, 'js', 'marketing.js'), 'utf8');
 
   ok('js/marketing.js declares stripOnly(keys)', /function stripOnly\s*\(/.test(marketing));
-  ok('the unconditional stripPaddleParams() is gone', !/function stripPaddleParams\s*\(/.test(marketing),
-     'it deleted _ptxn before Paddle could read it');
+  ok(
+    'the unconditional stripPaddleParams() is gone',
+    !/function stripPaddleParams\s*\(/.test(marketing),
+    'it deleted _ptxn before Paddle could read it'
+  );
 
   const hprStart = marketing.indexOf('function handlePaddleReturn');
   const hprEnd = marketing.indexOf('function pollPlanAfterCheckout');
-  const hprBody = (hprStart > -1 && hprEnd > hprStart) ? marketing.slice(hprStart, hprEnd) : '';
+  const hprBody = hprStart > -1 && hprEnd > hprStart ? marketing.slice(hprStart, hprEnd) : '';
   ok('handlePaddleReturn found in js/marketing.js', !!hprBody);
-  ok('handlePaddleReturn never names _ptxn', !!hprBody && hprBody.indexOf('_ptxn') === -1,
-     '_ptxn is an instruction to OPEN a checkout, never a return signal');
-  ok("handlePaddleReturn still strips pdc (Paddle's own checkout error)",
-     /stripOnly\(\s*\[\s*'pdc'\s*\]\s*\)/.test(hprBody));
+  ok(
+    'handlePaddleReturn never names _ptxn',
+    !!hprBody && hprBody.indexOf('_ptxn') === -1,
+    '_ptxn is an instruction to OPEN a checkout, never a return signal'
+  );
+  ok(
+    "handlePaddleReturn still strips pdc (Paddle's own checkout error)",
+    /stripOnly\(\s*\[\s*'pdc'\s*\]\s*\)/.test(hprBody)
+  );
 
   // Module-scope ORDER is load-bearing, not cosmetic: Paddle must be allowed to
   // read ?_ptxn before any other code touches the URL.
   const orderInit = marketing.lastIndexOf('initPaddleWhenReady();');
   const orderHandle = marketing.lastIndexOf('handlePaddleReturn();');
-  ok('module scope calls initPaddleWhenReady() BEFORE handlePaddleReturn()',
-     orderInit > -1 && orderHandle > -1 && orderInit < orderHandle,
-     'init@' + orderInit + ' return@' + orderHandle);
+  ok(
+    'module scope calls initPaddleWhenReady() BEFORE handlePaddleReturn()',
+    orderInit > -1 && orderHandle > -1 && orderInit < orderHandle,
+    'init@' + orderInit + ' return@' + orderHandle
+  );
 
   // The SHIPPED bundle is what the browser actually executes (AGENTS lesson 2),
   // so assert the fix reached it. Quotes are stripped first because minify
   // swaps them; the element ORDER is the signature that changed.
   const bundlePath = path.join(ROOT, 'dist', 'marketing-bundle.js');
-  ok('dist/marketing-bundle.js exists (npm run build precedes this gate)', fs.existsSync(bundlePath));
+  ok(
+    'dist/marketing-bundle.js exists (npm run build precedes this gate)',
+    fs.existsSync(bundlePath)
+  );
   if (fs.existsSync(bundlePath)) {
     const norm = fs.readFileSync(bundlePath, 'utf8').replace(/["'`]/g, '').replace(/\s+/g, '');
-    ok('shipped bundle has NO 4-key strip (_ptxn,plnk,_pxc,pdc)',
-       norm.indexOf('[_ptxn,plnk,_pxc,pdc]') === -1);
-    ok('shipped bundle strips _ptxn only AFTER checkout.completed',
-       norm.indexOf('[_ptxn,plnk,_pxc]') > -1);
+    ok(
+      'shipped bundle has NO 4-key strip (_ptxn,plnk,_pxc,pdc)',
+      norm.indexOf('[_ptxn,plnk,_pxc,pdc]') === -1
+    );
+    ok(
+      'shipped bundle strips _ptxn only AFTER checkout.completed',
+      norm.indexOf('[_ptxn,plnk,_pxc]') > -1
+    );
     ok('shipped bundle keeps the pdc-only strip', norm.indexOf('[pdc]') > -1);
   }
 
@@ -192,13 +236,14 @@ function directive(policySrc, name) {
   try {
     const page = await browser.newPage();
     const viol = [];
-    page.on('console', (m) => {
+    page.on('console', m => {
       const t = m.text();
       if (/Content Security Policy/.test(t)) viol.push(t.slice(0, 160));
     });
-    page.on('requestfailed', (r) => {
+    page.on('requestfailed', r => {
       const u = r.url();
-      if (/paddle/.test(u)) viol.push('REQFAIL ' + u.slice(0, 90) + ' :: ' + ((r.failure() || {}).errorText || ''));
+      if (/paddle/.test(u))
+        viol.push('REQFAIL ' + u.slice(0, 90) + ' :: ' + ((r.failure() || {}).errorText || ''));
     });
 
     // ---- ARM 2b: _ptxn SURVIVES A REAL PAGE LOAD (regression gate) -------
@@ -207,12 +252,20 @@ function directive(policySrc, name) {
     // _ptxn is missing from the address bar after a normal load, the checkout
     // is dead again - this is the exact symptom the owner reported.
     const ptxnVal = 'txn_01m4703mawe217sswjt0g0ssky01';
-    await page.goto(SITE + PRICING_PATH + '?_ptxn=' + ptxnVal, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.goto(SITE + PRICING_PATH + '?_ptxn=' + ptxnVal, {
+      waitUntil: 'domcontentloaded',
+      timeout: 60000
+    });
     await page.waitForTimeout(3000);
-    const afterPtxn = await page.evaluate(() => ({ search: location.search, paddle: typeof window.Paddle }));
-    ok('_ptxn SURVIVES a real page load (the dead-checkout regression)',
-       new RegExp('[?&]_ptxn=' + ptxnVal).test(afterPtxn.search),
-       'location.search=' + (afterPtxn.search || '(empty - the page ate it)'));
+    const afterPtxn = await page.evaluate(() => ({
+      search: location.search,
+      paddle: typeof window.Paddle
+    }));
+    ok(
+      '_ptxn SURVIVES a real page load (the dead-checkout regression)',
+      new RegExp('[?&]_ptxn=' + ptxnVal).test(afterPtxn.search),
+      'location.search=' + (afterPtxn.search || '(empty - the page ate it)')
+    );
 
     await page.goto(SITE + PRICING_PATH, { waitUntil: 'networkidle', timeout: 60000 });
     await page.waitForTimeout(3000);
@@ -221,39 +274,47 @@ function directive(policySrc, name) {
     viol.length = 0; // only violations during the overlay attempt matter
 
     await page.evaluate(() => {
-      try { window.Paddle.Checkout.open({ transactionId: 'txn_00000000000000000000000000' }); }
-      catch (e) { /* non-fatal; absence of a throw is what we assert */ }
+      try {
+        window.Paddle.Checkout.open({ transactionId: 'txn_00000000000000000000000000' });
+      } catch (e) {
+        /* non-fatal; absence of a throw is what we assert */
+      }
     });
     await page.waitForTimeout(5000);
 
     const frames = await page.evaluate(() =>
-      Array.from(document.querySelectorAll('iframe')).map((n) => ({
-        src: n.src, w: n.offsetWidth, h: n.offsetHeight,
-      })));
+      Array.from(document.querySelectorAll('iframe')).map(n => ({
+        src: n.src,
+        w: n.offsetWidth,
+        h: n.offsetHeight
+      }))
+    );
 
-    const overlay = frames.find((f) => /buy\.paddle\.com/.test(f.src));
-    ok('overlay iframe created on buy.paddle.com', !!overlay,
-       frames.length ? frames.map((f) => f.src.slice(0, 50)).join(' | ') : 'no iframes at all');
-    ok('overlay iframe is VISIBLE (non-zero size)',
-       !!overlay && overlay.w > 0 && overlay.h > 0,
-       overlay ? overlay.w + 'x' + overlay.h : 'n/a');
+    const overlay = frames.find(f => /buy\.paddle\.com/.test(f.src));
+    ok(
+      'overlay iframe created on buy.paddle.com',
+      !!overlay,
+      frames.length ? frames.map(f => f.src.slice(0, 50)).join(' | ') : 'no iframes at all'
+    );
+    ok(
+      'overlay iframe is VISIBLE (non-zero size)',
+      !!overlay && overlay.w > 0 && overlay.h > 0,
+      overlay ? overlay.w + 'x' + overlay.h : 'n/a'
+    );
 
-    ok('no CSP violation while opening checkout', viol.length === 0,
-       viol.slice(0, 3).join(' ;; '));
+    ok('no CSP violation while opening checkout', viol.length === 0, viol.slice(0, 3).join(' ;; '));
   } finally {
     await browser.close();
   }
 
   finish();
-})().catch((e) => {
+})().catch(e => {
   console.error('HARNESS ERROR:', e && e.message);
   fails++;
   finish();
 });
 
 function finish() {
-  console.log('\n' + (fails === 0
-    ? 'ALL CHECKS PASSED'
-    : fails + ' CHECK(S) FAILED'));
+  console.log('\n' + (fails === 0 ? 'ALL CHECKS PASSED' : fails + ' CHECK(S) FAILED'));
   process.exit(fails === 0 ? 0 : 1);
 }

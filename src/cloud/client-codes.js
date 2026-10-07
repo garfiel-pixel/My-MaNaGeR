@@ -4,22 +4,58 @@
    Client codes grant read-only access to specific panels only.
    ============================================================ */
 
-import { json, hashOwnerCode, randomSaltHex, cloudAuthOwnerEither, codesEqual } from '../lib/http.js';
+import {
+  json,
+  hashOwnerCode,
+  randomSaltHex,
+  cloudAuthOwnerEither,
+  codesEqual
+} from '../lib/http.js';
 
 // All possible section IDs that can be toggled
 const CLIENT_SECTIONS = [
-  'dash', 'def', 'charter', 'wbs', 'gantt', 'kan', 'res', 'bud',
-  'raci', 'comms', 'docs', 'meet', 'stk', 'chg', 'log', 'risk',
-  'claim', 'close', 'dmaic'
+  'dash',
+  'def',
+  'charter',
+  'wbs',
+  'gantt',
+  'kan',
+  'res',
+  'bud',
+  'raci',
+  'comms',
+  'docs',
+  'meet',
+  'stk',
+  'chg',
+  'log',
+  'risk',
+  'claim',
+  'close',
+  'dmaic'
 ];
 
 // Section display names for the admin UI
 const SECTION_LABELS = {
-  dash: 'Dashboard', def: 'Definitions', charter: 'Charter', wbs: 'WBS',
-  gantt: 'Gantt', kan: 'Kanban', res: 'Resources', bud: 'Budget',
-  raci: 'RACI', comms: 'Comms Log', docs: 'Documents', meet: 'Meetings',
-  stk: 'Stakeholders', chg: 'Changes', log: 'Decision Log', risk: 'Risk / Issues',
-  claim: 'Claim Pack', close: 'Closure', dmaic: 'DMAIC'
+  dash: 'Dashboard',
+  def: 'Definitions',
+  charter: 'Charter',
+  wbs: 'WBS',
+  gantt: 'Gantt',
+  kan: 'Kanban',
+  res: 'Resources',
+  bud: 'Budget',
+  raci: 'RACI',
+  comms: 'Comms Log',
+  docs: 'Documents',
+  meet: 'Meetings',
+  stk: 'Stakeholders',
+  chg: 'Changes',
+  log: 'Decision Log',
+  risk: 'Risk / Issues',
+  claim: 'Claim Pack',
+  close: 'Closure',
+  dmaic: 'DMAIC'
 };
 
 /**
@@ -41,7 +77,9 @@ export async function handleCloudClientCodeCreate(request, env, projectId) {
     // Verify the project exists + is live
     const project = await env.DB.prepare(
       'SELECT project_id, deleted_at FROM cloud_projects WHERE project_id = ?'
-    ).bind(projectId).first();
+    )
+      .bind(projectId)
+      .first();
     if (!project) return json({ ok: false, error: 'project not found' }, 404);
     if (project.deleted_at) return json({ ok: false, error: 'project_deleted' }, 403);
 
@@ -68,7 +106,9 @@ export async function handleCloudClientCodeCreate(request, env, projectId) {
 
     const result = await env.DB.prepare(
       'INSERT INTO cloud_client_codes (project_id, code_hash, code_salt, sections, expires_at) VALUES (?, ?, ?, ?, ?)'
-    ).bind(projectId, codeHash, salt, JSON.stringify(validSections), expiresAt).run();
+    )
+      .bind(projectId, codeHash, salt, JSON.stringify(validSections), expiresAt)
+      .run();
 
     return json({
       ok: true,
@@ -95,7 +135,9 @@ export async function handleCloudClientCodeList(request, env, projectId) {
 
     const rows = await env.DB.prepare(
       'SELECT id, sections, created_at, expires_at FROM cloud_client_codes WHERE project_id = ? ORDER BY created_at DESC'
-    ).bind(projectId).all();
+    )
+      .bind(projectId)
+      .all();
 
     const codes = (rows.results || []).map(r => ({
       id: r.id,
@@ -120,9 +162,9 @@ export async function handleCloudClientCodeRevoke(request, env, projectId, codeI
     const auth = await cloudAuthOwnerEither(request, env, projectId);
     if (!auth) return json({ ok: false, error: 'not owner' }, 403);
 
-    await env.DB.prepare(
-      'DELETE FROM cloud_client_codes WHERE id = ? AND project_id = ?'
-    ).bind(codeId, projectId).run();
+    await env.DB.prepare('DELETE FROM cloud_client_codes WHERE id = ? AND project_id = ?')
+      .bind(codeId, projectId)
+      .run();
 
     return json({ ok: true, deleted: true });
   } catch (e) {
@@ -145,9 +187,11 @@ export async function verifyClientCode(code, projectId, env) {
   // friendly errors (code_expired / project_deleted) instead of a bare 403.
   const rows = await env.DB.prepare(
     'SELECT c.id, c.code_hash, c.code_salt, c.sections, c.expires_at, p.deleted_at FROM cloud_client_codes c JOIN cloud_projects p ON p.project_id = c.project_id WHERE c.project_id = ?'
-  ).bind(projectId).all();
+  )
+    .bind(projectId)
+    .all();
 
-  for (const row of (rows.results || [])) {
+  for (const row of rows.results || []) {
     const hash = await hashOwnerCode(code, row.code_salt);
     // B12 (audit 2026-09-28): constant-time compare like the other 14 hash
     // checks (src/lib/http.js codesEqual) - plain === was the only outlier.

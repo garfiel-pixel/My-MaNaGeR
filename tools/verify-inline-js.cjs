@@ -30,16 +30,20 @@ function extractInlineScripts(html) {
   while ((m = re.exec(html)) !== null) {
     const attrs = m[1] || '';
     if (/\bsrc\s*=/i.test(attrs)) continue; // external script, not inline
-    if (/\btype\s*=\s*["']?(application\/json|application\/ld\+json|text\/template)/i.test(attrs)) continue;
+    if (/\btype\s*=\s*["']?(application\/json|application\/ld\+json|text\/template)/i.test(attrs))
+      continue;
     out.push({ attrs: attrs.trim(), code: m[2] || '' });
   }
   return out;
 }
 
 const files = process.argv.slice(2);
-const pages = files.length ? files : fs.readdirSync(ROOT)
-  .filter(f => f.endsWith('.html'))
-  .filter(f => !/^serve-icontest|^monolith/.test(f)); // archived scratch fixtures
+const pages = files.length
+  ? files
+  : fs
+      .readdirSync(ROOT)
+      .filter(f => f.endsWith('.html'))
+      .filter(f => !/^serve-icontest|^monolith/.test(f)); // archived scratch fixtures
 
 for (const page of pages) {
   const p = path.join(ROOT, page);
@@ -48,7 +52,8 @@ for (const page of pages) {
   const scripts = extractInlineScripts(html);
   scripts.forEach((s, i) => {
     blocks++;
-    const head = (s.attrs ? '<' + s.attrs + '> ' : '') + s.code.trim().slice(0, 60).replace(/\s+/g, ' ');
+    const head =
+      (s.attrs ? '<' + s.attrs + '> ' : '') + s.code.trim().slice(0, 60).replace(/\s+/g, ' ');
     if (!s.code.trim()) return; // empty block is harmless
     try {
       // new Function parses WITHOUT executing — exactly what we want.
@@ -61,7 +66,15 @@ for (const page of pages) {
 
 if (fails.length) {
   console.log('[verify-inline-js] FAIL — ' + fails.length + ' unparsable inline script(s):');
-  fails.forEach(f => console.log('  ' + f.page + ' block#' + f.block + ': ' + f.error + '\n    head: ' + f.head));
+  fails.forEach(f =>
+    console.log('  ' + f.page + ' block#' + f.block + ': ' + f.error + '\n    head: ' + f.head)
+  );
   process.exit(1);
 }
-console.log('[verify-inline-js] OK — ' + blocks + ' inline scripts across ' + pages.filter(f => fs.existsSync(path.join(ROOT, f))).length + ' pages all parse as JavaScript.');
+console.log(
+  '[verify-inline-js] OK — ' +
+    blocks +
+    ' inline scripts across ' +
+    pages.filter(f => fs.existsSync(path.join(ROOT, f))).length +
+    ' pages all parse as JavaScript.'
+);

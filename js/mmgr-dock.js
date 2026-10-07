@@ -34,12 +34,12 @@
     // EVERY tglGlassMode instance (dock + rail + gate), so the whole page
     // stays in step with the engine's actual state.
     try {
-      var G = window.MMGR && window.MMGR.Viewport
-        ? window.MMGR.Viewport.getGlassMode()
-        : 'css';
+      var G = window.MMGR && window.MMGR.Viewport ? window.MMGR.Viewport.getGlassMode() : 'css';
       var gs = document.querySelectorAll('[data-action="tglGlassMode"]');
-      for (var i = 0; i < gs.length; i++) gs[i].checked = (G === 'premium');
-    } catch (e) { /* Viewport not ready yet - next sync will catch it */ }
+      for (var i = 0; i < gs.length; i++) gs[i].checked = G === 'premium';
+    } catch (e) {
+      /* Viewport not ready yet - next sync will catch it */
+    }
     // Theme stack: set the dock's own .pal-btn aria-pressed from the stored
     // mode (MMGRTheme.getMode is the single source of truth; light default
     // per owner D12).
@@ -48,11 +48,16 @@
       if (mode) {
         var btns = document.querySelectorAll('.dock .pal-btn[data-pal]');
         for (var i = 0; i < btns.length; i++) {
-          btns[i].setAttribute('aria-pressed', btns[i].getAttribute('data-pal') === mode ? 'true' : 'false');
+          btns[i].setAttribute(
+            'aria-pressed',
+            btns[i].getAttribute('data-pal') === mode ? 'true' : 'false'
+          );
         }
         // Text-dropdown pickers (owner 2026-09-07) mirror the same source.
         var sels = document.querySelectorAll('select#theme-select');
-        for (var si = 0; si < sels.length; si++) { sels[si].value = mode; }
+        for (var si = 0; si < sels.length; si++) {
+          sels[si].value = mode;
+        }
       }
     } catch (e) {}
     // View row (Phase 3, owner D9): aria-pressed mirrors the EFFECTIVE
@@ -64,7 +69,10 @@
       var view = readPref(VIEW_KEY, 'flat');
       var vbtns = document.querySelectorAll('.dock .pal-btn[data-view]');
       for (var k = 0; k < vbtns.length; k++) {
-        vbtns[k].setAttribute('aria-pressed', vbtns[k].getAttribute('data-view') === view ? 'true' : 'false');
+        vbtns[k].setAttribute(
+          'aria-pressed',
+          vbtns[k].getAttribute('data-view') === view ? 'true' : 'false'
+        );
       }
     } catch (e) {}
   }
@@ -78,7 +86,11 @@
   var PAL_KEY = 'mmgr_palette'; // retired key - kept only so boot can scrub it (2026-09-12)
   var VIEW_KEY = 'mmgr_view_mode';
   function readPref(k, fb) {
-    try { return localStorage.getItem(k) || fb; } catch (e) { return fb; }
+    try {
+      return localStorage.getItem(k) || fb;
+    } catch (e) {
+      return fb;
+    }
   }
   function viewAllowed() {
     // Performance Mode on = heavy layers off (owner 2026-09-06): the 3D tilt
@@ -86,13 +98,18 @@
     try {
       var P = window.MMGR && window.MMGR.Perf ? window.MMGR.Perf : null;
       if (P && P.blocksHeavyLayers && P.blocksHeavyLayers()) return false;
-    } catch (e) { /* Perf absent - fall through to the classic gates */ }
+    } catch (e) {
+      /* Perf absent - fall through to the classic gates */
+    }
     try {
       var V = window.MMGR && window.MMGR.Viewport ? window.MMGR.Viewport : null;
       if (V && typeof V.isNarrow === 'function' && V.isNarrow()) return false;
-    } catch (e) { /* Viewport not ready yet - width check below covers it */ }
+    } catch (e) {
+      /* Viewport not ready yet - width check below covers it */
+    }
     if (window.innerWidth < 769) return false; // repo desktop boundary (769px)
-    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+      return false;
     return true;
   }
   // OWNER 2026-09-12 (review): the palette axis is retired (2026-09-05
@@ -105,7 +122,11 @@
   // same scrub so even a rogue [data-palette] dispatch cannot re-apply it.
   // Theme = Light/Dark/System only (mmgr-theme.js, device pref).
   function scrubRetiredPalette() {
-    try { localStorage.removeItem(PAL_KEY); } catch (e) { /* storage blocked */ }
+    try {
+      localStorage.removeItem(PAL_KEY);
+    } catch (e) {
+      /* storage blocked */
+    }
     document.documentElement.removeAttribute('data-theme');
   }
   function applyPalette() {
@@ -124,13 +145,17 @@
     sync();
   }
   function chooseView(m) {
-    try { localStorage.setItem(VIEW_KEY, m === '3d' ? '3d' : 'flat'); } catch (e) {}
+    try {
+      localStorage.setItem(VIEW_KEY, m === '3d' ? '3d' : 'flat');
+    } catch (e) {}
     applyView();
   }
   var _rzT = null;
   function onViewportChange() {
     if (_rzT) clearTimeout(_rzT);
-    _rzT = setTimeout(function () { applyView(); }, 150); // debounce resize/orientation
+    _rzT = setTimeout(function () {
+      applyView();
+    }, 150); // debounce resize/orientation
   }
 
   // ---- Performance Mode (owner 2026-09-06) ----
@@ -144,7 +169,9 @@
     // page's select#theme-select; MMGRTheme.setMode persists + pushes.
     var t = e.target && e.target.id === 'theme-select' ? e.target : null;
     if (t) {
-      try { if (window.MMGRTheme && window.MMGRTheme.setMode) window.MMGRTheme.setMode(t.value); } catch (err) {}
+      try {
+        if (window.MMGRTheme && window.MMGRTheme.setMode) window.MMGRTheme.setMode(t.value);
+      } catch (err) {}
       return;
     }
     t = e.target && e.target.id === 'perf-tgl' ? e.target : null;
@@ -152,7 +179,9 @@
     try {
       var P = window.MMGR && window.MMGR.Perf ? window.MMGR.Perf : null;
       if (P && P.set) P.set(!!t.checked);
-    } catch (err) { /* preference write must never break the page */ }
+    } catch (err) {
+      /* preference write must never break the page */
+    }
   });
 
   function boot() {
@@ -163,7 +192,9 @@
         var ts = document.querySelectorAll('#perf-tgl');
         for (var pi = 0; pi < ts.length; pi++) ts[pi].checked = P2.isOn();
       }
-    } catch (e) { /* Perf absent - toggles keep their markup default (on) */ }
+    } catch (e) {
+      /* Perf absent - toggles keep their markup default (on) */
+    }
     scrubRetiredPalette();
     applyView();
     sync();
@@ -173,7 +204,11 @@
     document.addEventListener('click', function (e) {
       var n = e.target;
       if (!n || !n.closest) return;
-      if (n.closest('[data-pal],[data-action="tglTheme"],[data-action="tglThemeQuick"],[data-action="tglGlassMode"]')) {
+      if (
+        n.closest(
+          '[data-pal],[data-action="tglTheme"],[data-action="tglThemeQuick"],[data-action="tglGlassMode"]'
+        )
+      ) {
         setTimeout(sync, 0);
       }
     });
@@ -210,5 +245,7 @@
   // sync() is idempotent: it only activates when the engine is inactive.
   try {
     if (window.MMGR && window.MMGR.Glass && window.MMGR.Glass.sync) window.MMGR.Glass.sync();
-  } catch (e) { /* glass boot must never break the page */ }
+  } catch (e) {
+    /* glass boot must never break the page */
+  }
 })();

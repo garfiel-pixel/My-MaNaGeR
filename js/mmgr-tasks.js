@@ -3,7 +3,7 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   const S = () => ns.State.getState();
@@ -39,25 +39,56 @@ var MMGR = window.MMGR || {};
   // points at exactly where the problem is (owner: "show where there is issues").
   function validateImportLines(lines) {
     const s = ns.State.getState();
-    const known = new Set((s.tasks || []).map(function (t) { return t.name; }));
-    const ok = [], issues = [];
+    const known = new Set(
+      (s.tasks || []).map(function (t) {
+        return t.name;
+      })
+    );
+    const ok = [],
+      issues = [];
     for (const line of lines) {
-      const m = line.match(/^(.+?)\s*\(\s*(\d+)\s*d\s*\)\s*\[\s*(\d{4}-\d{2}-\d{2})\s*→\s*(\d{4}-\d{2}-\d{2})\s*\]\s*$/);
+      const m = line.match(
+        /^(.+?)\s*\(\s*(\d+)\s*d\s*\)\s*\[\s*(\d{4}-\d{2}-\d{2})\s*→\s*(\d{4}-\d{2}-\d{2})\s*\]\s*$/
+      );
       if (!m) {
-        issues.push({ line: line, name: line.slice(0, 60), reason: 'Not in the format Name (3d) [2026-08-16 → 2026-08-20]', severity: 'error' });
+        issues.push({
+          line: line,
+          name: line.slice(0, 60),
+          reason: 'Not in the format Name (3d) [2026-08-16 → 2026-08-20]',
+          severity: 'error'
+        });
         continue;
       }
-      const name = m[1].trim(), dur = parseInt(m[2], 10), start = m[3], end = m[4];
+      const name = m[1].trim(),
+        dur = parseInt(m[2], 10),
+        start = m[3],
+        end = m[4];
       if (start > end) {
-        issues.push({ line: line, name: name, reason: 'End date is before start date', severity: 'error' });
+        issues.push({
+          line: line,
+          name: name,
+          reason: 'End date is before start date',
+          severity: 'error'
+        });
         continue;
       }
       const calc = durationFromDates(start, end);
       if (calc !== null && calc !== dur) {
-        issues.push({ line: line, name: name, reason: 'Days say ' + dur + ' but the dates span ' + calc + ' working days - the dates win', severity: 'warn' });
+        issues.push({
+          line: line,
+          name: name,
+          reason:
+            'Days say ' + dur + ' but the dates span ' + calc + ' working days - the dates win',
+          severity: 'warn'
+        });
       }
       if (!known.has(name)) {
-        issues.push({ line: line, name: name, reason: 'New task (will be created)', severity: 'warn' });
+        issues.push({
+          line: line,
+          name: name,
+          reason: 'New task (will be created)',
+          severity: 'warn'
+        });
       }
       ok.push({ name: name, dur: dur, start: start, end: end });
     }
@@ -66,16 +97,26 @@ var MMGR = window.MMGR || {};
 
   // ---- Task CRUD ----
   function addTask() {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (!s.tasks) s.tasks = [];
       s.tasks.push({
         id: U.genId('t'),
         name: 'New Task',
-        level: 0, indent: 0, isPhase: false,
-        status: 'todo', startDate: '', endDate: '', duration: '',
-        assignee: '', critical: false, leadTime: false,
-        recurring: false, weatherExposed: false,
-        confidence: 'high', predecessors: [], notes: '',
+        level: 0,
+        indent: 0,
+        isPhase: false,
+        status: 'todo',
+        startDate: '',
+        endDate: '',
+        duration: '',
+        assignee: '',
+        critical: false,
+        leadTime: false,
+        recurring: false,
+        weatherExposed: false,
+        confidence: 'high',
+        predecessors: [],
+        notes: '',
         weatherSensitive: false
       });
     });
@@ -84,7 +125,7 @@ var MMGR = window.MMGR || {};
 
   // ---- Milestone flag (feature 11) ----
   function tglMilestone(id) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       const task = (s.tasks || []).find(t => t.id === id);
       if (task) task.milestone = !task.milestone;
     });
@@ -94,7 +135,7 @@ var MMGR = window.MMGR || {};
 
   // ---- Weather-sensitive flag ----
   function tglWeather(id) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       const task = (s.tasks || []).find(t => t.id === id);
       if (task) task.weatherSensitive = !task.weatherSensitive;
     });
@@ -110,7 +151,7 @@ var MMGR = window.MMGR || {};
   // submitted date defaults to today so the tracker has an anchor; the
   // expected date is left for the user (never fabricated).
   function tglLeadTime(id) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       const task = (s.tasks || []).find(t => t.id === id);
       if (!task) return;
       task.leadTime = !task.leadTime;
@@ -129,7 +170,7 @@ var MMGR = window.MMGR || {};
   // the Dashboard tracker can show a fresh (non-stale) badge. Client-side
   // state only , a "last updated" timestamp, not a server sync.
   function tglLeadtimeReview(id) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       const task = (s.tasks || []).find(t => t.id === id);
       if (task) task.leadtimeUpdatedAt = new Date().toISOString();
     });
@@ -137,7 +178,7 @@ var MMGR = window.MMGR || {};
   }
 
   function updTaskField(id, field, value, evtType) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       const task = (s.tasks || []).find(t => t.id === id);
       if (task) {
         task[field] = value;
@@ -199,7 +240,12 @@ var MMGR = window.MMGR || {};
     // state is already saved on `input`; only the recomputed endDate cell is
     // patched in place; the derived panels (Gantt/Kanban/Dashboard) refresh
     // without touching the WBS DOM.
-    if (field === 'startDate' || field === 'endDate' || field === 'submittedDate' || field === 'expectedDate') {
+    if (
+      field === 'startDate' ||
+      field === 'endDate' ||
+      field === 'submittedDate' ||
+      field === 'expectedDate'
+    ) {
       if (field === 'startDate') {
         const st = ns.State.getState();
         const task = (st.tasks || []).find(t => t.id === id);
@@ -243,7 +289,7 @@ var MMGR = window.MMGR || {};
     // edits fire `change` immediately, so the table rebuild would drop the
     // caret. Re-render through rerenderPreservingFocus , the rebuilt twin
     // input keeps focus.
-    U.rerenderPreservingFocus(function() {
+    U.rerenderPreservingFocus(function () {
       // If the user's focus has moved to a native date/time input (e.g. they
       // clicked a date picker right after editing another field), rebuilding
       // the WBS table would destroy that input just as its picker is opening
@@ -252,8 +298,14 @@ var MMGR = window.MMGR || {};
       // WBS DOM, so they still refresh. Note: date commits themselves never
       // reach this path at all , see the date branch above.
       const ae = document.activeElement;
-      const pickerFocused = ae && ae.type && (ae.type === 'date' || ae.type === 'time' ||
-        ae.type === 'month' || ae.type === 'week' || ae.type === 'datetime-local');
+      const pickerFocused =
+        ae &&
+        ae.type &&
+        (ae.type === 'date' ||
+          ae.type === 'time' ||
+          ae.type === 'month' ||
+          ae.type === 'week' ||
+          ae.type === 'datetime-local');
       if (!pickerFocused) R.renderWbs();
       R.renderGantt();
       R.renderKanban();
@@ -265,7 +317,7 @@ var MMGR = window.MMGR || {};
   }
 
   function delTask(id) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (s.tasks) s.tasks = s.tasks.filter(t => t.id !== id);
     });
     // Keep the RACI matrix consistent: drop the deleted task's row + cells.
@@ -277,7 +329,7 @@ var MMGR = window.MMGR || {};
   }
 
   function indentTask(id) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (!s.tasks) return;
       const idx = s.tasks.findIndex(t => t.id === id);
       if (idx > 0) {
@@ -290,7 +342,7 @@ var MMGR = window.MMGR || {};
   }
 
   function outdentTask(id) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (!s.tasks) return;
       const task = s.tasks.find(t => t.id === id);
       if (task) {
@@ -305,16 +357,16 @@ var MMGR = window.MMGR || {};
     // Toggle phase collapse. State is persisted per task id with the flag
     // meaning "expanded": undefined/true = expanded, false = collapsed.
     // The DOM is driven by re-render from state, so it can never drift.
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (!s.defExpanded) s.defExpanded = {};
-      s.defExpanded[id] = (s.defExpanded[id] === false);
+      s.defExpanded[id] = s.defExpanded[id] === false;
     });
     R.renderWbs();
   }
 
   // ---- Bulk collapse/expand all phases (MONOLITH-PORTING-GUIDE feature 9) ----
   function collapseAll() {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (!s.defExpanded) s.defExpanded = {};
       // Collapse every phase container (isPhase or level 0) except standalone
       // tasks , the render treats isPhase || level===0 as a collapsible row.
@@ -326,7 +378,7 @@ var MMGR = window.MMGR || {};
   }
 
   function expandAll() {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (!s.defExpanded) s.defExpanded = {};
       (s.tasks || []).forEach(t => {
         if (t.isPhase || (t.level || 0) === 0) delete s.defExpanded[t.id]; // undefined = expanded
@@ -339,14 +391,17 @@ var MMGR = window.MMGR || {};
   function loadSprintData() {
     const s = S();
     const spr = s.sprint || {};
-    const setVal = (id, val) => { const el = U.$(id); if (el) el.value = val || ''; };
+    const setVal = (id, val) => {
+      const el = U.$(id);
+      if (el) el.value = val || '';
+    };
     setVal('sp-nm', spr.name);
     setVal('sp-st', spr.start);
     setVal('sp-en', spr.end);
   }
 
   function saveSprint() {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (!s.sprint) s.sprint = {};
       s.sprint.name = (U.$('sp-nm') || {}).value || 'Sprint 1';
       s.sprint.start = (U.$('sp-st') || {}).value || '';
@@ -372,15 +427,20 @@ var MMGR = window.MMGR || {};
     if (!source || !preview) return;
     const text = source.value.trim();
     if (!text) {
-      preview.innerHTML = '<div style="color:var(--slate);padding:10px">Paste your task outline to see a preview.</div>';
+      preview.innerHTML =
+        '<div style="color:var(--slate);padding:10px">Paste your task outline to see a preview.</div>';
       if (commitBtn) commitBtn.disabled = true;
       return;
     }
     const lines = text.split('\n').filter(l => l.trim());
-    let html = '<table class="dt" style="font-size:.74rem"><thead><tr><th>Level</th><th>Task Name</th></tr></thead><tbody>';
+    let html =
+      '<table class="dt" style="font-size:.74rem"><thead><tr><th>Level</th><th>Task Name</th></tr></thead><tbody>';
     let taskCount = 0;
     for (const line of lines) {
-      const cleaned = line.replace(/^[\s\-•*]+/, '').replace(/^[\d]+[\.\)]\s*/, '').trim();
+      const cleaned = line
+        .replace(/^[\s\-•*]+/, '')
+        .replace(/^[\d]+[\.\)]\s*/, '')
+        .trim();
       if (!cleaned) continue;
       const indent = Math.min(Math.floor((line.search(/\S/) || 0) / 2), 2);
       html += `<tr><td>L${indent}</td><td>${U.escapeHtml(cleaned)}</td></tr>`;
@@ -403,12 +463,16 @@ var MMGR = window.MMGR || {};
     // tasks. A line is skipped when a task with the same name already exists
     // at the same level under the same parent phase , so the WBS is a set,
     // not an append log.
-    let added = 0, skipped = 0;
-    ns.State.updateState(function(s) {
+    let added = 0,
+      skipped = 0;
+    ns.State.updateState(function (s) {
       if (!s.tasks) s.tasks = [];
       let currentPhase = null;
       for (const line of lines) {
-        const cleaned = line.replace(/^[\s\-•*]+/, '').replace(/^[\d]+[\.\)]\s*/, '').trim();
+        const cleaned = line
+          .replace(/^[\s\-•*]+/, '')
+          .replace(/^[\d]+[\.\)]\s*/, '')
+          .trim();
         if (!cleaned) continue;
         const indent = Math.min(Math.floor((line.search(/\S/) || 0) / 2), 2);
         // Track the phase line even when it is itself a duplicate, so its
@@ -417,27 +481,55 @@ var MMGR = window.MMGR || {};
         // would break the dedupe match and duplicate the children).
         if (indent === 0) currentPhase = cleaned;
         const parentName = indent === 0 ? null : currentPhase;
-        const dup = s.tasks.some(t =>
-          t.name === cleaned &&
-          (t.level || 0) === indent &&
-          (t.parentName || null) === parentName
+        const dup = s.tasks.some(
+          t =>
+            t.name === cleaned && (t.level || 0) === indent && (t.parentName || null) === parentName
         );
-        if (dup) { skipped++; continue; }
+        if (dup) {
+          skipped++;
+          continue;
+        }
         if (indent === 0) {
           s.tasks.push({
-            id: U.genId('t'), name: cleaned,
-            level: 0, indent: 0, isPhase: true,
-            status: 'todo', startDate: '', endDate: '', duration: '', assignee: '',
-            critical: false, leadTime: false, recurring: false, weatherExposed: false,
-            confidence: 'high', predecessors: [], notes: '', weatherSensitive: false
+            id: U.genId('t'),
+            name: cleaned,
+            level: 0,
+            indent: 0,
+            isPhase: true,
+            status: 'todo',
+            startDate: '',
+            endDate: '',
+            duration: '',
+            assignee: '',
+            critical: false,
+            leadTime: false,
+            recurring: false,
+            weatherExposed: false,
+            confidence: 'high',
+            predecessors: [],
+            notes: '',
+            weatherSensitive: false
           });
         } else {
           s.tasks.push({
-            id: U.genId('t'), name: cleaned,
-            level: indent, indent: indent, isPhase: false,
-            status: 'todo', startDate: '', endDate: '', duration: '', assignee: '',
-            critical: false, leadTime: false, recurring: false, weatherExposed: false,
-            confidence: 'high', predecessors: [], notes: '', weatherSensitive: false,
+            id: U.genId('t'),
+            name: cleaned,
+            level: indent,
+            indent: indent,
+            isPhase: false,
+            status: 'todo',
+            startDate: '',
+            endDate: '',
+            duration: '',
+            assignee: '',
+            critical: false,
+            leadTime: false,
+            recurring: false,
+            weatherExposed: false,
+            confidence: 'high',
+            predecessors: [],
+            notes: '',
+            weatherSensitive: false,
             parentName: currentPhase
           });
         }
@@ -454,7 +546,10 @@ var MMGR = window.MMGR || {};
     R.renderDash();
     closeWbsImport();
     const noun = added === 1 ? ' task imported' : ' tasks imported';
-    ns.App.showToast(added + noun + (skipped ? ' , ' + skipped + ' already present, skipped' : '!'), 'ok');
+    ns.App.showToast(
+      added + noun + (skipped ? ' , ' + skipped + ' already present, skipped' : '!'),
+      'ok'
+    );
   }
 
   // ---- Import Dates ----
@@ -465,8 +560,16 @@ var MMGR = window.MMGR || {};
     const s = S();
     const tasks = (Array.isArray(s.tasks) ? s.tasks : []).filter(t => !t.isPhase);
     // Show format hint in the template area so user knows the expected format
-    const hint = '# Format: Task Name (Xd) [YYYY-MM-DD \u2192 YYYY-MM-DD]\n# X = duration in days. Paste your dictated list below:\n\n';
-    template.value = hint + tasks.map(t => `${t.name} (${t.duration || '?'}d) [${t.startDate || 'YYYY-MM-DD'} \u2192 ${t.endDate || 'YYYY-MM-DD'}]`).join('\n');
+    const hint =
+      '# Format: Task Name (Xd) [YYYY-MM-DD \u2192 YYYY-MM-DD]\n# X = duration in days. Paste your dictated list below:\n\n';
+    template.value =
+      hint +
+      tasks
+        .map(
+          t =>
+            `${t.name} (${t.duration || '?'}d) [${t.startDate || 'YYYY-MM-DD'} \u2192 ${t.endDate || 'YYYY-MM-DD'}]`
+        )
+        .join('\n');
     // Fresh modal: clear the editable field and disable the Fill In button
     // until a valid preview exists, so state never carries across opens.
     const source = U.$('id-source');
@@ -496,12 +599,22 @@ var MMGR = window.MMGR || {};
     // legacy path fails (read-only content is safe to select + copy).
     template.select();
     let ok = false;
-    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    try {
+      ok = document.execCommand('copy');
+    } catch (e) {
+      ok = false;
+    }
     if (ok) {
-      ns.App.showToast('Copied! Paste into any AI and ask: "Add start/end dates for each task. Format: Task (Xd) [YYYY-MM-DD \u2192 YYYY-MM-DD]"', 'ok');
+      ns.App.showToast(
+        'Copied! Paste into any AI and ask: "Add start/end dates for each task. Format: Task (Xd) [YYYY-MM-DD \u2192 YYYY-MM-DD]"',
+        'ok'
+      );
     } else {
       U.copyToClipboard(template.value);
-      ns.App.showToast('Copied! Paste into any AI and ask: "Add start/end dates for each task. Format: Task (Xd) [YYYY-MM-DD \u2192 YYYY-MM-DD]"', 'ok');
+      ns.App.showToast(
+        'Copied! Paste into any AI and ask: "Add start/end dates for each task. Format: Task (Xd) [YYYY-MM-DD \u2192 YYYY-MM-DD]"',
+        'ok'
+      );
     }
   }
 
@@ -513,15 +626,19 @@ var MMGR = window.MMGR || {};
     if (!source || !preview) return;
     const text = source.value.trim();
     if (!text) {
-      preview.innerHTML = '<div style="color:var(--slate);padding:10px">Paste date-formatted tasks to see a preview.</div>';
+      preview.innerHTML =
+        '<div style="color:var(--slate);padding:10px">Paste date-formatted tasks to see a preview.</div>';
       if (commitBtn) commitBtn.disabled = true;
       return;
     }
     const lines = text.split('\n').filter(l => l.trim() && !l.trim().startsWith('#'));
-    let html = '<table class="dt" style="font-size:.74rem"><thead><tr><th>Task</th><th>Duration</th><th>Start</th><th>End</th></tr></thead><tbody>';
+    let html =
+      '<table class="dt" style="font-size:.74rem"><thead><tr><th>Task</th><th>Duration</th><th>Start</th><th>End</th></tr></thead><tbody>';
     let validCount = 0;
     for (const line of lines) {
-      const parts = line.match(/^(.+?)\s*\(\s*(\d+)\s*d\s*\)\s*\[\s*(\d{4}-\d{2}-\d{2})\s*→\s*(\d{4}-\d{2}-\d{2})\s*\]\s*$/);
+      const parts = line.match(
+        /^(.+?)\s*\(\s*(\d+)\s*d\s*\)\s*\[\s*(\d{4}-\d{2}-\d{2})\s*→\s*(\d{4}-\d{2}-\d{2})\s*\]\s*$/
+      );
       if (parts) {
         html += `<tr><td>${U.escapeHtml(parts[1].trim())}</td><td>${parts[2]}d</td><td>${parts[3]}</td><td>${parts[4]}</td></tr>`;
         validCount++;
@@ -540,15 +657,28 @@ var MMGR = window.MMGR || {};
     const box = U.$('id-mismatch');
     if (!box) return null;
     const res = validateImportLines(lines);
-    if (!res.issues.length) { box.innerHTML = ''; return res; }
+    if (!res.issues.length) {
+      box.innerHTML = '';
+      return res;
+    }
     let html = '<div style="margin-bottom:8px">';
     for (const issue of res.issues) {
       const color = issue.severity === 'error' ? 'var(--danger)' : 'var(--amber)';
       const tag = issue.severity === 'error' ? 'Blocks import' : 'Heads up';
-      html += '<div style="border-left:3px solid ' + color + ';padding:4px 8px;margin-bottom:4px;font-size:.74rem">'
-        + '<span style="color:' + color + ';font-weight:700">' + tag + '</span> '
-        + '<strong>' + U.escapeHtml(issue.name) + '</strong> - ' + U.escapeHtml(issue.reason)
-        + '</div>';
+      html +=
+        '<div style="border-left:3px solid ' +
+        color +
+        ';padding:4px 8px;margin-bottom:4px;font-size:.74rem">' +
+        '<span style="color:' +
+        color +
+        ';font-weight:700">' +
+        tag +
+        '</span> ' +
+        '<strong>' +
+        U.escapeHtml(issue.name) +
+        '</strong> - ' +
+        U.escapeHtml(issue.reason) +
+        '</div>';
     }
     box.innerHTML = html + '</div>';
     return res;
@@ -559,37 +689,63 @@ var MMGR = window.MMGR || {};
     const source = U.$('id-source');
     if (!source) return;
     const raw = source.value.trim();
-    if (!raw) { ns.App.showToast('Paste or load your text first, then use Read with AI.', 'err'); return; }
+    if (!raw) {
+      ns.App.showToast('Paste or load your text first, then use Read with AI.', 'err');
+      return;
+    }
     // Owner directive: AI-assisted features are part of the signed-in
     // experience. The strict-grammar paste path stays available to everyone.
     if (!(ns.Entitlements && ns.Entitlements.aiAssistant && ns.Entitlements.aiAssistant())) {
-syncIdAiNote();
-      ns.App.showToast('AI reading is part of the signed-in experience. Sign in, or paste the strict format - it works offline.', 'err');
+      syncIdAiNote();
+      ns.App.showToast(
+        'AI reading is part of the signed-in experience. Sign in, or paste the strict format - it works offline.',
+        'err'
+      );
       return;
     }
     syncIdAiNote();
     ns.App.showToast('Reading your text with AI...', 'ok');
-    const known = (ns.State.getState().tasks || []).map(function (t) { return t.name; });
+    const known = (ns.State.getState().tasks || []).map(function (t) {
+      return t.name;
+    });
     const prompt = ns.AiWin.aiNormalizeSchedulePrompt(raw, known);
     try {
       const res = await ns.AiWin.submit(prompt, '', { type: 'import-normalize' });
       if (!res || !res.ok || !res.text) {
-        ns.App.showToast('AI reading is not available right now - paste the strict format instead, it works offline.', 'err');
+        ns.App.showToast(
+          'AI reading is not available right now - paste the strict format instead, it works offline.',
+          'err'
+        );
         return;
       }
-      const lines = String(res.text).split('\n').map(function (l) { return l.trim(); }).filter(function (l) {
-        return l && !l.startsWith('#') && !/^(here|sure|okay|the following)/i.test(l);
-      });
+      const lines = String(res.text)
+        .split('\n')
+        .map(function (l) {
+          return l.trim();
+        })
+        .filter(function (l) {
+          return l && !l.startsWith('#') && !/^(here|sure|okay|the following)/i.test(l);
+        });
       if (!lines.length) {
-        ns.App.showToast('The AI reply had no task lines - paste the strict format instead.', 'err');
+        ns.App.showToast(
+          'The AI reply had no task lines - paste the strict format instead.',
+          'err'
+        );
         return;
       }
       source.value = lines.join('\n');
       idPreview();
-      ns.App.showToast('AI formatted ' + lines.length + ' line(s). Check the flagged issues, then Fill In.', 'ok');
+      ns.App.showToast(
+        'AI formatted ' + lines.length + ' line(s). Check the flagged issues, then Fill In.',
+        'ok'
+      );
     } catch (e) {
-      if (ns.Errors && ns.Errors.log) ns.Errors.log('AI import read failed: ' + (e && e.message), 'idReadWithAi');
-      ns.App.showToast('AI reading failed - paste the strict format instead, it works offline.', 'err');
+      if (ns.Errors && ns.Errors.log)
+        ns.Errors.log('AI import read failed: ' + (e && e.message), 'idReadWithAi');
+      ns.App.showToast(
+        'AI reading failed - paste the strict format instead, it works offline.',
+        'err'
+      );
     }
   }
 
@@ -632,7 +788,10 @@ syncIdAiNote();
     const source = U.$('id-source');
     if (!source) return;
     const text = source.value.trim();
-    if (!text) { ns.App.showToast('No data to import.', 'err'); return; }
+    if (!text) {
+      ns.App.showToast('No data to import.', 'err');
+      return;
+    }
     const lines = text.split('\n').filter(l => l.trim() && !l.trim().startsWith('#'));
     // Task 3 gate: validation runs BEFORE anything mutates. Any blocking
     // issue (bad shape, end before start) refuses the whole import with a
@@ -640,7 +799,12 @@ syncIdAiNote();
     const check = validateImportLines(lines);
     const errors = check.issues.filter(i => i.severity === 'error');
     if (errors.length) {
-      ns.App.showToast('Cannot import: ' + errors.length + ' line(s) have blocking problems - fix the red rows in the preview.', 'err');
+      ns.App.showToast(
+        'Cannot import: ' +
+          errors.length +
+          ' line(s) have blocking problems - fix the red rows in the preview.',
+        'err'
+      );
       return;
     }
     // Warn-level reconciliation: when the days number and the date span
@@ -649,17 +813,22 @@ syncIdAiNote();
     const durationOverride = {};
     for (const issue of check.issues) {
       if (issue.severity !== 'warn' || /working days/.test(issue.reason) === false) continue;
-      const m = issue.line.match(/^(.+?)\s*\(\s*(\d+)\s*d\s*\)\s*\[\s*(\d{4}-\d{2}-\d{2})\s*→\s*(\d{4}-\d{2}-\d{2})\s*\]\s*$/);
+      const m = issue.line.match(
+        /^(.+?)\s*\(\s*(\d+)\s*d\s*\)\s*\[\s*(\d{4}-\d{2}-\d{2})\s*→\s*(\d{4}-\d{2}-\d{2})\s*\]\s*$/
+      );
       if (m) durationOverride[m[1].trim()] = durationFromDates(m[3], m[4]);
     }
     // Bulk import is destructive , make it undoable.
     ns.State.pushUndo();
-    let created = 0, updated = 0;
+    let created = 0,
+      updated = 0;
     const createdThisRun = new Set(); // same-name-twice-in-one-import guard
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (!s.tasks) s.tasks = [];
       for (const line of lines) {
-        const parts = line.match(/^(.+?)\s*\(\s*(\d+)\s*d\s*\)\s*\[\s*(\d{4}-\d{2}-\d{2})\s*→\s*(\d{4}-\d{2}-\d{2})\s*\]\s*$/);
+        const parts = line.match(
+          /^(.+?)\s*\(\s*(\d+)\s*d\s*\)\s*\[\s*(\d{4}-\d{2}-\d{2})\s*→\s*(\d{4}-\d{2}-\d{2})\s*\]\s*$/
+        );
         if (parts) {
           const name = parts[1].trim();
           const dur = parts[2];
@@ -671,11 +840,24 @@ syncIdAiNote();
           let task = s.tasks.find(t => t.name === name);
           if (!task) {
             task = {
-              id: U.genId('t'), name: name,
-              level: 0, indent: 0, isPhase: false,
-              status: 'todo', startDate: '', endDate: '', duration: '', assignee: '',
-              critical: false, leadTime: false, recurring: false, weatherExposed: false,
-              confidence: 'high', predecessors: [], notes: '', weatherSensitive: false
+              id: U.genId('t'),
+              name: name,
+              level: 0,
+              indent: 0,
+              isPhase: false,
+              status: 'todo',
+              startDate: '',
+              endDate: '',
+              duration: '',
+              assignee: '',
+              critical: false,
+              leadTime: false,
+              recurring: false,
+              weatherExposed: false,
+              confidence: 'high',
+              predecessors: [],
+              notes: '',
+              weatherSensitive: false
             };
             s.tasks.push(task);
             createdThisRun.add(task.id);
@@ -706,7 +888,7 @@ syncIdAiNote();
 
   // ---- Task Comments (C21 @mentions) ----
   function addTaskComment(taskId, text, author) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       const task = (s.tasks || []).find(t => t.id === taskId);
       if (!task) return;
       if (!task.comments) task.comments = [];
@@ -719,7 +901,7 @@ syncIdAiNote();
       }
       task.comments.push({
         id: U.genShortId('CM'),
-        author: author || (s.userName || 'Admin'),
+        author: author || s.userName || 'Admin',
         text: text,
         mentions: mentions,
         timestamp: new Date().toISOString()
@@ -729,7 +911,7 @@ syncIdAiNote();
   }
 
   function delTaskComment(taskId, commentId) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       const task = (s.tasks || []).find(t => t.id === taskId);
       if (task && task.comments) {
         task.comments = task.comments.filter(c => c.id !== commentId);
@@ -740,7 +922,7 @@ syncIdAiNote();
 
   // ---- Task Follow-Up (C21 accountability tracking) ----
   function setTaskFollowUp(taskId, assignee, dueDate) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       const task = (s.tasks || []).find(t => t.id === taskId);
       if (!task) return;
       task.followUp = {
@@ -755,7 +937,7 @@ syncIdAiNote();
   }
 
   function completeTaskFollowUp(taskId) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       const task = (s.tasks || []).find(t => t.id === taskId);
       if (task && task.followUp) {
         task.followUp.status = 'completed';
@@ -767,7 +949,7 @@ syncIdAiNote();
   }
 
   function clearTaskFollowUp(taskId) {
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       const task = (s.tasks || []).find(t => t.id === taskId);
       if (task) delete task.followUp;
     });
@@ -781,11 +963,11 @@ syncIdAiNote();
     if (!s) return [];
     const names = [];
     // From resources
-    (s.resources || []).forEach(function(r) {
+    (s.resources || []).forEach(function (r) {
       if (r.name && names.indexOf(r.name) === -1) names.push(r.name);
     });
     // From stakeholders
-    (s.stakeholders || []).forEach(function(st) {
+    (s.stakeholders || []).forEach(function (st) {
       if (st.name && names.indexOf(st.name) === -1) names.push(st.name);
     });
     return names.sort();
@@ -847,6 +1029,5 @@ syncIdAiNote();
     idCommit: idCommit,
     copyIdTemplate: copyIdTemplate
   };
-
 })(MMGR);
 window.MMGR = MMGR;

@@ -16,42 +16,69 @@ const userDir = path.join(os.tmpdir(), 'chrome-ctrl-' + Date.now());
 
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
-const proc = spawn(CHROME, [
-  '--headless=new', '--disable-gpu', '--no-first-run', '--no-sandbox',
-  '--remote-allow-origins=*', '--remote-debugging-port=' + PORT,
-  '--user-data-dir=' + userDir, '--window-size=1280,900', 'about:blank'
-], { stdio: 'ignore' });
+const proc = spawn(
+  CHROME,
+  [
+    '--headless=new',
+    '--disable-gpu',
+    '--no-first-run',
+    '--no-sandbox',
+    '--remote-allow-origins=*',
+    '--remote-debugging-port=' + PORT,
+    '--user-data-dir=' + userDir,
+    '--window-size=1280,900',
+    'about:blank'
+  ],
+  { stdio: 'ignore' }
+);
 
 const results = [];
 function check(name, val, detail) {
   results.push({ name, val: !!val, detail });
-  console.log((val ? '[PASS] ' : '[FAIL] ') + name + (val ? '' : '  <-- ' + JSON.stringify(detail)));
+  console.log(
+    (val ? '[PASS] ' : '[FAIL] ') + name + (val ? '' : '  <-- ' + JSON.stringify(detail))
+  );
 }
 
 (async () => {
   for (let i = 0; i < 60; i++) {
-    try { const r = await fetch('http://127.0.0.1:' + PORT + '/json/version'); if (r.ok) break; } catch (e) {}
+    try {
+      const r = await fetch('http://127.0.0.1:' + PORT + '/json/version');
+      if (r.ok) break;
+    } catch (e) {}
     await delay(300);
   }
   const targets = await (await fetch('http://127.0.0.1:' + PORT + '/json')).json();
   const ws = new WebSocket(targets.find(t => t.type === 'page').webSocketDebuggerUrl);
   const pending = new Map();
   let id = 0;
-  ws.onmessage = (e) => {
+  ws.onmessage = e => {
     const m = JSON.parse(e.data);
-    if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); }
+    if (m.id && pending.has(m.id)) {
+      pending.get(m.id)(m);
+      pending.delete(m.id);
+    }
   };
-  await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error('ws fail')); });
-  const send = (method, params = {}) => new Promise(res => {
-    const mid = ++id;
-    pending.set(mid, res);
-    ws.send(JSON.stringify({ id: mid, method, params }));
+  await new Promise((res, rej) => {
+    ws.onopen = res;
+    ws.onerror = () => rej(new Error('ws fail'));
   });
+  const send = (method, params = {}) =>
+    new Promise(res => {
+      const mid = ++id;
+      pending.set(mid, res);
+      ws.send(JSON.stringify({ id: mid, method, params }));
+    });
   const ev = async expr => {
-    const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true });
+    const r = await send('Runtime.evaluate', {
+      expression: expr,
+      returnByValue: true,
+      awaitPromise: true
+    });
     return r.result && r.result.result ? r.result.result.value : undefined;
   };
-  await send('Runtime.enable'); await send('Page.enable');
+  await send('Runtime.enable');
+  await send('Page.enable');
 
   // ---- S1/S2: admin.html (DOM presence — elements exist even while the gate hides #admin-app) --
   await send('Page.navigate', { url: BASE + '/admin.html' });
@@ -85,14 +112,26 @@ function check(name, val, detail) {
   // OWNER 2026-09-07: sign-in entry lives ONLY on the app page. The admin
   // rail is read-only (auth-bar mount + renderRailUser()), and the shared
   // #siom sheet still mounts the GIS button.
-  check('S1 admin rail: account bar present and #siom sheet mounts the GIS button', !!(a1.railAuth && a1.siomPresent && a1.siomGoogle), a1);
+  check(
+    'S1 admin rail: account bar present and #siom sheet mounts the GIS button',
+    !!(a1.railAuth && a1.siomPresent && a1.siomGoogle),
+    a1
+  );
   // OWNER 2026-09-07: the rail Sign-in trigger lives on the app page
   // (.db-signin[data-action="openSignIn"]), not in the admin rail.
-  check('S1 admin rail: rail has no sign-in trigger (app page owns sign-in)', !a1.railOpenSignIn, a1);
+  check(
+    'S1 admin rail: rail has no sign-in trigger (app page owns sign-in)',
+    !a1.railOpenSignIn,
+    a1
+  );
   // OWNER 2026-09-07: the Customize block nests the Theme row inside a
   // .dock.dock-inline wrapper, so the count is 5 top-level .rail-ctl-row.
   check('S1 admin rail: Customize rows (premium/theme/perf/cross-project)', a1.railCtl === 5, a1);
-  check('S2 admin toolbar: Import Project present', a1.toolbarTxt.indexOf('Import Project') > -1, a1.toolbarTxt);
+  check(
+    'S2 admin toolbar: Import Project present',
+    a1.toolbarTxt.indexOf('Import Project') > -1,
+    a1.toolbarTxt
+  );
   check('S2 admin: import file input present', a1.fileInput === true, a1);
 
   // ---- S3: unlock the gate so project rows render ---------------------------
@@ -146,7 +185,9 @@ function check(name, val, detail) {
   await send('Page.navigate', { url: BASE + '/project.html?id=qa-ctrl' });
   await delay(3500);
   // Local-first: seed an admin record so the gate opens and the cloud module renders.
-  await ev(`localStorage.setItem('mmgr_admin_projects', JSON.stringify([{id:'qa-ctrl',title:'QA Ctrl',description:'',status:'active',file:'project.html?id=qa-ctrl',code:'QACTL1',codeHash:'x'}]));`);
+  await ev(
+    `localStorage.setItem('mmgr_admin_projects', JSON.stringify([{id:'qa-ctrl',title:'QA Ctrl',description:'',status:'active',file:'project.html?id=qa-ctrl',code:'QACTL1',codeHash:'x'}]));`
+  );
   await send('Page.navigate', { url: BASE + '/project.html?id=qa-ctrl' });
   await delay(3500);
   // Open the drawer AND switch to the Controls tab (db-ctrl starts hidden via is-hide).
@@ -170,14 +211,32 @@ function check(name, val, detail) {
       ctrlLen: ctrlText.length };
   })()`);
   check('S4 project: ctrl-share card rendered', p1.shareCards > 0, p1);
-  check('S4 project: Share & Access explains link/share', p1.shareHasCreate && p1.shareHasOwner, p1);
-  check('S4 project: Controls has Copy As + Your Name + Status sections', p1.ctrlHasCopyAs && p1.ctrlHasName && p1.ctrlHasStatus, p1);
+  check(
+    'S4 project: Share & Access explains link/share',
+    p1.shareHasCreate && p1.shareHasOwner,
+    p1
+  );
+  check(
+    'S4 project: Controls has Copy As + Your Name + Status sections',
+    p1.ctrlHasCopyAs && p1.ctrlHasName && p1.ctrlHasStatus,
+    p1
+  );
   console.log('   ctrl text length: ' + p1.ctrlLen);
 
-  try { await send('Page.close'); } catch (e) {}
-  try { proc.kill(); } catch (e) {}
+  try {
+    await send('Page.close');
+  } catch (e) {}
+  try {
+    proc.kill();
+  } catch (e) {}
   const failed = results.filter(r => !r.val);
   console.log('========================================');
   console.log(results.length + ' checks, ' + failed.length + ' failed');
   process.exit(failed.length ? 1 : 0);
-})().catch(e => { console.log('HARNESS ERROR: ' + (e && e.stack || e)); try { proc.kill(); } catch (x) {} process.exit(1); });
+})().catch(e => {
+  console.log('HARNESS ERROR: ' + ((e && e.stack) || e));
+  try {
+    proc.kill();
+  } catch (x) {}
+  process.exit(1);
+});

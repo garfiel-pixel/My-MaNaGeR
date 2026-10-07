@@ -9,7 +9,7 @@
      folder is missing on the host , surface it loudly on HTTP(S))
    Every lookup is null-guarded , this file must never throw.
    ============================================================ */
-(function(){
+(function () {
   'use strict';
 
   /* ---- decorative images are inert (OWNER 2026-08-17) ----
@@ -20,13 +20,17 @@
      + pointer events, and this guard blocks the native dragstart and the
      right-click image menu on them. Null-guarded , never throws. */
   var NO_DRAG_IMGS = '.hero-photo, .hc-img img, .pb-img';
-  function lockDecorativeImages(){
+  function lockDecorativeImages() {
     var imgs = document.querySelectorAll(NO_DRAG_IMGS);
-    for (var i = 0; i < imgs.length; i++){
-      (function(img){
+    for (var i = 0; i < imgs.length; i++) {
+      (function (img) {
         img.setAttribute('draggable', 'false');
-        img.addEventListener('dragstart', function(e){ e.preventDefault(); });
-        img.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+        img.addEventListener('dragstart', function (e) {
+          e.preventDefault();
+        });
+        img.addEventListener('contextmenu', function (e) {
+          e.preventDefault();
+        });
       })(imgs[i]);
     }
   }
@@ -36,7 +40,7 @@
   var toggle = document.getElementById('nav-toggle');
   var menu = document.getElementById('mobile-menu');
 
-  function closeMenu(returnFocus){
+  function closeMenu(returnFocus) {
     if (!menu) return;
     menu.classList.remove('open');
     if (toggle) {
@@ -45,7 +49,7 @@
       if (returnFocus) toggle.focus();
     }
   }
-  function openMenu(){
+  function openMenu() {
     if (!menu) return;
     menu.classList.add('open');
     if (toggle) {
@@ -57,14 +61,17 @@
   }
 
   if (toggle && menu) {
-    toggle.addEventListener('click', function(){
-      if (menu.classList.contains('open')) { closeMenu(true); }
-      else { openMenu(); }
+    toggle.addEventListener('click', function () {
+      if (menu.classList.contains('open')) {
+        closeMenu(true);
+      } else {
+        openMenu();
+      }
     });
-    menu.addEventListener('click', function(e){
+    menu.addEventListener('click', function (e) {
       if (e.target.closest && e.target.closest('a')) closeMenu(true);
     });
-    document.addEventListener('keydown', function(e){
+    document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') closeMenu(true);
     });
   }
@@ -82,15 +89,23 @@
      handlers); null-guarded, never throws. Referrer is normalized because
      Chrome caps it at origin-level for cross-page navigations - the origin
      match is the reliable same-site signal. */
-  document.addEventListener('click', function(e){
+  document.addEventListener('click', function (e) {
     var el = e.target.closest ? e.target.closest('[data-back]') : null;
     if (!el) return;
     e.preventDefault();
     var ref = '';
-    try { ref = document.referrer || ''; } catch (err) { ref = ''; }
+    try {
+      ref = document.referrer || '';
+    } catch (err) {
+      ref = '';
+    }
     var sameOrigin = false;
     if (ref) {
-      try { sameOrigin = new URL(ref).origin === window.location.origin; } catch (err) { sameOrigin = false; }
+      try {
+        sameOrigin = new URL(ref).origin === window.location.origin;
+      } catch (err) {
+        sameOrigin = false;
+      }
     }
     if (sameOrigin && window.history.length > 1) {
       window.history.back();
@@ -100,86 +115,184 @@
     }
   });
 
-  /* ---- slim edge scroll-spy (homepage only) ---- */
-  var spyNav = document.querySelector('.scroll-spy');
-  if (spyNav && 'IntersectionObserver' in window) {
-    var spyLinks = Array.prototype.slice.call(spyNav.querySelectorAll('a'));
-    var spyById = {};
-    spyLinks.forEach(function(a){
-      var href = a.getAttribute('href') || '';
-      if (href.charAt(0) === '#') spyById[href.slice(1)] = a;
+  /* ---- dot-rail nav (left side, dot-only with hover/focus labels) ---- */
+  /*
+    Major dots = top-level page chapters.
+    Subsection dots sit between the big ones and prefill as the page scrolls
+    through that major section. Labels are hidden by default and show on hover
+    and focus-within so you can tell what a dot points at; click a dot to jump
+    back to that area.
+    Prefill rule: when a major section is in view, its subsection dots show up
+    as "seen" (filled) in order, so a reader scrolling through the section sees
+    the dots appear behind the sections as they pass them. When you scroll back
+    out of that major section, its subsection dots clear so the rail does not
+    hold stale marks from sections you have left. */
+  var dotNav = document.querySelector('.dot-rail-navigation');
+  if (dotNav && 'IntersectionObserver' in window) {
+    var dotLinks = Array.prototype.slice.call(
+      dotNav.querySelectorAll('a[data-target], a[data-label]')
+    );
+    var dotById = {};
+    dotLinks.forEach(function (a) {
+      var target = a.getAttribute('data-target') || a.getAttribute('href') || '';
+      if (target.charAt(0) === '#') dotById[target.slice(1)] = a;
     });
-    var spySections = Object.keys(spyById)
-      .map(function(id){ return document.getElementById(id); })
+    var dotSections = Object.keys(dotById)
+      .map(function (id) {
+        return document.getElementById(id);
+      })
       .filter(Boolean);
-    /* OWNER 2026-09-05 (no-chip rail): the rail has no background anymore, so
-       label legibility is handled by flipping the WHOLE rail between light
-       and dark text depending on the active section's own scheme. Sections
-       declare data-spy-scheme="light|dark" (light = light background section,
-       needs dark labels). Default when unspecified: dark (light labels).
-       The rail starts .on-dark and the class tracks the active section. */
-    function sectionScheme(el){
+
+    /* subsection prefill map: majorId -> ordered list of subsection ids that
+       live under it. Right now that is only the #features section and its
+       feature-card anchors. Other majors have no subsection anchors, so they
+       get only their one big dot. */
+    var subsectionMap = {};
+    (function () {
+      var featureIds = [
+        'f-wbs',
+        'f-kanban',
+        'f-raci',
+        'f-risk',
+        'f-budget',
+        'f-ai',
+        'f-voice',
+        'f-weather',
+        'f-offline',
+        'f-health',
+        'f-meetings',
+        'f-claims',
+        'f-registers',
+        'f-gonogo',
+        'f-lookahead'
+      ];
+      var seen = {};
+      dotLinks.forEach(function (a) {
+        var t = a.getAttribute('data-target') || a.getAttribute('href') || '';
+        if (t.charAt(0) === '#') seen[t.slice(1)] = a;
+      });
+      subsectionMap['features'] = featureIds.filter(function (id) {
+        return seen[id];
+      });
+    })();
+
+    function dotFor(id) {
+      return dotById[id] || null;
+    }
+
+    /* active state for the dot rail: a major is active when its section is the
+       best visible one; a subsection dot is active when its anchor is inside the
+       currently active major section and is itself one of the visible subsection
+       anchors. */
+    function setActiveDot(sectionId) {
+      // activate the major dot for this section, if we have one
+      var majorLink = dotFor(sectionId);
+      dotLinks.forEach(function (a) {
+        var isMajor =
+          !a.parentElement ||
+          !a.parentElement.classList ||
+          !a.parentElement.classList.contains('dot-group-children');
+        if (isMajor) {
+          a.classList.toggle('active', a === majorLink);
+          if (a === majorLink) a.setAttribute('aria-current', 'true');
+          else a.removeAttribute('aria-current');
+        }
+      });
+
+      // subsection dots: if the active major has a subsection cluster, prefill the
+      // ones whose anchors are in view; otherwise clear them all.
+      var children = dotNav.querySelectorAll('.dot-group-children');
+      dotNav.querySelectorAll('.dot-item.minor').forEach(function (a) {
+        a.classList.remove('active');
+        a.removeAttribute('aria-current');
+      });
+      var cluster = dotNav.querySelector('.dot-group-children');
+      if (cluster && majorLink) {
+        var ids = Array.prototype.slice.call(
+          cluster.querySelectorAll('a[data-target], a[data-label]')
+        );
+        ids.forEach(function (a) {
+          var t = a.getAttribute('data-target') || a.getAttribute('href') || '';
+          var id = t.charAt(0) === '#' ? t.slice(1) : '';
+          var el = id ? document.getElementById(id) : null;
+          if (el && el.getBoundingClientRect().top < window.innerHeight - 40) {
+            a.classList.add('active');
+            a.setAttribute('aria-current', 'true');
+          }
+        });
+      }
+    }
+
+    /* dot rail scheme: same idea as the old slim rail - the rail flips between
+       light and dark text depending on the active section's own background. */
+    function sectionScheme(el) {
       if (!el) return 'dark';
       var s = el.getAttribute('data-spy-scheme');
       if (s === 'light' || s === 'dark') return s;
       return el.classList.contains('section-alt') ? 'light' : 'dark';
     }
-    function setSpyScheme(id){
-      var el = id ? document.getElementById(id) : null;
+    function setDotScheme(sectionId) {
+      var el = sectionId ? document.getElementById(sectionId) : null;
       var scheme = sectionScheme(el);
-      spyNav.classList.toggle('on-light', scheme === 'light');
-      spyNav.classList.toggle('on-dark', scheme !== 'light');
+      dotNav.classList.toggle('on-light', scheme === 'light');
+      dotNav.classList.toggle('on-dark', scheme !== 'light');
     }
-    function setSpy(id){
-      /* OWNER 2026-09-09 (P5.3): the trail recomputes in BOTH directions.
-         Sections above the active one are "done" (progress trail), the active
-         one is lit, and everything below is UN-LIT - so scrolling back up
-         un-lights the sections you scroll back past (the old one-way lock-in
-         never removed .done and stayed lit on the way up). */
-      var activeIdx = -1;
-      spyLinks.forEach(function(a, i){ if (id !== null && a === spyById[id]) activeIdx = i; });
-      spyLinks.forEach(function(a, i){
-        a.classList.toggle('active', i === activeIdx);
-        a.classList.toggle('done', activeIdx > -1 && i < activeIdx);
-        if (i === activeIdx) a.setAttribute('aria-current', 'true');
-        else a.removeAttribute('aria-current');
-      });
-      setSpyScheme(id);
-    }
-    // Initial scheme before the observer fires (hero is dark -> light labels).
-    setSpyScheme(null);
-    var lastId = spyLinks.length
-      ? (spyLinks[spyLinks.length - 1].getAttribute('href') || '').slice(1)
+
+    // initial scheme before the observer fires (hero is dark -> light labels)
+    setDotScheme(null);
+
+    var lastId = dotSections.length
+      ? (function () {
+          var last = null;
+          dotSections.forEach(function (el) {
+            if (el.id) last = el.id;
+          });
+          return last;
+        })()
       : null;
-    function atPageBottom(){
-      return (window.innerHeight + window.scrollY) >= (document.documentElement.scrollHeight - 4);
+
+    function atPageBottom() {
+      return window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
     }
-    /* Pick the section with the largest visible share, not just "the last one
-       that intersected" , when several sections are in frame, the most visible
-       one wins, so the active stick tracks what is actually on screen. */
-    var spy = new IntersectionObserver(function(entries){
-      var best = null, bestRatio = -1;
-      entries.forEach(function(entry){
-        if (entry.isIntersecting && entry.intersectionRatio > bestRatio) {
-          bestRatio = entry.intersectionRatio;
-          best = entry.target.id;
-        }
-      });
-      /* Bottom of the page: a short final section can sit entirely above the
-         observer band, so force the last spy link active instead of none. */
-      if (!best && atPageBottom() && lastId) best = lastId;
-      setSpy(best);
-    }, { rootMargin: '-40% 0px -45% 0px', threshold: [0, 0.25, 0.5, 0.75, 1] });
-    spySections.forEach(function(el){ spy.observe(el); });
+
+    var dotObserver = new IntersectionObserver(
+      function (entries) {
+        var best = null,
+          bestRatio = -1;
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting && entry.intersectionRatio > bestRatio) {
+            bestRatio = entry.intersectionRatio;
+            best = entry.target.id;
+          }
+        });
+        if (!best && atPageBottom() && lastId) best = lastId;
+        setActiveDot(best);
+        setDotScheme(best);
+      },
+      { rootMargin: '-40% 0px -45% 0px', threshold: [0, 0.25, 0.5, 0.75, 1] }
+    );
+
+    dotSections.forEach(function (el) {
+      dotObserver.observe(el);
+    });
   }
 
   /* ---- icon-sprite deploy guard (HTTP(S) only; file:// stays quiet) ---- */
   if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
-    fetch('css/mmgr-icons.svg').then(function(r){
-      if (!r.ok) console.warn('ICON SPRITE MISSING: css/mmgr-icons.svg returned ' + r.status + ' , upload the css/ folder (mmgr.css + mmgr-icons.svg) to the site root.');
-    }).catch(function(){
-      console.warn('ICON SPRITE MISSING: css/mmgr-icons.svg could not be fetched , upload the css/ folder to the site root.');
-    });
+    fetch('css/mmgr-icons.svg')
+      .then(function (r) {
+        if (!r.ok)
+          console.warn(
+            'ICON SPRITE MISSING: css/mmgr-icons.svg returned ' +
+              r.status +
+              ' , upload the css/ folder (mmgr.css + mmgr-icons.svg) to the site root.'
+          );
+      })
+      .catch(function () {
+        console.warn(
+          'ICON SPRITE MISSING: css/mmgr-icons.svg could not be fetched , upload the css/ folder to the site root.'
+        );
+      });
   }
 
   /* ---- header email sign-in sheet (OWNER 2026-08-14: "at the side of the
@@ -193,17 +306,25 @@
      the single #signin-sheet (marketing headers keep #signin-btn; the field-guide
      has one in the sidebar and one beside the mobile hamburger). All lookups are
      null-guarded , pages without the markup are unaffected. */
-  var GA = (window.MMGR && window.MMGR.GoogleAuth) ? window.MMGR.GoogleAuth : null;
+  var GA = window.MMGR && window.MMGR.GoogleAuth ? window.MMGR.GoogleAuth : null;
   var signinBtns = Array.prototype.slice.call(document.querySelectorAll('.signin-trigger'));
   var signinSheet = document.getElementById('signin-sheet');
 
-  function setSigninOpen(open){
+  function setSigninOpen(open) {
     if (!signinSheet) return;
     signinSheet.hidden = !open;
-    signinBtns.forEach(function(b){ b.setAttribute('aria-expanded', open ? 'true' : 'false'); });
+    signinBtns.forEach(function (b) {
+      b.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
     if (open) {
       var first = signinSheet.querySelector('input,button');
-      if (first && first.focus) { try { first.focus(); } catch (e) { /* focus is a hint */ } }
+      if (first && first.focus) {
+        try {
+          first.focus();
+        } catch (e) {
+          /* focus is a hint */
+        }
+      }
     }
   }
 
@@ -212,26 +333,32 @@
      static "Sign in" label that stayed put after signing in. Clicking the
      chip still opens the sheet (which holds the account row + Sign out).
      DOM APIs only , remote data can't inject. */
-  function renderSigninTriggers(user){
-    signinBtns.forEach(function(b){
+  function renderSigninTriggers(user) {
+    signinBtns.forEach(function (b) {
       b.innerHTML = '';
       b.classList.add('is-signedin');
       var displayName = (user && (user.name || user.email)) || 'Signed in';
       b.setAttribute('aria-label', 'Signed in as ' + displayName);
       /* Match the app sidebar pattern: SVG user icon + display name */
-      var safe = displayName.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-      b.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> ' + safe;
+      var safe = displayName
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+      b.innerHTML =
+        '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> ' +
+        safe;
     });
   }
-  function renderSigninSignedOutTriggers(){
-    signinBtns.forEach(function(b){
+  function renderSigninSignedOutTriggers() {
+    signinBtns.forEach(function (b) {
       b.classList.remove('is-signedin');
       b.removeAttribute('aria-label');
       b.textContent = 'Sign in';
     });
   }
 
-  function renderSigninUser(user){
+  function renderSigninUser(user) {
     if (!signinSheet) return;
     var form = signinSheet.querySelector('.email-auth');
     var userBox = document.getElementById('signin-user');
@@ -258,7 +385,7 @@
       }
     }
     if (nm) nm.textContent = (user && (user.name || user.email)) || 'Signed in';
-    if (sub) sub.textContent = (user && user.email) ? user.email : '';
+    if (sub) sub.textContent = user && user.email ? user.email : '';
     form.hidden = true;
     userBox.hidden = false;
   }
@@ -285,9 +412,12 @@
      answers active. /api/billing/status reports the PLAN, not the
      payment, so "not active" proves nothing about whether anyone was
      charged and the copy must never assert otherwise. */
-  function paddleReturnParams(){
-    try { return new URLSearchParams(window.location.search); }
-    catch (e) { return null; }
+  function paddleReturnParams() {
+    try {
+      return new URLSearchParams(window.location.search);
+    } catch (e) {
+      return null;
+    }
   }
 
   /* PADDLE-OWNS-_ptxn (fix 2026-10-05). `_ptxn` is Paddle's instruction to
@@ -298,15 +428,19 @@
      now reported by Paddle's own checkout.completed event (see
      onPaddleEvent), never inferred from the address bar. Only `pdc`
      (Paddle's encoded checkout error) is still read from the URL. */
-  function stripOnly(keys){
+  function stripOnly(keys) {
     try {
       var url = new URL(window.location.href);
-      keys.forEach(function(k){ url.searchParams.delete(k); });
+      keys.forEach(function (k) {
+        url.searchParams.delete(k);
+      });
       window.history.replaceState({}, '', url.pathname + url.search + url.hash);
-    } catch (e) { /* never let history rewrite break the page */ }
+    } catch (e) {
+      /* never let history rewrite break the page */
+    }
   }
 
-  function planBand(state, msg){
+  function planBand(state, msg) {
     var host = document.querySelector('main') || document.body;
     if (!host) return;
     var old = document.getElementById('paddle-return-band');
@@ -319,46 +453,70 @@
     band.style.borderTop = '1px solid var(--border, #ddd)';
     band.style.borderBottom = '1px solid var(--border, #ddd)';
     band.style.padding = '1.4rem 0';
-    band.innerHTML = '<div class="container"><p style="margin:0"><strong>' +
-      (state === 'ok' ? 'You are on Premium.' : state === 'wait' ? 'Almost there.' : 'Checkout did not complete.') +
-      '</strong> ' + msg + '</p></div>';
+    band.innerHTML =
+      '<div class="container"><p style="margin:0"><strong>' +
+      (state === 'ok'
+        ? 'You are on Premium.'
+        : state === 'wait'
+          ? 'Almost there.'
+          : 'Checkout did not complete.') +
+      '</strong> ' +
+      msg +
+      '</p></div>';
     host.insertBefore(band, host.firstChild);
   }
 
-  function handlePaddleReturn(){
+  function handlePaddleReturn() {
     var q = paddleReturnParams();
     if (!q || !q.get('pdc')) return;
     stripOnly(['pdc']);
-    planBand('error', 'Paddle reported that the checkout did not complete, so nothing has been charged. Nothing has been added to your account. You can try again from the button on this page, and we can help from the contact page if it keeps happening.');
+    planBand(
+      'error',
+      'Paddle reported that the checkout did not complete, so nothing has been charged. Nothing has been added to your account. You can try again from the button on this page, and we can help from the contact page if it keeps happening.'
+    );
   }
 
   /* Poll /api/billing/status after a completed checkout. The webhook is the
      ONLY thing that grants the plan and it can land a few seconds after the
      buyer sees Paddle's success screen, so one read is not enough. 12 reads
      at 2.5 s = 30 s, stopping the moment the server says active. */
-  function pollPlanAfterCheckout(tries){
+  function pollPlanAfterCheckout(tries) {
     if (typeof GA === 'undefined' || !GA || typeof GA.refreshPlan !== 'function') return;
-    GA.refreshPlan().then(function(data){
+    GA.refreshPlan().then(function (data) {
       if (data && data.active) {
-        planBand('ok', 'Thank you. Premium is active on your account right now, and everything Premium unlocks is already available to you.');
+        planBand(
+          'ok',
+          'Thank you. Premium is active on your account right now, and everything Premium unlocks is already available to you.'
+        );
       } else if (tries < 11) {
-        setTimeout(function(){ pollPlanAfterCheckout(tries + 1); }, 2500);
+        setTimeout(function () {
+          pollPlanAfterCheckout(tries + 1);
+        }, 2500);
       } else {
-        planBand('wait', 'Your payment is still being confirmed. This can take a minute. Refresh this page shortly, and if Premium still is not showing, contact us from the contact page and we will sort it out.');
+        planBand(
+          'wait',
+          'Your payment is still being confirmed. This can take a minute. Refresh this page shortly, and if Premium still is not showing, contact us from the contact page and we will sort it out.'
+        );
       }
     });
   }
 
-  function onPaddleEvent(ev){
+  function onPaddleEvent(ev) {
     if (!ev || !ev.name) return;
     if (ev.name === 'checkout.completed') {
       stripOnly(['_ptxn', 'plnk', '_pxc']);
-      planBand('wait', 'Your payment went through. We are adding Premium to your account - this normally takes a few seconds.');
+      planBand(
+        'wait',
+        'Your payment went through. We are adding Premium to your account - this normally takes a few seconds.'
+      );
       pollPlanAfterCheckout(0);
     } else if (ev.name === 'checkout.closed') {
       stripOnly(['_ptxn', 'plnk', '_pxc']);
     } else if (ev.name === 'checkout.error') {
-      planBand('error', 'Paddle reported a problem opening the checkout, so nothing has been charged. Try the button again, and contact us if it keeps happening.');
+      planBand(
+        'error',
+        'Paddle reported a problem opening the checkout, so nothing has been charged. Try the button again, and contact us if it keeps happening.'
+      );
     }
   }
 
@@ -373,13 +531,13 @@
      opened SYNCHRONOUSLY inside the click for the same reason as there:
      window.open() after the await has lost the user activation and Chrome
      blocks it with no message, which reads as a dead button. */
-  function wireUpgradeButtons(){
+  function wireUpgradeButtons() {
     var btns = document.querySelectorAll('[data-pricing-upgrade]');
     if (!btns.length) return;
-    Array.prototype.forEach.call(btns, function(btn){
-      btn.addEventListener('click', function(){
+    Array.prototype.forEach.call(btns, function (btn) {
+      btn.addEventListener('click', function () {
         var status = document.querySelector('[data-pricing-status]');
-        function say(msg, bad){
+        function say(msg, bad) {
           if (!status) return;
           status.hidden = false;
           status.textContent = msg;
@@ -392,26 +550,54 @@
         // server resolves the price ID. Legacy buttons keep the contractor
         // default by sending no tier.
         var tier = btn.getAttribute('data-tier');
-        var checkoutUrl = '/api/billing/checkout' + (tier ? '?tier=' + encodeURIComponent(tier) : '');
+        var checkoutUrl =
+          '/api/billing/checkout' + (tier ? '?tier=' + encodeURIComponent(tier) : '');
         fetch(checkoutUrl, { method: 'POST', credentials: 'same-origin' })
-          .then(function(res){
-            return res.json().catch(function(){ return {}; }).then(function(d){ return { ok: res.ok, status: res.status, data: d }; });
+          .then(function (res) {
+            return res
+              .json()
+              .catch(function () {
+                return {};
+              })
+              .then(function (d) {
+                return { ok: res.ok, status: res.status, data: d };
+              });
           })
-          .then(function(r){
+          .then(function (r) {
             if (!r.ok || !r.data || !r.data.ok || !r.data.checkoutUrl) {
-              if (tab) { try { tab.close(); } catch (e) { /* already gone */ } }
+              if (tab) {
+                try {
+                  tab.close();
+                } catch (e) {
+                  /* already gone */
+                }
+              }
               btn.disabled = false;
-              if (r.status === 403) say('Sign in first - the plan is attached to your account.', true);
+              if (r.status === 403)
+                say('Sign in first - the plan is attached to your account.', true);
               else if (r.status === 503) say('Checkout is not available on this server yet.', true);
-              else say((r.data && r.data.error) || ('Checkout failed (HTTP ' + r.status + ').'), true);
+              else
+                say((r.data && r.data.error) || 'Checkout failed (HTTP ' + r.status + ').', true);
               return;
             }
-            if (tab) { try { tab.opener = null; tab.location.replace(r.data.checkoutUrl); } catch (e) { window.open(r.data.checkoutUrl, '_blank', 'noopener'); } }
-            else window.open(r.data.checkoutUrl, '_blank', 'noopener');
+            if (tab) {
+              try {
+                tab.opener = null;
+                tab.location.replace(r.data.checkoutUrl);
+              } catch (e) {
+                window.open(r.data.checkoutUrl, '_blank', 'noopener');
+              }
+            } else window.open(r.data.checkoutUrl, '_blank', 'noopener');
             say('Checkout opened in a new tab. Finish there, then come back here.');
           })
-          .catch(function(){
-            if (tab) { try { tab.close(); } catch (e) { /* already gone */ } }
+          .catch(function () {
+            if (tab) {
+              try {
+                tab.close();
+              } catch (e) {
+                /* already gone */
+              }
+            }
             btn.disabled = false;
             say('Could not reach the server.', true);
           });
@@ -419,46 +605,58 @@
     });
   }
 
-  function renderSigninSignedOut(){
+  function renderSigninSignedOut() {
     if (!signinSheet) return;
     var form = signinSheet.querySelector('.email-auth');
     var userBox = document.getElementById('signin-user');
     var av = document.getElementById('signin-user-avatar');
     if (form) form.hidden = false;
     if (userBox) userBox.hidden = true;
-    if (av) { av.innerHTML = ''; av.textContent = ''; }
+    if (av) {
+      av.innerHTML = '';
+      av.textContent = '';
+    }
     renderSigninSignedOutTriggers();
   }
 
   if (signinBtns.length && signinSheet && GA) {
     var signinOut = document.getElementById('signin-out');
-    if (signinOut) signinOut.addEventListener('click', function(){ GA.signOut(); });
+    if (signinOut)
+      signinOut.addEventListener('click', function () {
+        GA.signOut();
+      });
 
-    signinBtns.forEach(function(b){
-      b.addEventListener('click', function(){
+    signinBtns.forEach(function (b) {
+      b.addEventListener('click', function () {
         setSigninOpen(signinSheet.hidden);
         /* iOS Safari: re-render GIS button after sheet becomes visible.
            GIS needs the host to be measurable (not display:none) for the
            button iframe to have non-zero dimensions. */
         if (!signinSheet.hidden) {
           if (typeof GA.ensureGisButton === 'function') {
-            setTimeout(function(){ GA.ensureGisButton(); }, 60);
+            setTimeout(function () {
+              GA.ensureGisButton();
+            }, 60);
           }
           /* If GIS never loaded, show the styled fallback button immediately
              so the user always sees "Sign in with Google" + "Sign in with
              email instead" , never a blank slot. */
           if (typeof GA.showGoogleFallback === 'function') {
-            setTimeout(function(){ GA.showGoogleFallback(); }, 120);
+            setTimeout(function () {
+              GA.showGoogleFallback();
+            }, 120);
           }
         }
       });
     });
-    document.addEventListener('keydown', function(e){
+    document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && !signinSheet.hidden) setSigninOpen(false);
     });
-    document.addEventListener('click', function(e){
+    document.addEventListener('click', function (e) {
       if (signinSheet.hidden) return;
-      var onTrigger = signinBtns.some(function(b){ return e.target === b || b.contains(e.target); });
+      var onTrigger = signinBtns.some(function (b) {
+        return e.target === b || b.contains(e.target);
+      });
       if (onTrigger) return;
       if (signinSheet.contains(e.target)) return;
       setSigninOpen(false);
@@ -469,11 +667,12 @@
        2026-09-06); the Google button renders into #google-signin-button
        (added to all marketing signin-sheets 2026-08-22). Then restore the
        session so an already-signed-in visitor sees their state. */
-    if (!document.getElementById('email-auth-block')) GA.mountEmailAuth('marketing-email-auth', { showToggle: false });
+    if (!document.getElementById('email-auth-block'))
+      GA.mountEmailAuth('marketing-email-auth', { showToggle: false });
     /* OWNER 2026-09-09 (P5.4): the links (Forgot password? / Create account)
        move BELOW the Google button and float free - no boxes. Sheet order:
        email form, divider, Google, links, note. */
-    (function(){
+    (function () {
       var alt = document.querySelector('#signin-sheet .email-auth-alt');
       var gbtn = document.getElementById('google-signin-button');
       if (alt && gbtn) gbtn.insertAdjacentElement('afterend', alt);
@@ -486,8 +685,12 @@
        Change-password entry for email accounts (mounted once here; the
        shared control hides itself unless the account has a password). */
     GA.mountPasswordControl(document.getElementById('signin-user'));
-    document.addEventListener('mmgr:user-changed', function(e){ renderSigninUser(e.detail); });
-    document.addEventListener('mmgr:google-signed-out', function(){ renderSigninSignedOut(); });
+    document.addEventListener('mmgr:user-changed', function (e) {
+      renderSigninUser(e.detail);
+    });
+    document.addEventListener('mmgr:google-signed-out', function () {
+      renderSigninSignedOut();
+    });
     GA.restoreSession();
   }
 
@@ -547,18 +750,22 @@
   };
 
   var ddFlashTimer = null;
-  function ddFlash(id){
+  function ddFlash(id) {
     var el = document.getElementById(id);
     if (!el) return;
     try {
       var rm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
-      el.scrollIntoView({ behavior: (rm && rm.matches) ? 'auto' : 'smooth', block: 'start' });
-    } catch (e) { el.scrollIntoView(); }
+      el.scrollIntoView({ behavior: rm && rm.matches ? 'auto' : 'smooth', block: 'start' });
+    } catch (e) {
+      el.scrollIntoView();
+    }
     el.classList.remove('dd-flash');
     void el.offsetWidth; // restart the animation
     el.classList.add('dd-flash');
     if (ddFlashTimer) clearTimeout(ddFlashTimer);
-    ddFlashTimer = setTimeout(function(){ el.classList.remove('dd-flash'); }, 2800);
+    ddFlashTimer = setTimeout(function () {
+      el.classList.remove('dd-flash');
+    }, 2800);
   }
 
   /* OWNER 2026-08-17 dropdown behavior: hover (or keyboard focus) opens a
@@ -569,42 +776,57 @@
   /* Escape closes the menu and returns focus to the trigger; the guard stops
      the trigger's own focusin from re-opening it in the same tick. */
   var ddSuppressUntil = 0;
-  function ddNow(){ return (window.performance && performance.now) ? performance.now() : Date.now(); }
-  function closeDropdowns(){
-    document.querySelectorAll('.nav-dd').forEach(function(w){ w.classList.remove('is-open'); });
-    document.querySelectorAll('.nav-dd a.nav-link').forEach(function(a){ a.setAttribute('aria-expanded', 'false'); });
+  function ddNow() {
+    return window.performance && performance.now ? performance.now() : Date.now();
+  }
+  function closeDropdowns() {
+    document.querySelectorAll('.nav-dd').forEach(function (w) {
+      w.classList.remove('is-open');
+    });
+    document.querySelectorAll('.nav-dd a.nav-link').forEach(function (a) {
+      a.setAttribute('aria-expanded', 'false');
+    });
   }
 
-  function wireNavDropdowns(){
+  function wireNavDropdowns() {
     var links = document.querySelectorAll('.site-nav a.nav-link');
     var known = {};
-    Object.keys(NAV_DD).forEach(function(k){
-      NAV_DD[k].items.forEach(function(it){ known[it.id] = true; });
+    Object.keys(NAV_DD).forEach(function (k) {
+      NAV_DD[k].items.forEach(function (it) {
+        known[it.id] = true;
+      });
     });
     if (links.length) {
-      Array.prototype.forEach.call(links, function(a){
+      Array.prototype.forEach.call(links, function (a) {
         if (a.closest('.nav-dd')) return; // idempotent , never re-wrap
         var cfg = NAV_DD[a.getAttribute('href')];
         if (!cfg) return;
         var wrap = document.createElement('span');
-        wrap.className = 'nav-dd' + (cfg.items.length > 8 ? ' nav-dd-cols' : '') + (cfg.items.length > 15 ? ' nav-dd-tall' : '');
+        wrap.className =
+          'nav-dd' +
+          (cfg.items.length > 8 ? ' nav-dd-cols' : '') +
+          (cfg.items.length > 15 ? ' nav-dd-tall' : '');
         var menu = document.createElement('span');
         menu.className = 'nav-dd-menu';
         menu.setAttribute('aria-label', String(a.textContent || '').trim() + ' sections');
         var list = document.createElement('span');
         list.className = 'nav-dd-list';
         var page = (a.getAttribute('href') || '#').split('#')[0];
-        cfg.items.forEach(function(it){
+        cfg.items.forEach(function (it) {
           var itA = document.createElement('a');
           itA.href = page + '#' + it.id;
           itA.className = 'nav-dd-item';
           itA.textContent = it.label;
-          itA.addEventListener('click', function(ev){
+          itA.addEventListener('click', function (ev) {
             closeDropdowns();
             if (document.getElementById(it.id)) {
               ev.preventDefault();
               ddFlash(it.id);
-              try { history.replaceState(null, '', '#' + it.id); } catch (e) { /* hash update is a hint */ }
+              try {
+                history.replaceState(null, '', '#' + it.id);
+              } catch (e) {
+                /* hash update is a hint */
+              }
             }
           });
           list.appendChild(itA);
@@ -632,29 +854,33 @@
         // Open state: mouseenter/focusin opens (page blurs behind); the scrim
         // click, Escape, picking an item, or focus moving away closes it.
         var open = false;
-        function sync(){ a.setAttribute('aria-expanded', open ? 'true' : 'false'); }
-        function openWrap(){
+        function sync() {
+          a.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+        function openWrap() {
           if (ddNow() < ddSuppressUntil) return; /* Escape just closed it */
           closeDropdowns();
           wrap.classList.add('is-open');
-          open = true; sync();
+          open = true;
+          sync();
         }
-        function closeWrap(){
+        function closeWrap() {
           wrap.classList.remove('is-open');
-          open = false; sync();
+          open = false;
+          sync();
         }
         wrap.addEventListener('mouseenter', openWrap);
         wrap.addEventListener('mouseleave', closeWrap);
         wrap.addEventListener('focusin', openWrap);
-        wrap.addEventListener('focusout', function(e){
+        wrap.addEventListener('focusout', function (e) {
           if (!wrap.contains(e.relatedTarget)) closeWrap();
         });
       });
     }
-    document.addEventListener('keydown', function(e){
+    document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') {
         var trigger = null;
-        document.querySelectorAll('.nav-dd').forEach(function(w){
+        document.querySelectorAll('.nav-dd').forEach(function (w) {
           var a = w.querySelector('a.nav-link');
           if (a && a.getAttribute('aria-expanded') === 'true') trigger = a;
         });
@@ -672,7 +898,9 @@
     if (location.hash) {
       var t = decodeURIComponent(location.hash.slice(1));
       if (known[t] && document.getElementById(t)) {
-        setTimeout(function(){ ddFlash(t); }, 120);
+        setTimeout(function () {
+          ddFlash(t);
+        }, 120);
       }
     }
   }
@@ -684,29 +912,38 @@
      JS only, so a static no-JS page sees everything fully visible; reduced-
      motion and no-IntersectionObserver users get the same instant visibility.
      Elements unobserve themselves once revealed. Never throws. */
-  var rvTargets = Array.prototype.slice.call(document.querySelectorAll(
-    '.fcard, .aud-item, .step, .section-head, .guide-band, .pb-content, .hero-inner'
-  ));
+  var rvTargets = Array.prototype.slice.call(
+    document.querySelectorAll(
+      '.fcard, .aud-item, .step, .section-head, .guide-band, .pb-content, .hero-inner'
+    )
+  );
   if (rvTargets.length) {
     var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
     if (!(reduceMotion && reduceMotion.matches) && 'IntersectionObserver' in window) {
-      rvTargets.forEach(function(el, i){
+      rvTargets.forEach(function (el, i) {
         el.classList.add('rv');
         el.style.setProperty('--rv-i', String(i > 8 ? 8 : i));
       });
-      var rvIO = new IntersectionObserver(function(entries){
-        entries.forEach(function(en){
-          if (en.isIntersecting) {
-            en.target.classList.add('rv-in');
-            rvIO.unobserve(en.target);
-          }
-        });
-      }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
-      rvTargets.forEach(function(el){ rvIO.observe(el); });
+      var rvIO = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (en) {
+            if (en.isIntersecting) {
+              en.target.classList.add('rv-in');
+              rvIO.unobserve(en.target);
+            }
+          });
+        },
+        { threshold: 0.12, rootMargin: '0px 0px -8% 0px' }
+      );
+      rvTargets.forEach(function (el) {
+        rvIO.observe(el);
+      });
     } else {
       // reduced-motion or no IO: everything visible immediately (CSS also
       // forces .rv to full visibility under reduced motion , belt + braces).
-      rvTargets.forEach(function(el){ el.classList.add('rv-in'); });
+      rvTargets.forEach(function (el) {
+        el.classList.add('rv-in');
+      });
     }
   }
 
@@ -724,8 +961,9 @@
   var featPrev = document.getElementById('feat-prev');
   var featNext = document.getElementById('feat-next');
   if (featTrack) {
-    (function(){
-      var GAP = 18, TICK_MS = 3400;
+    (function () {
+      var GAP = 18,
+        TICK_MS = 3400;
       var originals = Array.prototype.slice.call(featTrack.children);
       if (originals.length < 2) return;
       var rm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -733,7 +971,7 @@
       /* clone the first few cards for the seamless loop (aria-hidden copies) */
       var CLONES = Math.min(5, originals.length);
       var realScroll = 0;
-      originals.slice(0, CLONES).forEach(function(c){
+      originals.slice(0, CLONES).forEach(function (c) {
         var cl = c.cloneNode(true);
         cl.setAttribute('aria-hidden', 'true');
         /* clones must not inherit the reveal-on-scroll state (they are the
@@ -743,49 +981,74 @@
         featTrack.appendChild(cl);
       });
       var all = Array.prototype.slice.call(featTrack.children);
-      realScroll = all.slice(0, originals.length).reduce(function(w, c){ return w + c.getBoundingClientRect().width + GAP; }, -GAP);
-      function stepW(){
+      realScroll = all.slice(0, originals.length).reduce(function (w, c) {
+        return w + c.getBoundingClientRect().width + GAP;
+      }, -GAP);
+      function stepW() {
         return (all[0] ? all[0].getBoundingClientRect().width : 300) + GAP;
       }
-      function tick(){
+      function tick() {
         if (paused) return;
         /* reached the clones: snap back to the start, invisible */
         if (featTrack.scrollLeft >= realScroll - 4) featTrack.scrollLeft = 0;
         try {
-          featTrack.scrollBy({ left: stepW(), behavior: (rm && rm.matches) ? 'auto' : 'smooth' });
-        } catch (e) { featTrack.scrollLeft += stepW(); }
+          featTrack.scrollBy({ left: stepW(), behavior: rm && rm.matches ? 'auto' : 'smooth' });
+        } catch (e) {
+          featTrack.scrollLeft += stepW();
+        }
       }
       var timer = null;
-      function play(){ if (paused || timer) return; timer = setInterval(tick, TICK_MS); }
-      function stop(){ if (timer) { clearInterval(timer); timer = null; } }
-      function go(dir){
+      function play() {
+        if (paused || timer) return;
+        timer = setInterval(tick, TICK_MS);
+      }
+      function stop() {
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
+        }
+      }
+      function go(dir) {
         var w = stepW();
         var target = featTrack.scrollLeft + dir * w;
-        if (target >= realScroll) target = 0;                     /* wrap forward */
+        if (target >= realScroll) target = 0; /* wrap forward */
         if (target < 0) target = realScroll - featTrack.clientWidth; /* wrap back */
         try {
-          featTrack.scrollTo({ left: target, behavior: (rm && rm.matches) ? 'auto' : 'smooth' });
-        } catch (e) { featTrack.scrollLeft = target; }
+          featTrack.scrollTo({ left: target, behavior: rm && rm.matches ? 'auto' : 'smooth' });
+        } catch (e) {
+          featTrack.scrollLeft = target;
+        }
       }
-      if (featPrev) featPrev.addEventListener('click', function(){ go(-1); });
-      if (featNext) featNext.addEventListener('click', function(){ go(1); });
-      ['mouseenter', 'focusin', 'touchstart', 'pointerdown'].forEach(function(ev){
+      if (featPrev)
+        featPrev.addEventListener('click', function () {
+          go(-1);
+        });
+      if (featNext)
+        featNext.addEventListener('click', function () {
+          go(1);
+        });
+      ['mouseenter', 'focusin', 'touchstart', 'pointerdown'].forEach(function (ev) {
         featTrack.addEventListener(ev, stop, { passive: true });
       });
       featTrack.addEventListener('mouseleave', play);
-      document.addEventListener('visibilitychange', function(){
-        if (document.hidden) stop(); else play();
+      document.addEventListener('visibilitychange', function () {
+        if (document.hidden) stop();
+        else play();
       });
       /* Restart the auto-tick when the feature bar scrolls back into view
          (owner: "when a user interacts and leaves for a while, the animation
          doesn't restart"). IntersectionObserver watches the track element;
          when it becomes visible again after being hidden, play() restarts. */
       if (window.IntersectionObserver) {
-        var featIO = new IntersectionObserver(function(entries) {
-          entries.forEach(function(entry) {
-            if (entry.isIntersecting) play(); else stop();
-          });
-        }, { threshold: 0.1 });
+        var featIO = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              if (entry.isIntersecting) play();
+              else stop();
+            });
+          },
+          { threshold: 0.1 }
+        );
         featIO.observe(featTrack);
       }
       if (!paused) play();
@@ -796,21 +1059,24 @@
      contact.html form composes a ready-to-send email to the admin and
      opens the visitor's email app (mailto). A Copy message fallback covers
      devices without a mail client. Null-guarded, never throws, ASCII only. */
-  function mountContactForm(){
+  function mountContactForm() {
     var form = document.getElementById('contact-form');
     if (!form) return;
     var status = document.getElementById('ct-status');
     var copyBtn = document.getElementById('ct-copy');
     var submitBtn = form.querySelector('button[type=submit]');
     var TO = 'admin@mymanagerworkspace.com';
-    function field(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; }
-    function setStatus(msg, isErr){
+    function field(id) {
+      var el = document.getElementById(id);
+      return el ? el.value.trim() : '';
+    }
+    function setStatus(msg, isErr) {
       if (!status) return;
       status.textContent = msg;
       status.classList.toggle('is-err', !!isErr);
       status.hidden = false;
     }
-    function compose(){
+    function compose() {
       var name = field('ct-name');
       var email = field('ct-email');
       var topic = field('ct-topic') || 'Other';
@@ -822,19 +1088,34 @@
       lines.push(msg);
       return { subject: 'My MaNaGeR contact: ' + topic, body: lines.join('\n') };
     }
-    function validate(){
+    function validate() {
       var email = field('ct-email');
       var msg = field('ct-msg');
-      if (!email) { setStatus('Please add your email so we can reply.', true); return false; }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setStatus('That email address does not look right.', true); return false; }
-      if (!msg) { setStatus('Please write a message first.', true); return false; }
+      if (!email) {
+        setStatus('Please add your email so we can reply.', true);
+        return false;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        setStatus('That email address does not look right.', true);
+        return false;
+      }
+      if (!msg) {
+        setStatus('Please write a message first.', true);
+        return false;
+      }
       return true;
     }
-    function mailtoFallback(){
+    function mailtoFallback() {
       var c = compose();
-      window.location.href = 'mailto:' + TO + '?subject=' + encodeURIComponent(c.subject) + '&body=' + encodeURIComponent(c.body);
+      window.location.href =
+        'mailto:' +
+        TO +
+        '?subject=' +
+        encodeURIComponent(c.subject) +
+        '&body=' +
+        encodeURIComponent(c.body);
     }
-    form.addEventListener('submit', function(e){
+    form.addEventListener('submit', function (e) {
       e.preventDefault();
       if (!validate()) return;
       if (submitBtn) submitBtn.disabled = true;
@@ -848,40 +1129,62 @@
           topic: field('ct-topic'),
           message: field('ct-msg')
         })
-      }).then(function(res){
-        return res.json().catch(function(){ return { ok: false }; }).then(function(data){
-          return { res: res, data: data };
-        });
-      }).then(function(r){
-        if (r.res.ok && r.data && r.data.ok) {
-          form.reset();
-          setStatus('Message sent. We will reply to your email.');
-        } else if (r.res.status === 429) {
-          setStatus('That is a lot of messages in a short window. Please try again in about 30 minutes, or email ' + TO + ' directly.', true);
-        } else if (r.data && r.data.error) {
-          setStatus(r.data.error, true);
-        } else {
-          setStatus('Could not send just now. Opening your email app instead.', true);
+      })
+        .then(function (res) {
+          return res
+            .json()
+            .catch(function () {
+              return { ok: false };
+            })
+            .then(function (data) {
+              return { res: res, data: data };
+            });
+        })
+        .then(function (r) {
+          if (r.res.ok && r.data && r.data.ok) {
+            form.reset();
+            setStatus('Message sent. We will reply to your email.');
+          } else if (r.res.status === 429) {
+            setStatus(
+              'That is a lot of messages in a short window. Please try again in about 30 minutes, or email ' +
+                TO +
+                ' directly.',
+              true
+            );
+          } else if (r.data && r.data.error) {
+            setStatus(r.data.error, true);
+          } else {
+            setStatus('Could not send just now. Opening your email app instead.', true);
+            mailtoFallback();
+          }
+        })
+        .catch(function () {
+          setStatus(
+            'No connection right now. Opening your email app with the message ready.',
+            true
+          );
           mailtoFallback();
+        })
+        .then(function () {
+          if (submitBtn) submitBtn.disabled = false;
+        });
+    });
+    if (copyBtn)
+      copyBtn.addEventListener('click', function () {
+        if (!validate()) return;
+        var c = compose();
+        var text = c.subject + '\n\n' + c.body + '\n\nSent from the My MaNaGeR contact page.';
+        var done = function () {
+          setStatus('Message copied. Paste it into an email to ' + TO + '.');
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done, function () {
+            setStatus('Could not copy. Your email app will open instead.', true);
+          });
+        } else {
+          setStatus('Copy is not available here. Use Send message instead.', true);
         }
-      }).catch(function(){
-        setStatus('No connection right now. Opening your email app with the message ready.', true);
-        mailtoFallback();
-      }).then(function(){
-        if (submitBtn) submitBtn.disabled = false;
       });
-    });
-    if (copyBtn) copyBtn.addEventListener('click', function(){
-      if (!validate()) return;
-      var c = compose();
-      var text = c.subject + '\n\n' + c.body + '\n\nSent from the My MaNaGeR contact page.';
-      var done = function(){ setStatus('Message copied. Paste it into an email to ' + TO + '.'); };
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(done, function(){ setStatus('Could not copy. Your email app will open instead.', true); });
-      } else {
-        setStatus('Copy is not available here. Use Send message instead.', true);
-      }
-    });
   }
   /* Paddle returns the buyer here after checkout, carrying ?_ptxn= (see
      handlePaddleReturn). Called at MODULE scope rather than inside the
@@ -907,40 +1210,58 @@
      untouched. handlePaddleReturn() still runs and still reports only what
      the server can verify. */
   var paddleReady = false;
-  function initializePaddle(){
+  function initializePaddle() {
     if (paddleReady) return;
     var host = document.body;
     var token = host && host.getAttribute ? host.getAttribute('data-paddle-token') : '';
     if (!token) return;
-    if (typeof window.Paddle === 'undefined' || typeof window.Paddle.Initialize !== 'function') return;
+    if (typeof window.Paddle === 'undefined' || typeof window.Paddle.Initialize !== 'function')
+      return;
     try {
       /* A sandbox client token (test_...) only works against Paddle's sandbox
          environment, and Environment.set() must run BEFORE Initialize(). Live
          tokens (live_...) skip it. */
-      if (/^test_/.test(token) && window.Paddle.Environment && typeof window.Paddle.Environment.set === 'function') {
+      if (
+        /^test_/.test(token) &&
+        window.Paddle.Environment &&
+        typeof window.Paddle.Environment.set === 'function'
+      ) {
         window.Paddle.Environment.set('sandbox');
       }
       window.Paddle.Initialize({ token: token, eventCallback: onPaddleEvent });
       paddleReady = true;
-    } catch (e) { /* a checkout that will not open must not break the page */ }
+    } catch (e) {
+      /* a checkout that will not open must not break the page */
+    }
   }
 
   /* Paddle.js is deferred, so it may not exist yet when this runs. Poll
      briefly. If it never arrives (ad-blocker, CDN blocked, CSP) AND a buyer
      is trying to check out, SAY SO - a silent failure here looked exactly
      like "the pricing page redirected me to itself". */
-  function initPaddleWhenReady(){
+  function initPaddleWhenReady() {
     initializePaddle();
     if (paddleReady) return;
     var tries = 0;
-    var t = setInterval(function(){
+    var t = setInterval(function () {
       initializePaddle();
-      if (paddleReady) { clearInterval(t); return; }
+      if (paddleReady) {
+        clearInterval(t);
+        return;
+      }
       if (++tries > 40) {
         clearInterval(t);
         var q = paddleReturnParams();
-        if (q && q.get('_ptxn') && document.body && document.body.getAttribute('data-paddle-token')) {
-          planBand('error', 'The secure payment form could not load. A browser extension or content blocker may be blocking Paddle (cdn.paddle.com). Allow it for this site and reload this page, and nothing has been charged.');
+        if (
+          q &&
+          q.get('_ptxn') &&
+          document.body &&
+          document.body.getAttribute('data-paddle-token')
+        ) {
+          planBand(
+            'error',
+            'The secure payment form could not load. A browser extension or content blocker may be blocking Paddle (cdn.paddle.com). Allow it for this site and reload this page, and nothing has been charged.'
+          );
         }
       }
     }, 150);

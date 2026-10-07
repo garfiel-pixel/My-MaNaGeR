@@ -34,7 +34,7 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   const U = ns.Utils;
@@ -44,11 +44,19 @@ var MMGR = window.MMGR || {};
   // sessionStorage for this tab, cleared on Close or Clear. A missing vault
   // module degrades to disconnected (live chat disabled), never crashes.
   const BYO = ns.AiKey || {
-    isConnected: function() { return false; },
-    getKey: function() { return null; },
-    getProvider: function() { return 'openai'; },
-    setKey: function() { throw new Error('session vault not loaded'); },
-    clearKey: function() {}
+    isConnected: function () {
+      return false;
+    },
+    getKey: function () {
+      return null;
+    },
+    getProvider: function () {
+      return 'openai';
+    },
+    setKey: function () {
+      throw new Error('session vault not loaded');
+    },
+    clearKey: function () {}
   };
 
   // BYO-AI-KEY-SESSION-ONLY-v1: scrub any legacy apiKey the pre-directive
@@ -57,13 +65,22 @@ var MMGR = window.MMGR || {};
   // Runs once at module load; adds nothing to the state schema.
   (function scrubLegacyKey() {
     try {
-      const s = (ns.State && ns.State.getState) ? ns.State.getState() : null;
-      if (s && s.config && s.config.ai && typeof s.config.ai.apiKey === 'string' && s.config.ai.apiKey) {
-        ns.State.updateState(function(st) {
-          if (st.config && st.config.ai && typeof st.config.ai.apiKey === 'string') delete st.config.ai.apiKey;
+      const s = ns.State && ns.State.getState ? ns.State.getState() : null;
+      if (
+        s &&
+        s.config &&
+        s.config.ai &&
+        typeof s.config.ai.apiKey === 'string' &&
+        s.config.ai.apiKey
+      ) {
+        ns.State.updateState(function (st) {
+          if (st.config && st.config.ai && typeof st.config.ai.apiKey === 'string')
+            delete st.config.ai.apiKey;
         });
       }
-    } catch (e) { /* never block boot on cleanup */ }
+    } catch (e) {
+      /* never block boot on cleanup */
+    }
   })();
 
   // Readable labels for the existing prompt generators.
@@ -87,7 +104,7 @@ var MMGR = window.MMGR || {};
 
   // Rank 2.3 tier metadata , shown in the AI window settings row.
   const TIERS = {
-    off:   { label: 'Off , copy-first only' },
+    off: { label: 'Off , copy-first only' },
     local: { label: 'Local (zero-key, offline, zero-fabrication)' },
     cloud: { label: 'Cloud (BYO key, session-only , OpenAI / Google Gemini / Anthropic)' }
   };
@@ -136,7 +153,8 @@ var MMGR = window.MMGR || {};
   // slow earlier probe.
   async function checkApiHealth(force) {
     if (_apiCheckInFlight && !force) return null;
-    _apiCheckInFlight = true;        setApiStatus('checking', 'Backend · checking');
+    _apiCheckInFlight = true;
+    setApiStatus('checking', 'Backend · checking');
     let result = 'disconnected';
     try {
       const res = await ns.Net.get('/api/health', { timeoutMs: 4000, maxRetries: 0 });
@@ -153,7 +171,11 @@ var MMGR = window.MMGR || {};
     } catch (e) {
       result = 'disconnected';
       setApiStatus('disconnected', 'Backend · offline');
-      if (ns.Errors && ns.Errors.log) ns.Errors.log('api health check failed: ' + ((e && e.message) || 'unreachable'), 'apiHealth');
+      if (ns.Errors && ns.Errors.log)
+        ns.Errors.log(
+          'api health check failed: ' + ((e && e.message) || 'unreachable'),
+          'apiHealth'
+        );
     } finally {
       _apiCheckInFlight = false;
     }
@@ -170,23 +192,39 @@ var MMGR = window.MMGR || {};
     // window a visitor cannot use.
     if (!(ns.Entitlements && ns.Entitlements.aiAssistant && ns.Entitlements.aiAssistant())) {
       _aiOpenPending = true;
-      if (ns.App && ns.App.showToast) ns.App.showToast('AI features need sign-in , sign in and the assistant opens.', 'warn');
+      if (ns.App && ns.App.showToast)
+        ns.App.showToast('AI features need sign-in , sign in and the assistant opens.', 'warn');
       const GA = ns.GoogleAuth;
-      if (GA && typeof GA.openSignInPrompt === 'function') { try { GA.openSignInPrompt(); } catch (e) { /* fallback surfaces via the header */ } }
+      if (GA && typeof GA.openSignInPrompt === 'function') {
+        try {
+          GA.openSignInPrompt();
+        } catch (e) {
+          /* fallback surfaces via the header */
+        }
+      }
       return;
     }
     _aiOpenPending = false;
     const chips = U.$('ai-presets');
     if (chips && !chips.dataset.filled) {
-      const types = (ns.Prompts && ns.Prompts.list) ? ns.Prompts.list() : [];
-      chips.innerHTML = types.map(t =>
-        '<span class="ai-chip-cell">' +
-        '<button class="ai-chip" data-action="aiPreset" data-type="' + U.escapeHtml(t) + '">' +
-        U.escapeHtml(PRESET_LABELS[t] || t) + '</button>' +
-        '<button class="ai-run" data-action="aiRunPreset" data-type="' + U.escapeHtml(t) + '" title="One-click: generate with AI and save to project state">' +
-        '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg></button>' +
-        '</span>'
-      ).join('') || '<span class="txt-sl">No presets available.</span>';
+      const types = ns.Prompts && ns.Prompts.list ? ns.Prompts.list() : [];
+      chips.innerHTML =
+        types
+          .map(
+            t =>
+              '<span class="ai-chip-cell">' +
+              '<button class="ai-chip" data-action="aiPreset" data-type="' +
+              U.escapeHtml(t) +
+              '">' +
+              U.escapeHtml(PRESET_LABELS[t] || t) +
+              '</button>' +
+              '<button class="ai-run" data-action="aiRunPreset" data-type="' +
+              U.escapeHtml(t) +
+              '" title="One-click: generate with AI and save to project state">' +
+              '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg></button>' +
+              '</span>'
+          )
+          .join('') || '<span class="txt-sl">No presets available.</span>';
       chips.dataset.filled = '1';
     }
     syncSettingsUI();
@@ -196,16 +234,33 @@ var MMGR = window.MMGR || {};
     applyAiSizePref(); // AI-WINDOW-RESIZE: restore the saved size (and re-center) before showing
     modal.classList.add('open');
     const q = U.$('ai-q');
-    if (q) setTimeout(function() { q.focus(); }, 60);
+    if (q)
+      setTimeout(function () {
+        q.focus();
+      }, 60);
   }
 
   // Resume the deferred open once the session exists (see open() gate).
   let _aiOpenPending = false;
-  document.addEventListener('mmgr:google-signed-in', function() {
-    if (_aiOpenPending) { _aiOpenPending = false; try { open(); } catch (e) { /* zero-throw */ } }
+  document.addEventListener('mmgr:google-signed-in', function () {
+    if (_aiOpenPending) {
+      _aiOpenPending = false;
+      try {
+        open();
+      } catch (e) {
+        /* zero-throw */
+      }
+    }
   });
-  document.addEventListener('mmgr:user-changed', function() {
-    if (_aiOpenPending) { _aiOpenPending = false; try { open(); } catch (e) { /* zero-throw */ } }
+  document.addEventListener('mmgr:user-changed', function () {
+    if (_aiOpenPending) {
+      _aiOpenPending = false;
+      try {
+        open();
+      } catch (e) {
+        /* zero-throw */
+      }
+    }
   });
 
   function close() {
@@ -219,7 +274,7 @@ var MMGR = window.MMGR || {};
   function preset(type) {
     const q = U.$('ai-q');
     if (!q) return;
-    q.value = (ns.Prompts && ns.Prompts.generate) ? ns.Prompts.generate(type) : '';
+    q.value = ns.Prompts && ns.Prompts.generate ? ns.Prompts.generate(type) : '';
     q.focus();
     toast('Preset prompt loaded , send it, edit it, or copy it.');
   }
@@ -229,7 +284,11 @@ var MMGR = window.MMGR || {};
     const c = U.$('ai-ctx');
     const o = U.$('ai-out');
     const t = U.$('ai-trace');
-    if (q) { q.value = ''; q.style.height = ''; q.classList.remove('at-cap'); }
+    if (q) {
+      q.value = '';
+      q.style.height = '';
+      q.classList.remove('at-cap');
+    }
     if (c) c.value = '';
     if (o) o.value = '';
     if (t) t.textContent = '';
@@ -245,16 +304,33 @@ var MMGR = window.MMGR || {};
   // section, and the cloud system prompt forbids using anything
   // outside it , so traceability to state fields is the contract.
   const CONTEXT_SCHEMA = {
-    sections: ['PROJECT', 'HEALTH SCORE', 'EVM (Earned Value)', 'TIMELINE', 'CRITICAL PATH', 'TOP RISKS / ISSUES', 'WEATHER'],
+    sections: [
+      'PROJECT',
+      'HEALTH SCORE',
+      'EVM (Earned Value)',
+      'TIMELINE',
+      'CRITICAL PATH',
+      'TOP RISKS / ISSUES',
+      'WEATHER'
+    ],
     format: '## <SECTION>\n- <key>: <value>',
     keysBySection: {
-      'PROJECT': ['Name', 'Methodology', 'Sponsor', 'Objective', 'Target completion', 'Budget envelope', 'Constraints', 'Assumptions'],
+      PROJECT: [
+        'Name',
+        'Methodology',
+        'Sponsor',
+        'Objective',
+        'Target completion',
+        'Budget envelope',
+        'Constraints',
+        'Assumptions'
+      ],
       'HEALTH SCORE': ['Score', 'Status', 'Tasks'],
       'EVM (Earned Value)': ['SPI', 'CPI', 'EV / PV / AC'],
-      'TIMELINE': ['Target vs planned finish', 'Overdue tasks'],
+      TIMELINE: ['Target vs planned finish', 'Overdue tasks'],
       'CRITICAL PATH': ['Tasks on zero float'],
       'TOP RISKS / ISSUES': ['Open risks', 'Live issues'],
-      'WEATHER': ['Site', 'Weather risk days', 'Weather delay days logged']
+      WEATHER: ['Site', 'Weather risk days', 'Weather delay days logged']
     }
   };
 
@@ -268,10 +344,11 @@ var MMGR = window.MMGR || {};
   // Pure client-side read of the state tree. Every section is defensive
   // (try/catch) so one missing field can never blank the whole dump.
   function buildContext(state) {
-    const s = state || ((ns.State && ns.State.getState) ? ns.State.getState() : {});
+    const s = state || (ns.State && ns.State.getState ? ns.State.getState() : {});
     const L = [];
-    const sec = (title) => L.push('## ' + title);
-    const line = (k, v) => L.push('- ' + k + ': ' + (v === undefined || v === null || v === '' ? '-' : v));
+    const sec = title => L.push('## ' + title);
+    const line = (k, v) =>
+      L.push('- ' + k + ': ' + (v === undefined || v === null || v === '' ? '-' : v));
     // NOTE: `f` is hoisted to function scope on purpose. In the pre-refactor
     // version it lived inside the PROJECT try-block, so the TIMELINE section
     // hit a ReferenceError on `(f && f.targetCompletion)` and silently
@@ -285,7 +362,10 @@ var MMGR = window.MMGR || {};
       line('Sponsor', f.sponsor);
       line('Objective', f.objective);
       line('Target completion', f.targetCompletion || f.end);
-      line('Budget envelope', f.budgetEnvelope ? '$' + Number(f.budgetEnvelope).toLocaleString() : null);
+      line(
+        'Budget envelope',
+        f.budgetEnvelope ? '$' + Number(f.budgetEnvelope).toLocaleString() : null
+      );
       line('Constraints', f.constraints);
       line('Assumptions', f.assumptions);
     } catch (e) {}
@@ -303,7 +383,13 @@ var MMGR = window.MMGR || {};
         }
       }
       const tasks = s.tasks || [];
-      line('Tasks', tasks.length + ' total · ' + tasks.filter(t => t.status === 'completed').length + ' complete');
+      line(
+        'Tasks',
+        tasks.length +
+          ' total · ' +
+          tasks.filter(t => t.status === 'completed').length +
+          ' complete'
+      );
     } catch (e) {}
 
     try {
@@ -313,7 +399,12 @@ var MMGR = window.MMGR || {};
         if (e) {
           line('SPI', e.spi !== undefined ? e.spi.toFixed(2) : null);
           line('CPI', e.cpi !== undefined ? e.cpi.toFixed(2) : null);
-          line('EV / PV / AC', [e.ev, e.pv, e.ac].map(v => v !== undefined && v !== null ? '$' + Number(v).toLocaleString() : null).join(' / '));
+          line(
+            'EV / PV / AC',
+            [e.ev, e.pv, e.ac]
+              .map(v => (v !== undefined && v !== null ? '$' + Number(v).toLocaleString() : null))
+              .join(' / ')
+          );
         } else {
           line('Metrics', 'insufficient schedule/budget data');
         }
@@ -325,45 +416,113 @@ var MMGR = window.MMGR || {};
       const tgt = (f && f.targetCompletion) || (f && f.end) || null;
       const dated = (s.tasks || []).filter(t => t.endDate);
       if (tgt && dated.length) {
-        const projected = new Date(Math.max.apply(null, dated.map(t => new Date(t.endDate).getTime())));
-        const over = Math.round((projected.getTime() - new Date(tgt).getTime()) / MMGR.Utils.MS_PER_DAY);
-        line('Target vs planned finish', tgt + ' → ' + projected.toISOString().slice(0, 10) + ' (' + (over > 0 ? '+' + over + 'd over' : over < 0 ? Math.abs(over) + 'd ahead' : 'on target') + ')');
+        const projected = new Date(
+          Math.max.apply(
+            null,
+            dated.map(t => new Date(t.endDate).getTime())
+          )
+        );
+        const over = Math.round(
+          (projected.getTime() - new Date(tgt).getTime()) / MMGR.Utils.MS_PER_DAY
+        );
+        line(
+          'Target vs planned finish',
+          tgt +
+            ' → ' +
+            projected.toISOString().slice(0, 10) +
+            ' (' +
+            (over > 0
+              ? '+' + over + 'd over'
+              : over < 0
+                ? Math.abs(over) + 'd ahead'
+                : 'on target') +
+            ')'
+        );
       } else {
         line('Timeline', 'no target completion date and/or no dated tasks yet');
       }
-      const overdue = dated.filter(t => t.status !== 'completed' && new Date(t.endDate) < new Date());
+      const overdue = dated.filter(
+        t => t.status !== 'completed' && new Date(t.endDate) < new Date()
+      );
       line('Overdue tasks', overdue.length);
     } catch (e) {}
 
     try {
       sec('CRITICAL PATH');
       const crit = (s.tasks || []).filter(t => t.totalFloat === 0 && t.status !== 'completed');
-      line('Tasks on zero float', crit.length ? crit.slice(0, 8).map(t => t.name).join('; ') : 'none identified (run Cascade Dates)');
+      line(
+        'Tasks on zero float',
+        crit.length
+          ? crit
+              .slice(0, 8)
+              .map(t => t.name)
+              .join('; ')
+          : 'none identified (run Cascade Dates)'
+      );
     } catch (e) {}
 
     try {
       sec('TOP RISKS / ISSUES');
       const risks = (s.risks || []).filter(r => !r.issueId);
-      const high = risks.filter(r => /high/i.test(r.probability || '') || /high/i.test(r.impact || ''));
-      line('Open risks', risks.length + (high.length ? ' (' + high.length + ' high) ' : '') + (high.length ? high.slice(0, 5).map(r => r.description).join('; ') : ''));
+      const high = risks.filter(
+        r => /high/i.test(r.probability || '') || /high/i.test(r.impact || '')
+      );
+      line(
+        'Open risks',
+        risks.length +
+          (high.length ? ' (' + high.length + ' high) ' : '') +
+          (high.length
+            ? high
+                .slice(0, 5)
+                .map(r => r.description)
+                .join('; ')
+            : '')
+      );
       const issues = (s.issues || []).filter(i => i.status !== 'resolved' && i.status !== 'closed');
-      line('Live issues', issues.length ? issues.slice(0, 5).map(i => i.description).join('; ') : 'none');
+      line(
+        'Live issues',
+        issues.length
+          ? issues
+              .slice(0, 5)
+              .map(i => i.description)
+              .join('; ')
+          : 'none'
+      );
     } catch (e) {}
 
     try {
       sec('WEATHER');
-      if (s.sitePlace) line('Site', s.sitePlace + ' (Open-Meteo' + (s.wxCache && s.wxCache.days && s.wxCache.days.length ? ', cached ' + s.wxCache.days.length + '-day forecast' : ', no forecast cached') + ')');
+      if (s.sitePlace)
+        line(
+          'Site',
+          s.sitePlace +
+            ' (Open-Meteo' +
+            (s.wxCache && s.wxCache.days && s.wxCache.days.length
+              ? ', cached ' + s.wxCache.days.length + '-day forecast'
+              : ', no forecast cached') +
+            ')'
+        );
       else line('Site', 'no location set , regional weather windows only');
       if (ns.Forecast && ns.Forecast.riskDays) {
         const rd = ns.Forecast.riskDays(s) || [];
-        line('Weather risk days', rd.length ? rd.slice(0, 5).map(d => d.date + ' (' + d.alerts.join(', ') + ')').join('; ') : 'none in forecast');
+        line(
+          'Weather risk days',
+          rd.length
+            ? rd
+                .slice(0, 5)
+                .map(d => d.date + ' (' + d.alerts.join(', ') + ')')
+                .join('; ')
+            : 'none in forecast'
+        );
       }
       line('Weather delay days logged', (s.weatherLog || []).length);
     } catch (e) {}
 
     let out = L.join('\n');
     if (out.length > CONTEXT_MAX_CHARS) {
-      out = out.slice(0, CONTEXT_MAX_CHARS) + '\n…[context truncated , project data exceeds the safe packet size]';
+      out =
+        out.slice(0, CONTEXT_MAX_CHARS) +
+        '\n…[context truncated , project data exceeds the safe packet size]';
     }
     return out;
   }
@@ -383,7 +542,10 @@ var MMGR = window.MMGR || {};
     let txt = (q && q.value) || '';
     const ctx = (c && c.value) || '';
     if (ctx) txt += (txt ? '\n\n==== PROJECT CONTEXT ====\n' : '==== PROJECT CONTEXT ====\n') + ctx;
-    if (!txt.trim()) { toast('Nothing to copy yet , pick a preset or type a question.', 'err'); return; }
+    if (!txt.trim()) {
+      toast('Nothing to copy yet , pick a preset or type a question.', 'err');
+      return;
+    }
     U.copyToClipboard(txt);
     toast('Prompt + context copied , paste into your AI tool.');
   }
@@ -394,7 +556,7 @@ var MMGR = window.MMGR || {};
 
   // Read the merged AI config (state.config.ai over Config.ai defaults).
   function getAiCfg() {
-    const cfg = (ns.Net && ns.Net.getConfig) ? ns.Net.getConfig() : { ai: {} };
+    const cfg = ns.Net && ns.Net.getConfig ? ns.Net.getConfig() : { ai: {} };
     return Object.assign({}, ns.Config && ns.Config.ai ? ns.Config.ai : {}, cfg.ai || {});
   }
 
@@ -403,23 +565,30 @@ var MMGR = window.MMGR || {};
   // MERGED-AI-CONTROL (audit 1.2): whenever a non-off tier is selected, it is
   // remembered as lastTier so the drawer master switch can restore it when
   // flipped back ON (default 'local' when never set).
-  // AI-CLOUD-CONNECT-UI (DIR-2): apiKey is NEVER written to project state , 
+  // AI-CLOUD-CONNECT-UI (DIR-2): apiKey is NEVER written to project state ,
   // the session vault (mmgr-ai-key.js) is its only home. Any patch carrying
   // apiKey is silently dropped here, so no caller (action map, tests, future
   // UI) can ever persist a secret into state or into an export.
   function setAiCfg(patch) {
     const safe = {};
-    Object.keys(patch || {}).forEach(function(k) {
+    Object.keys(patch || {}).forEach(function (k) {
       if (k !== 'apiKey') safe[k] = patch[k];
     });
-    ns.State.updateState(function(s) {
+    ns.State.updateState(function (s) {
       if (!s.config || typeof s.config !== 'object' || Array.isArray(s.config)) s.config = {};
       // Atomic: build new AI config object, then assign in one step.
-      var cur = (s.config.ai && typeof s.config.ai === 'object' && !Array.isArray(s.config.ai)) ? s.config.ai : {};
+      var cur =
+        s.config.ai && typeof s.config.ai === 'object' && !Array.isArray(s.config.ai)
+          ? s.config.ai
+          : {};
       var next = {};
       var k;
-      for (k in cur) { if (cur.hasOwnProperty(k)) next[k] = cur[k]; }
-      for (k in safe) { if (safe.hasOwnProperty(k)) next[k] = safe[k]; }
+      for (k in cur) {
+        if (cur.hasOwnProperty(k)) next[k] = cur[k];
+      }
+      for (k in safe) {
+        if (safe.hasOwnProperty(k)) next[k] = safe[k];
+      }
       if (safe.tier !== undefined && safe.tier !== 'off') next.lastTier = safe.tier;
       s.config.ai = next;
     });
@@ -434,7 +603,7 @@ var MMGR = window.MMGR || {};
   function tglDrawerTier(el) {
     const on = el.type === 'checkbox' ? el.checked : false;
     const cfg = getAiCfg();
-    const tier = on ? (cfg.lastTier || 'local') : 'off';
+    const tier = on ? cfg.lastTier || 'local' : 'off';
     setAiCfg({ tier: tier });
     // syncSettingsUI re-gates the fab (renderFlags) so visibility and tier
     // can never disagree , no separate renderFlags call needed here.
@@ -447,7 +616,10 @@ var MMGR = window.MMGR || {};
   // writes an apiKey from state.config.
   function syncSettingsUI() {
     const cfg = getAiCfg();
-    const set = (id, val) => { const el = U.$(id); if (el && el.value !== val) el.value = val; };
+    const set = (id, val) => {
+      const el = U.$(id);
+      if (el && el.value !== val) el.value = val;
+    };
     set('ai-tier', cfg.tier || 'off');
     const cloudRow = U.$('ai-cfg-cloud');
     if (cloudRow) cloudRow.classList.toggle('is-hide', (cfg.tier || 'off') !== 'cloud');
@@ -468,9 +640,8 @@ var MMGR = window.MMGR || {};
       // health pill (ai-api-pill) is independent , it checks server
       // reachability, not key connection, so they can legitimately
       // show different states (e.g. 'Backend · online' + 'Disconnected').
-      pillLbl.textContent = tier === 'local' ? 'Local · zero-key'
-        : tier === 'cloud' ? 'Cloud'
-        : 'Off · copy-first';
+      pillLbl.textContent =
+        tier === 'local' ? 'Local · zero-key' : tier === 'cloud' ? 'Cloud' : 'Off · copy-first';
     }
     // MERGED-AI-CONTROL: the fab visibility follows the tier (hidden only
     // when the engine is fully off) , re-gate here so the header select and
@@ -496,7 +667,9 @@ var MMGR = window.MMGR || {};
   function getConnectionState() {
     if (!BYO.isConnected()) return 'not_connected';
     const cfg = getAiCfg();
-    return (cfg.connectionStatus === 'connected' && cfg.lastTestedAt) ? 'connected' : 'saved_untested';
+    return cfg.connectionStatus === 'connected' && cfg.lastTestedAt
+      ? 'connected'
+      : 'saved_untested';
   }
 
   function setConnectionStatus(status) {
@@ -518,7 +691,9 @@ var MMGR = window.MMGR || {};
     if (mcpCb) {
       var pid = window.MMGR && MMGR.App && MMGR.App.projectId ? MMGR.App.projectId : '';
       var saved = false;
-      try { saved = localStorage.getItem('mmgr_mcp_toggle_' + pid) === '1'; } catch(e) {}
+      try {
+        saved = localStorage.getItem('mmgr_mcp_toggle_' + pid) === '1';
+      } catch (e) {}
       mcpCb.checked = saved;
     }
   }
@@ -556,11 +731,14 @@ var MMGR = window.MMGR || {};
     // disabled Send button carries a native tooltip explaining what to do
     // next , hosted on the WRAPPER because Chrome suppresses title tooltips
     // on disabled buttons. NOTE: plain '&', not the HTML entity.
-    const msg = (tier === 'cloud' && status === 'not_connected')
-      ? 'Connect your AI key to send (session-only) , open the key settings next to the provider.'
-      : (tier === 'cloud' && status === 'saved_untested')
-        ? 'Key saved , Connect & Test to verify before sending.'
-        : (off ? 'Engine is Off , choose Local or Cloud in the tier select.' : '');
+    const msg =
+      tier === 'cloud' && status === 'not_connected'
+        ? 'Connect your AI key to send (session-only) , open the key settings next to the provider.'
+        : tier === 'cloud' && status === 'saved_untested'
+          ? 'Key saved , Connect & Test to verify before sending.'
+          : off
+            ? 'Engine is Off , choose Local or Cloud in the tier select.'
+            : '';
     const wrap = U.$('ai-send-wrap');
     if (wrap) wrap.setAttribute('title', msg || 'Send');
   }
@@ -572,7 +750,7 @@ var MMGR = window.MMGR || {};
   // typo'd/revoked/wrong-provider key returns 401/403 and must NOT count as
   // connected. Returns { ok, status }.
   async function probeProvider(provider, key) {
-    const def = (ns.Net && ns.Net.PROVIDER_DEFAULTS) ? ns.Net.PROVIDER_DEFAULTS[provider] : null;
+    const def = ns.Net && ns.Net.PROVIDER_DEFAULTS ? ns.Net.PROVIDER_DEFAULTS[provider] : null;
     if (!def) return { ok: false, status: 0 };
     const isGemini = provider === 'google-gemini';
     const isAnthropic = provider === 'anthropic';
@@ -581,9 +759,11 @@ var MMGR = window.MMGR || {};
       : isAnthropic
         ? 'https://api.anthropic.com/v1/models'
         : 'https://api.openai.com/v1/models';
-    const headers = isGemini ? {} : isAnthropic
-      ? { 'x-api-key': key, 'anthropic-version': '2023-06-01' }
-      : { 'Authorization': 'Bearer ' + key };
+    const headers = isGemini
+      ? {}
+      : isAnthropic
+        ? { 'x-api-key': key, 'anthropic-version': '2023-06-01' }
+        : { Authorization: 'Bearer ' + key };
     try {
       const res = await ns.Net.get(url, { headers: headers, timeoutMs: 6000, maxRetries: 0 });
       return { ok: !!(res && res.ok), status: res ? res.status : 0 };
@@ -616,7 +796,12 @@ var MMGR = window.MMGR || {};
     if (probe.ok) {
       setConnectionStatus('connected');
       syncSettingsUI();
-      toast('Key connected and verified against ' + providerLabel(provider) + ' , this session only. Cleared when you close the tab.', 'ok');
+      toast(
+        'Key connected and verified against ' +
+          providerLabel(provider) +
+          ' , this session only. Cleared when you close the tab.',
+        'ok'
+      );
       return { ok: true, status: 'connected' };
     }
     if (probe.status === 401 || probe.status === 403) {
@@ -631,7 +816,10 @@ var MMGR = window.MMGR || {};
     // Network failure / timeout / other status: key stays saved but unverified.
     syncSettingsUI();
     // NOTE: toast uses textContent , plain '&', not the HTML entity.
-    toast('Key saved for this session, but the provider check could not confirm it , check the key and your connection, then Connect & Test again.', 'err');
+    toast(
+      'Key saved for this session, but the provider check could not confirm it , check the key and your connection, then Connect & Test again.',
+      'err'
+    );
     return { ok: false, error: 'probe failed', status: 'saved_untested' };
   }
 
@@ -652,7 +840,9 @@ var MMGR = window.MMGR || {};
   // locally , switch to Cloud tier").
   const TRACE = { fields: [] };
 
-  function _t(field) { TRACE.fields.push(field); }
+  function _t(field) {
+    TRACE.fields.push(field);
+  }
 
   function fmt$(n) {
     return '$' + Number(n || 0).toLocaleString();
@@ -664,7 +854,7 @@ var MMGR = window.MMGR || {};
     const lower = text.toLowerCase();
     const tasks = s.tasks || [];
     const done = tasks.filter(t => t.status === 'completed').length;
-    const pct = tasks.length ? Math.round(done / tasks.length * 100) : 0;
+    const pct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
     const out = [];
 
     if (/completion|percent|progress|how (much|many).*done|status/.test(lower)) {
@@ -673,40 +863,112 @@ var MMGR = window.MMGR || {};
     }
     if (/overdue|behind|late/.test(lower)) {
       const od = tasks.filter(t => U.isOverdue(t.endDate) && t.status !== 'completed');
-      _t('tasks[].endDate'); _t('tasks[].status');
-      out.push('Overdue: ' + od.length + (od.length ? ' , ' + od.slice(0, 5).map(t => t.name + ' (due ' + t.endDate + ')').join('; ') : '.'));
+      _t('tasks[].endDate');
+      _t('tasks[].status');
+      out.push(
+        'Overdue: ' +
+          od.length +
+          (od.length
+            ? ' , ' +
+              od
+                .slice(0, 5)
+                .map(t => t.name + ' (due ' + t.endDate + ')')
+                .join('; ')
+            : '.')
+      );
     }
     if (/budget|cost|spend/.test(lower)) {
       const planned = (s.budgetLines || []).reduce((n, l) => n + (+l.planned || 0), 0);
       const actual = (s.budgetLines || []).reduce((n, l) => n + (+l.actual || 0), 0);
-      _t('budgetLines[].planned'); _t('budgetLines[].actual'); _t('budgetEnvelope');
-      out.push('Budget: ' + fmt$(actual) + ' actual vs ' + fmt$(planned) + ' planned (envelope ' + fmt$(s.budgetEnvelope) + ').');
+      _t('budgetLines[].planned');
+      _t('budgetLines[].actual');
+      _t('budgetEnvelope');
+      out.push(
+        'Budget: ' +
+          fmt$(actual) +
+          ' actual vs ' +
+          fmt$(planned) +
+          ' planned (envelope ' +
+          fmt$(s.budgetEnvelope) +
+          ').'
+      );
     }
     if (/risk/.test(lower)) {
-      const high = (s.risks || []).filter(r => !r.issueId && (/high/i.test(r.probability || '') || /high/i.test(r.impact || '')));
-      _t('risks[].probability'); _t('risks[].impact'); _t('risks[].description');
-      out.push('Open risks: ' + (s.risks || []).length + ' (' + high.length + ' high).' + (high.length ? ' ' + high.slice(0, 5).map(r => r.description).join('; ') : ''));
+      const high = (s.risks || []).filter(
+        r => !r.issueId && (/high/i.test(r.probability || '') || /high/i.test(r.impact || ''))
+      );
+      _t('risks[].probability');
+      _t('risks[].impact');
+      _t('risks[].description');
+      out.push(
+        'Open risks: ' +
+          (s.risks || []).length +
+          ' (' +
+          high.length +
+          ' high).' +
+          (high.length
+            ? ' ' +
+              high
+                .slice(0, 5)
+                .map(r => r.description)
+                .join('; ')
+            : '')
+      );
     }
     if (/issue/.test(lower)) {
       const live = (s.issues || []).filter(i => i.status !== 'resolved' && i.status !== 'closed');
-      _t('issues[].status'); _t('issues[].description');
-      out.push('Live issues: ' + live.length + (live.length ? ' , ' + live.slice(0, 5).map(i => i.description).join('; ') : '.'));
+      _t('issues[].status');
+      _t('issues[].description');
+      out.push(
+        'Live issues: ' +
+          live.length +
+          (live.length
+            ? ' , ' +
+              live
+                .slice(0, 5)
+                .map(i => i.description)
+                .join('; ')
+            : '.')
+      );
     }
     if (/critical|float|path/.test(lower)) {
       const crit = tasks.filter(t => t.totalFloat === 0 && t.status !== 'completed');
-      _t('tasks[].totalFloat'); _t('tasks[].status');
-      out.push('Critical path: ' + (crit.length ? crit.map(t => t.name).join(' → ') : 'none identified (run Cascade Dates).'));
+      _t('tasks[].totalFloat');
+      _t('tasks[].status');
+      out.push(
+        'Critical path: ' +
+          (crit.length ? crit.map(t => t.name).join(' → ') : 'none identified (run Cascade Dates).')
+      );
     }
     if (/evm|earned|spi|cpi|variance|burn rate/.test(lower) && ns.Evm && ns.Evm.compute) {
       const e = ns.Evm.compute(s);
       _t('EVM.compute(s)');
-      out.push(e ? 'EVM: SPI ' + e.spi.toFixed(2) + ', CPI ' + e.cpi.toFixed(2) + ', EV ' + fmt$(e.ev) + ' / PV ' + fmt$(e.pv) + ' / AC ' + fmt$(e.ac) + '.' : 'EVM: insufficient schedule/budget data.');
+      out.push(
+        e
+          ? 'EVM: SPI ' +
+              e.spi.toFixed(2) +
+              ', CPI ' +
+              e.cpi.toFixed(2) +
+              ', EV ' +
+              fmt$(e.ev) +
+              ' / PV ' +
+              fmt$(e.pv) +
+              ' / AC ' +
+              fmt$(e.ac) +
+              '.'
+          : 'EVM: insufficient schedule/budget data.'
+      );
     }
     // OWNER 2026-09-09 (P6.1): forecast questions must ALWAYS answer on the
     // local tier ("what is the project forecast" was refused - nothing matched).
     // Reuses the grounded forecast builder (projected finish vs target + CPI
     // trend + weather delays); its trace markers are preserved.
-    if (/forecast|projected? finish|finish date|completion date|\beta\b|when (will|is|do(es)?) (we|this|the project).*(done|finish|complete)/.test(lower) && LOCAL_BUILDERS.forecast) {
+    if (
+      /forecast|projected? finish|finish date|completion date|\beta\b|when (will|is|do(es)?) (we|this|the project).*(done|finish|complete)/.test(
+        lower
+      ) &&
+      LOCAL_BUILDERS.forecast
+    ) {
       const priorTrace = TRACE.fields.slice();
       const f = LOCAL_BUILDERS.forecast(s);
       TRACE.fields = priorTrace.concat(TRACE.fields);
@@ -714,8 +976,21 @@ var MMGR = window.MMGR || {};
     }
     if (/weather|delay/.test(lower) && ns.Forecast && ns.Forecast.riskDays) {
       const rd = ns.Forecast.riskDays(s) || [];
-      _t('weatherLog'); _t('wxCache');
-      out.push('Weather: ' + (s.weatherLog || []).length + ' delay day(s) logged' + (rd.length ? '; risk days: ' + rd.slice(0, 3).map(d => d.date).join(', ') : '') + '.');
+      _t('weatherLog');
+      _t('wxCache');
+      out.push(
+        'Weather: ' +
+          (s.weatherLog || []).length +
+          ' delay day(s) logged' +
+          (rd.length
+            ? '; risk days: ' +
+              rd
+                .slice(0, 3)
+                .map(d => d.date)
+                .join(', ')
+            : '') +
+          '.'
+      );
     }
 
     // OWNER 2026-09-16 (free-text answers + topic gate): questions the local
@@ -727,7 +1002,13 @@ var MMGR = window.MMGR || {};
     // centrally in submit(); the check here only guards direct runLocal
     // callers. Off-topic NEVER reaches the relay-assist block below.
     if (isOffTopicQuestion(lower)) {
-      return { ok: true, tier: 'local', model: 'local-state-engine', text: OFF_TOPIC_REPLY, trace: ['topic gate: non-project question refused locally'] };
+      return {
+        ok: true,
+        tier: 'local',
+        model: 'local-state-engine',
+        text: OFF_TOPIC_REPLY,
+        trace: ['topic gate: non-project question refused locally']
+      };
     }
     if (!out.length) {
       // Relay-assisted free-text: same construction as runCloud (context is
@@ -742,7 +1023,12 @@ var MMGR = window.MMGR || {};
       // NOTE: localLookup's parameter is `q` (not `prompt` - that name would
       // resolve to window.prompt here and stringify the function into the
       // message body).
-      const userContent = (q || '') + (ctx ? '\n\n==== PROJECT CONTEXT (grounding only) ====\n' + String(ctx).split(key).join('[key removed]') : '');
+      const userContent =
+        (q || '') +
+        (ctx
+          ? '\n\n==== PROJECT CONTEXT (grounding only) ====\n' +
+            String(ctx).split(key).join('[key removed]')
+          : '');
       const messages = [
         { role: 'system', content: CLOUD_SYSTEM_PROMPT },
         { role: 'user', content: userContent }
@@ -750,36 +1036,50 @@ var MMGR = window.MMGR || {};
       try {
         const r = await callProviderWithFallback(provider, key, messages, ctx || '');
         _t('relay: project question answered by ' + (r.model || 'cloud model'));
-        if (r.fellBackFrom) out.push('Fell back to ' + r.model + ' - ' + r.fellBackFrom + ' hit its rate limit.');
+        if (r.fellBackFrom)
+          out.push('Fell back to ' + r.model + ' - ' + r.fellBackFrom + ' hit its rate limit.');
         out.push(String(r.text));
       } catch (e) {
         if (e && (e.status === 429 || e.status === 503)) {
-          return { ok: false, error: 'The free built-in AI is at capacity right now - try again in a few minutes, or connect your own key in Settings \u25B8 AI Engine for unlimited questions.', tier: 'local' };
+          return {
+            ok: false,
+            error:
+              'The free built-in AI is at capacity right now - try again in a few minutes, or connect your own key in Settings \u25B8 AI Engine for unlimited questions.',
+            tier: 'local'
+          };
         }
-        if (ns.Errors && ns.Errors.log) ns.Errors.log('local relay assist failed: ' + (e && e.message), 'localLookup');
+        if (ns.Errors && ns.Errors.log)
+          ns.Errors.log('local relay assist failed: ' + (e && e.message), 'localLookup');
       }
     }
     if (!out.length) {
       return {
         ok: false,
-        error: 'This question needs reasoning beyond local lookup. Run it on the Cloud tier (Settings ▸ AI Engine), or copy the prompt + context into your AI tool.',
+        error:
+          'This question needs reasoning beyond local lookup. Run it on the Cloud tier (Settings ▸ AI Engine), or copy the prompt + context into your AI tool.',
         tier: 'local'
       };
     }
-    return { ok: true, tier: 'local', model: 'local-state-engine', text: out.join('\n'), trace: TRACE.fields.slice() };
+    return {
+      ok: true,
+      tier: 'local',
+      model: 'local-state-engine',
+      text: out.join('\n'),
+      trace: TRACE.fields.slice()
+    };
   }
 
   // Per-preset structured builders for the local tier. Each returns
   // { text, trace } where trace lists the state fields consumed.
   const LOCAL_BUILDERS = {
-    digest: function(s) {
+    digest: function (s) {
       TRACE.fields = [];
       if (!ns.Digest) return { text: 'Digest engine not loaded.', trace: [] };
       const d = ns.Digest.computeDigest(s);
       _t('Digest.computeDigest(s) , digestSnapshot/baseline diff');
       return { text: ns.Digest.buildDigestText(d), trace: TRACE.fields.slice() };
     },
-    health: function(s) {
+    health: function (s) {
       TRACE.fields = [];
       let text = 'HEALTH SUMMARY\n';
       if (ns.Health && ns.Health.get) {
@@ -794,142 +1094,295 @@ var MMGR = window.MMGR || {};
       const bl = tasks.filter(t => t.status === 'blocked').length;
       const od = tasks.filter(t => U.isOverdue(t.endDate) && t.status !== 'completed').length;
       const ip = tasks.filter(t => t.status === 'inprogress').length;
-      _t('tasks[].status'); _t('tasks[].endDate');
+      _t('tasks[].status');
+      _t('tasks[].endDate');
       text += 'In progress: ' + ip + ' | Blocked: ' + bl + ' | Overdue: ' + od + '\n';
       const live = (s.issues || []).filter(i => i.status !== 'resolved' && i.status !== 'closed');
       _t('issues[].status');
       text += 'Live issues: ' + live.length + '\n';
       const planned = (s.budgetLines || []).reduce((n, l) => n + (+l.planned || 0), 0);
       const actual = (s.budgetLines || []).reduce((n, l) => n + (+l.actual || 0), 0);
-      _t('budgetLines[].planned'); _t('budgetLines[].actual');
+      _t('budgetLines[].planned');
+      _t('budgetLines[].actual');
       text += 'Budget: ' + fmt$(actual) + ' spent of ' + fmt$(planned) + ' planned.';
       return { text: text, trace: TRACE.fields.slice() };
     },
-    forecast: function(s) {
+    forecast: function (s) {
       TRACE.fields = [];
       let text = 'FORECAST\n';
       let proj = null;
       const dated = (s.tasks || []).filter(t => t.endDate);
       const tgt = (s.charter && (s.charter.targetCompletion || s.charter.end)) || null;
       if (dated.length) {
-        proj = new Date(Math.max.apply(null, dated.map(t => new Date(t.endDate).getTime())));
+        proj = new Date(
+          Math.max.apply(
+            null,
+            dated.map(t => new Date(t.endDate).getTime())
+          )
+        );
         _t('tasks[].endDate');
       }
       if (tgt && proj) {
         const over = Math.round((proj - new Date(tgt)) / MMGR.Utils.MS_PER_DAY);
         _t('charter.targetCompletion');
-        text += 'Projected finish: ' + proj.toISOString().slice(0, 10) + ' vs target ' + tgt + ' (' + (over > 0 ? '+' + over + 'd over' : over < 0 ? Math.abs(over) + 'd ahead' : 'on target') + ').\n';
+        text +=
+          'Projected finish: ' +
+          proj.toISOString().slice(0, 10) +
+          ' vs target ' +
+          tgt +
+          ' (' +
+          (over > 0 ? '+' + over + 'd over' : over < 0 ? Math.abs(over) + 'd ahead' : 'on target') +
+          ').\n';
       } else {
         text += 'Projected finish: cannot compute , set a target completion and dated tasks.\n';
       }
       if (ns.Evm && ns.Evm.compute) {
         const e = ns.Evm.compute(s);
         _t('EVM.compute(s)');
-        if (e && e.cpi) text += 'Burn rate (CPI): ' + e.cpi.toFixed(2) + ' , EAC trend ' + (e.cpi < 1 ? 'over budget' : 'at/below budget') + '.\n';
+        if (e && e.cpi)
+          text +=
+            'Burn rate (CPI): ' +
+            e.cpi.toFixed(2) +
+            ' , EAC trend ' +
+            (e.cpi < 1 ? 'over budget' : 'at/below budget') +
+            '.\n';
       }
       const wx = (s.weatherLog || []).length;
       _t('weatherLog');
       text += 'Weather delay days logged: ' + wx + '.';
       return { text: text, trace: TRACE.fields.slice() };
     },
-    report: function(s) {
+    report: function (s) {
       TRACE.fields = [];
       const tasks = s.tasks || [];
       const done = tasks.filter(t => t.status === 'completed').length;
-      const pct = tasks.length ? Math.round(done / tasks.length * 100) : 0;
+      const pct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
       const od = tasks.filter(t => U.isOverdue(t.endDate) && t.status !== 'completed');
       const bl = tasks.filter(t => t.status === 'blocked');
       const planned = (s.budgetLines || []).reduce((n, l) => n + (+l.planned || 0), 0);
       const actual = (s.budgetLines || []).reduce((n, l) => n + (+l.actual || 0), 0);
-      const high = (s.risks || []).filter(r => !r.issueId && (/high/i.test(r.probability || '') || /high/i.test(r.impact || '')));
+      const high = (s.risks || []).filter(
+        r => !r.issueId && (/high/i.test(r.probability || '') || /high/i.test(r.impact || ''))
+      );
       const live = (s.issues || []).filter(i => i.status !== 'resolved' && i.status !== 'closed');
-      _t('charter.name'); _t('tasks[].status'); _t('tasks[].endDate'); _t('budgetLines[].planned');
-      _t('budgetLines[].actual'); _t('risks[].probability'); _t('risks[].impact'); _t('issues[].status');
+      _t('charter.name');
+      _t('tasks[].status');
+      _t('tasks[].endDate');
+      _t('budgetLines[].planned');
+      _t('budgetLines[].actual');
+      _t('risks[].probability');
+      _t('risks[].impact');
+      _t('issues[].status');
       const L = [];
-      L.push('PROJECT STATUS REPORT , ' + ((s.charter && s.charter.name) || s.projectName || 'Project'));
-      L.push('Completion: ' + pct + '% (' + done + '/' + tasks.length + ' tasks). Overdue: ' + od.length + '. Blocked: ' + bl.length + '.');
-      L.push('Budget: ' + fmt$(actual) + ' actual / ' + fmt$(planned) + ' planned (envelope ' + fmt$(s.budgetEnvelope) + ').');
-      L.push('Risks: ' + (s.risks || []).length + ' open (' + high.length + ' high). Live issues: ' + live.length + '.');
-      if (od.length) L.push('Needs attention: ' + od.slice(0, 5).map(t => t.name + ' (due ' + t.endDate + ')').join('; '));
-      if (bl.length) L.push('Blocked: ' + bl.slice(0, 5).map(t => t.name).join('; '));
+      L.push(
+        'PROJECT STATUS REPORT , ' + ((s.charter && s.charter.name) || s.projectName || 'Project')
+      );
+      L.push(
+        'Completion: ' +
+          pct +
+          '% (' +
+          done +
+          '/' +
+          tasks.length +
+          ' tasks). Overdue: ' +
+          od.length +
+          '. Blocked: ' +
+          bl.length +
+          '.'
+      );
+      L.push(
+        'Budget: ' +
+          fmt$(actual) +
+          ' actual / ' +
+          fmt$(planned) +
+          ' planned (envelope ' +
+          fmt$(s.budgetEnvelope) +
+          ').'
+      );
+      L.push(
+        'Risks: ' +
+          (s.risks || []).length +
+          ' open (' +
+          high.length +
+          ' high). Live issues: ' +
+          live.length +
+          '.'
+      );
+      if (od.length)
+        L.push(
+          'Needs attention: ' +
+            od
+              .slice(0, 5)
+              .map(t => t.name + ' (due ' + t.endDate + ')')
+              .join('; ')
+        );
+      if (bl.length)
+        L.push(
+          'Blocked: ' +
+            bl
+              .slice(0, 5)
+              .map(t => t.name)
+              .join('; ')
+        );
       return { text: L.join('\n'), trace: TRACE.fields.slice() };
     },
-    risk: function(s) {
+    risk: function (s) {
       TRACE.fields = [];
       const risks = (s.risks || []).filter(r => !r.issueId);
-      _t('risks[].description'); _t('risks[].probability'); _t('risks[].impact');
+      _t('risks[].description');
+      _t('risks[].probability');
+      _t('risks[].impact');
       const L = ['RISK REGISTER , ranked by probability × impact'];
-      const score = r => ({ Low: 1, low: 1, Medium: 2, medium: 2, High: 3, high: 3 }[(r.probability || '')] || 1) * ({ Low: 1, low: 1, Medium: 2, medium: 2, High: 3, high: 3 }[(r.impact || '')] || 1);
+      const score = r =>
+        (({ Low: 1, low: 1, Medium: 2, medium: 2, High: 3, high: 3 })[r.probability || ''] || 1) *
+        ({ Low: 1, low: 1, Medium: 2, medium: 2, High: 3, high: 3 }[r.impact || ''] || 1);
       const sorted = risks.slice().sort((a, b) => score(b) - score(a));
-      sorted.forEach(r => L.push('- [' + (score(r) >= 6 ? 'HIGH' : score(r) >= 3 ? 'MED' : 'LOW') + '] ' + (r.description || '(untitled)') + ' | P:' + (r.probability || '-') + ' I:' + (r.impact || '-') + (r.mitigation ? ' | Mitigation: ' + r.mitigation : '')));
+      sorted.forEach(r =>
+        L.push(
+          '- [' +
+            (score(r) >= 6 ? 'HIGH' : score(r) >= 3 ? 'MED' : 'LOW') +
+            '] ' +
+            (r.description || '(untitled)') +
+            ' | P:' +
+            (r.probability || '-') +
+            ' I:' +
+            (r.impact || '-') +
+            (r.mitigation ? ' | Mitigation: ' + r.mitigation : '')
+        )
+      );
       if (!sorted.length) L.push('(no open risks)');
       return { text: L.join('\n'), trace: TRACE.fields.slice() };
     },
-    audit: function(s) {
+    audit: function (s) {
       TRACE.fields = [];
       const tasks = s.tasks || [];
       const issues = [];
       tasks.forEach(t => {
-        if (t.startDate && t.endDate && t.startDate > t.endDate) issues.push('Task ' + t.id + ' (' + t.name + '): end before start.');
+        if (t.startDate && t.endDate && t.startDate > t.endDate)
+          issues.push('Task ' + t.id + ' (' + t.name + '): end before start.');
         if (t.parentId) {
           const p = tasks.find(x => x.id === t.parentId);
-          if (p && p.startDate && t.startDate && p.startDate > t.startDate) issues.push('Task ' + t.id + ' starts before parent ' + p.id + '.');
-          if (p && p.endDate && t.endDate && t.endDate > p.endDate) issues.push('Task ' + t.id + ' ends after parent ' + p.id + '.');
+          if (p && p.startDate && t.startDate && p.startDate > t.startDate)
+            issues.push('Task ' + t.id + ' starts before parent ' + p.id + '.');
+          if (p && p.endDate && t.endDate && t.endDate > p.endDate)
+            issues.push('Task ' + t.id + ' ends after parent ' + p.id + '.');
         }
         (t.predecessors || []).forEach(pid => {
           const pred = tasks.find(x => x.id === pid);
-          if (pred && pred.endDate && t.startDate && pred.endDate > t.startDate) issues.push('Task ' + t.id + ' starts before predecessor ' + pid + ' finishes.');
+          if (pred && pred.endDate && t.startDate && pred.endDate > t.startDate)
+            issues.push('Task ' + t.id + ' starts before predecessor ' + pid + ' finishes.');
         });
       });
-      _t('tasks[].startDate'); _t('tasks[].endDate'); _t('tasks[].predecessors'); _t('tasks[].parentId');
-      return { text: 'SCHEDULE LOGIC AUDIT\n' + (issues.length ? issues.map(i => '- ' + i).join('\n') : '(no date-logic issues found)'), trace: TRACE.fields.slice() };
-    },
-    change: function(s) {
-      TRACE.fields = [];
-      const pending = (s.changes || []).filter(c => c.status === 'submitted' || c.status === 'review');
-      _t('changes[].status'); _t('changes[].title'); _t('changes[].schedImpact'); _t('changes[].costImpact');
-      const L = ['CHANGE IMPACT , pending requests'];
-      pending.forEach(c => L.push('- ' + (c.title || '(untitled)') + ' | Sched: ' + (c.schedImpact || '-') + ' | Cost: ' + (c.costImpact || '-') + ' | ' + c.status));
-      if (!pending.length) L.push('(no pending change requests)');
-      return { text: L.join('\n'), trace: TRACE.fields.slice() };
-    },
-    client: function(s) {
-      TRACE.fields = [];
-      const tasks = s.tasks || [];
-      const done = tasks.filter(t => t.status === 'completed').length;
-      const pct = tasks.length ? Math.round(done / tasks.length * 100) : 0;
-      _t('tasks[].status'); _t('charter.name');
+      _t('tasks[].startDate');
+      _t('tasks[].endDate');
+      _t('tasks[].predecessors');
+      _t('tasks[].parentId');
       return {
-        text: 'CLIENT UPDATE , ' + ((s.charter && s.charter.name) || s.projectName || 'Project') + '\nCompletion: ' + pct + '% (' + done + ' of ' + tasks.length + ' tasks).\nOverall: ' + (pct >= 70 ? 'On track.' : pct >= 40 ? 'Progressing , minor concerns.' : 'Early stage , attention needed.'),
+        text:
+          'SCHEDULE LOGIC AUDIT\n' +
+          (issues.length ? issues.map(i => '- ' + i).join('\n') : '(no date-logic issues found)'),
         trace: TRACE.fields.slice()
       };
     },
-    claim: function(s) {
+    change: function (s) {
+      TRACE.fields = [];
+      const pending = (s.changes || []).filter(
+        c => c.status === 'submitted' || c.status === 'review'
+      );
+      _t('changes[].status');
+      _t('changes[].title');
+      _t('changes[].schedImpact');
+      _t('changes[].costImpact');
+      const L = ['CHANGE IMPACT , pending requests'];
+      pending.forEach(c =>
+        L.push(
+          '- ' +
+            (c.title || '(untitled)') +
+            ' | Sched: ' +
+            (c.schedImpact || '-') +
+            ' | Cost: ' +
+            (c.costImpact || '-') +
+            ' | ' +
+            c.status
+        )
+      );
+      if (!pending.length) L.push('(no pending change requests)');
+      return { text: L.join('\n'), trace: TRACE.fields.slice() };
+    },
+    client: function (s) {
+      TRACE.fields = [];
+      const tasks = s.tasks || [];
+      const done = tasks.filter(t => t.status === 'completed').length;
+      const pct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
+      _t('tasks[].status');
+      _t('charter.name');
+      return {
+        text:
+          'CLIENT UPDATE , ' +
+          ((s.charter && s.charter.name) || s.projectName || 'Project') +
+          '\nCompletion: ' +
+          pct +
+          '% (' +
+          done +
+          ' of ' +
+          tasks.length +
+          ' tasks).\nOverall: ' +
+          (pct >= 70
+            ? 'On track.'
+            : pct >= 40
+              ? 'Progressing , minor concerns.'
+              : 'Early stage , attention needed.'),
+        trace: TRACE.fields.slice()
+      };
+    },
+    claim: function (s) {
       TRACE.fields = [];
       const L = ['CLAIM PACK EVIDENCE'];
       if (ns.Claim && ns.Claim.computeSlips) {
         const slips = ns.Claim.computeSlips(s) || [];
         _t('Claim.computeSlips(s)');
-        if (slips.length) slips.forEach(x => L.push('- Slip: ' + (x.taskName || x.taskId) + ' ' + x.days + 'd (cause: ' + (x.cause || 'unknown') + ')'));
+        if (slips.length)
+          slips.forEach(x =>
+            L.push(
+              '- Slip: ' +
+                (x.taskName || x.taskId) +
+                ' ' +
+                x.days +
+                'd (cause: ' +
+                (x.cause || 'unknown') +
+                ')'
+            )
+          );
         else L.push('- No schedule slips detected.');
       }
       if (ns.Claim && ns.Claim.ldRollup) {
         const ld = ns.Claim.ldRollup(s);
         _t('Claim.ldRollup(s)');
-        if (ld) L.push('- LD exposure: ' + fmt$(ld.incurredLd || 0) + ' incurred / ' + fmt$(ld.avoidedLd || 0) + ' defensible.');
+        if (ld)
+          L.push(
+            '- LD exposure: ' +
+              fmt$(ld.incurredLd || 0) +
+              ' incurred / ' +
+              fmt$(ld.avoidedLd || 0) +
+              ' defensible.'
+          );
       }
       L.push('- Weather delay days logged: ' + (s.weatherLog || []).length + '.');
       _t('weatherLog');
       return { text: L.join('\n'), trace: TRACE.fields.slice() };
     },
-    daily: function(s) {
+    daily: function (s) {
       TRACE.fields = [];
       const tasks = s.tasks || [];
       const bl = tasks.filter(t => t.status === 'blocked');
       const crit = tasks.filter(t => t.totalFloat === 0 && t.status !== 'completed');
-      _t('tasks[].status'); _t('tasks[].totalFloat');
+      _t('tasks[].status');
+      _t('tasks[].totalFloat');
       const L = ['DAILY FIELD DIGEST'];
-      L.push('Blocked: ' + (bl.length ? bl.map(t => t.name + (t.notes ? ' , ' + t.notes : '')).join('; ') : 'none'));
+      L.push(
+        'Blocked: ' +
+          (bl.length ? bl.map(t => t.name + (t.notes ? ' , ' + t.notes : '')).join('; ') : 'none')
+      );
       L.push('Critical: ' + (crit.length ? crit.map(t => t.name).join(', ') : 'none'));
       return { text: L.join('\n'), trace: TRACE.fields.slice() };
     },
@@ -937,14 +1390,25 @@ var MMGR = window.MMGR || {};
     // App.emailTpl('status') template VERBATIM , zero-fabrication by
     // construction, the guaranteed no-model fallback the backlog requires.
     // The Cloud tier drafts a richer, AI-polished version on top.
-    email: function(s) {
+    email: function (s) {
       TRACE.fields = [];
-      _t('charter.name'); _t('charter.sponsor'); _t('tasks[].status'); _t('tasks[].endDate');
-      _t('issues[].status'); _t('risks[].probability'); _t('risks[].impact');
-      _t('budgetLines[].planned'); _t('budgetLines[].actual');
-      const base = (ns.App && ns.App.emailTplText) ? ns.App.emailTplText('status') : 'Static email template unavailable.';
+      _t('charter.name');
+      _t('charter.sponsor');
+      _t('tasks[].status');
+      _t('tasks[].endDate');
+      _t('issues[].status');
+      _t('risks[].probability');
+      _t('risks[].impact');
+      _t('budgetLines[].planned');
+      _t('budgetLines[].actual');
+      const base =
+        ns.App && ns.App.emailTplText
+          ? ns.App.emailTplText('status')
+          : 'Static email template unavailable.';
       return {
-        text: base + '\n\n(Static template from My MaNaGeR , run the Cloud tier for an AI-polished stakeholder email.)',
+        text:
+          base +
+          '\n\n(Static template from My MaNaGeR , run the Cloud tier for an AI-polished stakeholder email.)',
         trace: TRACE.fields.slice()
       };
     },
@@ -952,35 +1416,88 @@ var MMGR = window.MMGR || {};
     // Deterministic element-by-element audit of the assembled claim-pack data
     // , no model call, zero fabrication. Each element is PRESENT / MISSING /
     // N/A judged only from real state fields.
-    complianceCheck: function(s) {
+    complianceCheck: function (s) {
       TRACE.fields = [];
-      _t('Claim.computeSlips(s)'); _t('Claim.ldRollup(s)'); _t('weatherLog');
-      _t('changes[].status'); _t('logEntries');
+      _t('Claim.computeSlips(s)');
+      _t('Claim.ldRollup(s)');
+      _t('weatherLog');
+      _t('changes[].status');
+      _t('logEntries');
       const L = ['CLAIM PACKAGE COMPLIANCE CHECK (local engine)'];
-      const slips = (ns.Claim && ns.Claim.computeSlips) ? (ns.Claim.computeSlips(s) || []) : [];
-      const ld = (ns.Claim && ns.Claim.ldRollup) ? ns.Claim.ldRollup(s) : null;
+      const slips = ns.Claim && ns.Claim.computeSlips ? ns.Claim.computeSlips(s) || [] : [];
+      const ld = ns.Claim && ns.Claim.ldRollup ? ns.Claim.ldRollup(s) : null;
       const weatherLog = (s.weatherLog || []).length;
-      const pendingChg = (s.changes || []).filter(c => c.status === 'submitted' || c.status === 'review').length;
+      const pendingChg = (s.changes || []).filter(
+        c => c.status === 'submitted' || c.status === 'review'
+      ).length;
       const decLog = (s.logEntries || []).length;
       // 1. Delay narrative , slips with a cause tag are the narrative core.
       const narrative = slips.filter(x => x.cause && x.cause !== 'unknown').length;
-      L.push(narrative ? '1. DELAY NARRATIVE , PRESENT (' + narrative + ' cause-tagged slip' + (narrative === 1 ? '' : 's') + ')'
-        : '1. DELAY NARRATIVE , MISSING (no cause-tagged schedule slips captured; record slip causes in the Claim Pack tab)');
+      L.push(
+        narrative
+          ? '1. DELAY NARRATIVE , PRESENT (' +
+              narrative +
+              ' cause-tagged slip' +
+              (narrative === 1 ? '' : 's') +
+              ')'
+          : '1. DELAY NARRATIVE , MISSING (no cause-tagged schedule slips captured; record slip causes in the Claim Pack tab)'
+      );
       // 2. Supporting evidence references , weather log / changes / decisions.
       const evidence = (weatherLog > 0 ? 1 : 0) + (pendingChg > 0 ? 1 : 0) + (decLog > 0 ? 1 : 0);
-      L.push(evidence >= 2 ? '2. SUPPORTING EVIDENCE , PRESENT (weather log ' + weatherLog + ', pending changes ' + pendingChg + ', decisions ' + decLog + ')'
-        : '2. SUPPORTING EVIDENCE , ' + (evidence === 0 ? 'MISSING' : 'THIN') + ' (only ' + evidence + ' of 3 evidence types present: weather log ' + weatherLog + ', changes ' + pendingChg + ', decisions ' + decLog + ' , add the missing ones)');
+      L.push(
+        evidence >= 2
+          ? '2. SUPPORTING EVIDENCE , PRESENT (weather log ' +
+              weatherLog +
+              ', pending changes ' +
+              pendingChg +
+              ', decisions ' +
+              decLog +
+              ')'
+          : '2. SUPPORTING EVIDENCE , ' +
+              (evidence === 0 ? 'MISSING' : 'THIN') +
+              ' (only ' +
+              evidence +
+              ' of 3 evidence types present: weather log ' +
+              weatherLog +
+              ', changes ' +
+              pendingChg +
+              ', decisions ' +
+              decLog +
+              ' , add the missing ones)'
+      );
       // 3. Cost impact breakdown , LD rollup with both buckets.
-      L.push(ld && (ld.incurredLd > 0 || ld.avoidedLd > 0)
-        ? '3. COST IMPACT , PRESENT (LD ' + fmt$(ld.incurredLd || 0) + ' exposure / ' + fmt$(ld.avoidedLd || 0) + ' defensible)'
-        : '3. COST IMPACT , MISSING (no LD exposure computed; set an LD rate in the Budget panel and tag slip causes)');
+      L.push(
+        ld && (ld.incurredLd > 0 || ld.avoidedLd > 0)
+          ? '3. COST IMPACT , PRESENT (LD ' +
+              fmt$(ld.incurredLd || 0) +
+              ' exposure / ' +
+              fmt$(ld.avoidedLd || 0) +
+              ' defensible)'
+          : '3. COST IMPACT , MISSING (no LD exposure computed; set an LD rate in the Budget panel and tag slip causes)'
+      );
       // 4. Contractual basis , no state field exists; honest N/A.
-      L.push('4. CONTRACTUAL BASIS , N/A locally (no contract-terms field exists yet; the Cloud tier can assess a pasted contract basis)');
+      L.push(
+        '4. CONTRACTUAL BASIS , N/A locally (no contract-terms field exists yet; the Cloud tier can assess a pasted contract basis)'
+      );
       // 5. Requested relief , the claim narrative draft is the ask.
-      L.push('5. REQUESTED RELIEF , see the Claim Pack preset: draft the explicit ask (EoT / LD waiver / amount) once 1-3 are present');
-      const present = (narrative ? 1 : 0) + (evidence >= 2 ? 1 : 0) + (ld && (ld.incurredLd > 0 || ld.avoidedLd > 0) ? 1 : 0);
+      L.push(
+        '5. REQUESTED RELIEF , see the Claim Pack preset: draft the explicit ask (EoT / LD waiver / amount) once 1-3 are present'
+      );
+      const present =
+        (narrative ? 1 : 0) +
+        (evidence >= 2 ? 1 : 0) +
+        (ld && (ld.incurredLd > 0 || ld.avoidedLd > 0) ? 1 : 0);
       L.push('');
-      L.push('VERDICT: ' + (present >= 3 ? 'ready to draft , run the Cloud tier for the full element-by-element review.' : (present === 2 ? 'nearly ready , close the one gap above, then run the Cloud tier.' : 'not submission-ready , ' + (3 - present) + ' of 3 core elements missing; fix the gaps above first.')));
+      L.push(
+        'VERDICT: ' +
+          (present >= 3
+            ? 'ready to draft , run the Cloud tier for the full element-by-element review.'
+            : present === 2
+              ? 'nearly ready , close the one gap above, then run the Cloud tier.'
+              : 'not submission-ready , ' +
+                (3 - present) +
+                ' of 3 core elements missing; fix the gaps above first.')
+      );
       return { text: L.join('\n'), trace: TRACE.fields.slice() };
     }
   };
@@ -989,10 +1506,18 @@ var MMGR = window.MMGR || {};
   // and chit-chat never reach a model on EITHER tier - one polite local line,
   // never a provider call. Applied once in submit() before tier dispatch.
   function isOffTopicQuestion(lower) {
-    return /^(hi|hii+|hey+|hello+|yo|sup|good (morning|afternoon|evening)|how (are|r) (you|u)|how('| i)?s it going|what'?s up|whats up|thanks|thank you|thx|tell me a joke|who are you|what are you|are you (human|real|an ai|a robot)|your name|goodbye|bye)\b/.test(lower)
-      || (lower.length <= 42 && /\b(how was your day|how are things|nice weather|good job|well done|lol|haha)\b/.test(lower));
+    return (
+      /^(hi|hii+|hey+|hello+|yo|sup|good (morning|afternoon|evening)|how (are|r) (you|u)|how('| i)?s it going|what'?s up|whats up|thanks|thank you|thx|tell me a joke|who are you|what are you|are you (human|real|an ai|a robot)|your name|goodbye|bye)\b/.test(
+        lower
+      ) ||
+      (lower.length <= 42 &&
+        /\b(how was your day|how are things|nice weather|good job|well done|lol|haha)\b/.test(
+          lower
+        ))
+    );
   }
-  const OFF_TOPIC_REPLY = "I'm the built-in project assistant - I only answer questions about THIS project. Ask about the forecast, budget, risks, tasks, meetings, or weather delays.";
+  const OFF_TOPIC_REPLY =
+    "I'm the built-in project assistant - I only answer questions about THIS project. Ask about the forecast, budget, risks, tasks, meetings, or weather delays.";
 
   // Local fallback: honest "can't do this locally" answer.
   function localUnavailable() {
@@ -1008,7 +1533,13 @@ var MMGR = window.MMGR || {};
     if (type && LOCAL_BUILDERS[type]) {
       const built = LOCAL_BUILDERS[type](s);
       // Builders return { text, trace } , normalize to the full result shape.
-      return { ok: true, tier: 'local', model: 'local-state-engine', text: built.text, trace: built.trace || [] };
+      return {
+        ok: true,
+        tier: 'local',
+        model: 'local-state-engine',
+        text: built.text,
+        trace: built.trace || []
+      };
     }
     if (type) return localUnavailable();
     return localLookup(prompt, s);
@@ -1023,9 +1554,13 @@ var MMGR = window.MMGR || {};
   function geminiPayload(messages) {
     let system = '';
     const contents = [];
-    (messages || []).forEach(function(m) {
+    (messages || []).forEach(function (m) {
       if (m.role === 'system') system += (system ? '\n' : '') + (m.content || '');
-      else contents.push({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content || '' }] });
+      else
+        contents.push({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content || '' }]
+        });
     });
     const p = { contents: contents };
     if (system) p.systemInstruction = { parts: [{ text: system }] };
@@ -1065,14 +1600,37 @@ var MMGR = window.MMGR || {};
   // Single DIRECT OpenAI attempt at ONE model. Key rides the Authorization
   // Bearer header. Throws errors with .status set (429/503 capacity, 401 auth).
   async function openaiDirectAttempt(key, model, messages) {
-    const def = (ns.Net && ns.Net.PROVIDER_DEFAULTS) ? ns.Net.PROVIDER_DEFAULTS.openai : {};
+    const def = ns.Net && ns.Net.PROVIDER_DEFAULTS ? ns.Net.PROVIDER_DEFAULTS.openai : {};
     if (!def || !def.endpoint) throw new Error('no AI endpoint configured');
-    const res = await ns.Net.post(def.endpoint, { model: model, messages: messages }, { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }, timeoutMs: 30000, maxRetries: 1 });
-    if (res.status === 429 || res.status === 503) { const e = new Error('OpenAI rate limited (HTTP ' + res.status + ')'); e.status = res.status; throw e; }
-    if (res.status === 401 || res.status === 403) { const e = new Error('provider rejected the key'); e.status = 401; throw e; }
+    const res = await ns.Net.post(
+      def.endpoint,
+      { model: model, messages: messages },
+      {
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
+        timeoutMs: 30000,
+        maxRetries: 1
+      }
+    );
+    if (res.status === 429 || res.status === 503) {
+      const e = new Error('OpenAI rate limited (HTTP ' + res.status + ')');
+      e.status = res.status;
+      throw e;
+    }
+    if (res.status === 401 || res.status === 403) {
+      const e = new Error('provider rejected the key');
+      e.status = 401;
+      throw e;
+    }
     if (!res.ok) throw new Error('AI endpoint HTTP ' + res.status);
-    const data = await res.json().catch(function() { return null; });
-    const text = (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content);
+    const data = await res.json().catch(function () {
+      return null;
+    });
+    const text =
+      data &&
+      data.choices &&
+      data.choices[0] &&
+      data.choices[0].message &&
+      data.choices[0].message.content;
     if (!text) throw new Error('empty AI response');
     return String(text);
   }
@@ -1083,9 +1641,13 @@ var MMGR = window.MMGR || {};
   function anthropicPayload(model, messages) {
     let system = '';
     const msgs = [];
-    (messages || []).forEach(function(m) {
+    (messages || []).forEach(function (m) {
       if (m.role === 'system') system += (system ? '\n' : '') + (m.content || '');
-      else msgs.push({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content || '' });
+      else
+        msgs.push({
+          role: m.role === 'assistant' ? 'assistant' : 'user',
+          content: m.content || ''
+        });
     });
     const p = { model: model, max_tokens: 4096, messages: msgs };
     if (system) p.system = system;
@@ -1096,14 +1658,39 @@ var MMGR = window.MMGR || {};
   // with x-api-key + anthropic-version headers (NOT Bearer), requires
   // max_tokens, and returns text in data.content[].text.
   async function anthropicDirectAttempt(key, model, messages) {
-    const def = (ns.Net && ns.Net.PROVIDER_DEFAULTS) ? ns.Net.PROVIDER_DEFAULTS.anthropic : {};
+    const def = ns.Net && ns.Net.PROVIDER_DEFAULTS ? ns.Net.PROVIDER_DEFAULTS.anthropic : {};
     if (!def || !def.endpoint) throw new Error('no AI endpoint configured');
-    const res = await ns.Net.post(def.endpoint, anthropicPayload(model, messages), { headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' }, timeoutMs: 30000, maxRetries: 1 });
-    if (res.status === 429 || res.status === 503) { const e = new Error('Anthropic rate limited (HTTP ' + res.status + ')'); e.status = res.status; throw e; }
-    if (res.status === 401 || res.status === 403) { const e = new Error('provider rejected the key'); e.status = 401; throw e; }
+    const res = await ns.Net.post(def.endpoint, anthropicPayload(model, messages), {
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01'
+      },
+      timeoutMs: 30000,
+      maxRetries: 1
+    });
+    if (res.status === 429 || res.status === 503) {
+      const e = new Error('Anthropic rate limited (HTTP ' + res.status + ')');
+      e.status = res.status;
+      throw e;
+    }
+    if (res.status === 401 || res.status === 403) {
+      const e = new Error('provider rejected the key');
+      e.status = 401;
+      throw e;
+    }
     if (!res.ok) throw new Error('AI endpoint HTTP ' + res.status);
-    const data = await res.json().catch(function() { return null; });
-    const text = (data && Array.isArray(data.content)) ? data.content.map(function(c) { return (c && c.type === 'text' && c.text) ? c.text : ''; }).join('') : null;
+    const data = await res.json().catch(function () {
+      return null;
+    });
+    const text =
+      data && Array.isArray(data.content)
+        ? data.content
+            .map(function (c) {
+              return c && c.type === 'text' && c.text ? c.text : '';
+            })
+            .join('')
+        : null;
     if (!text) throw new Error('empty AI response');
     return String(text);
   }
@@ -1117,15 +1704,39 @@ var MMGR = window.MMGR || {};
   // failure) stops the ladder , DIR-3 says a network failure must NOT
   // silently fall through to a smaller model.
   async function geminiDirectAttempt(key, model, messages) {
-    const url = (ns.Net && ns.Net.geminiEndpointFor) ? ns.Net.geminiEndpointFor(model) : null;
+    const url = ns.Net && ns.Net.geminiEndpointFor ? ns.Net.geminiEndpointFor(model) : null;
     if (!url) throw new Error('no AI endpoint configured');
-    const res = await ns.Net.post(url, geminiPayload(messages), { headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, timeoutMs: 30000, maxRetries: 1 });
-    if (res.status === 429 || res.status === 503) { const e = new Error('Gemini rate limited (HTTP ' + res.status + ')'); e.status = res.status; throw e; }
-    if (res.status === 401 || res.status === 403) { const e = new Error('provider rejected the key'); e.status = 401; throw e; }
+    const res = await ns.Net.post(url, geminiPayload(messages), {
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+      timeoutMs: 30000,
+      maxRetries: 1
+    });
+    if (res.status === 429 || res.status === 503) {
+      const e = new Error('Gemini rate limited (HTTP ' + res.status + ')');
+      e.status = res.status;
+      throw e;
+    }
+    if (res.status === 401 || res.status === 403) {
+      const e = new Error('provider rejected the key');
+      e.status = 401;
+      throw e;
+    }
     if (!res.ok) throw new Error('AI endpoint HTTP ' + res.status);
-    const data = await res.json().catch(function() { return null; });
-    const text = (data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts)
-      ? data.candidates[0].content.parts.map(function(p) { return p.text || ''; }).join('') : null;
+    const data = await res.json().catch(function () {
+      return null;
+    });
+    const text =
+      data &&
+      data.candidates &&
+      data.candidates[0] &&
+      data.candidates[0].content &&
+      data.candidates[0].content.parts
+        ? data.candidates[0].content.parts
+            .map(function (p) {
+              return p.text || '';
+            })
+            .join('')
+        : null;
     if (!text) throw new Error('empty AI response');
     return String(text);
   }
@@ -1136,7 +1747,7 @@ var MMGR = window.MMGR || {};
   // status) is a real answer , carried up. A status-less throw is a network
   // failure/timeout: degrade to the direct call for the SAME model.
   async function providerAttempt(provider, key, model, messages, ctx, directOnly) {
-    const direct = function() {
+    const direct = function () {
       if (provider === 'google-gemini') return geminiDirectAttempt(key, model, messages);
       if (provider === 'anthropic') return anthropicDirectAttempt(key, model, messages);
       return openaiDirectAttempt(key, model, messages);
@@ -1145,14 +1756,23 @@ var MMGR = window.MMGR || {};
       let res;
       try {
         // MCP: include project context params when toggle is ON
-        var mcpPayload = { provider: provider, model: model, messages: messages, context: ctx || '' };
+        var mcpPayload = {
+          provider: provider,
+          model: model,
+          messages: messages,
+          context: ctx || ''
+        };
         var mcpCb = U.$('ai-mcp-toggle');
         if (mcpCb && mcpCb.checked && window.MMGR && MMGR.Render && MMGR.Render.getProjectId) {
           var pid = MMGR.App.projectId;
           var ocode = '';
-          try { ocode = sessionStorage.getItem('mmgr_cloud_code_' + pid) || ''; } catch(e) {}
+          try {
+            ocode = sessionStorage.getItem('mmgr_cloud_code_' + pid) || '';
+          } catch (e) {}
           var ecode = '';
-          try { ecode = sessionStorage.getItem('mmgr_cloud_ecode_' + pid) || ''; } catch(e) {}
+          try {
+            ecode = sessionStorage.getItem('mmgr_cloud_ecode_' + pid) || '';
+          } catch (e) {}
           if (pid && (ocode || ecode)) {
             mcpPayload.mcpProjectId = pid;
             mcpPayload.mcpCode = ocode || ecode;
@@ -1160,18 +1780,31 @@ var MMGR = window.MMGR || {};
         }
         res = await ns.Net.post('/api/ai/chat', mcpPayload, {
           headers: { 'Content-Type': 'application/json', 'X-User-Api-Key': key },
-          timeoutMs: 30000, maxRetries: 1
+          timeoutMs: 30000,
+          maxRetries: 1
         });
       } catch (e) {
-        if (e && (e.status === 429 || e.status === 503 || e.status === 401 || e.status === 403)) throw e;
+        if (e && (e.status === 429 || e.status === 503 || e.status === 401 || e.status === 403))
+          throw e;
         return direct();
       }
       if (res.status === 404 || res.status === 405) return direct();
-      if (res.status === 429 || res.status === 503) { const e = new Error('provider rate limited (HTTP ' + res.status + ')'); e.status = res.status; throw e; }
-      if (res.status === 401 || res.status === 403) { const e = new Error('provider rejected the key'); e.status = 401; throw e; }
+      if (res.status === 429 || res.status === 503) {
+        const e = new Error('provider rate limited (HTTP ' + res.status + ')');
+        e.status = res.status;
+        throw e;
+      }
+      if (res.status === 401 || res.status === 403) {
+        const e = new Error('provider rejected the key');
+        e.status = 401;
+        throw e;
+      }
       if (!res.ok) throw new Error('AI chat HTTP ' + res.status);
-      const data = await res.json().catch(function() { return null; });
-      if (!data || typeof data.text !== 'string' || !data.text) throw new Error('empty AI response');
+      const data = await res.json().catch(function () {
+        return null;
+      });
+      if (!data || typeof data.text !== 'string' || !data.text)
+        throw new Error('empty AI response');
       return String(data.text);
     }
     return direct();
@@ -1195,7 +1828,10 @@ var MMGR = window.MMGR || {};
         return { ok: true, text: text, model: model, fellBackFrom: i > 0 ? models[0] : null };
       } catch (e) {
         const status = e && e.status;
-        if (status === 429 || status === 503) { lastCapacityErr = e; continue; }
+        if (status === 429 || status === 503) {
+          lastCapacityErr = e;
+          continue;
+        }
         throw e; // 401/403 or any other error , stop the ladder immediately
       }
     }
@@ -1230,22 +1866,32 @@ var MMGR = window.MMGR || {};
     // , the open() gate is UX; this one is the contract. A connected BYO key
     // is NOT a session (the key vault is session-scoped, not an identity).
     if (!(ns.Entitlements && ns.Entitlements.aiAssistant && ns.Entitlements.aiAssistant())) {
-      throw new Error('AI needs sign-in , sign in once (Google or email) and the cloud engine unlocks.');
+      throw new Error(
+        'AI needs sign-in , sign in once (Google or email) and the cloud engine unlocks.'
+      );
     }
     // STEP-4 gate: live chat requires a connected session key. The key and
     // provider come from the vault ONLY , state.config.ai.apiKey (legacy) is
     // never read, so no project-state field can ever carry the key.
     const key = BYO.getKey();
-    if (!key) throw new Error('No AI key connected , connect one in the AI window (session-only, cleared when the tab closes).');
+    if (!key)
+      throw new Error(
+        'No AI key connected , connect one in the AI window (session-only, cleared when the tab closes).'
+      );
     const provider = BYO.getProvider() || 'openai';
-    const def = (ns.Net && ns.Net.PROVIDER_DEFAULTS) ? ns.Net.PROVIDER_DEFAULTS[provider] : {};
+    const def = ns.Net && ns.Net.PROVIDER_DEFAULTS ? ns.Net.PROVIDER_DEFAULTS[provider] : {};
     // Provider defaults only: legacy config.ai.endpoint/model overrides were
-    // UI-removed by this directive, and the relay path ignores them anyway , 
+    // UI-removed by this directive, and the relay path ignores them anyway ,
     // honoring them only in the direct fallback would be inconsistent.
     const model = (def && def.model) || provider;
     // STEP-3: the key must never appear in the packet , defensive strip even
     // though buildContext() only ever reads project state.
-    const userContent = (prompt || '') + (ctx ? '\n\n==== PROJECT CONTEXT (grounding only) ====\n' + String(ctx).split(key).join('[key removed]') : '');
+    const userContent =
+      (prompt || '') +
+      (ctx
+        ? '\n\n==== PROJECT CONTEXT (grounding only) ====\n' +
+          String(ctx).split(key).join('[key removed]')
+        : '');
     const messages = [
       { role: 'system', content: CLOUD_SYSTEM_PROMPT },
       { role: 'user', content: userContent }
@@ -1272,9 +1918,24 @@ var MMGR = window.MMGR || {};
     }
     // DIR-4 transparency: tell the user which model actually answered, and
     // when a 429 pushed the ladder to a smaller tier.
-    const trace = ['cloud:' + provider + ':' + actualModel + (fellBackFrom && fellBackFrom !== actualModel ? ' (fell back from ' + fellBackFrom + ' on 429)' : '')];
+    const trace = [
+      'cloud:' +
+        provider +
+        ':' +
+        actualModel +
+        (fellBackFrom && fellBackFrom !== actualModel
+          ? ' (fell back from ' + fellBackFrom + ' on 429)'
+          : '')
+    ];
     trace.push('grounded in attached context');
-    return { ok: true, tier: 'cloud', model: actualModel, fellBackFrom: fellBackFrom, text: String(text), trace: trace };
+    return {
+      ok: true,
+      tier: 'cloud',
+      model: actualModel,
+      fellBackFrom: fellBackFrom,
+      text: String(text),
+      trace: trace
+    };
   }
 
   // ---- submit(): the single seam both tiers share ----
@@ -1287,11 +1948,22 @@ var MMGR = window.MMGR || {};
     // every tier - never spends a provider call, never gets a generic chat
     // answer. Preset prompts are long and can never match.
     if (prompt && isOffTopicQuestion(String(prompt).toLowerCase())) {
-      return { ok: true, tier: 'local', model: 'local-state-engine', text: OFF_TOPIC_REPLY, trace: ['topic gate: non-project question refused locally'] };
+      return {
+        ok: true,
+        tier: 'local',
+        model: 'local-state-engine',
+        text: OFF_TOPIC_REPLY,
+        trace: ['topic gate: non-project question refused locally']
+      };
     }
     try {
       if (tier === 'off') {
-        return { ok: false, error: 'AI engine is Off , enable Local or Cloud in the AI window settings row (or Settings ▸ Controls ▸ AI Engine).', tier: 'off' };
+        return {
+          ok: false,
+          error:
+            'AI engine is Off , enable Local or Cloud in the AI window settings row (or Settings ▸ Controls ▸ AI Engine).',
+          tier: 'off'
+        };
       }
       if (tier === 'local') {
         const out = await runLocal(prompt, type);
@@ -1309,14 +1981,27 @@ var MMGR = window.MMGR || {};
         // STEP-4 gate at the single seam (covers Enter-send, preset runs, and
         // any caller that bypasses the disabled Send button).
         if (!BYO.isConnected()) {
-          return { ok: false, error: 'No AI key connected , open the AI window, pick Cloud, and Connect your key (session-only, never stored). Live chat needs it.', tier: 'cloud' };
+          return {
+            ok: false,
+            error:
+              'No AI key connected , open the AI window, pick Cloud, and Connect your key (session-only, never stored). Live chat needs it.',
+            tier: 'cloud'
+          };
         }
         return await runCloud(prompt, ctx || buildContext(), cfg);
       }
       return { ok: false, error: 'Unknown tier: ' + tier, tier: tier };
     } catch (e) {
-      if (ns.Errors && ns.Errors.log) ns.Errors.log('AI submit failed: ' + (e && e.message), 'aiSubmit');
-      return { ok: false, error: 'AI call failed , ' + (e && e.message ? e.message : 'unknown error') + '. The app is unaffected; check Settings ▸ AI Engine and try again.', tier: tier };
+      if (ns.Errors && ns.Errors.log)
+        ns.Errors.log('AI submit failed: ' + (e && e.message), 'aiSubmit');
+      return {
+        ok: false,
+        error:
+          'AI call failed , ' +
+          (e && e.message ? e.message : 'unknown error') +
+          '. The app is unaffected; check Settings ▸ AI Engine and try again.',
+        tier: tier
+      };
     }
   }
 
@@ -1324,8 +2009,8 @@ var MMGR = window.MMGR || {};
   async function runPreset(type) {
     const q = U.$('ai-q');
     const c = U.$('ai-ctx');
-    const prompt = (ns.Prompts && ns.Prompts.generate) ? ns.Prompts.generate(type) : '';
-    const ctx = (c && c.value) ? c.value : buildContext();
+    const prompt = ns.Prompts && ns.Prompts.generate ? ns.Prompts.generate(type) : '';
+    const ctx = c && c.value ? c.value : buildContext();
     if (q) q.value = prompt;
     if (c) c.value = ctx;
     if (_aiBusy) return { ok: false, error: 'busy' };
@@ -1344,7 +2029,7 @@ var MMGR = window.MMGR || {};
     renderThread(prompt, res);
     if (res.ok) {
       // Structured write-back into unified state (constraint #1/#5).
-      ns.State.updateState(function(s) {
+      ns.State.updateState(function (s) {
         if (!s.aiOutputs) s.aiOutputs = {};
         s.aiOutputs[type] = {
           at: new Date().toISOString(),
@@ -1372,8 +2057,11 @@ var MMGR = window.MMGR || {};
     const q = U.$('ai-q');
     const c = U.$('ai-ctx');
     const prompt = (q && q.value) || '';
-    if (!prompt.trim()) { toast('Type a question first.', 'err'); return { ok: false, error: 'empty question' }; }
-    const ctx = (c && c.value) ? c.value : buildContext();
+    if (!prompt.trim()) {
+      toast('Type a question first.', 'err');
+      return { ok: false, error: 'empty question' };
+    }
+    const ctx = c && c.value ? c.value : buildContext();
     _aiBusy = true;
     showTyping();
     let res;
@@ -1420,19 +2108,28 @@ var MMGR = window.MMGR || {};
     const out = U.$('ai-out');
     if (!out) return;
     if (res && res.ok) {
-      out.value = (type ? '[' + type + ' · ' + res.tier + ' · ' + (res.model || '') + ' , saved to project]\n\n' : '[answer · ' + res.tier + ' · ' + (res.model || '') + ']\n\n') + res.text;
+      out.value =
+        (type
+          ? '[' + type + ' · ' + res.tier + ' · ' + (res.model || '') + ' , saved to project]\n\n'
+          : '[answer · ' + res.tier + ' · ' + (res.model || '') + ']\n\n') + res.text;
       const trace = U.$('ai-trace');
-      if (trace) trace.textContent = 'Traceable to: ' + ((res.trace && res.trace.length) ? res.trace.join(', ') : '(grounded in attached context)');
+      if (trace)
+        trace.textContent =
+          'Traceable to: ' +
+          (res.trace && res.trace.length ? res.trace.join(', ') : '(grounded in attached context)');
     } else {
       out.value = '-';
       const trace = U.$('ai-trace');
-      if (trace) trace.textContent = (res && res.error) ? res.error : '';
+      if (trace) trace.textContent = res && res.error ? res.error : '';
     }
   }
 
   function copyOut() {
     const out = U.$('ai-out');
-    if (!out || !out.value || out.value === '-') { toast('Nothing to copy yet , run a preset first.', 'err'); return; }
+    if (!out || !out.value || out.value === '-') {
+      toast('Nothing to copy yet , run a preset first.', 'err');
+      return;
+    }
     U.copyToClipboard(out.value);
     toast('Result copied.');
   }
@@ -1445,7 +2142,7 @@ var MMGR = window.MMGR || {};
   const MIN_TYPING_MS = 500; // hold the typing beat long enough to read, even for instant local answers
   function escHtml(s) {
     const d = document.createElement('div');
-    d.textContent = (s === undefined || s === null) ? '' : String(s);
+    d.textContent = s === undefined || s === null ? '' : String(s);
     return d.innerHTML;
   }
   function scrollThread() {
@@ -1457,14 +2154,17 @@ var MMGR = window.MMGR || {};
     if (w) w.classList.add('is-hide');
   }
   function hideTyping() {
-    if (_typingEl) { _typingEl.remove(); _typingEl = null; }
+    if (_typingEl) {
+      _typingEl.remove();
+      _typingEl = null;
+    }
   }
   function resetThread() {
     hideTyping();
     const th = U.$('ai-thread');
     if (!th) return;
     if (th.dataset) delete th.dataset.seeded;
-    Array.prototype.forEach.call(th.querySelectorAll('.ai-bubble'), function(b) {
+    Array.prototype.forEach.call(th.querySelectorAll('.ai-bubble'), function (b) {
       if (b.id !== 'ai-welcome') b.remove();
     });
     const w = U.$('ai-welcome');
@@ -1487,7 +2187,9 @@ var MMGR = window.MMGR || {};
   async function holdTyping() {
     const elapsed = Date.now() - _typingShownAt;
     if (elapsed < MIN_TYPING_MS) {
-      await new Promise(function(r) { setTimeout(r, MIN_TYPING_MS - elapsed); });
+      await new Promise(function (r) {
+        setTimeout(r, MIN_TYPING_MS - elapsed);
+      });
     }
   }
   function addBubble(role, innerHtml, copyText) {
@@ -1511,14 +2213,35 @@ var MMGR = window.MMGR || {};
   // with a ladder).
   function fallbackBadgeHtml(tier, model, fellBackFrom) {
     if (tier !== 'cloud' || !fellBackFrom || !model || fellBackFrom === model) return '';
-    return '<div class="ai-fallback" role="status"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-down"></use></svg> Fell back to <strong>' + escHtml(model) + '</strong> , ' + escHtml(fellBackFrom) + ' hit its rate limit</div>';
+    return (
+      '<div class="ai-fallback" role="status"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-down"></use></svg> Fell back to <strong>' +
+      escHtml(model) +
+      '</strong> , ' +
+      escHtml(fellBackFrom) +
+      ' hit its rate limit</div>'
+    );
   }
 
   function botBubbleHtml(textHtml, metaHtml, badgeHtml, traceHtml) {
-    return botAvatar() + '<div class="ai-bot-body"><div class="ai-text">' + textHtml + '</div>' + (metaHtml || '') + (badgeHtml || '') + (traceHtml || '') + '</div>';
+    return (
+      botAvatar() +
+      '<div class="ai-bot-body"><div class="ai-text">' +
+      textHtml +
+      '</div>' +
+      (metaHtml || '') +
+      (badgeHtml || '') +
+      (traceHtml || '') +
+      '</div>'
+    );
   }
   function botMeta(engine, copyHtml) {
-    return '<div class="ai-meta"><span><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> ' + escHtml(engine) + '</span>' + (copyHtml || '') + '</div>';
+    return (
+      '<div class="ai-meta"><span><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> ' +
+      escHtml(engine) +
+      '</span>' +
+      (copyHtml || '') +
+      '</div>'
+    );
   }
   // AI-WINDOW-POLISH: every assistant bubble carries a per-answer Copy button
   // in its meta row. The raw text rides on the bubble's dataset (set via DOM
@@ -1536,17 +2259,36 @@ var MMGR = window.MMGR || {};
     }
     if (!res) return;
     if (res.ok) {
-      const engine = (res.tier === 'local') ? 'Local engine' : (res.tier === 'cloud' ? 'Cloud' : res.tier) + (res.model ? ' · ' + res.model : '');
+      const engine =
+        res.tier === 'local'
+          ? 'Local engine'
+          : (res.tier === 'cloud' ? 'Cloud' : res.tier) + (res.model ? ' · ' + res.model : '');
       // MODEL-FALLBACK-LADDER badge (DIR-4 visibility): when a 429 pushed the
       // ladder to a smaller model, render a visible chip so users see the
       // fallback fired WITHOUT having to read the trace line.
       const fallback = fallbackBadgeHtml(res.tier, res.model, res.fellBackFrom);
-      const trace = (res.trace && res.trace.length)
-        ? '<div class="ai-trace-inline">Traceable to: ' + escHtml(res.trace.join(', ')) + '</div>'
-        : '';
-      addBubble('bot', botBubbleHtml(escHtml(res.text).replace(/\n/g, '<br>'), botMeta(engine, copyBtnHtml()), fallback, trace), res.text);
+      const trace =
+        res.trace && res.trace.length
+          ? '<div class="ai-trace-inline">Traceable to: ' + escHtml(res.trace.join(', ')) + '</div>'
+          : '';
+      addBubble(
+        'bot',
+        botBubbleHtml(
+          escHtml(res.text).replace(/\n/g, '<br>'),
+          botMeta(engine, copyBtnHtml()),
+          fallback,
+          trace
+        ),
+        res.text
+      );
     } else {
-      addBubble('bot', botAvatar() + '<div class="ai-bot-body ai-err">' + escHtml(res.error || 'Something went wrong.') + '</div>');
+      addBubble(
+        'bot',
+        botAvatar() +
+          '<div class="ai-bot-body ai-err">' +
+          escHtml(res.error || 'Something went wrong.') +
+          '</div>'
+      );
     }
   }
   // On open, surface the most recent persisted result so the conversation
@@ -1555,16 +2297,27 @@ var MMGR = window.MMGR || {};
     const th = U.$('ai-thread');
     if (!th || th.dataset.seeded) return;
     th.dataset.seeded = '1';
-    const s = (ns.State && ns.State.getState) ? ns.State.getState() : {};
+    const s = ns.State && ns.State.getState ? ns.State.getState() : {};
     const outputs = (s && s.aiOutputs) || {};
     const types = Object.keys(outputs);
     if (!types.length) return;
     const last = outputs[types[types.length - 1]];
     if (!last || !last.text) return;
-    const engine = (last.tier === 'local') ? 'Local engine' : (last.tier === 'cloud' ? 'Cloud' : last.tier);
+    const engine =
+      last.tier === 'local' ? 'Local engine' : last.tier === 'cloud' ? 'Cloud' : last.tier;
     const badge = fallbackBadgeHtml(last.tier, last.model, last.fellBackFrom);
-    addBubble('bot', botBubbleHtml(escHtml(last.text).replace(/\n/g, '<br>'),
-      botMeta(engine + ' · saved ' + (last.at ? new Date(last.at).toLocaleString() : ''), copyBtnHtml()), badge), last.text);
+    addBubble(
+      'bot',
+      botBubbleHtml(
+        escHtml(last.text).replace(/\n/g, '<br>'),
+        botMeta(
+          engine + ' · saved ' + (last.at ? new Date(last.at).toLocaleString() : ''),
+          copyBtnHtml()
+        ),
+        badge
+      ),
+      last.text
+    );
   }
 
   // ---- DIR-1 (AI-WINDOW-LAYOUT-SCROLL-AND-INPUT-BUG): Chat/Presets tab ----
@@ -1574,7 +2327,7 @@ var MMGR = window.MMGR || {};
   // reachable regardless of conversation length. open() resets to the Chat
   // tab so the welcome hint matches the view on first open.
   function setAiTab(tab) {
-    document.querySelectorAll('.ai-seg-btn').forEach(function(b) {
+    document.querySelectorAll('.ai-seg-btn').forEach(function (b) {
       const on = b.getAttribute('data-tab') === tab;
       b.classList.toggle('is-on', on);
       b.setAttribute('aria-selected', on ? 'true' : 'false');
@@ -1584,11 +2337,11 @@ var MMGR = window.MMGR || {};
     if (c) c.classList.toggle('is-hide', tab !== 'chat');
     if (p) p.classList.toggle('is-hide', tab !== 'presets');
   }
-  (function() {
+  (function () {
     const segBtns = document.querySelectorAll('.ai-seg-btn');
     if (!segBtns.length) return;
-    segBtns.forEach(function(b) {
-      b.addEventListener('click', function() {
+    segBtns.forEach(function (b) {
+      b.addEventListener('click', function () {
         setAiTab(b.getAttribute('data-tab') || 'chat');
       });
     });
@@ -1597,7 +2350,7 @@ var MMGR = window.MMGR || {};
   // AI-WINDOW-POLISH: per-bubble Copy , delegated on the thread so bubbles
   // added at any time (live chat or state seed) pick it up without rebinding.
   // The exact answer text is read from the bubble's dataset.copyText.
-  (function() {
+  (function () {
     const th = U.$('ai-thread');
     if (!th) return;
     // REVIEW FIX: a single shared timer , rapid re-clicks clear the pending
@@ -1605,39 +2358,44 @@ var MMGR = window.MMGR || {};
     // the label stuck on "Copied" without the green styling). The reset also
     // restores the static known HTML + aria-label, never a captured snapshot.
     let resetTimer = null;
-    th.addEventListener('click', function(e) {
+    th.addEventListener('click', function (e) {
       const t = e.target;
-      const btn = (t && t.closest) ? t.closest('.ai-copy-btn') : null;
+      const btn = t && t.closest ? t.closest('.ai-copy-btn') : null;
       if (!btn) return;
       const bubble = btn.closest('.ai-bubble');
-      const text = (bubble && bubble.dataset) ? bubble.dataset.copyText : '';
-      if (!text) { toast('Nothing to copy here yet.', 'err'); return; }
+      const text = bubble && bubble.dataset ? bubble.dataset.copyText : '';
+      if (!text) {
+        toast('Nothing to copy here yet.', 'err');
+        return;
+      }
       U.copyToClipboard(text);
       toast('Answer copied.');
       if (resetTimer) clearTimeout(resetTimer);
       btn.classList.add('is-copied');
       btn.setAttribute('aria-label', 'Copied');
-      btn.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Copied';
-      resetTimer = setTimeout(function() {
+      btn.innerHTML =
+        '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Copied';
+      resetTimer = setTimeout(function () {
         btn.classList.remove('is-copied');
         btn.setAttribute('aria-label', 'Copy this answer');
-        btn.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy';
+        btn.innerHTML =
+          '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy';
         resetTimer = null;
       }, 1600);
     });
   })();
 
   // ---- Chat input: Enter sends (Shift+Enter = new line) + auto-grow ------
-  (function() {
+  (function () {
     const q = U.$('ai-q');
     if (!q) return;
-    q.addEventListener('keydown', function(e) {
+    q.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         runQuestion();
       }
     });
-    const grow = function() {
+    const grow = function () {
       q.style.height = 'auto';
       q.style.height = Math.min(q.scrollHeight, 120) + 'px';
       // DIR-2: when the box is capped at 120px and internally scrollable, mark
@@ -1652,23 +2410,25 @@ var MMGR = window.MMGR || {};
   // Wired directly (not through the action map) so the vault flow never
   // touches the read-only action lists , connecting a key is not a project
   // mutation and must stay available in view-only mode.
-  (function() {
+  (function () {
     const conn = U.$('ai-byo-connect');
-    if (conn) conn.addEventListener('click', function() {
-      const p = U.$('ai-byo-provider');
-      const k = U.$('ai-byo-key');
-      connectByo((p && p.value) || 'openai', (k && k.value) || '');
-    });
+    if (conn)
+      conn.addEventListener('click', function () {
+        const p = U.$('ai-byo-provider');
+        const k = U.$('ai-byo-key');
+        connectByo((p && p.value) || 'openai', (k && k.value) || '');
+      });
     const clr = U.$('ai-byo-clear');
     if (clr) clr.addEventListener('click', clearByo);
     const pk = U.$('ai-byo-key');
-    if (pk) pk.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const p = U.$('ai-byo-provider');
-        connectByo((p && p.value) || 'openai', pk.value);
-      }
-    });
+    if (pk)
+      pk.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const p = U.$('ai-byo-provider');
+          connectByo((p && p.value) || 'openai', pk.value);
+        }
+      });
   })();
 
   // UI-DECLUTTER: the API-key setup (paste + Connect & Test + security
@@ -1676,11 +2436,11 @@ var MMGR = window.MMGR || {};
   // chip and provider select stay visible in the strip, the raw key input is
   // one click away. Wired directly (like the connect/clear buttons above) so
   // it stays available in view-only mode.
-  (function() {
+  (function () {
     const gear = U.$('ai-byo-gear');
     const pop = U.$('ai-byo-pop');
     if (!gear || !pop) return;
-    gear.addEventListener('click', function() {
+    gear.addEventListener('click', function () {
       const open = pop.classList.contains('is-hide');
       pop.classList.toggle('is-hide', !open);
       gear.setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -1690,13 +2450,15 @@ var MMGR = window.MMGR || {};
   // INTEGRATED-STRUCTURE-API-WINDOW (plan §3): click (or Enter/Space on) the
   // API pill to re-check the backend health route on demand. force=true so a
   // user re-check bypasses an in-flight earlier probe.
-  (function() {
+  (function () {
     const pill = U.$('ai-api-pill');
     if (!pill) return;
     pill.setAttribute('role', 'button');
     pill.setAttribute('tabindex', '0');
-    pill.addEventListener('click', function() { checkApiHealth(true); });
-    pill.addEventListener('keydown', function(e) {
+    pill.addEventListener('click', function () {
+      checkApiHealth(true);
+    });
+    pill.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         checkApiHealth(true);
@@ -1721,7 +2483,9 @@ var MMGR = window.MMGR || {};
       const h = Math.round(Number(d && d.h));
       if (!(w > 0) || !(h > 0)) return null;
       return { w: w, h: h };
-    } catch (e) { return null; }
+    } catch (e) {
+      return null;
+    }
   }
 
   // AI-WINDOW-DOCKED-RESIZE (owner 2026-09-17): the window is a right-docked,
@@ -1741,7 +2505,11 @@ var MMGR = window.MMGR || {};
   }
 
   function saveAiWidth(w) {
-    try { localStorage.setItem(AI_SIZE_KEY, JSON.stringify({ w: clampAiWidth(w) })); } catch (e) { /* ignore */ }
+    try {
+      localStorage.setItem(AI_SIZE_KEY, JSON.stringify({ w: clampAiWidth(w) }));
+    } catch (e) {
+      /* ignore */
+    }
   }
 
   // Restore the saved width on open (clamped). No saved width -> the 420px
@@ -1757,11 +2525,13 @@ var MMGR = window.MMGR || {};
         const d = JSON.parse(raw);
         if (d && +d.w > 0) w = clampAiWidth(+d.w);
       }
-    } catch (e) { /* keep default */ }
+    } catch (e) {
+      /* keep default */
+    }
     win.style.width = w + 'px';
   }
 
-  (function() {
+  (function () {
     const win = U.$('ai-win');
     if (!win) return;
     // The resize affordance lives on the DRAWER itself (left-edge strip),
@@ -1785,7 +2555,11 @@ var MMGR = window.MMGR || {};
       win.classList.add('resizing');
       h.classList.add('dragging');
       e.preventDefault();
-      try { if (h.setPointerCapture) h.setPointerCapture(e.pointerId); } catch (err) { /* synthetic events */ }
+      try {
+        if (h.setPointerCapture) h.setPointerCapture(e.pointerId);
+      } catch (err) {
+        /* synthetic events */
+      }
     }
     function onMove(e) {
       if (!drag) return;
@@ -1804,7 +2578,11 @@ var MMGR = window.MMGR || {};
       drag = null;
       win.classList.remove('resizing');
       h.classList.remove('dragging');
-      if (raf) { cancelAnimationFrame(raf); raf = 0; if (pendingW) win.style.width = pendingW + 'px'; }
+      if (raf) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+        if (pendingW) win.style.width = pendingW + 'px';
+      }
       const w = parseInt(win.style.width, 10);
       if (w >= AI_W_MIN) saveAiWidth(w);
     }
@@ -1825,7 +2603,11 @@ var MMGR = window.MMGR || {};
     // convention as editor side panels).
     h.addEventListener('dblclick', function () {
       win.style.width = AI_SIZE_DEFAULT_W + 'px';
-      try { localStorage.removeItem(AI_SIZE_KEY); } catch (e) { /* ignore */ }
+      try {
+        localStorage.removeItem(AI_SIZE_KEY);
+      } catch (e) {
+        /* ignore */
+      }
       toast('Panel width reset to default.', 'ok');
     });
   })();
@@ -1837,19 +2619,34 @@ var MMGR = window.MMGR || {};
   // returns the exact previous geometry. Per-surface, per-device prefs.
   const FLOAT_W_MIN = 420;
   const FLOAT_H_MIN = 380;
-  function floatPrefKey(id) { return 'mmgr_float_' + id; }
+  function floatPrefKey(id) {
+    return 'mmgr_float_' + id;
+  }
   function readFloatPos(id) {
     try {
       const d = JSON.parse(localStorage.getItem(floatPrefKey(id)) || 'null');
       if (d && Number(d.x) === d.x && Number(d.y) === d.y) return d;
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+      /* ignore */
+    }
     return null;
   }
   function saveFloatPos(id, x, y) {
-    try { localStorage.setItem(floatPrefKey(id), JSON.stringify({ x: Math.round(x), y: Math.round(y) })); } catch (e) { /* ignore */ }
+    try {
+      localStorage.setItem(
+        floatPrefKey(id),
+        JSON.stringify({ x: Math.round(x), y: Math.round(y) })
+      );
+    } catch (e) {
+      /* ignore */
+    }
   }
   function clearFloatPos(id) {
-    try { localStorage.removeItem(floatPrefKey(id)); } catch (e) { /* ignore */ }
+    try {
+      localStorage.removeItem(floatPrefKey(id));
+    } catch (e) {
+      /* ignore */
+    }
   }
   // Enter/exit float mode for a docked surface (#ai-win, #drw). Self-healing:
   // the toggle button is injected next to the surface's close button.
@@ -1868,16 +2665,19 @@ var MMGR = window.MMGR || {};
       btn.setAttribute('data-float-toggle', id);
       btn.setAttribute('aria-label', 'Pop out into a floating window');
       btn.setAttribute('title', 'Pop out / dock (drag the header while floating)');
-      btn.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-popout"></use></svg>';
+      btn.innerHTML =
+        '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-popout"></use></svg>';
       // BROWSER-CAUGHT (wave-2 probe): on #drw the .dc close button is NOT a
       // direct child of .dh (nested deeper), so head.insertBefore(btn, dc)
       // threw NotFoundError and killed the whole module load (AiWin gone).
       // A broken injection must never break the surface: fall back to append.
       const dc = head.querySelector('.dc');
-      if (dc && dc.parentNode === head) head.insertBefore(btn, dc); else head.appendChild(btn);
+      if (dc && dc.parentNode === head) head.insertBefore(btn, dc);
+      else head.appendChild(btn);
     }
     let drag = null;
-    let raf = 0; let pending = null;
+    let raf = 0;
+    let pending = null;
     function applyPos() {
       if (!pending) return;
       el.style.left = pending.x + 'px';
@@ -1899,19 +2699,27 @@ var MMGR = window.MMGR || {};
         x: Math.min(Math.max(e.clientX - drag.dx, 8), Math.max(8, window.innerWidth - w - 8)),
         y: Math.min(Math.max(e.clientY - drag.dy, 8), Math.max(8, window.innerHeight - 48))
       };
-      if (!raf) raf = requestAnimationFrame(function() { raf = 0; applyPos(); });
+      if (!raf)
+        raf = requestAnimationFrame(function () {
+          raf = 0;
+          applyPos();
+        });
     }
     function onHeadUp() {
       if (!drag) return;
       drag = null;
-      if (raf) { cancelAnimationFrame(raf); raf = 0; applyPos(); }
+      if (raf) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+        applyPos();
+      }
       const r = el.getBoundingClientRect();
       saveFloatPos(id, r.left, r.top);
     }
     head.addEventListener('pointerdown', onHeadDown);
     document.addEventListener('pointermove', onHeadMove);
     document.addEventListener('pointerup', onHeadUp);
-    btn.addEventListener('click', function(e) {
+    btn.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();
       toggleFloat(id);
@@ -1925,18 +2733,22 @@ var MMGR = window.MMGR || {};
   function wireDimClick() {
     if (_dimWired) return;
     _dimWired = true;
-    document.addEventListener('click', function(e) {
-      if (!document.body.classList.contains('drw-float-open')) return;
-      // The ::after dim is not hit-testable; a click on the page BEHIND the
-      // floating drawer (not inside it, not on its controls) = minimize.
-      const drw = U.$('drw');
-      if (drw && (drw.contains(e.target) || e.target === drw)) return;
-      if (e.target.closest('#drw,[data-float-toggle]')) return;
-      if (drw && drw.classList.contains('float-mode') && drw.classList.contains('open')) {
-        e.stopPropagation();
-        toggleFloat('drw');
-      }
-    }, true);
+    document.addEventListener(
+      'click',
+      function (e) {
+        if (!document.body.classList.contains('drw-float-open')) return;
+        // The ::after dim is not hit-testable; a click on the page BEHIND the
+        // floating drawer (not inside it, not on its controls) = minimize.
+        const drw = U.$('drw');
+        if (drw && (drw.contains(e.target) || e.target === drw)) return;
+        if (e.target.closest('#drw,[data-float-toggle]')) return;
+        if (drw && drw.classList.contains('float-mode') && drw.classList.contains('open')) {
+          e.stopPropagation();
+          toggleFloat('drw');
+        }
+      },
+      true
+    );
   }
   function syncFloatState(id) {
     if (id !== 'drw') return;
@@ -1971,16 +2783,25 @@ var MMGR = window.MMGR || {};
       // where it was dragged last month - each open re-centers.
       const r = el.getBoundingClientRect();
       el.__dockGeom = {
-        left: el.style.left, top: el.style.top, width: el.style.width,
-        height: el.style.height, right: el.style.right
+        left: el.style.left,
+        top: el.style.top,
+        width: el.style.width,
+        height: el.style.height,
+        right: el.style.right
       };
       el.classList.add('float-mode');
       // Robustness: pop-out on a closed drawer opens it too (the toggle
       // lives in the header, so this is defensive - never a half-floated,
       // invisible window).
       if (id === 'drw' && !el.classList.contains('open')) el.classList.add('open');
-      const fw = Math.max(FLOAT_W_MIN, Math.min(Math.round(window.innerWidth * 0.66), window.innerWidth - 32));
-      const fh = Math.max(FLOAT_H_MIN, Math.min(Math.round(window.innerHeight * 0.8), window.innerHeight - 32));
+      const fw = Math.max(
+        FLOAT_W_MIN,
+        Math.min(Math.round(window.innerWidth * 0.66), window.innerWidth - 32)
+      );
+      const fh = Math.max(
+        FLOAT_H_MIN,
+        Math.min(Math.round(window.innerHeight * 0.8), window.innerHeight - 32)
+      );
       el.style.width = fw + 'px';
       el.style.height = fh + 'px';
       el.style.right = 'auto';
@@ -1997,10 +2818,17 @@ var MMGR = window.MMGR || {};
   // OWNER 2026-09-21: closing the settings drawer while it floats must dock
   // FIRST (class removal alone leaves float geometry applied - the dead-X
   // bug). A floating window that closes is gone, not parked mid-screen.
-  const _drwCloseWatcher = setInterval(function() {
+  const _drwCloseWatcher = setInterval(function () {
     const drw = U.$('drw');
-    if (!drw) { clearInterval(_drwCloseWatcher); return; }
-    if (drw.classList.contains('float-mode') && !drw.classList.contains('open') && !drw.__floatDocking) {
+    if (!drw) {
+      clearInterval(_drwCloseWatcher);
+      return;
+    }
+    if (
+      drw.classList.contains('float-mode') &&
+      !drw.classList.contains('open') &&
+      !drw.__floatDocking
+    ) {
       drw.__floatDocking = true;
       toggleFloat('drw');
       drw.__floatDocking = false;
@@ -2008,14 +2836,15 @@ var MMGR = window.MMGR || {};
     syncFloatState('drw');
   }, 150);
   // Keep a floating surface inside the viewport on resize.
-  window.addEventListener('resize', function() {
-    ['ai-win', 'drw'].forEach(function(id) {
+  window.addEventListener('resize', function () {
+    ['ai-win', 'drw'].forEach(function (id) {
       const el = U.$(id);
       if (!el || !el.classList.contains('float-mode')) return;
       const r = el.getBoundingClientRect();
       const x = Math.min(Math.max(r.left, 8), Math.max(8, window.innerWidth - r.width - 8));
       const y = Math.min(Math.max(r.top, 8), Math.max(8, window.innerHeight - 48));
-      el.style.left = x + 'px'; el.style.top = y + 'px';
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
       saveFloatPos(id, x, y);
     });
   });
@@ -2033,18 +2862,18 @@ var MMGR = window.MMGR || {};
     var aiQ = U.$('ai-q');
     if (aiQ) aiQ.value = val;
     // Small delay lets the window settle (thread seed + focus) before the run.
-    setTimeout(function() {
+    setTimeout(function () {
       if (typeof runQuestion === 'function') runQuestion();
     }, 120);
   }
-  document.addEventListener('keydown', function(e) {
+  document.addEventListener('keydown', function (e) {
     if (e.key !== 'Enter') return;
     var inp = document.getElementById('ai-command-input');
     if (!inp || document.activeElement !== inp) return;
     e.preventDefault();
     askFromCommandBar(e);
   });
-  document.addEventListener('click', function(e) {
+  document.addEventListener('click', function (e) {
     var btn = e.target.closest ? e.target.closest('#ai-command-btn') : null;
     if (!btn) return;
     askFromCommandBar(e);

@@ -48,7 +48,7 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   const U = ns.Utils;
@@ -59,9 +59,28 @@ var MMGR = window.MMGR || {};
   // gated per the plan's sequencing (Tier 1 ships after Tier 0 proves the
   // capture pipeline; Tier 2 is opt-in BYO-key, circuit-broken like weather).
   const TIERS = {
-    tier0: { id: 'tier0', label: 'Live captions (browser speech)', offline: false, key: false, gated: false },
-    tier1: { id: 'tier1', label: 'Offline transcription (whisper WASM)', offline: true, key: false, gated: false, model: 'ggml-tiny.en-q5_1 (31 MB, cached after first download)' },
-    tier2: { id: 'tier2', label: 'Cloud transcription (BYO key)', offline: false, key: true, gated: true }
+    tier0: {
+      id: 'tier0',
+      label: 'Live captions (browser speech)',
+      offline: false,
+      key: false,
+      gated: false
+    },
+    tier1: {
+      id: 'tier1',
+      label: 'Offline transcription (whisper WASM)',
+      offline: true,
+      key: false,
+      gated: false,
+      model: 'ggml-tiny.en-q5_1 (31 MB, cached after first download)'
+    },
+    tier2: {
+      id: 'tier2',
+      label: 'Cloud transcription (BYO key)',
+      offline: false,
+      key: true,
+      gated: true
+    }
   };
 
   // ---- IndexedDB chunk store (crash-safe capture evidence) --------------
@@ -78,30 +97,36 @@ var MMGR = window.MMGR || {};
 
   function openDB() {
     if (_dbPromise) return _dbPromise;
-    _dbPromise = new Promise(function(res, rej) {
+    _dbPromise = new Promise(function (res, rej) {
       if (typeof window === 'undefined' || !window.indexedDB) {
         rej(new Error('IndexedDB unavailable'));
         return;
       }
       const req = window.indexedDB.open(DB_NAME, DB_VERSION);
-      req.onupgradeneeded = function(e) {
+      req.onupgradeneeded = function (e) {
         const db = e.target.result;
-        if (!db.objectStoreNames.contains('sessions')) db.createObjectStore('sessions', { keyPath: 'sessionId' });
-        if (!db.objectStoreNames.contains('chunks')) db.createObjectStore('chunks', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('sessions'))
+          db.createObjectStore('sessions', { keyPath: 'sessionId' });
+        if (!db.objectStoreNames.contains('chunks'))
+          db.createObjectStore('chunks', { keyPath: 'id' });
       };
-      req.onsuccess = function() { res(req.result); };
-      req.onerror = function() { _dbPromise = null; rej(req.error || new Error('IndexedDB open failed')); };
+      req.onsuccess = function () {
+        res(req.result);
+      };
+      req.onerror = function () {
+        _dbPromise = null;
+        rej(req.error || new Error('IndexedDB open failed'));
+      };
     });
     return _dbPromise;
   }
 
   // Serialize writes per session so chunk counts stay exact under bursts.
   function enqueue(sessionId, fn) {
-    _queues[sessionId] = (_queues[sessionId] || Promise.resolve())
-      .then(fn)
-      .catch(function(err) {
-        if (ns.Errors && ns.Errors.log) ns.Errors.log((err && err.message) || String(err), 'voice-db');
-      });
+    _queues[sessionId] = (_queues[sessionId] || Promise.resolve()).then(fn).catch(function (err) {
+      if (ns.Errors && ns.Errors.log)
+        ns.Errors.log((err && err.message) || String(err), 'voice-db');
+    });
     return _queues[sessionId];
   }
   function waitQueue(sessionId) {
@@ -115,55 +140,91 @@ var MMGR = window.MMGR || {};
     // shared across every project on this origin , matching by meetingId
     // alone could surface or delete another project's session.
     const projectId = ns.projectId || 'default';
-    return enqueue(sessionId, function() {
-      return openDB().then(function(db) {
-        return new Promise(function(res, rej) {
+    return enqueue(sessionId, function () {
+      return openDB().then(function (db) {
+        return new Promise(function (res, rej) {
           const tx = db.transaction('sessions', 'readwrite');
-          tx.objectStore('sessions').put({ sessionId: sessionId, projectId: projectId, meetingId: meetingId, kind: kind, chunkCount: 0, finalized: false, createdAt: new Date().toISOString() });
-          tx.oncomplete = function() { res(sessionId); };
-          tx.onerror = function() { rej(tx.error); };
+          tx.objectStore('sessions').put({
+            sessionId: sessionId,
+            projectId: projectId,
+            meetingId: meetingId,
+            kind: kind,
+            chunkCount: 0,
+            finalized: false,
+            createdAt: new Date().toISOString()
+          });
+          tx.oncomplete = function () {
+            res(sessionId);
+          };
+          tx.onerror = function () {
+            rej(tx.error);
+          };
         });
       });
-    }).then(function() { return sessionId; });
+    }).then(function () {
+      return sessionId;
+    });
   }
 
   function appendChunk(sessionId, blob) {
-    return enqueue(sessionId, function() {
-      return openDB().then(function(db) {
-        return new Promise(function(res, rej) {
+    return enqueue(sessionId, function () {
+      return openDB().then(function (db) {
+        return new Promise(function (res, rej) {
           const tx = db.transaction(['sessions', 'chunks'], 'readwrite');
           const sessStore = tx.objectStore('sessions');
           const getReq = sessStore.get(sessionId);
-          getReq.onsuccess = function() {
+          getReq.onsuccess = function () {
             const sess = getReq.result;
-            if (!sess) { res(false); return; }
+            if (!sess) {
+              res(false);
+              return;
+            }
             const idx = sess.chunkCount || 0;
             sess.chunkCount = idx + 1;
             sessStore.put(sess);
-            tx.objectStore('chunks').put({ id: sessionId + ':' + idx, sessionId: sessionId, idx: idx, blob: blob, ts: new Date().toISOString() });
+            tx.objectStore('chunks').put({
+              id: sessionId + ':' + idx,
+              sessionId: sessionId,
+              idx: idx,
+              blob: blob,
+              ts: new Date().toISOString()
+            });
           };
-          tx.oncomplete = function() { res(true); };
-          tx.onerror = function() { rej(tx.error); };
+          tx.oncomplete = function () {
+            res(true);
+          };
+          tx.onerror = function () {
+            rej(tx.error);
+          };
         });
       });
     });
   }
 
   function finalizeSession(sessionId) {
-    return enqueue(sessionId, function() {
-      return openDB().then(function(db) {
-        return new Promise(function(res, rej) {
+    return enqueue(sessionId, function () {
+      return openDB().then(function (db) {
+        return new Promise(function (res, rej) {
           const tx = db.transaction('sessions', 'readwrite');
           const getReq = tx.objectStore('sessions').get(sessionId);
-          getReq.onsuccess = function() {
+          getReq.onsuccess = function () {
             const sess = getReq.result;
-            if (sess) { sess.finalized = true; tx.objectStore('sessions').put(sess); }
+            if (sess) {
+              sess.finalized = true;
+              tx.objectStore('sessions').put(sess);
+            }
           };
-          tx.oncomplete = function() { res(true); };
-          tx.onerror = function() { rej(tx.error); };
+          tx.oncomplete = function () {
+            res(true);
+          };
+          tx.onerror = function () {
+            rej(tx.error);
+          };
         });
       });
-    }).then(function() { pruneOldSessions(); });
+    }).then(function () {
+      pruneOldSessions();
+    });
   }
 
   // Bounded retention: audio chunks are session evidence, not eternal. After
@@ -174,67 +235,101 @@ var MMGR = window.MMGR || {};
   const SESSION_CAP = 25;
   function pruneOldSessions() {
     const pid = ns.projectId || 'default';
-    openDB().then(function(db) {
-      return new Promise(function(res, rej) {
-        const tx = db.transaction('sessions', 'readonly');
-        const req = tx.objectStore('sessions').getAll();
-        req.onsuccess = function() {
-          const mine = (req.result || [])
-            .filter(function(s) { return s.projectId === pid && s.finalized; })
-            .sort(function(a, b) { return (a.createdAt || '').localeCompare(b.createdAt || ''); });
-          res(mine.slice(0, Math.max(0, mine.length - SESSION_CAP)));
-        };
-        req.onerror = function() { rej(req.error); };
-      });
-    }).then(function(oldOnes) {
-      (oldOnes || []).forEach(function(s) { deleteSession(s.sessionId); });
-    }).catch(function() {});
+    openDB()
+      .then(function (db) {
+        return new Promise(function (res, rej) {
+          const tx = db.transaction('sessions', 'readonly');
+          const req = tx.objectStore('sessions').getAll();
+          req.onsuccess = function () {
+            const mine = (req.result || [])
+              .filter(function (s) {
+                return s.projectId === pid && s.finalized;
+              })
+              .sort(function (a, b) {
+                return (a.createdAt || '').localeCompare(b.createdAt || '');
+              });
+            res(mine.slice(0, Math.max(0, mine.length - SESSION_CAP)));
+          };
+          req.onerror = function () {
+            rej(req.error);
+          };
+        });
+      })
+      .then(function (oldOnes) {
+        (oldOnes || []).forEach(function (s) {
+          deleteSession(s.sessionId);
+        });
+      })
+      .catch(function () {});
   }
 
   function deleteSession(sessionId) {
-    return enqueue(sessionId, function() {
-      return openDB().then(function(db) {
-        return new Promise(function(res, rej) {
+    return enqueue(sessionId, function () {
+      return openDB().then(function (db) {
+        return new Promise(function (res, rej) {
           const tx = db.transaction(['sessions', 'chunks'], 'readwrite');
           tx.objectStore('sessions').delete(sessionId);
           const chunkStore = tx.objectStore('chunks');
           const range = IDBKeyRange.bound(sessionId + ':', sessionId + ':\uffff');
           const keysReq = chunkStore.getAllKeys(range);
-          keysReq.onsuccess = function() {
-            (keysReq.result || []).forEach(function(k) { chunkStore.delete(k); });
+          keysReq.onsuccess = function () {
+            (keysReq.result || []).forEach(function (k) {
+              chunkStore.delete(k);
+            });
           };
-          tx.oncomplete = function() { res(true); };
-          tx.onerror = function() { rej(tx.error); };
+          tx.oncomplete = function () {
+            res(true);
+          };
+          tx.onerror = function () {
+            rej(tx.error);
+          };
         });
       });
-    }).then(function(ok) { delete _queues[sessionId]; return ok; });
+    }).then(function (ok) {
+      delete _queues[sessionId];
+      return ok;
+    });
   }
 
   // All non-finalized sessions , used for the single dismissible recovery
   // chip (no notification spam: shown once per boot, never re-prompted).
   function pendingSessions() {
-    return openDB().then(function(db) {
-      return new Promise(function(res, rej) {
-        const tx = db.transaction('sessions', 'readonly');
-        const req = tx.objectStore('sessions').getAll();
-        req.onsuccess = function() {
-          const all = req.result || [];
-          res(all.filter(function(s) { return !s.finalized; }));
-        };
-        req.onerror = function() { rej(req.error); };
+    return openDB()
+      .then(function (db) {
+        return new Promise(function (res, rej) {
+          const tx = db.transaction('sessions', 'readonly');
+          const req = tx.objectStore('sessions').getAll();
+          req.onsuccess = function () {
+            const all = req.result || [];
+            res(
+              all.filter(function (s) {
+                return !s.finalized;
+              })
+            );
+          };
+          req.onerror = function () {
+            rej(req.error);
+          };
+        });
+      })
+      .catch(function () {
+        return [];
       });
-    }).catch(function() { return []; });
   }
 
   function countChunks(sessionId) {
-    return waitQueue(sessionId).then(function() {
-      return openDB().then(function(db) {
-        return new Promise(function(res, rej) {
+    return waitQueue(sessionId).then(function () {
+      return openDB().then(function (db) {
+        return new Promise(function (res, rej) {
           const tx = db.transaction('chunks', 'readonly');
           const range = IDBKeyRange.bound(sessionId + ':', sessionId + ':\uffff');
           const req = tx.objectStore('chunks').count(range);
-          req.onsuccess = function() { res(req.result); };
-          req.onerror = function() { rej(req.error); };
+          req.onsuccess = function () {
+            res(req.result);
+          };
+          req.onerror = function () {
+            rej(req.error);
+          };
         });
       });
     });
@@ -257,7 +352,9 @@ var MMGR = window.MMGR || {};
   };
   let _recoveryDismissed = false;
 
-  function isCapturing() { return _cap.active; }
+  function isCapturing() {
+    return _cap.active;
+  }
 
   function _toast(msg, type) {
     if (ns.App && ns.App.showToast) ns.App.showToast(msg, type || 'ok');
@@ -266,9 +363,19 @@ var MMGR = window.MMGR || {};
   async function startCapture() {
     const s = ns.State.getState();
     const m = s.activeMeeting;
-    if (!m) { _toast('Start a meeting first.', 'err'); return false; }
-    if (_cap.active) { _toast('Already recording.', 'err'); return false; }
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof window.MediaRecorder === 'undefined') {
+    if (!m) {
+      _toast('Start a meeting first.', 'err');
+      return false;
+    }
+    if (_cap.active) {
+      _toast('Already recording.', 'err');
+      return false;
+    }
+    if (
+      !navigator.mediaDevices ||
+      !navigator.mediaDevices.getUserMedia ||
+      typeof window.MediaRecorder === 'undefined'
+    ) {
       _toast('Voice capture needs a browser with microphone support (HTTPS/localhost).', 'err');
       return false;
     }
@@ -277,7 +384,7 @@ var MMGR = window.MMGR || {};
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const sessionId = await newSession(m.id, m.kind || 'weekly');
       const recorder = new window.MediaRecorder(stream);
-      recorder.ondataavailable = function(e) {
+      recorder.ondataavailable = function (e) {
         // Every emitted chunk is persisted to IndexedDB immediately , the
         // crash-safety guarantee: a tab kill loses at most this in-flight
         // 10s chunk, never the meeting.
@@ -285,10 +392,12 @@ var MMGR = window.MMGR || {};
           _cap.chunkCount++;
           appendChunk(sessionId, e.data);
           const el = U.$('voice-chunks');
-          if (el) el.textContent = _cap.chunkCount + ' chunk' + (_cap.chunkCount !== 1 ? 's' : '') + ' saved';
+          if (el)
+            el.textContent =
+              _cap.chunkCount + ' chunk' + (_cap.chunkCount !== 1 ? 's' : '') + ' saved';
         }
       };
-      recorder.onstop = function() {
+      recorder.onstop = function () {
         // Final dataavailable has already fired (and persisted) before
         // onstop; the session is finalized by stopCapture() itself.
       };
@@ -303,7 +412,7 @@ var MMGR = window.MMGR || {};
       _cap.captionBuf = '';
       _cap.lastStateFlush = 0;
 
-      ns.State.updateState(function(st) {
+      ns.State.updateState(function (st) {
         if (st.activeMeeting) {
           st.activeMeeting.captureState = 'recording';
           st.activeMeeting.captureMethod = 'tier0';
@@ -328,8 +437,15 @@ var MMGR = window.MMGR || {};
     } catch (err) {
       // If getUserMedia succeeded but a later step failed, the mic must not
       // stay on , release the tracks before surfacing the error.
-      if (stream) { try { stream.getTracks().forEach(function(t) { t.stop(); }); } catch (e) {} }
-      if (ns.Errors && ns.Errors.log) ns.Errors.log((err && err.message) || String(err), 'voice-start');
+      if (stream) {
+        try {
+          stream.getTracks().forEach(function (t) {
+            t.stop();
+          });
+        } catch (e) {}
+      }
+      if (ns.Errors && ns.Errors.log)
+        ns.Errors.log((err && err.message) || String(err), 'voice-start');
       _toast('Microphone unavailable or permission denied.', 'err');
       return false;
     }
@@ -355,15 +471,25 @@ var MMGR = window.MMGR || {};
       // captions). Every failure path degrades to the hand-editable text.
       kickTranscription(sessionId);
     }
-    ns.State.updateState(function(st) {
+    ns.State.updateState(function (st) {
       if (st.activeMeeting) {
         st.activeMeeting.captureState = 'stopped';
       }
     });
     if (_cap.recorder && _cap.recorder.state !== 'inactive') {
-      try { _cap.recorder.stop(); } catch (e) { /* already stopped */ }
+      try {
+        _cap.recorder.stop();
+      } catch (e) {
+        /* already stopped */
+      }
     }
-    if (_cap.stream) { try { _cap.stream.getTracks().forEach(function(t) { t.stop(); }); } catch (e) {} }
+    if (_cap.stream) {
+      try {
+        _cap.stream.getTracks().forEach(function (t) {
+          t.stop();
+        });
+      } catch (e) {}
+    }
     renderCaptureSection();
     _toast('Recording saved , captions are editable until you end the meeting.', 'ok');
     return true;
@@ -375,18 +501,28 @@ var MMGR = window.MMGR || {};
     if (_cap.active) {
       const sessionId = _cap.sessionId;
       _cap.active = false;
-      stopMeter(); stopTimer(); stopTier0();
+      stopMeter();
+      stopTimer();
+      stopTier0();
       if (_cap.recorder && _cap.recorder.state !== 'inactive') {
-        try { _cap.recorder.stop(); } catch (e) {}
+        try {
+          _cap.recorder.stop();
+        } catch (e) {}
       }
-      if (_cap.stream) { try { _cap.stream.getTracks().forEach(function(t) { t.stop(); }); } catch (e) {} }
+      if (_cap.stream) {
+        try {
+          _cap.stream.getTracks().forEach(function (t) {
+            t.stop();
+          });
+        } catch (e) {}
+      }
       if (sessionId) deleteSession(sessionId);
     } else {
       // Nothing live , also clear any pending (interrupted) session for the
       // current meeting so the recovery chip doesn't linger after a cancel.
       clearPendingForMeeting();
     }
-    ns.State.updateState(function(st) {
+    ns.State.updateState(function (st) {
       if (st.activeMeeting) {
         st.activeMeeting.captureState = null;
         st.activeMeeting.captureMethod = null;
@@ -395,7 +531,8 @@ var MMGR = window.MMGR || {};
       }
     });
     renderCaptureSection();
-    if (!silent) _toast(hadActive ? 'Recording discarded.' : 'Nothing to discard.', hadActive ? 'ok' : 'err');
+    if (!silent)
+      _toast(hadActive ? 'Recording discarded.' : 'Nothing to discard.', hadActive ? 'ok' : 'err');
     return hadActive;
   }
 
@@ -404,9 +541,10 @@ var MMGR = window.MMGR || {};
     const s = ns.State.getState();
     const mid = s.activeMeeting ? s.activeMeeting.id : null;
     const pid = ns.projectId || 'default';
-    pendingSessions().then(function(list) {
-      (list || []).forEach(function(sess) {
-        if (mid != null && sess.projectId === pid && sess.meetingId === mid) deleteSession(sess.sessionId);
+    pendingSessions().then(function (list) {
+      (list || []).forEach(function (sess) {
+        if (mid != null && sess.projectId === pid && sess.meetingId === mid)
+          deleteSession(sess.sessionId);
       });
     });
   }
@@ -423,11 +561,18 @@ var MMGR = window.MMGR || {};
       src.connect(analyser);
       const data = new Uint8Array(analyser.fftSize);
       const el = U.$('voice-meter-fill');
-      const tick = function() {
+      const tick = function () {
         if (!_cap.active) return;
-        try { analyser.getByteTimeDomainData(data); } catch (e) { return; }
+        try {
+          analyser.getByteTimeDomainData(data);
+        } catch (e) {
+          return;
+        }
         let sum = 0;
-        for (let i = 0; i < data.length; i++) { const v = (data[i] - 128) / 128; sum += v * v; }
+        for (let i = 0; i < data.length; i++) {
+          const v = (data[i] - 128) / 128;
+          sum += v * v;
+        }
         const rms = Math.sqrt(sum / data.length);
         const pct = Math.min(100, Math.max(4, Math.round(rms * 320)));
         if (el) el.style.width = pct + '%';
@@ -435,14 +580,24 @@ var MMGR = window.MMGR || {};
       };
       _cap.audioCtx = ctx;
       _cap.rafId = requestAnimationFrame(tick);
-    } catch (e) { /* meter is decorative , never block capture on it */ }
+    } catch (e) {
+      /* meter is decorative , never block capture on it */
+    }
   }
   function stopMeter() {
-    if (_cap.rafId) { cancelAnimationFrame(_cap.rafId); _cap.rafId = null; }
-    if (_cap.audioCtx) { try { _cap.audioCtx.close(); } catch (e) {} _cap.audioCtx = null; }
+    if (_cap.rafId) {
+      cancelAnimationFrame(_cap.rafId);
+      _cap.rafId = null;
+    }
+    if (_cap.audioCtx) {
+      try {
+        _cap.audioCtx.close();
+      } catch (e) {}
+      _cap.audioCtx = null;
+    }
   }
   function startTimer() {
-    _cap.timerId = setInterval(function() {
+    _cap.timerId = setInterval(function () {
       const el = U.$('voice-timer');
       if (!el || !_cap.startedAt) return;
       const sec = Math.floor((Date.now() - _cap.startedAt) / 1000);
@@ -450,7 +605,10 @@ var MMGR = window.MMGR || {};
     }, 1000);
   }
   function stopTimer() {
-    if (_cap.timerId) { clearInterval(_cap.timerId); _cap.timerId = null; }
+    if (_cap.timerId) {
+      clearInterval(_cap.timerId);
+      _cap.timerId = null;
+    }
   }
 
   // ---- Tier 0: Web Speech API live captions (circuit-broken) ------------
@@ -458,7 +616,9 @@ var MMGR = window.MMGR || {};
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     const note = U.$('voice-tier-note');
     if (!SR) {
-      if (note) note.textContent = 'Live captions unavailable in this browser , recording continues; type notes below.';
+      if (note)
+        note.textContent =
+          'Live captions unavailable in this browser , recording continues; type notes below.';
       return; // circuit-broken: capture proceeds, transcript stays editable
     }
     try {
@@ -466,28 +626,41 @@ var MMGR = window.MMGR || {};
       rec.continuous = true;
       rec.interimResults = false;
       rec.lang = 'en-US';
-      rec.onresult = function(e) {
+      rec.onresult = function (e) {
         let line = '';
         for (let i = e.resultIndex; i < e.results.length; i++) {
           if (e.results[i].isFinal) line += e.results[i][0].transcript;
         }
         if (line) appendCaption(line);
       };
-      rec.onerror = function(ev) {
-        if (ns.Errors && ns.Errors.log) ns.Errors.log((ev && ev.error) || 'speech error', 'voice-tier0');
+      rec.onerror = function (ev) {
+        if (ns.Errors && ns.Errors.log)
+          ns.Errors.log((ev && ev.error) || 'speech error', 'voice-tier0');
         const n = U.$('voice-tier-note');
-        if (n) n.textContent = 'Live captions interrupted (' + ((ev && ev.error) || 'error') + ') , type notes instead.';
+        if (n)
+          n.textContent =
+            'Live captions interrupted (' +
+            ((ev && ev.error) || 'error') +
+            ') , type notes instead.';
         _cap.rec = null;
       };
-      rec.onend = function() { /* no silent auto-restart loop */ };
+      rec.onend = function () {
+        /* no silent auto-restart loop */
+      };
       rec.start();
       _cap.rec = rec;
     } catch (err) {
-      if (ns.Errors && ns.Errors.log) ns.Errors.log((err && err.message) || String(err), 'voice-tier0');
+      if (ns.Errors && ns.Errors.log)
+        ns.Errors.log((err && err.message) || String(err), 'voice-tier0');
     }
   }
   function stopTier0() {
-    if (_cap.rec) { try { _cap.rec.stop(); } catch (e) {} _cap.rec = null; }
+    if (_cap.rec) {
+      try {
+        _cap.rec.stop();
+      } catch (e) {}
+      _cap.rec = null;
+    }
   }
 
   // ---- Tier 1: offline whisper.cpp WASM transcription (1.5.2) -----------
@@ -519,7 +692,8 @@ var MMGR = window.MMGR || {};
   // no repo bloat (deploy limit holds), portable data (model is not
   // project data). The bundled path below remains ONLY as a fallback for
   // self-hosted deploys that ship the .bin themselves.
-  const TIER1_MODEL_URL = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en-q5_1.bin';
+  const TIER1_MODEL_URL =
+    'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en-q5_1.bin';
   const TIER1_MODEL_FALLBACK = 'vendor/whisper/ggml-tiny.en-q5_1.bin';
   const TIER1_MODEL_CACHE = 'mmgr-whisper-model-v1';
 
@@ -549,10 +723,12 @@ var MMGR = window.MMGR || {};
     progress: 0,
     lastErr: null,
     pendingKick: null, // newest session requested while one is still running
-    modelSource: null  // 'remote-cache' | 'local-fallback' | 'hook' (diagnostic)
+    modelSource: null // 'remote-cache' | 'local-fallback' | 'hook' (diagnostic)
   };
 
-  function _t1Url(p) { return new URL(p, document.baseURI).href; }
+  function _t1Url(p) {
+    return new URL(p, document.baseURI).href;
+  }
 
   // Load the whisper runtime and init a context against a model source.
   // Shared by the remote (Blob URL of cached bytes) and local-fallback
@@ -566,7 +742,11 @@ var MMGR = window.MMGR || {};
     // once the runtime is already loaded (the module singleton is shared)
     // , that is fine: the first configure wins, later calls are no-ops.
     if (typeof mod.configureWasm === 'function') {
-      try { mod.configureWasm({ threads: false }); } catch (e) { /* already configured */ }
+      try {
+        mod.configureWasm({ threads: false });
+      } catch (e) {
+        /* already configured */
+      }
     }
     return mod.initWhisper({ filePath: modelPath, cacheModel: cacheModel });
   }
@@ -583,29 +763,34 @@ var MMGR = window.MMGR || {};
         cacheModel = true;
         modelSource = 'hook';
       } else {
-      // Production: remote-first. Fetch (or read from Cache API) the
-      // model bytes, wrap them in a Blob URL, and hand that URL to the
-      // whisper runtime. initWhisper accepts a fetchable URL, not raw
-      // bytes, so the Blob URL is the bridge. cacheModel=false here: the
-      // Cache API already persists the model under TIER1_MODEL_CACHE,
-      // and a Blob URL is not a stable Cache key for the runtime.
-      try {
-        const bytes = await getModelBytes();
-        modelPath = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }));
-        cacheModel = false;
-        modelSource = 'remote-cache';
-      } catch (remoteErr) {
-        // Offline, or a host outage: fall back to the bundled copy for
-        // self-hosted deploys that ship the .bin themselves. Record why.
-        // (A plain CORS block no longer lands here , the primary URL is
-        // the CORS-enabled HF mirror, verified at implementation time.)
-        if (ns.Errors && ns.Errors.log) {
-          ns.Errors.log('voice-tier1: remote model fetch failed (' + ((remoteErr && remoteErr.message) || String(remoteErr)) + ') , using bundled model', 'voice-tier1');
+        // Production: remote-first. Fetch (or read from Cache API) the
+        // model bytes, wrap them in a Blob URL, and hand that URL to the
+        // whisper runtime. initWhisper accepts a fetchable URL, not raw
+        // bytes, so the Blob URL is the bridge. cacheModel=false here: the
+        // Cache API already persists the model under TIER1_MODEL_CACHE,
+        // and a Blob URL is not a stable Cache key for the runtime.
+        try {
+          const bytes = await getModelBytes();
+          modelPath = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }));
+          cacheModel = false;
+          modelSource = 'remote-cache';
+        } catch (remoteErr) {
+          // Offline, or a host outage: fall back to the bundled copy for
+          // self-hosted deploys that ship the .bin themselves. Record why.
+          // (A plain CORS block no longer lands here , the primary URL is
+          // the CORS-enabled HF mirror, verified at implementation time.)
+          if (ns.Errors && ns.Errors.log) {
+            ns.Errors.log(
+              'voice-tier1: remote model fetch failed (' +
+                ((remoteErr && remoteErr.message) || String(remoteErr)) +
+                ') , using bundled model',
+              'voice-tier1'
+            );
+          }
+          modelPath = _t1Url(TIER1_MODEL_FALLBACK);
+          cacheModel = true; // bundled copy: runtime Cache Storage is fine
+          modelSource = 'local-fallback';
         }
-        modelPath = _t1Url(TIER1_MODEL_FALLBACK);
-        cacheModel = true; // bundled copy: runtime Cache Storage is fine
-        modelSource = 'local-fallback';
-      }
       }
       const ctx = await _t1InitRuntime(modelPath, cacheModel);
       target.ctx = ctx;
@@ -616,7 +801,8 @@ var MMGR = window.MMGR || {};
       target.ready = false;
       target.ctx = null;
       target.lastErr = err;
-      if (ns.Errors && ns.Errors.log) ns.Errors.log((err && err.message) || String(err), 'voice-tier1');
+      if (ns.Errors && ns.Errors.log)
+        ns.Errors.log((err && err.message) || String(err), 'voice-tier1');
     }
     return target.ready;
   }
@@ -628,11 +814,18 @@ var MMGR = window.MMGR || {};
   function initTier1(forcedModelUrl) {
     if (forcedModelUrl) return _initTier1Impl(forcedModelUrl);
     if (_t1.promise) return _t1.promise;
-    _t1.promise = _initTier1Impl().then(function(ok) { if (!ok) _t1.promise = null; return ok; });
+    _t1.promise = _initTier1Impl().then(function (ok) {
+      if (!ok) _t1.promise = null;
+      return ok;
+    });
     return _t1.promise;
   }
-  function warmTier1() { initTier1(); }
-  function tier1Ready() { return _t1.ready && !!_t1.ctx; }
+  function warmTier1() {
+    initTier1();
+  }
+  function tier1Ready() {
+    return _t1.ready && !!_t1.ctx;
+  }
   function tier1Status() {
     return {
       ready: _t1.ready,
@@ -647,7 +840,7 @@ var MMGR = window.MMGR || {};
   // Linear resample to whisper's fixed 16 kHz input rate.
   function resampleLinear(input, fromRate, toRate) {
     if (!input || !input.length || !fromRate || fromRate === toRate) return input;
-    const outLen = Math.max(1, Math.round(input.length * toRate / fromRate));
+    const outLen = Math.max(1, Math.round((input.length * toRate) / fromRate));
     const out = new Float32Array(outLen);
     const ratio = fromRate / toRate;
     for (let i = 0; i < outLen; i++) {
@@ -675,17 +868,25 @@ var MMGR = window.MMGR || {};
   // Every persisted chunk for a session, in arrival order (waits for any
   // in-flight append , the queue guarantees nothing is missed on stop).
   function readChunks(sessionId) {
-    return waitQueue(sessionId).then(function() {
-      return openDB().then(function(db) {
-        return new Promise(function(res, rej) {
+    return waitQueue(sessionId).then(function () {
+      return openDB().then(function (db) {
+        return new Promise(function (res, rej) {
           const tx = db.transaction('chunks', 'readonly');
           const range = IDBKeyRange.bound(sessionId + ':', sessionId + ':\uffff');
           const req = tx.objectStore('chunks').getAll(range);
-          req.onsuccess = function() {
-            const rows = (req.result || []).sort(function(a, b) { return (a.idx || 0) - (b.idx || 0); });
-            res(rows.map(function(r) { return r.blob; }));
+          req.onsuccess = function () {
+            const rows = (req.result || []).sort(function (a, b) {
+              return (a.idx || 0) - (b.idx || 0);
+            });
+            res(
+              rows.map(function (r) {
+                return r.blob;
+              })
+            );
           };
-          req.onerror = function() { rej(req.error); };
+          req.onerror = function () {
+            rej(req.error);
+          };
         });
       });
     });
@@ -703,7 +904,9 @@ var MMGR = window.MMGR || {};
       const ab = await ac.decodeAudioData(buf.slice(0));
       return mixToMono16k(ab);
     } finally {
-      try { ac.close(); } catch (e) {}
+      try {
+        ac.close();
+      } catch (e) {}
     }
   }
 
@@ -730,9 +933,14 @@ var MMGR = window.MMGR || {};
       }
       return;
     }
-    ns.State.updateState(function(st) {
-      const live = (st.activeMeeting && st.activeMeeting.captureSession === sessionId) ? st.activeMeeting : null;
-      const stored = live ? null : (st.meetings || []).find(function(m) { return m.captureSession === sessionId; });
+    ns.State.updateState(function (st) {
+      const live =
+        st.activeMeeting && st.activeMeeting.captureSession === sessionId ? st.activeMeeting : null;
+      const stored = live
+        ? null
+        : (st.meetings || []).find(function (m) {
+            return m.captureSession === sessionId;
+          });
       const target = live || stored;
       if (!target) return;
       target.transcript = clean;
@@ -744,7 +952,9 @@ var MMGR = window.MMGR || {};
     const s = ns.State.getState();
     const stillLive = s.activeMeeting && s.activeMeeting.captureSession === sessionId;
     if (!stillLive) {
-      const stored = (s.meetings || []).find(function(m) { return m.captureSession === sessionId; });
+      const stored = (s.meetings || []).find(function (m) {
+        return m.captureSession === sessionId;
+      });
       if (stored) applyExtractionToState(stored);
     }
   }
@@ -754,13 +964,23 @@ var MMGR = window.MMGR || {};
   // run it when the current job finishes (never silently drop a recording).
   async function transcribeSession(sessionId) {
     if (!sessionId) return;
-    if (_t1.transcribing) { _t1.pendingKick = sessionId; return; }
+    if (_t1.transcribing) {
+      _t1.pendingKick = sessionId;
+      return;
+    }
     _t1.transcribing = true;
     _t1.progress = 0;
-    const mark = function(field, val) {
-      ns.State.updateState(function(st) {
-        const live = (st.activeMeeting && st.activeMeeting.captureSession === sessionId) ? st.activeMeeting : null;
-        const target = live || (st.meetings || []).find(function(m) { return m.captureSession === sessionId; });
+    const mark = function (field, val) {
+      ns.State.updateState(function (st) {
+        const live =
+          st.activeMeeting && st.activeMeeting.captureSession === sessionId
+            ? st.activeMeeting
+            : null;
+        const target =
+          live ||
+          (st.meetings || []).find(function (m) {
+            return m.captureSession === sessionId;
+          });
         if (target) target[field] = val;
       });
     };
@@ -768,14 +988,20 @@ var MMGR = window.MMGR || {};
     renderCaptureSection();
     try {
       if (!tier1Ready()) await initTier1();
-      if (!tier1Ready()) throw (_t1.lastErr || new Error('Offline transcription unavailable'));
+      if (!tier1Ready()) throw _t1.lastErr || new Error('Offline transcription unavailable');
       const chunks = await readChunks(sessionId);
-      if (!chunks || !chunks.length) { mark('transcribeState', 'idle'); return; }
+      if (!chunks || !chunks.length) {
+        mark('transcribeState', 'idle');
+        return;
+      }
       const f32 = await decodeForWhisper(new Blob(chunks, { type: 'audio/webm' }));
-      if (!f32 || !f32.length) { mark('transcribeState', 'idle'); return; }
+      if (!f32 || !f32.length) {
+        mark('transcribeState', 'idle');
+        return;
+      }
       const op = _t1.ctx.transcribeData(f32, {
         language: 'en',
-        onProgress: function(p) {
+        onProgress: function (p) {
           // whisper.cpp reports percent (0-100); normalize defensively to 0-1.
           const v = typeof p === 'number' ? (p > 1 ? p / 100 : p) : 0;
           _t1.progress = Math.min(1, Math.max(0, v));
@@ -790,7 +1016,8 @@ var MMGR = window.MMGR || {};
     } catch (err) {
       _t1.lastErr = err;
       mark('transcribeState', 'failed');
-      if (ns.Errors && ns.Errors.log) ns.Errors.log((err && err.message) || String(err), 'voice-tier1');
+      if (ns.Errors && ns.Errors.log)
+        ns.Errors.log((err && err.message) || String(err), 'voice-tier1');
       _toast('Offline transcription failed , captions kept; you can retry.', 'err');
     } finally {
       _t1.transcribing = false;
@@ -802,24 +1029,31 @@ var MMGR = window.MMGR || {};
   }
 
   // Manual re-run from the stopped card (also the action behind the retry
-  // button after a failure). Targets the ACTIVE meeting's own session only , 
+  // button after a failure). Targets the ACTIVE meeting's own session only ,
   // stored meetings carry their own captureSession, so there is no case where
   // a session belonging to a different record should be re-transcribed here.
   function transcribeOffline() {
     const s = ns.State.getState();
     const m = s.activeMeeting;
     const sid = m && m.captureSession;
-    if (!sid) { _toast('No recorded session to transcribe.', 'err'); return false; }
+    if (!sid) {
+      _toast('No recorded session to transcribe.', 'err');
+      return false;
+    }
     transcribeSession(sid);
     return true;
   }
-  function kickTranscription(sessionId) { transcribeSession(sessionId); }
+  function kickTranscription(sessionId) {
+    transcribeSession(sessionId);
+  }
 
   // Caption lines accumulate in _cap.captionBuf and flush to state at most
   // every 5s , throttling keeps updatedAt churn (and thus multi-tab
   // storage-event conflict modals) off the hot path of live speech.
   function appendCaption(line) {
-    const clean = String(line || '').replace(/\s+/g, ' ').trim();
+    const clean = String(line || '')
+      .replace(/\s+/g, ' ')
+      .trim();
     if (!clean) return;
     const ta = U.$('voice-captions');
     if (ta) {
@@ -835,10 +1069,12 @@ var MMGR = window.MMGR || {};
     _cap.captionBuf = '';
     if (!buf) return;
     _cap.lastStateFlush = Date.now();
-    ns.State.updateState(function(st) {
+    ns.State.updateState(function (st) {
       if (st.activeMeeting) {
-        st.activeMeeting.transcript = ((st.activeMeeting.transcript || '').trim()
-          ? st.activeMeeting.transcript.replace(/\s+$/, '') + ' ' : '') + buf;
+        st.activeMeeting.transcript =
+          ((st.activeMeeting.transcript || '').trim()
+            ? st.activeMeeting.transcript.replace(/\s+$/, '') + ' '
+            : '') + buf;
       }
     });
   }
@@ -847,9 +1083,12 @@ var MMGR = window.MMGR || {};
   // Keyword patterns only, per the plan: "I'll", "by Friday", "we agree".
   // No AI call is ever made; the AI-refined upgrade path is gated behind
   // Rank 2's model wiring and is NOT a dependency here.
-  const DECISION_RE = /\b(we|the team|i)\s+(agree|agreed|decide|decided|confirm|confirmed|approve|approved)\b|\b(we|the team)(?:'re| are)\s+(going|planning)\s+to\b/i;
-  const ACTION_RE = /\b(i'?ll|i will|we'?ll|we will|you need to|someone needs to|can you|you should|we should|let'?s)\b/i;
-  const DUE_RE = /\bby\s+(tomorrow|tonight|this week|next week|next month|monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|\d{4}-\d{2}-\d{2})\b/i;
+  const DECISION_RE =
+    /\b(we|the team|i)\s+(agree|agreed|decide|decided|confirm|confirmed|approve|approved)\b|\b(we|the team)(?:'re| are)\s+(going|planning)\s+to\b/i;
+  const ACTION_RE =
+    /\b(i'?ll|i will|we'?ll|we will|you need to|someone needs to|can you|you should|we should|let'?s)\b/i;
+  const DUE_RE =
+    /\bby\s+(tomorrow|tonight|this week|next week|next month|monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|\d{4}-\d{2}-\d{2})\b/i;
   const OWNER_RE = /\b(?:assign|to|for|with)\s+([A-Z][A-Za-z]{1,20})\b/;
 
   // Clause splitter (QA-STRESS DIR-2 finding, Aug 2026): real whisper
@@ -861,16 +1100,19 @@ var MMGR = window.MMGR || {};
   // longer than 140 chars at commas/semicolons into INDEPENDENT clauses.
   // Deliberately NO merging back: merging two comma-bits can glue an
   // action clause to a decision clause, and the per-clause first-match
-  // rule would then drop the action again (verified by the stress run , 
+  // rule would then drop the action again (verified by the stress run ,
   // the merge step was the regression, not the split).
   function splitClauses(text) {
     const sentences = String(text || '').match(/[^.!?\n]+[.!?]*/g) || [];
     const out = [];
-    sentences.forEach(function(raw) {
+    sentences.forEach(function (raw) {
       const p = raw.trim();
       if (!p) return;
-      if (p.length <= 140) { out.push(p); return; }
-      p.split(/[,;]\s+/).forEach(function(b) {
+      if (p.length <= 140) {
+        out.push(p);
+        return;
+      }
+      p.split(/[,;]\s+/).forEach(function (b) {
         b = b.trim();
         if (b) out.push(b);
       });
@@ -884,7 +1126,7 @@ var MMGR = window.MMGR || {};
     const decisions = [];
     const actions = [];
     const seen = {};
-    sentences.forEach(function(raw) {
+    sentences.forEach(function (raw) {
       const s = raw.trim();
       if (s.length < 4) return;
       if (DECISION_RE.test(s)) {
@@ -898,7 +1140,10 @@ var MMGR = window.MMGR || {};
         const dueM = s.match(DUE_RE);
         const ownM = s.match(OWNER_RE);
         const body = s
-          .replace(/^[\s"'""]*(?:i'?ll|i will|we'?ll|we will|you need to|someone needs to|can you|you should|we should|let'?s)\s+/i, '')
+          .replace(
+            /^[\s"'""]*(?:i'?ll|i will|we'?ll|we will|you need to|someone needs to|can you|you should|we should|let'?s)\s+/i,
+            ''
+          )
           .replace(/[.!?]+$/, '')
           .trim();
         let text = body ? body.charAt(0).toUpperCase() + body.slice(1) : s.replace(/[.!?]+$/, '');
@@ -923,29 +1168,40 @@ var MMGR = window.MMGR || {};
     if (!src) return { decisions: [], actions: [] };
     const res = extractFromTranscript(src);
     if (!res.decisions.length && !res.actions.length) return res;
-    ns.State.updateState(function(st) {
+    ns.State.updateState(function (st) {
       if (!Array.isArray(st.logEntries)) st.logEntries = [];
       if (!st.meetingPromises) st.meetingPromises = {};
       const kind = m.kind || 'weekly';
       if (!st.meetingPromises[kind]) st.meetingPromises[kind] = [];
       const promiseCap = 30;
-      const mid = m.id != null ? m.id : (st.meetings && st.meetings.length ? st.meetings[0].id : null);
+      const mid =
+        m.id != null ? m.id : st.meetings && st.meetings.length ? st.meetings[0].id : null;
       const today = new Date().toISOString().slice(0, 10);
       // Idempotency guard (review finding): when Tier 1 whisper completes
       // AFTER endMeeting already extracted from partial live captions, the
       // same meeting can be extracted twice. Dedupe on (meeting, text) so a
       // re-extraction adds only genuinely new decisions/actions.
-      const alreadyLogged = function(text) {
-        return st.logEntries.some(function(e) {
-          return e.sourceMeetingId === mid && String(e.decision || e.text || '').trim().toLowerCase() === text.toLowerCase();
+      const alreadyLogged = function (text) {
+        return st.logEntries.some(function (e) {
+          return (
+            e.sourceMeetingId === mid &&
+            String(e.decision || e.text || '')
+              .trim()
+              .toLowerCase() === text.toLowerCase()
+          );
         });
       };
-      const alreadyPromised = function(text) {
-        return (st.meetingPromises[kind] || []).some(function(p) {
-          return p.sourceMeetingId === mid && String(p.text || '').trim().toLowerCase() === text.toLowerCase();
+      const alreadyPromised = function (text) {
+        return (st.meetingPromises[kind] || []).some(function (p) {
+          return (
+            p.sourceMeetingId === mid &&
+            String(p.text || '')
+              .trim()
+              .toLowerCase() === text.toLowerCase()
+          );
         });
       };
-      res.decisions.forEach(function(d) {
+      res.decisions.forEach(function (d) {
         if (alreadyLogged(d.text)) return;
         st.logEntries.push({
           id: U.genShortId('D'),
@@ -956,7 +1212,7 @@ var MMGR = window.MMGR || {};
           sourceMeetingId: mid // used by the dedupe above; renderers ignore it
         });
       });
-      res.actions.forEach(function(a) {
+      res.actions.forEach(function (a) {
         if (st.meetingPromises[kind].length >= promiseCap || alreadyPromised(a.text)) return;
         st.meetingPromises[kind].push({
           id: U.genShortId('P'),
@@ -981,28 +1237,35 @@ var MMGR = window.MMGR || {};
     if (!wrap) return;
     const s = ns.State.getState();
     const m = s.activeMeeting;
-    if (!m) { wrap.innerHTML = ''; return; }
+    if (!m) {
+      wrap.innerHTML = '';
+      return;
+    }
     const state = m.captureState;
     const isRec = state === 'recording';
     const isStopped = state === 'stopped';
     // Display continuity: un-flushed captions live in _cap.captionBuf while
     // state.transcript only receives them on the 5s throttle. A re-render
     // (e.g. tglMeetItem) must show BOTH, or the visible text drops lines.
-    const transcript = (m.transcript || '') + (_cap.active && _cap.captionBuf ? ' ' + _cap.captionBuf : '');
+    const transcript =
+      (m.transcript || '') + (_cap.active && _cap.captionBuf ? ' ' + _cap.captionBuf : '');
     let html = '';
     if (isRec) {
-      html = '<div class="voice-card voice-live">' +
+      html =
+        '<div class="voice-card voice-live">' +
         '<div class="voice-head">' +
-          '<span class="voice-rec"><span class="voice-dot"></span> REC</span>' +
-          '<span class="voice-timer" id="voice-timer">0m 0s</span>' +
-          '<span class="voice-chunks" id="voice-chunks">0 chunks saved</span>' +
+        '<span class="voice-rec"><span class="voice-dot"></span> REC</span>' +
+        '<span class="voice-timer" id="voice-timer">0m 0s</span>' +
+        '<span class="voice-chunks" id="voice-chunks">0 chunks saved</span>' +
         '</div>' +
         '<div class="voice-meter"><div class="voice-meter-fill" id="voice-meter-fill"></div></div>' +
         '<div class="voice-tier-note" id="voice-tier-note">Live captions (Tier 0) stream here , on stop, bundled offline whisper (Tier 1) produces the full transcript.</div>' +
-        '<textarea class="cf-ta voice-captions" id="voice-captions" readonly placeholder="Live captions appear here...">' + U.escapeHtml(transcript) + '</textarea>' +
+        '<textarea class="cf-ta voice-captions" id="voice-captions" readonly placeholder="Live captions appear here...">' +
+        U.escapeHtml(transcript) +
+        '</textarea>' +
         '<div class="g6"><button class="btn btn-g btn-s" data-action="voiceStopCapture"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Stop &amp; Save</button>' +
         '<button class="btn btn-n btn-s" data-action="voiceDiscardCapture"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Discard</button></div>' +
-      '</div>';
+        '</div>';
     } else {
       // Tier 1 status row for the stopped state: transcribing (progress),
       // done, failed (retry), or idle (manual Transcribe Offline button).
@@ -1010,26 +1273,42 @@ var MMGR = window.MMGR || {};
       if (m.captureSession) {
         if (m.transcribeState === 'transcribing') {
           const pct = Math.min(100, Math.round((tier1Status().progress || 0) * 100));
-          t1row = '<div class="voice-t1 voice-t1-on"><span class="voice-t1-lbl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cpu"></use></svg> Offline transcription (whisper, in-browser)...</span>' +
-            '<div class="voice-meter"><div class="voice-meter-fill" id="voice-meter-fill" style="width:' + pct + '%"></div></div></div>';
+          t1row =
+            '<div class="voice-t1 voice-t1-on"><span class="voice-t1-lbl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cpu"></use></svg> Offline transcription (whisper, in-browser)...</span>' +
+            '<div class="voice-meter"><div class="voice-meter-fill" id="voice-meter-fill" style="width:' +
+            pct +
+            '%"></div></div></div>';
         } else if (m.transcribeState === 'done') {
-          t1row = '<div class="voice-t1 voice-t1-ok"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Offline transcript ready , whisper WASM, no network.</div>';
+          t1row =
+            '<div class="voice-t1 voice-t1-ok"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Offline transcript ready , whisper WASM, no network.</div>';
         } else if (m.transcribeState === 'failed') {
-          t1row = '<div class="voice-t1 voice-t1-err"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Offline transcription failed , captions kept. <button class="btn btn-n btn-s" data-action="voiceTranscribeOffline">Retry</button></div>';
+          t1row =
+            '<div class="voice-t1 voice-t1-err"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Offline transcription failed , captions kept. <button class="btn btn-n btn-s" data-action="voiceTranscribeOffline">Retry</button></div>';
         } else {
-          t1row = '<div class="g6 voice-t1"><button class="btn btn-n btn-s" data-action="voiceTranscribeOffline"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cpu"></use></svg> Transcribe Offline</button>' +
+          t1row =
+            '<div class="g6 voice-t1"><button class="btn btn-n btn-s" data-action="voiceTranscribeOffline"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cpu"></use></svg> Transcribe Offline</button>' +
             '<span class="voice-sub">Runs fully in-browser via whisper , no key. First run downloads the 31 MB model once and caches it; if the download is blocked it uses the bundled copy.</span></div>';
         }
       }
-      html = '<div class="voice-card">' +
+      html =
+        '<div class="voice-card">' +
         '<div class="voice-head"><span class="voice-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Voice Capture</span>' +
-          (isStopped ? (m.captureMethod === 'tier1' ? '<span class="badge bg">offline transcript</span>' : '<span class="badge bg">saved</span>') : '<span class="badge ba">off</span>') + '</div>' +
-        (isStopped ? '' : '<div class="voice-note">Record this meeting , mic access is requested only while recording, and a live REC indicator stays on screen for consent. Live captions (Tier 0) stream while recording; bundled offline whisper (Tier 1) finalizes the transcript when you stop. Everything stays editable until you end the meeting.</div>') +
+        (isStopped
+          ? m.captureMethod === 'tier1'
+            ? '<span class="badge bg">offline transcript</span>'
+            : '<span class="badge bg">saved</span>'
+          : '<span class="badge ba">off</span>') +
+        '</div>' +
+        (isStopped
+          ? ''
+          : '<div class="voice-note">Record this meeting , mic access is requested only while recording, and a live REC indicator stays on screen for consent. Live captions (Tier 0) stream while recording; bundled offline whisper (Tier 1) finalizes the transcript when you stop. Everything stays editable until you end the meeting.</div>') +
         '<div class="g6"><button class="btn btn-g btn-s" data-action="voiceStartCapture"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Record Meeting</button></div>' +
         t1row +
         '<label class="cf-label voice-lbl">Transcript <span class="voice-sub">(typed or edited here; extracted into Decisions when the meeting ends)</span></label>' +
-        '<textarea class="cf-ta voice-captions" data-action="updMeetField" data-field="transcript" placeholder="Type or edit the transcript here...">' + U.escapeHtml(transcript) + '</textarea>' +
-      '</div>';
+        '<textarea class="cf-ta voice-captions" data-action="updMeetField" data-field="transcript" placeholder="Type or edit the transcript here...">' +
+        U.escapeHtml(transcript) +
+        '</textarea>' +
+        '</div>';
     }
     wrap.innerHTML = html;
     checkRecovery();
@@ -1043,22 +1322,30 @@ var MMGR = window.MMGR || {};
   function checkRecovery() {
     if (_recoveryDismissed) return;
     const s = ns.State.getState();
-    const curSession = _cap.active && _cap.sessionId ? _cap.sessionId : (s.activeMeeting && s.activeMeeting.captureSession) || null;
+    const curSession =
+      _cap.active && _cap.sessionId
+        ? _cap.sessionId
+        : (s.activeMeeting && s.activeMeeting.captureSession) || null;
     const pid = ns.projectId || 'default';
-    pendingSessions().then(function(list) {
-      const interrupted = (list || []).filter(function(sess) {
-        return sess.projectId === pid && sess.sessionId !== curSession;
-      });
-      if (!interrupted.length) return;
-      const wrap = U.$('meet-voice-wrap');
-      if (!wrap || wrap.querySelector('.voice-recover')) return; // one chip at a time
-      const chip = document.createElement('div');
-      chip.className = 'voice-recover';
-      chip.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> ' +
-        interrupted.length + ' interrupted recording session' + (interrupted.length !== 1 ? 's' : '') +
-        ' found , audio chunks were saved safely. <button class="btn btn-n btn-s" data-action="voiceRecoverDismiss">Dismiss</button>';
-      wrap.prepend(chip);
-    }).catch(function() {});
+    pendingSessions()
+      .then(function (list) {
+        const interrupted = (list || []).filter(function (sess) {
+          return sess.projectId === pid && sess.sessionId !== curSession;
+        });
+        if (!interrupted.length) return;
+        const wrap = U.$('meet-voice-wrap');
+        if (!wrap || wrap.querySelector('.voice-recover')) return; // one chip at a time
+        const chip = document.createElement('div');
+        chip.className = 'voice-recover';
+        chip.innerHTML =
+          '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> ' +
+          interrupted.length +
+          ' interrupted recording session' +
+          (interrupted.length !== 1 ? 's' : '') +
+          ' found , audio chunks were saved safely. <button class="btn btn-n btn-s" data-action="voiceRecoverDismiss">Dismiss</button>';
+        wrap.prepend(chip);
+      })
+      .catch(function () {});
   }
   function dismissRecovery() {
     _recoveryDismissed = true;
@@ -1084,37 +1371,56 @@ var MMGR = window.MMGR || {};
   // recording already ships in CSS). Turns itself off when the AI window
   // closes or the tier is switched (stopped from mmgr-ai.js close()).
   let _aiRec = null;
-  function aiBtn() { return document.getElementById('ai-voice-btn'); }
-  function aiRecActive() { return !!_aiRec; }
+  function aiBtn() {
+    return document.getElementById('ai-voice-btn');
+  }
+  function aiRecActive() {
+    return !!_aiRec;
+  }
   function stopAiDictation() {
     if (!_aiRec) return;
-    try { _aiRec.stop(); } catch (e) { /* ignore */ }
+    try {
+      _aiRec.stop();
+    } catch (e) {
+      /* ignore */
+    }
     _aiRec = null;
     const b = aiBtn();
     if (b) b.classList.remove('recording');
   }
   function toggleAiRecording() {
     const btn = aiBtn();
-    if (_aiRec) { stopAiDictation(); return; }
+    if (_aiRec) {
+      stopAiDictation();
+      return;
+    }
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
-      if (ns.App && ns.App.showToast) ns.App.showToast('Voice input is not available in this browser. Chrome or Edge support it.', 'warn');
+      if (ns.App && ns.App.showToast)
+        ns.App.showToast(
+          'Voice input is not available in this browser. Chrome or Edge support it.',
+          'warn'
+        );
       return;
     }
     let rec;
-    try { rec = new SR(); } catch (e) {
-      if (ns.App && ns.App.showToast) ns.App.showToast('Voice input could not start in this browser.', 'warn');
+    try {
+      rec = new SR();
+    } catch (e) {
+      if (ns.App && ns.App.showToast)
+        ns.App.showToast('Voice input could not start in this browser.', 'warn');
       return;
     }
     rec.continuous = true;
     rec.interimResults = true;
     rec.lang = document.documentElement.lang || 'en-US';
-    rec.onstart = function() {
+    rec.onstart = function () {
       _aiRec = rec;
       if (btn) btn.classList.add('recording');
-      if (ns.App && ns.App.showToast) ns.App.showToast('Listening. Click the mic again to stop.', 'ok');
+      if (ns.App && ns.App.showToast)
+        ns.App.showToast('Listening. Click the mic again to stop.', 'ok');
     };
-    rec.onresult = function(e) {
+    rec.onresult = function (e) {
       const q = document.getElementById('ai-q');
       if (!q) return;
       let finalText = '';
@@ -1124,34 +1430,54 @@ var MMGR = window.MMGR || {};
         else interim += e.results[i][0].transcript;
       }
       if (finalText) {
-        _aiBase = (q.value + (q.value && !/\s$/.test(q.value) ? ' ' : '') + finalText.trim());
+        _aiBase = q.value + (q.value && !/\s$/.test(q.value) ? ' ' : '') + finalText.trim();
         q.value = _aiBase;
       }
       q.value = _aiBase + (interim ? (q.value && !/\s$/.test(q.value) ? ' ' : '') + interim : '');
       q.dispatchEvent(new Event('input', { bubbles: true }));
-      try { q.focus({ preventScroll: true }); } catch (e2) { /* ignore */ }
+      try {
+        q.focus({ preventScroll: true });
+      } catch (e2) {
+        /* ignore */
+      }
     };
-    rec.onerror = function(ev) {
+    rec.onerror = function (ev) {
       const code = (ev && ev.error) || 'error';
       if (code === 'not-allowed' || code === 'service-not-allowed') {
-        if (ns.App && ns.App.showToast) ns.App.showToast('Microphone permission was blocked. Allow the mic in your browser settings and try again.', 'warn');
+        if (ns.App && ns.App.showToast)
+          ns.App.showToast(
+            'Microphone permission was blocked. Allow the mic in your browser settings and try again.',
+            'warn'
+          );
       } else if (code === 'no-speech') {
-        if (ns.App && ns.App.showToast) ns.App.showToast('Heard nothing. Try again a little closer to the mic.', 'warn');
+        if (ns.App && ns.App.showToast)
+          ns.App.showToast('Heard nothing. Try again a little closer to the mic.', 'warn');
       } else if (code === 'network') {
-        if (ns.App && ns.App.showToast) ns.App.showToast('Voice input needs a connection in this browser. Type your question instead.', 'warn');
+        if (ns.App && ns.App.showToast)
+          ns.App.showToast(
+            'Voice input needs a connection in this browser. Type your question instead.',
+            'warn'
+          );
       }
       stopAiDictation();
     };
-    rec.onend = function() {
+    rec.onend = function () {
       // Chrome ends the session on silence; restart while the user still
       // wants dictation (green state) so a pause does not kill the mic.
       if (_aiRec === rec) {
-        try { rec.start(); } catch (e) { stopAiDictation(); }
+        try {
+          rec.start();
+        } catch (e) {
+          stopAiDictation();
+        }
       }
     };
     _aiBase = null;
-    try { rec.start(); } catch (e) {
-      if (ns.App && ns.App.showToast) ns.App.showToast('Voice input could not start. Is the microphone in use?', 'warn');
+    try {
+      rec.start();
+    } catch (e) {
+      if (ns.App && ns.App.showToast)
+        ns.App.showToast('Voice input could not start. Is the microphone in use?', 'warn');
     }
   }
   let _aiBase = null;

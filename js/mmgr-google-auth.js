@@ -36,53 +36,64 @@
    offline load, or blocked script can never break the page.
    ============================================================ */
 var MMGR = window.MMGR || {};
-(function(ns) {
+(function (ns) {
   'use strict';
 
   // Public Client ID , safe to ship (also mirrored in worker.js / wrangler
   // vars). The Client Secret lives ONLY in the Worker's env.
   const CLIENT_ID = '297970704704-m05hgt93lfaq286q90br8c96ffg1aph3.apps.googleusercontent.com';
-  const GIS_SRC = 'https://accounts.google.com/gsi/client';  let _gisInit = false;   // GIS initialized exactly once
-  let _restored = false;  // /api/auth/me consulted at most once per boot
+  const GIS_SRC = 'https://accounts.google.com/gsi/client';
+  let _gisInit = false; // GIS initialized exactly once
+  let _restored = false; // /api/auth/me consulted at most once per boot
   let _popupWarnShown = false; // BUG-2: popup-blocked warning shown at most once
-  let _user = null;  // signed-in operator (session restore, Google, or email) , display-only, never gates anything
+  let _user = null; // signed-in operator (session restore, Google, or email) , display-only, never gates anything
 
-  function $(id) { return document.getElementById(id); }
-  function gisReady() { return !!(window.google && window.google.accounts && window.google.accounts.id); }
-
+  function $(id) {
+    return document.getElementById(id);
+  }
+  function gisReady() {
+    return !!(window.google && window.google.accounts && window.google.accounts.id);
+  }
 
   // BUG-2: detect when the GIS popup is blocked by the browser. The GIS
   // library logs to console.error (GSI_LOGGER) but provides no callback for
-  // popup failure. We intercept window.open during the GIS button click , 
+  // popup failure. We intercept window.open during the GIS button click ,
   // if it returns null, the popup was blocked , and show a user-facing
   // message instead of a silent console error.
   function installPopupBlockDetector() {
     const host = $('google-signin-button');
     if (!host) return;
-    host.addEventListener('click', function onGisClick() {
-      const origOpen = window.open;
-      window.open = function() {
-        window.open = origOpen; // restore immediately
-        const w = origOpen.apply(this, arguments);
-        if (!w && !_popupWarnShown) {
-          _popupWarnShown = true;
-          // Surface a clear, actionable message. The toast function may not
-          // be available on all pages, so fall back to a visible DOM element.
-          if (typeof toast === 'function') {
-            toast('Your browser blocked the Google sign-in popup. Allow popups for this site, or use the email sign-in below.', 'err');
-          } else {
-            const statusEl = $('google-signin-status') || $('drive-sync-status');
-            if (statusEl) {
-              statusEl.textContent = 'Popup blocked , allow popups for this site, or use email sign-in.';
-              statusEl.classList.add('is-err');
+    host.addEventListener(
+      'click',
+      function onGisClick() {
+        const origOpen = window.open;
+        window.open = function () {
+          window.open = origOpen; // restore immediately
+          const w = origOpen.apply(this, arguments);
+          if (!w && !_popupWarnShown) {
+            _popupWarnShown = true;
+            // Surface a clear, actionable message. The toast function may not
+            // be available on all pages, so fall back to a visible DOM element.
+            if (typeof toast === 'function') {
+              toast(
+                'Your browser blocked the Google sign-in popup. Allow popups for this site, or use the email sign-in below.',
+                'err'
+              );
+            } else {
+              const statusEl = $('google-signin-status') || $('drive-sync-status');
+              if (statusEl) {
+                statusEl.textContent =
+                  'Popup blocked , allow popups for this site, or use email sign-in.';
+                statusEl.classList.add('is-err');
+              }
             }
           }
-        }
-        return w;
-      };
-    }, { capture: true, once: true });
+          return w;
+        };
+      },
+      { capture: true, once: true }
+    );
   }
-
 
   // Render the GIS sign-in button into #google-signin-button. Safe to call
   // only when the element exists AND GIS is present; never throws.
@@ -90,7 +101,10 @@ var MMGR = window.MMGR || {};
     if (_gisInit) return true;
     try {
       if (!gisReady()) return false;
-      window.google.accounts.id.initialize({ client_id: CLIENT_ID, callback: handleCredentialResponse });
+      window.google.accounts.id.initialize({
+        client_id: CLIENT_ID,
+        callback: handleCredentialResponse
+      });
       const host = $('google-signin-button');
       if (host) {
         window.google.accounts.id.renderButton(host, {
@@ -104,7 +118,8 @@ var MMGR = window.MMGR || {};
       _gisInit = true;
       return true;
     } catch (e) {
-      if (window.console && window.console.warn) window.console.warn('mmgr-google-auth: GIS init failed (optional identity unaffected)', e);
+      if (window.console && window.console.warn)
+        window.console.warn('mmgr-google-auth: GIS init failed (optional identity unaffected)', e);
       return false;
     }
   }
@@ -128,7 +143,9 @@ var MMGR = window.MMGR || {};
     if (!host) return false;
     try {
       const ifr = host.querySelector('iframe');
-      const broken = !ifr || (ifr.getBoundingClientRect().width === 0 && ifr.getBoundingClientRect().height === 0);
+      const broken =
+        !ifr ||
+        (ifr.getBoundingClientRect().width === 0 && ifr.getBoundingClientRect().height === 0);
       if (!broken) return true;
       // Wipe the stale 0x0 render and draw a fresh button now that the host
       // is measurable (modal/rail open). GIS allows re-render after wipe.
@@ -142,7 +159,11 @@ var MMGR = window.MMGR || {};
       installPopupBlockDetector();
       return true;
     } catch (e) {
-      if (window.console && window.console.warn) window.console.warn('mmgr-google-auth: GIS re-render failed (optional identity unaffected)', e);
+      if (window.console && window.console.warn)
+        window.console.warn(
+          'mmgr-google-auth: GIS re-render failed (optional identity unaffected)',
+          e
+        );
       return false;
     }
   }
@@ -161,7 +182,9 @@ var MMGR = window.MMGR || {};
       const titleEl = siom.querySelector('.mt');
       if (titleEl) titleEl.textContent = 'Sign in';
       const hintEl = siom.querySelector('.si-hint');
-      if (hintEl) hintEl.textContent = 'Sign in with Google or use your email. Optional, for cloud sync, backups, and your cloud projects. Your admin code backs up here automatically.';
+      if (hintEl)
+        hintEl.textContent =
+          'Sign in with Google or use your email. Optional, for cloud sync, backups, and your cloud projects. Your admin code backs up here automatically.';
     }
     // OWNER 2026-08-15: project.html header chip hides when signed out.
     const hc = $('hdr-signin');
@@ -235,7 +258,9 @@ var MMGR = window.MMGR || {};
       // escrows to the account on sign-in (admin.html) - one honest line,
       // plain words (plain-language law: no mechanism talk).
       const who = user.email || user.name || user.sub || 'your account';
-      if (hintEl) hintEl.textContent = 'Signed in as ' + who + '. Your admin code and cloud backups are tied to this account.';
+      if (hintEl)
+        hintEl.textContent =
+          'Signed in as ' + who + '. Your admin code and cloud backups are tied to this account.';
     }
     // Page-level notification covering EVERY signed-in path (session
     // restore, Google, email) so a page without a chip (the marketing
@@ -338,20 +363,31 @@ var MMGR = window.MMGR || {};
     let res;
     try {
       res = await fetch('/api/billing/status', { method: 'GET', credentials: 'same-origin' });
-    } catch (e) { return null; }
+    } catch (e) {
+      return null;
+    }
     if (!res.ok) return null;
     let data = null;
-    try { data = await res.json(); } catch (e) { return null; }
+    try {
+      data = await res.json();
+    } catch (e) {
+      return null;
+    }
     if (!data || !data.ok || !data.configured) return null;
     // Keep the entitlement tier in sync with the authoritative billing fetch.
-    if (window.MMGR && MMGR.Entitlements && typeof MMGR.Entitlements.setBillingTier === 'function') {
+    if (
+      window.MMGR &&
+      MMGR.Entitlements &&
+      typeof MMGR.Entitlements.setBillingTier === 'function'
+    ) {
       MMGR.Entitlements.setBillingTier(data.plan || 'free');
     }
     const mounts = document.querySelectorAll('[data-plan-badge]');
     for (let i = 0; i < mounts.length; i++) {
       if (data.active) {
         mounts[i].hidden = false;
-        mounts[i].innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Premium';
+        mounts[i].innerHTML =
+          '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Premium';
       } else {
         mounts[i].hidden = true;
       }
@@ -369,9 +405,14 @@ var MMGR = window.MMGR || {};
       const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
       if (res.ok) {
         const data = await res.json();
-        if (data && data.ok && data.user) { showUser(data.user); return; }
+        if (data && data.ok && data.user) {
+          showUser(data.user);
+          return;
+        }
       }
-    } catch (e) { /* static host / offline , fall through */ }
+    } catch (e) {
+      /* static host / offline , fall through */
+    }
     showButton();
   }
 
@@ -389,12 +430,20 @@ var MMGR = window.MMGR || {};
         body: JSON.stringify({ idToken: credential })
       });
       let data = null;
-      try { data = await res.json(); } catch (e) { /* non-JSON failure */ }
+      try {
+        data = await res.json();
+      } catch (e) {
+        /* non-JSON failure */
+      }
       if (res.ok && data && data.ok && data.user) {
         showUser(data.user);
         document.dispatchEvent(new CustomEvent('mmgr:google-signed-in', { detail: data.user }));
         if (typeof window.mmgrOnGoogleSignIn === 'function') {
-          try { window.mmgrOnGoogleSignIn(data.user); } catch (e) { /* optional hook */ }
+          try {
+            window.mmgrOnGoogleSignIn(data.user);
+          } catch (e) {
+            /* optional hook */
+          }
         }
       } else {
         // Worker rejected the token (or a stale/forged credential) , no false
@@ -411,7 +460,9 @@ var MMGR = window.MMGR || {};
   async function signOut() {
     try {
       await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
-    } catch (e) { /* still clear the local chip */ }
+    } catch (e) {
+      /* still clear the local chip */
+    }
     showButton();
     // SIGN-OUT LEAVES THE PREMIUM PILL (owner report 2026-10-04): refreshPlan()
     // only ever SETS the pill from /api/billing/status, and the sign-out
@@ -429,7 +480,10 @@ var MMGR = window.MMGR || {};
   // cannot disagree about whether a signed-in account is on Premium.
   function clearPlanPills() {
     const mounts = document.querySelectorAll('[data-plan-badge]');
-    for (let i = 0; i < mounts.length; i++) { mounts[i].hidden = true; mounts[i].innerHTML = ''; }
+    for (let i = 0; i < mounts.length; i++) {
+      mounts[i].hidden = true;
+      mounts[i].innerHTML = '';
+    }
   }
 
   // OWNER 2026-08-15: programmatic sign-in prompt for cloud actions that
@@ -449,12 +503,19 @@ var MMGR = window.MMGR || {};
         id.prompt();
         return true;
       }
-    } catch (e) { /* fall through to the button-click fallback */ }
+    } catch (e) {
+      /* fall through to the button-click fallback */
+    }
     const host = $('google-signin-button');
     if (host) {
       const btn = host.querySelector('div[role="button"], button, iframe');
       if (btn) {
-        try { btn.click(); return true; } catch (e) { /* last resort */ }
+        try {
+          btn.click();
+          return true;
+        } catch (e) {
+          /* last resort */
+        }
       }
     }
     return false;
@@ -490,7 +551,8 @@ var MMGR = window.MMGR || {};
     // toggle. A show-password eye sits inside the password field. Spacing
     // is deliberately uneven: the form breathes, then a wider gap leads
     // to the divider and the Google button below (secondary path).
-    return '<div class="email-auth" id="email-auth-block">' +
+    return (
+      '<div class="email-auth" id="email-auth-block">' +
       '<form class="email-auth-form" novalidate>' +
       '<div class="email-auth-row">' +
       '<input type="email" class="email-auth-input" placeholder="Email" autocomplete="email" aria-label="Email" inputmode="email" enterkeyhint="next" autocapitalize="none" required>' +
@@ -536,10 +598,13 @@ var MMGR = window.MMGR || {};
       '<button type="button" class="email-auth-resend">Resend confirmation link</button>' +
       '<button type="button" class="email-auth-check-close">Got it</button>' +
       '</div>' +
-      '</div>';
+      '</div>'
+    );
   }
 
-  function emailAuthQ(block, sel) { return block ? block.querySelector(sel) : null; }
+  function emailAuthQ(block, sel) {
+    return block ? block.querySelector(sel) : null;
+  }
 
   function setEmailAuthError(block, msg) {
     const err = emailAuthQ(block, '.email-auth-err');
@@ -563,7 +628,11 @@ var MMGR = window.MMGR || {};
       throw new Error('Sign-in is unavailable on this host (needs the Worker API).');
     }
     let data = null;
-    try { data = await res.json(); } catch (e) { /* non-JSON failure */ }
+    try {
+      data = await res.json();
+    } catch (e) {
+      /* non-JSON failure */
+    }
     if (!res.ok || !data || !data.ok) {
       if (res.status === 429) throw new Error('Too many attempts , wait a minute and try again.');
       throw new Error((data && data.error) || 'Sign-in failed (HTTP ' + res.status + ').');
@@ -572,13 +641,21 @@ var MMGR = window.MMGR || {};
   }
 
   function emailLogin(email, password) {
-    return emailAuthPost('/api/auth/login', { email: email, password: password }).then(function(d) { return d.user; });
+    return emailAuthPost('/api/auth/login', { email: email, password: password }).then(
+      function (d) {
+        return d.user;
+      }
+    );
   }
 
   // AUTH MAINFRAME v2: register answers { user, emailSent } , emailSent tells
   // the UI whether a confirmation email was dispatched (verification flow).
   function emailRegister(email, password, name) {
-    return emailAuthPost('/api/auth/register', { email: email, password: password, name: name }).then(function(d) {
+    return emailAuthPost('/api/auth/register', {
+      email: email,
+      password: password,
+      name: name
+    }).then(function (d) {
       return { user: d.user, emailSent: d.emailSent === true };
     });
   }
@@ -672,7 +749,7 @@ var MMGR = window.MMGR || {};
     // Show-password eye (owner 2026-09-06): flips the field type + icon.
     const eye = emailAuthQ(block, '.email-auth-eye');
     if (eye) {
-      eye.addEventListener('click', function() {
+      eye.addEventListener('click', function () {
         const pass = emailAuthQ(block, '.email-auth-pass');
         if (!pass) return;
         const show = pass.type === 'password';
@@ -682,31 +759,43 @@ var MMGR = window.MMGR || {};
         eye.setAttribute('title', show ? 'Hide password' : 'Show password');
         const use = eye.querySelector('use');
         if (use) use.setAttribute('href', 'css/mmgr-icons.svg#' + (show ? 'i-eye-off' : 'i-eye'));
-        try { pass.focus(); } catch (e) { /* focus is a hint */ }
+        try {
+          pass.focus();
+        } catch (e) {
+          /* focus is a hint */
+        }
       });
     }
 
     // Legacy toggle (marketing pages mount with showToggle:true before this
     // change): only wired when the button actually exists.
     if (toggle) {
-      toggle.addEventListener('click', function() {
+      toggle.addEventListener('click', function () {
         form.hidden = !form.hidden;
         if (errEl) errEl.textContent = '';
         if (!form.hidden) {
           const em = emailAuthQ(form, 'input[type=email]');
-          if (em) { try { em.focus(); } catch (e) { /* focus is a hint, never fatal */ } }
+          if (em) {
+            try {
+              em.focus();
+            } catch (e) {
+              /* focus is a hint, never fatal */
+            }
+          }
         }
       });
     }
 
-    modeBtn.addEventListener('click', function() {
-      _emailMode = (_emailMode === 'login') ? 'register' : 'login';
+    modeBtn.addEventListener('click', function () {
+      _emailMode = _emailMode === 'login' ? 'register' : 'login';
       const isReg = _emailMode === 'register';
       if (nameEl) nameEl.hidden = !isReg;
       const pass = emailAuthQ(form, '.email-auth-pass');
       if (pass) pass.autocomplete = isReg ? 'new-password' : 'current-password';
       if (submitBtn) submitBtn.textContent = isReg ? 'Create account' : 'Sign in';
-      modeBtn.textContent = isReg ? 'Already have an account? Sign in' : 'Create an account instead';
+      modeBtn.textContent = isReg
+        ? 'Already have an account? Sign in'
+        : 'Create an account instead';
       if (forgotBtn) forgotBtn.hidden = isReg; // forgot-password is a LOGIN-only action
       if (errEl) errEl.textContent = '';
     });
@@ -714,104 +803,167 @@ var MMGR = window.MMGR || {};
     // AUTH MAINFRAME v2 , forgot-password: swap the form for the reset
     // request panel, POST /api/auth/forgot, then land on the generic
     // check-your-inbox state (no existence leak either way).
-    if (forgotBtn) forgotBtn.addEventListener('click', function() {
-      setEmailAuthError(block, '');
-      form.hidden = true;
-      if (resetPanel) resetPanel.hidden = false;
-      const ri = resetPanel ? resetPanel.querySelector('input[type=email]') : null;
-      if (ri) { try { ri.focus(); } catch (e) { /* focus is a hint */ } }
-    });
-    if (resetBack) resetBack.addEventListener('click', function() {
-      setEmailAuthError(block, '');
-      if (resetPanel) resetPanel.hidden = true;
-      form.hidden = false;
-    });
-    if (resetSubmit) resetSubmit.addEventListener('click', function() {
-      const ri = resetPanel ? resetPanel.querySelector('input[type=email]') : null;
-      const email = (ri && ri.value) ? ri.value.trim() : '';
-      const rerr = resetPanel ? emailAuthQ(resetPanel, '.email-auth-err') : null;
-      if (!email) { if (rerr) { rerr.textContent = 'Enter your email address.'; rerr.hidden = false; } return; }
-      if (rerr) rerr.hidden = true;
-      resetSubmit.disabled = true;
-      emailAuthPost('/api/auth/forgot', { email: email }).then(function() {
-        showEmailAuthCheck(block, 'If an account exists for that email, a reset link is on its way.', false);
-      }).catch(function(err) {
-        if (rerr) { rerr.textContent = (err && err.message) || 'Could not send the reset link.'; rerr.hidden = false; }
-      }).finally(function() {
-        resetSubmit.disabled = false;
+    if (forgotBtn)
+      forgotBtn.addEventListener('click', function () {
+        setEmailAuthError(block, '');
+        form.hidden = true;
+        if (resetPanel) resetPanel.hidden = false;
+        const ri = resetPanel ? resetPanel.querySelector('input[type=email]') : null;
+        if (ri) {
+          try {
+            ri.focus();
+          } catch (e) {
+            /* focus is a hint */
+          }
+        }
       });
-    });
+    if (resetBack)
+      resetBack.addEventListener('click', function () {
+        setEmailAuthError(block, '');
+        if (resetPanel) resetPanel.hidden = true;
+        form.hidden = false;
+      });
+    if (resetSubmit)
+      resetSubmit.addEventListener('click', function () {
+        const ri = resetPanel ? resetPanel.querySelector('input[type=email]') : null;
+        const email = ri && ri.value ? ri.value.trim() : '';
+        const rerr = resetPanel ? emailAuthQ(resetPanel, '.email-auth-err') : null;
+        if (!email) {
+          if (rerr) {
+            rerr.textContent = 'Enter your email address.';
+            rerr.hidden = false;
+          }
+          return;
+        }
+        if (rerr) rerr.hidden = true;
+        resetSubmit.disabled = true;
+        emailAuthPost('/api/auth/forgot', { email: email })
+          .then(function () {
+            showEmailAuthCheck(
+              block,
+              'If an account exists for that email, a reset link is on its way.',
+              false
+            );
+          })
+          .catch(function (err) {
+            if (rerr) {
+              rerr.textContent = (err && err.message) || 'Could not send the reset link.';
+              rerr.hidden = false;
+            }
+          })
+          .finally(function () {
+            resetSubmit.disabled = false;
+          });
+      });
 
     // "Check your inbox" panel actions: resend the verification link (verify
     // case) and complete the deferred sign-in render (Got it).
-    if (resendBtn) resendBtn.addEventListener('click', function() {
-      const email = _checkUser && _checkUser.email ? _checkUser.email : '';
-      if (!email) { if (checkMsg) checkMsg.textContent = 'Sign in with the account to request a new link.'; return; }
-      resendBtn.disabled = true;
-      emailAuthPost('/api/auth/resend-verify', { email: email }).then(function() {
-        if (checkMsg) checkMsg.textContent = 'If an account needs verification, a new confirmation link is on its way , check your inbox.';
-      }).catch(function(err) {
-        if (checkMsg) checkMsg.textContent = (err && err.message) || 'Could not send the link right now.';
-      }).finally(function() {
-        resendBtn.disabled = false;
-      });
-    });
-    if (checkClose) checkClose.addEventListener('click', function() {
-      hideEmailAuthCheck(block);
-      const user = _checkUser;
-      _checkUser = null;
-      if (user) {
-        showUser(user);
-        document.dispatchEvent(new CustomEvent('mmgr:google-signed-in', { detail: user }));
-        if (typeof window.mmgrOnGoogleSignIn === 'function') {
-          try { window.mmgrOnGoogleSignIn(user); } catch (e) { /* optional hook */ }
+    if (resendBtn)
+      resendBtn.addEventListener('click', function () {
+        const email = _checkUser && _checkUser.email ? _checkUser.email : '';
+        if (!email) {
+          if (checkMsg) checkMsg.textContent = 'Sign in with the account to request a new link.';
+          return;
         }
-      }
-    });
+        resendBtn.disabled = true;
+        emailAuthPost('/api/auth/resend-verify', { email: email })
+          .then(function () {
+            if (checkMsg)
+              checkMsg.textContent =
+                'If an account needs verification, a new confirmation link is on its way , check your inbox.';
+          })
+          .catch(function (err) {
+            if (checkMsg)
+              checkMsg.textContent = (err && err.message) || 'Could not send the link right now.';
+          })
+          .finally(function () {
+            resendBtn.disabled = false;
+          });
+      });
+    if (checkClose)
+      checkClose.addEventListener('click', function () {
+        hideEmailAuthCheck(block);
+        const user = _checkUser;
+        _checkUser = null;
+        if (user) {
+          showUser(user);
+          document.dispatchEvent(new CustomEvent('mmgr:google-signed-in', { detail: user }));
+          if (typeof window.mmgrOnGoogleSignIn === 'function') {
+            try {
+              window.mmgrOnGoogleSignIn(user);
+            } catch (e) {
+              /* optional hook */
+            }
+          }
+        }
+      });
 
-    form.addEventListener('submit', function(e) {
+    form.addEventListener('submit', function (e) {
       e.preventDefault();
       if (errEl) errEl.textContent = '';
       const em = emailAuthQ(form, 'input[type=email]');
       const pass = emailAuthQ(form, 'input[type=password]');
       const nm = emailAuthQ(form, '.email-auth-name');
-      const email = (em && em.value) ? em.value.trim() : '';
-      const password = (pass && pass.value) ? pass.value : '';
-      const name = (nm && nm.value) ? nm.value.trim() : '';
-      if (!email || !password) { setEmailAuthError(block, 'Enter your email and password.'); return; }
-      if (password.length < 8) { setEmailAuthError(block, 'Password must be at least 8 characters.'); return; }
+      const email = em && em.value ? em.value.trim() : '';
+      const password = pass && pass.value ? pass.value : '';
+      const name = nm && nm.value ? nm.value.trim() : '';
+      if (!email || !password) {
+        setEmailAuthError(block, 'Enter your email and password.');
+        return;
+      }
+      if (password.length < 8) {
+        setEmailAuthError(block, 'Password must be at least 8 characters.');
+        return;
+      }
       if (pass) pass.value = ''; // never echo the password in the DOM
       // SIGN-IN-POLISH: visible in-flight state - the button disables and
       // names what is happening, so a slow link never reads as a dead click.
       const originalLabel = submitBtn ? submitBtn.textContent : '';
-      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Signing you in\u2026'; }
-      const restoreBtn = function() {
-        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = (_emailMode === 'register') ? 'Create account' : 'Sign in'; }
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Signing you in\u2026';
+      }
+      const restoreBtn = function () {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = _emailMode === 'register' ? 'Create account' : 'Sign in';
+        }
       };
-      const p = (_emailMode === 'register')
-        ? emailRegister(email, password, name)
-        : emailLogin(email, password);
-      p.then(function(result) {
+      const p =
+        _emailMode === 'register'
+          ? emailRegister(email, password, name)
+          : emailLogin(email, password);
+      p.then(function (result) {
         // AUTH MAINFRAME v2: register now emails a confirmation link , show
         // the check-your-inbox state INSTEAD of the signed-in chip. The
         // session cookie is already set server-side; "Got it" completes the
         // sign-in render (showUser + events) so the user keeps the account.
         if (_emailMode === 'register' && result && result.emailSent) {
           _checkUser = result.user || null;
-          showEmailAuthCheck(block, 'We sent a confirmation link to ' + email + '. Cloud projects unlock once you click it.', true);
+          showEmailAuthCheck(
+            block,
+            'We sent a confirmation link to ' +
+              email +
+              '. Cloud projects unlock once you click it.',
+            true
+          );
           return;
         }
-        // Login, or register on a host without email configured (dormant) , 
+        // Login, or register on a host without email configured (dormant) ,
         // same success path as Google: chip replaces the auth surface, and
         // the identical event fires so the cloud drawer / hooks refresh.
-        const user = (result && result.user) ? result.user : result;
+        const user = result && result.user ? result.user : result;
         showUser(user);
         document.dispatchEvent(new CustomEvent('mmgr:google-signed-in', { detail: user }));
         if (typeof window.mmgrOnGoogleSignIn === 'function') {
-          try { window.mmgrOnGoogleSignIn(user); } catch (e) { /* optional hook */ }
+          try {
+            window.mmgrOnGoogleSignIn(user);
+          } catch (e) {
+            /* optional hook */
+          }
         }
         restoreBtn();
-      }).catch(function(err) {
+      }).catch(function (err) {
         setEmailAuthError(block, (err && err.message) || 'Sign-in failed.');
         restoreBtn();
       });
@@ -840,7 +992,8 @@ var MMGR = window.MMGR || {};
   }
 
   function pwMarkup() {
-    return '<div class="email-auth-pw" hidden>' +
+    return (
+      '<div class="email-auth-pw" hidden>' +
       '<p class="email-auth-pw-title"><strong>Change password</strong></p>' +
       '<p class="email-auth-pw-msg">You will stay signed in on this device. Every other device is signed out when the password changes.</p>' +
       '<div class="email-auth-row email-auth-pw-fields">' +
@@ -854,7 +1007,8 @@ var MMGR = window.MMGR || {};
       '</div>' +
       '<div class="email-auth-err email-auth-pw-err" role="status" aria-live="polite"></div>' +
       '<p class="email-auth-pw-ok" role="status" hidden>Password updated. Every other device was signed out.</p>' +
-      '</div>';
+      '</div>'
+    );
   }
 
   function resetPwPanel(rec) {
@@ -866,7 +1020,10 @@ var MMGR = window.MMGR || {};
     if (rec.ok) rec.ok.hidden = true;
     if (rec.fields) rec.fields.hidden = false;
     if (rec.actions) rec.actions.hidden = false;
-    if (rec.submit) { rec.submit.disabled = false; rec.submit.textContent = 'Update password'; }
+    if (rec.submit) {
+      rec.submit.disabled = false;
+      rec.submit.textContent = 'Update password';
+    }
   }
 
   function setPwError(rec, msg) {
@@ -886,11 +1043,17 @@ var MMGR = window.MMGR || {};
       throw new Error('Password change is unavailable on this host (needs the Worker API).');
     }
     let data = null;
-    try { data = await res.json(); } catch (e) { /* non-JSON failure */ }
+    try {
+      data = await res.json();
+    } catch (e) {
+      /* non-JSON failure */
+    }
     if (!res.ok || !data || !data.ok) {
       if (res.status === 429) throw new Error('Too many attempts , wait a minute and try again.');
       if (res.status === 401) throw new Error('Current password is incorrect.');
-      throw new Error((data && data.error) || 'Could not update the password (HTTP ' + res.status + ').');
+      throw new Error(
+        (data && data.error) || 'Could not update the password (HTTP ' + res.status + ').'
+      );
     }
     return data;
   }
@@ -910,7 +1073,9 @@ var MMGR = window.MMGR || {};
     btn.textContent = 'Change password';
     btn.setAttribute('aria-expanded', 'false');
     const rec = {
-      host: host, btn: btn, panel: panel,
+      host: host,
+      btn: btn,
+      panel: panel,
       fields: panel.querySelector('.email-auth-pw-fields'),
       actions: panel.querySelector('.email-auth-pw-actions'),
       cur: panel.querySelector('.email-auth-pw-cur'),
@@ -921,42 +1086,60 @@ var MMGR = window.MMGR || {};
       submit: panel.querySelector('.email-auth-pw-submit'),
       cancel: panel.querySelector('.email-auth-pw-cancel')
     };
-    btn.addEventListener('click', function() {
+    btn.addEventListener('click', function () {
       const open = panel.hidden;
       resetPwPanel(rec);
       panel.hidden = !open;
       btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-      if (open && rec.cur) { try { rec.cur.focus(); } catch (e) { /* focus is a hint */ } }
+      if (open && rec.cur) {
+        try {
+          rec.cur.focus();
+        } catch (e) {
+          /* focus is a hint */
+        }
+      }
     });
-    rec.cancel.addEventListener('click', function() {
+    rec.cancel.addEventListener('click', function () {
       resetPwPanel(rec);
       panel.hidden = true;
       btn.setAttribute('aria-expanded', 'false');
     });
-    rec.submit.addEventListener('click', function() {
-      const cv = (rec.cur && rec.cur.value) ? rec.cur.value : '';
-      const nv = (rec.next && rec.next.value) ? rec.next.value : '';
-      const cfv = (rec.conf && rec.conf.value) ? rec.conf.value : '';
+    rec.submit.addEventListener('click', function () {
+      const cv = rec.cur && rec.cur.value ? rec.cur.value : '';
+      const nv = rec.next && rec.next.value ? rec.next.value : '';
+      const cfv = rec.conf && rec.conf.value ? rec.conf.value : '';
       setPwError(rec, '');
-      if (!cv) { setPwError(rec, 'Enter your current password.'); return; }
-      if (nv.length < 8) { setPwError(rec, 'New password must be at least 8 characters.'); return; }
-      if (nv !== cfv) { setPwError(rec, 'New passwords do not match.'); return; }
+      if (!cv) {
+        setPwError(rec, 'Enter your current password.');
+        return;
+      }
+      if (nv.length < 8) {
+        setPwError(rec, 'New password must be at least 8 characters.');
+        return;
+      }
+      if (nv !== cfv) {
+        setPwError(rec, 'New passwords do not match.');
+        return;
+      }
       if (rec.cur) rec.cur.value = ''; // never echo passwords in the DOM
       if (rec.next) rec.next.value = '';
       if (rec.conf) rec.conf.value = '';
       rec.submit.disabled = true;
       rec.submit.textContent = 'Updating';
-      pwAuthPost({ currentPassword: cv, newPassword: nv }).then(function() {
-        if (rec.fields) rec.fields.hidden = true;
-        if (rec.actions) rec.actions.hidden = true;
-        setPwError(rec, '');
-        if (rec.ok) rec.ok.hidden = false;
-      }).catch(function(err) {
-        setPwError(rec, (err && err.message) || 'Could not update the password.');
-        if (rec.submit) rec.submit.textContent = 'Update password';
-      }).finally(function() {
-        if (rec.submit) rec.submit.disabled = false;
-      });
+      pwAuthPost({ currentPassword: cv, newPassword: nv })
+        .then(function () {
+          if (rec.fields) rec.fields.hidden = true;
+          if (rec.actions) rec.actions.hidden = true;
+          setPwError(rec, '');
+          if (rec.ok) rec.ok.hidden = false;
+        })
+        .catch(function (err) {
+          setPwError(rec, (err && err.message) || 'Could not update the password.');
+          if (rec.submit) rec.submit.textContent = 'Update password';
+        })
+        .finally(function () {
+          if (rec.submit) rec.submit.disabled = false;
+        });
     });
     // Trigger before the panel; when the host already ends with a sign-out
     // button (chip / sheet account row), slot both in front of it so the
@@ -977,7 +1160,7 @@ var MMGR = window.MMGR || {};
   // (sub 'email:…') have a password to change. Signed out → hidden.
   function syncPwHosts() {
     const show = isEmailAccount(_user);
-    _pwRecs.forEach(function(rec) {
+    _pwRecs.forEach(function (rec) {
       if (rec.btn) rec.btn.hidden = !show;
       if (!show && rec.panel && !rec.panel.hidden) {
         resetPwPanel(rec);
@@ -1027,16 +1210,16 @@ var MMGR = window.MMGR || {};
   const DRIVE_API = 'https://www.googleapis.com/drive/v3/files';
   const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
 
-  let _driveToken = null;      // session memory ONLY (module variable)
+  let _driveToken = null; // session memory ONLY (module variable)
   let _driveTokenExpiry = 0;
   let _driveTokenClient = null;
   let _tokenWaiter = null;
-  let _tokenInflight = false;  // re-entry guard: one token request at a time
+  let _tokenInflight = false; // re-entry guard: one token request at a time
 
   // Auto-backup device-level prefs (localStorage, same family as the
   // mmgr_sync_* slots , never project state).
-  const AUTO_KEY = 'mmgr_drive_auto';   // 'off' | '15' | '30' | '60' (minutes)
-  const LAST_KEY = 'mmgr_drive_last';   // ISO timestamp of last successful auto backup
+  const AUTO_KEY = 'mmgr_drive_auto'; // 'off' | '15' | '30' | '60' (minutes)
+  const LAST_KEY = 'mmgr_drive_last'; // ISO timestamp of last successful auto backup
 
   // The OAuth access token also caches to sessionStorage , literal "session
   // memory" that survives a reload WITHIN the same tab session, so the
@@ -1048,19 +1231,19 @@ var MMGR = window.MMGR || {};
 
   let _autoInterval = 'off';
   let _autoTimer = null;
-  let _driveBusy = false;     // manual/auto mutual exclusion for Drive ops
+  let _driveBusy = false; // manual/auto mutual exclusion for Drive ops
 
   // Optional passphrase encryption. The passphrase itself is session memory
   // ONLY (module var + sessionStorage, exactly like the OAuth token) , never
   // localStorage, never shipped , while the "encryption is ON" flag is a
   // persistent device pref (localStorage) so a fresh session fails CLOSED
   // instead of silently uploading plaintext after a browser restart.
-  const ENC_FLAG_KEY = 'mmgr_drive_enc';   // '1' = backups must be encrypted
-  const ENC_PASS_KEY = 'mmgr_drive_pass';  // sessionStorage: this session's passphrase
-  const KDF_ITERS = 250000;                // PBKDF2-SHA256 iterations
+  const ENC_FLAG_KEY = 'mmgr_drive_enc'; // '1' = backups must be encrypted
+  const ENC_PASS_KEY = 'mmgr_drive_pass'; // sessionStorage: this session's passphrase
+  const KDF_ITERS = 250000; // PBKDF2-SHA256 iterations
   const KDF_HASH = 'SHA-256';
   const CIPHER = 'AES-256-GCM';
-  let _drivePass = '';                     // session memory ONLY
+  let _drivePass = ''; // session memory ONLY
 
   function oauth2Ready() {
     return !!(window.google && window.google.accounts && window.google.accounts.oauth2);
@@ -1072,34 +1255,55 @@ var MMGR = window.MMGR || {};
   // (admin.html / offline-first shells). Zero-throw; rejects on timeout.
   function waitForOAuth2() {
     if (oauth2Ready()) return Promise.resolve(true);
-    return new Promise(function(resolve) {
+    return new Promise(function (resolve) {
       const s = document.querySelector('script[src*="gsi/client"]');
       let t = null;
       let done = false;
-      const finish = function(ok) { if (!done) { done = true; if (t) clearTimeout(t); resolve(ok); } };
+      const finish = function (ok) {
+        if (!done) {
+          done = true;
+          if (t) clearTimeout(t);
+          resolve(ok);
+        }
+      };
       if (s && typeof s.addEventListener === 'function') {
-        s.addEventListener('load', function() { finish(oauth2Ready()); });
-        s.addEventListener('error', function() { finish(false); });
+        s.addEventListener('load', function () {
+          finish(oauth2Ready());
+        });
+        s.addEventListener('error', function () {
+          finish(false);
+        });
       } else {
         try {
           const tag = document.createElement('script');
           tag.src = GIS_SRC;
           tag.async = true;
-          tag.onload = function() { finish(oauth2Ready()); };
-          tag.onerror = function() { finish(false); };
+          tag.onload = function () {
+            finish(oauth2Ready());
+          };
+          tag.onerror = function () {
+            finish(false);
+          };
           document.head.appendChild(tag);
-        } catch (e) { finish(false); return; }
+        } catch (e) {
+          finish(false);
+          return;
+        }
       }
-      t = setTimeout(function() { finish(oauth2Ready()); }, 8000);
+      t = setTimeout(function () {
+        finish(oauth2Ready());
+      }, 8000);
     });
   }
 
   // Workspace keys only , device-only slots never ride along (see header).
   function isWorkspaceKey(k) {
-    return k === 'mmgr_current_project' ||
+    return (
+      k === 'mmgr_current_project' ||
       k.indexOf('mmgr_state_') === 0 ||
       k.indexOf('mmgr_unlocked_') === 0 ||
-      k.indexOf('mmgr_scope_') === 0;
+      k.indexOf('mmgr_scope_') === 0
+    );
   }
 
   // GIS OAuth2 token-client callback: stores the access token in session
@@ -1110,12 +1314,19 @@ var MMGR = window.MMGR || {};
     try {
       sessionStorage.setItem(DRIVE_TOKEN_KEY, token);
       sessionStorage.setItem(DRIVE_TOKEN_EXP_KEY, String(expiry));
-    } catch (e) { /* sessionStorage blocked , module var still holds it */ }
+    } catch (e) {
+      /* sessionStorage blocked , module var still holds it */
+    }
   }
   function clearDriveTokenCache() {
     _driveToken = null;
     _driveTokenExpiry = 0;
-    try { sessionStorage.removeItem(DRIVE_TOKEN_KEY); sessionStorage.removeItem(DRIVE_TOKEN_EXP_KEY); } catch (e) { /* ignore */ }
+    try {
+      sessionStorage.removeItem(DRIVE_TOKEN_KEY);
+      sessionStorage.removeItem(DRIVE_TOKEN_EXP_KEY);
+    } catch (e) {
+      /* ignore */
+    }
   }
   // Restore the token from sessionStorage if a valid one exists there.
   function restoreDriveToken() {
@@ -1128,7 +1339,9 @@ var MMGR = window.MMGR || {};
         _driveTokenExpiry = e;
         return t;
       }
-    } catch (e2) { /* ignore */ }
+    } catch (e2) {
+      /* ignore */
+    }
     return null;
   }
 
@@ -1137,11 +1350,21 @@ var MMGR = window.MMGR || {};
     _tokenWaiter = null;
     if (!w) return;
     if (resp && resp.access_token) {
-      persistDriveToken(resp.access_token, Date.now() + ((resp.expires_in || 3600) * 1000) - 30000); // 30s safety margin
-      try { localStorage.setItem(DRIVE_GRANT_KEY, '1'); } catch (e) { /* ignore */ }
+      persistDriveToken(resp.access_token, Date.now() + (resp.expires_in || 3600) * 1000 - 30000); // 30s safety margin
+      try {
+        localStorage.setItem(DRIVE_GRANT_KEY, '1');
+      } catch (e) {
+        /* ignore */
+      }
       w.resolve(_driveToken);
     } else {
-      w.reject(new Error((resp && resp.error_description) || (resp && resp.error) || 'Google Drive access was not granted.'));
+      w.reject(
+        new Error(
+          (resp && resp.error_description) ||
+            (resp && resp.error) ||
+            'Google Drive access was not granted.'
+        )
+      );
     }
   }
 
@@ -1155,7 +1378,9 @@ var MMGR = window.MMGR || {};
         scope: DRIVE_SCOPE,
         callback: driveTokenCallback
       });
-    } catch (e) { _driveTokenClient = null; }
+    } catch (e) {
+      _driveTokenClient = null;
+    }
     return _driveTokenClient;
   }
 
@@ -1164,9 +1389,11 @@ var MMGR = window.MMGR || {};
   function requestDriveToken(forceConsent) {
     const client = driveTokenClient();
     if (!client) {
-      return Promise.reject(new Error('Google sign-in is unavailable (offline or blocked) , Drive backup needs Google.'));
+      return Promise.reject(
+        new Error('Google sign-in is unavailable (offline or blocked) , Drive backup needs Google.')
+      );
     }
-    return new Promise(function(resolve, reject) {
+    return new Promise(function (resolve, reject) {
       _tokenWaiter = { resolve: resolve, reject: reject };
       try {
         client.requestAccessToken(forceConsent ? { prompt: 'consent' } : {});
@@ -1214,7 +1441,11 @@ var MMGR = window.MMGR || {};
     // obtained on this device , otherwise a timer would surprise the user
     // with a consent popup out of nowhere.
     let granted = false;
-    try { granted = localStorage.getItem(DRIVE_GRANT_KEY) === '1'; } catch (e) { /* ignore */ }
+    try {
+      granted = localStorage.getItem(DRIVE_GRANT_KEY) === '1';
+    } catch (e) {
+      /* ignore */
+    }
     if (!granted || _tokenInflight) return null;
     try {
       if (!oauth2Ready()) await waitForOAuth2();
@@ -1225,7 +1456,8 @@ var MMGR = window.MMGR || {};
       return t;
     } catch (e) {
       _tokenInflight = false;
-      if (window.console && window.console.warn) window.console.warn('mmgr-google-auth: silent Drive token refresh skipped', e && e.message);
+      if (window.console && window.console.warn)
+        window.console.warn('mmgr-google-auth: silent Drive token refresh skipped', e && e.message);
       return null;
     }
   }
@@ -1239,7 +1471,10 @@ var MMGR = window.MMGR || {};
     if (!token) throw new Error('No Google Drive access token.');
     const res = await fetch(url, {
       method: (options && options.method) || 'GET',
-      headers: Object.assign({ Authorization: 'Bearer ' + token }, (options && options.headers) || {}),
+      headers: Object.assign(
+        { Authorization: 'Bearer ' + token },
+        (options && options.headers) || {}
+      ),
       body: options && options.body
     });
     if (res.status === 401 && !retried) {
@@ -1270,7 +1505,8 @@ var MMGR = window.MMGR || {};
   }
   function bytesToB64(bytes) {
     let s = '';
-    for (let i = 0; i < bytes.length; i += 0x8000) { // chunked , no call-stack overflow on big states
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      // chunked , no call-stack overflow on big states
       s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
     }
     return btoa(s);
@@ -1285,7 +1521,13 @@ var MMGR = window.MMGR || {};
   // envelope's recorded kdf metadata (see decryptPayload) so that a future KDF
   // change never bricks older encrypted backups.
   async function derivePassKey(pass, saltBytes, iters, hash) {
-    const material = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+    const material = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(pass),
+      'PBKDF2',
+      false,
+      ['deriveKey']
+    );
     return crypto.subtle.deriveKey(
       { name: 'PBKDF2', salt: saltBytes, iterations: iters || KDF_ITERS, hash: hash || KDF_HASH },
       material,
@@ -1300,7 +1542,11 @@ var MMGR = window.MMGR || {};
     const salt = crypto.getRandomValues(new Uint8Array(16));
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const key = await derivePassKey(pass, salt);
-    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, new TextEncoder().encode(JSON.stringify(obj)));
+    const ct = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: iv },
+      key,
+      new TextEncoder().encode(JSON.stringify(obj))
+    );
     return { salt: bytesToB64(salt), iv: bytesToB64(iv), data: bytesToB64(new Uint8Array(ct)) };
   }
   // Unseal { salt, iv, data }. GCM auth failure (wrong passphrase / tampered
@@ -1310,23 +1556,36 @@ var MMGR = window.MMGR || {};
   // with different KDF settings still decrypt; falls back to the constants.
   async function decryptPayload(enc, pass, kdfOverride) {
     if (!cryptoOk()) throw new Error('Encryption is unavailable in this browser (needs HTTPS).');
-    if (!enc || !enc.salt || !enc.iv || !enc.data) throw new Error('Encrypted backup is missing its key material.');
-    const iters = (kdfOverride && kdfOverride.iterations > 0) ? kdfOverride.iterations : KDF_ITERS;
-    const hash = (kdfOverride && kdfOverride.hash) ? kdfOverride.hash : KDF_HASH;
+    if (!enc || !enc.salt || !enc.iv || !enc.data)
+      throw new Error('Encrypted backup is missing its key material.');
+    const iters = kdfOverride && kdfOverride.iterations > 0 ? kdfOverride.iterations : KDF_ITERS;
+    const hash = kdfOverride && kdfOverride.hash ? kdfOverride.hash : KDF_HASH;
     const key = await derivePassKey(pass, b64ToBytes(enc.salt), iters, hash);
-    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64ToBytes(enc.iv) }, key, b64ToBytes(enc.data));
+    const pt = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: b64ToBytes(enc.iv) },
+      key,
+      b64ToBytes(enc.data)
+    );
     return JSON.parse(new TextDecoder().decode(pt));
   }
 
   // ---- Passphrase state (session memory + persistent ON flag) --------------
   function encryptionEnabled() {
     let flag = false;
-    try { flag = localStorage.getItem(ENC_FLAG_KEY) === '1'; } catch (e) { /* ignore */ }
+    try {
+      flag = localStorage.getItem(ENC_FLAG_KEY) === '1';
+    } catch (e) {
+      /* ignore */
+    }
     return flag || !!_drivePass;
   }
   function getDrivePass() {
     if (_drivePass) return _drivePass;
-    try { _drivePass = sessionStorage.getItem(ENC_PASS_KEY) || ''; } catch (e) { _drivePass = ''; }
+    try {
+      _drivePass = sessionStorage.getItem(ENC_PASS_KEY) || '';
+    } catch (e) {
+      _drivePass = '';
+    }
     return _drivePass;
   }
   // Setting a non-empty passphrase turns encryption ON (persistent flag);
@@ -1342,24 +1601,31 @@ var MMGR = window.MMGR || {};
         sessionStorage.removeItem(ENC_PASS_KEY);
         localStorage.removeItem(ENC_FLAG_KEY);
       }
-    } catch (e) { /* storage blocked , module var still holds it */ }
+    } catch (e) {
+      /* storage blocked , module var still holds it */
+    }
     return !!p;
   }
   // data-action / auth-bar entry point. Refuses to enable when the browser
   // can't encrypt, and never leaves the passphrase echoing in the input.
   function setDrivePassFrom(el) {
-    const v = (el && el.value != null) ? el.value : '';
+    const v = el && el.value != null ? el.value : '';
     if (v && !cryptoOk()) {
       if (el && 'value' in el) el.value = '';
-      setDriveStatus('Encryption is unavailable in this browser (needs HTTPS) , passphrase not saved.', 'err');
+      setDriveStatus(
+        'Encryption is unavailable in this browser (needs HTTPS) , passphrase not saved.',
+        'err'
+      );
       return;
     }
     const on = setDrivePass(v);
     if (el && 'value' in el) el.value = ''; // never echo the passphrase in the DOM
-    setDriveStatus(on
-      ? 'Backup encryption ON , future backups are passphrase-encrypted (AES-256-GCM).'
-      : 'Backup encryption OFF , backups upload as plaintext.',
-      on ? 'ok' : 'warn');
+    setDriveStatus(
+      on
+        ? 'Backup encryption ON , future backups are passphrase-encrypted (AES-256-GCM).'
+        : 'Backup encryption OFF , backups upload as plaintext.',
+      on ? 'ok' : 'warn'
+    );
   }
 
   // Collect ONLY the workspace slots (see isWorkspaceKey). Envelope has a
@@ -1371,7 +1637,9 @@ var MMGR = window.MMGR || {};
         const k = localStorage.key(i);
         if (k && isWorkspaceKey(k)) data[k] = localStorage.getItem(k);
       }
-    } catch (e) { /* storage locked , best effort */ }
+    } catch (e) {
+      /* storage locked , best effort */
+    }
     return {
       app: 'mymanager',
       kind: 'workspace-backup',
@@ -1385,9 +1653,18 @@ var MMGR = window.MMGR || {};
   // piling up duplicate files in Drive. Returns null on first run.
   async function findDriveBackup(silentOnly) {
     const q = encodeURIComponent("name = '" + DRIVE_FILE + "' and trashed = false");
-    const res = await driveFetch(DRIVE_API + '?q=' + q + '&spaces=drive&fields=files(id,name,modifiedTime)', null, null, false, silentOnly);
-    const data = await res.json().catch(function() { return {}; });
-    if (!res.ok) throw new Error(driveApiError(res, data) || 'Drive search failed (HTTP ' + res.status + ').');
+    const res = await driveFetch(
+      DRIVE_API + '?q=' + q + '&spaces=drive&fields=files(id,name,modifiedTime)',
+      null,
+      null,
+      false,
+      silentOnly
+    );
+    const data = await res.json().catch(function () {
+      return {};
+    });
+    if (!res.ok)
+      throw new Error(driveApiError(res, data) || 'Drive search failed (HTTP ' + res.status + ').');
     return (data.files && data.files[0]) || null;
   }
 
@@ -1406,10 +1683,14 @@ var MMGR = window.MMGR || {};
     if (encryptionEnabled()) {
       const pass = getDrivePass();
       if (!pass) {
-        throw new Error('Backup encryption is ON , enter your backup passphrase first (a backup never uploads plaintext while it\u2019s on).');
+        throw new Error(
+          'Backup encryption is ON , enter your backup passphrase first (a backup never uploads plaintext while it\u2019s on).'
+        );
       }
       if (!cryptoOk()) {
-        throw new Error('Encryption is unavailable in this browser (needs HTTPS) , turn backup encryption off or use a secure connection.');
+        throw new Error(
+          'Encryption is unavailable in this browser (needs HTTPS) , turn backup encryption off or use a secure connection.'
+        );
       }
       const sealed = await encryptPayload(payload, pass);
       uploadDoc = {
@@ -1426,19 +1707,29 @@ var MMGR = window.MMGR || {};
       };
     }
     const form = new FormData();
-    form.append('metadata', new Blob([JSON.stringify({ name: DRIVE_FILE, mimeType: 'application/json' })], { type: 'application/json' }));
+    form.append(
+      'metadata',
+      new Blob([JSON.stringify({ name: DRIVE_FILE, mimeType: 'application/json' })], {
+        type: 'application/json'
+      })
+    );
     form.append('file', new Blob([JSON.stringify(uploadDoc)], { type: 'application/json' }));
 
     const existing = await findDriveBackup(silentOnly);
-    const url = existing && existing.id
-      ? DRIVE_UPLOAD + '/' + encodeURIComponent(existing.id) + '?uploadType=multipart'
-      : DRIVE_UPLOAD + '?uploadType=multipart';
+    const url =
+      existing && existing.id
+        ? DRIVE_UPLOAD + '/' + encodeURIComponent(existing.id) + '?uploadType=multipart'
+        : DRIVE_UPLOAD + '?uploadType=multipart';
     const method = existing && existing.id ? 'PATCH' : 'POST';
 
     const res = await driveFetch(url, { method: method, body: form }, null, false, silentOnly);
-    const result = await res.json().catch(function() { return {}; });
+    const result = await res.json().catch(function () {
+      return {};
+    });
     if (!res.ok || !result.id) {
-      throw new Error(driveApiError(res, result) || 'Backup upload failed (HTTP ' + res.status + ').');
+      throw new Error(
+        driveApiError(res, result) || 'Backup upload failed (HTTP ' + res.status + ').'
+      );
     }
     return {
       fileId: result.id,
@@ -1457,7 +1748,9 @@ var MMGR = window.MMGR || {};
     }
     const res = await driveFetch(DRIVE_API + '/' + encodeURIComponent(existing.id) + '?alt=media');
     if (!res.ok) throw new Error('Restore download failed (HTTP ' + res.status + ').');
-    const raw = await res.json().catch(function() { return null; });
+    const raw = await res.json().catch(function () {
+      return null;
+    });
     // Encrypted envelope (v2): unseal with the session passphrase first. GCM
     // auth failure on a wrong passphrase throws BEFORE any key is written, so
     // a bad passphrase can never wipe local data.
@@ -1465,23 +1758,36 @@ var MMGR = window.MMGR || {};
     if (raw && raw.encrypted) {
       const pass = getDrivePass();
       if (!pass) {
-        throw new Error('That backup is encrypted , enter your backup passphrase (Backup settings) to restore it.');
+        throw new Error(
+          'That backup is encrypted , enter your backup passphrase (Backup settings) to restore it.'
+        );
       }
       try {
         // Pass the envelope's recorded KDF settings so a future iteration/hash
         // change never orphans older encrypted backups.
-        payload = await decryptPayload(raw, pass, (raw && raw.kdf) ? raw.kdf : null);
+        payload = await decryptPayload(raw, pass, raw && raw.kdf ? raw.kdf : null);
       } catch (e) {
         throw new Error('Wrong passphrase or corrupted backup , nothing was restored.');
       }
     }
-    if (!payload || payload.app !== 'mymanager' || payload.kind !== 'workspace-backup' || !payload.data || typeof payload.data !== 'object') {
+    if (
+      !payload ||
+      payload.app !== 'mymanager' ||
+      payload.kind !== 'workspace-backup' ||
+      !payload.data ||
+      typeof payload.data !== 'object'
+    ) {
       throw new Error('That Drive file is not a My MaNaGeR workspace backup.');
     }
     let written = 0;
     for (const k of Object.keys(payload.data)) {
       if (!isWorkspaceKey(k)) continue; // never restore device-only slots
-      try { localStorage.setItem(k, String(payload.data[k])); written++; } catch (e) { /* skip */ }
+      try {
+        localStorage.setItem(k, String(payload.data[k]));
+        written++;
+      } catch (e) {
+        /* skip */
+      }
     }
     return { written: written, exportedAt: payload.exportedAt };
   }
@@ -1493,12 +1799,18 @@ var MMGR = window.MMGR || {};
   function getAutoInterval() {
     try {
       const v = localStorage.getItem(AUTO_KEY);
-      return (v === '15' || v === '30' || v === '60') ? v : 'off';
-    } catch (e) { return 'off'; }
+      return v === '15' || v === '30' || v === '60' ? v : 'off';
+    } catch (e) {
+      return 'off';
+    }
   }
   function setAutoInterval(v) {
-    const val = (v === '15' || v === '30' || v === '60') ? v : 'off';
-    try { localStorage.setItem(AUTO_KEY, val); } catch (e) { /* ignore */ }
+    const val = v === '15' || v === '30' || v === '60' ? v : 'off';
+    try {
+      localStorage.setItem(AUTO_KEY, val);
+    } catch (e) {
+      /* ignore */
+    }
     _autoInterval = val;
     // Keep the auth-bar select in sync when set programmatically.
     const sel = $('drive-auto-interval');
@@ -1507,10 +1819,18 @@ var MMGR = window.MMGR || {};
     return val;
   }
   function getLastAutoBackup() {
-    try { return localStorage.getItem(LAST_KEY) || ''; } catch (e) { return ''; }
+    try {
+      return localStorage.getItem(LAST_KEY) || '';
+    } catch (e) {
+      return '';
+    }
   }
   function setLastAutoBackup(iso) {
-    try { localStorage.setItem(LAST_KEY, iso || new Date().toISOString()); } catch (e) { /* ignore */ }
+    try {
+      localStorage.setItem(LAST_KEY, iso || new Date().toISOString());
+    } catch (e) {
+      /* ignore */
+    }
   }
 
   async function runAutoBackupCheck() {
@@ -1519,7 +1839,12 @@ var MMGR = window.MMGR || {};
     if (!mins || mins <= 0) return false;
     // Respect the chosen interval since the last successful auto backup.
     const last = getLastAutoBackup();
-    if (last && Number.isFinite(new Date(last).getTime()) && (Date.now() - new Date(last).getTime()) < mins * 60000) return false;
+    if (
+      last &&
+      Number.isFinite(new Date(last).getTime()) &&
+      Date.now() - new Date(last).getTime() < mins * 60000
+    )
+      return false;
     // Silent token only , never a consent popup from a background timer.
     const token = await getDriveTokenSilent();
     if (!token) return false;
@@ -1529,15 +1854,18 @@ var MMGR = window.MMGR || {};
     try {
       const r = await backupToDrive(true); // silentOnly , every call stays quiet
       setLastAutoBackup(new Date().toISOString());
-      if (!document.hidden) setDriveStatus('Auto-backup saved , ' + r.keyCount + ' workspace keys.', 'ok');
+      if (!document.hidden)
+        setDriveStatus('Auto-backup saved , ' + r.keyCount + ' workspace keys.', 'ok');
       return true;
     } catch (e) {
-      if (window.console && window.console.warn) window.console.warn('mmgr-google-auth: auto-backup skipped', e && e.message);
+      if (window.console && window.console.warn)
+        window.console.warn('mmgr-google-auth: auto-backup skipped', e && e.message);
       // Fail-closed: when encryption is ON but the session passphrase is
       // missing, the user must act to resume backups , show a persistent hint
       // (only when the tab is visible) instead of going completely silent.
       const noPass = /passphrase/i.test((e && e.message) || '');
-      if (!document.hidden) setDriveStatus(noPass ? 'Enter your backup passphrase to resume auto-backup.' : '', 'err');
+      if (!document.hidden)
+        setDriveStatus(noPass ? 'Enter your backup passphrase to resume auto-backup.' : '', 'err');
       return false;
     } finally {
       _driveBusy = false;
@@ -1546,15 +1874,20 @@ var MMGR = window.MMGR || {};
   }
 
   function startAutoTimer() {
-    if (_autoTimer) { clearInterval(_autoTimer); _autoTimer = null; }
+    if (_autoTimer) {
+      clearInterval(_autoTimer);
+      _autoTimer = null;
+    }
     _autoInterval = getAutoInterval();
     // Controls-gated: no timer on pages without the Drive controls
     // (admin.html loads this module too, but auto-backup is a workspace
     // feature). Either the app.html auth-bar button or the project.html
     // drawer section (#drive-section) counts as a Drive-enabled page.
     if (_autoInterval === 'off' || (!$('btn-drive-backup') && !$('drive-section'))) return;
-    _autoTimer = setInterval(function() {
-      runAutoBackupCheck().catch(function() { /* timer tick must never throw */ });
+    _autoTimer = setInterval(function () {
+      runAutoBackupCheck().catch(function () {
+        /* timer tick must never throw */
+      });
     }, 60000);
   }
 
@@ -1574,23 +1907,41 @@ var MMGR = window.MMGR || {};
     // The project.html drawer buttons use data-action delegation instead of
     // ids , disable them too so a running backup/restore can't be re-triggered
     // there (the _driveBusy guard would also block it, this is just visual).
-    document.querySelectorAll('[data-action="driveBackup"], [data-action="driveRestore"]').forEach(function(btn) {
-      btn.disabled = busy;
-    });
+    document
+      .querySelectorAll('[data-action="driveBackup"], [data-action="driveRestore"]')
+      .forEach(function (btn) {
+        btn.disabled = busy;
+      });
   }
 
   // Shared auto-interval status line (used by both the app.html auth-bar
   // select and the project.html drawer select): chosen interval + next run.
   function autoIntervalStatus(v) {
-    if (v === 'off') { setDriveStatus('Auto-backup off.', 'ok'); return; }
+    if (v === 'off') {
+      setDriveStatus('Auto-backup off.', 'ok');
+      return;
+    }
     const next = getLastAutoBackup();
-    setDriveStatus('Auto-backup every ' + v + ' min' + (next ? ' , next ' + new Date(new Date(next).getTime() + parseInt(v, 10) * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '') + '.', 'ok');
+    setDriveStatus(
+      'Auto-backup every ' +
+        v +
+        ' min' +
+        (next
+          ? ' , next ' +
+            new Date(new Date(next).getTime() + parseInt(v, 10) * 60000).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit'
+            })
+          : '') +
+        '.',
+      'ok'
+    );
   }
 
   // data-action entry point for the project.html drawer select: reads the
   // select's value, persists the device pref, restarts the timer, reports.
   function setAutoIntervalFrom(el) {
-    const v = (el && el.value != null) ? el.value : 'off';
+    const v = el && el.value != null ? el.value : 'off';
     autoIntervalStatus(setAutoInterval(v));
   }
 
@@ -1611,12 +1962,22 @@ var MMGR = window.MMGR || {};
       '<button class="btn btn-n btn-s" data-action="driveRestore"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Restore from Drive</button>' +
       '</div>' +
       '<div class="sr"><span class="sl">Auto backup</span><select class="ctl-in w150" data-action="driveAutoInterval">' +
-      '<option value="off"' + (cur === 'off' ? ' selected' : '') + '>Off</option>' +
-      '<option value="15"' + (cur === '15' ? ' selected' : '') + '>Every 15 min</option>' +
-      '<option value="30"' + (cur === '30' ? ' selected' : '') + '>Every 30 min</option>' +
-      '<option value="60"' + (cur === '60' ? ' selected' : '') + '>Every 60 min</option>' +
+      '<option value="off"' +
+      (cur === 'off' ? ' selected' : '') +
+      '>Off</option>' +
+      '<option value="15"' +
+      (cur === '15' ? ' selected' : '') +
+      '>Every 15 min</option>' +
+      '<option value="30"' +
+      (cur === '30' ? ' selected' : '') +
+      '>Every 30 min</option>' +
+      '<option value="60"' +
+      (cur === '60' ? ' selected' : '') +
+      '>Every 60 min</option>' +
       '</select></div>' +
-      '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Passphrase</span><input type="password" class="ctl-in w150" data-action="driveSetPass" placeholder="' + (encryptionEnabled() ? 'Encryption on , enter to change' : 'Encrypt backups (optional)') + '" autocomplete="off"></div>' +
+      '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Passphrase</span><input type="password" class="ctl-in w150" data-action="driveSetPass" placeholder="' +
+      (encryptionEnabled() ? 'Encryption on , enter to change' : 'Encrypt backups (optional)') +
+      '" autocomplete="off"></div>' +
       '<div class="sr-hint">Set a passphrase to encrypt every backup (AES-256-GCM, PBKDF2 key) so AI keys and other project-state secrets never sit in Drive as plaintext. The passphrase stays on this device; re-enter it after restarting the browser. Clear it to go back to plaintext backups.</div>' +
       '<div id="drive-sync-status" class="drive-status"></div>';
   }
@@ -1631,7 +1992,16 @@ var MMGR = window.MMGR || {};
       // A successful manual backup also resets the auto-interval clock, so
       // the timer never fires right after a manual one.
       setLastAutoBackup(new Date().toISOString());
-      setDriveStatus('Backed up ' + r.keyCount + ' workspace keys' + (r.updated ? ' (updated)' : '') + ' , ' + r.exportedAt.slice(0, 10) + '.', 'ok');
+      setDriveStatus(
+        'Backed up ' +
+          r.keyCount +
+          ' workspace keys' +
+          (r.updated ? ' (updated)' : '') +
+          ' , ' +
+          r.exportedAt.slice(0, 10) +
+          '.',
+        'ok'
+      );
     } catch (e) {
       setDriveStatus((e && e.message) || 'Backup failed.', 'err');
     } finally {
@@ -1643,18 +2013,25 @@ var MMGR = window.MMGR || {};
   async function triggerRestore() {
     if (_driveBusy) return;
     // Restoring overwrites this device's local workspace , confirm first.
-    if (!window.confirm('Replace this device\u2019s workspace with the backup from Google Drive? Current local data will be overwritten.')) return;
+    if (
+      !window.confirm(
+        'Replace this device\u2019s workspace with the backup from Google Drive? Current local data will be overwritten.'
+      )
+    )
+      return;
     _driveBusy = true;
     setDriveBusy(true);
     setDriveStatus('Restoring…', 'busy');
     try {
       const r = await restoreFromDrive();
       setDriveStatus('Restored ' + r.written + ' workspace keys , reloading.', 'ok');
-      setTimeout(function() { window.location.reload(); }, 1200);
+      setTimeout(function () {
+        window.location.reload();
+      }, 1200);
       // Safety net: if the reload is ever blocked, re-enable the controls.
       // Matches BOTH mounts , the app.html id-based button and the
       // project.html drawer's data-action button (no id).
-      setTimeout(function() {
+      setTimeout(function () {
         if ($('btn-drive-restore') || document.querySelector('[data-action="driveRestore"]')) {
           _driveBusy = false;
           setDriveBusy(false);
@@ -1678,7 +2055,7 @@ var MMGR = window.MMGR || {};
     if (sel) {
       _autoInterval = getAutoInterval();
       sel.value = _autoInterval;
-      sel.addEventListener('change', function() {
+      sel.addEventListener('change', function () {
         autoIntervalStatus(setAutoInterval(sel.value));
       });
     }
@@ -1686,7 +2063,9 @@ var MMGR = window.MMGR || {};
     // version routes through data-action="driveSetPass" instead).
     const pp = $('drive-pass');
     if (pp) {
-      pp.addEventListener('change', function() { setDrivePassFrom(pp); });
+      pp.addEventListener('change', function () {
+        setDrivePassFrom(pp);
+      });
     }
     startAutoTimer();
   }
@@ -1697,11 +2076,23 @@ var MMGR = window.MMGR || {};
     const hc = $('hdr-signin');
     if (!hc || hc.getAttribute('data-wired') === '1') return;
     hc.setAttribute('data-wired', '1');
-    hc.addEventListener('click', function() {
+    hc.addEventListener('click', function () {
       const od = document.querySelector('[data-action="openDrw"]');
-      if (od) { try { od.click(); } catch (e) { /* optional */ } }
+      if (od) {
+        try {
+          od.click();
+        } catch (e) {
+          /* optional */
+        }
+      }
       const tab = document.querySelector('[data-action="swDtab"][data-tab="ctrl"]');
-      if (tab) { try { tab.click(); } catch (e) { /* optional */ } }
+      if (tab) {
+        try {
+          tab.click();
+        } catch (e) {
+          /* optional */
+        }
+      }
     });
   }
 
@@ -1721,7 +2112,8 @@ var MMGR = window.MMGR || {};
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'gis-fallback-btn';
-    btn.innerHTML = '<svg class="ico" aria-hidden="true" style="width:18px;height:18px;margin-right:8px;vertical-align:middle"><use href="css/mmgr-icons.svg#i-user"></use></svg>Sign in with Google';
+    btn.innerHTML =
+      '<svg class="ico" aria-hidden="true" style="width:18px;height:18px;margin-right:8px;vertical-align:middle"><use href="css/mmgr-icons.svg#i-user"></use></svg>Sign in with Google';
     btn.style.borderRadius = '50%';
     btn.style.width = '48px';
     btn.style.height = '48px';
@@ -1730,8 +2122,9 @@ var MMGR = window.MMGR || {};
     btn.title = 'Sign in with Google';
     // Keep only the icon inside the circular fallback (the text label does
     // not fit a circle); screen readers get the aria-label instead.
-    btn.innerHTML = '<svg class="ico" aria-hidden="true" style="width:20px;height:20px"><use href="css/mmgr-icons.svg#i-user"></use></svg>';
-    btn.addEventListener('click', function() {
+    btn.innerHTML =
+      '<svg class="ico" aria-hidden="true" style="width:20px;height:20px"><use href="css/mmgr-icons.svg#i-user"></use></svg>';
+    btn.addEventListener('click', function () {
       if (gisReady()) {
         initGIS();
         // The GIS button should now be rendered; hide the fallback
@@ -1760,20 +2153,33 @@ var MMGR = window.MMGR || {};
     // The GIS script tag is async+defer in the page head, so it may still be
     // loading. Initialize the moment it's present; if it never loads
     // (offline / blocked), the button slot stays empty and nothing is gated.
-    if (initGIS()) { restoreSession(); return; }
+    if (initGIS()) {
+      restoreSession();
+      return;
+    }
     const s = document.querySelector('script[src*="gsi/client"]');
     if (s && typeof s.addEventListener === 'function') {
-      s.addEventListener('load', function() { if (initGIS()) restoreSession(); });
-      s.addEventListener('error', function() { /* blocked/offline , fine */ });
+      s.addEventListener('load', function () {
+        if (initGIS()) restoreSession();
+      });
+      s.addEventListener('error', function () {
+        /* blocked/offline , fine */
+      });
     }
     // Fallback poll: covers the case where a cached async script fired its
     // load event before this listener attached. Also guarantees restoreSession
     // still runs (~10s cap) so an existing session chip appears even if GIS
     // never loads.
     let tries = 0;
-    const t = setInterval(function() {
-      if (gisReady()) { clearInterval(t); if (initGIS()) restoreSession(); }
-      else if (++tries > 40) { clearInterval(t); restoreSession(); showGoogleFallback(); }
+    const t = setInterval(function () {
+      if (gisReady()) {
+        clearInterval(t);
+        if (initGIS()) restoreSession();
+      } else if (++tries > 40) {
+        clearInterval(t);
+        restoreSession();
+        showGoogleFallback();
+      }
     }, 250);
   }
 
@@ -1794,8 +2200,12 @@ var MMGR = window.MMGR || {};
     handleCredentialResponse: handleCredentialResponse,
     // OWNER 2026-08-15: session state getters (display-only) so other
     // modules (mmgr-sync) and the header chip can reflect real sign-in.
-    getUser: function() { return _user; },
-    isSignedIn: function() { return !!_user; },
+    getUser: function () {
+      return _user;
+    },
+    isSignedIn: function () {
+      return !!_user;
+    },
     signOut: signOut,
     // PADDLE POST-CHECKOUT RETURN (2026-10-04): returns the parsed
     // /api/billing/status so marketing.js can report what actually

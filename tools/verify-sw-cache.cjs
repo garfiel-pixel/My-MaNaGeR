@@ -70,9 +70,15 @@ const stale = [];
 const missing = [];
 for (const asset of shellAssets) {
   const p = path.join(ROOT, asset);
-  if (!fs.existsSync(p)) { missing.push(asset); continue; }
+  if (!fs.existsSync(p)) {
+    missing.push(asset);
+    continue;
+  }
   const st = fs.statSync(p);
-  if (st.mtimeMs > swMtime + GRACE_MS) stale.push(asset + '  (mtime ' + st.mtimeMs + ' > sw.js ' + swMtime + ' + grace ' + GRACE_MS + 'ms)');
+  if (st.mtimeMs > swMtime + GRACE_MS)
+    stale.push(
+      asset + '  (mtime ' + st.mtimeMs + ' > sw.js ' + swMtime + ' + grace ' + GRACE_MS + 'ms)'
+    );
 }
 
 let ok = true;
@@ -85,12 +91,22 @@ if (missing.length) {
 }
 if (stale.length) {
   ok = false;
-  console.error('[verify-sw-cache] FAIL: these SHELL assets are NEWER than the last CACHE bump in sw.js (' + cacheVersion + '):');
+  console.error(
+    '[verify-sw-cache] FAIL: these SHELL assets are NEWER than the last CACHE bump in sw.js (' +
+      cacheVersion +
+      '):'
+  );
   stale.forEach(a => console.error('    - ' + a));
   console.error('    Bump the version string in sw.js (const CACHE = ...) to force a refresh.');
 }
 if (ok) {
-  console.log('[verify-sw-cache] OK — cache version ' + cacheVersion + ' is newer than all ' + shellAssets.length + ' SHELL assets.');
+  console.log(
+    '[verify-sw-cache] OK — cache version ' +
+      cacheVersion +
+      ' is newer than all ' +
+      shellAssets.length +
+      ' SHELL assets.'
+  );
 } else {
   process.exit(1);
 }

@@ -32,7 +32,7 @@ const { execFileSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const results = [];
-const log = (s) => process.stdout.write(s + '\n');
+const log = s => process.stdout.write(s + '\n');
 
 // Collect the source scripts the site can actually serve. Anything under
 // these roots is either bundled by build.js or loaded standalone by a page;
@@ -43,7 +43,11 @@ const ROOT_FILES = ['worker.js', 'serve.cjs', 'sw.js', 'build.js'];
 
 function walk(dir, out) {
   let entries;
-  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch (e) { return out; }
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch (e) {
+    return out;
+  }
   for (const e of entries) {
     if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
     const full = path.join(dir, e.name);
@@ -77,7 +81,11 @@ for (const f of uniq) {
     results.push({ rel, ok: true });
   } catch (e) {
     failed++;
-    const err = ((e.stderr && e.stderr.toString()) || e.message || '').trim().split('\n').slice(0, 4).join(' ');
+    const err = ((e.stderr && e.stderr.toString()) || e.message || '')
+      .trim()
+      .split('\n')
+      .slice(0, 4)
+      .join(' ');
     results.push({ rel, ok: false, err });
   }
 }
@@ -92,7 +100,7 @@ log('[verify-js-syntax] ' + pass + '/' + results.length + ' source scripts parse
 if (failed) {
   log('');
   log('A source script does NOT parse - anything it powers is DEAD in the browser.');
-  log('Common cause: an unquoted hyphenated object key (`my-key:` must be `\'my-key\':`).');
+  log("Common cause: an unquoted hyphenated object key (`my-key:` must be `'my-key':`).");
   log('Note: standalone pages (calculator.html -> js/calculator-page.js) are NOT');
   log('parsed by `node build.js`, which is exactly how a syntax error reaches users.');
   log('');

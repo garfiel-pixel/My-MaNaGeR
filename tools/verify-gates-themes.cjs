@@ -37,23 +37,42 @@ function parseColor(str) {
 }
 function blend(fg, bg) {
   const a = fg.a;
-  return { r: fg.r * a + bg.r * (1 - a), g: fg.g * a + bg.g * (1 - a), b: fg.b * a + bg.b * (1 - a), a: 1 };
+  return {
+    r: fg.r * a + bg.r * (1 - a),
+    g: fg.g * a + bg.g * (1 - a),
+    b: fg.b * a + bg.b * (1 - a),
+    a: 1
+  };
 }
 function lum(c) {
-  const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  const f = v => {
+    v /= 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  };
   return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b);
 }
 function contrast(fg, bg) {
-  const l1 = lum(fg), l2 = lum(bg);
-  const hi = Math.max(l1, l2), lo = Math.min(l1, l2);
+  const l1 = lum(fg),
+    l2 = lum(bg);
+  const hi = Math.max(l1, l2),
+    lo = Math.min(l1, l2);
   return (hi + 0.05) / (lo + 0.05);
 }
 
-const proc = spawn(CHROME, [
-  '--headless=new', '--disable-gpu', '--no-sandbox',
-  '--remote-allow-origins=*', '--remote-debugging-port=' + PORT,
-  '--user-data-dir=' + userDir, '--window-size=1280,900', 'about:blank'
-], { stdio: 'ignore' });
+const proc = spawn(
+  CHROME,
+  [
+    '--headless=new',
+    '--disable-gpu',
+    '--no-sandbox',
+    '--remote-allow-origins=*',
+    '--remote-debugging-port=' + PORT,
+    '--user-data-dir=' + userDir,
+    '--window-size=1280,900',
+    'about:blank'
+  ],
+  { stdio: 'ignore' }
+);
 
 async function waitForPageTarget() {
   for (let i = 0; i < 60; i++) {
@@ -62,7 +81,9 @@ async function waitForPageTarget() {
       const list = await r.json();
       const page = list.find(t => t.type === 'page');
       if (page && page.webSocketDebuggerUrl) return page.webSocketDebuggerUrl;
-    } catch (e) { /* not up yet */ }
+    } catch (e) {
+      /* not up yet */
+    }
     await sleep(200);
   }
   throw new Error('CDP page target did not come up');
@@ -71,30 +92,60 @@ async function waitForPageTarget() {
 (async function () {
   const wsUrl = await waitForPageTarget();
   const ws = new WebSocket(wsUrl);
-  await new Promise(r => { ws.onopen = r; });
+  await new Promise(r => {
+    ws.onopen = r;
+  });
 
   let id = 0;
   const pending = new Map();
   const consoleIssues = [];
   ws.onmessage = ev => {
     const msg = JSON.parse(ev.data);
-    if (msg.id && pending.has(msg.id)) { pending.get(msg.id)(msg); pending.delete(msg.id); }
-    else if (msg.method === 'Runtime.exceptionThrown') {
-      consoleIssues.push('EXC: ' + ((msg.params.exceptionDetails.exception && msg.params.exceptionDetails.exception.description) || msg.params.exceptionDetails.text).slice(0, 180));
-    }
-    else if (msg.method === 'Runtime.consoleAPICalled' && (msg.params.type === 'error' || msg.params.type === 'warning')) {
-      consoleIssues.push(msg.params.type.toUpperCase() + ': ' + (msg.params.args || []).map(a => a.value || a.description || '').join(' ').slice(0, 180));
+    if (msg.id && pending.has(msg.id)) {
+      pending.get(msg.id)(msg);
+      pending.delete(msg.id);
+    } else if (msg.method === 'Runtime.exceptionThrown') {
+      consoleIssues.push(
+        'EXC: ' +
+          (
+            (msg.params.exceptionDetails.exception &&
+              msg.params.exceptionDetails.exception.description) ||
+            msg.params.exceptionDetails.text
+          ).slice(0, 180)
+      );
+    } else if (
+      msg.method === 'Runtime.consoleAPICalled' &&
+      (msg.params.type === 'error' || msg.params.type === 'warning')
+    ) {
+      consoleIssues.push(
+        msg.params.type.toUpperCase() +
+          ': ' +
+          (msg.params.args || [])
+            .map(a => a.value || a.description || '')
+            .join(' ')
+            .slice(0, 180)
+      );
     }
   };
-  const send = (method, params) => new Promise(resolve => {
-    const mid = ++id;
-    pending.set(mid, resolve);
-    ws.send(JSON.stringify({ id: mid, method, params: params || {} }));
-  });
+  const send = (method, params) =>
+    new Promise(resolve => {
+      const mid = ++id;
+      pending.set(mid, resolve);
+      ws.send(JSON.stringify({ id: mid, method, params: params || {} }));
+    });
   const evaluate = async expr => {
-    const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true });
+    const r = await send('Runtime.evaluate', {
+      expression: expr,
+      returnByValue: true,
+      awaitPromise: true
+    });
     if (r.error) return 'CDP_ERROR:' + JSON.stringify(r.error);
-    if (r.result && r.result.exceptionDetails) return 'EXC:' + ((r.result.exceptionDetails.exception && r.result.exceptionDetails.exception.description) || r.result.exceptionDetails.text);
+    if (r.result && r.result.exceptionDetails)
+      return (
+        'EXC:' +
+        ((r.result.exceptionDetails.exception && r.result.exceptionDetails.exception.description) ||
+          r.result.exceptionDetails.text)
+      );
     return r.result && r.result.result ? r.result.result.value : null;
   };
 
@@ -103,9 +154,20 @@ async function waitForPageTarget() {
   await send('Log.enable');
   // Override the viewport (headless window stays 1280x900; the page sees the
   // requested size — innerWidth + media queries both reflect it).
-  await send('Emulation.setDeviceMetricsOverride', { width: viewportW, height: viewportH, deviceScaleFactor: 1, mobile: false });
+  await send('Emulation.setDeviceMetricsOverride', {
+    width: viewportW,
+    height: viewportH,
+    deviceScaleFactor: 1,
+    mobile: false
+  });
   await sleep(600);
-  console.log('VIEWPORT ' + viewportW + 'x' + viewportH + (viewportW <= 640 ? ' (narrow — CSS-glass path)' : ' (wide)'));
+  console.log(
+    'VIEWPORT ' +
+      viewportW +
+      'x' +
+      viewportH +
+      (viewportW <= 640 ? ' (narrow — CSS-glass path)' : ' (wide)')
+  );
 
   /* ---- in-page check: sample the gate's computed look + contrast ---- */
   const CHECK_SRC = `(function(){
@@ -157,7 +219,7 @@ async function waitForPageTarget() {
 
   function preload(glass, adminLogin, dark) {
     let s = "try{localStorage.setItem('mmgr_glass_mode','" + glass + "');}catch(e){}";
-    if (glass === 'premium') s += "try{window.__mmgrForceHighEnd=true;}catch(e){}";
+    if (glass === 'premium') s += 'try{window.__mmgrForceHighEnd=true;}catch(e){}';
     if (dark) s += "try{localStorage.setItem('mmgr_theme','dark');}catch(e){}";
     if (adminLogin) s += "try{localStorage.setItem('mmgr_admin_pass_hash','seedhash');}catch(e){}";
     return s;
@@ -165,7 +227,9 @@ async function waitForPageTarget() {
 
   const passes = [];
   async function pass(name, file, opts) {
-    const pre = await send('Page.addScriptToEvaluateOnNewDocument', { source: preload(opts.glass, opts.adminLogin, opts.dark) });
+    const pre = await send('Page.addScriptToEvaluateOnNewDocument', {
+      source: preload(opts.glass, opts.adminLogin, opts.dark)
+    });
     const startIdx = consoleIssues.length;
     // The app arm uses app.html?locked=<seed> (Phase 7 harness fix): the
     // demo cards in a fresh profile are auto-unlocked at boot and NAVIGATE
@@ -175,9 +239,10 @@ async function waitForPageTarget() {
     // calls openModal() directly for a not-yet-unlocked id, no card needed —
     // and stays on app.html, so the demo project's dev-only 404 noise (the
     // second parked failure: 1 console error) never fires either.
-    const url = (opts.locked && file === 'app.html')
-      ? BASE + '/app.html?locked=' + opts.locked
-      : BASE + '/' + file;
+    const url =
+      opts.locked && file === 'app.html'
+        ? BASE + '/app.html?locked=' + opts.locked
+        : BASE + '/' + file;
     await send('Page.navigate', { url });
     await sleep(opts.waitMs || 3200);
     // Dark is NOT forced here: each page's own early-apply snippet must turn
@@ -197,23 +262,43 @@ async function waitForPageTarget() {
       })()`);
       await sleep(500);
     }
-    const raw = await evaluate(CHECK_SRC.replace('${GATE_SEL}', opts.gateSel).replace('${SAMPLE_SEL}', opts.sampleSel));
+    const raw = await evaluate(
+      CHECK_SRC.replace('${GATE_SEL}', opts.gateSel).replace('${SAMPLE_SEL}', opts.sampleSel)
+    );
     let parsed = null;
-    try { parsed = JSON.parse(raw); } catch (e) { parsed = { parseError: String(raw).slice(0, 200) }; }
+    try {
+      parsed = JSON.parse(raw);
+    } catch (e) {
+      parsed = { parseError: String(raw).slice(0, 200) };
+    }
     const shot = await send('Page.captureScreenshot', { format: 'png' });
     const png = 'tools/gate-' + name + suffix + '.png';
-    if (shot.result && shot.result.data) fs.writeFileSync(png, Buffer.from(shot.result.data, 'base64'));
+    if (shot.result && shot.result.data)
+      fs.writeFileSync(png, Buffer.from(shot.result.data, 'base64'));
     await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: pre.identifier });
     await sleep(250);
-    const rec = { name, file, glass: opts.glass, dark: !!opts.dark, click, issues: consoleIssues.slice(startIdx), ...parsed, screenshot: png };
+    const rec = {
+      name,
+      file,
+      glass: opts.glass,
+      dark: !!opts.dark,
+      click,
+      issues: consoleIssues.slice(startIdx),
+      ...parsed,
+      screenshot: png
+    };
     passes.push(rec);
     console.log('PASS ' + name + ' done');
     return rec;
   }
 
   const sample = (gateSel, selList) =>
-    '[' + selList.map(s => JSON.stringify(s)).join(',') + '].forEach(function(s){' +
-    'var e=' + gateSel + '.querySelector(s); if(e){var r=sample(e); if(r) out.samples.push(r);}});';
+    '[' +
+    selList.map(s => JSON.stringify(s)).join(',') +
+    '].forEach(function(s){' +
+    'var e=' +
+    gateSel +
+    '.querySelector(s); if(e){var r=sample(e); if(r) out.samples.push(r);}});';
 
   const appGate = "document.querySelector('#om.open .mb')";
   const adminGate = "document.querySelector('.gbox')";
@@ -222,20 +307,76 @@ async function waitForPageTarget() {
   // Phase 7: each pass seeds a locked project via ?locked= (the real
   // editor-code unlock path) so the modal deterministically opens without
   // relying on a demo card click that navigates away.
-  await pass('app-light-css', 'app.html', { glass: 'css', dark: false, locked: 'qa-gate-seed', gateSel: appGate, sampleSel: sample(appGate, ['#om-title-text', '#om-desc', '#code-input', '#unlock-btn']) });
-  await pass('app-dark-css', 'app.html', { glass: 'css', dark: true, locked: 'qa-gate-seed', gateSel: appGate, sampleSel: sample(appGate, ['#om-title-text', '#om-desc', '#code-input', '#unlock-btn']) });
-  await pass('app-light-premium', 'app.html', { glass: 'premium', dark: false, locked: 'qa-gate-seed', gateSel: appGate, sampleSel: sample(appGate, ['#om-title-text', '#om-desc', '#code-input', '#unlock-btn']) });
-  await pass('app-dark-premium', 'app.html', { glass: 'premium', dark: true, locked: 'qa-gate-seed', gateSel: appGate, sampleSel: sample(appGate, ['#om-title-text', '#om-desc', '#code-input', '#unlock-btn']) });
+  await pass('app-light-css', 'app.html', {
+    glass: 'css',
+    dark: false,
+    locked: 'qa-gate-seed',
+    gateSel: appGate,
+    sampleSel: sample(appGate, ['#om-title-text', '#om-desc', '#code-input', '#unlock-btn'])
+  });
+  await pass('app-dark-css', 'app.html', {
+    glass: 'css',
+    dark: true,
+    locked: 'qa-gate-seed',
+    gateSel: appGate,
+    sampleSel: sample(appGate, ['#om-title-text', '#om-desc', '#code-input', '#unlock-btn'])
+  });
+  await pass('app-light-premium', 'app.html', {
+    glass: 'premium',
+    dark: false,
+    locked: 'qa-gate-seed',
+    gateSel: appGate,
+    sampleSel: sample(appGate, ['#om-title-text', '#om-desc', '#code-input', '#unlock-btn'])
+  });
+  await pass('app-dark-premium', 'app.html', {
+    glass: 'premium',
+    dark: true,
+    locked: 'qa-gate-seed',
+    gateSel: appGate,
+    sampleSel: sample(appGate, ['#om-title-text', '#om-desc', '#code-input', '#unlock-btn'])
+  });
 
   // ---- admin.html password SETUP gate: 2 glass × 2 themes ----
-  await pass('admin-setup-light-css', 'admin.html', { glass: 'css', dark: false, gateSel: adminGate, sampleSel: sample(adminGate, ['h1', 'p', 'input', 'button']) });
-  await pass('admin-setup-dark-css', 'admin.html', { glass: 'css', dark: true, gateSel: adminGate, sampleSel: sample(adminGate, ['h1', 'p', 'input', 'button']) });
-  await pass('admin-setup-light-premium', 'admin.html', { glass: 'premium', dark: false, gateSel: adminGate, sampleSel: sample(adminGate, ['h1', 'p', 'input', 'button']) });
-  await pass('admin-setup-dark-premium', 'admin.html', { glass: 'premium', dark: true, gateSel: adminGate, sampleSel: sample(adminGate, ['h1', 'p', 'input', 'button']) });
+  await pass('admin-setup-light-css', 'admin.html', {
+    glass: 'css',
+    dark: false,
+    gateSel: adminGate,
+    sampleSel: sample(adminGate, ['h1', 'p', 'input', 'button'])
+  });
+  await pass('admin-setup-dark-css', 'admin.html', {
+    glass: 'css',
+    dark: true,
+    gateSel: adminGate,
+    sampleSel: sample(adminGate, ['h1', 'p', 'input', 'button'])
+  });
+  await pass('admin-setup-light-premium', 'admin.html', {
+    glass: 'premium',
+    dark: false,
+    gateSel: adminGate,
+    sampleSel: sample(adminGate, ['h1', 'p', 'input', 'button'])
+  });
+  await pass('admin-setup-dark-premium', 'admin.html', {
+    glass: 'premium',
+    dark: true,
+    gateSel: adminGate,
+    sampleSel: sample(adminGate, ['h1', 'p', 'input', 'button'])
+  });
 
   // ---- admin.html LOGIN gate (returning admin): representative combos ----
-  await pass('admin-login-light-css', 'admin.html', { glass: 'css', dark: false, adminLogin: true, gateSel: adminGate, sampleSel: sample(adminGate, ['h1', 'p', 'input', 'button']) });
-  await pass('admin-login-dark-premium', 'admin.html', { glass: 'premium', dark: true, adminLogin: true, gateSel: adminGate, sampleSel: sample(adminGate, ['h1', 'p', 'input', 'button']) });
+  await pass('admin-login-light-css', 'admin.html', {
+    glass: 'css',
+    dark: false,
+    adminLogin: true,
+    gateSel: adminGate,
+    sampleSel: sample(adminGate, ['h1', 'p', 'input', 'button'])
+  });
+  await pass('admin-login-dark-premium', 'admin.html', {
+    glass: 'premium',
+    dark: true,
+    adminLogin: true,
+    gateSel: adminGate,
+    sampleSel: sample(adminGate, ['h1', 'p', 'input', 'button'])
+  });
 
   /* ---- verdicts ---- */
   const rows = passes.map(p => {
@@ -257,20 +398,30 @@ async function waitForPageTarget() {
     if (p.dark && p.page && !p.page.darkClass) flags.push('DARK-NOT-APPLIED');
     // Informational only: the premium engine is not loaded on launcher/gate
     // pages, so premium preference + capability legitimately changes nothing.
-    if (p.glass === 'premium' && p.page && p.page.canvasCount === 0) info.push('premium-engine-not-on-page');
+    if (p.glass === 'premium' && p.page && p.page.canvasCount === 0)
+      info.push('premium-engine-not-on-page');
     return {
-      combo: p.name, glass: p.glass, theme: p.dark ? 'dark' : 'light', screen: p.click || 'n/a',
+      combo: p.name,
+      glass: p.glass,
+      theme: p.dark ? 'dark' : 'light',
+      screen: p.click || 'n/a',
       worstContrast: worst === 99 ? null : +worst.toFixed(2),
-      errors: errors.length, warnings: warns.length,
+      errors: errors.length,
+      warnings: warns.length,
       gate: p.gate ? p.gate.cls : null,
       broken: flags.length > 0,
-      verdict: flags.length ? flags.join(' | ') : (info.length ? 'OK (' + info.join(', ') + ')' : 'OK')
+      verdict: flags.length
+        ? flags.join(' | ')
+        : info.length
+          ? 'OK (' + info.join(', ') + ')'
+          : 'OK'
     };
   });
 
   const summary = {
-    viewport: viewportW + 'x' + viewportH + (viewportW <= 640 ? ' (narrow — CSS-glass path)' : ' (wide)'),
-    note: 'Launcher/gate pages do not load the Liquid Glass engine (mmgr-glass.js/mmgr-viewport.js). Premium = localStorage mmgr_glass_mode=premium + __mmgrForceHighEnd (no-op on these pages by design). Dark = seeded device pref mmgr_theme=dark applied by each page\'s own early-apply snippet — the real persistence path, not a forced class.',
+    viewport:
+      viewportW + 'x' + viewportH + (viewportW <= 640 ? ' (narrow — CSS-glass path)' : ' (wide)'),
+    note: "Launcher/gate pages do not load the Liquid Glass engine (mmgr-glass.js/mmgr-viewport.js). Premium = localStorage mmgr_glass_mode=premium + __mmgrForceHighEnd (no-op on these pages by design). Dark = seeded device pref mmgr_theme=dark applied by each page's own early-apply snippet — the real persistence path, not a forced class.",
     rows,
     anyBroken: rows.some(r => r.broken)
   };
@@ -280,4 +431,8 @@ async function waitForPageTarget() {
   console.log('RESULT:', summary.anyBroken ? 'BROKEN STATES FOUND' : 'NO BROKEN STATES');
   proc.kill();
   process.exit(0);
-})().catch(e => { console.error('ERR', e && e.stack || e); proc.kill(); process.exit(1); });
+})().catch(e => {
+  console.error('ERR', (e && e.stack) || e);
+  proc.kill();
+  process.exit(1);
+});

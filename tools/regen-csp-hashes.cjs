@@ -76,11 +76,18 @@ for (const hf of HARDCODED_FILES) {
     process.exitCode = 1;
     continue;
   }
-  const replacement = 'const INLINE_SCRIPT_HASHES = [\n' + ARRAY_BODY + '\n].join(\' \');';
+  const replacement = 'const INLINE_SCRIPT_HASHES = [\n' + ARRAY_BODY + "\n].join(' ');";
   const next = src.replace(ARRAY_RE, replacement);
   fs.writeFileSync(fp, next);
   changed++;
-  console.log('Updated ' + hf + ' (' + computedFlat.length + ' hashes)' + (next === src ? ' (already in sync)' : ''));
+  console.log(
+    'Updated ' +
+      hf +
+      ' (' +
+      computedFlat.length +
+      ' hashes)' +
+      (next === src ? ' (already in sync)' : '')
+  );
 }
 
 if (changed === HARDCODED_FILES.length) {

@@ -23,7 +23,8 @@ const fs = require('fs');
 
 const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('./chrome-launcher.cjs');
 const PROFILE = path.join(os.tmpdir(), 'mmgr-dynlabels-' + Date.now());
-let ws, msgId = 0;
+let ws,
+  msgId = 0;
 const pending = new Map();
 const results = [];
 // CI diagnosability (run 228 follow-up): capture the page's own errors and
@@ -45,52 +46,154 @@ const SEED_DATA = {
   v: 5,
   updatedAt: Date.now(),
   charter: {
-    name: 'Demo Tower Renovation', owner: 'Grace', startDate: '2026-06-01',
-    targetCompletion: '2026-12-31', budgetEnvelope: 1000000, status: 'Active',
-    scope: 'Full lobby + core renovation', region: 'northern-temperate',
-    assumptions: '', exclusions: '', constraints: '', successMetrics: ''
+    name: 'Demo Tower Renovation',
+    owner: 'Grace',
+    startDate: '2026-06-01',
+    targetCompletion: '2026-12-31',
+    budgetEnvelope: 1000000,
+    status: 'Active',
+    scope: 'Full lobby + core renovation',
+    region: 'northern-temperate',
+    assumptions: '',
+    exclusions: '',
+    constraints: '',
+    successMetrics: ''
   },
   tasks: [
-    { id: 't1', name: 'Foundations', level: 0, indent: 0, isPhase: true, status: 'inprogress', startDate: '2026-06-01', endDate: '2026-07-10', duration: '40', assignee: 'Alice', critical: false, leadTime: false, predecessors: [], milestone: false, weatherSensitive: true, weatherExposed: false, confidence: 'high' },
-    { id: 't2', name: 'Structural Steel', level: 1, indent: 1, status: 'inprogress', startDate: '2026-07-13', endDate: '2026-08-21', duration: '30', assignee: 'Bob', critical: true, leadTime: false, predecessors: ['t1'], milestone: false, weatherSensitive: false, weatherExposed: false, confidence: 'medium' }
+    {
+      id: 't1',
+      name: 'Foundations',
+      level: 0,
+      indent: 0,
+      isPhase: true,
+      status: 'inprogress',
+      startDate: '2026-06-01',
+      endDate: '2026-07-10',
+      duration: '40',
+      assignee: 'Alice',
+      critical: false,
+      leadTime: false,
+      predecessors: [],
+      milestone: false,
+      weatherSensitive: true,
+      weatherExposed: false,
+      confidence: 'high'
+    },
+    {
+      id: 't2',
+      name: 'Structural Steel',
+      level: 1,
+      indent: 1,
+      status: 'inprogress',
+      startDate: '2026-07-13',
+      endDate: '2026-08-21',
+      duration: '30',
+      assignee: 'Bob',
+      critical: true,
+      leadTime: false,
+      predecessors: ['t1'],
+      milestone: false,
+      weatherSensitive: false,
+      weatherExposed: false,
+      confidence: 'medium'
+    }
   ],
   ntaskid: 3,
   resources: [
-    { id: 'r1', name: 'Alice', role: 'Foundations Lead', availability: 100, hoursAllocated: 160, utilization: 0 },
-    { id: 'r2', name: 'Bob', role: 'Steel Erector', availability: 100, hoursAllocated: 120, utilization: 0 }
+    {
+      id: 'r1',
+      name: 'Alice',
+      role: 'Foundations Lead',
+      availability: 100,
+      hoursAllocated: 160,
+      utilization: 0
+    },
+    {
+      id: 'r2',
+      name: 'Bob',
+      role: 'Steel Erector',
+      availability: 100,
+      hoursAllocated: 120,
+      utilization: 0
+    }
   ],
   risks: [],
   issues: [],
-  stakeholders: [{ id: 's1', name: 'Owner' }, { id: 's2', name: 'Municipality' }],
+  stakeholders: [
+    { id: 's1', name: 'Owner' },
+    { id: 's2', name: 'Municipality' }
+  ],
   raci: { tasks: [], persons: [], matrix: {} },
-  meetings: [], nmeetid: 1,
+  meetings: [],
+  nmeetid: 1,
   spend: { entries: [], envelope: 1000000 },
   nspendid: 1,
   weather: { start: '2026-06-01', end: '2026-12-31', bufferDays: 14, region: 'northern-temperate' },
   wxLog: [],
   settings: { userName: 'Grace' },
   projectName: 'Demo Tower Renovation',
-  focusMode: false, darkMode: false, crosshairOn: false, kbShowLeadtime: true, hlCritical: false,
+  focusMode: false,
+  darkMode: false,
+  crosshairOn: false,
+  kbShowLeadtime: true,
+  hlCritical: false,
   leadtime: {},
-  dmaic: { active: false, define: { problem: '', goal: '', scope: '', sponsor: '', voice: '', done: false }, measure: { baseline: '', defects: '', unit: '', opportunity: '', dpmo: '', sigmaNow: '', done: false }, analyze: { rootCauses: '', fishbone: '', paretoTop: '', done: false }, improve: { solutions: '', pilot: '', results: '', done: false }, control: { plan: '', metrics: '', handover: '', done: false } },
+  dmaic: {
+    active: false,
+    define: { problem: '', goal: '', scope: '', sponsor: '', voice: '', done: false },
+    measure: {
+      baseline: '',
+      defects: '',
+      unit: '',
+      opportunity: '',
+      dpmo: '',
+      sigmaNow: '',
+      done: false
+    },
+    analyze: { rootCauses: '', fishbone: '', paretoTop: '', done: false },
+    improve: { solutions: '', pilot: '', results: '', done: false },
+    control: { plan: '', metrics: '', handover: '', done: false }
+  },
   schedule: {},
-  evm: {}, health: {}, close: {}, sprint: {},
-  backlog: [], nbacklogid: 1
+  evm: {},
+  health: {},
+  close: {},
+  sprint: {},
+  backlog: [],
+  nbacklogid: 1
 };
-const log = (s) => process.stdout.write('[verify-dynamic-labels] ' + s + '\n');
-const delay = (ms) => new Promise(r => setTimeout(r, ms));
-setTimeout(() => { log('WATCHDOG'); try { ws && ws.close(); } catch (e) {} process.exit(2); }, 180000);
+const log = s => process.stdout.write('[verify-dynamic-labels] ' + s + '\n');
+const delay = ms => new Promise(r => setTimeout(r, ms));
+setTimeout(() => {
+  log('WATCHDOG');
+  try {
+    ws && ws.close();
+  } catch (e) {}
+  process.exit(2);
+}, 180000);
 
 function send(method, params) {
   return new Promise(res => {
     const id = ++msgId;
-    pending.set(id, m => { pending.delete(id); res(m.result || {}); });
+    pending.set(id, m => {
+      pending.delete(id);
+      res(m.result || {});
+    });
     ws.send(JSON.stringify({ id, method, params: params || {} }));
   });
 }
 async function ev(expr) {
-  const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true });
-  if (r.exceptionDetails) return { __err: r.exceptionDetails.exception ? r.exceptionDetails.exception.description : r.exceptionDetails.text };
+  const r = await send('Runtime.evaluate', {
+    expression: expr,
+    returnByValue: true,
+    awaitPromise: true
+  });
+  if (r.exceptionDetails)
+    return {
+      __err: r.exceptionDetails.exception
+        ? r.exceptionDetails.exception.description
+        : r.exceptionDetails.text
+    };
   return r.result && r.result.value;
 }
 
@@ -101,9 +204,27 @@ async function bootChrome(port, profile, url) {
   // (Runtime.evaluate stays unreachable -> "app never became ready"), which is
   // exactly the flake the header below documents. --remote-allow-origins=*
   // keeps the DevTools WebSocket connectable on newer Chrome.
-  const proc = spawn(CHROME, ['--headless=new', '--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--no-first-run', '--remote-allow-origins=*', '--remote-debugging-port=' + port, '--user-data-dir=' + profile, '--window-size=1440,1200', 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
+  const proc = spawn(
+    CHROME,
+    [
+      '--headless=new',
+      '--no-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--no-first-run',
+      '--remote-allow-origins=*',
+      '--remote-debugging-port=' + port,
+      '--user-data-dir=' + profile,
+      '--window-size=1440,1200',
+      'about:blank'
+    ],
+    { stdio: ['ignore', 'ignore', 'pipe'] }
+  );
   bootChrome._proc = proc; // expose for boot-retry cleanup
-  proc.stderr && proc.stderr.on('data', (c) => { chromeStderr = (chromeStderr + c.toString()).slice(-4000); });
+  proc.stderr &&
+    proc.stderr.on('data', c => {
+      chromeStderr = (chromeStderr + c.toString()).slice(-4000);
+    });
   // CI hardening (2026-09-20, run 35516043397 + its fix): the DevTools-port
   // poll passed but the immediately-following /json target fetch threw a bare
   // "TypeError: fetch failed" (ECONNREFUSED) — Chrome died between the two
@@ -118,28 +239,65 @@ async function bootChrome(port, profile, url) {
   for (let i = 0; i < 60; i++) {
     try {
       const r = await fetch('http://127.0.0.1:' + port + '/json');
-      if (r.ok) { targets = await r.json(); break; }
-    } catch (e) { /* Chrome may still be settling; retry */ }
+      if (r.ok) {
+        targets = await r.json();
+        break;
+      }
+    } catch (e) {
+      /* Chrome may still be settling; retry */
+    }
     await delay(500);
   }
-  if (!targets) throw new Error('devtools /json unreachable on :' + port + ' after readiness poll (chrome stderr: ' + chromeStderr.slice(-300).replace(/\s+/g, ' ') + ')');
+  if (!targets)
+    throw new Error(
+      'devtools /json unreachable on :' +
+        port +
+        ' after readiness poll (chrome stderr: ' +
+        chromeStderr.slice(-300).replace(/\s+/g, ' ') +
+        ')'
+    );
   const pages = targets.filter(t => t.type === 'page');
-  if (!pages.length) throw new Error('devtools /json returned no page targets (chrome stderr: ' + chromeStderr.slice(-300).replace(/\s+/g, ' ') + ')');
+  if (!pages.length)
+    throw new Error(
+      'devtools /json returned no page targets (chrome stderr: ' +
+        chromeStderr.slice(-300).replace(/\s+/g, ' ') +
+        ')'
+    );
   ws = new WebSocket(pages[0].webSocketDebuggerUrl);
-  ws.onmessage = (evt) => {
+  ws.onmessage = evt => {
     const m = JSON.parse(evt.data);
-    if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); return; }
+    if (m.id && pending.has(m.id)) {
+      pending.get(m.id)(m);
+      pending.delete(m.id);
+      return;
+    }
     if (m.method === 'Runtime.exceptionThrown') {
       const d = m.params.exceptionDetails || {};
-      pageErrors.push('EXC: ' + ((d.exception && d.exception.description) || d.text || 'unknown').slice(0, 300));
+      pageErrors.push(
+        'EXC: ' + ((d.exception && d.exception.description) || d.text || 'unknown').slice(0, 300)
+      );
       if (pageErrors.length > 20) pageErrors.shift();
-    } else if (m.method === 'Runtime.consoleAPICalled' && (m.params.type === 'error' || m.params.type === 'warning')) {
-      pageErrors.push(m.params.type.toUpperCase() + ': ' + (m.params.args || []).map(a => (a.value !== undefined ? String(a.value) : (a.description || a.type))).join(' ').slice(0, 300));
+    } else if (
+      m.method === 'Runtime.consoleAPICalled' &&
+      (m.params.type === 'error' || m.params.type === 'warning')
+    ) {
+      pageErrors.push(
+        m.params.type.toUpperCase() +
+          ': ' +
+          (m.params.args || [])
+            .map(a => (a.value !== undefined ? String(a.value) : a.description || a.type))
+            .join(' ')
+            .slice(0, 300)
+      );
       if (pageErrors.length > 20) pageErrors.shift();
     }
   };
-  await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error('ws fail')); });
-  await send('Runtime.enable'); await send('Page.enable');
+  await new Promise((res, rej) => {
+    ws.onopen = res;
+    ws.onerror = () => rej(new Error('ws fail'));
+  });
+  await send('Runtime.enable');
+  await send('Page.enable');
   // Seed localStorage BEFORE the app page boots (the app reads it at load):
   // land on the marketing page (same origin, no app boot), write the seed,
   // then navigate to project.html. Replaces the old seed-test.html redirect
@@ -147,7 +305,9 @@ async function bootChrome(port, profile, url) {
   try {
     await send('Page.navigate', { url: BASE + '/index.html' });
     await delay(1200);
-    await send('Runtime.evaluate', { returnByValue: true, expression: `(function(){
+    await send('Runtime.evaluate', {
+      returnByValue: true,
+      expression: `(function(){
       try {
         localStorage.setItem(${JSON.stringify(SEED_KEY)}, ${JSON.stringify(JSON.stringify(SEED_DATA))});
         localStorage.setItem('mmgr_current_project', 'demo-project');
@@ -155,14 +315,20 @@ async function bootChrome(port, profile, url) {
         localStorage.setItem('mmgr_unlocked_my_manager', '1');
         return 'seeded:' + localStorage.getItem('mmgr_current_project');
       } catch (e) { return 'seed-fail:' + e.message; }
-    })()` });
-  } catch (e) { log('WARN seed bootstrap failed: ' + (e && e.message)); }
-  await send('Page.navigate', { url: url || (BASE + '/project.html?id=demo-project') });
+    })()`
+    });
+  } catch (e) {
+    log('WARN seed bootstrap failed: ' + (e && e.message));
+  }
+  await send('Page.navigate', { url: url || BASE + '/project.html?id=demo-project' });
   await delay(4000);
   // Safety net: if the app bounced off the project page for any reason,
   // go back once (seed is already in place now).
   try {
-    const here = await send('Runtime.evaluate', { returnByValue: true, expression: 'location.href' });
+    const here = await send('Runtime.evaluate', {
+      returnByValue: true,
+      expression: 'location.href'
+    });
     const href = here.result && here.result.value;
     if (String(href).indexOf('project.html') === -1) {
       log('boot landed on ' + href + ' — re-navigating to project.html');
@@ -184,7 +350,13 @@ async function bootChrome(port, profile, url) {
     server = spawn(process.execPath, ['serve.cjs'], { stdio: 'ignore', detached: true });
     let serverUp = false;
     for (let i = 0; i < 30; i++) {
-      try { const r = await fetch(BASE + '/index.html'); if (r.ok) { serverUp = true; break; } } catch (e2) {}
+      try {
+        const r = await fetch(BASE + '/index.html');
+        if (r.ok) {
+          serverUp = true;
+          break;
+        }
+      } catch (e2) {}
       await delay(300);
     }
     if (!serverUp) {
@@ -199,11 +371,25 @@ async function bootChrome(port, profile, url) {
   // is missing or carries no MMGR namespace, Chrome can never become "ready"
   // and the boot poll below would burn 45s to report a bare failure.
   try {
-    const [b, p] = await Promise.all([fetch(BASE + '/dist/bundle.js'), fetch(BASE + '/project.html')]);
+    const [b, p] = await Promise.all([
+      fetch(BASE + '/dist/bundle.js'),
+      fetch(BASE + '/project.html')
+    ]);
     const btxt = b.ok ? await b.text() : '';
-    log('assets: project.html=' + p.status + ' bundle=' + b.status + ' bytes=' + btxt.length + ' hasMMGR=' + (btxt.indexOf('window.MMGR') !== -1));
+    log(
+      'assets: project.html=' +
+        p.status +
+        ' bundle=' +
+        b.status +
+        ' bytes=' +
+        btxt.length +
+        ' hasMMGR=' +
+        (btxt.indexOf('window.MMGR') !== -1)
+    );
     if (!b.ok) log('WARN dist/bundle.js not served — the CI build step or the server is wrong');
-  } catch (e) { log('WARN asset probe failed: ' + (e && e.message)); }
+  } catch (e) {
+    log('WARN asset probe failed: ' + (e && e.message));
+  }
 
   // CI hardening (2026-09-20): one full boot retry with a fresh profile.
   // The ubuntu runner flaked once here (Chrome died between the DevTools
@@ -217,11 +403,21 @@ async function bootChrome(port, profile, url) {
     log('boot attempt 1 failed: ' + (e1 && e1.message));
     log('retrying Chrome boot on a fresh port + profile (attempt 2)');
     // Kill the wedged attempt-1 Chrome so it cannot leak (or hold the port).
-    try { if (bootChrome._proc) bootChrome._proc.kill('SIGKILL'); } catch (e) {}
+    try {
+      if (bootChrome._proc) bootChrome._proc.kill('SIGKILL');
+    } catch (e) {}
     chromeStderr = '';
     proc = await bootChrome(9246, PROFILE + '-retry');
   }
-  const check = (name, val, detail) => { results.push({ name, val, detail }); log((val ? 'PASS' : 'FAIL') + ' ' + name + (val ? '' : '  <-- ' + JSON.stringify(detail === undefined ? null : detail))); };
+  const check = (name, val, detail) => {
+    results.push({ name, val, detail });
+    log(
+      (val ? 'PASS' : 'FAIL') +
+        ' ' +
+        name +
+        (val ? '' : '  <-- ' + JSON.stringify(detail === undefined ? null : detail))
+    );
+  };
 
   try {
     // DIR-7a hardening (2026-09-04): CI runner flakes twice in a row on this
@@ -244,7 +440,8 @@ async function bootChrome(port, profile, url) {
       // Diagnostic dump: make a CI recurrence self-describing (page URL, ready
       // state, whether MMGR exists and how many namespaces attached, script
       // count, captured page errors, Chrome stderr tail).
-      let diag = null, href = null;
+      let diag = null,
+        href = null;
       try {
         diag = await ev(`(function(){
           return { href: location.href, ready: document.readyState,
@@ -253,15 +450,25 @@ async function bootChrome(port, profile, url) {
             scripts: document.scripts.length };
         })()`);
         href = diag && diag.href;
-      } catch (e) { href = 'unreachable: ' + (e && e.message); }
+      } catch (e) {
+        href = 'unreachable: ' + (e && e.message);
+      }
       log('FAIL app never became ready after boot');
       log('diag: ' + JSON.stringify(diag === undefined ? null : diag));
       if (href && (!diag || diag.href !== href)) log('href: ' + href);
-      log('page errors (' + pageErrors.length + '): ' + (pageErrors.slice(0, 8).join(' | ') || 'none captured'));
+      log(
+        'page errors (' +
+          pageErrors.length +
+          '): ' +
+          (pageErrors.slice(0, 8).join(' | ') || 'none captured')
+      );
       if (chromeStderr) log('chrome stderr tail: ' + chromeStderr.slice(-600).replace(/\s+/g, ' '));
       process.exit(1);
     }
-    { const h = await ev('location.href'); log('booted: ' + (h && h.href ? h.href : h)); }
+    {
+      const h = await ev('location.href');
+      log('booted: ' + (h && h.href ? h.href : h));
+    }
     // Seed a project with rows in EVERY module that renders table inputs.
     await ev(`(function(){
       MMGR.State.clearProject();
@@ -339,12 +546,18 @@ async function bootChrome(port, profile, url) {
       });
       return { total: els.length, unnamed: unnamed };
     })()`);
-    check('ALL rendered updField/updSpendEntry controls have accessible names (aria-label/title/label[for])',
-      audit.total > 0 && audit.unnamed.length === 0, { total: audit.total, unnamed: audit.unnamed.slice(0, 12) });
-    check('sample names look human', (function(){
-      // Spot-check a Budget "planned" input and a Resources "name" input.
-      return true;
-    })());
+    check(
+      'ALL rendered updField/updSpendEntry controls have accessible names (aria-label/title/label[for])',
+      audit.total > 0 && audit.unnamed.length === 0,
+      { total: audit.total, unnamed: audit.unnamed.slice(0, 12) }
+    );
+    check(
+      'sample names look human',
+      (function () {
+        // Spot-check a Budget "planned" input and a Resources "name" input.
+        return true;
+      })()
+    );
 
     const samples = await ev(`(function(){
       var out = {};
@@ -361,15 +574,37 @@ async function bootChrome(port, profile, url) {
     // Budget rows show only their id as text (b1), so the label is
     // "Planned, b1" — header + visible row id. Spend rows have no pure-text
     // cell, so its labels are column-only ("Amount"). Both satisfy the audit.
-    check('spot-check names are column+row derived', samples.budgetPlanned && /^planned,/i.test(samples.budgetPlanned) && samples.budgetPlanned.split(',').length === 2 && samples.spendAmount === 'Amount', samples);
+    check(
+      'spot-check names are column+row derived',
+      samples.budgetPlanned &&
+        /^planned,/i.test(samples.budgetPlanned) &&
+        samples.budgetPlanned.split(',').length === 2 &&
+        samples.spendAmount === 'Amount',
+      samples
+    );
 
     const ok = results.every(r => r.val);
-    log(ok ? 'DYNAMIC-LABELS GATE PASS — ' + results.length + '/' + results.length : 'DYNAMIC-LABELS GATE FAIL');
+    log(
+      ok
+        ? 'DYNAMIC-LABELS GATE PASS — ' + results.length + '/' + results.length
+        : 'DYNAMIC-LABELS GATE FAIL'
+    );
     log('sections rendered: ' + (clicked.sections || []).join(','));
   } finally {
-    try { ws && ws.close(); } catch (e) {}
-    try { proc.kill('SIGKILL'); } catch (e) {}
-    if (server) { try { execSync('taskkill /F /T /PID ' + server.pid, { stdio: 'ignore' }); } catch (e) {} }
+    try {
+      ws && ws.close();
+    } catch (e) {}
+    try {
+      proc.kill('SIGKILL');
+    } catch (e) {}
+    if (server) {
+      try {
+        execSync('taskkill /F /T /PID ' + server.pid, { stdio: 'ignore' });
+      } catch (e) {}
+    }
     process.exit(results.every(r => r.val) ? 0 : 1);
   }
-})().catch((e) => { console.error(e); process.exit(1); });
+})().catch(e => {
+  console.error(e);
+  process.exit(1);
+});

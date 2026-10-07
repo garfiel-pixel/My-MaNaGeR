@@ -11,7 +11,7 @@
    ============================================================ */
 var MMGR = window.MMGR || {};
 
-(function(ns) {
+(function (ns) {
   'use strict';
 
   /**
@@ -28,13 +28,24 @@ var MMGR = window.MMGR || {};
   // bg = green/done, ba = amber/open, br = red/overdue/risk,
   // bo = orange/caution, bs = blue/in-progress, bp = purple/AI
   var VARIANTS = {
-    done:      'bg',  completed: 'bg',  awarded:  'bg',  ok:    'bg',
-    active:    'ba',  open:      'ba',  live:     'ba',
-    overdue:   'br',  risk:      'br',  danger:   'br',  err:   'br',
-    caution:   'bo',  critical:  'bo',
-    progress:  'bs',  planning:  'bs',  review:   'bs',
-    hold:      'on-hold',
-    ai:        'badge-ai'
+    done: 'bg',
+    completed: 'bg',
+    awarded: 'bg',
+    ok: 'bg',
+    active: 'ba',
+    open: 'ba',
+    live: 'ba',
+    overdue: 'br',
+    risk: 'br',
+    danger: 'br',
+    err: 'br',
+    caution: 'bo',
+    critical: 'bo',
+    progress: 'bs',
+    planning: 'bs',
+    review: 'bs',
+    hold: 'on-hold',
+    ai: 'badge-ai'
   };
 
   /**
@@ -49,15 +60,22 @@ var MMGR = window.MMGR || {};
     opts = opts || {};
     var cls = VARIANTS[variant] || variant || 'bg';
     var style = '';
-    if (opts.fontSize)  style += 'font-size:' + opts.fontSize + ';';
-    if (opts.padding)   style += 'padding:' + opts.padding + ';';
-    if (opts.nowrap)    style += 'white-space:nowrap;';
-    if (opts.style)     style += opts.style;
+    if (opts.fontSize) style += 'font-size:' + opts.fontSize + ';';
+    if (opts.padding) style += 'padding:' + opts.padding + ';';
+    if (opts.nowrap) style += 'white-space:nowrap;';
+    if (opts.style) style += opts.style;
     var titleAttr = opts.title ? ' title="' + opts.title.replace(/"/g, '&quot;') + '"' : '';
     var classAttr = 'badge ' + cls + (opts.className ? ' ' + opts.className : '');
-    return '<span class="' + classAttr + '"' +
-           (style ? ' style="' + style + '"' : '') +
-           titleAttr + '>' + text + '</span>';
+    return (
+      '<span class="' +
+      classAttr +
+      '"' +
+      (style ? ' style="' + style + '"' : '') +
+      titleAttr +
+      '>' +
+      text +
+      '</span>'
+    );
   }
 
   /**
@@ -69,10 +87,15 @@ var MMGR = window.MMGR || {};
    */
   function aiBadge(label, title) {
     var t = title ? ' title="' + title.replace(/"/g, '&quot;') + '"' : '';
-    return '<span class="badge-ai"' + t + '>' +
-           '<svg class="ico" aria-hidden="true">' +
-           '<use href="css/mmgr-icons.svg#i-sparkle"></use></svg> ' +
-           (label || 'MCP AI') + '</span>';
+    return (
+      '<span class="badge-ai"' +
+      t +
+      '>' +
+      '<svg class="ico" aria-hidden="true">' +
+      '<use href="css/mmgr-icons.svg#i-sparkle"></use></svg> ' +
+      (label || 'MCP AI') +
+      '</span>'
+    );
   }
 
   /**
@@ -83,14 +106,22 @@ var MMGR = window.MMGR || {};
    */
   function reviewBadge(status) {
     var map = {
-      pending:  { color: 'var(--gold)',   bg: 'rgba(245,158,11,.12)', border: 'rgba(245,158,11,.35)' },
-      accepted: { color: 'var(--green)',  bg: 'rgba(16,185,129,.12)', border: 'var(--green)' },
-      rejected: { color: '#ef4444',       bg: 'rgba(239,68,68,.12)',  border: 'rgba(239,68,68,.5)' }
+      pending: { color: 'var(--gold)', bg: 'rgba(245,158,11,.12)', border: 'rgba(245,158,11,.35)' },
+      accepted: { color: 'var(--green)', bg: 'rgba(16,185,129,.12)', border: 'var(--green)' },
+      rejected: { color: '#ef4444', bg: 'rgba(239,68,68,.12)', border: 'rgba(239,68,68,.5)' }
     };
     var s = map[status] || map.pending;
-    return '<span class="badge" style="color:' + s.color +
-           ';border:1px solid ' + s.border +
-           ';background:' + s.bg + '">' + status + '</span>';
+    return (
+      '<span class="badge" style="color:' +
+      s.color +
+      ';border:1px solid ' +
+      s.border +
+      ';background:' +
+      s.bg +
+      '">' +
+      status +
+      '</span>'
+    );
   }
 
   // ---- Shared toast (loads before mmgr-app.js, eliminates duplicate in mmgr-cloud-dash.js) ----
@@ -109,30 +140,44 @@ var MMGR = window.MMGR || {};
     var isErr = type === 'err' || type === 'error';
     var isWarn = type === 'warn';
     var t = document.createElement('div');
-    t.className = 'toast ' + (isErr ? 'err' : (isWarn ? 'warn' : 'ok'));
+    t.className = 'toast ' + (isErr ? 'err' : isWarn ? 'warn' : 'ok');
     t.setAttribute('role', isErr ? 'alert' : 'status');
     t.setAttribute('aria-live', isErr ? 'assertive' : 'polite');
     var icon = TOAST_ICONS[type] || 'i-check-circle';
     var label = TOAST_LABELS[type] || 'Done';
-    t.innerHTML = '<span class="toast-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#' + icon + '"></use></svg></span>' +
-                  '<span class="toast-body"><b></b><span></span></span>' +
-                  (action && action.label ? '<button type="button" class="toast-act" role="button"></button>' : '');
+    t.innerHTML =
+      '<span class="toast-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#' +
+      icon +
+      '"></use></svg></span>' +
+      '<span class="toast-body"><b></b><span></span></span>' +
+      (action && action.label
+        ? '<button type="button" class="toast-act" role="button"></button>'
+        : '');
     t.querySelector('b').textContent = label;
     t.querySelector('.toast-body > span').textContent = msg;
     var actBtn = t.querySelector('.toast-act');
     if (actBtn && action && action.label) {
       actBtn.textContent = action.label;
-      actBtn.addEventListener('click', function() {
-        clearTimeout(t._hideT); clearTimeout(t._killT);
+      actBtn.addEventListener('click', function () {
+        clearTimeout(t._hideT);
+        clearTimeout(t._killT);
         t.classList.remove('is-out');
         t.remove();
-        try { (action.fn || action.onClick)(); } catch (e) { /* caller guards */ }
+        try {
+          (action.fn || action.onClick)();
+        } catch (e) {
+          /* caller guards */
+        }
       });
     }
     document.body.appendChild(t);
-    var hold = (action && action.label) ? 6000 : 2600;
-    t._hideT = setTimeout(function() { t.classList.add('is-out'); }, hold);
-    t._killT = setTimeout(function() { t.remove(); }, hold + 500);
+    var hold = action && action.label ? 6000 : 2600;
+    t._hideT = setTimeout(function () {
+      t.classList.add('is-out');
+    }, hold);
+    t._killT = setTimeout(function () {
+      t.remove();
+    }, hold + 500);
   }
 
   // ---- Public API ----
@@ -143,5 +188,4 @@ var MMGR = window.MMGR || {};
     showToast: showToast,
     VARIANTS: VARIANTS
   };
-
 })(MMGR);

@@ -3,7 +3,7 @@
    and reports spy state + scroll positions. Run: node tools/verify-spy-cdp.js */
 const { spawn } = require('child_process');
 
-const { chromePath: chrome } = require('./chrome-launcher.cjs');
+const { chromePath: chrome, BASE } = require('./chrome-launcher.cjs');
 const port = 9333;
 const userDir = 'C:/tmp/chrome-cdp-' + Date.now();
 const proc = spawn(
@@ -93,9 +93,12 @@ async function waitForPageTarget() {
 
   await send('Page.enable');
   await send('Runtime.enable');
-  const navResp = await send('Page.navigate', {
-    url: 'file:///C:/Users/Garfield/Downloads/mymanager-fixed/index.html'
-  });
+  /* Served URL, never a local file path (2026-10-07). This line used to point
+     at `file:///C:/Users/<user>/Downloads/mymanager-fixed/index.html`: one
+     developer's Downloads folder, which cannot exist on any other machine - so
+     the step could never pass on the CI runner, and the suite was red for that
+     reason alone. BASE comes from chrome-launcher (QA_BASE overrides). */
+  const navResp = await send('Page.navigate', { url: BASE + '/index.html' });
   if (navResp.result && navResp.result.errorText) console.log('NAV:', navResp.result.errorText);
   try {
     await waitEvent('Page.loadEventFired', 8000);

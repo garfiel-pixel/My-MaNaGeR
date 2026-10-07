@@ -65,14 +65,24 @@ function policy(src, name) {
 }
 
 // Return ONE directive element (e.g. the script-src line) from a policy array
-// literal. The literal's elements are comma-separated double-quoted strings,
-// so a directive must be matched up to its own closing quote - matching across
+// literal. The literal's elements are comma-separated string literals, so a
+// directive must be matched up to its own closing quote - matching across
 // elements would let script-src checks accidentally read style-src's
 // 'unsafe-inline' (which is legitimate and required).
+//
+// Wave 8.7 (2026-10-07): Prettier normalises the quote style per literal (a
+// value containing ' stays double-quoted, one that does not becomes
+// single-quoted), so this accepts BOTH quote styles and returns the literal's
+// content plus any `+ CONST` continuation.
 function directive(policySrc, name) {
-  const re = new RegExp('"' + name + '(?:-[a-z]+)?[^"]*"(?:\\s*\\+\\s*[A-Z_]+)?');
-  const m = policySrc.match(re);
-  return m ? m[0] : '';
+  for (const q of ['"', "'"]) {
+    const re = new RegExp(
+      q + name + '(?:-[a-z]+)?(?:[^' + q + ']*)' + q + '(?:\\s*\\+\\s*[A-Z_]+)?'
+    );
+    const m = policySrc.match(re);
+    if (m) return m[0];
+  }
+  return '';
 }
 
 (async () => {

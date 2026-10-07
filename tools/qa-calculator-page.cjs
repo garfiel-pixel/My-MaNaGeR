@@ -430,8 +430,8 @@ async function withChrome(fn) {
     const b4 = fs.readFileSync(path.join(__dirname, '..', 'css', 'mmgr.css'), 'utf8');
     check(
       'B4 CSS: sun/moon dark-mode switch rules exist',
-      b4.indexOf('.bcp-ico-sun{display:none') > -1 &&
-        b4.indexOf('body.dark-mode .bcp-ico-sun{display:block') > -1,
+      /\.bcp-ico-sun\s*\{\s*display:\s*none/.test(b4) &&
+        /body\.dark-mode\s+\.bcp-ico-sun\s*\{\s*display:\s*block/.test(b4),
       null
     );
     check(

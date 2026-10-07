@@ -112,7 +112,7 @@ ok(
 console.log('\n=== ARM 3: reset endpoint cannot enumerate accounts ===\n');
 ok(
   'forgot still returns ONE generic message object',
-  /const generic = \{ ok: true, message: 'If an account exists for that email/.test(src)
+  /const generic = \{[\s\S]*?message: 'If an account exists for that email/.test(src)
 );
 ok(
   'the day-window query replaced the hour window for reset',

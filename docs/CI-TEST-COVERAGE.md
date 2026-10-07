@@ -35,11 +35,16 @@ or too niche for the deploy gate), **TRIAGE** (known-drifting, findings listed),
 | `tools/verify-skills-lock.cjs` | CI | `.agents/skills` hashes match `skills-lock.json` |
 | `tools/verify-render-exports.cjs` | CI | every module export has a `ns.X` wrapper |
 | `tools/verify-css-integrity.cjs` | CI | no stray comment-closer in CSS; every source rule survives into dist |
+| `tools/verify-a11y-labels.cjs` | CI | Waves 8.5 + 8.6: every served page's fields and icon-only controls carry an accessible name, every `label[for]` target resolves to a real id, and no page carries duplicate ids (static markup gate for screen-reader wiring) |
+| `tools/verify-eslint.cjs` | CI | Wave 8.7 ESLint lint gate — 0 errors required, warnings non-fatal (session 15) |
+| `tools/verify-prettier.cjs` | CI | Wave 8.7 Prettier format gate — all matched files must match style (session 15) |
 
 ## T1 — static QA gates
 
 | Harness | Status | Covers |
 |---|---|---|
+| `tools/verify-eslint.cjs` | CI | Wave 8.7 ESLint lint gate — 0 errors required, warnings non-fatal |
+| `tools/verify-prettier.cjs` | CI | Wave 8.7 Prettier format gate — all matched files must match style |
 | `tools/qa-dashboard-spec.cjs` | CI | dashboard tokens, markup, icons, contrast (76 checks) |
 | `tools/qa-changelog-diffs.cjs` | CI | changelog before/after diff rendering + escaping |
 | `tools/qa-paddle-csp.cjs` | EXTENDED | Paddle checkout CSP + the `_ptxn` dead-checkout regression (29 checks: 24 static, 5 live-browser). CSP: `buy.paddle.com` in frame-src, paddle styles allowed, hash gate stays strict, pricing-scoped only. `_ptxn`: the source no longer strips it unconditionally, `handlePaddleReturn` never names it, module scope initialises Paddle BEFORE the return handler, the SHIPPED bundle carries no 4-key strip, and a live browser proves `?_ptxn=` survives a real page load (the exact symptom of the 2026-10-05 dead checkout). Static arm runs in CI; the live-browser arm needs the deployed site (and targets `/pricing.html` on a local origin, which serve.cjs actually serves) |
@@ -130,10 +135,10 @@ or too niche for the deploy gate), **TRIAGE** (known-drifting, findings listed),
 
 ## TRIAGE — known-drifting, findings recorded (next wave)
 
-| Harness | Status | Findings (2026-09-22) |
+| Harness | Status | Findings (2026-10-06) |
 |---|---|---|
-| `qa-stress.cjs` | TRIAGE | **D02 is a REAL bug**: the IndexedDB journal held the pre-kill edit (`Grace-Crash-Edited`) but after a hard kill + relaunch nothing was restored — `restoreFromJournal()` only accepts the journal when its `updatedAt` is STRICTLY newer than localStorage's, and `journalPut()` stores a `ts` the restore ignores, so any boot-time localStorage write defeats crash recovery. P04: ambiguous-risk rendering assertion needs re-baselining. |
-| `qa-ai-visual.cjs` | TRIAGE | AI window does not open (4 checks) — same `Entitlements.aiAssistant()` signed-in gate already seamed in `qa-full`/`qa-ai`; needs the same seam. |
+| `qa-stress.cjs` | TRIAGE | **D02 RESOLVED 2026-10-06 (Wave 8.1)**: `restoreFromJournal()` now compares the journal's OWN record instead of localStorage `updatedAt` — the crash-recovery bug that dropped pre-kill edits is fixed in `js/mmgr-state.js`. P04: ambiguous-risk rendering assertion still needs re-baselining before the harness can leave TRIAGE. |
+| `qa-ai-visual.cjs` | TRIAGE | AI window does not open (4 checks) — same `Entitlements.aiAssistant()` signed-in gate already seamed in `qa-full`/`qa-ai`; this harness needs the same seam applied to its checks. |
 | `qa-glass.cjs` | EXTENDED | dual-engine glass lifecycle, 14 gates, host page app.html (TRIAGE RESOLVED 2026-09-29: seed-test.html redirects into project.html, where activate() excludes glass by design — the "headless can't boot" mystery was the page-exclusion guard, not SwiftShader/GPU; mocked-THREE lifecycle is deterministic). |
 | `qa-glass-visual.cjs` | TRIAGE | depends on the premium canvas existing (4 checks) — the qa-glass host-page fix (app.html instead of seed-test.html) likely unblocks it too; needs its own re-baseline before it can leave TRIAGE. |
 | `qa-oauth.cjs` | TRIAGE | 3 checks assume the old unlock flow; local-first means a locally-owned project unlocks with no modal (`qa-full` 70h/70i define the current contract), and the header sign-in bar moved. |
@@ -152,6 +157,10 @@ or too niche for the deploy gate), **TRIAGE** (known-drifting, findings listed),
 ```bash
 node build.js             # dist must exist before the CSS integrity arm
 npm run verify            # static gates (incl. verify:css)
+  verify:a11y   tools/verify-a11y-labels.cjs   19/19 pages clean (Waves 8.5 + 8.6 — session 15)
+  verify:eslint tools/verify-eslint.cjs       0 errors, warnings non-fatal (Wave 8.7 — session 15)
+  verify:prettier tools/verify-prettier.cjs    all matched files match Prettier style (Wave 8.7 — session 15)
+  verify:css    tools/verify-css-integrity.cjs
 node tools/qa-health-sweep.cjs http://127.0.0.1:8787   # page health vs the Worker
 node tools/verify-test-registry.cjs                    # this document stays complete
 ```

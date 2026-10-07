@@ -114,6 +114,18 @@ jobs:
         id: css
         run: node tools/verify-css-integrity.cjs
 
+      - name: Verify accessibility labels (Waves 8.5 + 8.6)
+        id: a11y
+        run: node tools/verify-a11y-labels.cjs
+
+      - name: Verify ESLint (Wave 8.7)
+        id: eslint
+        run: node tools/verify-eslint.cjs
+
+      - name: Verify Prettier (Wave 8.7)
+        id: prettier
+        run: node tools/verify-prettier.cjs
+
       # ── Deploy validation (dry-run, no credentials needed) ──────────
       - name: Wrangler deploy dry-run
         id: deploy
@@ -465,6 +477,9 @@ jobs:
           echo "| Skills lock | ${{ steps.skills.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Module exports | ${{ steps.exports.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| CSS integrity | ${{ steps.css.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| A11y labels | ${{ steps.a11y.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| ESLint | ${{ steps.eslint.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Prettier | ${{ steps.prettier.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Test registry | ${{ steps.registry.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Page health sweep | ${{ steps.health.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Wrangler dry-run | ${{ steps.deploy.outcome }} |" >> $GITHUB_STEP_SUMMARY

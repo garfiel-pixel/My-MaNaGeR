@@ -143,85 +143,108 @@
       })
       .filter(Boolean);
 
-    /* subsection prefill map: majorId -> ordered list of subsection ids that
-       live under it. Right now that is only the #features section and its
-       feature-card anchors. Other majors have no subsection anchors, so they
-       get only their one big dot. */
-    var subsectionMap = {};
-    (function () {
-      var featureIds = [
-        'f-wbs',
-        'f-kanban',
-        'f-raci',
-        'f-risk',
-        'f-budget',
-        'f-ai',
-        'f-voice',
-        'f-weather',
-        'f-offline',
-        'f-health',
-        'f-meetings',
-        'f-claims',
-        'f-registers',
-        'f-gonogo',
-        'f-lookahead'
-      ];
-      var seen = {};
-      dotLinks.forEach(function (a) {
-        var t = a.getAttribute('data-target') || a.getAttribute('href') || '';
-        if (t.charAt(0) === '#') seen[t.slice(1)] = a;
-      });
-      subsectionMap['features'] = featureIds.filter(function (id) {
-        return seen[id];
-      });
-    })();
+    /* ---- the travelling marker (owner 2026-10-07) ----------------------
+       ONE dot is active at any moment, and it follows the scroll. Big dots are
+       the page's chapters and the small dots between them are the topics under
+       that chapter, so the marker walks the two sizes in DOCUMENT ORDER rather
+       than lighting a whole cluster at once.
 
-    function dotFor(id) {
-      return dotById[id] || null;
+       The previous implementation lit every subsection whose anchor sat above
+       `innerHeight - 40` and cleared the lot on a section change, which measured
+       on the live page as: no dot active inside #features, ALL FIFTEEN active at
+       #f-wbs and #f-claims, none at #how. It could not express "where am I". */
+    function dotAnchorIsMajor(a) {
+      return !(
+        a.parentElement &&
+        a.parentElement.classList &&
+        a.parentElement.classList.contains('dot-group-children')
+      );
     }
 
-    /* active state for the dot rail: a major is active when its section is the
-       best visible one; a subsection dot is active when its anchor is inside the
-       currently active major section and is itself one of the visible subsection
-       anchors. */
-    function setActiveDot(sectionId) {
-      // activate the major dot for this section, if we have one
-      var majorLink = dotFor(sectionId);
-      dotLinks.forEach(function (a) {
-        var isMajor =
-          !a.parentElement ||
-          !a.parentElement.classList ||
-          !a.parentElement.classList.contains('dot-group-children');
-        if (isMajor) {
-          a.classList.toggle('active', a === majorLink);
-          if (a === majorLink) a.setAttribute('aria-current', 'true');
-          else a.removeAttribute('aria-current');
-        }
-      });
+    /* every anchor that resolves to a real element, in page order */
+    var dotAnchors = [];
+    dotLinks.forEach(function (a) {
+      var t = a.getAttribute('data-target') || a.getAttribute('href') || '';
+      var id = t.charAt(0) === '#' ? t.slice(1) : '';
+      var el = id ? document.getElementById(id) : null;
+      if (el) dotAnchors.push({ a: a, el: el, major: dotAnchorIsMajor(a) });
+    });
+    dotAnchors.sort(function (x, y) {
+      return (
+        x.el.getBoundingClientRect().top +
+        window.scrollY -
+        (y.el.getBoundingClientRect().top + window.scrollY)
+      );
+    });
 
-      // subsection dots: if the active major has a subsection cluster, prefill the
-      // ones whose anchors are in view; otherwise clear them all.
-      var children = dotNav.querySelectorAll('.dot-group-children');
-      dotNav.querySelectorAll('.dot-item.minor').forEach(function (a) {
-        a.classList.remove('active');
-        a.removeAttribute('aria-current');
+    function setActiveDotAnchor(a) {
+      dotLinks.forEach(function (l) {
+        l.classList.toggle('active', l === a);
+        if (l === a) l.setAttribute('aria-current', 'true');
+        else l.removeAttribute('aria-current');
       });
-      var cluster = dotNav.querySelector('.dot-group-children');
-      if (cluster && majorLink) {
-        var ids = Array.prototype.slice.call(
-          cluster.querySelectorAll('a[data-target], a[data-label]')
-        );
-        ids.forEach(function (a) {
-          var t = a.getAttribute('data-target') || a.getAttribute('href') || '';
-          var id = t.charAt(0) === '#' ? t.slice(1) : '';
-          var el = id ? document.getElementById(id) : null;
-          if (el && el.getBoundingClientRect().top < window.innerHeight - 40) {
-            a.classList.add('active');
-            a.setAttribute('aria-current', 'true');
-          }
-        });
+    }
+
+    /* the marker sits at the last anchor whose section start has passed the
+       reading line (38% down the viewport), which is the position the reader's
+       eye is actually in. */
+    function syncDots() {
+      if (!dotAnchors.length) return;
+      var readLine = window.scrollY + window.innerHeight * 0.38;
+      var current = dotAnchors[0];
+      for (var i = 0; i < dotAnchors.length; i++) {
+        if (dotAnchors[i].el.getBoundingClientRect().top + window.scrollY <= readLine)
+          current = dotAnchors[i];
+        else break;
       }
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4)
+        current = dotAnchors[dotAnchors.length - 1];
+
+      /* A ROW of anchors sits in a horizontal track: the fifteen #f-* feature
+         cards all occupy one line (measured tops 2083..2086 at 1440), so
+         vertical scroll alone cannot say which card the reader is on and the
+         last one in the row would otherwise claim every position.
+
+         Two details that cost a debugging round, both measured:
+         - the cards' tops differ by ~3px (65 vs 68 after a scrollIntoView), so
+           an exact-match or 2px tolerance splits the row and hands the marker
+           to the SECOND card. The row tolerance is therefore 24px.
+         - the pick must be the first card that is FULLY inside the reading
+           edge (left >= 0). "Nearest the edge" with a max(0, left) clamp let an
+           off-screen card win the sort. */
+      var rowTop = current.el.getBoundingClientRect().top;
+      var row = [];
+      for (var j = 0; j < dotAnchors.length; j++) {
+        if (Math.abs(dotAnchors[j].el.getBoundingClientRect().top - rowTop) <= 24)
+          row.push(dotAnchors[j]);
+      }
+      if (row.length > 1) {
+        var onTrack = null;
+        for (var k = 0; k < row.length; k++) {
+          if (row[k].el.getBoundingClientRect().left >= 0) {
+            onTrack = row[k];
+            break;
+          }
+        }
+        current = onTrack || row[row.length - 1];
+      }
+      setActiveDotAnchor(current.a);
     }
+
+    var dotRaf = 0;
+    function queueSyncDots() {
+      if (dotRaf) return;
+      dotRaf = window.requestAnimationFrame(function () {
+        dotRaf = 0;
+        syncDots();
+      });
+    }
+    window.addEventListener('scroll', queueSyncDots, { passive: true });
+    window.addEventListener('resize', queueSyncDots);
+    /* capture phase: a horizontal track inside the page fires scroll on ITSELF,
+       and element scroll events do not bubble to window. */
+    document.addEventListener('scroll', queueSyncDots, { passive: true, capture: true });
+    syncDots();
 
     /* dot rail scheme: same idea as the old slim rail - the rail flips between
        light and dark text depending on the active section's own background. */
@@ -266,8 +289,8 @@
           }
         });
         if (!best && atPageBottom() && lastId) best = lastId;
-        setActiveDot(best);
         setDotScheme(best);
+        syncDots();
       },
       { rootMargin: '-40% 0px -45% 0px', threshold: [0, 0.25, 0.5, 0.75, 1] }
     );

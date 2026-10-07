@@ -269,8 +269,17 @@ svg.ico use {
    the left edge. This is the same clearance the directive asked for
    (64px rail zone + tooltip overhang + small breathing room). */
 main {
-  margin-left: 96px;
   max-width: var(--content-max-width);
+}
+/* The 96px rail zone is reserved ONLY where the rail actually exists.
+   .dot-rail-navigation is display:none at <=880px, so reserving the gutter
+   below that width left every page shifted right with a dead left band: at
+   390px the content column measured 294px wide in a 390px screen (measured
+   2026-10-07), which is what made the legal pages read as cramped. */
+@media (min-width: 881px) {
+  main {
+    margin-left: 96px;
+  }
 }
 
 /* ---------- 4b. Hero description measure (directive Task 4 rule) ----------
@@ -284,13 +293,17 @@ main {
   position: relative;
 }
 .dot-group::before {
-  /* hairline separator between a major dot and its subsection cluster */
+  /* hairline separator between a major dot and its subsection cluster.
+     Height comes from anchoring BOTH edges. The previous
+     `height: calc(100% - ...)` never rendered: the group has no definite
+     height, so the percentage made the calc invalid and the used height came
+     out 0px (measured 2026-10-07). */
   content: '';
   position: absolute;
-  top: calc(1em + 22px + 2px); /* major dot + gap + hairline */
+  top: 18px; /* below the major dot */
+  bottom: 8px;
   left: 6px;
   width: 1px;
-  height: calc(100% - 2em - 22px - 4px);
   background: var(--border-subtle);
   z-index: 0;
   opacity: 0.5;
@@ -523,6 +536,12 @@ main {
   text-decoration: none;
 }
 .dot {
+  /* display is load-bearing, not cosmetic: an inline span IGNORES width and
+     height, so a big dot left inline renders 0x0 and is invisible. The
+     subsection dots survived only because their parent <a> is a flex box and
+     blockified them; the major dots sit inside an <a class="dot-link">
+     wrapper, stayed inline, and measured 0x0 on the live page (2026-10-07). */
+  display: block;
   width: 10px;
   height: 10px;
   border-radius: 50%;
@@ -760,6 +779,10 @@ body.dark-mode .brand small {
   display: flex;
   align-items: center;
   gap: 4px;
+  /* Owner 2026-10-07: the header is space-between with three children, so the
+     brand-to-Features void measured 334px while the links sat 3-4px apart.
+     The nav now hugs the brand; the CTA stays pinned right. */
+  margin-right: auto;
 }
 .site-nav a.nav-link {
   position: relative;
@@ -1762,13 +1785,21 @@ body.dark-mode .nav-dd-item:hover {
   display: grid;
   grid-template-columns: 1.15fr 0.85fr;
   gap: 56px;
-  align-items: center;
+  /* TOP-ALIGNED (owner 2026-10-07). Centering the text against the tall card
+     column pushed the headline down to y=590 on a 748px-tall viewport, cut
+     the sub-headline off at the fold and left the primary CTA (y=867)
+     entirely below it. Starting both columns at the top puts the headline,
+     the sub-headline and Get Started in the first screen. */
+  align-items: start;
 }
 .hero h1 {
-  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  /* Owner 2026-10-07: 36px was too small for the page's one headline, and
+     line-height 1.06 let descenders crowd the next line's ascenders (the
+     gold "one workspace" glyphs measurably overflowed the line box). */
+  font-size: clamp(2rem, 5.2vw, 3rem);
   font-weight: 800;
   letter-spacing: -0.025em;
-  line-height: 1.06;
+  line-height: 1.14;
   margin: 18px 0 18px;
 }
 .hero h1 .gold {
@@ -1850,7 +1881,11 @@ body.dark-mode .nav-dd-item:hover {
   width: 100%;
   height: auto;
   aspect-ratio: 900/491;
+  /* Capped so the three-card column stops dictating a 1485px-tall hero (owner
+     2026-10-07). Top-anchored crop keeps the chart's headline content. */
+  max-height: 190px;
   object-fit: cover;
+  object-position: 50% 0;
 }
 .hero-card .hc-top {
   display: flex;
@@ -1937,15 +1972,17 @@ body.dark-mode .nav-dd-item:hover {
   border-bottom: 1px solid var(--border);
 }
 .hero-card .hc-panelno {
-  font-size: 0.6rem;
+  /* Quieted (owner 2026-10-07): the filled number chip out-weighed the card's
+     own title and metadata. Same information, caption weight, no pill. */
+  font-size: 0.56rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
-  color: var(--gold-deep);
-  background: rgba(var(--gold-rgb), 0.12);
-  border: 1px solid rgba(var(--gold-rgb), 0.28);
-  border-radius: 5px;
-  padding: 2px 6px;
+  letter-spacing: 0.16em;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  padding: 0;
   line-height: 1.4;
+  font-variant-numeric: tabular-nums;
 }
 .hero-card .hc-paneltitle {
   font-size: 0.62rem;
@@ -2096,8 +2133,8 @@ body.dark-mode .hero-card .hc-panelhead {
   border-bottom-color: rgba(var(--gold-rgb), 0.24);
 }
 body.dark-mode .hero-card .hc-panelno {
-  color: var(--gold);
-  background: rgba(var(--gold-rgb), 0.16);
+  color: rgba(248, 250, 252, 0.6);
+  background: none;
 }
 body.dark-mode .hero-card .hc-paneltitle {
   color: var(--text-secondary);

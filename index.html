@@ -93,24 +93,17 @@
   <a class="btn btn-gold" href="app.html">Get Started</a>
 </nav>
 
-<!-- Dot-only rail. Big dots = major sections. Small dots between the big ones = the topics under each major section, prefilled as the page scrolls. Labels are hidden by default and show on hover/focus so you can tell what a dot points at; click a dot to jump back to that area. Subsection destinations: #features section maps to its feature cards (#f-wbs ... #f-lookahead); other majors have no subsection anchors, so they get only their one big dot. -->
+<!-- Dot-only rail. Big dots = major sections. Small dots between the big ones = the topics under each major section. ONE dot is active at a time and it follows the scroll through both sizes in document order (js/marketing.js syncDots). Labels are hidden by default and show on hover/focus so you can tell what a dot points at; click a dot to jump back to that area. Subsection destinations: #features section maps to its feature cards (#f-wbs ... #f-lookahead); other majors have no subsection anchors, so they get only their one big dot.
+     STRUCTURE NOTE (2026-10-07): the major dot is the <a class="dot-item major"> itself, and the subsection cluster is a <div>. Both were <li> elements nested directly inside the group <li>, which is invalid HTML: the parser implicitly closes the outer <li> at the next <li>, so the DOM came out flat, every >-.dot-group> rule matched nothing and the big dots rendered 0x0. Keep the .dot-item class on the element that carries .active (the anchor) - the active rules are written against it. -->
 <nav class="dot-rail-navigation" aria-label="Page sections">
   <div class="rail-line" aria-hidden="true"></div>
   <ul class="dot-list" role="list">
-    <li class="dot-item major" data-target="#builtfor" data-label="Built For">
-      <a href="#builtfor" class="dot-link" aria-label="Built For">
-        <span class="dot" aria-hidden="true"></span>
-      </a>
-      <span class="tooltip" role="tooltip">Built For</span>
+    <li>
+      <a href="#builtfor" class="dot-item major" data-target="#builtfor" data-label="Built For" aria-label="Built For"><span class="dot" aria-hidden="true"></span><span class="tooltip" role="tooltip">Built For</span></a>
     </li>
     <li class="dot-group" data-major="#features">
-      <li class="dot-item major" data-target="#features" data-label="Key Features">
-        <a href="#features" class="dot-link" aria-label="Key Features">
-          <span class="dot" aria-hidden="true"></span>
-        </a>
-        <span class="tooltip" role="tooltip">Key Features</span>
-      </li>
-      <li class="dot-group-children" aria-hidden="true">
+      <a href="#features" class="dot-item major" data-target="#features" data-label="Key Features" aria-label="Key Features"><span class="dot" aria-hidden="true"></span><span class="tooltip" role="tooltip">Key Features</span></a>
+      <div class="dot-group-children" aria-hidden="true">
         <a class="dot-item minor" href="#f-wbs" data-label="WBS + Gantt"><span class="dot" aria-hidden="true"></span>
           <span class="tooltip" role="tooltip">WBS + Gantt</span></a>
         <a class="dot-item minor" href="#f-kanban" data-label="Kanban Board"><span class="dot" aria-hidden="true"></span>
@@ -141,31 +134,19 @@
           <span class="tooltip" role="tooltip">Bid Leveling &amp; Go/No-Go</span></a>
         <a class="dot-item minor" href="#f-lookahead" data-label="Lookahead &amp; Field Metrics"><span class="dot" aria-hidden="true"></span>
           <span class="tooltip" role="tooltip">Lookahead &amp; Field Metrics</span></a>
-      </li>
+      </div>
     </li>
-    <li class="dot-item major" data-target="#how" data-label="How It Works">
-      <a href="#how" class="dot-link" aria-label="How It Works">
-        <span class="dot" aria-hidden="true"></span>
-      </a>
-      <span class="tooltip" role="tooltip">How It Works</span>
+    <li>
+      <a href="#how" class="dot-item major" data-target="#how" data-label="How It Works" aria-label="How It Works"><span class="dot" aria-hidden="true"></span><span class="tooltip" role="tooltip">How It Works</span></a>
     </li>
-    <li class="dot-item major" data-target="#data" data-label="Data &amp; Backup">
-      <a href="#data" class="dot-link" aria-label="Data &amp; Backup">
-        <span class="dot" aria-hidden="true"></span>
-      </a>
-      <span class="tooltip" role="tooltip">Data &amp; Backup</span>
+    <li>
+      <a href="#data" class="dot-item major" data-target="#data" data-label="Data &amp; Backup" aria-label="Data &amp; Backup"><span class="dot" aria-hidden="true"></span><span class="tooltip" role="tooltip">Data &amp; Backup</span></a>
     </li>
-    <li class="dot-item major" data-target="#guide" data-label="Field Guide">
-      <a href="#guide" class="dot-link" aria-label="Field Guide">
-        <span class="dot" aria-hidden="true"></span>
-      </a>
-      <span class="tooltip" role="tooltip">Field Guide</span>
+    <li>
+      <a href="#guide" class="dot-item major" data-target="#guide" data-label="Field Guide" aria-label="Field Guide"><span class="dot" aria-hidden="true"></span><span class="tooltip" role="tooltip">Field Guide</span></a>
     </li>
-    <li class="dot-item major" data-target="#faq" data-label="FAQ">
-      <a href="#faq" class="dot-link" aria-label="FAQ">
-        <span class="dot" aria-hidden="true"></span>
-      </a>
-      <span class="tooltip" role="tooltip">FAQ</span>
+    <li>
+      <a href="#faq" class="dot-item major" data-target="#faq" data-label="FAQ" aria-label="FAQ"><span class="dot" aria-hidden="true"></span><span class="tooltip" role="tooltip">FAQ</span></a>
     </li>
   </ul>
 </nav>

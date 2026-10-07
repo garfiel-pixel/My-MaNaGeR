@@ -1,79 +1,103 @@
 #!/usr/bin/env node
-/**
- * verify-prettier.cjs — run Prettier --check against the tracked source tree.
- * Gate for npm run verify:prettier (wired into npm run verify).
- *
- * Prettier exits 0 when all files match the configured style, 1 when any
- * file needs formatting. We run --check (no write) so the gate is a read-only
- * assertion; the codebase was formatted in the Wave 8.7 commit.
- */
+/* ============================================================
+   verify-prettier.cjs - Prettier format gate for `npm run verify` (Wave 8.7).
+
+   WHY IT IS WRITTEN THIS WAY (rewritten 2026-10-07 after a false pass):
+   The first version decided pass/fail by filtering Prettier's stdout with a
+   regex that expected "<count>  <path>" lines. Prettier 3 prints
+   "[warn] <path>", so the filter matched nothing, the failure list was always
+   empty, and the gate printed "all matched files use Prettier code style" even
+   with deliberate formatting drift injected. It could not fail.
+
+   This version trusts the EXIT CODE (Prettier's own contract):
+     0  = every matched file matches the configured style
+     1  = at least one file needs formatting
+     2  = Prettier itself errored (bad glob, or a file it cannot parse)
+
+   Scope comes from .prettierignore, which deliberately excludes HTML (a
+   reformat would rewrite inline <script> blocks and invalidate the SHA-256
+   CSP hashes in worker.js / serve.cjs - AGENTS.md rule 1), hash-pinned skill
+   bundles, and JSON/JSONC data & config.
+
+   Usage: node tools/verify-prettier.cjs
+   ============================================================ */
 'use strict';
 
-const { execFileSync } = require('child_process');
+const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
-const PRETTIER_BIN = path.join(__dirname, '..', 'node_modules', '.bin', 'prettier');
-const ROOT = __dirname;
+const ROOT = path.join(__dirname, '..');
+const PRETTIER_BIN = path.join(ROOT, 'node_modules', 'prettier', 'bin', 'prettier.cjs');
 
-// Match the files Prettier is configured to format (see .prettierrc.json
-// and the project's .prettierignore if any). We exclude artifact dirs that
-// are not committed: dist/, .wrangler/, node_modules/, tmp/, _archive/.
-const GLOB = [
-  'js/**/*.js',
-  'src/**/*.js',
-  'tools/**/*.cjs',
-  '*.cjs',
-  '*.mjs',
-  '*.css',
-  '*.html',
-  '*.json',
-  '*.md',
-  // Exclude generated/binary artifacts
-  '!dist/**',
-  '!.wrangler/**',
-  '!node_modules/**',
-  '!tmp/**',
-  '!_archive/**',
-];
+function fail(msg) {
+  process.stderr.write('\nPRETTIER GATE FAIL: ' + msg + '\n');
+  process.exit(1);
+}
 
-function main() {
-  let stdout = '';
-  let stderr = '';
-  try {
-    stdout = execFileSync(PRETTIER_BIN, [
-      '--check',
-      ...GLOB,
-    ], {
-      cwd: ROOT,
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
-  } catch (err) {
-    stderr = err.stderr ? err.stderr.toString('utf8') : '';
-    stdout = err.stdout ? err.stdout.toString('utf8') : '';
+if (!fs.existsSync(PRETTIER_BIN)) {
+  fail('prettier is not installed at ' + PRETTIER_BIN + ' - run `npm install`');
+}
+
+if (!fs.existsSync(path.join(ROOT, '.prettierignore'))) {
+  // Without it Prettier would sweep dist/, node_modules and vendor/, and the
+  // gate would be reporting on artifacts instead of source.
+  fail('.prettierignore is missing - the gate has no defined scope');
+}
+
+const r = spawnSync(process.execPath, [PRETTIER_BIN, '--check', '.'], {
+  cwd: ROOT,
+  encoding: 'utf8',
+  maxBuffer: 128 * 1024 * 1024
+});
+
+if (r.error) fail('could not start prettier: ' + r.error.message);
+
+const out = (r.stdout || '') + (r.stderr || '');
+const status = r.status;
+
+if (status === 0) {
+  // Guard against the "checked nothing" case: a scope that matches no file
+  // prints no [warn] lines and exits 0, which would be another silent pass.
+  if (/Checking formatting\.\.\./.test(out) === false) {
+    fail('prettier produced no "Checking formatting..." banner - it may have matched nothing');
   }
-
-  const combined = (stdout || '') + '\n' + (stderr || '');
-  const lines = combined.split('\n').filter(function (l) { return l.trim(); });
-
-  // Prettier --check outputs one line per file that differs:
-  //   "X    path/to/file"
-  const diffLines = lines.filter(function (l) {
-    return /^\s*[0-9]+\s+/.test(l) && !/All matched files/.test(l);
-  });
-
-  if (diffLines.length > 0) {
-    process.stderr.write(
-      '\nPRETTIER DIFF (' + diffLines.length + ' files need formatting):\n' +
-      diffLines.slice(0, 50).join('\n') +
-      (diffLines.length > 50 ? '\n... (+' + (diffLines.length - 50) + ' more)' : '') +
-      '\n'
-    );
-    process.exit(1);
-  }
-
-  process.stderr.write('Prettier: all matched files use Prettier code style\n');
+  console.log('Prettier: all matched files use Prettier code style');
   process.exit(0);
 }
 
-main();
+if (status === 2) {
+  process.stderr.write(out.slice(0, 4000) + '\n');
+  fail('prettier could not complete (glob or parse error)');
+}
+
+// status === 1: real formatting drift.
+// When stdout is not a TTY Prettier writes the [warn] lines to STDERR and
+// wraps the tag in ANSI colour, so strip escapes before matching or the list
+// comes back empty and the failure is reported without naming a file.
+const ANSI = /\u001b\[[0-9;]*m/g;
+const drifted = out
+  .split('\n')
+  .map(function (l) {
+    return l.replace(ANSI, '');
+  })
+  .filter(function (l) {
+    return /^\[warn\]\s+/.test(l) && !/Code style issues/.test(l);
+  })
+  .map(function (l) {
+    return l.replace(/^\[warn\]\s+/, '');
+  });
+
+process.stderr.write('\n' + drifted.length + ' file(s) need formatting:\n');
+process.stderr.write(
+  drifted
+    .slice(0, 50)
+    .map(function (f) {
+      return '  ' + f;
+    })
+    .join('\n') + '\n'
+);
+if (drifted.length > 50) {
+  process.stderr.write('  ... (+' + (drifted.length - 50) + ' more)\n');
+}
+fail('run `npx prettier --write .` to fix');

@@ -1,0 +1,52 @@
+# Prettier scope for My MaNaGeR.
+#
+# WHY THIS FILE EXISTS (Wave 8.7, 2026-10-07).
+# `npm run verify:prettier` runs `prettier --check .`, and Prettier honours
+# this file automatically. Without it the check either swept build artifacts
+# and dependencies or, worse, silently matched nothing and reported success -
+# a gate that never fails proves nothing.
+
+# ---- build artifacts, dependencies, scratch -----------------------------
+node_modules/
+dist/
+.wrangler/
+tmp/
+_archive/
+vendor/
+
+# ---- HTML is deliberately NOT Prettier-managed --------------------------
+# Reformatting a served page rewrites its inline <script> blocks, which
+# invalidates the SHA-256 CSP hashes held in worker.js and serve.cjs
+# (AGENTS.md rule 1 - stale hashes block the page with no visible error).
+# HTML markup is owned by the a11y gate (tools/verify-a11y-labels.cjs) and
+# the per-page browser harnesses.
+*.html
+
+# ---- hash-pinned skill bundles ------------------------------------------
+# skills-lock.json pins each skill's content hash and tools/verify-skills-lock.cjs
+# fails on a mismatch, so reformatting a skill would break the lock.
+.agents/
+
+# ---- data, config and generated reports ---------------------------------
+# JSON/JSONC are not code-style managed here: wrangler*.jsonc carries comments
+# that Prettier's JSON parser would drop, and the gate-matrix/calc-golden files
+# are generated or captured data rather than source.
+**/*.json
+**/*.jsonc
+mcp/fixtures/
+
+# ---- docs and non-code assets -------------------------------------------
+*.md
+**/*.md
+*.yml
+**/*.yml
+*.yaml
+**/*.yaml
+*.txt
+**/*.txt
+*.toml
+**/*.toml
+*.svg
+**/*.svg
+*.wav
+**/*.wav

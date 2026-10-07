@@ -118,6 +118,15 @@ jobs:
         id: a11y
         run: node tools/verify-a11y-labels.cjs
 
+      # Unit layer (node:test, Wave 8.11 billing helpers). The 10 tests and the
+      # `npm test` script existed but NOTHING ran them: the composite
+      # `npm run verify` chain never included it and CI calls its steps
+      # individually, so a regression in tier derivation or the free-project cap
+      # could ship green. This step is the one that actually executes them.
+      - name: Unit tests (node:test billing helpers)
+        id: unit
+        run: npm test
+
       - name: Verify ESLint (Wave 8.7)
         id: eslint
         run: node tools/verify-eslint.cjs
@@ -478,6 +487,7 @@ jobs:
           echo "| Module exports | ${{ steps.exports.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| CSS integrity | ${{ steps.css.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| A11y labels | ${{ steps.a11y.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit tests | ${{ steps.unit.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| ESLint | ${{ steps.eslint.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Prettier | ${{ steps.prettier.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Test registry | ${{ steps.registry.outcome }} |" >> $GITHUB_STEP_SUMMARY

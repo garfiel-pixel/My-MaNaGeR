@@ -36,15 +36,14 @@ or too niche for the deploy gate), **TRIAGE** (known-drifting, findings listed),
 | `tools/verify-render-exports.cjs` | CI | every module export has a `ns.X` wrapper |
 | `tools/verify-css-integrity.cjs` | CI | no stray comment-closer in CSS; every source rule survives into dist |
 | `tools/verify-a11y-labels.cjs` | CI | Waves 8.5 + 8.6: every served page's fields and icon-only controls carry an accessible name, every `label[for]` target resolves to a real id, and no page carries duplicate ids (static markup gate for screen-reader wiring) |
-| `tools/verify-eslint.cjs` | CI | Wave 8.7 ESLint lint gate — 0 errors required, warnings non-fatal (session 15) |
-| `tools/verify-prettier.cjs` | CI | Wave 8.7 Prettier format gate — all matched files must match style (session 15) |
+| `tools/verify-eslint.cjs` | CI | Wave 8.7 ESLint lint gate — runs the resolved local binary with `--format json` and fails on a crash, unparseable output, **0 files linted**, any severity-2 error, or warnings above the frozen ceiling (4600; currently 4522 across 233 files). Rewritten 2026-10-07: v1 used `--format unix` (removed in ESLint 10) and decided pass/fail by scanning the text for "error"/"warning", which ESLint's own failure message does not contain — it could not fail |
+| `tools/verify-prettier.cjs` | CI | Wave 8.7 Prettier format gate — trusts Prettier's exit code (0/1/2), strips ANSI, requires the `Checking formatting...` banner (guards the "matched nothing" silent pass) and requires `.prettierignore` to exist, and names every drifted file. Rewritten 2026-10-07: v1's regex expected `"<count>  <path>"` but Prettier 3 prints `[warn] <path>` on stderr — it could not fail |
+| `test/billing.test.mjs` | CI | `npm test` (`node --test test/*.test.mjs`) — 10 node:test cases over the billing helpers: free-project cap override + fallback, and tier derivation from the Paddle price ID (enterprise/company/contractor, unrecognised → contractor, never a downgrade, missing price/env). Added to the CI step list 2026-10-07: the script existed and the tests passed, but the composite `npm run verify` chain never called it and CI runs its steps individually, so nothing executed them |
 
 ## T1 — static QA gates
 
 | Harness | Status | Covers |
 |---|---|---|
-| `tools/verify-eslint.cjs` | CI | Wave 8.7 ESLint lint gate — 0 errors required, warnings non-fatal |
-| `tools/verify-prettier.cjs` | CI | Wave 8.7 Prettier format gate — all matched files must match style |
 | `tools/qa-dashboard-spec.cjs` | CI | dashboard tokens, markup, icons, contrast (76 checks) |
 | `tools/qa-changelog-diffs.cjs` | CI | changelog before/after diff rendering + escaping |
 | `tools/qa-paddle-csp.cjs` | EXTENDED | Paddle checkout CSP + the `_ptxn` dead-checkout regression (29 checks: 24 static, 5 live-browser). CSP: `buy.paddle.com` in frame-src, paddle styles allowed, hash gate stays strict, pricing-scoped only. `_ptxn`: the source no longer strips it unconditionally, `handlePaddleReturn` never names it, module scope initialises Paddle BEFORE the return handler, the SHIPPED bundle carries no 4-key strip, and a live browser proves `?_ptxn=` survives a real page load (the exact symptom of the 2026-10-05 dead checkout). Static arm runs in CI; the live-browser arm needs the deployed site (and targets `/pricing.html` on a local origin, which serve.cjs actually serves) |
@@ -158,8 +157,9 @@ or too niche for the deploy gate), **TRIAGE** (known-drifting, findings listed),
 node build.js             # dist must exist before the CSS integrity arm
 npm run verify            # static gates (incl. verify:css)
   verify:a11y   tools/verify-a11y-labels.cjs   19/19 pages clean (Waves 8.5 + 8.6 — session 15)
-  verify:eslint tools/verify-eslint.cjs       0 errors, warnings non-fatal (Wave 8.7 — session 15)
-  verify:prettier tools/verify-prettier.cjs    all matched files match Prettier style (Wave 8.7 — session 15)
+  verify:eslint tools/verify-eslint.cjs       0 errors, warnings must stay under the 4600 ceiling (Wave 8.7)
+  verify:prettier tools/verify-prettier.cjs    every matched source file matches Prettier style (Wave 8.7)
+npm test                                      10 node:test billing cases (Wave 8.11)
   verify:css    tools/verify-css-integrity.cjs
 node tools/qa-health-sweep.cjs http://127.0.0.1:8787   # page health vs the Worker
 node tools/verify-test-registry.cjs                    # this document stays complete

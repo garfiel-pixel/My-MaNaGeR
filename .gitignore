@@ -2,6 +2,9 @@
 # Repo files (source + runtime assets)
 node_modules/
 dist/
+# Local wrangler/miniflare dev state (D1/R2/KV/DO sqlite + cache). Regenerated
+# on demand; never source, and it churns on every local run.
+.wrangler/
 wrangler-state/
 mmgr-ak-ci-wstate/
 mmgr-backnav-profile/

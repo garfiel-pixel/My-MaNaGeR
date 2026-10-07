@@ -318,12 +318,18 @@ console.log('\nDone.');
 // the current content-addressed build artifacts.
 const manifest = {};
 if (buildApp) manifest['bundle.js'] = 'bundle.' + contentHash(path.join(DIST, 'bundle.js')) + '.js';
-if (buildLauncher) manifest['app-bundle.js'] = 'app-bundle.' + contentHash(path.join(DIST, 'app-bundle.js')) + '.js';
-if (buildAdmin) manifest['admin-bundle.js'] = 'admin-bundle.' + contentHash(path.join(DIST, 'admin-bundle.js')) + '.js';
-if (buildMkt) manifest['marketing-bundle.js'] = 'marketing-bundle.' + contentHash(path.join(DIST, 'marketing-bundle.js')) + '.js';
+if (buildLauncher)
+  manifest['app-bundle.js'] = 'app-bundle.' + contentHash(path.join(DIST, 'app-bundle.js')) + '.js';
+if (buildAdmin)
+  manifest['admin-bundle.js'] =
+    'admin-bundle.' + contentHash(path.join(DIST, 'admin-bundle.js')) + '.js';
+if (buildMkt)
+  manifest['marketing-bundle.js'] =
+    'marketing-bundle.' + contentHash(path.join(DIST, 'marketing-bundle.js')) + '.js';
 if (buildCss) {
   manifest['mmgr.min.css'] = 'mmgr.min.' + contentHash(path.join(DIST, 'mmgr.min.css')) + '.css';
-  manifest['marketing.min.css'] = 'marketing.min.' + contentHash(path.join(DIST, 'marketing.min.css')) + '.css';
+  manifest['marketing.min.css'] =
+    'marketing.min.' + contentHash(path.join(DIST, 'marketing.min.css')) + '.css';
 }
 writeManifest(manifest);
 

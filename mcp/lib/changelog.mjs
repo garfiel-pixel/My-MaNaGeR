@@ -29,7 +29,9 @@ export function loadChangelog(projectFile) {
   const p = changelogPathFor(projectFile);
   try {
     if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf8'));
-  } catch (e) { /* corrupt sidecar -> start fresh, don't crash the server */ }
+  } catch (e) {
+    /* corrupt sidecar -> start fresh, don't crash the server */
+  }
   return { version: 1, entries: [] };
 }
 
@@ -46,9 +48,21 @@ export function saveChangelog(projectFile, log) {
 // pre-change backup file can carry the same id); otherwise one is assigned.
 export function appendEntry(projectFile, entry) {
   const log = loadChangelog(projectFile);
-  const id = entry.id !== undefined ? entry.id
-    : (log.entries.length ? Math.max.apply(null, log.entries.map(e => e.id)) + 1 : 1);
-  const full = Object.assign({}, entry, { id }, { created_at: entry.created_at || new Date().toISOString() });
+  const id =
+    entry.id !== undefined
+      ? entry.id
+      : log.entries.length
+        ? Math.max.apply(
+            null,
+            log.entries.map(e => e.id)
+          ) + 1
+        : 1;
+  const full = Object.assign(
+    {},
+    entry,
+    { id },
+    { created_at: entry.created_at || new Date().toISOString() }
+  );
   log.entries.push(full);
   saveChangelog(projectFile, log);
   return full;
@@ -123,10 +137,34 @@ export function prepareRevert(projectFile, entryId) {
   const log = loadChangelog(projectFile);
   const entry = log.entries.find(e => e.id === entryId);
   if (!entry) return { ok: false, error: 'changelog entry ' + entryId + ' not found' };
-  if (entry.actor_label !== 'mcp-ai') return { ok: false, error: 'only MCP-AI changes can be reverted by this tool (entry ' + entryId + ' is ' + (entry.actor_label || 'unknown') + ')' };
-  if (entry.entry_type === 'revert') return { ok: false, error: 'entry ' + entryId + ' is itself a revert — re-reverting is not allowed; propose a new change instead' };
-  const alreadyReverted = log.entries.some(e => e.entry_type === 'revert' && (e.reverts_id === entryId || (e.diffs_json && entry.diffs_json && JSON.stringify(e.diffs_json) === JSON.stringify(entry.diffs_json))));
-  if (alreadyReverted) return { ok: false, error: 'entry ' + entryId + ' has already been reverted' };
+  if (entry.actor_label !== 'mcp-ai')
+    return {
+      ok: false,
+      error:
+        'only MCP-AI changes can be reverted by this tool (entry ' +
+        entryId +
+        ' is ' +
+        (entry.actor_label || 'unknown') +
+        ')'
+    };
+  if (entry.entry_type === 'revert')
+    return {
+      ok: false,
+      error:
+        'entry ' +
+        entryId +
+        ' is itself a revert — re-reverting is not allowed; propose a new change instead'
+    };
+  const alreadyReverted = log.entries.some(
+    e =>
+      e.entry_type === 'revert' &&
+      (e.reverts_id === entryId ||
+        (e.diffs_json &&
+          entry.diffs_json &&
+          JSON.stringify(e.diffs_json) === JSON.stringify(entry.diffs_json)))
+  );
+  if (alreadyReverted)
+    return { ok: false, error: 'entry ' + entryId + ' has already been reverted' };
   return { ok: true, entry };
 }
 

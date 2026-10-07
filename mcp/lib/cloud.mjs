@@ -16,10 +16,19 @@
    ============================================================ */
 
 const PROVIDER_DEFAULTS = {
-  openai: { endpoint: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini', fallbackModels: ['gpt-5-mini', 'gpt-5-nano'] },
-  anthropic: { endpoint: 'https://api.anthropic.com/v1/messages', model: 'claude-3-5-sonnet-latest', fallbackModels: ['claude-3-5-haiku-latest', 'claude-3-haiku'] },
+  openai: {
+    endpoint: 'https://api.openai.com/v1/chat/completions',
+    model: 'gpt-4o-mini',
+    fallbackModels: ['gpt-5-mini', 'gpt-5-nano']
+  },
+  anthropic: {
+    endpoint: 'https://api.anthropic.com/v1/messages',
+    model: 'claude-3-5-sonnet-latest',
+    fallbackModels: ['claude-3-5-haiku-latest', 'claude-3-haiku']
+  },
   'google-gemini': {
-    endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent',
+    endpoint:
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent',
     model: 'gemini-flash-latest',
     fallbackModels: ['gemini-flash-lite-latest']
   }
@@ -30,7 +39,11 @@ export function geminiEndpointFor(modelId) {
 }
 
 export function providerCatalog() {
-  return Object.keys(PROVIDER_DEFAULTS).map(p => ({ provider: p, model: PROVIDER_DEFAULTS[p].model, fallbackModels: PROVIDER_DEFAULTS[p].fallbackModels }));
+  return Object.keys(PROVIDER_DEFAULTS).map(p => ({
+    provider: p,
+    model: PROVIDER_DEFAULTS[p].model,
+    fallbackModels: PROVIDER_DEFAULTS[p].fallbackModels
+  }));
 }
 
 const CLOUD_SYSTEM_PROMPT =
@@ -41,7 +54,11 @@ function geminiPayload(messages) {
   const contents = [];
   (messages || []).forEach(function (m) {
     if (m.role === 'system') system += (system ? '\n' : '') + (m.content || '');
-    else contents.push({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content || '' }] });
+    else
+      contents.push({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content || '' }]
+      });
   });
   const p = { contents };
   if (system) p.systemInstruction = { parts: [{ text: system }] };
@@ -53,7 +70,8 @@ function anthropicPayload(model, messages) {
   const msgs = [];
   (messages || []).forEach(function (m) {
     if (m.role === 'system') system += (system ? '\n' : '') + (m.content || '');
-    else msgs.push({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content || '' });
+    else
+      msgs.push({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content || '' });
   });
   const p = { model, max_tokens: 4096, messages: msgs };
   if (system) p.system = system;
@@ -76,13 +94,26 @@ async function openaiAttempt(key, model, messages) {
   const def = PROVIDER_DEFAULTS.openai;
   const { status, ok, body } = await fetchJson(def.endpoint, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
     body: JSON.stringify({ model, messages })
   });
-  if (status === 429 || status === 503) { const e = new Error('OpenAI rate limited (HTTP ' + status + ')'); e.status = status; throw e; }
-  if (status === 401 || status === 403) { const e = new Error('provider rejected the key'); e.status = 401; throw e; }
+  if (status === 429 || status === 503) {
+    const e = new Error('OpenAI rate limited (HTTP ' + status + ')');
+    e.status = status;
+    throw e;
+  }
+  if (status === 401 || status === 403) {
+    const e = new Error('provider rejected the key');
+    e.status = 401;
+    throw e;
+  }
   if (!ok) throw new Error('AI endpoint HTTP ' + status);
-  const text = body && body.choices && body.choices[0] && body.choices[0].message && body.choices[0].message.content;
+  const text =
+    body &&
+    body.choices &&
+    body.choices[0] &&
+    body.choices[0].message &&
+    body.choices[0].message.content;
   if (!text) throw new Error('empty AI response');
   return String(text);
 }
@@ -91,13 +122,28 @@ async function anthropicAttempt(key, model, messages) {
   const def = PROVIDER_DEFAULTS.anthropic;
   const { status, ok, body } = await fetchJson(def.endpoint, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01'
+    },
     body: JSON.stringify(anthropicPayload(model, messages))
   });
-  if (status === 429 || status === 503) { const e = new Error('Anthropic rate limited (HTTP ' + status + ')'); e.status = status; throw e; }
-  if (status === 401 || status === 403) { const e = new Error('provider rejected the key'); e.status = 401; throw e; }
+  if (status === 429 || status === 503) {
+    const e = new Error('Anthropic rate limited (HTTP ' + status + ')');
+    e.status = status;
+    throw e;
+  }
+  if (status === 401 || status === 403) {
+    const e = new Error('provider rejected the key');
+    e.status = 401;
+    throw e;
+  }
   if (!ok) throw new Error('AI endpoint HTTP ' + status);
-  const text = (body && Array.isArray(body.content)) ? body.content.map(c => (c && c.type === 'text' && c.text) ? c.text : '').join('') : null;
+  const text =
+    body && Array.isArray(body.content)
+      ? body.content.map(c => (c && c.type === 'text' && c.text ? c.text : '')).join('')
+      : null;
   if (!text) throw new Error('empty AI response');
   return String(text);
 }
@@ -108,11 +154,25 @@ async function geminiAttempt(key, model, messages) {
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
     body: JSON.stringify(geminiPayload(messages))
   });
-  if (status === 429 || status === 503) { const e = new Error('Gemini rate limited (HTTP ' + status + ')'); e.status = status; throw e; }
-  if (status === 401 || status === 403) { const e = new Error('provider rejected the key'); e.status = 401; throw e; }
+  if (status === 429 || status === 503) {
+    const e = new Error('Gemini rate limited (HTTP ' + status + ')');
+    e.status = status;
+    throw e;
+  }
+  if (status === 401 || status === 403) {
+    const e = new Error('provider rejected the key');
+    e.status = 401;
+    throw e;
+  }
   if (!ok) throw new Error('AI endpoint HTTP ' + status);
-  const text = (body && body.candidates && body.candidates[0] && body.candidates[0].content && body.candidates[0].content.parts)
-    ? body.candidates[0].content.parts.map(p => p.text || '').join('') : null;
+  const text =
+    body &&
+    body.candidates &&
+    body.candidates[0] &&
+    body.candidates[0].content &&
+    body.candidates[0].content.parts
+      ? body.candidates[0].content.parts.map(p => p.text || '').join('')
+      : null;
   if (!text) throw new Error('empty AI response');
   return String(text);
 }
@@ -121,11 +181,20 @@ async function geminiAttempt(key, model, messages) {
 // model answered, plus which model that was and whether a fallback fired.
 export async function chatWithFallback(provider, key, messages, ctx) {
   const def = PROVIDER_DEFAULTS[provider];
-  if (!def) throw new Error('unknown provider "' + provider + '" — use one of: ' + Object.keys(PROVIDER_DEFAULTS).join(', '));
+  if (!def)
+    throw new Error(
+      'unknown provider "' +
+        provider +
+        '" — use one of: ' +
+        Object.keys(PROVIDER_DEFAULTS).join(', ')
+    );
   const models = [def.model].concat(def.fallbackModels || []).filter(Boolean);
-  const attempt = provider === 'google-gemini' ? geminiAttempt
-    : provider === 'anthropic' ? anthropicAttempt
-    : openaiAttempt;
+  const attempt =
+    provider === 'google-gemini'
+      ? geminiAttempt
+      : provider === 'anthropic'
+        ? anthropicAttempt
+        : openaiAttempt;
   let lastCapacityErr = null;
   for (let i = 0; i < models.length; i++) {
     const model = models[i];
@@ -134,7 +203,10 @@ export async function chatWithFallback(provider, key, messages, ctx) {
       return { ok: true, text, model, fellBackFrom: i > 0 ? models[0] : null };
     } catch (e) {
       const status = e && e.status;
-      if (status === 429 || status === 503) { lastCapacityErr = e; continue; }
+      if (status === 429 || status === 503) {
+        lastCapacityErr = e;
+        continue;
+      }
       throw e;
     }
   }
@@ -146,7 +218,12 @@ export async function chatWithFallback(provider, key, messages, ctx) {
 
 // Build the grounding message pair exactly like the app's runCloud.
 export function groundingMessages(prompt, context, key) {
-  const userContent = (prompt || '') + (context ? '\n\n==== PROJECT CONTEXT (grounding only) ====\n' + String(context).split(key).join('[key removed]') : '');
+  const userContent =
+    (prompt || '') +
+    (context
+      ? '\n\n==== PROJECT CONTEXT (grounding only) ====\n' +
+        String(context).split(key).join('[key removed]')
+      : '');
   return [
     { role: 'system', content: CLOUD_SYSTEM_PROMPT },
     { role: 'user', content: userContent }

@@ -41,12 +41,23 @@ export function isOverdue(endDate) {
 // ---- budget helpers (port of mmgr-resources.js / mmgr-health.js) ----
 function curveFraction(t, shape) {
   t = Math.max(0, Math.min(1, t));
-  const s = shape === 'bell' ? 'scurve' : shape === 'front-loaded' ? 'front' : shape === 'back-loaded' ? 'back' : shape;
+  const s =
+    shape === 'bell'
+      ? 'scurve'
+      : shape === 'front-loaded'
+        ? 'front'
+        : shape === 'back-loaded'
+          ? 'back'
+          : shape;
   switch (s) {
-    case 'scurve': return t * t * (3 - 2 * t);
-    case 'front': return 1 - Math.pow(1 - t, 2);
-    case 'back': return t * t;
-    default: return t;
+    case 'scurve':
+      return t * t * (3 - 2 * t);
+    case 'front':
+      return 1 - Math.pow(1 - t, 2);
+    case 'back':
+      return t * t;
+    default:
+      return t;
   }
 }
 
@@ -55,13 +66,17 @@ function budgetLineWindow(line, s) {
   const linkId = line.linkedTaskId || line.taskId || null;
   if (linkId) {
     const t = (s.tasks || []).find(x => String(x.id) === String(linkId));
-    if (t && t.startDate && t.endDate) return { start: parseDL(t.startDate), end: parseDL(t.endDate) };
+    if (t && t.startDate && t.endDate)
+      return { start: parseDL(t.startDate), end: parseDL(t.endDate) };
   }
   const dated = (s.tasks || []).filter(t => t.startDate && t.endDate);
   if (!dated.length) return null;
   const starts = dated.map(t => parseDL(t.startDate).getTime());
   const ends = dated.map(t => parseDL(t.endDate).getTime());
-  return { start: new Date(Math.min.apply(null, starts)), end: new Date(Math.max.apply(null, ends)) };
+  return {
+    start: new Date(Math.min.apply(null, starts)),
+    end: new Date(Math.max.apply(null, ends))
+  };
 }
 
 function lineCumulativeAt(line, asOf, s) {
@@ -76,7 +91,9 @@ function lineCumulativeAt(line, asOf, s) {
   const span = w.end - w.start;
   if (asOf <= w.start) return 0;
   if (asOf >= w.end || span <= 0) return planned;
-  return planned * curveFraction((asOf - w.start) / span, line.curveShape || line.curve || 'linear');
+  return (
+    planned * curveFraction((asOf - w.start) / span, line.curveShape || line.curve || 'linear')
+  );
 }
 
 // A budget line's actual $ — auto-derived from its own Spend Log entries
@@ -100,14 +117,20 @@ export function computeHealth(s) {
   if (tot === 0) return null;
   const dn = s.tasks.filter(t => t.status === 'completed').length;
   const overdue = s.tasks.filter(t => isOverdue(t.endDate) && t.status !== 'completed').length;
-  const liveIssues = (s.issues || []).filter(i => i.status !== 'resolved' && i.status !== 'closed').length;
-  const highRisks = (s.risks || []).filter(r => !r.issueId && r.probability === 'High' && r.impact === 'High').length;
-  const pendingChg = (s.changes || []).filter(c => c.status === 'submitted' || c.status === 'review' || !c.status).length;
+  const liveIssues = (s.issues || []).filter(
+    i => i.status !== 'resolved' && i.status !== 'closed'
+  ).length;
+  const highRisks = (s.risks || []).filter(
+    r => !r.issueId && r.probability === 'High' && r.impact === 'High'
+  ).length;
+  const pendingChg = (s.changes || []).filter(
+    c => c.status === 'submitted' || c.status === 'review' || !c.status
+  ).length;
   const tp = (s.budgetLines || []).reduce((sum, b) => sum + (+b.planned || 0), 0);
   const ta = (s.budgetLines || []).reduce((sum, b) => sum + lineActual(b, s), 0);
   const pct = dn / tot;
   const ev = tp * pct;
-  const cpi = (ta && tp) ? ev / ta : null;
+  const cpi = ta && tp ? ev / ta : null;
   const hasSchedule = s.tasks.some(t => t.startDate && t.endDate);
   const hasBudget = !!(ta && tp);
   const hasRisks = (s.risks || []).length > 0;
@@ -115,13 +138,17 @@ export function computeHealth(s) {
   const f1 = (dn / tot) * 100;
   const f2 = hasSchedule ? Math.max(0, 100 - (overdue / tot) * 100) : null;
   const f3 = hasBudget ? Math.max(0, 100 - Math.abs(cpi - 1) * 200) : null;
-  const f4 = hasRisks ? Math.max(0, 100 - (liveIssues * 15) - (highRisks * 5)) : null;
-  const f5 = hasChanges ? Math.max(0, 100 - (pendingChg * 10)) : null;
-  const weights = { f1: 0.30, f2: 0.25, f3: 0.20, f4: 0.15, f5: 0.10 };
+  const f4 = hasRisks ? Math.max(0, 100 - liveIssues * 15 - highRisks * 5) : null;
+  const f5 = hasChanges ? Math.max(0, 100 - pendingChg * 10) : null;
+  const weights = { f1: 0.3, f2: 0.25, f3: 0.2, f4: 0.15, f5: 0.1 };
   const factors = { f1, f2, f3, f4, f5 };
-  let weightSum = 0, scoreSum = 0;
+  let weightSum = 0,
+    scoreSum = 0;
   Object.keys(factors).forEach(k => {
-    if (factors[k] !== null) { weightSum += weights[k]; scoreSum += factors[k] * weights[k]; }
+    if (factors[k] !== null) {
+      weightSum += weights[k];
+      scoreSum += factors[k] * weights[k];
+    }
   });
   const score = weightSum ? Math.round(scoreSum / weightSum) : Math.round(f1);
   return { score, f1, f2, f3, f4, f5, hasSchedule, hasBudget, hasRisks, hasChanges, weightSum };
@@ -153,10 +180,10 @@ export function computeEvm(s) {
   const cv = ev - ac;
   const bac = tp;
   const eac = cpi ? ac + (bac - ev) / cpi : null;
-  const etc = (eac !== null) ? eac - ac : null;
-  const vac = (eac !== null) ? bac - eac : null;
+  const etc = eac !== null ? eac - ac : null;
+  const vac = eac !== null ? bac - eac : null;
   const tden = bac - ac;
-  const tcpi = (tden !== 0) ? (bac - ev) / tden : null;
+  const tcpi = tden !== 0 ? (bac - ev) / tden : null;
   return { pct, tp, ta, pv, ev, ac, spi, cpi, sv, cv, bac, eac, etc, vac, tcpi };
 }
 
@@ -170,24 +197,36 @@ export function riskDays(s) {
   const days = cache && cache.days ? cache.days : [];
   if (!days.length) return [];
   const wxTasks = (s.tasks || []).filter(t => t.weatherSensitive && t.startDate && t.endDate);
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  return days.map(d => {
-    const risky = d.precip >= RISK_PRECIP || d.tMax >= HEAT_C || d.tMin <= COLD_C;
-    if (!risky) return null;
-    const dateObj = parseDL(d.date) || new Date(d.date + 'T00:00:00');
-    const within7 = dateObj >= today && dateObj <= new Date(today.getTime() + 7 * 86400000);
-    const affected = wxTasks.filter(t => {
-      const ts = parseDL(t.startDate), te = parseDL(t.endDate);
-      if (!ts || !te) return false;
-      return dateObj >= ts && dateObj <= te;
-    });
-    if (!within7 && !affected.length) return null;
-    const alerts = [];
-    if (d.precip >= RISK_PRECIP) alerts.push('precip ' + d.precip + '%');
-    if (d.tMax >= HEAT_C) alerts.push('heat ' + d.tMax + 'C');
-    if (d.tMin <= COLD_C) alerts.push('cold ' + d.tMin + 'C');
-    return { date: d.date, code: d.code, precip: d.precip, tMax: d.tMax, tMin: d.tMin, alerts, affected: affected.map(t => t.name) };
-  }).filter(Boolean);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return days
+    .map(d => {
+      const risky = d.precip >= RISK_PRECIP || d.tMax >= HEAT_C || d.tMin <= COLD_C;
+      if (!risky) return null;
+      const dateObj = parseDL(d.date) || new Date(d.date + 'T00:00:00');
+      const within7 = dateObj >= today && dateObj <= new Date(today.getTime() + 7 * 86400000);
+      const affected = wxTasks.filter(t => {
+        const ts = parseDL(t.startDate),
+          te = parseDL(t.endDate);
+        if (!ts || !te) return false;
+        return dateObj >= ts && dateObj <= te;
+      });
+      if (!within7 && !affected.length) return null;
+      const alerts = [];
+      if (d.precip >= RISK_PRECIP) alerts.push('precip ' + d.precip + '%');
+      if (d.tMax >= HEAT_C) alerts.push('heat ' + d.tMax + 'C');
+      if (d.tMin <= COLD_C) alerts.push('cold ' + d.tMin + 'C');
+      return {
+        date: d.date,
+        code: d.code,
+        precip: d.precip,
+        tMax: d.tMax,
+        tMin: d.tMin,
+        alerts,
+        affected: affected.map(t => t.name)
+      };
+    })
+    .filter(Boolean);
 }
 
 // ---- Claim slips (port of mmgr-claim.js computeSlips) ----
@@ -217,7 +256,9 @@ function autoCause(s, task, baseEnd, curEnd) {
 export function computeSlips(s) {
   if (!s) return [];
   const baseMap = {};
-  ((s.baseline && s.baseline.tasks) || []).forEach(bt => { baseMap[String(bt.id)] = bt; });
+  ((s.baseline && s.baseline.tasks) || []).forEach(bt => {
+    baseMap[String(bt.id)] = bt;
+  });
   const slips = [];
   (s.tasks || []).forEach(t => {
     const bt = baseMap[String(t.id)];
@@ -251,8 +292,9 @@ const CONTEXT_MAX_CHARS = 12000;
 export function buildContext(state) {
   const s = state || {};
   const L = [];
-  const sec = (title) => L.push('## ' + title);
-  const line = (k, v) => L.push('- ' + k + ': ' + (v === undefined || v === null || v === '' ? '—' : v));
+  const sec = title => L.push('## ' + title);
+  const line = (k, v) =>
+    L.push('- ' + k + ': ' + (v === undefined || v === null || v === '' ? '—' : v));
   const f = s.charter || {};
 
   try {
@@ -262,7 +304,10 @@ export function buildContext(state) {
     line('Sponsor', f.sponsor);
     line('Objective', f.objective);
     line('Target completion', f.targetCompletion || f.end);
-    line('Budget envelope', f.budgetEnvelope ? '$' + Number(f.budgetEnvelope).toLocaleString() : null);
+    line(
+      'Budget envelope',
+      f.budgetEnvelope ? '$' + Number(f.budgetEnvelope).toLocaleString() : null
+    );
     line('Constraints', f.constraints);
     line('Assumptions', f.assumptions);
   } catch (e) {}
@@ -278,7 +323,10 @@ export function buildContext(state) {
       line('Score', 'not enough data yet');
     }
     const tasks = s.tasks || [];
-    line('Tasks', tasks.length + ' total · ' + tasks.filter(t => t.status === 'completed').length + ' complete');
+    line(
+      'Tasks',
+      tasks.length + ' total · ' + tasks.filter(t => t.status === 'completed').length + ' complete'
+    );
   } catch (e) {}
 
   try {
@@ -287,7 +335,12 @@ export function buildContext(state) {
     if (e) {
       line('SPI', e.spi !== undefined ? e.spi.toFixed(2) : null);
       line('CPI', e.cpi !== undefined ? e.cpi.toFixed(2) : null);
-      line('EV / PV / AC', [e.ev, e.pv, e.ac].map(v => v !== undefined && v !== null ? '$' + Number(v).toLocaleString() : null).join(' / '));
+      line(
+        'EV / PV / AC',
+        [e.ev, e.pv, e.ac]
+          .map(v => (v !== undefined && v !== null ? '$' + Number(v).toLocaleString() : null))
+          .join(' / ')
+      );
     } else {
       line('Metrics', 'insufficient schedule/budget data');
     }
@@ -298,9 +351,22 @@ export function buildContext(state) {
     const tgt = (f && f.targetCompletion) || (f && f.end) || null;
     const dated = (s.tasks || []).filter(t => t.endDate);
     if (tgt && dated.length) {
-      const projected = new Date(Math.max.apply(null, dated.map(t => new Date(t.endDate).getTime())));
+      const projected = new Date(
+        Math.max.apply(
+          null,
+          dated.map(t => new Date(t.endDate).getTime())
+        )
+      );
       const over = Math.round((projected.getTime() - new Date(tgt).getTime()) / 86400000);
-      line('Target vs planned finish', tgt + ' → ' + projected.toISOString().slice(0, 10) + ' (' + (over > 0 ? '+' + over + 'd over' : over < 0 ? Math.abs(over) + 'd ahead' : 'on target') + ')');
+      line(
+        'Target vs planned finish',
+        tgt +
+          ' → ' +
+          projected.toISOString().slice(0, 10) +
+          ' (' +
+          (over > 0 ? '+' + over + 'd over' : over < 0 ? Math.abs(over) + 'd ahead' : 'on target') +
+          ')'
+      );
     } else {
       line('Timeline', 'no target completion date and/or no dated tasks yet');
     }
@@ -311,30 +377,77 @@ export function buildContext(state) {
   try {
     sec('CRITICAL PATH');
     const crit = (s.tasks || []).filter(t => t.totalFloat === 0 && t.status !== 'completed');
-    line('Tasks on zero float', crit.length ? crit.slice(0, 8).map(t => t.name).join('; ') : 'none identified (run Cascade Dates)');
+    line(
+      'Tasks on zero float',
+      crit.length
+        ? crit
+            .slice(0, 8)
+            .map(t => t.name)
+            .join('; ')
+        : 'none identified (run Cascade Dates)'
+    );
   } catch (e) {}
 
   try {
     sec('TOP RISKS / ISSUES');
     const risks = (s.risks || []).filter(r => !r.issueId);
-    const high = risks.filter(r => /high/i.test(r.probability || '') || /high/i.test(r.impact || ''));
-    line('Open risks', risks.length + (high.length ? ' (' + high.length + ' high) ' : '') + (high.length ? high.slice(0, 5).map(r => r.description).join('; ') : ''));
+    const high = risks.filter(
+      r => /high/i.test(r.probability || '') || /high/i.test(r.impact || '')
+    );
+    line(
+      'Open risks',
+      risks.length +
+        (high.length ? ' (' + high.length + ' high) ' : '') +
+        (high.length
+          ? high
+              .slice(0, 5)
+              .map(r => r.description)
+              .join('; ')
+          : '')
+    );
     const issues = (s.issues || []).filter(i => i.status !== 'resolved' && i.status !== 'closed');
-    line('Live issues', issues.length ? issues.slice(0, 5).map(i => i.description).join('; ') : 'none');
+    line(
+      'Live issues',
+      issues.length
+        ? issues
+            .slice(0, 5)
+            .map(i => i.description)
+            .join('; ')
+        : 'none'
+    );
   } catch (e) {}
 
   try {
     sec('WEATHER');
-    if (s.sitePlace) line('Site', s.sitePlace + ' (Open-Meteo' + (s.wxCache && s.wxCache.days && s.wxCache.days.length ? ', cached ' + s.wxCache.days.length + '-day forecast' : ', no forecast cached') + ')');
+    if (s.sitePlace)
+      line(
+        'Site',
+        s.sitePlace +
+          ' (Open-Meteo' +
+          (s.wxCache && s.wxCache.days && s.wxCache.days.length
+            ? ', cached ' + s.wxCache.days.length + '-day forecast'
+            : ', no forecast cached') +
+          ')'
+      );
     else line('Site', 'no location set — regional weather windows only');
     const rd = riskDays(s);
-    line('Weather risk days', rd.length ? rd.slice(0, 5).map(d => d.date + ' (' + d.alerts.join(', ') + ')').join('; ') : 'none in forecast');
+    line(
+      'Weather risk days',
+      rd.length
+        ? rd
+            .slice(0, 5)
+            .map(d => d.date + ' (' + d.alerts.join(', ') + ')')
+            .join('; ')
+        : 'none in forecast'
+    );
     line('Weather delay days logged', (s.weatherLog || []).length);
   } catch (e) {}
 
   let out = L.join('\n');
   if (out.length > CONTEXT_MAX_CHARS) {
-    out = out.slice(0, CONTEXT_MAX_CHARS) + '\n…[context truncated — project data exceeds the safe packet size]';
+    out =
+      out.slice(0, CONTEXT_MAX_CHARS) +
+      '\n…[context truncated — project data exceeds the safe packet size]';
   }
   return out;
 }
@@ -345,13 +458,13 @@ export function buildContext(state) {
 // caller can decide (this MCP: fall back to the cloud tier when a key is set).
 export function localLookup(q, s) {
   const TRACE = [];
-  const _t = (field) => TRACE.push(field);
-  const fmt$ = (n) => '$' + Number(n || 0).toLocaleString();
+  const _t = field => TRACE.push(field);
+  const fmt$ = n => '$' + Number(n || 0).toLocaleString();
   const text = String(q || '');
   const lower = text.toLowerCase();
   const tasks = s.tasks || [];
   const done = tasks.filter(t => t.status === 'completed').length;
-  const pct = tasks.length ? Math.round(done / tasks.length * 100) : 0;
+  const pct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
   const out = [];
 
   if (/completion|percent|progress|how (much|many).*done|status/.test(lower)) {
@@ -360,52 +473,147 @@ export function localLookup(q, s) {
   }
   if (/overdue|behind|late/.test(lower)) {
     const od = tasks.filter(t => isOverdue(t.endDate) && t.status !== 'completed');
-    _t('tasks[].endDate'); _t('tasks[].status');
-    out.push('Overdue: ' + od.length + (od.length ? ' — ' + od.slice(0, 5).map(t => t.name + ' (due ' + t.endDate + ')').join('; ') : '.'));
+    _t('tasks[].endDate');
+    _t('tasks[].status');
+    out.push(
+      'Overdue: ' +
+        od.length +
+        (od.length
+          ? ' — ' +
+            od
+              .slice(0, 5)
+              .map(t => t.name + ' (due ' + t.endDate + ')')
+              .join('; ')
+          : '.')
+    );
   }
   if (/budget|cost|spend/.test(lower)) {
     const planned = (s.budgetLines || []).reduce((n, l) => n + (+l.planned || 0), 0);
     const actual = (s.budgetLines || []).reduce((n, l) => n + lineActual(l, s), 0);
-    _t('budgetLines[].planned'); _t('budgetLines[].actual'); _t('budgetEnvelope');
-    out.push('Budget: ' + fmt$(actual) + ' actual vs ' + fmt$(planned) + ' planned (envelope ' + fmt$(s.budgetEnvelope) + ').');
+    _t('budgetLines[].planned');
+    _t('budgetLines[].actual');
+    _t('budgetEnvelope');
+    out.push(
+      'Budget: ' +
+        fmt$(actual) +
+        ' actual vs ' +
+        fmt$(planned) +
+        ' planned (envelope ' +
+        fmt$(s.budgetEnvelope) +
+        ').'
+    );
   }
   if (/risk/.test(lower)) {
-    const high = (s.risks || []).filter(r => !r.issueId && (/high/i.test(r.probability || '') || /high/i.test(r.impact || '')));
-    _t('risks[].probability'); _t('risks[].impact'); _t('risks[].description');
-    out.push('Open risks: ' + (s.risks || []).length + ' (' + high.length + ' high).' + (high.length ? ' ' + high.slice(0, 5).map(r => r.description).join('; ') : ''));
+    const high = (s.risks || []).filter(
+      r => !r.issueId && (/high/i.test(r.probability || '') || /high/i.test(r.impact || ''))
+    );
+    _t('risks[].probability');
+    _t('risks[].impact');
+    _t('risks[].description');
+    out.push(
+      'Open risks: ' +
+        (s.risks || []).length +
+        ' (' +
+        high.length +
+        ' high).' +
+        (high.length
+          ? ' ' +
+            high
+              .slice(0, 5)
+              .map(r => r.description)
+              .join('; ')
+          : '')
+    );
   }
   if (/issue/.test(lower)) {
     const live = (s.issues || []).filter(i => i.status !== 'resolved' && i.status !== 'closed');
-    _t('issues[].status'); _t('issues[].description');
-    out.push('Live issues: ' + live.length + (live.length ? ' — ' + live.slice(0, 5).map(i => i.description).join('; ') : '.'));
+    _t('issues[].status');
+    _t('issues[].description');
+    out.push(
+      'Live issues: ' +
+        live.length +
+        (live.length
+          ? ' — ' +
+            live
+              .slice(0, 5)
+              .map(i => i.description)
+              .join('; ')
+          : '.')
+    );
   }
   if (/critical|float|path/.test(lower)) {
     const crit = tasks.filter(t => t.totalFloat === 0 && t.status !== 'completed');
-    _t('tasks[].totalFloat'); _t('tasks[].status');
-    out.push('Critical path: ' + (crit.length ? crit.map(t => t.name).join(' → ') : 'none identified (run Cascade Dates).'));
+    _t('tasks[].totalFloat');
+    _t('tasks[].status');
+    out.push(
+      'Critical path: ' +
+        (crit.length ? crit.map(t => t.name).join(' → ') : 'none identified (run Cascade Dates).')
+    );
   }
   if (/evm|earned|spi|cpi|variance/.test(lower)) {
     const e = computeEvm(s);
     _t('EVM.compute(s)');
-    out.push(e ? 'EVM: SPI ' + e.spi.toFixed(2) + ', CPI ' + e.cpi.toFixed(2) + ', EV ' + fmt$(e.ev) + ' / PV ' + fmt$(e.pv) + ' / AC ' + fmt$(e.ac) + '.' : 'EVM: insufficient schedule/budget data.');
+    out.push(
+      e
+        ? 'EVM: SPI ' +
+            e.spi.toFixed(2) +
+            ', CPI ' +
+            e.cpi.toFixed(2) +
+            ', EV ' +
+            fmt$(e.ev) +
+            ' / PV ' +
+            fmt$(e.pv) +
+            ' / AC ' +
+            fmt$(e.ac) +
+            '.'
+        : 'EVM: insufficient schedule/budget data.'
+    );
   }
   if (/weather|delay/.test(lower)) {
     const rd = riskDays(s);
-    _t('weatherLog'); _t('wxCache');
-    out.push('Weather: ' + (s.weatherLog || []).length + ' delay day(s) logged' + (rd.length ? '; risk days: ' + rd.slice(0, 3).map(d => d.date).join(', ') : '') + '.');
+    _t('weatherLog');
+    _t('wxCache');
+    out.push(
+      'Weather: ' +
+        (s.weatherLog || []).length +
+        ' delay day(s) logged' +
+        (rd.length
+          ? '; risk days: ' +
+            rd
+              .slice(0, 3)
+              .map(d => d.date)
+              .join(', ')
+          : '') +
+        '.'
+    );
   }
   if (/health|score/.test(lower)) {
     const h = computeHealth(s);
     _t('Health.compute(s)');
-    out.push(h ? 'Health: ' + h.score + '/100 (' + (h.score >= 70 ? 'Healthy' : h.score >= 40 ? 'Needs Attention' : 'At Risk') + ').' : 'Health: not enough data yet — add tasks.');
+    out.push(
+      h
+        ? 'Health: ' +
+            h.score +
+            '/100 (' +
+            (h.score >= 70 ? 'Healthy' : h.score >= 40 ? 'Needs Attention' : 'At Risk') +
+            ').'
+        : 'Health: not enough data yet — add tasks.'
+    );
   }
 
   if (!out.length) {
     return {
       ok: false,
-      error: 'This question needs reasoning beyond local lookup. Run it on the Cloud tier (set MMGR_MCP_AI_KEY + MMGR_MCP_PROVIDER), or copy the prompt + context into your AI tool.',
+      error:
+        'This question needs reasoning beyond local lookup. Run it on the Cloud tier (set MMGR_MCP_AI_KEY + MMGR_MCP_PROVIDER), or copy the prompt + context into your AI tool.',
       tier: 'local'
     };
   }
-  return { ok: true, tier: 'local', model: 'local-state-engine', text: out.join('\n'), trace: TRACE.slice() };
+  return {
+    ok: true,
+    tier: 'local',
+    model: 'local-state-engine',
+    text: out.join('\n'),
+    trace: TRACE.slice()
+  };
 }

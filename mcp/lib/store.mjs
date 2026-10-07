@@ -14,7 +14,58 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 
-const FIELD_KEYS = ['projectName', 'methodology', 'workWeek', 'theme', 'crosshairOn', 'userName', 'charter', 'tasks', 'meetings', 'meetingPromises', 'activeMeeting', 'resources', 'budgetLines', 'budgetEnvelope', 'spendLog', 'stakeholders', 'risks', 'issues', 'changes', 'logEntries', 'commsEntries', 'documents', 'closure', 'raci', 'sprint', 'dailySnapshots', 'dmaic', 'baseline', 'weatherRegion', 'siteLat', 'siteLon', 'sitePlace', 'wxCache', 'weatherLog', 'ldRate', 'wxViewDays', 'wxWindow', 'kbShowLeadtime', 'hlCritical', 'dailySnapshot', 'focusMode', 'streak', 'sentimentHistory', 'scheduleSlips', 'slipCauses', 'digestSnapshot', 'aiOutputs', 'packs', 'packsCalloutDismissed', 'packsEverEnabled'];
+const FIELD_KEYS = [
+  'projectName',
+  'methodology',
+  'workWeek',
+  'theme',
+  'crosshairOn',
+  'userName',
+  'charter',
+  'tasks',
+  'meetings',
+  'meetingPromises',
+  'activeMeeting',
+  'resources',
+  'budgetLines',
+  'budgetEnvelope',
+  'spendLog',
+  'stakeholders',
+  'risks',
+  'issues',
+  'changes',
+  'logEntries',
+  'commsEntries',
+  'documents',
+  'closure',
+  'raci',
+  'sprint',
+  'dailySnapshots',
+  'dmaic',
+  'baseline',
+  'weatherRegion',
+  'siteLat',
+  'siteLon',
+  'sitePlace',
+  'wxCache',
+  'weatherLog',
+  'ldRate',
+  'wxViewDays',
+  'wxWindow',
+  'kbShowLeadtime',
+  'hlCritical',
+  'dailySnapshot',
+  'focusMode',
+  'streak',
+  'sentimentHistory',
+  'scheduleSlips',
+  'slipCauses',
+  'digestSnapshot',
+  'aiOutputs',
+  'packs',
+  'packsCalloutDismissed',
+  'packsEverEnabled'
+];
 
 export function isProjectFile(name) {
   return /\.json$/i.test(name) && !name.includes('.mcp-changelog') && !name.includes('.pre-');
@@ -22,7 +73,8 @@ export function isProjectFile(name) {
 
 export function listProjects(dir) {
   try {
-    return fs.readdirSync(dir)
+    return fs
+      .readdirSync(dir)
       .filter(isProjectFile)
       .sort((a, b) => a.localeCompare(b));
   } catch (e) {
@@ -57,10 +109,16 @@ export function loadProject(file) {
     return { ok: false, error: 'project file is not valid JSON: ' + e.message };
   }
   if (!state || typeof state !== 'object' || Array.isArray(state)) {
-    return { ok: false, error: 'project file must be a state object (an exported My MaNaGeR .json)' };
+    return {
+      ok: false,
+      error: 'project file must be a state object (an exported My MaNaGeR .json)'
+    };
   }
   if (!state.tasks || !Array.isArray(state.tasks)) {
-    return { ok: false, error: 'project file does not look like a My MaNaGeR export (no tasks array)' };
+    return {
+      ok: false,
+      error: 'project file does not look like a My MaNaGeR export (no tasks array)'
+    };
   }
   return { ok: true, state, file };
 }

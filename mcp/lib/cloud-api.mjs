@@ -25,16 +25,19 @@
  * @returns {Promise<{ok: boolean, state?: object, error?: string}>}
  */
 export async function cloudLoadProject(baseUrl, projectId, ownerCode, editorCode) {
-  const headers = { 'Accept': 'application/json' };
+  const headers = { Accept: 'application/json' };
   if (ownerCode) headers['X-Owner-Code'] = ownerCode;
   if (editorCode) headers['X-Editor-Code'] = editorCode;
 
   try {
-    const res = await fetch(baseUrl + '/api/cloud/projects/' + encodeURIComponent(projectId) + '/load', {
-      method: 'GET',
-      credentials: 'same-origin',
-      headers
-    });
+    const res = await fetch(
+      baseUrl + '/api/cloud/projects/' + encodeURIComponent(projectId) + '/load',
+      {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers
+      }
+    );
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) {
       return { ok: false, error: data.error || 'HTTP ' + res.status };
@@ -57,18 +60,21 @@ export async function cloudLoadProject(baseUrl, projectId, ownerCode, editorCode
 export async function cloudSaveProject(baseUrl, projectId, state, ownerCode, editorCode) {
   const headers = {
     'Content-Type': 'application/json',
-    'Accept': 'application/json'
+    Accept: 'application/json'
   };
   if (ownerCode) headers['X-Owner-Code'] = ownerCode;
   if (editorCode) headers['X-Editor-Code'] = editorCode;
 
   try {
-    const res = await fetch(baseUrl + '/api/cloud/projects/' + encodeURIComponent(projectId) + '/save', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers,
-      body: JSON.stringify({ state })
-    });
+    const res = await fetch(
+      baseUrl + '/api/cloud/projects/' + encodeURIComponent(projectId) + '/save',
+      {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers,
+        body: JSON.stringify({ state })
+      }
+    );
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) {
       return { ok: false, error: data.error || 'HTTP ' + res.status };
@@ -87,7 +93,7 @@ export async function cloudSaveProject(baseUrl, projectId, state, ownerCode, edi
  * @returns {Promise<{ok: boolean, projects?: Array<{id: string, name?: string}>, error?: string}>}
  */
 export async function cloudListProjects(baseUrl, ownerCode, editorCode) {
-  const headers = { 'Accept': 'application/json' };
+  const headers = { Accept: 'application/json' };
   if (ownerCode) headers['X-Owner-Code'] = ownerCode;
   if (editorCode) headers['X-Editor-Code'] = editorCode;
 
@@ -117,7 +123,7 @@ export async function cloudAuthMe(baseUrl) {
     const res = await fetch(baseUrl + '/api/auth/me', {
       method: 'GET',
       credentials: 'same-origin',
-      headers: { 'Accept': 'application/json' }
+      headers: { Accept: 'application/json' }
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) {

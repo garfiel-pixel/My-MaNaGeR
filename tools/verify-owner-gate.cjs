@@ -81,18 +81,18 @@ function run(label, content) {
   );
   check(
     'G3b probe memo cleared by clearSessOwner',
-    has('function clearSessOwner()') &&
-      has('clearSessOwner() {\n    _sessOwner = false;\n    _sessOwnerProbed = false;') ||
-      (has('_sessOwner = false;') && has('_sessOwnerProbed = false;') && has('function clearSessOwner()')),
+    (has('function clearSessOwner()') &&
+      has('clearSessOwner() {\n    _sessOwner = false;\n    _sessOwnerProbed = false;')) ||
+      (has('_sessOwner = false;') &&
+        has('_sessOwnerProbed = false;') &&
+        has('function clearSessOwner()')),
     'clearSessOwner must reset the probe memo too'
   );
 
   // G4: a held code must not memoize the probe's negative.
   check(
     'G4 held-code probe path does not memoize',
-    has('if (getCode() || getECode())') &&
-      has('_sessOwnerProbed = false;') &&
-      has('return false;'),
+    has('if (getCode() || getECode())') && has('_sessOwnerProbed = false;') && has('return false;'),
     'dropping a code must let the next render re-probe the session'
   );
 

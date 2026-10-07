@@ -36,17 +36,29 @@ test('billingFreeCap: a non-positive or unreadable override falls back to 1', ()
 });
 
 test('deriveTier: maps the enterprise price ID to enterprise', () => {
-  const env = { PADDLE_ENTERPRISE_PRICE_ID: 'pri_ent', PADDLE_COMPANY_PRICE_ID: 'pri_com', PADDLE_PRICE_ID: 'pri_con' };
+  const env = {
+    PADDLE_ENTERPRISE_PRICE_ID: 'pri_ent',
+    PADDLE_COMPANY_PRICE_ID: 'pri_com',
+    PADDLE_PRICE_ID: 'pri_con'
+  };
   assert.equal(deriveTier('pri_ent', env), 'enterprise');
 });
 
 test('deriveTier: maps the company price ID to company', () => {
-  const env = { PADDLE_ENTERPRISE_PRICE_ID: 'pri_ent', PADDLE_COMPANY_PRICE_ID: 'pri_com', PADDLE_PRICE_ID: 'pri_con' };
+  const env = {
+    PADDLE_ENTERPRISE_PRICE_ID: 'pri_ent',
+    PADDLE_COMPANY_PRICE_ID: 'pri_com',
+    PADDLE_PRICE_ID: 'pri_con'
+  };
   assert.equal(deriveTier('pri_com', env), 'company');
 });
 
 test('deriveTier: any other known price ID is contractor', () => {
-  const env = { PADDLE_ENTERPRISE_PRICE_ID: 'pri_ent', PADDLE_COMPANY_PRICE_ID: 'pri_com', PADDLE_PRICE_ID: 'pri_con' };
+  const env = {
+    PADDLE_ENTERPRISE_PRICE_ID: 'pri_ent',
+    PADDLE_COMPANY_PRICE_ID: 'pri_com',
+    PADDLE_PRICE_ID: 'pri_con'
+  };
   assert.equal(deriveTier('pri_con', env), 'contractor');
 });
 

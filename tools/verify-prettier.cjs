@@ -19,6 +19,14 @@
    CSP hashes in worker.js / serve.cjs - AGENTS.md rule 1), hash-pinned skill
    bundles, and JSON/JSONC data & config.
 
+   DIAGNOSABILITY (2026-10-07): a failing gate is useless if the reason cannot
+   be read back. Downloading Actions job logs needs repository admin rights
+   (the API answers 403 "Must have admin rights to Repository"), so when this
+   runs under Actions it publishes the reason - and every drifted file - as a
+   workflow annotation, which the public check-runs API and the run page both
+   surface. Closing that blind spot is why every failure path goes through
+   fail() instead of writing to stderr and exiting locally.
+
    Usage: node tools/verify-prettier.cjs
    ============================================================ */
 'use strict';
@@ -30,19 +38,52 @@ const { spawnSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 const PRETTIER_BIN = path.join(ROOT, 'node_modules', 'prettier', 'bin', 'prettier.cjs');
 
-function fail(msg) {
+/**
+ * Publish a failure as a GitHub Actions annotation so it is readable from the
+ * public check-runs API even when the job logs are not. No-op off Actions.
+ * Escaping per the workflow-command spec: % -> %25, CR -> %0D, LF -> %0A.
+ */
+function annotate(title, message) {
+  if (process.env.GITHUB_ACTIONS !== 'true') return;
+  const body = String(message)
+    .replace(/%/g, '%25')
+    .replace(/\r/g, '%0D')
+    .replace(/\n/g, '%0A')
+    .slice(0, 6000);
+  process.stdout.write('::error title=' + title + '::' + body + '\n');
+}
+
+function fail(msg, detail) {
   process.stderr.write('\nPRETTIER GATE FAIL: ' + msg + '\n');
+  if (detail) process.stderr.write(detail + '\n');
+  annotate('Prettier gate: ' + msg, (detail || '') + '\n\n--- gate context ---\n' + context());
   process.exit(1);
 }
 
+function prettierVersion() {
+  try {
+    return require(path.join(ROOT, 'node_modules', 'prettier', 'package.json')).version;
+  } catch (e) {
+    return 'unknown';
+  }
+}
+
+function context() {
+  return [
+    'node: ' + process.version,
+    'prettier: ' + prettierVersion(),
+    'cwd: ' + process.cwd()
+  ].join('\n');
+}
+
 if (!fs.existsSync(PRETTIER_BIN)) {
-  fail('prettier is not installed at ' + PRETTIER_BIN + ' - run `npm install`');
+  fail('prettier is not installed', 'looked for ' + PRETTIER_BIN + ' - run `npm install`');
 }
 
 if (!fs.existsSync(path.join(ROOT, '.prettierignore'))) {
   // Without it Prettier would sweep dist/, node_modules and vendor/, and the
   // gate would be reporting on artifacts instead of source.
-  fail('.prettierignore is missing - the gate has no defined scope');
+  fail('.prettierignore is missing', 'the gate has no defined scope');
 }
 
 const r = spawnSync(process.execPath, [PRETTIER_BIN, '--check', '.'], {
@@ -60,15 +101,17 @@ if (status === 0) {
   // Guard against the "checked nothing" case: a scope that matches no file
   // prints no [warn] lines and exits 0, which would be another silent pass.
   if (/Checking formatting\.\.\./.test(out) === false) {
-    fail('prettier produced no "Checking formatting..." banner - it may have matched nothing');
+    fail(
+      'prettier produced no "Checking formatting..." banner',
+      'raw output:\n' + out.slice(0, 2000)
+    );
   }
   console.log('Prettier: all matched files use Prettier code style');
   process.exit(0);
 }
 
 if (status === 2) {
-  process.stderr.write(out.slice(0, 4000) + '\n');
-  fail('prettier could not complete (glob or parse error)');
+  fail('prettier could not complete (glob or parse error)', 'raw output:\n' + out.slice(0, 4000));
 }
 
 // status === 1: real formatting drift.
@@ -88,16 +131,17 @@ const drifted = out
     return l.replace(/^\[warn\]\s+/, '');
   });
 
-process.stderr.write('\n' + drifted.length + ' file(s) need formatting:\n');
-process.stderr.write(
-  drifted
-    .slice(0, 50)
-    .map(function (f) {
-      return '  ' + f;
-    })
-    .join('\n') + '\n'
-);
-if (drifted.length > 50) {
-  process.stderr.write('  ... (+' + (drifted.length - 50) + ' more)\n');
+const list = drifted
+  .slice(0, 100)
+  .map(function (f) {
+    return '  ' + f;
+  })
+  .join('\n');
+process.stderr.write('\n' + drifted.length + ' file(s) need formatting:\n' + list + '\n');
+if (drifted.length > 100) {
+  process.stderr.write('  ... (+' + (drifted.length - 100) + ' more)\n');
 }
-fail('run `npx prettier --write .` to fix');
+fail(
+  drifted.length + ' file(s) need formatting - run `npx prettier --write .` to fix',
+  list + (drifted.length > 100 ? '\n  ... (+' + (drifted.length - 100) + ' more)' : '')
+);

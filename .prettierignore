@@ -35,6 +35,14 @@ vendor/
 **/*.jsonc
 mcp/fixtures/
 
+# ---- CI-generated artifacts (not source) --------------------------------
+# The gitleaks step runs BEFORE this gate and writes its SARIF report into the
+# workspace. Prettier infers the JSON parser for `.sarif`, so an unformatted
+# generated report failed the gate on Actions while passing locally, where the
+# file never exists. Found 2026-10-07 on the first CI run of this gate.
+*.sarif
+gitleaks-*
+
 # ---- docs and non-code assets -------------------------------------------
 *.md
 **/*.md

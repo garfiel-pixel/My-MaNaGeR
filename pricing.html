@@ -12,7 +12,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pricing | My MaNaGeR</title>
-<meta name="description" content="My MaNaGeR pricing: four plans. A free plan that never expires, plus Contractor, Company and Enterprise for teams - cloud projects, the full AI assistant, and named team members with role-based access.">
+<meta name="description" content="My MaNaGeR pricing: five plans. A free plan that never expires, plus Contractor, Estimator, Company and Enterprise - cloud projects, the full AI assistant, and named team members with role-based access.">
 <link rel="icon" type="image/png" href="images/mpw-icon.png">
   <link rel="apple-touch-icon" href="images/mpw-icon.png">
 <link rel="stylesheet" href="dist/marketing.min.css">
@@ -82,7 +82,7 @@
     <div class="container">
       <span class="crumbs"><a href="index.html">Home</a> &middot; Pricing</span>
       <h1>Pricing</h1>
-      <p>Four plans. A free plan that never expires, and three that scale with your team.</p>
+      <p>Five plans. A free plan that never expires, plus Contractor, Estimator, Company and Enterprise.</p>
       <p class="privacy-updated">Effective Date: October 6, 2026</p>
       <p class="privacy-toc">
         <a href="refund.html">Refund Policy</a> &middot;
@@ -134,10 +134,17 @@
         </div>
 
         <div class="pricing-card is-featured">
-          <p class="pc-tier">Homeowner</p>
-          <p class="pc-name">Owners &amp; clients</p>
-          <p class="pc-price">$9.99 <small>/ month</small></p>
-          <p class="pc-note">First month free, then $9.99 monthly. Cancel any time.</p>
+          <!-- RENAMED 2026-10-07 (owner): this was the Homeowner plan at $9.99 a
+               month, which was never the price the owner set in Paddle. It is
+               the ESTIMATOR plan: $49.99 for six months, one payment period, for
+               a homeowner running their own build. The tier sent to
+               /api/billing/checkout is 'estimator' (the old 'homeowner' value
+               still resolves server-side, so nothing bought before the rename
+               is affected). -->
+          <p class="pc-tier">Estimator</p>
+          <p class="pc-name">Homeowners &amp; clients</p>
+          <p class="pc-price">$49.99 <small>/ 6 months</small></p>
+          <p class="pc-note">Billed every 6 months. Cancel any time.</p>
           <ul class="pc-list">
             <li>Everything in Free</li>
             <li>1 cloud-linked project for the job</li>
@@ -145,7 +152,7 @@
             <li>Track the project against the price you agreed</li>
             <li>Code sharing still works alongside your plan</li>
           </ul>
-          <p class="pc-cta"><button type="button" class="btn btn-gold" data-pricing-upgrade data-tier="homeowner">Start Homeowner</button></p>
+          <p class="pc-cta"><button type="button" class="btn btn-gold" data-pricing-upgrade data-tier="estimator">Start Estimator</button></p>
         </div>
 
         <div class="pricing-card">
@@ -184,7 +191,7 @@
       <div class="cmp-wrap">
         <table class="cmp-table">
           <thead>
-            <tr><th scope="col">Feature</th><th scope="col">Free</th><th scope="col">Contractor</th><th scope="col">Homeowner</th><th scope="col">Company</th><th scope="col">Enterprise</th></tr>
+            <tr><th scope="col">Feature</th><th scope="col">Free</th><th scope="col">Contractor</th><th scope="col">Estimator</th><th scope="col">Company</th><th scope="col">Enterprise</th></tr>
           </thead>
           <tbody>
             <tr><td>Cloud projects</td><td>1</td><td>Unlimited</td><td>1</td><td>Unlimited</td><td>Unlimited</td></tr>
@@ -205,8 +212,9 @@
       <h2 id="billing">How billing works</h2>
       <ul>
         <li><strong>Payments are handled by Paddle.</strong> Paddle is the merchant of record: they process your card, calculate and remit any sales tax, and handle billing support. Your card details never touch our servers.</li>
-        <li><strong>Your first month is free,</strong> as a trial. The trial is the only free month; the plan is $18.99 a month from then on.</li>
-        <li><strong>You are billed monthly.</strong> There is no annual plan and no long contract.</li>
+        <li><strong>Contractor's first month is free,</strong> as a trial. The trial is the only free month; Contractor is $18.99 a month from then on.</li>
+        <li><strong>Contractor is billed monthly.</strong> There is no annual plan and no long contract. Estimator is the one exception: it is billed once every 6 months at $49.99.</li>
+        <li><strong>The Estimator plan is not a monthly plan.</strong> Six months are paid at a time, so the price you pay per period is $49.99 and the next payment is six months later unless you cancel.</li>
         <li><strong>Cancel any time.</strong> Cancelling stops the next payment. Your Premium access runs to the end of the period you already paid for, and the free plan takes over after that.</li>
         <li><strong>Cancelling does not delete anything.</strong> Your projects stay in your account and stay readable. Premium only controls how many of them you may link.</li>
         <li><strong>Taxes are handled for you.</strong> Any tax due is calculated by Paddle at checkout from your location.</li>
@@ -214,7 +222,7 @@
 
       <h2 id="refunds">Refunds</h2>
       <p>If Premium is not right for you, ask for a refund within 30 days of a payment and we will put the money back. The full policy, including what is and is not covered, is on the <a href="refund.html">Refund Policy</a> page.</p>
-      <p>The free first month is not a payment, so there is nothing to refund: if you cancel during the trial you have paid nothing. The 30-day refund window starts at your first paid month.</p>
+      <p>The free first month on Contractor is not a payment, so there is nothing to refund there: if you cancel during the trial you have paid nothing. The 30-day refund window starts at your first paid period.</p>
 
       <h2 id="honest-limits">What paying does not change</h2>
       <p>We would rather be blunt than sell you something you will regret:</p>

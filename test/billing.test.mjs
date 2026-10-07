@@ -72,3 +72,34 @@ test('deriveTier: a missing price ID or env is contractor', () => {
   assert.equal(deriveTier('pri_ent', null), 'contractor');
   assert.equal(deriveTier(undefined, undefined), 'contractor');
 });
+
+// --- ESTIMATOR (owner 2026-10-07): the homeowner plan renamed -------------
+test('deriveTier: maps the estimator price ID to estimator', () => {
+  const env = { PADDLE_ESTIMATOR_PRICE_ID: 'pri_est', PADDLE_PRICE_ID: 'pri_con' };
+  assert.equal(deriveTier('pri_est', env), 'estimator');
+});
+
+test('deriveTier: the pre-rename homeowner price ID is an ALIAS for estimator', () => {
+  const env = { PADDLE_HOMEOWNER_PRICE_ID: 'pri_home', PADDLE_PRICE_ID: 'pri_con' };
+  assert.equal(deriveTier('pri_home', env), 'estimator');
+});
+
+test('deriveTier: the alias applies only to that price, never to contractor', () => {
+  const env = {
+    PADDLE_ESTIMATOR_PRICE_ID: 'pri_est',
+    PADDLE_HOMEOWNER_PRICE_ID: 'pri_home',
+    PADDLE_PRICE_ID: 'pri_con'
+  };
+  assert.equal(deriveTier('pri_con', env), 'contractor');
+  assert.equal(deriveTier('pri_est', env), 'estimator');
+  assert.equal(deriveTier('pri_home', env), 'estimator');
+});
+
+test('deriveTier: the estimator price wins over a stale homeowner price', () => {
+  const env = {
+    PADDLE_ESTIMATOR_PRICE_ID: 'pri_est',
+    PADDLE_HOMEOWNER_PRICE_ID: 'pri_est',
+    PADDLE_PRICE_ID: 'pri_con'
+  };
+  assert.equal(deriveTier('pri_est', env), 'estimator');
+});

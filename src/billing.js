@@ -77,14 +77,24 @@ export function billingFreeCap(env) {
 
 // Maps a Paddle price ID to a tier string. Falls back to 'contractor' for
 // any unrecognised ID so existing subscribers are never downgraded by mistake.
+//
+// ESTIMATOR (owner 2026-10-07): the homeowner plan IS the estimator plan - a
+// six-month subscription at $49.99, for a homeowner running their own build.
+// The tier string is 'estimator'. PADDLE_HOMEOWNER_PRICE_ID is still read as an
+// ALIAS so a subscription bought before the rename (or an in-flight checkout
+// on an old link) still resolves to the same plan instead of quietly falling
+// back to contractor - an alias that changed entitlements would be a silent
+// downgrade, which is the one thing this function must never do.
 export function deriveTier(priceId, env) {
   if (!priceId || !env) return 'contractor';
   if (env.PADDLE_ENTERPRISE_PRICE_ID && priceId === String(env.PADDLE_ENTERPRISE_PRICE_ID))
     return 'enterprise';
   if (env.PADDLE_COMPANY_PRICE_ID && priceId === String(env.PADDLE_COMPANY_PRICE_ID))
     return 'company';
+  if (env.PADDLE_ESTIMATOR_PRICE_ID && priceId === String(env.PADDLE_ESTIMATOR_PRICE_ID))
+    return 'estimator';
   if (env.PADDLE_HOMEOWNER_PRICE_ID && priceId === String(env.PADDLE_HOMEOWNER_PRICE_ID))
-    return 'homeowner';
+    return 'estimator';
   return 'contractor';
 }
 
@@ -569,12 +579,16 @@ export async function handleBillingCheckout(request, env) {
     priceId = String(env.PADDLE_ENTERPRISE_PRICE_ID);
   } else if (tierParam === 'company' && env.PADDLE_COMPANY_PRICE_ID) {
     priceId = String(env.PADDLE_COMPANY_PRICE_ID);
-  } else if (tierParam === 'homeowner' && env.PADDLE_HOMEOWNER_PRICE_ID) {
-    priceId = String(env.PADDLE_HOMEOWNER_PRICE_ID);
+  } else if (
+    (tierParam === 'estimator' || tierParam === 'homeowner') &&
+    (env.PADDLE_ESTIMATOR_PRICE_ID || env.PADDLE_HOMEOWNER_PRICE_ID)
+  ) {
+    // estimator is the plan; homeowner is the pre-rename alias for the same one
+    priceId = String(env.PADDLE_ESTIMATOR_PRICE_ID || env.PADDLE_HOMEOWNER_PRICE_ID);
   } else {
     priceId = String(env.PADDLE_PRICE_ID); // contractor (default)
   }
-  return paddleCheckout(env, session, priceId, tierParam);
+  return paddleCheckout(env, session, priceId, tierParam === 'homeowner' ? 'estimator' : tierParam);
 }
 
 // ---- manage / cancel (Wave 8.10, owner 2026-10-06) --------------------------

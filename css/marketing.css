@@ -263,229 +263,112 @@ svg.ico use {
   padding: 84px 0;
 }
 
-/* ---------- 4. Layout clearance for the dot-rail nav ----------
-   The fixed dot-rail lives at left:24px with a 1px line + tooltips that
-   slide out to the right, so the main reading column is nudged 96px from
-   the left edge. This is the same clearance the directive asked for
-   (64px rail zone + tooltip overhang + small breathing room). */
+/* ---------- 4. FULL-BLEED CANVAS (owner rule, 2026-10-07) ----------
+   <main> is the page canvas. It is exactly as wide as the window and carries
+   no margin, no max-width and no padding, so every band that is a direct child
+   (.hero, .page-hero, .photo-band, .section, .section-alt) paints edge to edge.
+   Only .container limits the reading column. NEVER give <main> a width, a
+   max-width or a left margin to "make room" for the dot rail: the rail floats
+   above the page (position: fixed) and reserves no space. */
 main {
-  max-width: var(--content-max-width);
-}
-/* The 96px rail zone is reserved ONLY where the rail actually exists.
-   .dot-rail-navigation is display:none at <=880px, so reserving the gutter
-   below that width left every page shifted right with a dead left band: at
-   390px the content column measured 294px wide in a 390px screen (measured
-   2026-10-07), which is what made the legal pages read as cramped. */
-@media (min-width: 881px) {
-  main {
-    margin-left: 96px;
-  }
+  display: block;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
 }
 
-/* ---------- 4b. Hero description measure (directive Task 4 rule) ----------
-
-/* ---------- dot-only rail: subsection dots tucked between the big ones ---------- */
-.dot-group {
+/* ---------- 4b. Hero description measure (directive Task 4 rule) ---------- */
+/* ---------- 5. DOT RAIL: big dot = major topic, small dots = minor topics ----------
+   Built from index.html (the majors) + js/marketing.js (the minors, count set by
+   MINORS_PER_GAP). No labels, no tooltips, no lines. ONE dot is active. */
+.dot-rail-navigation {
+  position: fixed;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 50;
+  pointer-events: none;
+}
+.dot-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0;
-  position: relative;
+  gap: 10px;
+  pointer-events: auto;
 }
-.dot-group::before {
-  /* hairline separator between a major dot and its subsection cluster.
-     Height comes from anchoring BOTH edges. The previous
-     `height: calc(100% - ...)` never rendered: the group has no definite
-     height, so the percentage made the calc invalid and the used height came
-     out 0px (measured 2026-10-07). */
-  content: '';
-  position: absolute;
-  top: 18px; /* below the major dot */
-  bottom: 8px;
-  left: 6px;
-  width: 1px;
-  background: var(--border-subtle);
-  z-index: 0;
-  opacity: 0.5;
-}
-.dot-group-children {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 15px;
-  padding-top: 4px;
-}
-.dot-item.minor {
+.dot-item {
   position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  width: 16px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
   text-decoration: none;
 }
-.dot-item.major .dot,
-.dot-group > .dot-item.major .dot {
+.dot-item::before {
+  /* bigger click target; absolutely positioned so it adds no height */
+  content: '';
+  position: absolute;
+  inset: -4px -8px;
+}
+.dot {
+  display: block;
+  border-radius: 50%;
+  background: #8b817a;
+  /* white halo + faint dark ring: readable on the dark hero AND the cream sections */
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.55),
+    0 0 0 2px rgba(0, 0, 0, 0.18);
+  transition:
+    width 0.15s ease-out,
+    height 0.15s ease-out,
+    background 0.15s ease-out,
+    box-shadow 0.15s ease-out;
+}
+.dot-item.major .dot {
   width: 12px;
   height: 12px;
-  border-radius: 50%;
-  background: var(--text-secondary);
-  transition:
-    width 0.15s ease-out,
-    height 0.15s ease-out,
-    background 0.15s ease-out,
-    box-shadow 0.15s ease-out,
-    transform 0.15s ease-out;
 }
-.dot-item.minor .dot,
-.dot-group-children > .dot-item.minor .dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--text-secondary);
-  transition:
-    width 0.15s ease-out,
-    height 0.15s ease-out,
-    background 0.15s ease-out,
-    box-shadow 0.15s ease-out,
-    transform 0.15s ease-out;
-  opacity: 0.5;
+.dot-item.minor .dot {
+  width: 5px;
+  height: 5px;
 }
-.dot-item.minor.active .dot,
-.dot-group-children > .dot-item.minor.active .dot {
-  width: 7px;
-  height: 7px;
-  background: var(--gold);
-  box-shadow: 0 0 6px var(--gold);
-  opacity: 1;
-}
-.dot-item.major.active .dot,
-.dot-group > .dot-item.major.active .dot {
+.dot-item.major.active .dot {
   width: 16px;
   height: 16px;
   background: var(--gold);
-  box-shadow: 0 0 12px var(--gold);
-  opacity: 1;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.7),
+    0 0 12px rgba(var(--gold-rgb), 0.75);
 }
-.dot-item.minor .dot-label,
-.dot-group-children > .dot-item.minor .dot-label {
-  display: none; /* labels are hidden by default on the rail */
-}
-.dot-item.minor .tooltip,
-.dot-group-children > .dot-item.minor .tooltip {
-  display: block;
-}
-.dot-item.minor .tooltip,
-.dot-group-children > .dot-item.minor .tooltip {
-  left: 20px;
-  top: 50%;
-  transform: translateY(-50%) translateX(-6px);
-  font-size: 11px;
-  padding: 3px 8px;
-}
-.dot-item.minor:hover .tooltip,
-.dot-group-children > .dot-item.minor:hover .tooltip,
-.dot-item.minor:focus-within .tooltip,
-.dot-group-children > .dot-item.minor:focus-within .tooltip {
-  opacity: 1;
-  transform: translateY(-50%) translateX(0);
-}
-.dot-item.minor:hover .dot,
-.dot-group-children > .dot-item.minor:hover .dot,
-.dot-item.minor:focus-within .dot,
-.dot-group-children > .dot-item.minor:focus-within .dot {
-  background: var(--gold);
-  box-shadow: 0 0 6px var(--gold);
-  opacity: 1;
-  transform: scale(1.15);
-}
-.dot-item.major:hover .dot,
-.dot-group > .dot-item.major:hover .dot,
-.dot-item.major:focus-within .dot,
-.dot-group > .dot-item.major:focus-within .dot {
-  background: var(--gold);
-  box-shadow: 0 0 10px var(--gold);
-  opacity: 1;
-  transform: scale(1.1);
-}
-.dot-group .dot-item.major::after {
-  /* small tick under a major dot so the subsection cluster has a visual anchor */
-  content: '';
-  display: block;
+.dot-item.minor.active .dot {
   width: 8px;
-  height: 1px;
-  background: var(--text-secondary);
-  margin-top: 2px;
-  opacity: 0.5;
-}
-.dot-group .dot-item.major:hover::after,
-.dot-group .dot-item.major:focus-within::after,
-.dot-group .dot-item.major.active::after {
+  height: 8px;
   background: var(--gold);
-  opacity: 1;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.7),
+    0 0 8px rgba(var(--gold-rgb), 0.75);
 }
-/* subsection dots visually belong to their parent major: keep them compact,
-   but don't collapse the whole group if one child is active */
-.dot-group-children > .dot-item.minor.active {
-  transform: translateX(0);
+.dot-item:focus-visible .dot {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
 }
-.dot-group-children > .dot-item.minor.active .dot {
-  transform: scale(1);
-}
-.dot-group > .dot-item.major.active + .dot-group-children {
-  /* when a major is active, its children are allowed to be seen by hover */
-  pointer-events: auto;
-}
-.dot-group-children > .dot-item.minor {
-  pointer-events: auto;
-}
-.dot-item.minor:focus-within .dot-label,
-.dot-group-children > .dot-item.minor:focus-within .dot-label {
-  display: inline;
-}
-.dot-rail-navigation .dot-label {
-  display: none; /* hide the major-dot labels by default too — only hover/focus shows them */
-}
-.dot-item.major:hover .dot-label,
-.dot-item.major:focus-within .dot-label,
-.dot-item.major.active .dot-label {
-  display: inline;
-}
-.dot-item.major .dot-label {
-  font-size: 10px;
-  letter-spacing: 0.03em;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  white-space: nowrap;
-  transition:
-    opacity 0.15s ease-out,
-    transform 0.15s ease-out;
-}
-.dot-item.major.active .dot-label {
-  color: var(--gold);
-}
-.dot-item.major.active .dot-label,
-.dot-item.major:hover .dot-label,
-.dot-item.major:focus-within .dot-label {
-  opacity: 1;
-  transform: translateY(0);
-}
-.dot-item.major .dot-label {
-  opacity: 0;
-  transform: translateY(-3px);
-  position: absolute;
-  left: 22px;
-  top: 50%;
-  transform-origin: left center;
-}
-.dot-item.major:hover .dot-label,
-.dot-item.major:focus-within .dot-label {
-  transform: translateY(0);
-}
-@media (max-width: 880px) {
+/* The rail needs >= 16px of clear space left of the reading column. The column
+   is min(1200px, 92vw) centred, so that holds from 1200px up. Below that, or on
+   a short window, the rail is hidden rather than overlapping content. */
+@media (max-width: 1199px), (max-height: 560px) {
   .dot-rail-navigation {
     display: none;
   }
 }
+
 /* The hero paragraph must not exceed 60ch. The page's real hero paragraph
    uses .hero-sub (tuned above); this alias exists so a generic matcher for
    ".hero-description" also binds if any downstream template adopts that
@@ -497,116 +380,6 @@ main {
   font-size: 1.125rem;
 }
 
-/* ---------- 1b. Fixed dot-rail nav (left side, labels always visible) ---------- */
-.dot-rail-navigation {
-  position: fixed;
-  left: 24px;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 50;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.rail-line {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 8px;
-  width: 1px;
-  background: var(--border-subtle);
-  z-index: 1;
-}
-.dot-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
-  z-index: 2;
-}
-.dot-item {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  text-decoration: none;
-}
-.dot {
-  /* display is load-bearing, not cosmetic: an inline span IGNORES width and
-     height, so a big dot left inline renders 0x0 and is invisible. The
-     subsection dots survived only because their parent <a> is a flex box and
-     blockified them; the major dots sit inside an <a class="dot-link">
-     wrapper, stayed inline, and measured 0x0 on the live page (2026-10-07). */
-  display: block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--text-secondary);
-  transition:
-    width 0.15s ease-out,
-    height 0.15s ease-out,
-    background 0.15s ease-out,
-    box-shadow 0.15s ease-out;
-}
-.dot-item.minor .dot {
-  width: 6px;
-  height: 6px;
-  opacity: 0.6;
-}
-.dot-item.active .dot {
-  width: 12px;
-  height: 12px;
-  background: var(--gold);
-  box-shadow: 0 0 10px var(--gold);
-  opacity: 1;
-}
-.dot-item .dot-label,
-.dot-item .dot-label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--text-secondary);
-  white-space: nowrap;
-  text-transform: uppercase;
-  transition: color 0.15s ease-out;
-}
-.dot-item.active .dot-label {
-  color: var(--gold);
-}
-.dot-item .tooltip {
-  position: absolute;
-  left: 24px;
-  top: 50%;
-  transform: translateY(-50%) translateX(-8px);
-  white-space: nowrap;
-  background: rgba(17, 24, 39, 0.85);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid var(--border-subtle);
-  color: var(--text-primary);
-  padding: 4px 10px;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  font-weight: 500;
-  opacity: 0;
-  pointer-events: none;
-  transition:
-    opacity 0.15s ease-out,
-    transform 0.15s ease-out;
-}
-.dot-item:hover .tooltip {
-  opacity: 1;
-  transform: translateY(-50%) translateX(0);
-}
-@media (max-width: 880px) {
-  .dot-rail-navigation {
-    display: none;
-  }
-}
 .section-alt {
   background: var(--bg-warm);
 }
@@ -4267,4 +4040,18 @@ body.dark-mode .pricing-card .pc-list li {
   .pricing-card:hover {
     transform: none;
   }
+}
+
+/* ---------- contact tiles must be allowed to shrink (phones) ----------
+   A flex/grid child defaults to min-width:auto, so a long unbreakable email
+   inside .contact-tile held the tile at 391px in a 390px window. */
+.contact-grid > * {
+  min-width: 0;
+}
+.contact-tile > div:not(.ct-icon) {
+  min-width: 0;
+}
+.contact-tile a,
+.contact-tile p {
+  overflow-wrap: anywhere;
 }

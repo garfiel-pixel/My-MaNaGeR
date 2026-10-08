@@ -29,6 +29,7 @@
     "verify:eslint": "node tools/verify-eslint.cjs",
     "verify:prettier": "node tools/verify-prettier.cjs",
     "verify:marketing": "node tools/verify-marketing-markup.cjs",
+    "verify:layout": "node tools/qa-marketing-layout.cjs",
     "verify:registry": "node tools/verify-test-registry.cjs",
     "verify:exports": "node tools/verify-render-exports.cjs",
     "test": "node --test test/*.test.mjs",

@@ -115,122 +115,72 @@
     }
   });
 
-  /* ---- dot-rail nav (left side, dot-only with hover/focus labels) ---- */
-  /*
-    Major dots = top-level page chapters.
-    Subsection dots sit between the big ones and prefill as the page scrolls
-    through that major section. Labels are hidden by default and show on hover
-    and focus-within so you can tell what a dot points at; click a dot to jump
-    back to that area.
-    Prefill rule: when a major section is in view, its subsection dots show up
-    as "seen" (filled) in order, so a reader scrolling through the section sees
-    the dots appear behind the sections as they pass them. When you scroll back
-    out of that major section, its subsection dots clear so the rail does not
-    hold stale marks from sections you have left. */
+  /* ---- dot rail ----
+     Big dot = major topic (the <a> links in index.html). Small dots = minor topics:
+     MINORS_PER_GAP of them are generated between every pair of big dots and stand at
+     equal thirds of the section above them. ONE dot is active, chosen by where the
+     reading line (38% down the window) sits in page order. No labels, no tooltips. */
   var dotNav = document.querySelector('.dot-rail-navigation');
-  if (dotNav && 'IntersectionObserver' in window) {
-    var dotLinks = Array.prototype.slice.call(
-      dotNav.querySelectorAll('a[data-target], a[data-label]')
-    );
-    var dotById = {};
-    dotLinks.forEach(function (a) {
-      var target = a.getAttribute('data-target') || a.getAttribute('href') || '';
-      if (target.charAt(0) === '#') dotById[target.slice(1)] = a;
+  if (dotNav) {
+    var MINORS_PER_GAP = 2;
+    var dotMajors = Array.prototype.slice.call(dotNav.querySelectorAll('a.dot-item.major'));
+    var dotList = dotNav.querySelector('.dot-list');
+    var dotStops = []; /* {dot, sec, frac} in page order */
+
+    dotMajors.forEach(function (a, i) {
+      var sec = document.getElementById((a.getAttribute('href') || '').slice(1));
+      if (!sec) return;
+      dotStops.push({ dot: a, sec: sec, frac: 0 });
+      if (i === dotMajors.length - 1) return; /* nothing under the last big dot */
+      for (var k = 1; k <= MINORS_PER_GAP; k++) {
+        var li = document.createElement('li');
+        li.setAttribute('aria-hidden', 'true');
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'dot-item minor';
+        b.tabIndex = -1;
+        b.innerHTML = '<span class="dot"></span>';
+        li.appendChild(b);
+        a.parentElement.parentNode.insertBefore(li, dotMajors[i + 1].parentElement);
+        dotStops.push({ dot: b, sec: sec, frac: k / (MINORS_PER_GAP + 1) });
+      }
     });
-    var dotSections = Object.keys(dotById)
-      .map(function (id) {
-        return document.getElementById(id);
-      })
-      .filter(Boolean);
 
-    /* ---- the travelling marker (owner 2026-10-07) ----------------------
-       ONE dot is active at any moment, and it follows the scroll. Big dots are
-       the page's chapters and the small dots between them are the topics under
-       that chapter, so the marker walks the two sizes in DOCUMENT ORDER rather
-       than lighting a whole cluster at once.
-
-       The previous implementation lit every subsection whose anchor sat above
-       `innerHeight - 40` and cleared the lot on a section change, which measured
-       on the live page as: no dot active inside #features, ALL FIFTEEN active at
-       #f-wbs and #f-claims, none at #how. It could not express "where am I". */
-    function dotAnchorIsMajor(a) {
-      return !(
-        a.parentElement &&
-        a.parentElement.classList &&
-        a.parentElement.classList.contains('dot-group-children')
-      );
+    function dotStopY(s) {
+      var r = s.sec.getBoundingClientRect();
+      return r.top + window.scrollY + r.height * s.frac;
     }
-
-    /* every anchor that resolves to a real element, in page order */
-    var dotAnchors = [];
-    dotLinks.forEach(function (a) {
-      var t = a.getAttribute('data-target') || a.getAttribute('href') || '';
-      var id = t.charAt(0) === '#' ? t.slice(1) : '';
-      var el = id ? document.getElementById(id) : null;
-      if (el) dotAnchors.push({ a: a, el: el, major: dotAnchorIsMajor(a) });
-    });
-    dotAnchors.sort(function (x, y) {
-      return (
-        x.el.getBoundingClientRect().top +
-        window.scrollY -
-        (y.el.getBoundingClientRect().top + window.scrollY)
-      );
-    });
-
-    function setActiveDotAnchor(a) {
-      dotLinks.forEach(function (l) {
-        l.classList.toggle('active', l === a);
-        if (l === a) l.setAttribute('aria-current', 'true');
-        else l.removeAttribute('aria-current');
-      });
+    function dotReadLine() {
+      return window.innerHeight * 0.38;
     }
-
-    /* the marker sits at the last anchor whose section start has passed the
-       reading line (38% down the viewport), which is the position the reader's
-       eye is actually in. */
     function syncDots() {
-      if (!dotAnchors.length) return;
-      var readLine = window.scrollY + window.innerHeight * 0.38;
-      var current = dotAnchors[0];
-      for (var i = 0; i < dotAnchors.length; i++) {
-        if (dotAnchors[i].el.getBoundingClientRect().top + window.scrollY <= readLine)
-          current = dotAnchors[i];
+      if (!dotStops.length) return;
+      var line = window.scrollY + dotReadLine();
+      var cur = dotStops[0];
+      for (var i = 0; i < dotStops.length; i++) {
+        if (dotStopY(dotStops[i]) <= line) cur = dotStops[i];
         else break;
       }
       if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4)
-        current = dotAnchors[dotAnchors.length - 1];
-
-      /* A ROW of anchors sits in a horizontal track: the fifteen #f-* feature
-         cards all occupy one line (measured tops 2083..2086 at 1440), so
-         vertical scroll alone cannot say which card the reader is on and the
-         last one in the row would otherwise claim every position.
-
-         Two details that cost a debugging round, both measured:
-         - the cards' tops differ by ~3px (65 vs 68 after a scrollIntoView), so
-           an exact-match or 2px tolerance splits the row and hands the marker
-           to the SECOND card. The row tolerance is therefore 24px.
-         - the pick must be the first card that is FULLY inside the reading
-           edge (left >= 0). "Nearest the edge" with a max(0, left) clamp let an
-           off-screen card win the sort. */
-      var rowTop = current.el.getBoundingClientRect().top;
-      var row = [];
-      for (var j = 0; j < dotAnchors.length; j++) {
-        if (Math.abs(dotAnchors[j].el.getBoundingClientRect().top - rowTop) <= 24)
-          row.push(dotAnchors[j]);
-      }
-      if (row.length > 1) {
-        var onTrack = null;
-        for (var k = 0; k < row.length; k++) {
-          if (row[k].el.getBoundingClientRect().left >= 0) {
-            onTrack = row[k];
-            break;
-          }
-        }
-        current = onTrack || row[row.length - 1];
-      }
-      setActiveDotAnchor(current.a);
+        cur = dotStops[dotStops.length - 1];
+      dotStops.forEach(function (s) {
+        var on = s === cur;
+        s.dot.classList.toggle('active', on);
+        if (on) s.dot.setAttribute('aria-current', 'true');
+        else s.dot.removeAttribute('aria-current');
+      });
     }
-
+    dotStops.forEach(function (s) {
+      if (s.frac === 0) return; /* big dots are real links */
+      s.dot.addEventListener('click', function () {
+        var reduce =
+          window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        window.scrollTo({
+          top: dotStopY(s) - dotReadLine() + 2,
+          behavior: reduce ? 'auto' : 'smooth'
+        });
+      });
+    });
     var dotRaf = 0;
     function queueSyncDots() {
       if (dotRaf) return;
@@ -241,63 +191,8 @@
     }
     window.addEventListener('scroll', queueSyncDots, { passive: true });
     window.addEventListener('resize', queueSyncDots);
-    /* capture phase: a horizontal track inside the page fires scroll on ITSELF,
-       and element scroll events do not bubble to window. */
-    document.addEventListener('scroll', queueSyncDots, { passive: true, capture: true });
+    window.addEventListener('load', queueSyncDots);
     syncDots();
-
-    /* dot rail scheme: same idea as the old slim rail - the rail flips between
-       light and dark text depending on the active section's own background. */
-    function sectionScheme(el) {
-      if (!el) return 'dark';
-      var s = el.getAttribute('data-spy-scheme');
-      if (s === 'light' || s === 'dark') return s;
-      return el.classList.contains('section-alt') ? 'light' : 'dark';
-    }
-    function setDotScheme(sectionId) {
-      var el = sectionId ? document.getElementById(sectionId) : null;
-      var scheme = sectionScheme(el);
-      dotNav.classList.toggle('on-light', scheme === 'light');
-      dotNav.classList.toggle('on-dark', scheme !== 'light');
-    }
-
-    // initial scheme before the observer fires (hero is dark -> light labels)
-    setDotScheme(null);
-
-    var lastId = dotSections.length
-      ? (function () {
-          var last = null;
-          dotSections.forEach(function (el) {
-            if (el.id) last = el.id;
-          });
-          return last;
-        })()
-      : null;
-
-    function atPageBottom() {
-      return window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
-    }
-
-    var dotObserver = new IntersectionObserver(
-      function (entries) {
-        var best = null,
-          bestRatio = -1;
-        entries.forEach(function (entry) {
-          if (entry.isIntersecting && entry.intersectionRatio > bestRatio) {
-            bestRatio = entry.intersectionRatio;
-            best = entry.target.id;
-          }
-        });
-        if (!best && atPageBottom() && lastId) best = lastId;
-        setDotScheme(best);
-        syncDots();
-      },
-      { rootMargin: '-40% 0px -45% 0px', threshold: [0, 0.25, 0.5, 0.75, 1] }
-    );
-
-    dotSections.forEach(function (el) {
-      dotObserver.observe(el);
-    });
   }
 
   /* ---- icon-sprite deploy guard (HTTP(S) only; file:// stays quiet) ---- */

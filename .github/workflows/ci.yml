@@ -227,6 +227,19 @@ jobs:
         env:
           WRANGLER_DEV_URL: http://127.0.0.1:8787
 
+      # The cancel contract against the REAL Worker. With no session cookie this
+      # exercises the session gate (a bare DELETE must be refused with the
+      # generic 403 body before any subscription row is read) and marks the
+      # cookie-dependent gates N/A; with QA_BILLING_CANCEL_COOKIE set it also
+      # runs the typed-confirmation and error-message gates. Registered as CI in
+      # docs/CI-TEST-COVERAGE.md, which is only true while this step exists.
+      - name: "T2: Billing cancel contract"
+        id: qa-billing-cancel
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: node tools/qa-billing-cancel.cjs
+        env:
+          QA_BILLING_CANCEL_URL: http://127.0.0.1:8787/
+
       - name: "T2: Cloud import"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-cloud-import.cjs
@@ -479,6 +492,7 @@ jobs:
           echo "| Inline JS parse | ${{ steps.inline.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Line endings | ${{ steps.eol.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Client codes E2E | ${{ steps.qa-client-codes.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Billing cancel contract | ${{ steps.qa-billing-cancel.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| API keys E2E | ${{ steps.qa-api-keys.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Sync bond E2E | ${{ steps.qa-sync-bond.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Service Worker | ${{ steps.sw.outcome }} |" >> $GITHUB_STEP_SUMMARY

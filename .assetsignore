@@ -49,3 +49,6 @@ secrets.json
 # worker.js so neither path can leak it.
 *.map
 **/*.map
+# 2026-10-08 (billing directive): named cookie files and the billing patch.
+*cookies*
+*.patch

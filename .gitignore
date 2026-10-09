@@ -107,3 +107,8 @@ tmp_*.md
 scratch.md
 scratch.json
 tmp/
+# 2026-10-08 (billing directive): a live session cookie jar was dropped in
+# the repo root by a QA session. *.json is already deploy-excluded, but
+# ignoring it by name too means a rename cannot leak it.
+*cookies*.json
+*cookies*.txt

@@ -105,6 +105,17 @@ export function billingStatusActive(status) {
   return status === 'active' || status === 'on_trial' || status === 'past_due';
 }
 
+// D1 stores current_period_end as epoch SECONDS. JavaScript's Date() takes
+// MILLISECONDS, so handing the stored number to the browser made it render
+// 1794154608 (Nov 8, 2026) as 1794154608 ms = "Jan 21, 1970". Every date that
+// leaves the API is an ISO-8601 UTC string instead - one format, no unit to
+// get wrong. A missing or non-positive value is null, never 1970.
+export function periodEndIso(sec) {
+  const n = Number(sec);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return new Date(n * 1000).toISOString();
+}
+
 function hmacHex(secret, payload) {
   return crypto.subtle
     .importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, [
@@ -161,8 +172,9 @@ async function lsApplyWebhook(env, rawBody) {
   const periodEndRaw = attrs.renews_at || attrs.ends_at;
   const periodEnd = periodEndRaw ? Math.floor(new Date(periodEndRaw).getTime() / 1000) : null;
   // Legacy LS subscribers stay on Contractor - the equivalent of the old 'pro'.
-  await applySubscription(env, ownerSub, lsId, status, 'contractor', periodEnd);
+  const lsApplied = await applySubscription(env, ownerSub, lsId, status, 'contractor', periodEnd);
   if (
+    lsApplied &&
     authEmailConfigured(env) &&
     (event === 'subscription_created' || event === 'subscription_cancelled')
   ) {
@@ -291,8 +303,9 @@ async function paddleApplyWebhook(env, rawBody) {
   const priceId =
     (data && data.items && data.items[0] && data.items[0].price && data.items[0].price.id) || null;
   const tier = deriveTier(priceId, env);
-  await applySubscription(env, ownerSub, pdId, status, tier, periodEnd, occurredAt);
+  const applied = await applySubscription(env, ownerSub, pdId, status, tier, periodEnd, occurredAt);
   if (
+    applied &&
     authEmailConfigured(env) &&
     (event === 'subscription.activated' || event === 'subscription.canceled')
   ) {
@@ -314,6 +327,39 @@ async function applySubscription(
   occurredAt
 ) {
   const now = occurredAt || new Date().toISOString();
+  // ONE ROW PER OWNER, so an event about a DIFFERENT subscription must not
+  // strip the one the owner is actually paying for: cancelling an old/duplicate
+  // subscription in the Paddle dashboard fires subscription.canceled for the
+  // OLD id, and without this check it overwrote the row and revoked Premium
+  // on the live one. An inactive event for a non-current id is acknowledged
+  // and ignored. (Active-vs-active still lets the latest win, with a warning.)
+  const prior = await env.DB.prepare(
+    'SELECT ls_subscription_id, status FROM cloud_subscriptions WHERE owner_sub = ?'
+  )
+    .bind(ownerSub)
+    .first();
+  if (prior && prior.ls_subscription_id && prior.ls_subscription_id !== providerSubId) {
+    if (billingStatusActive(prior.status) && !billingStatusActive(status)) {
+      console.warn(
+        'billing: ignored ' +
+          status +
+          ' event for ' +
+          providerSubId +
+          ' - the owner row holds the active subscription ' +
+          prior.ls_subscription_id
+      );
+      return false;
+    }
+    if (billingStatusActive(prior.status) && billingStatusActive(status)) {
+      console.warn(
+        'billing: owner now has two active subscriptions: ' +
+          prior.ls_subscription_id +
+          ' and ' +
+          providerSubId +
+          ' - the older one is no longer reachable from the app'
+      );
+    }
+  }
   // ls_subscription_id holds the provider's subscription/transaction id for
   // whichever provider wrote the row (one row per owner, latest wins).
   // plan AND tier both carry the tier string: `plan` is the historical column
@@ -328,6 +374,7 @@ async function applySubscription(
   )
     .bind(ownerSub, providerSubId, status, tier, tier, periodEnd, now, now)
     .run();
+  return true;
 }
 
 async function subEmailNotice(env, recipient, confirmed) {
@@ -407,7 +454,7 @@ export async function handleBillingStatus(request, env) {
     provider: provider,
     plan: active ? sub.tier || sub.plan || 'contractor' : 'free',
     active: active,
-    currentPeriodEnd: (sub && sub.current_period_end) || null,
+    currentPeriodEnd: periodEndIso(sub && sub.current_period_end),
     projectCap: cap,
     projectCount: projectCount
   });
@@ -572,6 +619,29 @@ export async function handleBillingCheckout(request, env) {
   const provider = billingProvider(env);
   if (!provider) return json({ ok: false, error: 'billing not configured' }, 503);
   if (provider !== 'paddle') return lsCheckout(env, session);
+  // A second checkout while a subscription is live creates a SECOND Paddle
+  // subscription that is billed separately. The one-row-per-owner table can
+  // only remember one of them, so the other keeps charging and can no longer
+  // be seen or cancelled from the app. Refuse until the first is cancelled.
+  const held = await env.DB.prepare(
+    'SELECT status, ls_subscription_id FROM cloud_subscriptions WHERE owner_sub = ?'
+  )
+    .bind(session.sub)
+    .first();
+  if (
+    held &&
+    billingStatusActive(held.status) &&
+    String(held.ls_subscription_id || '').indexOf('sub_') === 0
+  )
+    return json(
+      {
+        ok: false,
+        code: 'already_subscribed',
+        error:
+          'You already have an active subscription. Cancel it from your dashboard first - a second one would be billed separately and could not be managed from here.'
+      },
+      409
+    );
   const url = new URL(request.url);
   const tierParam = url.searchParams.get('tier') || 'contractor';
   let priceId;
@@ -610,6 +680,28 @@ export async function handleBillingCancel(request, env) {
       503
     );
   }
+  // OWNER 2026-10-09: cancelling must never be one stray click. The panel makes
+  // the user TYPE the word CANCEL, and the request itself has to carry it, so a
+  // bare DELETE - a stale open tab, a hand-made request, a mis-wired button -
+  // is refused here, before the subscription row is even read and long before
+  // Paddle is called. The check is deliberately the first thing after the
+  // provider gate: a wrong word cannot touch the database.
+  let confirmWord = '';
+  try {
+    const raw = await request.text();
+    if (raw) confirmWord = String((JSON.parse(raw) || {}).confirm || '');
+  } catch (e) {
+    confirmWord = '';
+  }
+  if (confirmWord.trim().toUpperCase() !== 'CANCEL')
+    return json(
+      {
+        ok: false,
+        code: 'confirm_required',
+        error: 'Type CANCEL to confirm cancelling your subscription.'
+      },
+      400
+    );
   const sub = await env.DB.prepare(
     'SELECT status, ls_subscription_id, current_period_end FROM cloud_subscriptions WHERE owner_sub = ?'
   )
@@ -628,12 +720,18 @@ export async function handleBillingCancel(request, env) {
     'Content-Type': 'application/json'
   };
   try {
-    const res = await fetch(base + '/subscriptions/' + encodeURIComponent(subId), {
-      method: 'PATCH',
+    // Paddle has a DEDICATED cancel operation. The old call PATCHed the
+    // subscription with `scheduled_change: { action: 'cancel', ... }`, which
+    // Paddle rejects with 400 "Invalid request." (its own docs: on PATCH,
+    // scheduled_change "may only be set to null to remove a scheduled change.
+    // Use the pause subscription, cancel subscription, and resume subscription
+    // operations to create scheduled changes"). The request field is
+    // `effective_from`, not `effective_at` - `effective_at` is the RESPONSE
+    // field, which is why the reply is parsed with effective_at below.
+    const res = await fetch(base + '/subscriptions/' + encodeURIComponent(subId) + '/cancel', {
+      method: 'POST',
       headers: auth,
-      body: JSON.stringify({
-        scheduled_change: { action: 'cancel', effective_at: 'next_billing_period' }
-      })
+      body: JSON.stringify({ effective_from: 'next_billing_period' })
     });
     const data = await res.json().catch(function () {
       return {};
@@ -644,13 +742,50 @@ export async function handleBillingCancel(request, env) {
         const err = (data && data.error) || {};
         const first = (err.errors && err.errors[0]) || {};
         detail = String(first.detail || err.detail || err.code || '').slice(0, 300);
+        if (err.code && detail.indexOf(String(err.code)) === -1)
+          detail = (detail + ' [' + String(err.code) + ']').slice(0, 340);
       } catch (e) {
         /* keep detail empty */
       }
+      // Mirror the checkout path's environment mismatch explainer. A 400/404 on
+      // the cancel PATCH is very often the same live/sandbox catalog split: the
+      // subscription lives in one Paddle environment and the API key + PADDLE_ENV
+      // are pointing at the other. Say so instead of returning the raw Paddle
+      // "Invalid request." which is not actionable from the admin panel.
+      let hint = '';
+      if (res.status === 404) {
+        hint =
+          ' - the subscription was not found by the ' +
+          (sandbox ? 'SANDBOX' : 'LIVE') +
+          ' API. The subscription and the API key may be in different Paddle environments. A sandbox key cannot reach a live subscription and the reverse. Check PADDLE_ENV, PADDLE_API_KEY and the subscription in the Paddle dashboard.';
+      } else if (res.status === 400) {
+        // A 400 means Paddle refused the REQUEST, not that the subscription is
+        // missing - the old shared hint sent the owner hunting an environment
+        // mismatch that did not exist. Say what a 400 actually means.
+        hint = ' - Paddle rejected the cancel request itself. This is not a missing subscription.';
+      } else if (res.status === 401 || res.status === 403) {
+        hint =
+          ' - Paddle rejected the API key for the ' +
+          (sandbox ? 'sandbox' : 'live') +
+          ' API. The key may be for the wrong environment or lack subscription write scope.';
+      }
+      // Surface the subscription id we tried to cancel so the worker log is
+      // actionable without guessing which row tripped it.
+      console.warn(
+        'billing cancel failed: subId=' +
+          subId +
+          ' env=' +
+          (sandbox ? 'sandbox' : 'live') +
+          ' http=' +
+          res.status +
+          ' detail=' +
+          detail
+      );
       return json(
         {
           ok: false,
-          error: 'cancel failed (Paddle HTTP ' + res.status + ')' + (detail ? ' , ' + detail : '')
+          error:
+            'cancel failed (Paddle HTTP ' + res.status + ')' + hint + (detail ? ' , ' + detail : '')
         },
         502
       );
@@ -662,7 +797,7 @@ export async function handleBillingCancel(request, env) {
     return json({
       ok: true,
       cancelAt: cancelAt,
-      currentPeriodEnd: sub.current_period_end || null,
+      currentPeriodEnd: periodEndIso(sub.current_period_end),
       status: sub.status
     });
   } catch (e) {

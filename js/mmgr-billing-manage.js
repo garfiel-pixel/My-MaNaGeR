@@ -32,7 +32,10 @@
   function fmtDate(iso) {
     if (!iso) return '';
     try {
-      var d = new Date(iso);
+      /* The API sends ISO strings. A bare number below 1e11 is epoch SECONDS
+         (1794154608 = Nov 2026); Date() wants ms, and skipping this made it
+         render as Jan 21, 1970. */
+      var d = new Date(typeof iso === 'number' && iso < 1e11 ? iso * 1000 : iso);
       if (isNaN(d.getTime())) return String(iso);
       return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     } catch (e) {
@@ -56,6 +59,22 @@
       '<button type="button" class="btn btn-n btn-s" data-bmg="manage">Manage subscription</button>';
   }
 
+  /* OWNER 2026-10-09: cancelling takes TWO deliberate acts - type the word, then
+     press the button - because one stray click on a phone should never end a
+     subscription. The button stays DISABLED (not merely styled as disabled, so
+     a keyboard or screen-reader user gets the same contract) until the typed
+     value matches, and the server refuses any cancel that does not carry the
+     word as well. */
+  var CONFIRM_WORD = 'CANCEL';
+
+  function wordMatches(value) {
+    return (
+      String(value || '')
+        .trim()
+        .toUpperCase() === CONFIRM_WORD
+    );
+  }
+
   function renderConfirm(plan, periodEnd) {
     plan.hidden = false;
     var when = periodEnd ? ' on ' + fmtDate(periodEnd) : ' at the end of the current period';
@@ -64,8 +83,13 @@
       '<div class="t-xs lh18" data-bmg="note" role="status">Cancel your plan? It stops the next payment' +
       esc(when) +
       '. You keep Premium until then, and nothing is deleted.</div>' +
+      '<label class="t-xs bmg-label" for="bmg-code">Type ' +
+      CONFIRM_WORD +
+      ' to confirm</label>' +
+      '<input id="bmg-code" class="bmg-code" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="bmg-why">' +
+      '<div class="t-xs lh18 bmg-why" id="bmg-why" role="status">The cancel button turns on once the word matches.</div>' +
       '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
-      '<button type="button" class="btn btn-d btn-s" data-bmg="confirm">Confirm cancel</button>' +
+      '<button type="button" class="btn btn-d btn-s" data-bmg="confirm" disabled aria-disabled="true">Confirm cancel</button>' +
       '<button type="button" class="btn btn-n btn-s" data-bmg="keep">Keep my plan</button>' +
       '</div>';
   }
@@ -121,9 +145,13 @@
     if (!plan || busy) return;
     busy = true;
     try {
+      // The word travels with the request: the server refuses a cancel that
+      // does not carry it, so this is not a client-side gesture only.
       var res = await fetch('/api/billing/subscription', {
         method: 'DELETE',
-        credentials: 'same-origin'
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: CONFIRM_WORD })
       });
       var data = await res.json().catch(function () {
         return {};
@@ -160,9 +188,28 @@
     }
     if (act === 'confirm') {
       e.preventDefault();
+      // Belt and braces: the button is disabled until the word matches, but the
+      // typed value is re-read here too, so a programmatic click cannot fire a
+      // cancel that the user never confirmed.
+      var code = $('bmg-code');
+      if (!wordMatches(code && code.value)) return;
       cancelSubscription();
       return;
     }
+  });
+
+  /* The confirm button is only usable once the typed word matches. Uses the
+     event-delegated input event so it survives every re-render of the panel. */
+  document.addEventListener('input', function (e) {
+    var el = e.target;
+    if (!el || el.id !== 'bmg-code') return;
+    var plan = $(PLAN);
+    if (!plan) return;
+    var btn = plan.querySelector('[data-bmg="confirm"]');
+    if (!btn) return;
+    var ok = wordMatches(el.value);
+    btn.disabled = !ok;
+    btn.setAttribute('aria-disabled', ok ? 'false' : 'true');
   });
 
   if (document.readyState === 'loading') {

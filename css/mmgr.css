@@ -4235,6 +4235,18 @@ body.dark-mode .dmaic-chip {
   gap: 4px;
   flex-shrink: 0;
 }
+/* OWNER 2026-10-09 (console/stress audit): the due chip refused to shrink, so
+   at 320px a long chip ("Due in 4 days - overdue by 3") pushed the DOCUMENT
+   13px wider than the screen and the whole page could be nudged sideways - a
+   found defect, measured, not a guess. From 561px up the chip stays exactly
+   as it was; on a small phone it may shrink and its label wraps instead of
+   widening the page. */
+@media (max-width: 560px) {
+  .tf-due {
+    flex-shrink: 1;
+    min-width: 0;
+  }
+}
 .tf-due svg {
   font-size: 0.7rem;
 }
@@ -4634,7 +4646,10 @@ body.gantt-dragging .gb {
   inset: 0;
   background: linear-gradient(90deg, transparent 20%, var(--skel-sheen) 50%, transparent 80%);
   transform: translateX(-100%);
-  animation: skel-sheen 1.4s infinite ease-in-out;
+  /* POLISH (owner 2026-10-09): the original 1.4s ease-in-out sheen read as a
+     fast flicker on a large boot splash; 1.7s with a settled curve reads as a
+     calm sweep instead. Nothing else about the loading state changes. */
+  animation: skel-sheen 1.7s infinite cubic-bezier(0.4, 0, 0.2, 1);
 }
 @keyframes skel-sheen {
   to {
@@ -4656,7 +4671,10 @@ body.gantt-dragging .gb {
 }
 .skel-pill {
   height: 30px;
-  border-radius: 100px;
+  /* Placeholder matches the control it stands in for: the app's buttons are
+     rounded rectangles now (owner 2026-10-09), so the pill placeholder follows
+     the same radius instead of promising a pill that no longer exists. */
+  border-radius: var(--radius-rect, 10px);
 }
 .skel-card {
   height: 120px;
@@ -15188,6 +15206,41 @@ body:not(.dark-mode):not(.db-page) .btn-pill.btn-pill {
 body:not(.dark-mode):not(.db-page) #app-sidebar .sec-btn {
   border-radius: var(--radius-rect);
 }
+/* ---- OWNER 2026-10-09 (ROUNDED-RECTANGLE LANGUAGE, NOW EVERYWHERE) ----
+   Owner: "way too much pill icons... we're gonna work with our rectangular
+   with curved edges... and we're gonna use that strictly", then extended it
+   to the app page and the project viewer as well as the admin panel. This
+   mirrors the 2026-09-20 project-page shape pass and adds the .db-page
+   surfaces - launcher (app.html), admin panel and the calculator page - plus
+   the status badge chips that read as "pill icons". Both themes: the rule is
+   deliberately not theme-scoped, so dark and light match.
+   DELIBERATELY NOT TOUCHED: elements whose roundness carries meaning - the
+   circular count badge (.sec-badge), avatars, status dots, the health-count
+   circles (fixed 28px circles per the earlier owner pass) - and the toast
+   chip language. SHAPE ONLY: zero colour, hover, icon or size changes. */
+.db-page .btn.btn,
+.db-page .btn-pill.btn-pill,
+.db-page .sec-btn.sec-btn,
+.db-page #app-sidebar .sec-btn,
+.db-page .badge,
+.db-page .bg,
+.db-page .ba,
+.db-page .br,
+.db-page .bo,
+.db-page .bs {
+  border-radius: var(--radius-rect);
+}
+/* The project viewer already took buttons/tabs in the 2026-09-20 pass; its
+   status chips join the same language here so the two surfaces match. */
+body:not(.db-page) .badge,
+body:not(.db-page) .bg,
+body:not(.db-page) .ba,
+body:not(.db-page) .br,
+body:not(.db-page) .bo,
+body:not(.db-page) .bs {
+  border-radius: var(--radius-rect);
+}
+
 /* ---- HAVE A CODE? (owner 2026-09-20, app.html) ------------------------
    The question mark beside the section heading explains what a code IS on
    hover or keyboard focus. Pure CSS tooltip: no JS, no handlers, no CSP
@@ -15614,11 +15667,221 @@ body.rr-open {
 }
 @media (max-width: 560px) {
   .bcp-ai-log {
-    max-height: 260px;
+    max-height: 300px;
   }
   .bcp-ai-msg {
     max-width: 100%;
   }
+  .bcp-ai-tools {
+    width: 100%;
+  }
+  .bcp-ai-tools .btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
+
+/* OWNER 2026-10-09 (item 4.3-4.6): the bigger assistant window.
+   A taller transcript with room to read, a history control, the two next-step
+   buttons, the attach control, and the signed-in identity pinned along the
+   bottom. Token-driven only, so light and dark both hold with no override. */
+.bcp-ai-log {
+  min-height: 260px;
+  max-height: 520px;
+}
+.bcp-ai-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.bcp-ai-tools .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.bcp-ai-tools .ico {
+  width: 14px;
+  height: 14px;
+}
+.bcp-ai-hist {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 16px);
+  background: var(--tile-bg);
+  padding: 8px;
+  margin-bottom: 10px;
+}
+.bcp-ai-histlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.bcp-ai-histrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.bcp-ai-histopen {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  font: inherit;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  padding: 7px 10px;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-rect, 10px);
+  cursor: pointer;
+}
+.bcp-ai-histopen:hover {
+  border-color: var(--gold);
+}
+.bcp-ai-histopen:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.bcp-ai-histtitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bcp-ai-histat {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  color: var(--text-secondary, var(--text));
+}
+.bcp-ai-histdel {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  color: var(--text-secondary, var(--text));
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-rect, 10px);
+  cursor: pointer;
+}
+.bcp-ai-histdel:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.bcp-ai-histdel .ico {
+  width: 14px;
+  height: 14px;
+}
+.bcp-ai-histempty {
+  margin: 4px 2px 2px;
+  font-size: 0.76rem;
+  color: var(--text-secondary, var(--text));
+}
+.bcp-ai-paths {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-lg, 16px);
+  background: rgba(var(--gold-rgb), 0.08);
+}
+.bcp-ai-pathq {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+.bcp-ai-pathrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.bcp-ai-pathrow .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.bcp-ai-pathrow .ico {
+  width: 14px;
+  height: 14px;
+}
+.bcp-ai-badge {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 6px;
+  border: 1px solid currentColor;
+}
+.bcp-ai-attach {
+  flex-shrink: 0;
+  min-height: 40px;
+  padding: 8px 10px;
+}
+.bcp-ai-attach .ico {
+  width: 16px;
+  height: 16px;
+}
+.bcp-ai-fileinfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 8px 0 0;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--text-secondary, var(--text));
+}
+.bcp-ai-fileinfo .ico {
+  width: 14px;
+  height: 14px;
+}
+.bcp-ai-me {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--border);
+  font-size: 0.78rem;
+  color: var(--text-secondary, var(--text));
+}
+.bcp-ai-ava {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--card);
+  background: var(--gold);
+}
+.bcp-ai-me-mail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bcp-ai-me-out {
+  flex: 1 1 auto;
+}
+.bcp-ai-me-link {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--gold);
 }
 
 /* ============================================

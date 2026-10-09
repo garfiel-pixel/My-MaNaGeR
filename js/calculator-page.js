@@ -8427,6 +8427,122 @@
   // D3 restore (pre-brand) retired 2026-10-01: brandLoad/renderBrand own the
   // business name now (mmgr_calc_biz_name migrates into mmgr_calc_brand).
 
+  /* OWNER 2026-10-09 (item 4.5-4.6): the Assistant panel's TWO hooks. They are
+     the whole contract - the panel stays swappable and never reads calculator
+     internals itself, and removing them only costs the feature, never the page.
+
+       MMGR_CALC_RATEBOOK()   plain text: the work-item keys the panel may
+                              name, the ACTIVE rate book with a slice of its
+                              rates, and how the line on screen is priced. This
+                              is what lets an answer be GROUNDED in the book
+                              instead of invented.
+       MMGR_CALC_POPULATE(v)  write the agreed figures into the form and add
+                              the line to the bill through the SAME dispatch the
+                              "Add to bill" button uses (calcBoqAdd) - a
+                              proposal and a click must not be two code paths.
+       MMGR_CALC_FILE()       the existing export: the priced line as CSV. */
+  function calcRateBookText() {
+    var out = [];
+    try {
+      var keys = Object.keys(WORK);
+      out.push(
+        'Work items you may name in "work" (key = label): ' +
+          keys
+            .map(function (k) {
+              var w = WORK[k] || {};
+              return k + ' = ' + (w.label || w.name || k) + (w.unit ? ' (' + w.unit + ')' : '');
+            })
+            .join('; ')
+      );
+      var b = activeBook();
+      if (b && b.rates) {
+        // Book rates are nested work -> variant -> { allIn, unit }.
+        var fams = Object.keys(b.rates);
+        var rows = [];
+        fams.slice(0, 12).forEach(function (fam) {
+          var variants = b.rates[fam] || {};
+          Object.keys(variants)
+            .slice(0, 3)
+            .forEach(function (v) {
+              var r = variants[v] || {};
+              var amt = r.allIn !== undefined ? r.allIn : r.rate;
+              if (amt === undefined || amt === null || amt === '') return;
+              rows.push(fam + '/' + v + ' ' + amt + (r.unit ? ' per ' + r.unit : ''));
+            });
+        });
+        out.push(
+          'Active rate book: ' +
+            (b.name || b.id || 'imported book') +
+            ' - ' +
+            fams.length +
+            ' work families. Rates to quote from: ' +
+            (rows.join('; ') || '(no numeric rates)') +
+            '.'
+        );
+      } else {
+        out.push('Active rate book: none - the built-in planning-grade model rates are in use.');
+      }
+      var st = readState();
+      if (st && st.work) out.push('The work item selected on the page is "' + st.work + '".');
+      if (lastResult && !lastResult.error) {
+        out.push(
+          'The line on screen prices at ' +
+            (lastResult.currency || '') +
+            ' ' +
+            lastResult.total +
+            '.'
+        );
+      }
+    } catch (e) {
+      return '';
+    }
+    return out.join('\n');
+  }
+
+  function calcPopulate(v) {
+    try {
+      if (!v || typeof v !== 'object') return { ok: false, error: 'nothing to add' };
+      var sel = $('calc-work');
+      if (v.work) {
+        if (!sel) return { ok: false, error: 'the calculator form is not on this page' };
+        var known = Array.prototype.some.call(sel.options || [], function (o) {
+          return o.value === v.work;
+        });
+        if (!known) return { ok: false, error: 'that work item is not on this page' };
+        sel.value = v.work;
+        syncLabels();
+      }
+      var w = WORK[(sel && sel.value) || ''] || {};
+      var put = function (name, id, allowed) {
+        if (!allowed) return;
+        if (v[name] === undefined || v[name] === null || v[name] === '') return;
+        var el = $(id);
+        if (el) el.value = String(v[name]);
+      };
+      put('d1', 'calc-d1', true);
+      put('d2', 'calc-d2', !!w.d2);
+      put('d3', 'calc-d3', !!w.d3);
+      if (v.measuredQty !== undefined && v.measuredQty !== null && v.measuredQty !== '') {
+        var mq = $('calc-measured-qty');
+        if (mq) mq.value = String(v.measuredQty);
+        var mt = $('calc-measured-manual');
+        if (mt) mt.checked = true;
+      }
+      var r = render();
+      if (!r || r.error) {
+        return { ok: false, error: 'those figures do not price - check the quantities' };
+      }
+      ACTIONS.calcBoqAdd();
+      return { ok: true, name: r.name, total: r.total, currency: r.currency || '' };
+    } catch (e) {
+      return { ok: false, error: 'could not add that line' };
+    }
+  }
+
+  window.MMGR_CALC_RATEBOOK = calcRateBookText;
+  window.MMGR_CALC_POPULATE = calcPopulate;
+  window.MMGR_CALC_FILE = downloadCsv;
+
   /* OWNER 2026-10-08: the Assistant panel (js/calc-ai.js).
      #calc-ai-mount is the SWAP POINT - a later full-page takeover calls
      MMGR_CALC_AI.unmount() and mounts its own module on this same node, so
@@ -8452,7 +8568,9 @@
             ? ''
             : String(Math.round(Number(v) * 100) / 100);
         };
+        var st = readState();
         var lines = [
+          'Work item key: ' + (st.work || ''),
           'Work item: ' + (r.name || '') + (r.unit ? ' (' + r.unit + ')' : ''),
           'Quantity: ' + (r.qty === undefined ? '' : r.qty) + (r.unit ? ' ' + r.unit : ''),
           'Currency: ' + (r.currency || ''),

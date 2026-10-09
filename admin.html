@@ -3112,7 +3112,21 @@ document.addEventListener('click', function(e){
   if (e.target.closest('.db-side-close')) return;
   const actionEl = e.target.closest('[data-action]');
   if (actionEl && (actionEl.getAttribute('data-action') === 'tglNav')) return;
-  if (e.target.closest('a') || actionEl) closeAdminNav();
+  // OWNER 2026-10-09: the rail is pinned open on desktop (see the pre-paint
+  // snippet), so navigation must NOT close it there - closing it on desktop
+  // left the page with no rail and no icons after a Back navigation. Mobile
+  // keeps the drawer behaviour. Mirrors app.html + project.html.
+  const _desktop = window.matchMedia && window.matchMedia('(min-width:769px)').matches;
+  if ((e.target.closest('a') || actionEl) && !_desktop) closeAdminNav();
+});
+/* Rail restore (owner 2026-10-09): the desktop rail is pinned open, so a page
+   restored from the back/forward cache must come back with it open and its
+   hamburger aria in step. */
+window.addEventListener('pageshow', function(){
+  if (!(window.matchMedia && window.matchMedia('(min-width:769px)').matches)) return;
+  document.body.classList.add('side-open');
+  const _btn = document.getElementById('nav-btn');
+  if (_btn) _btn.setAttribute('aria-expanded', 'true');
 });
 /* Rail accordion toggle ([data-rail-toggle]) - same delegated handler as
    app.html (FIX 2026-09-02: admin.html had the Customize button + panel but

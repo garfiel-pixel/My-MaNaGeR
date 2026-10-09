@@ -77,8 +77,11 @@ const check = (name, val, detail) => {
   const run = (pathname, init) =>
     mod.default.fetch(new Request('https://app.example' + pathname, init), env);
 
-  // 1. Missing key -> 503 (OWNER 2026-09-16: honest no-key contract; the old
-  // 'missing api key' 401 mislabeled Workers-AI capacity exhaustion)
+  // 1. No key AND no session -> 401 sign-in required (owner 2026-10-09,
+  // item 4.2). The free section is signed-in only: the daily cap is counted
+  // per account, and an anonymous caller has no account to count against -
+  // which is how an anonymous request used to ride the Workers AI binding for
+  // free. A caller's OWN key is NOT affected (R04-R14 below prove that).
   const r1 = await run('/api/ai/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -86,9 +89,45 @@ const check = (name, val, detail) => {
   });
   const d1 = await r1.json();
   check(
-    'R01 missing key -> 503 capacity JSON, no key demanded',
-    r1.status === 503 && d1.ok === false && String(d1.error).indexOf('capacity') !== -1,
-    { status: r1.status, d1 }
+    'R01 no key + no session -> 401 sign-in JSON, no key demanded, no upstream call',
+    r1.status === 401 &&
+      d1.ok === false &&
+      String(d1.error).indexOf('Sign in') !== -1 &&
+      upstreamCalls.length === 0,
+    { status: r1.status, d1, upstreamCalls: upstreamCalls.length }
+  );
+
+  // 1b. A SIGNED-IN caller with no key still gets the honest 503 capacity
+  // message (OWNER 2026-09-16 contract) - the gate above must not become a
+  // blanket refusal that hides real capacity trouble from signed-in users.
+  // Also: the env has no KV and no GEMINI_KEY_*, so this is the no-pool path.
+  const httpMod = await import(
+    pathToFileURL(path.join(dir, 'src', 'lib', 'http.js')).href + '?v=' + Date.now()
+  );
+  const sessionEnv = Object.assign({}, env, { GOOGLE_CLIENT_SECRET: 'harness-relay-secret' });
+  const sessKey = await httpMod.sessionKey(sessionEnv);
+  const sessTok = await httpMod.signSession(
+    {
+      sub: 'owner-1',
+      email: 'o@example.com',
+      exp: Math.floor(Date.now() / 1000) + 3600
+    },
+    sessKey
+  );
+  upstreamCalls = [];
+  const r1b = await mod.default.fetch(
+    new Request('https://app.example/api/ai/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: 'mmgr_session=' + sessTok },
+      body: JSON.stringify({ provider: 'openai', messages: [{ role: 'user', content: 'hi' }] })
+    }),
+    sessionEnv
+  );
+  const d1b = await r1b.json();
+  check(
+    'R01b signed-in, no key -> 503 capacity JSON (the sign-in gate is not a blanket refusal)',
+    r1b.status === 503 && d1b.ok === false && String(d1b.error).indexOf('capacity') !== -1,
+    { status: r1b.status, d1b }
   );
 
   // 2. Bad JSON body -> 400

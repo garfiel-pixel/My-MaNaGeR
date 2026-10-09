@@ -119,6 +119,43 @@ for (const href of anchorTargets) {
 }
 check('at least 3 sidebar links', anchorTargets.length >= 3);
 
+console.log('--- 2a2. Performance Mode lag probe samples the pretty default ---');
+// The probe exists to nudge a LAGGY device toward Performance Mode. It used to
+// return unless perf was already ON, so it could never fire on the pretty
+// default (owner report: "performance mode doesn't work or something").
+const perfJs = fs.readFileSync(path.join(ROOT, 'js', 'mmgr-perf.js'), 'utf8');
+check(
+  'lag probe runs while Performance Mode is OFF (heavy layers active)',
+  /if \(isOn\(\)\) return;/.test(perfJs) && !/\n\s*if \(!isOn\(\)\) return;/.test(perfJs)
+);
+
+console.log('--- 2b. rail survives a back-navigation (owner 2026-10-09) ---');
+// The launcher rail is pinned open on desktop. Clicking a rail link used to
+// close it on desktop too, and the icon strip is only shown by .side-closed,
+// which the close path never set - so leaving for admin/calculator and pressing
+// Back restored a page with neither the rail nor its icons.
+const adminHtml = fs.readFileSync(path.join(ROOT, 'admin.html'), 'utf8');
+check(
+  'app rail: navigation does not close the desktop rail',
+  /const desktop = window\.matchMedia/.test(appHtml) && /if \(desktop\) return;/.test(appHtml)
+);
+check(
+  'app rail: re-asserts the pinned-open state on pageshow',
+  /addEventListener\('pageshow'/.test(appHtml) && /classList\.add\('side-open'\)/.test(appHtml)
+);
+check(
+  'admin rail: navigation does not close the desktop rail',
+  /const _desktop = window\.matchMedia/.test(adminHtml) && /closeAdminNav\(\);/.test(adminHtml)
+);
+check(
+  'admin rail: re-asserts the pinned-open state on pageshow',
+  /addEventListener\('pageshow'/.test(adminHtml) && /classList\.add\('side-open'\)/.test(adminHtml)
+);
+check(
+  'admin bundle carries the bfcache icon-restore module',
+  fs.readFileSync(path.join(ROOT, 'dist/admin-bundle.js'), 'utf8').includes('MMGRIconRestore')
+);
+
 console.log('--- 3. Icon refs in dashboard markup exist in sprite ---');
 // grab the dashboard-specific block: everything between the DASHBOARD comment and <div class="wrap">
 const dashBlock = appHtml.slice(

@@ -448,6 +448,15 @@ export async function handleBillingStatus(request, env) {
     .bind(session.sub)
     .first();
   const active = !!(sub && billingStatusActive(sub.status));
+  // OWNER 2026-10-09 (L11): free = exactly the free cap (one linked project),
+  // and EVERY paid tier - estimator included - is unlimited. This used to
+  // report the free cap for every tier including paying ones, which is what
+  // forced the client gate to become contractor-only for a while. The create
+  // gate in src/cloud/projects.js already allowed any ACTIVE subscription
+  // past the cap, so the two now say the same thing: null means unlimited.
+  // A paid subscription is not metered by plan name here, deliberately - a
+  // tier we do not recognise must still be unlimited rather than silently
+  // capped at one project for someone who is paying.
   return json({
     ok: true,
     configured: true,
@@ -455,7 +464,7 @@ export async function handleBillingStatus(request, env) {
     plan: active ? sub.tier || sub.plan || 'contractor' : 'free',
     active: active,
     currentPeriodEnd: periodEndIso(sub && sub.current_period_end),
-    projectCap: cap,
+    projectCap: active ? null : cap,
     projectCount: projectCount
   });
 }

@@ -50,13 +50,18 @@ const AI_TIMEOUT_MS = 30000; // hard upstream timeout
 
    Free accounts get FREE_DAILY_MESSAGE_CAP messages per 24-hour window,
    counted in KV (env.KV, the binding that already exists - no migration).
-   Accounts with an active subscription are not capped.
+   Accounts with an active subscription are not capped. The whole free
+   section is SIGNED-IN ONLY (owner 2026-10-09): there is no account to count
+   an anonymous caller against, so an anonymous request is refused instead of
+   riding the free engines. A caller's own key is unaffected.
    The SMALLEST model is used on this rung, and the client's requested model
    is deliberately ignored: a free key's most generous allowance is on the
    lite model, so stepping up would burn the pool faster for no benefit. */
 const FREE_POOL_SLOTS = 4;
 const FREE_POOL_MODEL = 'gemini-flash-lite-latest';
-const FREE_DAILY_MESSAGE_CAP = 10;
+// Owner 2026-10-09: five, down from ten - and the number is deliberately
+// never advertised. The client shows only the reached-limit line.
+const FREE_DAILY_MESSAGE_CAP = 5;
 const FREE_QUOTA_TTL_S = 86400; // the window resets 24h after a key's own reset
 const FREE_QUOTA_PREFIX = 'aifree:';
 // Status for "out of free messages" - deliberately NOT 429/503, which the
@@ -387,24 +392,41 @@ export async function handleAiChat(request, env) {
   // per account and there is no account to count against otherwise.
   if (!key) {
     const session = await readSession(request, env);
+    // SIGN-IN GATE (owner 2026-10-09). The free section is signed-in only.
+    // The daily cap is counted per account, and an anonymous caller has no
+    // account to count against - which is exactly how an anonymous request
+    // used to ride the Workers AI binding for free, uncapped and invisible.
+    // A caller's OWN key (the BYO path below) is deliberately untouched:
+    // that key belongs to them and costs this project nothing.
+    if (!session || !session.sub) {
+      return json(
+        {
+          ok: false,
+          error:
+            'Sign in to use the assistant. It is free, and your daily allowance is counted on your account.',
+          tier: 'free-pool'
+        },
+        401
+      );
+    }
+    const paid = await poolIsPaid(env, session.sub);
+    const used = paid ? 0 : await freeQuotaUsed(env, session.sub);
+    if (!paid && used >= FREE_DAILY_MESSAGE_CAP) {
+      // The allowance is never advertised up front - only this reached-limit
+      // line, which says what happens next rather than naming a number.
+      return json(
+        {
+          ok: false,
+          error:
+            'You have reached your daily limit for free AI messages. It refreshes 24 hours after your first message, or connect your own AI key in the AI window (Settings, AI Engine) for unlimited questions.',
+          tier: 'free-pool',
+          remaining: 0
+        },
+        FREE_QUOTA_STATUS
+      );
+    }
     const pool = freePoolKeys(env);
-    if (session && session.sub && pool.length) {
-      const paid = await poolIsPaid(env, session.sub);
-      const used = paid ? 0 : await freeQuotaUsed(env, session.sub);
-      if (!paid && used >= FREE_DAILY_MESSAGE_CAP) {
-        return json(
-          {
-            ok: false,
-            error:
-              'You have used all ' +
-              FREE_DAILY_MESSAGE_CAP +
-              ' free AI messages for today. They reset 24 hours after your first one, or connect your own AI key in the AI window (Settings, AI Engine) for unlimited questions.',
-            tier: 'free-pool',
-            remaining: 0
-          },
-          FREE_QUOTA_STATUS
-        );
-      }
+    if (pool.length) {
       const poolOut = await poolAttempt(pool, body.messages);
       if (poolOut) {
         if (!paid) await freeQuotaBump(env, session.sub, used);
@@ -417,29 +439,36 @@ export async function handleAiChat(request, env) {
         });
       }
     }
-  }
 
-  // WORKERS-AI-FIRST (Rank 2): if no BYO key and Workers AI binding is
-  // available, run inference at the edge — zero external calls, zero API
-  // keys in the browser, sub-100ms latency. Falls through to external
-  // providers when a key IS provided (user's own endpoint preference).
-  if (!key && env && env.AI) {
-    try {
-      const aiModel = '@cf/meta/llama-3.1-8b-instruct';
-      const aiResult = await env.AI.run(aiModel, {
-        messages: body.messages.map(function (m) {
-          return { role: m.role || 'user', content: m.content || '' };
-        })
-      });
-      const aiText = aiResult && aiResult.response;
-      if (aiText)
-        return json({ ok: true, text: String(aiText), model: aiModel, source: 'workers-ai' });
-    } catch (e) {
-      // Workers AI failed — fall through to external providers
+    // WORKERS-AI SAFETY NET (Rank 2): the edge binding answers when the pool
+    // cannot - no key secrets configured, or every key throttled or revoked.
+    // It is the SAME free engine family, so it spends the same daily
+    // allowance; without that, "a few messages a day" would quietly become
+    // far more whenever the pool was unavailable.
+    if (env && env.AI) {
+      try {
+        const aiModel = '@cf/meta/llama-3.1-8b-instruct';
+        const aiResult = await env.AI.run(aiModel, {
+          messages: body.messages.map(function (m) {
+            return { role: m.role || 'user', content: m.content || '' };
+          })
+        });
+        const aiText = aiResult && aiResult.response;
+        if (aiText) {
+          if (!paid) await freeQuotaBump(env, session.sub, used);
+          return json({
+            ok: true,
+            text: String(aiText),
+            model: aiModel,
+            source: 'workers-ai',
+            remaining: paid ? null : Math.max(0, FREE_DAILY_MESSAGE_CAP - used - 1)
+          });
+        }
+      } catch (e) {
+        // Workers AI failed - fall through to the capacity message.
+      }
     }
-  }
 
-  if (!key) {
     // OWNER 2026-09-16: the Workers-AI no-key path used to fall through to
     // 'missing api key' when the free binding was exhausted or errored - a
     // flat-out wrong message that sent owners hunting for a key they never

@@ -297,18 +297,6 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
       <span class="db-project-ico"><svg class="ico" aria-hidden="true"><use id="demo-rail-icon" href="css/mmgr-icons.svg#i-eye"></use></svg></span>
       <span class="db-project-name">Show demo projects</span>
     </button>
-    <!-- Build Cost Calculator (owner 2026-09-28): client-facing estimator,
-         standalone page like admin.html. RAIL entry = icon + text, same
-         db-link language as every other rail row (the closed-rail icon strip
-         carries the icon-only twin below). -->
-    <a class="db-link" href="calculator.html" title="Build Cost Calculator - estimate quantities, labor and tax before the project starts"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calculator"></use></svg> Build Cost Calculator</a>
-    <a class="db-link" href="admin.html"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Admin panel</a>
-    <!-- CREATE-YOUR-OWN (owner directive 2026-08-15): the launcher's second
-         door into admin , an open-lock entry beside the Admin panel link that
-         sends visitors to the admin interface so they can create their own
-         project (their own admin point). Same db-link language as Admin panel
-         (replicated UI), i-unlock glyph, plain link close-on-nav behaviour. -->
-    <a class="db-link" href="admin.html"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-unlock"></use></svg> Create your own</a>
     <div class="db-g">Cloud</div>
     <button type="button" class="db-link" data-rail-toggle="rail-cloud-list" aria-expanded="false" aria-controls="rail-cloud-list"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud Projects <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
     <div class="db-sub" id="rail-cloud-list" hidden></div>
@@ -324,6 +312,24 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
       <input type="password" id="drive-pass" class="db-pass" placeholder="Backup passphrase" title="Encrypt backups with a passphrase (optional) -- enter once per browser session" autocomplete="off">
       <span id="drive-sync-status" class="drive-status" role="status" aria-live="polite"></span>
     </div>
+    <!-- OWNER 2026-10-09: Administrate and Tools are their OWN groups, so
+         the rail reads as five clear destinations (Overview / Projects /
+         Cloud / Administrate / Tools / Customize) instead of stacking the
+         admin and calculator entries inside Projects. -->
+    <div class="db-g">Administrate</div>
+    <a class="db-link" href="admin.html"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Admin panel</a>
+    <!-- CREATE-YOUR-OWN (owner directive 2026-08-15): the launcher's second
+         door into admin , an open-lock entry beside the Admin panel link that
+         sends visitors to the admin interface so they can create their own
+         project (their own admin point). Same db-link language as Admin panel
+         (replicated UI), i-unlock glyph, plain link close-on-nav behaviour. -->
+    <a class="db-link" href="admin.html"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-unlock"></use></svg> Create your own</a>
+    <div class="db-g">Tools</div>
+    <!-- Build Cost Calculator (owner 2026-09-28): client-facing estimator,
+         standalone page like admin.html. RAIL entry = icon + text, same
+         db-link language as every other rail row (the closed-rail icon strip
+         carries the icon-only twin below). -->
+    <a class="db-link" href="calculator.html" title="Build Cost Calculator - estimate quantities, labor and tax before the project starts"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calculator"></use></svg> Build Cost Calculator</a>
     <div class="db-g">Customize</div>
     <button type="button" class="db-link" data-rail-toggle="rail-customize" aria-expanded="false" aria-controls="rail-customize"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Customize <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
     <div class="db-sub db-customize" id="rail-customize" hidden>
@@ -1020,7 +1026,18 @@ if (demoRailRow) {
 document.getElementById('db-sidebar').addEventListener('click', e=>{
   // Accordion toggles (All Projects / Cloud / Backup / Customize) stay open , 
   // only plain navigation links close the drawer.
-  if (e.target.closest('a') && !e.target.closest('[data-rail-toggle]')) { document.body.classList.remove('side-open'); syncSidebarAria(); }
+  if (!(e.target.closest('a') && !e.target.closest('[data-rail-toggle]'))) return;
+  // OWNER 2026-10-09: the rail is PINNED OPEN on desktop (see the pre-paint
+  // snippet + project.html's shell), so a nav click must NOT close it there.
+  // It closed on desktop before, and because the icon strip is only shown by
+  // .side-closed, a Back navigation returned to a launcher with NO rail and
+  // NO icon strip - "the side panel is gone, no icons". Mobile keeps the
+  // off-canvas drawer behaviour: navigating closes it.
+  const desktop = window.matchMedia && window.matchMedia('(min-width:769px)').matches;
+  if (desktop) return;
+  document.body.classList.remove('side-open');
+  syncSidebarAria();
+  syncSidebarIcons();
 });
 
 /* NEW-UI-CREATION-BRIEF I1 follow-up , hamburger on ALL viewports. The
@@ -1097,7 +1114,24 @@ function syncThemeQuick(){
    into a hidden modal at boot; if its surface is empty when the modal opens
    (GIS sized it at 0px while hidden), render it again now that it is
    visible. The email form mounts after #google-signin-button on boot. */
+/* OWNER 2026-10-09: clicking Sign in on the app page now leaves for the
+   polished standalone sign-in page (signin.html) instead of opening the small
+   in-page #siom sheet - "once someone clicks sign in they should be popped up
+   to the good looking page". The #siom markup stays in place because the
+   contextual cloud sign-in prompts open it directly; this entry point no
+   longer does. Offline-first guard: a navigation to an uncached page must
+   never be the outcome of a click, so while offline the in-page sheet is
+   still used. */
 function openSignIn(){
+  var online = true;
+  try { online = navigator.onLine !== false; } catch(e){}
+  if (online){
+    try {
+      var next = encodeURIComponent((location.pathname || '/app') + (location.search || ''));
+      window.location.href = 'signin.html?next=' + next;
+      return;
+    } catch(e){ /* fall through to the in-page sheet */ }
+  }
   const m = document.getElementById('siom');
   if (!m) return;
   m.classList.add('open');
@@ -1820,6 +1854,17 @@ renderRailProjects();
 syncThemeQuick();
 syncSidebarAria();
 syncSidebarIcons();
+
+/* Rail restore (owner 2026-10-09): a page restored from the back/forward
+   cache must come back with the desktop rail exactly as the design pins it
+   (open), and its icon strip in step. Without this, leaving the launcher for
+   admin/calculator and pressing Back returned to a rail-less, icon-less page. */
+window.addEventListener('pageshow', function(){
+  if (!(window.matchMedia && window.matchMedia('(min-width:769px)').matches)) return;
+  document.body.classList.add('side-open');
+  syncSidebarAria();
+  syncSidebarIcons();
+});
 
 // Sidebar icon strip navigation: clicking an icon opens the sidebar and
 // navigates to the corresponding section/page.

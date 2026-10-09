@@ -171,7 +171,12 @@ const ADMIN_MODULES = [
   // Wave 8.10 (owner 2026-10-06): the admin rail's Manage-subscription strip.
   // Self-contained (delegated clicks, no inline script) so adding it changes
   // no CSP hash.
-  'js/mmgr-billing-manage.js'
+  'js/mmgr-billing-manage.js',
+  // bfcache sprite restore (2026-10-09): admin.html is a back/forward-cache
+  // restore target too - returning to it left its rail icons unpainted. Same
+  // module as the project + launcher bundles; load-order independent, it only
+  // touches the DOM, so it sits last.
+  'js/mmgr-icon-restore.js'
 ];
 
 // ---- Banner: ensures MMGR namespace exists before any module runs ----

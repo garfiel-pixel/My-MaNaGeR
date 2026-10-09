@@ -33,13 +33,17 @@
   function aiAssistant() {
     return signedIn();
   } // signed-in (unchanged)
-  // OWNER 2026-10-09: the ESTIMATOR tier is not contractor-level. The server
-  // returns the FREE project cap for every tier (src/billing.js, the
-  // projectCap field), so the old `_tier !== 'free'` promised unlimited cloud
-  // to a homeowner subscriber and then let the create gate refuse the 2nd
-  // project - a gate that lied is worse than no gate. contractor+ only.
+  // OWNER 2026-10-09 (L11): FREE = one linked project; EVERY PAID TIER -
+  // estimator included - is unlimited, and the server now says the same thing
+  // (src/billing.js returns projectCap null for any active subscription, and
+  // the create gate in src/cloud/projects.js has always let an active
+  // subscription past the cap). The estimator exclusion that lived here for a
+  // few hours existed only because the status response reported the free cap
+  // for every tier; with the server fixed, the client and server agree again.
+  // Offline/local projects are not counted by this gate at all - they are
+  // unlimited on every tier, signed in or not.
   function unlimitedCloud() {
-    return _tier === 'contractor' || _tier === 'company' || _tier === 'enterprise';
+    return _tier !== 'free';
   }
   // All paid tiers may use the AI estimator. The free tier is NOT excluded: it
   // gets a small daily allowance through the managed key pool (see the free

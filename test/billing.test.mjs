@@ -262,6 +262,57 @@ test('GET /api/billing/status returns currentPeriodEnd as an ISO string', async 
   assert.equal(d.currentPeriodEnd, '2026-11-08T16:16:48.000Z');
 });
 
+// OWNER 2026-10-09 (L11): free = the free cap (one linked project by
+// default), EVERY paid tier - estimator included - is unlimited. The status
+// response is what the client gate reads, so if it reports a cap for a paying
+// owner the rail shows a limit that the create gate would not actually apply.
+test('status: free gets the free cap; every PAID tier reports null (unlimited)', async () => {
+  const env = baseEnv({ sub: null }, { FREE_PROJECT_CAP: '1' });
+  const rFree = await handleBillingStatus(
+    await authedRequest(env, 'GET', 'https://x.test/api/billing/status'),
+    env
+  );
+  const dFree = await rFree.json();
+  assert.equal(dFree.plan, 'free');
+  assert.equal(dFree.projectCap, 1);
+
+  for (const tier of ['estimator', 'contractor', 'company', 'enterprise']) {
+    const e = baseEnv(
+      {
+        sub: { status: 'active', tier, plan: tier, current_period_end: PERIOD_END_SEC }
+      },
+      { FREE_PROJECT_CAP: '1' }
+    );
+    const r = await handleBillingStatus(
+      await authedRequest(e, 'GET', 'https://x.test/api/billing/status'),
+      e
+    );
+    const d = await r.json();
+    assert.equal(d.plan, tier);
+    assert.equal(d.projectCap, null, tier + ' must be unlimited');
+  }
+});
+
+test('status: the free cap defaults to 1 and past_due still counts as paid', async () => {
+  const dflt = baseEnv({ sub: null });
+  const r = await handleBillingStatus(
+    await authedRequest(dflt, 'GET', 'https://x.test/api/billing/status'),
+    dflt
+  );
+  assert.equal((await r.json()).projectCap, 1, 'the free cap default is one linked project');
+
+  const e = baseEnv({
+    sub: { status: 'past_due', tier: 'estimator', plan: 'estimator' }
+  });
+  const r2 = await handleBillingStatus(
+    await authedRequest(e, 'GET', 'https://x.test/api/billing/status'),
+    e
+  );
+  const d2 = await r2.json();
+  assert.equal(d2.active, true);
+  assert.equal(d2.projectCap, null, 'a failed payment must not cap a paying owner');
+});
+
 test('DELETE /api/billing/subscription POSTs to the LIVE cancel operation with the stored sub id and answers with ISO dates', async () => {
   const env = baseEnv({
     sub: { status: 'active', ls_subscription_id: SUB, current_period_end: PERIOD_END_SEC }

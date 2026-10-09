@@ -80,9 +80,14 @@
       nudged = localStorage.getItem('mmgr_perf_nudge') === '1';
     } catch (e) {}
     if (nudged || !window.requestAnimationFrame) return;
-    // Only surfaces matter: run while a page is visible, skip if the user
-    // already trimmed effects (perf on = heavy layers already stood down).
-    if (!isOn()) return;
+    // OWNER 2026-10-09: sample while the HEAVY layers are actually running,
+    // which is Performance Mode OFF (pretty is the default). The old guard was
+    // `if (!isOn()) return;` - it returned unless perf was ALREADY on, so a
+    // laggy device sitting on the default never got the nudge at all, which is
+    // the one case the probe exists for. When the user has already turned
+    // Performance Mode on, the heavy layers are down and there is nothing to
+    // probe.
+    if (isOn()) return;
     var frames = 0,
       slow = 0,
       tPrev = null,

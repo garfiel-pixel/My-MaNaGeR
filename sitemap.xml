@@ -24,4 +24,12 @@
   <url>
     <loc>https://mymanagerworkspace.com/terms</loc>
   </url>
+  <!-- OWNER 2026-10-09: pricing and refund are public, indexable pages and
+       robots.txt already allows them, but they were missing from this sitemap. -->
+  <url>
+    <loc>https://mymanagerworkspace.com/pricing</loc>
+  </url>
+  <url>
+    <loc>https://mymanagerworkspace.com/refund</loc>
+  </url>
 </urlset>

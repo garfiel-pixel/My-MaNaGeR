@@ -125,7 +125,9 @@ async function check(name, expr, hint) {
     `(function(){
     var h = document.querySelector('.site-header');
     var b = document.querySelector('.brand b');
-    return {val: !!h && !!b && /MaNaGeR/.test(b.textContent) && getComputedStyle(h).position === 'sticky'};
+    // Brand text is "MY MANAGER" now; the old case-sensitive /MaNaGeR/ probe
+    // went stale when the brand was renamed (2026-10-09 harness repair).
+    return {val: !!h && !!b && /manager/i.test(b.textContent) && getComputedStyle(h).position === 'sticky'};
   })()`
   );
   await check(
@@ -290,57 +292,35 @@ async function check(name, expr, hint) {
   })()`
   );
 
-  // ---- 6b. Mobile sign-in (OWNER 2026-08-14: "at the side of the hamburger") ----
-  // Still at 390px: the header Sign-in button must sit beside the hamburger,
-  // open the shared email-auth sheet within the viewport, and close on Escape
-  // with aria-expanded reset. Then the same wiring on the field-guide's
-  // mobile-bar (its own Sign-in button beside #menuBtn).
+  // ---- 6b. No marketing sign-in (OWNER 2026-10-09) ----
+  // Sign-in is offered ONLY on the app page now, and clicking Sign in there
+  // opens the polished standalone /signin page. Every marketing header sign-in
+  // trigger was removed, so the retired #signin-sheet must stay hidden and
+  // unreachable. This replaces the old mkt-16/mkt-17 checks that asserted the
+  // sheet OPENED - that contract no longer exists.
   await check(
-    'mkt-16 mobile: header Sign in beside hamburger, sheet opens + Escape closes',
+    'mkt-16 mobile: no marketing sign-in trigger; retired sheet stays hidden',
     `(function(){
-    var btn = document.querySelector('.signin-trigger');
-    var tog = document.getElementById('nav-toggle');
-    var cta = document.querySelector('.header-cta-desktop');
-    if (!btn || getComputedStyle(btn).display === 'none') return {val: false, why: 'signin hidden'};
-    if (!tog || getComputedStyle(tog).display === 'none') return {val: false, why: 'hamburger hidden'};
-    if (!cta || getComputedStyle(cta).display !== 'none') return {val: false, why: 'desktop CTA not hidden'};
-    if (document.documentElement.scrollWidth > document.documentElement.clientWidth + 1) return {val: false, why: 'horizontal overflow'};
-    btn.click();
+    if (document.querySelector('.signin-trigger')) return {val: false, why: 'a marketing sign-in trigger still exists'};
     var sheet = document.getElementById('signin-sheet');
-    var form = document.querySelector('#marketing-email-auth .email-auth-form');
-    var inViewport = sheet.getBoundingClientRect().right <= window.innerWidth + 1;
-    // FORM-PRIMARY contract (owner 2026-09-06, P5.4 2026-09-10): the email
-    // form is visible immediately on sheet open - no "sign in with email
-    // instead" toggle exists (showToggle:false). Escape closes.
-    if (sheet.hidden || !form || form.hidden || !inViewport) {
-      return {val: false, why: 'sheet did not open correctly', hidden: sheet.hidden, form: !!form, formHidden: form && form.hidden, inViewport: inViewport};
-    }
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
-    var closed = sheet.hidden && btn.getAttribute('aria-expanded') === 'false';
-    return {val: closed, closed: closed, aria: btn.getAttribute('aria-expanded')};
+    if (sheet && !sheet.hidden) return {val: false, why: 'retired signin sheet is visible'};
+    var tog = document.getElementById('nav-toggle');
+    if (!tog || getComputedStyle(tog).display === 'none') return {val: false, why: 'hamburger hidden'};
+    if (document.documentElement.scrollWidth > document.documentElement.clientWidth + 1) return {val: false, why: 'horizontal overflow'};
+    return {val: true};
   })()`
   );
   await send('Page.navigate', { url: BASE + '/mymanager-field-guide.html' });
   await delay(2400);
   await check(
-    'mkt-17 mobile guide: Sign in beside mobile-bar hamburger opens the sheet',
+    'mkt-17 mobile guide: no sign-in trigger beside the mobile-bar hamburger',
     `(function(){
     var bar = document.querySelector('.mobile-bar');
-    var signin = bar ? bar.querySelector('.signin-trigger') : null;
-    var menu = document.getElementById('menuBtn');
-    if (!signin || getComputedStyle(signin).display === 'none') return {val: false, why: 'mobile-bar signin hidden'};
-    if (!menu || getComputedStyle(menu).display === 'none') return {val: false, why: 'menuBtn hidden'};
-    if (document.documentElement.scrollWidth > document.documentElement.clientWidth + 1) return {val: false, why: 'horizontal overflow'};
-    signin.click();
+    if (bar && bar.querySelector('.signin-trigger')) return {val: false, why: 'guide mobile-bar still offers sign-in'};
     var sheet = document.getElementById('signin-sheet');
-    var form = document.querySelector('#marketing-email-auth .email-auth-form');
-    var inViewport = sheet.getBoundingClientRect().right <= window.innerWidth + 1;
-    // FORM-PRIMARY contract (owner 2026-09-06, P5.4 2026-09-10): form visible
-    // immediately, no toggle step.
-    if (sheet.hidden || !form || form.hidden || !inViewport) {
-      return {val: false, why: 'sheet did not open correctly', hidden: sheet.hidden, form: !!form, formHidden: form && form.hidden, inViewport: inViewport};
-    }
-    return {val: !form.hidden, hidden: sheet.hidden, formHidden: form.hidden, inViewport: inViewport};
+    if (sheet && !sheet.hidden) return {val: false, why: 'retired signin sheet is visible'};
+    if (document.documentElement.scrollWidth > document.documentElement.clientWidth + 1) return {val: false, why: 'horizontal overflow'};
+    return {val: true};
   })()`
   );
   await send('Emulation.clearDeviceMetricsOverride');

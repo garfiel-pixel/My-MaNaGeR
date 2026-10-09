@@ -6,7 +6,9 @@ import { signSession, sessionKey } from '../src/lib/http.js';
 // ---------------------------------------------------------------------------
 // The managed free pool (owner 2026-10-08): the free section's AI runs on the
 // owner's own Google keys, held as Worker secrets GEMINI_KEY_1..4, capped at
-// 10 messages per 24h for accounts without an active subscription.
+// 5 messages per 24h for accounts without an active subscription (owner
+// 2026-10-09: five, and the number is never advertised to the user). The
+// whole free section is signed-in only; a caller's own key is not.
 //
 // These call the REAL handler against the REAL key selection and quota logic,
 // with env and fetch faked. They exist because "the pool is wired" is the kind
@@ -215,14 +217,53 @@ test('pool: when EVERY key fails the existing capacity message still answers', a
   );
 });
 
-test('pool: a signed-out caller never reaches the pool (no account to cap)', async () => {
+test('sign-in: an anonymous caller is refused with a sign-in message, never the pool', async () => {
   const env = envWith();
   await withFetch(
     () => geminiOk('should not happen'),
     async calls => {
       const res = await handleAiChat(await chatRequest(env, {}, { anon: true }), env);
-      assert.equal(res.status, 503);
+      assert.equal(res.status, 401);
+      const data = await res.json();
+      assert.equal(data.ok, false);
+      assert.match(data.error, /Sign in/);
       assert.equal(calls.length, 0);
+    }
+  );
+});
+
+test('sign-in: an anonymous caller cannot ride the Workers AI free binding either', async () => {
+  let aiCalls = 0;
+  const env = envWith({
+    AI: {
+      async run() {
+        aiCalls += 1;
+        return { response: 'edge answer' };
+      }
+    }
+  });
+  await withFetch(
+    () => geminiOk('should not happen'),
+    async calls => {
+      const res = await handleAiChat(await chatRequest(env, {}, { anon: true }), env);
+      assert.equal(res.status, 401);
+      assert.equal(aiCalls, 0, 'the anonymous free ride is closed');
+      assert.equal(calls.length, 0);
+    }
+  );
+});
+
+test('sign-in: a caller OWN key still works with no session (the BYO path is theirs)', async () => {
+  const env = envWith();
+  await withFetch(
+    () => geminiOk('byo answer'),
+    async calls => {
+      const req = await chatRequest(env, {}, { anon: true });
+      req.headers.set('X-User-Api-Key', 'USER-OWN-KEY');
+      const res = await handleAiChat(req, env);
+      assert.equal(res.status, 200);
+      assert.equal(calls.length, 1);
+      assert.equal(calls[0].init.headers['x-goog-api-key'], 'USER-OWN-KEY');
     }
   );
 });
@@ -256,8 +297,8 @@ test('pool: the free model is used even when the caller asked for another provid
   );
 });
 
-test('quota: the 11th message in a window is refused with 402 and spends NO key', async () => {
-  const env = envWith({ KV: fakeKv([['aifree:owner-1', '10']]) });
+test('quota: the 6th message in a window is refused with 402 and spends NO key', async () => {
+  const env = envWith({ KV: fakeKv([['aifree:owner-1', '5']]) });
   await withFetch(
     () => geminiOk('should not happen'),
     async calls => {
@@ -267,14 +308,15 @@ test('quota: the 11th message in a window is refused with 402 and spends NO key'
       assert.equal(data.ok, false);
       assert.equal(data.tier, 'free-pool');
       assert.equal(data.remaining, 0);
-      assert.match(data.error, /10 free AI messages/);
+      assert.match(data.error, /daily limit/);
+      assert.doesNotMatch(data.error, /\b(5|10)\b/, 'the allowance is never named');
       assert.equal(calls.length, 0, 'an exhausted quota must not call the provider');
     }
   );
 });
 
 test('quota: 402 is NOT 429/503 (the client ladder must not retry it)', async () => {
-  const env = envWith({ KV: fakeKv([['aifree:owner-1', '10']]) });
+  const env = envWith({ KV: fakeKv([['aifree:owner-1', '5']]) });
   await withFetch(
     () => geminiOk('x'),
     async () => {
@@ -287,7 +329,7 @@ test('quota: 402 is NOT 429/503 (the client ladder must not retry it)', async ()
 });
 
 test('quota: the counter is spent on a successful answer and reported as remaining', async () => {
-  const env = envWith({ KV: fakeKv([['aifree:owner-1', '9']]) });
+  const env = envWith({ KV: fakeKv([['aifree:owner-1', '4']]) });
   await withFetch(
     () => geminiOk('last one'),
     async () => {
@@ -295,7 +337,7 @@ test('quota: the counter is spent on a successful answer and reported as remaini
       assert.equal(res.status, 200);
       const data = await res.json();
       assert.equal(data.remaining, 0);
-      assert.equal(env.KV.store.get('aifree:owner-1'), '10');
+      assert.equal(env.KV.store.get('aifree:owner-1'), '5');
       assert.equal(env.KV.puts.length, 1);
       assert.equal(env.KV.puts[0].opts.expirationTtl, 86400);
     }
@@ -309,7 +351,7 @@ test('quota: the first message starts the counter at 1 with a 24h window', async
     async () => {
       const res = await handleAiChat(await chatRequest(env, {}), env);
       const data = await res.json();
-      assert.equal(data.remaining, 9);
+      assert.equal(data.remaining, 4);
       assert.equal(env.KV.store.get('aifree:owner-1'), '1');
       assert.equal(env.KV.puts[0].key, 'aifree:owner-1');
       assert.equal(env.KV.puts[0].opts.expirationTtl, 86400);
@@ -330,7 +372,7 @@ test('quota: a failed rung does NOT spend the quota', async () => {
 });
 
 test('quota: an ACTIVE subscription is not capped', async () => {
-  const env = envWith({ KV: fakeKv([['aifree:owner-1', '10']]) });
+  const env = envWith({ KV: fakeKv([['aifree:owner-1', '5']]) });
   env._rows.sub = { status: 'active' };
   await withFetch(
     () => geminiOk('paid answer'),
@@ -347,7 +389,7 @@ test('quota: an ACTIVE subscription is not capped', async () => {
 });
 
 test('quota: a past_due subscription counts as active (D1 grace window)', async () => {
-  const env = envWith({ KV: fakeKv([['aifree:owner-1', '10']]) });
+  const env = envWith({ KV: fakeKv([['aifree:owner-1', '5']]) });
   env._rows.sub = { status: 'past_due' };
   await withFetch(
     () => geminiOk('grace'),
@@ -359,7 +401,7 @@ test('quota: a past_due subscription counts as active (D1 grace window)', async 
 });
 
 test('quota: a CANCELED subscription is capped again', async () => {
-  const env = envWith({ KV: fakeKv([['aifree:owner-1', '10']]) });
+  const env = envWith({ KV: fakeKv([['aifree:owner-1', '5']]) });
   env._rows.sub = { status: 'canceled' };
   await withFetch(
     () => geminiOk('x'),
@@ -390,13 +432,13 @@ test('quota: an unreadable counter is treated as zero, not as an error', async (
     async () => {
       const res = await handleAiChat(await chatRequest(env, {}), env);
       assert.equal(res.status, 200);
-      assert.equal((await res.json()).remaining, 9);
+      assert.equal((await res.json()).remaining, 4);
     }
   );
 });
 
 test('quota: a D1 fault fails CLOSED (treated as free) so the pool cannot be drained', async () => {
-  const env = envWith({ KV: fakeKv([['aifree:owner-1', '10']]) });
+  const env = envWith({ KV: fakeKv([['aifree:owner-1', '5']]) });
   env.DB = {
     prepare() {
       throw new Error('D1 unavailable');
@@ -427,14 +469,14 @@ test('pool: no key secret is ever echoed back to the caller', async () => {
 });
 
 test('pool: the quota counter is keyed per account, not globally', async () => {
-  const env = envWith({ KV: fakeKv([['aifree:owner-1', '10']]) });
+  const env = envWith({ KV: fakeKv([['aifree:owner-1', '5']]) });
   await withFetch(
     () => geminiOk('other account'),
     async () => {
       const res = await handleAiChat(await chatRequest(env, {}, { sub: 'owner-2' }), env);
       assert.equal(res.status, 200);
       const data = await res.json();
-      assert.equal(data.remaining, 9);
+      assert.equal(data.remaining, 4);
       assert.equal(env.KV.store.get('aifree:owner-2'), '1');
     }
   );
@@ -506,10 +548,32 @@ test('order: Workers AI is the safety net when every pool key fails', async () =
   );
 });
 
+test('quota: the Workers AI safety net spends the SAME allowance as the pool', async () => {
+  const env = envWith({
+    KV: fakeKv([['aifree:owner-1', '1']]),
+    AI: {
+      async run() {
+        return { response: 'edge answer' };
+      }
+    }
+  });
+  await withFetch(
+    () => new Response('{"error":"down"}', { status: 503 }),
+    async () => {
+      const res = await handleAiChat(await chatRequest(env, {}), env);
+      assert.equal(res.status, 200);
+      const data = await res.json();
+      assert.equal(data.source, 'workers-ai');
+      assert.equal(env.KV.store.get('aifree:owner-1'), '2');
+      assert.equal(data.remaining, 3);
+    }
+  );
+});
+
 test('quota: an exhausted allowance refuses BEFORE Workers AI (the cap is a cap)', async () => {
   let aiCalls = 0;
   const env = envWith({
-    KV: fakeKv([['aifree:owner-1', '10']]),
+    KV: fakeKv([['aifree:owner-1', '5']]),
     AI: {
       async run() {
         aiCalls += 1;

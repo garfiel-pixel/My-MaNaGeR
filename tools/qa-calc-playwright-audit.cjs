@@ -563,7 +563,240 @@ async function walkFocus(page) {
         };
       });
       check('IR2 app: persisted pageshow restores all dropped sprite hrefs', ir2.ok === true, ir2);
+      // admin.html: the admin bundle carried NO icon-restore module before
+      // 2026-10-09, so returning to the admin panel left its rail icons
+      // unpainted (owner report: "go to the admin panel and go back... no
+      // icons of the side"). The module must now be present in the admin
+      // bundle and repaint on a persisted pageshow.
+      await page.goto(BASE + '/admin.html', { waitUntil: 'networkidle' });
+      const ir3 = await page.evaluate(() => {
+        if (!window.MMGRIconRestore) return { err: 'module missing on admin (bundle)' };
+        const uses = Array.from(document.querySelectorAll('use[href^="css/mmgr-icons.svg"]'));
+        if (!uses.length) return { err: 'no external sprite uses' };
+        window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+        return {
+          ok: MMGRIconRestore.lastCount >= uses.length,
+          n: uses.length,
+          restored: MMGRIconRestore.lastCount
+        };
+      });
+      check(
+        'IR3 admin: persisted pageshow restores all dropped sprite hrefs',
+        ir3.ok === true,
+        ir3
+      );
       await page.close();
+    }
+
+    // ============ A: THE ASSISTANT WINDOW (owner 2026-10-09, 4.3-4.6) ============
+    // The whole window contract is proved here without a Worker: the session and
+    // the relay are stubbed, so what is under test is the PAGE - the bigger
+    // window, the history, the identity line, the attached file, the rate-book
+    // grounding and the two output paths. Any of those silently going dead is
+    // exactly what a screenshot review misses.
+    {
+      const aCtx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+      const ap = await aCtx.newPage();
+      const aerrs = [];
+      ap.on('pageerror', e => aerrs.push(String(e).slice(0, 140)));
+      const sent = [];
+      const PROPOSAL_JSON = '{"work":"siteprep","d1":12,"d2":3,"note":"strip and clear"}';
+      await ap.route('**/api/auth/me', r =>
+        r.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ ok: true, user: { email: 'owner@example.com' } })
+        })
+      );
+      await ap.route('**/api/ai/chat', r => {
+        sent.push(r.request().postData() || '');
+        return r.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            ok: true,
+            source: 'free-pool',
+            remaining: 3,
+            text: 'A 12 m by 3 m strip is about 36 m2 to clear.\n\nPROPOSAL: ' + PROPOSAL_JSON
+          })
+        });
+      });
+      await ap.goto(BASE + '/calculator.html', { waitUntil: 'networkidle' });
+      await ap.waitForTimeout(500);
+
+      const built = await ap.evaluate(() => {
+        const m = document.getElementById('calc-ai-mount');
+        if (!m) return { err: 'no mount node' };
+        return {
+          ok:
+            !!m.querySelector('.bcp-ai-log') &&
+            !!m.querySelector('[data-cai=hist]') &&
+            !!m.querySelector('[data-cai=new]') &&
+            !!m.querySelector('[data-cai=attach]') &&
+            !!m.querySelector('.bcp-ai-me'),
+          version: window.MMGR_CALC_AI && window.MMGR_CALC_AI.version,
+          status: (m.querySelector('[data-cai=status]') || {}).textContent || ''
+        };
+      });
+      check(
+        'A1 assistant window built (log, history, new chat, attach, identity)',
+        built.ok === true,
+        built
+      );
+      check(
+        'A2 no allowance number advertised up front',
+        !/\d+\s*free\s+messages/i.test(built.status),
+        built.status
+      );
+
+      const me = await ap.evaluate(() => {
+        const m = document.querySelector('#calc-ai-mount .bcp-ai-me');
+        return m
+          ? { text: m.textContent, initial: (m.querySelector('.bcp-ai-ava') || {}).textContent }
+          : { err: 'no identity line' };
+      });
+      check(
+        'A3 signed-in identity pinned at the bottom',
+        /owner@example\.com/.test(me.text || '') && me.initial === 'O',
+        me
+      );
+
+      const hist = await ap.evaluate(() => {
+        const btn = document.querySelector('[data-cai=hist]');
+        const panel = document.querySelector('[data-cai=histpanel]');
+        const before = panel.hidden;
+        btn.click();
+        const open = !panel.hidden && btn.getAttribute('aria-expanded') === 'true';
+        const empty = !document.querySelector('[data-cai=histempty]').hidden;
+        btn.click();
+        return { before, open, closed: panel.hidden, empty };
+      });
+      check(
+        'A4 history opens on click, closes again',
+        hist.before === true && hist.open && hist.closed,
+        hist
+      );
+      check('A5 history shows the empty state before any conversation', hist.empty === true, hist);
+
+      const newChat = await ap.evaluate(() => {
+        document.querySelector('[data-cai=new]').click();
+        const msgs = document.querySelectorAll('#calc-ai-mount .bcp-ai-msg');
+        return { msgs: msgs.length, first: (msgs[0] || {}).textContent || '' };
+      });
+      check(
+        'A6 New chat resets the transcript to the intro line',
+        newChat.msgs === 1 && /Ask me about this estimate/.test(newChat.first),
+        newChat
+      );
+
+      const sheet = path.join(ROOT, 'tmp', 'qa-rate-sheet.json');
+      fs.mkdirSync(path.dirname(sheet), { recursive: true });
+      fs.writeFileSync(
+        sheet,
+        JSON.stringify({ note: 'Harness rate sheet', rates: { siteprep: { allIn: 1234 } } })
+      );
+      await ap.setInputFiles('#calc-ai-file', sheet);
+      await ap.waitForTimeout(300);
+      const attached = await ap.evaluate(() => {
+        const fi = document.querySelector('#calc-ai-mount .bcp-ai-fileinfo');
+        return { hidden: fi.hidden, text: fi.textContent };
+      });
+      check(
+        'A7 an attached file is read and shown',
+        attached.hidden === false && /qa-rate-sheet\.json/.test(attached.text),
+        attached
+      );
+
+      // Price the line first so the export path has something to export.
+      await ap.selectOption('#calc-work', 'siteprep');
+      await ap.fill('#calc-d1', '12');
+      await ap.fill('#calc-d2', '3');
+      await ap.click('[data-action=calcRun]');
+      await ap.waitForTimeout(300);
+      await ap.fill('#calc-ai-input', 'roughly how much blockwork is that?');
+      await ap.click('[data-cai=send]');
+      await ap.waitForTimeout(600);
+
+      const body = sent.join('\n');
+      check(
+        'A8 the question carries the RATE BOOK grounding',
+        /Active rate book/.test(body) && /Work items you may name/.test(body),
+        body.slice(0, 160)
+      );
+      check(
+        'A9 the question carries the ATTACHED FILE text',
+        /Harness rate sheet/.test(body),
+        body.slice(0, 160)
+      );
+
+      const reply = await ap.evaluate(() => {
+        const rows = document.querySelectorAll('#calc-ai-mount .bcp-ai-msg.ai .bcp-ai-text');
+        const last = rows[rows.length - 1];
+        const paths = document.querySelector('[data-cai=paths]');
+        const badge = document.querySelector('#calc-ai-mount .bcp-ai-badge');
+        return {
+          text: last ? last.textContent : '',
+          pathsHidden: paths.hidden,
+          badge: badge ? badge.textContent : '',
+          first: (document.querySelector('#calc-ai-mount .bcp-ai-pathrow .btn-g') || {}).textContent
+        };
+      });
+      check(
+        'A10 the reply renders with the PROPOSAL line stripped out of the prose',
+        /36 m2 to clear/.test(reply.text) && !/PROPOSAL/.test(reply.text),
+        reply.text
+      );
+      check(
+        'A11 both output paths appear, populate marked recommended',
+        reply.pathsHidden === false &&
+          /recommended/i.test(reply.badge) &&
+          /Populate/.test(reply.first),
+        reply
+      );
+
+      const dl = ap.waitForEvent('download', { timeout: 8000 }).catch(() => null);
+      await ap.click('[data-cai=makefile]');
+      const download = await dl;
+      check(
+        'A12 generate a file downloads a CSV through the page export',
+        !!download && /\.csv$/.test(download.suggestedFilename()),
+        download ? download.suggestedFilename() : 'no download event'
+      );
+
+      const before = await ap.evaluate(
+        () => document.querySelectorAll('[data-action=calcBoqRecall]').length
+      );
+      await ap.click('[data-cai=pop]');
+      await ap.waitForTimeout(400);
+      const popped = await ap.evaluate(() => ({
+        lines: document.querySelectorAll('[data-action=calcBoqRecall]').length,
+        log: document.querySelector('#calc-ai-mount .bcp-ai-log').textContent,
+        paths: document.querySelector('[data-cai=paths]').hidden
+      }));
+      check(
+        'A13 populate adds the line to the bill through the calcBoqAdd dispatch',
+        popped.lines === before + 1 && /Added to the bill/.test(popped.log),
+        popped
+      );
+      check('A13b the choice is consumed once it has been followed', popped.paths === true, popped);
+
+      const hist2 = await ap.evaluate(() => {
+        document.querySelector('[data-cai=new]').click();
+        const rows = document.querySelectorAll('[data-cai=histopen]');
+        const title = rows.length ? rows[0].textContent : '';
+        if (rows.length) rows[0].click();
+        const msgs = Array.from(document.querySelectorAll('#calc-ai-mount .bcp-ai-msg')).map(m =>
+          m.textContent.slice(0, 40)
+        );
+        return { rows: rows.length, title, msgs };
+      });
+      check(
+        'A14 the conversation is kept and reopening it replays both sides',
+        hist2.rows === 1 && /blockwork/.test(hist2.title) && hist2.msgs.length === 2,
+        hist2
+      );
+      check('A15 zero page errors in the assistant window', aerrs.length === 0, aerrs);
+      await aCtx.close();
     }
   } finally {
     await browser.close().catch(() => {});

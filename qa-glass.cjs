@@ -145,11 +145,11 @@ async function ev(expr) {
   // ---- 0. boot: modules present + pinned CDN verified at implementation ----
   const b1 = await ev(`(function(){
     return { glass: !!window.MMGR.Glass, viewport: !!window.MMGR.Viewport,
-      cdn: window.MMGR.Glass && window.MMGR.Glass.THREE_CDN,
-      pinned: /unpkg\\.com\\/three@\\d+\\.\\d+\\.\\d+\\/build\\/three\\.module\\.js/.test(window.MMGR.Glass ? window.MMGR.Glass.THREE_CDN : '') };
+      cdn: window.MMGR.Glass && window.MMGR.Glass.THREE_MODULE,
+      pinned: (function(p){ return !!p && p.indexOf('/vendor/three/three.module.js') === 0 && p.indexOf('unpkg') === -1; })(window.MMGR.Glass && window.MMGR.Glass.THREE_MODULE) };
   })()`);
   check(
-    'G01 boot: Glass module + Viewport present, CDN pinned to real three URL',
+    'G01 boot: Glass module + Viewport present, three VENDORED same-origin (no CDN)',
     !!(b1.glass && b1.viewport && b1.pinned),
     b1
   );

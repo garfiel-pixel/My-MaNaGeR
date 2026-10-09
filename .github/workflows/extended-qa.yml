@@ -97,6 +97,9 @@ jobs:
       - name: "E-T4: marketing pages (zero console errors)"
         run: node qa-marketing.cjs
 
+      - name: "E-T4: console + stress audit (every served page)"
+        run: node tools/qa-console-stress.cjs
+
       - name: "E-T4: PWA manifest + service worker + offline CRUD"
         run: node qa-pwa.cjs
 

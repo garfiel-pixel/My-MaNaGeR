@@ -17,8 +17,134 @@
    v382 - full-bleed marketing canvas, 7-big-dot rail with generated
            small dots, contact tile phone overflow, guide sidebar spacing
    ============================================================ */
-const CACHE = 'mmgr-shell-v387';
+const CACHE = 'mmgr-shell-v396';
 
+// v396 - THE STRESS AUDIT FOUND ONE REAL DEFECT AND IT IS FIXED (owner 2026-10-09: "use playwright ...
+// capture the console ... stress this ... if we find any form of error, bring it back"). tools/qa-console-stress.cjs
+// now stresses far harder: every served page is walked at SIX widths (320/390/768/1024/1440/2560, the full-bleed
+// rule's whole range plus a small phone), flipped to dark mode and re-measured, given an 18-Tab keyboard walk,
+// and hammered with repeated rail clicks - while page errors, console errors and (newly) UNHANDLED PROMISE
+// REJECTIONS are all captured. That is 102 gates across 17 pages; zero console errors, zero page errors and zero
+// unhandled rejections anywhere. ONE defect turned up, and it was real: seed-test.html could be scrolled SIDEWAYS
+// by 13px at 320px, and the culprit was measured rather than guessed - .tf-due (a task's due-date chip) carried
+// flex-shrink: 0, so a long chip refused to shrink and pushed the whole document wider than the screen. From 561px
+// up the chip is untouched; on a small phone it may now shrink and its label wraps instead. css/mmgr.css and
+// dist/mmgr.min.css are shell assets, so this version bumps. No inline script was added or removed, so the CSP
+// inline-script hash set is unchanged.
+// v395 - THE CLOUD CAP TELLS THE TRUTH FOR PAYING OWNERS (owner 2026-10-09, item 12). The rule the owner
+// set is: free = one linked cloud project, and EVERY paid tier - the six-month ESTIMATOR plan included - is
+// unlimited. The create gate in src/cloud/projects.js already worked that way (any ACTIVE subscription goes
+// past the cap), but GET /api/billing/status reported the FREE cap for every tier, so the app was told a
+// paying owner had a one-project limit. The status response now returns projectCap null for any active
+// subscription and the free cap otherwise, which is the same rule the create gate enforces, so the rail
+// strip and the create refuse can no longer disagree. js/app/entitlements.js unlimitedCloud() follows the
+// server again (paid = unlimited, the estimator exclusion added hours earlier existed only because the
+// status response was wrong) - one rule, stated once per layer. Two new unit cases in test/billing.test.mjs
+// pin both halves (free gets the cap and it defaults to one; every paid tier and past_due report null),
+// 37/37. dist/app-bundle.js and dist/admin-bundle.js carry entitlements.js, so this shell version bumps.
+// No inline script was added or removed, so the CSP inline-script hash set is unchanged.
+// v394 - THE ASSISTANT IS A REAL WINDOW NOW (owner 2026-10-09, items 4.3-4.6). The calculator's assistant
+// was a Clear button, a transcript and a two-row box. It is now a Claude-shaped panel: a taller transcript
+// that has room to read, a History control that opens the conversations kept on this device (localStorage,
+// twenty deep, each one reopenable and deletable), a New chat control, the attach control, and the
+// SIGNED-IN IDENTITY pinned along the bottom so the panel never has to ask who you are. A FILE CAN BE
+// ATTACHED and read as text (a rate sheet, a document) and rides your next questions, with a chip that says
+// which file is in play - nothing is uploaded, the file is read in the page. The answers are GROUNDED: the
+// page hands the panel a plain-text reading of the ACTIVE rate book (and of the work items it may name)
+// through window.MMGR_CALC_RATEBOOK, so the assistant quotes the book instead of inventing a rate, and an
+// attached sheet joins the same grounding. And the conversation now ENDS IN A CHOICE, exactly as the owner
+// asked: when it settles on figures the assistant writes one PROPOSAL line, the panel strips it out of the
+// prose and offers the two paths - "Populate the calculator" (marked recommended) or "Generate a file to
+// download" - and follows whichever is clicked. Populate writes the agreed figures into the form and adds
+// the line to the bill through the VERY dispatch the Add-to-bill button uses (ACTIONS.calcBoqAdd, via the
+// page's MMGR_CALC_POPULATE hook), so a proposal and a click are one code path; the file path runs the
+// page's existing CSV export through MMGR_CALC_FILE - no new format. The panel still never reaches into
+// calculator internals: three page hooks are the whole contract, and an absent hook costs only that one
+// power, with the panel saying so plainly. 16 new Playwright gates (tools/qa-calc-playwright-audit.cjs,
+// section A, 57/57) prove the window, the history, the identity, the attachment actually reaching the
+// request body, the rate-book grounding in that same body, the stripped PROPOSAL, both output paths (a real
+// CSV download event and a real bill line) and zero page errors. js/calc-ai.js, js/calculator-page.js,
+// calculator.html and css/mmgr.css changed, so this shell version bumps; the Worker changed too in v393, so
+// a deploy is needed for the server half.
+// v393 - THE FREE AI IS FIVE A DAY, COUNTS WHERE IT SHOULD, AND IS SIGNED-IN ONLY (owner 2026-10-09,
+// item 4.1-4.2). Three changes, all in the free section of POST /api/ai/chat. (1) THE CAP IS FIVE, down
+// from ten - src/ai-proxy.js FREE_DAILY_MESSAGE_CAP and js/calc-ai.js CAP move together. (2) THE NUMBER
+// IS NEVER ADVERTISED: the calculator panel's status line used to open with "10 free messages a day" and
+// then report the count on every answer; it now stays SILENT until the allowance is gone, and the only
+// line it ever shows is the reached-limit one ("your daily limit has been reached... it refreshes 24 hours
+// after your first message"), worded without a number on both sides. (3) AN ANONYMOUS CALLER CANNOT USE
+// IT AT ALL: the free section is signed-in only, and the gate sits BEFORE the pool and before the Workers
+// AI binding, because the cap is counted per account and an anonymous caller has no account to count
+// against - which is exactly how an anonymous request used to ride the Workers AI binding for free,
+// uncapped and invisible, until now. A caller's OWN key is deliberately untouched: that key is theirs and
+// costs this project nothing, so the BYO path still answers with no session at all. A signed-in caller
+// with no key still gets the honest 503 capacity message, and the Workers AI safety net now SPENDS the
+// same daily allowance as the pool - without that, "five a day" would quietly have become far more
+// whenever the pool was unavailable. test/ai-free-pool.test.mjs re-baselined to 5 with three new sign-in
+// cases (29/29), and tools/qa-ai-relay.cjs R01 re-baselined from the retired anonymous 503 to the 401
+// sign-in contract plus a new R01b proving a SIGNED-IN no-key caller still gets 503 (the gate is not a
+// blanket refusal). js/calc-ai.js is a served asset, so this shell version bumps; the Worker changed too,
+// so a deploy is needed for the server half.
+// v392 - THE LEGAL LINKS EVERYONE WAS MISSING, AND A CONFIRMATION SCREEN THAT LOOKS LIKE THE REST
+// (owner 2026-10-09). (1) PRICING AND REFUND ARE NOW REACHABLE FROM THE FOOTER: the five marketing pages
+// that use the shared footer-legal row (index, features, about, contact, reviews) carried only Privacy and
+// Terms, so the price and the refund policy were effectively hidden behind know-the-URL; both links are now
+// in that row, matching the legal pages which already had them. The index footer's "Sign in" link was also
+// removed - sign-in lives on the app page now, and a marketing footer offering it contradicted that.
+// sitemap.xml gained /pricing and /refund: robots.txt already allowed both and they were simply absent from
+// the 8-entry sitemap. (2) THE EMAIL-CONFIRMATION AND PASSWORD-RESET SCREENS now sit on the SAME star sky as
+// sign-in (owner: the confirmation screen "wasn't looking good"), with the card kept SOLID on top so contrast
+// never depends on what is behind it (Gate 6.1) and a shared 20px radius. marketing CSS + HTML changed, so
+// this version is bumped.
+// v391 - FIVE CLEAR RAIL DESTINATIONS, ROUNDED RECTANGLES EVERYWHERE, A CALMER SKELETON
+// (owner 2026-10-09). (1) THE RAIL GROUPS: admin and calculator used to sit inside Projects. They now
+// have their own headings - Overview / Projects / Cloud / Administrate / Tools / Customize - so the
+// launcher reads as five destinations instead of one crowded column. (2) ROUNDED RECTANGLES, NOT PILLS:
+// the owner's "way too much pill icons... use rectangular with curved edges strictly" now covers the
+// .db-page surfaces too (launcher, admin panel, calculator), extending the 2026-09-20 project-page shape
+// pass rather than inventing a second language; status chips join it on both surfaces. Elements whose
+// roundness MEANS something stay round - the circular count badge, avatars, status dots, the fixed 28px
+// health circles - and the toast chip language is untouched. Shape only: no colour, hover, icon or size
+// change. (3) LOADING SKELETON POLISH: the sheen slows from 1.4s to 1.7s on a settled curve (it read as a
+// flicker on the full-screen boot splash) and .skel-pill takes --radius-rect, matching the control it
+// stands in for. css/mmgr.css and app.html changed, so this version is bumped.
+// v390 - THE LAG HINT CAN FINALLY FIRE (owner 2026-10-09). js/mmgr-perf.js's startLagProbe sampled
+// frame times to offer Performance Mode to a device that actually lags, but its guard was
+// `if (!isOn()) return;` - it bailed out unless Performance Mode was ALREADY on. Since the pretty
+// experience is the default (perf off), the probe could never run in the one situation it was written
+// for, which is why the owner saw no hint on a pretty page. The guard is now `if (isOn()) return;` -
+// sample while the heavy layers run, stay quiet once the user has already trimmed effects. The starfield
+// itself was re-measured on the app page with Performance Mode off and paints correctly
+// (effectiveGlassMode = premium, #glass-canvas present, body.glass-premium set), so no glass change was
+// needed. js/mmgr-perf.js is a shell asset and the bundles carry it, so this version is bumped.
+// v389 - SIGN-IN HAS ONE DOOR, AND IT IS A BEAUTIFUL ONE (owner 2026-10-09). The marketing header's
+// "Sign in" button opened #signin-sheet, a small dark box (owner: "the little pop up should not be
+// showing... you do not sign in from the marketing"). All ELEVEN header triggers were removed - the nine
+// marketing pages plus the field guide's two - so the sheet is now unreachable and simply stays hidden,
+// kept as a one-line-recoverable fallback rather than deleted. Sign-in is offered ONLY on the app page, and
+// clicking Sign in there now LEAVES for the polished standalone /signin page (star sky, glass card, Google
+// above email) instead of opening the in-page #siom sheet; while OFFLINE the in-page sheet is still used,
+// because a navigation to an uncached page must never be the outcome of a click (offline-first is sacred).
+// The /signin card was also SOFTENED on the owner's request ("don't make it too glassy, make it more soft,
+// keep the classiness"): 18px blur to 12px, a lighter border and shadow, and the inner panels lost their
+// dense navy fill - plus a prefers-reduced-transparency fallback for the card. qa-marketing's mkt-16/mkt-17
+// were RE-BASELINED in the same change: they used to assert the sheet opened, which is no longer the
+// contract; they now assert no marketing trigger exists and the retired sheet stays hidden. marketing CSS +
+// HTML and app.html's inline script changed, so the CSP inline-script hashes were regenerated and this
+// shell version bumped so returning clients re-fetch.
+// v388 - THE RAIL SURVIVES A BACK NAVIGATION (owner report 2026-10-09: "if I go to the admin panel and come
+// back, I cannot see the side panel anymore... no icons of the side, the SVG icons gone"). Two real defects,
+// both found in the source, not guessed. (1) On the launcher, clicking a rail navigation row removed
+// body.side-open on DESKTOP as well as in the mobile drawer, and the icon strip is only shown by .side-closed,
+// which that close path never set - so leaving the launcher for admin/calculator and pressing Back restored a
+// page with neither the rail nor its icons. The desktop rail is pinned open by design (project.html already
+// behaved this way, so its pattern is the reference), so app.html and admin.html now close the rail on
+// navigation ONLY below 769px, and both pages re-assert the pinned-open state on pageshow so a
+// back/forward-cache restore comes back whole. (2) admin.html's bundle never carried js/mmgr-icon-restore.js,
+// so a page restored from the back/forward cache kept its icon boxes and painted nothing - the same bfcache
+// sprite bug fixed for the other pages in the 2026-09-30 wave, now wired into the admin bundle too. app.html
+// and admin.html inline scripts changed, so the CSP inline-script hashes were regenerated in worker.js +
+// serve.cjs; dist/app-bundle.js and dist/admin-bundle.js changed, hence this bump.
 // v387 - bump only: js/calculator-page.js gained its braces for the eslint `curly` rule and js/calc-ai.js dropped an
 // unused helper AFTER the v386 stamp, so the v386 stamp predated the final edits and verify-sw-cache correctly flagged
 // the shell. Same content as v386 below, and no new shell asset. Bumped rather than left, because without it every

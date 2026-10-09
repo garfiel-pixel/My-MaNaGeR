@@ -139,5 +139,31 @@ while ((m = mainRule.exec(css)) !== null) {
 const js = fs.readFileSync(JS, 'utf8');
 ok('js/marketing.js declares MINORS_PER_GAP', /MINORS_PER_GAP\s*=/.test(js));
 
+/* ---- 5. No marketing sign-in (owner 2026-10-09) ------------------------- */
+// Sign-in is offered ONLY on the app page; clicking Sign in there opens the
+// polished standalone /signin page. Every marketing header trigger was removed
+// in that wave, so no marketing page may carry one, and the app page must route
+// to /signin instead of opening the retired in-page sheet.
+const MARKETING_PAGES = [
+  'index.html',
+  'features.html',
+  'about.html',
+  'contact.html',
+  'pricing.html',
+  'privacy.html',
+  'terms.html',
+  'refund.html',
+  'reviews.html',
+  'mymanager-field-guide.html'
+];
+for (const page of MARKETING_PAGES) {
+  const src = fs.readFileSync(path.join(ROOT, page), 'utf8');
+  // Match the MARKUP, not the class string - a stylesheet may legitimately
+  // name the class without exposing a working sign-in control.
+  ok(page + ': offers no sign-in trigger', !/<button[^>]*signin-trigger/.test(src));
+}
+const appHtml = fs.readFileSync(path.join(ROOT, 'app.html'), 'utf8');
+ok('app.html: Sign in leaves for the standalone /signin page', /signin\.html\?next=/.test(appHtml));
+
 console.log('\n' + (fails === 0 ? 'MARKETING MARKUP PASS' : fails + ' CHECK(S) FAILED'));
 process.exit(fails === 0 ? 0 : 1);

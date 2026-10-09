@@ -3690,27 +3690,53 @@ body.dark-mode .hero-card .hc-stepdot {
   animation: signin-drift 46s ease-in-out infinite;
 }
 
-.signin-page {
+/* The star sky is shared by the whole auth family (owner 2026-10-09: the
+   confirmation and reset screens "wasn't looking good", so they now sit on the
+   same sky as sign-in). The solid .auth-card stays solid on top of it, so
+   contrast is guaranteed and never depends on what is behind it (Gate 6.1). */
+.signin-page,
+.auth-sky-page {
   position: relative;
   isolation: isolate;
 }
 .signin-page > .auth-header,
 .signin-page > .auth-main,
-.signin-page > .signin-foot {
+.signin-page > .signin-foot,
+.auth-sky-page > .auth-header,
+.auth-sky-page > .auth-main,
+.auth-sky-page > .auth-footer {
   position: relative;
   z-index: 1;
 }
+.auth-sky-page .auth-card {
+  border-radius: 20px;
+}
 
-/* The glass card: the ONE glass surface on the page. */
+/* The glass card: the ONE glass surface on the page.
+   SOFTENED (owner 2026-10-09: "don't make it too glassy, make it more soft,
+   keep the classiness"). The heavy 18px blur + 0.7 shadow read as hard glass;
+   the card is now a gentler 12px frost with a softer border and a lighter
+   shadow, and the inner panels lost the dense navy fill so the whole page
+   feels calm rather than like a slab of glass. Still one glass surface, still
+   content-on-solid inside (Gate 6.1). */
 .signin-card {
   max-width: 432px;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
-  backdrop-filter: blur(18px) saturate(140%);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  -webkit-backdrop-filter: blur(12px) saturate(130%);
+  backdrop-filter: blur(12px) saturate(130%);
   box-shadow:
-    0 30px 70px -22px rgba(0, 0, 0, 0.7),
-    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    0 24px 56px -26px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+/* Gate 6.2: a glass surface ships a reduced-transparency fallback. */
+@media (prefers-reduced-transparency: reduce) {
+  .signin-card {
+    background: rgba(18, 24, 40, 0.97);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
 /* Text has to flip to light over the dark sky. Measured against the card's
    own composited fill, not against pure white. */
@@ -3721,12 +3747,14 @@ body.dark-mode .hero-card .hc-stepdot {
 .signin-card .signin-lede {
   color: rgba(236, 242, 252, 0.8);
 }
-/* The inner content layer stays SOLID so inputs and labels are readable. */
+/* The inner content layer stays readable but no longer dense (owner
+   2026-10-09 softening): a lighter fill and hairline keep the fields legible
+   while letting the star field breathe behind the card. */
 .signin-card #marketing-email-auth,
 .signin-card #google-signin-button,
 .signin-card .signin-return {
-  background: rgba(8, 14, 26, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(12, 18, 32, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
 }
 .signin-card #marketing-email-auth {

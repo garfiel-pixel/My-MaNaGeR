@@ -594,9 +594,31 @@ Every wave so far ended with `npm run verify` at exit 0 and `sw.js` bumped (curr
 **W4/W5/W6 open question (one line to flip):** the pool is **signed-in only** — the cap is per account and
 anonymous callers keep exactly the free Workers AI path they have today, so the public calculator's
 "no account needed" promise is untouched. If the owner wants anonymous visitors to spend the pool too, the
-quota key becomes `ip:<hash>` instead of `sub` and the calculator needs no other change.**Not yet proven end to end:** the pool rung has never run against the LIVE Google keys, because that needs a
-deployed Worker plus a signed-in session (a local `wrangler dev` has no secrets — there is no `.dev.vars`).
-The secrets are confirmed present; the live call is the first thing to check after the next deploy.
+quota key becomes `ip:<hash>` instead of `sub` and the calculator needs no other change.**SHIPPED 2026-10-09.** Pushed as `d32359b` and deployed as Worker version `f69db6ec` (staged under
+`$HOME/mmgr-deploy`, verified before upload: pool rung present, `js/calc-ai.js` present, `.dev.vars` absent,
+`tmp/` absent). CI run 37893330282 on that commit: **success**. Verified live: `/api/health` 200; `/calculator`
+serves `#calc-ai-mount` + `js/calc-ai.js?v=1`; `js/calc-ai.js` 200; `sw.js` at `v387`; the panel's rules are
+in the live `dist/mmgr.min.css`.
+
+First CI run (`2ffaf1b`) went RED at **T2 Team RBAC**, not at anything in this plan: `W8.10b`/`W8.10c` still sent
+a bare `DELETE` and asserted the pre-confirmation contract, so the new guard answered 400 `confirm_required`.
+Reproduced locally (27/29, exactly those two), fixed the HARNESS, and added `W8.10d` to pin the refusal itself
+(30/30). Everything after the red step had been SKIPPED, so the whole remaining set was run locally before
+re-pushing: cloud phase 1/2, cloud codes+delete, cloud import, health sweep, email auth, reviews, calc
+workspace, rank 9, t9, presence, prefs, AI badge, market features, offline copies, autosave+signin, controls
+admin, client codes, API keys, sync bond, paddle CSP, auth limits, v11, p1, theme persistence, qa-full, qa-ai.
+
+**Still not proven live:** the pool rung has never answered from a real Google key. That needs a SIGNED-IN
+browser session (the rung is per-account by design), and no local secret exists to mint one — `.dev.vars` is
+absent and the production session key is write-only. What IS proven live: the anonymous path still answers
+exactly as before (503 capacity, `tier: workers-ai`), the pool does not fire without an account, and no key
+material appears in any response body. The one live call to make by hand: sign in, open the calculator
+assistant or the AI window, and ask a question — the reply should carry `source: free-pool`.
+
+**One local-only failure, recorded so it is not mistaken for a regression:** `tools/qa-client-codes.cjs` P10
+(headless Chrome over CDP) fails on this Windows machine with `webSocketDebuggerUrl` undefined. The identical
+spawn works standalone, and the same suite passed in CI on `8139cc5` and again on `d32359b`, so it is the local
+Chrome/Windows environment, not the app and not this wave.
 
 **Deviation from this plan's W4 acceptance line, recorded deliberately:** W4 asked for a new
 `tools/verify-ai-pool.cjs` harness. The coverage went into the EXISTING unit suite

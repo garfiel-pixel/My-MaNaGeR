@@ -326,11 +326,15 @@ main {
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.55),
     0 0 0 2px rgba(0, 0, 0, 0.18);
+  /* SIZE IS PAINTED, NEVER LAID OUT. The dot sets its own item's height, so
+     animating width/height reflowed the whole column and made every other dot
+     shift up or down the instant the active one changed. scale() paints the
+     same size with zero layout change, composites on the GPU, and eases on a
+     curve that settles instead of stopping dead. */
   transition:
-    width 0.15s ease-out,
-    height 0.15s ease-out,
-    background 0.15s ease-out,
-    box-shadow 0.15s ease-out;
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.22s ease-out,
+    box-shadow 0.22s ease-out;
 }
 .dot-item.major .dot {
   width: 12px;
@@ -340,25 +344,44 @@ main {
   width: 5px;
   height: 5px;
 }
+/* Active is the SAME dot scaled up (16px major, 8px minor), so the layout box -
+   and therefore the height of the rail - never changes as the marker travels. */
 .dot-item.major.active .dot {
-  width: 16px;
-  height: 16px;
+  transform: scale(1.3333);
   background: var(--gold);
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.7),
     0 0 12px rgba(var(--gold-rgb), 0.75);
 }
 .dot-item.minor.active .dot {
-  width: 8px;
-  height: 8px;
+  transform: scale(1.6);
   background: var(--gold);
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.7),
     0 0 8px rgba(var(--gold-rgb), 0.75);
 }
+/* Hover on a fine pointer: grow the marker and deepen its ring. The fill stays
+   the neutral rest colour so hover can never read as "active" (which is gold). */
+@media (hover: hover) and (pointer: fine) {
+  .dot-item:not(.active):hover .dot {
+    transform: scale(1.3);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.75),
+      0 0 0 3px rgba(0, 0, 0, 0.28);
+  }
+  .dot-item.minor:not(.active):hover .dot {
+    transform: scale(1.55);
+  }
+}
 .dot-item:focus-visible .dot {
   outline: 2px solid var(--gold);
   outline-offset: 3px;
+}
+/* Reduced motion: the marker still moves, it just stops animating the move. */
+@media (prefers-reduced-motion: reduce) {
+  .dot {
+    transition: none;
+  }
 }
 /* The rail needs >= 16px of clear space left of the reading column. The column
    is min(1200px, 92vw) centred, so that holds from 1200px up. Below that, or on

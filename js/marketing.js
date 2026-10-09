@@ -153,18 +153,34 @@
     function dotReadLine() {
       return window.innerHeight * 0.38;
     }
+    /* The stop positions are measured ONCE and cached. Reading 19 element rects
+       on every scroll frame forced a layout each frame for a value that only
+       changes when the page or the window is resized, which is what made
+       scrolling past the rail feel heavy. The cache key covers both the page
+       height (images landing, sections growing) and the window height (the read
+       line is a fraction of it). */
+    var dotYs = [];
+    var dotYsKey = '';
+    function dotStopsYs() {
+      var key = document.documentElement.scrollHeight + 'x' + window.innerHeight;
+      if (dotYs.length && key === dotYsKey) return dotYs;
+      dotYsKey = key;
+      dotYs = dotStops.map(dotStopY);
+      return dotYs;
+    }
     function syncDots() {
       if (!dotStops.length) return;
+      var ys = dotStopsYs();
       var line = window.scrollY + dotReadLine();
-      var cur = dotStops[0];
+      var cur = 0;
       for (var i = 0; i < dotStops.length; i++) {
-        if (dotStopY(dotStops[i]) <= line) cur = dotStops[i];
+        if (ys[i] <= line) cur = i;
         else break;
       }
       if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4)
-        cur = dotStops[dotStops.length - 1];
-      dotStops.forEach(function (s) {
-        var on = s === cur;
+        cur = dotStops.length - 1;
+      dotStops.forEach(function (s, i) {
+        var on = i === cur;
         s.dot.classList.toggle('active', on);
         if (on) s.dot.setAttribute('aria-current', 'true');
         else s.dot.removeAttribute('aria-current');

@@ -11,7 +11,12 @@
   gets quantities, labor hours, costs, tax and total. History saves on
   this device (localStorage, user-clearable). External script only -
   no inline scripts, CSP hashes stay untouched. Icons are sprite
-  symbols, no emoji (owner gate). Light & dark ride the shared theme
+  symbols, no emoji (owner gate).
+  OWNER 2026-10-08: this page now carries the Assistant panel
+  (js/calc-ai.js), so the "no network calls" note that used to sit in
+  this header is no longer true and is removed. The ESTIMATE math is
+  still entirely on-device - the only request this page can make is the
+  question you type into the panel, and nothing else leaves the device. Light & dark ride the shared theme
   helper; every color comes from the theme tokens so both themes hold.
 -->
 <html lang="en">
@@ -23,7 +28,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" href="images/mpw-icon.png">
 <link rel="apple-touch-icon" href="images/mpw-icon.png">
-<link rel="stylesheet" href="dist/mmgr.min.css?v=26">
+<link rel="stylesheet" href="dist/mmgr.min.css?v=27">
 <script src="js/mmgr-theme.js" data-sync="1"></script>
 </head>
 <body class="db-page calculator-page">
@@ -68,7 +73,7 @@
     </div>
   </header>
 
-  <p class="bcp-lede">Pick a work item, enter the dimensions, choose your currency and country. Quantities, labor, materials, tax and total - computed on this device, nothing sent anywhere.</p>
+  <p class="bcp-lede">Pick a work item, enter the dimensions, choose your currency and country. Quantities, labor, materials, tax and total - worked out on this device, and the pricing never leaves it. The assistant on this page sends only the question you type.</p>
 
   <!-- OWNER 2026-09-30 how-to guide: step slider following the form's own
        field order (work item FIRST). Collapsible; state per device. -->
@@ -548,6 +553,18 @@
         </div>
   </section>
 
+  <!-- OWNER 2026-10-08: the assistant lives on THIS page for now. The page
+       owns this card and its heading; js/calc-ai.js owns everything inside
+       #calc-ai-mount, so the later full-page takeover is unmount() + mount()
+       on this same node - see the swap contract at the top of that file.
+       External script only, so the CSP hashes stay untouched. -->
+  <section class="card bcp-ai-card" id="calc-ai-card" aria-labelledby="calc-ai-h">
+    <div class="bcp-hist-head">
+      <h2 id="calc-ai-h" class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> Assistant <span class="bcp-hist-note">- asks the server, and sends the question you type</span></h2>
+    </div>
+    <div id="calc-ai-mount"></div>
+  </section>
+
   <section class="card" id="calc-boq-card" aria-labelledby="calc-boq-h">
     <div class="bcp-hist-head">
       <h2 id="calc-boq-h" class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-list"></use></svg> Bill of quantities <span class="bcp-hist-note">- every line priced on this device</span></h2>
@@ -690,6 +707,7 @@
      change here must bump v, or returning calculator-only visitors keep
      the old script/styles for a year. -->
 <script src="js/mmgr-icon-restore.js?v=25"></script>
-<script src="js/calculator-page.js?v=28"></script>
+<script src="js/calculator-page.js?v=29"></script>
+<script src="js/calc-ai.js?v=1"></script>
 </body>
 </html>

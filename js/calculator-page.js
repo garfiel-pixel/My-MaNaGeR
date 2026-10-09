@@ -8426,4 +8426,59 @@
   })();
   // D3 restore (pre-brand) retired 2026-10-01: brandLoad/renderBrand own the
   // business name now (mmgr_calc_biz_name migrates into mmgr_calc_brand).
+
+  /* OWNER 2026-10-08: the Assistant panel (js/calc-ai.js).
+     #calc-ai-mount is the SWAP POINT - a later full-page takeover calls
+     MMGR_CALC_AI.unmount() and mounts its own module on this same node, so
+     nothing in the calculator's own logic has to be unpicked.
+     MMGR_CALC_AI_CONTEXT is the optional hook that hands the panel a short,
+     plain summary of the estimate ON SCREEN, so the answers are about this
+     estimate instead of construction in general. Removing the hook only
+     costs that context - the panel still works. */
+  function mountCalcAssistant() {
+    var AI = window.MMGR_CALC_AI;
+    var mountNode = $('calc-ai-mount');
+    if (!AI || typeof AI.mount !== 'function' || !mountNode) {
+      return;
+    }
+    window.MMGR_CALC_AI_CONTEXT = function () {
+      try {
+        var r = lastResult;
+        if (!r || r.error) {
+          return 'No estimate has been worked out on the page yet.';
+        }
+        var money = function (v) {
+          return v === undefined || v === null || v === ''
+            ? ''
+            : String(Math.round(Number(v) * 100) / 100);
+        };
+        var lines = [
+          'Work item: ' + (r.name || '') + (r.unit ? ' (' + r.unit + ')' : ''),
+          'Quantity: ' + (r.qty === undefined ? '' : r.qty) + (r.unit ? ' ' + r.unit : ''),
+          'Currency: ' + (r.currency || ''),
+          'Materials: ' + money(r.mat),
+          'Labour: ' + money(r.lab),
+          'Subtotal: ' + money(r.subtotal),
+          'Tax: ' + money(r.tax),
+          'Total: ' + money(r.total)
+        ];
+        if (r.allIn) {
+          lines.push('All-in with preliminaries: ' + money(r.allIn));
+        }
+        return lines.join('\n');
+      } catch (e) {
+        return '';
+      }
+    };
+    AI.mount(mountNode);
+  }
+  /* js/calc-ai.js is a separate classic script that loads AFTER this one, so
+     mounting immediately would look up window.MMGR_CALC_AI too early and
+     silently mount nothing. Wait for DOM-ready instead: every classic script
+     in the body has run by then, whatever the tag order. */
+  if (window.MMGR_CALC_AI) {
+    mountCalcAssistant();
+  } else {
+    document.addEventListener('DOMContentLoaded', mountCalcAssistant, { once: true });
+  }
 })();

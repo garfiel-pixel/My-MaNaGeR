@@ -1040,6 +1040,10 @@ var MMGR = window.MMGR || {};
           out.push('Fell back to ' + r.model + ' - ' + r.fellBackFrom + ' hit its rate limit.');
         out.push(String(r.text));
       } catch (e) {
+        // Out of free messages for today - say exactly that, not "at capacity".
+        if (e && e.status === 402) {
+          return { ok: false, error: e.message, tier: 'free-pool' };
+        }
         if (e && (e.status === 429 || e.status === 503)) {
           return {
             ok: false,
@@ -1799,7 +1803,19 @@ var MMGR = window.MMGR || {};
         e.status = 401;
         throw e;
       }
-      if (!res.ok) throw new Error('AI chat HTTP ' + res.status);
+      if (!res.ok) {
+        // Carry the RELAY'S OWN wording (the free-quota notice, the capacity
+        // message) instead of a bare status code. Those sentences tell the
+        // user what to do next; a generic code throws them away.
+        let msg = '';
+        try {
+          const b = await res.json();
+          msg = (b && typeof b.error === 'string' && b.error) || '';
+        } catch (e) {}
+        const err = new Error(msg || 'AI chat HTTP ' + res.status);
+        err.status = res.status;
+        throw err;
+      }
       const data = await res.json().catch(function () {
         return null;
       });

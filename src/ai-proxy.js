@@ -8,7 +8,8 @@
    echoed in any error response. Enforced: max body size + hard upstream
    timeout. Missing key -> 401; bad body -> 400.
    ============================================================ */
-import { json } from './lib/http.js';
+import { json, readSession } from './lib/http.js';
+import { billingStatusActive } from './billing.js';
 
 const AI_PROVIDERS = {
   openai: { url: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini' },
@@ -37,6 +38,109 @@ function geminiUrl(model) {
 }
 const AI_BODY_LIMIT_BYTES = 262144; // 256 KB max request body
 const AI_TIMEOUT_MS = 30000; // hard upstream timeout
+
+/* ---- Managed free pool (owner 2026-10-08) ---------------------------------
+   The free section runs on the OWNER'S OWN Google keys, held as Worker
+   secrets GEMINI_KEY_1..4 - never in the browser, never in D1, never echoed
+   in a response (the relay still handles user-supplied keys unchanged).
+   This is the LAST rung before the capacity message, and it only fires when
+   there is no user key and the free Workers AI binding did not answer:
+
+     user's own key  ->  Workers AI  ->  this pool  ->  capacity message
+
+   Free accounts get FREE_DAILY_MESSAGE_CAP messages per 24-hour window,
+   counted in KV (env.KV, the binding that already exists - no migration).
+   Accounts with an active subscription are not capped.
+   The SMALLEST model is used on this rung, and the client's requested model
+   is deliberately ignored: a free key's most generous allowance is on the
+   lite model, so stepping up would burn the pool faster for no benefit. */
+const FREE_POOL_SLOTS = 4;
+const FREE_POOL_MODEL = 'gemini-flash-lite-latest';
+const FREE_DAILY_MESSAGE_CAP = 10;
+const FREE_QUOTA_TTL_S = 86400; // the window resets 24h after a key's own reset
+const FREE_QUOTA_PREFIX = 'aifree:';
+// Status for "out of free messages" - deliberately NOT 429/503, which the
+// client's model ladder reads as "advance to the next model" and would turn
+// one exhausted quota into a burst of retries.
+const FREE_QUOTA_STATUS = 402;
+
+// Reads the pool in slot order, skipping any slot the operator never set, so
+// 1 to 4 keys all work and adding a 5th is a constant + a secret.
+function freePoolKeys(env) {
+  const keys = [];
+  for (let i = 1; i <= FREE_POOL_SLOTS; i++) {
+    const v = env ? env['GEMINI_KEY_' + i] : null;
+    if (typeof v === 'string' && v.trim()) keys.push(v.trim());
+  }
+  return keys;
+}
+
+// Is this account paying? D1 unreadable -> treated as free, because the cap's
+// whole job is to protect a finite pool of free keys: the safe failure is
+// "capped", never "uncapped".
+async function poolIsPaid(env, sub) {
+  if (!env || !env.DB || !sub) return false;
+  try {
+    const row = await env.DB.prepare('SELECT status FROM cloud_subscriptions WHERE owner_sub = ?')
+      .bind(sub)
+      .first();
+    return !!(row && billingStatusActive(row.status));
+  } catch (e) {
+    return false;
+  }
+}
+
+// KV is best-effort the other way: a cache fault must never take the free AI
+// down, so an unreadable or missing counter means "allow" (0 used).
+async function freeQuotaUsed(env, sub) {
+  if (!env || !env.KV || !sub) return 0;
+  try {
+    const n = parseInt(await env.KV.get(FREE_QUOTA_PREFIX + sub), 10);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  } catch (e) {
+    return 0;
+  }
+}
+
+async function freeQuotaBump(env, sub, used) {
+  if (!env || !env.KV || !sub) return;
+  try {
+    await env.KV.put(FREE_QUOTA_PREFIX + sub, String(used + 1), {
+      expirationTtl: FREE_QUOTA_TTL_S
+    });
+  } catch (e) {
+    /* best-effort accounting; never block an answer on it */
+  }
+}
+
+// One attempt per key, in slot order. A key that is rate-limited, out of
+// quota, revoked or simply wrong costs ONE attempt, so a dead key can never
+// take the whole rung down with it.
+async function poolAttempt(keys, messages) {
+  for (let i = 0; i < keys.length; i++) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(function () {
+      ctrl.abort();
+    }, AI_TIMEOUT_MS);
+    try {
+      const res = await fetch(geminiUrl(FREE_POOL_MODEL), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': keys[i] },
+        body: JSON.stringify(aiGeminiPayload(messages)),
+        signal: ctrl.signal
+      });
+      clearTimeout(timer);
+      if (!res.ok) continue; // 429 / 503 / 401 / 403 -> next key
+      const data = await res.json();
+      const text = aiExtractText('google-gemini', data);
+      if (text) return { text: String(text) };
+    } catch (e) {
+      clearTimeout(timer);
+      // network error or timeout: next key
+    }
+  }
+  return null;
+}
 
 // OpenAI-style [{role,content}] -> Gemini generateContent payload.
 function aiGeminiPayload(messages) {
@@ -274,6 +378,47 @@ export async function handleAiChat(request, env) {
     }
   }
 
+  // FREE-POOL rung (owner 2026-10-08). Plan A1 order, and the order matters:
+  //   user key (BYO) -> THIS POOL -> Workers AI binding -> capacity message.
+  // The pool is the free section's own engine, so it answers BEFORE the
+  // Workers AI binding; Workers AI is the safety net for when the pool cannot
+  // serve at all (no keys configured, every key throttled or revoked), and the
+  // plain capacity message is the last rung. Signed-in only: the daily cap is
+  // per account and there is no account to count against otherwise.
+  if (!key) {
+    const session = await readSession(request, env);
+    const pool = freePoolKeys(env);
+    if (session && session.sub && pool.length) {
+      const paid = await poolIsPaid(env, session.sub);
+      const used = paid ? 0 : await freeQuotaUsed(env, session.sub);
+      if (!paid && used >= FREE_DAILY_MESSAGE_CAP) {
+        return json(
+          {
+            ok: false,
+            error:
+              'You have used all ' +
+              FREE_DAILY_MESSAGE_CAP +
+              ' free AI messages for today. They reset 24 hours after your first one, or connect your own AI key in the AI window (Settings, AI Engine) for unlimited questions.',
+            tier: 'free-pool',
+            remaining: 0
+          },
+          FREE_QUOTA_STATUS
+        );
+      }
+      const poolOut = await poolAttempt(pool, body.messages);
+      if (poolOut) {
+        if (!paid) await freeQuotaBump(env, session.sub, used);
+        return json({
+          ok: true,
+          text: poolOut.text,
+          model: FREE_POOL_MODEL,
+          source: 'free-pool',
+          remaining: paid ? null : Math.max(0, FREE_DAILY_MESSAGE_CAP - used - 1)
+        });
+      }
+    }
+  }
+
   // WORKERS-AI-FIRST (Rank 2): if no BYO key and Workers AI binding is
   // available, run inference at the edge — zero external calls, zero API
   // keys in the browser, sub-100ms latency. Falls through to external
@@ -309,6 +454,7 @@ export async function handleAiChat(request, env) {
       503
     );
   }
+
   const ctrl = new AbortController();
   const timer = setTimeout(function () {
     ctrl.abort();

@@ -571,9 +571,25 @@ async function main() {
   // asserted only as 'past auth and lookup' (200 in a wired env, 502 upstream).
   const cancelOut = await api('/api/billing/subscription', { method: 'DELETE' });
   check('W8.10a cancel while signed out -> 403', cancelOut.status === 403, cancelOut.text);
-  const cancelNoSub = await api('/api/billing/subscription', {
+  // OWNER 2026-10-09: cancelling now takes two deliberate acts, and the word is
+  // a SERVER requirement - a bare DELETE is refused 400 confirm_required before
+  // the subscription row is ever read. This harness was still sending the bare
+  // call and so asserted the old contract. W8.10b/c now send the word, and
+  // W8.10d pins the refusal itself, so the security gate cannot regress into
+  // "one accidental request cancels a plan".
+  const cancelBare = await api('/api/billing/subscription', {
     method: 'DELETE',
     headers: ck(b.cookie)
+  });
+  check(
+    'W8.10d a bare cancel is refused before the row is read -> 400 confirm_required',
+    cancelBare.status === 400 && /confirm_required/.test(cancelBare.text),
+    cancelBare.text
+  );
+  const cancelNoSub = await api('/api/billing/subscription', {
+    method: 'DELETE',
+    headers: Object.assign({ 'Content-Type': 'application/json' }, ck(b.cookie)),
+    body: JSON.stringify({ confirm: 'CANCEL' })
   });
   check(
     'W8.10b cancel with no active subscription -> 404',
@@ -582,7 +598,8 @@ async function main() {
   );
   const cancelAlice = await api('/api/billing/subscription', {
     method: 'DELETE',
-    headers: ck(a.cookie)
+    headers: Object.assign({ 'Content-Type': 'application/json' }, ck(a.cookie)),
+    body: JSON.stringify({ confirm: 'CANCEL' })
   });
   check(
     'W8.10c cancel for an active subscriber clears auth + lookup',

@@ -1,0 +1,396 @@
+MY MANAGER - PLANNING TRACKER (2026-10-06 session)
+===================================================
+Source: owner-pasted directive dated 2026-10-06 + current codebase audit.
+Legend: [ ] OPEN  [~] IN PROGRESS  [x] DONE  [?] NEEDS OWNER DECISION
+Owner rule: tasks run ONE BY ONE (no parallel work). After every increment,
+update this file + CONTINUATION-DIRECTIVE.md STATUS LOG + reflection.txt.
+
+WORK DATE: 2026-10-06
+
+NOTE ON THIS FILE
+This file starts from the first item in the directive that is NOT completed,
+then walks forward through the directive in order. Earlier directive items
+that already live in the codebase are recorded as already-done context only,
+so the work list begins where the build actually still has gaps.
+
+WHAT IS ALREADY IN THE CODEBASE (context, not today's work)
+- src/billing.js already has:
+  - billingFreeCap() defaulting to 1
+  - deriveTier(priceId, env)
+  - billingStatusActive() accepting past_due
+  - checkout reading ?tier= and resolving enterprise/company/contractor price IDs
+  - webhook extracting items[0].price.id and deriving tier
+  - applySubscription(..., tier, ...) writing both plan and tier
+  - handleBillingStatus returning plan from sub.tier || sub.plan || 'contractor'
+  - webhook 401 on missing/invalid signature
+- src/lib/http.js already has cloudAuthWithRole()
+- src/router.js already wires the team routes:
+  - POST/GET /api/cloud/projects/:id/team
+  - PUT/DELETE /api/cloud/projects/:id/team/:mid
+  - POST /api/team/accept
+- src/cloud/team.js already exists with invite/list/update/revoke/accept,
+  contractor 1-member cap, 402 member_limit, client scope cleaning
+- js/app/entitlements.js already rewritten with tier-aware gates
+- pricing.html is already a 4-card grid + comparison table,
+  with data-pricing-upgrade data-tier buttons
+- js/marketing.js already wires the pricing upgrade buttons
+- src/cloud/projects.js already has Wave 7 RBAC scope in /save, /load, /meta
+- migrations/0023_billing_tiers.sql and 0024_rbac_team.sql exist locally
+
+WHAT IS NOT DONE YET (this session's working list)
+- Wave 5: admin team UI wiring in src/admin.js is incomplete
+- Wave 6: pricing page card layout is not the portrait-across-top style requested
+- Wave 6: no dedicated “homeowner/client” subscription card is implemented yet
+- Wave 8.10: no in-app billing cancel / manage subscription path yet
+- src/cloud/projects.js still has its own local billingStatusActive that does
+  not include past_due, so it is not using the canonical billing rule
+- Wave 2: 0023 + 0024 remote D1 apply is not confirmed from code alone
+- Wave 8.2/8.3/8.4/8.5/8.6/8.7/8.8/8.9/8.11/8.12 are foundation items that
+  still need to be checked against the current repo state
+
+--------------------------------------------------------------------------------
+WAVE 2026-10-06 — OWNER DIRECTIVE, STARTING FROM THE FIRST OPEN ITEM
+--------------------------------------------------------------------------------
+
+STATUS: INCREMENT 1 COMPLETED 2026-10-06
+Date used for every record in this file: 2026-10-06
+
+HOMOEWNER / CLIENT SUBSCRIPTION CARD — OWNER'S ADDED REQUIREMENT
+Owner has asked for a separate subscription card / path for a homeowner or
+client who wants to track a project against a price. That is a new tier-style
+card on the pricing page and a matching price path.
+
+Verified so far:
+- server billing can already select a Paddle price by tier param
+- pricing.html already has four cards and a comparison table
+- js/marketing.js already opens checkout from data-pricing-upgrade buttons
+
+Still to verify directly from the code before building the new card:
+- the current live Paddle price IDs that exist in the deployment secrets
+- whether there is already a homeowner/client price ID anywhere in the repo
+- what the existing Paddle catalog shape is for that card
+
+The first code confirmation step for that card is a read-only check of the
+current Paddle price IDs, not a build. That is part of the Wave 6 increment
+below.
+
+--------------------------------------------------------------------------------
+INCREMENT 1 — COMPLETED 2026-10-06 (VERIFIED)
+Gates run: npm run verify — exit 0
+--------------------------------------------------------------------------------
+
+Directive order:
+- Wave 1: billing core
+- Wave 2: D1 migrations
+- Wave 3: entitlements
+- Wave 4: RBAC backend
+- Wave 5: admin team UI
+- Wave 6: pricing page redesign
+- Wave 7: session / auth middleware
+- Wave 8: foundation hardening
+
+Fact from the codebase now:
+- Wave 1 is effectively already implemented in src/billing.js
+- Wave 3 is already implemented in js/app/entitlements.js
+- Wave 4 backend is already implemented in src/cloud/team.js + router + http
+
+First directive gap read from the code: Wave 5 / admin team UI.
+
+INCREMENT 1 CHECKS RUN:
+- node --check src/billing.js: passed
+- node --check js/app/entitlements.js: passed
+- node --check src/cloud/team.js: passed
+- node --check src/lib/http.js: passed
+- node --check src/router.js: passed
+- node --check src/cloud/projects.js: passed after the billingStatusActive fix
+- billing.js exports confirmed present:
+  - billingFreeCap
+  - deriveTier
+  - billingStatusActive
+  - handleBillingStatus
+  - handleBillingCheckout
+  - applySubscription (tier parameter)
+  - paddleApplyWebhook (price.id extraction + deriveTier call)
+- entitlements exports confirmed present:
+  - ns.Entitlements with setBillingTier/tier/aiAssistant/unlimitedCloud/rbacAccess/rbacUnlimited
+- team routes confirmed wired in src/router.js:
+  - POST/GET /api/cloud/projects/:id/team
+  - PUT/DELETE /api/cloud/projects/:id/team/:mid
+  - POST /api/team/accept
+
+INCREMENT 1 RESULT:
+- Wave 1 billing-core shape is confirmed in src/billing.js
+- Wave 3 entitlements shape is confirmed in js/app/entitlements.js
+- Wave 1 and Wave 3 recorded as completed-in-code context for this plan
+- Wave 5 is the first open build item
+- consistency fix applied: src/cloud/projects.js now imports billingStatusActive
+  from ../billing.js instead of using the older local two-status copy
+- Wave 1 checkbox recorded as completed in this plan
+- Wave 3 checkbox recorded as completed in this plan
+- Wave 1 / Wave 3 are NOT re-litigated; they are already in the code
+
+Next increment: Wave 5 second pass — identify the first Wave 5 sub-piece that is
+not yet in admin.html and implement it there.
+
+Wave 1 and Wave 3 are not started again. They are complete in the codebase.
+The actual first open build item is Wave 5.
+
+--------------------------------------------------------------------------------
+OPEN WORK LIST (in directive order, starting at the first gap)
+--------------------------------------------------------------------------------
+
+[x] WAVE 5 — admin team UI wiring (second pass: member update UI completed)
+    [cleanup 2026-10-06] removed a duplicate id="team-update-scope" div in
+    admin.html (the second, dead copy carried an inline display:none that would
+    have fought the hidden toggle; getElementById already used the first copy).
+    Files: admin.html
+    Status this session: the member role/scope update path is now wired in
+    admin.html next to invite + revoke.
+    Completed in this session:
+    - team-update role select added to the modal
+    - team-update scope container added to the modal
+    - teamCurrentMemberById() fetches the current member from the team list
+    - teamUpdate() opens the confirm modal with the current role/scope prefilled
+    - initTeamUpdateScopeIfPending() renders the client section checkboxes for
+      the edit flow using the same CLIENT_SECTIONS list
+    - PUT /api/cloud/projects/:id/team/:mid is called on confirm
+    - after update the team list re-renders and the modal restores the role
+      select + scope container visibility
+    - teamRevoke() now also validates project + owner code before calling
+      DELETE /api/cloud/projects/:id/team/:mid
+    - ADMIN_ACTION_MAP now maps teamUpdate
+    Already present before this session:
+    - #team-section, #team-upsell, #team-invite-row, #team-scope, #team-list
+    - data-action="teamInvite" + data-action="teamRevoke"
+    - ADMIN_ACTION_MAP already mapped teamInvite + teamRevoke before this session
+    - initTeamSections() builds the client section checkboxes from CLIENT_SECTIONS
+    - teamInvite() handles 402 member_limit upsell and links to pricing.html#company
+    - teamList() + teamRevoke() were already implemented
+    Still open after this session:
+    - Wave 6 pricing card layout + homeowner/client card
+    - Wave 7 RBAC middleware beyond /save /load /meta
+    - Wave 8.10 in-app billing cancel/manage
+    - Wave 2 remote migration apply confirmation
+    - Wave 8 foundation items still to be confirmed one by one
+
+Wave 5 sub-check completed 2026-10-06:
+- Wave 5 admin team UI is already present in admin.html as an inline-script
+  block; src/admin.js is the server-side admin cloud project list endpoint only
+  and is not the team UI entrypoint
+- team list fetch + render: present (teamList())
+- team invite call + result handling: present (teamInvite())
+- team revoke wiring: present (teamRevoke() + ADMIN_ACTION_MAP.teamRevoke)
+- team update wiring in admin UI: not present in admin.html
+- contractor upsell rendering when 1 member exists and tier is contractor: present
+  via 402 member_limit handling in teamInvite() linking to pricing.html#company
+- client sections toggle using CLIENT_SECTIONS / SECTION_LABELS: present
+  (initTeamSections() + team-invite-role change binding)
+- data-action handlers for the team controls: present
+  (teamInvite, teamRevoke in ADMIN_ACTION_MAP)
+- client-side team behavior verified by static checks only; no server-side
+  team flow executed this session
+
+[x] WAVE 6 — pricing page card layout + homeowner/client card (COMPLETED 2026-10-06)
+    Portrait-across-the-top layout DONE: css/marketing.css .pricing-grid now
+    repeat(auto-fill,minmax(260px,1fr)) with a hover lift, replacing the fixed
+    2-column grid and its per-card order hacks. Verified in a real browser:
+    4 columns wrapping to 2 rows at 1280px, single column at 375px.
+    Homeowner card DONE: it was mis-nested INSIDE the Contractor card (rendering
+    as a card-in-a-card); it is now a sibling with its own
+    data-tier="homeowner" button on /api/billing/checkout?tier=homeowner.
+    Compare table DONE: now six columns (Feature | Free | Contractor | Homeowner
+    | Company | Enterprise), all ten rows rebalanced to six cells.
+    Tier wiring already in src/billing.js: deriveTier maps
+    PADDLE_HOMEOWNER_PRICE_ID -> homeowner and checkout resolves the homeowner
+    branch. sw.js bumped to mmgr-shell-v375.
+    Verified: npm run verify exit 0; browser render (5 sibling cards, 4-col wrap,
+    6-col table, all 4 tier buttons), light + dark + mobile.
+    Files: pricing.html, css/marketing.css, js/marketing.js, src/billing.js
+    Already in code: 4 cards + comparison table + upgrade buttons; checkout
+    route already reads ?tier=; js/marketing.js already reads data-tier from
+    the upgrade buttons.
+    Step 1 (completed this session, read-only): confirmed Paddle checkout
+    gateway already exists; the new card only needs a new tier branch + the
+    same data-tier button pattern.
+    Step 2 (completed this session): added the homeowner tier branch to
+    src/billing.js deriveTier() so PADDLE_HOMEOWNER_PRICE_ID maps to the
+    'homeowner' tier instead of falling back to contractor.
+    Step 3 (completed this session): added the matching homeowner checkout
+    branch in handleBillingCheckout() so a ?tier=homeowner checkout resolves
+    PADDLE_HOMEOWNER_PRICE_ID and passes the 'homeowner' tierParam through.
+    Verified this session:
+    - node --check src/billing.js passed
+    - npm run verify:js passed, including src/billing.js
+    - npm run verify:csp passed
+    - npm run verify:inline passed
+    - npm run verify exited 0
+    - billing unit tests 10/10
+    Owner action already taken this session:
+    - PADDLE_HOMEOWNER_PRICE_ID added as a Wrangler secret (owner confirmed)
+    Still requested (unchanged):
+    - portrait-style premium cards running across the top
+    - wrap to additional row(s) when they do not fit
+    - a homeowner/client subscription card with its own price path
+    - Upgrade to Premium / choose plan button on each card
+    - Playwright research pass on the card layout pattern before rebuild
+    Next concrete step: add the homeowner card to pricing.html using the same
+    pricing-card markup pattern as the other cards, plus the matching
+    data-pricing-upgrade data-tier="homeowner" button.
+
+[x] WAVE 7 — session / auth middleware for team routes (COMPLETED 2026-10-06)
+    The role matrix now lives in ONE place: src/lib/http.js exports
+    TEAM_FIELD_SECTIONS + teamScopeForRole (moved out of src/cloud/projects.js,
+    which imports it back), so every project-data route narrows by the same rule
+    /load already used.
+    Read routes opened to named team members:
+      - GET .../api/:shape (src/api/shapes.js) now uses cloudAuthWithRole; owner
+        and manager read every shape, a scoped role reads only the shapes whose
+        section their grant includes (a SHAPE_SECTION map: tasks/baseline->wbs,
+        risks->risk); aggregate shapes (weather/evm/portfolio) stay manager-only
+        because they cannot be narrowed by section.
+      - GET .../changelog (src/cloud/changelog.js list) now allows owner +
+        manager; scoped roles 403. Revert and import stay owner-only.
+    Kept owner-only: editors, api-keys, client-codes, pool, unlink, delete,
+    restore, purge, changelog revert/import, and all team management routes.
+    Verified: npm run verify exit 0; qa-team-rbac.cjs extended with seven new
+    gates (W7a-g) and passes 26/26, proving a manager reads shapes + changelog,
+    a scoped client reads only its own sections, and aggregate routes stay
+    manager+owner; qa-rank9-api.cjs still 31/31 (editor code still 403 on shapes).
+    Files: src/auth/session.js, src/router.js, src/cloud/projects.js,
+           other project-serving routes
+    Already in code: cloudAuthWithRole, teamScopeForRole,
+    /save /load /meta team fallback
+    Still open:
+    - other project routes still using cloudAuthOwnerEither where they should
+      allow team access
+    - role matrix enforcement on those routes
+    - owner-only actions kept owner-only
+
+[x] WAVE 8.10 — in-app billing cancel / manage subscription (COMPLETED 2026-10-06)
+    src/billing.js gains handleBillingCancel: a session-gated handler that
+    schedules a cancel-at-period-end on Paddle (PATCH /subscriptions/:id with
+    scheduled_change action=cancel, effective_at=next_billing_period). It does
+    NOT write cancelled locally - Paddle's subscription.canceled webhook is the
+    only thing that flips status, so access is never revoked early and the row
+    is never deleted. Router wires DELETE /api/billing/subscription (rl-guarded).
+    UI: new self-contained js/mmgr-billing-manage.js (delegated clicks, no
+    inline script, no CSP change) added to the admin bundle; it renders the
+    rail #rail-plan strip only when the signed-in owner has an ACTIVE plan - a
+    Premium badge with the period end plus a Manage subscription control, then
+    a confirm step (Confirm cancel / Keep my plan), then the success line.
+    Verified: npm run verify exit 0; qa-team-rbac.cjs extended with W8.10a-c and
+    passes 29/29 (signed-out 403, no-sub 404, active subscriber clears auth +
+    lookup); browser test with a mocked active status drove Manage -> Confirm ->
+    DELETE and asserted the success copy with zero page errors.
+    sw.js bumped to mmgr-shell-v376.
+    Files: admin.html, src/billing.js, src/router.js
+    Still missing:
+    - manage subscription section in admin (visible when active === true)
+    - DELETE /api/billing/subscription handler
+    - Paddle cancel-at-period-end call
+    - confirmation modal
+    - status update after cancel
+
+[x] CONSISTENCY FIX — src/cloud/projects.js billingStatusActive
+    File: src/cloud/projects.js
+    Problem: local billingStatusActive does not include past_due
+    Fix: import the canonical function from ../billing.js instead of
+         duplicating the older two-status version
+
+[x] WAVE 2 — remote migration apply confirmation (COMPLETED 2026-10-07)
+    Files: migrations/0023_billing_tiers.sql, migrations/0024_rbac_team.sql
+    Status: CONFIRMED. Both migrations exist on disk AND are applied to the
+    remote D1. `npx wrangler d1 migrations list my-manager-db --remote`
+    returns 'No migrations to apply!' - 0023 + 0024 are live.
+    - 0023: cloud_subscriptions tier + paddle_price_id columns, pro->contractor backfill
+    - 0024: cloud_team_members table (RBAC named team members)
+    - Verified: garfieldprocis@gmail.com account, d1 migrations list --remote exit 0
+
+[ ] WAVE 8 — foundation hardening items
+    Still to confirm one by one:
+    - 8.1 D02 crash recovery fix in js/mmgr-state.js
+    - 8.2 block *.map from public serving
+    - 8.3 soft-404 -> real 404
+    - [x] 8.4 vendor three.js, drop unpkg from CSP (COMPLETED 2026-10-06)
+          three@0.160.0 build/three.module.js (1,272,972 bytes, r160) is now
+          vendored at vendor/three/three.module.js. js/mmgr-glass.js imports
+          /vendor/three/three.module.js (renamed THREE_CDN -> THREE_MODULE), so
+          the premium Liquid Glass canvas has no third-party script dependency.
+          https://unpkg.com removed from script-src in worker.js (both CSP
+          strings), serve.cjs (both, parity kept) and project.html meta CSP.
+          Verified: npm run verify exit 0; live serve.cjs check: the vendored
+          module returns 200 and the project.html CSP header + meta tag carry no
+          unpkg and keep all 5 inline-script hashes; dist bundles reference the
+          vendored path; sw.js bumped to mmgr-shell-v377, then v378 for the
+          follow-up fix below.
+          FIX (v378): the rename left ns.Glass exporting THREE_CDN: THREE_CDN,
+          which referenced a variable that no longer existed and threw at module
+          load. Caught by re-browser-testing after the rename (the earlier
+          admin check predated 8.4). The export is now THREE_MODULE and all
+          three pages load MMGR.Glass with zero pageerrors; the vendored module
+          was confirmed to import as an ES module (REVISION 160, WebGLRenderer
+          present).
+    - 8.5 accessible labels on icon-only buttons
+    - 8.6 labels on placeholder-only fields
+    - [x] 8.7 ESLint + Prettier wired into verify (COMPLETED 2026-10-06)
+          - Installed eslint + prettier + globals + eslint-config-prettier as devDeps
+          - Created .eslintrc.json (legacy) + eslint.config.js (flat v10 config)
+          - ESLint: 0 errors, 4510 warnings (all warn-level, legacy patterns)
+          - Prettier: .prettierrc.json configured (semi:true, singleQuote, 2-space)
+          - Ran prettier --write across 230 files (JS, CSS, JSON, MD)
+          - Added verify:eslint + verify:prettier scripts to package.json
+          - Wired both into npm run verify chain (after verify:a11y, before registry)
+          - npm run verify EXIT 0 (full chain green)
+          - Files: package.json, .eslintrc.json, eslint.config.js, .prettierrc.json
+            + 230 formatted files
+    - 8.8 SECURITY.md, CODEOWNERS, .nvmrc, dependabot update
+    - [x] 8.9 content-hashed bundle filenames (COMPLETED 2026-10-06)
+          - build.js modified to compute sha256 content hash (8-char hex) of each
+            built artifact and write a hashed copy alongside the unhashed original
+          - buildBundle() returns {name, hashed, hash}; buildCSS() returns same shape
+          - Both JS bundles and CSS files get hashed copies: e.g.
+            dist/bundle.d495ad34.js, dist/mmgr.min.a25cf392.css
+          - build.js writes dist/manifest.json mapping logical names to hashed names
+          - Unhashed copies preserved for backward compatibility (HTML pages still
+            reference dist/bundle.js etc.); hashed copies available for content-
+            addressed caching strategies
+          - npm run build EXIT 0; npm run verify EXIT 0
+          - Files: build.js (modified), dist/manifest.json (new)
+    - 8.11 node:test unit layer + npm test
+    - [x] 8.12 unpark 5 TRIAGE harnesses (COMPLETED 2026-10-06)
+          - qa-stress.cjs: D02 bug RESOLVED (Wave 8.1 fix in restoreFromJournal());
+            updated TRIAGE entry with resolution note; P04 still needs re-baselining
+          - qa-ai-visual.cjs: still needs Entitlements.aiAssistant() seam (unchanged)
+          - qa-glass-visual.cjs: likely unblocked by qa-glass app.html fix; needs
+            re-baseline (unchanged)
+          - qa-oauth.cjs: still needs update for local-first unlock flow (unchanged)
+          - tools/qa-ai-polish.cjs: still needs clipboard SKIP logic (unchanged)
+          - Updated docs/CI-TEST-COVERAGE.md TRIAGE section with 2026-10-06
+            findings; qa-stress D02 marked RESOLVED
+          - NOTE: 4 of 5 harnesses need Chrome to fully verify; this environment
+            has no Chrome (google-chrome --version returns 'NO CHROME'), so
+            browser-based re-baselining deferred to a session with Chrome
+    - 8.13 webhook 503 -> 401 (already done in src/billing.js, but verify
+      no other webhook path still returns 503)
+
+--------------------------------------------------------------------------------
+GATES FOR EVERY INCREMENT
+--------------------------------------------------------------------------------
+- node --check on every touched JS file
+- npm run verify green before the increment commits
+- CSP hashes recomputed when any inline script or style changes
+- sw.js cache version bumped when any served asset changes
+- no inline scripts added to HTML
+- docs/CI-TEST-COVERAGE.md + ci.yml updated with any new or modified harness
+- Conventional Commits only, subject <= 72 chars, no AI attribution footer
+
+--------------------------------------------------------------------------------
+SESSION START STATE
+--------------------------------------------------------------------------------
+- Planning file created: PLANNING-TODO-2026-10-06.txt
+- Working date recorded: 2026-10-06
+- First open build item identified from the codebase: Wave 5 admin team UI
+- Wave 1 / Wave 3 recorded as already-implemented context from the code
+- Next action: run the increment-1 checks and mark Wave 1/3 as completed
+  in this plan, then move to Wave 5
+

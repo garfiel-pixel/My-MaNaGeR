@@ -3204,3 +3204,32 @@ Owner directive batch: fix the local-vs-cloud project-ID split (local "new town 
 
 *This file is the working source of truth for continuing this project across sessions.*
 Keep it updated. Do not let a session end without updating the STATUS LOG.*
+
+---
+
+**2026-10-07 — Session: MARKETING LANDING PAGE DOT-RAIL + LAYOUT REWORK (uncommitted, UNDEPLOYED).**
+Owner directive: the live marketing landing page (`mymanagerworkspace.com/`) was showing two big vertical side rails — left and right — covering the hero image (crane) and shrinking the page so content did not reach the screen edges. The page should fill the full screen; only a small dot rail on the left should remain, with the big major dots only (no small subsection dots), wired to the real sections, and no title/tooltip popup on hover/focus. Reference: the older UI (commits such as `34cc8b6`, `b75be60`, `a59c175`) used a single slim `<nav class="scroll-spy">` at `left:8px` — "slim edge index, functional layer only (never a panel)" — plus tiny sub-dots and short label words. That is the concrete "how it used to look."
+
+WHAT THIS SESSION DID
+- Reworked the marketing landing page toward: full-bleed layout (no 96px column peg on desktop), a slim left dot-only rail, major dots only (6: Built For / Key Features / How It Works / Data & Backup / Field Guide / FAQ), no subsection dots, no label/tooltip popups, and scroll-based dot highlighting (none at top, all lit at page bottom). Also applied readability/spacing polish from the owner's pasted UI critique where it mapped to the actual hero/header/nav structure (hero scrim weighted toward the text column, headline/sub/CTA spacing and line-height, preview-card sizing, header row gap + nav gap).
+- Files edited (source): `css/marketing.css` (layout, slim rail, tooltip/label suppression, hero + header/nav polish), `index.html` (rail markup reduced to 6 major-dot anchors — `#builtfor #features #how #data #guide #faq` — subsection dots and tooltip markup removed), `js/marketing.js` (dot selector narrowed to `a[data-target]`; scroll sync rewritten so normal scroll lights the matching major dot and page-bottom lights all major dots).
+- Rebuilt `dist/marketing.min.css` from source. Verified on disk: built CSS contains `.dot-item .tooltip{display:none!important}`, `.dot-item .dot-label{display:none!important}`, slim `.dot-rail-navigation{ left:18px; ... pointer-events:none }`, and NO `main{margin-left:96px}` rule. HTML smoke check via local file server (port 8765) returned STATUS 200, 1 rail, 6 dot items, 0 minor dots, 0 rail tooltips in the markup, 1 tooltip occurrence in the SVG sprite area only.
+
+KEY FINDING — LIVE SITE IS STALE RELATIVE TO THIS SESSION
+- The live site's `dist/marketing.min.css` does NOT match the rebuilt file. Live CSS still carries: `.dot-item .tooltip` with full visible-tooltip styling (`opacity:0; pointer-events:none`), `.dot-rail-navigation{ left:24px; ... }` (the wide rail), and `main{ margin-left:96px }` (the column peg). None of the this-session fixes are present on the live origin.
+- This means the owner's reported symptom (two big side rails + page not filling screen) is the LIVE artifact's behavior, and the source edits done this session have NOT reached production. The local preview server (port 8765) was started during this session to serve the rebuilt files but is NOT deploy — it is only a local file server for inspection.
+
+DECISIONS / STATE
+- This session's work is UNCOMMITTED and UNDEPLOYED by owner direction. No git commit was made. No `npm run verify` battery was run against the rebuilt output in this session (only file-level + build + grep checks were done). No browser screenshot was captured this session (headless Chrome on this machine refused the screenshot flags while a browser session was open; puppeteer not installed in this tree).
+- Pending, in owner's hands: (1) whether to deploy the rebuilt `dist/marketing.min.css` + the edited source to the live worker; (2) whether the right-side rail the owner saw is a real second rail element or the column-peg + wide left rail making the page read as narrower than the window (the source this session removed the peg, but the live CSS still has it); (3) owner eyeball of the rebuilt page before deciding to ship.
+
+OPEN FOR THE OWNER
+  (a) deploy decision for the rebuilt marketing assets (this session's source edits + rebuilt `dist/marketing.min.css`);
+  (b) if deployed, run the verify battery + live smoke against the live marketing page and confirm both side rails are gone and the page fills the screen;
+  (c) if the right-side rail is a real second element rather than a layout/narrowing artifact, pin it to the served artifact (live CSS/DOM) rather than editing more source blindly — the source this session removed the left peg and slimmed the single left rail, but a separate right-side bar would be a different cause.
+
+FILES TOUCHED THIS SESSION (source, uncommitted)
+  css/marketing.css, index.html, js/marketing.js, dist/marketing.min.css (rebuilt).
+
+SESSION END STATE
+  Work documented here and in reflection.txt. No commit, no deploy. Local preview server on port 8765 was used for inspection only and is not a deploy. Live origin still serves the pre-session `dist/marketing.min.css`.

@@ -1799,3 +1799,100 @@ OPEN FOR THE OWNER
       clock/queue noise rather than a wrong secret;
   (e) C4 (macOS window dots) from the pasted directive was never built and never
       reached the owner decision round - flagged, not silently added.
+
+================================================================================
+SESSION 2026-10-07 - MARKETING LANDING PAGE DOT-RAIL + LAYOUT REWORK
+STATUS: work done, documented, NOT committed, NOT deployed (owner direction)
+================================================================================
+
+WHAT THIS SESSION DID
+- Owner reported the live marketing landing page (mymanagerworkspace.com/)
+  had two big vertical side rails (left and right) covering the hero crane
+  image and shrinking the page so content did not reach the screen edges.
+  Said the page should fill the full screen, only a small dot rail on the
+  left should remain, with big major dots only (no small subsection dots),
+  wired to the real sections, and no title/tooltip popup on hover/focus.
+  Reference: the older UI (commits such as 34cc8b6, b75be60, a59c175) used
+  a single slim scroll-spy at left:8px ("never a panel") plus tiny sub-dots
+  and short label words — that is the concrete "how it used to look."
+
+- Reworked the landing page toward: full-bleed layout (removed the 96px
+  column peg on desktop), a slim left dot-only rail, major dots only (6:
+  Built For / Key Features / How It Works / Data & Backup / Field Guide /
+  FAQ), no subsection dots, no label/tooltip popups, and scroll-based dot
+  highlighting (none at top, all lit at page bottom). Also applied the
+  readability/spacing polish from the owner's pasted UI critique where it
+  mapped to actual structure: hero scrim weighted toward the text column,
+  headline/sub/CTA spacing + line-height, preview-card sizing, header row
+  gap + nav gap.
+
+FILES EDITED (source)
+- css/marketing.css — layout, slim rail, tooltip/label suppression, hero
+  + header/nav polish.
+- index.html — rail markup reduced to 6 major-dot anchors (#builtfor
+  #features #how #data #guide #faq); subsection dots and tooltip markup
+  removed.
+- js/marketing.js — dot selector narrowed to a[data-target]; scroll sync
+  rewritten so normal scroll lights the matching major dot and page-bottom
+  lights all major dots.
+- dist/marketing.min.css — rebuilt from source.
+
+VERIFICATION DONE THIS SESSION
+- File-level: css/marketing.css, index.html, js/marketing.js edited and
+  read back to confirm intent.
+- Build: node build.js ran clean; dist/marketing.min.css regenerated.
+- Built-CSS checks (grep on dist/marketing.min.css on disk): contains
+  .dot-item .tooltip{display:none!important}, .dot-item .dot-label{
+  display:none!important}, slim .dot-rail-navigation{ left:18px; ...
+  pointer-events:none }, and NO main{margin-left:96px} rule.
+- HTML smoke check via local file server on port 8765: STATUS 200,
+  37738-byte index.html, 1 rail, 6 dot items, 0 minor dots, 0 rail
+  tooltips in the markup, 1 tooltip occurrence in the SVG sprite area only.
+- Local file server stood up for inspection only — NOT a deploy.
+
+KEY FINDING THIS SESSION
+- The live site's dist/marketing.min.css does NOT match the rebuilt file.
+  Live CSS still carries the pre-session behavior:
+    .dot-item .tooltip  -> full visible-tooltip styling
+                             (opacity:0; pointer-events:none)
+    .dot-rail-navigation -> { left:24px; ... }  (the wide rail)
+    main{ margin-left:96px } -> the column peg, STILL PRESENT
+  None of this session's fixes are on the live origin.
+- This explains the owner's reported symptom directly: the live site is
+  still serving the version with the wide left rail and the 96px peg. The
+  two-rails + shrunken-page complaint is the live artifact's behavior, and
+  the source edits done this session never reached production.
+
+CORRECTIONS / GOTCHAS THIS SESSION
+- Spent too long spinning on a screenshot before confirming whether the
+  live site was even serving the rebuilt CSS. Should have checked the live
+  artifact first — that one check (curl the live dist/marketing.min.css
+  and grep the rail rule) answered the real question immediately: the live
+  site is stale. Lesson: when the reported symptom is a live-site visual
+  regression, verify what the live origin is actually serving before
+  chasing headless-screenshot tooling.
+- Headless Chrome on this machine refused --screenshot while a browser
+  session was open ("Opening in existing browser session", exit 21).
+  Puppeteer is not installed in this tree. Did not force it — instead
+  verified the page structurally via HTTP + grep, which was the higher-value
+  check anyway (it proved the live CSS is stale).
+- Do NOT trust "the rebuild ran" as proof the live site changed. The rebuild
+  wrote dist/marketing.min.css on disk here, but the live worker serves its
+  own copy. Without a deploy, the owner sees the old file.
+
+WHAT IS STILL OPEN (owner decision)
+- This session's work is UNCOMMITTED and UNDEPLOYED per owner direction.
+- Live site still shows the pre-session rail/peg behavior until the rebuilt
+  dist/marketing.min.css + edited source are deployed to the live worker.
+- If deployed, the next step is to run the verify battery + live smoke
+  against the live marketing page and confirm both side rails are gone and
+  the page fills the screen.
+- If a real right-side rail (separate element, not just the column-peg +
+  wide left rail making the page read as narrow) is still present after
+  deploy, pin it to the served artifact (live CSS/DOM) instead of editing
+  more source blindly.
+
+SESSION END STATE
+- Documented in CONTINUATION-DIRECTIVE.md STATUS LOG and here.
+- No commit. No deploy. Local preview server on 8765 was inspection-only.
+- Live origin still serves the pre-session dist/marketing.min.css.

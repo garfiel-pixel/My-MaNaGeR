@@ -28,7 +28,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" href="images/mpw-icon.png">
 <link rel="apple-touch-icon" href="images/mpw-icon.png">
-<link rel="stylesheet" href="dist/mmgr.min.css?v=27">
+<link rel="stylesheet" href="dist/mmgr.min.css?v=28">
 <script src="js/mmgr-theme.js" data-sync="1"></script>
 </head>
 <body class="db-page calculator-page">
@@ -208,14 +208,27 @@
            measured; identical repeats use the count box. Typing the known
            total instead skips the rows entirely. -->
       <div class="bcp-field bcp-inst" id="calc-instances">
-        <span class="bcp-units-label">Measure by element <span class="bcp-hist-note">- add a row for each one, or type the total below</span></span>
+        <span class="bcp-units-label">Measure by element <span class="bcp-hist-note">- add a row for each one</span></span>
         <div id="calc-inst-rows"></div>
         <div class="bcp-inst-actions">
           <button type="button" class="btn btn-n btn-s" id="calc-inst-add" data-action="calcInstAdd">+ Add element</button>
+        </div>
+        <span class="bcp-inst-sum" id="calc-inst-sum"></span>
+      </div>
+
+      <!-- OWNER 2026-10-10 (R4, T4): QUICK TOTAL - one big measurement times
+           one rate. The engine already prices this path; this block only
+           surfaces it: the quantity box carries the trade's own unit and the
+           line under it reads "69 m2 x J$120 = J$8,280". It sits beside (not
+           inside) the element rows so every trade can use it. No stored field
+           changed, so saved state, snapshots and the bill keep working. -->
+      <div class="bcp-field bcp-inst" id="calc-quick">
+        <span class="bcp-units-label" id="calc-quick-label">Quick total <span class="bcp-hist-note">- one quantity, priced at one rate</span></span>
+        <div class="bcp-inst-actions">
           <label class="bcp-inst-manual"><input type="checkbox" id="calc-measured-manual" data-action="calcInstToggle"> I know the total - let me type it</label>
         </div>
         <input type="number" id="calc-measured-qty" min="0" step="any" inputmode="decimal" placeholder="Total quantity" hidden aria-label="Total measured quantity (overrides the rows)">
-        <span class="bcp-inst-sum" id="calc-inst-sum"></span>
+        <span class="bcp-quick-line" id="calc-quick-line" role="status" hidden></span>
       </div>
 
       <!-- W2.7 (owner 2026-10-01) openings: you wouldn't lay block in the
@@ -707,7 +720,7 @@
      change here must bump v, or returning calculator-only visitors keep
      the old script/styles for a year. -->
 <script src="js/mmgr-icon-restore.js?v=25"></script>
-<script src="js/calculator-page.js?v=29"></script>
+<script src="js/calculator-page.js?v=30"></script>
 <script src="js/calc-ai.js?v=2"></script>
 </body>
 </html>

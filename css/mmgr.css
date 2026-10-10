@@ -50,6 +50,11 @@ svg.ico use {
   --brand-on: #ffffff; /* foreground on brand surfaces */
   --gold: #d96b27; /* alias: gold = brand for backward compat */
   --gold-rgb: 217, 107, 39;
+  /* Gold used as TEXT on a light surface. The gold FILL keeps --gold; a gold
+     word on white needs the deeper step to clear AA (owner 2026-10-10: the
+     identity is gold, and the gold must stay readable - never swapped for a
+     different hue). 5.74:1 on white, 4.90:1 on the soft-gold tint. */
+  --gold-ink: #a84a15;
   /* -- Accent cyan (secondary, restrained) -- */
   --accent-cyan: #00bcd4;
   --accent-cyan-subtle: rgba(0, 188, 212, 0.08);
@@ -165,6 +170,7 @@ body.dark-mode {
   --brand-on: #0b0b0d;
   --gold: #ffffff;
   --gold-rgb: 255, 255, 255;
+  --gold-ink: #ffffff; /* the accent IS white in dark mode */
   /* Accent cyan: white */
   --accent-cyan: #e8e8ec;
   --accent-cyan-subtle: rgba(255, 255, 255, 0.06);
@@ -10121,6 +10127,21 @@ html.mmgr-tour-active .bcp-tour-nudge {
   font-weight: 600;
   min-height: 1em;
 }
+/* OWNER 2026-10-10 (R4, T4): the Quick total read-out - "69 m2 x J$120 =
+   J$8,280 before tax". Gold is the identity, so the line is gold; it uses the
+   TEXT gold step (--gold-ink) so it stays readable on the light canvas. */
+.bcp-quick-line {
+  display: block;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--gold-ink);
+  letter-spacing: 0.01em;
+  margin-top: 2px;
+  min-height: 1em;
+}
+.bcp-quick-line[hidden] {
+  display: none;
+}
 /* W3 employer statutory on-costs + Jamaica levy note. */
 .bcp-oncost {
   display: flex;
@@ -13731,6 +13752,69 @@ body.db-page .cd-actions {
   gap: 10px;
   margin-top: 14px;
   flex-wrap: wrap;
+}
+/* ---- PART W11 (2026-10-10, owner R11): the card Load button stops
+   carrying a saturated green block on every card. The default state is a
+   quiet outline (transparent fill, hairline border, primary text); the
+   green arrives on hover / focus / press only. Scoped to the dashboard
+   card action row, so the rail rows (.db-project) and every other green
+   button keep their current treatment. Gold stays the identity - only this
+   one control is neutral until it is touched. */
+body.db-page .cd-actions .btn[data-cd-load] {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: none;
+  transition:
+    background var(--tr),
+    border-color var(--tr),
+    color var(--tr);
+}
+body.db-page .cd-actions .btn[data-cd-load]:hover,
+body.db-page .cd-actions .btn[data-cd-load]:focus-visible,
+body.db-page .cd-actions .btn[data-cd-load]:active {
+  /* white on #2e7d32 = 5.13:1 (AA) */
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+body.dark-mode.db-page .cd-actions .btn[data-cd-load] {
+  color: var(--text);
+  border-color: var(--db-border);
+  background: transparent;
+}
+body.dark-mode.db-page .cd-actions .btn[data-cd-load]:hover,
+body.dark-mode.db-page .cd-actions .btn[data-cd-load]:focus-visible,
+body.dark-mode.db-page .cd-actions .btn[data-cd-load]:active {
+  /* the green token collapses to white in dark mode, so pin the usable
+     green here: white on #2e7d32 = 5.13:1 (AA) */
+  background: #2e7d32;
+  border-color: #2e7d32;
+  color: #fff;
+}
+/* Touch devices have no hover: the default stays neutral and the green
+   shows only while the finger is down. */
+@media (hover: none) {
+  body.db-page .cd-actions .btn[data-cd-load]:hover {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--text);
+  }
+  body.db-page .cd-actions .btn[data-cd-load]:active {
+    background: var(--green);
+    border-color: var(--green);
+    color: #fff;
+  }
+  body.dark-mode.db-page .cd-actions .btn[data-cd-load]:hover {
+    background: transparent;
+    border-color: var(--db-border);
+    color: var(--text);
+  }
+  body.dark-mode.db-page .cd-actions .btn[data-cd-load]:active {
+    background: #2e7d32;
+    border-color: #2e7d32;
+    color: #fff;
+  }
 }
 body.db-page .cd-unpin {
   font: inherit;

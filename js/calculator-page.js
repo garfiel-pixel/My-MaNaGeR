@@ -1730,17 +1730,20 @@
     const d2 = w.d2 ? (imp ? raw2 * FT : raw2) : null;
     const d3 = w.d3 ? (imp ? raw3 * IN : raw3) : null;
     // Manual overrides carry no row-derived unit - derive the trade's canonical
-    // unit from q() itself (unit math never depends on the dimension values).
-    const mqUnit =
-      st.measuredUnit ||
-      (function () {
-        try {
-          return w.q(1, w.d2 ? 1 : null, w.d3 ? 1 : null).unit;
-        } catch (e) {
-          return '';
-        }
-      })();
-    const qr = hasMq ? { qty: mqRaw, unit: mqUnit } : w.q(d1, d2, d3);
+    // unit from q() itself (unit math never depends on the dimension values),
+    // and take the trade's OWN quantity label with it so the result heading can
+    // never read "undefined" on the typed-total path (owner 2026-10-10, F-3).
+    const canon = (function () {
+      try {
+        return w.q(1, w.d2 ? 1 : null, w.d3 ? 1 : null) || {};
+      } catch (e) {
+        return {};
+      }
+    })();
+    const mqUnit = st.measuredUnit || canon.unit || '';
+    const qr = hasMq
+      ? { qty: mqRaw, unit: mqUnit, qtyLabel: canon.qtyLabel || 'Measured quantity' }
+      : w.q(d1, d2, d3);
     // B1 (owner review 2026-09-29): waste/cuts is an editable percentage per
     // trade (tile 10, roof laps 10, concrete 5 defaults = the previously
     // baked-in factors). Empty/invalid falls back to the trade default.
@@ -3974,6 +3977,12 @@
     }
     if (addBtn) addBtn.textContent = '+ Add ' + INSTANCE_LABEL[kind].toLowerCase();
     const w = WORK[key];
+    // A-5 (owner review 2026-10-10): every row box carries a real accessible
+    // name ("Wall 1 length (m)"), not just a placeholder - these are exactly
+    // the boxes the assistant has to fill.
+    const rowName = function (rw, i) {
+      return rw.label || INSTANCE_LABEL[kind] + ' ' + (i + 1);
+    };
     rowsEl.innerHTML = instRows
       .map(function (rw, i) {
         return (
@@ -3987,6 +3996,8 @@
           i +
           '" data-field="d1" min="0" step="any" inputmode="decimal" placeholder="' +
           esc(dimLabel(w, 'd1')) +
+          '" aria-label="' +
+          esc(rowName(rw, i) + ' ' + dimLabel(w, 'd1')) +
           '" value="' +
           esc(rw.d1) +
           '">' +
@@ -3995,6 +4006,8 @@
               i +
               '" data-field="d2" min="0" step="any" inputmode="decimal" placeholder="' +
               esc(dimLabel(w, 'd2')) +
+              '" aria-label="' +
+              esc(rowName(rw, i) + ' ' + dimLabel(w, 'd2')) +
               '" value="' +
               esc(rw.d2) +
               '">'
@@ -4004,6 +4017,8 @@
               i +
               '" data-field="d3" min="0" step="any" inputmode="decimal" placeholder="' +
               esc(dimLabel(w, 'd3')) +
+              '" aria-label="' +
+              esc(rowName(rw, i) + ' ' + dimLabel(w, 'd3')) +
               '" value="' +
               esc(rw.d3) +
               '">'
@@ -5957,10 +5972,51 @@
     });
   }
 
+  // OWNER 2026-10-10 (R4, T4 "Quick total"): one big measurement times one
+  // rate. The engine has always priced this path (a measured quantity plus an
+  // all-in rate); this only makes it LEGIBLE - the quantity box carries the
+  // trade's own unit and the line under it shows the arithmetic before the
+  // on-costs and tax. No new maths, no new stored field.
+  function renderQuickLine(r) {
+    const qEl = $('calc-measured-qty');
+    if (!qEl) {
+      return;
+    }
+    const unit = (r && r.unit) || '';
+    qEl.placeholder = unit ? 'Total ' + unit : 'Total quantity';
+    qEl.setAttribute(
+      'aria-label',
+      unit ? 'Total measured quantity (' + unit + ')' : 'Total measured quantity'
+    );
+    const lineEl = $('calc-quick-line');
+    if (!lineEl) {
+      return;
+    }
+    const manual = $('calc-measured-manual');
+    let txt = '';
+    if (manual && manual.checked && r && r.allIn && isFinite(Number(r.qty)) && Number(r.qty) > 0) {
+      const qs = qtyShown(r.qty, unit).main;
+      // fmtMoney is the page's one money formatter (J$8,280), so the read-out
+      // reads exactly like the bill below it.
+      txt =
+        qs +
+        ' x ' +
+        fmtMoney(r.allInRate, r.currency) +
+        ' = ' +
+        fmtMoney(r.allInCost, r.currency) +
+        (r.tax > 0 ? ' before tax' : '');
+    }
+    lineEl.textContent = txt;
+    lineEl.hidden = !txt;
+  }
+
   function render() {
     const out = $('calc-output');
     if (!out) return;
     const r = compute();
+    // T4: the Quick total line and the quantity box's unit follow every
+    // recompute, including an error state (r is null then).
+    renderQuickLine(r && !r.error ? r : null);
     // W3: the document sheet extras (logo, contact, doc number, bill-to,
     // signature) follow their own fields on EVERY recompute - even before
     // dims price. A document header is data-driven, not price-driven, and

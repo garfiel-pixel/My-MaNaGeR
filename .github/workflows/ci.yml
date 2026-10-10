@@ -482,6 +482,10 @@ jobs:
         id: qa-calc-golden
         run: node tools/qa-calc-golden.cjs
 
+      - name: "T4: Quick total + dashboard card waves (qa-calc-assistant)"
+        id: qa-calc-assistant
+        run: node tools/qa-calc-assistant.cjs
+
       - name: "T4: Stop static QA server"
         if: always()
         run: pkill -f "node serve.cjs" || true

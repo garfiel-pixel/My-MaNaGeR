@@ -73,6 +73,7 @@ or too niche for the deploy gate), **TRIAGE** (known-drifting, findings listed),
 | `tools/qa-cloud-phase1.cjs` | CI | cloud create/save/load/meta, owner codes, codes never logged (29/29) |
 | `tools/qa-cloud-phase2.cjs` | CI | editor codes, section scope, changelog + revert (85/85) |
 | `tools/qa-cloud-codes-delete.cjs` | CI | code escrow + purge/restore after delete (23/23) |
+| `tools/qa-cloud-photos.cjs` | CI | Project Photos: code-created project accepts photos (the row is the cloud gate, not google_sub), upload/list/single-bytes/meta/delete round trip with content type + exact byte length, no destructive self-heal on view, and the role gates (wrong code 403, local-only project 403, viewer reads but cannot upload) (14/14) |
 | `tools/qa-cloud-import.cjs` | CI | CLI import ledger + id mapping (35/35) |
 | `tools/qa-market-features.cjs` | CI | dashboard/market feature aggregations (61/61) |
 | `tools/verify-controls-admin.cjs` | CI | Controls drawer surfaces + admin copy/labels (11/11) |

@@ -314,7 +314,7 @@ body.dark-mode .sec-btn:hover path {
   height: 84px;
   border-radius: 6px;
   overflow: hidden;
-  background: rgba(var(--gold-rgb), .06);
+  background: rgba(var(--gold-rgb), 0.06);
   border: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -341,7 +341,7 @@ body.dark-mode .sec-btn:hover path {
 }
 .photo-meta {
   color: var(--text-secondary);
-  font-size: .78rem;
+  font-size: 0.78rem;
 }
 .photo-item a:hover .photo-thumb {
   color: var(--brand);

@@ -3968,6 +3968,58 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // ---- PROJECT PHOTOS (C24): delegating wrappers --------------------------
+  // js/cloud/photos-ui.js owns the photo panel's DOM work (upload affordance,
+  // list render, role gate copy) and registers MMGR.CloudPhotos. These thin
+  // wrappers are the mmgr-cloud.js surface the export-completeness gate expects
+  // for an extracted cloud sub-module, and they never throw when the module is
+  // absent (e.g. a page that loads the cloud shell without the photos UI).
+  function _renderPhotosPanel() {
+    if (typeof MMGR.CloudPhotos !== 'undefined' && MMGR.CloudPhotos._renderPhotosPanel) {
+      try {
+        MMGR.CloudPhotos._renderPhotosPanel();
+      } catch (e) {
+        /* a panel repaint must never break the cloud render */
+      }
+    }
+  }
+  function cloudPhotosIsCloudProject() {
+    return ns.CloudPhotos ? !!ns.CloudPhotos.cloudPhotosIsCloudProject() : false;
+  }
+  function cloudPhotosCanUpload() {
+    return ns.CloudPhotos ? !!ns.CloudPhotos.cloudPhotosCanUpload() : false;
+  }
+  function cloudPhotosUploadGateMessage() {
+    return ns.CloudPhotos ? ns.CloudPhotos.cloudPhotosUploadGateMessage() : '';
+  }
+  function cloudPhotosFetchPhotos(errCb) {
+    return ns.CloudPhotos ? ns.CloudPhotos.cloudPhotosFetchPhotos(errCb) : null;
+  }
+  function cloudPhotosRenderPhotoList(container, opts) {
+    return ns.CloudPhotos ? ns.CloudPhotos.cloudPhotosRenderPhotoList(container, opts) : null;
+  }
+  function cloudPhotosDoUpload(file, caption) {
+    return ns.CloudPhotos ? ns.CloudPhotos.cloudPhotosDoUpload(file, caption) : null;
+  }
+  function cloudPhotosDoDelete(photoId, confirmMsg) {
+    return ns.CloudPhotos ? ns.CloudPhotos.cloudPhotosDoDelete(photoId, confirmMsg) : null;
+  }
+  function cloudPhotosHumanSize(bytes) {
+    return ns.CloudPhotos ? ns.CloudPhotos.cloudPhotosHumanSize(bytes) : '';
+  }
+  function cloudPhotosPhotoUrlFor(photo) {
+    return ns.CloudPhotos ? ns.CloudPhotos.cloudPhotosPhotoUrlFor(photo) : '';
+  }
+  function cloudPhotosPhotosUrl() {
+    return ns.CloudPhotos ? ns.CloudPhotos.cloudPhotosPhotosUrl() : '';
+  }
+  function cloudPhotosUploadUrl() {
+    return ns.CloudPhotos ? ns.CloudPhotos.cloudPhotosUploadUrl() : '';
+  }
+  function cloudPhotosGetPhotos() {
+    return ns.CloudPhotos ? ns.CloudPhotos.cloudPhotosGetPhotos() : [];
+  }
+
   // ---- public API ---------------------------------------------------------
   ns.Cloud = {
     checkMe: checkMe,
@@ -4098,83 +4150,35 @@ var MMGR = window.MMGR || {};
     get _sessOwner() {
       return _sessOwner;
     },
-    // PROJECT PHOTOS (C24): boot the photos panel + live upload affordance
-    // when this cloud module renders into the project page. The actual DOM
-    // work lives in js/cloud/photos-ui.js which only runs when ns.Cloud exists.
-    _renderPhotosPanel: function () {
-      if (typeof MMGR.CloudPhotos !== 'undefined' && MMGR.CloudPhotos._renderPhotosPanel) {
-        try { MMGR.CloudPhotos._renderPhotosPanel(); } catch (e) { /* guard */ }
-      }
-    },
-    // PROJECT PHOTOS (C24): thin wrappers so mmgr-cloud.js is the single
-    // export surface for the photos UI module, matching the registry check that
-    // expects every CloudPhotos* export to have a mmgr-cloud.js counterpart.
-    cloudPhotosIsCloudProject: function () {
-      return typeof MMGR.CloudPhotos !== 'undefined' && MMGR.CloudPhotos.isCloudProject
-        ? MMGR.CloudPhotos.isCloudProject()
-        : false;
-    },
-    cloudPhotosCanUpload: function () {
-      return typeof MMGR.CloudPhotos !== 'undefined' && MMGR.CloudPhotos.canUpload
-        ? MMGR.CloudPhotos.canUpload()
-        : false;
-    },
-    cloudPhotosUploadGateMessage: function () {
-      return typeof MMGR.CloudPhotos !== 'undefined' && MMGR.CloudPhotos.uploadGateMessage
-        ? MMGR.CloudPhotos.uploadGateMessage()
-        : '';
-    },
-    cloudPhotosFetchPhotos: function () {
-      return typeof MMGR.CloudPhotos !== 'undefined' && MMGR.CloudPhotos.fetchPhotos
-        ? MMGR.CloudPhotos.fetchPhotos
-        : null;
-    },
-    cloudPhotosRenderPhotoList: function () {
-      return typeof MMGR.CloudPhotos !== 'undefined' && MMGR.CloudPhotos.renderPhotoList
-        ? MMGR.CloudPhotos.renderPhotoList
-        : null;
-    },
-    cloudPhotosDoUpload: function () {
-      return typeof MMGR.CloudPhotos !== 'undefined' && MMGR.CloudPhotos.doUpload
-        ? MMGR.CloudPhotos.doUpload
-        : null;
-    },
-    cloudPhotosDoDelete: function () {
-      return typeof MMGR.CloudPhotos !== 'undefined' && MMGR.CloudPhotos.doDelete
-        ? MMGR.CloudPhotos.doDelete
-        : null;
-    },
-    cloudPhotosHumanSize: function () {
-      return typeof MMGR.CloudPhotos !== 'undefined' && MMGR.CloudPhotos.humanSize
-        ? MMGR.CloudPhotos.humanSize
-        : null;
-    },
-    cloudPhotosPhotoUrlFor: function () {
-      return typeof MMGR.CloudPhotos !== 'undefined' && MMGR.CloudPhotos.photoUrlFor
-        ? MMGR.CloudPhotos.photoUrlFor
-        : null;
-    },
-    cloudPhotosPhotosUrl: function () {
-      return typeof MMGR.CloudPhotos !== 'undefined' && MMGR.CloudPhotos.photosUrl
-        ? MMGR.CloudPhotos.photosUrl
-        : null;
-    },
-    cloudPhotosUploadUrl: function () {
-      return typeof MMGR.CloudPhotos !== 'undefined' && MMGR.CloudPhotos.uploadUrl
-        ? MMGR.CloudPhotos.uploadUrl
-        : null;
-    },
-    cloudPhotosGetPhotos: function () {
-      return typeof MMGR.CloudPhotos !== 'undefined' && MMGR.CloudPhotos._photos
-        ? MMGR.CloudPhotos._photos()
-        : [];
-    }
+    // PROJECT PHOTOS (C24): the photos panel's DOM work lives in
+    // js/cloud/photos-ui.js, which registers MMGR.CloudPhotos and boots the
+    // panel itself. These are references to the delegating wrappers declared at
+    // IIFE scope above this object; they exist so mmgr-cloud.js stays the single
+    // export surface for extracted cloud sub-modules (same shape as
+    // cloudReviewList / webhookList).
+    _renderPhotosPanel: _renderPhotosPanel,
+    cloudPhotosIsCloudProject: cloudPhotosIsCloudProject,
+    cloudPhotosCanUpload: cloudPhotosCanUpload,
+    cloudPhotosUploadGateMessage: cloudPhotosUploadGateMessage,
+    cloudPhotosFetchPhotos: cloudPhotosFetchPhotos,
+    cloudPhotosRenderPhotoList: cloudPhotosRenderPhotoList,
+    cloudPhotosDoUpload: cloudPhotosDoUpload,
+    cloudPhotosDoDelete: cloudPhotosDoDelete,
+    cloudPhotosHumanSize: cloudPhotosHumanSize,
+    cloudPhotosPhotoUrlFor: cloudPhotosPhotoUrlFor,
+    cloudPhotosPhotosUrl: cloudPhotosPhotosUrl,
+    cloudPhotosUploadUrl: cloudPhotosUploadUrl,
+    cloudPhotosGetPhotos: cloudPhotosGetPhotos
   };
   // PROJECT PHOTOS (C24): render the photos panel right after the cloud
   // module paints the page, before the next render. The panel itself is
   // mounted by js/cloud/photos-ui.js which only runs when ns.Cloud exists.
-  if (typeof MMGR.CloudPhotos !== "undefined" && MMGR.CloudPhotos._renderPhotosPanel) {
-    try { MMGR.CloudPhotos._renderPhotosPanel(); } catch (e) { /* guard */ }
+  if (typeof MMGR.CloudPhotos !== 'undefined' && MMGR.CloudPhotos._renderPhotosPanel) {
+    try {
+      MMGR.CloudPhotos._renderPhotosPanel();
+    } catch (e) {
+      /* guard */
+    }
   }
 
   // Render on boot (App.init calls this too via the guarded hook; the

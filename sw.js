@@ -17,8 +17,21 @@
    v382 - full-bleed marketing canvas, 7-big-dot rail with generated
            small dots, contact tile phone overflow, guide sidebar spacing
    ============================================================ */
-const CACHE = 'mmgr-shell-v397';
+const CACHE = 'mmgr-shell-v398';
 
+// v398 - PROJECT PHOTOS ARRIVE, AND THE COMPANY PRICE MATCHES ITS NEIGHBOURS (owner 2026-10-10).
+// (1) PROJECT PHOTOS: a new Photos section in the Collaborate group lets a cloud-linked project upload,
+// list, view and delete photos. Upload is owner+editor only; viewer and client codes read only, and a
+// client code sees the panel ONLY when its section grant includes it. A project that is not cloud-linked
+// is refused at the SERVER (plainUploadForbidden in src/cloud/photos.js), and the panel explains why the
+// upload control is unavailable instead of silently doing nothing. Blobs live in R2 under
+// photos/<project_id>/<photo_id>.<ext> with metadata in cloud_project_photos (migration 0025).
+// (2) COMPANY PRICE: the pricing page showed the Company plan as $50.00/month; it now reads $49.99,
+// the same shape the Estimator plan uses. DISPLAY ONLY - the amount actually charged comes from the
+// Paddle price id (PADDLE_COMPANY_PRICE_ID), so nothing about billing changes.
+// css/mmgr.css and project.html are shell assets, so this version bumps. No inline script was added or
+// removed, so the CSP inline-script hash set is unchanged.
+//
 // v397 - DARK-MODE CLOUD LOAD BUTTON SOFTENED (owner 2026-10-09: on the app page's My Cloud
 // Projects list, the green Load button should stay present but stop showing as a saturated green
 // block in dark mode; at rest it reads as a dark hairline like the other dark-mode list controls,

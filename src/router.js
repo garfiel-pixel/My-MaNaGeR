@@ -637,29 +637,39 @@ export async function routeApi(request, env, url) {
     // cloud_project_photos (migration 0025). A non-cloud project is refused at
     // the server (plainUploadForbidden), so the client gate is defense-in-depth,
     // not the only layer.
-    const cloudPhotosMatch = path.match(
-      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/photos$/
-    );
+    const cloudPhotosMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/photos$/);
     if (cloudPhotosMatch) {
       const r = await rl(request, 'general', env);
-      if (r) return r;
-      if (request.method === 'POST') return handlePhotoUpload(request, env, cloudPhotosMatch[1]);
-      if (request.method === 'GET') return handlePhotoList(request, env, cloudPhotosMatch[1]);
+      if (r) {
+        return r;
+      }
+      if (request.method === 'POST') {
+        return handlePhotoUpload(request, env, cloudPhotosMatch[1]);
+      }
+      if (request.method === 'GET') {
+        return handlePhotoList(request, env, cloudPhotosMatch[1]);
+      }
     }
     const cloudPhotoMatch = path.match(
       /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/photos\/([A-Za-z0-9_-]{1,128})$/
     );
     if (cloudPhotoMatch) {
       const r = await rl(request, 'general', env);
-      if (r) return r;
-      if (request.method === 'GET') return handlePhotoGet(request, env, cloudPhotoMatch[1], cloudPhotoMatch[2]);
+      if (r) {
+        return r;
+      }
+      if (request.method === 'GET') {
+        return handlePhotoGet(request, env, cloudPhotoMatch[1], cloudPhotoMatch[2]);
+      }
     }
     const cloudPhotoDelMatch = path.match(
       /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/photos\/([A-Za-z0-9_-]{1,128})\/delete$/
     );
     if (cloudPhotoDelMatch && request.method === 'POST') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handlePhotoDelete(request, env, cloudPhotoDelMatch[1], cloudPhotoDelMatch[2]);
     }
     const cloudPhotoMetaMatch = path.match(
@@ -667,7 +677,9 @@ export async function routeApi(request, env, url) {
     );
     if (cloudPhotoMetaMatch && request.method === 'GET') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handlePhotoMeta(request, env, cloudPhotoMetaMatch[1], cloudPhotoMetaMatch[2]);
     }
 

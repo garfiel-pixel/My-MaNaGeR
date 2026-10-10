@@ -781,6 +781,10 @@ export const CLOUD_SECTIONS = {
   meet: {
     label: 'Meetings',
     keys: ['meetings', 'meetingPromises', 'activeMeeting', 'nmeetid', 'sentimentHistory']
+  },
+  photos: {
+    label: 'Project Photos',
+    keys: []
   }
 };
 export const CLOUD_KEY_TO_SECTION = {};

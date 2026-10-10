@@ -131,6 +131,7 @@ const APP_MODULES = [
   'js/cloud/scope.js',
   'js/cloud/share.js',
   'js/cloud/review.js',
+  'js/cloud/photos-ui.js',
   'js/cloud/webhooks.js',
   // C23 Cloud Shared Resource Pool (Phase 6)
   'js/mmgr-pool.js',

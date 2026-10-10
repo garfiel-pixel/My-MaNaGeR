@@ -54,6 +54,13 @@ import {
   cloudPushRevChangedIfCopies
 } from './cloud/projects.js';
 import {
+  handlePhotoUpload,
+  handlePhotoList,
+  handlePhotoGet,
+  handlePhotoDelete,
+  handlePhotoMeta
+} from './cloud/photos.js';
+import {
   handleCloudEditorCreate,
   handleCloudEditorList,
   handleCloudEditorRevoke
@@ -623,6 +630,45 @@ export async function routeApi(request, env, url) {
       const r = await rl(request, 'general', env);
       if (r) return r;
       return handleCloudChangelogRevert(request, env, cloudRevertMatch[1], cloudRevertMatch[2]);
+    }
+    // PROJECT PHOTOS — cloud-only, auth-gated, role-checked (owner+editors
+    // upload; owner/editor/viewer/client view). Photos live in R2 under
+    // photos/<project_id>/<photo_id>.<ext> with metadata in
+    // cloud_project_photos (migration 0025). A non-cloud project is refused at
+    // the server (plainUploadForbidden), so the client gate is defense-in-depth,
+    // not the only layer.
+    const cloudPhotosMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/photos$/
+    );
+    if (cloudPhotosMatch) {
+      const r = await rl(request, 'general', env);
+      if (r) return r;
+      if (request.method === 'POST') return handlePhotoUpload(request, env, cloudPhotosMatch[1]);
+      if (request.method === 'GET') return handlePhotoList(request, env, cloudPhotosMatch[1]);
+    }
+    const cloudPhotoMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/photos\/([A-Za-z0-9_-]{1,128})$/
+    );
+    if (cloudPhotoMatch) {
+      const r = await rl(request, 'general', env);
+      if (r) return r;
+      if (request.method === 'GET') return handlePhotoGet(request, env, cloudPhotoMatch[1], cloudPhotoMatch[2]);
+    }
+    const cloudPhotoDelMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/photos\/([A-Za-z0-9_-]{1,128})\/delete$/
+    );
+    if (cloudPhotoDelMatch && request.method === 'POST') {
+      const r = await rl(request, 'general', env);
+      if (r) return r;
+      return handlePhotoDelete(request, env, cloudPhotoDelMatch[1], cloudPhotoDelMatch[2]);
+    }
+    const cloudPhotoMetaMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/photos\/([A-Za-z0-9_-]{1,128})\/meta$/
+    );
+    if (cloudPhotoMetaMatch && request.method === 'GET') {
+      const r = await rl(request, 'general', env);
+      if (r) return r;
+      return handlePhotoMeta(request, env, cloudPhotoMetaMatch[1], cloudPhotoMetaMatch[2]);
     }
 
     // 10. HEALTH PROBE

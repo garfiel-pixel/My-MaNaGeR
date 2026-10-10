@@ -14,7 +14,7 @@
   --gold-deep: #a84a15; /* brand deep - text accent on white */
   --gold-rgb: 217, 107, 39;
   --teal: #00bcd4; /* secondary accent - cyan, used sparingly */
-  --teal-deep: #0097a7; /* cyan deep */
+  --teal-deep: #00798a; /* cyan deep - 5.12:1 on white (was #0097a7 at 3.51) */
   --danger: #c62828;
   --purple: #8b5cf6;
   /* accent readable on the dark band (footer, page-hero, photo overlay) */
@@ -46,10 +46,13 @@
 
   /* text */
   --text-primary: #0f172a; /* black text (near-black navy) */
-  --text-secondary: #64748b;
+  --text-secondary: #56637a; /* 6.07:1 on white, 5.31:1 on the cream canvas (was #64748b at 4.16 on cream) */
   --on-navy: #f8fafc; /* text on navy */
-  --on-gold: #ffffff; /* text on blue */
-  --text-muted: #64748b; /* alias kept for downstream card legends */
+  /* OWNER 2026-10-10 (gold, D2): the gold fill IS the identity, so the label
+     carries the contrast. Dark ink on the gold measures 5.07:1; white on it
+     measured 3.45:1 and failed AA. Never darken the gold to fix the label. */
+  --on-gold: #1c1917; /* dark ink on the gold fill */
+  --text-muted: #56637a; /* alias kept for downstream card legends */
 
   /* Liquid Glass stack (functional layer only) */
   --glass-blur: 18px;
@@ -2488,7 +2491,8 @@ body.dark-mode .hero-card .hc-stepdot {
   flex-wrap: wrap;
   padding-top: 26px;
   font-size: 0.74rem;
-  color: rgba(248, 250, 252, 0.45);
+  /* 0.58 over the warm charcoal is 6.3:1; 0.45 measured 4.37 and failed AA. */
+  color: rgba(248, 250, 252, 0.58);
 }
 .footer-bottom a {
   color: rgba(248, 250, 252, 0.55);

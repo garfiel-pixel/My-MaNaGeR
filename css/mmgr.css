@@ -68,6 +68,9 @@ svg.ico use {
   --danger: #d63a3a; /* red = blocked/danger - OWNER 2026-09-12 (P2-13):
                            brightened from #C62828; the brightest step that
                            still holds WCAG AA (4.64:1) on the light canvas. */
+  /* Red used as TEXT on the raised surface (#f8f5f0), where --danger measures
+     4.27:1 and fails. Owner 2026-10-10 (T10-A). */
+  --danger-ink: #b83030;
   --danger-subtle: rgba(214, 58, 58, 0.08);
   --purple: #8b5cf6; /* DMAIC/quality accents */
   /* -- Status DOTS (owner 2026-09-17): true hue in BOTH themes - light
@@ -171,6 +174,7 @@ body.dark-mode {
   --gold: #ffffff;
   --gold-rgb: 255, 255, 255;
   --gold-ink: #ffffff; /* the accent IS white in dark mode */
+  --danger-ink: #ffffff; /* the accent IS white in dark mode */
   /* Accent cyan: white */
   --accent-cyan: #e8e8ec;
   --accent-cyan-subtle: rgba(255, 255, 255, 0.06);
@@ -9701,7 +9705,9 @@ body.dark-mode .bcp-ico-moon {
 }
 .bcp-seg-btn.active {
   background: color-mix(in oklch, var(--gold) 14%, transparent);
-  color: var(--gold);
+  /* gold on the soft-gold tint measured 2.95:1 - the text step of the gold
+     carries it instead (owner 2026-10-10, T10-A). */
+  color: var(--gold-ink);
 }
 .bcp-seg-btn:focus-visible {
   outline: 2px solid var(--gold);
@@ -15786,7 +15792,7 @@ body.rr-open {
 }
 .bcp-ai-note.bad {
   border-color: var(--danger);
-  color: var(--danger);
+  color: var(--danger-ink);
 }
 /* OWNER 2026-10-10 (T3, R9): the assistant's in-flight bubble - three gold
    dots inside the conversation, so the wait is visible where the answer will
@@ -16132,7 +16138,8 @@ body.rr-open {
 .bcp-ai-me-link {
   margin-left: auto;
   font-weight: 700;
-  color: var(--gold);
+  /* gold on white measured 3.45:1 - the text step carries it (T10-A). */
+  color: var(--gold-ink);
 }
 
 /* ============================================

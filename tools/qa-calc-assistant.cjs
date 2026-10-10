@@ -581,6 +581,115 @@ async function fileIntake(browser, errors) {
   await ctx.close();
 }
 
+// ---- W12a / T10-A: contrast on the surfaces that were flagged ---------------
+// The gold identity stays gold; where a gold word or a muted tone was too faint
+// the TEXT step moved, not the surface. Measured in the real browser with the
+// real cascade (computed colour over the real composited background).
+const CONTRAST_CASES = [
+  ['index.html', '.footer-bottom', 4.5, 'footer bottom line on the charcoal band'],
+  ['index.html', '.footer-col a', 4.5, 'footer column link on the charcoal band'],
+  ['contact.html', '.btn-gold', 4.5, 'contact submit label on the gold button'],
+  ['contact.html', '.contact-tile a', 4.5, 'contact tile link (teal on white)'],
+  ['reviews.html', '.btn-gold', 4.5, 'reviews submit label on the gold button'],
+  ['reviews.html', '.rv-field label', 4.5, 'reviews field label on the cream canvas'],
+  [
+    'calculator.html',
+    '.bcp-seg-btn.active',
+    4.5,
+    'calculator units toggle label on the soft-gold tint'
+  ],
+  ['mymanager-field-guide.html', '.nav-group-label', 4.5, 'field guide dim label on navy']
+];
+
+const CONTRAST_FN = () => {
+  const parse = c => {
+    const m = /rgba?\(([^)]+)\)/.exec(c || '');
+    if (!m) {
+      return null;
+    }
+    const p = m[1].split(',').map(Number);
+    return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 };
+  };
+  const lum = c => {
+    const f = v => {
+      v /= 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    };
+    return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b);
+  };
+  const resolveBg = el => {
+    const layers = [];
+    let n = el;
+    while (n && n.nodeType === 1) {
+      const c = parse(getComputedStyle(n).backgroundColor);
+      if (c && c.a > 0) {
+        layers.push(c);
+        if (c.a >= 0.999) {
+          break;
+        }
+      }
+      n = n.parentElement;
+    }
+    let out = { r: 255, g: 255, b: 255 };
+    for (let i = layers.length - 1; i >= 0; i--) {
+      const c = layers[i];
+      out = {
+        r: c.r * c.a + out.r * (1 - c.a),
+        g: c.g * c.a + out.g * (1 - c.a),
+        b: c.b * c.a + out.b * (1 - c.a)
+      };
+    }
+    return out;
+  };
+  window.__contrast = sel => {
+    const el = document.querySelector(sel);
+    if (!el) {
+      return null;
+    }
+    const cs = getComputedStyle(el);
+    const fg = parse(cs.color);
+    const bg = resolveBg(el);
+    const l1 = Math.max(lum(fg), lum(bg));
+    const l2 = Math.min(lum(fg), lum(bg));
+    return {
+      ratio: Math.round(((l1 + 0.05) / (l2 + 0.05)) * 100) / 100,
+      fg: cs.color,
+      bg: 'rgb(' + Math.round(bg.r) + ', ' + Math.round(bg.g) + ', ' + Math.round(bg.b) + ')',
+      size: cs.fontSize,
+      weight: cs.fontWeight
+    };
+  };
+  return true;
+};
+
+async function contrastGates(browser, errors) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => errors.push('contrast: ' + String(e).slice(0, 120)));
+  for (const [url, sel, min, label] of CONTRAST_CASES) {
+    await page.goto(BASE + '/' + url, { waitUntil: 'load' });
+    await page.evaluate(CONTRAST_FN);
+    const got = await page.evaluate(s => window.__contrast(s), sel);
+    check(
+      'T10-A ' + label + ' >= ' + min + ':1',
+      !!got && got.ratio >= min,
+      got || 'selector not found: ' + sel
+    );
+  }
+  // The assistant's identity link is the signed-OUT state (no auth mock here),
+  // which is exactly where the gold-on-white link renders.
+  await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
+  await page.waitForSelector('.bcp-ai-me-link', { timeout: 20000 });
+  await page.evaluate(CONTRAST_FN);
+  const link = await page.evaluate(() => window.__contrast('.bcp-ai-me-link'));
+  check(
+    'T10-A the assistant identity link on the panel >= 4.5:1',
+    !!link && link.ratio >= 4.5,
+    link
+  );
+  await ctx.close();
+}
+
 const MOCK_PROJECTS = {
   ok: true,
   projects: [
@@ -793,6 +902,7 @@ async function loadButton(browser, errors) {
     await loadButton(browser, errors);
     await assistantOutputs(browser, errors);
     await fileIntake(browser, errors);
+    await contrastGates(browser, errors);
 
     const real = errors.filter(e => !/\/api\//.test(e));
     check('zero page errors in the walked flows', real.length === 0, real.slice(0, 3));

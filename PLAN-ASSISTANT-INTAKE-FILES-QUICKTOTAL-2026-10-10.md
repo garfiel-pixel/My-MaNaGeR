@@ -13,6 +13,13 @@ Everything marked CODE-READ was read from source and still needs its probe. Noth
 4 (design) -> 5 (tasks) -> 6 (waves) -> 7 (review register, every category) -> 8 (owner decisions) -> 9 (not measured) ->
 10 (rules the terminal agent must follow) -> 11 (self-review).
 
+**OWNER DIRECTIVE (2026-10-10) - the identity is GOLD, not orange.** "Gold, not orange. Gold, not orange."
+The first draft of this plan (A-1 table, D2) proposed fixing the button contrast by **replacing the brand hue with
+`#b04f18`**, a dark orange-brown. That converts the gold identity into orange and is **rejected by the owner**.
+The gold surface is the identity and stays gold; the label on it moves to the dark ink token instead (T10-A / D2
+below). Gold is the theme word throughout this document: the brand, the focus ring, the dot rail, the tint, the
+hover - all gold. Anything in the codebase commented "brand orange" is a naming bug to correct, not a design to keep.
+
 ---
 
 ## 1. WHAT THE OWNER ASKED (every statement, numbered so it cannot be dropped)
@@ -300,11 +307,11 @@ to be appended to section 2 of `PLAN-WAVE-2026-10-09-MERGED.md` as W8-W12; it do
 | Where | Now | Ratio | Replacement (passes 4.5:1) |
 |---|---|---|---|
 | Footer text, all marketing pages | `#7f7e7e` on `#1c1917` | 4.32 | `#8c8b8a` (5.14) |
-| White text on brand orange (every gold button: the Contact and Reviews form submit buttons and the footer app button were flagged) | `#ffffff` on `#d96b27` | 3.45 | background `#b04f18` with white (5.28), or text `#1c1917` on the current orange (5.07). **Owner decision D2.** |
+| White text on brand gold (the Contact and Reviews form submit buttons and the footer app button were flagged) | `#ffffff` on `#d96b27` | 3.45 | **Keep the gold fill; move the label to dark ink.** `#1c1917` on `#d96b27` = **5.07:1**. Do NOT darken the brand. **Owner decision D2.** |
 | Teal links on white (Contact tiles) | `#0097a7` | 3.51 | `#00798a` (5.12) |
 | Slate helper text on cream (Reviews) | `#64748b` on `#f5efe6` | 4.16 | `#56637a` (5.31) |
-| Orange text on soft-orange (calculator units toggle) | `#d96b27` on `#faeae1` | 2.95 | `#a8470f` (5.02) |
-| Orange links on white (the assistant's identity link) | `#d96b27` | 3.45 | `#a8470f` (5.88) |
+| Gold text on soft-gold (calculator units toggle) | `#d96b27` on `#faeae1` | 2.95 | `--gold-deep` `#a84a15` (**4.90:1**) |
+| Gold links on white (the assistant's identity link) | `#d96b27` | 3.45 | `--gold-deep` `#a84a15` (**5.74:1**) |
 | Red note on cream (assistant note) | `#d63a3a` on `#f8f5f0` | 4.27 | `#b83030` (5.51) |
 | Field guide dim labels on navy (16-25 nodes per variant) | `#5f7891` on `#0a1930` | 3.84 | `#8aa3bb` (6.73) |
 
@@ -351,7 +358,7 @@ to be appended to section 2 of `PLAN-WAVE-2026-10-09-MERGED.md` as W8-W12; it do
 | ID | Question | Recommendation |
 |---|---|---|
 | D1 | How to read PDFs. | **Vendor a text extractor (pdf.js), lazy-loaded, same-origin.** Keeps the file on the device (the panel promises "nothing is uploaded"), stays offline-first, costs nothing per file. Rejected: sending the PDF to the model (the relay is text-only, it uploads the file, and it costs far more tokens). |
-| D2 | Brand orange on buttons fails contrast with white text. | Darken the solid button background to `#b04f18` and keep white text. Orange text links go to `#a8470f`. |
+| D2 | The brand **gold** on buttons fails AA with white text. | **Keep the gold surface (it is the identity) and put the dark ink label on it**: `#ffffff` on `#d96b27` is 3.45:1, but `#1c1917` on that same gold is **5.07:1** (AA). Gold text links/accents on white use `--gold-deep` `#a84a15` (5.74:1). Explicitly rejected: replacing the brand with `#b04f18` "dark orange-brown" - that is the orange the owner does not want. |
 | D3 | Where Quick total lives. | A tab beside "Measure by element" inside the "What are you pricing?" card. |
 | D4 | Import an attached rate CSV as a real rate book. | Phase 2, reusing the existing book importer. For now it grounds the chat only. |
 | D5 | Legal pages (privacy, terms) contain technical words. | Plain wording on public pages; exact technical detail only where legally required. |

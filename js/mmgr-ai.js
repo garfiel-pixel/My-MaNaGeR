@@ -2772,7 +2772,20 @@ var MMGR = window.MMGR || {};
     if (!el) return;
     const on = el.classList.contains('float-mode') && el.classList.contains('open');
     document.body.classList.toggle('drw-float-open', on);
-    el.setAttribute('aria-modal', on ? 'true' : 'false');
+    /* T10-B (owner 2026-10-10): aria-modal is only legal on a dialog, and the
+       settings drawer is not one while it is docked in the page - axe flagged
+       aria-modal="false" on a roleless div as critical. Docked = ordinary page
+       content with no modal state at all; floated over the workspace = a real
+       dialog (named for its Settings heading). */
+    if (on) {
+      el.setAttribute('role', 'dialog');
+      el.setAttribute('aria-modal', 'true');
+      el.setAttribute('aria-label', 'Settings');
+    } else {
+      el.removeAttribute('aria-modal');
+      el.removeAttribute('aria-label');
+      el.removeAttribute('role');
+    }
     if (on) wireDimClick();
   }
   function toggleFloat(id) {

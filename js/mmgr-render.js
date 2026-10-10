@@ -757,7 +757,7 @@ var MMGR = window.MMGR || {};
         .map(
           t => `<div class="tf-row" style="border-left-color:${color}">
         <div><span class="tf-name">${U.escapeHtml(t.name)}</span>${t.endDate ? `<span class="tf-due"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> ${t.endDate}</span>` : ''}</div>
-        <select class="tf-status" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="status"><option value="todo" ${t.status === 'todo' ? 'selected' : ''}>To Do</option><option value="inprogress" ${t.status === 'inprogress' ? 'selected' : ''}>In Progress</option><option value="blocked" ${t.status === 'blocked' ? 'selected' : ''}>Blocked</option><option value="completed" ${t.status === 'completed' ? 'selected' : ''}>Completed</option></select>
+        <select class="tf-status" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="status" aria-label="${U.escapeHtml(t.name || 'Task')} status"><option value="todo" ${t.status === 'todo' ? 'selected' : ''}>To Do</option><option value="inprogress" ${t.status === 'inprogress' ? 'selected' : ''}>In Progress</option><option value="blocked" ${t.status === 'blocked' ? 'selected' : ''}>Blocked</option><option value="completed" ${t.status === 'completed' ? 'selected' : ''}>Completed</option></select>
       </div>`
         )
         .join('');
@@ -765,8 +765,8 @@ var MMGR = window.MMGR || {};
     };
     const content = [
       renderGroup('Overdue', overdue, 'var(--danger)', 'i-alert-triangle'),
-      renderGroup('Due Today', dueToday, 'var(--amber)', 'i-dot'),
-      renderGroup('Due This Week', thisWeek, 'var(--gold)', 'i-calendar'),
+      renderGroup('Due Today', dueToday, 'var(--amber-ink)', 'i-dot'),
+      renderGroup('Due This Week', thisWeek, 'var(--gold-ink)', 'i-calendar'),
       renderGroup('In Progress', inProgress, 'var(--green)', 'i-tool')
     ].join('');
     el.innerHTML =
@@ -798,7 +798,7 @@ var MMGR = window.MMGR || {};
         .map(
           t => `<div class="tf-row" style="border-left-color:${color}">
         <div><span class="tf-name">${U.escapeHtml(t.name)}</span><span class="tf-due">${t.startDate ? U.fmtDateShort(t.startDate) : '?'} -> ${t.endDate ? U.fmtDateShort(t.endDate) : '?'}${t.assignee ? ' · ' + U.escapeHtml(t.assignee) : ''}${t.weatherExposed ? ' <svg class="ico" aria-hidden="true" style="color:var(--blue)"><use href="css/mmgr-icons.svg#i-cloud"></use></svg>' : ''}</span></div>
-        <select class="tf-status" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="status"><option value="todo" ${t.status === 'todo' ? 'selected' : ''}>To Do</option><option value="inprogress" ${t.status === 'inprogress' ? 'selected' : ''}>In Progress</option><option value="blocked" ${t.status === 'blocked' ? 'selected' : ''}>Blocked</option><option value="completed" ${t.status === 'completed' ? 'selected' : ''}>Completed</option></select>
+        <select class="tf-status" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="status" aria-label="${U.escapeHtml(t.name || 'Task')} status"><option value="todo" ${t.status === 'todo' ? 'selected' : ''}>To Do</option><option value="inprogress" ${t.status === 'inprogress' ? 'selected' : ''}>In Progress</option><option value="blocked" ${t.status === 'blocked' ? 'selected' : ''}>Blocked</option><option value="completed" ${t.status === 'completed' ? 'selected' : ''}>Completed</option></select>
       </div>`
         )
         .join('');
@@ -814,7 +814,7 @@ var MMGR = window.MMGR || {};
     const noEnd = tasks.filter(t => !t.endDate);
     const content =
       group('Overdue Carryover', overdue, 'var(--danger)') +
-      group('This Week', thisWk, 'var(--gold)') +
+      group('This Week', thisWk, 'var(--gold-ink)') +
       group('Next Week', nextWk, 'var(--green)') +
       (noEnd.length ? group('Starting Soon (no end date)', noEnd, 'var(--slate)') : '');
     el.innerHTML =

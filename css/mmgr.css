@@ -71,6 +71,10 @@ svg.ico use {
   /* Red used as TEXT on the raised surface (#f8f5f0), where --danger measures
      4.27:1 and fails. Owner 2026-10-10 (T10-A). */
   --danger-ink: #b83030;
+  /* Amber used as TEXT (Not backed up chip, planning notes, Due This Week):
+     --amber measures 3.79:1 on white and fails AA. Same law as the gold and
+     the red - the hue stays, the text step deepens. Owner 2026-10-10 (T10-A). */
+  --amber-ink: #c24700;
   --danger-subtle: rgba(214, 58, 58, 0.08);
   --purple: #8b5cf6; /* DMAIC/quality accents */
   /* -- Status DOTS (owner 2026-09-17): true hue in BOTH themes - light
@@ -89,7 +93,13 @@ svg.ico use {
   --amber: #e65100;
   --blue: #1565c0;
   /* -- Foreground on brand -- */
-  --on-gold: #ffffff;
+  /* Label sitting ON the gold FILL (owner 2026-10-10, T10-A / D2): white on
+     brand gold is 3.45:1 and fails AA, so the fill keeps its gold and the
+     label moves to the dark ink step - #1c1917 on #d96b27 = 5.07:1, matching
+     css/marketing.css. The light-mode rules whose fill is GREEN or DARK
+     (.sec-btn.active*, .btn-o:hover, .db-new-project:hover) override this
+     with a literal white, because ink on those fills would be worse. */
+  --on-gold: #1c1917;
   --on-primary: #ffffff;
   /* -- Functional surfaces -- */
   --tile-bg: #f8f5f0;
@@ -175,6 +185,7 @@ body.dark-mode {
   --gold-rgb: 255, 255, 255;
   --gold-ink: #ffffff; /* the accent IS white in dark mode */
   --danger-ink: #ffffff; /* the accent IS white in dark mode */
+  --amber-ink: #ffffff; /* the accent IS white in dark mode */
   /* Accent cyan: white */
   --accent-cyan: #e8e8ec;
   --accent-cyan-subtle: rgba(255, 255, 255, 0.06);
@@ -280,11 +291,11 @@ body.dark-mode .sec-nav .sec-btn.active {
    green; on the ACTIVE section the background is also green/white, so the
    label vanished. Active buttons keep their inverted label on hover. */
 .sec-btn.active:hover {
-  color: var(--on-gold);
+  color: #ffffff; /* green fill, light mode - not a gold fill */
 }
 .sec-btn.active:hover .ic-svg,
 .sec-btn.active:hover path {
-  stroke: var(--on-gold);
+  stroke: #ffffff; /* green fill, light mode */
 }
 body.dark-mode .sec-btn.active:hover {
   color: #0b0b0d;
@@ -470,7 +481,7 @@ body {
 }
 .sec-btn.active .ic-svg,
 .sec-btn.active path {
-  stroke: var(--on-gold);
+  stroke: #ffffff; /* green fill, light mode */
 }
 /* Status-colored icons: keep red for Risk, amber for Changes */
 .sec-btn[data-section='risk'] .ic-svg path {
@@ -1028,7 +1039,7 @@ body.nav-open #nav-scrim {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--gold);
+  color: var(--gold-ink);
 }
 .sb-title .ico {
   font-size: 0.8rem;
@@ -1263,7 +1274,7 @@ body.sidebar-open .sb-close .ico {
 }
 .sec-btn.active {
   border-color: var(--green);
-  color: var(--on-gold);
+  color: #ffffff; /* GREEN fill - ink would be 3.16:1 here */
   background: var(--green);
   font-weight: 700;
 }
@@ -1887,8 +1898,10 @@ body.sidebar-open .sb-close .ico {
 #health-card.has-danger #h-is.dotstat {
   color: var(--danger);
 } /* §1: brand-new project - the whole health card reads quieter */
+/* Quieter, not invisible: opacity 0.55 composited #333 to #8f8f8f on white
+   (3.23:1, AA fail). The muted text token does the same job at 5.74:1. */
 #health-card.health-empty .fb-sm {
-  opacity: 0.55;
+  color: var(--text-muted);
 } /* MARKET-FEATURE-ROADMAP A1: compliance count on the Project Health card -
    same treatment as the Blocked/Overdue/Live-Issues danger counts. */
 #health-card.has-compliance #h-coi.dotstat {
@@ -2221,17 +2234,17 @@ body.sidebar-open .sb-close .ico {
 }
 .ba {
   background: rgba(var(--amber-rgb), 0.2);
-  color: var(--amber);
+  color: var(--amber-ink);
   border: 1px solid var(--amber);
 }
 .br {
   background: rgba(239, 68, 68, 0.2);
-  color: var(--danger);
+  color: var(--danger-ink); /* on the tinted pill, --danger is 4.27:1 */
   border: 1px solid var(--danger);
 }
 .bo {
   background: rgba(var(--gold-rgb), 0.2);
-  color: var(--gold);
+  color: var(--gold-ink);
   border: 1px solid var(--gold);
 }
 .bs {
@@ -2601,6 +2614,7 @@ body.dark-mode .rm-active {
 }
 .btn-o:hover {
   background: var(--gold-dark, #7c2d12);
+  color: #ffffff; /* dark hover fill */
 }
 .btn-n {
   background: transparent;
@@ -4384,7 +4398,7 @@ body.dark-mode .dmaic-chip {
   align-items: center;
   gap: 6px;
   font-size: 0.72rem;
-  color: var(--amber);
+  color: var(--amber-ink);
   margin: 6px 0;
 }
 .ppc-basis {
@@ -6309,7 +6323,7 @@ body.db-page .db-user[hidden] {
   gap: 5px;
   font-size: 0.7rem;
   font-weight: 600;
-  color: var(--amber);
+  color: var(--amber-ink);
   padding: 3px 8px;
   border: none;
   border-radius: 100px;
@@ -6544,7 +6558,7 @@ a.bk-signin {
   gap: 8px;
 }
 .vl span {
-  color: var(--gold);
+  color: var(--gold-ink);
 } /* Sec-nav: plain pill row (reference alignment) - no card wrapper,
    tabs sit directly under the .vl caption line with natural spacing. */
 .es {
@@ -7631,6 +7645,7 @@ header {
 }
 .btn-o:hover {
   background: #92400e;
+  color: #ffffff; /* dark hover fill */
 }
 .btn-d {
   background: transparent;
@@ -10955,7 +10970,7 @@ body.dark-mode .sent-bar {
   max-width: 760px;
 }
 .wx-hint strong {
-  color: var(--gold);
+  color: var(--gold-ink);
   font-weight: 700;
 }
 
@@ -11005,7 +11020,7 @@ body.dark-mode .cause-sel {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--gold);
+  color: var(--gold-ink);
   margin-bottom: 3px;
 }
 .digest-sec .bn-item {
@@ -13572,7 +13587,7 @@ body.db-page .top h1 .ico {
   transform: translateY(-2px);
   box-shadow: 0 16px 32px -14px color-mix(in oklch, var(--gold) 85%, transparent);
   background: var(--gold-dark, #7c2d12);
-  color: var(--on-gold);
+  color: #ffffff; /* dark hover fill - ink would be 3.16:1 here */
 }
 .db-new-project:active {
   transform: translateY(0);

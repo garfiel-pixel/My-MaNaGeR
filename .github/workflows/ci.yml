@@ -486,6 +486,13 @@ jobs:
         id: qa-calc-assistant
         run: node tools/qa-calc-assistant.cjs
 
+      # axe-core accessibility gate (T10-B): every served page in light + dark,
+      # zero serious/critical violations. axe-core is a devDependency; the run
+      # injects it through CDP, which the page CSP does not block.
+      - name: "T4: Accessibility gate (axe-core, qa-a11y-axe)"
+        id: qa-a11y-axe
+        run: node tools/qa-a11y-axe.cjs
+
       - name: "T4: Stop static QA server"
         if: always()
         run: pkill -f "node serve.cjs" || true
@@ -512,6 +519,7 @@ jobs:
           echo "| Module exports | ${{ steps.exports.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| CSS integrity | ${{ steps.css.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| A11y labels | ${{ steps.a11y.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| A11y axe (serious/critical = 0) | ${{ steps.qa-a11y-axe.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Unit tests | ${{ steps.unit.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| ESLint | ${{ steps.eslint.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Prettier | ${{ steps.prettier.outcome }} |" >> $GITHUB_STEP_SUMMARY

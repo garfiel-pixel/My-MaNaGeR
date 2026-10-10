@@ -131,13 +131,19 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 @media(min-width:769px){.wrap{will-change:margin-left;}}
 
 /* SIDEBAR-CLOSED ICON STRIP (owner 2026-09-05): */
+/* T10-A/B (owner 2026-10-10): the strip is real navigation, so it is no
+   longer aria-hidden - the buttons carry their own aria-label and are
+   announced. What the strip must NOT be is invisible-but-tabbable: hidden
+   states now flip visibility too (the transition keeps the fade), so keyboard
+   focus can never land on a control nobody can see. */
 body.db-page:not(.dark-mode) .sidebar-icons{
   position:fixed;top:50%;left:8px;transform:translateY(-50%);
   display:flex;flex-direction:column;gap:12px;z-index:100;
-  opacity:0;pointer-events:none;transition:opacity var(--release-duration) var(--ease-ios);
+  opacity:0;pointer-events:none;visibility:hidden;
+  transition:opacity var(--release-duration) var(--ease-ios),visibility var(--release-duration) var(--ease-ios);
 }
 body.db-page:not(.dark-mode).side-closed .sidebar-icons{
-  opacity:1;pointer-events:auto;
+  opacity:1;pointer-events:auto;visibility:visible;
 }
 body.db-page:not(.dark-mode) .sidebar-icon{
   display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;
@@ -181,10 +187,11 @@ body.glass-premium .sidebar-icon{
 body.dark-mode.db-page .sidebar-icons{
   position:fixed;top:50%;left:8px;transform:translateY(-50%);
   display:flex;flex-direction:column;gap:12px;z-index:100;
-  opacity:0;pointer-events:none;transition:opacity var(--release-duration) var(--ease-ios);
+  opacity:0;pointer-events:none;visibility:hidden;
+  transition:opacity var(--release-duration) var(--ease-ios),visibility var(--release-duration) var(--ease-ios);
 }
 body.dark-mode.db-page.side-closed .sidebar-icons{
-  opacity:1;pointer-events:auto;
+  opacity:1;pointer-events:auto;visibility:visible;
 }
 body.dark-mode.db-page .sidebar-icon{
   display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;
@@ -217,7 +224,7 @@ body.dark-mode.db-page .sidebar-icon:hover .sidebar-tooltip{
 }
 
 /* Hide icon strip when sidebar is open (desktop) */
-body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
+body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;visibility:hidden;}
 
 @media(max-width:768px){
   body.db-page .sidebar-icons{display:none;}
@@ -376,7 +383,11 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
 
 <!-- Sidebar-closed icon strip (desktop only): when the rail is closed,
      show navigation icons along the left edge with hover tooltips. -->
-<div class="sidebar-icons" id="sidebar-icons" aria-hidden="true">
+<!-- T10-B (owner 2026-10-10): aria-hidden was on a strip of real buttons -
+     axe flagged focusable content inside an aria-hidden subtree. The label is
+     gone; the hidden state (above) now uses visibility, so the strip is either
+     announced and focusable, or not on screen at all - never both at once. -->
+<div class="sidebar-icons" id="sidebar-icons">
   <button type="button" class="sidebar-icon" data-nav="dashboard" title="Dashboard" aria-label="Dashboard">
     <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg>
     <span class="sidebar-tooltip">Dashboard</span>
@@ -448,12 +459,20 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
   <!-- SECTION HEADER (visual-analysis fix 2026-08-14): the local/published
        grid and the cloud section below are explicitly labeled so the two
        project lists can never be confused (Cloud vs Local). -->
-  <div class="db-sec" aria-label="Projects" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+  <!-- T10-A (owner 2026-10-10): the aria-label here had no role and the div is
+       an empty layout spacer (its title row was removed 2026-09-05), so the
+       label announced a region that does not exist. The label is gone; the
+       local grid and the cloud section below are labelled where they render. -->
+  <div class="db-sec" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
     <!-- Section-title row removed (owner 2026-09-05): the hero title now
          carries the identity; the redundant "Projects / New Project" pill
          row between it and the grid is gone. -->
   </div>
-  <div class="grid view-deck" id="grid"><!-- user project cards render here --></div>
+  <!-- T10-B (owner 2026-10-10): the label the emptied section header used to
+       carry now lives where the projects actually render, with a role that
+       makes it a landmark - "Projects" (this grid) vs "My Cloud Projects"
+       (the section below), which is what the 2026-08-14 note was for. -->
+  <div class="grid view-deck" id="grid" role="region" aria-label="Projects"><!-- user project cards render here --></div>
 
   <!-- DEMO PROJECTS SECTION - REVISED (owner 2026-09-15, second pass): the
        page-level eye button + show-pill were clutter. The demo section now
@@ -461,7 +480,9 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
        ONE eye toggle in the rail's All Projects dropdown (see demo-rail-row).
        The heading icon is gone per the owner. Demos hidden = only regular
        offline projects and cloud projects on screen. -->
-  <div id="demo-sec" class="db-sec" aria-label="Demo Projects" hidden>
+  <!-- T10-B: aria-label on a div with no role is prohibited (the h2 below
+       already names this section, and the div is hidden until demos show). -->
+  <div id="demo-sec" class="db-sec" hidden>
     <h2 class="db-sec-title">Demo Projects</h2>
   </div>
   <div class="grid" id="demo-grid" hidden><!-- demo project cards render here --></div>
@@ -475,7 +496,9 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
        the plan/upgrade strip was removed from here , the plan status now
        lives in the rail footer where it is always visible. Hidden until a
        valid session exists AND the Worker is present. -->
-  <div class="cloud-dash" id="cloud-dash" hidden aria-label="My cloud projects">
+  <!-- T10-B: same rule as #demo-sec - the heading below is the section's
+       name; an aria-label on a roleless div is prohibited by ARIA. -->
+  <div class="cloud-dash" id="cloud-dash" hidden>
     <div class="cd-head">
       <h2><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> My Cloud Projects</h2>
       <span class="cd-sub">Linked to your account. Click Load to open one</span>
@@ -496,7 +519,7 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
   <div class="cloud-dash" id="code-entry" aria-label="Open a project with a code" style="margin-top:8px;">
     <div class="cd-head">
       <h2><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-unlock"></use></svg> Have a code?
-        <span class="code-help" tabindex="0" aria-label="A code is what an admin or a project owner gives you. Paste it here to open their project."><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-help"></use></svg><span class="code-help-tip" role="tooltip">A code is what an admin or a project owner gives you. Paste it here to open their project.</span></span></h2>
+        <span class="code-help" tabindex="0" role="note" aria-label="A code is what an admin or a project owner gives you. Paste it here to open their project."><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-help"></use></svg><span class="code-help-tip" role="tooltip">A code is what an admin or a project owner gives you. Paste it here to open their project.</span></span></h2>
       <span class="cd-sub">Paste the code you were given and open the project</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -815,7 +838,11 @@ function renderCards(){
     var statusLabel = status.replace('-', ' ');
     var statusDot = ({ active: 'g', completed: 'g', planning: 'b', 'on-hold': 'a' })[status] || '';
     var cta = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> Explore';
-    return '<button class="pcard" data-id="' + p.id + '" aria-label="Explore ' + escapeHtml(p.title) + '">' +
+    /* T10-B (owner 2026-10-10): no aria-label here. The card IS its text, so a
+       short label put "Explore Riverside Tower" over a button that also says
+       "A fully populated 18-month ..." - axe's label/content rule. The demo
+       cards now take their name from the same visible text the main grid does. */
+    return '<button class="pcard" data-id="' + p.id + '">' +
       '<div class="pc-head"><div class="pc-title">' + escapeHtml(p.title) + '</div>' +
       '<div class="pc-lock"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg></div></div>' +
       '<div class="pc-desc">' + escapeHtml(p.description || '') + '</div>' +

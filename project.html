@@ -156,7 +156,11 @@
          showUser/showButton). Clicking it opens the Settings drawer at the
          Controls tab, where sign-in/sign-out live. -->
     <button type="button" class="si-chip" id="hdr-signin" hidden title="Signed in"></button>
-    <span class="bk-anchor"><div class="dirty-ind" id="dirty-ind" data-action="bkToggle" aria-haspopup="true" aria-expanded="false" aria-controls="bk-pop" title="Changes save to this browser automatically. Click to back up , to the cloud (automatic once linked) or to a .json file.">Not backed up</div>
+    <span class="bk-anchor"><!-- T10-B (owner 2026-10-10): a div with no role cannot carry
+         aria-haspopup / aria-expanded / aria-controls - axe flagged them as
+         ARIA attributes not allowed on a generic element. The title keeps the
+         same explanation for everyone who hovers; when this chip becomes a
+         keyboard-operable disclosure it gets role=button with it. --><div class="dirty-ind" id="dirty-ind" data-action="bkToggle" title="Changes save to this browser automatically. Click to back up , to the cloud (automatic once linked) or to a .json file.">Not backed up</div>
     <div class="bk-pop" id="bk-pop" hidden role="dialog" aria-label="Backup options">
       <div class="bk-pop-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-save"></use></svg> Backup</div>
       <button type="button" class="bk-opt" data-action="bkCloud">
@@ -287,7 +291,7 @@
       <div class="core-callout-txt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> <strong>Core Mode is on.</strong> Only the essential sections are shown (Overview, Plan, Collaborate). Turn on Risk, Budget, RACI, Meetings, Claim Pack and more - one click, nothing hidden is ever lost.</div>
       <div class="core-callout-actions">
         <button class="btn btn-g btn-s" data-action="openPacks"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> Turn on Advanced Packs</button>
-        <button class="btn btn-n btn-s" data-action="dismissPacksCallout" aria-label="Dismiss this tip , never show it again">Not now</button>
+        <button class="btn btn-n btn-s" data-action="dismissPacksCallout" aria-label="Not now - dismiss this tip and never show it again">Not now</button>
       </div>
     </div>
     <!-- AI COMMAND CARD: the single Ask-your-project entry point. Opens the
@@ -496,8 +500,8 @@
           <button class="btn btn-n btn-s" data-action="wxUseLocation" title="Use my current location , the forecast is then tailored to exactly where you are"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-crosshair"></use></svg> Use my current location</button>
           <button class="btn btn-n btn-s" data-action="wxRefresh">Refresh</button>
           <span class="wx-view-tgl">
-            <button class="btn btn-s" data-action="wxSetView" data-days="7" aria-label="Show 7-day weather forecast">7d</button>
-            <button class="btn btn-s" data-action="wxSetView" data-days="16" aria-label="Show 16-day weather forecast">16d</button>
+            <button class="btn btn-s" data-action="wxSetView" data-days="7" aria-label="7d - show the 7-day weather forecast">7d</button>
+            <button class="btn btn-s" data-action="wxSetView" data-days="16" aria-label="16d - show the 16-day weather forecast">16d</button>
           </span>
         </div>
         <div class="wx-hint">The site is looked up online for its exact coordinates , type your site city or address (more specific = more accurate), or tap <strong>Use my current location</strong> to tailor the forecast to exactly where you are. Needs an internet connection; when offline the regional weather windows remain the fallback.</div>

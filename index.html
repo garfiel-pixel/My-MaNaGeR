@@ -31,11 +31,11 @@
 <!-- ===================== HEADER (Liquid Glass , functional layer) ===================== -->
 <header class="site-header">
   <div class="container header-inner">
-    <a class="brand" href="index.html" aria-label="My MaNaGeR home">
+    <a class="brand" href="index.html">
       <span class="brand-mark" aria-hidden="true">
         <svg class="ico" aria-hidden="true" style="width:21px;height:21px;"><use href="css/mmgr-icons.svg#i-mpw"></use></svg>
       </span>
-      <span><b>MY MANAGER</b><small>Project Workspace</small></span>
+      <span><b>MY MANAGER</b> <small>Project Workspace</small></span>
     </a>
 
     <nav class="site-nav" aria-label="Primary">
@@ -144,7 +144,11 @@
            images/hero-schedule.svg (schedule), images/hero-evm-chart.svg
            (EVM), images/hero-ai-roadmap.svg (AI roadmap). Photos retired:
            the old webp photos are removed (owner: SVG art direction). -->
-      <div class="hero-visual" aria-hidden="true">
+      <!-- T10-A (owner 2026-10-10): decorative mock-ups. The cards carry
+           focusable bars for their hover tips, and a focusable element inside
+           aria-hidden is unreachable-but-tabbable; inert removes the whole
+           mock from the tab order and the accessibility tree. -->
+      <div class="hero-visual" inert aria-hidden="true">
         <div class="hero-card">
           <div class="hc-panelhead"><span class="hc-panelno">01</span><span class="hc-paneltitle">Schedule, Gantt</span></div>
           <div class="hc-img"><img src="images/hero-schedule.svg" alt="" loading="lazy" width="900" height="491" draggable="false"></div>
@@ -230,7 +234,7 @@
         <!-- Phase 2 copy: features intro. -->
         <p>Eighteen panels, wired together. Enter a number once and it shows up everywhere it matters. No re-entry, no drift.</p>
       </div>
-      <div class="features">
+      <div class="features" tabindex="0" role="group" aria-label="Feature panels">
         <article class="fcard" id="f-wbs">
           <span class="fc-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18M3 12h12M3 19h6" /></svg></span>
           <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg></div>

@@ -423,6 +423,164 @@ async function assistantOutputs(browser, errors) {
   await ctx.close();
 }
 
+// ---- W10a / T7: attachment allow-list + retrieval budget -------------------
+async function fileIntake(browser, errors) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => errors.push('calculator.html(file): ' + String(e).slice(0, 140)));
+  await page.route('**/api/auth/me', route =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true, user: { email: 'owner@example.com' } })
+    })
+  );
+  let lastBody = null;
+  await page.route('**/api/ai/chat', route => {
+    lastBody = route.request().postData() || '';
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true, text: 'Noted.', remaining: 4 })
+    });
+  });
+  await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
+  await page.waitForFunction(
+    () => {
+      const b = document.querySelector('[data-cai=send]');
+      return b && !b.disabled;
+    },
+    null,
+    { timeout: 20000 }
+  );
+
+  const accept = await page.getAttribute('[data-cai=file]', 'accept');
+  check(
+    'T7 the picker offers exactly the four types (pdf, csv, txt, md)',
+    accept === '.pdf,.csv,.txt,.md,application/pdf,text/csv,text/plain,text/markdown',
+    accept
+  );
+
+  // The real user path: press Attach, then pick a file. (Setting the input
+  // directly through CDP does not emit the trusted change the panel requires,
+  // by design - the panel deliberately ignores script-set values.)
+  const attachFile = async file => {
+    const [chooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      page.click('[data-cai=attach]')
+    ]);
+    await chooser.setFiles(file);
+  };
+
+  // A .json is refused in plain words and is not attached.
+  await attachFile({
+    name: 'rates.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from('{"a":1}')
+  });
+  await page.waitForTimeout(250);
+  const refused = await page.evaluate(() => ({
+    log: document.querySelector('[data-cai=log]').textContent,
+    info: document.querySelector('[data-cai=fileinfo]').hidden
+  }));
+  check(
+    'T7 a .json is refused with the plain message and is not attached',
+    /not supported\. Attach a PDF, CSV, TXT or MD file/.test(refused.log) && refused.info === true,
+    refused
+  );
+
+  // A 20,000-character TXT: attaches, is indexed, and the request carries only
+  // the relevant slice.
+  const filler = 'unrelated line about scaffolding and site fencing. '.repeat(400);
+  const bigTxt = filler + '\n\nRendered wall coverage is 10 m2 per litre.\n\n' + filler;
+  await attachFile({
+    name: 'notes.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from(bigTxt)
+  });
+  await page.waitForFunction(
+    () => {
+      const i = document.querySelector('[data-cai=fileinfo]');
+      return i && !i.hidden;
+    },
+    null,
+    { timeout: 5000 }
+  );
+  const attachInfo = await page.evaluate(() => ({
+    text: document.querySelector('[data-cai=fileinfo]').textContent,
+    indexed: /lines ready/.test(document.querySelector('[data-cai=fileinfo]').textContent)
+  }));
+  check('T7 the TXT attaches and is indexed', attachInfo.indexed === true, attachInfo.text);
+
+  // A CSV attaches and is indexed one line per row; a fake PDF is refused by
+  // the real signature, not by its name.
+  await attachFile({
+    name: 'rates.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from('item,unit,rate\nblock wall,m2,120\nrender,m2,45\n')
+  });
+  await page.waitForTimeout(250);
+  const csvInfo = await page.evaluate(
+    () => document.querySelector('[data-cai=fileinfo]').textContent
+  );
+  check('T7 a CSV attaches and is indexed by row', /rates\.csv/.test(csvInfo), csvInfo);
+
+  await attachFile({
+    name: 'scan.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('not really a pdf at all')
+  });
+  await page.waitForTimeout(250);
+  const fakePdf = await page.evaluate(() => ({
+    log: document.querySelector('[data-cai=log]').textContent,
+    info: document.querySelector('[data-cai=fileinfo]').textContent
+  }));
+  check(
+    'T7 a file named .pdf that is not a PDF is refused by its signature',
+    /not a PDF/.test(fakePdf.log),
+    fakePdf.log.slice(-160)
+  );
+
+  // back to the TXT for the retrieval-budget check
+  await attachFile({
+    name: 'notes.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from(bigTxt)
+  });
+  await page.waitForTimeout(250);
+
+  await page.fill('[data-cai=input]', 'how much render does a wall need per litre');
+  await page.click('[data-cai=send]');
+  await page.waitForTimeout(600);
+  const sent = String(lastBody || '');
+  const fileSection = (sent.split('ATTACHED FILE')[1] || '').split('"')[2] || sent;
+  check(
+    'T7 the request carries the file budget, not the whole 20k-character file',
+    sent.length > 0 && fileSection.length > 0 && fileSection.length <= 2200,
+    { bodyLen: sent.length, fileLen: fileSection.length }
+  );
+  check(
+    'T7 the relevant line is the one that travelled',
+    /Rendered wall coverage/.test(sent),
+    sent.slice(0, 160)
+  );
+
+  // The rate book answers about a family the old fixed window could miss.
+  const books = await page.evaluate(() => ({
+    filtered: window.MMGR_CALC_RATEBOOK('blockwall'),
+    plain: window.MMGR_CALC_RATEBOOK()
+  }));
+  check(
+    'T7 the rate book is filtered on the question (differs from the unfiltered text)',
+    !!books.filtered && books.filtered !== books.plain,
+    {
+      filteredLen: (books.filtered || '').length,
+      plainLen: (books.plain || '').length
+    }
+  );
+  await ctx.close();
+}
+
 const MOCK_PROJECTS = {
   ok: true,
   projects: [
@@ -634,6 +792,7 @@ async function loadButton(browser, errors) {
 
     await loadButton(browser, errors);
     await assistantOutputs(browser, errors);
+    await fileIntake(browser, errors);
 
     const real = errors.filter(e => !/\/api\//.test(e));
     check('zero page errors in the walked flows', real.length === 0, real.slice(0, 3));

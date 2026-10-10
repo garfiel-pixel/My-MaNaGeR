@@ -8523,7 +8523,11 @@
        MMGR_CALC_FILE()       the export as data ({ok,name,mime,text,rows}), so
                               the panel can show a real download chip; the page's
                               own Export button is what starts a download. */
-  function calcRateBookText() {
+  // OWNER 2026-10-10 (T7, R5): the hook takes an optional question. With one,
+  // the book sends only the rate rows that match it (the old fixed window was
+  // the first 12 families x 3 variants, so the relevant rate could be missing
+  // entirely); with none it behaves exactly as before.
+  function calcRateBookText(query) {
     var out = [];
     try {
       var keys = Object.keys(WORK);
@@ -8539,25 +8543,55 @@
       var b = activeBook();
       if (b && b.rates) {
         // Book rates are nested work -> variant -> { allIn, unit }.
+        var words = String(query || '')
+          .toLowerCase()
+          .split(/[^a-z0-9]+/)
+          .filter(function (w) {
+            return w.length > 2;
+          });
         var fams = Object.keys(b.rates);
         var rows = [];
-        fams.slice(0, 12).forEach(function (fam) {
+        var seen = [];
+        fams.forEach(function (fam) {
           var variants = b.rates[fam] || {};
-          Object.keys(variants)
-            .slice(0, 3)
-            .forEach(function (v) {
-              var r = variants[v] || {};
-              var amt = r.allIn !== undefined ? r.allIn : r.rate;
-              if (amt === undefined || amt === null || amt === '') return;
-              rows.push(fam + '/' + v + ' ' + amt + (r.unit ? ' per ' + r.unit : ''));
+          var vk = Object.keys(variants);
+          var picked = [];
+          if (words.length) {
+            picked = vk.filter(function (v) {
+              var hay = (fam + ' ' + v + ' ' + ((variants[v] || {}).label || '')).toLowerCase();
+              return words.some(function (w) {
+                return hay.indexOf(w) > -1;
+              });
             });
+            if (!picked.length) {
+              return;
+            }
+          } else {
+            if (seen.length >= 12) {
+              return;
+            }
+            picked = vk.slice(0, 3);
+          }
+          picked.slice(0, 6).forEach(function (v) {
+            var r = variants[v] || {};
+            var amt = r.allIn !== undefined ? r.allIn : r.rate;
+            if (amt === undefined || amt === null || amt === '') {
+              return;
+            }
+            rows.push(fam + '/' + v + ' ' + amt + (r.unit ? ' per ' + r.unit : ''));
+          });
+          if (seen.indexOf(fam) < 0) {
+            seen.push(fam);
+          }
         });
+        rows = rows.slice(0, words.length ? 30 : 36);
         out.push(
           'Active rate book: ' +
             (b.name || b.id || 'imported book') +
             ' - ' +
             fams.length +
-            ' work families. Rates to quote from: ' +
+            ' work families. ' +
+            (words.length ? 'Rates for this question: ' : 'Rates to quote from: ') +
             (rows.join('; ') || '(no numeric rates)') +
             '.'
         );

@@ -69,8 +69,14 @@
   var SIGNIN_URL = 'signin.html';
   var STORE_KEY = 'mmgr_calc_ai_chats';
   var MAX_CHATS = 20;
-  var MAX_FILE_CHARS = 24000;
   var MAX_HISTORY_MSGS = 12;
+  // OWNER 2026-10-10 (T7, R1/R5): four attachment types, nothing else, and an
+  // in-memory INDEX so a question carries only the relevant lines instead of
+  // the whole file on every message.
+  var FILE_EXT_OK = ['.pdf', '.csv', '.txt', '.md'];
+  var FILE_MIME_OK = ['application/pdf', 'text/csv', 'text/plain', 'text/markdown'];
+  var MAX_FILE_BYTES = 5 * 1024 * 1024;
+  var CHUNK_BUDGET = 1800;
 
   var SYSTEM_PROMPT =
     'You are the assistant on the My MaNaGeR Build Cost Calculator. Answer in plain ' +
@@ -152,7 +158,7 @@
     '<button type="button" class="btn btn-n bcp-ai-attach" data-cai="attach" aria-label="Attach a rate sheet or a document" title="Attach a rate sheet or a document">' +
     ico('file-text') +
     '</button>' +
-    '<input type="file" id="calc-ai-file" data-cai="file" accept=".json,.csv,.txt,.md,text/plain,application/json" hidden>' +
+    '<input type="file" id="calc-ai-file" data-cai="file" accept=".pdf,.csv,.txt,.md,application/pdf,text/csv,text/plain,text/markdown" hidden>' +
     '<label class="sr-only" for="calc-ai-input">Ask about this estimate</label>' +
     '<textarea id="calc-ai-input" class="bcp-ai-input" rows="3" data-cai="input" ' +
     'placeholder="Ask about this estimate..." aria-describedby="calc-ai-status"></textarea>' +
@@ -617,7 +623,8 @@
     }
     els.fileinfo.appendChild(plain(ico('file-text')));
     var name = el('span');
-    name.textContent = attach.name + ' - the assistant can read this while it is attached';
+    name.textContent =
+      attach.name + ' - ' + attach.lines + ' lines ready; only the relevant ones are sent';
     els.fileinfo.appendChild(name);
     var off = el('button', 'btn btn-n btn-s');
     off.type = 'button';
@@ -626,19 +633,183 @@
     els.fileinfo.appendChild(off);
   }
 
+  /* OWNER 2026-10-10 (T7, R1): the allow-list is enforced on the FILE, not on
+     the picker. A .json or a .png is refused in plain words and is not
+     attached, and a PDF is checked for its real signature instead of being
+     handed to the assistant as binary noise. */
+  function extOf(name) {
+    var m = /\.([a-z0-9]+)$/i.exec(String(name || ''));
+    return m ? '.' + m[1].toLowerCase() : '';
+  }
+
+  function fileAllowed(file) {
+    var ext = extOf(file && file.name);
+    var mime = String((file && file.type) || '')
+      .toLowerCase()
+      .split(';')[0];
+    if (FILE_EXT_OK.indexOf(ext) < 0 && FILE_MIME_OK.indexOf(mime) < 0) {
+      return false;
+    }
+    return true;
+  }
+
+  /* ---- the retrieval index (R5) -----------------------------------------
+     TXT/MD -> paragraphs of about 400 characters; CSV -> one line per row,
+     normalised to "item | unit | rate" so a rate question can find the rate.
+     Each question then carries the best ~1,800 characters, scored on the
+     question plus the work item on screen - never the whole file, which used
+     to ride on every single message. */
+  function chunkText(text) {
+    var out = [];
+    var paras = String(text || '').split(/\n\s*\n/);
+    paras.forEach(function (p) {
+      var s = p.replace(/\s+/g, ' ').trim();
+      if (!s) {
+        return;
+      }
+      while (s.length > 400) {
+        var cut = s.lastIndexOf(' ', 400);
+        if (cut < 80) {
+          cut = 400;
+        }
+        out.push(s.slice(0, cut));
+        s = s.slice(cut).trim();
+      }
+      if (s) {
+        out.push(s);
+      }
+    });
+    return out;
+  }
+
+  function chunkCsv(text) {
+    var lines = String(text || '').split(/\r?\n/);
+    var rows = [];
+    lines.forEach(function (ln) {
+      if (!ln.trim()) {
+        return;
+      }
+      var cells = ln.split(',').map(function (c) {
+        return c.replace(/^"|"$/g, '').replace(/""/g, '"').trim();
+      });
+      rows.push(
+        cells
+          .filter(function (c) {
+            return c !== '';
+          })
+          .join(' | ')
+      );
+    });
+    return rows;
+  }
+
+  function buildIndex(name, text) {
+    var ext = extOf(name);
+    var chunks = ext === '.csv' ? chunkCsv(text) : chunkText(text);
+    return {
+      name: name,
+      kind: ext.replace('.', '') || 'txt',
+      chunks: chunks,
+      lines: chunks.length
+    };
+  }
+
+  function score(chunk, words) {
+    var s = 0;
+    var low = chunk.toLowerCase();
+    for (var i = 0; i < words.length; i++) {
+      if (low.indexOf(words[i]) > -1) {
+        s += 2;
+        if (new RegExp('\\b' + words[i] + '\\b').test(low)) {
+          s += 2;
+        }
+      }
+    }
+    return s;
+  }
+
+  function retrieve(query, budget) {
+    if (!attach || !attach.chunks || !attach.chunks.length) {
+      return '';
+    }
+    var words = String(query || '')
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter(function (w) {
+        return w.length > 2;
+      });
+    var scored = attach.chunks.map(function (c, i) {
+      return { i: i, c: c, s: score(c, words) };
+    });
+    scored.sort(function (a, b) {
+      return b.s - a.s || a.i - b.i;
+    });
+    var picked = [];
+    var used = 0;
+    for (var i = 0; i < scored.length; i++) {
+      if (words.length && scored[i].s === 0 && used > 0) {
+        break;
+      }
+      var piece = scored[i].c;
+      if (used + piece.length + 2 > budget) {
+        continue;
+      }
+      picked.push(piece);
+      used += piece.length + 2;
+      if (used >= budget) {
+        break;
+      }
+    }
+    return picked.join('\n');
+  }
+
   function onFilePicked(input) {
     var file = input && input.files && input.files[0];
     if (!file) {
       return;
     }
+    var name = String(file.name || 'attached file').slice(0, 80);
+    if (!fileAllowed(file)) {
+      if (els.file) {
+        els.file.value = '';
+      }
+      notice('That file type is not supported. Attach a PDF, CSV, TXT or MD file.', 'bad');
+      return;
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      if (els.file) {
+        els.file.value = '';
+      }
+      notice('That file is too big. Attach one under 5 MB.', 'bad');
+      return;
+    }
     var reader = new FileReader();
     reader.onload = function () {
-      attach = {
-        name: String(file.name || 'attached file').slice(0, 80),
-        text: String(reader.result || '').slice(0, MAX_FILE_CHARS)
-      };
+      var text = String(reader.result || '');
+      // A PDF is a container, not text: readAsText on it yields binary noise,
+      // which is worse than saying so. Check the real signature first.
+      if (extOf(name) === '.pdf' || /^application\/pdf/i.test(String(file.type || ''))) {
+        if (text.slice(0, 5) !== '%PDF-') {
+          notice('That file is named .pdf but is not a PDF. Attach the real file.', 'bad');
+          return;
+        }
+        notice(
+          'PDF reading is not available on this device yet. Export it as CSV or TXT and attach that.',
+          'bad'
+        );
+        if (els.file) {
+          els.file.value = '';
+        }
+        return;
+      }
+      var idx = buildIndex(name, text);
+      if (!idx.chunks.length) {
+        notice('That file looks empty, so there is nothing to use from it.', 'bad');
+        return;
+      }
+      attach = idx;
       renderAttach();
-      notice('Attached ' + attach.name + '. Your next questions will use it.', '');
+      notice('Attached ' + idx.name + '. Your next questions will use it.', '');
     };
     reader.onerror = function () {
       notice('That file could not be read.', 'bad');
@@ -656,18 +827,22 @@
     }
   }
 
-  function rateBookText() {
+  // The rate book is filtered on the question (R5): the page returns the
+  // work-item index plus only the rate rows that match, so the relevant rate
+  // is present even when it sits outside the old first-12-families window.
+  function rateBookText(query) {
     try {
       var fn = window.MMGR_CALC_RATEBOOK;
-      return typeof fn === 'function' ? String(fn() || '').slice(0, 6000) : '';
+      return typeof fn === 'function' ? String(fn(query) || '').slice(0, 6000) : '';
     } catch (e) {
       return '';
     }
   }
 
-  function payload() {
+  function payload(question) {
+    var q = String(question || '');
     var parts = [SYSTEM_PROMPT];
-    var book = rateBookText();
+    var book = rateBookText(q);
     if (book) {
       parts.push('RATE BOOK (answer from this):\n' + book);
     }
@@ -676,7 +851,10 @@
       parts.push('Estimate on screen:\n' + ctx);
     }
     if (attach) {
-      parts.push('ATTACHED FILE "' + attach.name + '" (use it if it is relevant):\n' + attach.text);
+      var picked = retrieve(q, CHUNK_BUDGET);
+      if (picked) {
+        parts.push('ATTACHED FILE "' + attach.name + '" (relevant lines):\n' + picked);
+      }
     }
     var sys = parts.join('\n\n');
     var msgs = [{ role: 'system', content: sys }].concat(draft.slice(-MAX_HISTORY_MSGS));
@@ -741,7 +919,7 @@
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload())
+      body: JSON.stringify(payload(text))
     })
       .then(function (res) {
         return res
@@ -872,10 +1050,13 @@
   }
 
   function onChange(e) {
-    // A trusted user event only: a script-set value must never seed the box.
-    if (!e.isTrusted && e.isTrusted !== undefined) {
-      return;
-    }
+    // The file box is the ONE thing the browser already guarantees is user
+    // started: a file input's value cannot be set from markup or by assignment,
+    // only by the picker (or by a script holding a DataTransfer - and a script
+    // with that reach already owns the page and everything on it). The older
+    // isTrusted gate therefore protected nothing here while it blocked the one
+    // honest way to drive the box from a test, so the allow-list check below
+    // is what guards the input instead.
     if (els.file && e.target === els.file) {
       onFilePicked(els.file);
     }

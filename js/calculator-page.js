@@ -5616,18 +5616,42 @@
     if (e.target && e.target.id === 'calc-doc-title') render();
   });
 
+  /* OWNER 2026-10-10 (T2, F-2): the export splits into a PURE build and an
+     explicit download. buildCsv() returns the bytes and says honestly when
+     there is nothing priced; the assistant's chip renders THAT object, so the
+     chat can only ever offer a file that really exists. downloadCsv() is the
+     page's own Export button. One row builder, two callers - never two code
+     paths, and the chat never announces a file it did not produce. */
+  function buildCsv() {
+    if (!lastResult) {
+      return { ok: false, reason: 'nothing priced' };
+    }
+    const text = estimateCsv(lastResult);
+    return {
+      ok: true,
+      name: slug(docTitleBase()) + '-' + new Date().toISOString().slice(0, 10) + '.csv',
+      mime: 'text/csv;charset=utf-8',
+      text: text,
+      rows: text ? text.split('\n').length - 1 : 0
+    };
+  }
+
   function downloadCsv() {
-    if (!lastResult) return;
-    const blob = new Blob([estimateCsv(lastResult)], { type: 'text/csv;charset=utf-8' });
+    const f = buildCsv();
+    if (!f.ok) {
+      return f;
+    }
+    const blob = new Blob([f.text], { type: f.mime });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = slug(docTitleBase()) + '-' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.download = f.name;
     document.body.appendChild(a);
     a.click();
     a.remove();
     setTimeout(function () {
       URL.revokeObjectURL(a.href);
     }, 500);
+    return f;
   }
 
   function workName(key) {
@@ -8496,7 +8520,9 @@
                               the line to the bill through the SAME dispatch the
                               "Add to bill" button uses (calcBoqAdd) - a
                               proposal and a click must not be two code paths.
-       MMGR_CALC_FILE()       the existing export: the priced line as CSV. */
+       MMGR_CALC_FILE()       the export as data ({ok,name,mime,text,rows}), so
+                              the panel can show a real download chip; the page's
+                              own Export button is what starts a download. */
   function calcRateBookText() {
     var out = [];
     try {
@@ -8597,7 +8623,10 @@
 
   window.MMGR_CALC_RATEBOOK = calcRateBookText;
   window.MMGR_CALC_POPULATE = calcPopulate;
-  window.MMGR_CALC_FILE = downloadCsv;
+  // The panel hook returns the BUILD (never a download): the chip the user
+  // clicks is the only thing that fetches the file. The page's own Export
+  // button keeps calling downloadCsv through its action.
+  window.MMGR_CALC_FILE = buildCsv;
 
   /* OWNER 2026-10-08: the Assistant panel (js/calc-ai.js).
      #calc-ai-mount is the SWAP POINT - a later full-page takeover calls

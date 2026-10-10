@@ -257,6 +257,172 @@ async function ariaLabels(page) {
   check('A-5 the name reads like "Wall 1 length (m)"', /length/i.test(res.first), res.first);
 }
 
+// ---- W8a / T2 + T3: the assistant's own outputs ---------------------------
+async function assistantOutputs(browser, errors) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => errors.push('calculator.html(ai): ' + String(e).slice(0, 140)));
+  await page.route('**/api/auth/me', route =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true, user: { email: 'owner@example.com' } })
+    })
+  );
+  let relayCalls = 0;
+  await page.route('**/api/ai/chat', async route => {
+    relayCalls++;
+    // Deliberately slow, so the in-flight indicator is observable.
+    await new Promise(r => setTimeout(r, 900));
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ok: true,
+        text:
+          'Use one wall, 12 m long and 2.4 m high.\n' +
+          'PROPOSAL: {"work":"blockwall","d1":12,"d2":2.4,"note":"one wall"}',
+        remaining: 4
+      })
+    });
+  });
+  await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
+  await page.waitForFunction(
+    () => {
+      const b = document.querySelector('[data-cai=send]');
+      return b && !b.disabled;
+    },
+    null,
+    { timeout: 20000 }
+  );
+
+  // T3: a real relay round-trip shows the dots, and they are gone afterwards.
+  await page.fill('[data-cai=input]', 'price one wall 12 m by 2.4 m');
+  await page.click('[data-cai=send]');
+  await page.waitForSelector('.bcp-ai-typing', { timeout: 5000 });
+  const typing = await page.evaluate(() => {
+    const row = document.querySelector('.bcp-ai-typing');
+    return {
+      role: row ? row.getAttribute('role') : '',
+      name: row ? row.getAttribute('aria-label') : '',
+      dots: row ? row.querySelectorAll('.bcp-ai-dot').length : 0,
+      animated: row
+        ? getComputedStyle(row.querySelector('.bcp-ai-dot')).animationName !== 'none'
+        : false
+    };
+  });
+  check(
+    'T3 the in-flight bubble is a role=status row with three animated gold dots',
+    typing.role === 'status' && typing.dots === 3 && typing.animated === true,
+    typing
+  );
+  check(
+    'T3 it is named for a screen reader',
+    typing.name === 'The assistant is writing',
+    typing.name
+  );
+  await page.waitForFunction(() => !!window.__x || true, null, { timeout: 1000 }).catch(() => {});
+  await page.waitForSelector('.bcp-ai-typing', { state: 'detached', timeout: 15000 });
+  check('T3 the bubble is removed when the reply lands', true);
+  check('T3 exactly one relay request was spent', relayCalls === 1, relayCalls);
+  const noThinking = await page.evaluate(
+    () => !/Thinking\.\.\./.test(document.querySelector('[data-cai=log]').textContent)
+  );
+  check('T3 the old "Thinking..." status line is gone (one source of truth)', noThinking);
+
+  // T2: with NOTHING priced, no chip and no false success claim.
+  await page.click('[data-cai=makefile]');
+  await page.waitForTimeout(200);
+  const empty = await page.evaluate(() => ({
+    chips: document.querySelectorAll('.bcp-ai-chip').length,
+    text: document.querySelector('[data-cai=log]').textContent
+  }));
+  check('T2 nothing priced -> no download chip', empty.chips === 0, empty.chips);
+  check(
+    'T2 the chat never claims a download that did not happen',
+    !/has been downloaded/i.test(empty.text),
+    empty.text.replace(/\s+/g, ' ').slice(0, 140)
+  );
+  check(
+    'T2 it says plainly that nothing is priced yet',
+    /Nothing is priced yet/i.test(empty.text),
+    empty.text.replace(/\s+/g, ' ').slice(0, 140)
+  );
+
+  // T2: find an element-row box and fill the measurement the assistant proposed.
+  await page.evaluate(() => {
+    const sel = document.getElementById('calc-work');
+    sel.value = 'blockwall';
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await page.waitForTimeout(150);
+  await page.evaluate(() => {
+    const d1 = document.querySelector('#calc-inst-rows .bcp-inst-dim[data-field=d1]');
+    const d2 = document.querySelector('#calc-inst-rows .bcp-inst-dim[data-field=d2]');
+    if (d1) {
+      d1.value = '12';
+      d1.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    if (d2) {
+      d2.value = '2.4';
+      d2.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    const run = document.querySelector('[data-action="calcRun"]');
+    if (run) {
+      run.click();
+    }
+  });
+  await page.waitForTimeout(250);
+
+  await page.click('[data-cai=makefile]');
+  await page.waitForSelector('.bcp-ai-chip', { timeout: 5000 });
+  const chip = await page.evaluate(async () => {
+    const rows = document.querySelectorAll('.bcp-ai-chip');
+    const a = rows[rows.length - 1].querySelector('a[download]');
+    const href = a ? a.getAttribute('href') : '';
+    // Byte-for-byte against the page's own export (Response.text() strips the
+    // UTF-8 BOM per spec, so compare the raw bytes instead of the decoded text).
+    let blobBytes = new Uint8Array(0);
+    try {
+      blobBytes = new Uint8Array(await fetch(href).then(r => r.arrayBuffer()));
+    } catch (e) {
+      blobBytes = new Uint8Array(0);
+    }
+    const built = window.MMGR_CALC_FILE();
+    const want = built && built.ok ? new TextEncoder().encode(built.text) : new Uint8Array(0);
+    let sameBytes = want.length > 0 && want.length === blobBytes.length;
+    if (sameBytes) {
+      for (let i = 0; i < want.length; i++) {
+        if (want[i] !== blobBytes[i]) {
+          sameBytes = false;
+          break;
+        }
+      }
+    }
+    return {
+      chips: rows.length,
+      download: a ? a.getAttribute('download') : '',
+      blob: /^blob:/.test(href),
+      sameBytes,
+      rowsReported: built ? built.rows : -1,
+      blobLen: blobBytes.length,
+      builtLen: want.length
+    };
+  });
+  check('T2 a priced line produces exactly one chip', chip.chips === 1, chip.chips);
+  check(
+    'T2 the chip link is a real blob URL with a download name',
+    chip.blob && /\.csv$/.test(chip.download),
+    chip
+  );
+  check(
+    "T2 the chip bytes equal the page's own MMGR_CALC_FILE output",
+    chip.sameBytes === true,
+    chip
+  );
+  await ctx.close();
+}
+
 const MOCK_PROJECTS = {
   ok: true,
   projects: [
@@ -467,6 +633,7 @@ async function loadButton(browser, errors) {
     await ariaLabels(page);
 
     await loadButton(browser, errors);
+    await assistantOutputs(browser, errors);
 
     const real = errors.filter(e => !/\/api\//.test(e));
     check('zero page errors in the walked flows', real.length === 0, real.slice(0, 3));

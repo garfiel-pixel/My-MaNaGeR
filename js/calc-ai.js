@@ -49,7 +49,11 @@
      window.MMGR_CALC_AI_CONTEXT = function () { return 'totals ...'; };
      window.MMGR_CALC_RATEBOOK   = function () { return 'the rate book ...'; };
      window.MMGR_CALC_POPULATE   = function (v) { return { ok: true }; };
-     window.MMGR_CALC_FILE       = function () { ...export the priced line... };
+     window.MMGR_CALC_FILE       = function () { ...the priced line as data... };
+
+   MMGR_CALC_FILE returns the CSV as DATA ({ ok, name, mime, text, rows }) and
+   never downloads anything: the panel renders a download chip from it, so the
+   chat can only offer a file that really exists (owner 2026-10-10, T2).
 
    If a hook is absent the panel still answers; it only loses that one power,
    and it says so plainly instead of failing silently. No inline script, no
@@ -58,7 +62,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'calc-ai-2';
+  var VERSION = 'calc-ai-3';
   var ENDPOINT = '/api/ai/chat';
   var PROVIDER = 'google-gemini';
   var CAP = 5;
@@ -94,6 +98,12 @@
   var remaining = null;
   var attach = null;
   var proposal = null;
+  // Blob URLs handed to the file chips - revoked on unmount so a closed panel
+  // leaves nothing behind (T2).
+  var chipUrls = [];
+  // The in-flight "assistant is writing" row + its 25s slow-reply timer (T3).
+  var typingRow = null;
+  var typingTimer = null;
 
   function ico(name) {
     return (
@@ -182,6 +192,46 @@
     row.appendChild(body);
     els.log.appendChild(row);
     els.log.scrollTop = els.log.scrollHeight;
+  }
+
+  /* OWNER 2026-10-10 (T3, R9): the in-flight indicator is a real assistant
+     bubble with three gold dots, so the wait is visible IN the conversation
+     instead of as a distant status line. It carries role=status and an
+     accessible name, disappears on every outcome (answer, quota, outage,
+     network failure), and only says "Still working..." after 25 seconds.
+     prefers-reduced-motion keeps the dots but stops the motion (CSS). */
+  function showTyping() {
+    if (!els.log) {
+      return;
+    }
+    hideTyping();
+    var row = el('div', 'bcp-ai-typing');
+    row.setAttribute('role', 'status');
+    row.setAttribute('aria-label', 'The assistant is writing');
+    for (var i = 0; i < 3; i++) {
+      row.appendChild(el('span', 'bcp-ai-dot'));
+    }
+    var still = el('span', 'bcp-ai-still');
+    still.textContent = 'Still working...';
+    still.hidden = true;
+    row.appendChild(still);
+    els.log.appendChild(row);
+    els.log.scrollTop = els.log.scrollHeight;
+    typingRow = row;
+    typingTimer = setTimeout(function () {
+      still.hidden = false;
+    }, 25000);
+  }
+
+  function hideTyping() {
+    if (typingTimer) {
+      clearTimeout(typingTimer);
+      typingTimer = null;
+    }
+    if (typingRow && typingRow.parentNode) {
+      typingRow.parentNode.removeChild(typingRow);
+    }
+    typingRow = null;
   }
 
   // A notice is a system line (quota, outage, sign-in), never a fake reply
@@ -483,18 +533,76 @@
     notice((out && out.error) || 'That line could not be added - check the quantities.', 'bad');
   }
 
+  // OWNER 2026-10-10 (T2, F-2): "Generate a file" used to announce a download
+  // that never happened. Now the chip IS the download: the page builds the
+  // bytes, the chat renders the file with its real name, size and row count,
+  // and a link the user clicks. No priced line means no chip and one plain
+  // sentence - never a success claim.
+  function humanBytes(n) {
+    n = Number(n) || 0;
+    if (n < 1024) {
+      return n + ' B';
+    }
+    if (n < 1024 * 1024) {
+      return Math.round((n / 1024) * 10) / 10 + ' KB';
+    }
+    return Math.round((n / (1024 * 1024)) * 10) / 10 + ' MB';
+  }
+
+  function fileChip(f) {
+    if (!els.log) {
+      return;
+    }
+    var bytes = 0;
+    try {
+      bytes = new Blob([f.text]).size;
+    } catch (e) {
+      bytes = f.text ? f.text.length : 0;
+    }
+    var row = el('div', 'bcp-ai-chip');
+    row.appendChild(plain(ico('file-text')));
+    var meta = el('span', 'bcp-ai-chip-meta');
+    var nm = el('strong', 'bcp-ai-chip-name');
+    nm.textContent = f.name;
+    var sub = el('span', 'bcp-ai-chip-sub');
+    sub.textContent =
+      humanBytes(bytes) + ' - ' + (f.rows || 0) + ' row' + ((f.rows || 0) === 1 ? '' : 's');
+    meta.appendChild(nm);
+    meta.appendChild(sub);
+    row.appendChild(meta);
+    var url = '';
+    try {
+      url = URL.createObjectURL(new Blob([f.text], { type: f.mime || 'text/plain' }));
+    } catch (e) {
+      url = '';
+    }
+    var a = el('a', 'btn btn-g btn-s');
+    a.textContent = 'Download';
+    a.setAttribute('download', f.name);
+    a.href = url;
+    row.appendChild(a);
+    chipUrls.push(url);
+    els.log.appendChild(row);
+    els.log.scrollTop = els.log.scrollHeight;
+  }
+
   function onMakeFile() {
     var fn = window.MMGR_CALC_FILE;
     if (typeof fn !== 'function') {
-      notice('There is nothing to export yet - work out an estimate on the page first.', 'bad');
+      notice('Nothing is priced yet. Add the line to the calculator first.', 'bad');
       return;
     }
+    var f = null;
     try {
-      fn();
-      notice('Your estimate has been downloaded as a CSV file.', '');
+      f = fn();
     } catch (e) {
-      notice('The file could not be created just now.', 'bad');
+      f = null;
     }
+    if (!f || !f.ok || !f.text) {
+      notice('Nothing is priced yet. Add the line to the calculator first.', 'bad');
+      return;
+    }
+    fileChip(f);
   }
 
   /* ---- attachment ------------------------------------------------------ */
@@ -627,7 +735,7 @@
     els.input.value = '';
     push('user', text);
     draft.push({ role: 'user', content: text });
-    setStatus('Thinking...');
+    showTyping();
     syncDisabled();
     fetch(ENDPOINT, {
       method: 'POST',
@@ -647,6 +755,7 @@
       })
       .then(function (r) {
         busy = false;
+        hideTyping();
         if (r.ok && r.data.ok && typeof r.data.text === 'string' && r.data.text) {
           var parsed = parseProposal(r.data.text);
           draft.push({ role: 'assistant', content: r.data.text });
@@ -699,6 +808,7 @@
       })
       .catch(function () {
         busy = false;
+        hideTyping();
         notice('Could not reach the server. Check your connection and try again.', 'bad');
         setStatus(quotaLine());
       });
@@ -820,6 +930,9 @@
     userEmail = '';
     attach = null;
     proposal = null;
+    chipUrls = [];
+    typingRow = null;
+    typingTimer = null;
     loadChats();
     renderHistory();
     renderAttach();
@@ -841,6 +954,15 @@
     if (!root) {
       return;
     }
+    hideTyping();
+    chipUrls.forEach(function (u) {
+      try {
+        if (u) {
+          URL.revokeObjectURL(u);
+        }
+      } catch (e) {}
+    });
+    chipUrls = [];
     root.removeEventListener('click', onClick);
     root.removeEventListener('keydown', onKey);
     root.removeEventListener('change', onChange);

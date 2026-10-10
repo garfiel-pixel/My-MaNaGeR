@@ -15788,6 +15788,88 @@ body.rr-open {
   border-color: var(--danger);
   color: var(--danger);
 }
+/* OWNER 2026-10-10 (T3, R9): the assistant's in-flight bubble - three gold
+   dots inside the conversation, so the wait is visible where the answer will
+   land. Gold is the identity: the dots take the text-weight gold on the light
+   canvas and the white accent in dark mode (both themes declare the token). */
+.bcp-ai-typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 9px 13px;
+  border-radius: 14px 14px 14px 4px;
+  border: 1px solid var(--border);
+  background: var(--surface-raised, var(--card));
+  width: fit-content;
+}
+.bcp-ai-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gold-ink);
+  animation: bcp-ai-bounce 1.05s infinite ease-in-out;
+}
+.bcp-ai-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.bcp-ai-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes bcp-ai-bounce {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  40% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+.bcp-ai-still {
+  display: inline-block;
+  font-size: 0.72rem;
+  color: var(--text-muted, var(--slate));
+  margin-left: 4px;
+}
+.bcp-ai-still[hidden] {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bcp-ai-dot {
+    animation: none;
+    opacity: 0.7;
+  }
+}
+/* One download chip: the file the assistant built, with its real size and row
+   count, and the link that actually fetches it (T2). */
+.bcp-ai-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  flex-wrap: wrap;
+}
+.bcp-ai-chip-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.bcp-ai-chip-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text);
+  word-break: break-all;
+}
+.bcp-ai-chip-sub {
+  font-size: 0.7rem;
+  color: var(--text-muted, var(--slate));
+}
 .bcp-ai-ico {
   flex-shrink: 0;
   display: inline-flex;

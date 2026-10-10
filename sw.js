@@ -17,7 +17,16 @@
    v382 - full-bleed marketing canvas, 7-big-dot rail with generated
            small dots, contact tile phone overflow, guide sidebar spacing
    ============================================================ */
-const CACHE = 'mmgr-shell-v396';
+const CACHE = 'mmgr-shell-v397';
+
+// v397 - DARK-MODE CLOUD LOAD BUTTON SOFTENED (owner 2026-10-09: on the app page's My Cloud
+// Projects list, the green Load button should stay present but stop showing as a saturated green
+// block in dark mode; at rest it reads as a dark hairline like the other dark-mode list controls,
+// and on hover it shows the same grayscale accent wash used on db-project / db-btn rows - the same
+// little gray highlight the owner sees on All Projects. On the light theme the inherited .btn-g rule
+// still gives a clear green hover, which is the behaviour the owner asked for.
+// CSS only: css/mmgr.css got one new scoped override; sw bumped so returning clients re-fetch.
+//
 
 // v396 - THE STRESS AUDIT FOUND ONE REAL DEFECT AND IT IS FIXED (owner 2026-10-09: "use playwright ...
 // capture the console ... stress this ... if we find any form of error, bring it back"). tools/qa-console-stress.cjs

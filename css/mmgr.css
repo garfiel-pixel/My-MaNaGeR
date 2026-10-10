@@ -12839,6 +12839,22 @@ body.dark-mode.db-page .db-project:hover {
 body.dark-mode.db-page .db-project .db-project-ico {
   color: var(--db-accent);
 }
+body.dark-mode.db-page .db-project .btn-g {
+  /* Dark-mode cloud Load button: keep the action visible but soften the green
+     accent out of the layout. Rest = dark glass hairline (same read as the
+     other dark-mode db controls); hover = the same gray accent wash used on
+     db-project and db-btn rows, never the saturated green block. On the light
+     theme the inherited btn-g rule still gives a clear green hover, which is
+     the behaviour the owner asked for. */
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--text);
+}
+body.dark-mode.db-page .db-project .btn-g:hover {
+  background: color-mix(in oklch, var(--db-accent) 10%, transparent);
+  border-color: color-mix(in oklch, var(--db-accent) 65%, transparent);
+  color: var(--db-accent);
+}
 body.dark-mode.db-page .db-backup {
   background: var(--db-surface);
   border-color: var(--db-border);

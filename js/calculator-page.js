@@ -8615,6 +8615,97 @@
     return out.join('\n');
   }
 
+  /* OWNER 2026-10-11 (B1 - "those figures do not price - check the quantities").
+     The panel was handed one opaque sentence with no way to fix it. This is the
+     diagnosis it was missing.
+
+     MMGR_CALC_CHECK(v) is a PURE DRY RUN. It reads the work-item metadata
+     (WORK[key].d1/d2/d3 labels) and NEVER writes the form, the bill or saved
+     state, so the assistant can name EVERY box that is still needed, in plain
+     words, carrying the same unit the page itself would print on that box.
+
+     Money is deliberately NOT computed here. There is one pricing engine on this
+     page and it is render(); the check reports only the quantity the work's own
+     q() would produce, so a preview can never disagree with the bill. */
+  function calcCheck(v) {
+    var out = { ok: false, work: '', mode: 'dims', missing: [], preview: null, error: '' };
+    if (!v || typeof v !== 'object') {
+      out.error = 'nothing to check';
+      return out;
+    }
+    var sel = $('calc-work');
+    var key = v.work || (sel && sel.value) || '';
+    var w = WORK[key];
+    if (!w) {
+      out.error = 'that work item is not on this page';
+      return out;
+    }
+    out.work = key;
+    // "Length (m)" -> "m"; a box with no bracketed unit just has none.
+    var unitOf = function (label) {
+      var m = /\(([a-zA-Z0-9\/. ]+)\)\s*$/.exec(String(label || ''));
+      return m ? m[1] : '';
+    };
+    var bareOf = function (label) {
+      return String(label || '').replace(/\s*\([^)]*\)\s*$/, '');
+    };
+    var num = function (x) {
+      return x === undefined || x === null || x === '' ? null : Number(x);
+    };
+    var hasTotal = v.measuredQty !== undefined && v.measuredQty !== null && v.measuredQty !== '';
+    if (hasTotal) {
+      // Quick total: one number plus the work's own unit, already priced by the
+      // page's all-in path. The probe call reads the unit/label, never a price.
+      out.mode = 'total';
+      var n = num(v.measuredQty);
+      if (n === null || !isFinite(n) || n <= 0) {
+        out.missing.push({
+          field: 'measuredQty',
+          label: 'Total quantity',
+          unit: '',
+          hint: 'Enter the measured total as a number greater than zero.'
+        });
+      } else {
+        var probe = w.q(1, 1, 1) || {};
+        out.preview = { qty: n, unit: probe.unit || '', qtyLabel: probe.qtyLabel || '' };
+      }
+    } else {
+      out.mode = 'dims';
+      var given = { d1: num(v.d1), d2: num(v.d2), d3: num(v.d3) };
+      var defs = [
+        ['d1', w.d1],
+        ['d2', w.d2],
+        ['d3', w.d3]
+      ];
+      var vals = [0, 0, 0];
+      var all = true;
+      for (var i = 0; i < defs.length; i++) {
+        var label = defs[i][1];
+        if (!label) {
+          continue; // this work has no such box - it is not missing
+        }
+        var val = given[defs[i][0]];
+        if (val === null || !isFinite(val) || val <= 0) {
+          all = false;
+          out.missing.push({
+            field: defs[i][0],
+            label: String(label),
+            unit: unitOf(label),
+            hint: 'Enter ' + bareOf(label) + ' as a number greater than zero.'
+          });
+        } else {
+          vals[i] = val;
+        }
+      }
+      if (all) {
+        var pr = w.q(vals[0], vals[1], vals[2]) || {};
+        out.preview = { qty: pr.qty, unit: pr.unit || '', qtyLabel: pr.qtyLabel || '' };
+      }
+    }
+    out.ok = out.missing.length === 0;
+    return out;
+  }
+
   function calcPopulate(v) {
     try {
       if (!v || typeof v !== 'object') return { ok: false, error: 'nothing to add' };
@@ -8629,11 +8720,17 @@
         syncLabels();
       }
       var w = WORK[(sel && sel.value) || ''] || {};
+      // B1 (F-4): a box this work does not use, or a box the proposal omitted,
+      // is CLEARED rather than left holding the previous line's number - which is
+      // how a second line used to price with the first line's height.
       var put = function (name, id, allowed) {
-        if (!allowed) return;
-        if (v[name] === undefined || v[name] === null || v[name] === '') return;
         var el = $(id);
-        if (el) el.value = String(v[name]);
+        if (!el) return;
+        if (!allowed || v[name] === undefined || v[name] === null || v[name] === '') {
+          el.value = '';
+          return;
+        }
+        el.value = String(v[name]);
       };
       put('d1', 'calc-d1', true);
       put('d2', 'calc-d2', !!w.d2);
@@ -8644,9 +8741,30 @@
         var mt = $('calc-measured-manual');
         if (mt) mt.checked = true;
       }
+      // Diagnose BEFORE rendering, so the reply names the box that is actually
+      // short instead of the old blanket "those figures do not price".
+      var chk = calcCheck(v);
+      if (!chk.ok) {
+        var words = chk.missing
+          .map(function (m) {
+            return m.label;
+          })
+          .join(', ');
+        return {
+          ok: false,
+          error: 'I still need ' + words + '. Enter that and the line will price.',
+          missing: chk.missing
+        };
+      }
       var r = render();
       if (!r || r.error) {
-        return { ok: false, error: 'those figures do not price - check the quantities' };
+        return {
+          ok: false,
+          error:
+            'The form did not price that line: ' +
+            (r && r.error ? r.error : 'check the quantities.'),
+          missing: chk.missing
+        };
       }
       ACTIONS.calcBoqAdd();
       return { ok: true, name: r.name, total: r.total, currency: r.currency || '' };
@@ -8656,6 +8774,9 @@
   }
 
   window.MMGR_CALC_RATEBOOK = calcRateBookText;
+  // B1: the dry run, so the panel can ask for ONE missing box in plain words
+  // instead of being told the figures failed.
+  window.MMGR_CALC_CHECK = calcCheck;
   window.MMGR_CALC_POPULATE = calcPopulate;
   // The panel hook returns the BUILD (never a download): the chip the user
   // clicks is the only thing that fetches the file. The page's own Export

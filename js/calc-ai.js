@@ -516,6 +516,32 @@
       );
       return;
     }
+    // B1 (owner 2026-10-11): "those figures do not price" told the user nothing.
+    // Ask the PAGE first - MMGR_CALC_CHECK is a pure dry run that names every
+    // box still missing, in the page's own words and units - so the reply says
+    // which field to fill rather than that something failed.
+    var chk = null;
+    try {
+      var ck = window.MMGR_CALC_CHECK;
+      if (typeof ck === 'function') {
+        chk = ck(proposal);
+      }
+    } catch (e) {
+      chk = null;
+    }
+    if (chk && chk.ok === false && chk.missing && chk.missing.length) {
+      notice(
+        'I cannot enter that yet. The form still needs: ' +
+          chk.missing
+            .map(function (m) {
+              return m.label + (m.hint ? ' - ' + m.hint : '');
+            })
+            .join('  ') +
+          ' Tell me that figure and I will price it.',
+        'bad'
+      );
+      return;
+    }
     var out = null;
     try {
       out = fn(proposal);
@@ -536,7 +562,11 @@
       renderPaths();
       return;
     }
-    notice((out && out.error) || 'That line could not be added - check the quantities.', 'bad');
+    notice(
+      (out && out.error) ||
+        'That line could not be added. Check the numbers are greater than zero and try again.',
+      'bad'
+    );
   }
 
   // OWNER 2026-10-10 (T2, F-2): "Generate a file" used to announce a download
@@ -592,10 +622,22 @@
     els.log.scrollTop = els.log.scrollHeight;
   }
 
+  // B1 (owner 2026-10-11): "Nothing is priced yet. Add the line to the
+  // calculator first." named no cause and no next step. Say what is missing and
+  // what to press; a pending proposal gets the one-click path instead.
+  function nothingPricedNotice() {
+    notice(
+      proposal
+        ? 'Nothing is priced on this page yet, so there is no file to build. Use Populate above and I will add the line, then generate the file.'
+        : 'Nothing is priced on this page yet, so there is no file to build. Fill the dimension boxes and press Calculate, then generate the file again.',
+      'bad'
+    );
+  }
+
   function onMakeFile() {
     var fn = window.MMGR_CALC_FILE;
     if (typeof fn !== 'function') {
-      notice('Nothing is priced yet. Add the line to the calculator first.', 'bad');
+      nothingPricedNotice();
       return;
     }
     var f = null;
@@ -605,7 +647,7 @@
       f = null;
     }
     if (!f || !f.ok || !f.text) {
-      notice('Nothing is priced yet. Add the line to the calculator first.', 'bad');
+      nothingPricedNotice();
       return;
     }
     fileChip(f);

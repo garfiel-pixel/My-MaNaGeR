@@ -17,8 +17,24 @@
    v382 - full-bleed marketing canvas, 7-big-dot rail with generated
            small dots, contact tile phone overflow, guide sidebar spacing
    ============================================================ */
-const CACHE = 'mmgr-shell-v405';
+const CACHE = 'mmgr-shell-v407';
 
+// v407 - bump only: js/calculator-page.js was touched again after the v406
+// stamp (prettier), and verify-sw-cache refuses to let a shell asset be newer
+// than the last CACHE bump.
+//
+// v406 - THE ASSISTANT SAYS WHICH BOX IS MISSING (owner 2026-10-11: "those
+// figures do not price" and "Nothing is priced yet" told the user nothing).
+// New pure dry-run hook MMGR_CALC_CHECK names every box the chosen work item
+// still needs, in the page's own words and units, BEFORE anything is entered;
+// MMGR_CALC_POPULATE uses it so a short proposal is answered with the field to
+// fill instead of a blanket failure, and it now CLEARS the boxes a line does not
+// use (a second line used to price with the first line's height). The panel
+// surfaces that list, and "Generate a file" explains what is missing and points
+// at Populate or Calculate. js/calculator-page.js and js/calc-ai.js load raw on
+// calculator.html, so its ?v= bumps too. No inline script changed, so the CSP
+// inline-script hash set is unchanged.
+//
 // v405 - THE SIGN-IN PAGE WORKS AS DESIGNED (owner 2026-10-10: no Google button on /signin, "Sign in
 // with email" opened a black popup, the sky read blue-black, a lock icon, the wordmark half missing).
 // Causes: signin.html never loaded Google Identity; the email panel wore the old marketing

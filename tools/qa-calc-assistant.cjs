@@ -343,9 +343,12 @@ async function assistantOutputs(browser, errors) {
     !/has been downloaded/i.test(empty.text),
     empty.text.replace(/\s+/g, ' ').slice(0, 140)
   );
+  // B1 (owner 2026-10-11): the old line named neither a cause nor a next step.
+  // It must now say what is missing AND what to press.
   check(
-    'T2 it says plainly that nothing is priced yet',
-    /Nothing is priced yet/i.test(empty.text),
+    'T2 it says plainly that nothing is priced yet AND what to do next',
+    /Nothing is priced on this page yet/i.test(empty.text) &&
+      /(Populate|Calculate)/i.test(empty.text),
     empty.text.replace(/\s+/g, ' ').slice(0, 140)
   );
 
@@ -878,6 +881,121 @@ async function loadButton(browser, errors) {
   await ctx.close();
 }
 
+// ---- B1 (owner 2026-10-11): the diagnosis behind "those figures do not price"
+// The panel used to be handed one blanket sentence. These gates drive the
+// page's OWN hooks to prove it now names the box that is actually short.
+async function assistantDiagnosis(page) {
+  const hookOk = await page.evaluate(() => typeof window.MMGR_CALC_CHECK === 'function');
+  check('B1 the page exposes MMGR_CALC_CHECK', hookOk);
+
+  // The dry run must never touch the form or the bill.
+  const pure = await page.evaluate(() => {
+    const first = document.querySelector('#calc-work option');
+    const key = first ? first.value : '';
+    const snap = () => ({
+      d1: document.getElementById('calc-d1').value,
+      d2: document.getElementById('calc-d2').value,
+      d3: document.getElementById('calc-d3').value,
+      manual: document.getElementById('calc-measured-manual').checked,
+      work: document.getElementById('calc-work').value,
+      rows: document.querySelectorAll('[data-action=calcBoqRecall]').length
+    });
+    const before = snap();
+    window.MMGR_CALC_CHECK({ work: key, d1: 69 });
+    window.MMGR_CALC_CHECK({ work: key, measuredQty: 69 });
+    return JSON.stringify(before) === JSON.stringify(snap());
+  });
+  check('B1 MMGR_CALC_CHECK is a pure dry run (form and bill untouched)', pure);
+
+  // Over every work item, a lump v1 proposal must price or NAME its missing box.
+  const m = await page.evaluate(() => {
+    const sel = document.getElementById('calc-work');
+    const works = Array.from(sel.options)
+      .map(o => o.value)
+      .filter(Boolean);
+    let priced = 0;
+    let diagnosed = 0;
+    let bare = 0;
+    const samples = [];
+    works.forEach(key => {
+      sel.value = key;
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+      ['calc-d1', 'calc-d2', 'calc-d3'].forEach(id => {
+        const e = document.getElementById(id);
+        if (e) {
+          e.value = '';
+        }
+      });
+      const man = document.getElementById('calc-measured-manual');
+      if (man) {
+        man.checked = false;
+      }
+      const r = window.MMGR_CALC_POPULATE({ work: key, d1: 69 });
+      if (r && r.ok) {
+        priced++;
+      } else if (
+        r &&
+        Array.isArray(r.missing) &&
+        r.missing.length &&
+        !/those figures do not price/i.test(r.error || '')
+      ) {
+        diagnosed++;
+        if (samples.length < 2) {
+          samples.push(key + ' -> ' + (r.error || ''));
+        }
+      } else {
+        bare++;
+        if (samples.length < 3) {
+          samples.push(key + ' -> ' + JSON.stringify(r));
+        }
+      }
+    });
+    return { total: works.length, priced, diagnosed, bare, samples };
+  });
+  check(
+    'B1 a lump proposal never fails bare: it prices or names the missing box',
+    m.priced + m.diagnosed === m.total && m.bare === 0,
+    'priced ' + m.priced + ', diagnosed ' + m.diagnosed + ', bare ' + m.bare
+  );
+  if (m.samples.length) {
+    log('     ' + m.samples.join(' ; '));
+  }
+
+  // A second line must not price with the first line's numbers.
+  const stale = await page.evaluate(() => {
+    const sel = document.getElementById('calc-work');
+    const setWork = key => {
+      sel.value = key;
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    setWork('siteprep');
+    const a = window.MMGR_CALC_POPULATE({ work: 'siteprep', d1: 12, d2: 3 });
+    const d2AfterFirst = document.getElementById('calc-d2').value;
+    // The page's own dry run decides which work prices from one box.
+    const oneBox = Array.from(sel.options)
+      .map(o => o.value)
+      .filter(Boolean)
+      .find(key => window.MMGR_CALC_CHECK({ work: key, d1: 10 }).ok === true);
+    if (!oneBox) {
+      return { aOk: a.ok === true, cleared: false, oneBox: 'none' };
+    }
+    setWork(oneBox);
+    const b = window.MMGR_CALC_POPULATE({ work: oneBox, d1: 10 });
+    return {
+      aOk: a.ok === true,
+      cleared:
+        b.ok === true && d2AfterFirst === '3' && document.getElementById('calc-d2').value === '',
+      oneBox: oneBox
+    };
+  });
+  check('B1 a two-box line prices before the clear is measured', stale.aOk);
+  check(
+    'B1 the next line CLEARS the box the previous one left behind',
+    stale.cleared,
+    'one-box work ' + stale.oneBox
+  );
+}
+
 (async () => {
   let srv = null;
   const { chromium } = resolvePlaywright();
@@ -897,6 +1015,7 @@ async function loadButton(browser, errors) {
 
     await quickTotalMatrix(page);
     await quickTotalExample(page);
+    await assistantDiagnosis(page);
     await ariaLabels(page);
 
     await loadButton(browser, errors);

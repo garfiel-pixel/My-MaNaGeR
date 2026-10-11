@@ -117,7 +117,7 @@ async function check(name, expr, expected, hint) {
   // ---- BOOT ----
   await check(
     '01 boot: MMGR + active dash panel',
-    `(function(){return {val: !!(window.MMGR && MMGR.App && MMGR.State && document.querySelector('#panel-dash').classList.contains('active') && document.querySelectorAll('.panel').length === 19)};})()`
+    `(function(){return {val: !!(window.MMGR && MMGR.App && MMGR.State && document.querySelector('#panel-dash').classList.contains('active') && document.querySelectorAll('.panel').length === 20), n: document.querySelectorAll('.panel').length, mmgr: !!(window.MMGR&&MMGR.App&&MMGR.State)};})()`
   );
   await check(
     '01b boot: no boot failure banner',
@@ -889,11 +889,11 @@ async function check(name, expr, expected, hint) {
   );
   await check(
     '37 static markup: project.html source has zero inline styles',
-    `(function(){return fetch('project.html').then(function(r){return r.text();}).then(function(t){return {val: t.indexOf('style=') === -1};});})()`
+    `(function(){return fetch('project.html').then(function(r){return r.text();}).then(function(t){var n=t.split('style=').length-1;return {val: t.indexOf('style=') === -1, n: n};});})()`
   );
   await check(
     '38 dom census: rendered inline styles reduced',
-    `(function(){return {val: document.querySelectorAll('[style]').length < 200};})()`
+    `(function(){return {val: document.querySelectorAll('[style]').length < 200, n: document.querySelectorAll('[style]').length};})()`
   );
   // .is-hide must WIN over display rules (.sp{flex} etc.) — assert computed styles, not classes.
   await check(

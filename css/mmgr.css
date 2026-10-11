@@ -381,6 +381,24 @@ body.dark-mode .photo-item a:hover .photo-thumb {
   border-color: var(--brand);
 }
 
+/* Photos panel controls (owner 2026-10-11). These used to be hidden by
+   inline style attributes on project.html. Two reasons they move here:
+   the project page keeps a zero-inline-styles contract (qa-full 37), and
+   the rendered inline-style census counted them (qa-full 38). The CAPTION
+   box is deliberately left visible: the upload handler reads its value the
+   moment a file is chosen, so a hidden caption field meant a caption could
+   never be recorded. The file input stays invisible because it is opened
+   by its button, and the cancel button has no handler yet. */
+#photos-upload-input {
+  display: none;
+}
+#photos-cancel-btn {
+  display: none;
+}
+#photos-upload-note {
+  margin-top: 4px;
+}
+
 /* Theme picker pressed state: white in dark, gold kept for light */
 body.dark-mode .pal-btn[aria-pressed='true'] {
   color: #0b0b0d;

@@ -17,8 +17,18 @@
    v382 - full-bleed marketing canvas, 7-big-dot rail with generated
            small dots, contact tile phone overflow, guide sidebar spacing
    ============================================================ */
-const CACHE = 'mmgr-shell-v404';
+const CACHE = 'mmgr-shell-v405';
 
+// v405 - THE SIGN-IN PAGE WORKS AS DESIGNED (owner 2026-10-10: no Google button on /signin, "Sign in
+// with email" opened a black popup, the sky read blue-black, a lock icon, the wordmark half missing).
+// Causes: signin.html never loaded Google Identity; the email panel wore the old marketing
+// .signin-sheet class (position:fixed, #0b0b0d, white glow); the sky was #0b1220 navy plus a cyan glow;
+// the show-password button was forced to width:100%. Now: Google script + full-width pill button
+// (data-gis-* options, labelled fallback), in-card email dropdown, black star sky with gold accent,
+// no lock icon, readable wordmark/notes, stacked fields with the eye inside the password box.
+// New gate tools/qa-signin-look.cjs measures it. js/mmgr-google-auth.js, css/marketing.css and
+// signin.html are served assets, so this shell version bumps. (v404/v398 were the photos wave.)
+//
 // v398 - PROJECT PHOTOS ARRIVE, AND THE COMPANY PRICE MATCHES ITS NEIGHBOURS (owner 2026-10-10).
 // (1) PROJECT PHOTOS: a new Photos section in the Collaborate group lets a cloud-linked project upload,
 // list, view and delete photos. Upload is owner+editor only; viewer and client codes read only, and a

@@ -45,6 +45,8 @@
 <link rel="stylesheet" href="dist/marketing.min.css">
 <script src="js/mmgr-theme.js"></script>
 <script src="dist/app-bundle.js" defer></script>
+<!-- Google Identity Services: this page never loaded it, so the Google button could not render here. Same tag app.html carries. -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body class="auth-page signin-page">
 
@@ -68,7 +70,6 @@
        solid fill inside it (Gate 6.1: glass never carries content). -->
   <div class="auth-card signin-card">
 
-    <svg class="auth-icon head" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg>
     <h1>Sign in</h1>
     <p class="signin-lede">Signing in turns on cloud backup and lets you move projects between devices. The app itself works without an account.</p>
 
@@ -82,7 +83,7 @@
 
     <!-- 1. GOOGLE FIRST. Measured order on every site checked, and what
          the owner asked for. -->
-    <div id="google-signin-button" class="signin-google"></div>
+    <div id="google-signin-button" class="signin-google" data-gis-theme="outline" data-gis-shape="pill" data-gis-size="large" data-gis-text="continue_with" data-gis-width="fill"></div>
 
     <div class="email-auth-divider signin-divider"><span>or use your email</span></div>
 

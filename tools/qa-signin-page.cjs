@@ -40,6 +40,15 @@ const VALID = ['/app.html', '/project.html?id=demo', '/index.html#faq', '/dashbo
   const browser = await chromium.launch({ channel: 'chrome', args: ['--disk-cache-size=0'] });
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   const errs = [];
+  // Google's own script is stubbed so this gate is the same offline and online; a blocked or
+  // slow external script must not read as a page error (the look gate tests the real button).
+  await page.route('**/accounts.google.com/gsi/client*', r =>
+    r.fulfill({
+      status: 200,
+      contentType: 'application/javascript',
+      body: 'window.google={accounts:{id:{initialize:function(){},renderButton:function(){},prompt:function(){}}}};'
+    })
+  );
   page.on('console', m => {
     if (m.type() === 'error' && !/404 \(Not Found\)/.test(m.text()))
       errs.push(m.text().slice(0, 90));

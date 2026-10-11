@@ -3645,8 +3645,8 @@ body.dark-mode .hero-card .hc-stepdot {
     radial-gradient(1.2px 1.2px at 22% 88%, rgba(255, 255, 255, 0.7), transparent 60%),
     radial-gradient(1.5px 1.5px at 48% 34%, rgba(255, 255, 255, 0.55), transparent 60%),
     radial-gradient(900px 620px at 78% -8%, rgba(var(--gold-rgb), 0.2), transparent 62%),
-    radial-gradient(760px 560px at 8% 104%, rgba(0, 188, 212, 0.13), transparent 60%),
-    linear-gradient(178deg, #0b1220 0%, #111a2c 46%, #0a101c 100%);
+    radial-gradient(760px 560px at 8% 104%, rgba(var(--gold-rgb), 0.08), transparent 60%),
+    linear-gradient(178deg, #060607 0%, #0b0b0d 50%, #050506 100%);
 }
 /* A very slow drift keeps it alive without being noticeable as motion. */
 @keyframes signin-drift {
@@ -3737,7 +3737,7 @@ body.dark-mode .hero-card .hc-stepdot {
 /* Gate 6.2: a glass surface ships a reduced-transparency fallback. */
 @media (prefers-reduced-transparency: reduce) {
   .signin-card {
-    background: rgba(18, 24, 40, 0.97);
+    background: rgba(18, 18, 20, 0.97);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
@@ -3749,15 +3749,14 @@ body.dark-mode .hero-card .hc-stepdot {
   color: #fff;
 }
 .signin-card .signin-lede {
-  color: rgba(236, 242, 252, 0.8);
+  color: rgba(244, 244, 245, 0.8);
 }
 /* The inner content layer stays readable but no longer dense (owner
    2026-10-09 softening): a lighter fill and hairline keep the fields legible
    while letting the star field breathe behind the card. */
 .signin-card #marketing-email-auth,
-.signin-card #google-signin-button,
 .signin-card .signin-return {
-  background: rgba(12, 18, 32, 0.42);
+  background: rgba(14, 14, 16, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
 }
@@ -3771,7 +3770,7 @@ body.dark-mode .hero-card .hc-stepdot {
   padding: 10px 12px;
   margin: 14px 0 18px;
   font-size: var(--fs-small);
-  color: rgba(236, 242, 252, 0.86);
+  color: rgba(244, 244, 245, 0.86);
   line-height: 1.5;
 }
 .signin-card .signin-return[hidden] {
@@ -3790,6 +3789,8 @@ body.dark-mode .hero-card .hc-stepdot {
 /* Google door, measured first on every site checked. */
 .signin-google {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
   padding: 14px 0 2px;
 }
@@ -3806,7 +3807,7 @@ body.dark-mode .hero-card .hc-stepdot {
   font-size: 0.68rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(236, 242, 252, 0.6);
+  color: rgba(244, 244, 245, 0.6);
 }
 
 /* The email disclosure: a full-width quiet door, expanding downward. */
@@ -3825,7 +3826,7 @@ body.dark-mode .hero-card .hc-stepdot {
   font-size: 0.86rem;
   font-weight: 600;
   color: #fff;
-  background: rgba(8, 14, 26, 0.55);
+  background: rgba(14, 14, 16, 0.55);
   border: 1px solid rgba(255, 255, 255, 0.16);
   transition:
     border-color var(--tr),
@@ -3834,7 +3835,7 @@ body.dark-mode .hero-card .hc-stepdot {
 }
 .signin-disclosure:hover {
   border-color: rgba(var(--gold-rgb), 0.7);
-  background: rgba(8, 14, 26, 0.72);
+  background: rgba(14, 14, 16, 0.72);
 }
 .signin-disclosure:active {
   transform: scale(0.99);
@@ -3856,16 +3857,151 @@ body.dark-mode .hero-card .hc-stepdot {
   display: none;
 }
 
+/* ---------- SIGN-IN PAGE REPAIR (owner 2026-10-10) ----------
+   1. The email form is an in-card DROPDOWN, never a popup. The panel still
+      carries .signin-sheet so the shared form keeps its field styles, but the
+      old marketing popup's placement and chrome are switched off here.
+   2. The Google slot has no box of its own: the real button, or the labelled
+      fallback, is the only thing drawn in it.
+   3. Black sky with gold accent. No blue, no cyan.
+   4. The wordmark and the password row read correctly. */
+.signin-card .signin-email-panel.signin-sheet {
+  position: static;
+  top: auto;
+  right: auto;
+  width: auto;
+  z-index: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.signin-card .signin-google {
+  min-height: 44px;
+  padding: 0;
+  margin-top: 4px;
+}
+.signin-page .auth-header .brand b {
+  color: #fff;
+}
+.signin-card #marketing-email-auth .email-auth-row {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 10px;
+}
+.signin-card #marketing-email-auth .email-auth-input {
+  width: 100%;
+  flex: 0 0 auto;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.signin-card #marketing-email-auth .email-auth-pwwrap {
+  position: relative;
+  display: block;
+}
+.signin-card #marketing-email-auth .email-auth-pwwrap .email-auth-input {
+  padding-right: 48px;
+}
+.signin-card #marketing-email-auth .email-auth-eye {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 44px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0 9px 9px 0;
+  background: transparent;
+  color: rgba(244, 244, 245, 0.8);
+  cursor: pointer;
+}
+.signin-card #marketing-email-auth .email-auth-eye:hover {
+  color: #e8923a;
+}
+.signin-card #marketing-email-auth .email-auth-eye:focus-visible {
+  outline: 2px solid #e8923a;
+  outline-offset: -2px;
+}
+.signin-card #marketing-email-auth .email-auth-submit {
+  background: #e8923a;
+  color: #1c1917;
+  box-shadow: none;
+}
+.signin-card #marketing-email-auth .email-auth-submit:hover {
+  background: #f0a050;
+  box-shadow: 0 0 20px rgba(var(--gold-rgb), 0.35);
+}
+.signin-card #marketing-email-auth .email-auth-submit:focus-visible,
+.signin-card #marketing-email-auth .email-auth-input:focus-visible {
+  outline: 2px solid #e8923a;
+  outline-offset: 2px;
+}
+.signin-card #marketing-email-auth .email-auth-trust {
+  margin: 12px 0 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: rgba(244, 244, 245, 0.75);
+}
+.signin-card #marketing-email-auth .auth-legal {
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: rgba(244, 244, 245, 0.7);
+}
+.signin-card #marketing-email-auth .auth-legal a {
+  color: rgba(244, 244, 245, 0.9);
+  text-decoration: underline;
+}
+.signin-card #marketing-email-auth .auth-legal a:hover {
+  color: #e8923a;
+}
+.signin-card .gis-fallback-btn.is-wide {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: #fff;
+  color: #1c1917;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.signin-card .gis-fallback-btn.is-wide:hover {
+  background: #f4f4f5;
+}
+.signin-card .gis-fallback-btn.is-wide:focus-visible {
+  outline: 2px solid #e8923a;
+  outline-offset: 2px;
+}
+.signin-card .gis-fallback-note {
+  align-self: stretch;
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: rgba(244, 244, 245, 0.8);
+  text-align: center;
+}
+
 /* Legal, below the action on every measured site. */
 .signin-legal {
   margin-top: 18px;
   font-size: 0.72rem;
   line-height: 1.6;
-  color: rgba(236, 242, 252, 0.62);
+  color: rgba(244, 244, 245, 0.62);
   text-align: center;
 }
 .signin-legal a {
-  color: rgba(236, 242, 252, 0.9);
+  color: rgba(244, 244, 245, 0.9);
   text-decoration: underline;
 }
 .signin-legal a:hover {
@@ -3884,10 +4020,10 @@ body.dark-mode .hero-card .hc-stepdot {
   gap: 18px;
   padding: 6px 16px 28px;
   font-size: 0.74rem;
-  color: rgba(236, 242, 252, 0.55);
+  color: rgba(244, 244, 245, 0.55);
 }
 .signin-foot a {
-  color: rgba(236, 242, 252, 0.72);
+  color: rgba(244, 244, 245, 0.72);
 }
 .signin-foot a:hover {
   color: var(--gold);
@@ -3906,7 +4042,7 @@ body.dark-mode .signin-card {
    fall back to an opaque card rather than leaving text on a busy sky. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .signin-card {
-    background: #101a2b;
+    background: #121214;
     border-color: rgba(255, 255, 255, 0.16);
   }
   .signin-sky {
@@ -3917,7 +4053,7 @@ body.dark-mode .signin-card {
   .signin-card {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
-    background: #101a2b;
+    background: #121214;
   }
 }
 @media (prefers-reduced-motion: reduce) {

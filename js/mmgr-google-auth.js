@@ -95,6 +95,23 @@ var MMGR = window.MMGR || {};
     );
   }
 
+  // The Google button's look is set by data-gis-* attributes on its host, so a
+  // page can ask for the full-width pill without an inline script (CSP). With no
+  // attributes it stays the small round button every other page uses.
+  //   data-gis-width="fill" -> the host's own width, clamped to what GIS allows (200-400px).
+  function gisButtonOptions(host) {
+    const d = (host && host.dataset) || {};
+    const o = {
+      theme: d.gisTheme || 'outline',
+      size: d.gisSize || 'medium',
+      shape: d.gisShape || 'circle',
+      text: d.gisText || 'signin_with'
+    };
+    const w = d.gisWidth === 'fill' ? Math.round(host.clientWidth) : Number(d.gisWidth) || 0;
+    if (w) o.width = Math.max(200, Math.min(400, w));
+    return o;
+  }
+
   // Render the GIS sign-in button into #google-signin-button. Safe to call
   // only when the element exists AND GIS is present; never throws.
   function initGIS() {
@@ -107,12 +124,7 @@ var MMGR = window.MMGR || {};
       });
       const host = $('google-signin-button');
       if (host) {
-        window.google.accounts.id.renderButton(host, {
-          theme: 'outline',
-          size: 'medium',
-          shape: 'circle',
-          text: 'signin_with'
-        });
+        window.google.accounts.id.renderButton(host, gisButtonOptions(host));
         installPopupBlockDetector();
       }
       _gisInit = true;
@@ -150,12 +162,7 @@ var MMGR = window.MMGR || {};
       // Wipe the stale 0x0 render and draw a fresh button now that the host
       // is measurable (modal/rail open). GIS allows re-render after wipe.
       host.innerHTML = '';
-      window.google.accounts.id.renderButton(host, {
-        theme: 'outline',
-        size: 'medium',
-        shape: 'circle',
-        text: 'signin_with'
-      });
+      window.google.accounts.id.renderButton(host, gisButtonOptions(host));
       installPopupBlockDetector();
       return true;
     } catch (e) {
@@ -2112,18 +2119,24 @@ var MMGR = window.MMGR || {};
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'gis-fallback-btn';
-    btn.innerHTML =
-      '<svg class="ico" aria-hidden="true" style="width:18px;height:18px;margin-right:8px;vertical-align:middle"><use href="css/mmgr-icons.svg#i-user"></use></svg>Sign in with Google';
-    btn.style.borderRadius = '50%';
-    btn.style.width = '48px';
-    btn.style.height = '48px';
-    btn.style.padding = '0';
     btn.setAttribute('aria-label', 'Sign in with Google');
     btn.title = 'Sign in with Google';
-    // Keep only the icon inside the circular fallback (the text label does
-    // not fit a circle); screen readers get the aria-label instead.
-    btn.innerHTML =
-      '<svg class="ico" aria-hidden="true" style="width:20px;height:20px"><use href="css/mmgr-icons.svg#i-user"></use></svg>';
+    const wide = !!(host.dataset && host.dataset.gisShape === 'pill');
+    if (wide) {
+      // The sign-in page: a full-width labelled button, styled by .signin-card
+      // .gis-fallback-btn, never a bare circle.
+      btn.className = 'gis-fallback-btn is-wide';
+      btn.innerHTML = '<span>Continue with Google</span>';
+    } else {
+      btn.style.borderRadius = '50%';
+      btn.style.width = '48px';
+      btn.style.height = '48px';
+      btn.style.padding = '0';
+      // Keep only the icon inside the circular fallback (the text label does
+      // not fit a circle); screen readers get the aria-label instead.
+      btn.innerHTML =
+        '<svg class="ico" aria-hidden="true" style="width:20px;height:20px"><use href="css/mmgr-icons.svg#i-user"></use></svg>';
+    }
     btn.addEventListener('click', function () {
       if (gisReady()) {
         initGIS();
@@ -2131,9 +2144,16 @@ var MMGR = window.MMGR || {};
         var ifr = host.querySelector('iframe');
         if (ifr) btn.remove();
       } else {
-        btn.textContent = 'Google sign-in is unavailable right now. Use email sign-in below.';
-        btn.disabled = true;
-        btn.style.opacity = '0.6';
+        // Say it next to the button, never inside it: the button must stay a button.
+        let note = host.querySelector('.gis-fallback-note');
+        if (!note) {
+          note = document.createElement('p');
+          note.className = 'gis-fallback-note';
+          note.setAttribute('role', 'status');
+          host.appendChild(note);
+        }
+        note.textContent =
+          'Google sign-in could not load. Check your connection or use email below.';
       }
     });
     host.appendChild(btn);

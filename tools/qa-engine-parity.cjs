@@ -64,7 +64,9 @@ function globalWranglerJs() {
       [path.join(ROOT, 'node_modules', 'wrangler', 'bin', 'wrangler.js'), '--version'],
       { encoding: 'utf8', timeout: 30000 }
     );
-    if (out) return path.join(ROOT, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
+    if (out) {
+      return path.join(ROOT, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
+    }
   } catch (e) {
     /* not local */
   }
@@ -131,11 +133,15 @@ async function startWrangler() {
       const timer = setTimeout(() => ctrl.abort(), 3000);
       const r = await fetch(BASE + '/api/health', { signal: ctrl.signal });
       clearTimeout(timer);
-      if (r.ok) return;
+      if (r.ok) {
+        return;
+      }
     } catch (e) {
       /* not up */
     }
-    if (Date.now() - t0 > 120000) throw new Error('wrangler dev did not come up');
+    if (Date.now() - t0 > 120000) {
+      throw new Error('wrangler dev did not come up');
+    }
     await delay(1500);
   }
 }
@@ -171,7 +177,9 @@ async function withChrome(fn) {
     for (let i = 0; i < 60; i++) {
       try {
         const r = await fetch('http://127.0.0.1:' + port + '/json/version');
-        if (r.ok) break;
+        if (r.ok) {
+          break;
+        }
       } catch (e) {}
       await delay(300);
     }
@@ -247,7 +255,9 @@ async function withChrome(fn) {
     let cookie = '';
     const sc = r.headers.get('set-cookie') || '';
     const m = sc.match(/mmgr_session=([^;]+)/);
-    if (m) cookie = m[1];
+    if (m) {
+      cookie = m[1];
+    }
     if (!cookie || !reg.ok) {
       r = await fetch(BASE + '/api/auth/login', {
         method: 'POST',
@@ -257,11 +267,15 @@ async function withChrome(fn) {
       });
       reg = await j(r);
       const m2 = (r.headers.get('set-cookie') || '').match(/mmgr_session=([^;]+)/);
-      if (m2) cookie = m2[1];
+      if (m2) {
+        cookie = m2[1];
+      }
     }
     check('A1 email session minted', !!cookie && !!reg.ok, { reg, hasCookie: !!cookie });
     const authHeaders = { 'Content-Type': 'application/json' };
-    if (cookie) authHeaders.Cookie = 'mmgr_session=' + cookie;
+    if (cookie) {
+      authHeaders.Cookie = 'mmgr_session=' + cookie;
+    }
 
     r = await fetch(BASE + '/api/cloud/projects', {
       method: 'POST',
@@ -396,8 +410,15 @@ async function withChrome(fn) {
     await mcp({ jsonrpc: '2.0', method: 'notifications/initialized' });
     const list = await mcp({ jsonrpc: '2.0', id: 2, method: 'tools/list' });
     check(
-      'B2 tools/list has 7 tools',
-      !!(list && list.result && list.result.tools && list.result.tools.length === 7),
+      'B2 tools/list has 9 tools (B3 wave: get_table + run_monte_carlo)',
+      !!(
+        list &&
+        list.result &&
+        list.result.tools &&
+        list.result.tools.length === 9 &&
+        list.result.tools.some(t => t.name === 'get_table') &&
+        list.result.tools.some(t => t.name === 'run_monte_carlo')
+      ),
       list && list.result && list.result.tools && list.result.tools.length
     );
     const gt = await mcp({
@@ -411,6 +432,110 @@ async function withChrome(fn) {
       'B3 get_tasks returns seeded tasks with fiction intact',
       gtTasks && gtTasks.length === 2 && gtTasks[0].critical === true,
       gtTasks && gtTasks.length
+    );
+
+    // ---- B3 wave (owner 2026-10-11): get_table + run_monte_carlo over the
+    // REAL route. Both must honour the seeded state and the scope law.
+    const gtTable = await mcp({
+      jsonrpc: '2.0',
+      id: 31,
+      method: 'tools/call',
+      params: { name: 'get_table', arguments: { table: 'tasks' } }
+    });
+    const gtTableRows = gtTable && gtTable.result && JSON.parse(gtTable.result.content[0].text);
+    check(
+      'B3b get_table(tasks) returns the full raw table',
+      !!(gtTableRows && gtTableRows.count === 2 && gtTableRows.records[1].predecessors[0] === 'p1'),
+      gtTableRows && gtTableRows.count
+    );
+    const gtBad = await mcp({
+      jsonrpc: '2.0',
+      id: 32,
+      method: 'tools/call',
+      params: { name: 'get_table', arguments: { table: 'wxCache' } }
+    });
+    check(
+      'B3c get_table refuses an unknown/owner-only table with isError',
+      !!(gtBad && gtBad.result && gtBad.result.isError === true),
+      gtBad && gtBad.result
+    );
+    const mc = await mcp({
+      jsonrpc: '2.0',
+      id: 33,
+      method: 'tools/call',
+      params: {
+        name: 'run_monte_carlo',
+        arguments: { simulations: 300, targetDate: '2027-06-30' }
+      }
+    });
+    const mcOut = mc && mc.result && !mc.result.isError && JSON.parse(mc.result.content[0].text);
+    check(
+      'B3d run_monte_carlo returns percentiles + target probability over the real route',
+      !!(
+        mcOut &&
+        mcOut.simulations === 300 &&
+        mcOut.tasksSimulated === 2 &&
+        /^\d{4}-\d{2}-\d{2}$/.test(mcOut.percentiles.p50) &&
+        mcOut.percentiles.p10 <= mcOut.percentiles.p50 &&
+        mcOut.percentiles.p50 <= mcOut.percentiles.p80 &&
+        mcOut.percentiles.p80 <= mcOut.percentiles.p90 &&
+        typeof mcOut.target.probabilityPct === 'number' &&
+        mcOut.target.probabilityPct >= 0 &&
+        mcOut.target.probabilityPct <= 100
+      ),
+      mcOut
+    );
+    // Scoped-key parity: a WBS-only key can simulate but cannot read tables
+    // outside its grant (the same law as get_tasks/get_risks).
+    const scoped = await (
+      await fetch(BASE + '/api/cloud/projects/' + pid + '/api-keys', {
+        method: 'POST',
+        headers: ownerHeaders,
+        body: JSON.stringify({ label: 'parity-wbs-only', scope: ['wbs'] })
+      })
+    ).json();
+    const SKEY = scoped.apiKey;
+    const smcp = async body => {
+      const res = await fetch(BASE + '/api/mcp/' + pid, {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + SKEY,
+          'Content-Type': 'application/json',
+          Accept: 'application/json, text/event-stream'
+        },
+        body: JSON.stringify(body)
+      });
+      const text = await res.text();
+      return text ? JSON.parse(text) : {};
+    };
+    const smc = await smcp({
+      jsonrpc: '2.0',
+      id: 34,
+      method: 'tools/call',
+      params: { name: 'run_monte_carlo', arguments: { simulations: 200 } }
+    });
+    const smcOk =
+      smc && smc.result && !smc.result.isError && JSON.parse(smc.result.content[0].text);
+    check(
+      'B3e a WBS-only key can still run the simulation',
+      !!(smcOk && smcOk.simulations === 200 && smcOk.tasksSimulated === 2),
+      smcOk
+    );
+    const sTab = await smcp({
+      jsonrpc: '2.0',
+      id: 35,
+      method: 'tools/call',
+      params: { name: 'get_table', arguments: { table: 'budgetLines' } }
+    });
+    check(
+      'B3f a WBS-only key is refused a table outside its grant',
+      !!(
+        sTab &&
+        sTab.result &&
+        sTab.result.isError === true &&
+        /does not include that section/.test(sTab.result.content[0].text)
+      ),
+      sTab && sTab.result
     );
 
     // ---- C. REST /load carries predecessors ----

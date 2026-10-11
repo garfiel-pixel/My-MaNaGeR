@@ -31,6 +31,8 @@
      get_risks            — risk register with probability, impact
      get_weather          — weather forecast risk days + delay log
      get_meetings         — meeting log with decisions, actions
+     get_table            — B3 (2026-10-11): one full table by name, scoped
+     run_monte_carlo      — B3 (2026-10-11): schedule simulation, same engine
      apply_changes        — write diffs (goes through review queue)
    ============================================================ */
 
@@ -96,6 +98,48 @@ const TOOLS = [
     name: 'get_meetings',
     description: 'Get meeting log with decisions, action items, and attendees.',
     inputSchema: { type: 'object', properties: {}, required: [] }
+  },
+  {
+    name: 'get_table',
+    description:
+      'Read one full project table by name: tasks, resources, budgetLines, spendLog, stakeholders, changes, logEntries, risks, issues, meetings, documents, commsEntries, raci, dmaic, closure, charter, budgetEnvelope or projectDeadline. API keys only see tables inside their granted sections; the owner code sees all of them. Weather tables (wxCache, weatherLog) are owner-only, same as get_weather.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        table: {
+          type: 'string',
+          description: 'Table name - one of the names listed in this tool description'
+        },
+        limit: {
+          type: 'integer',
+          description: 'Max records to return from an array table (default 200)'
+        }
+      },
+      required: ['table']
+    }
+  },
+  {
+    name: 'run_monte_carlo',
+    description:
+      'Run the schedule Monte Carlo simulation (triangular distribution, the same engine the app uses) and return completion percentiles P10/P50/P80/P90 plus, optionally, the probability of finishing by a target date. Needs the WBS section. High x high risks widen the spread only when the key also grants the Risk section.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        targetDate: {
+          type: 'string',
+          description: 'Optional ISO date (YYYY-MM-DD) to score completion probability against'
+        },
+        riskFactor: {
+          type: 'number',
+          description: 'Duration stretch factor, clamped to 1.0-3.0 (default 1.2)'
+        },
+        simulations: {
+          type: 'integer',
+          description: 'Number of runs, clamped to 100-5000 (default 1000)'
+        }
+      },
+      required: []
+    }
   },
   {
     name: 'apply_changes',
@@ -206,11 +250,276 @@ function buildCreatedRecord(path, record, nowMs, counterRef) {
     ++counterRef.n;
   if (record && typeof record === 'object') {
     for (const k of Object.keys(record)) {
-      if (k === 'id') continue; // ids are server-assigned, never client-supplied
+      if (k === 'id') {
+        continue;
+      } // ids are server-assigned, never client-supplied
       rec[k] = record[k];
     }
   }
   return rec;
+}
+
+// ---- B3 (owner 2026-10-11): full table access + Monte Carlo run ----------
+// Two gaps closed, nothing widened. get_table opens the tables the six named
+// read tools never covered (resources, stakeholders, decisions, documents,
+// RACI, DMAIC, closure...) but validates against the SAME
+// CLOUD_KEY_TO_SECTION map apply_changes uses, so a scoped key can never read
+// a section it was not granted; the weather tables stay owner-only exactly
+// like get_weather. run_monte_carlo is a faithful port of the app's own
+// engine (js/mmgr-schedule.js triSample/simulateSchedule/runMonteCarlo -
+// triangular sampler, FS predecessor links, fixed-point pass capped at 50,
+// the same confidence high/low adjustments) - the parity law: an MCP answer
+// and the panel in the app must never disagree about the same schedule.
+const GET_TABLE_NAMES = [
+  'tasks',
+  'resources',
+  'budgetLines',
+  'spendLog',
+  'budgetEnvelope',
+  'stakeholders',
+  'changes',
+  'logEntries',
+  'risks',
+  'issues',
+  'meetings',
+  'documents',
+  'commsEntries',
+  'raci',
+  'dmaic',
+  'closure',
+  'charter',
+  'projectDeadline'
+];
+const GET_TABLE_OWNER_ONLY = ['wxCache', 'weatherLog'];
+
+function executeGetTable(state, scope, args) {
+  const name = String((args && args.table) || '').trim();
+  if (!name) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text:
+            'Name the table to read, e.g. {"table": "resources"}. Available: ' +
+            GET_TABLE_NAMES.join(', ') +
+            '.'
+        }
+      ],
+      isError: true
+    };
+  }
+  const ownerOnly = GET_TABLE_OWNER_ONLY.indexOf(name) !== -1;
+  if (ownerOnly) {
+    if (Array.isArray(scope)) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: 'Weather data is not a grantable section, so API keys cannot read it. The project owner can read it inside the app.'
+          }
+        ],
+        isError: true
+      };
+    }
+    return {
+      content: [
+        { type: 'text', text: JSON.stringify({ table: name, value: state[name] || null }, null, 2) }
+      ]
+    };
+  }
+  if (GET_TABLE_NAMES.indexOf(name) === -1) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text:
+            'Unknown table: ' +
+            name +
+            '. Available: ' +
+            GET_TABLE_NAMES.join(', ') +
+            (Array.isArray(scope) ? '' : '. Weather: ' + GET_TABLE_OWNER_ONLY.join(', ') + '.')
+        }
+      ],
+      isError: true
+    };
+  }
+  const sec = CLOUD_KEY_TO_SECTION[name];
+  if (sec && !sectionAllowed(scope, sec)) {
+    return { content: [{ type: 'text', text: sectionRefusal(scope) }], isError: true };
+  }
+  const value = state[name];
+  if (value === undefined || value === null) {
+    return {
+      content: [
+        { type: 'text', text: JSON.stringify({ table: name, count: 0, records: [] }, null, 2) }
+      ]
+    };
+  }
+  if (Array.isArray(value)) {
+    const limit = Math.min(1000, Math.max(1, +(args && args.limit) || 200));
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(
+            {
+              table: name,
+              count: value.length,
+              returned: Math.min(limit, value.length),
+              records: value.slice(0, limit)
+            },
+            null,
+            2
+          )
+        }
+      ]
+    };
+  }
+  return {
+    content: [{ type: 'text', text: JSON.stringify({ table: name, value: value }, null, 2) }]
+  };
+}
+
+// Triangular sampler - byte-for-byte the app's math (mmgr-schedule.js).
+function mcpTriSample(min, ml, max) {
+  const u = Math.random();
+  const fc = (ml - min) / (max - min);
+  if (u < fc) {
+    return min + Math.sqrt(u * (max - min) * (ml - min));
+  }
+  return max - Math.sqrt((1 - u) * (max - min) * (max - ml));
+}
+
+function executeMonteCarlo(state, scope, args) {
+  if (!sectionAllowed(scope, 'wbs')) {
+    return { content: [{ type: 'text', text: sectionRefusal(scope) }], isError: true };
+  }
+  const tasks = (Array.isArray(state.tasks) ? state.tasks : []).filter(function (t) {
+    return t && t.startDate && t.endDate && !t.isPhase;
+  });
+  if (tasks.length < 2) {
+    return {
+      content: [{ type: 'text', text: 'Need at least 2 scheduled tasks to simulate.' }],
+      isError: true
+    };
+  }
+  const N = Math.min(5000, Math.max(100, Math.round(+(args && args.simulations) || 1000)));
+  const riskFactor = Math.min(3, Math.max(1, +(args && args.riskFactor) || 1.2));
+  // The app counts high x high open risks (*2 days) - and a scoped key's
+  // state was already projected through cloudScopeState above, so a key
+  // without the Risk section simply contributes 0 here. Same math either way.
+  const highRiskCount = (Array.isArray(state.risks) ? state.risks : []).filter(function (r) {
+    return r && !r.issueId && r.probability === 'High' && r.impact === 'High';
+  }).length;
+  const riskAdder = highRiskCount * 2;
+
+  const results = [];
+  for (let sim = 0; sim < N; sim++) {
+    const simDur = {};
+    tasks.forEach(function (t) {
+      const baseDur = Math.max(
+        1,
+        Math.round((new Date(t.endDate) - new Date(t.startDate)) / 86400000)
+      );
+      let taskRiskFactor = riskFactor;
+      let taskRiskAdder = riskAdder;
+      if (t.confidenceLevel === 'high' || t.confidence === 'high') {
+        taskRiskFactor = Math.min(riskFactor, 1.1);
+        taskRiskAdder = Math.min(riskAdder, 1);
+      } else if (t.confidenceLevel === 'low' || t.confidence === 'low') {
+        taskRiskFactor = riskFactor * 1.3;
+        taskRiskAdder = riskAdder + 2;
+      }
+      simDur[t.id] = mcpTriSample(baseDur * 0.8, baseDur, baseDur * taskRiskFactor + taskRiskAdder);
+    });
+    const startDates = {};
+    const endDates = {};
+    tasks.forEach(function (t) {
+      startDates[t.id] = new Date(t.startDate);
+      endDates[t.id] = new Date(t.startDate);
+    });
+    let changed = true;
+    let passes = 0;
+    while (changed && passes < 50) {
+      changed = false;
+      passes++;
+      tasks.forEach(function (t) {
+        const preds = Array.isArray(t.predecessors) ? t.predecessors : [];
+        let minStart = null;
+        preds.forEach(function (pid) {
+          if (!endDates[pid] || !startDates[pid]) {
+            return;
+          }
+          const cs = new Date(endDates[pid]);
+          if (!minStart || cs > minStart) {
+            minStart = cs;
+          }
+        });
+        let sd = new Date(t.startDate);
+        if (minStart && minStart > sd) {
+          sd = minStart;
+        }
+        if (!startDates[t.id] || sd > startDates[t.id]) {
+          startDates[t.id] = sd;
+          changed = true;
+        }
+        const se = new Date(sd);
+        se.setDate(se.getDate() + Math.round(simDur[t.id]));
+        if (!endDates[t.id] || se > endDates[t.id]) {
+          endDates[t.id] = se;
+          changed = true;
+        }
+      });
+    }
+    results.push(
+      new Date(
+        Math.max.apply(
+          null,
+          Object.keys(endDates).map(function (k) {
+            return endDates[k].getTime();
+          })
+        )
+      )
+    );
+  }
+  results.sort(function (a, b) {
+    return a - b;
+  });
+  const iso = function (d) {
+    return d.toISOString().slice(0, 10);
+  };
+  const out = {
+    simulations: N,
+    tasksSimulated: tasks.length,
+    highRiskCount: highRiskCount,
+    riskFactor: riskFactor,
+    riskAdder: riskAdder,
+    percentiles: {
+      p10: iso(results[Math.floor(N * 0.1)]),
+      p50: iso(results[Math.floor(N * 0.5)]),
+      p80: iso(results[Math.floor(N * 0.8)]),
+      p90: iso(results[Math.floor(N * 0.9)])
+    }
+  };
+  const target = String((args && args.targetDate) || '').trim();
+  if (target) {
+    const td = new Date(target);
+    if (isNaN(td.getTime())) {
+      return {
+        content: [{ type: 'text', text: 'targetDate must be an ISO date, e.g. "2026-12-01".' }],
+        isError: true
+      };
+    }
+    const pct = Math.round(
+      (results.filter(function (d) {
+        return d <= td;
+      }).length /
+        N) *
+        100
+    );
+    out.target = { date: target, probabilityPct: pct };
+  }
+  return { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }] };
 }
 
 // ---- Tool execution ----
@@ -232,13 +541,16 @@ function sectionRefusal(scope) {
   );
 }
 
-function executeTool(name, state, projectId, label, scope) {
-  if (!state)
+function executeTool(name, state, projectId, label, scope, args) {
+  if (!state) {
     return {
       content: [{ type: 'text', text: 'No project data available. Save a snapshot first.' }],
       isError: true
     };
-  if (Array.isArray(scope)) state = cloudScopeState(state, scope);
+  }
+  if (Array.isArray(scope)) {
+    state = cloudScopeState(state, scope);
+  }
 
   switch (name) {
     case 'get_project_summary': {
@@ -271,8 +583,9 @@ function executeTool(name, state, projectId, label, scope) {
       };
     }
     case 'get_tasks': {
-      if (!sectionAllowed(scope, 'wbs'))
+      if (!sectionAllowed(scope, 'wbs')) {
         return { content: [{ type: 'text', text: sectionRefusal(scope) }], isError: true };
+      }
       const tasks = Array.isArray(state.tasks) ? state.tasks : [];
       return {
         content: [
@@ -312,8 +625,9 @@ function executeTool(name, state, projectId, label, scope) {
       };
     }
     case 'get_budget': {
-      if (!sectionAllowed(scope, 'bud'))
+      if (!sectionAllowed(scope, 'bud')) {
         return { content: [{ type: 'text', text: sectionRefusal(scope) }], isError: true };
+      }
       const lines = Array.isArray(state.budgetLines) ? state.budgetLines : [];
       const spendLog = Array.isArray(state.spendLog) ? state.spendLog : [];
       const enriched = lines.map(line => {
@@ -353,8 +667,9 @@ function executeTool(name, state, projectId, label, scope) {
       };
     }
     case 'get_risks': {
-      if (!sectionAllowed(scope, 'risk'))
+      if (!sectionAllowed(scope, 'risk')) {
         return { content: [{ type: 'text', text: sectionRefusal(scope) }], isError: true };
+      }
       const risks = Array.isArray(state.risks) ? state.risks : [];
       const issues = Array.isArray(state.issues) ? state.issues : [];
       return {
@@ -389,7 +704,7 @@ function executeTool(name, state, projectId, label, scope) {
       };
     }
     case 'get_weather': {
-      if (Array.isArray(scope))
+      if (Array.isArray(scope)) {
         return {
           content: [
             {
@@ -399,6 +714,7 @@ function executeTool(name, state, projectId, label, scope) {
           ],
           isError: true
         };
+      }
       const cache = state.wxCache || null;
       const days = cache && Array.isArray(cache.days) ? cache.days : [];
       const log = Array.isArray(state.weatherLog) ? state.weatherLog : [];
@@ -432,8 +748,9 @@ function executeTool(name, state, projectId, label, scope) {
       };
     }
     case 'get_meetings': {
-      if (!sectionAllowed(scope, 'meet'))
+      if (!sectionAllowed(scope, 'meet')) {
         return { content: [{ type: 'text', text: sectionRefusal(scope) }], isError: true };
+      }
       const meetings = Array.isArray(state.meetings) ? state.meetings : [];
       return {
         content: [
@@ -459,6 +776,10 @@ function executeTool(name, state, projectId, label, scope) {
         ]
       };
     }
+    case 'get_table':
+      return executeGetTable(state, scope, args);
+    case 'run_monte_carlo':
+      return executeMonteCarlo(state, scope, args);
     case 'apply_changes': {
       // API-KEY-AUDIT F3 (2026-09-16): this used to return a special result
       // and the route handler fetched /changelog/import - an AUDIT-LOG
@@ -545,7 +866,8 @@ async function handleMcpRequest(body, projectId, env, auth) {
       state,
       projectId,
       auth.label || 'MCP AI',
-      auth.role === 'api' ? auth.scope : null
+      auth.role === 'api' ? auth.scope : null,
+      toolArgs
     );
 
     // Handle apply_changes - queue a pending review proposal (API-KEY-AUDIT
@@ -842,15 +1164,21 @@ export async function handleMcpServer(request, env, projectId) {
 
   // Parse request body
   const read = await readCloudBody(request);
-  if (read.tooLarge) return json({ ok: false, error: 'Request too large' }, 413);
-  if (read.bad || !read.body) return json({ ok: false, error: 'Invalid JSON' }, 400);
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'Request too large' }, 413);
+  }
+  if (read.bad || !read.body) {
+    return json({ ok: false, error: 'Invalid JSON' }, 400);
+  }
 
   const body = read.body;
   const projectIdFromUrl = projectId;
 
   try {
     const response = await handleMcpRequest(body, projectIdFromUrl, env, auth);
-    if (!response) return new Response(null, { status: 202 });
+    if (!response) {
+      return new Response(null, { status: 202 });
+    }
     return json(response, 200);
   } catch (e) {
     console.error('MCP error:', e && e.message);

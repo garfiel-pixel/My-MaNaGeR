@@ -36,6 +36,8 @@ const MCP_TOOLS_LIST = [
   'get_risks',
   'get_weather',
   'get_meetings',
+  'get_table',
+  'run_monte_carlo',
   'apply_changes'
 ];
 function mcpSha256Hex(s) {
@@ -71,7 +73,9 @@ function mcpReadBody(req, cb) {
   let raw = '';
   req.on('data', function (c) {
     raw += c;
-    if (raw.length > 262144) req.destroy();
+    if (raw.length > 262144) {
+      req.destroy();
+    }
   });
   req.on('end', function () {
     let b = null;
@@ -91,6 +95,153 @@ function mcpRefusal(scope) {
     (Array.isArray(scope) && scope.length ? scope.join(', ') : '(no sections)') +
     '. Ask the project owner to tick more sections for this key.'
   );
+}
+// B3 (owner 2026-10-11): the dev mirror of get_table + run_monte_carlo.
+// Same scope law and same triangular math as src/mcp/server.js, running on
+// the in-memory fixtures (MCP_TASKS / MCP_RISKS) instead of R2 state.
+const MCP_GET_TABLE_NAMES = ['tasks', 'risks'];
+function mcpDevGetTable(scope, args) {
+  const name = String((args && args.table) || '').trim();
+  if (MCP_GET_TABLE_NAMES.indexOf(name) === -1) {
+    return {
+      text: 'Unknown table: ' + name + '. Available: ' + MCP_GET_TABLE_NAMES.join(', ') + '.',
+      err: true
+    };
+  }
+  if (mcpScopeGate(scope, name === 'tasks' ? 'wbs' : 'risk')) {
+    return { text: mcpRefusal(scope), err: true };
+  }
+  const value = name === 'tasks' ? MCP_TASKS : MCP_RISKS;
+  return { text: JSON.stringify({ table: name, count: value.length, records: value }, null, 2) };
+}
+function mcpDevTriSample(min, ml, max) {
+  const u = Math.random();
+  const fc = (ml - min) / (max - min);
+  if (u < fc) {
+    return min + Math.sqrt(u * (max - min) * (ml - min));
+  }
+  return max - Math.sqrt((1 - u) * (max - min) * (max - ml));
+}
+function mcpDevMonteCarlo(scope, args) {
+  if (mcpScopeGate(scope, 'wbs')) {
+    return { text: mcpRefusal(scope), err: true };
+  }
+  const tasks = MCP_TASKS.filter(function (t) {
+    return t && t.startDate && t.endDate && !t.isPhase;
+  });
+  if (tasks.length < 2) {
+    return { text: 'Need at least 2 scheduled tasks to simulate.', err: true };
+  }
+  const N = Math.min(5000, Math.max(100, Math.round(+(args && args.simulations) || 1000)));
+  const riskFactor = Math.min(3, Math.max(1, +(args && args.riskFactor) || 1.2));
+  const highRiskCount = MCP_RISKS.filter(function (r) {
+    return r && !r.promoted && String(r.probability) === 'High' && String(r.impact) === 'High';
+  }).length;
+  const riskAdder = highRiskCount * 2;
+  const results = [];
+  for (let sim = 0; sim < N; sim++) {
+    const simDur = {};
+    tasks.forEach(function (t) {
+      const baseDur = Math.max(
+        1,
+        Math.round((new Date(t.endDate) - new Date(t.startDate)) / 86400000)
+      );
+      let tf = riskFactor;
+      let ta = riskAdder;
+      if (t.confidenceLevel === 'high' || t.confidence === 'high') {
+        tf = Math.min(riskFactor, 1.1);
+        ta = Math.min(riskAdder, 1);
+      } else if (t.confidenceLevel === 'low' || t.confidence === 'low') {
+        tf = riskFactor * 1.3;
+        ta = riskAdder + 2;
+      }
+      simDur[t.id] = mcpDevTriSample(baseDur * 0.8, baseDur, baseDur * tf + ta);
+    });
+    const startDates = {};
+    const endDates = {};
+    tasks.forEach(function (t) {
+      startDates[t.id] = new Date(t.startDate);
+      endDates[t.id] = new Date(t.startDate);
+    });
+    let changed = true;
+    let passes = 0;
+    while (changed && passes < 50) {
+      changed = false;
+      passes++;
+      tasks.forEach(function (t) {
+        const preds = Array.isArray(t.predecessors) ? t.predecessors : [];
+        let minStart = null;
+        preds.forEach(function (pid) {
+          if (!endDates[pid] || !startDates[pid]) {
+            return;
+          }
+          const cs = new Date(endDates[pid]);
+          if (!minStart || cs > minStart) {
+            minStart = cs;
+          }
+        });
+        let sd = new Date(t.startDate);
+        if (minStart && minStart > sd) {
+          sd = minStart;
+        }
+        if (!startDates[t.id] || sd > startDates[t.id]) {
+          startDates[t.id] = sd;
+          changed = true;
+        }
+        const se = new Date(sd);
+        se.setDate(se.getDate() + Math.round(simDur[t.id]));
+        if (!endDates[t.id] || se > endDates[t.id]) {
+          endDates[t.id] = se;
+          changed = true;
+        }
+      });
+    }
+    results.push(
+      new Date(
+        Math.max.apply(
+          null,
+          Object.keys(endDates).map(function (k) {
+            return endDates[k].getTime();
+          })
+        )
+      )
+    );
+  }
+  results.sort(function (a, b) {
+    return a - b;
+  });
+  const iso = function (d) {
+    return d.toISOString().slice(0, 10);
+  };
+  const out = {
+    simulations: N,
+    tasksSimulated: tasks.length,
+    highRiskCount: highRiskCount,
+    riskFactor: riskFactor,
+    riskAdder: riskAdder,
+    percentiles: {
+      p10: iso(results[Math.floor(N * 0.1)]),
+      p50: iso(results[Math.floor(N * 0.5)]),
+      p80: iso(results[Math.floor(N * 0.8)]),
+      p90: iso(results[Math.floor(N * 0.9)])
+    }
+  };
+  const target = String((args && args.targetDate) || '').trim();
+  if (target) {
+    const td = new Date(target);
+    if (isNaN(td.getTime())) {
+      return { text: 'targetDate must be an ISO date, e.g. "2026-12-01".', err: true };
+    }
+    const pct = Math.round(
+      (results.filter(function (d) {
+        return d <= td;
+      }).length /
+        N) *
+        100
+    );
+    out.target = { date: target, probabilityPct: pct };
+  }
+  return { text: JSON.stringify(out, null, 2) };
 }
 // PATH-A (2026-09-16): byte-identical copy of MCP_AUTH_REFUSAL from
 // src/mcp/server.js - this CommonJS file cannot import the ESM module.
@@ -240,7 +391,9 @@ const server = http.createServer((req, res) => {
   try {
     const url = new URL(req.url, 'http://localhost:' + PORT);
     let p = decodeURIComponent(url.pathname);
-    if (p === '/') p = '/index.html';
+    if (p === '/') {
+      p = '/index.html';
+    }
 
     // INTEGRATED-STRUCTURE-API-WINDOW plan §1: mirror of the Worker's
     // OWNER 2026-09-14: dev mirror of the Worker's POST /api/contact -
@@ -252,7 +405,9 @@ const server = http.createServer((req, res) => {
       let raw = '';
       req.on('data', function (c) {
         raw += c;
-        if (raw.length > 8192) req.destroy();
+        if (raw.length > 8192) {
+          req.destroy();
+        }
       });
       req.on('end', function () {
         let body = null;
@@ -363,7 +518,9 @@ const server = http.createServer((req, res) => {
       if (req.method === 'GET') {
         const list = REVIEWS.slice()
           .sort(function (a, b) {
-            if (a.createdAt === b.createdAt) return b.id - a.id;
+            if (a.createdAt === b.createdAt) {
+              return b.id - a.id;
+            }
             return a.createdAt < b.createdAt ? 1 : -1;
           })
           .slice(0, 200);
@@ -378,7 +535,9 @@ const server = http.createServer((req, res) => {
         let raw = '';
         req.on('data', function (c) {
           raw += c;
-          if (raw.length > 8192) req.destroy();
+          if (raw.length > 8192) {
+            req.destroy();
+          }
         });
         req.on('end', function () {
           try {
@@ -408,8 +567,9 @@ const server = http.createServer((req, res) => {
             let stars = null;
             if (body.stars !== undefined && body.stars !== null && body.stars !== 0) {
               const n = Number(body.stars);
-              if (Number.isInteger(n) && n >= 1 && n <= 5) stars = n;
-              else {
+              if (Number.isInteger(n) && n >= 1 && n <= 5) {
+                stars = n;
+              } else {
                 res.writeHead(400, { 'Content-Type': 'application/json' });
                 res.end(
                   JSON.stringify({ ok: false, error: 'stars must be a whole number from 1 to 5' })
@@ -581,13 +741,19 @@ const server = http.createServer((req, res) => {
           };
           // PATH-A per-tool auth gate: without a valid credential every
           // tool call gets the refusal as a normal MCP isError result.
-          if (!kauthed) return out(MCP_AUTH_REFUSAL, true);
+          if (!kauthed) {
+            return out(MCP_AUTH_REFUSAL, true);
+          }
           if (t === 'get_tasks') {
-            if (mcpScopeGate(kscope, 'wbs')) return out(mcpRefusal(kscope), true);
+            if (mcpScopeGate(kscope, 'wbs')) {
+              return out(mcpRefusal(kscope), true);
+            }
             return out(JSON.stringify({ count: MCP_TASKS.length, tasks: MCP_TASKS }, null, 2));
           }
           if (t === 'get_risks') {
-            if (mcpScopeGate(kscope, 'risk')) return out(mcpRefusal(kscope), true);
+            if (mcpScopeGate(kscope, 'risk')) {
+              return out(mcpRefusal(kscope), true);
+            }
             return out(
               JSON.stringify(
                 { riskCount: MCP_RISKS.length, issueCount: 0, risks: MCP_RISKS },
@@ -595,6 +761,14 @@ const server = http.createServer((req, res) => {
                 2
               )
             );
+          }
+          if (t === 'get_table') {
+            const gt = mcpDevGetTable(kscope, (body.params || {}).arguments || {});
+            return out(gt.text, gt.err);
+          }
+          if (t === 'run_monte_carlo') {
+            const mc = mcpDevMonteCarlo(kscope, (body.params || {}).arguments || {});
+            return out(mc.text, mc.err);
           }
           return out('Unknown tool: ' + t, true);
         }

@@ -689,11 +689,15 @@ async function walkFocus(page) {
         newChat
       );
 
-      const sheet = path.join(ROOT, 'tmp', 'qa-rate-sheet.json');
+      // T7 (8a8599a) retired .json from the allow-list and replaced "send the
+      // whole file" with per-row retrieval. So the fixture is a CSV whose
+      // middle row scores on the question below and whose last row scores
+      // ZERO - that contrast is exactly what A9 proves.
+      const sheet = path.join(ROOT, 'tmp', 'qa-rate-sheet.csv');
       fs.mkdirSync(path.dirname(sheet), { recursive: true });
       fs.writeFileSync(
         sheet,
-        JSON.stringify({ note: 'Harness rate sheet', rates: { siteprep: { allIn: 1234 } } })
+        'item,unit,rate\nBlockwork laying,m2,1234\nGlazing weather windows,m2,9999\n'
       );
       await ap.setInputFiles('#calc-ai-file', sheet);
       await ap.waitForTimeout(300);
@@ -703,7 +707,7 @@ async function walkFocus(page) {
       });
       check(
         'A7 an attached file is read and shown',
-        attached.hidden === false && /qa-rate-sheet\.json/.test(attached.text),
+        attached.hidden === false && /qa-rate-sheet\.csv/.test(attached.text),
         attached
       );
 
@@ -724,8 +728,8 @@ async function walkFocus(page) {
         body.slice(0, 160)
       );
       check(
-        'A9 the question carries the ATTACHED FILE text',
-        /Harness rate sheet/.test(body),
+        'A9 the question carries the RETRIEVED row, not the whole file',
+        /Blockwork laying/.test(body) && !/Glazing weather windows/.test(body),
         body.slice(0, 160)
       );
 
@@ -754,11 +758,40 @@ async function walkFocus(page) {
         reply
       );
 
-      const dl = ap.waitForEvent('download', { timeout: 8000 }).catch(() => null);
+      // T2 (d5a66c5) removed the SILENT auto-download: "Generate a file" now
+      // renders a chip that carries a real download link, and it must never
+      // announce a download that did not happen. So the chip is asserted
+      // first, then the download is proved by clicking the chip's own link.
       await ap.click('[data-cai=makefile]');
+      await ap.waitForTimeout(400);
+      const chip = await ap.evaluate(() => {
+        const row = document.querySelector('#calc-ai-mount .bcp-ai-chip');
+        const a = row ? row.querySelector('a[download]') : null;
+        const log = document.querySelector('#calc-ai-mount .bcp-ai-log').textContent;
+        return {
+          has: !!row,
+          name: a ? a.getAttribute('download') : '',
+          isBlob: a ? a.href.indexOf('blob:') === 0 : false,
+          claimed: /has been downloaded/i.test(log)
+        };
+      });
+      check(
+        'A12 generate a file renders a download chip and claims no phantom download',
+        chip.has === true &&
+          /\.csv$/.test(chip.name) &&
+          chip.isBlob === true &&
+          chip.claimed === false,
+        chip
+      );
+
+      const dl = ap.waitForEvent('download', { timeout: 8000 }).catch(() => null);
+      await ap.evaluate(() => {
+        const a = document.querySelector('#calc-ai-mount .bcp-ai-chip a[download]');
+        if (a) a.click();
+      });
       const download = await dl;
       check(
-        'A12 generate a file downloads a CSV through the page export',
+        'A12b clicking the chip downloads that CSV',
         !!download && /\.csv$/.test(download.suggestedFilename()),
         download ? download.suggestedFilename() : 'no download event'
       );

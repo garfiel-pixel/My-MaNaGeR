@@ -805,6 +805,205 @@
     return picked.join('\n');
   }
 
+  /* ---- PDF text extraction (B2, owner 2026-10-11) --------------------------
+     "PDF reading is not available on this device yet." was simply true: the
+     panel refused every PDF. Sending the file to the model was never an option
+     (the relay is text-only and the panel promises nothing is uploaded), so the
+     reading happens here, in the page - no new dependency, no vendor blob, no
+     network, so it still works offline.
+
+     A PDF keeps its text inside content streams, usually zlib-compressed, drawn
+     with the Tj / TJ showing operators. So: inflate each stream with the
+     platform's own DecompressionStream, pull the literal strings that are
+     actually shown, and hand the result to the same index every other file
+     uses. A PDF with no text layer (a scan) yields nothing, and says so. */
+  function pdfUnescape(s) {
+    var out = '';
+    for (var i = 0; i < s.length; i++) {
+      var c = s.charAt(i);
+      if (c !== '\\') {
+        out += c;
+        continue;
+      }
+      var n = s.charAt(++i);
+      if (!n) {
+        break;
+      }
+      if (n >= '0' && n <= '7') {
+        var oct = n;
+        while (oct.length < 3 && s.charAt(i + 1) >= '0' && s.charAt(i + 1) <= '7') {
+          oct += s.charAt(++i);
+        }
+        out += String.fromCharCode(parseInt(oct, 8));
+      } else if (n === 'n') {
+        out += '\n';
+      } else if (n === 'r') {
+        out += '\r';
+      } else if (n === 't') {
+        out += '\t';
+      } else if (n === '\n' || n === '\r') {
+        // line continuation - nothing to add
+      } else {
+        out += n;
+      }
+    }
+    return out;
+  }
+
+  // Pull the literal strings that a showing operator (Tj, TJ, ', ") actually
+  // draws. Strings inside a bracket array belong to a TJ, so they always count.
+  function pdfContentToText(content) {
+    var res = [];
+    var i = 0;
+    var n = content.length;
+    var depth = 0;
+    while (i < n) {
+      var ch = content.charAt(i);
+      if (ch === '[') {
+        depth++;
+        i++;
+        continue;
+      }
+      if (ch === ']') {
+        if (depth > 0) {
+          depth--;
+        }
+        i++;
+        continue;
+      }
+      if (ch === '(') {
+        var j = i + 1;
+        var d = 1;
+        var s = '';
+        while (j < n && d > 0) {
+          var c = content.charAt(j);
+          if (c === '\\') {
+            s += c + content.charAt(j + 1);
+            j += 2;
+            continue;
+          }
+          if (c === '(') {
+            d++;
+          } else if (c === ')') {
+            d--;
+            if (d === 0) {
+              j++;
+              break;
+            }
+          }
+          s += c;
+          j++;
+        }
+        var tail = content.slice(j, j + 8).replace(/^\s+/, '');
+        if (depth > 0 || /^(Tj|TJ|'|"|'')/.test(tail)) {
+          res.push(pdfUnescape(s));
+        }
+        i = j;
+        continue;
+      }
+      if (ch === '\n' || ch === '\r') {
+        res.push('\n');
+      }
+      i++;
+    }
+    return res.join('');
+  }
+
+  function pdfInflate(bytes) {
+    if (typeof DecompressionStream === 'undefined' || typeof Blob === 'undefined') {
+      return Promise.resolve(null);
+    }
+    try {
+      var ds = new DecompressionStream('deflate');
+      var stream = new Blob([bytes]).stream().pipeThrough(ds);
+      return new Response(stream).arrayBuffer().then(
+        function (buf) {
+          return new TextDecoder('latin1').decode(new Uint8Array(buf));
+        },
+        function () {
+          return null;
+        }
+      );
+    } catch (e) {
+      return Promise.resolve(null);
+    }
+  }
+
+  function extractPdfText(buf) {
+    var bytes = new Uint8Array(buf);
+    var latin = new TextDecoder('latin1').decode(bytes);
+    if (latin.slice(0, 5) !== '%PDF-') {
+      return Promise.resolve({ ok: false, reason: 'not-a-pdf', text: '' });
+    }
+    var parts = [];
+    var idx = 0;
+    var guard = 0;
+    // A stream is followed by an end-of-line before "endstream"; that stray
+    // byte makes DecompressionStream reject the whole stream, so drop trailing
+    // whitespace before inflating and fall back to the untouched bytes.
+    var trimEnd = function (arr) {
+      var end = arr.length;
+      while (end > 0) {
+        var b = arr[end - 1];
+        if (b === 0x0a || b === 0x0d || b === 0x20) {
+          end--;
+          continue;
+        }
+        break;
+      }
+      return arr.subarray(0, end);
+    };
+    var step = function () {
+      if (guard++ > 5000 || parts.length > 400) {
+        return Promise.resolve();
+      }
+      var s = latin.indexOf('stream', idx);
+      if (s < 0) {
+        return Promise.resolve();
+      }
+      // The spec allows any end-of-line after the stream keyword, and writers
+      // emit one or two, so skip every one rather than assuming a single byte.
+      var start = s + 6;
+      while (latin.charAt(start) === '\n' || latin.charAt(start) === '\r') {
+        start++;
+      }
+      var e = latin.indexOf('endstream', start);
+      if (e < 0) {
+        return Promise.resolve();
+      }
+      var raw = bytes.subarray(start, e);
+      var next = function (content) {
+        if (content && /\b(BT|Tj|TJ)\b/.test(content)) {
+          var t = pdfContentToText(content);
+          if (t && t.replace(/\s+/g, '').length) {
+            parts.push(t);
+          }
+        }
+        idx = e + 9;
+        return step();
+      };
+      // 0x78 is the zlib header FlateDecode uses.
+      if (raw.length && raw[0] === 0x78) {
+        var trimmed = trimEnd(raw);
+        return pdfInflate(trimmed).then(function (c) {
+          if (c) {
+            return next(c);
+          }
+          return pdfInflate(raw).then(next);
+        });
+      }
+      return next(latin.slice(start, e));
+    };
+    return step().then(function () {
+      var text = parts
+        .join('\n')
+        .replace(/[ \t]+/g, ' ')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+      return { ok: text.length > 0, reason: text.length ? '' : 'no-text-layer', text: text };
+    });
+  }
+
   function onFilePicked(input) {
     var file = input && input.files && input.files[0];
     if (!file) {
@@ -825,25 +1024,8 @@
       notice('That file is too big. Attach one under 5 MB.', 'bad');
       return;
     }
-    var reader = new FileReader();
-    reader.onload = function () {
-      var text = String(reader.result || '');
-      // A PDF is a container, not text: readAsText on it yields binary noise,
-      // which is worse than saying so. Check the real signature first.
-      if (extOf(name) === '.pdf' || /^application\/pdf/i.test(String(file.type || ''))) {
-        if (text.slice(0, 5) !== '%PDF-') {
-          notice('That file is named .pdf but is not a PDF. Attach the real file.', 'bad');
-          return;
-        }
-        notice(
-          'PDF reading is not available on this device yet. Export it as CSV or TXT and attach that.',
-          'bad'
-        );
-        if (els.file) {
-          els.file.value = '';
-        }
-        return;
-      }
+    var isPdf = extOf(name) === '.pdf' || /^application\/pdf/i.test(String(file.type || ''));
+    var finish = function (text) {
       var idx = buildIndex(name, text);
       if (!idx.chunks.length) {
         notice('That file looks empty, so there is nothing to use from it.', 'bad');
@@ -853,10 +1035,44 @@
       renderAttach();
       notice('Attached ' + idx.name + '. Your next questions will use it.', '');
     };
+    var reader = new FileReader();
+    reader.onload = function () {
+      if (!isPdf) {
+        finish(String(reader.result || ''));
+        return;
+      }
+      // A PDF is a container, so it is read as BYTES and opened here; decoding
+      // it as text only ever produced binary noise, which is why it used to be
+      // refused outright.
+      extractPdfText(reader.result).then(function (r) {
+        if (r.reason === 'not-a-pdf') {
+          notice('That file is named .pdf but is not a PDF. Attach the real file.', 'bad');
+          if (els.file) {
+            els.file.value = '';
+          }
+          return;
+        }
+        if (!r.ok) {
+          notice(
+            'That PDF has no readable text (it looks like a scan). Export it as CSV or TXT and attach that.',
+            'bad'
+          );
+          if (els.file) {
+            els.file.value = '';
+          }
+          return;
+        }
+        finish(r.text);
+      });
+    };
     reader.onerror = function () {
       notice('That file could not be read.', 'bad');
     };
-    reader.readAsText(file);
+    if (isPdf) {
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.readAsText(file);
+    }
   }
 
   /* ---- relay ----------------------------------------------------------- */

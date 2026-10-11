@@ -17,8 +17,20 @@
    v382 - full-bleed marketing canvas, 7-big-dot rail with generated
            small dots, contact tile phone overflow, guide sidebar spacing
    ============================================================ */
-const CACHE = 'mmgr-shell-v407';
+const CACHE = 'mmgr-shell-v408';
 
+// v408 - PDFS ARE READ ON THE DEVICE (owner 2026-10-11: "PDF reading is not
+// available on this device yet. Export it as CSV or TXT and attach that."). The
+// panel refused every PDF because readAsText on a container only yields binary
+// noise, and sending the file to the model was never an option (the relay is
+// text-only and the panel promises nothing is uploaded). js/calc-ai.js now opens
+// a PDF itself: it inflates each content stream with the platform's own
+// DecompressionStream, pulls the strings the Tj/TJ operators actually draw, and
+// feeds the result to the same index every other file uses - no new dependency,
+// no network, so it still works offline. A PDF with no text layer says so and
+// suggests CSV or TXT; a renamed text file is still refused by its signature.
+// Four gates added to qa-calc-assistant (57/57).
+//
 // v407 - bump only: js/calculator-page.js was touched again after the v406
 // stamp (prettier), and verify-sw-cache refuses to let a shell asset be newer
 // than the last CACHE bump.

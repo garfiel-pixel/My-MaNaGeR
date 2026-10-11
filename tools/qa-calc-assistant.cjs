@@ -581,6 +581,103 @@ async function fileIntake(browser, errors) {
       plainLen: (books.plain || '').length
     }
   );
+
+  // ---- B2 (owner 2026-10-11): PDFs are READ now, on the device ---------------
+  // "PDF reading is not available on this device yet." used to be true. The
+  // fixtures are built here rather than committed: a real zlib-compressed
+  // content stream, a page with no text layer, and a renamed text file.
+  const zlib = require('zlib');
+  const makePdf = (content, flate) => {
+    const objs = [
+      '<< /Type /Catalog /Pages 2 0 R >>',
+      '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+      '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>'
+    ];
+    const body = Buffer.from(content, 'latin1');
+    const stored = flate ? zlib.deflateSync(body) : body;
+    objs.push(
+      '<< /Length ' + stored.length + (flate ? ' /Filter /FlateDecode' : '') + ' >>\nstream\n'
+    );
+    let out = '%PDF-1.4\n';
+    const offs = [];
+    objs.forEach((o, i) => {
+      offs[i] = out.length;
+      out += i + 1 + ' 0 obj\n' + o + '\n';
+      if (i === 3) {
+        out += stored.toString('latin1') + '\nendstream\n';
+      }
+      out += 'endobj\n';
+    });
+    const xref = out.length;
+    out += 'xref\n0 ' + (objs.length + 1) + '\n0000000000 65535 f \n';
+    offs.forEach(o => {
+      out += String(o).padStart(10, '0') + ' 00000 n \n';
+    });
+    out +=
+      'trailer\n<< /Root 1 0 R /Size ' +
+      (objs.length + 1) +
+      ' >>\nstartxref\n' +
+      xref +
+      '\n%%EOF\n';
+    return Buffer.from(out, 'latin1');
+  };
+  const fixDir = path.join(ROOT, 'tmp', 'fixtures');
+  fs.mkdirSync(fixDir, { recursive: true });
+  const b2GoodPdf = path.join(fixDir, 'b2-rates.pdf');
+  const b2ScanPdf = path.join(fixDir, 'b2-scan.pdf');
+  const b2FakePdf = path.join(fixDir, 'b2-fake.pdf');
+  fs.writeFileSync(
+    b2GoodPdf,
+    makePdf('BT /F1 12 Tf 72 720 Td (Blockwork laying rate is 1234 per m2) Tj ET\n', true)
+  );
+  fs.writeFileSync(b2ScanPdf, makePdf('q Q\n', false));
+  fs.writeFileSync(b2FakePdf, Buffer.from('this is not a pdf at all', 'latin1'));
+
+  const lastNote = () =>
+    page.evaluate(() => {
+      const rows = document.querySelectorAll('#calc-ai-mount .bcp-ai-note');
+      const n = rows[rows.length - 1];
+      return n ? n.textContent.trim() : '';
+    });
+
+  await attachFile(b2GoodPdf);
+  await page.waitForTimeout(500);
+  const pdfInfo = await page.evaluate(() => {
+    const fi = document.querySelector('#calc-ai-mount .bcp-ai-fileinfo');
+    return fi && !fi.hidden ? fi.textContent.trim() : '';
+  });
+  check(
+    'B2 a text PDF attaches instead of being refused',
+    /b2-rates\.pdf/.test(pdfInfo),
+    'info: ' + pdfInfo.slice(0, 40) + ' | note: ' + (await lastNote()).slice(0, 70)
+  );
+
+  await page.fill('[data-cai=input]', 'what is the blockwork laying rate?');
+  await page.click('[data-cai=send]');
+  await page.waitForTimeout(1000);
+  check(
+    'B2 the extracted PDF text travels with the question',
+    /Blockwork laying rate is 1234/.test(String(lastBody || '')),
+    String(lastBody || '').slice(0, 120)
+  );
+
+  await attachFile(b2ScanPdf);
+  await page.waitForTimeout(500);
+  const scanNote = await lastNote();
+  check(
+    'B2 a PDF with no text layer says so plainly',
+    /no readable text/i.test(scanNote),
+    scanNote.slice(0, 90)
+  );
+
+  await attachFile(b2FakePdf);
+  await page.waitForTimeout(500);
+  const fakeNote = await lastNote();
+  check(
+    'B2 a renamed text file is still refused by its signature',
+    /is not a PDF/i.test(fakeNote),
+    fakeNote.slice(0, 90)
+  );
   await ctx.close();
 }
 

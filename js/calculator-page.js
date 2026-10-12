@@ -3621,6 +3621,146 @@
   // The open popup's document-level Escape handler, so the toggle path can
   // tear it down exactly like the Close button does (no leaked listener).
   let _rrKeyHandler = null;
+  // Rate-book view state (owner 2026-10-12: "segmented ... a search button as
+  // well that actually indexes the rates"). The query and the chosen trade
+  // survive a Metric/Imperial flip, so switching units never throws away what
+  // the user was looking at.
+  let _rrQuery = '';
+  let _rrTrade = 'all';
+  // The full 811-row book is GENERATED (tools/gen-jic-full.cjs) and is fetched
+  // lazily the FIRST time the card opens, so the 100 rows shipped inline keep
+  // first paint fast on a slow connection (owner: "load quickly based on
+  // someone's Internet"). Once loaded it stays for the session, and the file
+  // joins the service-worker shell so it is there offline next time.
+  let _rrFull = null;
+  let _rrLoading = false;
+  function rrLoadFull(done) {
+    if (window.MMGR_JIC_FULL) {
+      _rrFull = window.MMGR_JIC_FULL;
+      done();
+      return;
+    }
+    if (_rrLoading) {
+      return; // in flight; its onload will render
+    }
+    _rrLoading = true;
+    const s = document.createElement('script');
+    s.src = 'js/jic-rates-full.js?v=' + JIC_FULL_V;
+    s.onload = function () {
+      _rrLoading = false;
+      _rrFull = window.MMGR_JIC_FULL || null;
+      done();
+    };
+    s.onerror = function () {
+      // Offline before the shell cached it: fall back to the 100 shipped rows
+      // and say so in the footer. Never an empty book and never a spinner that
+      // never resolves.
+      _rrLoading = false;
+      done();
+    };
+    document.head.appendChild(s);
+  }
+  // Cache-buster for the generated book, kept next to JIC_YEARS so a bump is
+  // one edit.
+  const JIC_FULL_V = '1';
+  // Trade list, in book order, from whichever source is loaded.
+  function rrTrades() {
+    if (_rrFull) {
+      return _rrFull.trades;
+    }
+    const seen = [];
+    JIC_RATES.forEach(function (r) {
+      if (
+        !seen.some(function (x) {
+          return x.tid === r.tid;
+        })
+      ) {
+        seen.push({ tid: r.tid, label: r.trade });
+      }
+    });
+    return seen;
+  }
+  // One row shape whether the data came from the generated 811-row file or the
+  // 100 rows shipped inline.
+  function rrRows() {
+    const labels = {};
+    rrTrades().forEach(function (t) {
+      labels[t.tid] = t.label;
+    });
+    if (_rrFull) {
+      return _rrFull.rows.map(function (r) {
+        const label = labels[r.t] || r.t;
+        return {
+          tid: r.t,
+          trade: label,
+          ref: label + ' #' + r.n,
+          desc: r.d,
+          impUnit: r.iu,
+          impRate: r.ir,
+          metUnit: r.mu,
+          metRate: r.mr,
+          basis: r.b === 'C' ? 'C' : 'S',
+          note: r.note || '',
+          inApp: !!r.app
+        };
+      });
+    }
+    return JIC_RATES.map(function (r) {
+      return {
+        tid: r.tid,
+        trade: r.trade,
+        ref: r.ref,
+        desc: r.desc,
+        impUnit: r.impUnit,
+        impRate: r.impRate,
+        metUnit: r.metUnit,
+        metRate: r.metRate,
+        basis: 'S',
+        note: '',
+        inApp: true
+      };
+    });
+  }
+  // The search indexes what a person would actually type: the description, the
+  // ref, the trade, either unit, AND both rate numbers - so typing a price
+  // finds the rows at that price, which is the case the owner named ("search
+  // for a specific rate ... relative rates will pop up").
+  function rrMatch(r, q) {
+    if (!q) {
+      return true;
+    }
+    if (r.desc.toLowerCase().indexOf(q) > -1) {
+      return true;
+    }
+    if (r.ref.toLowerCase().indexOf(q) > -1) {
+      return true;
+    }
+    if (r.trade.toLowerCase().indexOf(q) > -1) {
+      return true;
+    }
+    if (r.impUnit.toLowerCase().indexOf(q) > -1) {
+      return true;
+    }
+    if (r.metUnit.toLowerCase().indexOf(q) > -1) {
+      return true;
+    }
+    const n = Number(q.replace(/[, ]/g, ''));
+    if (isFinite(n) && n > 0) {
+      if (Math.round(r.impRate) === Math.round(n)) {
+        return true;
+      }
+      if (Math.round(r.metRate) === Math.round(n)) {
+        return true;
+      }
+    }
+    return false;
+  }
+  function rrMoney(v) {
+    return (
+      'J$' +
+      Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    );
+  }
   // BUG FIX (owner directive 2026-10-02, caught by the new RB gates): this
   // function was a TOGGLE - `if (existing) { existing.remove(); return; }` -
   // but the unit buttons inside the card also called it to RE-RENDER in the
@@ -3629,7 +3769,9 @@
   // (openRateBook); renderRateBookCard only ever renders.
   function renderRateBookCard() {
     const existing = document.getElementById('calc-ratebook-card');
-    if (existing) existing.remove();
+    if (existing) {
+      existing.remove();
+    }
     // Rebuilding in place (the Metric/Imperial toggle) must drop the previous
     // popup's Escape handler, or each toggle stacks another live listener.
     if (_rrKeyHandler) {
@@ -3647,35 +3789,98 @@
     card.setAttribute('aria-modal', 'true');
     card.setAttribute('aria-label', 'Jamaica rate book ' + JIC_YEARS);
     const curUnit = _rateBookUnits === 'imperial' ? 'imp' : 'met';
-    const unitLabel = _rateBookUnits === 'imperial' ? 'Imperial (JMD)' : 'Metric (JMD)';
+    const all = rrRows();
+    const trades = rrTrades();
+    const q = _rrQuery.trim().toLowerCase();
+    // Scoped set: the chosen trade first, then the query. Doing the trade
+    // filter before the search keeps a per-trade search O(that trade) instead
+    // of walking all 811 rows on every keystroke.
+    let view = all;
+    if (_rrTrade !== 'all') {
+      view = view.filter(function (r) {
+        return r.tid === _rrTrade;
+      });
+    }
+    if (q) {
+      view = view.filter(function (r) {
+        return rrMatch(r, q);
+      });
+    }
+    // Group into sections so a trade is never one endless scroll: each trade
+    // gets a heading row carrying its own count, and the sections follow the
+    // book's order. When a query is active the headings still show, so a hit
+    // inside a 100-row trade is still located.
     let rows = '';
-    let lastTrade = '';
-    JIC_RATES.forEach(function (r) {
-      if (r.trade !== lastTrade) {
-        rows += '<tr class="rr-trade"><td colspan="4">' + esc(r.trade) + '</td></tr>';
-        lastTrade = r.trade;
+    let last = '';
+    view.forEach(function (r) {
+      if (r.trade !== last) {
+        const n = view.filter(function (x) {
+          return x.trade === r.trade;
+        }).length;
+        rows +=
+          '<tr class="rr-trade"><th colspan="4" scope="colgroup">' +
+          esc(r.trade) +
+          '<span class="rr-count">' +
+          n +
+          ' rate' +
+          (n === 1 ? '' : 's') +
+          '</span></th></tr>';
+        last = r.trade;
       }
       const rateVal = curUnit === 'imp' ? r.impRate : r.metRate;
       const unitVal = curUnit === 'imp' ? r.impUnit : r.metUnit;
       rows +=
-        '<tr><td>' +
+        '<tr' +
+        (r.inApp ? ' class="rr-in-app"' : '') +
+        '><td class="rr-ref">' +
         esc(r.ref) +
-        '</td><td>' +
+        '</td><td class="rr-desc">' +
         esc(r.desc) +
-        '</td><td>' +
+        // 'C' marks a rate WE calculated from the imperial figure rather than
+        // one JIC printed. The owner asked for the marker; the title spells out
+        // what it means so it is never an unexplained letter.
+        (r.basis === 'C'
+          ? '<span class="rr-calc" title="Calculated from the imperial rate using the published conversion rule">C</span>'
+          : '') +
+        (r.note ? '<span class="rr-note">' + esc(r.note) + '</span>' : '') +
+        '</td><td class="rr-unit">' +
         esc(unitVal) +
-        '</td><td class="rr-rate">J$' +
-        Number(rateVal).toLocaleString(undefined, {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        }) +
+        '</td><td class="rr-rate">' +
+        rrMoney(rateVal) +
         '</td></tr>';
     });
-    // OWNER 2026-10-02: the heading is the JIC's own name and the year it
-    // governs, nothing else. The old line item / trade count / source sentence
-    // was clutter the owner did not want on screen. The table below carries the
-    // detail; the years stay in ONE constant so the title, the sheet name and
-    // the cover PDF can never disagree.
+    const empty = !view.length;
+    // The trade picker: All plus one control per trade, each showing its full
+    // row count. This is the per-trade half of "both global and per trade" -
+    // pick a trade to browse or search only within it.
+    const chips =
+      '<button type="button" class="bcp-seg-btn' +
+      (_rrTrade === 'all' ? ' active' : '') +
+      '" data-action="rrTrade" data-tid="all" aria-pressed="' +
+      (_rrTrade === 'all') +
+      '">All (' +
+      all.length +
+      ')</button>' +
+      trades
+        .map(function (t) {
+          const n = all.filter(function (r) {
+            return r.tid === t.tid;
+          }).length;
+          return (
+            '<button type="button" class="bcp-seg-btn' +
+            (_rrTrade === t.tid ? ' active' : '') +
+            '" data-action="rrTrade" data-tid="' +
+            t.tid +
+            '" aria-pressed="' +
+            (_rrTrade === t.tid) +
+            '">' +
+            esc(t.label) +
+            ' (' +
+            n +
+            ')</button>'
+          );
+        })
+        .join('');
     card.innerHTML =
       '<div class="rr-panel">' +
       '<div class="rr-head">' +
@@ -3692,10 +3897,38 @@
       '</div>' +
       '<button type="button" class="bcp-rr-x" data-action="rrClose" aria-label="Close the rate book" title="Close"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button>' +
       '</div>' +
-      '<div class="rr-scroll"><table class="rr-table"><thead><tr><th>Ref</th><th>Description</th><th>Unit</th><th>Rate</th></tr></thead><tbody>' +
-      rows +
-      '</tbody></table></div>' +
-      '<div class="rr-foot">All amounts in Jamaican dollars (J$).</div>' +
+      // Search is global across every trade by default, and scopes to the
+      // picked trade once one is chosen. It indexes description, ref, trade,
+      // unit and both rate columns.
+      '<div class="rr-search">' +
+      '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg>' +
+      '<input type="search" id="rr-q" class="rr-q" placeholder="Search ' +
+      all.length +
+      ' rates - a word, a ref, a trade or a price" aria-label="Search the rate book" value="' +
+      esc(_rrQuery) +
+      '" autocomplete="off">' +
+      '<span class="rr-hits" role="status" aria-live="polite">' +
+      (q ? view.length + ' of ' + all.length : all.length + ' rates') +
+      '</span>' +
+      '</div>' +
+      '<div class="rr-trades bcp-seg" role="group" aria-label="Trade">' +
+      chips +
+      '</div>' +
+      '<div class="rr-scroll">' +
+      (empty
+        ? '<div class="rr-empty">No rate matches "' +
+          esc(_rrQuery.trim()) +
+          '"' +
+          (_rrTrade !== 'all' ? ' in this trade' : '') +
+          '. Try a single word, or clear the search.</div>'
+        : '<table class="rr-table"><thead><tr><th>Ref</th><th>Description</th><th>Unit</th><th>Rate</th></tr></thead><tbody>' +
+          rows +
+          '</tbody></table>') +
+      '</div>' +
+      '<div class="rr-foot">' +
+      'All amounts in Jamaican dollars (J$). ' +
+      '<span class="rr-legend"><span class="rr-calc" aria-hidden="true">C</span> calculated by us from the imperial rate</span>' +
+      '</div>' +
       '</div>';
     document.body.appendChild(card);
     const close = function () {
@@ -3743,6 +3976,50 @@
         renderRateBookCard();
       });
     });
+    // Per-trade scope. Re-renders in place; the search box is refocused below
+    // so a user narrowing a search does not lose the cursor.
+    card.querySelectorAll('[data-action="rrTrade"]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        const next = b.getAttribute('data-tid');
+        if (next === _rrTrade) return;
+        _rrTrade = next;
+        renderRateBookCard();
+      });
+    });
+    // Search: re-render on every keystroke, then put the caret back. The
+    // filtered set is rebuilt from the cached rows each time, so a query can
+    // never leave stale rows behind.
+    const qEl = card.querySelector('#rr-q');
+    if (qEl) {
+      qEl.addEventListener('input', function () {
+        _rrQuery = qEl.value;
+        renderRateBookCard();
+        const again = document.getElementById('rr-q');
+        if (again) {
+          try {
+            again.focus();
+            // Caret to the end, so typing continues where it was.
+            again.setSelectionRange(again.value.length, again.value.length);
+          } catch (e) {
+            /* nicety */
+          }
+        }
+      });
+      // Focus the search box on open: finding a rate is the reason the card
+      // exists, so the first keystroke should just work.
+      try {
+        qEl.focus();
+      } catch (e) {
+        /* nicety */
+      }
+    }
+    // Lazy-load the full book the first time this opens. It re-renders once it
+    // lands (or falls back to the inline 100 rows if it cannot be fetched).
+    if (!_rrFull) {
+      rrLoadFull(function () {
+        if (document.getElementById('calc-ratebook-card')) renderRateBookCard();
+      });
+    }
   }
   // The top-bar link: opens the card, or closes it if it is already open.
   function showRateBookCard() {

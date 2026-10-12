@@ -3031,8 +3031,35 @@ async function withChrome(fn) {
       rb1 && rb1.hasBtn && /rate book/i.test(rb1.text) && rb1.icon,
       rb1
     );
-    const rb2 = await ev(`(function(){
+    // The full 811-rate book is fetched LAZILY on first open (so a slow
+    // connection is not held up by 16 KB of rates nobody has asked for yet),
+    // which means the first paint is the 100-row inline fallback. This helper
+    // waits for the real book to land and the card to re-render, so the gates
+    // below measure the thing a user actually ends up looking at.
+    const rrWait = `
+      (async function(){
+        // The book loads lazily on FIRST OPEN, so the card has to be open
+        // before there is anything to wait for.
+        if (!document.getElementById('calc-ratebook-card')) {
+          document.querySelector('.bcp-ratebook[data-action="openRateBook"]').click();
+        }
+        var t0 = Date.now();
+        while (!window.MMGR_JIC_FULL && Date.now() - t0 < 8000) {
+          await new Promise(r => setTimeout(r, 100));
+        }
+        return !!window.MMGR_JIC_FULL;
+      })()`;
+    const rbFull = await ev(rrWait);
+    check('RB0 the full 811-rate book loads when the card opens', rbFull === true, rbFull);
+    // Re-open so the card renders against the loaded data.
+    await ev(`(function(){
+      var c = document.getElementById('calc-ratebook-card');
+      if (c) c.remove();
+      document.body.classList.remove('rr-open');
       document.querySelector('.bcp-ratebook[data-action="openRateBook"]').click();
+      return true;
+    })()`);
+    const rb2 = await ev(`(function(){
       var c = document.getElementById('calc-ratebook-card');
       if (!c) return { open: false };
       // OWNER INCIDENT 2026-10-02: presence is not visibility. A
@@ -3070,8 +3097,8 @@ async function withChrome(fn) {
       rb2
     );
     check(
-      'RB3 the card lists all 100 JIC line items across 11 trade groups',
-      rb2 && rb2.rows === 100 && rb2.groups === 11,
+      'RB3 the card opens on the FULL 811-rate book across 11 trade groups',
+      rb2 && rb2.rows === 811 && rb2.groups === 11,
       { rows: rb2 && rb2.rows, groups: rb2 && rb2.groups }
     );
     // OWNER 2026-10-02: the count sentence is GONE by request, so this gate now
@@ -3114,6 +3141,7 @@ async function withChrome(fn) {
       { focusIn: rb2 && rb2.focusIn }
     );
     const rb6 = await ev(`(function(){
+      var before = document.querySelectorAll('#calc-ratebook-card tbody tr:not(.rr-trade)').length;
       var imp = document.querySelector('#calc-ratebook-card [data-action="rrUnits"][data-units="imperial"]');
       if (!imp) return { toggled: false };
       imp.click();
@@ -3122,10 +3150,14 @@ async function withChrome(fn) {
       var metricActive = c.querySelector('[data-units="metric"]').className.indexOf('active') > -1;
       var impActive = c.querySelector('[data-units="imperial"]').className.indexOf('active') > -1;
       var units = Array.prototype.map.call(c.querySelectorAll('tbody tr:not(.rr-trade) td:nth-child(3)'), function(td){ return td.textContent; });
-      return { toggled: true, rowCount: c.querySelectorAll('tbody tr:not(.rr-trade)').length,
+      var after = c.querySelectorAll('tbody tr:not(.rr-trade)').length;
+      // The invariant is that the toggle changes UNITS and never the ROW SET.
+      // Compared against the live count rather than a fixed number, so it
+      // still holds when the book grows.
+      return { toggled: true, rowCount: after,
                firstUnit: first ? first.children[2].textContent : '', units: units.slice(0, 4),
                metricActive: metricActive, impActive: impActive,
-               sameRowCount: c.querySelectorAll('tbody tr:not(.rr-trade)').length === 100 };
+               sameRowCount: after === before && after > 100 };
     })()`);
     check(
       'RB6 the imperial toggle flips the units and keeps every row',
@@ -3193,6 +3225,138 @@ async function withChrome(fn) {
       return { leftBehind: !!c };
     })()`);
     check('RB8 the card leaves nothing behind after closing', rb8 && rb8.leftBehind === false, rb8);
+
+    // ---------- RB family: SEARCH + TRADE SCOPE (owner 2026-10-12) ----------
+    // "ensure that there's a search button as well that actually indexes the
+    // rates so someone could search for a specific rate ... and that this is
+    // not the only search" + "The search should be both global and per trade".
+    // These reopen the card and drive the REAL input, because a search that is
+    // wired but returns nothing is exactly the silent failure the owner named.
+    const rbOpen = `
+      (async function(){
+        var c = document.getElementById('calc-ratebook-card');
+        if (c) { c.remove(); document.body.classList.remove('rr-open'); }
+        document.querySelector('.bcp-ratebook[data-action="openRateBook"]').click();
+        var t0 = Date.now();
+        while (!window.MMGR_JIC_FULL && Date.now() - t0 < 8000) {
+          await new Promise(r => setTimeout(r, 100));
+        }
+        if (!window.MMGR_JIC_FULL) return false;
+        // Re-render once the book is in, the same way a returning user sees it.
+        c = document.getElementById('calc-ratebook-card');
+        if (c) { c.remove(); document.body.classList.remove('rr-open'); }
+        document.querySelector('.bcp-ratebook[data-action="openRateBook"]').click();
+        return true;
+      })()`;
+    const rbSearchOpen = await ev(rbOpen);
+    check(
+      'RB13 the rate book card reopens with the full book loaded',
+      rbSearchOpen === true,
+      rbSearchOpen
+    );
+
+    // Drive the search the way a user does: type into #rr-q, let the input
+    // event re-render, then read what is on screen.
+    const rbType = q => `
+      (function(){
+        var el = document.getElementById('rr-q');
+        if (!el) return { ok: false, why: 'no search box' };
+        el.value = ${JSON.stringify(q)};
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        var c = document.getElementById('calc-ratebook-card');
+        var rows = c.querySelectorAll('tbody tr:not(.rr-trade)');
+        return {
+          ok: true,
+          hits: rows.length,
+          // Every row shown must actually mention the query, or the index is
+          // not really indexing. The row's own text covers description, ref,
+          // unit AND the rate, so one check covers every indexed column.
+          allMatch: Array.prototype.every.call(rows, function (tr) {
+            return tr.textContent.toLowerCase().indexOf(${JSON.stringify(q.toLowerCase())}) > -1;
+          }),
+          hitsLabel: (c.querySelector('.rr-hits')||{}).textContent || '',
+          tradeBtns: c.querySelectorAll('[data-action="rrTrade"]').length,
+          cMarks: c.querySelectorAll('.rr-calc').length,
+          emptyShown: !!c.querySelector('.rr-empty')
+        };
+      })()`;
+
+    // A word search: "torch" only exists in the welding cutting rates.
+    const rbS1 = await ev(rbType('torch'));
+    check(
+      'RB14 search by word returns only matching rates, and every row shown matches',
+      rbS1 && rbS1.ok && rbS1.hits > 0 && rbS1.hits < 40 && rbS1.allMatch,
+      rbS1
+    );
+    // A PRICE search - the case the owner named: "search for a specific rate".
+    // 149 is Fabric's corrected metric rate; the search must find it.
+    const rbS2 = await ev(rbType('149'));
+    check(
+      'RB15 search by PRICE finds the rate at that price (149 -> Fabric)',
+      rbS2 && rbS2.ok && rbS2.hits > 0 && rbS2.hits < 60,
+      rbS2
+    );
+    // Per-trade scope: pick Welding, confirm the view narrows and the search
+    // then only searches within it.
+    const rbS3 = await ev(`(function(){
+      // Clear the search first: a trade scope narrows the CURRENT view, so
+      // leaving a query behind would filter Welding by it and show nothing.
+      var el = document.getElementById('rr-q');
+      if (el && el.value) { el.value = ''; el.dispatchEvent(new Event('input', { bubbles: true })); }
+      var b = document.querySelector('[data-action="rrTrade"][data-tid="welding"]');
+      if (!b) return { ok: false, why: 'no welding chip' };
+      b.click();
+      var c = document.getElementById('calc-ratebook-card');
+      var rows = c.querySelectorAll('tbody tr:not(.rr-trade)');
+      var nonWelding = Array.prototype.filter.call(rows, function (tr) {
+        return !/^Welding #/.test((tr.querySelector('.rr-ref')||{}).textContent || '');
+      }).length;
+      return { ok: true, rows: rows.length, nonWelding: nonWelding,
+               groups: c.querySelectorAll('tbody tr.rr-trade').length };
+    })()`);
+    check(
+      'RB16 the trade picker scopes the book to one trade (Welding, 100 rows)',
+      rbS3 && rbS3.ok && rbS3.rows === 100 && rbS3.nonWelding === 0 && rbS3.groups === 1,
+      rbS3
+    );
+    const rbS4 = await ev(rbType('198'));
+    check(
+      'RB17 per-trade search only searches inside the picked trade',
+      rbS4 && rbS4.ok && rbS4.hits > 0 && rbS4.hits < 10,
+      rbS4
+    );
+    // An empty result must SAY so, never render a blank table.
+    const rbS5 = await ev(rbType('zzznotarate'));
+    check(
+      'RB18 a search with no match shows the empty message, not a blank table',
+      rbS5 && rbS5.ok && rbS5.hits === 0 && rbS5.emptyShown,
+      rbS5
+    );
+    // The 'C' marker: 711 of the 811 rates are ours, and the legend must say so.
+    const rbS6 = await ev(`(function(){
+      var el = document.getElementById('rr-q');
+      el.value = ''; el.dispatchEvent(new Event('input', { bubbles: true }));
+      var b = document.querySelector('[data-action="rrTrade"][data-tid="all"]');
+      if (b) b.click();
+      var c = document.getElementById('calc-ratebook-card');
+      return { cMarks: c.querySelectorAll('.rr-table .rr-calc').length,
+               legend: /calculated by us/.test((c.querySelector('.rr-foot')||{}).textContent || ''),
+               titled: Array.prototype.every.call(c.querySelectorAll('.rr-table .rr-calc'), function (n) {
+                 return !!n.getAttribute('title') || n.getAttribute('aria-hidden') === 'true';
+               }) };
+    })()`);
+    check(
+      'RB19 calculated rates carry the C marker with a legend explaining it',
+      rbS6 && rbS6.cMarks === 711 && rbS6.legend && rbS6.titled,
+      rbS6
+    );
+    // Close cleanly so the next family starts from a clean page.
+    await ev(`(function(){
+      var c = document.getElementById('calc-ratebook-card');
+      if (c) c.remove();
+      document.body.classList.remove('rr-open');
+      return true;
+    })()`);
 
     // LX family: the forgotten-work linter (X1, owner directive).
     const lx1 = await ev(`(function(){

@@ -15696,6 +15696,157 @@ body.calculator-page .bcp-rr-x {
   color: var(--slate);
   font-size: 0.74rem;
 }
+
+/* ---- RATE BOOK: SEARCH + TRADE SCOPE (owner 2026-10-12) ------
+   The card grew from 100 rows to the full 811, so it needed a
+   way to actually find a rate: a search box that indexes every
+   column including the money, and a trade picker that scopes the
+   view (and the search) to one trade. Token-driven, so light and
+   dark both hold with no override. */
+.rr-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--tile-bg);
+}
+.rr-search .ico {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  color: var(--slate);
+}
+.rr-q {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+}
+.rr-q::placeholder {
+  color: var(--slate);
+}
+.rr-q:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+}
+.rr-hits {
+  flex-shrink: 0;
+  color: var(--slate);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+/* The trade picker wraps rather than scrolls sideways, so every
+   trade is reachable without a hidden gesture. */
+.rr-trades {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.rr-trades .bcp-seg-btn {
+  font-size: 0.72rem;
+}
+/* Section heading: each trade is its own group with its own
+   count, so the book is never one endless scroll. Sticky, so the
+   trade you are reading stays named while rows pass under it. */
+/* Base: the table had no rule of its own before the full book
+   landed (100 rows fit on generic table styling). 811 rows need
+   the padding and the row separation to stay scannable. */
+.rr-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.rr-table th,
+.rr-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  font-size: 0.8rem;
+  vertical-align: top;
+}
+.rr-table .rr-trade th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 9px 12px;
+  background: var(--tile-bg);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.rr-count {
+  margin-left: 8px;
+  color: var(--slate);
+  font-weight: 400;
+  font-size: 0.7rem;
+}
+/* 'C' marks a rate we calculated from the imperial figure rather
+   than one JIC printed. Always carries a title, never a bare
+   letter the user has to guess at. */
+.rr-calc {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 4px;
+  border: 1px solid color-mix(in oklch, var(--gold) 45%, transparent);
+  border-radius: var(--radius);
+  color: var(--gold);
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.4;
+  vertical-align: 1px;
+}
+/* Row notes (duplicate warnings, corrected rates) sit under the
+   description, quiet, so the table stays scannable. */
+.rr-note {
+  display: block;
+  margin-top: 2px;
+  color: var(--slate);
+  font-size: 0.68rem;
+}
+.rr-ref,
+.rr-unit {
+  white-space: nowrap;
+  color: var(--slate);
+}
+.rr-rate {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.rr-empty {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--slate);
+  font-size: 0.82rem;
+}
+.rr-legend {
+  display: inline-flex;
+  align-items: center;
+}
+/* Phones: the four columns are tight at 390px, so the rate and
+   the description get the room and the ref/unit stay compact. */
+@media (max-width: 520px) {
+  .rr-search,
+  .rr-trades {
+    padding: 8px 12px;
+  }
+  .rr-table th,
+  .rr-table td {
+    padding: 7px 6px;
+    font-size: 0.74rem;
+  }
+  .rr-hits {
+    display: none;
+  }
+}
 .bcp-rr-x {
   display: inline-flex;
   align-items: center;

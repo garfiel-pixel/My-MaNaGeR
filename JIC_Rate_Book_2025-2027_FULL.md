@@ -346,7 +346,7 @@ Calculated rates are rounded to whole dollars, or to cents where the imperial ra
 | Steelwork #3 | ✔ | 5/8" Mild Steel Rebar | Lb. | 30 | Kg. | 67 | S |  |
 | Steelwork #4 | ✔ | 3/4" Mild Steel Rebar | Lb. | 30 | Kg. | 67 | S |  |
 | Steelwork #5 | ✔ | 1" Mild Steel Rebar | Lb. | 30 | Kg. | 67 | S |  |
-| Steelwork #6 | ✔ | Fabric | Yd.Sq. | 125 | m² | 276 | S | ⚠ formula gives 149 (finding 1) |
+| Steelwork #6 | ✔ | Fabric | Yd.Sq. | 125 | m² | 149 | S | fixed 2026-10-12: was 276 (a lb-kg factor on a per-yd² rate); 125 ÷ 0.83612736 = 149 |
 | Steelwork #7 | ✔ | 1/4" Stirrups | Doz. | 699 | Doz. | 699 | S |  |
 | Steelwork #8 | ✔ | 3/8" Stirrups | Doz. | 734 | Doz. | 734 | S |  |
 | Steelwork #9 | ✔ | 3/8" Stirrups (Large > 6' Girth) | Doz. | 917 | Doz. | 917 | S |  |

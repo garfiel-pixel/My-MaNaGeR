@@ -47,6 +47,34 @@ const check = (name, val, detail) => {
 };
 
 const PERSIST_DIR = path.join(TMP, 'mmgr-parity-wstate-' + Date.now());
+// B4 (owner 2026-10-11, "yes the mcp is a premium feature"): MCP tools/call
+// now requires the PROJECT OWNER's active plan. The harness proves the gate
+// end-to-end - valid key + free owner -> isError MCP_PREMIUM_REFUSAL, then
+// the signature-verified billing webhook (the ONLY writer of
+// cloud_subscriptions, same recipe as qa-email-auth B3) flips the owner to a
+// paid tier and every gate below runs against the entitled state.
+const LS_SECRET = 'qa-engine-parity-ls-9c31e7b4';
+function lsSignature(rawBody) {
+  return require('crypto').createHmac('sha256', LS_SECRET).update(rawBody).digest('hex');
+}
+async function seedSubscription(sub) {
+  const body = JSON.stringify({
+    meta: { event_name: 'subscription_created', custom_data: { sub: sub } },
+    data: {
+      id: 'ls_sub_parity_' + Math.random().toString(36).slice(2, 8),
+      attributes: {
+        status: 'active',
+        renews_at: new Date(Date.now() + 30 * 86400000).toISOString()
+      }
+    }
+  });
+  const res = await fetch(BASE + '/api/billing/webhook', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Signature': lsSignature(body) },
+    body: body
+  });
+  return { status: res.status, body: await res.json().catch(() => ({})) };
+}
 const j = async res => {
   try {
     return await res.json();
@@ -109,7 +137,12 @@ async function startWrangler() {
       '--ip',
       '127.0.0.1',
       '--persist-to',
-      PERSIST_DIR
+      PERSIST_DIR,
+      // B4: the webhook secret as a worker binding, so the premium gate can
+      // be unlocked the production way (signature-verified webhook), never a
+      // direct DB write.
+      '--var',
+      'LEMONSQUEEZY_WEBHOOK_SECRET:' + LS_SECRET
     ],
     {
       cwd: ROOT,
@@ -380,6 +413,42 @@ async function withChrome(fn) {
       'A4 full-scope key minted (sk-mmgr-)',
       !!KEY && KEY.lastIndexOf('sk-mmgr-', 0) === 0,
       createdKey
+    );
+
+    // ---- B4 premium gate (owner 2026-10-11): valid credential, free owner
+    // -> MCP refuses in MCP shape (isError, never HTTP 401/403 - PATH-A).
+    const freeCall = await fetch(BASE + '/api/mcp/' + pid, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + KEY,
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream'
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 90,
+        method: 'tools/call',
+        params: { name: 'get_tasks', arguments: {} }
+      })
+    });
+    const freeBody = await freeCall.text();
+    const freeJson = freeBody ? JSON.parse(freeBody) : {};
+    check(
+      'A4b free owner + valid key -> MCP_PREMIUM_REFUSAL (isError, HTTP 200, no data)',
+      freeCall.status === 200 &&
+        freeJson.result &&
+        freeJson.result.isError === true &&
+        /Premium feature/.test(freeJson.result.content[0].text) &&
+        freeBody.indexOf('Pour foundation') === -1,
+      { status: freeCall.status, freeJson }
+    );
+    // Unlock the production way: signature-verified billing webhook (the only
+    // writer of cloud_subscriptions).
+    const seeded = await seedSubscription('email:parity-qa@example.com');
+    check(
+      'A4c billing webhook seeds an active subscription for the owner',
+      seeded.status === 200 && seeded.body.status === 'active',
+      seeded
     );
 
     // ---- B. MCP over the REAL endpoint ----

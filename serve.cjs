@@ -744,6 +744,15 @@ const server = http.createServer((req, res) => {
           if (!kauthed) {
             return out(MCP_AUTH_REFUSAL, true);
           }
+          // NO premium gate here, deliberately. The Worker's MCP route is
+          // gated on the project OWNER's plan (MCP_PREMIUM_REFUSAL in
+          // src/mcp/server.js, proven by qa-api-keys P0d + qa-mcp-live-e2e
+          // A2b against the real Worker). This dev route answers from canned
+          // fixtures (MCP_TASKS / MCP_RISKS) with no owner row and no
+          // subscription table to gate on, so there is nothing to check -
+          // mirroring the refusal here would mean inventing a fake tier. Any
+          // premium-gate question is answered against wrangler dev or
+          // production, never against this stub.
           if (t === 'get_tasks') {
             if (mcpScopeGate(kscope, 'wbs')) {
               return out(mcpRefusal(kscope), true);

@@ -98,6 +98,32 @@ function globalWranglerJs() {
 }
 const WRANGLER_JS = globalWranglerJs();
 const PERSIST_DIR = path.join(os.tmpdir(), 'mmgr-ak-wstate-' + Date.now());
+// B4 (owner 2026-10-11, "yes the mcp is a premium feature"): MCP tools/call
+// requires the project owner's active plan. The harness unlocks it the
+// production way - a signature-verified billing webhook (the ONLY writer of
+// cloud_subscriptions), never a direct DB write (qa-email-auth B3 recipe).
+const AK_LS_SECRET = 'qa-api-keys-ls-5f82d1a9';
+function akSignature(rawBody) {
+  return require('crypto').createHmac('sha256', AK_LS_SECRET).update(rawBody).digest('hex');
+}
+async function akSeedSubscription(sub) {
+  const body = JSON.stringify({
+    meta: { event_name: 'subscription_created', custom_data: { sub: sub } },
+    data: {
+      id: 'ls_sub_ak_' + Math.random().toString(36).slice(2, 8),
+      attributes: {
+        status: 'active',
+        renews_at: new Date(Date.now() + 30 * 86400000).toISOString()
+      }
+    }
+  });
+  const res = await fetch(BASE + '/api/billing/webhook', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Signature': akSignature(body) },
+    body: body
+  });
+  return { status: res.status, body: await res.json().catch(() => ({})) };
+}
 
 function startWrangler() {
   return new Promise((resolve, reject) => {
@@ -133,7 +159,14 @@ function startWrangler() {
         '--ip',
         '127.0.0.1',
         '--persist-to',
-        PERSIST_DIR
+        PERSIST_DIR,
+        // B4 (owner 2026-10-11, "yes the mcp is a premium feature"): MCP
+        // tools/call now requires the project owner's active plan. The
+        // webhook secret reaches the worker as a binding so the harness can
+        // unlock it the production way - a signature-verified billing
+        // webhook, never a direct DB write (same recipe as qa-email-auth B3).
+        '--var',
+        'LEMONSQUEEZY_WEBHOOK_SECRET:' + AK_LS_SECRET
       ],
       {
         cwd: ROOT,
@@ -242,6 +275,48 @@ const j = async res => {
     });
     const saved = await j(r);
     check('P0c owner save ok (real state for scoped reads)', r.ok && saved.ok, saved);
+
+    // P0d (B4 premium gate): a valid key under a FREE owner must be refused
+    // in MCP shape - isError, HTTP 200, no data (PATH-A law). Then the
+    // signature-verified webhook entitles the owner so every MCP gate below
+    // runs against the state a paying customer has.
+    const mintForGate = await j(
+      await fetch(BASE + '/api/cloud/projects/' + pid + '/api-keys', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: ownerHeaders,
+        body: JSON.stringify({ label: 'Premium gate probe', scope: ['wbs'] })
+      })
+    );
+    const gateKey = mintForGate.apiKey;
+    const freeRes = await fetch(BASE + '/api/mcp/' + pid, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + gateKey,
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream'
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 91,
+        method: 'tools/call',
+        params: { name: 'get_tasks', arguments: {} }
+      })
+    });
+    const freeTxt = await freeRes.text();
+    check(
+      'P0d free owner + valid key -> MCP_PREMIUM_REFUSAL (isError, HTTP 200, no data)',
+      freeRes.status === 200 &&
+        /Premium feature/.test(freeTxt) &&
+        freeTxt.indexOf('Pour foundation') === -1,
+      { status: freeRes.status, freeTxt: freeTxt.slice(0, 200) }
+    );
+    const akSeeded = await akSeedSubscription('email:ak-qa@example.com');
+    check(
+      'P0e billing webhook entitles the owner (status active)',
+      akSeeded.status === 200 && akSeeded.body.status === 'active',
+      akSeeded
+    );
 
     // P1: create key (label + scope wbs+bud + 30-day expiry).
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/api-keys', {

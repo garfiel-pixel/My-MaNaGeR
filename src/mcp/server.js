@@ -49,6 +49,7 @@ import {
   CLOUD_KEY_TO_SECTION
 } from '../lib/http.js';
 import { API_SHAPES } from '../api/shapes.js';
+import { ownerTier } from '../cloud/team.js';
 
 // ---- MCP protocol constants ----
 
@@ -63,6 +64,18 @@ const SERVER_INFO = {
 // and the QA harnesses assert this exact text.
 export const MCP_AUTH_REFUSAL =
   'This endpoint needs its own credential before it will share project data or accept changes. Supply the project API key as Authorization: Bearer <key> or X-API-Key, or the owner code as Authorization: Bearer <owner-code>.';
+
+// B4 (owner 2026-10-11, "yes the mcp is a premium feature"): MCP is gated on
+// the PROJECT OWNER's active plan - any paid tier, same standard as
+// unlimitedCloud - whatever credential the caller holds (scoped key or owner
+// code; both only ever act on that one project, so the owner's plan is the
+// only one that can gate it). Same PATH-A law as MCP_AUTH_REFUSAL: this is a
+// normal MCP isError result, never an HTTP 401/403 - on an MCP endpoint the
+// HTTP status IS API. Credential check runs FIRST, so an unauthenticated or
+// bad-Bearer caller still gets the credential refusal and learns nothing
+// about plans, projects, or existence.
+export const MCP_PREMIUM_REFUSAL =
+  'MCP connections are a Premium feature. The project owner needs an active plan - upgrade at /pricing, then reconnect this tool. No project data is shared until then.';
 
 // ---- Tool definitions (MCP schema format) ----
 
@@ -850,10 +863,22 @@ async function handleMcpRequest(body, projectId, env, auth) {
     // Read project state
     const key = 'projects/' + projectId + '/latest.json';
     const row = await env.DB.prepare(
-      'SELECT latest_r2_key, owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?'
+      'SELECT latest_r2_key, owner_code_hash, owner_code_salt, google_sub FROM cloud_projects WHERE project_id = ?'
     )
       .bind(projectId)
       .first();
+
+    // B4 premium gate: valid credential, but the project owner has no active
+    // plan -> refuse in MCP shape. A project with no linked owner (no
+    // google_sub) reads as free, same as an absent entitlement row.
+    const mcpTier = await ownerTier(env, (row && row.google_sub) || '');
+    if (mcpTier === 'free') {
+      return {
+        jsonrpc: '2.0',
+        id,
+        result: { content: [{ type: 'text', text: MCP_PREMIUM_REFUSAL }], isError: true }
+      };
+    }
     const state =
       row && row.latest_r2_key
         ? await cloudReadState(env, key, row.owner_code_hash, row.owner_code_salt)

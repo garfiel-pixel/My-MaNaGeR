@@ -47,6 +47,17 @@ process.env.CHROME_DEBUG_PORT = process.env.CHROME_DEBUG_PORT || '9333';
 const { chromePath: CHROME, DEBUG_PORT } = require('./chrome-launcher.cjs');
 
 const PID = 'e2e-mcp-' + Math.random().toString(36).slice(2, 8);
+// B4 (owner 2026-10-11, "yes the mcp is a premium feature"): MCP tools/call
+// requires the PROJECT OWNER's active plan. This harness used to create an
+// ANONYMOUS project (no linked account = no entitlement possible), so it now
+// registers an email session, creates the project under it, and unlocks the
+// gate the production way - a signature-verified billing webhook, never a
+// direct DB write (qa-email-auth B3 recipe).
+const E2E_LS_SECRET = 'qa-mcp-e2e-ls-7b20c4d5';
+const E2E_EMAIL = 'mcp-e2e@example.com';
+function e2eSignature(rawBody) {
+  return require('crypto').createHmac('sha256', E2E_LS_SECRET).update(rawBody).digest('hex');
+}
 const KEY_LABEL = 'qa-mcp-live-e2e';
 const SCOPE = ['wbs'];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -175,7 +186,12 @@ async function startWrangler() {
       '--ip',
       '127.0.0.1',
       '--persist-to',
-      PERSIST_DIR
+      PERSIST_DIR,
+      // B4: the webhook secret as a worker binding, so the premium gate can
+      // be unlocked the production way (signature-verified webhook), never a
+      // direct DB write.
+      '--var',
+      'LEMONSQUEEZY_WEBHOOK_SECRET:' + E2E_LS_SECRET
     ],
     {
       cwd: ROOT,
@@ -203,9 +219,40 @@ async function main() {
   await startWrangler();
 
   // ---------- PHASE A: API ----------
-  const cr = await api('POST', '/api/cloud/projects', { projectId: PID, name: 'E2E MCP Probe' });
+  // Session first (B4): the project must carry an owner identity or the
+  // premium gate reads it as free and refuses every tools/call.
+  const regRes = await fetch(BASE + '/api/auth/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: E2E_EMAIL, password: 'e2e-pass-9x1', name: 'MCP E2E' })
+  });
+  const regBody = await regRes.json().catch(() => ({}));
+  let sessCookie = '';
+  const sc = regRes.headers.get('set-cookie') || '';
+  const sm = sc.match(/mmgr_session=([^;]+)/);
+  if (sm) sessCookie = sm[1];
+  if (!sessCookie || !regBody.ok) {
+    const lr = await fetch(BASE + '/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: E2E_EMAIL, password: 'e2e-pass-9x1' })
+    });
+    const lrBody = await lr.json().catch(() => ({}));
+    const lrsc = lr.headers.get('set-cookie') || '';
+    const lrm = lrsc.match(/mmgr_session=([^;]+)/);
+    if (lrm) sessCookie = lrm[1];
+    if (!sessCookie || !lrBody.ok) throw new Error('cannot mint an email session for the e2e run');
+  }
+  const sessH = { Cookie: 'mmgr_session=' + sessCookie };
+
+  const cr = await api(
+    'POST',
+    '/api/cloud/projects',
+    { projectId: PID, name: 'E2E MCP Probe' },
+    sessH
+  );
   check(
-    'A1 create throwaway project (anonymous create contract)',
+    'A1 create throwaway project (session-linked owner)',
     cr.status === 200 && cr.data.ok && typeof cr.data.ownerCode === 'string',
     cr
   );
@@ -241,6 +288,69 @@ async function main() {
   check('A2 owner save seeds the snapshot', sv.status === 200 && sv.data.ok, sv);
 
   await sleep(1200);
+  // A2b: await the probe BEFORE checking. check() is synchronous, so handing
+  // it a Promise would make this gate pass unconditionally, and the old third
+  // argument `{ km }` read a const that is only declared 26 lines below: a TDZ
+  // ReferenceError that crashed the whole harness at line 320 on every run.
+  const a2b = await (async () => {
+    const mkRes = await api(
+      'POST',
+      '/api/cloud/projects/' + PID + '/api-keys',
+      { label: 'e2e premium probe', scope: ['wbs'] },
+      ownerH(OC)
+    );
+    if (!mkRes.status || !mkRes.data || !mkRes.data.apiKey) return { ok: false, detail: mkRes };
+    const r = await api(
+      'POST',
+      '/api/mcp/' + PID,
+      {
+        jsonrpc: '2.0',
+        id: 92,
+        method: 'tools/call',
+        params: { name: 'get_tasks', arguments: {} }
+      },
+      keyH(mkRes.data.apiKey)
+    );
+    const t =
+      r.data &&
+      r.data.result &&
+      r.data.result.content &&
+      r.data.result.content[0] &&
+      r.data.result.content[0].text;
+    return {
+      ok: !!t && /Premium feature/.test(t) && t.indexOf('Pour foundation') === -1,
+      detail: { status: r.status, text: t }
+    };
+  })();
+  check(
+    'A2b premium gate: free session owner + valid key -> MCP_PREMIUM_REFUSAL',
+    a2b.ok,
+    a2b.detail
+  );
+  const e2eSeeded = await (async () => {
+    const body = JSON.stringify({
+      meta: { event_name: 'subscription_created', custom_data: { sub: 'email:' + E2E_EMAIL } },
+      data: {
+        id: 'ls_sub_e2e_' + Math.random().toString(36).slice(2, 8),
+        attributes: {
+          status: 'active',
+          renews_at: new Date(Date.now() + 30 * 86400000).toISOString()
+        }
+      }
+    });
+    const res = await fetch(BASE + '/api/billing/webhook', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Signature': e2eSignature(body) },
+      body: body
+    });
+    return { status: res.status, body: await res.json().catch(() => ({})) };
+  })();
+  check(
+    'A2c billing webhook entitles the owner (status active)',
+    e2eSeeded.status === 200 && e2eSeeded.body.status === 'active',
+    e2eSeeded
+  );
+
   const km = await api(
     'POST',
     '/api/cloud/projects/' + PID + '/api-keys',

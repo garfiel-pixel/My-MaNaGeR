@@ -17,8 +17,16 @@
    v382 - full-bleed marketing canvas, 7-big-dot rail with generated
            small dots, contact tile phone overflow, guide sidebar spacing
    ============================================================ */
-const CACHE = 'mmgr-shell-v409';
+const CACHE = 'mmgr-shell-v410';
 
+// v410 - STABLE TRADE IDS (P2a, owner 2026-10-12 rate-book wave). JIC_BOOK_MAP
+// matched each rate row to its work item by the trade's DISPLAY LABEL, so the
+// label rename the owner asked for ("Carpentry (Formwork)" -> "Carpentry")
+// would have silently stopped every row in that trade from producing a rate -
+// no error, just a cheaper estimate. Rows and map now carry a stable tid and
+// the map matches on it. qa-calc-golden asserts the payload count (100/100) and
+// spot-checks real rates, so a future rename cannot regress it.
+//
 // v409 - RATE-BOOK CORRECTIONS (owner 2026-10-12). Three fixes to the shipped
 // JIC book, each with a permanent gate behind it so it cannot drift back.
 // (1) FABRIC WAS PRICED 85% HIGH: Steelwork #6 carried 276 per m2 where 125 per

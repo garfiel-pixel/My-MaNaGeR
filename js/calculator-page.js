@@ -2459,6 +2459,7 @@
     // Excavation (9 items)
     {
       trade: 'Excavation',
+      tid: 'excavation',
       ref: 'JIC #1',
       desc: 'Compacted earth to 5 ft deep',
       impUnit: 'Yd.Cu.',
@@ -2468,6 +2469,7 @@
     },
     {
       trade: 'Excavation',
+      tid: 'excavation',
       ref: 'JIC #2',
       desc: 'Asphaltic concrete (Barber Green)',
       impUnit: 'Yd.Cu.',
@@ -2477,6 +2479,7 @@
     },
     {
       trade: 'Excavation',
+      tid: 'excavation',
       ref: 'JIC #3',
       desc: 'Compacted marl up to 5 ft deep',
       impUnit: 'Yd.Cu.',
@@ -2486,6 +2489,7 @@
     },
     {
       trade: 'Excavation',
+      tid: 'excavation',
       ref: 'JIC #4',
       desc: 'Compacted sand up to 5 ft deep',
       impUnit: 'Yd.Cu.',
@@ -2495,6 +2499,7 @@
     },
     {
       trade: 'Excavation',
+      tid: 'excavation',
       ref: 'JIC #5',
       desc: 'Stiff clay up to 5 ft deep',
       impUnit: 'Yd.Cu.',
@@ -2504,6 +2509,7 @@
     },
     {
       trade: 'Excavation',
+      tid: 'excavation',
       ref: 'JIC #6',
       desc: 'Stiff clay 5 to 10 ft deep',
       impUnit: 'Yd.Cu.',
@@ -2513,6 +2519,7 @@
     },
     {
       trade: 'Excavation',
+      tid: 'excavation',
       ref: 'JIC #7',
       desc: 'Rock/concrete no compressor',
       impUnit: 'Yd.Cu.',
@@ -2522,6 +2529,7 @@
     },
     {
       trade: 'Excavation',
+      tid: 'excavation',
       ref: 'JIC #8',
       desc: 'Rock/concrete compressor incl. labourers',
       impUnit: 'Yd.Cu.',
@@ -2531,6 +2539,7 @@
     },
     {
       trade: 'Excavation',
+      tid: 'excavation',
       ref: 'JIC #9',
       desc: 'Rock/concrete compressor labourers only',
       impUnit: 'Yd.Cu.',
@@ -2541,6 +2550,7 @@
     // Carpentry Formwork (9 items)
     {
       trade: 'Carpentry (Formwork)',
+      tid: 'carpentry',
       ref: 'JIC #1',
       desc: 'Erect and strip forms to belt and stiffener',
       impUnit: 'Ft.Sq.',
@@ -2550,6 +2560,7 @@
     },
     {
       trade: 'Carpentry (Formwork)',
+      tid: 'carpentry',
       ref: 'JIC #2',
       desc: 'Erect and strip forms to columns',
       impUnit: 'Ft.Sq.',
@@ -2559,6 +2570,7 @@
     },
     {
       trade: 'Carpentry (Formwork)',
+      tid: 'carpentry',
       ref: 'JIC #3',
       desc: 'Erect and strip forms to beams',
       impUnit: 'Ft.Sq.',
@@ -2568,6 +2580,7 @@
     },
     {
       trade: 'Carpentry (Formwork)',
+      tid: 'carpentry',
       ref: 'JIC #4',
       desc: 'Erect and strip forms to suspended slabs (stairs)',
       impUnit: 'Ft.Sq.',
@@ -2577,6 +2590,7 @@
     },
     {
       trade: 'Carpentry (Formwork)',
+      tid: 'carpentry',
       ref: 'JIC #5',
       desc: 'Erect and strip forms to suspended slabs (floor)',
       impUnit: 'Ft.Sq.',
@@ -2586,6 +2600,7 @@
     },
     {
       trade: 'Carpentry (Formwork)',
+      tid: 'carpentry',
       ref: 'JIC #6',
       desc: 'Erect and strip forms to walls',
       impUnit: 'Ft.Sq.',
@@ -2595,6 +2610,7 @@
     },
     {
       trade: 'Carpentry (Formwork)',
+      tid: 'carpentry',
       ref: 'JIC #7',
       desc: 'Erect and strip circular forms',
       impUnit: 'Ft.Sq.',
@@ -2604,6 +2620,7 @@
     },
     {
       trade: 'Carpentry (Formwork)',
+      tid: 'carpentry',
       ref: 'JIC #8',
       desc: 'Erect and strip forms to sides and deck of manholes',
       impUnit: 'Ft.Sq.',
@@ -2613,6 +2630,7 @@
     },
     {
       trade: 'Carpentry (Formwork)',
+      tid: 'carpentry',
       ref: 'JIC #9',
       desc: 'Make new formwork (columns, beam, belt, stiffener)',
       impUnit: 'Ft.Sq.',
@@ -2623,6 +2641,7 @@
     // Steelwork (9 items)
     {
       trade: 'Steelwork',
+      tid: 'steelwork',
       ref: 'JIC #1',
       desc: '3/8 in mild steel rebar',
       impUnit: 'Lb.',
@@ -2632,6 +2651,7 @@
     },
     {
       trade: 'Steelwork',
+      tid: 'steelwork',
       ref: 'JIC #2',
       desc: '1/2 in mild steel rebar',
       impUnit: 'Lb.',
@@ -2641,6 +2661,7 @@
     },
     {
       trade: 'Steelwork',
+      tid: 'steelwork',
       ref: 'JIC #3',
       desc: '5/8 in mild steel rebar',
       impUnit: 'Lb.',
@@ -2650,6 +2671,7 @@
     },
     {
       trade: 'Steelwork',
+      tid: 'steelwork',
       ref: 'JIC #4',
       desc: '3/4 in mild steel rebar',
       impUnit: 'Lb.',
@@ -2659,6 +2681,7 @@
     },
     {
       trade: 'Steelwork',
+      tid: 'steelwork',
       ref: 'JIC #5',
       desc: '1 in mild steel rebar',
       impUnit: 'Lb.',
@@ -2668,6 +2691,7 @@
     },
     {
       trade: 'Steelwork',
+      tid: 'steelwork',
       ref: 'JIC #6',
       // OWNER 2026-10-12: the metric figure used to be 276, which is the
       // imperial 125 multiplied by the pounds-to-kilograms factor - a unit
@@ -2683,6 +2707,7 @@
     },
     {
       trade: 'Steelwork',
+      tid: 'steelwork',
       ref: 'JIC #7',
       desc: '1/4 in stirrups',
       impUnit: 'Doz.',
@@ -2692,6 +2717,7 @@
     },
     {
       trade: 'Steelwork',
+      tid: 'steelwork',
       ref: 'JIC #8',
       desc: '3/8 in stirrups',
       impUnit: 'Doz.',
@@ -2701,6 +2727,7 @@
     },
     {
       trade: 'Steelwork',
+      tid: 'steelwork',
       ref: 'JIC #9',
       desc: '3/8 in stirrups (large, over 6 ft girth)',
       impUnit: 'Doz.',
@@ -2711,6 +2738,7 @@
     // Masonry (9 items)
     {
       trade: 'Masonry',
+      tid: 'masonry',
       ref: 'JIC #1',
       desc: 'Lay 8 in blocks fill all pockets GF to FF',
       impUnit: 'Yd.Sq.',
@@ -2720,6 +2748,7 @@
     },
     {
       trade: 'Masonry',
+      tid: 'masonry',
       ref: 'JIC #2',
       desc: 'Lay 8 in blocks fill all pockets FF and above',
       impUnit: 'Yd.Sq.',
@@ -2729,6 +2758,7 @@
     },
     {
       trade: 'Masonry',
+      tid: 'masonry',
       ref: 'JIC #3',
       desc: 'Lay 8 in blocks fill all pockets manholes drains',
       impUnit: 'Yd.Sq.',
@@ -2738,6 +2768,7 @@
     },
     {
       trade: 'Masonry',
+      tid: 'masonry',
       ref: 'JIC #4',
       desc: 'Lay 8 in blocks fill alternate pockets GF to FF',
       impUnit: 'Yd.Sq.',
@@ -2747,6 +2778,7 @@
     },
     {
       trade: 'Masonry',
+      tid: 'masonry',
       ref: 'JIC #5',
       desc: 'Lay 8 in blocks fill alternate pockets FF and above',
       impUnit: 'Yd.Sq.',
@@ -2756,6 +2788,7 @@
     },
     {
       trade: 'Masonry',
+      tid: 'masonry',
       ref: 'JIC #6',
       desc: 'Lay 6 in blocks fill all pockets GF to FF',
       impUnit: 'Yd.Sq.',
@@ -2765,6 +2798,7 @@
     },
     {
       trade: 'Masonry',
+      tid: 'masonry',
       ref: 'JIC #7',
       desc: 'Lay 6 in blocks fill all pockets FF and above',
       impUnit: 'Yd.Sq.',
@@ -2774,6 +2808,7 @@
     },
     {
       trade: 'Masonry',
+      tid: 'masonry',
       ref: 'JIC #8',
       desc: 'Lay 6 in blocks fill all pockets manholes drains gully basins',
       impUnit: 'Yd.Sq.',
@@ -2783,6 +2818,7 @@
     },
     {
       trade: 'Masonry',
+      tid: 'masonry',
       ref: 'JIC #9',
       desc: 'Lay 6 in blocks fill alternate pockets GF to FF',
       impUnit: 'Yd.Sq.',
@@ -2793,6 +2829,7 @@
     // Scaffolding (9 items)
     {
       trade: 'Scaffolding',
+      tid: 'scaffolding',
       ref: 'JIC #1',
       desc: 'Erect scaffolding up to 10 ft high unbraced',
       impUnit: 'Ft.Sq.',
@@ -2802,6 +2839,7 @@
     },
     {
       trade: 'Scaffolding',
+      tid: 'scaffolding',
       ref: 'JIC #2',
       desc: 'Erect scaffolding up to 10 ft high ties to building',
       impUnit: 'Ft.Sq.',
@@ -2811,6 +2849,7 @@
     },
     {
       trade: 'Scaffolding',
+      tid: 'scaffolding',
       ref: 'JIC #3',
       desc: 'Erect scaffolding 10 to 20 ft tied to building',
       impUnit: 'Ft.Sq.',
@@ -2820,6 +2859,7 @@
     },
     {
       trade: 'Scaffolding',
+      tid: 'scaffolding',
       ref: 'JIC #4',
       desc: 'Erect scaffolding 20 to 30 ft tied to building',
       impUnit: 'Ft.Sq.',
@@ -2829,6 +2869,7 @@
     },
     {
       trade: 'Scaffolding',
+      tid: 'scaffolding',
       ref: 'JIC #5',
       desc: 'Erect scaffolding 30 to 40 ft tied to building',
       impUnit: 'Ft.Sq.',
@@ -2838,6 +2879,7 @@
     },
     {
       trade: 'Scaffolding',
+      tid: 'scaffolding',
       ref: 'JIC #6',
       desc: 'Erect scaffolding 40 to 50 ft tied to building',
       impUnit: 'Ft.Sq.',
@@ -2847,6 +2889,7 @@
     },
     {
       trade: 'Scaffolding',
+      tid: 'scaffolding',
       ref: 'JIC #7',
       desc: 'Erect scaffolding 50 to 60 ft tied to building',
       impUnit: 'Ft.Sq.',
@@ -2856,6 +2899,7 @@
     },
     {
       trade: 'Scaffolding',
+      tid: 'scaffolding',
       ref: 'JIC #8',
       desc: 'Erect scaffolding 60 to 70 ft tied to building',
       impUnit: 'Ft.Sq.',
@@ -2865,6 +2909,7 @@
     },
     {
       trade: 'Scaffolding',
+      tid: 'scaffolding',
       ref: 'JIC #9',
       desc: 'Erect scaffolding 70 to 80 ft tied to building',
       impUnit: 'Ft.Sq.',
@@ -2875,6 +2920,7 @@
     // Tiling (9 items)
     {
       trade: 'Tiling',
+      tid: 'tiling',
       ref: 'JIC #1',
       desc: 'Terrazzo tiles lay and grout',
       impUnit: 'Yd.Sq.',
@@ -2884,6 +2930,7 @@
     },
     {
       trade: 'Tiling',
+      tid: 'tiling',
       ref: 'JIC #2',
       desc: 'Terrazzo tiles first cut',
       impUnit: 'Yd.Sq.',
@@ -2893,6 +2940,7 @@
     },
     {
       trade: 'Tiling',
+      tid: 'tiling',
       ref: 'JIC #3',
       desc: 'Terrazzo tile final cut and polish',
       impUnit: 'Yd.Sq.',
@@ -2902,6 +2950,7 @@
     },
     {
       trade: 'Tiling',
+      tid: 'tiling',
       ref: 'JIC #4',
       desc: 'Extra for terrazzo tiling to upper floors',
       impUnit: 'Yd.Sq.',
@@ -2911,6 +2960,7 @@
     },
     {
       trade: 'Tiling',
+      tid: 'tiling',
       ref: 'JIC #5',
       desc: 'Terrazzo tiles to treads 10 in wide finished',
       impUnit: 'Ft.Run',
@@ -2920,6 +2970,7 @@
     },
     {
       trade: 'Tiling',
+      tid: 'tiling',
       ref: 'JIC #6',
       desc: 'Terrazzo tiles to treads 11 to 12 in wide finished',
       impUnit: 'Ft.Run',
@@ -2929,6 +2980,7 @@
     },
     {
       trade: 'Tiling',
+      tid: 'tiling',
       ref: 'JIC #7',
       desc: 'Terrazzo tiles to riser 6 to 8 in high',
       impUnit: 'Ft.Run',
@@ -2938,6 +2990,7 @@
     },
     {
       trade: 'Tiling',
+      tid: 'tiling',
       ref: 'JIC #8',
       desc: 'Lay and grout marble tiles 12 in plus edges floors',
       impUnit: 'Yd.Sq.',
@@ -2947,6 +3000,7 @@
     },
     {
       trade: 'Tiling',
+      tid: 'tiling',
       ref: 'JIC #9',
       desc: 'Lay and grout marble tiles 12 in plus cutting walls',
       impUnit: 'Yd.Sq.',
@@ -2957,6 +3011,7 @@
     // Painting (9 items)
     {
       trade: 'Painting',
+      tid: 'painting',
       ref: 'JIC #1',
       desc: 'Emulsion paint wall one coat',
       impUnit: 'Yd.Sq.',
@@ -2966,6 +3021,7 @@
     },
     {
       trade: 'Painting',
+      tid: 'painting',
       ref: 'JIC #2',
       desc: 'Emulsion paint wall two coats',
       impUnit: 'Yd.Sq.',
@@ -2975,6 +3031,7 @@
     },
     {
       trade: 'Painting',
+      tid: 'painting',
       ref: 'JIC #3',
       desc: 'Emulsion paint pebble dash one coat',
       impUnit: 'Yd.Sq.',
@@ -2984,6 +3041,7 @@
     },
     {
       trade: 'Painting',
+      tid: 'painting',
       ref: 'JIC #4',
       desc: 'Emulsion paint pebble dash two coats',
       impUnit: 'Yd.Sq.',
@@ -2993,6 +3051,7 @@
     },
     {
       trade: 'Painting',
+      tid: 'painting',
       ref: 'JIC #5',
       desc: 'Emulsion paint cutting to line',
       impUnit: 'Ft.Run',
@@ -3002,6 +3061,7 @@
     },
     {
       trade: 'Painting',
+      tid: 'painting',
       ref: 'JIC #6',
       desc: 'Emulsion paint skirting 3 to 4 in one coat',
       impUnit: 'Ft.Run',
@@ -3011,6 +3071,7 @@
     },
     {
       trade: 'Painting',
+      tid: 'painting',
       ref: 'JIC #7',
       desc: 'Emulsion paint skirting 3 to 4 in two coats',
       impUnit: 'Ft.Run',
@@ -3020,6 +3081,7 @@
     },
     {
       trade: 'Painting',
+      tid: 'painting',
       ref: 'JIC #8',
       desc: 'Emulsion paint ceiling one coat',
       impUnit: 'Yd.Sq.',
@@ -3029,6 +3091,7 @@
     },
     {
       trade: 'Painting',
+      tid: 'painting',
       ref: 'JIC #9',
       desc: 'Emulsion paint ceiling two coats',
       impUnit: 'Yd.Sq.',
@@ -3039,6 +3102,7 @@
     // Joinery Skirtings (10 items)
     {
       trade: 'Joinery (Skirtings)',
+      tid: 'joinery',
       ref: 'JIC #1',
       desc: '1x3 skirtings bevelled top WPP',
       impUnit: 'Ft.Run',
@@ -3048,6 +3112,7 @@
     },
     {
       trade: 'Joinery (Skirtings)',
+      tid: 'joinery',
       ref: 'JIC #2',
       desc: '1x4 skirtings bevelled top WPP',
       impUnit: 'Ft.Run',
@@ -3057,6 +3122,7 @@
     },
     {
       trade: 'Joinery (Skirtings)',
+      tid: 'joinery',
       ref: 'JIC #3',
       desc: '1x6 skirtings bevelled top WPP',
       impUnit: 'Ft.Run',
@@ -3066,6 +3132,7 @@
     },
     {
       trade: 'Joinery (Skirtings)',
+      tid: 'joinery',
       ref: 'JIC #4',
       desc: '1x3 skirtings bevelled to Mah etc.',
       impUnit: 'Ft.Run',
@@ -3075,6 +3142,7 @@
     },
     {
       trade: 'Joinery (Skirtings)',
+      tid: 'joinery',
       ref: 'JIC #5',
       desc: '1x4 skirtings bevelled to Mah etc.',
       impUnit: 'Ft.Run',
@@ -3084,6 +3152,7 @@
     },
     {
       trade: 'Joinery (Skirtings)',
+      tid: 'joinery',
       ref: 'JIC #6',
       desc: '1x6 skirtings bevelled to Mah etc.',
       impUnit: 'Ft.Run',
@@ -3093,6 +3162,7 @@
     },
     {
       trade: 'Joinery (Skirtings)',
+      tid: 'joinery',
       ref: 'JIC #7',
       desc: '1x3 skirtings molded top WPP',
       impUnit: 'Ft.Run',
@@ -3102,6 +3172,7 @@
     },
     {
       trade: 'Joinery (Skirtings)',
+      tid: 'joinery',
       ref: 'JIC #8',
       desc: '1x4 skirtings molded top WPP',
       impUnit: 'Ft.Run',
@@ -3111,6 +3182,7 @@
     },
     {
       trade: 'Joinery (Skirtings)',
+      tid: 'joinery',
       ref: 'JIC #9',
       desc: '1x6 skirtings molded top WPP',
       impUnit: 'Ft.Run',
@@ -3120,6 +3192,7 @@
     },
     {
       trade: 'Joinery (Skirtings)',
+      tid: 'joinery',
       ref: 'JIC #10',
       desc: '1x3 skirtings molded top Mah etc.',
       impUnit: 'Ft.Run',
@@ -3130,6 +3203,7 @@
     // Plumbing (9 items)
     {
       trade: 'Plumbing',
+      tid: 'plumbing',
       ref: 'JIC #1',
       desc: '6 in diameter pipes',
       impUnit: 'Ft.Run',
@@ -3139,6 +3213,7 @@
     },
     {
       trade: 'Plumbing',
+      tid: 'plumbing',
       ref: 'JIC #2',
       desc: '4 in diameter pipes',
       impUnit: 'Ft.Run',
@@ -3148,6 +3223,7 @@
     },
     {
       trade: 'Plumbing',
+      tid: 'plumbing',
       ref: 'JIC #3',
       desc: '3 in diameter pipes',
       impUnit: 'Ft.Run',
@@ -3157,6 +3233,7 @@
     },
     {
       trade: 'Plumbing',
+      tid: 'plumbing',
       ref: 'JIC #4',
       desc: '2 in diameter pipes',
       impUnit: 'Ft.Run',
@@ -3166,6 +3243,7 @@
     },
     {
       trade: 'Plumbing',
+      tid: 'plumbing',
       ref: 'JIC #5',
       desc: '1.5 in diameter pipes',
       impUnit: 'Ft.Run',
@@ -3175,6 +3253,7 @@
     },
     {
       trade: 'Plumbing',
+      tid: 'plumbing',
       ref: 'JIC #6',
       desc: '1.25 in diameter pipes',
       impUnit: 'Ft.Run',
@@ -3184,6 +3263,7 @@
     },
     {
       trade: 'Plumbing',
+      tid: 'plumbing',
       ref: 'JIC #7',
       desc: '300mm 12 ft push fit pipes',
       impUnit: 'Ft.Run',
@@ -3193,6 +3273,7 @@
     },
     {
       trade: 'Plumbing',
+      tid: 'plumbing',
       ref: 'JIC #8',
       desc: '250mm 10 ft push fit pipes',
       impUnit: 'Ft.Run',
@@ -3202,6 +3283,7 @@
     },
     {
       trade: 'Plumbing',
+      tid: 'plumbing',
       ref: 'JIC #9',
       desc: '200mm 8 ft push fit pipes',
       impUnit: 'Ft.Run',
@@ -3212,6 +3294,7 @@
     // Electrical Conduit (9 items)
     {
       trade: 'Electrical (Conduit)',
+      tid: 'electrical',
       ref: 'JIC #1',
       desc: '1/2 in diameter pipe',
       impUnit: 'Ft.Run',
@@ -3221,6 +3304,7 @@
     },
     {
       trade: 'Electrical (Conduit)',
+      tid: 'electrical',
       ref: 'JIC #2',
       desc: '3/4 in diameter pipe',
       impUnit: 'Ft.Run',
@@ -3230,6 +3314,7 @@
     },
     {
       trade: 'Electrical (Conduit)',
+      tid: 'electrical',
       ref: 'JIC #3',
       desc: '1 in diameter pipe',
       impUnit: 'Ft.Run',
@@ -3239,6 +3324,7 @@
     },
     {
       trade: 'Electrical (Conduit)',
+      tid: 'electrical',
       ref: 'JIC #4',
       desc: '1-1/4 in diameter pipe',
       impUnit: 'Ft.Run',
@@ -3248,6 +3334,7 @@
     },
     {
       trade: 'Electrical (Conduit)',
+      tid: 'electrical',
       ref: 'JIC #5',
       desc: '1-1/2 in diameter pipe',
       impUnit: 'Ft.Run',
@@ -3257,6 +3344,7 @@
     },
     {
       trade: 'Electrical (Conduit)',
+      tid: 'electrical',
       ref: 'JIC #6',
       desc: '2 in diameter pipe',
       impUnit: 'Ft.Run',
@@ -3266,6 +3354,7 @@
     },
     {
       trade: 'Electrical (Conduit)',
+      tid: 'electrical',
       ref: 'JIC #7',
       desc: '1 in diameter pipe (higher rate)',
       impUnit: 'Ft.Run',
@@ -3275,6 +3364,7 @@
     },
     {
       trade: 'Electrical (Conduit)',
+      tid: 'electrical',
       ref: 'JIC #8',
       desc: '1-1/4 in diameter pipe (higher rate)',
       impUnit: 'Ft.Run',
@@ -3284,6 +3374,7 @@
     },
     {
       trade: 'Electrical (Conduit)',
+      tid: 'electrical',
       ref: 'JIC #9',
       desc: '1-1/2 in diameter pipe (higher rate)',
       impUnit: 'Ft.Run',
@@ -3294,6 +3385,7 @@
     // Welding (9 items)
     {
       trade: 'Welding',
+      tid: 'welding',
       ref: 'JIC #1',
       desc: 'Handle Mark Cut & Sand Smooth: 1/8 in thick metal using torch',
       impUnit: 'In.',
@@ -3303,6 +3395,7 @@
     },
     {
       trade: 'Welding',
+      tid: 'welding',
       ref: 'JIC #2',
       desc: 'Handle Mark Cut & Sand Smooth: 1/4 in thick metal using torch',
       impUnit: 'In.',
@@ -3312,6 +3405,7 @@
     },
     {
       trade: 'Welding',
+      tid: 'welding',
       ref: 'JIC #3',
       desc: 'Handle Mark Cut & Sand Smooth: 3/8 in thick metal using torch',
       impUnit: 'In.',
@@ -3321,6 +3415,7 @@
     },
     {
       trade: 'Welding',
+      tid: 'welding',
       ref: 'JIC #4',
       desc: 'Handle Mark Cut & Sand Smooth: 1/2 in thick metal using torch',
       impUnit: 'In.',
@@ -3330,6 +3425,7 @@
     },
     {
       trade: 'Welding',
+      tid: 'welding',
       ref: 'JIC #5',
       desc: 'Handle Mark Cut & Sand Smooth: 5/8 in thick metal using torch',
       impUnit: 'In.',
@@ -3339,6 +3435,7 @@
     },
     {
       trade: 'Welding',
+      tid: 'welding',
       ref: 'JIC #6',
       desc: 'Handle Mark Cut & Sand Smooth: 3/4 in thick metal using torch',
       impUnit: 'In.',
@@ -3348,6 +3445,7 @@
     },
     {
       trade: 'Welding',
+      tid: 'welding',
       ref: 'JIC #7',
       desc: 'Handle Mark Cut & Sand Smooth: 1 in thick metal using torch',
       impUnit: 'In.',
@@ -3357,6 +3455,7 @@
     },
     {
       trade: 'Welding',
+      tid: 'welding',
       ref: 'JIC #8',
       desc: 'Handle Mark Cut & Sand Smooth 1/16 in thick metal using CPSAW',
       impUnit: 'In.',
@@ -3366,6 +3465,7 @@
     },
     {
       trade: 'Welding',
+      tid: 'welding',
       ref: 'JIC #9',
       desc: 'Handle Mark Cut & Sand Smooth 1/8 in thick metal using CPSAW',
       impUnit: 'In.',
@@ -3375,106 +3475,106 @@
     }
   ];
   const JIC_BOOK_MAP = [
-    ['Excavation', 1, 'excav', 'standard'],
-    ['Excavation', 2, 'excav', 'asphalt'],
-    ['Excavation', 3, 'excav', 'marl'],
-    ['Excavation', 4, 'excav', 'sand'],
-    ['Excavation', 5, 'excav', 'clay-shallow'],
-    ['Excavation', 6, 'excav', 'clay-deep'],
-    ['Excavation', 7, 'excav', 'rock-hand'],
-    ['Excavation', 8, 'excav', 'rock-comp'],
-    ['Excavation', 9, 'excav', 'rock-labour'],
-    ['Carpentry (Formwork)', 1, 'formwork', 'wall-edge'],
-    ['Carpentry (Formwork)', 2, 'formwork', 'belt'],
-    ['Carpentry (Formwork)', 3, 'formwork', 'column'],
-    ['Carpentry (Formwork)', 4, 'formwork', 'beam'],
-    ['Carpentry (Formwork)', 5, 'formwork', 'susp-floor'],
-    ['Carpentry (Formwork)', 6, 'formwork', 'susp-stairs'],
-    ['Carpentry (Formwork)', 7, 'formwork', 'circular'],
-    ['Carpentry (Formwork)', 8, 'formwork', 'manhole'],
-    ['Carpentry (Formwork)', 9, 'formwork', 'new-fw'],
-    ['Steelwork', 1, 'rebar-size', '3-8'],
-    ['Steelwork', 2, 'rebar-size', '1-2'],
-    ['Steelwork', 3, 'rebar-size', '5-8'],
-    ['Steelwork', 4, 'rebar-size', '3-4'],
-    ['Steelwork', 5, 'rebar-size', '1'],
-    ['Steelwork', 6, 'fabric-mesh', '*'],
-    ['Steelwork', 7, 'stirrups', '1-4'],
-    ['Steelwork', 8, 'stirrups', '3-8'],
-    ['Steelwork', 9, 'stirrups', '3-8-lg'],
-    ['Masonry', 1, 'blockwall', 'standard'],
-    ['Masonry', 2, 'blockwall', '8in-ff'],
-    ['Masonry', 3, 'blockwall', '8in-mh'],
-    ['Masonry', 4, 'blockwall', '8in-alt-gf'],
-    ['Masonry', 5, 'blockwall', '8in-alt-ff'],
-    ['Masonry', 6, 'blockwall', '6in-gf'],
-    ['Masonry', 7, 'blockwall', '6in-ff'],
-    ['Masonry', 8, 'blockwall', '6in-mh'],
-    ['Masonry', 9, 'blockwall', '6in-alt-gf'],
-    ['Scaffolding', 1, 'scaffold', 'sc-10-unbraced'],
-    ['Scaffolding', 2, 'scaffold', 'sc-10-tied'],
-    ['Scaffolding', 3, 'scaffold', 'sc-10-20'],
-    ['Scaffolding', 4, 'scaffold', 'sc-20-30'],
-    ['Scaffolding', 5, 'scaffold', 'sc-30-40'],
-    ['Scaffolding', 6, 'scaffold', 'sc-40-50'],
-    ['Scaffolding', 7, 'scaffold', 'sc-50-60'],
-    ['Scaffolding', 8, 'scaffold', 'sc-60-70'],
-    ['Scaffolding', 9, 'scaffold', 'sc-70-80'],
-    ['Tiling', 1, 'tile', 'standard'],
-    ['Tiling', 2, 'tile', 'terrazzo-cut'],
-    ['Tiling', 3, 'tile', 'terrazzo-polish'],
-    ['Tiling', 4, 'tile', 'terrazzo-upper'],
-    ['Tiling', 5, 'tile', 'tread-10'],
-    ['Tiling', 6, 'tile', 'tread-11-12'],
-    ['Tiling', 7, 'tile', 'riser-6-8'],
-    ['Tiling', 8, 'tile', 'marble-floor'],
-    ['Tiling', 9, 'tile', 'marble-wall'],
-    ['Painting', 1, 'paint', 'wall-1coat'],
-    ['Painting', 2, 'paint', 'wall-2coat'],
-    ['Painting', 3, 'paint', 'pebble-1coat'],
-    ['Painting', 4, 'paint', 'pebble-2coat'],
-    ['Painting', 5, 'paint', 'cutting-in'],
-    ['Painting', 6, 'paint', 'skirting-1coat'],
-    ['Painting', 7, 'paint', 'skirting-2coat'],
-    ['Painting', 8, 'paint', 'ceiling-1coat'],
-    ['Painting', 9, 'paint', 'ceiling-2coat'],
-    ['Joinery (Skirtings)', 1, 'joinery', 'j-1x3-bev-wpp'],
-    ['Joinery (Skirtings)', 2, 'joinery', 'j-1x4-bev-wpp'],
-    ['Joinery (Skirtings)', 3, 'joinery', 'j-1x6-bev-wpp'],
-    ['Joinery (Skirtings)', 4, 'joinery', 'j-1x3-bev-mah'],
-    ['Joinery (Skirtings)', 5, 'joinery', 'j-1x4-bev-mah'],
-    ['Joinery (Skirtings)', 6, 'joinery', 'j-1x6-bev-mah'],
-    ['Joinery (Skirtings)', 7, 'joinery', 'j-1x3-mold-wpp'],
-    ['Joinery (Skirtings)', 8, 'joinery', 'j-1x4-mold-wpp'],
-    ['Joinery (Skirtings)', 9, 'joinery', 'j-1x6-mold-wpp'],
-    ['Joinery (Skirtings)', 10, 'joinery', 'j-1x3-mold-mah'],
-    ['Plumbing', 1, 'plumbing-pipe', 'pp-6in'],
-    ['Plumbing', 2, 'plumbing-pipe', 'pp-4in'],
-    ['Plumbing', 3, 'plumbing-pipe', 'pp-3in'],
-    ['Plumbing', 4, 'plumbing-pipe', 'pp-2in'],
-    ['Plumbing', 5, 'plumbing-pipe', 'pp-1.5in'],
-    ['Plumbing', 6, 'plumbing-pipe', 'pp-1.25in'],
-    ['Plumbing', 7, 'plumbing-pipe', 'pp-300mm'],
-    ['Plumbing', 8, 'plumbing-pipe', 'pp-250mm'],
-    ['Plumbing', 9, 'plumbing-pipe', 'pp-200mm'],
-    ['Electrical (Conduit)', 1, 'electrical-conduit', 'ec-0.5in'],
-    ['Electrical (Conduit)', 2, 'electrical-conduit', 'ec-0.75in'],
-    ['Electrical (Conduit)', 3, 'electrical-conduit', 'ec-1in-a'],
-    ['Electrical (Conduit)', 4, 'electrical-conduit', 'ec-1.25in-a'],
-    ['Electrical (Conduit)', 5, 'electrical-conduit', 'ec-1.5in-a'],
-    ['Electrical (Conduit)', 6, 'electrical-conduit', 'ec-2in'],
-    ['Electrical (Conduit)', 7, 'electrical-conduit', 'ec-1in-b'],
-    ['Electrical (Conduit)', 8, 'electrical-conduit', 'ec-1.25in-b'],
-    ['Electrical (Conduit)', 9, 'electrical-conduit', 'ec-1.5in-b'],
-    ['Welding', 1, 'welding', 'w-1/8-torch'],
-    ['Welding', 2, 'welding', 'w-1/4-torch'],
-    ['Welding', 3, 'welding', 'w-3/8-torch'],
-    ['Welding', 4, 'welding', 'w-1/2-torch'],
-    ['Welding', 5, 'welding', 'w-5/8-torch'],
-    ['Welding', 6, 'welding', 'w-3/4-torch'],
-    ['Welding', 7, 'welding', 'w-1-torch'],
-    ['Welding', 8, 'welding', 'w-1/16-cpsaw'],
-    ['Welding', 9, 'welding', 'w-1/8-cpsaw']
+    ['excavation', 1, 'excav', 'standard'],
+    ['excavation', 2, 'excav', 'asphalt'],
+    ['excavation', 3, 'excav', 'marl'],
+    ['excavation', 4, 'excav', 'sand'],
+    ['excavation', 5, 'excav', 'clay-shallow'],
+    ['excavation', 6, 'excav', 'clay-deep'],
+    ['excavation', 7, 'excav', 'rock-hand'],
+    ['excavation', 8, 'excav', 'rock-comp'],
+    ['excavation', 9, 'excav', 'rock-labour'],
+    ['carpentry', 1, 'formwork', 'wall-edge'],
+    ['carpentry', 2, 'formwork', 'belt'],
+    ['carpentry', 3, 'formwork', 'column'],
+    ['carpentry', 4, 'formwork', 'beam'],
+    ['carpentry', 5, 'formwork', 'susp-floor'],
+    ['carpentry', 6, 'formwork', 'susp-stairs'],
+    ['carpentry', 7, 'formwork', 'circular'],
+    ['carpentry', 8, 'formwork', 'manhole'],
+    ['carpentry', 9, 'formwork', 'new-fw'],
+    ['steelwork', 1, 'rebar-size', '3-8'],
+    ['steelwork', 2, 'rebar-size', '1-2'],
+    ['steelwork', 3, 'rebar-size', '5-8'],
+    ['steelwork', 4, 'rebar-size', '3-4'],
+    ['steelwork', 5, 'rebar-size', '1'],
+    ['steelwork', 6, 'fabric-mesh', '*'],
+    ['steelwork', 7, 'stirrups', '1-4'],
+    ['steelwork', 8, 'stirrups', '3-8'],
+    ['steelwork', 9, 'stirrups', '3-8-lg'],
+    ['masonry', 1, 'blockwall', 'standard'],
+    ['masonry', 2, 'blockwall', '8in-ff'],
+    ['masonry', 3, 'blockwall', '8in-mh'],
+    ['masonry', 4, 'blockwall', '8in-alt-gf'],
+    ['masonry', 5, 'blockwall', '8in-alt-ff'],
+    ['masonry', 6, 'blockwall', '6in-gf'],
+    ['masonry', 7, 'blockwall', '6in-ff'],
+    ['masonry', 8, 'blockwall', '6in-mh'],
+    ['masonry', 9, 'blockwall', '6in-alt-gf'],
+    ['scaffolding', 1, 'scaffold', 'sc-10-unbraced'],
+    ['scaffolding', 2, 'scaffold', 'sc-10-tied'],
+    ['scaffolding', 3, 'scaffold', 'sc-10-20'],
+    ['scaffolding', 4, 'scaffold', 'sc-20-30'],
+    ['scaffolding', 5, 'scaffold', 'sc-30-40'],
+    ['scaffolding', 6, 'scaffold', 'sc-40-50'],
+    ['scaffolding', 7, 'scaffold', 'sc-50-60'],
+    ['scaffolding', 8, 'scaffold', 'sc-60-70'],
+    ['scaffolding', 9, 'scaffold', 'sc-70-80'],
+    ['tiling', 1, 'tile', 'standard'],
+    ['tiling', 2, 'tile', 'terrazzo-cut'],
+    ['tiling', 3, 'tile', 'terrazzo-polish'],
+    ['tiling', 4, 'tile', 'terrazzo-upper'],
+    ['tiling', 5, 'tile', 'tread-10'],
+    ['tiling', 6, 'tile', 'tread-11-12'],
+    ['tiling', 7, 'tile', 'riser-6-8'],
+    ['tiling', 8, 'tile', 'marble-floor'],
+    ['tiling', 9, 'tile', 'marble-wall'],
+    ['painting', 1, 'paint', 'wall-1coat'],
+    ['painting', 2, 'paint', 'wall-2coat'],
+    ['painting', 3, 'paint', 'pebble-1coat'],
+    ['painting', 4, 'paint', 'pebble-2coat'],
+    ['painting', 5, 'paint', 'cutting-in'],
+    ['painting', 6, 'paint', 'skirting-1coat'],
+    ['painting', 7, 'paint', 'skirting-2coat'],
+    ['painting', 8, 'paint', 'ceiling-1coat'],
+    ['painting', 9, 'paint', 'ceiling-2coat'],
+    ['joinery', 1, 'joinery', 'j-1x3-bev-wpp'],
+    ['joinery', 2, 'joinery', 'j-1x4-bev-wpp'],
+    ['joinery', 3, 'joinery', 'j-1x6-bev-wpp'],
+    ['joinery', 4, 'joinery', 'j-1x3-bev-mah'],
+    ['joinery', 5, 'joinery', 'j-1x4-bev-mah'],
+    ['joinery', 6, 'joinery', 'j-1x6-bev-mah'],
+    ['joinery', 7, 'joinery', 'j-1x3-mold-wpp'],
+    ['joinery', 8, 'joinery', 'j-1x4-mold-wpp'],
+    ['joinery', 9, 'joinery', 'j-1x6-mold-wpp'],
+    ['joinery', 10, 'joinery', 'j-1x3-mold-mah'],
+    ['plumbing', 1, 'plumbing-pipe', 'pp-6in'],
+    ['plumbing', 2, 'plumbing-pipe', 'pp-4in'],
+    ['plumbing', 3, 'plumbing-pipe', 'pp-3in'],
+    ['plumbing', 4, 'plumbing-pipe', 'pp-2in'],
+    ['plumbing', 5, 'plumbing-pipe', 'pp-1.5in'],
+    ['plumbing', 6, 'plumbing-pipe', 'pp-1.25in'],
+    ['plumbing', 7, 'plumbing-pipe', 'pp-300mm'],
+    ['plumbing', 8, 'plumbing-pipe', 'pp-250mm'],
+    ['plumbing', 9, 'plumbing-pipe', 'pp-200mm'],
+    ['electrical', 1, 'electrical-conduit', 'ec-0.5in'],
+    ['electrical', 2, 'electrical-conduit', 'ec-0.75in'],
+    ['electrical', 3, 'electrical-conduit', 'ec-1in-a'],
+    ['electrical', 4, 'electrical-conduit', 'ec-1.25in-a'],
+    ['electrical', 5, 'electrical-conduit', 'ec-1.5in-a'],
+    ['electrical', 6, 'electrical-conduit', 'ec-2in'],
+    ['electrical', 7, 'electrical-conduit', 'ec-1in-b'],
+    ['electrical', 8, 'electrical-conduit', 'ec-1.25in-b'],
+    ['electrical', 9, 'electrical-conduit', 'ec-1.5in-b'],
+    ['welding', 1, 'welding', 'w-1/8-torch'],
+    ['welding', 2, 'welding', 'w-1/4-torch'],
+    ['welding', 3, 'welding', 'w-3/8-torch'],
+    ['welding', 4, 'welding', 'w-1/2-torch'],
+    ['welding', 5, 'welding', 'w-5/8-torch'],
+    ['welding', 6, 'welding', 'w-3/4-torch'],
+    ['welding', 7, 'welding', 'w-1-torch'],
+    ['welding', 8, 'welding', 'w-1/16-cpsaw'],
+    ['welding', 9, 'welding', 'w-1/8-cpsaw']
   ];
 
   // The shipped Jamaica book (owner 2026-10-02, Task 5). The JIC combined rate
@@ -3497,7 +3597,7 @@
     };
     JIC_RATES.forEach(function (r) {
       const m = JIC_BOOK_MAP.find(function (x) {
-        return x[0] === r.trade && x[1] === rowNo(r.ref);
+        return x[0] === r.tid && x[1] === rowNo(r.ref);
       });
       if (!m) return;
       if (!rates[m[2]]) rates[m[2]] = {};

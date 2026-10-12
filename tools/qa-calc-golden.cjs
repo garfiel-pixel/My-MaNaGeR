@@ -292,6 +292,52 @@ function absolutizeChrome(p) {
   await page.waitForTimeout(600);
 
   const near = (a, b, tol) => Math.abs((Number(a) || 0) - (Number(b) || 0)) <= tol;
+
+  // ---- The shipped JIC book payload (P2a, stable trade ids) ----------------
+  // jicBookPayload() maps JIC_RATES into the importable book by matching each
+  // row against JIC_BOOK_MAP. That match USED to be on the trade's DISPLAY
+  // LABEL, so renaming a trade - which the owner asked for - would have made
+  // every row in that trade silently stop producing a rate: no error, no
+  // thrown exception, just a book with fewer entries and lower prices. The map
+  // is keyed on a stable id now, and this gate is what proves it stays that
+  // way. It asserts the COUNT (100 mapped rows must survive the mapping) and
+  // the CONTENT (a rate is actually present for a spot-checked family),
+  // because a count alone would still pass if one trade dropped out and
+  // another gained a row.
+  {
+    const p = await page.evaluate(function () {
+      var out = window.__calcEngine.jicBookPayload();
+      var book = (out.books && out.books[0]) || {};
+      var rates = book.rates || {};
+      var fams = {};
+      var filled = 0;
+      Object.keys(rates).forEach(function (f) {
+        var v = rates[f] || {};
+        var n = Object.keys(v).length;
+        fams[f] = n;
+        filled += n;
+      });
+      return { entryCount: out.entryCount, filled: filled, fams: fams };
+    });
+    check(
+      'JIC book payload carries every mapped row (100) after the stable-id refactor',
+      p.entryCount === 100 && p.filled === 100,
+      p
+    );
+    // Spot-check a real rate so an empty-but-counted family cannot pass.
+    const spot = await page.evaluate(function () {
+      var b = window.__calcEngine.jicBookPayload().books[0];
+      return {
+        excav: (b.rates.excav || {})['standard'] || null,
+        welding: (b.rates.welding || {})['w-1-torch'] || null
+      };
+    });
+    check(
+      'JIC book payload still prices a spot-checked family (excavation + welding)',
+      !!(spot.excav && spot.excav.allIn > 0) && !!(spot.welding && spot.welding.allIn > 0),
+      spot
+    );
+  }
   let slipFlags = 0;
   for (const c of cases) {
     // Pure unit-factor cases (E3): direct asserts on rateFactor, no engine.

@@ -100,100 +100,9 @@ NEXT SESSION STARTING POINT
   Controls drawer does not yet mount #ctrl-mcp.
 - If the owner wants the marketing CTA larger, the CSS selectors are
   .hero-cta a (marketing.css) and .header-cta-desktop a.btn — both readable
-  now, no more dead-end grep.2026-09-07 (continuation)
+  now, no more dead-end grep.
 
-SESSION 2026-09-13 — WRAP-UP / HANDOFF (Buffy / Codebuff behind Freebuff)
-
-WHAT THIS SESSION ATTEMPTED
-- Pick up from the prior review handoff and continue toward completion based on the
-  owner's live directives (view-only / editor-code enforcement, sign-in UI, code re-open
-  flow, email recovery activation, policy/docs updates, QA + CI + deploy gate).
-- Diagnose the failing P10 harness in `tools/qa-client-codes.cjs` (code-entry / 
-  cloudCodeOpen path).
-
-WHAT WAS CONFIRMED / READ THIS SESSION
-- The live directive tree was re-read: CONTINUATION-DIRECTIVE.md (Parts A-E + STATUS LOG),
-  reflection.txt (prior session), and the owner's review text.
-- app.html now has the dedicated "Open with code" section (#code-entry) plus the
-  "Recently opened" section (#recent-dash) already mounted — the UI intent for the
-  code-re-open flow exists on the page.
-- The code-entry button is `<button id="code-entry-btn" data-action="cloudCodeOpen">`
-  and the recent-codes feature the prior session added to app.html's inline script is the
-  place to wire the "one-click re-open" behavior (project name + last-opened + click to
-  re-open, code stored on-device only).
-
-WHAT STILL BLOCKS THIS SESSION FROM CLAIMING DONE
-- P10 harness end-to-end: `node tools/qa-client-codes.cjs` has not been driven to a clean
-  pass this session. The harness launches its own wrangler dev on 8798, navigates Chrome
-  to /app.html, and then polls for the code-entry button + cloudCodeOpen wiring. The
-  current failure mode is NOT a simple delay issue — the page loads the button but the
-  inline script binding / delegate wiring for cloudCodeOpen is not reliably reachable at
-  click time inside the harness window. Multiple probe variants were attempted
-  (tmp/p10-probe.cjs, tmp/p10-inline-snap.cjs) and the session spent too long in diagnostic
-  loops. This is the exact item flagged in PLAN-P10-AND-REPO-AUDIT.md: the P10 loop was
-  caused by a combination of (1) CRLF vs LF noise making diffs look like full rewrites,
-  (2) a diagnostic harness that could report false negatives, (3) reading results before
-  the fetch chain could resolve, and (4) not reading the actual button wiring path before
-  patching the harness again.
-- Because P10 is the code-sharing / code-entry gate, this session did NOT proceed to claim
-  the view-only/editor-code enforcement, email recovery activation, or policy/doc updates
-  as done. They are still OPEN per the directive until the code path is verified.
-
-FILES MODIFIED THIS SESSION
-- tools/qa-client-codes.cjs — several harness patches were applied during P10 diagnosis
-  (poll targets, snapshots, wiring checks); none of them produced a clean end-to-end pass
-  before the session was wrapped. The file is in a patched-but-not-verified state.
-- tmp/p10-probe.cjs, tmp/p10-inline-snap.cjs — scratch probes, do not treat as release
-  artifacts.
-
-FILES READ / NOT TOUCHED
-- CONTINUATION-DIRECTIVE.md (read, not updated this session — must be updated by the next
-  session before claiming progress)
-- reflection.txt (this file)
-- app.html (read, not edited this session)
-
-WHAT THE NEXT SESSION MUST DO FIRST
-1. Read PLAN-P10-AND-REPO-AUDIT.md start to finish. Do not re-guess at the harness. The
-   audit already traced the cloudCodeOpen wiring end to end and concluded the app-layer
-   path itself was clean once the harness/EOL/diagnostic problems were fixed.
-2. Before any more harness patches: repair the repo's line-ending hygiene per the audit
-   (.gitattributes must cover *.js/*.cjs/*.md/*.sql/*.json/*.yml, then renormalize) so that
-   `git diff` stops lying and staged/working/HEAD can actually be read.
-3. Then patch the P10 harness ONCE with the correct wiring check, run a single clean
-   `node tools/qa-client-codes.cjs`, and read the result BEFORE touching anything else.
-4. Only after P10 passes: address the owner's outstanding items in this order
-   - Code re-open flow (recent-codes): wire the #recent-list / #recent-dash "click to
-     re-open" behavior so a code, once entered, shows project name + last-opened and opens
-     again on click, with the code stored on-device only.
-   - View-only enforcement: a view-only code must not permit Kanban drag / WBS edits / scope
-     changes; viewer scope must be read-only across the board.
-   - Editor-code display: editor codes must show the project they are for (no "unknown").
-   - Sign-in UI on app.html: remove the raw rectangular sign-in box; make the sign-in control
-     match the app's own card/chip language.
-   - Email recovery activation: the sendAuthEmail() + EMAIL_RECOVERY_ENABLED stack is built
-     but dormant; activation is owner-side (Resend + Cloudflare DNS + secrets + email
-     routing + OAuth origins), per OWNER-REVIEW.md. Owner must approve before activation.
-   - Privacy / services / field-guide / other docs: update to match the current product
-     state, including the Phase 4 contact-form sleeping task.
-   - Human audit on both themes + both mobile targets before any deploy claim.
-5. Verification gate before any deploy: node --check clean, `npm run verify` green,
-   relevant qa-*.cjs harnesses green, CI green on push, THEN deploy.
-
-VERIFICATION STATUS THIS SESSION
-- node --check and `npm run verify` were NOT re-run to a clean end-of-session state this
-  session because the P10 diagnostic loop burned the budget first. Do not assume those gates
-  are green from this session's work.
-
-HARD RULES FOR THE NEXT SESSION
-- NO emoji on any served page.
-- NO Codebuff attribution footer in any commit.
-- ALWAYS update CONTINUATION-DIRECTIVE.md STATUS LOG and write reflection.txt after every
-  meaningful work session.
-- Do not create a review zip without explicit owner permission.
-- Owner-only items (email activation, subdomain, billing, OAuth origins) stay in
-  OWNER-REVIEW.md until the owner completes them.
-
-END OF SESSION HANDOFFntinued) — marketing icon / CTA sizing pass:
+2026-09-07 (continued) — marketing icon / CTA sizing pass:
 - Enlarged marketing CTAs + comparable icons, token-driven, CSS only.
 - .btn-gold (marketing primary CTA): 16px 32px → 20px 40px, border-radius 14 → 16px, font-size 1.05 → 1.12rem (~1.25x, under 2x cap).
 - Comparable icons bumped ~1.3x–1.5x: .feat-btn .ico 18→22px, .fcard .fc-icon .ico 22→26px, .step .st-icon .ico 19→23px, guide-band eyebrow + cta icons 1.4→1.5em / 1.3→1.4em, .photo-band .pb-cta .ico +1.3em, .aud-item .ico 24→28px, .contact-tile .ct-icon .ico 21→25px, .faq summary .plus svg 14→17px, .rv-star-btn .ico 26→30px, .footer-legal .ico +1.3em.
@@ -669,6 +578,99 @@ OUTSTANDING / OWNER'S CALL
   OWNER-REVIEW subdomain note, contact-form sleeping phase, skills staleness
   read) are documented as REMAINING in the directive STATUS LOG and are
   separate follow-up tasks, not part of this review wave.
+
+SESSION 2026-09-13 — WRAP-UP / HANDOFF (Buffy / Codebuff behind Freebuff)
+
+WHAT THIS SESSION ATTEMPTED
+- Pick up from the prior review handoff and continue toward completion based on the
+  owner's live directives (view-only / editor-code enforcement, sign-in UI, code re-open
+  flow, email recovery activation, policy/docs updates, QA + CI + deploy gate).
+- Diagnose the failing P10 harness in `tools/qa-client-codes.cjs` (code-entry / 
+  cloudCodeOpen path).
+
+WHAT WAS CONFIRMED / READ THIS SESSION
+- The live directive tree was re-read: CONTINUATION-DIRECTIVE.md (Parts A-E + STATUS LOG),
+  reflection.txt (prior session), and the owner's review text.
+- app.html now has the dedicated "Open with code" section (#code-entry) plus the
+  "Recently opened" section (#recent-dash) already mounted — the UI intent for the
+  code-re-open flow exists on the page.
+- The code-entry button is `<button id="code-entry-btn" data-action="cloudCodeOpen">`
+  and the recent-codes feature the prior session added to app.html's inline script is the
+  place to wire the "one-click re-open" behavior (project name + last-opened + click to
+  re-open, code stored on-device only).
+
+WHAT STILL BLOCKS THIS SESSION FROM CLAIMING DONE
+- P10 harness end-to-end: `node tools/qa-client-codes.cjs` has not been driven to a clean
+  pass this session. The harness launches its own wrangler dev on 8798, navigates Chrome
+  to /app.html, and then polls for the code-entry button + cloudCodeOpen wiring. The
+  current failure mode is NOT a simple delay issue — the page loads the button but the
+  inline script binding / delegate wiring for cloudCodeOpen is not reliably reachable at
+  click time inside the harness window. Multiple probe variants were attempted
+  (tmp/p10-probe.cjs, tmp/p10-inline-snap.cjs) and the session spent too long in diagnostic
+  loops. This is the exact item flagged in PLAN-P10-AND-REPO-AUDIT.md: the P10 loop was
+  caused by a combination of (1) CRLF vs LF noise making diffs look like full rewrites,
+  (2) a diagnostic harness that could report false negatives, (3) reading results before
+  the fetch chain could resolve, and (4) not reading the actual button wiring path before
+  patching the harness again.
+- Because P10 is the code-sharing / code-entry gate, this session did NOT proceed to claim
+  the view-only/editor-code enforcement, email recovery activation, or policy/doc updates
+  as done. They are still OPEN per the directive until the code path is verified.
+
+FILES MODIFIED THIS SESSION
+- tools/qa-client-codes.cjs — several harness patches were applied during P10 diagnosis
+  (poll targets, snapshots, wiring checks); none of them produced a clean end-to-end pass
+  before the session was wrapped. The file is in a patched-but-not-verified state.
+- tmp/p10-probe.cjs, tmp/p10-inline-snap.cjs — scratch probes, do not treat as release
+  artifacts.
+
+FILES READ / NOT TOUCHED
+- CONTINUATION-DIRECTIVE.md (read, not updated this session — must be updated by the next
+  session before claiming progress)
+- reflection.txt (this file)
+- app.html (read, not edited this session)
+
+WHAT THE NEXT SESSION MUST DO FIRST
+1. Read PLAN-P10-AND-REPO-AUDIT.md start to finish. Do not re-guess at the harness. The
+   audit already traced the cloudCodeOpen wiring end to end and concluded the app-layer
+   path itself was clean once the harness/EOL/diagnostic problems were fixed.
+2. Before any more harness patches: repair the repo's line-ending hygiene per the audit
+   (.gitattributes must cover *.js/*.cjs/*.md/*.sql/*.json/*.yml, then renormalize) so that
+   `git diff` stops lying and staged/working/HEAD can actually be read.
+3. Then patch the P10 harness ONCE with the correct wiring check, run a single clean
+   `node tools/qa-client-codes.cjs`, and read the result BEFORE touching anything else.
+4. Only after P10 passes: address the owner's outstanding items in this order
+   - Code re-open flow (recent-codes): wire the #recent-list / #recent-dash "click to
+     re-open" behavior so a code, once entered, shows project name + last-opened and opens
+     again on click, with the code stored on-device only.
+   - View-only enforcement: a view-only code must not permit Kanban drag / WBS edits / scope
+     changes; viewer scope must be read-only across the board.
+   - Editor-code display: editor codes must show the project they are for (no "unknown").
+   - Sign-in UI on app.html: remove the raw rectangular sign-in box; make the sign-in control
+     match the app's own card/chip language.
+   - Email recovery activation: the sendAuthEmail() + EMAIL_RECOVERY_ENABLED stack is built
+     but dormant; activation is owner-side (Resend + Cloudflare DNS + secrets + email
+     routing + OAuth origins), per OWNER-REVIEW.md. Owner must approve before activation.
+   - Privacy / services / field-guide / other docs: update to match the current product
+     state, including the Phase 4 contact-form sleeping task.
+   - Human audit on both themes + both mobile targets before any deploy claim.
+5. Verification gate before any deploy: node --check clean, `npm run verify` green,
+   relevant qa-*.cjs harnesses green, CI green on push, THEN deploy.
+
+VERIFICATION STATUS THIS SESSION
+- node --check and `npm run verify` were NOT re-run to a clean end-of-session state this
+  session because the P10 diagnostic loop burned the budget first. Do not assume those gates
+  are green from this session's work.
+
+HARD RULES FOR THE NEXT SESSION
+- NO emoji on any served page.
+- NO Codebuff attribution footer in any commit.
+- ALWAYS update CONTINUATION-DIRECTIVE.md STATUS LOG and write reflection.txt after every
+  meaningful work session.
+- Do not create a review zip without explicit owner permission.
+- Owner-only items (email activation, subdomain, billing, OAuth origins) stay in
+  OWNER-REVIEW.md until the owner completes them.
+
+END OF SESSION HANDOFF
 
 SESSION 2026-09-14 — POST-MORTEM (health check + hero roadmap + Google review fixes + contact form)
 
@@ -1896,6 +1898,7 @@ SESSION END STATE
 - Documented in CONTINUATION-DIRECTIVE.md STATUS LOG and here.
 - No commit. No deploy. Local preview server on 8765 was inspection-only.
 - Live origin still serves the pre-session dist/marketing.min.css.
+
 # SESSION 2026-10-09 — DARK-MODE CLOUD LOAD BUTTON SOFTENED (Buffy / Codebuff behind Freebuff)
 
 ## WHAT THIS SESSION DID
@@ -1954,3 +1957,12 @@ SESSION END STATE
 - If you come back to this directory and want the one-line summary: I softened the app page's dark-mode cloud "Load" button so it is a low-presence dark hairline at rest and only shows gray on hover, with light theme untouched. I stopped after local static gates because I was looping on a useless minified-CSS grep instead of doing the one real remaining verification: rebuild CSS and confirm the new rule is in the served artifact.
 - The concrete next action, if someone picks this up: run the CSS build, read back the rule in dist, then commit/push/deploy and do the live smoke on the app page in dark mode.
 - If you instead want to treat the session as "done as far as I can here," then what is left is exactly: build CSS, prove the rule is in dist, then ship. Nothing else in this session is unresolved.
+
+CLOSED OUT (2026-10-09, same session, commit 82fbd3b): the build this entry
+calls pending WAS run before that commit landed - node build.js --css rebuilt
+dist/mmgr.min.css and the two body.dark-mode.db-page .db-project .btn-g rules
+(rest + hover) are present in the rebuilt artifact, read back rather than
+selector-grepped. sw.js CACHE went mmgr-shell-v396 -> mmgr-shell-v397 in the
+same commit, which carried css/mmgr.css + sw.js + this entry (dist/ is
+gitignored, so the rebuilt CSS is not tracked). The "build + read back" step
+above is DONE; commit/push/deploy of the rule follow the standing ship order.

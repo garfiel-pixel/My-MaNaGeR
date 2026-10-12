@@ -852,47 +852,47 @@
       variants: [
         {
           id: 'w-1/8-torch',
-          label: '1/8 in thick metal using torch (JIC Welding #1)',
+          label: 'Handle, mark, cut & sand smooth 1/8 in thick metal, torch (JIC Welding #1)',
           rate: { mat: 50, lab: 0 }
         },
         {
           id: 'w-1/4-torch',
-          label: '1/4 in thick metal using torch (JIC #2)',
+          label: 'Handle, mark, cut & sand smooth 1/4 in thick metal, torch (JIC #2)',
           rate: { mat: 64, lab: 0 }
         },
         {
           id: 'w-3/8-torch',
-          label: '3/8 in thick metal using torch (JIC #3)',
+          label: 'Handle, mark, cut & sand smooth 3/8 in thick metal, torch (JIC #3)',
           rate: { mat: 70, lab: 0 }
         },
         {
           id: 'w-1/2-torch',
-          label: '1/2 in thick metal using torch (JIC #4)',
+          label: 'Handle, mark, cut & sand smooth 1/2 in thick metal, torch (JIC #4)',
           rate: { mat: 78, lab: 0 }
         },
         {
           id: 'w-5/8-torch',
-          label: '5/8 in thick metal using torch (JIC #5)',
+          label: 'Handle, mark, cut & sand smooth 5/8 in thick metal, torch (JIC #5)',
           rate: { mat: 88, lab: 0 }
         },
         {
           id: 'w-3/4-torch',
-          label: '3/4 in thick metal using torch (JIC #6)',
+          label: 'Handle, mark, cut & sand smooth 3/4 in thick metal, torch (JIC #6)',
           rate: { mat: 97, lab: 0 }
         },
         {
           id: 'w-1-torch',
-          label: '1 in thick metal using torch (JIC #7)',
+          label: 'Handle, mark, cut & sand smooth 1 in thick metal, torch (JIC #7)',
           rate: { mat: 117, lab: 0 }
         },
         {
           id: 'w-1/16-cpsaw',
-          label: '1/16 in thick metal using CPSAW (JIC #8)',
+          label: 'Handle, mark, cut & sand smooth 1/16 in thick metal, CPSAW (JIC #8)',
           rate: { mat: 25, lab: 0 }
         },
         {
           id: 'w-1/8-cpsaw',
-          label: '1/8 in thick metal using CPSAW (JIC #9)',
+          label: 'Handle, mark, cut & sand smooth 1/8 in thick metal, CPSAW (JIC #9)',
           rate: { mat: 39, lab: 0 }
         }
       ]
@@ -2449,7 +2449,7 @@
   }
   // ---- JIC 2025-2027 rate book card (owner 2026-10-02) ----
   // Shows the full Jamaica rate book to the user in a modal-style card with
-  // imperial/metric toggle. The JIC_RATES data carries all 90 line items from
+  // imperial/metric toggle. The JIC_RATES data carries all 100 line items from
   // the official JIC 2025-2027 book (TRU Construction Estimator, all amounts JMD).
   // OWNER 2026-10-02: the year span the JIC book governs lives in ONE constant.
   // The popup title, the imported book's name and the CSV/documents all read it,
@@ -2669,11 +2669,17 @@
     {
       trade: 'Steelwork',
       ref: 'JIC #6',
+      // OWNER 2026-10-12: the metric figure used to be 276, which is the
+      // imperial 125 multiplied by the pounds-to-kilograms factor - a unit
+      // mix-up copied off the source page. Every other per-yd2 row in the book
+      // converts at 125 / 0.83612736 = 149, so metric mesh was priced about 85%
+      // too high. The conversion gate in tools/qa-calc-golden.cjs now checks
+      // this band on every row, so it cannot drift back.
       desc: 'Fabric',
       impUnit: 'Yd.Sq.',
       impRate: 125,
       metUnit: 'm\u00B2',
-      metRate: 276
+      metRate: 149
     },
     {
       trade: 'Steelwork',
@@ -3289,7 +3295,7 @@
     {
       trade: 'Welding',
       ref: 'JIC #1',
-      desc: '1/8 in thick metal using torch',
+      desc: 'Handle Mark Cut & Sand Smooth: 1/8 in thick metal using torch',
       impUnit: 'In.',
       impRate: 50,
       metUnit: '100mm',
@@ -3298,7 +3304,7 @@
     {
       trade: 'Welding',
       ref: 'JIC #2',
-      desc: '1/4 in thick metal using torch',
+      desc: 'Handle Mark Cut & Sand Smooth: 1/4 in thick metal using torch',
       impUnit: 'In.',
       impRate: 64,
       metUnit: '100mm',
@@ -3307,7 +3313,7 @@
     {
       trade: 'Welding',
       ref: 'JIC #3',
-      desc: '3/8 in thick metal using torch',
+      desc: 'Handle Mark Cut & Sand Smooth: 3/8 in thick metal using torch',
       impUnit: 'In.',
       impRate: 70,
       metUnit: '100mm',
@@ -3316,7 +3322,7 @@
     {
       trade: 'Welding',
       ref: 'JIC #4',
-      desc: '1/2 in thick metal using torch',
+      desc: 'Handle Mark Cut & Sand Smooth: 1/2 in thick metal using torch',
       impUnit: 'In.',
       impRate: 78,
       metUnit: '100mm',
@@ -3325,7 +3331,7 @@
     {
       trade: 'Welding',
       ref: 'JIC #5',
-      desc: '5/8 in thick metal using torch',
+      desc: 'Handle Mark Cut & Sand Smooth: 5/8 in thick metal using torch',
       impUnit: 'In.',
       impRate: 88,
       metUnit: '100mm',
@@ -3334,7 +3340,7 @@
     {
       trade: 'Welding',
       ref: 'JIC #6',
-      desc: '3/4 in thick metal using torch',
+      desc: 'Handle Mark Cut & Sand Smooth: 3/4 in thick metal using torch',
       impUnit: 'In.',
       impRate: 97,
       metUnit: '100mm',
@@ -3343,7 +3349,7 @@
     {
       trade: 'Welding',
       ref: 'JIC #7',
-      desc: '1 in thick metal using torch',
+      desc: 'Handle Mark Cut & Sand Smooth: 1 in thick metal using torch',
       impUnit: 'In.',
       impRate: 117,
       metUnit: '100mm',
@@ -3352,7 +3358,7 @@
     {
       trade: 'Welding',
       ref: 'JIC #8',
-      desc: '1/16 in thick metal using CPSAW',
+      desc: 'Handle Mark Cut & Sand Smooth 1/16 in thick metal using CPSAW',
       impUnit: 'In.',
       impRate: 25,
       metUnit: '100mm',
@@ -3361,7 +3367,7 @@
     {
       trade: 'Welding',
       ref: 'JIC #9',
-      desc: '1/8 in thick metal using CPSAW',
+      desc: 'Handle Mark Cut & Sand Smooth 1/8 in thick metal using CPSAW',
       impUnit: 'In.',
       impRate: 39,
       metUnit: '100mm',

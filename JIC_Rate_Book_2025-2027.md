@@ -57,7 +57,7 @@
 | Steelwork #3 | 5/8" mild steel rebar | Lb. | 30.00 | Kg. | 67.00 |
 | Steelwork #4 | 3/4" mild steel rebar | Lb. | 30.00 | Kg. | 67.00 |
 | Steelwork #5 | 1" mild steel rebar | Lb. | 30.00 | Kg. | 67.00 |
-| Steelwork #6 | Fabric | Yd.Sq. | 125.00 | m² | 276.00 |
+| Steelwork #6 | Fabric | Yd.Sq. | 125.00 | m² | 149.00 |
 | Steelwork #7 | 1/4" stirrups | Doz. | 699.00 | Doz. | 699.00 |
 | Steelwork #8 | 3/8" stirrups | Doz. | 734.00 | Doz. | 734.00 |
 | Steelwork #9 | 3/8" stirrups (large, > 6' girth) | Doz. | 917.00 | Doz. | 917.00 |
@@ -169,15 +169,15 @@ Unit is per inch (imperial) and per 100mm (metric). Task for all items: *Handle,
 
 | Ref | Description | Imp. Unit | Imp. Rate (JMD) | Met. Unit | Met. Rate (JMD) |
 |---|---|---|---:|---|---:|
-| Welding #1 | 1/8" thick metal, using torch | In. | 50.00 | 100mm | 198.00 |
-| Welding #2 | 1/4" thick metal, using torch | In. | 64.00 | 100mm | 251.00 |
-| Welding #3 | 3/8" thick metal, using torch | In. | 70.00 | 100mm | 276.00 |
-| Welding #4 | 1/2" thick metal, using torch | In. | 78.00 | 100mm | 306.00 |
-| Welding #5 | 5/8" thick metal, using torch | In. | 88.00 | 100mm | 345.00 |
-| Welding #6 | 3/4" thick metal, using torch | In. | 97.00 | 100mm | 383.00 |
-| Welding #7 | 1" thick metal, using torch | In. | 117.00 | 100mm | 460.00 |
-| Welding #8 | 1/16" thick metal, using CPSAW | In. | 25.00 | 100mm | 99.00 |
-| Welding #9 | 1/8" thick metal, using CPSAW | In. | 39.00 | 100mm | 153.00 |
+| Welding #1 | Handle Mark Cut & Sand Smooth: 1/8" thick metal, using torch | In. | 50.00 | 100mm | 198.00 |
+| Welding #2 | Handle Mark Cut & Sand Smooth: 1/4" thick metal, using torch | In. | 64.00 | 100mm | 251.00 |
+| Welding #3 | Handle Mark Cut & Sand Smooth: 3/8" thick metal, using torch | In. | 70.00 | 100mm | 276.00 |
+| Welding #4 | Handle Mark Cut & Sand Smooth: 1/2" thick metal, using torch | In. | 78.00 | 100mm | 306.00 |
+| Welding #5 | Handle Mark Cut & Sand Smooth: 5/8" thick metal, using torch | In. | 88.00 | 100mm | 345.00 |
+| Welding #6 | Handle Mark Cut & Sand Smooth: 3/4" thick metal, using torch | In. | 97.00 | 100mm | 383.00 |
+| Welding #7 | Handle Mark Cut & Sand Smooth: 1" thick metal, using torch | In. | 117.00 | 100mm | 460.00 |
+| Welding #8 | Handle Mark Cut & Sand Smooth 1/16" thick metal, using CPSAW | In. | 25.00 | 100mm | 99.00 |
+| Welding #9 | Handle Mark Cut & Sand Smooth 1/8" thick metal, using CPSAW | In. | 39.00 | 100mm | 153.00 |
 
 ---
 
@@ -195,4 +195,4 @@ Unit is per inch (imperial) and per 100mm (metric). Task for all items: *Handle,
 | WPP | As printed in source |
 | CPSAW | As printed in source |
 
-*Source: TRU Construction Estimator — JIC Rate Book 2025–2027 (6 pages, 90 line items across 11 trades).*
+*Source: TRU Construction Estimator — JIC Rate Book 2025–2027 (6 pages, 100 line items across 11 trades).*

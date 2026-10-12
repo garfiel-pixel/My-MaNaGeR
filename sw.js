@@ -17,8 +17,24 @@
    v382 - full-bleed marketing canvas, 7-big-dot rail with generated
            small dots, contact tile phone overflow, guide sidebar spacing
    ============================================================ */
-const CACHE = 'mmgr-shell-v408';
+const CACHE = 'mmgr-shell-v409';
 
+// v409 - RATE-BOOK CORRECTIONS (owner 2026-10-12). Three fixes to the shipped
+// JIC book, each with a permanent gate behind it so it cannot drift back.
+// (1) FABRIC WAS PRICED 85% HIGH: Steelwork #6 carried 276 per m2 where 125 per
+// yd2 converts to 149 - the imperial figure had been multiplied by the
+// pounds-to-kilograms factor instead of the square-yard factor. Now 149, and
+// tools/qa-calc-golden.cjs checks every row against the documented conversion
+// rules at a 6% band (measured worst case on the fixed table is 4.99%) plus a
+// named assertion on this exact row. (2) THE WELDING ROWS WERE MISLABELLED:
+// Welding #1-#9 priced cutting and smoothing, not welding, and were shown as
+// bare size strings. The rate table, the work-item picker and the shipped book
+// now carry the source's full description ("Handle Mark Cut & Sand Smooth: ..."
+// ) so nobody reads a cutting rate as a weld rate. (3) THE BOOK FOOTER CLAIMED
+// 90 LINE ITEMS over a 100-row table; the gate now counts the rows out of the
+// file and requires the footer to agree, so a miscount fails the build.
+// js/calculator-page.js is a SHELL asset, hence this bump.
+//
 // v408 - PDFS ARE READ ON THE DEVICE (owner 2026-10-11: "PDF reading is not
 // available on this device yet. Export it as CSV or TXT and attach that."). The
 // panel refused every PDF because readAsText on a container only yields binary

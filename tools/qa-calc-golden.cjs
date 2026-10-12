@@ -84,6 +84,161 @@ function absolutizeChrome(p) {
   const cases = book.cases || [];
   check('golden case file carries cases (>= 40)', cases.length >= 40, cases.length);
 
+  // ---- Conversion band (owner 2026-10-12, "Fix the wrong Fabric metric rate") --
+  // Every metric rate in the shipped book has to sit inside the rounding band of
+  // its imperial rate, converted by the rules in JIC_Rate_Book_2025-2027_FULL.md
+  // section 6. This is STATIC - it reads the source table out of
+  // js/calculator-page.js - so it runs before any browser boots and a boot
+  // failure cannot skip it.
+  //
+  // It exists because Steelwork #6 Fabric shipped 276 per m2 where 125 per yd2
+  // converts to 149: the imperial figure had been multiplied by the
+  // pounds-to-kilograms factor instead of the square-yard factor, so metric mesh
+  // was priced about 85% high. Measured on the fixed table the worst row is now
+  // 4.99% (Painting #5/#6 - a rate under JMD 20 where the source's own dollar
+  // rounding is worth several percent), so the band is 6%: wide enough to accept
+  // every honest row, far tighter than the 85% fault it exists to catch.
+  {
+    const src = fs.readFileSync(path.join(ROOT, 'js', 'calculator-page.js'), 'utf8');
+    const at = src.indexOf('const JIC_RATES = [');
+    const open = at < 0 ? -1 : src.indexOf('[', at);
+    // Bracket scan that skips strings, so a '[' inside a description cannot end
+    // the slice early.
+    let depth = 0,
+      end = -1,
+      quote = '';
+    for (let i = open; i >= 0 && i < src.length; i++) {
+      const ch = src[i];
+      if (quote) {
+        if (ch === '\\') {
+          i++;
+        } else if (ch === quote) {
+          quote = '';
+        }
+        continue;
+      }
+      if (ch === "'" || ch === '"' || ch === '`') {
+        quote = ch;
+      } else if (ch === '[') {
+        depth++;
+      } else if (ch === ']' && --depth === 0) {
+        end = i;
+        break;
+      }
+    }
+    const slice = end < 0 ? '' : src.slice(open, end + 1);
+    const ROW =
+      /trade:\s*'([^']*)'[\s\S]*?ref:\s*'([^']*)'[\s\S]*?impUnit:\s*'([^']*)'[\s\S]*?impRate:\s*([\d.]+)[\s\S]*?metRate:\s*([\d.]+)/g;
+    const table = [];
+    let m;
+    while ((m = ROW.exec(slice))) {
+      table.push({
+        trade: m[1],
+        ref: m[2],
+        impUnit: m[3],
+        impRate: Number(m[4]),
+        metRate: Number(m[5])
+      });
+    }
+    // Parsed count must equal the declared count, so a future row that parses
+    // differently is a FAILURE rather than a silently skipped row.
+    const declared = (slice.match(/trade:\s*'/g) || []).length;
+    check(
+      'rate table parsed out of js/calculator-page.js (every row, none silently skipped)',
+      table.length >= 100 && table.length === declared,
+      { parsed: table.length, declared }
+    );
+    // The documented conversion rules (FULL doc section 6). Units in PLAIN
+    // convert at 1.0; any unit in neither list means a NEW basis was added and
+    // this gate must be taught it rather than quietly passed.
+    const RULES = {
+      'Yd.Sq.': 1 / 0.83612736,
+      'Yd.Cu.': 1 / 0.764554858,
+      'Ft.Run': 1 / 0.3048,
+      'Ft.Sq.': 1 / 0.09290304,
+      'Lb.': 1 / 0.45359237,
+      'In.': 100 / 25.4
+    };
+    const PLAIN = ['Doz.', 'No.', 'Each', 'Ea.', 'Load'];
+    const unknown = table.filter(
+      r => RULES[r.impUnit] === undefined && PLAIN.indexOf(r.impUnit) === -1
+    );
+    check(
+      'every imperial unit in the rate table has a documented conversion rule',
+      unknown.length === 0,
+      unknown.map(r => r.trade + ' ' + r.ref + ' (' + r.impUnit + ')').slice(0, 10)
+    );
+    const far = [];
+    for (const r of table) {
+      const f = RULES[r.impUnit];
+      const exp = f === undefined ? r.impRate : r.impRate * f;
+      if (!exp) {
+        continue;
+      }
+      const pct = (Math.abs(r.metRate - exp) / exp) * 100;
+      if (pct > 6) {
+        far.push({
+          row: r.trade + ' ' + r.ref,
+          imp: r.impRate,
+          met: r.metRate,
+          exp: +exp.toFixed(2),
+          pct: +pct.toFixed(1)
+        });
+      }
+    }
+    check(
+      'every metric rate sits inside the 6% conversion band (JIC conversion gate)',
+      far.length === 0,
+      far.slice(0, 10)
+    );
+    // Named row, because a future editor is more likely to widen the band than
+    // to notice this one number in it.
+    const fab = table.find(r => r.trade === 'Steelwork' && /#6\b/.test(r.ref));
+    check(
+      'Steelwork #6 Fabric metric rate is the converted 149, not the unit-mixed 276',
+      !!fab && fab.metRate === 149,
+      fab
+    );
+
+    // The shipped book's own footer (owner finding 5, "the footer is wrong"). It
+    // claimed 90 line items over a 100-row table. Rather than trust the number
+    // that is printed there, count the data rows out of the file and require
+    // the footer to agree - and require it to agree with the app's table too,
+    // because a book that drifts from the calculator is worse than one that is
+    // merely miscounted.
+    const md = fs.readFileSync(path.join(ROOT, 'JIC_Rate_Book_2025-2027.md'), 'utf8');
+    // Data rows live under a '## Trade' heading, stop at the next heading or
+    // the Unit Key, and never carry a 'Ref' header.
+    let inKey = false,
+      mdRows = 0;
+    for (const line of md.split(/\r?\n/)) {
+      if (/^### Unit Key/.test(line)) {
+        inKey = true;
+        continue;
+      }
+      if (/^---/.test(line)) {
+        inKey = false;
+      }
+      if (/^## /.test(line)) {
+        continue;
+      }
+      if (!inKey && /^\| [A-Za-z0-9]/.test(line) && !/^\| Ref /.test(line)) {
+        mdRows++;
+      }
+    }
+    const footer = /\((\d+) pages?, (\d+) line items? across (\d+) trades?\)/.exec(md);
+    check(
+      'shipped book footer states the row count its table actually holds',
+      !!footer && Number(footer[2]) === mdRows,
+      { printed: footer ? footer[2] : null, actual: mdRows }
+    );
+    check(
+      'shipped book and the calculator table carry the same rows',
+      !!footer && mdRows === table.length && Number(footer[3]) === 11,
+      { book: mdRows, app: table.length, trades: footer ? footer[3] : null }
+    );
+  }
+
   if (!process.env.BASE) {
     let srv = null;
     try {

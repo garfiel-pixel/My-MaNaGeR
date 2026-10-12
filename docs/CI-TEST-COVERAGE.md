@@ -105,7 +105,7 @@ or too niche for the deploy gate), **TRIAGE** (known-drifting, findings listed),
 
 | Harness | Status | Covers |
 |---|---|---|
-| `qa-full.cjs` | CI | the full gap-list battery incl. cloud, readonly scope, MCP (181/181) |
+| `qa-full.cjs` | CI | the full gap-list battery incl. cloud, readonly scope, MCP, project search (183/183) |
 | `qa-ai.cjs` | CI | AI tiers: local engine, vault key, relay-first ladder, presets (green) |
 | `qa-v11.cjs` | CI | v11 feature battery: flags, imports, readonly gating (green) |
 | `qa-p1.cjs` | CI | P1 core battery: theme/crosshair persistence, kanban, cascade |

@@ -2196,6 +2196,73 @@ async function check(name, expr, expected, hint) {
     return {val: modalOpen && !local, modalOpen: modalOpen, local: local};
   })()`
   );
+  // ---- project search actually FILTERS (owner 2026-10-12) ----
+  // Regression net for a SILENT NO-OP: the search input handler used to be
+  // bound from an inline script that ran while the parser was still ABOVE the
+  // #ps-modal markup, so getElementById returned null, if(input) skipped the
+  // binding, and typing never called renderProjectResults - the owner typed a
+  // name and got the full list every time, with no error anywhere. The handler
+  // is document-delegated now. This gate dispatches a REAL bubbling input
+  // event, so any revert to a binding that never attaches fails here rather
+  // than in the owner's hands.
+  // The snapshot MUST live in localStorage, not on window: the gate below
+  // navigates to app.html, and a navigation replaces the whole window, so a
+  // window.__qaPsPrev captured here would be undefined on the far side and
+  // the restore would silently DELETE mmgr_admin_projects - starving 70j of
+  // the qa-local record isLocallyOwned() needs (cost one red run to find).
+  await ev(
+    `(function(){
+    var prev = localStorage.getItem('mmgr_admin_projects');
+    localStorage.setItem('mmgr_qa_ps_prev', (prev === null || prev === undefined) ? '__QA_ABSENT__' : prev);
+    localStorage.setItem('mmgr_admin_projects', JSON.stringify([
+      {id:'qa-s-alpha', title:'Alpha Hotel Renovation', description:'a hotel'},
+      {id:'qa-s-beta', title:'Beta Office Fitout', description:'an office'},
+      {id:'qa-s-gamma', title:'Gamma House Extension', description:'a house'}
+    ]));return true;})()`
+  );
+  await send('Page.navigate', { url: BASE + '/app.html' });
+  await delay(2500);
+  await check(
+    '70k v300 search: typing in the project search filters the list (was a silent no-op)',
+    `(function(){
+    var inp = document.getElementById('ps-input');
+    var list = document.getElementById('ps-list');
+    if(!inp || !list) return {val:false, why: inp ? 'missing #ps-list' : 'missing #ps-input'};
+    if(typeof openProjectSearch === 'function') openProjectSearch();
+    else { var b = document.getElementById('db-search-btn'); if(b) b.click(); }
+    var modal = document.getElementById('ps-modal');
+    var opened = !!(modal && modal.classList.contains('open'));
+    var type = function(v){
+      inp.value = v;
+      // A REAL bubbling input event: only a document-level delegated handler
+      // sees this, which is exactly the wiring this gate must prove.
+      inp.dispatchEvent(new Event('input', {bubbles:true}));
+      return list.querySelectorAll('.ps-item').length;
+    };
+    var all = type('');
+    var one = type('gamma');
+    var titles = Array.prototype.map.call(list.querySelectorAll('.ps-item-title'), function(n){ return n.textContent; });
+    var foundGamma = titles.some(function(t){ return t.indexOf('Gamma') > -1; });
+    var none = type('zzzznotaproject');
+    var emptyMsg = !!list.querySelector('.ps-empty');
+    return {val: opened && all >= 3 && one >= 1 && one < all && foundGamma && none === 0 && emptyMsg,
+            opened: opened, all: all, one: one, foundGamma: foundGamma, none: none, emptyMsg: emptyMsg};
+    })()`
+  );
+  await check(
+    '70k-restore: the project list snapshot is put back for the gates below',
+    `(function(){var p = localStorage.getItem('mmgr_qa_ps_prev');
+    // Marker missing means the snapshot above never ran - touch nothing.
+    if(p === null || p === undefined) return {val:false, why:'no snapshot to restore'};
+    if(p === '__QA_ABSENT__') localStorage.removeItem('mmgr_admin_projects');
+    else localStorage.setItem('mmgr_admin_projects', p);
+    localStorage.removeItem('mmgr_qa_ps_prev');
+    var now = localStorage.getItem('mmgr_admin_projects');
+    // Exact round-trip: the list must come back byte-for-byte, which is what
+    // 70j relies on (isLocallyOwned reads this very key).
+    var same = (p === '__QA_ABSENT__') ? (now === null) : (now === p);
+    return {val: same, same: same};})()`
+  );
   // Deep-link: project.html?id=qa-local with NO unlock flag set must pass the
   // gate purely because this device owns the project (mmgr_app checkAccess).
   await ev(

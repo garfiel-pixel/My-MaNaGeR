@@ -1614,8 +1614,15 @@ function renderProjectResults(query){
 }
 // Search input event
 (function() {
-  var input = document.getElementById('ps-input');
-  if (input) input.addEventListener('input', function() { renderProjectResults(this.value); });
+  // OWNER BUG 2026-10-12 (project search "does nothing"): this used to bind
+  // directly on #ps-input. This inline script runs while the parser is still
+  // ABOVE the search modal markup, so getElementById returned null, the
+  // if(input) guard skipped the binding silently, and typing never called
+  // renderProjectResults. Delegate from document instead - the exact pattern
+  // the .ps-item click below already uses - so parse order can never break it.
+  document.addEventListener('input', function(e) {
+    if (e.target && e.target.id === 'ps-input') renderProjectResults(e.target.value);
+  });
   // Click on result opens the project
   document.addEventListener('click', function(e) {
     var item = e.target.closest('.ps-item');

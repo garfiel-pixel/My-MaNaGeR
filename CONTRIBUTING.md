@@ -86,3 +86,73 @@ the same pattern:
 The static gate `node tools/verify-render-exports.cjs` (wired into `npm run
 verify`) catches any function that was extracted but never got a wrapper. Run
 it before committing any extraction-style refactor.
+
+Billing/cancel WIP handoff (2026-10-11)
+
+The billing/cancel work was mid-flight and NOT landed when the session was handed off.
+What is already in the tree (do not redo): src/mcp/server.js + serve.cjs already
+have MCP_PREMIUM_REFUSAL + the ownerTier premium gate on tools/call, plus
+get_table + run_monte_carlo + apply_changes queued as a review proposal; the B4
+MCP refusal/unlock harnesses (tools/qa-mcp-live-e2e.cjs A2b/A2c and
+tools/qa-engine-parity.cjs B3b-B3f) are already in the file; js/mmgr-billing-manage.js
+already has renderDone(plan, data) wired to render alreadyScheduled as
+"Cancelling on <date>".
+
+CORRECTED by the audit session (2026-10-12): the serve.cjs half of the claim above
+is FALSE - serve.cjs has MCP_AUTH_REFUSAL but no MCP_PREMIUM_REFUSAL, and it cannot
+have one: its /api/mcp route answers from canned fixtures (MCP_TASKS/MCP_RISKS)
+with no owner row or subscription table to gate on. The gate is Worker-only and is
+proven against the real Worker by qa-api-keys P0d and qa-mcp-live-e2e A2b. The
+dev stub now carries a comment saying so, so the next session does not re-chase it.
+
+What is WIP/broken: src/billing.js handleBillingCancel was rewritten but still has
+a variable-scope bug in the failure-path error-code handling. code is derived per
+branch (404, 400/409, 401/403) but not reliably visible to the shared failure
+catch block in all cases; the existing tests are still failing for that reason.
+
+Root cause of the edit loop (record this so the next session does NOT repeat it):
+the function already has multiple status branches (404, 400/409, 401/403), each
+of which derives/assigns code, PLUS a shared failure path after the fetch that
+also references code. Repeated attempts tried to make ONE variable visible
+everywhere by declaring it at different scopes (let in branches, var at function
+scope, re-derived before branches, re-derived after branches). Each variant
+either left code unset for the branch that reaches the catch, or polluted code
+across branches (a 404 path inheriting a 400's code, producing wrong
+/Paddle HTTP .../ assertion failures).
+
+Clean fix for the next session:
+- Do not use one live code variable shared across branches.
+- In each failure branch, compute the code string locally from the already-available
+  err payload (e.g. const code = err && err.code ? String(err.code) : '';), then pass
+  it explicitly into the shared failure message.
+- The shared failure message must receive code as an explicit argument, not read a
+  variable that may be out of scope.
+- Keep rule 5: key on the Paddle error.code, never the HTTP status.
+
+Tests still needed:
+- Add the positive cases the directive asked for against handleBillingCancel with a
+  fake D1 + fake Paddle fetch + a genuinely signed session:
+  - locked + scheduled cancel in body (400, subscription_locked_pending_changes) ->
+    ok:true, alreadyScheduled:true, cancelAt;
+  - locked + scheduled pause in body -> error naming the pause date;
+  - locked + fetch returns no usable scheduled change -> error quoting the Paddle code;
+  - wrong/missing word -> 400 confirm_required, Paddle never called;
+  - include BOTH a 400 locked case and a 409 locked case to prove the code is what
+    matters.
+- The reworded non-lock 400 test must still pass.
+
+RESOLVED (audit session 2026-10-12): the scope bug is fixed at its root -
+`var code`/`var err` are declared BEFORE the branch that fills them, so the 400/409
+and 401/403 branches stop throwing ReferenceError and the outer catch no longer
+reports "could not reach Paddle" for a real HTTP 403. A second fault in the same
+edit was fixed too: `let hint` had been glued to the end of a comment line, so the
+declaration was swallowed by the comment and never existed. The untested pause
+branch now has a test (scheduled pause in the body -> 403 naming the date).
+Evidence: npm test 72/72 (billing file 38/38), qa-billing-cancel G1 PASS against
+wrangler dev, qa-api-keys ALL, qa-engine-parity 19/19, qa-mcp-live-e2e 15/15
+(that harness had its own fault - a TDZ crash on `{ km }` plus a vacuous check()
+that would have passed unconditionally; both fixed).
+
+Do NOT touch under tmp/. Do NOT create new harness files. Do NOT touch Paddle
+infra. Full directive lives under DIRECTIVE: CANCEL MUST ACTUALLY CANCEL + FINISH
+B4 (pasted into CONTRIBUTING.md).

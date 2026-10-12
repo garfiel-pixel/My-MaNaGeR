@@ -747,36 +747,104 @@ export async function handleBillingCancel(request, env) {
     });
     if (!res.ok) {
       let detail = '';
+      // Per-rule-5: the error code is derived per-branch from the caught
+      // error's payload (err), and BOTH live in function scope so the outer
+      // catch can read them whichever branch ran. They must be declared
+      // BEFORE the branches: `err` used to be block-scoped to this try, so the
+      // 400/409 and 401/403 branches threw a ReferenceError and the outer
+      // catch reported "could not reach Paddle" for a real HTTP 403; and
+      // `var code = ''` used to sit AFTER the capture below and wipe it.
+      var code = '';
+      var err = {};
       try {
-        const err = (data && data.error) || {};
+        err = (data && data.error) || {};
         const first = (err.errors && err.errors[0]) || {};
         detail = String(first.detail || err.detail || err.code || '').slice(0, 300);
         if (err.code && detail.indexOf(String(err.code)) === -1)
           detail = (detail + ' [' + String(err.code) + ']').slice(0, 340);
+        code = code || err.code;
       } catch (e) {
         /* keep detail empty */
       }
-      // Mirror the checkout path's environment mismatch explainer. A 400/404 on
-      // the cancel PATCH is very often the same live/sandbox catalog split: the
-      // subscription lives in one Paddle environment and the API key + PADDLE_ENV
-      // are pointing at the other. Say so instead of returning the raw Paddle
-      // "Invalid request." which is not actionable from the admin panel.
+      // Paddle can return the same lock as 400 in production and 409 in docs.
+      // Key on the error CODE, never the HTTP status (rule 5).
+      // Locked paths are handled BEFORE the generic mistake hint, which stays
+      // only for 400s that are NOT a subscription_locked_pending_changes lock.
       let hint = '';
       if (res.status === 404) {
         hint =
           ' - the subscription was not found by the ' +
           (sandbox ? 'SANDBOX' : 'LIVE') +
           ' API. The subscription and the API key may be in different Paddle environments. A sandbox key cannot reach a live subscription and the reverse. Check PADDLE_ENV, PADDLE_API_KEY and the subscription in the Paddle dashboard.';
-      } else if (res.status === 400) {
-        // A 400 means Paddle refused the REQUEST, not that the subscription is
-        // missing - the old shared hint sent the owner hunting an environment
-        // mismatch that did not exist. Say what a 400 actually means.
+      } else if (res.status === 400 || res.status === 409) {
+        // Derive code from the caught error (err) so a 400 that did not
+        // include a code stays empty, and a lock code is visible only for the
+        // 400/409 path.
+        code = err && err.code ? String(err.code) : '';
+        if (code === 'subscription_locked_pending_changes') {
+          // Paddle already holds a scheduled change for this subscription.
+          // The app never stored that change, so the dashboard still shows a
+          // Cancel button and would report a real success as a failure here.
+          // Do not treat this as a failure: read the scheduled change from the
+          // response so the caller can surface the true state.
+          const sched = data && data.scheduled_change;
+          if (sched && sched.action === 'cancel' && String(sched.effective_at || '').length >= 10) {
+            // The cancel is already scheduled; short-circuit the caller so
+            // the dashboard shows the real state without retrying.
+            const body = {
+              ok: true,
+              alreadyScheduled: true,
+              cancelAt: String(sched.effective_at),
+              currentPeriodEnd: periodEndIso(sub.current_period_end),
+              status: sub.status
+            };
+            console.warn(
+              'billing cancel: already scheduled, subId=' +
+                subId +
+                ' env=' +
+                (sandbox ? 'sandbox' : 'live') +
+                ' http=' +
+                res.status +
+                ' code=' +
+                code
+            );
+            return json(body, 200);
+          }
+          if (sched && sched.action === 'pause') {
+            const pauseAt = String(sched.effective_at || '').slice(0, 10);
+            return json(
+              {
+                ok: false,
+                error:
+                  'A pause is already scheduled for ' +
+                  (pauseAt || 'an unknown date') +
+                  ' and is blocking the cancel. The pause must end or be cancelled before this subscription can be cancelled.'
+              },
+              403
+            );
+          }
+          // Paddle sent the lock code but did not return a usable scheduled
+          // change in the body. Do not guess the current state; quote the code.
+          return json(
+            {
+              ok: false,
+              error:
+                'The subscription already has a pending change and the server could not read it back. ' +
+                'This is a real cause quoted from Paddle: ' +
+                code +
+                '. Refresh and try again; if the Cancel button still appears after the refresh, the pending change may be a cancel or a pause.'
+            },
+            502
+          );
+        }
+        // Any other 400/409: a rejected request, not a missing subscription.
         hint = ' - Paddle rejected the cancel request itself. This is not a missing subscription.';
       } else if (res.status === 401 || res.status === 403) {
         hint =
           ' - Paddle rejected the API key for the ' +
           (sandbox ? 'sandbox' : 'live') +
           ' API. The key may be for the wrong environment or lack subscription write scope.';
+        code = err.code || code;
       }
       // Surface the subscription id we tried to cancel so the worker log is
       // actionable without guessing which row tripped it.
@@ -794,7 +862,13 @@ export async function handleBillingCancel(request, env) {
         {
           ok: false,
           error:
-            'cancel failed (Paddle HTTP ' + res.status + ')' + hint + (detail ? ' , ' + detail : '')
+            'cancel failed (Paddle HTTP ' +
+            (res && res.status ? String(res.status) : '?') +
+            ', code ' +
+            (code || '') +
+            ')' +
+            hint +
+            (detail ? ' , ' + detail : '')
         },
         502
       );
@@ -805,11 +879,23 @@ export async function handleBillingCancel(request, env) {
     // webhook finalise the status.
     return json({
       ok: true,
+      alreadyScheduled: sched && sched.action === 'cancel' ? true : false,
       cancelAt: cancelAt,
       currentPeriodEnd: periodEndIso(sub.current_period_end),
       status: sub.status
     });
   } catch (e) {
-    return json({ ok: false, error: 'cancel failed (upstream unreachable)' }, 502);
+    return json(
+      {
+        ok: false,
+        error:
+          'cancel failed: could not reach Paddle (status ' +
+          (e && e.status ? String(e.status) : '?') +
+          ', code ' +
+          (code || '') +
+          ')'
+      },
+      502
+    );
   }
 }

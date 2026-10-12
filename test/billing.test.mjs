@@ -388,11 +388,12 @@ test("cancel: a 404 from the LIVE api names the environment and keeps Paddle's e
   );
 });
 
-test('cancel: a 400 says Paddle refused the request, not that the subscription is missing', async () => {
+test('cancel: a 400 without a lock code is still reported as a rejected request, not a missing subscription', async () => {
   // The live failure that started this: Paddle answered 400 Invalid request.
-  // to a PATCH that could not create a cancel. The old shared hint claimed the
-  // subscription was "not found by the LIVE API", which was false and sent the
-  // owner hunting an environment mismatch that did not exist.
+  // to a PATCH that could not create a cancel. The 400 is now reported keyed on
+  // the error CODE (rule 5), not the HTTP status. A 400 without the
+  // subscription_locked_pending_changes lock code is still a rejected request,
+  // and the old 'not found by' wording does not appear.
   const env = baseEnv({
     sub: { status: 'active', ls_subscription_id: SUB, current_period_end: PERIOD_END_SEC }
   });
@@ -409,7 +410,9 @@ test('cancel: a 400 says Paddle refused the request, not that the subscription i
       assert.equal(res.status, 502);
       assert.match(d.error, /Paddle HTTP 400/);
       assert.match(d.error, /rejected the cancel request itself/);
+      assert.match(d.error, /bad_request/);
       assert.doesNotMatch(d.error, /not found by/);
+      assert.doesNotMatch(d.error, /subscription_locked_pending_changes/);
     }
   );
 });
@@ -428,8 +431,42 @@ test('cancel: a 403 is reported as a rejected key, not a missing subscription', 
         env
       );
       const d = await res.json();
+      assert.equal(res.status, 502);
+      assert.match(d.error, /Paddle HTTP 403/);
       assert.match(d.error, /rejected the API key for the live API/);
       assert.doesNotMatch(d.error, /not found by/);
+    }
+  );
+});
+
+test('cancel: a scheduled PAUSE in the body names the pause date instead of pretending to cancel', async () => {
+  // Real Paddle state: a pause is already scheduled, so the cancel is refused
+  // (the lock). The answer has to name the date that is blocking it, and it
+  // must never read as a success.
+  const env = baseEnv({
+    sub: { status: 'active', ls_subscription_id: SUB, current_period_end: PERIOD_END_SEC }
+  });
+  await withFetch(
+    () =>
+      paddleJson(400, {
+        error: {
+          code: 'subscription_locked_pending_changes',
+          detail: 'A scheduled change already exists.'
+        },
+        scheduled_change: { action: 'pause', effective_at: '2026-11-02T00:00:00Z' }
+      }),
+    async () => {
+      const res = await handleBillingCancel(
+        await authedRequest(env, 'DELETE', 'https://x.test/api/billing/subscription', {
+          confirm: 'CANCEL'
+        }),
+        env
+      );
+      const d = await res.json();
+      assert.equal(res.status, 403);
+      assert.equal(d.ok, false);
+      assert.match(d.error, /pause is already scheduled/i);
+      assert.match(d.error, /2026-11-02/);
     }
   );
 });

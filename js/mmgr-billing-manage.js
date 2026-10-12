@@ -94,12 +94,24 @@
       '</div>';
   }
 
-  function renderDone(plan, cancelAt) {
+  function renderDone(plan, data) {
+    // Already-scheduled cancels are real successes here, not errors: the second
+    // press and a stale open tab land here with alreadyScheduled:true and
+    // cancelAt, never with an error chip.
     plan.hidden = false;
-    plan.innerHTML =
-      '<div class="t-xs lh18" role="status">Your plan is set to cancel' +
-      (cancelAt ? ' on ' + fmtDate(cancelAt) : ' at the end of the period you paid for') +
-      '. Premium stays on until then.</div>';
+    var chip;
+    if (data && data.alreadyScheduled) {
+      chip =
+        '<div class="t-xs lh18 bmg-ok" role="status">Cancelling on ' +
+        (data.cancelAt ? esc(fmtDate(data.cancelAt)) : 'an unknown date') +
+        '. You keep Premium until then. This cancel was already on file.</div>';
+    } else {
+      chip =
+        '<div class="t-xs lh18 bmg-ok" role="status">Cancelling on ' +
+        (data && data.cancelAt ? esc(fmtDate(data.cancelAt)) : 'an unknown date') +
+        '. You keep Premium until then.</div>';
+    }
+    plan.innerHTML = chip;
   }
 
   function renderError(plan, msg) {
@@ -163,7 +175,7 @@
         );
         return;
       }
-      renderDone(plan, data.cancelAt || data.currentPeriodEnd);
+      renderDone(plan, data);
     } catch (e) {
       renderError(plan, 'Could not reach the server. Try again in a moment.');
     } finally {

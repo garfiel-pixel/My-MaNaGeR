@@ -2061,3 +2061,45 @@ STILL OPEN (next session candidates): admin.html icon-restore wiring is
    decision point, not a defect); deploy not run this session (owner go
    + staging recipe per AGENTS.md lesson 7); tmp/bump-sw-v339.cjs scratch
    can be cleaned.
+
+2026-10-11 — Billing/cancel WIP handoff (NOT landed).
+
+Already in tree (do not redo):
+- src/mcp/server.js + serve.cjs: MCP_PREMIUM_REFUSAL + ownerTier premium gate on tools/call; get_table + run_monte_carlo + apply_changes queued as review proposal.
+  [AUDIT 2026-10-12 correction: serve.cjs has NO MCP_PREMIUM_REFUSAL and cannot
+   have one - its /api/mcp route serves canned fixtures with no owner/subscription
+   row to gate on. Gate is Worker-only; proven by qa-api-keys P0d + qa-mcp-live-e2e
+   A2b against the real Worker. A comment in serve.cjs records the deliberate gap.]
+- tools/qa-mcp-live-e2e.cjs: A2b (free owner + valid key -> MCP_PREMIUM_REFUSAL), A2c (webhook entitles owner -> tools/call succeeds).
+- tools/qa-engine-parity.cjs: B3 B3b-B3f gates (9-tool surface, get_table, run_monte_carlo, scoped-key parity).
+- js/mmgr-billing-manage.js: renderDone(plan, data) wired to render alreadyScheduled as "Cancelling on <date>".
+
+WIP / broken right now:
+- src/billing.js handleBillingCancel: failure-path error-code handling still has a variable-scope bug. code is derived per branch (404, 400/409, 401/403) but not reliably visible to the shared failure catch block in all cases; repeated edit attempts looped instead of converging.
+- test/billing.test.mjs: one old test reworded for non-lock 400 rejected-request wording; new positive tests NOT yet added.
+
+Symptom in runner: ReferenceError: code is not defined at the failure/catch return path (and/or branch pollution where a 404 path inherits a 400's code, producing wrong /Paddle HTTP .../ assertion failures).
+
+Root cause of the loop: I kept trying to make ONE variable visible everywhere by declaring it at different scopes (let in branches, var at function scope, re-derived before/after branches). Each variant either left code unset for the branch that reaches the catch, or polluted code across branches. That is the same idea re-tried, not a new angle.
+
+Clean fix to do next:
+- Do not share one live code variable across branches.
+- In each failure branch, derive the code locally from the already-available err payload (e.g. const code = err && err.code ? String(err.code) : '';), then pass it explicitly into the shared failure message.
+- The shared failure message must receive code as an explicit argument, not read a variable that may be out of scope.
+- Keep rule 5: key on Paddle error.code, never the HTTP status.
+
+Tests still needed:
+- Add positive cases for handleBillingCancel with fake D1 + fake Paddle fetch + signed session: locked + scheduled cancel in body (400, subscription_locked_pending_changes) -> ok:true, alreadyScheduled:true, cancelAt; locked + scheduled pause in body -> error naming pause date; locked + fetch returns no usable scheduled change -> error quoting the Paddle code; wrong/missing word -> 400 confirm_required, Paddle never called; include BOTH a 400 locked case and a 409 locked case to prove the code is what matters. The reworded non-lock 400 test must still pass.
+
+Files touched in WIP (do not expand): src/billing.js, js/mmgr-billing-manage.js, test/billing.test.mjs.
+
+Do NOT touch under tmp/. Do NOT create new harness files. Do NOT touch Paddle infra.
+
+B4 next-session plan (next session picks up here):
+1. Finish billing/cancel cleanly (above). Then npm test + billing cancel battery.
+2. RBAC/tier matrix: run tools/qa-team-rbac.cjs unchanged, then grep every tier gate (ownerTier, unlimitedCloud, tier names, price-id mapping) in src/cloud/team.js, src/billing.js, js/app/entitlements.js; for each tier (free, contractor, enterprise, company, estimator) state which features it unlocks and which test proves it. Any gate with no test gets one added to the existing harness only (no new files).
+3. serve.cjs must give identical premium behavior (already has MCP_PREMIUM_REFUSAL mirror? confirm). tools/qa-engine-parity.cjs must still pass B3b-B3f.
+4. sw.js cache bump once per deploy, then npm run build + npm run verify.
+5. Deploy via same staged-copy procedure. Owner steps: hard refresh -> confirm "Cancelling on <date>" shows with no Cancel button; press old Cancel tab once more -> confirm no error.
+
+Full directive text lives in CONTRIBUTING.md (or wherever it was pasted) under DIRECTIVE: CANCEL MUST ACTUALLY CANCEL + FINISH B4.

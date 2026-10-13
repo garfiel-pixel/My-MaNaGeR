@@ -17,8 +17,28 @@
    v382 - full-bleed marketing canvas, 7-big-dot rail with generated
            small dots, contact tile phone overflow, guide sidebar spacing
    ============================================================ */
-const CACHE = 'mmgr-shell-v416';
+const CACHE = 'mmgr-shell-v417';
 
+// v417 - EMAIL SIGN-IN STOPPED REJECTING VALID INPUT (owner report
+// 2026-10-13: "a persistent 'Enter your email and password' even when valid
+// credentials are provided"). js/mmgr-google-auth.js only - no inline script,
+// CSP hashes unchanged. Root cause, reproduced in a real browser against
+// wrangler dev before touching anything: the password field was wiped BEFORE
+// the POST, so every failed attempt emptied it, and every retry then hit
+// `if (!email || !password)` and answered "Enter your email and password"
+// while the email sat there visibly filled in. Three fixes: (1) the password
+// now survives a failure and leaves the field only on success, on sign-out
+// and on a switch between sign-in and create-account; (2) the error names
+// ONLY the missing field and moves focus to it; (3) the form's validation
+// now mirrors the Worker's own rules instead of checking length alone -
+// email syntax (authEmailValid) on both doors, and the 3-of-4 character
+// strength rule (authPasswordProblem) on create-account only, so a password
+// the server would reject is named before the round-trip and an existing
+// account can never be locked out by a client-side check. Also: a _busy
+// guard stops a second submit during the round-trip, and resetEmailAuthMode
+// re-enables the submit button (a register attempt with email confirmation
+// parked it disabled behind the "check your inbox" panel, so signing out
+// handed back a dead Sign in button).
 // v416 - OWNER MOBILE + BRANDING WAVE (2026-10-13). Five things, all owner-
 // called-out from a phone review. (1) HERO GLOBE v2: the Pause/Play button
 // and the feature tab chips are GONE - they were the "little boxes" cluttering

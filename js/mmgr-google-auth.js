@@ -220,8 +220,22 @@ var MMGR = window.MMGR || {};
     const resetPanel = emailAuthQ(block, '.email-auth-reset');
     const checkPanel = emailAuthQ(block, '.email-auth-check');
     if (nameEl) nameEl.hidden = true;
-    if (pass) pass.autocomplete = 'current-password';
-    if (submitBtn) submitBtn.textContent = 'Sign in';
+    // OWNER 2026-10-13 (email sign-in fix): the password is no longer wiped
+    // after every attempt - that wipe is what made every retry answer
+    // "Enter your email and password" while the email sat there filled in.
+    // It now leaves the field at the two moments that end a session:
+    // here (sign-out / mode reset) and on a successful sign-in in the submit
+    // handler below. Also re-enables the button: a register attempt with
+    // email confirmation parks it disabled behind the "check your inbox"
+    // panel, and signing out used to hand back a dead Sign in button.
+    if (pass) {
+      pass.value = '';
+      pass.autocomplete = 'current-password';
+    }
+    if (submitBtn) {
+      submitBtn.textContent = 'Sign in';
+      submitBtn.disabled = false;
+    }
     if (modeBtn) modeBtn.textContent = 'Create an account instead';
     if (forgotBtn) forgotBtn.hidden = false;
     if (resetPanel) resetPanel.hidden = true;
@@ -618,6 +632,47 @@ var MMGR = window.MMGR || {};
     if (err) err.textContent = msg || '';
   }
 
+  // OWNER 2026-10-13 (email sign-in fix): the form used to check nothing but
+  // a password length of 8, so a value the Worker rejects - a malformed
+  // address, or a password under its strength rule - went to the server,
+  // failed, and was then wiped from the field. Both rules below mirror
+  // src/auth/session.js (authEmailValid / authPasswordProblem) EXACTLY:
+  // anything the server accepts has to pass here, or the form would start
+  // refusing valid input. Anything stricter belongs to the server alone.
+  function emailAddressValid(email) {
+    return email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+  }
+
+  // Returns '' when the password is acceptable, otherwise the message to
+  // show. Applied only while CREATING an account - sign-in never re-judges a
+  // password the user already owns, so an account whose password predates
+  // the rule can still sign in.
+  function passwordTooWeak(pw) {
+    if (pw.length < 8) {
+      return 'Passwords need at least 8 characters.';
+    }
+    if (/^(.)\1+$/.test(pw)) {
+      return 'A password cannot be the same character over and over.';
+    }
+    let classes = 0;
+    if (/[a-z]/.test(pw)) {
+      classes++;
+    }
+    if (/[A-Z]/.test(pw)) {
+      classes++;
+    }
+    if (/[0-9]/.test(pw)) {
+      classes++;
+    }
+    if (/[^A-Za-z0-9]/.test(pw)) {
+      classes++;
+    }
+    if (classes < 3) {
+      return 'Use 8 or more characters with at least three of these: lower case, upper case, numbers, symbols.';
+    }
+    return '';
+  }
+
   // POST to the Worker and resolve with the signed-in user on success.
   // Rejects with a user-facing message on any failure (incl. the auth
   // rate-limit 429). Never throws on network errors , same zero-throw
@@ -804,6 +859,11 @@ var MMGR = window.MMGR || {};
         ? 'Already have an account? Sign in'
         : 'Create an account instead';
       if (forgotBtn) forgotBtn.hidden = isReg; // forgot-password is a LOGIN-only action
+      // Switching doors changes what the field MEANS (an account you have vs
+      // one you are making, current-password vs new-password), so it starts
+      // empty rather than carrying a password into a different request.
+      const mp = emailAuthQ(form, '.email-auth-pass');
+      if (mp) mp.value = '';
       if (errEl) errEl.textContent = '';
     });
 
@@ -905,8 +965,27 @@ var MMGR = window.MMGR || {};
         }
       });
 
+    // OWNER 2026-10-13 (email sign-in fix, owner report: "a persistent
+    // 'Enter your email and password' even when valid credentials are
+    // provided"). Three real defects, all reproduced in a browser first:
+    //   1. THE WIPE. pass.value was cleared BEFORE the request, so any failed
+    //      attempt left the field empty and every retry answered "Enter your
+    //      email and password" while the email was visibly filled - the
+    //      password now survives a failure and the message names only the
+    //      field that is actually missing, with focus moved to it.
+    //   2. THE HALF-CHECKED PASSWORD. Only length was checked here, but the
+    //      Worker also requires 3 of 4 character classes on register, so a
+    //      weak password failed server-side, got wiped, and landed in the
+    //      same loop. Mirrored now (register mode only).
+    //   3. NO EMAIL CHECK AT ALL. The form has novalidate, so an unparseable
+    //      address was sent and answered with a bare 400. Checked here
+    //      against the Worker's own rule.
+    // _busy stops a second submit (Enter key during the round-trip) from
+    // doubling the POST and burning the auth rate bucket.
+    let _busy = false;
     form.addEventListener('submit', function (e) {
       e.preventDefault();
+      if (_busy) return;
       if (errEl) errEl.textContent = '';
       const em = emailAuthQ(form, 'input[type=email]');
       const pass = emailAuthQ(form, 'input[type=password]');
@@ -914,23 +993,49 @@ var MMGR = window.MMGR || {};
       const email = em && em.value ? em.value.trim() : '';
       const password = pass && pass.value ? pass.value : '';
       const name = nm && nm.value ? nm.value.trim() : '';
-      if (!email || !password) {
-        setEmailAuthError(block, 'Enter your email and password.');
+      const focusIt = function (el) {
+        if (!el) {
+          return;
+        }
+        try {
+          el.focus();
+        } catch (err) {
+          /* focus is a hint, never fatal */
+        }
+      };
+      if (!email) {
+        setEmailAuthError(block, 'Enter your email address.');
+        focusIt(em);
         return;
       }
-      if (password.length < 8) {
-        setEmailAuthError(block, 'Password must be at least 8 characters.');
+      if (!password) {
+        // Never name a field the user has just filled in.
+        setEmailAuthError(block, 'Enter your password.');
+        focusIt(pass);
         return;
       }
-      if (pass) pass.value = ''; // never echo the password in the DOM
+      if (!emailAddressValid(email)) {
+        setEmailAuthError(block, 'That email address does not look right.');
+        focusIt(em);
+        return;
+      }
+      if (_emailMode === 'register') {
+        const weak = passwordTooWeak(password);
+        if (weak) {
+          setEmailAuthError(block, weak);
+          focusIt(pass);
+          return;
+        }
+      }
+      _busy = true;
       // SIGN-IN-POLISH: visible in-flight state - the button disables and
       // names what is happening, so a slow link never reads as a dead click.
-      const originalLabel = submitBtn ? submitBtn.textContent : '';
       if (submitBtn) {
         submitBtn.disabled = true;
         submitBtn.textContent = 'Signing you in\u2026';
       }
       const restoreBtn = function () {
+        _busy = false;
         if (submitBtn) {
           submitBtn.disabled = false;
           submitBtn.textContent = _emailMode === 'register' ? 'Create account' : 'Sign in';
@@ -941,6 +1046,9 @@ var MMGR = window.MMGR || {};
           ? emailRegister(email, password, name)
           : emailLogin(email, password);
       p.then(function (result) {
+        // The attempt is over and it worked - this is when the password
+        // leaves the DOM, not before a request that may come back empty.
+        if (pass) pass.value = '';
         // AUTH MAINFRAME v2: register now emails a confirmation link , show
         // the check-your-inbox state INSTEAD of the signed-in chip. The
         // session cookie is already set server-side; "Got it" completes the
@@ -969,11 +1077,17 @@ var MMGR = window.MMGR || {};
             /* optional hook */
           }
         }
-        restoreBtn();
-      }).catch(function (err) {
-        setEmailAuthError(block, (err && err.message) || 'Sign-in failed.');
-        restoreBtn();
-      });
+      })
+        .catch(function (err) {
+          // The password deliberately STAYS in the field (owner decision
+          // 2026-10-13): a failure the user can retry without retyping is the
+          // whole point of the fix. It is still masked, and it still leaves on
+          // success, on sign-out and on a door switch.
+          setEmailAuthError(block, (err && err.message) || 'Sign-in failed.');
+        })
+        .finally(function () {
+          restoreBtn();
+        });
     });
   }
 

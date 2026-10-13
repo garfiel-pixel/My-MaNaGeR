@@ -102,6 +102,11 @@
      --------------------------------------------------------------------- */
   var toggle = document.getElementById('signin-email-toggle');
   var panel = document.getElementById('signin-email-panel');
+  /* Whether the email panel was open when the signed-in state took the card
+     over, so a sign-out hands the user back the form they were using instead
+     of a disclosure that is shut (or, worse, shut but still claiming to be
+     open). */
+  var panelWasOpen = false;
 
   function setEmailOpen(open) {
     if (!toggle || !panel) return;
@@ -173,7 +178,28 @@
       [g, div, tgl, ret].forEach(function (el) {
         if (el) el.hidden = signedIn;
       });
-      if (panel) panel.hidden = true;
+      /* The panel follows the DOORS, not the confirmation. Signed in, it
+         closes with them. Signed out, it is left exactly as the user left
+         it and the toggle's aria-expanded is re-synced - the old
+         unconditional close is what hid the email form behind a disclosure
+         that still claimed to be open (found 2026-10-13 while verifying the
+         email sign-in fix). */
+      if (panel) {
+        if (signedIn) {
+          panelWasOpen = !panel.hidden;
+          panel.hidden = true;
+        } else {
+          panel.hidden = !panelWasOpen;
+        }
+        /* The ARIA state lives on the BUTTON (#signin-email-toggle), not on
+           the .signin-email-toggle wrapper the card hides above - writing it
+           to the wrapper left the button claiming aria-expanded="true" over
+           a closed panel. */
+        if (toggle) {
+          toggle.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
+          toggle.classList.toggle('is-open', !panel.hidden);
+        }
+      }
       var h1 = card.querySelector('h1');
       if (h1) h1.hidden = signedIn;
       var lede = document.querySelector('.signin-lede');

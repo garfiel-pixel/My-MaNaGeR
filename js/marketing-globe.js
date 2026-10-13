@@ -288,6 +288,7 @@
   var state = {
     index: 0,
     next: 0, // the next RANDOM feature to ease toward during the spin gap
+    wraps: 0, // monotonic cycle counter - QA asserts the cycle KEEPS RUNNING
     t: 0,
     lon: LON0,
     lat: LAT0,
@@ -508,6 +509,7 @@
     state.t += dt;
     if (state.t >= CYCLE) {
       state.t -= CYCLE;
+      state.wraps++;
       state.index = state.next;
       state.next = pickOther(state.index);
       setCard(state.index, false);

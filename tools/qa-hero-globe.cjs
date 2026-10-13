@@ -336,14 +336,17 @@ const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{
     var G = window.MMGR_GLOBE;
     var buttons = document.querySelectorAll('.hg-controls button, .hg-play');
     var tabs = document.querySelectorAll('.hg-tab, .hg-tabs');
-    var idxBefore = G.state.index;
+    var wrapsBefore = G.state.wraps;
     for (var i = 0; i < 50; i++) {
       G.__advance(500);
     } // 25 s, > 2 cycles, no interaction at all
     return {
       controls: buttons.length,
       tabs: tabs.length,
-      cycled: G.state.index !== idxBefore
+      // The wrap counter is the deterministic signal: with RANDOM selection
+      // the index can legally land back on the same feature across wraps
+      // (~1 in 9), so index inequality alone is a flaky gate.
+      cycled: G.state.wraps - wrapsBefore >= 2
     };
   });
   check(
@@ -379,12 +382,15 @@ const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{
       // Before any step, lon may only match: no handler touched it.
       lonJump: Math.abs(G.state.lon - lonBefore) < 1e-6
     };
-    var idxBefore = G.state.index;
+    var wrapsBefore = G.state.wraps;
     for (var i = 0; i < 30; i++) {
       G.__advance(500);
     } // 15 s while the pointer is still "down"
     mk('pointerup', cx + 120, cy);
-    afterEvents.cycleNotHeld = G.state.index !== idxBefore;
+    // Deterministic: the monotonic wrap counter must have moved (a pointer
+    // press must never hold the cycle). Index inequality would be flaky -
+    // random selection can land back on the same feature.
+    afterEvents.cycleNotHeld = G.state.wraps - wrapsBefore >= 1;
     afterEvents.releasedClean = G.state.dragging === false;
     return afterEvents;
   });

@@ -4122,7 +4122,7 @@
       '</div>' +
       '<div class="rr-signin">' +
       '<h3>Sign in to open the rate book</h3>' +
-      '<p>The JIC rate book is free on every plan - Free included. Sign in so your rate views can follow you between devices. Your projects stay on this device either way.</p>' +
+      '<p>The JIC rate book is free on every plan, Free included. Sign in so your rate views can follow you between devices. Your projects stay on this device either way.</p>' +
       '<div class="rr-signin-cta">' +
       '<a class="btn btn-g" href="app.html?next=calculator.html">Sign in</a>' +
       '<button type="button" class="btn btn-ghost" data-action="rrClose">Not now</button>' +

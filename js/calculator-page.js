@@ -3585,6 +3585,26 @@
   // JIC_RATES at runtime, so the book can never drift from the table the user
   // reads on screen. Metric rates are used because the engine is metric-first
   // and rateFactor converts for the trades quoted per yd2/ft2/ft-run/lb/dozen.
+  // ---- Owner 2026-10-12 (G1): the split UNDER the all-in headline --------
+  // JIC publishes ONE combined figure per row, so there is no split to read
+  // off the sheet. Rather than one invented global percentage, the split is
+  // derived from each trade's OWN model mat/lab pair - the numbers this
+  // calculator has always priced that trade with - so the two bases tell the
+  // same story and nothing is fabricated.
+  // Clamped to 15%-85% so neither side can ever render as a zero line: the
+  // welding model carries lab 0, which would put "Labour J$0" under a real
+  // JIC figure. FALLBACK is an even split for any trade with no usable pair.
+  function matShareFor(workId) {
+    const r = WORK[workId] && WORK[workId].rate;
+    if (r && typeof r.mat === 'number' && typeof r.lab === 'number') {
+      const t = r.mat + r.lab;
+      if (t > 0) {
+        return Math.min(0.85, Math.max(0.15, r.mat / t));
+      }
+    }
+    return 0.5;
+  }
+
   function jicBookPayload() {
     const rates = {};
     let entries = 0;
@@ -3602,6 +3622,12 @@
       if (!m) return;
       if (!rates[m[2]]) rates[m[2]] = {};
       // The combined figure, in JMD, per the book's own rate unit.
+      // DELIBERATELY all-in only (owner 2026-10-12, G1): the book publishes ONE
+      // figure, so no mat/lab pair is stored here. Putting a derived split in
+      // this payload would feed it through modelRatesFor into the MEASURED
+      // basis too, re-pricing every covered trade away from its WORK model.
+      // The split shown under the headline is derived at the form layer
+      // (prefillSplitFromAllin) and only while the all-in basis is chosen.
       rates[m[2]][m[3]] = { allIn: r.metRate, unit: r.metUnit };
       entries++;
     });
@@ -7947,6 +7973,9 @@
   document.addEventListener('change', function (e) {
     const el = e.target.closest('[data-action="calcBasisPick"]');
     if (!el) return;
+    // G1: the basis decides whether the split is derived (all-in) or cleared
+    // (measured, days), so the rate fields are refreshed with the new choice.
+    refreshRateFields();
     syncBasis();
     render();
   });
@@ -7958,6 +7987,17 @@
     const el = $(id);
     if (!el) return;
     el.addEventListener('input', function () {
+      // Owner 2026-10-12 (G1): a typed headline re-derives the split so the
+      // two sides always add up to the figure above them. Typing on this line
+      // also CLAIMS the headline for the trade showing on the form.
+      if (id === 'calc-allin') {
+        el.dataset.work = ($('calc-work') || {}).value || '';
+        syncSplitFromAllin();
+        // G1: a cleared headline drops its split (nothing to be a split of),
+        // a typed one re-derives it - both live here so the input event alone
+        // is enough to keep the two in step.
+        prefillSplitFromAllin();
+      }
       syncBookNote();
       render();
     });
@@ -8070,14 +8110,22 @@
     const modelA =
       m && !m.unconvertible && m.allIn != null ? String(Math.round(m.allIn * 100) / 100) : '';
     if (allEl) {
+      // Owner 2026-10-12 (G1): a headline BELONGS to the trade it was filled
+      // for - by this book/model prefill, by the recalled snapshot, or later
+      // by the user typing on this very line. Recording that trade is what
+      // keeps a figure left over from another trade from ever being broken
+      // down into a fake material/labour split on a trade the book does not
+      // cover (the NC1 honesty gate).
       if (recallHold) {
         if (modelA !== '' && allEl.value === '') {
           allEl.value = modelA;
           allEl.dataset.model = modelA;
         }
+        allEl.dataset.work = key;
       } else if (modelA !== '') {
         if (allEl.value === '' || allEl.value === allEl.dataset.model) allEl.value = modelA;
         allEl.dataset.model = modelA;
+        allEl.dataset.work = key;
       } else if (allEl.value === allEl.dataset.model) {
         allEl.value = '';
         allEl.dataset.model = '';
@@ -8187,6 +8235,9 @@
             : 'Leave empty to price by the square meter with the rate above. Fill it in to price by the piece.';
       }
     }
+    // G1: the split under the all-in headline is derived after every prefill
+    // pass, so it always tracks the headline that was just filled in.
+    prefillSplitFromAllin();
   }
 
   // Live labels follow the work item (the floating calculator's spirit, page form).
@@ -8418,10 +8469,17 @@
     if ($('calc-verified-wrap')) $('calc-verified-wrap').hidden = !onAllin;
     if ($('calc-days-wrap')) $('calc-days-wrap').hidden = !onDays;
     if ($('calc-day-rate-wrap')) $('calc-day-rate-wrap').hidden = !onDays;
-    // The per-unit rate row is meaningless while an all-in rate is the whole
-    // price (it would invite a faked split), so it steps aside for it.
+    // Owner 2026-10-12 (G1): the per-unit row used to step aside for the
+    // all-in field ("it would invite a faked split"). It now STAYS VISIBLE
+    // under the headline, because the split is no longer faked - it is derived
+    // from the trade's own mat/lab share of the published figure and the user
+    // may override either side. This is the FORM's breakdown only: the output
+    // and CSV still print one combined "Work rate (all-in)" row, so D3 (a
+    // combined figure is never broken into parts ON A DOCUMENT) is unchanged.
     const ratesRow = $('calc-rates-row');
-    if (ratesRow) ratesRow.hidden = onAllin;
+    if (ratesRow) {
+      ratesRow.hidden = false;
+    }
     // The all-in field follows the trade's rate unit and the picked currency,
     // so a per-yd2 trade says "per yd2" and nobody has to guess the money.
     const ru = (WORK[key] || {}).runit;
@@ -8436,6 +8494,8 @@
     // Notifier 2 (D7): say where a book-filled rate came from, and when it was
     // last checked against the published book.
     syncBookNote();
+    // G1: entering or leaving the all-in basis fills or drops the split.
+    prefillSplitFromAllin();
   }
   // The published-rate note follows the CHOSEN currency, not the engine's.
   function syncBookNote() {
@@ -8462,6 +8522,143 @@
     const ru = (WORK[key] || {}).runit;
     const cur = ($('calc-currency') || {}).value || BASE_CURRENCY;
     return 'All-in rate (' + (ru ? 'per ' + ru + ', ' : '') + cur + ')';
+  }
+
+  // ---- Owner 2026-10-12 (G1): the headline follows the split -------------
+  // Editing either side of the split recomputes the all-in HEADLINE straight
+  // away (all-in = material + labour), and a sum that no longer equals the
+  // book's own figure drops the prefill marker - so the line then reads as
+  // the user's rate, never as the published one. A sum that still equals the
+  // book's figure LEAVES the marker alone, so an untouched split keeps the
+  // "came from a published book" note.
+  // Both functions write .value programmatically, which fires no input event,
+  // so they can never call each other into a loop.
+  function syncAllinFromSplit() {
+    const sel = $('calc-basis');
+    if (!sel || sel.value !== 'allin') {
+      return;
+    }
+    const m = $('calc-rate-mat'),
+      l = $('calc-rate-lab'),
+      a = $('calc-allin');
+    if (!m || !l || !a) {
+      return;
+    }
+    const mv = parseFloat(m.value),
+      lv = parseFloat(l.value);
+    if (!isFinite(mv) || !isFinite(lv)) {
+      return;
+    }
+    const sum = Math.round((mv + lv) * 100) / 100;
+    a.value = String(sum);
+    // Editing the split on this line is an edit of THIS line's headline, so
+    // the headline belongs to the trade now showing (see prefillSplitFromAllin).
+    a.dataset.work = ($('calc-work') || {}).value || '';
+    if (String(sum) !== String(a.dataset.model || '')) {
+      a.dataset.model = '';
+    }
+    syncBookNote();
+  }
+
+  // The other direction: a typed headline re-derives the two sides so the
+  // split on screen always adds up to the figure above it. Leaving a stale
+  // split under a new headline would show the user numbers that do not sum.
+  function syncSplitFromAllin() {
+    const sel = $('calc-basis');
+    if (!sel || sel.value !== 'allin') {
+      return;
+    }
+    const a = $('calc-allin'),
+      m = $('calc-rate-mat'),
+      l = $('calc-rate-lab');
+    if (!a || !m || !l) {
+      return;
+    }
+    const av = parseFloat(a.value);
+    if (!isFinite(av) || av <= 0) {
+      return;
+    }
+    const mat = Math.round(av * matShareFor(($('calc-work') || {}).value || '') * 100) / 100;
+    m.value = String(mat);
+    l.value = String(Math.round((av - mat) * 100) / 100);
+  }
+
+  // ---- Owner 2026-10-12 (G1): the split is a FORM-layer view, not book data --
+  // The JIC book publishes ONE figure, so there is no stored material/labour
+  // pair to show. The breakdown under the all-in headline is derived HERE,
+  // only while the all-in basis is chosen, from the trade's own mat/lab share
+  // (matShareFor) of that headline: mat = headline x share, lab = the REMAINDER,
+  // which is what makes the two sides add up to the figure above them exactly,
+  // at any figure and on any row.
+  //
+  // DELIBERATELY not inside jicBookPayload: a split stored in the book would
+  // travel through modelRatesFor into the MEASURED basis too and re-price every
+  // covered trade away from its WORK model. Measured pricing must keep working
+  // exactly as it did before this feature - which is why a value this function
+  // wrote is dropped again the moment the basis leaves all-in.
+  //
+  // Untouched is decided by ADDING THE TWO SIDES UP, never by a remembered
+  // marker: a snapshot recall restores the values without any bookkeeping, so
+  // a marker-based test leaves a stale pair on screen that nothing can ever
+  // re-derive. If the pair already adds up to the headline it is a split of
+  // that headline (the user's own edit stays, because their edit re-derives
+  // the headline first - see syncAllinFromSplit). If it does not, the pair is
+  // stale and gets re-derived.
+  function prefillSplitFromAllin() {
+    const sel = $('calc-basis');
+    const m = $('calc-rate-mat'),
+      l = $('calc-rate-lab');
+    const a = $('calc-allin');
+    if (!sel || !m || !l) return;
+    // A field holds either the model/book PREFILL (value === dataset.model,
+    // which must survive untouched - it is the fallback the line prices from
+    // once there is no headline) or a figure derived from - or typed under -
+    // the headline. Only the latter is ever dropped.
+    const dropIfNotModel = function (el) {
+      if (el.value !== '' && el.value !== (el.dataset.model || '')) el.value = '';
+    };
+    const onAllin = sel.value === 'allin';
+    const wasAllin = m.dataset.onAllin === '1';
+    if (!onAllin) {
+      // Only the TRANSITION out of all-in drops: a measured-basis refresh must
+      // never clear a rate the user typed there.
+      if (wasAllin) {
+        dropIfNotModel(m);
+        dropIfNotModel(l);
+      }
+      m.dataset.onAllin = '';
+      l.dataset.onAllin = '';
+      return;
+    }
+    m.dataset.onAllin = '1';
+    l.dataset.onAllin = '1';
+    if (!a) return;
+    // The headline must belong to THIS trade (filled by its own prefill, its
+    // recall, or typed on this line - see refreshRateFields). One that a
+    // previous trade left behind is stale money: it is never broken down, and
+    // any split still showing from that trade is dropped, so an uncovered
+    // trade keeps its honest empty field instead of a fabricated pair.
+    if (a.dataset.work !== (($('calc-work') || {}).value || '')) {
+      dropIfNotModel(m);
+      dropIfNotModel(l);
+      return;
+    }
+    const av = parseFloat(a.value);
+    // No headline, no breakdown: a cleared or unparsable all-in figure leaves
+    // nothing for the split to be a split OF, so it drops and the line falls
+    // back to the trade's model rates exactly as it did before G1.
+    if (!isFinite(av) || av <= 0) {
+      dropIfNotModel(m);
+      dropIfNotModel(l);
+      return;
+    }
+    const mv = parseFloat(m.value),
+      lv = parseFloat(l.value);
+    if (isFinite(mv) && isFinite(lv) && Math.abs(mv + lv - av) < 0.005) return;
+    const mat = Math.round(av * matShareFor(($('calc-work') || {}).value || '') * 100) / 100;
+    const lab = Math.round((av - mat) * 100) / 100;
+    m.value = String(mat);
+    l.value = String(lab);
   }
 
   // Labels as entered right now (kept for CSV display).
@@ -8559,6 +8756,12 @@
       const el = $(id);
       if (el)
         el.addEventListener('input', function () {
+          // Owner 2026-10-12 (G1): editing either side of the split moves the
+          // all-in headline with it, and drops the book's prefill marker when
+          // the sum no longer matches the published figure.
+          if (id === 'calc-rate-mat' || id === 'calc-rate-lab') {
+            syncAllinFromSplit();
+          }
           render();
         });
     });

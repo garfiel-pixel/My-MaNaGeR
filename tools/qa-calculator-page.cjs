@@ -811,12 +811,18 @@ async function withChrome(fn) {
       in1
     );
     const in2 = await ev(`(function(){
+      // OWNER 2026-10-12 (G1): the first-visit default lands on the all-in
+      // basis, and while that is chosen the material/labour fields hold the
+      // split DERIVED from the headline - exactly what G1 asks to see, and
+      // exactly what the engine ignores while the chooser says all-in. These
+      // gates are about MEASURED material+labour, so the measured basis is
+      // chosen through the real chooser FIRST (that choice is what clears the
+      // derived split in the app too) and then pinned on the state object.
+      var bs = document.getElementById('calc-basis');
+      if (bs.value !== 'measured') { bs.value = 'measured'; bs.dispatchEvent(new Event('change',{bubbles:true})); }
       var st = __calcEngine.readState();
       st.currency = 'USD';   // OWNER 2026-10-02: pin USD for the model-rate math.
-      st.basis = 'measured';   // ...and the SPLIT path: the JIC book is selected
-      // by default and it speaks all-in, so the first-visit default lands on
-      // the all-in basis. These gates are about material+labour, so they must
-      // pin the basis exactly as they pin the currency.
+      st.basis = 'measured';   // ...and the split basis, exactly as before G1.
       st.work = 'blockwall'; st.d1 = ''; st.d2 = ''; st.d3 = '';
       st.measuredQty = '62.4'; st.measuredUnit = 'm2';
       var r = __calcEngine.computeFor(st);
@@ -832,6 +838,10 @@ async function withChrome(fn) {
       in2
     );
     const in3 = await ev(`(function(){
+      // G1: choose the measured basis through the chooser before reading the
+      // form, so the fields carry MEASURED rates and not the all-in split.
+      var bs = document.getElementById('calc-basis');
+      if (bs.value !== 'measured') { bs.value = 'measured'; bs.dispatchEvent(new Event('change',{bubbles:true})); }
       var st = __calcEngine.readState();
       st.currency = 'USD';   // OWNER 2026-10-02: pin USD for the rate math.
       st.basis = 'measured';   // pin the split basis too (see IN2).
@@ -2499,7 +2509,7 @@ async function withChrome(fn) {
           _labModel: document.getElementById('calc-rate-lab').dataset.model }));
       var out = document.getElementById('calc-output').textContent;
       var csv = __calcEngine.estimateCsv(r);
-      return { ratesHidden: document.getElementById('calc-rates-row').hidden,
+      return { ratesShown: !document.getElementById('calc-rates-row').hidden,
                verifiedShown: !document.getElementById('calc-verified-wrap').hidden,
                allIn: r.allIn, mat: r.mat, lab: r.lab, cost: Math.round(r.allInCost), total: Math.round(r.total),
                oneRow: out.indexOf('Work rate (all-in)') > -1,
@@ -2508,9 +2518,9 @@ async function withChrome(fn) {
                csvNoSplit: csv.indexOf('"Materials"') === -1 && csv.indexOf('"Labor"') === -1 };
     })()`);
     check(
-      'AB1 all-in prices the whole line and shows ONE combined row - no Materials/Labour split on screen or CSV (D3)',
+      'AB1 all-in prices the whole line, KEEPS the split visible under the headline (owner 2026-10-12 G1), and the output + CSV still print ONE combined row (D3 unchanged)',
       ab1 &&
-        ab1.ratesHidden &&
+        ab1.ratesShown &&
         ab1.verifiedShown &&
         ab1.allIn &&
         ab1.mat === 0 &&
@@ -2749,6 +2759,99 @@ async function withChrome(fn) {
       ab8 && ab8.unconvertible && ab8.src === 'JMD' && ab8.fieldEmpty && ab8.noteHonest,
       ab8
     );
+
+    // ---- AB9/AB10: the split UNDER the all-in headline (owner 2026-10-12, G1)
+    // JIC publishes ONE figure, so the split is derived from the trade's own
+    // mat/lab share of it (see matShareFor). These gates pin the three
+    // promises: the split is VISIBLE and sums to the headline exactly, editing
+    // either side moves the headline, and a typed headline re-derives the sides.
+    const ab9 = await ev(`(function(){
+      function wait(){ return new Promise(function(r){ setTimeout(r, 120); }); }
+      // G1 needs a book that publishes an ALL-IN figure, because that is what
+      // the split is derived from. The BOOK family deliberately ends with no
+      // book active, so this gate installs its own JMD book carrying ONLY an
+      // all-in rate - the exact JIC shape: one published number, no split.
+      __calcEngine.importBooks({ books: [{ name: 'G1 split book', currency: 'JMD',
+        effective_from: '2026-10-01', effective_to: '2027-09-30',
+        rates: { tile: { '*': { allIn: 2500 } } } }] });
+      var mine = JSON.parse(localStorage.getItem('mmgr_calc_books') || '[]')
+        .filter(function(b){ return b && b.name === 'G1 split book'; })[0];
+      __calcEngine.setActiveBook(mine.id); __calcEngine.renderBooks();
+      var w = document.getElementById('calc-work'); w.value = 'tile'; w.dispatchEvent(new Event('change',{bubbles:true}));
+      return wait().then(function(){
+        // The book is JMD; matching the estimate currency is what lets the
+        // prefill land instead of coming back unconvertible (AB8).
+        var c = document.getElementById('calc-currency'); c.value = 'JMD'; c.dispatchEvent(new Event('change',{bubbles:true}));
+        return wait();
+      }).then(function(){
+        var b = document.getElementById('calc-basis'); b.value = 'allin'; b.dispatchEvent(new Event('change',{bubbles:true}));
+        return wait();
+      }).then(function(){
+        var row = document.getElementById('calc-rates-row');
+        var a = parseFloat(document.getElementById('calc-allin').value);
+        var m = parseFloat(document.getElementById('calc-rate-mat').value);
+        var l = parseFloat(document.getElementById('calc-rate-lab').value);
+        var note = document.getElementById('calc-book-note');
+        return { shown: !!row && !row.hidden, allIn: a, mat: m, lab: l,
+                 sums: isFinite(a) && isFinite(m) && isFinite(l) && Math.abs((m + l) - a) < 0.005,
+                 noteOn: !!note && !note.hidden };
+      });
+    })()`);
+    check(
+      'AB9 the all-in headline carries a VISIBLE split that sums to it exactly and is still book-noted (G1)',
+      ab9 && ab9.shown && ab9.sums && ab9.allIn > 0 && ab9.noteOn,
+      ab9
+    );
+    const ab10 = await ev(`(function(){
+      function wait(){ return new Promise(function(r){ setTimeout(r, 120); }); }
+      var lab = document.getElementById('calc-rate-lab');
+      var before = parseFloat(lab.value);
+      var aBefore = parseFloat(document.getElementById('calc-allin').value);
+      lab.value = String(before + 100); lab.dispatchEvent(new Event('input',{bubbles:true}));
+      return wait().then(function(){
+        var a = parseFloat(document.getElementById('calc-allin').value);
+        var m = parseFloat(document.getElementById('calc-rate-mat').value);
+        var l = parseFloat(document.getElementById('calc-rate-lab').value);
+        var note = document.getElementById('calc-book-note');
+        // The headline follows the edited side by exactly the amount typed, and
+        // the two sides still add up to it.
+        var followed = Math.abs(a - (m + l)) < 0.005 && Math.abs(a - (aBefore + 100)) < 0.005;
+        var noteDropped = !!note && note.hidden;
+        var aEl = document.getElementById('calc-allin');
+        aEl.value = '3000'; aEl.dispatchEvent(new Event('input',{bubbles:true}));
+        return wait().then(function(){
+          var m2 = parseFloat(document.getElementById('calc-rate-mat').value);
+          var l2 = parseFloat(document.getElementById('calc-rate-lab').value);
+          return { followed: followed, noteDropped: noteDropped,
+                   rederived: Math.abs((m2 + l2) - 3000) < 0.005 };
+        });
+      });
+    })()`);
+    check(
+      'AB10 editing either side moves the all-in headline with it; a typed headline re-derives the split (G1)',
+      ab10 && ab10.followed && ab10.noteDropped && ab10.rederived,
+      ab10
+    );
+
+    // G1 setup is LOCAL to AB9/AB10: put the form back the way the next
+    // families expect it - no active book, USD, measured basis - exactly as
+    // the BOOK family leaves it. Without this the book AB9 installs would
+    // still be answering modelRatesFor for every later gate (E2 saw a JMD
+    // tile rate where it expected an honest "no exchange rate" note).
+    await ev(`(function(){
+      var E = __calcEngine;
+      E.setActiveBook(''); E.renderBooks();
+      var w = document.getElementById('calc-work');
+      w.value = 'siteprep'; w.dispatchEvent(new Event('change',{bubbles:true}));
+      var c = document.getElementById('calc-currency');
+      c.value = 'USD'; c.dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-country').value = 'US';
+      document.getElementById('calc-d1').value = '10';
+      document.getElementById('calc-d2').value = '8';
+      var b = document.getElementById('calc-basis');
+      if (b.value !== 'measured') { b.value = 'measured'; b.dispatchEvent(new Event('change',{bubbles:true})); }
+      return true;
+    })()`);
 
     // ---- DB: per-day crew rate ----
     const db1 = await ev(`(function(){

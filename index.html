@@ -147,8 +147,33 @@
       <!-- T10-A (owner 2026-10-10): decorative mock-ups. The cards carry
            focusable bars for their hover tips, and a focusable element inside
            aria-hidden is unreachable-but-tabbable; inert removes the whole
-           mock from the tab order and the accessibility tree. -->
-      <div class="hero-visual" inert aria-hidden="true">
+           mock from the tab order and the accessibility tree. The globe stage
+           below must NOT sit inside the inert box (its cards and controls are
+           real, focusable links and buttons), so inert wraps only the three
+           mock cards. -->
+      <div class="hero-visual">
+        <!-- HERO GLOBE (owner 2026-10-12). The stage lives in the markup from
+             the FIRST PAINT: on phones it holds the generated poster, on wider
+             screens it sits over this card column, so switching the poster for
+             the live canvas never moves the page (CLS stays at zero). It lives
+             INSIDE .hero-visual (its positioned parent) so the absolute stage
+             overlays the card column and never the headline, and so
+             stage.closest('.hero-visual') finds the column to mark hg-live.
+             Nothing here removes the cards - js/marketing-globe.js hides them
+             by visibility only after the canvas has drawn its first frame, and
+             it never starts at all under prefers-reduced-motion, save-data or
+             an initialisation error. The bundle itself loads after window
+             load, so the headline is still the LCP. -->
+        <div class="hg-stage" id="hero-globe">
+          <div class="hg-frame">
+            <img class="hg-poster" src="images/hero-globe-poster.svg" alt="" width="900" height="760" fetchpriority="low" decoding="async" draggable="false">
+            <canvas class="hg-canvas" aria-hidden="true"></canvas>
+            <svg class="hg-tether" aria-hidden="true" focusable="false"></svg>
+            <div class="hg-cards"></div>
+            <div class="hg-controls"></div>
+          </div>
+        </div>
+        <div class="hero-cards" inert aria-hidden="true">
         <div class="hero-card">
           <div class="hc-panelhead"><span class="hc-panelno">01</span><span class="hc-paneltitle">Schedule, Gantt</span></div>
           <div class="hc-img"><img src="images/hero-schedule.svg" alt="" loading="lazy" width="900" height="491" draggable="false"></div>
@@ -188,6 +213,7 @@
               <li><span class="hc-stepdot"></span>Get a written answer</li>
             </ol>
           </div>
+        </div>
         </div>
       </div>
     </div>
@@ -574,6 +600,38 @@ document.addEventListener('DOMContentLoaded', function () {
     document.body.appendChild(t);
   });
 });
+</script>
+<script>
+/* HERO GLOBE loader (owner 2026-10-12). The globe is its own bundle and it
+   loads AFTER the page has loaded, or when the browser says it is idle, so
+   nothing competes with the headline for first paint. Same dev-fallback
+   shape as the block above: in production dist/marketing-globe.js exists;
+   in a local run without a build it 404s and the source file loads instead.
+   index.html is the ONLY page with this block, so the globe never loads on
+   any other marketing page. */
+(function () {
+  function inject(src) {
+    var t = document.createElement('script');
+    t.src = src;
+    document.body.appendChild(t);
+  }
+  function load() {
+    if (window.__mmgrGlobeLoading) return;
+    window.__mmgrGlobeLoading = 1;
+    var s = document.createElement('script');
+    s.src = 'dist/marketing-globe.js';
+    s.onerror = function () {
+      inject('js/marketing-globe.js');
+    };
+    document.body.appendChild(s);
+  }
+  function idle(fn) {
+    if ('requestIdleCallback' in window) requestIdleCallback(fn, { timeout: 4000 });
+    else setTimeout(fn, 1500);
+  }
+  if (document.readyState === 'complete') idle(load);
+  else window.addEventListener('load', function () { idle(load); }, { once: true });
+})();
 </script>
 </body>
 </html>

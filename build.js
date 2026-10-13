@@ -147,6 +147,9 @@ const APP_MODULES = [
 // ---- Marketing pages bundle ----
 const MARKETING_MODULES = ['js/marketing.js', 'js/reviews.js', 'js/verify.js', 'js/reset.js'];
 
+// ---- Hero globe bundle (index.html only, loaded after window load) ----
+const GLOBE_MODULES = ['js/marketing-globe.js'];
+
 // ---- app.html bundle (launcher / project list) ----
 const APP_LAUNCHER_MODULES = [
   'projects-data.js',
@@ -302,6 +305,7 @@ function buildCSS(inputFile, outputFile, label) {
 const args = process.argv.slice(2);
 const buildApp = args.length === 0 || args.includes('--app');
 const buildMkt = args.length === 0 || args.includes('--marketing');
+const buildGlobe = args.length === 0 || args.includes('--globe');
 const buildCss = args.length === 0 || args.includes('--css');
 const buildLauncher = args.length === 0 || args.includes('--launcher');
 const buildAdmin = args.length === 0 || args.includes('--admin');
@@ -312,6 +316,11 @@ if (buildApp) buildBundle(APP_MODULES, 'dist/bundle.js', 'app bundle');
 if (buildLauncher) buildBundle(APP_LAUNCHER_MODULES, 'dist/app-bundle.js', 'launcher bundle');
 if (buildAdmin) buildBundle(ADMIN_MODULES, 'dist/admin-bundle.js', 'admin bundle');
 if (buildMkt) buildBundle(MARKETING_MODULES, 'dist/marketing-bundle.js', 'marketing bundle');
+// HERO GLOBE (owner 2026-10-12): its OWN bundle, built from ONE module and
+// loaded by index.html only, after the page has loaded. Keeping it separate
+// is what lets the hero headline stay the LCP and keeps the globe off every
+// other marketing page.
+if (buildGlobe) buildBundle(GLOBE_MODULES, 'dist/marketing-globe.js', 'marketing globe bundle');
 if (buildCss) {
   buildCSS('css/mmgr.css', 'dist/mmgr.min.css', 'app CSS');
   buildCSS('css/marketing.css', 'dist/marketing.min.css', 'marketing CSS');
@@ -332,6 +341,9 @@ if (buildAdmin)
 if (buildMkt)
   manifest['marketing-bundle.js'] =
     'marketing-bundle.' + contentHash(path.join(DIST, 'marketing-bundle.js')) + '.js';
+if (buildGlobe)
+  manifest['marketing-globe.js'] =
+    'marketing-globe.' + contentHash(path.join(DIST, 'marketing-globe.js')) + '.js';
 if (buildCss) {
   manifest['mmgr.min.css'] = 'mmgr.min.' + contentHash(path.join(DIST, 'mmgr.min.css')) + '.css';
   manifest['marketing.min.css'] =

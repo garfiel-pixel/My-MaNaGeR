@@ -3039,8 +3039,14 @@ body.dark-mode .hero-card .hc-stepdot {
     grid-template-columns: 1fr;
     gap: 44px;
   }
-  .hero-visual {
+  /* HERO GLOBE (2026-10-12): phones never showed the mock cards, so the
+     stage - carrying its generated poster - takes the column from the FIRST
+     PAINT. Nothing is added to the flow later, so nothing shifts. */
+  .hero-cards {
     display: none;
+  }
+  .hero-visual {
+    display: block;
   }
   .footer-grid {
     grid-template-columns: 1fr 1fr;
@@ -4245,4 +4251,245 @@ body.dark-mode .pricing-card .pc-list li {
 .contact-tile a,
 .contact-tile p {
   overflow-wrap: anywhere;
+}
+
+/* ---------- HERO GLOBE STAGE (owner 2026-10-12, HERO GLOBE directive) ----------
+   The stage is in the markup from the first paint and it is a FIXED ASPECT
+   box, so swapping the generated poster for the live canvas changes nothing
+   about the page's geometry. On desktop it overlays the mock-card column
+   (position absolute, so appearing shifts nothing); the cards underneath are
+   hidden by VISIBILITY once the globe has drawn - never by display - so the
+   column keeps its height and the layout cannot move. On phones the cards
+   have always been hidden, so the stage simply sits in the flow there. */
+.hero-visual {
+  position: relative;
+}
+.hg-stage {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow: hidden;
+}
+.hg-stage.hg-on {
+  display: block;
+}
+/* First frame drawn: the mock cards go away by VISIBILITY, never display,
+   so the column keeps its height and the page cannot shift. Set on
+   .hero-visual by js/marketing-globe.js once the canvas has painted. */
+.hero-visual.hg-live .hero-cards {
+  visibility: hidden;
+}
+.hg-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 900 / 760;
+}
+.hg-poster,
+.hg-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.hg-poster {
+  object-fit: contain;
+  pointer-events: none;
+  transition: opacity 0.45s ease;
+}
+.hg-canvas {
+  opacity: 0;
+  transition: opacity 0.45s ease;
+  /* pan-y keeps the page scrollable by dragging over the globe (directive 3) */
+  touch-action: pan-y;
+  cursor: grab;
+}
+.hg-stage.hg-first .hg-canvas {
+  opacity: 1;
+}
+.hg-stage.hg-first .hg-poster {
+  opacity: 0;
+}
+.hg-tether {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+.hg-tether-line {
+  stroke: rgba(255, 224, 130, 0.6);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+}
+.hg-cards {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.hg-card {
+  position: absolute;
+  top: 50%;
+  pointer-events: auto;
+  width: min(248px, 46%);
+  display: block;
+  background: var(--card);
+  color: var(--text-primary);
+  border-radius: var(--radius-md);
+  padding: 13px 15px;
+  box-shadow: 0 20px 44px -12px rgba(15, 23, 42, 0.45);
+  text-decoration: none;
+  opacity: 0;
+  transform: translateY(-50%) scale(0.86);
+  transition:
+    opacity 0.38s ease,
+    transform 0.38s cubic-bezier(0.22, 0.88, 0.3, 1);
+}
+.hg-card.hg-open {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+.hg-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.hg-card-head b {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.hg-badge {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--on-gold);
+  background: var(--gold);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.hg-card-blurb {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.hg-card img {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 10px;
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+}
+.hg-card-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gold-deep);
+}
+.hg-card-foot .ico {
+  width: 14px;
+  height: 14px;
+}
+.hg-card:hover,
+.hg-card:focus-visible {
+  transform: translateY(-52%) scale(1.02);
+}
+.hg-controls {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.hg-play {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--on-navy);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: background var(--tr);
+}
+.hg-play:hover,
+.hg-play:focus-visible {
+  background: rgba(var(--gold-rgb), 0.28);
+}
+.hg-play .ico {
+  width: 13px;
+  height: 13px;
+}
+.hg-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.hg-tab {
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.72);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  padding: 6px 11px;
+  cursor: pointer;
+  transition:
+    background var(--tr),
+    color var(--tr);
+}
+.hg-tab:hover,
+.hg-tab:focus-visible {
+  color: var(--on-navy);
+  background: rgba(255, 255, 255, 0.14);
+}
+.hg-tab[aria-current='true'] {
+  color: var(--on-gold);
+  background: var(--gold);
+  border-color: var(--gold);
+}
+@media (max-width: 880px) {
+  .hg-stage {
+    position: static;
+    display: block;
+    overflow: visible;
+  }
+  .hg-controls {
+    top: auto;
+    bottom: 10px;
+    margin-top: 0;
+    justify-content: center;
+  }
+  .hg-card {
+    width: min(240px, 62%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hg-poster,
+  .hg-canvas,
+  .hg-card {
+    transition: none;
+  }
 }

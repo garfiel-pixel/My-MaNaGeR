@@ -493,6 +493,14 @@ jobs:
         id: qa-a11y-axe
         run: node tools/qa-a11y-axe.cjs
 
+      # HERO GLOBE gate (owner 2026-10-12): the landing hero's dot globe -
+      # markup-first stage, post-load bundle injection, real land mask, the
+      # nine-feature cycle through the __advance QA seam, pause/play, drag,
+      # manifest integrity, reduced-motion refusal, CLS zero, emoji + SW.
+      - name: "T4: Hero globe battery (qa-hero-globe)"
+        id: qa-hero-globe
+        run: node tools/qa-hero-globe.cjs
+
       - name: "T4: Stop static QA server"
         if: always()
         run: pkill -f "node serve.cjs" || true

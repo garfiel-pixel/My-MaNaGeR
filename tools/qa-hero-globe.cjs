@@ -15,12 +15,13 @@
          globe regression this gate exists for)
      G3  the starting orientation shows the home region (Jamaica
          on the near side, inside the disc)
-     G4  the 40 s auto-cycle visits EVERY feature card and the card
-         retracts on its own
-     G5  Pause really pauses (index frozen, aria-pressed, label
-         flips to Play) and Play resumes
-     G6  dragging the globe takes over and the auto-cycle stays
-         held off until the resume window
+     G4  the RANDOM auto-cycle pops MANY distinct feature cards,
+         never repeats a node back-to-back, and every card
+         retracts on its own (owner re-baseline 2026-10-13)
+     G5  no Pause/Play button and no feature tab chips remain,
+         and the globe still cycles by itself (owner 2026-10-13)
+     G6  the globe is not interactable by design: pointer
+         presses/drags change nothing while the cycle runs
      G7  manifest integrity: every feature's href resolves to a
          real page, its anchor id exists there, tiers are
          'free'/'premium' and MCP is labelled Premium
@@ -274,21 +275,22 @@ const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{
     home
   );
 
-  // G4: the auto-cycle, driven by the QA seam (no wall-clock luck). One
-  // feature every 10 s x 9 features needs > 90 s of stepped time to visit
-  // every node; the retract step then waits in 0.5 s windows until the
-  // module's OWN timer closes the card (never longer than one cycle).
+  // G4: the auto-cycle, driven by the QA seam (no wall-clock luck).
+  // OWNER 2026-10-13 RE-BASELINE: the cycle picks a RANDOM feature each lap
+  // (never the same node twice in a row), so "visits every feature in order"
+  // is no longer the contract. What is: many DISTINCT cards pop over time,
+  // no two consecutive pops repeat, and every card retracts on its own.
   const cycle = await page.evaluate(() => {
     var G = window.MMGR_GLOBE;
-    var visited = {};
-    var openedAtLeastOnce = false;
-    var t0 = G.state.index;
+    var opened = [];
+    var last = -1;
     for (var i = 0; i < 200; i++) {
-      // 200 x 0.5 s = 100 s > one lap of all nine features.
+      // 200 x 0.5 s = 100 s, ten laps of the 10 s cycle.
       G.__advance(500);
-      visited[G.state.index] = true;
-      if (G.cardIndex() >= 0) {
-        openedAtLeastOnce = true;
+      var ci = G.cardIndex();
+      if (ci >= 0 && ci !== last) {
+        opened.push(ci);
+        last = ci;
       }
     }
     // Let the cycle retract the open card by itself.
@@ -297,69 +299,63 @@ const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{
       G.__advance(500);
       closed = G.cardIndex() === -1;
     }
+    var distinct = Object.keys(
+      opened.reduce(function (a, v) {
+        a[v] = true;
+        return a;
+      }, {})
+    ).length;
+    var backToBack = false;
+    for (var k = 1; k < opened.length; k++) {
+      if (opened[k] === opened[k - 1]) {
+        backToBack = true;
+      }
+    }
     return {
-      first: t0,
-      visited: Object.keys(visited).map(Number),
+      pops: opened.length,
+      distinct: distinct,
       count: G.features.length,
-      openAtEnd: G.cardIndex(),
-      opened: openedAtLeastOnce
+      backToBack: backToBack,
+      openAtEnd: G.cardIndex()
     };
   });
-  const visitedAll =
-    cycle.visited.length === cycle.count &&
-    cycle.visited.every(function (v, i) {
-      return v === i;
-    });
   check(
-    'G4 the cycle visits every feature and every card retracts on its own',
-    visitedAll && cycle.opened && cycle.openAtEnd === -1,
+    'G4 the random cycle pops many distinct features, never repeats a node back-to-back, and retracts on its own',
+    cycle.pops >= 4 &&
+      cycle.distinct >= 4 &&
+      cycle.distinct <= cycle.count &&
+      !cycle.backToBack &&
+      cycle.openAtEnd === -1,
     cycle
   );
 
-  // G5: Pause / Play.
-  const pause = await page.evaluate(function () {
+  // G5: OWNER 2026-10-13 - the Pause/Play button and the feature tab chips
+  // are GONE (they were the "little boxes" cluttering the Android view).
+  // The globe must keep cycling on its own without any control to press.
+  const noCtl = await page.evaluate(function () {
     var G = window.MMGR_GLOBE;
-    var btn = document.querySelector('.hg-controls button');
-    if (!btn) {
-      return { noButton: true };
-    }
+    var buttons = document.querySelectorAll('.hg-controls button, .hg-play');
+    var tabs = document.querySelectorAll('.hg-tab, .hg-tabs');
     var idxBefore = G.state.index;
-    btn.click();
-    var pausedState = {
-      paused: G.state.paused,
-      pressed: btn.getAttribute('aria-pressed'),
-      label: (btn.querySelector('span') || btn).textContent.trim()
+    for (var i = 0; i < 50; i++) {
+      G.__advance(500);
+    } // 25 s, > 2 cycles, no interaction at all
+    return {
+      controls: buttons.length,
+      tabs: tabs.length,
+      cycled: G.state.index !== idxBefore
     };
-    for (var i = 0; i < 30; i++) {
-      G.__advance(500);
-    } // 15 s held
-    pausedState.indexHeld = G.state.index === idxBefore;
-    btn.click(); // Play
-    var resumed = G.state.paused === false;
-    for (var j = 0; j < 28; j++) {
-      G.__advance(500);
-    } // 14 s - past RESUME_AFTER
-    pausedState.indexMoved = G.state.index !== idxBefore;
-    pausedState.resumed = resumed;
-    return pausedState;
   });
   check(
-    'G5 Pause really pauses and Play resumes (aria-pressed + label flip with it)',
-    pause &&
-      !pause.noButton &&
-      pause.paused === true &&
-      pause.pressed === 'true' &&
-      pause.label === 'Play' &&
-      pause.indexHeld === true &&
-      pause.resumed === true &&
-      pause.indexMoved === true,
-    pause
+    'G5 no Pause/Play button and no tab chips remain, and the globe still cycles by itself',
+    noCtl && noCtl.controls === 0 && noCtl.tabs === 0 && noCtl.cycled === true,
+    noCtl
   );
 
-  // G6: a drag takes over - the globe follows the pointer, and while the
-  // button is down the auto-cycle cannot advance. (After release the module
-  // eases BACK to the current node by design - t resets to 0 - so the lon
-  // is measured DURING the drag, never after the ease-back.)
+  // G6: OWNER 2026-10-13 - the globe is NOT interactable by design ("nobody
+  // can interact with it"): pointer presses and drags on the frame change
+  // nothing - no takeover, no held cycle, no dragging state - while the
+  // auto-cycle carries on underneath.
   const drag = await page.evaluate(async function () {
     var G = window.MMGR_GLOBE;
     var frame = document.querySelector('.hg-frame');
@@ -378,29 +374,26 @@ const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{
       cy = b.top + b.height / 2;
     mk('pointerdown', cx, cy);
     mk('pointermove', cx + 120, cy);
-    var duringDrag = {
-      lonMoved: Math.abs(G.state.lon - lonBefore) > 20,
-      dragging: G.state.dragging === true
+    var afterEvents = {
+      dragging: G.state.dragging === true,
+      // Before any step, lon may only match: no handler touched it.
+      lonJump: Math.abs(G.state.lon - lonBefore) < 1e-6
     };
-    var idxBeforeRelease = G.state.index;
+    var idxBefore = G.state.index;
     for (var i = 0; i < 30; i++) {
       G.__advance(500);
-    } // 15 s while held down
-    duringDrag.indexHeld = G.state.index === idxBeforeRelease;
+    } // 15 s while the pointer is still "down"
     mk('pointerup', cx + 120, cy);
-    // After release the globe eases back to the node rather than snapping:
-    // the lon must converge on the target it is easing toward.
-    var t0 = G.state.t;
-    for (var j = 0; j < 8; j++) {
-      G.__advance(500);
-    }
-    duringDrag.easedBack = G.state.t > t0; // the cycle is running again
-    duringDrag.released = G.state.dragging === false;
-    return duringDrag;
+    afterEvents.cycleNotHeld = G.state.index !== idxBefore;
+    afterEvents.releasedClean = G.state.dragging === false;
+    return afterEvents;
   });
   check(
-    'G6 dragging turns the globe, holds the cycle while held down, and resumes after release',
-    drag.lonMoved && drag.dragging === true && drag.indexHeld && drag.released && drag.easedBack,
+    'G6 pointer presses and drags on the globe change nothing while the auto-cycle keeps running',
+    drag.dragging === false &&
+      drag.lonJump === true &&
+      drag.cycleNotHeld === true &&
+      drag.releasedClean === true,
     drag
   );
 

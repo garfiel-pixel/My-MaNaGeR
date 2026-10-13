@@ -339,21 +339,36 @@ async function walkFocus(page) {
         m.segIn && m.rateIn && m.pieceReachable && m.runTap,
         m
       );
-      // M9/M10 (owner 2026-09-30 mobile pass) on the phone viewport only.
+      // M9/M10 (owner re-baseline 2026-10-13) on the phone viewport only.
+      // OWNER 2026-10-13: the sticky treatment is GONE - Calculate and Add to
+      // bill used to pin themselves over the form on a phone and the owner
+      // called it out ("they're like there on the bottom of the screen"),
+      // choosing plain flow. What is asserted now: position is static AND the
+      // buttons SCROLL WITH THE PAGE (their viewport box tracks the scroll
+      // delta, so nothing is pinned over the content), with no sideways
+      // overflow and a thumb-sized tap target.
       if (vp.n === '390') {
         const m9 = await page.evaluate(() => {
+          window.scrollTo(0, 0);
           const b = document.querySelector('.bcp-run');
+          const topAt0 = b.getBoundingClientRect().top;
           window.scrollTo(0, 800);
           const r = b.getBoundingClientRect();
+          const moved = topAt0 - r.top; // ~800 when the button is in-flow
           return {
             pos: getComputedStyle(b).position,
-            inThumb: r.bottom > window.innerHeight - 160 && r.top < window.innerHeight,
+            scrolledWithPage: moved > 600,
+            inFlowStill: r.height > 0 && r.width > 0,
             noHScroll: document.documentElement.scrollWidth <= window.innerWidth + 1
           };
         });
         check(
-          'M9 [390] Calculate sticks within thumb reach after scroll',
-          m9 && m9.pos === 'sticky' && m9.inThumb,
+          'M9 [390] Calculate is plain in-flow on phone and scrolls with the page (owner 2026-10-13)',
+          m9 &&
+            m9.pos === 'static' &&
+            m9.scrolledWithPage === true &&
+            m9.inFlowStill === true &&
+            m9.noHScroll === true,
           m9
         );
         const m10 = await page.evaluate(() =>

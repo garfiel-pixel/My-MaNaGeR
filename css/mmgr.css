@@ -9453,15 +9453,13 @@ body.dark-mode .bcp-ico-moon {
     width: 44px;
     height: 44px;
   }
-  /* OWNER 2026-09-30 mobile pass: the run button never leaves the thumb
-     (sticky above the keyboard scroll). Print sheet unaffected (the
-     button is print-hidden). Input sizing lives AFTER the .bcp-field
-     base rule (must win the same-specificity cascade). */
+  /* OWNER 2026-10-13: the sticky treatment is GONE. Calculate and Add to bill
+     used to pin themselves to the bottom of a phone screen (both carry
+     .bcp-run), so they sat over the form until the reader scrolled down to
+     the real buttons - the owner called it out and chose plain flow. The
+     buttons are ordinary in-flow buttons now; print hiding is unchanged. */
   .bcp-run {
-    position: sticky;
-    bottom: 12px;
-    z-index: 20;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+    position: static;
   }
 }
 .bcp-lede {
@@ -11072,6 +11070,12 @@ body.dark-mode .cause-sel {
   display: block;
 }
 body.glass-premium #app-main {
+  position: relative;
+  z-index: 1;
+}
+/* OWNER 2026-10-13: the star field runs on the calculator now - its content
+   must paint above the fixed z-0 canvas exactly like #app-main does. */
+body.glass-premium .bcp-main {
   position: relative;
   z-index: 1;
 }
@@ -15743,14 +15747,29 @@ body.calculator-page .bcp-rr-x {
 }
 /* The trade picker wraps rather than scrolls sideways, so every
    trade is reachable without a hidden gesture. */
+/* OWNER 2026-10-13 ("get the tabs optimized properly"): the trade chips used
+   to WRAP into a five-row pill stack on a phone - one long tab bar the eye
+   could not scan. They are a single horizontal scroll strip now: no wrap,
+   snap-aligned, scrollbar hidden, and the chosen trade is scrolled into view
+   by the card itself so the active tab is always on screen. */
 .rr-trades {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
   padding: 10px 16px;
   border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.rr-trades::-webkit-scrollbar {
+  display: none;
 }
 .rr-trades .bcp-seg-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  scroll-snap-align: start;
   font-size: 0.72rem;
 }
 /* Section heading: each trade is its own group with its own
@@ -15782,6 +15801,14 @@ body.calculator-page .bcp-rr-x {
   font-size: 0.76rem;
   font-weight: 600;
   color: var(--text);
+}
+/* OWNER 2026-10-13 ("the data is formatted better"): money reads down the
+   RIGHT edge - the Rate column is right-aligned with tabular numerals so
+   digit columns line up. Scoped to cells only, so the trade group headings
+   (th colspan) keep their left anchor. */
+.rr-table thead th:last-child,
+.rr-table tbody td:last-child {
+  text-align: right;
 }
 .rr-count {
   margin-left: 8px;
@@ -15829,6 +15856,30 @@ body.calculator-page .bcp-rr-x {
 }
 .rr-legend {
   display: inline-flex;
+  align-items: center;
+}
+/* OWNER 2026-10-13: the signed-out gate for the rate book - the same shell as
+   the book, narrowed to its copy, one gold CTA and one quiet way out. */
+.rr-panel.rr-panel-s {
+  width: min(440px, 100%);
+  max-height: none;
+}
+.rr-signin {
+  padding: 26px 22px 24px;
+}
+.rr-signin h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+.rr-signin p {
+  margin: 0 0 18px;
+  color: var(--slate);
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+.rr-signin-cta {
+  display: flex;
+  gap: 10px;
   align-items: center;
 }
 /* Phones: the four columns are tight at 390px, so the rate and

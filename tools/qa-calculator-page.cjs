@@ -3122,6 +3122,12 @@ async function withChrome(fn) {
     // (lesson 14: a feature nothing asserts rots silently). These lock the
     // open/render/toggle/close contract AND the copy's own honesty - the
     // "90 line items" sentence used to contradict the 100 rows it sat above.
+    // OWNER 2026-10-13: the book is gated behind SIGN IN, and serve.cjs
+    // mirrors the Worker's signed-out /api/auth/me - so every RB gate below
+    // pins the SIGNED-IN branch through the module's QA seam and still
+    // measures the real book. The signed-out branch is RB-Auth1 right after
+    // RB1; the seam is cleared again before F4.
+    await ev(`window.__MMGR_RR_AUTH = 'in'; return true;`);
     const rb1 = await ev(`(function(){
       var btn = document.querySelector('.bcp-ratebook[data-action="openRateBook"]');
       return { hasBtn: !!btn, text: btn ? btn.textContent.replace(/\\s+/g,' ').trim() : '',
@@ -3134,6 +3140,52 @@ async function withChrome(fn) {
       rb1 && rb1.hasBtn && /rate book/i.test(rb1.text) && rb1.icon,
       rb1
     );
+    // RB-Auth1 (owner 2026-10-13): signed OUT, the button shows the sign-in
+    // card instead of the book - same overlay shell, plainly worded, with a
+    // Sign in CTA that lands in the app. Pinned through the seam; a real
+    // signed-out online visit answers {ok:false} from /api/auth/me the same
+    // way (serve.cjs mirrors that answer for every local run).
+    await ev(`(function(){
+      window.__MMGR_RR_AUTH = 'out';
+      var c = document.getElementById('calc-ratebook-card');
+      if (c) { c.remove(); document.body.classList.remove('rr-open'); }
+      document.querySelector('.bcp-ratebook[data-action="openRateBook"]').click();
+      return true;
+    })()`);
+    await delay(350);
+    const rbaOut = await ev(`(function(){
+      var c = document.getElementById('calc-ratebook-card');
+      if (!c) return { shown: false };
+      var signin = c.querySelector('.rr-signin');
+      var book = c.querySelector('#rr-q, .rr-table');
+      var cta = signin ? signin.querySelector('a[href*="app.html"]') : null;
+      var h3 = signin && signin.querySelector('h3');
+      var r = c.getBoundingClientRect();
+      var cs = getComputedStyle(c);
+      return { shown: true, signin: !!signin, book: !!book, cta: !!cta,
+               h3: h3 ? h3.textContent.trim() : '',
+               visible: r.width > 0 && r.height > 0 && cs.display !== 'none' };
+    })()`);
+    check(
+      'RB-Auth1 signed out: the button shows the sign-in card (not the book) with a Sign in CTA',
+      rbaOut &&
+        rbaOut.shown &&
+        rbaOut.signin &&
+        !rbaOut.book &&
+        rbaOut.cta &&
+        rbaOut.visible &&
+        /sign in/i.test(rbaOut.h3 || ''),
+      rbaOut
+    );
+    // Close the gate and restore the signed-in seam for every RB gate below
+    // (RB0 loads the real 811-row book through that branch - it IS the
+    // signed-in gate assertion).
+    await ev(`(function(){
+      var c = document.getElementById('calc-ratebook-card');
+      if (c) { c.remove(); document.body.classList.remove('rr-open'); }
+      window.__MMGR_RR_AUTH = 'in';
+      return true;
+    })()`);
     // The full 811-rate book is fetched LAZILY on first open (so a slow
     // connection is not held up by 16 KB of rates nobody has asked for yet),
     // which means the first paint is the 100-row inline fallback. This helper
@@ -3507,6 +3559,10 @@ async function withChrome(fn) {
       lx2 && lx2.shown && lx2.hasFix && lx2.added && lx2.gone,
       lx2
     );
+
+    // The RB family is done: clear the sign-in seam so everything below sees
+    // the dev server's real (signed-out) answer again.
+    await ev(`window.__MMGR_RR_AUTH = null; return true;`);
 
     // ---------- F4 ENHANCEMENTS ----------
     // U1: imperial toggle - labels convert, state persists, aria follows.

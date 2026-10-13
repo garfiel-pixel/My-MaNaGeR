@@ -17,7 +17,37 @@
    v382 - full-bleed marketing canvas, 7-big-dot rail with generated
            small dots, contact tile phone overflow, guide sidebar spacing
    ============================================================ */
-const CACHE = 'mmgr-shell-v415';
+const CACHE = 'mmgr-shell-v416';
+
+// v416 - OWNER MOBILE + BRANDING WAVE (2026-10-13). Five things, all owner-
+// called-out from a phone review. (1) HERO GLOBE v2: the Pause/Play button
+// and the feature tab chips are GONE - they were the "little boxes" cluttering
+// the Android view - the globe is non-interactive by design, spins
+// continuously between pops and now eases a RANDOM feature node to the front
+// each cycle (qa-hero-globe G4/G5/G6 re-baselined to that contract).
+// (2) HERO COPY + ART: the headline is the owner's "Build comfortably - all
+// in one workspace", the sub is trimmed to the promise, and the crane photo
+// is replaced by the owner's new branded landing image (converted to webp,
+// 81 KB, images/hero-landing.webp; the raw jpg sits beside it). Every photo
+// band on every marketing page now carries a discreet My MaNaGeR mark
+// (.pb-brand), and bare "AI" references are branded "My MaNaGeR AI".
+// (3) LANDING CAROUSEL FIX: the features auto-tick used to die on the first
+// touch (touch has no mouseleave) - it now resumes ~3 s after the finger
+// lifts, so "everything a real project needs" ticks by itself again.
+// (4) RATE BOOK BEHIND SIGN IN (not premium): calculator.html's rate book
+// button probes GET /api/auth/me and a signed-out visitor gets a plainly
+// worded sign-in card instead of the book; offline or answerless the book
+// OPENS (offline-first stays sacred), and the seam window.__MMGR_RR_AUTH
+// pins the branches for qa-calculator-page RB-Auth1. serve.cjs mirrors the
+// signed-out answer for local parity. Same wave: the trade tabs are a single
+// scroll strip (they used to wrap into a five-row pill stack on phones),
+// rates are right-aligned tabular figures, and the sticky Calculate / Add to
+// bill buttons are plain in-flow buttons again. (5) THE STAR FIELD RUNS ON
+// THE CALCULATOR: mmgr-viewport + mmgr-glass now load on calculator.html, so
+// the app/admin starry backdrop reaches the third core section - same glass
+// preference, same capability floor, and tglTheme refreshes the shader.
+// Sources, served HTML and dist changed, so returning clients re-fetch.
+//
 
 // v415 - HERO GLOBE (owner 2026-10-12, HERO GLOBE directive). index.html's
 // hero gains a hand-written Canvas 2D dot globe whose features pop out of it

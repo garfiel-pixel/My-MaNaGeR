@@ -496,6 +496,20 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // OWNER 2026-10-13 parity: the Worker's GET /api/auth/me answers the
+    // SIGNED-OUT shape here (the dev server has no session store), so the
+    // calculator's rate-book sign-in gate behaves locally exactly like a
+    // signed-out production visit. QA pins the signed-in branch through the
+    // window.__MMGR_RR_AUTH seam instead of a fake cookie.
+    if (p === '/api/auth/me' && req.method === 'GET') {
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store'
+      });
+      res.end(JSON.stringify({ ok: false, user: null }));
+      return;
+    }
+
     // PART F T7 (2026-08-16): mirror of the Worker's public reviews
     // endpoints so the local QA battery exercises reviews.html against
     // the dev server exactly like production (worker.js serves these

@@ -720,7 +720,12 @@
      change here must bump v, or returning calculator-only visitors keep
      the old script/styles for a year. -->
 <script src="js/mmgr-icon-restore.js?v=25"></script>
-<script src="js/calculator-page.js?v=35"></script>
+<!-- OWNER 2026-10-13: the star field the app and admin already carry runs on
+     the calculator now - the SAME modules, preferences and capability floor,
+     loaded in the order app.html uses (viewport signal first, glass second). -->
+<script src="js/mmgr-viewport.js?v=1"></script>
+<script src="js/mmgr-glass.js?v=1"></script>
+<script src="js/calculator-page.js?v=36"></script>
 <script src="js/calc-ai.js?v=6"></script>
 </body>
 </html>

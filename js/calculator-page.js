@@ -4012,6 +4012,14 @@
         renderRateBookCard();
       });
     });
+    // OWNER 2026-10-13: the trade strip no longer wraps - it scrolls. Keep the
+    // chosen tab on screen by setting the strip's OWN scrollLeft (never
+    // scrollIntoView, which could yank the page behind the popup).
+    const tradesWrap = card.querySelector('.rr-trades');
+    const activeChip = tradesWrap && tradesWrap.querySelector('.active');
+    if (tradesWrap && activeChip) {
+      tradesWrap.scrollLeft = Math.max(0, activeChip.offsetLeft - 8);
+    }
     // Search: re-render on every keystroke, then put the caret back. The
     // filtered set is rebuilt from the cached rows each time, so a query can
     // never leave stale rows behind.
@@ -4059,6 +4067,134 @@
       return;
     }
     renderRateBookCard();
+  }
+  // OWNER 2026-10-13 ("To access the rate book, you have to sign in. No
+  // premium needed"): the book opens for a SIGNED-IN account - Free included.
+  // The probe is GET /api/auth/me (the Worker's own session endpoint).
+  //   'in'    -> signed in, open the book.
+  //   'out'   -> signed out, show the sign-in card instead.
+  //   'unknow'-> no answer we can trust: a static dev server (404), an offline
+  //             device, or a Worker hiccup. Offline-first is sacred, so the
+  //             book OPENS rather than brick itself over an unverifiable state
+  //             - a real signed-out visit online always answers 'out'.
+  // window.__MMGR_RR_AUTH is the QA seam (qa-calculator-page RB-Auth gates):
+  // set it to 'in' or 'out' to pin the branch without a live Worker.
+  let _rrAuth = null;
+  function rrAuthState() {
+    if (window.__MMGR_RR_AUTH === 'in' || window.__MMGR_RR_AUTH === 'out') {
+      return Promise.resolve(window.__MMGR_RR_AUTH);
+    }
+    if (_rrAuth) {
+      return Promise.resolve(_rrAuth);
+    }
+    return fetch('/api/auth/me', { credentials: 'same-origin' })
+      .then(function (r) {
+        if (r.status === 404 || r.status === 501 || !r.ok) {
+          return 'unknown';
+        }
+        return r.json().then(function (d) {
+          return d && d.ok && d.user ? 'in' : 'out';
+        });
+      })
+      .catch(function () {
+        return 'unknown';
+      })
+      .then(function (s) {
+        _rrAuth = s;
+        return s;
+      });
+  }
+  // The signed-out card: same overlay shell as the book, plainly worded.
+  function renderRateBookSigninCard() {
+    const card = document.createElement('div');
+    card.id = 'calc-ratebook-card';
+    card.className = 'card rr-overlay';
+    card.setAttribute('role', 'dialog');
+    card.setAttribute('aria-modal', 'true');
+    card.setAttribute('aria-label', 'Sign in to open the rate book');
+    card.innerHTML =
+      '<div class="rr-panel rr-panel-s">' +
+      '<div class="rr-head">' +
+      '<h2 class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-book"></use></svg> JIC rates ' +
+      JIC_YEARS +
+      '</h2>' +
+      '<button type="button" class="bcp-rr-x" data-action="rrClose" aria-label="Close" title="Close"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button>' +
+      '</div>' +
+      '<div class="rr-signin">' +
+      '<h3>Sign in to open the rate book</h3>' +
+      '<p>The JIC rate book is free on every plan - Free included. Sign in so your rate views can follow you between devices. Your projects stay on this device either way.</p>' +
+      '<div class="rr-signin-cta">' +
+      '<a class="btn btn-g" href="app.html?next=calculator.html">Sign in</a>' +
+      '<button type="button" class="btn btn-ghost" data-action="rrClose">Not now</button>' +
+      '</div>' +
+      '</div>' +
+      '</div>';
+    document.body.appendChild(card);
+    const close = function () {
+      const c = document.getElementById('calc-ratebook-card');
+      if (c) c.remove();
+      document.body.classList.remove('rr-open');
+      document.removeEventListener('keydown', onKey, true);
+      const opener = document.querySelector('[data-action="openRateBook"]');
+      if (opener) opener.focus();
+    };
+    function onKey(e) {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        close();
+      }
+    }
+    _rrKeyHandler = onKey;
+    card.querySelectorAll('[data-action="rrClose"]').forEach(function (b) {
+      b.addEventListener('click', close);
+    });
+    card.addEventListener('click', function (e) {
+      if (e.target === card) close();
+    });
+    document.addEventListener('keydown', onKey, true);
+    const firstBtn = card.querySelector('.rr-signin-cta a, .bcp-rr-x');
+    if (firstBtn) {
+      try {
+        firstBtn.focus();
+      } catch (e) {
+        /* nicety */
+      }
+    }
+    document.body.classList.add('rr-open');
+  }
+  // The top-bar entry: probe the session, then open the book or the gate.
+  function openRateBookGated() {
+    // Already showing (either card): click-to-close keeps the toggle contract.
+    if (document.getElementById('calc-ratebook-card')) {
+      showRateBookCard();
+      return;
+    }
+    // Sync path when the answer is ALREADY known (a cached session, or the
+    // QA seam): a repeat open must stay instant and synchronous - the toggle
+    // contract the page and its harnesses rely on. The first click in a real
+    // session still probes the network before deciding.
+    const known =
+      window.__MMGR_RR_AUTH === 'in' || window.__MMGR_RR_AUTH === 'out'
+        ? window.__MMGR_RR_AUTH
+        : _rrAuth;
+    if (known === 'in' || known === 'out') {
+      if (known === 'out') {
+        renderRateBookSigninCard();
+      } else {
+        renderRateBookCard();
+      }
+      return;
+    }
+    rrAuthState().then(function (s) {
+      if (document.getElementById('calc-ratebook-card')) {
+        return; // a second click won the race; it already toggled
+      }
+      if (s === 'out') {
+        renderRateBookSigninCard();
+      } else {
+        renderRateBookCard();
+      }
+    });
   }
   // E1+E4 together: the rate a fresh prefill should show for a work item,
   // ALREADY in the estimate currency. Order: active book rate (workKey ->
@@ -6973,8 +7109,9 @@
       renderGuide();
     },
     // ---- Jamaica rate book card (owner 2026-10-02) ----
+    // Owner 2026-10-13: gated behind SIGN IN (not premium).
     openRateBook: function () {
-      showRateBookCard();
+      openRateBookGated();
     },
     // ---- First-visit tutorial actions (owner 2026-09-30) ----
     calcTourStart: function () {
@@ -7176,6 +7313,11 @@
       // body.dark-mode + persistence are owned there, never duplicated here.
       if (window.MMGRTheme && MMGRTheme.setMode) {
         MMGRTheme.setMode(MMGRTheme.isDark() ? 'light' : 'dark');
+        // OWNER 2026-10-13: the star field follows dark/light live, exactly
+        // like the app and admin pages do it.
+        if (window.MMGR && MMGR.Glass && MMGR.Glass.refreshTheme) {
+          MMGR.Glass.refreshTheme();
+        }
         return;
       }
       document.body.classList.toggle('dark-mode');
@@ -9424,5 +9566,12 @@
     mountCalcAssistant();
   } else {
     document.addEventListener('DOMContentLoaded', mountCalcAssistant, { once: true });
+  }
+  /* OWNER 2026-10-13: the star field the app and admin sections carry now
+     runs here too - same mmgr-glass module, same glass preference, same
+     capability floor (perf mode, weak hardware and narrow viewports stay on
+     CSS). sync() is a no-op everywhere else. */
+  if (window.MMGR && MMGR.Glass && MMGR.Glass.sync) {
+    MMGR.Glass.sync();
   }
 })();

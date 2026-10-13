@@ -46,7 +46,7 @@
   // Cycle timing (owner directive section 3).
   var CYCLE = 10000;
   var CARD_IN = 1600; // card pops once the globe has eased to the node
-  var CARD_OUT = 9000; // retract
+  var CARD_OUT = 7200; // retract - leaves a long spin gap before the next pop
   var EASE_TAU = 300; // damping time constant, ms
   var SPIN = 3.5; // idle spin, degrees per second (<= 4 as specified)
   var RESUME_AFTER = 4000; // auto-cycle resumes this long after interaction
@@ -86,7 +86,7 @@
     },
     {
       id: 'ai',
-      title: 'AI assistant',
+      title: 'My MaNaGeR AI',
       blurb:
         'Ask about your live project in plain words and get an answer read from your own data.',
       href: 'features.html#f-ai',
@@ -282,13 +282,12 @@
     tetherLine = null,
     cardsBox = null,
     controls = null,
-    pauseBtn = null,
-    tabBox = null,
     cardEls = [],
     tabEls = [];
 
   var state = {
     index: 0,
+    next: 0, // the next RANDOM feature to ease toward during the spin gap
     t: 0,
     lon: LON0,
     lat: LAT0,
@@ -484,9 +483,22 @@
   function target() {
     var f = FEATURES[state.index];
     if (state.t >= CARD_OUT) {
-      f = FEATURES[(state.index + 1) % FEATURES.length]; // ease to the NEXT node
+      f = FEATURES[state.next]; // ease to the NEXT (random) node
     }
     return f;
+  }
+
+  // A random feature index that is NOT `exclude`, so consecutive pops never
+  // repeat the same node.
+  function pickOther(exclude) {
+    if (FEATURES.length < 2) {
+      return exclude;
+    }
+    var i = exclude;
+    while (i === exclude) {
+      i = Math.floor(Math.random() * FEATURES.length);
+    }
+    return i;
   }
 
   function step(dt) {
@@ -496,12 +508,15 @@
     state.t += dt;
     if (state.t >= CYCLE) {
       state.t -= CYCLE;
-      state.index = (state.index + 1) % FEATURES.length;
+      state.index = state.next;
+      state.next = pickOther(state.index);
       setCard(state.index, false);
     }
     var f = target();
-    // Idle spin while the card is open, and only then.
-    if (state.t >= 2000 && state.t < CARD_OUT) {
+    // Continuous idle spin during the gap between cards, so the globe keeps
+    // rotating toward the next (random) node. While a card is showing the spin
+    // is off, so the node - and its tether - stay put.
+    if (state.t >= CARD_OUT) {
       state.lon += (SPIN * dt) / 1000;
     }
     var k = 1 - Math.exp(-dt / EASE_TAU); // time-based damping, frame-rate safe
@@ -660,6 +675,8 @@
     stage.classList.add('hg-on');
     state.lon = LON0;
     state.lat = LAT0;
+    state.index = 0;
+    state.next = pickOther(0);
     measure();
     render();
     _last = 0;
@@ -710,34 +727,6 @@
       tether.appendChild(tetherLine);
     }
 
-    // Pause / play - the one visible control the directive requires.
-    pauseBtn = document.createElement('button');
-    pauseBtn.type = 'button';
-    pauseBtn.className = 'hg-play';
-    pauseBtn.setAttribute('aria-pressed', 'false');
-    pauseBtn.appendChild(svgIcon('i-pause'));
-    var label = document.createElement('span');
-    label.textContent = 'Pause';
-    pauseBtn.appendChild(label);
-    controls.appendChild(pauseBtn);
-
-    // One tab per feature.
-    tabBox = document.createElement('div');
-    tabBox.className = 'hg-tabs';
-    tabBox.setAttribute('role', 'group');
-    tabBox.setAttribute('aria-label', 'Jump to a feature');
-    FEATURES.forEach(function (f, i) {
-      var b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'hg-tab';
-      b.textContent = f.title;
-      b.setAttribute('aria-current', 'false');
-      b.dataset.index = String(i);
-      tabBox.appendChild(b);
-      tabEls.push(b);
-    });
-    controls.appendChild(tabBox);
-
     // Every feature is a real link, in the DOM from the moment the globe
     // starts - only the active one is visible.
     FEATURES.forEach(function (f) {
@@ -780,101 +769,13 @@
       cardEls.push(a);
     });
 
-    pauseBtn.addEventListener('click', onPause);
-    tabBox.addEventListener('click', onTab);
-    wirePointer();
     wireHost();
     return true;
-  }
-
-  function onPause() {
-    state.paused = !state.paused;
-    pauseBtn.setAttribute('aria-pressed', state.paused ? 'true' : 'false');
-    pauseBtn.querySelector('span').textContent = state.paused ? 'Play' : 'Pause';
-    var use = pauseBtn.querySelector('use');
-    if (use) {
-      use.setAttribute('href', 'css/mmgr-icons.svg#' + (state.paused ? 'i-play' : 'i-pause'));
-    }
-    if (state.paused) {
-      stopLoop(); // an explicit Pause really stops the loop, not just the cycle
-    } else {
-      state.resumeAt = now(); // a deliberate Play resumes at once
-      if (!state.hidden && !state.frozen && !_raf) {
-        _last = 0;
-        _raf = requestAnimationFrame(loop);
-      }
-    }
-  }
-
-  function onTab(e) {
-    var b = e.target.closest ? e.target.closest('.hg-tab') : null;
-    if (!b) {
-      return;
-    }
-    var i = Number(b.dataset.index);
-    if (!isFinite(i)) {
-      return;
-    }
-    state.index = i;
-    state.t = 2000; // the globe is already easing to it; open the card
-    setCard(i, false);
-    bump();
   }
 
   function bump() {
     state.resumeAt = now() + RESUME_AFTER; // 4 s, then the cycle carries on
   }
-
-  function wirePointer() {
-    var down = false,
-      lastX = 0,
-      lastY = 0;
-    var onDown = function (e) {
-      down = true;
-      state.dragging = true;
-      lastX = e.clientX;
-      lastY = e.clientY;
-      if (frame.setPointerCapture && e.pointerId != null) {
-        try {
-          frame.setPointerCapture(e.pointerId);
-        } catch (err) {}
-      }
-    };
-    var onMove = function (e) {
-      if (!down) {
-        return;
-      }
-      var dx = e.clientX - lastX,
-        dy = e.clientY - lastY;
-      lastX = e.clientX;
-      lastY = e.clientY;
-      state.lon = clamp(state.lon + dx * 0.35, -180, 180);
-      state.lat = clamp(state.lat - dy * 0.2, -55, 60);
-      render();
-      if (_open !== -1) {
-        positionCard();
-      }
-      bump();
-    };
-    var onUp = function () {
-      if (!down) {
-        return;
-      }
-      down = false;
-      state.dragging = false;
-      state.t = 0; // ease back to the node rather than snapping
-      bump();
-    };
-    frame.addEventListener('pointerdown', onDown);
-    frame.addEventListener('pointermove', onMove);
-    frame.addEventListener('pointerup', onUp);
-    frame.addEventListener('pointercancel', onUp);
-    _listeners.push(['pointerdown', frame, onDown]);
-    _listeners.push(['pointermove', frame, onMove]);
-    _listeners.push(['pointerup', frame, onUp]);
-    _listeners.push(['pointercancel', frame, onUp]);
-  }
-
   function wireHost() {
     // Hover and focus-within pause the cycle; it resumes 4 s later unless the
     // user pressed Pause.

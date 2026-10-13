@@ -931,7 +931,8 @@
           featTrack.scrollLeft += stepW();
         }
       }
-      var timer = null;
+      var timer = null,
+        resumeT = 0;
       function play() {
         if (paused || timer) return;
         timer = setInterval(tick, TICK_MS);
@@ -940,6 +941,10 @@
         if (timer) {
           clearInterval(timer);
           timer = null;
+        }
+        if (resumeT) {
+          clearTimeout(resumeT);
+          resumeT = 0;
         }
       }
       function go(dir) {
@@ -965,6 +970,24 @@
         featTrack.addEventListener(ev, stop, { passive: true });
       });
       featTrack.addEventListener('mouseleave', play);
+      /* Touch has no mouseleave, so the auto-tick used to die on the first
+         tap and never come back (owner: "they are not going to the side by
+         themselves"). Resume a few seconds after the finger lifts. */
+      ['touchend', 'touchcancel', 'pointerup'].forEach(function (ev) {
+        featTrack.addEventListener(
+          ev,
+          function () {
+            if (paused) {
+              return;
+            }
+            if (resumeT) {
+              clearTimeout(resumeT);
+            }
+            resumeT = setTimeout(play, 3200);
+          },
+          { passive: true }
+        );
+      });
       document.addEventListener('visibilitychange', function () {
         if (document.hidden) stop();
         else play();

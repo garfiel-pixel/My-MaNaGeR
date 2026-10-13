@@ -2351,6 +2351,46 @@ body.dark-mode .hero-card .hc-stepdot {
   z-index: 1;
   max-width: 620px;
 }
+/* OWNER 2026-10-13 ("brand all of the images we have uploaded"): a discreet
+   house mark on every photo band. Sits above the overlay, top-right of the
+   photo, never inside the reading column. Decorative - the brand already
+   speaks in the header - so it is aria-hidden. Gold on a deep navy pill
+   clears AA against any photo behind it. */
+.pb-brand {
+  position: absolute;
+  top: 18px;
+  right: 22px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: rgba(8, 14, 28, 0.62);
+  border: 1px solid rgba(240, 195, 90, 0.4);
+  color: #f5f7fa;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+.pb-brand .ico {
+  width: 18px;
+  height: 18px;
+  color: var(--gold);
+}
+@media (max-width: 480px) {
+  .pb-brand {
+    top: 12px;
+    right: 12px;
+    padding: 5px 10px;
+    font-size: 0.72rem;
+  }
+  .pb-brand .ico {
+    width: 16px;
+    height: 16px;
+  }
+}
 .pb-content .eyebrow {
   color: var(--accent-on-navy);
 }

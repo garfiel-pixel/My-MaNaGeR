@@ -132,9 +132,12 @@ ok(
   /'verify', hourAgo\)/.test(src),
   'verify unchanged'
 );
+// Brace-tolerant (2026-10-14): the repo-wide eslint curly pass wrapped
+// single-statement bodies in src/auth/session.js; the assertion still
+// demands that exact generic-on-cap early return.
 ok(
   'a capped reset still returns the generic message, never a 429',
-  /if \(rl\.limited\) return json\(generic\)/.test(src)
+  /if \(rl\.limited\) \{?\s*return json\(generic\)/.test(src)
 );
 ok('the login 429 still sends Retry-After', /'Retry-After': String\(retryAfter\)/.test(src));
 ok(

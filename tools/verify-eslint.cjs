@@ -111,9 +111,19 @@ if (errors > 0) {
 }
 
 if (warnings > WARN_CEILING) {
-  console.error('\nESLint: ' + warnings + ' warning(s) found, which exceeds the frozen ceiling of ' + WARN_CEILING + '.');
-  console.error('This pull request added lint debt. If the additional warnings are intentional and reviewed, you may raise the baseline deliberately.');
-  console.error('To raise the baseline for CI on this branch, set ESLINT_CEILING in the workflow or environment.');
+  console.error(
+    '\nESLint: ' +
+      warnings +
+      ' warning(s) found, which exceeds the frozen ceiling of ' +
+      WARN_CEILING +
+      '.'
+  );
+  console.error(
+    'This pull request added lint debt. If the additional warnings are intentional and reviewed, you may raise the baseline deliberately.'
+  );
+  console.error(
+    'To raise the baseline for CI on this branch, set ESLINT_CEILING in the workflow or environment.'
+  );
   fail(
     warnings +
       ' warnings exceeds the frozen ceiling of ' +

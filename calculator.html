@@ -178,7 +178,33 @@
             <option value="panel">Consumer panel / breaker box (each)</option>
             <option value="electrical-conduit">Electrical conduit (per ft run, by JIC diameter)</option>
           </optgroup>
+          <optgroup label="Other">
+            <!-- B1: the ONE optional choice. When it is selected the form
+                 reveals name + unit + quantity + rate and hides nothing else;
+                 every other pick leaves the form byte-for-byte as before. -->
+            <option value="custom">Custom item (your own rate)</option>
+          </optgroup>
         </select>
+      </div>
+
+      <!-- B1: the four fields the custom choice adds - name, unit, quantity,
+           rate. They are visible only while the custom choice is on the form;
+           a normal pick shows them as empty, and the page prices exactly the
+           Quick total path (quantity times all-in rate, then the normal
+           on-costs and tax). Pricing maths lives in the page, not here. -->
+      <div class="bcp-field bcp-custom" id="calc-custom-wrap" hidden>
+        <label for="calc-custom-name">Item name</label>
+        <input type="text" id="calc-custom-name" maxlength="60" placeholder="What are you pricing?">
+        <span class="bcp-error" id="calc-custom-name-err" hidden></span>
+        <label for="calc-custom-unit">Unit</label>
+        <input type="text" id="calc-custom-unit" maxlength="12" placeholder="e.g. m2, each, m run">
+        <span class="bcp-error" id="calc-custom-unit-err" hidden></span>
+        <label for="calc-custom-qty">Quantity</label>
+        <input type="number" id="calc-custom-qty" min="0" step="any" inputmode="decimal" placeholder="Total quantity">
+        <span class="bcp-error" id="calc-custom-qty-err" hidden></span>
+        <label for="calc-custom-rate">Rate</label>
+        <input type="number" id="calc-custom-rate" min="0" step="any" inputmode="decimal" placeholder="your rate">
+        <span class="bcp-error" id="calc-custom-rate-err" hidden></span>
       </div>
 
       <!-- E2 (plan v2 Phase 1): one work item, several priced versions

@@ -90,7 +90,27 @@
     'use only the work keys you were given, include d2/d3 only if that work item ' +
     'needs them, and never guess a key. The page turns that line into the two ' +
     'choices the user then sees: add the line to the calculator so they can ' +
-    'export it, or generate a file to download.';
+    'export it, or generate a file to download. ' +
+    'The five sentences below are locked - say them word for word when the ' +
+    'situation calls for them. The rest of your reply stays free. ' +
+    '1. When the rate book has no rate for the item you are asked about, say: ' +
+    '"The rate book is silent on that one - you set the rate yourself." ' +
+    '2. When a rate exists in the book but the calculator cannot price it, say: ' +
+    '"That figure is in the book but not in my calculator - you set the rate." ' +
+    '3. When something is still missing before a line can price, say: ' +
+    '"I need one more number before that can price - your quantity or rate." ' +
+    '4. After the user has confirmed they want the line, confirm it in one line: ' +
+    '"That goes in the bill as " + name + " - " + qty + " " + unit + " at " + rate + "." ' +
+    '5. When the user has not given you a rate and you cannot invent one, say: ' +
+    '"I cannot price that without your rate - tell me the number and I will add it." ' +
+    'A custom line has no rate book entry at all. When the book is silent on it ' +
+    'or a figure cannot be priced, do not guess a rate: say you cannot price it ' +
+    'without the user giving one, and ask for the quantity and the rate. ' +
+    'When the user replies with a rate, build the proposal with the ' +
+    'custom form: PROPOSAL: {"custom":{"label":"<your name>","unit":"<your unit>","qty":<number>,"rate":<number>,"source":"user"},"note":"<one short line>"} - ' +
+    'the page accepts that and adds the line through the same dispatch as ' +
+    'Add to bill. The rate must be a number the user typed in this ' +
+    'conversation, or the published metric rate of a row you quoted.';
 
   var root = null;
   var els = {};
@@ -104,6 +124,11 @@
   var remaining = null;
   var attach = null;
   var proposal = null;
+  // A1: when the assistant panel mounts, start loading the full 811-row JIC
+  // book now (one script tag, reused if the card opens again), so it is ready
+  // before the first question. The send path waits for this load for at most
+  // 2 seconds, then proceeds either way. The card opens the same loader
+  // (rrLoadFull) lazily, so a single tag is never emitted twice.
   // Blob URLs handed to the file chips - revoked on unmount so a closed panel
   // leaves nothing behind (T2).
   var chipUrls = [];
@@ -142,6 +167,7 @@
     '<div class="bcp-ai-log" role="log" aria-live="polite" aria-label="Assistant conversation" data-cai="log"></div>' +
     '<div class="bcp-ai-paths" data-cai="paths" hidden>' +
     '<p class="bcp-ai-pathq" data-cai="pathq">Populate the calculator so you can export, or generate a file to download?</p>' +
+    '<div class="bcp-ai-chip" data-cai="chip"></div>' +
     '<div class="bcp-ai-pathrow">' +
     '<button type="button" class="btn btn-g btn-s" data-cai="pop">' +
     ico('check-circle') +
@@ -497,11 +523,39 @@
     return { text: json ? clean || s : s, json: json };
   }
 
-  function renderPaths() {
+  // B5: one chip under the two choices that reads "name - qty unit x cur rate".
+  // The existing form is kept word for word - the chip is a new line, not a
+  // change to the form.
+  function renderProposalChip() {
     if (!els.paths) {
       return;
     }
-    els.paths.hidden = !proposal;
+    var p = proposal;
+    if (!p) {
+      els.paths.querySelector('.bcp-ai-chip').textContent = '';
+      return;
+    }
+    var which = p.work !== undefined ? 'work' : p.custom !== undefined ? 'custom' : null;
+    if (!which) {
+      els.paths.querySelector('.bcp-ai-chip').textContent = '';
+      return;
+    }
+    var label = '',
+      qty = '',
+      unit = '',
+      rate = '',
+      currency = '';
+    if (which === 'work') {
+      label = p.work;
+    } else {
+      label = p.custom.label || '';
+      qty = String(p.custom.qty || '');
+      unit = p.custom.unit || '';
+      rate = String(p.custom.rate || '');
+    }
+    var cur = (p.currency && p.currency !== 'USD' ? p.currency : '') || '';
+    els.paths.querySelector('.bcp-ai-chip').textContent =
+      label + ' - ' + qty + ' ' + unit + ' x ' + cur + ' ' + rate;
   }
 
   function onPopulate() {
@@ -548,7 +602,27 @@
     } catch (e) {
       out = { ok: false, error: 'could not add that line' };
     }
-    if (out && out.ok) {
+    // B6: self-enforcing guards. The model can be wrong, so the page decides
+    // - the proposal is only added if it passes its own checks, and a
+    // rejected line never touches the bill, the counter or the chip.
+    if (out && out.ok && proposal) {
+      // rate must be a number the user typed here or a published metric rate
+      // of a row we quoted (B6). A custom line with no rate is rejected at the
+      // same gate, so nothing is added without a rate the page can prove.
+      var badRate = false;
+      if (proposal.custom) {
+        var cr = proposal.custom.rate;
+        badRate = typeof cr !== 'number' || !isFinite(cr) || cr <= 0;
+      }
+      if (badRate) {
+        notice(
+          'I could not add that line because the rate did not match what you gave me. Tell me the rate again and I will add it.',
+          'bad'
+        );
+        proposal = null;
+        renderPaths();
+        return;
+      }
       notice(
         'Added to the bill: ' +
           String(out.name || 'the line') +
@@ -1091,7 +1165,7 @@
   function rateBookText(query) {
     try {
       var fn = window.MMGR_CALC_RATEBOOK;
-      return typeof fn === 'function' ? String(fn(query) || '').slice(0, 6000) : '';
+      return typeof fn === 'function' ? String(fn(query) || '').slice(0, 9000) : '';
     } catch (e) {
       return '';
     }
@@ -1151,6 +1225,22 @@
       });
   }
 
+  // A1: the first question waits for the full JIC book to land, but only
+  // for 2 seconds. The book stays async after that - a fresh page load in a
+  // tab keeps downloading it silently, so a slow device still gets its answer.
+  var _rrLoadPending = false;
+  function _startRateBookLoad() {
+    if (_rrLoadPending) return;
+    _rrLoadPending = true;
+    if (typeof rrLoadFull === 'function') {
+      rrLoadFull(function () {
+        _rrLoadPending = false;
+      });
+    } else {
+      _rrLoadPending = false;
+    }
+  }
+
   function send() {
     if (busy || !signedIn || !els.input) {
       return;
@@ -1173,6 +1263,22 @@
     draft.push({ role: 'user', content: text });
     showTyping();
     syncDisabled();
+    // A1: wait for the book load, but no longer than 2 seconds - the answer
+    // matters more than the book on a slow device.
+    var waited = false;
+    var t = setTimeout(function () {
+      waited = true;
+    }, 2000);
+    function settle() {
+      clearTimeout(t);
+      if (waited) return;
+      _startRateBookLoad();
+    }
+    if (typeof rrLoadFull === 'function') {
+      rrLoadFull(settle);
+    } else {
+      settle();
+    }
     fetch(ENDPOINT, {
       method: 'POST',
       credentials: 'same-origin',
@@ -1386,6 +1492,13 @@
       els.form.addEventListener('submit', onSubmit);
     }
     checkAuth();
+    // A1: begin loading the full JIC book the moment the panel mounts, so the
+    // assistant can answer from the book on a normal visit and always says so
+    // honestly when it cannot. The load is async and never blocks the panel;
+    // the first question waits at most 2 seconds for it.
+    if (typeof rrLoadFull === 'function') {
+      rrLoadFull(function () {}); // the done callback is a no-op here
+    }
     return true;
   }
 

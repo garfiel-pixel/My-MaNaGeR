@@ -15638,6 +15638,27 @@ body.calculator-page .bcp-rr-x {
   padding-left: 12px;
   margin-left: -3px;
 }
+/* B1: the custom item's four fields. Same design tokens as the special-case
+   piece row, in the gold accent, no blue, no lock icon - the name input
+   replaces the rate-book value, the unit the quantity's unit. */
+#calc-custom-wrap[hidden] {
+  display: none !important;
+}
+.bcp-field-custom label {
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+.bcp-field-custom input {
+  border-color: var(--gold-500);
+  border-radius: var(--radius-control);
+  padding: 8px 10px;
+  font-size: 15px;
+}
+.bcp-error-line {
+  color: var(--status-danger);
+  font-size: 13px;
+  margin-top: 4px;
+}
 
 /* ---- (9) THE CASH-PLAN MESSAGE -------------------------------- */
 #calc-cash-msg[hidden] {
@@ -16110,6 +16131,22 @@ body.rr-open {
 .bcp-ai-chip-sub {
   font-size: 0.7rem;
   color: var(--text-muted, var(--slate));
+}
+/* B5: the proposal chip shows the agreed line the user can then price. */
+.bcp-ai-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+.bcp-ai-chip:empty {
+  display: none;
 }
 .bcp-ai-ico {
   flex-shrink: 0;

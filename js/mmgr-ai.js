@@ -74,8 +74,9 @@ var MMGR = window.MMGR || {};
         s.config.ai.apiKey
       ) {
         ns.State.updateState(function (st) {
-          if (st.config && st.config.ai && typeof st.config.ai.apiKey === 'string')
+          if (st.config && st.config.ai && typeof st.config.ai.apiKey === 'string') {
             delete st.config.ai.apiKey;
+          }
         });
       }
     } catch (e) {
@@ -110,15 +111,21 @@ var MMGR = window.MMGR || {};
   };
 
   function toast(msg, type) {
-    if (ns.App && ns.App.showToast) ns.App.showToast(msg, type || 'ok');
+    if (ns.App && ns.App.showToast) {
+      ns.App.showToast(msg, type || 'ok');
+    }
   }
 
   // Readable provider names for the connect UI (ANTHROPIC-CONNECTABLE
   // fast-follow: Anthropic joined the selectable set, so a two-way ternary
   // is no longer enough).
   function providerLabel(provider) {
-    if (provider === 'google-gemini') return 'Google Gemini';
-    if (provider === 'anthropic') return 'Anthropic Claude';
+    if (provider === 'google-gemini') {
+      return 'Google Gemini';
+    }
+    if (provider === 'anthropic') {
+      return 'Anthropic Claude';
+    }
     return 'OpenAI';
   }
 
@@ -136,9 +143,13 @@ var MMGR = window.MMGR || {};
 
   function setApiStatus(state, label) {
     const pill = U.$('ai-api-pill');
-    if (pill) pill.setAttribute('data-state', state);
+    if (pill) {
+      pill.setAttribute('data-state', state);
+    }
     const lbl = U.$('ai-api-pill-label');
-    if (lbl) lbl.textContent = label;
+    if (lbl) {
+      lbl.textContent = label;
+    }
   }
 
   // Pings /api/health with a SHORT timeout and zero retries (a health check
@@ -152,7 +163,9 @@ var MMGR = window.MMGR || {};
   // in-flight guard so a user re-check is never silently swallowed by a
   // slow earlier probe.
   async function checkApiHealth(force) {
-    if (_apiCheckInFlight && !force) return null;
+    if (_apiCheckInFlight && !force) {
+      return null;
+    }
     _apiCheckInFlight = true;
     setApiStatus('checking', 'Backend · checking');
     let result = 'disconnected';
@@ -171,11 +184,12 @@ var MMGR = window.MMGR || {};
     } catch (e) {
       result = 'disconnected';
       setApiStatus('disconnected', 'Backend · offline');
-      if (ns.Errors && ns.Errors.log)
+      if (ns.Errors && ns.Errors.log) {
         ns.Errors.log(
           'api health check failed: ' + ((e && e.message) || 'unreachable'),
           'apiHealth'
         );
+      }
     } finally {
       _apiCheckInFlight = false;
     }
@@ -184,7 +198,9 @@ var MMGR = window.MMGR || {};
 
   function open() {
     const modal = U.$('ai-win');
-    if (!modal) return;
+    if (!modal) {
+      return;
+    }
     // OWNER 2026-09-19 (signed-in AI): the assistant is part of the
     // signed-in experience , the Entitlements seam is the only rule source.
     // Signed-out, the click opens the sign-in flow and the window resumes
@@ -192,8 +208,9 @@ var MMGR = window.MMGR || {};
     // window a visitor cannot use.
     if (!(ns.Entitlements && ns.Entitlements.aiAssistant && ns.Entitlements.aiAssistant())) {
       _aiOpenPending = true;
-      if (ns.App && ns.App.showToast)
+      if (ns.App && ns.App.showToast) {
         ns.App.showToast('AI features need sign-in , sign in and the assistant opens.', 'warn');
+      }
       const GA = ns.GoogleAuth;
       if (GA && typeof GA.openSignInPrompt === 'function') {
         try {
@@ -234,10 +251,11 @@ var MMGR = window.MMGR || {};
     applyAiSizePref(); // AI-WINDOW-RESIZE: restore the saved size (and re-center) before showing
     modal.classList.add('open');
     const q = U.$('ai-q');
-    if (q)
+    if (q) {
       setTimeout(function () {
         q.focus();
       }, 60);
+    }
   }
 
   // Resume the deferred open once the session exists (see open() gate).
@@ -265,15 +283,21 @@ var MMGR = window.MMGR || {};
 
   function close() {
     const modal = U.$('ai-win');
-    if (modal) modal.classList.remove('open');
+    if (modal) {
+      modal.classList.remove('open');
+    }
     // OWNER 2026-09-17 (wave 3 W8): closing the AI window always stops the
     // mic - voice input never outlives the window it belongs to.
-    if (ns.Voice && ns.Voice.stopAiDictation) ns.Voice.stopAiDictation();
+    if (ns.Voice && ns.Voice.stopAiDictation) {
+      ns.Voice.stopAiDictation();
+    }
   }
 
   function preset(type) {
     const q = U.$('ai-q');
-    if (!q) return;
+    if (!q) {
+      return;
+    }
     q.value = ns.Prompts && ns.Prompts.generate ? ns.Prompts.generate(type) : '';
     q.focus();
     toast('Preset prompt loaded , send it, edit it, or copy it.');
@@ -289,9 +313,15 @@ var MMGR = window.MMGR || {};
       q.style.height = '';
       q.classList.remove('at-cap');
     }
-    if (c) c.value = '';
-    if (o) o.value = '';
-    if (t) t.textContent = '';
+    if (c) {
+      c.value = '';
+    }
+    if (o) {
+      o.value = '';
+    }
+    if (t) {
+      t.textContent = '';
+    }
     resetThread();
     toast('Cleared , new conversation.');
   }
@@ -492,7 +522,7 @@ var MMGR = window.MMGR || {};
 
     try {
       sec('WEATHER');
-      if (s.sitePlace)
+      if (s.sitePlace) {
         line(
           'Site',
           s.sitePlace +
@@ -502,7 +532,9 @@ var MMGR = window.MMGR || {};
               : ', no forecast cached') +
             ')'
         );
-      else line('Site', 'no location set , regional weather windows only');
+      } else {
+        line('Site', 'no location set , regional weather windows only');
+      }
       if (ns.Forecast && ns.Forecast.riskDays) {
         const rd = ns.Forecast.riskDays(s) || [];
         line(
@@ -529,7 +561,9 @@ var MMGR = window.MMGR || {};
 
   function attachContext() {
     const ctx = U.$('ai-ctx');
-    if (!ctx) return;
+    if (!ctx) {
+      return;
+    }
     const text = buildContext();
     ctx.value = text;
     toast('Project context attached (' + text.split('\n').length + ' lines).');
@@ -541,7 +575,9 @@ var MMGR = window.MMGR || {};
     const c = U.$('ai-ctx');
     let txt = (q && q.value) || '';
     const ctx = (c && c.value) || '';
-    if (ctx) txt += (txt ? '\n\n==== PROJECT CONTEXT ====\n' : '==== PROJECT CONTEXT ====\n') + ctx;
+    if (ctx) {
+      txt += (txt ? '\n\n==== PROJECT CONTEXT ====\n' : '==== PROJECT CONTEXT ====\n') + ctx;
+    }
     if (!txt.trim()) {
       toast('Nothing to copy yet , pick a preset or type a question.', 'err');
       return;
@@ -572,10 +608,14 @@ var MMGR = window.MMGR || {};
   function setAiCfg(patch) {
     const safe = {};
     Object.keys(patch || {}).forEach(function (k) {
-      if (k !== 'apiKey') safe[k] = patch[k];
+      if (k !== 'apiKey') {
+        safe[k] = patch[k];
+      }
     });
     ns.State.updateState(function (s) {
-      if (!s.config || typeof s.config !== 'object' || Array.isArray(s.config)) s.config = {};
+      if (!s.config || typeof s.config !== 'object' || Array.isArray(s.config)) {
+        s.config = {};
+      }
       // Atomic: build new AI config object, then assign in one step.
       var cur =
         s.config.ai && typeof s.config.ai === 'object' && !Array.isArray(s.config.ai)
@@ -584,12 +624,18 @@ var MMGR = window.MMGR || {};
       var next = {};
       var k;
       for (k in cur) {
-        if (cur.hasOwnProperty(k)) next[k] = cur[k];
+        if (cur.hasOwnProperty(k)) {
+          next[k] = cur[k];
+        }
       }
       for (k in safe) {
-        if (safe.hasOwnProperty(k)) next[k] = safe[k];
+        if (safe.hasOwnProperty(k)) {
+          next[k] = safe[k];
+        }
       }
-      if (safe.tier !== undefined && safe.tier !== 'off') next.lastTier = safe.tier;
+      if (safe.tier !== undefined && safe.tier !== 'off') {
+        next.lastTier = safe.tier;
+      }
       s.config.ai = next;
     });
   }
@@ -618,11 +664,15 @@ var MMGR = window.MMGR || {};
     const cfg = getAiCfg();
     const set = (id, val) => {
       const el = U.$(id);
-      if (el && el.value !== val) el.value = val;
+      if (el && el.value !== val) {
+        el.value = val;
+      }
     };
     set('ai-tier', cfg.tier || 'off');
     const cloudRow = U.$('ai-cfg-cloud');
-    if (cloudRow) cloudRow.classList.toggle('is-hide', (cfg.tier || 'off') !== 'cloud');
+    if (cloudRow) {
+      cloudRow.classList.toggle('is-hide', (cfg.tier || 'off') !== 'cloud');
+    }
     syncByoStatus();
     syncMcpToggle();
     syncSendGate();
@@ -630,7 +680,9 @@ var MMGR = window.MMGR || {};
     // cloud label reads the SAME canonical status field as the chip and the
     // Send gate , no two indicators can disagree anymore.
     const pill = U.$('ai-engine-pill');
-    if (pill) pill.setAttribute('data-tier', cfg.tier || 'off');
+    if (pill) {
+      pill.setAttribute('data-tier', cfg.tier || 'off');
+    }
     const pillLbl = U.$('ai-engine-pill-label');
     const tier = cfg.tier || 'off';
     if (pillLbl) {
@@ -646,7 +698,9 @@ var MMGR = window.MMGR || {};
     // MERGED-AI-CONTROL: the fab visibility follows the tier (hidden only
     // when the engine is fully off) , re-gate here so the header select and
     // the drawer switch can never leave the fab disagreeing with the tier.
-    if (ns.Render && ns.Render.renderFlags) ns.Render.renderFlags();
+    if (ns.Render && ns.Render.renderFlags) {
+      ns.Render.renderFlags();
+    }
   }
 
   // ---- BYO Connect flow (BYO-AI-KEY-SESSION-ONLY-v1 STEP-2) ----
@@ -665,7 +719,9 @@ var MMGR = window.MMGR || {};
   // entry always means 'not_connected', even if a stale 'connected' record
   // survived in state from a previous session.
   function getConnectionState() {
-    if (!BYO.isConnected()) return 'not_connected';
+    if (!BYO.isConnected()) {
+      return 'not_connected';
+    }
     const cfg = getAiCfg();
     return cfg.connectionStatus === 'connected' && cfg.lastTestedAt
       ? 'connected'
@@ -674,7 +730,9 @@ var MMGR = window.MMGR || {};
 
   function setConnectionStatus(status) {
     const patch = { connectionStatus: status };
-    if (status === 'connected') patch.lastTestedAt = new Date().toISOString();
+    if (status === 'connected') {
+      patch.lastTestedAt = new Date().toISOString();
+    }
     setAiCfg(patch);
   }
 
@@ -682,7 +740,9 @@ var MMGR = window.MMGR || {};
   function syncMcpToggle() {
     var mcpRow = U.$('ai-cfg-mcp');
     var mcpCb = U.$('ai-mcp-toggle');
-    if (!mcpRow) return;
+    if (!mcpRow) {
+      return;
+    }
     var cfg = getAiCfg();
     var isConnected = getConnectionState() === 'connected';
     var showMcp = (cfg.tier || 'off') === 'cloud' && isConnected;
@@ -700,18 +760,26 @@ var MMGR = window.MMGR || {};
 
   function syncByoStatus() {
     const st = U.$('ai-byo-status');
-    if (!st) return;
+    if (!st) {
+      return;
+    }
     const txt = st.querySelector('.ai-byo-status-txt');
     const status = getConnectionState();
     if (status === 'connected') {
       st.setAttribute('data-state', 'on');
-      if (txt) txt.textContent = 'Connected · ' + providerLabel(BYO.getProvider());
+      if (txt) {
+        txt.textContent = 'Connected · ' + providerLabel(BYO.getProvider());
+      }
     } else if (status === 'saved_untested') {
       st.setAttribute('data-state', 'untested');
-      if (txt) txt.textContent = 'Key saved , not tested';
+      if (txt) {
+        txt.textContent = 'Key saved , not tested';
+      }
     } else {
       st.setAttribute('data-state', 'off');
-      if (txt) txt.textContent = 'Disconnected';
+      if (txt) {
+        txt.textContent = 'Disconnected';
+      }
     }
   }
 
@@ -721,7 +789,9 @@ var MMGR = window.MMGR || {};
   // an honest hint. Off tier also disables Send (presets stay usable).
   function syncSendGate() {
     const s = U.$('ai-send');
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const tier = getAiCfg().tier || 'off';
     const status = getConnectionState();
     const off = tier === 'off';
@@ -740,7 +810,9 @@ var MMGR = window.MMGR || {};
             ? 'Engine is Off , choose Local or Cloud in the tier select.'
             : '';
     const wrap = U.$('ai-send-wrap');
-    if (wrap) wrap.setAttribute('title', msg || 'Send');
+    if (wrap) {
+      wrap.setAttribute('title', msg || 'Send');
+    }
   }
 
   // DIR-1: the real connectivity check. One minimal, cheap request through
@@ -751,7 +823,9 @@ var MMGR = window.MMGR || {};
   // connected. Returns { ok, status }.
   async function probeProvider(provider, key) {
     const def = ns.Net && ns.Net.PROVIDER_DEFAULTS ? ns.Net.PROVIDER_DEFAULTS[provider] : null;
-    if (!def) return { ok: false, status: 0 };
+    if (!def) {
+      return { ok: false, status: 0 };
+    }
     const isGemini = provider === 'google-gemini';
     const isAnthropic = provider === 'anthropic';
     const url = isGemini
@@ -788,7 +862,9 @@ var MMGR = window.MMGR || {};
       return { ok: false, error: (e && e.message) || 'invalid key', status: 'not_connected' };
     }
     const k = U.$('ai-byo-key');
-    if (k) k.value = ''; // never show the raw key after connect (with_key_ux)
+    if (k) {
+      k.value = '';
+    } // never show the raw key after connect (with_key_ux)
     // Key is now saved , but that is 'saved_untested', NOT 'connected'.
     setConnectionStatus('saved_untested');
     syncSettingsUI();
@@ -1036,8 +1112,9 @@ var MMGR = window.MMGR || {};
       try {
         const r = await callProviderWithFallback(provider, key, messages, ctx || '');
         _t('relay: project question answered by ' + (r.model || 'cloud model'));
-        if (r.fellBackFrom)
+        if (r.fellBackFrom) {
           out.push('Fell back to ' + r.model + ' - ' + r.fellBackFrom + ' hit its rate limit.');
+        }
         out.push(String(r.text));
       } catch (e) {
         // Out of free messages for today - say exactly that, not "at capacity".
@@ -1052,8 +1129,9 @@ var MMGR = window.MMGR || {};
             tier: 'local'
           };
         }
-        if (ns.Errors && ns.Errors.log)
+        if (ns.Errors && ns.Errors.log) {
           ns.Errors.log('local relay assist failed: ' + (e && e.message), 'localLookup');
+        }
       }
     }
     if (!out.length) {
@@ -1078,7 +1156,9 @@ var MMGR = window.MMGR || {};
   const LOCAL_BUILDERS = {
     digest: function (s) {
       TRACE.fields = [];
-      if (!ns.Digest) return { text: 'Digest engine not loaded.', trace: [] };
+      if (!ns.Digest) {
+        return { text: 'Digest engine not loaded.', trace: [] };
+      }
       const d = ns.Digest.computeDigest(s);
       _t('Digest.computeDigest(s) , digestSnapshot/baseline diff');
       return { text: ns.Digest.buildDigestText(d), trace: TRACE.fields.slice() };
@@ -1143,13 +1223,14 @@ var MMGR = window.MMGR || {};
       if (ns.Evm && ns.Evm.compute) {
         const e = ns.Evm.compute(s);
         _t('EVM.compute(s)');
-        if (e && e.cpi)
+        if (e && e.cpi) {
           text +=
             'Burn rate (CPI): ' +
             e.cpi.toFixed(2) +
             ' , EAC trend ' +
             (e.cpi < 1 ? 'over budget' : 'at/below budget') +
             '.\n';
+        }
       }
       const wx = (s.weatherLog || []).length;
       _t('weatherLog');
@@ -1212,7 +1293,7 @@ var MMGR = window.MMGR || {};
           live.length +
           '.'
       );
-      if (od.length)
+      if (od.length) {
         L.push(
           'Needs attention: ' +
             od
@@ -1220,7 +1301,8 @@ var MMGR = window.MMGR || {};
               .map(t => t.name + ' (due ' + t.endDate + ')')
               .join('; ')
         );
-      if (bl.length)
+      }
+      if (bl.length) {
         L.push(
           'Blocked: ' +
             bl
@@ -1228,6 +1310,7 @@ var MMGR = window.MMGR || {};
               .map(t => t.name)
               .join('; ')
         );
+      }
       return { text: L.join('\n'), trace: TRACE.fields.slice() };
     },
     risk: function (s) {
@@ -1254,7 +1337,9 @@ var MMGR = window.MMGR || {};
             (r.mitigation ? ' | Mitigation: ' + r.mitigation : '')
         )
       );
-      if (!sorted.length) L.push('(no open risks)');
+      if (!sorted.length) {
+        L.push('(no open risks)');
+      }
       return { text: L.join('\n'), trace: TRACE.fields.slice() };
     },
     audit: function (s) {
@@ -1262,19 +1347,23 @@ var MMGR = window.MMGR || {};
       const tasks = s.tasks || [];
       const issues = [];
       tasks.forEach(t => {
-        if (t.startDate && t.endDate && t.startDate > t.endDate)
+        if (t.startDate && t.endDate && t.startDate > t.endDate) {
           issues.push('Task ' + t.id + ' (' + t.name + '): end before start.');
+        }
         if (t.parentId) {
           const p = tasks.find(x => x.id === t.parentId);
-          if (p && p.startDate && t.startDate && p.startDate > t.startDate)
+          if (p && p.startDate && t.startDate && p.startDate > t.startDate) {
             issues.push('Task ' + t.id + ' starts before parent ' + p.id + '.');
-          if (p && p.endDate && t.endDate && t.endDate > p.endDate)
+          }
+          if (p && p.endDate && t.endDate && t.endDate > p.endDate) {
             issues.push('Task ' + t.id + ' ends after parent ' + p.id + '.');
+          }
         }
         (t.predecessors || []).forEach(pid => {
           const pred = tasks.find(x => x.id === pid);
-          if (pred && pred.endDate && t.startDate && pred.endDate > t.startDate)
+          if (pred && pred.endDate && t.startDate && pred.endDate > t.startDate) {
             issues.push('Task ' + t.id + ' starts before predecessor ' + pid + ' finishes.');
+          }
         });
       });
       _t('tasks[].startDate');
@@ -1310,7 +1399,9 @@ var MMGR = window.MMGR || {};
             c.status
         )
       );
-      if (!pending.length) L.push('(no pending change requests)');
+      if (!pending.length) {
+        L.push('(no pending change requests)');
+      }
       return { text: L.join('\n'), trace: TRACE.fields.slice() };
     },
     client: function (s) {
@@ -1345,7 +1436,7 @@ var MMGR = window.MMGR || {};
       if (ns.Claim && ns.Claim.computeSlips) {
         const slips = ns.Claim.computeSlips(s) || [];
         _t('Claim.computeSlips(s)');
-        if (slips.length)
+        if (slips.length) {
           slips.forEach(x =>
             L.push(
               '- Slip: ' +
@@ -1357,12 +1448,14 @@ var MMGR = window.MMGR || {};
                 ')'
             )
           );
-        else L.push('- No schedule slips detected.');
+        } else {
+          L.push('- No schedule slips detected.');
+        }
       }
       if (ns.Claim && ns.Claim.ldRollup) {
         const ld = ns.Claim.ldRollup(s);
         _t('Claim.ldRollup(s)');
-        if (ld)
+        if (ld) {
           L.push(
             '- LD exposure: ' +
               fmt$(ld.incurredLd || 0) +
@@ -1370,6 +1463,7 @@ var MMGR = window.MMGR || {};
               fmt$(ld.avoidedLd || 0) +
               ' defensible.'
           );
+        }
       }
       L.push('- Weather delay days logged: ' + (s.weatherLog || []).length + '.');
       _t('weatherLog');
@@ -1545,7 +1639,9 @@ var MMGR = window.MMGR || {};
         trace: built.trace || []
       };
     }
-    if (type) return localUnavailable();
+    if (type) {
+      return localUnavailable();
+    }
     return localLookup(prompt, s);
   }
 
@@ -1559,15 +1655,19 @@ var MMGR = window.MMGR || {};
     let system = '';
     const contents = [];
     (messages || []).forEach(function (m) {
-      if (m.role === 'system') system += (system ? '\n' : '') + (m.content || '');
-      else
+      if (m.role === 'system') {
+        system += (system ? '\n' : '') + (m.content || '');
+      } else {
         contents.push({
           role: m.role === 'assistant' ? 'model' : 'user',
           parts: [{ text: m.content || '' }]
         });
+      }
     });
     const p = { contents: contents };
-    if (system) p.systemInstruction = { parts: [{ text: system }] };
+    if (system) {
+      p.systemInstruction = { parts: [{ text: system }] };
+    }
     return p;
   }
 
@@ -1605,7 +1705,9 @@ var MMGR = window.MMGR || {};
   // Bearer header. Throws errors with .status set (429/503 capacity, 401 auth).
   async function openaiDirectAttempt(key, model, messages) {
     const def = ns.Net && ns.Net.PROVIDER_DEFAULTS ? ns.Net.PROVIDER_DEFAULTS.openai : {};
-    if (!def || !def.endpoint) throw new Error('no AI endpoint configured');
+    if (!def || !def.endpoint) {
+      throw new Error('no AI endpoint configured');
+    }
     const res = await ns.Net.post(
       def.endpoint,
       { model: model, messages: messages },
@@ -1625,7 +1727,9 @@ var MMGR = window.MMGR || {};
       e.status = 401;
       throw e;
     }
-    if (!res.ok) throw new Error('AI endpoint HTTP ' + res.status);
+    if (!res.ok) {
+      throw new Error('AI endpoint HTTP ' + res.status);
+    }
     const data = await res.json().catch(function () {
       return null;
     });
@@ -1635,7 +1739,9 @@ var MMGR = window.MMGR || {};
       data.choices[0] &&
       data.choices[0].message &&
       data.choices[0].message.content;
-    if (!text) throw new Error('empty AI response');
+    if (!text) {
+      throw new Error('empty AI response');
+    }
     return String(text);
   }
 
@@ -1646,15 +1752,19 @@ var MMGR = window.MMGR || {};
     let system = '';
     const msgs = [];
     (messages || []).forEach(function (m) {
-      if (m.role === 'system') system += (system ? '\n' : '') + (m.content || '');
-      else
+      if (m.role === 'system') {
+        system += (system ? '\n' : '') + (m.content || '');
+      } else {
         msgs.push({
           role: m.role === 'assistant' ? 'assistant' : 'user',
           content: m.content || ''
         });
+      }
     });
     const p = { model: model, max_tokens: 4096, messages: msgs };
-    if (system) p.system = system;
+    if (system) {
+      p.system = system;
+    }
     return p;
   }
 
@@ -1663,7 +1773,9 @@ var MMGR = window.MMGR || {};
   // max_tokens, and returns text in data.content[].text.
   async function anthropicDirectAttempt(key, model, messages) {
     const def = ns.Net && ns.Net.PROVIDER_DEFAULTS ? ns.Net.PROVIDER_DEFAULTS.anthropic : {};
-    if (!def || !def.endpoint) throw new Error('no AI endpoint configured');
+    if (!def || !def.endpoint) {
+      throw new Error('no AI endpoint configured');
+    }
     const res = await ns.Net.post(def.endpoint, anthropicPayload(model, messages), {
       headers: {
         'Content-Type': 'application/json',
@@ -1683,7 +1795,9 @@ var MMGR = window.MMGR || {};
       e.status = 401;
       throw e;
     }
-    if (!res.ok) throw new Error('AI endpoint HTTP ' + res.status);
+    if (!res.ok) {
+      throw new Error('AI endpoint HTTP ' + res.status);
+    }
     const data = await res.json().catch(function () {
       return null;
     });
@@ -1695,7 +1809,9 @@ var MMGR = window.MMGR || {};
             })
             .join('')
         : null;
-    if (!text) throw new Error('empty AI response');
+    if (!text) {
+      throw new Error('empty AI response');
+    }
     return String(text);
   }
 
@@ -1709,7 +1825,9 @@ var MMGR = window.MMGR || {};
   // silently fall through to a smaller model.
   async function geminiDirectAttempt(key, model, messages) {
     const url = ns.Net && ns.Net.geminiEndpointFor ? ns.Net.geminiEndpointFor(model) : null;
-    if (!url) throw new Error('no AI endpoint configured');
+    if (!url) {
+      throw new Error('no AI endpoint configured');
+    }
     const res = await ns.Net.post(url, geminiPayload(messages), {
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
       timeoutMs: 30000,
@@ -1725,7 +1843,9 @@ var MMGR = window.MMGR || {};
       e.status = 401;
       throw e;
     }
-    if (!res.ok) throw new Error('AI endpoint HTTP ' + res.status);
+    if (!res.ok) {
+      throw new Error('AI endpoint HTTP ' + res.status);
+    }
     const data = await res.json().catch(function () {
       return null;
     });
@@ -1741,7 +1861,9 @@ var MMGR = window.MMGR || {};
             })
             .join('')
         : null;
-    if (!text) throw new Error('empty AI response');
+    if (!text) {
+      throw new Error('empty AI response');
+    }
     return String(text);
   }
 
@@ -1752,8 +1874,12 @@ var MMGR = window.MMGR || {};
   // failure/timeout: degrade to the direct call for the SAME model.
   async function providerAttempt(provider, key, model, messages, ctx, directOnly) {
     const direct = function () {
-      if (provider === 'google-gemini') return geminiDirectAttempt(key, model, messages);
-      if (provider === 'anthropic') return anthropicDirectAttempt(key, model, messages);
+      if (provider === 'google-gemini') {
+        return geminiDirectAttempt(key, model, messages);
+      }
+      if (provider === 'anthropic') {
+        return anthropicDirectAttempt(key, model, messages);
+      }
       return openaiDirectAttempt(key, model, messages);
     };
     if (!directOnly) {
@@ -1788,11 +1914,14 @@ var MMGR = window.MMGR || {};
           maxRetries: 1
         });
       } catch (e) {
-        if (e && (e.status === 429 || e.status === 503 || e.status === 401 || e.status === 403))
+        if (e && (e.status === 429 || e.status === 503 || e.status === 401 || e.status === 403)) {
           throw e;
+        }
         return direct();
       }
-      if (res.status === 404 || res.status === 405) return direct();
+      if (res.status === 404 || res.status === 405) {
+        return direct();
+      }
       if (res.status === 429 || res.status === 503) {
         const e = new Error('provider rate limited (HTTP ' + res.status + ')');
         e.status = res.status;
@@ -1819,8 +1948,9 @@ var MMGR = window.MMGR || {};
       const data = await res.json().catch(function () {
         return null;
       });
-      if (!data || typeof data.text !== 'string' || !data.text)
+      if (!data || typeof data.text !== 'string' || !data.text) {
         throw new Error('empty AI response');
+      }
       return String(data.text);
     }
     return direct();
@@ -1834,7 +1964,9 @@ var MMGR = window.MMGR || {};
   async function callProviderWithFallback(provider, key, messages, ctx, opts) {
     const def = (ns.Net && ns.Net.PROVIDER_DEFAULTS && ns.Net.PROVIDER_DEFAULTS[provider]) || {};
     const models = [def.model].concat(def.fallbackModels || []).filter(Boolean);
-    if (!models.length) throw new Error('no model configured for provider ' + provider);
+    if (!models.length) {
+      throw new Error('no model configured for provider ' + provider);
+    }
     const directOnly = !!(opts && opts.directOnly);
     let lastCapacityErr = null;
     for (let i = 0; i < models.length; i++) {
@@ -1851,7 +1983,9 @@ var MMGR = window.MMGR || {};
         throw e; // 401/403 or any other error , stop the ladder immediately
       }
     }
-    if (lastCapacityErr) throw lastCapacityErr;
+    if (lastCapacityErr) {
+      throw lastCapacityErr;
+    }
     const e = new Error('all ' + provider + ' models rate-limited or unavailable');
     e.status = 429;
     throw e;
@@ -1890,10 +2024,11 @@ var MMGR = window.MMGR || {};
     // provider come from the vault ONLY , state.config.ai.apiKey (legacy) is
     // never read, so no project-state field can ever carry the key.
     const key = BYO.getKey();
-    if (!key)
+    if (!key) {
       throw new Error(
         'No AI key connected , connect one in the AI window (session-only, cleared when the tab closes).'
       );
+    }
     const provider = BYO.getProvider() || 'openai';
     const def = ns.Net && ns.Net.PROVIDER_DEFAULTS ? ns.Net.PROVIDER_DEFAULTS[provider] : {};
     // Provider defaults only: legacy config.ai.endpoint/model overrides were
@@ -1984,7 +2119,9 @@ var MMGR = window.MMGR || {};
       if (tier === 'local') {
         const out = await runLocal(prompt, type);
         // Normalize: every local path returns { ok, tier, model, text, trace }.
-        if (!out.ok) return out;
+        if (!out.ok) {
+          return out;
+        }
         return {
           ok: true,
           tier: 'local',
@@ -2008,8 +2145,9 @@ var MMGR = window.MMGR || {};
       }
       return { ok: false, error: 'Unknown tier: ' + tier, tier: tier };
     } catch (e) {
-      if (ns.Errors && ns.Errors.log)
+      if (ns.Errors && ns.Errors.log) {
         ns.Errors.log('AI submit failed: ' + (e && e.message), 'aiSubmit');
+      }
       return {
         ok: false,
         error:
@@ -2027,9 +2165,15 @@ var MMGR = window.MMGR || {};
     const c = U.$('ai-ctx');
     const prompt = ns.Prompts && ns.Prompts.generate ? ns.Prompts.generate(type) : '';
     const ctx = c && c.value ? c.value : buildContext();
-    if (q) q.value = prompt;
-    if (c) c.value = ctx;
-    if (_aiBusy) return { ok: false, error: 'busy' };
+    if (q) {
+      q.value = prompt;
+    }
+    if (c) {
+      c.value = ctx;
+    }
+    if (_aiBusy) {
+      return { ok: false, error: 'busy' };
+    }
     _aiBusy = true;
     showTyping();
     let res;
@@ -2046,7 +2190,9 @@ var MMGR = window.MMGR || {};
     if (res.ok) {
       // Structured write-back into unified state (constraint #1/#5).
       ns.State.updateState(function (s) {
-        if (!s.aiOutputs) s.aiOutputs = {};
+        if (!s.aiOutputs) {
+          s.aiOutputs = {};
+        }
         s.aiOutputs[type] = {
           at: new Date().toISOString(),
           tier: res.tier,
@@ -2069,7 +2215,9 @@ var MMGR = window.MMGR || {};
   // ---- Run the free-form question box ----
   let _aiBusy = false; // guards the Send path against rapid double-submits
   async function runQuestion() {
-    if (_aiBusy) return { ok: false, error: 'busy' };
+    if (_aiBusy) {
+      return { ok: false, error: 'busy' };
+    }
     const q = U.$('ai-q');
     const c = U.$('ai-ctx');
     const prompt = (q && q.value) || '';
@@ -2112,7 +2260,9 @@ var MMGR = window.MMGR || {};
   // focus back in it so the next question can be typed immediately.
   function clearQuestionBox() {
     const q = U.$('ai-q');
-    if (!q) return;
+    if (!q) {
+      return;
+    }
     q.value = '';
     q.style.height = '';
     q.classList.remove('at-cap');
@@ -2122,21 +2272,26 @@ var MMGR = window.MMGR || {};
   // ---- Render the result panel (#ai-out) ----
   function renderOutput(type, res) {
     const out = U.$('ai-out');
-    if (!out) return;
+    if (!out) {
+      return;
+    }
     if (res && res.ok) {
       out.value =
         (type
           ? '[' + type + ' · ' + res.tier + ' · ' + (res.model || '') + ' , saved to project]\n\n'
           : '[answer · ' + res.tier + ' · ' + (res.model || '') + ']\n\n') + res.text;
       const trace = U.$('ai-trace');
-      if (trace)
+      if (trace) {
         trace.textContent =
           'Traceable to: ' +
           (res.trace && res.trace.length ? res.trace.join(', ') : '(grounded in attached context)');
+      }
     } else {
       out.value = '-';
       const trace = U.$('ai-trace');
-      if (trace) trace.textContent = res && res.error ? res.error : '';
+      if (trace) {
+        trace.textContent = res && res.error ? res.error : '';
+      }
     }
   }
 
@@ -2163,11 +2318,15 @@ var MMGR = window.MMGR || {};
   }
   function scrollThread() {
     const th = U.$('ai-thread');
-    if (th) th.scrollTop = th.scrollHeight;
+    if (th) {
+      th.scrollTop = th.scrollHeight;
+    }
   }
   function hideWelcome() {
     const w = U.$('ai-welcome');
-    if (w) w.classList.add('is-hide');
+    if (w) {
+      w.classList.add('is-hide');
+    }
   }
   function hideTyping() {
     if (_typingEl) {
@@ -2178,17 +2337,27 @@ var MMGR = window.MMGR || {};
   function resetThread() {
     hideTyping();
     const th = U.$('ai-thread');
-    if (!th) return;
-    if (th.dataset) delete th.dataset.seeded;
+    if (!th) {
+      return;
+    }
+    if (th.dataset) {
+      delete th.dataset.seeded;
+    }
     Array.prototype.forEach.call(th.querySelectorAll('.ai-bubble'), function (b) {
-      if (b.id !== 'ai-welcome') b.remove();
+      if (b.id !== 'ai-welcome') {
+        b.remove();
+      }
     });
     const w = U.$('ai-welcome');
-    if (w) w.classList.remove('is-hide');
+    if (w) {
+      w.classList.remove('is-hide');
+    }
   }
   function showTyping() {
     const th = U.$('ai-thread');
-    if (!th) return;
+    if (!th) {
+      return;
+    }
     hideWelcome();
     hideTyping();
     _typingShownAt = Date.now();
@@ -2210,12 +2379,16 @@ var MMGR = window.MMGR || {};
   }
   function addBubble(role, innerHtml, copyText) {
     const th = U.$('ai-thread');
-    if (!th) return;
+    if (!th) {
+      return;
+    }
     hideWelcome();
     const b = document.createElement('div');
     b.className = role === 'user' ? 'ai-bubble ai-user' : 'ai-bubble ai-bot';
     b.innerHTML = innerHtml;
-    if (copyText !== undefined && copyText !== null) b.dataset.copyText = String(copyText);
+    if (copyText !== undefined && copyText !== null) {
+      b.dataset.copyText = String(copyText);
+    }
     th.appendChild(b);
     scrollThread();
   }
@@ -2228,7 +2401,9 @@ var MMGR = window.MMGR || {};
   // '' when no fallback fired. Tier gate keeps it cloud-only (the only tier
   // with a ladder).
   function fallbackBadgeHtml(tier, model, fellBackFrom) {
-    if (tier !== 'cloud' || !fellBackFrom || !model || fellBackFrom === model) return '';
+    if (tier !== 'cloud' || !fellBackFrom || !model || fellBackFrom === model) {
+      return '';
+    }
     return (
       '<div class="ai-fallback" role="status"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-down"></use></svg> Fell back to <strong>' +
       escHtml(model) +
@@ -2273,7 +2448,9 @@ var MMGR = window.MMGR || {};
     if (prompt && String(prompt).trim()) {
       addBubble('user', escHtml(prompt).replace(/\n/g, '<br>'));
     }
-    if (!res) return;
+    if (!res) {
+      return;
+    }
     if (res.ok) {
       const engine =
         res.tier === 'local'
@@ -2311,14 +2488,20 @@ var MMGR = window.MMGR || {};
   // feels continuous (reads state.aiOutputs only , never invents anything).
   function seedThreadFromState() {
     const th = U.$('ai-thread');
-    if (!th || th.dataset.seeded) return;
+    if (!th || th.dataset.seeded) {
+      return;
+    }
     th.dataset.seeded = '1';
     const s = ns.State && ns.State.getState ? ns.State.getState() : {};
     const outputs = (s && s.aiOutputs) || {};
     const types = Object.keys(outputs);
-    if (!types.length) return;
+    if (!types.length) {
+      return;
+    }
     const last = outputs[types[types.length - 1]];
-    if (!last || !last.text) return;
+    if (!last || !last.text) {
+      return;
+    }
     const engine =
       last.tier === 'local' ? 'Local engine' : last.tier === 'cloud' ? 'Cloud' : last.tier;
     const badge = fallbackBadgeHtml(last.tier, last.model, last.fellBackFrom);
@@ -2350,12 +2533,18 @@ var MMGR = window.MMGR || {};
     });
     const c = U.$('ai-pane-chat');
     const p = U.$('ai-pane-presets');
-    if (c) c.classList.toggle('is-hide', tab !== 'chat');
-    if (p) p.classList.toggle('is-hide', tab !== 'presets');
+    if (c) {
+      c.classList.toggle('is-hide', tab !== 'chat');
+    }
+    if (p) {
+      p.classList.toggle('is-hide', tab !== 'presets');
+    }
   }
   (function () {
     const segBtns = document.querySelectorAll('.ai-seg-btn');
-    if (!segBtns.length) return;
+    if (!segBtns.length) {
+      return;
+    }
     segBtns.forEach(function (b) {
       b.addEventListener('click', function () {
         setAiTab(b.getAttribute('data-tab') || 'chat');
@@ -2368,7 +2557,9 @@ var MMGR = window.MMGR || {};
   // The exact answer text is read from the bubble's dataset.copyText.
   (function () {
     const th = U.$('ai-thread');
-    if (!th) return;
+    if (!th) {
+      return;
+    }
     // REVIEW FIX: a single shared timer , rapid re-clicks clear the pending
     // restore instead of stacking stale captures (double-click used to leave
     // the label stuck on "Copied" without the green styling). The reset also
@@ -2377,7 +2568,9 @@ var MMGR = window.MMGR || {};
     th.addEventListener('click', function (e) {
       const t = e.target;
       const btn = t && t.closest ? t.closest('.ai-copy-btn') : null;
-      if (!btn) return;
+      if (!btn) {
+        return;
+      }
       const bubble = btn.closest('.ai-bubble');
       const text = bubble && bubble.dataset ? bubble.dataset.copyText : '';
       if (!text) {
@@ -2386,7 +2579,9 @@ var MMGR = window.MMGR || {};
       }
       U.copyToClipboard(text);
       toast('Answer copied.');
-      if (resetTimer) clearTimeout(resetTimer);
+      if (resetTimer) {
+        clearTimeout(resetTimer);
+      }
       btn.classList.add('is-copied');
       btn.setAttribute('aria-label', 'Copied');
       btn.innerHTML =
@@ -2404,7 +2599,9 @@ var MMGR = window.MMGR || {};
   // ---- Chat input: Enter sends (Shift+Enter = new line) + auto-grow ------
   (function () {
     const q = U.$('ai-q');
-    if (!q) return;
+    if (!q) {
+      return;
+    }
     q.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
@@ -2428,16 +2625,19 @@ var MMGR = window.MMGR || {};
   // mutation and must stay available in view-only mode.
   (function () {
     const conn = U.$('ai-byo-connect');
-    if (conn)
+    if (conn) {
       conn.addEventListener('click', function () {
         const p = U.$('ai-byo-provider');
         const k = U.$('ai-byo-key');
         connectByo((p && p.value) || 'openai', (k && k.value) || '');
       });
+    }
     const clr = U.$('ai-byo-clear');
-    if (clr) clr.addEventListener('click', clearByo);
+    if (clr) {
+      clr.addEventListener('click', clearByo);
+    }
     const pk = U.$('ai-byo-key');
-    if (pk)
+    if (pk) {
       pk.addEventListener('keydown', function (e) {
         if (e.key === 'Enter') {
           e.preventDefault();
@@ -2445,6 +2645,7 @@ var MMGR = window.MMGR || {};
           connectByo((p && p.value) || 'openai', pk.value);
         }
       });
+    }
   })();
 
   // UI-DECLUTTER: the API-key setup (paste + Connect & Test + security
@@ -2455,7 +2656,9 @@ var MMGR = window.MMGR || {};
   (function () {
     const gear = U.$('ai-byo-gear');
     const pop = U.$('ai-byo-pop');
-    if (!gear || !pop) return;
+    if (!gear || !pop) {
+      return;
+    }
     gear.addEventListener('click', function () {
       const open = pop.classList.contains('is-hide');
       pop.classList.toggle('is-hide', !open);
@@ -2468,7 +2671,9 @@ var MMGR = window.MMGR || {};
   // user re-check bypasses an in-flight earlier probe.
   (function () {
     const pill = U.$('ai-api-pill');
-    if (!pill) return;
+    if (!pill) {
+      return;
+    }
     pill.setAttribute('role', 'button');
     pill.setAttribute('tabindex', '0');
     pill.addEventListener('click', function () {
@@ -2493,11 +2698,15 @@ var MMGR = window.MMGR || {};
   function readAiSizePref() {
     try {
       const raw = localStorage.getItem(AI_SIZE_KEY);
-      if (!raw) return null;
+      if (!raw) {
+        return null;
+      }
       const d = JSON.parse(raw);
       const w = Math.round(Number(d && d.w));
       const h = Math.round(Number(d && d.h));
-      if (!(w > 0) || !(h > 0)) return null;
+      if (!(w > 0) || !(h > 0)) {
+        return null;
+      }
       return { w: w, h: h };
     } catch (e) {
       return null;
@@ -2533,13 +2742,17 @@ var MMGR = window.MMGR || {};
   // width and ignore the height.
   function applyAiSizePref() {
     const win = U.$('ai-win');
-    if (!win) return;
+    if (!win) {
+      return;
+    }
     let w = AI_SIZE_DEFAULT_W;
     try {
       const raw = localStorage.getItem(AI_SIZE_KEY);
       if (raw) {
         const d = JSON.parse(raw);
-        if (d && +d.w > 0) w = clampAiWidth(+d.w);
+        if (d && +d.w > 0) {
+          w = clampAiWidth(+d.w);
+        }
       }
     } catch (e) {
       /* keep default */
@@ -2549,7 +2762,9 @@ var MMGR = window.MMGR || {};
 
   (function () {
     const win = U.$('ai-win');
-    if (!win) return;
+    if (!win) {
+      return;
+    }
     // The resize affordance lives on the DRAWER itself (left-edge strip),
     // self-healed if the static markup is missing.
     let h = win.querySelector('.ai-rz-w');
@@ -2565,42 +2780,56 @@ var MMGR = window.MMGR || {};
     let raf = 0;
     let pendingW = 0;
     function onDown(e) {
-      if (e.button !== undefined && e.button !== 0) return;
+      if (e.button !== undefined && e.button !== 0) {
+        return;
+      }
       const r = win.getBoundingClientRect();
       drag = { startX: e.clientX, startW: r.width };
       win.classList.add('resizing');
       h.classList.add('dragging');
       e.preventDefault();
       try {
-        if (h.setPointerCapture) h.setPointerCapture(e.pointerId);
+        if (h.setPointerCapture) {
+          h.setPointerCapture(e.pointerId);
+        }
       } catch (err) {
         /* synthetic events */
       }
     }
     function onMove(e) {
-      if (!drag) return;
+      if (!drag) {
+        return;
+      }
       // West-edge drag: the panel grows as the cursor moves left. Width
       // writes are rAF-throttled so a fast drag never floods layout.
       pendingW = clampAiWidth(drag.startW + (drag.startX - e.clientX));
       if (!raf) {
         raf = requestAnimationFrame(function () {
           raf = 0;
-          if (drag) win.style.width = pendingW + 'px';
+          if (drag) {
+            win.style.width = pendingW + 'px';
+          }
         });
       }
     }
     function onUp() {
-      if (!drag) return;
+      if (!drag) {
+        return;
+      }
       drag = null;
       win.classList.remove('resizing');
       h.classList.remove('dragging');
       if (raf) {
         cancelAnimationFrame(raf);
         raf = 0;
-        if (pendingW) win.style.width = pendingW + 'px';
+        if (pendingW) {
+          win.style.width = pendingW + 'px';
+        }
       }
       const w = parseInt(win.style.width, 10);
-      if (w >= AI_W_MIN) saveAiWidth(w);
+      if (w >= AI_W_MIN) {
+        saveAiWidth(w);
+      }
     }
     h.addEventListener('pointerdown', onDown);
     h.addEventListener('pointermove', onMove);
@@ -2613,7 +2842,9 @@ var MMGR = window.MMGR || {};
     // window resize): re-clamp the inline width in place, never reposition.
     window.addEventListener('resize', function () {
       const cur = parseInt(win.style.width, 10);
-      if (cur > 0) win.style.width = clampAiWidth(cur) + 'px';
+      if (cur > 0) {
+        win.style.width = clampAiWidth(cur) + 'px';
+      }
     });
     // Double-click the edge: snap back to the docked default (the same
     // convention as editor side panels).
@@ -2641,7 +2872,9 @@ var MMGR = window.MMGR || {};
   function readFloatPos(id) {
     try {
       const d = JSON.parse(localStorage.getItem(floatPrefKey(id)) || 'null');
-      if (d && Number(d.x) === d.x && Number(d.y) === d.y) return d;
+      if (d && Number(d.x) === d.x && Number(d.y) === d.y) {
+        return d;
+      }
     } catch (e) {
       /* ignore */
     }
@@ -2668,11 +2901,15 @@ var MMGR = window.MMGR || {};
   // the toggle button is injected next to the surface's close button.
   function setupFloatSurface(id) {
     const el = U.$(id);
-    if (!el || el.__floatWired) return;
+    if (!el || el.__floatWired) {
+      return;
+    }
     el.__floatWired = true;
     const headSel = id === 'ai-win' ? '.ai-head' : '.dh';
     const head = el.querySelector(headSel);
-    if (!head) return;
+    if (!head) {
+      return;
+    }
     // Inject the toggle (SVG-only rule: the i-popout sprite symbol).
     let btn = head.querySelector('[data-float-toggle]');
     if (!btn) {
@@ -2688,41 +2925,55 @@ var MMGR = window.MMGR || {};
       // threw NotFoundError and killed the whole module load (AiWin gone).
       // A broken injection must never break the surface: fall back to append.
       const dc = head.querySelector('.dc');
-      if (dc && dc.parentNode === head) head.insertBefore(btn, dc);
-      else head.appendChild(btn);
+      if (dc && dc.parentNode === head) {
+        head.insertBefore(btn, dc);
+      } else {
+        head.appendChild(btn);
+      }
     }
     let drag = null;
     let raf = 0;
     let pending = null;
     function applyPos() {
-      if (!pending) return;
+      if (!pending) {
+        return;
+      }
       el.style.left = pending.x + 'px';
       el.style.top = pending.y + 'px';
       pending = null;
     }
     function onHeadDown(e) {
-      if (!el.classList.contains('float-mode')) return;
-      if (e.target.closest('button,select,input,textarea,[data-float-toggle]')) return;
+      if (!el.classList.contains('float-mode')) {
+        return;
+      }
+      if (e.target.closest('button,select,input,textarea,[data-float-toggle]')) {
+        return;
+      }
       const r = el.getBoundingClientRect();
       drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
       e.preventDefault();
     }
     function onHeadMove(e) {
-      if (!drag) return;
+      if (!drag) {
+        return;
+      }
       const w = el.getBoundingClientRect().width;
       const h = el.getBoundingClientRect().height;
       pending = {
         x: Math.min(Math.max(e.clientX - drag.dx, 8), Math.max(8, window.innerWidth - w - 8)),
         y: Math.min(Math.max(e.clientY - drag.dy, 8), Math.max(8, window.innerHeight - 48))
       };
-      if (!raf)
+      if (!raf) {
         raf = requestAnimationFrame(function () {
           raf = 0;
           applyPos();
         });
+      }
     }
     function onHeadUp() {
-      if (!drag) return;
+      if (!drag) {
+        return;
+      }
       drag = null;
       if (raf) {
         cancelAnimationFrame(raf);
@@ -2747,17 +2998,25 @@ var MMGR = window.MMGR || {};
   // once. The AI window keeps its own scrim behavior and is unaffected.
   let _dimWired = false;
   function wireDimClick() {
-    if (_dimWired) return;
+    if (_dimWired) {
+      return;
+    }
     _dimWired = true;
     document.addEventListener(
       'click',
       function (e) {
-        if (!document.body.classList.contains('drw-float-open')) return;
+        if (!document.body.classList.contains('drw-float-open')) {
+          return;
+        }
         // The ::after dim is not hit-testable; a click on the page BEHIND the
         // floating drawer (not inside it, not on its controls) = minimize.
         const drw = U.$('drw');
-        if (drw && (drw.contains(e.target) || e.target === drw)) return;
-        if (e.target.closest('#drw,[data-float-toggle]')) return;
+        if (drw && (drw.contains(e.target) || e.target === drw)) {
+          return;
+        }
+        if (e.target.closest('#drw,[data-float-toggle]')) {
+          return;
+        }
         if (drw && drw.classList.contains('float-mode') && drw.classList.contains('open')) {
           e.stopPropagation();
           toggleFloat('drw');
@@ -2767,9 +3026,13 @@ var MMGR = window.MMGR || {};
     );
   }
   function syncFloatState(id) {
-    if (id !== 'drw') return;
+    if (id !== 'drw') {
+      return;
+    }
     const el = U.$(id);
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const on = el.classList.contains('float-mode') && el.classList.contains('open');
     document.body.classList.toggle('drw-float-open', on);
     /* T10-B (owner 2026-10-10): aria-modal is only legal on a dialog, and the
@@ -2786,11 +3049,15 @@ var MMGR = window.MMGR || {};
       el.removeAttribute('aria-label');
       el.removeAttribute('role');
     }
-    if (on) wireDimClick();
+    if (on) {
+      wireDimClick();
+    }
   }
   function toggleFloat(id) {
     const el = U.$(id);
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     if (el.classList.contains('float-mode')) {
       // DOCK (minimize): restore the pre-float inline geometry (saved on
       // float-on) and put the drawer back into its sidebar.
@@ -2822,7 +3089,9 @@ var MMGR = window.MMGR || {};
       // Robustness: pop-out on a closed drawer opens it too (the toggle
       // lives in the header, so this is defensive - never a half-floated,
       // invisible window).
-      if (id === 'drw' && !el.classList.contains('open')) el.classList.add('open');
+      if (id === 'drw' && !el.classList.contains('open')) {
+        el.classList.add('open');
+      }
       const fw = Math.max(
         FLOAT_W_MIN,
         Math.min(Math.round(window.innerWidth * 0.66), window.innerWidth - 32)
@@ -2868,7 +3137,9 @@ var MMGR = window.MMGR || {};
   window.addEventListener('resize', function () {
     ['ai-win', 'drw'].forEach(function (id) {
       const el = U.$(id);
-      if (!el || !el.classList.contains('float-mode')) return;
+      if (!el || !el.classList.contains('float-mode')) {
+        return;
+      }
       const r = el.getBoundingClientRect();
       const x = Math.min(Math.max(r.left, 8), Math.max(8, window.innerWidth - r.width - 8));
       const y = Math.min(Math.max(r.top, 8), Math.max(8, window.innerHeight - 48));
@@ -2883,28 +3154,42 @@ var MMGR = window.MMGR || {};
   // question pre-filled and runs it right away (one action, no second Send).
   function askFromCommandBar(e) {
     var inp = document.getElementById('ai-command-input');
-    if (!inp) return;
+    if (!inp) {
+      return;
+    }
     var val = inp.value.trim();
     inp.value = '';
     open();
-    if (!val) return; // empty Ask just opens the assistant
+    if (!val) {
+      return;
+    } // empty Ask just opens the assistant
     var aiQ = U.$('ai-q');
-    if (aiQ) aiQ.value = val;
+    if (aiQ) {
+      aiQ.value = val;
+    }
     // Small delay lets the window settle (thread seed + focus) before the run.
     setTimeout(function () {
-      if (typeof runQuestion === 'function') runQuestion();
+      if (typeof runQuestion === 'function') {
+        runQuestion();
+      }
     }, 120);
   }
   document.addEventListener('keydown', function (e) {
-    if (e.key !== 'Enter') return;
+    if (e.key !== 'Enter') {
+      return;
+    }
     var inp = document.getElementById('ai-command-input');
-    if (!inp || document.activeElement !== inp) return;
+    if (!inp || document.activeElement !== inp) {
+      return;
+    }
     e.preventDefault();
     askFromCommandBar(e);
   });
   document.addEventListener('click', function (e) {
     var btn = e.target.closest ? e.target.closest('#ai-command-btn') : null;
-    if (!btn) return;
+    if (!btn) {
+      return;
+    }
     askFromCommandBar(e);
   });
 

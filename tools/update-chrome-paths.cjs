@@ -37,7 +37,9 @@ let updated = 0;
 
 for (const rel of scripts) {
   const abs = path.join(ROOT, rel);
-  if (!fs.existsSync(abs)) continue;
+  if (!fs.existsSync(abs)) {
+    continue;
+  }
 
   let content = fs.readFileSync(abs, 'utf8');
 

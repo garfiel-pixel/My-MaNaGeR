@@ -46,7 +46,9 @@
   var tsLoaded = false;
 
   window.mmgrTurnstileOnload = function () {
-    if (!turnstileDiv || typeof Turnstile === 'undefined' || turnstileWidget) return;
+    if (!turnstileDiv || typeof Turnstile === 'undefined' || turnstileWidget) {
+      return;
+    }
     try {
       turnstileWidget = window.turnstile.render(turnstileDiv, {
         sitekey: turnstileDiv.getAttribute('data-sitekey') || '',
@@ -68,7 +70,9 @@
   };
 
   function loadTurnstileScript() {
-    if (tsLoaded || !turnstileDiv) return;
+    if (tsLoaded || !turnstileDiv) {
+      return;
+    }
     tsLoaded = true;
     var s = document.createElement('script');
     s.src = TS_SCRIPT;
@@ -84,13 +88,17 @@
   // Worker first is what keeps an unconfigured deploy from showing a widget
   // whose token the server would then reject.
   function initTurnstile() {
-    if (!turnstileDiv) return;
+    if (!turnstileDiv) {
+      return;
+    }
     fetch('/api/turnstile-config', { credentials: 'same-origin' })
       .then(function (r) {
         return r.ok ? r.json() : null;
       })
       .then(function (d) {
-        if (!d || !d.ok || !d.sitekey) return;
+        if (!d || !d.ok || !d.sitekey) {
+          return;
+        }
         turnstileRequired = true;
         turnstileDiv.setAttribute('data-sitekey', d.sitekey);
         loadTurnstileScript();
@@ -114,24 +122,36 @@
   }
 
   function selectedStars() {
-    if (!pickRow) return 0;
+    if (!pickRow) {
+      return 0;
+    }
     var checked = pickRow.querySelector('input[name="stars"]:checked');
     var n = checked ? parseInt(checked.value, 10) : 0;
     return n >= 1 && n <= 5 ? n : 0;
   }
   function syncPickFill() {
-    if (pickRow) pickRow.setAttribute('data-val', String(selectedStars()));
+    if (pickRow) {
+      pickRow.setAttribute('data-val', String(selectedStars()));
+    }
   }
   function resetStars() {
-    if (!pickRow) return;
+    if (!pickRow) {
+      return;
+    }
     var checked = pickRow.querySelector('input[name="stars"]:checked');
-    if (checked) checked.checked = false;
+    if (checked) {
+      checked.checked = false;
+    }
     syncPickFill();
   }
-  if (pickRow) pickRow.addEventListener('change', syncPickFill);
+  if (pickRow) {
+    pickRow.addEventListener('change', syncPickFill);
+  }
 
   function setStatus(msg, isErr) {
-    if (!statusEl) return;
+    if (!statusEl) {
+      return;
+    }
     statusEl.textContent = msg || '';
     statusEl.classList.toggle('is-err', !!isErr);
     statusEl.hidden = !msg;
@@ -140,7 +160,9 @@
   // Build a star row (filled = stored rating) from the sprite , icons only,
   // never emoji. Returns null when not rated (0/null), so the row hides.
   function starRow(stars) {
-    if (!stars || stars < 1 || stars > 5) return null;
+    if (!stars || stars < 1 || stars > 5) {
+      return null;
+    }
     var wrap = document.createElement('span');
     wrap.className = 'rv-stars';
     wrap.setAttribute('aria-label', stars + ' out of 5');
@@ -157,9 +179,13 @@
   }
 
   function fmtDate(iso) {
-    if (!iso) return '';
+    if (!iso) {
+      return '';
+    }
     var d = new Date(iso);
-    if (isNaN(d.getTime())) return '';
+    if (isNaN(d.getTime())) {
+      return '';
+    }
     return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
   }
 
@@ -184,7 +210,9 @@
     card.appendChild(head);
 
     var stars = starRow(r && r.stars);
-    if (stars) card.appendChild(stars);
+    if (stars) {
+      card.appendChild(stars);
+    }
 
     var body = document.createElement('p');
     body.className = 'rv-text';
@@ -196,11 +224,15 @@
 
   function showEmpty(show) {
     var empty = document.getElementById('reviews-empty');
-    if (empty) empty.hidden = !show;
+    if (empty) {
+      empty.hidden = !show;
+    }
   }
 
   function renderList(reviews) {
-    if (!listEl) return;
+    if (!listEl) {
+      return;
+    }
     listEl.textContent = '';
     var list = Array.isArray(reviews) ? reviews : [];
     if (!list.length) {
@@ -247,20 +279,30 @@
         return;
       }
       var name = nameIn ? nameIn.value.replace(/\s+/g, ' ').trim() : '';
-      if (name.length > 60) name = name.slice(0, 60);
+      if (name.length > 60) {
+        name = name.slice(0, 60);
+      }
       var payload = { review: review };
-      if (name) payload.name = name;
+      if (name) {
+        payload.name = name;
+      }
       var stars = selectedStars();
-      if (stars) payload.stars = stars;
+      if (stars) {
+        payload.stars = stars;
+      }
       // Only send a token when the Worker told us a challenge is required.
       // Sending nothing while required fails server-side with a clear message.
-      if (turnstileToken) payload.turnstileToken = turnstileToken;
+      if (turnstileToken) {
+        payload.turnstileToken = turnstileToken;
+      }
       if (turnstileRequired && !turnstileToken) {
         setStatus('Please finish the check above before sending your review.', true);
         return;
       }
       var btn = formEl.querySelector('button[type="submit"]');
-      if (btn) btn.disabled = true;
+      if (btn) {
+        btn.disabled = true;
+      }
       try {
         var res = await fetch('/api/reviews', {
           method: 'POST',
@@ -278,8 +320,12 @@
           );
           return;
         }
-        if (nameIn) nameIn.value = '';
-        if (textIn) textIn.value = '';
+        if (nameIn) {
+          nameIn.value = '';
+        }
+        if (textIn) {
+          textIn.value = '';
+        }
         resetStars();
         resetTurnstile();
         setStatus('Thank you! Your review is live for everyone to see.');
@@ -289,9 +335,13 @@
       } catch (e) {
         setStatus('Could not reach the server. Please try again in a moment.', true);
       } finally {
-        if (btn) btn.disabled = false;
+        if (btn) {
+          btn.disabled = false;
+        }
         // Token is single-use whatever the outcome was.
-        if (turnstileRequired) resetTurnstile();
+        if (turnstileRequired) {
+          resetTurnstile();
+        }
       }
     });
   }

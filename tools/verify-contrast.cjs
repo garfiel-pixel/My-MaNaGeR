@@ -36,7 +36,9 @@ function contrastRatio(rgb1, rgb2) {
 
 function parseHex(hex) {
   hex = hex.replace('#', '');
-  if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+  if (hex.length === 3) {
+    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+  }
   return [
     parseInt(hex.slice(0, 2), 16),
     parseInt(hex.slice(2, 4), 16),
@@ -46,7 +48,9 @@ function parseHex(hex) {
 
 function parseRGB(str) {
   const m = str.match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
-  if (!m) return null;
+  if (!m) {
+    return null;
+  }
   return [parseInt(m[1]), parseInt(m[2]), parseInt(m[3])];
 }
 
@@ -61,7 +65,9 @@ function extractTokens(cssContent) {
     const assignments = block.match(/--[a-zA-Z0-9-]+\s*:\s*[^;]+/g) || [];
     for (const a of assignments) {
       const m = a.match(/--([a-zA-Z0-9-]+)\s*:\s*(.+)/);
-      if (!m) continue;
+      if (!m) {
+        continue;
+      }
       const name = m[1];
       let val = m[2].trim();
       // Extract hex colors
@@ -85,7 +91,9 @@ function extractTokens(cssContent) {
 
 /* ---- Check contrast pairs ---- */
 function checkContrast(label, fg, bg, minRatio) {
-  if (!fg || !bg) return; // token not found
+  if (!fg || !bg) {
+    return;
+  } // token not found
   const ratio = contrastRatio(fg, bg);
   const passed = ratio >= minRatio;
   if (passed) {

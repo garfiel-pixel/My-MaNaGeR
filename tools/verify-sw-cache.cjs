@@ -48,7 +48,9 @@ const strRe = /'([^']+)'/g;
 let m;
 while ((m = strRe.exec(shellMatch[1])) !== null) {
   const asset = m[1];
-  if (asset !== './') shellAssets.push(asset);
+  if (asset !== './') {
+    shellAssets.push(asset);
+  }
 }
 
 // 3) sw.js mtime = "the last CACHE bump" (bumping requires editing sw.js).
@@ -75,10 +77,11 @@ for (const asset of shellAssets) {
     continue;
   }
   const st = fs.statSync(p);
-  if (st.mtimeMs > swMtime + GRACE_MS)
+  if (st.mtimeMs > swMtime + GRACE_MS) {
     stale.push(
       asset + '  (mtime ' + st.mtimeMs + ' > sw.js ' + swMtime + ' + grace ' + GRACE_MS + 'ms)'
     );
+  }
 }
 
 let ok = true;

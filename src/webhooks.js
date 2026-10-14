@@ -30,26 +30,33 @@ async function webhookCryptoSecret() {
 
 export async function handleWebhookCreate(request, env, projectId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
+  if (!auth) {
+    return cloudForbidden();
+  }
   const read = await readCloudBody(request);
-  if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
-  if (read.bad || !read.body || typeof read.body !== 'object')
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad || !read.body || typeof read.body !== 'object') {
     return json({ ok: false, error: 'bad request' }, 400);
+  }
   const event = String(read.body.event || '').trim();
   const targetUrl = String(read.body.targetUrl || '').trim();
-  if (WEBHOOK_EVENTS.indexOf(event) === -1)
+  if (WEBHOOK_EVENTS.indexOf(event) === -1) {
     return json(
       { ok: false, error: 'unknown event , use health_dropped or weather_risk_tomorrow' },
       400
     );
+  }
   let u;
   try {
     u = new URL(targetUrl);
   } catch (e) {
     return json({ ok: false, error: 'targetUrl must be a valid URL' }, 400);
   }
-  if (u.protocol !== 'https:' && u.protocol !== 'http:')
+  if (u.protocol !== 'https:' && u.protocol !== 'http:') {
     return json({ ok: false, error: 'targetUrl must be http(s)' }, 400);
+  }
   const secret = await webhookCryptoSecret();
   const now = new Date().toISOString();
   const res = await env.DB.prepare(
@@ -69,7 +76,9 @@ export async function handleWebhookCreate(request, env, projectId) {
 
 export async function handleWebhookList(request, env, projectId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
+  if (!auth) {
+    return cloudForbidden();
+  }
   const rows = await env.DB.prepare(
     'SELECT id, project_id, event, target_url, enabled, last_fired_at, created_at FROM webhook_subscriptions WHERE project_id = ? ORDER BY id'
   )
@@ -91,13 +100,17 @@ export async function handleWebhookList(request, env, projectId) {
 
 export async function handleWebhookDelete(request, env, projectId, subId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
+  if (!auth) {
+    return cloudForbidden();
+  }
   const res = await env.DB.prepare(
     'DELETE FROM webhook_subscriptions WHERE id = ? AND project_id = ?'
   )
     .bind(Number(subId) || 0, projectId)
     .run();
-  if (!res.meta.changes) return json({ ok: false, error: 'webhook not found' }, 404);
+  if (!res.meta.changes) {
+    return json({ ok: false, error: 'webhook not found' }, 404);
+  }
   return json({ ok: true, deleted: true });
 }
 
@@ -140,7 +153,9 @@ async function webhookDeliver(env, sub, payload) {
 export async function evaluateWebhooks(env) {
   const rows = await env.DB.prepare('SELECT * FROM webhook_subscriptions WHERE enabled = 1').all();
   const subs = rows.results || [];
-  if (!subs.length) return { checked: 0, fired: [] };
+  if (!subs.length) {
+    return { checked: 0, fired: [] };
+  }
   const fired = [];
   const todayKey = new Date().toISOString().slice(0, 10);
   const seen = {};
@@ -156,7 +171,9 @@ export async function evaluateWebhooks(env) {
         row && row.latest_r2_key
           ? await cloudReadState(env, row.latest_r2_key, row.owner_code_hash, row.owner_code_salt)
           : null;
-      if (!state) continue;
+      if (!state) {
+        continue;
+      }
       let fire = false;
       let payload = null;
       if (sub.event === 'health_dropped') {

@@ -27,14 +27,18 @@ var MMGR = window.MMGR || {};
   (function migrateSpacedProjectIds() {
     try {
       const id = ns.projectId;
-      if (!id || !/\s/.test(id)) return; // nothing to fix
+      if (!id || !/\s/.test(id)) {
+        return;
+      } // nothing to fix
       const slug =
         id
           .toLowerCase()
           .trim()
           .replace(/[^a-z0-9]+/g, '-')
           .replace(/(^-|-$)/g, '') || 'project';
-      if (localStorage.getItem('mmgr_state_' + slug)) return; // target exists: never clobber
+      if (localStorage.getItem('mmgr_state_' + slug)) {
+        return;
+      } // target exists: never clobber
       ['mmgr_state_', 'mmgr_unlocked_', 'mmgr_scope_'].forEach(function (prefix) {
         const v = localStorage.getItem(prefix + id);
         if (v !== null) {
@@ -51,11 +55,15 @@ var MMGR = window.MMGR || {};
             list.forEach(function (p) {
               if (p && p.id === id) {
                 p.id = slug;
-                if (p.file) p.file = 'project.html?id=' + encodeURIComponent(slug);
+                if (p.file) {
+                  p.file = 'project.html?id=' + encodeURIComponent(slug);
+                }
                 changed = true;
               }
             });
-            if (changed) localStorage.setItem('mmgr_admin_projects', JSON.stringify(list));
+            if (changed) {
+              localStorage.setItem('mmgr_admin_projects', JSON.stringify(list));
+            }
           }
         }
       } catch (e) {
@@ -96,7 +104,9 @@ var MMGR = window.MMGR || {};
   function isLocallyOwned(id) {
     try {
       const raw = localStorage.getItem('mmgr_admin_projects');
-      if (!raw) return false;
+      if (!raw) {
+        return false;
+      }
       const list = JSON.parse(raw);
       return (
         Array.isArray(list) &&
@@ -145,8 +155,9 @@ var MMGR = window.MMGR || {};
         // C19: a CLIENT code is read-only exactly like a viewer code - the
         // scope machinery (READONLY_SAFE_ACTIONS) treats both identically,
         // and the section grant is enforced by applyClientScope hiding nav.
-        if (es && Array.isArray(es.sections) && (es.role === 'view' || es.role === 'client'))
+        if (es && Array.isArray(es.sections) && (es.role === 'view' || es.role === 'client')) {
           ns.scope = 'readonly';
+        }
       } catch (e) {
         /* ignore */
       }
@@ -183,9 +194,12 @@ var MMGR = window.MMGR || {};
       action !== 'cpOut' &&
       action !== 'saveProjectFile' &&
       action !== 'driveBackup'
-    )
+    ) {
       return false;
-    if (!cloudCodeHeld()) return false;
+    }
+    if (!cloudCodeHeld()) {
+      return false;
+    }
     if (window.MMGR.App && typeof window.MMGR.App.showToast === 'function') {
       window.MMGR.App.showToast(
         'Shared projects can\u2019t be copied offline. This project was opened with a share code.',
@@ -241,12 +255,16 @@ var MMGR = window.MMGR || {};
     }
 
     document.addEventListener('input', function (e) {
-      if (!e.target.id || !e.target.id.startsWith('comment-input-')) return;
+      if (!e.target.id || !e.target.id.startsWith('comment-input-')) {
+        return;
+      }
       const input = e.target;
       const val = input.value;
       const atIdx = val.lastIndexOf('@');
       const dropdown = document.getElementById('mention-dropdown');
-      if (!dropdown) return;
+      if (!dropdown) {
+        return;
+      }
 
       if (atIdx === -1 || (atIdx > 0 && val[atIdx - 1] !== ' ')) {
         dropdown.style.display = 'none';
@@ -268,11 +286,17 @@ var MMGR = window.MMGR || {};
 
     // Keyboard navigation (arrow keys + Enter + Escape)
     document.addEventListener('keydown', function (e) {
-      if (!e.target.id || !e.target.id.startsWith('comment-input-')) return;
+      if (!e.target.id || !e.target.id.startsWith('comment-input-')) {
+        return;
+      }
       const dropdown = document.getElementById('mention-dropdown');
-      if (!dropdown || dropdown.style.display === 'none') return;
+      if (!dropdown || dropdown.style.display === 'none') {
+        return;
+      }
       const items = dropdown.querySelectorAll('.mention-item');
-      if (!items.length) return;
+      if (!items.length) {
+        return;
+      }
 
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -306,7 +330,9 @@ var MMGR = window.MMGR || {};
         const input = e.target.closest('.card')
           ? e.target.closest('.card').querySelector('input[id^="comment-input-"]')
           : null;
-        if (input && name) selectMention(input, name);
+        if (input && name) {
+          selectMention(input, name);
+        }
       }
     });
 
@@ -328,7 +354,9 @@ var MMGR = window.MMGR || {};
   }
 
   function init() {
-    if (!checkAccess()) return;
+    if (!checkAccess()) {
+      return;
+    }
 
     ns.State.load();
 
@@ -358,7 +386,9 @@ var MMGR = window.MMGR || {};
     if (isReadonly()) {
       document.body.classList.add('readonly-mode');
       const banner = U.$('readonly-banner');
-      if (banner) banner.classList.remove('is-hide');
+      if (banner) {
+        banner.classList.remove('is-hide');
+      }
     }
 
     // Apply theme: the device-level pref (localStorage mmgr_theme - the same
@@ -383,12 +413,16 @@ var MMGR = window.MMGR || {};
         window.matchMedia &&
         window.matchMedia('(prefers-color-scheme: dark)').matches);
     document.body.classList.toggle('dark-mode', dark);
-    if (thmTgl) thmTgl.checked = !dark;
+    if (thmTgl) {
+      thmTgl.checked = !dark;
+    }
     // Apply crosshair
     if (s.crosshairOn) {
       document.body.classList.add('crosshair-on');
       const tgl = U.$('ch-tgl');
-      if (tgl) tgl.checked = true;
+      if (tgl) {
+        tgl.checked = true;
+      }
     }
     // Crosshair alignment lines (#cx horizontal, #cy vertical) follow the
     // pointer. Monolith parity: bound once at init, CSS hides the lines when
@@ -402,14 +436,20 @@ var MMGR = window.MMGR || {};
       });
     }
     // Persisted focus mode (monolith S.focus parity)
-    if (s.focusMode) document.body.classList.add('focus-mode');
+    if (s.focusMode) {
+      document.body.classList.add('focus-mode');
+    }
     // Set user name
     const nameIn = U.$('user-name-in');
-    if (nameIn) nameIn.value = s.userName || '';
+    if (nameIn) {
+      nameIn.value = s.userName || '';
+    }
 
     // Set work week
     const ww = U.$('ww-sel');
-    if (ww) ww.value = s.workWeek || 5;
+    if (ww) {
+      ww.value = s.workWeek || 5;
+    }
 
     // Load charter data
     ns.Charter && ns.Charter.loadCharterData();
@@ -419,7 +459,9 @@ var MMGR = window.MMGR || {};
 
     // Load budget envelope
     const env = U.$('bud-envelope');
-    if (env) env.value = s.budgetEnvelope || 0;
+    if (env) {
+      env.value = s.budgetEnvelope || 0;
+    }
 
     // SIDEBAR-HAMBURGER-TOGGLE-PLAN: build the desktop sidebar (a clone of
     // the .sec-nav groups) BEFORE the first render so the pack/methodology
@@ -429,7 +471,9 @@ var MMGR = window.MMGR || {};
     // OWNER 2026-08-15: the sidebar IS the view on desktop , boot the pinned
     // rail OPEN (body.sidebar-open). Mobile keeps the off-canvas drawer
     // (sidebar-open is never set there, so the scrim can't flash at boot).
-    if (window.innerWidth > 768) document.body.classList.add('sidebar-open');
+    if (window.innerWidth > 768) {
+      document.body.classList.add('sidebar-open');
+    }
     syncSidebarChrome();
     bindNavDismiss();
 
@@ -476,13 +520,17 @@ var MMGR = window.MMGR || {};
     }
 
     // Phase 2: hook the client error surface (window error + unhandledrejection)
-    if (ns.Errors && ns.Errors.hookGlobals) ns.Errors.hookGlobals();
+    if (ns.Errors && ns.Errors.hookGlobals) {
+      ns.Errors.hookGlobals();
+    }
 
     // Rank 4.2: crash-durability journal restore , if the IndexedDB journal
     // holds a NEWER state than localStorage (a hard kill happened mid-edit),
     // adopt it and re-render. Async best-effort; never blocks first paint.
     ns.State.restoreFromJournal().then(function (restored) {
-      if (restored) R.renderAll();
+      if (restored) {
+        R.renderAll();
+      }
     });
 
     // Populate weather region selector + set current value
@@ -520,7 +568,9 @@ var MMGR = window.MMGR || {};
     // Multi-tab conflict detection: storage events fire in OTHER tabs, so
     // this tab is notified whenever a peer overwrites the shared key.
     window.addEventListener('storage', function (e) {
-      if (!ns.State.getProjectKey || e.key !== ns.State.getProjectKey() || !e.newValue) return;
+      if (!ns.State.getProjectKey || e.key !== ns.State.getProjectKey() || !e.newValue) {
+        return;
+      }
       try {
         onExternalChange(JSON.parse(e.newValue));
       } catch (err) {
@@ -573,10 +623,16 @@ var MMGR = window.MMGR || {};
         closeOM();
         closeModals();
         const pm = document.getElementById('pool-modal');
-        if (pm) pm.remove();
+        if (pm) {
+          pm.remove();
+        }
         const im = document.getElementById('import-modal');
-        if (im) im.remove();
-        if (ns.Bids && ns.Bids.closeBidPkgModal) ns.Bids.closeBidPkgModal();
+        if (im) {
+          im.remove();
+        }
+        if (ns.Bids && ns.Bids.closeBidPkgModal) {
+          ns.Bids.closeBidPkgModal();
+        }
         if (ns.Charter) {
           ns.Charter.closeChartUp();
         }
@@ -598,9 +654,13 @@ var MMGR = window.MMGR || {};
     // engine is dynamically imported and only then , zero cost otherwise.
     if (ns.Viewport && ns.Viewport.getGlassMode) {
       const gt = U.$('glass-tgl');
-      if (gt) gt.checked = ns.Viewport.getGlassMode() === 'premium';
+      if (gt) {
+        gt.checked = ns.Viewport.getGlassMode() === 'premium';
+      }
     }
-    if (ns.Glass && ns.Glass.sync) ns.Glass.sync();
+    if (ns.Glass && ns.Glass.sync) {
+      ns.Glass.sync();
+    }
 
     // DIR-1b: reflect the device-level remote-error-reporting preference
     // (localStorage slot, like the glass mode toggle above , never project
@@ -608,31 +668,43 @@ var MMGR = window.MMGR || {};
     if (ns.Errors && ns.Errors.getReportCfg) {
       const rc = ns.Errors.getReportCfg();
       const rt = U.$('err-report-tgl');
-      if (rt) rt.checked = !!rc.enabled;
+      if (rt) {
+        rt.checked = !!rc.enabled;
+      }
       const rw = U.$('err-webhook');
-      if (rw && rw.value !== rc.url) rw.value = rc.url;
+      if (rw && rw.value !== rc.url) {
+        rw.value = rc.url;
+      }
     }
 
     // Rank 4.5: render the optional sync identity section (device label,
     // never a gate) into the Controls drawer.
-    if (ns.Sync && ns.Sync.renderSyncSection) ns.Sync.renderSyncSection();
+    if (ns.Sync && ns.Sync.renderSyncSection) {
+      ns.Sync.renderSyncSection();
+    }
 
     // GOOGLE-DRIVE-BACKUP: render the optional Drive backup/restore section
     // into the Controls drawer (project.html only , app.html uses its
     // auth-bar controls). Same zero-throw guard as the sync section above.
-    if (ns.GoogleAuth && ns.GoogleAuth.renderDriveSection) ns.GoogleAuth.renderDriveSection();
+    if (ns.GoogleAuth && ns.GoogleAuth.renderDriveSection) {
+      ns.GoogleAuth.renderDriveSection();
+    }
 
     // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 1: render the optional Cloud
     // Backup (D1 + R2 owner-code storage) section into the Controls drawer.
     // Strictly additive and never gating , the module no-ops without
     // #cloud-section (project.html only), and the Worker API absence degrades
     // to a quiet "unavailable here" note.
-    if (ns.Cloud && ns.Cloud.render) ns.Cloud.render();
+    if (ns.Cloud && ns.Cloud.render) {
+      ns.Cloud.render();
+    }
 
     // C23 CLOUD SHARED RESOURCE POOL (Phase 6): pull-merge linked pool
     // rows into the Resources panel on boot when a credential is held.
     // Strictly additive and never gating (offline / unlinked = no-op).
-    if (ns.Pool && ns.Pool.bootMerge) ns.Pool.bootMerge();
+    if (ns.Pool && ns.Pool.bootMerge) {
+      ns.Pool.bootMerge();
+    }
 
     // Run validation
     const issues = ns.State.validate();
@@ -670,13 +742,16 @@ var MMGR = window.MMGR || {};
     } catch (e) {
       /* ignore */
     }
-    if (!isReadonly())
+    if (!isReadonly()) {
       ns.State.updateState(function (s) {
         s.theme = theme;
       });
+    }
     // Rank 3.5: keep the premium glass shader's dark flag in step with the
     // theme (a toggle between light/dark must not leave a stale backdrop).
-    if (ns.Glass && ns.Glass.refreshTheme) ns.Glass.refreshTheme();
+    if (ns.Glass && ns.Glass.refreshTheme) {
+      ns.Glass.refreshTheme();
+    }
   }
 
   // ---- PLAN-OF-ACTION-LIQUID-GLASS-UI 3.5.3: Premium visual mode toggle ----
@@ -702,19 +777,25 @@ var MMGR = window.MMGR || {};
     // OWNER 2026-08-15: on desktop the sidebar is the pinned primary nav ,
     // section clicks do NOT close it (only the hamburger / Escape does).
     const btn = U.$('nav-btn');
-    if (btn) btn.setAttribute('aria-expanded', 'false');
+    if (btn) {
+      btn.setAttribute('aria-expanded', 'false');
+    }
   }
   // Dismiss bindings are installed once at init (not lazily on first click),
   // so Escape/resize/section-click always close the drawer AND the desktop
   // sidebar overlay even when the pref opened the sidebar at boot without a click.
   function bindNavDismiss() {
-    if (_navBound) return;
+    if (_navBound) {
+      return;
+    }
     _navBound = true;
     document.addEventListener('click', function (e) {
       const t = e.target;
       // Section buttons close the mobile drawer; on desktop the pinned rail
       // stays open (the hamburger is its close control).
-      if (t && t.closest && t.closest('.sec-btn')) closeNav();
+      if (t && t.closest && t.closest('.sec-btn')) {
+        closeNav();
+      }
       // Outside-click closes the backup popover (not on the indicator itself
       // or anything inside the popover).
       const pop = U.$('bk-pop');
@@ -722,17 +803,21 @@ var MMGR = window.MMGR || {};
         pop &&
         !pop.hidden &&
         !(t && t.closest && (t.closest('#bk-pop') || t.closest('#dirty-ind')))
-      )
+      ) {
         bkClose();
+      }
     });
     document.addEventListener('keydown', function (e) {
-      if (e.key !== 'Escape') return;
+      if (e.key !== 'Escape') {
+        return;
+      }
       closeNav();
       bkClose();
       // Escape also closes the desktop pinned rail , full-screen work, the
       // hamburger reopens it.
-      if (window.innerWidth > 768 && document.body.classList.contains('sidebar-open'))
+      if (window.innerWidth > 768 && document.body.classList.contains('sidebar-open')) {
         setSidebarOpen(false);
+      }
     });
     window.addEventListener('resize', function () {
       closeNav();
@@ -747,13 +832,17 @@ var MMGR = window.MMGR || {};
     const btn = U.$('nav-btn');
     if (window.innerWidth <= 768) {
       const open = document.body.classList.toggle('nav-open');
-      if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (btn) {
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      }
       // BUG-10: the mobile off-canvas drawer is the same overflow scroll
       // container as the desktop sidebar , reset it to the top on open too,
       // so the first section is always the first thing visible.
       if (open) {
         const nav = U.$('sec-nav');
-        if (nav) nav.scrollTop = 0;
+        if (nav) {
+          nav.scrollTop = 0;
+        }
       }
       return;
     }
@@ -778,42 +867,64 @@ var MMGR = window.MMGR || {};
     return ns.AppSidebar ? ns.AppSidebar.readDevicePref(key) : null;
   }
   function writeDevicePref(key, v) {
-    if (ns.AppSidebar) ns.AppSidebar.writeDevicePref(key, v);
+    if (ns.AppSidebar) {
+      ns.AppSidebar.writeDevicePref(key, v);
+    }
   }
   function sidebarEnabled() {
     return true;
   }
   function syncSidebarChrome() {
-    if (ns.AppSidebar) ns.AppSidebar.syncSidebarChrome();
+    if (ns.AppSidebar) {
+      ns.AppSidebar.syncSidebarChrome();
+    }
   }
   function setSidebarOpen(open) {
-    if (ns.AppSidebar) ns.AppSidebar.setSidebarOpen(open);
+    if (ns.AppSidebar) {
+      ns.AppSidebar.setSidebarOpen(open);
+    }
   }
   function toggleSidebar() {
-    if (ns.AppSidebar) ns.AppSidebar.toggleSidebar();
+    if (ns.AppSidebar) {
+      ns.AppSidebar.toggleSidebar();
+    }
   }
   function pushSidebarBackend(on) {
-    if (ns.AppSidebar) ns.AppSidebar.pushSidebarBackend(on);
+    if (ns.AppSidebar) {
+      ns.AppSidebar.pushSidebarBackend(on);
+    }
   }
   function pullSidebarBackend() {
-    if (ns.AppSidebar) ns.AppSidebar.pullSidebarBackend();
+    if (ns.AppSidebar) {
+      ns.AppSidebar.pullSidebarBackend();
+    }
   }
   function buildSidebar() {
-    if (ns.AppSidebar) ns.AppSidebar.buildSidebar();
+    if (ns.AppSidebar) {
+      ns.AppSidebar.buildSidebar();
+    }
   }
 
   // ---- PLAN-OF-ACTION-AI-VOICE-SYNC-v1 4.5: optional Google identity ----
   function syncConnect() {
-    if (ns.Sync && ns.Sync.connect) ns.Sync.connect();
+    if (ns.Sync && ns.Sync.connect) {
+      ns.Sync.connect();
+    }
   }
   function syncSignOut() {
-    if (ns.Sync && ns.Sync.signOut) ns.Sync.signOut();
+    if (ns.Sync && ns.Sync.signOut) {
+      ns.Sync.signOut();
+    }
   }
   function syncClientId(el) {
-    if (ns.Sync && ns.Sync.setClientId) ns.Sync.setClientId(el);
+    if (ns.Sync && ns.Sync.setClientId) {
+      ns.Sync.setClientId(el);
+    }
   }
   function syncDismissSuggest() {
-    if (ns.Sync && ns.Sync.dismissSuggestion) ns.Sync.dismissSuggestion();
+    if (ns.Sync && ns.Sync.dismissSuggestion) {
+      ns.Sync.dismissSuggestion();
+    }
   }
 
   // OWNER 2026-09-06: #siom sign-in sheet helpers (sidebar-bottom Sign in
@@ -825,7 +936,9 @@ var MMGR = window.MMGR || {};
       m.classList.add('open');
       try {
         const G = ns.GoogleAuth;
-        if (G && G.ensureGisButton) G.ensureGisButton();
+        if (G && G.ensureGisButton) {
+          G.ensureGisButton();
+        }
       } catch (e) {
         /* GIS quirk - the fallback button still shows */
       }
@@ -844,10 +957,14 @@ var MMGR = window.MMGR || {};
     // view instead of dying.
     const C = window.MMGR && window.MMGR.Cloud;
     const drw = U.$('drw');
-    if (!drw) return;
+    if (!drw) {
+      return;
+    }
     drw.classList.add('open');
     const tabBtn = document.querySelector('.dtab[data-tab="ctrl"]');
-    if (tabBtn) swDtab('ctrl', tabBtn);
+    if (tabBtn) {
+      swDtab('ctrl', tabBtn);
+    }
     if (C && C.render) {
       try {
         C.render();
@@ -877,7 +994,9 @@ var MMGR = window.MMGR || {};
   }
   function closeSignInModal() {
     const m = U.$('siom');
-    if (m) m.classList.remove('open');
+    if (m) {
+      m.classList.remove('open');
+    }
   }
 
   function tglCh() {
@@ -896,10 +1015,14 @@ var MMGR = window.MMGR || {};
   // render-side UI gating (renderFlags in mmgr-render.js).
   function tglFlag(el) {
     const flag = el.getAttribute('data-flag');
-    if (!flag) return;
+    if (!flag) {
+      return;
+    }
     const on = el.type === 'checkbox' ? el.checked : S().flags && S().flags[flag] !== false;
     ns.State.updateState(function (s) {
-      if (!s.flags || typeof s.flags !== 'object') s.flags = {};
+      if (!s.flags || typeof s.flags !== 'object') {
+        s.flags = {};
+      }
       s.flags[flag] = on;
     });
     R.renderAll();
@@ -907,7 +1030,9 @@ var MMGR = window.MMGR || {};
 
   // ---- Phase 2: client error surface ----
   function clearErrorLog() {
-    if (ns.Errors && ns.Errors.clear) ns.Errors.clear();
+    if (ns.Errors && ns.Errors.clear) {
+      ns.Errors.clear();
+    }
     showToast('Error log cleared.', 'ok');
   }
 
@@ -1015,7 +1140,9 @@ var MMGR = window.MMGR || {};
   function tglErrReport() {
     const tgl = U.$('err-report-tgl');
     const on = tgl ? tgl.checked : false;
-    if (ns.Errors && ns.Errors.setReportCfg) ns.Errors.setReportCfg({ enabled: on });
+    if (ns.Errors && ns.Errors.setReportCfg) {
+      ns.Errors.setReportCfg({ enabled: on });
+    }
     showToast(
       on
         ? 'Remote error reporting ON , new errors are posted to your webhook.'
@@ -1025,7 +1152,9 @@ var MMGR = window.MMGR || {};
   }
 
   function setErrWebhook(el) {
-    if (ns.Errors && ns.Errors.setReportCfg) ns.Errors.setReportCfg({ url: el.value });
+    if (ns.Errors && ns.Errors.setReportCfg) {
+      ns.Errors.setReportCfg({ url: el.value });
+    }
   }
 
   function tglLock() {
@@ -1053,7 +1182,9 @@ var MMGR = window.MMGR || {};
     });
     R.renderMethodology();
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    if (btn) btn.classList.add('active');
+    if (btn) {
+      btn.classList.add('active');
+    }
   }
 
   // ---- Sections ----
@@ -1074,20 +1205,28 @@ var MMGR = window.MMGR || {};
   // ---- Drawer ----
   function openDrw() {
     const drw = U.$('drw');
-    if (drw) drw.classList.add('open');
+    if (drw) {
+      drw.classList.add('open');
+    }
   }
 
   function closeDrw() {
     const drw = U.$('drw');
-    if (drw) drw.classList.remove('open');
+    if (drw) {
+      drw.classList.remove('open');
+    }
   }
 
   function swDtab(tab, btn) {
     document.querySelectorAll('.dtab').forEach(b => b.classList.remove('active'));
-    if (btn) btn.classList.add('active');
+    if (btn) {
+      btn.classList.add('active');
+    }
     ['feat', 'qa', 'prompt', 'ctrl'].forEach(t => {
       const el = U.$('db-' + t);
-      if (el) el.classList.toggle('is-hide', t !== tab);
+      if (el) {
+        el.classList.toggle('is-hide', t !== tab);
+      }
     });
   }
 
@@ -1124,7 +1263,9 @@ var MMGR = window.MMGR || {};
     ns.State.updateState(function (s) {
       s.packsCalloutDismissed = true;
     });
-    if (ns.Render && ns.Render.renderCoreCallout) ns.Render.renderCoreCallout();
+    if (ns.Render && ns.Render.renderCoreCallout) {
+      ns.Render.renderCoreCallout();
+    }
   }
 
   // ---- Toast ----
@@ -1169,9 +1310,13 @@ var MMGR = window.MMGR || {};
 
   function showMLC(meth) {
     const data = MLC_DATA[meth];
-    if (!data) return;
+    if (!data) {
+      return;
+    }
     const card = U.$('meth-learn-card');
-    if (!card) return;
+    if (!card) {
+      return;
+    }
     U.$('mlc-title').textContent = data.title;
     U.$('mlc-body').textContent = data.body;
     U.$('mlc-when').textContent = data.when;
@@ -1181,21 +1326,29 @@ var MMGR = window.MMGR || {};
 
   function closeMLC() {
     const card = U.$('meth-learn-card');
-    if (card) card.classList.add('is-hide');
+    if (card) {
+      card.classList.add('is-hide');
+    }
   }
 
   function scheduleMLCClose() {
-    if (mlcTimer) clearTimeout(mlcTimer);
+    if (mlcTimer) {
+      clearTimeout(mlcTimer);
+    }
     mlcTimer = setTimeout(closeMLC, 500);
   }
 
   function clearMlcTimer() {
-    if (mlcTimer) clearTimeout(mlcTimer);
+    if (mlcTimer) {
+      clearTimeout(mlcTimer);
+    }
   }
 
   // ---- Copy All / Export Text ---- (extracted to js/app/copy-text.js)
   function cpAllPage(section) {
-    if (ns.AppCopy) ns.AppCopy.cpAllPage(section);
+    if (ns.AppCopy) {
+      ns.AppCopy.cpAllPage(section);
+    }
   }
   function buildDigest(s) {
     return ns.AppCopy ? ns.AppCopy.buildDigest(s) : '';
@@ -1204,16 +1357,22 @@ var MMGR = window.MMGR || {};
     return ns.AppCopy ? ns.AppCopy.copyAsText(kind) : '';
   }
   function renderCtrlPreviews() {
-    if (ns.AppCopy) ns.AppCopy.renderCtrlPreviews();
+    if (ns.AppCopy) {
+      ns.AppCopy.renderCtrlPreviews();
+    }
   }
   function cpFormats(kind) {
-    if (ns.AppCopy) ns.AppCopy.cpFormats(kind);
+    if (ns.AppCopy) {
+      ns.AppCopy.cpFormats(kind);
+    }
   }
   function emailTplText(kind) {
     return ns.AppCopy ? ns.AppCopy.emailTplText(kind) : '';
   }
   function emailTpl(kind) {
-    if (ns.AppCopy) ns.AppCopy.emailTpl(kind);
+    if (ns.AppCopy) {
+      ns.AppCopy.emailTpl(kind);
+    }
   }
 
   // ---- 5.2 Definitions tooltips ---- (extracted to js/app/definitions.js)
@@ -1221,10 +1380,14 @@ var MMGR = window.MMGR || {};
     return ns.AppDefs && ns.AppDefs.defTipFor ? ns.AppDefs.defTipFor(term) : null;
   }
   function showDefTip(el, term) {
-    if (ns.AppDefs && ns.AppDefs.showDefTip) ns.AppDefs.showDefTip(el, term);
+    if (ns.AppDefs && ns.AppDefs.showDefTip) {
+      ns.AppDefs.showDefTip(el, term);
+    }
   }
   function hideDefTip() {
-    if (ns.AppDefs && ns.AppDefs.hideDefTip) ns.AppDefs.hideDefTip();
+    if (ns.AppDefs && ns.AppDefs.hideDefTip) {
+      ns.AppDefs.hideDefTip();
+    }
   }
 
   // ---- 5.x Gantt high-res PNG export ----
@@ -1247,8 +1410,12 @@ var MMGR = window.MMGR || {};
     let minDate = null,
       maxDate = null;
     tasks.forEach(t => {
-      if (!minDate || t.startDate < minDate) minDate = t.startDate;
-      if (!maxDate || t.endDate > maxDate) maxDate = t.endDate;
+      if (!minDate || t.startDate < minDate) {
+        minDate = t.startDate;
+      }
+      if (!maxDate || t.endDate > maxDate) {
+        maxDate = t.endDate;
+      }
     });
     // C1 (directive 2026-09-26): dynamic label column - measure the longest
     // label, clamp the left pad 120..320, and truncate with an ellipsis as
@@ -1259,7 +1426,9 @@ var MMGR = window.MMGR || {};
     let maxLabelWidth = 0;
     all.forEach(t => {
       const w = measureCtx.measureText(t.name || '').width;
-      if (w > maxLabelWidth) maxLabelWidth = w;
+      if (w > maxLabelWidth) {
+        maxLabelWidth = w;
+      }
     });
     const dayWidth = 14,
       rowH = 26,
@@ -1367,22 +1536,28 @@ var MMGR = window.MMGR || {};
     // that fits) - static PNGs have no tooltips, so the full name stays
     // readable in the live view; the export stays unclipped.
     function truncateToWidth(c, text, maxWidth) {
-      if (c.measureText(text).width <= maxWidth) return text;
+      if (c.measureText(text).width <= maxWidth) {
+        return text;
+      }
       let lo = 0,
         hi = text.length;
       while (lo < hi) {
         const mid = (lo + hi + 1) >> 1;
-        if (c.measureText(text.slice(0, mid) + '...').width <= maxWidth) lo = mid;
-        else hi = mid - 1;
+        if (c.measureText(text.slice(0, mid) + '...').width <= maxWidth) {
+          lo = mid;
+        } else {
+          hi = mid - 1;
+        }
       }
       return text.slice(0, lo) + '...';
     }
     // Baseline map
     const baseMap = {};
-    if (s.baseline && s.baseline.tasks)
+    if (s.baseline && s.baseline.tasks) {
       (s.baseline.tasks || []).forEach(bt => {
         baseMap[bt.id] = bt;
       });
+    }
     const todayStr = U.todayStr();
     const midY = id => rowY.get(id) + rowH / 2;
     // Rows: bands, tabs, labels, bars
@@ -1470,7 +1645,9 @@ var MMGR = window.MMGR || {};
     function connector(pid, sid, gold) {
       const p = rowById.get(String(pid)),
         sRow = rowById.get(String(sid));
-      if (!p || !sRow || !rowY.has(p.id) || !rowY.has(sRow.id)) return;
+      if (!p || !sRow || !rowY.has(p.id) || !rowY.has(sRow.id)) {
+        return;
+      }
       const x1 =
         X(p.endDate) +
         Math.max(3, U.daysBetween(p.startDate, p.endDate) * dayWidth + dayWidth * 0.2);
@@ -1580,56 +1757,88 @@ var MMGR = window.MMGR || {};
 
   // ---- Weather actions ---- (extracted to js/app/weather.js)
   async function wxGeocode() {
-    if (ns.AppWeather) ns.AppWeather.wxGeocode();
+    if (ns.AppWeather) {
+      ns.AppWeather.wxGeocode();
+    }
   }
   async function wxRefresh() {
-    if (ns.AppWeather) ns.AppWeather.wxRefresh();
+    if (ns.AppWeather) {
+      ns.AppWeather.wxRefresh();
+    }
   }
   async function wxUseLocation() {
-    if (ns.AppWeather) ns.AppWeather.wxUseLocation();
+    if (ns.AppWeather) {
+      ns.AppWeather.wxUseLocation();
+    }
   }
   function wxLogToday() {
-    if (ns.AppWeather) ns.AppWeather.wxLogToday();
+    if (ns.AppWeather) {
+      ns.AppWeather.wxLogToday();
+    }
   }
   function wxLogManual() {
-    if (ns.AppWeather) ns.AppWeather.wxLogManual();
+    if (ns.AppWeather) {
+      ns.AppWeather.wxLogManual();
+    }
   }
   function wxCopyNotice() {
-    if (ns.AppWeather) ns.AppWeather.wxCopyNotice();
+    if (ns.AppWeather) {
+      ns.AppWeather.wxCopyNotice();
+    }
   }
   function wxSetView(el) {
-    if (ns.AppWeather) ns.AppWeather.wxSetView(el);
+    if (ns.AppWeather) {
+      ns.AppWeather.wxSetView(el);
+    }
   }
   function wxDelLogEntry(el) {
-    if (ns.AppWeather) ns.AppWeather.wxDelLogEntry(el);
+    if (ns.AppWeather) {
+      ns.AppWeather.wxDelLogEntry(el);
+    }
   }
 
   // ---- Hold / Clear / Undo / Redo ---- (extracted to js/app/history.js)
   function startHold(section) {
-    if (ns.AppHistory) ns.AppHistory.startHold(section);
+    if (ns.AppHistory) {
+      ns.AppHistory.startHold(section);
+    }
   }
   function cancelHold() {
-    if (ns.AppHistory) ns.AppHistory.cancelHold();
+    if (ns.AppHistory) {
+      ns.AppHistory.cancelHold();
+    }
   }
   function clearSection(section) {
-    if (ns.AppHistory) ns.AppHistory.clearSection(section);
+    if (ns.AppHistory) {
+      ns.AppHistory.clearSection(section);
+    }
   }
   function undoClr() {
-    if (ns.AppHistory) ns.AppHistory.undoClr();
+    if (ns.AppHistory) {
+      ns.AppHistory.undoClr();
+    }
   }
   function undo() {
-    if (ns.AppHistory) ns.AppHistory.undo();
+    if (ns.AppHistory) {
+      ns.AppHistory.undo();
+    }
   }
   function redo() {
-    if (ns.AppHistory) ns.AppHistory.redo();
+    if (ns.AppHistory) {
+      ns.AppHistory.redo();
+    }
   }
   function updateUndoUi() {
-    if (ns.AppHistory) ns.AppHistory.updateUndoUi();
+    if (ns.AppHistory) {
+      ns.AppHistory.updateUndoUi();
+    }
   }
 
   // ---- Weather Region ---- (extracted to js/app/weather.js)
   function setRegion(val) {
-    if (ns.AppWeather && ns.AppWeather.setRegion) ns.AppWeather.setRegion(val);
+    if (ns.AppWeather && ns.AppWeather.setRegion) {
+      ns.AppWeather.setRegion(val);
+    }
   }
 
   // ---- Project Deadline (owner 2026-09-27) ----
@@ -1658,7 +1867,9 @@ var MMGR = window.MMGR || {};
     }
     if (ns.Render) {
       ns.Render.renderGantt();
-      if (ns.Render.renderDash) ns.Render.renderDash();
+      if (ns.Render.renderDash) {
+        ns.Render.renderDash();
+      }
     }
     if (ns.App && ns.App.showToast) {
       ns.App.showToast(
@@ -1671,22 +1882,34 @@ var MMGR = window.MMGR || {};
   // ---- Confirmation Dialog (replaces bare confirm() for destructive ops) ----
   // ---- Confirmation Dialog ---- (extracted to js/app/confirm.js)
   function askConfirm(opts) {
-    if (ns.AppConfirm) ns.AppConfirm.askConfirm(opts);
+    if (ns.AppConfirm) {
+      ns.AppConfirm.askConfirm(opts);
+    }
   }
   function cfmOk() {
-    if (ns.AppConfirm) ns.AppConfirm.cfmOk();
+    if (ns.AppConfirm) {
+      ns.AppConfirm.cfmOk();
+    }
   }
   function cfmCancel() {
-    if (ns.AppConfirm) ns.AppConfirm.cfmCancel();
+    if (ns.AppConfirm) {
+      ns.AppConfirm.cfmCancel();
+    }
   }
 
   // ---- Multi-tab Conflict Resolution ----
   let _pendingExternal = null;
   function onExternalChange(parsed) {
     const s = S();
-    if (!parsed || !s || !parsed.updatedAt) return;
-    if (parsed.updatedAt <= s.updatedAt) return; // not newer , ignore
-    if (JSON.stringify(parsed) === JSON.stringify(s)) return; // same content
+    if (!parsed || !s || !parsed.updatedAt) {
+      return;
+    }
+    if (parsed.updatedAt <= s.updatedAt) {
+      return;
+    } // not newer , ignore
+    if (JSON.stringify(parsed) === JSON.stringify(s)) {
+      return;
+    } // same content
     _pendingExternal = parsed;
     const modal = U.$('conflict-modal');
     if (modal) {
@@ -1703,7 +1926,9 @@ var MMGR = window.MMGR || {};
 
   function keepMine() {
     const modal = U.$('conflict-modal');
-    if (modal) modal.classList.remove('on');
+    if (modal) {
+      modal.classList.remove('on');
+    }
     _pendingExternal = null;
     ns.State.save(true); // re-persist ours with a fresh updatedAt
     showToast('Kept your version.', 'ok');
@@ -1711,13 +1936,19 @@ var MMGR = window.MMGR || {};
 
   function keepTheirs() {
     const modal = U.$('conflict-modal');
-    if (modal) modal.classList.remove('on');
+    if (modal) {
+      modal.classList.remove('on');
+    }
     const incoming = _pendingExternal;
     _pendingExternal = null;
     if (incoming && ns.State.adoptExternal(incoming)) {
       R.renderAll();
-      if (ns.Charter) ns.Charter.loadCharterData();
-      if (ns.Sprint) ns.Sprint.loadSprintData();
+      if (ns.Charter) {
+        ns.Charter.loadCharterData();
+      }
+      if (ns.Sprint) {
+        ns.Sprint.loadSprintData();
+      }
       showToast("Loaded the other tab's version.", 'ok');
     }
   }
@@ -1725,7 +1956,9 @@ var MMGR = window.MMGR || {};
   // Close every custom modal we own (Escape key path).
   // (extracted to js/app/confirm.js)
   function closeModals() {
-    if (ns.AppConfirm) ns.AppConfirm.closeModals();
+    if (ns.AppConfirm) {
+      ns.AppConfirm.closeModals();
+    }
   }
 
   // ---- Baseline Restore (undoable) ----
@@ -1754,7 +1987,9 @@ var MMGR = window.MMGR || {};
               t.startDate = bt.startDate;
               t.endDate = bt.endDate;
               t.duration = bt.duration;
-              if (bt.status) t.status = bt.status;
+              if (bt.status) {
+                t.status = bt.status;
+              }
             }
           });
         });
@@ -1788,7 +2023,9 @@ var MMGR = window.MMGR || {};
     });
     R.renderGantt();
     R.renderWbs();
-    if (btn) btn.classList.toggle('is-on', !!S().hlCritical);
+    if (btn) {
+      btn.classList.toggle('is-on', !!S().hlCritical);
+    }
   }
 
   function tglLeadtimeLane(btn) {
@@ -1798,7 +2035,9 @@ var MMGR = window.MMGR || {};
       st.kbShowLeadtime = !st.kbShowLeadtime;
     });
     R.renderKanban();
-    if (btn) btn.classList.toggle('is-on', !!S().kbShowLeadtime);
+    if (btn) {
+      btn.classList.toggle('is-on', !!S().kbShowLeadtime);
+    }
   }
 
   // ---- Kanban ----
@@ -1812,7 +2051,9 @@ var MMGR = window.MMGR || {};
   // attached there, so its dragend does reach document).
   function endBoardDrag() {
     const board = document.querySelector('.kb');
-    if (board) board.classList.remove('is-dragging');
+    if (board) {
+      board.classList.remove('is-dragging');
+    }
   }
 
   function dragCard(ev, taskId) {
@@ -1826,7 +2067,9 @@ var MMGR = window.MMGR || {};
           ev.dataTransfer.effectAllowed = 'none';
         } catch (e) {}
       }
-      if (ev && ev.preventDefault) ev.preventDefault();
+      if (ev && ev.preventDefault) {
+        ev.preventDefault();
+      }
       showToast('View-only access: the board can be read but not changed.', 'err');
       dragTaskId = null;
       return;
@@ -1860,12 +2103,16 @@ var MMGR = window.MMGR || {};
       }
       ns.State.updateState(function (s) {
         const task = (s.tasks || []).find(t => t.id === dragTaskId);
-        if (task) task.status = status;
+        if (task) {
+          task.status = status;
+        }
         // OWNER 2026-09-28: a card that enters a status column LEAVES the
         // Lead-Time lane. The old render kept it in both places, so dragging
         // it out changed nothing and dropping it back toggled leadTime off -
         // the card silently vanished from the lane.
-        if (task) task.leadTime = false;
+        if (task) {
+          task.leadTime = false;
+        }
       });
       R.renderKanban();
       R.renderWbs();
@@ -1891,7 +2138,9 @@ var MMGR = window.MMGR || {};
         // OWNER 2026-09-28: idempotent add, no toggle. Toggling made the
         // out-and-back dance silently REMOVE the lead-time flag (the
         // vanishing card); a lane drop now always means "keep it lead-time".
-        if (task) task.leadTime = true;
+        if (task) {
+          task.leadTime = true;
+        }
       });
       // Interaction re-audit: toggling lead-time changes the WBS row (LT badge
       // + submitted/expected inputs) and the Dashboard's Lead-Time Tracker ,
@@ -1924,12 +2173,16 @@ var MMGR = window.MMGR || {};
       .filter(Boolean)
       .sort();
     ns.State.updateState(function (state) {
-      if (!state.sprint) state.sprint = { name: 'Sprint 1', start: '', end: '' };
+      if (!state.sprint) {
+        state.sprint = { name: 'Sprint 1', start: '', end: '' };
+      }
       state.sprint.start = starts.length ? starts[0] : '';
       state.sprint.end = ends.length ? ends[ends.length - 1] : '';
     });
     // Refresh the sprint panel inputs
-    if (ns.Tasks && ns.Tasks.loadSprintData) ns.Tasks.loadSprintData();
+    if (ns.Tasks && ns.Tasks.loadSprintData) {
+      ns.Tasks.loadSprintData();
+    }
     showToast('Sprint populated with ' + unstarted.length + ' unstarted task(s).', 'ok');
   }
 
@@ -1949,12 +2202,16 @@ var MMGR = window.MMGR || {};
     // the modal header. Clicking it saves today's task statuses so tomorrow's
     // prompt shows a real completed-since-last-snapshot diff.
     const existing = document.getElementById('snap-daily-btn');
-    if (existing) existing.remove();
+    if (existing) {
+      existing.remove();
+    }
     if (type === 'daily') {
       const title = U.$('om-title');
       if (title) {
         setTimeout(() => {
-          if (document.getElementById('snap-daily-btn')) return;
+          if (document.getElementById('snap-daily-btn')) {
+            return;
+          }
           const b = document.createElement('button');
           b.id = 'snap-daily-btn';
           b.className = 'btn btn-g btn-s';
@@ -1981,7 +2238,9 @@ var MMGR = window.MMGR || {};
               'One-voice capture: records one microphone. It cannot tell people apart - keep attendee names in the meeting header instead. The transcript lands in this report, hand-editable.';
             v.addEventListener('click', function () {
               if (v.textContent === 'Capture audio') {
-                if (ns.Voice.startForFieldReport()) v.textContent = 'Stop capture';
+                if (ns.Voice.startForFieldReport()) {
+                  v.textContent = 'Stop capture';
+                }
               } else {
                 ns.Voice.stopCapture();
                 v.textContent = 'Capture audio';
@@ -1997,7 +2256,9 @@ var MMGR = window.MMGR || {};
           a.title =
             'Adds an action to the Closure list, referenced to this report. It counts in the Decision Engine until done.';
           a.addEventListener('click', function () {
-            if (ns.FieldReport && ns.FieldReport.addFieldAction) ns.FieldReport.addFieldAction();
+            if (ns.FieldReport && ns.FieldReport.addFieldAction) {
+              ns.FieldReport.addFieldAction();
+            }
           });
           title.parentNode.appendChild(a);
         }, 30);
@@ -2013,7 +2274,9 @@ var MMGR = window.MMGR || {};
     openDrw();
   }
   function openDrwToSave() {
-    if (ns.AppBackup) ns.AppBackup.openDrwToSave();
+    if (ns.AppBackup) {
+      ns.AppBackup.openDrwToSave();
+    }
   }
 
   // ---- Backup & Cloud-Sync UI ---- (extracted to js/app/backup.js)
@@ -2021,22 +2284,34 @@ var MMGR = window.MMGR || {};
     return ns.AppBackup && ns.AppBackup.cloudLinked ? ns.AppBackup.cloudLinked() : false;
   }
   function scheduleCloudAutoSave() {
-    if (ns.AppBackup) ns.AppBackup.scheduleCloudAutoSave();
+    if (ns.AppBackup) {
+      ns.AppBackup.scheduleCloudAutoSave();
+    }
   }
   function flushCloudAutoSave() {
-    if (ns.AppBackup) ns.AppBackup.flushCloudAutoSave();
+    if (ns.AppBackup) {
+      ns.AppBackup.flushCloudAutoSave();
+    }
   }
   function bkToggle() {
-    if (ns.AppBackup) ns.AppBackup.bkToggle();
+    if (ns.AppBackup) {
+      ns.AppBackup.bkToggle();
+    }
   }
   function bkClose() {
-    if (ns.AppBackup) ns.AppBackup.bkClose();
+    if (ns.AppBackup) {
+      ns.AppBackup.bkClose();
+    }
   }
   function bkSyncHint() {
-    if (ns.AppBackup) ns.AppBackup.bkSyncHint();
+    if (ns.AppBackup) {
+      ns.AppBackup.bkSyncHint();
+    }
   }
   function bkCloud() {
-    if (ns.AppBackup) ns.AppBackup.bkCloud();
+    if (ns.AppBackup) {
+      ns.AppBackup.bkCloud();
+    }
   }
 
   function openDrwToPrompts(type) {
@@ -2050,22 +2325,34 @@ var MMGR = window.MMGR || {};
 
   // ---- Export & File I/O ---- (extracted to js/app/export.js)
   function openOM() {
-    if (ns.AppExport) ns.AppExport.openOM();
+    if (ns.AppExport) {
+      ns.AppExport.openOM();
+    }
   }
   function closeOM() {
-    if (ns.AppExport) ns.AppExport.closeOM();
+    if (ns.AppExport) {
+      ns.AppExport.closeOM();
+    }
   }
   function cpOut() {
-    if (ns.AppExport) ns.AppExport.cpOut();
+    if (ns.AppExport) {
+      ns.AppExport.cpOut();
+    }
   }
   function loadClip() {
-    if (ns.AppExport) ns.AppExport.loadClip();
+    if (ns.AppExport) {
+      ns.AppExport.loadClip();
+    }
   }
   function saveProjectFile() {
-    if (ns.AppExport) ns.AppExport.saveProjectFile();
+    if (ns.AppExport) {
+      ns.AppExport.saveProjectFile();
+    }
   }
   function loadProjectFile(ev) {
-    if (ns.AppExport) ns.AppExport.loadProjectFile(ev);
+    if (ns.AppExport) {
+      ns.AppExport.loadProjectFile(ev);
+    }
   }
 
   // Rank 4.4: field-level merge of an exported project file into the current
@@ -2074,7 +2361,9 @@ var MMGR = window.MMGR || {};
   // merge never silently discards local edits. Reports a per-field summary.
   function mergeProjectFile(ev) {
     const file = ev.target.files[0];
-    if (!file) return;
+    if (!file) {
+      return;
+    }
     const reader = new FileReader();
     reader.onload = function (e) {
       let parsed = null;
@@ -2090,8 +2379,12 @@ var MMGR = window.MMGR || {};
         return;
       }
       R.renderAll();
-      if (ns.Charter) ns.Charter.loadCharterData();
-      if (ns.Sprint) ns.Sprint.loadSprintData();
+      if (ns.Charter) {
+        ns.Charter.loadCharterData();
+      }
+      if (ns.Sprint) {
+        ns.Sprint.loadSprintData();
+      }
       // Surface every two-way conflict by NAME , never silently resolved.
       // A conflict is a field present on BOTH sides; the newer stamp wins
       // and the loser is named in the toast so the user can verify it.
@@ -2125,7 +2418,9 @@ var MMGR = window.MMGR || {};
       // Rank 4.5: after a merge (multi-device use detected), offer the
       // single dismissible optional-identity suggestion , if not signed in
       // and not already dismissed on this device. Never a modal, never spam.
-      if (ns.Sync && ns.Sync.noteMultiDeviceUse) ns.Sync.noteMultiDeviceUse();
+      if (ns.Sync && ns.Sync.noteMultiDeviceUse) {
+        ns.Sync.noteMultiDeviceUse();
+      }
       showToast(summary, out.adopted > 0 ? 'ok' : 'warn');
     };
     reader.readAsText(file);
@@ -2133,7 +2428,9 @@ var MMGR = window.MMGR || {};
   }
 
   function saveBaseline() {
-    if (ns.AppExport) ns.AppExport.saveBaseline();
+    if (ns.AppExport) {
+      ns.AppExport.saveBaseline();
+    }
   }
 
   // ---- Init ----
@@ -2212,7 +2509,9 @@ var MMGR = window.MMGR || {};
           // Fail visibly for end users too , a silent blank page tells them
           // nothing about why nothing rendered.
           const sp = document.getElementById('boot-splash');
-          if (sp) sp.classList.add('off');
+          if (sp) {
+            sp.classList.add('off');
+          }
           const el = document.createElement('div');
           el.style.cssText =
             'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#1a1a1a;color:#ff6b6b;font:14px/1.5 monospace;padding:40px;text-align:center;z-index:99999';
@@ -2384,7 +2683,9 @@ window.MMGR = MMGR;
       const taskId = el.getAttribute('data-id');
       const assignee = prompt('Follow-up assignee:');
       const dueDate = prompt('Due date (YYYY-MM-DD):');
-      if (assignee) window.MMGR.Tasks.setTaskFollowUp(taskId, assignee, dueDate);
+      if (assignee) {
+        window.MMGR.Tasks.setTaskFollowUp(taskId, assignee, dueDate);
+      }
     },
     completeTaskFollowUp: el => window.MMGR.Tasks.completeTaskFollowUp(el.getAttribute('data-id')),
     clearTaskFollowUp: el => window.MMGR.Tasks.clearTaskFollowUp(el.getAttribute('data-id')),
@@ -2394,8 +2695,9 @@ window.MMGR = MMGR;
     // Every helper routes through the published window.MMGR.* API like the
     // neighboring handlers.
     toggleTaskComments: el => {
-      if (window.MMGR.Render && window.MMGR.Render.toggleTaskComments)
+      if (window.MMGR.Render && window.MMGR.Render.toggleTaskComments) {
         window.MMGR.Render.toggleTaskComments(el.getAttribute('data-id'));
+      }
     },
     importCrossProjectResources: () => {
       // Build a modal listing localStorage projects with their resources
@@ -2407,7 +2709,9 @@ window.MMGR = MMGR;
           const k = localStorage.key(i);
           if (k && k.startsWith('mmgr_state_')) {
             const pid = k.replace('mmgr_state_', '');
-            if (pid === currentId) continue;
+            if (pid === currentId) {
+              continue;
+            }
             try {
               const st = JSON.parse(localStorage.getItem(k));
               const res = st && st.resources && st.resources.length ? st.resources : [];
@@ -2474,34 +2778,44 @@ window.MMGR = MMGR;
         'position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:flex;align-items:center;justify-content:center';
       overlay.innerHTML = html;
       overlay.addEventListener('click', function (e) {
-        if (e.target === overlay || e.target.getAttribute('data-action') === 'closeImportModal')
+        if (e.target === overlay || e.target.getAttribute('data-action') === 'closeImportModal') {
           overlay.remove();
+        }
       });
       document.body.appendChild(overlay);
     },
     poolOpenLibrary: () => {
-      if (window.MMGR.RenderResources && window.MMGR.RenderResources.poolOpenLibrary)
+      if (window.MMGR.RenderResources && window.MMGR.RenderResources.poolOpenLibrary) {
         window.MMGR.RenderResources.poolOpenLibrary();
+      }
     },
     poolCloseLibrary: () => {
       const m = document.getElementById('pool-modal');
-      if (m) m.remove();
+      if (m) {
+        m.remove();
+      }
     },
     poolAddRow: el => {
-      if (window.MMGR.RenderResources && window.MMGR.RenderResources.poolAddRow)
+      if (window.MMGR.RenderResources && window.MMGR.RenderResources.poolAddRow) {
         window.MMGR.RenderResources.poolAddRow(parseInt(el.getAttribute('data-idx'), 10));
+      }
     },
     poolRefreshAndMerge: () => {
-      if (window.MMGR.Pool)
+      if (window.MMGR.Pool) {
         window.MMGR.Pool.refreshAndMerge().then(function () {
-          if (window.MMGR.Render) window.MMGR.Render.renderResources();
+          if (window.MMGR.Render) {
+            window.MMGR.Render.renderResources();
+          }
         });
+      }
     },
     doImportResources: el => {
       // B11 (audit 2026-09-28): was bare ns/S/U/R/showToast - ReferenceError
       // on every click; routed through the published window.MMGR.* API.
       const srcId = el.getAttribute('data-src-id');
-      if (!srcId) return;
+      if (!srcId) {
+        return;
+      }
       try {
         const srcState = JSON.parse(localStorage.getItem('mmgr_state_' + srcId));
         const srcRes = (srcState && srcState.resources) || [];
@@ -2516,7 +2830,9 @@ window.MMGR = MMGR;
           return;
         }
         window.MMGR.State.updateState(function (st) {
-          if (!st.resources) st.resources = [];
+          if (!st.resources) {
+            st.resources = [];
+          }
           toImport.forEach(function (r) {
             st.resources.push({
               id: window.MMGR.Utils.genShortId('R'),
@@ -2531,7 +2847,9 @@ window.MMGR = MMGR;
           });
         });
         const modal = document.getElementById('import-modal');
-        if (modal) modal.remove();
+        if (modal) {
+          modal.remove();
+        }
         window.MMGR.Render.renderResources();
         window.MMGR.App.showToast('Imported ' + toImport.length + ' resource(s).', 'ok');
       } catch (e) {
@@ -2540,7 +2858,9 @@ window.MMGR = MMGR;
     },
     closeImportModal: () => {
       const m = document.getElementById('import-modal');
-      if (m) m.remove();
+      if (m) {
+        m.remove();
+      }
     },
     saveAsTemplate: () => {
       const name = prompt('Template name:');
@@ -2548,27 +2868,33 @@ window.MMGR = MMGR;
       // fell through silently - no feedback at all. Name it, confirm with a
       // toast, and refresh the list (save mutates state but nothing re-rendered
       // #template-list until the next full render).
-      if (name === null) return; // user cancelled
+      if (name === null) {
+        return;
+      } // user cancelled
       const clean = name.trim();
       if (!clean) {
         showToast('Give the template a name first.', 'warn');
         return;
       }
       window.MMGR.Templates.saveAsTemplate(clean);
-      if (window.MMGR.Render && window.MMGR.Render.renderTemplates)
+      if (window.MMGR.Render && window.MMGR.Render.renderTemplates) {
         window.MMGR.Render.renderTemplates();
+      }
       showToast('Template saved: ' + clean, 'ok');
     },
     applyTemplate: el => {
       const tplId = el.getAttribute('data-tpl-id');
-      if (tplId) window.MMGR.Templates.applyTemplate(tplId);
+      if (tplId) {
+        window.MMGR.Templates.applyTemplate(tplId);
+      }
     },
     deleteTemplate: el => {
       const tplId = el.getAttribute('data-tpl-id');
       if (tplId && confirm('Delete this template?')) {
         window.MMGR.Templates.deleteTemplate(tplId);
-        if (window.MMGR.Render && window.MMGR.Render.renderTemplates)
+        if (window.MMGR.Render && window.MMGR.Render.renderTemplates) {
           window.MMGR.Render.renderTemplates();
+        }
         showToast('Template deleted.', 'ok');
       }
     },
@@ -2588,7 +2914,9 @@ window.MMGR = MMGR;
     openAiMailbox: () => window.MMGR.Watch.openMailbox(),
     closeAiMailbox: () => window.MMGR.Watch.closeMailbox(),
     closeAiMailboxBg: (el, e) => {
-      if (e && e.target && e.target.id === 'ai-mailbox') window.MMGR.Watch.closeMailbox();
+      if (e && e.target && e.target.id === 'ai-mailbox') {
+        window.MMGR.Watch.closeMailbox();
+      }
     },
     dismissAiNote: el => window.MMGR.Watch.dismissNote(el.getAttribute('data-id')),
     clearAiMailbox: () => window.MMGR.Watch.clearMailbox(),
@@ -2626,7 +2954,9 @@ window.MMGR = MMGR;
     bidPkgSave: () => window.MMGR.Bids.bidPkgSave(),
     closeBidPkg: () => window.MMGR.Bids.closeBidPkgModal(),
     closeBidPkgBg: (el, e) => {
-      if (e.target === el) window.MMGR.Bids.closeBidPkgModal();
+      if (e.target === el) {
+        window.MMGR.Bids.closeBidPkgModal();
+      }
     },
     bidSubAdd: el => window.MMGR.Bids.addSub(parseInt(el.getAttribute('data-pkg'))),
     bidSubDel: el =>
@@ -2805,7 +3135,9 @@ window.MMGR = MMGR;
     openChartUp: () => window.MMGR.Charter.openChartUp(),
     closeChartUp: () => window.MMGR.Charter.closeChartUp(),
     closeChartUpBg: (el, e) => {
-      if (e.target === el) window.MMGR.Charter.closeChartUp();
+      if (e.target === el) {
+        window.MMGR.Charter.closeChartUp();
+      }
     },
     regenChartPrompt: () => window.MMGR.Charter.regenChartPrompt(),
     copyChartPrompt: () => window.MMGR.Charter.copyChartPrompt(),
@@ -2841,7 +3173,9 @@ window.MMGR = MMGR;
     openAiWin: () => window.MMGR.AiWin.open(),
     closeAiWin: () => window.MMGR.AiWin.close(),
     closeAiWinBg: (el, e) => {
-      if (e.target === el) window.MMGR.AiWin.close();
+      if (e.target === el) {
+        window.MMGR.AiWin.close();
+      }
     },
     aiPreset: el => window.MMGR.AiWin.preset(el.getAttribute('data-type')),
     aiAttachContext: () => window.MMGR.AiWin.attachContext(),
@@ -2864,7 +3198,9 @@ window.MMGR = MMGR;
       }
     },
     aiVoiceToggle: () => {
-      if (window.MMGR && MMGR.Voice) MMGR.Voice.toggleAiRecording();
+      if (window.MMGR && MMGR.Voice) {
+        MMGR.Voice.toggleAiRecording();
+      }
     },
     // MERGED-AI-CONTROL (audit 1.2): the drawer's AI Assistant switch is now
     // the single AI on/off control , it reads/writes state.config.ai.tier
@@ -2889,7 +3225,9 @@ window.MMGR = MMGR;
     // Calculator toggle (floating draggable FAB).
     toggleCalc: () => {
       const C = window.MMGR.Calculator;
-      if (C && C.toggle) C.toggle();
+      if (C && C.toggle) {
+        C.toggle();
+      }
     },
     // THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §4.2: mobile nav drawer toggle.
     tglNav: () => window.MMGR.App.tglNav(),
@@ -2915,82 +3253,120 @@ window.MMGR = MMGR;
     // cloud share code is held (the recipient must not copy the project to
     // their own Drive).
     driveBackup: () => {
-      if (window.MMGR.App && window.MMGR.App.cloudExportBlocked('driveBackup')) return;
+      if (window.MMGR.App && window.MMGR.App.cloudExportBlocked('driveBackup')) {
+        return;
+      }
       const G = window.MMGR.GoogleAuth;
-      if (G && G.triggerBackup) G.triggerBackup();
+      if (G && G.triggerBackup) {
+        G.triggerBackup();
+      }
     },
     driveRestore: () => {
       const G = window.MMGR.GoogleAuth;
-      if (G && G.triggerRestore) G.triggerRestore();
+      if (G && G.triggerRestore) {
+        G.triggerRestore();
+      }
     },
     driveAutoInterval: el => {
       const G = window.MMGR.GoogleAuth;
-      if (G && G.setAutoIntervalFrom) G.setAutoIntervalFrom(el);
+      if (G && G.setAutoIntervalFrom) {
+        G.setAutoIntervalFrom(el);
+      }
     },
     driveSetPass: el => {
       const G = window.MMGR.GoogleAuth;
-      if (G && G.setDrivePassFrom) G.setDrivePassFrom(el);
+      if (G && G.setDrivePassFrom) {
+        G.setDrivePassFrom(el);
+      }
     },
     // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 1: optional Cloud Backup section
     // (owner-code create/save/load/recover + Google sign-in for recovery).
     // Same zero-throw pattern as the Drive entries above.
     cloudCreate: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.createProject) C.createProject();
+      if (C && C.createProject) {
+        C.createProject();
+      }
     },
     cloudClaim: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.claimProject) C.claimProject();
+      if (C && C.claimProject) {
+        C.claimProject();
+      }
     },
     cloudUpgrade: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.cloudUpgrade) C.cloudUpgrade();
+      if (C && C.cloudUpgrade) {
+        C.cloudUpgrade();
+      }
     },
     cloudResendVerify: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.cloudResendVerify) C.cloudResendVerify();
+      if (C && C.cloudResendVerify) {
+        C.cloudResendVerify();
+      }
     },
     cloudSave: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.saveToCloud) C.saveToCloud();
+      if (C && C.saveToCloud) {
+        C.saveToCloud();
+      }
     },
     cloudLoad: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.loadFromCloud) C.loadFromCloud();
+      if (C && C.loadFromCloud) {
+        C.loadFromCloud();
+      }
     },
     cloudRecover: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.recoverCode) C.recoverCode();
+      if (C && C.recoverCode) {
+        C.recoverCode();
+      }
     },
     // GAP-AUDIT-CLOUD-31: unlink (owner-only, deletes the CLOUD copy, keeps
     // local data) + the shown-once editor-code banner's Copy/Done actions.
     cloudUnlink: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.unlinkProject) C.unlinkProject();
+      if (C && C.unlinkProject) {
+        C.unlinkProject();
+      }
     },
     cloudWebhookList: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.webhookList) C.webhookList();
+      if (C && C.webhookList) {
+        C.webhookList();
+      }
     },
     cloudWebhookAdd: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.webhookAdd) C.webhookAdd();
+      if (C && C.webhookAdd) {
+        C.webhookAdd();
+      }
     },
     cloudWebhookDel: el => {
       const C = window.MMGR.Cloud;
-      if (C && C.webhookDel) C.webhookDel(el && el.getAttribute('data-id'));
+      if (C && C.webhookDel) {
+        C.webhookDel(el && el.getAttribute('data-id'));
+      }
     },
     cloudCopyEditorCode: el => {
       const C = window.MMGR.Cloud;
-      if (C && C.copyEditorCode && el) C.copyEditorCode(el.getAttribute('data-code'));
+      if (C && C.copyEditorCode && el) {
+        C.copyEditorCode(el.getAttribute('data-code'));
+      }
     },
     cloudEditorCodeDone: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.editorCodeDone) C.editorCodeDone();
+      if (C && C.editorCodeDone) {
+        C.editorCodeDone();
+      }
     },
     cloudCopyCode: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.copyCode) C.copyCode();
+      if (C && C.copyCode) {
+        C.copyCode();
+      }
     },
     mcpCopyUrl: () => {
       var inp = document.getElementById('mcp-url');
@@ -2999,10 +3375,14 @@ window.MMGR = MMGR;
           .writeText(inp.value)
           .then(function () {
             var st = document.getElementById('mcp-status');
-            if (st) st.textContent = 'Copied to clipboard.';
+            if (st) {
+              st.textContent = 'Copied to clipboard.';
+            }
             setTimeout(function () {
               var s = document.getElementById('mcp-status');
-              if (s) s.textContent = '';
+              if (s) {
+                s.textContent = '';
+              }
             }, 2000);
           })
           .catch(function () {
@@ -3022,39 +3402,51 @@ window.MMGR = MMGR;
           .writeText(inp.value)
           .then(function () {
             var st = document.getElementById('terminal-status');
-            if (st)
+            if (st) {
               st.textContent =
                 'Copied to clipboard. Remember to change the two placeholder paths to your own.';
+            }
             setTimeout(function () {
               var s = document.getElementById('terminal-status');
-              if (s) s.textContent = '';
+              if (s) {
+                s.textContent = '';
+              }
             }, 4000);
           })
           .catch(function () {
             inp.select();
             document.execCommand('copy');
-            if (document.getElementById('terminal-status'))
+            if (document.getElementById('terminal-status')) {
               document.getElementById('terminal-status').textContent = 'Copied to clipboard.';
+            }
           });
       }
     },
     cloudSignIn: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.signIn) C.signIn();
+      if (C && C.signIn) {
+        C.signIn();
+      }
     },
     cloudLoadWithCode: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.loadWithCode) C.loadWithCode();
+      if (C && C.loadWithCode) {
+        C.loadWithCode();
+      }
     },
     // SYNC BOND (Task 13): explicit re-sync for bonded projects + the
     // one-time offer's Later dismiss (both are drawer actions, no mutation).
     cloudResync: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.cloudResync) C.cloudResync();
+      if (C && C.cloudResync) {
+        C.cloudResync();
+      }
     },
     cloudBondLater: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.cloudBondLater) C.cloudBondLater();
+      if (C && C.cloudBondLater) {
+        C.cloudBondLater();
+      }
     },
     // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2/3: editor-code management
     // (create/list/revoke , owner-only, enforced server-side) and the
@@ -3062,47 +3454,69 @@ window.MMGR = MMGR;
     // Phase 1 entries above.
     cloudEditorCreate: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.createEditor) C.createEditor();
+      if (C && C.createEditor) {
+        C.createEditor();
+      }
     },
     cloudClientCreate: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.createClientCode) C.createClientCode();
+      if (C && C.createClientCode) {
+        C.createClientCode();
+      }
     },
     cloudClientList: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.listClientCodes) C.listClientCodes();
+      if (C && C.listClientCodes) {
+        C.listClientCodes();
+      }
     },
     cloudClientRevoke: el => {
       const C = window.MMGR.Cloud;
-      if (C && C.revokeClientCode) C.revokeClientCode(el && el.getAttribute('data-id'));
+      if (C && C.revokeClientCode) {
+        C.revokeClientCode(el && el.getAttribute('data-id'));
+      }
     },
     cloudEditorList: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.listEditors) C.listEditors();
+      if (C && C.listEditors) {
+        C.listEditors();
+      }
     },
     cloudEditorRevoke: el => {
       const C = window.MMGR.Cloud;
-      if (C && C.revokeEditor) C.revokeEditor(el && el.getAttribute('data-id'));
+      if (C && C.revokeEditor) {
+        C.revokeEditor(el && el.getAttribute('data-id'));
+      }
     },
     // PROJECT API KEYS (owner 2026-09-15): same owner-only, cloud-only family.
     cloudApiKeyCreate: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.createApiKey) C.createApiKey();
+      if (C && C.createApiKey) {
+        C.createApiKey();
+      }
     },
     cloudApiKeyList: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.listApiKeys) C.listApiKeys();
+      if (C && C.listApiKeys) {
+        C.listApiKeys();
+      }
     },
     cloudApiKeyRevoke: el => {
       const C = window.MMGR.Cloud;
-      if (C && C.revokeApiKey) C.revokeApiKey(el && el.getAttribute('data-id'));
+      if (C && C.revokeApiKey) {
+        C.revokeApiKey(el && el.getAttribute('data-id'));
+      }
     },
     // Share & Access sub-tabs (owner 2026-09-15): switch without a re-render.
     cloudShareTab: el => {
       const tab = el && el.getAttribute('data-tab');
-      if (!tab) return;
+      if (!tab) {
+        return;
+      }
       const wrap = document.getElementById('ctrl-share');
-      if (!wrap) return;
+      if (!wrap) {
+        return;
+      }
       wrap.querySelectorAll('.share-subtab').forEach(function (b) {
         const on = b.getAttribute('data-tab') === tab;
         b.classList.toggle('on', on);
@@ -3114,19 +3528,27 @@ window.MMGR = MMGR;
     },
     cloudLogList: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.listLog) C.listLog();
+      if (C && C.listLog) {
+        C.listLog();
+      }
     },
     cloudLogRevert: el => {
       const C = window.MMGR.Cloud;
-      if (C && C.revertLog) C.revertLog(el && el.getAttribute('data-id'));
+      if (C && C.revertLog) {
+        C.revertLog(el && el.getAttribute('data-id'));
+      }
     },
     cloudLogToggleDiffs: el => {
       const C = window.MMGR.Cloud;
-      if (C && C.toggleDiffs) C.toggleDiffs(el && el.getAttribute('data-id'));
+      if (C && C.toggleDiffs) {
+        C.toggleDiffs(el && el.getAttribute('data-id'));
+      }
     },
     cloudDropEditor: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.dropEditor) C.dropEditor();
+      if (C && C.dropEditor) {
+        C.dropEditor();
+      }
     },
     // CLOUD-FIRST SYNC (PART 3, approved 2026-08-17): offline copies +
     // broadcast. cloudMakeCopy registers this device (view-only);
@@ -3136,59 +3558,85 @@ window.MMGR = MMGR;
     // drops one registered copy from the owner's list.
     cloudMakeCopy: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.cloudMakeCopy) C.cloudMakeCopy();
+      if (C && C.cloudMakeCopy) {
+        C.cloudMakeCopy();
+      }
     },
     cloudUpdateCopy: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.cloudUpdateCopy) C.cloudUpdateCopy();
+      if (C && C.cloudUpdateCopy) {
+        C.cloudUpdateCopy();
+      }
     },
     cloudRemoveCopy: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.cloudRemoveCopy) C.cloudRemoveCopy();
+      if (C && C.cloudRemoveCopy) {
+        C.cloudRemoveCopy();
+      }
     },
     cloudBroadcast: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.cloudBroadcast) C.cloudBroadcast();
+      if (C && C.cloudBroadcast) {
+        C.cloudBroadcast();
+      }
     },
     cloudAutoBroadcast: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.cloudAutoBroadcast) C.cloudAutoBroadcast();
+      if (C && C.cloudAutoBroadcast) {
+        C.cloudAutoBroadcast();
+      }
     },
     cloudOfflineRemove: el => {
       const C = window.MMGR.Cloud;
-      if (C && C.cloudOfflineRemove) C.cloudOfflineRemove(el && el.getAttribute('data-id'));
+      if (C && C.cloudOfflineRemove) {
+        C.cloudOfflineRemove(el && el.getAttribute('data-id'));
+      }
     },
     // REVIEW QUEUE (2026-08-17, approved "always on"): owner review list +
     // accept/reject decisions; cloudReviewMine is the editor's own status.
     cloudReviewList: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.cloudReviewList) C.cloudReviewList();
+      if (C && C.cloudReviewList) {
+        C.cloudReviewList();
+      }
     },
     cloudReviewMine: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.cloudReviewMine) C.cloudReviewMine();
+      if (C && C.cloudReviewMine) {
+        C.cloudReviewMine();
+      }
     },
     cloudReviewAccept: el => {
       const C = window.MMGR.Cloud;
-      if (C && C.cloudReviewAccept) C.cloudReviewAccept(el && el.getAttribute('data-id'));
+      if (C && C.cloudReviewAccept) {
+        C.cloudReviewAccept(el && el.getAttribute('data-id'));
+      }
     },
     cloudReviewReject: el => {
       const C = window.MMGR.Cloud;
-      if (C && C.cloudReviewReject) C.cloudReviewReject(el && el.getAttribute('data-id'));
+      if (C && C.cloudReviewReject) {
+        C.cloudReviewReject(el && el.getAttribute('data-id'));
+      }
     },
     cloudReviewToggleDiffs: el => {
       const C = window.MMGR.Cloud;
-      if (C && C.reviewToggleDiffs) C.reviewToggleDiffs(el && el.getAttribute('data-id'));
+      if (C && C.reviewToggleDiffs) {
+        C.reviewToggleDiffs(el && el.getAttribute('data-id'));
+      }
     },
     // IN-PROJECT DELETE (owner 2026-08-17): Settings > Controls > Danger
     // Zone , confirm modal + password verify + the owner-only soft delete.
     cloudDeleteOpen: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.cloudDeleteOpen) C.cloudDeleteOpen();
+      if (C && C.cloudDeleteOpen) {
+        C.cloudDeleteOpen();
+      }
     },
     cloudDeleteClose: () => {
       const C = window.MMGR.Cloud;
-      if (C && C.cloudDeleteClose) C.cloudDeleteClose();
+      if (C && C.cloudDeleteClose) {
+        C.cloudDeleteClose();
+      }
     },
     // HOLD-TO-DELETE (owner 2026-09-17): the danger-zone confirm fires from
     // the 10s hold listeners below, never from a click (a synthetic click
@@ -3206,7 +3654,9 @@ window.MMGR = MMGR;
     // PART F T9 (no-offline-copy): export/download are refused while a cloud
     // share code is held , the recipient must not leave with the project file.
     saveProjectFile: () => {
-      if (window.MMGR.App && window.MMGR.App.cloudExportBlocked('saveProjectFile')) return;
+      if (window.MMGR.App && window.MMGR.App.cloudExportBlocked('saveProjectFile')) {
+        return;
+      }
       window.MMGR.App.saveProjectFile();
     },
     saveBaseline: () => window.MMGR.App.saveBaseline(),
@@ -3220,12 +3670,16 @@ window.MMGR = MMGR;
     keepMine: () => window.MMGR.App.keepMine(),
     keepTheirs: () => window.MMGR.App.keepTheirs(),
     openOM: () => {
-      if (window.MMGR.App && window.MMGR.App.cloudExportBlocked('openOM')) return;
+      if (window.MMGR.App && window.MMGR.App.cloudExportBlocked('openOM')) {
+        return;
+      }
       window.MMGR.App.openOM();
     },
     closeOM: () => window.MMGR.App.closeOM(),
     cpOut: () => {
-      if (window.MMGR.App && window.MMGR.App.cloudExportBlocked('cpOut')) return;
+      if (window.MMGR.App && window.MMGR.App.cloudExportBlocked('cpOut')) {
+        return;
+      }
       window.MMGR.App.cpOut();
     },
     loadClip: () => window.MMGR.App.loadClip(),
@@ -3238,11 +3692,15 @@ window.MMGR = MMGR;
     closeMLC: () => window.MMGR.App.closeMLC(),
     closeWbsImport: () => window.MMGR.Tasks.closeWbsImport(),
     closeWbsImportBg: (el, e) => {
-      if (e.target === el) window.MMGR.Tasks.closeWbsImport();
+      if (e.target === el) {
+        window.MMGR.Tasks.closeWbsImport();
+      }
     },
     closeImportDates: () => window.MMGR.Tasks.closeImportDates(),
     closeImportDatesBg: (el, e) => {
-      if (e.target === el) window.MMGR.Tasks.closeImportDates();
+      if (e.target === el) {
+        window.MMGR.Tasks.closeImportDates();
+      }
     },
     addRaciTaskFromPicker: el => {
       window.MMGR.Raci.addRaciTaskFromPicker(el.value);
@@ -3264,11 +3722,15 @@ window.MMGR = MMGR;
     // and the [data-perf] attribute on <html>. Safe in view-only (device pref).
     tglPerfMode: el => {
       const P = window.MMGR.Perf;
-      if (P && P.set) P.set(el.checked);
+      if (P && P.set) {
+        P.set(el.checked);
+      }
       // OWNER 2026-09-15: perf mode now also gates the starry WebGL shader.
       // Re-sync immediately so turning it OFF tears the running canvas down
       // (and turning it ON brings the background back on capable machines).
-      if (window.MMGR && MMGR.Glass && MMGR.Glass.sync) MMGR.Glass.sync();
+      if (window.MMGR && MMGR.Glass && MMGR.Glass.sync) {
+        MMGR.Glass.sync();
+      }
     },
     tglCh: el => {
       window.MMGR.App.tglCh();
@@ -3291,22 +3753,31 @@ window.MMGR = MMGR;
     // before this runs, so read it as-is (no manual flip, no preventDefault).
     tglPack: el => {
       const pack = el.getAttribute('data-pack');
-      if (!pack) return;
+      if (!pack) {
+        return;
+      }
       const on =
         el.type === 'checkbox'
           ? el.checked
           : window.MMGR.State.getState().packs &&
             window.MMGR.State.getState().packs[pack] !== false;
       window.MMGR.State.updateState(function (s) {
-        if (!s.packs) s.packs = {};
+        if (!s.packs) {
+          s.packs = {};
+        }
         s.packs[pack] = on;
         // DIR-3: once any pack has EVER been turned on, the Core-Mode nudge
         // stays hidden forever even if every pack is switched off again.
-        if (on) s.packsEverEnabled = true;
+        if (on) {
+          s.packsEverEnabled = true;
+        }
       });
-      if (window.MMGR.Render && window.MMGR.Render.renderPacks) window.MMGR.Render.renderPacks();
-      if (window.MMGR.Render && window.MMGR.Render.syncPackChips)
+      if (window.MMGR.Render && window.MMGR.Render.renderPacks) {
+        window.MMGR.Render.renderPacks();
+      }
+      if (window.MMGR.Render && window.MMGR.Render.syncPackChips) {
         window.MMGR.Render.syncPackChips();
+      }
       if (window.MMGR.App && window.MMGR.App.showToast) {
         window.MMGR.App.showToast(
           'Advanced pack ' + pack + ' turned ' + (on ? 'on' : 'off') + '.',
@@ -3700,8 +4171,12 @@ window.MMGR = MMGR;
       window.MMGR.App &&
       typeof window.MMGR.App.isReadonly === 'function' &&
       window.MMGR.App.isReadonly();
-    if (!ro) return true;
-    if (READONLY_SAFE_ACTIONS[action]) return true;
+    if (!ro) {
+      return true;
+    }
+    if (READONLY_SAFE_ACTIONS[action]) {
+      return true;
+    }
     if (window.MMGR.App && typeof window.MMGR.App.showToast === 'function') {
       window.MMGR.App.showToast(
         'View-only mode , read-only access. Contact the admin for full access.',
@@ -3714,7 +4189,9 @@ window.MMGR = MMGR;
   // Click event delegation
   document.addEventListener('click', function (e) {
     const el = e.target.closest('[data-action]');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     // P0 ("the dates are fighting me" , real-click path): editable field
     // controls (text/date inputs, selects, textareas) own their change/input
     // events; the delegated change/input listeners below are their ONLY
@@ -3739,7 +4216,9 @@ window.MMGR = MMGR;
       // before this handler runs, so revert it , otherwise the switch would
       // visually toggle while the state it controls stays unchanged (audit
       // 1.2 / 1.3 , the AI master switch, tglPack, tglFlag all behave this way).
-      if (el.tagName === 'INPUT' && el.type === 'checkbox') el.checked = !el.checked;
+      if (el.tagName === 'INPUT' && el.type === 'checkbox') {
+        el.checked = !el.checked;
+      }
       return;
     }
     const handler = ACTION_MAP[action];
@@ -3763,9 +4242,13 @@ window.MMGR = MMGR;
   // Change event delegation for input/select elements
   document.addEventListener('change', function (e) {
     const el = e.target.closest('[data-action]');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const action = el.getAttribute('data-action');
-    if (!guardReadonly(action)) return;
+    if (!guardReadonly(action)) {
+      return;
+    }
     const handler = ACTION_MAP[action];
     // CLAUDE-BUG-AUDIT (2026-08-11) #1: syncClientId is a type-then-blur text
     // field (Google OAuth Client ID) , it was missing from this change
@@ -3820,9 +4303,13 @@ window.MMGR = MMGR;
   // Input event delegation for textarea/input elements
   document.addEventListener('input', function (e) {
     const el = e.target.closest('[data-action]');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const action = el.getAttribute('data-action');
-    if (!guardReadonly(action)) return;
+    if (!guardReadonly(action)) {
+      return;
+    }
     const handler = ACTION_MAP[action];
     if (
       handler &&
@@ -3861,11 +4348,15 @@ window.MMGR = MMGR;
   // glossary entry on hover. Delegated mouseover/out , zero inline handlers.
   document.addEventListener('mouseover', function (e) {
     const el = e.target.closest && e.target.closest('[data-def]');
-    if (el) window.MMGR.App.showDefTip(el, el.getAttribute('data-def'));
+    if (el) {
+      window.MMGR.App.showDefTip(el, el.getAttribute('data-def'));
+    }
   });
   document.addEventListener('mouseout', function (e) {
     const el = e.target.closest && e.target.closest('[data-def]');
-    if (el) window.MMGR.App.hideDefTip();
+    if (el) {
+      window.MMGR.App.hideDefTip();
+    }
   });
 
   // RACI right-click cycles backward (feature 5) , contextmenu must be
@@ -3960,7 +4451,9 @@ window.MMGR = MMGR;
   document.addEventListener('dragend', function (e) {
     window.MMGR.App.endBoardDrag();
     const el = e.target && e.target.closest ? e.target.closest('[data-drag-id]') : null;
-    if (el) el.classList.remove('drag');
+    if (el) {
+      el.classList.remove('drag');
+    }
   });
 
   document.addEventListener('dragover', function (e) {
@@ -3980,7 +4473,9 @@ window.MMGR = MMGR;
 
   document.addEventListener('drop', function (e) {
     const col = e.target.closest('[data-drop-status]');
-    if (!col) return;
+    if (!col) {
+      return;
+    }
     e.preventDefault();
     const status = col.getAttribute('data-drop-status');
     if (status === 'leadtime') {
@@ -3998,7 +4493,9 @@ window.MMGR = MMGR;
   // whole section (clearSection) - a viewer could wipe the WBS. Refuse it.
   document.addEventListener('pointerdown', function (e) {
     const el = e.target.closest('[data-action="startHold"]');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     if (window.MMGR.App && window.MMGR.App.isReadonly && window.MMGR.App.isReadonly()) {
       e.preventDefault();
       window.MMGR.App.showToast('View-only access: nothing can be cleared.', 'err');
@@ -4019,47 +4516,65 @@ window.MMGR = MMGR;
   // a toast (the danger zone is owner-only UI, but the gate is the proof).
   document.addEventListener('pointerdown', function (e) {
     const el = e.target.closest && e.target.closest('[data-action="cloudDeleteConfirm"]');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     e.preventDefault();
     if (window.MMGR.App && window.MMGR.App.isReadonly && window.MMGR.App.isReadonly()) {
       window.MMGR.App.showToast('View-only access: nothing can be deleted.', 'err');
       return;
     }
     const C = window.MMGR.Cloud;
-    if (C && C.cloudDeleteHoldBegin) C.cloudDeleteHoldBegin();
+    if (C && C.cloudDeleteHoldBegin) {
+      C.cloudDeleteHoldBegin();
+    }
   });
   document.addEventListener('pointerup', function () {
     const C = window.MMGR.Cloud;
-    if (C && C.cloudDeleteHoldCancel) C.cloudDeleteHoldCancel();
+    if (C && C.cloudDeleteHoldCancel) {
+      C.cloudDeleteHoldCancel();
+    }
   });
   document.addEventListener('pointercancel', function () {
     const C = window.MMGR.Cloud;
-    if (C && C.cloudDeleteHoldCancel) C.cloudDeleteHoldCancel();
+    if (C && C.cloudDeleteHoldCancel) {
+      C.cloudDeleteHoldCancel();
+    }
   });
   document.addEventListener(
     'mouseleave',
     function (e) {
       if (e.target.closest && e.target.closest('[data-action="cloudDeleteConfirm"]')) {
         const C = window.MMGR.Cloud;
-        if (C && C.cloudDeleteHoldCancel) C.cloudDeleteHoldCancel();
+        if (C && C.cloudDeleteHoldCancel) {
+          C.cloudDeleteHoldCancel();
+        }
       }
     },
     true
   );
   window.addEventListener('blur', function () {
     const C = window.MMGR.Cloud;
-    if (C && C.cloudDeleteHoldCancel) C.cloudDeleteHoldCancel();
+    if (C && C.cloudDeleteHoldCancel) {
+      C.cloudDeleteHoldCancel();
+    }
   });
   // Keyboard parity: hold Space (or Enter) on the focused button, exactly
   // like a pointer hold; releasing the key cancels.
   document.addEventListener('keydown', function (e) {
-    if (e.key !== ' ' && e.key !== 'Enter') return;
+    if (e.key !== ' ' && e.key !== 'Enter') {
+      return;
+    }
     const el =
       document.activeElement && document.activeElement.closest
         ? document.activeElement.closest('[data-action="cloudDeleteConfirm"]')
         : null;
-    if (!el || e.repeat) return;
-    if (window.MMGR.App && window.MMGR.App.isReadonly && window.MMGR.App.isReadonly()) return;
+    if (!el || e.repeat) {
+      return;
+    }
+    if (window.MMGR.App && window.MMGR.App.isReadonly && window.MMGR.App.isReadonly()) {
+      return;
+    }
     const C = window.MMGR.Cloud;
     if (C && C.cloudDeleteHoldBegin) {
       e.preventDefault();
@@ -4067,9 +4582,13 @@ window.MMGR = MMGR;
     }
   });
   document.addEventListener('keyup', function (e) {
-    if (e.key !== ' ' && e.key !== 'Enter') return;
+    if (e.key !== ' ' && e.key !== 'Enter') {
+      return;
+    }
     const C = window.MMGR.Cloud;
-    if (C && C.cloudDeleteHoldCancel) C.cloudDeleteHoldCancel();
+    if (C && C.cloudDeleteHoldCancel) {
+      C.cloudDeleteHoldCancel();
+    }
   });
 
   document.addEventListener('pointercancel', () => window.MMGR.App.cancelHold());
@@ -4077,8 +4596,9 @@ window.MMGR = MMGR;
   document.addEventListener(
     'mouseleave',
     function (e) {
-      if (e.target.closest && e.target.closest('[data-action="startHold"]'))
+      if (e.target.closest && e.target.closest('[data-action="startHold"]')) {
         window.MMGR.App.cancelHold();
+      }
     },
     true
   );

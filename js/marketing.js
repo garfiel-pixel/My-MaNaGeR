@@ -41,23 +41,31 @@
   var menu = document.getElementById('mobile-menu');
 
   function closeMenu(returnFocus) {
-    if (!menu) return;
+    if (!menu) {
+      return;
+    }
     menu.classList.remove('open');
     if (toggle) {
       toggle.setAttribute('aria-expanded', 'false');
       toggle.setAttribute('aria-label', 'Open menu');
-      if (returnFocus) toggle.focus();
+      if (returnFocus) {
+        toggle.focus();
+      }
     }
   }
   function openMenu() {
-    if (!menu) return;
+    if (!menu) {
+      return;
+    }
     menu.classList.add('open');
     if (toggle) {
       toggle.setAttribute('aria-expanded', 'true');
       toggle.setAttribute('aria-label', 'Close menu');
     }
     var first = menu.querySelector('a');
-    if (first) first.focus();
+    if (first) {
+      first.focus();
+    }
   }
 
   if (toggle && menu) {
@@ -69,16 +77,22 @@
       }
     });
     menu.addEventListener('click', function (e) {
-      if (e.target.closest && e.target.closest('a')) closeMenu(true);
+      if (e.target.closest && e.target.closest('a')) {
+        closeMenu(true);
+      }
     });
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') closeMenu(true);
+      if (e.key === 'Escape') {
+        closeMenu(true);
+      }
     });
   }
 
   /* ---- footer year ---- */
   var year = document.getElementById('year');
-  if (year) year.textContent = String(new Date().getFullYear());
+  if (year) {
+    year.textContent = String(new Date().getFullYear());
+  }
 
   /* ---- E2 universal back-navigation (owner 2026-09-29) ----
      Every [data-back] control returns the visitor to where they came from:
@@ -91,7 +105,9 @@
      match is the reliable same-site signal. */
   document.addEventListener('click', function (e) {
     var el = e.target.closest ? e.target.closest('[data-back]') : null;
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     e.preventDefault();
     var ref = '';
     try {
@@ -111,7 +127,9 @@
       window.history.back();
     } else {
       var href = el.getAttribute('href');
-      if (href) window.location.href = href;
+      if (href) {
+        window.location.href = href;
+      }
     }
   });
 
@@ -129,9 +147,13 @@
 
     dotMajors.forEach(function (a, i) {
       var sec = document.getElementById((a.getAttribute('href') || '').slice(1));
-      if (!sec) return;
+      if (!sec) {
+        return;
+      }
       dotStops.push({ dot: a, sec: sec, frac: 0 });
-      if (i === dotMajors.length - 1) return; /* nothing under the last big dot */
+      if (i === dotMajors.length - 1) {
+        return;
+      } /* nothing under the last big dot */
       for (var k = 1; k <= MINORS_PER_GAP; k++) {
         var li = document.createElement('li');
         li.setAttribute('aria-hidden', 'true');
@@ -163,31 +185,44 @@
     var dotYsKey = '';
     function dotStopsYs() {
       var key = document.documentElement.scrollHeight + 'x' + window.innerHeight;
-      if (dotYs.length && key === dotYsKey) return dotYs;
+      if (dotYs.length && key === dotYsKey) {
+        return dotYs;
+      }
       dotYsKey = key;
       dotYs = dotStops.map(dotStopY);
       return dotYs;
     }
     function syncDots() {
-      if (!dotStops.length) return;
+      if (!dotStops.length) {
+        return;
+      }
       var ys = dotStopsYs();
       var line = window.scrollY + dotReadLine();
       var cur = 0;
       for (var i = 0; i < dotStops.length; i++) {
-        if (ys[i] <= line) cur = i;
-        else break;
+        if (ys[i] <= line) {
+          cur = i;
+        } else {
+          break;
+        }
       }
-      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4)
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) {
         cur = dotStops.length - 1;
+      }
       dotStops.forEach(function (s, i) {
         var on = i === cur;
         s.dot.classList.toggle('active', on);
-        if (on) s.dot.setAttribute('aria-current', 'true');
-        else s.dot.removeAttribute('aria-current');
+        if (on) {
+          s.dot.setAttribute('aria-current', 'true');
+        } else {
+          s.dot.removeAttribute('aria-current');
+        }
       });
     }
     dotStops.forEach(function (s) {
-      if (s.frac === 0) return; /* big dots are real links */
+      if (s.frac === 0) {
+        return;
+      } /* big dots are real links */
       s.dot.addEventListener('click', function () {
         var reduce =
           window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -199,7 +234,9 @@
     });
     var dotRaf = 0;
     function queueSyncDots() {
-      if (dotRaf) return;
+      if (dotRaf) {
+        return;
+      }
       dotRaf = window.requestAnimationFrame(function () {
         dotRaf = 0;
         syncDots();
@@ -215,12 +252,13 @@
   if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
     fetch('css/mmgr-icons.svg')
       .then(function (r) {
-        if (!r.ok)
+        if (!r.ok) {
           console.warn(
             'ICON SPRITE MISSING: css/mmgr-icons.svg returned ' +
               r.status +
               ' , upload the css/ folder (mmgr.css + mmgr-icons.svg) to the site root.'
           );
+        }
       })
       .catch(function () {
         console.warn(
@@ -245,7 +283,9 @@
   var signinSheet = document.getElementById('signin-sheet');
 
   function setSigninOpen(open) {
-    if (!signinSheet) return;
+    if (!signinSheet) {
+      return;
+    }
     signinSheet.hidden = !open;
     signinBtns.forEach(function (b) {
       b.setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -293,10 +333,14 @@
   }
 
   function renderSigninUser(user) {
-    if (!signinSheet) return;
+    if (!signinSheet) {
+      return;
+    }
     var form = signinSheet.querySelector('.email-auth');
     var userBox = document.getElementById('signin-user');
-    if (!form || !userBox) return;
+    if (!form || !userBox) {
+      return;
+    }
     renderSigninTriggers(user);
     var nm = document.getElementById('signin-user-name');
     var sub = document.getElementById('signin-user-sub');
@@ -318,8 +362,12 @@
         av.textContent = initial;
       }
     }
-    if (nm) nm.textContent = (user && (user.name || user.email)) || 'Signed in';
-    if (sub) sub.textContent = user && user.email ? user.email : '';
+    if (nm) {
+      nm.textContent = (user && (user.name || user.email)) || 'Signed in';
+    }
+    if (sub) {
+      sub.textContent = user && user.email ? user.email : '';
+    }
     form.hidden = true;
     userBox.hidden = false;
   }
@@ -376,9 +424,13 @@
 
   function planBand(state, msg) {
     var host = document.querySelector('main') || document.body;
-    if (!host) return;
+    if (!host) {
+      return;
+    }
     var old = document.getElementById('paddle-return-band');
-    if (old) old.remove();
+    if (old) {
+      old.remove();
+    }
     var band = document.createElement('div');
     band.id = 'paddle-return-band';
     band.setAttribute('role', 'status');
@@ -402,7 +454,9 @@
 
   function handlePaddleReturn() {
     var q = paddleReturnParams();
-    if (!q || !q.get('pdc')) return;
+    if (!q || !q.get('pdc')) {
+      return;
+    }
     stripOnly(['pdc']);
     planBand(
       'error',
@@ -415,7 +469,9 @@
      buyer sees Paddle's success screen, so one read is not enough. 12 reads
      at 2.5 s = 30 s, stopping the moment the server says active. */
   function pollPlanAfterCheckout(tries) {
-    if (typeof GA === 'undefined' || !GA || typeof GA.refreshPlan !== 'function') return;
+    if (typeof GA === 'undefined' || !GA || typeof GA.refreshPlan !== 'function') {
+      return;
+    }
     GA.refreshPlan().then(function (data) {
       if (data && data.active) {
         planBand(
@@ -436,7 +492,9 @@
   }
 
   function onPaddleEvent(ev) {
-    if (!ev || !ev.name) return;
+    if (!ev || !ev.name) {
+      return;
+    }
     if (ev.name === 'checkout.completed') {
       stripOnly(['_ptxn', 'plnk', '_pxc']);
       planBand(
@@ -467,12 +525,16 @@
      blocks it with no message, which reads as a dead button. */
   function wireUpgradeButtons() {
     var btns = document.querySelectorAll('[data-pricing-upgrade]');
-    if (!btns.length) return;
+    if (!btns.length) {
+      return;
+    }
     Array.prototype.forEach.call(btns, function (btn) {
       btn.addEventListener('click', function () {
         var status = document.querySelector('[data-pricing-status]');
         function say(msg, bad) {
-          if (!status) return;
+          if (!status) {
+            return;
+          }
           status.hidden = false;
           status.textContent = msg;
           status.style.color = bad ? 'var(--danger, #c0392b)' : '';
@@ -507,11 +569,13 @@
                 }
               }
               btn.disabled = false;
-              if (r.status === 403)
+              if (r.status === 403) {
                 say('Sign in first - the plan is attached to your account.', true);
-              else if (r.status === 503) say('Checkout is not available on this server yet.', true);
-              else
+              } else if (r.status === 503) {
+                say('Checkout is not available on this server yet.', true);
+              } else {
                 say((r.data && r.data.error) || 'Checkout failed (HTTP ' + r.status + ').', true);
+              }
               return;
             }
             if (tab) {
@@ -521,7 +585,9 @@
               } catch (e) {
                 window.open(r.data.checkoutUrl, '_blank', 'noopener');
               }
-            } else window.open(r.data.checkoutUrl, '_blank', 'noopener');
+            } else {
+              window.open(r.data.checkoutUrl, '_blank', 'noopener');
+            }
             say('Checkout opened in a new tab. Finish there, then come back here.');
           })
           .catch(function () {
@@ -540,12 +606,18 @@
   }
 
   function renderSigninSignedOut() {
-    if (!signinSheet) return;
+    if (!signinSheet) {
+      return;
+    }
     var form = signinSheet.querySelector('.email-auth');
     var userBox = document.getElementById('signin-user');
     var av = document.getElementById('signin-user-avatar');
-    if (form) form.hidden = false;
-    if (userBox) userBox.hidden = true;
+    if (form) {
+      form.hidden = false;
+    }
+    if (userBox) {
+      userBox.hidden = true;
+    }
     if (av) {
       av.innerHTML = '';
       av.textContent = '';
@@ -555,10 +627,11 @@
 
   if (signinBtns.length && signinSheet && GA) {
     var signinOut = document.getElementById('signin-out');
-    if (signinOut)
+    if (signinOut) {
       signinOut.addEventListener('click', function () {
         GA.signOut();
       });
+    }
 
     signinBtns.forEach(function (b) {
       b.addEventListener('click', function () {
@@ -584,15 +657,23 @@
       });
     });
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && !signinSheet.hidden) setSigninOpen(false);
+      if (e.key === 'Escape' && !signinSheet.hidden) {
+        setSigninOpen(false);
+      }
     });
     document.addEventListener('click', function (e) {
-      if (signinSheet.hidden) return;
+      if (signinSheet.hidden) {
+        return;
+      }
       var onTrigger = signinBtns.some(function (b) {
         return e.target === b || b.contains(e.target);
       });
-      if (onTrigger) return;
-      if (signinSheet.contains(e.target)) return;
+      if (onTrigger) {
+        return;
+      }
+      if (signinSheet.contains(e.target)) {
+        return;
+      }
       setSigninOpen(false);
     });
 
@@ -601,20 +682,25 @@
        2026-09-06); the Google button renders into #google-signin-button
        (added to all marketing signin-sheets 2026-08-22). Then restore the
        session so an already-signed-in visitor sees their state. */
-    if (!document.getElementById('email-auth-block'))
+    if (!document.getElementById('email-auth-block')) {
       GA.mountEmailAuth('marketing-email-auth', { showToggle: false });
+    }
     /* OWNER 2026-09-09 (P5.4): the links (Forgot password? / Create account)
        move BELOW the Google button and float free - no boxes. Sheet order:
        email form, divider, Google, links, note. */
     (function () {
       var alt = document.querySelector('#signin-sheet .email-auth-alt');
       var gbtn = document.getElementById('google-signin-button');
-      if (alt && gbtn) gbtn.insertAdjacentElement('afterend', alt);
+      if (alt && gbtn) {
+        gbtn.insertAdjacentElement('afterend', alt);
+      }
     })();
     /* Re-render the GIS button when the sheet opens , GIS measures the host
        at render time, so a button drawn into a hidden host comes out 0x0.
        ensureGisButton() wipes a broken render and re-draws when measurable. */
-    if (typeof GA.ensureGisButton === 'function') GA.ensureGisButton();
+    if (typeof GA.ensureGisButton === 'function') {
+      GA.ensureGisButton();
+    }
     /* AUTH MAINFRAME 2026-08-17: the signed-in account row carries the
        Change-password entry for email accounts (mounted once here; the
        shared control hides itself unless the account has a password). */
@@ -686,7 +772,9 @@
   var ddFlashTimer = null;
   function ddFlash(id) {
     var el = document.getElementById(id);
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     try {
       var rm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
       el.scrollIntoView({ behavior: rm && rm.matches ? 'auto' : 'smooth', block: 'start' });
@@ -696,7 +784,9 @@
     el.classList.remove('dd-flash');
     void el.offsetWidth; // restart the animation
     el.classList.add('dd-flash');
-    if (ddFlashTimer) clearTimeout(ddFlashTimer);
+    if (ddFlashTimer) {
+      clearTimeout(ddFlashTimer);
+    }
     ddFlashTimer = setTimeout(function () {
       el.classList.remove('dd-flash');
     }, 2800);
@@ -732,9 +822,13 @@
     });
     if (links.length) {
       Array.prototype.forEach.call(links, function (a) {
-        if (a.closest('.nav-dd')) return; // idempotent , never re-wrap
+        if (a.closest('.nav-dd')) {
+          return;
+        } // idempotent , never re-wrap
         var cfg = NAV_DD[a.getAttribute('href')];
-        if (!cfg) return;
+        if (!cfg) {
+          return;
+        }
         var wrap = document.createElement('span');
         wrap.className =
           'nav-dd' +
@@ -792,7 +886,9 @@
           a.setAttribute('aria-expanded', open ? 'true' : 'false');
         }
         function openWrap() {
-          if (ddNow() < ddSuppressUntil) return; /* Escape just closed it */
+          if (ddNow() < ddSuppressUntil) {
+            return;
+          } /* Escape just closed it */
           closeDropdowns();
           wrap.classList.add('is-open');
           open = true;
@@ -807,7 +903,9 @@
         wrap.addEventListener('mouseleave', closeWrap);
         wrap.addEventListener('focusin', openWrap);
         wrap.addEventListener('focusout', function (e) {
-          if (!wrap.contains(e.relatedTarget)) closeWrap();
+          if (!wrap.contains(e.relatedTarget)) {
+            closeWrap();
+          }
         });
       });
     }
@@ -816,7 +914,9 @@
         var trigger = null;
         document.querySelectorAll('.nav-dd').forEach(function (w) {
           var a = w.querySelector('a.nav-link');
-          if (a && a.getAttribute('aria-expanded') === 'true') trigger = a;
+          if (a && a.getAttribute('aria-expanded') === 'true') {
+            trigger = a;
+          }
         });
         closeDropdowns();
         if (trigger) {
@@ -899,7 +999,9 @@
       var GAP = 18,
         TICK_MS = 3400;
       var originals = Array.prototype.slice.call(featTrack.children);
-      if (originals.length < 2) return;
+      if (originals.length < 2) {
+        return;
+      }
       var rm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
       var paused = !!(rm && rm.matches);
       /* clone the first few cards for the seamless loop (aria-hidden copies) */
@@ -922,9 +1024,13 @@
         return (all[0] ? all[0].getBoundingClientRect().width : 300) + GAP;
       }
       function tick() {
-        if (paused) return;
+        if (paused) {
+          return;
+        }
         /* reached the clones: snap back to the start, invisible */
-        if (featTrack.scrollLeft >= realScroll - 4) featTrack.scrollLeft = 0;
+        if (featTrack.scrollLeft >= realScroll - 4) {
+          featTrack.scrollLeft = 0;
+        }
         try {
           featTrack.scrollBy({ left: stepW(), behavior: rm && rm.matches ? 'auto' : 'smooth' });
         } catch (e) {
@@ -934,7 +1040,9 @@
       var timer = null,
         resumeT = 0;
       function play() {
-        if (paused || timer) return;
+        if (paused || timer) {
+          return;
+        }
         timer = setInterval(tick, TICK_MS);
       }
       function stop() {
@@ -950,22 +1058,28 @@
       function go(dir) {
         var w = stepW();
         var target = featTrack.scrollLeft + dir * w;
-        if (target >= realScroll) target = 0; /* wrap forward */
-        if (target < 0) target = realScroll - featTrack.clientWidth; /* wrap back */
+        if (target >= realScroll) {
+          target = 0;
+        } /* wrap forward */
+        if (target < 0) {
+          target = realScroll - featTrack.clientWidth;
+        } /* wrap back */
         try {
           featTrack.scrollTo({ left: target, behavior: rm && rm.matches ? 'auto' : 'smooth' });
         } catch (e) {
           featTrack.scrollLeft = target;
         }
       }
-      if (featPrev)
+      if (featPrev) {
         featPrev.addEventListener('click', function () {
           go(-1);
         });
-      if (featNext)
+      }
+      if (featNext) {
         featNext.addEventListener('click', function () {
           go(1);
         });
+      }
       ['mouseenter', 'focusin', 'touchstart', 'pointerdown'].forEach(function (ev) {
         featTrack.addEventListener(ev, stop, { passive: true });
       });
@@ -989,8 +1103,11 @@
         );
       });
       document.addEventListener('visibilitychange', function () {
-        if (document.hidden) stop();
-        else play();
+        if (document.hidden) {
+          stop();
+        } else {
+          play();
+        }
       });
       /* Restart the auto-tick when the feature bar scrolls back into view
          (owner: "when a user interacts and leaves for a while, the animation
@@ -1000,15 +1117,20 @@
         var featIO = new IntersectionObserver(
           function (entries) {
             entries.forEach(function (entry) {
-              if (entry.isIntersecting) play();
-              else stop();
+              if (entry.isIntersecting) {
+                play();
+              } else {
+                stop();
+              }
             });
           },
           { threshold: 0.1 }
         );
         featIO.observe(featTrack);
       }
-      if (!paused) play();
+      if (!paused) {
+        play();
+      }
     })();
   }
 
@@ -1018,7 +1140,9 @@
      devices without a mail client. Null-guarded, never throws, ASCII only. */
   function mountContactForm() {
     var form = document.getElementById('contact-form');
-    if (!form) return;
+    if (!form) {
+      return;
+    }
     var status = document.getElementById('ct-status');
     var copyBtn = document.getElementById('ct-copy');
     var submitBtn = form.querySelector('button[type=submit]');
@@ -1028,7 +1152,9 @@
       return el ? el.value.trim() : '';
     }
     function setStatus(msg, isErr) {
-      if (!status) return;
+      if (!status) {
+        return;
+      }
       status.textContent = msg;
       status.classList.toggle('is-err', !!isErr);
       status.hidden = false;
@@ -1039,8 +1165,12 @@
       var topic = field('ct-topic') || 'Other';
       var msg = field('ct-msg');
       var lines = ['Topic: ' + topic];
-      if (name) lines.push('Name: ' + name);
-      if (email) lines.push('Email: ' + email);
+      if (name) {
+        lines.push('Name: ' + name);
+      }
+      if (email) {
+        lines.push('Email: ' + email);
+      }
       lines.push('');
       lines.push(msg);
       return { subject: 'My MaNaGeR contact: ' + topic, body: lines.join('\n') };
@@ -1074,8 +1204,12 @@
     }
     form.addEventListener('submit', function (e) {
       e.preventDefault();
-      if (!validate()) return;
-      if (submitBtn) submitBtn.disabled = true;
+      if (!validate()) {
+        return;
+      }
+      if (submitBtn) {
+        submitBtn.disabled = true;
+      }
       setStatus('Sending your message...');
       fetch('/api/contact', {
         method: 'POST',
@@ -1123,12 +1257,16 @@
           mailtoFallback();
         })
         .then(function () {
-          if (submitBtn) submitBtn.disabled = false;
+          if (submitBtn) {
+            submitBtn.disabled = false;
+          }
         });
     });
-    if (copyBtn)
+    if (copyBtn) {
       copyBtn.addEventListener('click', function () {
-        if (!validate()) return;
+        if (!validate()) {
+          return;
+        }
         var c = compose();
         var text = c.subject + '\n\n' + c.body + '\n\nSent from the My MaNaGeR contact page.';
         var done = function () {
@@ -1142,6 +1280,7 @@
           setStatus('Copy is not available here. Use Send message instead.', true);
         }
       });
+    }
   }
   /* Paddle returns the buyer here after checkout, carrying ?_ptxn= (see
      handlePaddleReturn). Called at MODULE scope rather than inside the
@@ -1168,12 +1307,17 @@
      the server can verify. */
   var paddleReady = false;
   function initializePaddle() {
-    if (paddleReady) return;
+    if (paddleReady) {
+      return;
+    }
     var host = document.body;
     var token = host && host.getAttribute ? host.getAttribute('data-paddle-token') : '';
-    if (!token) return;
-    if (typeof window.Paddle === 'undefined' || typeof window.Paddle.Initialize !== 'function')
+    if (!token) {
       return;
+    }
+    if (typeof window.Paddle === 'undefined' || typeof window.Paddle.Initialize !== 'function') {
+      return;
+    }
     try {
       /* A sandbox client token (test_...) only works against Paddle's sandbox
          environment, and Environment.set() must run BEFORE Initialize(). Live
@@ -1198,7 +1342,9 @@
      like "the pricing page redirected me to itself". */
   function initPaddleWhenReady() {
     initializePaddle();
-    if (paddleReady) return;
+    if (paddleReady) {
+      return;
+    }
     var tries = 0;
     var t = setInterval(function () {
       initializePaddle();

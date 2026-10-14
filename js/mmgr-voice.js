@@ -96,7 +96,9 @@ var MMGR = window.MMGR || {};
   const _queues = {}; // per-session promise chains (writes must not interleave)
 
   function openDB() {
-    if (_dbPromise) return _dbPromise;
+    if (_dbPromise) {
+      return _dbPromise;
+    }
     _dbPromise = new Promise(function (res, rej) {
       if (typeof window === 'undefined' || !window.indexedDB) {
         rej(new Error('IndexedDB unavailable'));
@@ -105,10 +107,12 @@ var MMGR = window.MMGR || {};
       const req = window.indexedDB.open(DB_NAME, DB_VERSION);
       req.onupgradeneeded = function (e) {
         const db = e.target.result;
-        if (!db.objectStoreNames.contains('sessions'))
+        if (!db.objectStoreNames.contains('sessions')) {
           db.createObjectStore('sessions', { keyPath: 'sessionId' });
-        if (!db.objectStoreNames.contains('chunks'))
+        }
+        if (!db.objectStoreNames.contains('chunks')) {
           db.createObjectStore('chunks', { keyPath: 'id' });
+        }
       };
       req.onsuccess = function () {
         res(req.result);
@@ -124,8 +128,9 @@ var MMGR = window.MMGR || {};
   // Serialize writes per session so chunk counts stay exact under bursts.
   function enqueue(sessionId, fn) {
     _queues[sessionId] = (_queues[sessionId] || Promise.resolve()).then(fn).catch(function (err) {
-      if (ns.Errors && ns.Errors.log)
+      if (ns.Errors && ns.Errors.log) {
         ns.Errors.log((err && err.message) || String(err), 'voice-db');
+      }
     });
     return _queues[sessionId];
   }
@@ -357,7 +362,9 @@ var MMGR = window.MMGR || {};
   }
 
   function _toast(msg, type) {
-    if (ns.App && ns.App.showToast) ns.App.showToast(msg, type || 'ok');
+    if (ns.App && ns.App.showToast) {
+      ns.App.showToast(msg, type || 'ok');
+    }
   }
 
   async function startCapture() {
@@ -392,9 +399,10 @@ var MMGR = window.MMGR || {};
           _cap.chunkCount++;
           appendChunk(sessionId, e.data);
           const el = U.$('voice-chunks');
-          if (el)
+          if (el) {
             el.textContent =
               _cap.chunkCount + ' chunk' + (_cap.chunkCount !== 1 ? 's' : '') + ' saved';
+          }
         }
       };
       recorder.onstop = function () {
@@ -444,8 +452,9 @@ var MMGR = window.MMGR || {};
           });
         } catch (e) {}
       }
-      if (ns.Errors && ns.Errors.log)
+      if (ns.Errors && ns.Errors.log) {
         ns.Errors.log((err && err.message) || String(err), 'voice-start');
+      }
       _toast('Microphone unavailable or permission denied.', 'err');
       return false;
     }
@@ -455,7 +464,9 @@ var MMGR = window.MMGR || {};
   // like endMeeting can extract immediately), finalizes the IDB session,
   // and marks the meeting record captureState='stopped'.
   function stopCapture() {
-    if (!_cap.active) return false;
+    if (!_cap.active) {
+      return false;
+    }
     const sessionId = _cap.sessionId;
     _cap.active = false;
     stopMeter();
@@ -516,7 +527,9 @@ var MMGR = window.MMGR || {};
           });
         } catch (e) {}
       }
-      if (sessionId) deleteSession(sessionId);
+      if (sessionId) {
+        deleteSession(sessionId);
+      }
     } else {
       // Nothing live , also clear any pending (interrupted) session for the
       // current meeting so the recovery chip doesn't linger after a cancel.
@@ -531,8 +544,9 @@ var MMGR = window.MMGR || {};
       }
     });
     renderCaptureSection();
-    if (!silent)
+    if (!silent) {
       _toast(hadActive ? 'Recording discarded.' : 'Nothing to discard.', hadActive ? 'ok' : 'err');
+    }
     return hadActive;
   }
 
@@ -543,8 +557,9 @@ var MMGR = window.MMGR || {};
     const pid = ns.projectId || 'default';
     pendingSessions().then(function (list) {
       (list || []).forEach(function (sess) {
-        if (mid != null && sess.projectId === pid && sess.meetingId === mid)
+        if (mid != null && sess.projectId === pid && sess.meetingId === mid) {
           deleteSession(sess.sessionId);
+        }
       });
     });
   }
@@ -553,7 +568,9 @@ var MMGR = window.MMGR || {};
   function startMeter(stream) {
     try {
       const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return;
+      if (!AC) {
+        return;
+      }
       const ctx = new AC();
       const src = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
@@ -562,7 +579,9 @@ var MMGR = window.MMGR || {};
       const data = new Uint8Array(analyser.fftSize);
       const el = U.$('voice-meter-fill');
       const tick = function () {
-        if (!_cap.active) return;
+        if (!_cap.active) {
+          return;
+        }
         try {
           analyser.getByteTimeDomainData(data);
         } catch (e) {
@@ -575,7 +594,9 @@ var MMGR = window.MMGR || {};
         }
         const rms = Math.sqrt(sum / data.length);
         const pct = Math.min(100, Math.max(4, Math.round(rms * 320)));
-        if (el) el.style.width = pct + '%';
+        if (el) {
+          el.style.width = pct + '%';
+        }
         _cap.rafId = requestAnimationFrame(tick);
       };
       _cap.audioCtx = ctx;
@@ -599,7 +620,9 @@ var MMGR = window.MMGR || {};
   function startTimer() {
     _cap.timerId = setInterval(function () {
       const el = U.$('voice-timer');
-      if (!el || !_cap.startedAt) return;
+      if (!el || !_cap.startedAt) {
+        return;
+      }
       const sec = Math.floor((Date.now() - _cap.startedAt) / 1000);
       el.textContent = Math.floor(sec / 60) + 'm ' + (sec % 60) + 's';
     }, 1000);
@@ -616,9 +639,10 @@ var MMGR = window.MMGR || {};
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     const note = U.$('voice-tier-note');
     if (!SR) {
-      if (note)
+      if (note) {
         note.textContent =
           'Live captions unavailable in this browser , recording continues; type notes below.';
+      }
       return; // circuit-broken: capture proceeds, transcript stays editable
     }
     try {
@@ -629,19 +653,25 @@ var MMGR = window.MMGR || {};
       rec.onresult = function (e) {
         let line = '';
         for (let i = e.resultIndex; i < e.results.length; i++) {
-          if (e.results[i].isFinal) line += e.results[i][0].transcript;
+          if (e.results[i].isFinal) {
+            line += e.results[i][0].transcript;
+          }
         }
-        if (line) appendCaption(line);
+        if (line) {
+          appendCaption(line);
+        }
       };
       rec.onerror = function (ev) {
-        if (ns.Errors && ns.Errors.log)
+        if (ns.Errors && ns.Errors.log) {
           ns.Errors.log((ev && ev.error) || 'speech error', 'voice-tier0');
+        }
         const n = U.$('voice-tier-note');
-        if (n)
+        if (n) {
           n.textContent =
             'Live captions interrupted (' +
             ((ev && ev.error) || 'error') +
             ') , type notes instead.';
+        }
         _cap.rec = null;
       };
       rec.onend = function () {
@@ -650,8 +680,9 @@ var MMGR = window.MMGR || {};
       rec.start();
       _cap.rec = rec;
     } catch (err) {
-      if (ns.Errors && ns.Errors.log)
+      if (ns.Errors && ns.Errors.log) {
         ns.Errors.log((err && err.message) || String(err), 'voice-tier0');
+      }
     }
   }
   function stopTier0() {
@@ -704,12 +735,16 @@ var MMGR = window.MMGR || {};
   // bundled local model in that case. Throwing on !response.ok matters: an
   // error-page body must never be handed to whisper as "model bytes".
   async function getModelBytes() {
-    if (typeof caches === 'undefined') throw new Error('Cache API unavailable (insecure context?)');
+    if (typeof caches === 'undefined') {
+      throw new Error('Cache API unavailable (insecure context?)');
+    }
     const cache = await caches.open(TIER1_MODEL_CACHE);
     let response = await cache.match(TIER1_MODEL_URL);
     if (!response) {
       response = await fetch(TIER1_MODEL_URL);
-      if (!response.ok) throw new Error('model download failed: HTTP ' + response.status);
+      if (!response.ok) {
+        throw new Error('model download failed: HTTP ' + response.status);
+      }
       await cache.put(TIER1_MODEL_URL, response.clone());
     }
     return response.arrayBuffer();
@@ -801,8 +836,9 @@ var MMGR = window.MMGR || {};
       target.ready = false;
       target.ctx = null;
       target.lastErr = err;
-      if (ns.Errors && ns.Errors.log)
+      if (ns.Errors && ns.Errors.log) {
         ns.Errors.log((err && err.message) || String(err), 'voice-tier1');
+      }
     }
     return target.ready;
   }
@@ -812,10 +848,16 @@ var MMGR = window.MMGR || {};
   // no argument. Failures are NOT memoized: a transient failure (e.g. the
   // model fetch hiccuping) can be retried by the next call.
   function initTier1(forcedModelUrl) {
-    if (forcedModelUrl) return _initTier1Impl(forcedModelUrl);
-    if (_t1.promise) return _t1.promise;
+    if (forcedModelUrl) {
+      return _initTier1Impl(forcedModelUrl);
+    }
+    if (_t1.promise) {
+      return _t1.promise;
+    }
     _t1.promise = _initTier1Impl().then(function (ok) {
-      if (!ok) _t1.promise = null;
+      if (!ok) {
+        _t1.promise = null;
+      }
       return ok;
     });
     return _t1.promise;
@@ -839,7 +881,9 @@ var MMGR = window.MMGR || {};
 
   // Linear resample to whisper's fixed 16 kHz input rate.
   function resampleLinear(input, fromRate, toRate) {
-    if (!input || !input.length || !fromRate || fromRate === toRate) return input;
+    if (!input || !input.length || !fromRate || fromRate === toRate) {
+      return input;
+    }
     const outLen = Math.max(1, Math.round((input.length * toRate) / fromRate));
     const out = new Float32Array(outLen);
     const ratio = fromRate / toRate;
@@ -854,13 +898,17 @@ var MMGR = window.MMGR || {};
   }
   // Mix all channels down to mono, then resample to 16 kHz.
   function mixToMono16k(audioBuffer) {
-    if (!audioBuffer || !audioBuffer.length) return null;
+    if (!audioBuffer || !audioBuffer.length) {
+      return null;
+    }
     const chans = audioBuffer.numberOfChannels || 1;
     const len = audioBuffer.length;
     const mono = new Float32Array(len);
     for (let c = 0; c < chans; c++) {
       const d = audioBuffer.getChannelData(c);
-      for (let i = 0; i < len; i++) mono[i] += d[i] / chans;
+      for (let i = 0; i < len; i++) {
+        mono[i] += d[i] / chans;
+      }
     }
     return resampleLinear(mono, audioBuffer.sampleRate || 48000, 16000);
   }
@@ -898,7 +946,9 @@ var MMGR = window.MMGR || {};
   async function decodeForWhisper(blob) {
     const buf = await blob.arrayBuffer();
     const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) throw new Error('AudioContext unavailable for offline transcription');
+    if (!AC) {
+      throw new Error('AudioContext unavailable for offline transcription');
+    }
     const ac = new AC();
     try {
       const ab = await ac.decodeAudioData(buf.slice(0));
@@ -921,7 +971,9 @@ var MMGR = window.MMGR || {};
   function startForFieldReport() {
     _target = { kind: 'field' };
     const ok = startCapture();
-    if (!ok) _target = { kind: 'meeting' }; // failed to start: reset
+    if (!ok) {
+      _target = { kind: 'meeting' };
+    } // failed to start: reset
     return ok;
   }
   function applyWhisperText(text, sessionId) {
@@ -942,7 +994,9 @@ var MMGR = window.MMGR || {};
             return m.captureSession === sessionId;
           });
       const target = live || stored;
-      if (!target) return;
+      if (!target) {
+        return;
+      }
       target.transcript = clean;
       target.captureMethod = 'tier1';
       target.transcribeState = 'done';
@@ -955,7 +1009,9 @@ var MMGR = window.MMGR || {};
       const stored = (s.meetings || []).find(function (m) {
         return m.captureSession === sessionId;
       });
-      if (stored) applyExtractionToState(stored);
+      if (stored) {
+        applyExtractionToState(stored);
+      }
     }
   }
 
@@ -963,7 +1019,9 @@ var MMGR = window.MMGR || {};
   // If another session is still transcribing, remember the NEWEST request and
   // run it when the current job finishes (never silently drop a recording).
   async function transcribeSession(sessionId) {
-    if (!sessionId) return;
+    if (!sessionId) {
+      return;
+    }
     if (_t1.transcribing) {
       _t1.pendingKick = sessionId;
       return;
@@ -981,14 +1039,20 @@ var MMGR = window.MMGR || {};
           (st.meetings || []).find(function (m) {
             return m.captureSession === sessionId;
           });
-        if (target) target[field] = val;
+        if (target) {
+          target[field] = val;
+        }
       });
     };
     mark('transcribeState', 'transcribing');
     renderCaptureSection();
     try {
-      if (!tier1Ready()) await initTier1();
-      if (!tier1Ready()) throw _t1.lastErr || new Error('Offline transcription unavailable');
+      if (!tier1Ready()) {
+        await initTier1();
+      }
+      if (!tier1Ready()) {
+        throw _t1.lastErr || new Error('Offline transcription unavailable');
+      }
       const chunks = await readChunks(sessionId);
       if (!chunks || !chunks.length) {
         mark('transcribeState', 'idle');
@@ -1006,25 +1070,32 @@ var MMGR = window.MMGR || {};
           const v = typeof p === 'number' ? (p > 1 ? p / 100 : p) : 0;
           _t1.progress = Math.min(1, Math.max(0, v));
           const fill = U.$('voice-meter-fill');
-          if (fill) fill.style.width = Math.round(_t1.progress * 100) + '%';
+          if (fill) {
+            fill.style.width = Math.round(_t1.progress * 100) + '%';
+          }
         }
       });
       const res = await op.promise;
       const text = String((res && res.result) || '').trim();
       applyWhisperText(text, sessionId);
-      if (text) _toast('Offline transcription complete , transcript updated.', 'ok');
+      if (text) {
+        _toast('Offline transcription complete , transcript updated.', 'ok');
+      }
     } catch (err) {
       _t1.lastErr = err;
       mark('transcribeState', 'failed');
-      if (ns.Errors && ns.Errors.log)
+      if (ns.Errors && ns.Errors.log) {
         ns.Errors.log((err && err.message) || String(err), 'voice-tier1');
+      }
       _toast('Offline transcription failed , captions kept; you can retry.', 'err');
     } finally {
       _t1.transcribing = false;
       renderCaptureSection();
       const next = _t1.pendingKick;
       _t1.pendingKick = null;
-      if (next) transcribeSession(next);
+      if (next) {
+        transcribeSession(next);
+      }
     }
   }
 
@@ -1054,20 +1125,28 @@ var MMGR = window.MMGR || {};
     const clean = String(line || '')
       .replace(/\s+/g, ' ')
       .trim();
-    if (!clean) return;
+    if (!clean) {
+      return;
+    }
     const ta = U.$('voice-captions');
     if (ta) {
       ta.value = (ta.value ? ta.value.replace(/\s+$/, '') + ' ' : '') + clean;
       ta.scrollTop = ta.scrollHeight;
     }
     _cap.captionBuf += (_cap.captionBuf ? ' ' : '') + clean;
-    if (Date.now() - _cap.lastStateFlush > 5000) flushCaptions(false);
+    if (Date.now() - _cap.lastStateFlush > 5000) {
+      flushCaptions(false);
+    }
   }
   function flushCaptions(force) {
-    if (!_cap.captionBuf && !force) return;
+    if (!_cap.captionBuf && !force) {
+      return;
+    }
     const buf = _cap.captionBuf;
     _cap.captionBuf = '';
-    if (!buf) return;
+    if (!buf) {
+      return;
+    }
     _cap.lastStateFlush = Date.now();
     ns.State.updateState(function (st) {
       if (st.activeMeeting) {
@@ -1107,14 +1186,18 @@ var MMGR = window.MMGR || {};
     const out = [];
     sentences.forEach(function (raw) {
       const p = raw.trim();
-      if (!p) return;
+      if (!p) {
+        return;
+      }
       if (p.length <= 140) {
         out.push(p);
         return;
       }
       p.split(/[,;]\s+/).forEach(function (b) {
         b = b.trim();
-        if (b) out.push(b);
+        if (b) {
+          out.push(b);
+        }
       });
     });
     return out;
@@ -1128,10 +1211,14 @@ var MMGR = window.MMGR || {};
     const seen = {};
     sentences.forEach(function (raw) {
       const s = raw.trim();
-      if (s.length < 4) return;
+      if (s.length < 4) {
+        return;
+      }
       if (DECISION_RE.test(s)) {
         const key = 'd:' + s.toLowerCase();
-        if (seen[key]) return;
+        if (seen[key]) {
+          return;
+        }
         seen[key] = 1;
         decisions.push({ text: s.replace(/[.!?]+$/, '') });
         return;
@@ -1147,10 +1234,16 @@ var MMGR = window.MMGR || {};
           .replace(/[.!?]+$/, '')
           .trim();
         let text = body ? body.charAt(0).toUpperCase() + body.slice(1) : s.replace(/[.!?]+$/, '');
-        if (dueM) text += ' (due ' + dueM[1] + ')';
-        if (ownM) text += ' , owner: ' + ownM[1];
+        if (dueM) {
+          text += ' (due ' + dueM[1] + ')';
+        }
+        if (ownM) {
+          text += ' , owner: ' + ownM[1];
+        }
         const key = 'a:' + text.toLowerCase();
-        if (seen[key]) return;
+        if (seen[key]) {
+          return;
+        }
         seen[key] = 1;
         actions.push({ text: text, due: dueM ? dueM[1] : null, owner: ownM ? ownM[1] : null });
       }
@@ -1165,14 +1258,24 @@ var MMGR = window.MMGR || {};
     const s = ns.State.getState();
     const m = meeting || s.activeMeeting;
     const src = m && m.transcript ? String(m.transcript).trim() : '';
-    if (!src) return { decisions: [], actions: [] };
+    if (!src) {
+      return { decisions: [], actions: [] };
+    }
     const res = extractFromTranscript(src);
-    if (!res.decisions.length && !res.actions.length) return res;
+    if (!res.decisions.length && !res.actions.length) {
+      return res;
+    }
     ns.State.updateState(function (st) {
-      if (!Array.isArray(st.logEntries)) st.logEntries = [];
-      if (!st.meetingPromises) st.meetingPromises = {};
+      if (!Array.isArray(st.logEntries)) {
+        st.logEntries = [];
+      }
+      if (!st.meetingPromises) {
+        st.meetingPromises = {};
+      }
       const kind = m.kind || 'weekly';
-      if (!st.meetingPromises[kind]) st.meetingPromises[kind] = [];
+      if (!st.meetingPromises[kind]) {
+        st.meetingPromises[kind] = [];
+      }
       const promiseCap = 30;
       const mid =
         m.id != null ? m.id : st.meetings && st.meetings.length ? st.meetings[0].id : null;
@@ -1202,7 +1305,9 @@ var MMGR = window.MMGR || {};
         });
       };
       res.decisions.forEach(function (d) {
-        if (alreadyLogged(d.text)) return;
+        if (alreadyLogged(d.text)) {
+          return;
+        }
         st.logEntries.push({
           id: U.genShortId('D'),
           date: new Date().toLocaleString(),
@@ -1213,7 +1318,9 @@ var MMGR = window.MMGR || {};
         });
       });
       res.actions.forEach(function (a) {
-        if (st.meetingPromises[kind].length >= promiseCap || alreadyPromised(a.text)) return;
+        if (st.meetingPromises[kind].length >= promiseCap || alreadyPromised(a.text)) {
+          return;
+        }
         st.meetingPromises[kind].push({
           id: U.genShortId('P'),
           text: a.text,
@@ -1234,7 +1341,9 @@ var MMGR = window.MMGR || {};
   // on screen the whole time , the consent-relevant recording indicator.
   function renderCaptureSection() {
     const wrap = U.$('meet-voice-wrap');
-    if (!wrap) return;
+    if (!wrap) {
+      return;
+    }
     const s = ns.State.getState();
     const m = s.activeMeeting;
     if (!m) {
@@ -1320,7 +1429,9 @@ var MMGR = window.MMGR || {};
   // recording must never flash a false "interrupted session" alarm (the
   // plan's no-notification-spam rule).
   function checkRecovery() {
-    if (_recoveryDismissed) return;
+    if (_recoveryDismissed) {
+      return;
+    }
     const s = ns.State.getState();
     const curSession =
       _cap.active && _cap.sessionId
@@ -1332,9 +1443,13 @@ var MMGR = window.MMGR || {};
         const interrupted = (list || []).filter(function (sess) {
           return sess.projectId === pid && sess.sessionId !== curSession;
         });
-        if (!interrupted.length) return;
+        if (!interrupted.length) {
+          return;
+        }
         const wrap = U.$('meet-voice-wrap');
-        if (!wrap || wrap.querySelector('.voice-recover')) return; // one chip at a time
+        if (!wrap || wrap.querySelector('.voice-recover')) {
+          return;
+        } // one chip at a time
         const chip = document.createElement('div');
         chip.className = 'voice-recover';
         chip.innerHTML =
@@ -1350,7 +1465,9 @@ var MMGR = window.MMGR || {};
   function dismissRecovery() {
     _recoveryDismissed = true;
     const chip = document.querySelector('.voice-recover');
-    if (chip) chip.remove();
+    if (chip) {
+      chip.remove();
+    }
   }
 
   function tierStatus() {
@@ -1378,7 +1495,9 @@ var MMGR = window.MMGR || {};
     return !!_aiRec;
   }
   function stopAiDictation() {
-    if (!_aiRec) return;
+    if (!_aiRec) {
+      return;
+    }
     try {
       _aiRec.stop();
     } catch (e) {
@@ -1386,7 +1505,9 @@ var MMGR = window.MMGR || {};
     }
     _aiRec = null;
     const b = aiBtn();
-    if (b) b.classList.remove('recording');
+    if (b) {
+      b.classList.remove('recording');
+    }
   }
   function toggleAiRecording() {
     const btn = aiBtn();
@@ -1396,19 +1517,21 @@ var MMGR = window.MMGR || {};
     }
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
-      if (ns.App && ns.App.showToast)
+      if (ns.App && ns.App.showToast) {
         ns.App.showToast(
           'Voice input is not available in this browser. Chrome or Edge support it.',
           'warn'
         );
+      }
       return;
     }
     let rec;
     try {
       rec = new SR();
     } catch (e) {
-      if (ns.App && ns.App.showToast)
+      if (ns.App && ns.App.showToast) {
         ns.App.showToast('Voice input could not start in this browser.', 'warn');
+      }
       return;
     }
     rec.continuous = true;
@@ -1416,18 +1539,26 @@ var MMGR = window.MMGR || {};
     rec.lang = document.documentElement.lang || 'en-US';
     rec.onstart = function () {
       _aiRec = rec;
-      if (btn) btn.classList.add('recording');
-      if (ns.App && ns.App.showToast)
+      if (btn) {
+        btn.classList.add('recording');
+      }
+      if (ns.App && ns.App.showToast) {
         ns.App.showToast('Listening. Click the mic again to stop.', 'ok');
+      }
     };
     rec.onresult = function (e) {
       const q = document.getElementById('ai-q');
-      if (!q) return;
+      if (!q) {
+        return;
+      }
       let finalText = '';
       let interim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
-        else interim += e.results[i][0].transcript;
+        if (e.results[i].isFinal) {
+          finalText += e.results[i][0].transcript;
+        } else {
+          interim += e.results[i][0].transcript;
+        }
       }
       if (finalText) {
         _aiBase = q.value + (q.value && !/\s$/.test(q.value) ? ' ' : '') + finalText.trim();
@@ -1444,20 +1575,23 @@ var MMGR = window.MMGR || {};
     rec.onerror = function (ev) {
       const code = (ev && ev.error) || 'error';
       if (code === 'not-allowed' || code === 'service-not-allowed') {
-        if (ns.App && ns.App.showToast)
+        if (ns.App && ns.App.showToast) {
           ns.App.showToast(
             'Microphone permission was blocked. Allow the mic in your browser settings and try again.',
             'warn'
           );
+        }
       } else if (code === 'no-speech') {
-        if (ns.App && ns.App.showToast)
+        if (ns.App && ns.App.showToast) {
           ns.App.showToast('Heard nothing. Try again a little closer to the mic.', 'warn');
+        }
       } else if (code === 'network') {
-        if (ns.App && ns.App.showToast)
+        if (ns.App && ns.App.showToast) {
           ns.App.showToast(
             'Voice input needs a connection in this browser. Type your question instead.',
             'warn'
           );
+        }
       }
       stopAiDictation();
     };
@@ -1476,8 +1610,9 @@ var MMGR = window.MMGR || {};
     try {
       rec.start();
     } catch (e) {
-      if (ns.App && ns.App.showToast)
+      if (ns.App && ns.App.showToast) {
         ns.App.showToast('Voice input could not start. Is the microphone in use?', 'warn');
+      }
     }
   }
   let _aiBase = null;

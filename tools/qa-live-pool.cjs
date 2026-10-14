@@ -81,7 +81,9 @@ async function req(path, opts = {}) {
   });
   const sc = r.headers.get('set-cookie') || '';
   const m = sc.match(/mmgr_session=([^;]+)/);
-  if (m) cookie = m[1];
+  if (m) {
+    cookie = m[1];
+  }
   check(
     'L1 register QA email + session cookie minted',
     r.ok && !!cookie && r.body && r.body.user && r.body.user.sub === 'email:' + EMAIL,
@@ -133,7 +135,9 @@ async function req(path, opts = {}) {
     r.ok && r.body && r.body.ok && !!r.body.ownerCode,
     r.body
   );
-  if (r.body && r.body.ownerCode) ownerHeadersA['X-Owner-Code'] = r.body.ownerCode;
+  if (r.body && r.body.ownerCode) {
+    ownerHeadersA['X-Owner-Code'] = r.body.ownerCode;
+  }
 
   r = await req('/api/cloud/projects', {
     method: 'POST',
@@ -145,7 +149,9 @@ async function req(path, opts = {}) {
     r.ok && r.body && r.body.ok && !!r.body.ownerCode,
     r.body
   );
-  if (r.body && r.body.ownerCode) ownerHeadersB['X-Owner-Code'] = r.body.ownerCode;
+  if (r.body && r.body.ownerCode) {
+    ownerHeadersB['X-Owner-Code'] = r.body.ownerCode;
+  }
 
   r = await req('/api/cloud/projects', {
     method: 'POST',
@@ -156,7 +162,9 @@ async function req(path, opts = {}) {
     r.ok && r.body && r.body.ok && !!r.body.ownerCode && r.body.linked === false,
     r.body
   );
-  if (r.body && r.body.ownerCode) ownerHeadersC['X-Owner-Code'] = r.body.ownerCode;
+  if (r.body && r.body.ownerCode) {
+    ownerHeadersC['X-Owner-Code'] = r.body.ownerCode;
+  }
 
   let item1 = null,
     item2 = null;
@@ -346,16 +354,18 @@ async function req(path, opts = {}) {
   } finally {
     // ---- CLEANUP (best-effort, never fails the gate) ----
     try {
-      if (item1)
+      if (item1) {
         await req('/api/cloud/projects/' + PID_A + '/pool/items/' + item1.id, {
           method: 'DELETE',
           headers: ownerHeadersA
         });
-      if (item2)
+      }
+      if (item2) {
         await req('/api/cloud/projects/' + PID_A + '/pool/items/' + item2.id, {
           method: 'DELETE',
           headers: ownerHeadersA
         });
+      }
       // Purge is the PATH-SEGMENT form (…/<pid>/purge) — the same shape
       // admin.html uses. The ?op=purge query form is NOT a route and 404s.
       if (ownerHeadersA['X-Owner-Code'] !== 'PLACEHOLDER') {

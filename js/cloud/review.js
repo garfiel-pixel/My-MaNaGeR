@@ -41,13 +41,17 @@ var MMGR = window.MMGR || {};
   function ownerHeaders() {
     const h = {};
     const code = getCode();
-    if (code) h['X-Owner-Code'] = code; // session owner: headerless, cookie authenticates
+    if (code) {
+      h['X-Owner-Code'] = code;
+    } // session owner: headerless, cookie authenticates
     return h;
   }
 
   async function cloudReviewList() {
     const wrap = $('cloud-review-list');
-    if (!wrap) return;
+    if (!wrap) {
+      return;
+    }
     if (!hasOwnerAccess()) {
       wrap.innerHTML = '<div class="sr-hint">Owner access required.</div>';
       return;
@@ -154,7 +158,9 @@ var MMGR = window.MMGR || {};
 
   async function cloudReviewMine() {
     const wrap = $('cloud-review-mine');
-    if (!wrap) return;
+    if (!wrap) {
+      return;
+    }
     try {
       const res = await fetch(
         '/api/cloud/projects/' + encodeURIComponent(pid()) + '/reviews?mine=1',
@@ -206,7 +212,9 @@ var MMGR = window.MMGR || {};
 
   function reviewToggleDiffs(id) {
     const panel = $('rv-diffs-' + id);
-    if (!panel) return;
+    if (!panel) {
+      return;
+    }
     const show = panel.classList.contains('is-hide');
     panel.classList.toggle('is-hide');
     const btn = document.querySelector(
@@ -229,8 +237,9 @@ var MMGR = window.MMGR || {};
       !window.confirm(
         'Accept this change? It is applied to the cloud project now and logged in the changelog (and offline copies refresh).'
       )
-    )
+    ) {
       return;
+    }
     setStatus('Accepting\u2026', 'busy');
     try {
       const res = await fetch(
@@ -287,8 +296,9 @@ var MMGR = window.MMGR || {};
       !window.confirm(
         'Reject this change? It is discarded - the cloud project stays as it is, and the source device sees it was rejected.'
       )
-    )
+    ) {
       return;
+    }
     setStatus('Rejecting\u2026', 'busy');
     try {
       const res = await fetch(
@@ -352,7 +362,9 @@ var MMGR = window.MMGR || {};
         ns.CloudShare && ns.CloudShare.getPendingEditorCode
           ? ns.CloudShare.getPendingEditorCode()
           : null;
-      if (pending && pending.code) code = pending.code;
+      if (pending && pending.code) {
+        code = pending.code;
+      }
     } catch (e) {
       /* banner already gone */
     }
@@ -368,24 +380,33 @@ var MMGR = window.MMGR || {};
     C.clearPendingEditorCode();
     C._render();
     try {
-      if (ns.Cloud.listEditors) ns.Cloud.listEditors();
+      if (ns.Cloud.listEditors) {
+        ns.Cloud.listEditors();
+      }
     } catch (e) {}
     try {
-      if (ns.Cloud.listClientCodes) ns.Cloud.listClientCodes();
+      if (ns.Cloud.listClientCodes) {
+        ns.Cloud.listClientCodes();
+      }
     } catch (e) {}
     try {
-      if (ns.Cloud.listApiKeys) ns.Cloud.listApiKeys();
+      if (ns.Cloud.listApiKeys) {
+        ns.Cloud.listApiKeys();
+      }
     } catch (e) {}
     try {
-      if (ns.App && ns.App.closeDrw) ns.App.closeDrw();
+      if (ns.App && ns.App.closeDrw) {
+        ns.App.closeDrw();
+      }
     } catch (e) {}
-    if (ns.App && ns.App.showToast)
+    if (ns.App && ns.App.showToast) {
       ns.App.showToast(
         copied
           ? 'Code copied and saved. The banner is dismissed - the code stays valid until revoked or it expires.'
           : 'Saved. The banner is dismissed - the code stays valid until revoked or it expires.',
         'ok'
       );
+    }
   }
 
   ns.CloudReview = {

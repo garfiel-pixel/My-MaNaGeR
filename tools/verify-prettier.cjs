@@ -44,7 +44,9 @@ const PRETTIER_BIN = path.join(ROOT, 'node_modules', 'prettier', 'bin', 'prettie
  * Escaping per the workflow-command spec: % -> %25, CR -> %0D, LF -> %0A.
  */
 function annotate(title, message) {
-  if (process.env.GITHUB_ACTIONS !== 'true') return;
+  if (process.env.GITHUB_ACTIONS !== 'true') {
+    return;
+  }
   const body = String(message)
     .replace(/%/g, '%25')
     .replace(/\r/g, '%0D')
@@ -55,7 +57,9 @@ function annotate(title, message) {
 
 function fail(msg, detail) {
   process.stderr.write('\nPRETTIER GATE FAIL: ' + msg + '\n');
-  if (detail) process.stderr.write(detail + '\n');
+  if (detail) {
+    process.stderr.write(detail + '\n');
+  }
   annotate('Prettier gate: ' + msg, (detail || '') + '\n\n--- gate context ---\n' + context());
   process.exit(1);
 }
@@ -92,7 +96,9 @@ const r = spawnSync(process.execPath, [PRETTIER_BIN, '--check', '.'], {
   maxBuffer: 128 * 1024 * 1024
 });
 
-if (r.error) fail('could not start prettier: ' + r.error.message);
+if (r.error) {
+  fail('could not start prettier: ' + r.error.message);
+}
 
 const out = (r.stdout || '') + (r.stderr || '');
 const status = r.status;

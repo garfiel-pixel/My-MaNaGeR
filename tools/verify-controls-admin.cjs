@@ -44,7 +44,9 @@ function check(name, val, detail) {
   for (let i = 0; i < 60; i++) {
     try {
       const r = await fetch('http://127.0.0.1:' + PORT + '/json/version');
-      if (r.ok) break;
+      if (r.ok) {
+        break;
+      }
     } catch (e) {}
     await delay(300);
   }
@@ -169,7 +171,9 @@ function check(name, val, detail) {
       }
       return 'waiting';
     })()`);
-    if (done === 'unlocked') break;
+    if (done === 'unlocked') {
+      break;
+    }
     await delay(500);
   }
   await delay(500);

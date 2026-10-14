@@ -62,7 +62,9 @@ var MMGR = window.MMGR || {};
   function isHighEnd() {
     // Test hook (same convention as qa-voice's forcedModelUrl): a QA gate
     // can force the verdict deterministically. Production never sets it.
-    if (typeof window.__mmgrForceHighEnd === 'boolean') return window.__mmgrForceHighEnd;
+    if (typeof window.__mmgrForceHighEnd === 'boolean') {
+      return window.__mmgrForceHighEnd;
+    }
     const cores = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 4;
     const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
     return cores >= 6 && dpr <= 2.5 && hasWebGL();
@@ -91,10 +93,18 @@ var MMGR = window.MMGR || {};
     // OWNER 2026-09-15: Performance Mode now gates the starry WebGL shader.
     // It was capability-only before; the owner wants perf mode to guarantee a
     // lag-free page on weak hardware, and the shader is the heaviest layer.
-    if (ns.Perf && ns.Perf.blocksHeavyLayers && ns.Perf.blocksHeavyLayers()) return 'css';
-    if (getGlassMode() !== 'premium') return 'css';
-    if (!isHighEnd()) return 'css'; // capability floor overrides preference
-    if (isNarrow()) return 'css'; // shared detection: narrow => CSS only
+    if (ns.Perf && ns.Perf.blocksHeavyLayers && ns.Perf.blocksHeavyLayers()) {
+      return 'css';
+    }
+    if (getGlassMode() !== 'premium') {
+      return 'css';
+    }
+    if (!isHighEnd()) {
+      return 'css';
+    } // capability floor overrides preference
+    if (isNarrow()) {
+      return 'css';
+    } // shared detection: narrow => CSS only
     return 'premium';
   }
 
@@ -142,7 +152,9 @@ var MMGR = window.MMGR || {};
   // ---- Apply / clear the simplified presentation for a panel ----
   function applySimple(section, on) {
     const panel = U.$('panel-' + section);
-    if (!panel) return;
+    if (!panel) {
+      return;
+    }
     panel.classList.toggle('vp-simple', !!on);
     panel.classList.toggle('vp-full', false); // leaving simplified clears the escape hatch
     const btn = panel.querySelector('.vp-full-btn');
@@ -164,7 +176,9 @@ var MMGR = window.MMGR || {};
   // the user leaves the section , the preference itself stays).
   function toggleFull(section) {
     const panel = U.$('panel-' + section);
-    if (!panel) return;
+    if (!panel) {
+      return;
+    }
     panel.classList.toggle('vp-full', !panel.classList.contains('vp-full'));
   }
 
@@ -174,7 +188,9 @@ var MMGR = window.MMGR || {};
   // again on this device. Never auto-switches.
   function maybePrompt(section) {
     const panel = U.$('panel-' + section);
-    if (!panel || !isDense(section)) return;
+    if (!panel || !isDense(section)) {
+      return;
+    }
     const pref = getPref(section);
     if (pref === 'simple') {
       applySimple(section, true);
@@ -184,10 +200,14 @@ var MMGR = window.MMGR || {};
       applySimple(section, false);
       return;
     }
-    if (!isNarrow()) return; // wide viewport: nothing to offer
+    if (!isNarrow()) {
+      return;
+    } // wide viewport: nothing to offer
     // First time on this device for a dense section on a narrow screen.
     let bar = panel.querySelector('.vp-prompt');
-    if (bar) return; // already offered
+    if (bar) {
+      return;
+    } // already offered
     bar = document.createElement('div');
     bar.className = 'vp-prompt';
     bar.innerHTML =
@@ -208,11 +228,12 @@ var MMGR = window.MMGR || {};
     setPref(section, 'simple');
     applySimple(section, true);
     removePrompt(section);
-    if (ns.App && ns.App.showToast)
+    if (ns.App && ns.App.showToast) {
       ns.App.showToast(
         'Simplified view on for this screen , toggle full table anytime from the panel.',
         'ok'
       );
+    }
   }
 
   // User dismissed: remember so it is never re-prompted on this device.
@@ -224,9 +245,13 @@ var MMGR = window.MMGR || {};
 
   function removePrompt(section) {
     const panel = U.$('panel-' + section);
-    if (!panel) return;
+    if (!panel) {
+      return;
+    }
     const bar = panel.querySelector('.vp-prompt');
-    if (bar) bar.remove();
+    if (bar) {
+      bar.remove();
+    }
   }
 
   // Clear a stored preference (used by tests / reset).
@@ -250,7 +275,9 @@ var MMGR = window.MMGR || {};
     try {
       const hdr = document.getElementById('app-header');
       const root = document.documentElement;
-      if (!hdr || !root) return;
+      if (!hdr || !root) {
+        return;
+      }
       root.style.setProperty('--hdr-h', Math.ceil(hdr.getBoundingClientRect().height) + 'px');
     } catch (e) {
       /* measurement must never throw */

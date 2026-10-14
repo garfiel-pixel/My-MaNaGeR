@@ -140,14 +140,18 @@ function globalWranglerJs() {
       shell: process.platform === 'win32'
     }).trim();
     const p = path.join(root, 'wrangler', 'bin', 'wrangler.js');
-    if (fs.existsSync(p)) return p;
+    if (fs.existsSync(p)) {
+      return p;
+    }
   } catch (e) {
     /* fall through */
   }
   // Fallback: local node_modules (CI, no global wrangler)
   try {
     const lp = path.join(__dirname, '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
-    if (fs.existsSync(lp)) return lp;
+    if (fs.existsSync(lp)) {
+      return lp;
+    }
   } catch (e) {
     /* fall through */
   }
@@ -213,7 +217,9 @@ function startWrangler(extraVars) {
     });
     proc.on('error', e => reject(new Error('wrangler spawn failed: ' + e.message)));
     proc.on('exit', code => {
-      if (code !== 0 && code !== null) log('wrangler dev exited early (code ' + code + ')');
+      if (code !== 0 && code !== null) {
+        log('wrangler dev exited early (code ' + code + ')');
+      }
     });
     const t0 = Date.now();
     const poll = async () => {
@@ -224,12 +230,15 @@ function startWrangler(extraVars) {
         }, 3000);
         const r = await fetch(BASE + '/api/health', { signal: ctrl.signal });
         clearTimeout(timer);
-        if (r.ok) return resolve();
+        if (r.ok) {
+          return resolve();
+        }
       } catch (e) {
         /* not up yet */
       }
-      if (Date.now() - t0 > 120000)
+      if (Date.now() - t0 > 120000) {
         return reject(new Error('wrangler dev did not come up in 120s'));
+      }
       setTimeout(poll, 1500);
     };
     poll();
@@ -297,7 +306,9 @@ function baseState(pid, name) {
       });
       reg = await j(r);
       scm = (r.headers.get('set-cookie') || '').match(/mmgr_session=([^;]+)/);
-      if (scm) sessCookie = scm[1];
+      if (scm) {
+        sessCookie = scm[1];
+      }
     }
     check('R0-pre email session minted (session-owner mode)', !!sessCookie && !!reg.ok, {
       reg,

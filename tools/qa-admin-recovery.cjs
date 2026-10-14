@@ -129,7 +129,9 @@ const otpFromMail = text => {
 function globalWranglerJs() {
   try {
     const lp = path.join(__dirname, '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
-    if (fs.existsSync(lp)) return lp;
+    if (fs.existsSync(lp)) {
+      return lp;
+    }
   } catch (e) {
     /* fall through */
   }
@@ -140,7 +142,9 @@ function globalWranglerJs() {
       shell: process.platform === 'win32'
     }).trim();
     const p = path.join(root, 'wrangler', 'bin', 'wrangler.js');
-    if (fs.existsSync(p)) return p;
+    if (fs.existsSync(p)) {
+      return p;
+    }
   } catch (e) {
     /* fall through */
   }
@@ -298,7 +302,9 @@ async function withChrome(fn) {
     for (let i = 0; i < 60; i++) {
       try {
         const r = await fetch('http://127.0.0.1:' + port + '/json/version');
-        if (r.ok) break;
+        if (r.ok) {
+          break;
+        }
       } catch (e) {}
       await delay(300);
     }
@@ -358,7 +364,9 @@ const freshSetup = async (ev, send, pass) => {
   const setupShown = await ev(
     `!document.getElementById('setup-screen').classList.contains('hidden')`
   );
-  if (!setupShown) return { setupShown: false };
+  if (!setupShown) {
+    return { setupShown: false };
+  }
   await fillValue(ev, 'setup-pass1', pass);
   await fillValue(ev, 'setup-pass2', pass);
   await clickAction(ev, 'adminSetupPassword');
@@ -426,8 +434,12 @@ const freshSetup = async (ev, send, pass) => {
   let vtoken = null;
   for (let i = 0; i < 40 && !vtoken; i++) {
     const mails = mailsTo(BOB, 'Confirm your My MaNaGeR account');
-    if (mails.length) vtoken = tokenFromVerifyMail(mails[mails.length - 1].text);
-    if (!vtoken) await delay(250);
+    if (mails.length) {
+      vtoken = tokenFromVerifyMail(mails[mails.length - 1].text);
+    }
+    if (!vtoken) {
+      await delay(250);
+    }
   }
   const bobVerify = await api('/api/auth/verify', {
     method: 'POST',
@@ -476,8 +488,12 @@ const freshSetup = async (ev, send, pass) => {
   let otp1 = null;
   for (let i = 0; i < 40 && !otp1; i++) {
     const mails = mailsTo(BOB, 'Your My MaNaGeR admin recovery code');
-    if (mails.length) otp1 = otpFromMail(mails[mails.length - 1].text);
-    if (!otp1) await delay(250);
+    if (mails.length) {
+      otp1 = otpFromMail(mails[mails.length - 1].text);
+    }
+    if (!otp1) {
+      await delay(250);
+    }
   }
   check(
     'T4 send -> 200 sent:true + OTP in the REAL captured email',
@@ -523,8 +539,12 @@ const freshSetup = async (ev, send, pass) => {
   let otp2 = null;
   for (let i = 0; i < 40 && !otp2; i++) {
     const mails = mailsTo(BOB, 'Your My MaNaGeR admin recovery code');
-    if (mails.length) otp2 = otpFromMail(mails[mails.length - 1].text);
-    if (!otp2) await delay(250);
+    if (mails.length) {
+      otp2 = otpFromMail(mails[mails.length - 1].text);
+    }
+    if (!otp2) {
+      await delay(250);
+    }
   }
   const t5old = await api('/api/auth/admin-recovery/verify', {
     method: 'POST',
@@ -551,8 +571,12 @@ const freshSetup = async (ev, send, pass) => {
   let otp3 = null;
   for (let i = 0; i < 40 && !otp3; i++) {
     const mails = mailsTo(BOB, 'Your My MaNaGeR admin recovery code');
-    if (mails.length) otp3 = otpFromMail(mails[mails.length - 1].text);
-    if (!otp3) await delay(250);
+    if (mails.length) {
+      otp3 = otpFromMail(mails[mails.length - 1].text);
+    }
+    if (!otp3) {
+      await delay(250);
+    }
   }
   let lastWrong = null;
   for (let i = 1; i <= 5; i++) {

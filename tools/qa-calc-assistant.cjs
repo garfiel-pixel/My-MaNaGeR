@@ -4,7 +4,8 @@
    Covers the two waves that surface numbers a user acts on:
 
      W8b / T4  QUICK TOTAL (calculator.html)
-       - all 43 work items price through the ONE big measurement x
+       - all 44 work items (43 trades + the custom choice) price
+         through the ONE big measurement x
          ONE rate path (measuredQty + all-in), through the real
          page hook MMGR_CALC_POPULATE, not a copied formula
        - the result heading never reads "undefined" (F-3)
@@ -128,7 +129,11 @@ async function quickTotalMatrix(page) {
           .filter(Boolean)
       : [];
   });
-  check('T4 work list is the full trade set (43)', works.length === 43, works.length);
+  check(
+    'T4 work list is the trade set plus the custom choice (44)',
+    works.length === 44,
+    works.length
+  );
 
   const bad = [];
   const undefinedText = [];
@@ -181,9 +186,9 @@ async function quickTotalMatrix(page) {
       bad.push({ key, line: res.line });
     }
   }
-  check('T4 every work item prices in Quick total mode (43/43)', bad.length === 0, bad.slice(0, 5));
+  check('T4 every work item prices in Quick total mode (44/44)', bad.length === 0, bad.slice(0, 5));
   check(
-    'F-3 no "undefined" / "NaN" / "[object" anywhere in the results (43/43)',
+    'F-3 no "undefined" / "NaN" / "[object" anywhere in the results (44/44)',
     undefinedText.length === 0,
     undefinedText.slice(0, 5)
   );
@@ -334,7 +339,10 @@ async function assistantOutputs(browser, errors) {
   await page.click('[data-cai=makefile]');
   await page.waitForTimeout(200);
   const empty = await page.evaluate(() => ({
-    chips: document.querySelectorAll('.bcp-ai-chip').length,
+    // B5 re-baseline (2026-10-14): the PROPOSAL chip lives in the paths box,
+    // not the log. A DOWNLOAD chip is only ever appended to the log, so the
+    // gate counts log chips - the proposal summary is not a download.
+    chips: document.querySelectorAll('.bcp-ai-log .bcp-ai-chip').length,
     text: document.querySelector('[data-cai=log]').textContent
   }));
   check('T2 nothing priced -> no download chip', empty.chips === 0, empty.chips);
@@ -378,9 +386,9 @@ async function assistantOutputs(browser, errors) {
   await page.waitForTimeout(250);
 
   await page.click('[data-cai=makefile]');
-  await page.waitForSelector('.bcp-ai-chip', { timeout: 5000 });
+  await page.waitForSelector('.bcp-ai-log .bcp-ai-chip', { timeout: 5000 });
   const chip = await page.evaluate(async () => {
-    const rows = document.querySelectorAll('.bcp-ai-chip');
+    const rows = document.querySelectorAll('.bcp-ai-log .bcp-ai-chip');
     const a = rows[rows.length - 1].querySelector('a[download]');
     const href = a ? a.getAttribute('href') : '';
     // Byte-for-byte against the page's own export (Response.text() strips the
@@ -1093,6 +1101,883 @@ async function assistantDiagnosis(page) {
   );
 }
 
+// ---- DIRECTIVE 2026-10-13 (PART A, N1-N9): the assistant reads the book ----
+function loadJicBook() {
+  const src = fs.readFileSync(path.join(ROOT, 'js', 'jic-rates-full.js'), 'utf8');
+  const key = 'window.MMGR_JIC_FULL = ';
+  const at = src.indexOf(key);
+  const end = src.lastIndexOf('};');
+  if (at < 0 || end < 0) {
+    throw new Error('jic-rates-full.js shape changed');
+  }
+  // The generated file is a JS object literal (unquoted keys), so it is
+  // evaluated rather than JSON-parsed - exactly what the browser does.
+  return new Function('return ' + src.slice(at + key.length, end + 1))();
+}
+
+async function mockAuth(page) {
+  await page.route('**/api/auth/me', route =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true, user: { email: 'owner@example.com' } })
+    })
+  );
+}
+
+// The relay is MOCKED (the free daily message cap is real). Replies are
+// chosen by call index so a conversation can be scripted turn by turn, and
+// every request body is kept so the gates can read the system message sent.
+async function mockRelay(page, replyFn) {
+  const bodies = [];
+  await page.route('**/api/ai/chat', route => {
+    const body = route.request().postData() || '';
+    bodies.push(body);
+    let text = '';
+    try {
+      text = replyFn(bodies.length - 1, body) || '';
+    } catch (e) {
+      text = '';
+    }
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true, text: text || 'Understood.', remaining: 4 })
+    });
+  });
+  return bodies;
+}
+
+function sysOf(body) {
+  try {
+    const j = JSON.parse(body);
+    return (j.messages && j.messages[0] && j.messages[0].content) || '';
+  } catch (e) {
+    return '';
+  }
+}
+
+function rateBlock(sys) {
+  const parts = String(sys).split('RATE BOOK (answer from this):');
+  return parts.length > 1 ? parts[1].split('\n\n')[0] : '';
+}
+
+async function sendQ(page, text) {
+  const before = await page.evaluate(
+    () => document.querySelectorAll('.bcp-ai-log .bcp-ai-msg.ai').length
+  );
+  await page.fill('[data-cai=input]', text);
+  await page.click('[data-cai=send]');
+  await page.waitForFunction(
+    n => document.querySelectorAll('.bcp-ai-log .bcp-ai-msg.ai').length > n,
+    before,
+    { timeout: 10000 }
+  );
+  await page.waitForTimeout(120);
+}
+
+// Directive 5.4: screenshots of a subject at 390 and 1280, light and dark,
+// with the hard rules probed programmatically - no horizontal overflow, no
+// emoji, no blue border where gold belongs, no lock icon.
+async function shotSet(page, dir, name, selector) {
+  fs.mkdirSync(dir, { recursive: true });
+  const probes = [];
+  for (const w of [390, 1280]) {
+    await page.setViewportSize({ width: w, height: 900 });
+    for (const dark of [false, true]) {
+      await page.evaluate(d => document.body.classList.toggle('dark-mode', d), dark);
+      await page.waitForTimeout(110);
+      const tag = w + '-' + (dark ? 'dark' : 'light');
+      await page.screenshot({ path: path.join(dir, name + '-' + tag + '.png') });
+      probes.push(
+        await page.evaluate(
+          ({ sel, t }) => {
+            const el = document.querySelector(sel);
+            const txt = el ? el.innerText || '' : '';
+            const de = document.documentElement;
+            const blue = el
+              ? Array.from(el.querySelectorAll('input')).some(i => {
+                  const m = /rgb\((\d+), (\d+), (\d+)\)/.exec(
+                    getComputedStyle(i).borderTopColor || ''
+                  );
+                  if (!m) {
+                    return false;
+                  }
+                  const r = +m[1];
+                  const g = +m[2];
+                  const b = +m[3];
+                  return b > 120 && b > r && b > g;
+                })
+              : false;
+            // The custom fields must carry the page's OWN accent token
+            // (--brand: warm gold in light, white in dark - see mmgr.css),
+            // not a blue and not a lost/absent accent. Comparing the border
+            // to the live --brand value makes "gold accent, no blue" a
+            // measurable, mode-agnostic rule.
+            const parse = c => {
+              const m = /#([0-9a-f]{6})/i.exec(c || '');
+              if (m) {
+                const n = parseInt(m[1], 16);
+                return [n >> 16, (n >> 8) & 255, n & 255];
+              }
+              const r = /rgb\((\d+), (\d+), (\d+)\)/.exec(c || '');
+              return r ? [+r[1], +r[2], +r[3]] : null;
+            };
+            const gold = el
+              ? Array.from(el.querySelectorAll('input')).every(i => {
+                  const cs = getComputedStyle(i);
+                  const want = parse(cs.getPropertyValue('--brand'));
+                  const got = parse(cs.borderTopColor || '');
+                  return (
+                    !!want &&
+                    !!got &&
+                    Math.abs(got[0] - want[0]) <= 3 &&
+                    Math.abs(got[1] - want[1]) <= 3 &&
+                    Math.abs(got[2] - want[2]) <= 3
+                  );
+                })
+              : false;
+            return {
+              tag: t,
+              found: !!el,
+              overflow: Math.max(
+                de.scrollWidth - de.clientWidth,
+                el ? el.scrollWidth - el.clientWidth : 0
+              ),
+              clipped: el
+                ? Array.from(el.querySelectorAll('label, span')).some(
+                    s => s.scrollHeight - s.clientHeight > 1 || s.scrollWidth - s.clientWidth > 1
+                  )
+                : false,
+              emoji:
+                /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\uFE0F\u{1F1E6}-\u{1F1FF}]/u.test(
+                  txt
+                ),
+              blue,
+              gold,
+              lock: el ? !!el.querySelector('[class*=lock]') : false
+            };
+          },
+          { sel: selector, t: tag }
+        )
+      );
+    }
+  }
+  await page.evaluate(() => document.body.classList.remove('dark-mode'));
+  await page.setViewportSize({ width: 1280, height: 900 });
+  return probes;
+}
+
+async function partARateAccess(browser, errors) {
+  let JIC;
+  try {
+    JIC = loadJicBook();
+  } catch (e) {
+    check('N0 the 811-row file parses', false, String(e));
+    return;
+  }
+  check(
+    'N0 the JIC file parses (811 rows, 11 trades)',
+    JIC.rows.length === 811 && JIC.trades.length === 11,
+    { rows: JIC.rows.length, trades: JIC.trades.length }
+  );
+  const counts = {};
+  JIC.rows.forEach(r => {
+    counts[r.t] = (counts[r.t] || 0) + 1;
+  });
+
+  // ---- N1 / N2 / N7 / N9: one fresh profile, scripted relay --------------
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await ctx.newPage();
+    page.on('pageerror', e => errors.push('calc(partA): ' + String(e).slice(0, 140)));
+    await mockAuth(page);
+    const bodies = await mockRelay(page, i =>
+      i === 2
+        ? 'One wall, 12 m long and 2.4 m high.\nPROPOSAL: {"work":"blockwall","d1":12,"d2":2.4,"note":"one wall"}'
+        : 'Understood - those are the rates on this device.'
+    );
+    await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
+    await page.waitForFunction(() => !!window.MMGR_CALC_RATEBOOK, null, { timeout: 20000 });
+    // A1: the panel mount starts the ONE full-book loader; give the local
+    // file a moment so the first question is answered from all 811 rows.
+    await page
+      .waitForFunction(() => !!window.MMGR_JIC_FULL, null, { timeout: 8000 })
+      .catch(() => {});
+
+    await sendQ(page, 'what rates do you have');
+    const sys1 = sysOf(bodies[bodies.length - 1]);
+    const rb1 = rateBlock(sys1);
+    check(
+      'N1 the scope line says 811 rates across 11 trades',
+      rb1.indexOf('811 rates across 11 trades') > -1,
+      rb1.slice(0, 160)
+    );
+    const missing = JIC.trades
+      .filter(t => !rb1.includes(t.label + ' ' + counts[t.tid]))
+      .map(t => t.label + ' ' + counts[t.tid]);
+    check('N1 all 11 trade names appear with their counts', missing.length === 0, missing);
+    check('N1 never "Active rate book: none"', sys1.indexOf('Active rate book: none') < 0);
+
+    await sendQ(page, 'rate for excavation in stiff clay');
+    const rb2 = rateBlock(sysOf(bodies[bodies.length - 1]));
+    const firstRow2 = rb2.split('\n').find(l => l.indexOf(' | ') > -1) || '';
+    const stiff = JIC.rows.find(r => /stiff clay/i.test(r.d || ''));
+    check('N2 the first rate line is the stiff clay row', /stiff clay/i.test(firstRow2), firstRow2);
+    check(
+      'N2 its metric rate comes from the file, not the test',
+      !!stiff && firstRow2.indexOf('J$' + stiff.mr + ' per ' + stiff.mu) > -1,
+      { row: firstRow2, file: stiff ? { mr: stiff.mr, mu: stiff.mu } : null }
+    );
+    // 5.5: the manual spot check - the first five rate lines of the request
+    // that was actually captured off the wire.
+    const five = rb2
+      .split('\n')
+      .filter(l => l.indexOf(' | ') > -1)
+      .slice(0, 5);
+    log('5.5 first five rate lines: ' + JSON.stringify(five));
+
+    // N3: one representative question per trade - a row OF that trade first.
+    const n3bad = [];
+    for (const t of JIC.trades) {
+      const first = await page.evaluate(q => {
+        const row =
+          window
+            .MMGR_CALC_RATEBOOK(q)
+            .split('\n')
+            .find(l => l.indexOf(' | ') > -1) || '';
+        return row.split(' #')[0];
+      }, t.label.toLowerCase());
+      if (first.toLowerCase().indexOf(t.label.toLowerCase()) < 0) {
+        n3bad.push({ trade: t.label, first });
+      }
+    }
+    check('N3 each of the 11 trades returns a row of that trade first', n3bad.length === 0, n3bad);
+
+    // N4: everyday questions land on a relevant row.
+    const n4 = await page.evaluate(() => {
+      const first = q =>
+        window
+          .MMGR_CALC_RATEBOOK(q)
+          .split('\n')
+          .find(l => l.indexOf(' | ') > -1) || '';
+      return {
+        block: first('block walls'),
+        paint: first('painting walls'),
+        tiles: first('tiles')
+      };
+    });
+    check(
+      'N4 "block walls" lands on a block-and-wall row',
+      /block/i.test(n4.block) && /wall/i.test(n4.block),
+      n4.block
+    );
+    check(
+      'N4 "painting walls" lands on a paint-and-wall row',
+      /paint/i.test(n4.paint) && /wall/i.test(n4.paint),
+      n4.paint
+    );
+    check('N4 "tiles" lands on a tile row', /tile/i.test(n4.tiles), n4.tiles);
+
+    // N7: the section never exceeds 9000 characters and no row is cut.
+    const rowLines = rb2.split('\n').filter(l => l.indexOf(' | ') > -1);
+    check('N7 the rate section never exceeds 9000 characters', rb2.length <= 9000, rb2.length);
+    check(
+      'N7 no row is cut mid-line',
+      rowLines.length > 0 && rowLines.every(l => /in calculator: (yes|no)$/.test(l)),
+      rowLines.slice(-2)
+    );
+
+    // N9: the original PROPOSAL instruction, word for word, and it still adds.
+    check(
+      'N9 the original PROPOSAL instruction is unchanged',
+      sys1.indexOf('PROPOSAL: {"work":"<key>","d1":<number>,"note":"<one short line>"}') > -1 &&
+        sys1.indexOf(
+          'use only the work keys you were given, include d2/d3 only if that work item needs them, and never guess a key.'
+        ) > -1
+    );
+    await sendQ(page, 'price one wall twelve metres by two point four');
+    await page.click('[data-cai=pop]');
+    await page.waitForTimeout(300);
+    const n9 = await page.evaluate(() => {
+      const notes = document.querySelectorAll('#calc-ai-mount .bcp-ai-note');
+      return {
+        rows: document.querySelectorAll('[data-action="calcBoqRecall"]').length,
+        note: notes.length ? notes[notes.length - 1].textContent : ''
+      };
+    });
+    check(
+      'N9 an original-form proposal still adds a line',
+      n9.rows === 1 && /Added to the bill/.test(n9.note),
+      n9
+    );
+    check(
+      'N9 an original-form proposal shows no custom fields',
+      !(await page.isVisible('#calc-custom-wrap'))
+    );
+    await ctx.close();
+  }
+
+  // ---- N5: the imported book takes the slot ahead of the published row ----
+  {
+    const same =
+      JIC.rows.find(r => r.t === 'masonry' && Number(r.n) === 1) ||
+      JIC.rows.find(r => r.t === 'masonry');
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    await ctx.addInitScript(
+      ({ book, active }) => {
+        try {
+          localStorage.setItem('mmgr_calc_books', JSON.stringify([book]));
+          localStorage.setItem('mmgr_calc_book_active', JSON.stringify(active));
+          localStorage.setItem('mmgr_calc_jic_default', '1');
+        } catch (e) {}
+      },
+      {
+        book: {
+          id: 'bk-owner',
+          name: 'Owner import',
+          rates: { masonry: { m1: { allIn: 999, unit: 'm2', label: same.d } } }
+        },
+        active: 'bk-owner'
+      }
+    );
+    const page = await ctx.newPage();
+    page.on('pageerror', e => errors.push('calc(partA-n5): ' + String(e).slice(0, 140)));
+    await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
+    await page.waitForFunction(() => !!window.MMGR_CALC_RATEBOOK, null, { timeout: 20000 });
+    await page
+      .waitForFunction(() => !!window.MMGR_JIC_FULL, null, { timeout: 8000 })
+      .catch(() => {});
+    const n5 = await page.evaluate(q => {
+      const lines = window.MMGR_CALC_RATEBOOK(q).split('\n');
+      const imp = lines.findIndex(l => l.indexOf('source: Owner import') > -1);
+      const jic = lines.findIndex(
+        l => l.indexOf('source: JIC ') > -1 && l.indexOf(q.slice(0, 18)) > -1
+      );
+      return { imp, jic, impLine: lines[imp] || '', jicLine: lines[jic] || '' };
+    }, same.d);
+    check('N5 both sources appear for the same item', n5.imp > -1 && n5.jic > -1, n5);
+    check('N5 the imported row is listed first', n5.imp > -1 && n5.jic > -1 && n5.imp < n5.jic, n5);
+    await ctx.close();
+  }
+
+  // ---- N6: the file is blocked - the exact failure line, and no hang ------
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await ctx.newPage();
+    page.on('pageerror', e => errors.push('calc(partA-n6): ' + String(e).slice(0, 140)));
+    await mockAuth(page);
+    // The script carries a cache-buster query, so the glob needs the tail.
+    await page.route('**/jic-rates-full.js*', route => route.abort());
+    const bodies = await mockRelay(page, () => 'Masonry starts with the block work rows.');
+    await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
+    await page.waitForFunction(() => !!window.MMGR_CALC_RATEBOOK, null, { timeout: 20000 });
+    await sendQ(page, 'what rates do you have for masonry');
+    const rb = rateBlock(sysOf(bodies[bodies.length - 1]));
+    const FAIL =
+      'The full JIC book could not load on this device; only the rates already on this page are available.';
+    check('N6 the exact A2 failure line is sent', rb.indexOf(FAIL) > -1, rb.slice(0, 200));
+    const ai = await page.evaluate(
+      () => document.querySelectorAll('.bcp-ai-log .bcp-ai-msg.ai').length
+    );
+    check('N6 the page does not hang (the reply landed)', ai >= 1, ai);
+    await ctx.close();
+  }
+
+  // ---- N8: one script tag, even with the assistant AND the card open ------
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await ctx.newPage();
+    page.on('pageerror', e => errors.push('calc(partA-n8): ' + String(e).slice(0, 140)));
+    await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
+    await page.waitForFunction(() => !!window.MMGR_CALC_RATEBOOK, null, { timeout: 20000 });
+    await page.click('[data-action="openRateBook"]');
+    await page.waitForSelector('#calc-ratebook-card', { timeout: 5000 });
+    await page.waitForTimeout(400);
+    const tags = await page.evaluate(
+      () => document.querySelectorAll('script[src*="jic-rates-full"]').length
+    );
+    check('N8 exactly one jic-rates-full.js script tag after both open', tags === 1, tags);
+    await ctx.close();
+  }
+}
+
+// ---- DIRECTIVE 2026-10-13 (PART B, C1-C11): the custom rate line ----------
+async function partBCustomLine(browser, errors) {
+  const JIC = loadJicBook();
+  const shots = path.join(ROOT, 'tmp', 'directive-shots');
+
+  // ---- C1 / C2 / C3 / C9 / C10: the real form, real clicks ---------------
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await ctx.newPage();
+    page.on('pageerror', e => errors.push('calc(partB): ' + String(e).slice(0, 140)));
+    await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
+    await page.waitForFunction(() => !!window.MMGR_CALC_POPULATE, null, { timeout: 20000 });
+
+    // C1: pick the custom choice with the real select - four fields show,
+    // nothing else hides; any other choice hides them and leaves it empty.
+    await page.selectOption('#calc-work', 'custom');
+    const c1a = {
+      fields: await page.isVisible('#calc-custom-wrap'),
+      dims: await page.isVisible('#calc-d1')
+    };
+    await page.selectOption('#calc-work', 'siteprep');
+    const c1b = {
+      hidden: !(await page.isVisible('#calc-custom-wrap')),
+      empty:
+        (await page.inputValue('#calc-custom-name')) === '' &&
+        (await page.inputValue('#calc-custom-rate')) === ''
+    };
+    check(
+      'C1 the custom pick shows exactly the four fields and hides nothing',
+      c1a.fields && c1a.dims,
+      c1a
+    );
+    check('C1 another pick hides them and leaves the form as it was', c1b.hidden && c1b.empty, c1b);
+
+    // C3: every invalid input from B2, one at a time - a plain message beside
+    // the field, no line added, and no undefined/NaN/[object] anywhere.
+    await page.selectOption('#calc-work', 'custom');
+    const c3cases = [
+      { name: '', unit: 'day', qty: '3', rate: '12000', err: 'calc-custom-name-err' },
+      { name: 'x'.repeat(61), unit: 'day', qty: '3', rate: '12000', err: 'calc-custom-name-err' },
+      { name: 'Fine name', unit: '', qty: '3', rate: '12000', err: 'calc-custom-unit-err' },
+      { name: 'Fine name', unit: 'day', qty: '0', rate: '12000', err: 'calc-custom-qty-err' },
+      { name: 'Fine name', unit: 'day', qty: '-5', rate: '12000', err: 'calc-custom-qty-err' },
+      { name: 'Fine name', unit: 'day', qty: 'abc', rate: '12000', err: 'calc-custom-qty-err' },
+      { name: 'Fine name', unit: 'day', qty: '3', rate: '0', err: 'calc-custom-rate-err' },
+      { name: 'Fine name', unit: 'day', qty: '3', rate: '-1', err: 'calc-custom-rate-err' },
+      { name: 'Fine name', unit: 'day', qty: '3', rate: 'abc', err: 'calc-custom-rate-err' }
+    ];
+    // Two layers guard the custom fields, and C3 must test the SECOND one:
+    // the inputs carry maxlength (nobody can TYPE 61 characters), so the
+    // values are injected programmatically to prove the validator itself
+    // rejects an over-long name / unit with its own message.
+    const c3maxlengths = await page.evaluate(() => ({
+      name: (document.getElementById('calc-custom-name') || {}).maxLength,
+      unit: (document.getElementById('calc-custom-unit') || {}).maxLength
+    }));
+    check(
+      'C3 the inputs cap typing at 60 / 12 characters',
+      c3maxlengths.name === 60 && c3maxlengths.unit === 12,
+      c3maxlengths
+    );
+    const setVal = async (id, v) => {
+      await page.evaluate(
+        ({ i, val }) => {
+          const el = document.getElementById(i);
+          el.value = val;
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+        },
+        { i: id, val: v }
+      );
+    };
+    const c3bad = [];
+    for (const t of c3cases) {
+      await setVal('calc-custom-name', t.name);
+      await setVal('calc-custom-unit', t.unit);
+      await setVal('calc-custom-qty', t.qty);
+      await setVal('calc-custom-rate', t.rate);
+      await page.click('[data-action="calcBoqAdd"]');
+      const shown = await page.isVisible('#' + t.err);
+      const rows = await page.locator('[data-action="calcBoqRecall"]').count();
+      if (!shown || rows !== 0) {
+        c3bad.push({ name: t.name, qty: t.qty, rate: t.rate, shown, rows });
+      }
+    }
+    check(
+      'C3 every invalid input shows its plain message and adds no line',
+      c3bad.length === 0,
+      c3bad
+    );
+    const bodyText = await page.evaluate(() => document.body.innerText);
+    check(
+      'C3 no undefined, NaN or [object] anywhere on the page',
+      !/undefined|NaN|\[object/i.test(bodyText)
+    );
+
+    // C2: Generator hire, 3 day at 12000 - the expected figures are computed
+    // IN THE TEST (quantity x rate, then the page's own 12.5% on-cost), never
+    // read back from the page.
+    await page.selectOption('#calc-country', 'NONE');
+    await page.fill('#calc-custom-name', 'Generator hire');
+    await page.fill('#calc-custom-unit', 'day');
+    await page.fill('#calc-custom-qty', '3');
+    await page.fill('#calc-custom-rate', '12000');
+    await page.click('[data-action="calcRun"]');
+    const quick = ((await page.textContent('#calc-quick-line')) || '').replace(/\s+/g, ' ');
+    const wantBase = 3 * 12000;
+    check(
+      'C2 the read-out line is 3 day x J$12,000 = J$36,000',
+      new RegExp('3 day x .*12,000 = .*' + wantBase.toLocaleString('en-US')).test(quick),
+      quick
+    );
+    await page.click('[data-action="calcBoqAdd"]');
+    const c2 = await page.evaluate(() => ({
+      rows: document.querySelectorAll('[data-action="calcBoqRecall"]').length,
+      bill: ((document.getElementById('calc-boq-card') || {}).innerText || '').replace(/\s+/g, ' ')
+    }));
+    check(
+      'C2 the bill line carries the name, 3 day, the rate and the total',
+      c2.rows === 1 &&
+        /Generator hire/.test(c2.bill) &&
+        /3 day/.test(c2.bill) &&
+        /(12,000|12000)/.test(c2.bill) &&
+        /(36,000|36000)/.test(c2.bill),
+      c2.bill.slice(0, 240)
+    );
+    await page.check('#calc-oncost-toggle');
+    await page.fill('#calc-oncost-pct', '12.5');
+    await page.click('[data-action="calcRun"]');
+    await page.click('[data-action="calcBoqAdd"]');
+    const wantOn = Math.round(wantBase * 1.125);
+    const c2b = await page.evaluate(() =>
+      ((document.getElementById('calc-boq-card') || {}).innerText || '').replace(/\s+/g, ' ')
+    );
+    check(
+      'C2 the on-cost total equals qty x rate + 12.5% (independent math)',
+      (c2b.match(/Generator hire/g) || []).length === 2 &&
+        c2b.indexOf(wantOn.toLocaleString('en-US')) > -1,
+      { wantOn, bill: c2b.slice(0, 300) }
+    );
+
+    // 5.4: screenshots of the custom form - 390 and 1280, light and dark -
+    // and the hard rules probed, not eyeballed.
+    await page.selectOption('#calc-work', 'custom');
+    const formProbes = await shotSet(page, shots, 'custom-form', '#calc-custom-wrap');
+    const badForm = formProbes.filter(
+      p => !p.found || p.overflow > 1 || p.clipped || p.emoji || p.blue || p.lock || !p.gold
+    );
+    check(
+      '5.4 the custom form: gold accent present, no overflow/clipping/emoji/blue/lock at 390/1280 light+dark',
+      badForm.length === 0,
+      badForm
+    );
+
+    // C9: reload keeps the lines, recall refills the four fields, and a state
+    // from BEFORE this change prices to its recorded total (golden fixture).
+    await page.reload({ waitUntil: 'load' });
+    await page.waitForFunction(() => !!window.MMGR_CALC_POPULATE, null, { timeout: 20000 });
+    const rowsReload = await page.locator('[data-action="calcBoqRecall"]').count();
+    check('C9 the custom lines survive a reload', rowsReload === 2, rowsReload);
+    await page.click('[data-action="calcBoqRecall"]');
+    await page.waitForTimeout(250);
+    const recall = {
+      name: await page.inputValue('#calc-custom-name'),
+      unit: await page.inputValue('#calc-custom-unit'),
+      qty: await page.inputValue('#calc-custom-qty'),
+      rate: await page.inputValue('#calc-custom-rate')
+    };
+    check(
+      'C9 recalling a custom entry refills its four fields',
+      recall.name === 'Generator hire' &&
+        recall.unit === 'day' &&
+        recall.qty === '3' &&
+        recall.rate === '12000',
+      recall
+    );
+    const golden = JSON.parse(
+      fs.readFileSync(path.join(ROOT, 'tools', 'calc-golden-cases.json'), 'utf8')
+    );
+    const gcase = (golden.cases || []).find(c => c.expect && c.expect.total != null && c.work);
+    const gres = await page.evaluate(c => {
+      const st = {
+        work: c.work,
+        units: c.units || 'metric',
+        d1: (c.dims && c.dims.d1) || '',
+        d2: (c.dims && c.dims.d2) || '',
+        d3: (c.dims && c.dims.d3) || '',
+        currency: c.currency || 'USD',
+        country: c.country || 'US',
+        quality: c.quality || 'standard',
+        wastePct: c.wastePct,
+        rateMat: c.rateMat,
+        rateLab: c.rateLab,
+        rateEq: c.rateEq,
+        ohPct: c.ohPct,
+        onCostPct: c.onCostPct,
+        taxOverride: c.taxOverride,
+        piecePrice: c.piecePrice,
+        pieceSize: c.pieceSize,
+        measuredQty: c.measuredQty,
+        measuredUnit: c.measuredUnit,
+        openings: c.openings ? JSON.stringify(c.openings) : undefined,
+        variant: c.variant,
+        labourOnly: c.labourOnly,
+        allInRate: c.allInRate,
+        daysStr: c.days,
+        dayRateStr: c.dayRate,
+        _matModel: c.matModel,
+        _labModel: c.labModel,
+        _allInModel: c.allInModel
+      };
+      const r = window.__calcEngine.computeFor(st);
+      return r && !r.error ? r.total : null;
+    }, gcase);
+    check(
+      'C9 a state saved before this change prices to its recorded total',
+      gres != null && Math.abs(gres - gcase.expect.total) <= 1,
+      { case: gcase.id, got: gres, want: gcase.expect.total }
+    );
+
+    // C10: the CSV and the printed document both carry name, quantity with
+    // unit, rate and line total.
+    const c10 = await page.evaluate(() => {
+      const built = window.MMGR_CALC_FILE();
+      const btn = document.querySelector('[data-action="calcPrint"]');
+      if (btn) {
+        btn.click();
+      }
+      return {
+        csv: built && built.ok ? built.text : '',
+        printed: document.body.innerText.replace(/\s+/g, ' '),
+        printClass: document.body.classList.contains('print-estimate')
+      };
+    });
+    const has4 = s =>
+      /Generator hire/.test(s) &&
+      /3 day/.test(s) &&
+      /(12,000|12000)/.test(s) &&
+      /(36,000|36000)/.test(s);
+    check('C10 the CSV carries name, 3 day, rate and total', has4(c10.csv), c10.csv.slice(0, 300));
+    check('C10 the printed document carries name, 3 day, rate and total', has4(c10.printed));
+    check('C10 Print enters the print-estimate view', c10.printClass === true);
+    await ctx.close();
+  }
+
+  // ---- C4-C8 + C11: scripted conversations through the real panel --------
+  {
+    const stiff =
+      JIC.rows.find(r => r.t === 'excavation' && Number(r.n) === 5) ||
+      JIC.rows.find(r => /stiff clay/i.test(r.d || ''));
+    const demo = JIC.rows.find(r => r.t === 'excavation' && Number(r.n) === 19) || stiff;
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await ctx.newPage();
+    page.on('pageerror', e => errors.push('calc(partB-chat): ' + String(e).slice(0, 140)));
+    await mockAuth(page);
+    const bodies = await mockRelay(page, i => {
+      const custom = (label, unit, qty, rate, source) =>
+        'Here is the line.\nPROPOSAL: {"custom":{"label":"' +
+        label +
+        '","unit":"' +
+        unit +
+        '","qty":' +
+        qty +
+        ',"rate":' +
+        rate +
+        ',"source":"' +
+        source +
+        '","currency":"JMD"},"note":"scripted"}';
+      if (i === 0) {
+        return 'There is no rate for shade cloth in the book - what rate will you use, and how much do you need?';
+      }
+      if (i === 1) {
+        return custom('Shade cloth', 'm2', 80, 4500, 'user');
+      }
+      if (i === 2) {
+        return custom('Fence paint', 'L', 10, 9999, 'user');
+      }
+      if (i === 3) {
+        return custom(
+          'Excavation stiff clay',
+          stiff.mu,
+          10,
+          stiff.mr + 0.01,
+          'JIC Excavation #' + stiff.n
+        );
+      }
+      if (i === 4) {
+        return custom(
+          'Excavation stiff clay',
+          stiff.mu,
+          10,
+          stiff.mr,
+          'JIC Excavation #' + stiff.n
+        );
+      }
+      if (i === 5) {
+        return custom('<b>Slab hire</b>', 'day', 2, stiff.mr, 'JIC Excavation #' + stiff.n);
+      }
+      if (i === 6) {
+        return custom('Demolish block walls', demo.mu, 40, demo.mr, 'JIC Excavation #' + demo.n);
+      }
+      if (i === 7) {
+        return 'One wall, 12 m long and 2.4 m high.\nPROPOSAL: {"work":"blockwall","d1":12,"d2":2.4,"note":"one wall"}';
+      }
+      return 'Understood.';
+    });
+    await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
+    await page.waitForFunction(() => !!window.MMGR_CALC_POPULATE, null, { timeout: 20000 });
+    await page
+      .waitForFunction(() => !!window.MMGR_JIC_FULL, null, { timeout: 8000 })
+      .catch(() => {});
+    const rowCount = () =>
+      page.evaluate(() => document.querySelectorAll('[data-action="calcBoqRecall"]').length);
+    const lastNote = () =>
+      page.evaluate(() => {
+        const n = document.querySelectorAll('#calc-ai-mount .bcp-ai-note');
+        return n.length ? n[n.length - 1].textContent : '';
+      });
+    const pop = async () => {
+      await page.click('[data-cai=pop]');
+      await page.waitForTimeout(280);
+    };
+
+    // C4: no rate anywhere - the turn's request carries the no-rate
+    // instruction, the reply asks for a rate, the user gives one, and the
+    // scripted custom proposal is accepted through the same dispatch.
+    await sendQ(page, 'what is your rate for shade cloth');
+    const sys0 = sysOf(bodies[bodies.length - 1]);
+    check(
+      'C4 the request carries the no-rate instruction',
+      sys0.indexOf('The rate book is silent on that one') > -1 &&
+        sys0.indexOf('do not guess a rate') > -1,
+      sys0.slice(-300)
+    );
+    await sendQ(page, 'my rate is 4500 per m2 for 80 m2');
+    const chip = await page.evaluate(() => {
+      const box = document.querySelector('[data-cai=paths] .bcp-ai-chip');
+      return box ? box.textContent : '';
+    });
+    check(
+      'B5 the custom proposal chip reads label, qty, unit and rate',
+      /Shade cloth/.test(chip) && /80 m2/.test(chip) && /4500/.test(chip),
+      chip
+    );
+    const chipProbes = await shotSet(page, shots, 'proposal-chip', '[data-cai=paths]');
+    const badChip = chipProbes.filter(p => !p.found || p.overflow > 1 || p.emoji || p.lock);
+    check(
+      '5.4 the proposal chip: no overflow, emoji or lock at 390/1280 light+dark',
+      badChip.length === 0,
+      badChip
+    );
+    await pop();
+    let rows = await rowCount();
+    let note = await lastNote();
+    check(
+      'C4 the accepted custom proposal adds the line through Add-to-bill dispatch',
+      rows === 1 && /Added to the bill/.test(note),
+      { rows, note }
+    );
+
+    // C5: a rate the user never typed - rejected with the EXACT B6 notice.
+    await sendQ(page, 'add a fence paint line please');
+    await pop();
+    rows = await rowCount();
+    note = await lastNote();
+    const B6 =
+      'I could not add that line because the rate did not match what you gave me. Tell me the rate again and I will add it.';
+    check(
+      'C5 a never-typed rate is rejected with the exact B6 notice, no line',
+      rows === 1 && note.indexOf(B6) > -1,
+      { rows, note }
+    );
+    const noticeProbes = await shotSet(page, shots, 'rejection-notice', '.bcp-ai-note');
+    const badNotice = noticeProbes.filter(p => !p.found || p.overflow > 1 || p.emoji || p.lock);
+    check(
+      '5.4 the rejection notice: no overflow, emoji or lock at 390/1280 light+dark',
+      badNotice.length === 0,
+      badNotice
+    );
+
+    // C6: a JIC source one cent off the file - rejected; exact - accepted.
+    await sendQ(page, 'use the book for that excavation rate');
+    await pop();
+    rows = await rowCount();
+    note = await lastNote();
+    check('C6 a JIC rate one cent off the file is rejected', rows === 1 && note.indexOf(B6) > -1, {
+      rows,
+      note
+    });
+    await sendQ(page, 'okay use the exact book rate');
+    await pop();
+    rows = await rowCount();
+    note = await lastNote();
+    check('C6 the exact file rate is accepted', rows === 2 && /Added to the bill/.test(note), {
+      rows,
+      note
+    });
+
+    // C7: markup in the label - rejected, and nothing renders as HTML.
+    await sendQ(page, 'and a slab hire line');
+    await pop();
+    rows = await rowCount();
+    note = await lastNote();
+    const htmlLeak = await page.evaluate(() => {
+      const bs = Array.from(document.querySelectorAll('b'));
+      return bs.some(b => /Slab hire/.test(b.textContent));
+    });
+    check(
+      'C7 markup in the label is rejected and renders as nothing',
+      rows === 2 && note.indexOf('markup') > -1 && !htmlLeak,
+      { rows, note, htmlLeak }
+    );
+
+    // C8: a row marked "in calculator: no" is visible to the model, and an
+    // accepted proposal lands as a custom line at the file's metric rate
+    // with the row's metric unit.
+    const sys6 = sysOf(bodies[bodies.length - 1]);
+    const rb6 = rateBlock(sys6);
+    const noRow = rb6
+      .split('\n')
+      .filter(l => l.indexOf(' | ') > -1 && /in calculator: no$/.test(l));
+    check(
+      'C8 the system text marks an "in calculator: no" row',
+      noRow.length > 0,
+      noRow.slice(0, 2)
+    );
+    await sendQ(page, 'add that demolition as a custom line');
+    await pop();
+    rows = await rowCount();
+    note = await lastNote();
+    const c8bill = await page.evaluate(() =>
+      ((document.getElementById('calc-boq-card') || {}).innerText || '').replace(/\s+/g, ' ')
+    );
+    check(
+      'C8 the accepted JIC proposal lands at the file rate with the row unit',
+      rows === 3 &&
+        /Added to the bill/.test(note) &&
+        /Demolish block walls/.test(c8bill) &&
+        c8bill.indexOf(String(demo.mu)) > -1 &&
+        new RegExp('(^|[^0-9])' + demo.mr + '([^0-9]|$)').test(c8bill),
+      { rows, note, bill: c8bill.slice(-260) }
+    );
+
+    // C11: both proposal forms back to back, then the 60-line cap.
+    await sendQ(page, 'and price one wall twelve by two point four');
+    await pop();
+    rows = await rowCount();
+    note = await lastNote();
+    check(
+      'C11 both proposal forms work back to back',
+      rows === 4 && /Added to the bill/.test(note),
+      { rows, note }
+    );
+    const cap = await page.evaluate(() => {
+      let i = 0;
+      while (i++ < 80) {
+        if (document.querySelectorAll('[data-action="calcBoqRecall"]').length >= 60) {
+          break;
+        }
+        try {
+          window.MMGR_CALC_POPULATE({ work: 'siteprep', d1: 2, d2: 3 });
+        } catch (e) {
+          break;
+        }
+      }
+      const before = document.querySelectorAll('[data-action="calcBoqRecall"]').length;
+      window.MMGR_CALC_POPULATE({
+        custom: { label: 'Cap test', unit: 'm2', qty: 1, rate: 100, source: 'user' }
+      });
+      const after = document.querySelectorAll('[data-action="calcBoqRecall"]').length;
+      return { before, after };
+    });
+    check('C11 the 60-line bill cap is respected', cap.before === 60 && cap.after === 60, cap);
+    await ctx.close();
+  }
+}
+
 (async () => {
   let srv = null;
   const { chromium } = resolvePlaywright();
@@ -1118,6 +2003,8 @@ async function assistantDiagnosis(page) {
     await loadButton(browser, errors);
     await assistantOutputs(browser, errors);
     await fileIntake(browser, errors);
+    await partARateAccess(browser, errors);
+    await partBCustomLine(browser, errors);
     await contrastGates(browser, errors);
 
     const real = errors.filter(e => !/\/api\//.test(e));

@@ -35,7 +35,9 @@ const R2_ENC_KDF_ITERS = 100000;
 function r2B64ToBytes(b64) {
   const bin = atob(b64);
   const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  for (let i = 0; i < bin.length; i++) {
+    out[i] = bin.charCodeAt(i);
+  }
   return out;
 }
 async function r2DeriveKey(ownerCodeHash, saltHex) {
@@ -66,8 +68,12 @@ async function r2DecryptBlob(raw, ownerCodeHash, ownerCodeSalt) {
   } catch (e) {
     return null;
   }
-  if (!parsed || parsed.v === undefined || parsed.v === 1) return parsed; // legacy plaintext
-  if (parsed.v !== R2_ENC_VERSION || !parsed.iv || !parsed.data) return parsed;
+  if (!parsed || parsed.v === undefined || parsed.v === 1) {
+    return parsed;
+  } // legacy plaintext
+  if (parsed.v !== R2_ENC_VERSION || !parsed.iv || !parsed.data) {
+    return parsed;
+  }
   const salt = parsed.salt || ownerCodeSalt;
   const key = await r2DeriveKey(ownerCodeHash, salt);
   const pt = await crypto.subtle.decrypt(
@@ -108,7 +114,9 @@ setTimeout(() => {
 function globalWranglerJs() {
   // 1. Local node_modules (CI and project-local installs)
   const localP = path.join(__dirname, '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
-  if (fs.existsSync(localP)) return localP;
+  if (fs.existsSync(localP)) {
+    return localP;
+  }
   // 2. Global npm install
   try {
     const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
@@ -117,7 +125,9 @@ function globalWranglerJs() {
       shell: process.platform === 'win32'
     }).trim();
     const p = path.join(root, 'wrangler', 'bin', 'wrangler.js');
-    if (fs.existsSync(p)) return p;
+    if (fs.existsSync(p)) {
+      return p;
+    }
   } catch (e) {
     /* fall through */
   }
@@ -149,7 +159,9 @@ function startWrangler() {
         try {
           const r = await fetch(process.env.WRANGLER_DEV_URL + '/api/health');
           const body = await r.json().catch(() => null);
-          if (r.ok && body && body.ok === true) return resolve();
+          if (r.ok && body && body.ok === true) {
+            return resolve();
+          }
           return reject(new Error('external wrangler health check failed: ' + r.status));
         } catch (e) {
           return reject(new Error('external wrangler not reachable: ' + e.message));
@@ -214,7 +226,9 @@ function startWrangler() {
     });
     proc.on('error', e => reject(new Error('wrangler spawn failed: ' + e.message)));
     proc.on('exit', code => {
-      if (code !== 0 && code !== null) log('wrangler dev exited early (code ' + code + ')');
+      if (code !== 0 && code !== null) {
+        log('wrangler dev exited early (code ' + code + ')');
+      }
     });
     // Wait for /api/health (up to 120s — first boot bundles the worker).
     // Must verify the RESPONSE BODY — SPA fallback serves index.html (200)
@@ -230,7 +244,9 @@ function startWrangler() {
         clearTimeout(timer);
         if (r.ok) {
           const body = await r.json().catch(() => null);
-          if (body && body.ok === true) return resolve();
+          if (body && body.ok === true) {
+            return resolve();
+          }
           // Status 200 but body is HTML (SPA fallback) — worker not loaded
           log(
             'health check got 200 but worker not loaded (SPA fallback?) — body: ' +
@@ -250,7 +266,9 @@ function startWrangler() {
   });
 }
 function stopWrangler() {
-  if (USE_EXTERNAL) return;
+  if (USE_EXTERNAL) {
+    return;
+  }
   try {
     proc && proc.kill();
   } catch (e) {}
@@ -263,9 +281,13 @@ function stopWrangler() {
 const q = s => "'" + String(s).replace(/'/g, "''") + "'";
 function d1File() {
   const dir = path.join(PERSIST_DIR, 'v3', 'd1', 'miniflare-D1DatabaseObject');
-  if (!fs.existsSync(dir)) return null;
+  if (!fs.existsSync(dir)) {
+    return null;
+  }
   for (const f of fs.readdirSync(dir)) {
-    if (f.endsWith('.sqlite') && !f.startsWith('metadata')) return path.join(dir, f);
+    if (f.endsWith('.sqlite') && !f.startsWith('metadata')) {
+      return path.join(dir, f);
+    }
   }
   return null;
 }
@@ -273,8 +295,12 @@ function d1File() {
 // sqlite reads. Copy the file to a temp location first (safe even with WAL).
 function d1FileCopy() {
   const src = d1File();
-  if (!src) return null;
-  if (!USE_EXTERNAL) return src; // no copy needed when we own the process
+  if (!src) {
+    return null;
+  }
+  if (!USE_EXTERNAL) {
+    return src;
+  } // no copy needed when we own the process
   try {
     const tmp = path.join(os.tmpdir(), 'mmgr-d1-copy-' + Date.now() + '.sqlite');
     fs.copyFileSync(src, tmp);
@@ -282,10 +308,14 @@ function d1FileCopy() {
     const srcWal = src + '-wal';
     const srcShm = src + '-shm';
     try {
-      if (fs.existsSync(srcWal)) fs.copyFileSync(srcWal, tmp + '-wal');
+      if (fs.existsSync(srcWal)) {
+        fs.copyFileSync(srcWal, tmp + '-wal');
+      }
     } catch (e) {}
     try {
-      if (fs.existsSync(srcShm)) fs.copyFileSync(srcShm, tmp + '-shm');
+      if (fs.existsSync(srcShm)) {
+        fs.copyFileSync(srcShm, tmp + '-shm');
+      }
     } catch (e) {}
     return tmp;
   } catch (e) {
@@ -300,7 +330,9 @@ function queryD1(sql) {
       const { DatabaseSync } = require('node:sqlite');
       const db = new DatabaseSync(f, { readOnly: true });
       const rows = [];
-      for (const row of db.prepare(sql).all()) rows.push(row);
+      for (const row of db.prepare(sql).all()) {
+        rows.push(row);
+      }
       db.close();
       // Clean up the temp copy
       if (USE_EXTERNAL && f !== d1File()) {
@@ -354,7 +386,9 @@ function queryD1(sql) {
       const m = out.match(/\[[\s\S]*\]/);
       if (m) {
         const parsed = JSON.parse(m[0]);
-        if (parsed[0] && Array.isArray(parsed[0].results)) return parsed[0].results;
+        if (parsed[0] && Array.isArray(parsed[0].results)) {
+          return parsed[0].results;
+        }
       }
     } catch (e) {
       log('d1 execute fallback failed: ' + e.message);
@@ -369,7 +403,9 @@ function queryD1(sql) {
 // OR whose content matches the marker (layout-agnostic).
 async function findR2Blob(keySuffix, marker, ownerCodeHash, ownerCodeSalt) {
   const root = path.join(PERSIST_DIR, 'v3', 'r2');
-  if (!fs.existsSync(root)) return null;
+  if (!fs.existsSync(root)) {
+    return null;
+  }
   const candidates = [];
   const walk = d => {
     let entries = [];
@@ -380,8 +416,9 @@ async function findR2Blob(keySuffix, marker, ownerCodeHash, ownerCodeSalt) {
     }
     for (const e of entries) {
       const p = path.join(d, e.name);
-      if (e.isDirectory()) walk(p);
-      else if (e.isFile()) {
+      if (e.isDirectory()) {
+        walk(p);
+      } else if (e.isFile()) {
         try {
           const content = fs.readFileSync(p, 'utf8');
           candidates.push({ path: p, content });
@@ -396,7 +433,9 @@ async function findR2Blob(keySuffix, marker, ownerCodeHash, ownerCodeSalt) {
   for (const c of candidates) {
     const keyMatch = keySuffix && c.path.split(path.sep).join('/').endsWith(keySuffix);
     const markerMatch = marker && c.content.indexOf(marker) > -1;
-    if (keyMatch || markerMatch) return c;
+    if (keyMatch || markerMatch) {
+      return c;
+    }
     // Try decrypting (handles encrypted blobs)
     if (marker && ownerCodeHash && ownerCodeSalt) {
       try {
@@ -465,7 +504,9 @@ async function phaseA() {
       'SELECT project_id, owner_code_salt, owner_code_hash, owner_label, google_sub, latest_r2_key FROM cloud_projects WHERE project_id = ' +
         q(PID)
     );
-    if (rows && rows.length > 0) break;
+    if (rows && rows.length > 0) {
+      break;
+    }
     log('C1c: row not visible on attempt ' + (_attempt + 1) + ', retrying in 200ms…');
     await delay(200);
   }
@@ -517,7 +558,9 @@ async function phaseA() {
   const blob = await findR2Blob(KEY, STATE_MARKER, blobHash, blobSalt);
   let blobState = null;
   try {
-    if (blob) blobState = JSON.parse(blob.content);
+    if (blob) {
+      blobState = JSON.parse(blob.content);
+    }
   } catch (e) {
     /* not JSON */
   }
@@ -567,7 +610,9 @@ async function phaseA() {
   const f = d1File();
   if (f) {
     try {
-      if (fs.readFileSync(f).includes(Buffer.from(CODE, 'utf8'))) plaintextOnDisk.push(f);
+      if (fs.readFileSync(f).includes(Buffer.from(CODE, 'utf8'))) {
+        plaintextOnDisk.push(f);
+      }
     } catch (e) {}
   }
   const r2root = path.join(PERSIST_DIR, 'v3', 'r2');
@@ -581,10 +626,13 @@ async function phaseA() {
       }
       for (const e of entries) {
         const p = path.join(d, e.name);
-        if (e.isDirectory()) walk2(p);
-        else if (e.isFile()) {
+        if (e.isDirectory()) {
+          walk2(p);
+        } else if (e.isFile()) {
           try {
-            if (fs.readFileSync(p).includes(Buffer.from(CODE, 'utf8'))) plaintextOnDisk.push(p);
+            if (fs.readFileSync(p).includes(Buffer.from(CODE, 'utf8'))) {
+              plaintextOnDisk.push(p);
+            }
           } catch (err) {}
         }
       }
@@ -682,8 +730,9 @@ function launchChrome(profileDir, port) {
           return resolve(p);
         }
       } catch (e) {}
-      if (!ok && Date.now() - t0 > 30000)
+      if (!ok && Date.now() - t0 > 30000) {
         return reject(new Error('chrome did not open on :' + port));
+      }
       setTimeout(poll, 300);
     };
     const t0 = Date.now();
@@ -728,12 +777,13 @@ async function ev(expr) {
     returnByValue: true,
     awaitPromise: true
   });
-  if (r.exceptionDetails)
+  if (r.exceptionDetails) {
     return {
       __err: r.exceptionDetails.exception
         ? r.exceptionDetails.exception.description
         : r.exceptionDetails.text
     };
+  }
   return r.result && r.result.value;
 }
 
@@ -745,7 +795,9 @@ async function clickWhen(selector) {
         JSON.stringify(selector) +
         ');if(el){el.click();return true;}return false;})()'
     );
-    if (ok === true) return true;
+    if (ok === true) {
+      return true;
+    }
     await delay(500);
   }
   return false;
@@ -881,7 +933,9 @@ async function phaseB() {
     wrongStatus = await ev(
       '(function(){var s=document.getElementById("cloud-status");return s?s.className+" | "+s.textContent:"";})()'
     );
-    if (wrongStatus.indexOf('ds-busy') === -1) break;
+    if (wrongStatus.indexOf('ds-busy') === -1) {
+      break;
+    }
   }
   const stateAfterWrong = await ev(
     '(function(){try{return JSON.parse(localStorage.getItem("mmgr_state_' +
@@ -913,7 +967,9 @@ async function phaseB() {
         PID +
         '"));return s?s.marker:null;}catch(e){return null;}})()'
     );
-    if (restored === 'device-a-local') break;
+    if (restored === 'device-a-local') {
+      break;
+    }
   }
   check(
     'C4h fresh device pulled the creator\u2019s cloud snapshot into the workspace',

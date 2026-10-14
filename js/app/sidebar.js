@@ -36,7 +36,9 @@ var MMGR = window.MMGR || {};
     document.body.classList.toggle('sidebar-on', on);
     if (document.body.classList.contains('sidebar-open')) {
       const sb = U.$('app-sidebar');
-      if (sb) sb.scrollTop = 0;
+      if (sb) {
+        sb.scrollTop = 0;
+      }
     }
     const btn = U.$('nav-btn');
     if (btn) {
@@ -48,7 +50,9 @@ var MMGR = window.MMGR || {};
       btn.setAttribute('aria-controls', mobile ? 'sec-nav' : 'app-sidebar');
     }
     const tgl = U.$('sb-tgl');
-    if (tgl) tgl.checked = on;
+    if (tgl) {
+      tgl.checked = on;
+    }
   }
 
   function setSidebarOpen(open) {
@@ -73,7 +77,9 @@ var MMGR = window.MMGR || {};
         body: JSON.stringify({ sidebar: on ? 'on' : 'off' })
       })
         .then(function (r) {
-          if (r.ok) writeDevicePref('mmgr_sidebar_backend', '1');
+          if (r.ok) {
+            writeDevicePref('mmgr_sidebar_backend', '1');
+          }
         })
         .catch(function () {
           /* offline / no worker, localStorage is the cache */
@@ -84,19 +90,31 @@ var MMGR = window.MMGR || {};
   }
 
   function pullSidebarBackend() {
-    if (_sidebarUserTouched) return;
-    if (readDevicePref('mmgr_sidebar_backend') !== '1') return;
-    if (readDevicePref(SIDEBAR_KEY) != null) return;
+    if (_sidebarUserTouched) {
+      return;
+    }
+    if (readDevicePref('mmgr_sidebar_backend') !== '1') {
+      return;
+    }
+    if (readDevicePref(SIDEBAR_KEY) != null) {
+      return;
+    }
     try {
       fetch('/api/cloud/prefs/theme', { headers: { Accept: 'application/json' } })
         .then(function (r) {
           return r.ok ? r.json() : null;
         })
         .then(function (d) {
-          if (!d || !d.ok || !d.theme) return;
-          if (_sidebarUserTouched) return;
+          if (!d || !d.ok || !d.theme) {
+            return;
+          }
+          if (_sidebarUserTouched) {
+            return;
+          }
           const v = d.theme.sidebar;
-          if (v !== 'on' && v !== 'off') return;
+          if (v !== 'on' && v !== 'off') {
+            return;
+          }
           writeDevicePref(SIDEBAR_KEY, v);
           document.body.classList.toggle('sidebar-open', v === 'on');
           syncSidebarChrome();
@@ -112,7 +130,9 @@ var MMGR = window.MMGR || {};
   function buildSidebar() {
     const sb = U.$('app-sidebar');
     const nav = U.$('sec-nav');
-    if (!sb || !nav) return;
+    if (!sb || !nav) {
+      return;
+    }
     const groups = nav.querySelectorAll('.nav-group');
     for (let i = 0; i < groups.length; i++) {
       const c = groups[i].cloneNode(true);
@@ -124,13 +144,21 @@ var MMGR = window.MMGR || {};
     const mo = new MutationObserver(function (muts) {
       for (let i = 0; i < muts.length; i++) {
         const m = muts[i];
-        if (m.type !== 'attributes' || m.attributeName !== 'class') continue;
+        if (m.type !== 'attributes' || m.attributeName !== 'class') {
+          continue;
+        }
         const orig = m.target;
-        if (!orig.classList || !orig.classList.contains('sec-btn')) continue;
+        if (!orig.classList || !orig.classList.contains('sec-btn')) {
+          continue;
+        }
         const sec = orig.getAttribute('data-section');
-        if (!sec) continue;
+        if (!sec) {
+          continue;
+        }
         const twin = sb.querySelector('.sec-btn[data-section="' + sec + '"]');
-        if (twin) twin.classList.toggle('is-hide', orig.classList.contains('is-hide'));
+        if (twin) {
+          twin.classList.toggle('is-hide', orig.classList.contains('is-hide'));
+        }
       }
     });
     mo.observe(nav, { subtree: true, attributes: true, attributeFilter: ['class'] });

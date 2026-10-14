@@ -12,7 +12,9 @@ var MMGR = window.MMGR || {};
   // ---- Snapshot Compare ----
   function takeSnapshot() {
     const s = S();
-    if (!s) return null;
+    if (!s) {
+      return null;
+    }
     const tasks = s.tasks || [];
     return {
       timestamp: new Date().toISOString(),
@@ -35,8 +37,12 @@ var MMGR = window.MMGR || {};
 
   function saveSnapshot() {
     const s = S();
-    if (!s) return;
-    if (!s.dailySnapshots) s.dailySnapshots = [];
+    if (!s) {
+      return;
+    }
+    if (!s.dailySnapshots) {
+      s.dailySnapshots = [];
+    }
     const snap = takeSnapshot();
     if (snap) {
       s.dailySnapshots.push(snap);
@@ -65,7 +71,9 @@ var MMGR = window.MMGR || {};
   // completed since the snapshot was taken.
   function snapshotDaily() {
     const s = S();
-    if (!s) return null;
+    if (!s) {
+      return null;
+    }
     const states = {};
     (s.tasks || []).forEach(t => {
       states[t.id] = t.status || 'todo';
@@ -85,7 +93,9 @@ var MMGR = window.MMGR || {};
   }
 
   function diffSnapshots(snapA, snapB) {
-    if (!snapA || !snapB) return null;
+    if (!snapA || !snapB) {
+      return null;
+    }
     const diff = {
       tasksCompleted: snapB.completedTasks - snapA.completedTasks,
       tasksBlocked: snapB.blockedTasks - snapA.blockedTasks,
@@ -99,7 +109,9 @@ var MMGR = window.MMGR || {};
 
   function generateFieldReportPrompt() {
     const s = S();
-    if (!s) return '';
+    if (!s) {
+      return '';
+    }
     const latest = getLatestSnapshot();
     const yesterday = getSnapshots().length > 1 ? getSnapshots()[getSnapshots().length - 2] : null;
     let diffText = '';
@@ -110,7 +122,9 @@ var MMGR = window.MMGR || {};
       }
     }
     const todayTasks = (s.tasks || []).filter(t => {
-      if (t.status === 'completed') return false;
+      if (t.status === 'completed') {
+        return false;
+      }
       const today = U.todayStr();
       return t.startDate <= today && t.endDate >= today;
     });
@@ -152,11 +166,17 @@ Generate a structured field report suitable for email or print. Include a header
   // the day and the prompt renderer includes it - plain text, hand-editable,
   // exactly the module's own convention.
   function insertTranscript(text) {
-    if (!text) return;
+    if (!text) {
+      return;
+    }
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const today = U.todayStr();
-    if (!Array.isArray(s.fieldReportNotes)) s.fieldReportNotes = [];
+    if (!Array.isArray(s.fieldReportNotes)) {
+      s.fieldReportNotes = [];
+    }
     let entry = s.fieldReportNotes.find(n => n.date === today);
     if (!entry) {
       entry = { date: today, text: '' };
@@ -168,18 +188,23 @@ Generate a structured field report suitable for email or print. Include a header
       new Date().toLocaleTimeString() +
       ']\n' +
       text;
-    if (s.fieldReportNotes.length > 60) s.fieldReportNotes = s.fieldReportNotes.slice(-60);
+    if (s.fieldReportNotes.length > 60) {
+      s.fieldReportNotes = s.fieldReportNotes.slice(-60);
+    }
     ns.State.save(true);
-    if (ns.App && ns.App.showToast)
+    if (ns.App && ns.App.showToast) {
       ns.App.showToast(
         'Transcript captured - it lands in the Daily Field Report prompt. Review before you trust it.',
         'ok'
       );
+    }
   }
 
   function getFieldNotes(date) {
     const s = S();
-    if (!s || !Array.isArray(s.fieldReportNotes)) return '';
+    if (!s || !Array.isArray(s.fieldReportNotes)) {
+      return '';
+    }
     const entry = s.fieldReportNotes.find(n => n.date === (date || U.todayStr()));
     return entry ? entry.text : '';
   }
@@ -189,19 +214,28 @@ Generate a structured field report suitable for email or print. Include a header
   // already counts open actions) pre-filled with the report reference.
   function addFieldAction() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const ref = 'Field report ' + U.todayStr();
     ns.State.updateState(function (st) {
-      if (!st.closure) st.closure = { items: [], well: '', imp: '', rec: '' };
-      if (!st.closure.items) st.closure.items = [];
+      if (!st.closure) {
+        st.closure = { items: [], well: '', imp: '', rec: '' };
+      }
+      if (!st.closure.items) {
+        st.closure.items = [];
+      }
       st.closure.items.push({ text: '[' + ref + '] ', done: false });
     });
-    if (ns.Render && ns.Render.renderClosure) ns.Render.renderClosure();
-    if (ns.App && ns.App.showToast)
+    if (ns.Render && ns.Render.renderClosure) {
+      ns.Render.renderClosure();
+    }
+    if (ns.App && ns.App.showToast) {
       ns.App.showToast(
         'Action item added in Closure - it counts in the Decision Engine until done.',
         'ok'
       );
+    }
   }
 
   // ---- API ----

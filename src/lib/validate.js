@@ -39,22 +39,33 @@ export function validateString(value, rules = {}) {
   } = rules;
 
   if (value === undefined || value === null) {
-    if (required) return errorResponse('field is required');
+    if (required) {
+      return errorResponse('field is required');
+    }
     return fallback;
   }
 
   if (typeof value !== 'string') {
-    if (required) return errorResponse('field must be a string');
+    if (required) {
+      return errorResponse('field must be a string');
+    }
     return fallback;
   }
 
   let s = trim ? value.trim() : value;
 
-  if (required && s.length === 0) return errorResponse('field is required');
-  if (s.length > 0 && s.length < minLength)
+  if (required && s.length === 0) {
+    return errorResponse('field is required');
+  }
+  if (s.length > 0 && s.length < minLength) {
     return errorResponse('too short (min ' + minLength + ' chars)');
-  if (s.length > maxLength) return errorResponse('too long (max ' + maxLength + ' chars)');
-  if (pattern && s.length > 0 && !pattern.test(s)) return errorResponse('invalid format');
+  }
+  if (s.length > maxLength) {
+    return errorResponse('too long (max ' + maxLength + ' chars)');
+  }
+  if (pattern && s.length > 0 && !pattern.test(s)) {
+    return errorResponse('invalid format');
+  }
 
   return s;
 }
@@ -75,19 +86,29 @@ export function validateNumber(value, rules = {}) {
   } = rules;
 
   if (value === undefined || value === null) {
-    if (required) return errorResponse('field is required');
+    if (required) {
+      return errorResponse('field is required');
+    }
     return fallback;
   }
 
   const n = Number(value);
   if (!Number.isFinite(n)) {
-    if (required) return errorResponse('field must be a number');
+    if (required) {
+      return errorResponse('field must be a number');
+    }
     return fallback;
   }
 
-  if (integer && !Number.isInteger(n)) return errorResponse('must be a whole number');
-  if (n < min) return errorResponse('must be at least ' + min);
-  if (n > max) return errorResponse('must be at most ' + max);
+  if (integer && !Number.isInteger(n)) {
+    return errorResponse('must be a whole number');
+  }
+  if (n < min) {
+    return errorResponse('must be at least ' + min);
+  }
+  if (n > max) {
+    return errorResponse('must be at most ' + max);
+  }
 
   return n;
 }
@@ -102,17 +123,25 @@ export function validateArray(value, rules = {}) {
   const { required = false, minItems = 0, maxItems = Infinity, of = null, fallback = [] } = rules;
 
   if (value === undefined || value === null) {
-    if (required) return errorResponse('field is required');
+    if (required) {
+      return errorResponse('field is required');
+    }
     return fallback;
   }
 
   if (!Array.isArray(value)) {
-    if (required) return errorResponse('field must be an array');
+    if (required) {
+      return errorResponse('field must be an array');
+    }
     return fallback;
   }
 
-  if (value.length < minItems) return errorResponse('must have at least ' + minItems + ' items');
-  if (value.length > maxItems) return errorResponse('must have at most ' + maxItems + ' items');
+  if (value.length < minItems) {
+    return errorResponse('must have at least ' + minItems + ' items');
+  }
+  if (value.length > maxItems) {
+    return errorResponse('must have at most ' + maxItems + ' items');
+  }
 
   return value;
 }
@@ -160,7 +189,9 @@ export async function validateBody(request, schema = {}, maxSize = 1048576) {
   }
 
   const result = validateSchema(body, schema);
-  if (result.error) return { error: result.error };
+  if (result.error) {
+    return { error: result.error };
+  }
   return { ok: true, data: result };
 }
 
@@ -197,7 +228,9 @@ export function validateSchema(obj, schema) {
         validated = value;
     }
 
-    if (validated && validated.error) return { error: validated.error };
+    if (validated && validated.error) {
+      return { error: validated.error };
+    }
     result[key] = validated;
   }
   return result;
@@ -281,11 +314,21 @@ function errorResponse(message, status = 400) {
  * and URL patterns. Returns the cleaned text or an error.
  */
 export function sanitizePlainText(text, maxLen = 2000) {
-  if (typeof text !== 'string') return { error: 'text must be a string' };
+  if (typeof text !== 'string') {
+    return { error: 'text must be a string' };
+  }
   const cleaned = text.trim();
-  if (cleaned.length === 0) return { error: 'text is required' };
-  if (cleaned.length > maxLen) return { error: 'text too long (max ' + maxLen + ' chars)' };
-  if (/[<>]/.test(cleaned)) return { error: 'plain text only - no HTML' };
-  if (/https?:\/\/|www\./i.test(cleaned)) return { error: 'plain text only - no URLs' };
+  if (cleaned.length === 0) {
+    return { error: 'text is required' };
+  }
+  if (cleaned.length > maxLen) {
+    return { error: 'text too long (max ' + maxLen + ' chars)' };
+  }
+  if (/[<>]/.test(cleaned)) {
+    return { error: 'plain text only - no HTML' };
+  }
+  if (/https?:\/\/|www\./i.test(cleaned)) {
+    return { error: 'plain text only - no URLs' };
+  }
   return { ok: true, text: cleaned };
 }

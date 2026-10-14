@@ -95,14 +95,18 @@ function globalWranglerJs() {
       shell: process.platform === 'win32'
     }).trim();
     const p = path.join(root, 'wrangler', 'bin', 'wrangler.js');
-    if (fs.existsSync(p)) return p;
+    if (fs.existsSync(p)) {
+      return p;
+    }
   } catch (e) {
     /* fall through */
   }
   // Fallback: local node_modules (CI, no global wrangler)
   try {
     const lp = path.join(__dirname, '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
-    if (fs.existsSync(lp)) return lp;
+    if (fs.existsSync(lp)) {
+      return lp;
+    }
   } catch (e) {
     /* fall through */
   }
@@ -182,11 +186,15 @@ async function startWrangler() {
       }, 3000);
       const r = await fetch(BASE + '/api/health', { signal: ctrl.signal });
       clearTimeout(timer);
-      if (r.ok) return;
+      if (r.ok) {
+        return;
+      }
     } catch (e) {
       /* not up yet */
     }
-    if (Date.now() - t0 > 120000) throw new Error('wrangler dev did not come up in 120s');
+    if (Date.now() - t0 > 120000) {
+      throw new Error('wrangler dev did not come up in 120s');
+    }
     await delay(1500);
   }
 }
@@ -256,7 +264,9 @@ function extractSessionCookie(res) {
 }
 
 function verifySignature(raw, sigHeader, secret) {
-  if (!sigHeader || !sigHeader.startsWith('sha256=')) return false;
+  if (!sigHeader || !sigHeader.startsWith('sha256=')) {
+    return false;
+  }
   const expected = sigHeader.slice('sha256='.length);
   const actual = crypto.createHmac('sha256', secret).update(raw).digest('hex');
   const a = Buffer.from(expected, 'hex');

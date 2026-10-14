@@ -198,7 +198,7 @@ check('G5b missing diffs -> empty panel', R({ id: 6 }) === '', R({ id: 6 }));
 
 // G6: render cap — more than 60 diffs shows a "… and N more" footer.
 const big = [];
-for (let i = 0; i < 70; i++)
+for (let i = 0; i < 70; i++) {
   big.push({
     path: 'tasks[' + i + '].name',
     before: 'b' + i,
@@ -206,6 +206,7 @@ for (let i = 0; i < 70; i++)
     beforeAbsent: false,
     afterAbsent: false
   });
+}
 const h6 = R({ id: 7, diffs: big });
 // Count ONLY row divs (class="cl-diff" exactly) — cl-diff-head / cl-diff-path
 // also contain the substring and must not be counted.

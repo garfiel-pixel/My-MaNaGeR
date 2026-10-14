@@ -11,7 +11,9 @@ var MMGR = window.MMGR || {};
 
   function addRisk() {
     ns.State.updateState(function (s) {
-      if (!s.risks) s.risks = [];
+      if (!s.risks) {
+        s.risks = [];
+      }
       s.risks.push({
         id: U.genShortId('R'),
         description: '',
@@ -26,25 +28,33 @@ var MMGR = window.MMGR || {};
 
   function updRisk(index, field, value) {
     ns.State.updateState(function (s) {
-      if (s.risks && s.risks[index]) s.risks[index][field] = value;
+      if (s.risks && s.risks[index]) {
+        s.risks[index][field] = value;
+      }
     });
   }
 
   function delRisk(index) {
     ns.State.updateState(function (s) {
-      if (s.risks) s.risks.splice(index, 1);
+      if (s.risks) {
+        s.risks.splice(index, 1);
+      }
     });
     R.renderRisks();
   }
 
   function toggleRiskIssue(index) {
     ns.State.updateState(function (s) {
-      if (!s.risks || !s.risks[index]) return;
+      if (!s.risks || !s.risks[index]) {
+        return;
+      }
       const risk = s.risks[index];
       if (risk.issueId) {
         risk.issueId = null;
       } else {
-        if (!s.issues) s.issues = [];
+        if (!s.issues) {
+          s.issues = [];
+        }
         s.issues.push({
           id: U.genShortId('I'),
           description: risk.description,
@@ -61,13 +71,17 @@ var MMGR = window.MMGR || {};
 
   function updIssue(index, field, value) {
     ns.State.updateState(function (s) {
-      if (s.issues && s.issues[index]) s.issues[index][field] = value;
+      if (s.issues && s.issues[index]) {
+        s.issues[index][field] = value;
+      }
     });
   }
 
   function delIssue(index) {
     ns.State.updateState(function (s) {
-      if (s.issues) s.issues.splice(index, 1);
+      if (s.issues) {
+        s.issues.splice(index, 1);
+      }
     });
     R.renderRisks();
   }
@@ -78,7 +92,9 @@ var MMGR = window.MMGR || {};
   // holds a pass/fail item checklist; status rolls up from item passes.
   function addInspection() {
     ns.State.updateState(function (s) {
-      if (!s.inspections) s.inspections = [];
+      if (!s.inspections) {
+        s.inspections = [];
+      }
       s.inspections.push({
         id: U.genShortId('INSP'),
         title: '',
@@ -96,14 +112,18 @@ var MMGR = window.MMGR || {};
   function updInspection(index, field, value, evtType) {
     ns.State.updateState(function (s) {
       const insp = s.inspections && s.inspections[index];
-      if (!insp) return;
+      if (!insp) {
+        return;
+      }
       insp[field] = value;
       if (field === 'status' && value === 'closed') {
         // Closing an inspection requires every item to pass (or be manually
         // overridden , the select still wins if items are incomplete).
       }
     });
-    if (evtType === 'input') return;
+    if (evtType === 'input') {
+      return;
+    }
     R.renderClosure();
   }
 
@@ -112,12 +132,17 @@ var MMGR = window.MMGR || {};
   function toggleInspItem(index, itemIdx) {
     ns.State.updateState(function (s) {
       const insp = s.inspections && s.inspections[index];
-      if (!insp || !insp.items || !insp.items[itemIdx]) return;
+      if (!insp || !insp.items || !insp.items[itemIdx]) {
+        return;
+      }
       insp.items[itemIdx].pass = !insp.items[itemIdx].pass;
       const items = insp.items || [];
       const checked = items.filter(i => i.pass).length;
-      if (items.length && checked === items.length) insp.status = 'passed';
-      else if (insp.status === 'passed') insp.status = 'open';
+      if (items.length && checked === items.length) {
+        insp.status = 'passed';
+      } else if (insp.status === 'passed') {
+        insp.status = 'open';
+      }
     });
     R.renderClosure();
   }
@@ -125,18 +150,26 @@ var MMGR = window.MMGR || {};
   function updInspItem(index, itemIdx, field, value, evtType) {
     ns.State.updateState(function (s) {
       const insp = s.inspections && s.inspections[index];
-      if (insp && insp.items && insp.items[itemIdx]) insp.items[itemIdx][field] = value;
+      if (insp && insp.items && insp.items[itemIdx]) {
+        insp.items[itemIdx][field] = value;
+      }
     });
     // Focus discipline: save on keystroke, re-render on blur/commit.
-    if (evtType === 'input') return;
+    if (evtType === 'input') {
+      return;
+    }
     R.renderClosure();
   }
 
   function addInspItem(index) {
     ns.State.updateState(function (s) {
       const insp = s.inspections && s.inspections[index];
-      if (!insp) return;
-      if (!insp.items) insp.items = [];
+      if (!insp) {
+        return;
+      }
+      if (!insp.items) {
+        insp.items = [];
+      }
       insp.items.push({ text: '', pass: false, notes: '' });
     });
     R.renderClosure();
@@ -145,14 +178,18 @@ var MMGR = window.MMGR || {};
   function delInspItem(index, itemIdx) {
     ns.State.updateState(function (s) {
       const insp = s.inspections && s.inspections[index];
-      if (insp && insp.items) insp.items.splice(itemIdx, 1);
+      if (insp && insp.items) {
+        insp.items.splice(itemIdx, 1);
+      }
     });
     R.renderClosure();
   }
 
   function delInspection(index) {
     ns.State.updateState(function (s) {
-      if (s.inspections) s.inspections.splice(index, 1);
+      if (s.inspections) {
+        s.inspections.splice(index, 1);
+      }
     });
     R.renderClosure();
   }
@@ -166,7 +203,9 @@ var MMGR = window.MMGR || {};
 
   function addIncident() {
     ns.State.updateState(function (s) {
-      if (!s.incidents) s.incidents = [];
+      if (!s.incidents) {
+        s.incidents = [];
+      }
       s.incidents.push({
         id: U.genShortId('INC'),
         date: U.todayStr(),
@@ -186,21 +225,30 @@ var MMGR = window.MMGR || {};
   function updIncident(index, field, value, evtType) {
     ns.State.updateState(function (s) {
       const inc = s.incidents && s.incidents[index];
-      if (!inc) return;
+      if (!inc) {
+        return;
+      }
       inc[field] = value;
       // Closure-loop discipline: closing stamps the date; reopening clears it.
       if (field === 'status') {
-        if (value === 'closed') inc.closedDate = inc.closedDate || U.todayStr();
-        else if (inc.closedDate && value !== 'closed') inc.closedDate = '';
+        if (value === 'closed') {
+          inc.closedDate = inc.closedDate || U.todayStr();
+        } else if (inc.closedDate && value !== 'closed') {
+          inc.closedDate = '';
+        }
       }
     });
-    if (evtType === 'input') return;
+    if (evtType === 'input') {
+      return;
+    }
     R.renderClosure();
   }
 
   function delIncident(index) {
     ns.State.updateState(function (s) {
-      if (s.incidents) s.incidents.splice(index, 1);
+      if (s.incidents) {
+        s.incidents.splice(index, 1);
+      }
     });
     R.renderClosure();
   }

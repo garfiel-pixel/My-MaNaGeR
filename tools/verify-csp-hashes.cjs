@@ -71,7 +71,9 @@ function extractHardcodedHashes(file) {
   const hashes = [];
   const re = /"'sha256-[A-Za-z0-9+/=]+'"/g;
   let m;
-  while ((m = re.exec(src)) !== null) hashes.push(m[0].slice(1, -1));
+  while ((m = re.exec(src)) !== null) {
+    hashes.push(m[0].slice(1, -1));
+  }
   // Loud failure on the bare-token form: an unquoted sha256 token that is
   // not part of a double-quoted CSP token means the list was rewritten wrong.
   const bare = src.match(/(?<!["'])'sha256-[A-Za-z0-9+/=]+'(?!["'])/g);
@@ -155,13 +157,17 @@ if (w !== s) {
 // production while worker.js/serve.cjs (and this tool) looked fine. Fail the
 // build if any page meta CSP omits a hash of its own inline script.
 function checkMetaCsp(file, hashes) {
-  if (!hashes.length) return;
+  if (!hashes.length) {
+    return;
+  }
   const src = fs.readFileSync(path.join(ROOT, file), 'utf8');
   const metaRe = /<meta[^>]+http-equiv=[\"']Content-Security-Policy[\"'][^>]*>/gi;
   let m;
   while ((m = metaRe.exec(src)) !== null) {
     const content = /content=([\"'])([\s\S]*?)\1/i.exec(m[0]);
-    if (!content) continue;
+    if (!content) {
+      continue;
+    }
     const policy = content[2];
     // Scope the lookup to the script-src directive only (a hash appearing in
     // another directive must not count as covered).

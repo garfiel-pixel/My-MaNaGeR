@@ -25,7 +25,9 @@ const ROOT = __dirname;
 const DIST = path.join(ROOT, 'dist');
 
 // ---- Ensure dist/ exists ----
-if (!fs.existsSync(DIST)) fs.mkdirSync(DIST, { recursive: true });
+if (!fs.existsSync(DIST)) {
+  fs.mkdirSync(DIST, { recursive: true });
+}
 
 /**
  * Compute a short content hash for a file.
@@ -312,15 +314,25 @@ const buildAdmin = args.length === 0 || args.includes('--admin');
 
 console.log('My MaNaGeR - build\n');
 
-if (buildApp) buildBundle(APP_MODULES, 'dist/bundle.js', 'app bundle');
-if (buildLauncher) buildBundle(APP_LAUNCHER_MODULES, 'dist/app-bundle.js', 'launcher bundle');
-if (buildAdmin) buildBundle(ADMIN_MODULES, 'dist/admin-bundle.js', 'admin bundle');
-if (buildMkt) buildBundle(MARKETING_MODULES, 'dist/marketing-bundle.js', 'marketing bundle');
+if (buildApp) {
+  buildBundle(APP_MODULES, 'dist/bundle.js', 'app bundle');
+}
+if (buildLauncher) {
+  buildBundle(APP_LAUNCHER_MODULES, 'dist/app-bundle.js', 'launcher bundle');
+}
+if (buildAdmin) {
+  buildBundle(ADMIN_MODULES, 'dist/admin-bundle.js', 'admin bundle');
+}
+if (buildMkt) {
+  buildBundle(MARKETING_MODULES, 'dist/marketing-bundle.js', 'marketing bundle');
+}
 // HERO GLOBE (owner 2026-10-12): its OWN bundle, built from ONE module and
 // loaded by index.html only, after the page has loaded. Keeping it separate
 // is what lets the hero headline stay the LCP and keeps the globe off every
 // other marketing page.
-if (buildGlobe) buildBundle(GLOBE_MODULES, 'dist/marketing-globe.js', 'marketing globe bundle');
+if (buildGlobe) {
+  buildBundle(GLOBE_MODULES, 'dist/marketing-globe.js', 'marketing globe bundle');
+}
 if (buildCss) {
   buildCSS('css/mmgr.css', 'dist/mmgr.min.css', 'app CSS');
   buildCSS('css/marketing.css', 'dist/marketing.min.css', 'marketing CSS');
@@ -332,18 +344,24 @@ console.log('\nDone.');
 // The manifest is used by sw.js and any HTML processors to find
 // the current content-addressed build artifacts.
 const manifest = {};
-if (buildApp) manifest['bundle.js'] = 'bundle.' + contentHash(path.join(DIST, 'bundle.js')) + '.js';
-if (buildLauncher)
+if (buildApp) {
+  manifest['bundle.js'] = 'bundle.' + contentHash(path.join(DIST, 'bundle.js')) + '.js';
+}
+if (buildLauncher) {
   manifest['app-bundle.js'] = 'app-bundle.' + contentHash(path.join(DIST, 'app-bundle.js')) + '.js';
-if (buildAdmin)
+}
+if (buildAdmin) {
   manifest['admin-bundle.js'] =
     'admin-bundle.' + contentHash(path.join(DIST, 'admin-bundle.js')) + '.js';
-if (buildMkt)
+}
+if (buildMkt) {
   manifest['marketing-bundle.js'] =
     'marketing-bundle.' + contentHash(path.join(DIST, 'marketing-bundle.js')) + '.js';
-if (buildGlobe)
+}
+if (buildGlobe) {
   manifest['marketing-globe.js'] =
     'marketing-globe.' + contentHash(path.join(DIST, 'marketing-globe.js')) + '.js';
+}
 if (buildCss) {
   manifest['mmgr.min.css'] = 'mmgr.min.' + contentHash(path.join(DIST, 'mmgr.min.css')) + '.css';
   manifest['marketing.min.css'] =

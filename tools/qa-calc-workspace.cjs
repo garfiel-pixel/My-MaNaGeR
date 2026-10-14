@@ -56,7 +56,9 @@ function globalWranglerJs() {
       [path.join(ROOT, 'node_modules', 'wrangler', 'bin', 'wrangler.js'), '--version'],
       { encoding: 'utf8', timeout: 30000 }
     );
-    if (out) return path.join(ROOT, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
+    if (out) {
+      return path.join(ROOT, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
+    }
   } catch (e) {
     /* not local */
   }
@@ -121,12 +123,15 @@ async function startWrangler() {
       const timer = setTimeout(() => ctrl.abort(), 3000);
       const r = await fetch(BASE + '/api/health', { signal: ctrl.signal });
       clearTimeout(timer);
-      if (r.ok) return;
+      if (r.ok) {
+        return;
+      }
     } catch (e) {
       /* not up */
     }
-    if (Date.now() - t0 > 120000)
+    if (Date.now() - t0 > 120000) {
       throw new Error('wrangler dev did not come up (log ' + LOG_PATH + ')');
+    }
     await delay(1500);
   }
 }
@@ -167,7 +172,9 @@ function stopWrangler() {
     let reg = await j(r);
     let cookie = '';
     const m = (r.headers.get('set-cookie') || '').match(/mmgr_session=([^;]+)/);
-    if (m) cookie = m[1];
+    if (m) {
+      cookie = m[1];
+    }
     if (!cookie || !reg.ok) {
       r = await fetch(BASE + '/api/auth/login', {
         method: 'POST',
@@ -177,7 +184,9 @@ function stopWrangler() {
       });
       reg = await j(r);
       const m2 = (r.headers.get('set-cookie') || '').match(/mmgr_session=([^;]+)/);
-      if (m2) cookie = m2[1];
+      if (m2) {
+        cookie = m2[1];
+      }
     }
     if (!cookie) {
       log('FATAL: no session minted');

@@ -33,7 +33,9 @@ const API_KEY_BODY_GROUP_LEN = 6;
 
 export async function handleCloudApiKeyCreate(request, env, projectId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
+  if (!auth) {
+    return cloudForbidden();
+  }
   const activeRows = await env.DB.prepare(
     'SELECT COUNT(*) AS n FROM cloud_api_keys WHERE project_id = ? AND active = 1'
   )
@@ -50,9 +52,12 @@ export async function handleCloudApiKeyCreate(request, env, projectId) {
     );
   }
   const read = await readCloudBody(request);
-  if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
-  if (read.bad || !read.body || typeof read.body !== 'object')
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad || !read.body || typeof read.body !== 'object') {
     return json({ ok: false, error: 'bad request' }, 400);
+  }
   const label = typeof read.body.label === 'string' ? read.body.label.trim().slice(0, 60) : '';
   // Section scope: same allowlist as editor codes. At least one section -
   // a key that can touch nothing is never issued.
@@ -63,12 +68,15 @@ export async function handleCloudApiKeyCreate(request, env, projectId) {
     : [];
   const seen = {};
   const unique = scope.filter(function (s) {
-    if (seen[s]) return false;
+    if (seen[s]) {
+      return false;
+    }
     seen[s] = 1;
     return true;
   });
-  if (unique.length === 0)
+  if (unique.length === 0) {
     return json({ ok: false, error: 'at least one section is required' }, 400);
+  }
   // Expiry: owner-chosen. Accept an ISO string or days-from-now number;
   // must be in the future when provided. Empty/null = no expiry.
   // expiresInDays is accepted as an alias (the client-code/editor-code
@@ -79,8 +87,9 @@ export async function handleCloudApiKeyCreate(request, env, projectId) {
     expiresAt = new Date(Date.now() + rawExp * 86400000).toISOString();
   } else if (typeof rawExp === 'string' && rawExp.trim()) {
     const t = Date.parse(rawExp.trim());
-    if (isNaN(t) || t <= Date.now())
+    if (isNaN(t) || t <= Date.now()) {
       return json({ ok: false, error: 'expiry must be a future date' }, 400);
+    }
     expiresAt = new Date(t).toISOString();
   }
   const salt = randomSaltHex();
@@ -92,8 +101,9 @@ export async function handleCloudApiKeyCreate(request, env, projectId) {
   const groups = [];
   for (let g = 0; g < API_KEY_BODY_GROUPS; g++) {
     let grp = '';
-    for (let i = 0; i < API_KEY_BODY_GROUP_LEN; i++)
+    for (let i = 0; i < API_KEY_BODY_GROUP_LEN; i++) {
       grp += CLOUD_KEY_ALPHABET[bytes[g * API_KEY_BODY_GROUP_LEN + i] % 32];
+    }
     groups.push(grp);
   }
   const apiKey = API_KEY_PREFIX_TOKEN + groups.join('-');
@@ -128,7 +138,9 @@ export async function handleCloudApiKeyCreate(request, env, projectId) {
 
 export async function handleCloudApiKeyList(request, env, projectId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
+  if (!auth) {
+    return cloudForbidden();
+  }
   const rows = await env.DB.prepare(
     'SELECT id, label, scope, key_prefix, expires_at, active, created_at, last_used_at FROM cloud_api_keys WHERE project_id = ? ORDER BY id DESC'
   )
@@ -138,7 +150,9 @@ export async function handleCloudApiKeyList(request, env, projectId) {
     let scope = [];
     try {
       const p = JSON.parse(r.scope);
-      if (Array.isArray(p)) scope = p;
+      if (Array.isArray(p)) {
+        scope = p;
+      }
     } catch (e) {
       scope = [];
     }
@@ -163,12 +177,16 @@ export async function handleCloudApiKeyList(request, env, projectId) {
 
 export async function handleCloudApiKeyRevoke(request, env, projectId, keyId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
+  if (!auth) {
+    return cloudForbidden();
+  }
   const res = await env.DB.prepare(
     'UPDATE cloud_api_keys SET active = 0 WHERE id = ? AND project_id = ? AND active = 1'
   )
     .bind(keyId, projectId)
     .run();
-  if (!res.meta.changes) return json({ ok: false, error: 'API key not found' }, 404);
+  if (!res.meta.changes) {
+    return json({ ok: false, error: 'API key not found' }, 404);
+  }
   return json({ ok: true, revokedKeyId: Number(keyId) });
 }

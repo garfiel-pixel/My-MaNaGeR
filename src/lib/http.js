@@ -36,35 +36,47 @@ export function cloudTimingSink() {
 
 export function base64UrlEncode(str) {
   let bin = '';
-  for (const b of new TextEncoder().encode(str)) bin += String.fromCharCode(b);
+  for (const b of new TextEncoder().encode(str)) {
+    bin += String.fromCharCode(b);
+  }
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 export function base64UrlDecode(b64) {
   const s = String(b64).replace(/-/g, '+').replace(/_/g, '/');
   const bin = atob(s);
   const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  for (let i = 0; i < bin.length; i++) {
+    bytes[i] = bin.charCodeAt(i);
+  }
   return new TextDecoder().decode(bytes);
 }
 export function base64UrlToBytes(b64) {
   const s = String(b64).replace(/-/g, '+').replace(/_/g, '/');
   const bin = atob(s);
   const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  for (let i = 0; i < bin.length; i++) {
+    bytes[i] = bin.charCodeAt(i);
+  }
   return bytes;
 }
 export function bytesToBase64Url(bytes) {
   let bin = '';
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  for (let i = 0; i < bytes.length; i++) {
+    bin += String.fromCharCode(bytes[i]);
+  }
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 // ---- Constant-time comparison ----------------------------------------------
 
 export function codesEqual(a, b) {
-  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) {
+    return false;
+  }
   let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
   return diff === 0;
 }
 
@@ -92,7 +104,9 @@ export async function sessionKey(env) {
   if (!_fallbackSessionKeyPromise) {
     const raw = crypto.getRandomValues(new Uint8Array(32));
     let bin = '';
-    for (let i = 0; i < raw.length; i++) bin += String.fromCharCode(raw[i]);
+    for (let i = 0; i < raw.length; i++) {
+      bin += String.fromCharCode(raw[i]);
+    }
     _fallbackSessionKeyPromise = crypto.subtle.importKey(
       'raw',
       new TextEncoder().encode(bin),
@@ -115,12 +129,20 @@ export async function readSession(request, env) {
   let raw = null;
   cookieHeader.split(';').forEach(function (part) {
     const idx = part.indexOf('=');
-    if (idx < 0) return;
-    if (part.slice(0, idx).trim() === SESSION_COOKIE) raw = part.slice(idx + 1).trim();
+    if (idx < 0) {
+      return;
+    }
+    if (part.slice(0, idx).trim() === SESSION_COOKIE) {
+      raw = part.slice(idx + 1).trim();
+    }
   });
-  if (!raw) return null;
+  if (!raw) {
+    return null;
+  }
   const dot = raw.indexOf('.');
-  if (dot <= 0 || dot >= raw.length - 1) return null;
+  if (dot <= 0 || dot >= raw.length - 1) {
+    return null;
+  }
   let payloadStr, sigBytes;
   try {
     payloadStr = base64UrlDecode(raw.slice(0, dot));
@@ -134,7 +156,9 @@ export async function readSession(request, env) {
   } catch (e) {
     return null;
   }
-  if (!payload || typeof payload !== 'object' || !payload.sub) return null;
+  if (!payload || typeof payload !== 'object' || !payload.sub) {
+    return null;
+  }
   let expected;
   try {
     expected = new Uint8Array(
@@ -143,12 +167,20 @@ export async function readSession(request, env) {
   } catch (e) {
     return null;
   }
-  if (expected.length !== sigBytes.length) return null;
+  if (expected.length !== sigBytes.length) {
+    return null;
+  }
   let diff = 0;
-  for (let i = 0; i < expected.length; i++) diff |= expected[i] ^ sigBytes[i];
-  if (diff !== 0) return null;
+  for (let i = 0; i < expected.length; i++) {
+    diff |= expected[i] ^ sigBytes[i];
+  }
+  if (diff !== 0) {
+    return null;
+  }
   const exp = Number(payload.exp);
-  if (!Number.isFinite(exp) || exp * 1000 <= Date.now()) return null;
+  if (!Number.isFinite(exp) || exp * 1000 <= Date.now()) {
+    return null;
+  }
   if (payload.jti) {
     // KV-CACHE (Rank 3): check KV first for recent revocation status.
     // Avoids a D1 query on every authenticated request. TTL 60s — a
@@ -157,8 +189,12 @@ export async function readSession(request, env) {
     try {
       if (env.KV) {
         const cached = await env.KV.get(kvKey);
-        if (cached === 'revoked') return null;
-        if (cached === 'valid') return payload;
+        if (cached === 'revoked') {
+          return null;
+        }
+        if (cached === 'valid') {
+          return payload;
+        }
       }
     } catch (e) {
       /* KV failure must not block auth */
@@ -173,12 +209,16 @@ export async function readSession(request, env) {
     }
     if (!sessRow || sessRow.revoked_at) {
       try {
-        if (env.KV) await env.KV.put(kvKey, 'revoked', { expirationTtl: 300 });
+        if (env.KV) {
+          await env.KV.put(kvKey, 'revoked', { expirationTtl: 300 });
+        }
       } catch (e) {}
       return null;
     }
     try {
-      if (env.KV) await env.KV.put(kvKey, 'valid', { expirationTtl: 60 });
+      if (env.KV) {
+        await env.KV.put(kvKey, 'valid', { expirationTtl: 60 });
+      }
     } catch (e) {}
   }
   return payload;
@@ -207,7 +247,9 @@ export function authEmailFrom(env) {
   return f || AUTH_FROM_FALLBACK;
 }
 export async function sendAuthEmail(env, to, subject, textBody) {
-  if (!authEmailConfigured(env)) return false;
+  if (!authEmailConfigured(env)) {
+    return false;
+  }
   try {
     const base =
       (env && typeof env.RESEND_API_BASE === 'string' && env.RESEND_API_BASE) || AUTH_RESEND_BASE;
@@ -219,10 +261,11 @@ export async function sendAuthEmail(env, to, subject, textBody) {
       },
       body: JSON.stringify({ from: authEmailFrom(env), to: [to], subject: subject, text: textBody })
     });
-    if (!res.ok)
+    if (!res.ok) {
       console.error(
         'resend email rejected: ' + res.status + ' ' + (await res.text()).slice(0, 200)
       );
+    }
     return res.ok;
   } catch (e) {
     console.error('resend email failed:', e && e.message);
@@ -277,14 +320,18 @@ export async function consumeAuthToken(env, rawToken, purpose) {
   try {
     const raw = String(rawToken);
     const dot = raw.indexOf('.');
-    if (dot <= 0 || dot >= raw.length - 1) return null;
+    if (dot <= 0 || dot >= raw.length - 1) {
+      return null;
+    }
     payloadStr = base64UrlDecode(raw.slice(0, dot));
     sigBytes = base64UrlToBytes(raw.slice(dot + 1));
     payload = JSON.parse(payloadStr);
   } catch (e) {
     return null;
   }
-  if (!payload || typeof payload !== 'object') return null;
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
   // 1. HMAC over the exact payload segment (same scheme as readSession).
   let expected;
   try {
@@ -294,16 +341,28 @@ export async function consumeAuthToken(env, rawToken, purpose) {
   } catch (e) {
     return null;
   }
-  if (expected.length !== sigBytes.length) return null;
+  if (expected.length !== sigBytes.length) {
+    return null;
+  }
   let diff = 0;
-  for (let i = 0; i < expected.length; i++) diff |= expected[i] ^ sigBytes[i];
-  if (diff !== 0) return null;
-  if (payload.t !== purpose) return null;
+  for (let i = 0; i < expected.length; i++) {
+    diff |= expected[i] ^ sigBytes[i];
+  }
+  if (diff !== 0) {
+    return null;
+  }
+  if (payload.t !== purpose) {
+    return null;
+  }
   const exp = Number(payload.exp);
-  if (!Number.isFinite(exp) || exp * 1000 <= Date.now()) return null;
+  if (!Number.isFinite(exp) || exp * 1000 <= Date.now()) {
+    return null;
+  }
   const jti = payload.j;
   const email = typeof payload.e === 'string' ? payload.e : '';
-  if (!jti || !email) return null;
+  if (!jti || !email) {
+    return null;
+  }
   try {
     // 2. Bind the ledger row to the token's own email + purpose, so a token
     //    can only ever act on the account it was minted for.
@@ -312,8 +371,12 @@ export async function consumeAuthToken(env, rawToken, purpose) {
     )
       .bind(jti, email, purpose)
       .first();
-    if (!row) return null;
-    if (row.used_at) return null;
+    if (!row) {
+      return null;
+    }
+    if (row.used_at) {
+      return null;
+    }
     // 3. Race-safe single use: the winner of the UPDATE is the only one that
     //    may proceed (mirrors the admin-recovery OTP contract).
     const up = await env.DB.prepare(
@@ -321,7 +384,9 @@ export async function consumeAuthToken(env, rawToken, purpose) {
     )
       .bind(new Date().toISOString(), jti)
       .run();
-    if (!up || !up.meta || up.meta.changes !== 1) return null;
+    if (!up || !up.meta || up.meta.changes !== 1) {
+      return null;
+    }
   } catch (e) {
     return null;
   }
@@ -381,7 +446,9 @@ const CLOUD_PBKDF2_ITERS = 100000;
 export function randomOwnerCode() {
   const bytes = crypto.getRandomValues(new Uint8Array(16));
   let code = '';
-  for (let i = 0; i < bytes.length; i++) code += CLOUD_CODE_ALPHABET[bytes[i] % 32];
+  for (let i = 0; i < bytes.length; i++) {
+    code += CLOUD_CODE_ALPHABET[bytes[i] % 32];
+  }
   return (
     code.slice(0, 4) + '-' + code.slice(4, 8) + '-' + code.slice(8, 12) + '-' + code.slice(12, 16)
   );
@@ -395,7 +462,9 @@ export function sanitizeProjectId(raw) {
 export function randomSaltHex() {
   const bytes = crypto.getRandomValues(new Uint8Array(16));
   let hex = '';
-  for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, '0');
+  for (let i = 0; i < bytes.length; i++) {
+    hex += bytes[i].toString(16).padStart(2, '0');
+  }
   return hex;
 }
 
@@ -419,7 +488,9 @@ export async function hashOwnerCode(code, saltHex) {
   );
   const bytes = new Uint8Array(bits);
   let hex = '';
-  for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, '0');
+  for (let i = 0; i < bytes.length; i++) {
+    hex += bytes[i].toString(16).padStart(2, '0');
+  }
   return hex;
 }
 
@@ -427,7 +498,9 @@ export async function fingerprintOf(code) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(code || '')));
   const bytes = new Uint8Array(buf);
   let hex = '';
-  for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, '0');
+  for (let i = 0; i < bytes.length; i++) {
+    hex += bytes[i].toString(16).padStart(2, '0');
+  }
   return hex;
 }
 
@@ -437,8 +510,9 @@ const CLOUD_DUMMY_CODE = 'ZZZZ-ZZZZ-ZZZZ-ZZZZ';
 export const CLOUD_DUMMY_SALT = '00000000000000000000000000000000';
 let _cloudDummyHashPromise = null;
 export async function cloudDummyHash() {
-  if (!_cloudDummyHashPromise)
+  if (!_cloudDummyHashPromise) {
     _cloudDummyHashPromise = hashOwnerCode(CLOUD_DUMMY_CODE, CLOUD_DUMMY_SALT);
+  }
   return _cloudDummyHashPromise;
 }
 
@@ -465,7 +539,9 @@ export async function cloudRateKey(request, headerNames) {
         const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(code));
         const bytes = new Uint8Array(hash);
         let hex = '';
-        for (let j = 0; j < bytes.length; j++) hex += bytes[j].toString(16).padStart(2, '0');
+        for (let j = 0; j < bytes.length; j++) {
+          hex += bytes[j].toString(16).padStart(2, '0');
+        }
         return 'code:' + hex;
       } catch (e) {
         return 'anon';
@@ -473,7 +549,9 @@ export async function cloudRateKey(request, headerNames) {
     }
   }
   const ip = request.headers.get('CF-Connecting-IP');
-  if (ip) return 'ip:' + ip;
+  if (ip) {
+    return 'ip:' + ip;
+  }
   return 'anon';
 }
 
@@ -484,7 +562,9 @@ export async function cloudRateCheck(request, bucket, env) {
   if (env && env.RATE_LIMITER) {
     try {
       const { success } = await env.RATE_LIMITER.limit({ key: ns });
-      if (!success) return { limited: true, retryAfter: 60 };
+      if (!success) {
+        return { limited: true, retryAfter: 60 };
+      }
       return { limited: false };
     } catch (e) {
       /* binding unavailable — fall through to in-memory */
@@ -497,7 +577,9 @@ export async function cloudRateCheck(request, bucket, env) {
     list = [];
     _cloudBuckets.set(ns, list);
   }
-  while (list.length && list[0] <= now - cfg.windowMs) list.shift();
+  while (list.length && list[0] <= now - cfg.windowMs) {
+    list.shift();
+  }
   if (list.length >= cfg.max) {
     return {
       limited: true,
@@ -507,7 +589,9 @@ export async function cloudRateCheck(request, bucket, env) {
   list.push(now);
   if (_cloudBuckets.size > 10000) {
     for (const [k, v] of _cloudBuckets) {
-      if (!v.length || v[v.length - 1] <= now - cfg.windowMs * 2) _cloudBuckets.delete(k);
+      if (!v.length || v[v.length - 1] <= now - cfg.windowMs * 2) {
+        _cloudBuckets.delete(k);
+      }
     }
   }
   return { limited: false };
@@ -523,7 +607,9 @@ export async function cloudRatePeek(request, bucket, env) {
   const cfg = CLOUD_RATE[bucket] || CLOUD_RATE.general;
   const now = Date.now();
   const list = _cloudBuckets.get(ns) || [];
-  while (list.length && list[0] <= now - cfg.windowMs) list.shift();
+  while (list.length && list[0] <= now - cfg.windowMs) {
+    list.shift();
+  }
   return { limited: list.length >= cfg.max, used: list.length };
 }
 
@@ -538,11 +624,15 @@ export async function cloudRateRecord(request, bucket, env) {
     list = [];
     _cloudBuckets.set(ns, list);
   }
-  while (list.length && list[0] <= now - cfg.windowMs) list.shift();
+  while (list.length && list[0] <= now - cfg.windowMs) {
+    list.shift();
+  }
   list.push(now);
   if (_cloudBuckets.size > 10000) {
     for (const [k, v] of _cloudBuckets) {
-      if (!v.length || v[v.length - 1] <= now - cfg.windowMs * 2) _cloudBuckets.delete(k);
+      if (!v.length || v[v.length - 1] <= now - cfg.windowMs * 2) {
+        _cloudBuckets.delete(k);
+      }
     }
   }
 }
@@ -566,7 +656,9 @@ export function cloudRateLimited(retryAfter) {
 const CLOUD_BODY_LIMIT_BYTES = 8388608;
 export async function readCloudBody(request) {
   const cl = Number(request.headers.get('Content-Length') || 0);
-  if (cl > CLOUD_BODY_LIMIT_BYTES) return { tooLarge: true };
+  if (cl > CLOUD_BODY_LIMIT_BYTES) {
+    return { tooLarge: true };
+  }
   if (!request.body) {
     try {
       return { body: await request.json() };
@@ -583,7 +675,9 @@ export async function readCloudBody(request) {
     done = res.done;
     if (res.value) {
       total += res.value.byteLength;
-      if (total > CLOUD_BODY_LIMIT_BYTES) return { tooLarge: true };
+      if (total > CLOUD_BODY_LIMIT_BYTES) {
+        return { tooLarge: true };
+      }
       chunks.push(res.value);
     }
   }
@@ -605,7 +699,9 @@ export async function readCloudBody(request) {
 
 export function sameOriginOnly(request) {
   const origin = request.headers.get('Origin');
-  if (!origin) return true;
+  if (!origin) {
+    return true;
+  }
   try {
     const u = new URL(request.url);
     const o = new URL(origin);
@@ -671,13 +767,17 @@ function r2BytesToBase64(bytes) {
 function r2Base64ToBytes(b64) {
   const bin = atob(b64);
   const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  for (let i = 0; i < bin.length; i++) {
+    out[i] = bin.charCodeAt(i);
+  }
   return out;
 }
 
 // Encrypt a state object for R2 storage. Returns a versioned envelope.
 export async function cloudEncryptState(state, ownerCodeHash, ownerCodeSalt) {
-  if (!state || !ownerCodeHash || !ownerCodeSalt) return JSON.stringify(state);
+  if (!state || !ownerCodeHash || !ownerCodeSalt) {
+    return JSON.stringify(state);
+  }
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const key = await r2DeriveKey(ownerCodeHash, ownerCodeSalt);
   const pt = new TextEncoder().encode(JSON.stringify(state));
@@ -693,10 +793,16 @@ export async function cloudEncryptState(state, ownerCodeHash, ownerCodeSalt) {
 // Decrypt a state object from R2. Detects legacy plaintext (no v field)
 // and returns it as-is. Returns the decrypted state object.
 export async function cloudDecryptState(envelope, ownerCodeHash, ownerCodeSalt) {
-  if (!envelope) return null;
+  if (!envelope) {
+    return null;
+  }
   // Legacy plaintext — no encryption envelope
-  if (envelope.v === undefined || envelope.v === 1) return envelope;
-  if (envelope.v !== R2_ENC_VERSION || !envelope.iv || !envelope.data) return envelope;
+  if (envelope.v === undefined || envelope.v === 1) {
+    return envelope;
+  }
+  if (envelope.v !== R2_ENC_VERSION || !envelope.iv || !envelope.data) {
+    return envelope;
+  }
   // Encrypted — derive key and decrypt
   const salt = envelope.salt || ownerCodeSalt;
   const key = await r2DeriveKey(ownerCodeHash, salt);
@@ -712,9 +818,13 @@ export async function cloudDecryptState(envelope, ownerCodeHash, ownerCodeSalt) 
 // Reads a state blob from R2, with optional decryption when owner credentials
 // are provided. Legacy plaintext blobs are returned as-is.
 export async function cloudReadState(env, key, ownerCodeHash, ownerCodeSalt) {
-  if (!key) return null;
+  if (!key) {
+    return null;
+  }
   const obj = await env.R2.get(key);
-  if (!obj) return null;
+  if (!obj) {
+    return null;
+  }
   const text = await obj.text();
   let parsed;
   try {
@@ -739,7 +849,9 @@ export async function cloudReadState(env, key, ownerCodeHash, ownerCodeSalt) {
 // Keys granted via CLOUD_SECTIONS but ABSENT from the stored blob come back
 // as null so the reader can tell 'empty' from 'hidden'.
 export function cloudScopeState(state, scope) {
-  if (!state || typeof state !== 'object' || Array.isArray(state)) return null;
+  if (!state || typeof state !== 'object' || Array.isArray(state)) {
+    return null;
+  }
   const out = {};
   scope.forEach(function (sec) {
     (CLOUD_SECTIONS[sec] || { keys: [] }).keys.forEach(function (k) {
@@ -809,16 +921,22 @@ CLOUD_CONTENT_KEYS.forEach(function (k) {
 // owner-chosen scope stored on the membership row.
 export const TEAM_FIELD_SECTIONS = ['wbs', 'res', 'risk', 'meet'];
 export function teamScopeForRole(role, memberScope) {
-  if (role === 'manager') return Object.keys(CLOUD_SECTIONS);
-  if (role === 'supervisor')
+  if (role === 'manager') {
+    return Object.keys(CLOUD_SECTIONS);
+  }
+  if (role === 'supervisor') {
     return TEAM_FIELD_SECTIONS.filter(function (k) {
       return !!CLOUD_SECTIONS[k];
     });
-  if (role === 'contractor')
+  }
+  if (role === 'contractor') {
     return ['wbs'].filter(function (k) {
       return !!CLOUD_SECTIONS[k];
     });
-  if (role === 'client') return Array.isArray(memberScope) ? memberScope : [];
+  }
+  if (role === 'client') {
+    return Array.isArray(memberScope) ? memberScope : [];
+  }
   return [];
 }
 
@@ -852,7 +970,9 @@ export function cloudScopeMerge(prev, submitted, scope) {
       base[k] = submitted[k];
       if (prev === null || prev === undefined || !cloudDeepEqual(prev[k], submitted[k])) {
         const sec = CLOUD_KEY_TO_SECTION[k];
-        if (sec && applied.indexOf(sec) === -1) applied.push(sec);
+        if (sec && applied.indexOf(sec) === -1) {
+          applied.push(sec);
+        }
       }
     } else if (CLOUD_CONTENT_KEY_SET[k]) {
       const differs =
@@ -861,7 +981,9 @@ export function cloudScopeMerge(prev, submitted, scope) {
           : !cloudDeepEqual(prev[k], submitted[k]);
       if (differs) {
         const sec = CLOUD_KEY_TO_SECTION[k];
-        if (sec && blocked.indexOf(sec) === -1) blocked.push(sec);
+        if (sec && blocked.indexOf(sec) === -1) {
+          blocked.push(sec);
+        }
       }
     }
   });
@@ -871,7 +993,9 @@ export function cloudScopeMerge(prev, submitted, scope) {
   const now = new Date().toISOString();
   applied.forEach(function (sec) {
     (CLOUD_SECTIONS[sec] || { keys: [] }).keys.forEach(function (k) {
-      if (base.fieldTs && typeof base.fieldTs === 'object') base.fieldTs[k] = now;
+      if (base.fieldTs && typeof base.fieldTs === 'object') {
+        base.fieldTs[k] = now;
+      }
     });
   });
   delete base.updatedAt;
@@ -910,21 +1034,27 @@ export function cloudFlattenLeaves(obj, out) {
   });
 }
 export function cloudDiffState(prev, next) {
-  if (!prev || typeof prev !== 'object') return null;
+  if (!prev || typeof prev !== 'object') {
+    return null;
+  }
   const before = {};
   const after = {};
   cloudFlattenLeaves(prev, before);
   cloudFlattenLeaves(next, after);
   const paths = Object.keys(before);
   Object.keys(after).forEach(function (p) {
-    if (paths.indexOf(p) === -1) paths.push(p);
+    if (paths.indexOf(p) === -1) {
+      paths.push(p);
+    }
   });
   const diffs = [];
   for (let i = 0; i < paths.length; i++) {
     const p = paths[i];
     const a = before[p];
     const b = after[p];
-    if (a === b || cloudDeepEqual(a, b)) continue;
+    if (a === b || cloudDeepEqual(a, b)) {
+      continue;
+    }
     diffs.push({
       path: p,
       before: a === undefined ? null : a,
@@ -939,9 +1069,14 @@ export function cloudSectionOfDiffs(diffs) {
   let sec = null;
   for (let i = 0; i < diffs.length; i++) {
     const s = CLOUD_KEY_TO_SECTION[String(diffs[i].path).split(/[.[]/)[0]];
-    if (s === undefined) continue;
-    if (sec === null) sec = s;
-    else if (sec !== s) return 'multiple';
+    if (s === undefined) {
+      continue;
+    }
+    if (sec === null) {
+      sec = s;
+    } else if (sec !== s) {
+      return 'multiple';
+    }
   }
   return sec;
 }
@@ -950,7 +1085,9 @@ export function cloudSectionOfDiffs(diffs) {
 
 export async function cloudLogSave(env, projectId, prev, next, actor, entryType) {
   const diffs = cloudDiffState(prev, next);
-  if (diffs === null || diffs.length === 0) return null;
+  if (diffs === null || diffs.length === 0) {
+    return null;
+  }
   const now = new Date().toISOString();
   if (diffs.length > CLOUD_MAX_LEAF_DIFFS) {
     const snapKey =
@@ -998,7 +1135,9 @@ export function cloudPathSegments(p) {
   while (i < s.length) {
     if (s[i] === '[') {
       const j = s.indexOf(']', i);
-      if (j < 0) break;
+      if (j < 0) {
+        break;
+      }
       segs.push({ idx: Number(s.slice(i + 1, j)) });
       i = j + 1;
     } else if (s[i] === '.') {
@@ -1007,8 +1146,12 @@ export function cloudPathSegments(p) {
       let j = s.indexOf('.', i);
       let k = s.indexOf('[', i);
       let end = s.length;
-      if (j >= 0 && j < end) end = j;
-      if (k >= 0 && k < end) end = k;
+      if (j >= 0 && j < end) {
+        end = j;
+      }
+      if (k >= 0 && k < end) {
+        end = k;
+      }
       segs.push({ key: s.slice(i, end) });
       i = end;
     }
@@ -1019,7 +1162,9 @@ export function cloudPathGet(obj, p) {
   let cur = obj;
   const segs = cloudPathSegments(p);
   for (let i = 0; i < segs.length; i++) {
-    if (cur === null || cur === undefined) return undefined;
+    if (cur === null || cur === undefined) {
+      return undefined;
+    }
     const seg = segs[i];
     cur = seg.idx !== undefined ? cur[seg.idx] : cur[seg.key];
   }
@@ -1029,23 +1174,35 @@ export function cloudPathSet(obj, p, val) {
   const segs = cloudPathSegments(p);
   let cur = obj;
   for (let i = 0; i < segs.length - 1; i++) {
-    if (cur === null || cur === undefined) return false;
+    if (cur === null || cur === undefined) {
+      return false;
+    }
     const seg = segs[i];
     if (seg.idx !== undefined) {
-      if (!Array.isArray(cur)) return false;
-      if (cur[seg.idx] === null || cur[seg.idx] === undefined) return false;
+      if (!Array.isArray(cur)) {
+        return false;
+      }
+      if (cur[seg.idx] === null || cur[seg.idx] === undefined) {
+        return false;
+      }
       cur = cur[seg.idx];
     } else {
-      if (cur[seg.key] === null || cur[seg.key] === undefined) return false;
+      if (cur[seg.key] === null || cur[seg.key] === undefined) {
+        return false;
+      }
       cur = cur[seg.key];
     }
   }
   const last = segs[segs.length - 1];
   if (last.idx !== undefined) {
-    if (!Array.isArray(cur)) return false;
+    if (!Array.isArray(cur)) {
+      return false;
+    }
     cur[last.idx] = val;
   } else {
-    if (cur === null || typeof cur !== 'object' || Array.isArray(cur)) return false;
+    if (cur === null || typeof cur !== 'object' || Array.isArray(cur)) {
+      return false;
+    }
     cur[last.key] = val;
   }
   return true;
@@ -1054,22 +1211,30 @@ export function cloudPathDelete(obj, p) {
   const segs = cloudPathSegments(p);
   let cur = obj;
   for (let i = 0; i < segs.length - 1; i++) {
-    if (cur === null || cur === undefined) return;
+    if (cur === null || cur === undefined) {
+      return;
+    }
     const seg = segs[i];
     cur = seg.idx !== undefined ? cur[seg.idx] : cur[seg.key];
   }
   const last = segs[segs.length - 1];
-  if (cur === null || cur === undefined) return;
-  if (last.idx !== undefined && Array.isArray(cur)) cur.splice(last.idx, 1);
-  else if (last.key !== undefined && typeof cur === 'object' && !Array.isArray(cur))
+  if (cur === null || cur === undefined) {
+    return;
+  }
+  if (last.idx !== undefined && Array.isArray(cur)) {
+    cur.splice(last.idx, 1);
+  } else if (last.key !== undefined && typeof cur === 'object' && !Array.isArray(cur)) {
     delete cur[last.key];
+  }
 }
 
 // ---- RecordId-aware diff revert -------------------------------------------
 
 export function cloudRevertDiff(s, d) {
   const m = String(d.path || '').match(/^([a-zA-Z]+)(?:\[(\d+)\])?(?:\.(.+))?$/);
-  if (!m) return false;
+  if (!m) {
+    return false;
+  }
   const listKey = m[1];
   const idxStr = m[2];
   const field = m[3];
@@ -1087,25 +1252,35 @@ export function cloudRevertDiff(s, d) {
     idx = list.findIndex(function (r) {
       return r && String(r.id) === String(d.recordId);
     });
-    if (idx < 0) return false;
+    if (idx < 0) {
+      return false;
+    }
   } else if (idxStr !== undefined) {
     idx = Number(idxStr);
   }
   if (d.beforeAbsent) {
     const rec = idx >= 0 && idx < list.length ? list[idx] : null;
     if (field) {
-      if (!rec) return false;
+      if (!rec) {
+        return false;
+      }
       delete rec[field];
       return true;
     }
-    if (idx >= 0 && idx < list.length) list.splice(idx, 1);
+    if (idx >= 0 && idx < list.length) {
+      list.splice(idx, 1);
+    }
     return true;
   }
   if (d.afterAbsent) {
-    if (idx < 0 || idx > list.length) return false;
+    if (idx < 0 || idx > list.length) {
+      return false;
+    }
     if (field) {
       const rec = list[idx];
-      if (!rec || typeof rec !== 'object') return false;
+      if (!rec || typeof rec !== 'object') {
+        return false;
+      }
       rec[field] = d.before;
       return true;
     }
@@ -1113,13 +1288,19 @@ export function cloudRevertDiff(s, d) {
     return true;
   }
   if (field) {
-    if (idx < 0 || idx >= list.length) return false;
+    if (idx < 0 || idx >= list.length) {
+      return false;
+    }
     const rec = list[idx];
-    if (!rec || typeof rec !== 'object') return false;
+    if (!rec || typeof rec !== 'object') {
+      return false;
+    }
     rec[field] = d.before;
     return true;
   }
-  if (idx < 0 || idx >= list.length) return false;
+  if (idx < 0 || idx >= list.length) {
+    return false;
+  }
   list[idx] = d.before;
   return true;
 }
@@ -1172,7 +1353,9 @@ export async function cloudAuthOwnerEither(request, env, projectId) {
   const code = String(request.headers.get('X-Owner-Code') || '').trim();
   if (code) {
     const a = await cloudAuthOwnerByCode(request, env, projectId, code);
-    if (a) return a;
+    if (a) {
+      return a;
+    }
   }
   return cloudAuthOwnerSession(request, env, projectId);
 }
@@ -1190,7 +1373,9 @@ export async function cloudAuthWithRole(request, env, projectId) {
     return { sub: sub, role: 'owner', source: 'owner', ownerAuth: ownerAuth };
   }
   const session = await readSession(request, env);
-  if (!session || !session.sub) return null;
+  if (!session || !session.sub) {
+    return null;
+  }
   const member = await env.DB.prepare(
     'SELECT role, scope FROM cloud_team_members WHERE project_id = ? AND user_sub = ? AND status = ?'
   )
@@ -1204,7 +1389,9 @@ export async function cloudAuthWithRole(request, env, projectId) {
   if (member.scope) {
     try {
       const s = JSON.parse(member.scope);
-      if (Array.isArray(s)) scope = s;
+      if (Array.isArray(s)) {
+        scope = s;
+      }
     } catch (e) {
       scope = null;
     }
@@ -1223,9 +1410,15 @@ export async function cloudAuthWithRole(request, env, projectId) {
 // null; the caller answers 403.
 export async function cloudAuthProjectRead(request, env, projectId, teamRoles) {
   const auth = await cloudAuthWithRole(request, env, projectId);
-  if (!auth) return null;
-  if (auth.source === 'owner') return auth;
-  if (Array.isArray(teamRoles) && teamRoles.indexOf(auth.role) === -1) return null;
+  if (!auth) {
+    return null;
+  }
+  if (auth.source === 'owner') {
+    return auth;
+  }
+  if (Array.isArray(teamRoles) && teamRoles.indexOf(auth.role) === -1) {
+    return null;
+  }
   return auth;
 }
 
@@ -1249,10 +1442,11 @@ export async function cloudAuthSharedCode(request, env, projectId, code, role) {
       let scope = [];
       try {
         const p = JSON.parse(row.scope);
-        if (Array.isArray(p))
+        if (Array.isArray(p)) {
           scope = p.filter(function (x) {
             return !!CLOUD_SECTIONS[x];
           });
+        }
       } catch (e) {
         scope = [];
       }
@@ -1290,7 +1484,9 @@ export async function cloudAuthApiKey(request, env, projectId, apiKey) {
   // the consumer's tool uppercased it. The stored fingerprint is over the
   // exact minted form, so normalize before hashing.
   let key = String(apiKey || '').trim();
-  if (key.toLowerCase().lastIndexOf('sk-mmgr-', 0) === 0) key = 'sk-mmgr-' + key.slice(8);
+  if (key.toLowerCase().lastIndexOf('sk-mmgr-', 0) === 0) {
+    key = 'sk-mmgr-' + key.slice(8);
+  }
   if (!key) {
     await Promise.all([cloudDummyHash(), cloudTimingSink()]);
     return null;
@@ -1334,10 +1530,11 @@ export async function cloudAuthApiKey(request, env, projectId, apiKey) {
   let scope = [];
   try {
     const p = JSON.parse(row.scope);
-    if (Array.isArray(p))
+    if (Array.isArray(p)) {
       scope = p.filter(function (x) {
         return !!CLOUD_SECTIONS[x];
       });
+    }
   } catch (e) {
     scope = [];
   }
@@ -1352,7 +1549,9 @@ export async function cloudAuthApiKey(request, env, projectId, apiKey) {
 }
 
 export async function cloudAdopt(env, projectId, sub, editorCodeId, role) {
-  if (!sub || !editorCodeId) return;
+  if (!sub || !editorCodeId) {
+    return;
+  }
   const now = new Date().toISOString();
   await env.DB.prepare(
     'INSERT INTO cloud_adoptions (project_id, recipient_sub, editor_code_id, role, created_at, updated_at) VALUES (?,?,?,?,?,?) ' +
@@ -1364,27 +1563,36 @@ export async function cloudAdopt(env, projectId, sub, editorCodeId, role) {
 
 export async function cloudAuthAdoption(request, env, projectId) {
   const session = await readSession(request, env);
-  if (!session || !session.sub) return null;
+  if (!session || !session.sub) {
+    return null;
+  }
   const ad = await env.DB.prepare(
     'SELECT editor_code_id, role FROM cloud_adoptions WHERE project_id = ? AND recipient_sub = ?'
   )
     .bind(projectId, session.sub)
     .first();
-  if (!ad) return null;
+  if (!ad) {
+    return null;
+  }
   const row = await env.DB.prepare(
     'SELECT e.id, e.code_salt, e.code_hash, e.label, e.scope, e.active, e.role, p.deleted_at FROM cloud_editor_codes e JOIN cloud_projects p ON p.project_id = e.project_id WHERE e.id = ?'
   )
     .bind(ad.editor_code_id)
     .first();
-  if (!row || row.active !== 1) return { revoked: true };
-  if (row.deleted_at) return { deleted: true };
+  if (!row || row.active !== 1) {
+    return { revoked: true };
+  }
+  if (row.deleted_at) {
+    return { deleted: true };
+  }
   let scope = [];
   try {
     const p = JSON.parse(row.scope);
-    if (Array.isArray(p))
+    if (Array.isArray(p)) {
       scope = p.filter(function (x) {
         return !!CLOUD_SECTIONS[x];
       });
+    }
   } catch (e) {
     scope = [];
   }
@@ -1401,22 +1609,32 @@ export async function cloudAuthAnyAccess(request, env, projectId) {
   const code = String(request.headers.get('X-Owner-Code') || '').trim();
   if (code) {
     const a = await cloudAuthOwnerByCode(request, env, projectId, code);
-    if (a) return a;
+    if (a) {
+      return a;
+    }
   }
   const ecode = String(request.headers.get('X-Editor-Code') || '').trim();
   if (ecode) {
     const a = await cloudAuthEditor(request, env, projectId, ecode);
-    if (a) return a;
+    if (a) {
+      return a;
+    }
   }
   const vcode = String(request.headers.get('X-View-Code') || '').trim();
   if (vcode) {
     const a = await cloudAuthViewer(request, env, projectId, vcode);
-    if (a) return a;
+    if (a) {
+      return a;
+    }
   }
   const sess = await cloudAuthOwnerSession(request, env, projectId);
-  if (sess) return sess;
+  if (sess) {
+    return sess;
+  }
   const ad = await cloudAuthAdoption(request, env, projectId);
-  if (ad && (ad.role === 'editor' || ad.role === 'view')) return ad;
+  if (ad && (ad.role === 'editor' || ad.role === 'view')) {
+    return ad;
+  }
   return null;
 }
 
@@ -1432,7 +1650,9 @@ export const CLOUD_ORPHAN_WARN_MS = 14 * 24 * 60 * 60 * 1000;
 // Reuses the existing Resend-based sendAuthEmail (same system that
 // sends auth verification emails). Returns true if sent, false if not.
 export async function sendOrphanWarningEmail(env, projectId, ownerEmail, daysLeft) {
-  if (!ownerEmail) return false;
+  if (!ownerEmail) {
+    return false;
+  }
   const subject = 'My MaNaGeR: Your project will be archived in ' + daysLeft + ' days';
   const body =
     'Hi,\n\n' +

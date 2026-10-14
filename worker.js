@@ -198,7 +198,9 @@ function normalizePathname(p) {
   const out = [];
   const segs = String(p).split('/');
   for (const seg of segs) {
-    if (seg === '.' || seg === '') continue;
+    if (seg === '.' || seg === '') {
+      continue;
+    }
     if (seg === '..') {
       out.pop();
       continue;

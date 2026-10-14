@@ -53,7 +53,9 @@
   }
   function fmtTs(iso) {
     const d = new Date(iso);
-    if (isNaN(d.getTime())) return String(iso || '');
+    if (isNaN(d.getTime())) {
+      return String(iso || '');
+    }
     const p = n => String(n).padStart(2, '0');
     return (
       d.getFullYear() +
@@ -83,9 +85,12 @@
       'Schema version: ' +
         (s.schemaVersion === undefined || s.schemaVersion === null ? '?' : s.schemaVersion)
     );
-    if (o.ua || o.viewport)
+    if (o.ua || o.viewport) {
       L.push('Environment: ' + (o.ua || '?') + (o.viewport ? ' | viewport ' + o.viewport : ''));
-    if (o.theme) L.push('Theme: ' + o.theme);
+    }
+    if (o.theme) {
+      L.push('Theme: ' + o.theme);
+    }
     L.push('Active panel: ' + (o.activePanel || 'none'));
     const packs = s.packs || {};
     const on = PACK_ORDER.filter(function (p) {
@@ -195,12 +200,16 @@
     let ua = '';
     try {
       const ap = document.querySelector('.panel.active');
-      if (ap) activePanel = ap.id.replace('panel-', '');
+      if (ap) {
+        activePanel = ap.id.replace('panel-', '');
+      }
       viewport = window.innerWidth + 'x' + window.innerHeight;
       theme =
         (document.documentElement && document.documentElement.getAttribute('data-theme')) ||
         'default';
-      if (document.body && document.body.classList.contains('dark-mode')) theme += ' (dark)';
+      if (document.body && document.body.classList.contains('dark-mode')) {
+        theme += ' (dark)';
+      }
       ua = navigator.userAgent;
     } catch (e) {
       /* DOM unavailable , keep the pure fields */
@@ -220,7 +229,9 @@
   async function copyPackage(includeContext) {
     try {
       const text = buildPackage(includeContext);
-      if (!ns.Utils || typeof ns.Utils.copyToClipboard !== 'function') return false;
+      if (!ns.Utils || typeof ns.Utils.copyToClipboard !== 'function') {
+        return false;
+      }
       return await ns.Utils.copyToClipboard(text);
     } catch (e) {
       return false;

@@ -55,8 +55,9 @@ const check = (name, ok, detail) => {
 };
 
 function resolvePlaywright() {
-  if (process.env.PLAYWRIGHT_MODULE && fs.existsSync(process.env.PLAYWRIGHT_MODULE))
+  if (process.env.PLAYWRIGHT_MODULE && fs.existsSync(process.env.PLAYWRIGHT_MODULE)) {
     return require(process.env.PLAYWRIGHT_MODULE);
+  }
   try {
     return require('playwright');
   } catch (e) {
@@ -67,18 +68,26 @@ function resolvePlaywright() {
     path.join(os.homedir(), '.npm', '_npx')
   ];
   for (const root of roots) {
-    if (!fs.existsSync(root)) continue;
+    if (!fs.existsSync(root)) {
+      continue;
+    }
     for (const dir of fs.readdirSync(root)) {
       const p = path.join(root, dir, 'node_modules', 'playwright');
-      if (fs.existsSync(path.join(p, 'index.js'))) return require(p);
+      if (fs.existsSync(path.join(p, 'index.js'))) {
+        return require(p);
+      }
     }
   }
   throw new Error('playwright not found - npm i -D playwright');
 }
 
 function absolutizeChrome(p) {
-  if (!p) return undefined;
-  if (path.isAbsolute(p)) return fs.existsSync(p) ? p : undefined;
+  if (!p) {
+    return undefined;
+  }
+  if (path.isAbsolute(p)) {
+    return fs.existsSync(p) ? p : undefined;
+  }
   const finder = os.platform() === 'win32' ? 'where' : 'command -v';
   try {
     const out = require('child_process')
@@ -86,7 +95,9 @@ function absolutizeChrome(p) {
       .toString()
       .trim()
       .split(/\r?\n/)[0];
-    if (out && fs.existsSync(out)) return out;
+    if (out && fs.existsSync(out)) {
+      return out;
+    }
   } catch (e) {
     /* fall back */
   }
@@ -416,7 +427,9 @@ async function walkFocus(page) {
           try {
             localStorage.removeItem('mmgr_calc_boq');
           } catch (e) {}
-          if (window.renderBoq) renderBoq();
+          if (window.renderBoq) {
+            renderBoq();
+          }
         });
         // M13 (client-docs W3): a real logo upload through the file input
         // lands in the brand store within the 1 MB cap, shows the preview,
@@ -464,7 +477,9 @@ async function walkFocus(page) {
         const m14 = await page.evaluate(() => {
           // Open the brand card through its own toggle (real state).
           const openBtn = document.querySelector('#calc-brand-card [data-action="calcBrandOpen"]');
-          if (openBtn && document.getElementById('calc-brand-body').hidden) openBtn.click();
+          if (openBtn && document.getElementById('calc-brand-body').hidden) {
+            openBtn.click();
+          }
           // Price a companion-bearing trade so the chips row shows.
           const work = document.getElementById('calc-work');
           work.value = 'blockwall';
@@ -555,10 +570,13 @@ async function walkFocus(page) {
       const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
       await page.goto(BASE + '/calculator.html', { waitUntil: 'networkidle' });
       const ir1 = await page.evaluate(() => {
-        if (!window.MMGRIconRestore || !MMGRIconRestore.restore)
+        if (!window.MMGRIconRestore || !MMGRIconRestore.restore) {
           return { err: 'module missing on calculator' };
+        }
         const u = document.querySelector('svg.ico use[href^="css/mmgr-icons.svg"]');
-        if (!u) return { err: 'no external sprite use found' };
+        if (!u) {
+          return { err: 'no external sprite use found' };
+        }
         const before = u.getAttribute('href');
         const n = MMGRIconRestore.restore(); // full pass: clears + re-resolves every external ref
         return { ok: n > 0 && u.getAttribute('href') === before, n: n };
@@ -567,9 +585,13 @@ async function walkFocus(page) {
       // app.html: same contract through the bundle build
       await page.goto(BASE + '/app.html', { waitUntil: 'networkidle' });
       const ir2 = await page.evaluate(() => {
-        if (!window.MMGRIconRestore) return { err: 'module missing on app (bundle)' };
+        if (!window.MMGRIconRestore) {
+          return { err: 'module missing on app (bundle)' };
+        }
         const uses = Array.from(document.querySelectorAll('use[href^="css/mmgr-icons.svg"]'));
-        if (!uses.length) return { err: 'no external sprite uses' };
+        if (!uses.length) {
+          return { err: 'no external sprite uses' };
+        }
         window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
         return {
           ok: MMGRIconRestore.lastCount >= uses.length,
@@ -585,9 +607,13 @@ async function walkFocus(page) {
       // bundle and repaint on a persisted pageshow.
       await page.goto(BASE + '/admin.html', { waitUntil: 'networkidle' });
       const ir3 = await page.evaluate(() => {
-        if (!window.MMGRIconRestore) return { err: 'module missing on admin (bundle)' };
+        if (!window.MMGRIconRestore) {
+          return { err: 'module missing on admin (bundle)' };
+        }
         const uses = Array.from(document.querySelectorAll('use[href^="css/mmgr-icons.svg"]'));
-        if (!uses.length) return { err: 'no external sprite uses' };
+        if (!uses.length) {
+          return { err: 'no external sprite uses' };
+        }
         window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
         return {
           ok: MMGRIconRestore.lastCount >= uses.length,
@@ -641,7 +667,9 @@ async function walkFocus(page) {
 
       const built = await ap.evaluate(() => {
         const m = document.getElementById('calc-ai-mount');
-        if (!m) return { err: 'no mount node' };
+        if (!m) {
+          return { err: 'no mount node' };
+        }
         return {
           ok:
             !!m.querySelector('.bcp-ai-log') &&
@@ -802,7 +830,9 @@ async function walkFocus(page) {
       const dl = ap.waitForEvent('download', { timeout: 8000 }).catch(() => null);
       await ap.evaluate(() => {
         const a = document.querySelector('#calc-ai-mount .bcp-ai-chip a[download]');
-        if (a) a.click();
+        if (a) {
+          a.click();
+        }
       });
       const download = await dl;
       check(
@@ -832,7 +862,9 @@ async function walkFocus(page) {
         document.querySelector('[data-cai=new]').click();
         const rows = document.querySelectorAll('[data-cai=histopen]');
         const title = rows.length ? rows[0].textContent : '';
-        if (rows.length) rows[0].click();
+        if (rows.length) {
+          rows[0].click();
+        }
         const msgs = Array.from(document.querySelectorAll('#calc-ai-mount .bcp-ai-msg')).map(m =>
           m.textContent.slice(0, 40)
         );

@@ -15,7 +15,9 @@ var MMGR = window.MMGR || {};
 
   function computeEVM(state) {
     const s = state || (ns.State ? ns.State.getState() : null);
-    if (!s || !s.tasks) return null;
+    if (!s || !s.tasks) {
+      return null;
+    }
     const tot = s.tasks.length;
     const dn = s.tasks.filter(t => t.status === 'completed').length;
     const pct = tot ? dn / tot : 0;
@@ -25,7 +27,9 @@ var MMGR = window.MMGR || {};
       Spend && Spend.budgetLineActual
         ? (s.budgetLines || []).reduce((sum, b) => sum + Spend.budgetLineActual(b, s), 0)
         : (s.budgetLines || []).reduce((sum, b) => sum + (+b.actual || 0), 0);
-    if (!tp || !tot) return null;
+    if (!tp || !tot) {
+      return null;
+    }
 
     // Planned Value is the time-phased cumulative planned spend as of today;
     // Earned Value credits each line by its linked task's completion (or the
@@ -39,7 +43,9 @@ var MMGR = window.MMGR || {};
       const linkId = l.linkedTaskId || l.taskId || null;
       if (linkId) {
         const t = s.tasks.find(x => String(x.id) === String(linkId));
-        if (t) return sum + planned * (t.status === 'completed' ? 1 : 0);
+        if (t) {
+          return sum + planned * (t.status === 'completed' ? 1 : 0);
+        }
       }
       return sum + planned * pct;
     }, 0);
@@ -111,7 +117,9 @@ var MMGR = window.MMGR || {};
       const el = document.getElementById(id);
       if (el) {
         el.textContent = t;
-        if (c) el.style.color = c;
+        if (c) {
+          el.style.color = c;
+        }
       }
     };
     const sc = !spi
@@ -218,7 +226,9 @@ var MMGR = window.MMGR || {};
           : new Date();
         var monthsElapsed = Math.max(1, (Date.now() - projectStart.getTime()) / (30.44 * 86400000)); // avg days per month
         burnRate = ac / monthsElapsed;
-        if (burnRate > 0) monthsLeft = etc / burnRate;
+        if (burnRate > 0) {
+          monthsLeft = etc / burnRate;
+        }
         // Confidence based on CPI trend
         if (cpi !== null) {
           if (cpi >= 1) {
@@ -237,7 +247,7 @@ var MMGR = window.MMGR || {};
       monthsEl.textContent = monthsLeft !== null ? monthsLeft.toFixed(1) : 'N/A';
       confEl.textContent = confidence;
       confEl.style.color = confColor;
-      if (confLbl)
+      if (confLbl) {
         confLbl.textContent =
           confidence === 'High'
             ? 'CPI on target'
@@ -246,6 +256,7 @@ var MMGR = window.MMGR || {};
               : confidence === 'Low'
                 ? 'Needs corrective action'
                 : '';
+      }
     }
   }
 

@@ -60,9 +60,12 @@ function run(label, content) {
   console.log('\n--- ' + label + ' ---');
 
   // G1: the adopter refuses the 'session' marker (no fake owner code).
+  // Brace-tolerant (2026-10-14): the repo-wide eslint curly pass wrapped
+  // single-statement bodies, so accept the bare and braced spellings. The
+  // assertion still demands that exact early return on the marker.
   check(
     'G1 adopter skips the session marker',
-    has("if (c === 'session') return;"),
+    /if \(c === 'session'\) \{?\s*return;/.test(content),
     'adoptAdminRecordedCode must not seed the registry marker as a code'
   );
 

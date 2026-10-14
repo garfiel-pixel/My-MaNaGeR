@@ -12,7 +12,9 @@ var MMGR = window.MMGR || {};
   const $ = U.$;
 
   function _toast(msg, type) {
-    if (ns.App && ns.App.showToast) ns.App.showToast(msg, type);
+    if (ns.App && ns.App.showToast) {
+      ns.App.showToast(msg, type);
+    }
   }
   function _R() {
     return ns.Render;
@@ -22,14 +24,18 @@ var MMGR = window.MMGR || {};
   function openOM() {
     const modal = $('om');
     const txt = $('om-txt');
-    if (!modal || !txt) return;
+    if (!modal || !txt) {
+      return;
+    }
     txt.value = ns.State.exportState();
     modal.classList.add('open');
   }
 
   function closeOM() {
     const modal = $('om');
-    if (modal) modal.classList.remove('open');
+    if (modal) {
+      modal.classList.remove('open');
+    }
   }
 
   function cpOut() {
@@ -46,8 +52,12 @@ var MMGR = window.MMGR || {};
       .then(text => {
         if (text && ns.State.importState(text)) {
           _R().renderAll();
-          if (ns.Charter) ns.Charter.loadCharterData();
-          if (ns.Sprint) ns.Sprint.loadSprintData();
+          if (ns.Charter) {
+            ns.Charter.loadCharterData();
+          }
+          if (ns.Sprint) {
+            ns.Sprint.loadSprintData();
+          }
           _toast('State loaded from clipboard!', 'ok');
         } else {
           _toast('Invalid state data in clipboard.', 'err');
@@ -75,13 +85,19 @@ var MMGR = window.MMGR || {};
 
   function loadProjectFile(ev) {
     const file = ev.target.files[0];
-    if (!file) return;
+    if (!file) {
+      return;
+    }
     const reader = new FileReader();
     reader.onload = function (e) {
       if (ns.State.importState(e.target.result)) {
         _R().renderAll();
-        if (ns.Charter) ns.Charter.loadCharterData();
-        if (ns.Sprint) ns.Sprint.loadSprintData();
+        if (ns.Charter) {
+          ns.Charter.loadCharterData();
+        }
+        if (ns.Sprint) {
+          ns.Sprint.loadSprintData();
+        }
         _toast('Project loaded!', 'ok');
       } else {
         _toast('Invalid project file.', 'err');

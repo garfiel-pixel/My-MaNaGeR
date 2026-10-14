@@ -49,12 +49,13 @@ async function ev(expr) {
     returnByValue: true,
     awaitPromise: true
   });
-  if (r.exceptionDetails)
+  if (r.exceptionDetails) {
     return {
       __err:
         (r.exceptionDetails.exception && r.exceptionDetails.exception.description) ||
         r.exceptionDetails.text
     };
+  }
   return r.result && r.result.value;
 }
 async function check(name, expr, hint) {
@@ -88,7 +89,9 @@ async function check(name, expr, hint) {
   for (let i = 0; i < 60; i++) {
     try {
       const r = await fetch('http://127.0.0.1:' + PORT + '/json/version');
-      if (r.ok) break;
+      if (r.ok) {
+        break;
+      }
     } catch (e) {}
     await delay(300);
   }
@@ -96,13 +99,15 @@ async function check(name, expr, hint) {
   ws = new WebSocket(targets.find(t => t.type === 'page').webSocketDebuggerUrl);
   ws.onmessage = evt => {
     const m = JSON.parse(evt.data);
-    if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error')
+    if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error') {
       consoleErrors.push((m.params.args || []).map(a => a.value || a.description || '').join(' '));
-    if (m.method === 'Runtime.exceptionThrown')
+    }
+    if (m.method === 'Runtime.exceptionThrown') {
       pageErrors.push(
         (m.params.exceptionDetails.exception && m.params.exceptionDetails.exception.description) ||
           'exception'
       );
+    }
     if (m.id && pending.has(m.id)) {
       pending.get(m.id)(m);
       pending.delete(m.id);
@@ -208,7 +213,9 @@ async function check(name, expr, hint) {
   for (var _w = 0; _w < 15; _w++) {
     await delay(500);
     var cnt = await ev('(function(){return document.querySelectorAll(".pcard").length;})()');
-    if (cnt > 0) break;
+    if (cnt > 0) {
+      break;
+    }
   }
   // demo-filled and demo-empty are auto-unlocked on boot; demo-project (the
   // old not-unlocked third card) left the public manifest 2026-09-17, so the
@@ -363,7 +370,9 @@ async function check(name, expr, hint) {
   log('\n===== SUMMARY =====');
   const fails = results.filter(r => r.status === 'FAIL');
   log(results.length - fails.length + ' passed, ' + fails.length + ' failed');
-  if (bad.length) log('Console-error pages: ' + JSON.stringify(bad.map(b => b.page)));
+  if (bad.length) {
+    log('Console-error pages: ' + JSON.stringify(bad.map(b => b.page)));
+  }
   try {
     proc.kill();
   } catch (e) {}

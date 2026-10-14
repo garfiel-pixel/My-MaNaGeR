@@ -188,12 +188,13 @@ async function ev(expr) {
     returnByValue: true,
     awaitPromise: true
   });
-  if (r.exceptionDetails)
+  if (r.exceptionDetails) {
     return {
       __err: r.exceptionDetails.exception
         ? r.exceptionDetails.exception.description
         : r.exceptionDetails.text
     };
+  }
   return r.result && r.result.value;
 }
 
@@ -248,7 +249,7 @@ async function bootChrome(port, profile, url) {
     }
     await delay(500);
   }
-  if (!targets)
+  if (!targets) {
     throw new Error(
       'devtools /json unreachable on :' +
         port +
@@ -256,13 +257,15 @@ async function bootChrome(port, profile, url) {
         chromeStderr.slice(-300).replace(/\s+/g, ' ') +
         ')'
     );
+  }
   const pages = targets.filter(t => t.type === 'page');
-  if (!pages.length)
+  if (!pages.length) {
     throw new Error(
       'devtools /json returned no page targets (chrome stderr: ' +
         chromeStderr.slice(-300).replace(/\s+/g, ' ') +
         ')'
     );
+  }
   ws = new WebSocket(pages[0].webSocketDebuggerUrl);
   ws.onmessage = evt => {
     const m = JSON.parse(evt.data);
@@ -276,7 +279,9 @@ async function bootChrome(port, profile, url) {
       pageErrors.push(
         'EXC: ' + ((d.exception && d.exception.description) || d.text || 'unknown').slice(0, 300)
       );
-      if (pageErrors.length > 20) pageErrors.shift();
+      if (pageErrors.length > 20) {
+        pageErrors.shift();
+      }
     } else if (
       m.method === 'Runtime.consoleAPICalled' &&
       (m.params.type === 'error' || m.params.type === 'warning')
@@ -289,7 +294,9 @@ async function bootChrome(port, profile, url) {
             .join(' ')
             .slice(0, 300)
       );
-      if (pageErrors.length > 20) pageErrors.shift();
+      if (pageErrors.length > 20) {
+        pageErrors.shift();
+      }
     }
   };
   await new Promise((res, rej) => {
@@ -344,7 +351,9 @@ async function bootChrome(port, profile, url) {
   let server = null;
   try {
     const r = await fetch(BASE + '/index.html');
-    if (!r.ok) throw new Error('bad status');
+    if (!r.ok) {
+      throw new Error('bad status');
+    }
   } catch (e) {
     log('server not up — spawning serve.cjs');
     server = spawn(process.execPath, ['serve.cjs'], { stdio: 'ignore', detached: true });
@@ -386,7 +395,9 @@ async function bootChrome(port, profile, url) {
         ' hasMMGR=' +
         (btxt.indexOf('window.MMGR') !== -1)
     );
-    if (!b.ok) log('WARN dist/bundle.js not served — the CI build step or the server is wrong');
+    if (!b.ok) {
+      log('WARN dist/bundle.js not served — the CI build step or the server is wrong');
+    }
   } catch (e) {
     log('WARN asset probe failed: ' + (e && e.message));
   }
@@ -404,7 +415,9 @@ async function bootChrome(port, profile, url) {
     log('retrying Chrome boot on a fresh port + profile (attempt 2)');
     // Kill the wedged attempt-1 Chrome so it cannot leak (or hold the port).
     try {
-      if (bootChrome._proc) bootChrome._proc.kill('SIGKILL');
+      if (bootChrome._proc) {
+        bootChrome._proc.kill('SIGKILL');
+      }
     } catch (e) {}
     chromeStderr = '';
     proc = await bootChrome(9246, PROFILE + '-retry');
@@ -455,14 +468,18 @@ async function bootChrome(port, profile, url) {
       }
       log('FAIL app never became ready after boot');
       log('diag: ' + JSON.stringify(diag === undefined ? null : diag));
-      if (href && (!diag || diag.href !== href)) log('href: ' + href);
+      if (href && (!diag || diag.href !== href)) {
+        log('href: ' + href);
+      }
       log(
         'page errors (' +
           pageErrors.length +
           '): ' +
           (pageErrors.slice(0, 8).join(' | ') || 'none captured')
       );
-      if (chromeStderr) log('chrome stderr tail: ' + chromeStderr.slice(-600).replace(/\s+/g, ' '));
+      if (chromeStderr) {
+        log('chrome stderr tail: ' + chromeStderr.slice(-600).replace(/\s+/g, ' '));
+      }
       process.exit(1);
     }
     {

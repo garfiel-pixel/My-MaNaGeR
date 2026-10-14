@@ -29,9 +29,12 @@ function extractInlineScripts(html) {
   let m;
   while ((m = re.exec(html)) !== null) {
     const attrs = m[1] || '';
-    if (/\bsrc\s*=/i.test(attrs)) continue; // external script, not inline
-    if (/\btype\s*=\s*["']?(application\/json|application\/ld\+json|text\/template)/i.test(attrs))
+    if (/\bsrc\s*=/i.test(attrs)) {
       continue;
+    } // external script, not inline
+    if (/\btype\s*=\s*["']?(application\/json|application\/ld\+json|text\/template)/i.test(attrs)) {
+      continue;
+    }
     out.push({ attrs: attrs.trim(), code: m[2] || '' });
   }
   return out;
@@ -47,14 +50,18 @@ const pages = files.length
 
 for (const page of pages) {
   const p = path.join(ROOT, page);
-  if (!fs.existsSync(p)) continue;
+  if (!fs.existsSync(p)) {
+    continue;
+  }
   const html = fs.readFileSync(p, 'utf8');
   const scripts = extractInlineScripts(html);
   scripts.forEach((s, i) => {
     blocks++;
     const head =
       (s.attrs ? '<' + s.attrs + '> ' : '') + s.code.trim().slice(0, 60).replace(/\s+/g, ' ');
-    if (!s.code.trim()) return; // empty block is harmless
+    if (!s.code.trim()) {
+      return;
+    } // empty block is harmless
     try {
       // new Function parses WITHOUT executing — exactly what we want.
       new Function(s.code);

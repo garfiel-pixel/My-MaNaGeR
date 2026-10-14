@@ -101,8 +101,9 @@ var MMGR = window.MMGR || {};
       });
       curTasks.forEach(t => {
         const pt = snapTaskMap[String(t.id)];
-        if (pt && pt.status !== 'completed' && t.status === 'completed')
+        if (pt && pt.status !== 'completed' && t.status === 'completed') {
           d.completed.push(t.name || t.id);
+        }
       });
       Object.keys(snapTaskMap).forEach(id => {
         const pt = snapTaskMap[id];
@@ -113,12 +114,17 @@ var MMGR = window.MMGR || {};
         }
         if (pt.endDate && ct.endDate) {
           const diff = U.daysBetween(pt.endDate, ct.endDate);
-          if (diff > 0) d.slipped.push({ name: ct.name || id, days: diff });
-          else if (diff < 0) d.recovered.push({ name: ct.name || id, days: Math.abs(diff) });
+          if (diff > 0) {
+            d.slipped.push({ name: ct.name || id, days: diff });
+          } else if (diff < 0) {
+            d.recovered.push({ name: ct.name || id, days: Math.abs(diff) });
+          }
         }
       });
       curTasks.forEach(t => {
-        if (!snapTaskMap[String(t.id)]) d.added.push(t.name || t.id);
+        if (!snapTaskMap[String(t.id)]) {
+          d.added.push(t.name || t.id);
+        }
       });
 
       // Risks
@@ -131,7 +137,9 @@ var MMGR = window.MMGR || {};
         const pr = snapRiskMap[id];
         const high = /high/i.test(r.probability || '') || /high/i.test(r.impact || '');
         if (!pr) {
-          if (high && !r.issueId) d.newHighRisks.push(r.description || id);
+          if (high && !r.issueId) {
+            d.newHighRisks.push(r.description || id);
+          }
         } else if (!pr.issueId && r.issueId) {
           d.risksPromoted.push(r.description || id);
         }
@@ -148,8 +156,9 @@ var MMGR = window.MMGR || {};
           pi.status !== 'resolved' &&
           pi.status !== 'closed' &&
           (i.status === 'resolved' || i.status === 'closed')
-        )
+        ) {
           d.issuesResolved.push(i.description || i.id);
+        }
       });
       // Budget movement
       const snapBudMap = {};
@@ -179,8 +188,9 @@ var MMGR = window.MMGR || {};
       });
       (s.changes || []).forEach(c => {
         const pc = snapChgMap[String(c.id)];
-        if (pc && pc.status !== (c.status || ''))
+        if (pc && pc.status !== (c.status || '')) {
           d.changeChanges.push({ title: c.title || c.id, from: pc.status, to: c.status || '' });
+        }
       });
       // Spend + weather deltas
       d.spendAdded = (s.spendLog || []).length - snap.spendCount;
@@ -198,15 +208,22 @@ var MMGR = window.MMGR || {};
           d.removed.push(bt.name || id);
           return;
         }
-        if (bt.status !== 'completed' && ct.status === 'completed') d.completed.push(ct.name || id);
+        if (bt.status !== 'completed' && ct.status === 'completed') {
+          d.completed.push(ct.name || id);
+        }
         if (bt.endDate && ct.endDate) {
           const diff = U.daysBetween(bt.endDate, ct.endDate);
-          if (diff > 0) d.slipped.push({ name: ct.name || id, days: diff });
-          else if (diff < 0) d.recovered.push({ name: ct.name || id, days: Math.abs(diff) });
+          if (diff > 0) {
+            d.slipped.push({ name: ct.name || id, days: diff });
+          } else if (diff < 0) {
+            d.recovered.push({ name: ct.name || id, days: Math.abs(diff) });
+          }
         }
       });
       curTasks.forEach(t => {
-        if (!baseMap[String(t.id)]) d.added.push(t.name || t.id);
+        if (!baseMap[String(t.id)]) {
+          d.added.push(t.name || t.id);
+        }
       });
       const basePlanned = (s.baseline.budgetLines || []).reduce((n, l) => n + (+l.planned || 0), 0);
       const baseActual = (s.baseline.budgetLines || []).reduce((n, l) => n + (+l.actual || 0), 0);
@@ -227,18 +244,21 @@ var MMGR = window.MMGR || {};
 
     // Open decisions / promises , always live
     (s.commsEntries || []).forEach(c => {
-      if ((c.actionItems || '').trim())
+      if ((c.actionItems || '').trim()) {
         d.openActions.push({ kind: 'Comms', date: c.date || '', text: c.actionItems });
+      }
     });
     (s.logEntries || []).forEach(l => {
-      if ((l.actionItems || '').trim())
+      if ((l.actionItems || '').trim()) {
         d.openActions.push({ kind: 'Decision Log', date: l.date || '', text: l.actionItems });
+      }
     });
     const promises = s.meetingPromises || {};
     Object.keys(promises).forEach(k => {
       (promises[k] || []).forEach(p => {
-        if (!p.done && (p.text || '').trim())
+        if (!p.done && (p.text || '').trim()) {
           d.openActions.push({ kind: 'Promise (' + k + ')', date: '', text: p.text });
+        }
       });
     });
 
@@ -247,11 +267,14 @@ var MMGR = window.MMGR || {};
 
   // ---- Reference-point label (snapshot date / baseline / none) ----
   function referenceLabel(d) {
-    if (d.mode === 'snapshot') return 'pinned ' + new Date(d.referenceAt).toLocaleString();
-    if (d.mode === 'baseline')
+    if (d.mode === 'snapshot') {
+      return 'pinned ' + new Date(d.referenceAt).toLocaleString();
+    }
+    if (d.mode === 'baseline') {
       return (
         'baseline' + (d.referenceAt ? ' (' + new Date(d.referenceAt).toLocaleString() + ')' : '')
       );
+    }
     return 'none , pin a reference point to start the weekly loop';
   }
 
@@ -261,8 +284,11 @@ var MMGR = window.MMGR || {};
   function digestSections(d) {
     const secs = [];
     const add = (title, lines, noneText) => {
-      if (lines.length) secs.push({ title: title, lines: lines });
-      else secs.push({ title: title, lines: [noneText || '(none)'] });
+      if (lines.length) {
+        secs.push({ title: title, lines: lines });
+      } else {
+        secs.push({ title: title, lines: [noneText || '(none)'] });
+      }
     };
 
     add(
@@ -397,7 +423,9 @@ var MMGR = window.MMGR || {};
   // ---- renderDigestCard: dashboard card ----
   function renderDigestCard(d) {
     const el = U.$('digest-body');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const esc = U.escapeHtml;
     let html =
       '<div class="digest-meta">Generated ' +
@@ -428,7 +456,9 @@ var MMGR = window.MMGR || {};
   // ---- generate: compute + render (read-only) ----
   function generate() {
     render();
-    if (ns.App && ns.App.showToast) ns.App.showToast('Digest generated.', 'ok');
+    if (ns.App && ns.App.showToast) {
+      ns.App.showToast('Digest generated.', 'ok');
+    }
   }
 
   // ---- pin: capture the reference point (mutating , blocked in readonly) ----
@@ -437,8 +467,9 @@ var MMGR = window.MMGR || {};
       st.digestSnapshot = captureSnapshot(st);
     });
     render();
-    if (ns.App && ns.App.showToast)
+    if (ns.App && ns.App.showToast) {
       ns.App.showToast('Reference pinned , future digests show what changed from now.', 'ok');
+    }
   }
 
   function render() {

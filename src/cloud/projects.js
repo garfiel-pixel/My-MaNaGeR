@@ -52,7 +52,9 @@ import { billingConfigured, billingFreeCap, billingStatusActive } from '../billi
 const CLOUD_STATE_SECRET_PATHS = ['config.ai.apiKey', 'config.ai.azureKey', 'config.api.keys'];
 
 function stripStateSecrets(obj) {
-  if (!obj || typeof obj !== 'object') return obj;
+  if (!obj || typeof obj !== 'object') {
+    return obj;
+  }
   for (let i = 0; i < CLOUD_STATE_SECRET_PATHS.length; i++) {
     cloudPathDelete(obj, CLOUD_STATE_SECRET_PATHS[i]);
   }
@@ -61,7 +63,9 @@ function stripStateSecrets(obj) {
 
 export async function handleCloudProjectList(request, env) {
   const session = await readSession(request, env);
-  if (!session || !session.sub) return cloudForbidden();
+  if (!session || !session.sub) {
+    return cloudForbidden();
+  }
   const owned = await env.DB.prepare(
     'SELECT project_id, owner_label, google_name, latest_r2_key, created_at, updated_at, last_owner_seen_at FROM cloud_projects WHERE google_sub = ? AND deleted_at IS NULL'
   )
@@ -91,7 +95,9 @@ export async function handleCloudProjectList(request, env) {
     });
   });
   ((adopted && adopted.results) || []).forEach(function (r) {
-    if (seen[r.project_id]) return;
+    if (seen[r.project_id]) {
+      return;
+    }
     const discontinued = !!r.deleted_at;
     projects.push({
       projectId: r.project_id,
@@ -115,30 +121,41 @@ export async function handleCloudProjectList(request, env) {
 
 export async function handleCloudUnadopt(request, env, projectId) {
   const session = await readSession(request, env);
-  if (!session || !session.sub) return cloudForbidden();
+  if (!session || !session.sub) {
+    return cloudForbidden();
+  }
   const res = await env.DB.prepare(
     'DELETE FROM cloud_adoptions WHERE project_id = ? AND recipient_sub = ?'
   )
     .bind(projectId, session.sub)
     .run();
-  if (!res.meta.changes) return json({ ok: false, error: 'not adopted' }, 404);
+  if (!res.meta.changes) {
+    return json({ ok: false, error: 'not adopted' }, 404);
+  }
   return json({ ok: true, removed: projectId });
 }
 
 export async function handleCloudCreate(request, env) {
   const read = await readCloudBody(request);
-  if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
-  if (read.bad || !read.body || typeof read.body !== 'object')
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad || !read.body || typeof read.body !== 'object') {
     return json({ ok: false, error: 'bad request' }, 400);
+  }
   const projectId = sanitizeProjectId(read.body.projectId);
-  if (!projectId) return json({ ok: false, error: 'bad project id' }, 400);
+  if (!projectId) {
+    return json({ ok: false, error: 'bad project id' }, 400);
+  }
   const name = typeof read.body.name === 'string' ? read.body.name.slice(0, 120) : '';
   const existing = await env.DB.prepare(
     'SELECT project_id FROM cloud_projects WHERE project_id = ?'
   )
     .bind(projectId)
     .first();
-  if (existing) return json({ ok: false, error: 'project already linked' }, 409);
+  if (existing) {
+    return json({ ok: false, error: 'project already linked' }, 409);
+  }
   const session = await readSession(request, env);
   if (session && session.sub && session.sub.indexOf('email:') === 0 && authEmailConfigured(env)) {
     const userRow = await env.DB.prepare('SELECT email_verified FROM auth_users WHERE email = ?')
@@ -206,7 +223,9 @@ export async function handleCloudCreate(request, env) {
     const raced = await env.DB.prepare('SELECT project_id FROM cloud_projects WHERE project_id = ?')
       .bind(projectId)
       .first();
-    if (raced) return json({ ok: false, error: 'project already linked' }, 409);
+    if (raced) {
+      return json({ ok: false, error: 'project already linked' }, 409);
+    }
     throw e;
   }
   return json({ ok: true, projectId: projectId, ownerCode: ownerCode, linked: !!session });
@@ -215,8 +234,9 @@ export async function handleCloudCreate(request, env) {
 export async function queueEditorProposal(env, projectId, a, submitted, prev, now) {
   const merged = cloudScopeMerge(prev, submitted, a.scope);
   const scope = Array.isArray(a.scope) ? a.scope : [];
-  if (!merged.applied.length)
+  if (!merged.applied.length) {
     return { status: 'noop', reviewId: null, applied: merged.applied, blocked: merged.blocked };
+  }
   let diffs = cloudDiffState(prev, merged.next) || [];
   diffs = diffs.filter(function (d) {
     return String(d.path).indexOf('fieldTs') !== 0;
@@ -252,11 +272,15 @@ export async function queueEditorProposal(env, projectId, a, submitted, prev, no
 
 export async function handleCloudSave(request, env, projectId, cloudPushRevChangedIfCopies) {
   const read = await readCloudBody(request);
-  if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
-  if (read.bad || !read.body || typeof read.body !== 'object')
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad || !read.body || typeof read.body !== 'object') {
     return json({ ok: false, error: 'bad request' }, 400);
-  if (read.body.state === undefined || read.body.state === null)
+  }
+  if (read.body.state === undefined || read.body.state === null) {
     return json({ ok: false, error: 'missing state' }, 400);
+  }
   // PROJECT API KEY SAVE (owner directive 2026-09-15): an X-API-Key save
   // NEVER writes directly. It is merged against the stored state under the
   // key's section scope and queued as a pending proposal the owner reviews
@@ -265,7 +289,9 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
   const apiKeyHeader = String(request.headers.get('X-API-Key') || '').trim();
   if (apiKeyHeader) {
     const ka = await cloudAuthApiKey(request, env, projectId, apiKeyHeader);
-    if (!ka) return cloudForbidden();
+    if (!ka) {
+      return cloudForbidden();
+    }
     const now = new Date().toISOString();
     const key = 'projects/' + projectId + '/latest.json';
     const projRow = await env.DB.prepare(
@@ -273,12 +299,17 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
     )
       .bind(projectId)
       .first();
-    if (!projRow) return cloudForbidden();
-    if (projRow.deleted_at) return cloudProjectDeleted();
+    if (!projRow) {
+      return cloudForbidden();
+    }
+    if (projRow.deleted_at) {
+      return cloudProjectDeleted();
+    }
     const prev = await cloudReadState(env, key, projRow.owner_code_hash, projRow.owner_code_salt);
     const merged = cloudScopeMerge(prev, JSON.parse(JSON.stringify(read.body.state)), ka.scope);
-    if (!merged.applied.length)
+    if (!merged.applied.length) {
       return json({ ok: false, error: "no changes within this key's section scope" }, 403);
+    }
     const diffs = (cloudDiffState(prev, merged.next) || []).filter(function (d) {
       return String(d.path).indexOf('fieldTs') !== 0;
     });
@@ -321,8 +352,12 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
   let teamAuth = null;
   if (!ownerCode && !editorCode) {
     adoptAuth = await cloudAuthAdoption(request, env, projectId);
-    if (adoptAuth && adoptAuth.revoked) return json({ ok: false, error: 'code_revoked' }, 403);
-    if (adoptAuth && adoptAuth.deleted) return cloudProjectDeleted();
+    if (adoptAuth && adoptAuth.revoked) {
+      return json({ ok: false, error: 'code_revoked' }, 403);
+    }
+    if (adoptAuth && adoptAuth.deleted) {
+      return cloudProjectDeleted();
+    }
     if (!adoptAuth) {
       // OWNER SESSION SAVE (2026-09-12 owner review): /load accepts the
       // signed-in account owner when no code is held, but /save refused the
@@ -365,7 +400,9 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
       const lbl = teamAuth ? 'Team manager' : sessOwner.label || rowFull.google_name || 'Owner';
       a = rowFull ? { label: lbl, row: rowFull } : null;
     }
-    if (!a) return cloudForbidden();
+    if (!a) {
+      return cloudForbidden();
+    }
     authRow = a.row;
     actor = teamAuth ? { type: 'manager', label: a.label } : { type: 'owner', label: a.label };
     // Read previous state with decryption credentials (owner auth has the key)
@@ -373,7 +410,9 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
     next = JSON.parse(JSON.stringify(read.body.state));
     stripStateSecrets(next);
     await cloudTouchOwner(env, projectId);
-    if (authRow && authRow.deleted_at) return cloudProjectDeleted();
+    if (authRow && authRow.deleted_at) {
+      return cloudProjectDeleted();
+    }
     next.updatedAt = now;
     // Encrypt state blob before R2 storage (server-side envelope encryption,
     // AES-256-GCM, key from owner_code_hash + owner_code_salt).
@@ -399,8 +438,12 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
       actor: actor.type,
       previousUpdatedAt: (prev && prev.updatedAt) || null
     };
-    if (entry) resp.changelog = entry;
-    if (cloudPushRevChangedIfCopies) await cloudPushRevChangedIfCopies(env, projectId, now, actor);
+    if (entry) {
+      resp.changelog = entry;
+    }
+    if (cloudPushRevChangedIfCopies) {
+      await cloudPushRevChangedIfCopies(env, projectId, now, actor);
+    }
     return json(resp);
   } else if (adoptAuth) {
     const a = adoptAuth;
@@ -409,7 +452,9 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
     // must never reach the proposal queue - without this check the save
     // handler treated every adopted session as an editor and a session-only
     // viewer save answered 200 (actor 'editor') instead of 403.
-    if (a.role !== 'editor') return cloudForbidden();
+    if (a.role !== 'editor') {
+      return cloudForbidden();
+    }
     authRow = a.row;
     actor = { type: 'editor', label: a.label };
     // Editor path: read previous state (may be encrypted, use owner credentials from D1)
@@ -438,10 +483,14 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
     });
   } else {
     const a = await cloudAuthEditor(request, env, projectId, editorCode);
-    if (!a) return cloudForbidden();
+    if (!a) {
+      return cloudForbidden();
+    }
     authRow = a.row;
     actor = { type: 'editor', label: a.label };
-    if (authRow && authRow.deleted_at) return cloudProjectDeleted();
+    if (authRow && authRow.deleted_at) {
+      return cloudProjectDeleted();
+    }
     // Editor path: read previous state (may be encrypted)
     const projRow = await env.DB.prepare(
       'SELECT owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?'
@@ -480,16 +529,23 @@ export async function handleCloudLoad(request, env, projectId) {
   const apiKeyHeader = String(request.headers.get('X-API-Key') || '').trim();
   if (apiKeyHeader && !ownerCode && !editorCode && !viewCode && !clientCode) {
     const ka = await cloudAuthApiKey(request, env, projectId, apiKeyHeader);
-    if (!ka) return cloudForbidden();
+    if (!ka) {
+      return cloudForbidden();
+    }
     const row = await env.DB.prepare(
       'SELECT latest_r2_key, owner_code_hash, owner_code_salt, updated_at, deleted_at FROM cloud_projects WHERE project_id = ?'
     )
       .bind(projectId)
       .first();
-    if (!row) return cloudForbidden();
-    if (row.deleted_at) return cloudProjectDeleted();
-    if (!row.latest_r2_key)
+    if (!row) {
+      return cloudForbidden();
+    }
+    if (row.deleted_at) {
+      return cloudProjectDeleted();
+    }
+    if (!row.latest_r2_key) {
       return json({ ok: true, state: null, savedAt: null, role: 'api', scope: ka.scope });
+    }
     const state = await cloudReadState(
       env,
       row.latest_r2_key,
@@ -545,30 +601,50 @@ export async function handleCloudLoad(request, env, projectId) {
     ownerAuth = true;
   } else if (editorCode) {
     editorAuth = await cloudAuthEditor(request, env, projectId, editorCode);
-    if (!editorAuth) return cloudForbidden();
+    if (!editorAuth) {
+      return cloudForbidden();
+    }
     const sess = await readSession(request, env);
-    if (sess && sess.sub) await cloudAdopt(env, projectId, sess.sub, editorAuth.editorId, 'editor');
+    if (sess && sess.sub) {
+      await cloudAdopt(env, projectId, sess.sub, editorAuth.editorId, 'editor');
+    }
   } else if (viewCode) {
     viewerAuth = await cloudAuthViewer(request, env, projectId, viewCode);
-    if (!viewerAuth) return cloudForbidden();
+    if (!viewerAuth) {
+      return cloudForbidden();
+    }
     const sess = await readSession(request, env);
-    if (sess && sess.sub) await cloudAdopt(env, projectId, sess.sub, viewerAuth.editorId, 'view');
+    if (sess && sess.sub) {
+      await cloudAdopt(env, projectId, sess.sub, viewerAuth.editorId, 'view');
+    }
   } else if (clientCode) {
     // C19: client codes are read-only; the section grant travels with the
     // response. Expired / deleted project map to friendly errors.
     const { verifyClientCode } = await import('./client-codes.js');
     clientAuth = await verifyClientCode(clientCode, projectId, env);
-    if (!clientAuth) return cloudForbidden();
-    if (clientAuth.expired)
+    if (!clientAuth) {
+      return cloudForbidden();
+    }
+    if (clientAuth.expired) {
       return json({ ok: false, error: 'code_expired', expiresAt: clientAuth.expiresAt }, 403);
-    if (clientAuth.deleted) return cloudProjectDeleted();
+    }
+    if (clientAuth.deleted) {
+      return cloudProjectDeleted();
+    }
   } else if (sessFallback) {
     ownerAuth = true;
   } else if (adoptFallback) {
-    if (adoptFallback.revoked) return json({ ok: false, error: 'code_revoked' }, 403);
-    if (adoptFallback.deleted) return cloudProjectDeleted();
-    if (adoptFallback.role === 'view') viewerAuth = adoptFallback;
-    else editorAuth = adoptFallback;
+    if (adoptFallback.revoked) {
+      return json({ ok: false, error: 'code_revoked' }, 403);
+    }
+    if (adoptFallback.deleted) {
+      return cloudProjectDeleted();
+    }
+    if (adoptFallback.role === 'view') {
+      viewerAuth = adoptFallback;
+    } else {
+      editorAuth = adoptFallback;
+    }
   } else if (teamFallback) {
     // Role view: manager reads the whole project, the other roles a slice.
     if (teamFallback.role === 'manager') {
@@ -582,8 +658,12 @@ export async function handleCloudLoad(request, env, projectId) {
       };
     }
   }
-  if (row.deleted_at) return cloudProjectDeleted();
-  if (ownerAuth) await cloudTouchOwner(env, projectId);
+  if (row.deleted_at) {
+    return cloudProjectDeleted();
+  }
+  if (ownerAuth) {
+    await cloudTouchOwner(env, projectId);
+  }
   if (!row.latest_r2_key) {
     const base = { ok: true, state: null, savedAt: null };
     if (teamFallback) {
@@ -657,7 +737,9 @@ async function rotateOwnerCode(env, projectId) {
   const row = await env.DB.prepare('SELECT google_name FROM cloud_projects WHERE project_id = ?')
     .bind(projectId)
     .first();
-  if (!row) return null;
+  if (!row) {
+    return null;
+  }
   const salt = randomSaltHex();
   const ownerCode = randomOwnerCode();
   const hash = await hashOwnerCode(ownerCode, salt);
@@ -693,7 +775,9 @@ export async function handleCloudRecover(request, env, projectId) {
     return cloudForbidden();
   }
   const rec = await rotateOwnerCode(env, projectId);
-  if (!rec) return cloudForbidden();
+  if (!rec) {
+    return cloudForbidden();
+  }
   return json({ ok: true, ownerCode: rec.ownerCode, recoveredAt: new Date().toISOString() });
 }
 
@@ -707,14 +791,20 @@ export async function handleCloudRecover(request, env, projectId) {
 // code unless the code also matches - which IS ownership by design.
 export async function handleCloudProjectClaim(request, env, projectId) {
   const session = await readSession(request, env);
-  if (!session || !session.sub)
+  if (!session || !session.sub) {
     return json({ ok: false, error: 'sign in to claim this project' }, 401);
+  }
   const read = await readCloudBody(request);
-  if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
-  if (read.bad || !read.body || typeof read.body !== 'object')
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad || !read.body || typeof read.body !== 'object') {
     return json({ ok: false, error: 'bad request' }, 400);
+  }
   const code = String(read.body.ownerCode || '').trim();
-  if (!code) return json({ ok: false, error: 'owner code required' }, 400);
+  if (!code) {
+    return json({ ok: false, error: 'owner code required' }, 400);
+  }
   const row = await env.DB.prepare(
     'SELECT google_sub, owner_code_salt, owner_code_hash, deleted_at FROM cloud_projects WHERE project_id = ?'
   )
@@ -724,15 +814,18 @@ export async function handleCloudProjectClaim(request, env, projectId) {
     await Promise.all([cloudDummyHash(), cloudTimingSink()]);
     return cloudForbidden();
   }
-  if (row.deleted_at) return cloudProjectDeleted();
+  if (row.deleted_at) {
+    return cloudProjectDeleted();
+  }
   const hash = await hashOwnerCode(code, row.owner_code_salt);
   if (!codesEqual(hash, row.owner_code_hash)) {
     await cloudTimingSink();
     return json({ ok: false, error: 'owner code does not match this project' }, 403);
   }
   if (row.google_sub) {
-    if (row.google_sub === session.sub)
+    if (row.google_sub === session.sub) {
       return json({ ok: true, alreadyLinked: true, projectId: projectId });
+    }
     await cloudTimingSink();
     return json({ ok: false, error: 'already linked to another account' }, 409);
   }
@@ -772,7 +865,9 @@ export async function handleCloudMeta(request, env, projectId) {
   if (code) {
     const hash = await hashOwnerCode(code, row.owner_code_salt);
     authorized = codesEqual(hash, row.owner_code_hash);
-    if (authorized) ownerProbe = true;
+    if (authorized) {
+      ownerProbe = true;
+    }
   } else if (ecode) {
     const ea = await cloudAuthEditor(request, env, projectId, ecode);
     if (ea) {
@@ -797,8 +892,9 @@ export async function handleCloudMeta(request, env, projectId) {
     if (ca && !ca.expired && !ca.deleted) {
       authorized = true;
       clientSections = ca.sections;
-    } else if (ca && ca.expired)
+    } else if (ca && ca.expired) {
       return json({ ok: false, error: 'code_expired', expiresAt: ca.expiresAt }, 403);
+    }
   }
   if (!authorized && session && session.sub && row.google_sub && row.google_sub === session.sub) {
     authorized = true;
@@ -806,15 +902,21 @@ export async function handleCloudMeta(request, env, projectId) {
   }
   if (!authorized && !ownerProbe) {
     const ad = await cloudAuthAdoption(request, env, projectId);
-    if (ad && ad.revoked) return json({ ok: false, error: 'code_revoked' }, 403);
-    if (ad && ad.deleted) return cloudProjectDeleted();
+    if (ad && ad.revoked) {
+      return json({ ok: false, error: 'code_revoked' }, 403);
+    }
+    if (ad && ad.deleted) {
+      return cloudProjectDeleted();
+    }
     if (ad) {
       authorized = true;
       isEditor = true;
       editorScope = ad.scope;
       editorLabel = ad.label;
       viewer = ad.role === 'view';
-      if (viewer) viewerScope = ad.scope;
+      if (viewer) {
+        viewerScope = ad.scope;
+      }
     }
   }
   // WAVE 7: an active named team member may probe meta with their role scope.
@@ -828,9 +930,15 @@ export async function handleCloudMeta(request, env, projectId) {
       teamScope = tr.scope;
     }
   }
-  if (!authorized) return cloudForbidden();
-  if (row.deleted_at) return cloudProjectDeleted();
-  if (ownerProbe) await cloudTouchOwner(env, projectId);
+  if (!authorized) {
+    return cloudForbidden();
+  }
+  if (row.deleted_at) {
+    return cloudProjectDeleted();
+  }
+  if (ownerProbe) {
+    await cloudTouchOwner(env, projectId);
+  }
   const resp = {
     ok: true,
     projectId: projectId,
@@ -871,23 +979,32 @@ export async function handleCloudMeta(request, env, projectId) {
 
 export async function handleCloudUnlink(request, env, projectId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
+  if (!auth) {
+    return cloudForbidden();
+  }
   const now = new Date().toISOString();
   const res = await env.DB.prepare('DELETE FROM cloud_projects WHERE project_id = ?')
     .bind(projectId)
     .run();
-  if (!res.meta.changes) return json({ ok: false, error: 'project not found' }, 404);
+  if (!res.meta.changes) {
+    return json({ ok: false, error: 'project not found' }, 404);
+  }
   await cloudDeleteProjectFully(env, projectId);
   return json({ ok: true, unlinked: projectId, unlinkedAt: now });
 }
 
 export async function handleCloudCodeLookup(request, env) {
   const read = await readCloudBody(request);
-  if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
-  if (read.bad || !read.body || typeof read.body !== 'object')
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad || !read.body || typeof read.body !== 'object') {
     return json({ ok: false, error: 'bad request' }, 400);
+  }
   const code = String(read.body.code || '').trim();
-  if (!code) return json({ ok: false, error: 'code required' }, 400);
+  if (!code) {
+    return json({ ok: false, error: 'code required' }, 400);
+  }
   const fp = await fingerprintOf(code);
   const row = await env.DB.prepare(
     'SELECT e.project_id, e.role, e.label, e.scope, e.active, p.deleted_at FROM cloud_editor_codes e JOIN cloud_projects p ON p.project_id = e.project_id WHERE e.code_fingerprint = ?'
@@ -916,9 +1033,12 @@ export async function handleCloudCodeLookup(request, env) {
     for (const cp of clientProjects.results || []) {
       const clientResult = await verifyClientCode(code, cp.project_id, env);
       if (clientResult) {
-        if (clientResult.expired)
+        if (clientResult.expired) {
           return json({ ok: false, error: 'code_expired', expiresAt: clientResult.expiresAt }, 403);
-        if (clientResult.deleted) return json({ ok: false, error: 'project_deleted' }, 403);
+        }
+        if (clientResult.deleted) {
+          return json({ ok: false, error: 'project_deleted' }, 403);
+        }
         return json({
           ok: true,
           projectId: clientResult.projectId,
@@ -942,7 +1062,7 @@ export async function handleCloudCodeLookup(request, env) {
   } catch (e) {
     lookupScope = [];
   }
-  if (!row.active)
+  if (!row.active) {
     return json({
       ok: true,
       projectId: row.project_id,
@@ -952,6 +1072,7 @@ export async function handleCloudCodeLookup(request, env) {
       revoked: true,
       deleted: !!row.deleted_at
     });
+  }
   return json({
     ok: true,
     projectId: row.project_id,
@@ -964,15 +1085,18 @@ export async function handleCloudCodeLookup(request, env) {
 
 export async function handleCloudProjectDelete(request, env, projectId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
+  if (!auth) {
+    return cloudForbidden();
+  }
   const now = new Date().toISOString();
   const res = await env.DB.prepare(
     'UPDATE cloud_projects SET deleted_at = ? WHERE project_id = ? AND deleted_at IS NULL'
   )
     .bind(now, projectId)
     .run();
-  if (!res.meta.changes)
+  if (!res.meta.changes) {
     return json({ ok: false, error: 'project not found or already deleted' }, 404);
+  }
   await env.DB.prepare('DELETE FROM cloud_reviews WHERE project_id = ? AND status = ?')
     .bind(projectId, 'pending')
     .run();
@@ -981,24 +1105,32 @@ export async function handleCloudProjectDelete(request, env, projectId) {
 
 export async function handleCloudProjectRestore(request, env, projectId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
+  if (!auth) {
+    return cloudForbidden();
+  }
   const res = await env.DB.prepare(
     'UPDATE cloud_projects SET deleted_at = NULL WHERE project_id = ? AND deleted_at IS NOT NULL'
   )
     .bind(projectId)
     .run();
-  if (!res.meta.changes) return json({ ok: false, error: 'project not found or not deleted' }, 404);
+  if (!res.meta.changes) {
+    return json({ ok: false, error: 'project not found or not deleted' }, 404);
+  }
   return json({ ok: true, restored: projectId });
 }
 
 export async function handleCloudProjectPurge(request, env, projectId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
+  if (!auth) {
+    return cloudForbidden();
+  }
   const now = new Date().toISOString();
   const res = await env.DB.prepare('DELETE FROM cloud_projects WHERE project_id = ?')
     .bind(projectId)
     .run();
-  if (!res.meta.changes) return json({ ok: false, error: 'project not found' }, 404);
+  if (!res.meta.changes) {
+    return json({ ok: false, error: 'project not found' }, 404);
+  }
   await cloudDeleteProjectFully(env, projectId);
   return json({ ok: true, purged: projectId, purgedAt: now });
 }
@@ -1082,7 +1214,9 @@ export async function purgeStaleCloudProjects(env) {
       const userRow = await env.DB.prepare('SELECT email FROM auth_users WHERE sub = ?')
         .bind(row.google_sub)
         .first();
-      if (userRow && userRow.email) email = userRow.email;
+      if (userRow && userRow.email) {
+        email = userRow.email;
+      }
     } catch (e) {
       /* email lookup best-effort */
     }
@@ -1091,7 +1225,9 @@ export async function purgeStaleCloudProjects(env) {
     const purgeAt = lastSeen + CLOUD_ORPHAN_RETENTION_MS;
     const daysLeft = Math.max(1, Math.ceil((purgeAt - now) / (24 * 60 * 60 * 1000)));
     const sent = await sendOrphanWarningEmail(env, row.project_id, email, daysLeft);
-    if (sent) warned.push(row.project_id);
+    if (sent) {
+      warned.push(row.project_id);
+    }
   }
 
   // Phase 2: Hard-purge projects past the retention deadline.

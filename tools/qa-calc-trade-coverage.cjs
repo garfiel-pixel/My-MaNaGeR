@@ -73,27 +73,41 @@ function resolvePlaywright() {
     path.join(os.homedir(), '.npm', '_npx')
   ];
   for (const root of roots) {
-    if (!fs.existsSync(root)) continue;
+    if (!fs.existsSync(root)) {
+      continue;
+    }
     for (const dir of fs.readdirSync(root)) {
       const p = path.join(root, dir, 'node_modules', 'playwright');
-      if (fs.existsSync(path.join(p, 'index.js'))) return require(p);
+      if (fs.existsSync(path.join(p, 'index.js'))) {
+        return require(p);
+      }
     }
   }
   throw new Error('playwright not found - npm i -D playwright');
 }
 function dimSample(label) {
   // Sane sample per basis: mm dims small, m dims modest, counts small.
-  if (/\(mm\)/.test(label)) return '100';
-  if (/\(m2\)|\(m3\)/.test(label)) return '10';
-  if (/\(m\)/.test(label)) return '10';
+  if (/\(mm\)/.test(label)) {
+    return '100';
+  }
+  if (/\(m2\)|\(m3\)/.test(label)) {
+    return '10';
+  }
+  if (/\(m\)/.test(label)) {
+    return '10';
+  }
   return '10';
 }
 // Playwright demands an ABSOLUTE executablePath. chrome-launcher may hand
 // back a bare command name on Unix (spawn resolves it through PATH,
 // Playwright does not) - locate it the way the sibling batteries do.
 function absolutizeChrome(p) {
-  if (!p) return undefined;
-  if (path.isAbsolute(p)) return fs.existsSync(p) ? p : undefined;
+  if (!p) {
+    return undefined;
+  }
+  if (path.isAbsolute(p)) {
+    return fs.existsSync(p) ? p : undefined;
+  }
   const finder = os.platform() === 'win32' ? 'where' : 'command -v';
   try {
     const out = require('child_process')
@@ -101,7 +115,9 @@ function absolutizeChrome(p) {
       .toString()
       .trim()
       .split(/\r?\n/)[0];
-    if (out && fs.existsSync(out)) return out;
+    if (out && fs.existsSync(out)) {
+      return out;
+    }
   } catch (e) {
     /* fall back */
   }
@@ -112,7 +128,9 @@ function absolutizeChrome(p) {
     let srv = null;
     try {
       const h = await fetch(BASE + '/calculator.html');
-      if (!h.ok) throw 0;
+      if (!h.ok) {
+        throw 0;
+      }
     } catch (e) {
       log('starting serve.cjs for this run');
       srv = spawn(process.execPath, ['serve.cjs'], { cwd: ROOT, stdio: 'ignore' });
@@ -120,7 +138,9 @@ function absolutizeChrome(p) {
         await delay(1000);
         try {
           const h = await fetch(BASE + '/calculator.html');
-          if (h.ok) break;
+          if (h.ok) {
+            break;
+          }
         } catch (e) {}
       }
     }
@@ -147,7 +167,9 @@ function absolutizeChrome(p) {
     consoleErrors++;
   });
   page.on('console', m => {
-    if (m.type() !== 'error') return;
+    if (m.type() !== 'error') {
+      return;
+    }
     const url = (m.location() || {}).url || '';
     if (/Failed to load resource/.test(m.text()) && /\/api\//.test(url)) {
       apiNoise.push(url.slice(-40));
@@ -182,7 +204,13 @@ function absolutizeChrome(p) {
   const trades = await page.evaluate(() =>
     Array.prototype.map
       .call(document.querySelectorAll('#calc-work option'), o => o.value)
-      .filter(v => v && v !== '')
+      // 'custom' (Custom item, your own rate) is NOT a trade: it has no
+      // d1 basis label, no family, and prices via its own four fields on
+      // the Quick total path - so the trade contract (family flip + d1
+      // label + d1 pricing) does not apply to it. Its real contract is
+      // exercised by tools/qa-calc-assistant.cjs C1-C11. This walker covers
+      // the trades; excluding the non-trade option keeps its 43 gates green.
+      .filter(v => v && v !== '' && v !== 'custom')
   );
   check('picker exposes the user trades (>= 20)', trades.length >= 20, trades);
 
@@ -235,7 +263,9 @@ function absolutizeChrome(p) {
           pp.dispatchEvent(new Event('input', { bubbles: true }));
         }
         pieceNote = { visible: true, pricePh: (pp || {}).placeholder || '' };
-      } else pieceNote = { visible: false };
+      } else {
+        pieceNote = { visible: false };
+      }
       document.querySelector('[data-action="calcRun"]').click();
       await new Promise(res => setTimeout(res, 150));
       const out = document.getElementById('calc-output').textContent;
@@ -244,7 +274,9 @@ function absolutizeChrome(p) {
       const csv = window.__calcEngine.estimateCsv(window.__calcEngine.readState());
       const linesBefore = JSON.parse(localStorage.getItem('mmgr_calc_boq') || '[]').length;
       const addBtn = document.querySelector('[data-action="calcBoqAdd"]');
-      if (addBtn) addBtn.click();
+      if (addBtn) {
+        addBtn.click();
+      }
       await new Promise(res => setTimeout(res, 120));
       const linesAfter = JSON.parse(localStorage.getItem('mmgr_calc_boq') || '[]').length;
       return {
@@ -309,7 +341,8 @@ function absolutizeChrome(p) {
   const mTrades = await mpage.evaluate(() =>
     Array.prototype.map
       .call(document.querySelectorAll('#calc-work option'), o => o.value)
-      .filter(v => v && v !== '')
+      // Same exclusion as the desktop pass: 'custom' is not a trade (see above).
+      .filter(v => v && v !== '' && v !== 'custom')
   );
   for (const trade of mTrades) {
     const res = await runTrade(mpage, trade, async trade => {

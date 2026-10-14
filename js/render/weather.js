@@ -28,19 +28,25 @@ var MMGR = window.MMGR || {};
   }
 
   function getNearCritical() {
-    if (ns.Schedule && ns.Schedule.getNearCritical) return ns.Schedule.getNearCritical();
+    if (ns.Schedule && ns.Schedule.getNearCritical) {
+      return ns.Schedule.getNearCritical();
+    }
     return [];
   }
 
   function crashCandidates() {
-    if (ns.Schedule && ns.Schedule.crashCandidates) return ns.Schedule.crashCandidates();
+    if (ns.Schedule && ns.Schedule.crashCandidates) {
+      return ns.Schedule.crashCandidates();
+    }
     return [];
   }
 
   // ---- Lead-Time Tracker ----
   function renderLeadtimeTracker() {
     const el = $('leadtime-tracker-body');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const s = S();
     const lt = ((s && s.tasks) || []).filter(t => t.leadTime);
     if (!lt.length) {
@@ -132,7 +138,9 @@ var MMGR = window.MMGR || {};
   // ---- Float Watch ----
   function renderFloatWatch() {
     const el = $('float-watch-body');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const s = S();
     const tasks = (s && s.tasks) || [];
     const nc = getNearCritical();
@@ -196,16 +204,24 @@ var MMGR = window.MMGR || {};
   // ---- Weather Variance ----
   function renderWeatherVariance() {
     const el = $('weather-variance-body');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     bindWxInputs();
     const s = S();
     const w = (s && s.wxWindow) || { start: '', end: '', bufferDays: 0 };
     const st = $('wx-start');
-    if (st && st !== document.activeElement) st.value = w.start || '';
+    if (st && st !== document.activeElement) {
+      st.value = w.start || '';
+    }
     const en = $('wx-end');
-    if (en && en !== document.activeElement) en.value = w.end || '';
+    if (en && en !== document.activeElement) {
+      en.value = w.end || '';
+    }
     const bf = $('wx-buffer');
-    if (bf && bf !== document.activeElement) bf.value = w.bufferDays || 0;
+    if (bf && bf !== document.activeElement) {
+      bf.value = w.bufferDays || 0;
+    }
     const winSt = U.parseDL(w.start),
       winEn = U.parseDL(w.end);
     const spanDays = winSt && winEn ? Math.round((winEn - winSt) / 86400000) : 0;
@@ -228,13 +244,17 @@ var MMGR = window.MMGR || {};
     wxTasks.forEach(t => {
       const ts = U.parseDL(t.startDate),
         te = U.parseDL(t.endDate);
-      if (!ts || !te) return;
+      if (!ts || !te) {
+        return;
+      }
       const dur = Math.max(1, Math.round((te - ts) / 86400000) + 1);
       totalDays += dur;
       if (winSt && winEn) {
         const ovStart = new Date(Math.max(ts, winSt));
         const ovEnd = new Date(Math.min(te, winEn));
-        if (ovStart <= ovEnd) inWindowDays += Math.round((ovEnd - ovStart) / 86400000) + 1;
+        if (ovStart <= ovEnd) {
+          inWindowDays += Math.round((ovEnd - ovStart) / 86400000) + 1;
+        }
       }
     });
     const buffer = w.bufferDays || 0;
@@ -288,7 +308,9 @@ var MMGR = window.MMGR || {};
       inp.addEventListener('change', function () {
         ns.State.updateState(function (st) {
           const task = (st.tasks || []).find(x => x.id === inp.getAttribute('data-wxpad'));
-          if (task) task.wxFloatPad = Math.max(0, Math.min(60, +inp.value || 0));
+          if (task) {
+            task.wxFloatPad = Math.max(0, Math.min(60, +inp.value || 0));
+          }
         });
         renderWeatherVariance();
       });
@@ -298,7 +320,9 @@ var MMGR = window.MMGR || {};
   // ---- Weather window inputs ----
   function updWxWindow() {
     ns.State.updateState(function (s) {
-      if (!s.wxWindow) s.wxWindow = { start: '', end: '', bufferDays: 0 };
+      if (!s.wxWindow) {
+        s.wxWindow = { start: '', end: '', bufferDays: 0 };
+      }
       const stEl = $('wx-start'),
         enEl = $('wx-end');
       s.wxWindow.start = (stEl && stEl.value) || '';
@@ -322,7 +346,9 @@ var MMGR = window.MMGR || {};
 
   function updWxBuffer() {
     ns.State.updateState(function (s) {
-      if (!s.wxWindow) s.wxWindow = { start: '', end: '', bufferDays: 0 };
+      if (!s.wxWindow) {
+        s.wxWindow = { start: '', end: '', bufferDays: 0 };
+      }
       const bfEl = $('wx-buffer');
       s.wxWindow.bufferDays = bfEl ? +bfEl.value || 0 : 0;
     });
@@ -340,7 +366,9 @@ var MMGR = window.MMGR || {};
   // ---- Schedule Confidence ----
   function renderScheduleConfidence() {
     const el = $('schedule-confidence-card');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const s = S();
     const f = (s && s.charter) || {};
     if (!f.targetCompletion && !f.end) {
@@ -384,10 +412,14 @@ var MMGR = window.MMGR || {};
       wxTasks.forEach(t => {
         const ts = U.parseDL(t.startDate),
           te = U.parseDL(t.endDate);
-        if (!ts || !te) return;
+        if (!ts || !te) {
+          return;
+        }
         const ovStart = new Date(Math.max(ts, winSt)),
           ovEnd = new Date(Math.min(te, winEn));
-        if (ovStart <= ovEnd) inWindow += Math.round((ovEnd - ovStart) / 86400000) + 1;
+        if (ovStart <= ovEnd) {
+          inWindow += Math.round((ovEnd - ovStart) / 86400000) + 1;
+        }
       });
       const over = inWindow - (w.bufferDays || 0);
       wxHtml =
@@ -416,7 +448,9 @@ var MMGR = window.MMGR || {};
   // ---- Safety Banner ----
   function renderSafetyBanner() {
     const el = $('safety-banner');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const s = S();
     const Fc = ns.Forecast;
     if (!Fc) {
@@ -428,19 +462,25 @@ var MMGR = window.MMGR || {};
     if (!hc) {
       el.classList.remove('safety-heat', 'safety-cold');
       el.classList.add('is-hide');
-      if (txt) txt.textContent = '';
+      if (txt) {
+        txt.textContent = '';
+      }
       return;
     }
     el.classList.remove('safety-heat', 'safety-cold');
     el.classList.add('safety-' + hc.kind);
-    if (txt) txt.textContent = hc.text;
+    if (txt) {
+      txt.textContent = hc.text;
+    }
     el.classList.remove('is-hide');
   }
 
   // ---- Weather Forecast ----
   function renderWeatherForecast() {
     const el = $('weather-forecast-body');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const s = S();
     const Fc = ns.Forecast;
     if (!Fc) {
@@ -456,7 +496,9 @@ var MMGR = window.MMGR || {};
       return;
     }
     const placeIn = $('wx-place-in');
-    if (placeIn && place && placeIn !== document.activeElement) placeIn.value = place;
+    if (placeIn && place && placeIn !== document.activeElement) {
+      placeIn.value = place;
+    }
     if (!days) {
       el.innerHTML =
         '<div class="es" style="padding:12px;font-size:.76rem">Forecast not fetched yet (or the 3h cache expired). Click <strong>Refresh</strong> to pull the 16-day Open-Meteo forecast for ' +
@@ -550,7 +592,9 @@ var MMGR = window.MMGR || {};
   // ---- Weather Log ----
   function renderWeatherLog() {
     const el = $('weather-log-body');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const s = S();
     const Fc = ns.Forecast;
     if (!Fc) {
@@ -558,7 +602,9 @@ var MMGR = window.MMGR || {};
       return;
     }
     const ldIn = $('wx-ld-rate');
-    if (ldIn && ldIn !== document.activeElement) ldIn.value = s.ldRate || 0;
+    if (ldIn && ldIn !== document.activeElement) {
+      ldIn.value = s.ldRate || 0;
+    }
     const strip = $('ld-sri-strip');
     if (strip) {
       const ld = Fc.ldExposure(s);

@@ -26,22 +26,34 @@ var MMGR = window.MMGR || {};
   }
 
   function parseImpactDays(text) {
-    if (!text) return 0;
+    if (!text) {
+      return 0;
+    }
     const m = String(text).match(
       /(\d+(?:\.\d+)?)\s*(d|day|days|w|wk|week|weeks|m|mo|month|months)/i
     );
-    if (!m) return 0;
+    if (!m) {
+      return 0;
+    }
     const n = parseFloat(m[1]);
     const unit = m[2].toLowerCase();
-    if (unit.charAt(0) === 'd') return Math.round(n);
-    if (unit.charAt(0) === 'w') return Math.round(n * 5);
+    if (unit.charAt(0) === 'd') {
+      return Math.round(n);
+    }
+    if (unit.charAt(0) === 'w') {
+      return Math.round(n * 5);
+    }
     return Math.round(n * 20);
   }
 
   function parseImpactCost(text) {
-    if (!text) return 0;
+    if (!text) {
+      return 0;
+    }
     const m = String(text).match(/\$?([\d,]+(?:\.\d+)?)/);
-    if (!m) return 0;
+    if (!m) {
+      return 0;
+    }
     return parseFloat(m[1].replace(/,/g, ''));
   }
 
@@ -75,17 +87,23 @@ var MMGR = window.MMGR || {};
   function riskMatrixCell(prob, imp) {
     const key = prob + '|' + imp;
     _riskFilter = _riskFilter === key ? null : key;
-    if (ns.Render && ns.Render.renderRisks) ns.Render.renderRisks();
+    if (ns.Render && ns.Render.renderRisks) {
+      ns.Render.renderRisks();
+    }
   }
 
   function clearRiskFilter() {
     _riskFilter = null;
-    if (ns.Render && ns.Render.renderRisks) ns.Render.renderRisks();
+    if (ns.Render && ns.Render.renderRisks) {
+      ns.Render.renderRisks();
+    }
   }
 
   function renderRiskMatrix() {
     const el = $('risk-matrix');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const s = S();
     const risks = (s && s.risks) || [];
     const probs = ['Low', 'Medium', 'High'];
@@ -97,7 +115,9 @@ var MMGR = window.MMGR || {};
         const p = r.probability || 'Low';
         const i = r.impact || 'Low';
         const key = p + '|' + i;
-        if (!matrix[key]) matrix[key] = [];
+        if (!matrix[key]) {
+          matrix[key] = [];
+        }
         matrix[key].push(r);
       });
     let html = '<table class="risk-matrix"><thead><tr><th></th>';
@@ -146,7 +166,9 @@ var MMGR = window.MMGR || {};
   function renderRisks() {
     const s = S();
     const body = $('risk-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     renderRiskMatrix();
     let risks = (s && s.risks) || [];
     if (_riskFilter) {

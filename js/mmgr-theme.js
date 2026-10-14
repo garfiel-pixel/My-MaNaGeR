@@ -137,7 +137,9 @@
   /** Keep premium-glass shader in step. */
   function syncGlass() {
     var G = window.MMGR && window.MMGR.Glass;
-    if (G && G.refreshTheme) G.refreshTheme();
+    if (G && G.refreshTheme) {
+      G.refreshTheme();
+    }
   }
 
   /**
@@ -155,10 +157,14 @@
 
   /** Listen for OS preference changes when mode is 'system'. */
   function watchSystemPreference() {
-    if (!window.matchMedia) return;
+    if (!window.matchMedia) {
+      return;
+    }
     var mq = window.matchMedia('(prefers-color-scheme: dark)');
     var handler = function () {
-      if (currentMode() === 'system') apply();
+      if (currentMode() === 'system') {
+        apply();
+      }
     };
     if (mq.addEventListener) {
       mq.addEventListener('change', handler);
@@ -170,7 +176,9 @@
   // --- Event delegation: one listener serves every picker on the page ---
   document.addEventListener('click', function (e) {
     var b = e.target && e.target.closest ? e.target.closest('[data-pal]') : null;
-    if (!b) return;
+    if (!b) {
+      return;
+    }
     e.preventDefault();
     setMode(b.getAttribute('data-pal'));
   });

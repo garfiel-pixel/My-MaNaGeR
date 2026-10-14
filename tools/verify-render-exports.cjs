@@ -55,7 +55,9 @@ function extractExportKeys(filePath, varPattern) {
       if (keyMatch && depth > 0) {
         keys.push({ key: keyMatch[1], line: i + 1 });
       }
-      if (depth <= 0) break;
+      if (depth <= 0) {
+        break;
+      }
     }
   }
   return keys;
@@ -70,7 +72,9 @@ function findDefinition(src, name) {
   ];
   for (const p of patterns) {
     const m = src.match(p);
-    if (m) return true;
+    if (m) {
+      return true;
+    }
   }
   return false;
 }

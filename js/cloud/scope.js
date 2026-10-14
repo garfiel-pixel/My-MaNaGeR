@@ -18,7 +18,11 @@ var MMGR = window.MMGR || {};
   function isWritableSection(key) {
     const sections = C._getSections();
     if (sections) {
-      for (let i = 0; i < sections.length; i++) if (sections[i].key === key) return true;
+      for (let i = 0; i < sections.length; i++) {
+        if (sections[i].key === key) {
+          return true;
+        }
+      }
       return false;
     }
     return VIEW_ONLY_PANELS.indexOf(key) === -1;
@@ -27,7 +31,9 @@ var MMGR = window.MMGR || {};
   function isSectionBlocked(section) {
     const scope = C.getEScope();
     const isEditor = !!C.getECode() && !C.getCode();
-    if (!isEditor || !scope) return false;
+    if (!isEditor || !scope) {
+      return false;
+    }
     return isWritableSection(section) && scope.sections.indexOf(section) === -1;
   }
 
@@ -51,7 +57,9 @@ var MMGR = window.MMGR || {};
       }
     }
     const banner = $('editor-scope-banner');
-    if (banner) banner.classList.toggle('is-hide', !isEditor);
+    if (banner) {
+      banner.classList.toggle('is-hide', !isEditor);
+    }
   }
 
   // ---- C19 CLIENT SCOPE (owner D3: "navigation buttons for hidden
@@ -64,14 +72,18 @@ var MMGR = window.MMGR || {};
     return !!C.getECode() && !C.getCode() && C.isClientSession();
   }
   function isClientSectionHidden(section) {
-    if (!isClientSession()) return false;
+    if (!isClientSession()) {
+      return false;
+    }
     const scope = C.getEScope();
     return !(scope && Array.isArray(scope.sections) && scope.sections.indexOf(section) > -1);
   }
   function applyClientScope() {
     const isClient = isClientSession();
     document.body.classList.toggle('client-scope', isClient);
-    if (!isClient) return;
+    if (!isClient) {
+      return;
+    }
     const btns = document.querySelectorAll('.sec-btn[data-section]');
     for (let i = 0; i < btns.length; i++) {
       const sec = btns[i].getAttribute('data-section');
@@ -85,7 +97,9 @@ var MMGR = window.MMGR || {};
       }
     }
     const banner = $('client-scope-banner');
-    if (banner) banner.classList.toggle('is-hide', false);
+    if (banner) {
+      banner.classList.toggle('is-hide', false);
+    }
   }
 
   ns.CloudScope = {

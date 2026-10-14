@@ -41,7 +41,9 @@
   /** Mirror the state onto <html> so CSS can react without JS. */
   function apply() {
     var de = document.documentElement;
-    if (de) de.setAttribute('data-perf', isOn() ? 'on' : 'off');
+    if (de) {
+      de.setAttribute('data-perf', isOn() ? 'on' : 'off');
+    }
   }
 
   /**
@@ -54,7 +56,9 @@
    */
   function syncInputs() {
     var inputs = document.querySelectorAll('input[type="checkbox"][data-action="tglPerfMode"]');
-    for (var i = 0; i < inputs.length; i++) inputs[i].checked = isOn();
+    for (var i = 0; i < inputs.length; i++) {
+      inputs[i].checked = isOn();
+    }
   }
 
   /**
@@ -79,7 +83,9 @@
     try {
       nudged = localStorage.getItem('mmgr_perf_nudge') === '1';
     } catch (e) {}
-    if (nudged || !window.requestAnimationFrame) return;
+    if (nudged || !window.requestAnimationFrame) {
+      return;
+    }
     // OWNER 2026-10-09: sample while the HEAVY layers are actually running,
     // which is Performance Mode OFF (pretty is the default). The old guard was
     // `if (!isOn()) return;` - it returned unless perf was ALREADY on, so a
@@ -87,14 +93,18 @@
     // the one case the probe exists for. When the user has already turned
     // Performance Mode on, the heavy layers are down and there is nothing to
     // probe.
-    if (isOn()) return;
+    if (isOn()) {
+      return;
+    }
     var frames = 0,
       slow = 0,
       tPrev = null,
       started = 0,
       done = false;
     function tick(t) {
-      if (done) return;
+      if (done) {
+        return;
+      }
       if (document.hidden) {
         tPrev = null;
         requestAnimationFrame(tick);
@@ -103,8 +113,12 @@
       if (tPrev !== null) {
         var dt = t - tPrev;
         frames += 1;
-        if (dt > 34) slow += 1; // under ~30fps
-        if (!started && frames > 10) started = 1; // warm-up done
+        if (dt > 34) {
+          slow += 1;
+        } // under ~30fps
+        if (!started && frames > 10) {
+          started = 1;
+        } // warm-up done
       }
       tPrev = t;
       if (started && frames >= 240) {
@@ -119,8 +133,12 @@
     }
     function finish() {
       done = true;
-      if (frames < 200) return; // too little data
-      if (slow / frames < 0.4) return; // smooth enough
+      if (frames < 200) {
+        return;
+      } // too little data
+      if (slow / frames < 0.4) {
+        return;
+      } // smooth enough
       try {
         localStorage.setItem('mmgr_perf_nudge', '1');
       } catch (e) {}

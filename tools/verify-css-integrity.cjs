@@ -87,14 +87,16 @@ for (const file of targets) {
       console.log('    ' + file + ':' + lineOf(raw, i));
     }
   }
-  if (stray)
+  if (stray) {
     fail(
       file +
         ': ' +
         stray +
         ' stray comment closer(s) - the prose after one is parsed as CSS and kills the next rule'
     );
-  else pass(file + ': no stray comment closer');
+  } else {
+    pass(file + ': no stray comment closer');
+  }
 }
 
 console.log('\n=== CSS integrity: ARM 2 rules dropped by the build ===');
@@ -109,7 +111,9 @@ for (const pair of PAIRS) {
   const classes = new Set();
   for (const m of srcCss.matchAll(/([^{}]+)\{/g)) {
     for (const s of m[1].split(',')) {
-      for (const c of s.trim().match(/\.([A-Za-z][A-Za-z0-9_-]*)/g) || []) classes.add(c.slice(1));
+      for (const c of s.trim().match(/\.([A-Za-z][A-Za-z0-9_-]*)/g) || []) {
+        classes.add(c.slice(1));
+      }
     }
   }
   // Collect the SELECTOR segments of the bundle (the text before each `{`),
@@ -117,13 +121,17 @@ for (const pair of PAIRS) {
   // `body.dark-mode`, a merged `.a,.b` list, or a descendant chain) while
   // declarations like `font-size:.72rem` are not mistaken for selectors.
   const segments = [];
-  for (const m of dist.matchAll(/([^{}]*)\{/g)) segments.push(m[1]);
+  for (const m of dist.matchAll(/([^{}]*)\{/g)) {
+    segments.push(m[1]);
+  }
   const selectors = segments.join('\n');
   const missing = [];
   for (const c of classes) {
-    if (!new RegExp('\\.' + c + '(?![A-Za-z0-9_-])').test(selectors)) missing.push(c);
+    if (!new RegExp('\\.' + c + '(?![A-Za-z0-9_-])').test(selectors)) {
+      missing.push(c);
+    }
   }
-  if (missing.length)
+  if (missing.length) {
     fail(
       pair.src +
         ': ' +
@@ -133,8 +141,9 @@ for (const pair of PAIRS) {
         ' -> ' +
         missing.slice(0, 12).join(', ')
     );
-  else
+  } else {
     pass(pair.src + ': all ' + classes.size + ' class rules survive the build into ' + pair.dist);
+  }
 }
 
 console.log('\n' + (failed ? 'CSS INTEGRITY FAIL (' + failed + ')' : 'CSS INTEGRITY PASS'));

@@ -48,7 +48,9 @@ const step = msg => console.log('\n== ' + msg);
 // Both of these were real failure modes, not hypotheticals: a literal "$HOME"
 // (cmd.exe) and a stage inside the repo (wrangler uploads every file under the
 // assets directory).
-if (/[$%]/.test(STAGE)) fail('stage path contains an unexpanded variable: ' + STAGE);
+if (/[$%]/.test(STAGE)) {
+  fail('stage path contains an unexpanded variable: ' + STAGE);
+}
 if (STAGE === ROOT || STAGE.startsWith(ROOT + path.sep)) {
   fail('stage path is inside the repo (' + STAGE + ') - wrangler would upload it');
 }
@@ -142,8 +144,12 @@ function run(cmd, args, opts) {
     useShell ? undefined : args,
     Object.assign({ stdio: 'inherit', shell: useShell }, opts || {})
   );
-  if (r.error) fail(cmd + ' failed to start: ' + r.error.message);
-  if (r.status !== 0) fail(cmd + ' exited ' + r.status);
+  if (r.error) {
+    fail(cmd + ' failed to start: ' + r.error.message);
+  }
+  if (r.status !== 0) {
+    fail(cmd + ' exited ' + r.status);
+  }
 }
 
 function copyTree(src, dest) {
@@ -152,17 +158,23 @@ function copyTree(src, dest) {
     const from = path.join(src, entry.name);
     const to = path.join(dest, entry.name);
     if (entry.isDirectory()) {
-      if (SKIP_DIRS.has(entry.name)) continue;
+      if (SKIP_DIRS.has(entry.name)) {
+        continue;
+      }
       copyTree(from, to);
     } else if (entry.isFile()) {
-      if (SKIP_FILE_RE.some(re => re.test(entry.name))) continue;
+      if (SKIP_FILE_RE.some(re => re.test(entry.name))) {
+        continue;
+      }
       fs.copyFileSync(from, to);
     }
   }
 }
 
 function sameBytes(a, b) {
-  if (!fs.existsSync(a) || !fs.existsSync(b)) return false;
+  if (!fs.existsSync(a) || !fs.existsSync(b)) {
+    return false;
+  }
   return fs.readFileSync(a).equals(fs.readFileSync(b));
 }
 
@@ -176,18 +188,25 @@ run('npm run verify', null, { cwd: ROOT });
 
 // ---- 3. stage ---------------------------------------------------------
 step('Staging a clean copy');
-if (fs.existsSync(STAGE)) fs.rmSync(STAGE, { recursive: true, force: true });
+if (fs.existsSync(STAGE)) {
+  fs.rmSync(STAGE, { recursive: true, force: true });
+}
 copyTree(ROOT, STAGE);
 for (const f of COPY_BACK) {
   const src = path.join(ROOT, f);
-  if (!fs.existsSync(src)) fail('missing ' + f);
+  if (!fs.existsSync(src)) {
+    fail('missing ' + f);
+  }
   fs.copyFileSync(src, path.join(STAGE, f));
 }
 const staged = fs.readdirSync(STAGE).length;
 console.log('   staged ' + staged + ' entries into ' + STAGE);
-if (fs.existsSync(path.join(STAGE, '.git'))) fail('.git was staged - the excludes are wrong');
-if (fs.existsSync(path.join(STAGE, 'node_modules')))
+if (fs.existsSync(path.join(STAGE, '.git'))) {
+  fail('.git was staged - the excludes are wrong');
+}
+if (fs.existsSync(path.join(STAGE, 'node_modules'))) {
   fail('node_modules was staged - the excludes are wrong');
+}
 
 // ---- 4. prove the staged copy is the current code ---------------------
 step('Verifying the staged copy carries the current bytes');
@@ -204,8 +223,9 @@ for (const rel of MUST_MATCH) {
     stale++;
   }
 }
-if (stale)
+if (stale) {
   fail(stale + ' staged file(s) differ from the working tree - refusing to deploy stale code');
+}
 console.log('   all ' + MUST_MATCH.length + ' tracked deploy files byte-identical');
 
 // ---- 5. deploy --------------------------------------------------------
@@ -215,6 +235,8 @@ if (STAGE_ONLY) {
 }
 step('Deploying from ' + STAGE);
 const wrangler = path.join(ROOT, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
-if (!fs.existsSync(wrangler)) fail('wrangler not found at ' + wrangler + ' - run npm install');
+if (!fs.existsSync(wrangler)) {
+  fail('wrangler not found at ' + wrangler + ' - run npm install');
+}
 run(process.execPath, [wrangler, 'deploy'], { cwd: STAGE });
 console.log('\nDeploy finished. Stage kept at ' + STAGE + ' (outside the repo).');

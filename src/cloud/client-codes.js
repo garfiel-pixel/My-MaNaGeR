@@ -72,7 +72,9 @@ export async function handleCloudClientCodeCreate(request, env, projectId) {
     // owner code OR signed-in session. The old session-only check made the
     // client-code UI dead on a device holding the owner code but no session.
     const auth = await cloudAuthOwnerEither(request, env, projectId);
-    if (!auth) return json({ ok: false, error: 'not owner' }, 403);
+    if (!auth) {
+      return json({ ok: false, error: 'not owner' }, 403);
+    }
 
     // Verify the project exists + is live
     const project = await env.DB.prepare(
@@ -80,14 +82,20 @@ export async function handleCloudClientCodeCreate(request, env, projectId) {
     )
       .bind(projectId)
       .first();
-    if (!project) return json({ ok: false, error: 'project not found' }, 404);
-    if (project.deleted_at) return json({ ok: false, error: 'project_deleted' }, 403);
+    if (!project) {
+      return json({ ok: false, error: 'project not found' }, 404);
+    }
+    if (project.deleted_at) {
+      return json({ ok: false, error: 'project_deleted' }, 403);
+    }
 
     const body = await request.json();
     const sections = Array.isArray(body.sections) ? body.sections : ['dash'];
     // Validate sections
     const validSections = sections.filter(s => CLIENT_SECTIONS.includes(s));
-    if (!validSections.length) return json({ ok: false, error: 'no valid sections' }, 400);
+    if (!validSections.length) {
+      return json({ ok: false, error: 'no valid sections' }, 400);
+    }
 
     // Expiry: expiresInDays (positive integer) wins, else expiresAt (ISO).
     // Anything invalid/absent means never expires.
@@ -131,7 +139,9 @@ export async function handleCloudClientCodeList(request, env, projectId) {
   try {
     // OWNER 2026-09-13: either-auth (see create).
     const auth = await cloudAuthOwnerEither(request, env, projectId);
-    if (!auth) return json({ ok: false, error: 'not owner' }, 403);
+    if (!auth) {
+      return json({ ok: false, error: 'not owner' }, 403);
+    }
 
     const rows = await env.DB.prepare(
       'SELECT id, sections, created_at, expires_at FROM cloud_client_codes WHERE project_id = ? ORDER BY created_at DESC'
@@ -160,7 +170,9 @@ export async function handleCloudClientCodeRevoke(request, env, projectId, codeI
   try {
     // OWNER 2026-09-13: either-auth (see create).
     const auth = await cloudAuthOwnerEither(request, env, projectId);
-    if (!auth) return json({ ok: false, error: 'not owner' }, 403);
+    if (!auth) {
+      return json({ ok: false, error: 'not owner' }, 403);
+    }
 
     await env.DB.prepare('DELETE FROM cloud_client_codes WHERE id = ? AND project_id = ?')
       .bind(codeId, projectId)
@@ -181,7 +193,9 @@ export async function handleCloudClientCodeRevoke(request, env, projectId, codeI
  * @returns {object|null} { projectId, sections } or null if invalid
  */
 export async function verifyClientCode(code, projectId, env) {
-  if (!code || !projectId) return null;
+  if (!code || !projectId) {
+    return null;
+  }
 
   // C19: carry expires_at + the project's deleted_at so callers can map the
   // friendly errors (code_expired / project_deleted) instead of a bare 403.

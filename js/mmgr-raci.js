@@ -11,7 +11,9 @@ var MMGR = window.MMGR || {};
 
   function refreshRaciTaskPicker() {
     const picker = U.$('raci-task-picker');
-    if (!picker) return;
+    if (!picker) {
+      return;
+    }
     const s = ns.State.getState();
     const tasks = (s.tasks || []).filter(t => t.isPhase || (t.level || 0) === 0);
     const raciTasks = (s.raci && s.raci.tasks) || [];
@@ -25,18 +27,26 @@ var MMGR = window.MMGR || {};
   }
 
   function addRaciTaskFromPicker(taskId) {
-    if (!taskId) return;
+    if (!taskId) {
+      return;
+    }
     ns.State.updateState(function (s) {
-      if (!s.raci) s.raci = { tasks: [], persons: [], matrix: {} };
+      if (!s.raci) {
+        s.raci = { tasks: [], persons: [], matrix: {} };
+      }
       const task = (s.tasks || []).find(t => t.id === taskId);
-      if (task) s.raci.tasks.push({ id: task.id, name: task.name });
+      if (task) {
+        s.raci.tasks.push({ id: task.id, name: task.name });
+      }
     });
     R.renderRaci();
   }
 
   function refreshRaciPersonPicker() {
     const picker = U.$('raci-person-picker');
-    if (!picker) return;
+    if (!picker) {
+      return;
+    }
     const s = ns.State.getState();
     const resources = s.resources || [];
     const stakeholders = s.stakeholders || [];
@@ -54,13 +64,19 @@ var MMGR = window.MMGR || {};
   }
 
   function addRaciPersonFromPicker(personId) {
-    if (!personId) return;
+    if (!personId) {
+      return;
+    }
     ns.State.updateState(function (s) {
-      if (!s.raci) s.raci = { tasks: [], persons: [], matrix: {} };
+      if (!s.raci) {
+        s.raci = { tasks: [], persons: [], matrix: {} };
+      }
       const resources = s.resources || [];
       const stks = s.stakeholders || [];
       const person = resources.find(r => r.id === personId) || stks.find(s => s.id === personId);
-      if (person) s.raci.persons.push({ id: person.id, name: person.name });
+      if (person) {
+        s.raci.persons.push({ id: person.id, name: person.name });
+      }
     });
     R.renderRaci();
   }
@@ -101,13 +117,19 @@ var MMGR = window.MMGR || {};
     // ev may be a real event (click/contextmenu) OR a plain options object
     // (keyboard handler / direct calls) , guard preventDefault so the cycle
     // never dies on a non-event argument.
-    if (ev && typeof ev.preventDefault === 'function') ev.preventDefault();
+    if (ev && typeof ev.preventDefault === 'function') {
+      ev.preventDefault();
+    }
     const dir = ev && ev.button === 2 ? -1 : 1;
     ns.State.updateState(function (s) {
-      if (!s.raci) s.raci = { tasks: [], persons: [], matrix: {} };
+      if (!s.raci) {
+        s.raci = { tasks: [], persons: [], matrix: {} };
+      }
       const key = taskId + '_' + personId;
       let idx = RACI_CYCLE.indexOf(s.raci.matrix[key] || '');
-      if (idx < 0) idx = 0;
+      if (idx < 0) {
+        idx = 0;
+      }
       idx = (idx + dir + RACI_CYCLE.length) % RACI_CYCLE.length;
       s.raci.matrix[key] = RACI_CYCLE[idx];
     });
@@ -119,7 +141,9 @@ var MMGR = window.MMGR || {};
   // handlers, so the CSP stays intact.
   document.addEventListener('keydown', function (e) {
     const cell = e.target.closest && e.target.closest('[data-action="cycleRaci"]');
-    if (!cell) return;
+    if (!cell) {
+      return;
+    }
     if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowRight') {
       e.preventDefault();
       cycleRaci(cell.getAttribute('data-task'), cell.getAttribute('data-person'), {});
@@ -133,18 +157,20 @@ var MMGR = window.MMGR || {};
     const s = ns.State.getState();
     if (p.sourceType === 'resource') {
       const r = (s.resources || []).find(x => x.id === p.sourceId);
-      if (r)
+      if (r) {
         return { name: r.name || '(unnamed)', role: r.role || '', tag: 'Resources', live: true };
+      }
     }
     if (p.sourceType === 'stakeholder') {
       const st = (s.stakeholders || []).find(x => x.id === p.sourceId);
-      if (st)
+      if (st) {
         return {
           name: st.name || '(unnamed)',
           role: st.role || '',
           tag: 'Stakeholders',
           live: true
         };
+      }
     }
     return { name: p.name || '', role: p.role || '', tag: null, live: false };
   }
@@ -153,7 +179,9 @@ var MMGR = window.MMGR || {};
     const s = ns.State.getState();
     if (t.sourceType === 'task') {
       const x = (s.tasks || []).find(y => y.id === t.sourceId);
-      if (x) return { name: x.name || '(unnamed)', wbs: x.id || '', live: true };
+      if (x) {
+        return { name: x.name || '(unnamed)', wbs: x.id || '', live: true };
+      }
     }
     return { name: t.name || '', wbs: '', live: false };
   }
@@ -163,8 +191,9 @@ var MMGR = window.MMGR || {};
     const s = ns.State.getState();
     const raci = s.raci || { tasks: [], persons: [], matrix: {} };
     const { tasks, persons, matrix } = raci;
-    if (!tasks.length || !persons.length)
+    if (!tasks.length || !persons.length) {
       return '(no RACI data yet , add task rows and person columns in the RACI tab first)';
+    }
     const header =
       'Task | ' +
       persons
@@ -184,13 +213,17 @@ var MMGR = window.MMGR || {};
   // entries are free-text inputs driven by these updaters (CSP-safe).
   function updRaciTask(idx, value) {
     ns.State.updateState(function (s) {
-      if (s.raci && s.raci.tasks && s.raci.tasks[idx]) s.raci.tasks[idx].name = value;
+      if (s.raci && s.raci.tasks && s.raci.tasks[idx]) {
+        s.raci.tasks[idx].name = value;
+      }
     });
   }
 
   function updRaciPerson(idx, field, value) {
     ns.State.updateState(function (s) {
-      if (s.raci && s.raci.persons && s.raci.persons[idx]) s.raci.persons[idx][field] = value;
+      if (s.raci && s.raci.persons && s.raci.persons[idx]) {
+        s.raci.persons[idx][field] = value;
+      }
     });
   }
 
@@ -203,11 +236,15 @@ var MMGR = window.MMGR || {};
   function pruneDeleted(opts) {
     const taskIds = (opts && opts.taskIds) || [];
     const personIds = (opts && opts.personIds) || [];
-    if (!taskIds.length && !personIds.length) return;
+    if (!taskIds.length && !personIds.length) {
+      return;
+    }
     const taskSet = taskIds.map(String);
     const personSet = personIds.map(String);
     ns.State.updateState(function (s) {
-      if (!s.raci) return;
+      if (!s.raci) {
+        return;
+      }
       const raci = s.raci;
       if (taskSet.length) {
         raci.tasks = (raci.tasks || []).filter(
@@ -236,20 +273,29 @@ var MMGR = window.MMGR || {};
 
   function delRaciTask(idx) {
     ns.State.updateState(function (s) {
-      if (s.raci && s.raci.tasks) s.raci.tasks.splice(idx, 1);
+      if (s.raci && s.raci.tasks) {
+        s.raci.tasks.splice(idx, 1);
+      }
     });
     R.renderRaci();
   }
 
   function delRaciPerson(idx) {
     ns.State.updateState(function (s) {
-      if (!s.raci) return;
+      if (!s.raci) {
+        return;
+      }
       const p = s.raci.persons && s.raci.persons[idx];
-      if (p)
+      if (p) {
         Object.keys(s.raci.matrix || {}).forEach(k => {
-          if (k.endsWith('_' + p.id)) delete s.raci.matrix[k];
+          if (k.endsWith('_' + p.id)) {
+            delete s.raci.matrix[k];
+          }
         });
-      if (s.raci.persons) s.raci.persons.splice(idx, 1);
+      }
+      if (s.raci.persons) {
+        s.raci.persons.splice(idx, 1);
+      }
     });
     R.renderRaci();
   }
@@ -265,13 +311,17 @@ var MMGR = window.MMGR || {};
     const s = state || ns.State.getState();
     const raci = (s && s.raci) || { tasks: [], persons: [], matrix: {} };
     const persons = raci.persons || [];
-    if (!persons.length) return [];
+    if (!persons.length) {
+      return [];
+    }
     const rows = persons
       .map(p => {
         const counts = { R: 0, A: 0, C: 0, I: 0 };
         (raci.tasks || []).forEach(t => {
           const v = (raci.matrix || {})[t.id + '_' + p.id];
-          if (counts[v] !== undefined) counts[v]++;
+          if (counts[v] !== undefined) {
+            counts[v]++;
+          }
         });
         const load =
           counts.R * WORKLOAD_WEIGHT.R +

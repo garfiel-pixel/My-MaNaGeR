@@ -29,7 +29,9 @@ walk('js');
 
 // Also the monolith reference file
 const monolith = 'monolith html to reference from all features.html';
-if (fs.existsSync(monolith)) files.push(monolith);
+if (fs.existsSync(monolith)) {
+  files.push(monolith);
+}
 
 let totalReplacements = 0;
 let filesChanged = 0;

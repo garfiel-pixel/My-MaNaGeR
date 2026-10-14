@@ -25,19 +25,29 @@ var MMGR = window.MMGR || {};
   function riskSeverity(r) {
     const p = String(r.probability || '').toLowerCase();
     const i = String(r.impact || '').toLowerCase();
-    if (p === 'high' && i === 'high') return 3;
-    if ((p === 'high' && i === 'medium') || (p === 'medium' && i === 'high')) return 2;
-    if (p === 'medium' && i === 'medium') return 1;
+    if (p === 'high' && i === 'high') {
+      return 3;
+    }
+    if ((p === 'high' && i === 'medium') || (p === 'medium' && i === 'high')) {
+      return 2;
+    }
+    if (p === 'medium' && i === 'medium') {
+      return 1;
+    }
     return 0; // anything involving Low does not force its way into today
   }
 
   function openActionItemCount(s) {
     let n = 0;
     (s.commsEntries || []).forEach(c => {
-      if ((c.actionItems || '').trim()) n++;
+      if ((c.actionItems || '').trim()) {
+        n++;
+      }
     });
     (s.logEntries || []).forEach(l => {
-      if ((l.actionItems || '').trim()) n++;
+      if ((l.actionItems || '').trim()) {
+        n++;
+      }
     });
     const promises = s.meetingPromises || {};
     Object.keys(promises).forEach(k => {
@@ -48,7 +58,9 @@ var MMGR = window.MMGR || {};
 
   function computeTodayDecisions(state) {
     const s = state || (ns.State ? ns.State.getState() : null);
-    if (!s) return [];
+    if (!s) {
+      return [];
+    }
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const W = { schedule: 4, stalled: 2, risk: 6, budget: 8, action: 3 };
@@ -56,11 +68,17 @@ var MMGR = window.MMGR || {};
 
     // 1. Overdue tasks , schedule slip past their end date
     (s.tasks || []).forEach(t => {
-      if (t.status === 'completed' || !t.endDate) return;
+      if (t.status === 'completed' || !t.endDate) {
+        return;
+      }
       const end = U.parseDL(t.endDate);
-      if (!end) return;
+      if (!end) {
+        return;
+      }
       const days = Math.round((end - today) / MMGR.Utils.MS_PER_DAY);
-      if (days >= 0) return;
+      if (days >= 0) {
+        return;
+      }
       const slip = Math.abs(days);
       items.push({
         src: 'Schedule',
@@ -73,12 +91,20 @@ var MMGR = window.MMGR || {};
 
     // 2. Stalled tasks , planned start passed, work never started
     (s.tasks || []).forEach(t => {
-      if (t.status !== 'todo' && t.status !== '') return;
-      if (!t.startDate) return;
+      if (t.status !== 'todo' && t.status !== '') {
+        return;
+      }
+      if (!t.startDate) {
+        return;
+      }
       const st = U.parseDL(t.startDate);
-      if (!st) return;
+      if (!st) {
+        return;
+      }
       const days = Math.round((today - st) / MMGR.Utils.MS_PER_DAY);
-      if (days <= 0) return;
+      if (days <= 0) {
+        return;
+      }
       items.push({
         src: 'Stalled',
         title: 'Work not started',
@@ -90,9 +116,13 @@ var MMGR = window.MMGR || {};
 
     // 3. High-severity risks still open (not yet promoted to issues)
     (s.risks || []).forEach(r => {
-      if (r.issueId) return;
+      if (r.issueId) {
+        return;
+      }
       const sev = riskSeverity(r);
-      if (!sev) return;
+      if (!sev) {
+        return;
+      }
       items.push({
         src: 'Risk',
         title: 'High risk open',
@@ -173,7 +203,9 @@ var MMGR = window.MMGR || {};
   // audit's inline-style census stays flat. Idempotent by construction.
   function renderTodayDecisions() {
     const el = document.getElementById('today-decision-body');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const items = computeTodayDecisions();
     if (!items.length) {
       el.innerHTML =

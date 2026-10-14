@@ -71,7 +71,9 @@ var MMGR = window.MMGR || {};
       sorted.push(id);
       for (const succId of adj[id] || []) {
         inDegree[succId]--;
-        if (inDegree[succId] === 0) queue.push(succId);
+        if (inDegree[succId] === 0) {
+          queue.push(succId);
+        }
       }
     }
     // Tasks in dependency order (or original order if no deps)
@@ -96,17 +98,23 @@ var MMGR = window.MMGR || {};
       if (inPath.has(id)) {
         // Cycle found: from the first occurrence of id on the path to the end
         const idx = path.indexOf(id);
-        for (let i = idx; i < path.length; i++) cyclic.add(path[i]);
+        for (let i = idx; i < path.length; i++) {
+          cyclic.add(path[i]);
+        }
         return;
       }
-      if (visited.has(id)) return;
+      if (visited.has(id)) {
+        return;
+      }
       visited.add(id);
       inPath.add(id);
       path.push(id);
       const task = taskMap[id];
       if (task && task.predecessors) {
         for (const pred of task.predecessors) {
-          if (taskMap[pred]) visit(pred);
+          if (taskMap[pred]) {
+            visit(pred);
+          }
         }
       }
       path.pop();
@@ -131,8 +139,9 @@ var MMGR = window.MMGR || {};
     });
     let earliestStart = null;
     sorted.forEach(t => {
-      if (t.startDate && (!earliestStart || t.startDate < earliestStart))
+      if (t.startDate && (!earliestStart || t.startDate < earliestStart)) {
         earliestStart = t.startDate;
+      }
     });
     const sched = [];
     const schedMap = {};
@@ -155,7 +164,9 @@ var MMGR = window.MMGR || {};
         if (t.predecessors && t.predecessors.length) {
           for (const predId of t.predecessors) {
             const ps = schedMap[predId];
-            if (ps && ps.ef && (!maxPredEF || ps.ef > maxPredEF)) maxPredEF = ps.ef;
+            if (ps && ps.ef && (!maxPredEF || ps.ef > maxPredEF)) {
+              maxPredEF = ps.ef;
+            }
           }
         }
         // Parent containment acts as a floor on ES (read-only)
@@ -163,7 +174,9 @@ var MMGR = window.MMGR || {};
           const parent = taskMap[t.parentId];
           if (parent && parent.startDate) {
             const ps = U.parseDL(parent.startDate);
-            if (ps && (!maxPredEF || ps > maxPredEF)) maxPredEF = ps;
+            if (ps && (!maxPredEF || ps > maxPredEF)) {
+              maxPredEF = ps;
+            }
           }
         }
         const anchor = t.startDate
@@ -208,7 +221,9 @@ var MMGR = window.MMGR || {};
   function deadlineFor(tasks, sched) {
     const s = ns.State.getState();
     const dl = s && U.parseDL(s.projectDeadline);
-    if (!dl) return null;
+    if (!dl) {
+      return null;
+    }
     const dlStr = U.fmtDate(dl);
     const hasSucc = {};
     (tasks || []).forEach(t => {
@@ -218,10 +233,14 @@ var MMGR = window.MMGR || {};
     });
     let terminalEF = null;
     sched.forEach(rec => {
-      if (rec.ef && !hasSucc[rec.id] && (!terminalEF || rec.ef > terminalEF)) terminalEF = rec.ef;
+      if (rec.ef && !hasSucc[rec.id] && (!terminalEF || rec.ef > terminalEF)) {
+        terminalEF = rec.ef;
+      }
     });
     // rec.ef is a Date; compare in STRING space (yyyy-mm-dd sorts lexically).
-    if (terminalEF && dlStr < U.fmtDate(terminalEF)) return null; // deadline missed: never rewrite history
+    if (terminalEF && dlStr < U.fmtDate(terminalEF)) {
+      return null;
+    } // deadline missed: never rewrite history
     return dlStr;
   }
 
@@ -234,20 +253,28 @@ var MMGR = window.MMGR || {};
     const schedMap = toSchedMap(sched);
     let projectEnd = null;
     sched.forEach(rec => {
-      if (rec.ef && (!projectEnd || rec.ef > projectEnd)) projectEnd = rec.ef;
+      if (rec.ef && (!projectEnd || rec.ef > projectEnd)) {
+        projectEnd = rec.ef;
+      }
     });
-    if (!projectEnd) return sched;
+    if (!projectEnd) {
+      return sched;
+    }
     // Normalize the deadline into Date space ONCE: rec.es/ef/lf and projectEnd
     // are all Dates in this pass - a raw string here would coerce through
     // toString and silently never compare equal (found by the deadline test).
     const dlDate = deadline ? U.parseDL(deadline) : null;
-    if (dlDate && dlDate > projectEnd) projectEnd = dlDate;
+    if (dlDate && dlDate > projectEnd) {
+      projectEnd = dlDate;
+    }
 
     // Reverse dependency order so successors' ls are already computed.
     const ordered = topologicalSort(tasks).reverse();
     ordered.forEach(t => {
       const rec = schedMap[t.id];
-      if (!rec || !rec.es || !t.duration) return;
+      if (!rec || !rec.es || !t.duration) {
+        return;
+      }
       const dur = parseInt(t.duration) || 1;
 
       // LF = min of successors' LS - 1
@@ -255,7 +282,9 @@ var MMGR = window.MMGR || {};
       for (const other of tasks) {
         if (other.predecessors && other.predecessors.includes(t.id)) {
           const os = schedMap[other.id];
-          if (os && os.ls && (!minSuccLS || os.ls < minSuccLS)) minSuccLS = os.ls;
+          if (os && os.ls && (!minSuccLS || os.ls < minSuccLS)) {
+            minSuccLS = os.ls;
+          }
         }
       }
       const lf = minSuccLS
@@ -272,8 +301,9 @@ var MMGR = window.MMGR || {};
   // Any successor references this task id? (deadline float is terminal-only)
   function hasSuccessor(schedMap, tasks, id) {
     for (const other of tasks) {
-      if (other.predecessors && other.predecessors.length && other.predecessors.includes(id))
+      if (other.predecessors && other.predecessors.length && other.predecessors.includes(id)) {
         return true;
+      }
     }
     return false;
   }
@@ -296,7 +326,9 @@ var MMGR = window.MMGR || {};
       for (const other of tasks) {
         if (other.predecessors && other.predecessors.includes(rec.id)) {
           const os = schedMap[other.id];
-          if (os && os.es && (!minSuccES || os.es < minSuccES)) minSuccES = os.es;
+          if (os && os.es && (!minSuccES || os.es < minSuccES)) {
+            minSuccES = os.es;
+          }
         }
       }
       rec.freeFloat = minSuccES ? U.workingDaysBetween(rec.ef, minSuccES) - 1 : rec.totalFloat;
@@ -320,23 +352,37 @@ var MMGR = window.MMGR || {};
   // drives SELECTIVE padding , a task gets buffer only for the days it
   // actually works inside a hostile window.
   function getWeatherOverlapDays(task, regionId) {
-    if (!task || !task.startDate || !task.endDate) return 0;
-    if (!ns.Weather) return 0;
+    if (!task || !task.startDate || !task.endDate) {
+      return 0;
+    }
+    if (!ns.Weather) {
+      return 0;
+    }
     const region = ns.Weather.getRegion ? ns.Weather.getRegion(regionId) : null;
-    if (!region) return 0;
+    if (!region) {
+      return 0;
+    }
     const windows = [];
     ['winter', 'monsoon', 'hurricane'].forEach(k => {
-      if (region[k]) windows.push(region[k]);
+      if (region[k]) {
+        windows.push(region[k]);
+      }
     });
-    if (!windows.length) return 0;
+    if (!windows.length) {
+      return 0;
+    }
     const start = U.parseDL(task.startDate);
     const end = U.parseDL(task.endDate);
-    if (!start || !end) return 0;
+    if (!start || !end) {
+      return 0;
+    }
     let overlap = 0;
     const total = U.daysBetween(start, end) + 1;
     for (let i = 0; i < total; i++) {
       const dStr = U.fmtDate(U.addDays(start, i));
-      if (windows.some(w => ns.Weather.isDateInWindow(dStr, w)) && U.isWorkDay(dStr)) overlap++;
+      if (windows.some(w => ns.Weather.isDateInWindow(dStr, w)) && U.isWorkDay(dStr)) {
+        overlap++;
+      }
     }
     return overlap;
   }
@@ -344,17 +390,22 @@ var MMGR = window.MMGR || {};
   // Selective weather buffer: only weather-SENSITIVE tasks, and only the days
   // inside the region's windows, capped at the configured max buffer.
   function calculateWeatherBuffer(task, regionId, bufferDays) {
-    if (!task || !task.weatherSensitive) return 0;
+    if (!task || !task.weatherSensitive) {
+      return 0;
+    }
     const exposure = getTaskWeatherExposure(task, regionId);
-    if (!exposure.exposed) return 0;
+    if (!exposure.exposed) {
+      return 0;
+    }
     const overlap = getWeatherOverlapDays(task, regionId);
     const cap = bufferDays || 5;
     return Math.min(overlap, cap);
   }
 
   function getTaskWeatherExposure(task, regionId) {
-    if (!ns.Weather || !task || !task.startDate || !task.endDate)
+    if (!ns.Weather || !task || !task.startDate || !task.endDate) {
       return { exposed: false, reason: '' };
+    }
     return ns.Weather.getTaskWeatherExposure(task, regionId);
   }
 
@@ -415,8 +466,12 @@ var MMGR = window.MMGR || {};
           let minES = null,
             maxEF = null;
           childRecs.forEach(r => {
-            if (!minES || r.es < minES) minES = r.es;
-            if (!maxEF || r.ef > maxEF) maxEF = r.ef;
+            if (!minES || r.es < minES) {
+              minES = r.es;
+            }
+            if (!maxEF || r.ef > maxEF) {
+              maxEF = r.ef;
+            }
           });
           const rec = schedMap[phase.id] || (schedMap[phase.id] = { id: phase.id });
           rec.es = minES;
@@ -435,7 +490,9 @@ var MMGR = window.MMGR || {};
     const skipped = [];
     live.forEach(t => {
       const rec = schedMap[t.id];
-      if (!rec || !rec.es || !rec.ef) return;
+      if (!rec || !rec.es || !rec.ef) {
+        return;
+      }
       const newStart = U.fmtDate(rec.es);
       const newEnd = U.fmtDate(rec.ef);
       if (t.status === 'completed' || t.status === 'inprogress') {
@@ -467,7 +524,9 @@ var MMGR = window.MMGR || {};
 
     live.forEach(t => {
       const rec = schedMap[t.id];
-      if (!rec) return;
+      if (!rec) {
+        return;
+      }
       // Date write-back - status-aware (owner 2026-09-26 cascade-polish):
       // completed and in-progress tasks carry actual dates (history), so the
       // cascade never rewrites them; their stored dates still anchor the plan
@@ -588,7 +647,9 @@ var MMGR = window.MMGR || {};
     const tasks = getTasks();
     tasks.forEach(t => {
       const rec = schedMap[t.id];
-      if (!rec) return;
+      if (!rec) {
+        return;
+      }
       t.critical = rec.totalFloat !== null && rec.totalFloat <= 0;
       t.totalFloat = rec.totalFloat;
       t.freeFloat = rec.freeFloat;
@@ -620,7 +681,9 @@ var MMGR = window.MMGR || {};
   function annotateSchedule(regionId) {
     try {
       const live = getTasks();
-      if (!live.length) return;
+      if (!live.length) {
+        return;
+      }
       const s = ns.State.getState();
       const region = regionId || (s && s.weatherRegion) || 'northern-temperate';
       // Transient clone, same as computePlan - mutating it never touches
@@ -662,7 +725,9 @@ var MMGR = window.MMGR || {};
   function crashCandidates() {
     const tasks = getTasks();
     const crit = tasks.filter((t, i) => {
-      if (t.totalFloat !== 0 || !t.startDate || !t.endDate) return false;
+      if (t.totalFloat !== 0 || !t.startDate || !t.endDate) {
+        return false;
+      }
       const next = tasks[i + 1];
       const tLvl = t.indent !== undefined ? t.indent : t.level || 0;
       const nLvl = next ? (next.indent !== undefined ? next.indent : next.level || 0) : 0;
@@ -670,8 +735,12 @@ var MMGR = window.MMGR || {};
     });
     return crit
       .filter(t => {
-        if (t.leadTime) return false; // third-party/waiting time, not labor-driven
-        if (CRASH_EXCLUDE_RE.test(t.name || '')) return false;
+        if (t.leadTime) {
+          return false;
+        } // third-party/waiting time, not labor-driven
+        if (CRASH_EXCLUDE_RE.test(t.name || '')) {
+          return false;
+        }
         const dur = Math.max(1, U.daysBetween(t.startDate, t.endDate) + 1);
         return dur >= 4; // not worth flagging a 1-3 day task as a crash target
       })
@@ -707,12 +776,20 @@ var MMGR = window.MMGR || {};
   // baseline float consumed. True-critical (0 float) is handled separately.
   function getNearCritical() {
     return getTasks().filter(t => {
-      if (t.totalFloat === null || t.totalFloat === undefined) return false;
-      if (t.totalFloat <= 0) return false; // true critical is separate
-      if (t.totalFloat <= 10) return true;
+      if (t.totalFloat === null || t.totalFloat === undefined) {
+        return false;
+      }
+      if (t.totalFloat <= 0) {
+        return false;
+      } // true critical is separate
+      if (t.totalFloat <= 10) {
+        return true;
+      }
       if (t.floatBaseline && t.floatBaseline > 0) {
         const consumed = (t.floatBaseline - t.totalFloat) / t.floatBaseline;
-        if (consumed > 0.3) return true;
+        if (consumed > 0.3) {
+          return true;
+        }
       }
       return false;
     });
@@ -731,7 +808,9 @@ var MMGR = window.MMGR || {};
     );
     const byPerson = {};
     tasks.forEach(t => {
-      if (!byPerson[t.assignee]) byPerson[t.assignee] = [];
+      if (!byPerson[t.assignee]) {
+        byPerson[t.assignee] = [];
+      }
       byPerson[t.assignee].push(t);
     });
     const conflicts = [];
@@ -838,9 +917,15 @@ var MMGR = window.MMGR || {};
     let lowFloat = 0;
     tasks.forEach(t => {
       const rec = schedMap[t.id];
-      if (t.isPhase) return;
-      if (rec && rec.totalFloat !== null && rec.totalFloat <= 0) criticalCount++;
-      if (rec && rec.totalFloat !== null && rec.totalFloat > 0 && rec.totalFloat <= 5) lowFloat++;
+      if (t.isPhase) {
+        return;
+      }
+      if (rec && rec.totalFloat !== null && rec.totalFloat <= 0) {
+        criticalCount++;
+      }
+      if (rec && rec.totalFloat !== null && rec.totalFloat > 0 && rec.totalFloat <= 5) {
+        lowFloat++;
+      }
     });
     issues.push({
       severity: 'info',
@@ -862,7 +947,9 @@ var MMGR = window.MMGR || {};
   function triSample(min, ml, max) {
     const u = Math.random();
     const fc = (ml - min) / (max - min);
-    if (u < fc) return min + Math.sqrt(u * (max - min) * (ml - min));
+    if (u < fc) {
+      return min + Math.sqrt(u * (max - min) * (ml - min));
+    }
     return max - Math.sqrt((1 - u) * (max - min) * (max - ml));
   }
 
@@ -872,7 +959,9 @@ var MMGR = window.MMGR || {};
   function simulateSchedule(N, riskFactor, riskAdder) {
     const s = ns.State.getState();
     const tasks = (s.tasks || []).filter(t => t.startDate && t.endDate && !t.isPhase);
-    if (tasks.length < 2) return null;
+    if (tasks.length < 2) {
+      return null;
+    }
     const results = [];
     for (let sim = 0; sim < N; sim++) {
       const simDur = {};
@@ -904,12 +993,18 @@ var MMGR = window.MMGR || {};
           const preds = Array.isArray(t.predecessors) ? t.predecessors : [];
           let minStart = null;
           preds.forEach(pid => {
-            if (!endDates[pid] || !startDates[pid]) return;
+            if (!endDates[pid] || !startDates[pid]) {
+              return;
+            }
             const cs = new Date(endDates[pid]);
-            if (!minStart || cs > minStart) minStart = cs;
+            if (!minStart || cs > minStart) {
+              minStart = cs;
+            }
           });
           let sd = new Date(t.startDate);
-          if (minStart && minStart > sd) sd = minStart;
+          if (minStart && minStart > sd) {
+            sd = minStart;
+          }
           if (!startDates[t.id] || sd > startDates[t.id]) {
             startDates[t.id] = sd;
             changed = true;
@@ -955,7 +1050,9 @@ var MMGR = window.MMGR || {};
       return;
     }
     const errEl = U.$('mc-error');
-    if (errEl) errEl.classList.add('is-hide');
+    if (errEl) {
+      errEl.classList.add('is-hide');
+    }
     const { results, tasks } = sim;
     const N = results.length;
     const p10 = results[Math.floor(N * 0.1)],
@@ -968,7 +1065,9 @@ var MMGR = window.MMGR || {};
       targetPct = Math.round((results.filter(d => d <= td).length / N) * 100);
     }
     const res = U.$('mc-result');
-    if (res) res.classList.remove('is-hide');
+    if (res) {
+      res.classList.remove('is-hide');
+    }
     const hl = U.$('mc-headline');
     if (hl) {
       if (targetStr) {
@@ -1032,13 +1131,23 @@ var MMGR = window.MMGR || {};
     const p = str => U.parseDL(str);
     return (tasks || [])
       .filter(function (t) {
-        if (t.status === 'completed') return false;
+        if (t.status === 'completed') {
+          return false;
+        }
         const s = t.startDate ? p(t.startDate) : null;
         const e = t.endDate ? p(t.endDate) : null;
-        if (!e && !s) return false;
-        if (e && e < today) return true; // overdue carryover
-        if (e && e <= horizon) return true; // finishing within horizon
-        if (s && s <= horizon) return true; // starting within horizon
+        if (!e && !s) {
+          return false;
+        }
+        if (e && e < today) {
+          return true;
+        } // overdue carryover
+        if (e && e <= horizon) {
+          return true;
+        } // finishing within horizon
+        if (s && s <= horizon) {
+          return true;
+        } // starting within horizon
         return false;
       })
       .sort(function (a, b) {
@@ -1065,11 +1174,15 @@ var MMGR = window.MMGR || {};
     end.setDate(start.getDate() + 6);
     // Same parseDL discipline as lookaheadTasks , local-midnight parsing.
     const due = (tasks || []).filter(function (t) {
-      if (!t.endDate) return false;
+      if (!t.endDate) {
+        return false;
+      }
       const e = U.parseDL(t.endDate);
       return e && e >= start && e <= end;
     });
-    if (!due.length) return { planned: 0, completed: 0, pct: null, start: start, end: end };
+    if (!due.length) {
+      return { planned: 0, completed: 0, pct: null, start: start, end: end };
+    }
     const completed = due.filter(function (t) {
       return t.status === 'completed';
     }).length;
@@ -1100,10 +1213,12 @@ var MMGR = window.MMGR || {};
           U.daysBetween(b.startDate, a.endDate) >= 0 &&
           U.daysBetween(a.startDate, b.endDate) >= 0
         ) {
-          if (!map.has(a.id))
+          if (!map.has(a.id)) {
             map.set(a.id, { peers: [], window: { start: a.startDate, end: a.endDate } });
-          if (!map.has(b.id))
+          }
+          if (!map.has(b.id)) {
             map.set(b.id, { peers: [], window: { start: b.startDate, end: b.endDate } });
+          }
           map.get(a.id).peers.push(b.id);
           map.get(b.id).peers.push(a.id);
         }

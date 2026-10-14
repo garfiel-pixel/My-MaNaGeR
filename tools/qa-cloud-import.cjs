@@ -71,7 +71,9 @@ setTimeout(() => {
 // ---- wrangler location + local dev (same scaffolding as phase 2) ----------
 function globalWranglerJs() {
   const localP = path.join(__dirname, '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
-  if (fs.existsSync(localP)) return localP;
+  if (fs.existsSync(localP)) {
+    return localP;
+  }
   try {
     const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
     const root = execFileSync(npmCmd, ['root', '-g'], {
@@ -79,7 +81,9 @@ function globalWranglerJs() {
       shell: process.platform === 'win32'
     }).trim();
     const p = path.join(root, 'wrangler', 'bin', 'wrangler.js');
-    if (fs.existsSync(p)) return p;
+    if (fs.existsSync(p)) {
+      return p;
+    }
   } catch (e) {
     /* fall through */
   }
@@ -147,12 +151,15 @@ function startWrangler() {
         }, 3000);
         const r = await fetch(BASE + '/api/health', { signal: ctrl.signal });
         clearTimeout(timer);
-        if (r.ok) return resolve();
+        if (r.ok) {
+          return resolve();
+        }
       } catch (e) {
         /* not up yet */
       }
-      if (Date.now() - t0 > 120000)
+      if (Date.now() - t0 > 120000) {
         return reject(new Error('wrangler dev did not come up in 120s'));
+      }
       setTimeout(poll, 1500);
     };
     poll();
@@ -167,9 +174,13 @@ function stopWrangler() {
 // ---- D1 direct inspection --------------------------------------------------
 function d1File() {
   const dir = path.join(PERSIST_DIR, 'v3', 'd1', 'miniflare-D1DatabaseObject');
-  if (!fs.existsSync(dir)) return null;
+  if (!fs.existsSync(dir)) {
+    return null;
+  }
   for (const f of fs.readdirSync(dir)) {
-    if (f.endsWith('.sqlite') && !f.startsWith('metadata')) return path.join(dir, f);
+    if (f.endsWith('.sqlite') && !f.startsWith('metadata')) {
+      return path.join(dir, f);
+    }
   }
   return null;
 }
@@ -180,7 +191,9 @@ function queryD1(sql) {
       const { DatabaseSync } = require('node:sqlite');
       const db = new DatabaseSync(f, { readOnly: true });
       const rows = [];
-      for (const row of db.prepare(sql).all()) rows.push(row);
+      for (const row of db.prepare(sql).all()) {
+        rows.push(row);
+      }
       db.close();
       return rows;
     } catch (e) {

@@ -79,7 +79,9 @@ function jsonFetch(url, opts = {}) {
     ) {
       reqOpts.headers['Content-Length'] = Buffer.byteLength(opts.body);
     }
-    if (COOKIE) reqOpts.headers['Cookie'] = COOKIE;
+    if (COOKIE) {
+      reqOpts.headers['Cookie'] = COOKIE;
+    }
     const req = http.request(reqOpts, res => {
       let body = '';
       res.on('data', c => (body += c));
@@ -98,7 +100,9 @@ function jsonFetch(url, opts = {}) {
       req.destroy();
       reject(new Error('timeout'));
     });
-    if (opts.body) req.write(opts.body);
+    if (opts.body) {
+      req.write(opts.body);
+    }
     req.end();
   });
 }

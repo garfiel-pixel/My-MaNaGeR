@@ -21,9 +21,13 @@ function apiDaysBetween(a, b) {
 }
 
 function apiIsOverdue(endDate) {
-  if (!endDate) return false;
+  if (!endDate) {
+    return false;
+  }
   const d = new Date(String(endDate).replace(/-/g, '/') + ' 00:00:00');
-  if (isNaN(d)) return false;
+  if (isNaN(d)) {
+    return false;
+  }
   return d < new Date();
 }
 
@@ -131,7 +135,9 @@ function apiWeather(state) {
   const riskDays = days
     .filter(d => {
       const dateObj = new Date(String(d.date).replace(/-/g, '/') + ' 00:00:00');
-      if (isNaN(dateObj) || dateObj < today || dateObj > in7) return false;
+      if (isNaN(dateObj) || dateObj < today || dateObj > in7) {
+        return false;
+      }
       return (+d.precip || 0) >= 60 || (+d.tMax || 0) >= 32 || (+d.tMin || 0) <= 0;
     })
     .map(d => ({ date: d.date, precip: +d.precip || 0, tMax: +d.tMax || 0, tMin: +d.tMin || 0 }));
@@ -158,31 +164,40 @@ function apiWeather(state) {
 function apiEVM(state) {
   const tasks = Array.isArray(state.tasks) ? state.tasks : [];
   const tot = tasks.length;
-  if (!tot) return { shape: 'evm', available: false };
+  if (!tot) {
+    return { shape: 'evm', available: false };
+  }
   const dn = tasks.filter(t => t.status === 'completed').length;
   const pct = dn / tot;
   const lines = Array.isArray(state.budgetLines) ? state.budgetLines : [];
   const spendLog = Array.isArray(state.spendLog) ? state.spendLog : [];
   const lineActual = function (line) {
     const log = spendLog.filter(e => e.budgetLineId === line.id);
-    if (log.length) return log.reduce((s, e) => s + (+e.amount || 0), 0);
+    if (log.length) {
+      return log.reduce((s, e) => s + (+e.amount || 0), 0);
+    }
     return +line.actual || 0;
   };
   const tp = lines.reduce((sum, l) => sum + (+l.planned || 0), 0);
   const ta = lines.reduce((sum, l) => sum + lineActual(l), 0);
-  if (!tp) return { shape: 'evm', available: false };
+  if (!tp) {
+    return { shape: 'evm', available: false };
+  }
   const windowOf = function (line) {
     const linkId = line.linkedTaskId || line.taskId || null;
     if (linkId) {
       const t = tasks.find(x => String(x.id) === String(linkId));
-      if (t && t.startDate && t.endDate)
+      if (t && t.startDate && t.endDate) {
         return {
           start: new Date(String(t.startDate).replace(/-/g, '/')),
           end: new Date(String(t.endDate).replace(/-/g, '/'))
         };
+      }
     }
     const dated = tasks.filter(t => t.startDate && t.endDate);
-    if (!dated.length) return null;
+    if (!dated.length) {
+      return null;
+    }
     const starts = dated.map(t => new Date(String(t.startDate).replace(/-/g, '/')).getTime());
     const ends = dated.map(t => new Date(String(t.endDate).replace(/-/g, '/')).getTime());
     return {
@@ -200,19 +215,31 @@ function apiEVM(state) {
           : shape === 'back-loaded'
             ? 'back'
             : shape;
-    if (s === 'scurve') return t * t * (3 - 2 * t);
-    if (s === 'front') return 1 - Math.pow(1 - t, 2);
-    if (s === 'back') return t * t;
+    if (s === 'scurve') {
+      return t * t * (3 - 2 * t);
+    }
+    if (s === 'front') {
+      return 1 - Math.pow(1 - t, 2);
+    }
+    if (s === 'back') {
+      return t * t;
+    }
     return t;
   };
   const today = apiDayStart(new Date());
   const pv = lines.reduce((sum, l) => {
     const planned = +l.planned || 0;
     const w = windowOf(l);
-    if (!w) return sum + planned * pct;
+    if (!w) {
+      return sum + planned * pct;
+    }
     const span = w.end - w.start;
-    if (today <= w.start) return sum;
-    if (today >= w.end || span <= 0) return sum + planned;
+    if (today <= w.start) {
+      return sum;
+    }
+    if (today >= w.end || span <= 0) {
+      return sum + planned;
+    }
     return (
       sum + planned * curveFraction((today - w.start) / span, l.curveShape || l.curve || 'linear')
     );
@@ -222,7 +249,9 @@ function apiEVM(state) {
     const linkId = l.linkedTaskId || l.taskId || null;
     if (linkId) {
       const t = tasks.find(x => String(x.id) === String(linkId));
-      if (t) return sum + planned * (t.status === 'completed' ? 1 : 0);
+      if (t) {
+        return sum + planned * (t.status === 'completed' ? 1 : 0);
+      }
     }
     return sum + planned * pct;
   }, 0);
@@ -261,7 +290,9 @@ function apiEVM(state) {
 function apiPortfolio(state) {
   const tasks = Array.isArray(state.tasks) ? state.tasks : [];
   const tot = tasks.length;
-  if (!tot) return { shape: 'portfolio', available: false };
+  if (!tot) {
+    return { shape: 'portfolio', available: false };
+  }
   const dn = tasks.filter(t => t.status === 'completed').length;
   const overdue = tasks.filter(t => apiIsOverdue(t.endDate) && t.status !== 'completed').length;
   const liveIssues = (Array.isArray(state.issues) ? state.issues : []).filter(
@@ -277,7 +308,9 @@ function apiPortfolio(state) {
   const spendLog = Array.isArray(state.spendLog) ? state.spendLog : [];
   const lineActual = function (line) {
     const log = spendLog.filter(e => e.budgetLineId === line.id);
-    if (log.length) return log.reduce((s, e) => s + (+e.amount || 0), 0);
+    if (log.length) {
+      return log.reduce((s, e) => s + (+e.amount || 0), 0);
+    }
     return +line.actual || 0;
   };
   const tp = lines.reduce((sum, b) => sum + (+b.planned || 0), 0);
@@ -347,7 +380,9 @@ export { apiPortfolio };
 
 export async function handleApiShape(request, env, projectId, shape) {
   const auth = await cloudAuthWithRole(request, env, projectId);
-  if (!auth) return cloudForbidden();
+  if (!auth) {
+    return cloudForbidden();
+  }
   if (auth.source !== 'owner') {
     // Wave 7 role matrix: owner sees every shape; a manager sees every shape
     // /load would give them; a scoped role sees only the shapes whose section
@@ -355,7 +390,9 @@ export async function handleApiShape(request, env, projectId, shape) {
     const sections = teamScopeForRole(auth.role, auth.scope);
     const need = SHAPE_SECTION[shape];
     const allowed = auth.role === 'manager' || (need !== null && sections.indexOf(need) !== -1);
-    if (!allowed) return cloudForbidden();
+    if (!allowed) {
+      return cloudForbidden();
+    }
   }
   const row = await env.DB.prepare(
     'SELECT latest_r2_key, owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?'
@@ -366,7 +403,9 @@ export async function handleApiShape(request, env, projectId, shape) {
     row && row.latest_r2_key
       ? await cloudReadState(env, row.latest_r2_key, row.owner_code_hash, row.owner_code_salt)
       : null;
-  if (!state) return json({ ok: true, shape: shape, exists: false, data: null });
+  if (!state) {
+    return json({ ok: true, shape: shape, exists: false, data: null });
+  }
   const builder = API_SHAPES[shape];
   return json({
     ok: true,

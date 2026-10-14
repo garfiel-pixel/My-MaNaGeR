@@ -75,15 +75,18 @@ async function escrowCipherKey(env) {
 
 function b64(bytes) {
   let s = '';
-  for (let i = 0; i < bytes.length; i += 0x8000)
+  for (let i = 0; i < bytes.length; i += 0x8000) {
     s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  }
   return btoa(s);
 }
 
 function unb64(str) {
   const bin = atob(str);
   const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  for (let i = 0; i < bin.length; i++) {
+    out[i] = bin.charCodeAt(i);
+  }
   return out;
 }
 
@@ -101,7 +104,9 @@ async function sealAdminHash(env, hashHex) {
 async function openAdminEnvelope(env, envelope) {
   try {
     const parsed = JSON.parse(envelope);
-    if (!parsed || parsed.v !== ESCROW_VERSION || !parsed.iv || !parsed.data) return null;
+    if (!parsed || parsed.v !== ESCROW_VERSION || !parsed.iv || !parsed.data) {
+      return null;
+    }
     const key = await escrowCipherKey(env);
     const pt = await crypto.subtle.decrypt(
       { name: 'AES-GCM', iv: unb64(parsed.iv) },
@@ -121,9 +126,15 @@ async function openAdminEnvelope(env, envelope) {
 // confirmation link (auth_users.email_verified = 1). Mirrors the gate the
 // cloud-create route uses.
 async function accountVerified(env, session) {
-  if (!session || !session.sub) return false;
-  if (session.sub.indexOf('email:') !== 0) return true;
-  if (!env || !env.DB) return false;
+  if (!session || !session.sub) {
+    return false;
+  }
+  if (session.sub.indexOf('email:') !== 0) {
+    return true;
+  }
+  if (!env || !env.DB) {
+    return false;
+  }
   try {
     const row = await env.DB.prepare('SELECT email_verified FROM auth_users WHERE email = ?')
       .bind(session.sub.slice('email:'.length))
@@ -142,11 +153,17 @@ export async function handleAdminCodePut(request, env) {
     return json({ ok: false, error: 'bad request' }, 400);
   }
   const code = String((body && body.code) || '').trim();
-  if (code.length < 8 || code.length > 128) return json({ ok: false, error: 'bad request' }, 400);
+  if (code.length < 8 || code.length > 128) {
+    return json({ ok: false, error: 'bad request' }, 400);
+  }
   const session = await readSession(request, env);
-  if (!session || !session.sub) return json({ ok: false, error: 'not signed in' }, 401);
+  if (!session || !session.sub) {
+    return json({ ok: false, error: 'not signed in' }, 401);
+  }
   const rl = await cloudRateCheck(request, 'general', env);
-  if (rl.limited) return json({ ok: false, error: 'too many requests' }, 429);
+  if (rl.limited) {
+    return json({ ok: false, error: 'too many requests' }, 429);
+  }
   const hashHex = await sha256Hex(code);
   const envelope = await sealAdminHash(env, hashHex);
   const now = new Date().toISOString();
@@ -165,9 +182,13 @@ export async function handleAdminCodePut(request, env) {
 
 export async function handleAdminCodeGet(request, env) {
   const session = await readSession(request, env);
-  if (!session || !session.sub) return json({ ok: false, error: 'not signed in' }, 401);
+  if (!session || !session.sub) {
+    return json({ ok: false, error: 'not signed in' }, 401);
+  }
   const rl = await cloudRateCheck(request, 'general', env);
-  if (rl.limited) return json({ ok: false, error: 'too many requests' }, 429);
+  if (rl.limited) {
+    return json({ ok: false, error: 'too many requests' }, 429);
+  }
   let row = null;
   try {
     row = await env.DB.prepare('SELECT envelope, updated_at FROM admin_code_escrow WHERE sub = ?')
@@ -176,7 +197,9 @@ export async function handleAdminCodeGet(request, env) {
   } catch (e) {
     row = null;
   }
-  if (!row) return json({ ok: true, hasCode: false });
+  if (!row) {
+    return json({ ok: true, hasCode: false });
+  }
   const verified = await accountVerified(env, session);
   if (!verified) {
     // Status only: never hand the credential to an unverified email account.

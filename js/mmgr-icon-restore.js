@@ -25,13 +25,19 @@
       try {
         var u = uses[i];
         var href = u.getAttribute('href') || u.getAttribute('xlink:href');
-        if (!href || href.charAt(0) === '#') continue; // in-document refs are safe
+        if (!href || href.charAt(0) === '#') {
+          continue;
+        } // in-document refs are safe
         var hadXlink = u.hasAttribute('xlink:href');
         u.removeAttribute('href');
-        if (hadXlink) u.removeAttribute('xlink:href');
+        if (hadXlink) {
+          u.removeAttribute('xlink:href');
+        }
         void u.getBoundingClientRect(); // force style/blur invalidation
         u.setAttribute('href', href);
-        if (hadXlink) u.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', href);
+        if (hadXlink) {
+          u.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', href);
+        }
         n++;
       } catch (e) {
         /* fail-soft per node; never block the page */
@@ -46,7 +52,9 @@
   var api = { restore: restore, lastCount: 0 };
 
   window.addEventListener('pageshow', function (ev) {
-    if (ev && ev.persisted) restore();
+    if (ev && ev.persisted) {
+      restore();
+    }
   });
 
   window.MMGRIconRestore = api;

@@ -431,7 +431,9 @@ const check = (name, val, detail) => {
     RATE_LIMITER: {
       limit: async function (kv) {
         globalThis.rlHits++;
-        if (globalThis.rlHits > 30) return { success: false };
+        if (globalThis.rlHits > 30) {
+          return { success: false };
+        }
         return { success: true };
       }
     }

@@ -33,9 +33,13 @@ var MMGR = window.MMGR || {};
 
   function renderSpendLog() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const b = $('spendlog-body');
-    if (!b) return;
+    if (!b) {
+      return;
+    }
     const log = s.spendLog || [];
     const lines = s.budgetLines || [];
     if (log.length === 0) {
@@ -65,9 +69,13 @@ var MMGR = window.MMGR || {};
 
   function renderCashFlowChart() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const wrap = $('cashflow-chart');
-    if (!wrap) return;
+    if (!wrap) {
+      return;
+    }
     const dated = (s.tasks || []).filter(t => t.startDate && t.endDate);
     if (!dated.length || !(s.budgetLines || []).length) {
       wrap.innerHTML =
@@ -142,9 +150,13 @@ var MMGR = window.MMGR || {};
 
   function renderBudget() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const body = $('bud-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const lines = s.budgetLines || [];
     const envelope = s.budgetEnvelope || 0;
     const planned = lines.reduce((sum, l) => sum + (+l.planned || 0), 0);
@@ -159,7 +171,9 @@ var MMGR = window.MMGR || {};
     const committedGap = Math.max(0, committed - actual);
     const setVal = (id, val) => {
       const el = $(id);
-      if (el) el.textContent = val;
+      if (el) {
+        el.textContent = val;
+      }
     };
     setVal('bud-envelope-disp', '$' + Number(envelope).toLocaleString());
     setVal('bud-committed', '$' + committed.toLocaleString());
@@ -174,7 +188,9 @@ var MMGR = window.MMGR || {};
         : 'All committed spend is out'
     );
     const gapEl = $('bud-committed-gap');
-    if (gapEl) gapEl.style.color = committedGap > 0 ? 'var(--amber)' : 'var(--slate)';
+    if (gapEl) {
+      gapEl.style.color = committedGap > 0 ? 'var(--amber)' : 'var(--slate)';
+    }
     setVal('bud-ta', '$' + actual.toLocaleString());
     setVal(
       'bud-spent-pct',
@@ -183,14 +199,19 @@ var MMGR = window.MMGR || {};
     setVal('bud-remaining', '$' + Math.max(0, remaining).toLocaleString());
     setVal('bud-remaining-pct', remaining >= 0 ? 'On budget' : 'Over budget');
     const remainingPctEl = $('bud-remaining-pct');
-    if (remainingPctEl)
+    if (remainingPctEl) {
       remainingPctEl.style.color = remaining >= 0 ? 'var(--slate)' : 'var(--danger)';
+    }
     setVal('bud-unallocated', '$' + Math.max(0, unallocated).toLocaleString());
     setVal('bud-bar-pct-label', envelope ? Math.round((actual / envelope) * 100) + '%' : '0%');
     const bar = $('bud-bar');
-    if (bar) bar.style.width = envelope ? Math.min(100, (actual / envelope) * 100) + '%' : '0%';
+    if (bar) {
+      bar.style.width = envelope ? Math.min(100, (actual / envelope) * 100) + '%' : '0%';
+    }
     const warn = $('bud-bar-warn');
-    if (warn) warn.classList.toggle('is-hide', !(actual > envelope));
+    if (warn) {
+      warn.classList.toggle('is-hide', !(actual > envelope));
+    }
     const overrun = $('bud-overrun-alert');
     const overrunAmt = $('bud-overrun-amt');
     if (overrun && overrunAmt) {
@@ -222,7 +243,9 @@ var MMGR = window.MMGR || {};
       : '';
     setVal('bud-waivers', waiverTxt);
     const waiverEl = $('bud-waivers-wrap');
-    if (waiverEl) waiverEl.classList.toggle('is-hide', !waiverTxt);
+    if (waiverEl) {
+      waiverEl.classList.toggle('is-hide', !waiverTxt);
+    }
     body.innerHTML = lines
       .map(
         (l, i) => `<tr>
@@ -273,24 +296,31 @@ var MMGR = window.MMGR || {};
           '</div>';
       }
     }
-    if (ns.Claim && ns.Claim.renderLdRollup) ns.Claim.renderLdRollup();
+    if (ns.Claim && ns.Claim.renderLdRollup) {
+      ns.Claim.renderLdRollup();
+    }
     renderPayApps();
   }
 
   function renderPayApps() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const body = $('payapp-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const apps = s.payApps || [];
     const sum = $('payapp-sum');
     const billed = apps
       .filter(a => a.status === 'approved' || a.status === 'submitted')
       .reduce((t, a) => t + (+a.amount || 0), 0);
-    if (sum)
+    if (sum) {
       sum.textContent = apps.length
         ? apps.length + ' on file · $' + billed.toLocaleString() + ' billed'
         : '';
+    }
     if (apps.length === 0) {
       body.innerHTML = emptyStateRow(
         8,

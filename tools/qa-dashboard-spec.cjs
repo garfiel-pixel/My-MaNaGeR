@@ -56,7 +56,9 @@ const tokens = [
   '--db-border',
   '--db-text-secondary'
 ];
-for (const t of tokens) check('token ' + t, css.includes(t + ':'), t);
+for (const t of tokens) {
+  check('token ' + t, css.includes(t + ':'), t);
+}
 for (const sel of [
   'body.dark-mode.db-page .db-side {',
   '.db-side,\n.db-hamb,\n.db-scrim {\n  display: none;\n}',
@@ -109,13 +111,15 @@ check('Escape closes drawer', /Escape/.test(appHtml) && /side-open/.test(appHtml
 // every dashboard anchor target must resolve to a real element or page
 const anchorTargets = [...appHtml.matchAll(/class="db-link" href="([^"]+)"/g)].map(m => m[1]);
 for (const href of anchorTargets) {
-  if (href.startsWith('#'))
+  if (href.startsWith('#')) {
     check(
       'anchor #' + href.slice(1) + ' exists',
       appHtml.includes('id="' + href.slice(1) + '"'),
       href
     );
-  else check('link ' + href + ' is a real page', fs.existsSync(path.join(ROOT, href)), href);
+  } else {
+    check('link ' + href + ' is a real page', fs.existsSync(path.join(ROOT, href)), href);
+  }
 }
 check('at least 3 sidebar links', anchorTargets.length >= 3);
 
@@ -123,10 +127,16 @@ console.log('--- 2a2. Performance Mode lag probe samples the pretty default ---'
 // The probe exists to nudge a LAGGY device toward Performance Mode. It used to
 // return unless perf was already ON, so it could never fire on the pretty
 // default (owner report: "performance mode doesn't work or something").
+// Both probes are brace-tolerant (2026-10-14): the repo-wide eslint curly
+// pass wrapped single-statement bodies, so accept `if (x) return;` and
+// `if (x) { return; }` alike - each still asserts the same early return.
 const perfJs = fs.readFileSync(path.join(ROOT, 'js', 'mmgr-perf.js'), 'utf8');
 check(
   'lag probe runs while Performance Mode is OFF (heavy layers active)',
-  /if \(isOn\(\)\) return;/.test(perfJs) && !/\n\s*if \(!isOn\(\)\) return;/.test(perfJs)
+  /if \(isOn\(\)\) \{?\s*return;/.test(perfJs) &&
+    // Line-anchored so the file's own comment quoting the old broken guard
+    // (`if (!isOn()) return;`) can never satisfy the negative probe.
+    !/\n\s*if \(!isOn\(\)\) \{?\s*return;/.test(perfJs)
 );
 
 console.log('--- 2b. rail survives a back-navigation (owner 2026-10-09) ---');
@@ -163,7 +173,9 @@ const dashBlock = appHtml.slice(
   appHtml.indexOf('<div class="wrap">')
 );
 const iconRefs = [...dashBlock.matchAll(/use href="css\/mmgr-icons\.svg#([^"]+)"/g)].map(m => m[1]);
-for (const id of iconRefs) check('icon #' + id, new RegExp('id="' + id + '"').test(sprite), id);
+for (const id of iconRefs) {
+  check('icon #' + id, new RegExp('id="' + id + '"').test(sprite), id);
+}
 
 console.log('--- 4. WCAG 2.2 contrast on recorded pairs (Gate 4.1/4.3) ---');
 function lum(hex) {
@@ -194,8 +206,9 @@ console.log('--- 5. app.html CSP hashes match worker.js + serve.cjs ---');
 const inlineScripts = [];
 const re = /<script>([\s\S]*?)<\/script>/g;
 let m;
-while ((m = re.exec(appHtml)) !== null)
+while ((m = re.exec(appHtml)) !== null) {
   inlineScripts.push('sha256-' + crypto.createHash('sha256').update(m[1]).digest('base64'));
+}
 for (const h of inlineScripts) {
   check('hash ' + h.slice(7, 20) + '… in worker.js', worker.includes("'" + h + "'"));
   check('hash ' + h.slice(7, 20) + '… in serve.cjs', serve.includes("'" + h + "'"));

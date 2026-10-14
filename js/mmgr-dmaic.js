@@ -71,15 +71,23 @@ var MMGR = window.MMGR || {};
 
   function updDMAIC(phase, field, val) {
     ns.State.updateState(function (s) {
-      if (!s.dmaic) s.dmaic = defaultDmaic();
-      if (s.dmaic[phase]) s.dmaic[phase][field] = val;
+      if (!s.dmaic) {
+        s.dmaic = defaultDmaic();
+      }
+      if (s.dmaic[phase]) {
+        s.dmaic[phase][field] = val;
+      }
     });
   }
 
   function tglDMAICPhase(phase) {
     ns.State.updateState(function (s) {
-      if (!s.dmaic) s.dmaic = defaultDmaic();
-      if (s.dmaic[phase]) s.dmaic[phase].done = !s.dmaic[phase].done;
+      if (!s.dmaic) {
+        s.dmaic = defaultDmaic();
+      }
+      if (s.dmaic[phase]) {
+        s.dmaic[phase].done = !s.dmaic[phase].done;
+      }
     });
     renderDMAIC();
     // Keep the Dashboard signal live when a phase completes/reopens.
@@ -89,12 +97,15 @@ var MMGR = window.MMGR || {};
   // DMAIC on/off , keeps the nav visible state in sync with methodology UI.
   function tglDMAIC(on) {
     ns.State.updateState(function (s) {
-      if (!s.dmaic) s.dmaic = defaultDmaic();
+      if (!s.dmaic) {
+        s.dmaic = defaultDmaic();
+      }
       s.dmaic.active = !!on;
     });
     renderDMAIC();
-    if (ns.App && ns.App.showToast && on)
+    if (ns.App && ns.App.showToast && on) {
       ns.App.showToast('DMAIC Mode activated , open the DMAIC tab.', 'ok');
+    }
   }
 
   function defaultDmaic() {
@@ -119,7 +130,9 @@ var MMGR = window.MMGR || {};
   function renderDMAIC() {
     const s = ns.State.getState();
     const el = U.$('dmaic-phases');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     if (!s.dmaic || !s.dmaic.define) {
       el.innerHTML = '';
       return;
@@ -139,7 +152,9 @@ var MMGR = window.MMGR || {};
   function renderDmaicSignal() {
     const s = ns.State.getState();
     const wrap = U.$('dmaic-signal-wrap');
-    if (!wrap) return;
+    if (!wrap) {
+      return;
+    }
     const d = s.dmaic;
     if (!d || !d.active) {
       wrap.classList.add('is-hide');
@@ -150,7 +165,9 @@ var MMGR = window.MMGR || {};
     const total = DMAIC_DEFS.length;
     const pct = Math.round((done / total) * 100);
     const el = U.$('dmaic-signal');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const chips = DMAIC_DEFS.map(ph => {
       const isDone = !!(d[ph.key] && d[ph.key].done);
       return `<span class="dmaic-chip ${isDone ? 'done' : ''}" title="${U.escapeHtml(ph.title)}">${ph.key.charAt(0).toUpperCase()}</span>`;

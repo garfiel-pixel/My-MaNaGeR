@@ -258,13 +258,14 @@ var MMGR = window.MMGR || {};
   function renderMeetings() {
     const s = ns.State.getState();
     const ul = U.$('meet-kickoff-list');
-    if (ul)
+    if (ul) {
       ul.innerHTML = MEET_KICKOFF_ITEMS.map(
         i =>
           '<li class="mk-item"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> ' +
           U.escapeHtml(i) +
           '</li>'
       ).join('');
+    }
     const meetCard = m => `<div class="card meet-card">
     <div class="meet-t">${U.escapeHtml(m.t)}</div>
     <div class="meet-dur"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clock"></use></svg> ${U.escapeHtml(m.dur)}</div>
@@ -272,15 +273,21 @@ var MMGR = window.MMGR || {};
     <div class="g6"><button class="btn btn-n btn-s" data-action="startMeeting" data-kind="${m.k}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> Start</button><button class="btn btn-n btn-s" data-action="copyMeetingTemplate" data-kind="${m.k}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
   </div>`;
     const rg = U.$('meet-recurring-grid');
-    if (rg) rg.innerHTML = MEET_RECURRING.map(meetCard).join('');
+    if (rg) {
+      rg.innerHTML = MEET_RECURRING.map(meetCard).join('');
+    }
     const sg = U.$('meet-specialized-grid');
-    if (sg) sg.innerHTML = MEET_SPECIALIZED.map(meetCard).join('');
+    if (sg) {
+      sg.innerHTML = MEET_SPECIALIZED.map(meetCard).join('');
+    }
     const ag = U.$('meet-agile-sec');
     const isAgile = s.methodology === 'agile' || s.methodology === 'hybrid';
     if (ag) {
       ag.classList.toggle('is-hide', !isAgile);
       const grid = U.$('meet-agile-grid');
-      if (grid) grid.innerHTML = MEET_AGILE.map(meetCard).join('');
+      if (grid) {
+        grid.innerHTML = MEET_AGILE.map(meetCard).join('');
+      }
     }
     renderPromises();
     renderSentimentHistory();
@@ -305,9 +312,13 @@ var MMGR = window.MMGR || {};
     const s = ns.State.getState();
     const m = s.activeMeeting;
     const label = SENTIMENT_LABELS[val];
-    if (!label) return;
+    if (!label) {
+      return;
+    }
     ns.State.updateState(function (st) {
-      if (!st.sentimentHistory) st.sentimentHistory = [];
+      if (!st.sentimentHistory) {
+        st.sentimentHistory = [];
+      }
       st.sentimentHistory.push({
         date: new Date().toISOString(),
         value: val,
@@ -318,14 +329,18 @@ var MMGR = window.MMGR || {};
         st.sentimentHistory = st.sentimentHistory.slice(-SENTIMENT_CAP);
       }
     });
-    if (ns.App && ns.App.showToast) ns.App.showToast('Pulse recorded , ' + label, 'ok');
+    if (ns.App && ns.App.showToast) {
+      ns.App.showToast('Pulse recorded , ' + label, 'ok');
+    }
     renderSentimentHistory();
   }
 
   function renderSentimentHistory() {
     const wrap = U.$('meet-sentiment-wrap');
     const body = U.$('meet-sentiment-body');
-    if (!wrap || !body) return;
+    if (!wrap || !body) {
+      return;
+    }
     const s = ns.State.getState();
     const hist = s.sentimentHistory || [];
     if (!hist.length) {
@@ -377,7 +392,9 @@ var MMGR = window.MMGR || {};
   // overdue; tick a checkbox to mark it done (writes back to state).
   function tglPromise(kind, idx) {
     const s = ns.State.getState();
-    if (!s.meetingPromises || !s.meetingPromises[kind] || !s.meetingPromises[kind][idx]) return;
+    if (!s.meetingPromises || !s.meetingPromises[kind] || !s.meetingPromises[kind][idx]) {
+      return;
+    }
     ns.State.updateState(function (st) {
       if (st.meetingPromises && st.meetingPromises[kind] && st.meetingPromises[kind][idx]) {
         st.meetingPromises[kind][idx].done = !st.meetingPromises[kind][idx].done;
@@ -389,7 +406,9 @@ var MMGR = window.MMGR || {};
   function renderPromises() {
     const wrap = U.$('meet-promises-wrap');
     const body = U.$('meet-promises');
-    if (!wrap || !body) return;
+    if (!wrap || !body) {
+      return;
+    }
     const s = ns.State.getState();
     const all = s.meetingPromises || {};
     const kinds = Object.keys(all).filter(k => (all[k] || []).length);
@@ -459,7 +478,9 @@ var MMGR = window.MMGR || {};
 
   function copyMeetingTemplate(kind) {
     const t = MEET_TEMPLATES[kind];
-    if (!t) return;
+    if (!t) {
+      return;
+    }
     const s = ns.State.getState();
     const proj = (s.charter && s.charter.name) || '[Project Name]';
     const hs = (ns.Health && ns.Health.get && ns.Health.get()) || '-';
@@ -478,8 +499,9 @@ var MMGR = window.MMGR || {};
     txt += `NEXT MEETING\n${'-'.repeat(50)}\nDate: ____________  Focus: ____________\n\n`;
     txt += `→ Populate these panels next: Charter, WBS, RACI, Risks, Budget, Stakeholders\n`;
     U.copyToClipboard(txt);
-    if (ns.App && ns.App.showToast)
+    if (ns.App && ns.App.showToast) {
       ns.App.showToast(t.title + ' template copied , ready for your meeting!', 'ok');
+    }
   }
 
   function openMeetPrompt() {
@@ -492,11 +514,17 @@ var MMGR = window.MMGR || {};
       nTasks = (s.tasks || []).length;
     const prompt = `# Custom Meeting Agenda Generator\n\n## Project Context\n- Name: ${proj}\n- Methodology: ${meth}\n- Current Health Score: ${hs}\n- WBS tasks: ${nTasks} | Risks: ${nRisks} | Stakeholders: ${nStk}\n\n## Request\nGenerate a fully structured meeting agenda for: [KICKOFF / WEEKLY / RISK REVIEW / STEERING COMMITTEE / PHASE-GATE / LESSONS LEARNED / OTHER , specify]\n\n## Required Sections\n1. Objective & expected outcomes\n2. Pre-work / materials to circulate in advance\n3. Sequential agenda items with time-boxes\n4. Discussion prompts for each item\n5. Decisions required\n6. Action item table (Owner / Due / Status)\n7. Links to which panels should be updated afterward (Charter, WBS, RACI, Risks, Budget, Stakeholders, Docs)\n8. Minutes template\n\nOptimize for: alignment, no gaps, actionable outputs, populating the project tool.`;
     const txt = U.$('om-txt');
-    if (txt) txt.value = prompt;
+    if (txt) {
+      txt.value = prompt;
+    }
     const title = U.$('om-title');
-    if (title) title.textContent = 'Custom Meeting Agenda Prompt';
+    if (title) {
+      title.textContent = 'Custom Meeting Agenda Prompt';
+    }
     const modal = U.$('om');
-    if (modal) modal.classList.add('open');
+    if (modal) {
+      modal.classList.add('open');
+    }
   }
 
   // ---- Live meeting tracking (MEETING_TRACKING_SPEC §4) ----
@@ -506,7 +534,9 @@ var MMGR = window.MMGR || {};
   let _elapsedTimer = null;
   function startElapsedTimer() {
     stopElapsedTimer();
-    if (!ns.State.getState().activeMeeting) return;
+    if (!ns.State.getState().activeMeeting) {
+      return;
+    }
     _elapsedTimer = setInterval(function () {
       const badge = U.$('meet-elapsed');
       const m = ns.State.getState().activeMeeting;
@@ -529,16 +559,23 @@ var MMGR = window.MMGR || {};
 
   function startMeeting(kind) {
     const t = MEET_TEMPLATES[kind];
-    if (!t) return;
+    if (!t) {
+      return;
+    }
     const s = ns.State.getState();
     if (s.activeMeeting) {
-      if (ns.App && ns.App.showToast)
+      if (ns.App && ns.App.showToast) {
         ns.App.showToast('A meeting is already in progress , end or cancel it first.', 'err');
+      }
       return;
     }
     ns.State.updateState(function (st) {
-      if (!st.meetings) st.meetings = [];
-      if (st.nmeetid === undefined) st.nmeetid = 1;
+      if (!st.meetings) {
+        st.meetings = [];
+      }
+      if (st.nmeetid === undefined) {
+        st.nmeetid = 1;
+      }
       const items = kind === 'kickoff' ? MEET_KICKOFF_ITEMS : t.items;
       st.activeMeeting = {
         id: st.nmeetid++,
@@ -564,15 +601,20 @@ var MMGR = window.MMGR || {};
     });
     renderMeetings();
     startElapsedTimer();
-    if (ns.App && ns.App.showToast) ns.App.showToast(t.title + ' started', 'ok');
+    if (ns.App && ns.App.showToast) {
+      ns.App.showToast(t.title + ' started', 'ok');
+    }
   }
 
   function tglMeetItem(i) {
     const s = ns.State.getState();
-    if (!s.activeMeeting) return;
+    if (!s.activeMeeting) {
+      return;
+    }
     ns.State.updateState(function (st) {
-      if (st.activeMeeting && st.activeMeeting.items[i])
+      if (st.activeMeeting && st.activeMeeting.items[i]) {
         st.activeMeeting.items[i].done = !st.activeMeeting.items[i].done;
+      }
     });
     renderActiveMeeting();
   }
@@ -581,24 +623,34 @@ var MMGR = window.MMGR || {};
   // re-rendering would steal focus out of the note input being typed in.
   function updMeetItemNote(i, val) {
     const s = ns.State.getState();
-    if (!s.activeMeeting) return;
+    if (!s.activeMeeting) {
+      return;
+    }
     ns.State.updateState(function (st) {
-      if (st.activeMeeting && st.activeMeeting.items[i]) st.activeMeeting.items[i].note = val;
+      if (st.activeMeeting && st.activeMeeting.items[i]) {
+        st.activeMeeting.items[i].note = val;
+      }
     });
   }
 
   // Same focus discipline as updMeetItemNote , save only, don't re-render.
   function updMeetField(field, val) {
     const s = ns.State.getState();
-    if (!s.activeMeeting) return;
+    if (!s.activeMeeting) {
+      return;
+    }
     ns.State.updateState(function (st) {
-      if (st.activeMeeting) st.activeMeeting[field] = val;
+      if (st.activeMeeting) {
+        st.activeMeeting[field] = val;
+      }
     });
   }
 
   function endMeeting() {
     const s = ns.State.getState();
-    if (!s.activeMeeting) return;
+    if (!s.activeMeeting) {
+      return;
+    }
     const m = s.activeMeeting;
     // Rank 1.5: if a voice recording is live, stop it FIRST so pending
     // captions flush into m.transcript before the meeting record is built.
@@ -612,7 +664,9 @@ var MMGR = window.MMGR || {};
     );
     ns.State.updateState(function (st) {
       const act = st.activeMeeting;
-      if (!act) return;
+      if (!act) {
+        return;
+      }
       act.endedAt = endedAt;
       act.durationMin = durationMin;
       const doneCount = act.items.filter(i => i.done).length;
@@ -629,10 +683,16 @@ var MMGR = window.MMGR || {};
       const unresolved = act.items.filter(i => !i.done);
       const noted = act.items.filter(i => i.done && (i.note || '').trim());
       const promiseCap = 30;
-      if (!st.meetingPromises) st.meetingPromises = {};
-      if (!st.meetingPromises[act.kind]) st.meetingPromises[act.kind] = [];
+      if (!st.meetingPromises) {
+        st.meetingPromises = {};
+      }
+      if (!st.meetingPromises[act.kind]) {
+        st.meetingPromises[act.kind] = [];
+      }
       unresolved.forEach(it => {
-        if (st.meetingPromises[act.kind].length >= promiseCap) return;
+        if (st.meetingPromises[act.kind].length >= promiseCap) {
+          return;
+        }
         st.meetingPromises[act.kind].push({
           id: U.genShortId('P'),
           text: it.text,
@@ -643,7 +703,9 @@ var MMGR = window.MMGR || {};
         });
       });
       noted.forEach(it => {
-        if (st.meetingPromises[act.kind].length >= promiseCap) return;
+        if (st.meetingPromises[act.kind].length >= promiseCap) {
+          return;
+        }
         st.meetingPromises[act.kind].push({
           id: U.genShortId('P'),
           text: it.note,
@@ -655,7 +717,9 @@ var MMGR = window.MMGR || {};
       });
       // Auto-generate a Comms Log entry so the meeting becomes a permanent
       // record (S.commsEntries shape from mmgr-closure.js addComms).
-      if (!st.commsEntries) st.commsEntries = [];
+      if (!st.commsEntries) {
+        st.commsEntries = [];
+      }
       st.commsEntries.push({
         id: U.genShortId('C'),
         date: endedAt.slice(0, 10),
@@ -676,7 +740,9 @@ var MMGR = window.MMGR || {};
         followUp: '',
         sourceMeetingId: act.id // T6 (2026-08-16): lets delMeeting remove this auto-logged Comms entry with its meeting
       });
-      if (!st.meetings) st.meetings = [];
+      if (!st.meetings) {
+        st.meetings = [];
+      }
       st.meetings.unshift(JSON.parse(JSON.stringify(act)));
       st.activeMeeting = null;
     });
@@ -707,8 +773,12 @@ var MMGR = window.MMGR || {};
 
   function cancelActiveMeeting() {
     const s = ns.State.getState();
-    if (!s.activeMeeting) return;
-    if (!window.confirm('Discard this in-progress meeting? Nothing will be saved.')) return;
+    if (!s.activeMeeting) {
+      return;
+    }
+    if (!window.confirm('Discard this in-progress meeting? Nothing will be saved.')) {
+      return;
+    }
     ns.State.updateState(function (st) {
       st.activeMeeting = null;
     });
@@ -723,7 +793,9 @@ var MMGR = window.MMGR || {};
   function copyMeetingMinutes(id) {
     const s = ns.State.getState();
     const m = (s.meetings || []).find(x => x.id === id) || s.activeMeeting;
-    if (!m) return;
+    if (!m) {
+      return;
+    }
     const proj = (s.charter && s.charter.name) || '[Project Name]';
     const ts = new Date().toLocaleString();
     let txt = `[${ts} | My MaNaGeR | ${(s.methodology || '').toUpperCase()}]\n\n`;
@@ -745,17 +817,22 @@ var MMGR = window.MMGR || {};
     actions.forEach((a, i) => {
       txt += `${i + 1} | ${a.text} |  |  | Complete\n`;
     });
-    if (!actions.length) txt += '1 |  |  |  | Open\n';
+    if (!actions.length) {
+      txt += '1 |  |  |  | Open\n';
+    }
     U.copyToClipboard(txt);
-    if (ns.App && ns.App.showToast)
+    if (ns.App && ns.App.showToast) {
       ns.App.showToast('Minutes copied to clipboard , paste into your email or minutes doc.', 'ok');
+    }
   }
 
   // ---- Rendering (MEETING_TRACKING_SPEC §5) ----
   function renderActiveMeeting() {
     const s = ns.State.getState();
     const wrap = U.$('active-meeting-wrap');
-    if (!wrap) return;
+    if (!wrap) {
+      return;
+    }
     const m = s.activeMeeting;
     if (!m) {
       wrap.innerHTML = '';
@@ -794,13 +871,17 @@ var MMGR = window.MMGR || {};
       <!-- Rank 1.5: meeting voice capture + transcription (rendered by mmgr-voice.js) -->
       <div id="meet-voice-wrap"></div>
     </div>`;
-    if (ns.Voice && ns.Voice.renderCaptureSection) ns.Voice.renderCaptureSection();
+    if (ns.Voice && ns.Voice.renderCaptureSection) {
+      ns.Voice.renderCaptureSection();
+    }
   }
 
   function renderMeetingHistory() {
     const s = ns.State.getState();
     const body = U.$('meeting-history-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const meetings = s.meetings || [];
     if (!meetings.length) {
       body.innerHTML =
@@ -840,8 +921,9 @@ var MMGR = window.MMGR || {};
     const s = ns.State.getState();
     const idx = (s.meetings || []).findIndex(x => x.id === id);
     if (idx < 0) {
-      if (ns.App && ns.App.showToast)
+      if (ns.App && ns.App.showToast) {
         ns.App.showToast('That meeting is no longer in this project.', 'warn');
+      }
       return;
     }
     const meeting = s.meetings[idx];
@@ -860,20 +942,30 @@ var MMGR = window.MMGR || {};
         Object.keys(st.meetingPromises || {}).forEach(function (k) {
           const kept = (st.meetingPromises[k] || []).filter(function (p) {
             const linked = p.sourceMeetingId === id;
-            if (linked) snap.promises.push({ kind: k, p: JSON.parse(JSON.stringify(p)) });
+            if (linked) {
+              snap.promises.push({ kind: k, p: JSON.parse(JSON.stringify(p)) });
+            }
             return !linked;
           });
-          if (kept.length) keepPromises[k] = kept;
+          if (kept.length) {
+            keepPromises[k] = kept;
+          }
         });
-        if (st.meetingPromises) st.meetingPromises = keepPromises;
+        if (st.meetingPromises) {
+          st.meetingPromises = keepPromises;
+        }
         st.commsEntries = (st.commsEntries || []).filter(function (c) {
           const linked = c.sourceMeetingId === id;
-          if (linked) snap.comms.push(JSON.parse(JSON.stringify(c)));
+          if (linked) {
+            snap.comms.push(JSON.parse(JSON.stringify(c)));
+          }
           return !linked;
         });
         st.logEntries = (st.logEntries || []).filter(function (e) {
           const linked = e.sourceMeetingId === id;
-          if (linked) snap.logEntries.push(JSON.parse(JSON.stringify(e)));
+          if (linked) {
+            snap.logEntries.push(JSON.parse(JSON.stringify(e)));
+          }
           return !linked;
         });
         st.meetings = (st.meetings || []).filter(x => x.id !== id);
@@ -881,12 +973,18 @@ var MMGR = window.MMGR || {};
       snap.done = true;
       _delSnapshot = snap;
       setTimeout(function () {
-        if (_delSnapshot && _delSnapshot.at === snap.at) _dropDelSnapshot();
+        if (_delSnapshot && _delSnapshot.at === snap.at) {
+          _dropDelSnapshot();
+        }
       }, DEL_UNDO_MS);
       renderMeetings();
       renderPromises();
-      if (R && R.renderLog) R.renderLog();
-      if (R && R.renderComms) R.renderComms();
+      if (R && R.renderLog) {
+        R.renderLog();
+      }
+      if (R && R.renderComms) {
+        R.renderComms();
+      }
       if (ns.App && ns.App.showToast) {
         var n = function (v, s, p) {
           return v + ' ' + (v === 1 ? s : p);
@@ -934,23 +1032,34 @@ var MMGR = window.MMGR || {};
       !snap.done ||
       Date.now() - snap.at > DEL_UNDO_MS
     ) {
-      if (ns.App && ns.App.showToast)
+      if (ns.App && ns.App.showToast) {
         ns.App.showToast('The undo window for that meeting has passed.', 'warn');
+      }
       return;
     }
     ns.State.updateState(function (st) {
-      if (!st.meetings) st.meetings = [];
+      if (!st.meetings) {
+        st.meetings = [];
+      }
       st.meetings.unshift(JSON.parse(JSON.stringify(snap.meeting)));
-      if (!st.commsEntries) st.commsEntries = [];
+      if (!st.commsEntries) {
+        st.commsEntries = [];
+      }
       snap.comms.forEach(function (c) {
         st.commsEntries.push(JSON.parse(JSON.stringify(c)));
       });
-      if (!st.meetingPromises) st.meetingPromises = {};
+      if (!st.meetingPromises) {
+        st.meetingPromises = {};
+      }
       snap.promises.forEach(function (e) {
-        if (!st.meetingPromises[e.kind]) st.meetingPromises[e.kind] = [];
+        if (!st.meetingPromises[e.kind]) {
+          st.meetingPromises[e.kind] = [];
+        }
         st.meetingPromises[e.kind].push(JSON.parse(JSON.stringify(e.p)));
       });
-      if (!st.logEntries) st.logEntries = [];
+      if (!st.logEntries) {
+        st.logEntries = [];
+      }
       snap.logEntries.forEach(function (e) {
         st.logEntries.push(JSON.parse(JSON.stringify(e)));
       });
@@ -959,9 +1068,15 @@ var MMGR = window.MMGR || {};
     _dropDelSnapshot();
     renderMeetings();
     renderPromises();
-    if (R && R.renderLog) R.renderLog();
-    if (R && R.renderComms) R.renderComms();
-    if (ns.App && ns.App.showToast) ns.App.showToast('Meeting restored.', 'ok');
+    if (R && R.renderLog) {
+      R.renderLog();
+    }
+    if (R && R.renderComms) {
+      R.renderComms();
+    }
+    if (ns.App && ns.App.showToast) {
+      ns.App.showToast('Meeting restored.', 'ok');
+    }
   }
 
   // ---- API ----

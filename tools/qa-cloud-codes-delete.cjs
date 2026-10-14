@@ -70,7 +70,9 @@ setTimeout(() => {
 
 function globalWranglerJs() {
   const localP = path.join(__dirname, '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
-  if (fs.existsSync(localP)) return localP;
+  if (fs.existsSync(localP)) {
+    return localP;
+  }
   try {
     const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
     const root = execFileSync(npmCmd, ['root', '-g'], {
@@ -78,7 +80,9 @@ function globalWranglerJs() {
       shell: process.platform === 'win32'
     }).trim();
     const p = path.join(root, 'wrangler', 'bin', 'wrangler.js');
-    if (fs.existsSync(p)) return p;
+    if (fs.existsSync(p)) {
+      return p;
+    }
   } catch (e) {
     /* fall through */
   }
@@ -143,7 +147,9 @@ function startWrangler() {
     });
     proc.on('error', e => reject(new Error('wrangler spawn failed: ' + e.message)));
     proc.on('exit', code => {
-      if (code !== 0 && code !== null) log('wrangler dev exited early (code ' + code + ')');
+      if (code !== 0 && code !== null) {
+        log('wrangler dev exited early (code ' + code + ')');
+      }
     });
     const t0 = Date.now();
     const poll = async () => {
@@ -154,12 +160,15 @@ function startWrangler() {
         }, 3000);
         const r = await fetch(BASE + '/api/health', { signal: ctrl.signal });
         clearTimeout(timer);
-        if (r.ok) return resolve();
+        if (r.ok) {
+          return resolve();
+        }
       } catch (e) {
         /* not up yet */
       }
-      if (Date.now() - t0 > 120000)
+      if (Date.now() - t0 > 120000) {
         return reject(new Error('wrangler dev did not come up in 120s'));
+      }
       setTimeout(poll, 1500);
     };
     poll();

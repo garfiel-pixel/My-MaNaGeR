@@ -44,7 +44,9 @@
   var _enabledTabs = null;
 
   function loadEnabledTabs() {
-    if (_enabledTabs !== null) return _enabledTabs;
+    if (_enabledTabs !== null) {
+      return _enabledTabs;
+    }
     // Default: every tab on. General is the arithmetic core and is never
     // stored (it is always on); the others persist as a JSON array.
     var names = ['general'].concat(
@@ -136,7 +138,9 @@
 
   /* ── Build the DOM ── */
   function build() {
-    if (_icon) return;
+    if (_icon) {
+      return;
+    }
 
     // FAB icon
     _icon = document.createElement('button');
@@ -887,9 +891,13 @@
         var tabEls = _panel.querySelectorAll('.calc-tab');
         var hasActive = false;
         tabEls.forEach(function (t) {
-          if (t.classList.contains('active')) hasActive = true;
+          if (t.classList.contains('active')) {
+            hasActive = true;
+          }
         });
-        if (!hasActive) switchTab('general');
+        if (!hasActive) {
+          switchTab('general');
+        }
       });
     });
 
@@ -900,7 +908,9 @@
           var card = inp.closest('.calc-card');
           if (card) {
             var actionBtn = card.querySelector('[data-calc-action]');
-            if (actionBtn) actionBtn.click();
+            if (actionBtn) {
+              actionBtn.click();
+            }
           }
         }
       });
@@ -913,7 +923,9 @@
   function handleGeneralCalc(btn) {
     var action = btn.getAttribute('data-gc');
     var disp = document.getElementById('calc-display');
-    if (!disp) return;
+    if (!disp) {
+      return;
+    }
 
     if (action === 'num') {
       var n = btn.getAttribute('data-n');
@@ -970,18 +982,34 @@
   }
 
   function calc(a, b, op) {
-    if (op === '+') return a + b;
-    if (op === '-') return a - b;
-    if (op === '*') return a * b;
-    if (op === '/') return b !== 0 ? a / b : 0;
+    if (op === '+') {
+      return a + b;
+    }
+    if (op === '-') {
+      return a - b;
+    }
+    if (op === '*') {
+      return a * b;
+    }
+    if (op === '/') {
+      return b !== 0 ? a / b : 0;
+    }
     return b;
   }
 
   function opSymbol(op) {
-    if (op === '+') return '+';
-    if (op === '-') return '-';
-    if (op === '*') return 'x';
-    if (op === '/') return '/';
+    if (op === '+') {
+      return '+';
+    }
+    if (op === '-') {
+      return '-';
+    }
+    if (op === '*') {
+      return 'x';
+    }
+    if (op === '/') {
+      return '/';
+    }
     return op;
   }
 
@@ -1654,7 +1682,9 @@
   /* ── Helpers ── */
   function showResult(id, text) {
     var el = document.getElementById(id);
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     el.textContent = text;
     el.hidden = false;
     el.classList.add('calc-result-show');
@@ -1666,14 +1696,22 @@
 
   function formatNum(val) {
     var n = parseFloat(val);
-    if (isNaN(n)) return val;
-    if (Math.abs(n) >= 1e12) return n.toExponential(4);
-    if (Number.isInteger(n) && Math.abs(n) < 1e15) return n.toLocaleString('en-US');
+    if (isNaN(n)) {
+      return val;
+    }
+    if (Math.abs(n) >= 1e12) {
+      return n.toExponential(4);
+    }
+    if (Number.isInteger(n) && Math.abs(n) < 1e15) {
+      return n.toLocaleString('en-US');
+    }
     return n.toLocaleString('en-US', { maximumFractionDigits: 8 });
   }
 
   function fmtNum(n) {
-    if (Math.abs(n) >= 1e12) return n.toExponential(4);
+    if (Math.abs(n) >= 1e12) {
+      return n.toExponential(4);
+    }
     return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
@@ -1683,7 +1721,9 @@
 
   function updateConvPairs(category) {
     var pairSel = document.getElementById('conv-pair');
-    if (!pairSel) return;
+    if (!pairSel) {
+      return;
+    }
     var pairs = CONVERSIONS[category] || [];
     pairSel.innerHTML = pairs
       .map(function (c) {
@@ -1704,13 +1744,17 @@
 
   function addHistory(text) {
     _history.unshift(text);
-    if (_history.length > 10) _history.pop();
+    if (_history.length > 10) {
+      _history.pop();
+    }
     renderHistory();
   }
 
   function renderHistory() {
     var el = document.getElementById('calc-history');
-    if (!el || !_history.length) return;
+    if (!el || !_history.length) {
+      return;
+    }
     el.hidden = false;
     el.innerHTML =
       '<div class="calc-history-title">Recent</div>' +
@@ -1743,7 +1787,9 @@
       return isTabVisible(t.id);
     });
     var tabsEl = _panel.querySelector('.calc-tabs');
-    if (!tabsEl) return;
+    if (!tabsEl) {
+      return;
+    }
     tabsEl.innerHTML = visible
       .map(function (t) {
         return (
@@ -1783,7 +1829,9 @@
     _panel.querySelectorAll('.calc-section').forEach(function (s) {
       var sid = s.getAttribute('data-calc');
       var hidden = sid !== tabId;
-      if (sid !== 'settings' && sid !== 'general' && !isTabVisible(sid)) hidden = true;
+      if (sid !== 'settings' && sid !== 'general' && !isTabVisible(sid)) {
+        hidden = true;
+      }
       s.classList.toggle('is-hide', hidden);
     });
     // A taller tab changes the panel height AFTER the open-time clamp, so
@@ -1795,13 +1843,17 @@
 
   /* ── Drag logic ── */
   function onIconMouseDown(e) {
-    if (e.button !== 0) return;
+    if (e.button !== 0) {
+      return;
+    }
     startDrag(e.clientX, e.clientY);
     e.preventDefault();
   }
 
   function onIconTouchStart(e) {
-    if (e.touches.length !== 1) return;
+    if (e.touches.length !== 1) {
+      return;
+    }
     var t = e.touches[0];
     startDrag(t.clientX, t.clientY);
     e.preventDefault();
@@ -1824,7 +1876,9 @@
   }
 
   function onDragMoveTouch(e) {
-    if (e.touches.length !== 1) return;
+    if (e.touches.length !== 1) {
+      return;
+    }
     _dragging = true;
     var t = e.touches[0];
     moveIcon(t.clientX, t.clientY);
@@ -1860,9 +1914,14 @@
   }
 
   function onIconClick() {
-    if (_dragging) return;
-    if (_open) close();
-    else open();
+    if (_dragging) {
+      return;
+    }
+    if (_open) {
+      close();
+    } else {
+      open();
+    }
   }
 
   /* ── Resize (owner 2026-09-28): 8-way drag handles + per-device size ── */
@@ -1896,7 +1955,9 @@
     document.addEventListener('touchend', onRzEnd);
   }
   function rzApply(cx, cy) {
-    if (!_rz) return;
+    if (!_rz) {
+      return;
+    }
     var minW = 300,
       minH = 220;
     var maxW = Math.max(minW, window.innerWidth - 20);
@@ -1907,8 +1968,12 @@
       t = _rz.t,
       w = _rz.w,
       h = _rz.h;
-    if (_rz.dir.indexOf('e') > -1) w = Math.min(maxW, Math.max(minW, _rz.w + dx));
-    if (_rz.dir.indexOf('s') > -1) h = Math.min(maxH, Math.max(minH, _rz.h + dy));
+    if (_rz.dir.indexOf('e') > -1) {
+      w = Math.min(maxW, Math.max(minW, _rz.w + dx));
+    }
+    if (_rz.dir.indexOf('s') > -1) {
+      h = Math.min(maxH, Math.max(minH, _rz.h + dy));
+    }
     if (_rz.dir.indexOf('w') > -1) {
       w = Math.min(maxW, Math.max(minW, _rz.w - dx));
       l = _rz.l + (_rz.w - w);
@@ -1978,7 +2043,9 @@
   // height the panel is fixed-size and the clamp only moves it, never grows
   // it; without one the content-height behavior is unchanged.
   function clampPanelInViewport() {
-    if (!_panel || !_open) return;
+    if (!_panel || !_open) {
+      return;
+    }
     var cur = parseFloat(_panel.style.top) || 0;
     var ph = _panel.offsetHeight;
     if (cur + ph > window.innerHeight - 8) {
@@ -1988,7 +2055,9 @@
   // Tab switches must not leave a resized panel overflowing: the panel keeps
   // its saved height (body scrolls), so only the position needs re-clamping.
   function reapplySavedHeight() {
-    if (!_panel || !_open) return;
+    if (!_panel || !_open) {
+      return;
+    }
     var saved = loadSize();
     if (saved) {
       _panel.style.width = saved.w + 'px';
@@ -2014,8 +2083,11 @@
     // never opened anything). The FAB itself stays available via show().
     build();
     show();
-    if (_open) close();
-    else open();
+    if (_open) {
+      close();
+    } else {
+      open();
+    }
   }
 
   function show() {
@@ -2024,8 +2096,12 @@
   }
 
   function hide() {
-    if (_icon) _icon.style.display = 'none';
-    if (_open) close();
+    if (_icon) {
+      _icon.style.display = 'none';
+    }
+    if (_open) {
+      close();
+    }
   }
 
   /* ── Public API ── */

@@ -59,14 +59,18 @@ function globalWranglerJs() {
       shell: process.platform === 'win32'
     }).trim();
     const p = path.join(root, 'wrangler', 'bin', 'wrangler.js');
-    if (fs.existsSync(p)) return p;
+    if (fs.existsSync(p)) {
+      return p;
+    }
   } catch (e) {
     /* fall through */
   }
   // Fallback: local node_modules (CI, no global wrangler)
   try {
     const lp = path.join(__dirname, '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
-    if (fs.existsSync(lp)) return lp;
+    if (fs.existsSync(lp)) {
+      return lp;
+    }
   } catch (e) {
     /* fall through */
   }
@@ -80,10 +84,14 @@ const {
   externalWranglerGuard,
   stopWranglerIfLocal
 } = require('./wrangler-ci-helpers.cjs');
-if (USE_EXTERNAL && process.env.WRANGLER_DEV_URL) BASE = process.env.WRANGLER_DEV_URL;
+if (USE_EXTERNAL && process.env.WRANGLER_DEV_URL) {
+  BASE = process.env.WRANGLER_DEV_URL;
+}
 async function startWrangler() {
   const ext = externalWranglerGuard(log);
-  if (ext) return ext;
+  if (ext) {
+    return ext;
+  }
   try {
     fs.rmSync(STOP_FILE, { force: true });
     fs.rmSync(STATE_FILE, { force: true });
@@ -147,11 +155,15 @@ async function startWrangler() {
       }, 3000);
       const r = await fetch(BASE + '/api/health', { signal: ctrl.signal });
       clearTimeout(timer);
-      if (r.ok) return;
+      if (r.ok) {
+        return;
+      }
     } catch (e) {
       /* not up yet */
     }
-    if (Date.now() - t0 > 120000) throw new Error('wrangler dev did not come up in 120s');
+    if (Date.now() - t0 > 120000) {
+      throw new Error('wrangler dev did not come up in 120s');
+    }
     await delay(1500);
   }
 }
@@ -173,14 +185,18 @@ async function api(pathname, opts) {
     try {
       res = await fetch(BASE + pathname, Object.assign({}, opts || {}));
       lastErr = null;
-      if (res.status < 500) break;
+      if (res.status < 500) {
+        break;
+      }
       lastErr = new Error('HTTP ' + res.status);
     } catch (e) {
       lastErr = e;
     }
     await delay(300 * (attempt + 1));
   }
-  if (!res) throw lastErr;
+  if (!res) {
+    throw lastErr;
+  }
   let body = null;
   try {
     body = await res.json();
@@ -367,7 +383,9 @@ function baseState(pid, name) {
       // Keep alive until the stop file appears (or a 15-min watchdog).
       const t0 = Date.now();
       while (Date.now() - t0 < 900000) {
-        if (fs.existsSync(STOP_FILE)) break;
+        if (fs.existsSync(STOP_FILE)) {
+          break;
+        }
         await delay(1000);
       }
     }

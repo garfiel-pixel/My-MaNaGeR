@@ -19,7 +19,9 @@ const CHROME =
       '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
     ];
     for (const c of cands) {
-      if (fs.existsSync(c)) return c;
+      if (fs.existsSync(c)) {
+        return c;
+      }
     }
     return 'chrome';
   })();
@@ -70,7 +72,9 @@ async function bootChrome(port, profile) {
       await delay(250);
     }
   }
-  if (!ws) throw new Error('chrome did not start');
+  if (!ws) {
+    throw new Error('chrome did not start');
+  }
   let id = 0;
   const pending = new Map();
   ws.onmessage = ev => {
@@ -102,7 +106,7 @@ async function ev(send, expr) {
     returnByValue: true,
     awaitPromise: true
   });
-  if (r.result && r.result.exceptionDetails)
+  if (r.result && r.result.exceptionDetails) {
     return (
       'EXC: ' +
       (
@@ -110,6 +114,7 @@ async function ev(send, expr) {
         ''
       ).slice(0, 200)
     );
+  }
   return r.result && r.result.result
     ? r.result.result.value
     : 'RAW:' + JSON.stringify(r).slice(0, 300);

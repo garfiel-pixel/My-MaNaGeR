@@ -1062,6 +1062,19 @@
           rate: { mat: 11, lab: 19 }
         }
       ]
+    },
+    // B1 (DIRECTIVE-ASSISTANT-JIC-RATES-ACCESS): the ONE optional choice.
+    // No dimension boxes and no model split - the line prices from its four
+    // own fields through the Quick total path (quantity x rate, then the
+    // normal on-costs and tax), so every other work item is untouched.
+    custom: {
+      group: 'Other',
+      d1: null,
+      d2: null,
+      d3: null,
+      q: () => ({ qty: 1, unit: '', qtyLabel: 'Quantity' }),
+      rate: { mat: 0, lab: 0 },
+      matDesc: 'Your own rate - one combined figure, no split'
     }
   };
 
@@ -1094,7 +1107,9 @@
       qty: function (st) {
         const n1 = parseFloat(st.d1),
           n2 = parseFloat(st.d2);
-        if (!(n1 > 0)) return null;
+        if (!(n1 > 0)) {
+          return null;
+        }
         const d1 = st.units === 'imperial' ? n1 * FT : n1;
         const run = n2 > 0 ? (st.units === 'imperial' ? n2 * FT : n2) * 2 + d1 * 2 : d1;
         return run > 0 ? run : null;
@@ -1106,7 +1121,9 @@
       qty: function (st) {
         const n1 = parseFloat(st.d1),
           n2 = parseFloat(st.d2);
-        if (!(n1 > 0) || !(n2 > 0)) return null;
+        if (!(n1 > 0) || !(n2 > 0)) {
+          return null;
+        }
         return st.units === 'imperial' ? n1 * FT * (n2 * FT) : n1 * n2;
       }
     },
@@ -1116,7 +1133,9 @@
       qty: function (st) {
         const n1 = parseFloat(st.d1),
           n2 = parseFloat(st.d2);
-        if (!(n1 > 0) || !(n2 > 0)) return null;
+        if (!(n1 > 0) || !(n2 > 0)) {
+          return null;
+        }
         return st.units === 'imperial' ? n1 * FT * (n2 * FT) : n1 * n2;
       }
     },
@@ -1127,11 +1146,15 @@
         const v = parseFloat(
           st.measuredQty != null && st.measuredQty !== '' ? st.measuredQty : st.measuredAuto
         );
-        if (v > 0) return v;
+        if (v > 0) {
+          return v;
+        }
         const n1 = parseFloat(st.d1),
           n2 = parseFloat(st.d2),
           n3 = parseFloat(st.d3);
-        if (!(n1 > 0) || !(n2 > 0) || !(n3 > 0)) return null;
+        if (!(n1 > 0) || !(n2 > 0) || !(n3 > 0)) {
+          return null;
+        }
         const d1 = st.units === 'imperial' ? n1 * FT : n1;
         const d2 = st.units === 'imperial' ? n2 * FT : n2;
         const d3 = st.units === 'imperial' ? n3 * IN : n3;
@@ -1143,7 +1166,9 @@
       work: 'debrush',
       qty: function (st) {
         const n1 = parseFloat(st.d1);
-        if (!(n1 > 0)) return null;
+        if (!(n1 > 0)) {
+          return null;
+        }
         return st.units === 'imperial' ? n1 * FT : n1;
       }
     },
@@ -1152,7 +1177,9 @@
       work: 'post-holes',
       qty: function (st) {
         const n1 = parseFloat(st.d1);
-        if (!(n1 > 0)) return null;
+        if (!(n1 > 0)) {
+          return null;
+        }
         const run = st.units === 'imperial' ? n1 * FT : n1;
         return Math.min(200, Math.ceil(run / 2.5));
       }
@@ -1165,7 +1192,9 @@
     return ids
       .map(function (id) {
         const def = COMPANION_DEFS[id];
-        if (!def) return null;
+        if (!def) {
+          return null;
+        }
         const qty = def.qty(st);
         return qty != null && qty > 0 ? { id: id, name: def.name, work: def.work, qty: qty } : null;
       })
@@ -1228,7 +1257,9 @@
   function billLint(lines) {
     const w = {};
     (lines || []).forEach(function (l) {
-      if (l && l.st && WORK[l.st.work]) w[l.st.work] = true;
+      if (l && l.st && WORK[l.st.work]) {
+        w[l.st.work] = true;
+      }
     });
     return LINT_RULES.filter(function (r) {
       return r.when(w) && r.missing(w);
@@ -1299,7 +1330,9 @@
   // Units of `code` per 1 USD. The base needs no entry; an unknown code
   // returns null - callers must show an honest warning, never a relabel.
   function fxFactor(code) {
-    if (!code || code === BASE_CURRENCY) return 1;
+    if (!code || code === BASE_CURRENCY) {
+      return 1;
+    }
     const e = loadFx()[code];
     const per = e && parseFloat(e.per);
     return isFinite(per) && per > 0 ? per : null;
@@ -1308,7 +1341,9 @@
   // stale warning" - it never blocks, it tells).
   function fxStale(code) {
     const e = loadFx()[code];
-    if (!e || !e.asOf) return false;
+    if (!e || !e.asOf) {
+      return false;
+    }
     const t = Date.parse(e.asOf);
     return isFinite(t) && Date.now() - t > 180 * 86400000;
   }
@@ -1316,10 +1351,14 @@
   // the USD-anchored table (src X -> target Y = per(Y) / per(X)). Null when
   // either side is missing and the pair is real - callers say so honestly.
   function fxBetween(src, target) {
-    if (!src || src === target) return 1;
+    if (!src || src === target) {
+      return 1;
+    }
     const ps = src === BASE_CURRENCY ? 1 : fxFactor(src);
     const pt = target === BASE_CURRENCY ? 1 : fxFactor(target);
-    if (ps == null || pt == null) return null;
+    if (ps == null || pt == null) {
+      return null;
+    }
     return pt / ps;
   }
   // The Exchange rates card body: one chip per set rate with its as-of date
@@ -1332,7 +1371,9 @@
         dateEl.value = new Date().toISOString().slice(0, 10);
       } catch (e) {}
     }
-    if (!list) return;
+    if (!list) {
+      return;
+    }
     const t = loadFx();
     const codes = Object.keys(t);
     list.innerHTML = codes.length
@@ -1423,8 +1464,9 @@
         };
       }
       // Counts (fixtures, panels, wiring points) are whole numbers.
-      if (unit === 'each' || unit === 'point')
+      if (unit === 'each' || unit === 'point') {
         return { main: Math.round(qty).toLocaleString() + ' ' + unit, alt: '' };
+      }
       return { main: Math.round(qty * 100) / 100 + ' ' + unit, alt: '' };
     }
     const pick = _units === 'imperial' ? c.imp : c.met;
@@ -1476,7 +1518,9 @@
     return NO_DAY_BASIS.indexOf(key) > -1;
   }
   function rateFactor(entry, engineUnit) {
-    if (!entry || entry === engineUnit) return 1;
+    if (!entry || entry === engineUnit) {
+      return 1;
+    }
     const f = RATE_UNITS[entry];
     return isFinite(f) && f > 0 ? f : 1;
   }
@@ -1508,7 +1552,9 @@
   // ---- Model rates (for the rate fields + Reset to model) -----------------
   function modelMatRate(key, d1m, d2m) {
     const w = WORK[key];
-    if (!w) return '';
+    if (!w) {
+      return '';
+    }
     const r = w.rate.mat;
     return typeof r === 'function' ? r(d1m, d2m) : r;
   }
@@ -1555,6 +1601,12 @@
       // OWNER 2026-10-02: the special-case opt-in is part of the state, so an
       // estimate saved with a hand-typed block size recalls with the row open.
       pieceCustom: !!($('calc-piece-custom') || {}).checked,
+      // B1/B7: the custom line's own four fields ride every snapshot, so a
+      // reload, a bill recall or a history entry restores the same named line.
+      calcCustomName: ($('calc-custom-name') || {}).value || '',
+      calcCustomUnit: ($('calc-custom-unit') || {}).value || '',
+      calcCustomQty: ($('calc-custom-qty') || {}).value || '',
+      calcCustomRate: ($('calc-custom-rate') || {}).value || '',
       measuredQty: ($('calc-measured-qty') || {}).value || '',
       measuredAuto: instSum > 0 ? String(instSum) : '',
       measuredUnit: instUnit,
@@ -1574,9 +1626,15 @@
   // total away from what the estimate showed when it was saved).
   let recallHold = false;
   function applyState(st) {
-    if (!st) return;
-    if (st.units) setUnits(st.units, true);
-    if (st.work) $('calc-work').value = st.work;
+    if (!st) {
+      return;
+    }
+    if (st.units) {
+      setUnits(st.units, true);
+    }
+    if (st.work) {
+      $('calc-work').value = st.work;
+    }
     // W2: restore instance rows BEFORE syncLabels (it re-renders the editor
     // and recomputes the measured sum from the rows).
     try {
@@ -1591,7 +1649,9 @@
     } catch (e) {
       openRows = [];
     }
-    if ($('calc-measured-qty')) $('calc-measured-qty').value = st.measuredQty || '';
+    if ($('calc-measured-qty')) {
+      $('calc-measured-qty').value = st.measuredQty || '';
+    }
     syncLabels();
     // E2/E6: the variant select was (re)rendered by syncLabels - restore the
     // saved pick now that its option exists. Labour mode rides the snapshot.
@@ -1599,59 +1659,139 @@
       const hasOpt = Array.prototype.some.call($('calc-variant').options || [], function (o) {
         return o.value === st.variant;
       });
-      if (hasOpt) $('calc-variant').value = st.variant;
+      if (hasOpt) {
+        $('calc-variant').value = st.variant;
+      }
     }
-    if ($('calc-labour-only')) $('calc-labour-only').checked = !!st.labourOnly;
+    if ($('calc-labour-only')) {
+      $('calc-labour-only').checked = !!st.labourOnly;
+    }
     $('calc-d1').value = st.d1 || '';
-    if ($('calc-d2')) $('calc-d2').value = st.d2 || '';
-    if ($('calc-d3')) $('calc-d3').value = st.d3 || '';
-    if ($('calc-currency')) $('calc-currency').value = st.currency || DEFAULT_CURRENCY;
-    if ($('calc-country')) $('calc-country').value = st.country || DEFAULT_COUNTRY;
-    if ($('calc-quality')) $('calc-quality').value = st.quality || 'standard';
-    if ($('calc-tax-override')) $('calc-tax-override').value = st.taxOverride || '';
-    if ($('calc-waste')) $('calc-waste').value = st.wastePct || '';
-    if ($('calc-rate-mat')) $('calc-rate-mat').value = st.rateMat || '';
-    if ($('calc-rate-lab')) $('calc-rate-lab').value = st.rateLab || '';
+    if ($('calc-d2')) {
+      $('calc-d2').value = st.d2 || '';
+    }
+    if ($('calc-d3')) {
+      $('calc-d3').value = st.d3 || '';
+      // B7: restore the custom fields AFTER syncLabels (a non-custom pick
+      // clears them on the way; a custom pick leaves them to these values).
+      const cRestore = {
+        'calc-custom-name': st.calcCustomName,
+        'calc-custom-unit': st.calcCustomUnit,
+        'calc-custom-qty': st.calcCustomQty,
+        'calc-custom-rate': st.calcCustomRate
+      };
+      Object.keys(cRestore).forEach(function (id) {
+        const fe = $(id);
+        if (fe) {
+          fe.value = cRestore[id] || '';
+        }
+        const ee = $(id + '-err');
+        if (ee) {
+          ee.hidden = true;
+          ee.textContent = '';
+        }
+      });
+    }
+    if ($('calc-currency')) {
+      $('calc-currency').value = st.currency || DEFAULT_CURRENCY;
+    }
+    if ($('calc-country')) {
+      $('calc-country').value = st.country || DEFAULT_COUNTRY;
+    }
+    if ($('calc-quality')) {
+      $('calc-quality').value = st.quality || 'standard';
+    }
+    if ($('calc-tax-override')) {
+      $('calc-tax-override').value = st.taxOverride || '';
+    }
+    if ($('calc-waste')) {
+      $('calc-waste').value = st.wastePct || '';
+    }
+    if ($('calc-rate-mat')) {
+      $('calc-rate-mat').value = st.rateMat || '';
+    }
+    if ($('calc-rate-lab')) {
+      $('calc-rate-lab').value = st.rateLab || '';
+    }
     // E1/E4: the saved prefill markers ride the snapshot so a recalled
     // estimate keeps its model-vs-your-rate semantics (and its exact total,
     // even if the FX table or the active book changed since it was saved).
-    if ($('calc-rate-mat'))
+    if ($('calc-rate-mat')) {
       $('calc-rate-mat').dataset.model =
         st.matModel != null ? String(st.matModel) : ($('calc-rate-mat').dataset || {}).model || '';
-    if ($('calc-rate-lab'))
+    }
+    if ($('calc-rate-lab')) {
       $('calc-rate-lab').dataset.model =
         st.labModel != null ? String(st.labModel) : ($('calc-rate-lab').dataset || {}).model || '';
-    if ($('calc-rate-eq')) $('calc-rate-eq').value = st.rateEq || '';
+    }
+    if ($('calc-rate-eq')) {
+      $('calc-rate-eq').value = st.rateEq || '';
+    }
     // All-in + per-day crew basis ride the same snapshot (restored here, with
     // their prefill markers, for the same recall-fidelity reason as the rate
     // fields above - a recalled line must price to the same money).
-    if ($('calc-allin')) $('calc-allin').value = st.allInRate || '';
+    if ($('calc-allin')) {
+      $('calc-allin').value = st.allInRate || '';
+    }
     // The chosen basis is part of the snapshot: a recalled line comes back
     // showing the same inputs it was saved with.
-    if ($('calc-basis')) $('calc-basis').value = st.basis || 'measured';
-    if ($('calc-allin'))
+    if ($('calc-basis')) {
+      $('calc-basis').value = st.basis || 'measured';
+    }
+    if ($('calc-allin')) {
       $('calc-allin').dataset.model =
         st.allInModel != null ? String(st.allInModel) : ($('calc-allin').dataset || {}).model || '';
-    if ($('calc-days')) $('calc-days').value = st.daysStr || '';
-    if ($('calc-day-rate')) $('calc-day-rate').value = st.dayRateStr || '';
-    if ($('calc-allin-verified')) $('calc-allin-verified').value = st.verifiedOn || '';
-    if ($('calc-oh')) $('calc-oh').value = st.ohPct || '';
+    }
+    if ($('calc-days')) {
+      $('calc-days').value = st.daysStr || '';
+    }
+    if ($('calc-day-rate')) {
+      $('calc-day-rate').value = st.dayRateStr || '';
+    }
+    if ($('calc-allin-verified')) {
+      $('calc-allin-verified').value = st.verifiedOn || '';
+    }
+    if ($('calc-oh')) {
+      $('calc-oh').value = st.ohPct || '';
+    }
     if ($('calc-oncost-pct')) {
       $('calc-oncost-pct').value = st.onCostPct || '';
       const t = $('calc-oncost-toggle');
-      if (t) t.checked = !!st.onCostPct;
+      if (t) {
+        t.checked = !!st.onCostPct;
+      }
       $('calc-oncost-pct').disabled = !$('calc-oncost-toggle').checked;
     }
-    if ($('calc-doc-type')) $('calc-doc-type').value = st.docType || 'Estimate';
-    if ($('calc-doc-title')) $('calc-doc-title').value = st.docTitle || '';
-    if ($('calc-client-name')) $('calc-client-name').value = st.clientName || '';
-    if ($('calc-client-addr')) $('calc-client-addr').value = st.clientAddr || '';
-    if ($('calc-doc-no')) $('calc-doc-no').value = st.docNo || '';
-    if ($('calc-doc-date')) $('calc-doc-date').value = st.docDate || '';
-    if ($('calc-doc-due')) $('calc-doc-due').value = st.docDue || '';
-    if ($('calc-piece-price')) $('calc-piece-price').value = st.piecePrice || '';
-    if ($('calc-piece-size')) $('calc-piece-size').value = st.pieceSize || '';
-    if ($('calc-piece-custom')) $('calc-piece-custom').checked = !!st.pieceCustom;
+    if ($('calc-doc-type')) {
+      $('calc-doc-type').value = st.docType || 'Estimate';
+    }
+    if ($('calc-doc-title')) {
+      $('calc-doc-title').value = st.docTitle || '';
+    }
+    if ($('calc-client-name')) {
+      $('calc-client-name').value = st.clientName || '';
+    }
+    if ($('calc-client-addr')) {
+      $('calc-client-addr').value = st.clientAddr || '';
+    }
+    if ($('calc-doc-no')) {
+      $('calc-doc-no').value = st.docNo || '';
+    }
+    if ($('calc-doc-date')) {
+      $('calc-doc-date').value = st.docDate || '';
+    }
+    if ($('calc-doc-due')) {
+      $('calc-doc-due').value = st.docDue || '';
+    }
+    if ($('calc-piece-price')) {
+      $('calc-piece-price').value = st.piecePrice || '';
+    }
+    if ($('calc-piece-size')) {
+      $('calc-piece-size').value = st.pieceSize || '';
+    }
+    if ($('calc-piece-custom')) {
+      $('calc-piece-custom').checked = !!st.pieceCustom;
+    }
     recallHold = true;
     refreshRateFields();
     recallHold = false;
@@ -1663,13 +1803,17 @@
   // while material cost stays on the rate; a price also switches the per-piece
   // math on. Pure - no DOM, shared by the live estimate and the CSV export.
   function pieceCount(qty, unit, spec, sizeStr) {
-    if (!spec || !sizeStr) return null;
+    if (!spec || !sizeStr) {
+      return null;
+    }
     // Ceil with float-dust guard: 39.6/0.18 must be 220 pieces, not 221
     // (the raw IEEE quotient lands a hair above the integer).
     const ceilClean = v => Math.ceil(Math.round(v * 1e6) / 1e6);
     if (spec.div === 'volume') {
       const y = parseFloat(sizeStr);
-      if (!isFinite(y) || y <= 0) return null;
+      if (!isFinite(y) || y <= 0) {
+        return null;
+      }
       const litres = unit === 'm3' ? qty * 1000 : qty; // concrete m3 -> litres; paint is already L
       return {
         n: ceilClean(litres / y),
@@ -1678,17 +1822,22 @@
       };
     }
     const m = sizeStr.match(/^([\d.]+)\s*(?:x|by|\*)\s*([\d.]+)$/i);
-    if (!m) return null;
+    if (!m) {
+      return null;
+    }
     const conv = _units === 'imperial' ? (spec.unit === 'm' ? FT : FT * 100) : 1;
     const a = parseFloat(m[1]) * conv,
       b = parseFloat(m[2]) * conv;
-    if (!(a > 0 && b > 0)) return null;
-    if (spec.div === 'width')
+    if (!(a > 0 && b > 0)) {
+      return null;
+    }
+    if (spec.div === 'width') {
       return {
         n: ceilClean(qty / a),
         lbl: spec.plural || 'panels',
         sizeTxt: m[1] + ' x ' + m[2] + ' ' + spec.unit
       };
+    }
     const areaM2 = spec.unit === 'm' ? a * b : (a / 100) * (b / 100);
     return {
       n: ceilClean(qty / areaM2),
@@ -1703,8 +1852,13 @@
   // through this one function - one math path, zero drift.
   function computeFor(st) {
     const key = st.work;
+    // B1: the custom line prices from its own four fields through the Quick
+    // total path - never from the dimension boxes or the model split.
+    const isCustom = key === 'custom';
     const w = WORK[key];
-    if (!w) return null;
+    if (!w) {
+      return null;
+    }
     // E2: the picked variant (a legacy state with no variant resolves to the
     // first, whose rates equal the pre-conversion model).
     const av = activeVariant(w, st);
@@ -1715,13 +1869,25 @@
       st.measuredQty != null && st.measuredQty !== '' ? st.measuredQty : st.measuredAuto
     );
     const hasMq = isFinite(mqRaw) && mqRaw > 0;
+    // B1: the custom line's own quantity and rate. The quantity falls back
+    // to the Quick total box so the one measurement x one rate path prices a
+    // custom line too (the assistant and T4 write there); the rate prefers
+    // the typed custom field and only then the all-in field when the chooser
+    // says the all-in basis is in play - the chooser stays authoritative.
+    const cQtyRaw = parseFloat(st.calcCustomQty);
+    const cQtyOk = isFinite(cQtyRaw) && cQtyRaw > 0;
+    const cRateRaw = parseFloat(st.calcCustomRate);
+    const cRateOk = isFinite(cRateRaw) && cRateRaw > 0;
+    const cUnit = isCustom ? String(st.calcCustomUnit || '').trim() : '';
+    const custQty = isCustom ? (cQtyOk ? cQtyRaw : hasMq ? mqRaw : 0) : 0;
     const raw1 = num({ value: st.d1 });
     const raw2 = w.d2 ? num({ value: st.d2 }) : null;
     const raw3 = w.d3 ? num({ value: st.d3 }) : null;
-    if (!hasMq && (!raw1 || (w.d2 && !raw2) || (w.d3 && !raw3)))
+    if (!isCustom && !hasMq && (!raw1 || (w.d2 && !raw2) || (w.d3 && !raw3))) {
       return {
         error: 'Enter the dimensions the form asks for (all three when thickness or depth applies).'
       };
+    }
     // Imperial entry converts to the metric the formulas speak (ft to m,
     // in to mm); metric passes through untouched. A single-dim area/volume
     // trade converts its one dim with its squared/cubed factor (IMP_D1_FACTOR).
@@ -1741,9 +1907,11 @@
       }
     })();
     const mqUnit = st.measuredUnit || canon.unit || '';
-    const qr = hasMq
-      ? { qty: mqRaw, unit: mqUnit, qtyLabel: canon.qtyLabel || 'Measured quantity' }
-      : w.q(d1, d2, d3);
+    const qr = isCustom
+      ? { qty: custQty, unit: cUnit || mqUnit, qtyLabel: 'Quantity' }
+      : hasMq
+        ? { qty: mqRaw, unit: mqUnit, qtyLabel: canon.qtyLabel || 'Measured quantity' }
+        : w.q(d1, d2, d3);
     // B1 (owner review 2026-09-29): waste/cuts is an editable percentage per
     // trade (tile 10, roof laps 10, concrete 5 defaults = the previously
     // baked-in factors). Empty/invalid falls back to the trade default.
@@ -1802,15 +1970,32 @@
     // when the chooser is on 'allin', or when no basis is present at all (a
     // legacy snapshot / golden case / hand-built state, which must keep the
     // old all-in-beats-everything behaviour).
-    const allIn = isFinite(allInRaw) && allInRaw > 0 && basis !== 'days' && basis !== 'measured';
-    const allInRate = allIn ? allInRaw : 0;
+    // B1: a custom line prices from its OWN rate when typed, and otherwise
+    // from the all-in field - but only when the chooser says the all-in
+    // basis is in play, exactly like every other line. Every other work
+    // item keeps the original rule unchanged.
+    const custRate = isCustom
+      ? cRateOk
+        ? cRateRaw
+        : isFinite(allInRaw) && allInRaw > 0 && basis !== 'days' && basis !== 'measured'
+          ? allInRaw
+          : 0
+      : 0;
+    const allIn = isCustom
+      ? custQty > 0 && custRate > 0
+      : isFinite(allInRaw) && allInRaw > 0 && basis !== 'days' && basis !== 'measured';
+    const allInRate = isCustom ? (allIn ? custRate : 0) : allIn ? allInRaw : 0;
     // The book (or the model) prefills this field and the prefill marker rides
     // the snapshot, exactly like the material/labour fields. A number equal to
     // the marker came from the source; anything else was typed by the user and
     // wins (D4 - the book is a default, never a lock).
     const allInModel = st._allInModel != null ? String(st._allInModel) : null;
-    const allInOverride = allIn && (allInModel === null || String(allInRaw) !== allInModel);
-    const bookFilled = allIn && !allInOverride;
+    // A custom rate is ALWAYS the user's own figure - never a book prefill,
+    // so it never claims a published source and it may show "your rate".
+    const allInOverride = isCustom
+      ? allIn
+      : allIn && (allInModel === null || String(allInRaw) !== allInModel);
+    const bookFilled = isCustom ? false : allIn && !allInOverride;
     // ---- Per-day crew rate ------------------------------------------------
     // The tradesman knows how many days the job takes, so he types the days
     // and the crew rate for one of them (D1 - per-hour and any productivity
@@ -1870,7 +2055,9 @@
     // count; the per-unit rate override stays off until a price is typed too.
     if (w.piece && (!isFinite(pieceRaw) || pieceRaw <= 0) && (st.pieceSize || '').trim() !== '') {
       const countOnly = pieceCount(qty, qr.unit, w.piece, (st.pieceSize || '').trim());
-      if (countOnly) piece = { countOnly: true, count: countOnly };
+      if (countOnly) {
+        piece = { countOnly: true, count: countOnly };
+      }
     }
     if (w.piece && isFinite(pieceRaw) && pieceRaw > 0) {
       const spec = w.piece;
@@ -1953,7 +2140,16 @@
     // and the statutory costs on that labour, so it enters the subtotal whole
     // and on-costs are NOT added on top of it (adding them would charge the
     // employer's NI twice).
-    const allInCost = allIn ? qty * allInRate * rf * quality : 0;
+    // B1: a custom line is quantity x its rate EXACTLY - the user's own
+    // figure, never converted, never scaled by the finish level, never
+    // split. Every other all-in line keeps the rf/quality treatment.
+    const allInCost = isCustom
+      ? allIn
+        ? qty * allInRate
+        : 0
+      : allIn
+        ? qty * allInRate * rf * quality
+        : 0;
     const eq = qty * eqRate * rf * quality;
     // OWNER 2026-10-02: 'NONE' is a first-class country value meaning
     // "this job is not taxed" (TAX.NONE = 0). It is NOT an override - the
@@ -1965,7 +2161,10 @@
     const taxRate = override !== null ? override : TAX[country] || 0;
     // Statutory on-costs ride LABOUR only, so they apply to a typed day rate
     // (it is payroll) but not to an all-in rate (already inside the figure).
-    const onCost = (lab * onCostPct) / 100;
+    // B1: a CUSTOM line carries the page's normal on-costs on its own cost -
+    // the committed contract in calculator.html ("quantity times all-in
+    // rate, then the normal on-costs and tax"). Every other line unchanged.
+    const onCost = ((lab + (isCustom ? allInCost : 0)) * onCostPct) / 100;
     const sub = mat + lab + onCost + eq + allInCost;
     const oh = (sub * ohPct) / 100;
     const tax = ((sub + oh) * taxRate) / 100;
@@ -2014,6 +2213,10 @@
       allIn: allIn,
       allInRate: allInRate,
       allInCost: allInCost,
+      isCustom: isCustom,
+      customName: isCustom ? String(st.calcCustomName || '').trim() : '',
+      customUnit: isCustom ? cUnit : '',
+      customRate: isCustom ? allInRate : 0,
       allInOverridden: allInOverride,
       bookFilled: bookFilled,
       dayBasis: dayBasis,
@@ -2095,16 +2298,30 @@
     const sh = loadSheets().find(function (x) {
       return x.id === id;
     });
-    if (!sh) return;
+    if (!sh) {
+      return;
+    }
     const r = sh.rates;
-    if ($('calc-rate-mat')) $('calc-rate-mat').value = r.rateMat;
-    if ($('calc-rate-lab')) $('calc-rate-lab').value = r.rateLab;
-    if ($('calc-piece-price')) $('calc-piece-price').value = r.piecePrice || '';
-    if ($('calc-piece-size')) $('calc-piece-size').value = r.pieceSize || '';
-    if ($('calc-rate-mat')) $('calc-rate-mat').dataset.sheet = sh.name;
+    if ($('calc-rate-mat')) {
+      $('calc-rate-mat').value = r.rateMat;
+    }
+    if ($('calc-rate-lab')) {
+      $('calc-rate-lab').value = r.rateLab;
+    }
+    if ($('calc-piece-price')) {
+      $('calc-piece-price').value = r.piecePrice || '';
+    }
+    if ($('calc-piece-size')) {
+      $('calc-piece-size').value = r.pieceSize || '';
+    }
+    if ($('calc-rate-mat')) {
+      $('calc-rate-mat').dataset.sheet = sh.name;
+    }
     render();
     const outEl = $('calc-output');
-    if (outEl) outEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (outEl) {
+      outEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
   }
   function loadSheets() {
     try {
@@ -2127,19 +2344,24 @@
   // import flow so the user always sees what happened to their file).
   function sheetMsg(text) {
     const el = $('calc-sheet-msg');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     el.textContent = text;
     el.hidden = !text;
-    if (text)
+    if (text) {
       setTimeout(function () {
         el.hidden = true;
       }, 5000);
+    }
   }
 
   // D1: validate + merge an imported sheets payload. Returns how many were
   // merged and how many entries were skipped (never throws).
   function importSheets(json) {
-    if (!json || !Array.isArray(json.sheets)) return null;
+    if (!json || !Array.isArray(json.sheets)) {
+      return null;
+    }
     const existing = loadSheets();
     let merged = 0,
       skipped = 0;
@@ -2167,8 +2389,11 @@
       const at = existing.findIndex(function (x) {
         return (x.name || '').toLowerCase() === name.toLowerCase();
       });
-      if (at > -1) existing[at] = sheet;
-      else existing.unshift(sheet);
+      if (at > -1) {
+        existing[at] = sheet;
+      } else {
+        existing.unshift(sheet);
+      }
       merged++;
     });
     if (merged) {
@@ -2274,7 +2499,9 @@
   }
   function djb2(s) {
     let h = 5381;
-    for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+    for (let i = 0; i < s.length; i++) {
+      h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+    }
     return 'c' + h.toString(36);
   }
   function bookChecksum(rates) {
@@ -2288,7 +2515,9 @@
   // Validate + merge an imported books payload. Unknown work keys and
   // negative/absent rates are rejected and COUNTED, never thrown.
   function importBooks(json) {
-    if (!json || !Array.isArray(json.books)) return null;
+    if (!json || !Array.isArray(json.books)) {
+      return null;
+    }
     const existing = loadBooks();
     let merged = 0,
       skipped = 0,
@@ -2349,7 +2578,9 @@
             unit: r && typeof r.unit === 'string' ? r.unit.slice(0, 12) : undefined
           };
         });
-        if (Object.keys(cv).length) clean[k] = cv;
+        if (Object.keys(cv).length) {
+          clean[k] = cv;
+        }
       });
       if (!Object.keys(clean).length) {
         skipped++;
@@ -2383,8 +2614,11 @@
       const at = existing.findIndex(function (x) {
         return (x.name || '').toLowerCase() === name.toLowerCase();
       });
-      if (at > -1) existing[at] = book;
-      else existing.unshift(book);
+      if (at > -1) {
+        existing[at] = book;
+      } else {
+        existing.unshift(book);
+      }
       merged++;
     });
     if (merged) {
@@ -2394,22 +2628,27 @@
     return { merged: merged, skipped: skipped, badKeys: badKeys };
   }
   function bookExpired(b) {
-    if (!b || !b.effective_to) return false;
+    if (!b || !b.effective_to) {
+      return false;
+    }
     const t = Date.parse(b.effective_to);
     return isFinite(t) && Date.now() > t + 86400000;
   }
   function renderBooks() {
     const sel = $('calc-book-select'),
       exp = $('calc-book-expired');
-    if (!sel) return;
+    if (!sel) {
+      return;
+    }
     const list = loadBooks();
     if (
       activeBookId() &&
       !list.some(function (b) {
         return b.id === activeBookId();
       })
-    )
+    ) {
       setActiveBook('');
+    }
     sel.innerHTML =
       '<option value="">' +
       (list.length ? 'Rate book...' : 'Rate book (none imported)') +
@@ -2438,13 +2677,14 @@
     const a = activeBook();
     if (exp) {
       exp.hidden = !(a && bookExpired(a));
-      if (a && bookExpired(a))
+      if (a && bookExpired(a)) {
         exp.textContent =
           'The rate book "' +
           a.name +
           '" expired on ' +
           a.effective_to +
           ' - its rates are shown as they are. Import a newer book when you have one.';
+      }
     }
   }
   // ---- JIC 2025-2027 rate book card (owner 2026-10-02) ----
@@ -3619,8 +3859,12 @@
       const m = JIC_BOOK_MAP.find(function (x) {
         return x[0] === r.tid && x[1] === rowNo(r.ref);
       });
-      if (!m) return;
-      if (!rates[m[2]]) rates[m[2]] = {};
+      if (!m) {
+        return;
+      }
+      if (!rates[m[2]]) {
+        rates[m[2]] = {};
+      }
       // The combined figure, in JMD, per the book's own rate unit.
       // DELIBERATELY all-in only (owner 2026-10-12, G1): the book publishes ONE
       // figure, so no mat/lab pair is stored here. Putting a derived split in
@@ -3660,14 +3904,34 @@
   // joins the service-worker shell so it is there offline next time.
   let _rrFull = null;
   let _rrLoading = false;
+  // A1: every caller waits its turn - the panel mount, the rate-book card
+  // and the send path all queue here, so exactly ONE script tag is ever
+  // created and every done callback fires when it lands (or fails).
+  let _rrWaiters = [];
+  function rrFlushWaiters() {
+    const ws = _rrWaiters;
+    _rrWaiters = [];
+    ws.forEach(function (f) {
+      try {
+        f();
+      } catch (e) {
+        /* one broken waiter must not strand the rest */
+      }
+    });
+  }
   function rrLoadFull(done) {
     if (window.MMGR_JIC_FULL) {
       _rrFull = window.MMGR_JIC_FULL;
-      done();
+      if (typeof done === 'function') {
+        done();
+      }
       return;
     }
+    if (typeof done === 'function') {
+      _rrWaiters.push(done);
+    }
     if (_rrLoading) {
-      return; // in flight; its onload will render
+      return; // in flight; its onload will flush every waiter
     }
     _rrLoading = true;
     const s = document.createElement('script');
@@ -3675,14 +3939,14 @@
     s.onload = function () {
       _rrLoading = false;
       _rrFull = window.MMGR_JIC_FULL || null;
-      done();
+      rrFlushWaiters();
     };
     s.onerror = function () {
       // Offline before the shell cached it: fall back to the 100 shipped rows
       // and say so in the footer. Never an empty book and never a spinner that
       // never resolves.
       _rrLoading = false;
-      done();
+      rrFlushWaiters();
     };
     document.head.appendChild(s);
   }
@@ -3959,7 +4223,9 @@
     document.body.appendChild(card);
     const close = function () {
       const c = document.getElementById('calc-ratebook-card');
-      if (c) c.remove();
+      if (c) {
+        c.remove();
+      }
       document.body.classList.remove('rr-open');
       // OWNER INCIDENT 2026-10-02: the Escape listener used to live on the
       // card. A card that never receives focus never sees a keydown, so
@@ -3968,7 +4234,9 @@
       // cannot leak across openings.
       document.removeEventListener('keydown', onKey, true);
       const opener = document.querySelector('[data-action="openRateBook"]');
-      if (opener) opener.focus();
+      if (opener) {
+        opener.focus();
+      }
     };
     function onKey(e) {
       if (e.key === 'Escape') {
@@ -3980,7 +4248,9 @@
     card.querySelector('[data-action="rrClose"]').addEventListener('click', close);
     // A popup you can leave three ways: the X, the scrim behind it, Escape.
     card.addEventListener('click', function (e) {
-      if (e.target === card) close();
+      if (e.target === card) {
+        close();
+      }
     });
     document.addEventListener('keydown', onKey, true);
     // Focus moves into the panel so a keyboard user is IN the dialog (and so
@@ -3997,7 +4267,9 @@
     card.querySelectorAll('[data-action="rrUnits"]').forEach(function (b) {
       b.addEventListener('click', function () {
         const next = b.getAttribute('data-units');
-        if (next === _rateBookUnits) return; // already showing this system
+        if (next === _rateBookUnits) {
+          return;
+        } // already showing this system
         _rateBookUnits = next;
         renderRateBookCard();
       });
@@ -4007,7 +4279,9 @@
     card.querySelectorAll('[data-action="rrTrade"]').forEach(function (b) {
       b.addEventListener('click', function () {
         const next = b.getAttribute('data-tid');
-        if (next === _rrTrade) return;
+        if (next === _rrTrade) {
+          return;
+        }
         _rrTrade = next;
         renderRateBookCard();
       });
@@ -4051,7 +4325,9 @@
     // lands (or falls back to the inline 100 rows if it cannot be fetched).
     if (!_rrFull) {
       rrLoadFull(function () {
-        if (document.getElementById('calc-ratebook-card')) renderRateBookCard();
+        if (document.getElementById('calc-ratebook-card')) {
+          renderRateBookCard();
+        }
       });
     }
   }
@@ -4059,7 +4335,9 @@
   function showRateBookCard() {
     if (document.getElementById('calc-ratebook-card')) {
       const c = document.getElementById('calc-ratebook-card');
-      if (c) c.remove();
+      if (c) {
+        c.remove();
+      }
       // The toggle must run the same teardown as the Close button, or the
       // document Escape listener and the body scroll lock outlive the card.
       document.body.classList.remove('rr-open');
@@ -4132,11 +4410,15 @@
     document.body.appendChild(card);
     const close = function () {
       const c = document.getElementById('calc-ratebook-card');
-      if (c) c.remove();
+      if (c) {
+        c.remove();
+      }
       document.body.classList.remove('rr-open');
       document.removeEventListener('keydown', onKey, true);
       const opener = document.querySelector('[data-action="openRateBook"]');
-      if (opener) opener.focus();
+      if (opener) {
+        opener.focus();
+      }
     };
     function onKey(e) {
       if (e.key === 'Escape') {
@@ -4149,7 +4431,9 @@
       b.addEventListener('click', close);
     });
     card.addEventListener('click', function (e) {
-      if (e.target === card) close();
+      if (e.target === card) {
+        close();
+      }
     });
     document.addEventListener('keydown', onKey, true);
     const firstBtn = card.querySelector('.rr-signin-cta a, .bcp-rr-x');
@@ -4205,7 +4489,9 @@
   // and says so honestly (never a silent relabel).
   function modelRatesFor(key, variantId, targetCode, d1m, d2m) {
     const w = WORK[key];
-    if (!w) return null;
+    if (!w) {
+      return null;
+    }
     const b = activeBook();
     let mat = null,
       lab = null,
@@ -4237,7 +4523,7 @@
     // E1 currency honesty: with no exchange rate for the book's currency the
     // result is flagged unconvertible and the CALLER leaves the fields empty
     // and says so. A JMD figure is never relabelled as the user's currency.
-    if (f == null)
+    if (f == null) {
       return {
         mat: mat,
         lab: lab,
@@ -4247,6 +4533,7 @@
         fromBook: fromBook,
         unconvertible: true
       };
+    }
     return {
       mat: mat == null ? null : mat * f,
       lab: lab == null ? null : lab * f,
@@ -4274,7 +4561,9 @@
   // old recalls reproduce the same total (Phase 1 exit gate). Phase 2 fills
   // the real JIC variant sets from the official sheet; no invented numbers.
   function activeVariant(w, st) {
-    if (!w || !w.variants || !w.variants.length) return null;
+    if (!w || !w.variants || !w.variants.length) {
+      return null;
+    }
     const id = st && st.variant;
     return (
       w.variants.find(function (v) {
@@ -4284,7 +4573,9 @@
   }
   function variantFor(key, variantId) {
     const w = WORK[key];
-    if (!w || !w.variants || !w.variants.length) return null;
+    if (!w || !w.variants || !w.variants.length) {
+      return null;
+    }
     return (
       w.variants.find(function (v) {
         return v && v.id === variantId;
@@ -4346,15 +4637,21 @@
     } catch (e) {
       rows = [];
     }
-    if (!Array.isArray(rows)) return { count: 0, area: 0 };
+    if (!Array.isArray(rows)) {
+      return { count: 0, area: 0 };
+    }
     let count = 0,
       area = 0;
     rows.forEach(function (rw) {
-      if (!rw) return;
+      if (!rw) {
+        return;
+      }
       const n = parseFloat(rw.n);
       const wRaw = parseFloat(rw.w),
         hRaw = parseFloat(rw.h);
-      if (!(n > 0) || !(wRaw > 0) || !(hRaw > 0)) return;
+      if (!(n > 0) || !(wRaw > 0) || !(hRaw > 0)) {
+        return;
+      }
       const w = imperial ? wRaw * FT : wRaw;
       const h = imperial ? hRaw * FT : hRaw;
       count += n;
@@ -4373,26 +4670,34 @@
   // fix; nothing is ever changed silently.
   function dimSlips(st) {
     const w = WORK[st && st.work];
-    if (!w) return [];
+    if (!w) {
+      return [];
+    }
     const imp = st && st.units === 'imperial';
     const out = [];
     const r2 = v => Math.round(v * 100) / 100;
     const band = function (field, label, v) {
-      if (!(v > 0)) return;
+      if (!(v > 0)) {
+        return;
+      }
       // Weight boxes (kg / lb) are unambiguous - the length/area bands do not
       // apply (rebar-size types steel weight in kg here; 500 kg is a normal
       // pour's steel, not a 500 m run).
-      if (/\(kg\)|\(lb\)/.test(label)) return;
+      if (/\(kg\)|\(lb\)/.test(label)) {
+        return;
+      }
       if (/count/.test(label)) {
-        if (v > 300)
+        if (v > 300) {
           out.push({ field: field, msg: v + ' is a lot of units - check the count.', fix: null });
+        }
         return;
       }
       if (/\(mm\)/.test(label)) {
         if (imp) {
           // the box speaks inches here; only absurd values flag
-          if (v > 60)
+          if (v > 60) {
             out.push({ field: field, msg: v + ' in is very thick - check the unit.', fix: null });
+          }
           return;
         }
         if (v < 20) {
@@ -4418,32 +4723,35 @@
         return;
       }
       if (/\(m2\)|\(m3\)/.test(label)) {
-        if (v < 0.05)
+        if (v < 0.05) {
           out.push({ field: field, msg: v + ' is very small - check the unit.', fix: null });
+        }
         return;
       }
       if (/Height/.test(label)) {
-        if (v > (imp ? 500 : 12))
+        if (v > (imp ? 500 : 12)) {
           out.push({
             field: field,
             msg: v + (imp ? ' ft' : ' m') + ' tall is unusual - check the unit.',
             fix: null
           });
-        else if (v < (imp ? 0.5 : 0.4))
+        } else if (v < (imp ? 0.5 : 0.4)) {
           out.push({
             field: field,
             msg: v + (imp ? ' ft' : ' m') + ' is very short for a height - check the unit.',
             fix: null
           });
+        }
         return;
       }
       // metre-box lengths / runs (feet boxes in imperial mode)
       if (imp) {
-        if (v > 500)
+        if (v > 500) {
           out.push({ field: field, msg: v + ' ft is very long - check the unit.', fix: null });
+        }
         return;
       }
-      if (v > 150)
+      if (v > 150) {
         out.push({
           field: field,
           msg:
@@ -4455,7 +4763,7 @@
             ' m)',
           fix: String(r2(v * FT))
         });
-      else if (v < 0.1)
+      } else if (v < 0.1) {
         out.push({
           field: field,
           msg:
@@ -4467,10 +4775,15 @@
             ' m)',
           fix: String(r2(v / 1000))
         });
+      }
     };
     band('d1', w.d1 || '', parseFloat(st.d1));
-    if (w.d2) band('d2', w.d2 || '', parseFloat(st.d2));
-    if (w.d3) band('d3', w.d3 || '', parseFloat(st.d3));
+    if (w.d2) {
+      band('d2', w.d2 || '', parseFloat(st.d2));
+    }
+    if (w.d3) {
+      band('d3', w.d3 || '', parseFloat(st.d3));
+    }
     return out;
   }
   // PURE: sum instance rows through WORK[key].q with the SAME imperial
@@ -4478,17 +4791,23 @@
   // never thrown. n = identical-repeat count (digital timesing).
   function instancesQty(rows, key) {
     const w = WORK[key];
-    if (!w) return { qty: 0, unit: '' };
+    if (!w) {
+      return { qty: 0, unit: '' };
+    }
     const imp = _units === 'imperial';
     let qty = 0,
       unit = '';
     (rows || []).forEach(function (rw) {
-      if (!rw) return;
+      if (!rw) {
+        return;
+      }
       const n = Math.max(1, parseInt(rw.n, 10) || 1);
       const a = parseFloat(rw.d1),
         b = w.d2 ? parseFloat(rw.d2) : null,
         c = w.d3 ? parseFloat(rw.d3) : null;
-      if (!(a > 0) || (w.d2 && !(b > 0)) || (w.d3 && !(c > 0))) return;
+      if (!(a > 0) || (w.d2 && !(b > 0)) || (w.d3 && !(c > 0))) {
+        return;
+      }
       const d1 = imp ? a * (IMP_D1_FACTOR[key] || FT) : a;
       const d2 = w.d2 ? (imp ? b * FT : b) : null;
       const d3 = w.d3 ? (imp ? c * IN : c) : null;
@@ -4501,7 +4820,9 @@
   function renderInstances() {
     const wrap = $('calc-instances'),
       rowsEl = $('calc-inst-rows');
-    if (!wrap || !rowsEl) return;
+    if (!wrap || !rowsEl) {
+      return;
+    }
     const key = ($('calc-work') || {}).value || '';
     const kind = INSTANCE_KINDS[key];
     const addBtn = $('calc-inst-add');
@@ -4520,7 +4841,9 @@
       instRows = [{ label: INSTANCE_LABEL[kind] + ' 1', d1: '', d2: '', d3: '', n: 1 }];
       instLastKey = key;
     }
-    if (addBtn) addBtn.textContent = '+ Add ' + INSTANCE_LABEL[kind].toLowerCase();
+    if (addBtn) {
+      addBtn.textContent = '+ Add ' + INSTANCE_LABEL[kind].toLowerCase();
+    }
     const w = WORK[key];
     // A-5 (owner review 2026-10-10): every row box carries a real accessible
     // name ("Wall 1 length (m)"), not just a placeholder - these are exactly
@@ -4584,8 +4907,9 @@
     instSum = s.qty;
     instUnit = s.unit;
     const sumEl = $('calc-inst-sum');
-    if (sumEl)
+    if (sumEl) {
       sumEl.textContent = instSum > 0 ? 'Measured total: ' + qtyShown(instSum, instUnit).main : '';
+    }
   }
 
   // W2.7: the openings editor - visibility follows the trade (wall-area
@@ -4594,7 +4918,9 @@
   function renderOpenings() {
     const wrap = $('calc-openings'),
       rowsEl = $('calc-openings-rows');
-    if (!wrap || !rowsEl) return;
+    if (!wrap || !rowsEl) {
+      return;
+    }
     const key = ($('calc-work') || {}).value || '';
     const w = WORK[key];
     if (!w || !w.openings) {
@@ -4648,7 +4974,7 @@
       .join('');
     const a = openingsArea({ openings: JSON.stringify(openRows) }, _units === 'imperial');
     const sumEl = $('calc-open-sum');
-    if (sumEl)
+    if (sumEl) {
       sumEl.textContent =
         a.count > 0
           ? 'Deducts ' +
@@ -4658,18 +4984,24 @@
             ' opening' +
             (a.count === 1 ? '' : 's')
           : '';
+    }
   }
 
   function activeSheetName() {
     const matEl = $('calc-rate-mat'),
       labEl = $('calc-rate-lab');
-    if (!matEl || !labEl) return null;
-    if (matEl.value === '' || labEl.value === '') return null;
+    if (!matEl || !labEl) {
+      return null;
+    }
+    if (matEl.value === '' || labEl.value === '') {
+      return null;
+    }
     if (
       String(parseFloat(matEl.value)) === matEl.dataset.model ||
       String(parseFloat(labEl.value)) === labEl.dataset.model
-    )
+    ) {
       return null;
+    }
     return matEl.dataset.sheet || null;
   }
 
@@ -4703,13 +5035,17 @@
     (items || []).forEach(function (it) {
       const v = parseFloat(it.value);
       let amt = 0;
-      if (it.basis === 'fixed' && isFinite(v)) amt = v;
-      else if (it.basis === 'pct' && isFinite(v)) amt = works > 0 ? (works * v) / 100 : 0;
-      else if (it.basis === 'week' && isFinite(v)) {
+      if (it.basis === 'fixed' && isFinite(v)) {
+        amt = v;
+      } else if (it.basis === 'pct' && isFinite(v)) {
+        amt = works > 0 ? (works * v) / 100 : 0;
+      } else if (it.basis === 'week' && isFinite(v)) {
         const wks = parseFloat(it.weeks);
         amt = v * (isFinite(wks) && wks > 0 ? wks : 0);
       }
-      if (!(amt > 0)) amt = 0;
+      if (!(amt > 0)) {
+        amt = 0;
+      }
       total += amt;
       perItem.push({ name: it.name, amount: Math.round(amt * 100) / 100 });
     });
@@ -4726,20 +5062,26 @@
     { name: 'Demobilization & clean', basis: 'pct', value: '0.5', weeks: '' }
   ];
   function prelimWorks(worksOverride) {
-    if (typeof worksOverride === 'number') return worksOverride;
+    if (typeof worksOverride === 'number') {
+      return worksOverride;
+    }
     const lines = loadBoq();
-    if (lines.length) return boqTotals(lines).sub;
+    if (lines.length) {
+      return boqTotals(lines).sub;
+    }
     const r = computeFor(readState());
     return r && !r.error ? r.sub : 0;
   }
   function renderPrelims(worksOverride) {
     const wrap = $('calc-prelims-body'),
       totalEl = $('calc-prelims-total');
-    if (!wrap) return;
+    if (!wrap) {
+      return;
+    }
     const works = prelimWorks(worksOverride);
     const t = prelimsTotal(prelimItems, works);
     const cur = works > 0 ? CURRENCY[lastResult && lastResult.currency] || '$' : '$';
-    if (totalEl)
+    if (totalEl) {
       totalEl.textContent = prelimItems.length
         ? 'On top of the works (' +
           cur +
@@ -4748,6 +5090,7 @@
           cur +
           Math.round(t.total).toLocaleString()
         : '';
+    }
     wrap.innerHTML = prelimItems.length
       ? prelimItems
           .map(function (it, i) {
@@ -4811,18 +5154,24 @@
   // empty keeps the 85 kg/m3 norm as the all-in figure it has always been.
   const FORM_RATE_DEFAULT = 55;
   function formworkM2(key, d1, d2, d3) {
-    if (key !== 'slab' && key !== 'concrete-drive' && key !== 'footings') return null;
+    if (key !== 'slab' && key !== 'concrete-drive' && key !== 'footings') {
+      return null;
+    }
     const a = parseFloat(d1),
       b = parseFloat(d2),
       c = parseFloat(d3);
-    if (!(a > 0) || !(b > 0) || !(c > 0)) return null;
+    if (!(a > 0) || !(b > 0) || !(c > 0)) {
+      return null;
+    }
     const perimeter = 2 * (a + b);
     const height = c / 1000; // thickness/depth is always typed in mm
     return Math.round(perimeter * height * 100) / 100;
   }
   function renderAccessories() {
     const box = $('calc-formwork-box');
-    if (!box) return;
+    if (!box) {
+      return;
+    }
     const st = readState();
     const m2 = formworkM2(st.work, st.d1, st.d2, st.d3);
     if (m2) {
@@ -4845,8 +5194,11 @@
         cur +
         rate +
         '/m2 (editable).';
-      if (txt) txt.textContent = msg;
-      else box.textContent = msg;
+      if (txt) {
+        txt.textContent = msg;
+      } else {
+        box.textContent = msg;
+      }
     } else {
       box.hidden = true;
     }
@@ -4907,12 +5259,16 @@
     scheduleWsPut();
   }
   function ensurePackSeeds() {
-    if (!loadPacks().length) persistPacks(PACK_SEEDS.slice());
+    if (!loadPacks().length) {
+      persistPacks(PACK_SEEDS.slice());
+    }
   }
   function renderPacks() {
     const sel = $('calc-pack-select'),
       note = $('calc-pack-note');
-    if (!sel) return;
+    if (!sel) {
+      return;
+    }
     const list = loadPacks();
     sel.innerHTML =
       '<option value="">Location pack' +
@@ -4928,21 +5284,30 @@
         return x.id === note.dataset.forId;
       });
       note.hidden = !p;
-      if (p) note.textContent = p.benchmark || '';
+      if (p) {
+        note.textContent = p.benchmark || '';
+      }
     }
   }
   function applyPackById(id) {
     const p = loadPacks().find(function (x) {
       return x.id === id;
     });
-    if (!p) return;
-    if ($('calc-currency') && p.currency) $('calc-currency').value = p.currency;
-    if ($('calc-tax-override') && p.taxDefault != null && p.taxDefault !== '')
+    if (!p) {
+      return;
+    }
+    if ($('calc-currency') && p.currency) {
+      $('calc-currency').value = p.currency;
+    }
+    if ($('calc-tax-override') && p.taxDefault != null && p.taxDefault !== '') {
       $('calc-tax-override').value = String(p.taxDefault);
+    }
     const mat = $('calc-rate-mat');
     if (p.index && p.index !== 1 && mat && mat.value) {
       const v = parseFloat(mat.value);
-      if (isFinite(v)) mat.value = String(Math.round(v * p.index * 100) / 100);
+      if (isFinite(v)) {
+        mat.value = String(Math.round(v * p.index * 100) / 100);
+      }
     }
     const note = $('calc-pack-note');
     if (note) {
@@ -4954,7 +5319,9 @@
   }
   // Export every pack as JSON; import merges by name (invalid entries skipped).
   function importPacks(json) {
-    if (!json || !Array.isArray(json.packs)) return null;
+    if (!json || !Array.isArray(json.packs)) {
+      return null;
+    }
     const existing = loadPacks();
     let merged = 0,
       skipped = 0;
@@ -4977,8 +5344,11 @@
       const at = existing.findIndex(function (x) {
         return (x.name || '').toLowerCase() === name.toLowerCase();
       });
-      if (at > -1) existing[at] = pack;
-      else existing.unshift(pack);
+      if (at > -1) {
+        existing[at] = pack;
+      } else {
+        existing.unshift(pack);
+      }
       merged++;
     });
     if (merged) {
@@ -5071,7 +5441,9 @@
   }
   function renderRollup() {
     const body = $('calc-rollup-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const works = prelimWorks();
     if (!(works > 0)) {
       body.innerHTML = '';
@@ -5143,9 +5515,13 @@
         bell.push(w);
         sum += w;
       }
-      for (let i = 0; i < m; i++) per.push((T * bell[i]) / sum);
+      for (let i = 0; i < m; i++) {
+        per.push((T * bell[i]) / sum);
+      }
     } else {
-      for (let i = 0; i < m; i++) per.push(T / m);
+      for (let i = 0; i < m; i++) {
+        per.push(T / m);
+      }
     }
     const cum = [];
     let run = 0;
@@ -5157,7 +5533,9 @@
   }
   function renderCash() {
     const body = $('calc-cash-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const months = parseInt(($('calc-months') || {}).value, 10);
     const mode = ($('calc-cash-mode') || {}).value || 'scurve';
     if (!(months > 0)) {
@@ -5208,7 +5586,9 @@
       const opt = Array.prototype.slice.call(sel.options || []).find(function (o) {
         return o.value === key;
       });
-      if (opt) return opt.textContent.trim();
+      if (opt) {
+        return opt.textContent.trim();
+      }
     }
     return key;
   }
@@ -5236,7 +5616,9 @@
       lab = 0;
     (lines || []).forEach(function (line) {
       const r = computeFor(line.st || {});
-      if (!r || r.error) return;
+      if (!r || r.error) {
+        return;
+      }
       mat += r.mat;
       lab += r.lab;
       perLine.push({
@@ -5255,11 +5637,15 @@
     const wrap = $('calc-boq-body'),
       card = $('calc-boq-card'),
       total = $('calc-boq-total');
-    if (!wrap) return;
+    if (!wrap) {
+      return;
+    }
     const lines = loadBoq();
-    if (card) card.hidden = lines.length === 0 && !$('calc-boq-open');
+    if (card) {
+      card.hidden = lines.length === 0 && !$('calc-boq-open');
+    }
     const t = boqTotals(lines);
-    if (total)
+    if (total) {
       total.textContent = lines.length
         ? 'Bill total: ' +
           (CURRENCY[t.perLine[0].currency] || '$') +
@@ -5269,23 +5655,44 @@
           ' line' +
           (lines.length === 1 ? '' : 's')
         : '';
+    }
     renderLint(lines);
     wrap.innerHTML = lines.length
       ? lines
           .map(function (line, i) {
-            const r = computeFor(line.st || {});
+            const st0 = line.st || {};
+            const r = computeFor(st0);
             const money =
               r && !r.error
                 ? (CURRENCY[r.currency] || '$') + Math.round(r.total).toLocaleString()
                 : 'check settings';
             const qty = r && !r.error ? qtyShown(r.qty, r.unit).main : '';
+            // B1: a CUSTOM line must also carry its rate on the bill, so the
+            // row reads name, quantity with the user's unit, rate and total.
+            // Every other work item keeps its exact old shape.
+            let meta = qty + ' - ' + money;
+            if (
+              r &&
+              !r.error &&
+              st0.work === 'custom' &&
+              isFinite(r.allInRate) &&
+              r.allInRate > 0
+            ) {
+              meta =
+                qty +
+                ' x ' +
+                (CURRENCY[r.currency] || '$') +
+                Math.round(r.allInRate).toLocaleString() +
+                ' - ' +
+                money;
+            }
             return (
               '<div class="bcp-est-row bcp-boq-line">' +
               '<span class="bcp-est-name">' +
               esc(line.name || workLabel((line.st || {}).work)) +
               '</span>' +
               '<span class="bcp-est-meta">' +
-              esc(qty + ' - ' + money) +
+              esc(meta) +
               '</span>' +
               '<button type="button" class="btn btn-n btn-s" data-action="calcBoqRecall" data-idx="' +
               i +
@@ -5304,7 +5711,9 @@
   // one-tap fix where the quantity can be derived from the bill itself.
   function renderLint(lines) {
     const box = $('calc-lint');
-    if (!box) return;
+    if (!box) {
+      return;
+    }
     const flags = billLint(lines);
     if (!flags.length) {
       box.hidden = true;
@@ -5336,7 +5745,9 @@
   function renderSheets() {
     const wrap = $('calc-sheets');
     const sel = $('calc-sheet-select');
-    if (!wrap || !sel) return;
+    if (!wrap || !sel) {
+      return;
+    }
     const list = loadSheets();
     sel.innerHTML =
       '<option value="">Saved rate sheets' +
@@ -5377,7 +5788,9 @@
 
   function renderEstimates() {
     const wrap = $('calc-estimates');
-    if (!wrap) return;
+    if (!wrap) {
+      return;
+    }
     const list = loadEstimates();
     if (!list.length) {
       wrap.innerHTML =
@@ -5421,7 +5834,9 @@
   function renderCompare() {
     const wrap = $('calc-compare'),
       card = $('calc-compare-card');
-    if (!wrap || !card) return;
+    if (!wrap || !card) {
+      return;
+    }
     const ids = Array.prototype.slice
       .call(document.querySelectorAll('.bcp-cmp-check:checked'))
       .map(function (c) {
@@ -5437,7 +5852,9 @@
         const est = loadEstimates().find(function (x) {
           return x.id === id;
         });
-        if (!est) return null;
+        if (!est) {
+          return null;
+        }
         const r = computeFor(est.st || {});
         return r && !r.error ? { name: est.name, r: r } : null;
       })
@@ -5581,12 +5998,21 @@
     ];
     const money = [];
     moneyRows.forEach(function (row) {
-      if (Array.isArray(row[0])) money.push.apply(money, row);
-      else money.push(row);
+      if (Array.isArray(row[0])) {
+        money.push.apply(money, row);
+      } else {
+        money.push(row);
+      }
     });
-    if (r.onCost > 0) money.push(['Labor statutory costs', r.onCostPct + '%', n(r.onCost)]);
-    if (r.eq > 0) money.push(['Equipment / plant hire', '', n(r.eq)]);
-    if (r.ohPct > 0) money.push(['Overhead & margin', r.ohPct + '%', n(r.oh)]);
+    if (r.onCost > 0) {
+      money.push(['Labor statutory costs', r.onCostPct + '%', n(r.onCost)]);
+    }
+    if (r.eq > 0) {
+      money.push(['Equipment / plant hire', '', n(r.eq)]);
+    }
+    if (r.ohPct > 0) {
+      money.push(['Overhead & margin', r.ohPct + '%', n(r.oh)]);
+    }
     money.push(['Subtotal', '', n(r.sub)]);
     // OWNER 2026-10-02: the tax row ALWAYS shows. Dropping it when the amount
     // happened to be zero hid a real decision from the document - a reader
@@ -5676,7 +6102,9 @@
         'Exchange rate',
         (function () {
           const c = r.currency || BASE_CURRENCY;
-          if (c === BASE_CURRENCY) return 'base currency';
+          if (c === BASE_CURRENCY) {
+            return 'base currency';
+          }
           const f = fxFactor(c);
           return f != null
             ? f + ' ' + c + ' per USD as of ' + ((loadFx()[c] || {}).asOf || '?')
@@ -5851,8 +6279,12 @@
   // Every persist path calls this (after its localStorage write) so a signed-in
   // device pushes its workspace without any user action.
   function scheduleWsPut() {
-    if (wsSignedOut || wsMerging) return;
-    if (wsPutTimer) clearTimeout(wsPutTimer);
+    if (wsSignedOut || wsMerging) {
+      return;
+    }
+    if (wsPutTimer) {
+      clearTimeout(wsPutTimer);
+    }
     wsPutTimer = setTimeout(wsPut, WS_DEBOUNCE_MS);
   }
   // Pure-ish collector: the seven synced sections with their stamps.
@@ -5877,7 +6309,9 @@
   // PURE merge decision: newer stamp wins; empty local adopts cloud; equal
   // stamps keep local; corrupt (non-object) cloud sections are skipped.
   function wsMerge(localStamp, cloudStamp, localVal, cloudVal) {
-    if (!cloudVal || typeof cloudVal !== 'object') return localVal;
+    if (!cloudVal || typeof cloudVal !== 'object') {
+      return localVal;
+    }
     if (
       localVal === null ||
       localVal === undefined ||
@@ -5885,17 +6319,22 @@
         !Array.isArray(localVal) &&
         Object.keys(localVal).length === 0) ||
       (Array.isArray(localVal) && localVal.length === 0)
-    )
+    ) {
       return cloudVal;
+    }
     return (cloudStamp || 0) > (localStamp || 0) ? cloudVal : localVal;
   }
   // Pure application of a probe payload: sets the plan, merges each section
   // into localStorage, returns what happened (no network, no rendering).
   function wsApplyProbe(data) {
-    if (!data || typeof data !== 'object') return { ok: false };
+    if (!data || typeof data !== 'object') {
+      return { ok: false };
+    }
     Entitlements.setPlan(data.plan);
     const ws = data.ws;
-    if (!ws || typeof ws !== 'object') return { ok: true, merged: [] };
+    if (!ws || typeof ws !== 'object') {
+      return { ok: true, merged: [] };
+    }
     const stamps = wsStampsLoad();
     const merged = [];
     // Applying a cloud section routes through the persist helpers, which stamp
@@ -6007,7 +6446,9 @@
         const name = pair[0],
           cloud = pair[1],
           apply = pair[2];
-        if (!cloud || typeof cloud !== 'object' || !cloud.val) return; // corrupt/absent cloud section: skip
+        if (!cloud || typeof cloud !== 'object' || !cloud.val) {
+          return;
+        } // corrupt/absent cloud section: skip
         const localVal = (function () {
           try {
             return JSON.parse(localStorage.getItem(wsKeys()[name]) || 'null');
@@ -6039,7 +6480,7 @@
   // down once already - do not hoist this back).
   let WS_KEYS = null;
   function wsKeys() {
-    if (!WS_KEYS)
+    if (!WS_KEYS) {
       WS_KEYS = {
         estimates: NKEY,
         boq: BKEY2,
@@ -6052,6 +6493,7 @@
         fx: FXKEY,
         books: BKKEY
       };
+    }
     return WS_KEYS;
   }
   function wsPayload(withLogo) {
@@ -6062,7 +6504,9 @@
     return c;
   }
   async function wsPut() {
-    if (wsSignedOut || wsInFlight || !navigator.onLine) return;
+    if (wsSignedOut || wsInFlight || !navigator.onLine) {
+      return;
+    }
     wsInFlight = true;
     try {
       let res = await fetch('/api/calc/workspace', {
@@ -6080,14 +6524,18 @@
           body: JSON.stringify(wsPayload(false))
         });
       }
-      if (res.status === 403) wsSignedOut = true;
+      if (res.status === 403) {
+        wsSignedOut = true;
+      }
     } catch (e) {
       /* offline / network down - silent, offline-first */
     }
     wsInFlight = false;
   }
   async function wsProbe() {
-    if (wsSignedOut || wsInFlight || !navigator.onLine) return;
+    if (wsSignedOut || wsInFlight || !navigator.onLine) {
+      return;
+    }
     wsInFlight = true;
     try {
       const res = await fetch('/api/calc/workspace', { method: 'GET', credentials: 'same-origin' });
@@ -6096,7 +6544,9 @@
       } else if (res.ok) {
         const data = await res.json();
         const out = wsApplyProbe(data);
-        if (out.ok && out.merged && out.merged.length) render();
+        if (out.ok && out.merged && out.merged.length) {
+          render();
+        }
       }
     } catch (e) {
       /* offline - silent */
@@ -6147,18 +6597,26 @@
   };
 
   document.addEventListener('change', function (e) {
-    if (e.target && e.target.id === 'calc-doc-type') render();
-    if (e.target && e.target.id === 'calc-family') onFamilyChange(e.target.value);
+    if (e.target && e.target.id === 'calc-doc-type') {
+      render();
+    }
+    if (e.target && e.target.id === 'calc-family') {
+      onFamilyChange(e.target.value);
+    }
     // E2: picking a version re-prefills the model rates for it.
     if (e.target && e.target.id === 'calc-variant') {
       refreshRateFields();
       render();
     }
     // E6: labour-only mode re-prices live.
-    if (e.target && e.target.id === 'calc-labour-only') render();
+    if (e.target && e.target.id === 'calc-labour-only') {
+      render();
+    }
   });
   document.addEventListener('input', function (e) {
-    if (e.target && e.target.id === 'calc-doc-title') render();
+    if (e.target && e.target.id === 'calc-doc-title') {
+      render();
+    }
   });
 
   /* OWNER 2026-10-10 (T2, F-2): the export splits into a PURE build and an
@@ -6203,6 +6661,13 @@
     const sel = $('calc-work');
     const opt = sel && sel.selectedOptions && sel.selectedOptions[0];
     let name = opt ? opt.textContent.trim() : key;
+    // B1: a custom line is named by the USER's name, never by the option.
+    if (key === 'custom') {
+      const cn = (($('calc-custom-name') || {}).value || '').trim();
+      if (cn) {
+        return cn;
+      }
+    }
     // E2: multi-variant trades carry the picked version in the name so bill
     // lines, history and CSV name what was priced (single-variant trades -
     // the Phase 1 excavation conversion - keep the clean base name).
@@ -6212,7 +6677,9 @@
       const av = variantFor(key, vSel.value);
       // The default (first) variant keeps the clean base name; a non-default
       // pick names itself on bill lines, history and CSV.
-      if (av && av.id !== w.variants[0].id) name = name + ' - ' + av.label;
+      if (av && av.id !== w.variants[0].id) {
+        name = name + ' - ' + av.label;
+      }
     }
     return name;
   }
@@ -6241,7 +6708,9 @@
   const ALLIN_INCLUDED = 'in the all-in rate';
   // Plain language: "2.5 days at $400 per day", never "labour basis" or "norm".
   function dayBasisNote(r) {
-    if (!r || !r.dayBasis) return '';
+    if (!r || !r.dayBasis) {
+      return '';
+    }
     const d = (Math.round(r.days * 100) / 100).toLocaleString();
     return (
       d +
@@ -6252,11 +6721,15 @@
   }
   // The source annotation shared by every surface, so the wording matches.
   function allInSourceNote(r) {
-    if (!r || !r.allIn) return '';
+    if (!r || !r.allIn) {
+      return '';
+    }
     return r.allInOverridden ? ' - your rate' : r.bookFilled ? ' - JIC rate book' : '';
   }
   function matRowLabel(r) {
-    if (r.allIn) return ALLIN_ROW_LABEL + allInSourceNote(r);
+    if (r.allIn) {
+      return ALLIN_ROW_LABEL + allInSourceNote(r);
+    }
     return (
       'Materials' +
       (r.matExcluded ? ' - excluded (labour only)' : r.matOverridden ? ' - your rate' : '')
@@ -6290,7 +6763,9 @@
     } catch (e) {
       b = null;
     }
-    if (!b || typeof b !== 'object') b = {};
+    if (!b || typeof b !== 'object') {
+      b = {};
+    }
     // Migration: the pre-brand lone business name folds in once, PERSISTS
     // into the brand store, then the old key is retired.
     try {
@@ -6334,7 +6809,9 @@
   //PURE: decoded byte size of a data URL (base64 payload is 4/3 of the bytes).
   function logoFitsCap(dataUrl) {
     const i = String(dataUrl || '').indexOf(',');
-    if (i < 0) return false;
+    if (i < 0) {
+      return false;
+    }
     const b64 = dataUrl.slice(i + 1).replace(/[^A-Za-z0-9+/=]/g, '');
     return (b64.length * 3) / 4 <= 1000000;
   }
@@ -6345,7 +6822,9 @@
       try {
         let w = img.naturalWidth || img.width,
           h = img.naturalHeight || img.height;
-        if (!w || !h) return resolve(null);
+        if (!w || !h) {
+          return resolve(null);
+        }
         const MAX = 600;
         let scale = Math.min(1, MAX / Math.max(w, h));
         let cw = Math.max(1, Math.round(w * scale)),
@@ -6366,7 +6845,9 @@
           canvas.height = ch;
           canvas.getContext('2d').drawImage(img, 0, 0, cw, ch);
           const url = canvas.toDataURL(hasAlpha ? 'image/png' : 'image/jpeg', q);
-          if (logoFitsCap(url)) return resolve(url);
+          if (logoFitsCap(url)) {
+            return resolve(url);
+          }
           if (!hasAlpha && q > 0.5) {
             q -= 0.15;
             continue;
@@ -6416,7 +6897,9 @@
   }
   function bizName() {
     const el = $('calc-biz-name');
-    if (el && el.value.trim()) return el.value.trim();
+    if (el && el.value.trim()) {
+      return el.value.trim();
+    }
     return brandLoad().name;
   }
 
@@ -6446,7 +6929,9 @@
     }
     const docNo = ($('calc-doc-no') || {}).value || '';
     const qd = $('calc-quote-docno');
-    if (qd) qd.textContent = docNo;
+    if (qd) {
+      qd.textContent = docNo;
+    }
     const client = (($('calc-client-name') || {}).value || '').trim();
     const addr = (($('calc-client-addr') || {}).value || '').trim();
     const bt = $('calc-quote-billto');
@@ -6466,8 +6951,12 @@
       if (show) {
         const nameEl = sig.querySelector('.bcp-sig-name'),
           titleEl = sig.querySelector('.bcp-sig-title');
-        if (nameEl) nameEl.textContent = brand.sigName || bizName();
-        if (titleEl) titleEl.textContent = brand.sigTitle || '';
+        if (nameEl) {
+          nameEl.textContent = brand.sigName || bizName();
+        }
+        if (titleEl) {
+          titleEl.textContent = brand.sigTitle || '';
+        }
       }
     }
   }
@@ -6484,7 +6973,9 @@
         preview.hidden = true;
       }
     }
-    if (rm) rm.hidden = !b.logo;
+    if (rm) {
+      rm.hidden = !b.logo;
+    }
     const map = {
       'calc-brand-name': b.name,
       'calc-brand-phone': b.phone,
@@ -6496,12 +6987,18 @@
     };
     Object.keys(map).forEach(function (id) {
       const el = $(id);
-      if (el && document.activeElement !== el) el.value = map[id];
+      if (el && document.activeElement !== el) {
+        el.value = map[id];
+      }
     });
     const sigT = $('calc-sig-show');
-    if (sigT) sigT.checked = b.sigShow === 'on';
+    if (sigT) {
+      sigT.checked = b.sigShow === 'on';
+    }
     const bizEl = $('calc-biz-name');
-    if (bizEl && document.activeElement !== bizEl) bizEl.value = b.name;
+    if (bizEl && document.activeElement !== bizEl) {
+      bizEl.value = b.name;
+    }
   }
 
   // ---- W2 2026-10-01: companion chips (one-tap bill lines) ----------------
@@ -6510,7 +7007,9 @@
   // match), so the row empties naturally as you accept them.
   function renderCompanions(r) {
     const wrap = $('calc-companions');
-    if (!wrap) return;
+    if (!wrap) {
+      return;
+    }
     wrap.innerHTML = '';
     const res = r;
     if (!res || res.error) {
@@ -6563,7 +7062,16 @@
     }
     const manual = $('calc-measured-manual');
     let txt = '';
-    if (manual && manual.checked && r && r.allIn && isFinite(Number(r.qty)) && Number(r.qty) > 0) {
+    // B1: a custom line always shows its arithmetic (quantity x your rate)
+    // even outside the Quick total box; every other line keeps the original
+    // condition unchanged.
+    if (
+      r &&
+      r.allIn &&
+      isFinite(Number(r.qty)) &&
+      Number(r.qty) > 0 &&
+      ((manual && manual.checked) || r.isCustom)
+    ) {
       const qs = qtyShown(r.qty, unit).main;
       // fmtMoney is the page's one money formatter (J$8,280), so the read-out
       // reads exactly like the bill below it.
@@ -6581,7 +7089,9 @@
 
   function render() {
     const out = $('calc-output');
-    if (!out) return;
+    if (!out) {
+      return;
+    }
     const r = compute();
     // T4: the Quick total line and the quantity box's unit follow every
     // recompute, including an error state (r is null then).
@@ -6602,7 +7112,9 @@
     renderCompanions(r);
     if (!r || r.error) {
       lastResult = null;
-      if ($('calc-out-actions')) $('calc-out-actions').classList.add('is-hide');
+      if ($('calc-out-actions')) {
+        $('calc-out-actions').classList.add('is-hide');
+      }
     }
     if (!r) {
       out.innerHTML =
@@ -6614,7 +7126,9 @@
       return;
     }
     lastResult = r;
-    if ($('calc-out-actions')) $('calc-out-actions').classList.remove('is-hide');
+    if ($('calc-out-actions')) {
+      $('calc-out-actions').classList.remove('is-hide');
+    }
     const pieceNarr =
       r.piece && !r.piece.countOnly
         ? r.piece.div === 'width'
@@ -6655,9 +7169,13 @@
     const qh = $('calc-quote-biz'),
       qm = $('calc-quote-meta'),
       qt = $('calc-quote-title');
-    if (qh) qh.textContent = bizName();
-    if (qt) qt.textContent = docType();
-    if (qm)
+    if (qh) {
+      qh.textContent = bizName();
+    }
+    if (qt) {
+      qt.textContent = docType();
+    }
+    if (qm) {
       qm.textContent =
         (docTitleRaw() || ($('calc-save-name') || {}).value || r.name) +
         '  -  ' +
@@ -6666,6 +7184,7 @@
         shown.main +
         '  -  ' +
         new Date().toISOString().slice(0, 10);
+    }
     // W3: the full document sheet - logo, contact block, document number
     // and bill-to appear ONLY when their data exists (plain by default).
     out.innerHTML =
@@ -6777,7 +7296,9 @@
   }
   function renderHistory() {
     const wrap = $('calc-history');
-    if (!wrap) return;
+    if (!wrap) {
+      return;
+    }
     const h = loadHistory();
     if (!h.length) {
       wrap.innerHTML = '<div class="calc-empty">Nothing saved yet.</div>';
@@ -6837,21 +7358,34 @@
     const body = $('calc-guide-body'),
       reopen = $('calc-guide-reopen'),
       toggle = $('calc-guide-toggle');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const open = guideOpenState();
     body.hidden = !open;
-    if (reopen) reopen.hidden = open;
-    if (toggle) toggle.hidden = !open;
-    if (!open) return;
+    if (reopen) {
+      reopen.hidden = open;
+    }
+    if (toggle) {
+      toggle.hidden = !open;
+    }
+    if (!open) {
+      return;
+    }
     const c = $('calc-guide-count'),
       t = $('calc-guide-text'),
       dots = $('calc-guide-dots');
-    if (c) c.textContent = guideIdx + 1 + ' of ' + GUIDE_STEPS.length;
-    if (t) t.textContent = GUIDE_STEPS[guideIdx];
+    if (c) {
+      c.textContent = guideIdx + 1 + ' of ' + GUIDE_STEPS.length;
+    }
+    if (t) {
+      t.textContent = GUIDE_STEPS[guideIdx];
+    }
     if (dots) {
       let h = '';
-      for (let i = 0; i < GUIDE_STEPS.length; i++)
+      for (let i = 0; i < GUIDE_STEPS.length; i++) {
         h += '<span class="bcp-guide-dot' + (i === guideIdx ? ' active' : '') + '"></span>';
+      }
       dots.innerHTML = h;
     }
   }
@@ -6929,17 +7463,27 @@
   // phone width), and the highlighted field itself blurred with the page.
   function tourBlurSet(el) {
     const main = document.querySelector('.bcp-main');
-    if (!main) return;
+    if (!main) {
+      return;
+    }
     const marked = main.querySelectorAll('.bcp-tour-blur');
-    for (let i = 0; i < marked.length; i++) marked[i].classList.remove('bcp-tour-blur');
-    if (!el || !main.contains(el)) return;
+    for (let i = 0; i < marked.length; i++) {
+      marked[i].classList.remove('bcp-tour-blur');
+    }
+    if (!el || !main.contains(el)) {
+      return;
+    }
     let cur = el;
     while (cur && cur !== main) {
       const parent = cur.parentElement;
-      if (!parent) break;
+      if (!parent) {
+        break;
+      }
       const kids = parent.children;
       for (let i = 0; i < kids.length; i++) {
-        if (kids[i] !== cur) kids[i].classList.add('bcp-tour-blur');
+        if (kids[i] !== cur) {
+          kids[i].classList.add('bcp-tour-blur');
+        }
       }
       cur = parent;
     }
@@ -6948,12 +7492,18 @@
     tourIdx = -1;
     tourFlag();
     const o = $('calc-tour-overlay');
-    if (o) o.hidden = true;
+    if (o) {
+      o.hidden = true;
+    }
     const spot = $('calc-tour-spot');
-    if (spot) spot.hidden = true;
+    if (spot) {
+      spot.hidden = true;
+    }
     tourBlurSet(null);
     const popEnd = $('calc-tour-pop');
-    if (popEnd) popEnd.classList.remove('is-final');
+    if (popEnd) {
+      popEnd.classList.remove('is-final');
+    }
     try {
       document.documentElement.classList.remove('mmgr-tour-active');
     } catch (e) {}
@@ -6961,7 +7511,9 @@
   function tourShow() {
     const o = $('calc-tour-overlay'),
       pop = $('calc-tour-pop');
-    if (!o || !pop) return;
+    if (!o || !pop) {
+      return;
+    }
     const st = TOUR_STEPS[tourIdx];
     if (!st) {
       tourEnd();
@@ -6971,16 +7523,23 @@
     const c = $('calc-tour-count'),
       t = $('calc-tour-text'),
       dots = $('calc-tour-dots');
-    if (c) c.textContent = tourIdx + 1 + ' of ' + TOUR_STEPS.length;
-    if (t) t.textContent = st.text;
+    if (c) {
+      c.textContent = tourIdx + 1 + ' of ' + TOUR_STEPS.length;
+    }
+    if (t) {
+      t.textContent = st.text;
+    }
     if (dots) {
       let h = '';
-      for (let i = 0; i < TOUR_STEPS.length; i++)
+      for (let i = 0; i < TOUR_STEPS.length; i++) {
         h += '<span class="bcp-guide-dot' + (i === tourIdx ? ' active' : '') + '"></span>';
+      }
       dots.innerHTML = h;
     }
     const tEl = st.sel ? document.querySelector(st.sel) : null;
-    if (st.sel) pop.classList.remove('is-final'); // dock rules own anchored steps
+    if (st.sel) {
+      pop.classList.remove('is-final');
+    } // dock rules own anchored steps
     // Blur everything OFF the spotlight path (owner: the rest of the screen
     // is blurred). The whole .bcp-field wrapper - label + input - stays crisp
     // so the talked-about field reads as one unit; the class lands per
@@ -7000,7 +7559,9 @@
       // Double rAF = the repo's standard flush (AGENTS.md lesson 3).
       requestAnimationFrame(function () {
         requestAnimationFrame(function () {
-          if (tourIdx < 0 || TOUR_STEPS[tourIdx] !== st) return;
+          if (tourIdx < 0 || TOUR_STEPS[tourIdx] !== st) {
+            return;
+          }
           positionTourPop(tEl);
           positionTourSpot(tEl);
         });
@@ -7023,7 +7584,9 @@
   // of the field's own border.
   function positionTourSpot(target) {
     const spot = $('calc-tour-spot');
-    if (!spot) return;
+    if (!spot) {
+      return;
+    }
     spot.hidden = false;
     const r = target.getBoundingClientRect();
     spot.style.left = r.left - 6 + 'px';
@@ -7033,7 +7596,9 @@
   }
   function positionTourPop(target) {
     const pop = $('calc-tour-pop');
-    if (!pop) return;
+    if (!pop) {
+      return;
+    }
     pop.style.transform = 'none';
     const r = target.getBoundingClientRect();
     const pr = pop.getBoundingClientRect();
@@ -7043,10 +7608,14 @@
     pop.style.top = (below ? r.bottom + 12 : Math.max(12, r.top - pr.height - 12)) + 'px';
   }
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && tourIdx >= 0) tourEnd();
+    if (e.key === 'Escape' && tourIdx >= 0) {
+      tourEnd();
+    }
   });
   window.addEventListener('resize', function () {
-    if (tourIdx < 0) return;
+    if (tourIdx < 0) {
+      return;
+    }
     const st = TOUR_STEPS[tourIdx];
     const t = st && st.sel ? document.querySelector(st.sel) : null;
     if (t) {
@@ -7056,13 +7625,17 @@
     }
     // Final card: keep the ring glued to the centered pop across resizes.
     const pop = $('calc-tour-pop');
-    if (pop) positionTourSpot(pop);
+    if (pop) {
+      positionTourSpot(pop);
+    }
   });
   // Keep the cutout glued to the target while the page scrolls under it.
   window.addEventListener(
     'scroll',
     function () {
-      if (tourIdx < 0) return;
+      if (tourIdx < 0) {
+        return;
+      }
       const st = TOUR_STEPS[tourIdx];
       const t = st && st.sel ? document.querySelector(st.sel) : null;
       if (t) {
@@ -7117,11 +7690,15 @@
     calcTourStart: function () {
       tourIdx = 0;
       const n = $('calc-tour-nudge');
-      if (n) n.hidden = true;
+      if (n) {
+        n.hidden = true;
+      }
       tourShow();
     },
     calcTourNext: function () {
-      if (tourIdx < 0) return;
+      if (tourIdx < 0) {
+        return;
+      }
       if (tourIdx >= TOUR_STEPS.length - 1) {
         tourEnd();
         return;
@@ -7130,7 +7707,9 @@
       tourShow();
     },
     calcTourPrev: function () {
-      if (tourIdx <= 0) return;
+      if (tourIdx <= 0) {
+        return;
+      }
       tourIdx--;
       tourShow();
     },
@@ -7139,7 +7718,9 @@
     },
     calcTourDismiss: function () {
       const n = $('calc-tour-nudge');
-      if (n) n.hidden = true;
+      if (n) {
+        n.hidden = true;
+      }
       tourFlag();
     },
     calcRun: function () {
@@ -7179,7 +7760,9 @@
     },
     calcRestore: function (el) {
       const h = loadHistory()[parseInt(el.getAttribute('data-idx'), 10)];
-      if (!h) return;
+      if (!h) {
+        return;
+      }
       if (h.st) {
         // New rows: restore EVERYTHING the sum was computed with.
         applyState(h.st);
@@ -7194,7 +7777,9 @@
     calcDelHist: function (el) {
       const idx = parseInt(el.getAttribute('data-idx'), 10);
       const h = loadHistory();
-      if (isNaN(idx) || !h[idx]) return;
+      if (isNaN(idx) || !h[idx]) {
+        return;
+      }
       h.splice(idx, 1);
       try {
         localStorage.setItem(HKEY, JSON.stringify(h));
@@ -7224,11 +7809,15 @@
         if (cur && cur.value === BASE_CURRENCY) {
           cur.value = b.currency || DEFAULT_CURRENCY;
           const co = $('calc-country');
-          if (co && co.value === 'US') co.value = 'JM';
+          if (co && co.value === 'US') {
+            co.value = 'JM';
+          }
         }
         // The all-in basis is what this book speaks, so offer it directly.
         const sel = $('calc-basis');
-        if (sel && sel.value === 'measured') sel.value = 'allin';
+        if (sel && sel.value === 'measured') {
+          sel.value = 'allin';
+        }
       }
       renderBooks();
       refreshRateFields();
@@ -7243,14 +7832,17 @@
               payload.entryCount +
               ' rates. Its rates prefill the all-in field, and you can type over any of them.'
       );
-      if (res && res.skipped)
+      if (res && res.skipped) {
         console.warn('[calc] Jamaica book skipped ' + res.skipped + ' entries');
+      }
     },
     // OWNER 2026-10-02: the shipped book is the DEFAULT, loaded once per device
     // and then left entirely to the user. Only the FIRST visit installs it; after
     // that the user's own choice (including "none") is never overridden again.
     calcBookDefault: function () {
-      if (localStorage.getItem(JICSEEN)) return;
+      if (localStorage.getItem(JICSEEN)) {
+        return;
+      }
       try {
         localStorage.setItem(JICSEEN, '1');
       } catch (e) {
@@ -7262,8 +7854,9 @@
         return (x.name || '').indexOf('Jamaica rate book') === 0;
       });
       if (!b) {
-        if (res && res.skipped)
+        if (res && res.skipped) {
           console.warn('[calc] Jamaica book skipped ' + res.skipped + ' entries');
+        }
         return;
       }
       setActiveBook(b.id);
@@ -7276,7 +7869,9 @@
       // install only; from then on the user's own choice, including 'measured',
       // is never overridden again.
       const sel = $('calc-basis');
-      if (sel && sel.value === 'measured') sel.value = 'allin';
+      if (sel && sel.value === 'measured') {
+        sel.value = 'allin';
+      }
       sheetMsg(
         'Loaded the Jamaica rate book ' +
           JIC_YEARS +
@@ -7294,17 +7889,31 @@
     },
     // F4b: put the model rates back (the escape hatch from your own rates).
     calcRatesReset: function () {
-      if ($('calc-rate-mat')) $('calc-rate-mat').value = '';
-      if ($('calc-rate-lab')) $('calc-rate-lab').value = '';
+      if ($('calc-rate-mat')) {
+        $('calc-rate-mat').value = '';
+      }
+      if ($('calc-rate-lab')) {
+        $('calc-rate-lab').value = '';
+      }
       if ($('calc-allin')) {
         $('calc-allin').value = '';
         $('calc-allin').dataset.model = '';
       }
-      if ($('calc-days')) $('calc-days').value = '';
-      if ($('calc-day-rate')) $('calc-day-rate').value = '';
-      if ($('calc-piece-price')) $('calc-piece-price').value = '';
-      if ($('calc-piece-size')) $('calc-piece-size').value = '';
-      if ($('calc-waste')) $('calc-waste').value = '';
+      if ($('calc-days')) {
+        $('calc-days').value = '';
+      }
+      if ($('calc-day-rate')) {
+        $('calc-day-rate').value = '';
+      }
+      if ($('calc-piece-price')) {
+        $('calc-piece-price').value = '';
+      }
+      if ($('calc-piece-size')) {
+        $('calc-piece-size').value = '';
+      }
+      if ($('calc-waste')) {
+        $('calc-waste').value = '';
+      }
       refreshRateFields();
       render();
     },
@@ -7357,14 +7966,18 @@
     },
     // F4-2: export the live breakdown.
     calcPrint: function () {
-      if (!lastResult) return;
+      if (!lastResult) {
+        return;
+      }
       document.body.classList.add('print-estimate');
       window.print();
     },
     calcCsv: downloadCsv,
     // F4-3: named estimates.
     calcSave: function () {
-      if (!lastResult) return;
+      if (!lastResult) {
+        return;
+      }
       const nameEl = $('calc-save-name');
       const name =
         ((nameEl && nameEl.value) || '').trim() ||
@@ -7374,8 +7987,9 @@
       // W3: the doc-number counter bumps only when a save carries the exact
       // suggested number - a hand-typed number is the user's own sequence.
       const c = docCounterLoad();
-      if ((st.docNo || '').trim() === docNoSuggest(st.docType, c[st.docType]))
+      if ((st.docNo || '').trim() === docNoSuggest(st.docType, c[st.docType])) {
         docCounterBump(st.docType);
+      }
       list.unshift({
         id: 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
         name: name,
@@ -7384,20 +7998,25 @@
         st: st
       });
       persistEstimates(list);
-      if (nameEl) nameEl.value = '';
+      if (nameEl) {
+        nameEl.value = '';
+      }
       renderEstimates();
     },
     calcOpen: function (el) {
       const est = loadEstimates().find(function (x) {
         return x.id === el.getAttribute('data-id');
       });
-      if (!est) return;
+      if (!est) {
+        return;
+      }
       if (est.st) {
         applyState(est.st);
       } else if (est.work) {
         applyLegacy(est);
-        if (est.taxOverride && $('calc-tax-override'))
+        if (est.taxOverride && $('calc-tax-override')) {
           $('calc-tax-override').value = est.taxOverride;
+        }
       }
       render();
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -7413,26 +8032,41 @@
     },
     // ---- W1 bill of quantities ----
     calcBoqAdd: function () {
+      // B2: a custom line must pass the page's OWN validation first - a
+      // bad field shows its message beside the input and nothing is added.
+      if (!validateCustomFields()) {
+        return;
+      }
       const r = render();
-      if (!r || r.error) return;
+      if (!r || r.error) {
+        return;
+      }
       const lines = loadBoq();
-      if (lines.length >= 60) return;
+      if (lines.length >= 60) {
+        return;
+      }
       lines.push({ st: readState(), name: r.name });
       persistBoq(lines);
       renderBoq();
       const card = $('calc-boq-card');
-      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
     },
     calcBoqRecall: function (el) {
       const line = loadBoq()[parseInt(el.getAttribute('data-idx'), 10)];
-      if (!line) return;
+      if (!line) {
+        return;
+      }
       applyState(line.st);
       render();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
     calcBoqRemove: function (el) {
       const idx = parseInt(el.getAttribute('data-idx'), 10);
-      if (isNaN(idx)) return;
+      if (isNaN(idx)) {
+        return;
+      }
       persistBoq(
         loadBoq().filter(function (x, i) {
           return i !== idx;
@@ -7448,7 +8082,9 @@
     calcInstAdd: function () {
       const key = ($('calc-work') || {}).value || '';
       const kind = INSTANCE_KINDS[key];
-      if (!kind) return;
+      if (!kind) {
+        return;
+      }
       instRows.push({
         label: INSTANCE_LABEL[kind] + ' ' + (instRows.length + 1),
         d1: '',
@@ -7461,7 +8097,9 @@
     },
     calcInstDel: function (el) {
       const idx = parseInt(el.getAttribute('data-idx'), 10);
-      if (isNaN(idx)) return;
+      if (isNaN(idx)) {
+        return;
+      }
       instRows.splice(idx, 1);
       renderInstances();
       render();
@@ -7474,7 +8112,9 @@
     },
     calcOpenDel: function (el) {
       const idx = parseInt(el.getAttribute('data-idx'), 10);
-      if (isNaN(idx)) return;
+      if (isNaN(idx)) {
+        return;
+      }
       openRows.splice(idx, 1);
       renderOpenings();
       render();
@@ -7488,14 +8128,18 @@
       renderPrelims();
     },
     calcPrelimAdd: function () {
-      if (prelimItems.length >= 30) return;
+      if (prelimItems.length >= 30) {
+        return;
+      }
       prelimItems.push({ name: '', basis: 'fixed', value: '', weeks: '' });
       persistPrelims(prelimItems);
       renderPrelims();
     },
     calcPrelimRemove: function (el) {
       const idx = parseInt(el.getAttribute('data-idx'), 10);
-      if (isNaN(idx)) return;
+      if (isNaN(idx)) {
+        return;
+      }
       prelimItems.splice(idx, 1);
       persistPrelims(prelimItems);
       renderPrelims();
@@ -7593,11 +8237,15 @@
     calcFormworkAdd: function () {
       const st = readState();
       const m2 = formworkM2(st.work, st.d1, st.d2, st.d3);
-      if (!m2) return;
+      if (!m2) {
+        return;
+      }
       const rateRaw = parseFloat(($('calc-formwork-rate') || {}).value);
       const rate = isFinite(rateRaw) && rateRaw > 0 ? rateRaw : FORM_RATE_DEFAULT;
       const lines = loadBoq();
-      if (lines.length >= 60) return;
+      if (lines.length >= 60) {
+        return;
+      }
       // Formwork is priced as its own bill line through the REAL formwork
       // trade with measuredQty carrying the derived m2 (2026-10-01 fix: the
       // line previously stored markers computeFor never read, so it priced
@@ -7628,7 +8276,9 @@
     calcLintFix: function (el) {
       const work = el.getAttribute('data-fix');
       const lines = loadBoq();
-      if (!work || lines.length >= 60) return;
+      if (!work || lines.length >= 60) {
+        return;
+      }
       // The quantity derives from the first line that the flag came from:
       // formwork from the first pour's contact area; cart-away from the
       // first dig/pour volume (the same allowance basis as the cart3 chip).
@@ -7648,11 +8298,13 @@
                 s.work === 'concrete-drive')
           );
         })[0];
-      if (!src) return;
+      if (!src) {
+        return;
+      }
       let qty = 0;
-      if (work === 'formwork')
+      if (work === 'formwork') {
         qty = formworkM2(src.work, parseFloat(src.d1), parseFloat(src.d2), parseFloat(src.d3)) || 0;
-      else {
+      } else {
         const r = computeFor(
           Object.assign({}, src, { measuredQty: src.measuredQty || src.measuredAuto })
         );
@@ -7701,12 +8353,18 @@
     calcCompAdd: function (el) {
       const id = el.getAttribute('data-cp');
       const def = COMPANION_DEFS[id];
-      if (!def) return;
+      if (!def) {
+        return;
+      }
       const st = readState();
       const qty = def.qty(st);
-      if (!(qty > 0)) return;
+      if (!(qty > 0)) {
+        return;
+      }
       const lines = loadBoq();
-      if (lines.length >= 60) return;
+      if (lines.length >= 60) {
+        return;
+      }
       // Same derived-line mechanism as formwork: a real WORK entry priced by
       // measuredQty through the one math path. Bill lines stay fully
       // editable/removable; recall re-fills the form as a plain measured
@@ -7734,7 +8392,9 @@
     // ---- W3 business details + document fields ----
     calcBrandOpen: function (el) {
       const body = $('calc-brand-body');
-      if (!body) return;
+      if (!body) {
+        return;
+      }
       body.hidden = !body.hidden;
       if (el) {
         el.setAttribute('aria-expanded', String(!body.hidden));
@@ -7757,9 +8417,13 @@
     calcPackApply: function (el) {
       const sel = $('calc-pack-select');
       const id = el && el.tagName === 'SELECT' ? el.value : sel ? sel.value : '';
-      if (!id) return;
+      if (!id) {
+        return;
+      }
       applyPackById(id);
-      if (sel) sel.selectedIndex = 0;
+      if (sel) {
+        sel.selectedIndex = 0;
+      }
     },
     calcPackExport: function () {
       const list = loadPacks();
@@ -7786,15 +8450,21 @@
     },
     calcPackImport: function () {
       const f = $('calc-pack-file');
-      if (f) f.click();
+      if (f) {
+        f.click();
+      }
     },
     calcInstToggle: function () {
       const wrap = $('calc-instances');
       const manual = $('calc-measured-manual');
-      if (!wrap || !manual) return;
+      if (!wrap || !manual) {
+        return;
+      }
       wrap.hidden = manual.checked;
       const q = $('calc-measured-qty');
-      if (q) q.hidden = !manual.checked;
+      if (q) {
+        q.hidden = !manual.checked;
+      }
       renderInstances();
       render();
     },
@@ -7802,7 +8472,9 @@
     calcCompare: renderCompare,
     calcCompareClose: function () {
       const card = $('calc-compare-card');
-      if (card) card.hidden = true;
+      if (card) {
+        card.hidden = true;
+      }
       document.querySelectorAll('.bcp-cmp-check:checked').forEach(function (c) {
         c.checked = false;
       });
@@ -7820,7 +8492,9 @@
       }
       const matEl = $('calc-rate-mat'),
         labEl = $('calc-rate-lab');
-      if (!matEl || !matEl.value || !labEl || !labEl.value) return;
+      if (!matEl || !matEl.value || !labEl || !labEl.value) {
+        return;
+      }
       const list = loadSheets().filter(function (sh) {
         return sh.name.toLowerCase() !== name.toLowerCase();
       });
@@ -7883,7 +8557,9 @@
     },
     calcSheetImport: function () {
       const f = $('calc-sheet-file');
-      if (f) f.click();
+      if (f) {
+        f.click();
+      }
     },
     // ---- E1 (plan v2 Phase 1): exchange rates -----------------------------
     calcFxSave: function () {
@@ -7913,7 +8589,9 @@
     },
     calcFxDel: function (el) {
       const code = el.getAttribute('data-code');
-      if (!code) return;
+      if (!code) {
+        return;
+      }
       const t = loadFx();
       delete t[code];
       persistFx(t);
@@ -7947,7 +8625,9 @@
     },
     calcBookImport: function () {
       const f = $('calc-book-file');
-      if (f) f.click();
+      if (f) {
+        f.click();
+      }
     },
     calcBookClear: function () {
       setActiveBook('');
@@ -7971,18 +8651,26 @@
 
   document.addEventListener('click', function (e) {
     const el = e.target.closest('[data-action]');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const fn = ACTIONS[el.getAttribute('data-action')];
-    if (fn) fn(el);
+    if (fn) {
+      fn(el);
+    }
   });
   // Checkboxes and selects with data-action fire 'change', not a click that
   // carries a value in every browser - dispatch them on change as well (W3:
   // the signature-lines toggle is the first checkbox action on this page).
   document.addEventListener('change', function (e) {
     const el = e.target.closest('[data-action]');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const fn = ACTIONS[el.getAttribute('data-action')];
-    if (fn && el.tagName === 'INPUT' && el.type === 'checkbox') fn(el);
+    if (fn && el.tagName === 'INPUT' && el.type === 'checkbox') {
+      fn(el);
+    }
   });
 
   // Rate-sheet quick picker: choosing a sheet in the <select> applies it.
@@ -7990,14 +8678,18 @@
   // data-id) - resolve by value here, then snap back to the placeholder row.
   document.addEventListener('change', function (e) {
     const el = e.target.closest('[data-action="calcSheetPick"]');
-    if (!el || !el.value) return;
+    if (!el || !el.value) {
+      return;
+    }
     applySheetById(el.value);
     el.selectedIndex = 0;
   });
   // W8 location-pack picker: same value-apply-then-snap convention.
   document.addEventListener('change', function (e) {
     const el = e.target.closest('[data-action="calcPackApply"]');
-    if (!el || !el.value) return;
+    if (!el || !el.value) {
+      return;
+    }
     applyPackById(el.value);
     el.selectedIndex = 0;
   });
@@ -8008,7 +8700,9 @@
     if (e.target.id === 'calc-pack-file') {
       const file = e.target.files && e.target.files[0];
       e.target.value = '';
-      if (!file) return;
+      if (!file) {
+        return;
+      }
       const reader = new FileReader();
       reader.onload = function () {
         let json = null;
@@ -8032,10 +8726,14 @@
       reader.readAsText(file);
       return;
     }
-    if (e.target.id !== 'calc-sheet-file') return;
+    if (e.target.id !== 'calc-sheet-file') {
+      return;
+    }
     const file = e.target.files && e.target.files[0];
     e.target.value = ''; // allow re-choosing the same file
-    if (!file) return;
+    if (!file) {
+      return;
+    }
     const reader = new FileReader();
     reader.onload = function () {
       let json = null;
@@ -8062,10 +8760,14 @@
   // E4: the rate-book file input - same contract as sheets/packs. A bad file
   // reports in the status line and never throws, never clears storage.
   document.addEventListener('change', function (e) {
-    if (!e.target || e.target.id !== 'calc-book-file') return;
+    if (!e.target || e.target.id !== 'calc-book-file') {
+      return;
+    }
     const file = e.target.files && e.target.files[0];
     e.target.value = '';
-    if (!file) return;
+    if (!file) {
+      return;
+    }
     const reader = new FileReader();
     reader.onload = function () {
       let json = null;
@@ -8096,7 +8798,9 @@
   // then-snap, same convention as sheets/packs). Its rates drive the prefill.
   document.addEventListener('change', function (e) {
     const el = e.target.closest('[data-action="calcBookPick"]');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     setActiveBook(el.value);
     el.selectedIndex = 0;
     renderBooks();
@@ -8114,7 +8818,9 @@
   // the chooser works before and after a snapshot restore.
   document.addEventListener('change', function (e) {
     const el = e.target.closest('[data-action="calcBasisPick"]');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     // G1: the basis decides whether the split is derived (all-in) or cleared
     // (measured, days), so the rate fields are refreshed with the new choice.
     refreshRateFields();
@@ -8127,7 +8833,9 @@
   // the checked-on stamp stays visible for the life of the line.
   ['calc-allin', 'calc-allin-verified'].forEach(function (id) {
     const el = $(id);
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     el.addEventListener('input', function () {
       // Owner 2026-10-12 (G1): a typed headline re-derives the split so the
       // two sides always add up to the figure above them. Typing on this line
@@ -8146,7 +8854,9 @@
   });
   ['calc-days', 'calc-day-rate'].forEach(function (id) {
     const el = $(id);
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     el.addEventListener('input', function () {
       render();
     });
@@ -8163,11 +8873,15 @@
   // card's name field mirrors it - both write the same key since W3).
   (function () {
     const el = $('calc-biz-name');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     el.addEventListener('input', function () {
       brandSave({ name: el.value.trim() });
       const cardEl = $('calc-brand-name');
-      if (cardEl && document.activeElement !== cardEl) cardEl.value = el.value.trim();
+      if (cardEl && document.activeElement !== cardEl) {
+        cardEl.value = el.value.trim();
+      }
       render();
     });
   })();
@@ -8176,14 +8890,18 @@
   // piece rows show only on trades that have a piece spec.
   function rateUnitLabel(key) {
     const w = WORK[key];
-    if (!w) return '';
+    if (!w) {
+      return '';
+    }
     // E3: a declared rate-entry unit (from the trade or its active variant)
     // names the basis exactly as the rate source speaks it.
     const vSel = $('calc-variant');
     const ru =
       (vSel && vSel.value && w.variants ? (variantFor(key, vSel.value) || {}).runit : null) ||
       w.runit;
-    if (ru) return 'per ' + ru;
+    if (ru) {
+      return 'per ' + ru;
+    }
     const map = { m2: 'per m2', m3: 'per m3', m: 'per m', t: 'per tonne', L: 'per litre' };
     const imp = _units === 'imperial';
     const impMap = {
@@ -8211,11 +8929,15 @@
   function refreshRateFields() {
     const key = ($('calc-work') || {}).value;
     const w = WORK[key];
-    if (!w) return;
+    if (!w) {
+      return;
+    }
     const d = currentDims();
     const matEl = $('calc-rate-mat'),
       labEl = $('calc-rate-lab');
-    if (!matEl || !labEl) return;
+    if (!matEl || !labEl) {
+      return;
+    }
     // E1+E4: the prefill rate comes from the active rate book first, then
     // the WORK model (or the active variant), ALREADY converted into the
     // estimate currency through the FX table. When the pair is missing the
@@ -8230,7 +8952,7 @@
     const needNote = !m || m.unconvertible;
     if (fxNote) {
       fxNote.hidden = !needNote;
-      if (needNote)
+      if (needNote) {
         fxNote.textContent =
           'Model rates are ' +
           (m && m.unconvertible ? 'in ' + m.src + ' (imported rate book)' : 'US dollars') +
@@ -8239,6 +8961,7 @@
           ' exchange rate in the Exchange rates card below, or type your own rates, to price in ' +
           cur +
           '.';
+      }
     }
     const modelM =
       m && !m.unconvertible && m.mat != null ? String(Math.round(m.mat * 100) / 100) : '';
@@ -8265,7 +8988,9 @@
         }
         allEl.dataset.work = key;
       } else if (modelA !== '') {
-        if (allEl.value === '' || allEl.value === allEl.dataset.model) allEl.value = modelA;
+        if (allEl.value === '' || allEl.value === allEl.dataset.model) {
+          allEl.value = modelA;
+        }
         allEl.dataset.model = modelA;
         allEl.dataset.work = key;
       } else if (allEl.value === allEl.dataset.model) {
@@ -8290,8 +9015,12 @@
       // Prefill empty fields; an UNTOUCHED prefill (value === what we last put
       // there) follows the model when dimensions change the model rate. A typed
       // override is never overwritten - that is the rate freedom.
-      if (matEl.value === '' || matEl.value === matEl.dataset.model) matEl.value = modelM;
-      if (labEl.value === '' || labEl.value === labEl.dataset.model) labEl.value = modelL;
+      if (matEl.value === '' || matEl.value === matEl.dataset.model) {
+        matEl.value = modelM;
+      }
+      if (labEl.value === '' || labEl.value === labEl.dataset.model) {
+        labEl.value = modelL;
+      }
       matEl.dataset.model = modelM;
       labEl.dataset.model = modelL;
     } else {
@@ -8309,7 +9038,9 @@
     $('calc-rate-mat-label').textContent = 'Material rate ' + rateUnitLabel(key);
     $('calc-rate-lab-label').textContent = 'Labor rate ' + rateUnitLabel(key);
     const eqLbl = $('calc-rate-eq-label');
-    if (eqLbl) eqLbl.textContent = 'Equipment / plant hire ' + rateUnitLabel(key);
+    if (eqLbl) {
+      eqLbl.textContent = 'Equipment / plant hire ' + rateUnitLabel(key);
+    }
     // B1 waste field: only trades with a waste spec; label names the allowance,
     // empty field prefills the trade default (typed values are never clobbered).
     const ww = $('calc-waste-wrap'),
@@ -8476,7 +9207,9 @@
   // The family select only filters the VIEW: non-family optgroups hide while
   // their options stay selectable (recalls set #calc-work directly).
   function applyFamilyFilter(sel) {
-    if (!sel) return;
+    if (!sel) {
+      return;
+    }
     const fam = localStorage.getItem(FKEY) || '';
     const keep = fam && FAMILIES[fam] ? FAMILIES[fam].label.split(' - ')[0] : '';
     Array.prototype.forEach.call(sel.querySelectorAll('optgroup'), function (og) {
@@ -8489,7 +9222,9 @@
   function syncFamily() {
     const sel = $('calc-work'),
       fSel = $('calc-family');
-    if (!sel || !fSel) return;
+    if (!sel || !fSel) {
+      return;
+    }
     const key = sel.value;
     const wanted = WORK_FAMILY[key] || '';
     let fam = localStorage.getItem(FKEY) || '';
@@ -8504,17 +9239,21 @@
     }
     applyFamilyFilter(sel);
     const hintEl = $('calc-family-hint');
-    if (hintEl)
+    if (hintEl) {
       hintEl.textContent = familyHintKey(fam)
         ? FAMILIES[fam].hint
         : 'Pick the kind of work first - only its trades stay in the list. Choose All to see every trade.';
+    }
   }
   // The family select's own change handler (delegated below - the page has
   // one dispatch convention).
   function onFamilyChange(val) {
     try {
-      if (val) localStorage.setItem(FKEY, val);
-      else localStorage.removeItem(FKEY);
+      if (val) {
+        localStorage.setItem(FKEY, val);
+      } else {
+        localStorage.removeItem(FKEY);
+      }
     } catch (e) {}
     const sel = $('calc-work');
     if (val && sel && WORK_FAMILY[sel.value] !== val) {
@@ -8522,7 +9261,9 @@
       const first = Object.keys(WORK_FAMILY).find(function (k) {
         return WORK_FAMILY[k] === val;
       });
-      if (first) sel.value = first;
+      if (first) {
+        sel.value = first;
+      }
     }
     syncLabels();
   }
@@ -8532,7 +9273,9 @@
   function renderVariant() {
     const wrap = $('calc-variant-wrap'),
       sel = $('calc-variant');
-    if (!wrap || !sel) return;
+    if (!wrap || !sel) {
+      return;
+    }
     const w = WORK[($('calc-work') || {}).value];
     const vs = w && w.variants;
     wrap.hidden = !vs;
@@ -8549,14 +9292,17 @@
       !vs.some(function (v) {
         return v.id === sel.value;
       })
-    )
+    ) {
       sel.value = vs[0].id;
+    }
   }
 
   function syncLabels() {
     const key = ($('calc-work') || {}).value;
     const w = WORK[key];
-    if (!w) return;
+    if (!w) {
+      return;
+    }
     syncFamily();
     $('calc-d1-label').textContent = dimLabel(w, 'd1');
     $('calc-d2-label').textContent = dimLabel(w, 'd2') || '';
@@ -8565,6 +9311,27 @@
     $('calc-d3-label').textContent = dimLabel(w, 'd3') || '';
     $('calc-d3-wrap').hidden = !w.d3;
     $('calc-d3').hidden = !w.d3;
+    // B1: the custom choice reveals name + unit + quantity + rate and hides
+    // nothing else; any other pick leaves those four empty and hidden.
+    const cWrap = $('calc-custom-wrap');
+    if (cWrap) {
+      cWrap.hidden = key !== 'custom';
+      if (key !== 'custom') {
+        ['calc-custom-name', 'calc-custom-unit', 'calc-custom-qty', 'calc-custom-rate'].forEach(
+          function (id) {
+            const fe = $(id);
+            if (fe) {
+              fe.value = '';
+            }
+            const ee = $(id + '-err');
+            if (ee) {
+              ee.hidden = true;
+              ee.textContent = '';
+            }
+          }
+        );
+      }
+    }
     // Country default tax hint follows selection when no custom override.
     const c = ($('calc-country') || {}).value;
     if ($('calc-country') && !$('calc-tax-override').value) {
@@ -8572,7 +9339,9 @@
     }
     // W3: the Contractors Levy note is Jamaica-specific.
     const jmNote = $('calc-jm-levy-note');
-    if (jmNote) jmNote.hidden = c !== 'JM';
+    if (jmNote) {
+      jmNote.hidden = c !== 'JM';
+    }
     // W2: instance editor follows the work item (rows re-seed per trade).
     renderInstances();
     // W2.7: the openings editor appears only on wall-area trades.
@@ -8585,7 +9354,9 @@
       rlEl = $('calc-rebar-laps');
     if (rlWrap && rlEl) {
       rlWrap.hidden = key !== 'rebar';
-      if (key !== 'rebar') rlEl.value = '';
+      if (key !== 'rebar') {
+        rlEl.value = '';
+      }
     }
     syncBasis();
     refreshRateFields();
@@ -8602,15 +9373,25 @@
   function syncBasis() {
     const key = ($('calc-work') || {}).value || '';
     const sel = $('calc-basis');
-    if (!sel) return;
+    if (!sel) {
+      return;
+    }
     const mode = sel.value || 'measured';
     const onAllin = mode === 'allin',
       onDays = mode === 'days';
-    if ($('calc-allin-wrap')) $('calc-allin-wrap').hidden = !onAllin;
+    if ($('calc-allin-wrap')) {
+      $('calc-allin-wrap').hidden = !onAllin;
+    }
     // The "checked against JIC on" stamp only means anything on an all-in line.
-    if ($('calc-verified-wrap')) $('calc-verified-wrap').hidden = !onAllin;
-    if ($('calc-days-wrap')) $('calc-days-wrap').hidden = !onDays;
-    if ($('calc-day-rate-wrap')) $('calc-day-rate-wrap').hidden = !onDays;
+    if ($('calc-verified-wrap')) {
+      $('calc-verified-wrap').hidden = !onAllin;
+    }
+    if ($('calc-days-wrap')) {
+      $('calc-days-wrap').hidden = !onDays;
+    }
+    if ($('calc-day-rate-wrap')) {
+      $('calc-day-rate-wrap').hidden = !onDays;
+    }
     // Owner 2026-10-12 (G1): the per-unit row used to step aside for the
     // all-in field ("it would invite a faked split"). It now STAYS VISIBLE
     // under the headline, because the split is no longer faked - it is derived
@@ -8625,7 +9406,9 @@
     // The all-in field follows the trade's rate unit and the picked currency,
     // so a per-yd2 trade says "per yd2" and nobody has to guess the money.
     const ru = (WORK[key] || {}).runit;
-    if ($('calc-allin-label')) $('calc-allin-label').textContent = syncAllinCurrencyLabel();
+    if ($('calc-allin-label')) {
+      $('calc-allin-label').textContent = syncAllinCurrencyLabel();
+    }
     // Notifier 1 (D7): advises on the finishes whose daily output swings.
     const dn = $('calc-day-note');
     if (dn) {
@@ -8642,7 +9425,9 @@
   // The published-rate note follows the CHOSEN currency, not the engine's.
   function syncBookNote() {
     const n = $('calc-book-note');
-    if (!n) return;
+    if (!n) {
+      return;
+    }
     const sel = $('calc-basis');
     const mode = sel ? sel.value : 'measured';
     const el = $('calc-allin');
@@ -8751,13 +9536,17 @@
     const m = $('calc-rate-mat'),
       l = $('calc-rate-lab');
     const a = $('calc-allin');
-    if (!sel || !m || !l) return;
+    if (!sel || !m || !l) {
+      return;
+    }
     // A field holds either the model/book PREFILL (value === dataset.model,
     // which must survive untouched - it is the fallback the line prices from
     // once there is no headline) or a figure derived from - or typed under -
     // the headline. Only the latter is ever dropped.
     const dropIfNotModel = function (el) {
-      if (el.value !== '' && el.value !== (el.dataset.model || '')) el.value = '';
+      if (el.value !== '' && el.value !== (el.dataset.model || '')) {
+        el.value = '';
+      }
     };
     const onAllin = sel.value === 'allin';
     const wasAllin = m.dataset.onAllin === '1';
@@ -8774,7 +9563,9 @@
     }
     m.dataset.onAllin = '1';
     l.dataset.onAllin = '1';
-    if (!a) return;
+    if (!a) {
+      return;
+    }
     // The headline must belong to THIS trade (filled by its own prefill, its
     // recall, or typed on this line - see refreshRateFields). One that a
     // previous trade left behind is stale money: it is never broken down, and
@@ -8796,7 +9587,9 @@
     }
     const mv = parseFloat(m.value),
       lv = parseFloat(l.value);
-    if (isFinite(mv) && isFinite(lv) && Math.abs(mv + lv - av) < 0.005) return;
+    if (isFinite(mv) && isFinite(lv) && Math.abs(mv + lv - av) < 0.005) {
+      return;
+    }
     const mat = Math.round(av * matShareFor(($('calc-work') || {}).value || '') * 100) / 100;
     const lab = Math.round((av - mat) * 100) / 100;
     m.value = String(mat);
@@ -8806,7 +9599,9 @@
   // Labels as entered right now (kept for CSV display).
   function currentDimLabels() {
     const w = WORK[($('calc-work') || {}).value];
-    if (!w) return [];
+    if (!w) {
+      return [];
+    }
     return [dimLabel(w, 'd1'), dimLabel(w, 'd2'), dimLabel(w, 'd3')].filter(Boolean);
   }
 
@@ -8821,25 +9616,53 @@
       const v = parseFloat(h.d1);
       if (isFinite(v) && v > 0) {
         const d1s = String(w.d1 || '');
-        if (d1s.indexOf('(mm)') > -1) units = v >= 100 ? 'metric' : 'imperial';
-        else if (d1s.indexOf('(m2)') > -1 || d1s.indexOf('(m3)') > -1 || d1s.indexOf('(m)') > -1)
+        if (d1s.indexOf('(mm)') > -1) {
+          units = v >= 100 ? 'metric' : 'imperial';
+        } else if (
+          d1s.indexOf('(m2)') > -1 ||
+          d1s.indexOf('(m3)') > -1 ||
+          d1s.indexOf('(m)') > -1
+        ) {
           units = v >= 3 ? 'metric' : 'imperial';
+        }
       }
     }
-    if (h.units) units = h.units;
-    if (units) setUnits(units, true);
+    if (h.units) {
+      units = h.units;
+    }
+    if (units) {
+      setUnits(units, true);
+    }
     $('calc-work').value = h.work || 'slab';
     syncLabels();
     $('calc-d1').value = h.d1 || '';
-    if ($('calc-d2')) $('calc-d2').value = h.d2 || '';
-    if ($('calc-d3')) $('calc-d3').value = h.d3 || '';
-    if ($('calc-currency')) $('calc-currency').value = h.currency || 'USD';
-    if ($('calc-country')) $('calc-country').value = h.country || 'US';
-    if ($('calc-quality')) $('calc-quality').value = h.quality || 'standard';
-    if ($('calc-rate-mat')) $('calc-rate-mat').value = '';
-    if ($('calc-rate-lab')) $('calc-rate-lab').value = '';
-    if ($('calc-piece-price')) $('calc-piece-price').value = '';
-    if ($('calc-piece-size')) $('calc-piece-size').value = '';
+    if ($('calc-d2')) {
+      $('calc-d2').value = h.d2 || '';
+    }
+    if ($('calc-d3')) {
+      $('calc-d3').value = h.d3 || '';
+    }
+    if ($('calc-currency')) {
+      $('calc-currency').value = h.currency || 'USD';
+    }
+    if ($('calc-country')) {
+      $('calc-country').value = h.country || 'US';
+    }
+    if ($('calc-quality')) {
+      $('calc-quality').value = h.quality || 'standard';
+    }
+    if ($('calc-rate-mat')) {
+      $('calc-rate-mat').value = '';
+    }
+    if ($('calc-rate-lab')) {
+      $('calc-rate-lab').value = '';
+    }
+    if ($('calc-piece-price')) {
+      $('calc-piece-price').value = '';
+    }
+    if ($('calc-piece-size')) {
+      $('calc-piece-size').value = '';
+    }
     refreshRateFields();
   }
 
@@ -8860,7 +9683,9 @@
     const any = ['calc-d1', 'calc-d2', 'calc-d3'].some(function (id) {
       return $(id) && $(id).value;
     });
-    if (any || silent !== true) render();
+    if (any || silent !== true) {
+      render();
+    }
   }
   function countryLabel(code) {
     const map = {
@@ -8876,12 +9701,93 @@
     return map[code] || code;
   }
 
+  // ---- B2/B3 (DIRECTIVE-ASSISTANT-JIC-RATES-ACCESS): the custom line ---
+  // Four fields, validated IN the page - never trusted from the model. One
+  // plain message per field, shown beside that field; a line that fails
+  // never reaches the bill. Declared BEFORE init: wireCustomFields() runs
+  // at page start and would otherwise hit the temporal dead zone.
+  const CUSTOM_FIELD_RULES = {
+    'calc-custom-name': [
+      function (val) {
+        const t = String(val == null ? '' : val).trim();
+        return t.length >= 1 && t.length <= 60;
+      },
+      'Give the item a name of 1 to 60 characters.'
+    ],
+    'calc-custom-unit': [
+      function (val) {
+        const t = String(val == null ? '' : val).trim();
+        return t.length >= 1 && t.length <= 12;
+      },
+      'Give the unit in 1 to 12 characters, for example m2 or day.'
+    ],
+    'calc-custom-qty': [
+      function (val) {
+        const n = parseFloat(val);
+        return isFinite(n) && n > 0;
+      },
+      'Enter the quantity as a number greater than zero.'
+    ],
+    'calc-custom-rate': [
+      function (val) {
+        const n = parseFloat(val);
+        return isFinite(n) && n > 0;
+      },
+      'Enter your rate as a number greater than zero.'
+    ]
+  };
+  function customFieldOk(id, val) {
+    const rule = CUSTOM_FIELD_RULES[id];
+    return rule ? rule[0](val) : true;
+  }
+  // Returns true when every field the custom choice uses is valid. On
+  // failure each invalid field shows its own message; valid fields stay
+  // quiet, so the user only ever sees what to fix.
+  function validateCustomFields() {
+    if (($('calc-work') || {}).value !== 'custom') {
+      return true;
+    }
+    let ok = true;
+    Object.keys(CUSTOM_FIELD_RULES).forEach(function (id) {
+      const el = $(id);
+      const err = $(id + '-err');
+      const good = el ? customFieldOk(id, el.value) : false;
+      if (!good) {
+        ok = false;
+        if (err) {
+          err.hidden = false;
+          err.textContent = CUSTOM_FIELD_RULES[id][1];
+        }
+      }
+    });
+    return ok;
+  }
+  // While typing, a field that becomes valid clears its own message at
+  // once - the user never has to guess whether a fix took.
+  function wireCustomFields() {
+    Object.keys(CUSTOM_FIELD_RULES).forEach(function (id) {
+      const el = $(id);
+      if (el) {
+        el.addEventListener('input', function () {
+          const err = $(id + '-err');
+          if (err && !err.hidden && customFieldOk(id, el.value)) {
+            err.hidden = true;
+            err.textContent = '';
+          }
+        });
+      }
+    });
+  }
+
   // Init: theme comes from the shared helper (mmgr-theme.js, loaded in <head>
   // with data-sync="1") which applies the saved mode before first paint - no
   // local restore here, a second writer would fight the helper.
   if ($('calc-work')) {
     $('calc-work').addEventListener('change', syncLabels);
-    if ($('calc-family')) $('calc-family').value = localStorage.getItem(FKEY) || '';
+    wireCustomFields();
+    if ($('calc-family')) {
+      $('calc-family').value = localStorage.getItem(FKEY) || '';
+    }
     [
       'calc-currency',
       'calc-country',
@@ -8896,7 +9802,7 @@
       'calc-waste'
     ].forEach(function (id) {
       const el = $(id);
-      if (el)
+      if (el) {
         el.addEventListener('input', function () {
           // Owner 2026-10-12 (G1): editing either side of the split moves the
           // all-in headline with it, and drops the book's prefill marker when
@@ -8906,41 +9812,50 @@
           }
           render();
         });
+      }
     });
     // E1/E4: dims feed dim-dependent model rates (fencing height) - refresh
     // the prefill before pricing so the field IS the money being charged.
     ['calc-d1', 'calc-d2', 'calc-d3'].forEach(function (id) {
       const el = $(id);
-      if (el)
+      if (el) {
         el.addEventListener('input', function () {
           refreshRateFields();
           render();
         });
+      }
     });
     // E1: switching currency re-prefills the model rates for it - the fields
     // must never carry another currency's numbers under the new symbol.
-    if ($('calc-currency'))
+    if ($('calc-currency')) {
       $('calc-currency').addEventListener('change', function () {
         refreshRateFields();
         syncBasis();
         render();
       });
+    }
     // OWNER 2026-10-02: the special-case piece toggle reveals the row, so it
     // must re-run syncLabels (which owns the row's hidden state) before render.
-    if ($('calc-piece-custom'))
+    if ($('calc-piece-custom')) {
       $('calc-piece-custom').addEventListener('change', function () {
         syncLabels();
         render();
       });
+    }
     // W2: instance-row editing recomputes the measured total live; the
     // override field drives render() directly.
     $('calc-instances').addEventListener('input', function (e) {
       const el = e.target;
       const idx = parseInt(el.getAttribute('data-idx'), 10);
       const field = el.getAttribute('data-field');
-      if (isNaN(idx) || !field) return;
-      if (field === 'n') instRows[idx].n = Math.max(1, parseInt(el.value, 10) || 1);
-      else instRows[idx][field] = el.value;
+      if (isNaN(idx) || !field) {
+        return;
+      }
+      if (field === 'n') {
+        instRows[idx].n = Math.max(1, parseInt(el.value, 10) || 1);
+      } else {
+        instRows[idx][field] = el.value;
+      }
       // Keystrokes must NOT rebuild the row the user is typing in (the innerHTML
       // replace drops focus mid-entry); refresh the measured total only. Full
       // re-render stays on add / delete / trade change.
@@ -8948,9 +9863,10 @@
       instSum = s.qty;
       instUnit = s.unit;
       const sumEl = $('calc-inst-sum');
-      if (sumEl)
+      if (sumEl) {
         sumEl.textContent =
           instSum > 0 ? 'Measured total: ' + qtyShown(instSum, instUnit).main : '';
+      }
       render();
     });
     // W2.7: openings rows edit live; the type select fires 'change', the
@@ -8959,16 +9875,21 @@
       const el = e.target;
       const idx = parseInt(el.getAttribute('data-idx'), 10);
       const field = el.getAttribute('data-field');
-      if (isNaN(idx) || !field || !openRows[idx]) return;
-      if (field === 'n') openRows[idx].n = Math.max(1, parseInt(el.value, 10) || 1);
-      else openRows[idx][field] = el.value;
+      if (isNaN(idx) || !field || !openRows[idx]) {
+        return;
+      }
+      if (field === 'n') {
+        openRows[idx].n = Math.max(1, parseInt(el.value, 10) || 1);
+      } else {
+        openRows[idx][field] = el.value;
+      }
       // Same no-rebuild rule as the instances rows: a full renderOpenings() on
       // every keystroke replaces the focused input and eats the rest of the
       // entry. Refresh the deducts-sum only; full re-render stays on add /
       // delete / trade change.
       const a = openingsArea({ openings: JSON.stringify(openRows) }, _units === 'imperial');
       const sumEl = $('calc-open-sum');
-      if (sumEl)
+      if (sumEl) {
         sumEl.textContent =
           a.count > 0
             ? 'Deducts ' +
@@ -8978,6 +9899,7 @@
               ' opening' +
               (a.count === 1 ? '' : 's')
             : '';
+      }
       render();
     };
     const openWrap = $('calc-openings');
@@ -8992,7 +9914,9 @@
     function onCostSuggest() {
       const t = $('calc-oncost-toggle'),
         p = $('calc-oncost-pct');
-      if (!t || !p) return;
+      if (!t || !p) {
+        return;
+      }
       p.disabled = !t.checked;
       if (t.checked && $('calc-country').value === 'JM' && !p.dataset.touched && !p.value) {
         p.value = '12.5';
@@ -9009,7 +9933,9 @@
       const el = e.target;
       const idx = parseInt(el.getAttribute('data-idx'), 10);
       const field = el.getAttribute('data-field');
-      if (isNaN(idx) || !field || !prelimItems[idx]) return;
+      if (isNaN(idx) || !field || !prelimItems[idx]) {
+        return;
+      }
       prelimItems[idx][field] = el.value;
       persistPrelims(prelimItems);
       renderPrelims();
@@ -9026,7 +9952,9 @@
       'calc-disc-amt'
     ].forEach(function (id) {
       const el = $(id);
-      if (!el) return;
+      if (!el) {
+        return;
+      }
       el.addEventListener('input', function () {
         persistRollupPrefs({
           designC: $('calc-design-c').value,
@@ -9041,13 +9969,20 @@
       });
     });
     const cashMode = $('calc-cash-mode');
-    if (cashMode) cashMode.addEventListener('change', renderCash);
+    if (cashMode) {
+      cashMode.addEventListener('change', renderCash);
+    }
     $('calc-country').addEventListener('change', function () {
       // W3: the Contractors Levy note is Jamaica-specific.
       const note = $('calc-jm-levy-note');
-      if (note) note.hidden = $('calc-country').value !== 'JM';
-      if ($('calc-oncost-toggle').checked) onCostSuggest();
-      else render();
+      if (note) {
+        note.hidden = $('calc-country').value !== 'JM';
+      }
+      if ($('calc-oncost-toggle').checked) {
+        onCostSuggest();
+      } else {
+        render();
+      }
     });
     // Saved unit system comes back before first interaction; silent keeps the
     // empty-state text until the user actually enters dimensions.
@@ -9065,7 +10000,9 @@
   // OWNER 2026-10-02: the shipped Jamaica book is the default on FIRST visit
   // (self-guarding via JICSEEN, so the user's own choice is never overridden
   // afterwards). Runs BEFORE renderBooks so the picker paints already-selected.
-  if (ACTIONS.calcBookDefault) ACTIONS.calcBookDefault();
+  if (ACTIONS.calcBookDefault) {
+    ACTIONS.calcBookDefault();
+  }
   renderBooks();
   // W1 bill of quantities: paint the stored bill on load.
   renderBoq();
@@ -9078,34 +10015,54 @@
   // W5 waterfall: restore the saved contingency/escalation settings.
   (function () {
     const p = loadRollupPrefs();
-    if ($('calc-design-c')) $('calc-design-c').value = p.designC != null ? p.designC : '10';
-    if ($('calc-constr-c')) $('calc-constr-c').value = p.constrC != null ? p.constrC : '5';
-    if ($('calc-esc-pct')) $('calc-esc-pct').value = p.escPct != null ? p.escPct : '5';
+    if ($('calc-design-c')) {
+      $('calc-design-c').value = p.designC != null ? p.designC : '10';
+    }
+    if ($('calc-constr-c')) {
+      $('calc-constr-c').value = p.constrC != null ? p.constrC : '5';
+    }
+    if ($('calc-esc-pct')) {
+      $('calc-esc-pct').value = p.escPct != null ? p.escPct : '5';
+    }
     // OWNER 2026-10-02: 12 months is the common Jamaican residential build and
     // it makes the cash plan work the moment the user clicks Export, instead of
     // failing on a blank field. Their own value, once typed, always wins.
-    if ($('calc-months')) $('calc-months').value = p.months != null ? p.months : '12';
-    if ($('calc-disc-pct')) $('calc-disc-pct').value = p.discPct != null ? p.discPct : '';
-    if ($('calc-disc-amt')) $('calc-disc-amt').value = p.discAmt != null ? p.discAmt : '';
+    if ($('calc-months')) {
+      $('calc-months').value = p.months != null ? p.months : '12';
+    }
+    if ($('calc-disc-pct')) {
+      $('calc-disc-pct').value = p.discPct != null ? p.discPct : '';
+    }
+    if ($('calc-disc-amt')) {
+      $('calc-disc-amt').value = p.discAmt != null ? p.discAmt : '';
+    }
   })();
   // W3: brand + document fields restore on load (before first render so the
   // sheet has its data); the logo pipeline downgrades big images on-device.
   (function () {
     renderBrand();
     const dEl = $('calc-doc-date');
-    if (dEl && !dEl.value) dEl.value = new Date().toISOString().slice(0, 10);
+    if (dEl && !dEl.value) {
+      dEl.value = new Date().toISOString().slice(0, 10);
+    }
     const c = docCounterLoad();
     const dType = docType();
     const noEl = $('calc-doc-no');
-    if (noEl && !noEl.value) noEl.placeholder = docNoSuggest(dType, c[dType]) + ' (next number)';
+    if (noEl && !noEl.value) {
+      noEl.placeholder = docNoSuggest(dType, c[dType]) + ' (next number)';
+    }
     const logoFile = $('calc-logo-file');
-    if (logoFile)
+    if (logoFile) {
       logoFile.addEventListener('change', function () {
         const f = logoFile.files && logoFile.files[0];
         const note = $('calc-logo-note');
-        if (!f) return;
+        if (!f) {
+          return;
+        }
         const say = function (m) {
-          if (note) note.textContent = m;
+          if (note) {
+            note.textContent = m;
+          }
         };
         if (!/^image\//.test(f.type)) {
           say('That file is not an image. Choose a PNG or JPG.');
@@ -9143,6 +10100,7 @@
         };
         reader.readAsDataURL(f);
       });
+    }
     [
       'calc-brand-name',
       'calc-brand-phone',
@@ -9153,7 +10111,9 @@
       'calc-brand-sigtitle'
     ].forEach(function (id) {
       const el = $(id);
-      if (!el) return;
+      if (!el) {
+        return;
+      }
       el.addEventListener('input', function () {
         const patch = {};
         patch[
@@ -9179,37 +10139,49 @@
       'calc-doc-due'
     ].forEach(function (id) {
       const el = $(id);
-      if (el) el.addEventListener('input', render);
+      if (el) {
+        el.addEventListener('input', render);
+      }
     });
     const dTypeSel = $('calc-doc-type');
-    if (dTypeSel)
+    if (dTypeSel) {
       dTypeSel.addEventListener('change', function () {
         const cc = docCounterLoad();
         const t = docType();
         const ne = $('calc-doc-no');
-        if (ne && !ne.value) ne.placeholder = docNoSuggest(t, cc[t]) + ' (next number)';
+        if (ne && !ne.value) {
+          ne.placeholder = docNoSuggest(t, cc[t]) + ' (next number)';
+        }
       });
-    if (localStorage.getItem('mmgr_calc_brand_open') === '1')
+    }
+    if (localStorage.getItem('mmgr_calc_brand_open') === '1') {
       ACTIONS.calcBrandOpen(
         $('calc-brand-card')
           ? $('calc-brand-card').querySelector('[data-action="calcBrandOpen"]')
           : null
       );
+    }
   })();
   // How-to guide: paint the first step (open state decides visibility).
   renderGuide();
   // First-visit tutorial nudge: only when the flag is absent.
   (function () {
     const n = $('calc-tour-nudge');
-    if (n && !tourDone()) n.hidden = false;
+    if (n && !tourDone()) {
+      n.hidden = false;
+    }
   })();
   // W5 workspace follow: one silent probe for signed-in accounts, after first
   // paint. Signed-out / offline / any failure: silent no-op, offline intact.
-  if (navigator.onLine) setTimeout(wsProbe, 1500);
+  if (navigator.onLine) {
+    setTimeout(wsProbe, 1500);
+  }
   // Swipe support on the guide body (40px threshold, horizontal only).
   (function () {
     const body = $('calc-guide-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     let x0 = null;
     body.addEventListener(
       'touchstart',
@@ -9221,11 +10193,16 @@
     body.addEventListener(
       'touchend',
       function (e) {
-        if (x0 === null) return;
+        if (x0 === null) {
+          return;
+        }
         const dx = e.changedTouches[0].clientX - x0;
         if (Math.abs(dx) > 40) {
-          if (dx < 0) ACTIONS.calcGuideNext();
-          else ACTIONS.calcGuidePrev();
+          if (dx < 0) {
+            ACTIONS.calcGuideNext();
+          } else {
+            ACTIONS.calcGuidePrev();
+          }
         }
         x0 = null;
       },
@@ -9255,6 +10232,220 @@
   // the book sends only the rate rows that match it (the old fixed window was
   // the first 12 families x 3 variants, so the relevant rate could be missing
   // entirely); with none it behaves exactly as before.
+  /* A2-A4 (DIRECTIVE-ASSISTANT-JIC-RATES-ACCESS, 2026-10-13 - rate access).
+     The assistant's window onto the rates used to be the IMPORTED book only:
+     on a normal visit there is none, so it said "no rates" while 811
+     published rows sat on the device. It now:
+       - opens the rate section with ONE scope line built from the loaded
+         book - name, years, total, per-trade counts - or the exact A2
+         failure line when the full file never arrived (the ranking then
+         falls back to the 100 rows this page ships inline);
+       - ranks EVERY row (the full 811 plus the active imported book)
+         against the question - stop words stripped, simple plurals reduced,
+         description and trade-label term hits, a trade-name boost and an
+         exact-phrase boost - and returns at most 12 whole rows, never a row
+         started past 8500 characters (the panel slices the block at 9000). */
+  var RATE_STOP_WORDS = {
+    the: 1,
+    a: 1,
+    an: 1,
+    of: 1,
+    for: 1,
+    in: 1,
+    on: 1,
+    at: 1,
+    to: 1,
+    and: 1,
+    or: 1,
+    is: 1,
+    are: 1,
+    was: 1,
+    were: 1,
+    be: 1,
+    been: 1,
+    with: 1,
+    as: 1,
+    by: 1,
+    from: 1,
+    that: 1,
+    this: 1,
+    these: 1,
+    it: 1,
+    its: 1,
+    do: 1,
+    does: 1,
+    did: 1,
+    you: 1,
+    your: 1,
+    we: 1,
+    our: 1,
+    my: 1,
+    me: 1,
+    i: 1,
+    what: 1,
+    which: 1,
+    who: 1,
+    how: 1,
+    when: 1,
+    where: 1,
+    there: 1,
+    here: 1,
+    can: 1,
+    could: 1,
+    would: 1,
+    should: 1,
+    will: 1,
+    shall: 1,
+    may: 1,
+    might: 1,
+    must: 1,
+    please: 1,
+    want: 1,
+    need: 1,
+    give: 1,
+    get: 1,
+    have: 1,
+    has: 1,
+    had: 1,
+    not: 1,
+    no: 1,
+    yes: 1,
+    if: 1,
+    then: 1,
+    than: 1,
+    more: 1,
+    most: 1,
+    some: 1,
+    any: 1,
+    all: 1,
+    into: 1,
+    up: 1,
+    out: 1,
+    off: 1,
+    over: 1,
+    under: 1,
+    about: 1,
+    many: 1,
+    much: 1,
+    also: 1,
+    per: 1,
+    one: 1,
+    two: 1,
+    three: 1,
+    // "rate"/"price" name the SUBJECT of nearly every question, so they are
+    // scaffolding, not content: "rate for excavation in stiff clay" scores on
+    // excavation, stiff and clay, not on the word rate.
+    rate: 1,
+    rates: 1,
+    price: 1,
+    prices: 1,
+    cost: 1,
+    costs: 1,
+    figure: 1,
+    figures: 1,
+    number: 1,
+    numbers: 1,
+    charge: 1,
+    charges: 1,
+    amount: 1,
+    amounts: 1,
+    value: 1,
+    values: 1
+  };
+  function rateNorm(s) {
+    return String(s === undefined || s === null ? '' : s)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .replace(/ +/g, ' ')
+      .replace(/^ | $/g, '');
+  }
+  // Simple plural reduction - tiles -> tile, boxes -> box, stories -> story.
+  function rateStem(w) {
+    if (w.length > 4 && /ies$/.test(w)) {
+      return w.slice(0, -3) + 'y';
+    }
+    if (w.length > 4 && /(sses|shes|ches|xes|zes)$/.test(w)) {
+      return w.slice(0, -2);
+    }
+    if (w.length > 3 && /s$/.test(w) && !/(ss|us|is)$/.test(w)) {
+      return w.slice(0, -1);
+    }
+    return w;
+  }
+  function rateTokens(s) {
+    var words = rateNorm(s).split(' ');
+    var toks = [];
+    for (var i = 0; i < words.length; i++) {
+      var w = words[i];
+      if (!w || RATE_STOP_WORDS[w]) {
+        continue;
+      }
+      var st = rateStem(w);
+      if (toks.indexOf(st) < 0) {
+        toks.push(st);
+      }
+    }
+    return toks;
+  }
+  // A term hits when it equals a word or shares its stem-prefix (paint with
+  // painting, block with blockwork). Both sides need 4 characters, so a short
+  // fragment cannot match half the book.
+  function rateTokenHit(toks, t) {
+    for (var i = 0; i < toks.length; i++) {
+      var x = toks[i];
+      if (x === t) {
+        return true;
+      }
+      if (t.length >= 4 && x.length >= 4 && (x.indexOf(t) === 0 || t.indexOf(x) === 0)) {
+        return true;
+      }
+    }
+    return false;
+  }
+  function rateScoreRow(qTokens, qPhrase, descToks, labelToks, rowNorm) {
+    var s = 0;
+    for (var i = 0; i < qTokens.length; i++) {
+      var t = qTokens[i];
+      if (rateTokenHit(descToks, t)) {
+        s += 1;
+      }
+      if (rateTokenHit(labelToks, t)) {
+        // the label's own term hit (+1) and the trade-name boost (+2)
+        s += 3;
+      }
+    }
+    if (qPhrase && (' ' + rowNorm + ' ').indexOf(' ' + qPhrase + ' ') > -1) {
+      s += 3;
+    }
+    return s;
+  }
+  // Same item in both books - the user's own import takes the slot ahead of
+  // the published row.
+  function rateSameItem(a, c) {
+    if (!a || !c) {
+      return false;
+    }
+    if (a === c) {
+      return true;
+    }
+    return a.length >= 8 && c.length >= 8 && (a.indexOf(c) > -1 || c.indexOf(a) > -1);
+  }
+  // An imported family prices through a work item only when its family or
+  // variant IS one of the page's work keys or labels.
+  function rateInCalc(keys, fam, variant) {
+    var f = rateNorm(fam);
+    var v = rateNorm(variant);
+    for (var i = 0; i < keys.length; i++) {
+      var w = WORK[keys[i]] || {};
+      var kn = rateNorm(keys[i]);
+      var ln = rateNorm(w.label || w.name || '');
+      if ((kn && (kn === f || kn === v)) || (ln && (ln === f || ln === v))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   function calcRateBookText(query) {
     var out = [];
     try {
@@ -9268,66 +10459,177 @@
             })
             .join('; ')
       );
-      var b = activeBook();
-      if (b && b.rates) {
-        // Book rates are nested work -> variant -> { allIn, unit }.
-        var words = String(query || '')
-          .toLowerCase()
-          .split(/[^a-z0-9]+/)
-          .filter(function (w) {
-            return w.length > 2;
-          });
-        var fams = Object.keys(b.rates);
-        var rows = [];
-        var seen = [];
-        fams.forEach(function (fam) {
-          var variants = b.rates[fam] || {};
-          var vk = Object.keys(variants);
-          var picked = [];
-          if (words.length) {
-            picked = vk.filter(function (v) {
-              var hay = (fam + ' ' + v + ' ' + ((variants[v] || {}).label || '')).toLowerCase();
-              return words.some(function (w) {
-                return hay.indexOf(w) > -1;
-              });
-            });
-            if (!picked.length) {
-              return;
-            }
-          } else {
-            if (seen.length >= 12) {
-              return;
-            }
-            picked = vk.slice(0, 3);
-          }
-          picked.slice(0, 6).forEach(function (v) {
-            var r = variants[v] || {};
-            var amt = r.allIn !== undefined ? r.allIn : r.rate;
-            if (amt === undefined || amt === null || amt === '') {
-              return;
-            }
-            rows.push(fam + '/' + v + ' ' + amt + (r.unit ? ' per ' + r.unit : ''));
-          });
-          if (seen.indexOf(fam) < 0) {
-            seen.push(fam);
-          }
+      // A2 - the scope line, always first in the rate section: which book,
+      // what years, how many rates, how many per trade. The full file is
+      // loaded by the panel mount / the rate-book card through rrLoadFull.
+      var full = _rrFull && _rrFull.rows && _rrFull.rows.length ? _rrFull : null;
+      var years = (full && full.years) || JIC_YEARS;
+      if (full) {
+        var counts = {};
+        full.rows.forEach(function (r) {
+          counts[r.t] = (counts[r.t] || 0) + 1;
         });
-        rows = rows.slice(0, words.length ? 30 : 36);
+        var scopeTrades = (full.trades || []).map(function (t) {
+          return (t.label || t.tid) + ' ' + (counts[t.tid] || 0);
+        });
         out.push(
-          'Active rate book: ' +
-            (b.name || b.id || 'imported book') +
-            ' - ' +
-            fams.length +
-            ' work families. ' +
-            (words.length ? 'Rates for this question: ' : 'Rates to quote from: ') +
-            (rows.join('; ') || '(no numeric rates)') +
+          'Jamaica rate book ' +
+            years +
+            ': ' +
+            full.rows.length +
+            ' rates across ' +
+            (full.trades || []).length +
+            ' trades - ' +
+            scopeTrades.join(', ') +
             '.'
         );
       } else {
-        out.push('Active rate book: none - the built-in planning-grade model rates are in use.');
+        out.push(
+          'The full JIC book could not load on this device; only the rates already on this page are available.'
+        );
+      }
+      var b = activeBook();
+      out.push(
+        b && b.rates
+          ? 'Active rate book: ' +
+              (b.name || b.id || 'imported book') +
+              ' - ' +
+              Object.keys(b.rates).length +
+              ' work families.'
+          : 'Active rate book: no import - the built-in planning-grade model rates are in use.'
+      );
+      // A3 - rank every row: the full 811 (or the inline 100 while the file
+      // is unavailable) plus the active imported book, top 12 by score.
+      var q = rateNorm(query || '');
+      var qTokens = rateTokens(query || '');
+      var fullLabels = {};
+      if (full) {
+        (full.trades || []).forEach(function (t) {
+          fullLabels[t.tid] = t.label;
+        });
+      }
+      var candidates = [];
+      var seq = 0;
+      rrRows().forEach(function (r) {
+        var label = fullLabels[r.tid] || r.trade || r.tid;
+        var desc = String(r.desc || '');
+        var s = rateScoreRow(
+          qTokens,
+          q,
+          rateTokens(desc),
+          rateTokens(label),
+          rateNorm(label + ' ' + desc)
+        );
+        if (s <= 0) {
+          return;
+        }
+        var hashAt = String(r.ref || '').indexOf('#');
+        var ref =
+          hashAt > -1
+            ? label +
+              ' #' +
+              String(r.ref)
+                .slice(hashAt + 1)
+                .trim()
+            : label + ' ' + String(r.ref || '');
+        candidates.push({
+          s: s,
+          seq: seq++,
+          imp: false,
+          key: rateNorm(desc),
+          line:
+            ref +
+            ' | ' +
+            desc +
+            ' | J$' +
+            r.metRate +
+            (r.metUnit ? ' per ' + r.metUnit : '') +
+            ' | source: JIC ' +
+            years +
+            ' | in calculator: ' +
+            (r.inApp ? 'yes' : 'no')
+        });
+      });
+      if (b && b.rates) {
+        Object.keys(b.rates).forEach(function (fam) {
+          var variants = b.rates[fam] || {};
+          var vk = Object.keys(variants);
+          vk.forEach(function (v, vi) {
+            var vr = variants[v] || {};
+            var amt = vr.allIn !== undefined ? vr.allIn : vr.rate;
+            if (amt === undefined || amt === null || amt === '') {
+              return;
+            }
+            var lab = String(vr.label || v || fam);
+            var hay = fam + ' ' + v + ' ' + (vr.label || '');
+            var s = rateScoreRow(
+              qTokens,
+              q,
+              rateTokens(hay),
+              rateTokens(fam),
+              rateNorm(fam + ' ' + hay)
+            );
+            if (s <= 0) {
+              return;
+            }
+            candidates.push({
+              s: s,
+              seq: seq++,
+              imp: true,
+              key: rateNorm(lab),
+              line:
+                fam +
+                ' #' +
+                (vi + 1) +
+                ' | ' +
+                lab +
+                ' | J$' +
+                amt +
+                (vr.unit ? ' per ' + vr.unit : '') +
+                ' | source: ' +
+                (b.name || b.id || 'imported book') +
+                ' | in calculator: ' +
+                (rateInCalc(keys, fam, v) ? 'yes' : 'no')
+            });
+          });
+        });
+      }
+      candidates.sort(function (x, y) {
+        return y.s - x.s || x.seq - y.seq;
+      });
+      // The same item in both sources: the imported row takes the slot
+      // directly ahead of the published one.
+      candidates.slice().forEach(function (e) {
+        if (!e.imp) {
+          return;
+        }
+        for (var j = 0; j < candidates.length; j++) {
+          var c = candidates[j];
+          if (c.imp || !rateSameItem(e.key, c.key)) {
+            continue;
+          }
+          candidates.splice(candidates.indexOf(e), 1);
+          candidates.splice(candidates.indexOf(c), 0, e);
+          break;
+        }
+      });
+      // A3/A5 - at most 12 rows, and never START a row that would push the
+      // text past 8500 characters, so no row is ever cut in half.
+      var added = 0;
+      var used = out.join('\n').length;
+      for (var n = 0; n < candidates.length && added < 12; n++) {
+        var line = candidates[n].line;
+        if (used + 1 + line.length >= 8500) {
+          break;
+        }
+        out.push(line);
+        used += 1 + line.length;
+        added++;
       }
       var st = readState();
-      if (st && st.work) out.push('The work item selected on the page is "' + st.work + '".');
+      if (st && st.work) {
+        out.push('The work item selected on the page is "' + st.work + '".');
+      }
       if (lastResult && !lastResult.error) {
         out.push(
           'The line on screen prices at ' +
@@ -9355,6 +10657,83 @@
      Money is deliberately NOT computed here. There is one pricing engine on this
      page and it is render(); the check reports only the quantity the work's own
      q() would produce, so a preview can never disagree with the bill. */
+  // B3: the custom line's four fields. A model proposal (v.custom) is
+  // validated as given; otherwise the live form is read. Every failure is
+  // one named field in plain words, so the assistant asks for exactly what
+  // is missing - never a bare "something failed".
+  function customCheck(v, out) {
+    const src = v && v.custom && typeof v.custom === 'object' ? v.custom : null;
+    const g = function (prop, id) {
+      if (src) {
+        return src[prop];
+      }
+      const el = $(id);
+      return el ? el.value : '';
+    };
+    const str = function (x) {
+      return x === undefined || x === null ? '' : String(x);
+    };
+    const label = str(g('label', 'calc-custom-name')).trim();
+    const unit = str(g('unit', 'calc-custom-unit')).trim();
+    const qv = parseFloat(str(g('qty', 'calc-custom-qty')));
+    const rv = parseFloat(str(g('rate', 'calc-custom-rate')));
+    out.work = 'custom';
+    out.mode = 'total';
+    if (label.length < 1 || label.length > 60) {
+      out.missing.push({
+        field: 'label',
+        label: 'Item name',
+        unit: '',
+        hint: 'Give the item a name of 1 to 60 characters.'
+      });
+    }
+    if (unit.length < 1 || unit.length > 12) {
+      out.missing.push({
+        field: 'unit',
+        label: 'Unit',
+        unit: '',
+        hint: 'Give the unit in 1 to 12 characters, for example m2 or day.'
+      });
+    }
+    // The Quick total quantity counts as the custom line's quantity, so the
+    // one measurement x one rate path prices it too.
+    const mq = parseFloat(str(v.measuredQty));
+    const qty = isFinite(qv) && qv > 0 ? qv : isFinite(mq) && mq > 0 ? mq : null;
+    if (qty === null) {
+      out.missing.push({
+        field: 'qty',
+        label: 'Quantity',
+        unit: '',
+        hint: 'Enter the quantity as a number greater than zero.'
+      });
+    }
+    // A proposal must carry its own valid rate (the page never invents one);
+    // the form may also price from the all-in field when the chooser says
+    // the all-in basis is in play - the same rule the engine applies.
+    let rate = isFinite(rv) && rv > 0 ? rv : null;
+    if (rate === null && !src) {
+      const basisEl = $('calc-basis');
+      const basis = basisEl ? basisEl.value || 'measured' : 'measured';
+      const av = parseFloat(str(($('calc-allin') || {}).value));
+      if (isFinite(av) && av > 0 && basis !== 'days' && basis !== 'measured') {
+        rate = av;
+      }
+    }
+    if (rate === null) {
+      out.missing.push({
+        field: 'rate',
+        label: 'Rate',
+        unit: '',
+        hint: 'Enter your rate as a number greater than zero.'
+      });
+    }
+    out.ok = out.missing.length === 0;
+    if (out.ok) {
+      out.preview = { qty: qty, unit: unit, qtyLabel: 'Quantity' };
+    }
+    return out;
+  }
+
   function calcCheck(v) {
     var out = { ok: false, work: '', mode: 'dims', missing: [], preview: null, error: '' };
     if (!v || typeof v !== 'object') {
@@ -9363,6 +10742,12 @@
     }
     var sel = $('calc-work');
     var key = v.work || (sel && sel.value) || '';
+    // B3: a custom proposal (or the custom choice) validates its OWN four
+    // fields before any work-item lookup - the model's object when passed,
+    // the live form otherwise.
+    if (v.custom || key === 'custom') {
+      return customCheck(v, out);
+    }
     var w = WORK[key];
     if (!w) {
       out.error = 'that work item is not on this page';
@@ -9434,16 +10819,95 @@
     return out;
   }
 
+  // B6 (DIRECTIVE section 3): self-enforcing guards, because the model can be
+  // wrong. The rate proof for source:"user" lives in js/calc-ai.js - only the
+  // panel can see the conversation. Everything the PAGE can prove - markup or
+  // control characters in the name or unit, a JIC source whose rate differs
+  // from the loaded book by a cent, and a bill already at its 60-line cap -
+  // rejects here, before a single field is touched: no line, no fill.
+  var B6_RATE_NOTICE =
+    'I could not add that line because the rate did not match what you gave me. Tell me the rate again and I will add it.';
+  function b6CustomGuard(c) {
+    var str = function (x) {
+      return String(x === undefined || x === null ? '' : x);
+    };
+    if (/[\u0000-\u001f\u007f<>]/.test(str(c.label) + str(c.unit))) {
+      return 'I could not add that line because the name or the unit contained markup. Ask for it again in plain words and I will add it.';
+    }
+    var src = str(c.source);
+    if (/^JIC\s+/.test(src)) {
+      var ref = src.replace(/^JIC\s+/, '');
+      var rows = rrRows();
+      var hit = null;
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i].ref === ref) {
+          hit = rows[i];
+          break;
+        }
+      }
+      var rate = Number(c.rate);
+      if (
+        !hit ||
+        !isFinite(rate) ||
+        Math.round(rate * 100) !== Math.round(Number(hit.metRate) * 100)
+      ) {
+        return B6_RATE_NOTICE;
+      }
+    }
+    if (loadBoq().length >= 60) {
+      return 'The bill is full at 60 lines. Remove a line before adding another.';
+    }
+    return '';
+  }
+
   function calcPopulate(v) {
     try {
-      if (!v || typeof v !== 'object') return { ok: false, error: 'nothing to add' };
+      if (!v || typeof v !== 'object') {
+        return { ok: false, error: 'nothing to add' };
+      }
       var sel = $('calc-work');
+      // B3: a custom proposal selects the custom choice and fills its four
+      // fields; the SAME validation and the SAME calcBoqAdd dispatch then
+      // run as for any other line - a proposal and a click stay one path.
+      if (v.custom && typeof v.custom === 'object') {
+        var b6 = b6CustomGuard(v.custom);
+        if (b6) {
+          return { ok: false, error: b6 };
+        }
+        if (!sel) {
+          return { ok: false, error: 'the calculator form is not on this page' };
+        }
+        sel.value = 'custom';
+        syncLabels();
+        var cflds = [
+          ['calc-custom-name', v.custom.label],
+          ['calc-custom-unit', v.custom.unit],
+          ['calc-custom-qty', v.custom.qty],
+          ['calc-custom-rate', v.custom.rate]
+        ];
+        for (var ci = 0; ci < cflds.length; ci++) {
+          var cel = $(cflds[ci][0]);
+          if (cel) {
+            cel.value =
+              cflds[ci][1] === undefined || cflds[ci][1] === null ? '' : String(cflds[ci][1]);
+          }
+          var cerr = $(cflds[ci][0] + '-err');
+          if (cerr) {
+            cerr.hidden = true;
+            cerr.textContent = '';
+          }
+        }
+      }
       if (v.work) {
-        if (!sel) return { ok: false, error: 'the calculator form is not on this page' };
+        if (!sel) {
+          return { ok: false, error: 'the calculator form is not on this page' };
+        }
         var known = Array.prototype.some.call(sel.options || [], function (o) {
           return o.value === v.work;
         });
-        if (!known) return { ok: false, error: 'that work item is not on this page' };
+        if (!known) {
+          return { ok: false, error: 'that work item is not on this page' };
+        }
         sel.value = v.work;
         syncLabels();
       }
@@ -9453,7 +10917,9 @@
       // how a second line used to price with the first line's height.
       var put = function (name, id, allowed) {
         var el = $(id);
-        if (!el) return;
+        if (!el) {
+          return;
+        }
         if (!allowed || v[name] === undefined || v[name] === null || v[name] === '') {
           el.value = '';
           return;
@@ -9465,9 +10931,13 @@
       put('d3', 'calc-d3', !!w.d3);
       if (v.measuredQty !== undefined && v.measuredQty !== null && v.measuredQty !== '') {
         var mq = $('calc-measured-qty');
-        if (mq) mq.value = String(v.measuredQty);
+        if (mq) {
+          mq.value = String(v.measuredQty);
+        }
         var mt = $('calc-measured-manual');
-        if (mt) mt.checked = true;
+        if (mt) {
+          mt.checked = true;
+        }
       }
       // Diagnose BEFORE rendering, so the reply names the box that is actually
       // short instead of the old blanket "those figures do not price".
@@ -9502,6 +10972,11 @@
   }
 
   window.MMGR_CALC_RATEBOOK = calcRateBookText;
+  // A1: the panel's mount and send path drive the ONE full-book loader. It
+  // used to be looked up as a bare global that never existed, so the
+  // 811-row book never loaded outside the rate-book card - the assistant
+  // could not index the rates the owner published.
+  window.MMGR_JIC_FULL_LOAD = rrLoadFull;
   // B1: the dry run, so the panel can ask for ONE missing box in plain words
   // instead of being told the figures failed.
   window.MMGR_CALC_CHECK = calcCheck;

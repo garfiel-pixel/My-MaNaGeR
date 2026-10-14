@@ -26,7 +26,9 @@ var MMGR = window.MMGR || {};
   function getPendingEditorCode() {
     try {
       const raw = localStorage.getItem(pendingCodeKey());
-      if (!raw) return null;
+      if (!raw) {
+        return null;
+      }
       const p = JSON.parse(raw);
       return p && p.code ? p : null;
     } catch (e) {
@@ -58,15 +60,21 @@ var MMGR = window.MMGR || {};
 
   function sectionLabel(key) {
     const sections = C._getSections();
-    if (!sections) return key;
+    if (!sections) {
+      return key;
+    }
     for (let i = 0; i < sections.length; i++) {
-      if (sections[i].key === key) return sections[i].label || key;
+      if (sections[i].key === key) {
+        return sections[i].label || key;
+      }
     }
     return key;
   }
 
   function pendingBannerHtml(pendingCode) {
-    if (!pendingCode) return '';
+    if (!pendingCode) {
+      return '';
+    }
     const isView = pendingCode.role === 'view';
     const isClient = pendingCode.role === 'client';
     const isApi = pendingCode.role === 'api';
@@ -165,7 +173,9 @@ var MMGR = window.MMGR || {};
 
   function renderShare() {
     const wrap = $('ctrl-share');
-    if (!wrap) return;
+    if (!wrap) {
+      return;
+    }
     const code = C.getCode();
     const ecode = C.getECode();
     const escope = C.getEScope();
@@ -239,9 +249,15 @@ var MMGR = window.MMGR || {};
     const paneEd = wrap.querySelector('.share-subpane[data-pane="editor"]');
     const paneCl = wrap.querySelector('.share-subpane[data-pane="client"]');
     const paneAk = wrap.querySelector('.share-subpane[data-pane="api"]');
-    if (paneEd) paneEd.innerHTML = editorPaneInner();
-    if (paneCl) paneCl.innerHTML = clientCodesHtml();
-    if (paneAk) paneAk.innerHTML = apiKeysHtml();
+    if (paneEd) {
+      paneEd.innerHTML = editorPaneInner();
+    }
+    if (paneCl) {
+      paneCl.innerHTML = clientCodesHtml();
+    }
+    if (paneAk) {
+      paneAk.innerHTML = apiKeysHtml();
+    }
   }
   // Editor pane body: the editor-codes section (header row, create row, scope
   // box, list) extracted from the branch bodies above so sharePane() can slot

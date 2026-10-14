@@ -17,7 +17,9 @@ const ROOT = path.join(__dirname, '..');
 let fails = 0;
 function ok(label, cond, extra) {
   console.log((cond ? 'PASS  ' : 'FAIL  ') + label + (extra ? '  [' + extra + ']' : ''));
-  if (!cond) fails++;
+  if (!cond) {
+    fails++;
+  }
 }
 
 const src = fs.readFileSync(path.join(ROOT, 'src', 'auth', 'session.js'), 'utf8');
@@ -31,9 +33,13 @@ console.log('=== ARM 1: reset cap + lockout ladder ===\n');
 // reported a correct source as broken.
 const num = name => {
   const m = src.match(new RegExp('const ' + name + '\\s*=\\s*([^;\\n]+)'));
-  if (!m) return null;
+  if (!m) {
+    return null;
+  }
   const expr = m[1].trim();
-  if (!/^[0-9\s*+()]+$/.test(expr)) return null; // never eval arbitrary source
+  if (!/^[0-9\s*+()]+$/.test(expr)) {
+    return null;
+  } // never eval arbitrary source
   try {
     return Function('"use strict";return (' + expr + ')')();
   } catch (e) {
@@ -69,7 +75,9 @@ ok('the removed flat ESCALATE_MS constant is gone', !/AUTH_LOCK_ESCALATE_MS/.tes
 
 // Re-implement the ladder exactly as the source does, then assert its shape.
 function lockMs(n) {
-  if (n < failsAt) return 0;
+  if (n < failsAt) {
+    return 0;
+  }
   const tiers = Math.floor((n - failsAt) / escalate);
   return Math.min(windowMs * Math.pow(mult, tiers), maxMs);
 }

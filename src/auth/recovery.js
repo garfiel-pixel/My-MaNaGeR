@@ -49,7 +49,9 @@ function recEnabledOffResponse() {
 
 function recMaskEmail(email) {
   const at = String(email || '').indexOf('@');
-  if (at <= 0) return 'your email';
+  if (at <= 0) {
+    return 'your email';
+  }
   return String(email).slice(0, 1) + '***@' + String(email).slice(at + 1);
 }
 
@@ -62,7 +64,9 @@ async function recDummyWork() {
 // session at all (handled by the caller's 401).
 async function recEligible(env, session) {
   const email = String(session.email || '');
-  if (!email) return false;
+  if (!email) {
+    return false;
+  }
   if (String(session.sub || '').indexOf('email:') === 0) {
     try {
       const row = await env.DB.prepare('SELECT email_verified FROM auth_users WHERE email = ?')
@@ -79,8 +83,9 @@ async function recEligible(env, session) {
 function recNewOtp() {
   const bytes = crypto.getRandomValues(new Uint8Array(REC_OTP_LEN));
   let code = '';
-  for (let i = 0; i < bytes.length; i++)
+  for (let i = 0; i < bytes.length; i++) {
     code += REC_OTP_ALPHABET[bytes[i] % REC_OTP_ALPHABET.length];
+  }
   return code;
 }
 
@@ -88,7 +93,9 @@ function recNewOtp() {
 // forgot panel asks once whether email recovery is offered for THIS admin.
 export async function handleAdminRecoveryStatus(request, env) {
   const session = await readSession(request, env);
-  if (!session || !session.sub) return json({ ok: false, error: 'not signed in' }, 401);
+  if (!session || !session.sub) {
+    return json({ ok: false, error: 'not signed in' }, 401);
+  }
   const eligible = await recEligible(env, session);
   return json({
     ok: true,
@@ -105,8 +112,12 @@ export async function handleAdminRecoverySend(request, env) {
   // that also gates forgot-password from the same address. Only a genuine,
   // eligible, signed-in request may consume a slot now.
   const session = await readSession(request, env);
-  if (!session || !session.sub) return json({ ok: false, error: 'not signed in' }, 401);
-  if (!recFlagOn(env)) return recEnabledOffResponse();
+  if (!session || !session.sub) {
+    return json({ ok: false, error: 'not signed in' }, 401);
+  }
+  if (!recFlagOn(env)) {
+    return recEnabledOffResponse();
+  }
   if (!(await recEligible(env, session))) {
     return json({ ok: false, error: 'this account has no verified email on file' }, 403);
   }
@@ -114,8 +125,9 @@ export async function handleAdminRecoverySend(request, env) {
   // first layer; the handler's own 3/hr + 5-attempt-lock layers stay. The
   // slot is consumed only when an email actually goes out.
   const rl = await cloudRateCheck(request, 'authmail', env);
-  if (rl.limited)
+  if (rl.limited) {
     return json({ ok: false, error: 'too many recovery requests - try again in 30 minutes' }, 429);
+  }
   const email = String(session.email || '');
   const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   let sentCount = 0;
@@ -190,8 +202,12 @@ export async function handleAdminRecoverySend(request, env) {
 // unused, unexpired OTP matches (single-use, race-safe).
 export async function handleAdminRecoveryVerify(request, env) {
   const session = await readSession(request, env);
-  if (!session || !session.sub) return json({ ok: false, error: 'not signed in' }, 401);
-  if (!recFlagOn(env)) return recEnabledOffResponse();
+  if (!session || !session.sub) {
+    return json({ ok: false, error: 'not signed in' }, 401);
+  }
+  if (!recFlagOn(env)) {
+    return recEnabledOffResponse();
+  }
   let body;
   try {
     body = await request.json();
@@ -201,7 +217,9 @@ export async function handleAdminRecoveryVerify(request, env) {
   const code = String((body && body.code) || '')
     .trim()
     .toUpperCase();
-  if (!code) return json({ ok: false, error: 'code is required' }, 400);
+  if (!code) {
+    return json({ ok: false, error: 'code is required' }, 400);
+  }
   const now = new Date().toISOString();
   let row;
   try {

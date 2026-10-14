@@ -53,16 +53,18 @@ const PADDLE_TS_TOLERANCE_SEC = 5;
 // Which provider (if any) this deployment is configured for. Paddle wins
 // when both sets exist - that is the migration direction (LS -> Paddle).
 export function billingProvider(env) {
-  if (env && env.PADDLE_WEBHOOK_SECRET && env.PADDLE_API_KEY && env.PADDLE_PRICE_ID)
+  if (env && env.PADDLE_WEBHOOK_SECRET && env.PADDLE_API_KEY && env.PADDLE_PRICE_ID) {
     return 'paddle';
+  }
   if (
     env &&
     env.LEMONSQUEEZY_WEBHOOK_SECRET &&
     env.LEMONSQUEEZY_API_KEY &&
     env.LEMONSQUEEZY_VARIANT_ID &&
     env.LEMONSQUEEZY_STORE_ID
-  )
+  ) {
     return 'lemonsqueezy';
+  }
   return null;
 }
 
@@ -86,15 +88,21 @@ export function billingFreeCap(env) {
 // back to contractor - an alias that changed entitlements would be a silent
 // downgrade, which is the one thing this function must never do.
 export function deriveTier(priceId, env) {
-  if (!priceId || !env) return 'contractor';
-  if (env.PADDLE_ENTERPRISE_PRICE_ID && priceId === String(env.PADDLE_ENTERPRISE_PRICE_ID))
+  if (!priceId || !env) {
+    return 'contractor';
+  }
+  if (env.PADDLE_ENTERPRISE_PRICE_ID && priceId === String(env.PADDLE_ENTERPRISE_PRICE_ID)) {
     return 'enterprise';
-  if (env.PADDLE_COMPANY_PRICE_ID && priceId === String(env.PADDLE_COMPANY_PRICE_ID))
+  }
+  if (env.PADDLE_COMPANY_PRICE_ID && priceId === String(env.PADDLE_COMPANY_PRICE_ID)) {
     return 'company';
-  if (env.PADDLE_ESTIMATOR_PRICE_ID && priceId === String(env.PADDLE_ESTIMATOR_PRICE_ID))
+  }
+  if (env.PADDLE_ESTIMATOR_PRICE_ID && priceId === String(env.PADDLE_ESTIMATOR_PRICE_ID)) {
     return 'estimator';
-  if (env.PADDLE_HOMEOWNER_PRICE_ID && priceId === String(env.PADDLE_HOMEOWNER_PRICE_ID))
+  }
+  if (env.PADDLE_HOMEOWNER_PRICE_ID && priceId === String(env.PADDLE_HOMEOWNER_PRICE_ID)) {
     return 'estimator';
+  }
   return 'contractor';
 }
 
@@ -112,7 +120,9 @@ export function billingStatusActive(status) {
 // get wrong. A missing or non-positive value is null, never 1970.
 export function periodEndIso(sec) {
   const n = Number(sec);
-  if (!Number.isFinite(n) || n <= 0) return null;
+  if (!Number.isFinite(n) || n <= 0) {
+    return null;
+  }
   return new Date(n * 1000).toISOString();
 }
 
@@ -127,7 +137,9 @@ function hmacHex(secret, payload) {
     .then(function (sigBytes) {
       let hex = '';
       const arr = new Uint8Array(sigBytes);
-      for (let i = 0; i < arr.length; i++) hex += arr[i].toString(16).padStart(2, '0');
+      for (let i = 0; i < arr.length; i++) {
+        hex += arr[i].toString(16).padStart(2, '0');
+      }
       return hex;
     });
 }
@@ -135,7 +147,9 @@ function hmacHex(secret, payload) {
 // ---- LemonSqueezy (legacy provider, kept until the owner retires it) ------
 
 async function lsVerifySignature(env, rawBody, sigHeader) {
-  if (!env || !env.LEMONSQUEEZY_WEBHOOK_SECRET) return false;
+  if (!env || !env.LEMONSQUEEZY_WEBHOOK_SECRET) {
+    return false;
+  }
   try {
     const hex = await hmacHex(env.LEMONSQUEEZY_WEBHOOK_SECRET, rawBody);
     return codesEqual(hex, String(sigHeader || '').toLowerCase());
@@ -165,9 +179,12 @@ async function lsApplyWebhook(env, rawBody) {
     'subscription_paused',
     'subscription_resumed'
   ];
-  if (lifecycle.indexOf(event) === -1) return json({ ok: true, ignored: event });
-  if (!ownerSub || !lsId)
+  if (lifecycle.indexOf(event) === -1) {
+    return json({ ok: true, ignored: event });
+  }
+  if (!ownerSub || !lsId) {
     return json({ ok: false, error: 'missing owner identity in custom_data' }, 400);
+  }
   const status = String(attrs.status || '');
   const periodEndRaw = attrs.renews_at || attrs.ends_at;
   const periodEnd = periodEndRaw ? Math.floor(new Date(periodEndRaw).getTime() / 1000) : null;
@@ -191,7 +208,9 @@ async function lsApplyWebhook(env, rawBody) {
 // /api/billing/webhook, set the three PADDLE_* secrets, done) ---------------
 
 async function paddleVerifySignature(env, rawBody, sigHeader) {
-  if (!env || !env.PADDLE_WEBHOOK_SECRET) return false;
+  if (!env || !env.PADDLE_WEBHOOK_SECRET) {
+    return false;
+  }
   try {
     // Paddle-Signature: ts=<unix>;h1=<hex>[;h1=<hex>...] (rotation). Ignore
     // unknown parts; a header without ts or without any h1 never verifies.
@@ -215,10 +234,16 @@ async function paddleVerifySignature(env, rawBody, sigHeader) {
       .map(function (p) {
         return p[1].toLowerCase();
       });
-    if (!tsPart || !h1s.length) return false;
+    if (!tsPart || !h1s.length) {
+      return false;
+    }
     const ts = parseInt(tsPart, 10);
-    if (!Number.isFinite(ts)) return false;
-    if (Math.abs(Date.now() / 1000 - ts) > PADDLE_TS_TOLERANCE_SEC) return false;
+    if (!Number.isFinite(ts)) {
+      return false;
+    }
+    if (Math.abs(Date.now() / 1000 - ts) > PADDLE_TS_TOLERANCE_SEC) {
+      return false;
+    }
     const hex = await hmacHex(env.PADDLE_WEBHOOK_SECRET, ts + ':' + rawBody);
     return h1s.some(function (h) {
       return codesEqual(hex, h);
@@ -264,15 +289,17 @@ async function paddleApplyWebhook(env, rawBody) {
     'subscription.past_due',
     'subscription.canceled'
   ];
-  if (lifecycle.indexOf(event) === -1 && event !== 'transaction.completed')
+  if (lifecycle.indexOf(event) === -1 && event !== 'transaction.completed') {
     return json({ ok: true, ignored: event });
+  }
   // A subscription's own transactions (first charge AND every renewal) must
   // never write the entitlement row: they carry no billing period and a
   // transaction id, so a renewal used to overwrite the real subscription id
   // and wipe current_period_end. The subscription.* events own entitlement;
   // only a ONE-TIME purchase (no subscription_id) is granted from here.
-  if (event === 'transaction.completed' && data.subscription_id)
+  if (event === 'transaction.completed' && data.subscription_id) {
     return json({ ok: true, ignored: 'subscription transaction' });
+  }
   if (!ownerSub || !pdId) {
     // No owner identity means the event did not originate from OUR checkout (a
     // dashboard-made subscription, a test fire). Answering 400 makes Paddle
@@ -284,7 +311,9 @@ async function paddleApplyWebhook(env, rawBody) {
   // event happened, so applySubscription can refuse an older event arriving late.
   let occurredAt = new Date().toISOString();
   try {
-    if (payload && payload.occurred_at) occurredAt = new Date(payload.occurred_at).toISOString();
+    if (payload && payload.occurred_at) {
+      occurredAt = new Date(payload.occurred_at).toISOString();
+    }
   } catch (e) {
     /* keep now */
   }
@@ -296,7 +325,9 @@ async function paddleApplyWebhook(env, rawBody) {
   } else {
     status = paddleStatus(data.status);
     const endRaw = data.current_billing_period && data.current_billing_period.ends_at;
-    if (endRaw) periodEnd = Math.floor(new Date(endRaw).getTime() / 1000);
+    if (endRaw) {
+      periodEnd = Math.floor(new Date(endRaw).getTime() / 1000);
+    }
   }
   // Paddle events carry items[0].price.id on subscription and transaction
   // events; the price ID is what names the tier, never a hardcoded 'pro'.
@@ -378,7 +409,9 @@ async function applySubscription(
 }
 
 async function subEmailNotice(env, recipient, confirmed) {
-  if (!recipient) return;
+  if (!recipient) {
+    return;
+  }
   try {
     await sendAuthEmail(
       env,
@@ -405,18 +438,22 @@ export async function handleBillingWebhook(request, env) {
     // Wave 8.13: an unauthenticated webhook is an AUTH failure (401), not a
     // transient server problem (503). A 503 tells the provider to retry for
     // days against a destination that can never succeed.
-    if (!env || !env.PADDLE_WEBHOOK_SECRET)
+    if (!env || !env.PADDLE_WEBHOOK_SECRET) {
       return json({ ok: false, error: 'webhook not configured' }, 401);
-    if (!(await paddleVerifySignature(env, rawBody, sigPaddle)))
+    }
+    if (!(await paddleVerifySignature(env, rawBody, sigPaddle))) {
       return json({ ok: false, error: 'invalid signature' }, 401);
+    }
     return paddleApplyWebhook(env, rawBody);
   }
   if (sigLS) {
     // Wave 8.13: same rule for a legacy delivery to a retired destination.
-    if (!env || !env.LEMONSQUEEZY_WEBHOOK_SECRET)
+    if (!env || !env.LEMONSQUEEZY_WEBHOOK_SECRET) {
       return json({ ok: false, error: 'webhook not configured' }, 401);
-    if (!(await lsVerifySignature(env, rawBody, sigLS)))
+    }
+    if (!(await lsVerifySignature(env, rawBody, sigLS))) {
       return json({ ok: false, error: 'invalid signature' }, 401);
+    }
     return lsApplyWebhook(env, rawBody);
   }
   return json({ ok: false, error: 'invalid signature' }, 401);
@@ -426,14 +463,16 @@ export async function handleBillingWebhook(request, env) {
 
 export async function handleBillingStatus(request, env) {
   const session = await readSession(request, env);
-  if (!session || !session.sub) return cloudForbidden();
+  if (!session || !session.sub) {
+    return cloudForbidden();
+  }
   const provider = billingProvider(env);
   const cap = billingFreeCap(env);
   const cnt = await env.DB.prepare('SELECT COUNT(*) AS c FROM cloud_projects WHERE google_sub = ?')
     .bind(session.sub)
     .first();
   const projectCount = (cnt && cnt.c) || 0;
-  if (!provider)
+  if (!provider) {
     return json({
       ok: true,
       configured: false,
@@ -442,6 +481,7 @@ export async function handleBillingStatus(request, env) {
       projectCap: null,
       projectCount: projectCount
     });
+  }
   const sub = await env.DB.prepare(
     'SELECT status, plan, tier, current_period_end FROM cloud_subscriptions WHERE owner_sub = ?'
   )
@@ -497,8 +537,9 @@ async function paddleCheckout(env, session, priceId, tierParam) {
         return {};
       });
       const found = qd && qd.data && qd.data[0] && qd.data[0].id;
-      if (found) customerId = String(found);
-      else {
+      if (found) {
+        customerId = String(found);
+      } else {
         const c = await fetch(base + '/customers', {
           method: 'POST',
           headers: auth,
@@ -507,14 +548,18 @@ async function paddleCheckout(env, session, priceId, tierParam) {
         const cd = await c.json().catch(function () {
           return {};
         });
-        if (c.ok && cd && cd.data && cd.data.id) customerId = String(cd.data.id);
+        if (c.ok && cd && cd.data && cd.data.id) {
+          customerId = String(cd.data.id);
+        }
       }
     }
     const body = {
       items: [{ quantity: 1, price_id: priceId }],
       custom_data: { sub: session.sub, tier: tierParam }
     };
-    if (customerId) body.customer_id = customerId;
+    if (customerId) {
+      body.customer_id = customerId;
+    }
     const res = await fetch(base + '/transactions', {
       method: 'POST',
       headers: auth,
@@ -624,10 +669,16 @@ async function lsCheckout(env, session) {
 
 export async function handleBillingCheckout(request, env) {
   const session = await readSession(request, env);
-  if (!session || !session.sub) return cloudForbidden();
+  if (!session || !session.sub) {
+    return cloudForbidden();
+  }
   const provider = billingProvider(env);
-  if (!provider) return json({ ok: false, error: 'billing not configured' }, 503);
-  if (provider !== 'paddle') return lsCheckout(env, session);
+  if (!provider) {
+    return json({ ok: false, error: 'billing not configured' }, 503);
+  }
+  if (provider !== 'paddle') {
+    return lsCheckout(env, session);
+  }
   // A second checkout while a subscription is live creates a SECOND Paddle
   // subscription that is billed separately. The one-row-per-owner table can
   // only remember one of them, so the other keeps charging and can no longer
@@ -641,7 +692,7 @@ export async function handleBillingCheckout(request, env) {
     held &&
     billingStatusActive(held.status) &&
     String(held.ls_subscription_id || '').indexOf('sub_') === 0
-  )
+  ) {
     return json(
       {
         ok: false,
@@ -651,6 +702,7 @@ export async function handleBillingCheckout(request, env) {
       },
       409
     );
+  }
   const url = new URL(request.url);
   const tierParam = url.searchParams.get('tier') || 'contractor';
   let priceId;
@@ -679,9 +731,13 @@ export async function handleBillingCheckout(request, env) {
 // ends. The row is never deleted.
 export async function handleBillingCancel(request, env) {
   const session = await readSession(request, env);
-  if (!session || !session.sub) return cloudForbidden();
+  if (!session || !session.sub) {
+    return cloudForbidden();
+  }
   const provider = billingProvider(env);
-  if (!provider) return json({ ok: false, error: 'billing not configured' }, 503);
+  if (!provider) {
+    return json({ ok: false, error: 'billing not configured' }, 503);
+  }
   if (provider !== 'paddle') {
     // LemonSqueezy is retired (D2): there is no live cancel path for it.
     return json(
@@ -698,11 +754,13 @@ export async function handleBillingCancel(request, env) {
   let confirmWord = '';
   try {
     const raw = await request.text();
-    if (raw) confirmWord = String((JSON.parse(raw) || {}).confirm || '');
+    if (raw) {
+      confirmWord = String((JSON.parse(raw) || {}).confirm || '');
+    }
   } catch (e) {
     confirmWord = '';
   }
-  if (confirmWord.trim().toUpperCase() !== 'CANCEL')
+  if (confirmWord.trim().toUpperCase() !== 'CANCEL') {
     return json(
       {
         ok: false,
@@ -711,17 +769,21 @@ export async function handleBillingCancel(request, env) {
       },
       400
     );
+  }
   const sub = await env.DB.prepare(
     'SELECT status, ls_subscription_id, current_period_end FROM cloud_subscriptions WHERE owner_sub = ?'
   )
     .bind(session.sub)
     .first();
-  if (!sub || !billingStatusActive(sub.status))
+  if (!sub || !billingStatusActive(sub.status)) {
     return json({ ok: false, error: 'no active subscription' }, 404);
+  }
   // ls_subscription_id is the generic provider subscription id; Paddle writes
   // its sub_... there via applySubscription().
   const subId = String(sub.ls_subscription_id || '');
-  if (!subId) return json({ ok: false, error: 'subscription reference missing' }, 409);
+  if (!subId) {
+    return json({ ok: false, error: 'subscription reference missing' }, 409);
+  }
   const sandbox = String(env.PADDLE_ENV || '') === 'sandbox';
   const base = sandbox ? PADDLE_SANDBOX_BASE : PADDLE_API_BASE;
   const auth = {
@@ -760,8 +822,9 @@ export async function handleBillingCancel(request, env) {
         err = (data && data.error) || {};
         const first = (err.errors && err.errors[0]) || {};
         detail = String(first.detail || err.detail || err.code || '').slice(0, 300);
-        if (err.code && detail.indexOf(String(err.code)) === -1)
+        if (err.code && detail.indexOf(String(err.code)) === -1) {
           detail = (detail + ' [' + String(err.code) + ']').slice(0, 340);
+        }
         code = code || err.code;
       } catch (e) {
         /* keep detail empty */

@@ -80,7 +80,9 @@ setTimeout(() => {
 // ---- wrangler location ----------------------------------------------------
 function globalWranglerJs() {
   const localP = path.join(__dirname, '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
-  if (fs.existsSync(localP)) return localP;
+  if (fs.existsSync(localP)) {
+    return localP;
+  }
   try {
     const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
     const root = execFileSync(npmCmd, ['root', '-g'], {
@@ -88,7 +90,9 @@ function globalWranglerJs() {
       shell: process.platform === 'win32'
     }).trim();
     const p = path.join(root, 'wrangler', 'bin', 'wrangler.js');
-    if (fs.existsSync(p)) return p;
+    if (fs.existsSync(p)) {
+      return p;
+    }
   } catch (e) {
     /* fall through */
   }
@@ -130,7 +134,9 @@ function startWrangler() {
             const r = await fetch(process.env.WRANGLER_DEV_URL + '/api/cloud/sections', {
               signal: ctrl.signal
             });
-            if (!r.ok) return false;
+            if (!r.ok) {
+              return false;
+            }
             const body = await r.json().catch(() => null);
             return !!(
               body &&
@@ -211,7 +217,9 @@ function startWrangler() {
     });
     proc.on('error', e => reject(new Error('wrangler spawn failed: ' + e.message)));
     proc.on('exit', code => {
-      if (code !== 0 && code !== null) log('wrangler dev exited early (code ' + code + ')');
+      if (code !== 0 && code !== null) {
+        log('wrangler dev exited early (code ' + code + ')');
+      }
     });
     const t0 = Date.now();
     const poll = async () => {
@@ -224,7 +232,9 @@ function startWrangler() {
         clearTimeout(timer);
         if (r.ok) {
           const body = await r.json().catch(() => null);
-          if (body && body.ok === true) return resolve();
+          if (body && body.ok === true) {
+            return resolve();
+          }
           log(
             'health check got 200 but worker not loaded (SPA fallback?) — body: ' +
               JSON.stringify(body).slice(0, 200)
@@ -252,9 +262,13 @@ function stopWrangler() {
 const q = s => "'" + String(s).replace(/'/g, "''") + "'";
 function d1File() {
   const dir = path.join(PERSIST_DIR, 'v3', 'd1', 'miniflare-D1DatabaseObject');
-  if (!fs.existsSync(dir)) return null;
+  if (!fs.existsSync(dir)) {
+    return null;
+  }
   for (const f of fs.readdirSync(dir)) {
-    if (f.endsWith('.sqlite') && !f.startsWith('metadata')) return path.join(dir, f);
+    if (f.endsWith('.sqlite') && !f.startsWith('metadata')) {
+      return path.join(dir, f);
+    }
   }
   return null;
 }
@@ -265,7 +279,9 @@ function queryD1(sql) {
       const { DatabaseSync } = require('node:sqlite');
       const db = new DatabaseSync(f, { readOnly: true });
       const rows = [];
-      for (const row of db.prepare(sql).all()) rows.push(row);
+      for (const row of db.prepare(sql).all()) {
+        rows.push(row);
+      }
       db.close();
       return rows;
     } catch (e) {
@@ -295,7 +311,9 @@ function queryD1(sql) {
       const m = out.match(/\[[\s\S]*\]/);
       if (m) {
         const parsed = JSON.parse(m[0]);
-        if (parsed[0] && Array.isArray(parsed[0].results)) return parsed[0].results;
+        if (parsed[0] && Array.isArray(parsed[0].results)) {
+          return parsed[0].results;
+        }
       }
     } catch (e) {
       log('d1 execute fallback failed: ' + e.message);
@@ -309,7 +327,9 @@ async function queryD1Retry(sql, label) {
   label = label || 'd1-read';
   for (let _attempt = 0; _attempt < 3; _attempt++) {
     const rows = queryD1(sql);
-    if (rows && rows.length > 0) return rows;
+    if (rows && rows.length > 0) {
+      return rows;
+    }
     log(label + ': row not visible on attempt ' + (_attempt + 1) + ', retrying in 200ms...');
     await delay(200);
   }
@@ -317,7 +337,9 @@ async function queryD1Retry(sql, label) {
 }
 function findR2Blob(keySuffix, marker) {
   const root = path.join(PERSIST_DIR, 'v3', 'r2');
-  if (!fs.existsSync(root)) return null;
+  if (!fs.existsSync(root)) {
+    return null;
+  }
   const hits = [];
   const walk = d => {
     let entries = [];
@@ -328,13 +350,16 @@ function findR2Blob(keySuffix, marker) {
     }
     for (const e of entries) {
       const p = path.join(d, e.name);
-      if (e.isDirectory()) walk(p);
-      else if (e.isFile()) {
+      if (e.isDirectory()) {
+        walk(p);
+      } else if (e.isFile()) {
         try {
           const content = fs.readFileSync(p, 'utf8');
           const keyMatch = keySuffix && p.split(path.sep).join('/').endsWith(keySuffix);
           const markerMatch = marker && content.indexOf(marker) > -1;
-          if (keyMatch || markerMatch) hits.push({ path: p, content });
+          if (keyMatch || markerMatch) {
+            hits.push({ path: p, content });
+          }
         } catch (err) {
           /* skip locked/partial */
         }
@@ -390,9 +415,13 @@ function launchChrome(profileDir, port) {
     const poll = async () => {
       try {
         const r = await fetch('http://127.0.0.1:' + port + '/json/version');
-        if (r.ok) return resolve(p);
+        if (r.ok) {
+          return resolve(p);
+        }
       } catch (e) {}
-      if (Date.now() - t0 > 30000) return reject(new Error('chrome did not open on :' + port));
+      if (Date.now() - t0 > 30000) {
+        return reject(new Error('chrome did not open on :' + port));
+      }
       setTimeout(poll, 300);
     };
     poll();
@@ -408,8 +437,9 @@ async function cdpConnect(port) {
       pending.get(m.id)(m);
       pending.delete(m.id);
     }
-    if (m.method === 'Page.javascriptDialogOpening')
+    if (m.method === 'Page.javascriptDialogOpening') {
       send('Page.handleJavaScriptDialog', { accept: true });
+    }
   };
   await new Promise((res, rej) => {
     ws.onopen = res;
@@ -434,12 +464,13 @@ async function ev(expr) {
     returnByValue: true,
     awaitPromise: true
   });
-  if (r.exceptionDetails)
+  if (r.exceptionDetails) {
     return {
       __err: r.exceptionDetails.exception
         ? r.exceptionDetails.exception.description
         : r.exceptionDetails.text
     };
+  }
   return r.result && r.result.value;
 }
 async function clickWhen(selector) {
@@ -449,7 +480,9 @@ async function clickWhen(selector) {
         JSON.stringify(selector) +
         ');if(el){el.click();return true;}return false;})()'
     );
-    if (ok === true) return true;
+    if (ok === true) {
+      return true;
+    }
     await delay(500);
   }
   return false;
@@ -782,7 +815,9 @@ function baseState(pid, name) {
         'SELECT label, scope, code_salt, code_hash FROM cloud_editor_codes WHERE project_id = ' +
           q(PID)
       );
-      if (edRows && edRows.length > 0) break;
+      if (edRows && edRows.length > 0) {
+        break;
+      }
       log('P2.1d: row not visible on attempt ' + (_attempt + 1) + ', retrying in 200ms…');
       await delay(200);
     }
@@ -828,7 +863,9 @@ function baseState(pid, name) {
     const d1f = d1File();
     if (d1f) {
       try {
-        if (fs.readFileSync(d1f).includes(Buffer.from(EC, 'utf8'))) plaintextOnDisk.push(d1f);
+        if (fs.readFileSync(d1f).includes(Buffer.from(EC, 'utf8'))) {
+          plaintextOnDisk.push(d1f);
+        }
       } catch (e) {}
     }
     check(
@@ -1178,7 +1215,9 @@ function baseState(pid, name) {
     const e1Row = logRows && logRows[0];
     let e1Diffs = null;
     try {
-      if (e1Row && e1Row.diffs_json) e1Diffs = JSON.parse(e1Row.diffs_json);
+      if (e1Row && e1Row.diffs_json) {
+        e1Diffs = JSON.parse(e1Row.diffs_json);
+      }
     } catch (err) {}
     check(
       'P3.1b changelog row is edit / owner with a single section',
@@ -1383,7 +1422,7 @@ function baseState(pid, name) {
     );
     const stateBig = JSON.parse(JSON.stringify(stateWithMarker));
     stateBig.tasks = [];
-    for (let i = 0; i < 12; i++)
+    for (let i = 0; i < 12; i++) {
       stateBig.tasks.push({
         id: 'big' + i,
         name: 'Bulk Task ' + i,
@@ -1395,6 +1434,7 @@ function baseState(pid, name) {
         milestone: false,
         note: 'n' + i
       });
+    }
     const saveBig = await api('/api/cloud/projects/' + PID + '/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC },
@@ -1606,7 +1646,9 @@ function baseState(pid, name) {
         headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OCC },
         body: JSON.stringify({ label: 'Cap ' + i, scope: ['wbs'] })
       });
-      if (i === 26) capStatus = r;
+      if (i === 26) {
+        capStatus = r;
+      }
     }
     check(
       'P5.2 editor-code cap: 26th create rejected with the cap error',
@@ -1693,12 +1735,16 @@ function baseState(pid, name) {
       const r = await fetch(BASE + '/api/cloud/projects/' + PID + '/meta', {
         headers: { 'X-Owner-Code': OC }
       });
-      if (r.status === 200) sawOk = true;
+      if (r.status === 200) {
+        sawOk = true;
+      }
       if (r.status === 429 && !saw429) {
         saw429 = true;
         hasRetryAfter = !!r.headers.get('Retry-After');
       }
-      if (saw429 && i > 100) break;
+      if (saw429 && i > 100) {
+        break;
+      }
     }
     check(
       'P5.4a burst trips 429 with a Retry-After header',

@@ -417,7 +417,9 @@ var MMGR = window.MMGR || {};
   // defined in css/mmgr.css; no inline styles, no new ids.
   function renderDefs() {
     const el = document.getElementById('def-container');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     el.innerHTML = DEFINITIONS.map(function (d) {
       return (
         '<div class="def-card">' +

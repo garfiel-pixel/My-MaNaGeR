@@ -15649,7 +15649,11 @@ body.calculator-page .bcp-rr-x {
   color: var(--ink-strong);
 }
 .bcp-field-custom input {
-  border-color: var(--gold-500);
+  /* --gold-500 is a MARKETING token and is not defined on this page, so it
+     resolved to nothing and the gold accent silently vanished. --brand is
+     this page's own gold identity (defined light and dark), so the custom
+     fields keep the accent the rest of the calculator uses. */
+  border-color: var(--brand);
   border-radius: var(--radius-control);
   padding: 8px 10px;
   font-size: 15px;

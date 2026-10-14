@@ -22,7 +22,9 @@ const log = s => process.stdout.write(s + '\n');
 // ---- Wrangler startup (self-contained, like other T2 harnesses) ----
 const WRANGLER_JS = (function () {
   const local = path.join(ROOT, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
-  if (fs.existsSync(local)) return local;
+  if (fs.existsSync(local)) {
+    return local;
+  }
   try {
     return (
       execFileSync(process.execPath, ['npm', 'root', '-g'], { encoding: 'utf8' }).trim() +
@@ -160,7 +162,9 @@ function annotateFailure() {
   for (let i = 0; i < 60; i++) {
     try {
       const r = await fetch('http://127.0.0.1:' + CHROME_PORT + '/json/version');
-      if (r.ok) break;
+      if (r.ok) {
+        break;
+      }
     } catch (e) {}
     await delay(300);
   }
@@ -211,13 +215,16 @@ function annotateFailure() {
     cloudReady = await ev(
       `(function(){ try { return { cloud: !!(window.MMGR && window.MMGR.Cloud) }; } catch(e) { return { cloud: false }; } })()`
     );
-    if (cloudReady && cloudReady.cloud) break;
+    if (cloudReady && cloudReady.cloud) {
+      break;
+    }
     await delay(500);
   }
-  if (!cloudReady || !cloudReady.cloud)
+  if (!cloudReady || !cloudReady.cloud) {
     log(
       '[cas] C1 WARNING: MMGR.Cloud still absent after 20s (stale CSP hash is the classic cause)'
     );
+  }
   const c1 = await ev(`(async function(){
     try {
       if (!(window.MMGR && window.MMGR.Cloud)) return { cloudMissing: true };
@@ -244,7 +251,9 @@ function annotateFailure() {
     c1
   );
   check('C1 keepalive flag passed through', c1 && c1.keepalive === true, c1);
-  if (!(c1 && c1.ok)) annotateFailure();
+  if (!(c1 && c1.ok)) {
+    annotateFailure();
+  }
 
   // ---- C2: recoverCode while unsigned -> sign-in prompt -> auto-resume -----
   const c2 = await ev(`(async function(){
@@ -304,8 +313,9 @@ function annotateFailure() {
     c2.statusMentionsSignIn &&
     c2.recoverFiredAfter &&
     c2.recoverSucceeded
-  ))
+  )) {
     annotateFailure();
+  }
 
   // ---- C3: admin Publish to Cloud while unsigned ---------------------------
   await send('Page.navigate', { url: BASE + '/admin.html' });
@@ -341,7 +351,9 @@ function annotateFailure() {
     }
     await delay(500);
   }
-  if (!unlocked) log('[cas] C3 WARNING: admin never unlocked in 60s (rc-om poll exhausted)');
+  if (!unlocked) {
+    log('[cas] C3 WARNING: admin never unlocked in 60s (rc-om poll exhausted)');
+  }
   await delay(500);
   const c3 = await ev(`(async function(){
     try {
@@ -390,8 +402,9 @@ function annotateFailure() {
     c3
   );
   check('C3 admin publish auto-resumes after sign-in', c3 && c3.publishedAfter === true, c3);
-  if (!(c3 && c3.publishBlocked && c3.prompted && c3.toastMentionsSignIn && c3.publishedAfter))
+  if (!(c3 && c3.publishBlocked && c3.prompted && c3.toastMentionsSignIn && c3.publishedAfter)) {
     annotateFailure();
+  }
 
   // ---- C4: review-queue accept failure surfaces (2026-09-25) --------------
   // The owner's live incident, made testable: an accept whose merge applied
@@ -403,10 +416,11 @@ function annotateFailure() {
   const cloudMod = await ev(
     `(function(){ try { return { cloud: !!(window.MMGR && window.MMGR.Cloud && window.MMGR.CloudReview) }; } catch (e) { return { cloud: false }; } })()`
   );
-  if (!(cloudMod && cloudMod.cloud))
+  if (!(cloudMod && cloudMod.cloud)) {
     log(
       '[cas] C4 WARNING: CloudReview unavailable on the project page (stale bundle / CSP hash is the classic cause)'
     );
+  }
   const c4 = await ev(`(async function(){
     try {
       const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -453,7 +467,9 @@ function annotateFailure() {
     c4 && c4.toastCount >= 3,
     c4
   );
-  if (!(c4 && c4.zeroWarn && c4.realOk && c4.errShown && c4.toastCount >= 3)) annotateFailure();
+  if (!(c4 && c4.zeroWarn && c4.realOk && c4.errShown && c4.toastCount >= 3)) {
+    annotateFailure();
+  }
 
   try {
     await send('Page.close');

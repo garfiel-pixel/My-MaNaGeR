@@ -12,8 +12,12 @@ var MMGR = window.MMGR || {};
   // ---- Closure ----
   function addCloseItem() {
     ns.State.updateState(function (s) {
-      if (!s.closure) s.closure = { items: [], well: '', imp: '', rec: '' };
-      if (!s.closure.items) s.closure.items = [];
+      if (!s.closure) {
+        s.closure = { items: [], well: '', imp: '', rec: '' };
+      }
+      if (!s.closure.items) {
+        s.closure.items = [];
+      }
       s.closure.items.push({ text: '', done: false });
     });
     R.renderClosure();
@@ -30,14 +34,18 @@ var MMGR = window.MMGR || {};
 
   function delCloseItem(index) {
     ns.State.updateState(function (s) {
-      if (s.closure && s.closure.items) s.closure.items.splice(index, 1);
+      if (s.closure && s.closure.items) {
+        s.closure.items.splice(index, 1);
+      }
     });
     R.renderClosure();
   }
 
   function updClose(field, value) {
     ns.State.updateState(function (s) {
-      if (!s.closure) s.closure = { items: [], well: '', imp: '', rec: '' };
+      if (!s.closure) {
+        s.closure = { items: [], well: '', imp: '', rec: '' };
+      }
       s.closure[field] = value;
     });
   }
@@ -45,7 +53,9 @@ var MMGR = window.MMGR || {};
   // ---- Comms ----
   function addComms() {
     ns.State.updateState(function (s) {
-      if (!s.commsEntries) s.commsEntries = [];
+      if (!s.commsEntries) {
+        s.commsEntries = [];
+      }
       s.commsEntries.push({
         id: U.genShortId('C'),
         date: U.todayStr(),
@@ -61,13 +71,17 @@ var MMGR = window.MMGR || {};
 
   function updComms(index, field, value) {
     ns.State.updateState(function (s) {
-      if (s.commsEntries && s.commsEntries[index]) s.commsEntries[index][field] = value;
+      if (s.commsEntries && s.commsEntries[index]) {
+        s.commsEntries[index][field] = value;
+      }
     });
   }
 
   function delComms(index) {
     ns.State.updateState(function (s) {
-      if (s.commsEntries) s.commsEntries.splice(index, 1);
+      if (s.commsEntries) {
+        s.commsEntries.splice(index, 1);
+      }
     });
     R.renderComms();
   }
@@ -77,7 +91,9 @@ var MMGR = window.MMGR || {};
   // plain state records with a lifecycle + a "whose turn is it" field.
   function addRfi() {
     ns.State.updateState(function (s) {
-      if (!s.rfis) s.rfis = [];
+      if (!s.rfis) {
+        s.rfis = [];
+      }
       s.rfis.push({
         id: U.genShortId('RFI'),
         number: '',
@@ -97,17 +113,23 @@ var MMGR = window.MMGR || {};
 
   function updRfi(index, field, value, evtType) {
     ns.State.updateState(function (s) {
-      if (s.rfis && s.rfis[index]) s.rfis[index][field] = value;
+      if (s.rfis && s.rfis[index]) {
+        s.rfis[index][field] = value;
+      }
     });
     // Focus discipline: save on keystroke, re-render on blur/commit so the
     // open/closed summary stays live.
-    if (evtType === 'input') return;
+    if (evtType === 'input') {
+      return;
+    }
     R.renderDocuments();
   }
 
   function delRfi(index) {
     ns.State.updateState(function (s) {
-      if (s.rfis) s.rfis.splice(index, 1);
+      if (s.rfis) {
+        s.rfis.splice(index, 1);
+      }
     });
     R.renderDocuments();
   }
@@ -117,7 +139,9 @@ var MMGR = window.MMGR || {};
   // document approvals, not questions).
   function addSubmittal() {
     ns.State.updateState(function (s) {
-      if (!s.submittals) s.submittals = [];
+      if (!s.submittals) {
+        s.submittals = [];
+      }
       s.submittals.push({
         id: U.genShortId('SUB'),
         number: '',
@@ -136,15 +160,21 @@ var MMGR = window.MMGR || {};
 
   function updSubmittal(index, field, value, evtType) {
     ns.State.updateState(function (s) {
-      if (s.submittals && s.submittals[index]) s.submittals[index][field] = value;
+      if (s.submittals && s.submittals[index]) {
+        s.submittals[index][field] = value;
+      }
     });
-    if (evtType === 'input') return;
+    if (evtType === 'input') {
+      return;
+    }
     R.renderDocuments();
   }
 
   function delSubmittal(index) {
     ns.State.updateState(function (s) {
-      if (s.submittals) s.submittals.splice(index, 1);
+      if (s.submittals) {
+        s.submittals.splice(index, 1);
+      }
     });
     R.renderDocuments();
   }
@@ -155,7 +185,9 @@ var MMGR = window.MMGR || {};
   // simple closeout checklist (which stays as-is for broad closeout items).
   function addPunch() {
     ns.State.updateState(function (s) {
-      if (!s.punchList) s.punchList = [];
+      if (!s.punchList) {
+        s.punchList = [];
+      }
       s.punchList.push({
         id: U.genShortId('P'),
         item: '',
@@ -172,15 +204,21 @@ var MMGR = window.MMGR || {};
 
   function updPunch(index, field, value, evtType) {
     ns.State.updateState(function (s) {
-      if (s.punchList && s.punchList[index]) s.punchList[index][field] = value;
+      if (s.punchList && s.punchList[index]) {
+        s.punchList[index][field] = value;
+      }
     });
-    if (evtType === 'input') return;
+    if (evtType === 'input') {
+      return;
+    }
     R.renderClosure();
   }
 
   function delPunch(index) {
     ns.State.updateState(function (s) {
-      if (s.punchList) s.punchList.splice(index, 1);
+      if (s.punchList) {
+        s.punchList.splice(index, 1);
+      }
     });
     R.renderClosure();
   }
@@ -190,7 +228,9 @@ var MMGR = window.MMGR || {};
   // roadmap's ask was a bundled package distinct from the Closure checklist.
   function addHandoverItem() {
     ns.State.updateState(function (s) {
-      if (!s.handover) s.handover = [];
+      if (!s.handover) {
+        s.handover = [];
+      }
       s.handover.push({
         id: U.genShortId('HO'),
         item: '',
@@ -204,15 +244,21 @@ var MMGR = window.MMGR || {};
 
   function updHandoverItem(index, field, value, evtType) {
     ns.State.updateState(function (s) {
-      if (s.handover && s.handover[index]) s.handover[index][field] = value;
+      if (s.handover && s.handover[index]) {
+        s.handover[index][field] = value;
+      }
     });
-    if (evtType === 'input') return;
+    if (evtType === 'input') {
+      return;
+    }
     R.renderClosure();
   }
 
   function delHandoverItem(index) {
     ns.State.updateState(function (s) {
-      if (s.handover) s.handover.splice(index, 1);
+      if (s.handover) {
+        s.handover.splice(index, 1);
+      }
     });
     R.renderClosure();
   }
@@ -221,7 +267,9 @@ var MMGR = window.MMGR || {};
   // Warranty periods with end dates , feeds the C29 expiry rollup.
   function addWarranty() {
     ns.State.updateState(function (s) {
-      if (!s.warrantyItems) s.warrantyItems = [];
+      if (!s.warrantyItems) {
+        s.warrantyItems = [];
+      }
       s.warrantyItems.push({
         id: U.genShortId('WR'),
         item: '',
@@ -236,15 +284,21 @@ var MMGR = window.MMGR || {};
 
   function updWarranty(index, field, value, evtType) {
     ns.State.updateState(function (s) {
-      if (s.warrantyItems && s.warrantyItems[index]) s.warrantyItems[index][field] = value;
+      if (s.warrantyItems && s.warrantyItems[index]) {
+        s.warrantyItems[index][field] = value;
+      }
     });
-    if (evtType === 'input') return;
+    if (evtType === 'input') {
+      return;
+    }
     R.renderClosure();
   }
 
   function delWarranty(index) {
     ns.State.updateState(function (s) {
-      if (s.warrantyItems) s.warrantyItems.splice(index, 1);
+      if (s.warrantyItems) {
+        s.warrantyItems.splice(index, 1);
+      }
     });
     R.renderClosure();
   }
@@ -253,7 +307,9 @@ var MMGR = window.MMGR || {};
   // Who received which drawing revision, when, and by what method.
   function addDrawLog() {
     ns.State.updateState(function (s) {
-      if (!s.drawingLog) s.drawingLog = [];
+      if (!s.drawingLog) {
+        s.drawingLog = [];
+      }
       s.drawingLog.push({
         id: U.genShortId('DL'),
         date: U.todayStr(),
@@ -269,15 +325,21 @@ var MMGR = window.MMGR || {};
 
   function updDrawLog(index, field, value, evtType) {
     ns.State.updateState(function (s) {
-      if (s.drawingLog && s.drawingLog[index]) s.drawingLog[index][field] = value;
+      if (s.drawingLog && s.drawingLog[index]) {
+        s.drawingLog[index][field] = value;
+      }
     });
-    if (evtType === 'input') return;
+    if (evtType === 'input') {
+      return;
+    }
     R.renderDocuments();
   }
 
   function delDrawLog(index) {
     ns.State.updateState(function (s) {
-      if (s.drawingLog) s.drawingLog.splice(index, 1);
+      if (s.drawingLog) {
+        s.drawingLog.splice(index, 1);
+      }
     });
     R.renderDocuments();
   }
@@ -286,7 +348,9 @@ var MMGR = window.MMGR || {};
   // Dedicated permit status/expiry tracking , feeds the C29 expiry rollup.
   function addPermit() {
     ns.State.updateState(function (s) {
-      if (!s.permits) s.permits = [];
+      if (!s.permits) {
+        s.permits = [];
+      }
       s.permits.push({
         id: U.genShortId('PM'),
         permitNo: '',
@@ -303,15 +367,21 @@ var MMGR = window.MMGR || {};
 
   function updPermit(index, field, value, evtType) {
     ns.State.updateState(function (s) {
-      if (s.permits && s.permits[index]) s.permits[index][field] = value;
+      if (s.permits && s.permits[index]) {
+        s.permits[index][field] = value;
+      }
     });
-    if (evtType === 'input') return;
+    if (evtType === 'input') {
+      return;
+    }
     R.renderDocuments();
   }
 
   function delPermit(index) {
     ns.State.updateState(function (s) {
-      if (s.permits) s.permits.splice(index, 1);
+      if (s.permits) {
+        s.permits.splice(index, 1);
+      }
     });
     R.renderDocuments();
   }
@@ -322,7 +392,9 @@ var MMGR = window.MMGR || {};
   // Pure function over state , reads live state, renders nothing.
   function getBallInCourt() {
     const s = ns.State ? ns.State.getState() : null;
-    if (!s) return [];
+    if (!s) {
+      return [];
+    }
     const out = [];
     (s.rfis || []).forEach(function (r) {
       if (r.status === 'open' || r.status === 'routed') {
@@ -365,7 +437,9 @@ var MMGR = window.MMGR || {};
   // ---- Documents ----
   function addDoc() {
     ns.State.updateState(function (s) {
-      if (!s.documents) s.documents = [];
+      if (!s.documents) {
+        s.documents = [];
+      }
       s.documents.push({
         id: U.genShortId('D'),
         docNo: '',
@@ -383,13 +457,17 @@ var MMGR = window.MMGR || {};
 
   function updDoc(index, field, value) {
     ns.State.updateState(function (s) {
-      if (s.documents && s.documents[index]) s.documents[index][field] = value;
+      if (s.documents && s.documents[index]) {
+        s.documents[index][field] = value;
+      }
     });
   }
 
   function delDoc(index) {
     ns.State.updateState(function (s) {
-      if (s.documents) s.documents.splice(index, 1);
+      if (s.documents) {
+        s.documents.splice(index, 1);
+      }
     });
     R.renderDocuments();
   }
@@ -460,7 +538,9 @@ var MMGR = window.MMGR || {};
   // Material orders, delivery tracking, lead times.
   function addProcurement() {
     ns.State.updateState(function (s) {
-      if (!s.procurement) s.procurement = [];
+      if (!s.procurement) {
+        s.procurement = [];
+      }
       s.procurement.push({
         id: U.genShortId('PO'),
         material: '',
@@ -480,15 +560,21 @@ var MMGR = window.MMGR || {};
 
   function updProcurement(index, field, value, evtType) {
     ns.State.updateState(function (s) {
-      if (s.procurement && s.procurement[index]) s.procurement[index][field] = value;
+      if (s.procurement && s.procurement[index]) {
+        s.procurement[index][field] = value;
+      }
     });
-    if (evtType === 'input') return;
+    if (evtType === 'input') {
+      return;
+    }
     R.renderDocuments();
   }
 
   function delProcurement(index) {
     ns.State.updateState(function (s) {
-      if (s.procurement) s.procurement.splice(index, 1);
+      if (s.procurement) {
+        s.procurement.splice(index, 1);
+      }
     });
     R.renderDocuments();
   }

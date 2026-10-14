@@ -28,7 +28,9 @@ async function waitForPageTarget() {
       const r = await fetch('http://127.0.0.1:' + port + '/json/list');
       const list = await r.json();
       const page = list.find(t => t.type === 'page');
-      if (page && page.webSocketDebuggerUrl) return page.webSocketDebuggerUrl;
+      if (page && page.webSocketDebuggerUrl) {
+        return page.webSocketDebuggerUrl;
+      }
     } catch (e) {
       /* not up yet */
     }
@@ -52,7 +54,9 @@ async function waitForPageTarget() {
     if (msg.id && pending.has(msg.id)) {
       pending.get(msg.id)(msg);
       pending.delete(msg.id);
-    } else if (msg.method) events.push(msg);
+    } else if (msg.method) {
+      events.push(msg);
+    }
   };
   const send = (method, params) =>
     new Promise(resolve => {
@@ -62,8 +66,10 @@ async function waitForPageTarget() {
     });
   const evaluate = async expr => {
     const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true });
-    if (r.error) return 'CDP_ERROR:' + JSON.stringify(r.error);
-    if (r.result && r.result.exceptionDetails)
+    if (r.error) {
+      return 'CDP_ERROR:' + JSON.stringify(r.error);
+    }
+    if (r.result && r.result.exceptionDetails) {
       return (
         'EXC:' +
         (r.result.exceptionDetails.text || '') +
@@ -71,6 +77,7 @@ async function waitForPageTarget() {
         ((r.result.exceptionDetails.exception && r.result.exceptionDetails.exception.description) ||
           '')
       );
+    }
     return r.result && r.result.result
       ? r.result.result.value
       : 'RAW:' + JSON.stringify(r).slice(0, 200);
@@ -99,7 +106,9 @@ async function waitForPageTarget() {
      the step could never pass on the CI runner, and the suite was red for that
      reason alone. BASE comes from chrome-launcher (QA_BASE overrides). */
   const navResp = await send('Page.navigate', { url: BASE + '/index.html' });
-  if (navResp.result && navResp.result.errorText) console.log('NAV:', navResp.result.errorText);
+  if (navResp.result && navResp.result.errorText) {
+    console.log('NAV:', navResp.result.errorText);
+  }
   try {
     await waitEvent('Page.loadEventFired', 8000);
   } catch (e) {

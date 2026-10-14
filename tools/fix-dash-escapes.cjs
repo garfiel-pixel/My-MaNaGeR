@@ -7,8 +7,11 @@ function walk(dir) {
   let files = [];
   for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, f.name);
-    if (f.isDirectory() && !SKIP.includes(f.name)) files = files.concat(walk(full));
-    else if (f.isFile() && f.name.endsWith('.js')) files.push(full);
+    if (f.isDirectory() && !SKIP.includes(f.name)) {
+      files = files.concat(walk(full));
+    } else if (f.isFile() && f.name.endsWith('.js')) {
+      files.push(full);
+    }
   }
   return files;
 }

@@ -63,14 +63,18 @@ function findChrome() {
           .toString()
           .trim()
           .split(/\r?\n/)[0];
-        if (out && fs.existsSync(out)) return out;
+        if (out && fs.existsSync(out)) {
+          return out;
+        }
         return c; // which agreed the candidate exists - keep prior behavior
       } catch (e) {
         /* not in PATH */
       }
     } else {
       // On Windows, check file existence
-      if (fs.existsSync(c)) return c;
+      if (fs.existsSync(c)) {
+        return c;
+      }
     }
   }
 

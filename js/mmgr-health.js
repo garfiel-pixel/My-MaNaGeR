@@ -19,17 +19,23 @@ var MMGR = window.MMGR || {};
   // the cash-flow chart. Kept dependency-free so Health stays portable.
   function lineActual(line, state) {
     const log = (state.spendLog || []).filter(e => e.budgetLineId === line.id);
-    if (log.length) return log.reduce((s, e) => s + (+e.amount || 0), 0);
+    if (log.length) {
+      return log.reduce((s, e) => s + (+e.amount || 0), 0);
+    }
     return +line.actual || 0;
   }
 
   function computeHealthScore(state) {
     const s = state || (ns.State ? ns.State.getState() : null);
-    if (!s || !s.tasks) return null;
+    if (!s || !s.tasks) {
+      return null;
+    }
     const tot = s.tasks.length;
     // Empty project: no tasks means no completion/schedule/budget data exists
     // yet. A computed number here would be fabricated, not measured.
-    if (tot === 0) return null;
+    if (tot === 0) {
+      return null;
+    }
 
     const dn = s.tasks.filter(t => t.status === 'completed').length;
     const overdue = s.tasks.filter(t => U.isOverdue(t.endDate) && t.status !== 'completed').length;
@@ -100,13 +106,17 @@ var MMGR = window.MMGR || {};
       const el = document.getElementById(id);
       if (el) {
         el.textContent = v;
-        if (c) el.style.color = c;
+        if (c) {
+          el.style.color = c;
+        }
       }
     };
     const suffix = document.getElementById('health-score-suffix');
     if (!h) {
       setE('health-score-num', '-', 'var(--slate)');
-      if (suffix) suffix.classList.add('is-hide');
+      if (suffix) {
+        suffix.classList.add('is-hide');
+      }
       setE('health-score-label', 'Add tasks to calculate', 'var(--slate)');
       const bar = document.getElementById('health-bar');
       if (bar) {
@@ -114,11 +124,15 @@ var MMGR = window.MMGR || {};
         bar.style.background = 'var(--border)';
       }
       const bd = document.getElementById('health-breakdown');
-      if (bd) bd.innerHTML = '<div>Score becomes available once at least one task exists.</div>';
+      if (bd) {
+        bd.innerHTML = '<div>Score becomes available once at least one task exists.</div>';
+      }
       _lastScore = null;
       return;
     }
-    if (suffix) suffix.classList.remove('is-hide');
+    if (suffix) {
+      suffix.classList.remove('is-hide');
+    }
     // Narrative must compare against the PREVIOUS score, then we advance.
     const narrative = buildNarrative(h);
     _lastScore = h.score;
@@ -184,7 +198,9 @@ var MMGR = window.MMGR || {};
   let _lastScore = null;
 
   function buildNarrative(h) {
-    if (!h) return 'Add tasks to calculate a Health Score.';
+    if (!h) {
+      return 'Add tasks to calculate a Health Score.';
+    }
     const parts = [];
     if (_lastScore !== null && _lastScore !== h.score) {
       parts.push('Score moved from ' + _lastScore + ' to ' + h.score + ' since the last update.');
@@ -199,7 +215,9 @@ var MMGR = window.MMGR || {};
     let worst = null;
     Object.keys(factorNames).forEach(k => {
       const v = h[k];
-      if (v !== null && v !== undefined && (worst === null || v < worst.v)) worst = { k: k, v: v };
+      if (v !== null && v !== undefined && (worst === null || v < worst.v)) {
+        worst = { k: k, v: v };
+      }
     });
     if (worst && worst.v < 80) {
       parts.push(
@@ -210,10 +228,18 @@ var MMGR = window.MMGR || {};
       );
     }
     const missing = [];
-    if (!h.hasSchedule) missing.push('Schedule');
-    if (!h.hasBudget) missing.push('Budget');
-    if (!h.hasRisks) missing.push('Risk');
-    if (!h.hasChanges) missing.push('Change');
+    if (!h.hasSchedule) {
+      missing.push('Schedule');
+    }
+    if (!h.hasBudget) {
+      missing.push('Budget');
+    }
+    if (!h.hasRisks) {
+      missing.push('Risk');
+    }
+    if (!h.hasChanges) {
+      missing.push('Change');
+    }
     if (missing.length) {
       parts.push(
         'Waiting on data: ' +
@@ -221,7 +247,9 @@ var MMGR = window.MMGR || {};
           ' , excluded from the weighting until they have real inputs.'
       );
     }
-    if (!parts.length) parts.push('All weighted factors are healthy.');
+    if (!parts.length) {
+      parts.push('All weighted factors are healthy.');
+    }
     return parts.join(' ');
   }
 

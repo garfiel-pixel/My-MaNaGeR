@@ -88,7 +88,9 @@ function parse() {
   // Section 7 only - the earlier sections are prose and summary tables that
   // would otherwise parse as rows.
   const s7 = lines.findIndex(l => /^## 7\./.test(l));
-  if (s7 < 0) throw new Error('section 7 not found in ' + SRC);
+  if (s7 < 0) {
+    throw new Error('section 7 not found in ' + SRC);
+  }
 
   const byHeading = {};
   let heading = null;
@@ -101,13 +103,19 @@ function parse() {
       heading = h[1].trim();
       continue;
     }
-    if (!heading || line.charAt(0) !== '|') continue;
+    if (!heading || line.charAt(0) !== '|') {
+      continue;
+    }
     const cells = line
       .split('|')
       .slice(1, -1)
       .map(s => s.trim());
-    if (cells.length !== 9) continue; // header + separator rows
-    if (/^Ref$/.test(cells[0]) || /^-{2,}/.test(cells[0])) continue;
+    if (cells.length !== 9) {
+      continue;
+    } // header + separator rows
+    if (/^Ref$/.test(cells[0]) || /^-{2,}/.test(cells[0])) {
+      continue;
+    }
 
     const ref = cells[0];
     const rm = /^(\S+)\s+#(\d+)$/.exec(ref);
@@ -129,16 +137,19 @@ function parse() {
     note = note.split(MARKER_WARN).join('').trim();
     // Any OTHER banned glyph is a source mistake - refuse rather than serve it.
     for (const ch of note) {
-      if (bannedRange(ch.codePointAt(0)))
+      if (bannedRange(ch.codePointAt(0))) {
         throw new Error(
           'banned glyph U+' + ch.codePointAt(0).toString(16).toUpperCase() + ' in note for ' + ref
         );
+      }
     }
 
     // Numbers may carry thousands separators ("1,428").
     const num = s => Number(String(s).replace(/,/g, ''));
 
-    if (!byHeading[trade.tid]) byHeading[trade.tid] = [];
+    if (!byHeading[trade.tid]) {
+      byHeading[trade.tid] = [];
+    }
     byHeading[trade.tid].push({
       tid: trade.tid,
       ref: rm[1] + ' #' + rm[2],
@@ -154,12 +165,16 @@ function parse() {
     });
   }
 
-  if (unknown.length) throw new Error('unparsed refs: ' + unknown.slice(0, 5).join(', '));
+  if (unknown.length) {
+    throw new Error('unparsed refs: ' + unknown.slice(0, 5).join(', '));
+  }
 
   const rows = [];
   for (const t of TRADES) {
     const list = byHeading[t.tid];
-    if (!list) throw new Error('no rows parsed for trade ' + t.tid);
+    if (!list) {
+      throw new Error('no rows parsed for trade ' + t.tid);
+    }
     rows.push.apply(rows, list);
   }
   return rows;
@@ -184,9 +199,15 @@ function render(rows) {
       mu: r.metUnit,
       mr: r.metRate
     };
-    if (r.basis !== 'S') o.b = r.basis;
-    if (r.note) o.note = r.note;
-    if (r.inApp) o.app = 1;
+    if (r.basis !== 'S') {
+      o.b = r.basis;
+    }
+    if (r.note) {
+      o.note = r.note;
+    }
+    if (r.inApp) {
+      o.app = 1;
+    }
     return o;
   });
   const header =

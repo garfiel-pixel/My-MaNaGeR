@@ -19,16 +19,22 @@ var MMGR = window.MMGR || {};
     if (!modal) {
       // No dialog in the DOM: fall back to native confirm so safety holds.
       if (window.confirm((opts && opts.message) || 'Confirm?')) {
-        if (opts && opts.onOk) opts.onOk();
+        if (opts && opts.onOk) {
+          opts.onOk();
+        }
       }
       return;
     }
     _cfmCb = (opts && opts.onOk) || null;
     _cfmCancelCb = (opts && opts.onCancel) || null;
     const title = U.$('cfm-title');
-    if (title) title.textContent = (opts && opts.title) || 'Confirm';
+    if (title) {
+      title.textContent = (opts && opts.title) || 'Confirm';
+    }
     const msg = U.$('cfm-msg');
-    if (msg) msg.textContent = (opts && opts.message) || '';
+    if (msg) {
+      msg.textContent = (opts && opts.message) || '';
+    }
     const items = U.$('cfm-items');
     if (items) {
       const list = (opts && opts.items) || [];
@@ -54,30 +60,44 @@ var MMGR = window.MMGR || {};
       }
     }
     const cancelBtn = U.$('cfm-cancel');
-    if (cancelBtn) cancelBtn.textContent = (opts && opts.cancelLabel) || 'Cancel';
+    if (cancelBtn) {
+      cancelBtn.textContent = (opts && opts.cancelLabel) || 'Cancel';
+    }
     modal.classList.add('on');
   }
 
   function cfmOk() {
     const modal = U.$('cfm-modal');
-    if (modal) modal.classList.remove('on');
+    if (modal) {
+      modal.classList.remove('on');
+    }
     const items = U.$('cfm-items');
-    if (items) items.classList.add('is-hide');
+    if (items) {
+      items.classList.add('is-hide');
+    }
     const cb = _cfmCb;
     _cfmCb = null;
     _cfmCancelCb = null;
-    if (cb) cb();
+    if (cb) {
+      cb();
+    }
   }
 
   function cfmCancel() {
     const modal = U.$('cfm-modal');
-    if (modal) modal.classList.remove('on');
+    if (modal) {
+      modal.classList.remove('on');
+    }
     const items = U.$('cfm-items');
-    if (items) items.classList.add('is-hide');
+    if (items) {
+      items.classList.add('is-hide');
+    }
     const cb = _cfmCancelCb;
     _cfmCb = null;
     _cfmCancelCb = null;
-    if (cb) cb();
+    if (cb) {
+      cb();
+    }
   }
 
   // Close every custom modal we own (Escape key path). An Escape on the
@@ -86,12 +106,16 @@ var MMGR = window.MMGR || {};
   function closeModals() {
     ['cfm-modal', 'conflict-modal', 'del-modal'].forEach(function (id) {
       var el = U.$(id);
-      if (el) el.classList.remove('on');
+      if (el) {
+        el.classList.remove('on');
+      }
     });
     var cb = _cfmCancelCb;
     _cfmCb = null;
     _cfmCancelCb = null;
-    if (cb) cb();
+    if (cb) {
+      cb();
+    }
   }
 
   ns.AppConfirm = {

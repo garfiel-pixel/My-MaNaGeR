@@ -22,7 +22,9 @@ var MMGR = window.MMGR || {};
   function watchLeadTimes(s, today) {
     const out = [];
     for (const t of s.tasks || []) {
-      if (!t.leadTime || !t.expectedDate || t.delivered) continue;
+      if (!t.leadTime || !t.expectedDate || t.delivered) {
+        continue;
+      }
       const d = U.daysBetween(today, t.expectedDate); // negative = overdue
       if (d <= 2) {
         out.push({
@@ -51,7 +53,9 @@ var MMGR = window.MMGR || {};
     const byCat = {};
     for (const b of s.budgetLines || []) {
       const cat = b.category || 'Uncategorized';
-      if (!byCat[cat]) byCat[cat] = { planned: 0, actual: 0 };
+      if (!byCat[cat]) {
+        byCat[cat] = { planned: 0, actual: 0 };
+      }
       byCat[cat].planned += +b.planned || 0;
       byCat[cat].actual += (+b.actual || 0) + (+b.committed || 0);
     }
@@ -98,12 +102,18 @@ var MMGR = window.MMGR || {};
   // heat 32C, cold 0C), same source of truth; this never invents weather.
   // Offline (no/expired cache) it silently returns nothing.
   function watchWeather(s) {
-    if (!ns.Forecast || !ns.Forecast.riskDays) return [];
+    if (!ns.Forecast || !ns.Forecast.riskDays) {
+      return [];
+    }
     const risky = ns.Forecast.riskDays(s);
-    if (!risky || !risky.length) return [];
+    if (!risky || !risky.length) {
+      return [];
+    }
     const out = [];
     for (const t of s.tasks || []) {
-      if (!t.weatherExposed || !t.startDate || !t.endDate) continue;
+      if (!t.weatherExposed || !t.startDate || !t.endDate) {
+        continue;
+      }
       for (const d of risky) {
         if (d.date >= t.startDate && d.date <= t.endDate) {
           const why = d.alerts && d.alerts.length ? d.alerts.join(', ') : 'weather risk';
@@ -136,7 +146,9 @@ var MMGR = window.MMGR || {};
   function watchSchedule(s) {
     const out = [];
     const tasks = (s.tasks || []).filter(t => t.startDate && t.endDate && !t.isPhase);
-    if (tasks.length < 3) return out;
+    if (tasks.length < 3) {
+      return out;
+    }
     // 1. Phase gates with zero slack: a failed inspection cascades into the
     // next phase. Gates on the critical path with no float deserve reserve.
     const gates = (s.tasks || []).filter(t => /gate/i.test(t.name || '') && !t.isPhase);
@@ -158,17 +170,23 @@ var MMGR = window.MMGR || {};
     // front-loaded cash with no schedule benefit - stagger the order.
     const byId = new Map((s.tasks || []).map(t => [t.id, t]));
     for (const t of tasks) {
-      if (!t.leadTime || !t.expectedDate) continue;
+      if (!t.leadTime || !t.expectedDate) {
+        continue;
+      }
       let minSuccessorStart = null,
         succName = '';
       for (const c of tasks) {
-        if (!(c.predecessors || []).some(p => String(p) === String(t.id))) continue;
+        if (!(c.predecessors || []).some(p => String(p) === String(t.id))) {
+          continue;
+        }
         if (minSuccessorStart === null || c.startDate < minSuccessorStart) {
           minSuccessorStart = c.startDate;
           succName = c.name;
         }
       }
-      if (!minSuccessorStart) continue;
+      if (!minSuccessorStart) {
+        continue;
+      }
       const slack = U.daysBetween(t.expectedDate, minSuccessorStart);
       if (slack >= 7) {
         out.push({
@@ -191,7 +209,9 @@ var MMGR = window.MMGR || {};
     // 3. Weather-sensitive tasks with zero buffer: resequence or add float
     // so one rain day does not land on the critical chain.
     for (const t of tasks) {
-      if (!t.weatherSensitive) continue;
+      if (!t.weatherSensitive) {
+        continue;
+      }
       const dur = parseInt(t.duration) || 0;
       if (t.critical && dur >= 3 && !t._schedPad) {
         out.push({
@@ -251,10 +271,14 @@ var MMGR = window.MMGR || {};
   function watchParallel(s) {
     const out = [];
     const tasks = (s.tasks || []).filter(t => !t.isPhase && t.startDate && t.endDate);
-    if (tasks.length < 2) return out;
+    if (tasks.length < 2) {
+      return out;
+    }
     const groups =
       ns.Schedule && ns.Schedule.parallelGroups ? ns.Schedule.parallelGroups(s.tasks) : null;
-    if (!groups) return out;
+    if (!groups) {
+      return out;
+    }
     const byId = new Map((s.tasks || []).map(t => [t.id, t]));
     const nameOf = id => {
       const t = byId.get(id);
@@ -265,9 +289,13 @@ var MMGR = window.MMGR || {};
     const running = tasks.filter(t => t.status === 'inprogress');
     for (const a of running) {
       const g = groups.get(a.id);
-      if (!g || !g.peers.length) continue;
+      if (!g || !g.peers.length) {
+        continue;
+      }
       const peers = g.peers.map(id => byId.get(id)).filter(p => p && p.status === 'todo');
-      if (!peers.length) continue;
+      if (!peers.length) {
+        continue;
+      }
       const peer = peers[0];
       // Shared-resource read: if both name the same assignee, say so -
       // starting both needs a crew decision, which is the actionable point.
@@ -299,8 +327,12 @@ var MMGR = window.MMGR || {};
     //    owner could parallelize the whole group if crews allow.
     const byStart = new Map();
     for (const t of tasks) {
-      if (t.status !== 'todo') continue;
-      if (!byStart.has(t.startDate)) byStart.set(t.startDate, []);
+      if (t.status !== 'todo') {
+        continue;
+      }
+      if (!byStart.has(t.startDate)) {
+        byStart.set(t.startDate, []);
+      }
       byStart.get(t.startDate).push(t);
     }
     const today = U.todayStr();
@@ -309,10 +341,14 @@ var MMGR = window.MMGR || {};
       .sort();
     for (const day of starts) {
       const group = byStart.get(day);
-      if (group.length < 3) continue;
+      if (group.length < 3) {
+        continue;
+      }
       const ids = new Set(group.map(t => t.id));
       const linked = group.some(t => (t.predecessors || []).some(p => ids.has(p)));
-      if (linked) continue; // a dependency inside the group = not independent
+      if (linked) {
+        continue;
+      } // a dependency inside the group = not independent
       const names = group.slice(0, 4).map(t => t.name);
       const more = group.length > 4 ? ' and ' + (group.length - 4) + ' more' : '';
       out.push({
@@ -349,7 +385,9 @@ var MMGR = window.MMGR || {};
         return;
       }
       const s = ns.State.getState();
-      if (!s || !s.tasks) return;
+      if (!s || !s.tasks) {
+        return;
+      }
       const today = U.todayStr();
       const found = [].concat(
         watchLeadTimes(s, today),
@@ -359,13 +397,19 @@ var MMGR = window.MMGR || {};
         watchSchedule(s),
         watchParallel(s)
       );
-      if (!found.length) return;
+      if (!found.length) {
+        return;
+      }
       let added = 0;
       ns.State.updateState(function (st) {
-        if (!Array.isArray(st.aiInbox)) st.aiInbox = [];
+        if (!Array.isArray(st.aiInbox)) {
+          st.aiInbox = [];
+        }
         const seen = new Set(st.aiInbox.map(n => n.kind + '|' + n.text));
         for (const f of found) {
-          if (seen.has(f.kind + '|' + f.text)) continue;
+          if (seen.has(f.kind + '|' + f.text)) {
+            continue;
+          }
           st.aiInbox.unshift({
             id: U.genId('n'),
             at: new Date().toISOString(),
@@ -394,24 +438,31 @@ var MMGR = window.MMGR || {};
 
   function renderBell() {
     const bell = document.getElementById('ai-bell');
-    if (!bell) return;
+    if (!bell) {
+      return;
+    }
     const n = unreadCount();
     const dot = bell.querySelector('[data-bell-dot]');
-    if (dot) dot.hidden = n === 0;
+    if (dot) {
+      dot.hidden = n === 0;
+    }
     bell.setAttribute('aria-label', 'Assistant notices' + (n ? ', ' + n + ' unread' : ''));
   }
 
   function openMailbox() {
     const box = document.getElementById('ai-mailbox');
-    if (!box) return;
+    if (!box) {
+      return;
+    }
     const list = box.querySelector('[data-mailbox-list]');
     // Task 9: locked card for signed-out users - plain language, one route
     // to the existing sign-in sheet. No notices are computed or shown.
     if (!assistantActive()) {
-      if (list)
+      if (list) {
         list.innerHTML =
           '<div class="ai-note"><div class="ai-note-tx">The background assistant is part of the signed-in experience. Sign in and it starts watching lead times, budget and resources on this project - everything stays on this machine either way.</div>' +
           '<div style="margin-top:6px"><button class="btn btn-g btn-s" data-action="openSignIn">Sign in</button></div></div>';
+      }
       renderBell();
       box.classList.add('on');
       return;
@@ -469,7 +520,9 @@ var MMGR = window.MMGR || {};
 
   function closeMailbox() {
     const box = document.getElementById('ai-mailbox');
-    if (box) box.classList.remove('on');
+    if (box) {
+      box.classList.remove('on');
+    }
   }
 
   function dismissNote(id) {

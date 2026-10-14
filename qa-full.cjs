@@ -85,7 +85,9 @@ async function check(name, expr, expected, hint) {
   for (let i = 0; i < 60; i++) {
     try {
       const r = await fetch('http://127.0.0.1:' + PORT + '/json/version');
-      if (r.ok) break;
+      if (r.ok) {
+        break;
+      }
     } catch (e) {}
     await delay(300);
   }
@@ -93,13 +95,15 @@ async function check(name, expr, expected, hint) {
   ws = new WebSocket(targets.find(t => t.type === 'page').webSocketDebuggerUrl);
   ws.onmessage = ev => {
     const m = JSON.parse(ev.data);
-    if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error')
+    if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error') {
       consoleErrors.push((m.params.args || []).map(a => a.value || a.description || '').join(' '));
-    if (m.method === 'Runtime.exceptionThrown')
+    }
+    if (m.method === 'Runtime.exceptionThrown') {
       pageErrors.push(
         (m.params.exceptionDetails.exception && m.params.exceptionDetails.exception.description) ||
           'exception'
       );
+    }
     if (m.id && pending.has(m.id)) {
       pending.get(m.id)(m);
       pending.delete(m.id);
@@ -2327,7 +2331,9 @@ async function check(name, expr, expected, hint) {
     const re = /\$\('([a-zA-Z0-9-]+)'\)|getElementById\('([a-zA-Z0-9-]+)'\)/g;
     const found = new Set();
     let mm;
-    while ((mm = re.exec(rsrc)) !== null) found.add(mm[1] || mm[2]);
+    while ((mm = re.exec(rsrc)) !== null) {
+      found.add(mm[1] || mm[2]);
+    }
     const missing = Array.from(found).filter(id => html.indexOf('id="' + id + '"') === -1);
     results.push({
       status: missing.length ? 'FAIL' : 'PASS',

@@ -20,7 +20,9 @@
   function show(id) {
     for (var i = 0; i < STATES.length; i++) {
       var el = $(STATES[i]);
-      if (el) el.hidden = STATES[i] !== id;
+      if (el) {
+        el.hidden = STATES[i] !== id;
+      }
     }
   }
 
@@ -28,7 +30,9 @@
 
   function fail(msg) {
     var m = $('st-err-msg');
-    if (m) m.textContent = msg;
+    if (m) {
+      m.textContent = msg;
+    }
     show('st-err');
   }
 
@@ -85,8 +89,12 @@
         }
         return;
       }
-      if (btn) btn.disabled = true;
-      if (errEl) errEl.hidden = true;
+      if (btn) {
+        btn.disabled = true;
+      }
+      if (errEl) {
+        errEl.hidden = true;
+      }
       fetch('/api/auth/resend-verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -101,7 +109,9 @@
           show('st-sent');
         })
         .catch(function () {
-          if (btn) btn.disabled = false;
+          if (btn) {
+            btn.disabled = false;
+          }
           if (errEl) {
             errEl.textContent =
               'Could not send the link right now. Check your connection and try again.';

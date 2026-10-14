@@ -3233,3 +3233,31 @@ SESSION END STATE
 
 *This file is the working source of truth for continuing this project across sessions.*
 Keep it updated. Do not let a session end without updating the STATUS LOG.*
+
+---
+
+**2026-10-13 — Session: IN-CHAT TWEAK CONFIRMATION + SESSION DOCUMENTATION CLOSE-OFF (no commit, no deploy — documentation only).** Owner asked for a one-line hero tweak on the marketing landing page: "build comfortably all in one workspace" in all caps, no dash between comfortably and all, and keep COMFORTABLY and WORKSPACE gold. I verified on disk that index.html already carries exactly that shape, so no new edit was needed:
+- hero h1 on disk: `<h1>BUILD <span class="gold">COMFORTABLY</span> ALL IN ONE <span class="gold">WORKSPACE</span>.</h1>`
+- all caps present: PASS
+- COMFORTABLY gold + WORKSPACE gold: PASS
+- no unicode dash range in index.html: PASS
+- no mdash entity in index.html: PASS
+- the BUILD...COMFORTABLY...WORKSPACE sentence structure matches the request: PASS
+The request was already reflected on disk and already shipped in the live deploy from the prior 2026-10-13 headline pass, so I confirmed it verbatim but did not touch the file. This session's only action was verifying + documenting that the live copy matches the ask.
+
+WHAT THIS SESSION TOUCHED
+- reflection.txt — appended the 2026-10-13 SESSION record.
+- CONTINUATION-DIRECTIVE.md — STATUS LOG appended with this 2026-10-13 record.
+No code files were edited. No files were staged or pushed.
+
+VERIFICATION RUN THIS SESSION
+- Re-read index.html around the hero h1 and confirmed the full block verbatim.
+- Programmatically confirmed: hero h1 block intact, BUILD/COMFORTABLY/WORKSPACE all present, no unicode dash range, no mdash entity in index.html.
+
+CURRENT SESSION CONTEXT
+- This 2026-10-13 activity sits on top of a long rolling window that already landed: the marketing hero dot-rail + full-bleed layout rework (2026-10-07), the index.html/pricing.html/calculator-page hero all-caps + dash-removal pass (2026-10-13, already deployed before this message), plus earlier waves through 2026-09-28 (calculator, gantt/geo, kanban, rate sheets, deadlines, MCP, cloud, sync, admin, review queue, deploys).
+
+NEXT SESSION STARTING POINT
+- The directive's last shipped state is the 2026-10-07 marketing dot-rail + layout rework worktree (uncommitted/undeployed per that entry). Beyond that, this 2026-10-13 message was purely a documentation close-off of an already-live headline.
+- If the owner wants another copy pass on the hero (tone, length, punctuation, line-break), re-open index.html around the hero h1 + hero-sub paragraph; nothing else in the page is in scope for this request.
+- If the owner wants this documented as a closed item, the entry above already records it as closed.

@@ -86,7 +86,9 @@ var MMGR = window.MMGR || {};
   const esc = v => U.escapeHtml(v === undefined || v === null ? '' : String(v));
   const money = n => '$' + (+n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
   const toast = (msg, type) => {
-    if (ns.App && ns.App.showToast) ns.App.showToast(msg, type || 'ok');
+    if (ns.App && ns.App.showToast) {
+      ns.App.showToast(msg, type || 'ok');
+    }
   };
 
   // ---- Legacy-data normalization (T8 rebuild): pre-rebuild packages stored
@@ -95,7 +97,9 @@ var MMGR = window.MMGR || {};
   //      into the new shapes in place so old projects keep their numbers.
   function normalizeLegacy() {
     const s = S();
-    if (!s) return false;
+    if (!s) {
+      return false;
+    }
     let changed = false;
     (s.bidPackages || []).forEach(function (p) {
       if (!p.lineItems && Array.isArray(p.bids)) {
@@ -132,10 +136,11 @@ var MMGR = window.MMGR || {};
         changed = true;
       }
     });
-    if (changed)
+    if (changed) {
       ns.State.updateState(function () {
         /* mutation done above */
       });
+    }
     return changed;
   }
 
@@ -159,8 +164,11 @@ var MMGR = window.MMGR || {};
           sub.amounts && sub.amounts[li] !== undefined && sub.amounts[li] !== null
             ? +sub.amounts[li] || 0
             : null;
-        if (amt === null) adj += +it.estCost || 0;
-        else base += amt;
+        if (amt === null) {
+          adj += +it.estCost || 0;
+        } else {
+          base += amt;
+        }
       });
       const leveled = base + adj;
       return {
@@ -181,16 +189,22 @@ var MMGR = window.MMGR || {};
       const hasPrice = ((sub && sub.amounts) || []).some(function (a) {
         return a !== undefined && a !== null && +a > 0;
       });
-      if (r.vendor && hasPrice) pricedIdx.push(si);
+      if (r.vendor && hasPrice) {
+        pricedIdx.push(si);
+      }
     });
     let lowestIdx = -1;
     if (pricedIdx.length) {
       let min = Infinity;
       pricedIdx.forEach(function (si) {
-        if (rows[si].leveled < min) min = rows[si].leveled;
+        if (rows[si].leveled < min) {
+          min = rows[si].leveled;
+        }
       });
       pricedIdx.forEach(function (si) {
-        if (lowestIdx === -1 && rows[si].leveled === min) lowestIdx = si;
+        if (lowestIdx === -1 && rows[si].leveled === min) {
+          lowestIdx = si;
+        }
       });
     }
     return {
@@ -236,7 +250,9 @@ var MMGR = window.MMGR || {};
     const anyRated = parts.some(function (p) {
       return p.avg > 0;
     });
-    if (!anyRated) return { pct: null, recommendation: null, parts: parts };
+    if (!anyRated) {
+      return { pct: null, recommendation: null, parts: parts };
+    }
     const pct =
       parts.reduce(function (sum, p) {
         return sum + p.contribution;
@@ -277,35 +293,51 @@ var MMGR = window.MMGR || {};
           lineItems: [{ description: '', estCost: 0 }]
         };
     const modal = U.$('bidpkg-modal');
-    if (!modal) return;
+    if (!modal) {
+      return;
+    }
     const title = U.$('bp-title');
-    if (title)
+    if (title) {
       title.textContent = _draft.editPkgIdx === null ? 'Add Bid Package' : 'Edit Bid Package';
+    }
     const nameEl = U.$('bp-name');
-    if (nameEl) nameEl.value = _draft.package;
+    if (nameEl) {
+      nameEl.value = _draft.package;
+    }
     const csiEl = U.$('bp-csi');
-    if (csiEl) csiEl.innerHTML = csiOptions(_draft.csiDivision);
+    if (csiEl) {
+      csiEl.innerHTML = csiOptions(_draft.csiDivision);
+    }
     const budEl = U.$('bp-budget');
-    if (budEl) budEl.value = _draft.targetBudget ? String(_draft.targetBudget) : '';
+    if (budEl) {
+      budEl.value = _draft.targetBudget ? String(_draft.targetBudget) : '';
+    }
     const dlEl = U.$('bp-deadline');
-    if (dlEl) dlEl.value = _draft.bidDeadline || '';
+    if (dlEl) {
+      dlEl.value = _draft.bidDeadline || '';
+    }
     renderDraftItems();
     modal.classList.add('on');
-    if (nameEl)
+    if (nameEl) {
       setTimeout(function () {
         nameEl.focus();
       }, 50);
+    }
   }
 
   function closeBidPkgModal() {
     const modal = U.$('bidpkg-modal');
-    if (modal) modal.classList.remove('on');
+    if (modal) {
+      modal.classList.remove('on');
+    }
     _draft = null;
   }
 
   function renderDraftItems() {
     const wrap = U.$('bp-items');
-    if (!wrap || !_draft) return;
+    if (!wrap || !_draft) {
+      return;
+    }
     wrap.innerHTML = _draft.lineItems
       .map(function (it, i) {
         return (
@@ -330,13 +362,17 @@ var MMGR = window.MMGR || {};
   }
 
   function bidModalAddItem() {
-    if (!_draft) return;
+    if (!_draft) {
+      return;
+    }
     _draft.lineItems.push({ description: '', estCost: 0 });
     renderDraftItems();
   }
 
   function bidModalDelItem(idx) {
-    if (!_draft) return;
+    if (!_draft) {
+      return;
+    }
     if (_draft.lineItems.length <= 1) {
       toast('A package needs at least one scope line item.', 'err');
       return;
@@ -346,7 +382,9 @@ var MMGR = window.MMGR || {};
   }
 
   function readDraft() {
-    if (!_draft) return null;
+    if (!_draft) {
+      return null;
+    }
     const name = (U.$('bp-name') || {}).value || '';
     const csi = (U.$('bp-csi') || {}).value || '00';
     const budget = parseFloat((U.$('bp-budget') || {}).value) || 0;
@@ -355,19 +393,27 @@ var MMGR = window.MMGR || {};
     document.querySelectorAll('#bp-items .bp-item').forEach(function (row) {
       const desc = (row.querySelector('.bp-item-desc') || {}).value || '';
       const cost = parseFloat((row.querySelector('.bp-item-cost') || {}).value) || 0;
-      if (desc.trim()) items.push({ description: desc.trim(), estCost: cost });
+      if (desc.trim()) {
+        items.push({ description: desc.trim(), estCost: cost });
+      }
     });
     return { name: name.trim(), csi: csi, budget: budget, deadline: deadline, items: items };
   }
 
   function bidPkgSave() {
-    if (!_draft) return;
+    if (!_draft) {
+      return;
+    }
     const d = readDraft();
-    if (!d) return;
+    if (!d) {
+      return;
+    }
     if (!d.name) {
       toast('Give the package a name before saving.', 'err');
       const n = U.$('bp-name');
-      if (n) n.focus();
+      if (n) {
+        n.focus();
+      }
       return;
     }
     if (!d.items.length) {
@@ -377,7 +423,9 @@ var MMGR = window.MMGR || {};
     const isEdit = _draft.editPkgIdx !== null;
     let savedPkg = null;
     ns.State.updateState(function (s) {
-      if (!s.bidPackages) s.bidPackages = [];
+      if (!s.bidPackages) {
+        s.bidPackages = [];
+      }
       const src =
         _draft.editPkgIdx !== null && s.bidPackages[_draft.editPkgIdx]
           ? s.bidPackages[_draft.editPkgIdx]
@@ -392,7 +440,9 @@ var MMGR = window.MMGR || {};
         });
         // Keep sub amounts aligned: grow/shrink to the new line-item count.
         (src.subs || []).forEach(function (sub) {
-          if (!Array.isArray(sub.amounts)) sub.amounts = [];
+          if (!Array.isArray(sub.amounts)) {
+            sub.amounts = [];
+          }
           sub.amounts.length = d.items.length;
         });
         // Drop subs whose vendor is empty and never priced anything.
@@ -424,7 +474,9 @@ var MMGR = window.MMGR || {};
     closeBidPkgModal();
     R.renderStakeholders();
     toast(isEdit ? 'Bid package updated.' : 'Bid package saved.', 'ok');
-    if (savedPkg) openRfqMailto(savedPkg);
+    if (savedPkg) {
+      openRfqMailto(savedPkg);
+    }
   }
 
   function openRfqMailto(pkg) {
@@ -461,19 +513,30 @@ var MMGR = window.MMGR || {};
   function updPkg(pkgIdx, field, value, evtType) {
     ns.State.updateState(function (s) {
       const p = s.bidPackages && s.bidPackages[pkgIdx];
-      if (!p) return;
-      if (field === 'targetBudget') p.targetBudget = parseFloat(value) || 0;
-      else p[field] = value;
+      if (!p) {
+        return;
+      }
+      if (field === 'targetBudget') {
+        p.targetBudget = parseFloat(value) || 0;
+      } else {
+        p[field] = value;
+      }
     });
-    if (evtType === 'input') return;
+    if (evtType === 'input') {
+      return;
+    }
     R.renderStakeholders();
   }
 
   function addSub(pkgIdx) {
     ns.State.updateState(function (s) {
       const p = s.bidPackages && s.bidPackages[pkgIdx];
-      if (!p) return;
-      if (!p.subs) p.subs = [];
+      if (!p) {
+        return;
+      }
+      if (!p.subs) {
+        p.subs = [];
+      }
       p.subs.push({
         vendor: '',
         email: '',
@@ -490,7 +553,9 @@ var MMGR = window.MMGR || {};
   function delSub(pkgIdx, sidx) {
     const p = pkgAt(pkgIdx);
     const sub = p && p.subs && p.subs[sidx];
-    if (!p || !sub) return;
+    if (!p || !sub) {
+      return;
+    }
     const name = (sub.vendor || '').trim() || 'this subcontractor';
     if (!ns.App || !ns.App.askConfirm) {
       doDelSub();
@@ -506,7 +571,9 @@ var MMGR = window.MMGR || {};
     function doDelSub() {
       ns.State.updateState(function (s) {
         const pp = s.bidPackages && s.bidPackages[pkgIdx];
-        if (pp && pp.subs) pp.subs.splice(sidx, 1);
+        if (pp && pp.subs) {
+          pp.subs.splice(sidx, 1);
+        }
       });
       R.renderStakeholders();
     }
@@ -515,20 +582,30 @@ var MMGR = window.MMGR || {};
   function updSub(pkgIdx, sidx, field, value, evtType) {
     ns.State.updateState(function (s) {
       const p = s.bidPackages && s.bidPackages[pkgIdx];
-      if (p && p.subs && p.subs[sidx]) p.subs[sidx][field] = value;
+      if (p && p.subs && p.subs[sidx]) {
+        p.subs[sidx][field] = value;
+      }
     });
-    if (evtType === 'input') return;
+    if (evtType === 'input') {
+      return;
+    }
     R.renderStakeholders();
   }
 
   function addLine(pkgIdx) {
     ns.State.updateState(function (s) {
       const p = s.bidPackages && s.bidPackages[pkgIdx];
-      if (!p) return;
-      if (!p.lineItems) p.lineItems = [];
+      if (!p) {
+        return;
+      }
+      if (!p.lineItems) {
+        p.lineItems = [];
+      }
       p.lineItems.push({ description: '', estCost: 0 });
       (p.subs || []).forEach(function (sub) {
-        if (!sub.amounts) sub.amounts = [];
+        if (!sub.amounts) {
+          sub.amounts = [];
+        }
         sub.amounts.push(null);
       });
     });
@@ -543,10 +620,14 @@ var MMGR = window.MMGR || {};
     }
     ns.State.updateState(function (s) {
       const pp = s.bidPackages && s.bidPackages[pkgIdx];
-      if (!pp || !pp.lineItems) return;
+      if (!pp || !pp.lineItems) {
+        return;
+      }
       pp.lineItems.splice(lidx, 1);
       (pp.subs || []).forEach(function (sub) {
-        if (Array.isArray(sub.amounts)) sub.amounts.splice(lidx, 1);
+        if (Array.isArray(sub.amounts)) {
+          sub.amounts.splice(lidx, 1);
+        }
       });
     });
     R.renderStakeholders();
@@ -559,33 +640,45 @@ var MMGR = window.MMGR || {};
         p.lineItems[lidx][field] = field === 'estCost' ? parseFloat(value) || 0 : value;
       }
     });
-    if (evtType === 'input') return;
+    if (evtType === 'input') {
+      return;
+    }
     R.renderStakeholders();
   }
 
   function updAmount(pkgIdx, sidx, lidx, value, evtType) {
     ns.State.updateState(function (s) {
       const p = s.bidPackages && s.bidPackages[pkgIdx];
-      if (!p || !p.subs || !p.subs[sidx]) return;
+      if (!p || !p.subs || !p.subs[sidx]) {
+        return;
+      }
       const sub = p.subs[sidx];
-      if (!Array.isArray(sub.amounts)) sub.amounts = [];
+      if (!Array.isArray(sub.amounts)) {
+        sub.amounts = [];
+      }
       const v =
         value === '' || value === null || value === undefined ? null : parseFloat(value) || 0;
       sub.amounts[lidx] = v;
     });
-    if (evtType === 'input') return;
+    if (evtType === 'input') {
+      return;
+    }
     R.renderStakeholders();
   }
 
   function awardSub(pkgIdx, sidx) {
     const p = pkgAt(pkgIdx);
     const sub = p && p.subs && p.subs[sidx];
-    if (!p || !sub) return;
+    if (!p || !sub) {
+      return;
+    }
     if (sub.awarded) {
       // Undo the award.
       ns.State.updateState(function (s) {
         const pp = s.bidPackages && s.bidPackages[pkgIdx];
-        if (pp && pp.subs && pp.subs[sidx]) pp.subs[sidx].awarded = false;
+        if (pp && pp.subs && pp.subs[sidx]) {
+          pp.subs[sidx].awarded = false;
+        }
       });
       R.renderStakeholders();
       toast('Award withdrawn.', 'ok');
@@ -595,7 +688,9 @@ var MMGR = window.MMGR || {};
     const doAward = function () {
       ns.State.updateState(function (s) {
         const pp = s.bidPackages && s.bidPackages[pkgIdx];
-        if (pp && pp.subs && pp.subs[sidx]) pp.subs[sidx].awarded = true;
+        if (pp && pp.subs && pp.subs[sidx]) {
+          pp.subs[sidx].awarded = true;
+        }
       });
       R.renderStakeholders();
       toast('Contract awarded to ' + (name || 'subcontractor') + '.', 'ok');
@@ -615,7 +710,9 @@ var MMGR = window.MMGR || {};
   function openProposal(pkgIdx, sidx) {
     const p = pkgAt(pkgIdx);
     const sub = p && p.subs && p.subs[sidx];
-    if (!p || !sub) return;
+    if (!p || !sub) {
+      return;
+    }
     const url = (sub.proposalUrl || '').trim();
     if (!url) {
       toast('No proposal link saved for this subcontractor yet. Paste one in the header.', 'err');
@@ -627,7 +724,9 @@ var MMGR = window.MMGR || {};
   function clarifySub(pkgIdx, sidx) {
     const p = pkgAt(pkgIdx);
     const sub = p && p.subs && p.subs[sidx];
-    if (!p || !sub) return;
+    if (!p || !sub) {
+      return;
+    }
     const lines = (p.lineItems || [])
       .map(function (it, i) {
         const amt =
@@ -668,11 +767,15 @@ var MMGR = window.MMGR || {};
 
   function delBidPackage(pkgIdx) {
     const p = pkgAt(pkgIdx);
-    if (!p) return;
+    if (!p) {
+      return;
+    }
     const name = (p.package || '').trim() || 'this bid package';
     const doDel = function () {
       ns.State.updateState(function (s) {
-        if (s.bidPackages) s.bidPackages.splice(pkgIdx, 1);
+        if (s.bidPackages) {
+          s.bidPackages.splice(pkgIdx, 1);
+        }
       });
       R.renderStakeholders();
       toast('Bid package deleted.', 'ok');
@@ -693,7 +796,9 @@ var MMGR = window.MMGR || {};
   // ================= Go/No-Go scorecard mutations =================
   function addGoNoGo() {
     ns.State.updateState(function (s) {
-      if (!s.goNoGo) s.goNoGo = [];
+      if (!s.goNoGo) {
+        s.goNoGo = [];
+      }
       s.goNoGo.push({
         id: U.genShortId('GNG'),
         projectName: '',
@@ -710,17 +815,25 @@ var MMGR = window.MMGR || {};
 
   function updGoNoGo(idx, field, value, evtType) {
     ns.State.updateState(function (s) {
-      if (s.goNoGo && s.goNoGo[idx]) s.goNoGo[idx][field] = value;
+      if (s.goNoGo && s.goNoGo[idx]) {
+        s.goNoGo[idx][field] = value;
+      }
     });
-    if (evtType === 'input') return;
+    if (evtType === 'input') {
+      return;
+    }
     R.renderStakeholders();
   }
 
   function addGoNoGoCat(idx) {
     ns.State.updateState(function (s) {
       const g = s.goNoGo && s.goNoGo[idx];
-      if (!g) return;
-      if (!g.categories) g.categories = [];
+      if (!g) {
+        return;
+      }
+      if (!g.categories) {
+        g.categories = [];
+      }
       g.categories.push({ label: '', weight: 25, criteria: [{ label: '', stars: 0 }] });
     });
     R.renderStakeholders();
@@ -734,7 +847,9 @@ var MMGR = window.MMGR || {};
     }
     ns.State.updateState(function (s) {
       const gg = s.goNoGo && s.goNoGo[idx];
-      if (gg && gg.categories) gg.categories.splice(cidx, 1);
+      if (gg && gg.categories) {
+        gg.categories.splice(cidx, 1);
+      }
     });
     R.renderStakeholders();
   }
@@ -746,18 +861,28 @@ var MMGR = window.MMGR || {};
         g.categories[cidx][field] = field === 'weight' ? parseFloat(value) || 0 : value;
       }
     });
-    if (evtType === 'input') return;
+    if (evtType === 'input') {
+      return;
+    }
     R.renderStakeholders();
   }
 
   function addGoNoGoCriterion(idx, cidx) {
     ns.State.updateState(function (s) {
       const g = s.goNoGo && s.goNoGo[idx];
-      if (!g) return;
-      if (!g.categories) g.categories = [];
+      if (!g) {
+        return;
+      }
+      if (!g.categories) {
+        g.categories = [];
+      }
       const cat = g.categories[cidx === undefined || cidx === null ? 0 : cidx];
-      if (!cat) return;
-      if (!cat.criteria) cat.criteria = [];
+      if (!cat) {
+        return;
+      }
+      if (!cat.criteria) {
+        cat.criteria = [];
+      }
       cat.criteria.push({ label: '', stars: 0 });
     });
     R.renderStakeholders();
@@ -767,7 +892,9 @@ var MMGR = window.MMGR || {};
     ns.State.updateState(function (s) {
       const g = s.goNoGo && s.goNoGo[idx];
       const cat = g && g.categories && g.categories[cidx];
-      if (cat && cat.criteria) cat.criteria.splice(ridx, 1);
+      if (cat && cat.criteria) {
+        cat.criteria.splice(ridx, 1);
+      }
     });
     R.renderStakeholders();
   }
@@ -776,9 +903,13 @@ var MMGR = window.MMGR || {};
     ns.State.updateState(function (s) {
       const g = s.goNoGo && s.goNoGo[idx];
       const cat = g && g.categories && g.categories[cidx];
-      if (cat && cat.criteria && cat.criteria[ridx]) cat.criteria[ridx][field] = value;
+      if (cat && cat.criteria && cat.criteria[ridx]) {
+        cat.criteria[ridx][field] = value;
+      }
     });
-    if (evtType === 'input') return;
+    if (evtType === 'input') {
+      return;
+    }
     R.renderStakeholders();
   }
 
@@ -786,19 +917,24 @@ var MMGR = window.MMGR || {};
     ns.State.updateState(function (s) {
       const g = s.goNoGo && s.goNoGo[idx];
       const cat = g && g.categories && g.categories[cidx];
-      if (cat && cat.criteria && cat.criteria[ridx])
+      if (cat && cat.criteria && cat.criteria[ridx]) {
         cat.criteria[ridx].stars = Math.min(5, Math.max(0, +val || 0));
+      }
     });
     R.renderStakeholders();
   }
 
   function delGoNoGo(idx) {
     const g = S() && S().goNoGo && S().goNoGo[idx];
-    if (!g) return;
+    if (!g) {
+      return;
+    }
     const name = (g.projectName || '').trim() || 'this scorecard';
     const doDel = function () {
       ns.State.updateState(function (s) {
-        if (s.goNoGo) s.goNoGo.splice(idx, 1);
+        if (s.goNoGo) {
+          s.goNoGo.splice(idx, 1);
+        }
       });
       R.renderStakeholders();
       toast('Scorecard deleted.', 'ok');
@@ -869,7 +1005,9 @@ var MMGR = window.MMGR || {};
 
   function renderGoNoGo() {
     const body = U.$('gonogo-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const s = S();
     const list = (s && s.goNoGo) || [];
     if (!list.length) {
@@ -992,7 +1130,9 @@ var MMGR = window.MMGR || {};
 
   function render() {
     const body = U.$('bid-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     normalizeLegacy();
     const s = S();
     const pkgs = (s && s.bidPackages) || [];
@@ -1124,7 +1264,9 @@ var MMGR = window.MMGR || {};
     };
     const numTd = n => '<td class="lvl-num">' + money(n) + '</td>';
     const pctTd = r => {
-      if (r.varPct === null) return '<td class="lvl-num lvl-var-na">, </td>';
+      if (r.varPct === null) {
+        return '<td class="lvl-num lvl-var-na">, </td>';
+      }
       const cls = r.varPct <= 0 ? ' lvl-var-ok' : ' lvl-var-over';
       return (
         '<td class="lvl-num' +
@@ -1196,11 +1338,18 @@ var MMGR = window.MMGR || {};
       : '';
 
     const chips = [];
-    if (p.csiDivision) chips.push('<span class="bid-chip">CSI ' + esc(p.csiDivision) + '</span>');
-    if (g.budget > 0) chips.push('<span class="bid-chip">' + money(g.budget) + '</span>');
-    if (p.bidDeadline) chips.push('<span class="bid-chip">Due ' + esc(p.bidDeadline) + '</span>');
-    if (!chips.length)
+    if (p.csiDivision) {
+      chips.push('<span class="bid-chip">CSI ' + esc(p.csiDivision) + '</span>');
+    }
+    if (g.budget > 0) {
+      chips.push('<span class="bid-chip">' + money(g.budget) + '</span>');
+    }
+    if (p.bidDeadline) {
+      chips.push('<span class="bid-chip">Due ' + esc(p.bidDeadline) + '</span>');
+    }
+    if (!chips.length) {
       chips.push('<span class="bid-chip bid-chip-muted">Add scope details in the modal</span>');
+    }
 
     return (
       '<div class="bid-pkg">' +

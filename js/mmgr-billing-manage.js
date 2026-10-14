@@ -30,13 +30,17 @@
       .replace(/'/g, '&#39;');
   }
   function fmtDate(iso) {
-    if (!iso) return '';
+    if (!iso) {
+      return '';
+    }
     try {
       /* The API sends ISO strings. A bare number below 1e11 is epoch SECONDS
          (1794154608 = Nov 2026); Date() wants ms, and skipping this made it
          render as Jan 21, 1970. */
       var d = new Date(typeof iso === 'number' && iso < 1e11 ? iso * 1000 : iso);
-      if (isNaN(d.getTime())) return String(iso);
+      if (isNaN(d.getTime())) {
+        return String(iso);
+      }
       return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     } catch (e) {
       return String(iso);
@@ -115,7 +119,9 @@
   }
 
   function renderError(plan, msg) {
-    if (!plan) return;
+    if (!plan) {
+      return;
+    }
     plan.hidden = false;
     plan.innerHTML =
       '<div class="t-xs lh18" role="status" style="color:var(--danger)">' + esc(msg) + '</div>';
@@ -125,7 +131,9 @@
 
   async function loadPlan() {
     var plan = $(PLAN);
-    if (!plan) return;
+    if (!plan) {
+      return;
+    }
     var res;
     try {
       res = await fetch('/api/billing/status', { method: 'GET', credentials: 'same-origin' });
@@ -154,7 +162,9 @@
 
   async function cancelSubscription() {
     var plan = $(PLAN);
-    if (!plan || busy) return;
+    if (!plan || busy) {
+      return;
+    }
     busy = true;
     try {
       // The word travels with the request: the server refuses a cancel that
@@ -185,7 +195,9 @@
 
   document.addEventListener('click', function (e) {
     var el = e.target && e.target.closest ? e.target.closest('[data-bmg]') : null;
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     var act = el.getAttribute('data-bmg');
     var plan = $(PLAN);
     if (act === 'manage') {
@@ -204,7 +216,9 @@
       // typed value is re-read here too, so a programmatic click cannot fire a
       // cancel that the user never confirmed.
       var code = $('bmg-code');
-      if (!wordMatches(code && code.value)) return;
+      if (!wordMatches(code && code.value)) {
+        return;
+      }
       cancelSubscription();
       return;
     }
@@ -214,11 +228,17 @@
      event-delegated input event so it survives every re-render of the panel. */
   document.addEventListener('input', function (e) {
     var el = e.target;
-    if (!el || el.id !== 'bmg-code') return;
+    if (!el || el.id !== 'bmg-code') {
+      return;
+    }
     var plan = $(PLAN);
-    if (!plan) return;
+    if (!plan) {
+      return;
+    }
     var btn = plan.querySelector('[data-bmg="confirm"]');
-    if (!btn) return;
+    if (!btn) {
+      return;
+    }
     var ok = wordMatches(el.value);
     btn.disabled = !ok;
     btn.setAttribute('aria-disabled', ok ? 'false' : 'true');

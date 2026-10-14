@@ -33,19 +33,31 @@ async function verifyGoogleIdToken(idToken, clientId) {
     const res = await fetch(
       'https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken)
     );
-    if (!res.ok) return null;
+    if (!res.ok) {
+      return null;
+    }
     payload = await res.json();
   } catch (e) {
     return null;
   }
-  if (!payload || typeof payload !== 'object') return null;
-  if (payload.aud !== clientId) return null;
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+  if (payload.aud !== clientId) {
+    return null;
+  }
   const iss = String(payload.iss || '');
-  if (iss !== 'accounts.google.com' && iss !== 'https://accounts.google.com') return null;
+  if (iss !== 'accounts.google.com' && iss !== 'https://accounts.google.com') {
+    return null;
+  }
   const exp = Number(payload.exp);
-  if (!Number.isFinite(exp) || exp * 1000 <= Date.now()) return null;
+  if (!Number.isFinite(exp) || exp * 1000 <= Date.now()) {
+    return null;
+  }
   const sub = payload.sub ? String(payload.sub) : '';
-  if (!sub) return null;
+  if (!sub) {
+    return null;
+  }
   return {
     sub: sub,
     email: typeof payload.email === 'string' ? payload.email : '',
@@ -98,13 +110,17 @@ export async function handleAuthGoogle(request, env) {
     return json({ ok: false, error: 'bad request' }, 400);
   }
   const idToken = body && typeof body.idToken === 'string' ? body.idToken : '';
-  if (!idToken) return json({ ok: false, error: 'missing id_token' }, 400);
+  if (!idToken) {
+    return json({ ok: false, error: 'missing id_token' }, 400);
+  }
   const clientId =
     env && typeof env.GOOGLE_CLIENT_ID === 'string' && env.GOOGLE_CLIENT_ID
       ? env.GOOGLE_CLIENT_ID
       : GOOGLE_CLIENT_ID;
   const user = await verifyGoogleIdToken(idToken, clientId);
-  if (!user) return json({ ok: false, error: 'invalid token' }, 401);
+  if (!user) {
+    return json({ ok: false, error: 'invalid token' }, 401);
+  }
   const s = await mintSession(user, env);
   return new Response(JSON.stringify({ ok: true, user }), {
     status: 200,
@@ -119,7 +135,9 @@ export async function handleAuthGoogle(request, env) {
 // GET /api/auth/me -> { ok:true, user } when a valid session cookie exists
 export async function handleAuthMe(request, env) {
   const session = await readSession(request, env);
-  if (!session) return json({ ok: false, user: null });
+  if (!session) {
+    return json({ ok: false, user: null });
+  }
   // AUTH-MAINFRAME lazy sliding renewal: re-issue the cookie when the
   // session is older than the renew window (or is a pre-table cookie
   // carrying no jti/iat), bounded by the absolute cap. Same jti, fresh

@@ -61,12 +61,13 @@ async function ev(expr) {
     returnByValue: true,
     awaitPromise: true
   });
-  if (r.exceptionDetails)
+  if (r.exceptionDetails) {
     return {
       __err: r.exceptionDetails.exception
         ? r.exceptionDetails.exception.description
         : r.exceptionDetails.text
     };
+  }
   return r.result && r.result.value;
 }
 
@@ -87,7 +88,9 @@ async function ev(expr) {
   for (let i = 0; i < 60; i++) {
     try {
       const r = await fetch('http://127.0.0.1:' + PORT + '/json/version');
-      if (r.ok) break;
+      if (r.ok) {
+        break;
+      }
     } catch (e) {}
     await delay(300);
   }

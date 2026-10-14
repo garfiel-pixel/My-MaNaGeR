@@ -60,10 +60,18 @@ var MMGR = window.MMGR || {};
     opts = opts || {};
     var cls = VARIANTS[variant] || variant || 'bg';
     var style = '';
-    if (opts.fontSize) style += 'font-size:' + opts.fontSize + ';';
-    if (opts.padding) style += 'padding:' + opts.padding + ';';
-    if (opts.nowrap) style += 'white-space:nowrap;';
-    if (opts.style) style += opts.style;
+    if (opts.fontSize) {
+      style += 'font-size:' + opts.fontSize + ';';
+    }
+    if (opts.padding) {
+      style += 'padding:' + opts.padding + ';';
+    }
+    if (opts.nowrap) {
+      style += 'white-space:nowrap;';
+    }
+    if (opts.style) {
+      style += opts.style;
+    }
     var titleAttr = opts.title ? ' title="' + opts.title.replace(/"/g, '&quot;') + '"' : '';
     var classAttr = 'badge ' + cls + (opts.className ? ' ' + opts.className : '');
     return (
@@ -136,7 +144,9 @@ var MMGR = window.MMGR || {};
    */
   function showToast(msg, type, action) {
     var existing = document.querySelector('.toast');
-    if (existing) existing.remove();
+    if (existing) {
+      existing.remove();
+    }
     var isErr = type === 'err' || type === 'error';
     var isWarn = type === 'warn';
     var t = document.createElement('div');

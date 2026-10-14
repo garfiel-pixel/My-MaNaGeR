@@ -36,7 +36,9 @@
     try {
       var G = window.MMGR && window.MMGR.Viewport ? window.MMGR.Viewport.getGlassMode() : 'css';
       var gs = document.querySelectorAll('[data-action="tglGlassMode"]');
-      for (var i = 0; i < gs.length; i++) gs[i].checked = G === 'premium';
+      for (var i = 0; i < gs.length; i++) {
+        gs[i].checked = G === 'premium';
+      }
     } catch (e) {
       /* Viewport not ready yet - next sync will catch it */
     }
@@ -97,19 +99,26 @@
     // is a GPU layer, so it yields to Performance Mode like the WebGL engine.
     try {
       var P = window.MMGR && window.MMGR.Perf ? window.MMGR.Perf : null;
-      if (P && P.blocksHeavyLayers && P.blocksHeavyLayers()) return false;
+      if (P && P.blocksHeavyLayers && P.blocksHeavyLayers()) {
+        return false;
+      }
     } catch (e) {
       /* Perf absent - fall through to the classic gates */
     }
     try {
       var V = window.MMGR && window.MMGR.Viewport ? window.MMGR.Viewport : null;
-      if (V && typeof V.isNarrow === 'function' && V.isNarrow()) return false;
+      if (V && typeof V.isNarrow === 'function' && V.isNarrow()) {
+        return false;
+      }
     } catch (e) {
       /* Viewport not ready yet - width check below covers it */
     }
-    if (window.innerWidth < 769) return false; // repo desktop boundary (769px)
-    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+    if (window.innerWidth < 769) {
       return false;
+    } // repo desktop boundary (769px)
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return false;
+    }
     return true;
   }
   // OWNER 2026-09-12 (review): the palette axis is retired (2026-09-05
@@ -134,7 +143,9 @@
     // Premium glass colorway follows the palette (uRose reads data-theme).
     try {
       var G = window.MMGR && window.MMGR.Glass ? window.MMGR.Glass : null;
-      if (G && G.refreshTheme) G.refreshTheme();
+      if (G && G.refreshTheme) {
+        G.refreshTheme();
+      }
     } catch (e) {}
     sync();
   }
@@ -152,7 +163,9 @@
   }
   var _rzT = null;
   function onViewportChange() {
-    if (_rzT) clearTimeout(_rzT);
+    if (_rzT) {
+      clearTimeout(_rzT);
+    }
     _rzT = setTimeout(function () {
       applyView();
     }, 150); // debounce resize/orientation
@@ -170,15 +183,21 @@
     var t = e.target && e.target.id === 'theme-select' ? e.target : null;
     if (t) {
       try {
-        if (window.MMGRTheme && window.MMGRTheme.setMode) window.MMGRTheme.setMode(t.value);
+        if (window.MMGRTheme && window.MMGRTheme.setMode) {
+          window.MMGRTheme.setMode(t.value);
+        }
       } catch (err) {}
       return;
     }
     t = e.target && e.target.id === 'perf-tgl' ? e.target : null;
-    if (!t) return;
+    if (!t) {
+      return;
+    }
     try {
       var P = window.MMGR && window.MMGR.Perf ? window.MMGR.Perf : null;
-      if (P && P.set) P.set(!!t.checked);
+      if (P && P.set) {
+        P.set(!!t.checked);
+      }
     } catch (err) {
       /* preference write must never break the page */
     }
@@ -190,7 +209,9 @@
       var P2 = window.MMGR && window.MMGR.Perf ? window.MMGR.Perf : null;
       if (P2 && P2.isOn) {
         var ts = document.querySelectorAll('#perf-tgl');
-        for (var pi = 0; pi < ts.length; pi++) ts[pi].checked = P2.isOn();
+        for (var pi = 0; pi < ts.length; pi++) {
+          ts[pi].checked = P2.isOn();
+        }
       }
     } catch (e) {
       /* Perf absent - toggles keep their markup default (on) */
@@ -203,7 +224,9 @@
     // checked state never drifts from the page.
     document.addEventListener('click', function (e) {
       var n = e.target;
-      if (!n || !n.closest) return;
+      if (!n || !n.closest) {
+        return;
+      }
       if (
         n.closest(
           '[data-pal],[data-action="tglTheme"],[data-action="tglThemeQuick"],[data-action="tglGlassMode"]'
@@ -227,16 +250,24 @@
   // mmgr-theme.js listener, untouched.
   document.addEventListener('click', function (e) {
     var n = e.target && e.target.closest ? e.target.closest('[data-palette],[data-view]') : null;
-    if (!n) return;
+    if (!n) {
+      return;
+    }
     e.preventDefault();
-    if (n.hasAttribute('data-palette')) applyPalette(); // neutralized scrub (palette retired 2026-09-05; stale-rose fix 2026-09-12)
-    if (n.hasAttribute('data-view')) chooseView(n.getAttribute('data-view'));
+    if (n.hasAttribute('data-palette')) {
+      applyPalette();
+    } // neutralized scrub (palette retired 2026-09-05; stale-rose fix 2026-09-12)
+    if (n.hasAttribute('data-view')) {
+      chooseView(n.getAttribute('data-view'));
+    }
   });
   // Mobile auto-flat + rotate: re-evaluate the effective view on resize /
   // orientation changes (a phone rotated wide still respects the narrow rule;
   // a window widened past 769 re-enables a stored 3D choice).
   window.addEventListener('resize', onViewportChange);
-  if (window.visualViewport) window.visualViewport.addEventListener('resize', onViewportChange);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', onViewportChange);
+  }
 
   // Auto-boot the premium glass engine on pages whose inline boot sync runs
   // before their deferred bundle defines MMGR (launcher + admin - the inline
@@ -244,7 +275,9 @@
   // only post-bundle hook those pages have; project.html boots it itself).
   // sync() is idempotent: it only activates when the engine is inactive.
   try {
-    if (window.MMGR && window.MMGR.Glass && window.MMGR.Glass.sync) window.MMGR.Glass.sync();
+    if (window.MMGR && window.MMGR.Glass && window.MMGR.Glass.sync) {
+      window.MMGR.Glass.sync();
+    }
   } catch (e) {
     /* glass boot must never break the page */
   }

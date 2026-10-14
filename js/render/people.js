@@ -29,9 +29,13 @@ var MMGR = window.MMGR || {};
   // ---- Stakeholders ----
   function renderStakeholders() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const body = $('stk-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const stks = s.stakeholders || [];
     const soon = 30;
     const expiring =
@@ -51,12 +55,18 @@ var MMGR = window.MMGR || {};
         : '';
       banner.classList.toggle('is-hide', !n);
       const btxt = banner.querySelector('.stk-cmp-txt');
-      if (btxt) btxt.textContent = txt;
+      if (btxt) {
+        btxt.textContent = txt;
+      }
     }
     syncStakeComplianceBadges(expiring.length);
     if (ns.Bids) {
-      if (ns.Bids.render) ns.Bids.render();
-      if (ns.Bids.renderGoNoGo) ns.Bids.renderGoNoGo();
+      if (ns.Bids.render) {
+        ns.Bids.render();
+      }
+      if (ns.Bids.renderGoNoGo) {
+        ns.Bids.renderGoNoGo();
+      }
     }
     if (stks.length === 0) {
       body.innerHTML = emptyStateRow(
@@ -101,11 +111,16 @@ var MMGR = window.MMGR || {};
     const h = $('h-coi');
     if (h) {
       const n = h.querySelector('.ds-num');
-      if (n) n.textContent = count;
-      else h.textContent = count;
+      if (n) {
+        n.textContent = count;
+      } else {
+        h.textContent = count;
+      }
     }
     const card = $('health-card');
-    if (card) card.classList.toggle('has-compliance', count > 0);
+    if (card) {
+      card.classList.toggle('has-compliance', count > 0);
+    }
     document.querySelectorAll('[data-section="stk"] .sec-badge').forEach(function (b) {
       b.textContent = count;
       b.classList.toggle('is-hide', count === 0);
@@ -115,9 +130,13 @@ var MMGR = window.MMGR || {};
   // ---- Changes ----
   function renderChanges() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const body = $('chg-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const changes = s.changes || [];
     if (changes.length === 0) {
       body.innerHTML = emptyStateRow(
@@ -170,9 +189,13 @@ var MMGR = window.MMGR || {};
   // ---- Log ----
   function renderLog() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const body = $('log-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const entries = s.logEntries || [];
     if (entries.length === 0) {
       body.innerHTML = emptyStateRow(
@@ -198,9 +221,13 @@ var MMGR = window.MMGR || {};
   // ---- RACI ----
   function renderRaci() {
     const s = S();
-    if (!s || !s.raci) return;
+    if (!s || !s.raci) {
+      return;
+    }
     const con = $('raci-con');
-    if (!con) return;
+    if (!con) {
+      return;
+    }
     const raci = s.raci;
     const tasks = raci.tasks || [];
     const persons = raci.persons || [];
@@ -210,8 +237,12 @@ var MMGR = window.MMGR || {};
       con.innerHTML = '';
       return;
     }
-    if (Raci.refreshRaciPersonPicker) Raci.refreshRaciPersonPicker();
-    if (Raci.refreshRaciTaskPicker) Raci.refreshRaciTaskPicker();
+    if (Raci.refreshRaciPersonPicker) {
+      Raci.refreshRaciPersonPicker();
+    }
+    if (Raci.refreshRaciTaskPicker) {
+      Raci.refreshRaciTaskPicker();
+    }
     if (tasks.length === 0 && persons.length === 0) {
       con.innerHTML =
         '<div class="es"><div class="ic"><svg class="ico" style="font-size:2rem" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg></div>' +
@@ -273,7 +304,9 @@ var MMGR = window.MMGR || {};
   // ---- 4.2 RACI workload heatmap ----
   function renderRaciHeatmap() {
     const el = $('raci-heatmap');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const s = S();
     const raci = (s && s.raci) || { tasks: [], persons: [], matrix: {} };
     if (!(raci.persons || []).length) {
@@ -311,7 +344,9 @@ var MMGR = window.MMGR || {};
   function renderRaciAlerts() {
     const s = S();
     const el = $('raci-alerts');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const raci = (s && s.raci) || { tasks: [], persons: [], matrix: {} };
     const { tasks, persons, matrix } = raci;
     const Raci = ns.Raci;
@@ -347,9 +382,13 @@ var MMGR = window.MMGR || {};
   // ---- Comms ----
   function renderComms() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const body = $('comms-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const entries = s.commsEntries || [];
     if (entries.length === 0) {
       body.innerHTML = emptyStateRow(

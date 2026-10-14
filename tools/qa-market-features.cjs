@@ -43,8 +43,9 @@ async function ev(expr) {
     returnByValue: true,
     awaitPromise: true
   });
-  if (r.exceptionDetails)
+  if (r.exceptionDetails) {
     return { __err: (r.exceptionDetails.exception || {}).description || r.exceptionDetails.text };
+  }
   return r.result && r.result.value;
 }
 async function check(name, expr, hint) {
@@ -78,9 +79,13 @@ async function check(name, expr, hint) {
       const r = await fetch('http://127.0.0.1:' + PORT + '/json');
       const list = await r.json();
       const page = list.find(x => x.type === 'page');
-      if (page) wsUrl = page.webSocketDebuggerUrl;
+      if (page) {
+        wsUrl = page.webSocketDebuggerUrl;
+      }
     } catch (e) {}
-    if (!wsUrl) await delay(250);
+    if (!wsUrl) {
+      await delay(250);
+    }
   }
   if (!wsUrl) {
     log('Chrome debugger not reachable');
@@ -90,7 +95,9 @@ async function check(name, expr, hint) {
   await new Promise(res => ws.addEventListener('open', res));
   ws.addEventListener('message', function (evt) {
     const m = JSON.parse(evt.data);
-    if (m.id && pending.has(m.id)) pending.get(m.id)(m);
+    if (m.id && pending.has(m.id)) {
+      pending.get(m.id)(m);
+    }
   });
   await send('Runtime.enable');
   await send('Page.enable');

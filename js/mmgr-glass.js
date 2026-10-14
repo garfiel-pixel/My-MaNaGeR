@@ -60,8 +60,12 @@ var MMGR = window.MMGR || {};
   // verify the lifecycle deterministically without the network. Production
   // never sets it , the real dynamic import from the pinned CDN is used.
   function _importThree() {
-    if (typeof window.__mmgrThreeImport === 'function') return window.__mmgrThreeImport();
-    if (typeof window.__mmgrGlassImportCalls === 'number') window.__mmgrGlassImportCalls++;
+    if (typeof window.__mmgrThreeImport === 'function') {
+      return window.__mmgrThreeImport();
+    }
+    if (typeof window.__mmgrGlassImportCalls === 'number') {
+      window.__mmgrGlassImportCalls++;
+    }
     return import(THREE_MODULE);
   }
 
@@ -209,18 +213,24 @@ var MMGR = window.MMGR || {};
   let _glowRaf = 0;
 
   function _onMouseMove(e) {
-    if (_glowRaf) return;
+    if (_glowRaf) {
+      return;
+    }
     _glowRaf = requestAnimationFrame(function () {
       _glowRaf = 0;
       const de = document.documentElement;
-      if (!de) return;
+      if (!de) {
+        return;
+      }
       de.style.setProperty('--mouse-x', e.clientX + 'px');
       de.style.setProperty('--mouse-y', e.clientY + 'px');
     });
   }
 
   function _mountGlow() {
-    if (_glowEl) return;
+    if (_glowEl) {
+      return;
+    }
     const el = document.createElement('div');
     el.className = 'mouse-glow';
     el.setAttribute('aria-hidden', 'true');
@@ -235,12 +245,16 @@ var MMGR = window.MMGR || {};
       _glowRaf = 0;
     }
     window.removeEventListener('mousemove', _onMouseMove);
-    if (_glowEl && _glowEl.parentNode) _glowEl.parentNode.removeChild(_glowEl);
+    if (_glowEl && _glowEl.parentNode) {
+      _glowEl.parentNode.removeChild(_glowEl);
+    }
     _glowEl = null;
   }
 
   function _frame() {
-    if (!_state.active || !_state.renderer) return;
+    if (!_state.active || !_state.renderer) {
+      return;
+    }
     try {
       _state.uniforms.uTime.value = _state.clock.getElapsedTime();
       _state.renderer.render(_state.scene, _state.camera);
@@ -248,7 +262,9 @@ var MMGR = window.MMGR || {};
     } catch (e) {
       // A render exception must never crash the app , fall back to CSS.
       deactivate();
-      if (ns.Errors && ns.Errors.log) ns.Errors.log('glass: render error, back to CSS', 'glass');
+      if (ns.Errors && ns.Errors.log) {
+        ns.Errors.log('glass: render error, back to CSS', 'glass');
+      }
     }
   }
 
@@ -258,7 +274,9 @@ var MMGR = window.MMGR || {};
   // it when the tab comes back; the mouse-glow RAF is cancelled the same way
   // (its mousemove listener still re-arms it, which is fine while hidden).
   function _onVisibility() {
-    if (!_state.active) return;
+    if (!_state.active) {
+      return;
+    }
     if (document.hidden || document.visibilityState === 'hidden') {
       if (_state.rafId) {
         cancelAnimationFrame(_state.rafId);
@@ -270,7 +288,9 @@ var MMGR = window.MMGR || {};
   }
 
   function _onResize() {
-    if (!_state.active || !_state.renderer) return;
+    if (!_state.active || !_state.renderer) {
+      return;
+    }
     try {
       _state.renderer.setSize(window.innerWidth, window.innerHeight);
       _state.uniforms.uRes.value.set(window.innerWidth, window.innerHeight);
@@ -279,7 +299,9 @@ var MMGR = window.MMGR || {};
     }
     // Shared detection: resize into a narrow viewport must tear the engine
     // down (same signal that switches dense layouts to simplified cards).
-    if (ns.Viewport && ns.Viewport.effectiveGlassMode() !== 'premium') sync();
+    if (ns.Viewport && ns.Viewport.effectiveGlassMode() !== 'premium') {
+      sync();
+    }
   }
 
   // Activate the premium engine. Returns a Promise<boolean> so callers (and
@@ -291,8 +313,12 @@ var MMGR = window.MMGR || {};
   // further activate() calls are no-ops returning true.
   let _activating = false;
   async function activate() {
-    if (_state.active) return true;
-    if (_activating) return true;
+    if (_state.active) {
+      return true;
+    }
+    if (_activating) {
+      return true;
+    }
     // OWNER 2026-09-07 -> REVISED 2026-09-09: premium glass started as the
     // APP SECTION's identity, never inside a project. The owner then asked
     // for the SAME premium starry treatment on the admin page so app and
@@ -301,8 +327,12 @@ var MMGR = window.MMGR || {};
     // stays excluded (dense data workspace). The served path is the
     // authoritative signal (production strips .html).
     const _p = (location.pathname || '').toLowerCase();
-    if (_p.indexOf('project') !== -1) return false;
-    if (!ns.Viewport || ns.Viewport.effectiveGlassMode() !== 'premium') return false;
+    if (_p.indexOf('project') !== -1) {
+      return false;
+    }
+    if (!ns.Viewport || ns.Viewport.effectiveGlassMode() !== 'premium') {
+      return false;
+    }
     _activating = true;
     let THREE = null;
     try {
@@ -317,7 +347,9 @@ var MMGR = window.MMGR || {};
       // Defensive: never mount a duplicate id (a stale canvas from an
       // interrupted earlier activation would break getElementById callers).
       const orphan = document.getElementById('glass-canvas');
-      if (orphan && orphan.parentNode) orphan.parentNode.removeChild(orphan);
+      if (orphan && orphan.parentNode) {
+        orphan.parentNode.removeChild(orphan);
+      }
       const canvas = document.createElement('canvas');
       canvas.id = 'glass-canvas';
       canvas.setAttribute('aria-hidden', 'true');
@@ -395,14 +427,16 @@ var MMGR = window.MMGR || {};
   function _fallback(why, err) {
     _unmountGlow();
     try {
-      if (_state.canvas && _state.canvas.parentNode)
+      if (_state.canvas && _state.canvas.parentNode) {
         _state.canvas.parentNode.removeChild(_state.canvas);
+      }
     } catch (e) {
       /* ignore */
     }
     document.body.classList.remove('glass-premium');
-    if (ns.Errors && ns.Errors.log)
+    if (ns.Errors && ns.Errors.log) {
       ns.Errors.log('glass: premium unavailable (' + why + ') , CSS glass stays on', 'glass');
+    }
     // OWNER 2026-09-06: silent fallback - no toast announcing the glass mode.
     _state = freshState();
   }
@@ -410,9 +444,13 @@ var MMGR = window.MMGR || {};
   // 3.5.5 shared teardown: dispose renderer + force WebGL context loss so a
   // mode toggle never leaks GPU contexts. Idempotent and never throws.
   function deactivate() {
-    if (!_state.active && !_state.renderer) return;
+    if (!_state.active && !_state.renderer) {
+      return;
+    }
     _unmountGlow();
-    if (_state.rafId) cancelAnimationFrame(_state.rafId);
+    if (_state.rafId) {
+      cancelAnimationFrame(_state.rafId);
+    }
     window.removeEventListener('resize', _onResize);
     document.removeEventListener('visibilitychange', _onVisibility);
     try {
@@ -421,15 +459,18 @@ var MMGR = window.MMGR || {};
         _state.renderer.dispose();
         if (gl && gl.getExtension) {
           const ext = gl.getExtension('WEBGL_lose_context');
-          if (ext && ext.loseContext) ext.loseContext();
+          if (ext && ext.loseContext) {
+            ext.loseContext();
+          }
         }
       }
     } catch (e) {
       /* teardown is best-effort */
     }
     try {
-      if (_state.canvas && _state.canvas.parentNode)
+      if (_state.canvas && _state.canvas.parentNode) {
         _state.canvas.parentNode.removeChild(_state.canvas);
+      }
     } catch (e) {
       /* ignore */
     }

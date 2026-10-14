@@ -23,7 +23,9 @@ const proc = spawn(
   for (let i = 0; i < 60; i++) {
     try {
       const r = await fetch('http://127.0.0.1:' + PORT + '/json/version');
-      if (r.ok) break;
+      if (r.ok) {
+        break;
+      }
     } catch (e) {}
     await delay(300);
   }

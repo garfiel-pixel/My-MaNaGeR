@@ -41,7 +41,9 @@
         .replace(/'/g, '&#39;');
     };
   function fmtDate(iso) {
-    if (!iso) return 'never synced';
+    if (!iso) {
+      return 'never synced';
+    }
     try {
       const d = new Date(iso);
       return isNaN(d.getTime())
@@ -83,18 +85,27 @@
       .replace(/[^A-Z0-9]/g, '');
     // Two valid shapes: 16-char owner/editor/viewer code (grouped) and the
     // 8-char client code (client-codes.js genCode) - pass 8 chars through.
-    if (s.length === 16)
+    if (s.length === 16) {
       return s.slice(0, 4) + '-' + s.slice(4, 8) + '-' + s.slice(8, 12) + '-' + s.slice(12, 16);
+    }
     return s;
   }
   function isCodeShape(code) {
-    if (/^[A-Z2-9]{4}(-[A-Z2-9]{4}){3}$/.test(code)) return true;
+    if (/^[A-Z2-9]{4}(-[A-Z2-9]{4}){3}$/.test(code)) {
+      return true;
+    }
     return /^[A-Z2-9]{8}$/.test(code);
   }
   function roleHeader(role, code) {
-    if (role === 'owner') return { 'X-Owner-Code': code };
-    if (role === 'view') return { 'X-View-Code': code };
-    if (role === 'client') return { 'X-Client-Code': code };
+    if (role === 'owner') {
+      return { 'X-Owner-Code': code };
+    }
+    if (role === 'view') {
+      return { 'X-View-Code': code };
+    }
+    if (role === 'client') {
+      return { 'X-Client-Code': code };
+    }
     return { 'X-Editor-Code': code };
   }
   async function codeEntryOpen() {
@@ -214,7 +225,9 @@
   // the project through the SAME data-cd-load path as the dashboard cards.
   function renderRailCloud(projects) {
     const list = $(RAIL_CLOUD);
-    if (!list) return;
+    if (!list) {
+      return;
+    }
     if (!projects || !projects.length) {
       list.innerHTML =
         '<div class="db-sub-empty">No cloud projects yet. Link one from any project\'s Cloud section.</div>';
@@ -240,9 +253,10 @@
   }
   function setRailCloudEmpty(msg) {
     const list = $(RAIL_CLOUD);
-    if (list)
+    if (list) {
       list.innerHTML =
         '<div class="db-sub-empty">' + escapeHtml(msg || 'No cloud projects.') + '</div>';
+    }
   }
 
   // ---- Skeleton loading states (2026-09-29) ----
@@ -273,7 +287,9 @@
   async function loadList() {
     const dash = $(DASH);
     const list = $(LIST);
-    if (!dash || !list) return;
+    if (!dash || !list) {
+      return;
+    }
     // Paint skeletons BEFORE the fetch so the section shows progress instead
     // of popping in. The offline catch below hides it again immediately, so
     // static-host visitors never see a shimmer over a hanging request.
@@ -455,31 +471,49 @@
   async function loadPlan() {
     const plan = $(RAIL_PLAN);
     const railUp = $(RAIL_UPGRADE);
-    if (!plan && !railUp) return;
+    if (!plan && !railUp) {
+      return;
+    }
     let res;
     try {
       res = await fetch('/api/billing/status', { method: 'GET', credentials: 'same-origin' });
     } catch (e) {
-      if (plan) plan.hidden = true;
-      if (railUp) railUp.hidden = true;
+      if (plan) {
+        plan.hidden = true;
+      }
+      if (railUp) {
+        railUp.hidden = true;
+      }
       return;
     }
     if (!res.ok) {
-      if (plan) plan.hidden = true;
-      if (railUp) railUp.hidden = true;
+      if (plan) {
+        plan.hidden = true;
+      }
+      if (railUp) {
+        railUp.hidden = true;
+      }
       return;
     }
     let data = null;
     try {
       data = await res.json();
     } catch (e) {
-      if (plan) plan.hidden = true;
-      if (railUp) railUp.hidden = true;
+      if (plan) {
+        plan.hidden = true;
+      }
+      if (railUp) {
+        railUp.hidden = true;
+      }
       return;
     }
     if (!data || !data.ok || !data.configured) {
-      if (plan) plan.hidden = true;
-      if (railUp) railUp.hidden = true;
+      if (plan) {
+        plan.hidden = true;
+      }
+      if (railUp) {
+        railUp.hidden = true;
+      }
       return;
     }
     // Single source of truth for the active tier: the billing status fetch.
@@ -500,11 +534,15 @@
           '<span class="db-plan-badge"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Premium</span>';
         plan.hidden = false;
       }
-      if (railUp) railUp.hidden = true;
+      if (railUp) {
+        railUp.hidden = true;
+      }
     } else {
       // Free plan -> a simple Upgrade to Premium button (owner: "something
       // simple like upgrade to premium"), with a small note at the cap.
-      if (plan) plan.hidden = true;
+      if (plan) {
+        plan.hidden = true;
+      }
       if (railUp) {
         railUp.hidden = false;
         railUp.innerHTML =
@@ -542,12 +580,14 @@
             /* already gone */
           }
         }
-        if (res.status === 503)
+        if (res.status === 503) {
           setStatus(
             'Billing isn\u2019t configured on this server yet, so no upgrade is available.',
             true
           );
-        else setStatus((data && data.error) || 'Checkout failed (HTTP ' + res.status + ').', true);
+        } else {
+          setStatus((data && data.error) || 'Checkout failed (HTTP ' + res.status + ').', true);
+        }
         return;
       }
       if (tab) {
@@ -557,7 +597,9 @@
         } catch (e) {
           window.open(data.checkoutUrl, '_blank', 'noopener');
         }
-      } else window.open(data.checkoutUrl, '_blank', 'noopener');
+      } else {
+        window.open(data.checkoutUrl, '_blank', 'noopener');
+      }
       setStatus(
         'Checkout opened in a new tab , complete the purchase there, then refresh this page.'
       );
@@ -641,7 +683,9 @@
                   role: data.role === 'view' ? 'view' : 'editor'
                 })
               );
-              if (data.role === 'view') localStorage.setItem('mmgr_scope_' + projectId, 'readonly');
+              if (data.role === 'view') {
+                localStorage.setItem('mmgr_scope_' + projectId, 'readonly');
+              }
             } catch (e) {
               /* ignore , server still enforces */
             }
@@ -710,7 +754,9 @@
       try {
         const raw = localStorage.getItem('mmgr_admin_projects');
         list = raw ? JSON.parse(raw) : [];
-        if (!Array.isArray(list)) list = [];
+        if (!Array.isArray(list)) {
+          list = [];
+        }
       } catch (e) {
         list = [];
       }
@@ -775,7 +821,9 @@
     try {
       var raw = localStorage.getItem('mmgr_admin_projects');
       var list = raw ? JSON.parse(raw) : [];
-      if (!Array.isArray(list)) list = [];
+      if (!Array.isArray(list)) {
+        list = [];
+      }
       for (var i = 0; i < list.length; i++) {
         if (list[i] && list[i].id === projectId && !list[i].cloudId) {
           list[i].cloudId = projectId;
@@ -793,7 +841,9 @@
   // are on that page (the cloud dash and the grid share the page).
   function renderCardsIfPresent() {
     try {
-      if (typeof window.renderCards === 'function') window.renderCards();
+      if (typeof window.renderCards === 'function') {
+        window.renderCards();
+      }
     } catch (e) {
       /* grid not on this page */
     }
@@ -845,13 +895,16 @@
   function openDeleteConfirm(projectId, name) {
     _pendingDelete = { id: projectId, name: name || projectId };
     const d = document.getElementById('cdm-desc');
-    if (d)
+    if (d) {
       d.textContent =
         'Deleting "' +
         (name || projectId) +
         '" removes it from the cloud backend. Every shared copy stops working (discontinued) and it disappears from your launcher. You can undo this for a few seconds after confirming. After that, you have 5 days to recover it from the Recover Deleted Projects section.';
+    }
     const err = document.getElementById('cdm-err');
-    if (err) err.textContent = '';
+    if (err) {
+      err.textContent = '';
+    }
     const m = document.getElementById('cdm');
     if (m) {
       m.classList.add('open');
@@ -860,7 +913,9 @@
   function closeDeleteConfirm() {
     _pendingDelete = null;
     const m = document.getElementById('cdm');
-    if (m) m.classList.remove('open');
+    if (m) {
+      m.classList.remove('open');
+    }
   }
   async function deleteProject(projectId, name) {
     setStatus('Deleting project…');
@@ -921,18 +976,26 @@
   // loadProject().
   function closeMenus() {
     const pops = document.querySelectorAll('.cd-menu-pop');
-    for (let i = 0; i < pops.length; i++) pops[i].hidden = true;
+    for (let i = 0; i < pops.length; i++) {
+      pops[i].hidden = true;
+    }
     const btns = document.querySelectorAll('[data-cd-menu]');
-    for (let i = 0; i < btns.length; i++) btns[i].setAttribute('aria-expanded', 'false');
+    for (let i = 0; i < btns.length; i++) {
+      btns[i].setAttribute('aria-expanded', 'false');
+    }
   }
   function toggleMenu(projectId, btn) {
     const pop = document.querySelector('[data-cd-menu-pop="' + projectId + '"]');
-    if (!pop) return;
+    if (!pop) {
+      return;
+    }
     const wasOpen = !pop.hidden;
     closeMenus();
     if (!wasOpen) {
       pop.hidden = false;
-      if (btn) btn.setAttribute('aria-expanded', 'true');
+      if (btn) {
+        btn.setAttribute('aria-expanded', 'true');
+      }
     }
   }
 
@@ -961,7 +1024,9 @@
     if (menuBtn) {
       e.preventDefault();
       const id = menuBtn.getAttribute('data-cd-menu');
-      if (id) toggleMenu(id, menuBtn);
+      if (id) {
+        toggleMenu(id, menuBtn);
+      }
       return;
     }
     const del = e.target && e.target.closest ? e.target.closest('[data-cd-del]') : null;
@@ -969,7 +1034,9 @@
       e.preventDefault();
       closeMenus();
       const id = del.getAttribute('data-cd-del');
-      if (id) openDeleteConfirm(id, del.getAttribute('data-cd-del-name') || id);
+      if (id) {
+        openDeleteConfirm(id, del.getAttribute('data-cd-del-name') || id);
+      }
       return;
     }
     // OWNER 2026-09-13: Save offline copy - restore the cloud project to
@@ -982,7 +1049,9 @@
       e.preventDefault();
       closeMenus();
       const id = cpy.getAttribute('data-cd-copy');
-      if (id) saveOfflineCopy(id);
+      if (id) {
+        saveOfflineCopy(id);
+      }
       return;
     }
     const un = e.target && e.target.closest ? e.target.closest('[data-cd-unpin]') : null;
@@ -990,14 +1059,18 @@
       e.preventDefault();
       closeMenus();
       const id = un.getAttribute('data-cd-unpin');
-      if (id) unpinProject(id, !!un.getAttribute('data-cd-disc'));
+      if (id) {
+        unpinProject(id, !!un.getAttribute('data-cd-disc'));
+      }
       return;
     }
     const el = e.target && e.target.closest ? e.target.closest('[data-cd-load]') : null;
     if (el) {
       e.preventDefault();
       const id = el.getAttribute('data-cd-load');
-      if (id) loadProject(id);
+      if (id) {
+        loadProject(id);
+      }
       return;
     }
     const up = e.target && e.target.closest ? e.target.closest('[data-cd-upgrade]') : null;
@@ -1010,7 +1083,9 @@
     if (cfm) {
       e.preventDefault();
       const p = _pendingDelete;
-      if (p) deleteProject(p.id, p.name);
+      if (p) {
+        deleteProject(p.id, p.name);
+      }
       return;
     }
     if (e.target && e.target.closest && e.target.closest('[data-cdm-close]')) {
@@ -1019,9 +1094,13 @@
       return;
     }
     // Click outside any menu popover closes every open one.
-    if (!e.target.closest('.cd-menu-pop') && !e.target.closest('[data-cd-menu]')) closeMenus();
+    if (!e.target.closest('.cd-menu-pop') && !e.target.closest('[data-cd-menu]')) {
+      closeMenus();
+    }
     // Click on the #cdm backdrop closes the confirm sheet (same as #om).
-    if (e.target.id === 'cdm') closeDeleteConfirm();
+    if (e.target.id === 'cdm') {
+      closeDeleteConfirm();
+    }
   });
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
@@ -1042,9 +1121,13 @@
   });
   document.addEventListener('mmgr:google-signed-out', function () {
     const dash = $(DASH);
-    if (dash) dash.hidden = true;
+    if (dash) {
+      dash.hidden = true;
+    }
     const rl = $(RAIL_CLOUD);
-    if (rl) rl.innerHTML = '<div class="db-sub-empty">Sign in to see your cloud projects.</div>';
+    if (rl) {
+      rl.innerHTML = '<div class="db-sub-empty">Sign in to see your cloud projects.</div>';
+    }
     // SIGN-OUT LEAVES THE PREMIUM BADGE (owner report 2026-10-04): this
     // handler cleared the project list but never the plan strip, so signing
     // out of a Premium account left "Premium" on screen for the next person
@@ -1087,40 +1170,59 @@
 
   function paginateGrid() {
     const grid = document.getElementById('grid');
-    if (!grid) return;
+    if (!grid) {
+      return;
+    }
     const cards = Array.prototype.slice.call(grid.querySelectorAll('.pcard'));
     let nav = document.getElementById('pg-nav');
     if (cards.length <= PG_PER_PAGE) {
       cards.forEach(function (c) {
         c.classList.remove('pg-off');
       });
-      if (nav) nav.remove();
+      if (nav) {
+        nav.remove();
+      }
       return;
     }
     const pages = Math.ceil(cards.length / PG_PER_PAGE);
-    if (pgCurrent > pages - 1) pgCurrent = pages - 1;
+    if (pgCurrent > pages - 1) {
+      pgCurrent = pages - 1;
+    }
 
     function showPage(i) {
       pgCurrent = i;
       cards.forEach(function (c, idx) {
         const on = Math.floor(idx / PG_PER_PAGE) === pgCurrent;
         c.classList.toggle('pg-off', !on);
-        if (on) c.classList.add('pg-on');
-        else c.classList.remove('pg-on');
+        if (on) {
+          c.classList.add('pg-on');
+        } else {
+          c.classList.remove('pg-on');
+        }
       });
       const prev = document.getElementById('pg-prev');
       const next = document.getElementById('pg-next');
       const cnt = document.getElementById('pg-count');
-      if (prev) prev.disabled = pgCurrent === 0;
-      if (next) next.disabled = pgCurrent === pages - 1;
-      if (cnt) cnt.textContent = pgCurrent + 1 + ' of ' + pages;
+      if (prev) {
+        prev.disabled = pgCurrent === 0;
+      }
+      if (next) {
+        next.disabled = pgCurrent === pages - 1;
+      }
+      if (cnt) {
+        cnt.textContent = pgCurrent + 1 + ' of ' + pages;
+      }
       const dots = document.querySelectorAll('.pg-dot');
-      for (let d = 0; d < dots.length; d++) dots[d].classList.toggle('is-on', d === pgCurrent);
+      for (let d = 0; d < dots.length; d++) {
+        dots[d].classList.toggle('is-on', d === pgCurrent);
+      }
     }
 
     function buildDots() {
       const dotsEl = document.getElementById('pg-dots');
-      if (!dotsEl || dotsEl.children.length === pages) return;
+      if (!dotsEl || dotsEl.children.length === pages) {
+        return;
+      }
       let html = '';
       for (let p = 0; p < pages; p++) {
         html +=
@@ -1147,14 +1249,20 @@
         '<button type="button" class="pg-btn" id="pg-next" aria-label="Next projects">Next <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>';
       grid.parentNode.insertBefore(nav, grid.nextSibling);
       document.getElementById('pg-prev').addEventListener('click', function () {
-        if (pgCurrent > 0) showPage(pgCurrent - 1);
+        if (pgCurrent > 0) {
+          showPage(pgCurrent - 1);
+        }
       });
       document.getElementById('pg-next').addEventListener('click', function () {
-        if (pgCurrent < pages - 1) showPage(pgCurrent + 1);
+        if (pgCurrent < pages - 1) {
+          showPage(pgCurrent + 1);
+        }
       });
       document.getElementById('pg-dots').addEventListener('click', function (e) {
         const dot = e.target && e.target.closest ? e.target.closest('.pg-dot') : null;
-        if (dot) showPage(parseInt(dot.getAttribute('data-pg'), 10) || 0);
+        if (dot) {
+          showPage(parseInt(dot.getAttribute('data-pg'), 10) || 0);
+        }
       });
     }
     buildDots();
@@ -1184,7 +1292,9 @@
     var dash = document.getElementById(RECOVER_DASH);
     var list = document.getElementById(RECOVER_LIST);
     var status = document.getElementById(RECOVER_STATUS);
-    if (!dash || !list) return;
+    if (!dash || !list) {
+      return;
+    }
     // Only show if signed in
     fetch('/api/auth/me', { credentials: 'same-origin' })
       .then(function (r) {
@@ -1198,7 +1308,9 @@
         return fetch('/api/cloud/projects/deleted', { method: 'GET', credentials: 'same-origin' });
       })
       .then(function (res) {
-        if (!res) return;
+        if (!res) {
+          return;
+        }
         if (!res.ok) {
           dash.hidden = true;
           return;
@@ -1270,7 +1382,9 @@
 
   function recoverProject(projectId, name) {
     var status = document.getElementById(RECOVER_STATUS);
-    if (status) status.textContent = 'Restoring project...';
+    if (status) {
+      status.textContent = 'Restoring project...';
+    }
     fetch('/api/cloud/projects/' + encodeURIComponent(projectId) + '/restore', {
       method: 'POST',
       credentials: 'same-origin'
@@ -1280,16 +1394,22 @@
       })
       .then(function (data) {
         if (!data || !data.ok) {
-          if (status) status.textContent = (data && data.error) || 'Could not restore the project.';
+          if (status) {
+            status.textContent = (data && data.error) || 'Could not restore the project.';
+          }
           return;
         }
         notify('"' + (name || projectId) + '" restored successfully.', 'ok');
-        if (status) status.textContent = '';
+        if (status) {
+          status.textContent = '';
+        }
         loadDeletedProjects();
         loadList(); // refresh main cloud list too
       })
       .catch(function () {
-        if (status) status.textContent = 'Could not reach the cloud service.';
+        if (status) {
+          status.textContent = 'Could not reach the cloud service.';
+        }
       });
   }
 

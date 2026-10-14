@@ -35,7 +35,9 @@ const delay = ms => new Promise(r => setTimeout(r, ms));
       await delay(250);
     }
   }
-  if (!ws) throw new Error('no chrome');
+  if (!ws) {
+    throw new Error('no chrome');
+  }
   let id = 0;
   const pend = new Map();
   ws.onmessage = e => {

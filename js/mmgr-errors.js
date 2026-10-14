@@ -45,9 +45,12 @@ var MMGR = window.MMGR || {};
 
   function setReportCfg(cfg) {
     try {
-      if (cfg && typeof cfg.enabled === 'boolean')
+      if (cfg && typeof cfg.enabled === 'boolean') {
         localStorage.setItem(REPORT_KEY, cfg.enabled ? '1' : '0');
-      if (cfg && typeof cfg.url === 'string') localStorage.setItem(WEBHOOK_KEY, cfg.url.trim());
+      }
+      if (cfg && typeof cfg.url === 'string') {
+        localStorage.setItem(WEBHOOK_KEY, cfg.url.trim());
+      }
     } catch (e) {
       /* ignored */
     }
@@ -63,9 +66,15 @@ var MMGR = window.MMGR || {};
   async function _report(entry) {
     try {
       const cfg = getReportCfg();
-      if (!cfg.enabled || !cfg.url) return;
-      if (!/^https:\/\//i.test(cfg.url)) return;
-      if (!ns.Net || typeof ns.Net.post !== 'function') return;
+      if (!cfg.enabled || !cfg.url) {
+        return;
+      }
+      if (!/^https:\/\//i.test(cfg.url)) {
+        return;
+      }
+      if (!ns.Net || typeof ns.Net.post !== 'function') {
+        return;
+      }
       await ns.Net.post(
         cfg.url,
         {
@@ -89,19 +98,25 @@ var MMGR = window.MMGR || {};
   }
 
   function log(msg, action) {
-    if (_busy) return;
+    if (_busy) {
+      return;
+    }
     _busy = true;
     let entry = null;
     try {
       const s = ns.State.getState();
-      if (!Array.isArray(s.errorLog)) s.errorLog = [];
+      if (!Array.isArray(s.errorLog)) {
+        s.errorLog = [];
+      }
       entry = {
         ts: new Date().toISOString(),
         msg: String(msg === undefined || msg === null ? 'unknown error' : msg).slice(0, 300),
         action: action || 'app'
       };
       s.errorLog.push(entry);
-      if (s.errorLog.length > MAX) s.errorLog = s.errorLog.slice(s.errorLog.length - MAX);
+      if (s.errorLog.length > MAX) {
+        s.errorLog = s.errorLog.slice(s.errorLog.length - MAX);
+      }
       // Deliberate save(true) rather than updateState: updateState fires
       // change listeners + the streak touch on EVERY recorded error and could
       // re-enter the error path while persisting. The _busy guard already
@@ -114,7 +129,9 @@ var MMGR = window.MMGR || {};
     _busy = false;
     // DIR-1b: the only hook that may leave this module. No-op when the
     // toggle is off (default) , the log() behavior above is unchanged.
-    if (entry) _report(entry);
+    if (entry) {
+      _report(entry);
+    }
   }
 
   function clear() {
@@ -134,7 +151,9 @@ var MMGR = window.MMGR || {};
   }
 
   function hookGlobals() {
-    if (typeof window === 'undefined' || !window.addEventListener) return;
+    if (typeof window === 'undefined' || !window.addEventListener) {
+      return;
+    }
     window.addEventListener('error', function (e) {
       log((e && e.message) || 'window error', 'global');
     });
@@ -151,7 +170,9 @@ var MMGR = window.MMGR || {};
 
   function fmtTs(iso) {
     const d = new Date(iso);
-    if (isNaN(d.getTime())) return String(iso || '');
+    if (isNaN(d.getTime())) {
+      return String(iso || '');
+    }
     const p = n => String(n).padStart(2, '0');
     return (
       d.getFullYear() +
@@ -172,7 +193,9 @@ var MMGR = window.MMGR || {};
   // classes come from css/mmgr.css (.errlog/.el-row/.el-ts/.el-act/...).
   function render() {
     const body = U.$('errlog-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const entries = getLog();
     if (!entries.length) {
       body.innerHTML = '<div class="el-empty">No client errors recorded.</div>';

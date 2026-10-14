@@ -25,7 +25,9 @@ for (const page of PAGES) {
   const html = fs.readFileSync(path.join(ROOT, page), 'utf8');
   const re = /data-action="([A-Za-z0-9]+)"/g;
   let m;
-  while ((m = re.exec(html)) !== null) actions.add(m[1]);
+  while ((m = re.exec(html)) !== null) {
+    actions.add(m[1]);
+  }
 }
 
 // Every ACTION_MAP key literal — capture the map object body between
@@ -40,7 +42,9 @@ const mapBody = mb[1];
 const mapKeys = new Set();
 const keyRe = /'([A-Za-z0-9]+)'\s*:/g;
 let k;
-while ((k = keyRe.exec(mapBody)) !== null) mapKeys.add(k[1]);
+while ((k = keyRe.exec(mapBody)) !== null) {
+  mapKeys.add(k[1]);
+}
 
 // Markup actions not defined in the map AND not referenced anywhere else.
 const missing = [...actions].filter(a => !mapKeys.has(a) && app.indexOf("'" + a + "'") === -1);

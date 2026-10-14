@@ -26,10 +26,15 @@ function parseWranglerRows(stdout) {
     } catch (e) {
       continue;
     }
-    if (!Array.isArray(parsed)) continue;
-    if (parsed.length && parsed.every(s => s && typeof s === 'object' && 'results' in s))
+    if (!Array.isArray(parsed)) {
+      continue;
+    }
+    if (parsed.length && parsed.every(s => s && typeof s === 'object' && 'results' in s)) {
       return parsed.reduce((all, s) => all.concat(s.results || []), []);
-    if (parsed.length === 0) return [];
+    }
+    if (parsed.length === 0) {
+      return [];
+    }
   }
   throw new Error('no JSON result found in wrangler output');
 }
@@ -47,9 +52,13 @@ function main() {
   let where = '--remote';
   const rest = [];
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--db') db = args[++i];
-    else if (args[i] === '--local') where = '--local';
-    else rest.push(args[i]);
+    if (args[i] === '--db') {
+      db = args[++i];
+    } else if (args[i] === '--local') {
+      where = '--local';
+    } else {
+      rest.push(args[i]);
+    }
   }
   const sql = rest.join(' ');
   if (!sql) {
@@ -97,4 +106,6 @@ function main() {
 }
 
 module.exports = { parseWranglerRows, isReadOnly };
-if (require.main === module) main();
+if (require.main === module) {
+  main();
+}

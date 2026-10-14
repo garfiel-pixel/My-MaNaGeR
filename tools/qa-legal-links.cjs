@@ -34,12 +34,13 @@ async function ev(expr) {
     returnByValue: true,
     awaitPromise: true
   });
-  if (r.exceptionDetails)
+  if (r.exceptionDetails) {
     return {
       __err: r.exceptionDetails.exception
         ? r.exceptionDetails.exception.description
         : r.exceptionDetails.text
     };
+  }
   return r.result && r.result.value;
 }
 const check = (name, val, detail) => {
@@ -51,14 +52,18 @@ const check = (name, val, detail) => {
   let server = null;
   try {
     const r = await fetch(BASE + '/index.html');
-    if (!r.ok) throw new Error('down');
+    if (!r.ok) {
+      throw new Error('down');
+    }
   } catch (e) {
     log('server down — spawning serve.cjs');
     server = spawn(process.execPath, ['serve.cjs'], { stdio: 'ignore', detached: true });
     for (let i = 0; i < 30; i++) {
       try {
         const r = await fetch(BASE + '/index.html');
-        if (r.ok) break;
+        if (r.ok) {
+          break;
+        }
       } catch (e2) {}
       await delay(300);
     }
@@ -79,7 +84,9 @@ const check = (name, val, detail) => {
   for (let i = 0; i < 60; i++) {
     try {
       const r = await fetch('http://127.0.0.1:9251/json/version');
-      if (r.ok) break;
+      if (r.ok) {
+        break;
+      }
     } catch (e) {}
     await delay(300);
   }

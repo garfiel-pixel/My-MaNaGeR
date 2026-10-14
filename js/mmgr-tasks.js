@@ -19,15 +19,21 @@ var MMGR = window.MMGR || {};
   // Returns null when either date is missing or the pair is inverted -
   // callers treat null as "nothing to write".
   function durationFromDates(start, end) {
-    if (!start || !end) return null;
+    if (!start || !end) {
+      return null;
+    }
     // SAME-DAY (2026-09-26): the endpoint bonuses below DOUBLE-COUNT a
     // one-day span (0 strictly-between + 1 + 1 = 2; a weekend day scored
     // 0 + 0 + 0 = 0 - the owner's "dates that have zero days"). The exact
     // inverse of the forward convention for start == end is always 1:
     // addWorkingDays(start, 0) === start for any day of the week.
-    if (start === end) return 1;
+    if (start === end) {
+      return 1;
+    }
     const between = U.workingDaysBetween(start, end);
-    if (between < 0) return null;
+    if (between < 0) {
+      return null;
+    }
     const raw = between + (U.isWorkDay(start) ? 1 : 0) + (U.isWorkDay(end) ? 1 : 0);
     return Math.floor(raw + 0.5);
   }
@@ -98,7 +104,9 @@ var MMGR = window.MMGR || {};
   // ---- Task CRUD ----
   function addTask() {
     ns.State.updateState(function (s) {
-      if (!s.tasks) s.tasks = [];
+      if (!s.tasks) {
+        s.tasks = [];
+      }
       s.tasks.push({
         id: U.genId('t'),
         name: 'New Task',
@@ -127,7 +135,9 @@ var MMGR = window.MMGR || {};
   function tglMilestone(id) {
     ns.State.updateState(function (s) {
       const task = (s.tasks || []).find(t => t.id === id);
-      if (task) task.milestone = !task.milestone;
+      if (task) {
+        task.milestone = !task.milestone;
+      }
     });
     R.renderWbs();
     R.renderDash();
@@ -137,7 +147,9 @@ var MMGR = window.MMGR || {};
   function tglWeather(id) {
     ns.State.updateState(function (s) {
       const task = (s.tasks || []).find(t => t.id === id);
-      if (task) task.weatherSensitive = !task.weatherSensitive;
+      if (task) {
+        task.weatherSensitive = !task.weatherSensitive;
+      }
     });
     R.renderWbs();
     R.renderGantt();
@@ -153,7 +165,9 @@ var MMGR = window.MMGR || {};
   function tglLeadTime(id) {
     ns.State.updateState(function (s) {
       const task = (s.tasks || []).find(t => t.id === id);
-      if (!task) return;
+      if (!task) {
+        return;
+      }
       task.leadTime = !task.leadTime;
       if (task.leadTime && !task.submittedDate) {
         task.submittedDate = U.todayStr();
@@ -172,7 +186,9 @@ var MMGR = window.MMGR || {};
   function tglLeadtimeReview(id) {
     ns.State.updateState(function (s) {
       const task = (s.tasks || []).find(t => t.id === id);
-      if (task) task.leadtimeUpdatedAt = new Date().toISOString();
+      if (task) {
+        task.leadtimeUpdatedAt = new Date().toISOString();
+      }
     });
     R.renderDash();
   }
@@ -204,7 +220,9 @@ var MMGR = window.MMGR || {};
             // working-day math the endDate branch uses). Whichever of the
             // three fields is touched first, the other two determine it.
             const c = durationFromDates(task.startDate, task.endDate);
-            if (c !== null) task.duration = String(c);
+            if (c !== null) {
+              task.duration = String(c);
+            }
           }
         } else if (field === 'endDate') {
           // Dates drive days (owner 2026-09-19): setting the end date
@@ -229,7 +247,9 @@ var MMGR = window.MMGR || {};
     // every `input` keystroke destroys the focused input and drops the caret,
     // so only one character could ever be typed. State is saved on every
     // keystroke; the table re-renders on `change` (blur/commit) instead.
-    if (evtType === 'input') return;
+    if (evtType === 'input') {
+      return;
+    }
     // Date-commit discipline (user-reported "the dates are fighting me" bug):
     // the native date picker is anchored to the focused input element. On a
     // date commit Chrome fires `change`; rebuilding the WBS table from that
@@ -252,14 +272,18 @@ var MMGR = window.MMGR || {};
         if (task && task.endDate) {
           const row = document.querySelector('#wbs-body tr.wbs-row[data-id="' + id + '"]');
           const endInp = row && row.querySelector('input[data-field="endDate"]');
-          if (endInp) endInp.value = task.endDate;
+          if (endInp) {
+            endInp.value = task.endDate;
+          }
         }
         if (task && task.duration) {
           // DATE-TRIAD: the startDate edit may have filled the Days cell
           // (start+end, no duration) - patch it in place, picker stays put.
           const row = document.querySelector('#wbs-body tr.wbs-row[data-id="' + id + '"]');
           const durInp = row && row.querySelector('input[data-field="duration"]');
-          if (durInp) durInp.value = task.duration;
+          if (durInp) {
+            durInp.value = task.duration;
+          }
         }
       }
       if (field === 'endDate') {
@@ -270,14 +294,18 @@ var MMGR = window.MMGR || {};
         if (task && task.duration) {
           const row = document.querySelector('#wbs-body tr.wbs-row[data-id="' + id + '"]');
           const durInp = row && row.querySelector('input[data-field="duration"]');
-          if (durInp) durInp.value = task.duration;
+          if (durInp) {
+            durInp.value = task.duration;
+          }
         }
         if (task && task.startDate) {
           // DATE-TRIAD: the endDate edit may have back-computed the start
           // (end+duration, no start) - patch the start cell in place too.
           const row = document.querySelector('#wbs-body tr.wbs-row[data-id="' + id + '"]');
           const startInp = row && row.querySelector('input[data-field="startDate"]');
-          if (startInp) startInp.value = task.startDate;
+          if (startInp) {
+            startInp.value = task.startDate;
+          }
         }
       }
       R.renderGantt();
@@ -306,7 +334,9 @@ var MMGR = window.MMGR || {};
           ae.type === 'month' ||
           ae.type === 'week' ||
           ae.type === 'datetime-local');
-      if (!pickerFocused) R.renderWbs();
+      if (!pickerFocused) {
+        R.renderWbs();
+      }
       R.renderGantt();
       R.renderKanban();
       // Interaction re-audit: a status change also moves the health ring,
@@ -318,10 +348,14 @@ var MMGR = window.MMGR || {};
 
   function delTask(id) {
     ns.State.updateState(function (s) {
-      if (s.tasks) s.tasks = s.tasks.filter(t => t.id !== id);
+      if (s.tasks) {
+        s.tasks = s.tasks.filter(t => t.id !== id);
+      }
     });
     // Keep the RACI matrix consistent: drop the deleted task's row + cells.
-    if (ns.Raci && ns.Raci.pruneDeleted) ns.Raci.pruneDeleted({ taskIds: [id] });
+    if (ns.Raci && ns.Raci.pruneDeleted) {
+      ns.Raci.pruneDeleted({ taskIds: [id] });
+    }
     R.renderWbs();
     R.renderGantt();
     R.renderKanban();
@@ -330,7 +364,9 @@ var MMGR = window.MMGR || {};
 
   function indentTask(id) {
     ns.State.updateState(function (s) {
-      if (!s.tasks) return;
+      if (!s.tasks) {
+        return;
+      }
       const idx = s.tasks.findIndex(t => t.id === id);
       if (idx > 0) {
         const prev = s.tasks[idx - 1];
@@ -343,7 +379,9 @@ var MMGR = window.MMGR || {};
 
   function outdentTask(id) {
     ns.State.updateState(function (s) {
-      if (!s.tasks) return;
+      if (!s.tasks) {
+        return;
+      }
       const task = s.tasks.find(t => t.id === id);
       if (task) {
         task.indent = Math.max((task.indent || 0) - 1, 0);
@@ -358,7 +396,9 @@ var MMGR = window.MMGR || {};
     // meaning "expanded": undefined/true = expanded, false = collapsed.
     // The DOM is driven by re-render from state, so it can never drift.
     ns.State.updateState(function (s) {
-      if (!s.defExpanded) s.defExpanded = {};
+      if (!s.defExpanded) {
+        s.defExpanded = {};
+      }
       s.defExpanded[id] = s.defExpanded[id] === false;
     });
     R.renderWbs();
@@ -367,11 +407,15 @@ var MMGR = window.MMGR || {};
   // ---- Bulk collapse/expand all phases (MONOLITH-PORTING-GUIDE feature 9) ----
   function collapseAll() {
     ns.State.updateState(function (s) {
-      if (!s.defExpanded) s.defExpanded = {};
+      if (!s.defExpanded) {
+        s.defExpanded = {};
+      }
       // Collapse every phase container (isPhase or level 0) except standalone
       // tasks , the render treats isPhase || level===0 as a collapsible row.
       (s.tasks || []).forEach(t => {
-        if (t.isPhase || (t.level || 0) === 0) s.defExpanded[t.id] = false;
+        if (t.isPhase || (t.level || 0) === 0) {
+          s.defExpanded[t.id] = false;
+        }
       });
     });
     R.renderWbs();
@@ -379,9 +423,13 @@ var MMGR = window.MMGR || {};
 
   function expandAll() {
     ns.State.updateState(function (s) {
-      if (!s.defExpanded) s.defExpanded = {};
+      if (!s.defExpanded) {
+        s.defExpanded = {};
+      }
       (s.tasks || []).forEach(t => {
-        if (t.isPhase || (t.level || 0) === 0) delete s.defExpanded[t.id]; // undefined = expanded
+        if (t.isPhase || (t.level || 0) === 0) {
+          delete s.defExpanded[t.id];
+        } // undefined = expanded
       });
     });
     R.renderWbs();
@@ -393,7 +441,9 @@ var MMGR = window.MMGR || {};
     const spr = s.sprint || {};
     const setVal = (id, val) => {
       const el = U.$(id);
-      if (el) el.value = val || '';
+      if (el) {
+        el.value = val || '';
+      }
     };
     setVal('sp-nm', spr.name);
     setVal('sp-st', spr.start);
@@ -402,7 +452,9 @@ var MMGR = window.MMGR || {};
 
   function saveSprint() {
     ns.State.updateState(function (s) {
-      if (!s.sprint) s.sprint = {};
+      if (!s.sprint) {
+        s.sprint = {};
+      }
       s.sprint.name = (U.$('sp-nm') || {}).value || 'Sprint 1';
       s.sprint.start = (U.$('sp-st') || {}).value || '';
       s.sprint.end = (U.$('sp-en') || {}).value || '';
@@ -412,24 +464,32 @@ var MMGR = window.MMGR || {};
   // ---- WBS Import ----
   function openWbsImport() {
     const modal = U.$('wbsimport-modal');
-    if (modal) modal.classList.add('on');
+    if (modal) {
+      modal.classList.add('on');
+    }
   }
 
   function closeWbsImport() {
     const modal = U.$('wbsimport-modal');
-    if (modal) modal.classList.remove('on');
+    if (modal) {
+      modal.classList.remove('on');
+    }
   }
 
   function wiPreview() {
     const source = U.$('wi-source');
     const preview = U.$('wi-preview');
     const commitBtn = U.$('wi-commit-btn');
-    if (!source || !preview) return;
+    if (!source || !preview) {
+      return;
+    }
     const text = source.value.trim();
     if (!text) {
       preview.innerHTML =
         '<div style="color:var(--slate);padding:10px">Paste your task outline to see a preview.</div>';
-      if (commitBtn) commitBtn.disabled = true;
+      if (commitBtn) {
+        commitBtn.disabled = true;
+      }
       return;
     }
     const lines = text.split('\n').filter(l => l.trim());
@@ -441,21 +501,29 @@ var MMGR = window.MMGR || {};
         .replace(/^[\s\-•*]+/, '')
         .replace(/^[\d]+[\.\)]\s*/, '')
         .trim();
-      if (!cleaned) continue;
+      if (!cleaned) {
+        continue;
+      }
       const indent = Math.min(Math.floor((line.search(/\S/) || 0) / 2), 2);
       html += `<tr><td>L${indent}</td><td>${U.escapeHtml(cleaned)}</td></tr>`;
       taskCount++;
     }
     html += '</tbody></table>';
     preview.innerHTML = html;
-    if (commitBtn) commitBtn.disabled = taskCount === 0;
+    if (commitBtn) {
+      commitBtn.disabled = taskCount === 0;
+    }
   }
 
   function wiCommit() {
     const source = U.$('wi-source');
-    if (!source) return;
+    if (!source) {
+      return;
+    }
     const text = source.value.trim();
-    if (!text) return;
+    if (!text) {
+      return;
+    }
     const lines = text.split('\n').filter(l => l.trim());
     // Bulk import is destructive (adds tasks) , make it undoable.
     ns.State.pushUndo();
@@ -466,20 +534,26 @@ var MMGR = window.MMGR || {};
     let added = 0,
       skipped = 0;
     ns.State.updateState(function (s) {
-      if (!s.tasks) s.tasks = [];
+      if (!s.tasks) {
+        s.tasks = [];
+      }
       let currentPhase = null;
       for (const line of lines) {
         const cleaned = line
           .replace(/^[\s\-•*]+/, '')
           .replace(/^[\d]+[\.\)]\s*/, '')
           .trim();
-        if (!cleaned) continue;
+        if (!cleaned) {
+          continue;
+        }
         const indent = Math.min(Math.floor((line.search(/\S/) || 0) / 2), 2);
         // Track the phase line even when it is itself a duplicate, so its
         // children keep the correct parent linkage on a re-import (a skipped
         // phase must not orphan the next line into parentName=null, which
         // would break the dedupe match and duplicate the children).
-        if (indent === 0) currentPhase = cleaned;
+        if (indent === 0) {
+          currentPhase = cleaned;
+        }
         const parentName = indent === 0 ? null : currentPhase;
         const dup = s.tasks.some(
           t =>
@@ -556,7 +630,9 @@ var MMGR = window.MMGR || {};
   function openImportDates() {
     const modal = U.$('importdates-modal');
     const template = U.$('id-template');
-    if (!modal || !template) return;
+    if (!modal || !template) {
+      return;
+    }
     const s = S();
     const tasks = (Array.isArray(s.tasks) ? s.tasks : []).filter(t => !t.isPhase);
     // Show format hint in the template area so user knows the expected format
@@ -573,16 +649,22 @@ var MMGR = window.MMGR || {};
     // Fresh modal: clear the editable field and disable the Fill In button
     // until a valid preview exists, so state never carries across opens.
     const source = U.$('id-source');
-    if (source) source.value = '';
+    if (source) {
+      source.value = '';
+    }
     const commitBtn = U.$('id-commit-btn');
-    if (commitBtn) commitBtn.disabled = true;
+    if (commitBtn) {
+      commitBtn.disabled = true;
+    }
     syncIdAiNote(); // AI button reflects the entitlement seam on every open
     modal.classList.add('on');
   }
 
   function closeImportDates() {
     const modal = U.$('importdates-modal');
-    if (modal) modal.classList.remove('on');
+    if (modal) {
+      modal.classList.remove('on');
+    }
   }
 
   // ---- MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-2: 'Copy List' ----
@@ -593,7 +675,9 @@ var MMGR = window.MMGR || {};
   // Import Dates modal, so that is what is restored here.
   function copyIdTemplate() {
     const template = U.$('id-template');
-    if (!template) return;
+    if (!template) {
+      return;
+    }
     // execCommand returns false on failure rather than throwing , check the
     // return value so the async clipboard fallback actually fires when the
     // legacy path fails (read-only content is safe to select + copy).
@@ -623,12 +707,16 @@ var MMGR = window.MMGR || {};
     const source = U.$('id-source');
     const preview = U.$('id-preview');
     const commitBtn = U.$('id-commit-btn');
-    if (!source || !preview) return;
+    if (!source || !preview) {
+      return;
+    }
     const text = source.value.trim();
     if (!text) {
       preview.innerHTML =
         '<div style="color:var(--slate);padding:10px">Paste date-formatted tasks to see a preview.</div>';
-      if (commitBtn) commitBtn.disabled = true;
+      if (commitBtn) {
+        commitBtn.disabled = true;
+      }
       return;
     }
     const lines = text.split('\n').filter(l => l.trim() && !l.trim().startsWith('#'));
@@ -646,7 +734,9 @@ var MMGR = window.MMGR || {};
     }
     html += '</tbody></table>';
     preview.innerHTML = html;
-    if (commitBtn) commitBtn.disabled = validCount === 0;
+    if (commitBtn) {
+      commitBtn.disabled = validCount === 0;
+    }
     renderIdMismatch(lines);
   }
 
@@ -655,7 +745,9 @@ var MMGR = window.MMGR || {};
   // the offending line so the user sees exactly where the problem is.
   function renderIdMismatch(lines) {
     const box = U.$('id-mismatch');
-    if (!box) return null;
+    if (!box) {
+      return null;
+    }
     const res = validateImportLines(lines);
     if (!res.issues.length) {
       box.innerHTML = '';
@@ -687,7 +779,9 @@ var MMGR = window.MMGR || {};
   // ---- Task 3: AI-assisted read (signed-in only; strict path works offline) ----
   async function idReadWithAi() {
     const source = U.$('id-source');
-    if (!source) return;
+    if (!source) {
+      return;
+    }
     const raw = source.value.trim();
     if (!raw) {
       ns.App.showToast('Paste or load your text first, then use Read with AI.', 'err');
@@ -740,8 +834,9 @@ var MMGR = window.MMGR || {};
         'ok'
       );
     } catch (e) {
-      if (ns.Errors && ns.Errors.log)
+      if (ns.Errors && ns.Errors.log) {
         ns.Errors.log('AI import read failed: ' + (e && e.message), 'idReadWithAi');
+      }
       ns.App.showToast(
         'AI reading failed - paste the strict format instead, it works offline.',
         'err'
@@ -753,7 +848,9 @@ var MMGR = window.MMGR || {};
   function syncIdAiNote() {
     const note = U.$('id-ai-note');
     const btn = U.$('id-ai-btn');
-    if (!note || !btn) return;
+    if (!note || !btn) {
+      return;
+    }
     const allowed = ns.Entitlements && ns.Entitlements.aiAssistant && ns.Entitlements.aiAssistant();
     btn.disabled = !allowed;
     note.textContent = allowed ? '' : 'AI reading is part of the signed-in experience.';
@@ -762,11 +859,15 @@ var MMGR = window.MMGR || {};
   // ---- Task 3: file picker (.txt/.md only; honest refusal otherwise) ----
   function idFilePickTrigger() {
     const fi = U.$('id-file');
-    if (fi) fi.click();
+    if (fi) {
+      fi.click();
+    }
   }
   async function idFilePick(el) {
     const f = el && el.files && el.files[0];
-    if (!f) return;
+    if (!f) {
+      return;
+    }
     const source = U.$('id-source');
     const name = (f.name || '').toLowerCase();
     try {
@@ -774,7 +875,9 @@ var MMGR = window.MMGR || {};
         throw new Error("Can't read that file type here - paste the text instead.");
       }
       const text = await f.text();
-      if (source) source.value = String(text || '').trim();
+      if (source) {
+        source.value = String(text || '').trim();
+      }
       idPreview();
       ns.App.showToast('File loaded. Check the flagged issues, then Fill In.', 'ok');
     } catch (err) {
@@ -786,7 +889,9 @@ var MMGR = window.MMGR || {};
 
   function idCommit() {
     const source = U.$('id-source');
-    if (!source) return;
+    if (!source) {
+      return;
+    }
     const text = source.value.trim();
     if (!text) {
       ns.App.showToast('No data to import.', 'err');
@@ -812,11 +917,15 @@ var MMGR = window.MMGR || {};
     // recomputed from the dates at commit time.
     const durationOverride = {};
     for (const issue of check.issues) {
-      if (issue.severity !== 'warn' || /working days/.test(issue.reason) === false) continue;
+      if (issue.severity !== 'warn' || /working days/.test(issue.reason) === false) {
+        continue;
+      }
       const m = issue.line.match(
         /^(.+?)\s*\(\s*(\d+)\s*d\s*\)\s*\[\s*(\d{4}-\d{2}-\d{2})\s*→\s*(\d{4}-\d{2}-\d{2})\s*\]\s*$/
       );
-      if (m) durationOverride[m[1].trim()] = durationFromDates(m[3], m[4]);
+      if (m) {
+        durationOverride[m[1].trim()] = durationFromDates(m[3], m[4]);
+      }
     }
     // Bulk import is destructive , make it undoable.
     ns.State.pushUndo();
@@ -824,7 +933,9 @@ var MMGR = window.MMGR || {};
       updated = 0;
     const createdThisRun = new Set(); // same-name-twice-in-one-import guard
     ns.State.updateState(function (s) {
-      if (!s.tasks) s.tasks = [];
+      if (!s.tasks) {
+        s.tasks = [];
+      }
       for (const line of lines) {
         const parts = line.match(
           /^(.+?)\s*\(\s*(\d+)\s*d\s*\)\s*\[\s*(\d{4}-\d{2}-\d{2})\s*→\s*(\d{4}-\d{2}-\d{2})\s*\]\s*$/
@@ -890,8 +1001,12 @@ var MMGR = window.MMGR || {};
   function addTaskComment(taskId, text, author) {
     ns.State.updateState(function (s) {
       const task = (s.tasks || []).find(t => t.id === taskId);
-      if (!task) return;
-      if (!task.comments) task.comments = [];
+      if (!task) {
+        return;
+      }
+      if (!task.comments) {
+        task.comments = [];
+      }
       // Extract @mentions from text
       const mentionRegex = /@(\w+(?:\s+\w+)?)/g;
       const mentions = [];
@@ -924,7 +1039,9 @@ var MMGR = window.MMGR || {};
   function setTaskFollowUp(taskId, assignee, dueDate) {
     ns.State.updateState(function (s) {
       const task = (s.tasks || []).find(t => t.id === taskId);
-      if (!task) return;
+      if (!task) {
+        return;
+      }
       task.followUp = {
         assignee: assignee || '',
         dueDate: dueDate || '',
@@ -951,7 +1068,9 @@ var MMGR = window.MMGR || {};
   function clearTaskFollowUp(taskId) {
     ns.State.updateState(function (s) {
       const task = (s.tasks || []).find(t => t.id === taskId);
-      if (task) delete task.followUp;
+      if (task) {
+        delete task.followUp;
+      }
     });
     R.renderWbs();
     R.renderDash();
@@ -960,15 +1079,21 @@ var MMGR = window.MMGR || {};
   // ---- Get stakeholders for @mention autocomplete ----
   function getStakeholderNames() {
     const s = ns.State.getState();
-    if (!s) return [];
+    if (!s) {
+      return [];
+    }
     const names = [];
     // From resources
     (s.resources || []).forEach(function (r) {
-      if (r.name && names.indexOf(r.name) === -1) names.push(r.name);
+      if (r.name && names.indexOf(r.name) === -1) {
+        names.push(r.name);
+      }
     });
     // From stakeholders
     (s.stakeholders || []).forEach(function (st) {
-      if (st.name && names.indexOf(st.name) === -1) names.push(st.name);
+      if (st.name && names.indexOf(st.name) === -1) {
+        names.push(st.name);
+      }
     });
     return names.sort();
   }

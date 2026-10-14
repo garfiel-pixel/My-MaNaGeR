@@ -49,7 +49,9 @@ const PRICING_PATH = /^https?:\/\/(127\.0\.0\.1|localhost)/.test(SITE)
 let fails = 0;
 function ok(label, cond, extra) {
   console.log((cond ? 'PASS  ' : 'FAIL  ') + label + (extra ? '  [' + extra + ']' : ''));
-  if (!cond) fails++;
+  if (!cond) {
+    fails++;
+  }
 }
 
 // Extract a `const NAME = [ ... ].join(<anything>);` array block. The join
@@ -57,10 +59,14 @@ function ok(label, cond, extra) {
 // match `.join(` generically and slice back to the closing bracket.
 function policy(src, name) {
   const start = src.indexOf('const ' + name + ' = [');
-  if (start === -1) return null;
+  if (start === -1) {
+    return null;
+  }
   const open = src.indexOf('[', start);
   const end = src.indexOf('.join(', open);
-  if (open === -1 || end === -1) return null;
+  if (open === -1 || end === -1) {
+    return null;
+  }
   return src.slice(open, src.lastIndexOf(']', end) + 1);
 }
 
@@ -80,7 +86,9 @@ function directive(policySrc, name) {
       q + name + '(?:-[a-z]+)?(?:[^' + q + ']*)' + q + '(?:\\s*\\+\\s*[A-Z_]+)?'
     );
     const m = policySrc.match(re);
-    if (m) return m[0];
+    if (m) {
+      return m[0];
+    }
   }
   return '';
 }
@@ -248,12 +256,15 @@ function directive(policySrc, name) {
     const viol = [];
     page.on('console', m => {
       const t = m.text();
-      if (/Content Security Policy/.test(t)) viol.push(t.slice(0, 160));
+      if (/Content Security Policy/.test(t)) {
+        viol.push(t.slice(0, 160));
+      }
     });
     page.on('requestfailed', r => {
       const u = r.url();
-      if (/paddle/.test(u))
+      if (/paddle/.test(u)) {
         viol.push('REQFAIL ' + u.slice(0, 90) + ' :: ' + ((r.failure() || {}).errorText || ''));
+      }
     });
 
     // ---- ARM 2b: _ptxn SURVIVES A REAL PAGE LOAD (regression gate) -------

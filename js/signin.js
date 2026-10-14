@@ -42,20 +42,34 @@
      credential-phishing primitive, so this is deliberately strict.
      --------------------------------------------------------------------- */
   function safeNext(raw) {
-    if (!raw) return '';
+    if (!raw) {
+      return '';
+    }
     var v = String(raw);
     // Trim control characters/whitespace that could hide a scheme.
     v = v.replace(/[\u0000-\u001f\u007f\s]/g, '');
-    if (!v) return '';
+    if (!v) {
+      return '';
+    }
     // Must begin with exactly one slash, and not a double slash or a
     // backslash-smuggled protocol-relative URL.
-    if (v.charAt(0) !== '/') return '';
-    if (v.charAt(1) === '/') return '';
-    if (v.charAt(1) === '\\') return '';
-    if (/^\/[\\]/.test(v)) return '';
+    if (v.charAt(0) !== '/') {
+      return '';
+    }
+    if (v.charAt(1) === '/') {
+      return '';
+    }
+    if (v.charAt(1) === '\\') {
+      return '';
+    }
+    if (/^\/[\\]/.test(v)) {
+      return '';
+    }
     // Reject a scheme hiding behind the slash, e.g. /javascript:alert(1)
     // is harmless as a path, but /https:/evil.com is not worth allowing.
-    if (/^\/[a-z][a-z0-9+.-]*:/i.test(v)) return '';
+    if (/^\/[a-z][a-z0-9+.-]*:/i.test(v)) {
+      return '';
+    }
     return v;
   }
 
@@ -81,15 +95,20 @@
   function setReturn(v) {
     RETURN_TO = v;
     try {
-      if (v) sessionStorage.setItem('mmgr_signin_next', v);
-      else sessionStorage.removeItem('mmgr_signin_next');
+      if (v) {
+        sessionStorage.setItem('mmgr_signin_next', v);
+      } else {
+        sessionStorage.removeItem('mmgr_signin_next');
+      }
     } catch (e) {
       /* private mode: the query param still works this visit */
     }
   }
 
   var qNext = nextFromQuery();
-  if (qNext) setReturn(qNext);
+  if (qNext) {
+    setReturn(qNext);
+  }
 
   function goNext() {
     var target = safeNext(RETURN_TO);
@@ -109,7 +128,9 @@
   var panelWasOpen = false;
 
   function setEmailOpen(open) {
-    if (!toggle || !panel) return;
+    if (!toggle || !panel) {
+      return;
+    }
     panel.hidden = !open;
     toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     toggle.classList.toggle('is-open', open);
@@ -117,7 +138,9 @@
        focus when opened by keyboard so the next Tab is useful. */
     if (open) {
       var f = panel.querySelector('input:not([type=hidden])');
-      if (f && document.activeElement === toggle) f.focus();
+      if (f && document.activeElement === toggle) {
+        f.focus();
+      }
     }
     /* GIS measures its host at render time; after a layout change the
        button can be stale, so re-render once the panel settles. */
@@ -150,7 +173,9 @@
       GA.mountEmailAuth('marketing-email-auth', { showToggle: false });
     }
     /* Re-render the Google button once it has a measurable host. */
-    if (typeof GA.ensureGisButton === 'function') GA.ensureGisButton();
+    if (typeof GA.ensureGisButton === 'function') {
+      GA.ensureGisButton();
+    }
     GA.mountPasswordControl(document.getElementById('signin-done'));
     /* Change-password control lives inside the signed-in block. */
     GA.restoreSession();
@@ -166,7 +191,9 @@
 
   function renderSignedIn(user) {
     var signedIn = !!(user && (user.sub || user.email));
-    if (!done) return;
+    if (!done) {
+      return;
+    }
     done.hidden = !signedIn;
     var card = document.querySelector('.signin-card');
     if (card) {
@@ -176,7 +203,9 @@
       var tgl = document.querySelector('.signin-email-toggle');
       var ret = document.getElementById('signin-return');
       [g, div, tgl, ret].forEach(function (el) {
-        if (el) el.hidden = signedIn;
+        if (el) {
+          el.hidden = signedIn;
+        }
       });
       /* The panel follows the DOORS, not the confirmation. Signed in, it
          closes with them. Signed out, it is left exactly as the user left
@@ -201,16 +230,22 @@
         }
       }
       var h1 = card.querySelector('h1');
-      if (h1) h1.hidden = signedIn;
+      if (h1) {
+        h1.hidden = signedIn;
+      }
       var lede = document.querySelector('.signin-lede');
-      if (lede) lede.hidden = signedIn;
+      if (lede) {
+        lede.hidden = signedIn;
+      }
     }
     var nameEl = document.getElementById('signin-done-name');
     if (nameEl && signedIn) {
       var nm = (user && (user.name || user.email)) || '';
       nameEl.textContent = nm ? 'Signed in as ' + nm + '.' : 'Your projects are ready.';
     }
-    if (cont) cont.href = safeNext(RETURN_TO) || DEFAULT_NEXT;
+    if (cont) {
+      cont.href = safeNext(RETURN_TO) || DEFAULT_NEXT;
+    }
     if (signedIn && RETURN_TO) {
       /* Return automatically, but not so fast the user cannot read the
          confirmation - and never instantly on first paint. */
@@ -233,8 +268,11 @@
   var out = document.getElementById('signin-out');
   if (out) {
     out.addEventListener('click', function () {
-      if (GA && typeof GA.signOut === 'function') GA.signOut();
-      else window.location.reload();
+      if (GA && typeof GA.signOut === 'function') {
+        GA.signOut();
+      } else {
+        window.location.reload();
+      }
     });
   }
 

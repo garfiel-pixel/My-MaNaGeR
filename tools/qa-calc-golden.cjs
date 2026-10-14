@@ -53,18 +53,26 @@ function resolvePlaywright() {
     path.join(os.homedir(), '.npm', '_npx')
   ];
   for (const root of roots) {
-    if (!fs.existsSync(root)) continue;
+    if (!fs.existsSync(root)) {
+      continue;
+    }
     for (const dir of fs.readdirSync(root)) {
       const p = path.join(root, dir, 'node_modules', 'playwright');
-      if (fs.existsSync(path.join(p, 'index.js'))) return require(p);
+      if (fs.existsSync(path.join(p, 'index.js'))) {
+        return require(p);
+      }
     }
   }
   throw new Error('playwright not found - npm i -D playwright');
 }
 // Playwright demands an ABSOLUTE executablePath (see qa-calc-trade-coverage).
 function absolutizeChrome(p) {
-  if (!p) return undefined;
-  if (path.isAbsolute(p)) return fs.existsSync(p) ? p : undefined;
+  if (!p) {
+    return undefined;
+  }
+  if (path.isAbsolute(p)) {
+    return fs.existsSync(p) ? p : undefined;
+  }
   const finder = os.platform() === 'win32' ? 'where' : 'command -v';
   try {
     const out = require('child_process')
@@ -72,7 +80,9 @@ function absolutizeChrome(p) {
       .toString()
       .trim()
       .split(/\r?\n/)[0];
-    if (out && fs.existsSync(out)) return out;
+    if (out && fs.existsSync(out)) {
+      return out;
+    }
   } catch (e) {
     /* fall back */
   }
@@ -243,7 +253,9 @@ function absolutizeChrome(p) {
     let srv = null;
     try {
       const h = await fetch(BASE + '/calculator.html');
-      if (!h.ok) throw 0;
+      if (!h.ok) {
+        throw 0;
+      }
     } catch (e) {
       log('starting serve.cjs for this run');
       srv = spawn(process.execPath, ['serve.cjs'], { cwd: ROOT, stdio: 'ignore' });
@@ -251,7 +263,9 @@ function absolutizeChrome(p) {
         await delay(1000);
         try {
           const h = await fetch(BASE + '/calculator.html');
-          if (h.ok) break;
+          if (h.ok) {
+            break;
+          }
         } catch (e) {}
       }
     }
@@ -276,9 +290,13 @@ function absolutizeChrome(p) {
     consoleErrors++;
   });
   page.on('console', m => {
-    if (m.type() !== 'error') return;
+    if (m.type() !== 'error') {
+      return;
+    }
     const url = (m.location() || {}).url || '';
-    if (/Failed to load resource/.test(m.text()) && /\/api\//.test(url)) return; // signed-out probe noise
+    if (/Failed to load resource/.test(m.text()) && /\/api\//.test(url)) {
+      return;
+    } // signed-out probe noise
     consoleErrors++;
   });
   await page.goto(BASE + '/calculator.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -397,8 +415,12 @@ function absolutizeChrome(p) {
           _allInModel: c.allInModel
         };
         const r = window.__calcEngine.computeFor(st);
-        if (!r) return { error: 'null result' };
-        if (r.error) return { error: r.error };
+        if (!r) {
+          return { error: 'null result' };
+        }
+        if (r.error) {
+          return { error: r.error };
+        }
         // Owner directive 2026-10-01: a golden case is plausible input - the
         // unit-slip guard must flag NOTHING on any of them (zero false positives).
         return {
@@ -427,30 +449,49 @@ function absolutizeChrome(p) {
     }
     const e = c.expect;
     const parts = [];
-    if (e.qty != null && !near(r.qty, e.qty, 0.02)) parts.push('qty ' + r.qty + ' != ' + e.qty);
-    if (e.mat != null && !near(r.mat, e.mat, 1)) parts.push('mat ' + r.mat + ' != ' + e.mat);
-    if (e.lab != null && !near(r.lab, e.lab, 1)) parts.push('lab ' + r.lab + ' != ' + e.lab);
-    if (e.tax != null && !near(r.tax, e.tax, 1)) parts.push('tax ' + r.tax + ' != ' + e.tax);
-    if (e.total != null && !near(r.total, e.total, 1))
+    if (e.qty != null && !near(r.qty, e.qty, 0.02)) {
+      parts.push('qty ' + r.qty + ' != ' + e.qty);
+    }
+    if (e.mat != null && !near(r.mat, e.mat, 1)) {
+      parts.push('mat ' + r.mat + ' != ' + e.mat);
+    }
+    if (e.lab != null && !near(r.lab, e.lab, 1)) {
+      parts.push('lab ' + r.lab + ' != ' + e.lab);
+    }
+    if (e.tax != null && !near(r.tax, e.tax, 1)) {
+      parts.push('tax ' + r.tax + ' != ' + e.tax);
+    }
+    if (e.total != null && !near(r.total, e.total, 1)) {
       parts.push('total ' + r.total + ' != ' + e.total);
-    if (e.sub != null && !near(r.sub, e.sub, 1)) parts.push('sub ' + r.sub + ' != ' + e.sub);
-    if (e.onCost != null && !near(r.onCost, e.onCost, 1))
+    }
+    if (e.sub != null && !near(r.sub, e.sub, 1)) {
+      parts.push('sub ' + r.sub + ' != ' + e.sub);
+    }
+    if (e.onCost != null && !near(r.onCost, e.onCost, 1)) {
       parts.push('onCost ' + r.onCost + ' != ' + e.onCost);
-    if (e.allInCost != null && !near(r.allInCost, e.allInCost, 1))
+    }
+    if (e.allInCost != null && !near(r.allInCost, e.allInCost, 1)) {
       parts.push('allInCost ' + r.allInCost + ' != ' + e.allInCost);
-    if (e.days != null && !near(r.days, e.days, 0.001))
+    }
+    if (e.days != null && !near(r.days, e.days, 0.001)) {
       parts.push('days ' + r.days + ' != ' + e.days);
-    if (e.allIn != null && !!r.allIn !== !!e.allIn)
+    }
+    if (e.allIn != null && !!r.allIn !== !!e.allIn) {
       parts.push('allIn ' + r.allIn + ' != ' + e.allIn);
-    if (e.dayBasis != null && !!r.dayBasis !== !!e.dayBasis)
+    }
+    if (e.dayBasis != null && !!r.dayBasis !== !!e.dayBasis) {
       parts.push('dayBasis ' + r.dayBasis + ' != ' + e.dayBasis);
-    if (e.labourOnly != null && !!r.labourOnly !== !!e.labourOnly)
+    }
+    if (e.labourOnly != null && !!r.labourOnly !== !!e.labourOnly) {
       parts.push('labourOnly ' + r.labourOnly + ' != ' + e.labourOnly);
-    if (e.bookFilled != null && !!r.bookFilled !== !!e.bookFilled)
+    }
+    if (e.bookFilled != null && !!r.bookFilled !== !!e.bookFilled) {
       parts.push('bookFilled ' + r.bookFilled + ' != ' + e.bookFilled);
+    }
     // D3: an all-in line must NEVER show a split material/labour money.
-    if (e.allIn && r.allIn && (r.mat !== 0 || r.lab !== 0))
+    if (e.allIn && r.allIn && (r.mat !== 0 || r.lab !== 0)) {
       parts.push('all-in line shows a split: mat ' + r.mat + ' / lab ' + r.lab);
+    }
     if (r.slips && r.slips.length) {
       parts.push('unit-slip false positive: ' + r.slips.map(s => s.msg).join(' | '));
       slipFlags += r.slips.length;

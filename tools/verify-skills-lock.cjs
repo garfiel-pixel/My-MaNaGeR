@@ -13,7 +13,9 @@ async function collectFiles(baseDir, currentDir, results) {
     entries.map(async entry => {
       const fullPath = path.join(currentDir, entry.name);
       if (entry.isDirectory()) {
-        if (entry.name === '.git' || entry.name === 'node_modules') return;
+        if (entry.name === '.git' || entry.name === 'node_modules') {
+          return;
+        }
         await collectFiles(baseDir, fullPath, results);
       } else if (entry.isFile()) {
         const content = await fs.promises.readFile(fullPath);
@@ -55,7 +57,9 @@ async function computeSkillFolderHash(skillDir) {
     }
     const h = await computeSkillFolderHash(dir);
     const match = h === meta.computedHash;
-    if (!match) ok = false;
+    if (!match) {
+      ok = false;
+    }
     console.log(
       (match ? 'OK' : 'STALE').padEnd(6),
       name.padEnd(28),

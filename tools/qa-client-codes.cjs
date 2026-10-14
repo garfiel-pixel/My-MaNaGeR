@@ -72,7 +72,9 @@ const check = (name, val, detail) => {
       name +
       (val ? '' : '   <-- ' + JSON.stringify(detail === undefined ? null : detail).slice(0, 400))
   );
-  if (!val) annotateFailure(name, detail);
+  if (!val) {
+    annotateFailure(name, detail);
+  }
 };
 
 let proc = null;
@@ -86,7 +88,9 @@ setTimeout(() => {
 
 function globalWranglerJs() {
   const localP = path.join(ROOT, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
-  if (fs.existsSync(localP)) return localP;
+  if (fs.existsSync(localP)) {
+    return localP;
+  }
   try {
     const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
     const root = execFileSync(npmCmd, ['root', '-g'], {
@@ -94,7 +98,9 @@ function globalWranglerJs() {
       shell: process.platform === 'win32'
     }).trim();
     const p = path.join(root, 'wrangler', 'bin', 'wrangler.js');
-    if (fs.existsSync(p)) return p;
+    if (fs.existsSync(p)) {
+      return p;
+    }
   } catch (e) {
     /* fall through */
   }
@@ -147,16 +153,22 @@ function startWrangler() {
     );
     proc.on('error', e => reject(new Error('wrangler spawn failed: ' + e.message)));
     proc.on('exit', code => {
-      if (code !== 0 && code !== null) log('wrangler dev exited early (code ' + code + ')');
+      if (code !== 0 && code !== null) {
+        log('wrangler dev exited early (code ' + code + ')');
+      }
     });
     // NOTHING touches `proc` after this. The browser click below targets the
     // `code-entry-btn` button element directly via CDP page evaluation; it does
     // NOT invoke `proc.stdin.write` or any child_process control channel.
     const poll = async tries => {
-      if (tries <= 0) return reject(new Error('wrangler dev did not come up in 120s'));
+      if (tries <= 0) {
+        return reject(new Error('wrangler dev did not come up in 120s'));
+      }
       try {
         const r = await fetch(BASE + '/api/health');
-        if (r.ok) return resolve();
+        if (r.ok) {
+          return resolve();
+        }
       } catch (e) {
         /* not up yet */
       }
@@ -197,7 +209,9 @@ const j = async res => {
     let cookie = '';
     const sc = r.headers.get('set-cookie') || '';
     const m = sc.match(/mmgr_session=([^;]+)/);
-    if (m) cookie = m[1];
+    if (m) {
+      cookie = m[1];
+    }
     if (!cookie || !reg.ok) {
       // Fall back to login (account may exist from a previous run's WAL).
       r = await fetch(BASE + '/api/auth/login', {
@@ -209,10 +223,14 @@ const j = async res => {
       reg = await j(r);
       const sc2 = r.headers.get('set-cookie') || '';
       const m2 = sc2.match(/mmgr_session=([^;]+)/);
-      if (m2) cookie = m2[1];
+      if (m2) {
+        cookie = m2[1];
+      }
     }
     const authHeaders = { 'Content-Type': 'application/json' };
-    if (cookie) authHeaders.Cookie = 'mmgr_session=' + cookie;
+    if (cookie) {
+      authHeaders.Cookie = 'mmgr_session=' + cookie;
+    }
     check(
       'P0a email session minted (client-code create needs a signed-in owner)',
       !!cookie && !!reg.ok,
@@ -623,7 +641,9 @@ const j = async res => {
       for (let i = 0; i < 40; i++) {
         try {
           const v = await (await fetch('http://127.0.0.1:9231/json/version')).json();
-          if (v.webSocketDebuggerUrl) break;
+          if (v.webSocketDebuggerUrl) {
+            break;
+          }
         } catch (e) {}
         await delay(300);
       }
@@ -639,7 +659,9 @@ const j = async res => {
         } catch (e) {
           /* not ready yet */
         }
-        if (!tgt) await delay(300);
+        if (!tgt) {
+          await delay(300);
+        }
       }
       ws = new WebSocket(tgt.webSocketDebuggerUrl);
       const pending = new Map();
@@ -716,7 +738,9 @@ const j = async res => {
             log('P10 poll eval error: ' + s.error);
           }
           if (s && !s.error) {
-            if (s) pollReads.push({ i: pollI, t: Date.now(), s });
+            if (s) {
+              pollReads.push({ i: pollI, t: Date.now(), s });
+            }
             if (s.wired && !s.btnDisabled) {
               wiredUntil = s;
               break;
@@ -783,9 +807,12 @@ const j = async res => {
           if (
             navState.href.indexOf('project.html?id=' + pid) > -1 ||
             navState.href.indexOf('/project?id=' + pid) > -1
-          )
+          ) {
             break;
-          if (navState.btnText === 'Open from Cloud' && navState.status) break; // flow returned with an error message
+          }
+          if (navState.btnText === 'Open from Cloud' && navState.status) {
+            break;
+          } // flow returned with an error message
         }
       }
       const consoleErrors = navSamples.length ? navSamples[navSamples.length - 1].errs : [];
@@ -831,7 +858,9 @@ const j = async res => {
             wbs: sec('wbs'), def: sec('def'), dash: sec('dash'),
             banner: (function(){ const b = document.getElementById('client-scope-banner'); return b ? !b.classList.contains('is-hide') : null; })() };
         })()`);
-        if (scopeState && scopeState.clientScope === true && scopeState.banner === true) break;
+        if (scopeState && scopeState.clientScope === true && scopeState.banner === true) {
+          break;
+        }
       }
       check(
         'P10b project boots client scope (readonly + banner)',

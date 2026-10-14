@@ -12,7 +12,9 @@ var MMGR = window.MMGR || {};
   const $ = U.$;
 
   function _toast(msg, type) {
-    if (ns.App && ns.App.showToast) ns.App.showToast(msg, type);
+    if (ns.App && ns.App.showToast) {
+      ns.App.showToast(msg, type);
+    }
   }
 
   // Background cloud auto-sync debounce
@@ -21,15 +23,25 @@ var MMGR = window.MMGR || {};
 
   function cloudLinked() {
     const C = window.MMGR.Cloud;
-    if (!C) return false;
-    if (C.getCode && C.getCode()) return true;
-    if (C.getECode && C.getECode()) return true;
+    if (!C) {
+      return false;
+    }
+    if (C.getCode && C.getCode()) {
+      return true;
+    }
+    if (C.getECode && C.getECode()) {
+      return true;
+    }
     return false;
   }
 
   function scheduleCloudAutoSave() {
-    if (!cloudLinked()) return;
-    if (_cloudAutoTimer) clearTimeout(_cloudAutoTimer);
+    if (!cloudLinked()) {
+      return;
+    }
+    if (_cloudAutoTimer) {
+      clearTimeout(_cloudAutoTimer);
+    }
     _cloudAutoTimer = setTimeout(function () {
       _cloudAutoTimer = null;
       const C = window.MMGR.Cloud;
@@ -44,10 +56,14 @@ var MMGR = window.MMGR || {};
   }
 
   function flushCloudAutoSave() {
-    if (!_cloudAutoTimer) return;
+    if (!_cloudAutoTimer) {
+      return;
+    }
     clearTimeout(_cloudAutoTimer);
     _cloudAutoTimer = null;
-    if (!cloudLinked()) return;
+    if (!cloudLinked()) {
+      return;
+    }
     const C = window.MMGR.Cloud;
     if (C && C.autoSaveToCloud) {
       try {
@@ -62,27 +78,39 @@ var MMGR = window.MMGR || {};
   function bkToggle() {
     const pop = $('bk-pop');
     const ind = $('dirty-ind');
-    if (!pop) return;
+    if (!pop) {
+      return;
+    }
     if (pop.hidden) {
       bkSyncHint();
       pop.hidden = false;
-      if (ind) ind.setAttribute('aria-expanded', 'true');
+      if (ind) {
+        ind.setAttribute('aria-expanded', 'true');
+      }
     } else {
       pop.hidden = true;
-      if (ind) ind.setAttribute('aria-expanded', 'false');
+      if (ind) {
+        ind.setAttribute('aria-expanded', 'false');
+      }
     }
   }
 
   function bkClose() {
     const pop = $('bk-pop');
     const ind = $('dirty-ind');
-    if (pop && !pop.hidden) pop.hidden = true;
-    if (ind) ind.setAttribute('aria-expanded', 'false');
+    if (pop && !pop.hidden) {
+      pop.hidden = true;
+    }
+    if (ind) {
+      ind.setAttribute('aria-expanded', 'false');
+    }
   }
 
   function bkSyncHint() {
     const el = $('bk-cloud-hint');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const C = window.MMGR.Cloud;
     el.textContent =
       C && C.getCode && C.getCode()
@@ -97,10 +125,14 @@ var MMGR = window.MMGR || {};
     bkClose();
     if (C && C.getCode && C.getCode()) {
       // Already linked with an owner code on this device , push the snapshot.
-      if (C.saveToCloud) C.saveToCloud();
+      if (C.saveToCloud) {
+        C.saveToCloud();
+      }
     } else if (C && C.getECode && C.getECode()) {
       // Editor code held , save flows through the owner-review path.
-      if (C.saveToCloud) C.saveToCloud();
+      if (C.saveToCloud) {
+        C.saveToCloud();
+      }
     } else {
       // OWNER 2026-09-20 (no-op fix + CI phase1 C4c contract): "Backup to
       // cloud" on a device with no credential must DO something. Create
@@ -116,7 +148,9 @@ var MMGR = window.MMGR || {};
           Promise.resolve(C.checkMe(false)).then(
             function (signedIn) {
               if (signedIn) {
-                if (C.createProject) C.createProject();
+                if (C.createProject) {
+                  C.createProject();
+                }
               } else if (C.signIn) {
                 Promise.resolve(C.signIn()).catch(function () {});
               }
@@ -136,10 +170,14 @@ var MMGR = window.MMGR || {};
   // immediately instead of a bare drawer. `done` (optional) runs after the
   // render settles so callers can chain sign-in prompts on the rendered host.
   function openDrwToSave(done) {
-    if (ns.App && ns.App.openDrwToSaveMechanics) ns.App.openDrwToSaveMechanics();
+    if (ns.App && ns.App.openDrwToSaveMechanics) {
+      ns.App.openDrwToSaveMechanics();
+    }
     const C = window.MMGR.Cloud;
     if (!C) {
-      if (done) done();
+      if (done) {
+        done();
+      }
       return;
     }
     const focusSignin = function () {
@@ -162,7 +200,9 @@ var MMGR = window.MMGR || {};
     const settle = function () {
       requestAnimationFrame(function () {
         focusSignin();
-        if (done) done(focusSignin);
+        if (done) {
+          done(focusSignin);
+        }
       });
     };
     if (C.render) {

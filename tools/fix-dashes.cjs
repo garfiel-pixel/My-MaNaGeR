@@ -40,7 +40,9 @@ function getAllJsFiles() {
   for (const d of JS_DIRS) {
     try {
       for (const f of fs.readdirSync(d)) {
-        if (f.endsWith('.js')) files.push(path.join(d, f));
+        if (f.endsWith('.js')) {
+          files.push(path.join(d, f));
+        }
       }
     } catch (e) {}
   }
@@ -88,7 +90,9 @@ function replaceDashes(content) {
   // Only in JS strings (careful not to break HTML attributes)
   // Actually, let's skip this — curly quotes in HTML are fine, just em/en dashes are the target
 
-  if (content !== original) changed = true;
+  if (content !== original) {
+    changed = true;
+  }
   return { content, changed };
 }
 
@@ -97,7 +101,9 @@ let totalFiles = 0;
 
 // Process HTML files
 for (const f of HTML_FILES) {
-  if (!fs.existsSync(f)) continue;
+  if (!fs.existsSync(f)) {
+    continue;
+  }
   const content = fs.readFileSync(f, 'utf8');
   const result = replaceDashes(content);
   totalFiles++;

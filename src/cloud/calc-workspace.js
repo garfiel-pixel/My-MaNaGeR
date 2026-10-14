@@ -15,24 +15,34 @@ const WS_CAP = 4000000; // 4 MB - the logo dataURL dominates the payload
 
 export async function handleCalcWorkspaceGet(request, env) {
   const session = await readSession(request, env);
-  if (!session || !session.sub) return cloudForbidden();
+  if (!session || !session.sub) {
+    return cloudForbidden();
+  }
   const obj = await env.R2.get('calc-ws/' + session.sub + '.json');
-  if (!obj) return json({ ok: true, plan: 'free', ws: null });
+  if (!obj) {
+    return json({ ok: true, plan: 'free', ws: null });
+  }
   let parsed = null;
   try {
     parsed = JSON.parse(await obj.text());
   } catch (e) {
     parsed = null;
   }
-  if (!parsed || typeof parsed !== 'object') return json({ ok: true, plan: 'free', ws: null });
+  if (!parsed || typeof parsed !== 'object') {
+    return json({ ok: true, plan: 'free', ws: null });
+  }
   return json({ ok: true, plan: 'free', ws: parsed });
 }
 
 export async function handleCalcWorkspacePut(request, env) {
   const session = await readSession(request, env);
-  if (!session || !session.sub) return cloudForbidden();
+  if (!session || !session.sub) {
+    return cloudForbidden();
+  }
   const cl = Number(request.headers.get('content-length') || 0);
-  if (cl > WS_CAP) return json({ ok: false, error: 'workspace too large' }, 413);
+  if (cl > WS_CAP) {
+    return json({ ok: false, error: 'workspace too large' }, 413);
+  }
   let body = null;
   try {
     body = await request.json();

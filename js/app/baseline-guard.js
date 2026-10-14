@@ -32,7 +32,9 @@ var MMGR = window.MMGR || {};
   function ensure() {
     try {
       const s = ns.State.getState();
-      if (!s || !s.tasks) return;
+      if (!s || !s.tasks) {
+        return;
+      }
       const sched = isSchedulable(s);
       // Nudge dots (cheap, every call): visible only while the project is
       // schedulable, has NO baseline, and the one-shot auto-capture already

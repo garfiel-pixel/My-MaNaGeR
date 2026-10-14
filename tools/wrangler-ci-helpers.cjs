@@ -25,13 +25,17 @@ const USE_EXTERNAL = !!process.env.WRANGLER_DEV_URL;
  * @returns {Promise<void>|null} A resolved promise if external, null if local start needed
  */
 function externalWranglerGuard(log) {
-  if (!USE_EXTERNAL) return null;
+  if (!USE_EXTERNAL) {
+    return null;
+  }
   log('using external wrangler at ' + process.env.WRANGLER_DEV_URL + ' (skipping local start)…');
   return (async () => {
     try {
       const r = await fetch(process.env.WRANGLER_DEV_URL + '/api/health');
       const body = await r.json().catch(() => null);
-      if (r.ok && body && body.ok === true) return;
+      if (r.ok && body && body.ok === true) {
+        return;
+      }
       throw new Error('health check failed: ' + r.status);
     } catch (e) {
       throw new Error('external wrangler not reachable: ' + e.message);
@@ -45,7 +49,9 @@ function externalWranglerGuard(log) {
  * @param {object|null} proc - the child process to kill
  */
 function stopWranglerIfLocal(proc) {
-  if (USE_EXTERNAL) return;
+  if (USE_EXTERNAL) {
+    return;
+  }
   try {
     proc && proc.kill();
   } catch (e) {}

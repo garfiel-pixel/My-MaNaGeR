@@ -167,7 +167,9 @@ const _cloudPushRev = cloudPushRevChangedIfCopies;
    TRACKING — lightweight event logging (Analytics Engine)
    ============================================================ */
 function trackEvent(env, idx1, idx2, blob1, blob2) {
-  if (!env || !env.ANALYTICS) return;
+  if (!env || !env.ANALYTICS) {
+    return;
+  }
   try {
     env.ANALYTICS.writeDataPoint({
       indexes: [String(idx1 || ''), String(idx2 || '')],
@@ -184,7 +186,9 @@ function trackEvent(env, idx1, idx2, blob1, blob2) {
    ============================================================ */
 async function handlePresenceAuth(request, env) {
   const rl = await cloudRateCheck(request, 'general', env);
-  if (rl.limited) return cloudRateLimited(rl.retryAfter);
+  if (rl.limited) {
+    return cloudRateLimited(rl.retryAfter);
+  }
   try {
     const body = await request.json();
     const projectId = String(body.projectId || '').slice(0, 64);
@@ -203,10 +207,16 @@ async function handlePresenceAuth(request, env) {
       return json({ ok: false });
     }
     const hash = await hashOwnerCode(code, row.owner_code_salt);
-    if (codesEqual(hash, row.owner_code_hash)) return json({ ok: true, name: 'Owner' });
+    if (codesEqual(hash, row.owner_code_hash)) {
+      return json({ ok: true, name: 'Owner' });
+    }
     const ed = await cloudAuthEditor(request, env, projectId, code);
-    if (ed) return json({ ok: true, name: ed.label || 'Editor' });
-    if (await cloudManifestCodeOk(env, projectId, code)) return json({ ok: true, name: 'Viewer' });
+    if (ed) {
+      return json({ ok: true, name: ed.label || 'Editor' });
+    }
+    if (await cloudManifestCodeOk(env, projectId, code)) {
+      return json({ ok: true, name: 'Viewer' });
+    }
     await Promise.all([cloudDummyHash(), cloudTimingSink()]);
     return json({ ok: false });
   } catch (e) {
@@ -222,7 +232,9 @@ async function handlePresenceAuth(request, env) {
    ============================================================ */
 async function rl(request, bucket, env) {
   const r = await cloudRateCheck(request, bucket, env);
-  if (r.limited) return cloudRateLimited(r.retryAfter);
+  if (r.limited) {
+    return cloudRateLimited(r.retryAfter);
+  }
   return null; // not limited
 }
 
@@ -251,13 +263,17 @@ export async function routeApi(request, env, url) {
     // 4. CLOUD PROJECT ROUTES (/api/cloud/projects)
     if (path === '/api/cloud/projects') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       if (request.method === 'POST') {
         trackEvent(env, 'api', 'cloud-create');
         structuredLog(env, 'info', 'cloud-create-start');
         return handleCloudCreate(request, env);
       }
-      if (request.method === 'GET') return handleCloudProjectList(request, env);
+      if (request.method === 'GET') {
+        return handleCloudProjectList(request, env);
+      }
     }
 
     const cloudMatch = path.match(
@@ -267,8 +283,12 @@ export async function routeApi(request, env, url) {
       const pid = cloudMatch[1];
       const op = cloudMatch[2];
       const r = await rl(request, op === 'recover' ? 'recover' : 'general', env);
-      if (r) return r;
-      if (op === 'meta' && request.method === 'GET') return handleCloudMeta(request, env, pid);
+      if (r) {
+        return r;
+      }
+      if (op === 'meta' && request.method === 'GET') {
+        return handleCloudMeta(request, env, pid);
+      }
       if (op === 'save' && request.method === 'POST') {
         trackEvent(env, 'api', 'cloud-save', pid);
         structuredLog(env, 'info', 'cloud-save-start', { projectId: pid });
@@ -276,28 +296,38 @@ export async function routeApi(request, env, url) {
           await _cloudPushRev(env, projectId, now, actor);
         });
       }
-      if (op === 'load' && request.method === 'POST') return handleCloudLoad(request, env, pid);
-      if (op === 'recover' && request.method === 'POST')
+      if (op === 'load' && request.method === 'POST') {
+        return handleCloudLoad(request, env, pid);
+      }
+      if (op === 'recover' && request.method === 'POST') {
         return handleCloudRecover(request, env, pid);
-      if (op === 'delete' && request.method === 'POST')
+      }
+      if (op === 'delete' && request.method === 'POST') {
         return handleCloudProjectDelete(request, env, pid);
-      if (op === 'restore' && request.method === 'POST')
+      }
+      if (op === 'restore' && request.method === 'POST') {
         return handleCloudProjectRestore(request, env, pid);
+      }
       if (op === 'claim' && request.method === 'POST') {
         trackEvent(env, 'api', 'cloud-claim', pid);
         return handleCloudProjectClaim(request, env, pid);
       }
-      if (op === 'purge' && request.method === 'POST')
+      if (op === 'purge' && request.method === 'POST') {
         return handleCloudProjectPurge(request, env, pid);
+      }
     }
 
     // DELETED PROJECTS LIST (for Recover UI)
     if (path === '/api/cloud/projects/deleted' && request.method === 'GET') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       try {
         const session = await readSession(request, env);
-        if (!session || !session.sub) return cloudForbidden();
+        if (!session || !session.sub) {
+          return cloudForbidden();
+        }
         const graceMs = 5 * 24 * 60 * 60 * 1000; // 5-day grace period
         const cutoff = new Date(Date.now() - graceMs).toISOString();
         const rows = await env.DB.prepare(
@@ -322,7 +352,9 @@ export async function routeApi(request, env, url) {
     // CODE LOOKUP
     if (path === '/api/cloud/codes/lookup' && request.method === 'POST') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleCloudCodeLookup(request, env);
     }
 
@@ -330,13 +362,17 @@ export async function routeApi(request, env, url) {
     const cloudUnadoptMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/adopt$/);
     if (cloudUnadoptMatch && request.method === 'DELETE') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleCloudUnadopt(request, env, cloudUnadoptMatch[1]);
     }
     const cloudUnlinkMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})$/);
     if (cloudUnlinkMatch && request.method === 'DELETE') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleCloudUnlink(request, env, cloudUnlinkMatch[1]);
     }
 
@@ -346,9 +382,11 @@ export async function routeApi(request, env, url) {
     );
     if (apiShapeMatch && request.method === 'GET') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       const shape = apiShapeMatch[2];
-      if (!API_SHAPES[shape])
+      if (!API_SHAPES[shape]) {
         return json(
           {
             ok: false,
@@ -356,6 +394,7 @@ export async function routeApi(request, env, url) {
           },
           404
         );
+      }
       return handleApiShape(request, env, apiShapeMatch[1], shape);
     }
 
@@ -365,16 +404,24 @@ export async function routeApi(request, env, url) {
     );
     if (webhookListMatch) {
       const r = await rl(request, 'general', env);
-      if (r) return r;
-      if (request.method === 'POST') return handleWebhookCreate(request, env, webhookListMatch[1]);
-      if (request.method === 'GET') return handleWebhookList(request, env, webhookListMatch[1]);
+      if (r) {
+        return r;
+      }
+      if (request.method === 'POST') {
+        return handleWebhookCreate(request, env, webhookListMatch[1]);
+      }
+      if (request.method === 'GET') {
+        return handleWebhookList(request, env, webhookListMatch[1]);
+      }
     }
     const webhookDelMatch = path.match(
       /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/webhooks\/(\d+)$/
     );
     if (webhookDelMatch && request.method === 'DELETE') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleWebhookDelete(request, env, webhookDelMatch[1], webhookDelMatch[2]);
     }
 
@@ -382,46 +429,72 @@ export async function routeApi(request, env, url) {
     const teamListMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/team$/);
     if (teamListMatch) {
       const r = await rl(request, 'general', env);
-      if (r) return r;
-      if (request.method === 'POST') return handleTeamInvite(request, env, teamListMatch[1]);
-      if (request.method === 'GET') return handleTeamList(request, env, teamListMatch[1]);
+      if (r) {
+        return r;
+      }
+      if (request.method === 'POST') {
+        return handleTeamInvite(request, env, teamListMatch[1]);
+      }
+      if (request.method === 'GET') {
+        return handleTeamList(request, env, teamListMatch[1]);
+      }
     }
     const teamMemberMatch = path.match(
       /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/team\/(\d+)$/
     );
     if (teamMemberMatch) {
       const r = await rl(request, 'general', env);
-      if (r) return r;
-      if (request.method === 'PUT')
+      if (r) {
+        return r;
+      }
+      if (request.method === 'PUT') {
         return handleTeamUpdate(request, env, teamMemberMatch[1], teamMemberMatch[2]);
-      if (request.method === 'DELETE')
+      }
+      if (request.method === 'DELETE') {
         return handleTeamRevoke(request, env, teamMemberMatch[1], teamMemberMatch[2]);
+      }
     }
     if (path === '/api/team/accept' && request.method === 'POST') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleTeamAccept(request, env);
     }
 
     // 5. CLOUD PREFS / PRESENCE
     if (path === '/api/cloud/prefs/theme') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
-      if (request.method === 'GET') return handleCloudPrefsGet(request, env);
-      if (request.method === 'PUT') return handleCloudPrefsPut(request, env);
+      if (r) {
+        return r;
+      }
+      if (request.method === 'GET') {
+        return handleCloudPrefsGet(request, env);
+      }
+      if (request.method === 'PUT') {
+        return handleCloudPrefsPut(request, env);
+      }
     }
     if (path === '/api/cloud/presence') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handlePresenceUpgrade(request, env, url);
     }
 
     // 5b. CALC WORKSPACE (client-docs W5: everything follows the account)
     if (path === '/api/calc/workspace') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
-      if (request.method === 'GET') return handleCalcWorkspaceGet(request, env);
-      if (request.method === 'PUT') return handleCalcWorkspacePut(request, env);
+      if (r) {
+        return r;
+      }
+      if (request.method === 'GET') {
+        return handleCalcWorkspaceGet(request, env);
+      }
+      if (request.method === 'PUT') {
+        return handleCalcWorkspacePut(request, env);
+      }
     }
 
     // 6. CLOUD SYNC (offline copies, broadcast)
@@ -430,17 +503,24 @@ export async function routeApi(request, env, url) {
     );
     if (offlineListMatch) {
       const r = await rl(request, 'general', env);
-      if (r) return r;
-      if (request.method === 'POST')
+      if (r) {
+        return r;
+      }
+      if (request.method === 'POST') {
         return handleOfflineCopyRegister(request, env, offlineListMatch[1]);
-      if (request.method === 'GET') return handleOfflineCopyList(request, env, offlineListMatch[1]);
+      }
+      if (request.method === 'GET') {
+        return handleOfflineCopyList(request, env, offlineListMatch[1]);
+      }
     }
     const offlineDelMatch = path.match(
       /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/offline-copies\/([A-Za-z0-9-]{1,64})$/
     );
     if (offlineDelMatch && request.method === 'DELETE') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleOfflineCopyDelete(request, env, offlineDelMatch[1], offlineDelMatch[2]);
     }
 
@@ -448,7 +528,9 @@ export async function routeApi(request, env, url) {
     const reviewListMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/reviews$/);
     if (reviewListMatch && request.method === 'GET') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleReviewList(
         request,
         env,
@@ -461,7 +543,9 @@ export async function routeApi(request, env, url) {
     );
     if (reviewAcceptMatch && request.method === 'POST') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleReviewAccept(
         request,
         env,
@@ -475,7 +559,9 @@ export async function routeApi(request, env, url) {
     );
     if (reviewRejectMatch && request.method === 'POST') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleReviewReject(request, env, reviewRejectMatch[1], Number(reviewRejectMatch[2]));
     }
 
@@ -483,7 +569,9 @@ export async function routeApi(request, env, url) {
     const broadcastMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/broadcast$/);
     if (broadcastMatch && request.method === 'POST') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleCloudBroadcast(request, env, broadcastMatch[1], presencePushRevChanged);
     }
     const autoBcMatch = path.match(
@@ -491,14 +579,18 @@ export async function routeApi(request, env, url) {
     );
     if (autoBcMatch && request.method === 'PUT') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleCloudAutoBroadcast(request, env, autoBcMatch[1]);
     }
 
     // 8. CLOUD ADMIN
     if (path === '/api/cloud/admin/projects' && request.method === 'GET') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleAdminCloudList(request, env);
     }
 
@@ -511,18 +603,24 @@ export async function routeApi(request, env, url) {
     );
     if (cloudEditorsMatch) {
       const r = await rl(request, 'general', env);
-      if (r) return r;
-      if (request.method === 'POST')
+      if (r) {
+        return r;
+      }
+      if (request.method === 'POST') {
         return handleCloudEditorCreate(request, env, cloudEditorsMatch[1]);
-      if (request.method === 'GET')
+      }
+      if (request.method === 'GET') {
         return handleCloudEditorList(request, env, cloudEditorsMatch[1]);
+      }
     }
     const cloudEditorDelMatch = path.match(
       /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/editors\/(\d+)$/
     );
     if (cloudEditorDelMatch && request.method === 'DELETE') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleCloudEditorRevoke(request, env, cloudEditorDelMatch[1], cloudEditorDelMatch[2]);
     }
     // PROJECT API KEYS (owner directive 2026-09-15): scoped, expiring keys
@@ -533,18 +631,24 @@ export async function routeApi(request, env, url) {
     );
     if (cloudApiKeysMatch) {
       const r = await rl(request, 'general', env);
-      if (r) return r;
-      if (request.method === 'POST')
+      if (r) {
+        return r;
+      }
+      if (request.method === 'POST') {
         return handleCloudApiKeyCreate(request, env, cloudApiKeysMatch[1]);
-      if (request.method === 'GET')
+      }
+      if (request.method === 'GET') {
         return handleCloudApiKeyList(request, env, cloudApiKeysMatch[1]);
+      }
     }
     const cloudApiKeyDelMatch = path.match(
       /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/api-keys\/(\d+)$/
     );
     if (cloudApiKeyDelMatch && request.method === 'DELETE') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleCloudApiKeyRevoke(request, env, cloudApiKeyDelMatch[1], cloudApiKeyDelMatch[2]);
     }
     // C19: Client Codes (read-only, section-filtered access)
@@ -553,18 +657,24 @@ export async function routeApi(request, env, url) {
     );
     if (cloudClientMatch) {
       const r = await rl(request, 'general', env);
-      if (r) return r;
-      if (request.method === 'POST')
+      if (r) {
+        return r;
+      }
+      if (request.method === 'POST') {
         return handleCloudClientCodeCreate(request, env, cloudClientMatch[1]);
-      if (request.method === 'GET')
+      }
+      if (request.method === 'GET') {
         return handleCloudClientCodeList(request, env, cloudClientMatch[1]);
+      }
     }
     const cloudClientDelMatch = path.match(
       /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/client-codes\/(\d+)$/
     );
     if (cloudClientDelMatch && request.method === 'DELETE') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleCloudClientCodeRevoke(
         request,
         env,
@@ -578,27 +688,39 @@ export async function routeApi(request, env, url) {
     );
     if (poolItemsMatch) {
       const r = await rl(request, 'general', env);
-      if (r) return r;
-      if (request.method === 'GET') return handlePoolItemsList(request, env, poolItemsMatch[1]);
-      if (request.method === 'POST') return handlePoolItemCreate(request, env, poolItemsMatch[1]);
+      if (r) {
+        return r;
+      }
+      if (request.method === 'GET') {
+        return handlePoolItemsList(request, env, poolItemsMatch[1]);
+      }
+      if (request.method === 'POST') {
+        return handlePoolItemCreate(request, env, poolItemsMatch[1]);
+      }
     }
     const poolItemMatch = path.match(
       /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/pool\/items\/([A-Za-z0-9_-]{1,80})$/
     );
     if (poolItemMatch) {
       const r = await rl(request, 'general', env);
-      if (r) return r;
-      if (request.method === 'PUT')
+      if (r) {
+        return r;
+      }
+      if (request.method === 'PUT') {
         return handlePoolItemUpdate(request, env, poolItemMatch[1], poolItemMatch[2]);
-      if (request.method === 'DELETE')
+      }
+      if (request.method === 'DELETE') {
         return handlePoolItemDelete(request, env, poolItemMatch[1], poolItemMatch[2]);
+      }
     }
     const poolLinkMatch = path.match(
       /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/pool\/links$/
     );
     if (poolLinkMatch && request.method === 'POST') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handlePoolLinkCreate(request, env, poolLinkMatch[1]);
     }
     const poolLinkDelMatch = path.match(
@@ -606,13 +728,17 @@ export async function routeApi(request, env, url) {
     );
     if (poolLinkDelMatch && request.method === 'DELETE') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handlePoolLinkDelete(request, env, poolLinkDelMatch[1], poolLinkDelMatch[2]);
     }
     const cloudLogMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/changelog$/);
     if (cloudLogMatch && request.method === 'GET') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleCloudChangelogList(request, env, cloudLogMatch[1]);
     }
     const cloudImportMatch = path.match(
@@ -620,7 +746,9 @@ export async function routeApi(request, env, url) {
     );
     if (cloudImportMatch && request.method === 'POST') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleCloudChangelogImport(request, env, cloudImportMatch[1]);
     }
     const cloudRevertMatch = path.match(
@@ -628,7 +756,9 @@ export async function routeApi(request, env, url) {
     );
     if (cloudRevertMatch && request.method === 'POST') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleCloudChangelogRevert(request, env, cloudRevertMatch[1], cloudRevertMatch[2]);
     }
     // PROJECT PHOTOS — cloud-only, auth-gated, role-checked (owner+editors
@@ -694,18 +824,24 @@ export async function routeApi(request, env, url) {
     // secret, and rides the general bucket like every other read.
     if (path === '/api/turnstile-config' && request.method === 'GET') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleTurnstileConfig(env);
     }
     if (path === '/api/reviews') {
       if (request.method === 'GET') {
         const r = await rl(request, 'general', env);
-        if (r) return r;
+        if (r) {
+          return r;
+        }
         return handleReviewsList(env);
       }
       if (request.method === 'POST') {
         const r = await rl(request, 'reviews', env);
-        if (r) return r;
+        if (r) {
+          return r;
+        }
         structuredLog(env, 'info', 'review-create-start');
         return handleReviewsCreate(request, env);
       }
@@ -727,47 +863,65 @@ export async function routeApi(request, env, url) {
     }
     if (path === '/api/auth/register' && request.method === 'POST') {
       const r = await rl(request, 'authRegister', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleAuthRegister(request, env);
     }
     if (path === '/api/auth/login' && request.method === 'POST') {
       const r = await rl(request, 'authLogin', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleAuthLogin(request, env);
     }
     if (path === '/api/auth/password' && request.method === 'POST') {
       const r = await rl(request, 'authLogin', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleAuthPasswordChange(request, env);
     }
     if (path === '/api/auth/verify-password' && request.method === 'POST') {
       const r = await rl(request, 'authLogin', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleAuthVerifyPassword(request, env);
     }
     if (path === '/api/auth/delete-account' && request.method === 'POST') {
       const r = await rl(request, 'authLogin', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleAuthDeleteAccount(request, env);
     }
     if (path === '/api/auth/verify' && request.method === 'POST') {
       const r = await rl(request, 'authToken', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleAuthVerify(request, env);
     }
     if (path === '/api/auth/forgot' && request.method === 'POST') {
       const r = await rl(request, 'authForgot', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleAuthForgot(request, env);
     }
     if (path === '/api/auth/reset' && request.method === 'POST') {
       const r = await rl(request, 'authToken', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleAuthReset(request, env);
     }
     if (path === '/api/auth/resend-verify' && request.method === 'POST') {
       const r = await rl(request, 'authForgot', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleAuthResendVerify(request, env);
     }
     // Tier A admin recovery (AREA G2): status probe + OTP send + verify.
@@ -779,7 +933,9 @@ export async function routeApi(request, env, url) {
     // credential); get rides general (status probe + one-click restore).
     if (path === '/api/auth/admin-code' && request.method === 'PUT') {
       const r = await rl(request, 'authLogin', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleAdminCodePut(request, env);
     }
     if (path === '/api/auth/admin-code' && request.method === 'GET') {
@@ -790,12 +946,16 @@ export async function routeApi(request, env, url) {
     }
     if (path === '/api/auth/admin-recovery/send' && request.method === 'POST') {
       const r = await rl(request, 'authForgot', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleAdminRecoverySend(request, env);
     }
     if (path === '/api/auth/admin-recovery/verify' && request.method === 'POST') {
       const r = await rl(request, 'authLogin', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleAdminRecoveryVerify(request, env);
     }
     if (path === '/api/auth/logout' && request.method === 'POST') {
@@ -808,12 +968,16 @@ export async function routeApi(request, env, url) {
     // 13. BILLING ROUTES
     if (path === '/api/billing/status' && request.method === 'GET') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleBillingStatus(request, env);
     }
     if (path === '/api/billing/checkout' && request.method === 'POST') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleBillingCheckout(request, env);
     }
     // WAVE 8.10 (owner 2026-10-06): manage / cancel the signed-in owner's
@@ -821,7 +985,9 @@ export async function routeApi(request, env, url) {
     // runs to the end of the paid period. Owner-only (session-gated).
     if (path === '/api/billing/subscription' && request.method === 'DELETE') {
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleBillingCancel(request, env);
     }
 
@@ -838,7 +1004,9 @@ export async function routeApi(request, env, url) {
       // guard while carrying the single most powerful credential check. Same
       // general bucket as every sibling route.
       const r = await rl(request, 'general', env);
-      if (r) return r;
+      if (r) {
+        return r;
+      }
       return handleMcpServer(request, env, mcpMatch[1]);
     }
 

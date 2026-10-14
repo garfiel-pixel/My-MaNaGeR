@@ -12,7 +12,9 @@ var MMGR = window.MMGR || {};
   // ---- Resources ----
   function addResource() {
     ns.State.updateState(function (s) {
-      if (!s.resources) s.resources = [];
+      if (!s.resources) {
+        s.resources = [];
+      }
       s.resources.push({
         id: U.genShortId('R'),
         name: '',
@@ -38,7 +40,9 @@ var MMGR = window.MMGR || {};
     });
     // Focus discipline: save on keystroke, re-render on blur/commit (see
     // app.js 'updTaskField'). Re-rendering on `input` drops the caret.
-    if (evtType === 'input') return;
+    if (evtType === 'input') {
+      return;
+    }
     R.renderResources();
   }
 
@@ -51,8 +55,9 @@ var MMGR = window.MMGR || {};
       }
     });
     // Keep the RACI matrix consistent: drop the deleted resource's column.
-    if (removedId != null && ns.Raci && ns.Raci.pruneDeleted)
+    if (removedId != null && ns.Raci && ns.Raci.pruneDeleted) {
       ns.Raci.pruneDeleted({ personIds: [removedId] });
+    }
     R.renderResources();
   }
 
@@ -80,7 +85,9 @@ var MMGR = window.MMGR || {};
   function pushResourcesToBudget() {
     ns.State.updateState(function (s) {
       const resources = s.resources || [];
-      if (!s.budgetLines) s.budgetLines = [];
+      if (!s.budgetLines) {
+        s.budgetLines = [];
+      }
       for (const r of resources) {
         const cost = (r.rate || 0) * (r.hoursAllocated || 0);
         if (cost > 0) {
@@ -103,7 +110,9 @@ var MMGR = window.MMGR || {};
   // ---- Budget ----
   function addBudgetLine() {
     ns.State.updateState(function (s) {
-      if (!s.budgetLines) s.budgetLines = [];
+      if (!s.budgetLines) {
+        s.budgetLines = [];
+      }
       s.budgetLines.push({
         id: U.genShortId('B'),
         category: '',
@@ -135,13 +144,17 @@ var MMGR = window.MMGR || {};
       }
     });
     // Focus discipline: save on keystroke, re-render on blur/commit.
-    if (evtType === 'input') return;
+    if (evtType === 'input') {
+      return;
+    }
     R.renderBudget();
   }
 
   function delBudgetLine(index) {
     ns.State.updateState(function (s) {
-      if (s.budgetLines) s.budgetLines.splice(index, 1);
+      if (s.budgetLines) {
+        s.budgetLines.splice(index, 1);
+      }
     });
     R.renderBudget();
   }
@@ -151,7 +164,9 @@ var MMGR = window.MMGR || {};
       s.budgetEnvelope = parseFloat(value) || 0;
     });
     // Focus discipline: save on keystroke, re-render on blur/commit.
-    if (evtType === 'input') return;
+    if (evtType === 'input') {
+      return;
+    }
     R.renderBudget();
   }
 
@@ -189,15 +204,20 @@ var MMGR = window.MMGR || {};
   // the whole project's span (earliest task start to latest task end).
   function budgetLineWindow(line, state) {
     const s = state || (ns.State ? ns.State.getState() : null);
-    if (!s) return null;
+    if (!s) {
+      return null;
+    }
     const linkId = line.linkedTaskId || line.taskId || null;
     if (linkId) {
       const t = (s.tasks || []).find(x => String(x.id) === String(linkId));
-      if (t && t.startDate && t.endDate)
+      if (t && t.startDate && t.endDate) {
         return { start: U.parseDL(t.startDate), end: U.parseDL(t.endDate) };
+      }
     }
     const dated = (s.tasks || []).filter(t => t.startDate && t.endDate);
-    if (!dated.length) return null;
+    if (!dated.length) {
+      return null;
+    }
     const starts = dated.map(t => U.parseDL(t.startDate).getTime());
     const ends = dated.map(t => U.parseDL(t.endDate).getTime());
     return {
@@ -219,8 +239,12 @@ var MMGR = window.MMGR || {};
       return planned * (tot ? dn / tot : 0);
     }
     const span = w.end - w.start;
-    if (asOf <= w.start) return 0;
-    if (asOf >= w.end || span <= 0) return planned;
+    if (asOf <= w.start) {
+      return 0;
+    }
+    if (asOf >= w.end || span <= 0) {
+      return planned;
+    }
     return (
       planned * curveFraction((asOf - w.start) / span, line.curveShape || line.curve || 'linear')
     );
@@ -237,7 +261,9 @@ var MMGR = window.MMGR || {};
   // wherever it's shown).
   function actualCumulativeAt(asOf, state) {
     const s = state || (ns.State ? ns.State.getState() : null);
-    if (!s) return 0;
+    if (!s) {
+      return 0;
+    }
     const log = s.spendLog || [];
     if (log.length) {
       return log
@@ -250,7 +276,9 @@ var MMGR = window.MMGR || {};
     return (s.budgetLines || []).reduce((sum, l) => {
       const actual = +l.actual || 0;
       const w = budgetLineWindow(l, s);
-      if (!w || actual <= 0 || q <= w.start) return sum;
+      if (!w || actual <= 0 || q <= w.start) {
+        return sum;
+      }
       const denom = Math.max(1, Math.min(today, w.end) - w.start);
       return sum + actual * Math.min(1, (q - w.start) / denom);
     }, 0);
@@ -262,7 +290,9 @@ var MMGR = window.MMGR || {};
   function budgetLineActual(line, state) {
     const s = state || (ns.State ? ns.State.getState() : null);
     const log = ((s && s.spendLog) || []).filter(e => e.budgetLineId === line.id);
-    if (log.length) return log.reduce((sum, e) => sum + (+e.amount || 0), 0);
+    if (log.length) {
+      return log.reduce((sum, e) => sum + (+e.amount || 0), 0);
+    }
     return +line.actual || 0;
   }
 
@@ -273,8 +303,12 @@ var MMGR = window.MMGR || {};
       return;
     }
     ns.State.updateState(function (st) {
-      if (!st.spendLog) st.spendLog = [];
-      if (!st.nspid) st.nspid = 1;
+      if (!st.spendLog) {
+        st.spendLog = [];
+      }
+      if (!st.nspid) {
+        st.nspid = 1;
+      }
       st.spendLog.push({
         id: 'S' + st.nspid++,
         date: U.todayStr(),
@@ -288,7 +322,9 @@ var MMGR = window.MMGR || {};
 
   function delSpendEntry(index) {
     ns.State.updateState(function (s) {
-      if (s.spendLog) s.spendLog.splice(index, 1);
+      if (s.spendLog) {
+        s.spendLog.splice(index, 1);
+      }
     });
     R.renderBudget();
   }
@@ -296,18 +332,24 @@ var MMGR = window.MMGR || {};
   function updSpendEntry(index, field, value, evtType) {
     ns.State.updateState(function (s) {
       const e = s.spendLog && s.spendLog[index];
-      if (!e) return;
+      if (!e) {
+        return;
+      }
       e[field] =
         field === 'amount' ? parseFloat(value) || 0 : field === 'budgetLineId' ? value : value;
     });
     // Focus discipline: save on keystroke, re-render on blur/commit.
-    if (evtType === 'input') return;
+    if (evtType === 'input') {
+      return;
+    }
     // Date-commit discipline (same class as the WBS date bug): the native
     // date picker is anchored to the focused input. Rebuilding the Budget
     // panel on a spend-date commit destroys that input mid-interaction. The
     // date value is already saved; nothing else on the Budget panel derives
     // from it, so skip the rebuild on date commits.
-    if (field === 'date') return;
+    if (field === 'date') {
+      return;
+    }
     R.renderBudget();
   }
 
@@ -331,7 +373,9 @@ var MMGR = window.MMGR || {};
 
   function addPayApp(manual) {
     ns.State.updateState(function (s) {
-      if (!s.payApps) s.payApps = [];
+      if (!s.payApps) {
+        s.payApps = [];
+      }
       const n = s.payApps.length + 1;
       const amount = manual ? 0 : Math.round(liveSpendTotal());
       s.payApps.push({
@@ -346,7 +390,9 @@ var MMGR = window.MMGR || {};
       });
     });
     R.renderBudget();
-    if (!manual) ns.App.showToast('Pay application draft generated from live spend.', 'ok');
+    if (!manual) {
+      ns.App.showToast('Pay application draft generated from live spend.', 'ok');
+    }
   }
 
   function genPayApp() {
@@ -359,13 +405,17 @@ var MMGR = window.MMGR || {};
         s.payApps[index][field] = field === 'amount' ? parseFloat(value) || 0 : value;
       }
     });
-    if (evtType === 'input') return;
+    if (evtType === 'input') {
+      return;
+    }
     R.renderBudget();
   }
 
   function delPayApp(index) {
     ns.State.updateState(function (s) {
-      if (s.payApps) s.payApps.splice(index, 1);
+      if (s.payApps) {
+        s.payApps.splice(index, 1);
+      }
     });
     R.renderBudget();
   }
@@ -392,7 +442,9 @@ var MMGR = window.MMGR || {};
   // Per-task hours log for field crew.
   function addTimeEntry() {
     ns.State.updateState(function (s) {
-      if (!s.timeEntries) s.timeEntries = [];
+      if (!s.timeEntries) {
+        s.timeEntries = [];
+      }
       s.timeEntries.push({
         id: U.genShortId('TE'),
         task: '',
@@ -411,13 +463,17 @@ var MMGR = window.MMGR || {};
         s.timeEntries[index][field] = field === 'hours' ? parseFloat(value) || 0 : value;
       }
     });
-    if (evtType === 'input') return;
+    if (evtType === 'input') {
+      return;
+    }
     R.renderResources();
   }
 
   function delTimeEntry(index) {
     ns.State.updateState(function (s) {
-      if (s.timeEntries) s.timeEntries.splice(index, 1);
+      if (s.timeEntries) {
+        s.timeEntries.splice(index, 1);
+      }
     });
     R.renderResources();
   }
@@ -432,7 +488,9 @@ var MMGR = window.MMGR || {};
   // Equipment usage, maintenance, allocation.
   function addEquipment() {
     ns.State.updateState(function (s) {
-      if (!s.equipment) s.equipment = [];
+      if (!s.equipment) {
+        s.equipment = [];
+      }
       s.equipment.push({
         id: U.genShortId('EQ'),
         name: '',
@@ -452,15 +510,21 @@ var MMGR = window.MMGR || {};
 
   function updEquipment(index, field, value, evtType) {
     ns.State.updateState(function (s) {
-      if (s.equipment && s.equipment[index]) s.equipment[index][field] = value;
+      if (s.equipment && s.equipment[index]) {
+        s.equipment[index][field] = value;
+      }
     });
-    if (evtType === 'input') return;
+    if (evtType === 'input') {
+      return;
+    }
     R.renderResources();
   }
 
   function delEquipment(index) {
     ns.State.updateState(function (s) {
-      if (s.equipment) s.equipment.splice(index, 1);
+      if (s.equipment) {
+        s.equipment.splice(index, 1);
+      }
     });
     R.renderResources();
   }

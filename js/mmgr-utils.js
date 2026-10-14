@@ -8,7 +8,9 @@ var MMGR = window.MMGR || {};
 
   // ---- Date Parsing ----
   function parseDL(str) {
-    if (!str) return null;
+    if (!str) {
+      return null;
+    }
     // YYYY-MM-DD
     if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
       const parts = str.split('-').map(Number);
@@ -21,8 +23,12 @@ var MMGR = window.MMGR || {};
     //   both ≤ 12        → ambiguous; documented default is DD/MM/YYYY
     if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(str)) {
       const parts = str.split('/').map(Number);
-      if (parts[0] > 12) return new Date(parts[2], parts[1] - 1, parts[0]); // DD/MM
-      if (parts[1] > 12) return new Date(parts[2], parts[0] - 1, parts[1]); // MM/DD
+      if (parts[0] > 12) {
+        return new Date(parts[2], parts[1] - 1, parts[0]);
+      } // DD/MM
+      if (parts[1] > 12) {
+        return new Date(parts[2], parts[0] - 1, parts[1]);
+      } // MM/DD
       return new Date(parts[2], parts[1] - 1, parts[0]); // ambiguous → DD/MM
     }
     // DD-Mon-YYYY
@@ -43,18 +49,28 @@ var MMGR = window.MMGR || {};
     const m = str.match(/^(\d{1,2})-([a-zA-Z]{3})-(\d{4})$/);
     if (m) {
       const month = months[m[2].toLowerCase()];
-      if (month !== undefined) return new Date(+m[3], month, +m[1]);
+      if (month !== undefined) {
+        return new Date(+m[3], month, +m[1]);
+      }
     }
     // ISO
     const d = new Date(str);
-    if (!isNaN(d.getTime())) return d;
+    if (!isNaN(d.getTime())) {
+      return d;
+    }
     return null;
   }
 
   function fmtDate(d) {
-    if (!d) return '';
-    if (typeof d === 'string') d = parseDL(d);
-    if (!d || isNaN(d.getTime())) return '';
+    if (!d) {
+      return '';
+    }
+    if (typeof d === 'string') {
+      d = parseDL(d);
+    }
+    if (!d || isNaN(d.getTime())) {
+      return '';
+    }
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
@@ -62,9 +78,15 @@ var MMGR = window.MMGR || {};
   }
 
   function fmtDateShort(d) {
-    if (!d) return '';
-    if (typeof d === 'string') d = parseDL(d);
-    if (!d || isNaN(d.getTime())) return '';
+    if (!d) {
+      return '';
+    }
+    if (typeof d === 'string') {
+      d = parseDL(d);
+    }
+    if (!d || isNaN(d.getTime())) {
+      return '';
+    }
     const months = [
       'Jan',
       'Feb',
@@ -83,16 +105,28 @@ var MMGR = window.MMGR || {};
   }
 
   function daysBetween(a, b) {
-    if (!a || !b) return 0;
-    if (typeof a === 'string') a = parseDL(a);
-    if (typeof b === 'string') b = parseDL(b);
-    if (!a || !b || isNaN(a.getTime()) || isNaN(b.getTime())) return 0;
+    if (!a || !b) {
+      return 0;
+    }
+    if (typeof a === 'string') {
+      a = parseDL(a);
+    }
+    if (typeof b === 'string') {
+      b = parseDL(b);
+    }
+    if (!a || !b || isNaN(a.getTime()) || isNaN(b.getTime())) {
+      return 0;
+    }
     return Math.round((b - a) / (1000 * 60 * 60 * 24));
   }
 
   function addDays(d, n) {
-    if (typeof d === 'string') d = parseDL(d);
-    if (!d || isNaN(d.getTime())) return new Date();
+    if (typeof d === 'string') {
+      d = parseDL(d);
+    }
+    if (!d || isNaN(d.getTime())) {
+      return new Date();
+    }
     const r = new Date(d);
     r.setDate(r.getDate() + n);
     return r;
@@ -103,7 +137,9 @@ var MMGR = window.MMGR || {};
   }
 
   function isOverdue(endDate) {
-    if (!endDate) return false;
+    if (!endDate) {
+      return false;
+    }
     const end = parseDL(endDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -111,7 +147,9 @@ var MMGR = window.MMGR || {};
   }
 
   function isDueSoon(endDate, days) {
-    if (!endDate) return false;
+    if (!endDate) {
+      return false;
+    }
     const end = parseDL(endDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -128,11 +166,17 @@ var MMGR = window.MMGR || {};
   // Is this calendar day a working day under the given work week?
   // workWeek = days worked per week: 5 → Mon-Fri, 6 → Mon-Sat, 7 → every day.
   function isWorkDay(d, workWeek) {
-    if (typeof d === 'string') d = parseDL(d);
-    if (!d || isNaN(d.getTime())) return false;
+    if (typeof d === 'string') {
+      d = parseDL(d);
+    }
+    if (!d || isNaN(d.getTime())) {
+      return false;
+    }
     // Same fallback as the other working-day helpers: state-driven, 5 if none.
     const ww = parseInt(workWeek) || getWorkWeek();
-    if (ww >= 7) return true;
+    if (ww >= 7) {
+      return true;
+    }
     const dow = d.getDay(); // 0 = Sunday
     return dow >= 1 && dow <= ww;
   }
@@ -141,8 +185,12 @@ var MMGR = window.MMGR || {};
   // days per the configured work week. Used for all duration arithmetic so
   // the work-week control actually drives cascade, Gantt bars, and float.
   function addWorkingDays(d, n, workWeek) {
-    if (typeof d === 'string') d = parseDL(d);
-    if (!d || isNaN(d.getTime())) return new Date();
+    if (typeof d === 'string') {
+      d = parseDL(d);
+    }
+    if (!d || isNaN(d.getTime())) {
+      return new Date();
+    }
     const ww = parseInt(workWeek) || getWorkWeek();
     const r = new Date(d);
     r.setHours(0, 0, 0, 0);
@@ -150,7 +198,9 @@ var MMGR = window.MMGR || {};
     const dir = n >= 0 ? 1 : -1;
     while (steps > 0) {
       r.setDate(r.getDate() + dir);
-      if (isWorkDay(r, ww)) steps--;
+      if (isWorkDay(r, ww)) {
+        steps--;
+      }
     }
     return r;
   }
@@ -159,10 +209,18 @@ var MMGR = window.MMGR || {};
   // after a, negative otherwise). The float math mirrors calendar daysBetween
   // but counts only the days the crew actually works.
   function workingDaysBetween(a, b, workWeek) {
-    if (!a || !b) return 0;
-    if (typeof a === 'string') a = parseDL(a);
-    if (typeof b === 'string') b = parseDL(b);
-    if (!a || !b || isNaN(a.getTime()) || isNaN(b.getTime())) return 0;
+    if (!a || !b) {
+      return 0;
+    }
+    if (typeof a === 'string') {
+      a = parseDL(a);
+    }
+    if (typeof b === 'string') {
+      b = parseDL(b);
+    }
+    if (!a || !b || isNaN(a.getTime()) || isNaN(b.getTime())) {
+      return 0;
+    }
     const ww = parseInt(workWeek) || getWorkWeek();
     const forward = a <= b;
     const lo = forward ? a : b;
@@ -172,7 +230,9 @@ var MMGR = window.MMGR || {};
     cur.setHours(0, 0, 0, 0);
     cur.setDate(cur.getDate() + 1);
     while (cur < hi) {
-      if (isWorkDay(cur, ww)) count++;
+      if (isWorkDay(cur, ww)) {
+        count++;
+      }
       cur.setDate(cur.getDate() + 1);
     }
     return forward ? count : -count;
@@ -214,17 +274,23 @@ var MMGR = window.MMGR || {};
 
   function show(id) {
     const el = $(id);
-    if (el) el.classList.remove('is-hide');
+    if (el) {
+      el.classList.remove('is-hide');
+    }
   }
 
   function hide(id) {
     const el = $(id);
-    if (el) el.classList.add('is-hide');
+    if (el) {
+      el.classList.add('is-hide');
+    }
   }
 
   function toggle(id) {
     const el = $(id);
-    if (el) el.classList.toggle('is-hide');
+    if (el) {
+      el.classList.toggle('is-hide');
+    }
   }
 
   // ---- Debounce ----
@@ -250,7 +316,9 @@ var MMGR = window.MMGR || {};
 
   // ---- Sanitize ----
   function sanitize(str) {
-    if (!str) return '';
+    if (!str) {
+      return '';
+    }
     return String(str)
       .replace(/<[^>]*>/g, '')
       .trim();
@@ -301,9 +369,15 @@ var MMGR = window.MMGR || {};
       renderFn();
       if (rec && rec.action) {
         let sel = '[data-action="' + rec.action + '"]';
-        if (rec.id != null) sel += '[data-id="' + rec.id + '"]';
-        if (rec.field != null) sel += '[data-field="' + rec.field + '"]';
-        if (rec.idx != null) sel += '[data-idx="' + rec.idx + '"]';
+        if (rec.id != null) {
+          sel += '[data-id="' + rec.id + '"]';
+        }
+        if (rec.field != null) {
+          sel += '[data-field="' + rec.field + '"]';
+        }
+        if (rec.idx != null) {
+          sel += '[data-idx="' + rec.idx + '"]';
+        }
         const el = document.querySelector(sel);
         if (el && el !== document.activeElement) {
           // Defensive guard: native picker inputs (date/time/month/week/
@@ -364,7 +438,9 @@ var MMGR = window.MMGR || {};
 
     /* BUG #1: safe JSON.parse - prevents app crash on corrupt localStorage */
     safeParse: function (raw, fallback) {
-      if (fallback === undefined) fallback = null;
+      if (fallback === undefined) {
+        fallback = null;
+      }
       try {
         return JSON.parse(raw);
       } catch (e) {
@@ -374,7 +450,9 @@ var MMGR = window.MMGR || {};
 
     /* BUG #3: truncate list with overflow indicator */
     truncateList: function (arr, limit, fmt) {
-      if (!arr || !arr.length) return '';
+      if (!arr || !arr.length) {
+        return '';
+      }
       var shown = arr.slice(0, limit).map(
         fmt ||
           function (x) {

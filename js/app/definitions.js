@@ -14,14 +14,18 @@ var MMGR = window.MMGR || {};
   let _defTipTimer = null;
 
   function defTipFor(term) {
-    if (!ns.Defs || !ns.Defs.DATA) return null;
+    if (!ns.Defs || !ns.Defs.DATA) {
+      return null;
+    }
     const entry = ns.Defs.DATA.find(d => d.term.toLowerCase() === String(term || '').toLowerCase());
     return entry || null;
   }
 
   function showDefTip(el, term) {
     const entry = defTipFor(term);
-    if (!entry) return;
+    if (!entry) {
+      return;
+    }
     if (_defTipTimer) {
       clearTimeout(_defTipTimer);
       _defTipTimer = null;
@@ -51,7 +55,9 @@ var MMGR = window.MMGR || {};
       clearTimeout(_defTipTimer);
       _defTipTimer = null;
     }
-    if (_defTipEl) _defTipEl.classList.remove('vis');
+    if (_defTipEl) {
+      _defTipEl.classList.remove('vis');
+    }
   }
 
   ns.AppDefs = {

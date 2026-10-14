@@ -28,14 +28,20 @@ var MMGR = window.MMGR || {};
   // ---- Punch List (MARKET-FEATURE-ROADMAP C3) ----
   function renderPunchList() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const body = $('punch-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const items = s.punchList || [];
     const open = items.filter(i => i.status !== 'done').length;
     const done = items.length - open;
     const sum = $('punch-sum');
-    if (sum) sum.textContent = items.length ? done + ' done · ' + open + ' open' : '';
+    if (sum) {
+      sum.textContent = items.length ? done + ' done · ' + open + ' open' : '';
+    }
     if (items.length === 0) {
       body.innerHTML = emptyStateRow(
         9,
@@ -66,13 +72,19 @@ var MMGR = window.MMGR || {};
   // ---- Handover / Closeout Package (MARKET-FEATURE-ROADMAP C18) ----
   function renderHandover() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const body = $('handover-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const list = s.handover || [];
     const filed = list.filter(x => x.status === 'filed').length;
     const sum = $('handover-sum');
-    if (sum) sum.textContent = list.length ? filed + ' of ' + list.length + ' filed' : '';
+    if (sum) {
+      sum.textContent = list.length ? filed + ' of ' + list.length + ' filed' : '';
+    }
     if (list.length === 0) {
       body.innerHTML = emptyStateRow(
         6,
@@ -98,12 +110,18 @@ var MMGR = window.MMGR || {};
   // ---- Warranty Tracker (MARKET-FEATURE-ROADMAP C26) ----
   function renderWarranty() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const body = $('warranty-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const list = s.warrantyItems || [];
     const sum = $('warranty-sum');
-    if (sum) sum.textContent = list.length ? list.length + ' tracked' : '';
+    if (sum) {
+      sum.textContent = list.length ? list.length + ' tracked' : '';
+    }
     if (list.length === 0) {
       body.innerHTML = emptyStateRow(
         8,
@@ -113,9 +131,13 @@ var MMGR = window.MMGR || {};
       return;
     }
     function dl(d) {
-      if (!d) return null;
+      if (!d) {
+        return null;
+      }
       const dt = new Date(d);
-      if (isNaN(dt.getTime())) return null;
+      if (isNaN(dt.getTime())) {
+        return null;
+      }
       return Math.round((dt.getTime() - Date.now()) / 86400000);
     }
     body.innerHTML = list
@@ -147,16 +169,21 @@ var MMGR = window.MMGR || {};
   // ---- Inspection Checklists (MARKET-FEATURE-ROADMAP C16) ----
   function renderInspections() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const body = $('insp-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const list = s.inspections || [];
     const sum = $('insp-sum');
     const passed = list.filter(x => x.status === 'passed' || x.status === 'closed').length;
-    if (sum)
+    if (sum) {
       sum.textContent = list.length
         ? passed + ' passed \u00b7 ' + (list.length - passed) + ' open'
         : '';
+    }
     if (list.length === 0) {
       body.innerHTML = emptyStateRow(
         8,
@@ -203,16 +230,21 @@ var MMGR = window.MMGR || {};
   // ---- Incident Register (MARKET-FEATURE-ROADMAP C17) ----
   function renderIncidents() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const body = $('inc-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const list = s.incidents || [];
     const sum = $('inc-sum');
     const open = list.filter(x => x.status !== 'closed').length;
-    if (sum)
+    if (sum) {
       sum.textContent = list.length
         ? open + ' open \u00b7 ' + (list.length - open) + ' closed'
         : '';
+    }
     if (list.length === 0) {
       body.innerHTML = emptyStateRow(
         10,
@@ -249,13 +281,17 @@ var MMGR = window.MMGR || {};
 
   function renderClosure() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     renderPunchList();
     renderHandover();
     renderWarranty();
     renderInspections();
     renderIncidents();
-    if (!s.closure) return;
+    if (!s.closure) {
+      return;
+    }
     const items = s.closure.items || [];
     const chk = $('close-chk');
     if (chk) {
@@ -278,11 +314,17 @@ var MMGR = window.MMGR || {};
       }
     }
     const well = $('ll-well');
-    if (well) well.value = s.closure.well || '';
+    if (well) {
+      well.value = s.closure.well || '';
+    }
     const imp = $('ll-imp');
-    if (imp) imp.value = s.closure.imp || '';
+    if (imp) {
+      imp.value = s.closure.imp || '';
+    }
     const rec = $('ll-rec');
-    if (rec) rec.value = s.closure.rec || '';
+    if (rec) {
+      rec.value = s.closure.rec || '';
+    }
   }
 
   ns.RenderClosure = {

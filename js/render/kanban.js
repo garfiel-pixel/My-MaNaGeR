@@ -102,7 +102,9 @@ var MMGR = window.MMGR || {};
 
   function renderKanban() {
     const s = S();
-    if (!s || !s.tasks) return;
+    if (!s || !s.tasks) {
+      return;
+    }
     const cols = [
       ['todo', 'kc-todo', 'w-todo'],
       ['inprogress', 'kc-ip', 'w-ip'],
@@ -112,22 +114,32 @@ var MMGR = window.MMGR || {};
     const kbShow = !!s.kbShowLeadtime;
     const ltFlagOff = !!(s.flags && s.flags.leadtimeLane === false);
     const ltLane = $('col-leadtime');
-    if (ltLane) ltLane.classList.toggle('is-hide', !kbShow || ltFlagOff);
+    if (ltLane) {
+      ltLane.classList.toggle('is-hide', !kbShow || ltFlagOff);
+    }
     const ltChip = document.querySelector('[data-action="tglLeadtimeLane"]');
-    if (ltChip) ltChip.classList.toggle('is-on', kbShow);
+    if (ltChip) {
+      ltChip.classList.toggle('is-on', kbShow);
+    }
     const noTasksAtAll = s.tasks.length === 0;
     const rollupParents = new Set();
     s.tasks.forEach(t => {
-      if (t.parentName) rollupParents.add(t.parentName);
+      if (t.parentName) {
+        rollupParents.add(t.parentName);
+      }
     });
     const isWorkItem = t => !t.isPhase && !((t.level || 0) === 0 && rollupParents.has(t.name));
     for (const col of cols) {
       const status = col[0];
       const el = $(col[1]);
-      if (!el) continue;
+      if (!el) {
+        continue;
+      }
       const tasks = s.tasks.filter(t => (t.status || 'todo') === status && isWorkItem(t));
       const wip = $(col[2]);
-      if (wip) wip.textContent = tasks.length;
+      if (wip) {
+        wip.textContent = tasks.length;
+      }
       if (noTasksAtAll) {
         el.innerHTML =
           status === 'todo'
@@ -141,7 +153,9 @@ var MMGR = window.MMGR || {};
     if (ltEl) {
       const ltTasks = (s.tasks || []).filter(t => t.leadTime && isWorkItem(t));
       const wlt = $('w-lt');
-      if (wlt) wlt.textContent = ltTasks.length;
+      if (wlt) {
+        wlt.textContent = ltTasks.length;
+      }
       if (noTasksAtAll) {
         ltEl.innerHTML = '';
       } else if (!ltTasks.length) {

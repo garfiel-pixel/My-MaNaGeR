@@ -142,7 +142,9 @@ const IDEMPOTENCY_TTL_SECONDS = 300;
  */
 export async function withIdempotency(request, env, handler, opts = {}) {
   const key = request.headers.get('Idempotency-Key');
-  if (!key) return null; // No key provided — proceed normally
+  if (!key) {
+    return null;
+  } // No key provided — proceed normally
 
   const ttl = opts.ttlSeconds || IDEMPOTENCY_TTL_SECONDS;
   const bucket = opts.bucket || 'idem';
@@ -180,7 +182,9 @@ export async function withIdempotency(request, env, handler, opts = {}) {
       }
     } catch (e) {
       // Table might not exist yet — that's fine, skip idempotency
-      if (e && e.message && e.message.indexOf('no such table') !== -1) return null;
+      if (e && e.message && e.message.indexOf('no such table') !== -1) {
+        return null;
+      }
     }
   }
 

@@ -41,7 +41,9 @@ var MMGR = window.MMGR || {};
     const h = { 'Content-Type': 'application/json' };
     try {
       const cred = C && C._activeCredential ? C._activeCredential() : null;
-      if (cred && cred.header && cred.code) h[cred.header] = cred.code;
+      if (cred && cred.header && cred.code) {
+        h[cred.header] = cred.code;
+      }
     } catch (e) {
       /* no cloud credential - server will 401 */
     }
@@ -96,7 +98,7 @@ var MMGR = window.MMGR || {};
   // result so callers can show a "cloud credential needed" state.
   async function refresh() {
     const r = await poolFetch(poolUrl('/items'), 'GET');
-    if (!r.ok || !r.data.ok)
+    if (!r.ok || !r.data.ok) {
       return {
         ok: false,
         status: r.status,
@@ -104,6 +106,7 @@ var MMGR = window.MMGR || {};
         items: [],
         linked: {}
       };
+    }
     _cache = { items: r.data.items || [], linked: r.data.linked || {} };
     return { ok: true, items: _cache.items, linked: _cache.linked };
   }
@@ -157,17 +160,27 @@ var MMGR = window.MMGR || {};
   // FIFO replay; a still-offline op stays queued (no data loss).
   async function flushPending() {
     const q = loadQ();
-    if (!q.length) return;
+    if (!q.length) {
+      return;
+    }
     for (let i = 0; i < q.length; i++) {
       const op = q[i];
       try {
-        if (op.op === 'link') await linkItem(op.poolItemId);
-        else if (op.op === 'unlink') await unlinkItem(op.poolItemId);
-        else if (op.op === 'create') await createItem(op.fields);
-        else if (op.op === 'update') await updateItem(op.poolItemId, op.fields);
-        else if (op.op === 'delete') await deleteItem(op.poolItemId);
+        if (op.op === 'link') {
+          await linkItem(op.poolItemId);
+        } else if (op.op === 'unlink') {
+          await unlinkItem(op.poolItemId);
+        } else if (op.op === 'create') {
+          await createItem(op.fields);
+        } else if (op.op === 'update') {
+          await updateItem(op.poolItemId, op.fields);
+        } else if (op.op === 'delete') {
+          await deleteItem(op.poolItemId);
+        }
         // a success (or a definitive 4xx handled inside) drops the op
-        if (op.op === 'link' || op.op === 'unlink' || op.op === 'delete') q[i]._done = true;
+        if (op.op === 'link' || op.op === 'unlink' || op.op === 'delete') {
+          q[i]._done = true;
+        }
       } catch (e) {
         /* offline - stop and retry later */ break;
       }
@@ -190,13 +203,19 @@ var MMGR = window.MMGR || {};
     let merged = 0,
       created = 0;
     ns.State.updateState(function (s) {
-      if (!s.resources) s.resources = [];
+      if (!s.resources) {
+        s.resources = [];
+      }
       const knownIds = {};
       s.resources.forEach(function (r) {
-        if (r.poolItemId) knownIds[r.poolItemId] = r;
+        if (r.poolItemId) {
+          knownIds[r.poolItemId] = r;
+        }
       });
       (items || []).forEach(function (poolItem) {
-        if (!linked || !linked[poolItem.id]) return; // only linked rows come in
+        if (!linked || !linked[poolItem.id]) {
+          return;
+        } // only linked rows come in
         const existing = knownIds[poolItem.id];
         const shared = {
           name: poolItem.name || '',
@@ -245,7 +264,9 @@ var MMGR = window.MMGR || {};
   // Convenience used by render/resources.js when the picker pulls.
   async function refreshAndMerge() {
     const r = await refresh();
-    if (!r.ok) return { ok: false, status: r.status, error: r.error };
+    if (!r.ok) {
+      return { ok: false, status: r.status, error: r.error };
+    }
     const out = mergeIntoState(r.items, r.linked);
     await flushPending();
     return { ok: true, items: r.items, linked: r.linked, merged: out.merged, created: out.created };
@@ -268,7 +289,9 @@ var MMGR = window.MMGR || {};
       rate: Number(resource.rate) || 0,
       notes: ''
     });
-    if (!res.ok) return res;
+    if (!res.ok) {
+      return res;
+    }
     // stamp the local row so future merges key on it, then link
     ns.State.updateState(function (s) {
       const row = (s.resources || []).find(function (x) {
@@ -288,8 +311,12 @@ var MMGR = window.MMGR || {};
   async function bootMerge() {
     // Only meaningful for cloud-linked projects held with a credential.
     const cred = C && C._activeCredential ? C._activeCredential() : null;
-    if (!cred) return;
-    if (_bootMerged) return;
+    if (!cred) {
+      return;
+    }
+    if (_bootMerged) {
+      return;
+    }
     _bootMerged = true;
     try {
       const r = await refreshAndMerge();

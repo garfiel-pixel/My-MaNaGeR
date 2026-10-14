@@ -64,7 +64,7 @@ const delay = ms => new Promise(r => setTimeout(r, ms));
   // capture console + exceptions
   ws.onmessage = e => {
     const m = JSON.parse(e.data);
-    if (m.method === 'Runtime.exceptionThrown')
+    if (m.method === 'Runtime.exceptionThrown') {
       errors.push(
         'EXC: ' +
           (m.params.exceptionDetails.exception
@@ -72,7 +72,8 @@ const delay = ms => new Promise(r => setTimeout(r, ms));
             : m.params.exceptionDetails.text || ''
           ).slice(0, 150)
       );
-    if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error')
+    }
+    if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error') {
       errors.push(
         'CONSOLE: ' +
           (m.params.args || [])
@@ -80,6 +81,7 @@ const delay = ms => new Promise(r => setTimeout(r, ms));
             .join(' ')
             .slice(0, 150)
       );
+    }
     if (m.id && pend.has(m.id)) {
       pend.get(m.id)(m);
       pend.delete(m.id);

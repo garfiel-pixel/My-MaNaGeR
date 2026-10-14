@@ -75,13 +75,17 @@ function isExpectedLocalDevError(text, url) {
   //    tools/qa-paddle-csp.cjs ("profitwell must stay out: revenue analytics,
   //    not checkout"). Paddle injects it anyway, so it logs a CSP violation on
   //    pricing.html. This is intended behaviour, not a page defect.
-  if (/profitwell/i.test(both)) return true;
+  if (/profitwell/i.test(both)) {
+    return true;
+  }
 
   // 3. Google Identity Services refuses 127.0.0.1 because the OAuth client's
   //    authorized origins do not include localhost; the REAL origin is
   //    authorized, so this failure only exists in local/dev runs. The browser
   //    reports it as a gsi/button 403 plus a GSI_LOGGER origin message.
-  if (/accounts\.google\.com\/gsi\//.test(url) || /GSI_LOGGER/.test(text)) return true;
+  if (/accounts\.google\.com\/gsi\//.test(url) || /GSI_LOGGER/.test(text)) {
+    return true;
+  }
 
   return false;
 }
@@ -133,9 +137,13 @@ function check(label, ok, extra) {
       const text = msg.text();
       const url = (msg.location && msg.location().url) || '';
       if (t === 'error') {
-        if (isExpectedLocalDevError(text, url)) return;
+        if (isExpectedLocalDevError(text, url)) {
+          return;
+        }
         consoleErrors.push({ text: text.slice(0, 240), url });
-      } else if (t === 'warning') consoleWarnings.push(text);
+      } else if (t === 'warning') {
+        consoleWarnings.push(text);
+      }
     });
 
     try {
@@ -157,7 +165,9 @@ function check(label, ok, extra) {
         const de = document.documentElement;
         return de.scrollWidth - de.clientWidth;
       });
-      if (o > 2) overflowAt.push({ w, by: o });
+      if (o > 2) {
+        overflowAt.push({ w, by: o });
+      }
     }
     const overflow = overflowAt.length ? overflowAt[0] : null;
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -172,7 +182,9 @@ function check(label, ok, extra) {
           app.click();
         }
         const railClose = document.querySelector('.db-side-close, #nav-btn');
-        if (railClose && railClose !== app) railClose.click();
+        if (railClose && railClose !== app) {
+          railClose.click();
+        }
         const toggles = document.querySelectorAll('[data-rail-toggle]');
         toggles.forEach(t => {
           t.click();
@@ -222,7 +234,9 @@ function check(label, ok, extra) {
       .evaluate(() => {
         for (let i = 0; i < 6; i++) {
           const b = document.querySelector('#db-nav-btn, [data-action="tglNav"], .nav-btn');
-          if (b) b.click();
+          if (b) {
+            b.click();
+          }
         }
       })
       .catch(() => {});

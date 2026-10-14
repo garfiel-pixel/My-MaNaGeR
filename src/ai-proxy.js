@@ -75,7 +75,9 @@ function freePoolKeys(env) {
   const keys = [];
   for (let i = 1; i <= FREE_POOL_SLOTS; i++) {
     const v = env ? env['GEMINI_KEY_' + i] : null;
-    if (typeof v === 'string' && v.trim()) keys.push(v.trim());
+    if (typeof v === 'string' && v.trim()) {
+      keys.push(v.trim());
+    }
   }
   return keys;
 }
@@ -84,7 +86,9 @@ function freePoolKeys(env) {
 // whole job is to protect a finite pool of free keys: the safe failure is
 // "capped", never "uncapped".
 async function poolIsPaid(env, sub) {
-  if (!env || !env.DB || !sub) return false;
+  if (!env || !env.DB || !sub) {
+    return false;
+  }
   try {
     const row = await env.DB.prepare('SELECT status FROM cloud_subscriptions WHERE owner_sub = ?')
       .bind(sub)
@@ -98,7 +102,9 @@ async function poolIsPaid(env, sub) {
 // KV is best-effort the other way: a cache fault must never take the free AI
 // down, so an unreadable or missing counter means "allow" (0 used).
 async function freeQuotaUsed(env, sub) {
-  if (!env || !env.KV || !sub) return 0;
+  if (!env || !env.KV || !sub) {
+    return 0;
+  }
   try {
     const n = parseInt(await env.KV.get(FREE_QUOTA_PREFIX + sub), 10);
     return Number.isFinite(n) && n > 0 ? n : 0;
@@ -108,7 +114,9 @@ async function freeQuotaUsed(env, sub) {
 }
 
 async function freeQuotaBump(env, sub, used) {
-  if (!env || !env.KV || !sub) return;
+  if (!env || !env.KV || !sub) {
+    return;
+  }
   try {
     await env.KV.put(FREE_QUOTA_PREFIX + sub, String(used + 1), {
       expirationTtl: FREE_QUOTA_TTL_S
@@ -135,10 +143,14 @@ async function poolAttempt(keys, messages) {
         signal: ctrl.signal
       });
       clearTimeout(timer);
-      if (!res.ok) continue; // 429 / 503 / 401 / 403 -> next key
+      if (!res.ok) {
+        continue;
+      } // 429 / 503 / 401 / 403 -> next key
       const data = await res.json();
       const text = aiExtractText('google-gemini', data);
-      if (text) return { text: String(text) };
+      if (text) {
+        return { text: String(text) };
+      }
     } catch (e) {
       clearTimeout(timer);
       // network error or timeout: next key
@@ -152,15 +164,19 @@ function aiGeminiPayload(messages) {
   let system = '';
   const contents = [];
   (messages || []).forEach(function (m) {
-    if (m && m.role === 'system') system += (system ? '\n' : '') + (m.content || '');
-    else if (m && m.content)
+    if (m && m.role === 'system') {
+      system += (system ? '\n' : '') + (m.content || '');
+    } else if (m && m.content) {
       contents.push({
         role: m.role === 'assistant' || m.role === 'model' ? 'model' : 'user',
         parts: [{ text: m.content }]
       });
+    }
   });
   const p = { contents: contents };
-  if (system) p.systemInstruction = { parts: [{ text: system }] };
+  if (system) {
+    p.systemInstruction = { parts: [{ text: system }] };
+  }
   return p;
 }
 
@@ -202,15 +218,19 @@ function aiAnthropicPayload(model, messages) {
   let system = '';
   const msgs = [];
   (messages || []).forEach(function (m) {
-    if (m && m.role === 'system') system += (system ? '\n' : '') + (m.content || '');
-    else if (m && m.content)
+    if (m && m.role === 'system') {
+      system += (system ? '\n' : '') + (m.content || '');
+    } else if (m && m.content) {
       msgs.push({
         role: m.role === 'assistant' || m.role === 'model' ? 'assistant' : 'user',
         content: m.content
       });
+    }
   });
   const p = { model: model, max_tokens: 4096, messages: msgs };
-  if (system) p.system = system;
+  if (system) {
+    p.system = system;
+  }
   return p;
 }
 
@@ -219,7 +239,9 @@ function aiAnthropicPayload(model, messages) {
 // read with a running byte budget and abandoned once it exceeds the limit.
 async function readAiBody(request) {
   const cl = Number(request.headers.get('Content-Length') || 0);
-  if (cl > AI_BODY_LIMIT_BYTES) return { tooLarge: true };
+  if (cl > AI_BODY_LIMIT_BYTES) {
+    return { tooLarge: true };
+  }
   if (!request.body) {
     try {
       return { body: await request.json() };
@@ -236,7 +258,9 @@ async function readAiBody(request) {
     done = res.done;
     if (res.value) {
       total += res.value.byteLength;
-      if (total > AI_BODY_LIMIT_BYTES) return { tooLarge: true };
+      if (total > AI_BODY_LIMIT_BYTES) {
+        return { tooLarge: true };
+      }
       chunks.push(res.value);
     }
   }
@@ -258,7 +282,9 @@ async function readAiBody(request) {
 // fetch the project state and inject it into the system prompt so the AI
 // can reference real project data (tasks, budget, risks, etc.).
 async function buildMcpContext(env, projectId, code) {
-  if (!projectId || !code) return '';
+  if (!projectId || !code) {
+    return '';
+  }
   try {
     const key = 'projects/' + projectId + '/latest.json';
     const row = await env.DB.prepare(
@@ -266,11 +292,15 @@ async function buildMcpContext(env, projectId, code) {
     )
       .bind(projectId)
       .first();
-    if (!row || !row.latest_r2_key) return '';
+    if (!row || !row.latest_r2_key) {
+      return '';
+    }
     // Import cloudReadState
     const { cloudReadState } = await import('./lib/http.js');
     const state = await cloudReadState(env, key, row.owner_code_hash, row.owner_code_salt);
-    if (!state) return '';
+    if (!state) {
+      return '';
+    }
     // Build a compact context summary
     const tasks = Array.isArray(state.tasks) ? state.tasks : [];
     const budgetLines = Array.isArray(state.budgetLines) ? state.budgetLines : [];
@@ -347,20 +377,29 @@ async function buildMcpContext(env, projectId, code) {
 
 export async function handleAiChat(request, env) {
   const read = await readAiBody(request);
-  if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
-  if (read.bad) return json({ ok: false, error: 'bad request' }, 400);
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad) {
+    return json({ ok: false, error: 'bad request' }, 400);
+  }
   const body = read.body;
-  if (!body || typeof body !== 'object') return json({ ok: false, error: 'bad request' }, 400);
+  if (!body || typeof body !== 'object') {
+    return json({ ok: false, error: 'bad request' }, 400);
+  }
   const provider = String(body.provider || '').toLowerCase();
-  if (!AI_PROVIDERS[provider]) return json({ ok: false, error: 'unsupported provider' }, 400);
+  if (!AI_PROVIDERS[provider]) {
+    return json({ ok: false, error: 'unsupported provider' }, 400);
+  }
   const reqModel =
     typeof body.model === 'string' && GEMINI_MODEL_RE.test(body.model) ? body.model : null;
   const model = reqModel || AI_PROVIDERS[provider].model;
   const key =
     String(request.headers.get('X-User-Api-Key') || '').trim() ||
     (typeof body.apiKey === 'string' ? String(body.apiKey).trim() : '');
-  if (!Array.isArray(body.messages) || !body.messages.length)
+  if (!Array.isArray(body.messages) || !body.messages.length) {
     return json({ ok: false, error: 'bad request' }, 400);
+  }
 
   // MCP: inject project context if mcpProjectId + mcpCode provided
   if (body.mcpProjectId && body.mcpCode) {
@@ -429,7 +468,9 @@ export async function handleAiChat(request, env) {
     if (pool.length) {
       const poolOut = await poolAttempt(pool, body.messages);
       if (poolOut) {
-        if (!paid) await freeQuotaBump(env, session.sub, used);
+        if (!paid) {
+          await freeQuotaBump(env, session.sub, used);
+        }
         return json({
           ok: true,
           text: poolOut.text,
@@ -455,7 +496,9 @@ export async function handleAiChat(request, env) {
         });
         const aiText = aiResult && aiResult.response;
         if (aiText) {
-          if (!paid) await freeQuotaBump(env, session.sub, used);
+          if (!paid) {
+            await freeQuotaBump(env, session.sub, used);
+          }
           return json({
             ok: true,
             text: String(aiText),
@@ -520,17 +563,19 @@ export async function handleAiChat(request, env) {
   if (!upstream.ok) {
     // Provider auth failures surface as 401 so the client clears its session
     // key (STEP-4). The key itself is never echoed anywhere.
-    if (upstream.status === 401 || upstream.status === 403)
+    if (upstream.status === 401 || upstream.status === 403) {
       return json({ ok: false, error: 'provider rejected the key' }, 401);
+    }
     // GEMINI-MODEL-FALLBACK-LADDER (DIR-3): capacity rejections (429 rate
     // limit / 503 overload) pass through with their own status so the client's
     // model ladder can detect them and retry the NEXT model through this same
     // relay. Everything else collapses to a generic 502.
-    if (upstream.status === 429 || upstream.status === 503)
+    if (upstream.status === 429 || upstream.status === 503) {
       return json(
         { ok: false, error: 'provider rate limited (HTTP ' + upstream.status + ')' },
         upstream.status
       );
+    }
     return json({ ok: false, error: 'provider error ' + upstream.status }, 502);
   }
   let data;
@@ -540,7 +585,9 @@ export async function handleAiChat(request, env) {
     return json({ ok: false, error: 'bad provider response' }, 502);
   }
   const text = aiExtractText(provider, data);
-  if (!text) return json({ ok: false, error: 'empty provider response' }, 502);
+  if (!text) {
+    return json({ ok: false, error: 'empty provider response' }, 502);
+  }
   // Echo the model that actually answered so the client can report it (DIR-4).
   return json({ ok: true, text: String(text), model: model });
 }

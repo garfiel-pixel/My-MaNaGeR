@@ -14,7 +14,9 @@ const SAMPLES_DIR = path.join(__dirname, '..', 'vendor', 'whisper', 'samples');
 // ---- minimal WAV reader (RIFF, 16-bit PCM mono/stereo) ----
 function readWav(file) {
   const buf = fs.readFileSync(file);
-  if (buf.toString('ascii', 0, 4) !== 'RIFF') throw new Error(file + ': not RIFF');
+  if (buf.toString('ascii', 0, 4) !== 'RIFF') {
+    throw new Error(file + ': not RIFF');
+  }
   let off = 12;
   let fmt = null,
     data = null;
@@ -33,8 +35,12 @@ function readWav(file) {
     }
     off += 8 + sz + (sz % 2);
   }
-  if (!fmt || !data) throw new Error(file + ': missing fmt/data');
-  if (fmt.audioFormat !== 1) throw new Error(file + ': not PCM (fmt ' + fmt.audioFormat + ')');
+  if (!fmt || !data) {
+    throw new Error(file + ': missing fmt/data');
+  }
+  if (fmt.audioFormat !== 1) {
+    throw new Error(file + ': not PCM (fmt ' + fmt.audioFormat + ')');
+  }
   const bytesPerSample = fmt.bits / 8;
   const samples = new Float32Array(Math.floor(data.length / bytesPerSample));
   for (let i = 0; i < samples.length; i++) {
@@ -45,19 +51,25 @@ function readWav(file) {
 }
 
 function toMono(w) {
-  if (w.channels === 1) return w.samples;
+  if (w.channels === 1) {
+    return w.samples;
+  }
   const n = Math.floor(w.samples.length / w.channels);
   const m = new Float32Array(n);
   for (let i = 0; i < n; i++) {
     let s = 0;
-    for (let c = 0; c < w.channels; c++) s += w.samples[i * w.channels + c];
+    for (let c = 0; c < w.channels; c++) {
+      s += w.samples[i * w.channels + c];
+    }
     m[i] = s / w.channels;
   }
   return m;
 }
 
 function resample(s, fromRate, toRate) {
-  if (fromRate === toRate) return s;
+  if (fromRate === toRate) {
+    return s;
+  }
   const out = new Float32Array(Math.max(1, Math.round((s.length * toRate) / fromRate)));
   const ratio = fromRate / toRate;
   for (let i = 0; i < out.length; i++) {
@@ -119,7 +131,9 @@ const mix = new Float32Array(total);
 function add(dst, src, gain, startSample) {
   for (let i = 0; i < src.length; i++) {
     const j = startSample + i;
-    if (j < dst.length) dst[j] += src[i] * gain;
+    if (j < dst.length) {
+      dst[j] += src[i] * gain;
+    }
   }
 }
 add(mix, pm, 0.9, 0);

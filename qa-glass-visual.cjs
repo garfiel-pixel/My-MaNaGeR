@@ -51,12 +51,13 @@ async function ev(expr) {
     returnByValue: true,
     awaitPromise: true
   });
-  if (r.exceptionDetails)
+  if (r.exceptionDetails) {
     return {
       __err: r.exceptionDetails.exception
         ? r.exceptionDetails.exception.description
         : r.exceptionDetails.text
     };
+  }
   return r.result && r.result.value;
 }
 
@@ -75,8 +76,11 @@ function decodePng(buf) {
       w = data.readUInt32BE(0);
       h = data.readUInt32BE(4);
       ct = data[9];
-    } else if (type === 'IDAT') idat.push(data);
-    else if (type === 'IEND') break;
+    } else if (type === 'IDAT') {
+      idat.push(data);
+    } else if (type === 'IEND') {
+      break;
+    }
     off += 12 + len;
   }
   const raw = zlib.inflateSync(Buffer.concat(idat));
@@ -93,10 +97,13 @@ function decodePng(buf) {
         const left = x >= bpp ? row[x - bpp] : 0;
         const up = y > 0 ? out[(y - 1) * stride + x] : 0;
         const ul = y > 0 && x >= bpp ? out[(y - 1) * stride + x - bpp] : 0;
-        if (f === 1) a = (a + left) & 255;
-        else if (f === 2) a = (a + up) & 255;
-        else if (f === 3) a = (a + ((left + up) >> 1)) & 255;
-        else if (f === 4) {
+        if (f === 1) {
+          a = (a + left) & 255;
+        } else if (f === 2) {
+          a = (a + up) & 255;
+        } else if (f === 3) {
+          a = (a + ((left + up) >> 1)) & 255;
+        } else if (f === 4) {
           const pa = Math.abs(up - ul),
             pb = Math.abs(left - ul),
             pc = Math.abs(left + up - 2 * ul);
@@ -133,7 +140,9 @@ function scan(img, edgeOnly) {
       if (edgeOnly) {
         const nx = x / img.w,
           ny = y / img.h;
-        if (nx > edge && nx < 1 - edge && ny > edge && ny < 1 - edge) continue;
+        if (nx > edge && nx < 1 - edge && ny > edge && ny < 1 - edge) {
+          continue;
+        }
       }
       const i = (y * img.w + x) * bpp;
       const r = img.data[i] / 255,
@@ -146,20 +155,31 @@ function scan(img, edgeOnly) {
       const sat = mx === 0 ? 0 : d / mx;
       let hue = -1;
       if (d > 0.004) {
-        if (mx === r) hue = 60 * (((g - b) / d) % 6);
-        else if (mx === g) hue = 60 * ((b - r) / d + 2);
-        else hue = 60 * ((r - g) / d + 4);
-        if (hue < 0) hue += 360;
+        if (mx === r) {
+          hue = 60 * (((g - b) / d) % 6);
+        } else if (mx === g) {
+          hue = 60 * ((b - r) / d + 2);
+        } else {
+          hue = 60 * ((r - g) / d + 4);
+        }
+        if (hue < 0) {
+          hue += 360;
+        }
       }
       lumSum += lum;
       delSum += d;
       n++;
       if (sat > 0.3) {
         nSat++;
-        if (hue >= 170 && hue < 255) nBlue++;
-        else if (hue >= 80 && hue < 170) bands.green++;
-        else if (hue >= 255 && hue < 320) bands.purple++;
-        else if (hue >= 12 && hue < 50) bands.orange++;
+        if (hue >= 170 && hue < 255) {
+          nBlue++;
+        } else if (hue >= 80 && hue < 170) {
+          bands.green++;
+        } else if (hue >= 255 && hue < 320) {
+          bands.purple++;
+        } else if (hue >= 12 && hue < 50) {
+          bands.orange++;
+        }
       }
     }
   }
@@ -206,7 +226,9 @@ async function shot(name) {
   for (let i = 0; i < 60; i++) {
     try {
       const r = await fetch('http://127.0.0.1:' + PORT + '/json/version');
-      if (r.ok) break;
+      if (r.ok) {
+        break;
+      }
     } catch (e) {}
     await delay(300);
   }
@@ -215,12 +237,14 @@ async function shot(name) {
   const consoleErrors = [];
   ws.onmessage = ev => {
     const m = JSON.parse(ev.data);
-    if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error')
+    if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error') {
       consoleErrors.push((m.params.args || []).map(a => a.value || a.description || '').join(' '));
-    if (m.method === 'Runtime.exceptionThrown')
+    }
+    if (m.method === 'Runtime.exceptionThrown') {
       consoleErrors.push(
         'EXCEPTION: ' + (m.params.exceptionDetails && m.params.exceptionDetails.text)
       );
+    }
     if (m.id && pending.has(m.id)) {
       pending.get(m.id)(m);
       pending.delete(m.id);

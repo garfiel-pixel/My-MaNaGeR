@@ -69,7 +69,9 @@ var MMGR = window.MMGR || {};
   }
   function deviceLabel() {
     const id = getIdentity();
-    if (!id) return '';
+    if (!id) {
+      return '';
+    }
     return id.name || id.email || id.sub || 'this device';
   }
   function setIdentity(id) {
@@ -120,7 +122,9 @@ var MMGR = window.MMGR || {};
   function decodeIdToken(token) {
     try {
       const parts = String(token || '').split('.');
-      if (parts.length < 2) return null;
+      if (parts.length < 2) {
+        return null;
+      }
       const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
       const json = decodeURIComponent(
         Array.prototype.map
@@ -139,8 +143,9 @@ var MMGR = window.MMGR || {};
   function handleCredential(resp) {
     const payload = resp && resp.credential ? decodeIdToken(resp.credential) : null;
     if (!payload || !payload.sub) {
-      if (ns.App && ns.App.showToast)
+      if (ns.App && ns.App.showToast) {
         ns.App.showToast('Google sign-in returned no usable identity.', 'err');
+      }
       return;
     }
     setIdentity({
@@ -189,29 +194,32 @@ var MMGR = window.MMGR || {};
   async function connect() {
     const ok = await loadGIS();
     if (!ok || !window.google || !window.google.accounts || !window.google.accounts.id) {
-      if (ns.App && ns.App.showToast)
+      if (ns.App && ns.App.showToast) {
         ns.App.showToast(
           'Google sign-in unavailable (offline?) , file export/import sync still works.',
           'err'
         );
+      }
       return false;
     }
     const clientId = getClientId() || sharedClientId();
     if (!clientId) {
-      if (ns.App && ns.App.showToast)
+      if (ns.App && ns.App.showToast) {
         ns.App.showToast('Google sign-in is not configured on this host.', 'err');
+      }
       return false;
     }
     try {
       window.google.accounts.id.initialize({ client_id: clientId, callback: onConnectCredential });
       const btn = U.$('sync-gis-btn');
-      if (btn)
+      if (btn) {
         window.google.accounts.id.renderButton(btn, {
           theme: 'outline',
           size: 'medium',
           shape: 'circle',
           text: 'continue_with'
         });
+      }
       // OWNER 2026-08-15: pop the Google prompt immediately (one motion ,
       // the rendered button is the fallback when the prompt API is blocked).
       if (window.google.accounts.id && typeof window.google.accounts.id.prompt === 'function') {
@@ -223,7 +231,9 @@ var MMGR = window.MMGR || {};
       }
       return true;
     } catch (e) {
-      if (ns.Errors && ns.Errors.log) ns.Errors.log('gis: ' + (e && e.message), 'sync');
+      if (ns.Errors && ns.Errors.log) {
+        ns.Errors.log('gis: ' + (e && e.message), 'sync');
+      }
       return false;
     }
   }
@@ -263,8 +273,9 @@ var MMGR = window.MMGR || {};
       }
     }
     renderSyncSection();
-    if (ns.App && ns.App.showToast)
+    if (ns.App && ns.App.showToast) {
       ns.App.showToast('Signed out , device label removed. All features still work.', 'ok');
+    }
   }
 
   // ---- Single dismissible suggestion (no spam, never a modal) ------------
@@ -303,7 +314,9 @@ var MMGR = window.MMGR || {};
     } catch (e) {
       /* ignore */
     }
-    if (isSignedIn() || suggestionDismissed()) return;
+    if (isSignedIn() || suggestionDismissed()) {
+      return;
+    }
     renderSyncSection();
   }
 
@@ -312,7 +325,9 @@ var MMGR = window.MMGR || {};
   // existing classes (sr/sr-hint/exp-row/btn) so it needs zero new CSS.
   function renderSyncSection() {
     const wrap = U.$('sync-section');
-    if (!wrap) return;
+    if (!wrap) {
+      return;
+    }
     const signedIn = isSignedIn();
     const id = getIdentity();
     let html = '';

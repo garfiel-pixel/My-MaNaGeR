@@ -15,7 +15,9 @@ var MMGR = window.MMGR || {};
   // showToast + Render refs resolved at call time (they live in mmgr-app.js
   // and mmgr-render.js which load first).
   function _toast(msg, type) {
-    if (ns.App && ns.App.showToast) ns.App.showToast(msg, type);
+    if (ns.App && ns.App.showToast) {
+      ns.App.showToast(msg, type);
+    }
   }
   function _R() {
     return ns.Render;
@@ -89,7 +91,9 @@ var MMGR = window.MMGR || {};
     } catch (e) {
       place = '';
     }
-    if (!place) place = lat.toFixed(2) + ', ' + lon.toFixed(2);
+    if (!place) {
+      place = lat.toFixed(2) + ', ' + lon.toFixed(2);
+    }
     ns.State.updateState(function (s) {
       s.sitePlace = place;
     });
@@ -149,8 +153,12 @@ var MMGR = window.MMGR || {};
       manual: true,
       condition: condition
     });
-    if (condEl) condEl.value = '';
-    if (noteEl) noteEl.value = '';
+    if (condEl) {
+      condEl.value = '';
+    }
+    if (noteEl) {
+      noteEl.value = '';
+    }
     _toast('Manual weather day logged.', 'ok');
     _R().renderAll();
   }
@@ -185,7 +193,9 @@ var MMGR = window.MMGR || {};
     let label = val;
     if (ns.Weather && ns.Weather.getRegion) {
       const r = ns.Weather.getRegion(val);
-      if (r && r.name) label = r.name;
+      if (r && r.name) {
+        label = r.name;
+      }
     }
     _toast('Weather region: ' + label, 'ok');
   }

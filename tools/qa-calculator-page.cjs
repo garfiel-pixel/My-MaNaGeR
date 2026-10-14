@@ -162,7 +162,9 @@ async function withChrome(fn) {
     for (let i = 0; i < 60; i++) {
       try {
         const r = await fetch('http://127.0.0.1:' + port + '/json/version');
-        if (r.ok) break;
+        if (r.ok) {
+          break;
+        }
       } catch (e) {}
       await delay(300);
     }
@@ -1358,14 +1360,19 @@ async function withChrome(fn) {
     })()`);
     // JIC 2025-2027 re-baseline (2026-10-02): the JIC wave added two families
     // (Temporary and metal works, Joinery), so the picker now carries 8 groups.
+    // Custom-item re-baseline (2026-10-14): the custom rate line added a 9th
+    // group ("Other"), so "All trades" now shows every one of the 9 groups.
     check(
       'FM4 All trades shows every group and clears the memory; work item untouched',
-      fm4 && fm4.all === 8 && fm4.stored === null && fm4.work === 'tile',
+      fm4 && fm4.all === 9 && fm4.stored === null && fm4.work === 'tile',
       fm4
     );
     const fm5 = await ev(`(function(){
       var vals = Array.prototype.map.call(document.getElementById('calc-work').options, function(o) { return o.value; });
-      return { n: vals.length,
+      // Count only trades: 'custom' (Custom item) is the 44th option but is
+      // not a trade - it lives in the "Other" group with no d1/family.
+      var trades = vals.filter(function(v) { return v !== 'custom'; });
+      return { n: trades.length, total: vals.length,
         // G1 (plan v2 Phase 2): formwork by element is INTENTIONALLY pickable
         // now; the still-derived lines stay invisible.
         hiddenDerived: ['cart-away', 'lining-out', 'debrush', 'post-holes'].filter(function(k) { return vals.indexOf(k) > -1; }),
@@ -1375,6 +1382,10 @@ async function withChrome(fn) {
     // JIC trades are scaffolding, welding, joinery, plumbing-pipe and
     // electrical-conduit (scaffold/welding/joinery/plumbing-pipe/
     // electrical-conduit), all verified pickable below.
+    // Custom-item re-baseline (2026-10-14): the picker now carries a 44th
+    // option - "Custom item (your own rate)" in the new "Other" group - but
+    // that is NOT a trade, so this gate counts only trades and still asserts
+    // 43. Its real contract lives in qa-calc-assistant.cjs C1-C11.
     check(
       'FM5 picker carries exactly the 43 user trades (38 + the 5 JIC-2025 trades) - formwork pickable, derived lines stay invisible',
       fm5 && fm5.n === 43 && fm5.phase2 && fm5.hiddenDerived.length === 0,

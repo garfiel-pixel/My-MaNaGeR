@@ -42,7 +42,9 @@ function nowIso() {
 function randomInviteToken() {
   const bytes = crypto.getRandomValues(new Uint8Array(16));
   let hex = '';
-  for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, '0');
+  for (let i = 0; i < bytes.length; i++) {
+    hex += bytes[i].toString(16).padStart(2, '0');
+  }
   return hex; // 32-char hex
 }
 
@@ -53,7 +55,9 @@ async function ownerTier(env, ownerSub) {
   )
     .bind(ownerSub)
     .first();
-  if (!sub || !billingStatusActive(sub.status)) return 'free';
+  if (!sub || !billingStatusActive(sub.status)) {
+    return 'free';
+  }
   return sub.tier || sub.plan || 'contractor';
 }
 
@@ -68,8 +72,12 @@ async function activeMemberCount(env, projectId) {
 }
 
 function cleanScope(role, scope) {
-  if (role !== 'client') return null;
-  if (!Array.isArray(scope)) return null;
+  if (role !== 'client') {
+    return null;
+  }
+  if (!Array.isArray(scope)) {
+    return null;
+  }
   const out = scope.filter(function (s) {
     return typeof s === 'string' && !!CLOUD_SECTIONS[s];
   });
@@ -99,7 +107,9 @@ function serializeMember(row) {
 // POST /api/cloud/projects/:id/team { email, role, scope? }
 export async function handleTeamInvite(request, env, projectId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
+  if (!auth) {
+    return cloudForbidden();
+  }
   let body;
   try {
     body = await request.json();
@@ -110,9 +120,12 @@ export async function handleTeamInvite(request, env, projectId) {
     .trim()
     .toLowerCase();
   const role = String((body && body.role) || 'contractor');
-  if (!email || email.indexOf('@') < 0)
+  if (!email || email.indexOf('@') < 0) {
     return json({ ok: false, error: 'a valid email is required' }, 400);
-  if (TEAM_ROLES.indexOf(role) === -1) return json({ ok: false, error: 'unknown role' }, 400);
+  }
+  if (TEAM_ROLES.indexOf(role) === -1) {
+    return json({ ok: false, error: 'unknown role' }, 400);
+  }
 
   // Resolve the owner identity that carries the entitlement.
   let ownerSub = (auth.row && auth.row.google_sub) || '';
@@ -134,7 +147,9 @@ export async function handleTeamInvite(request, env, projectId) {
   const userRow = await env.DB.prepare('SELECT email, provider FROM auth_users WHERE email = ?')
     .bind(email)
     .first();
-  if (!userRow) return json({ ok: false, error: 'user_not_found' }, 404);
+  if (!userRow) {
+    return json({ ok: false, error: 'user_not_found' }, 404);
+  }
   const userSub = 'email:' + email;
 
   const existing = await env.DB.prepare(
@@ -198,7 +213,9 @@ export async function handleTeamInvite(request, env, projectId) {
 // GET /api/cloud/projects/:id/team
 export async function handleTeamList(request, env, projectId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
+  if (!auth) {
+    return cloudForbidden();
+  }
   const rows = await env.DB.prepare(
     "SELECT id, user_sub, role, status, scope, created_at, accepted_at FROM cloud_team_members WHERE project_id = ? AND status != 'revoked' ORDER BY created_at ASC"
   )
@@ -211,7 +228,9 @@ export async function handleTeamList(request, env, projectId) {
 // PUT /api/cloud/projects/:id/team/:mid { role?, scope? }
 export async function handleTeamUpdate(request, env, projectId, memberId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
+  if (!auth) {
+    return cloudForbidden();
+  }
   let body;
   try {
     body = await request.json();
@@ -223,9 +242,13 @@ export async function handleTeamUpdate(request, env, projectId, memberId) {
   )
     .bind(memberId, projectId)
     .first();
-  if (!row) return json({ ok: false, error: 'member_not_found' }, 404);
+  if (!row) {
+    return json({ ok: false, error: 'member_not_found' }, 404);
+  }
   const role = body && body.role !== undefined ? String(body.role) : row.role;
-  if (TEAM_ROLES.indexOf(role) === -1) return json({ ok: false, error: 'unknown role' }, 400);
+  if (TEAM_ROLES.indexOf(role) === -1) {
+    return json({ ok: false, error: 'unknown role' }, 400);
+  }
   const scope = body && body.scope !== undefined ? cleanScope(role, body.scope) : row.scope;
   await env.DB.prepare(
     'UPDATE cloud_team_members SET role = ?, scope = ? WHERE id = ? AND project_id = ?'
@@ -238,13 +261,17 @@ export async function handleTeamUpdate(request, env, projectId, memberId) {
 // DELETE /api/cloud/projects/:id/team/:mid  (soft revoke, never hard-delete)
 export async function handleTeamRevoke(request, env, projectId, memberId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
+  if (!auth) {
+    return cloudForbidden();
+  }
   const row = await env.DB.prepare(
     'SELECT id FROM cloud_team_members WHERE id = ? AND project_id = ?'
   )
     .bind(memberId, projectId)
     .first();
-  if (!row) return json({ ok: false, error: 'member_not_found' }, 404);
+  if (!row) {
+    return json({ ok: false, error: 'member_not_found' }, 404);
+  }
   await env.DB.prepare(
     "UPDATE cloud_team_members SET status = 'revoked', invite_token = NULL WHERE id = ? AND project_id = ?"
   )
@@ -256,7 +283,9 @@ export async function handleTeamRevoke(request, env, projectId, memberId) {
 // POST /api/team/accept { token } - the invited user must be signed in.
 export async function handleTeamAccept(request, env) {
   const session = await readSession(request, env);
-  if (!session || !session.sub) return cloudForbidden();
+  if (!session || !session.sub) {
+    return cloudForbidden();
+  }
   let body;
   try {
     body = await request.json();
@@ -264,15 +293,20 @@ export async function handleTeamAccept(request, env) {
     return json({ ok: false, error: 'bad request' }, 400);
   }
   const token = String((body && body.token) || '').trim();
-  if (!token) return json({ ok: false, error: 'missing token' }, 400);
+  if (!token) {
+    return json({ ok: false, error: 'missing token' }, 400);
+  }
   const row = await env.DB.prepare(
     "SELECT id, project_id, user_sub, role, status FROM cloud_team_members WHERE invite_token = ? AND status = 'pending'"
   )
     .bind(token)
     .first();
-  if (!row) return json({ ok: false, error: 'invalid or expired invitation' }, 404);
-  if (row.user_sub !== session.sub)
+  if (!row) {
+    return json({ ok: false, error: 'invalid or expired invitation' }, 404);
+  }
+  if (row.user_sub !== session.sub) {
     return json({ ok: false, error: 'this invitation is for a different account' }, 403);
+  }
   await env.DB.prepare(
     "UPDATE cloud_team_members SET status = 'active', accepted_at = ?, invite_token = NULL WHERE id = ?"
   )

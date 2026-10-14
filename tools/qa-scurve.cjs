@@ -19,7 +19,9 @@ const BASE = process.env.QA_BASE || 'http://127.0.0.1:8765';
 let fails = 0;
 function ok(label, cond, extra) {
   console.log((cond ? 'PASS  ' : 'FAIL  ') + label + (extra ? '  [' + extra + ']' : ''));
-  if (!cond) fails++;
+  if (!cond) {
+    fails++;
+  }
 }
 
 // ---- ARM 1: the asset itself, read from disk ---------------------------
@@ -37,8 +39,9 @@ for (const m of paths) {
     .split(/\s+/)
     .map(s => s.split(',').map(Number));
   let len = 0;
-  for (let i = 1; i < pts.length; i++)
+  for (let i = 1; i < pts.length; i++) {
     len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+  }
   const dash = Number(m[2]);
   ok(
     'dasharray ' + dash + ' covers the path length ' + Math.round(len),

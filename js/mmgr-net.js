@@ -182,7 +182,9 @@ var MMGR = window.MMGR || {};
         // Retry transient server/rate-limit statuses; let 3xx/4xx (except
         // 408/429) pass through so the caller can surface them directly.
         const retriable = res.status >= 500 || res.status === 429 || res.status === 408;
-        if (res.ok || !retriable) return res;
+        if (res.ok || !retriable) {
+          return res;
+        }
         lastErr = new Error('HTTP ' + res.status);
         // GEMINI-MODEL-FALLBACK-LADDER (DIR-3): carry the HTTP status on the
         // thrown error so the AI ladder can tell capacity rejections (429 rate
@@ -234,7 +236,9 @@ var MMGR = window.MMGR || {};
           timeoutMs: o.timeoutMs
         });
         const retriable = res.status >= 500 || res.status === 429 || res.status === 408;
-        if (res.ok || !retriable) return res;
+        if (res.ok || !retriable) {
+          return res;
+        }
         lastErr = new Error('HTTP ' + res.status);
         // GEMINI-MODEL-FALLBACK-LADDER (DIR-3): carry the HTTP status on the
         // thrown error so the AI ladder can tell capacity rejections (429 rate

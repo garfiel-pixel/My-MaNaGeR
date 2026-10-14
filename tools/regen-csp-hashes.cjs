@@ -57,7 +57,9 @@ function computeHashes(file) {
 }
 
 const computedFlat = [];
-for (const f of HTML_FILES) computedFlat.push(...computeHashes(f));
+for (const f of HTML_FILES) {
+  computedFlat.push(...computeHashes(f));
+}
 
 const ARRAY_BODY = computedFlat.map(h => '  "' + h + '",').join('\n');
 

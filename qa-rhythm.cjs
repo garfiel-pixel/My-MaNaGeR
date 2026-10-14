@@ -54,12 +54,13 @@ async function ev(expr) {
     returnByValue: true,
     awaitPromise: true
   });
-  if (r.exceptionDetails)
+  if (r.exceptionDetails) {
     return {
       __err: r.exceptionDetails.exception
         ? r.exceptionDetails.exception.description
         : r.exceptionDetails.text
     };
+  }
   return r.result && r.result.value;
 }
 
@@ -108,7 +109,9 @@ const SEED_STATE = `(function(){
   for (let i = 0; i < 60; i++) {
     try {
       const r = await fetch('http://127.0.0.1:' + PORT + '/json/version');
-      if (r.ok) break;
+      if (r.ok) {
+        break;
+      }
     } catch (e) {}
     await delay(300);
   }
@@ -146,7 +149,9 @@ const SEED_STATE = `(function(){
     const ready = await ev(`(function(){
       return !!document.querySelector('#panel-dash.active') && document.querySelectorAll('#n3 li').length >= 3;
     })()`);
-    if (ready === true) break;
+    if (ready === true) {
+      break;
+    }
   }
   await delay(500);
 

@@ -29,14 +29,19 @@ var MMGR = window.MMGR || {};
   // ---- RFI Register (MARKET-FEATURE-ROADMAP C1) ----
   function renderRfis() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const body = $('rfi-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const list = s.rfis || [];
     const open = list.filter(r => r.status !== 'closed').length;
     const sum = $('rfi-sum');
-    if (sum)
+    if (sum) {
       sum.textContent = list.length ? open + ' open · ' + (list.length - open) + ' closed' : '';
+    }
     if (list.length === 0) {
       body.innerHTML = emptyStateRow(
         11,
@@ -74,16 +79,22 @@ var MMGR = window.MMGR || {};
   // ---- Submittal Register (MARKET-FEATURE-ROADMAP C2) ----
   function renderSubmittals() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const body = $('sub-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const list = s.submittals || [];
     const approved = list.filter(
       x => x.status === 'approved' || x.status === 'approved-comments'
     ).length;
     const pending = list.filter(x => x.status === 'pending' || x.status === 'review').length;
     const sum = $('sub-sum');
-    if (sum) sum.textContent = list.length ? approved + ' approved · ' + pending + ' pending' : '';
+    if (sum) {
+      sum.textContent = list.length ? approved + ' approved · ' + pending + ' pending' : '';
+    }
     if (list.length === 0) {
       body.innerHTML = emptyStateRow(
         10,
@@ -121,13 +132,19 @@ var MMGR = window.MMGR || {};
   // ---- Ball-in-court rollup (MARKET-FEATURE-ROADMAP C6) ----
   function renderBallInCourt() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const body = $('blc-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const list =
       ns.BallInCourt && ns.BallInCourt.getBallInCourt ? ns.BallInCourt.getBallInCourt() : [];
     const sum = $('blc-sum');
-    if (sum) sum.textContent = list.length ? list.length + ' items awaiting action' : '';
+    if (sum) {
+      sum.textContent = list.length ? list.length + ' items awaiting action' : '';
+    }
     if (list.length === 0) {
       body.innerHTML =
         '<div class="es" style="padding:14px;font-size:.78rem">Nothing awaiting action , every open item has a named next step or none is open.</div>';
@@ -148,12 +165,18 @@ var MMGR = window.MMGR || {};
   // ---- Drawing Distribution Log (MARKET-FEATURE-ROADMAP C11) ----
   function renderDrawLog() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const body = $('drawlog-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const list = s.drawingLog || [];
     const sum = $('drawlog-sum');
-    if (sum) sum.textContent = list.length ? list.length + ' distributions' : '';
+    if (sum) {
+      sum.textContent = list.length ? list.length + ' distributions' : '';
+    }
     if (list.length === 0) {
       body.innerHTML = emptyStateRow(
         8,
@@ -181,13 +204,19 @@ var MMGR = window.MMGR || {};
   // ---- Permit Register (MARKET-FEATURE-ROADMAP C30) ----
   function renderPermits() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const body = $('permit-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const list = s.permits || [];
     const sum = $('permit-sum');
     const active = list.filter(x => x.status === 'active').length;
-    if (sum) sum.textContent = list.length ? active + ' active' : '';
+    if (sum) {
+      sum.textContent = list.length ? active + ' active' : '';
+    }
     if (list.length === 0) {
       body.innerHTML = emptyStateRow(
         9,
@@ -197,9 +226,13 @@ var MMGR = window.MMGR || {};
       return;
     }
     function dl(d) {
-      if (!d) return null;
+      if (!d) {
+        return null;
+      }
       const dt = new Date(d);
-      if (isNaN(dt.getTime())) return null;
+      if (isNaN(dt.getTime())) {
+        return null;
+      }
       return Math.round((dt.getTime() - Date.now()) / 86400000);
     }
     const statusColor = st =>
@@ -241,15 +274,20 @@ var MMGR = window.MMGR || {};
   // ---- Procurement Log (MARKET-FEATURE-ROADMAP C10) ----
   function renderProcurement() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const body = $('proc-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const list = s.procurement || [];
     const sum = $('proc-sum');
     const ordered = list.filter(x => x.status === 'ordered').length;
     const inTransit = list.filter(x => x.status === 'in-transit').length;
-    if (sum)
+    if (sum) {
       sum.textContent = list.length ? ordered + ' ordered, ' + inTransit + ' in transit' : '';
+    }
     if (list.length === 0) {
       body.innerHTML = emptyStateRow(
         9,
@@ -259,9 +297,13 @@ var MMGR = window.MMGR || {};
       return;
     }
     function dl(d) {
-      if (!d) return null;
+      if (!d) {
+        return null;
+      }
       const dt = new Date(d);
-      if (isNaN(dt.getTime())) return null;
+      if (isNaN(dt.getTime())) {
+        return null;
+      }
       return Math.round((dt.getTime() - Date.now()) / 86400000);
     }
     const statusColor = st =>
@@ -305,7 +347,9 @@ var MMGR = window.MMGR || {};
 
   function renderDocuments() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     renderRfis();
     renderSubmittals();
     renderBallInCourt();
@@ -313,7 +357,9 @@ var MMGR = window.MMGR || {};
     renderPermits();
     renderProcurement();
     const body = $('doc-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const docs = s.documents || [];
     if (docs.length === 0) {
       body.innerHTML = emptyStateRow(

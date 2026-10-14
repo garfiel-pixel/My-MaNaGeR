@@ -52,7 +52,9 @@ const pages = fs
 
 let fails = 0;
 function check(ok, label, extra) {
-  if (!ok) fails++;
+  if (!ok) {
+    fails++;
+  }
   console.log((ok ? 'PASS  ' : 'FAIL  ') + label + (extra ? '  [' + extra + ']' : ''));
 }
 
@@ -129,7 +131,9 @@ const MEASURE = () => {
     await page.waitForTimeout(400);
     const r = await page.evaluate(() => {
       const nav = document.querySelector('.dot-rail-navigation');
-      if (!nav) return null;
+      if (!nav) {
+        return null;
+      }
       const items = [...nav.querySelectorAll('.dot-item')];
       const nb = nav.getBoundingClientRect();
       const dots = items.map(i => {
@@ -226,8 +230,12 @@ const MEASURE = () => {
           .filter(x => x >= 0);
         return { n: act.length, ix: act[0] };
       });
-      if (st.n !== 1) onlyOne = false;
-      if (i === 0) first = st.ix;
+      if (st.n !== 1) {
+        onlyOne = false;
+      }
+      if (i === 0) {
+        first = st.ix;
+      }
       seen.push(st.ix);
     }
     const monotone = seen.every((v, i) => i === 0 || v >= seen[i - 1]);

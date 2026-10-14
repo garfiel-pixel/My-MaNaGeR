@@ -11,7 +11,9 @@ function need(name, path, re) {
     ok = false;
   }
   console.log((ok ? 'PASS' : 'FAIL') + '  ' + name);
-  if (!ok) fail++;
+  if (!ok) {
+    fail++;
+  }
 }
 need(
   'updTaskField endDate branch back-computes duration',

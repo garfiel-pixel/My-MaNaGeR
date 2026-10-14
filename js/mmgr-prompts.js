@@ -11,7 +11,9 @@ var MMGR = window.MMGR || {};
 
   function buildTaskList() {
     const s = S();
-    if (!s || !s.tasks) return '(No tasks)';
+    if (!s || !s.tasks) {
+      return '(No tasks)';
+    }
     return s.tasks
       .map(t => {
         const flags = [
@@ -31,7 +33,9 @@ var MMGR = window.MMGR || {};
 
   function buildRiskList() {
     const s = S();
-    if (!s || !s.risks) return '(No risks)';
+    if (!s || !s.risks) {
+      return '(No risks)';
+    }
     return s.risks
       .map(
         r =>
@@ -42,7 +46,9 @@ var MMGR = window.MMGR || {};
 
   function buildIssueList() {
     const s = S();
-    if (!s || !s.issues) return '(No issues)';
+    if (!s || !s.issues) {
+      return '(No issues)';
+    }
     return s.issues
       .map(
         i =>
@@ -53,7 +59,9 @@ var MMGR = window.MMGR || {};
 
   function buildCharterSummary() {
     const s = S();
-    if (!s || !s.charter) return '(No charter)';
+    if (!s || !s.charter) {
+      return '(No charter)';
+    }
     const c = s.charter;
     return [
       `Project: ${c.name || 'Unnamed'}`,
@@ -67,7 +75,9 @@ var MMGR = window.MMGR || {};
 
   function buildBudgetSummary() {
     const s = S();
-    if (!s) return '(No budget)';
+    if (!s) {
+      return '(No budget)';
+    }
     const lines = s.budgetLines || [];
     const envelope = s.budgetEnvelope || 0;
     const planned = lines.reduce((sum, l) => sum + (+l.planned || 0), 0);
@@ -77,7 +87,9 @@ var MMGR = window.MMGR || {};
 
   function buildResourceSummary() {
     const s = S();
-    if (!s || !s.resources) return '(No resources)';
+    if (!s || !s.resources) {
+      return '(No resources)';
+    }
     return s.resources
       .map(
         r =>
@@ -88,27 +100,39 @@ var MMGR = window.MMGR || {};
 
   function buildRaciSummary() {
     const s = S();
-    if (!s || !s.raci) return '(No RACI)';
+    if (!s || !s.raci) {
+      return '(No RACI)';
+    }
     const raci = s.raci;
-    if (!raci.tasks || !raci.persons || !raci.matrix) return '(No RACI data)';
+    if (!raci.tasks || !raci.persons || !raci.matrix) {
+      return '(No RACI data)';
+    }
     const lines = [];
     for (const t of raci.tasks) {
       const assignments = [];
       for (const p of raci.persons) {
         const key = `${t.id || t.name || t}_${p.id || p.name || p}`;
         const val = raci.matrix[key];
-        if (val) assignments.push(`${p.name || p}:${val}`);
+        if (val) {
+          assignments.push(`${p.name || p}:${val}`);
+        }
       }
-      if (assignments.length) lines.push(`- ${t.name || t}: ${assignments.join(', ')}`);
+      if (assignments.length) {
+        lines.push(`- ${t.name || t}: ${assignments.join(', ')}`);
+      }
     }
     return lines.join('\n') || '(No RACI assignments)';
   }
 
   function buildChangeSummary() {
     const s = S();
-    if (!s || !s.changes) return '(No changes)';
+    if (!s || !s.changes) {
+      return '(No changes)';
+    }
     const pending = s.changes.filter(c => c.status === 'submitted' || c.status === 'review');
-    if (!pending.length) return '(No pending changes)';
+    if (!pending.length) {
+      return '(No pending changes)';
+    }
     return pending
       .map(
         c =>
@@ -119,7 +143,9 @@ var MMGR = window.MMGR || {};
 
   function buildLogSummary() {
     const s = S();
-    if (!s || !s.logEntries) return '(No log entries)';
+    if (!s || !s.logEntries) {
+      return '(No log entries)';
+    }
     const recent = s.logEntries.slice(-5);
     return recent
       .map(
@@ -131,7 +157,9 @@ var MMGR = window.MMGR || {};
 
   function buildContext() {
     const s = S();
-    if (!s) return '';
+    if (!s) {
+      return '';
+    }
     const tasks = s.tasks || [];
     const total = tasks.length;
     const done = tasks.filter(t => t.status === 'completed').length;
@@ -372,10 +400,14 @@ ${(() => {
   wxTasks.forEach(t => {
     const ts = U.parseDL(t.startDate),
       te = U.parseDL(t.endDate);
-    if (!ts || !te || !winSt || !winEn) return;
+    if (!ts || !te || !winSt || !winEn) {
+      return;
+    }
     const ovStart = new Date(Math.max(ts, winSt));
     const ovEnd = new Date(Math.min(te, winEn));
-    if (ovStart <= ovEnd) wxDur += Math.round((ovEnd - ovStart) / MMGR.Utils.MS_PER_DAY) + 1;
+    if (ovStart <= ovEnd) {
+      wxDur += Math.round((ovEnd - ovStart) / MMGR.Utils.MS_PER_DAY) + 1;
+    }
   });
   return `Hurricane window: ${w.start || 'not set'} → ${w.end || 'not set'} | Charter buffer: ${w.bufferDays || 0} days | Weather-exposed duration in window: ${wxDur} days.\n**If weather-exposed duration exceeds the stated Charter buffer, flag it in your output as a schedule risk.**`;
 })()}`;
@@ -683,26 +715,37 @@ Generate a client-facing status update in plain language (no PM jargon):
       if (prevSnap && prevSnap.taskStates) {
         tasks.forEach(t => {
           const prev = prevSnap.taskStates[t.id];
-          if (prev && prev !== 'completed' && t.status === 'completed') completedToday.push(t);
+          if (prev && prev !== 'completed' && t.status === 'completed') {
+            completedToday.push(t);
+          }
         });
       }
       const blocked = tasks.filter(t => t.status === 'blocked');
       const inprog = tasks.filter(t => t.status === 'inprogress');
       const leadtimeNear = tasks.filter(t => {
-        if (!t.leadTime || !t.expectedDate) return false;
+        if (!t.leadTime || !t.expectedDate) {
+          return false;
+        }
         const days = Math.round((U.parseDL(t.expectedDate) - today) / MMGR.Utils.MS_PER_DAY);
         return days <= 7;
       });
       const nearCrit = tasks.filter(t => {
-        if (t.totalFloat === null || t.totalFloat === undefined) return false;
-        if (t.totalFloat <= 0) return false;
-        if (t.totalFloat <= 10) return true;
+        if (t.totalFloat === null || t.totalFloat === undefined) {
+          return false;
+        }
+        if (t.totalFloat <= 0) {
+          return false;
+        }
+        if (t.totalFloat <= 10) {
+          return true;
+        }
         if (
           t.floatBaseline &&
           t.floatBaseline > 0 &&
           (t.floatBaseline - t.totalFloat) / t.floatBaseline > 0.3
-        )
+        ) {
           return true;
+        }
         return false;
       });
       const crit = tasks.filter(t => t.totalFloat === 0);
@@ -859,7 +902,9 @@ ${ldBlock}
 === WEATHER DELAY LOG ===
 ${(() => {
   const wl = (s && s.weatherLog) || [];
-  if (!wl.length) return '(no weather delays logged)';
+  if (!wl.length) {
+    return '(no weather delays logged)';
+  }
   return wl
     .map(
       e =>
@@ -930,7 +975,9 @@ ${ldBlock}
 === WEATHER DELAY LOG ===
 ${(() => {
   const wl = (s && s.weatherLog) || [];
-  if (!wl.length) return '(no weather delays logged)';
+  if (!wl.length) {
+    return '(no weather delays logged)';
+  }
   return wl
     .map(
       e =>
@@ -958,7 +1005,9 @@ End with: a one-line verdict on submission readiness, and a short list of exactl
 
   function generatePrompt(type) {
     const generator = prompts[type];
-    if (!generator) return `No prompt template for "${type}".`;
+    if (!generator) {
+      return `No prompt template for "${type}".`;
+    }
     try {
       return generator();
     } catch (e) {

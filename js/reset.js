@@ -21,7 +21,9 @@
   function show(id) {
     for (var i = 0; i < STATES.length; i++) {
       var el = $(STATES[i]);
-      if (el) el.hidden = STATES[i] !== id;
+      if (el) {
+        el.hidden = STATES[i] !== id;
+      }
     }
   }
 
@@ -29,7 +31,9 @@
 
   function fail(msg) {
     var m = $('st-err-msg');
-    if (m) m.textContent = msg;
+    if (m) {
+      m.textContent = msg;
+    }
     show('st-err');
   }
 
@@ -46,7 +50,9 @@
 
   if (!token) {
     // The form is pointless without a token , show the error state directly.
-    if (form) form.hidden = true;
+    if (form) {
+      form.hidden = true;
+    }
     fail(
       'This reset link is incomplete. Use the full link from your email, or request a fresh one below.'
     );
@@ -63,7 +69,9 @@
         formErr('The two passwords do not match.');
         return;
       }
-      if (errEl) errEl.hidden = true;
+      if (errEl) {
+        errEl.hidden = true;
+      }
       btn.disabled = true;
       var label = btn.textContent;
       btn.textContent = 'Setting your password...';
@@ -120,8 +128,12 @@
         }
         return;
       }
-      if (recBtn) recBtn.disabled = true;
-      if (recErr) recErr.hidden = true;
+      if (recBtn) {
+        recBtn.disabled = true;
+      }
+      if (recErr) {
+        recErr.hidden = true;
+      }
       fetch('/api/auth/forgot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -136,7 +148,9 @@
           show('st-sent');
         })
         .catch(function () {
-          if (recBtn) recBtn.disabled = false;
+          if (recBtn) {
+            recBtn.disabled = false;
+          }
           if (recErr) {
             recErr.textContent =
               'Could not send the link right now. Check your connection and try again.';

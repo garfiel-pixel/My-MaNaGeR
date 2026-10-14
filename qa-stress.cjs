@@ -62,12 +62,13 @@ async function ev(expr) {
     returnByValue: true,
     awaitPromise: true
   });
-  if (r.exceptionDetails)
+  if (r.exceptionDetails) {
     return {
       __err: r.exceptionDetails.exception
         ? r.exceptionDetails.exception.description
         : r.exceptionDetails.text
     };
+  }
   return r.result && r.result.value;
 }
 
@@ -88,7 +89,9 @@ async function bootChrome(port, profile, url) {
   for (let i = 0; i < 60; i++) {
     try {
       const r = await fetch('http://127.0.0.1:' + port + '/json/version');
-      if (r.ok) break;
+      if (r.ok) {
+        break;
+      }
     } catch (e) {}
     await delay(300);
   }
@@ -705,7 +708,9 @@ function hardKill(proc) {
         if (st && st.t && st.t.length > 15) {
           done = true;
           tx = st.t;
-        } else if (st && !st.busy && (st.ts === 'failed' || st.ts === 'idle')) break;
+        } else if (st && !st.busy && (st.ts === 'failed' || st.ts === 'idle')) {
+          break;
+        }
       }
       const wdiag = await ev(
         `(function(){ var s = MMGR.State.getState(); var m = (s.meetings || []).find(function(x){ return x.captureSession === '${wsid}'; }); return { ts: m ? m.transcribeState : null, cm: m ? m.captureMethod : null, tlen: m ? (m.transcript || '').length : 0, errs: (s.errorLog || []).filter(function(e){ return String(e.msg || e.message || '').indexOf('voice') > -1 || String(e.msg || e.message || '').indexOf('tier1') > -1; }).slice(-4).map(function(e){ return e.msg || e.message; }) }; })()`

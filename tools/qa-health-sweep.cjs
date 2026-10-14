@@ -91,12 +91,20 @@ const IS_DEV_SERVER = /:8765\b/.test(BASE);
 
 function isExpectedOnLocalhost(url, status) {
   const u = String(url || '');
-  if (/accounts\.google\.com\/gsi\//.test(u) || /googleusercontent\.com/.test(u)) return true;
-  if (/\/api\//.test(u)) {
-    if (status === 401 || status === 403) return true; // signed-out gate
-    if (IS_DEV_SERVER && (status === 404 || status === 0)) return true; // no route mirror
+  if (/accounts\.google\.com\/gsi\//.test(u) || /googleusercontent\.com/.test(u)) {
+    return true;
   }
-  if (IS_DEV_SERVER && /\/api\/cloud\/presence/.test(u)) return true; // no Durable Object locally
+  if (/\/api\//.test(u)) {
+    if (status === 401 || status === 403) {
+      return true;
+    } // signed-out gate
+    if (IS_DEV_SERVER && (status === 404 || status === 0)) {
+      return true;
+    } // no route mirror
+  }
+  if (IS_DEV_SERVER && /\/api\/cloud\/presence/.test(u)) {
+    return true;
+  } // no Durable Object locally
   return false;
 }
 
@@ -106,14 +114,20 @@ function isExpectedConsoleMessage(txt) {
   const t = String(txt || '').trim();
   // Generic resource-load failure: no URL in the text, already reported with
   // its real URL + status by the response listener - never double-count it.
-  if (/^Failed to load resource/i.test(t)) return true;
+  if (/^Failed to load resource/i.test(t)) {
+    return true;
+  }
   // Google rejects 127.0.0.1 as an unregistered OAuth origin; fine on the
   // real domain.
-  if (/GSI_LOGGER.*origin is not allowed/i.test(t)) return true;
+  if (/GSI_LOGGER.*origin is not allowed/i.test(t)) {
+    return true;
+  }
   // Presence WebSocket: the static dev server has no Durable Object, so the
   // /api/cloud/presence upgrade always fails there. On wrangler dev the DO
   // exists and a failure would be a genuine finding.
-  if (IS_DEV_SERVER && /WebSocket connection to .*\/api\/cloud\/presence/i.test(t)) return true;
+  if (IS_DEV_SERVER && /WebSocket connection to .*\/api\/cloud\/presence/i.test(t)) {
+    return true;
+  }
   return false;
 }
 
@@ -131,10 +145,14 @@ function resolvePlaywright() {
     path.join(os.homedir(), '.npm', '_npx')
   ];
   for (const root of roots) {
-    if (!fs.existsSync(root)) continue;
+    if (!fs.existsSync(root)) {
+      continue;
+    }
     for (const dir of fs.readdirSync(root)) {
       const p = path.join(root, dir, 'node_modules', 'playwright');
-      if (fs.existsSync(path.join(p, 'index.js'))) return require(p);
+      if (fs.existsSync(path.join(p, 'index.js'))) {
+        return require(p);
+      }
     }
   }
   throw new Error(
@@ -151,8 +169,12 @@ function resolvePlaywright() {
 // ubuntu-latest. Resolve the bare name through the shell first; if that fails,
 // return undefined so Playwright falls back to its own bundled browser.
 function absolutizeChrome(p) {
-  if (!p) return undefined;
-  if (path.isAbsolute(p)) return fs.existsSync(p) ? p : undefined;
+  if (!p) {
+    return undefined;
+  }
+  if (path.isAbsolute(p)) {
+    return fs.existsSync(p) ? p : undefined;
+  }
   const finder = os.platform() === 'win32' ? 'where' : 'command -v';
   try {
     const out = require('child_process')
@@ -160,7 +182,9 @@ function absolutizeChrome(p) {
       .toString()
       .trim()
       .split(/\r?\n/)[0];
-    if (out && fs.existsSync(out)) return out;
+    if (out && fs.existsSync(out)) {
+      return out;
+    }
   } catch (e) {
     /* not on PATH - let Playwright try its own browser */
   }
@@ -172,12 +196,16 @@ function absolutizeChrome(p) {
 // never applies and the repo's CSP verifier does not hash it either.
 function diskHashes(file) {
   const rel = file.split('?')[0];
-  if (!fs.existsSync(rel)) return null;
+  if (!fs.existsSync(rel)) {
+    return null;
+  }
   const html = fs.readFileSync(rel, 'utf8');
   const out = [];
   for (const m of html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)) {
     const type = (m[0].match(/<script[^>]*>/)[0].match(/type=["']([^"']+)["']/) || [])[1];
-    if (type && !/^(module|text\/javascript|application\/javascript)$/.test(type)) continue;
+    if (type && !/^(module|text\/javascript|application\/javascript)$/.test(type)) {
+      continue;
+    }
     out.push(crypto.createHash('sha256').update(m[1]).digest('base64'));
   }
   return out;
@@ -217,12 +245,17 @@ function diskHashes(file) {
     page.on('console', m => {
       const t = m.type();
       const txt = m.text();
-      if (/Content Security Policy|Refused to/i.test(txt)) cspViolations.push(txt);
-      else if (t === 'error') consoleErrors.push(txt);
+      if (/Content Security Policy|Refused to/i.test(txt)) {
+        cspViolations.push(txt);
+      } else if (t === 'error') {
+        consoleErrors.push(txt);
+      }
     });
     page.on('pageerror', e => exceptions.push(String((e && e.message) || e)));
     page.on('response', r => {
-      if (r.status() >= 400) badResponses.push(r.status() + ' ' + r.url());
+      if (r.status() >= 400) {
+        badResponses.push(r.status() + ' ' + r.url());
+      }
     });
     page.on('requestfailed', r =>
       failed.push(((r.failure() && r.failure().errorText) || 'failed') + ' ' + r.url())
@@ -281,9 +314,13 @@ function diskHashes(file) {
       const declared = (header.match(/sha256-[A-Za-z0-9+/=]+/g) || []).map(s => s.slice(7));
       const onDisk = onDiskHashes;
       cspMissing = onDisk.filter(h => declared.indexOf(h) === -1).length;
-      if (!header) cspNote = 'NO CSP HEADER';
-      else if (cspMissing) cspNote = 'MISSING-FROM-LIVE-CSP x' + cspMissing;
-      else cspNote = 'live list superset of this page (' + declared.length + ' hashes, site-wide)';
+      if (!header) {
+        cspNote = 'NO CSP HEADER';
+      } else if (cspMissing) {
+        cspNote = 'MISSING-FROM-LIVE-CSP x' + cspMissing;
+      } else {
+        cspNote = 'live list superset of this page (' + declared.length + ' hashes, site-wide)';
+      }
     } catch (e) {
       cspNote = 'probe failed: ' + e.message;
     }
@@ -326,8 +363,12 @@ function diskHashes(file) {
       return m ? [m[1]] : [];
     };
     const isEdgeInjection = v => {
-      if (!info.cfInjected) return false;
-      if (!/(Executing|Refused to execute) inline script/.test(String(v))) return false;
+      if (!info.cfInjected) {
+        return false;
+      }
+      if (!/(Executing|Refused to execute) inline script/.test(String(v))) {
+        return false;
+      }
       const req = requiredHashes(v);
       return req.length > 0 && req.every(h => onDiskHashes.indexOf(h) === -1);
     };
@@ -340,18 +381,42 @@ function diskHashes(file) {
       expectedEdgeCsp;
 
     const problems = [];
-    if (realConsoleErrors.length) problems.push('console-errors:' + realConsoleErrors.length);
-    if (realCspViolations.length) problems.push('CSP-violations:' + realCspViolations.length);
-    if (exceptions.length) problems.push('exceptions:' + exceptions.length);
-    if (unexpectedResponses.length) problems.push('http>=400:' + unexpectedResponses.length);
-    if (unexpectedFailed.length) problems.push('req-failed:' + unexpectedFailed.length);
-    if (emoji) problems.push('EMOJI');
-    if (leak) problems.push('LEAKED-RAW-VALUE');
-    if (!info.title) problems.push('no-title');
-    if (!info.lang) problems.push('no-lang-attr');
-    if (!info.viewport) problems.push('no-viewport-meta');
-    if (!res || cspMissing || /NO CSP HEADER/.test(cspNote)) problems.push('CSP-DRIFT');
-    if (problems.length) flagged++;
+    if (realConsoleErrors.length) {
+      problems.push('console-errors:' + realConsoleErrors.length);
+    }
+    if (realCspViolations.length) {
+      problems.push('CSP-violations:' + realCspViolations.length);
+    }
+    if (exceptions.length) {
+      problems.push('exceptions:' + exceptions.length);
+    }
+    if (unexpectedResponses.length) {
+      problems.push('http>=400:' + unexpectedResponses.length);
+    }
+    if (unexpectedFailed.length) {
+      problems.push('req-failed:' + unexpectedFailed.length);
+    }
+    if (emoji) {
+      problems.push('EMOJI');
+    }
+    if (leak) {
+      problems.push('LEAKED-RAW-VALUE');
+    }
+    if (!info.title) {
+      problems.push('no-title');
+    }
+    if (!info.lang) {
+      problems.push('no-lang-attr');
+    }
+    if (!info.viewport) {
+      problems.push('no-viewport-meta');
+    }
+    if (!res || cspMissing || /NO CSP HEADER/.test(cspNote)) {
+      problems.push('CSP-DRIFT');
+    }
+    if (problems.length) {
+      flagged++;
+    }
 
     loadedSheets[file] = info.sheets || [];
     rows.push({
@@ -397,9 +462,11 @@ function diskHashes(file) {
     const srcCss = fs.readFileSync(pair.src, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
     const srcClasses = new Set();
     for (const m of srcCss.matchAll(/([^{}]+)\{/g)) {
-      for (const s of m[1].split(','))
-        for (const c of s.trim().match(/\.([A-Za-z][A-Za-z0-9_-]*)/g) || [])
+      for (const s of m[1].split(',')) {
+        for (const c of s.trim().match(/\.([A-Za-z][A-Za-z0-9_-]*)/g) || []) {
           srcClasses.add(c.slice(1));
+        }
+      }
     }
     const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const p = await ctx.newPage();
@@ -413,9 +480,11 @@ function diskHashes(file) {
             walk(r.cssRules);
             continue;
           }
-          if (r.selectorText)
-            for (const c of r.selectorText.match(/\.([A-Za-z][A-Za-z0-9_-]*)/g) || [])
+          if (r.selectorText) {
+            for (const c of r.selectorText.match(/\.([A-Za-z][A-Za-z0-9_-]*)/g) || []) {
               seen[c.slice(1)] = true;
+            }
+          }
         }
       };
       for (const sheet of document.styleSheets) {
@@ -458,21 +527,29 @@ function diskHashes(file) {
 
   console.log('\n===== DETAIL =====');
   for (const r of rows) {
-    if (!r.problems.length) continue;
+    if (!r.problems.length) {
+      continue;
+    }
     console.log('\n--- ' + r.file + ' (status ' + r.status + ')');
     for (const key of ['consoleErrors', 'cspViolations', 'exceptions', 'badResponses', 'failed']) {
-      if (r[key].length)
+      if (r[key].length) {
         console.log('  ' + key + ': ' + JSON.stringify(r[key].slice(0, 5), null, 2));
+      }
     }
-    if (r.emojiSample) console.log('  emoji glyph: ' + JSON.stringify(r.emojiSample));
-    if (r.leakSample) console.log('  leaked value: ' + JSON.stringify(r.leakSample));
+    if (r.emojiSample) {
+      console.log('  emoji glyph: ' + JSON.stringify(r.emojiSample));
+    }
+    if (r.leakSample) {
+      console.log('  leaked value: ' + JSON.stringify(r.leakSample));
+    }
     console.log('  csp: ' + r.cspNote);
-    if (r.expectedCount)
+    if (r.expectedCount) {
       console.log(
         '  (plus ' +
           r.expectedCount +
           ' expected local-only event(s): signed-out /api 401-403, GSI origin, dev-server 404s)'
       );
+    }
   }
   console.log(
     '\n===== HEALTH SWEEP: ' +

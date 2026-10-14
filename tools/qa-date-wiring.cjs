@@ -51,7 +51,9 @@ function globalWranglerJs() {
     const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
     const root = execFileSync(npmCmd, ['root', '-g'], { encoding: 'utf8' }).trim();
     const p = path.join(root, 'wrangler', 'bin', 'wrangler.js');
-    if (fs.existsSync(p)) return p;
+    if (fs.existsSync(p)) {
+      return p;
+    }
   } catch (e) {
     /* fall through */
   }
@@ -117,11 +119,15 @@ async function startWrangler() {
       const timer = setTimeout(() => ctrl.abort(), 3000);
       const r = await fetch(BASE + '/api/health', { signal: ctrl.signal });
       clearTimeout(timer);
-      if (r.ok) return;
+      if (r.ok) {
+        return;
+      }
     } catch (e) {
       /* not up yet */
     }
-    if (Date.now() - t0 > 120000) throw new Error('wrangler dev did not come up in 120s');
+    if (Date.now() - t0 > 120000) {
+      throw new Error('wrangler dev did not come up in 120s');
+    }
     await delay(1500);
   }
 }
@@ -158,7 +164,9 @@ async function withChrome(fn) {
     for (let i = 0; i < 60; i++) {
       try {
         const r = await fetch('http://127.0.0.1:' + port + '/json/version');
-        if (r.ok) break;
+        if (r.ok) {
+          break;
+        }
       } catch (e) {}
       await delay(300);
     }

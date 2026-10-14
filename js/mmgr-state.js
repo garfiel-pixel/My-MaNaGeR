@@ -397,19 +397,29 @@ var MMGR = window.MMGR || {};
   const migrations = {
     1: function (state) {
       // V0 -> V1: Add spendLog and budgetEnvelope
-      if (!state.spendLog) state.spendLog = [];
-      if (!state.budgetEnvelope) state.budgetEnvelope = 0;
+      if (!state.spendLog) {
+        state.spendLog = [];
+      }
+      if (!state.budgetEnvelope) {
+        state.budgetEnvelope = 0;
+      }
       return state;
     },
     2: function (state) {
       // V1 -> V2: Add dailySnapshots and dmaic
-      if (!state.dailySnapshots) state.dailySnapshots = [];
-      if (!state.dmaic) state.dmaic = { phases: [] };
+      if (!state.dailySnapshots) {
+        state.dailySnapshots = [];
+      }
+      if (!state.dmaic) {
+        state.dmaic = { phases: [] };
+      }
       return state;
     },
     3: function (state) {
       // V2 -> V3: Add weatherRegion
-      if (!state.weatherRegion) state.weatherRegion = 'northern-temperate';
+      if (!state.weatherRegion) {
+        state.weatherRegion = 'northern-temperate';
+      }
       return state;
     },
     4: function (state) {
@@ -420,21 +430,35 @@ var MMGR = window.MMGR || {};
       // Tasks: milestone flag + confidence level (Monte Carlo uses
       // confidence; keep the old coarse `confidence` for backward compat).
       (state.tasks || []).forEach(t => {
-        if (t.milestone === undefined) t.milestone = false;
-        if (t.confidenceLevel === undefined) t.confidenceLevel = t.confidence || null;
+        if (t.milestone === undefined) {
+          t.milestone = false;
+        }
+        if (t.confidenceLevel === undefined) {
+          t.confidenceLevel = t.confidence || null;
+        }
       });
 
       // Budget lines: spend-window linking + curve shape (Feature 2).
       (state.budgetLines || []).forEach(b => {
-        if (b.linkedTaskId === undefined) b.linkedTaskId = b.taskId || null;
-        if (!b.curveShape) b.curveShape = b.curve || 'linear';
+        if (b.linkedTaskId === undefined) {
+          b.linkedTaskId = b.taskId || null;
+        }
+        if (!b.curveShape) {
+          b.curveShape = b.curve || 'linear';
+        }
       });
 
       // KPIs: live-link fields (Feature 3).
       ((state.charter && state.charter.kpis) || []).forEach(k => {
-        if (k.linkedMetric === undefined) k.linkedMetric = null;
-        if (!k.dir) k.dir = 'higher';
-        if (k.measure === undefined) k.measure = '';
+        if (k.linkedMetric === undefined) {
+          k.linkedMetric = null;
+        }
+        if (!k.dir) {
+          k.dir = 'higher';
+        }
+        if (k.measure === undefined) {
+          k.measure = '';
+        }
       });
 
       // DMAIC: replace the old empty { phases: [] } stub with the structured
@@ -455,13 +479,23 @@ var MMGR = window.MMGR || {};
         improve: { solutions: '', pilot: '', results: '', done: false },
         control: { plan: '', metrics: '', handover: '', done: false }
       };
-      if (!state.dmaic || !state.dmaic.define) state.dmaic = dmaicDefaults;
+      if (!state.dmaic || !state.dmaic.define) {
+        state.dmaic = dmaicDefaults;
+      }
 
       // Meetings (MEETING_TRACKING_SPEC): completed history + live session.
-      if (!state.meetings) state.meetings = [];
-      if (state.activeMeeting === undefined) state.activeMeeting = null;
-      if (state.nmeetid === undefined) state.nmeetid = 1;
-      if (state.nspid === undefined) state.nspid = 1;
+      if (!state.meetings) {
+        state.meetings = [];
+      }
+      if (state.activeMeeting === undefined) {
+        state.activeMeeting = null;
+      }
+      if (state.nmeetid === undefined) {
+        state.nmeetid = 1;
+      }
+      if (state.nspid === undefined) {
+        state.nspid = 1;
+      }
       return state;
     },
     5: function (state) {
@@ -469,18 +503,40 @@ var MMGR = window.MMGR || {};
       // Watch, Weather Variance, Crash Candidates, Schedule Confidence) +
       // Critical Path Highlighter + Daily Field snapshot. Every field the new
       // renderers read gets a back-fill so old saved projects load cleanly.
-      if (!state.wxWindow) state.wxWindow = { start: '', end: '', bufferDays: 0 };
-      if (state.wxWindow.bufferDays === undefined) state.wxWindow.bufferDays = 0;
-      if (state.kbShowLeadtime === undefined) state.kbShowLeadtime = false;
-      if (state.hlCritical === undefined) state.hlCritical = false;
-      if (state.dailySnapshot === undefined) state.dailySnapshot = null;
-      if (state.focusMode === undefined) state.focusMode = false;
-      if (state.lastBackedUpAt === undefined) state.lastBackedUpAt = null;
+      if (!state.wxWindow) {
+        state.wxWindow = { start: '', end: '', bufferDays: 0 };
+      }
+      if (state.wxWindow.bufferDays === undefined) {
+        state.wxWindow.bufferDays = 0;
+      }
+      if (state.kbShowLeadtime === undefined) {
+        state.kbShowLeadtime = false;
+      }
+      if (state.hlCritical === undefined) {
+        state.hlCritical = false;
+      }
+      if (state.dailySnapshot === undefined) {
+        state.dailySnapshot = null;
+      }
+      if (state.focusMode === undefined) {
+        state.focusMode = false;
+      }
+      if (state.lastBackedUpAt === undefined) {
+        state.lastBackedUpAt = null;
+      }
       (state.tasks || []).forEach(t => {
-        if (t.submittedDate === undefined) t.submittedDate = '';
-        if (t.expectedDate === undefined) t.expectedDate = '';
-        if (t.floatBaseline === undefined) t.floatBaseline = null;
-        if (t.weatherExposed === undefined) t.weatherExposed = false;
+        if (t.submittedDate === undefined) {
+          t.submittedDate = '';
+        }
+        if (t.expectedDate === undefined) {
+          t.expectedDate = '';
+        }
+        if (t.floatBaseline === undefined) {
+          t.floatBaseline = null;
+        }
+        if (t.weatherExposed === undefined) {
+          t.weatherExposed = false;
+        }
       });
       return state;
     },
@@ -488,7 +544,9 @@ var MMGR = window.MMGR || {};
       // V5 -> V6: ACTION-PLAN 1.2 meeting-to-action closed loop , promises
       // carried from one meeting of a kind into the next meeting of the same
       // kind. Keyed by meeting kind (kickoff/weekly/risk/...).
-      if (!state.meetingPromises) state.meetingPromises = {};
+      if (!state.meetingPromises) {
+        state.meetingPromises = {};
+      }
       return state;
     },
     7: function (state) {
@@ -496,13 +554,19 @@ var MMGR = window.MMGR || {};
       // 2.1 risk-to-task link + 2.5 risk cost-impact estimate (expected value
       // feeds the Budget contingency comparison).
       (state.risks || []).forEach(r => {
-        if (r.linkedTaskId === undefined) r.linkedTaskId = null;
-        if (r.costImpactEstimate === undefined) r.costImpactEstimate = 0;
+        if (r.linkedTaskId === undefined) {
+          r.linkedTaskId = null;
+        }
+        if (r.costImpactEstimate === undefined) {
+          r.costImpactEstimate = 0;
+        }
       });
       // 2.5 budget lines can be flagged as contingency (compared against
       // the summed expected value of risks).
       (state.budgetLines || []).forEach(b => {
-        if (b.isContingency === undefined) b.isContingency = false;
+        if (b.isContingency === undefined) {
+          b.isContingency = false;
+        }
       });
       return state;
     },
@@ -511,33 +575,57 @@ var MMGR = window.MMGR || {};
       if (!state.streak || typeof state.streak !== 'object') {
         state.streak = { count: 0, lastDate: null };
       } else {
-        if (state.streak.count === undefined) state.streak.count = 0;
-        if (state.streak.lastDate === undefined) state.streak.lastDate = null;
+        if (state.streak.count === undefined) {
+          state.streak.count = 0;
+        }
+        if (state.streak.lastDate === undefined) {
+          state.streak.lastDate = null;
+        }
       }
       return state;
     },
     9: function (state) {
       // V8 -> V9: ACTION-PLAN 7 weather forecast + delay log fields.
-      if (state.siteLat === undefined) state.siteLat = null;
-      if (state.siteLon === undefined) state.siteLon = null;
-      if (state.sitePlace === undefined) state.sitePlace = '';
-      if (state.wxCache === undefined) state.wxCache = null;
-      if (!state.weatherLog) state.weatherLog = [];
-      if (state.ldRate === undefined) state.ldRate = 0;
+      if (state.siteLat === undefined) {
+        state.siteLat = null;
+      }
+      if (state.siteLon === undefined) {
+        state.siteLon = null;
+      }
+      if (state.sitePlace === undefined) {
+        state.sitePlace = '';
+      }
+      if (state.wxCache === undefined) {
+        state.wxCache = null;
+      }
+      if (!state.weatherLog) {
+        state.weatherLog = [];
+      }
+      if (state.ldRate === undefined) {
+        state.ldRate = 0;
+      }
       return state;
     },
     10: function (state) {
       // V9 -> V10: ACTION-PLAN 3.2 sentiment pulse history + 7.3 manual
       // per-task weather float + item 23 rolling lead-time review stamps.
       // All additive back-fills , old saved projects load cleanly.
-      if (!state.sentimentHistory) state.sentimentHistory = [];
-      if (state.wxViewDays === undefined) state.wxViewDays = 7;
+      if (!state.sentimentHistory) {
+        state.sentimentHistory = [];
+      }
+      if (state.wxViewDays === undefined) {
+        state.wxViewDays = 7;
+      }
       (state.tasks || []).forEach(t => {
         // 7.3: extra buffer days a PM explicitly assigns to THIS task
         // (distributed weather float, added on top of the auto regional pad).
-        if (t.wxFloatPad === undefined) t.wxFloatPad = 0;
+        if (t.wxFloatPad === undefined) {
+          t.wxFloatPad = 0;
+        }
         // 23: last time this lead-time item's rolling forecast was reviewed.
-        if (t.leadtimeUpdatedAt === undefined) t.leadtimeUpdatedAt = null;
+        if (t.leadtimeUpdatedAt === undefined) {
+          t.leadtimeUpdatedAt = null;
+        }
       });
       return state;
     },
@@ -552,19 +640,28 @@ var MMGR = window.MMGR || {};
       // MERGED-AI-CONTROL (audit 1.2): aiWindow is dropped from the backfill ,
       // the AI assistant now follows state.config.ai.tier, not a flag.
       ['monteCarlo', 'ganttExport', 'leadtimeLane', 'weatherForecast'].forEach(k => {
-        if (state.flags[k] === undefined) state.flags[k] = true;
+        if (state.flags[k] === undefined) {
+          state.flags[k] = true;
+        }
       });
-      if (!Array.isArray(state.errorLog)) state.errorLog = [];
-      if (!state.config || typeof state.config !== 'object' || Array.isArray(state.config))
+      if (!Array.isArray(state.errorLog)) {
+        state.errorLog = [];
+      }
+      if (!state.config || typeof state.config !== 'object' || Array.isArray(state.config)) {
         state.config = {};
-      if (state.charter && !Array.isArray(state.charter.kpis)) state.charter.kpis = [];
+      }
+      if (state.charter && !Array.isArray(state.charter.kpis)) {
+        state.charter.kpis = [];
+      }
       return state;
     },
     12: function (state) {
       // V11 -> V12: MASTER-ACTION-PLAN-v3-STRICT Rank 1.2 , schedule slips
       // (baseline-vs-actual delta as a first-class object) + user cause-tag
       // overrides. Additive back-fill: old saved projects get empty arrays.
-      if (!Array.isArray(state.scheduleSlips)) state.scheduleSlips = [];
+      if (!Array.isArray(state.scheduleSlips)) {
+        state.scheduleSlips = [];
+      }
       if (
         !state.slipCauses ||
         typeof state.slipCauses !== 'object' ||
@@ -578,7 +675,9 @@ var MMGR = window.MMGR || {};
       // V12 -> V13: MASTER-ACTION-PLAN-v3-STRICT Rank 2.1 , digest reference
       // point. Additive: old projects simply have no snapshot yet, and the
       // digest falls back to the baseline until the user pins one.
-      if (state.digestSnapshot === undefined) state.digestSnapshot = null;
+      if (state.digestSnapshot === undefined) {
+        state.digestSnapshot = null;
+      }
       return state;
     },
     14: function (state) {
@@ -588,11 +687,21 @@ var MMGR = window.MMGR || {};
       // are the visible recording indicators. Audio chunks never touch this
       // path (IndexedDB only , see mmgr-voice.js). All additive back-fills.
       const vf = function (m) {
-        if (!m) return;
-        if (m.transcript === undefined) m.transcript = '';
-        if (m.captureState === undefined) m.captureState = null;
-        if (m.captureMethod === undefined) m.captureMethod = null;
-        if (m.captureSession === undefined) m.captureSession = null;
+        if (!m) {
+          return;
+        }
+        if (m.transcript === undefined) {
+          m.transcript = '';
+        }
+        if (m.captureState === undefined) {
+          m.captureState = null;
+        }
+        if (m.captureMethod === undefined) {
+          m.captureMethod = null;
+        }
+        if (m.captureSession === undefined) {
+          m.captureSession = null;
+        }
       };
       vf(state.activeMeeting);
       (state.meetings || []).forEach(vf);
@@ -619,7 +728,9 @@ var MMGR = window.MMGR || {};
         state.packs = {};
       }
       ['schedule', 'money', 'governance', 'field', 'quality'].forEach(function (k) {
-        if (state.packs[k] === undefined) state.packs[k] = true;
+        if (state.packs[k] === undefined) {
+          state.packs[k] = true;
+        }
       });
       return state;
     },
@@ -636,23 +747,33 @@ var MMGR = window.MMGR || {};
       // onboarding callout memory. Additive back-fill: pre-v16 saved projects
       // already migrated with all packs ON, so the callout stays hidden for
       // them; brand-new projects start at false and show the nudge once.
-      if (state.packsCalloutDismissed === undefined) state.packsCalloutDismissed = false;
-      if (state.packsEverEnabled === undefined) state.packsEverEnabled = false;
+      if (state.packsCalloutDismissed === undefined) {
+        state.packsCalloutDismissed = false;
+      }
+      if (state.packsEverEnabled === undefined) {
+        state.packsEverEnabled = false;
+      }
       return state;
     },
     19: function (state) {
       // V18 -> V19: ensure risks and issues arrays exist (seed-test fixture
       // and very old saved projects may lack them, triggering validation
       // warnings on every boot).
-      if (!state.risks || !Array.isArray(state.risks)) state.risks = [];
-      if (!state.issues || !Array.isArray(state.issues)) state.issues = [];
+      if (!state.risks || !Array.isArray(state.risks)) {
+        state.risks = [];
+      }
+      if (!state.issues || !Array.isArray(state.issues)) {
+        state.issues = [];
+      }
       return state;
     }
   };
 
   function migrate(state) {
     const v = state.schemaVersion || 0;
-    if (v === SCHEMA_VERSION) return state;
+    if (v === SCHEMA_VERSION) {
+      return state;
+    }
     // Apply migrations sequentially
     const sortedMigrations = Object.keys(migrations)
       .map(Number)
@@ -692,15 +813,21 @@ var MMGR = window.MMGR || {};
   // Capture the current state as an undo point. Call BEFORE the destructive
   // write happens (i.e. while _state still holds the pre-change plan).
   function pushUndo() {
-    if (!_state) return;
+    if (!_state) {
+      return;
+    }
     _undoStack.push(cloneState());
-    if (_undoStack.length > UNDO_LIMIT) _undoStack.shift();
+    if (_undoStack.length > UNDO_LIMIT) {
+      _undoStack.shift();
+    }
     // Any new edit invalidates the redo branch
     _redoStack = [];
   }
 
   function undo() {
-    if (!_undoStack.length) return false;
+    if (!_undoStack.length) {
+      return false;
+    }
     _redoStack.push(cloneState());
     _state = _undoStack.pop();
     _dirty = false;
@@ -710,7 +837,9 @@ var MMGR = window.MMGR || {};
   }
 
   function redo() {
-    if (!_redoStack.length) return false;
+    if (!_redoStack.length) {
+      return false;
+    }
     _undoStack.push(cloneState());
     _state = _redoStack.pop();
     _dirty = false;
@@ -787,7 +916,9 @@ var MMGR = window.MMGR || {};
     const report = [];
     try {
       const incoming = migrate(parsedState);
-      if (!incoming || typeof incoming !== 'object') return null;
+      if (!incoming || typeof incoming !== 'object') {
+        return null;
+      }
       // Snapshot before mutating so a merge is undoable, like every other
       // destructive op (adopt, cascade, clear-all, baseline restore). Only
       // pushed once, at the first actual adoption , a pure no-op merge
@@ -802,7 +933,9 @@ var MMGR = window.MMGR || {};
       FIELD_KEYS.forEach(function (k) {
         const hasLocal = _state[k] !== undefined;
         const hasInc = incoming[k] !== undefined;
-        if (!hasInc) return; // incoming lacks the field -> keep local
+        if (!hasInc) {
+          return;
+        } // incoming lacks the field -> keep local
         const lt = localTs[k] || localTime;
         const it = incTs[k] || incTime;
         if (!hasLocal || it > lt) {
@@ -811,7 +944,9 @@ var MMGR = window.MMGR || {};
             undoPushed = true;
           }
           _state[k] = incoming[k];
-          if (_state.fieldTs) _state.fieldTs[k] = it;
+          if (_state.fieldTs) {
+            _state.fieldTs[k] = it;
+          }
           adopted++;
           report.push({
             field: k,
@@ -974,8 +1109,12 @@ var MMGR = window.MMGR || {};
   // Stamp fieldTs for every tracked key whose serialized value changed since
   // the previous save (or all keys on the first save). Called once per save.
   function stampFieldTs(nowIso) {
-    if (!_state) return;
-    if (!_state.fieldTs || typeof _state.fieldTs !== 'object') _state.fieldTs = {};
+    if (!_state) {
+      return;
+    }
+    if (!_state.fieldTs || typeof _state.fieldTs !== 'object') {
+      _state.fieldTs = {};
+    }
     if (_fieldJsonCache === null) {
       // First save in this session: stamp everything once so old state has a
       // complete map; build the per-field cache for subsequent saves.
@@ -1009,7 +1148,9 @@ var MMGR = window.MMGR || {};
   }
 
   function save(immediate, opts) {
-    if (!_state) return;
+    if (!_state) {
+      return;
+    }
     _state.updatedAt = new Date().toISOString();
     // Rank 4.4: stamp per-field timestamps BEFORE persisting so the saved
     // blob carries the same map the merge will read.
@@ -1017,7 +1158,9 @@ var MMGR = window.MMGR || {};
     // File-backup watermark: stamping updatedAt and lastBackedUpAt with the
     // SAME timestamp keeps the dirty-indicator comparison exact (a backup is
     // only "clean" while no edit has landed after it).
-    if (opts && opts.backup) _state.lastBackedUpAt = _state.updatedAt;
+    if (opts && opts.backup) {
+      _state.lastBackedUpAt = _state.updatedAt;
+    }
     _dirty = true;
     // Rank 4.2: mirror into the IndexedDB journal on every save (immediate
     // and debounced) , async fire-and-forget, never blocks or throws.
@@ -1037,7 +1180,9 @@ var MMGR = window.MMGR || {};
         _dirty = false;
         return;
       }
-      if (_saveTimer) clearTimeout(_saveTimer);
+      if (_saveTimer) {
+        clearTimeout(_saveTimer);
+      }
       _saveTimer = setTimeout(() => {
         try {
           localStorage.setItem(getProjectKey(), json);
@@ -1081,7 +1226,9 @@ var MMGR = window.MMGR || {};
         const req = indexedDB.open(JDB, 1);
         req.onupgradeneeded = function () {
           const db = req.result;
-          if (!db.objectStoreNames.contains(JSTORE)) db.createObjectStore(JSTORE);
+          if (!db.objectStoreNames.contains(JSTORE)) {
+            db.createObjectStore(JSTORE);
+          }
         };
         req.onsuccess = function () {
           resolve(req.result);
@@ -1099,7 +1246,9 @@ var MMGR = window.MMGR || {};
   // throws , the journal is a durability net, not a dependency.
   function journalPut(state) {
     jdb().then(function (db) {
-      if (!db) return;
+      if (!db) {
+        return;
+      }
       try {
         const tx = db.transaction(JSTORE, 'readwrite');
         tx.objectStore(JSTORE).put({ ts: state.updatedAt, json: JSON.stringify(state) }, jkey());
@@ -1114,7 +1263,9 @@ var MMGR = window.MMGR || {};
   // crash-recovery restore on the next boot.
   function journalClear() {
     jdb().then(function (db) {
-      if (!db) return;
+      if (!db) {
+        return;
+      }
       try {
         const tx = db.transaction(JSTORE, 'readwrite');
         tx.objectStore(JSTORE).delete(jkey());
@@ -1155,7 +1306,9 @@ var MMGR = window.MMGR || {};
   // in localStorage. It NEVER sets returnValue / preventDefault , the fix is
   // a silent flush, not a "leave site?" nag (no notification spam rule).
   function flushSave() {
-    if (!_state || !_dirty) return;
+    if (!_state || !_dirty) {
+      return;
+    }
     try {
       // NOTE: do NOT re-stamp updatedAt here. updateState/save already stamp
       // it at mutation time, so the pending state carries a fresh timestamp.
@@ -1181,7 +1334,9 @@ var MMGR = window.MMGR || {};
   function restoreFromJournal() {
     return journalGet()
       .then(function (rec) {
-        if (!rec || !rec.json || !_state) return false;
+        if (!rec || !rec.json || !_state) {
+          return false;
+        }
         try {
           const parsed = JSON.parse(rec.json);
           // D02 FIX (Wave 8.1, owner 2026-10-06): the journal IS the last
@@ -1201,7 +1356,9 @@ var MMGR = window.MMGR || {};
           if (lsRaw) {
             // Nothing to recover when localStorage already holds this exact state.
             try {
-              if (JSON.stringify(JSON.parse(lsRaw)) === JSON.stringify(parsed)) return false;
+              if (JSON.stringify(JSON.parse(lsRaw)) === JSON.stringify(parsed)) {
+                return false;
+              }
             } catch (e) {
               /* fall through to restore */
             }
@@ -1223,7 +1380,9 @@ var MMGR = window.MMGR || {};
   }
 
   function getState() {
-    if (!_state) load();
+    if (!_state) {
+      load();
+    }
     return _state;
   }
 
@@ -1233,9 +1392,13 @@ var MMGR = window.MMGR || {};
   // Simulated-client note: pure localStorage, no server round-trip needed.
   function _touchStreak(s) {
     try {
-      if (!s.streak) s.streak = { count: 0, lastDate: null };
+      if (!s.streak) {
+        s.streak = { count: 0, lastDate: null };
+      }
       const today = new Date().toISOString().slice(0, 10); // UTC calendar day
-      if (s.streak.lastDate === today) return; // already counted today
+      if (s.streak.lastDate === today) {
+        return;
+      } // already counted today
       const last = s.streak.lastDate ? new Date(s.streak.lastDate + 'T00:00:00Z') : null;
       const todayD = new Date(today + 'T00:00:00Z');
       const gap = last ? Math.round((todayD - last) / 86400000) : 999;
@@ -1260,9 +1423,13 @@ var MMGR = window.MMGR || {};
     if (_dirtyFields === null) {
       // Full-replace pending (e.g. adopt/merge); keep it dirty.
     } else {
-      if (!_dirtyFields || !(_dirtyFields instanceof Set)) _dirtyFields = new Set();
+      if (!_dirtyFields || !(_dirtyFields instanceof Set)) {
+        _dirtyFields = new Set();
+      }
       FIELD_KEYS.forEach(function (k) {
-        if (s[k] !== refs[k]) _dirtyFields.add(k);
+        if (s[k] !== refs[k]) {
+          _dirtyFields.add(k);
+        }
       });
     }
     save();
@@ -1291,7 +1458,9 @@ var MMGR = window.MMGR || {};
   const SECRET_KEYS = ['apiKey'];
 
   function stripSecrets(obj) {
-    if (!obj || typeof obj !== 'object') return obj;
+    if (!obj || typeof obj !== 'object') {
+      return obj;
+    }
     const cfg = obj.config;
     if (cfg && typeof cfg === 'object' && !Array.isArray(cfg)) {
       // state.config.ai , the AI provider block (apiKey is the only secret;
@@ -1429,7 +1598,9 @@ var MMGR = window.MMGR || {};
       })
     );
     // baseline is a top-level field; mark it dirty since we bypassed updateState.
-    if (_dirtyFields instanceof Set) _dirtyFields.add('baseline');
+    if (_dirtyFields instanceof Set) {
+      _dirtyFields.add('baseline');
+    }
     save(true);
   }
 
@@ -1437,20 +1608,29 @@ var MMGR = window.MMGR || {};
   function validate() {
     const s = getState();
     const issues = [];
-    if (!s.tasks || !Array.isArray(s.tasks)) issues.push('Missing tasks array');
-    if (!s.risks || !Array.isArray(s.risks)) issues.push('Missing risks array');
-    if (s.schemaVersion !== SCHEMA_VERSION)
+    if (!s.tasks || !Array.isArray(s.tasks)) {
+      issues.push('Missing tasks array');
+    }
+    if (!s.risks || !Array.isArray(s.risks)) {
+      issues.push('Missing risks array');
+    }
+    if (s.schemaVersion !== SCHEMA_VERSION) {
       issues.push(`Schema version ${s.schemaVersion} != expected ${SCHEMA_VERSION}`);
+    }
     // Check for circular references in predecessors
     try {
       const visited = new Set();
       function checkCycle(taskId, path) {
-        if (path.has(taskId)) return true;
+        if (path.has(taskId)) {
+          return true;
+        }
         path.add(taskId);
         const task = s.tasks.find(t => t.id === taskId);
         if (task && task.predecessors) {
           for (const pred of task.predecessors) {
-            if (checkCycle(pred, new Set(path))) return true;
+            if (checkCycle(pred, new Set(path))) {
+              return true;
+            }
           }
         }
         path.delete(taskId);
@@ -1508,7 +1688,9 @@ var MMGR = window.MMGR || {};
   }
   if (typeof document !== 'undefined' && document.addEventListener) {
     document.addEventListener('visibilitychange', function () {
-      if (document.visibilityState === 'hidden') flushSave();
+      if (document.visibilityState === 'hidden') {
+        flushSave();
+      }
     });
   }
 })(MMGR);

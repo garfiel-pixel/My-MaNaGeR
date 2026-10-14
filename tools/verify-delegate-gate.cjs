@@ -27,9 +27,13 @@ function extractFunctions(filePath) {
   var fns = new Map();
   for (var i = 0; i < lines.length; i++) {
     var m = lines[i].match(/(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:function|\())/);
-    if (!m) continue;
+    if (!m) {
+      continue;
+    }
     var name = m[1] || m[2];
-    if (!name || name.length < 3) continue;
+    if (!name || name.length < 3) {
+      continue;
+    }
     var braceCount = 0,
       bodyStarted = false,
       bodyLines = 0;
@@ -39,10 +43,14 @@ function extractFunctions(filePath) {
           braceCount++;
           bodyStarted = true;
         }
-        if (lines[j][ci] === '}') braceCount--;
+        if (lines[j][ci] === '}') {
+          braceCount--;
+        }
       }
       bodyLines++;
-      if (bodyStarted && braceCount <= 0) break;
+      if (bodyStarted && braceCount <= 0) {
+        break;
+      }
     }
     fns.set(name, { line: i + 1, bodyLines: bodyLines });
   }
@@ -53,14 +61,26 @@ function isDelegateBody(filePath, fnName) {
   var content = fs.readFileSync(filePath, 'utf8');
   var re = new RegExp('function\\s+' + fnName + '\\s*\\([^)]*\\)\\s*\\{([\\s\\S]+?)\\}');
   var m = content.match(re);
-  if (!m) return false;
+  if (!m) {
+    return false;
+  }
   var body = m[1].trim();
   var lineCount = body.split('\n').length;
-  if (lineCount > 3) return false;
-  if (/if\s*\(.*\)\s*\{?\s*(ns|window\.MMGR|MMGR|this)\.\w+\.\w+/.test(body)) return true;
-  if (/return\s+(ns|window\.MMGR|MMGR|this)\.\w+/.test(body)) return true;
-  if (/return\s+(true|false|null|undefined|\d+)/.test(body)) return true;
-  if (/\(ns|window\.MMGR|MMGR\)\.\w+\.\w+/.test(body)) return true;
+  if (lineCount > 3) {
+    return false;
+  }
+  if (/if\s*\(.*\)\s*\{?\s*(ns|window\.MMGR|MMGR|this)\.\w+\.\w+/.test(body)) {
+    return true;
+  }
+  if (/return\s+(ns|window\.MMGR|MMGR|this)\.\w+/.test(body)) {
+    return true;
+  }
+  if (/return\s+(true|false|null|undefined|\d+)/.test(body)) {
+    return true;
+  }
+  if (/\(ns|window\.MMGR|MMGR\)\.\w+\.\w+/.test(body)) {
+    return true;
+  }
   return false;
 }
 

@@ -247,7 +247,9 @@ function globalWranglerJs() {
   // 1. Local node_modules (CI and project-local installs)
   try {
     const lp = path.join(__dirname, '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
-    if (fs.existsSync(lp)) return lp;
+    if (fs.existsSync(lp)) {
+      return lp;
+    }
   } catch (e) {
     /* fall through */
   }
@@ -259,7 +261,9 @@ function globalWranglerJs() {
       shell: process.platform === 'win32'
     }).trim();
     const p = path.join(root, 'wrangler', 'bin', 'wrangler.js');
-    if (fs.existsSync(p)) return p;
+    if (fs.existsSync(p)) {
+      return p;
+    }
   } catch (e) {
     /* fall through */
   }
@@ -395,11 +399,15 @@ async function startWrangler(mode) {
       }, 3000);
       const r = await fetch(BASE + '/api/health', { signal: ctrl.signal });
       clearTimeout(timer);
-      if (r.ok) return;
+      if (r.ok) {
+        return;
+      }
     } catch (e) {
       /* not up yet */
     }
-    if (Date.now() - t0 > 120000) throw new Error('wrangler dev did not come up in 120s');
+    if (Date.now() - t0 > 120000) {
+      throw new Error('wrangler dev did not come up in 120s');
+    }
     await delay(1500);
   }
 }
@@ -731,7 +739,9 @@ async function phase1() {
     if (r.status === 429) {
       saw429++;
       retryAfter = r.headers.get('Retry-After');
-    } else if (r.status === 401) saw401++;
+    } else if (r.status === 401) {
+      saw401++;
+    }
   }
   check(
     'A15 rate burst: ≥1 401 (real attempts pass) AND ≥1 429 with Retry-After (blocked)',
@@ -1783,11 +1793,15 @@ function pwLaunchChrome(profileDir, port) {
     const poll = async () => {
       try {
         const r = await fetch('http://127.0.0.1:' + port + '/json/version');
-        if (r.ok) return resolve(p);
+        if (r.ok) {
+          return resolve(p);
+        }
       } catch (e) {
         /* not up */
       }
-      if (Date.now() - t0 > 30000) return reject(new Error('chrome did not open on :' + port));
+      if (Date.now() - t0 > 30000) {
+        return reject(new Error('chrome did not open on :' + port));
+      }
       setTimeout(poll, 300);
     };
     poll();
@@ -1850,12 +1864,14 @@ async function phase5() {
     pwConsoleErrors = [];
     pwWs.onmessage = ev2 => {
       const msg = JSON.parse(ev2.data);
-      if (msg.method === 'Runtime.consoleAPICalled' && msg.params && msg.params.type === 'error')
+      if (msg.method === 'Runtime.consoleAPICalled' && msg.params && msg.params.type === 'error') {
         pwConsoleErrors.push(
           'console: ' + (msg.params.args || []).map(a => a.value || a.description || '').join(' ')
         );
-      if (msg.method === 'Runtime.exceptionThrown' && msg.params && msg.params.exceptionDetails)
+      }
+      if (msg.method === 'Runtime.exceptionThrown' && msg.params && msg.params.exceptionDetails) {
         pwConsoleErrors.push('exception: ' + (msg.params.exceptionDetails.text || ''));
+      }
       if (msg.id && pwPending.has(msg.id)) {
         pwPending.get(msg.id)(msg);
         pwPending.delete(msg.id);
@@ -1885,7 +1901,9 @@ async function phase5() {
         var b = document.querySelector('#google-user-chip .email-auth-pw-btn');
         return b ? { hidden: b.hidden, text: b.textContent } : null;
       })()`);
-      if (trig && trig.hidden === false) break;
+      if (trig && trig.hidden === false) {
+        break;
+      }
     }
     check(
       'G1 email session -> Change-password trigger VISIBLE in the signed-in chip',
@@ -1972,7 +1990,9 @@ async function phase5() {
           submitDisabled: s.disabled
         };
       })()`);
-      if (g6 && g6.err) break;
+      if (g6 && g6.err) {
+        break;
+      }
     }
     check(
       'G6 wrong current (real 401) -> inline "Current password is incorrect.", fields cleared, submit restored',
@@ -2087,7 +2107,9 @@ async function phase5() {
         var b = document.querySelector('#google-user-chip .email-auth-pw-btn');
         return { chipHidden: chip ? chip.hidden : 'no-chip', btnHidden: b ? b.hidden : 'no-btn', btnText: b ? b.textContent : null };
       })()`);
-      if (g8 && g8.btnHidden === true) break;
+      if (g8 && g8.btnHidden === true) {
+        break;
+      }
     }
     check(
       'G8 google session -> trigger HIDDEN (Google accounts have no password)',
@@ -2106,7 +2128,9 @@ async function phase5() {
         var b = document.querySelector('#google-user-chip .email-auth-pw-btn');
         return { chipHidden: chip ? chip.hidden : 'no-chip', btnHidden: b ? b.hidden : 'no-btn' };
       })()`);
-      if (g9 && (g9.chipHidden === true || g9.btnHidden === true)) break;
+      if (g9 && (g9.chipHidden === true || g9.btnHidden === true)) {
+        break;
+      }
     }
     // Signed out: showUser never runs, so the trigger is not mounted at all
     // ('no-btn') OR is hidden — either way it is not visible.
@@ -2223,7 +2247,9 @@ process.on('SIGTERM', function () {
       log('Ctrl+C ends the run early: prints a partial RESULT and stops wrangler');
       const t0 = Date.now();
       while (Date.now() - t0 < 1200000) {
-        if (fs.existsSync(STOP_FILE)) break;
+        if (fs.existsSync(STOP_FILE)) {
+          break;
+        }
         await delay(1000);
       }
     } else if (!process.env.MMGR_QA_NO_BROWSER) {

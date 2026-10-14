@@ -49,26 +49,37 @@ function walk(dir, out) {
     return out;
   }
   for (const e of entries) {
-    if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
+    if (e.name === 'node_modules' || e.name.startsWith('.')) {
+      continue;
+    }
     const full = path.join(dir, e.name);
-    if (e.isDirectory()) walk(full, out);
-    else if (e.isFile() && full.endsWith('.js')) out.push(full);
+    if (e.isDirectory()) {
+      walk(full, out);
+    } else if (e.isFile() && full.endsWith('.js')) {
+      out.push(full);
+    }
   }
   return out;
 }
 
 const files = [];
-for (const d of SCAN_DIRS) walk(path.join(ROOT, d), files);
+for (const d of SCAN_DIRS) {
+  walk(path.join(ROOT, d), files);
+}
 for (const f of ROOT_FILES) {
   const p = path.join(ROOT, f);
-  if (fs.existsSync(p)) files.push(p);
+  if (fs.existsSync(p)) {
+    files.push(p);
+  }
 }
 
 // De-duplicate: js/app and js/render are already under js/.
 const seen = new Set();
 const uniq = files.filter(f => {
   const rel = path.relative(ROOT, f);
-  if (seen.has(rel)) return false;
+  if (seen.has(rel)) {
+    return false;
+  }
   seen.add(rel);
   return true;
 });

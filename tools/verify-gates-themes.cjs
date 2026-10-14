@@ -31,7 +31,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 /* ---- Node-side color/contrast math (for the verdict pass) ---- */
 function parseColor(str) {
   const m = String(str).match(/rgba?\(([^)]+)\)/);
-  if (!m) return null;
+  if (!m) {
+    return null;
+  }
   const p = m[1].split(',').map(s => parseFloat(s.trim()));
   return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 };
 }
@@ -80,7 +82,9 @@ async function waitForPageTarget() {
       const r = await fetch('http://127.0.0.1:' + PORT + '/json/list');
       const list = await r.json();
       const page = list.find(t => t.type === 'page');
-      if (page && page.webSocketDebuggerUrl) return page.webSocketDebuggerUrl;
+      if (page && page.webSocketDebuggerUrl) {
+        return page.webSocketDebuggerUrl;
+      }
     } catch (e) {
       /* not up yet */
     }
@@ -139,13 +143,16 @@ async function waitForPageTarget() {
       returnByValue: true,
       awaitPromise: true
     });
-    if (r.error) return 'CDP_ERROR:' + JSON.stringify(r.error);
-    if (r.result && r.result.exceptionDetails)
+    if (r.error) {
+      return 'CDP_ERROR:' + JSON.stringify(r.error);
+    }
+    if (r.result && r.result.exceptionDetails) {
       return (
         'EXC:' +
         ((r.result.exceptionDetails.exception && r.result.exceptionDetails.exception.description) ||
           r.result.exceptionDetails.text)
       );
+    }
     return r.result && r.result.result ? r.result.result.value : null;
   };
 
@@ -219,9 +226,15 @@ async function waitForPageTarget() {
 
   function preload(glass, adminLogin, dark) {
     let s = "try{localStorage.setItem('mmgr_glass_mode','" + glass + "');}catch(e){}";
-    if (glass === 'premium') s += 'try{window.__mmgrForceHighEnd=true;}catch(e){}';
-    if (dark) s += "try{localStorage.setItem('mmgr_theme','dark');}catch(e){}";
-    if (adminLogin) s += "try{localStorage.setItem('mmgr_admin_pass_hash','seedhash');}catch(e){}";
+    if (glass === 'premium') {
+      s += 'try{window.__mmgrForceHighEnd=true;}catch(e){}';
+    }
+    if (dark) {
+      s += "try{localStorage.setItem('mmgr_theme','dark');}catch(e){}";
+    }
+    if (adminLogin) {
+      s += "try{localStorage.setItem('mmgr_admin_pass_hash','seedhash');}catch(e){}";
+    }
     return s;
   }
 
@@ -273,8 +286,9 @@ async function waitForPageTarget() {
     }
     const shot = await send('Page.captureScreenshot', { format: 'png' });
     const png = 'tools/gate-' + name + suffix + '.png';
-    if (shot.result && shot.result.data)
+    if (shot.result && shot.result.data) {
       fs.writeFileSync(png, Buffer.from(shot.result.data, 'base64'));
+    }
     await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: pre.identifier });
     await sleep(250);
     const rec = {
@@ -384,22 +398,40 @@ async function waitForPageTarget() {
     const info = [];
     const errors = p.issues.filter(i => i.startsWith('EXC') || i.startsWith('ERROR'));
     const warns = p.issues.filter(i => i.startsWith('WARN'));
-    if (errors.length) flags.push('CONSOLE-ERRORS');
-    if (p.page && p.page.overflow) flags.push('H-OVERFLOW');
-    if (p.gate && !p.gate.inView) flags.push('GATE-OUT-OF-VIEW');
-    if (p.gate && !p.gate.hFits) flags.push('GATE-H-OVERFLOW');
+    if (errors.length) {
+      flags.push('CONSOLE-ERRORS');
+    }
+    if (p.page && p.page.overflow) {
+      flags.push('H-OVERFLOW');
+    }
+    if (p.gate && !p.gate.inView) {
+      flags.push('GATE-OUT-OF-VIEW');
+    }
+    if (p.gate && !p.gate.hFits) {
+      flags.push('GATE-H-OVERFLOW');
+    }
     let worst = 99;
-    if (p.samples && p.samples.length) worst = Math.min(...p.samples.map(s => s.ratio));
-    if (worst < 1.25) flags.push('INVISIBLE-TEXT(' + worst.toFixed(2) + ')');
-    else if (worst < 3) flags.push('LOW-CONTRAST(' + worst.toFixed(2) + ')');
-    if (!p.gate) flags.push('NO-GATE-FOUND');
+    if (p.samples && p.samples.length) {
+      worst = Math.min(...p.samples.map(s => s.ratio));
+    }
+    if (worst < 1.25) {
+      flags.push('INVISIBLE-TEXT(' + worst.toFixed(2) + ')');
+    } else if (worst < 3) {
+      flags.push('LOW-CONTRAST(' + worst.toFixed(2) + ')');
+    }
+    if (!p.gate) {
+      flags.push('NO-GATE-FOUND');
+    }
     // The page's early-apply snippet must turn the seeded device pref into the
     // dark-mode class; if it doesn't, the persistence wiring is broken.
-    if (p.dark && p.page && !p.page.darkClass) flags.push('DARK-NOT-APPLIED');
+    if (p.dark && p.page && !p.page.darkClass) {
+      flags.push('DARK-NOT-APPLIED');
+    }
     // Informational only: the premium engine is not loaded on launcher/gate
     // pages, so premium preference + capability legitimately changes nothing.
-    if (p.glass === 'premium' && p.page && p.page.canvasCount === 0)
+    if (p.glass === 'premium' && p.page && p.page.canvasCount === 0) {
       info.push('premium-engine-not-on-page');
+    }
     return {
       combo: p.name,
       glass: p.glass,

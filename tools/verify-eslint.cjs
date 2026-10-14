@@ -54,7 +54,9 @@ const r = spawnSync(process.execPath, [ESLINT_BIN, '.', '--format', 'json'], {
   maxBuffer: 128 * 1024 * 1024
 });
 
-if (r.error) fail('could not start eslint: ' + r.error.message);
+if (r.error) {
+  fail('could not start eslint: ' + r.error.message);
+}
 
 let results;
 try {
@@ -64,7 +66,9 @@ try {
   fail('eslint did not return parseable JSON (it probably could not load a config)');
 }
 
-if (!Array.isArray(results)) fail('unexpected eslint output shape');
+if (!Array.isArray(results)) {
+  fail('unexpected eslint output shape');
+}
 
 const linted = results.filter(function (f) {
   return Array.isArray(f.messages);
@@ -81,7 +85,9 @@ const errorLines = [];
 results.forEach(function (f) {
   (f.messages || []).forEach(function (m) {
     const where = path.relative(ROOT, f.filePath) + ':' + (m.line || 0) + ':' + (m.column || 0);
-    if (m.fatal) fatal++;
+    if (m.fatal) {
+      fatal++;
+    }
     if (m.severity === 2) {
       errors++;
       errorLines.push('  ' + where + '  ' + m.message + (m.ruleId ? '  (' + m.ruleId + ')' : ''));
@@ -91,7 +97,9 @@ results.forEach(function (f) {
   });
 });
 
-if (fatal) fail(fatal + ' fatal parse error(s) in linted files');
+if (fatal) {
+  fail(fatal + ' fatal parse error(s) in linted files');
+}
 
 if (errors > 0) {
   process.stderr.write('\n' + errors + ' ESLint error(s):\n');

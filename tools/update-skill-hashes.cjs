@@ -10,7 +10,9 @@ function hashFolder(dir) {
     for (const e of entries) {
       const full = path.join(d, e.name);
       if (e.isDirectory()) {
-        if (e.name === '.git' || e.name === 'node_modules') continue;
+        if (e.name === '.git' || e.name === 'node_modules') {
+          continue;
+        }
         walk(full);
       } else if (e.isFile()) {
         const relativePath = path.relative(dir, full).split(path.sep).join('/');
@@ -20,7 +22,9 @@ function hashFolder(dir) {
     }
   }
   walk(dir);
-  if (!files.length) return '';
+  if (!files.length) {
+    return '';
+  }
   files.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
   const hash = crypto.createHash('sha256');
   for (const file of files) {
@@ -44,8 +48,12 @@ for (const [name, entry] of Object.entries(lock.skills || {})) {
       console.log(
         'Updating ' + name + ': ' + oldHash.substring(0, 8) + ' -> ' + newHash.substring(0, 8)
       );
-      if (entry.computedHash) entry.computedHash = newHash;
-      if (entry.hash) entry.hash = newHash;
+      if (entry.computedHash) {
+        entry.computedHash = newHash;
+      }
+      if (entry.hash) {
+        entry.hash = newHash;
+      }
       updated++;
     }
   }

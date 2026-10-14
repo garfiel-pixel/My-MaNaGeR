@@ -34,7 +34,9 @@ function globalWranglerJs() {
   // 1. Local node_modules (CI and project-local installs)
   try {
     const lp = path.join(__dirname, '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
-    if (fs.existsSync(lp)) return lp;
+    if (fs.existsSync(lp)) {
+      return lp;
+    }
   } catch (e) {
     /* fall through */
   }
@@ -46,7 +48,9 @@ function globalWranglerJs() {
       shell: process.platform === 'win32'
     }).trim();
     const p = path.join(root, 'wrangler', 'bin', 'wrangler.js');
-    if (fs.existsSync(p)) return p;
+    if (fs.existsSync(p)) {
+      return p;
+    }
   } catch (e) {
     /* fall through */
   }
@@ -84,7 +88,9 @@ async function waitFor(fn, timeout, what) {
   while (Date.now() - t0 < timeout) {
     try {
       const v = await fn();
-      if (v) return v;
+      if (v) {
+        return v;
+      }
     } catch (e) {
       /* keep waiting */
     }
@@ -305,7 +311,9 @@ async function main() {
       c.msgs.some(m => m.type === 'init' && m.members && m.members.some(x => x.name === 'Owner')),
       c.msgs
     );
-    if (c.ws) c.ws.close();
+    if (c.ws) {
+      c.ws.close();
+    }
 
     console.log('---');
     console.log((fails ? 'FAIL ' : 'PASS ') + passes + ' passed, ' + fails + ' failed');
@@ -317,12 +325,13 @@ async function main() {
     // Tear down BEFORE exiting. process.exit() inside try/catch SKIPS this
     // finally on some paths, which is exactly how this suite leaked its
     // wrangler onto :8796 and broke the next same-port suite in CI.
-    if (dev)
+    if (dev) {
       try {
         dev.kill('SIGTERM');
       } catch (e) {
         /* ignore */
       }
+    }
     await sleep(1200);
     try {
       process.kill(dev.pid);

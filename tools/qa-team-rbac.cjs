@@ -110,7 +110,9 @@ function startEmailStub() {
 function latestEmailTo(email, subjectPart) {
   for (let i = stubEmails.length - 1; i >= 0; i--) {
     const m = stubEmails[i];
-    if (m.to === email && (!subjectPart || String(m.subject).indexOf(subjectPart) >= 0)) return m;
+    if (m.to === email && (!subjectPart || String(m.subject).indexOf(subjectPart) >= 0)) {
+      return m;
+    }
   }
   return null;
 }
@@ -125,7 +127,9 @@ let devLog = '';
 function globalWranglerJs() {
   try {
     const lp = path.join(__dirname, '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
-    if (fs.existsSync(lp)) return lp;
+    if (fs.existsSync(lp)) {
+      return lp;
+    }
   } catch (e) {
     /* fall through */
   }
@@ -136,7 +140,9 @@ function globalWranglerJs() {
       shell: process.platform === 'win32'
     }).trim();
     const p = path.join(root, 'wrangler', 'bin', 'wrangler.js');
-    if (fs.existsSync(p)) return p;
+    if (fs.existsSync(p)) {
+      return p;
+    }
   } catch (e) {
     /* fall through */
   }
@@ -227,11 +233,15 @@ async function startWrangler() {
       }, 3000);
       const r = await fetch(BASE + '/api/health', { signal: ctrl.signal });
       clearTimeout(timer);
-      if (r.ok) return;
+      if (r.ok) {
+        return;
+      }
     } catch (e) {
       /* not up yet */
     }
-    if (Date.now() - t0 > 120000) throw new Error('wrangler dev did not come up in 120s');
+    if (Date.now() - t0 > 120000) {
+      throw new Error('wrangler dev did not come up in 120s');
+    }
     await delay(1500);
   }
 }
@@ -261,7 +271,9 @@ async function api(pathname, opts) {
 }
 function cookieFrom(res) {
   const sc = res.headers.get('set-cookie');
-  if (!sc) return null;
+  if (!sc) {
+    return null;
+  }
   const m = sc.match(/mmgr_session=([^;]+)/);
   return m ? 'mmgr_session=' + m[1] : null;
 }
@@ -308,7 +320,9 @@ async function registerAndVerify(email, name) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password: PW, name })
   });
-  if (reg.status !== 200) return { reg, cookie: null };
+  if (reg.status !== 200) {
+    return { reg, cookie: null };
+  }
   const cookie = cookieFrom(reg);
   // Verify the address so the cloud-create email gate passes.
   await delay(300);
@@ -656,12 +670,16 @@ async function main() {
   const passed = results.filter(r => r.val).length;
   log('----------------------------------------');
   log('RESULT: ' + passed + '/' + results.length + ' gates passed');
-  if (passed !== results.length) process.exitCode = 1;
+  if (passed !== results.length) {
+    process.exitCode = 1;
+  }
 }
 
 let stopping = false;
 function shutdown() {
-  if (stopping) return;
+  if (stopping) {
+    return;
+  }
   stopping = true;
   stopWrangler();
 }

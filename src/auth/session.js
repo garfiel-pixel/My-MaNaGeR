@@ -41,14 +41,25 @@ function authPasswordProblem(pw) {
   // FIX (2026-09-18): this was /^(.)\\1+$/ - a DOUBLE backslash, so it matched
   // a literal backslash and never fired: 'aaaaaaaa' passed the strength gate.
   // Register, reset and password-change all route through here.
-  if (/^(.)\1+$/.test(pw)) return 'password is too weak - mix letters, numbers and symbols';
+  if (/^(.)\1+$/.test(pw)) {
+    return 'password is too weak - mix letters, numbers and symbols';
+  }
   let classes = 0;
-  if (/[a-z]/.test(pw)) classes++;
-  if (/[A-Z]/.test(pw)) classes++;
-  if (/[0-9]/.test(pw)) classes++;
-  if (/[^A-Za-z0-9]/.test(pw)) classes++;
-  if (classes < 3)
+  if (/[a-z]/.test(pw)) {
+    classes++;
+  }
+  if (/[A-Z]/.test(pw)) {
+    classes++;
+  }
+  if (/[0-9]/.test(pw)) {
+    classes++;
+  }
+  if (/[^A-Za-z0-9]/.test(pw)) {
+    classes++;
+  }
+  if (classes < 3) {
     return 'password is too weak - use a mix of upper and lower case, numbers or symbols';
+  }
   return null;
 }
 // Auth-flow tuning knobs, in three groups:
@@ -88,7 +99,9 @@ const AUTH_LOCK_TIER_MULTIPLIER = 2;
 // Returned as ms, or 0 when the account is not locked yet.
 function authLockMsForFails(fails) {
   const n = Number(fails) || 0;
-  if (n < AUTH_LOCK_FAILS) return 0;
+  if (n < AUTH_LOCK_FAILS) {
+    return 0;
+  }
   const tiers = Math.floor((n - AUTH_LOCK_FAILS) / AUTH_LOCK_ESCALATE_FAILS);
   const ms = AUTH_LOCK_WINDOW_MS * Math.pow(AUTH_LOCK_TIER_MULTIPLIER, tiers);
   return Math.min(ms, AUTH_LOCK_MAX_MS);
@@ -125,15 +138,21 @@ export async function handleAuthRegister(request, env) {
     return json({ ok: false, error: 'bad request' }, 400);
   }
   const email = authNormalizeEmail(body && body.email);
-  if (!authEmailValid(email)) return json({ ok: false, error: 'invalid email address' }, 400);
+  if (!authEmailValid(email)) {
+    return json({ ok: false, error: 'invalid email address' }, 400);
+  }
   const password = String((body && body.password) || '');
   const pwProblem = authPasswordProblem(password);
-  if (pwProblem) return json({ ok: false, error: pwProblem }, 400);
+  if (pwProblem) {
+    return json({ ok: false, error: pwProblem }, 400);
+  }
   const name = String((body && body.name) || '').slice(0, 80);
   const existing = await env.DB.prepare('SELECT email, provider FROM auth_users WHERE email = ?')
     .bind(email)
     .first();
-  if (existing) return json({ ok: false, error: AUTH_ACCOUNT_TAKEN }, 409);
+  if (existing) {
+    return json({ ok: false, error: AUTH_ACCOUNT_TAKEN }, 409);
+  }
   const salt = randomSaltHex();
   const hash = await authHashPassword(password, salt);
   const now = new Date().toISOString();
@@ -147,7 +166,9 @@ export async function handleAuthRegister(request, env) {
     const raced = await env.DB.prepare('SELECT email FROM auth_users WHERE email = ?')
       .bind(email)
       .first();
-    if (raced) return json({ ok: false, error: AUTH_ACCOUNT_TAKEN }, 409);
+    if (raced) {
+      return json({ ok: false, error: AUTH_ACCOUNT_TAKEN }, 409);
+    }
     throw e;
   }
   let emailSent = false;
@@ -213,7 +234,9 @@ export async function handleAuthLogin(request, env) {
     return json({ ok: false, error: 'invalid email or password' }, 401);
   }
   const sep = row.password_hash.indexOf(':');
-  if (sep <= 0) return json({ ok: false, error: 'invalid email or password' }, 401);
+  if (sep <= 0) {
+    return json({ ok: false, error: 'invalid email or password' }, 401);
+  }
   const hash = await authHashPassword(password, row.password_hash.slice(0, sep));
   if (!codesEqual(hash, row.password_hash.slice(sep + 1))) {
     const fails = (guard ? Number(guard.failed_attempts) || 0 : 0) + 1;
@@ -240,9 +263,12 @@ export async function handleAuthLogin(request, env) {
 
 export async function handleAuthPasswordChange(request, env) {
   const session = await readSession(request, env);
-  if (!session || !session.sub) return json({ ok: false, error: 'not signed in' }, 401);
-  if (session.sub.indexOf('email:') !== 0)
+  if (!session || !session.sub) {
+    return json({ ok: false, error: 'not signed in' }, 401);
+  }
+  if (session.sub.indexOf('email:') !== 0) {
     return json({ ok: false, error: 'this account has no password' }, 400);
+  }
   let body;
   try {
     body = await request.json();
@@ -253,13 +279,19 @@ export async function handleAuthPasswordChange(request, env) {
   const current = String((body && body.currentPassword) || '');
   const next = String((body && body.newPassword) || '');
   const resetPwProblem = authPasswordProblem(next);
-  if (resetPwProblem) return json({ ok: false, error: resetPwProblem }, 400);
+  if (resetPwProblem) {
+    return json({ ok: false, error: resetPwProblem }, 400);
+  }
   const row = await env.DB.prepare('SELECT password_hash FROM auth_users WHERE email = ?')
     .bind(email)
     .first();
-  if (!row) return json({ ok: false, error: 'account not found' }, 404);
+  if (!row) {
+    return json({ ok: false, error: 'account not found' }, 404);
+  }
   const sep = row.password_hash.indexOf(':');
-  if (sep <= 0) return json({ ok: false, error: 'account not found' }, 404);
+  if (sep <= 0) {
+    return json({ ok: false, error: 'account not found' }, 404);
+  }
   const hash = await authHashPassword(current, row.password_hash.slice(0, sep));
   if (!codesEqual(hash, row.password_hash.slice(sep + 1))) {
     return json({ ok: false, error: 'current password is incorrect' }, 401);
@@ -295,9 +327,12 @@ export async function handleAuthPasswordChange(request, env) {
 
 export async function handleAuthVerifyPassword(request, env) {
   const session = await readSession(request, env);
-  if (!session || !session.sub) return json({ ok: false, error: 'not signed in' }, 401);
-  if (session.sub.indexOf('email:') !== 0)
+  if (!session || !session.sub) {
+    return json({ ok: false, error: 'not signed in' }, 401);
+  }
+  if (session.sub.indexOf('email:') !== 0) {
     return json({ ok: false, error: 'this account has no password' }, 400);
+  }
   let body;
   try {
     body = await request.json();
@@ -305,14 +340,20 @@ export async function handleAuthVerifyPassword(request, env) {
     return json({ ok: false, error: 'bad request' }, 400);
   }
   const password = String((body && body.password) || '');
-  if (!password) return json({ ok: false, error: 'password is required' }, 400);
+  if (!password) {
+    return json({ ok: false, error: 'password is required' }, 400);
+  }
   const email = session.sub.slice('email:'.length);
   const row = await env.DB.prepare('SELECT password_hash FROM auth_users WHERE email = ?')
     .bind(email)
     .first();
-  if (!row) return json({ ok: false, error: 'account not found' }, 404);
+  if (!row) {
+    return json({ ok: false, error: 'account not found' }, 404);
+  }
   const sep = row.password_hash.indexOf(':');
-  if (sep <= 0) return json({ ok: false, error: 'account not found' }, 404);
+  if (sep <= 0) {
+    return json({ ok: false, error: 'account not found' }, 404);
+  }
   const hash = await authHashPassword(password, row.password_hash.slice(0, sep));
   if (!codesEqual(hash, row.password_hash.slice(sep + 1))) {
     return json({ ok: false, error: 'password is incorrect' }, 401);
@@ -328,7 +369,9 @@ export async function handleAuthVerify(request, env) {
     return json({ ok: false, error: 'bad request' }, 400);
   }
   const email = await consumeAuthToken(env, String((body && body.token) || ''), 'verify');
-  if (!email) return json({ ok: false, error: 'invalid or expired verification link' }, 400);
+  if (!email) {
+    return json({ ok: false, error: 'invalid or expired verification link' }, 400);
+  }
   try {
     await env.DB.prepare('UPDATE auth_users SET email_verified = 1 WHERE email = ?')
       .bind(email)
@@ -351,7 +394,9 @@ export async function handleAuthForgot(request, env) {
   // reveal whether an account exists (E11 contract). The per-email 5/hour
   // cap below stays as the second layer.
   const rl = await cloudRatePeek(request, 'authmail', env);
-  if (rl.limited) return json(generic);
+  if (rl.limited) {
+    return json(generic);
+  }
   const recordSend = function () {
     return cloudRateRecord(request, 'authmail', env);
   };
@@ -362,7 +407,9 @@ export async function handleAuthForgot(request, env) {
     return json({ ok: false, error: 'bad request' }, 400);
   }
   const email = authNormalizeEmail(body && body.email);
-  if (!authEmailValid(email)) return json({ ok: false, error: 'invalid email address' }, 400);
+  if (!authEmailValid(email)) {
+    return json({ ok: false, error: 'invalid email address' }, 400);
+  }
   const row = await env.DB.prepare('SELECT email FROM auth_users WHERE email = ?')
     .bind(email)
     .first();
@@ -410,13 +457,19 @@ export async function handleAuthReset(request, env) {
   }
   const next = String((body && body.newPassword) || '');
   const resetPwProblem = authPasswordProblem(next);
-  if (resetPwProblem) return json({ ok: false, error: resetPwProblem }, 400);
+  if (resetPwProblem) {
+    return json({ ok: false, error: resetPwProblem }, 400);
+  }
   const email = await consumeAuthToken(env, String((body && body.token) || ''), 'reset');
-  if (!email) return json({ ok: false, error: 'invalid or expired reset link' }, 400);
+  if (!email) {
+    return json({ ok: false, error: 'invalid or expired reset link' }, 400);
+  }
   const row = await env.DB.prepare('SELECT email FROM auth_users WHERE email = ?')
     .bind(email)
     .first();
-  if (!row) return json({ ok: false, error: 'invalid or expired reset link' }, 400);
+  if (!row) {
+    return json({ ok: false, error: 'invalid or expired reset link' }, 400);
+  }
   const salt = randomSaltHex();
   const newHash = await authHashPassword(next, salt);
   await env.DB.prepare('UPDATE auth_users SET password_hash = ? WHERE email = ?')
@@ -455,7 +508,9 @@ export async function handleAuthResendVerify(request, env) {
     return json({ ok: false, error: 'bad request' }, 400);
   }
   const email = authNormalizeEmail(body && body.email);
-  if (!authEmailValid(email)) return json({ ok: false, error: 'invalid email address' }, 400);
+  if (!authEmailValid(email)) {
+    return json({ ok: false, error: 'invalid email address' }, 400);
+  }
   const generic = {
     ok: true,
     message: 'If an account needs verification, a new confirmation link is on its way.'
@@ -470,7 +525,9 @@ export async function handleAuthResendVerify(request, env) {
     await authHashPassword('x'.repeat(AUTH_MIN_PASSWORD), CLOUD_DUMMY_SALT);
     return json(generic);
   }
-  if (row.email_verified) return json(generic);
+  if (row.email_verified) {
+    return json(generic);
+  }
   if (authEmailConfigured(env)) {
     try {
       const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
@@ -504,7 +561,9 @@ export async function handleAuthResendVerify(request, env) {
 // mid-deletion timeout leaves the account row intact for retry.
 export async function handleAuthDeleteAccount(request, env) {
   const session = await readSession(request, env);
-  if (!session || !session.sub) return json({ ok: false, error: 'not signed in' }, 401);
+  if (!session || !session.sub) {
+    return json({ ok: false, error: 'not signed in' }, 401);
+  }
 
   let body;
   try {
@@ -517,14 +576,20 @@ export async function handleAuthDeleteAccount(request, env) {
   const isEmailAccount = session.sub.indexOf('email:') === 0;
   if (isEmailAccount) {
     const password = String((body && body.password) || '');
-    if (!password) return json({ ok: false, error: 'password is required' }, 400);
+    if (!password) {
+      return json({ ok: false, error: 'password is required' }, 400);
+    }
     const email = session.sub.slice('email:'.length);
     const row = await env.DB.prepare('SELECT password_hash FROM auth_users WHERE email = ?')
       .bind(email)
       .first();
-    if (!row) return json({ ok: false, error: 'account not found' }, 404);
+    if (!row) {
+      return json({ ok: false, error: 'account not found' }, 404);
+    }
     const sep = row.password_hash.indexOf(':');
-    if (sep <= 0) return json({ ok: false, error: 'account not found' }, 404);
+    if (sep <= 0) {
+      return json({ ok: false, error: 'account not found' }, 404);
+    }
     const hash = await authHashPassword(password, row.password_hash.slice(0, sep));
     if (!codesEqual(hash, row.password_hash.slice(sep + 1))) {
       return json({ ok: false, error: 'password is incorrect' }, 401);

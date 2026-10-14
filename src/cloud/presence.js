@@ -31,16 +31,22 @@ async function sha256Hex(str) {
 export async function cloudManifestCodeOk(env, projectId, code) {
   try {
     const res = await env.ASSETS.fetch('/projects-data.js');
-    if (!res.ok) return false;
+    if (!res.ok) {
+      return false;
+    }
     const text = await res.text();
     const start = text.indexOf('[');
     const end = text.lastIndexOf(']');
-    if (start < 0 || end <= start) return false;
+    if (start < 0 || end <= start) {
+      return false;
+    }
     const projects = JSON.parse(text.slice(start, end + 1));
     const p = (projects || []).find(function (x) {
       return x && x.id === projectId;
     });
-    if (!p) return false;
+    if (!p) {
+      return false;
+    }
     const hash = await sha256Hex(
       String(code || '')
         .trim()
@@ -153,7 +159,9 @@ export class Presence {
     if (upgrade !== 'websocket') {
       try {
         const msg = await request.text();
-        if (msg) this.broadcast(msg);
+        if (msg) {
+          this.broadcast(msg);
+        }
       } catch (e) {
         /* ignore malformed internal calls */
       }
@@ -178,7 +186,9 @@ export class Presence {
       const members = [];
       for (const ws of this.state.getWebSockets()) {
         const a = ws.deserializeAttachment();
-        if (a && a.id !== id) members.push({ id: a.id, name: a.name, since: a.since });
+        if (a && a.id !== id) {
+          members.push({ id: a.id, name: a.name, since: a.since });
+        }
       }
       server.send(JSON.stringify({ type: 'init', self: id, members: members }));
       this.broadcast(JSON.stringify({ type: 'join', id: id, name: name, since: Date.now() }), id);
@@ -214,8 +224,9 @@ export class Presence {
             const members = [];
             for (const w of this.state.getWebSockets()) {
               const a = w.deserializeAttachment();
-              if (a && a.authed && a.id !== att.id)
+              if (a && a.authed && a.id !== att.id) {
                 members.push({ id: a.id, name: a.name, since: a.since });
+              }
             }
             ws.send(JSON.stringify({ type: 'init', self: att.id, members: members }));
             this.broadcast(
@@ -262,19 +273,27 @@ export class Presence {
 
   async webSocketClose(ws, code, reason, wasClean) {
     const a = ws.deserializeAttachment() || {};
-    if (a && a.id) this.broadcast(JSON.stringify({ type: 'leave', id: a.id }), null);
+    if (a && a.id) {
+      this.broadcast(JSON.stringify({ type: 'leave', id: a.id }), null);
+    }
   }
 
   async webSocketError(ws, err) {
     const a = ws.deserializeAttachment() || {};
-    if (a && a.id) this.broadcast(JSON.stringify({ type: 'leave', id: a.id }), null);
+    if (a && a.id) {
+      this.broadcast(JSON.stringify({ type: 'leave', id: a.id }), null);
+    }
   }
 
   broadcast(message, exceptId) {
     for (const ws of this.state.getWebSockets()) {
       const a = ws.deserializeAttachment();
-      if (!a || !a.authed) continue;
-      if (exceptId && a.id === exceptId) continue;
+      if (!a || !a.authed) {
+        continue;
+      }
+      if (exceptId && a.id === exceptId) {
+        continue;
+      }
       try {
         ws.send(message);
       } catch (e) {

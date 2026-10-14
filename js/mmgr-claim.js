@@ -32,7 +32,9 @@ var MMGR = window.MMGR || {};
   // ---- LD rate (same source as Forecast.ldExposure: state.ldRate, else charter) ----
   function ldRate(state) {
     const s = state || (ns.State ? ns.State.getState() : null);
-    if (!s) return 0;
+    if (!s) {
+      return 0;
+    }
     return +((s.ldRate !== undefined ? s.ldRate : s.charter && s.charter.ldRate) || 0);
   }
 
@@ -41,7 +43,9 @@ var MMGR = window.MMGR || {};
   //            currentEnd, days, cause, causeSource }] sorted by days desc.
   function computeSlips(state) {
     const s = state || (ns.State ? ns.State.getState() : null);
-    if (!s) return [];
+    if (!s) {
+      return [];
+    }
     const baseMap = {};
     ((s.baseline && s.baseline.tasks) || []).forEach(bt => {
       baseMap[String(bt.id)] = bt;
@@ -49,12 +53,18 @@ var MMGR = window.MMGR || {};
     const slips = [];
     (s.tasks || []).forEach(t => {
       const bt = baseMap[String(t.id)];
-      if (!bt || !bt.endDate || !t.endDate) return;
+      if (!bt || !bt.endDate || !t.endDate) {
+        return;
+      }
       const baseEnd = U.parseDL(bt.endDate);
       const curEnd = U.parseDL(t.endDate);
-      if (!baseEnd || !curEnd) return;
+      if (!baseEnd || !curEnd) {
+        return;
+      }
       const days = Math.round((curEnd - baseEnd) / DAY);
-      if (days <= 0) return; // only slips, never gains, are claim-relevant
+      if (days <= 0) {
+        return;
+      } // only slips, never gains, are claim-relevant
       slips.push({
         taskId: String(t.id),
         taskName: t.name || String(t.id),
@@ -85,21 +95,31 @@ var MMGR = window.MMGR || {};
     //    names this task as affected.
     const wxHit = (s.weatherLog || []).some(e => {
       const d = U.parseDL(e.date);
-      if (!d) return false;
-      if (!(e.affectedTaskIds || []).map(String).some(x => x === id)) return false;
+      if (!d) {
+        return false;
+      }
+      if (!(e.affectedTaskIds || []).map(String).some(x => x === id)) {
+        return false;
+      }
       return d >= baseEnd && d <= curEnd;
     });
-    if (wxHit) return 'weather';
+    if (wxHit) {
+      return 'weather';
+    }
     // 2. predecessor , any predecessor also slipped vs baseline.
     const slippedIds = {};
     ((s.baseline && s.baseline.tasks) || []).forEach(bt => {
       const cur = (s.tasks || []).find(x => String(x.id) === String(bt.id));
       if (cur && bt.endDate && cur.endDate) {
         const d = Math.round((U.parseDL(cur.endDate) - U.parseDL(bt.endDate)) / DAY);
-        if (d > 0) slippedIds[String(bt.id)] = true;
+        if (d > 0) {
+          slippedIds[String(bt.id)] = true;
+        }
       }
     });
-    if ((task.predecessors || []).some(p => slippedIds[String(p)])) return 'predecessor';
+    if ((task.predecessors || []).some(p => slippedIds[String(p)])) {
+      return 'predecessor';
+    }
     // 3. change , a change-control entry references this task by id or name.
     const nameLc = String(task.name || '').toLowerCase();
     const chgHit = (s.changes || []).some(c => {
@@ -110,20 +130,27 @@ var MMGR = window.MMGR || {};
       // substring like "st4el"), plus a name match only when the name is
       // specific enough (>= 3 chars) to avoid false positives.
       const tokens = hay.split(/[^a-zA-Z0-9_]+/).filter(Boolean);
-      if (tokens.indexOf(id) > -1) return true;
+      if (tokens.indexOf(id) > -1) {
+        return true;
+      }
       return nameLc.length >= 3 && hay.toLowerCase().indexOf(nameLc) > -1;
     });
-    if (chgHit) return 'change';
+    if (chgHit) {
+      return 'change';
+    }
     // 4. never silently blank.
     return 'unknown';
   }
 
   // ---- setCause: persist a user override (writes state.slipCauses) ----
   function setCause(taskId, cause) {
-    if (CAUSES.indexOf(cause) === -1) return;
+    if (CAUSES.indexOf(cause) === -1) {
+      return;
+    }
     ns.State.updateState(function (s) {
-      if (!s.slipCauses || typeof s.slipCauses !== 'object' || Array.isArray(s.slipCauses))
+      if (!s.slipCauses || typeof s.slipCauses !== 'object' || Array.isArray(s.slipCauses)) {
         s.slipCauses = {};
+      }
       s.slipCauses[String(taskId)] = cause;
     });
     // renderClaimPanel also refreshes the Budget-tab LD rollup card
@@ -143,14 +170,19 @@ var MMGR = window.MMGR || {};
       total: 0,
       totalDays: 0
     };
-    if (!s) return zero;
+    if (!s) {
+      return zero;
+    }
     const rate = ldRate(s);
     const slips = computeSlips(s);
     let avoidedDays = 0,
       incurredDays = 0;
     slips.forEach(sl => {
-      if (sl.cause === 'weather') avoidedDays += sl.days;
-      else incurredDays += sl.days;
+      if (sl.cause === 'weather') {
+        avoidedDays += sl.days;
+      } else {
+        incurredDays += sl.days;
+      }
     });
     return {
       rate: rate,
@@ -166,17 +198,27 @@ var MMGR = window.MMGR || {};
   // ---- 1.1 buildClaimPack: everything pulled LIVE from unified state ----
   function buildClaimPack(state, from, to) {
     const s = state || (ns.State ? ns.State.getState() : null);
-    if (!s) return null;
+    if (!s) {
+      return null;
+    }
     const f = s.charter || {};
     const project = s.projectName || f.name || 'Project';
     const fromD = from ? U.parseDL(from) : null;
     const toD = to ? U.parseDL(to) : null;
     const inRange = function (dStr) {
-      if (!dStr) return false;
+      if (!dStr) {
+        return false;
+      }
       const d = U.parseDL(dStr);
-      if (!d) return false;
-      if (fromD && d < fromD) return false;
-      if (toD && d > toD) return false;
+      if (!d) {
+        return false;
+      }
+      if (fromD && d < fromD) {
+        return false;
+      }
+      if (toD && d > toD) {
+        return false;
+      }
       return true;
     };
     // Weather delay rows in the window (Rank 7.4 data , the Rank 1 dependency)
@@ -196,7 +238,9 @@ var MMGR = window.MMGR || {};
     const affectedIds = [];
     weatherDelays.forEach(e =>
       (e.affectedTaskIds || []).forEach(id => {
-        if (affectedIds.indexOf(id) === -1) affectedIds.push(id);
+        if (affectedIds.indexOf(id) === -1) {
+          affectedIds.push(id);
+        }
       })
     );
     const affectedTasks = affectedIds.map(id => {
@@ -222,8 +266,11 @@ var MMGR = window.MMGR || {};
     let wAvoidedDays = 0,
       wIncurredDays = 0;
     slips.forEach(sl => {
-      if (sl.cause === 'weather') wAvoidedDays += sl.days;
-      else wIncurredDays += sl.days;
+      if (sl.cause === 'weather') {
+        wAvoidedDays += sl.days;
+      } else {
+        wIncurredDays += sl.days;
+      }
     });
     const ldRoll = {
       rate: rate,
@@ -280,7 +327,9 @@ var MMGR = window.MMGR || {};
     const promises = s.meetingPromises || {};
     Object.keys(promises).forEach(k => {
       (promises[k] || []).forEach(p => {
-        if (!p.done) openPromises.push({ text: p.text || '', meeting: k });
+        if (!p.done) {
+          openPromises.push({ text: p.text || '', meeting: k });
+        }
       });
     });
     const narrative = buildNarrative(project, weatherDelays, slips, ldRoll, from, to);
@@ -369,8 +418,9 @@ var MMGR = window.MMGR || {};
   // ATTESTATION block (signature / name / role / date) so the pasted text
   // stands alone as a submittable record. Zero hand-typed content.
   function claimPackText(pack) {
-    if (!pack)
+    if (!pack) {
       return 'No claim package generated yet. Open the Claim Pack tab, set a date range, and click Generate.';
+    }
     const s = ns.State && ns.State.getState ? ns.State.getState() : {};
     const userName = String(s.userName || '').trim();
     const L = [];
@@ -414,7 +464,9 @@ var MMGR = window.MMGR || {};
           cur += ' ' + word;
         }
       });
-      if (cur) out.push(cur);
+      if (cur) {
+        out.push(cur);
+      }
       return out;
     };
     const ref = ((pack.from || 'START') + '-' + (pack.to || 'TODAY')).replace(/[^0-9A-Za-z-]/g, '');
@@ -612,19 +664,24 @@ var MMGR = window.MMGR || {};
     const to = toEl ? toEl.value : '';
     if (from && to && from > to) {
       // ISO dates compare lexicographically
-      if (ns.App && ns.App.showToast)
+      if (ns.App && ns.App.showToast) {
         ns.App.showToast('Date range is reversed , From must be before To.', 'err');
+      }
       return;
     }
     const pack = buildClaimPack(ns.State.getState(), from, to);
     renderPackage(pack);
-    if (ns.App && ns.App.showToast) ns.App.showToast('Claim package generated.', 'ok');
+    if (ns.App && ns.App.showToast) {
+      ns.App.showToast('Claim package generated.', 'ok');
+    }
   }
 
   // ---- renderPackage: live preview in the Claim Pack panel ----
   function renderPackage(pack) {
     const el = U.$('claim-package-body');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const esc = U.escapeHtml;
     let html = '<div class="claim-narr">' + esc(pack.narrative) + '</div>';
     html +=
@@ -670,7 +727,9 @@ var MMGR = window.MMGR || {};
   // ---- renderLdRollup: Budget-tab LD exposure card (1.3) ----
   function renderLdRollup() {
     const el = U.$('ld-rollup-body');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const ld = ldRollup(ns.State.getState());
     if (!ld.rate && !ld.totalDays) {
       el.innerHTML =

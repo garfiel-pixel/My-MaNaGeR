@@ -19,13 +19,17 @@ const BASES = {
 
 async function probe(env, key, id, fetchImpl) {
   const f = fetchImpl || fetch;
-  if (!key) return { env, skipped: true };
+  if (!key) {
+    return { env, skipped: true };
+  }
   const kind = /^sub_[0-9a-z]+$/i.test(id)
     ? 'subscriptions'
     : /^pri_[0-9a-z]+$/i.test(id)
       ? 'prices'
       : '';
-  if (!kind) return { env, id, invalidId: true };
+  if (!kind) {
+    return { env, id, invalidId: true };
+  }
   try {
     const res = await f(BASES[env] + '/' + kind + '/' + encodeURIComponent(id), {
       headers: { Authorization: 'Bearer ' + key }
@@ -42,7 +46,7 @@ async function probe(env, key, id, fetchImpl) {
       };
     }
     const d = (body && body.data) || {};
-    if (kind === 'prices')
+    if (kind === 'prices') {
       return {
         env,
         id,
@@ -51,6 +55,7 @@ async function probe(env, key, id, fetchImpl) {
         product: d.product_id,
         name: d.name || d.description || null
       };
+    }
     return {
       env,
       id,
@@ -70,10 +75,18 @@ async function probe(env, key, id, fetchImpl) {
 // One plain-English verdict per subscription id.
 function verdict(live, sandbox) {
   const found = r => r && r.http === 200;
-  if (found(live) && found(sandbox)) return 'FOUND IN BOTH (unexpected - ids are unique)';
-  if (found(live)) return 'LIVE: the live API knows this id';
-  if (found(sandbox)) return 'SANDBOX ONLY: it exists in sandbox, the live API cannot see it';
-  if (live && live.skipped && sandbox && sandbox.skipped) return 'NO KEYS SUPPLIED';
+  if (found(live) && found(sandbox)) {
+    return 'FOUND IN BOTH (unexpected - ids are unique)';
+  }
+  if (found(live)) {
+    return 'LIVE: the live API knows this id';
+  }
+  if (found(sandbox)) {
+    return 'SANDBOX ONLY: it exists in sandbox, the live API cannot see it';
+  }
+  if (live && live.skipped && sandbox && sandbox.skipped) {
+    return 'NO KEYS SUPPLIED';
+  }
   return 'NOT FOUND in the environments you supplied a key for';
 }
 
@@ -97,4 +110,6 @@ async function main() {
 }
 
 module.exports = { probe, verdict };
-if (require.main === module) main();
+if (require.main === module) {
+  main();
+}

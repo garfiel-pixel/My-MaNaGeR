@@ -18,7 +18,9 @@ const BASE = process.env.QA_BASE || 'http://127.0.0.1:8765';
 let fails = 0;
 function ok(label, cond, extra) {
   console.log((cond ? 'PASS  ' : 'FAIL  ') + label + (extra ? '  [' + extra + ']' : ''));
-  if (!cond) fails++;
+  if (!cond) {
+    fails++;
+  }
 }
 
 // next= values that MUST be refused, and ones that MUST be honoured.
@@ -50,8 +52,9 @@ const VALID = ['/app.html', '/project.html?id=demo', '/index.html#faq', '/dashbo
     })
   );
   page.on('console', m => {
-    if (m.type() === 'error' && !/404 \(Not Found\)/.test(m.text()))
+    if (m.type() === 'error' && !/404 \(Not Found\)/.test(m.text())) {
       errs.push(m.text().slice(0, 90));
+    }
   });
   page.on('pageerror', e => errs.push('PAGEERROR ' + e.message.slice(0, 90)));
 
@@ -228,7 +231,9 @@ const VALID = ['/app.html', '/project.html?id=demo', '/index.html#faq', '/dashbo
     const out = {};
     const g = (sel, bg, key) => {
       const e = document.querySelector(sel);
-      if (e) out[key] = ratio(over(parse(getComputedStyle(e).color), bg), bg);
+      if (e) {
+        out[key] = ratio(over(parse(getComputedStyle(e).color), bg), bg);
+      }
     };
     g('.signin-card h1', cardFill, 'h1');
     g('.signin-lede', cardFill, 'lede');
@@ -241,7 +246,9 @@ const VALID = ['/app.html', '/project.html?id=demo', '/index.html#faq', '/dashbo
     return out;
   });
   for (const k of ['h1', 'lede', 'legal', 'inputText', 'placeholder']) {
-    if (cr[k] === undefined) continue;
+    if (cr[k] === undefined) {
+      continue;
+    }
     ok('WCAG AA contrast: ' + k + ' >= 4.5:1', cr[k] >= 4.5, cr[k] + ':1');
   }
 

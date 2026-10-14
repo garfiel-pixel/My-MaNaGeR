@@ -99,7 +99,9 @@ const forbidden = [
   'Steering board',
   'sk-SUPER-SECRET-999'
 ];
-for (const f of forbidden) check('R2 excludes ' + JSON.stringify(f), sanitized.indexOf(f) === -1);
+for (const f of forbidden) {
+  check('R2 excludes ' + JSON.stringify(f), sanitized.indexOf(f) === -1);
+}
 check('R2 note that context is omitted', sanitized.indexOf('Project context omitted') > -1);
 
 console.log('--- R3 opt-in context adds names/figures, still never keys ---');

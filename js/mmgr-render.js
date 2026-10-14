@@ -56,7 +56,9 @@ var MMGR = window.MMGR || {};
   // interpolated into markup, not set via textContent.
   function renderGreeting() {
     const g = $('greeting');
-    if (!g) return;
+    if (!g) {
+      return;
+    }
     const s = S();
     const hour = new Date().getHours();
     let icon = 'i-moon',
@@ -81,18 +83,24 @@ var MMGR = window.MMGR || {};
   // ---- Methodology ----
   function renderMethodology() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const meth = s.methodology || 'waterfall';
     const methLabel = meth.charAt(0).toUpperCase() + meth.slice(1);
     const el = $('meth-lbl');
-    if (el) el.textContent = methLabel + ' View';
+    if (el) {
+      el.textContent = methLabel + ' View';
+    }
     // Update tab buttons
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.classList.toggle('active', btn.textContent.toLowerCase() === meth);
     });
     // Sprint visibility (is-hide class, not inline style)
     const sprintPanel = $('sprint-p');
-    if (sprintPanel) sprintPanel.classList.toggle('is-hide', meth !== 'agile');
+    if (sprintPanel) {
+      sprintPanel.classList.toggle('is-hide', meth !== 'agile');
+    }
     // SIDEBAR-HAMBURGER-TOGGLE-PLAN: the gate targets EVERY .sec-btn for the
     // section (top pill nav + desktop sidebar clones), not just #dmaic-nav by
     // id, the sidebar mirrors the same visibility by construction.
@@ -104,7 +112,9 @@ var MMGR = window.MMGR || {};
   // ---- Lock Indicator ----
   function renderLock() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const locked = s.methodologyLocked;
     const ind = $('lk-ind');
     if (ind) {
@@ -115,13 +125,17 @@ var MMGR = window.MMGR || {};
     }
     // Glass §5: the Lock button is a binary chip, solid when locked.
     const lockBtn = document.querySelector('[data-action="tglLock"]');
-    if (lockBtn) lockBtn.classList.toggle('is-on', !!locked);
+    if (lockBtn) {
+      lockBtn.classList.toggle('is-on', !!locked);
+    }
   }
 
   // ---- Dashboard ----
   function renderDash() {
     const s = S();
-    if (!s || !s.tasks) return;
+    if (!s || !s.tasks) {
+      return;
+    }
     // DIR-3: keep the Core-Mode onboarding callout in sync with pack state
     // (a pack toggled on elsewhere must hide it the moment the user returns
     // to the Dashboard).
@@ -144,17 +158,23 @@ var MMGR = window.MMGR || {};
     const circ = 245;
     const offset = circ - (circ * pct) / 100;
     const rf = $('rf');
-    if (rf) rf.style.strokeDashoffset = offset;
+    if (rf) {
+      rf.style.strokeDashoffset = offset;
+    }
     // OWNER 2026-09-15 (ring polish): one quarter-turn entry sweep per page
     // load - guarded so re-renders never replay the animation.
     const pringEl = rf && rf.closest ? rf.closest('.pring') : null;
-    if (pringEl && !pringEl.classList.contains('ring-in')) pringEl.classList.add('ring-in');
+    if (pringEl && !pringEl.classList.contains('ring-in')) {
+      pringEl.classList.add('ring-in');
+    }
     const rt = $('rt');
     // OWNER 2026-09-12 (P2-12): ONLY the percentage lives inside the ring -
     // the word 'Completed' beside it (repeated three times around the title,
     // the ring, and the stat block) crowded the circle. The figure reads as
     // a percent naturally; the beside stat keeps its 'Completed' label.
-    if (rt) rt.textContent = total === 0 ? '0%' : pct + '%';
+    if (rt) {
+      rt.textContent = total === 0 ? '0%' : pct + '%';
+    }
     const dc = $('dc');
     if (dc) {
       dc.textContent = done;
@@ -169,7 +189,9 @@ var MMGR = window.MMGR || {};
     // Health
     const setVal = (id, val) => {
       const el = $(id);
-      if (el) el.textContent = val;
+      if (el) {
+        el.textContent = val;
+      }
     };
     setVal('h-ip', ip);
     setVal('h-ar', atRisk);
@@ -214,7 +236,9 @@ var MMGR = window.MMGR || {};
             // Critical path first, then due soon, then by priority
             const aCrit = a.critical ? 1 : 0;
             const bCrit = b.critical ? 1 : 0;
-            if (bCrit !== aCrit) return bCrit - aCrit;
+            if (bCrit !== aCrit) {
+              return bCrit - aCrit;
+            }
             const aDue = a.endDate ? U.daysBetween(new Date(), a.endDate) : 999;
             const bDue = b.endDate ? U.daysBetween(new Date(), b.endDate) : 999;
             return aDue - bDue;
@@ -255,18 +279,24 @@ var MMGR = window.MMGR || {};
         // Empty: explain why + quiet the zero (§1.2).
         budEl.textContent = '';
         budEl.style.color = 'var(--slate)';
-        if (budCard) budCard.classList.add('tier3');
+        if (budCard) {
+          budCard.classList.add('tier3');
+        }
       } else {
         budEl.textContent = (variance >= 0 ? '+' : '') + '$' + Math.abs(variance).toLocaleString();
         budEl.style.color = variance >= 0 ? 'var(--green)' : 'var(--danger)';
-        if (budCard) budCard.classList.remove('tier3');
+        if (budCard) {
+          budCard.classList.remove('tier3');
+        }
       }
     }
     const budSub = $('dw-bud-sub');
     if (budSub) {
-      if (bud.length === 0) budSub.innerHTML = 'No budget lines yet, add one in Budget';
-      else
+      if (bud.length === 0) {
+        budSub.innerHTML = 'No budget lines yet, add one in Budget';
+      } else {
         budSub.textContent = `Planned: $${planned.toLocaleString()} | Actual: $${actual.toLocaleString()}`;
+      }
     }
 
     // Resource Utilization
@@ -289,11 +319,15 @@ var MMGR = window.MMGR || {};
       if (resources.length === 0) {
         utilEl.textContent = '';
         utilEl.style.color = 'var(--slate)';
-        if (utilCard) utilCard.classList.add('tier3');
+        if (utilCard) {
+          utilCard.classList.add('tier3');
+        }
       } else {
         utilEl.textContent = avgUtil + '%';
         utilEl.style.color = '';
-        if (utilCard) utilCard.classList.remove('tier3');
+        if (utilCard) {
+          utilCard.classList.remove('tier3');
+        }
       }
     }
     setVal(
@@ -316,11 +350,15 @@ var MMGR = window.MMGR || {};
       if (changes.length === 0) {
         chgEl.textContent = '';
         chgEl.style.color = 'var(--slate)';
-        if (chgCard) chgCard.classList.add('tier3');
+        if (chgCard) {
+          chgCard.classList.add('tier3');
+        }
       } else {
         chgEl.textContent = pending;
         chgEl.style.color = pending > 0 ? 'var(--amber)' : '';
-        if (chgCard) chgCard.classList.remove('tier3');
+        if (chgCard) {
+          chgCard.classList.remove('tier3');
+        }
       }
     }
     if (chgSub) {
@@ -335,8 +373,12 @@ var MMGR = window.MMGR || {};
         const schedStr =
           totalSchedImpact !== 0 ? (totalSchedImpact > 0 ? '+' : '') + totalSchedImpact + 'd' : '';
         const parts = [approved.length + ' approved'];
-        if (costStr) parts.push('Cost: ' + costStr);
-        if (schedStr) parts.push('Schedule: ' + schedStr);
+        if (costStr) {
+          parts.push('Cost: ' + costStr);
+        }
+        if (schedStr) {
+          parts.push('Schedule: ' + schedStr);
+        }
         chgSub.textContent = parts.join(' | ');
       }
     }
@@ -354,20 +396,29 @@ var MMGR = window.MMGR || {};
       const diff = currentPct - basePct;
       baseEl.textContent = (diff >= 0 ? '+' : '') + diff + '%';
       baseEl.style.color = diff >= 0 ? 'var(--green)' : 'var(--danger)';
-      if (baseSub) baseSub.textContent = `vs baseline (${basePct}% at capture)`;
-      if (baseCard) baseCard.classList.remove('tier3');
+      if (baseSub) {
+        baseSub.textContent = `vs baseline (${basePct}% at capture)`;
+      }
+      if (baseCard) {
+        baseCard.classList.remove('tier3');
+      }
     } else if (baseEl) {
       baseEl.textContent = '';
       baseEl.style.color = 'var(--slate)';
-      if (baseSub)
+      if (baseSub) {
         baseSub.textContent =
           'No baseline yet - one is captured automatically once a task has dates and days, or use Save Baseline in Controls.';
-      if (baseCard) baseCard.classList.add('tier3');
+      }
+      if (baseCard) {
+        baseCard.classList.add('tier3');
+      }
     }
     // Baseline guard (owner 2026-09-19): idempotent - auto-captures the first
     // baseline when the project becomes schedulable and toggles the nudge
     // dots. Runs on every dashboard render so the signal can never go stale.
-    if (ns.BaselineGuard) ns.BaselineGuard.ensure();
+    if (ns.BaselineGuard) {
+      ns.BaselineGuard.ensure();
+    }
 
     // Baseline variance table, schedule days per task + overall cost delta
     const bvt = $('base-var-body');
@@ -383,13 +434,19 @@ var MMGR = window.MMGR || {};
           0
         );
         const curPlanned = bud.reduce((sum, l) => sum + (+l.planned || 0), 0);
-        if (basePlanned > 0 || curPlanned > 0) costVar = curPlanned - basePlanned;
+        if (basePlanned > 0 || curPlanned > 0) {
+          costVar = curPlanned - basePlanned;
+        }
         const rows = [];
         (Array.isArray(base.tasks) ? base.tasks : []).forEach(bt => {
           const cur = currentMap[bt.id];
-          if (!cur) return;
+          if (!cur) {
+            return;
+          }
           let schedVar = null;
-          if (bt.endDate && cur.endDate) schedVar = U.daysBetween(bt.endDate, cur.endDate);
+          if (bt.endDate && cur.endDate) {
+            schedVar = U.daysBetween(bt.endDate, cur.endDate);
+          }
           rows.push({
             name: bt.name,
             bEnd: bt.endDate || '',
@@ -455,8 +512,12 @@ var MMGR = window.MMGR || {};
       if (completedTasks.length === 0) {
         cycleEl.textContent = '-';
         cycleEl.style.color = 'var(--slate)';
-        if (cycleSub) cycleSub.textContent = 'Complete tasks to see cycle time';
-        if (cycleCard) cycleCard.classList.add('tier3');
+        if (cycleSub) {
+          cycleSub.textContent = 'Complete tasks to see cycle time';
+        }
+        if (cycleCard) {
+          cycleCard.classList.add('tier3');
+        }
       } else {
         // C9 data-quality guard (2026-09-05): a completed task whose planned or
         // actual span runs backwards (end before start - bad or out-of-order
@@ -475,10 +536,13 @@ var MMGR = window.MMGR || {};
         if (validTasks.length === 0) {
           cycleEl.textContent = '--';
           cycleEl.style.color = 'var(--danger)';
-          if (cycleSub)
+          if (cycleSub) {
             cycleSub.textContent =
               'Completed task dates run backwards - fix the task start/end dates to see cycle time';
-          if (cycleCard) cycleCard.classList.remove('tier3');
+          }
+          if (cycleCard) {
+            cycleCard.classList.remove('tier3');
+          }
         } else {
           const plannedDurs = validTasks.map(t => U.daysBetween(t.startDate, t.endDate));
           const avgPlanned = Math.round(
@@ -506,9 +570,15 @@ var MMGR = window.MMGR || {};
             ' task' +
             (validTasks.length === 1 ? '' : 's') +
             ')';
-          if (dropped > 0) subTxt += ' | ' + dropped + ' excluded for date errors';
-          if (cycleSub) cycleSub.textContent = subTxt;
-          if (cycleCard) cycleCard.classList.remove('tier3');
+          if (dropped > 0) {
+            subTxt += ' | ' + dropped + ' excluded for date errors';
+          }
+          if (cycleSub) {
+            cycleSub.textContent = subTxt;
+          }
+          if (cycleCard) {
+            cycleCard.classList.remove('tier3');
+          }
         }
       }
     }
@@ -558,37 +628,47 @@ var MMGR = window.MMGR || {};
     }
 
     // Health Score (feature 1), must be cheap; renders only its own card.
-    if (ns.Health && ns.Health.render) ns.Health.render();
+    if (ns.Health && ns.Health.render) {
+      ns.Health.render();
+    }
     // DMAIC progress signal (visible only while DMAIC is active)
-    if (ns.Dmaic && ns.Dmaic.renderSignal) ns.Dmaic.renderSignal();
+    if (ns.Dmaic && ns.Dmaic.renderSignal) {
+      ns.Dmaic.renderSignal();
+    }
     // EVM (feature 4)
-    if (ns.Evm && ns.Evm.render) ns.Evm.render();
+    if (ns.Evm && ns.Evm.render) {
+      ns.Evm.render();
+    }
     // ---- Attention card (UI-UX doc §7.1): items needing immediate action ----
     const attnEl = $('attention-body');
     if (attnEl) {
       const attnItems = [];
-      if (overdue > 0)
+      if (overdue > 0) {
         attnItems.push({
           label: overdue + ' task' + (overdue > 1 ? 's' : '') + ' overdue',
           cls: 'br'
         });
-      if (blocked > 0)
+      }
+      if (blocked > 0) {
         attnItems.push({
           label: blocked + ' task' + (blocked > 1 ? 's' : '') + ' blocked',
           cls: 'br'
         });
-      if (issues > 0)
+      }
+      if (issues > 0) {
         attnItems.push({ label: issues + ' live issue' + (issues > 1 ? 's' : ''), cls: 'br' });
-      if (atRisk > 0)
+      }
+      if (atRisk > 0) {
         attnItems.push({
           label: atRisk + ' task' + (atRisk > 1 ? 's' : '') + ' due soon',
           cls: 'ba'
         });
+      }
       const expiringCompliance =
         ns.Stakeholders && ns.Stakeholders.getExpiringCompliance
           ? ns.Stakeholders.getExpiringCompliance(s.stakeholders || [], 30).length
           : 0;
-      if (expiringCompliance > 0)
+      if (expiringCompliance > 0) {
         attnItems.push({
           label:
             expiringCompliance +
@@ -597,8 +677,11 @@ var MMGR = window.MMGR || {};
             ' expiring',
           cls: 'ba'
         });
+      }
       const attnCard = $('attention-card');
-      if (attnCard) attnCard.classList.toggle('has-items', attnItems.length > 0);
+      if (attnCard) {
+        attnCard.classList.toggle('has-items', attnItems.length > 0);
+      }
       if (attnItems.length === 0) {
         attnEl.innerHTML =
           '<div class="fb-sm"><span>Everything looks clear.</span><span class="dotstat zero"><span class="sdot"></span><span class="ds-num">0</span></span></div>';
@@ -635,12 +718,16 @@ var MMGR = window.MMGR || {};
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekStart.getDate() + 7);
         const thisWeekPlanned = tasks.filter(function (t) {
-          if (t.status === 'completed' || !t.endDate) return false;
+          if (t.status === 'completed' || !t.endDate) {
+            return false;
+          }
           const d = new Date(t.endDate);
           return d >= weekStart && d < weekEnd;
         }).length;
         const thisWeekDone = tasks.filter(function (t) {
-          if (t.status !== 'completed' || !t.endDate) return false;
+          if (t.status !== 'completed' || !t.endDate) {
+            return false;
+          }
           const d = new Date(t.endDate);
           return d >= weekStart && d < weekEnd;
         }).length;
@@ -679,7 +766,9 @@ var MMGR = window.MMGR || {};
       // MARKET-FEATURE-ROADMAP C29: expiry & renewal rollup card.
       renderExpiryCard();
       // Today's Decision Engine (ACTION-PLAN 1.1), impact-scored ranking
-      if (ns.Decisions && ns.Decisions.render) ns.Decisions.render();
+      if (ns.Decisions && ns.Decisions.render) {
+        ns.Decisions.render();
+      }
       // Milestone Timeline + Timeline Target status (feature 11)
       renderMilestoneTimeline();
       renderTimelineStatus();
@@ -701,7 +790,9 @@ var MMGR = window.MMGR || {};
       // Meetings (MEETING_TRACKING_SPEC)
       renderMeetingsPanel();
       // Rank 2: Weekly/Daily Digest Engine, 'What Changed' diff + snapshot
-      if (ns.Digest && ns.Digest.render) ns.Digest.render();
+      if (ns.Digest && ns.Digest.render) {
+        ns.Digest.render();
+      }
     });
   }
 
@@ -711,16 +802,21 @@ var MMGR = window.MMGR || {};
   // same updTaskField data-action the WBS uses.
   function renderTodayView() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const el = $('today-body');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const lbl = $('today-date-lbl');
-    if (lbl)
+    if (lbl) {
       lbl.textContent = new Date().toLocaleDateString('en-US', {
         weekday: 'long',
         month: 'long',
         day: 'numeric'
       });
+    }
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const in7 = new Date(today);
@@ -751,7 +847,9 @@ var MMGR = window.MMGR || {};
         !(t.endDate && U.parseDL(t.endDate) <= in7)
     );
     const renderGroup = (title, list, color, icon) => {
-      if (!list.length) return '';
+      if (!list.length) {
+        return '';
+      }
       const head = `<div class="tf-head" style="color:${color}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#${icon}"></use></svg> ${title} (${list.length})</div>`;
       const rows = list
         .map(
@@ -781,9 +879,13 @@ var MMGR = window.MMGR || {};
   // and Today's Focus use.
   function renderLookahead() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const el = $('lookahead-body');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const tasks =
       ns.Schedule && ns.Schedule.lookaheadTasks
         ? ns.Schedule.lookaheadTasks(s.tasks || [], 14)
@@ -793,7 +895,9 @@ var MMGR = window.MMGR || {};
     const wkLabel = d =>
       'Week of ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const group = (label, list, color) => {
-      if (!list.length) return '';
+      if (!list.length) {
+        return '';
+      }
       const rows = list
         .map(
           t => `<div class="tf-row" style="border-left-color:${color}">
@@ -827,17 +931,21 @@ var MMGR = window.MMGR || {};
   // are completed. Current week figure + last 4 weeks as quiet history bars.
   function renderPpc() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const el = $('ppc-body');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const tasks = s.tasks || [];
     const now = computePpcSafe(tasks, 0);
     const hist = [1, 2, 3, 4].map(o => computePpcSafe(tasks, o)).reverse();
     const head = $('ppc-head');
     if (head) {
-      if (now.planned === 0)
+      if (now.planned === 0) {
         head.textContent = 'No tasks planned to finish this week, add end dates to schedule work.';
-      else
+      } else {
         head.textContent =
           now.completed +
           ' of ' +
@@ -845,6 +953,7 @@ var MMGR = window.MMGR || {};
           ' tasks planned this week completed (' +
           now.pct +
           '%)';
+      }
     }
     const overdue = tasks.filter(t => U.isOverdue(t.endDate) && t.status !== 'completed').length;
     const bars = hist
@@ -877,7 +986,9 @@ var MMGR = window.MMGR || {};
   // Safe wrapper, computePpc lives on Schedule; never let a missing module
   // kill the dashboard render.
   function computePpcSafe(tasks, offset) {
-    if (ns.Schedule && ns.Schedule.computePpc) return ns.Schedule.computePpc(tasks, offset);
+    if (ns.Schedule && ns.Schedule.computePpc) {
+      return ns.Schedule.computePpc(tasks, offset);
+    }
     return { planned: 0, completed: 0, pct: null, start: new Date(), end: new Date() };
   }
 
@@ -886,20 +997,30 @@ var MMGR = window.MMGR || {};
   // with a date coming due in the next 60 days (or already past).
   function renderExpiryCard() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const el = $('expiry-body');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const wrap = $('expiry-card');
     const list =
       ns.Compliance && ns.Compliance.getExpiryRollup ? ns.Compliance.getExpiryRollup(60) : [];
     if (list.length === 0) {
-      if (wrap) wrap.classList.add('is-hide');
+      if (wrap) {
+        wrap.classList.add('is-hide');
+      }
       return;
     }
-    if (wrap) wrap.classList.remove('is-hide');
+    if (wrap) {
+      wrap.classList.remove('is-hide');
+    }
     const setVal = (id, val) => {
       const x = $(id);
-      if (x) x.textContent = val;
+      if (x) {
+        x.textContent = val;
+      }
     };
     setVal('expiry-count', list.length + (list.length === 1 ? ' item' : ' items') + ' due');
     const kindColor = k =>
@@ -944,11 +1065,17 @@ var MMGR = window.MMGR || {};
   // date.
   function computeTimelineStatus(state) {
     const s = state || S();
-    if (!s) return null;
+    if (!s) {
+      return null;
+    }
     const f = s.charter || {};
-    if (!f.targetCompletion && !f.end) return null;
+    if (!f.targetCompletion && !f.end) {
+      return null;
+    }
     const dated = (s.tasks || []).filter(t => t.endDate || t.end);
-    if (!dated.length) return null;
+    if (!dated.length) {
+      return null;
+    }
     const targetDate = f.targetCompletion || f.end;
     const target = new Date(targetDate);
     const projected = new Date(
@@ -986,9 +1113,13 @@ var MMGR = window.MMGR || {};
 
   function renderTimelineStatus() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const wrap = $('timeline-target-card');
-    if (!wrap) return;
+    if (!wrap) {
+      return;
+    }
     const t = computeTimelineStatus(s);
     const hdrBadge = $('timeline-ind');
     if (!t) {
@@ -998,7 +1129,9 @@ var MMGR = window.MMGR || {};
           ? 'Set a <strong>Target Completion Date</strong> in the Charter tab to activate timeline tracking.'
           : 'Schedule at least one task with an end date (WBS/Gantt) to compare it against your Target Completion Date.';
       wrap.innerHTML = `<div class="es" style="padding:14px;font-size:.78rem">${msg}</div>`;
-      if (hdrBadge) hdrBadge.classList.remove('on');
+      if (hdrBadge) {
+        hdrBadge.classList.remove('on');
+      }
       return;
     }
     const color =
@@ -1028,9 +1161,13 @@ var MMGR = window.MMGR || {};
   // from the full Gantt chart.
   function renderMilestoneTimeline() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const el = $('milestone-timeline');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const milestones = (s.tasks || [])
       .filter(t => t.milestone && t.endDate)
       .sort((a, b) => new Date(a.endDate) - new Date(b.endDate));
@@ -1061,9 +1198,13 @@ var MMGR = window.MMGR || {};
   // ---- Timeline Indicator ----
   function renderTimelineIndicator() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const ind = $('timeline-ind');
-    if (!ind) return;
+    if (!ind) {
+      return;
+    }
     const target = s.charter && s.charter.targetCompletion;
     if (!target) {
       ind.classList.remove('on');
@@ -1073,7 +1214,9 @@ var MMGR = window.MMGR || {};
     const tasks = s.tasks || [];
     let latestEnd = null;
     for (const t of tasks) {
-      if (t.endDate && (!latestEnd || t.endDate > latestEnd)) latestEnd = t.endDate;
+      if (t.endDate && (!latestEnd || t.endDate > latestEnd)) {
+        latestEnd = t.endDate;
+      }
     }
     if (!latestEnd) {
       ind.classList.remove('on');
@@ -1123,34 +1266,54 @@ var MMGR = window.MMGR || {};
   // days remaining (or overdue) vs the Expected Date.
   // ---- Weather rendering ---- (extracted to js/render/weather.js)
   function renderLeadtimeTracker() {
-    if (ns.RenderWeather) ns.RenderWeather.renderLeadtimeTracker();
+    if (ns.RenderWeather) {
+      ns.RenderWeather.renderLeadtimeTracker();
+    }
   }
   function renderFloatWatch() {
-    if (ns.RenderWeather) ns.RenderWeather.renderFloatWatch();
+    if (ns.RenderWeather) {
+      ns.RenderWeather.renderFloatWatch();
+    }
   }
   function renderWeatherVariance() {
-    if (ns.RenderWeather) ns.RenderWeather.renderWeatherVariance();
+    if (ns.RenderWeather) {
+      ns.RenderWeather.renderWeatherVariance();
+    }
   }
   function updWxWindow() {
-    if (ns.RenderWeather) ns.RenderWeather.updWxWindow();
+    if (ns.RenderWeather) {
+      ns.RenderWeather.updWxWindow();
+    }
   }
   function updWxBuffer() {
-    if (ns.RenderWeather) ns.RenderWeather.updWxBuffer();
+    if (ns.RenderWeather) {
+      ns.RenderWeather.updWxBuffer();
+    }
   }
   function updLdRate() {
-    if (ns.RenderWeather) ns.RenderWeather.updLdRate();
+    if (ns.RenderWeather) {
+      ns.RenderWeather.updLdRate();
+    }
   }
   function renderScheduleConfidence() {
-    if (ns.RenderWeather) ns.RenderWeather.renderScheduleConfidence();
+    if (ns.RenderWeather) {
+      ns.RenderWeather.renderScheduleConfidence();
+    }
   }
   function renderWeatherForecast() {
-    if (ns.RenderWeather) ns.RenderWeather.renderWeatherForecast();
+    if (ns.RenderWeather) {
+      ns.RenderWeather.renderWeatherForecast();
+    }
   }
   function renderWeatherLog() {
-    if (ns.RenderWeather) ns.RenderWeather.renderWeatherLog();
+    if (ns.RenderWeather) {
+      ns.RenderWeather.renderWeatherLog();
+    }
   }
   function renderSafetyBanner() {
-    if (ns.RenderWeather) ns.RenderWeather.renderSafetyBanner();
+    if (ns.RenderWeather) {
+      ns.RenderWeather.renderSafetyBanner();
+    }
   }
 
   // ==================================================================
@@ -1170,7 +1333,9 @@ var MMGR = window.MMGR || {};
   // visibility: amber at ≤7d overdue, red 8-21d, bold red beyond 21d.
   function computeAgingActions(state) {
     const s = state || S();
-    if (!s) return [];
+    if (!s) {
+      return [];
+    }
     const items = [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -1180,7 +1345,9 @@ var MMGR = window.MMGR || {};
     const promises = s.meetingPromises || {};
     Object.keys(promises).forEach(kind => {
       (Array.isArray(promises[kind]) ? promises[kind] : []).forEach(p => {
-        if (p.done) return;
+        if (p.done) {
+          return;
+        }
         const created = p.createdAt ? U.parseDL(p.createdAt.slice(0, 10)) : null;
         items.push({
           text: p.text,
@@ -1194,7 +1361,9 @@ var MMGR = window.MMGR || {};
     // Comms-log action items (follow-up date is the due date when present)
     (s.commsEntries || []).forEach(c => {
       const txt = (c.actionItems || '').trim();
-      if (!txt) return;
+      if (!txt) {
+        return;
+      }
       const due = U.parseDL(c.followUp);
       const base = due || U.parseDL(c.date);
       items.push({
@@ -1208,7 +1377,9 @@ var MMGR = window.MMGR || {};
     // Decision-log action items
     (s.logEntries || []).forEach(l => {
       const txt = (l.actionItems || '').trim();
-      if (!txt) return;
+      if (!txt) {
+        return;
+      }
       const base = U.parseDL(String(l.date || '').slice(0, 10)) || null;
       items.push({ text: txt, src: 'Decision log', kind: 'log', age: daysFrom(base), due: null });
     });
@@ -1222,17 +1393,26 @@ var MMGR = window.MMGR || {};
   }
 
   function agingTier(age) {
-    if (age === null) return { cls: 'ba', label: 'no due date' };
-    if (age <= 0)
+    if (age === null) {
+      return { cls: 'ba', label: 'no due date' };
+    }
+    if (age <= 0) {
       return { cls: 'bg', label: age === 0 ? 'due today' : 'due in ' + Math.abs(age) + 'd' };
-    if (age <= 7) return { cls: 'ba', label: age + 'd overdue' };
-    if (age <= 21) return { cls: 'br', label: age + 'd overdue' };
+    }
+    if (age <= 7) {
+      return { cls: 'ba', label: age + 'd overdue' };
+    }
+    if (age <= 21) {
+      return { cls: 'br', label: age + 'd overdue' };
+    }
     return { cls: 'br', label: age + 'd, STALE', stale: true };
   }
 
   function renderActionAging() {
     const el = $('action-aging-body');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const items = computeAgingActions();
     if (!items.length) {
       el.innerHTML =
@@ -1266,7 +1446,9 @@ var MMGR = window.MMGR || {};
   // gates any core path. Client-side state, no server round-trip.
   function renderStreak() {
     const el = $('streak-body');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const s = S();
     const st = (s && s.streak) || { count: 0, lastDate: null };
     const count = st.count || 0;
@@ -1290,7 +1472,9 @@ var MMGR = window.MMGR || {};
   // of state so the dashboard card and Copy All share the same wording.
   function computeBaselineNarrative(state) {
     const s = state || S();
-    if (!s || !s.baseline || !s.baseline.tasks) return null;
+    if (!s || !s.baseline || !s.baseline.tasks) {
+      return null;
+    }
     const base = s.baseline.tasks || [];
     const cur = s.tasks || [];
     const curMap = {};
@@ -1307,10 +1491,15 @@ var MMGR = window.MMGR || {};
     const gained = [];
     base.forEach(bt => {
       const ct = curMap[bt.id];
-      if (!ct || !bt.endDate || !ct.endDate) return;
+      if (!ct || !bt.endDate || !ct.endDate) {
+        return;
+      }
       const d = U.daysBetween(bt.endDate, ct.endDate);
-      if (d > 0) slipped.push({ name: bt.name, days: d });
-      else if (d < 0) gained.push({ name: bt.name, days: Math.abs(d) });
+      if (d > 0) {
+        slipped.push({ name: bt.name, days: d });
+      } else if (d < 0) {
+        gained.push({ name: bt.name, days: Math.abs(d) });
+      }
     });
     if (slipped.length) {
       slipped.sort((a, b) => b.days - a.days);
@@ -1340,7 +1529,7 @@ var MMGR = window.MMGR || {};
     // Scope drift
     const added = cur.filter(t => !baseMap[t.id]);
     const removed = base.filter(t => !curMap[t.id]);
-    if (added.length)
+    if (added.length) {
       sentences.push(
         added.length +
           ' task' +
@@ -1353,17 +1542,20 @@ var MMGR = window.MMGR || {};
           (added.length > 3 ? '...' : '') +
           ').'
       );
-    if (removed.length)
+    }
+    if (removed.length) {
       sentences.push(
         removed.length + ' task' + (removed.length > 1 ? 's' : '') + ' removed since baseline.'
       );
+    }
     // Completion movement
     const baseDone = base.filter(t => t.status === 'completed').length;
     const curDone = cur.filter(t => t.status === 'completed').length;
-    if (curDone !== baseDone)
+    if (curDone !== baseDone) {
       sentences.push(
         'Completed tasks moved from ' + baseDone + ' to ' + curDone + ' since baseline.'
       );
+    }
     // Cost movement (planned $ only, actuals are live, not baseline)
     const basePlanned = (s.baseline.budgetLines || []).reduce((n, l) => n + (+l.planned || 0), 0);
     const curPlanned = (s.budgetLines || []).reduce((n, l) => n + (+l.planned || 0), 0);
@@ -1383,7 +1575,9 @@ var MMGR = window.MMGR || {};
 
   function renderBaselineNarrative() {
     const el = $('baseline-narrative-body');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const narr = computeBaselineNarrative();
     if (!narr) {
       el.innerHTML =
@@ -1413,9 +1607,13 @@ var MMGR = window.MMGR || {};
   //   3. Not linked + file-backed-up -> indicator hidden (clean).
   function renderDirtyIndicator() {
     const ind = $('dirty-ind');
-    if (!ind) return;
+    if (!ind) {
+      return;
+    }
     const s = S();
-    if (!s || !ns.State) return;
+    if (!s || !ns.State) {
+      return;
+    }
     const C = window.MMGR.Cloud;
     // OWNER 2026-09-19 (synced-chip honesty): the old check counted ONLY a
     // held owner code, so two fully-synced shapes showed "Not backed up":
@@ -1501,10 +1699,14 @@ var MMGR = window.MMGR || {};
   // Re-render the indicator when the sign-in state changes (arriving or
   // leaving) so #bk-signin matches the session immediately.
   document.addEventListener('mmgr:user-changed', function () {
-    if (ns.Render && ns.Render.renderDirtyIndicator) ns.Render.renderDirtyIndicator();
+    if (ns.Render && ns.Render.renderDirtyIndicator) {
+      ns.Render.renderDirtyIndicator();
+    }
   });
   document.addEventListener('mmgr:google-signed-out', function () {
-    if (ns.Render && ns.Render.renderDirtyIndicator) ns.Render.renderDirtyIndicator();
+    if (ns.Render && ns.Render.renderDirtyIndicator) {
+      ns.Render.renderDirtyIndicator();
+    }
   });
 
   // ---- Sections ----
@@ -1534,18 +1736,24 @@ var MMGR = window.MMGR || {};
 
   // Definitions glossary (data + render live in js/mmgr-defs.js).
   function renderDefs() {
-    if (ns.Defs && ns.Defs.render) ns.Defs.render();
+    if (ns.Defs && ns.Defs.render) {
+      ns.Defs.render();
+    }
   }
 
   // Meetings panel (MEETING_TRACKING_SPEC), delegates to the Meetings module.
   function renderMeetingsPanel() {
-    if (ns.Meetings && ns.Meetings.renderMeetings) ns.Meetings.renderMeetings();
+    if (ns.Meetings && ns.Meetings.renderMeetings) {
+      ns.Meetings.renderMeetings();
+    }
   }
 
   // Claim Pack panel (MASTER-ACTION-PLAN-v3-STRICT Rank 1), delegates to the
   // Claim module (slips cause tags, package preview).
   function renderClaimPanel() {
-    if (ns.Claim && ns.Claim.render) ns.Claim.render();
+    if (ns.Claim && ns.Claim.render) {
+      ns.Claim.render();
+    }
   }
 
   function showSection(section, btn) {
@@ -1579,8 +1787,9 @@ var MMGR = window.MMGR || {};
       window.MMGR.Cloud.isSectionBlocked &&
       window.MMGR.Cloud.isSectionBlocked(section)
     ) {
-      if (ns.App && ns.App.showToast)
+      if (ns.App && ns.App.showToast) {
         ns.App.showToast("That section is outside this editor code's scope. Locked.", 'warn');
+      }
       return;
     }
     // PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE DIR-2: every section switch
@@ -1594,35 +1803,51 @@ var MMGR = window.MMGR || {};
     // task description stuck to the cursor after swiping from gantt to
     // dashboard). Also unhook any capture that only lives while hovering.
     const _tip = $('gantt-tip');
-    if (_tip) _tip.classList.remove('vis');
+    if (_tip) {
+      _tip.classList.remove('vis');
+    }
     // Update nav buttons
     document.querySelectorAll('.sec-btn').forEach(b => b.classList.remove('active'));
-    if (btn) btn.classList.add('active');
+    if (btn) {
+      btn.classList.add('active');
+    }
     // Show panel
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     const panel = $('panel-' + section);
-    if (panel) panel.classList.add('active');
+    if (panel) {
+      panel.classList.add('active');
+    }
     // Render section-specific content
     const renderer = SECTION_RENDERERS[section];
-    if (renderer) renderer();
+    if (renderer) {
+      renderer();
+    }
     // DIR-7a: give the freshly rendered table inputs their accessible names.
     labelDynamicFields();
     // Rank 3.4: viewport-aware layout detection, offer the one-time
     // simplified-view prompt for dense sections on narrow screens.
-    if (ns.Viewport && ns.Viewport.maybePrompt) ns.Viewport.maybePrompt(section);
+    if (ns.Viewport && ns.Viewport.maybePrompt) {
+      ns.Viewport.maybePrompt(section);
+    }
     // PLAN-OF-ACTION-LIQUID-GLASS-UI §2: the SAME detection signal also
     // drives the glass engine choice, one signal, two consumers (layout
     // simplification and glass-engine selection). Section changes re-check
     // so a resize/switch into a narrow view never leaves a heavy engine on.
-    if (ns.Glass && ns.Glass.sync) ns.Glass.sync();
+    if (ns.Glass && ns.Glass.sync) {
+      ns.Glass.sync();
+    }
   }
 
   // ---- WBS ----
   function renderWbs() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const body = $('wbs-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     // RESTORE-7: keep the schedule-issues banner in sync with the rows below.
     renderWbsAlerts();
     const tasks = s.tasks || [];
@@ -1636,7 +1861,9 @@ var MMGR = window.MMGR || {};
     // Semantics: defExpanded[id] === false  ->  phase is collapsed (true/undefined = expanded).
     const collapsedIds = new Set();
     Object.keys(defExpanded).forEach(id => {
-      if (defExpanded[id] === false) collapsedIds.add(id);
+      if (defExpanded[id] === false) {
+        collapsedIds.add(id);
+      }
     });
     // 2.1 dependency-aware risk propagation: any task with an overdue
     // predecessor is downstream of a slip, flagged inline, live.
@@ -1647,13 +1874,18 @@ var MMGR = window.MMGR || {};
     const phaseStack = []; // open phase ancestors: { indent, id }
     for (const t of tasks) {
       const indent = t.indent !== undefined ? t.indent : t.level || 0;
-      while (phaseStack.length && phaseStack[phaseStack.length - 1].indent >= indent)
+      while (phaseStack.length && phaseStack[phaseStack.length - 1].indent >= indent) {
         phaseStack.pop();
+      }
       const hidden = phaseStack.some(p => collapsedIds.has(p.id));
       // A row counts as a phase container when it is a phase OR a top-level
       // task (level 0), matching the row template's `isPhase || level === 0`.
-      if (t.isPhase || (t.level || 0) === 0) phaseStack.push({ indent: indent, id: t.id });
-      if (!hidden) visibleTasks.push(t);
+      if (t.isPhase || (t.level || 0) === 0) {
+        phaseStack.push({ indent: indent, id: t.id });
+      }
+      if (!hidden) {
+        visibleTasks.push(t);
+      }
     }
     // Task 4 (2026-09-19): parallel groups computed ONCE per render (the
     // pairwise overlap predicate matches audit() exactly). Badge markup is
@@ -1753,14 +1985,18 @@ var MMGR = window.MMGR || {};
 
   function renderTaskComments() {
     const el = $('task-comments');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     if (!_selectedTaskId) {
       el.innerHTML = '';
       el.hidden = true;
       return;
     }
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const task = (s.tasks || []).find(t => t.id === _selectedTaskId);
     if (!task) {
       el.innerHTML = '';
@@ -1828,7 +2064,9 @@ var MMGR = window.MMGR || {};
       html +=
         '<div style="margin-top:8px;padding:6px 8px;background:var(--tile-bg);border-radius:4px;font-size:.75rem">';
       html += '<strong>Follow-up:</strong> ' + U.escapeHtml(fu.assignee);
-      if (fu.dueDate) html += ' by ' + fu.dueDate;
+      if (fu.dueDate) {
+        html += ' by ' + fu.dueDate;
+      }
       html +=
         ' <span class="badge ' +
         (fu.status === 'completed' ? 'bg' : 'bo') +
@@ -1874,14 +2112,18 @@ var MMGR = window.MMGR || {};
     const ids = {};
     let dupCount = 0;
     s.tasks.forEach(function (t) {
-      if (ids[t.id]) dupCount++;
+      if (ids[t.id]) {
+        dupCount++;
+      }
       ids[t.id] = true;
     });
     return { cycles: cycles.length, dups: dupCount };
   }
   function renderWbsAlerts() {
     const el = $('wbs-alerts');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const s = S();
     if (!s || !s.tasks || s.tasks.length === 0) {
       el.innerHTML = '';
@@ -1951,17 +2193,23 @@ var MMGR = window.MMGR || {};
 
   function renderGantt() {
     const s = S();
-    if (!s || !s.tasks) return;
+    if (!s || !s.tasks) {
+      return;
+    }
     const gc = $('gantt-chart');
     const gl = $('gantt-labels');
-    if (!gc) return;
+    if (!gc) {
+      return;
+    }
 
     // OWNER 2026-09-28: a re-render swaps the bar the pointer may be over;
     // no mouseout ever fires for a removed node, so the hover tip would
     // survive with nothing left to leave. Hide it with the chart it
     // described (same fix as showSection's section-switch guard).
     const _tip = $('gantt-tip');
-    if (_tip) _tip.classList.remove('vis');
+    if (_tip) {
+      _tip.classList.remove('vis');
+    }
 
     // B8 (audit 2026-09-28): critical/float on live tasks only refreshed
     // when setDeadline or a gantt drag ended, so date edits made elsewhere
@@ -1983,13 +2231,17 @@ var MMGR = window.MMGR || {};
     // of this device's typing. Never clobbers a value being typed: only
     // writes when it actually differs.
     const dl = $('deadline-input');
-    if (dl && dl.value !== (s.projectDeadline || '')) dl.value = s.projectDeadline || '';
+    if (dl && dl.value !== (s.projectDeadline || '')) {
+      dl.value = s.projectDeadline || '';
+    }
 
     const tasks = s.tasks.filter(t => t.startDate && t.endDate);
     if (tasks.length === 0) {
       gc.innerHTML =
         '<div class="es"><div class="ic"><svg class="ico" style="font-size:2rem" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg></div><div>Add tasks with dates to see the Gantt chart.</div><button class="btn btn-g btn-s" data-action="showSec" data-section="wbs">+ Add Task</button></div>';
-      if (gl) gl.innerHTML = '';
+      if (gl) {
+        gl.innerHTML = '';
+      }
       _ganttMeta = null;
       return;
     }
@@ -1998,8 +2250,12 @@ var MMGR = window.MMGR || {};
     let minDate = null,
       maxDate = null;
     for (const t of tasks) {
-      if (!minDate || t.startDate < minDate) minDate = t.startDate;
-      if (!maxDate || t.endDate > maxDate) maxDate = t.endDate;
+      if (!minDate || t.startDate < minDate) {
+        minDate = t.startDate;
+      }
+      if (!maxDate || t.endDate > maxDate) {
+        maxDate = t.endDate;
+      }
     }
     if (!minDate || !maxDate) {
       gc.innerHTML = '<div class="es">No valid date range.</div>';
@@ -2029,9 +2285,13 @@ var MMGR = window.MMGR || {};
     // Critical Path Highlighter (monolith S.cp): when on, the non-critical
     // chain is dimmed via body.hl-critical, gold stays on the critical bars.
     const hlOn = !!s.hlCritical;
-    if (document.body) document.body.classList.toggle('hl-critical', hlOn);
+    if (document.body) {
+      document.body.classList.toggle('hl-critical', hlOn);
+    }
     const hlChip = document.querySelector('[data-action="toggleCritical"]');
-    if (hlChip) hlChip.classList.toggle('is-on', hlOn);
+    if (hlChip) {
+      hlChip.classList.toggle('is-on', hlOn);
+    }
 
     // Render header (show week numbers + day numbers) + weekend bands
     // C2 (visual directive 2026-09-26): Sat/Sun columns shaded; the Monday
@@ -2044,8 +2304,9 @@ var MMGR = window.MMGR || {};
       const isFirst = i === 0;
       const isWeekend = d.getDay() === 0 || d.getDay() === 6;
       headerHtml += `<div class="gd${isMonday || isFirst ? ' gd-hl' : ''}${isWeekend ? ' gd-wknd' : ''}">${d.getDate()}</div>`;
-      if (isWeekend)
+      if (isWeekend) {
         weekendBandsHtml += `<div class="gantt-wknd-band" style="left:${i * dayWidth}px;width:${dayWidth}px"></div>`;
+      }
     }
     headerHtml += '</div>';
     gc.innerHTML = headerHtml;
@@ -2065,7 +2326,9 @@ var MMGR = window.MMGR || {};
     for (const t of tasks) {
       const start = U.parseDL(t.startDate);
       const end = U.parseDL(t.endDate);
-      if (!start || !end) continue;
+      if (!start || !end) {
+        continue;
+      }
 
       const left = Math.max(0, U.daysBetween(minDate, t.startDate)) * dayWidth;
       const width = Math.max(U.daysBetween(t.startDate, t.endDate), 1) * dayWidth;
@@ -2081,14 +2344,30 @@ var MMGR = window.MMGR || {};
 
       // Classes
       const classes = [];
-      if (t.critical) classes.push('crit');
-      if (t.status !== 'completed' && U.isOverdue(t.endDate)) classes.push('od');
-      if (U.isDueSoon(t.endDate, 3) && t.status !== 'completed') classes.push('pls');
-      if (t.status === 'completed') classes.push('dn');
-      if (t.leadTime) classes.push('leadtime');
-      if (t.recurring) classes.push('recurring');
-      if (t.confidence === 'low') classes.push('lowconf');
-      if (t.weatherExposed) classes.push('wex');
+      if (t.critical) {
+        classes.push('crit');
+      }
+      if (t.status !== 'completed' && U.isOverdue(t.endDate)) {
+        classes.push('od');
+      }
+      if (U.isDueSoon(t.endDate, 3) && t.status !== 'completed') {
+        classes.push('pls');
+      }
+      if (t.status === 'completed') {
+        classes.push('dn');
+      }
+      if (t.leadTime) {
+        classes.push('leadtime');
+      }
+      if (t.recurring) {
+        classes.push('recurring');
+      }
+      if (t.confidence === 'low') {
+        classes.push('lowconf');
+      }
+      if (t.weatherExposed) {
+        classes.push('wex');
+      }
 
       // Float indicator
       const floatStr =
@@ -2182,7 +2461,9 @@ var MMGR = window.MMGR || {};
       (todayLeft !== null
         ? `<div class="gantt-today" style="left:${todayLeft}px" title="Today: ${todayStr}"></div>`
         : '');
-    if (gl) gl.innerHTML = labelsHtml;
+    if (gl) {
+      gl.innerHTML = labelsHtml;
+    }
 
     // Draw dependency arrows (SVG overlay)
     drawDependencyArrows(tasks);
@@ -2195,26 +2476,36 @@ var MMGR = window.MMGR || {};
   // (rect offset + scroll), so arrows stay glued to the bars while scrolling.
   function drawDependencyArrows(tasks) {
     const gc = $('gantt-chart');
-    if (!gc) return;
+    if (!gc) {
+      return;
+    }
 
     // Remove any previous overlay FIRST, repeated renders/cascades must
     // never stack multiple SVGs.
     const oldArrows = gc.querySelector('.gantt-arrows');
-    if (oldArrows) oldArrows.remove();
+    if (oldArrows) {
+      oldArrows.remove();
+    }
 
     // When the Gantt panel is hidden, rects are all zeros, skip the overlay;
     // renderGantt redraws arrows the next time the section is shown.
-    if (!gc.offsetParent) return;
+    if (!gc.offsetParent) {
+      return;
+    }
 
     // Only draw if there are predecessor links
     const hasPreds = tasks.some(t => t.predecessors && t.predecessors.length);
-    if (!hasPreds) return;
+    if (!hasPreds) {
+      return;
+    }
 
     // Milestone diamonds are included so a milestone predecessor still gets
     // its dependency arrow (the diamond carries data-id like any bar); drag
     // remains excluded from diamonds by design (drag handlers key on .gb).
     const bars = gc.querySelectorAll('.gb, .gb-milestone');
-    if (!bars.length) return;
+    if (!bars.length) {
+      return;
+    }
 
     // Map task id -> bar element (attribute lookup, no selector escaping)
     const barMap = {};
@@ -2256,15 +2547,21 @@ var MMGR = window.MMGR || {};
 
     tasks.forEach(t => {
       const preds = t.predecessors || [];
-      if (!preds.length) return;
+      if (!preds.length) {
+        return;
+      }
       const b2 = barMap[t.id];
-      if (!b2) return;
+      if (!b2) {
+        return;
+      }
       const rect2 = b2.getBoundingClientRect();
       const x2 = rect2.left - gcRect.left + scrollX;
       const y2 = rect2.top + rect2.height / 2 - gcRect.top + scrollY;
       for (const predId of preds) {
         const b1 = barMap[predId];
-        if (!b1) continue;
+        if (!b1) {
+          continue;
+        }
         const rect1 = b1.getBoundingClientRect();
         const x1 = rect1.right - gcRect.left + scrollX;
         const y1 = rect1.top + rect1.height / 2 - gcRect.top + scrollY;
@@ -2317,11 +2614,15 @@ var MMGR = window.MMGR || {};
   // rAF-throttled: at most one redraw per frame regardless of event volume.
   let _arrowsRaf = null;
   function redrawGanttArrows() {
-    if (_arrowsRaf) return;
+    if (_arrowsRaf) {
+      return;
+    }
     _arrowsRaf = requestAnimationFrame(() => {
       _arrowsRaf = null;
       const s = S();
-      if (!s || !s.tasks) return;
+      if (!s || !s.tasks) {
+        return;
+      }
       const tasks = s.tasks.filter(t => t.startDate && t.endDate);
       // Draw even with zero tasks: drawDependencyArrows removes any stale
       // overlay before its empty-early-return, so a chart emptied without a
@@ -2338,7 +2639,9 @@ var MMGR = window.MMGR || {};
     function (e) {
       const t = e.target;
       const gc = document.getElementById('gantt-chart');
-      if (t && gc && (gc.contains(t) || t.contains(gc))) redrawGanttArrows();
+      if (t && gc && (gc.contains(t) || t.contains(gc))) {
+        redrawGanttArrows();
+      }
     },
     true
   );
@@ -2355,7 +2658,9 @@ var MMGR = window.MMGR || {};
     return ns.RenderKanban ? ns.RenderKanban.kanbanLeadtimeCard(t) : '';
   }
   function renderKanban() {
-    if (ns.RenderKanban) ns.RenderKanban.renderKanban();
+    if (ns.RenderKanban) {
+      ns.RenderKanban.renderKanban();
+    }
   }
 
   // ---- Risks ---- (extracted to js/render/risks.js)
@@ -2372,40 +2677,62 @@ var MMGR = window.MMGR || {};
     return ns.RenderRisks ? ns.RenderRisks.contingencyTotal(state) : 0;
   }
   function riskMatrixCell(prob, imp) {
-    if (ns.RenderRisks) ns.RenderRisks.riskMatrixCell(prob, imp);
+    if (ns.RenderRisks) {
+      ns.RenderRisks.riskMatrixCell(prob, imp);
+    }
   }
   function clearRiskFilter() {
-    if (ns.RenderRisks) ns.RenderRisks.clearRiskFilter();
+    if (ns.RenderRisks) {
+      ns.RenderRisks.clearRiskFilter();
+    }
   }
   function renderRiskMatrix() {
-    if (ns.RenderRisks) ns.RenderRisks.renderRiskMatrix();
+    if (ns.RenderRisks) {
+      ns.RenderRisks.renderRiskMatrix();
+    }
   }
   function renderRisks() {
-    if (ns.RenderRisks) ns.RenderRisks.renderRisks();
+    if (ns.RenderRisks) {
+      ns.RenderRisks.renderRisks();
+    }
   }
 
   // ---- Resources ---- (extracted to js/render/resources.js)
   function renderResources() {
-    if (ns.RenderResources) ns.RenderResources.renderResources();
+    if (ns.RenderResources) {
+      ns.RenderResources.renderResources();
+    }
   }
   function renderResourceLeveling() {
-    if (ns.RenderResources) ns.RenderResources.renderResourceLeveling();
+    if (ns.RenderResources) {
+      ns.RenderResources.renderResourceLeveling();
+    }
   }
   function renderTimeTracking() {
-    if (ns.RenderResources) ns.RenderResources.renderTimeTracking();
+    if (ns.RenderResources) {
+      ns.RenderResources.renderTimeTracking();
+    }
   }
   function renderEquipment() {
-    if (ns.RenderResources) ns.RenderResources.renderEquipment();
+    if (ns.RenderResources) {
+      ns.RenderResources.renderEquipment();
+    }
   }
   // C23 Shared Resource Pool (Phase 6) delegates - mirror the pattern above.
   function poolOpenLibrary() {
-    if (ns.RenderResources) ns.RenderResources.poolOpenLibrary();
+    if (ns.RenderResources) {
+      ns.RenderResources.poolOpenLibrary();
+    }
   }
   function poolAddRow() {
-    if (ns.RenderResources) ns.RenderResources.poolAddRow.apply(null, arguments);
+    if (ns.RenderResources) {
+      ns.RenderResources.poolAddRow.apply(null, arguments);
+    }
   }
   function poolBootMergeIfLinked() {
-    if (ns.RenderResources) ns.RenderResources.poolBootMergeIfLinked();
+    if (ns.RenderResources) {
+      ns.RenderResources.poolBootMergeIfLinked();
+    }
   }
 
   // ---- Financials ---- (extracted to js/render/financials.js)
@@ -2413,82 +2740,128 @@ var MMGR = window.MMGR || {};
     return ns.RenderFinancials ? ns.RenderFinancials.fmt$(n) : '';
   }
   function renderSpendLog() {
-    if (ns.RenderFinancials) ns.RenderFinancials.renderSpendLog();
+    if (ns.RenderFinancials) {
+      ns.RenderFinancials.renderSpendLog();
+    }
   }
   function renderCashFlowChart() {
-    if (ns.RenderFinancials) ns.RenderFinancials.renderCashFlowChart();
+    if (ns.RenderFinancials) {
+      ns.RenderFinancials.renderCashFlowChart();
+    }
   }
   function renderBudget() {
-    if (ns.RenderFinancials) ns.RenderFinancials.renderBudget();
+    if (ns.RenderFinancials) {
+      ns.RenderFinancials.renderBudget();
+    }
   }
   function renderPayApps() {
-    if (ns.RenderFinancials) ns.RenderFinancials.renderPayApps();
+    if (ns.RenderFinancials) {
+      ns.RenderFinancials.renderPayApps();
+    }
   }
 
   // ---- People ---- (extracted to js/render/people.js)
   function renderStakeholders() {
-    if (ns.RenderPeople) ns.RenderPeople.renderStakeholders();
+    if (ns.RenderPeople) {
+      ns.RenderPeople.renderStakeholders();
+    }
   }
   function syncStakeComplianceBadges(count) {
-    if (ns.RenderPeople) ns.RenderPeople.syncStakeComplianceBadges(count);
+    if (ns.RenderPeople) {
+      ns.RenderPeople.syncStakeComplianceBadges(count);
+    }
   }
   function renderChanges() {
-    if (ns.RenderPeople) ns.RenderPeople.renderChanges();
+    if (ns.RenderPeople) {
+      ns.RenderPeople.renderChanges();
+    }
   }
   function renderLog() {
-    if (ns.RenderPeople) ns.RenderPeople.renderLog();
+    if (ns.RenderPeople) {
+      ns.RenderPeople.renderLog();
+    }
   }
 
   // ---- Closure ---- (extracted to js/render/closure.js)
   function renderPunchList() {
-    if (ns.RenderClosure) ns.RenderClosure.renderPunchList();
+    if (ns.RenderClosure) {
+      ns.RenderClosure.renderPunchList();
+    }
   }
   function renderHandover() {
-    if (ns.RenderClosure) ns.RenderClosure.renderHandover();
+    if (ns.RenderClosure) {
+      ns.RenderClosure.renderHandover();
+    }
   }
   function renderWarranty() {
-    if (ns.RenderClosure) ns.RenderClosure.renderWarranty();
+    if (ns.RenderClosure) {
+      ns.RenderClosure.renderWarranty();
+    }
   }
   function renderClosure() {
-    if (ns.RenderClosure) ns.RenderClosure.renderClosure();
+    if (ns.RenderClosure) {
+      ns.RenderClosure.renderClosure();
+    }
   }
 
   // ---- RACI + Comms ---- (extracted to js/render/people.js)
   function renderRaci() {
-    if (ns.RenderPeople) ns.RenderPeople.renderRaci();
+    if (ns.RenderPeople) {
+      ns.RenderPeople.renderRaci();
+    }
   }
   function renderRaciHeatmap() {
-    if (ns.RenderPeople) ns.RenderPeople.renderRaciHeatmap();
+    if (ns.RenderPeople) {
+      ns.RenderPeople.renderRaciHeatmap();
+    }
   }
   function renderRaciAlerts() {
-    if (ns.RenderPeople) ns.RenderPeople.renderRaciAlerts();
+    if (ns.RenderPeople) {
+      ns.RenderPeople.renderRaciAlerts();
+    }
   }
   function renderComms() {
-    if (ns.RenderPeople) ns.RenderPeople.renderComms();
+    if (ns.RenderPeople) {
+      ns.RenderPeople.renderComms();
+    }
   }
 
   // ---- Documents ---- (extracted to js/render/documents.js)
   // Shims delegate to ns.RenderDocs for backward compatibility.
   function renderRfis() {
-    if (ns.RenderDocs) ns.RenderDocs.renderRfis();
+    if (ns.RenderDocs) {
+      ns.RenderDocs.renderRfis();
+    }
   }
   function renderSubmittals() {
-    if (ns.RenderDocs) ns.RenderDocs.renderSubmittals();
+    if (ns.RenderDocs) {
+      ns.RenderDocs.renderSubmittals();
+    }
   }
   function renderBallInCourt() {
-    if (ns.RenderDocs) ns.RenderDocs.renderBallInCourt();
+    if (ns.RenderDocs) {
+      ns.RenderDocs.renderBallInCourt();
+    }
   }
   function renderDrawLog() {
-    if (ns.RenderDocs) ns.RenderDocs.renderDrawLog();
+    if (ns.RenderDocs) {
+      ns.RenderDocs.renderDrawLog();
+    }
   }
   function renderPermits() {
-    if (ns.RenderDocs) ns.RenderDocs.renderPermits();
+    if (ns.RenderDocs) {
+      ns.RenderDocs.renderPermits();
+    }
   }
   function renderProcurement() {
-    if (ns.RenderDocs) ns.RenderDocs.renderProcurement();
+    if (ns.RenderDocs) {
+      ns.RenderDocs.renderProcurement();
+    }
   }
   function renderDocuments() {
-    if (ns.RenderDocs) ns.RenderDocs.renderDocuments();
+    if (ns.RenderDocs) {
+      ns.RenderDocs.renderDocuments();
+    }
   }
 
   // ---- DMAIC ----
@@ -2499,12 +2872,16 @@ var MMGR = window.MMGR || {};
   // Safe to call on every renderAll: updCharter saves on each input keystroke,
   // so the refill always reads state that already contains the user's edits.
   function renderCharter() {
-    if (ns.Charter && ns.Charter.loadCharterData) ns.Charter.loadCharterData();
+    if (ns.Charter && ns.Charter.loadCharterData) {
+      ns.Charter.loadCharterData();
+    }
   }
 
   // shim keeps SECTION_RENDERERS wiring stable.
   function renderDmaic() {
-    if (ns.Dmaic && ns.Dmaic.render) ns.Dmaic.render();
+    if (ns.Dmaic && ns.Dmaic.render) {
+      ns.Dmaic.render();
+    }
   }
 
   // ---- Persistent toggle sync (monolith parity, boot-safe) ----
@@ -2515,16 +2892,24 @@ var MMGR = window.MMGR || {};
   // renderAll calls this so boot and every re-render are deterministic.
   function syncPersistentToggles() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const kbShow = !!s.kbShowLeadtime;
     const ltLane = $('col-leadtime');
-    if (ltLane) ltLane.classList.toggle('is-hide', !kbShow);
+    if (ltLane) {
+      ltLane.classList.toggle('is-hide', !kbShow);
+    }
     const ltChip = document.querySelector('[data-action="tglLeadtimeLane"]');
-    if (ltChip) ltChip.classList.toggle('is-on', kbShow);
+    if (ltChip) {
+      ltChip.classList.toggle('is-on', kbShow);
+    }
     const hlOn = !!s.hlCritical;
     document.body.classList.toggle('hl-critical', hlOn);
     const hlChip = document.querySelector('[data-action="toggleCritical"]');
-    if (hlChip) hlChip.classList.toggle('is-on', hlOn);
+    if (hlChip) {
+      hlChip.classList.toggle('is-on', hlOn);
+    }
   }
 
   // ---- Phase 2: feature flags (Controls drawer) ----
@@ -2533,7 +2918,9 @@ var MMGR = window.MMGR || {};
   // on; a flag off hides its button/card via the existing is-hide class.
   function renderFlags() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const fl = s.flags || {};
     document.querySelectorAll('[data-action="tglFlag"]').forEach(function (chip) {
       const f = chip.getAttribute('data-flag');
@@ -2570,10 +2957,14 @@ var MMGR = window.MMGR || {};
     // the lane stays driven by kbShowLeadtime exactly as before.
     if (fl.leadtimeLane === false) {
       const ltLane = $('col-leadtime');
-      if (ltLane) ltLane.classList.add('is-hide');
+      if (ltLane) {
+        ltLane.classList.add('is-hide');
+      }
     }
     // Phase 2: keep the Controls error surface in sync with state.
-    if (ns.Errors && ns.Errors.render) ns.Errors.render();
+    if (ns.Errors && ns.Errors.render) {
+      ns.Errors.render();
+    }
   }
 
   // ---- Full Render ----
@@ -2607,7 +2998,9 @@ var MMGR = window.MMGR || {};
   // pack is OFF we force-hide it. Same for any future dual-gated button.
   function renderPacks() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const packs = s.packs || {};
     document.querySelectorAll('.sec-btn[data-pack]').forEach(function (btn) {
       const pack = btn.getAttribute('data-pack');
@@ -2616,7 +3009,9 @@ var MMGR = window.MMGR || {};
       // the sidebar clones too) instead of the id (originals only), so the
       // desktop sidebar's DMAIC clone gets the same methodology-vs-pack split.
       const dualGated = btn.getAttribute('data-dual-gate') === '1';
-      if (on && dualGated) return; // leave to the other gate (methodology)
+      if (on && dualGated) {
+        return;
+      } // leave to the other gate (methodology)
       btn.classList.toggle('is-hide', !on);
     });
     const active = document.querySelector('.panel.active');
@@ -2639,7 +3034,9 @@ var MMGR = window.MMGR || {};
   function renderCoreCallout() {
     const s = S();
     const el = $('core-callout');
-    if (!s || !el) return;
+    if (!s || !el) {
+      return;
+    }
     const packs = s.packs || {};
     const anyOn = PACK_ORDER.some(function (p) {
       return packs[p] !== false;
@@ -2665,13 +3062,19 @@ var MMGR = window.MMGR || {};
     const idx = cells.findIndex(function (c) {
       return c.contains(inp);
     });
-    if (idx < 0) return null;
+    if (idx < 0) {
+      return null;
+    }
     const table = row.closest('table');
     const thead = table && table.querySelector('thead');
-    if (!thead) return null;
+    if (!thead) {
+      return null;
+    }
     const ths = thead.querySelectorAll('th');
     const th = ths[idx];
-    if (!th) return null;
+    if (!th) {
+      return null;
+    }
     const t = (th.textContent || '').replace(/\s+/g, ' ').trim();
     return t || null;
   }
@@ -2679,13 +3082,19 @@ var MMGR = window.MMGR || {};
   function rowLabelFor(row, inp) {
     const cells = Array.prototype.slice.call(row.cells || []);
     for (let c = 0; c < cells.length; c++) {
-      if (cells[c].contains(inp)) continue; // never name a control after itself
+      if (cells[c].contains(inp)) {
+        continue;
+      } // never name a control after itself
       // A cell whose text lives in interactive children (a <select>'s option
       // list, an <input>'s value, a <button>'s label) is not a stable row
       // label, skip it and look for a plain text cell (row id, task name).
-      if (cells[c].querySelector('input,select,textarea,button')) continue;
+      if (cells[c].querySelector('input,select,textarea,button')) {
+        continue;
+      }
       const t = (cells[c].textContent || '').replace(/\s+/g, ' ').trim();
-      if (t) return t.slice(0, 60);
+      if (t) {
+        return t.slice(0, 60);
+      }
     }
     return null;
   }
@@ -2707,7 +3116,9 @@ var MMGR = window.MMGR || {};
         const external =
           (inp.getAttribute('aria-label') && inp.getAttribute('data-a11y-auto') === null) ||
           !!inp.getAttribute('title');
-        if (external) return;
+        if (external) {
+          return;
+        }
         const own = inp.getAttribute('data-a11y-auto') !== null;
         const setLabel = function (label) {
           inp.setAttribute('aria-label', label);
@@ -2722,38 +3133,53 @@ var MMGR = window.MMGR || {};
           id &&
           /^[A-Za-z][A-Za-z0-9:_-]*$/.test(id) &&
           document.querySelector('label[for="' + id + '"]')
-        )
+        ) {
           return;
+        }
         const row = inp.closest('tr');
         if (!row) {
           // Non-table row layouts (e.g. closure items render as flex rows): name
           // the control from its container's own non-interactive text (the item
           // label), never from buttons/inputs it sits beside.
           const container = inp.parentElement;
-          if (!container) return;
+          if (!container) {
+            return;
+          }
           const clone = container.cloneNode(true);
           clone.querySelectorAll('input,select,textarea,button').forEach(function (n) {
             n.remove();
           });
           const t = (clone.textContent || '').replace(/\s+/g, ' ').trim();
-          if (t) setLabel(t.slice(0, 80));
-          else if (own) clearLabel(); // row lost its labelable text, drop the stale name
+          if (t) {
+            setLabel(t.slice(0, 80));
+          } else if (own) {
+            clearLabel();
+          } // row lost its labelable text, drop the stale name
           return;
         }
         const parts = [];
         const th = columnHeaderFor(row, inp);
-        if (th) parts.push(th);
+        if (th) {
+          parts.push(th);
+        }
         const rl = rowLabelFor(row, inp);
-        if (rl) parts.push(rl);
-        if (parts.length) setLabel(parts.join(', '));
-        else if (own) clearLabel(); // nothing derivable now, drop the stale name
+        if (rl) {
+          parts.push(rl);
+        }
+        if (parts.length) {
+          setLabel(parts.join(', '));
+        } else if (own) {
+          clearLabel();
+        } // nothing derivable now, drop the stale name
       });
   }
 
   // Sync the Controls drawer pack toggle chips with state.
   function syncPackChips() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const packs = s.packs || {};
     document.querySelectorAll('[data-action="tglPack"]').forEach(function (chip) {
       const p = chip.getAttribute('data-pack');
@@ -2778,13 +3204,17 @@ var MMGR = window.MMGR || {};
     const active = document.querySelector('.panel.active');
     if (active) {
       const renderer = SECTION_RENDERERS[active.id.replace('panel-', '')];
-      if (renderer && renderer !== renderDash) renderer();
+      if (renderer && renderer !== renderDash) {
+        renderer();
+      }
     }
     // DIR-7a: label any inputs the re-render just (re)created.
     labelDynamicFields();
     // DIR-2: the sticky nav's offset tracks the header's real height, the
     // greeting line changes height, so re-measure on every full render.
-    if (ns.Viewport && ns.Viewport.syncHeaderStack) ns.Viewport.syncHeaderStack();
+    if (ns.Viewport && ns.Viewport.syncHeaderStack) {
+      ns.Viewport.syncHeaderStack();
+    }
     // OWNER 2026-08-15: Controls-tab live previews (Copy As + Email Templates)
     // must mirror the current state, App is loaded after Render, so guard.
     if (window.MMGR && window.MMGR.App && window.MMGR.App.renderCtrlPreviews) {
@@ -2802,27 +3232,41 @@ var MMGR = window.MMGR || {};
 
   function ganttBarById(id) {
     const gc = $('gantt-chart');
-    if (!gc) return null;
+    if (!gc) {
+      return null;
+    }
     const bars = gc.querySelectorAll('.gb');
     for (let i = 0; i < bars.length; i++) {
-      if (bars[i].getAttribute('data-id') === id) return bars[i];
+      if (bars[i].getAttribute('data-id') === id) {
+        return bars[i];
+      }
     }
     return null;
   }
 
   function ganttDragStart(e) {
     const bar = e.target.closest && e.target.closest('.gb');
-    if (!bar || !_ganttMeta) return;
+    if (!bar || !_ganttMeta) {
+      return;
+    }
     // Baseline overlays are inert
-    if (bar.classList.contains('gb-base')) return;
+    if (bar.classList.contains('gb-base')) {
+      return;
+    }
     const gc = $('gantt-chart');
-    if (!gc || !gc.contains(bar)) return;
+    if (!gc || !gc.contains(bar)) {
+      return;
+    }
     const taskId = bar.getAttribute('data-id');
     const s = S();
     const task = (s.tasks || []).find(t => t.id === taskId);
-    if (!task || task.isPhase) return;
+    if (!task || task.isPhase) {
+      return;
+    }
     e.preventDefault();
-    if (bar.setPointerCapture) bar.setPointerCapture(e.pointerId);
+    if (bar.setPointerCapture) {
+      bar.setPointerCapture(e.pointerId);
+    }
 
     // Earliest allowed start = max(predecessor end + 1, chart min date)
     let minAllowed = U.parseDL(_ganttMeta.minDate);
@@ -2831,7 +3275,9 @@ var MMGR = window.MMGR || {};
       if (pred && pred.endDate) {
         // May start on the next WORKING day after the predecessor finishes.
         const pef = U.addWorkingDays(U.parseDL(pred.endDate), 1);
-        if (pef && pef > minAllowed) minAllowed = pef;
+        if (pef && pef > minAllowed) {
+          minAllowed = pef;
+        }
       }
     });
 
@@ -2848,13 +3294,19 @@ var MMGR = window.MMGR || {};
 
   function ganttDragMove(e) {
     const d = _ganttDrag;
-    if (!d || !_ganttMeta) return;
+    if (!d || !_ganttMeta) {
+      return;
+    }
     const deltaDays = Math.round((e.clientX - d.startX) / _ganttMeta.dayWidth);
-    if (!d.moved && deltaDays === 0) return;
+    if (!d.moved && deltaDays === 0) {
+      return;
+    }
     d.moved = true;
     const s = S();
     const task = (s.tasks || []).find(t => t.id === d.taskId);
-    if (!task) return;
+    if (!task) {
+      return;
+    }
     // Preview in the SAME unit as the commit: working days. The bar moves
     // one work step per grid cell crossed and never lands on a non-working
     // day, so what you see during the drag is what you get on release.
@@ -2892,14 +3344,22 @@ var MMGR = window.MMGR || {};
     _ganttDrag = null;
     document.body.classList.remove('gantt-dragging');
     const tip = $('gantt-tip');
-    if (tip) tip.classList.remove('vis');
-    if (!d || !d.moved) return;
+    if (tip) {
+      tip.classList.remove('vis');
+    }
+    if (!d || !d.moved) {
+      return;
+    }
     const s = S();
     const task = (s.tasks || []).find(t => t.id === d.taskId);
-    if (!task) return;
+    if (!task) {
+      return;
+    }
     const bar = ganttBarById(d.taskId);
     const newStart = bar ? bar.getAttribute('data-preview-start') : null;
-    if (!newStart || newStart === task.startDate) return;
+    if (!newStart || newStart === task.startDate) {
+      return;
+    }
 
     // Commit the drag as an undoable edit, this task only. A drag is a
     // deliberate single-task nudge; re-scheduling the whole plan stays an
@@ -2921,7 +3381,9 @@ var MMGR = window.MMGR || {};
           ns.Tasks && ns.Tasks.durationFromDates
             ? ns.Tasks.durationFromDates(t.startDate, t.endDate)
             : null;
-        if (dd !== null) t.duration = String(dd);
+        if (dd !== null) {
+          t.duration = String(dd);
+        }
       }
     });
     // Refresh float / critical annotations READ-ONLY (dates untouched) so the
@@ -2952,7 +3414,9 @@ var MMGR = window.MMGR || {};
     });
     ns.Render.renderGantt();
     ns.Render.renderWbs();
-    if (ns.App && ns.App.showToast) ns.App.showToast('Dependency removed.', 'ok');
+    if (ns.App && ns.App.showToast) {
+      ns.App.showToast('Dependency removed.', 'ok');
+    }
   }
 
   function ganttTipFor(task) {
@@ -2985,7 +3449,9 @@ var MMGR = window.MMGR || {};
 
   function positionGanttTip(e) {
     const tip = $('gantt-tip');
-    if (!tip) return;
+    if (!tip) {
+      return;
+    }
     const x = Math.min(e.clientX + 14, window.innerWidth - 240);
     const y = Math.min(e.clientY + 14, window.innerHeight - 140);
     tip.style.left = x + 'px';
@@ -3000,17 +3466,23 @@ var MMGR = window.MMGR || {};
     }
   });
   document.addEventListener('pointermove', function (e) {
-    if (_ganttDrag) ganttDragMove(e);
+    if (_ganttDrag) {
+      ganttDragMove(e);
+    }
   });
   document.addEventListener('pointerup', function (e) {
-    if (_ganttDrag) ganttDragEnd(e);
+    if (_ganttDrag) {
+      ganttDragEnd(e);
+    }
   });
   document.addEventListener('pointercancel', function () {
     if (_ganttDrag) {
       _ganttDrag = null;
       document.body.classList.remove('gantt-dragging');
       const tip = $('gantt-tip');
-      if (tip) tip.classList.remove('vis');
+      if (tip) {
+        tip.classList.remove('vis');
+      }
       ns.Render.renderGantt();
     }
   });
@@ -3018,9 +3490,13 @@ var MMGR = window.MMGR || {};
   // Click a dependency arrow to edit / remove the link
   document.addEventListener('click', function (e) {
     const gc = $('gantt-chart');
-    if (!gc) return;
+    if (!gc) {
+      return;
+    }
     const link = e.target.closest && e.target.closest('.gan-link');
-    if (!link || !gc.contains(link)) return;
+    if (!link || !gc.contains(link)) {
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     const fromId = link.getAttribute('data-from');
@@ -3049,12 +3525,18 @@ var MMGR = window.MMGR || {};
     'mouseover',
     function (e) {
       const bar = e.target.closest && e.target.closest('.gb');
-      if (!bar || bar.classList.contains('gb-base')) return;
+      if (!bar || bar.classList.contains('gb-base')) {
+        return;
+      }
       const gc = $('gantt-chart');
-      if (!gc || !gc.contains(bar)) return;
+      if (!gc || !gc.contains(bar)) {
+        return;
+      }
       const s = S();
       const task = (s.tasks || []).find(t => t.id === bar.getAttribute('data-id'));
-      if (!task) return;
+      if (!task) {
+        return;
+      }
       const tip = $('gantt-tip');
       if (tip) {
         tip.innerHTML = ganttTipFor(task);
@@ -3068,23 +3550,33 @@ var MMGR = window.MMGR || {};
     // OWNER 2026-09-28: only track while a gantt bar is hovered (or a bar
     // drag preview is up). The un-gated version chased the cursor page-wide
     // after the pointer had left the chart.
-    if (!_ganttDrag && !($('gantt-chart') && $('gantt-chart').matches(':hover'))) return;
+    if (!_ganttDrag && !($('gantt-chart') && $('gantt-chart').matches(':hover'))) {
+      return;
+    }
     const tip = $('gantt-tip');
-    if (tip && tip.classList.contains('vis')) positionGanttTip(e);
+    if (tip && tip.classList.contains('vis')) {
+      positionGanttTip(e);
+    }
   });
 
   document.addEventListener(
     'mouseout',
     function (e) {
       const gc = $('gantt-chart');
-      if (!gc) return;
+      if (!gc) {
+        return;
+      }
       const bar = e.target.closest && e.target.closest('.gb');
-      if (!bar) return;
+      if (!bar) {
+        return;
+      }
       // OWNER 2026-09-28: leave the BAR, lose the tip. The old check demanded
       // the pointer land outside the whole chart, so gliding from a bar onto
       // the grid kept the description following the cursor across the page.
       const tip = $('gantt-tip');
-      if (tip) tip.classList.remove('vis');
+      if (tip) {
+        tip.classList.remove('vis');
+      }
     },
     true
   );
@@ -3112,13 +3604,19 @@ var MMGR = window.MMGR || {};
     // Read-only scope (view-only codes): the task name is a <span>, so it is
     // not covered by the input/select pointer-events guard, block renames
     // here for both the click and Enter paths before any mutation can happen.
-    if (document.body.classList.contains('readonly-mode')) return;
+    if (document.body.classList.contains('readonly-mode')) {
+      return;
+    }
     const id = row.getAttribute('data-id');
     const s = S();
     const task = (s.tasks || []).find(t => t.id === id);
-    if (!task) return;
+    if (!task) {
+      return;
+    }
     const nameEl = row.querySelector('.wbs-name');
-    if (!nameEl) return;
+    if (!nameEl) {
+      return;
+    }
     const input = document.createElement('input');
     input.type = 'text';
     input.value = task.name || '';
@@ -3128,7 +3626,9 @@ var MMGR = window.MMGR || {};
     input.select();
     let done = false;
     const commit = function () {
-      if (done) return;
+      if (done) {
+        return;
+      }
       done = true;
       const val = input.value.trim();
       if (val && val !== task.name && ns.Tasks && ns.Tasks.updTaskField) {
@@ -3139,7 +3639,9 @@ var MMGR = window.MMGR || {};
       // Re-select the row after re-render so the caret stays in the list
       requestAnimationFrame(() => {
         const rr = wbsRows().find(r => r.getAttribute('data-id') === id);
-        if (rr) selectWbsRow(rr);
+        if (rr) {
+          selectWbsRow(rr);
+        }
       });
     };
     input.addEventListener('blur', commit);
@@ -3158,15 +3660,23 @@ var MMGR = window.MMGR || {};
 
   document.addEventListener('keydown', function (e) {
     const body = $('wbs-body');
-    if (!body || !body.contains(e.target)) return;
-    if (e.target.closest && e.target.closest('input,select,textarea')) return; // native editing
+    if (!body || !body.contains(e.target)) {
+      return;
+    }
+    if (e.target.closest && e.target.closest('input,select,textarea')) {
+      return;
+    } // native editing
     const rows = wbsRows();
-    if (!rows.length) return;
+    if (!rows.length) {
+      return;
+    }
     const idx = rows.indexOf(e.target.closest('tr'));
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       const next = e.key === 'ArrowDown' ? idx + 1 : idx - 1;
-      if (next >= 0 && next < rows.length) selectWbsRow(rows[next]);
+      if (next >= 0 && next < rows.length) {
+        selectWbsRow(rows[next]);
+      }
     } else if (e.key === 'Enter') {
       if (idx >= 0 && e.target.tagName === 'TR') {
         e.preventDefault();
@@ -3177,8 +3687,12 @@ var MMGR = window.MMGR || {};
 
   document.addEventListener('click', function (e) {
     const body = $('wbs-body');
-    if (!body || !body.contains(e.target)) return;
-    if (e.target.closest && e.target.closest('input,select,button,a,svg')) return;
+    if (!body || !body.contains(e.target)) {
+      return;
+    }
+    if (e.target.closest && e.target.closest('input,select,button,a,svg')) {
+      return;
+    }
     // Click-to-edit the task name (mouse parity with the Enter-key path).
     const nameTarget = e.target.closest ? e.target.closest('.wbs-name') : null;
     if (nameTarget) {
@@ -3190,7 +3704,9 @@ var MMGR = window.MMGR || {};
       }
     }
     const row = e.target.closest('tr.wbs-row');
-    if (row) selectWbsRow(row);
+    if (row) {
+      selectWbsRow(row);
+    }
   });
 
   // Weather window inputs (dashboard card), direct listeners, not
@@ -3199,7 +3715,9 @@ var MMGR = window.MMGR || {};
   // when the scripts load; stub elements in tests simply no-op.
   let _wxBound = false;
   function bindWxInputs() {
-    if (ns.RenderWeather) ns.RenderWeather.bindWxInputs();
+    if (ns.RenderWeather) {
+      ns.RenderWeather.bindWxInputs();
+    }
   }
 
   // ---- API ----
@@ -3287,7 +3805,9 @@ var MMGR = window.MMGR || {};
   // ---- C24 Template Library ----
   function renderTemplates() {
     const el = $('template-list');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const s = S();
     const Templates = ns.Templates;
     if (!Templates) {

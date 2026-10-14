@@ -84,6 +84,10 @@
     'If you do not know something, say so instead of guessing. ' +
     'The RATE BOOK below is the truth about prices: quote from it, and say when a ' +
     'figure is not in it rather than inventing one. ' +
+    'It opens with a scope line naming the book, its years, its total rate count ' +
+    'and its per-trade counts. When that scope line says the full book could not ' +
+    'load, tell the user plainly, in one short sentence, that this device only ' +
+    'has the rates already on the page. ' +
     'When the conversation settles on figures to price, end your reply with ONE ' +
     'final line in exactly this form (no code fences, nothing after it): ' +
     'PROPOSAL: {"work":"<key>","d1":<number>,"note":"<one short line>"} - ' +
@@ -558,6 +562,45 @@
       label + ' - ' + qty + ' ' + unit + ' x ' + cur + ' ' + rate;
   }
 
+  // The two output choices appear ONLY while a parsed PROPOSAL is waiting.
+  // The history replay, a live reply and the B6 rejection all funnel through
+  // here, so consuming or rejecting a proposal takes them away again - the
+  // box is never left dangling over a conversation that already answered.
+  function renderPaths() {
+    if (!els.paths) {
+      return;
+    }
+    els.paths.hidden = !proposal;
+    renderProposalChip();
+  }
+
+  // B6: the exact rejection notice (DIRECTIVE section 3). Wording kept in
+  // step with the page's own guard in calculator-page.js.
+  var B6_RATE_NOTICE =
+    'I could not add that line because the rate did not match what you gave me. Tell me the rate again and I will add it.';
+  // B6: source "user" - the rate must be a number the USER typed in this
+  // conversation, compared after removing currency symbols, spaces and
+  // thousands separators, and also by numeric equality so "4,500" proves 4500.
+  function userTypedRate(rate) {
+    var want = Number(rate);
+    for (var i = 0; i < draft.length; i++) {
+      if (draft[i].role !== 'user') {
+        continue;
+      }
+      var flat = String(draft[i].content || '').replace(/[$,\s]/g, '');
+      if (flat.indexOf(String(rate)) > -1) {
+        return true;
+      }
+      var nums = flat.match(/\d+(?:\.\d+)?/g) || [];
+      for (var j = 0; j < nums.length; j++) {
+        if (Number(nums[j]) === want) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   function onPopulate() {
     if (!proposal) {
       return;
@@ -596,33 +639,37 @@
       );
       return;
     }
+    // B6: self-enforcing guards run BEFORE the page is asked, so a rejected
+    // proposal never fills a field, never prices and never touches the bill,
+    // the counter or the chip. The model can be wrong; this side decides.
+    if (proposal.custom) {
+      var cr = proposal.custom.rate;
+      if (typeof cr !== 'number' || !isFinite(cr) || cr <= 0) {
+        notice(B6_RATE_NOTICE, 'bad');
+        proposal = null;
+        renderPaths();
+        return;
+      }
+      var psrc = proposal.custom.source;
+      var psrcs = String(psrc === undefined || psrc === null ? '' : psrc);
+      if (!psrcs || psrcs === 'user') {
+        if (!userTypedRate(cr)) {
+          notice(B6_RATE_NOTICE, 'bad');
+          proposal = null;
+          renderPaths();
+          return;
+        }
+      }
+      // A JIC source is proved against the loaded book by the PAGE (it owns
+      // the book); its rejection arrives as out.error below.
+    }
     var out = null;
     try {
       out = fn(proposal);
     } catch (e) {
       out = { ok: false, error: 'could not add that line' };
     }
-    // B6: self-enforcing guards. The model can be wrong, so the page decides
-    // - the proposal is only added if it passes its own checks, and a
-    // rejected line never touches the bill, the counter or the chip.
     if (out && out.ok && proposal) {
-      // rate must be a number the user typed here or a published metric rate
-      // of a row we quoted (B6). A custom line with no rate is rejected at the
-      // same gate, so nothing is added without a rate the page can prove.
-      var badRate = false;
-      if (proposal.custom) {
-        var cr = proposal.custom.rate;
-        badRate = typeof cr !== 'number' || !isFinite(cr) || cr <= 0;
-      }
-      if (badRate) {
-        notice(
-          'I could not add that line because the rate did not match what you gave me. Tell me the rate again and I will add it.',
-          'bad'
-        );
-        proposal = null;
-        renderPaths();
-        return;
-      }
       notice(
         'Added to the bill: ' +
           String(out.name || 'the line') +
@@ -1228,17 +1275,17 @@
   // A1: the first question waits for the full JIC book to land, but only
   // for 2 seconds. The book stays async after that - a fresh page load in a
   // tab keeps downloading it silently, so a slow device still gets its answer.
-  var _rrLoadPending = false;
-  function _startRateBookLoad() {
-    if (_rrLoadPending) return;
-    _rrLoadPending = true;
-    if (typeof rrLoadFull === 'function') {
-      rrLoadFull(function () {
-        _rrLoadPending = false;
-      });
-    } else {
-      _rrLoadPending = false;
+  // A1: the page exposes its ONE loader (one script tag, never two). The
+  // bare `rrLoadFull` global this used to look up never existed - the full
+  // book never loaded outside the rate-book card, so the assistant could
+  // never index the 811 published rates on a normal visit.
+  function rrLoad(done) {
+    var load = window.MMGR_JIC_FULL_LOAD;
+    if (typeof load === 'function') {
+      load(done);
+      return true;
     }
+    return false;
   }
 
   function send() {
@@ -1263,97 +1310,102 @@
     draft.push({ role: 'user', content: text });
     showTyping();
     syncDisabled();
-    // A1: wait for the book load, but no longer than 2 seconds - the answer
-    // matters more than the book on a slow device.
-    var waited = false;
-    var t = setTimeout(function () {
-      waited = true;
-    }, 2000);
-    function settle() {
-      clearTimeout(t);
-      if (waited) return;
-      _startRateBookLoad();
+    // A1: the question waits for the full book to land - at most 2 seconds,
+    // then it proceeds either way. The payload is built at DELIVER time, so
+    // the RATE BOOK block carries the 811 rows whenever they made it in.
+    var sent = false;
+    var t = null;
+    function deliver() {
+      if (sent) {
+        return;
+      }
+      sent = true;
+      if (t) {
+        clearTimeout(t);
+      }
+      doFetch();
     }
-    if (typeof rrLoadFull === 'function') {
-      rrLoadFull(settle);
-    } else {
-      settle();
-    }
-    fetch(ENDPOINT, {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload(text))
-    })
-      .then(function (res) {
-        return res
-          .json()
-          .catch(function () {
-            return {};
-          })
-          .then(function (data) {
-            return { status: res.status, ok: res.ok, data: data || {} };
-          });
+    function doFetch() {
+      fetch(ENDPOINT, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload(text))
       })
-      .then(function (r) {
-        busy = false;
-        hideTyping();
-        if (r.ok && r.data.ok && typeof r.data.text === 'string' && r.data.text) {
-          var parsed = parseProposal(r.data.text);
-          draft.push({ role: 'assistant', content: r.data.text });
-          push('assistant', parsed.text);
-          proposal = parsed.json;
-          renderPaths();
-          if (typeof r.data.remaining === 'number') {
-            // Clamped to the client's own idea of the allowance: the server
-            // owns the number, but a reply that reported more than CAP would
-            // mean the two sides disagree, and this side must never promise
-            // more than the other one grants.
-            remaining = Math.min(r.data.remaining, CAP);
-          } else if (r.data.remaining === null) {
-            remaining = null;
+        .then(function (res) {
+          return res
+            .json()
+            .catch(function () {
+              return {};
+            })
+            .then(function (data) {
+              return { status: res.status, ok: res.ok, data: data || {} };
+            });
+        })
+        .then(function (r) {
+          busy = false;
+          hideTyping();
+          if (r.ok && r.data.ok && typeof r.data.text === 'string' && r.data.text) {
+            var parsed = parseProposal(r.data.text);
+            draft.push({ role: 'assistant', content: r.data.text });
+            push('assistant', parsed.text);
+            proposal = parsed.json;
+            renderPaths();
+            if (typeof r.data.remaining === 'number') {
+              // Clamped to the client's own idea of the allowance: the server
+              // owns the number, but a reply that reported more than CAP would
+              // mean the two sides disagree, and this side must never promise
+              // more than the other one grants.
+              remaining = Math.min(r.data.remaining, CAP);
+            } else if (r.data.remaining === null) {
+              remaining = null;
+            }
+            setStatus(quotaLine());
+            saveDraft();
+            return;
           }
-          setStatus(quotaLine());
-          saveDraft();
-          return;
-        }
-        if (r.status === 402) {
-          remaining = 0;
+          if (r.status === 402) {
+            remaining = 0;
+            notice(
+              r.data.error ||
+                'Your daily limit has been reached. It refreshes 24 hours after your first message.',
+              'bad'
+            );
+            setStatus(quotaLine());
+            return;
+          }
+          if (r.status === 401 || r.status === 403) {
+            signedIn = false;
+            renderIdentity();
+            notice('Your sign-in has run out. Sign in again and the assistant comes back.', 'bad');
+            setStatus('Sign in to use the assistant.', true);
+            return;
+          }
+          if (r.status === 429 || r.status === 503) {
+            notice(
+              r.data.error || 'The free assistant is busy right now. Try again in a minute.',
+              'bad'
+            );
+            setStatus(quotaLine());
+            return;
+          }
           notice(
-            r.data.error ||
-              'Your daily limit has been reached. It refreshes 24 hours after your first message.',
+            r.data.error || 'The assistant could not answer just now (HTTP ' + r.status + ').',
             'bad'
           );
           setStatus(quotaLine());
-          return;
-        }
-        if (r.status === 401 || r.status === 403) {
-          signedIn = false;
-          renderIdentity();
-          notice('Your sign-in has run out. Sign in again and the assistant comes back.', 'bad');
-          setStatus('Sign in to use the assistant.', true);
-          return;
-        }
-        if (r.status === 429 || r.status === 503) {
-          notice(
-            r.data.error || 'The free assistant is busy right now. Try again in a minute.',
-            'bad'
-          );
+        })
+        .catch(function () {
+          busy = false;
+          hideTyping();
+          notice('Could not reach the server. Check your connection and try again.', 'bad');
           setStatus(quotaLine());
-          return;
-        }
-        notice(
-          r.data.error || 'The assistant could not answer just now (HTTP ' + r.status + ').',
-          'bad'
-        );
-        setStatus(quotaLine());
-      })
-      .catch(function () {
-        busy = false;
-        hideTyping();
-        notice('Could not reach the server. Check your connection and try again.', 'bad');
-        setStatus(quotaLine());
-      });
+        });
+    }
+    t = setTimeout(deliver, 2000);
+    if (!rrLoad(deliver)) {
+      deliver();
+    }
   }
 
   /* ---- events ---------------------------------------------------------- */
@@ -1496,9 +1548,7 @@
     // assistant can answer from the book on a normal visit and always says so
     // honestly when it cannot. The load is async and never blocks the panel;
     // the first question waits at most 2 seconds for it.
-    if (typeof rrLoadFull === 'function') {
-      rrLoadFull(function () {}); // the done callback is a no-op here
-    }
+    rrLoad(function () {}); // the done callback is a no-op here
     return true;
   }
 

@@ -119,14 +119,18 @@ function globalWranglerJs() {
       shell: process.platform === 'win32'
     }).trim();
     const p = path.join(root, 'wrangler', 'bin', 'wrangler.js');
-    if (fs.existsSync(p)) return p;
+    if (fs.existsSync(p)) {
+      return p;
+    }
   } catch (e) {
     /* fall through */
   }
   // Fallback: local node_modules (CI, no global wrangler)
   try {
     const lp = path.join(__dirname, '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
-    if (fs.existsSync(lp)) return lp;
+    if (fs.existsSync(lp)) {
+      return lp;
+    }
   } catch (e) {
     /* fall through */
   }
@@ -203,11 +207,15 @@ async function startWrangler() {
       }, 3000);
       const r = await fetch(BASE + '/api/health', { signal: ctrl.signal });
       clearTimeout(timer);
-      if (r.ok) return;
+      if (r.ok) {
+        return;
+      }
     } catch (e) {
       /* not up yet */
     }
-    if (Date.now() - t0 > 120000) throw new Error('wrangler dev did not come up in 120s');
+    if (Date.now() - t0 > 120000) {
+      throw new Error('wrangler dev did not come up in 120s');
+    }
     await delay(1500);
   }
 }
@@ -444,7 +452,9 @@ const authHeaders = cookie =>
       log('waiting for browser phase (stop file: ' + STOP_FILE + ')…');
       const t0 = Date.now();
       while (Date.now() - t0 < 1200000) {
-        if (fs.existsSync(STOP_FILE)) break;
+        if (fs.existsSync(STOP_FILE)) {
+          break;
+        }
         await delay(1000);
       }
     }

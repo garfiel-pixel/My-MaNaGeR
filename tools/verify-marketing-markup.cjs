@@ -31,7 +31,9 @@ const JS = path.join(ROOT, 'js', 'marketing.js');
 let fails = 0;
 function ok(label, cond, extra) {
   console.log((cond ? 'PASS  ' : 'FAIL  ') + label + (extra ? '  [' + extra + ']' : ''));
-  if (!cond) fails++;
+  if (!cond) {
+    fails++;
+  }
 }
 
 /* ---- 1. rail markup: 7 big dots, no labels/tooltips/lines, no nested <li> ---------- */
@@ -49,7 +51,9 @@ if (railStart > -1) {
     if (/^<\/li/.test(t)) {
       depth = Math.max(0, depth - 1);
     } else {
-      if (depth > 0) nested++;
+      if (depth > 0) {
+        nested++;
+      }
       depth++;
     }
   });
@@ -129,10 +133,12 @@ while ((m = mainRule.exec(css)) !== null) {
     hasWidth100,
     'width=' + (body.match(/width\s*:\s*[^;\n]*/)?.[0] || 'absent')
   );
-  if (!hasMaxWidth && /max-width\s*:/i.test(body))
+  if (!hasMaxWidth && /max-width\s*:/i.test(body)) {
     ok('main max-width is none', false, 'max-width declared (not none)');
-  if (!hasWidth100 && /width\s*:/i.test(body))
+  }
+  if (!hasWidth100 && /width\s*:/i.test(body)) {
     ok('main width is 100%', false, 'width declared (not 100%)');
+  }
 }
 
 /* ---- 4. js/marketing.js must declare MINORS_PER_GAP -------------------- */

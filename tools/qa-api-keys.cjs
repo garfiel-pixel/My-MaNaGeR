@@ -68,7 +68,9 @@ const check = (name, val, detail) => {
       name +
       (val ? '' : '   <-- ' + JSON.stringify(detail === undefined ? null : detail).slice(0, 400))
   );
-  if (!val) annotateFailure(name, detail);
+  if (!val) {
+    annotateFailure(name, detail);
+  }
 };
 
 let proc = null;
@@ -82,7 +84,9 @@ setTimeout(() => {
 
 function globalWranglerJs() {
   const localP = path.join(ROOT, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
-  if (fs.existsSync(localP)) return localP;
+  if (fs.existsSync(localP)) {
+    return localP;
+  }
   try {
     const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
     const root = execFileSync(npmCmd, ['root', '-g'], {
@@ -90,7 +94,9 @@ function globalWranglerJs() {
       shell: process.platform === 'win32'
     }).trim();
     const p = path.join(root, 'wrangler', 'bin', 'wrangler.js');
-    if (fs.existsSync(p)) return p;
+    if (fs.existsSync(p)) {
+      return p;
+    }
   } catch (e) {
     /* fall through */
   }
@@ -176,10 +182,14 @@ function startWrangler() {
     );
     proc.on('error', e => reject(new Error('wrangler spawn failed: ' + e.message)));
     const poll = async tries => {
-      if (tries <= 0) return reject(new Error('wrangler dev did not come up in 120s'));
+      if (tries <= 0) {
+        return reject(new Error('wrangler dev did not come up in 120s'));
+      }
       try {
         const r = await fetch(BASE + '/api/health');
-        if (r.ok) return resolve();
+        if (r.ok) {
+          return resolve();
+        }
       } catch (e) {
         /* not up yet */
       }
@@ -219,7 +229,9 @@ const j = async res => {
     let cookie = '';
     const sc = r.headers.get('set-cookie') || '';
     const m = sc.match(/mmgr_session=([^;]+)/);
-    if (m) cookie = m[1];
+    if (m) {
+      cookie = m[1];
+    }
     if (!cookie || !reg.ok) {
       r = await fetch(BASE + '/api/auth/login', {
         method: 'POST',
@@ -230,10 +242,14 @@ const j = async res => {
       reg = await j(r);
       const sc2 = r.headers.get('set-cookie') || '';
       const m2 = sc2.match(/mmgr_session=([^;]+)/);
-      if (m2) cookie = m2[1];
+      if (m2) {
+        cookie = m2[1];
+      }
     }
     const authHeaders = { 'Content-Type': 'application/json' };
-    if (cookie) authHeaders.Cookie = 'mmgr_session=' + cookie;
+    if (cookie) {
+      authHeaders.Cookie = 'mmgr_session=' + cookie;
+    }
     check('P0a email session minted (key management is owner-either-auth)', !!cookie && !!reg.ok, {
       reg,
       hasCookie: !!cookie

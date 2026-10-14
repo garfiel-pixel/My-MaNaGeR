@@ -12,7 +12,9 @@ var MMGR = window.MMGR || {};
   // ---- Stakeholders ----
   function addStake() {
     ns.State.updateState(function (s) {
-      if (!s.stakeholders) s.stakeholders = [];
+      if (!s.stakeholders) {
+        s.stakeholders = [];
+      }
       s.stakeholders.push({
         id: U.genShortId('S'),
         name: '',
@@ -62,17 +64,25 @@ var MMGR = window.MMGR || {};
   // MARKET-FEATURE-ROADMAP A5: EMR staleness , never verified counts as stale;
   // otherwise stale after `staleAfterDays` (default 365) since verification.
   function isEmrStale(stakeholder, staleAfterDays) {
-    if (!stakeholder) return false;
-    if (!stakeholder.emrVerifiedAt) return true;
+    if (!stakeholder) {
+      return false;
+    }
+    if (!stakeholder.emrVerifiedAt) {
+      return true;
+    }
     const days = staleAfterDays === undefined || staleAfterDays === null ? 365 : +staleAfterDays;
     const verified = new Date(stakeholder.emrVerifiedAt);
-    if (isNaN(verified.getTime())) return true;
+    if (isNaN(verified.getTime())) {
+      return true;
+    }
     return (Date.now() - verified.getTime()) / 86400000 > days;
   }
 
   function updStake(index, field, value) {
     ns.State.updateState(function (s) {
-      if (s.stakeholders && s.stakeholders[index]) s.stakeholders[index][field] = value;
+      if (s.stakeholders && s.stakeholders[index]) {
+        s.stakeholders[index][field] = value;
+      }
     });
   }
 
@@ -85,15 +95,18 @@ var MMGR = window.MMGR || {};
       }
     });
     // Keep the RACI matrix consistent: drop the deleted stakeholder's column.
-    if (removedId != null && ns.Raci && ns.Raci.pruneDeleted)
+    if (removedId != null && ns.Raci && ns.Raci.pruneDeleted) {
       ns.Raci.pruneDeleted({ personIds: [removedId] });
+    }
     R.renderStakeholders();
   }
 
   // ---- Changes ----
   function addChange() {
     ns.State.updateState(function (s) {
-      if (!s.changes) s.changes = [];
+      if (!s.changes) {
+        s.changes = [];
+      }
       s.changes.push({
         id: U.genShortId('C'),
         date: U.todayStr(),
@@ -111,13 +124,17 @@ var MMGR = window.MMGR || {};
 
   function updChange(index, field, value) {
     ns.State.updateState(function (s) {
-      if (s.changes && s.changes[index]) s.changes[index][field] = value;
+      if (s.changes && s.changes[index]) {
+        s.changes[index][field] = value;
+      }
     });
   }
 
   function delChange(index) {
     ns.State.updateState(function (s) {
-      if (s.changes) s.changes.splice(index, 1);
+      if (s.changes) {
+        s.changes.splice(index, 1);
+      }
     });
     R.renderChanges();
   }
@@ -125,7 +142,9 @@ var MMGR = window.MMGR || {};
   // ---- Log ----
   function addLog() {
     ns.State.updateState(function (s) {
-      if (!s.logEntries) s.logEntries = [];
+      if (!s.logEntries) {
+        s.logEntries = [];
+      }
       s.logEntries.push({
         date: new Date().toLocaleString(),
         decision: '',
@@ -138,13 +157,17 @@ var MMGR = window.MMGR || {};
 
   function updLog(index, field, value) {
     ns.State.updateState(function (s) {
-      if (s.logEntries && s.logEntries[index]) s.logEntries[index][field] = value;
+      if (s.logEntries && s.logEntries[index]) {
+        s.logEntries[index][field] = value;
+      }
     });
   }
 
   function delLog(index) {
     ns.State.updateState(function (s) {
-      if (s.logEntries) s.logEntries.splice(index, 1);
+      if (s.logEntries) {
+        s.logEntries.splice(index, 1);
+      }
     });
     R.renderLog();
   }
@@ -158,59 +181,72 @@ var MMGR = window.MMGR || {};
     const now = new Date();
     const soon = new Date(now.getTime() + days * 86400000);
     const s = ns.State ? ns.State.getState() : null;
-    if (!s) return [];
+    if (!s) {
+      return [];
+    }
     const out = [];
     function dueIn(d) {
-      if (!d) return null;
+      if (!d) {
+        return null;
+      }
       const dt = new Date(d);
-      if (isNaN(dt.getTime())) return null;
+      if (isNaN(dt.getTime())) {
+        return null;
+      }
       return Math.round((dt.getTime() - now.getTime()) / 86400000);
     }
     (s.stakeholders || []).forEach(function (st) {
       const coi = dueIn(st.coiExpiry);
-      if (coi !== null && coi <= days)
+      if (coi !== null && coi <= days) {
         out.push({
           kind: 'COI',
           label: (st.name || 'Stakeholder') + ' , COI',
           date: st.coiExpiry,
           daysLeft: coi
         });
+      }
       const lic = dueIn(st.licenseExpiry);
-      if (lic !== null && lic <= days)
+      if (lic !== null && lic <= days) {
         out.push({
           kind: 'License',
           label: (st.name || 'Stakeholder') + ' , license',
           date: st.licenseExpiry,
           daysLeft: lic
         });
-      if (isEmrStale(st) && (st.emr || st.emr !== undefined))
+      }
+      if (isEmrStale(st) && (st.emr || st.emr !== undefined)) {
         out.push({
           kind: 'EMR',
           label: (st.name || 'Stakeholder') + ' , EMR re-verification',
           date: '',
           daysLeft: null
         });
+      }
     });
     (s.warrantyItems || []).forEach(function (w) {
       const dl = dueIn(w.warrantyEnd);
-      if (dl !== null && dl <= days)
+      if (dl !== null && dl <= days) {
         out.push({
           kind: 'Warranty',
           label: (w.item || 'Warranty item') + ' , ' + (w.provider || 'provider'),
           date: w.warrantyEnd,
           daysLeft: dl
         });
+      }
     });
     (s.permits || []).forEach(function (p) {
-      if (p.status === 'expired' || p.status === 'closed') return;
+      if (p.status === 'expired' || p.status === 'closed') {
+        return;
+      }
       const dl = dueIn(p.expires);
-      if (dl !== null && dl <= days)
+      if (dl !== null && dl <= days) {
         out.push({
           kind: 'Permit',
           label: (p.permitNo || p.id) + ' , ' + (p.agency || 'permit'),
           date: p.expires,
           daysLeft: dl
         });
+      }
     });
     return out.sort(function (a, b) {
       const da = a.date || '9999-12-31';

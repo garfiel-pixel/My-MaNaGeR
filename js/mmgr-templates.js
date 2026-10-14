@@ -120,9 +120,13 @@ var MMGR = window.MMGR || {};
   // ---- CRUD ----
   function saveAsTemplate(name) {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     ns.State.updateState(function (st) {
-      if (!st.projectTemplates) st.projectTemplates = [];
+      if (!st.projectTemplates) {
+        st.projectTemplates = [];
+      }
       // Remove built-in with same name if re-saving
       st.projectTemplates = st.projectTemplates.filter(function (t) {
         return !t.builtin || t.name !== name;
@@ -141,7 +145,9 @@ var MMGR = window.MMGR || {};
 
   function deleteTemplate(tplId) {
     ns.State.updateState(function (st) {
-      if (!st.projectTemplates) return;
+      if (!st.projectTemplates) {
+        return;
+      }
       st.projectTemplates = st.projectTemplates.filter(function (t) {
         return t.id !== tplId;
       });
@@ -150,12 +156,16 @@ var MMGR = window.MMGR || {};
 
   function applyTemplate(tplId) {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const allTemplates = BUILT_IN.concat(s.projectTemplates || []);
     const tpl = allTemplates.find(function (t) {
       return t.id === tplId;
     });
-    if (!tpl) return;
+    if (!tpl) {
+      return;
+    }
     // Confirm before overwriting
     if (s.tasks && s.tasks.length > 0) {
       if (
@@ -164,17 +174,22 @@ var MMGR = window.MMGR || {};
             tpl.name +
             '"? This will add template tasks and budget lines to your current project.'
         )
-      )
+      ) {
         return;
+      }
     }
     ns.State.updateState(function (st) {
       // Merge tasks (add template tasks after existing)
       if (tpl.tasks && tpl.tasks.length) {
-        if (!st.tasks) st.tasks = [];
+        if (!st.tasks) {
+          st.tasks = [];
+        }
         let maxId = 0;
         st.tasks.forEach(function (t) {
           const num = parseInt(String(t.id).replace(/\D/g, ''));
-          if (num > maxId) maxId = num;
+          if (num > maxId) {
+            maxId = num;
+          }
         });
         tpl.tasks.forEach(function (t) {
           maxId++;
@@ -195,7 +210,9 @@ var MMGR = window.MMGR || {};
       }
       // Merge budget lines
       if (tpl.budgetLines && tpl.budgetLines.length) {
-        if (!st.budgetLines) st.budgetLines = [];
+        if (!st.budgetLines) {
+          st.budgetLines = [];
+        }
         tpl.budgetLines.forEach(function (b) {
           st.budgetLines.push({
             id: U.genShortId('BL'),

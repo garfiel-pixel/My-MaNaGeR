@@ -91,28 +91,38 @@ function parseArgs(argv) {
       k === '--max-id' ||
       k === '--ledger'
     ) {
-      if (v === undefined) fail(k + ' requires a value');
+      if (v === undefined) {
+        fail(k + ' requires a value');
+      }
       a[k.slice(2).replace(/-/g, '_')] = v;
       i++;
     } else if (k === '--dry-run') {
       a.dry_run = true;
-    } else fail('unknown option ' + k);
+    } else {
+      fail('unknown option ' + k);
+    }
   }
   return a;
 }
 
 const args = parseArgs(process.argv.slice(2));
-if (!args) process.exit(0);
+if (!args) {
+  process.exit(0);
+}
 
 // ---- locate the sidecar + derive the cloud project id --------------------
 let projectFile = args.file;
 if (!projectFile) {
   const dir = args.dir || process.env.MMGR_MCP_DIR || path.join('mcp', 'projects');
   const name = args.project_name;
-  if (!name) fail('provide --file <project.json>, or --dir + --project-name');
+  if (!name) {
+    fail('provide --file <project.json>, or --dir + --project-name');
+  }
   projectFile = path.join(dir, name.replace(/\.json$/i, '') + '.json');
 }
-if (!fs.existsSync(projectFile)) fail('project file not found: ' + projectFile);
+if (!fs.existsSync(projectFile)) {
+  fail('project file not found: ' + projectFile);
+}
 
 let state = {};
 try {
@@ -129,10 +139,11 @@ if (!projectId || !/^[A-Za-z0-9_-]{1,64}$/.test(String(projectId))) {
 }
 
 const sidecar = projectFile.replace(/\.json$/i, '') + '.mcp-changelog.json';
-if (!fs.existsSync(sidecar))
+if (!fs.existsSync(sidecar)) {
   fail(
     'no MCP changelog sidecar at ' + sidecar + ' — run the MCP server and approve some edits first'
   );
+}
 let log = {};
 try {
   log = JSON.parse(fs.readFileSync(sidecar, 'utf8'));
@@ -152,7 +163,9 @@ try {
 } catch (e) {
   /* first run */
 }
-if (!ledger.entries || typeof ledger.entries !== 'object') ledger.entries = {};
+if (!ledger.entries || typeof ledger.entries !== 'object') {
+  ledger.entries = {};
+}
 
 const maxId = args.max_id !== undefined ? Number(args.max_id) : Infinity;
 const pending = entries
@@ -205,9 +218,13 @@ for (let i = 0; i < pending.length; i++) {
 }
 
 const url = (args.url || process.env.MMGR_CLOUD_URL || '').replace(/\/+$/, '');
-if (!url) fail('provide --url <origin> (or set MMGR_CLOUD_URL)');
+if (!url) {
+  fail('provide --url <origin> (or set MMGR_CLOUD_URL)');
+}
 const ownerCode = args.owner_code || process.env.MMGR_OWNER_CODE || '';
-if (!ownerCode) fail('provide --owner-code <code> (or set MMGR_OWNER_CODE)');
+if (!ownerCode) {
+  fail('provide --owner-code <code> (or set MMGR_OWNER_CODE)');
+}
 
 if (args.dry_run) {
   console.log(
@@ -237,11 +254,15 @@ if (args.dry_run) {
   } catch (e) {
     /* non-JSON */
   }
-  if (res.status === 403) fail('owner code rejected for project ' + projectId + ' (403)', 2);
-  if (res.status === 429)
+  if (res.status === 403) {
+    fail('owner code rejected for project ' + projectId + ' (403)', 2);
+  }
+  if (res.status === 429) {
     fail('rate limited — ' + ((body && body.error) || 'try again in a minute'), 2);
-  if (!res.ok)
+  }
+  if (!res.ok) {
     fail('import failed (HTTP ' + res.status + '): ' + JSON.stringify(body).slice(0, 300));
+  }
   const b = body || {};
   const importedEntries = b.importedEntries || b.imported || [];
   const skippedEntries = b.skippedEntries || b.skipped || [];

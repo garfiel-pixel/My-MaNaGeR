@@ -49,14 +49,20 @@ var MMGR = window.MMGR || {};
 
   function getWindow(regionId, windowName) {
     const region = WINDOWS[regionId];
-    if (!region) return null;
+    if (!region) {
+      return null;
+    }
     return region[windowName] || null;
   }
 
   function isDateInWindow(dateStr, window) {
-    if (!window || !dateStr) return false;
+    if (!window || !dateStr) {
+      return false;
+    }
     const d = U.parseDL(dateStr);
-    if (!d) return false;
+    if (!d) {
+      return false;
+    }
     const startParts = window.start.split('-').map(Number);
     const endParts = window.end.split('-').map(Number);
     const startDate = new Date(d.getFullYear(), startParts[0] - 1, startParts[1]);
@@ -69,9 +75,13 @@ var MMGR = window.MMGR || {};
   }
 
   function getTaskWeatherExposure(task, regionId) {
-    if (!task || !task.startDate || !task.endDate) return { exposed: false, reason: '' };
+    if (!task || !task.startDate || !task.endDate) {
+      return { exposed: false, reason: '' };
+    }
     const region = WINDOWS[regionId || 'northern-temperate'];
-    if (!region) return { exposed: false, reason: '' };
+    if (!region) {
+      return { exposed: false, reason: '' };
+    }
     const reasons = [];
     // Check winter
     const winter = region.winter;
@@ -112,7 +122,9 @@ var MMGR = window.MMGR || {};
   // ---- Hurricane Window Variance ----
   function getHurricaneWindowVariance(regionId, targetEndDate) {
     const region = WINDOWS[regionId || 'northern-temperate'];
-    if (!region || !region.hurricane) return { overlap: false, daysUntilWindow: null, message: '' };
+    if (!region || !region.hurricane) {
+      return { overlap: false, daysUntilWindow: null, message: '' };
+    }
     const hurricane = region.hurricane;
     // Parse hurricane end
     const endParts = hurricane.end.split('-').map(Number);
@@ -122,7 +134,9 @@ var MMGR = window.MMGR || {};
       hurricaneEnd.getMonth() < 6 ? hurricaneEnd.getFullYear() + 1 : hurricaneEnd.getFullYear()
     );
     const target = U.parseDL(targetEndDate);
-    if (!target) return { overlap: false, daysUntilWindow: null, message: '' };
+    if (!target) {
+      return { overlap: false, daysUntilWindow: null, message: '' };
+    }
     const days = U.daysBetween(target, hurricaneEnd);
     if (days < 0) {
       return {

@@ -11,7 +11,9 @@ var MMGR = window.MMGR || {};
 
   const U = ns.Utils;
   function _toast(msg, type) {
-    if (ns.App && ns.App.showToast) ns.App.showToast(msg, type);
+    if (ns.App && ns.App.showToast) {
+      ns.App.showToast(msg, type);
+    }
   }
 
   function _fmtMoney(n) {
@@ -200,7 +202,9 @@ var MMGR = window.MMGR || {};
       return;
     }
     var body = U.$(section + '-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     text = Array.from(body.querySelectorAll('tr'))
       .map(function (tr) {
         return Array.from(tr.querySelectorAll('td,th'))
@@ -243,15 +247,16 @@ var MMGR = window.MMGR || {};
     if (f.targetCompletion) {
       var t =
         ns.Render && ns.Render.computeTimelineStatus ? ns.Render.computeTimelineStatus(s) : null;
-      if (t)
+      if (t) {
         lines.push(
           'Timeline: ' + t.status + (t.overrunDays > 0 ? ' (+' + t.overrunDays + 'd)' : '')
         );
+      }
     }
     var risks = (Array.isArray(s.risks) ? s.risks : []).filter(function (r) {
       return !r.issueId && (r.probability === 'High' || r.probability === 'high');
     });
-    if (risks.length)
+    if (risks.length) {
       lines.push(
         'High risks: ' +
           risks
@@ -260,10 +265,11 @@ var MMGR = window.MMGR || {};
             })
             .join('; ')
       );
+    }
     var issues = (Array.isArray(s.issues) ? s.issues : []).filter(function (i) {
       return i.status !== 'resolved' && i.status !== 'closed';
     });
-    if (issues.length)
+    if (issues.length) {
       lines.push(
         'Open issues: ' +
           issues
@@ -272,6 +278,7 @@ var MMGR = window.MMGR || {};
             })
             .join('; ')
       );
+    }
     var planned = (Array.isArray(s.budgetLines) ? s.budgetLines : []).reduce(function (n, l) {
       return n + (+l.planned || 0);
     }, 0);
@@ -290,7 +297,9 @@ var MMGR = window.MMGR || {};
       var open = ns.Render.computeAgingActions(s).filter(function (a) {
         return (a.age || 0) > 0;
       }).length;
-      if (open) lines.push('Action items past due: ' + open);
+      if (open) {
+        lines.push('Action items past due: ' + open);
+      }
     }
     return lines.join('\n');
   }
@@ -333,7 +342,9 @@ var MMGR = window.MMGR || {};
           tasks.length +
           ' tasks)'
       );
-      if (f.targetCompletion) lines.push('Target completion: ' + f.targetCompletion);
+      if (f.targetCompletion) {
+        lines.push('Target completion: ' + f.targetCompletion);
+      }
       lines.push('');
       lines.push('KEY METRICS');
       lines.push('-'.repeat(30));
@@ -366,7 +377,9 @@ var MMGR = window.MMGR || {};
   function renderCtrlPreviews() {
     var set = function (id, txt) {
       var el = U.$(id);
-      if (el) el.textContent = txt || '';
+      if (el) {
+        el.textContent = txt || '';
+      }
     };
     set('pv-slack', copyAsText('slack'));
     set('pv-email', copyAsText('email'));

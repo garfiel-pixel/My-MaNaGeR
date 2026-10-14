@@ -27,7 +27,9 @@ var MMGR = window.MMGR || {};
 
   async function webhookList() {
     const wrap = $('cloud-webhook-list');
-    if (!wrap) return;
+    if (!wrap) {
+      return;
+    }
     const code = getCode();
     if (!code) {
       wrap.innerHTML = '<div class="sr-hint">Owner code required.</div>';
@@ -112,7 +114,9 @@ var MMGR = window.MMGR || {};
         setStatus((data && data.error) || 'Add webhook failed (HTTP ' + res.status + ').', 'err');
         return;
       }
-      if (urlEl) urlEl.value = '';
+      if (urlEl) {
+        urlEl.value = '';
+      }
       setStatus('Webhook added. Signing secret (shown once, store it): ' + data.secret, 'ok');
       webhookList();
     } catch (e) {

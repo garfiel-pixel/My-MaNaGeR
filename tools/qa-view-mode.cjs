@@ -78,7 +78,9 @@ function contrast(a, b) {
     for (let i = 0; i < 60; i++) {
       try {
         const r = await fetch('http://127.0.0.1:' + PORT + '/json/version');
-        if (r.ok) break;
+        if (r.ok) {
+          break;
+        }
       } catch (e) {}
       await delay(300);
     }
@@ -205,10 +207,11 @@ function contrast(a, b) {
     let v3 = null;
     for (let i = 0; i < 10; i++) {
       await delay(300);
-      if (i === 4)
+      if (i === 4) {
         await ev(
           `window.dispatchEvent(new Event('resize')); try{ if(window.MMGR&&MMGR.Perf&&MMGR.Perf.apply) MMGR.Perf.apply(); }catch(e){}`
         );
+      }
       v3 = await ev(`(function(){
       const deck = document.querySelector('.view-deck');
       const cs = deck ? getComputedStyle(deck) : null;
@@ -221,7 +224,9 @@ function contrast(a, b) {
         deckBlur: cs ? cs.getPropertyValue('--glass-blur').trim() : null,
         bodyTr: bodyTr, modalTr: modalTr };
     })()`);
-      if (v3 && /matrix3d|perspective|rotate/.test(String(v3.deckTr))) break;
+      if (v3 && /matrix3d|perspective|rotate/.test(String(v3.deckTr))) {
+        break;
+      }
     }
     const tilting =
       v3.view3d &&

@@ -34,7 +34,9 @@
   // Google session needs no code , the cookie rides the handshake.
   function accessEvidence() {
     var p = pid();
-    if (!p) return null;
+    if (!p) {
+      return null;
+    }
     var code = '';
     try {
       code =
@@ -49,7 +51,9 @@
 
   function connect() {
     var p = pid();
-    if (!p || closedByUs || typeof WebSocket === 'undefined') return;
+    if (!p || closedByUs || typeof WebSocket === 'undefined') {
+      return;
+    }
     var proto = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
     var code = accessEvidence();
     var url = proto + window.location.host + '/api/cloud/presence?project=' + encodeURIComponent(p);
@@ -119,8 +123,12 @@
     socket.onclose = function () {
       stopPing();
       ws = null;
-      if (closedByUs) return;
-      if (failedOpens >= 3) return; // 403/availability won't self-heal , stay quiet
+      if (closedByUs) {
+        return;
+      }
+      if (failedOpens >= 3) {
+        return;
+      } // 403/availability won't self-heal , stay quiet
       failedOpens++;
       scheduleReconnect();
     };
@@ -130,7 +138,9 @@
   }
 
   function scheduleReconnect() {
-    if (closedByUs || !pid()) return;
+    if (closedByUs || !pid()) {
+      return;
+    }
     setTimeout(connect, reconnectDelay);
     reconnectDelay = Math.min(reconnectDelay * 2, 30000);
   }
@@ -156,7 +166,9 @@
 
   function render() {
     var el = chip();
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     var others = Object.keys(members).filter(function (id) {
       return id !== selfId;
     });
@@ -168,7 +180,9 @@
       return members[id].name || 'Viewer';
     });
     var label = el.querySelector('[data-presence-label]');
-    if (label) label.textContent = others.length + ' online , ' + names.join(', ');
+    if (label) {
+      label.textContent = others.length + ' online , ' + names.join(', ');
+    }
     el.setAttribute(
       'title',
       names.join(', ') + (names.length > 1 ? ' are viewing' : ' is viewing') + ' this project'
@@ -194,7 +208,9 @@
         }
       } else {
         closedByUs = false;
-        if (!ws) connect();
+        if (!ws) {
+          connect();
+        }
       }
     });
     window.addEventListener('pagehide', function () {

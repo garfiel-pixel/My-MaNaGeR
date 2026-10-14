@@ -61,14 +61,18 @@ for (const f of files) {
   }
   // the line carrying the filename must also carry a status token
   const line = doc.split('\n').find(l => l.indexOf(f.name) > -1) || '';
-  if (!TOKENS.some(t => new RegExp('\\b' + t + '\\b').test(line))) untagged.push(f.name);
+  if (!TOKENS.some(t => new RegExp('\\b' + t + '\\b').test(line))) {
+    untagged.push(f.name);
+  }
 }
 
-if (unregistered.length)
+if (unregistered.length) {
   fail(unregistered.length + ' harness(es) missing from ' + DOC + ': ' + unregistered.join(', '));
-else pass('all ' + files.length + ' harnesses are registered in ' + DOC);
+} else {
+  pass('all ' + files.length + ' harnesses are registered in ' + DOC);
+}
 
-if (untagged.length)
+if (untagged.length) {
   fail(
     untagged.length +
       ' harness row(s) carry no status token (' +
@@ -76,7 +80,9 @@ if (untagged.length)
       '): ' +
       untagged.join(', ')
   );
-else pass('every registered row declares where it runs');
+} else {
+  pass('every registered row declares where it runs');
+}
 
 // a registered harness that no longer exists is stale documentation
 const referenced = Array.from(
@@ -85,15 +91,20 @@ const referenced = Array.from(
 const seen = new Set();
 const stale = [];
 for (const r of referenced) {
-  if (seen.has(r)) continue;
+  if (seen.has(r)) {
+    continue;
+  }
   seen.add(r);
   const bare = path.basename(r);
-  if (!fs.existsSync(r) && !fs.existsSync(bare) && !fs.existsSync(path.join('tools', bare)))
+  if (!fs.existsSync(r) && !fs.existsSync(bare) && !fs.existsSync(path.join('tools', bare))) {
     stale.push(r);
+  }
 }
-if (stale.length)
+if (stale.length) {
   fail(stale.length + ' registry entr(ies) point at files that do not exist: ' + stale.join(', '));
-else pass('no stale registry entries');
+} else {
+  pass('no stale registry entries');
+}
 
 console.log('\n' + (failed ? 'TEST REGISTRY FAIL (' + failed + ')' : 'TEST REGISTRY PASS'));
 process.exit(failed ? 1 : 0);

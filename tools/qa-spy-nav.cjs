@@ -22,7 +22,9 @@ const BASE = process.env.QA_BASE || 'http://127.0.0.1:8765';
 let fails = 0;
 function ok(label, cond, extra) {
   console.log((cond ? 'PASS  ' : 'FAIL  ') + label + (extra ? '  [' + extra + ']' : ''));
-  if (!cond) fails++;
+  if (!cond) {
+    fails++;
+  }
 }
 
 (async () => {
@@ -30,8 +32,9 @@ function ok(label, cond, extra) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errs = [];
   page.on('console', m => {
-    if (m.type() === 'error' && !/404 \(Not Found\)/.test(m.text()))
+    if (m.type() === 'error' && !/404 \(Not Found\)/.test(m.text())) {
       errs.push(m.text().slice(0, 90));
+    }
   });
   page.on('pageerror', e => errs.push('PAGEERROR ' + e.message.slice(0, 80)));
 
@@ -47,7 +50,9 @@ function ok(label, cond, extra) {
       const q = s => document.querySelector(s);
       const box = s => {
         const el = q(s);
-        if (!el) return null;
+        if (!el) {
+          return null;
+        }
         const r = el.getBoundingClientRect();
         return { top: Math.round(r.top), bottom: Math.round(r.bottom) };
       };

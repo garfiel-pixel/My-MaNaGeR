@@ -38,15 +38,21 @@ var MMGR = window.MMGR || {};
     } catch (e) {
       return null;
     }
-    if (!raw) return null;
+    if (!raw) {
+      return null;
+    }
     let data;
     try {
       data = JSON.parse(raw);
     } catch (e) {
       return null;
     }
-    if (!data || typeof data !== 'object') return null;
-    if (typeof data.key !== 'string' || !data.key.trim()) return null;
+    if (!data || typeof data !== 'object') {
+      return null;
+    }
+    if (typeof data.key !== 'string' || !data.key.trim()) {
+      return null;
+    }
     return {
       provider: PROVIDERS.indexOf(data.provider) >= 0 ? data.provider : 'openai',
       key: data.key

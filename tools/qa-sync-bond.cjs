@@ -51,7 +51,9 @@ const check = (name, val, detail) => {
 
 let _done = false;
 const _watchdog = setTimeout(() => {
-  if (_done) return;
+  if (_done) {
+    return;
+  }
   log('WATCHDOG — harness exceeded 300s');
   try {
     proc && proc.kill();
@@ -62,7 +64,9 @@ const _watchdog = setTimeout(() => {
 // ---- wrangler location (same discovery as qa-cloud-phase1) ----------------
 function globalWranglerJs() {
   const localP = path.join(__dirname, '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
-  if (fs.existsSync(localP)) return localP;
+  if (fs.existsSync(localP)) {
+    return localP;
+  }
   try {
     const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
     const root = execFileSync(npmCmd, ['root', '-g'], {
@@ -70,7 +74,9 @@ function globalWranglerJs() {
       shell: process.platform === 'win32'
     }).trim();
     const p = path.join(root, 'wrangler', 'bin', 'wrangler.js');
-    if (fs.existsSync(p)) return p;
+    if (fs.existsSync(p)) {
+      return p;
+    }
   } catch (e) {
     /* fall through */
   }
@@ -95,7 +101,9 @@ function startWrangler() {
         try {
           const r = await fetch(process.env.WRANGLER_DEV_URL + '/api/health');
           const body = await r.json().catch(() => null);
-          if (r.ok && body && body.ok === true) return resolve();
+          if (r.ok && body && body.ok === true) {
+            return resolve();
+          }
           return reject(new Error('external wrangler health check failed: ' + r.status));
         } catch (e) {
           return reject(new Error('external wrangler not reachable: ' + e.message));
@@ -163,7 +171,9 @@ function startWrangler() {
         clearTimeout(timer);
         if (r.ok) {
           const body = await r.json().catch(() => null);
-          if (body && body.ok === true) return resolve();
+          if (body && body.ok === true) {
+            return resolve();
+          }
         }
       } catch (e) {
         /* not up yet */
@@ -178,7 +188,9 @@ function startWrangler() {
   });
 }
 function stopWrangler() {
-  if (USE_EXTERNAL) return;
+  if (USE_EXTERNAL) {
+    return;
+  }
   try {
     proc && proc.kill();
   } catch (e) {}
@@ -225,8 +237,9 @@ function launchChrome(profileDir, port) {
           return resolve(p);
         }
       } catch (e) {}
-      if (!ok && Date.now() - t0 > 30000)
+      if (!ok && Date.now() - t0 > 30000) {
         return reject(new Error('chrome did not open on :' + port));
+      }
       setTimeout(poll, 300);
     };
     const t0 = Date.now();
@@ -270,12 +283,13 @@ async function ev(expr) {
     returnByValue: true,
     awaitPromise: true
   });
-  if (r.exceptionDetails)
+  if (r.exceptionDetails) {
     return {
       __err: r.exceptionDetails.exception
         ? r.exceptionDetails.exception.description
         : r.exceptionDetails.text
     };
+  }
   return r.result && r.result.value;
 }
 // Trap console errors from this point on (harness convention).
@@ -289,8 +303,12 @@ async function waitFor(expr, timeout, label) {
   const t0 = Date.now();
   for (;;) {
     const v = await ev(expr);
-    if (v && !v.__err) return v;
-    if (Date.now() - t0 > (timeout || 15000)) return v;
+    if (v && !v.__err) {
+      return v;
+    }
+    if (Date.now() - t0 > (timeout || 15000)) {
+      return v;
+    }
     await delay(500);
   }
 }
@@ -302,7 +320,9 @@ async function statusSettle() {
     const s = await ev(
       '(function(){var s=document.getElementById("cloud-status");return s?(s.className+" | "+s.textContent):"";})()'
     );
-    if (s === last && s.indexOf('busy') === -1 && s) return s;
+    if (s === last && s.indexOf('busy') === -1 && s) {
+      return s;
+    }
     last = s;
   }
   return last;
@@ -370,8 +390,9 @@ async function main() {
     headers: { 'Content-Type': 'application/json', 'X-Owner-Code': CODE },
     body: JSON.stringify({ state: stateA })
   });
-  if (!(save0.status === 200 && save0.body && save0.body.ok))
+  if (!(save0.status === 200 && save0.body && save0.body.ok)) {
     throw new Error('seed save failed: ' + save0.text);
+  }
 
   // ---- Device A: open project + hold the owner code + export --------------
   const dirA = path.join(os.tmpdir(), 'mmgr-bond-A-' + Date.now());

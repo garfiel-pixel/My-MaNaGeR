@@ -33,16 +33,28 @@ const SHARED_FIELDS = ['name', 'type', 'role', 'availability', 'rate', 'notes'];
 function cleanShared(body, current) {
   const out = {};
   SHARED_FIELDS.forEach(function (f) {
-    if (body[f] !== undefined && body[f] !== null) out[f] = body[f];
-    else if (current && current[f] !== undefined && current[f] !== null) out[f] = current[f];
-    else if (f === 'availability') out[f] = 100;
-    else if (f === 'rate') out[f] = 0;
-    else out[f] = '';
+    if (body[f] !== undefined && body[f] !== null) {
+      out[f] = body[f];
+    } else if (current && current[f] !== undefined && current[f] !== null) {
+      out[f] = current[f];
+    } else if (f === 'availability') {
+      out[f] = 100;
+    } else if (f === 'rate') {
+      out[f] = 0;
+    } else {
+      out[f] = '';
+    }
   });
-  if (typeof out.name !== 'string' || !out.name.trim()) return null;
+  if (typeof out.name !== 'string' || !out.name.trim()) {
+    return null;
+  }
   out.name = out.name.trim().slice(0, 120);
-  if (typeof out.role === 'string') out.role = out.role.trim().slice(0, 60);
-  if (typeof out.notes === 'string') out.notes = out.notes.trim().slice(0, 500);
+  if (typeof out.role === 'string') {
+    out.role = out.role.trim().slice(0, 60);
+  }
+  if (typeof out.notes === 'string') {
+    out.notes = out.notes.trim().slice(0, 500);
+  }
   out.availability = Math.max(0, Math.min(100, Number(out.availability) || 0));
   out.rate = Math.max(0, Number(out.rate) || 0);
   return out;
@@ -78,10 +90,14 @@ function rowToItem(r) {
 // (the account pool starts empty — honest, no phantom data).
 async function accountOf(request, env, projectId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return null;
+  if (!auth) {
+    return null;
+  }
   const row = auth.row || {};
   const sub = row.google_sub || auth.sub;
-  if (sub) return { auth: auth, key: sub, accountScoped: true };
+  if (sub) {
+    return { auth: auth, key: sub, accountScoped: true };
+  }
   // code-only: per-project namespace keyed by the project id
   return { auth: auth, key: 'project:' + projectId, accountScoped: false };
 }
@@ -98,7 +114,9 @@ function forbidden() {
 // Library picker (items = all, linked = items pinned to this project).
 export async function handlePoolItemsList(request, env, projectId) {
   const acct = await accountOf(request, env, projectId);
-  if (!acct) return forbidden();
+  if (!acct) {
+    return forbidden();
+  }
   const [itemsRes, linksRes] = await Promise.all([
     env.DB.prepare('SELECT * FROM cloud_pool_items WHERE owner_sub = ? ORDER BY kind, name')
       .bind(acct.key)
@@ -119,22 +137,33 @@ export async function handlePoolItemsList(request, env, projectId) {
 // Body: { kind, name, type?, role?, availability?, rate?, notes? }
 export async function handlePoolItemCreate(request, env, projectId) {
   const acct = await accountOf(request, env, projectId);
-  if (!acct) return forbidden();
+  if (!acct) {
+    return forbidden();
+  }
   const read = await readCloudBody(request);
-  if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
-  if (read.bad || !read.body || typeof read.body !== 'object')
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad || !read.body || typeof read.body !== 'object') {
     return json({ ok: false, error: 'bad request' }, 400);
+  }
   const kind =
     POOL_KINDS.indexOf(read.body.kind) > -1
       ? read.body.kind
       : read.body.kind === 'subcontractor'
         ? 'person'
         : null;
-  if (!kind) return json({ ok: false, error: 'kind must be person | equipment | material' }, 400);
+  if (!kind) {
+    return json({ ok: false, error: 'kind must be person | equipment | material' }, 400);
+  }
   const clean = cleanShared(read.body, null);
-  if (!clean) return json({ ok: false, error: 'a pool item needs a name' }, 400);
+  if (!clean) {
+    return json({ ok: false, error: 'a pool item needs a name' }, 400);
+  }
   // Person type defaults so Labor/Subcontractor survive the round trip.
-  if (kind === 'person' && !clean.type) clean.type = 'Labor';
+  if (kind === 'person' && !clean.type) {
+    clean.type = 'Labor';
+  }
   const now = new Date().toISOString();
   const id =
     'pool-' +
@@ -174,19 +203,28 @@ export async function handlePoolItemCreate(request, env, projectId) {
 // Update the SHARED fields only (hoursAllocated stays project-local).
 export async function handlePoolItemUpdate(request, env, projectId, itemId) {
   const acct = await accountOf(request, env, projectId);
-  if (!acct) return forbidden();
+  if (!acct) {
+    return forbidden();
+  }
   const read = await readCloudBody(request);
-  if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
-  if (read.bad || !read.body || typeof read.body !== 'object')
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad || !read.body || typeof read.body !== 'object') {
     return json({ ok: false, error: 'bad request' }, 400);
+  }
   const existing = await env.DB.prepare(
     'SELECT * FROM cloud_pool_items WHERE id = ? AND owner_sub = ?'
   )
     .bind(itemId, acct.key)
     .first();
-  if (!existing) return json({ ok: false, error: 'pool item not found' }, 404);
+  if (!existing) {
+    return json({ ok: false, error: 'pool item not found' }, 404);
+  }
   const clean = cleanShared(read.body, existing);
-  if (!clean) return json({ ok: false, error: 'a pool item needs a name' }, 400);
+  if (!clean) {
+    return json({ ok: false, error: 'a pool item needs a name' }, 400);
+  }
   const now = new Date().toISOString();
   await env.DB.prepare(
     'UPDATE cloud_pool_items SET name = ?, type = ?, role = ?, availability = ?, rate = ?, notes = ?, updated_at = ? WHERE id = ? AND owner_sub = ?'
@@ -214,11 +252,15 @@ export async function handlePoolItemUpdate(request, env, projectId, itemId) {
 // detached local copy in any project that had it linked.
 export async function handlePoolItemDelete(request, env, projectId, itemId) {
   const acct = await accountOf(request, env, projectId);
-  if (!acct) return forbidden();
+  if (!acct) {
+    return forbidden();
+  }
   const res = await env.DB.prepare('DELETE FROM cloud_pool_items WHERE id = ? AND owner_sub = ?')
     .bind(itemId, acct.key)
     .run();
-  if (!res.meta.changes) return json({ ok: false, error: 'pool item not found' }, 404);
+  if (!res.meta.changes) {
+    return json({ ok: false, error: 'pool item not found' }, 404);
+  }
   return json({ ok: true, deletedItemId: itemId });
 }
 
@@ -229,20 +271,29 @@ export async function handlePoolItemDelete(request, env, projectId, itemId) {
 // A project cannot link another account's pool row.
 export async function handlePoolLinkCreate(request, env, projectId) {
   const acct = await accountOf(request, env, projectId);
-  if (!acct) return forbidden();
+  if (!acct) {
+    return forbidden();
+  }
   const read = await readCloudBody(request);
-  if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
-  if (read.bad || !read.body || typeof read.body !== 'object')
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad || !read.body || typeof read.body !== 'object') {
     return json({ ok: false, error: 'bad request' }, 400);
+  }
   const poolItemId =
     typeof read.body.poolItemId === 'string' ? read.body.poolItemId.trim().slice(0, 64) : '';
-  if (!poolItemId) return json({ ok: false, error: 'poolItemId is required' }, 400);
+  if (!poolItemId) {
+    return json({ ok: false, error: 'poolItemId is required' }, 400);
+  }
   const item = await env.DB.prepare(
     'SELECT id FROM cloud_pool_items WHERE id = ? AND owner_sub = ?'
   )
     .bind(poolItemId, acct.key)
     .first();
-  if (!item) return json({ ok: false, error: 'pool item not found' }, 404);
+  if (!item) {
+    return json({ ok: false, error: 'pool item not found' }, 404);
+  }
   const now = new Date().toISOString();
   const res = await env.DB.prepare(
     'INSERT OR IGNORE INTO cloud_pool_links (project_id, pool_item_id, linked_at) VALUES (?,?,?)'
@@ -255,7 +306,9 @@ export async function handlePoolLinkCreate(request, env, projectId) {
 // DELETE /api/cloud/projects/:id/pool/links/:itemId
 export async function handlePoolLinkDelete(request, env, projectId, itemId) {
   const acct = await accountOf(request, env, projectId);
-  if (!acct) return forbidden();
+  if (!acct) {
+    return forbidden();
+  }
   const res = await env.DB.prepare(
     'DELETE FROM cloud_pool_links WHERE project_id = ? AND pool_item_id = ?'
   )

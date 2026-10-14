@@ -26,7 +26,9 @@ const REVIEW_BODY_LIMIT_BYTES = 8192;
 
 async function readReviewBody(request) {
   const cl = Number(request.headers.get('Content-Length') || 0);
-  if (cl > REVIEW_BODY_LIMIT_BYTES) return { tooLarge: true };
+  if (cl > REVIEW_BODY_LIMIT_BYTES) {
+    return { tooLarge: true };
+  }
   if (!request.body) {
     try {
       return { body: await request.json() };
@@ -43,7 +45,9 @@ async function readReviewBody(request) {
     done = res.done;
     if (res.value) {
       total += res.value.byteLength;
-      if (total > REVIEW_BODY_LIMIT_BYTES) return { tooLarge: true };
+      if (total > REVIEW_BODY_LIMIT_BYTES) {
+        return { tooLarge: true };
+      }
       chunks.push(res.value);
     }
   }
@@ -62,8 +66,12 @@ async function readReviewBody(request) {
 }
 
 function reviewPlainTextProblem(s) {
-  if (/[<>]/.test(s)) return 'plain text only , no HTML or markup in reviews';
-  if (/https?:\/\/|www\./i.test(s)) return 'plain text only , no links in reviews';
+  if (/[<>]/.test(s)) {
+    return 'plain text only , no HTML or markup in reviews';
+  }
+  if (/https?:\/\/|www\./i.test(s)) {
+    return 'plain text only , no links in reviews';
+  }
   return null;
 }
 
@@ -118,22 +126,27 @@ export function handleTurnstileConfig(env) {
 // for authorization, so a missing/garbage value just means no remoteip.
 function clientIp(request) {
   const ip = request.headers.get('CF-Connecting-IP');
-  if (typeof ip !== 'string') return '';
+  if (typeof ip !== 'string') {
+    return '';
+  }
   return /^[\d.]{3,45}$|^[0-9a-fA-F:]{3,45}$/.test(ip) ? ip : '';
 }
 
 // Verify one token with Cloudflare. Returns { ok:false, error } on any
 // failure so the caller can refuse without leaking which part failed.
 async function verifyTurnstileToken(token, remoteIp, env) {
-  if (!turnstileEnabled(env)) return { ok: true, skipped: true };
+  if (!turnstileEnabled(env)) {
+    return { ok: true, skipped: true };
+  }
   if (typeof token !== 'string' || !token.trim()) {
     return { ok: false, error: 'please finish the check above before sending your review' };
   }
   // Bound the token length - siteverify tokens are ~1-2 KB, so this rejects
   // an obvious attempt to push a huge body through the verify call.
   const tok = token.trim();
-  if (tok.length > 4096)
+  if (tok.length > 4096) {
     return { ok: false, error: 'that check could not be read, please try again' };
+  }
   let res;
   try {
     res = await fetch(turnstileVerifyUrl(env), {
@@ -149,24 +162,29 @@ async function verifyTurnstileToken(token, remoteIp, env) {
     // Network trouble reaching CF must NOT become a bypass: refuse.
     return { ok: false, error: 'we could not check that you are human, please try again' };
   }
-  if (!res || !res.ok)
+  if (!res || !res.ok) {
     return { ok: false, error: 'we could not check that you are human, please try again' };
+  }
   let data = null;
   try {
     data = await res.json();
   } catch (e) {
     data = null;
   }
-  if (!data || data.success !== true)
+  if (!data || data.success !== true) {
     return { ok: false, error: 'that check did not pass, please try again' };
+  }
   return { ok: true };
 }
 
 export async function handleReviewsCreate(request, env) {
   const read = await readReviewBody(request);
-  if (read.tooLarge) return json({ ok: false, error: 'review too large' }, 413);
-  if (read.bad || !read.body || typeof read.body !== 'object')
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'review too large' }, 413);
+  }
+  if (read.bad || !read.body || typeof read.body !== 'object') {
     return json({ ok: false, error: 'bad request' }, 400);
+  }
   // TURNSTILE FIRST: the bot gate runs before any validation, storage, or
   // D1/R2 write, so a bot never reaches the insert path at all. The client's
   // IP goes to CF as remoteip so the check is bound to the caller.
@@ -178,19 +196,27 @@ export async function handleReviewsCreate(request, env) {
   const rawName =
     typeof read.body.name === 'string' ? read.body.name.trim().slice(0, REVIEW_NAME_MAX) : '';
   const rawText = typeof read.body.review === 'string' ? read.body.review.trim() : '';
-  if (!rawText) return json({ ok: false, error: 'review text is required' }, 400);
-  if (rawText.length > REVIEW_TEXT_MAX)
+  if (!rawText) {
+    return json({ ok: false, error: 'review text is required' }, 400);
+  }
+  if (rawText.length > REVIEW_TEXT_MAX) {
     return json(
       { ok: false, error: 'review too long (max ' + REVIEW_TEXT_MAX + ' characters)' },
       400
     );
+  }
   const prob = reviewPlainTextProblem(rawText) || reviewPlainTextProblem(rawName);
-  if (prob) return json({ ok: false, error: prob }, 400);
+  if (prob) {
+    return json({ ok: false, error: prob }, 400);
+  }
   let stars = null;
   if (read.body.stars !== undefined && read.body.stars !== null && read.body.stars !== 0) {
     const n = Number(read.body.stars);
-    if (Number.isInteger(n) && n >= 1 && n <= 5) stars = n;
-    else return json({ ok: false, error: 'stars must be a whole number from 1 to 5' }, 400);
+    if (Number.isInteger(n) && n >= 1 && n <= 5) {
+      stars = n;
+    } else {
+      return json({ ok: false, error: 'stars must be a whole number from 1 to 5' }, 400);
+    }
   }
   const name = rawName ? rawName : null;
   const now = new Date().toISOString();
@@ -261,8 +287,12 @@ export async function handleReviewList(request, env, projectId, mine) {
   const row = await env.DB.prepare('SELECT deleted_at FROM cloud_projects WHERE project_id = ?')
     .bind(projectId)
     .first();
-  if (!row) return cloudForbidden();
-  if (row.deleted_at) return cloudProjectDeleted();
+  if (!row) {
+    return cloudForbidden();
+  }
+  if (row.deleted_at) {
+    return cloudProjectDeleted();
+  }
   if (owner && !mine) {
     const rows = await env.DB.prepare(
       'SELECT id, proposal_type, source_type, source_label, status, diffs_json, proposed_at, decided_at, decided_by, accepted_entry_id FROM cloud_reviews WHERE project_id = ? ORDER BY CASE WHEN status = ? THEN 0 ELSE 1 END, id DESC LIMIT 100'
@@ -272,7 +302,9 @@ export async function handleReviewList(request, env, projectId, mine) {
     const proposals = (rows.results || []).map(function (r) {
       let diffs = null;
       try {
-        if (r.diffs_json) diffs = JSON.parse(r.diffs_json);
+        if (r.diffs_json) {
+          diffs = JSON.parse(r.diffs_json);
+        }
       } catch (e) {
         diffs = null;
       }
@@ -299,7 +331,9 @@ export async function handleReviewList(request, env, projectId, mine) {
   const mineList = (mineRows.results || []).map(function (r) {
     let diffs = null;
     try {
-      if (r.diffs_json) diffs = JSON.parse(r.diffs_json);
+      if (r.diffs_json) {
+        diffs = JSON.parse(r.diffs_json);
+      }
     } catch (e) {
       diffs = null;
     }
@@ -321,12 +355,18 @@ export async function handleReviewList(request, env, projectId, mine) {
 // via a parameter to avoid circular dependency
 export async function handleReviewAccept(request, env, projectId, reviewId, pushRevChanged) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
+  if (!auth) {
+    return cloudForbidden();
+  }
   const row = await env.DB.prepare('SELECT * FROM cloud_reviews WHERE id = ? AND project_id = ?')
     .bind(reviewId, projectId)
     .first();
-  if (!row) return json({ ok: false, error: 'proposal not found' }, 404);
-  if (row.status !== 'pending') return json({ ok: false, error: 'proposal is not pending' }, 409);
+  if (!row) {
+    return json({ ok: false, error: 'proposal not found' }, 404);
+  }
+  if (row.status !== 'pending') {
+    return json({ ok: false, error: 'proposal is not pending' }, 409);
+  }
   const now = new Date().toISOString();
   const resp = { ok: true, reviewId: reviewId, status: 'accepted', decidedAt: now };
   if (row.proposal_type === 'save') {
@@ -345,7 +385,9 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
     let scope = [];
     try {
       const p = JSON.parse(row.scope);
-      if (Array.isArray(p)) scope = p;
+      if (Array.isArray(p)) {
+        scope = p;
+      }
     } catch (e) {
       scope = [];
     }
@@ -392,9 +434,12 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
         { type: 'owner', label: auth.label || 'Owner' },
         'accepted'
       );
-      if (entry) resp.changelog = entry;
-      if (pushRevChanged)
+      if (entry) {
+        resp.changelog = entry;
+      }
+      if (pushRevChanged) {
         await pushRevChanged(env, projectId, now, { type: 'owner', label: auth.label || 'Owner' });
+      }
       resp.savedAt = now;
     }
   } else if (row.proposal_type === 'mcp') {
@@ -417,7 +462,9 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
     let scope = [];
     try {
       const p = JSON.parse(row.scope);
-      if (Array.isArray(p)) scope = p;
+      if (Array.isArray(p)) {
+        scope = p;
+      }
     } catch (e) {
       scope = [];
     }
@@ -458,9 +505,12 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
         { type: 'owner', label: auth.label || 'Owner' },
         'accepted'
       );
-      if (entry) resp.changelog = entry;
-      if (pushRevChanged)
+      if (entry) {
+        resp.changelog = entry;
+      }
+      if (pushRevChanged) {
         await pushRevChanged(env, projectId, now, { type: 'owner', label: auth.label || 'Owner' });
+      }
       resp.savedAt = now;
     }
   } else {
@@ -478,12 +528,18 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
 
 export async function handleReviewReject(request, env, projectId, reviewId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
+  if (!auth) {
+    return cloudForbidden();
+  }
   const row = await env.DB.prepare('SELECT * FROM cloud_reviews WHERE id = ? AND project_id = ?')
     .bind(reviewId, projectId)
     .first();
-  if (!row) return json({ ok: false, error: 'proposal not found' }, 404);
-  if (row.status !== 'pending') return json({ ok: false, error: 'proposal is not pending' }, 409);
+  if (!row) {
+    return json({ ok: false, error: 'proposal not found' }, 404);
+  }
+  if (row.status !== 'pending') {
+    return json({ ok: false, error: 'proposal is not pending' }, 409);
+  }
   const now = new Date().toISOString();
   await env.DB.prepare(
     'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at) VALUES (?,?,?,?,?,?,?,?)'

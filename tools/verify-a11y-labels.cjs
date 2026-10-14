@@ -57,8 +57,9 @@ function attrsOf(tag) {
   const out = {};
   const re = /([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*("([^"]*)"|'([^']*)'|([^\s"'>]+))/g;
   let m;
-  while ((m = re.exec(tag)))
+  while ((m = re.exec(tag))) {
     out[m[1].toLowerCase()] = m[3] != null ? m[3] : m[4] != null ? m[4] : m[5];
+  }
   return out;
 }
 const hasName = a => !!(a['aria-label'] || a['aria-labelledby'] || a.title);
@@ -81,7 +82,9 @@ for (const file of pages) {
   const idRe = /\sid\s*=\s*"([^"]+)"/g;
   while ((m = idRe.exec(html))) {
     const line = lineAt(html, m.index);
-    if (!ids.has(m[1])) ids.set(m[1], { line, count: 0 });
+    if (!ids.has(m[1])) {
+      ids.set(m[1], { line, count: 0 });
+    }
     ids.get(m[1]).count++;
   }
 
@@ -90,14 +93,17 @@ for (const file of pages) {
   while ((m = forRe.exec(html))) {
     const target = (m[2] != null ? m[2] : m[3]).trim();
     const line = lineAt(html, m.index);
-    if (!labelFor.has(target)) labelFor.set(target, line);
-    if (!ids.has(target))
+    if (!labelFor.has(target)) {
+      labelFor.set(target, line);
+    }
+    if (!ids.has(target)) {
       fail(
         file,
         line,
         'LABEL TARGET',
         `<label for="${target}"> points at an id that does not exist`
       );
+    }
   }
 
   const wrapped = new Set();
@@ -108,7 +114,9 @@ for (const file of pages) {
     let c;
     while ((c = ctlRe.exec(inner))) {
       const a = attrsOf(c[0]);
-      if (a.id) wrapped.add(a.id);
+      if (a.id) {
+        wrapped.add(a.id);
+      }
     }
   }
 
@@ -119,10 +127,16 @@ for (const file of pages) {
     const raw = m[0];
     const a = attrsOf(raw);
     const type = (a.type || 'text').toLowerCase();
-    if (ACTION_TYPES.test(type)) continue;
+    if (ACTION_TYPES.test(type)) {
+      continue;
+    }
     fieldCount++;
-    if (hasName(a)) continue;
-    if (a.id && (labelFor.has(a.id) || wrapped.has(a.id))) continue;
+    if (hasName(a)) {
+      continue;
+    }
+    if (a.id && (labelFor.has(a.id) || wrapped.has(a.id))) {
+      continue;
+    }
     const label = a.placeholder
       ? `placeholder-only ("${a.placeholder.slice(0, 40)}")`
       : 'no name and no placeholder';
@@ -145,10 +159,16 @@ for (const file of pages) {
       .replace(/<[^>]+>/g, '')
       .replace(/&[a-z#0-9]+;/gi, '')
       .trim();
-    if (text) continue;
-    if (!/<(svg|use|img)\b/i.test(inner)) continue; // genuinely empty (decorative/spacer)
+    if (text) {
+      continue;
+    }
+    if (!/<(svg|use|img)\b/i.test(inner)) {
+      continue;
+    } // genuinely empty (decorative/spacer)
     iconCount++;
-    if (hasName(a)) continue;
+    if (hasName(a)) {
+      continue;
+    }
     fail(
       file,
       lineAt(html, m.index),
@@ -159,8 +179,9 @@ for (const file of pages) {
 
   // ---- ARM 4: duplicate ids ----
   for (const [id, info] of ids) {
-    if (info.count > 1)
+    if (info.count > 1) {
       fail(file, info.line, 'DUP ID', `id="${id}" appears ${info.count} times on this page`);
+    }
   }
 
   if (!findings.some(f => f.includes('  ' + file + ':'))) {

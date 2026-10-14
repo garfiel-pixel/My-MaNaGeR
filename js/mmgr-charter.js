@@ -15,7 +15,9 @@ var MMGR = window.MMGR || {};
     const c = s.charter || {};
     const setVal = (id, val) => {
       const el = U.$(id);
-      if (el) el.value = val || '';
+      if (el) {
+        el.value = val || '';
+      }
     };
     setVal('ch-name', c.name);
     setVal('ch-sponsor', c.sponsor);
@@ -33,7 +35,9 @@ var MMGR = window.MMGR || {};
 
   function updCharter(field, value) {
     ns.State.updateState(function (s) {
-      if (!s.charter) s.charter = {};
+      if (!s.charter) {
+        s.charter = {};
+      }
       s.charter[field] = value;
     });
   }
@@ -64,12 +68,20 @@ var MMGR = window.MMGR || {};
   // Walk up from a task to see if any ancestor matches a name pattern.
   function hasBranch(t, pattern) {
     const s = S();
-    if (!s || !s.tasks) return false;
+    if (!s || !s.tasks) {
+      return false;
+    }
     const idx = s.tasks.indexOf(t);
-    if (idx < 0) return false;
+    if (idx < 0) {
+      return false;
+    }
     for (let j = idx; j >= 0; j--) {
-      if (pattern.test(s.tasks[j].name || '')) return true;
-      if ((s.tasks[j].level || 0) === 0) break;
+      if (pattern.test(s.tasks[j].name || '')) {
+        return true;
+      }
+      if ((s.tasks[j].level || 0) === 0) {
+        break;
+      }
     }
     return false;
   }
@@ -148,11 +160,17 @@ var MMGR = window.MMGR || {};
   // ≥/≤ read (direction chosen per-KPI). If the target has no parseable
   // number, the badge says so instead of guessing.
   function kpiStatus(k) {
-    if (!k || !k.linkedMetric) return null;
+    if (!k || !k.linkedMetric) {
+      return null;
+    }
     const live = kpiLiveValue(k.linkedMetric);
-    if (live === null || live === undefined) return { live: null, cls: 'bs', txt: 'No data yet' };
+    if (live === null || live === undefined) {
+      return { live: null, cls: 'bs', txt: 'No data yet' };
+    }
     const num = parseFloat(String(k.target || '').replace(/[^0-9.\-]/g, ''));
-    if (isNaN(num)) return { live: live, cls: 'bs', txt: 'Add a numeric target to compare' };
+    if (isNaN(num)) {
+      return { live: live, cls: 'bs', txt: 'Add a numeric target to compare' };
+    }
     const lower = k.dir === 'lower';
     const good = lower ? live <= num : live >= num;
     const band = lower ? num * 1.1 : num * 0.9;
@@ -164,15 +182,18 @@ var MMGR = window.MMGR || {};
 
   function updKPILink(i, metric) {
     ns.State.updateState(function (s) {
-      if (s.charter && s.charter.kpis && s.charter.kpis[i])
+      if (s.charter && s.charter.kpis && s.charter.kpis[i]) {
         s.charter.kpis[i].linkedMetric = metric || null;
+      }
     });
     renderKpiList();
   }
 
   function updKPIDir(i, dir) {
     ns.State.updateState(function (s) {
-      if (s.charter && s.charter.kpis && s.charter.kpis[i]) s.charter.kpis[i].dir = dir;
+      if (s.charter && s.charter.kpis && s.charter.kpis[i]) {
+        s.charter.kpis[i].dir = dir;
+      }
     });
     renderKpiList();
   }
@@ -191,15 +212,23 @@ var MMGR = window.MMGR || {};
   // Auto-suggest a live link from the KPI name (Section 5 of the monolith).
   function kpiSuggestLink(name) {
     const n = (name || '').toLowerCase();
-    if (/ltifr|lost time|injury/i.test(n)) return 'ltifrRollup';
-    if (/defect.*handover|handover.*defect|punch.?list/i.test(n)) return 'defectsHandoverRollup';
-    if (/nepa|municipal.*finding|findings.*municipal/i.test(n)) return 'nepaFindingsRollup';
+    if (/ltifr|lost time|injury/i.test(n)) {
+      return 'ltifrRollup';
+    }
+    if (/defect.*handover|handover.*defect|punch.?list/i.test(n)) {
+      return 'defectsHandoverRollup';
+    }
+    if (/nepa|municipal.*finding|findings.*municipal/i.test(n)) {
+      return 'nepaFindingsRollup';
+    }
     return null;
   }
 
   function renderKpiList() {
     const container = U.$('kpi-list');
-    if (!container) return;
+    if (!container) {
+      return;
+    }
     const s = S();
     const kpis = (s.charter && s.charter.kpis) || [];
     if (kpis.length === 0) {
@@ -241,8 +270,12 @@ var MMGR = window.MMGR || {};
 
   function addKPI() {
     ns.State.updateState(function (s) {
-      if (!s.charter) s.charter = {};
-      if (!s.charter.kpis) s.charter.kpis = [];
+      if (!s.charter) {
+        s.charter = {};
+      }
+      if (!s.charter.kpis) {
+        s.charter.kpis = [];
+      }
       s.charter.kpis.push({
         name: '',
         target: '',
@@ -266,8 +299,9 @@ var MMGR = window.MMGR || {};
           const sug = kpiSuggestLink(value);
           if (sug) {
             s.charter.kpis[index].linkedMetric = sug;
-            if (ns.App && ns.App.showToast)
+            if (ns.App && ns.App.showToast) {
               ns.App.showToast('Auto-linked KPI to ' + kpiMetricLabel(sug), 'ok');
+            }
           }
         }
       }
@@ -276,7 +310,9 @@ var MMGR = window.MMGR || {};
 
   function delKPI(index) {
     ns.State.updateState(function (s) {
-      if (s.charter && s.charter.kpis) s.charter.kpis.splice(index, 1);
+      if (s.charter && s.charter.kpis) {
+        s.charter.kpis.splice(index, 1);
+      }
     });
     renderKpiList();
   }
@@ -284,18 +320,26 @@ var MMGR = window.MMGR || {};
   // ---- Charter Upload Modal (MONOLITH-PORTING-GUIDE feature 12) ----
   function openChartUp(text) {
     const modal = U.$('chartup-modal');
-    if (!modal) return;
+    if (!modal) {
+      return;
+    }
     const src = U.$('cu-source');
-    if (src && text !== undefined) src.value = text || '';
+    if (src && text !== undefined) {
+      src.value = text || '';
+    }
     const out = U.$('cu-output');
-    if (out) out.value = '';
+    if (out) {
+      out.value = '';
+    }
     regenChartPrompt();
     modal.classList.add('on');
   }
 
   function closeChartUp() {
     const modal = U.$('chartup-modal');
-    if (modal) modal.classList.remove('on');
+    if (modal) {
+      modal.classList.remove('on');
+    }
   }
 
   // V3.1 , modal tab switcher (Upload File vs Paste Text).
@@ -308,26 +352,38 @@ var MMGR = window.MMGR || {};
       tf.classList.toggle('active', which === 'file');
       tp.classList.toggle('active', which === 'paste');
     }
-    if (pf) pf.classList.toggle('is-hide', which !== 'file');
-    if (pp) pp.classList.toggle('is-hide', which !== 'paste');
+    if (pf) {
+      pf.classList.toggle('is-hide', which !== 'file');
+    }
+    if (pp) {
+      pp.classList.toggle('is-hide', which !== 'paste');
+    }
     if (which === 'paste') {
       const s = U.$('cu-source');
-      if (s) setTimeout(() => s.focus(), 50);
+      if (s) {
+        setTimeout(() => s.focus(), 50);
+      }
     }
   }
 
   function uploadCharterDoc() {
     const inp = U.$('charter-upload');
-    if (!inp) return;
+    if (!inp) {
+      return;
+    }
     inp.value = '';
     inp.click();
   }
 
   async function handleCharterUpload(ev) {
     const f = ev.target.files && ev.target.files[0];
-    if (!f) return;
+    if (!f) {
+      return;
+    }
     const nmEl = U.$('cu-file-name');
-    if (nmEl) nmEl.textContent = f.name;
+    if (nmEl) {
+      nmEl.textContent = f.name;
+    }
     cuSwitchTab('file');
     const name = (f.name || '').toLowerCase();
     try {
@@ -348,16 +404,18 @@ var MMGR = window.MMGR || {};
         throw new Error('Unsupported file type. Use .txt or .md , or paste the text directly.');
       }
       openChartUp(text.trim());
-      if (ns.App && ns.App.showToast)
+      if (ns.App && ns.App.showToast) {
         ns.App.showToast('Text extracted , review, generate prompt, then paste AI output', 'ok');
+      }
     } catch (err) {
       console.error('Charter upload:', err);
       openChartUp('');
       // Unsupported binary formats land the user on the Paste tab with the
       // cursor ready , one paste away from continuing the workflow.
       cuSwitchTab('paste');
-      if (ns.App && ns.App.showToast)
+      if (ns.App && ns.App.showToast) {
         ns.App.showToast(err.message || 'Could not extract text.', 'err');
+      }
     }
   }
 
@@ -391,7 +449,9 @@ var MMGR = window.MMGR || {};
   function regenChartPrompt() {
     const source = U.$('cu-source');
     const prompt = U.$('cu-prompt');
-    if (!source || !prompt) return;
+    if (!source || !prompt) {
+      return;
+    }
     prompt.value = generateCharterFillPrompt(source.value || '[PASTE YOUR CHARTER TEXT ABOVE]');
   }
 
@@ -405,14 +465,18 @@ var MMGR = window.MMGR || {};
 
   // Tolerant JSON parse: strips code fences and leading/trailing prose.
   function tryParseCharterJSON(raw) {
-    if (!raw) return null;
+    if (!raw) {
+      return null;
+    }
     let t = raw.trim();
     t = t
       .replace(/^```(?:json)?\s*/i, '')
       .replace(/```\s*$/, '')
       .trim();
     const m = t.match(/\{[\s\S]*\}$/) || t.match(/\{[\s\S]*\}/);
-    if (m) t = m[0];
+    if (m) {
+      t = m[0];
+    }
     try {
       return JSON.parse(t);
     } catch (e) {
@@ -462,7 +526,9 @@ var MMGR = window.MMGR || {};
     let data = tryParseCharterJSON(raw);
     if (!data) {
       const src = (U.$('cu-source') || {}).value || '';
-      if (raw.trim() === '' && src.trim()) data = regexExtractCharter(src);
+      if (raw.trim() === '' && src.trim()) {
+        data = regexExtractCharter(src);
+      }
     }
     if (!data) {
       ns.App.showToast(
@@ -472,10 +538,14 @@ var MMGR = window.MMGR || {};
       return;
     }
     ns.State.updateState(function (s) {
-      if (!s.charter) s.charter = {};
+      if (!s.charter) {
+        s.charter = {};
+      }
       const f = s.charter;
       const put = (k, v) => {
-        if (v !== undefined && v !== null && v !== '') f[k] = v;
+        if (v !== undefined && v !== null && v !== '') {
+          f[k] = v;
+        }
       };
       put('name', data.name);
       put('sponsor', data.sponsor);
@@ -496,9 +566,13 @@ var MMGR = window.MMGR || {};
       put('assumptions', data.assumptions || data.assum);
       put('exclusions', data.exclusions || data.outs);
       if (Array.isArray(data.kpis) && data.kpis.length) {
-        if (!s.charter.kpis) s.charter.kpis = [];
+        if (!s.charter.kpis) {
+          s.charter.kpis = [];
+        }
         data.kpis.forEach(k => {
-          if (!k) return;
+          if (!k) {
+            return;
+          }
           s.charter.kpis.push({
             name: k.name || '',
             target: k.target || '',
@@ -568,13 +642,19 @@ var MMGR = window.MMGR || {};
         read('ch-budget') !== undefined && read('ch-budget') !== '' ? +read('ch-budget') : undefined
     };
     ns.State.updateState(function (st) {
-      if (!st.charter) st.charter = {};
+      if (!st.charter) {
+        st.charter = {};
+      }
       Object.keys(vals).forEach(k => {
-        if (vals[k] !== undefined) st.charter[k] = vals[k];
+        if (vals[k] !== undefined) {
+          st.charter[k] = vals[k];
+        }
       });
     });
     ns.State.save(true);
-    if (ns.App && ns.App.showToast) ns.App.showToast('Charter saved!', 'ok');
+    if (ns.App && ns.App.showToast) {
+      ns.App.showToast('Charter saved!', 'ok');
+    }
   }
 
   // ---- API ----

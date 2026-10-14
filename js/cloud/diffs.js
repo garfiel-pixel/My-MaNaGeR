@@ -17,17 +17,24 @@ var MMGR = window.MMGR || {};
   }
 
   function clVal(v, absent, cls, absentWord) {
-    if (absent) return '<em class="cl-absent">' + esc(absentWord || 'absent') + '</em>';
+    if (absent) {
+      return '<em class="cl-absent">' + esc(absentWord || 'absent') + '</em>';
+    }
     let s;
-    if (v === undefined) v = null;
-    if (v === null) s = 'null';
-    else if (typeof v === 'object') {
+    if (v === undefined) {
+      v = null;
+    }
+    if (v === null) {
+      s = 'null';
+    } else if (typeof v === 'object') {
       try {
         s = JSON.stringify(v);
       } catch (e) {
         s = String(v);
       }
-    } else s = String(v);
+    } else {
+      s = String(v);
+    }
     const title = s.length > 140 ? ' title="' + esc(s) + '"' : '';
     const shown = s.length > 140 ? s.slice(0, 137) + '\u2026' : s;
     return '<code class="cl-val ' + cls + '"' + title + '>' + esc(shown) + '</code>';
@@ -36,7 +43,9 @@ var MMGR = window.MMGR || {};
   function renderDiffPanel(en) {
     const diffs = (Array.isArray(en.diffs) ? en.diffs : []).slice(0, 60);
     const n = Array.isArray(en.diffs) ? en.diffs.length : 0;
-    if (!diffs.length) return '';
+    if (!diffs.length) {
+      return '';
+    }
     // OWNER 2026-09-24 (reverted experiment + honest labels): the per-row
     // .cl-diff wrapper IS the grid (matches .cl-diffs-head columns) - flat
     // cells broke the 4-column layout when the panel lacked a grid container.
@@ -58,8 +67,9 @@ var MMGR = window.MMGR || {};
         clVal(d.after, d.afterAbsent === true, 'cl-new', 'removed') +
         '</div>';
     }
-    if (n > diffs.length)
+    if (n > diffs.length) {
       rows += '<div class="cl-more">\u2026 and ' + (n - diffs.length) + ' more field(s)</div>';
+    }
     return (
       '<div class="cl-diffs-head"><span>Field</span><span>Before</span><span></span><span>After</span></div>' +
       rows
@@ -68,7 +78,9 @@ var MMGR = window.MMGR || {};
 
   function toggleDiffs(id) {
     const panel = $('cl-diffs-' + id);
-    if (!panel) return;
+    if (!panel) {
+      return;
+    }
     const show = panel.classList.contains('is-hide');
     panel.classList.toggle('is-hide');
     const btn = document.querySelector(

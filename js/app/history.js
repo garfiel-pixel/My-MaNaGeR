@@ -12,7 +12,9 @@ var MMGR = window.MMGR || {};
   const $ = U.$;
 
   function _toast(msg, type) {
-    if (ns.App && ns.App.showToast) ns.App.showToast(msg, type);
+    if (ns.App && ns.App.showToast) {
+      ns.App.showToast(msg, type);
+    }
   }
   function _R() {
     return ns.Render;
@@ -25,16 +27,22 @@ var MMGR = window.MMGR || {};
   const HOLD_MSG_OFF = ' Page cleared.';
 
   function startHold(section) {
-    if (holdTimer) return;
+    if (holdTimer) {
+      return;
+    }
     const dur = $('ut');
-    if (dur) dur.textContent = '10';
+    if (dur) {
+      dur.textContent = '10';
+    }
     const ub = $('ub');
     if (ub && !ub.classList.contains('vis')) {
       ub.classList.add('vis');
       holdShowedBar = true;
     }
     const msg = $('ub-msg');
-    if (msg) msg.textContent = HOLD_MSG_ON;
+    if (msg) {
+      msg.textContent = HOLD_MSG_ON;
+    }
     holdTimer = setInterval(() => {
       const el = $('ut');
       if (el) {
@@ -51,18 +59,26 @@ var MMGR = window.MMGR || {};
   }
 
   function cancelHold() {
-    if (!holdTimer) return;
+    if (!holdTimer) {
+      return;
+    }
     clearInterval(holdTimer);
     holdTimer = null;
     if (holdShowedBar) {
       const ub = $('ub');
-      if (ub) ub.classList.remove('vis');
+      if (ub) {
+        ub.classList.remove('vis');
+      }
       holdShowedBar = false;
     }
     const msg = $('ub-msg');
-    if (msg) msg.textContent = HOLD_MSG_OFF;
+    if (msg) {
+      msg.textContent = HOLD_MSG_OFF;
+    }
     const dur = $('ut');
-    if (dur) dur.textContent = '5';
+    if (dur) {
+      dur.textContent = '5';
+    }
   }
 
   function clearSection(section) {
@@ -99,17 +115,25 @@ var MMGR = window.MMGR || {};
       setTimeout(() => ub.classList.remove('vis'), 5000);
     }
     const msg = $('ub-msg');
-    if (msg) msg.textContent = HOLD_MSG_OFF;
+    if (msg) {
+      msg.textContent = HOLD_MSG_OFF;
+    }
     updateUndoUi();
   }
 
   function undoClr() {
     const ub = $('ub');
-    if (ub) ub.classList.remove('vis');
+    if (ub) {
+      ub.classList.remove('vis');
+    }
     if (ns.State.undo()) {
       _R().renderAll();
-      if (ns.Charter) ns.Charter.loadCharterData();
-      if (ns.Sprint) ns.Sprint.loadSprintData();
+      if (ns.Charter) {
+        ns.Charter.loadCharterData();
+      }
+      if (ns.Sprint) {
+        ns.Sprint.loadSprintData();
+      }
       _toast('Undone.', 'ok');
     } else {
       _toast('Nothing to undo.', 'err');
@@ -121,8 +145,12 @@ var MMGR = window.MMGR || {};
   function undo() {
     if (ns.State.undo()) {
       _R().renderAll();
-      if (ns.Charter) ns.Charter.loadCharterData();
-      if (ns.Sprint) ns.Sprint.loadSprintData();
+      if (ns.Charter) {
+        ns.Charter.loadCharterData();
+      }
+      if (ns.Sprint) {
+        ns.Sprint.loadSprintData();
+      }
       _toast('Undone.', 'ok');
     } else {
       _toast('Nothing to undo.', 'err');
@@ -133,8 +161,12 @@ var MMGR = window.MMGR || {};
   function redo() {
     if (ns.State.redo()) {
       _R().renderAll();
-      if (ns.Charter) ns.Charter.loadCharterData();
-      if (ns.Sprint) ns.Sprint.loadSprintData();
+      if (ns.Charter) {
+        ns.Charter.loadCharterData();
+      }
+      if (ns.Sprint) {
+        ns.Sprint.loadSprintData();
+      }
       _toast('Redone.', 'ok');
     } else {
       _toast('Nothing to redo.', 'err');
@@ -144,9 +176,13 @@ var MMGR = window.MMGR || {};
 
   function updateUndoUi() {
     const u = $('undo-btn');
-    if (u) u.textContent = 'Undo' + (ns.State.undoDepth() ? ' (' + ns.State.undoDepth() + ')' : '');
+    if (u) {
+      u.textContent = 'Undo' + (ns.State.undoDepth() ? ' (' + ns.State.undoDepth() + ')' : '');
+    }
     const r = $('redo-btn');
-    if (r) r.textContent = 'Redo' + (ns.State.redoDepth() ? ' (' + ns.State.redoDepth() + ')' : '');
+    if (r) {
+      r.textContent = 'Redo' + (ns.State.redoDepth() ? ' (' + ns.State.redoDepth() + ')' : '');
+    }
   }
 
   ns.AppHistory = {

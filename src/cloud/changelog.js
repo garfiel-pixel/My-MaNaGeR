@@ -26,8 +26,12 @@ export async function handleCloudChangelogList(request, env, projectId) {
   // it (they already read the whole project via /load). Scoped roles get 403.
   // Revert and import below stay owner-only.
   const auth = await cloudAuthWithRole(request, env, projectId);
-  if (!auth) return cloudForbidden();
-  if (auth.source !== 'owner' && auth.role !== 'manager') return cloudForbidden();
+  if (!auth) {
+    return cloudForbidden();
+  }
+  if (auth.source !== 'owner' && auth.role !== 'manager') {
+    return cloudForbidden();
+  }
   const rows = await env.DB.prepare(
     'SELECT id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, import_key, created_at FROM cloud_changelog WHERE project_id = ? ORDER BY id DESC LIMIT 100'
   )
@@ -36,7 +40,9 @@ export async function handleCloudChangelogList(request, env, projectId) {
   const entries = (rows.results || []).map(function (r) {
     let diffs = null;
     try {
-      if (r.diffs_json) diffs = JSON.parse(r.diffs_json);
+      if (r.diffs_json) {
+        diffs = JSON.parse(r.diffs_json);
+      }
     } catch (e) {
       diffs = null;
     }
@@ -57,13 +63,17 @@ export async function handleCloudChangelogList(request, env, projectId) {
 
 export async function handleCloudChangelogRevert(request, env, projectId, entryId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
+  if (!auth) {
+    return cloudForbidden();
+  }
   const entry = await env.DB.prepare(
     'SELECT id, entry_type, section, diffs_json, snapshot_key FROM cloud_changelog WHERE id = ? AND project_id = ?'
   )
     .bind(entryId, projectId)
     .first();
-  if (!entry) return json({ ok: false, error: 'entry not found' }, 404);
+  if (!entry) {
+    return json({ ok: false, error: 'entry not found' }, 404);
+  }
   const key = 'projects/' + projectId + '/latest.json';
   // Fetch encryption credentials for decrypting the current state blob
   const projRow = await env.DB.prepare(
@@ -77,7 +87,9 @@ export async function handleCloudChangelogRevert(request, env, projectId, entryI
     projRow && projRow.owner_code_hash,
     projRow && projRow.owner_code_salt
   );
-  if (!cur) return json({ ok: false, error: 'no snapshot to revert against' }, 400);
+  if (!cur) {
+    return json({ ok: false, error: 'no snapshot to revert against' }, 400);
+  }
   const now = new Date().toISOString();
   let next;
   let logDiffs = null;
@@ -89,7 +101,9 @@ export async function handleCloudChangelogRevert(request, env, projectId, entryI
   ) {
     let diffs = [];
     try {
-      if (entry.diffs_json) diffs = JSON.parse(entry.diffs_json);
+      if (entry.diffs_json) {
+        diffs = JSON.parse(entry.diffs_json);
+      }
     } catch (e) {
       diffs = [];
     }
@@ -98,7 +112,9 @@ export async function handleCloudChangelogRevert(request, env, projectId, entryI
     diffs.forEach(function (d) {
       const curVal = cloudPathGet(pre, d.path);
       const applied = cloudRevertDiff(pre, d);
-      if (!applied) return;
+      if (!applied) {
+        return;
+      }
       revDiffs.push({
         path: d.path,
         before: curVal === undefined ? null : curVal,
@@ -110,16 +126,22 @@ export async function handleCloudChangelogRevert(request, env, projectId, entryI
     next = pre;
     logDiffs = revDiffs;
   } else if (entry.entry_type === 'bulk' || (entry.entry_type === 'revert' && entry.snapshot_key)) {
-    if (!entry.snapshot_key) return json({ ok: false, error: 'entry has no snapshot' }, 400);
+    if (!entry.snapshot_key) {
+      return json({ ok: false, error: 'entry has no snapshot' }, 400);
+    }
     const snap = await env.R2.get(entry.snapshot_key);
-    if (!snap) return json({ ok: false, error: 'snapshot missing' }, 410);
+    if (!snap) {
+      return json({ ok: false, error: 'snapshot missing' }, 410);
+    }
     let snapState = null;
     try {
       snapState = JSON.parse(await snap.text());
     } catch (e) {
       snapState = null;
     }
-    if (!snapState) return json({ ok: false, error: 'snapshot corrupt' }, 410);
+    if (!snapState) {
+      return json({ ok: false, error: 'snapshot corrupt' }, 410);
+    }
     logSnapKey =
       'projects/' +
       projectId +
@@ -175,22 +197,26 @@ export async function handleCloudChangelogRevert(request, env, projectId, entryI
 }
 
 function sanitizeImportEntry(raw) {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw))
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     return { ok: false, reason: 'malformed entry' };
+  }
   const localId = Number(raw.localId !== undefined ? raw.localId : raw.id);
-  if (!Number.isInteger(localId) || localId < 1)
+  if (!Number.isInteger(localId) || localId < 1) {
     return { ok: false, reason: 'localId must be a positive integer' };
+  }
   const type = String(raw.entry_type || '');
-  if (type !== 'edit' && type !== 'bulk' && type !== 'revert')
+  if (type !== 'edit' && type !== 'bulk' && type !== 'revert') {
     return { ok: false, reason: 'unsupported entry_type "' + type + '"' };
+  }
   const actorType = raw.actor_type === 'editor' ? 'editor' : 'owner';
   const label =
     typeof raw.actor_label === 'string' && raw.actor_label.trim()
       ? raw.actor_label.trim().slice(0, 60)
       : 'mcp-ai';
   const createdAt = String(raw.created_at || '');
-  if (!createdAt || Number.isNaN(Date.parse(createdAt)))
+  if (!createdAt || Number.isNaN(Date.parse(createdAt))) {
     return { ok: false, reason: 'created_at must be an ISO date' };
+  }
   let diffs = null;
   if (raw.diffs_json !== undefined && raw.diffs_json !== null) {
     if (typeof raw.diffs_json === 'string') {
@@ -202,15 +228,20 @@ function sanitizeImportEntry(raw) {
     } else {
       diffs = raw.diffs_json;
     }
-    if (!Array.isArray(diffs)) return { ok: false, reason: 'diffs_json must be an array' };
-    if (diffs.length > CLOUD_IMPORT_MAX_DIFFS)
+    if (!Array.isArray(diffs)) {
+      return { ok: false, reason: 'diffs_json must be an array' };
+    }
+    if (diffs.length > CLOUD_IMPORT_MAX_DIFFS) {
       return { ok: false, reason: 'too many diffs (max ' + CLOUD_IMPORT_MAX_DIFFS + ')' };
+    }
     for (let i = 0; i < diffs.length; i++) {
       const d = diffs[i];
-      if (!d || typeof d !== 'object' || typeof d.path !== 'string' || !d.path)
+      if (!d || typeof d !== 'object' || typeof d.path !== 'string' || !d.path) {
         return { ok: false, reason: 'diff missing path' };
-      if (typeof d.beforeAbsent !== 'boolean' || typeof d.afterAbsent !== 'boolean')
+      }
+      if (typeof d.beforeAbsent !== 'boolean' || typeof d.afterAbsent !== 'boolean') {
         return { ok: false, reason: 'diff missing beforeAbsent/afterAbsent' };
+      }
     }
   }
   return {
@@ -230,7 +261,9 @@ function cloudVerifyImportedDiffs(blob, diffs) {
   for (let i = 0; i < diffs.length; i++) {
     const d = diffs[i];
     const m = String(d.path).match(/^([a-zA-Z]+)(?:\[(\d+)\])?(?:\.([a-zA-Z]+))?$/);
-    if (!m) return { ok: false, reason: 'malformed diff path ' + d.path };
+    if (!m) {
+      return { ok: false, reason: 'malformed diff path ' + d.path };
+    }
     const listKey = m[1];
     const field = m[3];
     if (listKey === 'charter') {
@@ -241,17 +274,18 @@ function cloudVerifyImportedDiffs(blob, diffs) {
       continue;
     }
     const list = blob[listKey];
-    if (!Array.isArray(list))
+    if (!Array.isArray(list)) {
       return {
         ok: false,
         reason: 'no "' + listKey + '" in the cloud blob (blob diverged from the MCP edit)'
       };
+    }
     if (d.recordId !== undefined) {
       const rec = list.find(function (r) {
         return r && String(r.id) === String(d.recordId);
       });
       if (d.afterAbsent) {
-        if (rec !== undefined)
+        if (rec !== undefined) {
           return {
             ok: false,
             reason:
@@ -259,8 +293,9 @@ function cloudVerifyImportedDiffs(blob, diffs) {
               d.recordId +
               ' still exists in the cloud (blob diverged from the MCP edit)'
           };
+        }
       } else if (d.beforeAbsent) {
-        if (rec === undefined || !cloudDeepEqual(rec, d.after))
+        if (rec === undefined || !cloudDeepEqual(rec, d.after)) {
           return {
             ok: false,
             reason:
@@ -268,12 +303,15 @@ function cloudVerifyImportedDiffs(blob, diffs) {
               d.recordId +
               ' missing from the cloud (blob diverged from the MCP edit)'
           };
+        }
       } else if (field) {
-        if (rec === undefined || !cloudDeepEqual(rec[field], d.after))
+        if (rec === undefined || !cloudDeepEqual(rec[field], d.after)) {
           return { ok: false, reason: 'field ' + d.path + ' diverged from the MCP edit' };
+        }
       } else {
-        if (rec === undefined || !cloudDeepEqual(rec, d.after))
+        if (rec === undefined || !cloudDeepEqual(rec, d.after)) {
           return { ok: false, reason: 'record ' + d.recordId + ' diverged from the MCP edit' };
+        }
       }
       continue;
     }
@@ -287,19 +325,26 @@ function cloudVerifyImportedDiffs(blob, diffs) {
 
 export async function handleCloudChangelogImport(request, env, projectId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
+  if (!auth) {
+    return cloudForbidden();
+  }
   const read = await readCloudBody(request);
-  if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
-  if (read.bad || !read.body || typeof read.body !== 'object')
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad || !read.body || typeof read.body !== 'object') {
     return json({ ok: false, error: 'bad request' }, 400);
+  }
   const submitted = Array.isArray(read.body.entries) ? read.body.entries : null;
-  if (!submitted || submitted.length === 0)
+  if (!submitted || submitted.length === 0) {
     return json({ ok: false, error: 'entries required' }, 400);
-  if (submitted.length > CLOUD_IMPORT_MAX_ENTRIES)
+  }
+  if (submitted.length > CLOUD_IMPORT_MAX_ENTRIES) {
     return json(
       { ok: false, error: 'too many entries (max ' + CLOUD_IMPORT_MAX_ENTRIES + ')' },
       400
     );
+  }
   const key = 'projects/' + projectId + '/latest.json';
   const projRow = await env.DB.prepare(
     'SELECT owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?'

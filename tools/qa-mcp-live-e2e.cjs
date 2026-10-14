@@ -86,7 +86,9 @@ let userDir = null;
 let cleaned = false;
 
 async function cleanup() {
-  if (cleaned) return;
+  if (cleaned) {
+    return;
+  }
   cleaned = true;
   // The throwaway project must never survive a crashed run: best-effort
   // delete with whatever credentials we hold.
@@ -142,7 +144,9 @@ async function mcp(key, method, params, id) {
 // ---- wrangler lifecycle (self-contained, T3 pattern) ----
 const WRANGLER_JS = (function () {
   const local = path.join(ROOT, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
-  if (fs.existsSync(local)) return local;
+  if (fs.existsSync(local)) {
+    return local;
+  }
   try {
     return (
       execFileSync(process.execPath, ['npm', 'root', '-g'], { encoding: 'utf8' }).trim() +
@@ -230,7 +234,9 @@ async function main() {
   let sessCookie = '';
   const sc = regRes.headers.get('set-cookie') || '';
   const sm = sc.match(/mmgr_session=([^;]+)/);
-  if (sm) sessCookie = sm[1];
+  if (sm) {
+    sessCookie = sm[1];
+  }
   if (!sessCookie || !regBody.ok) {
     const lr = await fetch(BASE + '/api/auth/login', {
       method: 'POST',
@@ -240,8 +246,12 @@ async function main() {
     const lrBody = await lr.json().catch(() => ({}));
     const lrsc = lr.headers.get('set-cookie') || '';
     const lrm = lrsc.match(/mmgr_session=([^;]+)/);
-    if (lrm) sessCookie = lrm[1];
-    if (!sessCookie || !lrBody.ok) throw new Error('cannot mint an email session for the e2e run');
+    if (lrm) {
+      sessCookie = lrm[1];
+    }
+    if (!sessCookie || !lrBody.ok) {
+      throw new Error('cannot mint an email session for the e2e run');
+    }
   }
   const sessH = { Cookie: 'mmgr_session=' + sessCookie };
 
@@ -257,7 +267,9 @@ async function main() {
     cr
   );
   OC = cr.data.ownerCode;
-  if (!OC) throw new Error('cannot continue without owner code');
+  if (!OC) {
+    throw new Error('cannot continue without owner code');
+  }
 
   const seedState = {
     schemaVersion: 19,
@@ -299,7 +311,9 @@ async function main() {
       { label: 'e2e premium probe', scope: ['wbs'] },
       ownerH(OC)
     );
-    if (!mkRes.status || !mkRes.data || !mkRes.data.apiKey) return { ok: false, detail: mkRes };
+    if (!mkRes.status || !mkRes.data || !mkRes.data.apiKey) {
+      return { ok: false, detail: mkRes };
+    }
     const r = await api(
       'POST',
       '/api/mcp/' + PID,
@@ -364,7 +378,9 @@ async function main() {
   );
   const KEY = km.data.apiKey;
   KEY_ID = km.data.keyId;
-  if (!KEY) throw new Error('cannot continue without api key');
+  if (!KEY) {
+    throw new Error('cannot continue without api key');
+  }
 
   await sleep(800);
   const init = await mcp(
@@ -433,7 +449,9 @@ async function main() {
     let portOwner = null;
     try {
       const v = await fetch('http://127.0.0.1:' + DEBUG_PORT + '/json/version');
-      if (v.ok) portOwner = await v.json();
+      if (v.ok) {
+        portOwner = await v.json();
+      }
     } catch (e) {}
     if (portOwner) {
       log(
@@ -475,7 +493,9 @@ async function main() {
       for (let i = 0; i < 60; i++) {
         try {
           const r = await fetch('http://127.0.0.1:' + DEBUG_PORT + '/json/version');
-          if (r.ok) break;
+          if (r.ok) {
+            break;
+          }
         } catch (e) {}
         await sleep(300);
       }
@@ -499,13 +519,14 @@ async function main() {
             })
           );
         }
-        if (m.method === 'Runtime.exceptionThrown')
+        if (m.method === 'Runtime.exceptionThrown') {
           log(
             'PAGE EXCEPTION: ' +
               JSON.stringify(
                 (m.params && m.params.exceptionDetails && m.params.exceptionDetails.exception) || {}
               ).slice(0, 200)
           );
+        }
         if (m.method === 'Runtime.consoleAPICalled') {
           pageLogs.push(
             (m.params.type || 'log') +
@@ -514,7 +535,9 @@ async function main() {
                 .map(a => (a.value !== undefined ? String(a.value) : a.description || a.type || ''))
                 .join(' ')
           );
-          if (pageLogs.length > 60) pageLogs.shift();
+          if (pageLogs.length > 60) {
+            pageLogs.shift();
+          }
         }
         if (m.method === 'Log.entryAdded') {
           pageLogs.push(
@@ -523,7 +546,9 @@ async function main() {
               ': ' +
               ((m.params.entry && m.params.entry.text) || '').slice(0, 200)
           );
-          if (pageLogs.length > 60) pageLogs.shift();
+          if (pageLogs.length > 60) {
+            pageLogs.shift();
+          }
         }
       };
       await new Promise((res, rej) => {
@@ -566,12 +591,16 @@ async function main() {
         cloudReady = await ev(
           `(function(){ try { return { cloud: !!(window.MMGR && window.MMGR.Cloud && window.MMGR.CloudReview), ready: document.readyState, href: location.href }; } catch (e) { return { cloud: false, err: String(e) }; } })()`
         );
-        if (cloudReady && cloudReady.cloud) break;
+        if (cloudReady && cloudReady.cloud) {
+          break;
+        }
         await sleep(750);
       }
       if (!(cloudReady && cloudReady.cloud)) {
         log('B1 DIAGNOSTICS: last console/page logs:');
-        for (const l of pageLogs.slice(-15)) log('  | ' + l);
+        for (const l of pageLogs.slice(-15)) {
+          log('  | ' + l);
+        }
         log(
           '  | document: ' +
             JSON.stringify(

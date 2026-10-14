@@ -32,9 +32,13 @@ var MMGR = window.MMGR || {};
 
   function renderResources() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const body = $('res-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const resources = s.resources || [];
     // C23 (Phase 6): when the Cross-Project toggle is on, the Resources
     // card gets the pool Library (Shared Resource Pool) instead of the old
@@ -160,9 +164,13 @@ var MMGR = window.MMGR || {};
 
   function renderResourceLeveling() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const el = $('res-leveling');
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const resources = s.resources || [];
     if (!resources.length) {
       el.innerHTML = '';
@@ -208,15 +216,21 @@ var MMGR = window.MMGR || {};
   // ---- Time Tracking (C27) ----
   function renderTimeTracking() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const body = $('time-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const list = s.timeEntries || [];
     const sum = $('time-sum');
     const totalHrs = list.reduce(function (a, x) {
       return a + (parseFloat(x.hours) || 0);
     }, 0);
-    if (sum) sum.textContent = list.length ? totalHrs.toFixed(1) + 'h total' : '';
+    if (sum) {
+      sum.textContent = list.length ? totalHrs.toFixed(1) + 'h total' : '';
+    }
     if (list.length === 0) {
       body.innerHTML = emptyStateRow(
         6,
@@ -269,14 +283,20 @@ var MMGR = window.MMGR || {};
   // ---- Equipment Log (C28) ----
   function renderEquipment() {
     const s = S();
-    if (!s) return;
+    if (!s) {
+      return;
+    }
     const body = $('equip-body');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
     const list = s.equipment || [];
     const sum = $('equip-sum');
     const active = list.filter(x => x.status === 'active').length;
     const rented = list.filter(x => x.ownership === 'rented').length;
-    if (sum) sum.textContent = list.length ? active + ' active, ' + rented + ' rented' : '';
+    if (sum) {
+      sum.textContent = list.length ? active + ' active, ' + rented + ' rented' : '';
+    }
     if (list.length === 0) {
       body.innerHTML = emptyStateRow(
         9,
@@ -370,7 +390,9 @@ var MMGR = window.MMGR || {};
 
   function poolOpenLibrary() {
     const modal = document.getElementById('pool-modal');
-    if (modal) modal.remove();
+    if (modal) {
+      modal.remove();
+    }
     const overlay = document.createElement('div');
     overlay.id = 'pool-modal';
     overlay.style.cssText =
@@ -395,8 +417,9 @@ var MMGR = window.MMGR || {};
       if (
         e.target === overlay ||
         (e.target.getAttribute && e.target.getAttribute('data-action') === 'poolCloseLibrary')
-      )
+      ) {
         overlay.remove();
+      }
       const act = e.target && e.target.getAttribute ? e.target.getAttribute('data-action') : null;
       if (act === 'poolLinkRow') {
         const id = e.target.getAttribute('data-id');
@@ -418,7 +441,9 @@ var MMGR = window.MMGR || {};
   async function poolLoadList(overlay) {
     const listEl = overlay.querySelector('#pool-list');
     const statusEl = overlay.querySelector('#pool-status');
-    if (!listEl || !statusEl) return;
+    if (!listEl || !statusEl) {
+      return;
+    }
     const P = ns.Pool;
     statusEl.textContent = 'Loading…';
     const r = await P.refresh();
@@ -484,19 +509,21 @@ var MMGR = window.MMGR || {};
     const r = await P.linkItem(id);
     if (!r.ok) {
       const statusEl = overlay.querySelector('#pool-status');
-      if (statusEl)
+      if (statusEl) {
         statusEl.textContent = r.queued
           ? 'Offline - link queued and will sync when back online.'
           : 'Link failed: ' + (r.error || 'unknown');
+      }
     } else {
       const out = await P.refreshAndMerge();
       R().renderResources();
       const toast = ns.App && ns.App.showToast ? ns.App.showToast : null;
-      if (toast && out.ok)
+      if (toast && out.ok) {
         toast(
           'Linked from pool' + (out.created ? ' - ' + out.created + ' resource(s) added.' : '.'),
           'ok'
         );
+      }
     }
     poolLoadList(overlay);
   }
@@ -505,25 +532,30 @@ var MMGR = window.MMGR || {};
     const P = ns.Pool;
     const r = await P.unlinkItem(id);
     const statusEl = overlay.querySelector('#pool-status');
-    if (!r.ok && statusEl)
+    if (!r.ok && statusEl) {
       statusEl.textContent = r.queued
         ? 'Offline - unlink queued.'
         : 'Unlink failed: ' + (r.error || 'unknown');
-    else R().renderResources();
+    } else {
+      R().renderResources();
+    }
     poolLoadList(overlay);
   }
 
   async function poolDeleteRow(id, overlay) {
     const P = ns.Pool;
     const nameEl = overlay.querySelector('#pool-status');
-    if (nameEl) nameEl.textContent = 'Deleting…';
+    if (nameEl) {
+      nameEl.textContent = 'Deleting…';
+    }
     const r = await P.deleteItem(id);
-    if (nameEl)
+    if (nameEl) {
       nameEl.textContent = r.ok
         ? 'Deleted from pool. Projects keep their local copy.'
         : r.queued
           ? 'Offline - delete queued.'
           : 'Delete failed: ' + (r.error || 'unknown');
+    }
     R().renderResources();
     poolLoadList(overlay);
   }
@@ -534,7 +566,9 @@ var MMGR = window.MMGR || {};
     const statusEl = overlay.querySelector('#pool-status');
     const name = nameEl ? nameEl.value.trim() : '';
     if (!name) {
-      if (statusEl) statusEl.textContent = 'Give the pool row a name first.';
+      if (statusEl) {
+        statusEl.textContent = 'Give the pool row a name first.';
+      }
       return;
     }
     const P = ns.Pool;
@@ -545,19 +579,24 @@ var MMGR = window.MMGR || {};
       rate: 0
     });
     if (!r.ok) {
-      if (statusEl)
+      if (statusEl) {
         statusEl.textContent = r.queued
           ? 'Offline - pool row queued.'
           : 'Create failed: ' + (r.error || 'unknown');
+      }
       return;
     }
-    if (nameEl) nameEl.value = '';
+    if (nameEl) {
+      nameEl.value = '';
+    }
     const linked = await P.linkItem(r.item.id);
     if (linked.ok) {
       await P.refreshAndMerge();
       R().renderResources();
       const toast = ns.App && ns.App.showToast ? ns.App.showToast : null;
-      if (toast) toast('Added "' + r.item.name + '" to the pool and linked it.', 'ok');
+      if (toast) {
+        toast('Added "' + r.item.name + '" to the pool and linked it.', 'ok');
+      }
     }
     poolLoadList(overlay);
   }
@@ -565,25 +604,32 @@ var MMGR = window.MMGR || {};
   function poolAddRow(idx) {
     const s = S();
     const res = s && s.resources && s.resources[idx];
-    if (!res) return;
+    if (!res) {
+      return;
+    }
     const toast = ns.App && ns.App.showToast ? ns.App.showToast : null;
     const P = ns.Pool;
     P.addRowToPool(res).then(function (r) {
       if (r && r.ok) {
-        if (toast) toast('Added "' + (r.item.name || '') + '" to the Shared Resource Pool.', 'ok');
-      } else if (toast)
+        if (toast) {
+          toast('Added "' + (r.item.name || '') + '" to the Shared Resource Pool.', 'ok');
+        }
+      } else if (toast) {
         toast(
           r && r.error
             ? 'Add to pool failed: ' + r.error
             : 'Add to pool failed (offline - row queued).',
           'err'
         );
+      }
       R().renderResources();
     });
   }
 
   function poolBootMergeIfLinked() {
-    if (ns.Pool && ns.Pool.bootMerge) ns.Pool.bootMerge();
+    if (ns.Pool && ns.Pool.bootMerge) {
+      ns.Pool.bootMerge();
+    }
   }
 
   ns.RenderResources = {

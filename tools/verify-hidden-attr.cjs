@@ -75,17 +75,22 @@ function parseCss(text) {
     for (let i = startIdx; i < len; i++) {
       const ch = stripped[i];
       if (inStr) {
-        if (ch === inStr) inStr = null;
+        if (ch === inStr) {
+          inStr = null;
+        }
         continue;
       }
       if (ch === '"' || ch === "'") {
         inStr = ch;
         continue;
       }
-      if (ch === '{') depth++;
-      else if (ch === '}') {
+      if (ch === '{') {
+        depth++;
+      } else if (ch === '}') {
         depth--;
-        if (depth === 0) return { body: stripped.slice(startIdx + 1, i), end: i + 1 };
+        if (depth === 0) {
+          return { body: stripped.slice(startIdx + 1, i), end: i + 1 };
+        }
       }
     }
     return { body: '', end: len };
@@ -97,7 +102,9 @@ function parseCss(text) {
     let i = from;
     while (i < limit) {
       const braceIdx = stripped.indexOf('{', i);
-      if (braceIdx === -1 || braceIdx >= limit) break;
+      if (braceIdx === -1 || braceIdx >= limit) {
+        break;
+      }
       const prelude = stripped.slice(i, braceIdx).trim();
       const { body, end } = readBlock(braceIdx);
       if (prelude.startsWith('@')) {
@@ -115,7 +122,9 @@ function parseCss(text) {
         i = end;
         continue;
       }
-      if (prelude) out.push({ selector: prelude, body });
+      if (prelude) {
+        out.push({ selector: prelude, body });
+      }
       i = end;
     }
   }
@@ -131,12 +140,17 @@ function splitSelectors(selector) {
   let cur = '';
   for (let i = 0; i < selector.length; i++) {
     const ch = selector[i];
-    if (ch === '[' || ch === '(') depth++;
-    else if (ch === ']' || ch === ')') depth--;
+    if (ch === '[' || ch === '(') {
+      depth++;
+    } else if (ch === ']' || ch === ')') {
+      depth--;
+    }
     if (ch === ',' && depth === 0) {
       parts.push(cur.trim());
       cur = '';
-    } else cur += ch;
+    } else {
+      cur += ch;
+    }
   }
   parts.push(cur.trim());
   return parts.filter(Boolean);
@@ -177,7 +191,9 @@ function specificity(selector) {
 
 function compareSpec(s1, s2) {
   for (let i = 0; i < 3; i++) {
-    if (s1[i] !== s2[i]) return s1[i] > s2[i] ? 1 : -1;
+    if (s1[i] !== s2[i]) {
+      return s1[i] > s2[i] ? 1 : -1;
+    }
   }
   return 0;
 }
@@ -197,10 +213,16 @@ function esc(s) {
 //     they need ancestor/structure context a static scan cannot prove.
 function canMatch(selector, el) {
   const comp = lastCompound(selector);
-  if (comp === '*' || /\*/.test(comp.replace(/\[[^\]]*\]/g, ''))) return true;
-  if (el.id && new RegExp('#' + esc(el.id) + '(?![\\w-])').test(comp)) return true;
+  if (comp === '*' || /\*/.test(comp.replace(/\[[^\]]*\]/g, ''))) {
+    return true;
+  }
+  if (el.id && new RegExp('#' + esc(el.id) + '(?![\\w-])').test(comp)) {
+    return true;
+  }
   for (const c of el.classes) {
-    if (new RegExp('\\.' + esc(c) + '(?![\\w-])').test(comp)) return true;
+    if (new RegExp('\\.' + esc(c) + '(?![\\w-])').test(comp)) {
+      return true;
+    }
   }
   return false;
 }
@@ -227,7 +249,9 @@ function findHiddenElements(htmlFile, text) {
   while ((m = re.exec(text)) !== null) {
     const tag = m[1].toLowerCase();
     const attrs = parseAttrs(m[2] || '');
-    if (!('hidden' in attrs)) continue;
+    if (!('hidden' in attrs)) {
+      continue;
+    }
     const id = attrs.id || null;
     const classes = (attrs.class || '').trim().split(/\s+/).filter(Boolean);
     els.push({
@@ -250,8 +274,9 @@ function findHiddenElements(htmlFile, text) {
 const cssSources = collectCss();
 const allRules = [];
 for (const s of cssSources) {
-  for (const r of parseCss(s.text))
+  for (const r of parseCss(s.text)) {
     allRules.push({ selector: r.selector, body: r.body, src: s.src });
+  }
 }
 
 const DISPLAY_RE = /display\s*:\s*([^;{}]+)/g;
@@ -261,7 +286,9 @@ function displayVals(body) {
   DISPLAY_RE.lastIndex = 0;
   while ((m = DISPLAY_RE.exec(body)) !== null) {
     const raw = (m[1] || '').trim();
-    if (!raw) continue;
+    if (!raw) {
+      continue;
+    }
     const important = /!important\s*$/i.test(raw);
     const value = raw
       .replace(/!important\s*$/i, '')
@@ -283,21 +310,31 @@ for (const f of htmlFiles) {
     const defeat = []; // non-none display rules matching el
     const guard = []; // display:none rules matching el whose selector contains [hidden]
     for (const rule of allRules) {
-      if (/:not\(/.test(rule.selector)) continue; // :not() selectors: cannot statically prove they apply
-      if (/::/.test(rule.selector)) continue; // ::pseudo-element rules never style the element itself
+      if (/:not\(/.test(rule.selector)) {
+        continue;
+      } // :not() selectors: cannot statically prove they apply
+      if (/::/.test(rule.selector)) {
+        continue;
+      } // ::pseudo-element rules never style the element itself
       const matchesEl = splitSelectors(rule.selector).some(sel => canMatch(sel, el));
-      if (!matchesEl) continue;
+      if (!matchesEl) {
+        continue;
+      }
       for (const v of displayVals(rule.body)) {
         const hasHidden = /\[hidden(?=[\s\]])/i.test(rule.selector);
         if (v.value === 'none') {
-          if (hasHidden) guard.push({ selector: rule.selector, v, src: rule.src });
+          if (hasHidden) {
+            guard.push({ selector: rule.selector, v, src: rule.src });
+          }
         } else if (v.value && !hasHidden) {
           defeat.push({ selector: rule.selector, v, src: rule.src });
         }
       }
     }
 
-    if (!defeat.length) continue;
+    if (!defeat.length) {
+      continue;
+    }
     const guardImportant = guard.some(g => g.v.important);
     const defeatImportant = defeat.some(d => d.v.important);
     const bestDefeatSpec = defeat.reduce(

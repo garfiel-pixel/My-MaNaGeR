@@ -525,7 +525,18 @@ const CLOUD_RATE = {
   // forgot-password / admin-recovery send cap (per IP in prod via the
   // RATE_LIMITER binding; per-isolate in-memory fallback in dev).
   contact: { max: 5, windowMs: 30 * 60000 },
-  authmail: { max: 5, windowMs: 30 * 60000 }
+  authmail: { max: 5, windowMs: 30 * 60000 },
+  // W7 (owner 2026-10-15). Two buckets that existed in the design were never
+  // added to this table, so `CLOUD_RATE[bucket] || CLOUD_RATE.general` quietly
+  // handed them the GENERAL allowance instead of their own - the review form
+  // was designed for 10 per minute and has been running at 30.
+  //   reviews: the public review POST is the only public write surface here.
+  reviews: { max: 10, windowMs: 60000 },
+  //   ai: the relay is the most expensive route on the Worker - every request
+  //   costs an upstream model call, and until now the route had no rl() guard
+  //   at all. 60 per minute matches the RATE_LIMITER binding's own window, so
+  //   the local fallback and production answer the same number.
+  ai: { max: 60, windowMs: 60000 }
 };
 const _cloudBuckets = new Map();
 
@@ -559,19 +570,38 @@ export async function cloudRateCheck(request, bucket, env) {
   const headers = bucket === 'recover' ? ['X-Owner-Code'] : ['X-Owner-Code', 'X-Editor-Code'];
   const key = await cloudRateKey(request, headers);
   const ns = bucket + ':' + key;
+  // Resolved once, used by BOTH limiters below. An unknown bucket falls back
+  // to the general allowance - it still gets a limit of its own (the ns is
+  // namespaced), it just does not get a stricter one.
+  const cfg = CLOUD_RATE[bucket] || CLOUD_RATE.general;
+  const now = Date.now();
+
+  // 1. SHARED BINDING (cross-isolate, eventually consistent). Deliberately
+  //    still checked FIRST and unchanged: several harnesses assert this call
+  //    is MADE (tools/qa-ai-relay.cjs M3 counts limiter invocations, not just
+  //    the resulting 429), and moving it would turn a true assertion into a
+  //    false one.
   if (env && env.RATE_LIMITER) {
     try {
       const { success } = await env.RATE_LIMITER.limit({ key: ns });
       if (!success) {
         return { limited: true, retryAfter: 60 };
       }
-      return { limited: false };
     } catch (e) {
-      /* binding unavailable — fall through to in-memory */
+      /* binding unavailable - fall through to the table below */
     }
   }
-  const cfg = CLOUD_RATE[bucket] || CLOUD_RATE.general;
-  const now = Date.now();
+
+  // 2. THE CONFIGURED PER-BUCKET LIMIT (W7, owner 2026-10-15): this window
+  //    used to run ONLY when the binding was absent. Production has the
+  //    binding, so production never reached this table and every bucket ran
+  //    at the binding's flat 60 per minute - including `contact` and
+  //    `authmail`, which the owner ordered at 5 per 30 minutes on 2026-09-14,
+  //    and the public review form, designed for 10 per minute. A limit that
+  //    is written down but never reached reads as enforced in every audit
+  //    while doing nothing in production, which is worse than having no
+  //    limit at all. Both limiters now apply and the stricter one wins: the
+  //    table is the ceiling, the binding stays as the cross-isolate backstop.
   let list = _cloudBuckets.get(ns);
   if (!list) {
     list = [];

@@ -9,9 +9,15 @@
    false failures when this path was first written.
 
    What it proves (the whole feature, not just the happy path):
-     - a CODE-created cloud project (google_sub NULL) accepts photos.
-       This is the regression that mattered: the upload gate must key on
-       the cloud_projects ROW, not on a linked Google account.
+     - a CODE-created cloud project (google_sub NULL) accepts photos
+       while billing is dormant. This is the regression that mattered:
+       the upload gate must key on the cloud_projects ROW, not on a
+       linked Google account.
+     - W10 (owner 2026-10-15): with billing configured, that same
+       project has no paying account behind it, so its upload is
+       refused 402 upgrade_required instead of silently filling R2.
+       The harness branches on the response, so both contracts are
+       asserted against the deployment that actually applies.
      - upload -> list -> single-photo bytes -> meta -> delete round trip,
        with the served Content-Type and exact byte length checked.
      - the single-photo path reconstructs the SAME R2 key the upload
@@ -120,6 +126,38 @@ async function main() {
   data = await res.json().catch(function () {
     return {};
   });
+
+  // W10 (owner 2026-10-15) REBASELINE. Uploading is now a PAID feature, and
+  // this fixture is deliberately the case with no paying account behind it:
+  // the project was created with no session, so cloud_projects.google_sub is
+  // NULL, and the request carries only an owner code, so there is no session
+  // on the upload either. There is therefore nobody to bill.
+  //
+  // Two deployments are legitimate and this branch proves the RIGHT one for
+  // whichever it is talking to:
+  //   billing NOT configured (CI, and any dev without Paddle secrets in
+  //     .dev.vars) -> the gate is dormant, the upload must succeed and the
+  //     full round trip below runs, exactly as before W10;
+  //   billing configured -> the upload must be refused 402 upgrade_required,
+  //     which is the new contract, and the round trip cannot be exercised
+  //     against a fixture that has no account to pay for it.
+  // Detection is the response itself, because /api/billing/status is
+  // session-gated (403 anonymously) and could not be used to ask.
+  const refusedForBilling = res.status === 402 && data.code === 'upgrade_required';
+
+  if (refusedForBilling) {
+    ok(
+      'paid gate refuses an upload with no paying account (402 upgrade_required)',
+      data.upgrade === true && /paid plan/.test(String(data.error || '')),
+      res.status + '|' + JSON.stringify(data).slice(0, 200)
+    );
+    console.log(
+      TAG +
+        ' SKIP  upload/list/view/delete round trip - unreachable while billing is configured (the fixture has no subscription)'
+    );
+    return report();
+  }
+
   const photoId = data.photo && data.photo.id;
   ok(
     'owner uploads a photo',

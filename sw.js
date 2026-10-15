@@ -17,7 +17,60 @@
    v382 - full-bleed marketing canvas, 7-big-dot rail with generated
            small dots, contact tile phone overflow, guide sidebar spacing
    ============================================================ */
-const CACHE = 'mmgr-shell-v421';
+const CACHE = 'mmgr-shell-v422';
+
+// v422 - WAVE: PAID PHOTOS, LEGAL TRUTH, DNT/GPC, RATE LIMITS (owner
+// 2026-10-15). Served HTML changed on four pages, so this bump is what makes
+// returning clients fetch them; no inline script was touched, so the CSP
+// inline-script hash set is byte-identical.
+// (1) PHOTO UPLOADS ARE A PAID FEATURE (W10): src/cloud/photos.js refuses an
+//     upload with 402 upgrade_required unless the project OWNER's account or
+//     the uploader's OWN signed-in account holds an active subscription. The
+//     check sits after the role check (a bad credential still answers 403 and
+//     learns nothing about billing) and before the body is read (a refusal
+//     stores no bytes), is dormant while Paddle secrets are absent, and fails
+//     closed when there is no account to bill - which is the hole a free tier
+//     would use. VIEWING photos is untouched. test/photo-tier.test.mjs 9/9;
+//     tools/qa-cloud-photos.cjs re-baselined to branch on the response,
+//     because a code-created fixture has no paying account behind it.
+// (2) LEGAL PAGES MADE TRUE (W4/W5): refund.html's window is 14 days, not 30,
+//     everywhere including its meta description, and it gains the outage
+//     section that was missing entirely (the customer picks a refund or a
+//     discount when a paid feature is broken on our side). terms.html now
+//     DEFINES the licence that section 17 always referred to but section 7
+//     never granted, drops "subscription fees are non-refundable" - which
+//     flatly contradicted the refund policy on the next page - renames
+//     LemonSqueezy to Paddle in sections 8 and 9, and caps aggregate liability
+//     at USD $50, down from $100. privacy.html renames its payment processor.
+//     pricing.html follows the 14-day window, states what the free plan may
+//     not do with photos, and stops carrying two different effective dates.
+// (3) DNT/GPC KEPT ITS PROMISE (W6): privacy.html section 7 said a Do Not
+//     Track or Global Privacy Control signal suppresses our telemetry. It
+//     did not - nothing read either header while the Analytics Engine binding
+//     has been live since 2026-08-25. Both readers are new in
+//     src/lib/observe.js and both write paths in observe.js and router.js now
+//     skip the data point. The structured server log deliberately still runs,
+//     so a fault stays diagnosable; test/privacy-signal.test.mjs 9/9.
+// (4) RATE LIMITS ENFORCED WHERE THEY WERE WRITTEN (W7): /api/ai/chat was the
+//     last route with no rl() guard - and the dearest one, every request pays
+//     for an upstream model call - so it gains an `ai` bucket. Worse, the
+//     configured bucket table was SKIPPED whenever the RATE_LIMITER binding
+//     answered, and production has that binding: contact and authmail, ordered
+//     at 5 per 30 minutes on 2026-09-14, have been running at the binding's
+//     flat 60/min all along, and the public review form at 30/min instead of
+//     its designed 10. Both limiters now run and the stricter one wins.
+//     tools/qa-ai-relay.cjs M3 re-baselined from an exact binding-call count
+//     (31) to the range its intent actually asserts.
+// (5) VERIFICATION BEFORE THE FREE AI (W9): registering issued the session
+//     before the confirmation link was ever opened, so the free pool - keyed
+//     per account on the operator's own Gemini keys - could be multiplied by
+//     registering throwaway addresses. The pool now requires a confirmed
+//     email, under exactly the conditions handleCloudCreate has used since
+//     2026-08-17 (email sessions only, only when mail is configured, Google
+//     exempt, a caller's own key untouched). 6 of 7 live accounts were
+//     already verified; the one that was not is a QA address.
+// (6) SMALL CORRECTNESS (W8): refund.html told readers the free cap "goes
+//     back to 8" while pricing.html and billingFreeCap both say 1.
 
 // v417 - EMAIL SIGN-IN STOPPED REJECTING VALID INPUT (owner report
 // 2026-10-13: "a persistent 'Enter your email and password' even when valid

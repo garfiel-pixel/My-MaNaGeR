@@ -152,7 +152,7 @@
             <li>Live weather forecasts (Open-Meteo, open source, no API key required)</li>
             <li>BYO API key AI processing (OpenAI, Google Gemini, Anthropic Claude, or any compatible provider you configure)</li>
             <li>Email authentication (Resend transactional email service)</li>
-            <li>Payment processing (LemonSqueezy, for optional paid plans only)</li>
+            <li>Payment processing (Paddle, for optional paid plans only)</li>
           </ul>
         </li>
         <li><strong>Infrastructure processors:</strong> The Application's cloud features are operated on Cloudflare's Workers, D1 database, R2 storage, and CDN edge. Cloudflare acts as an infrastructure processor: it handles and stores the limited account and project metadata described in Section 3 on servers it operates, and its edge servers may retain standard, short-lived request logs. Cloudflare's own privacy policy and data-processing terms apply to that handling.</li>
@@ -171,7 +171,9 @@
       <p>The Application does not collect, process, or aggregate information from any individual, including minors under any age threshold worldwide, natively satisfying the requirements of the United States COPPA, the United Kingdom Age Appropriate Design Code, and global equivalents. The Application is intended for use by licensed construction professionals and project managers of legal working age.</p>
 
       <h3>7. Do Not Track &amp; Global Privacy Control</h3>
-      <p>The Application honors Do Not Track (DNT) browser signals and Global Privacy Control (GPC) headers. When detected, all optional telemetry and analytics (if any are enabled in future versions) are automatically suppressed. Given the Application's local-first architecture, DNT/GPC compliance is inherent in the design.</p>
+      <p>The Application honors Do Not Track (DNT) browser signals and the Global Privacy Control (GPC) header. When your browser sends either one, we switch off the optional usage telemetry for your requests. Your browser sets these on its own, so there is nothing to sign into, nothing to click and nothing to configure on our side.</p>
+      <p>This is not a promise about a future version. The switch is built into the server now, and it covers the only analytics we send, which counts events such as a project being saved. Server logs are kept either way, because they are how a fault gets found; they are operational records, they are not shared with anyone, and they are not used to build a profile of you.</p>
+      <p>Given the Application's local-first architecture, most of your work never reaches us in the first place.</p>
 
       <h3>8. Data Breach Notification</h3>
       <p>Because the Application does not store project data on any remote server, a data breach of our infrastructure cannot expose your project data. In the event of a breach affecting account metadata (email addresses, hashed passwords), we will notify affected users within 72 hours as required by GDPR Art. 33 and applicable breach notification laws. Account passwords are hashed with PBKDF2-SHA256 (100,000 iterations) and cannot be reverse-engineered from the hash.</p>

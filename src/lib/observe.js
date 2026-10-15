@@ -65,6 +65,40 @@ export function structuredLog(env, level, event, data = {}) {
 }
 
 /**
+ * W6 (owner 2026-10-15): does this caller ask not to be tracked?
+ *
+ * Two headers, both set by the browser itself on every request, so no
+ * client code and no cookie are involved:
+ *   Sec-GPC: 1  - Global Privacy Control (the modern one, backed by law
+ *                 in California and the EU)
+ *   DNT: 1      - Do Not Track (legacy, still sent by many browsers)
+ *
+ * privacy.html section 7 promises that a detected signal suppresses the
+ * optional analytics telemetry. Before this function that promise was
+ * FALSE - the Analytics Engine binding has been live since 2026-08-25 and
+ * nothing read either header. A privacy policy that claims a suppression
+ * the code does not perform is the worst kind of lie to ship, so the
+ * promise is now implemented in the one place that writes data points.
+ *
+ * Deliberately narrow: it suppresses ANALYTICS writes only. Structured
+ * server logs (structuredLog) are operational - they are how a 500 gets
+ * diagnosed - and are not shared with any third party.
+ */
+export function privacySignalRequested(request) {
+  const headers = request && request.headers;
+  if (!headers || typeof headers.get !== 'function') {
+    return false;
+  }
+  const gpc = String(headers.get('Sec-GPC') || '')
+    .trim()
+    .toLowerCase();
+  if (gpc === '1' || gpc === 'true') {
+    return true;
+  }
+  return String(headers.get('DNT') || '').trim() === '1';
+}
+
+/**
  * Track an error event for observability. Logs the error with
  * structured context and optionally writes to Analytics Engine.
  *
@@ -72,16 +106,20 @@ export function structuredLog(env, level, event, data = {}) {
  * @param {string} event - Event name
  * @param {Error|any} error - The error object
  * @param {object} context - Additional context
+ * @param {Request} [request] - The triggering request; when it carries
+ *   DNT or Sec-GPC the Analytics Engine write is skipped (the structured
+ *   log still runs, so the error remains diagnosable).
  */
-export function trackError(env, event, error, context = {}) {
+export function trackError(env, event, error, context = {}, request = null) {
   structuredLog(env, 'error', event, {
     ...context,
     message: error && error.message ? error.message : String(error),
     stack: error && error.stack ? error.stack.split('\n').slice(0, 3).join(' | ') : undefined
   });
 
-  // Also fire to Analytics Engine if available
-  if (env && env.ANALYTICS) {
+  // Also fire to Analytics Engine if available - unless the caller asked
+  // not to be tracked (W6).
+  if (env && env.ANALYTICS && !privacySignalRequested(request)) {
     try {
       env.ANALYTICS.writeDataPoint({
         indexes: ['error', event],
@@ -99,11 +137,14 @@ export function trackError(env, event, error, context = {}) {
 
 /**
  * Track a success/info event for observability.
+ * Same DNT/GPC rule as trackError: the structured log always runs, the
+ * Analytics Engine write is skipped when the caller asked not to be
+ * tracked (W6).
  */
-export function trackEvent(env, event, context = {}) {
+export function trackEvent(env, event, context = {}, request = null) {
   structuredLog(env, 'info', event, context);
 
-  if (env && env.ANALYTICS) {
+  if (env && env.ANALYTICS && !privacySignalRequested(request)) {
     try {
       env.ANALYTICS.writeDataPoint({
         indexes: ['info', event],

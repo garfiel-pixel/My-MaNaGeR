@@ -8,7 +8,7 @@
    echoed in any error response. Enforced: max body size + hard upstream
    timeout. Missing key -> 401; bad body -> 400.
    ============================================================ */
-import { json, readSession } from './lib/http.js';
+import { json, readSession, authEmailConfigured } from './lib/http.js';
 import { billingStatusActive } from './billing.js';
 
 const AI_PROVIDERS = {
@@ -447,6 +447,38 @@ export async function handleAiChat(request, env) {
         },
         401
       );
+    }
+    // VERIFICATION GATE (W9, owner 2026-10-15). Signing in is NOT proving
+    // you own the address: handleAuthRegister issues the session immediately
+    // and only afterwards emails a confirmation link, so an account that has
+    // never opened that link is already "signed in". This rung hands out the
+    // operator's own Gemini keys with a per-account daily allowance on top,
+    // and the allowance is keyed by account - so N unregistered-then-ignored
+    // addresses were worth N times the free allowance, at no cost to whoever
+    // registered them, and the confirmation email never had to be opened.
+    //
+    // Deliberately the SAME shape and the SAME conditions as the gate
+    // handleCloudCreate has used since 2026-08-17: only `email:` sessions,
+    // only when email is actually configured (otherwise no confirmation link
+    // could ever be sent and every account would be permanently barred), and
+    // Google sessions are exempt because Google already proved the address.
+    // A caller's OWN key below stays untouched, as it always has been.
+    if (authEmailConfigured(env) && String(session.sub).indexOf('email:') === 0) {
+      const vrow = await env.DB.prepare('SELECT email_verified FROM auth_users WHERE email = ?')
+        .bind(String(session.sub).slice('email:'.length))
+        .first();
+      if (!(vrow && Number(vrow.email_verified) === 1)) {
+        return json(
+          {
+            ok: false,
+            verifyRequired: true,
+            error:
+              'Confirm your email address to use the assistant. Open the link we emailed you, then ask again.',
+            tier: 'free-pool'
+          },
+          403
+        );
+      }
     }
     const paid = await poolIsPaid(env, session.sub);
     const used = paid ? 0 : await freeQuotaUsed(env, session.sub);

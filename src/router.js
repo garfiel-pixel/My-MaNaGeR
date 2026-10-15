@@ -30,7 +30,7 @@ import {
   readSession,
   cloudForbidden
 } from './lib/http.js';
-import { trackError, structuredLog } from './lib/observe.js';
+import { trackError, structuredLog, privacySignalRequested } from './lib/observe.js';
 import {
   handleBillingWebhook,
   handleBillingStatus,
@@ -166,8 +166,15 @@ const _cloudPushRev = cloudPushRevChangedIfCopies;
 /* ============================================================
    TRACKING — lightweight event logging (Analytics Engine)
    ============================================================ */
-function trackEvent(env, idx1, idx2, blob1, blob2) {
+// W6 (owner 2026-10-15): `request` is a required argument, not an optional
+// one, precisely so the DNT/GPC check below can never be forgotten at a new
+// call site - the privacy.html promise is "the signal suppresses the
+// telemetry", and a default of null would silently mean "always track".
+function trackEvent(env, request, idx1, idx2, blob1, blob2) {
   if (!env || !env.ANALYTICS) {
+    return;
+  }
+  if (privacySignalRequested(request)) {
     return;
   }
   try {
@@ -267,7 +274,7 @@ export async function routeApi(request, env, url) {
         return r;
       }
       if (request.method === 'POST') {
-        trackEvent(env, 'api', 'cloud-create');
+        trackEvent(env, request, 'api', 'cloud-create');
         structuredLog(env, 'info', 'cloud-create-start');
         return handleCloudCreate(request, env);
       }
@@ -290,7 +297,7 @@ export async function routeApi(request, env, url) {
         return handleCloudMeta(request, env, pid);
       }
       if (op === 'save' && request.method === 'POST') {
-        trackEvent(env, 'api', 'cloud-save', pid);
+        trackEvent(env, request, 'api', 'cloud-save', pid);
         structuredLog(env, 'info', 'cloud-save-start', { projectId: pid });
         return handleCloudSave(request, env, pid, async function (env, projectId, now, actor) {
           await _cloudPushRev(env, projectId, now, actor);
@@ -309,7 +316,7 @@ export async function routeApi(request, env, url) {
         return handleCloudProjectRestore(request, env, pid);
       }
       if (op === 'claim' && request.method === 'POST') {
-        trackEvent(env, 'api', 'cloud-claim', pid);
+        trackEvent(env, request, 'api', 'cloud-claim', pid);
         return handleCloudProjectClaim(request, env, pid);
       }
       if (op === 'purge' && request.method === 'POST') {
@@ -993,7 +1000,16 @@ export async function routeApi(request, env, url) {
 
     // 14. AI RELAY
     if (path === '/api/ai/chat' && request.method === 'POST') {
-      trackEvent(env, 'api', 'ai-chat');
+      // W7 (owner 2026-10-15): this was the last route on the Worker with no
+      // rl() guard, and it is the dearest one - every request pays for an
+      // upstream model call. Same treatment the MCP route received in the
+      // API-KEY-AUDIT, on its own `ai` bucket so a burst of chat cannot lock
+      // the owner out of the rest of the API.
+      const r = await rl(request, 'ai', env);
+      if (r) {
+        return r;
+      }
+      trackEvent(env, request, 'api', 'ai-chat');
       return handleAiChat(request, env);
     }
 
@@ -1013,7 +1029,7 @@ export async function routeApi(request, env, url) {
     // 16. 404 FALLBACK
     return json({ ok: false, error: 'not found' }, 404);
   } catch (e) {
-    trackError(env, 'api-unhandled', e, { path: url.pathname, method: request.method });
+    trackError(env, 'api-unhandled', e, { path: url.pathname, method: request.method }, request);
     return json({ ok: false, error: 'internal server error' }, 500);
   }
 }

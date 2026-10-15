@@ -13,7 +13,8 @@
         adoption, team, or api key — mirrors handleCloudMeta / handleCloudLoad),
      3. the caller's role permits the requested action.
 
-   Upload: owner + editors only.
+   Upload: owner + editors only, AND the project must be covered by an active
+   paid subscription (W10, owner 2026-10-15) - see photoUploadPaid() below.
    View list / single photo: owner, editor, viewer, client (read-only through
    the client-code section grant), adoption, team member with read access.
    Delete: owner + editors only.
@@ -22,7 +23,14 @@
    Metadata: cloud_project_photos (migration 0025)
    ============================================================ */
 
-import { json, cloudForbidden, cloudProjectDeleted, cloudTimingSink } from '../lib/http.js';
+import {
+  json,
+  cloudForbidden,
+  cloudProjectDeleted,
+  cloudTimingSink,
+  readSession
+} from '../lib/http.js';
+import { billingConfigured, billingStatusActive } from '../billing.js';
 
 // Shared access gate used by upload / list / single / delete. Kept in one
 // place so the timing-safe auth path is not duplicated across handlers.
@@ -66,6 +74,63 @@ function rolesWithUpload(role) {
 
 function rolesWithView(role) {
   return role === 'owner' || role === 'editor' || role === 'view' || role === 'client';
+}
+
+// ---- W10 (owner 2026-10-15): uploading is a PAID feature ------------------
+// A photo writes bytes to R2, so a free account must not be able to fill the
+// bucket. Two accounts can legitimately pay for one upload and EITHER is
+// enough:
+//   1. the project OWNER's account (cloud_projects.google_sub - the same
+//      identity namespace as cloud_subscriptions.owner_sub, see migration
+//      0007) - an editor or a client-code holder is spending storage the
+//      owner bought, so the owner's plan covers them;
+//   2. the uploader's OWN signed-in account - the owner's instruction was
+//      "whoever is uploading ... has a subscription".
+// With no billing subject at all (a project created while signed out, and no
+// session on this request) the upload is REFUSED: there is no account to bill,
+// which is precisely the hole a free tier would drive through.
+//
+// Dormant without billing, like every other entitlement check in this codebase
+// (handleCloudCreate's free cap): with no Paddle secrets configured the gate
+// changes nothing.
+//
+// Fail-closed on a database error, matching poolIsPaid in src/ai-proxy.js:
+// the whole point of the check is to protect a finite paid resource, so an
+// unreadable ledger must never read as "paid".
+async function photoUploadPaid(env, proj, request) {
+  if (!billingConfigured(env)) {
+    return true;
+  }
+  const subjects = [];
+  if (proj && proj.google_sub) {
+    subjects.push(String(proj.google_sub));
+  }
+  if (request) {
+    try {
+      const session = await readSession(request, env);
+      if (session && session.sub) {
+        subjects.push(String(session.sub));
+      }
+    } catch (e) {
+      /* no readable session - the owner's own account alone decides */
+    }
+  }
+  if (!subjects.length) {
+    return false;
+  }
+  for (let i = 0; i < subjects.length; i++) {
+    try {
+      const row = await env.DB.prepare('SELECT status FROM cloud_subscriptions WHERE owner_sub = ?')
+        .bind(subjects[i])
+        .first();
+      if (row && billingStatusActive(row.status)) {
+        return true;
+      }
+    } catch (e) {
+      /* try the next subject before giving up */
+    }
+  }
+  return false;
 }
 
 // ---- helpers: project row + auth resolution (mirrors handleCloudMeta) ----
@@ -240,6 +305,22 @@ export async function handlePhotoUpload(request, env, projectId) {
   }
   if (!rolesWithUpload(access.role)) {
     return json({ ok: false, error: 'only the project owner or an editor can upload photos' }, 403);
+  }
+
+  // W10: paid feature. Deliberately AFTER the role check (an unauthenticated
+  // caller still gets the same plain 403 as before and learns nothing about
+  // billing) and BEFORE the body is read (a refused upload never parses a
+  // multipart payload it is not going to store).
+  if (!(await photoUploadPaid(env, proj, request))) {
+    return json(
+      {
+        ok: false,
+        code: 'upgrade_required',
+        upgrade: true,
+        error: 'photos are part of a paid plan - upgrade to add photos to this project'
+      },
+      402
+    );
   }
 
   // Body: multipart form with one file field "file".

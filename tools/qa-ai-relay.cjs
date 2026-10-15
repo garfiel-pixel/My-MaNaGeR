@@ -453,9 +453,21 @@ const check = (name, val, detail) => {
       break;
     }
   }
+  // W7 (owner 2026-10-15) REBASELINE. This assertion used to be
+  // `rlHits === 31` - an exact count of BINDING invocations, which held only
+  // because cloudRateCheck returned the moment the binding answered and never
+  // reached the configured per-bucket window. Production has that binding, so
+  // production was running EVERY bucket at its flat 60/min, silently ignoring
+  // the stricter limits the owner ordered (contact and authmail are 5 per 30
+  // minutes on paper and were 60/min in production). Both limiters now run and
+  // the stricter one wins, so the table can trip before the binding and the
+  // binding legitimately sees fewer calls than the old exact count assumed.
+  // What M3 exists to prove is unchanged and is what the range asserts: the
+  // route consults a limiter on every attempt, and it answers 429 rather than
+  // reaching an unthrottled handler.
   check(
     'M3 MCP route rate-limited (audit F1): hits trip the limiter -> 429, never an unthrottled handler',
-    m3saw429 && globalThis.rlHits === 31,
+    m3saw429 && globalThis.rlHits >= 1 && globalThis.rlHits <= 31,
     { saw429: m3saw429, hits: globalThis.rlHits, last: m3last && m3last.status }
   );
 

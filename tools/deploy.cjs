@@ -109,14 +109,27 @@ const SKIP_FILE_RE = [
   /\.key$/i,
   /^secrets\.json$/
 ];
-// Files excluded by SKIP_FILE_RE that wrangler still NEEDS: package.json and
-// wrangler.jsonc (both *.json, so the excludes above would drop them and
-// wrangler would fail to find its config / package manifest in the stage).
-// Copied back AFTER the tree walk, which is what the comment above describes.
+// Files excluded by SKIP_FILE_RE that wrangler still NEEDS on disk in the
+// stage: package.json and wrangler.jsonc (both *.json, so the excludes above
+// would drop them and wrangler would fail to find its config / package manifest
+// in the stage). Copied back AFTER the tree walk, which is what the comment
+// above describes.
 // NOTE: this constant was referenced by the staging step but never actually
 // declared - the deploy tool threw `ReferenceError: COPY_BACK is not defined`
 // and could not ship anything until 2026-10-03.
-const COPY_BACK = ['package.json', 'wrangler.jsonc'];
+// 2026-10-15 (W1): robots.txt joins this list for a different reason - not
+// because wrangler needs it, but because the WORKER needs it. worker.js serves
+// /robots.txt through env.ASSETS.fetch() (SEO_FILES), so the file must exist in
+// the stage for it to be uploaded at all; '*.txt' plus the root-robots rule
+// above would otherwise stage no robots.txt and the route would 404 forever.
+// .assetsignore carries the matching '!robots.txt' that lets it through the
+// upload filter.
+//
+// DO NOT add src/, mcp/ or docs/ to SKIP_DIRS to "fix" a leak: wrangler BUNDLES
+// worker.js and follows its imports into src/, so those files must stay in the
+// stage for the build to resolve. What keeps them off the public internet is
+// .assetsignore (the upload filter), not this staging list.
+const COPY_BACK = ['package.json', 'wrangler.jsonc', 'robots.txt'];
 // Files whose staged bytes must match the working tree before shipping.
 const MUST_MATCH = [
   'index.html',

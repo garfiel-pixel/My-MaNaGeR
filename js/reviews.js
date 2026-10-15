@@ -46,7 +46,13 @@
   var tsLoaded = false;
 
   window.mmgrTurnstileOnload = function () {
-    if (!turnstileDiv || typeof Turnstile === 'undefined' || turnstileWidget) {
+    // The global is lowercase `turnstile` - Cloudflare's api.js does NOT
+    // define a capital-T `Turnstile` on this page (verified live 2026-10-15:
+    // typeof Turnstile === 'undefined' while typeof window.turnstile ===
+    // 'object'). Testing the capital-T name made this callback return early
+    // every single time, so the widget never rendered and the server, once
+    // TURNSTILE_SECRET was set, refused every review.
+    if (!turnstileDiv || typeof window.turnstile === 'undefined' || turnstileWidget) {
       return;
     }
     try {

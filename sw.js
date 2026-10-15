@@ -17,7 +17,31 @@
    v382 - full-bleed marketing canvas, 7-big-dot rail with generated
            small dots, contact tile phone overflow, guide sidebar spacing
    ============================================================ */
-const CACHE = 'mmgr-shell-v422';
+const CACHE = 'mmgr-shell-v423';
+
+// v423 - THE REVIEWS FORM WAS BROKEN FOR EVERY VISITOR, BY THE FIX THAT ARMED
+// ITS BOT CHECK (owner 2026-10-15). The owner created the Cloudflare Turnstile
+// widget and set TURNSTILE_SECRET, which switched the server-side bot gate ON:
+// src/reviews.js verifyTurnstileToken() refuses POST /api/reviews with 403
+// unless the request carries a valid token. The client could never produce one,
+// because the widget never rendered - and it never rendered because of a
+// one-word type error in js/reviews.js. window.mmgrTurnstileOnload() guarded
+// itself with `typeof Turnstile === 'undefined'`, testing the CAPITAL-T global,
+// but Cloudflare's api.js exposes only lowercase `turnstile`. Measured on the
+// live page: typeof Turnstile === 'undefined' while typeof window.turnstile ===
+// 'object'. So the guard returned early EVERY time and turnstile.render() was
+// never reached. Proved by isolating it: calling window.mmgrTurnstileOnload() by
+// hand rendered nothing (div stayed 0x0, no children), while the identical
+// turnstile.render(div, {sitekey: ...}) call into a fresh div succeeded in the
+// same page load (widget id returned, child node added). The guard now tests
+// window.turnstile. Sequence of the whole incident, because the ORDER is the
+// lesson: before the secret existed the server skipped the check and the dead
+// widget was harmless; setting the secret is what turned a silent no-op into a
+// form that refused every real visitor. Arming a gate and verifying it renders
+// are the same job, not two jobs. dist/marketing-bundle.js AND js/reviews.js are
+// both SHELL assets, so this bump is what makes returning clients fetch the
+// fixed copies. No inline script added or removed, so the CSP inline-script
+// hash set is unchanged.
 
 // v422 - WAVE: PAID PHOTOS, LEGAL TRUTH, DNT/GPC, RATE LIMITS (owner
 // 2026-10-15). Served HTML changed on four pages, so this bump is what makes

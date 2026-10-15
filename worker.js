@@ -192,6 +192,88 @@ function notFoundPage() {
   );
 }
 
+// 8.4: 404 shape shared by the private-path guards (maps + backend sources).
+function privateNotFound() {
+  return new Response('Not Found', {
+    status: 404,
+    headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }
+  });
+}
+
+// 8.4: paths that are build/deploy/dev internals, never runtime assets.
+// Prefixes cover the whole trees; DENY_FILES covers the root-level files whose
+// names do not reveal what they are; the root-level extension rule catches
+// stray docs and config that get added later without anyone updating a list.
+const PRIVATE_PREFIXES = [
+  '/src/',
+  '/test/',
+  '/tools/',
+  '/mcp/',
+  '/docs/',
+  '/migrations/',
+  '/node_modules/',
+  '/.github/',
+  '/.githooks/',
+  '/_archive/',
+  // VCS and tool state. test/private-paths.test.mjs caught /.git/ missing from
+  // this list, which is exactly what the test is for.
+  '/.git/',
+  '/.wrangler/',
+  '/.freebuff/',
+  '/tmp/',
+  '/dogfood-output/'
+];
+const PRIVATE_FILES = new Set([
+  '/worker.js',
+  '/build.js',
+  '/serve.cjs',
+  '/package.json',
+  '/package-lock.json',
+  '/wrangler.jsonc',
+  '/wrangler.ci.jsonc',
+  '/eslint.config.js',
+  '/skills-lock.json',
+  '/CODEOWNERS',
+  '/.dev.vars',
+  '/.dev.vars.example',
+  '/.gitleaks.toml',
+  '/.gitleaksignore',
+  '/.gitattributes',
+  '/.gitignore',
+  '/.assetsignore',
+  '/.prettierrc.json',
+  '/.prettierignore',
+  '/.npmrc',
+  '/.nvmrc'
+]);
+// Root-level only: a single-segment path carrying a file extension that is
+// never a runtime asset. Nested paths are left alone so real assets such as
+// /dist/*.json are never caught by accident.
+const PRIVATE_ROOT_EXT = /\.(md|txt|json|jsonc|ya?ml|lock|cjs|mjs|ts)$/i;
+// The two root text files that ARE meant to be public. They are already served
+// by the SEO_FILES branch ABOVE this guard; listing them here too keeps the
+// predicate correct on its own, so it cannot 404 them if that branch ever
+// moves or changes order.
+const PUBLIC_ROOT_FILES = new Set(['/robots.txt', '/sitemap.xml']);
+
+// Exported for test/private-paths.test.mjs - the list is only worth having if
+// something proves the real assets still pass through it.
+export function isPrivatePath(normalized) {
+  if (PUBLIC_ROOT_FILES.has(normalized)) {
+    return false;
+  }
+  for (const prefix of PRIVATE_PREFIXES) {
+    if (normalized.indexOf(prefix) === 0) {
+      return true;
+    }
+  }
+  if (PRIVATE_FILES.has(normalized)) {
+    return true;
+  }
+  const segs = normalized.split('/').filter(Boolean);
+  return segs.length === 1 && PRIVATE_ROOT_EXT.test(segs[0]);
+}
+
 // Collapse '.'/'..' path segments so traversal can never fool the
 // whisper-path check.
 function normalizePathname(p) {
@@ -309,10 +391,28 @@ export default {
 
       // 8.2: source maps are build artifacts and must never be public.
       if (/\.map$/.test(normalized)) {
-        return new Response('Not Found', {
-          status: 404,
-          headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }
-        });
+        return privateNotFound();
+      }
+
+      // 8.4 (2026-10-15): backend + dev tooling must never be public. The
+      // assets directory is '.' (wrangler.jsonc), so EVERY repo file is
+      // uploaded unless excluded - and it was verified live that the whole
+      // server source tree was downloadable: /worker.js, /src/router.js,
+      // /src/lib/http.js, /src/auth/session.js, /src/billing.js, /src/ai-proxy.js,
+      // /src/cloud/projects.js, /mcp/server.mjs, /package.json, /wrangler.jsonc,
+      // /build.js, /eslint.config.js, /test/*.mjs, /skills-lock.json,
+      // /.dev.vars.example. No secret VALUES leak (those are Wrangler secrets),
+      // but the lockout ladder, rate-limit config, R2 key derivation and the
+      // full route map do - and it cannot be un-published.
+      //
+      // WHY A GUARD AND NOT JUST assets.exclude: exclude is not reliable on its
+      // own here - live /robots.txt is served WITH a real text/plain body
+      // although 'robots.txt' is already listed in that exclude array. So the
+      // exclude list stays as the belt (it also keeps the upload small) and
+      // this guard is the braces, which is provable locally.
+      // robots.txt / sitemap.xml are unaffected: SEO_FILES is handled above.
+      if (isPrivatePath(normalized)) {
+        return privateNotFound();
       }
 
       // 8.3: a real 404 for unknown, extension-less paths (never the SPA

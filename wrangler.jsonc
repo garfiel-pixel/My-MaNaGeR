@@ -147,13 +147,14 @@
     { "tag": "v1-presence", "new_sqlite_classes": ["Presence"] }
   ],
   "assets": {
+    // 2026-10-15: this block used to carry an "exclude" array, including a
+    // robots.txt entry. Wrangler 4.136.3 REJECTS that key — it prints
+    // "Unexpected fields found in assets field: exclude" — so it never filtered
+    // anything, which is why live /robots.txt was served while listed there.
+    // .assetsignore is the only upload filter that works, and worker.js
+    // isPrivatePath() is the guard of record (test/private-paths.test.mjs).
     "binding": "ASSETS",
     "directory": ".",
-    "exclude": [
-      "planners",
-      "*.txt",
-      "robots.txt"
-    ],
     "not_found_handling": "single-page-application",
     // run_worker_first: the Worker's fetch() handler MUST run for asset
     // requests too — otherwise Cloudflare serves static files directly at

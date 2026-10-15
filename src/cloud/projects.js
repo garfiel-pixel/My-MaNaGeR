@@ -1135,28 +1135,112 @@ export async function handleCloudProjectPurge(request, env, projectId) {
   return json({ ok: true, purged: projectId, purgedAt: now });
 }
 
-// Fully delete a project and all its referencing rows — R2 blobs, editor
-// codes, changelog, adoptions, offline copies, and reviews. Used by unlink,
-// purge, orphan sweep, and account deletion. The caller must still delete
-// the cloud_projects row itself (it owns the primary key lifecycle).
+// Fully delete a project and all its referencing rows. Used by unlink, purge,
+// orphan sweep, and account deletion. The caller must still delete the
+// cloud_projects row itself (it owns the primary key lifecycle).
+// The two constants below are the SINGLE SOURCE OF TRUTH for what gets purged:
+// add a new project-scoped table or R2 prefix to those lists, not to the
+// function body, or the next feature will silently leave data behind again.
+// W2 (2026-10-15): TWO R2 prefixes, not one. Project state lives under
+// projects/<id>/ but PROJECT PHOTOS live under photos/<id>/ (see
+// PHOTO_R2_PREFIX in photos.js). Only the first prefix was ever listed here, so
+// every photo object - and its cloud_project_photos row - survived project
+// deletion, account deletion and the nightly orphan sweep FOREVER. Site photos
+// carry faces and EXIF, so this was the most serious part of the retention gap.
+const PROJECT_PURGE_PREFIXES = ['projects/', 'photos/'];
+
+// Table -> the column that scopes it to one project. Every one of these holds
+// rows keyed to project_id and NONE of them were purged before W2: client
+// codes (0017), API keys (0020), team members (0024) and project photos (0025)
+// landed after this helper was written, and it was never updated.
+const PROJECT_PURGE_TABLES = [
+  'cloud_editor_codes',
+  'cloud_changelog',
+  'cloud_adoptions',
+  'offline_copies',
+  'cloud_reviews',
+  'cloud_client_codes',
+  'cloud_api_keys',
+  'cloud_team_members',
+  'cloud_pool_links',
+  'webhook_subscriptions',
+  'cloud_project_photos'
+];
+
 export async function cloudDeleteProjectFully(env, projectId) {
-  let cursor = undefined;
-  do {
-    const listed = await env.R2.list({ prefix: 'projects/' + projectId + '/', cursor: cursor });
-    for (let i = 0; i < (listed.objects || []).length; i++) {
-      try {
-        await env.R2.delete(listed.objects[i].key);
-      } catch (e) {
-        /* best-effort */
+  for (const prefix of PROJECT_PURGE_PREFIXES) {
+    let cursor = undefined;
+    do {
+      const listed = await env.R2.list({ prefix: prefix + projectId + '/', cursor: cursor });
+      for (let i = 0; i < (listed.objects || []).length; i++) {
+        try {
+          await env.R2.delete(listed.objects[i].key);
+        } catch (e) {
+          /* best-effort */
+        }
       }
+      cursor = listed.truncated ? listed.cursor : undefined;
+    } while (cursor);
+  }
+  const notYetMigrated = [];
+  for (const table of PROJECT_PURGE_TABLES) {
+    try {
+      await env.DB.prepare('DELETE FROM ' + table + ' WHERE project_id = ?')
+        .bind(projectId)
+        .run();
+    } catch (e) {
+      // A table whose migration is not applied to THIS environment must not
+      // break a purge. Verified 2026-10-15: production is one migration behind
+      // (0025_project_photos is unapplied), so an unconditional DELETE would
+      // have thrown and taken project deletion, account deletion AND the
+      // nightly orphan sweep down with it.
+      // ONLY "no such table" is tolerated. A lock, a corrupt statement or a
+      // typo'd column still propagates, so a real fault cannot hide in here -
+      // which is the lesson of the bug this whole change fixes.
+      if (String((e && e.message) || '').indexOf('no such table') === -1) {
+        throw e;
+      }
+      notYetMigrated.push(table);
     }
-    cursor = listed.truncated ? listed.cursor : undefined;
-  } while (cursor);
-  await env.DB.prepare('DELETE FROM cloud_editor_codes WHERE project_id = ?').bind(projectId).run();
-  await env.DB.prepare('DELETE FROM cloud_changelog WHERE project_id = ?').bind(projectId).run();
-  await env.DB.prepare('DELETE FROM cloud_adoptions WHERE project_id = ?').bind(projectId).run();
-  await env.DB.prepare('DELETE FROM offline_copies WHERE project_id = ?').bind(projectId).run();
-  await env.DB.prepare('DELETE FROM cloud_reviews WHERE project_id = ?').bind(projectId).run();
+  }
+  if (notYetMigrated.length) {
+    console.warn(
+      'purge skipped tables whose migration is not applied here: ' +
+        notYetMigrated.join(', ') +
+        ' (project ' +
+        projectId +
+        ')'
+    );
+  }
+}
+
+// W2 (2026-10-15): account-scoped rows that live OUTSIDE any single project.
+// Deleting an account deleted its own projects but left the account referenced
+// in OTHER people's projects - as an active team member, an adoption, and a
+// shared-pool item - plus its calculator workspace blob. The privacy policy
+// promises account deletion removes all server-side data, so these belong here.
+// Exported (and kept separate from the handler) so
+// test/delete-cascade.test.mjs can drive it with a fake env: this path had no
+// test coverage at all.
+// Pool LINKS go first: they reference the pool item ids that are about to be
+// deleted, and nothing guarantees a foreign key cascade.
+export async function cloudPurgeAccountRows(env, sub) {
+  await env.DB.prepare('DELETE FROM cloud_team_members WHERE user_sub = ?').bind(sub).run();
+  await env.DB.prepare('DELETE FROM cloud_adoptions WHERE recipient_sub = ?').bind(sub).run();
+  await env.DB.prepare(
+    'DELETE FROM cloud_pool_links WHERE pool_item_id IN (SELECT id FROM cloud_pool_items WHERE owner_sub = ?)'
+  )
+    .bind(sub)
+    .run();
+  await env.DB.prepare('DELETE FROM cloud_pool_items WHERE owner_sub = ?').bind(sub).run();
+  // calc-ws/<sub>.json - the calculator workspace blob, keyed in
+  // src/cloud/calc-workspace.js. Deleted best-effort so a storage blip cannot
+  // fail the rest of the account deletion.
+  try {
+    await env.R2.delete('calc-ws/' + sub + '.json');
+  } catch (e) {
+    /* best-effort */
+  }
 }
 
 export async function cloudPushRevChangedIfCopies(env, projectId, now, actor) {

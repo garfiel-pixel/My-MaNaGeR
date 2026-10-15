@@ -24,7 +24,9 @@ import {
   SESSION_COOKIE,
   CLOUD_DUMMY_SALT
 } from '../lib/http.js';
-import { cloudDeleteProjectFully } from '../cloud/projects.js';
+import { cloudDeleteProjectFully, cloudPurgeAccountRows } from '../cloud/projects.js';
+import { billingCancelForDeletion } from '../billing.js';
+import { structuredLog } from '../lib/observe.js';
 import { cloudPrefsKey } from '../cloud/sync.js';
 
 const AUTH_MIN_PASSWORD = 8;
@@ -600,12 +602,27 @@ export async function handleAuthDeleteAccount(request, env) {
     }
   }
 
-  // 2. Block if active subscription exists
-  const sub = await env.DB.prepare('SELECT status FROM cloud_subscriptions WHERE owner_sub = ?')
-    .bind(session.sub)
-    .first();
-  if (sub && (sub.status === 'active' || sub.status === 'on_trial')) {
-    return json({ ok: false, error: 'cancel your subscription before deleting your account' }, 409);
+  // 2. Cancel any live subscription AT PADDLE (W3, owner 2026-10-15).
+  // This replaces the old 409 "cancel your subscription before deleting your
+  // account", which made the user go and cancel first. Owner decision: deleting
+  // the account cancels immediately and forfeits the remaining paid days, and
+  // the refund policy states it.
+  // If Paddle refuses, deletion STOPS here - deleting the account while Paddle
+  // keeps billing would take away the only panel that could cancel it.
+  const cancelResult = await billingCancelForDeletion(env, session.sub);
+  if (!cancelResult.ok) {
+    structuredLog(env, 'warn', 'delete-account-subscription-cancel-failed', {
+      reason: cancelResult.error
+    });
+    return json(
+      {
+        ok: false,
+        error:
+          'We could not cancel your subscription just now, so your account has not been deleted. ' +
+          'Please try again in a moment, or cancel the subscription first from the Subscription panel.'
+      },
+      502
+    );
   }
 
   // 3. Delete every owned project fully (R2 + all referencing D1 rows)
@@ -628,6 +645,12 @@ export async function handleAuthDeleteAccount(request, env) {
   await env.DB.prepare('DELETE FROM cloud_subscriptions WHERE owner_sub = ?')
     .bind(session.sub)
     .run();
+  // W2 (2026-10-15): rows that reference this account OUTSIDE its own projects
+  // (team memberships in other people's projects, adoptions, shared-pool items)
+  // and its calculator workspace blob. Deleting the account used to leave all
+  // of these behind, which contradicts the policy's promise that account
+  // deletion removes every server-side record.
+  await cloudPurgeAccountRows(env, session.sub);
   await env.DB.prepare('DELETE FROM auth_sessions WHERE sub = ?').bind(session.sub).run();
   if (isEmailAccount) {
     const email = session.sub.slice('email:'.length);

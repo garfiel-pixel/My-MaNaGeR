@@ -722,6 +722,93 @@ export async function handleBillingCheckout(request, env) {
   return paddleCheckout(env, session, priceId, tierParam === 'homeowner' ? 'estimator' : tierParam);
 }
 
+// ---- cancel for ACCOUNT DELETION (W3, owner 2026-10-15) --------------------
+// Deleting your account cancels the subscription IMMEDIATELY. Owner decision:
+// the remaining paid days are forfeited, and the refund policy says so. This is
+// deliberately NOT the same as handleBillingCancel below, which schedules a
+// cancel at period end so the subscriber keeps what they already paid for - a
+// deleted account has nowhere to keep it.
+//
+// The rule that matters: this returns { ok: false } on any refusal, and the
+// caller then DOES NOT DELETE. The one outcome that must never happen is
+// deleting someone's account while Paddle keeps billing them - they lose the
+// panel that could cancel it and cannot see the charge stop.
+//
+// A subscription that is already gone at Paddle (404) counts as cancelled, so
+// a subscription cancelled in the Paddle dashboard cannot block deletion.
+// Reuses handleBillingCancel's endpoint shape verbatim: POST
+// /subscriptions/{id}/cancel with `effective_from` (NOT `effective_at`, which
+// is the response field).
+export async function billingCancelForDeletion(env, sub) {
+  if (!sub) {
+    return { ok: true };
+  }
+  if (billingProvider(env) !== 'paddle') {
+    // Not configured, or a retired LemonSqueezy deployment: there is no live
+    // billing to cancel, and blocking deletion on an absent provider would
+    // strand the user.
+    return { ok: true };
+  }
+  let row;
+  try {
+    row = await env.DB.prepare(
+      'SELECT status, ls_subscription_id, current_period_end FROM cloud_subscriptions WHERE owner_sub = ?'
+    )
+      .bind(sub)
+      .first();
+  } catch (e) {
+    return { ok: false, error: 'could not read the subscription' };
+  }
+  // No row, or a row that is not paying (canceled / expired / paused): nothing
+  // will be billed again, so deletion is safe.
+  if (!row || !billingStatusActive(row.status)) {
+    return { ok: true };
+  }
+  const subId = String(row.ls_subscription_id || '');
+  if (!subId) {
+    return { ok: false, error: 'subscription reference missing' };
+  }
+  const sandbox = String(env.PADDLE_ENV || '') === 'sandbox';
+  const base = sandbox ? PADDLE_SANDBOX_BASE : PADDLE_API_BASE;
+  let res;
+  try {
+    res = await fetch(base + '/subscriptions/' + encodeURIComponent(subId) + '/cancel', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + env.PADDLE_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ effective_from: 'immediately' })
+    });
+  } catch (e) {
+    return { ok: false, error: 'could not reach the payment provider' };
+  }
+  if (res.status === 404) {
+    return { ok: true, alreadyGone: true };
+  }
+  if (!res.ok) {
+    let detail = '';
+    try {
+      const data = await res.json();
+      const err = (data && data.error) || {};
+      const first = (err.errors && err.errors[0]) || {};
+      detail = String(first.detail || err.detail || err.code || '').slice(0, 200);
+    } catch (e) {
+      detail = '';
+    }
+    console.error(
+      'billing cancel for deletion failed: subId=' +
+        subId +
+        ' http=' +
+        res.status +
+        ' detail=' +
+        detail
+    );
+    return { ok: false, error: 'the payment provider refused to cancel the subscription' };
+  }
+  return { ok: true };
+}
+
 // ---- manage / cancel (Wave 8.10, owner 2026-10-06) --------------------------
 // Schedule a cancel-at-period-end on Paddle. The subscriber KEEPS Premium until
 // the end of the period they already paid for , cancelling stops the NEXT

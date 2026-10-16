@@ -1147,6 +1147,231 @@ STATUS: **PLANNING APPROVED 2026-08-16 — implementation started in the same se
 
 ---
 
+## PART H — PROCUREMENT TAB + AI QUOTE WINDOW (owner concept, 2026-10-16)
+
+**Status: PLANNED, NOT BUILT. Nothing in this part has been coded.** Written for whichever
+session picks it up. The owner described the concept in one message; the research below
+was done in a real browser against the live site plus static reads of the wiring it has
+to fit. Do not re-derive H1 — it is measured, with file:line.
+
+### H0. What the owner asked for, decoded
+
+1. A **Procurement tab inside the project UI** (a new tab in the project's section rail).
+2. A list of **vendors/suppliers**, maintained by whoever does the procuring.
+3. Click a supplier → a **drop-down** reveals **what they offer**, each line carrying a
+   **price with a minimum** — the cheapest price that supplier quoted for that item.
+4. The officer enters that price once; it **stays there until updated later**.
+5. **A separate AI window beside it** that can **index everything in the supplier tab**
+   and **write a quote** that is copy-paste ready for an email.
+6. Use the **Gemini keys already in the codebase** — "link it to that so it actually
+   listens", i.e. when the owner tests it, it must really work.
+7. Enterprise-grade output that matches or beats what the app already does.
+
+Owner's own constraint: this is a **UI feature**, not a backend rework. Nothing about
+billing, auth or the cloud API changes shape.
+
+### H1. What I measured this session (do not re-derive)
+
+**The project tab rail.** Tabs are static markup in `project.html`, one button each:
+`<button class="sec-btn" data-action="showSec" data-section="comms" data-pack="governance">`
+plus an inline `<svg>` icon stroked in `#D4AF37` (see `project.html:216` for Comms Log,
+`:224` for Decision Log). There are **20 tabs today**: Dashboard, Definitions, Charter,
+WBS, Gantt, Kanban, Resources, Budget, RACI, Comms Log, Documents, Meetings, Photos,
+Stakeholders, Changes, Decision Log, Risk / Issues, Claim Pack, Closure, DMAIC.
+
+**The dispatch path.** `data-action="showSec"` → `js/mmgr-app.js:2655` → `showSec()` at
+`js/mmgr-app.js:1191` → `R.showSection()` at `js/mmgr-render.js:1759`. That function
+**guards the editor scope itself** (`MMGR.Cloud.isClientSectionHidden`) so an in-panel
+jump button cannot bypass a restricted editor code — a new section inherits that guard
+for free, but only if the section is known to the cloud layer (see CLOUD_SECTIONS below).
+Pack gating reads the `data-pack` attribute at `js/mmgr-app.js:3755`.
+
+**State + schema.** `js/mmgr-state.js:180` — `SCHEMA_VERSION = 19`. Any new state shape
+means **v20 plus a migration**, and `validate()` at `js/mmgr-state.js:1617` fails loudly
+on a version mismatch. Existing arrays to mirror for shape and id counters: `tasks`,
+`risks`, `resources`, `spend.entries`, each with an `n…id` counter (`ntaskid`, `nspendid`).
+
+**Cloud sync whitelist.** `src/lib/http.js:906` — `CLOUD_SECTIONS` maps a section id to
+the exact state keys it is allowed to save: e.g. `risk: { keys: ['risks','issues'] }`,
+`bud: { keys: ['budgetLines','budgetEnvelope','spendLog','nspid'] }`. **A new section
+that is not listed here does not persist to the cloud.** `photos` is listed with an
+empty key array because photo blobs live in R2, not in state — proof the list is the
+single source of truth for what syncs.
+
+**The AI engine (client).** `js/mmgr-net.js` — `PROVIDER_DEFAULTS` exposes exactly
+`['openai','anthropic','google-gemini']`, confirmed live in the browser on the running
+site (`window.MMGR.Net.PROVIDER_DEFAULTS`). The Gemini endpoint is built per model by
+`geminiEndpointFor(modelId)` (`js/mmgr-net.js:98`) and the ladder carries HTTP status so
+429/503 advance to the next rung and 401 stops.
+
+**The AI engine (server).** `src/ai-proxy.js` is the `/api/ai/chat` relay. Its **free
+pool reads `env['GEMINI_KEY_' + i]`** — `GEMINI_KEY_1..4` (`src/ai-proxy.js:44`, `:77`).
+Order is deliberate: user BYO key → **this pool** → Workers AI binding → capacity
+message. `FREE_DAILY_MESSAGE_CAP = 5` (`src/ai-proxy.js:64`), counted **per signed-in
+account**, and an anonymous caller gets 401 before any model is touched. So the quote
+feature works on the existing secrets **with no new configuration**, but it **requires
+sign-in** — tell the owner that before they test it signed out.
+
+**Presets.** `js/mmgr-ai.js:88` — `PRESET_LABELS` currently has 15 entries (`report`,
+`forecast`, `risk`, `digest`, `health`, `audit`, `visual`, `change`, `client`,
+`charterdates`, `gendates`, `daily`, `claim`, `email`, `complianceCheck`). The runner is
+`runPreset(type)` at `js/mmgr-ai.js:2163`. Prompt builders live in `js/mmgr-prompts.js`
+as `buildTaskList()`, `buildRiskList()`, `buildBudgetSummary()` … composed by
+`buildContext()`. `window.MMGR.Prompts` and `window.MMGR.Net` are reachable from the
+page (verified live); `window.MMGR.AI` was **not** on the namespace in my probe — check
+the real export name before writing against it.
+
+**The guaranteed-offline precedent.** The `email` preset has a no-model fallback: when
+the model cannot answer it emits a static template verbatim. Copy that pattern for the
+quote, so a signed-out, offline or out-of-quota user still gets a pasteable quote.
+
+**Gates the new UI must clear.** `tools/qa-a11y-axe.cjs` measures `project.html` in
+**light and dark** (project.html IS dark-capable, unlike the marketing pages) and fails
+on any serious/critical axe violation — so new panels need real contrast in both
+palettes. Emoji are a hard gate: SVG sprite symbols only. No inline `<script>`: it
+changes the CSP hash set (`worker.js` + `serve.cjs` + the page's meta CSP). And after any
+`js/*.js` edit, `node build.js` or the change silently does not ship (stale bundle).
+
+### H2. Recommended design
+
+**State shape** (flat, matching how every other module stores rows):
+
+```
+procurement: {
+  vendors: [ { id, name, contact, phone, email, notes, updatedAt } ],
+  items:   [ { id, vendorId, name, unit, minPrice, currency, leadTimeDays,
+               notes, quotedAt, quotedBy } ],
+  nvendorid: 1, nitemid: 1
+}
+```
+Flat `items` keyed by `vendorId` rather than nested per-vendor arrays: the drop-down
+then becomes a filter, export/validate stay trivial, and the shape matches `risks` /
+`tasks` so every existing helper works unchanged.
+
+**Why `quotedAt` / `quotedBy` are not optional.** Procurement data goes stale, and a
+minimum price from six months ago is worse than no price at all. Showing "quoted 4
+months ago" turns the table from a liability into a decision aid. `quotedBy` is the
+sign-in sub or the local owner code label.
+
+**Currency: do NOT auto-convert.** The calculator already carries the owner's rule that
+this product is not a converter (JMD is simply the working currency). Store currency
+per line, default to the project currency, and **only compute a subtotal when every
+line shares one currency** — otherwise say "mixed currencies, total not calculated".
+Guessing an FX rate would fabricate a number a procurement officer might send to a
+client.
+
+**Tabs.** One new `Procurement` `.sec-btn` (`data-section="proc"`) with an SVG icon,
+placed after Budget and before RACI where procurement work naturally sits. Give it
+`data-pack="procurement"` so it ships hidden behind a pack toggle — the rail already
+carries 20 items and a 21st makes it scroll on a laptop; the packs system
+(`js/mmgr-app.js:3755`) exists exactly for this.
+
+**Inside the tab.** Two columns on wide screens, stacked on narrow: the vendor list
+(disclosure buttons) on the left, and the selected vendor's items table on the right.
+The disclosure must be real ARIA — a `<button aria-expanded aria-controls>` opening the
+panel — not a `<div onclick>`, because axe and the keyboard gate both check it. Price
+cells are inline inputs reusing the existing `updField` pattern, which also means the
+`verify-dynamic-labels` gate needs the derived accessible names it already expects.
+
+**The AI quote — one engine, not a second window.** The owner asked for "a separate tab
+beside that for an AI window". Build the **panel**, not a second engine: a Quote card
+inside the Procurement tab with a vendor selector, a tone/type selector (request for
+quotation vs. award vs. thank-you) and a **Copy** button. It calls the existing
+`runPreset('quote')`, so keys, quota, the model ladder, error copy and the sign-in gate
+are all inherited. A second AI window would mean a second quota, a second key vault and
+a second set of failure states — that is how a product starts disagreeing with itself.
+
+**New preset `quote`.** Add `quote: 'Write a Quote'` to `PRESET_LABELS`, a
+`buildProcurementContext()` builder in `js/mmgr-prompts.js` that serialises vendors +
+items + prices + currency + staleness, and a `runPreset('quote')` branch that asks for
+plain text with **no markdown fences and no table syntax** (it is going into an email
+client), a greeting, line items with unit prices, a subtotal where one currency allows
+it, a validity note and a sign-off. The prompt must forbid inventing prices: an item
+with no recorded price is written as "price on request", never a number.
+
+**Context size.** Bound it. Cap the serialised block (e.g. 200 vendors / 400 items) and
+truncate with an explicit "…N more items not included" line so the model cannot quietly
+drop rows the officer cannot see.
+
+### H3. Drawbacks and risks — the step-back the owner asked for
+
+1. **Hallucinated prices are the headline risk.** A confident wrong number in a quote
+   that gets emailed is worse than no feature. Mitigate with the forbid-invent rule
+   above **and a QA assertion that every number in the generated quote exists in the
+   source procurement data.** That gate is the difference between a demo and a tool.
+2. **Staleness.** Covered by `quotedAt` plus a visible badge past 30 days.
+3. **A second AI window.** Rejected on purpose; see H2.
+4. **Offline-first is sacred.** Vendors, items and prices must be fully editable with no
+   network. Only the quote step needs the network, and it must fail with a plain message
+   rather than an empty box.
+5. **Scope creep.** Purchase orders, approvals, three-way matching, invoices, budget
+   drawdown — all explicitly out of v1. The concept is a supplier price book plus a
+   quote writer.
+6. **Editor scope.** If procurement is not in `CLOUD_SECTIONS`, a scoped editor code
+   cannot save it and the section silently becomes read-only in the cloud. Add it with
+   `keys: ['procurement']` and decide whether `procurement` is a grantable scope or
+   owner-only — that is a product decision, make it deliberately.
+7. **Changelog noise.** Price edits will show up in the Changes tab. That is desirable
+   (who changed a price, and when) but confirm the diff renderer handles the nested
+   shape before shipping.
+8. **Harness drift.** Any gate that asserts a section count or the nav list will break
+   when the 21st tab lands. Grep for those assertions (`qa-dashboard-spec`, `qa-full`)
+   **before** editing `project.html`, not after CI is red.
+
+### H4. Acceptance criteria (what the owner will actually test)
+
+- Open a project → Procurement tab appears (behind its pack) → add a supplier → add
+   three items with prices → reload the page → all of it is still there.
+- Click the supplier → the drop-down opens with the keyboard and lists their items,
+   each with its price.
+- Edit a price → it saves and the `quotedAt` stamp updates.
+- Click **Write quote** while signed in → an email-ready quote appears containing those
+   exact prices and no invented ones → **Copy** → paste into an email client → it reads
+   as a professional quote.
+- Go offline → the tab still works; only the quote step says it needs a connection.
+- Sign out → the quote step explains it needs a sign-in, the rest of the tab works.
+- Both light and dark palettes pass the axe gate on the new panels.
+
+### H5. Ordered steps for the next session
+
+1. Load `.agents/skills/universal-ui-architect`, `ui-modernization`,
+   `skeptical-code-audit`, `gemini-api-dev` and `qa-expert` before touching code.
+2. `js/mmgr-state.js` — bump to v20, add the `procurement` shape to the default state,
+   write the migration, and extend `validate()`.
+3. `src/lib/http.js:906` — add `proc: { label: 'Procurement', keys: ['procurement'] }`
+   to `CLOUD_SECTIONS`.
+4. `project.html` — add the `.sec-btn` tab with its inline SVG, and the section markup:
+   vendor list, disclosure panels, items table, quote card. **No inline script.**
+5. `js/mmgr-prompts.js` — `buildProcurementContext()`.
+6. `js/mmgr-ai.js` — `quote` in `PRESET_LABELS` + the `runPreset('quote')` branch with
+   the offline/no-model template fallback.
+7. A new render module (e.g. `js/mmgr-procurement.js`) in the right bundle layer in
+   `build.js`, following the `data-action` dispatch convention and adding its actions to
+   `ACTION_MAP` + `READONLY_SAFE_ACTIONS` for view-only.
+8. `css/mmgr.css` — token-driven styles for the new panels, light **and** dark.
+9. `node build.js`, then `grep -c 'buildProcurementContext' dist/bundle.js` to prove the
+   bundle is not stale.
+10. New `tools/qa-procurement.cjs` covering: add vendor, add item, keyboard disclosure,
+   persistence across reload, migration seeding an old project, quote contains only
+   source numbers, quote fallback when the relay is stubbed, view-only cannot edit, and
+   axe contrast light+dark. Register it in `docs/CI-TEST-COVERAGE.md` **and** add a
+   `ci.yml` step — a harness that is not registered is a harness that never runs.
+11. `npm run verify`, the new harness, then commit/push and **watch CI to completion**.
+12. Deploy from a clean staging copy only after CI is green, then re-probe the live
+   project page.
+
+### H6. What NOT to do
+
+- No second AI window, no second key vault, no second quota.
+- No new secrets: `GEMINI_KEY_1..4` already exist and the relay already uses them.
+- No inline `<script>` in `project.html` (CSP hash churn, rule 1).
+- No emoji anywhere (rule 7) — SVG sprite symbol, and if one is missing, add it to
+  `css/mmgr-icons.svg`.
+- No auto currency conversion and no invented prices.
+- Never hand-edit `skills-lock.json`.
+
+---
+
 ## VERIFICATION WORKFLOW — how this closes out
 
 Per Garfield's instruction: work through Parts A–D using each file's real, in-repo
@@ -3261,3 +3486,28 @@ NEXT SESSION STARTING POINT
 - The directive's last shipped state is the 2026-10-07 marketing dot-rail + layout rework worktree (uncommitted/undeployed per that entry). Beyond that, this 2026-10-13 message was purely a documentation close-off of an already-live headline.
 - If the owner wants another copy pass on the hero (tone, length, punctuation, line-break), re-open index.html around the hero h1 + hero-sub paragraph; nothing else in the page is in scope for this request.
 - If the owner wants this documented as a closed item, the entry above already records it as closed.
+
+**2026-10-16 — Session: PROMO SIDE NOTE SHIPPED, TURNSTILE P0 FIXED, DARK-MODE A11Y REPAIR, PROCUREMENT PLAN (PART H).** Four things landed, in the order they were found:
+1. **Reviews Turnstile was live and broken for every visitor (P0).** The bot gate was armed with a secret, but `js/reviews.js` guarded on the capital-T global `Turnstile` while Cloudflare only exposes lowercase `turnstile`, so `initTurnstile()` returned early every time and the widget rendered nothing (measured live: `divChildren: 0`, box 0x0, while a manual `turnstile.render()` in the same page succeeded). Fixed to read `window.turnstile`; verified live with a real headed browser issuing a 730-char token. Shell bumped to v423.
+2. **Launch-offer side note on pricing.html** (owner copy): `50% off your first 18 billing cycles, code 5JBXWUGZ8L at checkout`. Display only — no billing, pricing, checkout or backend change, and the code is not wired into the Paddle call. `.promo-note` / `.promo-code` in `css/marketing.css`, token-driven, `user-select:all` so one tap copies it on a phone.
+3. **CI failed on that note (T4 axe gate) and it was my note.** `.promo-code` put 13px bold `--gold-deep` (#a84a15) on the chip's gold tint, measured **4.09:1** against the 4.5:1 floor. Glyphs are now `--text-primary` (12.68:1 light, 9.69:1 dark measured in a real browser); the gold identity stays in the border and tint. v425.
+4. **The darker finding: dark mode was never being measured on marketing pages.** `qa-a11y-axe` labelled a run `[dark]` without checking that dark mode had engaged. No marketing page can become dark at all — none loads `mmgr-theme.js`, none has app/admin's inline FOUC script, `marketing.js` has no theme logic and `marketing.css` has no `prefers-color-scheme` block, so its whole `body.dark-mode` block is dormant. Every marketing `[dark]` row was the light page measured a second time (heading-order was being counted twice: 42 nodes before, 21 after). The gate now reads `body.dark-mode` after load, skips passes where dark cannot engage, fails a page that ignores `mmgr_theme=light`, and pins the light-only set in `LIGHT_ONLY`. It immediately caught a real discrepancy: `seed-test.html` is a redirect stub into `project.html` and inherits its palette, so it is deliberately NOT light-only. Fixing dark properly exposed 24 serious failures — the pricing comparison table's green checkmarks at 3.32:1 — now one token, `--status-success: #2fbd74` in `body.dark-mode` (7.40:1 on the canvas, 6.68:1 on the card). v426.
+5. **Procurement plan written as PART H** (planning only, no code): a Procurement tab with a supplier drop-down of items and minimum prices, plus an AI quote panel that indexes that data and writes an email-ready quote on the existing Gemini relay. H1 records the measured wiring with file:line so the next session does not re-derive it.
+
+WHAT THIS SESSION TOUCHED
+- `js/reviews.js` — Turnstile guard reads `window.turnstile`.
+- `pricing.html` — launch-offer side note.
+- `css/marketing.css` — `.promo-note`, `.promo-code`, dark `--status-success`.
+- `sw.js` — v423, v424, v425, v426.
+- `tools/qa-a11y-axe.cjs` — honest dark-mode measurement + `LIGHT_ONLY` gate.
+- `CONTINUATION-DIRECTIVE.md` — PART H (Procurement plan) + this record.
+
+VERIFICATION RUN THIS SESSION
+- `npm run verify` green after every change; `tools/qa-a11y-axe.cjs` 7/7 with `colour-contrast` absent from the rule list entirely.
+- Live-site probes in a real browser (CDP + Playwright): Turnstile widget 623x72 and issuing tokens; promo chip contrast measured 12.68:1 light and 9.69:1 dark against the actual composited background; zero serious/critical axe violations live.
+- `qa-marketing.cjs` 20/20 including `mkt-10 reviews.html zero console errors`.
+- An unregistered-harness check on the reviews module: `tools/qa-reviews.cjs` is the cloud review-queue gate, not the public form; `qa-marketing` is the gate that covers `reviews.html`.
+
+NEXT SESSION STARTING POINT
+- PART H is the live work item: ordered steps in H5, acceptance criteria in H4, and H6 lists the hard constraints not to violate.
+- Standing caution carried forward from this session: a gate that reports a state it did not actually produce is worse than no gate. When a harness labels a condition (`[dark]`, "signed in", "configured"), assert that condition in the browser before trusting the label.

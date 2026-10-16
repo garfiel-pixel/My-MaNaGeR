@@ -17,7 +17,14 @@
    v382 - full-bleed marketing canvas, 7-big-dot rail with generated
            small dots, contact tile phone overflow, guide sidebar spacing
    ============================================================ */
-const CACHE = 'mmgr-shell-v426';
+const CACHE = 'mmgr-shell-v427';
+
+// v427 - CALCULATOR FAMILY FILTER: THE TWO MISSING OPTIONS (2026-10-16).
+// calculator.html's "Type of work" select offered only 6 of the 8 families
+// FAMILY_META defines: temporary-metal and joinery had no option, so a stored
+// family hid the scaffolding/welding and joinery optgroups with no way to show
+// them, and a weld recall stranded the select on a blank value. Two <option>
+// elements added - calculator.html is a SHELL asset, hence this bump.
 
 // v426 - DARK-MODE SUCCESS TOKEN + HONEST A11Y GATE (CI repair 2026-10-16).
 // Found while verifying the v425 launch-offer fix in a real dark palette:

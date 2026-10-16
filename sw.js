@@ -17,7 +17,19 @@
    v382 - full-bleed marketing canvas, 7-big-dot rail with generated
            small dots, contact tile phone overflow, guide sidebar spacing
    ============================================================ */
-const CACHE = 'mmgr-shell-v424';
+const CACHE = 'mmgr-shell-v425';
+
+// v425 - PROMO CODE CHIP CONTRAST FIX (CI repair 2026-10-16). The v424 launch
+// offer note failed the axe accessibility gate (T4, qa-a11y-axe): .promo-code
+// rendered 13px bold --gold-deep (#a84a15) on the chip's own gold tint, which
+// composites to about #efd5c0 over the note's wash - a measured 4.09:1 against
+// the 4.5:1 WCAG AA floor, flagged serious in BOTH light and dark and red on
+// main at the pricing page. The gold identity is carried by the border and the
+// tint; the code glyphs themselves are now --text-primary, which measures
+// 12.7:1 light and 11.9:1 dark, so the thing a buyer has to read and retype at
+// checkout is the most legible text in the note. css/marketing.css only - no
+// markup, no script, no backend change, and the offer itself is untouched.
+// dist/marketing.min.css is a SHELL asset, hence this bump.
 
 // v424 - LAUNCH-OFFER SIDE NOTE ON PRICING (owner 2026-10-15). One side note
 // above the plan cards on pricing.html: the launch offer is 50% off the first

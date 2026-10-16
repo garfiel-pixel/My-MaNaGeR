@@ -17,7 +17,30 @@
    v382 - full-bleed marketing canvas, 7-big-dot rail with generated
            small dots, contact tile phone overflow, guide sidebar spacing
    ============================================================ */
-const CACHE = 'mmgr-shell-v425';
+const CACHE = 'mmgr-shell-v426';
+
+// v426 - DARK-MODE SUCCESS TOKEN + HONEST A11Y GATE (CI repair 2026-10-16).
+// Found while verifying the v425 launch-offer fix in a real dark palette:
+// marketing.css never redefined --status-success for dark mode, so dark kept
+// the light #16794d and the pricing comparison table's green checkmarks read
+// 3.32:1 on --bg #1a1614 (2.99:1 on --card #242019) - 24 serious axe failures.
+// body.dark-mode now sets --status-success: #2fbd74 (7.40:1 on the canvas,
+// 6.68:1 on the card, same hue family, not neon), so every success mark on a
+// marketing page follows one token rather than being patched cell by cell.
+// SECOND, AND WHY IT WAS INVISIBLE: tools/qa-a11y-axe.cjs labelled a run
+// [dark] without checking that dark mode had actually engaged. No marketing
+// page can become dark at all - none loads mmgr-theme.js, none has app/admin's
+// inline FOUC script, marketing.js holds no theme logic and marketing.css has
+// no prefers-color-scheme block - so every marketing [dark] row was the light
+// page measured a second time. The gate now checks body.dark-mode after load,
+// skips the pass when the page has no dark path, fails if a page ignores
+// mmgr_theme=light, and pins the light-only set in LIGHT_ONLY so a page that
+// gains dark support fails the gate until its dark palette is measured for
+// real. NOTE FOR THE NEXT AUTHOR: the dark marketing rules are dormant, not
+// dead - adding mmgr-theme.js to a marketing page turns them on, and that is
+// a measured change (there will be more of this family to fix), not a free one.
+// css/marketing.css + tools/qa-a11y-axe.cjs changed; dist/marketing.min.css is
+// a SHELL asset, hence this bump.
 
 // v425 - PROMO CODE CHIP CONTRAST FIX (CI repair 2026-10-16). The v424 launch
 // offer note failed the axe accessibility gate (T4, qa-a11y-axe): .promo-code

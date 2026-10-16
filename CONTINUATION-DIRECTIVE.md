@@ -1372,6 +1372,135 @@ drop rows the officer cannot see.
 
 ---
 
+## PART I — RATE-BOOK COVERAGE PLAN (owner request, 2026-10-16)
+
+Planning only - no code was written for this part. Owner asked: the book holds
+800+ rates, welding exists yet is nowhere under the trades, and 711 of the 811
+rates have no calculator - "write a plan for wiring more of the browse-only
+rates into calculators". Everything below is measured from the repo this
+session; do not re-derive.
+
+### I0. What exists today (verified, with numbers)
+
+- `js/jic-rates-full.js` = 811 rows across 11 trades (excavation 95, carpentry
+  99, steelwork 21, masonry 100, scaffolding 16, tiling 34, painting 74,
+  joinery 100, plumbing 100, electrical 72, welding 100). Lazy-loaded by
+  `calculator-page.js` (`rrLoadFull`, SW shell-cached since v427's era), with
+  the inline `JIC_RATES` (100 rows) as fetch-failure fallback.
+- 100 rows carry the `app` flag (9-10 per trade) and ALL 100 land in a real
+  calculator: excavation->`excav`, carpentry->`formwork`, steelwork->
+  `rebar-size` (5) + `fabric-mesh` (Fabric) + `stirrups` (3), masonry->
+  `blockwall`, scaffolding->`scaffold`, tiling->`tile`, painting->`paint`,
+  joinery->`joinery`, plumbing->`plumbing-pipe`, electrical->
+  `electrical-conduit`, welding->`welding`.
+- **711 rows are browse-only** (unwired per trade: excavation 86, masonry 91,
+  plumbing 91, joinery 90, carpentry 90, welding 91, painting 65, electrical
+  63, tiling 25, steelwork 12, scaffolding 7). The intended bridge today is:
+  read the book, then price via `custom` (Custom item, your own rate).
+- The rate book popup (`renderRateBookCard`) is browse/search/trade-chip only:
+  rows are plain table cells with NO action.
+- `WORK` = 48 calculations; 34 are model/formula-only (no JIC rows exist for
+  them - by design, fine print says planning-grade). RATE_UNITS already adapts
+  ft2/ft-run/lb/dozen/yd2 entry units; per-in welding and per-100mm paths exist.
+- Gates today: `qa-calculator-page` 228/228, `qa-calc-trade-coverage` 88/88
+  (43 trades x 2 viewports), both registered; `npm run verify` green.
+- 2026-10-16 (commit f2ce6be, live-verified): the family filter gap is FIXED -
+  `#calc-family` now offers all 8 families incl. temporary-metal and joinery,
+  so welding/scaffold/joinery are findable under a family filter. Do not
+  regress: family option labels must stay verbatim FAMILY_META labels.
+
+### I1. Design options (considered, with a recommendation)
+
+**Option A (recommended, phase 1) - "Use this rate" bridge.** Make every
+rate-book row actionable: one button per row that prices it through the
+EXISTING custom-item path, prefilled (name = description, unit = the row's
+unit, rate = the row's rate in the displayed unit system) with the JIC ref
+carried into the bill line for traceability (e.g. "Welding #8 - Handle mark
+cut..."). Converts all 711 rows in one move with zero new calculation code,
+reuses the custom-item contract (C1-C11 in qa-calc-assistant), and stays
+money-exact by construction (same qty x rate + on-costs + tax path).
+
+**Option B - hand-wire remaining rows as WORK variants.** Reject as the
+primary strategy: ~711 hand-maintained entries duplicating book data, drift
+risk every time the book is re-published, and variant pickers become 100-row
+scrollbars. Keep it only as SELECTIVE expansion where a picker is obviously
+thin (e.g. welding CPSAW #10-13), and only on owner request.
+
+**Option C - generic "JIC item" calculator (phase 2).** One WORK-like picker:
+choose trade -> choose rate row -> type quantity -> price through the normal
+calculator identity (basis label, dimensions, on-costs, tax, CSV, bill).
+Bigger UX surface than A, but the result is a first-class estimate line
+instead of a quick custom total. Build it AFTER A proves the demand.
+
+### I2. Phases (each independently shippable, each with gates)
+
+1. Phase 1 (Option A): row action in `renderRateBookCard` + custom-item
+   prefill + ref in the bill line. Gates: extend `qa-calculator-page` (row
+   action prefills all four custom fields; total = qty x book rate exact;
+   bill line carries the ref; works with metric AND imperial display; works
+   OFFLINE via the inline fallback for refs <= 100).
+2. Phase 2 (Option C): generic JIC picker reusing RATE_UNITS adapters.
+   Gates: one trade-coverage-style walker per trade through the new path.
+3. Phase 3 (owner-selected variant expansion, Option B selectively).
+
+### I3. Drawbacks and risks (the step-back)
+
+- **Book truthiness**: the book itself carries known defects - six trades cap
+  at exactly #100 (possible source-page display limit), some rows are the same
+  item at two rates (#40 vs #72, #43 vs #78...), 'C'-basis metric rates are
+  OUR conversions not JIC-printed, and "Welding" rows price cutting &
+  smoothing (real weld rates #63-67 are NOT shipped). Any "use this rate"
+  surface must keep rates user-editable and must not imply the book is final.
+- **Dual-source drift**: inline JIC_RATES (100) vs full book (811). Phase 1
+  must state which source a row came from; rows >100 must degrade honestly
+  (button absent or disabled with a reason) when only the fallback loaded.
+- **Offline-first is sacred**: any new surface must work with no network;
+  jic-rates-full.js is in the SW shell - bump the cache if it changes.
+- **Money invariants**: reuse existing tax/on-cost ordering; no new money
+  math. The C2-style exactness gates are the contract.
+- **CSP (rule 1)**: zero inline scripts on calculator.html stays zero.
+- **Emoji (rule 7)**: SVG only; the row action uses an existing icon
+  (`i-tag` or similar), never a glyph.
+- **Registry law (lesson 14)**: any new harness gets a
+  CI-TEST-COVERAGE.md row AND a ci.yml/extended-qa.yml step, or it never runs.
+
+### I4. Acceptance (what the owner will actually test)
+
+On the live calculator: open the rate book, pick ANY of the 811 rows (say
+Welding #8), one action -> the form is prefilled, type a quantity -> the
+total equals qty x rate plus the normal on-costs and tax, Add to bill lands a
+line that names the JIC ref, CSV carries it, all of it works offline, in both
+unit systems, in dark and light, with zero axe violations and the existing
+228 + 88 gates still green.
+
+### I5. Ordered steps for the next session
+
+1. Load `.agents/skills/skeptical-code-audit` + `qa-expert`; re-read I0.
+2. `renderRateBookCard`: add the per-row action (button, data-action wired
+   through the page's single dispatch convention), disabled+explained when
+   the inline fallback is active and the ref > 100.
+3. Custom-item bridge: prefill `calc-custom-name/unit/qty/rate` from the row
+   (respect the displayed unit system + currency display), set the ref into
+   the name for bill traceability, scroll/focus the form, close the popup.
+4. Gates in `tools/qa-calculator-page.cjs` (new family of checks, exact
+   totals both unit systems, offline-with-fallback refusal path).
+5. `node build.js`; bump `sw.js` only if a shell asset changed; `npm run
+   verify`; run qa-calculator-page + qa-calc-trade-coverage.
+6. Commit (Conventional, no AI footer), push, poll CI to green, deploy via
+   `node tools/deploy.cjs`, re-probe the live calculator.
+7. Update this part's log entry with what shipped.
+
+### I6. What NOT to do
+
+- Do not hand-wire 711 variants (Option B as primary).
+- Do not invent, convert or auto-adjust any rate; no currency conversion.
+- Do not delete the inline JIC_RATES fallback until every path is proven to
+  load the full book offline.
+- No emoji, no inline scripts, no new dependencies, no second rate book UI
+  outside calculator.html.
+
+---
+
 ## VERIFICATION WORKFLOW — how this closes out
 
 Per Garfield's instruction: work through Parts A–D using each file's real, in-repo
@@ -3511,3 +3640,21 @@ VERIFICATION RUN THIS SESSION
 NEXT SESSION STARTING POINT
 - PART H is the live work item: ordered steps in H5, acceptance criteria in H4, and H6 lists the hard constraints not to violate.
 - Standing caution carried forward from this session: a gate that reports a state it did not actually produce is worse than no gate. When a harness labels a condition (`[dark]`, "signed in", "configured"), assert that condition in the browser before trusting the label.
+
+**2026-10-16 — Session (continued): CALCULATOR FAMILY-FILTER FIX SHIPPED (f2ce6be, live-verified), RATE-COVERAGE PLAN (PART I).** Owner asked whether the 811-rate book has a calculator for each rate and why welding was unfindable "under the trades". The audit (all numbers in PART I0) answered the question and exposed one real defect, which was then reproduced in a real browser BEFORE fixing and re-verified after:
+
+1. **The defect:** `#calc-family` ("Type of work") offered only 6 of the 8 families `FAMILY_META`/`WORK_FAMILY` define - `temporary-metal` and `joinery` had no `<option>`. A stored family therefore hid the scaffolding/welding and joinery optgroups with no way to show them short of All trades, and a recall that selected weld/scaffold while a family was stored stranded the select on a blank value (`syncFamily` writes a value no option matches - `fSel.selectedIndex === -1` with the view locked to one group). Root cause confirmed by the design comment itself (W2.5: families were designed as "six trades"; the JIC wave added the metadata but never the options).
+2. **Reproduced first, as ordered:** `tmp/repro-family-bug.cjs pre` = 4/4 in headless Chrome against serve.cjs (missing options; any stored family hides the welding group; the stranded blank-select chain; the locked single-group view). One harness lesson en route: the first P2 assertion was over-constrained - boot-time `syncFamily` flips a stored family to the persisted work item's own family, so the honest claim is "one non-JIC group shows", which held.
+3. **Fix:** two `<option>` elements in `calculator.html` with verbatim FAMILY_META labels (the FM gates and the new post-gate assert them). `sw.js` -> v427 (shell page). `node build.js` clean.
+4. **Verified:** `tmp/repro-family-bug.cjs post` 5/5 (options exist with correct labels; filter behavior unchanged; selecting Temporary-and-metal-works works and shows its label; the recall chain now leaves the select SHOWING its family; All trades restores all 9 groups); `npm run verify` green; `qa-calculator-page` 228/228 (FM1-FM5 intact); `qa-calc-trade-coverage` 88/88 across 43 trades both viewports, zero page errors.
+5. **Shipped:** commit `f2ce6be` (Conventional, no AI footer), pushed, CI full-suite SUCCESS (run 38897994087), deployed via `node tools/deploy.cjs` (version 7288e73a). Live proof: `/calculator` byte-identical to local (sha256 49bcd793...), both options present with exact labels, live `sw.js` = v427 and byte-identical. Live-check lesson re-learned: production 307-redirects `.html` URLs (curl needs -L; lesson 4).
+6. **PART I added** (planning only, no code): the full rate-coverage plan - measured baseline, Option A ("Use this rate" row action feeding the existing custom-item path - recommended, converts all 711 browse-only rows with zero new money math) vs rejected Option B (711 hand-wired variants) vs phase-2 Option C (generic JIC picker reusing RATE_UNITS), drawbacks (book truthiness: #100 caps, duplicate items at two rates, 'C'-basis conversions, "Welding" rows are cutting), acceptance criteria, ordered steps, and what NOT to do.
+
+WHAT THIS SESSION TOUCHED
+- `calculator.html` - two family `<option>` elements + explanatory comment.
+- `sw.js` - v426 -> v427.
+- `CONTINUATION-DIRECTIVE.md` - PART I (rate-coverage plan) + this record.
+- `tmp/repro-family-bug.cjs` - pre/post browser gate (gitignored scratch; promote to tools/ if the family filter is touched again).
+
+NEXT SESSION STARTING POINT
+- PART I is the live work item (phases in I2, steps in I5, constraints in I6). PART H (Procurement) remains the other queued plan - both are independent and either can start first.

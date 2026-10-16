@@ -4217,6 +4217,54 @@ body.dark-mode .signin-card {
   width: 100%;
 }
 
+/* LAUNCH-OFFER SIDE NOTE (owner 2026-10-15). One line beside the plans that
+   carries the three things a buyer needs: the discount, how long it lasts and
+   the code to type at checkout. Display only, no behaviour.
+   COLOUR: every value is a token, and --gold-rgb / --gold-deep / --text-primary
+   are all redefined inside body.dark-mode, so dark parity comes for free. The
+   accent is kept to the lead and the code chip; the sentence itself stays on
+   --text-primary so the note never drops below full contrast in either theme
+   (gold on white alone would read at about 3.4:1, which is under the 4.5:1
+   floor for text this size - that is exactly why the sentence is NOT gold). */
+.promo-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 6px;
+  margin: 0 0 16px;
+  padding: 11px 14px;
+  border: 1px solid rgba(var(--gold-rgb), 0.34);
+  border-left: 3px solid var(--gold);
+  border-radius: var(--radius-sm);
+  background: rgba(var(--gold-rgb), 0.07);
+  color: var(--text-primary);
+  font-size: var(--fs-small);
+  line-height: 1.5;
+}
+.promo-note strong {
+  font-weight: 700;
+  color: var(--gold-deep);
+}
+.promo-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.94em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 7px;
+  border: 1px solid rgba(var(--gold-rgb), 0.4);
+  border-radius: 6px;
+  background: rgba(var(--gold-rgb), 0.14);
+  color: var(--gold-deep);
+  /* one tap selects the whole code, so a phone buyer can copy it */
+  -webkit-user-select: all;
+  user-select: all;
+}
+@media (max-width: 640px) {
+  .promo-note {
+    padding: 10px 12px;
+  }
+}
+
 .cmp-wrap {
   overflow-x: auto;
   margin: 0 0 10px;

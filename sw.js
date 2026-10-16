@@ -17,7 +17,21 @@
    v382 - full-bleed marketing canvas, 7-big-dot rail with generated
            small dots, contact tile phone overflow, guide sidebar spacing
    ============================================================ */
-const CACHE = 'mmgr-shell-v423';
+const CACHE = 'mmgr-shell-v424';
+
+// v424 - LAUNCH-OFFER SIDE NOTE ON PRICING (owner 2026-10-15). One side note
+// above the plan cards on pricing.html: the launch offer is 50% off the first
+// 18 billing cycles and the buyer types code 5JBXWUGZ8L at checkout. DISPLAY
+// ONLY - no billing, pricing, checkout or backend behaviour changed, the code
+// is not passed to the Paddle call and nothing applies automatically; it is a
+// note the buyer can read and punch in. css/marketing.css gains .promo-note /
+// .promo-code, built entirely from tokens (--gold-rgb, --gold-deep,
+// --text-primary) that body.dark-mode redefines, so dark parity is free and the
+// sentence stays on --text-primary rather than gold (gold text on white reads
+// at about 3.4:1, under the 4.5:1 floor at this size). The code chip uses
+// user-select:all so one tap copies it on a phone. No emoji (rule 7) and no
+// inline script added, so the CSP inline-script hash set is unchanged.
+// pricing.html and dist/marketing.min.css are SHELL assets, hence this bump.
 
 // v423 - THE REVIEWS FORM WAS BROKEN FOR EVERY VISITOR, BY THE FIX THAT ARMED
 // ITS BOT CHECK (owner 2026-10-15). The owner created the Cloudflare Turnstile

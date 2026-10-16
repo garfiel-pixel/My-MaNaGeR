@@ -4254,7 +4254,14 @@ body.dark-mode .signin-card {
   border: 1px solid rgba(var(--gold-rgb), 0.4);
   border-radius: 6px;
   background: rgba(var(--gold-rgb), 0.14);
-  color: var(--gold-deep);
+  /* CODE GLYPHS ARE --text-primary, NOT gold (CI fix 2026-10-16). The chip's
+     own tint darkens the note's wash to about #efd5c0 in light mode, where
+     --gold-deep (#a84a15) lands at 4.09:1 - under the 4.5:1 floor for 13px
+     bold, and the axe gate (qa-a11y-axe) failed the page on it. The gold
+     identity is carried by the border and the tint; the code itself stays at
+     full contrast (12.7:1 light, 11.9:1 dark) so the code a buyer must read
+     and retype is the most legible thing in the note. */
+  color: var(--text-primary);
   /* one tap selects the whole code, so a phone buyer can copy it */
   -webkit-user-select: all;
   user-select: all;

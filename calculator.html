@@ -113,6 +113,15 @@
           <option value="finishes">Finishes - tiling, drives, fencing, trims</option>
           <option value="plumbing">Plumbing - pipe runs, fixtures</option>
           <option value="electrical">Electrical - points, conduit, panels</option>
+          <!-- JIC wave gap fix (2026-10-16): FAMILY_META/WORK_FAMILY define EIGHT
+               families, but these two options were never added, so the filter
+               could never SHOW the scaffolding/welding or joinery groups - and a
+               recall that selected weld/scaffold while any family was stored
+               stranded this select on a blank value (no matching option). Labels
+               must stay verbatim FAMILY_META label strings (the FM gates and the
+               post-fix family gate assert them). -->
+          <option value="temporary-metal">Temporary and metal works - scaffolding, welding</option>
+          <option value="joinery">Joinery - skirtings</option>
         </select>
         <span class="bcp-hint" id="calc-family-hint">Pick the kind of work first - only its trades stay in the list. Choose All to see every trade.</span>
       </div>

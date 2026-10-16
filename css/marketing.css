@@ -107,6 +107,15 @@ body.dark-mode {
   --text-secondary: #9a8e80;
   --on-navy: #e8e0d8;
   --on-gold: #1a1614;
+  /* SUCCESS GREEN, LIGHTENED FOR THE DARK CANVAS (CI repair 2026-10-16).
+     --status-success was never redefined here, so dark mode kept the light
+     #16794d, which measures 3.32:1 on --bg #1a1614 and 2.99:1 on --card
+     #242019 - both under the 4.5:1 floor, and axe counted 24 failing cells
+     in the pricing comparison table alone. #2fbd74 measures 7.40:1 on the
+     canvas and 6.68:1 on the card: the same hue family as the light value,
+     not a neon green. One token, so every success mark on a marketing page
+     follows it together rather than being patched cell by cell. */
+  --status-success: #2fbd74;
   --glass-tint: rgba(26, 22, 20, 0.8);
   --glass-tint-soft: rgba(26, 22, 20, 0.6);
   --glass-specular: linear-gradient(

@@ -13,6 +13,12 @@
    minor findings are printed but do not fail the gate (they are tracked in
    the plan's register as known, non-blocking debt).
 
+   DARK MODE IS MEASURED ONLY WHERE IT IS REAL (2026-10-16 repair). A page
+   is only put through the dark pass if loading it with mmgr_theme=dark
+   actually puts body.dark-mode on the page. The marketing pages cannot
+   become dark at all today (see LIGHT_ONLY below), so they are measured
+   once in their real state instead of twice, once under a false label.
+
    Two extra gates that axe does not have:
      H1-1  one visible h1 per page (the register's A-6 was measured from a
            raw-markup crawl that counted the h1s sitting inside MUTUALLY
@@ -75,6 +81,45 @@ const PAGES = [
 ];
 // Pages whose whole job is a heading (the register's A-6 subjects).
 const HEADING_PAGES = ['signin.html', 'verify.html', 'reset.html', 'admin.html'];
+
+// PAGES WITH NO DARK-MODE PATH AT ALL (measured 2026-10-16).
+//
+// A dark pass is only meaningful on a page that can actually become dark.
+// The nine marketing pages and the field guide ship no way to get there:
+// none of them loads js/mmgr-theme.js, none carries the inline FOUC script
+// that app/admin use, js/marketing.js holds no theme logic, and
+// css/marketing.css has no prefers-color-scheme block - its body.dark-mode
+// token block is written and reachable in CSS but nothing ever applies the
+// class, so those rules are currently dormant.
+//
+// seed-test.html is deliberately NOT in this list even though it has no
+// theme script of its own: it ends in location.replace('project.html?id=...'),
+// so the page the harness actually measures is project.html, which IS dark
+// capable. A redirect stub inherits its destination's palette.
+//
+// Until a marketing page gains a real dark-mode path, setting
+// mmgr_theme=dark for it measures the LIGHT page a second time under a dark
+// label. That is exactly what hid 24 serious colour-contrast failures in
+// pricing.html's comparison table: the green checkmarks read 3.32:1 on the
+// dark canvas, and the gate reported [dark] while measuring light.
+//
+// The gate below asserts this list matches the pages that really did not
+// engage dark mode. Adding mmgr-theme.js to a marketing page therefore
+// fails the gate on purpose: dark starts being measured for it and this
+// list must be shortened in the same change, so a page can never silently
+// drift back into being measured light twice.
+const LIGHT_ONLY = [
+  'index.html',
+  'features.html',
+  'about.html',
+  'contact.html',
+  'reviews.html',
+  'pricing.html',
+  'privacy.html',
+  'terms.html',
+  'refund.html',
+  'mymanager-field-guide.html'
+];
 
 function resolvePlaywright() {
   if (process.env.PLAYWRIGHT_MODULE && fs.existsSync(process.env.PLAYWRIGHT_MODULE)) {
@@ -180,6 +225,7 @@ function axeSource() {
   const blocking = []; // serious + critical, per page/theme
   const byRule = {}; // everything, for the report
   const headingRows = [];
+  const lightOnlySeen = []; // pages whose dark pass did NOT engage dark mode
 
   for (const file of PAGES) {
     for (const theme of ['light', 'dark']) {
@@ -199,6 +245,27 @@ function axeSource() {
       try {
         await page.goto(BASE + '/' + file, { waitUntil: 'load', timeout: 45000 });
         await page.waitForTimeout(1600);
+        // DARK MODE MUST BE REAL OR IT IS NOT MEASURED (2026-10-16).
+        // mmgr_theme=dark only does something on a page that reads it. When
+        // the class is not on <body> after load, the page has no dark path,
+        // so the pass is SKIPPED - never relabelled as a dark measurement of
+        // a light page, which is how dark-mode contrast debt hid for weeks.
+        const darkEngaged = await page.evaluate(() =>
+          document.body.classList.contains('dark-mode')
+        );
+        if (theme === 'dark' && !darkEngaged) {
+          lightOnlySeen.push(file);
+          await ctx.close();
+          continue;
+        }
+        if (theme === 'light' && darkEngaged) {
+          // The mirror-image lie: a page that ignored mmgr_theme=light would
+          // have its dark palette filed under [light] instead.
+          blocking.push(
+            file +
+              ' [light] page came up dark: mmgr_theme=light was not honoured, so this pass measured the dark palette'
+          );
+        }
         await page.evaluate(AXE);
         const res = await page.evaluate(async () => {
           const r = await window.axe.run(document, { resultTypes: ['violations'] });
@@ -256,8 +323,22 @@ function axeSource() {
 
   log('');
   log('===== gates =====');
+  log('');
+  log(
+    'light-only pages (no dark-mode path, dark pass skipped): ' +
+      (lightOnlySeen.length ? lightOnlySeen.join(', ') : '(none)')
+  );
+  // Self-maintaining list: a page that gains a real dark path stops showing
+  // up in lightOnlySeen and fails here until it is removed from LIGHT_ONLY -
+  // at which point its dark palette is measured for real.
   check(
-    'zero serious or critical axe violations (18 pages x light+dark)',
+    'dark pass really engaged dark mode (light-only set matches the documented list)',
+    LIGHT_ONLY.every(f => lightOnlySeen.includes(f)) &&
+      lightOnlySeen.every(f => LIGHT_ONLY.includes(f)),
+    { expected: LIGHT_ONLY, measured: lightOnlySeen }
+  );
+  check(
+    'zero serious or critical axe violations (18 pages; dark measured only where it engages)',
     blocking.length === 0,
     blocking.slice(0, 12)
   );

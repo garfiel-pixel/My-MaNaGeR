@@ -3872,3 +3872,17 @@ sequencing choice asked in chat (before or after PART H).
 them into H7.7/H5 step 4 wording, and the next session starts PART H markup
 immediately (H5 steps 1-12 are already ordered). The Phase 3 sequencing answer
 (above, D1) goes in the same record.
+
+**D2 DECIDED (owner, 2026-10-17):**
+- (a) **Behind packs** - the Procurement tab ships as `data-pack="procurement"`,
+  hidden until the user turns on its pack. Fold into H5 step 4 wording: the tab
+  button carries the pack attribute; the pack gate already reads data-pack
+  (js/mmgr-app.js:3755), no new gating code.
+- (b) **Grantable editor scope** - `proc` joins the editor-code section scope,
+  so an officer can be given Procurement alone (owner: "maintained by whoever
+  does the procuring"). Fold into H5: the scope list gains proc (server side +
+  the scope UI); CLOUD_SECTIONS still gets its `proc` entry for sync (H5 step 3
+  unchanged); view-only still reads via READONLY_SAFE.
+With both answers in hand, **H7.7 no longer blocks anything: the next session
+may start PART H at H5 step 1 directly.** D1 (Phase 3 sequencing) still OPEN -
+owner asked for a fuller coverage explanation first (see D1 follow-up in chat).

@@ -1370,6 +1370,75 @@ drop rows the officer cannot see.
 - No auto currency conversion and no invented prices.
 - Never hand-edit `skills-lock.json`.
 
+### H7. Plan review + improvements (owner review, 2026-10-17)
+
+The owner asked for a step-back review of this plan before any build. H1-H6
+stand as measured; the eight improvements below fold into the plan. The one-line
+summary: **seed the price book from the JIC rate book instead of a blank table,
+and reuse the grounding + harness machinery this repo already proved on
+2026-10-16/17 instead of inventing a second copy.**
+
+**H7.1 Seed items from the JIC rate book (the big one).** A supplier price book
+starting from an empty table is the weakest part of v1. `js/jic-rates-full.js`
+(811 published minimums across 11 trades) is already in the SW shell and already
+lazy-loads from a second surface (`rrLoadFull` in `js/calculator-page.js`). The
+Procurement tab's "add item" gets a **From rate book** picker: search the 811
+rows, tap one, and the item prefills name/unit/rate with the source ref carried
+(e.g. `JIC Plumbing #57`), vendor = a default "JIC book 2025-2027 (published
+minimum)" entry, `quotedAt` = book publication, marked book-sourced. The officer
+then overrides with real vendor quotes over time - the book is the floor, the
+vendor table is the truth. This is the same prefill contract PART I Option A
+builds for the calculator (I1); build the row-action/prefill logic once and
+share the shape, so the two parts do not drift.
+
+**H7.2 The quote-integrity gate already exists as proven machinery.** H3 risk 1
+hallucinated prices) asks for "a QA assertion that every number in the generated
+quote exists in the source data". That exact pattern shipped 2026-10-16:
+`tools/qa-calc-assistant.cjs` N2 ("its metric rate comes from the file, not the
+test") and its `mockRelay`/`sendQ`/`sysOf` harness kit. The new
+`tools/qa-procurement.cjs` copies that kit verbatim and adds the strict form:
+every `J$` figure in the generated quote must appear in the serialised
+procurement context, byte-for-byte. Do not re-derive the relay stubbing.
+
+**H7.3 New injection surface - name it in the gate, not just the plan.** Vendor
+name, contact, phone, notes and every item string are user-typed and render into
+`project.html`, which is axe-gated in BOTH palettes. Rule: all procurement
+strings render through the existing `esc()` / textContent path, never string
+HTML. The harness seeds a vendor named `<img onerror=alert(1)>` and asserts it
+lands as literal text. Add this to H4 acceptance explicitly.
+
+**H7.4 CSV out + paste-in (v1.1, cheap, offline).** Price books move between
+projects and offsite. The calculator already has CSV export machinery; reuse the
+pattern: Export vendor + items to CSV (instant, offline), and paste-CSV import
+with validation (name required, unit text, price finite >= 0). No backend, no
+deploy surface. Do not block v1 on it.
+
+**H7.5 Cross-vendor comparison - the payoff of the flat shape.** The flat
+`items` keyed by `vendorId` (H2) makes the officer's real question one group-by
+away: "same item, who is cheaper?" A compare view groups by normalised item
+name and shows each vendor's price + quotedAt, cheapest marked, stale prices
+deprioritised. No schema change, one render helper. The quote panel gains an
+"All vendors - best price per item" mode on the same grouping. Target v1 if the
+tab build stays small, else first thing in v1.1.
+
+**H7.6 Validation specifics (so validate() is written once).** Price: finite,
+>= 0, <= 12 chars. Name: <= 80 chars, required. Notes <= 500. Duplicate vendor
+names allowed but warned. `quotedAt` auto-stamps on every price change;
+`quotedBy` = signed-in email, or `local (this device)` offline.
+
+**H7.7 The only owner decisions blocking step 4** (make them before markup):
+(a) `data-pack="procurement"` (ships hidden behind the pack toggle - recommended,
+the rail already carries 20 tabs) vs always-visible 21st tab; (b) is `proc` a
+grantable editor scope or owner-only. Everything else in H5 proceeds without
+input.
+
+**H7.8 Live probes use the production domain.** The canonical live site is
+**https://mymanagerworkspace.com** (verified 2026-10-17 serving sw v430 + all
+fixes; canonical URLs, og:url and sitemap.xml already carry it).
+`my-manager.garfieldprocis.workers.dev` is the origin alias - same bytes.
+**`mymanager.app` is an UNRELATED third-party site** (2019-era firebase page) -
+a session this week probed it by mistake; never use that host.
+
 ---
 
 ## PART I — RATE-BOOK COVERAGE PLAN (owner request, 2026-10-16)
@@ -3658,3 +3727,33 @@ WHAT THIS SESSION TOUCHED
 
 NEXT SESSION STARTING POINT
 - PART I is the live work item (phases in I2, steps in I5, constraints in I6). PART H (Procurement) remains the other queued plan - both are independent and either can start first.
+
+**2026-10-17 — Session: WELDING UNITS MONEY FIX + AI RATE GROUNDING SHIPPED (e158134 + c6b25a1, CI green, deployed v9ff0ac33, live-verified), PART H REVIEW (H7), DOMAIN RECORDED.** Owner asked that the assistant stop answering calculator/rate questions with "I don't have access", then the full ship order: local QA, CI green, deploy. Two real defects were found by probing the shipped app, fixed, gated, and shipped:
+
+1. **Welding money bug (fixed).** The synthetic JIC book published welding's per-100mm figure against an INCH quantity with no RATE_UNITS adapter (rf fell through to 1) and the imperial ft->m default rewrote the typed inches: 100 in priced J$19,800 metric / J$6,035 imperial instead of the book's own J$50/in. Fix in `js/calculator-page.js`: per-100mm rows now publish the per-inch pair (`{ allIn: r.impRate, unit: 'in' }`) and `IMP_D1_FACTOR.welding = 1`. Both modes now price 100 x J$50 = J$5,000 materials (+ the JIC row's own 0.75 day x J$400 labour where present) - identical either way. Reproduced in a real browser BEFORE the fix, re-verified in a real browser on the live site AFTER (metric and imperial byte-identical, quantity label stays "100 in").
+2. **AI grounding fix (fixed).** The assistant already ranks the full 811-rate book via `MMGR_CALC_RATEBOOK`, but "cement" matched ZERO rows - the commonest word on a Jamaican site - so it answered "the rate book is silent". `RATE_QUERY_EXPAND` (query-side only, same stemmer/ranker; popup search stays exact) now widens cement->concrete/mortar/block/mix plus dump/haul/debris, worker, wire, plumbing, toilet, kitchen, fence, scaffold. Verified end-to-end ("cement" -> 12 concrete/mortar/block rows).
+3. **CI red -> green loop (one cycle).** First run failed at `qa-calc-assistant` N2: the speculative `excavation -> [excavate, earth, trench]` key fired on "rate for excavation in stiff clay" and let the generic clay-shallow row outrank the exact stiff-clay row. Root cause fixed (key removed - "excavation" already reached the book without it), not re-baselined. Run 38989606512 on c6b25a1 = SUCCESS.
+4. **Harness work.** New WU family in `tools/qa-calculator-page.cjs`: WU1 per-inch payload rows (J$50/in #1, J$117/in #7, metric rows keep pairs), WU2/WU3 identical money both unit modes with exact-figure pins, WU4 assistant "cement" grounding e2e (WU-DUMP logs the money composition every run). Fixed two PRE-EXISTING bare-return evals (`window.__MMGR_RR_AUTH = 'in'; return true;` - "Illegal return statement" parse errors meant the RB auth seam NEVER actually set; the RB family passed only because the dev server fails open) and the WU4 eval's uncalled-IIFE bug.
+5. **PART H reviewed (planning only).** Owner asked for improvements before any build - written as **H7** (eight items). Headline: seed the supplier price book from the 811-rate JIC book instead of a blank table (H7.1, sharing PART I Option A's prefill contract), reuse qa-calc-assistant's proven mockRelay harness + the "every number exists in source" gate for the quote (H7.2), name the new XSS surface + gate it (H7.3), CSV out/in (H7.4), cross-vendor compare view (H7.5), validation specifics (H7.6), the two owner decisions (pack toggle, editor scope - H7.7), production domain for live probes (H7.8).
+6. **Owner questions answered:** "PART I" is a LETTER (the 9th sequential plan in this file: A... H, I) - not "part one"; there is no Part II. It is the rate-coverage plan, planning-only, Phase 1 ready to build per I5. Domain confirmed: **mymanagerworkspace.com** is production (verified live serving this deploy; canonical/og:url/sitemap already carry it). `mymanager.app` is an unrelated third-party site - never probe it.
+
+FILES MODIFIED (committed + deployed):
+- `js/calculator-page.js` - welding per-inch payload + IMP_D1_FACTOR.welding=1 + RATE_QUERY_EXPAND/rateExpandQuery wired into calcRateBookText's token path (excavation key removed after CI).
+- `tools/qa-calculator-page.cjs` - WU family + two bare-return eval fixes + WU4 IIFE fix.
+- `sw.js` - CACHE mmgr-shell-v427 -> v428 (feature) -> v429 (prettier) -> v430 (CI fix); deployed version carries v430.
+- `CONTINUATION-DIRECTIVE.md` - H7 + this record.
+- `reflection.txt` - this session's record (carries the uncommitted 2026-10-13 entry from a prior session - left as the owner's call to commit it).
+
+TEST RESULTS:
+- Local: `npm run verify` exit 0 (CSP, SW cache, CSS integrity, emoji, a11y, eslint, prettier, registry); `qa-calculator-page` exit 0 incl. WU1-WU4; `qa-calc-trade-coverage` 88/88 (43 trades x 2 viewports); `qa-calc-assistant` exit 0 after the N2 fix.
+- CI: run 38989606512 on c6b25a1 = SUCCESS (after one red->fix->push->re-poll cycle per lesson 8).
+- Deploy: `node tools/deploy.cjs` exit 0 from the clean staging copy (byte-proved), worker version 9ff0ac33, sw mmgr-shell-v430.
+- Live: real headless browser on the deployed calculator -> 100 in JIC Welding #1 = J$5,000 subtotal + 15% tax = J$5,750, identical metric AND imperial; live js/calculator-page.js carries RATE_QUERY_EXPAND (2), welding:1, the 100mm ternary, cement mapping, and NOT the excavation key; live sw.js = v430.
+
+WHAT STILL OPEN:
+- PART I Phase 1 (Use this rate row action) - the live code work item, not started.
+- PART H Procurement - still planned-only; H7 folds into it; the two H7.7 owner decisions (pack toggle vs always-visible, grantable scope vs owner-only) are the only blockers before markup.
+- `reflection.txt` carries a prior session's uncommitted 2026-10-13 record (owner's call).
+
+NEXT SESSION STARTING POINT
+- Two queued plans, both planning-complete, either can start first: **PART I Phase 1** (rate-coverage row action, steps in I5) or **PART H Procurement** (build per H5 with the H7 improvements folded in; decide H7.7 first). Live probes against https://mymanagerworkspace.com.

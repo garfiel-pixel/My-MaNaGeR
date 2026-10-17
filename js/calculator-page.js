@@ -1075,6 +1075,24 @@
       q: () => ({ qty: 1, unit: '', qtyLabel: 'Quantity' }),
       rate: { mat: 0, lab: 0 },
       matDesc: 'Your own rate - one combined figure, no split'
+    },
+    // PART I PHASE 2 (owner, 2026-10-17): the JIC PICKER (I1 Option C). One
+    // work item prices ANY row of the shipped rate book as a first-class
+    // estimate line: pick a trade, pick a rate, type the quantity in the
+    // ROW'S OWN unit, so quantity x rate is exact - the RATE_UNITS adapter
+    // resolves to its identity, so no new money math exists here. The rate
+    // prefills from the book and stays the user's to type over (the book is
+    // a default, never a lock) and the row's ref + description name the line
+    // on the estimate, the bill and the CSV. Money then runs the normal
+    // identity: on-costs, overhead and tax.
+    jic: {
+      group: 'Other',
+      d1: 'Quantity',
+      d2: null,
+      d3: null,
+      q: () => ({ qty: 1, unit: '', qtyLabel: 'Quantity' }),
+      rate: { mat: 0, lab: 0 },
+      matDesc: 'JIC rate book - published rate, yours to edit'
     }
   };
 
@@ -1613,6 +1631,13 @@
       calcCustomUnit: ($('calc-custom-unit') || {}).value || '',
       calcCustomQty: ($('calc-custom-qty') || {}).value || '',
       calcCustomRate: ($('calc-custom-rate') || {}).value || '',
+      // PART I PHASE 2: the JIC picker's trade + row + rate (with its book
+      // prefill marker) ride every snapshot, so a reload, a bill recall or a
+      // history entry restores the same pick and the same money exactly.
+      jicTrade: ($('calc-jic-trade') || {}).value || '',
+      jicRef: ($('calc-jic-row') || {}).value || '',
+      jicRate: ($('calc-jic-rate') || {}).value || '',
+      jicModel: (($('calc-jic-rate') || {}).dataset || {}).model || '',
       measuredQty: ($('calc-measured-qty') || {}).value || '',
       measuredAuto: instSum > 0 ? String(instSum) : '',
       measuredUnit: instUnit,
@@ -1698,6 +1723,32 @@
         }
       });
     }
+    // PART I PHASE 2: restore the JIC pick AFTER syncLabels rendered the
+    // picker (the same order the variant select uses): trade first so its
+    // rows exist, then the saved row, then the rate with its book marker -
+    // and a held final render syncs the unit label and the note WITHOUT
+    // re-seeding the rate from the book, so a recall re-creates its saved
+    // total to the cent even if the book changed underneath it.
+    _jicRecall = true;
+    if ($('calc-jic-trade') && st.jicTrade) {
+      $('calc-jic-trade').value = st.jicTrade;
+    }
+    renderJicPicker();
+    if ($('calc-jic-row') && st.jicRef) {
+      const jRows = $('calc-jic-row').options;
+      for (let ji = 0; ji < jRows.length; ji++) {
+        if (jRows[ji].value === st.jicRef) {
+          $('calc-jic-row').value = st.jicRef;
+          break;
+        }
+      }
+    }
+    if ($('calc-jic-rate')) {
+      $('calc-jic-rate').value = st.jicRate || '';
+      $('calc-jic-rate').dataset.model = st.jicModel != null ? String(st.jicModel) : '';
+    }
+    renderJicPicker();
+    _jicRecall = false;
     if ($('calc-currency')) {
       $('calc-currency').value = st.currency || DEFAULT_CURRENCY;
     }
@@ -1861,6 +1912,12 @@
     // B1: the custom line prices from its own four fields through the Quick
     // total path - never from the dimension boxes or the model split.
     const isCustom = key === 'custom';
+    // PART I PHASE 2: the JIC picker line prices from its OWN picked row +
+    // rate fields (like the custom line from its four), never from the
+    // dimension model - the row resolves from PURE state, so a recalled
+    // snapshot prices from the pick it was saved with.
+    const isJic = key === 'jic';
+    const jicRow = isJic ? jicRowFor(st.jicTrade, st.jicRef) : null;
     const w = WORK[key];
     if (!w) {
       return null;
@@ -1886,10 +1943,31 @@
     const cRateOk = isFinite(cRateRaw) && cRateRaw > 0;
     const cUnit = isCustom ? String(st.calcCustomUnit || '').trim() : '';
     const custQty = isCustom ? (cQtyOk ? cQtyRaw : hasMq ? mqRaw : 0) : 0;
+    // PART I PHASE 2: the JIC line's own quantity (d1, in the ROW's own
+    // unit, falling back to the Quick total box exactly like the custom
+    // line) and its own rate (prefilled from the book, the user's to edit).
+    const jicQtyRaw = parseFloat(st.d1);
+    const jicQty = isJic ? (jicQtyRaw > 0 ? jicQtyRaw : hasMq ? mqRaw : 0) : 0;
+    const jicRateRaw = parseFloat(st.jicRate);
+    const jicRateOk = isFinite(jicRateRaw) && jicRateRaw > 0;
     const raw1 = num({ value: st.d1 });
     const raw2 = w.d2 ? num({ value: st.d2 }) : null;
     const raw3 = w.d3 ? num({ value: st.d3 }) : null;
-    if (!isCustom && !hasMq && (!raw1 || (w.d2 && !raw2) || (w.d3 && !raw3))) {
+    // PART I PHASE 2: the JIC line validates against its OWN pick - the row
+    // must resolve, the quantity must be positive, and the rate must be a
+    // number (the book prefill satisfies that the moment a row is chosen).
+    if (isJic && !jicRow) {
+      return { error: 'Pick a trade and a rate in the JIC picker before pricing.' };
+    }
+    if (isJic && !(jicQty > 0)) {
+      return { error: 'Enter the quantity for this JIC rate - it prices as quantity x rate.' };
+    }
+    if (isJic && !jicRateOk) {
+      return {
+        error: 'Type the rate for this JIC row - the book rate is prefilled and yours to edit.'
+      };
+    }
+    if (!isCustom && !isJic && !hasMq && (!raw1 || (w.d2 && !raw2) || (w.d3 && !raw3))) {
       return {
         error: 'Enter the dimensions the form asks for (all three when thickness or depth applies).'
       };
@@ -1915,9 +1993,11 @@
     const mqUnit = st.measuredUnit || canon.unit || '';
     const qr = isCustom
       ? { qty: custQty, unit: cUnit || mqUnit, qtyLabel: 'Quantity' }
-      : hasMq
-        ? { qty: mqRaw, unit: mqUnit, qtyLabel: canon.qtyLabel || 'Measured quantity' }
-        : w.q(d1, d2, d3);
+      : isJic
+        ? { qty: jicQty, unit: jicUnitFor(jicRow, imp), qtyLabel: 'Quantity' }
+        : hasMq
+          ? { qty: mqRaw, unit: mqUnit, qtyLabel: canon.qtyLabel || 'Measured quantity' }
+          : w.q(d1, d2, d3);
     // B1 (owner review 2026-09-29): waste/cuts is an editable percentage per
     // trade (tile 10, roof laps 10, concrete 5 defaults = the previously
     // baked-in factors). Empty/invalid falls back to the trade default.
@@ -1989,8 +2069,20 @@
       : 0;
     const allIn = isCustom
       ? custQty > 0 && custRate > 0
-      : isFinite(allInRaw) && allInRaw > 0 && basis !== 'days' && basis !== 'measured';
-    const allInRate = isCustom ? (allIn ? custRate : 0) : allIn ? allInRaw : 0;
+      : isJic
+        ? jicQty > 0 && jicRateOk
+        : isFinite(allInRaw) && allInRaw > 0 && basis !== 'days' && basis !== 'measured';
+    const allInRate = isCustom
+      ? allIn
+        ? custRate
+        : 0
+      : isJic
+        ? allIn
+          ? jicRateRaw
+          : 0
+        : allIn
+          ? allInRaw
+          : 0;
     // The book (or the model) prefills this field and the prefill marker rides
     // the snapshot, exactly like the material/labour fields. A number equal to
     // the marker came from the source; anything else was typed by the user and
@@ -1998,9 +2090,13 @@
     const allInModel = st._allInModel != null ? String(st._allInModel) : null;
     // A custom rate is ALWAYS the user's own figure - never a book prefill,
     // so it never claims a published source and it may show "your rate".
+    // A JIC rate claims the published source only while it still EQUALS its
+    // book prefill marker - the same D4 contract as the split rate fields.
     const allInOverride = isCustom
       ? allIn
-      : allIn && (allInModel === null || String(allInRaw) !== allInModel);
+      : isJic
+        ? allIn && (st._jicModel == null || String(jicRateRaw) !== String(st._jicModel))
+        : allIn && (allInModel === null || String(allInRaw) !== allInModel);
     const bookFilled = isCustom ? false : allIn && !allInOverride;
     // ---- Per-day crew rate ------------------------------------------------
     // The tradesman knows how many days the job takes, so he types the days
@@ -2120,7 +2216,10 @@
     // E3: rates (model or typed - both follow the labeled rate basis)
     // convert from the item's rate-entry unit into the engine unit. Piece
     // pricing already prices per engine unit and never takes the factor.
-    const runit = (av && av.runit) || w.runit || null;
+    // PART I PHASE 2: the JIC line's rate-entry unit IS the row's own unit,
+    // so the RATE_UNITS adapter resolves to its identity and the quantity x
+    // rate below is exact in both display systems.
+    const runit = isJic ? jicUnitFor(jicRow, imp) : (av && av.runit) || w.runit || null;
     const rf = rateFactor(runit, qr.unit);
     // E6: labour-only mode prices the WORK - labor at its rate; material
     // money is the user's own, so a typed material rate still shows while
@@ -2148,14 +2247,17 @@
     // employer's NI twice).
     // B1: a custom line is quantity x its rate EXACTLY - the user's own
     // figure, never converted, never scaled by the finish level, never
-    // split. Every other all-in line keeps the rf/quality treatment.
-    const allInCost = isCustom
-      ? allIn
-        ? qty * allInRate
-        : 0
-      : allIn
-        ? qty * allInRate * rf * quality
-        : 0;
+    // split. A JIC line is quantity x the picked book rate EXACTLY (the
+    // published figure is already a combined rate, per the row's own unit).
+    // Every other all-in line keeps the rf/quality treatment.
+    const allInCost =
+      isCustom || isJic
+        ? allIn
+          ? qty * allInRate
+          : 0
+        : allIn
+          ? qty * allInRate * rf * quality
+          : 0;
     const eq = qty * eqRate * rf * quality;
     // OWNER 2026-10-02: 'NONE' is a first-class country value meaning
     // "this job is not taxed" (TAX.NONE = 0). It is NOT an override - the
@@ -2167,10 +2269,11 @@
     const taxRate = override !== null ? override : TAX[country] || 0;
     // Statutory on-costs ride LABOUR only, so they apply to a typed day rate
     // (it is payroll) but not to an all-in rate (already inside the figure).
-    // B1: a CUSTOM line carries the page's normal on-costs on its own cost -
-    // the committed contract in calculator.html ("quantity times all-in
-    // rate, then the normal on-costs and tax"). Every other line unchanged.
-    const onCost = ((lab + (isCustom ? allInCost : 0)) * onCostPct) / 100;
+    // B1: a CUSTOM or JIC line carries the page's normal on-costs on its
+    // own cost - the committed contract in calculator.html ("quantity times
+    // all-in rate, then the normal on-costs and tax"). Every other line
+    // unchanged.
+    const onCost = ((lab + (isCustom || isJic ? allInCost : 0)) * onCostPct) / 100;
     const sub = mat + lab + onCost + eq + allInCost;
     const oh = (sub * ohPct) / 100;
     const tax = ((sub + oh) * taxRate) / 100;
@@ -2183,7 +2286,7 @@
       baseQty: qr.qty,
       unit: qr.unit,
       qtyLabel: qr.qtyLabel,
-      matDesc: w.matDesc,
+      matDesc: isJic && jicRow ? jicRow.ref + ' - ' + jicRow.desc : w.matDesc,
       basis: basis || null,
       orderCount: orderCount,
       openings: openings,
@@ -2223,6 +2326,8 @@
       customName: isCustom ? String(st.calcCustomName || '').trim() : '',
       customUnit: isCustom ? cUnit : '',
       customRate: isCustom ? allInRate : 0,
+      isJic: isJic,
+      jicRef: jicRow ? jicRow.ref : '',
       allInOverridden: allInOverride,
       bookFilled: bookFilled,
       dayBasis: dayBasis,
@@ -2247,6 +2352,7 @@
     st._matModel = $('calc-rate-mat') ? $('calc-rate-mat').dataset.model : undefined;
     st._labModel = $('calc-rate-lab') ? $('calc-rate-lab').dataset.model : undefined;
     st._allInModel = $('calc-allin') ? $('calc-allin').dataset.model : undefined;
+    st._jicModel = $('calc-jic-rate') ? $('calc-jic-rate').dataset.model : undefined;
     const r = computeFor(st);
     if (r && !r.error) {
       r.name = workName(st.work);
@@ -4072,6 +4178,263 @@
       Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     );
   }
+  // ---- PART I PHASE 2 (owner, 2026-10-17): the JIC PICKER (I1 Option C) ----
+  // Choose a trade, choose one of its book rates, type the quantity - any of
+  // the 811 shipped rows prices as a first-class estimate line. Field
+  // visibility follows syncLabels (the custom/variant convention); the data
+  // comes from whichever book source is loaded, so the picker works with no
+  // network (the inline 100 rows carry all 11 trades). The rate field carries
+  // the book prefill marker (dataset.model) exactly like the split rate
+  // fields: equal = the published figure, anything else = the user's own
+  // (the book is a default, never a lock).
+  let _jicIdxSrc = null;
+  let _jicIdx = null;
+  let _jicRecall = false;
+  let _jicTried = false;
+  let _jicOffline = false;
+  let _prevWork = null;
+  // PURE row resolution over whichever book source is loaded - never the DOM
+  // - so computeFor prices a recalled pick from its own saved trade + ref and
+  // workName() names the line from the same row. Memoized per source (inline
+  // 100 / full 811), so a render never re-maps the whole book.
+  function jicRowIndex() {
+    const src = _rrFull ? 'full' : 'inline';
+    if (_jicIdx && _jicIdxSrc === src) {
+      return _jicIdx;
+    }
+    const idx = {};
+    rrRows().forEach(function (r) {
+      const k = r.tid + '|' + r.ref;
+      if (!idx[k]) {
+        idx[k] = r;
+      }
+    });
+    _jicIdx = idx;
+    _jicIdxSrc = src;
+    return idx;
+  }
+  function jicRowFor(tid, ref) {
+    if (!tid || !ref) {
+      return null;
+    }
+    return jicRowIndex()[tid + '|' + ref] || null;
+  }
+  // The row's money speaks the ROW's own unit: the displayed unit system
+  // picks the side (both shipped books carry a positive rate on both sides -
+  // verified 811/811 and 100/100), and each side's unit follows its own
+  // rate, so quantity x rate is exact with no conversion anywhere.
+  function jicUnitFor(row, imp) {
+    return (imp ? row.impUnit : row.metUnit) || (imp ? row.metUnit : row.impUnit) || 'each';
+  }
+  function jicRateFor(row, imp) {
+    const v = imp ? row.impRate : row.metRate;
+    return isFinite(v) && v > 0 ? v : imp ? row.metRate : row.impRate;
+  }
+  // The published-rate note follows the PICKED row: it says the figure is
+  // the book's own while the field still equals the prefill marker, and
+  // hides the moment the user's own figure lands.
+  function syncJicNote() {
+    const note = $('calc-jic-note');
+    const rateEl = $('calc-jic-rate');
+    if (!note || !rateEl) {
+      return;
+    }
+    const m = rateEl.dataset.model;
+    const untouched = m != null && m !== '' && String(rateEl.value) === String(m);
+    note.hidden = !untouched;
+    if (untouched) {
+      note.textContent =
+        'This rate came from the published JIC rate book. Rates change - type your own figure if yours differs.';
+    }
+  }
+  function renderJicPicker() {
+    const wrap = $('calc-jic-wrap');
+    const key = ($('calc-work') || {}).value;
+    if (!wrap) {
+      return;
+    }
+    wrap.hidden = key !== 'jic';
+    const tSel = $('calc-jic-trade'),
+      rSel = $('calc-jic-row'),
+      rateEl = $('calc-jic-rate');
+    if (!tSel || !rSel || !rateEl) {
+      return;
+    }
+    if (key !== 'jic') {
+      // Leaving the picker drops the pick the way leaving Custom clears its
+      // four fields: the next open starts clean, a recall restores its own
+      // pick through applyState - and the last seen work item is remembered
+      // so a rejected pick (signed out, online) steps back to it.
+      _prevWork = key;
+      tSel.value = '';
+      rSel.innerHTML = '<option value="">Pick a trade first</option>';
+      rSel.disabled = true;
+      rateEl.value = '';
+      delete rateEl.dataset.model;
+      syncJicNote();
+      return;
+    }
+    const imp = _units === 'imperial';
+    // Trades with their row counts, in book order; a still-valid selection
+    // survives the rebuild (a unit flip or a full-book land must not lose
+    // the pick).
+    const trades = rrTrades();
+    const rowsAll = rrRows();
+    const prevT = tSel.value;
+    tSel.innerHTML =
+      '<option value="">Pick a trade</option>' +
+      trades
+        .map(function (t) {
+          const n = rowsAll.filter(function (r) {
+            return r.tid === t.tid;
+          }).length;
+          return n
+            ? '<option value="' + esc(t.tid) + '">' + esc(t.label) + ' (' + n + ')</option>'
+            : '';
+        })
+        .join('');
+    tSel.value = trades.some(function (t) {
+      return t.tid === prevT;
+    })
+      ? prevT
+      : '';
+    const tid = tSel.value;
+    if (!tid) {
+      rSel.innerHTML = '<option value="">Pick a trade first</option>';
+      rSel.disabled = true;
+      rateEl.value = '';
+      delete rateEl.dataset.model;
+      syncJicNote();
+      kickJicFullLoad();
+      return;
+    }
+    rSel.disabled = false;
+    // Rows of the chosen trade in the DISPLAYED unit system: the option says
+    // ref, description, unit and rate - plus the book's own honesty notes
+    // ('cutting and smoothing, not welding', 'same item as #72 at a
+    // different rate') and, on the converted side, the calculated-rate
+    // marker, so a pick is legible without a second look at the book.
+    const rows = rowsAll.filter(function (r) {
+      return r.tid === tid;
+    });
+    const prevR = rSel.value;
+    rSel.innerHTML = rows
+      .map(function (r) {
+        const unit = jicUnitFor(r, imp);
+        const rate = jicRateFor(r, imp);
+        const d = r.desc.length > 46 ? r.desc.slice(0, 43) + '...' : r.desc;
+        return (
+          '<option value="' +
+          esc(r.ref) +
+          '">' +
+          esc(r.ref) +
+          ' - ' +
+          esc(d) +
+          ' (' +
+          esc(unit) +
+          ' - ' +
+          rrMoney(rate) +
+          ')' +
+          (r.note ? ' - ' + esc(r.note) : '') +
+          (r.basis === 'C' && !imp ? ' [our conversion]' : '') +
+          '</option>'
+        );
+      })
+      .join('');
+    const hadRow = rows.some(function (r) {
+      return r.ref === prevR;
+    });
+    if (!hadRow) {
+      rSel.value = rows.length ? rows[0].ref : '';
+    }
+    const row = jicRowFor(tid, rSel.value);
+    if (row) {
+      // The rate follows the row: a fresh pick (or a trade change) seeds the
+      // book figure; an untouched book figure follows its row across a unit
+      // flip or a full-book land; the user's OWN typed figure is never
+      // overwritten - and a recall holds its saved figure exactly, because
+      // the sum it showed is the sum it must re-create.
+      const m = rateEl.dataset.model;
+      const untouched = m != null && m !== '' && String(rateEl.value) === String(m);
+      if (!_jicRecall && (!hadRow || rateEl.value === '' || untouched)) {
+        const v = Math.round(jicRateFor(row, imp) * 100) / 100;
+        rateEl.value = String(v);
+        rateEl.dataset.model = String(v);
+      }
+      const unit = jicUnitFor(row, imp);
+      const uEl = $('calc-jic-unit');
+      if (uEl) {
+        uEl.textContent = unit;
+      }
+      const d1l = $('calc-d1-label');
+      if (d1l) {
+        d1l.textContent = 'Quantity (' + unit + ')';
+      }
+    }
+    // The hint stays honest about the source: after a FAILED full-book load
+    // (a first open with no network) it says the built-in set is shown.
+    const hint = $('calc-jic-hint');
+    if (hint) {
+      hint.textContent =
+        _rrFull || !_jicOffline
+          ? '- pick a trade, then a rate'
+          : '- pick a trade, then a rate (showing the built-in set)';
+    }
+    syncJicNote();
+    kickJicFullLoad();
+  }
+  // The full 811-row book loads on the first picker (or card) ask, AT MOST
+  // once per page life: a failed fetch (offline, first visit) settles on the
+  // inline 100 rows - which carry all 11 trades - instead of retrying on
+  // every render. A page refresh is a fresh attempt.
+  function kickJicFullLoad() {
+    if (_rrFull || _jicTried) {
+      return;
+    }
+    _jicTried = true;
+    rrLoadFull(function () {
+      _jicOffline = !window.MMGR_JIC_FULL;
+      if (($('calc-work') || {}).value === 'jic') {
+        renderJicPicker();
+      }
+    });
+  }
+  // The picker IS rate-book access, so it carries the book's own sign-in
+  // gate (owner 2026-10-13: to access the rate book, you sign in - free,
+  // no premium): a signed-OUT visit online steps back to the previous work
+  // item and shows the same sign-in card the book uses; offline or with an
+  // unverifiable answer it OPENS (offline-first is sacred - same rule as the
+  // book card). window.__MMGR_RR_AUTH is the QA seam, exactly as for the card.
+  function jicGateOnWorkChange() {
+    const sel = $('calc-work');
+    if (!sel || sel.value !== 'jic') {
+      return;
+    }
+    const known =
+      window.__MMGR_RR_AUTH === 'in' || window.__MMGR_RR_AUTH === 'out'
+        ? window.__MMGR_RR_AUTH
+        : _rrAuth;
+    const reject = function () {
+      if (($('calc-work') || {}).value !== 'jic') {
+        return;
+      }
+      renderRateBookSigninCard();
+      sel.value = _prevWork && WORK[_prevWork] ? _prevWork : 'custom';
+      syncLabels();
+    };
+    if (known === 'out') {
+      reject();
+      return;
+    }
+    if (known === 'in') {
+      return;
+    }
+    rrAuthState().then(function (s) {
+      if (s === 'out') {
+        reject();
+      }
+    });
+  }
   // BUG FIX (owner directive 2026-10-02, caught by the new RB gates): this
   // function was a TOGGLE - `if (existing) { existing.remove(); return; }` -
   // but the unit buttons inside the card also called it to RE-RENDER in the
@@ -4778,6 +5141,13 @@
   function dimSlips(st) {
     const w = WORK[st && st.work];
     if (!w) {
+      return [];
+    }
+    // PART I PHASE 2: the JIC picker's quantity is in the ROW's own unit
+    // (metres, sq m, each, yd3 - whatever the chosen rate is per), so the
+    // metre and length bands below would flag honest quantities as unit
+    // mistakes. The row's own unit on the quantity label is the guard here.
+    if (st.work === 'jic') {
       return [];
     }
     const imp = st && st.units === 'imperial';
@@ -6775,6 +7145,22 @@
         return cn;
       }
     }
+    // PART I PHASE 2: a JIC line is named by its ROW - the ref first, then
+    // the book's own description - so bill lines, history and the CSV say
+    // which published rate was priced (no 60-char field contract here: the
+    // full ref + description rides, capped only for readability).
+    if (key === 'jic') {
+      const tSel = $('calc-jic-trade');
+      const rSel = $('calc-jic-row');
+      const row = tSel && rSel ? jicRowFor(tSel.value, rSel.value) : null;
+      if (row) {
+        let jn = row.ref + ' - ' + row.desc;
+        if (jn.length > 90) {
+          jn = jn.slice(0, 87) + '...';
+        }
+        return jn;
+      }
+    }
     // E2: multi-variant trades carry the picked version in the name so bill
     // lines, history and CSV name what was priced (single-variant trades -
     // the Phase 1 excavation conversion - keep the clean base name).
@@ -7169,15 +7555,15 @@
     }
     const manual = $('calc-measured-manual');
     let txt = '';
-    // B1: a custom line always shows its arithmetic (quantity x your rate)
-    // even outside the Quick total box; every other line keeps the original
-    // condition unchanged.
+    // B1: a custom or JIC line always shows its arithmetic (quantity x the
+    // rate) even outside the Quick total box; every other line keeps the
+    // original condition unchanged.
     if (
       r &&
       r.allIn &&
       isFinite(Number(r.qty)) &&
       Number(r.qty) > 0 &&
-      ((manual && manual.checked) || r.isCustom)
+      ((manual && manual.checked) || r.isCustom || r.isJic)
     ) {
       const qs = qtyShown(r.qty, unit).main;
       // fmtMoney is the page's one money formatter (J$8,280), so the read-out
@@ -7312,7 +7698,10 @@
       esc(shown.alt) +
       '</span></strong></div>' +
       '<div class="calc-sum-sub">' +
-      r.matDesc +
+      // PART I PHASE 2: a JIC line's matDesc carries the row's own ref +
+      // description (the book writes with & and quotes), so the ONE HTML
+      // insert escapes it; the CSV takes the same raw string.
+      esc(r.matDesc) +
       '</div>' +
       (r.orderCount
         ? '<div class="calc-sum-sub">Order about <strong>' +
@@ -9455,6 +9844,9 @@
     renderOpenings();
     // E2: the variant selector follows the trade.
     renderVariant();
+    // PART I PHASE 2: the JIC picker follows the work item (the same owner
+    // as the variant selector - per-item field visibility lives in syncLabels).
+    renderJicPicker();
     // W7: the rebar laps field rides the rebar trade only (same home as the
     // d2/d3 wrap hiding - syncLabels owns per-trade field visibility).
     const rlWrap = $('calc-rebar-laps-wrap'),
@@ -9891,7 +10283,30 @@
   // local restore here, a second writer would fight the helper.
   if ($('calc-work')) {
     $('calc-work').addEventListener('change', syncLabels);
+    // PART I PHASE 2: picking the JIC rate item steps through the book's own
+    // sign-in gate (registered after syncLabels, so the revert re-renders).
+    _prevWork = ($('calc-work') || {}).value || 'custom';
+    $('calc-work').addEventListener('change', jicGateOnWorkChange);
     wireCustomFields();
+    // PART I PHASE 2: trade and row picks rebuild the picker (the row seeds
+    // its book rate) and re-price the line at once; typing over the rate
+    // re-prices live and drops the published-rate note the moment the figure
+    // stops matching it.
+    ['calc-jic-trade', 'calc-jic-row'].forEach(function (id) {
+      const el = $(id);
+      if (el) {
+        el.addEventListener('change', function () {
+          renderJicPicker();
+          render();
+        });
+      }
+    });
+    if ($('calc-jic-rate')) {
+      $('calc-jic-rate').addEventListener('input', function () {
+        syncJicNote();
+        render();
+      });
+    }
     if ($('calc-family')) {
       $('calc-family').value = localStorage.getItem(FKEY) || '';
     }
@@ -10909,6 +11324,40 @@
     // the live form otherwise.
     if (v.custom || key === 'custom') {
       return customCheck(v, out);
+    }
+    // PART I PHASE 2: the JIC picker validates its OWN pick before the
+    // standard flow - a row must be chosen (trade + row resolve together and
+    // the book prefills its rate), so the dry run NAMES that box instead of
+    // failing bare. The quantity itself follows the normal rules below (the
+    // box or the Quick total), and a picked row's rate is prefilled by the
+    // page, so an empty rate is only ever the user clearing it.
+    if (key === 'jic') {
+      var jT = v.jicTrade || ($('calc-jic-trade') || {}).value || '';
+      var jR = v.jicRef || ($('calc-jic-row') || {}).value || '';
+      if (!jT || !jR || !jicRowFor(jT, jR)) {
+        out.work = 'jic';
+        out.missing.push({
+          field: 'jicRow',
+          label: 'a trade and a rate in the JIC picker',
+          unit: '',
+          hint: 'Pick a trade, then one of its published rates, in the JIC rate book picker.'
+        });
+        return out;
+      }
+      var jRateRaw =
+        v.jicRate !== undefined && v.jicRate !== null && v.jicRate !== ''
+          ? v.jicRate
+          : ($('calc-jic-rate') || {}).value || '';
+      if (!(Number(jRateRaw) > 0)) {
+        out.work = 'jic';
+        out.missing.push({
+          field: 'jicRate',
+          label: 'the rate for that JIC row',
+          unit: '',
+          hint: 'The published rate is prefilled - type your own figure if yours is newer.'
+        });
+        return out;
+      }
     }
     var w = WORK[key];
     if (!w) {

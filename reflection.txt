@@ -2289,15 +2289,22 @@ WHAT THIS SESSION DID
      open); and the WU4 eval's outer IIFE was an uncalled function expression (returned
      the function object -> null).
   5. PART H REVIEW (planning only, per owner request). Eight improvements written into
-     CONTINUATION-DIRECTIVE.md H7: seed the supplier price book from the 811-rate JIC
-     book instead of a blank table (H7.1, sharing PART I Option A's prefill contract);
-     reuse qa-calc-assistant's proven mockRelay/sendQ kit + an "every J$ figure in the
-     quote exists byte-for-byte in the serialised context" gate (H7.2); name and gate
-     the new XSS surface - vendor/item strings render text-only through esc() (H7.3);
-     CSV export + paste-import (H7.4); cross-vendor compare grouped by item name with
-     cheapest + staleness marked (H7.5); validation specifics (H7.6); the two owner
-     decisions that block markup - pack toggle vs always-visible tab, grantable scope
-     vs owner-only (H7.7); live probes against the production domain (H7.8).
+     CONTINUATION-DIRECTIVE.md H7: reuse qa-calc-assistant's proven mockRelay/sendQ kit
+     + an "every J$ figure in the quote exists byte-for-byte in the serialised context"
+     gate (H7.2); name and gate the new XSS surface - vendor/item strings render
+     text-only through esc() (H7.3); CSV export + paste-import (H7.4); cross-vendor
+     compare grouped by item name with cheapest + staleness marked (H7.5); validation
+     specifics (H7.6); the two owner decisions that block markup - pack toggle vs
+     always-visible tab, grantable scope vs owner-only (H7.7); live probes against the
+     production domain (H7.8).
+     OWNER CORRECTION 2026-10-17 (H7.1): the first draft of H7.1 proposed prefilling
+     supplier items from the JIC rate book. The owner rejected it - CORRECTLY. The rate
+     book holds no supplier data; suppliers price at their OWN rates. The workflow, as
+     the owner stated it: supplier -> dropdown -> Add -> the items THEY offer, each
+     with their lowest-quantity price, entered BY HAND by the project manager from the
+     supplier's own quote or rate sheet when contacted; stays until updated. The JIC
+     rate book never prefills, suggests or validates a supplier line. H7.1 rewritten,
+     constraint added to H6.
   6. DOMAIN RECORDED. https://mymanagerworkspace.com is production - verified this
      session serving the deployed v430 worker + all fixes; canonical hrefs, og:url and
      sitemap.xml already carry it. my-manager.garfieldprocis.workers.dev is the origin

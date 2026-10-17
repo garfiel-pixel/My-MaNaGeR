@@ -3658,6 +3658,285 @@ async function withChrome(fn) {
       wuA
     );
 
+    // ---------- UR family: PART I PHASE 1 - "Use this rate" row action ------
+    // Owner 2026-10-17. Every book row must price through the EXISTING custom
+    // item path (I1 Option A): ref-first name (<= 60 chars), the DISPLAYED
+    // unit system's unit + rate, quantity x rate EXACTLY (B1 - no new money
+    // math), the JIC ref on the landed bill line, and the same action working
+    // on the inline 100-row fallback when the full book cannot load (I3).
+    const urSaved = await ev(`(function(){
+      var w = document.getElementById('calc-work');
+      var v = w ? w.value : '';
+      // localStorage, not window: UR6 reloads the page mid-family and a
+      // window var would not survive it.
+      try { localStorage.setItem('mmgr_ur_saved_work', v); } catch (e) {}
+      return v;
+    })()`);
+    const urOpenOk = await ev(rbOpen);
+    check(
+      'UR0 the book reopens with the full 811-row payload for the row-action family',
+      urOpenOk === true,
+      urOpenOk
+    );
+
+    // UR1 - structure: a fifth column with an action on EVERY rendered row.
+    const ur1 = await ev(`(function(){
+      var tbl = document.querySelector('#calc-ratebook-card .rr-table');
+      var heads = tbl ? Array.prototype.map.call(tbl.querySelectorAll('thead th'), function(t){ return t.textContent.trim(); }) : [];
+      var dataRows = tbl ? tbl.querySelectorAll('tbody tr:not(.rr-trade)').length : 0;
+      var btns = document.querySelectorAll('#calc-ratebook-card [data-action="rrUse"]');
+      var first = btns[0] || null;
+      return {
+        heads: heads,
+        rows: dataRows,
+        btns: btns.length,
+        aria: first ? first.getAttribute('aria-label') || '' : '',
+        icon: first ? !!first.querySelector('use') : false
+      };
+    })()`);
+    check(
+      'UR1 all 811 rows carry a Use action (header Ref/Description/Unit/Rate/Use, named SVG button per row)',
+      ur1 &&
+        ur1.heads.join(',') === 'Ref,Description,Unit,Rate,Use' &&
+        ur1.rows === 811 &&
+        ur1.btns === 811 &&
+        ur1.aria.indexOf('Use ') === 0 &&
+        ur1.icon,
+      ur1
+    );
+
+    // UR2 - the prefill. Narrow to ONE row: the FULL book's wording for
+    // welding #1 is '1/8\" Thick Metal Using Torch' (verified unique against
+    // the shipped 811 - #9 is CPS Saw, steelwork's torch rows are rebar cuts).
+    // Self-computing: the row's own displayed cells are the expected values.
+    await ev(`(function(){
+      var q = document.getElementById('rr-q');
+      q.value = '1/8" thick metal using torch';
+      q.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    })()`);
+    const ur2 = await ev(`(function(){
+      var btns = document.querySelectorAll('#calc-ratebook-card [data-action="rrUse"]');
+      var first = btns[0];
+      if (!first) { return { hits: 0 }; }
+      var tr = first.closest('tr');
+      var cell = function (cls) { var el = tr && tr.querySelector(cls); return el ? el.textContent.trim() : ''; };
+      var out = { hits: btns.length, refCell: cell('.rr-ref'), rateCell: cell('.rr-rate'), unitCell: cell('.rr-unit') };
+      first.click();
+      out.work = document.getElementById('calc-work').value;
+      out.wrap = !document.getElementById('calc-custom-wrap').hidden;
+      out.name = document.getElementById('calc-custom-name').value;
+      out.unit = document.getElementById('calc-custom-unit').value;
+      out.qty = document.getElementById('calc-custom-qty').value;
+      out.rate = document.getElementById('calc-custom-rate').value;
+      out.cardGone = !document.getElementById('calc-ratebook-card');
+      out.focus = (document.activeElement || {}).id || '';
+      return out;
+    })()`);
+    const ur2rate = ur2 ? Number(String(ur2.rateCell).replace(/[^0-9.]/g, '')) : NaN;
+    check(
+      'UR2 Use prefills Custom from the shown row: ref-first name <=60, shown unit + rate, qty cleared, popup closed, focus in quantity',
+      ur2 &&
+        ur2.hits === 1 &&
+        ur2.refCell === 'Welding #1' &&
+        ur2.work === 'custom' &&
+        ur2.wrap &&
+        ur2.name.indexOf(ur2.refCell + ' - ') === 0 &&
+        ur2.name.length <= 60 &&
+        ur2.unit === ur2.unitCell &&
+        isFinite(ur2rate) &&
+        ur2rate > 0 &&
+        Math.abs(parseFloat(ur2.rate) - ur2rate) < 0.005 &&
+        ur2.qty === '' &&
+        ur2.cardGone &&
+        ur2.focus === 'calc-custom-qty',
+      ur2
+    );
+
+    // UR3 - money: 5 x the typed rate, EXACTLY (B1 custom contract).
+    const ur3 = await ev(`(function(){
+      var d = document.getElementById('calc-custom-qty');
+      d.value = '5';
+      d.dispatchEvent(new Event('input', { bubbles: true }));
+      document.querySelector('[data-action="calcRun"]').click();
+      var out = (document.getElementById('calc-output') || {}).textContent || '';
+      var si = out.indexOf('Subtotal');
+      var sub = '';
+      if (si > -1) { var m2 = out.slice(si).match(/[0-9][0-9,]*/); sub = m2 ? m2[0] : ''; }
+      return { sub: sub };
+    })()`);
+    const ur3sub = ur3 ? Number(String(ur3.sub).replace(/,/g, '')) : NaN;
+    check(
+      'UR3 the custom line prices 5 x the book rate EXACTLY',
+      isFinite(ur3sub) && isFinite(ur2rate) && ur3sub === 5 * ur2rate,
+      { got: ur3 && ur3.sub, expected: isFinite(ur2rate) ? 5 * ur2rate : NaN }
+    );
+
+    // UR4 - the SAME row in the OTHER book unit system: its own unit + rate
+    // (metric 198/100mm vs imperial 50/In. - they MUST differ), its own exact
+    // 5 x rate money. Reopens, flips the book toggle, re-searches.
+    const ur4pre = await ev(`(function(){
+      document.querySelector('.bcp-ratebook[data-action="openRateBook"]').click();
+      var flipped = null;
+      document.querySelectorAll('#calc-ratebook-card [data-action="rrUnits"]').forEach(function (b) {
+        if (!b.classList.contains('active')) { flipped = b.getAttribute('data-units'); b.click(); }
+      });
+      var q = document.getElementById('rr-q');
+      if (q) { q.value = '1/8" thick metal using torch'; q.dispatchEvent(new Event('input', { bubbles: true })); }
+      return { flipped: flipped };
+    })()`);
+    const ur4 = await ev(`(function(){
+      var btns = document.querySelectorAll('#calc-ratebook-card [data-action="rrUse"]');
+      var first = btns[0];
+      if (!first) { return { hits: 0 }; }
+      var tr = first.closest('tr');
+      var cell = function (cls) { var el = tr && tr.querySelector(cls); return el ? el.textContent.trim() : ''; };
+      var out = { hits: btns.length, rateCell: cell('.rr-rate'), unitCell: cell('.rr-unit') };
+      first.click();
+      out.rate = document.getElementById('calc-custom-rate').value;
+      out.unit = document.getElementById('calc-custom-unit').value;
+      var d = document.getElementById('calc-custom-qty');
+      d.value = '5';
+      d.dispatchEvent(new Event('input', { bubbles: true }));
+      document.querySelector('[data-action="calcRun"]').click();
+      var o = (document.getElementById('calc-output') || {}).textContent || '';
+      var si = o.indexOf('Subtotal');
+      out.sub = '';
+      if (si > -1) { var m2 = o.slice(si).match(/[0-9][0-9,]*/); out.sub = m2 ? m2[0] : ''; }
+      return out;
+    })()`);
+    const ur4rate = ur4 ? Number(String(ur4.rateCell).replace(/[^0-9.]/g, '')) : NaN;
+    const ur4sub = ur4 ? Number(String(ur4.sub).replace(/,/g, '')) : NaN;
+    check(
+      'UR4 the SAME row in the other book unit system prefills its own unit + rate (metric 198 vs imperial 50 differ) and prices 5 x that exactly',
+      ur4pre &&
+        ur4pre.flipped &&
+        ur4 &&
+        ur4.hits === 1 &&
+        ur4.unit === ur4.unitCell &&
+        isFinite(ur4rate) &&
+        Math.abs(parseFloat(ur4.rate) - ur4rate) < 0.005 &&
+        isFinite(ur2rate) &&
+        ur4rate !== ur2rate &&
+        isFinite(ur4sub) &&
+        ur4sub === 5 * ur4rate,
+      {
+        flipped: ur4pre && ur4pre.flipped,
+        ur4: ur4,
+        ur2rate: ur2rate,
+        expected: isFinite(ur4rate) ? 5 * ur4rate : NaN
+      }
+    );
+
+    // UR5 - traceability: the landed bill line carries the JIC ref, and the
+    // bill is left exactly as it was found (later families set their own).
+    const ur5 = await ev(`(function(){
+      var prev = null;
+      try { prev = localStorage.getItem('mmgr_calc_boq'); } catch (e) {}
+      var add = document.querySelector('#calc-output [data-action="calcBoqAdd"]') || document.querySelector('[data-action="calcBoqAdd"]');
+      if (add) { add.click(); }
+      var lines = [];
+      try { lines = JSON.parse(localStorage.getItem('mmgr_calc_boq') || '[]'); } catch (e) {}
+      var last = lines.length ? lines[lines.length - 1] : null;
+      try {
+        if (prev === null) { localStorage.removeItem('mmgr_calc_boq'); }
+        else { localStorage.setItem('mmgr_calc_boq', prev); }
+      } catch (e) {}
+      if (window.__calcEngine) { __calcEngine.renderBoq(); }
+      return { added: !!add, lines: lines.length, name: last ? last.name || '' : '' };
+    })()`);
+    check(
+      'UR5 the landed bill line carries the JIC ref for traceability',
+      ur5 && ur5.added && ur5.name.indexOf('Welding #1') > -1,
+      ur5
+    );
+
+    // UR6 - OFFLINE (I3): the SAME action on the inline 100-row fallback.
+    // calculator.html registers NO service worker (verified - no
+    // serviceWorker reference on the page), so blocking the book script at
+    // the network layer exercises rrLoadFull's onerror fallback exactly as a
+    // first-open-with-no-network does: 100 rows, every one still actionable.
+    await send('Network.enable');
+    await send('Network.setBlockedURLs', { urls: ['*jic-rates-full*'] });
+    await ev(`location.reload()`);
+    await delay(1200);
+    let ur6ready = false;
+    for (let i = 0; i < 15 && !ur6ready; i++) {
+      ur6ready =
+        (await ev(`!!document.getElementById('calc-work') && !!window.__calcEngine`)) === true;
+      if (!ur6ready) {
+        await delay(400);
+      }
+    }
+    // The reload cleared the RB auth seam; set it again so the card renders
+    // the BOOK (not the sign-in shell) exactly like the RB family does.
+    await ev(`window.__MMGR_RR_AUTH = 'in'; true;`);
+    await ev(`(function(){
+      var btn = document.querySelector('.bcp-ratebook[data-action="openRateBook"]');
+      if (btn) { btn.click(); }
+      return true;
+    })()`);
+    let ur6hits = null;
+    for (let i = 0; i < 12 && !ur6hits; i++) {
+      await delay(500);
+      ur6hits = await ev(
+        `(function(){ var h = document.querySelector('#calc-ratebook-card .rr-hits'); return h ? h.textContent : null; })()`
+      );
+    }
+    const ur6r = await ev(`(function(){
+      var btns = document.querySelectorAll('#calc-ratebook-card [data-action="rrUse"]');
+      var first = btns[0] || null;
+      var got = null;
+      if (first) {
+        first.click();
+        got = {
+          work: document.getElementById('calc-work').value,
+          name: document.getElementById('calc-custom-name').value,
+          rate: document.getElementById('calc-custom-rate').value,
+          qty: document.getElementById('calc-custom-qty').value,
+          cardGone: !document.getElementById('calc-ratebook-card')
+        };
+      }
+      return { full: !!window.MMGR_JIC_FULL, btns: btns.length, got: got };
+    })()`);
+    await send('Network.setBlockedURLs', { urls: [] });
+    check(
+      'UR6 offline: the inline 100-row fallback renders Use actions and the prefill still works (full book script blocked)',
+      ur6ready &&
+        ur6hits !== null &&
+        /100 rates/.test(ur6hits) &&
+        ur6r &&
+        ur6r.full === false &&
+        ur6r.btns === 100 &&
+        ur6r.got &&
+        ur6r.got.work === 'custom' &&
+        /#/.test(ur6r.got.name) &&
+        parseFloat(ur6r.got.rate) > 0 &&
+        ur6r.got.qty === '' &&
+        ur6r.got.cardGone,
+      {
+        ready: ur6ready,
+        hits: ur6hits,
+        full: ur6r && ur6r.full,
+        btns: ur6r && ur6r.btns,
+        got: ur6r && ur6r.got
+      }
+    );
+    // Restore the pre-UR trade (switching away from Custom clears the four
+    // fields via syncLabels) so the families below inherit clean state. Read
+    // the saved value from localStorage - the window var died with UR6's
+    // reload, which is exactly how U1 was left staring at a Custom form.
+    await ev(`(function(){
+      var w = document.getElementById('calc-work');
+      var target = '';
+      try { target = localStorage.getItem('mmgr_ur_saved_work') || ''; localStorage.removeItem('mmgr_ur_saved_work'); } catch (e) {}
+      if (w && target && w.value !== target) {
+        w.value = target;
+        w.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      return w ? w.value : null;
+    })()`);
+
     // LX family: the forgotten-work linter (X1, owner directive).
     const lx1 = await ev(`(function(){
       var mk = function(work) { return { st: { work: work } } };

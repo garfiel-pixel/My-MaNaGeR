@@ -15873,6 +15873,37 @@ body.calculator-page .bcp-rr-x {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+/* PART I PHASE 1 (2026-10-17): the "Use this rate" row action added a fifth
+   column, so the Rate cells are no longer the last child - right alignment
+   is now explicit per class (header and cells), and the new Use column takes
+   the right-edge slot with a compact icon button. Tokens only: light and dark
+   palettes both follow the existing card variables. */
+.rr-table thead th.rr-rate-h,
+.rr-table tbody td.rr-rate {
+  text-align: right;
+}
+.rr-use {
+  width: 1%;
+  white-space: nowrap;
+}
+.rr-use-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  background: var(--tile-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--slate);
+  cursor: pointer;
+}
+.rr-use-btn:hover,
+.rr-use-btn:focus-visible {
+  border-color: var(--gold);
+  color: var(--gold);
+}
 .rr-empty {
   padding: 28px 16px;
   text-align: center;

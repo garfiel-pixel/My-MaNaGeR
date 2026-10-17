@@ -4123,13 +4123,13 @@
     // inside a 100-row trade is still located.
     let rows = '';
     let last = '';
-    view.forEach(function (r) {
+    view.forEach(function (r, i) {
       if (r.trade !== last) {
         const n = view.filter(function (x) {
           return x.trade === r.trade;
         }).length;
         rows +=
-          '<tr class="rr-trade"><th colspan="4" scope="colgroup">' +
+          '<tr class="rr-trade"><th colspan="5" scope="colgroup">' +
           esc(r.trade) +
           '<span class="rr-count">' +
           n +
@@ -4158,6 +4158,18 @@
         esc(unitVal) +
         '</td><td class="rr-rate">' +
         rrMoney(rateVal) +
+        '</td><td class="rr-use">' +
+        // PART I PHASE 1 (owner, 2026-10-17) - "Use this rate" (I1 Option A).
+        // A row without a positive published rate never gets an action: no
+        // silent zero price (the shipped books carry none such - verified
+        // 811/811 + 100/100 positive - the guard is honest degradation).
+        (rateVal > 0
+          ? '<button type="button" class="rr-use-btn" data-action="rrUse" data-i="' +
+            i +
+            '" aria-label="Use ' +
+            esc(r.ref) +
+            ' in the calculator" title="Use this rate in the calculator"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg></button>'
+          : '') +
         '</td></tr>';
     });
     const empty = !view.length;
@@ -4232,7 +4244,7 @@
           '"' +
           (_rrTrade !== 'all' ? ' in this trade' : '') +
           '. Try a single word, or clear the search.</div>'
-        : '<table class="rr-table"><thead><tr><th>Ref</th><th>Description</th><th>Unit</th><th>Rate</th></tr></thead><tbody>' +
+        : '<table class="rr-table"><thead><tr><th>Ref</th><th>Description</th><th>Unit</th><th class="rr-rate-h">Rate</th><th class="rr-use-h">Use</th></tr></thead><tbody>' +
           rows +
           '</tbody></table>') +
       '</div>' +
@@ -4307,6 +4319,19 @@
         renderRateBookCard();
       });
     });
+    // PART I PHASE 1 (owner, 2026-10-17): "Use this rate" - every row prices
+    // through the EXISTING custom-item path (I1 Option A): no new money math,
+    // the row's displayed unit system + rate, and the ref rides the name onto
+    // the bill line. data-i indexes THIS render's filtered view; every
+    // re-render rewires, so an index can never point at a stale row.
+    card.querySelectorAll('[data-action="rrUse"]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        const idx = Number(b.getAttribute('data-i'));
+        if (view[idx]) {
+          rrUseRate(view[idx]);
+        }
+      });
+    });
     // OWNER 2026-10-13: the trade strip no longer wraps - it scrolls. Keep the
     // chosen tab on screen by setting the strip's OWN scrollLeft (never
     // scrollIntoView, which could yank the page behind the popup).
@@ -4350,6 +4375,67 @@
           renderRateBookCard();
         }
       });
+    }
+  }
+  // PART I PHASE 1 (owner, 2026-10-17, "Use this rate"): prefill the Custom
+  // item from the row AS DISPLAYED (the book's current unit system - what the
+  // user was just reading). The custom path prices quantity x rate EXACTLY
+  // (B1) - zero new money math - and workName() carries this name (ref first)
+  // onto the bill line, the CSV and history for traceability. The inline
+  // fallback only ever holds rows up to #100, all with full data, so every
+  // rendered row is actionable offline; the ref in the name keeps a truncated
+  // description identifiable (capped at the field's 60-char contract).
+  function rrUseRate(r) {
+    const imp = _rateBookUnits === 'imperial';
+    const unit = (imp ? r.impUnit : r.metUnit) || (imp ? r.metUnit : r.impUnit) || 'each';
+    const rateVal = imp ? r.impRate : r.metRate;
+    if (!(rateVal > 0)) {
+      return;
+    }
+    // Switch the form to Custom FIRST: syncLabels reveals the four fields on
+    // entering 'custom' (it only clears them when LEAVING custom), so the
+    // fill below always lands on visible fields.
+    const w = $('calc-work');
+    if (w && w.value !== 'custom') {
+      w.value = 'custom';
+      w.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    let name = r.ref + ' - ' + r.desc;
+    if (name.length > 60) {
+      name = name.slice(0, 57) + '...';
+    }
+    const set = function (id, val) {
+      const el = $(id);
+      if (el) {
+        el.value = val;
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    };
+    set('calc-custom-name', name);
+    set('calc-custom-unit', String(unit).slice(0, 12));
+    set('calc-custom-qty', '');
+    set('calc-custom-rate', String(Math.round(Number(rateVal) * 100) / 100));
+    // Close the popup the way the Close button does (card, scroll lock,
+    // Escape listener), reset the card's own state so the NEXT open starts
+    // clean, then land focus in the one field still to fill: the quantity.
+    const c = document.getElementById('calc-ratebook-card');
+    if (c) {
+      c.remove();
+    }
+    document.body.classList.remove('rr-open');
+    if (_rrKeyHandler) {
+      document.removeEventListener('keydown', _rrKeyHandler, true);
+      _rrKeyHandler = null;
+    }
+    _rrQuery = '';
+    _rrTrade = 'all';
+    const wrap = $('calc-custom-wrap');
+    if (wrap && wrap.scrollIntoView) {
+      wrap.scrollIntoView({ block: 'center' });
+    }
+    const qty = $('calc-custom-qty');
+    if (qty) {
+      qty.focus();
     }
   }
   // The top-bar link: opens the card, or closes it if it is already open.

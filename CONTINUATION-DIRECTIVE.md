@@ -3886,3 +3886,20 @@ immediately (H5 steps 1-12 are already ordered). The Phase 3 sequencing answer
 With both answers in hand, **H7.7 no longer blocks anything: the next session
 may start PART H at H5 step 1 directly.** D1 (Phase 3 sequencing) still OPEN -
 owner asked for a fuller coverage explanation first (see D1 follow-up in chat).
+
+**D1 DECIDED (owner, 2026-10-17): PARK it, queue it at the back.**
+Owner's call, verbatim intent: rates outside a purpose-built calculator are
+already covered (the Custom item takes your own figure; the picker takes any
+book row), so Phase 3 stays parked. Slight wording note for the record - it is
+NOT a custom field: it would be purpose-built MEASURING forms for selected
+LISTED rows; access is already solved either way. The owner's instruction for
+the next session: **start PART H Procurement and drive it to completion**
+("start the other task to completion"). Phase 3 re-triggers any time by the
+owner naming rows they measure often (the entails list is in D1 above).
+
+NEXT SESSION STARTING POINT (final, 2026-10-17): **PART H Procurement, start
+at H5 step 1 and run through step 12** - H7.7 DECIDED (tab behind the packs
+toggle; proc = grantable editor scope), H7.1 corrected (supplier prices are
+hand-entered from each supplier's own rates), H7.2-H7.8 folded in. PART I is
+COMPLETE (Phases 1+2 shipped and live-verified; Phase 3 parked by owner
+decision). Live probes: https://mymanagerworkspace.com (never mymanager.app).

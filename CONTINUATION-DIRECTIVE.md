@@ -1451,8 +1451,16 @@ a session this week probed it by mistake; never use that host.
 version 621e3169, live-verified on mymanagerworkspace.com): the "Use this
 rate" row action is BUILT and gated (UR0-UR6 in qa-calculator-page: structure
 811/811, prefill contract, exact money in both book unit systems, ref on the
-bill line, offline inline-fallback path). Phases 2-3 below remain PLANNED.
-Original plan text follows.
+bill line, offline inline-fallback path).
+**PHASE 2 SHIPPED 2026-10-17** (commit `822ffb5`, CI green, deployed version
+af33909c, live-verified): the generic JIC PICKER (I1 Option C) - the "JIC
+rate book" work item prices ANY shipped row as a first-class estimate line
+(pick trade, pick rate, type quantity in the row's own unit; qty x rate
+EXACT; ref names bill/CSV; book sign-in gate; offline via the inline 100).
+Gated JP0-JP7 in qa-calculator-page (incl. the I2 exit gate: an 11-trade
+walker with exact money in the shown unit system). Only Phase 3 remains
+(owner-selected variant expansion, on owner request). Original plan text
+follows.
 
 Planning only - no code was written for this part. Owner asked: the book holds
 800+ rates, welding exists yet is nowhere under the trades, and 711 of the 811
@@ -3762,7 +3770,7 @@ TEST RESULTS:
 - Live: real headless browser on the deployed calculator -> 100 in JIC Welding #1 = J$5,000 subtotal + 15% tax = J$5,750, identical metric AND imperial; live js/calculator-page.js carries RATE_QUERY_EXPAND (2), welding:1, the 100mm ternary, cement mapping, and NOT the excavation key; live sw.js = v430.
 
 WHAT STILL OPEN:
-- PART I Phase 1 (Use this rate row action) - the live code work item, not started.
+- PART I Phase 1 (Use this rate) + Phase 2 (generic JIC picker) - BOTH SHIPPED 2026-10-17 (b4f5763 / 822ffb5, live-verified). Only Phase 3 remains: owner-selected variant expansion (Option B selectively, on owner request).
 - PART H Procurement - still planned-only; H7 folds into it; the two H7.7 owner decisions (pack toggle vs always-visible, grantable scope vs owner-only) are the only blockers before markup.
 - `reflection.txt` carries a prior session's uncommitted 2026-10-13 record (owner's call).
 
@@ -3782,3 +3790,23 @@ NEXT SESSION STARTING POINT
 
 NEXT SESSION STARTING POINT
 - **PART I Phase 1 is DONE.** Queued, independent, planning-complete: **PART I Phase 2** (generic JIC picker, I2) or **PART H Procurement** (H5 + H7 with H7.1 corrected; decide H7.7 first). Live probes against https://mymanagerworkspace.com.
+
+**2026-10-17 — Session (continued): PART I PHASE 2 SHIPPED (822ffb5, CI green, deployed af33909c, live-verified).** The generic JIC picker (I1 Option C): one new work item "JIC rate book" under Other prices ANY shipped book row as a first-class estimate line — pick a trade (the 11 book trades, each with its row count), pick a rate (the option text = ref, description, unit, rate, plus the book's own honesty notes such as "cutting and smoothing, not welding" and the "our conversion" marker on the converted side), type the quantity in the ROW'S OWN unit so quantity x rate is exact (the RATE_UNITS adapter resolves to its identity; zero new money math; the normal on-costs, overhead and tax follow). Design/lessons:
+- The pick resolves from PURE state (tid+ref over a memoized index per book source), so computeFor prices a recalled snapshot from the pick it was saved with, and a `_jicRecall` hold stops applyState's re-render from re-seeding the rate from the book — a recall re-creates its exact sum even if the book changed underneath.
+- The rate field carries the dataset.model book marker (the D4 contract): the CSV says "JIC rate book" while the figure is untouched and "(your rate)" once edited; the published-rate note follows the same marker.
+- workName names the line ref-first ("Welding #1 - Handle Mark Cut & Sand Smooth…") so bill/history/CSV carry the JIC ref; the ONE HTML insert of matDesc now escapes it (the book writes with ampersands) while the CSV takes the raw string — escape at the insert, never in the data.
+- dimSlips skips jic: the row's unit governs the quantity box, so the metre/length bands would flag honest quantities as unit mistakes.
+- The picker carries the book's own sign-in gate (owner 2026-10-13): signed out online the pick reverts and the SAME sign-in card appears; offline or with an unverifiable answer it opens. LIVE-probe subtlety: without a pinned QA seam the rejection is ASYNC (the /api/auth/me probe) — act and read must be split with a settle delay, or a late reject clobbers the flow started after it (it did, first probe run).
+- The assistant dry-run MMGR_CALC_CHECK names the missing pick ("a trade and a rate in the JIC picker") instead of failing bare — the B1 walker caught that.
+- The full book loads at most once per page life (`_jicTried`); after a failed load the picker's hint says "showing the built-in set" and the inline 100 rows (all 11 trades, 9-10 rows each) keep everything usable offline.
+
+**Gates:** new JP0-JP7 family in `tools/qa-calculator-page.cjs` — structure/open, sign-in-gate revert, seed+note+unit label, the I2 exit gate (11-trade walker: every trade prices 3 x its displayed first rate EXACTLY with zero mat/lab and normal tax, the expected rate parsed from the SHOWN option text so the gate measures what a user reads), bill + CSV ref on welding, imperial-display exactness, typed-rate + snapshot recall, and OFFLINE (network-blocked full book → inline set + honest hint). Re-baselines: FM5 keeps asserting 43 trades with the 45th option (jic) excluded; both trade-coverage walkers and the assistant T4/B1 walkers exclude the non-trade option. HARNESS GOTCHA (cost an hour): regexes inside harness template literals need DOUBLE backslashes in the file — a single backslash is silently eaten by the template-literal unescape (no syntax error, the regex just never matches). Also: a gate assertion had a double negative (`!wrap.hidden` read false when correctly hidden) — instrument the fail message with every clause value before theorizing (that is what pinpointed both).
+
+Local: `npm run verify` 117/117, qa-calculator-page **247/247**, trade-coverage **88/88**, qa-calc-assistant **105/105**, prettier clean, emoji scan clean on served files. CI run `39044280704` SUCCESS.
+
+**Live (mymanagerworkspace.com, version af33909c):** bytes carry the option/wrap/selects, `calculator-page.js?v=39` (13 picker symbols), sw v432; real-browser probe `tmp/live-jic-picker.cjs`: signed-out picker gate INTACT (pick reverts to siteprep + sign-in card); with the QA seam — 11 trades, welding 100 rows (full book), Welding #1 seeded at J$198 with the note and the "Quantity (100mm)" label → quantity 5 → Run → **Subtotal J$990 = 5 x 198 exact** → bill line and CSV both carry "Welding #1 - Handle Mark Cut & Sand Smooth: 1/8\" Thick Metal Using Torch" → snapshot roundtrip re-creates 990 → zero page errors. PASS.
+
+**Files:** `js/calculator-page.js`, `calculator.html` (option + picker wrap + buster v39), `sw.js` (v432), `tools/qa-calculator-page.cjs`, `tools/qa-calc-trade-coverage.cjs`, `tools/qa-calc-assistant.cjs`, `CONTINUATION-DIRECTIVE.md`, `reflection.txt`. No CSS changes were needed (the picker rides the existing `.bcp-field` select/input rules); CSP untouched (zero inline scripts).
+
+NEXT SESSION STARTING POINT
+- **PART I Phases 1 AND 2 are DONE.** Only Phase 3 remains (owner-selected variant expansion, Option B selectively — on owner request only). Queued next: **PART H Procurement** (build per H5 with H7 folded in — H7.1 corrected; decide H7.7 first: pack toggle vs always-visible, grantable scope vs owner-only). Live probes against https://mymanagerworkspace.com.

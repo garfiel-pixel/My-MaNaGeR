@@ -3138,7 +3138,7 @@ async function withChrome(fn) {
     // pins the SIGNED-IN branch through the module's QA seam and still
     // measures the real book. The signed-out branch is RB-Auth1 right after
     // RB1; the seam is cleared again before F4.
-    await ev(`window.__MMGR_RR_AUTH = 'in'; return true;`);
+    await ev(`window.__MMGR_RR_AUTH = 'in'; true;`);
     const rb1 = await ev(`(function(){
       var btn = document.querySelector('.bcp-ratebook[data-action="openRateBook"]');
       return { hasBtn: !!btn, text: btn ? btn.textContent.replace(/\\s+/g,' ').trim() : '',
@@ -3524,6 +3524,140 @@ async function withChrome(fn) {
       return true;
     })()`);
 
+    // WU family (2026-10-16): the WELDING UNITS fix + the assistant's rate
+    // grounding. Two shipped defects drove this family: (1) the synthetic
+    // JIC book published welding's per-100mm figure against an INCH
+    // quantity with no adapter ('100mm' has no RATE_UNITS entry, rf fell to
+    // 1), and imperial entry multiplied the inches by the ft->m default -
+    // 100 in priced J$19,800 metric / J$6,035 imperial instead of the
+    // book's own J$50/in -> J$5,000; (2) the assistant's grounding matched
+    // ZERO rows for "cement" - the commonest word on a Jamaican site - so
+    // it answered "the rate book is silent" on real questions.
+    // Contract (WU-DUMP logs it every run): 100 in x J$50/in = J$5,000
+    // materials + the JIC row's own labour (0.75 days x J$400) = J$5,300
+    // - the SAME figure in BOTH unit modes.
+    const wu1 = await ev(`(function(){
+      var b = window.__calcEngine.jicBookPayload().books[0];
+      return {
+        one: (b.rates.welding || {})['w-1/8-torch'] || null,
+        seven: (b.rates.welding || {})['w-1-torch'] || null,
+        exc: (b.rates.excav || {})['standard'] || null
+      };
+    })()`);
+    check(
+      'WU1 the book payload prices welding per INCH per row (1/8in = J$50/in #1, 1in = J$117/in #7) and metric rows keep their pairs',
+      wu1 &&
+        wu1.one &&
+        wu1.one.allIn === 50 &&
+        wu1.one.unit === 'in' &&
+        wu1.seven &&
+        wu1.seven.allIn === 117 &&
+        wu1.seven.unit === 'in' &&
+        wu1.exc &&
+        wu1.exc.allIn > 0 &&
+        wu1.exc.unit === 'm\u00B3',
+      wu1
+    );
+    const wuRun = async units =>
+      await ev(`(function(){
+        document.querySelector('[data-action="calcUnits"][data-units="${units}"]').click();
+        var w = document.getElementById('calc-work');
+        if (window.__WU_SAVED_WORK === undefined) window.__WU_SAVED_WORK = w.value;
+        w.value = 'welding';
+        w.dispatchEvent(new Event('change',{bubbles:true}));
+        var v = document.getElementById('calc-variant');
+        v.selectedIndex = 0;
+        v.dispatchEvent(new Event('change',{bubbles:true}));
+        var d1 = document.getElementById('calc-d1');
+        d1.value = '100';
+        d1.dispatchEvent(new Event('input',{bubbles:true}));
+        document.querySelector('[data-action="calcRun"]').click();
+        var out = (document.getElementById('calc-output')||{}).textContent || '';
+        // Regex-free extraction: backslashes do not survive the JSON ->
+        // template-literal trip into this expression reliably.
+        var si = out.indexOf('Subtotal');
+        var sub = '';
+        if (si > -1) {
+          var m2 = out.slice(si).match(/[0-9][0-9,]*/);
+          sub = m2 ? m2[0] : '';
+        }
+        var sel = v.options[v.selectedIndex];
+        return {
+          sub: sub,
+          allin: (document.getElementById('calc-allin')||{}).value || '',
+          variant: sel ? (sel.text || sel.value) : null,
+          raw: out.slice(0, 500),
+          label: (document.querySelector('.calc-sum-qty')||{}).textContent || ''
+        };
+      })()`);
+    const wuM = await wuRun('metric');
+    const wuI = await wuRun('imperial');
+    const wuNum = x => (x && x.sub ? parseFloat(String(x.sub).replace(/,/g, '')) : NaN);
+    log('WU-DUMP ' + JSON.stringify({ metric: wuM, imperial: wuI }));
+    check(
+      'WU2 metric: 100 in prices the book per-inch rate (materials J$5,000, subtotal J$5,300 with the JIC labour)',
+      wuM &&
+        wuM.sub === '5,300' &&
+        wuM.raw.indexOf('5,000') > -1 &&
+        wuM.allin === wuI.allin &&
+        parseFloat(wuM.allin) > 0 &&
+        /100 in/.test(wuM.label),
+      wuM
+    );
+    check(
+      'WU3 imperial: the SAME input prices the SAME J$5,300 (the FT default no longer rewrites inches)',
+      wuI &&
+        wuNum(wuI) === wuNum(wuM) &&
+        wuI.sub === '5,300' &&
+        wuI.allin === wuM.allin &&
+        /100 in/.test(wuI.label),
+      wuI
+    );
+    // Restore metric, the pre-WU trade, and the cleared unit pref so no later
+    // family inherits WU's state (U1 reads labels off the selected trade).
+    await ev(`(function(){
+      document.querySelector('[data-action="calcUnits"][data-units="metric"]').click();
+      try { localStorage.removeItem('mmgr_calc_units'); } catch (e) {}
+      var w = document.getElementById('calc-work');
+      if (window.__WU_SAVED_WORK !== undefined) {
+        w.value = window.__WU_SAVED_WORK;
+        w.dispatchEvent(new Event('change',{bubbles:true}));
+        delete window.__WU_SAVED_WORK;
+      }
+      return true;
+    })()`);
+    // The assistant's grounding: wait for the full book, then ask in the
+    // site's own word. "cement" must reach concrete/mortar/block rows.
+    const wuA = await ev(`(function(){
+      return new Promise(function(res){
+        var t0 = Date.now();
+        var tick = function(){
+          try {
+            var fn = window.MMGR_CALC_RATEBOOK;
+            var txt = typeof fn === 'function' ? (fn('What is the price of cement per cubic metre?') || '') : '';
+            var hasScope = /811/.test(txt);
+            if (hasScope || Date.now() - t0 > 6000) {
+              var rows = txt.split('\\n').filter(function(l){ return l.indexOf(' | J$') > -1; });
+              res({ rows: rows.length, hit: /concrete|block|mortar/i.test(txt), scope: hasScope,
+                    first: rows[0] ? rows[0].slice(0, 90) : null });
+              return;
+            }
+            if (typeof window.MMGR_JIC_FULL_LOAD === 'function') window.MMGR_JIC_FULL_LOAD(function(){});
+          } catch (e) {
+            res({ err: String((e && e.message) || e) });
+            return;
+          }
+          setTimeout(tick, 500);
+        };
+        tick();
+      });
+    })()`);
+    check(
+      'WU4 assistant grounding: "cement" reaches concrete/mortar/block rates, full-book scope visible',
+      wuA && wuA.scope && wuA.rows > 0 && wuA.hit,
+      wuA
+    );
+
     // LX family: the forgotten-work linter (X1, owner directive).
     const lx1 = await ev(`(function(){
       var mk = function(work) { return { st: { work: work } } };
@@ -3573,7 +3707,7 @@ async function withChrome(fn) {
 
     // The RB family is done: clear the sign-in seam so everything below sees
     // the dev server's real (signed-out) answer again.
-    await ev(`window.__MMGR_RR_AUTH = null; return true;`);
+    await ev(`window.__MMGR_RR_AUTH = null; true;`);
 
     // ---------- F4 ENHANCEMENTS ----------
     // U1: imperial toggle - labels convert, state persists, aria follows.

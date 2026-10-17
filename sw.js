@@ -17,7 +17,17 @@
    v382 - full-bleed marketing canvas, 7-big-dot rail with generated
            small dots, contact tile phone overflow, guide sidebar spacing
    ============================================================ */
-const CACHE = 'mmgr-shell-v427';
+const CACHE = 'mmgr-shell-v429';
+
+// v428 - WELDING UNITS + AI RATE GROUNDING (2026-10-16).
+// (1) The synthetic JIC book published welding's per-100mm figure against an
+// inch quantity with no adapter, and imperial entry multiplied the inches by
+// the ft->m default: 100 in priced J$19,800 metric / J$6,035 imperial instead
+// of the book's own J$50/in -> J$5,000. Book payload now carries the per-inch
+// pair for per-100mm rows; IMP_D1_FACTOR.welding = 1. (2) The assistant's
+// rate grounding matched ZERO rows for "cement" - query now widens through
+// RATE_QUERY_EXPAND (site word -> book words, query side only).
+// js/calculator-page.js is a SHELL asset, hence this bump.
 
 // v427 - CALCULATOR FAMILY FILTER: THE TWO MISSING OPTIONS (2026-10-16).
 // calculator.html's "Type of work" select offered only 6 of the 8 families

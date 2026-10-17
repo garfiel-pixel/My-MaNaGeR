@@ -1418,7 +1418,13 @@
   const IMP_D1_FACTOR = {
     formwork: FT * FT,
     'fabric-mesh': FT * FT,
-    'concrete-labour': 0.764554858
+    'concrete-labour': 0.764554858,
+    // WELDING UNITS FIX (2026-10-16): the welding field is INCHES in BOTH
+    // unit systems - dimLabel never rewrites its '(in)' label - so the
+    // imperial default ft->m multiply (FT) turned a typed 100 inches into
+    // 30.48 "inches" and then priced it. 1 = entry is already the engine's
+    // inch unit for this trade; imperial now prices exactly like metric.
+    welding: 1
   };
 
   function dimLabel(w, which) {
@@ -3872,7 +3878,22 @@
       // basis too, re-pricing every covered trade away from its WORK model.
       // The split shown under the headline is derived at the form layer
       // (prefillSplitFromAllin) and only while the all-in basis is chosen.
-      rates[m[2]][m[3]] = { allIn: r.metRate, unit: r.metUnit };
+      // WELDING UNITS FIX (2026-10-16): the welding rows are published per
+      // 100mm on the metric side and per INCH on the imperial side, but the
+      // calculator's welding quantity IS inches in both unit systems (q ->
+      // unit 'in', field label "Total cut length (in)"). Publishing the
+      // per-100mm figure here made the engine multiply inch quantities by a
+      // per-100mm rate with NO adapter ('100mm' has no RATE_UNITS entry, so
+      // rf fell through to 1): 100 in priced J$19,800 in metric (100 x 198)
+      // and J$6,035 in imperial (the FT default turned 100 into 30.48, then
+      // x 198) - about 4x and 1.2x over the published J$50/in. Per-inch
+      // figures for per-inch quantities: both modes now price 100 x 50 =
+      // J$5,000, the book's own imperial column, exact. Only the welding
+      // rows carry metUnit '100mm'; every other row keeps its metric pair.
+      rates[m[2]][m[3]] =
+        r.metUnit === '100mm'
+          ? { allIn: r.impRate, unit: 'in' }
+          : { allIn: r.metRate, unit: r.metUnit };
       entries++;
     });
     const book = {
@@ -10359,6 +10380,60 @@
       .replace(/ +/g, ' ')
       .replace(/^ | $/g, '');
   }
+  // AI GROUNDING (2026-10-16): contractors ask in site words, the book files
+  // in spec words - "cement" matched ZERO of the 811 rows, so the assistant
+  // answered "the rate book is silent" on the commonest question there is.
+  // This map widens the QUERY tokens only (never the rows), one direction
+  // only: site word -> book words. Keys and values are pre-stem forms; the
+  // expansion runs through the same stemmer as the query tokens. Used by the
+  // assistant's rate grounding (calcRateBookText) - the rate-book popup's
+  // own search box is deliberately left exact-match.
+  var RATE_QUERY_EXPAND = {
+    cement: ['concrete', 'mortar', 'block', 'mix'],
+    concrete: ['block', 'mix'],
+    dump: ['cart', 'remove', 'load'],
+    haul: ['cart', 'remove', 'load'],
+    debris: ['cart', 'remove', 'demolish'],
+    rubbish: ['cart', 'remove', 'demolish'],
+    worker: ['labour', 'man'],
+    workers: ['labour', 'man'],
+    wire: ['conduit', 'electrical', 'point'],
+    wiring: ['conduit', 'electrical', 'point'],
+    socket: ['point', 'electrical'],
+    plumbing: ['pipe', 'drain', 'supply'],
+    toilet: ['fixture', 'bath', 'water'],
+    sink: ['fixture', 'supply'],
+    kitchen: ['cabinet', 'tile'],
+    fence: ['fencing', 'chain'],
+    dumpster: ['cart', 'remove', 'load'],
+    scaffold: ['erect', 'scaffolding'],
+    excavation: ['excavate', 'earth', 'trench']
+  };
+  function rateExpandQuery(qTokens) {
+    var seen = {};
+    var i;
+    for (i = 0; i < qTokens.length; i++) {
+      seen[qTokens[i]] = 1;
+    }
+    var extra = [];
+    for (i = 0; i < qTokens.length; i++) {
+      var mapped = RATE_QUERY_EXPAND[qTokens[i]] || null;
+      if (!mapped) {
+        continue;
+      }
+      for (var j = 0; j < mapped.length; j++) {
+        var sm = rateStem(rateNorm(mapped[j]));
+        if (sm && !seen[sm]) {
+          seen[sm] = 1;
+          extra.push(sm);
+        }
+      }
+    }
+    for (i = 0; i < extra.length; i++) {
+      qTokens.push(extra[i]);
+    }
+    return qTokens;
+  }
   // Simple plural reduction - tiles -> tile, boxes -> box, stories -> story.
   function rateStem(w) {
     if (w.length > 4 && /ies$/.test(w)) {
@@ -10501,7 +10576,9 @@
       // A3 - rank every row: the full 811 (or the inline 100 while the file
       // is unavailable) plus the active imported book, top 12 by score.
       var q = rateNorm(query || '');
-      var qTokens = rateTokens(query || '');
+      // AI GROUNDING (2026-10-16): site words widen to book words before
+      // scoring, so "cement" reaches the concrete/mortar/block rows.
+      var qTokens = rateExpandQuery(rateTokens(query || ''));
       var fullLabels = {};
       if (full) {
         (full.trades || []).forEach(function (t) {

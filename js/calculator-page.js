@@ -10406,8 +10406,7 @@
     kitchen: ['cabinet', 'tile'],
     fence: ['fencing', 'chain'],
     dumpster: ['cart', 'remove', 'load'],
-    scaffold: ['erect', 'scaffolding'],
-    excavation: ['excavate', 'earth', 'trench']
+    scaffold: ['erect', 'scaffolding']
   };
   function rateExpandQuery(qTokens) {
     var seen = {};

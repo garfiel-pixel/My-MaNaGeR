@@ -17,7 +17,7 @@
    v382 - full-bleed marketing canvas, 7-big-dot rail with generated
            small dots, contact tile phone overflow, guide sidebar spacing
    ============================================================ */
-const CACHE = 'mmgr-shell-v429';
+const CACHE = 'mmgr-shell-v430';
 
 // v428 - WELDING UNITS + AI RATE GROUNDING (2026-10-16).
 // (1) The synthetic JIC book published welding's per-100mm figure against an

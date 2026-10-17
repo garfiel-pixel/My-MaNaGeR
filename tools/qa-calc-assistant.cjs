@@ -126,7 +126,11 @@ async function quickTotalMatrix(page) {
     return sel
       ? Array.from(sel.options)
           .map(o => o.value)
-          .filter(Boolean)
+          // 'jic' (JIC rate book, PART I Phase 2) is NOT quick-total walkable
+          // - it needs a picked book row; its contract is the JP family in
+          // tools/qa-calculator-page.cjs. Everything else, custom included,
+          // prices through the measured-total + all-in flow below.
+          .filter(v => v && v !== 'jic')
       : [];
   });
   check(

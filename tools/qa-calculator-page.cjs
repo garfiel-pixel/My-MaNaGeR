@@ -1367,11 +1367,12 @@ async function withChrome(fn) {
       fm4 && fm4.all === 9 && fm4.stored === null && fm4.work === 'tile',
       fm4
     );
-    const fm5 = await ev(`(function(){
-      var vals = Array.prototype.map.call(document.getElementById('calc-work').options, function(o) { return o.value; });
-      // Count only trades: 'custom' (Custom item) is the 44th option but is
-      // not a trade - it lives in the "Other" group with no d1/family.
-      var trades = vals.filter(function(v) { return v !== 'custom'; });
+    const fm5 =
+      await ev(`(function(){      var vals = Array.prototype.map.call(document.getElementById('calc-work').options, function (o) { return o.value; });
+      // Count only trades: 'custom' (Custom item) and 'jic' (JIC rate book,
+      // PART I Phase 2) are NOT trades - they live in the "Other" group with
+      // no family and price via their own pickers.
+      var trades = vals.filter(function (v) { return v !== 'custom' && v !== 'jic'; });
       return { n: trades.length, total: vals.length,
         // G1 (plan v2 Phase 2): formwork by element is INTENTIONALLY pickable
         // now; the still-derived lines stay invisible.
@@ -1386,6 +1387,9 @@ async function withChrome(fn) {
     // option - "Custom item (your own rate)" in the new "Other" group - but
     // that is NOT a trade, so this gate counts only trades and still asserts
     // 43. Its real contract lives in qa-calc-assistant.cjs C1-C11.
+    // JIC-picker re-baseline (2026-10-17, PART I Phase 2): a 45th option -
+    // "JIC rate book (pick a published rate)" in the same "Other" group -
+    // is also NOT a trade; its contract is the JP family below.
     check(
       'FM5 picker carries exactly the 43 user trades (38 + the 5 JIC-2025 trades) - formwork pickable, derived lines stay invisible',
       fm5 && fm5.n === 43 && fm5.phase2 && fm5.hiddenDerived.length === 0,
@@ -3987,6 +3991,383 @@ async function withChrome(fn) {
     // The RB family is done: clear the sign-in seam so everything below sees
     // the dev server's real (signed-out) answer again.
     await ev(`window.__MMGR_RR_AUTH = null; true;`);
+
+    // ---------- JP family: PART I PHASE 2 - the generic JIC PICKER --------
+    // Owner 2026-10-17 (I1 Option C). One work item prices ANY shipped book
+    // row as a first-class estimate line: pick a trade, pick a rate (seeded
+    // from the book, the user's to edit), type the quantity in the ROW'S OWN
+    // unit - quantity x rate EXACT (B1 identity, zero new money math), the
+    // ref names the bill and CSV lines, the book's sign-in gate applies, and
+    // the whole flow works from the inline 100-row set offline. Every gate
+    // parses the expected rate out of the SHOWN option text, so it measures
+    // exactly what a user reads whatever source is loaded.
+    // Normalize the entry state so the family is order-independent: park on
+    // a known trade first (which also proves the leave-branch hides and
+    // CLEARS the picker), then capture the pre-JP work item for the final
+    // restore - the F4 families below expect the trade they started with.
+    const jpSavedWork = await ev(`(function(){
+      var w = document.getElementById('calc-work');
+      var prev = w ? w.value : '';
+      if (!prev || prev === 'jic') { prev = 'tile'; }
+      // Always re-dispatch the change: syncLabels re-runs renderJicPicker,
+      // which hides + clears the picker, so the default-hidden contract the
+      // next gate asserts is deterministic no matter what ran before.
+      w.value = prev;
+      w.dispatchEvent(new Event('change', { bubbles: true }));
+      return prev;
+    })()`);
+    await ev(`window.__MMGR_RR_AUTH = 'in'; true;`);
+    // JP0 structure: the choice exists under Other, hidden picker until the
+    // pick, then the picker with all 11 book trades and a row select waiting.
+    const jp0 = await ev(`(function(){
+      var opt = document.querySelector('#calc-work option[value="jic"]');
+      var grp = opt ? opt.parentElement : null;
+      var wrap = document.getElementById('calc-jic-wrap');
+      var before = wrap ? wrap.hidden : null;
+      var w = document.getElementById('calc-work');
+      w.value = 'jic';
+      w.dispatchEvent(new Event('change', { bubbles: true }));
+      var tSel = document.getElementById('calc-jic-trade');
+      var rSel = document.getElementById('calc-jic-row');
+      return {
+        opt: !!opt, group: grp ? grp.label : '', beforeHidden: before,
+        work: w.value, wrapShown: wrap ? !wrap.hidden : false,
+        trades: tSel ? tSel.options.length - 1 : -1,
+        rowDisabled: rSel ? rSel.disabled : null,
+        rowPh: rSel && rSel.options[0] ? rSel.options[0].textContent : ''
+      };
+    })()`);
+    check(
+      'JP0 the JIC choice exists under Other; picking it shows the picker (11 book trades, row select waits for a trade)',
+      jp0 &&
+        jp0.opt &&
+        jp0.group === 'Other' &&
+        jp0.beforeHidden &&
+        jp0.work === 'jic' &&
+        jp0.wrapShown &&
+        jp0.trades === 11 &&
+        jp0.rowDisabled &&
+        /Pick a trade first/.test(jp0.rowPh),
+      jp0
+    );
+    // JP1 the gate: signed OUT online, the pick reverts to the previous work
+    // item and the SAME sign-in card the book uses appears.
+    await ev(`window.__MMGR_RR_AUTH = 'out'; true;`);
+    const jp1 = await ev(`(function(){
+      var w = document.getElementById('calc-work');
+      w.value = 'jic';
+      w.dispatchEvent(new Event('change', { bubbles: true }));
+      var c = document.getElementById('calc-ratebook-card');
+      var signin = c ? c.querySelector('.rr-signin') : null;
+      var wrap = document.getElementById('calc-jic-wrap');
+      var out = { work: w.value, signin: !!signin,
+        cta: !!(signin && signin.querySelector('a[href*="app.html"]')),
+        wrapShown: wrap ? !wrap.hidden : false };
+      if (c) { c.remove(); document.body.classList.remove('rr-open'); }
+      return out;
+    })()`);
+    await ev(`window.__MMGR_RR_AUTH = 'in'; true;`);
+    check(
+      'JP1 the picker carries the book sign-in gate: signed out online it reverts to the previous item and shows the sign-in card',
+      jp1 && jp1.work !== 'jic' && jp1.signin && jp1.cta && !jp1.wrapShown,
+      jp1
+    );
+    // JP2 the seed: a picked trade lists its rows, the first row auto-seeds
+    // the rate field (option unit + rate == the field), the book note shows,
+    // and the quantity label carries the row's own unit.
+    const jp2 = await ev(`(function(){
+      var w = document.getElementById('calc-work');
+      w.value = 'jic';
+      w.dispatchEvent(new Event('change', { bubbles: true }));
+      var tSel = document.getElementById('calc-jic-trade');
+      var firstT = tSel.options[1] ? tSel.options[1].value : '';
+      tSel.value = firstT;
+      tSel.dispatchEvent(new Event('change', { bubbles: true }));
+      var rSel = document.getElementById('calc-jic-row');
+      var opt = rSel.options[0];
+      var m = opt ? opt.textContent.match(/^([\\s\\S]*)\\(([^(]+) - J\\$([0-9,.]+)\\)/) : null;
+      var rate = document.getElementById('calc-jic-rate');
+      var note = document.getElementById('calc-jic-note');
+      var d1l = document.getElementById('calc-d1-label');
+      return {
+        trade: firstT, rows: rSel.options.length, rowVal: rSel.value,
+        rowText: opt ? opt.textContent : '',
+        optUnit: m ? m[2] : '', optRate: m ? parseFloat(m[3].replace(/,/g, '')) : NaN,
+        rate: rate ? parseFloat(rate.value) : NaN,
+        model: rate ? rate.dataset.model : '',
+        noteShown: note ? !note.hidden : null,
+        d1Label: d1l ? d1l.textContent : '',
+        unitSpan: (document.getElementById('calc-jic-unit') || {}).textContent || ''
+      };
+    })()`);
+    check(
+      'JP2 picking a trade seeds its first rate: option unit + rate == the rate field, book note on, Quantity label carries the row unit',
+      jp2 &&
+        jp2.rows > 0 &&
+        jp2.rowVal &&
+        /#/.test(jp2.rowText) &&
+        isFinite(jp2.optRate) &&
+        jp2.optRate > 0 &&
+        Math.abs(jp2.rate - jp2.optRate) < 0.005 &&
+        String(jp2.model) === String(jp2.rate) &&
+        jp2.noteShown === true &&
+        jp2.d1Label === 'Quantity (' + jp2.optUnit + ')' &&
+        jp2.unitSpan === jp2.optUnit,
+      jp2
+    );
+    // JP3 the WALKER (I2's exit gate): every one of the 11 book trades
+    // prices 3 x its displayed first rate EXACTLY through the new path - the
+    // all-in identity, zero fabricated mat/lab, then the page's own tax.
+    const jp3 = await ev(`(function(){
+      var tSel = document.getElementById('calc-jic-trade');
+      var fails = [];
+      var n = 0;
+      for (var i = 1; i < tSel.options.length; i++) {
+        var tid = tSel.options[i].value;
+        tSel.value = tid;
+        tSel.dispatchEvent(new Event('change', { bubbles: true }));
+        var rSel = document.getElementById('calc-jic-row');
+        var opt = rSel.options[0];
+        var m = opt ? opt.textContent.match(/^([\\s\\S]*)\\(([^(]+) - J\\$([0-9,.]+)\\)/) : null;
+        var rate = m ? parseFloat(m[3].replace(/,/g, '')) : NaN;
+        var qty = document.getElementById('calc-d1');
+        qty.value = '3';
+        qty.dispatchEvent(new Event('input', { bubbles: true }));
+        var r = __calcEngine.computeFor(__calcEngine.readState());
+        if (!r || r.error) { fails.push(tid + ': ' + (r && r.error)); continue; }
+        n++;
+        var exp = 3 * rate;
+        var ok =
+          r.allIn === true &&
+          Math.abs(r.allInCost - exp) < 0.005 &&
+          Math.abs(r.sub - exp) < 0.005 &&
+          Math.abs(r.mat) < 0.005 &&
+          Math.abs(r.lab) < 0.005 &&
+          Math.abs(r.eq) < 0.005 &&
+          Math.abs(r.tax - ((r.sub + r.oh) * r.taxRate) / 100) < 0.01;
+        if (!ok) {
+          fails.push(tid + ': sub=' + r.sub + ' exp=' + exp + ' allIn=' + r.allIn +
+            ' allInCost=' + r.allInCost + ' mat=' + r.mat + ' lab=' + r.lab +
+            ' eq=' + r.eq + ' onCost=' + r.onCost + ' oh=' + r.oh +
+            ' tax=' + r.tax + ' taxRate=' + r.taxRate + ' qty=' + r.qty);
+        }
+      }
+      return { walked: n, fails: fails };
+    })()`);
+    check(
+      'JP3 walker: all 11 book trades price 3 x their displayed first rate EXACTLY (all-in identity, zero mat/lab, normal tax)',
+      jp3 && jp3.walked === 11 && jp3.fails.length === 0,
+      jp3
+    );
+    // JP4 identity on the DOCUMENTS: the landed bill line and the CSV both
+    // name the JIC ref (welding's first row - the owner-named cutting rows).
+    const jp4 = await ev(`(function(){
+      var tSel = document.getElementById('calc-jic-trade');
+      tSel.value = 'welding';
+      tSel.dispatchEvent(new Event('change', { bubbles: true }));
+      var rSel = document.getElementById('calc-jic-row');
+      var ref = rSel.value;
+      var qty = document.getElementById('calc-d1');
+      qty.value = '5';
+      qty.dispatchEvent(new Event('input', { bubbles: true }));
+      var prev = null;
+      try { prev = localStorage.getItem('mmgr_calc_boq'); } catch (e) {}
+      try { localStorage.removeItem('mmgr_calc_boq'); } catch (e) {}
+      document.querySelector('[data-action="calcBoqAdd"]').click();
+      var lines = [];
+      try { lines = JSON.parse(localStorage.getItem('mmgr_calc_boq') || '[]'); } catch (e) {}
+      var last = lines.length ? lines[lines.length - 1] : null;
+      var csv = window.MMGR_CALC_FILE ? window.MMGR_CALC_FILE() : null;
+      var out = { ref: ref, added: !!last, name: last ? last.name : '',
+        csvOk: !!(csv && csv.ok), csvText: csv && csv.ok ? csv.text : '' };
+      try {
+        if (prev === null) { localStorage.removeItem('mmgr_calc_boq'); }
+        else { localStorage.setItem('mmgr_calc_boq', prev); }
+      } catch (e) {}
+      if (window.__calcEngine) { __calcEngine.renderBoq(); }
+      return out;
+    })()`);
+    check(
+      'JP4 the bill line and the CSV both name the JIC ref for traceability',
+      jp4 &&
+        jp4.added &&
+        /#/.test(jp4.ref || '') &&
+        jp4.name.indexOf(jp4.ref) === 0 &&
+        jp4.csvOk &&
+        jp4.csvText.indexOf(jp4.ref) > -1,
+      {
+        ref: jp4 && jp4.ref,
+        added: jp4 && jp4.added,
+        name: jp4 && jp4.name,
+        csvOk: jp4 && jp4.csvOk
+      }
+    );
+    // JP5 the imperial side: the option shows the IMPERIAL unit + rate, the
+    // field follows, and quantity x rate stays exact (the RATE_UNITS adapter
+    // resolves to its identity in both display systems).
+    const jp5 = await ev(`(function(){
+      var impBtn = document.querySelector('[data-action="calcUnits"][data-units="imperial"]');
+      var wasImp = impBtn.getAttribute('aria-pressed') === 'true';
+      if (!wasImp) { impBtn.click(); }
+      var rSel = document.getElementById('calc-jic-row');
+      var m = rSel.options[0].textContent.match(/^([\\s\\S]*)\\(([^(]+) - J\\$([0-9,.]+)\\)/);
+      var rate = document.getElementById('calc-jic-rate');
+      var qty = document.getElementById('calc-d1');
+      qty.value = '7';
+      qty.dispatchEvent(new Event('input', { bubbles: true }));
+      var r = __calcEngine.computeFor(__calcEngine.readState());
+      var out = { wasImp: wasImp, unit: m ? m[2] : '',
+        optRate: m ? parseFloat(m[3].replace(/,/g, '')) : NaN,
+        rate: parseFloat(rate.value),
+        sub: r && !r.error ? r.sub : NaN, runit: r && !r.error ? r.runit : null };
+      document.querySelector('[data-action="calcUnits"][data-units="metric"]').click();
+      return out;
+    })()`);
+    check(
+      'JP5 imperial display: the option, the seeded rate and the priced total all speak the imperial side, exactly',
+      jp5 &&
+        isFinite(jp5.optRate) &&
+        Math.abs(jp5.rate - jp5.optRate) < 0.005 &&
+        Math.abs(jp5.sub - 7 * jp5.optRate) < 0.005 &&
+        jp5.runit === jp5.unit &&
+        jp5.unit.length > 0,
+      jp5
+    );
+    // JP6 the rate is the USER's the moment it differs from the book: note
+    // drops, the result claims "your rate", the CSV says so - and the full
+    // snapshot roundtrip re-creates the exact total with the pick restored.
+    const jp6 = await ev(`(function(){
+      var rate = document.getElementById('calc-jic-rate');
+      rate.value = '250';
+      rate.dispatchEvent(new Event('input', { bubbles: true }));
+      var note = document.getElementById('calc-jic-note');
+      var st = __calcEngine.readState();
+      var r1 = __calcEngine.computeFor(st);
+      var csv1 = window.MMGR_CALC_FILE ? (window.MMGR_CALC_FILE().text || '') : '';
+      var saved = JSON.parse(JSON.stringify(st));
+      var w = document.getElementById('calc-work');
+      w.value = 'slab';
+      w.dispatchEvent(new Event('change', { bubbles: true }));
+      __calcEngine.applyState(saved);
+      var r2 = __calcEngine.computeFor(__calcEngine.readState());
+      return {
+        noteHidden: note ? note.hidden : null,
+        overridden: !!(r1 && r1.allInOverridden === true && r1.bookFilled === false),
+        csvYours: /your rate/.test(csv1),
+        r1sub: r1 && !r1.error ? r1.sub : NaN,
+        restoredSub: r2 && !r2.error ? r2.sub : NaN,
+        restoredRate: (document.getElementById('calc-jic-rate') || {}).value || '',
+        restoredNote: (document.getElementById('calc-jic-note') || {}).hidden,
+        restoredWork: (document.getElementById('calc-work') || {}).value || ''
+      };
+    })()`);
+    check(
+      'JP6 typing over the book rate: note drops, flagged your rate (CSV says so); the snapshot roundtrip re-creates the exact total with the pick restored',
+      jp6 &&
+        jp6.noteHidden === true &&
+        jp6.overridden &&
+        jp6.csvYours &&
+        isFinite(jp6.r1sub) &&
+        Math.abs(jp6.restoredSub - jp6.r1sub) < 0.005 &&
+        jp6.restoredRate === '250' &&
+        jp6.restoredNote === true &&
+        jp6.restoredWork === 'jic',
+      jp6
+    );
+    // JP7 OFFLINE (I3): the SAME flow from the inline 100-row set. The page
+    // registers no service worker (verified in Phase 1), so blocking the
+    // full-book script at the network layer exercises the honest degrade
+    // exactly as a first-open-with-no-network does: all 11 trades still
+    // listed, the pick + exact price still work, and the hint says the
+    // built-in set is shown.
+    await send('Network.enable');
+    await send('Network.setBlockedURLs', { urls: ['*jic-rates-full*'] });
+    await ev(`(function(){
+      // Save the PRE-JP work item from the Node side (the DOM now holds the
+      // jic pick), so the reload restores what the F4 families expect.
+      try { localStorage.setItem('mmgr_jp_saved_work', ${JSON.stringify(jpSavedWork || 'tile')}); } catch (e) {}
+      location.reload();
+      return true;
+    })()`);
+    await delay(1200);
+    let jp7ready = false;
+    for (let i = 0; i < 15 && !jp7ready; i++) {
+      jp7ready =
+        (await ev(`!!document.getElementById('calc-work') && !!window.__calcEngine`)) === true;
+      if (!jp7ready) {
+        await delay(400);
+      }
+    }
+    // The reload cleared the auth seam; set it again so the gate is pinned.
+    await ev(`window.__MMGR_RR_AUTH = 'in'; true;`);
+    await ev(`(function(){
+      var w = document.getElementById('calc-work');
+      w.value = 'jic';
+      w.dispatchEvent(new Event('change', { bubbles: true }));
+      var tSel = document.getElementById('calc-jic-trade');
+      tSel.value = 'welding';
+      tSel.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    })()`);
+    let jp7hint = null;
+    for (let i = 0; i < 10 && jp7hint === null; i++) {
+      await delay(400);
+      jp7hint = await ev(`(function(){
+        var h = document.getElementById('calc-jic-hint');
+        return h && /built-in/.test(h.textContent) ? h.textContent : null;
+      })()`);
+    }
+    const jp7 = await ev(`(function(){
+      var rSel = document.getElementById('calc-jic-row');
+      var m = rSel && rSel.options[0]
+        ? rSel.options[0].textContent.match(/^([\\s\\S]*)\\(([^(]+) - J\\$([0-9,.]+)\\)/)
+        : null;
+      var rate = m ? parseFloat(m[3].replace(/,/g, '')) : NaN;
+      var qty = document.getElementById('calc-d1');
+      qty.value = '2';
+      qty.dispatchEvent(new Event('input', { bubbles: true }));
+      var r = __calcEngine.computeFor(__calcEngine.readState());
+      var tSel = document.getElementById('calc-jic-trade');
+      return { full: !!window.MMGR_JIC_FULL, trades: tSel ? tSel.options.length - 1 : -1,
+        rows: rSel ? rSel.options.length : 0, ref: rSel ? rSel.value : '',
+        unit: m ? m[2] : '', sub: r && !r.error ? r.sub : NaN, exp: 2 * rate };
+    })()`);
+    await send('Network.setBlockedURLs', { urls: [] });
+    check(
+      'JP7 offline: the inline 100-row set carries all 11 trades, the pick + exact price still work, and the hint says the built-in set is shown',
+      jp7ready &&
+        jp7hint !== null &&
+        jp7 &&
+        jp7.full === false &&
+        jp7.trades === 11 &&
+        jp7.rows > 0 &&
+        /#/.test(jp7.ref || '') &&
+        isFinite(jp7.sub) &&
+        Math.abs(jp7.sub - jp7.exp) < 0.005,
+      {
+        ready: jp7ready,
+        hint: jp7hint,
+        full: jp7 && jp7.full,
+        trades: jp7 && jp7.trades,
+        rows: jp7 && jp7.rows,
+        unit: jp7 && jp7.unit,
+        sub: jp7 && jp7.sub,
+        exp: jp7 && jp7.exp
+      }
+    );
+    // Restore the pre-JP work item (the reload cleared the DOM pick) and the
+    // sign-in seam, so the F4 families below inherit the state they expect.
+    await ev(`(function(){
+      var w = document.getElementById('calc-work');
+      var target = '';
+      try { target = localStorage.getItem('mmgr_jp_saved_work') || ''; localStorage.removeItem('mmgr_jp_saved_work'); } catch (e) {}
+      if (w && target && w.value !== target) {
+        w.value = target;
+        w.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      window.__MMGR_RR_AUTH = null;
+      return w ? w.value : null;
+    })()`);
 
     // ---------- F4 ENHANCEMENTS ----------
     // U1: imperial toggle - labels convert, state persists, aria follows.

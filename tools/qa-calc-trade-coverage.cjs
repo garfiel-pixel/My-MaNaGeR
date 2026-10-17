@@ -208,9 +208,12 @@ function absolutizeChrome(p) {
       // d1 basis label, no family, and prices via its own four fields on
       // the Quick total path - so the trade contract (family flip + d1
       // label + d1 pricing) does not apply to it. Its real contract is
-      // exercised by tools/qa-calc-assistant.cjs C1-C11. This walker covers
-      // the trades; excluding the non-trade option keeps its 43 gates green.
-      .filter(v => v && v !== '' && v !== 'custom')
+      // exercised by tools/qa-calc-assistant.cjs C1-C11. 'jic' (JIC rate
+      // book, PART I Phase 2) is NOT a trade either - it prices any book
+      // row through its own picker (the JP family in qa-calculator-page).
+      // This walker covers the trades; excluding the non-trade options
+      // keeps its 43 gates green.
+      .filter(v => v && v !== '' && v !== 'custom' && v !== 'jic')
   );
   check('picker exposes the user trades (>= 20)', trades.length >= 20, trades);
 
@@ -341,8 +344,9 @@ function absolutizeChrome(p) {
   const mTrades = await mpage.evaluate(() =>
     Array.prototype.map
       .call(document.querySelectorAll('#calc-work option'), o => o.value)
-      // Same exclusion as the desktop pass: 'custom' is not a trade (see above).
-      .filter(v => v && v !== '' && v !== 'custom')
+      // Same exclusions as the desktop pass: 'custom' and 'jic' are not
+      // trades (see above).
+      .filter(v => v && v !== '' && v !== 'custom' && v !== 'jic')
   );
   for (const trade of mTrades) {
     const res = await runTrade(mpage, trade, async trade => {

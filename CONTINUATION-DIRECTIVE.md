@@ -1368,28 +1368,32 @@ drop rows the officer cannot see.
 - No emoji anywhere (rule 7) — SVG sprite symbol, and if one is missing, add it to
   `css/mmgr-icons.svg`.
 - No auto currency conversion and no invented prices.
+- No rate-book data in the supplier tab (owner, 2026-10-17): supplier prices
+  come from the supplier, entered by the PM from the supplier's own quote or
+  rate sheet. The JIC book never prefills, suggests or converts a supplier line.
 - Never hand-edit `skills-lock.json`.
 
 ### H7. Plan review + improvements (owner review, 2026-10-17)
 
 The owner asked for a step-back review of this plan before any build. H1-H6
 stand as measured; the eight improvements below fold into the plan. The one-line
-summary: **seed the price book from the JIC rate book instead of a blank table,
-and reuse the grounding + harness machinery this repo already proved on
-2026-10-16/17 instead of inventing a second copy.**
+summary: **supplier lines are entered BY HAND from each supplier's OWN rates
+(owner, 2026-10-17), and the quote gate + harness reuse the machinery this repo
+already proved on 2026-10-16/17 instead of inventing a second copy.**
 
-**H7.1 Seed items from the JIC rate book (the big one).** A supplier price book
-starting from an empty table is the weakest part of v1. `js/jic-rates-full.js`
-(811 published minimums across 11 trades) is already in the SW shell and already
-lazy-loads from a second surface (`rrLoadFull` in `js/calculator-page.js`). The
-Procurement tab's "add item" gets a **From rate book** picker: search the 811
-rows, tap one, and the item prefills name/unit/rate with the source ref carried
-(e.g. `JIC Plumbing #57`), vendor = a default "JIC book 2025-2027 (published
-minimum)" entry, `quotedAt` = book publication, marked book-sourced. The officer
-then overrides with real vendor quotes over time - the book is the floor, the
-vendor table is the truth. This is the same prefill contract PART I Option A
-builds for the calculator (I1); build the row-action/prefill logic once and
-share the shape, so the two parts do not drift.
+**H7.1 Supplier items are entered BY HAND from the SUPPLIER's own rates
+(owner clarification 2026-10-17 - this REPLACES the first draft of this item,
+which wrongly proposed prefilling supplier items from the JIC rate book).** The
+rate book holds no supplier data, and suppliers do not price at JIC rates -
+every supplier has their own rates. The workflow, exactly as the owner stated
+it: click a supplier -> dropdown -> **Add** button -> enter what THEY offer
+(cement, purchase and delivery, premix, whatever they sell), each line carrying
+their **lowest-quantity price**, typed by the project manager (whoever is
+filling it in) from the supplier's own quote or the supplier's own rate sheet
+when you contact them. The price stays there until updated later. The JIC rate
+book is a SEPARATE reference and has no place in this tab: it never prefills,
+suggests or validates a supplier line. What the app (and the AI quote panel)
+reference is the digital record the PM typed - that record IS the feature.
 
 **H7.2 The quote-integrity gate already exists as proven machinery.** H3 risk 1
 hallucinated prices) asks for "a QA assertion that every number in the generated
@@ -3734,7 +3738,7 @@ NEXT SESSION STARTING POINT
 2. **AI grounding fix (fixed).** The assistant already ranks the full 811-rate book via `MMGR_CALC_RATEBOOK`, but "cement" matched ZERO rows - the commonest word on a Jamaican site - so it answered "the rate book is silent". `RATE_QUERY_EXPAND` (query-side only, same stemmer/ranker; popup search stays exact) now widens cement->concrete/mortar/block/mix plus dump/haul/debris, worker, wire, plumbing, toilet, kitchen, fence, scaffold. Verified end-to-end ("cement" -> 12 concrete/mortar/block rows).
 3. **CI red -> green loop (one cycle).** First run failed at `qa-calc-assistant` N2: the speculative `excavation -> [excavate, earth, trench]` key fired on "rate for excavation in stiff clay" and let the generic clay-shallow row outrank the exact stiff-clay row. Root cause fixed (key removed - "excavation" already reached the book without it), not re-baselined. Run 38989606512 on c6b25a1 = SUCCESS.
 4. **Harness work.** New WU family in `tools/qa-calculator-page.cjs`: WU1 per-inch payload rows (J$50/in #1, J$117/in #7, metric rows keep pairs), WU2/WU3 identical money both unit modes with exact-figure pins, WU4 assistant "cement" grounding e2e (WU-DUMP logs the money composition every run). Fixed two PRE-EXISTING bare-return evals (`window.__MMGR_RR_AUTH = 'in'; return true;` - "Illegal return statement" parse errors meant the RB auth seam NEVER actually set; the RB family passed only because the dev server fails open) and the WU4 eval's uncalled-IIFE bug.
-5. **PART H reviewed (planning only).** Owner asked for improvements before any build - written as **H7** (eight items). Headline: seed the supplier price book from the 811-rate JIC book instead of a blank table (H7.1, sharing PART I Option A's prefill contract), reuse qa-calc-assistant's proven mockRelay harness + the "every number exists in source" gate for the quote (H7.2), name the new XSS surface + gate it (H7.3), CSV out/in (H7.4), cross-vendor compare view (H7.5), validation specifics (H7.6), the two owner decisions (pack toggle, editor scope - H7.7), production domain for live probes (H7.8).
+5. **PART H reviewed (planning only).** Owner asked for improvements before any build - written as **H7** (eight items): reuse qa-calc-assistant's proven mockRelay harness + the "every number exists in source" gate for the quote (H7.2), name the new XSS surface + gate it (H7.3), CSV out/in (H7.4), cross-vendor compare on the PM-entered lines (H7.5), validation specifics (H7.6), the two owner decisions (pack toggle, editor scope - H7.7), production domain for live probes (H7.8). **Owner correction, same day:** H7.1's first draft wrongly proposed prefilling supplier items from the JIC rate book - rejected. Supplier lines are entered BY HAND from each supplier's OWN rates (PM types the supplier's quote/rate-sheet figures; the JIC book never touches the supplier tab). H7.1 rewritten, constraint added to H6.
 6. **Owner questions answered:** "PART I" is a LETTER (the 9th sequential plan in this file: A... H, I) - not "part one"; there is no Part II. It is the rate-coverage plan, planning-only, Phase 1 ready to build per I5. Domain confirmed: **mymanagerworkspace.com** is production (verified live serving this deploy; canonical/og:url/sitemap already carry it). `mymanager.app` is an unrelated third-party site - never probe it.
 
 FILES MODIFIED (committed + deployed):

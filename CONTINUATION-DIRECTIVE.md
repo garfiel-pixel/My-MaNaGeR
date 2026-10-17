@@ -3810,3 +3810,65 @@ Local: `npm run verify` 117/117, qa-calculator-page **247/247**, trade-coverage 
 
 NEXT SESSION STARTING POINT
 - **PART I Phases 1 AND 2 are DONE.** Only Phase 3 remains (owner-selected variant expansion, Option B selectively — on owner request only). Queued next: **PART H Procurement** (build per H5 with H7 folded in — H7.1 corrected; decide H7.7 first: pack toggle vs always-visible, grantable scope vs owner-only). Live probes against https://mymanagerworkspace.com.
+
+---
+
+## DECISIONS NEEDED FROM THE OWNER (2026-10-17, end of the Phase 2 session)
+
+Written so the next session executes the moment the answers arrive - no
+re-derivation. Both blocks are plain-language on purpose (plain-language-copy
+law). Until marked DECIDED, treat them as OPEN.
+
+### D1. PART I Phase 3 (the variant expansion) - what it is and what it would take
+
+**In plain words:** Phases 1 and 2 let you price ANY of the 811 book rows, but
+you type the quantity yourself in both. Phase 3 is the third way: hand-pick
+specific book rates and bake them INTO a calculator as named "versions" - the
+way the block-wall calculator already offers block sizes or the pipe calculator
+offers diameters - so the quantity is DERIVED from measurements (length x
+height, count, etc.) and the rate arrives as a dropdown choice with the book
+figure prefilled.
+
+**What it entails once triggered:**
+1. The owner names a shortlist (trade + row numbers, e.g. "welding CPSAW #10-13"
+   or specific masonry sizes). Nothing else is needed from the owner.
+2. Add `variants` entries to the matching WORK items carrying THE BOOK'S
+   PUBLISHED NUMBERS ONLY (never invented figures); the prefill stays the
+   user's to edit (the book is a default, never a lock - D4).
+3. The variant dropdown, prefill wiring and unit handling already exist (the
+   E2 engine), so this is mostly data work.
+4. Gates: re-baseline the variant-count assertions (V-family), add one exactness
+   gate per new variant (measured quantity x book rate, exact), and keep the
+   book-vs-variant numbers provably the same source.
+
+**Why it is owner-request-only (the plan's own reasoning):** Option B was
+rejected as the GENERAL strategy - ~711 hand-copied entries would drift every
+time the book is republished, and variant pickers become 100-row scrollbars.
+Phase 1+2 already cover every row, so Phase 3 is only worth it where MEASURING
+BEATS TYPING for a row you price constantly. Trigger it by naming rows;
+sequencing choice asked in chat (before or after PART H).
+
+### D2. H7.7 - the two decisions that block PART H markup (H7.7 verbatim: "make them before markup")
+
+**(a) Where the Procurement tab lives: pack toggle vs always-visible.**
+- Option A (recommended in H7.7): `data-pack="procurement"` - ships HIDDEN
+  behind the existing packs toggle; the rail already carries 20 tabs, and packs
+  are the existing show/hide mechanism (data-pack is read at
+  js/mmgr-app.js:3755). Users turn on the Procurement pack to see the tab.
+  One attribute; the tab appears/disappears with the pack.
+- Option B: always visible as the 21st tab, for every project and user,
+  immediately. No pack step, but a busier rail and no way to hide it.
+
+**(b) Who may edit it: grantable editor scope vs owner-only.**
+- Option A: `proc` is a GRANTABLE editor scope - an editor code can be given
+  Procurement ALONE, so the officer doing the buying can maintain vendors and
+  prices without full owner rights. Matches the owner's own H0 wording
+  ("maintained by whoever does the procuring"). Entails: proc joins the
+  editor-code section scope list (server + the scope UI).
+- Option B: OWNER-ONLY edits - editors and viewers see the tab read-only via
+  the existing view-only path. No new scope wiring; simplest.
+
+**On the answer:** record the choices here marked DECIDED with the date, fold
+them into H7.7/H5 step 4 wording, and the next session starts PART H markup
+immediately (H5 steps 1-12 are already ordered). The Phase 3 sequencing answer
+(above, D1) goes in the same record.

@@ -2350,3 +2350,62 @@ WHAT STILL OPEN
   - PART I Phase 1 (Use this rate row action) - queued, not started.
   - PART H Procurement - planned-only; H7 folds in; H7.7 owner decisions are the
     only blockers before markup.
+
+SESSION 2026-10-17 (continued) — PART I PHASE 1 SHIPPED: USE THIS RATE (b4f5763, CI green, deployed 621e3169, live-verified)
+
+OWNER DIRECTION
+  - Rejected H7.1's first draft (supplier items seeded from the JIC rate book) -
+    CORRECTLY; the rate book has nothing to do with suppliers, suppliers price at
+    their OWN rates. H7.1 rewritten + H6 constraint, committed (263ab9a, CI green):
+    supplier -> dropdown -> Add -> what THEY offer with their lowest-quantity
+    price, entered BY HAND by the PM from the supplier's own quote/rate sheet.
+  - "Part I is good and in good condition. I would like to go forward on that."
+
+WHAT SHIPPED (I1 Option A, the recommended bridge)
+  - Every rate-book row (811) carries a compact SVG Use action: prefill Custom
+    with ref-first name (<= 60), the DISPLAYED unit system's unit + rate, qty
+    cleared; popup closes; focus lands in quantity. Pricing reuses the existing
+    custom path (qty x rate EXACT, normal on-costs + tax); workName() carries the
+    ref onto the bill line, CSV and history. The 711 browse-only rows are now
+    priceable with ZERO new money math.
+  - Files: js/calculator-page.js (rrUseRate + fifth Use column + card wiring;
+    no-positive-rate rows get no action, 811/811 + 100/100 verified positive),
+    css/mmgr.css (Rate keeps right alignment explicitly, .rr-use/.rr-use-btn
+    tokens), calculator.html (?v=38 JS, ?v=30 CSS), sw.js (mmgr-shell-v431),
+    dist/mmgr.min.css rebuilt. calculator-page.js is NOT bundled (raw shell).
+
+QA (new UR family, UR0-UR6, in tools/qa-calculator-page.cjs)
+  - UR0/UR1 full book, header Ref/Description/Unit/Rate/Use, Use on all 811 rows.
+  - UR2 prefill self-computing against the row's own cells; UR3/UR4 exact money
+    in BOTH book unit systems (5 x 198 metric = 990, 5 x 50 imperial = 250).
+  - UR5 landed bill line carries "Welding #1"; bill restored as found.
+  - UR6 OFFLINE: jic-rates-full.js blocked at the network layer (calculator.html
+    registers NO service worker - verified) -> inline 100-row fallback, every row
+    still actionable, prefill works. Two harness gotchas found by testing against
+    raw data instead of guessing: full book words welding #1 as
+    '1/8" Thick Metal Using Torch' vs inline '1/8 in...' (query pinned to the
+    full-book wording); the family's saved trade lives in localStorage because
+    UR6 reloads the page (window vars do not survive - that was U1's failure).
+  - Also fixed in this family's wake: none (no pre-existing issues beyond the
+    earlier session's bare-return evals).
+
+GATES
+  - npm run verify exit 0 (prettier, sw v431 > shell mtimes, CSP, CSS integrity,
+    registry). qa-calculator-page exit 0 (all families). qa-calc-trade-coverage
+    88/88 (43 trades x 2 viewports).
+  - CI run 38998747412 on b4f5763 = SUCCESS (263ab9a docs run also success).
+
+DEPLOY + LIVE (https://mymanagerworkspace.com)
+  - node tools/deploy.cjs exit 0, staging byte-proved, version 621e3169.
+  - Live bytes: calculator.html ?v=38 + ?v=30, sw mmgr-shell-v431, js carries
+    rrUseRate, min css carries rr-use-btn.
+  - Real browser e2e (tmp/live-use-rate.cjs): signed-out book gate INTACT
+    (sign-in card, 0 rows); with the QA seam - 811 rates, search -> 1 hit,
+    Welding #1 (J$198.00 / 100mm shown) -> Use -> prefill exact (name ref-first
+    <=60, unit 100mm, rate 198, qty cleared, popup closed) -> qty 5 -> Run ->
+    Subtotal J$990 = 5 x 198 EXACT -> 0 page errors. PASS.
+
+WHAT STILL OPEN
+  - PART I Phase 2 (generic JIC picker) + Phase 3 (selective variants) planned.
+  - PART H Procurement: planned-only; H7 folded in with H7.1 corrected; H7.7
+    owner decisions (pack toggle, editor scope) block markup.

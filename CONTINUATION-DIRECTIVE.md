@@ -1447,6 +1447,13 @@ a session this week probed it by mistake; never use that host.
 
 ## PART I — RATE-BOOK COVERAGE PLAN (owner request, 2026-10-16)
 
+**PHASE 1 SHIPPED 2026-10-17** (commit `b4f5763`, CI green, deployed
+version 621e3169, live-verified on mymanagerworkspace.com): the "Use this
+rate" row action is BUILT and gated (UR0-UR6 in qa-calculator-page: structure
+811/811, prefill contract, exact money in both book unit systems, ref on the
+bill line, offline inline-fallback path). Phases 2-3 below remain PLANNED.
+Original plan text follows.
+
 Planning only - no code was written for this part. Owner asked: the book holds
 800+ rates, welding exists yet is nowhere under the trades, and 711 of the 811
 rates have no calculator - "write a plan for wiring more of the browse-only
@@ -3760,4 +3767,18 @@ WHAT STILL OPEN:
 - `reflection.txt` carries a prior session's uncommitted 2026-10-13 record (owner's call).
 
 NEXT SESSION STARTING POINT
-- Two queued plans, both planning-complete, either can start first: **PART I Phase 1** (rate-coverage row action, steps in I5) or **PART H Procurement** (build per H5 with the H7 improvements folded in; decide H7.7 first). Live probes against https://mymanagerworkspace.com.
+- **PART I Phase 1 is SHIPPED** (Use this rate, commit b4f5763, live-verified). Queued next, either independent: **PART I Phase 2** (generic JIC picker, I2) or **PART H Procurement** (build per H5 with H7 folded in - NOTE H7.1 was CORRECTED 2026-10-17: supplier lines are hand-entered from each supplier's OWN rates, the rate book never touches the supplier tab; decide H7.7 first). Live probes against https://mymanagerworkspace.com.
+
+**2026-10-17 — Session (continued): H7.1 CORRECTED (owner rejection, 263ab9a), PART I PHASE 1 SHIPPED (b4f5763, CI green, deployed 621e3169, live-verified).** Two things, in order:
+
+1. **H7.1 corrected per owner.** The first draft proposed prefilling supplier items from the JIC rate book - wrong, and the owner said so: the rate book has no supplier data; suppliers price at their OWN rates. H7.1 now states the owner's workflow verbatim (supplier -> dropdown -> Add -> what THEY offer, each line with its lowest-quantity price, entered BY HAND by the PM from the supplier's own quote or rate sheet, staying until updated); H6 gained "the JIC book never prefills, suggests or validates a supplier line"; both session records corrected. Commit `263ab9a`, CI green.
+2. **PART I Phase 1 shipped** (owner: "Part I is good... go forward on that"). The "Use this rate" row action (I1 Option A): every one of the 811 rate-book rows carries an SVG action that prefills Custom (ref-first name <=60, the DISPLAYED unit system's unit + rate, quantity cleared), closes the popup and focuses the quantity; pricing reuses the custom path (qty x rate EXACT, normal on-costs + tax) and the ref rides workName() onto the bill/CSV/history. All 711 browse-only rows are priceable with zero new money math. Ordered I5 steps executed exactly (skills loaded, dispatch convention kept, build.js ran + dist/mmgr.min.css verified carrying the new rules, calculator.html cache-busters v38/v30, sw mmgr-shell-v431, verify green, new gates, CI watched to success, deployed from the staging copy, live re-probe).
+
+**Gates:** new UR family (UR0-UR6) in `tools/qa-calculator-page.cjs` - structure (811 Use buttons, Ref/Description/Unit/Rate/Use header), prefill self-computing against the row's own cells, exact money in BOTH book unit systems (5x198=990 metric, 5x50=250 imperial), the ref on the landed bill line, and OFFLINE: jic-rates-full.js blocked at the network layer (calculator.html registers no SW - verified) leaves the inline 100-row fallback fully actionable. Two data-checked gotchas are recorded in the entry: full book vs inline word welding #1 differently (query pinned to full-book wording), and the family's saved trade lives in localStorage because UR6 reloads (a window var died with the reload and left U1 staring at a Custom form - caught, not worked around). Local: `npm run verify` exit 0, qa-calculator-page exit 0, trade-coverage 88/88. CI `38998747412` SUCCESS.
+
+**Live (mymanagerworkspace.com, version 621e3169):** bytes carry ?v=38/?v=30/sw v431/rrUseRate/rr-use-btn; signed-out book gate INTACT (sign-in card, 0 rows); with the QA seam a real browser did the full flow - 811 rates, search -> one hit, Welding #1 (J$198.00 per 100mm shown) -> Use -> exact prefill -> quantity 5 -> Run -> **Subtotal J$990 = 5 x 198** -> zero page errors. PASS (`tmp/live-use-rate.cjs`).
+
+**Files:** `js/calculator-page.js`, `css/mmgr.css`, `calculator.html`, `sw.js`, `tools/qa-calculator-page.cjs`, `dist/mmgr.min.css` (rebuilt, gitignored), `CONTINUATION-DIRECTIVE.md`, `reflection.txt`.
+
+NEXT SESSION STARTING POINT
+- **PART I Phase 1 is DONE.** Queued, independent, planning-complete: **PART I Phase 2** (generic JIC picker, I2) or **PART H Procurement** (H5 + H7 with H7.1 corrected; decide H7.7 first). Live probes against https://mymanagerworkspace.com.

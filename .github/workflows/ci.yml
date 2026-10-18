@@ -169,6 +169,10 @@ jobs:
         id: qa-owner-gate
         run: node tools/verify-owner-gate.cjs
 
+      - name: "T1: Doc size gate (plan docs <= 40KB)"
+        id: qa-doc-size
+        run: node tools/verify-doc-size.cjs
+
       # Chrome is needed from here on: the page-health sweep in T2 drives it
       # against wrangler dev, and the T3 batteries drive it directly.
       - name: Chrome available

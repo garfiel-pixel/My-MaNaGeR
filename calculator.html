@@ -583,7 +583,8 @@
         </select>
         <input type="text" id="calc-doc-title" maxlength="80" placeholder="e.g. Kitchen renovation - Smith" aria-label="Document title, shown on the printed sheet and in the export filename">
         <button type="button" class="btn btn-n btn-s" data-action="calcPrint"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Print / PDF</button>
-        <button type="button" class="btn btn-n btn-s" data-action="calcCsv"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> CSV</button>
+        <button type="button" class="btn btn-n btn-s" data-action="calcXlsx" title="Download a spreadsheet with a summary, the cost breakdown, the assumptions and the bill"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Spreadsheet</button>
+        <button type="button" class="btn btn-n btn-s" data-action="calcCsv" title="Download the flat CSV that machines read"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> CSV</button>
         <span class="bcp-save">
           <input type="text" id="calc-save-name" maxlength="60" placeholder="Name this estimate" aria-label="Name this estimate">
           <button type="button" class="btn btn-g btn-s" data-action="calcSave"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-receipt"></use></svg> Save</button>
@@ -795,7 +796,8 @@
      loaded in the order app.html uses (viewport signal first, glass second). -->
 <script src="js/mmgr-viewport.js?v=1"></script>
 <script src="js/mmgr-glass.js?v=1"></script>
-<script src="js/calculator-page.js?v=40"></script>
+<script src="js/xlsx-lite.js?v=1"></script>
+<script src="js/calculator-page.js?v=41"></script>
 <script src="js/calc-ai.js?v=8"></script>
 </body>
 </html>

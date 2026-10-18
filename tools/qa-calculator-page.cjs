@@ -1950,7 +1950,9 @@ async function withChrome(fn) {
       return { jm: withTax.tax, off: noTax.tax, rateOff: noTax.taxRate, flagged: noTax.overrideApplied,
                // The rate is now the Detail column beside the Tax money row (the old
       // export had a separate "Tax rate %" row).
-      csvZero: csv.indexOf('"Tax","0%","0"') > -1, totalEqualsSub: Math.abs(noTax.total - (noTax.sub + noTax.oh)) < 0.01,
+      // C4 re-baseline: the rate is the detail cell and the money is printed to
+      // the cent, so a zero tax row reads "Tax","0%" with an amount of 0.00.
+      csvZero: csv.indexOf('"Cost","Tax","0%"') > -1 && csv.indexOf('"0.00"') > -1, totalEqualsSub: Math.abs(noTax.total - (noTax.sub + noTax.oh)) < 0.01,
                labelNoTax: out.indexOf('no tax - your rate') > -1 };
     })()`);
     check(
@@ -2490,8 +2492,9 @@ async function withChrome(fn) {
       var csv = __calcEngine.estimateCsv(r);
       return { excluded: out.indexOf('Materials - excluded (labour only)') > -1,
                lab: r ? Math.round(r.lab) : null, mat: r ? Math.round(r.mat) : null,
-               // Amount is the THIRD column now; the exclusion note sits in it verbatim.
-               csvRow: csv.indexOf('"Materials","brought in","excluded (labour only)"') > -1, rides: st.labourOnly === true };
+               // C4 re-baseline: the flat schema is section,item,detail,and the
+               // exclusion note is the DETAIL cell of the Materials row.
+               csvRow: csv.indexOf('"Cost","Materials","excluded (labour only)"') > -1, rides: st.labourOnly === true };
     })()`);
     check(
       'LM1 labour-only: materials excluded, labor priced (12.6x85=1071), CSV names the exclusion, flag rides readState',
@@ -2550,7 +2553,8 @@ async function withChrome(fn) {
                allIn: r.allIn, mat: r.mat, lab: r.lab, cost: Math.round(r.allInCost), total: Math.round(r.total),
                oneRow: out.indexOf('Work rate (all-in)') > -1,
                noMatRow: out.indexOf('Materials') === -1, noLabRow: out.indexOf('Labor') === -1,
-               csvCombined: csv.indexOf('"Work rate (all-in)","","1600"') > -1,
+               // C4 re-baseline: one combined row, now at the cents the document prints.
+               csvCombined: csv.indexOf('"Cost","Work rate (all-in)"') > -1 && csv.indexOf('"1600.00"') > -1,
                csvNoSplit: csv.indexOf('"Materials"') === -1 && csv.indexOf('"Labor"') === -1 };
     })()`);
     check(

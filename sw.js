@@ -17,7 +17,20 @@
    v382 - full-bleed marketing canvas, 7-big-dot rail with generated
            small dots, contact tile phone overflow, guide sidebar spacing
    ============================================================ */
-const CACHE = 'mmgr-shell-v432';
+// v433 - PART H build (working tree, owner-directed): new Procurement tab
+// (suppliers + their hand-entered prices + AI quote panel). New module
+// js/mmgr-procurement.js (APP bundle + dev fallback), PROMPTS quote builder
+// + context/money/bookTotals exports, AI quote local draft + relay assist,
+// project.html panel markup, proc CSS block, CSP inline hashes regenerated
+// (25/25), field-guide entry.
+// v435 - the calculator's documents: two-decimal money in print and exports, the
+// reconciled row ladder (subtotal before/after overhead), one flat eight-field
+// CSV, and the vendored .xlsx writer (js/xlsx-lite.js) behind the new
+// Spreadsheet action. calculator-page.js, calculator.html and xlsx-lite.js are
+// shell assets, so returning clients must re-fetch. NOTE: the v434 line below
+// describes the PART H procurement build, which is still uncommitted in the
+// working tree; v435 is the first cache bump that carries this file.
+const CACHE = 'mmgr-shell-v435';
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new
 // 'JIC rate book' choice on calculator.html) prices ANY shipped book row as
@@ -580,7 +593,10 @@ const SHELL = [
   'js/verify.js',
   'js/reset.js',
   'js/calculator-page.js',
-  'js/calc-ai.js'
+  'js/calc-ai.js',
+  // C4: the vendored spreadsheet writer. It sits beside calculator-page.js so
+  // the Spreadsheet action still works with no network.
+  'js/xlsx-lite.js'
 ];
 
 self.addEventListener('install', function (e) {

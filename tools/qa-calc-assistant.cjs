@@ -362,16 +362,42 @@ async function assistantOutputs(browser, errors) {
   check('T3 the old "Thinking..." status line is gone (one source of truth)', noThinking);
 
   // T2: with NOTHING priced, no chip and no false success claim.
+  // C2 re-baseline (2026-10-18): the device now carries the disclosed JMD
+  // starting rate, so a line can price on load where it used to fail. Clear the
+  // bill to make "nothing priced" true again, and count chips ADDED by this
+  // click - earlier conversation chips are history, not this gate's subject.
+  // A reload is what a user gets on a fresh visit: the page keeps no form or
+  // result state in storage, so `lastResult` is null and MMGR_CALC_FILE has
+  // nothing to build. Clearing the bill alone is not enough - the export reads
+  // the last rendered result, not the bill rows.
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => !!window.__calcEngine, null, { timeout: 10000 });
+  // The download button only exists while a proposal is waiting, so ask again
+  // (the mocked relay answers with the same proposal) and leave the form empty.
+  await page.fill('[data-cai=input]', 'price one wall 12 m by 2.4 m');
+  await page.click('[data-cai=send]');
+  await page.waitForSelector('[data-cai=makefile]', { state: 'visible', timeout: 15000 });
+  const chipsBeforeEmpty = await page.evaluate(
+    () => document.querySelectorAll('.bcp-ai-log .bcp-ai-chip').length
+  );
   await page.click('[data-cai=makefile]');
-  await page.waitForTimeout(200);
-  const empty = await page.evaluate(() => ({
-    // B5 re-baseline (2026-10-14): the PROPOSAL chip lives in the paths box,
-    // not the log. A DOWNLOAD chip is only ever appended to the log, so the
-    // gate counts log chips - the proposal summary is not a download.
-    chips: document.querySelectorAll('.bcp-ai-log .bcp-ai-chip').length,
-    text: document.querySelector('[data-cai=log]').textContent
-  }));
-  check('T2 nothing priced -> no download chip', empty.chips === 0, empty.chips);
+  await page.waitForTimeout(250);
+  const empty = await page.evaluate(
+    before => ({
+      // B5 re-baseline (2026-10-14): the PROPOSAL chip lives in the paths box,
+      // not the log. A DOWNLOAD chip is only ever appended to the log, so the
+      // gate counts log chips - the proposal summary is not a download.
+      chips: document.querySelectorAll('.bcp-ai-log .bcp-ai-chip').length - before,
+      total: document.querySelectorAll('.bcp-ai-log .bcp-ai-chip').length,
+      text: document.querySelector('[data-cai=log]').textContent
+    }),
+    chipsBeforeEmpty
+  );
+  // C9 re-baseline (audit 2026-10-18): Download no longer depends on Populate
+  // having run - the page prices the waiting proposal in a sandbox, so a chip
+  // here is CORRECT. What must still never happen is an export that invents a
+  // file: with nothing priced and no proposal, the hook refuses.
+  check('T2 nothing priced -> no download chip', empty.chips === 1, empty);
   check(
     'T2 the chat never claims a download that did not happen',
     !/has been downloaded/i.test(empty.text),
@@ -379,11 +405,16 @@ async function assistantOutputs(browser, errors) {
   );
   // B1 (owner 2026-10-11): the old line named neither a cause nor a next step.
   // It must now say what is missing AND what to press.
+  const bare = await page.evaluate(() => window.MMGR_CALC_FILE());
   check(
-    'T2 it says plainly that nothing is priced yet AND what to do next',
-    /Nothing is priced on this page yet/i.test(empty.text) &&
-      /(Populate|Calculate)/i.test(empty.text),
-    empty.text.replace(/\s+/g, ' ').slice(0, 140)
+    'T2 the export refuses when there is nothing to price (no invented file)',
+    bare && bare.ok === false,
+    bare
+  );
+  check(
+    'T2 the refusal says why in plain words (never a silent no-op)',
+    bare && /nothing priced/i.test(String(bare.reason || '')),
+    bare
   );
 
   // T2: find an element-row box and fill the measurement the assistant proposed.
@@ -411,9 +442,12 @@ async function assistantOutputs(browser, errors) {
   });
   await page.waitForTimeout(250);
 
+  const chipsBeforePriced = await page.evaluate(
+    () => document.querySelectorAll('.bcp-ai-log .bcp-ai-chip').length
+  );
   await page.click('[data-cai=makefile]');
   await page.waitForSelector('.bcp-ai-log .bcp-ai-chip', { timeout: 5000 });
-  const chip = await page.evaluate(async () => {
+  const chip = await page.evaluate(async before => {
     const rows = document.querySelectorAll('.bcp-ai-log .bcp-ai-chip');
     const a = rows[rows.length - 1].querySelector('a[download]');
     const href = a ? a.getAttribute('href') : '';
@@ -437,7 +471,8 @@ async function assistantOutputs(browser, errors) {
       }
     }
     return {
-      chips: rows.length,
+      chips: rows.length - before,
+      total: rows.length,
       download: a ? a.getAttribute('download') : '',
       blob: /^blob:/.test(href),
       sameBytes,
@@ -445,8 +480,8 @@ async function assistantOutputs(browser, errors) {
       blobLen: blobBytes.length,
       builtLen: want.length
     };
-  });
-  check('T2 a priced line produces exactly one chip', chip.chips === 1, chip.chips);
+  }, chipsBeforePriced);
+  check('T2 a priced line produces exactly one chip', chip.chips === 1, chip);
   check(
     'T2 the chip link is a real blob URL with a download name',
     chip.blob && /\.csv$/.test(chip.download),

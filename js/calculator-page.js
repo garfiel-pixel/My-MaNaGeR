@@ -11953,7 +11953,17 @@
       // C8 FAIL-CLOSED: an independent derivation from the declared units must
       // agree with what the engine just produced. Nothing is added when it does
       // not - a wrong line in the bill is worse than a refused one.
-      if (!qtyGuard(expectedEngineQty(v), Number(r.qty))) {
+      //
+      // Scope (2026-10-18): this check owns the MEASURED-TOTAL path - the one
+      // place a unit mix-up changes the money silently, because the user states
+      // a figure and nothing else lands in a box. On the dimension path the
+      // engine applies its own per-trade allowances (rebar's bar count, the
+      // waste percentage), so the raw q() reading and r.qty legitimately differ;
+      // re-deriving it here refused good lines. The dimension conversions keep
+      // their own coverage in the page harness (U1-U3, I1) and T1.
+      var guardable =
+        v.measuredQty !== undefined && v.measuredQty !== null && v.measuredQty !== '';
+      if (guardable && !qtyGuard(expectedEngineQty(v), Number(r.qty))) {
         return {
           ok: false,
           error: 'The quantity did not match what you said, so nothing was added.'

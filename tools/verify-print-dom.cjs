@@ -103,7 +103,10 @@ function chromeExecutable() {
           const vis = style.visibility || '';
           const parts = sel.split(',').map(s => s.trim());
           for (const part of parts) {
-            if (!part.indexOf('body.print-estimate') === 0 && part.indexOf('body.print-estimate') === -1)
+            if (
+              !part.indexOf('body.print-estimate') === 0 &&
+              part.indexOf('body.print-estimate') === -1
+            )
               continue;
             const isShow = disp === 'block' || disp === 'flex' || vis === 'visible';
             // `> *`, `> *:not(...)`, `> *[hidden]`: any hide rule aimed at ALL
@@ -156,7 +159,9 @@ function chromeExecutable() {
       while (node && node !== document.documentElement) {
         const cs = getComputedStyle(node);
         chain.push({
-          node: node.tagName.toLowerCase() + (node.className ? '.' + String(node.className).split(' ')[0] : ''),
+          node:
+            node.tagName.toLowerCase() +
+            (node.className ? '.' + String(node.className).split(' ')[0] : ''),
           display: cs.display,
           visibility: cs.visibility
         });
@@ -184,13 +189,20 @@ function chromeExecutable() {
 
     console.log('[verify-print-dom] calculator.html + css/mmgr.css parsed for real');
     console.log('[verify-print-dom] show rules resolved: ' + report.show.length);
-    report.show.forEach(s => console.log('    matches ' + String(s.count).padStart(3) + '  ' + s.selector));
+    report.show.forEach(s =>
+      console.log('    matches ' + String(s.count).padStart(3) + '  ' + s.selector)
+    );
     console.log('[verify-print-dom] hide-all-children rules: ' + report.hideAll.length);
-    report.hideAll.forEach(h => console.log('    matches ' + String(h.count).padStart(3) + '  ' + h.selector));
+    report.hideAll.forEach(h =>
+      console.log('    matches ' + String(h.count).padStart(3) + '  ' + h.selector)
+    );
     console.log('[verify-print-dom] printable estimate card height: ' + visible.height + 'px');
     console.log('[verify-print-dom] printable text starts: ' + JSON.stringify(visible.text));
     if (report.unparsable.length) {
-      console.log('[verify-print-dom] selectors Chromium refused (informational): ' + report.unparsable.join(' | '));
+      console.log(
+        '[verify-print-dom] selectors Chromium refused (informational): ' +
+          report.unparsable.join(' | ')
+      );
     }
   } finally {
     await browser.close();

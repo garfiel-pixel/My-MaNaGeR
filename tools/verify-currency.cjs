@@ -105,7 +105,10 @@ async function ensureServer() {
         const st = Object.assign({}, b, extra);
         st._fxMissing = st.currency !== 'USD';
         const r = __calcEngine.computeFor(st);
-        return { error: r && r.error ? r.error : null, total: r && r.total != null ? r.total : null };
+        return {
+          error: r && r.error ? r.error : null,
+          total: r && r.total != null ? r.total : null
+        };
       },
       [base, { units: 'metric' }]
     );
@@ -192,7 +195,10 @@ async function ensureServer() {
     );
     check(
       'C2e the comparison lists book, your split and the model per unit',
-      c2e.cmp && /Book rate/.test(c2e.cmp.text) && /Your split/.test(c2e.cmp.text) && /Model/.test(c2e.cmp.text),
+      c2e.cmp &&
+        /Book rate/.test(c2e.cmp.text) &&
+        /Your split/.test(c2e.cmp.text) &&
+        /Model/.test(c2e.cmp.text),
       c2e.cmp
     );
     check(
@@ -200,11 +206,7 @@ async function ensureServer() {
       c2e.sane && c2e.sane.ok === false && c2e.sane.ratio > 30,
       c2e.sane
     );
-    check(
-      'C2e-3 two rates within 3x stay quiet',
-      c2e.okPair && c2e.okPair.ok === true,
-      c2e.okPair
-    );
+    check('C2e-3 two rates within 3x stay quiet', c2e.okPair && c2e.okPair.ok === true, c2e.okPair);
 
     // ---- C2f: the strip and banner are on the page and read-only
     const c2f = await page.evaluate(() => {

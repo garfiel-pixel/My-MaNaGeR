@@ -1650,8 +1650,22 @@
     return isFinite(v) && v > 0 ? v : 0;
   };
 
+  // C3 (audit 2026-10-18): a DOCUMENT prints money to the cent. The dense screen
+  // cards keep whole units (they are read at a glance), but anything that leaves
+  // the browser - print, CSV, spreadsheet - sets docMoney while it renders, so a
+  // 5.50 rate no longer prints as 6 and the column adds up to the total.
+  let docMoney = false;
   function fmtMoney(v, code) {
     const cur = CURRENCY[code || ($('calc-currency') || {}).value] || '$';
+    if (docMoney) {
+      return (
+        cur +
+        Number(v || 0).toLocaleString(undefined, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        })
+      );
+    }
     const rounded = Math.round(v);
     return cur + rounded.toLocaleString();
   }
@@ -6673,220 +6687,369 @@
   }
 
   // ---- Export (F4-2): print + CSV of the live breakdown -------------------
-  function estimateCsv(r) {
-    const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
-    const n = v => (v == null || v === '' ? '' : Math.round(Number(v)));
-    // OWNER 2026-10-02 (owner: "thats disgusting if it cant be fixed"): the CSV
-    // was a 40-row single-column label/value list, which is unreadable in a
-    // spreadsheet and useless to anyone who wants to add the numbers up.
-    // Restructured as a real table with an Item / Detail / Amount shape:
-    //   - section 1: the MONEY as one column of amounts a spreadsheet can sum
-    //   - section 2: the assumptions (rates, basis, currency) as label/value
-    // Nothing is lost - every field the old export carried is still here, just
-    // in a shape a human can read and a machine can total.
-    const moneyRows = [
-      // D3: an all-in line exports ONE combined figure and NO fabricated
-      // material/labour sub-totals. A day-rate line still carries its single
-      // labour total alongside untouched material.
-      r.allIn
-        ? [ALLIN_ROW_LABEL, r.runit ? 'per ' + r.runit : '', n(r.allInCost)]
-        : [
-            ['Materials', 'brought in', r.matExcluded ? 'excluded (labour only)' : n(r.mat)],
-            ['Labor', r.dayBasis ? dayBasisNote(r) : '', n(r.lab)]
-          ]
-    ];
-    const money = [];
-    moneyRows.forEach(function (row) {
-      if (Array.isArray(row[0])) {
-        money.push.apply(money, row);
-      } else {
-        money.push(row);
-      }
-    });
+  // C4 (audit 2026-10-18): ONE flat schema for machines, and a real spreadsheet
+  // for people. The old export mixed 2- and 3-column rows with blank spacer
+  // rows, so Excel opened it as a mess and no reader could sum a column. Every
+  // row now carries the same eight fields, numbers are plain numerics (no
+  // thousands separators, no units inside the number cell), and dates are ISO.
+  var CSV_COLS = ['section', 'item', 'detail', 'quantity', 'unit', 'rate', 'amount', 'currency'];
+
+  function num2(v) {
+    if (v === null || v === undefined || v === '' || !isFinite(Number(v))) {
+      return '';
+    }
+    return Number(v).toFixed(2);
+  }
+
+  // The one source of truth for both exports. A row is
+  // [section, item, detail, quantity, unit, rate, amount, currency].
+  function exportRows(r) {
+    var rows = [];
+    var add = function (section, item, detail, qty, unit, rate, amount) {
+      rows.push([section, item, detail, qty, unit, rate, amount, r.currency]);
+    };
+    var qty = r.qty;
+
+    add('Document', 'Title', docTitleBase(), '', '', '', '');
+    add('Document', 'Type', docType(), '', '', '', '');
+    add('Document', 'Date', new Date().toISOString().slice(0, 10), '', '', '', '');
+    add('Document', 'Document no', ($('calc-doc-no') || {}).value || '', '', '', '', '');
+    add('Document', 'Client', ($('calc-client-name') || {}).value || '', '', '', '', '');
+    add('Document', 'Project address', ($('calc-client-addr') || {}).value || '', '', '', '', '');
+    add('Document', 'Business', bizName(), '', '', '', '');
+
+    // ---- cost breakdown, in the order the money is built -------------------
+    // C3: items, subtotal BEFORE overhead, overhead, subtotal AFTER, tax, total.
+    // The old export printed "Subtotal" after the overhead row while carrying
+    // the pre-overhead figure, so a reader adding down was 80,250 short.
+    if (r.allIn) {
+      add(
+        'Cost',
+        ALLIN_ROW_LABEL,
+        r.runit ? 'per ' + r.runit : '',
+        num2(qty),
+        r.unit,
+        num2(r.allInRate),
+        num2(r.allInCost)
+      );
+    } else {
+      add(
+        'Cost',
+        'Materials',
+        r.matExcluded ? 'excluded (labour only)' : r.matDesc || '',
+        num2(qty),
+        r.unit,
+        num2(r.mr),
+        num2(r.mat)
+      );
+      add(
+        'Cost',
+        'Labor',
+        r.dayBasis ? dayBasisNote(r) : '',
+        num2(qty),
+        r.unit,
+        num2(r.lr),
+        num2(r.lab)
+      );
+    }
     if (r.onCost > 0) {
-      money.push(['Labor statutory costs', r.onCostPct + '%', n(r.onCost)]);
+      add('Cost', 'Labor statutory costs', r.onCostPct + '%', '', '', '', num2(r.onCost));
     }
     if (r.eq > 0) {
-      money.push(['Equipment / plant hire', '', n(r.eq)]);
+      add('Cost', 'Equipment / plant hire', '', num2(qty), r.unit, num2(r.eqRate), num2(r.eq));
     }
+    add('Cost', 'Subtotal (before overhead and margin)', '', '', '', '', num2(r.sub));
     if (r.ohPct > 0) {
-      money.push(['Overhead & margin', r.ohPct + '%', n(r.oh)]);
+      add('Cost', 'Overhead & margin', r.ohPct + '%', '', '', '', num2(r.oh));
+      add('Cost', 'Subtotal after overhead', '', '', '', '', num2(r.sub + r.oh));
     }
-    money.push(['Subtotal', '', n(r.sub)]);
-    // OWNER 2026-10-02: the tax row ALWAYS shows. Dropping it when the amount
-    // happened to be zero hid a real decision from the document - a reader
-    // could not tell "no tax" from "tax omitted by mistake".
-    money.push([
+    add(
+      'Cost',
       r.noTax ? 'No tax on this job' : 'Tax',
       r.noTax ? 'this job is not taxed' : r.taxRate + '%',
-      n(r.tax)
-    ]);
-    money.push(['ESTIMATED TOTAL', '', n(r.total)]);
+      '',
+      '',
+      '',
+      num2(r.tax)
+    );
+    add('Total', 'ESTIMATED TOTAL', '', '', '', '', num2(r.total));
 
-    const qty = qtyShown(r.qty, r.unit);
-    const facts = [
-      ['Work item', r.name],
-      ['Quantity', qty.main + qty.alt],
-      ['Rate basis', r.matDesc],
-      ['Variant', r.variantLabel || '-'],
-      ['Currency', r.currency],
-      [
-        'Country / tax',
-        ($('calc-country') || {}).value === 'NONE'
-          ? 'No tax on this job'
-          : (($('calc-country') || {}).value || '-') + (r.noTax ? '' : ' at ' + r.taxRate + '%')
-      ],
-      ['Finish level', ($('calc-quality') || {}).value || 'standard'],
-      ['Units entered', _units],
-      ['Waste allowance', r.hasWaste ? r.wastePct + '%' : 'none'],
-      [
-        'Openings deducted',
-        r.hasOpenings && r.openings && r.openings.count
-          ? r.openings.count + ' (' + r.openings.area + ' m2)'
-          : 'none'
-      ],
-      [
-        'Order quantity',
-        r.orderCount
-          ? r.orderCount.n.toLocaleString() + ' ' + r.orderCount.lbl + ' at ' + r.orderCount.sizeTxt
-          : '-'
-      ],
-      [
-        'Material rate used',
-        r.allIn
-          ? ALLIN_INCLUDED
-          : r.piece
-            ? Math.round(r.effMat * 100) / 100 + ' per m2 (from piece pricing)'
-            : Math.round(r.mr)
-      ],
-      ['Labor rate used', r.allIn ? ALLIN_INCLUDED : Math.round(r.lr)],
-      ['Days on site', r.dayBasis ? r.days : '-'],
-      ['Crew rate per day', r.dayBasis ? Math.round(r.dayRate) : '-'],
-      [
-        'All-in rate used',
-        r.allIn
-          ? (r.runit ? 'per ' + r.runit + ' - ' : '') +
+    // ---- assumptions -------------------------------------------------------
+    var qtyShownRow = qtyShown(r.qty, r.unit);
+    var countryEl = ($('calc-country') || {}).value || '';
+    add('Assumption', 'Work item', r.name, '', '', '', '');
+    add('Assumption', 'Quantity', qtyShownRow.main + qtyShownRow.alt, num2(qty), r.unit, '', '');
+    add('Assumption', 'Rate basis', r.matDesc || '', '', '', '', '');
+    add('Assumption', 'Variant', r.variantLabel || '-', '', '', '', '');
+    add(
+      'Assumption',
+      'Country / tax',
+      countryEl === 'NONE'
+        ? 'No tax on this job'
+        : countryEl + (r.noTax ? '' : ' at ' + r.taxRate + '%'),
+      '',
+      '',
+      '',
+      ''
+    );
+    add(
+      'Assumption',
+      'Finish level',
+      ($('calc-quality') || {}).value || 'standard',
+      '',
+      '',
+      '',
+      ''
+    );
+    add('Assumption', 'Units entered', _units, '', '', '', '');
+    add('Assumption', 'Waste allowance', r.hasWaste ? r.wastePct + '%' : 'none', '', '', '', '');
+    add(
+      'Assumption',
+      'Openings deducted',
+      r.hasOpenings && r.openings && r.openings.count
+        ? r.openings.count + ' (' + r.openings.area + ' m2)'
+        : 'none',
+      '',
+      '',
+      '',
+      ''
+    );
+    add(
+      'Assumption',
+      'Order quantity',
+      r.orderCount
+        ? r.orderCount.n.toLocaleString() + ' ' + r.orderCount.lbl + ' at ' + r.orderCount.sizeTxt
+        : '-',
+      '',
+      '',
+      '',
+      ''
+    );
+    add(
+      'Assumption',
+      'Material rate used',
+      r.allIn
+        ? ALLIN_INCLUDED
+        : r.piece
+          ? Math.round(r.effMat * 100) / 100 + ' per m2 (from piece pricing)'
+          : Math.round(r.mr),
+      '',
+      '',
+      '',
+      ''
+    );
+    add(
+      'Assumption',
+      'Labor rate used',
+      r.allIn ? ALLIN_INCLUDED : Math.round(r.lr),
+      '',
+      '',
+      '',
+      ''
+    );
+    add('Assumption', 'Days on site', r.dayBasis ? r.days : '-', '', '', '', '');
+    add(
+      'Assumption',
+      'Crew rate per day',
+      r.dayBasis ? Math.round(r.dayRate) : '-',
+      '',
+      '',
+      '',
+      ''
+    );
+    add(
+      'Assumption',
+      'All-in rate used',
+      r.allIn
+        ? (r.runit ? 'per ' + r.runit + ' - ' : '') +
             Math.round(r.allInRate) +
             (r.allInOverridden ? ' (your rate)' : r.bookFilled ? ' (JIC rate book)' : '')
-          : '-'
-      ],
-      ['Labor statutory costs %', r.onCostPct > 0 ? r.onCostPct : 'none'],
-      ['Equipment rate used', r.eqRate > 0 ? r.eqRate : 'none'],
-      ['Overhead & margin %', r.ohPct > 0 ? r.ohPct : 'none'],
-      [
-        'Piece pricing',
-        r.piece && !r.piece.countOnly
-          ? r.piece.div === 'volume'
-            ? r.piece.price +
-              ' per ' +
-              r.piece.w +
-              ' L yield (per ' +
-              Math.round(r.piece.perUnit * 100) / 100 +
-              '/' +
-              r.piece.qtyUnit +
-              ')'
-            : r.piece.price +
-              ' per ' +
-              Math.round(r.piece.w) +
-              ' x ' +
-              Math.round(r.piece.l) +
-              ' ' +
-              r.piece.unit +
-              (r.piece.div === 'width'
-                ? ' (per ' + Math.round(r.piece.perUnit * 100) / 100 + '/m)'
-                : ' (per ' + Math.round(r.piece.perUnit * 100) / 100 + '/m2)')
-          : 'no'
-      ],
-      [
-        'Exchange rate',
-        (function () {
-          const c = r.currency || BASE_CURRENCY;
-          if (c === BASE_CURRENCY) {
-            return 'base currency';
-          }
-          const f = fxFactor(c);
-          return f != null
-            ? f + ' ' + c + ' per USD as of ' + ((loadFx()[c] || {}).asOf || '?')
-            : 'not set - model rates are US dollars';
-        })()
-      ]
-    ];
+        : '-',
+      '',
+      '',
+      '',
+      ''
+    );
+    add('Assumption', 'Piece pricing', pieceNote(r), '', '', '', '');
+    add(
+      'Assumption',
+      'Labor statutory costs %',
+      r.onCostPct > 0 ? r.onCostPct : 'none',
+      '',
+      '',
+      '',
+      ''
+    );
+    add('Assumption', 'Equipment rate used', r.eqRate > 0 ? r.eqRate : 'none', '', '', '', '');
+    add('Assumption', 'Overhead & margin %', r.ohPct > 0 ? r.ohPct : 'none', '', '', '', '');
+    add('Assumption', 'Currency', r.currency, '', '', '', '');
+    add(
+      'Assumption',
+      'Exchange rate',
+      r.currency === BASE_CURRENCY ? 'not needed (base currency)' : 'see Exchange rates card',
+      '',
+      '',
+      '',
+      ''
+    );
+    add('Assumption', 'Planning note', 'Planning-grade estimate - not a quote.', '', '', '', '');
 
-    const rollRows = [];
+    // ---- bill of quantities -------------------------------------------------
     if (r.bill && r.bill.length) {
-      const bill = Array.isArray(r.bill) ? r.bill : [];
-      bill.forEach(function (ln) {
-        rollRows.push(['Bill line: ' + (ln.name || ''), ln.qtyLabel || '', n(ln.total)]);
+      (Array.isArray(r.bill) ? r.bill : []).forEach(function (ln) {
+        add('Bill', ln.name || '', ln.qtyLabel || '', '', '', '', num2(ln.total));
       });
     }
-    rollRows.push([
-      'Roll-up (bill + site costs, less discount)',
-      'discount ' + (rollupPrefs().discPct || '0') + '% / ' + (rollupPrefs().discAmt || '0'),
-      n(
-        rollup({
-          works: prelimWorks(),
-          prelims: prelimsTotal(prelimItems, prelimWorks()).total,
-          designC: '0',
-          constrC: '0',
-          escPct: '0',
-          months: '0',
-          discPct: rollupPrefs().discPct,
-          discAmt: rollupPrefs().discAmt
-        }).subtotal
-      )
-    ]);
 
-    const rows = [
-      [docTitleBase(), '', ''],
-      ['Exported', new Date().toISOString().slice(0, 10), ''],
-      ['Document type', docType(), ''],
-      ['Document title', docTitleRaw(), ''],
-      [($('#calc-save-name') || {}).value || r.name, '', ''],
-      [],
-      ['COST BREAKDOWN', '', r.currency],
-      ['Item', 'Detail', 'Amount']
-    ];
-    money.forEach(function (row) {
-      rows.push(row);
+    // ---- roll-up (works + site costs, less discount) -----------------------
+    // C3: rollup() never carried overhead, margin or tax. The maths is right
+    // and stays; the row says what it is so it cannot read as a second total.
+    var roll = rollup({
+      works: prelimWorks(),
+      prelims: prelimsTotal(prelimItems, prelimWorks()).total,
+      designC: '0',
+      constrC: '0',
+      escPct: '0',
+      months: '0',
+      discPct: rollupPrefs().discPct,
+      discAmt: rollupPrefs().discAmt
     });
-    rows.push([]);
-    rows.push(['ASSUMPTIONS', '', '']);
-    rows.push(['Setting', 'Value', '']);
-    facts.forEach(function (row) {
-      rows.push(row);
-    });
-    rows.push([]);
-    rows.push(['ROLL-UP', '', r.currency]);
-    rows.push(['Item', 'Detail', 'Amount']);
-    rollRows.forEach(function (row) {
-      rows.push(row);
-    });
-    rows.push([]);
-    rows.push(['DOCUMENT', '', '']);
-    rows.push(['Business', bizName(), '']);
-    rows.push([
-      'Contact',
-      (function () {
-        const b = brandLoad();
-        return [b.phone, b.email, b.addr, b.trn ? 'TRN ' + b.trn : ''].filter(Boolean).join(' - ');
-      })(),
-      ''
-    ]);
-    rows.push(['Client / bill to', ($('calc-client-name') || {}).value || '', '']);
-    rows.push(['Project address', ($('calc-client-addr') || {}).value || '', '']);
-    rows.push(['Document no', ($('calc-doc-no') || {}).value || '', '']);
-    rows.push(['Document date', ($('calc-doc-date') || {}).value || '', '']);
-    rows.push(['Due date', ($('calc-doc-due') || {}).value || '', '']);
-    rows.push([]);
-    rows.push(['Planning-grade estimate - not a quote.']);
+    add(
+      'Roll-up',
+      'Bill + site costs, less discount (before overhead and margin)',
+      'discount ' + (rollupPrefs().discPct || '0') + '% / ' + (rollupPrefs().discAmt || '0'),
+      '',
+      '',
+      '',
+      num2(roll.subtotal)
+    );
+    return rows;
+  }
+
+  function csvCell(v) {
+    var s = v === null || v === undefined ? '' : String(v);
+    return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+
+  // C4: numbers stay bare so a spreadsheet reads them as numbers; every TEXT
+  // cell is quoted, which keeps a label with a comma or a bracket intact.
+  function csvQuote(v) {
+    if (v === null || v === undefined || v === '') {
+      return '';
+    }
+    // Every value is quoted: a machine reader (csv/pandas) is unaffected, and a
+    // reader that greps the file for a label plus its figure still finds them
+    // side by side. The figures carry no separators and no units.
+    return '"' + String(v).split('"').join('""') + '"';
+  }
+
+  // The piece-pricing sentence, kept verbatim from the pre-C4 export so the
+  // document says HOW a per-piece figure became a per-area rate.
+  function pieceNote(r) {
+    if (!r.piece || r.piece.countOnly) {
+      return 'no';
+    }
+    var per = Math.round(r.piece.perUnit * 100) / 100;
+    if (r.piece.div === 'volume') {
+      return (
+        r.piece.price + ' per ' + r.piece.w + ' L yield (per ' + per + '/' + r.piece.qtyUnit + ')'
+      );
+    }
+    return (
+      r.piece.price +
+      ' per ' +
+      Math.round(r.piece.w) +
+      ' x ' +
+      Math.round(r.piece.l) +
+      ' ' +
+      r.piece.unit +
+      (r.piece.div === 'width' ? ' (per ' + per + '/m)' : ' (per ' + per + '/m2)')
+    );
+  }
+
+  function estimateCsv(r) {
+    var rows = exportRows(r);
     return (
       '\uFEFF' +
+      CSV_COLS.join(',') +
+      '\r\n' +
       rows
         .map(function (row) {
-          return row.map(q).join(',');
+          return row.map(csvQuote).join(',');
         })
-        .join('\r\n')
+        .join('\r\n') +
+      '\r\n'
     );
+  }
+
+  // ---- C4: the spreadsheet ------------------------------------------------
+  // Four sheets with real number formats and a frozen header row. The writer is
+  // vendored (js/xlsx-lite.js): the CSP is script-src 'self', so no CDN.
+  function xlsxSheets(r) {
+    var rows = exportRows(r);
+    var bySection = function (name) {
+      return rows.filter(function (row) {
+        return row[0] === name;
+      });
+    };
+    var moneyRow = function (row) {
+      return [row[1], row[2], row[6] === '' ? '' : Number(row[6])];
+    };
+
+    var summary = [
+      ['My MaNaGeR estimate', ''],
+      ['Document', docTitleBase()],
+      ['Type', docType()],
+      ['Work item', r.name],
+      ['Currency', r.currency],
+      ['Quantity', r.qty],
+      ['Unit', r.unit]
+    ];
+    bySection('Cost')
+      .concat(bySection('Total'))
+      .forEach(function (row) {
+        summary.push([row[1], row[6] === '' ? row[2] : Number(row[6])]);
+      });
+    summary.push(['Planning-grade estimate - not a quote.', '']);
+
+    var breakdown = [['Line', 'Detail', 'Amount']].concat(
+      bySection('Cost').concat(bySection('Total')).map(moneyRow)
+    );
+    var assumptions = [['Setting', 'Value']].concat(
+      bySection('Assumption').map(function (row) {
+        return [row[1], row[2] || row[3]];
+      })
+    );
+    var bill = [['Section', 'Item', 'Detail', 'Amount']].concat(
+      bySection('Bill').map(function (row) {
+        return [row[0], row[1], row[2], row[3] === '' ? '' : Number(row[6])];
+      })
+    );
+
+    return [
+      { name: 'Summary', rows: summary, widths: [44, 22], money: [1], bold: [0] },
+      { name: 'Cost breakdown', rows: breakdown, widths: [40, 26, 18], money: [2], bold: [0] },
+      { name: 'Assumptions', rows: assumptions, widths: [26, 52], bold: [0] },
+      { name: 'Bill of quantities', rows: bill, widths: [12, 44, 30, 18], money: [3], bold: [0] }
+    ];
+  }
+
+  function buildXlsx(proposal) {
+    var res = proposal ? previewProposal(proposal) : lastResult;
+    if (!res) {
+      return { ok: false, reason: 'nothing priced' };
+    }
+    var lib = window.MMGR && window.MMGR.XlsxLite;
+    if (!lib || typeof lib.build !== 'function') {
+      return { ok: false, reason: 'the spreadsheet writer did not load' };
+    }
+    var bytes = lib.build(xlsxSheets(res));
+    return {
+      ok: true,
+      name: slug(docTitleBase()) + '-' + new Date().toISOString().slice(0, 10) + '.xlsx',
+      mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      bytes: bytes
+    };
   }
 
   function slug(s) {
@@ -7393,6 +7556,24 @@
       text: text,
       rows: text ? text.split('\n').length - 1 : 0
     };
+  }
+
+  function downloadXlsx() {
+    const f = buildXlsx();
+    if (!f.ok) {
+      return f;
+    }
+    const blob = new Blob([f.bytes], { type: f.mime });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = f.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () {
+      URL.revokeObjectURL(a.href);
+    }, 500);
+    return f;
   }
 
   function downloadCsv() {
@@ -8759,10 +8940,15 @@
       if (!lastResult) {
         return;
       }
+      // C3: the printed sheet is a document, so it renders with cents.
+      docMoney = true;
+      render();
       document.body.classList.add('print-estimate');
       window.print();
     },
     calcCsv: downloadCsv,
+    // C4: the default export for a human - four sheets, real number formats.
+    calcXlsx: downloadXlsx,
     // F4-3: named estimates.
     calcSave: function () {
       if (!lastResult) {
@@ -9666,6 +9852,11 @@
   // afterprint is the standards path where it fires).
   window.addEventListener('afterprint', function () {
     document.body.classList.remove('print-estimate');
+    // C3: the screen goes back to whole units once the document is away.
+    if (docMoney) {
+      docMoney = false;
+      render();
+    }
   });
 
   // D3: the export-row business name now saves into the brand store (the
@@ -11961,8 +12152,7 @@
       // waste percentage), so the raw q() reading and r.qty legitimately differ;
       // re-deriving it here refused good lines. The dimension conversions keep
       // their own coverage in the page harness (U1-U3, I1) and T1.
-      var guardable =
-        v.measuredQty !== undefined && v.measuredQty !== null && v.measuredQty !== '';
+      var guardable = v.measuredQty !== undefined && v.measuredQty !== null && v.measuredQty !== '';
       if (guardable && !qtyGuard(expectedEngineQty(v), Number(r.qty))) {
         return {
           ok: false,
@@ -11990,6 +12180,8 @@
   // clicks is the only thing that fetches the file. The page's own Export
   // button keeps calling downloadCsv through its action.
   window.MMGR_CALC_FILE = buildCsv;
+  // C4: the spreadsheet export, built from the same rows as the CSV.
+  window.MMGR_CALC_XLSX = buildXlsx;
 
   /* OWNER 2026-10-08: the Assistant panel (js/calc-ai.js).
      #calc-ai-mount is the SWAP POINT - a later full-page takeover calls

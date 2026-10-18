@@ -49,7 +49,7 @@
       var mode = window.MMGRTheme && window.MMGRTheme.getMode ? window.MMGRTheme.getMode() : null;
       if (mode) {
         var btns = document.querySelectorAll('.dock .pal-btn[data-pal]');
-        for (var i = 0; i < btns.length; i++) {
+        for (let i = 0; i < btns.length; i++) {
           btns[i].setAttribute(
             'aria-pressed',
             btns[i].getAttribute('data-pal') === mode ? 'true' : 'false'

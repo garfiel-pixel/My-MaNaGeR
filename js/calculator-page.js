@@ -1,3 +1,4 @@
+/* global MMGR, MMGRTheme */
 /* ============================================================
    My MaNaGeR - Build Cost Calculator page (js/calculator-page.js)
    ------------------------------------------------------------

@@ -76,8 +76,8 @@ var MMGR = window.MMGR || {};
             _popupWarnShown = true;
             // Surface a clear, actionable message. The toast function may not
             // be available on all pages, so fall back to a visible DOM element.
-            if (typeof toast === 'function') {
-              toast(
+            if (window.MMGR && window.MMGR.App && typeof window.MMGR.App.showToast === 'function') {
+              window.MMGR.App.showToast(
                 'Your browser blocked the Google sign-in popup. Allow popups for this site, or use the email sign-in below.',
                 'err'
               );

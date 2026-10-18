@@ -253,8 +253,15 @@ async function ensureServer() {
       };
     });
     check(
-      'U7 the Quick total read-out names both units',
-      /10,000(\.\d+)?\s*sq ft/.test(readout.txt) && /929(\.\d+)?\s*m2/.test(readout.txt),
+      'U7 the Quick total read-out speaks the on-screen system in the owner sentence (hero carries both)',
+      // Re-baselined 2026-10-18: the read-out is the owner's pinned sentence
+      // ("69 m2 x J$120 = J$8,280 before tax") and must not grow a parenthetical
+      // conversion - the plain-language law forbids it, and the hero above
+      // already prints the secondary reading (I1). What matters here is that
+      // the number is in the system the user is typing in, never converted.
+      /10,000(\.\d+)?\s*sq ft/.test(readout.txt) &&
+        !/\bm2\b/.test(readout.txt) &&
+        readout.entry === 'imp',
       readout
     );
 

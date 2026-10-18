@@ -244,6 +244,90 @@ async function ensureServer() {
       readout
     );
 
+    // ---- U9-C8: the assistant's proposal carries its unit, and populate
+    // prices from it (the model never converts - the page does).
+    const u9 = await page.evaluate(() => {
+      const proposal = { work: 'blockwall', units: 'imperial', d1: 100, d2: 100 };
+      const chk = window.MMGR_CALC_CHECK(proposal);
+      const res = window.MMGR_CALC_POPULATE(proposal);
+      const after = window.__calcEngine.computeFor(window.__calcEngine.readState());
+      return {
+        preview: chk && chk.preview ? chk.preview : null,
+        res: res,
+        qty: after && !after.error ? after.qty : null,
+        units: document.getElementById('calc-work') ? 'ok' : 'missing'
+      };
+    });
+    check('U9 the dry run previews the proposal quantity and unit', !!u9.preview && u9.preview.qty > 0, u9);
+    check('U9b Populate accepts an imperial proposal', u9.res && u9.res.ok === true, u9.res);
+    check(
+      'U9c the populated line prices 929.0304 m2 (100 ft x 100 ft)',
+      u9.qty != null && close(u9.qty, 929.0304, 1e-6),
+      u9
+    );
+
+    // ---- U10-C8: the fail-closed rule itself (both sides driven directly)
+    const u10 = await page.evaluate(() => ({
+      agrees: __calcEngine.qtyGuard(929.0304, 929.0304),
+      disagrees: __calcEngine.qtyGuard(929.0304, 10000),
+      unknown: __calcEngine.qtyGuard(null, 10000),
+      expectedImperial: __calcEngine.expectedEngineQty({
+        work: 'blockwall',
+        units: 'imperial',
+        d1: 100,
+        d2: 100
+      }),
+      expectedMetric: __calcEngine.expectedEngineQty({
+        work: 'blockwall',
+        units: 'metric',
+        measuredQty: 10000
+      })
+    }));
+    check(
+      'U10 the quantity guard accepts agreement and refuses disagreement',
+      u10.agrees === true && u10.disagrees === false && u10.unknown === true,
+      u10
+    );
+    check(
+      'U10b the independent derivation matches the two declarations',
+      close(u10.expectedImperial, 929.0304, 1e-6) && close(u10.expectedMetric, 10000, 1e-9),
+      u10
+    );
+
+    // ---- U11-C9: Download works on a PROPOSAL, before any Populate
+    const u11 = await page.evaluate(() => {
+      const f = window.MMGR_CALC_FILE({
+        work: 'blockwall',
+        units: 'imperial',
+        d1: 100,
+        d2: 100
+      });
+      return {
+        ok: !!(f && f.ok),
+        name: f && f.name,
+        rows: f && f.rows,
+        text: (f && f.text) || '',
+        head: f && f.text ? f.text.slice(0, 200) : ''
+      };
+    });
+    check('U11 Generate a file prices an unpopulated proposal (no Populate first)', u11.ok === true, u11);
+    check(
+      'U11b the sandboxed file carries the converted quantity and a total',
+      /929\.03/.test(u11.text) && /[0-9][0-9,]*\.[0-9]{2}/.test(u11.text),
+      { head: u11.head, rows: u11.rows }
+    );
+
+    // ---- U12-C10: the chip's data source is never blank for a work proposal
+    const u12 = await page.evaluate(() => {
+      const chk = window.MMGR_CALC_CHECK({ work: 'blockwall', units: 'imperial', d1: 100, d2: 100 });
+      return { qty: chk.preview && chk.preview.qty, unit: chk.preview && chk.preview.unit };
+    });
+    check(
+      'U12 a work proposal previews a real quantity and unit (the chip reads these)',
+      u12.qty > 0 && !!u12.unit,
+      u12
+    );
+
     // ---- U8 (static): EVERY writer of the box declares its unit
     const src = fs.readFileSync(path.join(ROOT, 'js', 'calculator-page.js'), 'utf8').split(/\r?\n/);
     const undeclared = [];

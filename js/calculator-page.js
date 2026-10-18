@@ -674,7 +674,8 @@
       d3: null,
       q: a => ({ qty: a, unit: 'm2', qtyLabel: 'Scaffold erected' }),
       runit: 'ft2',
-      matDesc: 'Scaffolding erected and stripped, by height band (planning models; bands follow the JIC book rows)',
+      matDesc:
+        'Scaffolding erected and stripped, by height band (planning models; bands follow the JIC book rows)',
       variants: [
         {
           id: 'sc-10-unbraced',
@@ -716,7 +717,11 @@
           label: '60 to 70 ft tied to building (planning model)',
           rate: { mat: 9, lab: 5 }
         },
-        { id: 'sc-70-80', label: '70 to 80 ft tied to building (planning model)', rate: { mat: 9, lab: 5 } }
+        {
+          id: 'sc-70-80',
+          label: '70 to 80 ft tied to building (planning model)',
+          rate: { mat: 9, lab: 5 }
+        }
       ]
     },
     joinery: {
@@ -726,7 +731,8 @@
       d3: null,
       q: a => ({ qty: a, unit: 'm', qtyLabel: 'Skirting run (linear)' }),
       runit: 'ft run',
-      matDesc: 'Skirting boards by size profile and species (planning models; bands follow the JIC book rows)',
+      matDesc:
+        'Skirting boards by size profile and species (planning models; bands follow the JIC book rows)',
       variants: [
         {
           id: 'j-1x3-bev-wpp',
@@ -797,8 +803,16 @@
         { id: 'pp-4in', label: '4 in diameter pipes (planning model)', rate: { mat: 33, lab: 22 } },
         { id: 'pp-3in', label: '3 in diameter pipes (planning model)', rate: { mat: 31, lab: 21 } },
         { id: 'pp-2in', label: '2 in diameter pipes (planning model)', rate: { mat: 20, lab: 14 } },
-        { id: 'pp-1.5in', label: '1.5 in diameter pipes (planning model)', rate: { mat: 17, lab: 12 } },
-        { id: 'pp-1.25in', label: '1.25 in diameter pipes (planning model)', rate: { mat: 17, lab: 12 } },
+        {
+          id: 'pp-1.5in',
+          label: '1.5 in diameter pipes (planning model)',
+          rate: { mat: 17, lab: 12 }
+        },
+        {
+          id: 'pp-1.25in',
+          label: '1.25 in diameter pipes (planning model)',
+          rate: { mat: 17, lab: 12 }
+        },
         {
           id: 'pp-300mm',
           label: '300mm 12 ft push fit pipes (planning model)',
@@ -809,7 +823,11 @@
           label: '250mm 10 ft push fit pipes (planning model)',
           rate: { mat: 72, lab: 49 }
         },
-        { id: 'pp-200mm', label: '200mm 8 ft push fit pipes (planning model)', rate: { mat: 56, lab: 38 } }
+        {
+          id: 'pp-200mm',
+          label: '200mm 8 ft push fit pipes (planning model)',
+          rate: { mat: 56, lab: 38 }
+        }
       ]
     },
     'electrical-conduit': {
@@ -826,10 +844,22 @@
           label: '1/2 in diameter pipe (planning model)',
           rate: { mat: 5, lab: 3 }
         },
-        { id: 'ec-0.75in', label: '3/4 in diameter pipe (planning model)', rate: { mat: 6, lab: 4 } },
+        {
+          id: 'ec-0.75in',
+          label: '3/4 in diameter pipe (planning model)',
+          rate: { mat: 6, lab: 4 }
+        },
         { id: 'ec-1in-a', label: '1 in diameter pipe (planning model)', rate: { mat: 6, lab: 5 } },
-        { id: 'ec-1.25in-a', label: '1-1/4 in diameter pipe (planning model)', rate: { mat: 8, lab: 5 } },
-        { id: 'ec-1.5in-a', label: '1-1/2 in diameter pipe (planning model)', rate: { mat: 9, lab: 6 } },
+        {
+          id: 'ec-1.25in-a',
+          label: '1-1/4 in diameter pipe (planning model)',
+          rate: { mat: 8, lab: 5 }
+        },
+        {
+          id: 'ec-1.5in-a',
+          label: '1-1/2 in diameter pipe (planning model)',
+          rate: { mat: 9, lab: 6 }
+        },
         { id: 'ec-2in', label: '2 in diameter pipe (planning model)', rate: { mat: 11, lab: 7 } },
         {
           id: 'ec-1in-b',
@@ -2199,7 +2229,14 @@
     // came out 32.7x apart. It now refuses in plain words instead of guessing;
     // an all-in line, a JIC pick, a custom line and a crew-day line are all
     // exempt because none of them touches the model rates.
-    if (st._fxMissing && !isCustom && !isJic && !allIn && !dayBasis && !(matPresent && labPresent)) {
+    if (
+      st._fxMissing &&
+      !isCustom &&
+      !isJic &&
+      !allIn &&
+      !dayBasis &&
+      !(matPresent && labPresent)
+    ) {
       return {
         error:
           'No exchange rate is set for ' +
@@ -2507,7 +2544,10 @@
     const sym = CURRENCY[local] || '';
     const w = WORK[st.work];
     const av = w && w.variants ? activeVariant(w, st) : null;
-    const unit = (r && r.unit) || (w && w.q ? (w.q(1, w.d2 ? 1 : null, w.d3 ? 1 : null) || {}).unit : '') || '';
+    const unit =
+      (r && r.unit) ||
+      (w && w.q ? (w.q(1, w.d2 ? 1 : null, w.d3 ? 1 : null) || {}).unit : '') ||
+      '';
     const per = unit ? 'Per ' + (_units === 'imperial' ? entryUnitName(unit) : unit) : 'Per unit';
     const allIn = parseFloat(st.allInRate);
     const mat = parseFloat(st.rateMat);
@@ -2527,8 +2567,10 @@
       rates.model = modelUsd * fx;
     }
     const parts = [
-      'Book rate ' + (rates.book != null ? fmtMoney(rates.book, local) : sym + '0 (pick the book rate)'),
-      'Your split ' + (haveSplit ? fmtMoney(rates.split, local) : sym + '0 (add a material and a labour rate)'),
+      'Book rate ' +
+        (rates.book != null ? fmtMoney(rates.book, local) : sym + '0 (pick the book rate)'),
+      'Your split ' +
+        (haveSplit ? fmtMoney(rates.split, local) : sym + '0 (add a material and a labour rate)'),
       st._fxMissing && local !== BASE_CURRENCY
         ? 'Model needs an exchange rate'
         : 'Model ' + fmtMoney(rates.model || 0, local)
@@ -7223,6 +7265,9 @@
     // C2: the rate comparison + its sanity rule (T3 drives both).
     rateSanity: rateSanity,
     rateComparison: rateComparison,
+    // C8: the independent derivation and its fail-closed rule (T1 drives both).
+    expectedEngineQty: expectedEngineQty,
+    qtyGuard: qtyGuard,
     prelimsTotal: prelimsTotal,
     rollup: rollup,
     cashCurve: cashCurve,
@@ -7285,11 +7330,62 @@
      chat can only ever offer a file that really exists. downloadCsv() is the
      page's own Export button. One row builder, two callers - never two code
      paths, and the chat never announces a file it did not produce. */
-  function buildCsv() {
-    if (!lastResult) {
+  // C9 (AUDIT-DIRECTIVE-2026-10-18): a proposal can be priced WITHOUT touching
+  // the form, the bill or storage, so "Generate a file" works on a fresh
+  // proposal instead of demanding Populate first (which is what made Download
+  // look dead to the owner). PURE: it builds a state object and runs the same
+  // engine every other path uses.
+  function stateFromProposal(v) {
+    const st = readState();
+    if (v.work && WORK[v.work]) {
+      st.work = v.work;
+    }
+    const units = v.units === 'imperial' || v.units === 'metric' ? v.units : st.units;
+    st.units = units;
+    if (v.measuredQty !== undefined && v.measuredQty !== null && v.measuredQty !== '') {
+      st.measuredQty = String(v.measuredQty);
+      st.measuredEntry = units === 'imperial' ? 'imp' : 'eng';
+      st.measuredAuto = '';
+      st.measuredUnit =
+        (WORK[st.work] && WORK[st.work].q(1, null, null).unit) || st.measuredUnit || '';
+    } else {
+      st.measuredQty = '';
+      st.d1 = v.d1 === undefined || v.d1 === null ? '' : String(v.d1);
+      st.d2 = v.d2 === undefined || v.d2 === null ? '' : String(v.d2);
+      st.d3 = v.d3 === undefined || v.d3 === null ? '' : String(v.d3);
+    }
+    if (v.allInRate !== undefined) {
+      st.allInRate = String(v.allInRate);
+    }
+    if (v.basis) {
+      st.basis = v.basis;
+    }
+    return st;
+  }
+
+  function previewProposal(v) {
+    try {
+      const st = stateFromProposal(v);
+      const cur = st.currency || DEFAULT_CURRENCY;
+      st._fxMissing = cur !== BASE_CURRENCY && fxFactor(cur) == null;
+      const r = computeFor(st);
+      if (!r || r.error) {
+        return null;
+      }
+      r.name = workName(st.work);
+      return r;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function buildCsv(proposal) {
+    // A proposal is priced in a sandbox; no proposal means the live result.
+    const res = proposal ? previewProposal(proposal) : lastResult;
+    if (!res) {
       return { ok: false, reason: 'nothing priced' };
     }
-    const text = estimateCsv(lastResult);
+    const text = estimateCsv(res);
     return {
       ok: true,
       name: slug(docTitleBase()) + '-' + new Date().toISOString().slice(0, 10) + '.csv',
@@ -11704,10 +11800,51 @@
     return '';
   }
 
+  // C8 (AUDIT-DIRECTIVE-2026-10-18): the quantity a proposal SHOULD produce,
+  // derived independently from the units the model declared. The engine is then
+  // compared against it after populate, so a unit mismatch fails closed instead
+  // of quietly adding a line 10x wrong.
+  function expectedEngineQty(v) {
+    try {
+      var w = WORK[v && v.work];
+      if (!w || !w.q) {
+        return null;
+      }
+      var imp = v.units === 'imperial';
+      if (v.measuredQty !== undefined && v.measuredQty !== null && v.measuredQty !== '') {
+        var unit = (w.q(1, w.d2 ? 1 : null, w.d3 ? 1 : null) || {}).unit || '';
+        return toEngineQty(v.measuredQty, imp ? 'imp' : 'eng', unit);
+      }
+      var d1 = imp ? parseFloat(v.d1) * (IMP_D1_FACTOR[v.work] || FT) : parseFloat(v.d1);
+      var d2 = w.d2 ? (imp ? parseFloat(v.d2) * FT : parseFloat(v.d2)) : null;
+      var d3 = w.d3 ? (imp ? parseFloat(v.d3) * IN : parseFloat(v.d3)) : null;
+      var q = w.q(d1, d2, d3);
+      return q && isFinite(q.qty) ? q.qty : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // C8 FAIL-CLOSED RULE, as a pure predicate so a test can drive both sides:
+  // an unknown expectation (nothing to compare) lets the line through, a known
+  // one must agree with the engine to within a millionth.
+  function qtyGuard(expected, got) {
+    if (expected == null || !isFinite(expected) || expected <= 0) {
+      return true;
+    }
+    return isFinite(got) && Math.abs(got - expected) <= 1e-6 * Math.max(1, expected);
+  }
+
   function calcPopulate(v) {
     try {
       if (!v || typeof v !== 'object') {
         return { ok: false, error: 'nothing to add' };
+      }
+      // C8: the model never converts - the page does, and it does it from the
+      // unit system the model declared, BEFORE any box is written, so the box
+      // labels and the entry declaration agree with the numbers arriving.
+      if ((v.units === 'imperial' || v.units === 'metric') && calcUnitFlagOn()) {
+        setUnits(v.units, false);
       }
       var sel = $('calc-work');
       // B3: a custom proposal selects the custom choice and fills its four
@@ -11812,6 +11949,15 @@
           missing: chk.missing
         };
       }
+      // C8 FAIL-CLOSED: an independent derivation from the declared units must
+      // agree with what the engine just produced. Nothing is added when it does
+      // not - a wrong line in the bill is worse than a refused one.
+      if (!qtyGuard(expectedEngineQty(v), Number(r.qty))) {
+        return {
+          ok: false,
+          error: 'The quantity did not match what you said, so nothing was added.'
+        };
+      }
       ACTIONS.calcBoqAdd();
       return { ok: true, name: r.name, total: r.total, currency: r.currency || '' };
     } catch (e) {
@@ -11860,7 +12006,22 @@
             : String(Math.round(Number(v) * 100) / 100);
         };
         var st = readState();
+        // C8 (AUDIT-DIRECTIVE-2026-10-18): the panel must know which unit
+        // system is on screen and which unit each box is asking for, so the
+        // model never has to guess (and never converts - the page does).
+        var wNow = WORK[st.work] || {};
+        var boxWords = [];
+        if (wNow.d1) {
+          boxWords.push('d1 = ' + dimLabel(wNow, 'd1'));
+        }
+        if (wNow.d2) {
+          boxWords.push('d2 = ' + dimLabel(wNow, 'd2'));
+        }
+        if (wNow.d3) {
+          boxWords.push('d3 = ' + dimLabel(wNow, 'd3'));
+        }
         var lines = [
+          'Unit system on screen: ' + _units,
           'Work item key: ' + (st.work || ''),
           'Work item: ' + (r.name || '') + (r.unit ? ' (' + r.unit + ')' : ''),
           'Quantity: ' + (r.qty === undefined ? '' : r.qty) + (r.unit ? ' ' + r.unit : ''),
@@ -11871,6 +12032,17 @@
           'Tax: ' + money(r.tax),
           'Total: ' + money(r.total)
         ];
+        if (boxWords.length) {
+          lines.push('Boxes for this work item: ' + boxWords.join(', '));
+        }
+        if (r.unit) {
+          lines.push(
+            'This work item measures in: ' +
+              r.unit +
+              (r.qtyLabel ? ' (' + r.qtyLabel + ')' : '') +
+              (_units === 'imperial' ? ' - imperial entry unit: ' + entryUnitName(r.unit) : '')
+          );
+        }
         if (r.allIn) {
           lines.push('All-in with preliminaries: ' + money(r.allIn));
         }

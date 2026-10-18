@@ -169,15 +169,29 @@ jobs:
         id: qa-owner-gate
         run: node tools/verify-owner-gate.cjs
 
-      - name: "T1: Doc size gate (plan docs <= 40KB)"
-        id: qa-doc-size
-        run: node tools/verify-doc-size.cjs
 
       # Chrome is needed from here on: the page-health sweep in T2 drives it
       # against wrangler dev, and the T3 batteries drive it directly.
       - name: Chrome available
         id: chrome
         run: google-chrome --version || (sudo apt-get update && sudo apt-get install -y google-chrome-stable)
+
+      # AUDIT-DIRECTIVE-2026-10-18 tripwires that need a real browser.
+      - name: "T1: Measured-quantity unit boundary (golden table)"
+        id: qa-units
+        run: node tools/verify-units.cjs
+
+      - name: "T4: Print allow-list matches the real DOM"
+        id: qa-print-dom
+        run: node tools/verify-print-dom.cjs
+
+      - name: "T5: No Math.random under src/ or worker.js"
+        id: qa-weak-random
+        run: node tools/verify-no-weak-random.cjs
+
+      - name: "T8: Plan docs stay under 40 KB"
+        id: qa-doc-size
+        run: node tools/verify-doc-size.cjs
 
       # ── TIER 2: Needs wrangler dev (D1/R2 emulation) ────────────────
       - name: "T2: Start wrangler dev (background)"

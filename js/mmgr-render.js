@@ -1728,6 +1728,7 @@ var MMGR = window.MMGR || {};
     raci: renderRaci,
     comms: renderComms,
     docs: renderDocuments,
+    proc: renderProcPanel,
     dmaic: renderDmaic,
     meet: renderMeetingsPanel,
     charter: renderCharter,
@@ -1753,6 +1754,15 @@ var MMGR = window.MMGR || {};
   function renderClaimPanel() {
     if (ns.Claim && ns.Claim.render) {
       ns.Claim.render();
+    }
+  }
+
+  // Procurement panel (PART H: supplier price book + AI quote), delegates
+  // to the Proc module (ns.Proc - NOT ns.Procurement, that name is taken
+  // by the C10 material-order log).
+  function renderProcPanel() {
+    if (ns.Proc && ns.Proc.render) {
+      ns.Proc.render();
     }
   }
 
@@ -2980,9 +2990,10 @@ var MMGR = window.MMGR || {};
     governance:
       'Governance (RACI / Risk / Changes / Log / Comms / Docs / Closure / Stakeholders / Claim)',
     field: 'Field (Meetings / Claim)',
-    quality: 'Quality (DMAIC)'
+    quality: 'Quality (DMAIC)',
+    procurement: 'Procurement (Suppliers, quoted prices, AI quotes)'
   };
-  const PACK_ORDER = ['schedule', 'money', 'governance', 'field', 'quality'];
+  const PACK_ORDER = ['schedule', 'money', 'governance', 'field', 'quality', 'procurement'];
 
   function packOfSection(sec) {
     const btn = document.querySelector('.sec-btn[data-section="' + sec + '"]');

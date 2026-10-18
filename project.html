@@ -59,7 +59,7 @@
       clicks "Connect Google" in Settings > Controls. It is a device label,
       never a gate , offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://static.cloudflareinsights.com https://accounts.google.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-5or126vT/Zglw3U/tddN1oiYfQWWU72J4+5skzkCYWA=' 'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4=' 'sha256-1lQZ8ZnhADNPMPnTqfYPbBDeCin0qp40ehxDc065Fmc='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://static.cloudflareinsights.com https://accounts.google.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-tIUyVLgLv863QHzQD18am+1btD7M/npgp++Uizni0S4=' 'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4=' 'sha256-1lQZ8ZnhADNPMPnTqfYPbBDeCin0qp40ehxDc065Fmc='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
@@ -212,6 +212,7 @@
     <button class="sec-btn" data-action="showSec" data-section="kan" id="knav"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="2" stroke="#D4AF37" stroke-width="2"/><path d="M9 4V20M15 4V20" stroke="#D4AF37" stroke-width="2"/></svg>Kanban</button>
     <button class="sec-btn" data-action="showSec" data-section="res" data-pack="money"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M5 18H19" stroke="#22C55E" stroke-width="2"/><path d="M12 4C8.5 4 5.5 7 5.5 11V18H18.5V11C18.5 7 15.5 4 12 4Z" stroke="#22C55E" stroke-width="2"/></svg>Resources</button>
     <button class="sec-btn" data-action="showSec" data-section="bud" data-pack="money"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M21 7H3V17H21V7Z" stroke="#D4AF37" stroke-width="2" stroke-linejoin="round"/><path d="M17 10H7" stroke="#D4AF37" stroke-width="2"/><path d="M3 7L12 12L21 7" stroke="#D4AF37" stroke-width="2"/></svg>Budget</button>
+    <button class="sec-btn" data-action="showSec" data-section="proc" data-pack="procurement"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M3 5H5.4L7.3 15.5H17.7L19.6 7.5H6.3" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7.3 15.5L6.9 18H18.4" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="20.4" r="1.5" stroke="#D4AF37" stroke-width="2"/><circle cx="17" cy="20.4" r="1.5" stroke="#D4AF37" stroke-width="2"/></svg>Procurement</button>
     <button class="sec-btn" data-action="showSec" data-section="raci" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><circle cx="8" cy="8" r="3" stroke="#3B82F6" stroke-width="2"/><circle cx="16" cy="8" r="3" stroke="#3B82F6" stroke-width="2"/><circle cx="12" cy="16" r="3" stroke="#3B82F6" stroke-width="2"/></svg>RACI</button>
     <button class="sec-btn" data-action="showSec" data-section="comms" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M4 5C4 3.9 4.9 3 6 3H18C19.1 3 20 3.9 20 5V14C20 15.1 19.1 16 18 16H9L5 20V16H6C4.9 16 4 15.1 4 14V5Z" stroke="#D4AF37" stroke-width="2" stroke-linejoin="round"/><path d="M8 8H16M8 11H13" stroke="#D4AF37" stroke-width="2" stroke-linecap="round"/></svg>Comms Log</button>
     <button class="sec-btn" data-action="showSec" data-section="docs" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" stroke="#64748B" stroke-width="2"/><path d="M14 2V8H20" stroke="#64748B" stroke-width="2"/></svg>Documents</button>
@@ -1011,6 +1012,51 @@
     </div>
   </div>
 
+  <!-- ═══ PROCUREMENT (PART H: supplier price book + AI quote panel) ═══ -->
+  <div class="panel" id="panel-proc">
+    <div class="card">
+      <div class="card-title">Procurement, Supplier Price Book
+        <div class="g6">
+          <button class="btn btn-g btn-s" data-action="addPvendor">+ Add Supplier</button>
+        </div>
+      </div>
+      <div class="proc-grid">
+        <div class="proc-col">
+          <div class="card-title ct-sm">Suppliers<span class="ct-sub" id="proc-vendor-count"></span></div>
+          <div id="proc-vendors" class="proc-vendors"></div>
+        </div>
+        <div class="proc-col">
+          <div class="card-title ct-sm">What they offer<span class="ct-sub" id="proc-vendor-sub"></span>
+            <div class="g6">
+              <button class="btn btn-g btn-s" data-action="addPitem">+ Add Item</button>
+            </div>
+          </div>
+          <div class="ox"><table class="dt"><thead><tr>
+            <th class="w38">ID</th><th>Item</th><th class="w70">Unit</th><th class="w110">Min price</th><th class="w80">Currency</th><th class="w80">Lead days</th><th class="w130">Quoted</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
+          </tr></thead><tbody id="proc-item-body"></tbody></table></div>
+          <div id="proc-subtotal" class="stat-sm proc-subtotal"></div>
+        </div>
+      </div>
+    </div>
+    <!-- AI quote panel (H2): a PANEL over the existing relay, never a second
+         engine , keys, quota, sign-in gate and error copy are all inherited. -->
+    <div class="card m0a mt16">
+      <div class="card-title">Write a Quote<span class="ct-sub">Uses the prices recorded above. An item with no price is written as "price on request", never a guessed number.</span>
+        <div class="g6">
+          <select id="proc-quote-vendor" class="btn btn-n btn-s cur-pt" aria-label="Supplier for this quote" data-action="procQuoteVendor"><option value="">Pick a supplier</option></select>
+          <select id="proc-quote-tone" class="btn btn-n btn-s cur-pt" aria-label="Quote type" data-action="procQuoteTone">
+            <option value="rfq">Request for quotation</option>
+            <option value="award">Award / purchase intent</option>
+            <option value="thanks">Thank you note</option>
+          </select>
+          <button class="btn btn-g btn-s" data-action="procQuote">Write quote</button>
+          <button class="btn btn-n btn-s is-hide" data-action="procQuoteCopy" id="proc-quote-copy"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>
+        </div>
+      </div>
+      <div id="proc-quote-out" class="proc-quote-out" role="region" aria-label="Generated quote" aria-live="polite"></div>
+    </div>
+  </div>
+
   <!-- ═══ RACI ═══ -->
   <div class="panel" id="panel-raci">
     <div class="card">
@@ -1568,6 +1614,7 @@
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Governance</span><label class="tgl"><input type="checkbox" id="pk-governance" aria-label="Governance pack" data-action="tglPack" data-pack="governance"><span class="tsl"></span></label></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg> Field</span><label class="tgl"><input type="checkbox" id="pk-field" aria-label="Field pack" data-action="tglPack" data-pack="field"><span class="tsl"></span></label></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg> Quality</span><label class="tgl"><input type="checkbox" id="pk-quality" aria-label="Quality pack" data-action="tglPack" data-pack="quality"><span class="tsl"></span></label></div>
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cart"></use></svg> Procurement</span><label class="tgl"><input type="checkbox" id="pk-procurement" aria-label="Procurement pack" data-action="tglPack" data-pack="procurement"><span class="tsl"></span></label></div>
     <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-tool"></use></svg> Support &amp; Diagnostics</div>
     <!-- Phase 2: client-side error surface (last 20 errors, timestamp + action) -->
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Client Error Log</span><span class="g6"><button class="btn btn-n btn-s" data-action="copyErrorLog" title="Copy the error log to the clipboard as plain text"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button><button class="btn btn-n btn-s" data-action="downloadErrorLog" title="Download the error log as a .txt file"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Download</button><button class="btn btn-n btn-s" data-action="clearErrorLog">Clear</button></span></div>
@@ -1861,6 +1908,7 @@ document.addEventListener('DOMContentLoaded', function() {
    'js/app/export.js','js/app/history.js','js/app/definitions.js',
    'js/mmgr-presence.js','js/mmgr-tasks.js','js/mmgr-risks.js',
    'js/mmgr-stakeholders.js','js/mmgr-bids.js','js/mmgr-closure.js',
+   'js/mmgr-procurement.js',
    'js/mmgr-raci.js','js/mmgr-charter.js','js/mmgr-defs.js',
    'js/mmgr-forecast.js','js/mmgr-decisions.js',
    'js/mmgr-claim.js','js/mmgr-digest.js','js/mmgr-ai-key.js',

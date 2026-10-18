@@ -155,6 +155,187 @@ var MMGR = window.MMGR || {};
       .join('\n');
   }
 
+  // ---- PART H (owner 2026-10-16): the supplier price book -> quote -------
+  // One money formatter shared by the prompt's data block, the local quote
+  // draft and the panel subtotal , byte-identical figures everywhere is what
+  // makes H7.2's quote-integrity gate (every J$ figure in a generated quote
+  // must appear in the serialised context) checkable at all.
+  function money(amount, currency) {
+    const n = Number(amount);
+    if (!isFinite(n)) {
+      return '';
+    }
+    const code = String(currency || 'JMD').toUpperCase();
+    const num = Number.isInteger(n)
+      ? n.toLocaleString('en-US')
+      : n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    if (code === 'JMD') {
+      return 'J$' + num;
+    }
+    if (code === 'USD') {
+      return 'US$' + num;
+    }
+    return code + ' ' + num;
+  }
+
+  function quotedAgo(iso) {
+    const t = iso ? Date.parse(iso) : NaN;
+    if (isNaN(t)) {
+      return 'not recorded';
+    }
+    const days = Math.floor((Date.now() - t) / 86400000);
+    if (days <= 0) {
+      return 'today';
+    }
+    if (days === 1) {
+      return 'yesterday';
+    }
+    return days + ' days ago';
+  }
+
+  // The ONE subtotal rule (H2/H6: never guess FX). The SAME verdict string is
+  // emitted by buildProcurementContext, the local quote draft and
+  // #proc-subtotal, so a subtotal in a generated quote is always copyable
+  // byte-for-byte from the context.
+  function bookTotals(items) {
+    const list = Array.isArray(items) ? items : [];
+    const priced = list.filter(function (it) {
+      return (
+        it &&
+        it.minPrice !== '' &&
+        it.minPrice !== null &&
+        it.minPrice !== undefined &&
+        isFinite(Number(it.minPrice)) &&
+        Number(it.minPrice) >= 0
+      );
+    });
+    const curs = {};
+    priced.forEach(function (it) {
+      curs[String(it.currency || 'JMD').toUpperCase()] = true;
+    });
+    const keys = Object.keys(curs).sort();
+    if (!list.length) {
+      return { verdict: '', single: false, total: 0, currency: '' };
+    }
+    if (keys.length > 1) {
+      return {
+        verdict: 'Mixed currencies, total not calculated.',
+        single: false,
+        total: 0,
+        currency: ''
+      };
+    }
+    if (priced.length !== list.length) {
+      return {
+        verdict: 'Some lines have no price, total not calculated.',
+        single: false,
+        total: 0,
+        currency: keys[0] || 'JMD'
+      };
+    }
+    const total = priced.reduce(function (a, it) {
+      return a + Number(it.minPrice);
+    }, 0);
+    const cur = keys[0] || 'JMD';
+    return {
+      verdict: 'Subtotal (all lines ' + cur + '): ' + money(total, cur),
+      single: true,
+      total: total,
+      currency: cur
+    };
+  }
+
+  // Serialised price book for the quote prompt. Bounds per H2: 200 suppliers /
+  // 400 items with EXPLICIT truncation lines, so a long book can never be
+  // silently dropped by the model. opts.vendorId scopes the block to one
+  // supplier (v1 quotes ONE supplier at a time).
+  function buildProcurementContext(opts) {
+    const s = S();
+    if (!s || !s.supplierBook) {
+      return '(No supplier price book yet. Add a supplier and their prices in the Procurement tab first.)';
+    }
+    const book = s.supplierBook;
+    const allVendors = book.vendors || [];
+    const allItems = book.items || [];
+    const sel = opts && opts.vendorId ? String(opts.vendorId) : '';
+    const listV = sel
+      ? allVendors.filter(function (v) {
+          return String(v.id) === sel;
+        })
+      : allVendors;
+    const MAX_V = 200;
+    const MAX_I = 400;
+    const shown = listV.slice(0, MAX_V);
+    const listed = [];
+    const lines = ['=== SUPPLIER PRICE BOOK (ground truth) ==='];
+    let itemsShown = 0;
+    let itemsTotal = 0;
+    shown.forEach(function (v) {
+      const its = allItems.filter(function (it) {
+        return String(it.vendorId) === String(v.id);
+      });
+      itemsTotal += its.length;
+      lines.push('');
+      lines.push('Supplier: ' + (v.name || '(unnamed supplier)'));
+      if (v.contact) {
+        lines.push('  Contact: ' + v.contact);
+      }
+      if (v.phone) {
+        lines.push('  Phone: ' + v.phone);
+      }
+      if (v.email) {
+        lines.push('  Email: ' + v.email);
+      }
+      if (!its.length) {
+        lines.push('  (no items recorded)');
+      }
+      const room = Math.max(MAX_I - itemsShown, 0);
+      its.slice(0, room).forEach(function (it) {
+        itemsShown++;
+        listed.push(it);
+        const priced =
+          it.minPrice !== '' &&
+          it.minPrice !== null &&
+          it.minPrice !== undefined &&
+          isFinite(Number(it.minPrice)) &&
+          Number(it.minPrice) >= 0;
+        const price = priced
+          ? money(it.minPrice, it.currency) + ' per ' + (it.unit || 'unit')
+          : 'price on request';
+        const lead =
+          it.leadTimeDays !== undefined && it.leadTimeDays !== null && it.leadTimeDays !== ''
+            ? Number(it.leadTimeDays) + ' days'
+            : 'not recorded';
+        lines.push(
+          '  - ' +
+            it.name +
+            ' | ' +
+            price +
+            ' | lead ' +
+            lead +
+            ' | quoted ' +
+            quotedAgo(it.quotedAt) +
+            (it.quotedBy ? ' by ' + it.quotedBy : '')
+        );
+      });
+    });
+    const hiddenV = listV.length - shown.length;
+    if (hiddenV > 0) {
+      lines.push('');
+      lines.push('... ' + hiddenV + ' more suppliers not included in this block.');
+    }
+    const hiddenI = itemsTotal - itemsShown;
+    if (hiddenI > 0) {
+      lines.push('... ' + hiddenI + ' more items not included in this block.');
+    }
+    lines.push('');
+    const totals = bookTotals(listed);
+    if (totals.verdict) {
+      lines.push(totals.verdict);
+    }
+    return lines.join('\n');
+  }
+
   function buildContext() {
     const s = S();
     if (!s) {
@@ -1000,6 +1181,39 @@ Review this claim package against a standard submission checklist and report, el
 4. CONTRACTUAL BASIS , is there a stated basis for relief (which contract terms, notices, or obligations apply)?
 5. REQUESTED RELIEF , is the ask explicit (extension of time, LD waiver, amount)?
 End with: a one-line verdict on submission readiness, and a short list of exactly what to add before submitting. Where a required element is genuinely absent from the data, say "MISSING , add ..." rather than assuming it exists.`;
+    },
+    // PART H: write a supplier email strictly FROM the recorded price book.
+    // The FORBID-INVENT rules below are H3 risk 1 (the headline risk: a
+    // confident wrong number in an emailed quote) and qa-procurement enforces
+    // them byte-for-byte against context() (H7.2).
+    quote: function () {
+      const opts = ns.Proc && ns.Proc.getQuoteOpts ? ns.Proc.getQuoteOpts() : {};
+      const tone =
+        opts.tone === 'award'
+          ? 'award notice (we are placing the order with this supplier)'
+          : opts.tone === 'thanks'
+            ? 'thank-you note (acknowledging their quotation)'
+            : 'request for quotation (asking them to confirm the recorded prices)';
+      const s = S();
+      const pn = (s && s.charter && s.charter.name) || (s && s.projectName) || 'our project';
+      const signOff = (s && s.userName) || 'Project Manager';
+      return `SUPPLIER EMAIL , WRITE IT FROM THE DATA BELOW ONLY
+
+=== THIS EMAIL ===
+To: the supplier named in the data
+Type: ${tone}
+Project: ${pn}
+Sign-off name: ${signOff}
+
+${buildProcurementContext({ vendorId: opts.vendorId || '' })}
+
+=== INSTRUCTIONS ===
+Write a short, professional, email-ready message in plain text:
+- A greeting addressed to the supplier, one or two sentences suited to the Type above, the line items with their EXACT prices, the subtotal line EXACTLY as the data states it (or that exact "not calculated" sentence when the data says so), a one-line next step, and the sign-off from the Sign-off name above.
+- Every money figure MUST be copied byte-for-byte from the data above. NEVER invent, estimate, round, convert or calculate a price. A line whose price is "price on request" stays written as "price on request", never a number.
+- Keep each currency symbol exactly as shown in the data. Never add up figures yourself unless the data already states the subtotal.
+- Plain text only: no markdown fences, no tables, no emoji, no em or en dashes (use commas, periods or colons).
+- Eight lines or fewer before the sign-off.`;
     }
   };
 
@@ -1023,7 +1237,13 @@ End with: a one-line verdict on submission readiness, and a short list of exactl
   // ---- API ----
   ns.Prompts = {
     generate: generatePrompt,
-    list: getPromptList
+    list: getPromptList,
+    // PART H: probeable quote machinery , qa-procurement reads context() and
+    // asserts every money figure in the generated quote appears in it
+    // byte-for-byte (H7.2); money/bookTotals keep all three surfaces identical.
+    context: buildProcurementContext,
+    money: money,
+    bookTotals: bookTotals
   };
 })(MMGR);
 window.MMGR = MMGR;

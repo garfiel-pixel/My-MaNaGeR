@@ -16571,3 +16571,185 @@ body.dark-mode .dashboard-card {
   position: relative;
   z-index: 1;
 }
+
+/* ============================================================
+   PART H (owner 2026-10-16): Procurement tab - supplier price
+   book + AI quote panel. Token-driven: body.dark-mode re-maps
+   every value below, so no dark override block of its own is
+   needed. Solid surfaces only (Gate 6.1: dense price rows never
+   sit on glass); text steps follow the amber/gold ink law.
+   ============================================================ */
+.proc-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 900px) {
+  .proc-grid {
+    grid-template-columns: minmax(230px, 0.85fr) minmax(0, 1.6fr);
+    gap: 20px;
+  }
+}
+
+.proc-col {
+  min-width: 0;
+}
+
+.proc-vendors {
+  margin-top: 8px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--squircle-md);
+  background: var(--glass-fill-dark);
+  overflow: hidden;
+}
+
+.proc-empty {
+  display: block;
+  padding: 14px;
+  color: var(--slate);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.pv-disc {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--tr);
+}
+
+.pv-disc:hover,
+.pv-disc:focus-visible {
+  background: var(--tile-bg);
+}
+
+.pv-disc + .pv-panel {
+  border-top: 1px solid var(--glass-border);
+}
+
+.pv-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pv-meta {
+  flex: 0 0 auto;
+  color: var(--slate);
+  font-size: 0.74rem;
+  white-space: nowrap;
+}
+
+.pv-stale {
+  flex: 0 0 auto;
+  color: var(--amber-ink);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.pv-disc::after {
+  content: '';
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  margin-left: auto;
+  border-right: 2px solid var(--slate);
+  border-bottom: 2px solid var(--slate);
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform var(--tr);
+}
+
+.pv-disc[aria-expanded='true']::after {
+  transform: rotate(-135deg) translate(-2px, -2px);
+}
+
+.pv-panel {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  background: var(--glass-fill-dark);
+}
+
+.pv-panel[hidden] {
+  display: none;
+}
+
+.pv-fl {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--slate);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pv-in {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--tile-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+textarea.pv-in {
+  resize: vertical;
+}
+
+.pv-dup {
+  color: var(--amber-ink);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.proc-qd {
+  color: var(--slate);
+  font-size: 0.74rem;
+  line-height: 1.45;
+  white-space: nowrap;
+}
+
+.proc-subtotal {
+  margin-top: 8px;
+  font-weight: 600;
+  /* Gate A1 (WCAG 2.2 AA, measured 2026-10-18): .stat-sm's --gold
+     (#d96b27) on the card's white is 3.45:1 , below the 4.5:1 floor for
+     14.4px text. The accent ink token passes in both palettes:
+     light #c24700 on #ffffff = 5.0:1 , dark --amber-ink resolves to
+     white on the dark card. */
+  color: var(--amber-ink);
+}
+
+.proc-quote-out {
+  margin-top: 12px;
+  padding: 14px;
+  min-height: 52px;
+  background: var(--glass-fill-dark);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--squircle-md);
+  color: var(--text);
+  font-size: 0.86rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.proc-quote-out:empty::before {
+  content: 'Your quote will appear here. Copy it straight into an email.';
+  color: var(--slate);
+}

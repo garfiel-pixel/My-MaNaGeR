@@ -31,7 +31,15 @@
 // describes the PART H procurement build, which is still uncommitted in the
 // working tree; v435 was the first cache bump that carried this file, and v436
 // carries the combined Add-and-download action in calc-ai.js.
-const CACHE = 'mmgr-shell-v436';
+// v437 - PART H COMPLETE (audit task P1, H5.5-H5.12). The supplier price
+// book's disclosure panel actually opens (vendorFields emitted `hidden` on
+// every .pv-panel and nothing ever removed it, so Add Supplier landed a row
+// whose name field could not be focused), .proc-subtotal moved off --gold
+// (#d96b27 on white = 3.45:1 , below the 4.5:1 floor) onto --amber-ink
+// (5.0:1 light, white in dark), and the qa-procurement gate went green
+// (27/27) and joined CI. css/mmgr.css, dist/mmgr.min.css, dist/bundle.js and
+// project.html are shell assets, hence this bump.
+const CACHE = 'mmgr-shell-v437';
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new
 // 'JIC rate book' choice on calculator.html) prices ANY shipped book row as

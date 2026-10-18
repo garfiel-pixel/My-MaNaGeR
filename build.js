@@ -111,6 +111,9 @@ const APP_MODULES = [
   'js/mmgr-stakeholders.js',
   'js/mmgr-bids.js',
   'js/mmgr-closure.js',
+  // PART H (owner 2026-10-16): Procurement tab - supplier price book +
+  // AI quote panel (ns.Proc). Call-time deps only (State/Utils/Prompts).
+  'js/mmgr-procurement.js',
   'js/mmgr-raci.js',
   'js/mmgr-charter.js',
   'js/mmgr-defs.js',

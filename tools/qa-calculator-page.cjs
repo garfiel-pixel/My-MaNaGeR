@@ -251,6 +251,12 @@ async function withChrome(fn) {
     check('C0 calculator page boots with form + output', !!booted, booted);
 
     // C1+C2: slab 10x8x150mm, JMD, Jamaica 15% - exact quantities + money math.
+    // C2 re-baseline: the app now refuses to charge a US-dollar model as JMD with
+    // no exchange rate. Seed the disclosed starting rate first (the real user
+    // path: pick Jamaica, the page offers the seeded rate), then price.
+    await ev(`(function(){
+      try { localStorage.setItem('mmgr_calc_fx', JSON.stringify({ JMD: { per: '158', asOf: '2026-01-15', seeded: true } })); } catch (e) {}
+    })()`);
     const c12 = await ev(`(function(){
       document.getElementById('calc-work').value = 'slab';
       document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
@@ -259,7 +265,7 @@ async function withChrome(fn) {
       document.getElementById('calc-d3').value = '150';
       document.getElementById('calc-currency').value = 'JMD';
       document.getElementById('calc-country').value = 'JM';
-      document.getElementById('calc-currency').dispatchEvent(new Event('input',{bubbles:true}));
+      document.getElementById('calc-currency').dispatchEvent(new Event('change',{bubbles:true}));
       document.querySelector('[data-action="calcRun"]').click();
       const out = document.getElementById('calc-output').textContent;
       const qty = out.match(/([\\d.]+) m3/);
@@ -711,6 +717,7 @@ async function withChrome(fn) {
       document.getElementById('calc-d2').value = '10';
       document.getElementById('calc-d3').value = '100';
       document.getElementById('calc-currency').value = 'USD';
+      document.getElementById('calc-currency').dispatchEvent(new Event('change', { bubbles: true }));
       document.getElementById('calc-country').value = 'US';
       document.getElementById('calc-quality').value = 'standard';
     })()`);
@@ -1283,6 +1290,7 @@ async function withChrome(fn) {
       localStorage.setItem('mmgr_calc_locpacks', JSON.stringify(list));
       document.getElementById('calc-rate-mat').value = '';
       document.getElementById('calc-currency').value = 'USD';
+      document.getElementById('calc-currency').dispatchEvent(new Event('change', { bubbles: true }));
       document.getElementById('calc-tax-override').value = '';
       document.getElementById('calc-pack-note').hidden = true;
     })()`);
@@ -2222,16 +2230,17 @@ async function withChrome(fn) {
                first: sel.options.length ? sel.options[0].textContent : '', val: sel.value };
     })()`);
     check(
-      'EV1 variant selector: hidden on slab, shown on excavation with its JIC #1 soil variant',
-      // JIC 2025-2027 re-baseline (2026-10-02): excav carries the 9 official
-      // JIC soil rates (#1-#9). The first is still id 'standard' - carrying the
-      // pre-conversion model rates - so old saves recall unchanged (proved by
-      // EV3's unchanged 1600 total). The LABEL is now the JIC wording.
+      'EV1 variant selector: hidden on slab, shown on excavation, model variant labelled plainly (never JIC)',
+      // C2b re-baseline (audit 2026-10-18): the first excav variant keeps id
+      // 'standard' so old saves recall unchanged, but it carries the US-DOLLAR
+      // planning model - so it may never be labelled "JIC #1". The label now
+      // says what the figure is; the JIC soil rates live in the book picker.
       ev1 &&
         ev1.slabHidden &&
         ev1.shown &&
         ev1.opts === 9 &&
-        ev1.first === 'Compacted earth to 5 ft deep (JIC #1)' &&
+        ev1.first === 'Compacted earth to 5 ft deep (planning model)' &&
+        ev1.first.indexOf('JIC') === -1 &&
         ev1.val === 'standard',
       ev1
     );
@@ -2269,7 +2278,7 @@ async function withChrome(fn) {
       ev3 &&
         ev3.same === true &&
         ev3.vId === 'standard' &&
-        ev3.vLabel === 'Compacted earth to 5 ft deep (JIC #1)',
+        ev3.vLabel === 'Compacted earth to 5 ft deep (planning model)',
       ev3
     );
 
@@ -2327,21 +2336,33 @@ async function withChrome(fn) {
       var note = !document.getElementById('calc-fx-note').hidden;
       document.querySelector('[data-action=calcRun]').click();
       var out = document.getElementById('calc-output').textContent;
-      return { rm: rm, note: note, banner: out.indexOf('Built-in model rates are US dollars') > -1,
-               usdMoney: out.indexOf('$3,405') > -1, noJmd: out.indexOf('J$3,405') === -1 };
+      return { rm: rm, note: note,
+               refused: /no exchange rate is set for JMD/i.test(out),
+               noMoney: out.indexOf('3,405') === -1 && out.indexOf('Estimated total') === -1 };
     })()`);
     check(
-      'FX3 with no rate, JMD fields stay empty + note shows + totals carry the USD symbol (never a relabel)',
-      fx3 && fx3.rm === '' && fx3.note && fx3.banner && fx3.usdMoney && fx3.noJmd,
+      'FX3 with no rate, JMD fields stay EMPTY and the page REFUSES to print a total (audit C2)',
+      // C2 re-baseline (audit 2026-10-18): the old contract printed the US-dollar
+      // model total under a JMD estimate beside a banner. That IS the "two
+      // stupid rates" defect - a number in the wrong currency. The engine now
+      // refuses and names the three ways out, so no figure reaches the page.
+      fx3 && fx3.rm === '' && fx3.note && fx3.refused && fx3.noMoney,
       fx3
     );
     const fx4 = await ev(`(function(){
+      // C2 re-baseline: with no exchange rate the engine refuses while EITHER
+      // split rate is empty (a lone typed material rate would still charge the
+      // US-dollar labour model as JMD). Type both - which is this gate's point:
+      // money the user typed is their own money and is never converted.
       document.getElementById('calc-rate-mat').value = '4000';
       document.getElementById('calc-rate-mat').dispatchEvent(new Event('input',{bubbles:true}));
+      document.getElementById('calc-rate-lab').value = '1000';
+      document.getElementById('calc-rate-lab').dispatchEvent(new Event('input',{bubbles:true}));
       document.querySelector('[data-action=calcRun]').click();
       var out = document.getElementById('calc-output').textContent;
       var r = __calcEngine.computeFor(Object.assign(__calcEngine.readState(), { _matModel: document.getElementById('calc-rate-mat').dataset.model, _labModel: document.getElementById('calc-rate-lab').dataset.model }));
       document.getElementById('calc-rate-mat').value = '';
+      document.getElementById('calc-rate-lab').value = '';
       return { typedUsed: out.indexOf('50,400') > -1, mat: r ? Math.round(r.mat) : null, overridden: r ? r.matOverridden : null };
     })()`);
     check(
@@ -4300,6 +4321,24 @@ async function withChrome(fn) {
     }
     // The reload cleared the auth seam; set it again so the gate is pinned.
     await ev(`window.__MMGR_RR_AUTH = 'in'; true;`);
+
+    // C2 re-baseline (2026-10-18). The JP family priced in JMD, so the reload
+    // restores a JMD form - and the calculator now (correctly) refuses to
+    // charge the US-dollar planning model as JMD with no exchange rate. Keep
+    // the disclosed seeded rate on the device, then put the form back on USD
+    // for the unit/save/export families that price the model.
+    await ev(`(function(){
+      try { localStorage.setItem('mmgr_calc_fx', JSON.stringify({ JMD: { per: '158', asOf: '2026-01-15', seeded: true } })); } catch (e) {}
+      var c = document.getElementById('calc-currency');
+      if (c) { c.value = 'USD'; c.dispatchEvent(new Event('change', { bubbles: true })); }
+      var b = document.getElementById('calc-basis');
+      if (b && b.value !== 'measured') { b.value = 'measured'; b.dispatchEvent(new Event('change', { bubbles: true })); }
+      var mq = document.getElementById('calc-measured-qty');
+      if (mq) { mq.value = ''; }
+      var man = document.getElementById('calc-measured-manual');
+      if (man) { man.checked = false; }
+      return true;
+    })()`);
     await ev(`(function(){
       var w = document.getElementById('calc-work');
       w.value = 'jic';
@@ -4766,13 +4805,18 @@ async function withChrome(fn) {
     // note naming the gap - exactly the E1 contract. It still prices (the
     // engine falls back safely), it just never invents a converted number.
     check(
-      'E2 legacy JMD row recalls: units inferred (m), rate left EMPTY with the honest note, still priced (no invented conversion)',
+      'E2 legacy JMD row recalls: units inferred (m), rate converted by the DISCLOSED seeded rate (never a raw USD number), still priced',
+      // C2 re-baseline (2026-10-18): the device carries the seeded, dated,
+      // visible JMD starting rate (158), so the recall prefill is a CONVERTED
+      // figure (tile model 24 x 158 = 3792) - not the raw USD 24 wearing a J$
+      // sign, and not an invented number. With a rate present there is no gap
+      // to name, so the honest note is correctly absent.
       e2 &&
         e2.work === 'tile' &&
         e2.d1 === '10' &&
         e2.units === 'metric' &&
-        e2.rm === '' &&
-        e2.note &&
+        e2.rm === '3792' &&
+        e2.note === false &&
         e2.priced,
       e2
     );

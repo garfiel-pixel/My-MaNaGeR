@@ -7848,10 +7848,11 @@
       Number(r.qty) > 0 &&
       ((manual && manual.checked) || r.isCustom || r.isJic)
     ) {
-      // C1: the read-out prints BOTH units ("10,000 sq ft (about 929.03 m2)")
-      // so the physical quantity is unambiguous whichever system is on screen.
-      const qsObj = qtyShown(r.qty, unit);
-      const qs = qsObj.main + (qsObj.alt || '');
+      // C1: the quantity printed here is ALWAYS the system on screen, and the
+      // hero above carries the secondary reading. This line stays the owner's
+      // own wording ("69 m2 x J$120 = J$8,280 before tax") - the plain-language
+      // law does not allow a parenthetical to creep into a pinned sentence.
+      const qs = qtyShown(r.qty, unit).main;
       // fmtMoney is the page's one money formatter (J$8,280), so the read-out
       // reads exactly like the bill below it.
       txt =

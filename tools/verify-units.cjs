@@ -142,11 +142,19 @@ async function ensureServer() {
       measuredUnit: 'm2',
       measuredAuto: ''
     });
-    check('U3 metric Quick total 10,000 prices 10,000 m2', u3.qty != null && close(u3.qty, 10000), u3);
+    check(
+      'U3 metric Quick total 10,000 prices 10,000 m2',
+      u3.qty != null && close(u3.qty, 10000),
+      u3
+    );
 
     // ---- U4: a LEGACY saved state (no measuredEntry at all) prices as before
     const u4 = await run({ units: 'metric', measuredQty: '10000', measuredUnit: 'm2' });
-    check('U4 legacy state without measuredEntry is unchanged', u4.qty != null && close(u4.qty, 10000), u4);
+    check(
+      'U4 legacy state without measuredEntry is unchanged',
+      u4.qty != null && close(u4.qty, 10000),
+      u4
+    );
     const u4b = await run({ units: 'imperial', measuredQty: '10000', measuredUnit: 'm2' });
     check(
       'U4b legacy imperial state still means engine units (no silent conversion)',
@@ -188,11 +196,17 @@ async function ensureServer() {
       document.querySelector('[data-action="calcUnits"][data-units="metric"]').click();
       const metric = { value: box.value, entry: box.dataset.entry };
       const rm = __calcEngine.computeFor(__calcEngine.readState());
-      return { imperial, metric, qtyImp: ri && !ri.error ? ri.qty : null, qtyMet: rm && !rm.error ? rm.qty : null };
+      return {
+        imperial,
+        metric,
+        qtyImp: ri && !ri.error ? ri.qty : null,
+        qtyMet: rm && !rm.error ? rm.qty : null
+      };
     });
     check(
       'U6 toggle to imperial converts the digits (10,000 m2 -> 107,639.1042 sq ft)',
-      Number(toggle.imperial.value) > 107639 && Number(toggle.imperial.value) < 107640 &&
+      Number(toggle.imperial.value) > 107639 &&
+        Number(toggle.imperial.value) < 107640 &&
         toggle.imperial.entry === 'imp',
       toggle.imperial
     );
@@ -258,7 +272,11 @@ async function ensureServer() {
         units: document.getElementById('calc-work') ? 'ok' : 'missing'
       };
     });
-    check('U9 the dry run previews the proposal quantity and unit', !!u9.preview && u9.preview.qty > 0, u9);
+    check(
+      'U9 the dry run previews the proposal quantity and unit',
+      !!u9.preview && u9.preview.qty > 0,
+      u9
+    );
     check('U9b Populate accepts an imperial proposal', u9.res && u9.res.ok === true, u9.res);
     check(
       'U9c the populated line prices 929.0304 m2 (100 ft x 100 ft)',
@@ -310,7 +328,11 @@ async function ensureServer() {
         head: f && f.text ? f.text.slice(0, 200) : ''
       };
     });
-    check('U11 Generate a file prices an unpopulated proposal (no Populate first)', u11.ok === true, u11);
+    check(
+      'U11 Generate a file prices an unpopulated proposal (no Populate first)',
+      u11.ok === true,
+      u11
+    );
     check(
       'U11b the sandboxed file carries the converted quantity and a total',
       /929\.03/.test(u11.text) && /[0-9][0-9,]*\.[0-9]{2}/.test(u11.text),
@@ -319,7 +341,12 @@ async function ensureServer() {
 
     // ---- U12-C10: the chip's data source is never blank for a work proposal
     const u12 = await page.evaluate(() => {
-      const chk = window.MMGR_CALC_CHECK({ work: 'blockwall', units: 'imperial', d1: 100, d2: 100 });
+      const chk = window.MMGR_CALC_CHECK({
+        work: 'blockwall',
+        units: 'imperial',
+        d1: 100,
+        d2: 100
+      });
       return { qty: chk.preview && chk.preview.qty, unit: chk.preview && chk.preview.unit };
     });
     check(
@@ -339,7 +366,9 @@ async function ensureServer() {
       let indirect = false;
       if (!direct && /\.value\s*=/.test(line)) {
         const before = src.slice(Math.max(0, i - 4), i + 1).join('\n');
-        indirect = /calc-measured-qty['"]\)/.test(before) && /var\s+\w+\s*=\s*\$\(\s*'calc-measured-qty'/.test(before);
+        indirect =
+          /calc-measured-qty['"]\)/.test(before) &&
+          /var\s+\w+\s*=\s*\$\(\s*'calc-measured-qty'/.test(before);
       }
       if (!direct && !indirect) return;
       writers++;

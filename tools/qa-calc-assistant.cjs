@@ -30,6 +30,26 @@ const fs = require('fs');
 const { spawn } = require('child_process');
 const PORT = 8765;
 const BASE = process.env.BASE || 'http://127.0.0.1:' + PORT;
+
+// C2 re-baseline (audit 2026-10-18): the calculator no longer charges a
+// US-dollar model as JMD with no exchange rate - it refuses, which is correct.
+// These gates exercise the assistant and the page, not the FX table, so each
+// context starts with the DISCLOSED seeded JMD starting rate, exactly what a
+// real Jamaica project gets on first use. The refusal path has its own gates
+// in tools/verify-currency.cjs (T3) and the FX3/FX4 page gates.
+async function seedCalcFx(page) {
+  await page.addInitScript(() => {
+    try {
+      if (!localStorage.getItem('mmgr_calc_fx')) {
+        localStorage.setItem(
+          'mmgr_calc_fx',
+          JSON.stringify({ JMD: { per: '158', asOf: '2026-01-15', seeded: true } })
+        );
+      }
+    } catch (e) {}
+  });
+}
+
 const ROOT = path.resolve(__dirname, '..');
 const log = s => process.stdout.write('[calc-ai] ' + s + '\n');
 const delay = ms => new Promise(r => setTimeout(r, ms));
@@ -118,6 +138,7 @@ async function ensureServer() {
 
 // ---------------------------------------------------------------- sections
 async function quickTotalMatrix(page) {
+  await seedCalcFx(page);
   await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
   await page.waitForFunction(() => !!window.MMGR_CALC_POPULATE, null, { timeout: 20000 });
 
@@ -295,6 +316,7 @@ async function assistantOutputs(browser, errors) {
       })
     });
   });
+  await seedCalcFx(page);
   await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
   await page.waitForFunction(
     () => {
@@ -459,6 +481,7 @@ async function fileIntake(browser, errors) {
       body: JSON.stringify({ ok: true, text: 'Noted.', remaining: 4 })
     });
   });
+  await seedCalcFx(page);
   await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
   await page.waitForFunction(
     () => {
@@ -790,6 +813,7 @@ async function contrastGates(browser, errors) {
   }
   // The assistant's identity link is the signed-OUT state (no auth mock here),
   // which is exactly where the gold-on-white link renders.
+  await seedCalcFx(page);
   await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
   await page.waitForSelector('.bcp-ai-me-link', { timeout: 20000 });
   await page.evaluate(CONTRAST_FN);
@@ -1301,6 +1325,7 @@ async function partARateAccess(browser, errors) {
         ? 'One wall, 12 m long and 2.4 m high.\nPROPOSAL: {"work":"blockwall","d1":12,"d2":2.4,"note":"one wall"}'
         : 'Understood - those are the rates on this device.'
     );
+    await seedCalcFx(page);
     await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
     await page.waitForFunction(() => !!window.MMGR_CALC_RATEBOOK, null, { timeout: 20000 });
     // A1: the panel mount starts the ONE full-book loader; give the local
@@ -1392,13 +1417,15 @@ async function partARateAccess(browser, errors) {
       rowLines.slice(-2)
     );
 
-    // N9: the original PROPOSAL instruction, word for word, and it still adds.
+    // N9 (re-baselined 2026-10-18, audit C8): the PROPOSAL instruction now
+    // REQUIRES the unit system the user spoke in, so the page never converts a
+    // stated figure behind their back. The key discipline is unchanged.
     check(
-      'N9 the original PROPOSAL instruction is unchanged',
-      sys1.indexOf('PROPOSAL: {"work":"<key>","d1":<number>,"note":"<one short line>"}') > -1 &&
-        sys1.indexOf(
-          'use only the work keys you were given, include d2/d3 only if that work item needs them, and never guess a key.'
-        ) > -1
+      'N9 the PROPOSAL instruction carries the unit system and the key discipline',
+      sys1.indexOf('PROPOSAL: {"work":"<key>","units":"metric"|"imperial","d1":<number>') > -1 &&
+        sys1.indexOf('PROPOSAL: {"work":"<key>","units":"...","measuredQty":<number>') > -1 &&
+        /use only the work keys you were given/i.test(sys1) &&
+        /never guess a key/i.test(sys1)
     );
     await sendQ(page, 'price one wall twelve metres by two point four');
     await page.click('[data-cai=pop]');
@@ -1447,6 +1474,7 @@ async function partARateAccess(browser, errors) {
     );
     const page = await ctx.newPage();
     page.on('pageerror', e => errors.push('calc(partA-n5): ' + String(e).slice(0, 140)));
+    await seedCalcFx(page);
     await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
     await page.waitForFunction(() => !!window.MMGR_CALC_RATEBOOK, null, { timeout: 20000 });
     await page
@@ -1474,6 +1502,7 @@ async function partARateAccess(browser, errors) {
     // The script carries a cache-buster query, so the glob needs the tail.
     await page.route('**/jic-rates-full.js*', route => route.abort());
     const bodies = await mockRelay(page, () => 'Masonry starts with the block work rows.');
+    await seedCalcFx(page);
     await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
     await page.waitForFunction(() => !!window.MMGR_CALC_RATEBOOK, null, { timeout: 20000 });
     await sendQ(page, 'what rates do you have for masonry');
@@ -1493,6 +1522,7 @@ async function partARateAccess(browser, errors) {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await ctx.newPage();
     page.on('pageerror', e => errors.push('calc(partA-n8): ' + String(e).slice(0, 140)));
+    await seedCalcFx(page);
     await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
     await page.waitForFunction(() => !!window.MMGR_CALC_RATEBOOK, null, { timeout: 20000 });
     await page.click('[data-action="openRateBook"]');
@@ -1516,6 +1546,7 @@ async function partBCustomLine(browser, errors) {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await ctx.newPage();
     page.on('pageerror', e => errors.push('calc(partB): ' + String(e).slice(0, 140)));
+    await seedCalcFx(page);
     await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
     await page.waitForFunction(() => !!window.MMGR_CALC_POPULATE, null, { timeout: 20000 });
 
@@ -1811,6 +1842,7 @@ async function partBCustomLine(browser, errors) {
       }
       return 'Understood.';
     });
+    await seedCalcFx(page);
     await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
     await page.waitForFunction(() => !!window.MMGR_CALC_POPULATE, null, { timeout: 20000 });
     await page

@@ -1505,6 +1505,57 @@
     };
   }
 
+  // ---- C1 (AUDIT-DIRECTIVE-2026-10-18): THE MEASURED-QUANTITY UNIT BOUNDARY --
+  // One physical quantity has ONE canonical unit inside the engine (m2, m3, m,
+  // t, L, each), and every entry point DECLARES what unit it writes. The
+  // dimension boxes already convert feet to metres; the Quick total box did
+  // not, so 100 ft x 100 ft typed or sent as 10,000 became 10,000 m2 - a
+  // 10.7639x overstatement of the money.
+  //
+  // The declaration is `dataset.entry` on #calc-measured-qty, mirrored into
+  // state as `measuredEntry`, and it has exactly two values:
+  //   'eng' - the number is ALREADY in the engine unit (legacy meaning; every
+  //           saved estimate, every programmatic writer and every derived bill
+  //           line means this, so a missing field prices exactly as before),
+  //   'imp' - the number is in the imperial entry unit shown on the box
+  //           (sq ft, cu yd, ft, US gal).
+  const IMP_ENTRY = {
+    m2: { name: 'sq ft', toEngine: 0.09290304 },
+    m3: { name: 'cu yd', toEngine: 0.764554858 },
+    m: { name: 'ft', toEngine: 0.3048 },
+    L: { name: 'US gal', toEngine: 3.785411784 }
+  };
+  function entryUnitName(engineUnit) {
+    const row = IMP_ENTRY[engineUnit];
+    return row ? row.name : engineUnit;
+  }
+  function toEngineQty(value, entryFlag, engineUnit) {
+    const row = IMP_ENTRY[engineUnit];
+    const n = parseFloat(value);
+    if (!isFinite(n)) {
+      return n;
+    }
+    return entryFlag === 'imp' && row ? n * row.toEngine : n;
+  }
+  function fromEngineQty(value, entryFlag, engineUnit) {
+    const row = IMP_ENTRY[engineUnit];
+    const n = parseFloat(value);
+    if (!isFinite(n)) {
+      return n;
+    }
+    return entryFlag === 'imp' && row ? n / row.toEngine : n;
+  }
+  // Kill switch (rule N10). Default ON; a device that flips
+  // mmgr_flag_calcUnitFlag to '0' gets the pre-conversion behaviour back
+  // without a redeploy. Listed in docs/STORAGE-INVENTORY.md.
+  function calcUnitFlagOn() {
+    try {
+      return localStorage.getItem('mmgr_flag_calcUnitFlag') !== '0';
+    } catch (e) {
+      return true;
+    }
+  }
+
   // ---- E3 (plan v2 Phase 1): RATE-ENTRY UNIT ADAPTER -----------------------
   // The engine's math is metric (m2, m3, m, t, L, each). A work item may
   // declare the unit its RATES are quoted in (a JIC-style sheet speaks yd2,
@@ -1640,6 +1691,9 @@
       jicRate: ($('calc-jic-rate') || {}).value || '',
       jicModel: (($('calc-jic-rate') || {}).dataset || {}).model || '',
       measuredQty: ($('calc-measured-qty') || {}).value || '',
+      // C1: how to READ the number above ('imp' = imperial entry unit shown on
+      // the box, 'eng' = engine units). A missing value means 'eng'.
+      measuredEntry: (($('calc-measured-qty') || {}).dataset || {}).entry || 'eng',
       measuredAuto: instSum > 0 ? String(instSum) : '',
       measuredUnit: instUnit,
       instances: JSON.stringify(instRows || []),
@@ -1683,6 +1737,9 @@
     }
     if ($('calc-measured-qty')) {
       $('calc-measured-qty').value = st.measuredQty || '';
+      // C1: restore the entry unit declaration with the value, so a recalled
+      // estimate re-creates its exact sum instead of re-reading old digits.
+      $('calc-measured-qty').dataset.entry = st.measuredEntry || 'eng';
     }
     syncLabels();
     // E2/E6: the variant select was (re)rendered by syncLabels - restore the
@@ -1933,6 +1990,19 @@
       st.measuredQty != null && st.measuredQty !== '' ? st.measuredQty : st.measuredAuto
     );
     const hasMq = isFinite(mqRaw) && mqRaw > 0;
+    // C1: the trade's canonical unit is needed BEFORE any measured quantity is
+    // converted, so this block (it depends on nothing else) is hoisted here.
+    const canon = (function () {
+      try {
+        return w.q(1, w.d2 ? 1 : null, w.d3 ? 1 : null) || {};
+      } catch (e) {
+        return {};
+      }
+    })();
+    const mqUnit = st.measuredUnit || canon.unit || '';
+    // ONE conversion, decided by what the number IS (measuredEntry), never by
+    // the unit system alone.
+    const mqQty = hasMq && calcUnitFlagOn() ? toEngineQty(mqRaw, st.measuredEntry, mqUnit) : mqRaw;
     // B1: the custom line's own quantity and rate. The quantity falls back
     // to the Quick total box so the one measurement x one rate path prices a
     // custom line too (the assistant and T4 write there); the rate prefers
@@ -1943,12 +2013,12 @@
     const cRateRaw = parseFloat(st.calcCustomRate);
     const cRateOk = isFinite(cRateRaw) && cRateRaw > 0;
     const cUnit = isCustom ? String(st.calcCustomUnit || '').trim() : '';
-    const custQty = isCustom ? (cQtyOk ? cQtyRaw : hasMq ? mqRaw : 0) : 0;
+    const custQty = isCustom ? (cQtyOk ? cQtyRaw : hasMq ? mqQty : 0) : 0;
     // PART I PHASE 2: the JIC line's own quantity (d1, in the ROW's own
     // unit, falling back to the Quick total box exactly like the custom
     // line) and its own rate (prefilled from the book, the user's to edit).
     const jicQtyRaw = parseFloat(st.d1);
-    const jicQty = isJic ? (jicQtyRaw > 0 ? jicQtyRaw : hasMq ? mqRaw : 0) : 0;
+    const jicQty = isJic ? (jicQtyRaw > 0 ? jicQtyRaw : hasMq ? mqQty : 0) : 0;
     const jicRateRaw = parseFloat(st.jicRate);
     const jicRateOk = isFinite(jicRateRaw) && jicRateRaw > 0;
     const raw1 = num({ value: st.d1 });
@@ -1980,24 +2050,15 @@
     const d1 = imp ? raw1 * (IMP_D1_FACTOR[key] || FT) : raw1;
     const d2 = w.d2 ? (imp ? raw2 * FT : raw2) : null;
     const d3 = w.d3 ? (imp ? raw3 * IN : raw3) : null;
-    // Manual overrides carry no row-derived unit - derive the trade's canonical
-    // unit from q() itself (unit math never depends on the dimension values),
-    // and take the trade's OWN quantity label with it so the result heading can
+    // Manual overrides carry no row-derived unit: `canon`/`mqUnit` are derived
+    // above (C1) with the trade's OWN quantity label, so the result heading can
     // never read "undefined" on the typed-total path (owner 2026-10-10, F-3).
-    const canon = (function () {
-      try {
-        return w.q(1, w.d2 ? 1 : null, w.d3 ? 1 : null) || {};
-      } catch (e) {
-        return {};
-      }
-    })();
-    const mqUnit = st.measuredUnit || canon.unit || '';
     const qr = isCustom
       ? { qty: custQty, unit: cUnit || mqUnit, qtyLabel: 'Quantity' }
       : isJic
         ? { qty: jicQty, unit: jicUnitFor(jicRow, imp), qtyLabel: 'Quantity' }
         : hasMq
-          ? { qty: mqRaw, unit: mqUnit, qtyLabel: canon.qtyLabel || 'Measured quantity' }
+          ? { qty: mqQty, unit: mqUnit, qtyLabel: canon.qtyLabel || 'Measured quantity' }
           : w.q(d1, d2, d3);
     // B1 (owner review 2026-09-29): waste/cuts is an editable percentage per
     // trade (tile 10, roof laps 10, concrete 5 defaults = the previously
@@ -2019,7 +2080,7 @@
     const modelMr = hasMq
       ? av
         ? av.rate.mat
-        : matRate(w, mqRaw, null)
+        : matRate(w, mqQty, null)
       : av
         ? av.rate.mat
         : matRate(w, d1, d2);
@@ -2488,7 +2549,7 @@
         return;
       }
       const sheet = {
-        id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), // ok: non-secret
         name: name,
         at: new Date().toISOString().slice(0, 10),
         rates: {
@@ -2712,7 +2773,7 @@
         return;
       }
       const book = {
-        id: 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        id: 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), // ok: non-secret
         name: name,
         source: item && typeof item.source === 'string' ? item.source.slice(0, 80) : '',
         effective_from:
@@ -5812,7 +5873,7 @@
         return;
       }
       const pack = {
-        id: 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        id: 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), // ok: non-secret
         name: name,
         currency: String(item.currency).toUpperCase().slice(0, 3),
         taxDefault: isFinite(td) && td >= 0 ? td : 0,
@@ -7544,11 +7605,15 @@
     if (!qEl) {
       return;
     }
+    // C1: the box names the unit it is actually asking for. In imperial mode
+    // that is the entry unit (sq ft / cu yd / ft / US gal), so a typed number
+    // is never mistaken for the engine's unit.
     const unit = (r && r.unit) || '';
-    qEl.placeholder = unit ? 'Total ' + unit : 'Total quantity';
+    const entryUnit = _units === 'imperial' ? entryUnitName(unit) : unit;
+    qEl.placeholder = entryUnit ? 'Total ' + entryUnit : 'Total quantity';
     qEl.setAttribute(
       'aria-label',
-      unit ? 'Total measured quantity (' + unit + ')' : 'Total measured quantity'
+      entryUnit ? 'Total measured quantity (' + entryUnit + ')' : 'Total measured quantity'
     );
     const lineEl = $('calc-quick-line');
     if (!lineEl) {
@@ -7566,7 +7631,10 @@
       Number(r.qty) > 0 &&
       ((manual && manual.checked) || r.isCustom || r.isJic)
     ) {
-      const qs = qtyShown(r.qty, unit).main;
+      // C1: the read-out prints BOTH units ("10,000 sq ft (about 929.03 m2)")
+      // so the physical quantity is unambiguous whichever system is on screen.
+      const qsObj = qtyShown(r.qty, unit);
+      const qs = qsObj.main + (qsObj.alt || '');
       // fmtMoney is the page's one money formatter (J$8,280), so the read-out
       // reads exactly like the bill below it.
       txt =
@@ -8488,7 +8556,7 @@
         docCounterBump(st.docType);
       }
       list.unshift({
-        id: 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        id: 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), // ok: non-secret
         name: name,
         at: new Date().toISOString().slice(0, 10),
         total: fmtMoney(lastResult.total),
@@ -8751,6 +8819,8 @@
       const lineSt = Object.assign({}, st, {
         work: 'formwork',
         measuredQty: String(m2),
+        // C1: programmatic writers declare engine units explicitly.
+        measuredEntry: 'eng',
         measuredAuto: '',
         measuredUnit: 'm2',
         instances: '[]',
@@ -8803,7 +8873,12 @@
         qty = formworkM2(src.work, parseFloat(src.d1), parseFloat(src.d2), parseFloat(src.d3)) || 0;
       } else {
         const r = computeFor(
-          Object.assign({}, src, { measuredQty: src.measuredQty || src.measuredAuto })
+          Object.assign({}, src, {
+            measuredQty: src.measuredQty || src.measuredAuto,
+            // C1: the typed value keeps its own declaration; a fall-back to the
+            // derived total is an engine-unit number.
+            measuredEntry: src.measuredQty ? src.measuredEntry || 'eng' : 'eng'
+          })
         );
         qty = r && !r.error ? r.qty : 0;
       }
@@ -8869,6 +8944,8 @@
       const lineSt = Object.assign({}, st, {
         work: def.work,
         measuredQty: String(qty),
+        // C1: a derived bill line is always in the engine unit.
+        measuredEntry: 'eng',
         measuredAuto: '',
         measuredUnit: WORK[def.work].q(1).unit,
         instances: '[]',
@@ -8996,7 +9073,7 @@
         return sh.name.toLowerCase() !== name.toLowerCase();
       });
       list.unshift({
-        id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), // ok: non-secret
         name: name,
         at: new Date().toISOString().slice(0, 10),
         rates: {
@@ -10170,7 +10247,26 @@
   // there is something on the table (a bare form keeps its friendly empty
   // state instead of flashing the dimensions error).
   function setUnits(mode, silent) {
-    _units = mode === 'imperial' ? 'imperial' : 'metric';
+    const next = mode === 'imperial' ? 'imperial' : 'metric';
+    // C1: switching the unit system keeps the PHYSICAL quantity in the Quick
+    // total box, not the digits (100 feet by 100 feet stays 929.0304 m2).
+    // Skipped while a snapshot is applied (silent), where the restored value
+    // and its measuredEntry declaration are authoritative.
+    const qBox = $('calc-measured-qty');
+    if (silent !== true && qBox && String(qBox.value || '').trim() && next !== _units) {
+      const wKey = ($('calc-work') || {}).value;
+      const ww = WORK[wKey];
+      const engUnit =
+        (ww && ww.q ? (ww.q(1, ww.d2 ? 1 : null, ww.d3 ? 1 : null) || {}).unit : '') || '';
+      const oldFlag = qBox.dataset.entry || (_units === 'imperial' ? 'imp' : 'eng');
+      const newFlag = next === 'imperial' ? 'imp' : 'eng';
+      const eng = toEngineQty(parseFloat(qBox.value), oldFlag, engUnit);
+      if (isFinite(eng)) {
+        qBox.value = String(Math.round(fromEngineQty(eng, newFlag, engUnit) * 10000) / 10000);
+        qBox.dataset.entry = newFlag;
+      }
+    }
+    _units = next;
     try {
       localStorage.setItem('mmgr_calc_units', _units);
     } catch (e) {}
@@ -10430,7 +10526,15 @@
       openWrap.addEventListener('input', openHandler);
       openWrap.addEventListener('change', openHandler);
     }
-    $('calc-measured-qty').addEventListener('input', render);
+    // C1: the box's own handler stamps WHERE the digits came from, from the
+    // unit system on screen at that moment, and only then renders.
+    $('calc-measured-qty').addEventListener('input', function (e) {
+      const t = e && e.target ? e.target : $('calc-measured-qty');
+      if (t && t.dataset) {
+        t.dataset.entry = _units === 'imperial' ? 'imp' : 'eng';
+      }
+      render();
+    });
     // W3: employer statutory on-costs. Enabling the toggle (or switching to
     // Jamaica while it is on) suggests the 12.5% stack; a typed value always
     // wins (touched flag) and 0/empty keeps it off.
@@ -11545,6 +11649,10 @@
         var mq = $('calc-measured-qty');
         if (mq) {
           mq.value = String(v.measuredQty);
+          mq.dataset.entry = v.units === 'imperial' ? 'imp' : 'eng';
+          // C1: a number written by code declares its unit too. The assistant
+          // sends the unit system it spoke in (C8); anything else is engine
+          // units, exactly like a saved estimate.
         }
         var mt = $('calc-measured-manual');
         if (mt) {

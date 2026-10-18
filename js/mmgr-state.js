@@ -330,6 +330,20 @@ var MMGR = window.MMGR || {};
       // AI assistant is controlled by state.config.ai.tier (the drawer switch
       // is its master on/off). Only the four real UI modules stay flags.
       flags: { monteCarlo: true, ganttExport: true, leadtimeLane: true, weatherForecast: true },
+      // AUDIT-DIRECTIVE-2026-10-18 (rule N10): every risky change ships with a
+      // kill switch, so a fault can be turned off without redeploying logic.
+      // Flipping one to false restores the previous behaviour. The calculator
+      // page reads the same names from localStorage as mmgr_flag_<name>
+      // (listed in docs/STORAGE-INVENTORY.md); these defaults keep the new
+      // behaviour on.
+      calcUnitFlag: true, // C1: measured-quantity unit conversion
+      calcAiUnits: true, // C8: units in AI proposals + the echo chip
+      calcStickyPanel: true, // C6: sticky estimate panel + mobile total bar
+      calcSwitches: true, // C7: switch rows in place of bare checkboxes
+      calcRenderScheduler: true, // X-1: heavy-pass render scheduling
+      ganttExportV2: true, // G1-G8: the rewritten Gantt export
+      procPo: true, // P9: purchase orders from an awarded quote
+      consentBanner: true, // S-2: cookie and storage consent
       // Phase 2: client-side error surface , last 20 errors, each with a
       // timestamp and the source action, surfaced in the Controls drawer.
       errorLog: [],

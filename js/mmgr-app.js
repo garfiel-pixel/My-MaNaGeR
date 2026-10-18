@@ -2873,14 +2873,14 @@ window.MMGR = MMGR;
       } // user cancelled
       const clean = name.trim();
       if (!clean) {
-        showToast('Give the template a name first.', 'warn');
+        window.MMGR.App.showToast('Give the template a name first.', 'warn');
         return;
       }
       window.MMGR.Templates.saveAsTemplate(clean);
       if (window.MMGR.Render && window.MMGR.Render.renderTemplates) {
         window.MMGR.Render.renderTemplates();
       }
-      showToast('Template saved: ' + clean, 'ok');
+      window.MMGR.App.showToast('Template saved: ' + clean, 'ok');
     },
     applyTemplate: el => {
       const tplId = el.getAttribute('data-tpl-id');
@@ -2895,7 +2895,7 @@ window.MMGR = MMGR;
         if (window.MMGR.Render && window.MMGR.Render.renderTemplates) {
           window.MMGR.Render.renderTemplates();
         }
-        showToast('Template deleted.', 'ok');
+        window.MMGR.App.showToast('Template deleted.', 'ok');
       }
     },
     outdentTask: el => window.MMGR.Tasks.outdentTask(el.getAttribute('data-id')),

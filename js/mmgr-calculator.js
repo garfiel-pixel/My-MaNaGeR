@@ -1094,7 +1094,7 @@
           return c.from === parts[0] && c.to === parts[1];
         });
         if (conv) {
-          var res = val * conv.factor;
+          let res = val * conv.factor;
           r =
             fmtNum(val) +
             ' ' +
@@ -1212,7 +1212,7 @@
         var mrate = parseFloat(document.getElementById('mat-rate').value) || 0;
         var mw = parseFloat(document.getElementById('mat-waste').value) || 0;
         var base = mq * mrate;
-        var withWaste = base * (1 + mw / 100);
+        let withWaste = base * (1 + mw / 100);
         r = 'Base: ' + fmtDollars(base) + ' | With ' + mw + '% waste: ' + fmtDollars(withWaste);
         showResult('mat-result', r);
         addHistory(r);
@@ -1234,13 +1234,13 @@
       /* ── Construction trades (Phase 5 / A1) ── */
       case 'tr-pour': {
         var l = parseFloat(document.getElementById('tr-l').value) || 0;
-        var w = parseFloat(document.getElementById('tr-w').value) || 0;
+        let w = parseFloat(document.getElementById('tr-w').value) || 0;
         var t = parseFloat(document.getElementById('tr-t').value) || 0;
-        var waste = parseFloat(document.getElementById('tr-waste').value) || 0;
-        var volFt = l * w * (t / 12);
-        var volYd = volFt / 27;
+        let waste = parseFloat(document.getElementById('tr-waste').value) || 0;
+        let volFt = l * w * (t / 12);
+        let volYd = volFt / 27;
         var bags = Math.ceil((volYd * 27) / 0.6); // 60 lb bag @ 0.45 cu ft
-        var withWaste = volYd * (1 + waste / 100);
+        let withWaste = volYd * (1 + waste / 100);
         r =
           volFt.toFixed(1) +
           ' cu ft = ' +
@@ -1256,9 +1256,9 @@
       }
       case 'tr-cylinder': {
         var d = parseFloat(document.getElementById('tr-col-d').value) || 0;
-        var h = parseFloat(document.getElementById('tr-col-h').value) || 0;
+        let h = parseFloat(document.getElementById('tr-col-h').value) || 0;
         var n = parseInt(document.getElementById('tr-col-n').value) || 1;
-        var rad = d / 2;
+        let rad = d / 2;
         var oneYd = (Math.PI * rad * rad * h) / 27;
         var totalYd = oneYd * n;
         r =
@@ -1268,7 +1268,7 @@
         break;
       }
       case 'tr-masonry': {
-        var mw = parseFloat(document.getElementById('tr-mw').value) || 0;
+        let mw = parseFloat(document.getElementById('tr-mw').value) || 0;
         var mh = parseFloat(document.getElementById('tr-mh').value) || 0;
         var msz = document.getElementById('tr-msz').value;
         var mwaste = parseFloat(document.getElementById('tr-mwaste').value) || 0;
@@ -1466,7 +1466,7 @@
       }
       /* ── Bid & finance (Phase 5 / A2) ── */
       case 'fi-bid': {
-        var cost = parseFloat(document.getElementById('fi-cost').value) || 0;
+        let cost = parseFloat(document.getElementById('fi-cost').value) || 0;
         var oh = parseFloat(document.getElementById('fi-oh').value) || 0;
         var prof = parseFloat(document.getElementById('fi-profit').value) || 0;
         var withOh = cost * (1 + oh / 100);
@@ -1490,7 +1490,7 @@
       case 'fi-break': {
         var fix = parseFloat(document.getElementById('fi-be-fix').value) || 0;
         var cunit = parseFloat(document.getElementById('fi-be-unit').value) || 0;
-        var price = parseFloat(document.getElementById('fi-be-price').value) || 0;
+        let price = parseFloat(document.getElementById('fi-be-price').value) || 0;
         var be = price > cunit ? fix / (price - cunit) : null;
         r =
           be !== null
@@ -1505,12 +1505,12 @@
         var annual = parseFloat(document.getElementById('fi-loan-r').value) || 0;
         var yrs = parseInt(document.getElementById('fi-loan-y').value) || 1;
         var rn = annual / 100 / 12;
-        var n = yrs * 12;
+        let n = yrs * 12;
         var pay =
           rn > 0 && n > 0
             ? (P * rn * Math.pow(1 + rn, n)) / (Math.pow(1 + rn, n) - 1)
             : P / Math.max(1, n);
-        var total = pay * n;
+        let total = pay * n;
         r =
           'Monthly: ' +
           fmtDollars(pay) +
@@ -1524,9 +1524,9 @@
       }
       /* ── Site & geometry (Phase 5 / A3) ── */
       case 'si-slope': {
-        var rise = parseFloat(document.getElementById('si-rise').value) || 0;
+        let rise = parseFloat(document.getElementById('si-rise').value) || 0;
         var run = parseFloat(document.getElementById('si-run').value) || 0;
-        var pct = run !== 0 ? (rise / run) * 100 : 0;
+        let pct = run !== 0 ? (rise / run) * 100 : 0;
         var deg = run !== 0 ? (Math.atan2(rise, run) * 180) / Math.PI : 0;
         r =
           rise +
@@ -1542,7 +1542,7 @@
         break;
       }
       case 'si-arc': {
-        var rad = parseFloat(document.getElementById('si-rad').value) || 0;
+        let rad = parseFloat(document.getElementById('si-rad').value) || 0;
         var ang = parseFloat(document.getElementById('si-ang').value) || 0;
         var arc = 2 * Math.PI * rad * (ang / 360);
         // chord = 2r sin(theta/2)
@@ -1575,8 +1575,8 @@
       case 'si-frustum': {
         var ftop = parseFloat(document.getElementById('si-fr-top').value) || 0;
         var fbot = parseFloat(document.getElementById('si-fr-bot').value) || 0;
-        var fh = parseFloat(document.getElementById('si-fr-h').value) || 0;
-        var vol = (fh / 3) * (ftop + fbot + Math.sqrt(ftop * fbot));
+        let fh = parseFloat(document.getElementById('si-fr-h').value) || 0;
+        let vol = (fh / 3) * (ftop + fbot + Math.sqrt(ftop * fbot));
         r = 'Frustum volume: ' + vol.toFixed(2) + ' cu ft (' + (vol / 27).toFixed(2) + ' cu yd)';
         showResult('si-frustum-result', r);
         addHistory(r);
@@ -2031,9 +2031,9 @@
     // on tall tabs (Trades stacks 9 cards), and the icon-anchored py could
     // push the panel's tail below the viewport fold. Re-measure and clamp
     // so the whole panel (scrollable body included) stays on screen.
-    var ph = _panel.offsetHeight;
-    if (py + ph > window.innerHeight - 8) {
-      _panel.style.top = Math.max(8, window.innerHeight - ph - 8) + 'px';
+    var measuredPh = _panel.offsetHeight;
+    if (py + measuredPh > window.innerHeight - 8) {
+      _panel.style.top = Math.max(8, window.innerHeight - measuredPh - 8) + 'px';
     }
   }
 

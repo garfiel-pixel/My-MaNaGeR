@@ -1,3 +1,4 @@
+/* global WebSocketPair */
 /* ============================================================
    REAL-TIME PRESENCE — Durable Object + WebSocket upgrade
    ------------------------------------------------------------

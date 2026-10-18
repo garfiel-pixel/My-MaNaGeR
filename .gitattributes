@@ -23,3 +23,6 @@
 *.css   text eol=lf
 *.svg   text eol=lf
 *.txt   text eol=lf
+.nvmrc text eol=lf
+.assetsignore text eol=lf
+*.sh    text eol=lf

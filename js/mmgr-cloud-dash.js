@@ -1,3 +1,4 @@
+/* global MMGR */
 /* ============================================================
    My MaNaGeR , "My Cloud Projects" dashboard (app.html launcher)
    A5-3 decision (2026-08-11): a signed-in Google owner sees every

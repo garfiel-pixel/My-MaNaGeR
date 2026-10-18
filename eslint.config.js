@@ -86,5 +86,19 @@ module.exports = [
       }
     },
     rules: scriptRules
+  },
+  // AUDIT-DIRECTIVE-2026-10-18 (task D-1 / GATE D): inside the APP source an
+  // undefined reference or a duplicate declaration is a hard error, never a
+  // warning. Scoped to js/ + src/ + worker.js (the scope the audit linted,
+  // `eslint js src worker.js` = 0 errors) because the harnesses under tools/
+  // legitimately reference browser globals inside page.evaluate() callbacks and
+  // re-declare node built-ins (crypto, URL), which the rule reports as
+  // "already defined as a built-in global variable" - noise, not a defect.
+  {
+    files: ['worker.js', 'src/**/*.js', 'js/**/*.js'],
+    rules: {
+      'no-undef': 'error',
+      'no-redeclare': 'error'
+    }
   }
 ];

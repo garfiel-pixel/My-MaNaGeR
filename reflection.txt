@@ -174,3 +174,13 @@ is 247/247; the assistant harness is still 98/7 and I did not paper over it.
 Second lesson: a raw `select.value = 'USD'` is not a currency change. The
 engine keeps its own state, so the harnesses spent months silently pricing on
 whatever currency the previous gate left behind.
+
+2026-10-18 (S1 close): two lessons worth more than the fixes. One: when a gate
+goes red after a correct change, the first question is not "how do I make the
+gate pass" but "was this gate ever testing the right thing". Here seven
+assistant gates looked like one story (state leaking) and were actually three
+stories, and one of them was a real bug I had introduced - the fail-closed
+quantity guard refused good lines because it re-derived a number the engine
+legitimately adjusts. Two: a document is a different artefact from a screen.
+Whole units are right on a card you glance at and wrong in a file someone adds
+up. That one distinction, two decimals on the way out, is most of C3.

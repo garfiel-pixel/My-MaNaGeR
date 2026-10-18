@@ -620,8 +620,12 @@ export async function handleCloudLoad(request, env, projectId) {
   } else if (clientCode) {
     // C19: client codes are read-only; the section grant travels with the
     // response. Expired / deleted project map to friendly errors.
-    const { verifyClientCode, clientCodeGuardCheck, clientCodeNoteFailure, clientCodeClearFailures } =
-      await import('./client-codes.js');
+    const {
+      verifyClientCode,
+      clientCodeGuardCheck,
+      clientCodeNoteFailure,
+      clientCodeClearFailures
+    } = await import('./client-codes.js');
     // S-1 (AUDIT-DIRECTIVE-2026-10-18): the same 5-fail / 15-minute guard the
     // email sign-in has had since 2026-09-14, keyed per project AND per
     // address. It fails open, so an unapplied migration never locks anyone out.

@@ -23,14 +23,15 @@
 // + context/money/bookTotals exports, AI quote local draft + relay assist,
 // project.html panel markup, proc CSS block, CSP inline hashes regenerated
 // (25/25), field-guide entry.
-// v435 - the calculator's documents: two-decimal money in print and exports, the
+// v436 - the calculator's documents: two-decimal money in print and exports, the
 // reconciled row ladder (subtotal before/after overhead), one flat eight-field
 // CSV, and the vendored .xlsx writer (js/xlsx-lite.js) behind the new
 // Spreadsheet action. calculator-page.js, calculator.html and xlsx-lite.js are
 // shell assets, so returning clients must re-fetch. NOTE: the v434 line below
 // describes the PART H procurement build, which is still uncommitted in the
-// working tree; v435 is the first cache bump that carries this file.
-const CACHE = 'mmgr-shell-v435';
+// working tree; v435 was the first cache bump that carried this file, and v436
+// carries the combined Add-and-download action in calc-ai.js.
+const CACHE = 'mmgr-shell-v436';
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new
 // 'JIC rate book' choice on calculator.html) prices ANY shipped book row as

@@ -193,6 +193,12 @@
     ico('download') +
     '<span>Generate a file to download</span>' +
     '</button>' +
+    // C9 (audit 2026-10-18): the third path, one click, no ordering to remember:
+    // the line goes into the bill AND the file is ready to take away.
+    '<button type="button" class="btn btn-n btn-s" data-cai="both">' +
+    ico('check-circle') +
+    '<span>Add and download</span>' +
+    '</button>' +
     '</div>' +
     '</div>' +
     '<form class="bcp-ai-form" data-cai="form" autocomplete="off">' +
@@ -711,13 +717,22 @@
       );
       proposal = null;
       renderPaths();
-      return;
+      return true;
     }
     notice(
       (out && out.error) ||
         'That line could not be added. Check the numbers are greater than zero and try again.',
       'bad'
     );
+  }
+
+  // C9: the combined action, for the user who wants both and should not have to
+  // guess an order. Nothing is announced as downloaded unless the file exists.
+  function onBoth() {
+    var added = onPopulate();
+    if (added) {
+      onMakeFile();
+    }
   }
 
   // OWNER 2026-10-10 (T2, F-2): "Generate a file" used to announce a download
@@ -1480,6 +1495,10 @@
     }
     if (what === 'makefile') {
       onMakeFile();
+      return;
+    }
+    if (what === 'both') {
+      onBoth();
       return;
     }
     if (what === 'attach') {

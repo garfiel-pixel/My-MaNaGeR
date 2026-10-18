@@ -1,0 +1,34 @@
+#!/bin/sh
+# ============================================================
+# .githooks/pre-commit - the cheap tripwires (AUDIT-DIRECTIVE-2026-10-18, s10)
+# ------------------------------------------------------------
+# Runs the four fast gates that catch the exact defects this audit found, so a
+# commit cannot reintroduce one. The heavy browser gates (T1 units, T3 currency,
+# T6 Gantt export, T7 INP) stay in CI where the cost belongs.
+#
+#   T4  tools/verify-print-dom.cjs      a print selector must match the real DOM
+#   T5  tools/verify-no-weak-random.cjs no Math.random under src/ or worker.js
+#   T8  tools/verify-doc-size.cjs       plan docs stay readable (<= 40 KB)
+#   Lint tools/verify-eslint.cjs        errors + the frozen warning ceiling
+#
+# Escape hatch, used sparingly and deliberately: git commit --no-verify
+# ============================================================
+set -e
+
+run() {
+  name="$1"
+  shift
+  if ! out=$(node "$@" 2>&1); then
+    printf '%s\n' "$out" | tail -25
+    echo ""
+    echo "pre-commit: $name FAILED. Fix it, or commit with --no-verify if you must."
+    exit 1
+  fi
+}
+
+run "T4 print-selector gate" tools/verify-print-dom.cjs
+run "T5 weak-random gate" tools/verify-no-weak-random.cjs
+run "T8 doc-size gate" tools/verify-doc-size.cjs
+run "ESLint gate" tools/verify-eslint.cjs
+
+echo "pre-commit: T4, T5, T8 and ESLint green"

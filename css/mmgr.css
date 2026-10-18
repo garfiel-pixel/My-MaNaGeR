@@ -10528,6 +10528,16 @@ html.mmgr-tour-active .bcp-tour-nudge {
    opts any element out.
    ============================================================ */
 @media print {
+  /* C5 (AUDIT-DIRECTIVE-2026-10-18): one A4 sheet with sane margins, and the
+     estimate keeps its light paper look (never the dark theme's ink). */
+  @page {
+    size: A4;
+    margin: 14mm 12mm 16mm;
+  }
+  body.print-estimate {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
   /* OWNER 2026-10-02 (owner: "pdf is good when exported but its exporting
      the entire page when we only need the bill / the specific estimate",
      "even the rate sheet is being shown in the pdf"):
@@ -10554,11 +10564,32 @@ html.mmgr-tour-active .bcp-tour-nudge {
     max-width: none;
     padding: 0;
   }
-  body.print-estimate .bcp-main > * {
+  /* C5 (AUDIT-DIRECTIVE-2026-10-18): this allow-list used to hide EVERY direct
+     child of .bcp-main and then re-show `.bcp-main > .bcp-result`. The estimate
+     card is a GRANDCHILD (main > .bcp-grid > .bcp-result), so the show rule
+     matched nothing and the printed page came out BLANK (owner: "the pdf was
+     easy to read, now it is broken"). The list now walks the real tree: keep
+     the grid, hide its siblings, then keep the result card inside the grid.
+     tools/verify-print-dom.cjs fails if any of these show-selectors matches
+     nothing in the parsed page, so a wrapper added later cannot blank it again. */
+  body.print-estimate .bcp-main > *:not(.bcp-grid) {
     display: none !important;
   }
-  body.print-estimate .bcp-main > .bcp-result {
+  body.print-estimate .bcp-grid > *:not(.bcp-result) {
+    display: none !important;
+  }
+  body.print-estimate .bcp-grid > .bcp-result {
     display: block !important;
+    position: static !important;
+    max-height: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+  }
+  /* Rows never straddle a page break (C5). */
+  body.print-estimate .calc-line,
+  body.print-estimate .bcp-qh-top,
+  body.print-estimate .bcp-qh-sig {
+    break-inside: avoid;
   }
   body.print-estimate .bcp-lede {
     display: none !important;

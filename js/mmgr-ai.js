@@ -100,7 +100,8 @@ var MMGR = window.MMGR || {};
     daily: 'Daily Field Report',
     claim: 'Claim Pack',
     email: 'Stakeholder Email',
-    complianceCheck: 'Claim Compliance'
+    complianceCheck: 'Claim Compliance',
+    quote: 'Write a Quote'
   };
 
   // Rank 2.3 tier metadata , shown in the AI window settings row.
@@ -1597,6 +1598,96 @@ var MMGR = window.MMGR || {};
                 ' of 3 core elements missing; fix the gaps above first.')
       );
       return { text: L.join('\n'), trace: TRACE.fields.slice() };
+    },
+    // PART H (owner 2026-10-16): the guaranteed no-model quote (H2) , the
+    // email preset's static-fallback pattern made data-driven: a pasteable
+    // supplier email built straight from the recorded price book, exact
+    // figures BY CONSTRUCTION, working signed-out / offline / out-of-quota.
+    // quoteRelayAssist() layers the model polish on top when the relay answers.
+    quote: function (s) {
+      TRACE.fields = [];
+      _t('supplierBook.vendors');
+      _t('supplierBook.items');
+      const P = ns.Prompts || {};
+      const money =
+        P.money ||
+        function (n) {
+          return String(n);
+        };
+      const book = s.supplierBook || {};
+      const vendors = book.vendors || [];
+      const opts = ns.Proc && ns.Proc.getQuoteOpts ? ns.Proc.getQuoteOpts() : {};
+      const vid = opts.vendorId ? String(opts.vendorId) : '';
+      const matches = vid
+        ? vendors.filter(function (x) {
+            return String(x.id) === vid;
+          })
+        : vendors;
+      const v = matches[0] || null;
+      const items = (book.items || []).filter(function (it) {
+        return v && String(it.vendorId) === String(v.id);
+      });
+      const tone = opts.tone || 'rfq';
+      const L = [];
+      L.push('Dear ' + (v && (v.contact || v.name) ? v.contact || v.name : 'Supplier') + ',');
+      L.push('');
+      if (tone === 'award') {
+        L.push(
+          'We are pleased to place this order with you, on the items and prices recorded below. Please confirm acceptance and the expected delivery dates by return email.'
+        );
+      } else if (tone === 'thanks') {
+        L.push(
+          'Thank you for your quotation. Your items and prices are recorded below, and we will be in touch with the order details shortly.'
+        );
+      } else {
+        L.push(
+          'Thank you for your rates. To proceed, please confirm the items and prices recorded below, together with your lead times.'
+        );
+      }
+      L.push('');
+      if (!v) {
+        L.push('(No supplier picked. Pick one in the Procurement tab first, or add a supplier.)');
+      } else if (!items.length) {
+        L.push(
+          v.name + ': no items recorded yet. Add what they offer in the Procurement tab first.'
+        );
+      } else {
+        items.forEach(function (it) {
+          const priced =
+            it.minPrice !== '' &&
+            it.minPrice !== null &&
+            it.minPrice !== undefined &&
+            isFinite(Number(it.minPrice)) &&
+            Number(it.minPrice) >= 0;
+          const price = priced
+            ? money(it.minPrice, it.currency) + ' per ' + (it.unit || 'unit')
+            : 'price on request';
+          const lead =
+            it.leadTimeDays !== undefined && it.leadTimeDays !== null && it.leadTimeDays !== ''
+              ? ', lead ' + Number(it.leadTimeDays) + ' days'
+              : '';
+          L.push('- ' + it.name + (it.unit ? ' (' + it.unit + ')' : '') + ': ' + price + lead);
+        });
+        const totals = P.bookTotals ? P.bookTotals(items) : null;
+        if (totals && totals.verdict) {
+          L.push('');
+          L.push(totals.verdict);
+        }
+      }
+      L.push('');
+      L.push(
+        'Prices as recorded on ' +
+          new Date().toISOString().slice(0, 10) +
+          ', valid for confirmation within 14 days.'
+      );
+      L.push('');
+      L.push('Regards,');
+      L.push(s.userName || 'Project Manager');
+      const pn = (s.charter && s.charter.name) || s.projectName || '';
+      if (pn) {
+        L.push(pn);
+      }
+      return { text: L.join('\n'), trace: TRACE.fields.slice() };
     }
   };
 
@@ -2159,6 +2250,120 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // PART H: the quote's relay assist (H4). The quote must "actually listen"
+  // (owner) on the keys that ALREADY exist: after the normal submit(), a
+  // deterministic draft is the guaranteed floor, then the same-origin relay
+  // is tried with an EMPTY BYO key , the server answers signed-in sessions
+  // from its free Gemini pool (401 signed-out / 402 over-cap / 429-503 busy,
+  // each mapped to plain copy below). Construction mirrors the proven
+  // zero-key path in localLookup. NEVER an empty box (H4): on any failure
+  // the draft stands with an honest one-line parenthetical note.
+  async function quoteRelayAssist(res, promptStr, ctxStr) {
+    // A real model already answered (cloud tier with a connected BYO key).
+    if (res && res.ok && res.model && res.model !== 'local-state-engine') {
+      return res;
+    }
+    let draft = res && res.ok ? res.text : '';
+    let trace = (res && res.trace) || [];
+    if (!draft) {
+      try {
+        const built = LOCAL_BUILDERS.quote(ns.State.getState());
+        draft = built.text;
+        trace = built.trace || [];
+      } catch (e) {
+        draft = '';
+      }
+    }
+    if (!draft) {
+      return {
+        ok: false,
+        error:
+          (res && res.error) ||
+          'No supplier price data to quote from. Add a supplier and their prices in the Procurement tab first.',
+        tier: 'local'
+      };
+    }
+    const plain = function (note) {
+      return {
+        ok: true,
+        tier: 'local',
+        model: 'local-state-engine',
+        text: draft + '\n\n(' + note + ')',
+        trace: trace
+      };
+    };
+    // Engine deliberately Off: respect the setting, no relay attempt.
+    if (res && res.tier === 'off') {
+      return plain(
+        'The AI engine is Off (Settings, Controls). This is the plain draft from your recorded prices, safe to paste as-is.'
+      );
+    }
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      return plain(
+        'The quote step needs a connection for AI writing. This is the plain draft from your recorded prices, safe to paste as-is.'
+      );
+    }
+    try {
+      const key = BYO.getKey() || '';
+      const provider = BYO.getProvider() || 'openai';
+      // CRITICAL: guard the key-scrub , copying localLookup's
+      // String(ctx).split(key) verbatim with key='' would split EVERY
+      // CHARACTER and corrupt the context.
+      const scrubbed = key
+        ? String(ctxStr || '')
+            .split(key)
+            .join('[key removed]')
+        : String(ctxStr || '');
+      const userContent =
+        String(promptStr || '') +
+        (scrubbed ? '\n\n==== PROJECT CONTEXT (grounding only) ====\n' + scrubbed : '');
+      const messages = [
+        { role: 'system', content: CLOUD_SYSTEM_PROMPT },
+        { role: 'user', content: userContent }
+      ];
+      const r = await callProviderWithFallback(provider, key, messages, ctxStr || '');
+      let text = String(r.text || '').trim();
+      if (text.indexOf('```') === 0) {
+        text = text
+          .replace(/^```[a-zA-Z]*\n?/, '')
+          .replace(/\n?```$/, '')
+          .trim();
+      }
+      if (!text) {
+        return plain(
+          'The built-in AI returned nothing. This is the plain draft from your recorded prices, safe to paste as-is.'
+        );
+      }
+      return {
+        ok: true,
+        tier: 'cloud',
+        model: r.model || 'cloud model',
+        fellBackFrom: r.fellBackFrom || null,
+        text: text,
+        trace: ['relay: quote written by ' + (r.model || 'cloud model')]
+      };
+    } catch (e) {
+      if (e && e.status === 401) {
+        return plain(
+          'Sign in with Google to have the built-in AI write this quote. The text above is the plain draft from your recorded prices, safe to paste as-is.'
+        );
+      }
+      if (e && e.status === 402) {
+        return plain(
+          'Your free AI messages for today are used up. The text above is the plain draft from your recorded prices, safe to paste as-is.'
+        );
+      }
+      if (e && (e.status === 429 || e.status === 503)) {
+        return plain(
+          'The built-in AI is busy right now. The text above is the plain draft from your recorded prices; try again in a few minutes.'
+        );
+      }
+      return plain(
+        'The quote step needs a connection to write this with AI. The text above is the plain draft from your recorded prices, safe to paste as-is.'
+      );
+    }
+  }
+
   // ---- Agent-style preset run: generate → submit → write to state ----
   async function runPreset(type) {
     const q = U.$('ai-q');
@@ -2184,6 +2389,11 @@ var MMGR = window.MMGR || {};
       res = { ok: false, error: (e && e.message) || 'AI run failed.' };
     } finally {
       _aiBusy = false;
+    }
+    // PART H: the quote always lands (H4) , deterministic draft floor first,
+    // then the signed-in free-pool relay for a real model answer.
+    if (type === 'quote') {
+      res = await quoteRelayAssist(res, prompt, ctx);
     }
     await holdTyping();
     renderThread(prompt, res);

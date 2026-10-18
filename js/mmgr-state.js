@@ -177,7 +177,7 @@ var MMGR = window.MMGR || {};
   'use strict';
 
   const STORAGE_KEY = 'mmgr_state';
-  const SCHEMA_VERSION = 19;
+  const SCHEMA_VERSION = 20;
 
   // ---- Default State ----
   /** @returns {AppState} */
@@ -389,7 +389,8 @@ var MMGR = window.MMGR || {};
         money: false, // Money: Budget / EVM
         governance: false, // Governance: RACI / Risk / Changes / Stakeholders / Log / Comms / Docs / Closure / Claim
         field: false, // Field: Weather / Meetings / Claim
-        quality: false // Quality: DMAIC
+        quality: false, // Quality: DMAIC
+        procurement: false // PART H: Procurement tab (supplier price book) , gated per owner D2
       },
       // PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE DIR-3: Core-Mode onboarding
       // callout memory. packsCalloutDismissed , the user clicked "Not now"
@@ -399,6 +400,13 @@ var MMGR = window.MMGR || {};
       // for that project, never show this callout again").
       packsCalloutDismissed: false,
       packsEverEnabled: false,
+      // PART H (owner 2026-10-16): the supplier price book , vendors and their
+      // hand-entered quote lines (H7.1: prices are typed from the SUPPLIER'S
+      // OWN rate sheet, never prefilled from the JIC book). Deliberately NOT
+      // named `procurement`: that key is taken by the C10 Procurement Log
+      // (material orders, an ARRAY - see mmgr-closure.js), and reusing it
+      // would overwrite existing users' material-order rows.
+      supplierBook: { vendors: [], items: [], nvendorid: 1, nitemid: 1 },
       // Timestamp
       updatedAt: new Date().toISOString()
     };
@@ -780,6 +788,37 @@ var MMGR = window.MMGR || {};
         state.issues = [];
       }
       return state;
+    },
+    20: function (state) {
+      // V19 -> V20: PART H supplier price book. Additive back-fill: seed the
+      // shape on every pre-v20 project so the Procurement tab (data-section
+      // "proc") renders an empty book instead of crashing on undefined.
+      if (!state.supplierBook || typeof state.supplierBook !== 'object') {
+        state.supplierBook = { vendors: [], items: [], nvendorid: 1, nitemid: 1 };
+      } else {
+        if (!Array.isArray(state.supplierBook.vendors)) {
+          state.supplierBook.vendors = [];
+        }
+        if (!Array.isArray(state.supplierBook.items)) {
+          state.supplierBook.items = [];
+        }
+        if (!(state.supplierBook.nvendorid > 0)) {
+          state.supplierBook.nvendorid = 1;
+        }
+        if (!(state.supplierBook.nitemid > 0)) {
+          state.supplierBook.nitemid = 1;
+        }
+      }
+      // Pack gate (owner D2: the tab ships HIDDEN behind its pack toggle).
+      // renderPacks() treats a MISSING pack key as ON , without this seed every
+      // existing project would see the 21st rail button immediately.
+      if (!state.packs || typeof state.packs !== 'object') {
+        state.packs = {};
+      }
+      if (state.packs.procurement === undefined) {
+        state.packs.procurement = false;
+      }
+      return state;
     }
   };
 
@@ -1099,6 +1138,11 @@ var MMGR = window.MMGR || {};
     'goNoGo',
     // C10 Procurement Log (material orders, delivery tracking)
     'procurement',
+    // PART H supplier price book (vendors + their quote lines) , rides the
+    // per-field timestamp/merge machinery like every other list; without it,
+    // cloud conflict resolution could silently drop a procurement officer's
+    // price edits.
+    'supplierBook',
     // C27 Time Tracking (per-task hours log)
     'timeEntries',
     // C28 Equipment Log (rental/ownership/maintenance)
@@ -1627,6 +1671,41 @@ var MMGR = window.MMGR || {};
     }
     if (!s.risks || !Array.isArray(s.risks)) {
       issues.push('Missing risks array');
+    }
+    // PART H supplier price book (H7.6: validate once, here). Read-only
+    // checks - migration 20 seeds the shape on load, so these only fire on
+    // genuinely corrupt data, which the boot warnings should surface.
+    if (!s.supplierBook || typeof s.supplierBook !== 'object') {
+      issues.push('Missing supplierBook object');
+    } else {
+      if (!Array.isArray(s.supplierBook.vendors)) {
+        issues.push('supplierBook.vendors is not an array');
+      }
+      if (!Array.isArray(s.supplierBook.items)) {
+        issues.push('supplierBook.items is not an array');
+      } else {
+        for (let i = 0; i < s.supplierBook.items.length; i++) {
+          const it = s.supplierBook.items[i];
+          if (!it || typeof it.name !== 'string' || !it.name.trim()) {
+            issues.push('supplierBook item ' + i + ' has no name');
+            continue;
+          }
+          if (it.name.length > 80) {
+            issues.push('supplierBook item "' + it.name.slice(0, 20) + '" name exceeds 80 chars');
+          }
+          if (it.notes && String(it.notes).length > 500) {
+            issues.push('supplierBook item "' + it.name + '" notes exceed 500 chars');
+          }
+          if (it.minPrice !== undefined && it.minPrice !== '' && it.minPrice !== null) {
+            const p = Number(it.minPrice);
+            if (!isFinite(p) || p < 0) {
+              issues.push('supplierBook item "' + it.name + '" has an invalid price');
+            } else if (String(it.minPrice).length > 12) {
+              issues.push('supplierBook item "' + it.name + '" price exceeds 12 chars');
+            }
+          }
+        }
+      }
     }
     if (s.schemaVersion !== SCHEMA_VERSION) {
       issues.push(`Schema version ${s.schemaVersion} != expected ${SCHEMA_VERSION}`);

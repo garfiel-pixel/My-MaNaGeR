@@ -934,6 +934,12 @@ export const CLOUD_SECTIONS = {
   comms: { label: 'Comms Log', keys: ['commsEntries'] },
   docs: { label: 'Documents', keys: ['documents'] },
   dmaic: { label: 'DMAIC', keys: ['dmaic'] },
+  // PART H (owner 2026-10-16): the supplier price book section. Keys carry
+  // `supplierBook` (NOT `procurement` , that is the C10 material-order log
+  // living in FIELD_KEYS with no section of its own). Without this entry a
+  // scoped editor code cannot save the section and it silently becomes
+  // read-only in the cloud (H3 risk 6).
+  proc: { label: 'Procurement', keys: ['supplierBook'] },
   meet: {
     label: 'Meetings',
     keys: ['meetings', 'meetingPromises', 'activeMeeting', 'nmeetid', 'sentimentHistory']

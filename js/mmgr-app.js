@@ -3084,6 +3084,21 @@ window.MMGR = MMGR;
     delSubmittal: el => window.MMGR.Submittals.delSubmittal(parseInt(el.getAttribute('data-idx'))),
     addPunch: () => window.MMGR.PunchList.addPunch(),
     delPunch: el => window.MMGR.PunchList.delPunch(parseInt(el.getAttribute('data-idx'))),
+    // PART H (owner 2026-10-16): Procurement tab , supplier price book +
+    // AI quote panel (js/mmgr-procurement.js, ns.Proc). All state-mutating,
+    // except selVendor (disclosure/select, view-only) and procQuoteCopy
+    // (clipboard) which are listed in READONLY_SAFE_ACTIONS below.
+    addPvendor: () => window.MMGR.Proc.addPvendor(),
+    delPvendor: el => window.MMGR.Proc.delPvendor(el),
+    updPvendor: (el, e) => window.MMGR.Proc.updPvendor(el, e),
+    selVendor: el => window.MMGR.Proc.selVendor(el),
+    addPitem: () => window.MMGR.Proc.addPitem(),
+    delPitem: el => window.MMGR.Proc.delPitem(el),
+    updPitem: (el, e) => window.MMGR.Proc.updPitem(el, e),
+    procQuote: () => window.MMGR.Proc.procQuote(),
+    procQuoteVendor: el => window.MMGR.Proc.procQuoteVendor(el),
+    procQuoteTone: el => window.MMGR.Proc.procQuoteTone(el),
+    procQuoteCopy: () => window.MMGR.Proc.procQuoteCopy(),
     // MARKET-FEATURE-ROADMAP Section C batch 2 (state mutations , never
     // READONLY_SAFE): pay applications, inspections, incidents, handover,
     // warranty, drawing distribution log, permits.
@@ -3987,6 +4002,12 @@ window.MMGR = MMGR;
     openMeetPrompt: 1,
     copyMeetingMinutes: 1,
     runMonteCarlo: 1,
+    // PART H: the Procurement disclosure toggle (selVendor) and the quote
+    // Copy button are pure view actions; every other proc action mutates
+    // state and stays blocked in view-only mode (procQuote also writes
+    // aiOutputs, same policy as aiRunPreset).
+    selVendor: 1,
+    procQuoteCopy: 1,
     undoClr: 1,
     // MONOLITH-FEATURE-PARITY-DIRECTIVES restorations: risk matrix filtering,
     // WBS issues banner toggle, Import Dates Copy List, email templates, and
@@ -4290,6 +4311,10 @@ window.MMGR = MMGR;
         action === 'gonogoCatUpd' ||
         action === 'gonogoCritUpd' ||
         action === 'updInspItem' ||
+        action === 'updPvendor' ||
+        action === 'updPitem' ||
+        action === 'procQuoteVendor' ||
+        action === 'procQuoteTone' ||
         action === 'idFilePick')
     ) {
       handler(el, e);
@@ -4338,7 +4363,9 @@ window.MMGR = MMGR;
         action === 'gonogoUpd' ||
         action === 'gonogoCatUpd' ||
         action === 'gonogoCritUpd' ||
-        action === 'updInspItem')
+        action === 'updInspItem' ||
+        action === 'updPvendor' ||
+        action === 'updPitem')
     ) {
       handler(el, e);
     }

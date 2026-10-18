@@ -324,6 +324,30 @@ const GOLDEN = [
       );
     }
 
+    // ---- C3: the PRINTED sheet is a document, so it carries cents ----------
+    // C3's second half had no gate: money leaves at two decimals for print while
+    // the dense card stays whole units. window.print() is a no-op in headless,
+    // and the page renders BEFORE it is called, so the render is what is checked.
+    const printMoney = await page.evaluate(() => {
+      const out = document.getElementById('calc-output');
+      const before = out.textContent;
+      document.querySelector('[data-action="calcPrint"]').click();
+      const during = out.textContent;
+      const inPrintMode = document.body.classList.contains('print-estimate');
+      window.dispatchEvent(new Event('afterprint'));
+      return { before, during, after: out.textContent, inPrintMode };
+    });
+    check(
+      'C3 the print sheet renders money to the cent',
+      printMoney.inPrintMode && /[0-9][.,][0-9]{2}(?![0-9])/.test(printMoney.during),
+      printMoney.during.slice(0, 160)
+    );
+    check(
+      'C3 the screen returns to whole units after printing',
+      printMoney.after === printMoney.before,
+      { before: printMoney.before.slice(0, 100), after: printMoney.after.slice(0, 100) }
+    );
+
     check('the page threw no errors while exporting', errors.length === 0, errors.slice(0, 2));
   } finally {
     await browser.close();

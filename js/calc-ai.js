@@ -393,7 +393,7 @@
       return;
     }
     if (!activeId) {
-      activeId = 'c' + Date.now().toString(36) + Math.floor(Math.random() * 1000).toString(36);
+      activeId = 'c' + Date.now().toString(36) + Math.floor(Math.random() * 1000).toString(36); // ok: non-secret
       chats.unshift({ id: activeId, title: titleFor(msgs), at: Date.now(), messages: msgs });
     } else {
       chats = chats.map(function (c) {

@@ -566,6 +566,20 @@ export async function cloudRateKey(request, headerNames) {
   return 'anon';
 }
 
+// S-1 (AUDIT-DIRECTIVE-2026-10-18, rule N5): an id suffix is not a secret, but
+// src/ carries no Math.random at all (tools/verify-no-weak-random.cjs fails on
+// any hit). The alphabet is exactly 32 letters, so a CSPRNG byte masked with 31
+// picks one with no modulo bias.
+const ID_SUFFIX_ALPHABET = '0123456789abcdefghijklmnopqrstuv';
+export function randomIdSuffix(len = 8) {
+  const bytes = crypto.getRandomValues(new Uint8Array(len));
+  let out = '';
+  for (let i = 0; i < bytes.length; i++) {
+    out += ID_SUFFIX_ALPHABET[bytes[i] & 31];
+  }
+  return out;
+}
+
 export async function cloudRateCheck(request, bucket, env) {
   const headers = bucket === 'recover' ? ['X-Owner-Code'] : ['X-Owner-Code', 'X-Editor-Code'];
   const key = await cloudRateKey(request, headers);
@@ -1126,7 +1140,7 @@ export async function cloudLogSave(env, projectId, prev, next, actor, entryType)
       '/changelog/' +
       Date.now().toString(36) +
       '-' +
-      Math.random().toString(36).slice(2, 8) +
+      randomIdSuffix(6) +
       '.json';
     await env.R2.put(snapKey, JSON.stringify(prev), {
       httpMetadata: { contentType: 'application/json' }

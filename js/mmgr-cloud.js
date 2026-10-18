@@ -205,12 +205,12 @@ var MMGR = window.MMGR || {};
       if (!id) {
         id = crypto.randomUUID
           ? crypto.randomUUID()
-          : 'dev-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+          : 'dev-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10); // ok: non-secret
         localStorage.setItem('mmgr_device_id', id);
       }
       return id;
     } catch (e) {
-      return 'dev-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+      return 'dev-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10); // ok: non-secret
     }
   }
   function copyKey() {

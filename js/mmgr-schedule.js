@@ -945,7 +945,7 @@ var MMGR = window.MMGR || {};
   // ---- Monte Carlo Schedule Simulation (feature 7) ----
   // Triangular distribution sampler: min/mode/max. Pure math.
   function triSample(min, ml, max) {
-    const u = Math.random();
+    const u = Math.random(); // ok: non-secret
     const fc = (ml - min) / (max - min);
     if (u < fc) {
       return min + Math.sqrt(u * (max - min) * (ml - min));

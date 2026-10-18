@@ -171,8 +171,7 @@ export async function handlePoolItemCreate(request, env, projectId) {
     clean.type = 'Labor';
   }
   const now = new Date().toISOString();
-  const id =
-    'pool-' + now.replace(/\D/g, '').slice(0, 14) + '-' + randomIdSuffix(6);
+  const id = 'pool-' + now.replace(/\D/g, '').slice(0, 14) + '-' + randomIdSuffix(6);
   const res = await env.DB.prepare(
     'INSERT INTO cloud_pool_items (id, owner_sub, kind, name, type, role, availability, rate, hoursAllocated, notes, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,0,?,?,?)'
   )

@@ -62,10 +62,12 @@ or too niche for the deploy gate), **TRIAGE** (known-drifting, findings listed),
 | `tools/verify-dynamic-labels.cjs` | CI | JS-rendered table inputs get derived accessible names |
 | `tools/verify-delegate-gate.cjs` | CI | monolith shims stay shims; no duplicate implementations |
 | `tools/verify-owner-gate.cjs` | CI | session-marker never becomes a fake owner code; sign-in invalidates ownership memos; state-aware owner-gate message (12 checks) |
+| `tools/verify-doc-size.cjs` | CI | T8 doc-size gate (audit directive H-1 / rule N9): `CONTINUATION-DIRECTIVE.md`, `AGENTS.md` and `CLAUDE.md` stay <= 40,960 bytes so a session can read the plan without burning its context; `AUDIT-DIRECTIVE-*.md` carries the one documented exception (owner hand-over work order) |
 | `tools/verify-render-exports.cjs` | CI | (also listed above) render/API export completeness |
 | `tools/verify-ai-import.cjs` | EXTENDED | AI-assisted import seams (12 checks) |
 | `tools/verify-date-wiring.cjs` | EXTENDED | date-change wiring + re-sync offer |
 | `tools/verify-contrast.cjs` | EXTENDED | WCAG 2.2 AA contrast pairs (18 pairs) |
+| `tools/qa-procurement.cjs` | TRIAGE | PART H Procurement tab (Part H mid-build, uncommitted at 2026-10-18: migration v19->v20 supplierBook seeding, pack-gated tab, supplier/item rows, exact subtotal, quote writer). Real browser against serve.cjs. NOT yet wired into ci.yml: audit task P1 (Sprint 2) finishes H5.5-H5.12 and promotes this row to CI in the same change |
 | `tools/audit-action-map.cjs` | EXTENDED | every `data-action` in markup has a handler (360 keys) |
 
 ## T2 — wrangler dev (:8787)

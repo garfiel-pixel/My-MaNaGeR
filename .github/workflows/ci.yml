@@ -511,6 +511,14 @@ jobs:
         id: qa-calc-assistant
         run: node tools/qa-calc-assistant.cjs
 
+      # PART H / audit task P1: the Procurement pack (supplier price book +
+      # AI quote writer). Promoted TRIAGE -> CI in the same change that
+      # finished H5.5-H5.12 (docs/CI-TEST-COVERAGE.md). Reuses the serve.cjs
+      # server started above; it starts its own only if :8765 is down.
+      - name: "T4: Procurement pack (qa-procurement)"
+        id: qa-procurement
+        run: node tools/qa-procurement.cjs
+
       # axe-core accessibility gate (T10-B): every served page in light + dark,
       # zero serious/critical violations. axe-core is a devDependency; the run
       # injects it through CDP, which the page CSP does not block.

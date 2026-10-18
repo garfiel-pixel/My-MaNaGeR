@@ -72,7 +72,7 @@ or too niche for the deploy gate), **TRIAGE** (known-drifting, findings listed),
 | `tools/verify-ai-import.cjs` | EXTENDED | AI-assisted import seams (12 checks) |
 | `tools/verify-date-wiring.cjs` | EXTENDED | date-change wiring + re-sync offer |
 | `tools/verify-contrast.cjs` | EXTENDED | WCAG 2.2 AA contrast pairs (18 pairs) |
-| `tools/qa-procurement.cjs` | TRIAGE | PART H Procurement tab (Part H mid-build, uncommitted at 2026-10-18: migration v19->v20 supplierBook seeding, pack-gated tab, supplier/item rows, exact subtotal, quote writer). Real browser against serve.cjs. NOT yet wired into ci.yml: audit task P1 (Sprint 2) finishes H5.5-H5.12 and promotes this row to CI in the same change |
+| `tools/qa-procurement.cjs` | CI | PART H Procurement tab, finished as audit task P1 (2026-10-18): migration v19->v20 seeds `supplierBook` and `packs.procurement=false` while keeping the C10 material-order rows, the pack-gated tab, supplier/item CRUD + keyboard disclosure, exact subtotal byte-identical to `MMGR.Prompts.bookTotals`, the H7.3 injection surface, persistence across a real reload, axe light AND dark on `#panel-proc`, the view-only guard, and the quote writer's H7.2 integrity + H4 behaviour matrix (27/27 gates). Real browser against serve.cjs; wired into ci.yml T4 in the same change that promoted this row. NOTE two fixes were harness-side and are documented in the file: the fixture must be re-seeded by the next document (the IndexedDB crash journal restores the pre-fixture save over it) and dark must be BOOTED (`mmgr_theme=dark`) rather than class-toggled (the starfield paints its theme at init). |
 | `tools/audit-action-map.cjs` | EXTENDED | every `data-action` in markup has a handler (360 keys) |
 
 ## T2 — wrangler dev (:8787)

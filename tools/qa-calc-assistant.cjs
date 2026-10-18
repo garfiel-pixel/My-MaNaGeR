@@ -492,6 +492,25 @@ async function assistantOutputs(browser, errors) {
     chip.sameBytes === true,
     chip
   );
+
+  // C9 (c): the combined action does BOTH in one click - the line lands in the
+  // bill and the file is there to take away, in that order, with no guesswork.
+  await page.fill('[data-cai=input]', 'price one wall 12 m by 2.4 m');
+  await page.click('[data-cai=send]');
+  await page.waitForSelector('[data-cai=both]', { state: 'visible', timeout: 15000 });
+  const combined = await page.evaluate(async () => {
+    const rows = () => document.querySelectorAll('[data-action="calcBoqRecall"]').length;
+    const chips = () => document.querySelectorAll('.bcp-ai-log .bcp-ai-chip').length;
+    const before = { rows: rows(), chips: chips() };
+    document.querySelector('[data-cai=both]').click();
+    await new Promise(r => setTimeout(r, 600));
+    return { before, rows: rows(), chips: chips() };
+  });
+  check(
+    'C9 the combined action adds the line AND makes the file in one click',
+    combined.rows === combined.before.rows + 1 && combined.chips === combined.before.chips + 1,
+    combined
+  );
   await ctx.close();
 }
 

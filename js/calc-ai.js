@@ -80,7 +80,14 @@
 
   var SYSTEM_PROMPT =
     'You are the assistant on the My MaNaGeR Build Cost Calculator. Answer in plain ' +
-    'language a client can follow - short, no jargon, no emoji. Use metric units. ' +
+    'language a client can follow - short, no jargon, no emoji. ' +
+    // C8 (AUDIT-DIRECTIVE-2026-10-18): the model must NEVER convert. The page
+    // converts, in JavaScript, and shows its working - so a number the model
+    // invents is never silently priced in the wrong unit.
+    'Never convert units. Copy the numbers the user gave you and set "units" to ' +
+    'the system the user spoke in (feet and square feet are imperial, metres and ' +
+    'square metres are metric). If the user mixes systems, ask which one to use ' +
+    'before proposing. The page does all the conversions. ' +
     'If you do not know something, say so instead of guessing. ' +
     'The RATE BOOK below is the truth about prices: quote from it, and say when a ' +
     'figure is not in it rather than inventing one. ' +
@@ -90,8 +97,12 @@
     'has the rates already on the page. ' +
     'When the conversation settles on figures to price, end your reply with ONE ' +
     'final line in exactly this form (no code fences, nothing after it): ' +
-    'PROPOSAL: {"work":"<key>","d1":<number>,"note":"<one short line>"} - ' +
-    'use only the work keys you were given, include d2/d3 only if that work item ' +
+    'PROPOSAL: {"work":"<key>","units":"metric"|"imperial","d1":<number>,"note":"<one short line>"} - ' +
+    'the units field is required and is the system the USER spoke in, never a ' +
+    'converted guess. For a job the user states as one total, send ' +
+    'PROPOSAL: {"work":"<key>","units":"...","measuredQty":<number>,"note":"..."} ' +
+    'and put the user\u0027s own number there. ' +
+    'Use only the work keys you were given, include d2/d3 only if that work item ' +
     'needs them, and never guess a key. The page turns that line into the two ' +
     'choices the user then sees: add the line to the calculator so they can ' +
     'export it, or generate a file to download. ' +
@@ -111,7 +122,7 @@
     'or a figure cannot be priced, do not guess a rate: say you cannot price it ' +
     'without the user giving one, and ask for the quantity and the rate. ' +
     'When the user replies with a rate, build the proposal with the ' +
-    'custom form: PROPOSAL: {"custom":{"label":"<your name>","unit":"<your unit>","qty":<number>,"rate":<number>,"source":"user"},"note":"<one short line>"} - ' +
+    'custom form: PROPOSAL: {"custom":{"label":"<your name>","unit":"<your unit>","qty":<number>,"rate":<number>,"source":"user"},"units":"metric"|"imperial","note":"<one short line>"} - ' +
     'the page accepts that and adds the line through the same dispatch as ' +
     'Add to bill. The rate must be a number the user typed in this ' +
     'conversation, or the published metric rate of a row you quoted.';
@@ -550,7 +561,22 @@
       rate = '',
       currency = '';
     if (which === 'work') {
+      // C10 (AUDIT-DIRECTIVE-2026-10-18): a work proposal carries no rate, so
+      // the old chip printed "blockwork -  x  ". Read the real figures from the
+      // PAGE's own dry run instead: it is the preview the user is about to add.
       label = p.work;
+      qty = '';
+      unit = '';
+      try {
+        var ck = window.MMGR_CALC_CHECK;
+        var chk = typeof ck === 'function' ? ck(p) : null;
+        if (chk && chk.preview && chk.preview.qty) {
+          qty = String(chk.preview.qty);
+          unit = chk.preview.unit || '';
+        }
+      } catch (e) {
+        qty = '';
+      }
     } else {
       label = p.custom.label || '';
       qty = String(p.custom.qty || '');
@@ -558,8 +584,12 @@
       rate = String(p.custom.rate || '');
     }
     var cur = (p.currency && p.currency !== 'USD' ? p.currency : '') || '';
+    // C10: a work proposal reads as "name - quantity unit"; a custom proposal
+    // keeps its arithmetic (its rate is the user's own typed figure).
     els.paths.querySelector('.bcp-ai-chip').textContent =
-      label + ' - ' + qty + ' ' + unit + ' x ' + cur + ' ' + rate;
+      which === 'work'
+        ? label + (qty ? ' - ' + qty + ' ' + unit : '')
+        : label + ' - ' + qty + ' ' + unit + ' x ' + cur + ' ' + rate;
   }
 
   // The two output choices appear ONLY while a parsed PROPOSAL is waiting.
@@ -763,7 +793,9 @@
     }
     var f = null;
     try {
-      f = fn();
+      // C9: hand the pending proposal to the page so it can price it in a
+      // sandbox - Download no longer needs Populate to have run first.
+      f = fn(proposal);
     } catch (e) {
       f = null;
     }

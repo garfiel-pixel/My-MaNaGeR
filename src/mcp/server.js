@@ -393,9 +393,35 @@ function executeGetTable(state, scope, args) {
   };
 }
 
+// S-1 (AUDIT-DIRECTIVE-2026-10-18, rule N5): src/ carries no Math.random at
+// all, so the sampler draws from a xorshift128 generator seeded once from the
+// CSPRNG. Percentiles come from the same triangular math; the source of the
+// uniform numbers is not predictable from earlier output.
+let _mcRngState = null;
+function mcpNextUniform() {
+  if (!_mcRngState) {
+    const seed = new Uint32Array(4);
+    crypto.getRandomValues(seed);
+    // All-zero state is a fixed point of xorshift: nudge it.
+    if (!seed[0] && !seed[1] && !seed[2] && !seed[3]) {
+      seed[0] = 0x9e3779b9;
+    }
+    _mcRngState = seed;
+  }
+  let t = _mcRngState[3];
+  const s0 = _mcRngState[0];
+  _mcRngState[3] = _mcRngState[2];
+  _mcRngState[2] = _mcRngState[1];
+  _mcRngState[1] = s0;
+  t ^= t << 11;
+  t ^= t >>> 8;
+  _mcRngState[0] = (t ^ s0 ^ (s0 >>> 19)) >>> 0;
+  return _mcRngState[0] / 4294967296;
+}
+
 // Triangular sampler - byte-for-byte the app's math (mmgr-schedule.js).
 function mcpTriSample(min, ml, max) {
-  const u = Math.random();
+  const u = mcpNextUniform();
   const fc = (ml - min) / (max - min);
   if (u < fc) {
     return min + Math.sqrt(u * (max - min) * (ml - min));

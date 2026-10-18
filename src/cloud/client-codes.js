@@ -225,14 +225,108 @@ export async function verifyClientCode(code, projectId, env) {
   return null;
 }
 
-// Generate a 8-char uppercase code
+// Generate a 10-char uppercase code.
+// S-1 (AUDIT-DIRECTIVE-2026-10-18, rule N5): this used Math.random(), a
+// predictable generator, at 8 characters (40 bits). The alphabet is exactly 32
+// letters, so masking a CSPRNG byte with 31 selects a character with NO modulo
+// bias. 10 characters is 50 bits. Existing 8-character codes stay valid: the
+// lookup hashes whatever the caller sent and compares hashes, never lengths.
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 function genCode() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = crypto.getRandomValues(new Uint8Array(10));
   let code = '';
-  for (let i = 0; i < 8; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  for (let i = 0; i < bytes.length; i++) {
+    code += CODE_ALPHABET[bytes[i] & 31];
   }
   return code;
+}
+
+// ---- Brute-force guard (S-1) -----------------------------------------------
+// Mirrors src/auth/session.js + auth_login_guard: 5 wrong codes for the same
+// project from the same address lock that pair for 15 minutes. Every helper
+// fails OPEN (a missing table or a D1 hiccup must never block a real client).
+const CLIENT_CODE_MAX_FAILS = 5;
+const CLIENT_CODE_LOCK_MS = 15 * 60 * 1000;
+
+function clientGuardKeys(projectId, request) {
+  const ip = String((request && request.headers.get('CF-Connecting-IP')) || 'unknown');
+  return ['project:' + projectId + '|ip:' + ip, 'ip:' + ip];
+}
+
+function clientGuardLockedUntil(prev, fails) {
+  if (fails < CLIENT_CODE_MAX_FAILS) {
+    return null;
+  }
+  const base = prev && prev.locked_until ? new Date(prev.locked_until).getTime() : 0;
+  const from = Math.max(base, Date.now());
+  return new Date(from + CLIENT_CODE_LOCK_MS).toISOString();
+}
+
+export async function clientCodeGuardCheck(request, env, projectId) {
+  if (!env || !env.DB) {
+    return { limited: false };
+  }
+  const keys = clientGuardKeys(projectId, request);
+  try {
+    const rows = await env.DB.prepare(
+      'SELECT guard_key, locked_until FROM client_code_guard WHERE guard_key IN (?,?)'
+    )
+      .bind(keys[0], keys[1])
+      .all();
+    for (const row of rows.results || []) {
+      if (row.locked_until && new Date(row.locked_until).getTime() > Date.now()) {
+        return {
+          limited: true,
+          retryAfter: Math.max(
+            1,
+            Math.ceil((new Date(row.locked_until).getTime() - Date.now()) / 1000)
+          )
+        };
+      }
+    }
+  } catch (e) {
+    /* guard table missing or D1 unavailable: allow the read */
+  }
+  return { limited: false };
+}
+
+export async function clientCodeNoteFailure(request, env, projectId) {
+  if (!env || !env.DB) {
+    return;
+  }
+  const keys = clientGuardKeys(projectId, request);
+  for (const key of keys) {
+    try {
+      const prev = await env.DB.prepare(
+        'SELECT failed_attempts, locked_until FROM client_code_guard WHERE guard_key = ?'
+      )
+        .bind(key)
+        .first();
+      const fails = (prev ? Number(prev.failed_attempts) || 0 : 0) + 1;
+      await env.DB.prepare(
+        'INSERT INTO client_code_guard (guard_key, failed_attempts, locked_until) VALUES (?,?,?) ' +
+          'ON CONFLICT(guard_key) DO UPDATE SET failed_attempts = excluded.failed_attempts, locked_until = excluded.locked_until'
+      )
+        .bind(key, fails, clientGuardLockedUntil(prev, fails))
+        .run();
+    } catch (e) {
+      /* a guard write must never break the request */
+    }
+  }
+}
+
+export async function clientCodeClearFailures(request, env, projectId) {
+  if (!env || !env.DB) {
+    return;
+  }
+  const keys = clientGuardKeys(projectId, request);
+  try {
+    await env.DB.prepare('DELETE FROM client_code_guard WHERE guard_key IN (?,?)')
+      .bind(keys[0], keys[1])
+      .run();
+  } catch (e) {
+    /* best effort */
+  }
 }
 
 // Import readSession from http.js

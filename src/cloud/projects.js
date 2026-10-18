@@ -620,11 +620,34 @@ export async function handleCloudLoad(request, env, projectId) {
   } else if (clientCode) {
     // C19: client codes are read-only; the section grant travels with the
     // response. Expired / deleted project map to friendly errors.
-    const { verifyClientCode } = await import('./client-codes.js');
+    const { verifyClientCode, clientCodeGuardCheck, clientCodeNoteFailure, clientCodeClearFailures } =
+      await import('./client-codes.js');
+    // S-1 (AUDIT-DIRECTIVE-2026-10-18): the same 5-fail / 15-minute guard the
+    // email sign-in has had since 2026-09-14, keyed per project AND per
+    // address. It fails open, so an unapplied migration never locks anyone out.
+    const cg = await clientCodeGuardCheck(request, env, projectId);
+    if (cg.limited) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: 'too many wrong access codes - try again in a few minutes'
+        }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Cache-Control': 'no-store',
+            'Retry-After': String(cg.retryAfter)
+          }
+        }
+      );
+    }
     clientAuth = await verifyClientCode(clientCode, projectId, env);
     if (!clientAuth) {
+      await clientCodeNoteFailure(request, env, projectId);
       return cloudForbidden();
     }
+    await clientCodeClearFailures(request, env, projectId);
     if (clientAuth.expired) {
       return json({ ok: false, error: 'code_expired', expiresAt: clientAuth.expiresAt }, 403);
     }

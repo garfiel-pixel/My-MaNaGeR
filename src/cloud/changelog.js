@@ -14,7 +14,8 @@ import {
   cloudEncryptState,
   cloudAuthOwnerEither,
   cloudAuthWithRole,
-  readCloudBody
+  readCloudBody,
+  randomIdSuffix
 } from '../lib/http.js';
 
 const CLOUD_IMPORT_MAX_ENTRIES = 500;
@@ -148,7 +149,7 @@ export async function handleCloudChangelogRevert(request, env, projectId, entryI
       '/changelog/' +
       Date.now().toString(36) +
       '-' +
-      Math.random().toString(36).slice(2, 8) +
+      randomIdSuffix(6) +
       '.json';
     await env.R2.put(logSnapKey, JSON.stringify(cur), {
       httpMetadata: { contentType: 'application/json' }

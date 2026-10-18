@@ -497,7 +497,7 @@
     }
     var i = exclude;
     while (i === exclude) {
-      i = Math.floor(Math.random() * FEATURES.length);
+      i = Math.floor(Math.random() * FEATURES.length); // ok: non-secret
     }
     return i;
   }

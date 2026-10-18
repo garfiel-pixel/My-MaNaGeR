@@ -21,7 +21,13 @@
    pool item cascades its links (FOREIGN KEY in migration 0019) —
    the project keeps its detached local copy per the spec.
    ============================================================ */
-import { json, readCloudBody, cloudForbidden, cloudAuthOwnerEither } from '../lib/http.js';
+import {
+  json,
+  readCloudBody,
+  cloudForbidden,
+  cloudAuthOwnerEither,
+  randomIdSuffix
+} from '../lib/http.js';
 
 // Valid pool kinds. People = Labor + Subcontractor via type;
 // stakeholders are deliberately NOT pool rows (DECIDED 09-03).
@@ -166,10 +172,7 @@ export async function handlePoolItemCreate(request, env, projectId) {
   }
   const now = new Date().toISOString();
   const id =
-    'pool-' +
-    now.replace(/\D/g, '').slice(0, 14) +
-    '-' +
-    Math.floor(Math.random() * 1e6).toString(36);
+    'pool-' + now.replace(/\D/g, '').slice(0, 14) + '-' + randomIdSuffix(6);
   const res = await env.DB.prepare(
     'INSERT INTO cloud_pool_items (id, owner_sub, kind, name, type, role, availability, rate, hoursAllocated, notes, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,0,?,?,?)'
   )

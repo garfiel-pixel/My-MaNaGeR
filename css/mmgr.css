@@ -9606,6 +9606,36 @@ body.dark-mode .bcp-ico-moon {
     grid-column: auto;
   }
 }
+/* C2 (AUDIT-DIRECTIVE-2026-10-18): the rate comparison strip and its sanity
+   banner. Solid surfaces (content layer, rule 1.6), tokens only, so both
+   palettes hold. The strip is plain text; the banner is a status line. */
+.bcp-rate-compare {
+  grid-column: 1/-1;
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  background: var(--tile-bg);
+  color: var(--text);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+.bcp-rate-compare:empty {
+  display: none;
+}
+.bcp-rate-sanity {
+  grid-column: 1/-1;
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  border-left: 3px solid var(--warn, #b8860b);
+  background: var(--tile-bg);
+  color: var(--text);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+.bcp-rate-sanity[hidden] {
+  display: none;
+}
 .bcp-note-warn,
 .bcp-note-info {
   font-size: 0.76rem;

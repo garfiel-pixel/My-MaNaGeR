@@ -181,6 +181,10 @@ jobs:
         id: qa-units
         run: node tools/verify-units.cjs
 
+      - name: "T3: Currency honesty (never charge a model rate as local money)"
+        id: qa-currency
+        run: node tools/verify-currency.cjs
+
       - name: "T4: Print allow-list matches the real DOM"
         id: qa-print-dom
         run: node tools/verify-print-dom.cjs

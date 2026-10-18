@@ -59,53 +59,57 @@
       rate: { mat: 2, lab: 14 },
       matDesc: 'Cart-away / disposal',
       // E2 (Phase 1) + G7 (plan v2 Phase 2) + JIC 2025-2027 (owner 2026-10-02):
-      // all 9 JIC excavation rates keyed from the official JIC rate book. First
-      // variant = pre-conversion model so old saves recall identically. Rates are
-      // JMD from the JIC 2025-2027 book (TRU Construction Estimator); editable.
+      // C2 (AUDIT-DIRECTIVE-2026-10-18): these are the app's OWN planning-grade
+      // split models (material + labour, US dollars), NOT rows from the JIC rate
+      // book - the book quotes one all-in JMD figure per row, which a split can
+      // never be. The labels used to claim "(JIC #n)" and were read as book
+      // numbers, which is how the owner saw a USD model charged as local money.
+      // The book's own figures are reached through the JIC rate book picker.
+      // First variant = pre-conversion model so old saves recall identically.
       variants: [
         {
           id: 'standard',
-          label: 'Compacted earth to 5 ft deep (JIC #1)',
+          label: 'Compacted earth to 5 ft deep (planning model)',
           rate: { mat: 2, lab: 14 }
         },
         {
           id: 'asphalt',
-          label: 'Asphaltic concrete Barber Green (JIC #2)',
+          label: 'Asphaltic concrete Barber Green (planning model)',
           rate: { mat: 3, lab: 28 }
         },
         {
           id: 'marl',
-          label: 'Compacted marl up to 5 ft deep (JIC #3)',
+          label: 'Compacted marl up to 5 ft deep (planning model)',
           rate: { mat: 1.5, lab: 20 }
         },
         {
           id: 'sand',
-          label: 'Compacted sand up to 5 ft deep (JIC #4)',
+          label: 'Compacted sand up to 5 ft deep (planning model)',
           rate: { mat: 1.5, lab: 17 }
         },
         {
           id: 'clay-shallow',
-          label: 'Stiff clay up to 5 ft deep (JIC #5)',
+          label: 'Stiff clay up to 5 ft deep (planning model)',
           rate: { mat: 1, lab: 24 }
         },
         {
           id: 'clay-deep',
-          label: 'Stiff clay 5 to 10 ft deep (JIC #6)',
+          label: 'Stiff clay 5 to 10 ft deep (planning model)',
           rate: { mat: 1, lab: 30 }
         },
         {
           id: 'rock-hand',
-          label: 'Rock/concrete no compressor (JIC #7)',
+          label: 'Rock/concrete no compressor (planning model)',
           rate: { mat: 2, lab: 55 }
         },
         {
           id: 'rock-comp',
-          label: 'Rock/concrete compressor incl. labourers (JIC #8)',
+          label: 'Rock/concrete compressor incl. labourers (planning model)',
           rate: { mat: 12, lab: 38 }
         },
         {
           id: 'rock-labour',
-          label: 'Rock/concrete compressor labourers only (JIC #9)',
+          label: 'Rock/concrete compressor labourers only (planning model)',
           rate: { mat: 2, lab: 70 }
         }
       ]
@@ -165,54 +169,56 @@
       q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Wall area' }),
       rate: { mat: 22, lab: 28 },
       matDesc: 'Blocks (12.5/m2), mortar, ties',
-      // G5 (plan v2 Phase 2) + JIC 2025-2027 (owner 2026-10-02): 9 JIC masonry
-      // rates by block size, pocket fill, floor elevation and special work. First
-      // variant = pre-conversion model so old saves recall identically. Rates JMD
-      // from the JIC 2025-2027 book (TRU Construction Estimator); editable.
+      // G5 (plan v2 Phase 2), corrected by C2 (AUDIT-DIRECTIVE-2026-10-18): 9
+      // planning-grade masonry models by block size, pocket fill and elevation.
+      // They are NOT book rows - the JIC book quotes an all-in JMD figure per
+      // row, never a split - so the labels no longer claim a JIC number. Use the
+      // JIC rate book picker for the book's own rates. First variant =
+      // pre-conversion model so old saves recall identically.
       variants: [
         {
           id: 'standard',
-          label: '8 in blocks fill all pockets GF to FF (JIC Masonry #1)',
+          label: '8 in blocks fill all pockets GF to FF (planning model)',
           rate: { mat: 22, lab: 28 }
         },
         {
           id: '8in-ff',
-          label: '8 in blocks fill all pockets FF and above (JIC #2)',
+          label: '8 in blocks fill all pockets FF and above (planning model)',
           rate: { mat: 24, lab: 30 }
         },
         {
           id: '8in-mh',
-          label: '8 in blocks fill all pockets manholes drains (JIC #3)',
+          label: '8 in blocks fill all pockets manholes drains (planning model)',
           rate: { mat: 26, lab: 34 }
         },
         {
           id: '8in-alt-gf',
-          label: '8 in blocks fill alternate pockets GF to FF (JIC #4)',
+          label: '8 in blocks fill alternate pockets GF to FF (planning model)',
           rate: { mat: 20, lab: 26 }
         },
         {
           id: '8in-alt-ff',
-          label: '8 in blocks fill alternate pockets FF and above (JIC #5)',
+          label: '8 in blocks fill alternate pockets FF and above (planning model)',
           rate: { mat: 22, lab: 28 }
         },
         {
           id: '6in-gf',
-          label: '6 in blocks fill all pockets GF to FF (JIC #6)',
+          label: '6 in blocks fill all pockets GF to FF (planning model)',
           rate: { mat: 18, lab: 26 }
         },
         {
           id: '6in-ff',
-          label: '6 in blocks fill all pockets FF and above (JIC #7)',
+          label: '6 in blocks fill all pockets FF and above (planning model)',
           rate: { mat: 22, lab: 28 }
         },
         {
           id: '6in-mh',
-          label: '6 in blocks fill all pockets manholes drains gully (JIC #8)',
+          label: '6 in blocks fill all pockets manholes drains gully (planning model)',
           rate: { mat: 24, lab: 30 }
         },
         {
           id: '6in-alt-gf',
-          label: '6 in blocks fill alternate pockets GF to FF (JIC #9)',
+          label: '6 in blocks fill alternate pockets GF to FF (planning model)',
           rate: { mat: 16, lab: 24 }
         }
       ]
@@ -590,31 +596,31 @@
       variants: [
         {
           id: 'wall-edge',
-          label: 'Walls, edges, footings (JIC Carpentry #6)',
+          label: 'Walls, edges, footings (planning model)',
           rate: { mat: 22, lab: 33 }
         },
-        { id: 'belt', label: 'Belt and stiffener (JIC Carpentry #1)', rate: { mat: 26, lab: 48 } },
-        { id: 'column', label: 'Columns (JIC Carpentry #2)', rate: { mat: 30, lab: 55 } },
-        { id: 'beam', label: 'Beams (JIC Carpentry #3)', rate: { mat: 30, lab: 55 } },
+        { id: 'belt', label: 'Belt and stiffener (planning model)', rate: { mat: 26, lab: 48 } },
+        { id: 'column', label: 'Columns (planning model)', rate: { mat: 30, lab: 55 } },
+        { id: 'beam', label: 'Beams (planning model)', rate: { mat: 30, lab: 55 } },
         {
           id: 'susp-floor',
-          label: 'Suspended slab floor (JIC Carpentry #5)',
+          label: 'Suspended slab floor (planning model)',
           rate: { mat: 30, lab: 55 }
         },
         {
           id: 'susp-stairs',
-          label: 'Suspended slab stairs (JIC Carpentry #4)',
+          label: 'Suspended slab stairs (planning model)',
           rate: { mat: 26, lab: 48 }
         },
-        { id: 'circular', label: 'Circular forms (JIC Carpentry #7)', rate: { mat: 32, lab: 58 } },
+        { id: 'circular', label: 'Circular forms (planning model)', rate: { mat: 32, lab: 58 } },
         {
           id: 'manhole',
-          label: 'Manhole sides and deck (JIC Carpentry #8)',
+          label: 'Manhole sides and deck (planning model)',
           rate: { mat: 40, lab: 74 }
         },
         {
           id: 'new-fw',
-          label: 'Make new formwork columns beam belt stiffener (JIC #9)',
+          label: 'Make new formwork columns beam belt stiffener (planning model)',
           rate: { mat: 10, lab: 18 }
         }
       ]
@@ -668,49 +674,49 @@
       d3: null,
       q: a => ({ qty: a, unit: 'm2', qtyLabel: 'Scaffold erected' }),
       runit: 'ft2',
-      matDesc: 'Erect and strip scaffolding by height band (JIC 2025-2027, all 9 height bands)',
+      matDesc: 'Scaffolding erected and stripped, by height band (planning models; bands follow the JIC book rows)',
       variants: [
         {
           id: 'sc-10-unbraced',
-          label: 'Up to 10 ft high unbraced (JIC Scaffolding #1)',
+          label: 'Up to 10 ft high unbraced (planning model)',
           rate: { mat: 2, lab: 1 }
         },
         {
           id: 'sc-10-tied',
-          label: 'Up to 10 ft high tied to building (JIC #2)',
+          label: 'Up to 10 ft high tied to building (planning model)',
           rate: { mat: 3, lab: 2 }
         },
         {
           id: 'sc-10-20',
-          label: '10 to 20 ft tied to building (JIC #3)',
+          label: '10 to 20 ft tied to building (planning model)',
           rate: { mat: 4, lab: 2 }
         },
         {
           id: 'sc-20-30',
-          label: '20 to 30 ft tied to building (JIC #4)',
+          label: '20 to 30 ft tied to building (planning model)',
           rate: { mat: 5, lab: 3 }
         },
         {
           id: 'sc-30-40',
-          label: '30 to 40 ft tied to building (JIC #5)',
+          label: '30 to 40 ft tied to building (planning model)',
           rate: { mat: 7, lab: 4 }
         },
         {
           id: 'sc-40-50',
-          label: '40 to 50 ft tied to building (JIC #6)',
+          label: '40 to 50 ft tied to building (planning model)',
           rate: { mat: 8, lab: 4 }
         },
         {
           id: 'sc-50-60',
-          label: '50 to 60 ft tied to building (JIC #7)',
+          label: '50 to 60 ft tied to building (planning model)',
           rate: { mat: 8, lab: 5 }
         },
         {
           id: 'sc-60-70',
-          label: '60 to 70 ft tied to building (JIC #8)',
+          label: '60 to 70 ft tied to building (planning model)',
           rate: { mat: 9, lab: 5 }
         },
-        { id: 'sc-70-80', label: '70 to 80 ft tied to building (JIC #9)', rate: { mat: 9, lab: 5 } }
+        { id: 'sc-70-80', label: '70 to 80 ft tied to building (planning model)', rate: { mat: 9, lab: 5 } }
       ]
     },
     joinery: {
@@ -720,56 +726,56 @@
       d3: null,
       q: a => ({ qty: a, unit: 'm', qtyLabel: 'Skirting run (linear)' }),
       runit: 'ft run',
-      matDesc: 'Skirting boards by size profile and species (JIC 2025-2027, all 10 joinery rates)',
+      matDesc: 'Skirting boards by size profile and species (planning models; bands follow the JIC book rows)',
       variants: [
         {
           id: 'j-1x3-bev-wpp',
-          label: '1x3 skirtings bevelled top WPP (JIC Joinery #1)',
+          label: '1x3 skirtings bevelled top WPP (planning model)',
           rate: { mat: 9, lab: 6 }
         },
         {
           id: 'j-1x4-bev-wpp',
-          label: '1x4 skirtings bevelled top WPP (JIC #2)',
+          label: '1x4 skirtings bevelled top WPP (planning model)',
           rate: { mat: 10, lab: 7 }
         },
         {
           id: 'j-1x6-bev-wpp',
-          label: '1x6 skirtings bevelled top WPP (JIC #3)',
+          label: '1x6 skirtings bevelled top WPP (planning model)',
           rate: { mat: 12, lab: 8 }
         },
         {
           id: 'j-1x3-bev-mah',
-          label: '1x3 skirtings bevelled to Mah etc. (JIC #4)',
+          label: '1x3 skirtings bevelled to Mah etc. (planning model)',
           rate: { mat: 10, lab: 7 }
         },
         {
           id: 'j-1x4-bev-mah',
-          label: '1x4 skirtings bevelled to Mah etc. (JIC #5)',
+          label: '1x4 skirtings bevelled to Mah etc. (planning model)',
           rate: { mat: 11, lab: 8 }
         },
         {
           id: 'j-1x6-bev-mah',
-          label: '1x6 skirtings bevelled to Mah etc. (JIC #6)',
+          label: '1x6 skirtings bevelled to Mah etc. (planning model)',
           rate: { mat: 13, lab: 9 }
         },
         {
           id: 'j-1x3-mold-wpp',
-          label: '1x3 skirtings molded top WPP (JIC #7)',
+          label: '1x3 skirtings molded top WPP (planning model)',
           rate: { mat: 13, lab: 9 }
         },
         {
           id: 'j-1x4-mold-wpp',
-          label: '1x4 skirtings molded top WPP (JIC #8)',
+          label: '1x4 skirtings molded top WPP (planning model)',
           rate: { mat: 14, lab: 10 }
         },
         {
           id: 'j-1x6-mold-wpp',
-          label: '1x6 skirtings molded top WPP (JIC #9)',
+          label: '1x6 skirtings molded top WPP (planning model)',
           rate: { mat: 15, lab: 11 }
         },
         {
           id: 'j-1x3-mold-mah',
-          label: '1x3 skirtings molded top Mah etc. (JIC #10)',
+          label: '1x3 skirtings molded top Mah etc. (planning model)',
           rate: { mat: 14, lab: 10 }
         }
       ]
@@ -781,29 +787,29 @@
       d3: null,
       q: a => ({ qty: a, unit: 'm', qtyLabel: 'Pipe run (linear)' }),
       runit: 'ft run',
-      matDesc: 'Pipe laying by diameter (JIC 2025-2027, all 9 plumbing pipe rates)',
+      matDesc: 'Pipe laying by diameter (planning models; bands follow the JIC book rows)',
       variants: [
         {
           id: 'pp-6in',
-          label: '6 in diameter pipes (JIC Plumbing #1)',
+          label: '6 in diameter pipes (planning model)',
           rate: { mat: 44, lab: 29 }
         },
-        { id: 'pp-4in', label: '4 in diameter pipes (JIC #2)', rate: { mat: 33, lab: 22 } },
-        { id: 'pp-3in', label: '3 in diameter pipes (JIC #3)', rate: { mat: 31, lab: 21 } },
-        { id: 'pp-2in', label: '2 in diameter pipes (JIC #4)', rate: { mat: 20, lab: 14 } },
-        { id: 'pp-1.5in', label: '1.5 in diameter pipes (JIC #5)', rate: { mat: 17, lab: 12 } },
-        { id: 'pp-1.25in', label: '1.25 in diameter pipes (JIC #6)', rate: { mat: 17, lab: 12 } },
+        { id: 'pp-4in', label: '4 in diameter pipes (planning model)', rate: { mat: 33, lab: 22 } },
+        { id: 'pp-3in', label: '3 in diameter pipes (planning model)', rate: { mat: 31, lab: 21 } },
+        { id: 'pp-2in', label: '2 in diameter pipes (planning model)', rate: { mat: 20, lab: 14 } },
+        { id: 'pp-1.5in', label: '1.5 in diameter pipes (planning model)', rate: { mat: 17, lab: 12 } },
+        { id: 'pp-1.25in', label: '1.25 in diameter pipes (planning model)', rate: { mat: 17, lab: 12 } },
         {
           id: 'pp-300mm',
-          label: '300mm 12 ft push fit pipes (JIC #7)',
+          label: '300mm 12 ft push fit pipes (planning model)',
           rate: { mat: 89, lab: 60 }
         },
         {
           id: 'pp-250mm',
-          label: '250mm 10 ft push fit pipes (JIC #8)',
+          label: '250mm 10 ft push fit pipes (planning model)',
           rate: { mat: 72, lab: 49 }
         },
-        { id: 'pp-200mm', label: '200mm 8 ft push fit pipes (JIC #9)', rate: { mat: 56, lab: 38 } }
+        { id: 'pp-200mm', label: '200mm 8 ft push fit pipes (planning model)', rate: { mat: 56, lab: 38 } }
       ]
     },
     'electrical-conduit': {
@@ -813,31 +819,31 @@
       d3: null,
       q: a => ({ qty: a, unit: 'm', qtyLabel: 'Conduit run (linear)' }),
       runit: 'ft run',
-      matDesc: 'Conduit by diameter (JIC 2025-2027, all 9 electrical conduit rates)',
+      matDesc: 'Conduit by diameter (planning models; bands follow the JIC book rows)',
       variants: [
         {
           id: 'ec-0.5in',
-          label: '1/2 in diameter pipe (JIC Electrical #1)',
+          label: '1/2 in diameter pipe (planning model)',
           rate: { mat: 5, lab: 3 }
         },
-        { id: 'ec-0.75in', label: '3/4 in diameter pipe (JIC #2)', rate: { mat: 6, lab: 4 } },
-        { id: 'ec-1in-a', label: '1 in diameter pipe (JIC #3)', rate: { mat: 6, lab: 5 } },
-        { id: 'ec-1.25in-a', label: '1-1/4 in diameter pipe (JIC #4)', rate: { mat: 8, lab: 5 } },
-        { id: 'ec-1.5in-a', label: '1-1/2 in diameter pipe (JIC #5)', rate: { mat: 9, lab: 6 } },
-        { id: 'ec-2in', label: '2 in diameter pipe (JIC #6)', rate: { mat: 11, lab: 7 } },
+        { id: 'ec-0.75in', label: '3/4 in diameter pipe (planning model)', rate: { mat: 6, lab: 4 } },
+        { id: 'ec-1in-a', label: '1 in diameter pipe (planning model)', rate: { mat: 6, lab: 5 } },
+        { id: 'ec-1.25in-a', label: '1-1/4 in diameter pipe (planning model)', rate: { mat: 8, lab: 5 } },
+        { id: 'ec-1.5in-a', label: '1-1/2 in diameter pipe (planning model)', rate: { mat: 9, lab: 6 } },
+        { id: 'ec-2in', label: '2 in diameter pipe (planning model)', rate: { mat: 11, lab: 7 } },
         {
           id: 'ec-1in-b',
-          label: '1 in diameter pipe higher rate (JIC #7)',
+          label: '1 in diameter pipe higher rate (planning model)',
           rate: { mat: 11, lab: 7 }
         },
         {
           id: 'ec-1.25in-b',
-          label: '1-1/4 in diameter pipe higher rate (JIC #8)',
+          label: '1-1/4 in diameter pipe higher rate (planning model)',
           rate: { mat: 13, lab: 8 }
         },
         {
           id: 'ec-1.5in-b',
-          label: '1-1/2 in diameter pipe higher rate (JIC #9)',
+          label: '1-1/2 in diameter pipe higher rate (planning model)',
           rate: { mat: 15, lab: 9 }
         }
       ]
@@ -853,47 +859,47 @@
       variants: [
         {
           id: 'w-1/8-torch',
-          label: 'Handle, mark, cut & sand smooth 1/8 in thick metal, torch (JIC Welding #1)',
+          label: 'Handle, mark, cut & sand smooth 1/8 in thick metal, torch (planning model)',
           rate: { mat: 50, lab: 0 }
         },
         {
           id: 'w-1/4-torch',
-          label: 'Handle, mark, cut & sand smooth 1/4 in thick metal, torch (JIC #2)',
+          label: 'Handle, mark, cut & sand smooth 1/4 in thick metal, torch (planning model)',
           rate: { mat: 64, lab: 0 }
         },
         {
           id: 'w-3/8-torch',
-          label: 'Handle, mark, cut & sand smooth 3/8 in thick metal, torch (JIC #3)',
+          label: 'Handle, mark, cut & sand smooth 3/8 in thick metal, torch (planning model)',
           rate: { mat: 70, lab: 0 }
         },
         {
           id: 'w-1/2-torch',
-          label: 'Handle, mark, cut & sand smooth 1/2 in thick metal, torch (JIC #4)',
+          label: 'Handle, mark, cut & sand smooth 1/2 in thick metal, torch (planning model)',
           rate: { mat: 78, lab: 0 }
         },
         {
           id: 'w-5/8-torch',
-          label: 'Handle, mark, cut & sand smooth 5/8 in thick metal, torch (JIC #5)',
+          label: 'Handle, mark, cut & sand smooth 5/8 in thick metal, torch (planning model)',
           rate: { mat: 88, lab: 0 }
         },
         {
           id: 'w-3/4-torch',
-          label: 'Handle, mark, cut & sand smooth 3/4 in thick metal, torch (JIC #6)',
+          label: 'Handle, mark, cut & sand smooth 3/4 in thick metal, torch (planning model)',
           rate: { mat: 97, lab: 0 }
         },
         {
           id: 'w-1-torch',
-          label: 'Handle, mark, cut & sand smooth 1 in thick metal, torch (JIC #7)',
+          label: 'Handle, mark, cut & sand smooth 1 in thick metal, torch (planning model)',
           rate: { mat: 117, lab: 0 }
         },
         {
           id: 'w-1/16-cpsaw',
-          label: 'Handle, mark, cut & sand smooth 1/16 in thick metal, CPSAW (JIC #8)',
+          label: 'Handle, mark, cut & sand smooth 1/16 in thick metal, CPSAW (planning model)',
           rate: { mat: 25, lab: 0 }
         },
         {
           id: 'w-1/8-cpsaw',
-          label: 'Handle, mark, cut & sand smooth 1/8 in thick metal, CPSAW (JIC #9)',
+          label: 'Handle, mark, cut & sand smooth 1/8 in thick metal, CPSAW (planning model)',
           rate: { mat: 39, lab: 0 }
         }
       ]
@@ -921,47 +927,47 @@
       variants: [
         {
           id: 'standard',
-          label: 'Terrazzo tiles lay and grout (JIC Tiling #1)',
+          label: 'Terrazzo tiles lay and grout (planning model)',
           rate: { mat: 24, lab: 32 }
         },
         {
           id: 'terrazzo-cut',
-          label: 'Terrazzo tiles first cut (JIC #2)',
+          label: 'Terrazzo tiles first cut (planning model)',
           rate: { mat: 11, lab: 15 }
         },
         {
           id: 'terrazzo-polish',
-          label: 'Terrazzo tile final cut and polish (JIC #3)',
+          label: 'Terrazzo tile final cut and polish (planning model)',
           rate: { mat: 16, lab: 20 }
         },
         {
           id: 'terrazzo-upper',
-          label: 'Extra for terrazzo tiling upper floors (JIC #4)',
+          label: 'Extra for terrazzo tiling upper floors (planning model)',
           rate: { mat: 2, lab: 3 }
         },
         {
           id: 'tread-10',
-          label: 'Terrazzo tiles to treads 10 in wide finished (JIC #5)',
+          label: 'Terrazzo tiles to treads 10 in wide finished (planning model)',
           rate: { mat: 45, lab: 30 }
         },
         {
           id: 'tread-11-12',
-          label: 'Terrazzo tiles to treads 11-12 in wide finished (JIC #6)',
+          label: 'Terrazzo tiles to treads 11-12 in wide finished (planning model)',
           rate: { mat: 57, lab: 37 }
         },
         {
           id: 'riser-6-8',
-          label: 'Terrazzo tiles to riser 6-8 in high (JIC #7)',
+          label: 'Terrazzo tiles to riser 6-8 in high (planning model)',
           rate: { mat: 50, lab: 33 }
         },
         {
           id: 'marble-floor',
-          label: 'Lay and grout marble tiles 12 in plus edges floors (JIC #8)',
+          label: 'Lay and grout marble tiles 12 in plus edges floors (planning model)',
           rate: { mat: 42, lab: 56 }
         },
         {
           id: 'marble-wall',
-          label: 'Lay and grout marble tiles 12 in plus cutting walls (JIC #9)',
+          label: 'Lay and grout marble tiles 12 in plus cutting walls (planning model)',
           rate: { mat: 45, lab: 59 }
         }
       ]
@@ -989,47 +995,47 @@
       variants: [
         {
           id: 'wall-1coat',
-          label: 'Emulsion paint wall one coat (JIC Painting #1)',
+          label: 'Emulsion paint wall one coat (planning model)',
           rate: { mat: 14, lab: 11 }
         },
         {
           id: 'wall-2coat',
-          label: 'Emulsion paint wall two coats (JIC #2)',
+          label: 'Emulsion paint wall two coats (planning model)',
           rate: { mat: 28, lab: 22 }
         },
         {
           id: 'pebble-1coat',
-          label: 'Emulsion paint pebble dash one coat (JIC #3)',
+          label: 'Emulsion paint pebble dash one coat (planning model)',
           rate: { mat: 19, lab: 15 }
         },
         {
           id: 'pebble-2coat',
-          label: 'Emulsion paint pebble dash two coats (JIC #4)',
+          label: 'Emulsion paint pebble dash two coats (planning model)',
           rate: { mat: 36, lab: 29 }
         },
         {
           id: 'cutting-in',
-          label: 'Emulsion paint cutting to line (JIC #5)',
+          label: 'Emulsion paint cutting to line (planning model)',
           rate: { mat: 4, lab: 3 }
         },
         {
           id: 'skirting-1coat',
-          label: 'Emulsion paint skirting 3-4 in one coat (JIC #6)',
+          label: 'Emulsion paint skirting 3-4 in one coat (planning model)',
           rate: { mat: 4, lab: 3 }
         },
         {
           id: 'skirting-2coat',
-          label: 'Emulsion paint skirting 3-4 in two coats (JIC #7)',
+          label: 'Emulsion paint skirting 3-4 in two coats (planning model)',
           rate: { mat: 11, lab: 8 }
         },
         {
           id: 'ceiling-1coat',
-          label: 'Emulsion paint ceiling one coat (JIC #8)',
+          label: 'Emulsion paint ceiling one coat (planning model)',
           rate: { mat: 16, lab: 12 }
         },
         {
           id: 'ceiling-2coat',
-          label: 'Emulsion paint ceiling two coats (JIC #9)',
+          label: 'Emulsion paint ceiling two coats (planning model)',
           rate: { mat: 31, lab: 24 }
         }
       ]
@@ -1053,13 +1059,13 @@
       d3: null,
       q: a => ({ qty: a, unit: 'each', qtyLabel: 'Stirrups' }),
       runit: 'dozen',
-      matDesc: 'Links cut bent and fixed by size (JIC 2025-2027, 3 stirrup rates)',
+      matDesc: 'Links cut bent and fixed by size (planning models; bands follow the JIC book rows)',
       variants: [
-        { id: '1-4', label: '1/4 in links (JIC Steelwork #7)', rate: { mat: 6, lab: 12 } },
-        { id: '3-8', label: '3/8 in links (JIC Steelwork #8)', rate: { mat: 8, lab: 15 } },
+        { id: '1-4', label: '1/4 in links (planning model)', rate: { mat: 6, lab: 12 } },
+        { id: '3-8', label: '3/8 in links (planning model)', rate: { mat: 8, lab: 15 } },
         {
           id: '3-8-lg',
-          label: '3/8 in links large girth over 6 ft (JIC Steelwork #9)',
+          label: '3/8 in links large girth over 6 ft (planning model)',
           rate: { mat: 11, lab: 19 }
         }
       ]
@@ -2185,6 +2191,24 @@
     // flag that case so the render can say so honestly instead of relabelling.
     const matPresent = isFinite(matRaw) && matRaw >= 0;
     const labPresent = isFinite(labRaw) && labRaw >= 0;
+    // ---- C2 (AUDIT-DIRECTIVE-2026-10-18): NEVER charge across currencies ----
+    // The planning model's rates are US dollars. With a local currency and no
+    // exchange rate the engine used to fall back to that raw model and charge
+    // USD 22 / USD 28 as J$22 / J$28 (the CSV even printed "model rates are US
+    // dollars" beside the J$ total). That is how two quotes for the same job
+    // came out 32.7x apart. It now refuses in plain words instead of guessing;
+    // an all-in line, a JIC pick, a custom line and a crew-day line are all
+    // exempt because none of them touches the model rates.
+    if (st._fxMissing && !isCustom && !isJic && !allIn && !dayBasis && !(matPresent && labPresent)) {
+      return {
+        error:
+          'No exchange rate is set for ' +
+          (st.currency || 'this currency') +
+          ', so the planning model (US dollars) cannot price this line. Choose the book rate to ' +
+          'use the JIC rate book, type your own material and labour rates, or add the rate in ' +
+          'Exchange rates.'
+      };
+    }
     const matOverride = matPresent && (matModel === null || String(matRaw) !== matModel);
     const labOverride = labPresent && (labModel === null || String(labRaw) !== labModel);
     const mr = matPresent ? matRaw : modelMr;
@@ -2411,6 +2435,12 @@
   // before), run the pure engine, and attach the DOM-derived name.
   function compute() {
     const st = readState();
+    // C2 (AUDIT-DIRECTIVE-2026-10-18): computeFor is pure and reads the state
+    // object, so this wrapper tells it the one fact it cannot know - that a
+    // local currency is in play with no exchange rate to reach the planning
+    // model's US dollars. Without it the engine charged USD 22 as J$22.
+    const curNow = st.currency || DEFAULT_CURRENCY;
+    st._fxMissing = curNow !== BASE_CURRENCY && fxFactor(curNow) == null;
     st._matModel = $('calc-rate-mat') ? $('calc-rate-mat').dataset.model : undefined;
     st._labModel = $('calc-rate-lab') ? $('calc-rate-lab').dataset.model : undefined;
     st._allInModel = $('calc-allin') ? $('calc-allin').dataset.model : undefined;
@@ -2441,6 +2471,94 @@
       }
     }
     return r;
+  }
+
+  // ---- C2 (AUDIT-DIRECTIVE-2026-10-18): THE RATE COMPARISON + SANITY BANNER --
+  // Pure: it lists the money the form is offering for THIS line, per unit, and
+  // reports how far apart the live figures are. Two prices for the same unit
+  // more than 3x apart is the signature of a currency or unit slip - the owner
+  // saw 22 + 28 per m2 beside 1,747 per m2 on the same job (32.7x). Nothing
+  // here blocks a send; it makes the gap visible before one.
+  function rateSanity(rates) {
+    const priced = [];
+    Object.keys(rates || {}).forEach(function (k) {
+      const v = parseFloat(rates[k]);
+      if (isFinite(v) && v > 0) {
+        priced.push({ key: k, value: v });
+      }
+    });
+    if (priced.length < 2) {
+      return { ok: true, ratio: null };
+    }
+    priced.sort(function (a, b) {
+      return a.value - b.value;
+    });
+    const ratio = priced[priced.length - 1].value / priced[0].value;
+    return {
+      ok: ratio <= 3,
+      ratio: Math.round(ratio * 100) / 100,
+      low: priced[0].key,
+      high: priced[priced.length - 1].key
+    };
+  }
+
+  function rateComparison(st, r) {
+    const local = st.currency || DEFAULT_CURRENCY;
+    const sym = CURRENCY[local] || '';
+    const w = WORK[st.work];
+    const av = w && w.variants ? activeVariant(w, st) : null;
+    const unit = (r && r.unit) || (w && w.q ? (w.q(1, w.d2 ? 1 : null, w.d3 ? 1 : null) || {}).unit : '') || '';
+    const per = unit ? 'Per ' + (_units === 'imperial' ? entryUnitName(unit) : unit) : 'Per unit';
+    const allIn = parseFloat(st.allInRate);
+    const mat = parseFloat(st.rateMat);
+    const lab = parseFloat(st.rateLab);
+    const haveSplit = isFinite(mat) && mat > 0 && isFinite(lab) && lab > 0;
+    const modelUsd = av && av.rate ? Number(av.rate.mat) + Number(av.rate.lab) : 0;
+    // A model figure is only a PRICE once it is in the estimate's currency.
+    const fx = st._fxMissing ? null : fxFactor(local);
+    const rates = {};
+    if (isFinite(allIn) && allIn > 0) {
+      rates.book = allIn;
+    }
+    if (haveSplit) {
+      rates.split = mat + lab;
+    }
+    if (fx != null && modelUsd > 0) {
+      rates.model = modelUsd * fx;
+    }
+    const parts = [
+      'Book rate ' + (rates.book != null ? fmtMoney(rates.book, local) : sym + '0 (pick the book rate)'),
+      'Your split ' + (haveSplit ? fmtMoney(rates.split, local) : sym + '0 (add a material and a labour rate)'),
+      st._fxMissing && local !== BASE_CURRENCY
+        ? 'Model needs an exchange rate'
+        : 'Model ' + fmtMoney(rates.model || 0, local)
+    ];
+    return { title: per, text: parts.join('  |  '), rates: rates, sanity: rateSanity(rates) };
+  }
+
+  function renderRateCompare(r, st) {
+    const strip = $('calc-rate-compare');
+    if (!strip) {
+      return;
+    }
+    const cmp = rateComparison(st, r);
+    const txt = cmp.title + ': ' + cmp.text;
+    if (strip.textContent !== txt) {
+      strip.textContent = txt;
+    }
+    const banner = $('calc-rate-sanity');
+    if (banner) {
+      const bad = cmp.sanity && cmp.sanity.ok === false;
+      const msg = bad
+        ? 'These two rates differ by ' +
+          cmp.sanity.ratio.toFixed(1) +
+          ' times. Check the currency and the unit before you send this.'
+        : '';
+      if (banner.textContent !== msg) {
+        banner.textContent = msg;
+      }
+      banner.hidden = !bad;
+    }
   }
 
   // ---- Named estimates (F4-3): save / recall / delete, this device only ---
@@ -7102,6 +7220,9 @@
     syncLabels: syncLabels,
     instancesQty: instancesQty,
     estimateCsv: estimateCsv,
+    // C2: the rate comparison + its sanity rule (T3 drives both).
+    rateSanity: rateSanity,
+    rateComparison: rateComparison,
     prelimsTotal: prelimsTotal,
     rollup: rollup,
     cashCurve: cashCurve,
@@ -7655,6 +7776,11 @@
       return;
     }
     const r = compute();
+    // C2: the rate comparison strip and its sanity banner ride every recompute.
+    const stRates = readState();
+    const curRates = stRates.currency || DEFAULT_CURRENCY;
+    stRates._fxMissing = curRates !== BASE_CURRENCY && fxFactor(curRates) == null;
+    renderRateCompare(r && !r.error ? r : null, stRates);
     // T4: the Quick total line and the quantity box's unit follow every
     // recompute, including an error state (r is null then).
     renderQuickLine(r && !r.error ? r : null);
@@ -7684,7 +7810,9 @@
       return;
     }
     if (r.error) {
-      out.innerHTML = '<div class="calc-empty">' + r.error + '</div>';
+      // D-9 (AUDIT-DIRECTIVE-2026-10-18): an engine error string now carries
+      // the user's currency, so it is escaped at its one HTML insert.
+      out.innerHTML = '<div class="calc-empty">' + esc(r.error) + '</div>';
       return;
     }
     lastResult = r;

@@ -386,11 +386,20 @@
         <div class="bcp-field bcp-basis-pick">
           <label for="calc-basis">How do you price this work?</label>
           <select id="calc-basis" data-action="calcBasisPick" aria-label="How do you price this work">
-            <option value="measured">Measured - by the unit</option>
-            <option value="allin">All-in rate - one combined rate</option>
-            <option value="days">Days on site - a crew rate per day</option>
+            <option value="measured">Your own split - material rate plus labour rate</option>
+            <option value="allin">Book rate - one combined rate (JIC 2025 to 2027)</option>
+            <option value="days">Crew days - a rate per day</option>
           </select>
         </div>
+        <!-- C2 (AUDIT-DIRECTIVE-2026-10-18): the same line priced three ways, on
+             screen before the owner chooses, plus the sanity banner that fires
+             when two of them are more than 3x apart. Read-only text. -->
+        <div
+          id="calc-rate-compare"
+          class="bcp-rate-compare"
+          aria-live="polite"
+        ></div>
+        <div id="calc-rate-sanity" class="bcp-rate-sanity" role="status" hidden></div>
         <div class="bcp-field bcp-basis-allin" id="calc-allin-wrap" hidden>
           <label for="calc-allin" id="calc-allin-label">All-in rate</label>
           <input type="number" id="calc-allin" min="0" step="any" inputmode="decimal" placeholder="one rate covering the whole job">

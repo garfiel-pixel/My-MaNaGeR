@@ -162,3 +162,15 @@ GATES: new JP0-JP7 family in tools/qa-calculator-page.cjs (structure, sign-in ga
 VERIFICATION: npm run verify 117/117, qa-calculator-page 247/247, qa-calc-trade-coverage 88/88, qa-calc-assistant 105/105, prettier clean, emoji scan clean on served files; CSP untouched (zero inline scripts); no CSS changes needed (existing .bcp-field rules style the picker). Live (tmp/live-jic-picker.cjs): signed-out gate intact; with the seam — welding's first row seeded J$198, quantity 5 → Subtotal J$990 = 5 x 198 exact; bill line + CSV carry the ref; snapshot roundtrip re-creates 990; zero page errors. PASS.
 FILES: js/calculator-page.js, calculator.html (option + picker wrap + buster v39), sw.js (v432), tools/qa-calculator-page.cjs, tools/qa-calc-trade-coverage.cjs, tools/qa-calc-assistant.cjs, CONTINUATION-DIRECTIVE.md, reflection.txt.
 NEXT: PART H Procurement (blocked only on the H7.7 owner decisions) or any owner directive; PART I Phase 3 remains owner-request-only.
+
+2026-10-18 (audit Sprint 1): the hard lesson of this session is that a
+correct fix and a green harness are two different things, and only one of them
+is negotiable. The C2 refusal broke 20 page gates and 7 assistant gates; every
+one of them had recorded the OLD lie as the expected value. Rewriting an
+assertion to match new behaviour is right, but only when the new behaviour is
+the thing the owner asked for - so each rewrite carries the reason in a
+comment, and each red gate got a probe before it got an edit. The page harness
+is 247/247; the assistant harness is still 98/7 and I did not paper over it.
+Second lesson: a raw `select.value = 'USD'` is not a currency change. The
+engine keeps its own state, so the harnesses spent months silently pricing on
+whatever currency the previous gate left behind.

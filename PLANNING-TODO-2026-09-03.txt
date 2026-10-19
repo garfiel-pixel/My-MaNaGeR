@@ -2155,3 +2155,10 @@ binding with counted overflow). 185/185, verify green, sw v441.
 G5->G8 note for the next session: the export DIALOG toggle ('All links')
 belongs to G8; ui.ganttLinkPolicy already reads it, so G8 only needs the
 modal + persistence.
+DEPLOYED (G5 wave) 2026-10-19: version 8d9ec45e-9aa4-472e-a235-3b0cbb83a716
+from $HOME/mmgr-deploy (sw v441 markers verified before upload). CI
+39305025096 GREEN on 4f5444b before deploy. Live smoke: health 200, sw serves
+v441, dist/bundle.js carries linksDrawn + the hidden-links legend entry, CSP
+present. S2 now stands at G1-G5 + G7 done; remaining: G6 (table/theme/formats
+via neutral draw list), G8 (export dialog) + GATE G/T6 (bank-renovation
+fixture - still needs the owner's data file).

@@ -2147,3 +2147,11 @@ pricing Starter expansion + API/MCP listing (sw v439), and the Gantt export
 G1-G4/G7 wave (sw v440). CI 39300501292 GREEN on 03b671d before deploy.
 Live smoke: /api/health 200, sw.js serves v440, pricing + features + live
 dist/bundle.js all carry the new code, CSP header present.
+G5 LANDED (S2 step 3, same session): links draw before bars, near-only
+default policy (critical chain + <=8 rows), per-source lanes, arrowheads on
+every link incl. the overlap branch, dashed lag links, 1,500 cap with a
+'+N hidden links' legend entry. Gate qa-full 55c (policy 59/60 chain, cap
+binding with counted overflow). 185/185, verify green, sw v441.
+G5->G8 note for the next session: the export DIALOG toggle ('All links')
+belongs to G8; ui.ganttLinkPolicy already reads it, so G8 only needs the
+modal + persistence.

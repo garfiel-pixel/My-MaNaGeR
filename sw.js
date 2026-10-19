@@ -39,6 +39,19 @@
 // (5.0:1 light, white in dark), and the qa-procurement gate went green
 // (27/27) and joined CI. css/mmgr.css, dist/mmgr.min.css, dist/bundle.js and
 // project.html are shell assets, hence this bump.
+// v441 - GANTT-EXPORT G5: DEPENDENCY LINKS (S2 step 3). Links now draw
+// BEFORE the rows so bars cover them (a crossing line is context, never a
+// rival signal). Default policy 'near' = the critical chain plus links
+// spanning <= 8 rows; the future G8 export dialog flips ui.ganttLinkPolicy
+// to 'all'. Each source routes its vertical leg through its own lane
+// (x1 + 6 + 3 * lane) so links from one predecessor no longer stack on one
+// channel; EVERY link gets an arrowhead (the overlap branch had none); lag
+// links (successor at or before the link column) draw DASHED; total capped
+// at 1,500 with a '+N hidden links' legend entry - the cap is never silent.
+// Gate qa-full 55c asserts policy (near=59 of 60 chain links, all=60), the
+// cap binding at 1,500 with a counted overflow, and no throw (185/185).
+// js/mmgr-app.js + dist/bundle.js are SHELL assets, hence this bump; no
+// inline script touched, CSP hashes byte-identical.
 // v440 - GANTT-EXPORT G1/G2/G3/G4/G7 (S2 step 2, AUDIT-DIRECTIVE-2026-10-18).
 // G7 FIRST (before any change that widens the export): canvas geometry is
 // clamped to the browser limits (16,384px a side, ~268MP area) and dayWidth
@@ -93,7 +106,7 @@
 // tmp/inp-baseline.json) and the qa-presence startup hardening that repaired
 // CI run 39146188112 (workerd died on a bind conflict; the devtools
 // inspector port is now derived from QA_PORT and startup retries once).
-const CACHE = 'mmgr-shell-v440';
+const CACHE = 'mmgr-shell-v441';
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new
 // 'JIC rate book' choice on calculator.html) prices ANY shipped book row as

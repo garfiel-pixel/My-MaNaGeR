@@ -119,9 +119,20 @@ async function check(name, expr, expected, hint) {
   await delay(4500);
 
   // ---- BOOT ----
+  // PANEL-COUNT (CI repair 2026-10-19, lesson 8.3 stale-harness family):
+  // the expected panel count is read from project.html itself, never
+  // hard-coded. The frozen "=== 20" broke when panel-proc shipped (2026-10-18,
+  // procurement wave -> 21 panels) and the failure hid behind earlier red
+  // steps so T4 never ran. Disk manifest == runtime count keeps the guard
+  // (a panel missing from the DOM still fails) while surviving new panels.
+  const EXP_PANELS = (
+    require('fs')
+      .readFileSync(path.join(__dirname, 'project.html'), 'utf8')
+      .match(/id="panel-[a-z0-9-]+"/g) || []
+  ).length;
   await check(
     '01 boot: MMGR + active dash panel',
-    `(function(){return {val: !!(window.MMGR && MMGR.App && MMGR.State && document.querySelector('#panel-dash').classList.contains('active') && document.querySelectorAll('.panel').length === 20), n: document.querySelectorAll('.panel').length, mmgr: !!(window.MMGR&&MMGR.App&&MMGR.State)};})()`
+    `(function(){return {val: !!(window.MMGR && MMGR.App && MMGR.State && document.querySelector('#panel-dash').classList.contains('active') && document.querySelectorAll('.panel').length === ${EXP_PANELS}), n: document.querySelectorAll('.panel').length, exp: ${EXP_PANELS}, mmgr: !!(window.MMGR&&MMGR.App&&MMGR.State)};})()`
   );
   await check(
     '01b boot: no boot failure banner',

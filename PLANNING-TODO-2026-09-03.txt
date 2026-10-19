@@ -2103,3 +2103,10 @@ B4 next-session plan (next session picks up here):
 5. Deploy via same staged-copy procedure. Owner steps: hard refresh -> confirm "Cancelling on <date>" shows with no Cancel button; press old Cancel tab once more -> confirm no error.
 
 Full directive text lives in CONTRIBUTING.md (or wherever it was pasted) under DIRECTIVE: CANCEL MUST ACTUALLY CANCEL + FINISH B4.
+
+--- CI repair 2026-10-19 (run 39213903470, SHA 2e4e019, T4 qa-full) ---
+Harness changed: qa-full.cjs check 01 - frozen ".panel === 20" replaced by
+the disk-manifest count (id="panel-*" in project.html = 21). The app contract
+did NOT change: panel-proc shipped 2026-10-18 (2659f41 procurement wave) and
+the stale assertion hid behind earlier red steps (T2 Presence) so T4 never
+executed until 2026-10-19. Local repro: 183 passed / 0 failed.

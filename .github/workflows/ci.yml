@@ -519,6 +519,15 @@ jobs:
         id: qa-procurement
         run: node tools/qa-procurement.cjs
 
+      # Wide-monitor fill (owner report 2026-10-19): the app column must span
+      # a 2560/3440 screen on app, project, calculator and admin, keep its
+      # 1080px reading width below 1200px, never push a horizontal scrollbar,
+      # and leave the printed sheet at its capped width. Reuses the serve.cjs
+      # server started above.
+      - name: "T4: Wide-monitor fill (qa-widescreen)"
+        id: qa-widescreen
+        run: node tools/qa-widescreen.cjs
+
       # axe-core accessibility gate (T10-B): every served page in light + dark,
       # zero serious/critical violations. axe-core is a devDependency; the run
       # injects it through CDP, which the page CSP does not block.

@@ -216,7 +216,14 @@ async function walkFocus(page) {
       );
 
       // V: live recompute + error guidance + actions row gating.
-      await page.selectOption('#calc-work', 'slab');
+      // C2 re-baseline (2026-10-19, CI repair, lesson 8.3): run on 'excav',
+      // the one work item that is BOTH book-covered (JIC all-in prefills and
+      // prices in JMD without an exchange rate) AND has all three dimension
+      // fields visible. 'slab', 'footings' and 'concrete-drive' deliberately
+      // REFUSE to price in JMD with no exchange rate since the currency-honesty
+      // fix (that refusal is gated by tools/verify-currency.cjs C2a), so under
+      // the old contract V2 was asserting the exact bug C2 removed.
+      await page.selectOption('#calc-work', 'excav');
       await page.fill('#calc-d1', '10');
       await page.fill('#calc-d2', '8');
       const live = await page.evaluate(() => document.getElementById('calc-output').textContent);
@@ -284,7 +291,11 @@ async function walkFocus(page) {
 
       // R: recall fidelity through real UI events (the owner's exact scenario:
       // do it in metric, switch to imperial, recall -> metric returns).
-      await page.selectOption('#calc-work', 'slab');
+      // 'excav' for the same C2 reason as V above: calcRun only writes a
+      // history row when the estimate priced without error, and the Recall
+      // button lives on that row - an honest refusal (slab, no fx) leaves
+      // nothing to recall and the click times out.
+      await page.selectOption('#calc-work', 'excav');
       await page.fill('#calc-d1', '10');
       await page.fill('#calc-d2', '8');
       await page.fill('#calc-d3', '150');
@@ -641,7 +652,12 @@ async function walkFocus(page) {
       const aerrs = [];
       ap.on('pageerror', e => aerrs.push(String(e).slice(0, 140)));
       const sent = [];
-      const PROPOSAL_JSON = '{"work":"siteprep","d1":12,"d2":3,"note":"strip and clear"}';
+      // C2 re-baseline (2026-10-19): the PROPOSAL must price. 'siteprep' has
+      // no book rate, so with JMD and no exchange rate the page refuses it
+      // (correct currency-honesty behaviour) and Populate declines with a
+      // notice instead of adding. 'blockwall' prices from its JIC all-in rate,
+      // which is also what the page flow above now sits on.
+      const PROPOSAL_JSON = '{"work":"blockwall","d1":12,"d2":3,"note":"strip and clear"}';
       await ap.route('**/api/auth/me', r =>
         r.fulfill({
           status: 200,
@@ -755,7 +771,12 @@ async function walkFocus(page) {
       );
 
       // Price the line first so the export path has something to export.
-      await ap.selectOption('#calc-work', 'siteprep');
+      // C2 re-baseline (2026-10-19): 'siteprep' stopped pricing under the
+      // currency-honesty refusal (no book rate, no fx), which left the export
+      // path with nothing to export and Populate correctly declining. 'blockwall'
+      // prefills its JIC all-in rate and prices in JMD, and 12 m x 3 m IS the
+      // blockwork strip the question below asks about.
+      await ap.selectOption('#calc-work', 'blockwall');
       await ap.fill('#calc-d1', '12');
       await ap.fill('#calc-d2', '3');
       await ap.click('[data-action=calcRun]');

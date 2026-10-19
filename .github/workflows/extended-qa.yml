@@ -106,6 +106,16 @@ jobs:
       - name: "E-T4: floating calculator"
         run: node tools/qa-calculator.cjs
 
+      - name: "E-T4: INP profile, 4x throttled (qa-inp, audit X-3)"
+        # X-3 of AUDIT-DIRECTIVE-2026-10-18: interaction durations per
+        # scenario (type, Calculate, switch, units, AI panel, Gantt, tab) with
+        # a 4x CPU throttle, recorded to tmp/inp-baseline.json. Registered
+        # EXTENDED rather than CI on purpose: the budget check (200ms, 100ms
+        # typing) is a SPRINT gate - the recorded baseline is over budget
+        # until X-1/X-2 land, so ci.yml would carry a permanently red step -
+        # and throttled timings are noisy on shared runners.
+        run: node tools/qa-inp.cjs
+
       - name: "E-T4: build cost calculator page + parallel assistant"
         run: node tools/qa-calculator-page.cjs
 

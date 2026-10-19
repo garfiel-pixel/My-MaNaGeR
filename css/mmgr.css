@@ -16753,3 +16753,21 @@ textarea.pv-in {
   content: 'Your quote will appear here. Copy it straight into an email.';
   color: var(--slate);
 }
+
+/* ---- WIDE MONITORS (owner 2026-10-19): the app must fill the screen it is
+   opened on. Above 1200px each workspace column stops being a fixed reading
+   width (.wrap 1080, #app-main 1600, .bcp-main 1080) and grows into the space
+   the rail leaves, so a 2560 or 3440 monitor gets content across the whole
+   canvas instead of a narrow strip with empty background either side. The
+   inner grids already reflow (auto-fit tracks), and every column keeps its
+   own edge padding, so nothing lands against the window.
+   Below 1200px nothing changes - the cap still governs, so every phone,
+   tablet, mobile and print layout keeps the width it has today. Print renders
+   at paper width (about 816px), so the printed estimate sheet is untouched. */
+@media (min-width: 1200px) {
+  body.db-page .wrap,
+  #app-main,
+  .bcp-main {
+    max-width: none;
+  }
+}

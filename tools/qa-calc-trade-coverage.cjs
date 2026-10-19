@@ -217,6 +217,22 @@ function absolutizeChrome(p) {
   );
   check('picker exposes the user trades (>= 20)', trades.length >= 20, trades);
 
+  // C2 re-baseline (2026-10-19, CI repair): this walk asserts every trade
+  // prices from its dims (steps 4 and 6). Since the currency-honesty fix, a
+  // trade the shipped book does NOT cover deliberately refuses in JMD with no
+  // exchange rate (correct behaviour - gated by tools/verify-currency.cjs
+  // C2a), so the walk would fail most of the picker for an environment reason
+  // rather than a per-trade one. Seed the sanctioned remedy once - a JMD rate
+  // per 1 USD - so every trade prices through the converted model exactly as
+  // a configured site would, and the per-trade contract keeps its teeth. The
+  // per-trade reset below only clears mmgr_calc_boq/wstamps, never this.
+  await page.evaluate(() =>
+    localStorage.setItem(
+      'mmgr_calc_fx',
+      JSON.stringify({ JMD: { per: '157.0', asOf: new Date().toISOString().slice(0, 10) } })
+    )
+  );
+
   for (const trade of trades) {
     const res = await runTrade(page, trade, async trade => {
       const dimSample = label => (/\(mm\)/.test(label || '') ? '100' : '10');
@@ -341,6 +357,14 @@ function absolutizeChrome(p) {
     { timeout: 30000 }
   );
   await mpage.waitForTimeout(600);
+  // Same fx seed as the desktop pass - a new context has its own
+  // localStorage, so without this every mobile trade would refuse.
+  await mpage.evaluate(() =>
+    localStorage.setItem(
+      'mmgr_calc_fx',
+      JSON.stringify({ JMD: { per: '157.0', asOf: new Date().toISOString().slice(0, 10) } })
+    )
+  );
   const mTrades = await mpage.evaluate(() =>
     Array.prototype.map
       .call(document.querySelectorAll('#calc-work option'), o => o.value)

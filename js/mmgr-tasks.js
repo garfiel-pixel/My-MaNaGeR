@@ -241,6 +241,17 @@ var MMGR = window.MMGR || {};
             }
           }
         }
+        // G1 (directive 2026-10-18): any date edit re-derives every phase
+        // span from its children (Schedule.rollupPhases), so a phase bar
+        // can never go stale behind an edited child - the live chart, the
+        // WBS and the Gantt export all read the same rolled-up dates.
+        if (
+          (field === 'startDate' || field === 'endDate' || field === 'duration') &&
+          ns.Schedule &&
+          ns.Schedule.rollupPhases
+        ) {
+          ns.Schedule.rollupPhases(s.tasks || []);
+        }
       }
     });
     // Focus discipline (browser-verified): re-rendering the WBS table on

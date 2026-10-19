@@ -3395,6 +3395,12 @@ var MMGR = window.MMGR || {};
         if (dd !== null) {
           t.duration = String(dd);
         }
+        // G1 (directive 2026-10-18): a drag is a date edit - re-derive every
+        // phase span from its children so the dragged child cannot leave
+        // its phase bar stale (same roll-up the WBS edit path calls).
+        if (ns.Schedule && ns.Schedule.rollupPhases) {
+          ns.Schedule.rollupPhases(state.tasks || []);
+        }
       }
     });
     // Refresh float / critical annotations READ-ONLY (dates untouched) so the

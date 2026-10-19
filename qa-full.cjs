@@ -1241,6 +1241,59 @@ async function check(name, expr, expected, hint) {
   })()`
   );
   await check(
+    '55b gantt export G1/G2/G3/G7: phase roll-up, row order, milestone diamonds, canvas guard',
+    `(function(){
+    // G-directive fixture (2026-10-18): a phase whose STORED end is stale
+    // (children run past it), an orphan task with no resolvable parent, a
+    // zero-duration gate row with NO milestone flag, and a 1,000-day window
+    // + 700 rows so both canvas limits (side and area) actually bind.
+    var snap=JSON.parse(JSON.stringify(MMGR.State.getState()));
+    function d(n){var t=new Date();t.setDate(t.getDate()+n);return t.toISOString().slice(0,10);}
+    var tasks=[
+      {id:'ph1',name:'Phase One',isPhase:true,startDate:d(0),endDate:d(10),status:'active'},
+      {id:'c1',name:'Child task',parentId:'ph1',startDate:d(0),endDate:d(30),status:'active',duration:'31'},
+      {id:'c2',name:'Second child',parentId:'ph1',startDate:d(5),endDate:d(40),status:'active',duration:'36'},
+      {id:'ms1',name:'Phase gate: inspection complete',parentId:'ph1',startDate:d(40),endDate:d(40),duration:'0',status:'active'},
+      {id:'orph',name:'Orphan leftover task',startDate:d(1),endDate:d(3),duration:'3',status:'active'},
+      {id:'far',name:'Far future task',parentId:'ph1',startDate:d(900),endDate:d(1000),duration:'101',status:'active'}
+    ];
+    for(var i=0;i<700;i++){tasks.push({id:'f'+i,parentId:'ph1',name:'Filler '+i,startDate:d(i%90),endDate:d((i%90)+2),duration:'3',status:'active'});}
+    MMGR.State.updateState(function(s){s.tasks=tasks;});
+    var captured=null;
+    var orig=HTMLCanvasElement.prototype.toBlob;
+    HTMLCanvasElement.prototype.toBlob=function(cb){captured=this;cb(new Blob(['png'],{type:'image/png'}));};
+    var threw=false, thrown=null;
+    try{MMGR.App.exportGanttPNG();}catch(e){threw=true;thrown=String(e);}
+    HTMLCanvasElement.prototype.toBlob=orig;
+    var m=window.__ganttExportMeta||null;
+    MMGR.State.updateState(function(s){s.tasks=snap.tasks;});
+    window.__mmgrUnassignedNoticeShown=false;
+    if(!m){return {val:false,why:'no __ganttExportMeta',threw:threw,thrown:thrown};}
+    // G1: the phase bar spans its CHILDREN (end d(1000)), not the stale
+    // stored end d(10) - and the window includes the rolled-up span.
+    var g1=!!m.phaseSpans['ph1'] && m.phaseSpans['ph1'].end===d(1000) && m.phaseSpans['ph1'].start===d(0);
+    // G2: set equality - every dated task id appears exactly once, the
+    // orphan is grouped last under the unassigned divider, none dropped.
+    var ids=m.rows.filter(function(x){return x!=='__unassigned__';});
+    var g2=ids.length===tasks.length && tasks.every(function(t){return ids.indexOf(t.id)>-1;}) &&
+      m.unassigned.length===1 && m.unassigned[0]==='orph' && m.rows[m.rows.length-1]==='orph' &&
+      m.rows.indexOf('__unassigned__')<m.rows.indexOf('orph') && m.rows.indexOf('ph1')===0;
+    // G3: the zero-duration gate row (no milestone flag) draws as a
+    // diamond; a normal child never does.
+    var g3=m.milestones.indexOf('ms1')>-1 && m.milestones.indexOf('c1')===-1 && m.milestones.indexOf('f0')===-1;
+    // G7: the 1,000-day window narrows dayWidth down the ladder and the
+    // 706-row height clamps the scale, so both canvas dimensions stay
+    // inside the browser limits (<=16,384 a side, <=268MP) and toBlob is
+    // reached with a real canvas - never a blank or failed export.
+    var g7=!!captured && m.canvasW<=16384 && m.canvasH<=16384 && (m.canvasW*m.canvasH)<=2.6e8 &&
+      m.canvasW>1000 && m.dayWidth<14 && m.scale<2 && m.scale>=0.3;
+    return {val: !threw&&g1&&g2&&g3&&g7, threw:threw, thrown:thrown,
+      g1:g1, g2:g2, g3:g3, g7:g7,
+      span:m.phaseSpans['ph1'], rows:m.rows.length, un:m.unassigned, ms0:m.milestones.slice(0,3),
+      cw:m.canvasW, ch:m.canvasH, dayWidth:m.dayWidth, scale:Math.round(m.scale*100)/100};
+  })()`
+  );
+  await check(
     '56 onboarding empty states: WBS + Kanban deep-link to add task',
     `(function(){
     var snap=JSON.parse(JSON.stringify(MMGR.State.getState().tasks));

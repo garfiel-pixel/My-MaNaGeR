@@ -1407,14 +1407,26 @@ var MMGR = window.MMGR || {};
       showToast('No dated tasks to export.', 'err');
       return;
     }
+    // G1 export layer (directive 2026-10-18): a phase displays its
+    // CHILDREN's span, derived at export time - a static image must never
+    // trust a stored phase date that an edit after Cascade left stale.
+    const spanOf = {};
+    tasks.forEach(t => {
+      let span = null;
+      if (t.isPhase && ns.Schedule && ns.Schedule.phaseSpan) {
+        span = ns.Schedule.phaseSpan(t, all);
+      }
+      spanOf[t.id] = span || { start: t.startDate, end: t.endDate };
+    });
     let minDate = null,
       maxDate = null;
     tasks.forEach(t => {
-      if (!minDate || t.startDate < minDate) {
-        minDate = t.startDate;
+      const sp = spanOf[t.id];
+      if (!minDate || sp.start < minDate) {
+        minDate = sp.start;
       }
-      if (!maxDate || t.endDate > maxDate) {
-        maxDate = t.endDate;
+      if (!maxDate || sp.end > maxDate) {
+        maxDate = sp.end;
       }
     });
     // C1 (directive 2026-09-26): dynamic label column - measure the longest
@@ -1430,15 +1442,67 @@ var MMGR = window.MMGR || {};
         maxLabelWidth = w;
       }
     });
-    const dayWidth = 14,
-      rowH = 26,
-      headerH = 56;
+    const rowH = 26,
+      headerH = 96; // G4: title block + three header bands (month/week/day)
+    // G7 first half: pick dayWidth from the window so the logical width
+    // stays at most ~3,200px. The ladder (14 -> 7 -> 3 -> 1.5 px/day)
+    // keeps any multi-year schedule inside the browser canvas limits at
+    // scale 2; the guard below handles the residual (huge row counts).
+    let dayWidth = 14;
     const padL = Math.min(Math.max(120, Math.ceil(maxLabelWidth) + 30), 340);
     const padR = 20,
       padT = 16,
       padB = 44; // C7: 2-line legend wrap headroom
     const phaseGap = 7; // breathing room before each phase row (chunking)
     const totalDays = U.daysBetween(minDate, maxDate) + 1;
+    while (dayWidth > 1.5 && padL + totalDays * dayWidth + 320 > 3200) {
+      dayWidth = dayWidth === 14 ? 7 : dayWidth === 7 ? 3 : 1.5;
+    }
+    // G2 row order: phases in state order, each followed by its children
+    // sorted by start date then WBS position; tasks whose parent cannot be
+    // resolved collect under an "Unassigned tasks" group at the END (an
+    // orphan must never print above P0 again). No task is ever dropped.
+    const ordered = [];
+    const placed = new Set();
+    const emitKids = parent => {
+      const kids = tasks.filter(
+        c =>
+          !c.isPhase &&
+          !placed.has(c.id) &&
+          (String(c.parentId) === String(parent.id) || c.parentName === parent.name)
+      );
+      kids.sort((a, b) => (a.startDate < b.startDate ? -1 : a.startDate > b.startDate ? 1 : 0));
+      kids.forEach(k => {
+        ordered.push(k);
+        placed.add(k.id);
+        emitKids(k);
+      });
+    };
+    tasks
+      .filter(t => t.isPhase)
+      .forEach(ph => {
+        ordered.push(ph);
+        placed.add(ph.id);
+        emitKids(ph);
+      });
+    const unassigned = tasks.filter(t => !placed.has(t.id));
+    if (unassigned.length) {
+      ordered.push({
+        id: '__unassigned__',
+        name: 'Unassigned tasks (' + unassigned.length + ')',
+        isGroupHeader: true
+      });
+      unassigned.forEach(t => ordered.push(t));
+    }
+    // One-time notice in the APP (not the PNG): orphans are a data problem
+    // the owner can fix, never something to silently drop or auto-delete.
+    if (unassigned.length && !window.__mmgrUnassignedNoticeShown) {
+      window.__mmgrUnassignedNoticeShown = true;
+      showToast(
+        unassigned.length + ' tasks have no phase. Move them into a phase or delete them.',
+        'err'
+      );
+    }
     // Row geometry pass: y per task + phase gap before isPhase rows + phase
     // ownership for the tab strips (nearest preceding phase row).
     const rowY = new Map();
@@ -1459,7 +1523,13 @@ var MMGR = window.MMGR || {};
       '#d4af37'
     ];
     let y = padT + headerH;
-    tasks.forEach(t => {
+    ordered.forEach(t => {
+      if (t.isGroupHeader) {
+        y += rowY.size ? phaseGap : 0;
+        rowY.set(t.id, y);
+        y += rowH;
+        return;
+      }
       if (t.isPhase) {
         phaseIdx++;
         curPhase = t;
@@ -1475,7 +1545,18 @@ var MMGR = window.MMGR || {};
     });
     const W = padL + totalDays * dayWidth + padR;
     const H = y + padB;
-    const scale = 2;
+    // G7 canvas-limit guard: past the common 16,384px side / ~268MP area
+    // limits toBlob returns null (or a blank image) and the user sees
+    // "Export failed." - clamp the device-pixel scale so EVERY export
+    // decodes. Below 0.75 the image is small but real; the toast says so.
+    const MAX_SIDE = 16000,
+      MAX_AREA = 2.6e8;
+    let scale = Math.min(2, MAX_SIDE / W, MAX_SIDE / H, Math.sqrt(MAX_AREA / (W * H)));
+    let scaledNote = '';
+    if (scale < 0.75) {
+      scale = Math.max(scale, 0.3); // extreme row counts: small but decodable
+      scaledNote = ' (scaled to fit browser image limits)';
+    }
     const canvas = document.createElement('canvas');
     canvas.width = W * scale;
     canvas.height = H * scale;
@@ -1498,7 +1579,8 @@ var MMGR = window.MMGR || {};
         maxDate +
         '  |  ' +
         tasks.length +
-        ' rows  |  exported ' +
+        (unassigned.length ? ' rows, ' + unassigned.length + ' unassigned' : ' rows') +
+        '  |  exported ' +
         new Date().toISOString().slice(0, 10) +
         (s.userName ? '  |  prepared by ' + s.userName : ''),
       8,
@@ -1507,6 +1589,17 @@ var MMGR = window.MMGR || {};
     // Chart-area header + weekend shading + week-start dividers + day labels
     // C2 (directive): weekend FILL is separate from the Monday week-start
     // LINE - the old code conflated them into one Monday-only fill.
+    // G4 (directive): three header bands - months (labelled at the FIRST
+    // VISIBLE day of each month, so a leading partial month is never
+    // unlabelled), week-start dates, and day numbers only when they fit
+    // (dayWidth >= 18) else ticks. 10px numbers in 14px columns collided
+    // on two-digit days; the bands own separate y rows so nothing overlaps.
+    const bandY = {
+      month: padT + headerH - 44,
+      week: padT + headerH - 30,
+      day: padT + headerH - 14
+    };
+    let prevMonth = -1;
     for (let i = 0; i < totalDays; i++) {
       const d = U.addDays(minDate, i);
       const x = padL + i * dayWidth;
@@ -1522,14 +1615,32 @@ var MMGR = window.MMGR || {};
         ctx.moveTo(x + 0.5, padT + headerH - 18);
         ctx.lineTo(x + 0.5, H - padB);
         ctx.stroke();
+        // Band 2: the week-start date. Only when it has room next door.
+        if (dayWidth >= 7) {
+          ctx.font = '9px sans-serif';
+          ctx.fillStyle = '#64748b';
+          ctx.fillText(String(d.getDate()), x + 1, bandY.week);
+        }
       }
-      ctx.font = '10px sans-serif';
-      ctx.fillStyle = dow === 0 || dow === 6 ? '#64748b' : '#94a3b8';
-      ctx.fillText(String(d.getDate()), x + 1, padT + headerH - 22);
-      if (d.getDate() === 1) {
+      // Band 1: month label at the first VISIBLE day of the month.
+      if (d.getMonth() !== prevMonth) {
+        prevMonth = d.getMonth();
         ctx.fillStyle = '#cbd5e1';
-        ctx.font = '700 9px sans-serif';
-        ctx.fillText(d.toLocaleString('default', { month: 'short' }), x + 1, padT + headerH - 34);
+        ctx.font = '700 10px sans-serif';
+        ctx.fillText(
+          d.toLocaleString('default', { month: 'short' }) + ' ' + String(d.getFullYear()),
+          x + 1,
+          bandY.month
+        );
+      }
+      // Band 3: day numbers only when they fit; ticks otherwise.
+      if (dayWidth >= 18) {
+        ctx.font = '10px sans-serif';
+        ctx.fillStyle = dow === 0 || dow === 6 ? '#64748b' : '#94a3b8';
+        ctx.fillText(String(d.getDate()), x + 1, bandY.day);
+      } else if (dow === 1) {
+        ctx.fillStyle = 'rgba(148,163,184,.45)';
+        ctx.fillRect(x, bandY.day - 4, 1, 4);
       }
     }
     // C1 backstop: label truncation (binary search for the widest prefix
@@ -1561,10 +1672,22 @@ var MMGR = window.MMGR || {};
     const todayStr = U.todayStr();
     const midY = id => rowY.get(id) + rowH / 2;
     // Rows: bands, tabs, labels, bars
-    tasks.forEach(t => {
+    ordered.forEach(t => {
       const ry = rowY.get(t.id);
-      const x0 = X(t.startDate);
-      const bw = Math.max(3, U.daysBetween(t.startDate, t.endDate) * dayWidth + dayWidth * 0.2);
+      if (t.isGroupHeader) {
+        // G2: the "Unassigned tasks" divider row - a labelled band, no bar.
+        ctx.fillStyle = 'rgba(214,58,58,.10)';
+        ctx.fillRect(padL, ry, W - padL - padR, rowH);
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = '700 11px sans-serif';
+        ctx.fillText(t.name, 8, ry + rowH / 2 + 3);
+        return;
+      }
+      // G1: the bar draws the ROLLED-UP span - phases span their children,
+      // derived at export time from phaseSpan, never the stored dates.
+      const sp = spanOf[t.id] || { start: t.startDate, end: t.endDate };
+      const x0 = X(sp.start);
+      const bw = Math.max(3, U.daysBetween(sp.start, sp.end) * dayWidth + dayWidth * 0.2);
       if (t.isPhase) {
         ctx.fillStyle = 'rgba(148,163,184,.08)';
         ctx.fillRect(padL, ry, W - padL - padR, rowH);
@@ -1606,13 +1729,22 @@ var MMGR = window.MMGR || {};
         ? '#d4af37'
         : t.status === 'completed'
           ? '#009b3a'
-          : U.isOverdue(t.endDate) && t.status !== 'completed'
+          : U.isOverdue(sp.end) && t.status !== 'completed'
             ? '#D63A3A'
-            : U.isDueSoon(t.endDate, 3) && t.status !== 'completed'
+            : U.isDueSoon(sp.end, 3) && t.status !== 'completed'
               ? '#f59e0b'
               : '#3b82f6';
       ctx.fillStyle = col;
-      if (t.milestone) {
+      // G3: a milestone is a milestone by FLAG or by SHAPE - a zero-duration
+      // row (or a same-day row whose name reads as a gate/sign-off) draws as
+      // a diamond, never a 3px sliver. The seeded "Phase gate" rows in the
+      // owner's projects carry no milestone flag; the heuristic catches them.
+      const isMs =
+        !!t.milestone ||
+        Number(t.duration) === 0 ||
+        (t.startDate === t.endDate &&
+          /gate|sign-?off|complete|milestone|certificate/i.test(t.name || ''));
+      if (isMs) {
         // Milestones read as diamonds (owner review: gates must not read as slivers)
         const cx = x0 + bw / 2,
           cy = ry + rowH / 2,
@@ -1629,6 +1761,14 @@ var MMGR = window.MMGR || {};
           ctx.lineWidth = 1;
           ctx.stroke();
         }
+        // G3: the milestone's name rides to the RIGHT of the diamond - a
+        // diamond with no label tells the reader nothing.
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = '700 9px sans-serif';
+        const msLabel = truncateToWidth(ctx, t.name || '', W - padR - (cx + r + 4));
+        ctx.fillText(msLabel, cx + r + 4, cy + 3);
+        ctx.font = t.isPhase ? '700 11px sans-serif' : '600 10px sans-serif';
+        ctx.fillStyle = t.isPhase ? '#f8fafc' : '#e2e8f0';
       } else {
         ctx.fillRect(x0, ry + (t.critical ? 0 : 4), bw, rowH - (t.critical ? 0 : 8));
         if (t.critical) {
@@ -1648,12 +1788,16 @@ var MMGR = window.MMGR || {};
       if (!p || !sRow || !rowY.has(p.id) || !rowY.has(sRow.id)) {
         return;
       }
+      // G1: connectors launch from the ROLLED-UP span too - a phase's
+      // dependency leaves where its children actually end, not where a
+      // stale stored date claims.
+      const psp = spanOf[p.id] || { start: p.startDate, end: p.endDate };
+      const ssp = spanOf[sRow.id] || { start: sRow.startDate, end: sRow.endDate };
       const x1 =
-        X(p.endDate) +
-        Math.max(3, U.daysBetween(p.startDate, p.endDate) * dayWidth + dayWidth * 0.2);
+        X(psp.end) + Math.max(3, U.daysBetween(psp.start, psp.end) * dayWidth + dayWidth * 0.2);
       const y1 = midY(p.id),
         y2 = midY(sRow.id);
-      const x2 = X(sRow.startDate) - 3;
+      const x2 = X(ssp.start) - 3;
       if (x2 <= x1 + 2) {
         // successor starts before pred ends (overlap/lag): route below
         ctx.strokeStyle = gold ? 'rgba(212,175,55,.85)' : 'rgba(148,163,184,.28)';
@@ -1751,8 +1895,32 @@ var MMGR = window.MMGR || {};
       setTimeout(function () {
         URL.revokeObjectURL(a.href);
       }, 400);
-      showToast('High-res Gantt exported (PNG).', 'ok');
+      showToast('High-res Gantt exported (PNG)' + scaledNote + '.', 'ok');
     }, 'image/png');
+    // GATE hook (G1/G2/G3/G7): the QA harness reads the export's own
+    // geometry - ordered row ids, rolled-up phase spans, milestone list and
+    // the clamped canvas size - without decoding pixels.
+    window.__ganttExportMeta = {
+      rows: ordered.map(t => t.id),
+      unassigned: unassigned.map(t => t.id),
+      phaseSpans: spanOf,
+      milestones: ordered
+        .filter(
+          t =>
+            !t.isGroupHeader &&
+            (!!t.milestone ||
+              Number(t.duration) === 0 ||
+              (t.startDate === t.endDate &&
+                /gate|sign-?off|complete|milestone|certificate/i.test(t.name || '')))
+        )
+        .map(t => t.id),
+      dayWidth: dayWidth,
+      W: W,
+      H: H,
+      scale: scale,
+      canvasW: canvas.width,
+      canvasH: canvas.height
+    };
   }
 
   // ---- Weather actions ---- (extracted to js/app/weather.js)

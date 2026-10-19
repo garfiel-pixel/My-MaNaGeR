@@ -178,43 +178,100 @@ async function main() {
     console.log('qa-presence: migrations applied (local persist)');
   }
 
-  const dev = spawn(
-    process.execPath,
-    [
-      WRANGLER_JS,
-      'dev',
-      '--config',
-      'wrangler.ci.jsonc',
-      '--port',
-      String(PORT),
-      '--ip',
-      '127.0.0.1',
-      '--persist-to',
-      PERSIST,
-      '--var',
-      'GOOGLE_CLIENT_SECRET:' + SECRET,
-      '--var',
-      'ADMIN_CODE:' + ADMIN
-    ],
-    { stdio: ['ignore', 'pipe', 'pipe'] }
-  );
-  dev.stdout.on('data', d => process.stdout.write('[dev] ' + d));
-  dev.stderr.on('data', d => process.stdout.write('[dev!] ' + d));
+  // CI run 39146188112 (2026-10-19) died here: workerd printed
+  // "bind(): Address already in use" and this harness timed out waiting for a
+  // server that never came up, because wrangler chooses the devtools inspector
+  // port itself and a sibling suite still held it. Two fixes, both harness
+  // side: the inspector port is now DERIVED from QA_PORT (unique per suite,
+  // outside wrangler's default 9229+ range), and when the first attempt still
+  // cannot come up, the whole dev server is retried once on a port no other
+  // suite uses. The assertions below are untouched.
+  let dev = null;
+  const spawnDev = (port, inspectorPort) => {
+    const d = spawn(
+      process.execPath,
+      [
+        WRANGLER_JS,
+        'dev',
+        '--config',
+        'wrangler.ci.jsonc',
+        '--port',
+        String(port),
+        '--ip',
+        '127.0.0.1',
+        '--inspector-port',
+        String(inspectorPort),
+        '--persist-to',
+        PERSIST,
+        '--var',
+        'GOOGLE_CLIENT_SECRET:' + SECRET,
+        '--var',
+        'ADMIN_CODE:' + ADMIN
+      ],
+      { stdio: ['ignore', 'pipe', 'pipe'] }
+    );
+    let buf = '';
+    d.stdout.on('data', x => {
+      buf += x;
+      process.stdout.write('[dev] ' + x);
+    });
+    d.stderr.on('data', x => {
+      buf += x;
+      process.stdout.write('[dev!] ' + x);
+    });
+    return { d, out: () => buf };
+  };
+  const healthy = async () => {
+    try {
+      return (await fetch(BASE + '/api/health')).ok;
+    } catch (e) {
+      return false;
+    }
+  };
+  const waitHealthy = async ms => {
+    try {
+      await waitFor(healthy, ms, 'wrangler dev');
+      return true;
+    } catch (e) {
+      return false;
+    }
+  };
+
+  let activePort = PORT;
+  let attempt = spawnDev(activePort, PORT + 1000);
+  dev = attempt.d;
+  let up = await waitHealthy(120000);
+  if (!up) {
+    const output = attempt.out();
+    const bindFailed =
+      /Address already in use|failed to start|Fatal uncaught/.test(output) || dev.exitCode !== null;
+    console.log(
+      'qa-presence: attempt on :' +
+        activePort +
+        ' did not come up (' +
+        (bindFailed ? 'bind/start failure' : 'timeout') +
+        ') - retrying once on :' +
+        (PORT + 40)
+    );
+    try {
+      dev.kill('SIGTERM');
+    } catch (e) {
+      /* ignore */
+    }
+    await sleep(1500);
+    activePort = PORT + 40;
+    BASE = 'http://127.0.0.1:' + activePort;
+    attempt = spawnDev(activePort, PORT + 1001);
+    dev = attempt.d;
+    up = await waitHealthy(120000);
+  }
+  if (!up) {
+    throw new Error('timeout waiting for wrangler dev');
+  }
 
   let exitCode = 0;
   try {
-    await waitFor(
-      async () => {
-        try {
-          return (await fetch(BASE + '/api/health')).ok;
-        } catch (e) {
-          return false;
-        }
-      },
-      120000,
-      'wrangler dev'
-    );
-    console.log('qa-presence: wrangler dev up on :' + PORT);
+    console.log('qa-presence: wrangler dev up on :' + activePort);
 
     const cookieAlice = mintCookie('sub-alice', 'Alice');
     const cookieBob = mintCookie('sub-bob', 'Bob');

@@ -2139,3 +2139,11 @@ test/fixtures/bank-renovation.json still needs to be created from the owner's
 data). Also open: B4 billing-cancel WIP handoff (src/billing.js handleBillingCancel
 scope bug + test/billing.test.mjs positives) and the RBAC/tier matrix sweep.
 DEPLOY: staging recipe per lesson 7, stage under $HOME, verify staged files.
+DEPLOYED 2026-10-19: version 9ddd3f2e-64d8-4845-9eda-a521f7609580 from the
+$HOME/mmgr-deploy staging copy (7/7 new-code markers verified before upload).
+Carries: CI-repair harness re-baselines (qa-full self-baselined panel count,
+qa-calc-playwright-audit + qa-calc-trade-coverage C2 re-baselines), the
+pricing Starter expansion + API/MCP listing (sw v439), and the Gantt export
+G1-G4/G7 wave (sw v440). CI 39300501292 GREEN on 03b671d before deploy.
+Live smoke: /api/health 200, sw.js serves v440, pricing + features + live
+dist/bundle.js all carry the new code, CSP header present.

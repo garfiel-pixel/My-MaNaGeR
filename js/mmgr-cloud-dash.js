@@ -84,8 +84,9 @@
     const s = String(raw || '')
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, '');
-    // Two valid shapes: 16-char owner/editor/viewer code (grouped) and the
-    // 8-char client code (client-codes.js genCode) - pass 8 chars through.
+    // Shapes: the 16-char owner/editor/viewer code (grouped with dashes) and
+    // the plain client code - 10 chars since S-1, 8 chars on codes issued
+    // before it. Only the 16-char shape gets grouped; the rest pass through.
     if (s.length === 16) {
       return s.slice(0, 4) + '-' + s.slice(4, 8) + '-' + s.slice(8, 12) + '-' + s.slice(12, 16);
     }
@@ -95,7 +96,12 @@
     if (/^[A-Z2-9]{4}(-[A-Z2-9]{4}){3}$/.test(code)) {
       return true;
     }
-    return /^[A-Z2-9]{8}$/.test(code);
+    // Plain codes: the 10-character client code issued since S-1 (the
+    // launcher gate here still assumed the old 8-char one and refused every
+    // NEW client code - CI run 39210381851 P10a, and a real client could not
+    // open the project at all). The server is the authority on whether a code
+    // resolves; the launcher only catches an obvious typo before a round trip.
+    return /^[A-Z2-9]{8,16}$/.test(code);
   }
   function roleHeader(role, code) {
     if (role === 'owner') {
@@ -113,7 +119,10 @@
     const inp = $(CODE_IN);
     const code = normalizeCode(inp && inp.value);
     if (!isCodeShape(code)) {
-      codeStatus('Enter the full 16-character code (it looks like XXXX-XXXX-XXXX-XXXX).', true);
+      codeStatus(
+        'That code is not complete. Codes look like ABCD-EFGH-JKLM-NPQR, or 8 to 10 letters and numbers.',
+        true
+      );
       return;
     }
     const btn = $(CODE_BTN);

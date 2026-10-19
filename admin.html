@@ -140,6 +140,10 @@ header h1 .mark{color:var(--gold);}
 .hdr-actions a:hover{color:var(--gold);}
 .hdr-actions a:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px;}
 main{max-width:1000px;margin:0 auto;padding:26px 24px 70px;}
+/* Wide monitors (owner 2026-10-19): the create/admin flow fills the screen it
+   is opened on instead of a 1000px strip with empty canvas either side. Under
+   1200px the reading width above still governs. */
+@media (min-width:1200px){main{max-width:none;}}
 
 /* ── project rows ── */
 .prow{border:1px solid var(--border);border-radius:var(--radius,8px);padding:16px 18px;margin-bottom:10px;background:var(--card);transition:border-color var(--tr),box-shadow var(--tr);}

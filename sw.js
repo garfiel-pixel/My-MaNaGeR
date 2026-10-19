@@ -39,7 +39,22 @@
 // (5.0:1 light, white in dark), and the qa-procurement gate went green
 // (27/27) and joined CI. css/mmgr.css, dist/mmgr.min.css, dist/bundle.js and
 // project.html are shell assets, hence this bump.
-const CACHE = 'mmgr-shell-v437';
+// v438 - WIDE MONITORS (owner report 2026-10-19: on a huge monitor the app
+// section did not cover the screen - a narrow strip in a wide empty field).
+// One @media (min-width:1200px) rule in css/mmgr.css lifts the three fixed
+// column caps (.wrap 1080 on the launcher, #app-main 1600 on the workspace,
+// .bcp-main 1080 on the calculator) so the column grows into the space the
+// rail leaves, plus the matching inline rule on admin.html's main (1000 ->
+// none above 1200). Below 1200px nothing changes, and print still renders at
+// paper width so the estimate sheet keeps its cap - both proven by the new
+// tools/qa-widescreen.cjs gate (27 checks, wired into ci.yml T4).
+// css/mmgr.css, dist/mmgr.min.css and admin.html are shell assets, hence this
+// bump. Same change carries the audit's X-3 measurement harness (qa-inp,
+// EXTENDED: 4x-throttled interaction timings, baseline recorded to
+// tmp/inp-baseline.json) and the qa-presence startup hardening that repaired
+// CI run 39146188112 (workerd died on a bind conflict; the devtools
+// inspector port is now derived from QA_PORT and startup retries once).
+const CACHE = 'mmgr-shell-v438';
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new
 // 'JIC rate book' choice on calculator.html) prices ANY shipped book row as

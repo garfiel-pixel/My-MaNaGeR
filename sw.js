@@ -39,6 +39,24 @@
 // (5.0:1 light, white in dark), and the qa-procurement gate went green
 // (27/27) and joined CI. css/mmgr.css, dist/mmgr.min.css, dist/bundle.js and
 // project.html are shell assets, hence this bump.
+// v439 - PRICING-STARTER-EXPANDED + API/MCP-FEATURE-CARD (owner directive
+// 2026-10-19: the Starter card must list the ACTUAL free benefits so a buyer
+// pays only when they want the paid extras, and the site must show the
+// Open API + MCP Server as portfolio-grade capabilities). Every new Starter
+// bullet is code-verified free: PDF/CSV exports carry no entitlement gate
+// anywhere in the app, project API keys (src/cloud/api-keys.js) and webhooks
+// (src/webhooks.js) gate on owner auth only - never a plan - and the LOCAL
+// stdio MCP server (mcp/server.mjs) runs on the user's own machine with no
+// account at all. The MCP row in the compare table splits honestly:
+// 'On your device' for Free vs 'Cloud and device' for paid, because the
+// CLOUD /api/mcp endpoint is the B4 premium gate (src/mcp/server.js
+// MCP_PREMIUM_REFUSAL, any active plan unlocks it) - the local stdio server
+// is not, and cannot be, billing-gated. features.html gains the f-connect
+// card (Open API & MCP Server) covering scoped keys, the cloud MCP review-
+// proposal flow, local MCP and webhooks. pricing.html meta description
+// updated to name the API + MCP. pricing.html and features.html are SHELL
+// assets, hence this bump; no inline script added or removed, so the CSP
+// inline-script hash set is byte-identical.
 // v438 - WIDE MONITORS (owner report 2026-10-19: on a huge monitor the app
 // section did not cover the screen - a narrow strip in a wide empty field).
 // One @media (min-width:1200px) rule in css/mmgr.css lifts the three fixed
@@ -54,7 +72,7 @@
 // tmp/inp-baseline.json) and the qa-presence startup hardening that repaired
 // CI run 39146188112 (workerd died on a bind conflict; the devtools
 // inspector port is now derived from QA_PORT and startup retries once).
-const CACHE = 'mmgr-shell-v438';
+const CACHE = 'mmgr-shell-v439';
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new
 // 'JIC rate book' choice on calculator.html) prices ANY shipped book row as

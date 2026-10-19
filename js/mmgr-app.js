@@ -1671,6 +1671,89 @@ var MMGR = window.MMGR || {};
     }
     const todayStr = U.todayStr();
     const midY = id => rowY.get(id) + rowH / 2;
+    // G5 (directive): links draw BEFORE the rows, so bars cover them - a
+    // crossing line is context, never a rival signal. Policy: the critical
+    // chain plus links spanning at most 8 rows ('near'); the G8 export
+    // dialog flips ui.ganttLinkPolicy to 'all'. Each source routes its
+    // vertical leg through its own lane (x1 + 6 + 3 * lane) so links from
+    // one predecessor no longer stack on one channel; every link gets an
+    // arrowhead, lag links (successor starts at or before the predecessor
+    // ends) draw DASHED, and the total is capped so a link mesh cannot
+    // bury the chart - the overflow is counted and named in the legend.
+    const linkPolicy = s.ui && s.ui.ganttLinkPolicy === 'all' ? 'all' : 'near';
+    let linksDrawn = 0,
+      linksHidden = 0;
+    const laneBySource = {};
+    function arrowhead(x, y, rightwards, gold) {
+      const back = rightwards ? -4 : 4;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + back, y - 3);
+      ctx.lineTo(x + back, y + 3);
+      ctx.closePath();
+      ctx.fillStyle = gold ? 'rgba(212,175,55,.9)' : 'rgba(148,163,184,.5)';
+      ctx.fill();
+    }
+    function connector(pid, sid, gold) {
+      const p = rowById.get(String(pid)),
+        sRow = rowById.get(String(sid));
+      if (!p || !sRow || !rowY.has(p.id) || !rowY.has(sRow.id)) {
+        return;
+      }
+      // G1: connectors launch from the ROLLED-UP span too - a phase's
+      // dependency leaves where its children actually end, not where a
+      // stale stored date claims.
+      const psp = spanOf[p.id] || { start: p.startDate, end: p.endDate };
+      const ssp = spanOf[sRow.id] || { start: sRow.startDate, end: sRow.endDate };
+      const y1 = midY(p.id),
+        y2 = midY(sRow.id);
+      // Policy: critical chain always; other links only when they stay
+      // near (<= 8 rows) or the reader asked for all of them.
+      if (!gold && linkPolicy !== 'all' && Math.abs(y2 - y1) / rowH > 8) {
+        return;
+      }
+      if (linksDrawn >= 1500) {
+        linksHidden++;
+        return;
+      }
+      linksDrawn++;
+      const lane = laneBySource[p.id] || 0;
+      laneBySource[p.id] = lane + 1;
+      const legX = x1For(psp) + 6 + 3 * (lane % 4);
+      ctx.strokeStyle = gold ? 'rgba(212,175,55,.85)' : 'rgba(148,163,184,.28)';
+      ctx.lineWidth = gold ? 1.4 : 1;
+      const x2 = X(ssp.start) - 3;
+      if (x2 <= legX + 2) {
+        // Successor starts at or before the link column (overlap / lag):
+        // route below the predecessor row, DASHED, arrow into the left edge.
+        const yEnd = y2 + (y2 > y1 ? 4 : -4);
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.moveTo(x1For(psp), y1);
+        ctx.lineTo(legX, y1);
+        ctx.lineTo(legX, yEnd);
+        ctx.lineTo(x2, yEnd);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        arrowhead(x2, yEnd, false, gold);
+        return;
+      }
+      ctx.beginPath();
+      ctx.moveTo(x1For(psp), y1);
+      ctx.lineTo(legX, y1);
+      ctx.lineTo(legX, y2);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      arrowhead(x2, y2, true, gold);
+    }
+    function x1For(sp) {
+      return X(sp.end) + Math.max(3, U.daysBetween(sp.start, sp.end) * dayWidth + dayWidth * 0.2);
+    }
+    tasks.forEach(t =>
+      (t.predecessors || []).forEach(pid =>
+        connector(pid, t.id, !!(rowById.get(String(pid)) || {}).critical && !!t.critical)
+      )
+    );
     // Rows: bands, tabs, labels, bars
     ordered.forEach(t => {
       const ry = rowY.get(t.id);
@@ -1777,61 +1860,7 @@ var MMGR = window.MMGR || {};
           ctx.strokeRect(x0 + 0.5, ry + 0.5, bw - 1, rowH - 1);
         }
       }
-    });
-    // Dependency connectors (owner: "no line as signaler to say this is this")
-    // FS elbows: right edge of predecessor -> next-row column -> arrow into
-    // successor left edge. Critical-chain links draw gold on top; the rest
-    // stay subtle so the eye can trace the story of the schedule.
-    function connector(pid, sid, gold) {
-      const p = rowById.get(String(pid)),
-        sRow = rowById.get(String(sid));
-      if (!p || !sRow || !rowY.has(p.id) || !rowY.has(sRow.id)) {
-        return;
-      }
-      // G1: connectors launch from the ROLLED-UP span too - a phase's
-      // dependency leaves where its children actually end, not where a
-      // stale stored date claims.
-      const psp = spanOf[p.id] || { start: p.startDate, end: p.endDate };
-      const ssp = spanOf[sRow.id] || { start: sRow.startDate, end: sRow.endDate };
-      const x1 =
-        X(psp.end) + Math.max(3, U.daysBetween(psp.start, psp.end) * dayWidth + dayWidth * 0.2);
-      const y1 = midY(p.id),
-        y2 = midY(sRow.id);
-      const x2 = X(ssp.start) - 3;
-      if (x2 <= x1 + 2) {
-        // successor starts before pred ends (overlap/lag): route below
-        ctx.strokeStyle = gold ? 'rgba(212,175,55,.85)' : 'rgba(148,163,184,.28)';
-        ctx.lineWidth = gold ? 1.4 : 1;
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x1 + 4, y1);
-        ctx.lineTo(x1 + 4, y2 + (y2 > y1 ? 4 : -4));
-        ctx.lineTo(x2, y2 + (y2 > y1 ? 4 : -4));
-        ctx.stroke();
-        return;
-      }
-      ctx.strokeStyle = gold ? 'rgba(212,175,55,.85)' : 'rgba(148,163,184,.28)';
-      ctx.lineWidth = gold ? 1.4 : 1;
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x1 + 5, y1);
-      ctx.lineTo(x1 + 5, y2);
-      ctx.lineTo(x2, y2);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(x2, y2);
-      ctx.lineTo(x2 - 4, y2 - 3);
-      ctx.lineTo(x2 - 4, y2 + 3);
-      ctx.closePath();
-      ctx.fillStyle = gold ? 'rgba(212,175,55,.9)' : 'rgba(148,163,184,.5)';
-      ctx.fill();
-    }
-    tasks.forEach(t =>
-      (t.predecessors || []).forEach(pid =>
-        connector(pid, t.id, !!(rowById.get(String(pid)) || {}).critical && !!t.critical)
-      )
-    );
-    // Today line (owner review: fastest way to see late vs upcoming)
+    }); // Today line (owner review: fastest way to see late vs upcoming)
     if (todayStr >= minDate && todayStr <= maxDate) {
       const tx = X(todayStr) + dayWidth / 2;
       ctx.strokeStyle = 'rgba(214,58,58,.9)';
@@ -1849,7 +1878,12 @@ var MMGR = window.MMGR || {};
     // C7: legend wraps upward when one line cannot fit it all; padB = 44
     // reserves the two-row headroom so it never collides with the last row.
     ctx.font = '11px sans-serif';
-    const legend = [
+    const legend = [];
+    if (linksHidden > 0) {
+      // G5: the cap is never silent - the chart says how many links it cut.
+      legend.push(['rgba(148,163,184,.5)', '+' + linksHidden + ' hidden links']);
+    }
+    legend.push(
       ['#d4af37', 'Critical'],
       ['#3b82f6', 'Task'],
       ['#009b3a', 'Done'],
@@ -1862,7 +1896,7 @@ var MMGR = window.MMGR || {};
       ['#D63A3A', 'Today line'],
       ['#8b5cf6', 'Phase tab'],
       ['#009b3a', 'Milestone']
-    ];
+    );
     let lx = padL,
       ly = H - 20;
     legend.forEach(l => {
@@ -1919,7 +1953,10 @@ var MMGR = window.MMGR || {};
       H: H,
       scale: scale,
       canvasW: canvas.width,
-      canvasH: canvas.height
+      canvasH: canvas.height,
+      linkPolicy: linkPolicy,
+      linksDrawn: linksDrawn,
+      linksHidden: linksHidden
     };
   }
 

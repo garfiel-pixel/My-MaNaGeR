@@ -1294,6 +1294,52 @@ async function check(name, expr, expected, hint) {
   })()`
   );
   await check(
+    '55c gantt export G5: link policy, lanes, cap with honest hidden count',
+    `(function(){
+    var snap=JSON.parse(JSON.stringify(MMGR.State.getState()));
+    function d(n){var t=new Date();t.setDate(t.getDate()+n);return t.toISOString().slice(0,10);}
+    function exportMeta(){
+      var captured=null;
+      var orig=HTMLCanvasElement.prototype.toBlob;
+      HTMLCanvasElement.prototype.toBlob=function(cb){captured=this;cb(new Blob(['png'],{type:'image/png'}));};
+      var threw=false;try{MMGR.App.exportGanttPNG();}catch(e){threw=true;}
+      HTMLCanvasElement.prototype.toBlob=orig;
+      return {m:window.__ganttExportMeta||null,threw:threw};
+    }
+    MMGR.State.updateState(function(s){s.ui=s.ui||{};delete s.ui.ganttLinkPolicy;});
+    // Chain fixture: 60 tasks, each linked to its predecessor (near links,
+    // 1 row apart) plus one FAR non-critical link (row 0 -> row 59).
+    var tasks=[];
+    for(var i=0;i<60;i++){
+      tasks.push({id:'t'+i,name:'Task '+i,startDate:d(i),endDate:d(i+2),duration:'3',status:'active',
+        predecessors: i===0?[]:(i===59?['t58','t0']:['t'+(i-1)])});
+    }
+    MMGR.State.updateState(function(s){s.tasks=tasks;});
+    var near=exportMeta();
+    var nearOk=!near.threw && near.m && near.m.linkPolicy==='near' && near.m.linksDrawn===59 && near.m.linksHidden===0;
+    // 'all' policy draws the far link too.
+    MMGR.State.updateState(function(s){s.ui.ganttLinkPolicy='all';});
+    var all=exportMeta();
+    var allOk=!all.threw && all.m && all.m.linkPolicy==='all' && all.m.linksDrawn===60;
+    // Cap fixture: full mesh (60 x 60 = up to 3,540 links) - the cap binds
+    // at 1,500 and the overflow is COUNTED, never silently dropped.
+    var mesh=[];
+    for(var j=0;j<60;j++){
+      var preds=[];for(var k=0;k<60;k++){if(k!==j){preds.push('t'+k);}}
+      mesh.push({id:'t'+j,name:'Mesh '+j,startDate:d(j),endDate:d(j+2),duration:'3',status:'active',predecessors:preds});
+    }
+    MMGR.State.updateState(function(s){s.tasks=mesh;});
+    var cap=exportMeta();
+    MMGR.State.updateState(function(s){s.tasks=snap.tasks;s.ui=snap.ui||{};});
+    window.__mmgrUnassignedNoticeShown=false;
+    var capOk=!cap.threw && cap.m && cap.m.linksDrawn===1500 && cap.m.linksHidden>0;
+    return {val: nearOk&&allOk&&capOk,
+      near: near.m?{p:near.m.linkPolicy,d:near.m.linksDrawn,h:near.m.linksHidden}:null,
+      all: all.m?{p:all.m.linkPolicy,d:all.m.linksDrawn}:null,
+      cap: cap.m?{d:cap.m.linksDrawn,h:cap.m.linksHidden}:null};
+  })()`
+  );
+  await check(
     '56 onboarding empty states: WBS + Kanban deep-link to add task',
     `(function(){
     var snap=JSON.parse(JSON.stringify(MMGR.State.getState().tasks));

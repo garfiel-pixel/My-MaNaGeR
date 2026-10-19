@@ -39,6 +39,27 @@
 // (5.0:1 light, white in dark), and the qa-procurement gate went green
 // (27/27) and joined CI. css/mmgr.css, dist/mmgr.min.css, dist/bundle.js and
 // project.html are shell assets, hence this bump.
+// v440 - GANTT-EXPORT G1/G2/G3/G4/G7 (S2 step 2, AUDIT-DIRECTIVE-2026-10-18).
+// G7 FIRST (before any change that widens the export): canvas geometry is
+// clamped to the browser limits (16,384px a side, ~268MP area) and dayWidth
+// narrows 14 -> 7 -> 3 -> 1.5 px/day so a multi-year schedule exports a real
+// PNG instead of toBlob's null/blank (the old "Export failed."); extreme row
+// counts scale down (min 0.3) with an honest toast. G1: the export derives
+// every phase bar, the window and the dependency connectors from its
+// CHILDREN's span at export time (Schedule.phaseSpan), and a new
+// Schedule.rollupPhases() - one function, three callers (WBS date edit,
+// Gantt drag) - keeps the LIVE chart agreeing with the export. G2: rows now
+// print phases in order, children by start date, and orphans grouped LAST
+// under an "Unassigned tasks" divider (count in the title line + one app
+// notice; never dropped, never auto-deleted). G3: zero-duration rows and
+// same-day gate/sign-off/certificate names draw as diamonds with a label,
+// not 3px slivers. G4: three header bands - month label at the first
+// VISIBLE day of each month (a leading partial month is no longer
+// unlabelled), week-start dates, day numbers only when they fit. New gate
+// qa-full 55b asserts all five via the __ganttExportMeta hook (184/184).
+// js/mmgr-app.js, mmgr-schedule.js, mmgr-tasks.js, mmgr-render.js and
+// dist/bundle.js are SHELL assets, hence this bump; no inline script
+// touched, CSP hashes byte-identical.
 // v439 - PRICING-STARTER-EXPANDED + API/MCP-FEATURE-CARD (owner directive
 // 2026-10-19: the Starter card must list the ACTUAL free benefits so a buyer
 // pays only when they want the paid extras, and the site must show the
@@ -72,7 +93,7 @@
 // tmp/inp-baseline.json) and the qa-presence startup hardening that repaired
 // CI run 39146188112 (workerd died on a bind conflict; the devtools
 // inspector port is now derived from QA_PORT and startup retries once).
-const CACHE = 'mmgr-shell-v439';
+const CACHE = 'mmgr-shell-v440';
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new
 // 'JIC rate book' choice on calculator.html) prices ANY shipped book row as

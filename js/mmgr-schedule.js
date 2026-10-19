@@ -1227,7 +1227,56 @@ var MMGR = window.MMGR || {};
     return map;
   }
 
+  // G1 (directive 2026-10-18): a phase's stored dates go stale the moment
+  // any child is edited afterwards - the roll-up only ran inside applyPlan
+  // (Cascade Dates). ONE roll-up function, called from the task update path
+  // (mmgr-tasks.js updTaskField) and after a Gantt drag (mmgr-render.js
+  // ganttDragEnd), so the live chart, the WBS and the export can never
+  // disagree about where a phase bar sits. Childless phases keep their
+  // stored dates - there is nothing to derive from.
+  function phaseSpan(phase, all) {
+    const kids = all.filter(
+      c =>
+        !c.isPhase &&
+        c.startDate &&
+        c.endDate &&
+        (String(c.parentId) === String(phase.id) || c.parentName === phase.name)
+    );
+    if (!kids.length) {
+      return null;
+    }
+    let start = kids[0].startDate,
+      end = kids[0].endDate;
+    kids.forEach(c => {
+      if (c.startDate < start) {
+        start = c.startDate;
+      }
+      if (c.endDate > end) {
+        end = c.endDate;
+      }
+    });
+    return { start: start, end: end };
+  }
+  // Mutates the task list in place; returns how many phases were corrected.
+  function rollupPhases(tasks) {
+    const all = tasks || [];
+    let changed = 0;
+    all
+      .filter(t => t.isPhase)
+      .forEach(ph => {
+        const span = phaseSpan(ph, all);
+        if (span && (ph.startDate !== span.start || ph.endDate !== span.end)) {
+          ph.startDate = span.start;
+          ph.endDate = span.end;
+          changed++;
+        }
+      });
+    return changed;
+  }
+
   ns.Schedule = {
+    phaseSpan: phaseSpan,
+    rollupPhases: rollupPhases,
     lookaheadTasks: lookaheadTasks,
     computePpc: computePpc,
     isoWeekStart: isoWeekStart,

@@ -2110,3 +2110,32 @@ the disk-manifest count (id="panel-*" in project.html = 21). The app contract
 did NOT change: panel-proc shipped 2026-10-18 (2659f41 procurement wave) and
 the stale assertion hid behind earlier red steps (T2 Presence) so T4 never
 executed until 2026-10-19. Local repro: 183 passed / 0 failed.
+
+--- SESSION 2026-10-19 (S2 step 2 + pricing wave, three commits) ---
+CI REPAIR LOOP (lesson 8) finished this session - four latent layers, one per
+red step: (1) qa-full check 01 panel count frozen at 20 vs panel-proc's 21 ->
+self-baseline from project.html disk manifest (36295b1); (2) qa-calc-
+playwright-audit V2/R/A sections priced uncovered work (siteprep) under the
+C2 currency contract -> excav/blockwall + fx seeding (308ce38); (3)
+qa-calc-trade-coverage needed the sanctioned mmgr_calc_fx remedy seeded in
+BOTH browser contexts (desktop AND the separate mobile context - 60 -> 30 ->
+0 fails when the second seed landed); CI green on 308ce38.
+PRICING WAVE (00cdebb, owner directive): Starter card 8 -> 13 bullets, every
+free claim code-verified (exports ungated, API keys + webhooks owner-auth
+only, local stdio MCP ungated); MCP compare row splits honestly Free 'On your
+device' vs paid 'Cloud and device' (cloud /api/mcp = B4 premium gate);
+features.html gains f-connect (Open API & MCP Server). sw v439.
+GANTT EXPORT (this commit): S2 step 2 G7+G1+G2+G3+G4 done, G5/G6/G8 remain.
+G7 canvas guard (16,384px side / 268MP clamp + dayWidth ladder 14->1.5) so
+long schedules export a real PNG; G1 phaseSpan derived at export + NEW
+Schedule.rollupPhases() with 3 callers (WBS edit, Gantt drag); G2 ordered
+rows + Unassigned group + one app notice; G3 zero-duration/gate-name diamond
+heuristic + label; G4 three header bands. Gate: qa-full 55b via the new
+__ganttExportMeta hook. 184/184. sw v440.
+NEXT SESSION START HERE: S2 step 3 = G5 (dependency link lanes + arrowheads
++ link cap), then G6 (left table columns, light theme, SVG/PDF via a neutral
+draw list), then G8 (export dialog) and GATE G/T6 (bank-renovation fixture -
+test/fixtures/bank-renovation.json still needs to be created from the owner's
+data). Also open: B4 billing-cancel WIP handoff (src/billing.js handleBillingCancel
+scope bug + test/billing.test.mjs positives) and the RBAC/tier matrix sweep.
+DEPLOY: staging recipe per lesson 7, stage under $HOME, verify staged files.

@@ -596,7 +596,7 @@
           <button class="btn btn-g btn-s" data-action="cascadeGantt" data-def="Cascade Dates"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Cascade Dates</button>
           <label class="wx-field" data-def="Project deadline - the engine gives terminal chains float when the plan finishes before it"><span class="t-xs">Deadline</span> <input type="date" id="deadline-input" data-action="setDeadline"></label>
           <button class="btn btn-o btn-s toggle-chip is-off" data-action="toggleCritical" data-def="Critical Path"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-target"></use></svg> Highlight Critical</button>
-          <button class="btn btn-n btn-s" data-action="exportGanttPNG" title="Download a large print-ready PNG of the current schedule (baseline + critical path + weather hatching included)"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Export Chart</button>
+          <button class="btn btn-n btn-s" data-action="openGanttExport" title="Choose the format, theme and columns, then download the schedule (baseline + critical path + weather hatching included)"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Export Chart</button>
         </div>
       </div>
       <div class="gw">
@@ -1724,6 +1724,45 @@
         <button class="btn btn-d btn-s" data-action="closeChartUp">Cancel</button>
         <button class="btn btn-g btn-s" data-action="applyChartAIOutput"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Apply to Charter</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Gantt Export Modal (G8): format, theme, columns, links, baseline -->
+<div id="gantt-export-modal" data-action="closeGanttExportBg">
+  <div class="cu-box gx-box">
+    <h3><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Export Schedule</h3>
+    <div class="gx-grid">
+      <fieldset class="gx-set">
+        <legend>Format</legend>
+        <label class="gx-opt"><input type="radio" name="gx-format" value="png" checked aria-label="PNG image format"> PNG image (print-ready)</label>
+        <label class="gx-opt"><input type="radio" name="gx-format" value="svg" aria-label="SVG vector format"> SVG vector (scales to any size)</label>
+      </fieldset>
+      <fieldset class="gx-set">
+        <legend>Theme</legend>
+        <label class="gx-opt"><input type="radio" name="gx-theme" value="light" checked aria-label="Light print theme"> Light (prints clean)</label>
+        <label class="gx-opt"><input type="radio" name="gx-theme" value="dark" aria-label="Dark theme"> Dark</label>
+      </fieldset>
+      <fieldset class="gx-set">
+        <legend>Links</legend>
+        <label class="gx-opt"><input type="radio" name="gx-links" value="near" checked aria-label="Critical and near links"> Critical and near</label>
+        <label class="gx-opt"><input type="radio" name="gx-links" value="all" aria-label="All dependency links"> All links</label>
+      </fieldset>
+      <fieldset class="gx-set">
+        <legend>Columns</legend>
+        <label class="gx-opt"><input type="checkbox" id="gx-c-wbs" checked aria-label="WBS column"> WBS</label>
+        <label class="gx-opt"><input type="checkbox" checked disabled aria-label="Task column (always shown)"> Task</label>
+        <label class="gx-opt"><input type="checkbox" id="gx-c-dur" checked aria-label="Duration column"> Duration</label>
+        <label class="gx-opt"><input type="checkbox" id="gx-c-start" checked aria-label="Start column"> Start</label>
+        <label class="gx-opt"><input type="checkbox" id="gx-c-finish" checked aria-label="Finish column"> Finish</label>
+        <label class="gx-opt"><input type="checkbox" id="gx-c-pct" checked aria-label="Percent complete column"> % complete</label>
+        <label class="gx-opt"><input type="checkbox" id="gx-c-assignee" checked aria-label="Assignee column"> Assignee</label>
+        <label class="gx-opt"><input type="checkbox" id="gx-baseline" checked aria-label="Baseline bars"> Baseline bars</label>
+      </fieldset>
+    </div>
+    <div class="cu-actions">
+      <button class="btn btn-d btn-s" data-action="closeGanttExport">Cancel</button>
+      <button class="btn btn-g btn-s" data-action="ganttExportRun"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Export</button>
     </div>
   </div>
 </div>

@@ -1399,14 +1399,188 @@ var MMGR = window.MMGR || {};
   // phase header banding + phase tab strips, weekend column shading, a real
   // title block (project, window, export date, prepared by) and a legible
   // legend. Bars/critical/weather/baseline carry over unchanged.
-  function exportGanttPNG() {
+  // ==== G6 (directive 2026-10-18): the export draws ONCE into a neutral
+  // list of primitives {rect|line|text|poly}; PNG replays that list to a
+  // canvas and SVG string-builds from the SAME list, so the two outputs can
+  // never differ. Light (print) theme is the default - dark-only exports
+  // waste ink and fail on projectors; the G8 dialog remembers the choices
+  // in ui.ganttExport, and the zero-click default is a good export.
+  function ganttExportOpts() {
+    const s = ns.State.getState();
+    const ui = s.ui || {};
+    const saved = ui.ganttExport || {};
+    const c = saved.columns || {};
+    return {
+      format: saved.format === 'svg' ? 'svg' : 'png',
+      theme: saved.theme === 'dark' ? 'dark' : 'light',
+      // G5's key stays the source of truth for the link policy; the G8
+      // dialog's "All links" switch writes it.
+      links: ui.ganttLinkPolicy === 'all' ? 'all' : 'near',
+      baseline: saved.baseline !== false,
+      columns: {
+        wbs: c.wbs !== false,
+        task: true, // the task name is the one column that can never hide
+        dur: c.dur !== false,
+        start: c.start !== false,
+        finish: c.finish !== false,
+        pct: c.pct !== false,
+        assignee: c.assignee !== false
+      }
+    };
+  }
+
+  function ganttTheme(name) {
+    if (name === 'dark') {
+      return {
+        name: 'dark',
+        bg: '#0e1116',
+        title: '#f1f5f9',
+        sub: '#94a3b8',
+        bandMonth: '#cbd5e1',
+        bandWeek: '#64748b',
+        bandDay: '#94a3b8',
+        weekend: 'rgba(148,163,184,.10)',
+        weekline: 'rgba(255,255,255,.10)',
+        dayTick: 'rgba(148,163,184,.45)',
+        tableHead: '#94a3b8',
+        tableText: '#cbd5e1',
+        tableSep: 'rgba(148,163,184,.14)',
+        phaseBand: 'rgba(148,163,184,.08)',
+        groupBand: 'rgba(214,58,58,.10)',
+        groupText: '#f8fafc',
+        phaseText: '#f8fafc',
+        taskText: '#e2e8f0',
+        msLabel: '#cbd5e1',
+        legendText: '#cbd5e1',
+        // Phase summary bracket. The directive says "black"; on a dark
+        // canvas black would vanish, so the bracket INVERTS (light on dark)
+        // - the bracket SHAPE with end ticks + rolled-up dates is what
+        // distinguishes a phase from a task, in both themes.
+        bracket: '#e2e8f0',
+        bracketDates: '#94a3b8',
+        gold: '#d4af37',
+        task: '#3b82f6',
+        done: '#009b3a',
+        due: '#f59e0b',
+        over: '#D63A3A',
+        barOutline: 'rgba(255,255,255,.6)',
+        baseline: 'rgba(148,163,184,.35)',
+        weatherFill: 'rgba(56,189,248,.25)',
+        weatherLine: 'rgba(56,189,248,.8)',
+        link: 'rgba(148,163,184,.28)',
+        linkGold: 'rgba(212,175,55,.85)',
+        linkArrow: 'rgba(148,163,184,.5)',
+        linkArrowGold: 'rgba(212,175,55,.9)',
+        today: '#D63A3A',
+        todayLine: 'rgba(214,58,58,.9)'
+      };
+    }
+    // Light (print) theme: white background, dark text, the critical gold
+    // darkened to #a8870f so it survives ink and projectors.
+    return {
+      name: 'light',
+      bg: '#ffffff',
+      title: '#111827',
+      sub: '#4b5563',
+      bandMonth: '#374151',
+      bandWeek: '#6b7280',
+      bandDay: '#4b5563',
+      weekend: 'rgba(15,23,42,.05)',
+      weekline: 'rgba(15,23,42,.10)',
+      dayTick: 'rgba(15,23,42,.35)',
+      tableHead: '#374151',
+      tableText: '#1f2937',
+      tableSep: 'rgba(15,23,42,.12)',
+      phaseBand: 'rgba(15,23,42,.04)',
+      groupBand: 'rgba(185,28,28,.08)',
+      groupText: '#7f1d1d',
+      phaseText: '#111827',
+      taskText: '#1f2937',
+      msLabel: '#374151',
+      legendText: '#374151',
+      bracket: '#111111',
+      bracketDates: '#4b5563',
+      gold: '#a8870f',
+      task: '#2563eb',
+      done: '#15803d',
+      due: '#b45309',
+      over: '#b91c1c',
+      barOutline: 'rgba(0,0,0,.5)',
+      baseline: 'rgba(15,23,42,.28)',
+      weatherFill: 'rgba(2,132,199,.18)',
+      weatherLine: 'rgba(2,132,199,.7)',
+      link: 'rgba(15,23,42,.35)',
+      linkGold: 'rgba(168,135,15,.9)',
+      linkArrow: 'rgba(15,23,42,.55)',
+      linkArrowGold: 'rgba(168,135,15,.95)',
+      today: '#b91c1c',
+      todayLine: 'rgba(185,28,28,.85)'
+    };
+  }
+
+  // One build pass -> neutral primitives. Everything the PNG used to draw
+  // is here, plus G6: the left table (WBS / Task / Duration / Start /
+  // Finish / % / Assignee), the phase summary bracket with rolled-up dates
+  // (a phase is NEVER the same blue as a task again), and a progress fill
+  // inside each bar. Progress is derived honestly from the data model,
+  // which carries a status but no measured percentage: completed = 100%,
+  // in-progress = the elapsed share of its own span (planned progress,
+  // labelled as such in the legend), not started = empty.
+  function buildGanttDrawList(o) {
     const s = ns.State.getState();
     const all = s.tasks || [];
     const tasks = all.filter(t => t.startDate && t.endDate);
     if (!tasks.length) {
-      showToast('No dated tasks to export.', 'err');
-      return;
+      return null;
     }
+    const T = ganttTheme(o.theme);
+    const prims = [];
+    const mctx = document.createElement('canvas').getContext('2d');
+    const fontStr = (size, weight) => (weight || 400) + ' ' + size + 'px sans-serif';
+    const tw = (str, size, weight) => {
+      mctx.font = fontStr(size, weight);
+      return mctx.measureText(str).width;
+    };
+    // C1 backstop: label truncation (binary search for the widest prefix
+    // that fits) - static exports have no tooltips, so the full name stays
+    // readable in the live view; the export stays unclipped.
+    const trunc = (str, size, weight, maxW) => {
+      str = String(str || '');
+      if (tw(str, size, weight) <= maxW) {
+        return str;
+      }
+      let lo = 0,
+        hi = str.length;
+      while (lo < hi) {
+        const mid = (lo + hi + 1) >> 1;
+        if (tw(str.slice(0, mid) + '...', size, weight) <= maxW) {
+          lo = mid;
+        } else {
+          hi = mid - 1;
+        }
+      }
+      return str.slice(0, lo) + '...';
+    };
+    const hexA = (hex, a) => {
+      const m = /^#([0-9a-f]{6})$/i.exec(hex);
+      if (!m) {
+        return hex;
+      }
+      const n = parseInt(m[1], 16);
+      return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+    };
+    const rect = p => {
+      prims.push(Object.assign({ type: 'rect' }, p));
+    };
+    const line = p => {
+      prims.push(Object.assign({ type: 'line' }, p));
+    };
+    const text = p => {
+      prims.push(Object.assign({ type: 'text' }, p));
+    };
+    const poly = p => {
+      prims.push(Object.assign({ type: 'poly' }, p));
+    };
     // G1 export layer (directive 2026-10-18): a phase displays its
     // CHILDREN's span, derived at export time - a static image must never
     // trust a stored phase date that an edit after Cascade left stale.
@@ -1429,27 +1603,52 @@ var MMGR = window.MMGR || {};
         maxDate = sp.end;
       }
     });
-    // C1 (directive 2026-09-26): dynamic label column - measure the longest
-    // label, clamp the left pad 120..320, and truncate with an ellipsis as
-    // the hard backstop. The fixed 200px guess let long names run into the
-    // bar region (the visible defect in the owner's exported image).
-    const measureCtx = document.createElement('canvas').getContext('2d');
-    measureCtx.font = '700 11px sans-serif';
+    const rowH = 26,
+      headerH = 96; // G4: title block + three header bands (month/week/day)
+    // ---- G6 left table: fixed columns around a measured Task column.
     let maxLabelWidth = 0;
     all.forEach(t => {
-      const w = measureCtx.measureText(t.name || '').width;
+      const w = tw(t.name || '', 11, 700);
       if (w > maxLabelWidth) {
         maxLabelWidth = w;
       }
     });
-    const rowH = 26,
-      headerH = 96; // G4: title block + three header bands (month/week/day)
+    const colDefs = [];
+    if (o.columns.wbs) {
+      colDefs.push({ key: 'wbs', label: 'WBS', w: 34, align: 'left' });
+    }
+    colDefs.push({
+      key: 'task',
+      label: 'Task',
+      w: Math.min(Math.max(110, Math.ceil(maxLabelWidth) + 10), 240),
+      align: 'left'
+    });
+    if (o.columns.dur) {
+      colDefs.push({ key: 'dur', label: 'Duration', w: 48, align: 'left' });
+    }
+    if (o.columns.start) {
+      colDefs.push({ key: 'start', label: 'Start', w: 66, align: 'left' });
+    }
+    if (o.columns.finish) {
+      colDefs.push({ key: 'finish', label: 'Finish', w: 66, align: 'left' });
+    }
+    if (o.columns.pct) {
+      colDefs.push({ key: 'pct', label: '%', w: 30, align: 'right' });
+    }
+    if (o.columns.assignee) {
+      colDefs.push({ key: 'assignee', label: 'Assignee', w: 90, align: 'left' });
+    }
+    let colX = 8;
+    colDefs.forEach(cd => {
+      cd.x = colX;
+      colX += cd.w;
+    });
     // G7 first half: pick dayWidth from the window so the logical width
     // stays at most ~3,200px. The ladder (14 -> 7 -> 3 -> 1.5 px/day)
     // keeps any multi-year schedule inside the browser canvas limits at
-    // scale 2; the guard below handles the residual (huge row counts).
+    // scale 2; the guard in exportGanttPNG handles the residual.
     let dayWidth = 14;
-    const padL = Math.min(Math.max(120, Math.ceil(maxLabelWidth) + 30), 340);
+    const padL = colX + 8; // G6: the table owns the left pad now
     const padR = 20,
       padT = 16,
       padB = 44; // C7: 2-line legend wrap headroom
@@ -1494,8 +1693,8 @@ var MMGR = window.MMGR || {};
       });
       unassigned.forEach(t => ordered.push(t));
     }
-    // One-time notice in the APP (not the PNG): orphans are a data problem
-    // the owner can fix, never something to silently drop or auto-delete.
+    // One-time notice in the APP (not the export): orphans are a data
+    // problem the owner can fix, never something to silently drop.
     if (unassigned.length && !window.__mmgrUnassignedNoticeShown) {
       window.__mmgrUnassignedNoticeShown = true;
       showToast(
@@ -1503,6 +1702,23 @@ var MMGR = window.MMGR || {};
         'err'
       );
     }
+    // WBS numbers for the table: phases 1,2,3; their children 1.1, 1.2 ...
+    const wbsOf = new Map();
+    let phNum = 0,
+      chNum = 0;
+    ordered.forEach(t => {
+      if (t.isGroupHeader) {
+        return;
+      }
+      if (t.isPhase) {
+        phNum++;
+        chNum = 0;
+        wbsOf.set(t.id, String(phNum));
+      } else if (phNum > 0) {
+        chNum++;
+        wbsOf.set(t.id, phNum + '.' + chNum);
+      }
+    });
     // Row geometry pass: y per task + phase gap before isPhase rows + phase
     // ownership for the tab strips (nearest preceding phase row).
     const rowY = new Map();
@@ -1545,36 +1761,23 @@ var MMGR = window.MMGR || {};
     });
     const W = padL + totalDays * dayWidth + padR;
     const H = y + padB;
-    // G7 canvas-limit guard: past the common 16,384px side / ~268MP area
-    // limits toBlob returns null (or a blank image) and the user sees
-    // "Export failed." - clamp the device-pixel scale so EVERY export
-    // decodes. Below 0.75 the image is small but real; the toast says so.
-    const MAX_SIDE = 16000,
-      MAX_AREA = 2.6e8;
-    let scale = Math.min(2, MAX_SIDE / W, MAX_SIDE / H, Math.sqrt(MAX_AREA / (W * H)));
-    let scaledNote = '';
-    if (scale < 0.75) {
-      scale = Math.max(scale, 0.3); // extreme row counts: small but decodable
-      scaledNote = ' (scaled to fit browser image limits)';
-    }
-    const canvas = document.createElement('canvas');
-    canvas.width = W * scale;
-    canvas.height = H * scale;
-    const ctx = canvas.getContext('2d');
-    ctx.scale(scale, scale);
     const X = d => padL + U.daysBetween(minDate, d) * dayWidth;
-    // Background
-    ctx.fillStyle = '#0e1116';
-    ctx.fillRect(0, 0, W, H);
+    // Background (a prim, so every renderer paints the same canvas)
+    rect({ x: 0, y: 0, w: W, h: H, fill: T.bg });
     // Title block (owner review: project, window, export date, prepared by)
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#f1f5f9';
-    ctx.font = '700 13px sans-serif';
-    ctx.fillText((s.projectName || 'Project') + ' - Schedule Export', 8, padT + 12);
-    ctx.font = '10px sans-serif';
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillText(
-      minDate +
+    text({
+      x: 8,
+      y: padT + 12,
+      str: (s.projectName || 'Project') + ' - Schedule Export',
+      size: 13,
+      weight: 700,
+      fill: T.title
+    });
+    text({
+      x: 8,
+      y: padT + 28,
+      str:
+        minDate +
         ' to ' +
         maxDate +
         '  |  ' +
@@ -1583,17 +1786,17 @@ var MMGR = window.MMGR || {};
         '  |  exported ' +
         new Date().toISOString().slice(0, 10) +
         (s.userName ? '  |  prepared by ' + s.userName : ''),
-      8,
-      padT + 28
-    );
+      size: 10,
+      weight: 400,
+      fill: T.sub
+    });
     // Chart-area header + weekend shading + week-start dividers + day labels
     // C2 (directive): weekend FILL is separate from the Monday week-start
     // LINE - the old code conflated them into one Monday-only fill.
-    // G4 (directive): three header bands - months (labelled at the FIRST
+    // G4 (directive): three header bands - months (labelled at the first
     // VISIBLE day of each month, so a leading partial month is never
     // unlabelled), week-start dates, and day numbers only when they fit
-    // (dayWidth >= 18) else ticks. 10px numbers in 14px columns collided
-    // on two-digit days; the bands own separate y rows so nothing overlaps.
+    // (dayWidth >= 18) else ticks.
     const bandY = {
       month: padT + headerH - 44,
       week: padT + headerH - 30,
@@ -1605,66 +1808,92 @@ var MMGR = window.MMGR || {};
       const x = padL + i * dayWidth;
       const dow = d.getDay();
       if (dow === 0 || dow === 6) {
-        ctx.fillStyle = 'rgba(148,163,184,.10)';
-        ctx.fillRect(x, padT + headerH - 18, dayWidth, H - padT - headerH + 4);
+        rect({
+          x: x,
+          y: padT + headerH - 18,
+          w: dayWidth,
+          h: H - padT - headerH + 4,
+          fill: T.weekend
+        });
       }
       if (dow === 1) {
-        ctx.strokeStyle = 'rgba(255,255,255,.10)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(x + 0.5, padT + headerH - 18);
-        ctx.lineTo(x + 0.5, H - padB);
-        ctx.stroke();
+        line({
+          x1: x + 0.5,
+          y1: padT + headerH - 18,
+          x2: x + 0.5,
+          y2: H - padB,
+          stroke: T.weekline,
+          lw: 1
+        });
         // Band 2: the week-start date. Only when it has room next door.
         if (dayWidth >= 7) {
-          ctx.font = '9px sans-serif';
-          ctx.fillStyle = '#64748b';
-          ctx.fillText(String(d.getDate()), x + 1, bandY.week);
+          text({
+            x: x + 1,
+            y: bandY.week,
+            str: String(d.getDate()),
+            size: 9,
+            weight: 400,
+            fill: T.bandWeek
+          });
         }
       }
       // Band 1: month label at the first VISIBLE day of the month.
       if (d.getMonth() !== prevMonth) {
         prevMonth = d.getMonth();
-        ctx.fillStyle = '#cbd5e1';
-        ctx.font = '700 10px sans-serif';
-        ctx.fillText(
-          d.toLocaleString('default', { month: 'short' }) + ' ' + String(d.getFullYear()),
-          x + 1,
-          bandY.month
-        );
+        text({
+          x: x + 1,
+          y: bandY.month,
+          str: d.toLocaleString('default', { month: 'short' }) + ' ' + String(d.getFullYear()),
+          size: 10,
+          weight: 700,
+          fill: T.bandMonth
+        });
       }
       // Band 3: day numbers only when they fit; ticks otherwise.
       if (dayWidth >= 18) {
-        ctx.font = '10px sans-serif';
-        ctx.fillStyle = dow === 0 || dow === 6 ? '#64748b' : '#94a3b8';
-        ctx.fillText(String(d.getDate()), x + 1, bandY.day);
+        text({
+          x: x + 1,
+          y: bandY.day,
+          str: String(d.getDate()),
+          size: 10,
+          weight: 400,
+          fill: dow === 0 || dow === 6 ? T.bandWeek : T.bandDay
+        });
       } else if (dow === 1) {
-        ctx.fillStyle = 'rgba(148,163,184,.45)';
-        ctx.fillRect(x, bandY.day - 4, 1, 4);
+        rect({ x: x, y: bandY.day - 4, w: 1, h: 4, fill: T.dayTick });
       }
     }
-    // C1 backstop: label truncation (binary search for the widest prefix
-    // that fits) - static PNGs have no tooltips, so the full name stays
-    // readable in the live view; the export stays unclipped.
-    function truncateToWidth(c, text, maxWidth) {
-      if (c.measureText(text).width <= maxWidth) {
-        return text;
+    // ---- G6 table header: column labels, an underline, and separators
+    // that run the full height, so the export reads like every other
+    // planning tool's left table.
+    colDefs.forEach(cd => {
+      text({
+        x: cd.align === 'right' ? cd.x + cd.w - 4 : cd.x,
+        y: bandY.week,
+        str: cd.label,
+        size: 9,
+        weight: 700,
+        fill: T.tableHead,
+        align: cd.align
+      });
+    });
+    line({ x1: 6, y1: bandY.day - 8, x2: padL - 8, y2: bandY.day - 8, stroke: T.tableSep, lw: 1 });
+    colDefs.forEach((cd, ci) => {
+      if (ci === 0) {
+        return;
       }
-      let lo = 0,
-        hi = text.length;
-      while (lo < hi) {
-        const mid = (lo + hi + 1) >> 1;
-        if (c.measureText(text.slice(0, mid) + '...').width <= maxWidth) {
-          lo = mid;
-        } else {
-          hi = mid - 1;
-        }
-      }
-      return text.slice(0, lo) + '...';
-    }
+      line({
+        x1: cd.x - 2,
+        y1: bandY.month - 6,
+        x2: cd.x - 2,
+        y2: H - padB,
+        stroke: T.tableSep,
+        lw: 1
+      });
+    });
     // Baseline map
     const baseMap = {};
-    if (s.baseline && s.baseline.tasks) {
+    if (o.baseline && s.baseline && s.baseline.tasks) {
       (s.baseline.tasks || []).forEach(bt => {
         baseMap[bt.id] = bt;
       });
@@ -1675,25 +1904,12 @@ var MMGR = window.MMGR || {};
     // crossing line is context, never a rival signal. Policy: the critical
     // chain plus links spanning at most 8 rows ('near'); the G8 export
     // dialog flips ui.ganttLinkPolicy to 'all'. Each source routes its
-    // vertical leg through its own lane (x1 + 6 + 3 * lane) so links from
-    // one predecessor no longer stack on one channel; every link gets an
-    // arrowhead, lag links (successor starts at or before the predecessor
-    // ends) draw DASHED, and the total is capped so a link mesh cannot
-    // bury the chart - the overflow is counted and named in the legend.
-    const linkPolicy = s.ui && s.ui.ganttLinkPolicy === 'all' ? 'all' : 'near';
+    // vertical leg through its own lane, every link gets an arrowhead,
+    // lag links draw DASHED, and the total is capped with an honest count.
+    const linkPolicy = o.links;
     let linksDrawn = 0,
       linksHidden = 0;
     const laneBySource = {};
-    function arrowhead(x, y, rightwards, gold) {
-      const back = rightwards ? -4 : 4;
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + back, y - 3);
-      ctx.lineTo(x + back, y + 3);
-      ctx.closePath();
-      ctx.fillStyle = gold ? 'rgba(212,175,55,.9)' : 'rgba(148,163,184,.5)';
-      ctx.fill();
-    }
     function connector(pid, sid, gold) {
       const p = rowById.get(String(pid)),
         sRow = rowById.get(String(sid));
@@ -1720,31 +1936,48 @@ var MMGR = window.MMGR || {};
       const lane = laneBySource[p.id] || 0;
       laneBySource[p.id] = lane + 1;
       const legX = x1For(psp) + 6 + 3 * (lane % 4);
-      ctx.strokeStyle = gold ? 'rgba(212,175,55,.85)' : 'rgba(148,163,184,.28)';
-      ctx.lineWidth = gold ? 1.4 : 1;
       const x2 = X(ssp.start) - 3;
-      if (x2 <= legX + 2) {
-        // Successor starts at or before the link column (overlap / lag):
-        // route below the predecessor row, DASHED, arrow into the left edge.
-        const yEnd = y2 + (y2 > y1 ? 4 : -4);
-        ctx.setLineDash([4, 3]);
-        ctx.beginPath();
-        ctx.moveTo(x1For(psp), y1);
-        ctx.lineTo(legX, y1);
-        ctx.lineTo(legX, yEnd);
-        ctx.lineTo(x2, yEnd);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        arrowhead(x2, yEnd, false, gold);
-        return;
-      }
-      ctx.beginPath();
-      ctx.moveTo(x1For(psp), y1);
-      ctx.lineTo(legX, y1);
-      ctx.lineTo(legX, y2);
-      ctx.lineTo(x2, y2);
-      ctx.stroke();
-      arrowhead(x2, y2, true, gold);
+      const yEnd = x2 <= legX + 2 ? y2 + (y2 > y1 ? 4 : -4) : y2;
+      line({
+        x1: x1For(psp),
+        y1: y1,
+        x2: legX,
+        y2: y1,
+        stroke: gold ? T.linkGold : T.link,
+        lw: gold ? 1.4 : 1
+      });
+      line({
+        x1: legX,
+        y1: y1,
+        x2: legX,
+        y2: yEnd,
+        stroke: gold ? T.linkGold : T.link,
+        lw: gold ? 1.4 : 1
+      });
+      line({
+        x1: legX,
+        y1: yEnd,
+        x2: x2,
+        y2: yEnd,
+        stroke: gold ? T.linkGold : T.link,
+        lw: gold ? 1.4 : 1,
+        // Lag / overlap links (successor starts at or before the link
+        // column) route below the predecessor row, DASHED.
+        dash: x2 <= legX + 2 ? [4, 3] : undefined
+      });
+      // Arrowhead on EVERY link (G5) - a bare line end reads as a glitch.
+      // The arrow points the way the link ENTERS: from the left on the
+      // normal route, from the right when the lag leg sits past x2.
+      const back = x2 <= legX + 2 ? 4 : -4;
+      poly({
+        pts: [
+          [x2, yEnd],
+          [x2 + back, yEnd - 3],
+          [x2 + back, yEnd + 3]
+        ],
+        fill: gold ? T.linkArrowGold : T.linkArrow,
+        close: true
+      });
     }
     function x1For(sp) {
       return X(sp.end) + Math.max(3, U.daysBetween(sp.start, sp.end) * dayWidth + dayWidth * 0.2);
@@ -1754,16 +1987,39 @@ var MMGR = window.MMGR || {};
         connector(pid, t.id, !!(rowById.get(String(pid)) || {}).critical && !!t.critical)
       )
     );
-    // Rows: bands, tabs, labels, bars
+    // G6: progress fill - honest derivation from the status field (the
+    // model carries no measured percentage): completed fills the bar;
+    // in-progress fills the ELAPSED share of its own span, which is
+    // planned progress and says so in the legend; not started stays empty.
+    const pctOf = (t, sp) => {
+      if (t.status === 'completed') {
+        return 100;
+      }
+      if (t.status !== 'in-progress') {
+        return 0;
+      }
+      const spanDays = U.daysBetween(sp.start, sp.end) + 1;
+      const elapsed = U.daysBetween(sp.start, todayStr) + 1;
+      return Math.max(0, Math.min(100, Math.round((elapsed / Math.max(1, spanDays)) * 100)));
+    };
+    let progressFills = 0,
+      phaseBrackets = 0;
+    // Rows: table cells, bands, tabs, bars
     ordered.forEach(t => {
       const ry = rowY.get(t.id);
+      const rowMid = ry + rowH / 2;
       if (t.isGroupHeader) {
         // G2: the "Unassigned tasks" divider row - a labelled band, no bar.
-        ctx.fillStyle = 'rgba(214,58,58,.10)';
-        ctx.fillRect(padL, ry, W - padL - padR, rowH);
-        ctx.fillStyle = '#f8fafc';
-        ctx.font = '700 11px sans-serif';
-        ctx.fillText(t.name, 8, ry + rowH / 2 + 3);
+        rect({ x: padL, y: ry, w: W - padL - padR, h: rowH, fill: T.groupBand });
+        const taskCol = colDefs.find(cd => cd.key === 'task') || colDefs[0];
+        text({
+          x: taskCol.x,
+          y: rowMid + 3,
+          str: t.name,
+          size: 11,
+          weight: 700,
+          fill: T.groupText
+        });
         return;
       }
       // G1: the bar draws the ROLLED-UP span - phases span their children,
@@ -1772,194 +2028,548 @@ var MMGR = window.MMGR || {};
       const x0 = X(sp.start);
       const bw = Math.max(3, U.daysBetween(sp.start, sp.end) * dayWidth + dayWidth * 0.2);
       if (t.isPhase) {
-        ctx.fillStyle = 'rgba(148,163,184,.08)';
-        ctx.fillRect(padL, ry, W - padL - padR, rowH);
+        rect({ x: padL, y: ry, w: W - padL - padR, h: rowH, fill: T.phaseBand });
       }
       const tab = rowPhase.get(t.id);
       if (tab) {
-        ctx.fillStyle = tab.color;
-        ctx.globalAlpha = t.isPhase ? 0.9 : 0.55;
-        ctx.fillRect(padL - 6, ry + 2, 3, rowH - 4);
-        ctx.globalAlpha = 1;
+        rect({
+          x: padL - 6,
+          y: ry + 2,
+          w: 3,
+          h: rowH - 4,
+          fill: hexA(tab.color, t.isPhase ? 0.9 : 0.55)
+        });
       }
-      ctx.fillStyle = t.isPhase ? '#f8fafc' : '#e2e8f0';
-      ctx.font = t.isPhase ? '700 11px sans-serif' : '600 10px sans-serif';
-      ctx.fillText(
-        truncateToWidth(ctx, t.name || '', padL - 30),
-        t.isPhase ? 8 : 20,
-        ry + rowH / 2 + 3
-      );
+      // ---- G6 table cells (WBS / Task / Duration / Start / Finish / % /
+      // Assignee), each truncated to its column.
+      const durVal =
+        t.duration !== undefined &&
+        t.duration !== null &&
+        t.duration !== '' &&
+        isFinite(Number(t.duration))
+          ? String(t.duration)
+          : String(U.daysBetween(sp.start, sp.end) + 1);
+      const pctVal = t.isPhase ? '' : String(pctOf(t, sp));
+      const cell = {
+        wbs: wbsOf.get(t.id) || '',
+        dur: durVal,
+        start: sp.start,
+        finish: sp.end,
+        pct: pctVal,
+        assignee: t.assignedTo || ''
+      };
+      colDefs.forEach(cd => {
+        if (cd.key === 'task') {
+          return;
+        }
+        const v = String(cell[cd.key] || '');
+        if (!v) {
+          return;
+        }
+        const str = trunc(v, 9, 400, cd.w - 6);
+        text({
+          x: cd.align === 'right' ? cd.x + cd.w - 4 : cd.x,
+          y: rowMid + 3,
+          str: str,
+          size: 9,
+          weight: 400,
+          fill: t.isPhase ? T.phaseText : T.tableText,
+          align: cd.align
+        });
+      });
+      const taskCol = colDefs.find(cd => cd.key === 'task') || colDefs[0];
+      const indent = Math.min(4, Number(t.indent || t.level) || 0);
+      text({
+        x: taskCol.x + indent * 8,
+        y: rowMid + 3,
+        str: trunc(
+          t.name || '',
+          t.isPhase ? 11 : 10,
+          t.isPhase ? 700 : 600,
+          taskCol.w - indent * 8 - 4
+        ),
+        size: t.isPhase ? 11 : 10,
+        weight: t.isPhase ? 700 : 600,
+        fill: t.isPhase ? T.phaseText : T.taskText
+      });
       const bt = baseMap[t.id];
       if (bt && bt.startDate && bt.endDate) {
         const bx = X(bt.startDate);
         const bww = Math.max(1, U.daysBetween(bt.startDate, bt.endDate)) * dayWidth;
-        ctx.fillStyle = 'rgba(148,163,184,.35)';
-        ctx.fillRect(bx, ry + 3, bww, rowH - 10);
+        rect({ x: bx, y: ry + 3, w: bww, h: rowH - 10, fill: T.baseline });
       }
       if (t.weatherExposed) {
-        ctx.fillStyle = 'rgba(56,189,248,.25)';
-        ctx.fillRect(x0, ry, bw, rowH);
-        ctx.strokeStyle = 'rgba(56,189,248,.8)';
-        ctx.lineWidth = 1;
+        rect({ x: x0, y: ry, w: bw, h: rowH, fill: T.weatherFill });
         for (let hx = x0; hx < x0 + bw; hx += 7) {
-          ctx.beginPath();
-          ctx.moveTo(hx, ry);
-          ctx.lineTo(hx + 7, ry + rowH);
-          ctx.stroke();
+          line({ x1: hx, y1: ry, x2: hx + 7, y2: ry + rowH, stroke: T.weatherLine, lw: 1 });
         }
       }
       const col = t.critical
-        ? '#d4af37'
+        ? T.gold
         : t.status === 'completed'
-          ? '#009b3a'
+          ? T.done
           : U.isOverdue(sp.end) && t.status !== 'completed'
-            ? '#D63A3A'
+            ? T.over
             : U.isDueSoon(sp.end, 3) && t.status !== 'completed'
-              ? '#f59e0b'
-              : '#3b82f6';
-      ctx.fillStyle = col;
+              ? T.due
+              : T.task;
       // G3: a milestone is a milestone by FLAG or by SHAPE - a zero-duration
       // row (or a same-day row whose name reads as a gate/sign-off) draws as
-      // a diamond, never a 3px sliver. The seeded "Phase gate" rows in the
-      // owner's projects carry no milestone flag; the heuristic catches them.
+      // a diamond, never a 3px sliver.
       const isMs =
         !!t.milestone ||
         Number(t.duration) === 0 ||
         (t.startDate === t.endDate &&
           /gate|sign-?off|complete|milestone|certificate/i.test(t.name || ''));
       if (isMs) {
-        // Milestones read as diamonds (owner review: gates must not read as slivers)
         const cx = x0 + bw / 2,
-          cy = ry + rowH / 2,
           r = rowH / 2 - 4;
-        ctx.beginPath();
-        ctx.moveTo(cx, cy - r);
-        ctx.lineTo(cx + r, cy);
-        ctx.lineTo(cx, cy + r);
-        ctx.lineTo(cx - r, cy);
-        ctx.closePath();
-        ctx.fill();
-        if (t.critical) {
-          ctx.strokeStyle = 'rgba(255,255,255,.6)';
-          ctx.lineWidth = 1;
-          ctx.stroke();
-        }
+        poly({
+          pts: [
+            [cx, rowMid - r],
+            [cx + r, rowMid],
+            [cx, rowMid + r],
+            [cx - r, rowMid]
+          ],
+          fill: col,
+          stroke: t.critical ? T.barOutline : undefined,
+          lw: 1,
+          close: true
+        });
         // G3: the milestone's name rides to the RIGHT of the diamond - a
         // diamond with no label tells the reader nothing.
-        ctx.fillStyle = '#cbd5e1';
-        ctx.font = '700 9px sans-serif';
-        const msLabel = truncateToWidth(ctx, t.name || '', W - padR - (cx + r + 4));
-        ctx.fillText(msLabel, cx + r + 4, cy + 3);
-        ctx.font = t.isPhase ? '700 11px sans-serif' : '600 10px sans-serif';
-        ctx.fillStyle = t.isPhase ? '#f8fafc' : '#e2e8f0';
-      } else {
-        ctx.fillRect(x0, ry + (t.critical ? 0 : 4), bw, rowH - (t.critical ? 0 : 8));
-        if (t.critical) {
-          ctx.strokeStyle = 'rgba(255,255,255,.6)';
-          ctx.lineWidth = 1;
-          ctx.strokeRect(x0 + 0.5, ry + 0.5, bw - 1, rowH - 1);
-        }
+        text({
+          x: cx + r + 4,
+          y: rowMid + 3,
+          str: trunc(t.name || '', 9, 700, W - padR - (cx + r + 4)),
+          size: 9,
+          weight: 700,
+          fill: T.msLabel
+        });
+        return;
       }
-    }); // Today line (owner review: fastest way to see late vs upcoming)
+      if (t.isPhase) {
+        // G6 phase summary style: a bracket bar with end ticks and the
+        // rolled-up dates - visibly different from any task bar (the old
+        // export drew phases in the same blue as a task).
+        line({ x1: x0, y1: rowMid, x2: x0 + bw, y2: rowMid, stroke: T.bracket, lw: 2 });
+        line({ x1: x0, y1: rowMid, x2: x0, y2: rowMid + 6, stroke: T.bracket, lw: 2 });
+        line({ x1: x0 + bw, y1: rowMid, x2: x0 + bw, y2: rowMid + 6, stroke: T.bracket, lw: 2 });
+        text({
+          x: x0 + bw + 6,
+          y: rowMid + 3,
+          str: sp.start + ' to ' + sp.end,
+          size: 9,
+          weight: 600,
+          fill: T.bracketDates
+        });
+        phaseBrackets++;
+        return;
+      }
+      // G6 progress fill: the bar draws at reduced weight; the progress
+      // portion draws solid on top, left to right.
+      const by = t.critical ? 0 : 4,
+        bh = rowH - (t.critical ? 0 : 8);
+      rect({ x: x0, y: ry + by, w: bw, h: bh, fill: hexA(col, 0.45) });
+      const pctDone = pctOf(t, sp);
+      if (pctDone > 0) {
+        rect({ x: x0, y: ry + by, w: Math.max(1, (bw * pctDone) / 100), h: bh, fill: col });
+        progressFills++;
+      }
+      if (t.critical) {
+        rect({ x: x0, y: ry, w: bw, h: rowH, stroke: T.barOutline, lw: 1 });
+      }
+    });
+    // Today line (owner review: fastest way to see late vs upcoming)
     if (todayStr >= minDate && todayStr <= maxDate) {
       const tx = X(todayStr) + dayWidth / 2;
-      ctx.strokeStyle = 'rgba(214,58,58,.9)';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([5, 4]);
-      ctx.beginPath();
-      ctx.moveTo(tx, padT + headerH - 18);
-      ctx.lineTo(tx, H - padB);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle = '#D63A3A';
-      ctx.font = '700 9px sans-serif';
-      ctx.fillText('TODAY', tx + 4, padT + headerH - 20);
+      line({
+        x1: tx,
+        y1: padT + headerH - 18,
+        x2: tx,
+        y2: H - padB,
+        stroke: T.todayLine,
+        lw: 1.5,
+        dash: [5, 4]
+      });
+      text({
+        x: tx + 4,
+        y: padT + headerH - 20,
+        str: 'TODAY',
+        size: 9,
+        weight: 700,
+        fill: T.today
+      });
     }
     // C7: legend wraps upward when one line cannot fit it all; padB = 44
     // reserves the two-row headroom so it never collides with the last row.
-    ctx.font = '11px sans-serif';
     const legend = [];
     if (linksHidden > 0) {
       // G5: the cap is never silent - the chart says how many links it cut.
-      legend.push(['rgba(148,163,184,.5)', '+' + linksHidden + ' hidden links']);
+      legend.push([T.linkArrow, '+' + linksHidden + ' hidden links']);
     }
     legend.push(
-      ['#d4af37', 'Critical'],
-      ['#3b82f6', 'Task'],
-      ['#009b3a', 'Done'],
-      ['#f59e0b', 'Due soon'],
-      ['#D63A3A', 'Overdue'],
-      ['rgba(56,189,248,.6)', 'Weather-exposed'],
-      ['rgba(148,163,184,.5)', 'Baseline'],
-      ['rgba(212,175,55,.85)', 'Critical chain link'],
-      ['rgba(148,163,184,.5)', 'Dependency'],
-      ['#D63A3A', 'Today line'],
-      ['#8b5cf6', 'Phase tab'],
-      ['#009b3a', 'Milestone']
+      [T.gold, 'Critical'],
+      [T.task, 'Task'],
+      [T.done, 'Done'],
+      [T.due, 'Due soon'],
+      [T.over, 'Overdue'],
+      [T.weatherLine, 'Weather-exposed'],
+      [T.baseline, 'Baseline'],
+      [T.linkGold, 'Critical chain link'],
+      [T.linkArrow, 'Dependency'],
+      [T.today, 'Today line'],
+      [PHASE_TABS[0], 'Phase tab'],
+      [T.bracket, 'Phase summary'],
+      [T.done, 'Progress (done or elapsed)'],
+      [T.msLabel, 'Milestone']
     );
     let lx = padL,
       ly = H - 20;
     legend.forEach(l => {
-      const lw = ctx.measureText(l[1]).width;
+      const lw = tw(l[1], 11, 400);
       if (lx + 24 + lw > W - padR) {
         lx = padL;
         ly -= 16;
       }
-      ctx.fillStyle = l[0];
-      ctx.fillRect(lx, ly, 16, 12);
-      ctx.fillStyle = '#cbd5e1';
-      ctx.fillText(l[1], lx + 20, ly + 10);
+      rect({ x: lx, y: ly, w: 16, h: 12, fill: l[0] });
+      text({ x: lx + 20, y: ly + 10, str: l[1], size: 11, weight: 400, fill: T.legendText });
       lx += 24 + lw + 18;
+    });
+    return {
+      prims: prims,
+      W: W,
+      H: H,
+      meta: {
+        // GATE hooks: the QA harness reads the export's own geometry
+        // without decoding pixels.
+        rows: ordered.map(t => t.id),
+        unassigned: unassigned.map(t => t.id),
+        phaseSpans: spanOf,
+        milestones: ordered
+          .filter(
+            t =>
+              !t.isGroupHeader &&
+              (!!t.milestone ||
+                Number(t.duration) === 0 ||
+                (t.startDate === t.endDate &&
+                  /gate|sign-?off|complete|milestone|certificate/i.test(t.name || '')))
+          )
+          .map(t => t.id),
+        dayWidth: dayWidth,
+        W: W,
+        H: H,
+        linkPolicy: linkPolicy,
+        linksDrawn: linksDrawn,
+        linksHidden: linksHidden,
+        theme: T.name,
+        columns: colDefs.map(cd => cd.key),
+        prims: prims.length,
+        progressFills: progressFills,
+        phaseBrackets: phaseBrackets
+      }
+    };
+  }
+
+  // ---- G6 renderers: the SAME primitive list replays to canvas (PNG) and
+  // string-builds to SVG, so the two formats can never differ.
+  function ganttRenderCanvas(list, scale) {
+    const canvas = document.createElement('canvas');
+    canvas.width = list.W * scale;
+    canvas.height = list.H * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+    list.prims.forEach(p => {
+      if (p.type === 'rect') {
+        if (p.fill) {
+          ctx.fillStyle = p.fill;
+          ctx.fillRect(p.x, p.y, p.w, p.h);
+        }
+        if (p.stroke) {
+          ctx.strokeStyle = p.stroke;
+          ctx.lineWidth = p.lw || 1;
+          ctx.strokeRect(p.x + 0.5, p.y + 0.5, p.w - 1, p.h - 1);
+        }
+      } else if (p.type === 'line') {
+        ctx.strokeStyle = p.stroke;
+        ctx.lineWidth = p.lw || 1;
+        if (p.dash) {
+          ctx.setLineDash(p.dash);
+        }
+        ctx.beginPath();
+        ctx.moveTo(p.x1, p.y1);
+        ctx.lineTo(p.x2, p.y2);
+        ctx.stroke();
+        if (p.dash) {
+          ctx.setLineDash([]);
+        }
+      } else if (p.type === 'poly') {
+        ctx.beginPath();
+        p.pts.forEach((pt, i) => (i ? ctx.lineTo(pt[0], pt[1]) : ctx.moveTo(pt[0], pt[1])));
+        if (p.close) {
+          ctx.closePath();
+        }
+        if (p.fill) {
+          ctx.fillStyle = p.fill;
+          ctx.fill();
+        }
+        if (p.stroke) {
+          ctx.strokeStyle = p.stroke;
+          ctx.lineWidth = p.lw || 1;
+          ctx.stroke();
+        }
+      } else if (p.type === 'text') {
+        ctx.fillStyle = p.fill;
+        ctx.font = fontStrOf(p);
+        ctx.textAlign = p.align === 'right' ? 'right' : 'left';
+        ctx.fillText(p.str, p.x, p.y);
+        ctx.textAlign = 'left';
+      }
+    });
+    return canvas;
+    function fontStrOf(p) {
+      return (p.weight || 400) + ' ' + p.size + 'px sans-serif';
+    }
+  }
+
+  function ganttRenderSVG(list) {
+    const esc = str =>
+      String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+    const num = n => (Math.round(n * 100) / 100).toString();
+    let out =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="' +
+      list.W +
+      '" height="' +
+      list.H +
+      '" viewBox="0 0 ' +
+      list.W +
+      ' ' +
+      list.H +
+      '">';
+    list.prims.forEach(p => {
+      if (p.type === 'rect') {
+        out +=
+          '<rect x="' +
+          num(p.x) +
+          '" y="' +
+          num(p.y) +
+          '" width="' +
+          num(p.w) +
+          '" height="' +
+          num(p.h) +
+          '" fill="' +
+          esc(p.fill || 'none') +
+          '"' +
+          (p.stroke
+            ? ' stroke="' + esc(p.stroke) + '" stroke-width="' + num(p.lw || 1) + '"'
+            : '') +
+          '/>';
+      } else if (p.type === 'line') {
+        out +=
+          '<line x1="' +
+          num(p.x1) +
+          '" y1="' +
+          num(p.y1) +
+          '" x2="' +
+          num(p.x2) +
+          '" y2="' +
+          num(p.y2) +
+          '" stroke="' +
+          esc(p.stroke) +
+          '" stroke-width="' +
+          num(p.lw || 1) +
+          '"' +
+          (p.dash ? ' stroke-dasharray="' + p.dash.join(',') + '"' : '') +
+          '/>';
+      } else if (p.type === 'poly') {
+        out +=
+          '<polygon points="' +
+          p.pts.map(pt => num(pt[0]) + ',' + num(pt[1])).join(' ') +
+          '" fill="' +
+          esc(p.fill || 'none') +
+          '"' +
+          (p.stroke
+            ? ' stroke="' + esc(p.stroke) + '" stroke-width="' + num(p.lw || 1) + '"'
+            : '') +
+          '/>';
+      } else if (p.type === 'text') {
+        out +=
+          '<text x="' +
+          num(p.x) +
+          '" y="' +
+          num(p.y) +
+          '" font-family="sans-serif" font-size="' +
+          num(p.size) +
+          '" font-weight="' +
+          (p.weight || 400) +
+          '" fill="' +
+          esc(p.fill) +
+          '"' +
+          (p.align === 'right' ? ' text-anchor="end"' : '') +
+          '>' +
+          esc(p.str) +
+          '</text>';
+      }
+    });
+    return out + '</svg>';
+  }
+
+  function ganttDownload(blob, name) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () {
+      URL.revokeObjectURL(a.href);
+    }, 400);
+  }
+
+  function ganttExportBase(s) {
+    return (
+      (s.projectName || 'project').replace(/[^a-z0-9]+/gi, '-').toLowerCase() +
+      '-gantt-' +
+      new Date().toISOString().slice(0, 10)
+    );
+  }
+
+  function exportGanttPNG() {
+    const s = ns.State.getState();
+    const o = ganttExportOpts();
+    const list = buildGanttDrawList(o);
+    if (!list) {
+      showToast('No dated tasks to export.', 'err');
+      return;
+    }
+    // G7 canvas-limit guard: past the common 16,384px side / ~268MP area
+    // limits toBlob returns null (or a blank image) and the user sees
+    // "Export failed." - clamp the device-pixel scale so EVERY export
+    // decodes. Below 0.75 the image is small but real; the toast says so.
+    const MAX_SIDE = 16000,
+      MAX_AREA = 2.6e8;
+    let scale = Math.min(
+      2,
+      MAX_SIDE / list.W,
+      MAX_SIDE / list.H,
+      Math.sqrt(MAX_AREA / (list.W * list.H))
+    );
+    let scaledNote = '';
+    if (scale < 0.75) {
+      scale = Math.max(scale, 0.3); // extreme row counts: small but decodable
+      scaledNote = ' (scaled to fit browser image limits)';
+    }
+    const canvas = ganttRenderCanvas(list, scale);
+    window.__ganttExportMeta = Object.assign({}, list.meta, {
+      format: 'png',
+      scale: scale,
+      canvasW: canvas.width,
+      canvasH: canvas.height
     });
     canvas.toBlob(function (blob) {
       if (!blob) {
         showToast('Export failed.', 'err');
         return;
       }
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download =
-        (s.projectName || 'project').replace(/[^a-z0-9]+/gi, '-').toLowerCase() +
-        '-gantt-' +
-        new Date().toISOString().slice(0, 10) +
-        '.png';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(function () {
-        URL.revokeObjectURL(a.href);
-      }, 400);
+      ganttDownload(blob, ganttExportBase(s) + '.png');
       showToast('High-res Gantt exported (PNG)' + scaledNote + '.', 'ok');
     }, 'image/png');
-    // GATE hook (G1/G2/G3/G7): the QA harness reads the export's own
-    // geometry - ordered row ids, rolled-up phase spans, milestone list and
-    // the clamped canvas size - without decoding pixels.
-    window.__ganttExportMeta = {
-      rows: ordered.map(t => t.id),
-      unassigned: unassigned.map(t => t.id),
-      phaseSpans: spanOf,
-      milestones: ordered
-        .filter(
-          t =>
-            !t.isGroupHeader &&
-            (!!t.milestone ||
-              Number(t.duration) === 0 ||
-              (t.startDate === t.endDate &&
-                /gate|sign-?off|complete|milestone|certificate/i.test(t.name || '')))
-        )
-        .map(t => t.id),
-      dayWidth: dayWidth,
-      W: W,
-      H: H,
-      scale: scale,
-      canvasW: canvas.width,
-      canvasH: canvas.height,
-      linkPolicy: linkPolicy,
-      linksDrawn: linksDrawn,
-      linksHidden: linksHidden
-    };
   }
 
+  // G6 format: SVG is vector and string-built from the SAME draw list as
+  // the PNG, so it scales to any projector or plotter and can never
+  // disagree with the raster output.
+  function exportGanttSVG() {
+    const s = ns.State.getState();
+    const o = ganttExportOpts();
+    const list = buildGanttDrawList(o);
+    if (!list) {
+      showToast('No dated tasks to export.', 'err');
+      return;
+    }
+    const svg = ganttRenderSVG(list);
+    window.__ganttExportSVG = svg;
+    window.__ganttExportMeta = Object.assign({}, list.meta, {
+      format: 'svg',
+      svgTexts: (svg.match(/<text/g) || []).length
+    });
+    ganttDownload(
+      new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }),
+      ganttExportBase(s) + '.svg'
+    );
+    showToast('Gantt exported (SVG vector).', 'ok');
+  }
+
+  // ---- G8 export dialog: format, theme, columns, links, baseline. The
+  // last choice is remembered per project in ui state (never in project
+  // data), and the zero-click default - PNG, light, all columns, near
+  // links, baseline on - already produces a good print-ready export.
+  function ganttExportDialogSet(id, val) {
+    const el = document.querySelector('input[name="' + id + '"][value="' + val + '"]');
+    if (el) {
+      el.checked = true;
+    }
+  }
+  function openGanttExport() {
+    const o = ganttExportOpts();
+    ganttExportDialogSet('gx-format', o.format);
+    ganttExportDialogSet('gx-theme', o.theme);
+    ganttExportDialogSet('gx-links', o.links);
+    ['wbs', 'dur', 'start', 'finish', 'pct', 'assignee'].forEach(k => {
+      const el = document.getElementById('gx-c-' + k);
+      if (el) {
+        el.checked = !!o.columns[k];
+      }
+    });
+    const bl = document.getElementById('gx-baseline');
+    if (bl) {
+      bl.checked = !!o.baseline;
+    }
+    const m = document.getElementById('gantt-export-modal');
+    if (m) {
+      m.classList.add('on');
+    }
+  }
+  function closeGanttExport() {
+    const m = document.getElementById('gantt-export-modal');
+    if (m) {
+      m.classList.remove('on');
+    }
+  }
+  function ganttExportRun() {
+    const val = name => {
+      const el = document.querySelector('input[name="' + name + '"]:checked');
+      return el ? el.value : '';
+    };
+    const cols = {};
+    ['wbs', 'dur', 'start', 'finish', 'pct', 'assignee'].forEach(k => {
+      const el = document.getElementById('gx-c-' + k);
+      cols[k] = el ? !!el.checked : true;
+    });
+    const bl = document.getElementById('gx-baseline');
+    const s = ns.State.getState();
+    s.ui = s.ui || {};
+    s.ui.ganttExport = {
+      format: val('gx-format') === 'svg' ? 'svg' : 'png',
+      theme: val('gx-theme') === 'dark' ? 'dark' : 'light',
+      columns: cols,
+      baseline: bl ? !!bl.checked : true
+    };
+    // G5's key stays the policy source; the dialog's Links row writes it.
+    s.ui.ganttLinkPolicy = val('gx-links') === 'all' ? 'all' : 'near';
+    ns.State.save(true);
+    closeGanttExport();
+    if (s.ui.ganttExport.format === 'svg') {
+      exportGanttSVG();
+    } else {
+      exportGanttPNG();
+    }
+  }
   // ---- Weather actions ---- (extracted to js/app/weather.js)
   async function wxGeocode() {
     if (ns.AppWeather) {
@@ -2803,6 +3413,10 @@ var MMGR = window.MMGR || {};
     showDefTip: showDefTip,
     hideDefTip: hideDefTip,
     exportGanttPNG: exportGanttPNG,
+    exportGanttSVG: exportGanttSVG,
+    openGanttExport: openGanttExport,
+    closeGanttExport: closeGanttExport,
+    ganttExportRun: ganttExportRun,
     startHold: startHold,
     cancelHold: cancelHold,
     clearSection: clearSection,
@@ -3373,6 +3987,15 @@ window.MMGR = MMGR;
     // generator (view-only , composes + copies, never mutates state).
     emailTpl: el => window.MMGR.App.emailTpl(el.getAttribute('data-kind')),
     exportGanttPNG: () => window.MMGR.App.exportGanttPNG(),
+    // G8 export dialog: open/close + run; the background click closes.
+    openGanttExport: () => window.MMGR.App.openGanttExport(),
+    closeGanttExport: () => window.MMGR.App.closeGanttExport(),
+    closeGanttExportBg: (el, e) => {
+      if (e.target === el) {
+        window.MMGR.App.closeGanttExport();
+      }
+    },
+    ganttExportRun: () => window.MMGR.App.ganttExportRun(),
     wxGeocode: () => window.MMGR.App.wxGeocode(),
     wxUseLocation: () => window.MMGR.App.wxUseLocation(),
     wxRefresh: () => window.MMGR.App.wxRefresh(),

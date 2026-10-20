@@ -2247,3 +2247,34 @@ intact. Alignment was measured before/after in a real browser at 1920w
 (cloud sections l=572 -> l=288 = grid left edge). Owner asleep; night
 plan per tracker NEXT = procurement P2/P3/P4, then further sprint-3
 order as time allows, each wave with its own CI-green deploy.
+
+--- PROCUREMENT P2/P3/P4 WAVE (2026-10-20 night, sprint-3 order item 2) ---
+SHIPPED (this commit):
+- P2 price history: every price edit appends {price, quotedAt, quotedBy,
+  qtyBreak:null} to an append-only trail capped at 12 (ONE write path -
+  the manual cell and the import share pushPriceHistory). Inline-SVG
+  sparkline in the Quoted cell (native <title> lists the values; rising
+  = red). Stale badge keeps its 30-day rule. SCHEMA_VERSION 20 -> 21
+  with an additive migration (priceHistory back-fill).
+- P3 price-list import: "Import price list" (CSV or XLSX) -> auto
+  column mapping (editable selects) -> DRY-RUN preview (new / updates /
+  skipped with reasons, first 8 rows, "Nothing is saved until you press
+  Import") -> apply. Merge rule: same supplier + normalised name + unit
+  = UPDATE that row (price, terms, history stamp), never a duplicate;
+  rows without a name or usable price are skipped and NAMED. js/
+  xlsx-lite.js gained a real READER: dependency-free RFC-1951 inflate
+  (stored + fixed + dynamic Huffman), central-directory walk, sheet ->
+  rows with sharedStrings + sparse refs; validated against node zlib
+  byte-for-byte (P2z gate) + deflate-zip + own-stored-zip round trips.
+  xlsx-lite registered into the project bundle (build.js).
+- P4 compare view: items down (by name), suppliers across; cheapest
+  price highlighted ONLY where 2+ suppliers carry the item; lead time +
+  min order under each price; per-currency cheapest-basket totals; a
+  mixed-currency row is marked and kept OUT of totals - currencies are
+  never converted (C2 honesty). Item table gained a Min order column
+  (10 cols).
+- GATES: qa-procurement extended P2z/P2a-c/P3a-c/P4 (35/35); M2 re-
+  baselined to schema 21 + S1 to 10 columns (contract changes, noted in
+  the harness). npm run verify green; qa-full 187/187; sw shell v446.
+NEXT SPRINT-3 ORDER: S-2 consent (inventory first), M-1, M-2, M-5;
+then S-3..S-6 hardening; INP polish; architecture survey; re-audit.

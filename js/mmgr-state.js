@@ -177,7 +177,7 @@ var MMGR = window.MMGR || {};
   'use strict';
 
   const STORAGE_KEY = 'mmgr_state';
-  const SCHEMA_VERSION = 20;
+  const SCHEMA_VERSION = 21;
 
   // ---- Default State ----
   /** @returns {AppState} */
@@ -786,6 +786,20 @@ var MMGR = window.MMGR || {};
       }
       if (!state.issues || !Array.isArray(state.issues)) {
         state.issues = [];
+      }
+      return state;
+    },
+    21: function (state) {
+      // V20 -> V21: P2 price history (directive 2026-10-18). Additive
+      // back-fill only - every supplier-book item gets the append-only
+      // priceHistory trail (empty until the next price edit or import);
+      // nothing else changes shape, so v20 states load unchanged.
+      if (state.supplierBook && Array.isArray(state.supplierBook.items)) {
+        state.supplierBook.items.forEach(function (it) {
+          if (it && typeof it === 'object' && !Array.isArray(it.priceHistory)) {
+            it.priceHistory = [];
+          }
+        });
       }
       return state;
     },

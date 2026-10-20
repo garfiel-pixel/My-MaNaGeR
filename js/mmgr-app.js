@@ -3963,6 +3963,14 @@ window.MMGR = MMGR;
     procQuoteVendor: el => window.MMGR.Proc.procQuoteVendor(el),
     procQuoteTone: el => window.MMGR.Proc.procQuoteTone(el),
     procQuoteCopy: () => window.MMGR.Proc.procQuoteCopy(),
+    // P3 import + P4 compare (directive 2026-10-18)
+    procImport: () => window.MMGR.Proc.procImport(),
+    procImportCancel: () => window.MMGR.Proc.procImportCancel(),
+    procImportFile: el => window.MMGR.Proc.procImportFile(el),
+    procImportMap: () => window.MMGR.Proc.procImportMap(),
+    procImportApply: () => window.MMGR.Proc.procImportApply(),
+    procCompare: () => window.MMGR.Proc.procCompare(),
+    procCompareClose: () => window.MMGR.Proc.procCompareClose(),
     // MARKET-FEATURE-ROADMAP Section C batch 2 (state mutations , never
     // READONLY_SAFE): pay applications, inspections, incidents, handover,
     // warranty, drawing distribution log, permits.

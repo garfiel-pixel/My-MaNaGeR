@@ -16822,3 +16822,83 @@ textarea.pv-in {
   accent-color: var(--gold);
   flex: none;
 }
+
+/* ---- Procurement P2/P3/P4 (2026-10-20): price-history sparkline,
+   import dry-run panel, compare matrix. ---- */
+.ph-spark {
+  vertical-align: middle;
+  margin-left: 6px;
+}
+.pc-imp-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 6px 0 10px;
+}
+.pc-imp-map {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.pc-imp-f {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.68rem;
+  color: var(--slate);
+}
+.pc-imp-f select {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--text);
+  font-size: 0.72rem;
+  padding: 4px 6px;
+}
+.pc-imp-sum {
+  font-size: 0.74rem;
+  margin: 6px 0;
+  color: var(--text);
+}
+.pc-imp-t {
+  margin-top: 4px;
+}
+.pc-v-new {
+  color: var(--green);
+  font-weight: 600;
+}
+.pc-v-upd {
+  color: var(--amber);
+  font-weight: 600;
+}
+.pc-v-skip {
+  color: var(--slate);
+}
+.pcx td.pc-cheap {
+  background: color-mix(in oklch, var(--green) 14%, transparent);
+  font-weight: 700;
+}
+.pc-price {
+  font-weight: 600;
+}
+.pc-sub {
+  display: block;
+  font-size: 0.64rem;
+  color: var(--slate);
+  font-weight: 400;
+}
+.pc-none {
+  color: var(--slate);
+}
+.pc-mixed {
+  font-size: 0.62rem;
+  color: var(--amber);
+}
+.pc-tot {
+  margin-top: 8px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text);
+}

@@ -193,7 +193,9 @@ async function ev(expr) {
   await ev(`document.querySelector('[data-action="tglFlag"][data-flag="ganttExport"]').click()`);
   await delay(250);
   const f5 = await ev(`(function(){
-    var btn = document.querySelector('[data-action="exportGanttPNG"]');
+    // G8 (2026-10-20): Export Chart now OPENS the export dialog, so the
+    // flag gate follows the button's new data-action openGanttExport.
+    var btn = document.querySelector('[data-action="openGanttExport"]');
     return { off: MMGR.State.getState().flags.ganttExport === false && !!btn && btn.classList.contains('is-hide') };
   })()`);
   check('05 flags: ganttExport off -> Export Chart hidden', f5.off, f5);

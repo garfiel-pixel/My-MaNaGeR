@@ -260,7 +260,7 @@ const MCP_AUTH_REFUSAL =
 const INLINE_SCRIPT_HASHES = [
   "'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk='",
   "'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M='",
-  "'sha256-tIUyVLgLv863QHzQD18am+1btD7M/npgp++Uizni0S4='",
+  "'sha256-gfsHD0hWPHbqScBzCG03KThLx1uSZyAYZrc0ad1/amk='",
   "'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4='",
   "'sha256-6n6X5blbus8T7LO3a/rxKTOOdes6mm9KXmC/gWtOr1M='",
   "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='",
@@ -286,9 +286,12 @@ const INLINE_SCRIPT_HASHES = [
 ].join(' ');
 
 const SECURITY_HEADERS = {
+  // S-2 parity with worker.js: the analytics host is a per-request decision
+  // (the mmgr_consent_a cookie gates it), resolved below via the
+  // %%ANALYTICS%% placeholder before the response is written.
   'Content-Security-Policy': [
     "default-src 'self'",
-    "script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com https://static.cloudflareinsights.com https://challenges.cloudflare.com https://cdn.paddle.com " +
+    "script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com%%ANALYTICS%% https://challenges.cloudflare.com https://cdn.paddle.com " +
       INLINE_SCRIPT_HASHES,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com",
     "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com",
@@ -353,7 +356,7 @@ const WHISPER_CSP = [
 // not required for checkout.
 const PADDLE_CSP = [
   "default-src 'self'",
-  "script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com https://static.cloudflareinsights.com https://challenges.cloudflare.com https://cdn.paddle.com " +
+  "script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com%%ANALYTICS%% https://challenges.cloudflare.com https://cdn.paddle.com " +
     INLINE_SCRIPT_HASHES,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com https://cdn.paddle.com",
   "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com",
@@ -860,12 +863,16 @@ const server = http.createServer((req, res) => {
     // path.join(ROOT, p) result used for serving — test it directly.
     if (file.startsWith(path.join(ROOT, 'vendor', 'whisper') + path.sep)) {
       headers['Content-Security-Policy'] = WHISPER_CSP;
-    }
-    // Scoped CSP: the Paddle checkout page gets the overlay origins. Exact
-    // filename match on the resolved path (mirrors worker.js, which matches
-    // the normalized pathname) so no other page inherits it.
-    if (path.basename(file) === 'pricing.html') {
-      headers['Content-Security-Policy'] = PADDLE_CSP;
+    } else {
+      // S-2: resolve the analytics placeholder - the host rides along only
+      // for a visitor whose consent cookie allows it (worker.js cspFor parity).
+      const consentOk = /(^|;\s*)mmgr_consent_a=1(\s*;|$)/.test(String(req.headers.cookie || ''));
+      const analyticsHost = consentOk ? ' https://static.cloudflareinsights.com' : '';
+      const base =
+        path.basename(file) === 'pricing.html'
+          ? PADDLE_CSP
+          : SECURITY_HEADERS['Content-Security-Policy'];
+      headers['Content-Security-Policy'] = base.replace('%%ANALYTICS%%', analyticsHost);
     }
     res.writeHead(200, headers);
     fs.createReadStream(file).pipe(res);

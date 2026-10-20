@@ -4618,6 +4618,27 @@ window.MMGR = MMGR;
     // Performance Mode toggle (owner 2026-09-06): trims heavy CSS blur/shadow
     // layers + 3D tilt. Mirrors mmgr-perf.js which owns the localStorage slot
     // and the [data-perf] attribute on <html>. Safe in view-only (device pref).
+    // S-2 PRIVACY (audit 2026-10-18, 8.2 item 7): the app's Settings >
+    // Privacy toggle is the app-side of the consent choice. It writes the
+    // same record the public banner writes and mirrors it into the cookie
+    // the Worker's CSP reads, so turning it off here really does block the
+    // analytics script on the next page load. Device-level, never project
+    // state - which is why it is in READONLY_SAFE_ACTIONS below.
+    tglConsentStat: el => {
+      const C = window.MMGR && window.MMGR.Consent;
+      if (!C || !C.save) {
+        return;
+      }
+      C.save(!!el.checked);
+      if (window.MMGR && MMGR.App && MMGR.App.showToast) {
+        MMGR.App.showToast(
+          el.checked
+            ? 'Usage statistics are on. We count visits to the public pages.'
+            : 'Usage statistics are off. Nothing is counted.',
+          'ok'
+        );
+      }
+    },
     tglPerfMode: el => {
       const P = window.MMGR.Perf;
       if (P && P.set) {
@@ -4954,6 +4975,10 @@ window.MMGR = MMGR;
     // OWNER 2026-09-06: Performance Mode is a device-level screen choice, not
     // project state , allowed in view-only like glass mode + theme.
     tglPerfMode: 1,
+    // The consent toggle is a DEVICE-level choice (localStorage mmgr_consent
+    // + the mirror cookie), not project state: it is allowed in view-only
+    // mode, exactly like the theme and the glass preference.
+    tglConsentStat: 1,
     // Theme-persistence: the theme preference is a device-level choice too
     // (localStorage mmgr_theme, the same slot the launcher + admin read) ,
     // allowed in view-only like glass mode. tglTheme writes only the device

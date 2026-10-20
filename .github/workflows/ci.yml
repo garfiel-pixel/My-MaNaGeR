@@ -519,6 +519,14 @@ jobs:
         id: qa-procurement
         run: node tools/qa-procurement.cjs
 
+      # S-2 cookie + storage consent (audit 2026-10-18, 8.2): the banner flow
+      # end to end, the storage-key inventory, and the cookie-gated analytics
+      # CSP in worker.js AND serve.cjs. Reuses the serve.cjs server started
+      # above; it starts its own only if :8765 is down.
+      - name: "T4: Cookie consent + storage inventory (qa-consent)"
+        id: qa-consent
+        run: node tools/qa-consent.cjs
+
       # Wide-monitor fill (owner report 2026-10-19): the app column must span
       # a 2560/3440 screen on app, project, calculator and admin, keep its
       # 1080px reading width below 1200px, never push a horizontal scrollbar,

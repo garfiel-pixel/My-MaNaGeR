@@ -25,7 +25,7 @@ export { Presence }; // wrangler requires DO classes in the entrypoint
 const INLINE_SCRIPT_HASHES = [
   "'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk='",
   "'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M='",
-  "'sha256-tIUyVLgLv863QHzQD18am+1btD7M/npgp++Uizni0S4='",
+  "'sha256-gfsHD0hWPHbqScBzCG03KThLx1uSZyAYZrc0ad1/amk='",
   "'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4='",
   "'sha256-6n6X5blbus8T7LO3a/rxKTOOdes6mm9KXmC/gWtOr1M='",
   "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='",
@@ -50,9 +50,35 @@ const INLINE_SCRIPT_HASHES = [
   "'sha256-O8tjgX8HAC3naABULMDuIYqJtVsk/JWqKAbIoD83O4I='"
 ].join(' ');
 
+// S-2 CONSENT-GATED ANALYTICS (audit 2026-10-18, 8.2). The zone auto-injects
+// Cloudflare's Web Analytics beacon into browser navigations at the edge,
+// AFTER this Worker's response is built (verified live 2026-10-20), so the
+// only enforcement point we own is this header. static.cloudflareinsights.com
+// is therefore NOT in the base policy: cspFor() appends it per response only
+// when the visitor's consent cookie says analytics was accepted (js/consent.js
+// mirrors the mmgr_consent localStorage choice into the mmgr_consent_a
+// cookie). Without the cookie the browser refuses the injected beacon before
+// fetching it - zero requests before consent, which is exactly GATE S-2. If
+// the zone's auto-injection is ever disabled in the dashboard, this gate
+// simply stops mattering (nothing is injected); it never becomes wrong.
+const CONSENT_ANALYTICS_HOST = ' https://static.cloudflareinsights.com';
+
+function analyticsAllowed(request) {
+  const cookie = request.headers.get('Cookie') || '';
+  return /(^|;\s*)mmgr_consent_a=1(\s*;|$)/.test(cookie);
+}
+
+function cspFor(request, normalized) {
+  const allow = analyticsAllowed(request) ? CONSENT_ANALYTICS_HOST : '';
+  const base = normalized === '/pricing' || normalized === '/pricing.html' ? PADDLE_CSP : CSP;
+  // Both base policies carry an %%ANALYTICS%% placeholder inside script-src;
+  // it resolves to the host (consented) or to nothing (default).
+  return base.replace('%%ANALYTICS%%', allow);
+}
+
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com https://static.cloudflareinsights.com https://challenges.cloudflare.com https://cdn.paddle.com " +
+  "script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com%%ANALYTICS%% https://challenges.cloudflare.com https://cdn.paddle.com " +
     INLINE_SCRIPT_HASHES,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com",
   "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com",
@@ -69,7 +95,8 @@ const CSP = [
 ].join('; ');
 
 const HEADERS = {
-  'Content-Security-Policy': CSP,
+  // NOTE: Content-Security-Policy is deliberately NOT in this static map -
+  // it is per-request (consent cookie gates the analytics host), set below.
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
@@ -130,7 +157,7 @@ const WHISPER_CSP = [
 // revenue analytics; it is not required for checkout, so it stays blocked.
 const PADDLE_CSP = [
   "default-src 'self'",
-  "script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com https://static.cloudflareinsights.com https://challenges.cloudflare.com https://cdn.paddle.com " +
+  "script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com%%ANALYTICS%% https://challenges.cloudflare.com https://cdn.paddle.com " +
     INLINE_SCRIPT_HASHES,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com https://cdn.paddle.com",
   "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com",
@@ -428,6 +455,7 @@ export default {
           { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
           HEADERS
         );
+        headers['Content-Security-Policy'] = cspFor(request, normalized);
         return new Response(notFoundPage(), { status: 404, headers: headers });
       }
 
@@ -436,6 +464,10 @@ export default {
       for (const [name, value] of Object.entries(HEADERS)) {
         decorated.headers.set(name, value);
       }
+      // Per-request CSP: the analytics host rides along only for a visitor
+      // whose consent cookie allows it (S-2). This also carries the pricing
+      // scoped policy, so the separate pricing override below is gone.
+      decorated.headers.set('Content-Security-Policy', cspFor(request, normalized));
 
       // Cache-Control strategy
       const ext = normalized.replace(/.*\\./, '').toLowerCase();
@@ -460,12 +492,7 @@ export default {
         decorated.headers.set('Content-Security-Policy', WHISPER_CSP);
       }
 
-      // Scoped CSP for the Paddle checkout page. pricing.html is Paddle's
-      // default payment link, so the overlay renders here and nowhere else.
-      // '/' is deliberately NOT included: the homepage does not load Paddle.
-      if (normalized === '/pricing' || normalized === '/pricing.html') {
-        decorated.headers.set('Content-Security-Policy', PADDLE_CSP);
-      }
+      // (pricing.html's scoped Paddle CSP is handled inside cspFor above.)
 
       return decorated;
     } catch (e) {

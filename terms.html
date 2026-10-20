@@ -25,7 +25,7 @@
   <link rel="apple-touch-icon" href="images/mpw-icon.png">
 <link rel="stylesheet" href="dist/marketing.min.css">
 </head>
-<body>
+<body data-consent-banner="on">
 
 <a class="skip-link" href="#main">Skip to content</a>
 
@@ -280,12 +280,14 @@
       <a href="terms.html" aria-current="page">Terms of Service</a>
       <a href="pricing.html">Pricing</a>
       <a href="refund.html">Refund Policy</a>
+      <button type="button" class="consent-link" data-consent-open>Cookie settings</button>
     </div>
     <p class="footer-copy">&copy; 2026 My MaNaGeR. All rights reserved.</p>
   </div>
 </footer>
 
 <script src="js/mmgr-google-auth.js"></script>
+<script src="js/consent.js" defer></script>
 <script defer src="dist/marketing-bundle.js" onerror="window.__mmgrBundleMissing=1"></script>
 <script>
 /* Dev fallback: when dist/marketing-bundle.js is missing (local dev without

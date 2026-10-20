@@ -48,7 +48,7 @@
 <!-- Google Identity Services: this page never loaded it, so the Google button could not render here. Same tag app.html carries. -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
-<body class="auth-page signin-page">
+<body data-consent-banner="on" class="auth-page signin-page">
 
 <a class="skip-link" href="#main">Skip to content</a>
 
@@ -124,8 +124,10 @@
   <a href="pricing.html">Pricing</a>
   <a href="refund.html">Refund Policy</a>
   <a href="contact.html">Contact</a>
+  <button type="button" class="consent-link" data-consent-open>Cookie settings</button>
 </footer>
 
+<script src="js/consent.js" defer></script>
 <script src="js/signin.js" defer></script>
 </body>
 </html>

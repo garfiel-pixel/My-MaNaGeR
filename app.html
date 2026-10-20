@@ -112,7 +112,12 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 /* A5-3 (2026-08-11): multi-project "My Cloud Projects" dashboard , the
    signed-in owner's cloud-linked projects, session-gated, each loadable
    without re-entering the code. Mirrors the .pf-card language. */
-.cloud-dash{max-width:1040px;margin:0 auto 28px;}
+/* OWNER 2026-10-20 (alignment): was max-width:1040px + margin auto -
+   a leftover from the old 1080px wrap, it CENTRED the cloud sections
+   (measured: left 572 vs the project grid's 288 at 1920w), so My Cloud
+   Projects and the code entry hung 284px right of every project card.
+   The cloud sections now share the grid's exact left edge and width. */
+.cloud-dash{max-width:none;margin:0 0 28px;}
 .cloud-dash .cd-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px;}
 .cloud-dash .cd-head h2{font-size:.85rem;font-weight:700;margin:0;}
 .cloud-dash .cd-head .cd-sub{font-size:.66rem;color:var(--slate);}

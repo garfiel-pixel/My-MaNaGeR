@@ -24,7 +24,7 @@
 <link rel="preload" href="images/hero-landing.webp" as="image" type="image/webp">
 <link rel="preload" href="dist/marketing.min.css" as="style">
 </head>
-<body>
+<body data-consent-banner="on">
 
 <a class="skip-link" href="#main">Skip to content</a>
 
@@ -580,13 +580,14 @@
     </div>
     <div class="footer-bottom">
       <span>© <span id="year">2026</span> My MaNaGeR. All rights reserved.</span>
-      <span class="footer-legal"><a href="privacy.html">Privacy Policy</a> · <a href="terms.html">Terms of Service</a> · <a href="pricing.html">Pricing</a> · <a href="refund.html">Refund Policy</a></span>
+      <span class="footer-legal"><a href="privacy.html">Privacy Policy</a> · <a href="terms.html">Terms of Service</a> · <a href="pricing.html">Pricing</a> · <a href="refund.html">Refund Policy</a> · <button type="button" class="consent-link" data-consent-open>Cookie settings</button></span>
       <span>Local-first, no tracking, no servers required</span>
     </div>
   </div>
 </footer>
 
 <script src="js/mmgr-google-auth.js"></script>
+<script src="js/consent.js" defer></script>
 <script defer src="dist/marketing-bundle.js" onerror="window.__mmgrBundleMissing=1"></script>
 <script>
 /* Dev fallback: when dist/marketing-bundle.js is missing (local dev without

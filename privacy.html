@@ -2,7 +2,7 @@
 <!--
   My MaNaGeR - Global Privacy Policy
   Effective Date: August 30, 2026
-  Last Revised: September 17, 2026
+  Last Revised: October 20, 2026
   This document governs all use of the Application across all jurisdictions.
   Revision 2026-09-05: fixed sign-in script order (google-auth now loads
   before marketing.js so the sign-in button works on this page) and wired
@@ -20,7 +20,7 @@
   <link rel="apple-touch-icon" href="images/mpw-icon.png">
 <link rel="stylesheet" href="dist/marketing.min.css">
 </head>
-<body>
+<body data-consent-banner="on">
 
 <a class="skip-link" href="#main">Skip to content</a>
 
@@ -85,11 +85,12 @@
       <span class="crumbs"><a href="index.html">Home</a> &middot; Privacy Policy</span>
       <h1>Privacy Policy</h1>
       <p>Global data privacy policy for My MaNaGeR.</p>
-      <p class="privacy-updated">Effective Date: August 30, 2026 · Last Revised: September 17, 2026</p>
+      <p class="privacy-updated">Effective Date: August 30, 2026 · Last Revised: October 20, 2026</p>
       <p class="privacy-toc">
         <a href="terms.html">Terms of Service</a> &middot;
         <a href="pricing.html">Pricing</a> &middot;
         <a href="refund.html">Refund Policy</a> &middot;
+        <a href="#storage">Storage</a> &middot;
         <a href="#contact-legal">Contact</a>
       </p>
     </div>
@@ -184,8 +185,44 @@
       <h3>10. Contact &amp; Data Protection Officer</h3>
       <p id="contact-legal">For questions about this privacy policy, your data, or to exercise any data-subject right, contact us at <a href="mailto:admin@mymanagerworkspace.com">admin@mymanagerworkspace.com</a>. For GDPR-related inquiries, you may also contact the relevant supervisory authority in your EU member state.</p>
 
-      <p style="text-align:center;font-size:.82rem;color:var(--text-secondary);">This document was last revised on September 17, 2026. Use of My MaNaGeR is also governed by the <a href="terms.html">Terms of Service</a>.</p>
+      <p style="text-align:center;font-size:.82rem;color:var(--text-secondary);">This document was last revised on October 20, 2026. Use of My MaNaGeR is also governed by the <a href="terms.html">Terms of Service</a>.</p>
 
+    </div>
+  </section>
+
+  <section class="section" id="storage">
+    <div class="container">
+      <h2>Storage this site uses</h2>
+      <p>Every cookie and every piece of storage this site uses, with what it is for. Anything needed to run the site is marked necessary. Anything optional stays off until you allow it.</p>
+
+      <h3>Cookies</h3>
+      <table class="consent-table">
+        <thead><tr><th>Name</th><th>What it is for</th><th>Kind</th></tr></thead>
+        <tbody>
+          <tr><td><code>mmgr_session</code></td><td>Keeps you signed in. The site's own scripts cannot read it.</td><td>Necessary</td></tr>
+          <tr><td><code>mmgr_consent_a</code></td><td>Carries your cookie choice to the server, so the site can allow or block the visit-counting script.</td><td>Necessary</td></tr>
+          <tr><td>Cloudflare challenge cookies</td><td>Bot and attack protection, set by the network that hosts the site.</td><td>Necessary</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Stored on your device</h3>
+      <p>Everything below stays in your browser on this device. Nothing here is sent anywhere unless you turn on cloud sync yourself.</p>
+      <table class="consent-table">
+        <thead><tr><th>What it holds</th><th>Kind</th></tr></thead>
+        <tbody>
+          <tr><td>Your cookie choice (<code>mmgr_consent</code>)</td><td>Necessary</td></tr>
+          <tr><td>Your projects and their full data (<code>mmgr_state_...</code>, <code>mmgr_projects</code>, <code>mmgr_admin_projects</code>)</td><td>Necessary</td></tr>
+          <tr><td>Sign-in and access state (<code>mmgr_admin_pass_hash</code>, <code>mmgr_admin_session</code>, <code>mmgr_admin_setup</code>, <code>mmgr_signin_next</code>, <code>mmgr_sync_identity</code>, <code>mmgr_sync_clientid</code>)</td><td>Necessary</td></tr>
+          <tr><td>Cloud links and codes for your projects (<code>mmgr_cloud_...</code>, <code>mmgr_unlocked_...</code>, <code>mmgr_scope_...</code>, <code>mmgr_current_project</code>, <code>mmgr_device_id</code>)</td><td>Necessary</td></tr>
+          <tr><td>Appearance and layout (<code>mmgr_theme</code>, <code>mmgr_sidebar</code>, <code>mmgr_perf_mode</code>)</td><td>Necessary</td></tr>
+          <tr><td>Calculator work: estimates, rate sheets, rates, branding, history (<code>mmgr_calc_...</code>)</td><td>Necessary</td></tr>
+          <tr><td>Google Drive backup, only after you connect it (<code>mmgr_drive_...</code>)</td><td>Necessary</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Optional: visit counts</h3>
+      <p>With your permission, the site counts visits and page views through Cloudflare Web Analytics, so we know which pages get used. It does not build a profile of you and is not used for advertising. It stays blocked until you choose Accept all, and you can change your mind at any time with the button below.</p>
+      <p><button type="button" class="consent-btn" data-consent-open>Change your choice</button></p>
     </div>
   </section>
 </main>
@@ -207,12 +244,14 @@
       <a href="terms.html">Terms of Service</a>
       <a href="pricing.html">Pricing</a>
       <a href="refund.html">Refund Policy</a>
+      <button type="button" class="consent-link" data-consent-open>Cookie settings</button>
     </div>
     <p class="footer-copy">&copy; 2026 My MaNaGeR. All rights reserved.</p>
   </div>
 </footer>
 
 <script src="js/mmgr-google-auth.js"></script>
+<script src="js/consent.js" defer></script>
 <script defer src="dist/marketing-bundle.js" onerror="window.__mmgrBundleMissing=1"></script>
 <script>
 /* Dev fallback: when dist/marketing-bundle.js is missing (local dev without

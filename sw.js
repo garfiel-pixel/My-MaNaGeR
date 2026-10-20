@@ -106,7 +106,41 @@
 // tmp/inp-baseline.json) and the qa-presence startup hardening that repaired
 // CI run 39146188112 (workerd died on a bind conflict; the devtools
 // inspector port is now derived from QA_PORT and startup retries once).
-const CACHE = 'mmgr-shell-v446';
+// v447 - S-2 COOKIE AND STORAGE CONSENT (audit 2026-10-18, 8.2). Ten public
+// pages (index, about, contact, features, reviews, privacy, terms, pricing,
+// refund, signin) now carry a cookie banner and a Cookie settings link in
+// the footer; privacy.html gains the storage inventory table and a Change
+// your choice button; the signed-in app carries the choice in Settings
+// instead of a banner (that row landed with v449). The choice lives in
+// localStorage mmgr_consent and is
+// mirrored into the mmgr_consent_a cookie, which is what worker.js and
+// serve.cjs read to decide whether the Content-Security-Policy may allow
+// static.cloudflareinsights.com - the Cloudflare Web Analytics beacon is
+// injected at the EDGE on every browser navigation, so the CSP is the only
+// enforcement point we own, and without consent the browser refuses the
+// script before it is ever fetched (zero requests). js/consent.js is a new
+// SHELL asset (offline-first: the banner and the saved choice must both
+// work with no network) and the eleven edited pages are SHELL assets, hence
+// this bump. No inline script was added or removed on those pages, so the
+// CSP inline-script hash set is byte-identical.
+// v450 - S-2 APP-SIDE PRIVACY ROW (audit 2026-10-18, 8.2 item 7). The signed-in
+// app now carries the choice where the directive says it should live: a
+// Settings > Privacy row with a Usage statistics toggle, NOT a banner in the
+// app. The toggle writes the same mmgr_consent record the public banner
+// writes and mirrors it into the mmgr_consent_a cookie, so turning it off
+// here really does block the analytics script on the next page load. js/
+// consent.js joins the APP bundle (it is a device-level module, like the
+// theme), the toggle is in READONLY_SAFE_ACTIONS because it is never project
+// state, and js/consent.js syncs the toggle to the saved choice on boot so a
+// device that already accepted is not told "off". project.html's dev-fallback
+// list now names js/consent.js, so that INLINE block's SHA-256 changed: the
+// hashes were regenerated (tools/regen-csp-hashes.cjs) into worker.js and
+// serve.cjs, and project.html's own meta CSP carries the new hash - without
+// that the dev-fallback block would have been silently blocked in production
+// (the AGENTS rule 1 trap, caught by tools/verify-csp-hashes.cjs).
+// project.html, js/mmgr-app.js and dist/bundle.js are SHELL assets, hence
+// this bump.
+const CACHE = 'mmgr-shell-v450';
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new
 // 'JIC rate book' choice on calculator.html) prices ANY shipped book row as
@@ -665,6 +699,11 @@ const SHELL = [
   'js/mmgr-cloud-dash.js',
   // Marketing + utility JS
   'js/marketing.js',
+  // S-2 CONSENT (audit 2026-10-18, 8.2): the cookie banner and the choice
+  // loader run on every public page. Offline-first means the banner must
+  // still appear (and the choice must still be readable) with no network, so
+  // the module is in the shell, not fetched on demand.
+  'js/consent.js',
   'js/reviews.js',
   'js/verify.js',
   'js/reset.js',

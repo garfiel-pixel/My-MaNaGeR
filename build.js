@@ -59,6 +59,11 @@ const APP_MODULES = [
   // Performance Mode (owner 2026-09-06): gates heavy layers; must load
   // before mmgr-viewport.js / mmgr-dock.js read it.
   'js/mmgr-perf.js',
+  // Consent (audit 2026-10-18, 8.2): the signed-in app carries the choice
+  // as a Settings > Privacy toggle instead of a banner, and the mirror
+  // cookie it writes is what the Worker's CSP reads. Public pages load this
+  // file standalone; the app carries it here.
+  'js/consent.js',
   // Render sub-modules (loaded before mmgr-render.js which wraps them)
   'js/render/financials.js',
   'js/render/people.js',

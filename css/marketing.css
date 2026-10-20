@@ -4597,3 +4597,192 @@ body.dark-mode .pricing-card .pc-list li {
     transition: none;
   }
 }
+
+/* ---- S-2 CONSENT BANNER (audit 2026-10-18, 8.2) ----------------------
+   Solid card at the bottom of public pages. Three EQUAL buttons (no dark
+   pattern: no single emphasized choice). No glass - this is content the
+   visitor must read and act on. Driven by js/consent.js. */
+.consent-card {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  margin: 0 auto;
+  max-width: 720px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  padding: 16px 18px;
+  z-index: 920;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+.consent-card[hidden] {
+  display: none;
+}
+.consent-body {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+.consent-title {
+  margin: 0 0 2px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.consent-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+.consent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.consent-actions[hidden] {
+  display: none;
+}
+.consent-btn {
+  flex: 1 1 auto;
+  min-width: 110px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 9px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.consent-btn:hover {
+  background: var(--gold-50);
+  border-color: var(--gold);
+}
+.consent-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.consent-btn:active {
+  transform: translateY(1px);
+}
+.consent-choose {
+  flex: 1 1 100%;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.consent-choose[hidden] {
+  display: none;
+}
+.consent-opt {
+  margin-bottom: 12px;
+}
+.consent-opt label {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-left: 6px;
+}
+.consent-check {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--gold);
+}
+.consent-opt-note {
+  margin: 2px 0 0 26px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.consent-link {
+  font: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.consent-link:hover {
+  color: var(--gold-deep);
+}
+.consent-link:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+body.dark-mode .consent-card {
+  background: var(--glass-tint, #201c18);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+body.dark-mode .consent-title,
+body.dark-mode .consent-opt label {
+  color: var(--on-navy);
+}
+body.dark-mode .consent-text,
+body.dark-mode .consent-opt-note {
+  color: rgba(248, 250, 252, 0.78);
+}
+body.dark-mode .consent-btn {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.22);
+  color: var(--on-navy);
+}
+body.dark-mode .consent-btn:hover {
+  background: rgba(232, 146, 58, 0.16);
+  border-color: var(--gold-300);
+}
+body.dark-mode .consent-choose {
+  border-top-color: rgba(255, 255, 255, 0.14);
+}
+@media (prefers-reduced-motion: reduce) {
+  .consent-btn:active {
+    transform: none;
+  }
+}
+@media (max-width: 560px) {
+  .consent-card {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    padding: 14px;
+  }
+  .consent-btn {
+    min-width: 96px;
+  }
+}
+
+/* ---- S-2 privacy storage tables --------------------------------------- */
+.consent-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0 20px;
+  font-size: 14px;
+}
+.consent-table th,
+.consent-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.consent-table th {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.consent-table td {
+  color: var(--text-secondary);
+}
+.consent-table code {
+  font-size: 12.5px;
+}
+body.dark-mode .consent-table th {
+  color: var(--on-navy);
+}
+body.dark-mode .consent-table td {
+  color: rgba(248, 250, 252, 0.78);
+}

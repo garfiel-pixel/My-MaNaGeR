@@ -2238,3 +2238,12 @@ NEXT: SPRINT 3 order item 2 = procurement P2-P10 (price history, CSV/
 XLSX import, compare view first). The estimate PDF (C5b consumer) and
 P9 PO PDF now have their writer: ns.Pdf.build(prims, opts).
 Sprint order item 1 (G5/G6/G8 incl. SVG + PDF) is now FULLY done.
+DEPLOY 2026-10-20 (version 5894ea22-da5b-48a9-9abe-10d9a6950d5b):
+C5b PDF writer + Gantt PDF (664de52, CI 39391486128 green) AND launcher
+cloud-section alignment fix (771b84b, CI 39394787856 green). SMOKE:
+health 200; sw v445 serving; app.html carries the left-align rule; live
+bundle carries exportGanttPDF; project dialog has the PDF radio; CSP
+intact. Alignment was measured before/after in a real browser at 1920w
+(cloud sections l=572 -> l=288 = grid left edge). Owner asleep; night
+plan per tracker NEXT = procurement P2/P3/P4, then further sprint-3
+order as time allows, each wave with its own CI-green deploy.

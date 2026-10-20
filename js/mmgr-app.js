@@ -1411,8 +1411,9 @@ var MMGR = window.MMGR || {};
     const saved = ui.ganttExport || {};
     const c = saved.columns || {};
     return {
-      format: saved.format === 'svg' ? 'svg' : 'png',
+      format: saved.format === 'svg' ? 'svg' : saved.format === 'pdf' ? 'pdf' : 'png',
       theme: saved.theme === 'dark' ? 'dark' : 'light',
+      page: saved.page === 'a4' || saved.page === 'a3' ? saved.page : 'fit',
       // G5's key stays the source of truth for the link policy; the G8
       // dialog's "All links" switch writes it.
       links: ui.ganttLinkPolicy === 'all' ? 'all' : 'near',
@@ -2259,6 +2260,9 @@ var MMGR = window.MMGR || {};
         dayWidth: dayWidth,
         W: W,
         H: H,
+        // C5b: the logical height of the title block + table header band
+        // that the PDF writer repeats on every page.
+        hdrPx: padT + headerH,
         linkPolicy: linkPolicy,
         linksDrawn: linksDrawn,
         linksHidden: linksHidden,
@@ -2505,6 +2509,42 @@ var MMGR = window.MMGR || {};
     showToast('Gantt exported (SVG vector).', 'ok');
   }
 
+  // C5b (directive): true PDF from the SAME draw list via the shared
+  // writer in js/mmgr-pdf.js - vector, landscape, searchable text.
+  // 'fit' is one page sized to the content; A4/A3 paginate vertically
+  // with the header band + table column headers repeated per page.
+  function exportGanttPDF() {
+    const s = ns.State.getState();
+    const o = ganttExportOpts();
+    const list = buildGanttDrawList(o);
+    if (!list) {
+      showToast('No dated tasks to export.', 'err');
+      return;
+    }
+    if (!ns.Pdf || typeof ns.Pdf.build !== 'function') {
+      showToast('PDF export is unavailable.', 'err');
+      return;
+    }
+    const res = ns.Pdf.build(list.prims, {
+      page: o.page,
+      W: list.W,
+      H: list.H,
+      hdrPx: list.meta.hdrPx
+    });
+    window.__ganttExportMeta = Object.assign({}, list.meta, {
+      format: 'pdf',
+      page: res.mode,
+      pdfPages: res.pages,
+      pdfBytes: res.bytes.length
+    });
+    window.__ganttExportPDF = res;
+    ganttDownload(new Blob([res.bytes], { type: 'application/pdf' }), ganttExportBase(s) + '.pdf');
+    showToast(
+      'Gantt exported (PDF' + (res.pages > 1 ? ', ' + res.pages + ' pages' : '') + ').',
+      'ok'
+    );
+  }
+
   // ---- G8 export dialog: format, theme, columns, links, baseline. The
   // last choice is remembered per project in ui state (never in project
   // data), and the zero-click default - PNG, light, all columns, near
@@ -2518,6 +2558,7 @@ var MMGR = window.MMGR || {};
   function openGanttExport() {
     const o = ganttExportOpts();
     ganttExportDialogSet('gx-format', o.format);
+    ganttExportDialogSet('gx-page', o.page);
     ganttExportDialogSet('gx-theme', o.theme);
     ganttExportDialogSet('gx-links', o.links);
     ['wbs', 'dur', 'start', 'finish', 'pct', 'assignee'].forEach(k => {
@@ -2555,7 +2596,8 @@ var MMGR = window.MMGR || {};
     const s = ns.State.getState();
     s.ui = s.ui || {};
     s.ui.ganttExport = {
-      format: val('gx-format') === 'svg' ? 'svg' : 'png',
+      format: val('gx-format') === 'svg' ? 'svg' : val('gx-format') === 'pdf' ? 'pdf' : 'png',
+      page: val('gx-page') === 'a4' || val('gx-page') === 'a3' ? val('gx-page') : 'fit',
       theme: val('gx-theme') === 'dark' ? 'dark' : 'light',
       columns: cols,
       baseline: bl ? !!bl.checked : true
@@ -2566,6 +2608,8 @@ var MMGR = window.MMGR || {};
     closeGanttExport();
     if (s.ui.ganttExport.format === 'svg') {
       exportGanttSVG();
+    } else if (s.ui.ganttExport.format === 'pdf') {
+      exportGanttPDF();
     } else {
       exportGanttPNG();
     }
@@ -3414,6 +3458,7 @@ var MMGR = window.MMGR || {};
     hideDefTip: hideDefTip,
     exportGanttPNG: exportGanttPNG,
     exportGanttSVG: exportGanttSVG,
+    exportGanttPDF: exportGanttPDF,
     openGanttExport: openGanttExport,
     closeGanttExport: closeGanttExport,
     ganttExportRun: ganttExportRun,
@@ -3987,6 +4032,8 @@ window.MMGR = MMGR;
     // generator (view-only , composes + copies, never mutates state).
     emailTpl: el => window.MMGR.App.emailTpl(el.getAttribute('data-kind')),
     exportGanttPNG: () => window.MMGR.App.exportGanttPNG(),
+    exportGanttSVG: () => window.MMGR.App.exportGanttSVG(),
+    exportGanttPDF: () => window.MMGR.App.exportGanttPDF(),
     // G8 export dialog: open/close + run; the background click closes.
     openGanttExport: () => window.MMGR.App.openGanttExport(),
     closeGanttExport: () => window.MMGR.App.closeGanttExport(),

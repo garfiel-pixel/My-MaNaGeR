@@ -106,7 +106,7 @@
 // tmp/inp-baseline.json) and the qa-presence startup hardening that repaired
 // CI run 39146188112 (workerd died on a bind conflict; the devtools
 // inspector port is now derived from QA_PORT and startup retries once).
-const CACHE = 'mmgr-shell-v443';
+const CACHE = 'mmgr-shell-v444';
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new
 // 'JIC rate book' choice on calculator.html) prices ANY shipped book row as

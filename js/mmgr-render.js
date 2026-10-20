@@ -2958,7 +2958,7 @@ var MMGR = window.MMGR || {};
       aiChip.classList.toggle('is-on', aiOn);
     }
     gate('[data-action="runMonteCarlo"]', 'monteCarlo');
-    gate('[data-action="exportGanttPNG"]', 'ganttExport');
+    gate('[data-action="openGanttExport"]', 'ganttExport');
     gate('[data-action="tglLeadtimeLane"]', 'leadtimeLane');
     gate('#weather-forecast-card', 'weatherForecast');
     // Full gate for the lead-time lane itself: the flag OFF hides the lane

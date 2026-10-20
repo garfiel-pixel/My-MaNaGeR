@@ -2162,3 +2162,40 @@ v441, dist/bundle.js carries linksDrawn + the hidden-links legend entry, CSP
 present. S2 now stands at G1-G5 + G7 done; remaining: G6 (table/theme/formats
 via neutral draw list), G8 (export dialog) + GATE G/T6 (bank-renovation
 fixture - still needs the owner's data file).
+
+--- S2 STEP 3 CONTINUED: G6 + G8-trimmed export dialog (2026-10-20) ---
+SHIPPED (this commit):
+- G6 draw-list pipeline: exportGanttPNG refactored to build ONE neutral
+  primitive list (rect/line/text/poly); ganttRenderCanvas (PNG) and
+  ganttRenderSVG (new, SVG vector) replay the SAME list, so the two
+  formats can never differ. js/mmgr-app.js.
+- G6 left table: WBS (computed 1/1.2 numbering), Task, Duration, Start,
+  Finish, % complete, Assignee; column separators + header row. Task
+  column is the only one that can never hide.
+- G6 light (print) theme: white bg, dark text, critical gold #a8870f;
+  LIGHT IS THE DEFAULT (dark-only wasted ink, failed projectors). Dark
+  palette kept verbatim for the dark choice.
+- G6 phase summary style: bracket bar with end ticks + rolled-up dates
+  text (was: same blue as a task). G6 progress fill: honest derivation
+  from the status field (completed=100%, in-progress=elapsed share of
+  its own span = planned progress, labelled so in the legend; model has
+  no measured %). Legend entries "Phase summary" + "Progress (done or
+  elapsed)" added.
+- G8-trimmed dialog (#gantt-export-modal): format PNG/SVG, theme
+  Light/Dark, links Critical-near/All (writes ui.ganttLinkPolicy - the
+  G5 key), 6 column checkboxes + baseline toggle. Choice remembered per
+  project in ui.ganttExport (never project data). Zero-click default =
+  PNG, light, all columns, near links, baseline on = good export.
+  Export Chart button now opens the dialog; flag gate in mmgr-render.js
+  follows the button's new data-action openGanttExport.
+- GATE 55d in qa-full: dialog opens/runs, light PNG default, phase
+  bracket count, progress fills, SVG parses as XML with table headers +
+  row labels, dark/light canvas colors, columns hide for real.
+  qa-full 186/186 green; npm run verify green; sw shell v443.
+DEFERRED (needs C5b, NOT started): PDF format - the paginated vector
+PDF writer does not exist yet (C5b is its first consumer; the Gantt
+PDF and the calculator estimate PDF should share it). Also deferred to
+a later G8 pass: page size (A4/A3, PDF-only), date range, phase filter.
+NEXT SESSION STARTS: C5b true PDF writer (shared), then Gantt PDF row
+in the dialog; GATE G/T6 needs test/fixtures/bank-renovation.json from
+the owner's data.

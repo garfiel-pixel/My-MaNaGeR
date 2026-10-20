@@ -1340,6 +1340,59 @@ async function check(name, expr, expected, hint) {
   })()`
   );
   await check(
+    '55d gantt export G6/G8: themes, table columns, phase bracket, progress fill, SVG format, dialog',
+    `(function(){
+    var snap=JSON.parse(JSON.stringify(MMGR.State.getState()));
+    function d(n){var t=new Date();t.setDate(t.getDate()+n);return t.toISOString().slice(0,10);}
+    var tasks=[
+      {id:'ph1',name:'Foundations',isPhase:true,startDate:d(0),endDate:d(4),status:'active'},
+      {id:'a',name:'Excavate',parentId:'ph1',startDate:d(0),endDate:d(2),duration:'3',status:'completed',assignedTo:'Jose'},
+      {id:'b',name:'Pour footings',parentId:'ph1',startDate:d(-3),endDate:d(4),duration:'8',status:'in-progress',assignedTo:'Kim'},
+      {id:'c',name:'Cure',parentId:'ph1',startDate:d(4),endDate:d(8),duration:'5',status:'not-started'}
+    ];
+    MMGR.State.updateState(function(s){s.tasks=tasks;s.ui={};});
+    // 1) The G8 dialog opens, and its zero-click default run (PNG, light,
+    // all columns) produces a real export without throwing.
+    var opened=false;
+    try{MMGR.App.openGanttExport();var dm=document.getElementById('gantt-export-modal');opened=!!dm&&dm.classList.contains('on');}catch(e){}
+    var orig=HTMLCanvasElement.prototype.toBlob;
+    HTMLCanvasElement.prototype.toBlob=function(cb){cb(new Blob(['png'],{type:'image/png'}));};
+    var runThrew=false;try{MMGR.App.ganttExportRun();}catch(e){runThrew=true;}
+    HTMLCanvasElement.prototype.toBlob=orig;
+    var closed=!document.getElementById('gantt-export-modal').classList.contains('on');
+    var m1=window.__ganttExportMeta||{};
+    var g1=opened&&closed&&!runThrew&&m1.format==='png'&&m1.theme==='light'&&
+      m1.columns.join(',')==='wbs,task,dur,start,finish,pct,assignee';
+    // 2) G6 content: the phase draws a summary BRACKET (never the task
+    // blue) and completed/in-progress rows carry a progress fill.
+    var g2=m1.phaseBrackets===1&&m1.progressFills>=2&&m1.milestones.indexOf('c')===-1;
+    // 3) SVG is string-built from the SAME draw list: it parses as XML,
+    // carries the table header labels and every row label, and the dark
+    // theme paints the dark canvas.
+    MMGR.State.updateState(function(s){s.ui.ganttExport={format:'svg',theme:'dark',columns:{},baseline:true};});
+    var threw=false;try{MMGR.App.exportGanttSVG();}catch(e){threw=true;}
+    var svg=String(window.__ganttExportSVG||'');var m2=window.__ganttExportMeta||{};
+    var doc=new DOMParser().parseFromString(svg,'image/svg+xml');
+    var parsed=!doc.querySelector('parsererror')&&doc.documentElement.tagName==='svg';
+    var texts=doc.querySelectorAll('text');
+    var names=['Foundations','Excavate','Pour footings','Cure','WBS','Duration','Assignee'];
+    var g3=!threw&&parsed&&m2.format==='svg'&&m2.theme==='dark'&&svg.indexOf('#0e1116')>-1&&
+      texts.length>=m2.rows.length&&names.every(function(n){return svg.indexOf(n)>-1;});
+    // 4) Columns hide for real: drop % and Assignee and the SVG loses them.
+    MMGR.State.updateState(function(s){s.ui.ganttExport={format:'svg',theme:'light',columns:{pct:false,assignee:false},baseline:true};});
+    MMGR.App.exportGanttSVG();
+    var svgL=String(window.__ganttExportSVG||'');var m3=window.__ganttExportMeta||{};
+    var g4=m3.theme==='light'&&svgL.indexOf('#ffffff')>-1&&
+      m3.columns.indexOf('pct')===-1&&m3.columns.indexOf('assignee')===-1&&
+      svgL.indexOf('Assignee')===-1;
+    MMGR.State.updateState(function(s){s.tasks=snap.tasks;s.ui=snap.ui||{};});
+    window.__mmgrUnassignedNoticeShown=false;
+    return {val: g1&&g2&&g3&&g4, g1:g1, g2:g2, g3:g3, g4:g4,
+      cols:m1.columns, brackets:m1.phaseBrackets, fills:m1.progressFills,
+      svgTexts:m2.svgTexts, rows:m2.rows.length, cols3:m3.columns};
+  })()`
+  );
+  await check(
     '56 onboarding empty states: WBS + Kanban deep-link to add task',
     `(function(){
     var snap=JSON.parse(JSON.stringify(MMGR.State.getState().tasks));

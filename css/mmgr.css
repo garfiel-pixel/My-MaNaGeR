@@ -16771,3 +16771,54 @@ textarea.pv-in {
     max-width: none;
   }
 }
+
+/* ---- Gantt Export modal (G8): format, theme, columns, links, baseline.
+   Same solid-surface box language as #chartup-modal (no glass on
+   content); the grid keeps every choice visible at once. ---- */
+#gantt-export-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 9998;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+#gantt-export-modal.on {
+  display: flex;
+}
+#gantt-export-modal .gx-box {
+  max-width: 640px;
+}
+#gantt-export-modal .gx-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 12px 0 14px;
+}
+#gantt-export-modal .gx-set {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 0;
+}
+#gantt-export-modal .gx-set legend {
+  color: var(--gold);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0 6px;
+}
+#gantt-export-modal .gx-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text);
+  padding: 3px 0;
+  cursor: pointer;
+}
+#gantt-export-modal .gx-opt input {
+  accent-color: var(--gold);
+  flex: none;
+}

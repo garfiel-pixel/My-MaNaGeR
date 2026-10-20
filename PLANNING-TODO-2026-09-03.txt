@@ -2199,3 +2199,9 @@ a later G8 pass: page size (A4/A3, PDF-only), date range, phase filter.
 NEXT SESSION STARTS: C5b true PDF writer (shared), then Gantt PDF row
 in the dialog; GATE G/T6 needs test/fixtures/bank-renovation.json from
 the owner's data.
+CI REPAIR (2026-10-20, run 39378913431): qa-v11 check 05 went red on the
+G6/G8 commit - the harness queried [data-action="exportGanttPNG"] but the
+Export Chart button now opens the dialog (data-action openGanttExport).
+Harness re-baselined to the new contract (qa-v11.cjs), local V11_GATE
+PASS. Contract change: the flag gate in mmgr-render.js hides
+[data-action="openGanttExport"].

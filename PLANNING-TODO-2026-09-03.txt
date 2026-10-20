@@ -2278,3 +2278,15 @@ SHIPPED (this commit):
   the harness). npm run verify green; qa-full 187/187; sw shell v446.
 NEXT SPRINT-3 ORDER: S-2 consent (inventory first), M-1, M-2, M-5;
 then S-3..S-6 hardening; INP polish; architecture survey; re-audit.
+DEPLOY 2026-10-20 night, version 2a0cd285-0e26-4b19-94f2-521a81591f74
+(procurement P2/P3/P4, commit 4c012b7, CI 39401015848 GREEN). SMOKE:
+health 200; sw v446; live /project carries the Import price list +
+Compare prices buttons; live bundle carries inflateRaw + the compare
+highlight; CSP intact. NIGHT TOTAL (3 commits, 2 deploys, all CI
+green): C5b shared PDF writer + Gantt PDF with A4/A3 pagination, launcher
+cloud-section left-alignment fix (measured before/after), procurement
+P2/P3/P4 (price history + sparkline, CSV/XLSX import with a dependency-
+free inflate reader and dry-run merge, compare matrix with per-currency
+totals). WAKE-UP NEXT DECISION: sprint-3 order item 3 = S-2 consent
+(inventory first), M-1, M-2, M-5; then S-3..S-6, INP, architecture
+survey, re-audit.

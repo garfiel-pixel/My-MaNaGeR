@@ -9,8 +9,8 @@
      M1-M4  migration v19 -> v20 seeds supplierBook, keeps the C10
             material-order rows, seeds packs.procurement=false, and
             the tab ships HIDDEN until its pack is switched on (D2).
-     S1     the panel structure: vendors column, 9-column items
-            table, subtotal line, quote card (supplier select, tone
+     S1     the panel structure: vendors column, 10-column items
+            table (Min order joined with P4), subtotal line, quote (supplier select, tone
             select, Write quote, Copy, output region).
      V1/V2  add supplier lands, focus jumps to the name field, the
             typed name renders in the row and the count updates.
@@ -411,8 +411,10 @@ function quoteFromBody(body) {
       };
     });
     check(
-      'M2 migration seeds supplierBook + packs.procurement=false, keeps the C10 material-order row, schema 20',
-      m2.v === 20 &&
+      'M2 migration seeds supplierBook + packs.procurement=false, keeps the C10 material-order row, schema 21',
+      // Re-baselined 2026-10-20: the P2 price-history wave bumped
+      // SCHEMA_VERSION 20 -> 21 (additive back-fill of priceHistory).
+      m2.v === 21 &&
         m2.seeded &&
         m2.packSeeded &&
         m2.c10 &&
@@ -463,7 +465,7 @@ function quoteFromBody(body) {
         // NOTE: the table is `table.dt > thead > th` (repo convention), so
         // the descendant selector has to read `.dt thead th`, not the other
         // way round.
-        cols: document.querySelectorAll('#panel-proc table.dt thead th').length === 9,
+        cols: document.querySelectorAll('#panel-proc table.dt thead th').length === 10,
         subtotal: q('#proc-subtotal'),
         vendorSel: !!document.getElementById('proc-quote-vendor'),
         vendorOpt0: (document.getElementById('proc-quote-vendor').options[0] || {}).text,
@@ -935,6 +937,357 @@ function quoteFromBody(body) {
         q8 === 'Add a supplier and their prices first, then write the quote.',
       { delta: relay.bodies.length - b8, q8 }
     );
+
+    // ============================================================
+    // P2/P3/P4 gates (AUDIT-DIRECTIVE 2026-10-18, procurement wave).
+    // ============================================================
+
+    // P2z: the new XLSX reader's inflate is validated against node's own
+    // zlib (dynamic Huffman, real bytes) before the browser flow uses it.
+    {
+      const zlib = require('zlib');
+      const payload = Buffer.from(('supplier price list row '.repeat(300) + 'end').repeat(9));
+      const deflated = zlib.deflateRawSync(payload, { level: 9 });
+      const round = await page.evaluate(
+        function (args) {
+          const out = window.MMGR.XlsxLite.inflateRaw(new Uint8Array(args[0]), args[1]);
+          return Array.from(out);
+        },
+        [Array.from(deflated), payload.length]
+      );
+      const ok = Buffer.from(round).equals(payload) && round.length === payload.length;
+      check('P2z XLSX reader inflate round-trips zlib-deflated bytes exactly', ok, {
+        got: round && round.length,
+        want: payload.length
+      });
+    }
+
+    // Seed a deterministic book: one vendor, one priced item.
+    await page.evaluate(function () {
+      window.MMGR.State.updateState(function (s) {
+        s.supplierBook = {
+          vendors: [
+            { id: 'v1', name: 'Aggie Supply', contact: '', phone: '', email: '', notes: '' }
+          ],
+          items: [
+            {
+              id: 'i1',
+              vendorId: 'v1',
+              name: 'Gravel',
+              unit: 'load',
+              minPrice: '900',
+              currency: 'JMD',
+              leadTimeDays: '2',
+              minOrder: '',
+              notes: '',
+              quotedAt: '',
+              quotedBy: '',
+              priceHistory: []
+            }
+          ],
+          nvendorid: 2,
+          nitemid: 2
+        };
+      });
+      window.MMGR.Proc.render();
+    });
+    await page.click('#pv-disc-0');
+
+    // ---- P2: price history + sparkline ----
+    const editPrice = async val => {
+      await page.evaluate(function (v) {
+        const inp = document.querySelector('#proc-item-body input[data-field="minPrice"]');
+        inp.value = String(v);
+        inp.dispatchEvent(new Event('change', { bubbles: true }));
+      }, val);
+    };
+    await editPrice(950);
+    await editPrice(975);
+    await editPrice(1000);
+    const p2 = await page.evaluate(function () {
+      const it = window.MMGR.State.getState().supplierBook.items[0];
+      const h = it.priceHistory || [];
+      const spark = document.querySelector('#proc-item-body svg.ph-spark polyline');
+      return {
+        n: h.length,
+        last: h[h.length - 1],
+        capped: h.length <= 12,
+        sparkPts: spark ? spark.getAttribute('points').split(' ').length : 0
+      };
+    });
+    check(
+      'P2a every price edit appends to the price history with who + when',
+      p2.n === 3 &&
+        p2.last &&
+        p2.last.price === '1000' &&
+        !!p2.last.quotedAt &&
+        !!p2.last.quotedBy &&
+        p2.last.qtyBreak === null,
+      p2
+    );
+    check('P2b the sparkline renders once history has 2+ prices', p2.sparkPts >= 2, p2);
+    // cap: hammer 20 more edits -> history never exceeds 12
+    for (let i = 0; i < 20; i++) {
+      await editPrice(1000 + i + 1);
+    }
+    const p2cap = await page.evaluate(function () {
+      const it = window.MMGR.State.getState().supplierBook.items[0];
+      return {
+        n: (it.priceHistory || []).length,
+        newest: it.priceHistory[it.priceHistory.length - 1].price
+      };
+    });
+    check(
+      'P2c price history is append-only and capped at 12',
+      p2cap.n === 12 && p2cap.newest === '1020',
+      p2cap
+    );
+
+    // ---- P3: CSV import with mapping, dry run, merge ----
+    await page.evaluate(function () {
+      window.MMGR.Proc.procImport();
+    });
+    const csvText =
+      'Item,Unit,Price,Currency,Lead days,Min order\n' +
+      'Cement,bag,450,JMD,7,10\n' +
+      'Sand,m3,3200,JMD,2,\n' +
+      'Broken down,load,,JMD,,\n' +
+      'Gravel,load,1200,JMD,3,\n';
+    await page.evaluate(function (text) {
+      const file = new File([text], 'price-list.csv', { type: 'text/csv' });
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      const inp = document.getElementById('proc-imp-file');
+      inp.files = dt.files;
+      window.MMGR.Proc.procImportFile(inp);
+    }, csvText);
+    await page
+      .waitForFunction(
+        function () {
+          const p = window.MMGR.Proc._impPreview && window.MMGR.Proc._impPreview();
+          return p && p.add.length + p.upd.length + p.skip.length === 4;
+        },
+        null,
+        { timeout: 5000 }
+      )
+      .catch(function () {});
+    const p3 = await page.evaluate(function () {
+      const p = window.MMGR.Proc._impPreview();
+      const body = document.getElementById('proc-imp-body').textContent;
+      return {
+        add: p.add.length,
+        upd: p.upd.length,
+        skip: p.skip.length,
+        skipWhy: p.skip[0] ? p.skip[0].why : '',
+        namesIt: body.indexOf('Nothing is saved until you press Import') > -1,
+        verdicts: body.indexOf('new item') > -1 && body.indexOf('updates Gravel') > -1
+      };
+    });
+    check(
+      'P3a CSV dry run: 2 new, 1 update (merge by name+unit), 1 skipped and named',
+      p3.add === 2 &&
+        p3.upd === 1 &&
+        p3.skip === 1 &&
+        /no usable price/.test(p3.skipWhy) &&
+        p3.namesIt &&
+        p3.verdicts,
+      p3
+    );
+    const p3apply = await page.evaluate(function () {
+      window.MMGR.Proc.procImportApply();
+      const b = window.MMGR.State.getState().supplierBook;
+      const gravel = b.items.filter(function (x) {
+        return x.name === 'Gravel';
+      })[0];
+      const cement = b.items.filter(function (x) {
+        return x.name === 'Cement';
+      })[0];
+      return {
+        items: b.items.length,
+        gravelPrice: gravel ? gravel.minPrice : null,
+        gravelHist: gravel && gravel.priceHistory ? gravel.priceHistory.length : 0,
+        gravelBy: gravel ? gravel.quotedBy : '',
+        cementLead: cement ? cement.leadTimeDays : null,
+        cementMinOrder: cement ? cement.minOrder : null,
+        hidden: document.getElementById('proc-import').classList.contains('is-hide')
+      };
+    });
+    check(
+      'P3b applying the import adds rows, merges the duplicate, stamps history',
+      p3apply.items === 3 &&
+        p3apply.gravelPrice === '1200' &&
+        p3apply.gravelHist >= 1 &&
+        p3apply.gravelHist <= 12 &&
+        /import \(price-list\.csv\)/.test(p3apply.gravelBy) &&
+        p3apply.cementLead === '7' &&
+        p3apply.cementMinOrder === '10' &&
+        p3apply.hidden,
+      p3apply
+    );
+
+    // ---- P3x: XLSX import round-trip through the real reader ----
+    await page.evaluate(function () {
+      window.MMGR.Proc.procImport();
+    });
+    const xlsxB64 = await page.evaluate(function () {
+      const bytes = window.MMGR.XlsxLite.build([
+        {
+          name: 'Sheet1',
+          rows: [
+            ['Item', 'Unit', 'Price'],
+            ['Blocks', 'each', 210],
+            ['Paint', 'tin', '']
+          ]
+        }
+      ]);
+      let s = '';
+      for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+      return btoa(s);
+    });
+    await page.evaluate(function (b64) {
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const file = new File([bytes], 'list.xlsx', {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      const inp = document.getElementById('proc-imp-file');
+      inp.files = dt.files;
+      window.MMGR.Proc.procImportFile(inp);
+    }, xlsxB64);
+    await page
+      .waitForFunction(
+        function () {
+          const p = window.MMGR.Proc._impPreview && window.MMGR.Proc._impPreview();
+          return p && p.add.length + p.upd.length + p.skip.length === 2;
+        },
+        null,
+        { timeout: 5000 }
+      )
+      .catch(function () {});
+    const p3x = await page.evaluate(function () {
+      const p = window.MMGR.Proc._impPreview();
+      return {
+        add: p.add.length,
+        skip: p.skip.length,
+        first: p.add[0] ? p.add[0].name : '',
+        price: p.add[0] ? p.add[0].price : null
+      };
+    });
+    check(
+      'P3c XLSX price list reads through the shared reader (1 new, 1 skipped)',
+      p3x.add === 1 && p3x.skip === 1 && p3x.first === 'Blocks' && p3x.price === 210,
+      p3x
+    );
+    await page.evaluate(function () {
+      window.MMGR.Proc.procImportCancel();
+    });
+
+    // ---- P4: compare matrix ----
+    await page.evaluate(function () {
+      window.MMGR.State.updateState(function (s) {
+        s.supplierBook.vendors.push({
+          id: 'v2',
+          name: 'Better Buys',
+          contact: '',
+          phone: '',
+          email: '',
+          notes: ''
+        });
+        const n = s.supplierBook.nitemid;
+        s.supplierBook.items.push(
+          {
+            id: 'i' + n,
+            vendorId: 'v2',
+            name: 'Cement',
+            unit: 'bag',
+            minPrice: '430',
+            currency: 'JMD',
+            leadTimeDays: '5',
+            minOrder: '50',
+            notes: '',
+            quotedAt: '',
+            quotedBy: '',
+            priceHistory: []
+          },
+          {
+            id: 'i' + (n + 1),
+            vendorId: 'v1',
+            name: 'Cement',
+            unit: 'bag',
+            minPrice: '450',
+            currency: 'JMD',
+            leadTimeDays: '7',
+            minOrder: '10',
+            notes: '',
+            quotedAt: '',
+            quotedBy: '',
+            priceHistory: []
+          },
+          {
+            id: 'i' + (n + 2),
+            vendorId: 'v1',
+            name: 'Paint',
+            unit: 'tin',
+            minPrice: '100',
+            currency: 'JMD',
+            leadTimeDays: '',
+            minOrder: '',
+            notes: '',
+            quotedAt: '',
+            quotedBy: '',
+            priceHistory: []
+          },
+          {
+            id: 'i' + (n + 3),
+            vendorId: 'v2',
+            name: 'Paint',
+            unit: 'tin',
+            minPrice: '12',
+            currency: 'USD',
+            leadTimeDays: '',
+            minOrder: '',
+            notes: '',
+            quotedAt: '',
+            quotedBy: '',
+            priceHistory: []
+          }
+        );
+        s.supplierBook.nitemid = n + 4;
+      });
+      window.MMGR.Proc.procCompare();
+    });
+    const p4 = await page.evaluate(function () {
+      const box = document.getElementById('proc-cmp-body');
+      const cheapCells = box.querySelectorAll('td.pc-cheap');
+      const mixed = box.querySelectorAll('.pc-mixed').length;
+      const text = box.textContent;
+      return {
+        cheap: cheapCells.length,
+        cheapText: cheapCells.length ? cheapCells[0].textContent : '',
+        mixed,
+        hasTotal: /JMD 430/.test(text),
+        hasLead: /5d lead/.test(text),
+        hasMoq: /min order 50/.test(text),
+        totText: (document.querySelector('.pc-tot') || {}).textContent || ''
+      };
+    });
+    check(
+      'P4 compare matrix: cheapest highlighted, lead + min order shown, mixed-currency row kept out of totals',
+      p4.cheap === 1 &&
+        /JMD 430/.test(p4.cheapText) &&
+        p4.mixed === 1 &&
+        p4.hasTotal &&
+        p4.hasLead &&
+        p4.hasMoq &&
+        !/USD/.test(p4.totText),
+      p4
+    );
+    await page.evaluate(function () {
+      window.MMGR.Proc.procCompareClose();
+    });
 
     // E1 zero page errors (the /api/ mock chatter is expected noise).
     const real = pageErrors.filter(e => !/\/api\//.test(e));

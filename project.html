@@ -1017,6 +1017,8 @@
     <div class="card">
       <div class="card-title">Procurement, Supplier Price Book
         <div class="g6">
+          <button class="btn btn-n btn-s" data-action="procImport"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Import price list</button>
+          <button class="btn btn-n btn-s" data-action="procCompare"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> Compare prices</button>
           <button class="btn btn-g btn-s" data-action="addPvendor">+ Add Supplier</button>
         </div>
       </div>
@@ -1032,11 +1034,31 @@
             </div>
           </div>
           <div class="ox"><table class="dt"><thead><tr>
-            <th class="w38">ID</th><th>Item</th><th class="w70">Unit</th><th class="w110">Min price</th><th class="w80">Currency</th><th class="w80">Lead days</th><th class="w130">Quoted</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
+            <th class="w38">ID</th><th>Item</th><th class="w70">Unit</th><th class="w110">Min price</th><th class="w80">Currency</th><th class="w80">Lead days</th><th class="w70">Min order</th><th class="w130">Quoted</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
           </tr></thead><tbody id="proc-item-body"></tbody></table></div>
           <div id="proc-subtotal" class="stat-sm proc-subtotal"></div>
         </div>
       </div>
+    </div>
+    <!-- P3 import (directive 2026-10-18): CSV/XLSX -> mapping -> dry-run
+         preview -> apply. Nothing is written until Import is pressed. -->
+    <div class="card m0a mt16 is-hide" id="proc-import">
+      <div class="card-title">Import a supplier price list<span class="ct-sub">CSV or Excel. The dry run shows exactly what will happen; nothing is saved until you press Import.</span>
+        <div class="g6">
+          <button class="btn btn-d btn-s" data-action="procImportCancel">Close</button>
+        </div>
+      </div>
+      <div id="proc-imp-body"></div>
+    </div>
+    <!-- P4 compare: same item down the rows, suppliers across, cheapest
+         highlighted. Currencies are never converted. -->
+    <div class="card m0a mt16 is-hide" id="proc-compare">
+      <div class="card-title">Compare prices<span class="ct-sub">The same item across your suppliers. The cheapest price is highlighted; currencies are never converted.</span>
+        <div class="g6">
+          <button class="btn btn-d btn-s" data-action="procCompareClose">Close</button>
+        </div>
+      </div>
+      <div id="proc-cmp-body"></div>
     </div>
     <!-- AI quote panel (H2): a PANEL over the existing relay, never a second
          engine , keys, quota, sign-in gate and error copy are all inherited. -->

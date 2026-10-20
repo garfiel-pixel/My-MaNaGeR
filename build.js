@@ -87,6 +87,8 @@ const APP_MODULES = [
   'js/app/components.js',
   // C5b shared PDF writer - dependency of mmgr-app.js exports (Gantt PDF)
   'js/mmgr-pdf.js',
+  // XLSX/CSV writer AND reader (P3 procurement import reuses the reader)
+  'js/xlsx-lite.js',
   // App sub-modules (extracted from mmgr-app.js)
   'js/app/confirm.js',
   'js/app/copy-text.js',

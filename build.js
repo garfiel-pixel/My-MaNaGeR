@@ -85,6 +85,8 @@ const APP_MODULES = [
   // App controller
   // Shared component templates (loaded before render modules)
   'js/app/components.js',
+  // C5b shared PDF writer - dependency of mmgr-app.js exports (Gantt PDF)
+  'js/mmgr-pdf.js',
   // App sub-modules (extracted from mmgr-app.js)
   'js/app/confirm.js',
   'js/app/copy-text.js',

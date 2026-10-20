@@ -1393,6 +1393,48 @@ async function check(name, expr, expected, hint) {
   })()`
   );
   await check(
+    '55e gantt export C5b PDF: true PDF from the draw list, A4 pagination with repeated header, fit mode',
+    `(function(){
+    var snap=JSON.parse(JSON.stringify(MMGR.State.getState()));
+    function d(n){var t=new Date();t.setDate(t.getDate()+n);return t.toISOString().slice(0,10);}
+    var tasks=[
+      {id:'ph1',name:'Foundations',isPhase:true,startDate:d(0),endDate:d(6),status:'active'}
+    ];
+    for(var i=0;i<80;i++){tasks.push({id:'r'+i,parentId:'ph1',name:'Row task '+i,startDate:d(i%50),endDate:d((i%50)+2),duration:'3',status:'active',assignedTo:'Crew'+(i%4)});}
+    MMGR.State.updateState(function(s){s.tasks=tasks;s.ui={ganttExport:{format:'pdf',theme:'light',page:'a4',columns:{},baseline:true}};});
+    var threw=false,thrown=null;
+    try{MMGR.App.exportGanttPDF();}catch(e){threw=true;thrown=String(e);}
+    var m=window.__ganttExportMeta||{};
+    var res=window.__ganttExportPDF||null;
+    var txt='';
+    if(res&&res.bytes){
+      var s8='';var n=Math.min(res.bytes.length,300000);
+      for(var b=0;b<n;b++){s8+=String.fromCharCode(res.bytes[b]);}
+      txt=s8;
+    }
+    // Structural truth: PDF magic, correct page objects (not /Pages),
+    // fonts + streams + xref present, task text searchable in the bytes.
+    var magic=txt.slice(0,8)==='%PDF-1.4';
+    // (regex built with new RegExp: a backslash-slash inside the gate's
+    // template literal cooks to a bare slash and would break the parse)
+    var pageObjs=(txt.match(new RegExp('/Type /Page[^s]','g'))||[]).length;
+    var hasCore=txt.indexOf('Helvetica')>-1&&txt.indexOf('endstream')>-1&&txt.indexOf('startxref')>-1;
+    var hasText=txt.indexOf('Row task 7')>-1&&txt.indexOf('Foundations')>-1;
+    var g1=!threw&&magic&&m.format==='pdf'&&m.page==='a4'&&res&&res.pages>1&&pageObjs===res.pages&&m.pdfPages===res.pages;
+    var g2=hasCore&&hasText&&m.pdfBytes>5000;
+    // Fit mode: ONE page sized to the content (W*0.75 x H*0.75 pt).
+    MMGR.State.updateState(function(s){s.ui.ganttExport.page='fit';});
+    var fitThrew=false;try{MMGR.App.exportGanttPDF();}catch(e){fitThrew=true;}
+    var m2=window.__ganttExportMeta||{};
+    var fitOk=!fitThrew&&m2.format==='pdf'&&m2.page==='fit'&&m2.pdfPages===1&&m2.W>0;
+    MMGR.State.updateState(function(s){s.tasks=snap.tasks;s.ui=snap.ui||{};});
+    window.__mmgrUnassignedNoticeShown=false;
+    return {val: g1&&g2&&fitOk, threw:threw, thrown:thrown,
+      g1:g1, g2:g2, fit:fitOk,
+      pages:m.pdfPages, pageObjs:pageObjs, bytes:m.pdfBytes, fitPages:m2.pdfPages};
+  })()`
+  );
+  await check(
     '56 onboarding empty states: WBS + Kanban deep-link to add task',
     `(function(){
     var snap=JSON.parse(JSON.stringify(MMGR.State.getState().tasks));

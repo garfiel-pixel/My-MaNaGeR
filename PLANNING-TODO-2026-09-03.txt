@@ -2214,3 +2214,27 @@ gantt-export-modal + openGanttExport in the served page; sw.js serving
 mmgr-shell-v443; dist/bundle.js carries the new export pipeline; CSP
 header present. Gantt export G1-G8 (minus PDF + page size + date/phase
 filter, documented above) is LIVE.
+
+--- C5b SHARED PDF WRITER + GANTT PDF (2026-10-20, sprint-3 order item 1 DONE) ---
+SHIPPED (this commit):
+- js/mmgr-pdf.js = THE shared true-PDF writer (C5b). Input: the neutral
+  draw list. Output: PDF 1.4 bytes - vector only, Helvetica, searchable
+  text, byte-accurate xref, no dependencies. Page modes: 'fit' (one page
+  sized to the content), 'a4'/'a3' (landscape sheets, fit-to-width,
+  vertical pagination with the header band + table column headers
+  REPEATED on every page, body clipped per window). Alpha colors map to
+  per-page ExtGState /ca groups. Registered in build.js before
+  mmgr-app.js.
+- Gantt PDF (G6 formats complete minus nothing now): exportGanttPDF
+  draws the SAME list and hands it to ns.Pdf.build. Dialog Format row
+  gains PDF; new "Page size (PDF)" row (Fit / A4 / A3), persisted in
+  ui.ganttExport.page. Sw shell v444.
+- GATE 55e: %PDF-1.4 magic, /Type /Page object count == pages, Helvetica
+  + endstream + startxref present, task text searchable in the bytes,
+  A4 fixture paginates >1 page, fit mode == 1 page. qa-full 187/187.
+  (Harness lesson: a backslash-slash inside a qa-full template literal
+  cooks to a bare slash - build such regexes with new RegExp instead.)
+NEXT: SPRINT 3 order item 2 = procurement P2-P10 (price history, CSV/
+XLSX import, compare view first). The estimate PDF (C5b consumer) and
+P9 PO PDF now have their writer: ns.Pdf.build(prims, opts).
+Sprint order item 1 (G5/G6/G8 incl. SVG + PDF) is now FULLY done.

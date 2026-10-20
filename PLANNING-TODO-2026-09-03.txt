@@ -2205,3 +2205,12 @@ Export Chart button now opens the dialog (data-action openGanttExport).
 Harness re-baselined to the new contract (qa-v11.cjs), local V11_GATE
 PASS. Contract change: the flag gate in mmgr-render.js hides
 [data-action="openGanttExport"].
+DEPLOY 2026-10-20: version 15806643-3691-4bb5-b055-3944417d349e, from the
+$HOME/mmgr-deploy staging copy (markers verified: modal markup, sw v443,
+bundle openGanttExport, qa-v11 fix). CI green on 19b1d9a (run
+39380539019; qa-full 186/186 incl. new 55d, qa-v11 V11_GATE after the
+re-baseline). LIVE SMOKE: /api/health 200; /project 200 with
+gantt-export-modal + openGanttExport in the served page; sw.js serving
+mmgr-shell-v443; dist/bundle.js carries the new export pipeline; CSP
+header present. Gantt export G1-G8 (minus PDF + page size + date/phase
+filter, documented above) is LIVE.

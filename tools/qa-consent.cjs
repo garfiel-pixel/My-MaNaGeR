@@ -267,8 +267,25 @@ function phaseStatic() {
 // ---- Phase B: browser gates ----
 async function phaseBrowser() {
   const { chromium } = resolvePlaywright();
+  // Use the shared Chrome auto-detect (tools/chrome-launcher.cjs) rather than
+  // the bare CHROME_PATH env var. CI installs the playwright devDep with
+  // --ignore-scripts, so Playwright's OWN bundled Chromium is never
+  // downloaded there; the CI runner supplies the SYSTEM Chrome instead.
+  // With no executablePath, Playwright asks for the bundled binary and dies
+  // with "Executable doesn't exist ... chromium_headless_shell" (CI run
+  // 39693725061, step 77). The launcher finds google-chrome on the runner
+  // and the installed Chrome on the dev machine; if neither exists we fall
+  // back to Playwright's own browser so a local `npx playwright install`
+  // setup still works.
+  let executablePath;
+  try {
+    executablePath =
+      require(path.join(ROOT, 'tools', 'chrome-launcher.cjs')).chromePath || undefined;
+  } catch (e) {
+    /* fall back to playwright's browser */
+  }
   const browser = await chromium.launch({
-    executablePath: process.env.CHROME_PATH || undefined,
+    executablePath,
     headless: true
   });
   const context = await browser.newContext();

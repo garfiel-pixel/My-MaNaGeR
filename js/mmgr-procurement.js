@@ -186,6 +186,122 @@ var MMGR = window.MMGR || {};
     );
   }
 
+  // ---- P5 (directive 2026-10-18, quantity break pricing) ------------------
+  // An item may carry volume tiers ({minQty, price}, ascending by minQty),
+  // e.g. "1 to 49: 120, 50+: 112". Given a quantity, the applicable unit price
+  // is the tier with the LARGEST minQty that is <= qty. With no tiers (or no
+  // usable one) the single minPrice is the price - so a plain item prices
+  // exactly as before. Tiers never convert currency (C2 rule); each tier is in
+  // the item's own currency.
+  const TIERS_MAX = 12;
+  function tiersOf(it) {
+    const raw = it && Array.isArray(it.priceTiers) ? it.priceTiers : [];
+    return raw
+      .filter(function (t) {
+        // A tier needs BOTH a quantity and a REAL price. Number('') is 0, so
+        // an empty price box would otherwise price the tier as 0 and quote
+        // J$0 for that quantity - require a non-empty numeric price.
+        const hasQty = t && t.minQty !== '' && t.minQty !== null && isFinite(Number(t.minQty));
+        const hasPrice = t && t.price !== '' && t.price !== null && isFinite(Number(t.price));
+        return hasQty && hasPrice && Number(t.minQty) >= 0 && Number(t.price) >= 0;
+      })
+      .map(function (t) {
+        return { minQty: Number(t.minQty), price: Number(t.price) };
+      })
+      .sort(function (a, b) {
+        return a.minQty - b.minQty;
+      })
+      .slice(0, TIERS_MAX);
+  }
+
+  // The one picking rule: largest minQty that does not exceed qty. Returns the
+  // unit price as a Number, or null when nothing applies (caller falls back to
+  // minPrice). Exported on ns.Proc so the quote builder and tests share it.
+  function tierPriceFor(it, qty) {
+    const q = Number(qty);
+    if (!isFinite(q)) {
+      return null;
+    }
+    const tiers = tiersOf(it);
+    let pick = null;
+    for (let i = 0; i < tiers.length; i++) {
+      if (q >= tiers[i].minQty) {
+        pick = tiers[i];
+      }
+    }
+    return pick ? pick.price : null;
+  }
+
+  // The effective unit price for a quantity: the tier if one applies, else the
+  // item's single minPrice. Returns null when the item has no usable price.
+  function unitPriceFor(it, qty) {
+    const t = tierPriceFor(it, qty);
+    if (t !== null) {
+      return t;
+    }
+    return priced(it) ? Number(it.minPrice) : null;
+  }
+
+  // Compact label for the table's Breaks cell: "1+ 120 | 50+ 112", or "-".
+  function tierLabel(it) {
+    const tiers = tiersOf(it);
+    if (!tiers.length) {
+      return '';
+    }
+    return tiers
+      .map(function (t) {
+        return t.minQty + '+ ' + t.price;
+      })
+      .join('  |  ');
+  }
+
+  // ---- P6 (directive 2026-10-18, landed cost) ----------------------------
+  // "Cheapest" must mean cheapest DELIVERED. A supplier's per-delivery
+  // on-costs (freight + handling) and each item's duty rate are added to the
+  // unit price so the compare view and the quote can rank delivered price.
+  // C2 HONESTY: every figure stays in the supplier's OWN currency. We never
+  // convert - a landed total is only ever summed within one currency, and a
+  // mixed-currency row is kept out of totals exactly as P4 does. Freight and
+  // handling are per-DELIVERY, so they are spread over the order quantity
+  // (qty defaults to 1 when unknown) to get a per-unit on-cost.
+  function numOr(v, dflt) {
+    const n = Number(
+      String(v == null ? '' : v)
+        .trim()
+        .replace(/,/g, '')
+    );
+    return isFinite(n) && n >= 0 ? n : dflt;
+  }
+
+  // Per-unit on-costs for a vendor at a given quantity. Returns
+  // { freight, handling, duty, lead } as per-unit numbers (0 when unset).
+  function landedFor(vendor, item, qty) {
+    const q = numOr(qty, 1);
+    const divide = q > 0 ? q : 1;
+    const freight = numOr(vendor && vendor.landFreight, 0) / divide;
+    const handling = numOr(vendor && vendor.landHandling, 0) / divide;
+    const duty = numOr(item && item.dutyPct, 0) / 100;
+    return {
+      freight: freight,
+      handling: handling,
+      dutyRate: numOr(item && item.dutyPct, 0),
+      dutyFactor: 1 + duty,
+      lead: numOr(vendor && vendor.landLeadDays, null)
+    };
+  }
+
+  // The DELIVERED unit price for an item at a quantity, within its own
+  // currency. base (from unitPriceFor) -> duty -> + spread freight/handling.
+  // Returns null when the item has no usable base price. Never converts.
+  function landedUnitFor(vendor, item, qty) {
+    const base = unitPriceFor(item, qty);
+    if (base === null) {
+      return null;
+    }
+    const lf = landedFor(vendor, item, qty);
+    return base * lf.dutyFactor + lf.freight + lf.handling;
+  }
+
   // Staleness badge (H3.2): a price from six months ago is worse than
   // no price, so every disclosed supplier carries its own honest stamp.
   function staleBadge(vendorId) {
@@ -294,6 +410,13 @@ var MMGR = window.MMGR || {};
       f('phone', 'Phone', 'tel') +
       f('email', 'Email', 'email') +
       f('notes', 'Notes', 'textarea') +
+      // P6 landed cost: per-DELIVERY on-costs in this supplier's own currency
+      // (never converted). Spread across the order quantity to rank delivered
+      // price in the compare view. Duty is per-item (see the item table).
+      '<div class="pv-sub">Delivery and on-costs (this supplier\u2019s currency)</div>' +
+      f('landFreight', 'Freight per delivery', 'text', ' inputmode="decimal"') +
+      f('landHandling', 'Handling per delivery', 'text', ' inputmode="decimal"') +
+      f('landLeadDays', 'Delivery lead (days)', 'text', ' inputmode="numeric"') +
       dup +
       '<div class="g6"><button type="button" class="btn btn-d btn-s" data-action="delPvendor" data-idx="' +
       i +
@@ -364,7 +487,7 @@ var MMGR = window.MMGR || {};
     }
     if (!v) {
       body.innerHTML =
-        '<tr><td colspan="10" class="proc-empty">Pick a supplier to see what they offer.</td></tr>';
+        '<tr><td colspan="12" class="proc-empty">Pick a supplier to see what they offer.</td></tr>';
       if (subtot) {
         subtot.textContent = '';
         subtot.classList.add('is-hide');
@@ -374,7 +497,7 @@ var MMGR = window.MMGR || {};
     const idxs = itemIdxFor(v.id);
     if (!idxs.length) {
       body.innerHTML =
-        '<tr><td colspan="10" class="proc-empty">No items recorded yet. Add what this supplier offers and their price.</td></tr>';
+        '<tr><td colspan="12" class="proc-empty">No items recorded yet. Add what this supplier offers and their price.</td></tr>';
       if (subtot) {
         subtot.textContent = '';
         subtot.classList.add('is-hide');
@@ -427,6 +550,52 @@ var MMGR = window.MMGR || {};
           esc(qd) +
           sparkline(it) +
           (stale ? '<br>' + stale : '') +
+          '</td>' +
+          '<td><input type="text" inputmode="decimal" value="' +
+          esc(it.dutyPct === 0 ? '0' : it.dutyPct || '') +
+          '" data-action="updPitem" data-idx="' +
+          gi +
+          '" data-field="dutyPct" aria-label="Duty rate percent" placeholder="-"></td>' +
+          '<td class="proc-brk">' +
+          (function () {
+            const lbl = tierLabel(it);
+            // The button's VISIBLE text is the label (or "Set breaks"). The
+            // accessible name must CONTAIN that visible text (axe SC 2.5.3),
+            // so lead with it and append the purpose.
+            const shown = lbl ? esc(lbl) : 'Set breaks';
+            return (
+              '<button type="button" class="btn btn-n btn-s" data-action="openTiers" data-idx="' +
+              gi +
+              '" aria-label="' +
+              shown +
+              ' - edit quantity breaks for ' +
+              esc(it.name || 'item') +
+              '">' +
+              shown +
+              '</button>' +
+              // P10 lead time -> schedule. Stacked under the breaks button in
+              // the SAME cell so the table stays 12 columns wide (no new
+              // "wall"): both are per-item setup actions. Disabled with no
+              // recorded lead days so we never attach a guessed duration.
+              (function () {
+                const ld = parseInt(it.leadTimeDays, 10);
+                const ok = isFinite(ld) && ld > 0;
+                return (
+                  '<button type="button" class="btn btn-n btn-s mt4' +
+                  (ok ? '' : ' is-off') +
+                  '" data-action="procLead" data-idx="' +
+                  gi +
+                  '"' +
+                  (ok ? '' : ' disabled') +
+                  ' aria-label="Schedule - attach the ' +
+                  (ok ? ld + '-day' : 'lead') +
+                  ' lead time for ' +
+                  esc(it.name || 'item') +
+                  ' to a task">Schedule</button>'
+                );
+              })()
+            );
+          })() +
           '</td>' +
           '<td><input type="text" value="' +
           esc(it.notes || '') +
@@ -489,6 +658,7 @@ var MMGR = window.MMGR || {};
   // covers the before-first-render case (getQuoteOpts is called by
   // the prompt builders, which may run before the panel ever opened).
   let _quoteVendor = '';
+  let _quoteOk = false;
   function _quoteVendorSel() {
     const el = U.$('proc-quote-vendor');
     return el ? String(el.value || '') : _quoteVendor;
@@ -498,6 +668,7 @@ var MMGR = window.MMGR || {};
     renderVendors();
     renderItems();
     renderQuoteOpts();
+    renderRfq();
     if (_imp) {
       renderImport();
     }
@@ -583,6 +754,24 @@ var MMGR = window.MMGR || {};
     if (field === 'notes' && String(value).length > 500) {
       return;
     }
+    // P6 landed cost: freight/handling/lead validate AT THE SEAM so state
+    // never holds a number a later gate would reject. Same pattern as updPitem.
+    if (field === 'landFreight' || field === 'landHandling') {
+      const raw = String(value).trim();
+      if (raw !== '') {
+        const p = Number(raw.replace(/,/g, ''));
+        if (!isFinite(p) || p < 0 || raw.length > 12) {
+          return;
+        }
+      }
+      value = raw.replace(/,/g, '');
+    }
+    if (field === 'landLeadDays') {
+      const raw = String(value).trim();
+      if (raw !== '' && !/^\d{0,4}$/.test(raw)) {
+        return;
+      }
+    }
     value = String(value);
     ns.State.updateState(function (s) {
       if (s.supplierBook && s.supplierBook.vendors && s.supplierBook.vendors[idx]) {
@@ -637,6 +826,7 @@ var MMGR = window.MMGR || {};
         currency: 'JMD',
         leadTimeDays: '',
         minOrder: '',
+        dutyPct: '',
         notes: '',
         quotedAt: '',
         quotedBy: '',
@@ -686,6 +876,14 @@ var MMGR = window.MMGR || {};
     if (field === 'minOrder') {
       const raw = String(value).trim();
       if (raw !== '' && !/^\d{0,6}$/.test(raw)) {
+        return;
+      }
+    }
+    // P6 landed cost: a per-item duty RATE (percent). Cap at 1000% and allow
+    // one decimal; validated AT THE SEAM like every other numeric field.
+    if (field === 'dutyPct') {
+      const raw = String(value).trim();
+      if (raw !== '' && (!/^\d{0,4}(\.\d{1,2})?$/.test(raw) || Number(raw) > 1000)) {
         return;
       }
     }
@@ -740,9 +938,17 @@ var MMGR = window.MMGR || {};
   // ---- AI quote panel (H2: one engine, never a second window) ----
   function getQuoteOpts() {
     const tone = U.$('proc-quote-tone');
+    // P8 RFQ email pack: the term fields are read LIVE (ephemeral, H8.4) so
+    // they never touch project state and need no migration.
+    const valid = U.$('proc-quote-valid');
+    const site = U.$('proc-quote-site');
+    const terms = U.$('proc-quote-terms');
     return {
       vendorId: _quoteVendorSel(),
-      tone: tone ? String(tone.value || 'rfq') || 'rfq' : 'rfq'
+      tone: tone ? String(tone.value || 'rfq') || 'rfq' : 'rfq',
+      validUntil: valid ? String(valid.value || '').slice(0, 40) : '',
+      site: site ? String(site.value || '').slice(0, 120) : '',
+      terms: terms ? String(terms.value || '').slice(0, 120) : ''
     };
   }
 
@@ -753,6 +959,45 @@ var MMGR = window.MMGR || {};
   function procQuoteTone(el) {
     // ephemeral, never state - getQuoteOpts reads the live select
     void el;
+    // P9: switching to/from the award tone toggles the Purchase order
+    // button - a PO is only raised from an awarded quote.
+    syncPoBtn();
+  }
+
+  // P8: the term inputs are ephemeral too - getQuoteOpts reads them live.
+  // Kept as a dispatch target so the change/input events have a handler and
+  // the audit-action-map gate sees a real ACTION_MAP entry.
+  function procQuoteTerm(el) {
+    void el;
+  }
+
+  // P8: open the generated quote in the mail client. The subject names the
+  // project + supplier; the body is the EXACT text already on screen (the
+  // quote writer's byte-for-byte figures), so this adds no numbers of its
+  // own - H7.2 integrity carries straight through to the mail client.
+  function procQuoteMailto() {
+    const out = U.$('proc-quote-out');
+    const text = out ? out.textContent : '';
+    if (!text) {
+      toast('Write the quote first, then open it in email.', 'warn');
+      return;
+    }
+    const opts = getQuoteOpts();
+    const v = vendorsOf().filter(function (x) {
+      return String(x.id) === String(opts.vendorId);
+    })[0];
+    const vendorName = v ? v.name || 'Supplier' : 'Supplier';
+    const s = S();
+    const pn = (s && s.charter && s.charter.name) || (s && s.projectName) || 'our project';
+    const toneWord = opts.tone === 'award' ? 'Award' : opts.tone === 'thanks' ? 'Thank you' : 'RFQ';
+    const subject = toneWord + ': ' + pn + ' - ' + vendorName;
+    window.location.href =
+      'mailto:' +
+      encodeURIComponent((v && v.email) || '') +
+      '?subject=' +
+      encodeURIComponent(subject) +
+      '&body=' +
+      encodeURIComponent(text);
   }
 
   async function procQuote() {
@@ -780,10 +1025,15 @@ var MMGR = window.MMGR || {};
       }
     }
     const copyBtn = U.$('proc-quote-copy');
+    const mailBtn = U.$('proc-quote-mailto');
     if (res && res.ok && res.text) {
       out.textContent = res.text;
+      _quoteOk = true;
       if (copyBtn) {
         copyBtn.classList.remove('is-hide');
+      }
+      if (mailBtn) {
+        mailBtn.classList.remove('is-hide');
       }
     } else {
       let err = (res && res.error) || 'The quote could not be written. Try again.';
@@ -791,10 +1041,15 @@ var MMGR = window.MMGR || {};
         err = 'The assistant is already writing. Give it a moment.';
       }
       out.textContent = err;
+      _quoteOk = false;
       if (copyBtn) {
         copyBtn.classList.add('is-hide');
       }
+      if (mailBtn) {
+        mailBtn.classList.add('is-hide');
+      }
     }
+    syncPoBtn();
   }
 
   function procQuoteCopy() {
@@ -806,6 +1061,479 @@ var MMGR = window.MMGR || {};
     U.copyToClipboard(text).then(function () {
       toast('Quote copied. Paste it into your email.', 'ok');
     });
+  }
+
+  // ============================================================
+  // P9 (directive 2026-10-18, purchase order PDF): from an AWARDED
+  // quote (tone = 'award') raise a one-page PO on the shared C5b PDF
+  // writer. The PO number mirrors the calculator's docNoSuggest format
+  // (PREFIX-0001) - that helper is page-scoped to calculator.html, so
+  // the PO keeps the same zero-padded convention with its own counter
+  // (mmgr_po_counter). Lines join the supplier's priced items to the
+  // RFQ handoff (P7) quantities by normalised name; with no RFQ the
+  // minimum order quantity is the grounded starting qty. Every figure
+  // is a real book number (H7.2) - nothing is invented. Delivery is
+  // derived from the longest lead time (or 'As agreed'). Ephemeral:
+  // reads live, writes only the counter (localStorage), never state.
+  // ============================================================
+  const PO_NO_KEY = 'mmgr_po_counter';
+
+  function poNextNo() {
+    let n = 1;
+    try {
+      n = parseInt(localStorage.getItem(PO_NO_KEY), 10) || 1;
+    } catch (e) {
+      n = 1;
+    }
+    try {
+      localStorage.setItem(PO_NO_KEY, String(n + 1));
+    } catch (e) {
+      /* a full/blocked localStorage must not break the export */
+    }
+    return 'PO-' + (n < 10 ? '000' + n : n < 100 ? '00' + n : n < 1000 ? '0' + n : String(n));
+  }
+
+  function poMoney(n) {
+    const v = Number(n);
+    if (!isFinite(v)) {
+      return '-';
+    }
+    const p = v.toFixed(2).split('.');
+    p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return p.join('.');
+  }
+
+  function poNormName(s) {
+    return String(s || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+  }
+
+  // Ordered lines: the supplier's priced items, qty joined from the RFQ
+  // handoff by name (real estimate quantities) else the item's minimum
+  // order quantity. total = qty x unit price, only when a qty is known.
+  function poLines(vendorId) {
+    const rfq = getRfq();
+    const qByName = {};
+    if (rfq && Array.isArray(rfq.lines)) {
+      rfq.lines.forEach(function (l) {
+        const q = Number(l.qty);
+        if (isFinite(q)) {
+          qByName[poNormName(l.name)] = q;
+        }
+      });
+    }
+    return itemsOf()
+      .filter(function (it) {
+        return String(it.vendorId) === String(vendorId) && priced(it);
+      })
+      .map(function (it) {
+        const k = poNormName(it.name);
+        const rfqQ = qByName[k];
+        const moq =
+          it.minOrder !== '' && isFinite(Number(it.minOrder)) ? Number(it.minOrder) : null;
+        const qty = rfqQ !== undefined ? rfqQ : moq;
+        const unitPrice = Number(it.minPrice);
+        return {
+          name: it.name || 'Item',
+          unit: it.unit || '',
+          currency: it.currency || 'JMD',
+          unitPrice: unitPrice,
+          qty: qty,
+          total: qty !== null && qty !== undefined ? qty * unitPrice : null,
+          lead:
+            it.leadTimeDays !== '' && isFinite(Number(it.leadTimeDays))
+              ? Number(it.leadTimeDays)
+              : null
+        };
+      });
+  }
+
+  // Per-currency totals only - a mixed-currency book is never summed into
+  // one figure (C2 rule). Returns [{currency,total}].
+  function poTotals(lines) {
+    const byCur = {};
+    lines.forEach(function (l) {
+      if (l.total !== null && l.total !== undefined) {
+        byCur[l.currency] = (byCur[l.currency] || 0) + l.total;
+      }
+    });
+    return Object.keys(byCur).map(function (c) {
+      return { currency: c, total: byCur[c] };
+    });
+  }
+
+  // Delivery date derived from the longest lead time (grounded). No usable
+  // lead time -> 'As agreed' - never an invented date.
+  function poDeliveryDate(lines) {
+    let maxLead = null;
+    lines.forEach(function (l) {
+      if (l.lead !== null && l.lead !== undefined && (maxLead === null || l.lead > maxLead)) {
+        maxLead = l.lead;
+      }
+    });
+    if (maxLead === null || maxLead <= 0) {
+      return 'As agreed';
+    }
+    return new Date(Date.now() + maxLead * 86400000).toISOString().slice(0, 10);
+  }
+
+  // The neutral draw list for ns.Pdf.build (px, y down). One 'fit' page.
+  function buildPoDraw(d) {
+    const W = 800;
+    const M = 40;
+    const prims = [];
+    const text = function (x, y, str, o) {
+      prims.push(
+        Object.assign(
+          { type: 'text', x: x, y: y, str: String(str), size: 11, fill: '#111827', weight: 400 },
+          o || {}
+        )
+      );
+    };
+    const line = function (x1, y1, x2, y2, o) {
+      prims.push(
+        Object.assign(
+          { type: 'line', x1: x1, y1: y1, x2: x2, y2: y2, stroke: '#d1d5db', lw: 1 },
+          o || {}
+        )
+      );
+    };
+    text(M, 52, 'PURCHASE ORDER', { size: 22, weight: 700 });
+    text(W - M, 52, d.no, { size: 14, weight: 700, align: 'right' });
+    text(M, 74, d.project, { size: 11, fill: '#6b7280' });
+    text(W - M, 74, 'Issued ' + d.today, { size: 11, fill: '#6b7280', align: 'right' });
+    line(M, 88, W - M, 88, { stroke: '#111827', lw: 1.5 });
+    let y = 112;
+    // supplier (left)
+    text(M, y, 'SUPPLIER', { size: 9, fill: '#6b7280', weight: 700 });
+    y += 16;
+    text(M, y, d.vendor.name || 'Supplier', { size: 13, weight: 700 });
+    y += 16;
+    ['contact', 'phone', 'email'].forEach(function (f) {
+      if (d.vendor[f]) {
+        text(M, y, d.vendor[f], { fill: '#374151' });
+        y += 15;
+      }
+    });
+    // terms (right)
+    const rx = 480;
+    let ry = 112;
+    [
+      ['DELIVER TO', d.site || 'As agreed'],
+      ['DELIVERY', d.delivery],
+      ['PAYMENT TERMS', d.terms || 'As agreed']
+    ].forEach(function (pair) {
+      text(rx, ry, pair[0], { size: 9, fill: '#6b7280', weight: 700 });
+      ry += 16;
+      text(rx, ry, pair[1], { fill: '#374151' });
+      ry += 20;
+    });
+    y = Math.max(y, ry) + 8;
+    line(M, y, W - M, y);
+    y += 22;
+    // table header
+    const cItem = M + 28,
+      cUnit = 360,
+      cQty = 470,
+      cPrice = 590,
+      cCur = 606,
+      cTotal = W - M;
+    text(M, y, '#', { size: 9, fill: '#6b7280', weight: 700 });
+    text(cItem, y, 'ITEM', { size: 9, fill: '#6b7280', weight: 700 });
+    text(cUnit, y, 'UNIT', { size: 9, fill: '#6b7280', weight: 700 });
+    text(cQty, y, 'QTY', { size: 9, fill: '#6b7280', weight: 700, align: 'right' });
+    text(cPrice, y, 'UNIT PRICE', { size: 9, fill: '#6b7280', weight: 700, align: 'right' });
+    text(cCur, y, 'CUR', { size: 9, fill: '#6b7280', weight: 700 });
+    text(cTotal, y, 'TOTAL', { size: 9, fill: '#6b7280', weight: 700, align: 'right' });
+    y += 8;
+    line(M, y, W - M, y, { stroke: '#111827', lw: 1 });
+    y += 18;
+    // rows
+    d.lines.forEach(function (l, i) {
+      text(M, y, i + 1, { fill: '#374151' });
+      text(cItem, y, l.name);
+      text(cUnit, y, l.unit, { fill: '#374151' });
+      text(cQty, y, l.qty === null || l.qty === undefined ? '-' : l.qty, { align: 'right' });
+      text(cPrice, y, poMoney(l.unitPrice), { align: 'right' });
+      text(cCur, y, l.currency, { fill: '#374151' });
+      text(cTotal, y, l.total === null || l.total === undefined ? '-' : poMoney(l.total), {
+        align: 'right'
+      });
+      y += 18;
+      line(M, y - 8, W - M, y - 8, { stroke: '#e5e7eb', lw: 0.5 });
+    });
+    y += 6;
+    line(M, y, W - M, y, { stroke: '#111827', lw: 1 });
+    y += 20;
+    // totals (per currency)
+    const totals = poTotals(d.lines);
+    if (totals.length) {
+      totals.forEach(function (t) {
+        text(W - M, y, 'Total (' + t.currency + '): ' + poMoney(t.total), {
+          size: 12,
+          weight: 700,
+          align: 'right'
+        });
+        y += 18;
+      });
+    } else {
+      text(W - M, y, 'Total: on confirmation', { size: 12, weight: 700, align: 'right' });
+      y += 18;
+    }
+    y += 20;
+    // signature block
+    line(M, y, W - M, y, { stroke: '#d1d5db', lw: 1 });
+    y += 28;
+    const halfW = (W - 2 * M) / 2;
+    text(M, y, 'Authorised signature', { size: 9, fill: '#6b7280' });
+    text(M + halfW, y, 'Accepted by (Supplier)', { size: 9, fill: '#6b7280' });
+    y += 34;
+    line(M, y, M + halfW - 20, y, { stroke: '#374151', lw: 1 });
+    line(M + halfW, y, W - M, y, { stroke: '#374151', lw: 1 });
+    y += 16;
+    text(M, y, d.project, { size: 9, fill: '#6b7280' });
+    text(M + halfW, y, d.vendor.name || 'Supplier', { size: 9, fill: '#6b7280' });
+    y += 30;
+    return { prims: prims, W: W, H: y };
+  }
+
+  // Reveal the Purchase order button only for an AWARD-tone quote that
+  // actually produced text - a PO is raised from an awarded quote.
+  function syncPoBtn() {
+    const btn = U.$('proc-po');
+    if (!btn) {
+      return;
+    }
+    const show = getQuoteOpts().tone === 'award' && _quoteOk;
+    btn.classList.toggle('is-hide', !show);
+  }
+
+  function procPo() {
+    const opts = getQuoteOpts();
+    const v = vendorsOf().filter(function (x) {
+      return String(x.id) === String(opts.vendorId);
+    })[0];
+    if (!v) {
+      toast('Pick the awarded supplier first, then raise the purchase order.', 'warn');
+      return;
+    }
+    const lines = poLines(String(v.id));
+    if (!lines.length) {
+      toast('That supplier has no priced items to order.', 'warn');
+      return;
+    }
+    if (!ns.Pdf || typeof ns.Pdf.build !== 'function') {
+      toast('PDF export is unavailable.', 'err');
+      return;
+    }
+    const s = S();
+    const project = (s && s.charter && s.charter.name) || (s && s.projectName) || 'Project';
+    const no = poNextNo();
+    const draw = buildPoDraw({
+      no: no,
+      project: project,
+      vendor: v,
+      lines: lines,
+      site: opts.site,
+      terms: opts.terms,
+      delivery: poDeliveryDate(lines),
+      today: new Date().toISOString().slice(0, 10)
+    });
+    const res = ns.Pdf.build(draw.prims, { page: 'fit', W: draw.W, H: draw.H, hdrPx: 0 });
+    window.__poPdf = res;
+    window.__poMeta = {
+      no: no,
+      supplier: v.name || 'Supplier',
+      lines: lines.length,
+      delivery: poDeliveryDate(lines),
+      pages: res.pages,
+      bytes: res.bytes.length,
+      pdf: String.fromCharCode.apply(null, res.bytes.subarray(0, 5))
+    };
+    poDownload(new Blob([res.bytes], { type: 'application/pdf' }), 'po-' + no + '.pdf');
+    toast('Purchase order ' + no + ' exported (PDF).', 'ok');
+  }
+
+  // local download helper (mmgr-app's ganttDownload is not on ns.Proc).
+  function poDownload(blob, name) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () {
+      URL.revokeObjectURL(a.href);
+    }, 400);
+  }
+
+  // ============================================================
+  // P10 (directive 2026-10-18, lead time -> schedule): a supplier's
+  // stated lead time on a procured item marks an EXISTING schedule
+  // task as a lead-time item and stamps its tracking dates -
+  //   submittedDate = today (the order date)
+  //   expectedDate  = today + the item's leadTimeDays
+  // so it flows straight into the Dashboard Lead-Time Tracker, the
+  // Kanban lead-time lane and the hatched Gantt bar (all of which
+  // already read t.leadTime / submittedDate / expectedDate). No new
+  // tasks are created and no lead time is ever invented: with no
+  // recorded lead days the card says so and the Link button is off.
+  // It also warns - toast AND an inline tracker note - when order date
+  // plus lead time lands AFTER the task's own start date, which is the
+  // Primavera-style "you ordered too late" signal. Ephemeral picker;
+  // only the chosen task's fields are written to project state.
+  // ============================================================
+  let _leadIdx = -1;
+
+  function procLead(el) {
+    const idx = parseInt(el.getAttribute('data-idx'), 10);
+    if (!isFinite(idx) || !itemsOf()[idx]) {
+      return;
+    }
+    _leadIdx = idx;
+    const sec = U.$('proc-lead');
+    if (sec) {
+      sec.classList.remove('is-hide');
+    }
+    // One disclosure card at a time (same discipline as tiers/import/compare).
+    ['proc-tiers', 'proc-import', 'proc-compare'].forEach(function (id) {
+      const n = U.$(id);
+      if (n) {
+        n.classList.add('is-hide');
+      }
+    });
+    _imp = null;
+    _cmpOpen = false;
+    renderLead();
+  }
+
+  function closeLead() {
+    _leadIdx = -1;
+    const sec = U.$('proc-lead');
+    if (sec) {
+      sec.classList.add('is-hide');
+    }
+  }
+
+  // The card body: what this item promises, and which task to attach it to.
+  // The lead days are echoed from the row - the Link button is disabled when
+  // there is none, so the schedule is never seeded with a guessed duration.
+  function renderLead() {
+    const el = U.$('proc-lead-body');
+    if (!el) {
+      return;
+    }
+    const it = itemsOf()[_leadIdx];
+    const s = S();
+    const tasks = ((s && s.tasks) || []).filter(function (t) {
+      return t && !t.isPhase;
+    });
+    if (!it) {
+      el.innerHTML =
+        '<div class="proc-empty">Pick an item first, then attach its lead time to a task.</div>';
+      return;
+    }
+    const lead = parseInt(it.leadTimeDays, 10);
+    const hasLead = isFinite(lead) && lead > 0;
+    let html =
+      '<div class="ct-sub"><strong>' +
+      esc(it.name || '(unnamed item)') +
+      '</strong> - supplier lead time: ' +
+      (hasLead ? lead + ' days' : 'not set on this row yet') +
+      '.</div>';
+    if (!tasks.length) {
+      html +=
+        '<div class="proc-empty">No schedule tasks to attach to yet. Add a task in the Schedule first.</div>';
+      el.innerHTML = html;
+      return;
+    }
+    html +=
+      '<div class="g6 mt8">' +
+      '<label class="pv-fl" for="proc-lead-task">Attach to task</label>' +
+      '<select id="proc-lead-task" class="btn btn-n btn-s cur-pt" aria-label="Schedule task to attach this lead time to">';
+    tasks.forEach(function (t) {
+      html +=
+        '<option value="' +
+        esc(t.id) +
+        '">' +
+        esc(t.name || 'Task') +
+        (t.startDate ? ' (starts ' + esc(t.startDate) + ')' : '') +
+        '</option>';
+    });
+    html += '</select>';
+    html +=
+      '<button type="button" class="btn btn-g btn-s" data-action="procLeadLink"' +
+      (hasLead ? '' : ' disabled') +
+      '>Link lead time</button>';
+    html += '</div>';
+    if (!hasLead) {
+      html +=
+        '<div class="proc-empty">Set "Lead days" on this item\u2019s row first, then attach it - we never invent a lead time.</div>';
+    }
+    el.innerHTML = html;
+  }
+
+  // The link itself. expectedDate = today + leadDays. When that lands after
+  // the task's own start date we say so plainly (toast + the inline tracker
+  // note renderLead adds) - ordering late is exactly what P10 exists to catch.
+  function procLeadLink() {
+    const it = itemsOf()[_leadIdx];
+    const sel = U.$('proc-lead-task');
+    if (!it || !sel) {
+      return;
+    }
+    const lead = parseInt(it.leadTimeDays, 10);
+    if (!isFinite(lead) || lead <= 0) {
+      toast('Set this item\u2019s lead days first - we never guess a lead time.', 'warn');
+      return;
+    }
+    const taskId = String(sel.value || '');
+    const today = U.todayStr();
+    const expected = U.fmtDate(U.addDays(today, lead));
+    let late = false;
+    let start = '';
+    let taskName = '';
+    ns.State.updateState(function (st) {
+      const task = ((st && st.tasks) || []).find(function (t) {
+        return String(t.id) === taskId;
+      });
+      if (!task) {
+        return;
+      }
+      task.leadTime = true;
+      task.submittedDate = today;
+      task.expectedDate = expected;
+      start = task.startDate || '';
+      taskName = task.name || 'that task';
+      // order date + lead time passes the task's start = too late.
+      late = !!(start && U.parseDL(expected) > U.parseDL(start));
+    });
+    closeLead();
+    // Refresh every surface that reads lead-time state (same set tglLeadTime
+    // drives), so the tracker/lane/bar update without a reload.
+    if (ns.Render) {
+      ['renderWbs', 'renderGantt', 'renderKanban', 'renderDash'].forEach(function (fn) {
+        if (typeof ns.Render[fn] === 'function') {
+          ns.Render[fn]();
+        }
+      });
+    }
+    if (late) {
+      toast(
+        'Lead time linked, but it lands ' +
+          expected +
+          ' - after \u201c' +
+          taskName +
+          '\u201d starts (' +
+          start +
+          '). Order earlier.',
+        'warn'
+      );
+    } else {
+      toast('Lead time linked. Expected ' + expected + '.', 'ok');
+    }
   }
 
   // ============================================================
@@ -1257,7 +1985,14 @@ var MMGR = window.MMGR || {};
       return;
     }
     // Group priced rows by normalised name; per (name, vendor) keep the
-    // cheapest qualifying row.
+    // cheapest qualifying row. P6: each cell also carries the DELIVERED unit
+    // price (base + duty + spread freight/handling, qty=1) so the matrix can
+    // rank by landed cost. On-costs stay in the item's own currency - never
+    // converted (C2 rule).
+    const vendorById = {};
+    vendorsOf().forEach(function (v) {
+      vendorById[String(v.id)] = v;
+    });
     const byName = {};
     items.forEach(function (it) {
       const k = normName(it.name);
@@ -1265,9 +2000,15 @@ var MMGR = window.MMGR || {};
       byName[k] = byName[k] || { label: it.name || k, cells: {} };
       const cur = String(it.currency || 'JMD').toUpperCase();
       const prev = byName[k].cells[String(it.vendorId)];
+      const vend = vendorById[String(it.vendorId)] || null;
+      const landed = landedUnitFor(vend, it, 1);
+      const lf = landedFor(vend, it, 1);
       if (!prev || Number(it.minPrice) < prev.price) {
         byName[k].cells[String(it.vendorId)] = {
           price: Number(it.minPrice),
+          landed: landed,
+          onCost: landed !== null ? landed - Number(it.minPrice) : 0,
+          landLead: lf.lead,
           currency: cur,
           lead: it.leadTimeDays,
           minOrder: it.minOrder
@@ -1291,14 +2032,19 @@ var MMGR = window.MMGR || {};
       '</tr></thead><tbody>';
     names.forEach(function (k) {
       const row = byName[k];
-      // cheapest within one currency only
+      // P6: rank by DELIVERED price (landed) where recorded, else base price.
+      // On-costs stay in the item's own currency, so this is still a
+      // within-one-currency comparison - never a conversion (C2 rule).
+      const rankOf = function (c) {
+        return c.landed !== null && c.landed !== undefined ? c.landed : c.price;
+      };
       const byCur = {};
       vendors.forEach(function (v) {
         const c = row.cells[String(v.id)];
         if (!c) return;
         byCur[c.currency] = Math.min(
           byCur[c.currency] === undefined ? Infinity : byCur[c.currency],
-          c.price
+          rankOf(c)
         );
       });
       const curs = Object.keys(byCur);
@@ -1322,13 +2068,23 @@ var MMGR = window.MMGR || {};
           html += '<td class="pc-none">-</td>';
           return;
         }
-        const cheap = canCompare && c.price === rowMin;
+        const cheap = canCompare && rankOf(c) === rowMin;
         html +=
           '<td class="' +
           (cheap ? 'pc-cheap' : '') +
           '"><span class="pc-price">' +
           esc(c.currency + ' ' + c.price) +
           '</span>' +
+          // P6: show the delivered uplift so "cheapest" is honest. Only when
+          // there IS an on-cost (freight/handling/duty) to report.
+          (c.onCost > 0
+            ? '<span class="pc-sub">delivered ' +
+              esc(c.currency + ' ' + Math.round(c.landed * 100) / 100) +
+              '</span>'
+            : '') +
+          (c.landLead !== null && c.landLead !== undefined
+            ? '<span class="pc-sub">delivery ' + esc(c.landLead) + 'd</span>'
+            : '') +
           (c.lead !== '' && c.lead !== undefined && c.lead !== null
             ? '<span class="pc-sub">' + esc(c.lead) + 'd lead</span>'
             : '') +
@@ -1382,6 +2138,297 @@ var MMGR = window.MMGR || {};
     if (sec) sec.classList.add('is-hide');
   }
 
+  // ============================================================
+  // P5 (directive 2026-10-18, quantity break pricing): a per-item tier
+  // editor. Tiers live on the item as priceTiers [{minQty, price}]. This
+  // panel lists them for ONE item, lets the officer add/remove/edit rows,
+  // and previews the unit price the quote will pick for a sample quantity
+  // (the same tierPriceFor rule the prompt context and the RFQ use). View
+  // state only: _tierIdx is the global item index being edited.
+  // ============================================================
+  let _tierIdx = -1;
+
+  function openTiers(el) {
+    const idx = parseInt(el.getAttribute('data-idx'), 10);
+    if (!isFinite(idx) || !itemsOf()[idx]) {
+      return;
+    }
+    _tierIdx = idx;
+    const sec = U.$('proc-tiers');
+    if (sec) {
+      sec.classList.remove('is-hide');
+    }
+    // One disclosure card at a time (matches import/compare behaviour).
+    const imp = U.$('proc-import');
+    if (imp) {
+      imp.classList.add('is-hide');
+    }
+    const cmp = U.$('proc-compare');
+    if (cmp) {
+      cmp.classList.add('is-hide');
+    }
+    _imp = null;
+    _cmpOpen = false;
+    renderTiers();
+  }
+
+  function closeTiers() {
+    _tierIdx = -1;
+    const sec = U.$('proc-tiers');
+    if (sec) {
+      sec.classList.add('is-hide');
+    }
+  }
+
+  function addTier() {
+    const it = itemsOf()[_tierIdx];
+    if (!it) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      const b = s.supplierBook;
+      const target = b && Array.isArray(b.items) ? b.items[_tierIdx] : null;
+      if (!target) {
+        return;
+      }
+      if (!Array.isArray(target.priceTiers)) {
+        target.priceTiers = [];
+      }
+      if (target.priceTiers.length >= TIERS_MAX) {
+        return;
+      }
+      // Seed the next minQty one above the current highest so rows read as a
+      // sensible ladder the officer can then tune.
+      const highest = target.priceTiers.reduce(function (a, t) {
+        return Math.max(a, isFinite(Number(t.minQty)) ? Number(t.minQty) : 0);
+      }, 0);
+      // Store minQty as a string, matching how minPrice/leadTimeDays/minOrder
+      // are stored; tiersOf normalises with Number() at read time.
+      target.priceTiers.push({ minQty: String(highest + 1), price: '' });
+    });
+    renderTiers();
+    render();
+  }
+
+  function delTier(el) {
+    const tidx = parseInt(el.getAttribute('data-tidx'), 10);
+    ns.State.updateState(function (s) {
+      const b = s.supplierBook;
+      const target = b && Array.isArray(b.items) ? b.items[_tierIdx] : null;
+      if (target && Array.isArray(target.priceTiers) && isFinite(tidx)) {
+        target.priceTiers.splice(tidx, 1);
+      }
+    });
+    renderTiers();
+    render();
+  }
+
+  function updTier(el, e) {
+    const tidx = parseInt(el.getAttribute('data-tidx'), 10);
+    const field = el.getAttribute('data-field');
+    const raw = String(el.value || '').trim();
+    // Validate AT THE SEAM: a half-typed number is simply not written.
+    if (field === 'minQty') {
+      if (raw !== '' && (!/^\d{0,7}$/.test(raw) || Number(raw) < 0)) {
+        return;
+      }
+    } else if (field === 'price') {
+      if (raw !== '') {
+        const p = Number(raw.replace(/,/g, ''));
+        if (!isFinite(p) || p < 0 || raw.length > 12) {
+          return;
+        }
+      }
+    } else {
+      return;
+    }
+    const value = field === 'price' ? raw.replace(/,/g, '') : raw;
+    ns.State.updateState(function (s) {
+      const b = s.supplierBook;
+      const target = b && Array.isArray(b.items) ? b.items[_tierIdx] : null;
+      if (target && Array.isArray(target.priceTiers) && target.priceTiers[tidx]) {
+        target.priceTiers[tidx][field] = value;
+      }
+    });
+    // Focus discipline: save on keystroke, re-render on commit.
+    if (e && e.type === 'input') {
+      return;
+    }
+    renderTiers();
+    render();
+  }
+
+  function renderTiers() {
+    const el = U.$('proc-tier-body');
+    if (!el) {
+      return;
+    }
+    const it = itemsOf()[_tierIdx];
+    if (!it) {
+      el.innerHTML =
+        '<div class="proc-empty">Pick an item first, then set its quantity breaks.</div>';
+      return;
+    }
+    const tiers = Array.isArray(it.priceTiers) ? it.priceTiers : [];
+    const cur = String(it.currency || 'JMD');
+    let html =
+      '<div class="ct-sub">' +
+      esc(it.name || '(unnamed item)') +
+      ' - charge less per unit when they order more. The quote picks the row that matches the quantity.</div>';
+    html +=
+      '<div class="ox"><table class="dt pcx"><thead><tr><th>Order from (qty)</th><th class="w110">Unit price (' +
+      esc(cur) +
+      ')</th><th class="w50"></th></tr></thead><tbody>';
+    tiers.forEach(function (t, ti) {
+      html +=
+        '<tr><td><input type="text" inputmode="numeric" value="' +
+        esc(t.minQty === 0 ? '0' : t.minQty || '') +
+        '" data-action="updTier" data-tidx="' +
+        ti +
+        '" data-field="minQty" aria-label="Minimum quantity for this price" placeholder="0"></td>' +
+        '<td><input type="text" inputmode="decimal" value="' +
+        esc(t.price === 0 ? '0' : t.price || '') +
+        '" data-action="updTier" data-tidx="' +
+        ti +
+        '" data-field="price" aria-label="Unit price at this quantity" placeholder="0"></td>' +
+        '<td class="w50"><button type="button" class="btn btn-s btn-d" data-action="delTier" data-tidx="' +
+        ti +
+        '" aria-label="Remove this price break"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></td></tr>';
+    });
+    if (!tiers.length) {
+      html +=
+        '<tr><td colspan="3" class="proc-empty">No breaks yet - this item uses its single Min price for every quantity.</td></tr>';
+    }
+    html += '</tbody></table></div>';
+    html +=
+      '<div class="g6 mt8"><button type="button" class="btn btn-g btn-s" data-action="addTier"' +
+      (tiers.length >= TIERS_MAX ? ' disabled' : '') +
+      '>+ Add break</button></div>';
+    // Live proof of the picking rule: type a quantity, see the unit price the
+    // quote will charge. Falls back to Min price when no tier applies.
+    html +=
+      '<div class="pc-tier-pick"><label for="proc-tier-qty">Check a quantity: </label>' +
+      '<input type="text" inputmode="numeric" id="proc-tier-qty" value="" placeholder="qty" ' +
+      'data-action="tierPreview" aria-label="Quantity to price"><span id="proc-tier-pick-out" class="pc-sub"></span></div>';
+    el.innerHTML = html;
+    updateTierPreview();
+  }
+
+  // The preview echoes the SAME rule the prompt uses, so the officer sees
+  // exactly what the quote will charge. No rounding games: unit price only.
+  function tierPreview() {
+    updateTierPreview();
+  }
+  function updateTierPreview() {
+    const out = U.$('proc-tier-pick-out');
+    const qEl = U.$('proc-tier-qty');
+    if (!out || !qEl) {
+      return;
+    }
+    const it = itemsOf()[_tierIdx];
+    const q = Number(String(qEl.value || '').trim());
+    if (!it || !isFinite(q) || String(qEl.value || '').trim() === '') {
+      out.textContent = '';
+      return;
+    }
+    const p = unitPriceFor(it, q);
+    out.textContent =
+      p === null
+        ? 'no price recorded for this item yet'
+        : q + ' x ' + String(it.currency || 'JMD') + ' ' + p + ' each';
+  }
+
+  // ============================================================
+  // P7 (directive 2026-10-18): Calculator -> RFQ. The Bill of Quantities
+  // lives in calculator.html (a different page), so the handoff is a shared
+  // same-origin key `mmgr_rfq_draft` written by calcBoqRfq. On render we
+  // pick it up, surface an RFQ card, and the quote writer can address these
+  // lines to a chosen supplier. The lines carry CANONICAL engine qty/unit
+  // (C1) - never a display conversion. View state + one pickup; the draft is
+  // cleared only when the officer dismisses it (never silently dropped).
+  // ============================================================
+  let _rfq = null; // { lines:[{name,qty,unit,currency}], at } or null
+  let _rfqLoaded = false;
+
+  function loadRfqDraft() {
+    if (_rfqLoaded) {
+      return;
+    }
+    _rfqLoaded = true;
+    try {
+      const raw = localStorage.getItem('mmgr_rfq_draft');
+      if (!raw) {
+        return;
+      }
+      const d = JSON.parse(raw);
+      if (d && Array.isArray(d.lines) && d.lines.length) {
+        _rfq = { lines: d.lines, at: d.at || '' };
+      }
+    } catch (e) {
+      /* a malformed handoff must never break the tab */
+    }
+  }
+
+  function getRfq() {
+    loadRfqDraft();
+    return _rfq;
+  }
+
+  function clearRfq() {
+    _rfq = null;
+    _rfqLoaded = true;
+    try {
+      localStorage.removeItem('mmgr_rfq_draft');
+    } catch (e) {
+      /* ignore */
+    }
+    render();
+  }
+
+  function renderRfq() {
+    const sec = U.$('proc-rfq');
+    if (!sec) {
+      return;
+    }
+    loadRfqDraft();
+    if (!_rfq) {
+      sec.classList.add('is-hide');
+      return;
+    }
+    const body = U.$('proc-rfq-body');
+    if (body) {
+      const rows = _rfq.lines
+        .map(function (l, i) {
+          return (
+            '<tr><td>' +
+            (i + 1) +
+            '</td><td>' +
+            esc(l.name || 'Line') +
+            '</td><td>' +
+            esc(String(l.qty)) +
+            '</td><td>' +
+            esc(l.unit || '') +
+            '</td><td>' +
+            esc(l.currency || 'JMD') +
+            '</td></tr>'
+          );
+        })
+        .join('');
+      body.innerHTML =
+        '<div class="ct-sub">' +
+        _rfq.lines.length +
+        ' line' +
+        (_rfq.lines.length === 1 ? '' : 's') +
+        ' sent from the Bill of quantities. Quantities are in their canonical engine units.</div>' +
+        '<div class="ox"><table class="dt pcx"><thead><tr><th>#</th><th>Item</th>' +
+        '<th class="w110">Qty</th><th class="w80">Unit</th><th class="w80">Cur</th>' +
+        '</tr></thead><tbody>' +
+        rows +
+        '</tbody></table></div>';
+    }
+    sec.classList.remove('is-hide');
+  }
+
   // ---- API ----
   ns.Proc = {
     render: render,
@@ -1397,6 +2444,18 @@ var MMGR = window.MMGR || {};
     procQuoteVendor: procQuoteVendor,
     procQuoteTone: procQuoteTone,
     procQuoteCopy: procQuoteCopy,
+    // P8 RFQ email pack
+    procQuoteTerm: procQuoteTerm,
+    procQuoteMailto: procQuoteMailto,
+    // P9 purchase order PDF (from an awarded quote)
+    procPo: procPo,
+    syncPoBtn: syncPoBtn,
+    poLines: poLines,
+    // P10 lead time -> schedule
+    procLead: procLead,
+    closeLead: closeLead,
+    procLeadLink: procLeadLink,
+    renderLead: renderLead,
     // P2/P3/P4
     procImport: procImport,
     procImportCancel: procImportCancel,
@@ -1406,6 +2465,24 @@ var MMGR = window.MMGR || {};
     procCompare: procCompare,
     procCompareClose: procCompareClose,
     renderCompare: renderCompare,
+    // P5 quantity break pricing
+    openTiers: openTiers,
+    closeTiers: closeTiers,
+    addTier: addTier,
+    delTier: delTier,
+    updTier: updTier,
+    tierPreview: tierPreview,
+    renderTiers: renderTiers,
+    tierPriceFor: tierPriceFor,
+    unitPriceFor: unitPriceFor,
+    tiersOf: tiersOf,
+    // P6 landed cost
+    landedFor: landedFor,
+    landedUnitFor: landedUnitFor,
+    // P7 calculator -> RFQ
+    getRfq: getRfq,
+    clearRfq: clearRfq,
+    renderRfq: renderRfq,
     _impPreview: function () {
       return _imp && _imp.preview ? _imp.preview : null;
     }

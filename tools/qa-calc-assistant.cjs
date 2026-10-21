@@ -943,7 +943,28 @@ async function loadButton(browser, errors) {
       const cs = getComputedStyle(b);
       return { bg: cs.backgroundColor, color: cs.color, border: cs.borderTopColor };
     }, BTN);
-  const settle = () => page.waitForTimeout(320);
+  // A fixed 320ms wait RACES the 120ms CSS transition. The transition's
+  // start time is set at the next style resolution, and a busy main thread
+  // (the battery running other suites) delays that resolution, so the read
+  // can land MID-transition and return an INTERPOLATED tone: rgb(140,140,140)
+  // between the light 51 and dark 245 label tokens, rgb(144,141,139) between
+  // the light 229 and dark 43 border tokens. That failed the token check for
+  // a reason that has nothing to do with the app. Wait for the element's
+  // OWN transitions to finish instead of guessing a duration: force the
+  // style recalc that starts the transition, await the animations, then
+  // flush a frame so the final value is committed.
+  const settle = async () => {
+    await page.evaluate(sel => {
+      const b = document.querySelector(sel);
+      void getComputedStyle(b).color; // force recalc: the transition starts now
+      const anims = b.getAnimations ? b.getAnimations() : [];
+      const done = anims.map(a => a.finished.catch(() => {}));
+      return Promise.race([Promise.all(done), new Promise(r => setTimeout(r, 3000))]);
+    }, BTN);
+    await page.evaluate(
+      () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+    );
+  };
   const rest = await readBtn();
   check(
     'W11 default fill is transparent (not a green block)',

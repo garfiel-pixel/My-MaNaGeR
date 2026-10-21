@@ -163,18 +163,50 @@ function directive(policySrc, name) {
   }
 
   // Scoping: only pricing.html may receive PADDLE_CSP.
-  const wScope = workerSrc.slice(workerSrc.indexOf('const PADDLE_CSP'));
+  //
+  // The check must NOT be anchored on the `const PADDLE_CSP` declaration:
+  // the selection site moved when the consent gate landed (it now lives in
+  // cspFor(), which sits ABOVE the const, because the policy has to be
+  // resolved per request for the analytics host). A slice from the
+  // declaration would therefore miss the very code it is asserting.
+  // Instead, blank out the declaration and inspect every USE of the policy.
+  // The placeholder must not itself contain the string being counted.
+  const wWithoutDecl = workerSrc.replace(
+    /const\s+PADDLE_CSP\s*=\s*\[[\s\S]*?\]\.join\([^)]*\)/,
+    'const PADDLE_POLICY = "<POLICY_DECL>"'
+  );
+  const wUses = wWithoutDecl.match(/PADDLE_CSP/g) || [];
+  ok(
+    'worker.js uses PADDLE_CSP in exactly one place (the pricing selection)',
+    wUses.length === 1,
+    'uses=' + wUses.length
+  );
+  // The condition and the policy must be on the SAME line as the use, which
+  // is how the selection is written in both worker.js and serve.cjs.
+  const wSelLine = wWithoutDecl
+    .split('\n')
+    .find(l => l.indexOf('PADDLE_CSP') > -1 && l.indexOf('PADDLE_POLICY') === -1);
   ok(
     'worker.js scopes PADDLE_CSP to pricing only',
-    /normalized === '\/pricing' \|\| normalized === '\/pricing\.html'/.test(
-      wScope.slice(wScope.indexOf("normalized === '/pricing'") - 200)
-    )
+    !!wSelLine &&
+      /normalized === '\/pricing'/.test(wSelLine) &&
+      /normalized === '\/pricing\.html'/.test(wSelLine),
+    wSelLine ? wSelLine.trim().slice(0, 150) : 'no use of PADDLE_CSP found'
   );
+  // The set of paths the selection condition names must be EXACTLY the two
+  // pricing forms - no more, no fewer. A regex on one literal ordering
+  // misses a policy that also matches '/' (e.g. `normalized === '/' ||
+  // normalized === '/pricing' || ...`), which is exactly the leak this gate
+  // exists to prevent: the homepage must keep the strict site-wide policy.
+  const wPaths = wSelLine
+    ? (wSelLine.match(/normalized === '[^']*'/g) || [])
+        .map(s => s.replace(/^normalized === '|'$/g, ''))
+        .sort()
+    : [];
   ok(
     "worker.js does not apply PADDLE_CSP to '/'",
-    !/normalized === '\/pricing'\s*\|\s*normalized === '\/pricing\.html'\s*\|\s*normalized === '\/'/.test(
-      workerSrc
-    )
+    wPaths.length === 2 && wPaths[0] === '/pricing' && wPaths[1] === '/pricing.html',
+    'selection names [' + wPaths.join(', ') + ']'
   );
   ok(
     'serve.cjs scopes PADDLE_CSP by pricing.html basename',
@@ -254,15 +286,42 @@ function directive(policySrc, name) {
   try {
     const page = await browser.newPage();
     const viol = [];
+    // Two kinds of "Content Security Policy" console message exist, and the
+    // difference is the whole point of this check:
+    //   - ENFORCED ("violates the following Content Security Policy
+    //     directive ... The action has been blocked"): our policy refused
+    //     something the checkout needs. THAT is the regression this gate
+    //     exists to catch.
+    //   - REPORT-ONLY ("violates the following report-only Content Security
+    //     Policy directive ... no further action has been taken"): an
+    //     advisory. Paddle's own server sends one
+    //     (Content-Security-Policy-Report-Only: frame-ancestors <origin>)
+    //     and it echoes the framing origin with the PORT STRIPPED, so on a
+    //     local origin (http://127.0.0.1:8765) it always mismatches the
+    //     real origin and logs an advisory. Nothing is blocked, and the
+    //     overlay still renders - the two checks below prove that.
+    // Counting a report-only advisory as a failure would make this gate
+    // pass on production and fail on localhost for a reason that has
+    // nothing to do with our policy.
+    const isReportOnly = t => /report-only/i.test(t);
+    // public.profitwell.com is DELIBERATELY blocked by our policy (ARM 1
+    // asserts it stays blocked) - it is Paddle's revenue analytics, not
+    // checkout. The request therefore fails on purpose and is not a
+    // checkout regression.
+    const isIntentionalProfitwellBlock = t => /profitwell/i.test(t);
     page.on('console', m => {
       const t = m.text();
-      if (/Content Security Policy/.test(t)) {
+      if (
+        /Content Security Policy/.test(t) &&
+        !isReportOnly(t) &&
+        !isIntentionalProfitwellBlock(t)
+      ) {
         viol.push(t.slice(0, 160));
       }
     });
     page.on('requestfailed', r => {
       const u = r.url();
-      if (/paddle/.test(u)) {
+      if (/paddle/.test(u) && !/profitwell/.test(u)) {
         viol.push('REQFAIL ' + u.slice(0, 90) + ' :: ' + ((r.failure() || {}).errorText || ''));
       }
     });

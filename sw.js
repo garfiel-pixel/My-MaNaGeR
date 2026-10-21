@@ -140,7 +140,14 @@
 // (the AGENTS rule 1 trap, caught by tools/verify-csp-hashes.cjs).
 // project.html, js/mmgr-app.js and dist/bundle.js are SHELL assets, hence
 // this bump.
-const CACHE = 'mmgr-shell-v450';
+// v451 - PROCUREMENT P5-P10 + M-2 WAVE (2026-10-21). The Procurement tab
+// grew the price-break tiers, the landed-cost uplift, the calculator-to-RFQ
+// handoff, the RFQ email pack, the purchase-order PDF and the lead-time-to-
+// schedule link; Settings gained the Your data block (download all my data,
+// delete my account); the field guide gained the matching cards. The served
+// pages changed (project.html, calculator.html, css/mmgr.css, dist/bundle.js,
+// dist/mmgr.min.css, mymanager-field-guide.html), hence this bump.
+const CACHE = 'mmgr-shell-v451';
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new
 // 'JIC rate book' choice on calculator.html) prices ANY shipped book row as

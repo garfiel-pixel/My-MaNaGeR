@@ -652,9 +652,13 @@
   <section class="card" id="calc-boq-card" aria-labelledby="calc-boq-h">
     <div class="bcp-hist-head">
       <h2 id="calc-boq-h" class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-list"></use></svg> Bill of quantities <span class="bcp-hist-note">- every line priced on this device</span></h2>
-      <button type="button" class="btn btn-n btn-s" data-action="calcBoqClear">Clear bill</button>
+      <span>
+        <button type="button" class="btn btn-n btn-s" data-action="calcBoqRfq" title="Send these lines to the Procurement tab as a request for quotation">Request prices for this bill</button>
+        <button type="button" class="btn btn-n btn-s" data-action="calcBoqClear">Clear bill</button>
+      </span>
     </div>
     <p class="bcp-boq-total" id="calc-boq-total"></p>
+    <p class="bcp-hist-note" id="calc-rfq-note" role="status" aria-live="polite"></p>
     <!-- X1 (plan v2): the forgotten-work check - flags rebar with no
          concrete, pours with no formwork, walls with no footing, digs with
          no cart-away; one-tap fixes add a real, editable bill line. -->

@@ -1034,7 +1034,7 @@
             </div>
           </div>
           <div class="ox"><table class="dt"><thead><tr>
-            <th class="w38">ID</th><th>Item</th><th class="w70">Unit</th><th class="w110">Min price</th><th class="w80">Currency</th><th class="w80">Lead days</th><th class="w70">Min order</th><th class="w130">Quoted</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
+            <th class="w38">ID</th><th>Item</th><th class="w70">Unit</th><th class="w110">Min price</th><th class="w80">Currency</th><th class="w80">Lead days</th><th class="w70">Min order</th><th class="w130">Quoted</th><th class="w70">Duty %</th><th class="w130">Breaks</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
           </tr></thead><tbody id="proc-item-body"></tbody></table></div>
           <div id="proc-subtotal" class="stat-sm proc-subtotal"></div>
         </div>
@@ -1060,6 +1060,39 @@
       </div>
       <div id="proc-cmp-body"></div>
     </div>
+    <!-- P5 quantity break pricing (directive 2026-10-18): per-item volume
+         tiers. The quote picks the row matching the quantity; no tier means
+         the single Min price is used, exactly as before. -->
+    <div class="card m0a mt16 is-hide" id="proc-tiers">
+      <div class="card-title">Quantity breaks<span class="ct-sub">Charge less per unit the more they order. The quote picks the row that matches the quantity.</span>
+        <div class="g6">
+          <button class="btn btn-d btn-s" data-action="closeTiers">Close</button>
+        </div>
+      </div>
+      <div id="proc-tier-body"></div>
+    </div>
+    <!-- P10 lead time -> schedule (directive 2026-10-18): attach an item's
+         supplier lead time to a schedule task so the Lead-Time Tracker, the
+         Kanban lead-time lane and the hatched Gantt bar pick it up. -->
+    <div class="card m0a mt16 is-hide" id="proc-lead">
+      <div class="card-title">Attach lead time to the schedule<span class="ct-sub">Marks the task as a lead-time item, orders today, and expects delivery after the supplier's lead time. It warns when that lands past the task's own start.</span>
+        <div class="g6">
+          <button class="btn btn-d btn-s" data-action="closeLead">Close</button>
+        </div>
+      </div>
+      <div id="proc-lead-body"></div>
+    </div>
+    <!-- P7 calculator -> RFQ (directive 2026-10-18): lines handed over from
+         the Bill of Quantities (calculator.html) via a shared local key,
+         ready to address to a chosen supplier in the quote writer. -->
+    <div class="card m0a mt16 is-hide" id="proc-rfq">
+      <div class="card-title">Request for quotation from your bill<span class="ct-sub">Lines sent from the calculator's Bill of quantities. Quantities are in their canonical engine units.</span>
+        <div class="g6">
+          <button class="btn btn-d btn-s" data-action="clearRfq">Dismiss</button>
+        </div>
+      </div>
+      <div id="proc-rfq-body"></div>
+    </div>
     <!-- AI quote panel (H2): a PANEL over the existing relay, never a second
          engine , keys, quota, sign-in gate and error copy are all inherited. -->
     <div class="card m0a mt16">
@@ -1073,6 +1106,20 @@
           </select>
           <button class="btn btn-g btn-s" data-action="procQuote">Write quote</button>
           <button class="btn btn-n btn-s is-hide" data-action="procQuoteCopy" id="proc-quote-copy"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>
+          <button class="btn btn-n btn-s is-hide" data-action="procQuoteMailto" id="proc-quote-mailto"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg> Open in email</button>
+          <!-- P9 purchase order: revealed only for an AWARD-tone quote, so a
+               PO is raised from an awarded quote (never a cold request). -->
+          <button class="btn btn-g btn-s is-hide" data-action="procPo" id="proc-po"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Purchase order</button>
+        </div>
+        <!-- P8 RFQ email pack: the practical terms every request carries.
+             Ephemeral (read live by getQuoteOpts), never written to state. -->
+        <div class="proc-rfq-pack">
+          <label class="pv-fl" for="proc-quote-valid">Quote valid until</label>
+          <input class="pv-in" type="date" id="proc-quote-valid" data-action="procQuoteTerm" aria-label="Quote valid until">
+          <label class="pv-fl" for="proc-quote-site">Deliver to</label>
+          <input class="pv-in" type="text" id="proc-quote-site" data-action="procQuoteTerm" aria-label="Delivery site" placeholder="Site address">
+          <label class="pv-fl" for="proc-quote-terms">Payment terms</label>
+          <input class="pv-in" type="text" id="proc-quote-terms" data-action="procQuoteTerm" aria-label="Payment terms" placeholder="e.g. Net 30">
         </div>
       </div>
       <div id="proc-quote-out" class="proc-quote-out" role="region" aria-label="Generated quote" aria-live="polite"></div>
@@ -1597,6 +1644,16 @@
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> Usage statistics</span><label class="tgl"><input type="checkbox" id="consent-stat-tgl" aria-label="Usage statistics: count visits to the public pages" data-action="tglConsentStat"><span class="tsl"></span></label></div>
     <div class="sr-hint">Counts visits to the public pages so we can see which parts get used. Never used for advertising. Your project data stays on this device.</div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> What we store</span><a class="btn btn-n btn-s" href="privacy.html" target="_blank" rel="noopener">Open</a></div>
+
+    <!-- M-2 PRIVACY (audit 2026-10-18, 8.5): your data, in plain reach.
+         Export is a client-side JSON of every mmgr_* key this browser holds
+         (offline-first: the device IS the source). Account delete renders only
+         when signed in, and mirrors the Worker contract: an email account
+         confirms with its password, a Google account types DELETE. -->
+    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Your data</div>
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Download all my data</span><button class="btn btn-n btn-s" data-action="exportMyData">Download</button></div>
+    <div class="sr-hint">One JSON file of every project and setting this browser holds. Keep it as a backup, or move it to another device.</div>
+    <div id="data-account" aria-live="polite"></div>
 
     <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud &amp; Sync</div>
     <!-- PLAN-OF-ACTION-AI-VOICE-SYNC-v1 4.5: optional Google identity for

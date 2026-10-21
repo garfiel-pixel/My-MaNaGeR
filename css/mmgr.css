@@ -7240,6 +7240,9 @@ body.dark-mode .wbs-alert-item {
 .mt7 {
   margin-top: 7px;
 }
+.mt4 {
+  margin-top: 4px;
+}
 .mt8 {
   margin-top: 8px;
 }
@@ -8242,6 +8245,34 @@ body.dark-mode .pcard:hover {
   margin-top: 16px;
   border-top: 1px solid var(--border);
   padding-top: 12px;
+}
+/* P10 inline late note: the supplier lead time lands after the task's own
+   start. A subtle inline chip - tinted, soft border, sits on the same line
+   under the status - so it reads as attached to that row without becoming
+   another block across the panel (owner note: distinguish, keep aligned). */
+.lt-late {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+}
+body.dark-mode .lt-late {
+  color: #fde68a;
+  background: #4a3406;
+  border-color: #92600a;
+}
+/* The tracker already emits txt-warn for a near due date; give it a home so
+   the warning colour is consistent in both palettes. */
+.txt-warn {
+  color: #b45309;
+}
+body.dark-mode .txt-warn {
+  color: #fbbf24;
 }
 .lt-section-h {
   font-size: 0.74rem;
@@ -16901,4 +16932,67 @@ textarea.pv-in {
   font-size: 0.76rem;
   font-weight: 600;
   color: var(--text);
+}
+/* P5 quantity break pricing: the Breaks cell shows the ladder inline (or an
+   invite to add one), and the tier panel previews the picked unit price. */
+.proc-brk {
+  white-space: nowrap;
+}
+.proc-brk .btn {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pc-tier-pick {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+  color: var(--text);
+}
+.pc-tier-pick input {
+  width: 74px;
+  padding: 3px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--input-bg, var(--card));
+  color: var(--text);
+  font-size: 0.74rem;
+}
+.pc-tier-pick .pc-sub {
+  display: inline;
+  margin-left: 4px;
+}
+/* P6 landed cost: the vendor panel's "Delivery and on-costs" subsection label. */
+.pv-sub {
+  grid-column: 1 / -1;
+  margin-top: 8px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--slate);
+}
+/* P8 RFQ email pack: validity / delivery / payment terms under the quote
+   controls. Three-up on wide, stacked on narrow (same pv-in styling). */
+.proc-rfq-pack {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+  align-items: end;
+}
+.proc-rfq-pack .pv-fl {
+  grid-row: 1;
+}
+.proc-rfq-pack .pv-in {
+  grid-row: 2;
+  width: 100%;
+}
+@media (max-width: 720px) {
+  .proc-rfq-pack {
+    grid-template-columns: 1fr;
+  }
 }

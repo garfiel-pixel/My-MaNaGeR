@@ -286,6 +286,28 @@ var MMGR = window.MMGR || {};
       if (v.email) {
         lines.push('  Email: ' + v.email);
       }
+      // P6 landed cost: the supplier's per-delivery on-costs, in their OWN
+      // currency (never converted). The quote may add these to a delivered
+      // price but must never silently convert between currencies (C2 rule).
+      const lf = ns.Proc && ns.Proc.landedFor ? ns.Proc.landedFor(v, null, 1) : null;
+      if (lf && (lf.freight > 0 || lf.handling > 0 || lf.lead !== null)) {
+        const oncost = [];
+        // Vendor-level on-costs have no single currency (items may differ),
+        // so print the plain number - never assert a currency symbol we do
+        // not know (C2 honesty: no silent currency claim).
+        if (lf.freight > 0) {
+          oncost.push('freight ' + lf.freight);
+        }
+        if (lf.handling > 0) {
+          oncost.push('handling ' + lf.handling);
+        }
+        if (lf.lead !== null) {
+          oncost.push('delivery ' + lf.lead + ' days');
+        }
+        lines.push(
+          '  delivery costs (per delivery, in this supplier\u2019s currency): ' + oncost.join(', ')
+        );
+      }
       if (!its.length) {
         lines.push('  (no items recorded)');
       }
@@ -317,6 +339,22 @@ var MMGR = window.MMGR || {};
             quotedAgo(it.quotedAt) +
             (it.quotedBy ? ' by ' + it.quotedBy : '')
         );
+        // P5 quantity break pricing: expose the volume ladder so the quote
+        // picks the tier matching the ordered quantity instead of always the
+        // single Min price. Same money() formatter, so every figure here is
+        // copyable byte-for-byte into the quote (H7.2 gate stays intact).
+        const tiers = ns.Proc && ns.Proc.tiersOf ? ns.Proc.tiersOf(it) : [];
+        if (tiers.length) {
+          lines.push(
+            '    quantity breaks: ' +
+              tiers
+                .map(function (t) {
+                  return t.minQty + '+ = ' + money(t.price, it.currency);
+                })
+                .join(', ') +
+              ' (use the break that matches the ordered quantity)'
+          );
+        }
       });
     });
     const hiddenV = listV.length - shown.length;
@@ -329,6 +367,18 @@ var MMGR = window.MMGR || {};
       lines.push('... ' + hiddenI + ' more items not included in this block.');
     }
     lines.push('');
+    // P7 calculator -> RFQ: when a bill was handed over, list its lines as
+    // the REQUESTED quantities the supplier is being asked to price. Canonical
+    // engine qty/unit (C1). These are quantities, not money, so the H7.2
+    // byte-for-byte money gate is unaffected.
+    const rfq = ns.Proc && ns.Proc.getRfq ? ns.Proc.getRfq() : null;
+    if (rfq && Array.isArray(rfq.lines) && rfq.lines.length) {
+      lines.push('=== REQUESTED LINES (from the bill of quantities, price these) ===');
+      rfq.lines.forEach(function (l) {
+        lines.push('  - ' + l.name + ' | qty ' + l.qty + ' ' + (l.unit || ''));
+      });
+      lines.push('');
+    }
     const totals = bookTotals(listed);
     if (totals.verdict) {
       lines.push(totals.verdict);
@@ -1197,13 +1247,27 @@ End with: a one-line verdict on submission readiness, and a short list of exactl
       const s = S();
       const pn = (s && s.charter && s.charter.name) || (s && s.projectName) || 'our project';
       const signOff = (s && s.userName) || 'Project Manager';
+      // P8 RFQ email pack: practical terms, passed through verbatim when set.
+      // They are plain words (a date, a site, payment terms) - never money -
+      // so the H7.2 byte-for-byte money gate is unaffected.
+      const terms = [];
+      if (opts.validUntil) {
+        terms.push('Quote valid until: ' + opts.validUntil);
+      }
+      if (opts.site) {
+        terms.push('Deliver to: ' + opts.site);
+      }
+      if (opts.terms) {
+        terms.push('Payment terms: ' + opts.terms);
+      }
+      const termsBlock = terms.length ? terms.join('\n') + '\n' : '';
       return `SUPPLIER EMAIL , WRITE IT FROM THE DATA BELOW ONLY
 
 === THIS EMAIL ===
 To: the supplier named in the data
 Type: ${tone}
 Project: ${pn}
-Sign-off name: ${signOff}
+${termsBlock}Sign-off name: ${signOff}
 
 ${buildProcurementContext({ vendorId: opts.vendorId || '' })}
 

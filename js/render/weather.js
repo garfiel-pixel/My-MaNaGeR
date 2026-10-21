@@ -81,6 +81,14 @@ var MMGR = window.MMGR || {};
           }
           const pct =
             sub && exp && exp > sub ? Math.round(((today - sub) / (exp - sub)) * 100) : null;
+          // P10 inline late note: the supplier's lead time lands AFTER this
+          // task's own start - ordering was too late. A subtle inline chip so
+          // it reads as attached to this row without shouting (owner note:
+          // distinguish, don't add another wall).
+          const late =
+            t.startDate && exp && U.parseDL(t.expectedDate) > U.parseDL(t.startDate)
+              ? ' - lands after this task starts (' + t.startDate + ')'
+              : '';
           return (
             '<tr><td>' +
             U.escapeHtml(t.name) +
@@ -93,6 +101,7 @@ var MMGR = window.MMGR || {};
             '">' +
             status +
             (pct !== null ? ' (' + Math.max(0, Math.min(100, pct)) + '% elapsed)' : '') +
+            (late ? '<span class="lt-late">' + U.escapeHtml(late) + '</span>' : '') +
             '</td></tr>'
           );
         })

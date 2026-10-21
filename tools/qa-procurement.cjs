@@ -411,10 +411,10 @@ function quoteFromBody(body) {
       };
     });
     check(
-      'M2 migration seeds supplierBook + packs.procurement=false, keeps the C10 material-order row, schema 21',
-      // Re-baselined 2026-10-20: the P2 price-history wave bumped
-      // SCHEMA_VERSION 20 -> 21 (additive back-fill of priceHistory).
-      m2.v === 21 &&
+      'M2 migration seeds supplierBook + packs.procurement=false, keeps the C10 material-order row, schema 22',
+      // Re-baselined 2026-10-21: the P5 quantity-break wave bumped
+      // SCHEMA_VERSION 21 -> 22 (additive back-fill of priceTiers).
+      m2.v === 22 &&
         m2.seeded &&
         m2.packSeeded &&
         m2.c10 &&
@@ -465,7 +465,9 @@ function quoteFromBody(body) {
         // NOTE: the table is `table.dt > thead > th` (repo convention), so
         // the descendant selector has to read `.dt thead th`, not the other
         // way round.
-        cols: document.querySelectorAll('#panel-proc table.dt thead th').length === 10,
+        // 12 = ID, Item, Unit, Min price, Currency, Lead days, Min order,
+        // Quoted, Duty % (P6), Breaks (P5), Notes, delete-icon.
+        cols: document.querySelectorAll('#panel-proc table.dt thead th').length === 12,
         subtotal: q('#proc-subtotal'),
         vendorSel: !!document.getElementById('proc-quote-vendor'),
         vendorOpt0: (document.getElementById('proc-quote-vendor').options[0] || {}).text,
@@ -480,7 +482,7 @@ function quoteFromBody(body) {
       };
     });
     check(
-      'S1 panel structure: vendors column, 9-column table, subtotal, quote card + empty states',
+      'S1 panel structure: vendors column, 12-column table, subtotal, quote card + empty states',
       s1.panel &&
         s1.vendors &&
         s1.addVendor &&
@@ -1288,6 +1290,518 @@ function quoteFromBody(body) {
     await page.evaluate(function () {
       window.MMGR.Proc.procCompareClose();
     });
+
+    // ---- P5: quantity break pricing (directive 2026-10-18) ----
+    // Seed a volume ladder on item 0 and prove the picking rule, the editor
+    // write-through, the live preview, and that the quote context exposes it.
+    await page.evaluate(function () {
+      window.MMGR.State.updateState(function (s) {
+        const it = s.supplierBook.items[0];
+        it.minPrice = '120';
+        it.priceTiers = [
+          { minQty: 1, price: '120' },
+          { minQty: 50, price: '112' },
+          { minQty: 200, price: '105' }
+        ];
+      });
+      window.MMGR.Proc.render();
+    });
+    const p5pick = await page.evaluate(function () {
+      const it = window.MMGR.State.getState().supplierBook.items[0];
+      const P = window.MMGR.Proc;
+      return {
+        q1: P.tierPriceFor(it, 1),
+        q49: P.tierPriceFor(it, 49),
+        q50: P.tierPriceFor(it, 50),
+        q199: P.tierPriceFor(it, 199),
+        q200: P.tierPriceFor(it, 200),
+        q999: P.tierPriceFor(it, 999),
+        // no tier at/below qty -> falls back to single minPrice
+        below: P.tierPriceFor(it, 0),
+        unit0: P.unitPriceFor(it, 0),
+        unit50: P.unitPriceFor(it, 50)
+      };
+    });
+    check(
+      'P5a tier picker takes the largest minQty at or below the quantity, falls back to Min price below the ladder',
+      p5pick.q1 === 120 &&
+        p5pick.q49 === 120 &&
+        p5pick.q50 === 112 &&
+        p5pick.q199 === 112 &&
+        p5pick.q200 === 105 &&
+        p5pick.q999 === 105 &&
+        p5pick.below === null &&
+        p5pick.unit0 === 120 &&
+        p5pick.unit50 === 112,
+      p5pick
+    );
+    // Editor: open the panel, add a break, edit it, confirm state + label.
+    await page.evaluate(function () {
+      const btn = document.querySelector('#proc-item-body [data-action="openTiers"]');
+      btn.click();
+    });
+    const p5open = await page.evaluate(function () {
+      return !document.getElementById('proc-tiers').classList.contains('is-hide');
+    });
+    await page.evaluate(function () {
+      window.MMGR.Proc.addTier(); // seeds minQty = highest+1 = 201
+    });
+    const p5edited = await page.evaluate(function () {
+      const inp = document.querySelector(
+        '#proc-tier-body input[data-field="minQty"][data-tidx="3"]'
+      );
+      inp.value = '500';
+      inp.dispatchEvent(new Event('change', { bubbles: true }));
+      const price = document.querySelector(
+        '#proc-tier-body input[data-field="price"][data-tidx="3"]'
+      );
+      price.value = '99';
+      price.dispatchEvent(new Event('change', { bubbles: true }));
+      const it = window.MMGR.State.getState().supplierBook.items[0];
+      return { n: it.priceTiers.length, t3: it.priceTiers[3] };
+    });
+    check(
+      'P5b the tier editor writes through to state (add + edit minQty and price)',
+      // minQty and price are stored as strings, matching how minPrice/
+      // leadTimeDays/minOrder are stored; tiersOf normalises with Number().
+      p5open &&
+        p5edited.n === 4 &&
+        p5edited.t3 &&
+        p5edited.t3.minQty === '500' &&
+        p5edited.t3.price === '99',
+      p5edited
+    );
+    // Live preview echoes the same picking rule the quote uses.
+    const p5prev = await page.evaluate(function () {
+      const q = document.getElementById('proc-tier-qty');
+      q.value = '50';
+      window.MMGR.Proc.tierPreview();
+      return document.getElementById('proc-tier-pick-out').textContent;
+    });
+    check(
+      'P5c the quantity preview shows the tier unit price the quote will charge',
+      /50 x JMD 112 each/.test(p5prev),
+      p5prev
+    );
+    await page.evaluate(function () {
+      window.MMGR.Proc.closeTiers();
+    });
+    // Quote context exposes the ladder so the model can pick by quantity.
+    const p5ctx = await page.evaluate(function () {
+      return window.MMGR.Prompts.context ? window.MMGR.Prompts.context({ vendorId: 'v1' }) : '';
+    });
+    check(
+      'P5d the quote context lists each quantity break with its money figure',
+      /quantity breaks:/.test(p5ctx) &&
+        /1\+ = J\$120/.test(p5ctx) &&
+        /50\+ = J\$112/.test(p5ctx) &&
+        /500\+ = J\$99/.test(p5ctx),
+      p5ctx.slice(p5ctx.indexOf('quantity breaks') - 40, p5ctx.indexOf('quantity breaks') + 120)
+    );
+
+    // ---- P6: landed cost (directive 2026-10-18) ----
+    // Freight + handling are per-DELIVERY (spread over qty); duty is a
+    // per-item rate. "Cheapest" must mean cheapest DELIVERED, and on-costs
+    // stay in the item's own currency - never converted (C2 honesty).
+    await page.evaluate(function () {
+      window.MMGR.State.updateState(function (s) {
+        const b = s.supplierBook;
+        // v1 freight/handling/lead: per-delivery on-costs.
+        b.vendors[0].landFreight = '200';
+        b.vendors[0].landHandling = '100';
+        b.vendors[0].landLeadDays = '7';
+        // item 0 (Gravel): base 120 JMD, 10% duty.
+        b.items[0].dutyPct = '10';
+      });
+      window.MMGR.Proc.render();
+    });
+    const p6 = await page.evaluate(function () {
+      const s = window.MMGR.State.getState();
+      const v = s.supplierBook.vendors[0];
+      const it = s.supplierBook.items[0];
+      const P = window.MMGR.Proc;
+      // qty=2: base 120 -> duty 10% = 132, + freight 200/2=100 + handling 100/2=50 => 282.
+      const unit2 = P.landedUnitFor(v, it, 2);
+      // qty=1: 132 + 200 + 100 = 432.
+      const unit1 = P.landedUnitFor(v, it, 1);
+      const lf = P.landedFor(v, it, 2);
+      return {
+        unit2: Math.round(unit2 * 100) / 100,
+        unit1: Math.round(unit1 * 100) / 100,
+        freight2: lf.freight,
+        handling2: lf.handling,
+        dutyRate: lf.dutyRate,
+        lead: lf.lead
+      };
+    });
+    check(
+      'P6a landed unit price = base + duty + per-delivery freight/handling spread over qty (own currency, no FX)',
+      p6.unit2 === 282 &&
+        p6.unit1 === 432 &&
+        p6.freight2 === 100 &&
+        p6.handling2 === 50 &&
+        p6.dutyRate === 10 &&
+        p6.lead === 7,
+      p6
+    );
+    // Compare view ranks by delivered price and labels the uplift.
+    await page.evaluate(function () {
+      window.MMGR.State.updateState(function (s) {
+        const b = s.supplierBook;
+        // A second supplier with a CHEAPER base but heavier on-costs, so the
+        // DELIVERED price is higher - the highlight must NOT flip to it.
+        b.vendors.push({
+          id: 'v2',
+          name: 'Bulk Traders',
+          contact: '',
+          phone: '',
+          email: '',
+          notes: '',
+          landFreight: '500',
+          landHandling: '0',
+          landLeadDays: '14'
+        });
+        b.nvendorid = 3;
+        b.items.push({
+          id: 'i2',
+          vendorId: 'v2',
+          name: 'Gravel',
+          unit: 'load',
+          minPrice: '100',
+          currency: 'JMD',
+          leadTimeDays: '5',
+          minOrder: '',
+          dutyPct: '10',
+          notes: '',
+          quotedAt: '',
+          quotedBy: '',
+          priceHistory: []
+        });
+        b.nitemid = 3;
+      });
+      window.MMGR.Proc.render();
+      window.MMGR.Proc.procCompare();
+    });
+    const p6cmp = await page.evaluate(function () {
+      const body = document.getElementById('proc-cmp-body').textContent;
+      // Find the GRAVEL row and read which vendor cell is highlighted. v1
+      // (Aggie) base 120 -> delivered 432; v2 (Bulk) base 100 -> delivered
+      // 610. Ranking by DELIVERED must highlight Aggie despite Bulk's cheaper
+      // base - that is the whole point of P6 (cheapest = cheapest delivered).
+      let gravelWinner = '';
+      document.querySelectorAll('#proc-cmp-body tbody tr').forEach(function (tr) {
+        const label = (tr.querySelector('td') || {}).textContent || '';
+        if (/^Gravel/.test(label.trim())) {
+          tr.querySelectorAll('td').forEach(function (td, ci) {
+            if (ci > 0 && td.classList.contains('pc-cheap')) {
+              gravelWinner = td.textContent.trim().slice(0, 30);
+            }
+          });
+        }
+      });
+      return { gravelWinner: gravelWinner, hasDelivered: /delivered/.test(body) };
+    });
+    check(
+      'P6b the compare matrix ranks GRAVEL by delivered price (Aggie 432 beats Bulk 610 despite Bulk cheaper base) and labels the uplift',
+      /JMD 120/.test(p6cmp.gravelWinner) && p6cmp.hasDelivered,
+      p6cmp
+    );
+    await page.evaluate(function () {
+      window.MMGR.Proc.procCompareClose();
+    });
+    // The quote context carries the delivery costs, honestly unattributed to a
+    // currency (C2: never assert a currency symbol we do not know).
+    const p6ctx = await page.evaluate(function () {
+      return window.MMGR.Prompts.context({ vendorId: 'v1' });
+    });
+    check(
+      'P6c the quote context lists delivery costs per delivery without asserting a currency',
+      /delivery costs \(per delivery/.test(p6ctx) &&
+        /freight 200/.test(p6ctx) &&
+        /handling 100/.test(p6ctx) &&
+        /delivery 7 days/.test(p6ctx),
+      p6ctx.slice(p6ctx.indexOf('delivery costs') - 10, p6ctx.indexOf('delivery costs') + 120)
+    );
+
+    // ---- P7: calculator -> RFQ (directive 2026-10-18) ----
+    // The bill lives in calculator.html; the handoff is a shared local key.
+    // Seed it, reload (the pickup runs once per load), assert the RFQ card
+    // surfaces the canonical-qty lines and the quote context addresses them,
+    // then dismiss and prove the key is cleared.
+    await page.evaluate(function () {
+      localStorage.setItem(
+        'mmgr_rfq_draft',
+        JSON.stringify({
+          lines: [
+            { name: 'Blockwork', qty: 929.03, unit: 'm2', currency: 'JMD' },
+            { name: 'Cement', qty: 120, unit: 'bag', currency: 'JMD' }
+          ],
+          at: new Date().toISOString(),
+          from: 'calculator'
+        })
+      );
+    });
+    await page.reload({ waitUntil: 'load' });
+    await booted();
+    // Re-open the Procurement section so render() -> renderRfq() runs and the
+    // handoff card is surfaced (the pickup renders only when the tab shows).
+    await openProc();
+    const p7 = await page.evaluate(function () {
+      const card = document.getElementById('proc-rfq');
+      const shown = card && !card.classList.contains('is-hide');
+      const body = card ? card.textContent : '';
+      const ctx = window.MMGR.Prompts.context
+        ? window.MMGR.Prompts.context({ vendorId: 'v1' })
+        : '';
+      return {
+        shown: !!shown,
+        hasBlock: /Blockwork/.test(body),
+        hasCanonicalQty: /929\.03/.test(body),
+        ctxRequested: /REQUESTED LINES/.test(ctx) && /qty 929\.03 m2/.test(ctx)
+      };
+    });
+    check(
+      'P7 the bill handoff surfaces an RFQ card with canonical-qty lines and the quote context lists them as requested',
+      p7.shown && p7.hasBlock && p7.hasCanonicalQty && p7.ctxRequested,
+      p7
+    );
+    const p7clear = await page.evaluate(function () {
+      window.MMGR.Proc.clearRfq();
+      const card = document.getElementById('proc-rfq');
+      return {
+        hidden: card.classList.contains('is-hide'),
+        keyGone: localStorage.getItem('mmgr_rfq_draft') === null,
+        ctxClean: !/REQUESTED LINES/.test(window.MMGR.Prompts.context({ vendorId: 'v1' }))
+      };
+    });
+    check(
+      'P7b dismissing the RFQ card hides it, clears the shared key, and drops the lines from the quote context',
+      p7clear.hidden && p7clear.keyGone && p7clear.ctxClean,
+      p7clear
+    );
+
+    // ---- P8: RFQ email pack (directive 2026-10-18) ----
+    // Fill the term fields, write a quote, and prove the terms reach the
+    // request body (they flow into the prompt header) and the mailto button
+    // reveals. getQuoteOpts reads them live - ephemeral, never state.
+    await page.evaluate(function () {
+      var set = function (id, v) {
+        var el = document.getElementById(id);
+        el.value = v;
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      };
+      set('proc-quote-valid', '2026-12-31');
+      set('proc-quote-site', '12 Tower Street, Kingston');
+      set('proc-quote-terms', 'Net 30');
+    });
+    const p8opts = await page.evaluate(function () {
+      return window.MMGR.Proc.getQuoteOpts();
+    });
+    check(
+      'P8a getQuoteOpts reads the validity date, delivery site and payment terms live',
+      p8opts.validUntil === '2026-12-31' &&
+        p8opts.site === '12 Tower Street, Kingston' &&
+        p8opts.terms === 'Net 30',
+      p8opts
+    );
+    await page.selectOption('#proc-quote-vendor', 'v1');
+    await page.evaluate(function () {
+      var t = document.getElementById('proc-quote-tone');
+      t.value = 'rfq';
+      t.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    relay.mode = 'echo';
+    auth.signedIn = true;
+    const p8prev = await outText();
+    await runQuote(p8prev);
+    const p8body = relay.bodies[relay.bodies.length - 1] || '';
+    const p8 = await page.evaluate(function () {
+      return {
+        mailShown: !document.getElementById('proc-quote-mailto').classList.contains('is-hide')
+      };
+    });
+    check(
+      'P8b the quote request body carries validity, delivery site and payment terms; the mailto button reveals',
+      /Quote valid until: 2026-12-31/.test(p8body) &&
+        /Deliver to: 12 Tower Street, Kingston/.test(p8body) &&
+        /Payment terms: Net 30/.test(p8body) &&
+        p8.mailShown,
+      { mailShown: p8.mailShown, bodyHit: /Payment terms: Net 30/.test(p8body) }
+    );
+
+    // ---- P9: purchase order PDF from an awarded quote (directive 2026-10-18) ----
+    // Set the tone to 'award', write a quote (reveals the Purchase order
+    // button), then raise the PO and assert the C5b PDF metadata: PO number
+    // mirrors docNoSuggest (PO-NNNN), supplier + priced lines flow through,
+    // and the bytes are a real PDF (starts %PDF, one page).
+    await page.selectOption('#proc-quote-vendor', 'v1');
+    await page.evaluate(function () {
+      var t = document.getElementById('proc-quote-tone');
+      t.value = 'award';
+      t.dispatchEvent(new Event('change', { bubbles: true }));
+      // Clear the output first: the award-tone echo repeats the SAME money
+      // lines as the P8 quote, so without a blank start runQuote's
+      // wait-for-change would never fire and would time out.
+      document.getElementById('proc-quote-out').textContent = '';
+    });
+    relay.mode = 'echo';
+    auth.signedIn = true;
+    const p9prev = await outText();
+    await runQuote(p9prev);
+    const p9btn = await page.evaluate(function () {
+      return {
+        poShown: !document.getElementById('proc-po').classList.contains('is-hide')
+      };
+    });
+    check('P9a an award-tone quote reveals the Purchase order button', p9btn.poShown, p9btn);
+    await page.evaluate(function () {
+      window.__poMeta = null;
+      window.MMGR.Proc.procPo();
+    });
+    const p9 = await page.evaluate(function () {
+      var m = window.__poMeta || {};
+      var rfqCleared = localStorage.getItem('mmgr_rfq_draft') === null;
+      var book = MMGR.State.getState().supplierBook;
+      var v1 = book.vendors.filter(function (v) {
+        return String(v.id) === 'v1';
+      })[0];
+      var v1priced = book.items.filter(function (it) {
+        return String(it.vendorId) === 'v1' && it.minPrice !== '' && isFinite(Number(it.minPrice));
+      }).length;
+      return {
+        meta: m,
+        rfqCleared: rfqCleared,
+        v1priced: v1priced,
+        v1name: v1 ? v1.name : '',
+        counter: localStorage.getItem('mmgr_po_counter')
+      };
+    });
+    const pm = p9.meta || {};
+    check(
+      'P9b procPo builds a real PDF: PO-NNNN number, supplier + every priced v1 line, one %PDF page, counter bumped',
+      /^PO-\d{4}$/.test(pm.no || '') &&
+        pm.supplier === p9.v1name &&
+        pm.lines === p9.v1priced &&
+        pm.lines > 0 &&
+        pm.pages === 1 &&
+        pm.bytes > 800 &&
+        pm.pdf === '%PDF-' &&
+        Number(p9.counter) >= 2,
+      { meta: pm, v1priced: p9.v1priced, counter: p9.counter }
+    );
+
+    // ---- P10: lead time -> schedule link (directive 2026-10-18) ----
+    // Select v1 in the ITEM table first (its disclosure carries data-id="v1")
+    // - renderItems only draws rows for the selected supplier, and _selId is
+    // ephemeral (the R1 reload cleared it; P9 set only the quote-vendor select).
+    await page.click('[data-action="selVendor"][data-id="v1"]');
+    await page.waitForSelector('#proc-item-body input[data-field="name"]', { timeout: 4000 });
+    // Seed two tasks (fixture has none): one starting TODAY (linking a 14-day
+    // lead lands after it = the late warning), one starting in 90 days (on
+    // time). Give a v1 item a lead time, link it to the late task, and assert
+    // the task fields, the warn toast, and the inline .lt-late tracker chip.
+    const p10 = await page.evaluate(function () {
+      var U = MMGR.Utils;
+      var today = U.todayStr();
+      var lateId = 'qa-lt-late';
+      var okId = 'qa-lt-ok';
+      MMGR.State.updateState(function (s) {
+        s.tasks = s.tasks || [];
+        s.tasks.push({ id: lateId, name: 'Pour slab', startDate: today, endDate: today });
+        s.tasks.push({
+          id: okId,
+          name: 'Roof cover',
+          startDate: U.fmtDate(U.addDays(today, 90)),
+          endDate: U.fmtDate(U.addDays(today, 96))
+        });
+        // give the FIRST priced v1 item a 14-day supplier lead time
+        var it = s.supplierBook.items.filter(function (x) {
+          return String(x.vendorId) === 'v1' && isFinite(Number(x.minPrice));
+        })[0];
+        if (it) {
+          it.leadTimeDays = '14';
+          window.__p10Item = it.id;
+        }
+      });
+      MMGR.Proc.render();
+      // the Schedule button is enabled only when the row has lead days
+      var btns = [...document.querySelectorAll('[data-action="procLead"]')];
+      return {
+        today: today,
+        enabled: btns.filter(function (b) {
+          return !b.disabled;
+        }).length,
+        total: btns.length
+      };
+    });
+    check(
+      'P10a a row with lead days shows an ENABLED Schedule button; rows without one stay disabled (never a guessed lead time)',
+      p10.enabled >= 1 && p10.total >= 2 && p10.enabled < p10.total,
+      p10
+    );
+    // Open the lead card for the first ENABLED row and link it to the LATE task.
+    await page.evaluate(function () {
+      var b = [...document.querySelectorAll('[data-action="procLead"]')].filter(function (x) {
+        return !x.disabled;
+      })[0];
+      b.click();
+    });
+    await page.waitForSelector('#proc-lead:not(.is-hide) #proc-lead-task', { timeout: 4000 });
+    const p10link = await page.evaluate(function (lateId) {
+      var sel = document.getElementById('proc-lead-task');
+      sel.value = lateId;
+      var toastsBefore = document.querySelectorAll('.toast').length;
+      document.querySelector('[data-action="procLeadLink"]').click();
+      var toasts = [...document.querySelectorAll('.toast')].map(function (t) {
+        return t.textContent || '';
+      });
+      var task = MMGR.State.getState().tasks.filter(function (t) {
+        return t.id === lateId;
+      })[0];
+      return {
+        lead: task && task.leadTime === true,
+        submitted: task && task.submittedDate === MMGR.Utils.todayStr(),
+        expected:
+          task &&
+          task.expectedDate === MMGR.Utils.fmtDate(MMGR.Utils.addDays(MMGR.Utils.todayStr(), 14)),
+        cardHidden: document.getElementById('proc-lead').classList.contains('is-hide'),
+        newToasts: toasts.slice(toastsBefore),
+        warn: toasts.some(function (t) {
+          return /lands .* after/i.test(t) && /Order earlier/.test(t);
+        })
+      };
+    }, 'qa-lt-late');
+    check(
+      'P10b linking stamps leadTime + order date today + expected today+14, closes the card, and warns it lands after the task start',
+      p10link.lead && p10link.submitted && p10link.expected && p10link.cardHidden && p10link.warn,
+      p10link
+    );
+    // Flush the RAF renderDash uses, then read the tracker's inline chip.
+    await page.evaluate(function () {
+      MMGR.Render.renderDash();
+      return new Promise(function (res) {
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            res();
+          });
+        });
+      });
+    });
+    await page.waitForTimeout(200);
+    const p10track = await page.evaluate(function () {
+      var el = document.getElementById('leadtime-tracker-body');
+      var html = el ? el.innerHTML : '';
+      return {
+        hasChip: /class="lt-late"/.test(html),
+        namesTask: /Pour slab/.test(html),
+        chipText: /lands after this task starts/.test(html)
+      };
+    });
+    check(
+      'P10c the Lead-Time Tracker shows the linked task with an inline late chip (order lands after the task start)',
+      p10track.hasChip && p10track.namesTask && p10track.chipText,
+      p10track
+    );
 
     // E1 zero page errors (the /api/ mock chatter is expected noise).
     const real = pageErrors.filter(e => !/\/api\//.test(e));

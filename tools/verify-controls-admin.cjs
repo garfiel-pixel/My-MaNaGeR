@@ -227,6 +227,42 @@ function check(name, val, detail) {
   );
   console.log('   ctrl text length: ' + p1.ctrlLen);
 
+  // ---- M-2: Your data (export + account delete gating) ---------------------
+  // exportMyData() walks every mmgr_* localStorage slot into one timestamped
+  // JSON payload and returns it, so we assert the shape directly. We also
+  // render the account-delete block while SIGNED OUT and require it to stay
+  // empty (the Worker's delete endpoint only makes sense behind a session).
+  const m2 = await ev(`(async function(){
+    var p = MMGR.App.exportMyData();
+    var keys = Object.keys(p.data);
+    await MMGR.App.renderDataAccount();
+    var host = document.getElementById('data-account');
+    return {
+      count: p.count,
+      keysAllMmgr: keys.length > 0 && keys.every(function(k){ return k.indexOf('mmgr_') === 0; }),
+      seeded: keys.indexOf('mmgr_admin_projects') > -1,
+      hasAt: /^\\d{4}-\\d{2}-\\d{2}T/.test(p.exportedAt || ''),
+      hasExportBtn: !!document.querySelector('[data-action="exportMyData"]'),
+      hostHtml: host ? host.innerHTML : ''
+    };
+  })()`);
+  check(
+    'M-2 export: one timestamped JSON payload, every key an mmgr_ slot, the seeded record included',
+    m2.count >= 1 && m2.keysAllMmgr && m2.seeded && m2.hasAt,
+    m2
+  );
+  check(
+    'M-2 export: Download button present in the Your data section',
+    m2.hasExportBtn === true,
+    m2
+  );
+  check(
+    'M-2 delete: signed out -> NO account-delete block is rendered',
+    m2.hostHtml.indexOf('Delete my account') === -1 &&
+      m2.hostHtml.indexOf('del-acct-secret') === -1,
+    { hostLen: m2.hostHtml.length }
+  );
+
   try {
     await send('Page.close');
   } catch (e) {}

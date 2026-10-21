@@ -9054,6 +9054,62 @@
       persistBoq([]);
       renderBoq();
     },
+    // ---- P7 (directive 2026-10-18): Bill -> RFQ --------------------------
+    // Serialise the bill's lines in their CANONICAL engine units (C1: the
+    // same qty/computeFor number the estimate prices, never a display
+    // conversion) into a shared same-origin key. The Procurement tab
+    // (project.html) reads that key and turns the lines into an RFQ draft
+    // the quote writer can send. Device-local handoff - nothing leaves the
+    // browser here.
+    calcBoqRfq: function () {
+      const note = $('calc-rfq-note');
+      const lines = loadBoq();
+      if (!lines.length) {
+        if (note) {
+          note.textContent = 'No lines yet - add work to the bill first, then request prices.';
+        }
+        return;
+      }
+      const rfq = [];
+      lines.forEach(function (line) {
+        const r = computeFor(line.st || {});
+        if (!r || r.error) {
+          return;
+        }
+        rfq.push({
+          name: (line.name || r.name || 'Line').toString().slice(0, 120),
+          // Canonical engine quantity + unit (C1), rounded for a quote line.
+          qty: Math.round(Number(r.qty) * 1000) / 1000,
+          unit: (r.unit || '').toString().slice(0, 24),
+          currency: r.currency || DEFAULT_CURRENCY
+        });
+      });
+      if (!rfq.length) {
+        if (note) {
+          note.textContent = 'None of these lines priced cleanly - fix them, then request prices.';
+        }
+        return;
+      }
+      try {
+        localStorage.setItem(
+          'mmgr_rfq_draft',
+          JSON.stringify({ lines: rfq, at: new Date().toISOString(), from: 'calculator' })
+        );
+      } catch (e) {
+        if (note) {
+          note.textContent =
+            'This browser blocked local storage, so the bill could not be handed over.';
+        }
+        return;
+      }
+      if (note) {
+        note.textContent =
+          rfq.length +
+          ' line' +
+          (rfq.length === 1 ? '' : 's') +
+          ' sent to Procurement. Open a project, go to Procurement, and write the quote.';
+      }
+    },
     // ---- W2 element instances ----
     calcInstAdd: function () {
       const key = ($('calc-work') || {}).value || '';

@@ -758,6 +758,31 @@ async function withChrome(fn) {
       bq2 && bq2.before === 1 && bq2.after === 2 && bq2.work2 === 'blockwall' && bq2.total === '10',
       bq2
     );
+    // P7 (directive 2026-10-18): the Request-prices handoff writes the shared
+    // local key with CANONICAL engine qty/unit (C1) and confirms on screen.
+    const bq2r = await ev(`(function(){
+      localStorage.removeItem('mmgr_rfq_draft');
+      document.querySelector('[data-action="calcBoqRfq"]').click();
+      var raw = localStorage.getItem('mmgr_rfq_draft');
+      var d = raw ? JSON.parse(raw) : null;
+      var note = document.getElementById('calc-rfq-note');
+      return { has: !!d, n: d && d.lines ? d.lines.length : 0,
+               firstQty: d && d.lines && d.lines[0] ? d.lines[0].qty : null,
+               firstUnit: d && d.lines && d.lines[0] ? d.lines[0].unit : '',
+               canonical: !!(d && d.lines && d.lines.every(function(l){ return typeof l.qty === 'number' && l.qty > 0; })),
+               noted: !!(note && /sent to Procurement/.test(note.textContent)) };
+    })()`);
+    check(
+      'P7 Request-prices writes the RFQ handoff with canonical qty/unit and confirms on screen',
+      bq2r &&
+        bq2r.has &&
+        bq2r.n === 2 &&
+        bq2r.firstQty > 0 &&
+        !!bq2r.firstUnit &&
+        bq2r.canonical &&
+        bq2r.noted,
+      bq2r
+    );
     const bq3 = await ev(`(function(){
       var body = document.getElementById('calc-boq-body');
       var rows = body ? body.querySelectorAll('.bcp-boq-line').length : 0;

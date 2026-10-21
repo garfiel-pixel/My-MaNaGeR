@@ -91,6 +91,8 @@ fails the gate.
 | `mmgr_calc_locpacks` | Local packs. | necessary |
 | `mmgr_calc_rollup` , `mmgr_calc_boq` , `mmgr_calc_biz_name` , `mmgr_calc_family` | Estimate breakdowns and business details. | necessary |
 | `mmgr_calc_wstamps` | Work-save timestamps. | necessary |
+| `mmgr_rfq_draft` | Bill-of-quantities lines handed from the calculator to the Procurement tab to write a request for quotation. Cleared when you dismiss it. | necessary |
+| `mmgr_po_counter` | Purchase-order number sequence for the Procurement tab (PO-0001, PO-0002, ...). | necessary |
 | `mmgr_calc_brand` , `mmgr_calc_doccounter` | Branding and document numbering. | necessary |
 | `mmgr_calc_history` , `mmgr_calc_ai_chats` | Estimate history and assistant chats. | necessary |
 | `mmgr_calc_guide_open` , `mmgr_calc_tour_done` , `mmgr_calc_brand_open` | Guide and tour state. | necessary |

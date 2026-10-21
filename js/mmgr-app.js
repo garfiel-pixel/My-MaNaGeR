@@ -1228,6 +1228,11 @@ var MMGR = window.MMGR || {};
         el.classList.toggle('is-hide', t !== tab);
       }
     });
+    // M-2: the Controls tab carries the account-delete block; render it on
+    // first open so a session restored before this drawer existed shows it.
+    if (tab === 'ctrl') {
+      renderDataAccount();
+    }
   }
 
   // DIR-3 (PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE): jump the user straight
@@ -3389,8 +3394,152 @@ var MMGR = window.MMGR || {};
     tryInit();
   }
 
+  // ---- M-2 (audit 2026-10-18, 8.5): Your data - export + account delete ----
+  // EXPORT is fully client-side: offline-first means the device IS the source,
+  // so we walk every mmgr_* key in localStorage and hand back one JSON file.
+  // The BYO AI key is deliberately NOT here - it lives in sessionStorage and
+  // never touches localStorage (Q&A "Where does my AI key live?").
+  function exportMyData() {
+    const data = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || k.indexOf('mmgr_') !== 0) {
+        continue;
+      }
+      const raw = localStorage.getItem(k);
+      try {
+        data[k] = JSON.parse(raw);
+      } catch (e) {
+        data[k] = raw; // a plain-string slot (rare) still exports verbatim
+      }
+    }
+    const payload = {
+      app: 'My MaNaGeR',
+      exportedAt: new Date().toISOString(),
+      note: 'Everything this browser holds for you. Keys starting mmgr_state_ are full projects.',
+      count: Object.keys(data).length,
+      data: data
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'my-manager-data-' + String(payload.exportedAt).slice(0, 10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () {
+      URL.revokeObjectURL(a.href);
+    }, 400);
+    showToast(
+      payload.count
+        ? 'Downloaded ' + payload.count + ' settings as one JSON file.'
+        : 'Nothing to download yet.',
+      payload.count ? 'ok' : 'warn'
+    );
+    return payload;
+  }
+
+  // The delete block renders ONLY when signed in, and mirrors the Worker's
+  // contract exactly (src/auth/session.js handleAuthDeleteAccount): an email
+  // account confirms with its password, a Google account types DELETE.
+  async function renderDataAccount() {
+    const host = U.$('data-account');
+    if (!host) {
+      return;
+    }
+    let user = null;
+    try {
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
+      const d = res.ok ? await res.json() : null;
+      if (d && d.ok && d.user) {
+        user = d.user;
+      }
+    } catch (e) {
+      /* static host / offline: no delete UI, which is correct */
+    }
+    if (!user) {
+      host.innerHTML = '';
+      return;
+    }
+    const isEmail = String(user.sub || '').indexOf('email:') === 0;
+    host.innerHTML =
+      '<div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete account</div>' +
+      '<div class="sr-hint ctl-lead">This removes your account and everything synced to it from our servers. ' +
+      'Download your data first if you want a copy. This cannot be undone.</div>' +
+      (isEmail
+        ? '<div class="sr"><span class="sl"><label for="del-acct-secret">Confirm with your password</label></span>' +
+          '<input class="ctl-in w150" type="password" id="del-acct-secret" autocomplete="current-password" aria-label="Your password, to confirm deleting your account"></div>'
+        : '<div class="sr"><span class="sl"><label for="del-acct-secret">Type DELETE to confirm</label></span>' +
+          '<input class="ctl-in w150" type="text" id="del-acct-secret" autocomplete="off" spellcheck="false" aria-label="Type DELETE to confirm deleting your account"></div>') +
+      '<div class="ctl-actions"><button class="btn btn-d btn-s" data-action="deleteAccount" data-kind="' +
+      (isEmail ? 'password' : 'delete') +
+      '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete my account</button></div>';
+  }
+
+  async function deleteAccount(btn) {
+    const kind = (btn && btn.getAttribute('data-kind')) || 'delete';
+    const field = U.$('del-acct-secret');
+    const val = field ? String(field.value || '') : '';
+    if (kind === 'password' && !val) {
+      showToast('Enter your password to confirm.', 'warn');
+      return;
+    }
+    if (kind !== 'password' && val !== 'DELETE') {
+      showToast('Type DELETE to confirm.', 'warn');
+      return;
+    }
+    if (
+      !window.confirm(
+        'Delete your account and everything synced to it? This cannot be undone. Download your data first if you want a copy.'
+      )
+    ) {
+      return;
+    }
+    const body = kind === 'password' ? { password: val } : { confirm: 'DELETE' };
+    let res = null;
+    let out = null;
+    try {
+      res = await fetch('/api/auth/delete-account', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      out = await res.json();
+    } catch (e) {
+      showToast('Could not reach the server. Check your connection and try again.', 'err');
+      return;
+    }
+    if (res.ok && out && out.ok) {
+      showToast('Your account and its server data are deleted.', 'ok');
+      // Server cleared the session cookie; clear the local chip + go home.
+      document.dispatchEvent(new CustomEvent('mmgr:google-signed-out'));
+      setTimeout(function () {
+        window.location.href = 'index.html';
+      }, 900);
+    } else {
+      showToast((out && out.error) || 'Could not delete your account. Try again.', 'err');
+    }
+  }
+
+  // M-2: keep the delete block in step with the session. It renders only when
+  // signed in (renderDataAccount clears the host otherwise), so re-run it on
+  // every sign-in/out and whenever the Controls tab is opened.
+  document.addEventListener('mmgr:google-signed-in', function () {
+    renderDataAccount();
+  });
+  document.addEventListener('mmgr:google-signed-out', function () {
+    renderDataAccount();
+  });
+  document.addEventListener('mmgr:user-changed', function () {
+    renderDataAccount();
+  });
+
   // ---- API ----
   ns.App = {
+    exportMyData: exportMyData,
+    renderDataAccount: renderDataAccount,
+    deleteAccount: deleteAccount,
     init: init,
     _boot: _boot,
     openDrwToSaveMechanics: openDrwToSaveMechanics,
@@ -3963,6 +4112,12 @@ window.MMGR = MMGR;
     procQuoteVendor: el => window.MMGR.Proc.procQuoteVendor(el),
     procQuoteTone: el => window.MMGR.Proc.procQuoteTone(el),
     procQuoteCopy: () => window.MMGR.Proc.procQuoteCopy(),
+    // P8 RFQ email pack: terms read live (ephemeral), mailto opens the
+    // generated quote in the mail client with NO new numbers (book only).
+    procQuoteTerm: el => window.MMGR.Proc.procQuoteTerm(el),
+    procQuoteMailto: () => window.MMGR.Proc.procQuoteMailto(),
+    // P9 purchase order PDF from an awarded quote (export only, never state)
+    procPo: () => window.MMGR.Proc.procPo(),
     // P3 import + P4 compare (directive 2026-10-18)
     procImport: () => window.MMGR.Proc.procImport(),
     procImportCancel: () => window.MMGR.Proc.procImportCancel(),
@@ -3971,6 +4126,23 @@ window.MMGR = MMGR;
     procImportApply: () => window.MMGR.Proc.procImportApply(),
     procCompare: () => window.MMGR.Proc.procCompare(),
     procCompareClose: () => window.MMGR.Proc.procCompareClose(),
+    // P5 quantity break pricing (directive 2026-10-18). openTiers/closeTiers/
+    // tierPreview are pure view (READONLY_SAFE below); addTier/delTier/updTier
+    // mutate priceTiers and stay blocked in view-only mode.
+    openTiers: el => window.MMGR.Proc.openTiers(el),
+    closeTiers: () => window.MMGR.Proc.closeTiers(),
+    // P10 lead time -> schedule: open/close are pure view (a disclosure card);
+    // procLeadLink mutates the task's leadTime/dates and stays blocked in
+    // view-only (same policy as addTier/delTier).
+    procLead: el => window.MMGR.Proc.procLead(el),
+    closeLead: () => window.MMGR.Proc.closeLead(),
+    procLeadLink: () => window.MMGR.Proc.procLeadLink(),
+    addTier: () => window.MMGR.Proc.addTier(),
+    delTier: el => window.MMGR.Proc.delTier(el),
+    updTier: (el, e) => window.MMGR.Proc.updTier(el, e),
+    tierPreview: () => window.MMGR.Proc.tierPreview(),
+    // P7 calculator -> RFQ: dismissing the handoff card clears the local draft.
+    clearRfq: () => window.MMGR.Proc.clearRfq(),
     // MARKET-FEATURE-ROADMAP Section C batch 2 (state mutations , never
     // READONLY_SAFE): pay applications, inspections, incidents, handover,
     // warranty, drawing distribution log, permits.
@@ -4654,6 +4826,11 @@ window.MMGR = MMGR;
     tglCh: el => {
       window.MMGR.App.tglCh();
     },
+    // M-2 Your data: export is a device-level read+download (safe in view-only);
+    // deleteAccount re-auths against the Worker and is deliberately NOT in
+    // READONLY_SAFE_ACTIONS (a viewer cannot delete the owner's account).
+    exportMyData: () => window.MMGR.App.exportMyData(),
+    deleteAccount: el => window.MMGR.App.deleteAccount(el),
     tglFlag: el => window.MMGR.App.tglFlag(el),
     clearErrorLog: () => window.MMGR.App.clearErrorLog(),
     // DIR-1a/1b: error log export (view-only) + remote-reporting toggle/URL
@@ -4912,6 +5089,28 @@ window.MMGR = MMGR;
     // aiOutputs, same policy as aiRunPreset).
     selVendor: 1,
     procQuoteCopy: 1,
+    // P8 RFQ email pack: the term fields are ephemeral (read live, never
+    // state) and the mailto only opens the mail client with text already on
+    // screen - both are pure view, safe in view-only mode.
+    procQuoteTerm: 1,
+    procQuoteMailto: 1,
+    // P9: raising a purchase-order PDF is an export (writes only the local
+    // PO counter to localStorage, never project state) - safe in view-only.
+    procPo: 1,
+    // P5 quantity break pricing: opening/closing the tier panel and the live
+    // quantity preview are pure view. addTier/delTier/updTier mutate
+    // priceTiers and are deliberately NOT listed (view-only refuses them).
+    openTiers: 1,
+    closeTiers: 1,
+    tierPreview: 1,
+    // P10: opening/closing the lead-time link card is pure view. The Link
+    // button (procLeadLink) writes the task's leadTime + dates and is
+    // deliberately NOT listed (view-only refuses it).
+    procLead: 1,
+    closeLead: 1,
+    // P7: dismissing the calculator->RFQ handoff card clears an ephemeral
+    // local draft (not project state), so it is safe in view-only mode.
+    clearRfq: 1,
     undoClr: 1,
     // MONOLITH-FEATURE-PARITY-DIRECTIVES restorations: risk matrix filtering,
     // WBS issues banner toggle, Import Dates Copy List, email templates, and
@@ -4979,6 +5178,10 @@ window.MMGR = MMGR;
     // + the mirror cookie), not project state: it is allowed in view-only
     // mode, exactly like the theme and the glass preference.
     tglConsentStat: 1,
+    // M-2 Your data: the export only READS localStorage and downloads a file -
+    // no project state changes, so a viewer may take their own copy. The
+    // delete button stays out of this list (viewer cannot delete the account).
+    exportMyData: 1,
     // Theme-persistence: the theme preference is a device-level choice too
     // (localStorage mmgr_theme, the same slot the launcher + admin read) ,
     // allowed in view-only like glass mode. tglTheme writes only the device
@@ -5221,8 +5424,10 @@ window.MMGR = MMGR;
         action === 'updInspItem' ||
         action === 'updPvendor' ||
         action === 'updPitem' ||
+        action === 'updTier' ||
         action === 'procQuoteVendor' ||
         action === 'procQuoteTone' ||
+        action === 'procQuoteTerm' ||
         action === 'idFilePick')
     ) {
       handler(el, e);
@@ -5273,7 +5478,8 @@ window.MMGR = MMGR;
         action === 'gonogoCritUpd' ||
         action === 'updInspItem' ||
         action === 'updPvendor' ||
-        action === 'updPitem')
+        action === 'updPitem' ||
+        action === 'updTier')
     ) {
       handler(el, e);
     }

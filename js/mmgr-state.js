@@ -177,7 +177,7 @@ var MMGR = window.MMGR || {};
   'use strict';
 
   const STORAGE_KEY = 'mmgr_state';
-  const SCHEMA_VERSION = 21;
+  const SCHEMA_VERSION = 22;
 
   // ---- Default State ----
   /** @returns {AppState} */
@@ -798,6 +798,36 @@ var MMGR = window.MMGR || {};
         state.supplierBook.items.forEach(function (it) {
           if (it && typeof it === 'object' && !Array.isArray(it.priceHistory)) {
             it.priceHistory = [];
+          }
+        });
+      }
+      return state;
+    },
+    22: function (state) {
+      // V21 -> V22: P5 quantity break pricing + P6 landed cost (directive
+      // 2026-10-18). Additive back-fill only - every supplier-book item gains
+      // an optional priceTiers array ([{minQty, price}] ascending) and an
+      // optional dutyPct; every vendor gains flat landed-cost fields. Empty
+      // means "no breaks / no on-costs", so v21 states load and price exactly
+      // as before. One bump covers the whole P5-P10 wave (owner rule).
+      if (state.supplierBook && Array.isArray(state.supplierBook.items)) {
+        state.supplierBook.items.forEach(function (it) {
+          if (it && typeof it === 'object' && !Array.isArray(it.priceTiers)) {
+            it.priceTiers = [];
+          }
+          if (it && typeof it === 'object' && it.dutyPct === undefined) {
+            it.dutyPct = ''; // per-item duty rate (%); empty = none recorded
+          }
+        });
+      }
+      if (state.supplierBook && Array.isArray(state.supplierBook.vendors)) {
+        state.supplierBook.vendors.forEach(function (v) {
+          if (v && typeof v === 'object') {
+            // Per-DELIVERY on-costs in the supplier's own currency (never
+            // converted - C2 honesty). Lead time is the delivery window.
+            if (v.landFreight === undefined) v.landFreight = '';
+            if (v.landHandling === undefined) v.landHandling = '';
+            if (v.landLeadDays === undefined) v.landLeadDays = '';
           }
         });
       }

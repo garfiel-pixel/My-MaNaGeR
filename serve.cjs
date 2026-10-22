@@ -904,7 +904,16 @@ const server = http.createServer((req, res) => {
     } else {
       // S-2: resolve the analytics placeholder - the host rides along only
       // for a visitor whose consent cookie allows it (worker.js cspFor parity).
-      const consentOk = analyticsAllowed(req.headers.cookie);
+      //
+      // The host goes into DOCUMENTS only (worker.js parity). A browser
+      // enforces the policy of the response it finally renders, so an
+      // asset's policy is inert - and keeping the host out of every other
+      // response means no cacheable response (a script with a one-year TTL)
+      // ever holds a header that depends on one visitor's choice. The
+      // dev server only ever serves real files, so '.html' covers every
+      // document here.
+      const isDocument = ext === '.html';
+      const consentOk = isDocument && analyticsAllowed(req.headers.cookie);
       const analyticsHost = consentOk ? ' https://static.cloudflareinsights.com' : '';
       const base =
         path.basename(file) === 'pricing.html'

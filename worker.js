@@ -99,8 +99,14 @@ function analyticsAllowed(request) {
   return age < CONSENT_MAX_AGE_MS;
 }
 
-function cspFor(request, normalized) {
-  const allow = analyticsAllowed(request) ? CONSENT_ANALYTICS_HOST : '';
+function cspFor(request, normalized, isDocument) {
+  // The analytics host belongs in a DOCUMENT's policy ONLY. The beacon is
+  // injected into HTML at the edge, so only an HTML response can ever carry
+  // the script that needs the host - a script or stylesheet response has no
+  // policy of its own to enforce. Every other response gets the constant
+  // base policy, so a cacheable response never holds a header that depends
+  // on one visitor's choice.
+  const allow = isDocument && analyticsAllowed(request) ? CONSENT_ANALYTICS_HOST : '';
   const base = normalized === '/pricing' || normalized === '/pricing.html' ? PADDLE_CSP : CSP;
   // Both base policies carry an %%ANALYTICS%% placeholder inside script-src;
   // it resolves to the host (consented) or to nothing (default).
@@ -486,7 +492,7 @@ export default {
           { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
           HEADERS
         );
-        headers['Content-Security-Policy'] = cspFor(request, normalized);
+        headers['Content-Security-Policy'] = cspFor(request, normalized, true);
         return new Response(notFoundPage(), { status: 404, headers: headers });
       }
 
@@ -495,10 +501,33 @@ export default {
       for (const [name, value] of Object.entries(HEADERS)) {
         decorated.headers.set(name, value);
       }
+      // What kind of response is this? The extensionless routing answers
+      // /index.html and /project.html with a 307 that carries no
+      // Content-Type at all, and a 304 carries none either - so the
+      // CONTENT TYPE alone cannot say "this is a document". The PATH says
+      // it: the page routes and the .html files are the documents, and
+      // they are documents whatever status the response carries.
+      //
+      // Both halves matter. A 304 has no body, so its Content-Type is
+      // absent - and the browser MERGES a 304's headers into the copy it
+      // already stored. A document judged only by its content type would
+      // therefore be handed a policy without the host the moment it
+      // revalidated, and a consented visitor would silently stop counting.
+      const contentType = (response.headers.get('Content-Type') || '').toLowerCase();
+      const isHtml = contentType.indexOf('text/html') === 0;
+      const isPagePath =
+        normalized === '/' || /\.html$/i.test(normalized) || PAGE_ROUTES.has(normalized);
+      const isDocument = isHtml || isPagePath;
       // Per-request CSP: the analytics host rides along only for a visitor
       // whose consent cookie allows it (S-2). This also carries the pricing
       // scoped policy, so the separate pricing override below is gone.
-      decorated.headers.set('Content-Security-Policy', cspFor(request, normalized));
+      //
+      // The host goes into DOCUMENTS only. A browser enforces the policy of
+      // the response it finally renders, so an asset's policy is inert.
+      // Keeping the host out of every other response means no cacheable
+      // response (a script with an hour-long TTL) ever holds a header that
+      // depends on one visitor's choice.
+      decorated.headers.set('Content-Security-Policy', cspFor(request, normalized, isDocument));
 
       // Cache-Control strategy
       //
@@ -525,19 +554,10 @@ export default {
       // long-standing one; it is left exactly as it is - changing the asset
       // TTL is a separate decision, not part of the consent gate.)
       //
-      // The document test is the RESPONSE's own content type, not the path:
-      // every page this Worker serves is text/html, whether it is reached
-      // as /index.html, as the extensionless /app, or as the single-page
-      // fallback - and every one of them carries the per-request
-      // Content-Security-Policy set just above.
-      //
-      // The .html paths are named as well, because the extensionless
-      // routing answers them with a 307 REDIRECT that carries no
-      // Content-Type at all: /project.html and /index.html redirect to
-      // /project and /. That redirect is part of the document flow (it
-      // carries the same per-request policy), so it revalidates too.
-      const contentType = (response.headers.get('Content-Type') || '').toLowerCase();
-      const isDocument = contentType.indexOf('text/html') === 0 || /\.html$/i.test(normalized);
+      // The document test is the PATH (see above), so the .html files and
+      // the extensionless page routes are both in the set - including the
+      // 307 redirect the extensionless routing answers /project.html with,
+      // which carries no Content-Type of its own.
       const ext = normalized.replace(/.*\\./, '').toLowerCase();
       const IMMUTABLE = 'public, max-age=31536000, immutable';
       const NO_CACHE = 'no-cache';

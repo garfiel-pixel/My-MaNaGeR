@@ -312,21 +312,39 @@ function phaseStatic() {
   // would be green on the dev server by construction and would never bite.
   const ccStart = worker.indexOf('Cache-Control strategy');
   const ccBlock = ccStart > -1 ? worker.slice(ccStart, ccStart + 2600) : '';
+  const docStart = worker.indexOf('const isDocument =');
+  const docBlock = docStart > -1 ? worker.slice(docStart - 1400, docStart + 200) : '';
   check(
     'S8 the Worker serves the page routes as documents (they revalidate, so no cache can replay an old consent decision)',
     ccBlock !== '' &&
-      /text\/html/.test(ccBlock) &&
       /NO_CACHE/.test(ccBlock) &&
       // The extensionless routing answers /index.html and /project.html with
-      // a 307 that carries NO Content-Type, so the content-type rule alone
-      // would drop them back to the shared one-hour TTL. The path rule is
-      // what keeps the redirect in the document set.
-      /\.html\$/i.test(ccBlock),
+      // a 307 that carries NO Content-Type, and a 304 carries none either -
+      // so the CONTENT TYPE alone cannot identify a document. The PATH
+      // rule is what keeps the redirects and the revalidations in the set.
+      docBlock !== '' &&
+      /PAGE_ROUTES\.has\(normalized\)/.test(docBlock) &&
+      /\.html\$/i.test(docBlock),
     {
       blockFound: ccBlock !== '',
-      documentRule: /text\/html/.test(ccBlock),
-      redirectRule: /\.html\$/i.test(ccBlock)
+      docBlockFound: docBlock !== '',
+      pageRouteRule: /PAGE_ROUTES\.has\(normalized\)/.test(docBlock),
+      htmlPathRule: /\.html\$/i.test(docBlock)
     }
+  );
+
+  // S10 - the analytics host belongs in a DOCUMENT's policy only. A browser
+  // enforces the policy of the response it finally renders, so an asset's
+  // policy is inert - but a cacheable asset (a script with a one-year TTL)
+  // that carries a consent-dependent header can be replayed across consent
+  // states, which is the same leak one layer down. Both servers must
+  // therefore resolve the placeholder to the host for documents ONLY.
+  const workerCsp = /function cspFor\([^)]*\)[\s\S]{0,1200}?isDocument/.test(worker);
+  const serveDocOnly = /isDocument\s*&&\s*analyticsAllowed/.test(serve);
+  check(
+    'S10 both servers put the analytics host in documents only (a cacheable asset never carries a consent-dependent header)',
+    workerCsp && serveDocOnly,
+    { workerDocumentOnly: workerCsp, serveDocumentOnly: serveDocOnly }
   );
 
   // S9 - a copy the service worker keeps is NOT the server's live word on

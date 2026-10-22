@@ -2340,3 +2340,23 @@ close, on the very paths a visitor types. The path rule is back
 so it cannot silently lose either again. Proven by mutation: removing
 the path rule turns S8 red (35 passed, 1 failed) and restoring it turns
 S8 green again. The gate bites; it is not a decoration.
+S-2 WAVE 3 - THE HOST BELONGS IN DOCUMENTS ONLY (2026-10-22).
+With the leak measured closed on live (0 beacon responses under an aged-out
+choice, was 3 of 3), the live header sweep found the last shape of the
+same class: a CACHEABLE ASSET still carried a CONSENT-DEPENDENT header.
+The Content-Security-Policy is per request, and the worker stamped it on
+EVERY response - a script with an hour-long TTL included - so the browser
+could replay an asset whose policy allowed the analytics host. The rule
+now: the host rides along in a DOCUMENT's policy only. A browser enforces
+the policy of the response it finally renders, so an asset's policy is
+inert anyway; keeping the host out of everything else means no cacheable
+response ever holds a header that depends on one visitor's choice. Both
+servers (worker.js + serve.cjs) do it, and S10 gates it.
+THE DOCUMENT SET IS THE PATH, NOT THE CONTENT TYPE. Two traps, both
+measured: the extensionless routing answers /project.html with a 307 that
+carries no Content-Type, and a 304 carries none either - and the browser
+MERGES a 304's headers into the copy it already stored. A document judged
+only by its content type would be handed a policy without the host the
+moment it revalidated, and a consented visitor would silently stop
+counting. The set is therefore the page routes + the .html files, whatever
+status the response carries.

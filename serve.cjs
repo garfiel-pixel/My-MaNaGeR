@@ -862,6 +862,15 @@ const server = http.createServer((req, res) => {
     // Cache-Control parity with worker.js: HTML revalidates on every visit,
     // static assets cache for 1 year (content changes are SW-cache-busted),
     // JSON/manifest revalidate, everything else gets a short TTL.
+    //
+    // S-2 (audit 2026-10-18, 8.2): the Content-Security-Policy this server
+    // sends is PER REQUEST - the analytics host rides along in it only for a
+    // visitor whose consent cookie allows it. A document served from a cache
+    // that can outlive the request that produced it would replay an old
+    // consent decision, so every document revalidates on every visit. The
+    // dev server only ever serves real files, so '.html' covers every
+    // document here (the Worker's extensionless page routes are served by
+    // the Worker itself).
     var cc;
     if (ext === '.html' || p === '/') {
       cc = 'no-cache';

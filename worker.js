@@ -530,8 +530,14 @@ export default {
       // as /index.html, as the extensionless /app, or as the single-page
       // fallback - and every one of them carries the per-request
       // Content-Security-Policy set just above.
+      //
+      // The .html paths are named as well, because the extensionless
+      // routing answers them with a 307 REDIRECT that carries no
+      // Content-Type at all: /project.html and /index.html redirect to
+      // /project and /. That redirect is part of the document flow (it
+      // carries the same per-request policy), so it revalidates too.
       const contentType = (response.headers.get('Content-Type') || '').toLowerCase();
-      const isDocument = contentType.indexOf('text/html') === 0;
+      const isDocument = contentType.indexOf('text/html') === 0 || /\.html$/i.test(normalized);
       const ext = normalized.replace(/.*\\./, '').toLowerCase();
       const IMMUTABLE = 'public, max-age=31536000, immutable';
       const NO_CACHE = 'no-cache';

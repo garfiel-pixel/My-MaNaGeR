@@ -314,10 +314,18 @@ function phaseStatic() {
   const ccBlock = ccStart > -1 ? worker.slice(ccStart, ccStart + 2600) : '';
   check(
     'S8 the Worker serves the page routes as documents (they revalidate, so no cache can replay an old consent decision)',
-    ccBlock !== '' && /text\/html/.test(ccBlock) && /NO_CACHE/.test(ccBlock),
+    ccBlock !== '' &&
+      /text\/html/.test(ccBlock) &&
+      /NO_CACHE/.test(ccBlock) &&
+      // The extensionless routing answers /index.html and /project.html with
+      // a 307 that carries NO Content-Type, so the content-type rule alone
+      // would drop them back to the shared one-hour TTL. The path rule is
+      // what keeps the redirect in the document set.
+      /\.html\$/i.test(ccBlock),
     {
       blockFound: ccBlock !== '',
-      documentRule: /text\/html/.test(ccBlock)
+      documentRule: /text\/html/.test(ccBlock),
+      redirectRule: /\.html\$/i.test(ccBlock)
     }
   );
 

@@ -2360,3 +2360,15 @@ only by its content type would be handed a policy without the host the
 moment it revalidated, and a consented visitor would silently stop
 counting. The set is therefore the page routes + the .html files, whatever
 status the response carries.
+S-2 SHIPPED - MEASURED AGAINST PRODUCTION (2026-10-22).
+Deploy 022c14ea (worker + sw + harness). LIVE, measured after the deploy:
+- the app page under an aged-out choice collects NO beacon: 0 responses
+  across 3 app loads (it was 3 of 3 before the wave), and the page's own
+  policy no longer allows the host.
+- every page route and every .html redirect now answers 'no-cache'; every
+  ASSET answers its long TTL and carries NO analytics host at all, so no
+  cacheable response holds a consent-dependent header.
+- the full harness against PRODUCTION: 37 passed, 0 failed - including the
+  primed-cache gates (B8c0 control, B8c refusal, B8d offline copy) that
+  FAIL against a site without the fix. The gates have teeth and the site
+  now satisfies them.

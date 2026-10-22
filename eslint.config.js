@@ -1,4 +1,16 @@
 const globals = require('globals');
+const mmgrRules = require('./tools/eslint-rules/no-unsanitized-html.js');
+
+// The local rule set (S-5, audit 2026-10-18). One rule today: the
+// output-escaping gate. It is a real ESLint rule, so it runs with the
+// lint the repo already runs, and its findings are errors, not
+// warnings - an unescaped value in an HTML string is a hole, not a
+// style note.
+const localPlugin = {
+  rules: {
+    'no-unsanitized-html': mmgrRules
+  }
+};
 
 const scriptRules = {
   curly: 'warn',
@@ -99,6 +111,17 @@ module.exports = [
     rules: {
       'no-undef': 'error',
       'no-redeclare': 'error'
+    }
+  },
+  // S-5 (AUDIT-DIRECTIVE-2026-10-18, 8.1 S-5): the output-escaping
+  // rule. Scoped to js/ - the browser modules that build HTML strings.
+  // The Worker (worker.js, src/) serves JSON, not HTML, so it has no
+  // innerHTML sink to guard.
+  {
+    files: ['js/**/*.js'],
+    plugins: { mmgr: localPlugin },
+    rules: {
+      'mmgr/no-unsanitized-html': 'error'
     }
   }
 ];

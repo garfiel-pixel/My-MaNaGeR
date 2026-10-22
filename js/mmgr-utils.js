@@ -266,10 +266,17 @@ var MMGR = window.MMGR || {};
     return document.getElementById(id);
   }
 
+  // S-5 (audit 2026-10-18): attribute-SAFE. The textContent trick escapes
+  // & < > but NOT quotes, so a value carrying a quote could close the
+  // attribute it lands in (value="${name}" with name = " onfocus="x).
+  // Escaping " and ' as well makes ONE escaper safe in text position and
+  // in attribute position, which is where most of the app puts user text
+  // (values, titles, data-ids). Rendered output is unchanged - &quot;
+  // and &#39; decode back to the original character.
   function escapeHtml(str) {
     const d = document.createElement('div');
     d.textContent = str == null ? '' : String(str);
-    return d.innerHTML;
+    return d.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   function show(id) {

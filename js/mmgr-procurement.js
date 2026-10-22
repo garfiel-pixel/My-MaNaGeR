@@ -603,7 +603,7 @@ var MMGR = window.MMGR || {};
           gi +
           '" data-field="notes" aria-label="Notes" placeholder="-"></td>' +
           '<td class="w50"><button type="button" class="btn btn-s btn-d" data-action="delPitem" data-idx="' +
-          gi +
+          Number(gi) +
           '" aria-label="Remove ' +
           esc(it.name || 'item') +
           '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></td>' +

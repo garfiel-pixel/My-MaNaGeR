@@ -5,17 +5,34 @@
   "compatibility_flags": ["nodejs_compat"],
   "observability": {
     "enabled": true,
+    // S-3 (audit 2026-10-18): every request used to be recorded - the AI
+    // relay and the auth routes included. A log tail is kept, exported and
+    // read by people who are not the account owner, and a log line is very
+    // hard to take back once written. Three changes, one reason:
+    //   - TRACES at 10%: the volume lives here, and 10% still shows a slow
+    //     route when it is slow.
+    //   - INVOCATION LOGS OFF: the installed wrangler (4.136.3) offers only
+    //     a boolean here, so a 0.1 rate is not expressible, and "off" is
+    //     the stricter reading of the directive - no record of every
+    //     request. The app's own structured logs (cloud-save, ai-chat, and
+    //     every error) are untouched.
+    //   - THE QUERY STRING IS REDACTED: a URL can carry a token.
+    // ERRORS STAY AT 1 (logs.head_sampling_rate 1): a sampled-away error
+    // is an error nobody can diagnose. The redaction that keeps a
+    // credential out of a line lives in src/lib/observe.js, and
+    // tools/verify-observability-redaction.cjs holds it to that.
     "head_sampling_rate": 1,
+    "redact_query_string": true,
     "logs": {
       "enabled": true,
       "head_sampling_rate": 1,
       "persist": true,
-      "invocation_logs": true
+      "invocation_logs": false
     },
     "traces": {
       "enabled": true,
       "persist": true,
-      "head_sampling_rate": 1
+      "head_sampling_rate": 0.1
     }
   },
   // OBSERVABILITY-SECURITY-DOMAIN-EXECUTION-DIRECTIVES DIR-2 (branch B):

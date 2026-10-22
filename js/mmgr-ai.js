@@ -2503,6 +2503,8 @@ var MMGR = window.MMGR || {};
         trace.textContent = res && res.error ? res.error : '';
       }
     }
+    // S-6.5: a result landing must not take the caret out of the question box.
+    restoreAiFocus();
   }
 
   function copyOut() {
@@ -2595,12 +2597,14 @@ var MMGR = window.MMGR || {};
     hideWelcome();
     const b = document.createElement('div');
     b.className = role === 'user' ? 'ai-bubble ai-user' : 'ai-bubble ai-bot';
-    b.innerHTML = innerHtml;
+    b.innerHTML = innerHtml; // ok: every caller passes botBubbleHtml()/escHtml() output, never raw model text
     if (copyText !== undefined && copyText !== null) {
       b.dataset.copyText = String(copyText);
     }
     th.appendChild(b);
     scrollThread();
+    // S-6.5: a new bubble must not take the caret out of the question box.
+    restoreAiFocus();
   }
   function botAvatar() {
     return '<div class="ai-bot-avatar"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg></div>';
@@ -3395,6 +3399,80 @@ var MMGR = window.MMGR || {};
     e.preventDefault();
     askFromCommandBar(e);
   });
+  /* S-6.5 (owner 2026-10-22) - DESKTOP FOCUS RETENTION IN THE CHAT.
+     On desktop the dashboard re-renders underneath the AI window (the RAF
+     sub-renders in renderDash, a cloud pull, a preference save). A render that
+     replaces the window's container throws the caret out of the question box
+     mid-sentence, which is what the owner reported as the chat "stealing the
+     keyboard back".
+
+     The rule: if the question box HAD focus, and focus lands on the page body
+     (i.e. it was lost, NOT moved to another control the user clicked), put it
+     back with the same selection. Two notes on why this is safe:
+       - it never steals focus from a control the user chose: only a body/null
+         activeElement is restored;
+       - it only fires while the box carried the caret, so a closed or
+         untouched window is never refocused. */
+  var _aiFocusMemo = null;
+  function rememberAiFocus() {
+    var q = document.getElementById('ai-q');
+    _aiFocusMemo = null;
+    if (!q || document.activeElement !== q) {
+      return;
+    }
+    _aiFocusMemo = {
+      value: q.value,
+      start: q.selectionStart,
+      end: q.selectionEnd
+    };
+  }
+  function restoreAiFocus() {
+    if (!_aiFocusMemo) {
+      return false;
+    }
+    var q = document.getElementById('ai-q');
+    if (!q) {
+      return false;
+    }
+    if (document.activeElement === q) {
+      return true;
+    }
+    var a = document.activeElement;
+    var lost = !a || a === document.body || a === document.documentElement;
+    if (!lost) {
+      return false; // the user is somewhere else on purpose
+    }
+    try {
+      q.focus({ preventScroll: true });
+      if (_aiFocusMemo.value === q.value) {
+        q.setSelectionRange(_aiFocusMemo.start, _aiFocusMemo.end);
+      }
+    } catch (e) {
+      return false;
+    }
+    return document.activeElement === q;
+  }
+  document.addEventListener(
+    'focusin',
+    function (e) {
+      if (e.target && e.target.id === 'ai-q') {
+        rememberAiFocus();
+        return;
+      }
+      // Any deliberate move to another control ends the retention window.
+      _aiFocusMemo = null;
+    },
+    true
+  );
+  document.addEventListener(
+    'input',
+    function (e) {
+      if (e.target && e.target.id === 'ai-q') {
+        rememberAiFocus();
+      }
+    },
+    true
+  );
   document.addEventListener('click', function (e) {
     var btn = e.target.closest ? e.target.closest('#ai-command-btn') : null;
     if (!btn) {
@@ -3464,7 +3542,10 @@ var MMGR = window.MMGR || {};
     readAiSizePref: readAiSizePref,
     saveAiSize: saveAiWidth,
     clampAiSize: clampAiWidth,
-    applyAiSizePref: applyAiSizePref
+    applyAiSizePref: applyAiSizePref,
+    // S-6.5: focus retention helpers (exported so the harness can prove them)
+    rememberAiFocus: rememberAiFocus,
+    restoreAiFocus: restoreAiFocus
   };
 })(MMGR);
 window.MMGR = MMGR;

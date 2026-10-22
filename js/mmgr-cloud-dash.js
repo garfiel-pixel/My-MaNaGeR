@@ -557,7 +557,13 @@
         railUp.hidden = false;
         railUp.innerHTML =
           'Upgrade to Premium' +
-          (atLimit ? '<span class="db-upgrade-note">' + count + ' of ' + cap + ' used</span>' : '');
+          (atLimit
+            ? '<span class="db-upgrade-note">' +
+              Number(count) +
+              ' of ' +
+              Number(cap) +
+              ' used</span>'
+            : '');
       }
     }
   }

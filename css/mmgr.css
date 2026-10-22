@@ -3980,10 +3980,15 @@ body.dark-mode .dmaic-chip {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--gold);
+  color: var(--gold-ink);
   font-weight: 700;
   margin-bottom: 8px;
   font-size: 0.76rem;
+}
+/* The button that opens the shortcut sheet sits at the far end of the
+   block heading. */
+.sr-kbd .sl-open {
+  margin-left: auto;
 }
 .kbd-grid {
   display: grid;
@@ -3997,13 +4002,58 @@ body.dark-mode .dmaic-chip {
   display: inline-block;
   background: rgba(var(--gold-rgb), 0.12);
   border: 1px solid rgba(var(--gold-rgb), 0.35);
-  color: var(--gold);
+  /* --gold-ink, not --gold: the chip text is small, and plain gold on the
+     light card only reached 3.3:1. The ink step passes AA. */
+  color: var(--gold-ink);
   border-radius: 4px;
   padding: 0 6px;
   font-size: 0.66rem;
   font-weight: 700;
   font-family: ui-monospace, Consolas, monospace;
   white-space: nowrap;
+}
+
+/* ---- Keyboard shortcut sheet (audit M-5) ----
+   One modal, shared by the workspace and the calculator. It sits above
+   the drawer (1000), the output modal and the assistant window (2000). */
+.kb-sheet {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  z-index: 2200;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.kb-sheet.open {
+  display: flex;
+}
+.kb-sheet .mb {
+  width: 520px;
+  max-width: 100%;
+  max-height: 82vh;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.22);
+}
+.kb-sheet .mt {
+  /* Same AA fix as the key chips: the title is small text. */
+  color: var(--gold-ink);
+}
+.kb-sheet .kbd-grid {
+  grid-template-columns: minmax(96px, auto) 1fr;
+  gap: 9px 12px;
+  align-items: baseline;
+}
+.kb-sheet .kbd {
+  justify-self: start;
+  font-size: 0.72rem;
+  padding: 1px 7px;
+}
+.kb-note {
+  margin: 16px 0 0;
+  font-size: 0.72rem;
+  line-height: 1.55;
+  color: var(--slate);
 }
 .meet-empty {
   font-size: 0.78rem;
@@ -6872,6 +6922,23 @@ body.dark-mode .wbs-alert-item {
   .core-callout,
   #app-sidebar {
     display: none !important;
+  }
+  /* OWNER 2026-10-22: THE STAR FIELD NEVER PRINTS. With performance mode off
+     the Premium Glass engine mounts a full-viewport WebGL starfield
+     (#glass-canvas, position:fixed, z-index 0) plus its cursor glow, and a
+     position:fixed element is anchored to the PAGE box - so Chromium repeated
+     the starfield on every printed sheet and every PDF exported from Print /
+     PDF carried the deep-space background instead of white paper. It is
+     decoration for a screen and nothing else, so it is removed for paper here
+     (body's background below is already forced white, the canvas was painting
+     over it). Same rule covers the estimate sheet, which scopes its own print
+     styles to body.print-estimate. */
+  #glass-canvas,
+  .mouse-glow {
+    display: none !important;
+  }
+  html {
+    background: #fff !important;
   }
   body {
     background: #fff !important;
@@ -9976,6 +10043,10 @@ body.dark-mode .bcp-ico-moon {
   height: 16px;
   color: var(--gold);
 }
+/* The shortcut button parks next to the Hide button. */
+.bcp-guide-kbd {
+  margin-left: auto;
+}
 .bcp-guide-row {
   display: flex;
   align-items: center;
@@ -10581,6 +10652,63 @@ html.mmgr-tour-active .bcp-tour-nudge {
   }
 }
 
+/* S-6.4 (owner 2026-10-22) - "the same nice boxes throughout".
+   The estimate screen carried TWO field languages: the boxes inside a
+   .bcp-field took the token treatment, while the document row, the brand
+   grid, the client fields, the save-name box, the JIC rate and every
+   element/opening row fell back to the browser default - the "stepping into
+   the past" boxes the owner pointed at.
+
+   ONE rule set, tokens only (so light and dark stay in parity), and the
+   selector is wrapped in :where() so its specificity is just the page class:
+   every existing class rule - a compact grid row, a status colour, the phone
+   16px size - still wins without a !important or an ordering fight. Only the
+   fields that had NO treatment get this one. */
+.calculator-page
+  :where(
+    input[type='text'],
+    input[type='number'],
+    input[type='search'],
+    input:not([type]),
+    textarea
+  ) {
+  background: var(--tile-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 9px 12px;
+  font-family: inherit;
+  font-size: 0.88rem;
+  min-width: 0;
+  transition:
+    border-color var(--tr),
+    box-shadow var(--tr);
+}
+.calculator-page
+  :where(
+    input[type='text'],
+    input[type='number'],
+    input[type='search'],
+    input:not([type]),
+    textarea
+  ):focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(var(--gold-rgb), 0.14);
+}
+@media (max-width: 600px) {
+  /* Same iOS rule the .bcp-field block follows: 16px kills the zoom-jump. */
+  .calculator-page
+    :where(
+      input[type='text'],
+      input[type='number'],
+      input[type='search'],
+      input:not([type]),
+      textarea
+    ) {
+    font-size: 16px;
+  }
+}
+
 /* ============================================================
    BUILD COST CALCULATOR - PRINT SHEET (F4-2, owner 2026-09-28)
    body.print-estimate scopes it so nothing else inherits it. Chrome
@@ -10590,7 +10718,13 @@ html.mmgr-tour-active .bcp-tour-nudge {
    ============================================================ */
 @media print {
   /* C5 (AUDIT-DIRECTIVE-2026-10-18): one A4 sheet with sane margins, and the
-     estimate keeps its light paper look (never the dark theme's ink). */
+     estimate keeps its light paper look (never the dark theme's ink).
+     S-6.3: these numbers ARE the printable box. The same measurement lives in
+     js/mmgr-pdf.js as PRINT_BOX.marginMm (the side margin, shared by the
+     vector writer) - a 2mm top / 4mm bottom allowance is added here for the
+     browser's OWN header and footer strip (URL, date, page number), which
+     prints inside the page margin and would otherwise sit on the letterhead.
+     tools/verify-print-dom.cjs fails when the two ever disagree. */
   @page {
     size: A4;
     margin: 14mm 12mm 16mm;
@@ -10620,6 +10754,26 @@ html.mmgr-tour-active .bcp-tour-nudge {
   body.print-estimate {
     background: #fff !important;
     color: #111 !important;
+  }
+  /* S-6.3 (AUDIT-DIRECTIVE-2026-10-18): CHROME BLEED. A position:fixed box is
+     anchored to the PAGE box, so Chrome repeats it on EVERY printed sheet -
+     the tour spotlight's 9999px shadow spread dimmed all four paper edges and
+     the tour popover (fixed, and never `hidden` in markup) painted over the
+     first rows, while the signature footer disappeared under it on the last
+     sheet. Nothing fixed belongs on paper: the tour furniture and toasts are
+     screen-only chrome. A tour left open mid-print also blurred the estimate
+     element by element, so its blur is lifted for the sheet. */
+  body.print-estimate .bcp-tour-overlay,
+  body.print-estimate .bcp-tour-spot,
+  body.print-estimate .bcp-tour-pop,
+  body.print-estimate .bcp-tour-nudge,
+  body.print-estimate .toast,
+  body.print-estimate .mmgr-toast {
+    display: none !important;
+  }
+  html.mmgr-tour-active body.print-estimate .bcp-tour-blur,
+  html.mmgr-tour-active .bcp-tour-blur {
+    filter: none !important;
   }
   body.print-estimate .bcp-main {
     max-width: none;

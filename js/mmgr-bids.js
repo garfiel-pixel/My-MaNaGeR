@@ -1258,7 +1258,7 @@ var MMGR = window.MMGR || {};
     const tds = function (fn) {
       return subs
         .map(function (_, si) {
-          return fn(g.subs[si], si);
+          return fn(g.subs[si], si); // ok: fn is one of the local td builders, which escape their own text
         })
         .join('');
     };
@@ -1297,12 +1297,12 @@ var MMGR = window.MMGR || {};
         '<button class="btn btn-s btn-n lvl-act" data-action="bidProposal" data-pkg="' +
         pi +
         '" data-sid="' +
-        si +
+        Number(si) +
         '">View Proposal</button>' +
         '<button class="btn btn-s btn-n lvl-act" data-action="bidClarify" data-pkg="' +
         pi +
         '" data-sid="' +
-        si +
+        Number(si) +
         '">Clarify Email</button>' +
         (lowest ? '<span class="badge bg lvl-lowest">lowest leveled</span>' : '') +
         '</td>'
@@ -1366,7 +1366,7 @@ var MMGR = window.MMGR || {};
       pi +
       '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-edit"></use></svg> Edit</button>' +
       '<button class="btn btn-n btn-s" data-action="bidSubAdd" data-pkg="' +
-      pi +
+      Number(pi) +
       '">+ Add Sub</button>' +
       '<button class="btn btn-s btn-d" data-action="bidDelPkg" data-pkg="' +
       pi +
@@ -1387,7 +1387,7 @@ var MMGR = window.MMGR || {};
       pi +
       '">+ Add Line Item</button>' +
       '<button class="btn btn-n btn-s" data-action="bidSubAdd" data-pkg="' +
-      pi +
+      Number(pi) +
       '">+ Add Subcontractor</button>' +
       '</div>' +
       '</div>'

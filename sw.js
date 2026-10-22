@@ -178,7 +178,64 @@
 // normally. sw.js changed, so the cache name is bumped; no shell asset
 // changed and no inline script was added or removed, so the CSP
 // inline-script hash set is unchanged.
-const CACHE = 'mmgr-shell-v453';
+// v455 - KEYBOARD SHORTCUTS + THE SHORTCUT SHEET (audit M-5, 2026-10-21).
+// New module js/mmgr-shortcuts.js: "?" opens a help sheet listing every
+// shortcut, "/" jumps to the assistant box, and "Enter" works out the
+// estimate on the calculator page. It loads from its own <script src> on
+// project.html and calculator.html (NOT the app bundle), so the CSP
+// inline-script hash set never moves. The sheet and the drawer's shortcut
+// block are rendered from ONE table inside the module, so the two lists
+// cannot drift apart. Changed shell assets: project.html, calculator.html,
+// css/mmgr.css, dist/mmgr.min.css and the new module itself - hence this
+// bump, so a returning client re-fetches them.
+// v456 - WAVE S-6 (owner 2026-10-22): the calculator assistant's two-option
+// rate choice and its settings power. A work proposal now offers BOTH ways to
+// price it (the rate book figure, or the user's own rate - which opens the
+// custom line with the same job and an EMPTY rate box in focus), and a reply
+// may carry the settings the calculator already has (country/GCT 15%, custom
+// tax, overhead, statutory on-costs, design/construction contingency). Nothing
+// is written without the user's click, and the 2% Contractors Levy is refused
+// by name because it is a withholding, not a cost. Also: the chat keeps the
+// caret in the question box across a reply on desktop (the box no longer
+// disables itself while the assistant writes), the estimate screen's unstyled
+// boxes took the token field treatment, and the dashboard repaint restores the
+// AI window's focus. Changed shell assets: calculator.html,
+// js/calculator-page.js, js/calc-ai.js, js/mmgr-ai.js, js/mmgr-render.js,
+// css/mmgr.css, dist/mmgr.min.css, dist/bundle.js - hence this bump. No inline
+// script was added or removed, so the CSP hash set is unchanged.
+// v457 - S-6.3 (owner 2026-10-22): THE PRINTED SHEET STOPS BLEEDING. The print
+// sheet kept two position:fixed boxes alive - the tour spotlight (its 9999px
+// shadow spread dimmed all four paper edges) and the tour popover, which is
+// not `hidden` in markup and so painted over the first rows on every copy.
+// Fixed boxes are anchored to the PAGE box, so Chrome repeated both on every
+// sheet, over the footer as well. Both are now screen-only, and a tour left
+// open mid-print no longer blurs the estimate element by element. The shared
+// vector writer (js/mmgr-pdf.js) had the matching defect: its Helvetica width
+// was a rough `length * 0.52em`, which under-measured capitals and 'm'/'w', so
+// right-aligned cells ran past the paper edge and the clip path cut their last
+// glyphs. It now measures real glyph advances, clamps every text box into the
+// printable box, keeps a gap under the repeated header band, and breaks pages
+// BETWEEN text lines instead of through one. One measurement (PRINT_BOX) is
+// shared with the print sheet's @page margins and gated by
+// tools/verify-print-dom.cjs. Changed shell assets: css/mmgr.css,
+// dist/mmgr.min.css, dist/bundle.js - hence this bump. No inline script was
+// added or removed, so the CSP hash set is unchanged.
+// v458 - OWNER 2026-10-22: THE STAR FIELD NO LONGER PRINTS. This is the PDF
+// report behind v457, named properly. With performance mode OFF the Premium
+// Glass engine mounts a full-viewport position:fixed WebGL starfield
+// (#glass-canvas) plus its cursor glow, and a fixed box is anchored to the PAGE
+// box: Chromium repeated the starfield on every printed sheet, so Print / PDF
+// exported the deep-space background instead of white paper. The global
+// @media print block now removes #glass-canvas and .mouse-glow and forces
+// white paper, and it covers the estimate sheet (whose own print block is
+// scoped to body.print-estimate) and the project/app pages alike. Measured
+// with the engine LIVE on /calculator.html and /project.html: print media
+// computes display:none for both, body white; screen still paints the canvas
+// (proven by renaming the rule - the canvas then computed `block` in print,
+// and gate G13 in qa-glass.cjs fails without it). css/mmgr.css and
+// dist/mmgr.min.css are shell assets, hence this bump. No inline script was
+// added or removed, so the CSP hash set is unchanged.
+const CACHE = 'mmgr-shell-v458';
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new
 // 'JIC rate book' choice on calculator.html) prices ANY shipped book row as
@@ -734,6 +791,10 @@ const SHELL = [
   'js/mmgr-theme.js',
   'js/mmgr-perf.js',
   'js/mmgr-dock.js',
+  // AUDIT 2026-10-18 M-5: the keyboard shortcut module. It has its own
+  // <script src> on project.html and calculator.html, so it is not in any
+  // bundle; listing it here keeps it working with no network.
+  'js/mmgr-shortcuts.js',
   'js/mmgr-cloud-dash.js',
   // Marketing + utility JS
   'js/marketing.js',

@@ -371,6 +371,44 @@ async function ev(expr) {
     { u1, u2 }
   );
 
+  // ---- G13: THE STARFIELD NEVER PRINTS (owner report 2026-10-22) ----------
+  // With Performance Mode off the engine is LIVE (G10 just proved it): a
+  // full-viewport position:fixed #glass-canvas plus its cursor glow. A fixed
+  // box is anchored to the PAGE box, so Chromium repeats it on EVERY printed
+  // sheet - so Print / PDF exported with the deep-space background painted
+  // over the paper instead of white. The global @media print block removes
+  // both and forces paper white. The screen half of this gate (canvas back to
+  // a painted display once print media ends) keeps it from passing vacuously.
+  await send('Emulation.setEmulatedMedia', { media: 'print' });
+  await delay(250);
+  const p1 = await ev(`(function(){
+    var c = document.getElementById('glass-canvas');
+    var g = document.querySelector('.mouse-glow');
+    var cs = function(el){ return el ? getComputedStyle(el) : null; };
+    return { active: window.MMGR.Glass.active(), canvas: !!c, glow: !!g,
+      canvasDisplay: c ? cs(c).display : 'absent',
+      glowDisplay: g ? cs(g).display : 'absent',
+      bodyBg: cs(document.body).backgroundColor,
+      htmlBg: cs(document.documentElement).backgroundColor };
+  })()`);
+  await send('Emulation.setEmulatedMedia', { media: 'screen' });
+  await delay(200);
+  const p2 = await ev(`(function(){
+    var c = document.getElementById('glass-canvas');
+    return { display: c ? getComputedStyle(c).display : 'absent' };
+  })()`);
+  check(
+    'G13 print: the live starfield + glow are paper-hidden (canvas displays on screen, display:none in print, body white)',
+    p1.active === true &&
+      p1.canvas === true &&
+      p1.canvasDisplay === 'none' &&
+      p1.glowDisplay === 'none' &&
+      /255, 255, 255/.test(p1.bodyBg) &&
+      /255, 255, 255/.test(p1.htmlBg) &&
+      p2.display !== 'none',
+    { p1, p2 }
+  );
+
   // Back off via the preference path (setGlassMode('css') + sync).
   await ev(
     `(function(){ window.MMGR.Viewport.setGlassMode('css'); window.MMGR.Glass.sync(); return true; })()`

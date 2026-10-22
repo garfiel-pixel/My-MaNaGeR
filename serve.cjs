@@ -11,7 +11,12 @@ const path = require('path');
 const crypto = require('crypto');
 
 const ROOT = __dirname;
-const PORT = 8765;
+// MMGR_SERVE_PORT lets a harness boot its OWN private server instead of
+// sharing :8765 with whatever else is running. A shared server can be a
+// STALE one (AGENTS lesson 10: the CSP is computed at startup), so a
+// security gate that measures the header must not measure someone else's
+// process. The default is unchanged.
+const PORT = Number(process.env.MMGR_SERVE_PORT || 8765);
 
 // PART F T7 (2026-08-16): in-memory reviews store for the dev-server
 // mirror below (production uses the Worker's D1 `reviews` table + R2).

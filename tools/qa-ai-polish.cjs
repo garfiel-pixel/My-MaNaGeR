@@ -268,6 +268,47 @@ async function ev(expr) {
     }
   });
 
+  // ---- S-6.5 (owner 2026-10-22): the caret survives a dashboard repaint ----
+  const s65 = await ev(`(function(){
+    // The window only opens for a signed-in account (the entitlement seam);
+    // this probe asserts the focus contract, not the gate, so it opens the
+    // seam for the length of the check and restores it after.
+    var ent = MMGR.Entitlements;
+    var orig = ent && ent.aiAssistant;
+    if (ent) ent.aiAssistant = function () { return true; };
+    MMGR.AiWin.open();
+    var q = document.getElementById('ai-q');
+    if (!q) return { ok: false, why: 'no question box' };
+    q.focus();
+    q.value = 'half typed sentence';
+    try { q.setSelectionRange(4, 4); } catch (e) {}
+    MMGR.AiWin.rememberAiFocus();
+    q.blur(); // what a re-render does: focus falls to the page body
+    var restored = MMGR.AiWin.restoreAiFocus();
+    if (ent && orig) ent.aiAssistant = orig;
+    return { ok: restored === true && document.activeElement === q,
+      restored: restored, dis: q.disabled, vis: !!(q.offsetParent || q.getClientRects().length), activeId: document.activeElement ? (document.activeElement.id || document.activeElement.tagName) : 'none',
+      sel: q.selectionStart, value: q.value };
+  })()`);
+  check(
+    'S6.5 focus returns to the question box after a re-render',
+    s65 && s65.ok === true && s65.sel === 4,
+    s65
+  );
+
+  const s65b = await ev(`(function(){
+    MMGR.AiWin.open();
+    var q = document.getElementById('ai-q');
+    var other = document.getElementById('ai-tier');
+    if (!q || !other) return { ok: false, why: 'controls missing' };
+    q.focus();
+    MMGR.AiWin.rememberAiFocus();
+    other.focus(); // the user deliberately moved on
+    var stole = MMGR.AiWin.restoreAiFocus();
+    return { ok: stole === false, active: document.activeElement && document.activeElement.id };
+  })()`);
+  check('S6.5 focus is never taken from a control the user chose', s65b && s65b.ok === true, s65b);
+
   check('copy: no console errors', consoleErrors.length === 0, consoleErrors);
   const fails = results.filter(x => !x.val);
   log(

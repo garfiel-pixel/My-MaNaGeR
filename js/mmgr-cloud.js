@@ -1700,7 +1700,7 @@ var MMGR = window.MMGR || {};
               : '') +
             (e.active
               ? '<button class="btn btn-d btn-s" data-action="cloudEditorRevoke" data-id="' +
-                e.id +
+                esc(e.id) +
                 '">Revoke</button>'
               : '<span class="sr-hint" style="margin:0">revoked</span>') +
             '</div>'
@@ -2212,7 +2212,7 @@ var MMGR = window.MMGR || {};
           let what = '';
           let revertBtn =
             '<button class="btn btn-o btn-s" data-action="cloudLogRevert" data-id="' +
-            en.id +
+            esc(en.id) +
             '">Revert</button>';
           if (en.type === 'bulk') {
             what = 'Full-state change (snapshot)';

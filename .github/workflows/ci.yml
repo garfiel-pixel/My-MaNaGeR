@@ -135,6 +135,26 @@ jobs:
         id: prettier
         run: node tools/verify-prettier.cjs
 
+      # Observability cost + privacy (S-3, audit 2026-10-18). Two halves:
+      # the wrangler config must not record every request (traces <= 10%,
+      # invocation logs off, query string redacted, errors unsampled) and
+      # the log scrubber in src/lib/observe.js must keep every credential
+      # OUT of the log tail while leaving the useful context in.
+      - name: "T1: Observability sampling + redaction (S-3)"
+        id: qa-observe
+        run: node tools/verify-observability-redaction.cjs
+
+      # CSP scoping (S-4, audit 2026-10-18). 'unsafe-eval' turns a string
+      # into code, so it must reach the vendored whisper runtime ONLY.
+      # The gate reads the policies in worker.js and serve.cjs, proves the
+      # Worker and the dev server declare the same ones, and then FETCHES
+      # every HTML page and reads the header it comes back with - with a
+      # control that proves the whisper runtime really does get the
+      # relaxed policy, so the check cannot pass by being vacuous.
+      - name: "T1: CSP scoping - no unsafe-eval on any HTML page (S-4)"
+        id: qa-csp-eval
+        run: node tools/verify-csp-unsafe-eval.cjs
+
       # ── Deploy validation (dry-run, no credentials needed) ──────────
       - name: Wrangler deploy dry-run
         id: deploy
@@ -526,6 +546,14 @@ jobs:
       - name: "T4: Cookie consent + storage inventory (qa-consent)"
         id: qa-consent
         run: node tools/qa-consent.cjs
+
+      # M-5 keyboard shortcuts + the shortcut help sheet (audit 2026-10-18):
+      # "?" opens the sheet, "/" reaches the assistant, Enter works out the
+      # estimate on the calculator, and neither one eats what the user is
+      # typing. Reuses the serve.cjs server started above.
+      - name: "T4: Keyboard shortcuts + help sheet (qa-shortcuts)"
+        id: qa-shortcuts
+        run: node tools/qa-shortcuts.cjs
 
       # Wide-monitor fill (owner report 2026-10-19): the app column must span
       # a 2560/3440 screen on app, project, calculator and admin, keep its

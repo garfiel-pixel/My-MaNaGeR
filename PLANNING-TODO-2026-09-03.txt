@@ -2372,3 +2372,97 @@ Deploy 022c14ea (worker + sw + harness). LIVE, measured after the deploy:
   primed-cache gates (B8c0 control, B8c refusal, B8d offline copy) that
   FAIL against a site without the fix. The gates have teeth and the site
   now satisfies them.
+S-5 SHIPPED IN FULL - THE OUTPUT-ESCAPING GATE AND ITS FIRST 51 FINDINGS
+(2026-10-22). AUDIT-DIRECTIVE-2026-10-18 8.1 S-5 asked for a lint rule
+that requires every interpolated value in an innerHTML template to pass
+through an escaper, and for what it finds to be fixed in the same
+sprint. Both are done.
+- THE RULE is tools/eslint-rules/no-unsanitized-html.js, registered in
+  eslint.config.js as mmgr/no-unsanitized-html: 'error' for js/**. It
+  follows the VALUE, not the line: literals and numbers are safe,
+  esc()/escapeHtml()/U.escapeHtml() are safe, a template literal and a
+  '+' chain are checked interpolation by interpolation, an identifier is
+  resolved to its declaration, arr.map(fn) is checked inside the
+  callback. A line (or the line that opens the statement) may carry
+  `// ok: <reason>`; a bare `// ok` is NOT an allowance.
+- WHAT IT FOUND, AND WHAT EACH ONE GOT. 51 findings over 19 files. Real
+  user or server text now goes through an escaper: the calculator's
+  history chips (was a bare '<' replacement - now the module's escHtml),
+  RACI option ids, cloud editor/log ids, webhook ids, weather-region
+  ids, kanban dates, the calculator page's currency code. Values that are
+  provably not text carry a reason instead: schedule float/pad day
+  counts, simulation bucket counts, LD avoided/incurred days, decision
+  impact scores, bid/procurement row indexes (Number()-wrapped where the
+  value sits in an attribute), health label text, marketing band copy,
+  the AI bubble's already-escaped HTML. marketing.js grew one esc() so
+  the manual four-replace chain is not repeated by hand.
+- TWO RULE FALSE NEGATIVES WERE FOUND WHILE TRIAGING (a constant table
+  read and a literal-array element both reported as unsafe) and the rule
+  now PROVES them instead of demanding a marker for them.
+- PINNED: test/no-unsanitized-html.test.mjs, 12 cases, both directions
+  (it fires on the five unsafe shapes, it stays quiet on the seven safe
+  ones, and the marker requires a reason). Registered in
+  docs/CI-TEST-COVERAGE.md; runs in `npm test` inside `npm run verify`.
+- VERIFIED: npx eslint js -> 0 errors (185 pre-existing warnings);
+  tools/verify-eslint.cjs PASS; npm run verify EXIT=0 including CSP,
+  CSS integrity, a11y and the 129-case node test suite; and against the
+  rebuilt bundles - qa-procurement 51/0 (its X1/X2 injection gates still
+  pass), qa-calculator-page 248/248, qa-dashboard-spec 98/0,
+  qa-calc-assistant 107/0, qa-health-sweep 15/15 pages clean.
+
+2026-10-22 - S-6.3 PDF + PRINT CHROME BLEED (AUDIT-DIRECTIVE 2026-10-18 §14.3).
+- ROOT CAUSE ON PAPER: two position:fixed boxes stayed alive under print media
+  (.bcp-tour-spot, whose 9999px shadow spread dimmed all four paper edges, and
+  .bcp-tour-pop, which has no [hidden] rule in markup and painted over the first
+  rows). A fixed box is anchored to the PAGE box, so Chrome repeated both on
+  EVERY sheet, over the footer as well. Both are screen-only now, a tour left
+  open mid-print no longer blurs the estimate, and .toast/.mmgr-toast join them.
+- ROOT CAUSE IN THE VECTOR WRITER: js/mmgr-pdf.js measured text as
+  `length * size * 0.52` (0.556 for digits), which under-measures capitals and
+  'm'/'w' by up to 60%. Right-aligned cells are positioned by subtracting that
+  width, so the text ran past the paper edge and the clip path cut its last
+  glyphs - the "right column clipped at some sizes" defect. Replaced with real
+  Helvetica advances (1/1000 em table + a 1.08 bold factor, because an
+  over-estimate is harmless and an under-estimate clips).
+- ALSO: every text box is clamped into the printable box (x and baseline), the
+  repeated header band now keeps a real gap above the first body row, and page
+  breaks land BETWEEN text lines (merged text bands) instead of slicing the row
+  that straddled the cut. build() returns `layout` (per-sheet printable box +
+  every drawn text box) as the gate hook, like the Gantt's meta hooks.
+- ONE MEASUREMENT, TWO SURFACES: PRINT_BOX.marginMm (12) is the side margin in
+  both js/mmgr-pdf.js and the print sheet's @page block, which keeps 14/16mm
+  top/bottom for the browser's OWN header/footer strip.
+- GATES: tools/verify-print-dom.cjs gains the printable-box arm (fixed/sticky
+  banner, horizontal overflow at 360/768/1280, letterhead-to-first-row gap,
+  A4/A3 vector geometry, header-above-body, every row exactly once, @page vs
+  PRINT_BOX parity). Proven to bite: @page 20mm fails parity. Registry row
+  updated in docs/CI-TEST-COVERAGE.md.
+- VERIFIED: node build.js; npm run verify EXIT=0; verify-print-dom PASS (3
+  sheets at A4 and A3, 90/90 rows once, all text inside the box);
+  qa-calc-assistant 130/0; qa-ai-polish 13/13.
+
+2026-10-22 - S-6.3b THE STARFIELD WAS PRINTING (owner report, supersedes the
+narrower reading of §14.3).
+- THE DEFECT: with performance mode OFF the Premium Glass engine mounts a
+  full-viewport position:fixed WebGL starfield (#glass-canvas, z-index 0) plus
+  its cursor glow (.mouse-glow). A fixed box is anchored to the PAGE box, so
+  Chromium repeated the starfield on EVERY printed sheet - Print / PDF exported
+  the deep-space background instead of paper. The global @media print block
+  forced body white but never removed the canvas, so the canvas painted over
+  the white.
+- FIX: css/mmgr.css's global @media print block now hides #glass-canvas and
+  .mouse-glow and forces html/body white. It applies to the calculator's
+  estimate sheet (scoped to body.print-estimate), project.html and app.html.
+- MEASURED with the engine LIVE: /calculator.html and /project.html both boot
+  glass-premium with the canvas + glow mounted; under print media both compute
+  display:none and body/html are rgb(255,255,255). Proven to bite by renaming
+  the rule: the canvas then computed `block` under print media.
+- GATES: qa-glass.cjs G13 (live, engine active, print media emulated, screen
+  media still paints the canvas) and a static starfield arm in
+  tools/verify-print-dom.cjs (rule present AND js/mmgr-glass.js still mounts
+  those ids; comments stripped, because the print block's own prose names both
+  ids and a comment-blind check went green with the rule deleted - measured).
+- sw.js bumped to mmgr-shell-v458 (css/mmgr.css + dist/mmgr.min.css are shell
+  assets). Registry rows updated for both harnesses.
+- VERIFIED: node build.js; npm run verify EXIT=0; qa-glass PASS (15 gates);
+  verify-print-dom PASS; qa-health-sweep 15/15 clean pages.

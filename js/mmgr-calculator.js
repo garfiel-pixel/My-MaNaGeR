@@ -11,6 +11,20 @@
   var ns = (window.MMGR = window.MMGR || {});
   ns.Calculator = ns.Calculator || {};
 
+  // S-5 (AUDIT-DIRECTIVE-2026-10-18): every value that reaches an
+  // innerHTML string goes through here. Delegates to Utils so the whole
+  // app has ONE escaper; the local chain is only a load-order fallback.
+  function escHtml(v) {
+    if (ns.Utils && typeof ns.Utils.escapeHtml === 'function') {
+      return ns.Utils.escapeHtml(v);
+    }
+    return String(v === null || v === undefined ? '' : v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
   var _icon = null; // the draggable circular FAB
   var _panel = null; // the calculator panel
   var _open = false;
@@ -1729,13 +1743,13 @@
       .map(function (c) {
         return (
           '<option value="' +
-          c.from +
+          escHtml(c.from) +
           '-' +
-          c.to +
+          escHtml(c.to) +
           '">' +
-          c.from.toUpperCase() +
+          escHtml(c.from.toUpperCase()) +
           ' → ' +
-          c.to.toUpperCase() +
+          escHtml(c.to.toUpperCase()) +
           '</option>'
         );
       })
@@ -1760,11 +1774,7 @@
       '<div class="calc-history-title">Recent</div>' +
       _history
         .map(function (h) {
-          return (
-            '<div class="calc-history-item" title="Click to copy">' +
-            h.replace(/</g, '&lt;') +
-            '</div>'
-          );
+          return '<div class="calc-history-item" title="Click to copy">' + escHtml(h) + '</div>';
         })
         .join('');
     el.querySelectorAll('.calc-history-item').forEach(function (item) {

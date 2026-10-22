@@ -3,12 +3,25 @@
  *
  * What this file owns:
  *   - the choice itself: localStorage `mmgr_consent` = {v, iv, analytics, ts}
- *   - the server-readable mirror: cookie `mmgr_consent_a` (value 1, only set
- *     when analytics is allowed) so the Worker's Content-Security-Policy can
- *     allow or block the analytics script per response
+ *   - the server-readable mirror: cookie `mmgr_consent_a`, written as
+ *     "<inventoryVersion>.<chosenAtMs>" and only when analytics is allowed,
+ *     so the Worker's Content-Security-Policy can allow or block the
+ *     analytics script per response
  *   - the banner (three equal buttons, no dark pattern) and its "Choose" panel
  *   - MMGR.Consent.allows(category) for other code to ask before doing
  *     anything optional
+ *
+ * WHY THE MIRROR CARRIES THE VERSION AND THE TIME, NOT A PLAIN "1":
+ * the server's only view of the choice is that cookie, so it has to be
+ * able to tell a CURRENT choice from a STALE one on its own. A bare "1"
+ * cannot: a choice made under an older inventory, or one older than
+ * twelve months, still arrives as "1" and the server keeps allowing the
+ * analytics host. The client used to clear the mirror itself, but only on
+ * the pages that show the banner - the signed-in app has no banner, so on
+ * the app the stale mirror survived and the beacon kept running (measured
+ * live 2026-10-21: 3 of 3 app loads collected the beacon under a stale
+ * choice). Now the server judges the cookie itself (version + age) and
+ * this file reconciles the mirror on EVERY page, banner or not.
  *
  * WHY THE CSP GATES THE ANALYTICS SCRIPT INSTEAD OF THIS FILE INJECTING IT:
  * the directive's design assumed we control the analytics tag. We do not:
@@ -34,8 +47,13 @@
 
   var KEY = 'mmgr_consent'; // localStorage - the choice of record
   var COOKIE = 'mmgr_consent_a'; // cookie - server-readable mirror for the CSP
-  var INVENTORY_VERSION = 1; // bump when docs/STORAGE-INVENTORY.md changes a category
+  // Bump when docs/STORAGE-INVENTORY.md changes a category. The server
+  // checks the SAME number (CONSENT_INVENTORY_VERSION in worker.js and
+  // serve.cjs), so the three must be bumped together - tools/qa-consent.cjs
+  // phase S fails the build if they drift.
+  var INVENTORY_VERSION = 1;
   var MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000; // re-ask every 12 months
+  var CLOCK_SKEW_MS = 24 * 60 * 60 * 1000; // a record dated in the future is not credible
   var CARD_ID = 'consent-card';
 
   function read() {
@@ -64,19 +82,64 @@
       return false;
     }
     var t = Date.parse(c.ts);
-    if (!t || Date.now() - t >= MAX_AGE_MS) {
+    if (!t) {
+      return false;
+    }
+    var now = Date.now();
+    // A device clock running ahead of the server must not buy extra months.
+    if (t - now > CLOCK_SKEW_MS) {
+      return false;
+    }
+    if (now - t >= MAX_AGE_MS) {
       return false;
     }
     return true;
   }
 
-  function writeCookieMirror(analytics) {
+  // The mirror is the server's only view of the choice, so it carries the
+  // version the choice was made under and the moment it was made. Empty
+  // string means "no valid choice" - the server then blocks the host.
+  function mirrorValue(c) {
+    if (!c || !c.analytics || !isFresh(c)) {
+      return '';
+    }
+    return INVENTORY_VERSION + '.' + Date.parse(c.ts);
+  }
+
+  function readMirror() {
+    var parts = ('; ' + document.cookie).split('; ');
+    for (var i = 0; i < parts.length; i++) {
+      var kv = parts[i].split('=');
+      if (kv[0] === COOKIE) {
+        return kv.slice(1).join('=');
+      }
+    }
+    return '';
+  }
+
+  function writeMirror(value) {
     var secure = location.protocol === 'https:' ? '; Secure' : '';
-    if (analytics) {
+    if (value) {
       document.cookie =
-        COOKIE + '=1; path=/; max-age=' + Math.floor(MAX_AGE_MS / 1000) + '; SameSite=Lax' + secure;
+        COOKIE +
+        '=' +
+        value +
+        '; path=/; max-age=' +
+        Math.floor(MAX_AGE_MS / 1000) +
+        '; SameSite=Lax' +
+        secure;
     } else {
       document.cookie = COOKIE + '=; path=/; max-age=0; SameSite=Lax' + secure;
+    }
+  }
+
+  // Keep the mirror in step with the stored choice on EVERY page - not only
+  // the ones that show the banner. The app has no banner, and a mirror left
+  // behind there keeps the server allowing the analytics script.
+  function syncMirror() {
+    var want = mirrorValue(read());
+    if (readMirror() !== want) {
+      writeMirror(want);
     }
   }
 
@@ -105,7 +168,7 @@
     } catch (e) {
       /* private mode: the banner still works for this page view */
     }
-    writeCookieMirror(!!analytics);
+    writeMirror(mirrorValue(c));
     hide();
   }
 
@@ -258,6 +321,10 @@
     }
     // Every page syncs its own toggle; only the public pages show a banner.
     syncInputs();
+    // Every page also reconciles the mirror - the app included. A stale or
+    // absent choice clears it here, so the server's policy matches what
+    // this device actually chose.
+    syncMirror();
     // Public pages opt in with data-consent-banner="on" on <body>. The
     // signed-in app never shows the banner (audit 8.2 item 7): its choice
     // surface is Settings, Privacy.
@@ -268,8 +335,8 @@
     var stale = read();
     if (!isFresh(stale)) {
       // Nothing valid is remembered: the analytics script stays blocked
-      // (mirror cleared so the server policy matches) and the banner asks.
-      writeCookieMirror(false);
+      // (the mirror was cleared above so the server policy matches) and
+      // the banner asks.
       open();
     }
     document.addEventListener('click', onClick);
@@ -282,6 +349,7 @@
     save: save,
     read: read,
     syncInputs: syncInputs,
+    syncMirror: syncMirror,
     INVENTORY_VERSION: INVENTORY_VERSION
   };
 

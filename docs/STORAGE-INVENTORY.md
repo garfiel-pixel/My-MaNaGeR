@@ -14,6 +14,9 @@ Categories:
 The consent choice itself is necessary (it is how the site remembers the
 answer). Bump `INVENTORY_VERSION` in `js/consent.js` whenever a row is added
 or changes category; every visitor is asked again after a version change.
+The server reads that same number back out of the cookie, so bump
+`CONSENT_INVENTORY_VERSION` in `worker.js` and `serve.cjs` in the same
+change - `tools/qa-consent.cjs` phase S fails the build if the three drift.
 
 Enforced by `tools/qa-consent.cjs` phase S: any `localStorage` /
 `sessionStorage` / cookie key written by shipped code that is not listed here
@@ -24,7 +27,7 @@ fails the gate.
 | Name | Set by | Purpose | Category |
 |---|---|---|---|
 | `mmgr_session` | server (`src/auth/session.js`) | Keeps you signed in. HttpOnly, Secure, SameSite=Lax - never readable by page scripts. | necessary |
-| `mmgr_consent_a` | `js/consent.js` | Carries your cookie choice to the server so the security policy can allow or block the analytics script. Same value as the `analytics` choice in `mmgr_consent`. | necessary |
+| `mmgr_consent_a` | `js/consent.js` | Carries your cookie choice to the server so the security policy can allow or block the analytics script. Holds the inventory version and the moment you chose, so the server can tell a current choice from an old one without asking the browser. | necessary |
 | Cloudflare `/cdn-cgi/` challenge cookies | Cloudflare edge | Bot protection and DDoS defence. Set by the network, not by this site's code. | necessary |
 
 ## localStorage - account and app shell

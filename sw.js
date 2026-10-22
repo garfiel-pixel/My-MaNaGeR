@@ -147,7 +147,19 @@
 // delete my account); the field guide gained the matching cards. The served
 // pages changed (project.html, calculator.html, css/mmgr.css, dist/bundle.js,
 // dist/mmgr.min.css, mymanager-field-guide.html), hence this bump.
-const CACHE = 'mmgr-shell-v451';
+// v452 - S-2 CONSENT GATE: THE SERVER NOW JUDGES THE CHOICE (2026-10-21).
+// The mirror cookie mmgr_consent_a carries the inventory version and the
+// moment the choice was made ("<version>.<ms>") instead of a bare "1", and
+// js/consent.js reconciles it on EVERY page - the signed-in app shows no
+// banner, so an aged-out choice used to leave the mirror standing and the
+// analytics beacon kept running there (3 of 3 app loads collected it,
+// measured live). worker.js and serve.cjs now refuse a cookie whose
+// version is not the one they serve, or whose timestamp is older than
+// twelve months, so the block happens on the FIRST request instead of
+// waiting for a script to run. js/consent.js, dist/bundle.js and
+// worker.js/serve.cjs are SHELL assets, hence this bump. No inline script
+// was added or removed, so the CSP inline-script hash set is unchanged.
+const CACHE = 'mmgr-shell-v452';
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new
 // 'JIC rate book' choice on calculator.html) prices ANY shipped book row as

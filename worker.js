@@ -61,11 +61,42 @@ const INLINE_SCRIPT_HASHES = [
 // fetching it - zero requests before consent, which is exactly GATE S-2. If
 // the zone's auto-injection is ever disabled in the dashboard, this gate
 // simply stops mattering (nothing is injected); it never becomes wrong.
+//
+// The cookie is "<inventoryVersion>.<chosenAtMs>", NOT a bare flag: this
+// server is the only place that can tell a current choice from a stale one
+// on the very first request, before any script has run. A choice made under
+// an older inventory, or one older than twelve months, is refused here -
+// which is what stops the beacon on pages that never run the consent script
+// (the signed-in app shows no banner). See js/consent.js for the client side.
 const CONSENT_ANALYTICS_HOST = ' https://static.cloudflareinsights.com';
+
+// MUST match INVENTORY_VERSION in js/consent.js and
+// CONSENT_INVENTORY_VERSION in serve.cjs - tools/qa-consent.cjs phase S
+// fails the build if the three drift.
+const CONSENT_INVENTORY_VERSION = 1;
+// A choice is re-asked every 12 months (js/consent.js MAX_AGE_MS).
+const CONSENT_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000;
+// Tolerate a device clock a little ahead of this server's.
+const CONSENT_CLOCK_SKEW_MS = 24 * 60 * 60 * 1000;
 
 function analyticsAllowed(request) {
   const cookie = request.headers.get('Cookie') || '';
-  return /(^|;\s*)mmgr_consent_a=1(\s*;|$)/.test(cookie);
+  const m = /(?:^|;\s*)mmgr_consent_a=(\d+)\.(\d+)(?:\s*;|$)/.exec(cookie);
+  if (!m) {
+    return false;
+  }
+  if (Number(m[1]) !== CONSENT_INVENTORY_VERSION) {
+    return false; // a choice made under an older inventory: ask again
+  }
+  const ts = Number(m[2]);
+  if (!Number.isFinite(ts) || ts <= 0) {
+    return false;
+  }
+  const age = Date.now() - ts;
+  if (age < 0) {
+    return age > -CONSENT_CLOCK_SKEW_MS; // clock ahead: only a small skew passes
+  }
+  return age < CONSENT_MAX_AGE_MS;
 }
 
 function cspFor(request, normalized) {

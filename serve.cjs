@@ -256,6 +256,35 @@ const MCP_AUTH_REFUSAL =
 // script-src directive (space-separated). A hash as its own ';'-joined element
 // becomes an invalid directive and the browser rejects the WHOLE policy,
 // silently breaking every inline script. Must match worker.js exactly.
+//
+// S-2 consent gate: the analytics host rides along only for a visitor whose
+// consent cookie is CURRENT. The cookie is "<inventoryVersion>.<chosenAtMs>"
+// (js/consent.js writes it), so a choice made under an older inventory, or
+// one older than twelve months, is refused here - the server judges the
+// cookie on its own, before any script runs. Keep this in lockstep with
+// worker.js: CONSENT_INVENTORY_VERSION and the parser below.
+const CONSENT_INVENTORY_VERSION = 1;
+const CONSENT_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000;
+const CONSENT_CLOCK_SKEW_MS = 24 * 60 * 60 * 1000;
+
+function analyticsAllowed(cookieHeader) {
+  const m = /(?:^|;\s*)mmgr_consent_a=(\d+)\.(\d+)(?:\s*;|$)/.exec(String(cookieHeader || ''));
+  if (!m) {
+    return false;
+  }
+  if (Number(m[1]) !== CONSENT_INVENTORY_VERSION) {
+    return false;
+  }
+  const ts = Number(m[2]);
+  if (!Number.isFinite(ts) || ts <= 0) {
+    return false;
+  }
+  const age = Date.now() - ts;
+  if (age < 0) {
+    return age > -CONSENT_CLOCK_SKEW_MS;
+  }
+  return age < CONSENT_MAX_AGE_MS;
+}
 
 const INLINE_SCRIPT_HASHES = [
   "'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk='",
@@ -866,7 +895,7 @@ const server = http.createServer((req, res) => {
     } else {
       // S-2: resolve the analytics placeholder - the host rides along only
       // for a visitor whose consent cookie allows it (worker.js cspFor parity).
-      const consentOk = /(^|;\s*)mmgr_consent_a=1(\s*;|$)/.test(String(req.headers.cookie || ''));
+      const consentOk = analyticsAllowed(req.headers.cookie);
       const analyticsHost = consentOk ? ' https://static.cloudflareinsights.com' : '';
       const base =
         path.basename(file) === 'pricing.html'

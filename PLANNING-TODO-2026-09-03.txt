@@ -2329,3 +2329,14 @@ locally; against the UNFIXED live site the two new browser gates FAIL
 (cspAllowsHost true under an aged-out choice, and the offline copy
 carrying the host) - the gates have teeth, proven before the deploy
 rather than after it.
+S-2 WAVE 2 - THE REDIRECT I BROKE IN THE FIRST PLACE (2026-10-22).
+The document rule shipped, the leak measured 0/3 on live (was 3/3), and the
+live header check found MY OWN regression in the same breath: the
+extensionless routing answers /index.html and /project.html with a 307
+that carries NO Content-Type at all, so the content-type rule dropped them
+back to the shared one-hour TTL - the exact hole the wave set out to
+close, on the very paths a visitor types. The path rule is back
+(/\.html$/i alongside the content type), and the S8 gate now demands BOTH
+so it cannot silently lose either again. Proven by mutation: removing
+the path rule turns S8 red (35 passed, 1 failed) and restoring it turns
+S8 green again. The gate bites; it is not a decoration.

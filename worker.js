@@ -501,11 +501,42 @@ export default {
       decorated.headers.set('Content-Security-Policy', cspFor(request, normalized));
 
       // Cache-Control strategy
+      //
+      // S-2 (audit 2026-10-18, 8.2) - A DOCUMENT IS NEVER SERVED FROM A
+      // CACHE THAT CAN OUTLIVE THE REQUEST THAT PRODUCED IT. The
+      // Content-Security-Policy set just above is PER REQUEST: the analytics
+      // host rides along in it only for a visitor whose consent cookie
+      // allows it. A response a cache may reuse across consent states hands
+      // one visitor another visitor's decision.
+      //
+      // MEASURED LIVE 2026-10-21, one layer below the server gate: the
+      // extensionless page routes (/project, /app, /dashboard, ...) fell
+      // through to the short TTL below, so the browser kept the copy it had
+      // cached WHILE THE CHOICE WAS CURRENT and replayed its
+      // Content-Security-Policy - with the analytics host in it - after the
+      // choice had aged out. The beacon ran under a stale choice even
+      // though the server refused the stale cookie, because the browser
+      // never asked the server again. Pages therefore revalidate on every
+      // visit ('no-cache'), exactly as the .html pages already did.
+      //
+      // Static assets keep the TTL they have always had: a script's policy
+      // comes from the document that loads it, so the per-request CSP on an
+      // asset never reaches a visitor. (The `ext` test below is the
+      // long-standing one; it is left exactly as it is - changing the asset
+      // TTL is a separate decision, not part of the consent gate.)
+      //
+      // The document test is the RESPONSE's own content type, not the path:
+      // every page this Worker serves is text/html, whether it is reached
+      // as /index.html, as the extensionless /app, or as the single-page
+      // fallback - and every one of them carries the per-request
+      // Content-Security-Policy set just above.
+      const contentType = (response.headers.get('Content-Type') || '').toLowerCase();
+      const isDocument = contentType.indexOf('text/html') === 0;
       const ext = normalized.replace(/.*\\./, '').toLowerCase();
       const IMMUTABLE = 'public, max-age=31536000, immutable';
       const NO_CACHE = 'no-cache';
       const SHORT_TTL = 'public, max-age=3600';
-      if (/\.html$/.test(normalized) || normalized === '/' || ext === normalized.replace('/', '')) {
+      if (isDocument) {
         decorated.headers.set('Cache-Control', NO_CACHE);
       } else if (
         ['js', 'css', 'svg', 'png', 'ico', 'webp', 'woff', 'woff2', 'ttf', 'otf'].indexOf(ext) !==

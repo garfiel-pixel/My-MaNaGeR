@@ -299,6 +299,41 @@ function phaseStatic() {
     }
   );
 
+  // S8 - the per-request Content-Security-Policy must never be handed to a
+  // cache that can reuse it across consent states. Measured live
+  // 2026-10-21: the extensionless page routes (/project, /app, ...) fell
+  // through to the shared one-hour TTL, so the browser replayed the copy it
+  // had cached WHILE THE CHOICE WAS CURRENT and the beacon ran under a
+  // choice that had aged out - the server refusal was never even asked
+  // for. Documents therefore revalidate on every visit.
+  //
+  // This is a source-level gate on purpose: the leak only reproduces where
+  // the beacon is actually injected (production), so a behavioural gate
+  // would be green on the dev server by construction and would never bite.
+  const ccStart = worker.indexOf('Cache-Control strategy');
+  const ccBlock = ccStart > -1 ? worker.slice(ccStart, ccStart + 2600) : '';
+  check(
+    'S8 the Worker serves the page routes as documents (they revalidate, so no cache can replay an old consent decision)',
+    ccBlock !== '' && /text\/html/.test(ccBlock) && /NO_CACHE/.test(ccBlock),
+    {
+      blockFound: ccBlock !== '',
+      documentRule: /text\/html/.test(ccBlock)
+    }
+  );
+
+  // S9 - a copy the service worker keeps is NOT the server's live word on
+  // consent. It carries the policy it was cached with, and the HTML the
+  // edge served already carries the beacon tag inside it, so a cached copy
+  // handed back to a visitor must not carry the analytics host.
+  const swSrc = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
+  check(
+    'S9 the service worker serves its cached copies without the analytics host',
+    /function withoutAnalyticsHost/.test(swSrc) &&
+      /withoutAnalyticsHost\(hit\)/.test(swSrc) &&
+      /withoutAnalyticsHost\(fallback\)/.test(swSrc),
+    { helper: /function withoutAnalyticsHost/.test(swSrc) }
+  );
+
   // S5 - the app-side choice surface (audit 8.2 item 7): the signed-in app
   // carries the choice in Settings, NOT a banner. The markup lives in
   // project.html's Controls drawer, the module rides the app bundle, and
@@ -665,12 +700,66 @@ async function phaseBrowser() {
     await page.evaluate(() => location.pathname)
   );
 
-  // ---- B8c: THE APP-PAGE HOLE ----
+  // ---- B8c: THE APP-PAGE HOLE, WITH THE CACHES PRIMED ----
   // Found live 2026-10-21: the signed-in app shows NO banner, so an aged-out
   // choice used to leave the mirror cookie standing and the beacon kept
   // running on every app load (3 of 3 loads collected it). The server must
   // refuse the aged cookie on the very first app request, and the app must
   // clear the mirror it finds. This is the gate that was missing.
+  //
+  // PRIME THE CACHES FIRST, or the gate passes for the wrong reason. The
+  // Content-Security-Policy is a PER REQUEST decision, and the browser
+  // keeps the copy it cached while the choice was current. Measured live
+  // 2026-10-21, one layer below the server gate: with the app page cached
+  // under a current choice, an aged-out choice STILL ran the beacon - the
+  // server refused the stale cookie and the browser never asked again,
+  // because it replayed the policy from its cache. The old gate only
+  // passed because nothing had been cached under a current choice yet.
+  //
+  // So: restore a current choice, load the app page twice (the first
+  // installs the service worker, the second is served through it), and
+  // PROVE the copy in the caches allows the host - that is the control that
+  // gives the refusal below its teeth.
+  //
+  // The three loads share ONE fresh query string on purpose. The leak was
+  // the browser REPLAYING a cached copy, so the priming and the test have
+  // to look at the same cached URL: a query the browser has never seen
+  // forces the priming to fetch it for real, and the test then replays
+  // exactly that copy. Measured live 2026-10-21 against the unfixed site:
+  // the control failed, the refusal passed for the wrong reason - the
+  // browser answered with whatever it had cached last, in either
+  // direction.
+  const CACHE_KEY = '?id=demo-project&qa=consent-' + Date.now();
+  const APP_URL = BASE + '/project.html' + CACHE_KEY;
+  await page.evaluate(() => {
+    const c = JSON.parse(localStorage.getItem('mmgr_consent')) || {
+      v: 1,
+      iv: 1,
+      analytics: true
+    };
+    c.ts = new Date().toISOString();
+    localStorage.setItem('mmgr_consent', JSON.stringify(c));
+  });
+  await setMirror(String(IV) + '.' + Date.now());
+  await page.goto(APP_URL, { waitUntil: 'load' });
+  await delay(1500);
+  const primeResp = await page.goto(APP_URL, { waitUntil: 'load' });
+  await delay(1500);
+  const primeCsp = cspOfResponse(primeResp);
+  check(
+    'B8c0 the app page under a CURRENT choice allows the analytics host (the control for B8c)',
+    primeCsp.indexOf('static.cloudflareinsights.com') > -1,
+    primeCsp.slice(0, 200)
+  );
+
+  // Now age the choice out - the record AND the mirror carry the old moment,
+  // exactly as the world leaves them - and load the app page again. The
+  // caches now hold a copy that WOULD allow the beacon, so this load is the
+  // real test: the server must refuse the stale cookie, the browser must
+  // not replay the policy it cached under the old choice, and the app must
+  // clear the mirror it finds. "The beacon did not run" is the ground
+  // truth: a cached copy can serve the script from the browser's own cache,
+  // so a zero RESPONSE count alone would prove nothing.
   await page.evaluate(ts => {
     const c = JSON.parse(localStorage.getItem('mmgr_consent')) || {
       v: 1,
@@ -682,18 +771,52 @@ async function phaseBrowser() {
   }, OLD_TS);
   await setMirror(String(IV) + '.' + OLD_TS);
   const responsesBeforeApp = beaconResponses.length;
-  const appResp = await page.goto(BASE + '/project.html?id=demo-project', { waitUntil: 'load' });
+  const appResp = await page.goto(APP_URL, { waitUntil: 'load' });
   await delay(3000);
   const appCsp = cspOfResponse(appResp);
   const b8c = {
     cspAllowsHost: appCsp.indexOf('static.cloudflareinsights.com') > -1,
     newResponses: beaconResponses.length - responsesBeforeApp,
+    executed: await beaconRan(),
     mirror: await mirrorCookie()
   };
   check(
     'B8c the app page under an aged-out choice collects no analytics and clears the mirror',
-    b8c.cspAllowsHost === false && b8c.newResponses === 0 && b8c.mirror.length === 0,
+    b8c.cspAllowsHost === false &&
+      b8c.newResponses === 0 &&
+      b8c.executed !== true &&
+      b8c.mirror.length === 0,
     b8c
+  );
+
+  // ---- B8d: THE COPY THE SERVICE WORKER KEEPS ----
+  // Offline-first is sacred, so the service worker keeps the shell. That
+  // copy carries the policy it was cached with - and the HTML the edge
+  // served already carries the beacon tag inside it. A page served from
+  // the cache is NOT the server's live word on consent, so it must not
+  // carry the analytics host. Go offline and prove the cached page
+  // refuses the beacon.
+  await context.setOffline(true);
+  let offlineCsp = '';
+  let offlineRan = null;
+  let offlineError = null;
+  try {
+    const offlineResp = await page.goto(APP_URL, { waitUntil: 'load' });
+    await delay(2000);
+    offlineCsp = cspOfResponse(offlineResp);
+    offlineRan = await beaconRan();
+  } catch (e) {
+    offlineError = String((e && e.message) || e);
+    offlineCsp = '(navigation failed offline) ' + offlineError;
+  } finally {
+    await context.setOffline(false);
+  }
+  check(
+    'B8d the offline (service worker) copy of the app page does not allow the analytics host',
+    offlineError === null &&
+      offlineCsp.indexOf('static.cloudflareinsights.com') === -1 &&
+      offlineRan !== true,
+    { offlineCsp: offlineCsp.slice(0, 200), offlineRan: offlineRan, offlineError: offlineError }
   );
 
   // B13 - the app-side Privacy row, driven for real: open the Settings

@@ -159,7 +159,26 @@
 // waiting for a script to run. js/consent.js, dist/bundle.js and
 // worker.js/serve.cjs are SHELL assets, hence this bump. No inline script
 // was added or removed, so the CSP inline-script hash set is unchanged.
-const CACHE = 'mmgr-shell-v452';
+// v453 - S-2 CONSENT GATE, ONE LAYER DOWN: THE CACHES (2026-10-21). The
+// v452 server gate refused a stale choice on the FIRST request - but the
+// browser did not always make that request. The Content-Security-Policy is
+// a per-request decision (the analytics host rides along only for a
+// consented visitor), and the extensionless page routes (/project, /app,
+// /dashboard, ...) were served with a shared one-hour TTL, so the browser
+// replayed the copy it had cached WHILE THE CHOICE WAS CURRENT and the
+// beacon ran under an aged-out choice: the server refused the stale cookie
+// and the browser never asked again. Measured live, 3 of 3 app loads
+// collected the beacon under a stale choice even with the v452 gate in
+// place. Two changes close it: worker.js (and serve.cjs) now serve the
+// page routes as DOCUMENTS - they revalidate on every visit, so no cache
+// can replay an old consent decision - and this worker's offline
+// fallback serves every copy it keeps WITHOUT the analytics host, because
+// a cached page is not the server's live word on consent. The live
+// (network-first) path is untouched: a consented visitor still counts
+// normally. sw.js changed, so the cache name is bumped; no shell asset
+// changed and no inline script was added or removed, so the CSP
+// inline-script hash set is unchanged.
+const CACHE = 'mmgr-shell-v453';
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new
 // 'JIC rate book' choice on calculator.html) prices ANY shipped book row as
@@ -770,6 +789,48 @@ self.addEventListener('activate', function (e) {
   );
 });
 
+// S-2 CONSENT GATE (audit 2026-10-18, 8.2). The Worker's
+// Content-Security-Policy carries the analytics host ONLY for a visitor
+// whose consent cookie allows it, so that policy is a PER REQUEST decision.
+// A copy this worker keeps is not a fresh decision about this visitor: it
+// was computed for whoever fetched it first, and the HTML the edge served
+// already carries the beacon script tag inside it. Serving such a copy
+// would hand one visitor another visitor's permission - and the beacon
+// would run from the browser's own cache. Measured live 2026-10-21: with
+// the app page cached while the choice was current, an aged-out choice
+// still ran the beacon.
+//
+// So every copy taken from the cache is served WITHOUT the analytics host.
+// The live path is untouched: the network-first branch returns the Worker's
+// own response, which carries the policy the Worker computed for THIS
+// request. Only the offline/fallback copies lose the host, and that is the
+// safe direction - a cached page is not the server's live word on consent.
+const ANALYTICS_HOST = 'https://static.cloudflareinsights.com';
+
+function withoutAnalyticsHost(res) {
+  if (!res) return res;
+  try {
+    const csp = res.headers.get('Content-Security-Policy');
+    if (!csp || csp.indexOf(ANALYTICS_HOST) === -1) return res;
+    const headers = new Headers(res.headers);
+    headers.set(
+      'Content-Security-Policy',
+      csp
+        .split(ANALYTICS_HOST)
+        .join('')
+        .replace(/\s{2,}/g, ' ')
+        .trim()
+    );
+    return new Response(res.body, {
+      status: res.status,
+      statusText: res.statusText,
+      headers: headers
+    });
+  } catch (e) {
+    return res;
+  }
+}
+
 self.addEventListener('fetch', function (e) {
   const req = e.request;
   const url = new URL(req.url);
@@ -798,8 +859,13 @@ self.addEventListener('fetch', function (e) {
           return res;
         })
         .catch(function () {
+          // Offline (or the network failed): serve the cached shell, but
+          // never with the analytics host - see withoutAnalyticsHost above.
           return caches.match(req).then(function (hit) {
-            return hit || caches.match('project.html');
+            if (hit) return withoutAnalyticsHost(hit);
+            return caches.match('project.html').then(function (fallback) {
+              return withoutAnalyticsHost(fallback);
+            });
           });
         })
     );
@@ -821,7 +887,11 @@ self.addEventListener('fetch', function (e) {
           return res;
         })
         .catch(function () {
-          return caches.match('project.html');
+          // Same rule as the navigation fallback: a cached page is not the
+          // server's live word on consent, so the analytics host goes.
+          return caches.match('project.html').then(function (fallback) {
+            return withoutAnalyticsHost(fallback);
+          });
         });
     })
   );

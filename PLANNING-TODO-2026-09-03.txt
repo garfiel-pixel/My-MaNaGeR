@@ -2290,3 +2290,42 @@ free inflate reader and dry-run merge, compare matrix with per-currency
 totals). WAKE-UP NEXT DECISION: sprint-3 order item 3 = S-2 consent
 (inventory first), M-1, M-2, M-5; then S-3..S-6, INP, architecture
 survey, re-audit.
+
+S-2 CONSENT GATE - THE CACHES, ONE LAYER DOWN (2026-10-21 night).
+The v452 wave closed the server gate: the mirror cookie carries
+"<inventoryVersion>.<chosenAtMs>", both servers judge it, and the client
+reconciles the mirror on EVERY page (the signed-in app shows no banner).
+PROVEN WRONG ONE LAYER DOWN, and this is the measurement that matters:
+the leak was NOT closed. Live, 3 of 3 app loads still ran the beacon
+under an aged-out choice. Root cause: the Content-Security-Policy is a
+PER REQUEST decision (the analytics host rides along only for a
+consented visitor), but the page routes were served with a shared
+one-hour TTL - the extensionless routes (/project, /app, /dashboard)
+fell through the extension test, which has been dead code since the
+first version (normalized.replace(/.*\./,'') keeps the leading slash,
+so ext was never 'js'/'css'/... and never matched). So the browser
+replayed the copy it had cached WHILE THE CHOICE WAS CURRENT and the
+server was never asked again. The leak runs BOTH ways: against the
+unfixed site the consent control FAILED (a current choice was refused
+because the cache held an older, restrictive copy).
+FIX: (1) worker.js decides the document rule from the RESPONSE's own
+content type (text/html), so every page - /index.html, the
+extensionless /app, the single-page fallback - revalidates on every
+visit and no cache can replay an old consent decision; the asset TTL is
+deliberately unchanged (a separate decision, and the ext bug stays
+visible in the comment rather than being silently "fixed" into a
+one-year immutable TTL nobody asked for); serve.cjs carries the same
+rule in prose (its documents are .html files, already no-cache).
+(2) sw.js: a copy the worker keeps is not the server's live word on
+consent - the offline fallback now serves every cached copy WITHOUT
+the analytics host, because the HTML the edge served already carries
+the beacon tag inside it. The live network-first path is untouched, so
+a consented visitor still counts normally. sw shell v453.
+GATES: qa-consent grew S8 (the Worker's document rule), S9 (the
+worker's strip), B8c0 (the control), B8c (the app-page refusal, now
+with the caches PRIMED and a fresh query string so the priming and the
+test look at the same cached URL) and B8d (the offline copy). 36/36
+locally; against the UNFIXED live site the two new browser gates FAIL
+(cspAllowsHost true under an aged-out choice, and the offline copy
+carrying the host) - the gates have teeth, proven before the deploy
+rather than after it.

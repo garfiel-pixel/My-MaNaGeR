@@ -14,14 +14,19 @@ var MMGR = window.MMGR || {};
   const U = ns.Utils;
   const $ = U.$;
 
+  // S-5 (audit 2026-10-18): colspan is a column count and text is plain
+  // text, so both are escaped. actionsHtml is the caller's action-button
+  // MARKUP (every caller passes a literal <button>), so it is not text and
+  // must not be escaped.
   function emptyStateRow(colspan, text, actionsHtml) {
     return (
       '<tr><td colspan="' +
-      colspan +
+      U.escapeHtml(colspan) +
       '"><div class="es es-row">' +
       '<div>' +
-      text +
+      U.escapeHtml(text) +
       '</div>' +
+      // ok: actionsHtml is the caller's action-button markup, not user text
       (actionsHtml ? '<div class="es-actions">' + actionsHtml + '</div>' : '') +
       '</div></td></tr>'
     );
@@ -201,7 +206,7 @@ var MMGR = window.MMGR || {};
               '</span><span class="fw-meta">' +
               c.duration +
               'd task - up to ~' +
-              c.recoverable +
+              c.recoverable + // ok: day count from crashCandidates()
               'd recoverable</span></div>'
           )
           .join('') +
@@ -448,7 +453,7 @@ var MMGR = window.MMGR || {};
       ? '<div class="sc-cell"><div class="big sc-crash">' +
         U.escapeHtml(cc[0].task.name) +
         '</div><div class="lbl">biggest crash candidate - up to ~' +
-        cc[0].recoverable +
+        cc[0].recoverable + // ok: day count from crashCandidates()
         'd recoverable</div></div>'
       : '<div class="sc-cell"><div class="lbl" style="color:var(--slate)">No crash candidates identified yet.</div></div>';
     el.innerHTML = '<div class="sc-grid">' + probHtml + wxHtml + riskHtml + '</div>';
@@ -631,7 +636,7 @@ var MMGR = window.MMGR || {};
         Number(ld.exposure).toLocaleString() +
         '</div></div>' +
         '<div class="wx-stat"><div class="k">Schedule Reliability</div><div class="v">' +
-        (sriV ? sriV.index + '%' : '-') +
+        (sriV ? sriV.index + '%' : '-') + // ok: index is a 0-100 reliability score
         '</div></div>';
     }
     const log = s.weatherLog || [];

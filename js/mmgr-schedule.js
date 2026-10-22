@@ -1109,7 +1109,7 @@ var MMGR = window.MMGR || {};
         Object.keys(buckets)
           .map(
             k =>
-              `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;font-size:.68rem"><span style="min-width:55px;color:var(--slate)">${k}</span><div style="height:12px;background:var(--green);border-radius:2px;width:${Math.round((buckets[k] / maxC) * 200)}px;opacity:.8"></div><span style="color:var(--slate)">${buckets[k]}</span></div>`
+              `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;font-size:.68rem"><span style="min-width:55px;color:var(--slate)">${k}</span><div style="height:12px;background:var(--green);border-radius:2px;width:${Math.round((buckets[k] / maxC) * 200)}px;opacity:.8"></div><span style="color:var(--slate)">${buckets[k]}</span></div>` // ok: k is a formatted month from toLocaleString, the others are simulation counts
           )
           .join('');
     }

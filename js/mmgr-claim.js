@@ -744,14 +744,14 @@ var MMGR = window.MMGR || {};
       '<div class="wx-stat"><div class="k">Avoided (weather)</div><div class="v var-pos">$' +
       Number(ld.avoided).toLocaleString() +
       '</div><div class="t-xxs">' +
-      ld.avoidedDays +
+      ld.avoidedDays + // ok: avoided time is a day count from the LD model
       'd weather-caused</div></div>' +
       '<div class="wx-stat"><div class="k">Incurred (other)</div><div class="v ' +
       (ld.incurred ? 'var-neg' : '') +
       '">$' +
       Number(ld.incurred).toLocaleString() +
       '</div><div class="t-xxs">' +
-      ld.incurredDays +
+      ld.incurredDays + // ok: incurred time is a day count from the LD model
       'd other causes</div></div>' +
       '</div>';
   }

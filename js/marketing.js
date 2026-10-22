@@ -19,6 +19,17 @@
      carries draggable="false", the CSS blocks -webkit-user-drag + selection
      + pointer events, and this guard blocks the native dragstart and the
      right-click image menu on them. Null-guarded , never throws. */
+  /* ---- S-5 escaper (AUDIT-DIRECTIVE-2026-10-18) ----
+     Every value that reaches an innerHTML string on a marketing page goes
+     through here. Same four replacements the sign-in button used inline. */
+  function esc(v) {
+    return String(v === null || v === undefined ? '' : v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
   var NO_DRAG_IMGS = '.hero-photo, .hc-img img, .pb-img';
   function lockDecorativeImages() {
     var imgs = document.querySelectorAll(NO_DRAG_IMGS);
@@ -314,11 +325,7 @@
       var displayName = (user && (user.name || user.email)) || 'Signed in';
       b.setAttribute('aria-label', 'Signed in as ' + displayName);
       /* Match the app sidebar pattern: SVG user icon + display name */
-      var safe = displayName
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+      var safe = esc(displayName);
       b.innerHTML =
         '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> ' +
         safe;
@@ -447,7 +454,7 @@
           ? 'Almost there.'
           : 'Checkout did not complete.') +
       '</strong> ' +
-      msg +
+      esc(msg) +
       '</p></div>';
     host.insertBefore(band, host.firstChild);
   }

@@ -12,14 +12,19 @@ var MMGR = window.MMGR || {};
   const U = ns.Utils;
   const $ = U.$;
 
+  // S-5 (audit 2026-10-18): colspan is a column count and text is plain
+  // text, so both are escaped. actionsHtml is the caller's action-button
+  // MARKUP (every caller passes a literal <button>), so it is not text and
+  // must not be escaped.
   function emptyStateRow(colspan, text, actionsHtml) {
     return (
       '<tr><td colspan="' +
-      colspan +
+      U.escapeHtml(colspan) +
       '"><div class="es es-row">' +
       '<div>' +
-      text +
+      U.escapeHtml(text) +
       '</div>' +
+      // ok: actionsHtml is the caller's action-button markup, not user text
       (actionsHtml ? '<div class="es-actions">' + actionsHtml + '</div>' : '') +
       '</div></td></tr>'
     );
@@ -156,8 +161,8 @@ var MMGR = window.MMGR || {};
       <td>${U.escapeHtml(x.id || 'WR' + (i + 1))}</td>
       <td><input type="text" value="${U.escapeHtml(x.item)}" data-action="updField" data-module="Warranty" data-field="item" data-idx="${i}" style="min-width:150px" placeholder="Item / system"></td>
       <td><input type="text" value="${U.escapeHtml(x.provider || '')}" data-action="updField" data-module="Warranty" data-field="provider" data-idx="${i}" placeholder="Provider"></td>
-      <td><input type="date" value="${x.warrantyStart || ''}" data-action="updField" data-module="Warranty" data-field="warrantyStart" data-idx="${i}"></td>
-      <td><input type="date" value="${x.warrantyEnd || ''}" data-action="updField" data-module="Warranty" data-field="warrantyEnd" data-idx="${i}"></td>
+      <td><input type="date" value="${U.escapeHtml(x.warrantyStart || '')}" data-action="updField" data-module="Warranty" data-field="warrantyStart" data-idx="${i}"></td>
+      <td><input type="date" value="${U.escapeHtml(x.warrantyEnd || '')}" data-action="updField" data-module="Warranty" data-field="warrantyEnd" data-idx="${i}"></td>
       <td style="color:${leftColor}">${leftTxt}</td>
       <td><input type="text" value="${U.escapeHtml(x.notes || '')}" data-action="updField" data-module="Warranty" data-field="notes" data-idx="${i}" placeholder="-"></td>
       <td><button class="btn btn-s btn-d" data-action="delWarranty" data-idx="${i}">×</button></td>
@@ -216,7 +221,7 @@ var MMGR = window.MMGR || {};
         <td><input type="text" value="${U.escapeHtml(x.title)}" data-action="updField" data-module="Inspections" data-field="title" data-idx="${i}" style="min-width:130px" placeholder="Inspection title"></td>
         <td><input type="text" value="${U.escapeHtml(x.trade || '')}" data-action="updField" data-module="Inspections" data-field="trade" data-idx="${i}" style="width:90px" placeholder="Trade"></td>
         <td><input type="text" value="${U.escapeHtml(x.area || '')}" data-action="updField" data-module="Inspections" data-field="area" data-idx="${i}" style="width:100px" placeholder="Area"></td>
-        <td><input type="date" value="${x.date || ''}" data-action="updField" data-module="Inspections" data-field="date" data-idx="${i}"></td>
+        <td><input type="date" value="${U.escapeHtml(x.date || '')}" data-action="updField" data-module="Inspections" data-field="date" data-idx="${i}"></td>
         <td style="min-width:220px">${itemRows}
           <button class="btn btn-s btn-g" data-action="addInspItem" data-idx="${i}">+ item</button>
         </td>
@@ -265,12 +270,12 @@ var MMGR = window.MMGR || {};
       .map(
         (x, i) => `<tr>
       <td>${U.escapeHtml(x.id || 'INC' + (i + 1))}</td>
-      <td><input type="date" value="${x.date || ''}" data-action="updField" data-module="Incidents" data-field="date" data-idx="${i}"></td>
+      <td><input type="date" value="${U.escapeHtml(x.date || '')}" data-action="updField" data-module="Incidents" data-field="date" data-idx="${i}"></td>
       <td><select data-action="updField" data-module="Incidents" data-field="type" data-idx="${i}">${['Safety', 'Quality', 'Environmental'].map(v => `<option ${x.type === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
       <td><select data-action="updField" data-module="Incidents" data-field="severity" data-idx="${i}" style="color:${x.severity === 'High' ? 'var(--danger)' : x.severity === 'Medium' ? 'var(--amber)' : 'var(--slate)'}">${['Low', 'Medium', 'High', 'Critical'].map(v => `<option ${x.severity === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
       <td><input type="text" value="${U.escapeHtml(x.description)}" data-action="updField" data-module="Incidents" data-field="description" data-idx="${i}" style="min-width:150px" placeholder="What happened"></td>
       <td><input type="text" value="${U.escapeHtml(x.owner || '')}" data-action="updField" data-module="Incidents" data-field="owner" data-idx="${i}" style="width:90px" placeholder="Owner"></td>
-      <td><select data-action="updField" data-module="Incidents" data-field="status" data-idx="${i}" style="color:${statusColor(x.status)}">${((ns.Incidents && ns.Incidents.statuses) || ['open', 'investigation', 'action', 'closed']).map(v => `<option ${x.status === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+      <td><select data-action="updField" data-module="Incidents" data-field="status" data-idx="${i}" style="color:${statusColor(x.status)}">${((ns.Incidents && ns.Incidents.statuses) || ['open', 'investigation', 'action', 'closed']).map(v => `<option ${x.status === v ? 'selected' : ''}>${U.escapeHtml(v)}</option>`).join('')}</select></td>
       <td><input type="text" value="${U.escapeHtml(x.rootCause || '')}" data-action="updField" data-module="Incidents" data-field="rootCause" data-idx="${i}" style="width:120px" placeholder="Root cause"></td>
       <td><input type="text" value="${U.escapeHtml(x.correctiveAction || '')}" data-action="updField" data-module="Incidents" data-field="correctiveAction" data-idx="${i}" style="width:120px" placeholder="Corrective action"></td>
       <td><button class="btn btn-s btn-d" data-action="delIncident" data-idx="${i}">×</button></td>

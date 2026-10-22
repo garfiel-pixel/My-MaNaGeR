@@ -540,7 +540,7 @@ var MMGR = window.MMGR || {};
         .map(
           r =>
             '<option value="' +
-            r.id +
+            U.escapeHtml(r.id) +
             '"' +
             (r.id === (s.weatherRegion || 'northern-temperate') ? ' selected' : '') +
             '>' +
@@ -3059,7 +3059,7 @@ var MMGR = window.MMGR || {};
       txt.value = prompt;
       U.$('om-title').innerHTML =
         '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-edit"></use></svg> Prompt , ' +
-        type;
+        type; // ok: type is a fixed prompt-type label from the prompts table
       modal.classList.add('open');
     }
     // Monolith port: the Daily Field report gets a "Snapshot Now" button in

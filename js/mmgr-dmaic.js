@@ -140,7 +140,7 @@ var MMGR = window.MMGR || {};
     el.innerHTML = DMAIC_DEFS.map(ph => {
       const data = s.dmaic[ph.key] || {};
       const done = !!data.done;
-      return `<div class="card dmaic-card"><div class="card-title">${ph.title}<div class="dmaic-actions"><span class="st-txt"><span class="sdot ${done ? 'g' : 'b'}"></span>${done ? 'Complete' : 'In Progress'}</span><button class="btn ${done ? 'btn-n' : 'btn-g'} btn-s" data-action="tglDMAICPhase" data-phase="${ph.key}">${done ? 'Reopen' : 'Mark Complete'}</button></div></div><div class="dmaic-hint">${ph.hint}</div><div class="charter-grid">${ph.fields.map(([f, lbl, sub]) => `<div class="cf-field full"><label class="cf-label">${lbl}</label><div class="cf-sub">${sub}</div><textarea class="cf-ta" data-action="updDMAIC" data-phase="${ph.key}" data-field="${f}">${(data[f] || '').replace(/</g, '&lt;')}</textarea></div>`).join('')}</div></div>`;
+      return `<div class="card dmaic-card"><div class="card-title">${U.escapeHtml(ph.title)}<div class="dmaic-actions"><span class="st-txt"><span class="sdot ${done ? 'g' : 'b'}"></span>${done ? 'Complete' : 'In Progress'}</span><button class="btn ${done ? 'btn-n' : 'btn-g'} btn-s" data-action="tglDMAICPhase" data-phase="${U.escapeHtml(ph.key)}">${done ? 'Reopen' : 'Mark Complete'}</button></div></div><div class="dmaic-hint">${U.escapeHtml(ph.hint)}</div><div class="charter-grid">${ph.fields.map(([f, lbl, sub]) => `<div class="cf-field full"><label class="cf-label">${U.escapeHtml(lbl)}</label><div class="cf-sub">${U.escapeHtml(sub)}</div><textarea class="cf-ta" data-action="updDMAIC" data-phase="${U.escapeHtml(ph.key)}" data-field="${U.escapeHtml(f)}">${U.escapeHtml(data[f] || '')}</textarea></div>`).join('')}</div></div>`;
     }).join('');
   }
 
@@ -170,7 +170,7 @@ var MMGR = window.MMGR || {};
     }
     const chips = DMAIC_DEFS.map(ph => {
       const isDone = !!(d[ph.key] && d[ph.key].done);
-      return `<span class="dmaic-chip ${isDone ? 'done' : ''}" title="${U.escapeHtml(ph.title)}">${ph.key.charAt(0).toUpperCase()}</span>`;
+      return `<span class="dmaic-chip ${isDone ? 'done' : ''}" title="${U.escapeHtml(ph.title)}">${U.escapeHtml(ph.key.charAt(0).toUpperCase())}</span>`;
     }).join('');
     el.innerHTML = `<div class="dmaic-signal-row">
       <div class="dmaic-chips">${chips}</div>

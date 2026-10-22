@@ -28,7 +28,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" href="images/mpw-icon.png">
 <link rel="apple-touch-icon" href="images/mpw-icon.png">
-<link rel="stylesheet" href="dist/mmgr.min.css?v=31">
+<link rel="stylesheet" href="dist/mmgr.min.css?v=32">
 <script src="js/mmgr-theme.js" data-sync="1"></script>
 </head>
 <body class="db-page calculator-page">
@@ -80,6 +80,7 @@
   <section class="card bcp-guide" id="calc-guide-card" aria-labelledby="calc-guide-h">
     <div class="bcp-guide-head">
       <h2 id="calc-guide-h" class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-book"></use></svg> How to use</h2>
+      <button type="button" class="btn btn-n btn-s bcp-guide-kbd" data-mmks="open" aria-haspopup="dialog" title="Open the keyboard shortcut list">Shortcuts</button>
       <button type="button" class="btn btn-n btn-s" data-action="calcGuideClose" id="calc-guide-toggle" title="Hide the guide">Hide</button>
     </div>
     <div class="bcp-guide-body" id="calc-guide-body">
@@ -801,7 +802,11 @@
 <script src="js/mmgr-viewport.js?v=1"></script>
 <script src="js/mmgr-glass.js?v=1"></script>
 <script src="js/xlsx-lite.js?v=1"></script>
-<script src="js/calculator-page.js?v=41"></script>
-<script src="js/calc-ai.js?v=9"></script>
+<script src="js/calculator-page.js?v=42"></script>
+<script src="js/calc-ai.js?v=10"></script>
+<!-- AUDIT 2026-10-18 M-5: keyboard shortcuts + the shortcut sheet.
+     Its own script tag (not in the bundle) so the CSP inline-script
+     hashes never move. -->
+<script src="js/mmgr-shortcuts.js?v=1"></script>
 </body>
 </html>

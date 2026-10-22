@@ -1250,4 +1250,115 @@ it in the log in one line, and carry on. Nothing else in this file depends on th
 | `reflection.txt` rewritten | | |
 | Open Critical or High items remaining | 0 required at end of Sprint 3 | |
 
+---
+
+## 14. WAVE S-6 (OWNER, 2026-10-22) - CALCULATOR AND ASSISTANT IMPROVEMENTS
+
+**Owner's framing, verbatim in substance:** these are NOT big changes and NOT a UI revamp.
+They are feature improvements on what already ships. The S-5 output-escaping sprint is
+finished and shipped in full (see the PLANNING-TODO entry for the same date) before this
+wave started, so S-6 begins from a green tree.
+
+**Also from the owner in the same answer:** the estimate screen's plain input boxes read
+like "stepping into the past" next to the units/quantity fields, which already look right.
+"Those nice looking boxes throughout" - the same treatment, applied by TOKENS, not by
+hand-restyling one screen.
+
+### 14.1 S-6.1 - THE RATE-BOOK TWO-OPTION BINDING (owner decision)
+
+When the assistant quotes a published rate and the user has given a quantity, it must
+present **BOTH options at once**, in plain words:
+
+1. "From the rate book that comes to <figure>. Do you want that added?"
+2. "Or use your own rate - tell me the number and I will price it that way."
+
+The assistant never converts and never invents a rate. It states the book figure, then
+hands the decision to the user. Files: `js/calc-ai.js` (system prompt + the proposal
+paths area), `js/calculator-page.js` (`MMGR_CALC_CHECK` already returns the page's own
+dry-run `preview.qty` / `preview.unit`, and the JIC source path already proves a book
+rate against the loaded book). A work proposal already carries no rate; the book figure
+must come from the PAGE, never from the model.
+
+Acceptance:
+- with a book rate available, the panel shows the book figure AND the user-rate option;
+- taking the user-rate option opens the existing custom-line fields prefilled with the
+  quantity the page computed, and the rate stays the user's typed number;
+- a rate the user did not type is still rejected by the B6 guard (unchanged);
+- no second pricing engine: every figure the panel prints comes from the page's dry run.
+
+### 14.2 S-6.2 - CONVERSATIONAL FOLLOW-UPS THAT REACH THE SETTINGS
+
+The assistant may ASK about, and (after the user's confirmation) APPLY, the settings the
+calculator already supports. Scope is deliberately "only what the calculator already
+supports" - nothing is invented:
+
+| Follow-up | Where it lands today |
+|---|---|
+| GCT 15% (Jamaica) | `#calc-country` (`TAX = { JM: 15, ... }`, line ~1335 of `js/calculator-page.js`) |
+| Any other tax rate | `#calc-tax-override` (0 is a real value: "no tax") |
+| Statutory labour on-costs | the on-cost percentage (`onCostPct`) |
+| Design / construction contingency, escalation | the planning waterfall, lines ~6075-6200 |
+| 2% Contractors Levy | **NOT computable today** - it is a WITHHOLDING on the client's payment, and the page already says exactly that in `#calc-jm-levy-note`. The assistant must say the same thing and must not add it as a cost. |
+
+Delivery: a new page hook `MMGR_CALC_SETTINGS(v)` that validates and writes those fields
+through the existing change path, and a proposal form
+`PROPOSAL: {"settings":{"country":"JM","taxOverride":15,"onCost":5,...},"note":"..."}`.
+The panel must show the settings it is about to change and require a click - no silent
+writes from model text. Also: `PROPOSAL` payload only, OR calculator settings + proposal,
+per the owner's answer - both paths must work, so a reply may carry `settings` and
+`custom`/`work` in the same object.
+
+Acceptance:
+- asking "what about GCT?" yields the 15% answer plus an offer to set it;
+- accepting the offer changes the country/tax fields and the estimate total recomputes;
+- a levy question gets the withholding sentence, and no line is added;
+- the panel never writes a setting without the user's click.
+
+### 14.3 S-6.3 - PDF AND PRINT CHROME BLEED
+
+The exported estimate and the print DOM both paint their header/footer chrome into the
+page edge, so the first and last rows sit under it and the right column is clipped at
+some sizes. Fix BOTH surfaces from ONE source of measurement:
+
+- the vector export path (`js/mmgr-pdf.js` - the shared writer used by the Gantt, the
+  estimate and the PO), and
+- the print DOM (`@media print` rules that `js/calculator-page.js` toggles around
+  `window.print()`).
+
+Acceptance: the header band, every table row and the footer are inside the printable box
+at A4 and A3, on the first and last page; no glyph is clipped; `tools/verify-print-dom.cjs`
+and the estimate-PDF gates still pass; the sheet count stays correct.
+
+### 14.4 S-6.4 - THE "NICE BOX" FIELD TREATMENT, BY TOKEN
+
+The estimate screen's inputs must use the SAME token-driven field treatment the
+units/quantity fields already use - one `.bcp-field input` / `select` / `textarea` rule
+set in `css/mmgr.css`, driven by the existing tokens (radius, border, inner shadow, focus
+ring, dark-mode parity). No per-element restyling, no new colours, no layout change.
+
+Acceptance: every text/number/select/textarea inside a `.bcp-field` on `calculator.html`
+and in the project estimate section shares the treatment in light AND dark; focus ring
+meets the contrast gate; `npm run verify:css` and the live CSSOM sweep stay green.
+
+### 14.5 S-6.5 - AI CHAT FOCUS RETENTION ON DESKTOP (BOTH CHATS)
+
+On desktop, typing in either chat (the app assistant in `js/mmgr-ai.js` and the calculator
+assistant in `js/calc-ai.js`) loses the caret whenever the thread re-renders - a reply
+arriving, a stream chunk, a history repaint. The input must keep focus and caret position
+across every re-render; phone behaviour is unchanged.
+
+Acceptance: focus a chat input, type a partial message, force a re-render (reply,
+history toggle, suggestion click) - the input is still focused with the same selection
+range; no scroll jump; both panels covered by the harness.
+
+### 14.6 DEFINITION OF DONE FOR S-6
+
+- `node build.js` (bundles must carry the change), `npm run verify` green.
+- `qa-calc-assistant`, `qa-calculator-page`, `qa-health-sweep` green; new gates added to
+  `qa-calc-assistant.cjs` for 14.1, 14.2 and 14.5, and to `tools/verify-print-dom.cjs`
+  (or the estimate-PDF gate) for 14.3.
+- No new emoji, no inline script (CSP hashes untouched), offline-first untouched, cloud
+  sync untouched.
+- Registry row updated in `docs/CI-TEST-COVERAGE.md` when a harness gains gates.
+
 **End of directive.**

@@ -6670,11 +6670,11 @@
         .map(function (rowDef) {
           return (
             '<tr><th scope="row">' +
-            rowDef[0] +
+            rowDef[0] + // ok: row labels are string literals in the rows definition table
             '</th>' +
             cols
               .map(function (c) {
-                return '<td>' + rowDef[1](c) + '</td>';
+                return '<td>' + rowDef[1](c) + '</td>'; // ok: each cell formatter renders money()/escaped text
               })
               .join('') +
             '</tr>'
@@ -8240,7 +8240,7 @@
       ) +
       row('Estimated total', fmtMoney(r.total, moneyCode), 'calc-line-total') +
       '<div class="calc-fine">Planning-grade estimate for ' +
-      r.currency +
+      esc(r.currency) +
       '. Not a quote - every line becomes editable in the app once the project starts.</div>';
     return r;
   }
@@ -12222,7 +12222,172 @@
     }
   }
 
+  /* S-6.1 (owner 2026-10-22) - "or would you like to use your own rate?".
+     The second of the two options the assistant offers. It moves the page to a
+     CUSTOM line carrying the SAME job - name, unit and the quantity the dry
+     run already worked out - and puts the caret in the rate box. It writes NO
+     rate: the user's own figure is the entire point of choosing this path, and
+     the B6 guard in the panel then proves the rate really came from them. */
+  function calcUserRate(v) {
+    try {
+      var chk = calcCheck(v || {});
+      var src = v && v.custom && typeof v.custom === 'object' ? v.custom : null;
+      var label = src ? String(src.label || '') : '';
+      var unit = src ? String(src.unit || '') : '';
+      var qty = src ? Number(src.qty) : NaN;
+      if (!label) {
+        var key = (v && v.work) || ($('calc-work') || {}).value || '';
+        var w = WORK[key] || {};
+        label = String(w.label || w.name || key || '');
+      }
+      if (chk && chk.preview) {
+        if (!unit) {
+          unit = String(chk.preview.unit || '');
+        }
+        if (!(qty > 0)) {
+          qty = Number(chk.preview.qty);
+        }
+      }
+      label = label.trim().slice(0, 60);
+      if (!label) {
+        return {
+          ok: false,
+          error: 'I could not name that line. Tell me what it is and give me your rate.'
+        };
+      }
+      // Switch to Custom FIRST: syncLabels reveals the four boxes on entering
+      // 'custom' and only clears them when LEAVING it - the same order the
+      // rate-book picker uses, so the fill always lands on visible fields.
+      var sel = $('calc-work');
+      if (sel && sel.value !== 'custom') {
+        sel.value = 'custom';
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      var set = function (id, val) {
+        var el = $(id);
+        if (el) {
+          el.value = val;
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      };
+      set('calc-custom-name', label);
+      set('calc-custom-unit', unit.slice(0, 12));
+      set('calc-custom-qty', qty > 0 && isFinite(qty) ? String(Math.round(qty * 1000) / 1000) : '');
+      var rate = $('calc-custom-rate');
+      if (rate) {
+        rate.value = '';
+        var wrap = $('calc-custom-wrap');
+        if (wrap && wrap.scrollIntoView) {
+          wrap.scrollIntoView({ block: 'center' });
+        }
+        rate.focus();
+      }
+      return { ok: true, label: label, unit: unit, qty: qty > 0 ? qty : null };
+    } catch (e) {
+      return { ok: false, error: 'I could not switch that line to your own rate.' };
+    }
+  }
+
+  /* S-6.2 (owner 2026-10-22) - the settings the calculator ALREADY has, and
+     nothing else. Every key is allowlisted here, range-checked against the
+     input's own min/max, and written through the same input/change events a
+     person typing would fire, so one render path prices the change. A key the
+     page does not support is refused by name - never ignored, never invented. */
+  var SETTING_FIELDS = {
+    country: { id: 'calc-country', label: 'Country', select: true },
+    taxOverride: { id: 'calc-tax-override', label: 'Custom tax', min: 0, max: 40, unit: '%' },
+    overhead: { id: 'calc-oh', label: 'Overhead & margin', min: 0, max: 60, unit: '%' },
+    onCostPct: {
+      id: 'calc-oncost-pct',
+      label: 'Statutory costs on labour',
+      min: 0,
+      max: 25,
+      unit: '%'
+    },
+    designC: { id: 'calc-design-c', label: 'Design contingency', min: 0, max: 50, unit: '%' },
+    constrC: { id: 'calc-constr-c', label: 'Construction contingency', min: 0, max: 50, unit: '%' }
+  };
+  function calcSettings(v) {
+    try {
+      if (!v || typeof v !== 'object') {
+        return { ok: false, error: 'There are no settings in that reply.' };
+      }
+      var changed = [];
+      var refused = [];
+      Object.keys(v).forEach(function (k) {
+        var spec = SETTING_FIELDS[k];
+        if (!spec) {
+          refused.push(k);
+          return;
+        }
+        var el = $(spec.id);
+        if (!el) {
+          refused.push(k);
+          return;
+        }
+        if (spec.select) {
+          var want = String(v[k]);
+          var ok = false;
+          for (var i = 0; i < el.options.length; i++) {
+            if (el.options[i].value === want) {
+              ok = true;
+              break;
+            }
+          }
+          if (!ok) {
+            refused.push(k);
+            return;
+          }
+          if (el.value !== want) {
+            el.value = want;
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+            changed.push({ field: k, label: spec.label, from: '', to: want });
+          }
+          return;
+        }
+        var n = Number(v[k]);
+        if (!isFinite(n) || n < spec.min || n > spec.max) {
+          refused.push(k);
+          return;
+        }
+        // The statutory-cost percent only prices when its toggle is on; the
+        // toggle is the person's switch, so applying a percent turns it on - a
+        // number written into a disabled box would look applied and do nothing.
+        if (k === 'onCostPct') {
+          var tog = $('calc-oncost-toggle');
+          if (tog && !tog.checked) {
+            tog.checked = true;
+            tog.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        }
+        var before = String(el.value);
+        el.value = String(n);
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        if (before !== String(n)) {
+          changed.push({ field: k, label: spec.label, from: before, to: n + spec.unit });
+        }
+      });
+      if (!changed.length) {
+        return {
+          ok: false,
+          error: refused.length
+            ? 'I cannot change ' + refused.join(', ') + ' on this page.'
+            : 'Those settings are already what you asked for.'
+        };
+      }
+      render();
+      return { ok: true, changed: changed, refused: refused };
+    } catch (e) {
+      return { ok: false, error: 'Those settings could not be changed.' };
+    }
+  }
+
   window.MMGR_CALC_RATEBOOK = calcRateBookText;
+  // S-6.1 / S-6.2: the assistant's two powers over the form. Both are
+  // optional hooks: a page without them loses those two buttons only.
+  window.MMGR_CALC_USER_RATE = calcUserRate;
+  window.MMGR_CALC_SETTINGS = calcSettings;
   // A1: the panel's mount and send path drive the ONE full-book loader. It
   // used to be looked up as a bare global that never existed, so the
   // 811-row book never loaded outside the rate-book card - the assistant

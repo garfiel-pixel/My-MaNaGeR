@@ -13,14 +13,19 @@ var MMGR = window.MMGR || {};
   const U = ns.Utils;
   const $ = U.$;
 
+  // S-5 (audit 2026-10-18): colspan is a column count and text is plain
+  // text, so both are escaped. actionsHtml is the caller's action-button
+  // MARKUP (every caller passes a literal <button>), so it is not text and
+  // must not be escaped.
   function emptyStateRow(colspan, text, actionsHtml) {
     return (
       '<tr><td colspan="' +
-      colspan +
+      U.escapeHtml(colspan) +
       '"><div class="es es-row">' +
       '<div>' +
-      text +
+      U.escapeHtml(text) +
       '</div>' +
+      // ok: actionsHtml is the caller's action-button markup, not user text
       (actionsHtml ? '<div class="es-actions">' + actionsHtml + '</div>' : '') +
       '</div></td></tr>'
     );
@@ -57,9 +62,9 @@ var MMGR = window.MMGR || {};
     b.innerHTML = log
       .map(
         (e, i) => `<tr>
-      <td><input type="date" value="${e.date || ''}" data-action="updSpendEntry" data-idx="${i}" data-field="date"></td>
+      <td><input type="date" value="${U.escapeHtml(e.date || '')}" data-action="updSpendEntry" data-idx="${i}" data-field="date"></td>
       <td><select data-action="updSpendEntry" data-idx="${i}" data-field="budgetLineId">${lineOpts(e.budgetLineId)}</select></td>
-      <td><input type="number" value="${e.amount || 0}" min="0" step="10" data-action="updSpendEntry" data-idx="${i}" data-field="amount" style="width:90px"></td>
+      <td><input type="number" value="${U.escapeHtml(e.amount || 0)}" min="0" step="10" data-action="updSpendEntry" data-idx="${i}" data-field="amount" style="width:90px"></td>
       <td><input type="text" value="${U.escapeHtml(e.notes || '')}" data-action="updSpendEntry" data-idx="${i}" data-field="notes" placeholder="Invoice #, vendor..."></td>
       <td><button class="btn btn-s btn-d" data-action="delSpendEntry" data-idx="${i}">×</button></td>
     </tr>`
@@ -251,9 +256,9 @@ var MMGR = window.MMGR || {};
         (l, i) => `<tr>
       <td>${U.escapeHtml(l.id || 'B' + (i + 1))}</td>
       <td><input type="text" value="${U.escapeHtml(l.category)}" data-action="updField" data-module="Budget" data-field="category" data-idx="${i}"></td>
-      <td><input type="number" value="${l.planned || 0}" min="0" step="100" data-action="updField" data-module="Budget" data-field="planned" data-idx="${i}" style="width:90px"></td>
-      <td><input type="number" value="${l.committed !== null && l.committed !== undefined && l.committed !== '' ? l.committed : ''}" min="0" step="100" data-action="updField" data-module="Budget" data-field="committed" data-idx="${i}" style="width:90px" placeholder="${l.planned || 0}" title="Committed $ , blank defaults to Planned (C12)"></td>
-      <td><input type="number" value="${l.actual || 0}" min="0" step="100" data-action="updField" data-module="Budget" data-field="actual" data-idx="${i}" style="width:90px"></td>
+      <td><input type="number" value="${U.escapeHtml(l.planned || 0)}" min="0" step="100" data-action="updField" data-module="Budget" data-field="planned" data-idx="${i}" style="width:90px"></td>
+      <td><input type="number" value="${U.escapeHtml(l.committed !== null && l.committed !== undefined && l.committed !== '' ? l.committed : '')}" min="0" step="100" data-action="updField" data-module="Budget" data-field="committed" data-idx="${i}" style="width:90px" placeholder="${U.escapeHtml(l.planned || 0)}" title="Committed $ , blank defaults to Planned (C12)"></td>
+      <td><input type="number" value="${U.escapeHtml(l.actual || 0)}" min="0" step="100" data-action="updField" data-module="Budget" data-field="actual" data-idx="${i}" style="width:90px"></td>
       <td style="color:${(l.planned || 0) - (l.actual || 0) >= 0 ? 'var(--green)' : 'var(--danger)'}">${(l.planned || 0) - (l.actual || 0) >= 0 ? '+' : ''}$${Math.abs((l.planned || 0) - (l.actual || 0)).toLocaleString()}</td>
       <td>${envelope ? Math.round(((l.actual || 0) / envelope) * 100) + '%' : '0%'}</td>
       <td><select data-action="updField" data-module="Budget" data-field="taskId" data-idx="${i}"><option value="">-</option>${(s.tasks || []).map(t => `<option ${t.id === l.taskId ? 'selected' : ''}>${U.escapeHtml(t.id)}</option>`).join('')}</select></td>
@@ -342,10 +347,10 @@ var MMGR = window.MMGR || {};
         (a, i) => `<tr>
       <td>${U.escapeHtml(a.number || a.id || 'PA' + (i + 1))}</td>
       <td><input type="text" value="${U.escapeHtml(a.period)}" data-action="updField" data-module="PayApps" data-field="period" data-idx="${i}" placeholder="e.g. Aug 2026"></td>
-      <td><input type="number" value="${a.amount || 0}" min="0" step="100" data-action="updField" data-module="PayApps" data-field="amount" data-idx="${i}" style="width:100px"></td>
+      <td><input type="number" value="${U.escapeHtml(a.amount || 0)}" min="0" step="100" data-action="updField" data-module="PayApps" data-field="amount" data-idx="${i}" style="width:100px"></td>
       <td><select data-action="updField" data-module="PayApps" data-field="status" data-idx="${i}" style="color:${statusColor(a.status)}">${['draft', 'submitted', 'approved', 'rejected'].map(v => `<option ${a.status === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
-      <td><input type="date" value="${a.dateSubmitted || ''}" data-action="updField" data-module="PayApps" data-field="dateSubmitted" data-idx="${i}"></td>
-      <td><input type="date" value="${a.dateApproved || ''}" data-action="updField" data-module="PayApps" data-field="dateApproved" data-idx="${i}"></td>
+      <td><input type="date" value="${U.escapeHtml(a.dateSubmitted || '')}" data-action="updField" data-module="PayApps" data-field="dateSubmitted" data-idx="${i}"></td>
+      <td><input type="date" value="${U.escapeHtml(a.dateApproved || '')}" data-action="updField" data-module="PayApps" data-field="dateApproved" data-idx="${i}"></td>
       <td><input type="text" value="${U.escapeHtml(a.notes || '')}" data-action="updField" data-module="PayApps" data-field="notes" data-idx="${i}" placeholder="-"></td>
       <td><button class="btn btn-s btn-d" data-action="delPayApp" data-idx="${i}">×</button></td>
     </tr>`

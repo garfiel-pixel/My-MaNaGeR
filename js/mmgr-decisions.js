@@ -221,7 +221,7 @@ var MMGR = window.MMGR || {};
           '" title="Impact score: ' +
           U.escapeHtml(it.reason) +
           '">' +
-          it.impact +
+          it.impact + // ok: impact is a numeric 1-5 score
           '</span> <span class="tf-name">' +
           U.escapeHtml(it.title) +
           '</span></div><span class="tf-due">' +

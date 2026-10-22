@@ -166,7 +166,7 @@ var MMGR = window.MMGR || {};
     const row = (labelTxt, val, active) =>
       active
         ? '<div>' + labelTxt + ': ' + Math.round(val) + '</div>'
-        : '<div style="color:var(--slate)">' + labelTxt + ': <em>not enough data yet</em></div>';
+        : '<div style="color:var(--slate)">' + labelTxt + ': <em>not enough data yet</em></div>'; // ok: labelTxt is a fixed label passed by renderHealth()
     const bd = document.getElementById('health-breakdown');
     if (bd) {
       bd.innerHTML =

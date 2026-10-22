@@ -62,7 +62,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'calc-ai-3';
+  var VERSION = 'calc-ai-4';
   var ENDPOINT = '/api/ai/chat';
   var PROVIDER = 'google-gemini';
   var CAP = 5;
@@ -125,7 +125,32 @@
     'custom form: PROPOSAL: {"custom":{"label":"<your name>","unit":"<your unit>","qty":<number>,"rate":<number>,"source":"user"},"units":"metric"|"imperial","note":"<one short line>"} - ' +
     'the page accepts that and adds the line through the same dispatch as ' +
     'Add to bill. The rate must be a number the user typed in this ' +
-    'conversation, or the published metric rate of a row you quoted.';
+    'conversation, or the published metric rate of a row you quoted. ' +
+    // S-6.1 (owner 2026-10-22): BOTH options, every time a book rate exists.
+    // The owner's words: state the book figure, then offer the user's own.
+    'When the rate book has a rate for the work the user described, state that ' +
+    'figure in one line and then offer the choice, in this shape: "From the ' +
+    'rate book that comes to " + the figure + ". Do you want that added, or ' +
+    'would you prefer to use your own rate?" Never pick for the user and never ' +
+    'drop the second option - a priced line the user did not choose is worse ' +
+    'than one extra question. When the user then gives their own figure, use ' +
+    'the custom form with source "user". ' +
+    // S-6.2 (owner 2026-10-22): the settings the calculator already supports,
+    // and the one thing it does NOT support, said the page's way.
+    'You may also help with the estimate settings this page already has: the ' +
+    'country tax (Jamaica is 15% GCT), a custom tax percentage, the overhead ' +
+    'and margin percentage, the employer statutory costs on labour, and the ' +
+    'design and construction contingency percentages. A 2% Contractors Levy is ' +
+    'NOT an extra cost and this calculator has no line for it - when asked, say ' +
+    'plainly that it is withheld from the contractor\u0027s payment and already ' +
+    'comes out of the price, and do not add it to anything. ' +
+    'When the user agrees to a settings change, END the reply with ONE final ' +
+    'line in exactly this form (no code fences): ' +
+    'PROPOSAL: {"settings":{"country":"JM","taxOverride":15,"overhead":10,"onCostPct":12.5,"designC":10,"constrC":5},"note":"<one short line>"} - ' +
+    'include ONLY the keys that change. A settings line may also carry "work" ' +
+    'or "custom" if the same reply priced a line. Nothing is changed until the ' +
+    'user clicks the button the page shows, so never say the settings are ' +
+    'already applied.';
 
   var root = null;
   var els = {};
@@ -188,6 +213,22 @@
     ico('check-circle') +
     '<span>Populate the calculator</span>' +
     '<span class="bcp-ai-badge">recommended</span>' +
+    '</button>' +
+    // S-6.1 (owner 2026-10-22): the SECOND option, stated up front rather
+    // than buried in prose. A work proposal can price from the rate book; a
+    // user who has their own figure takes this instead. It never writes a
+    // rate - it opens the custom line with the same job and puts the caret
+    // in the rate box for the user to type their own number.
+    '<button type="button" class="btn btn-n btn-s" data-cai="myrate" hidden>' +
+    ico('edit') +
+    '<span>Use my own rate</span>' +
+    '</button>' +
+    // S-6.2 (owner 2026-10-22): the settings the calculator already supports
+    // (country/tax, overhead, statutory on-costs, contingencies). Shown only
+    // when a reply carries them, and applied only on this click.
+    '<button type="button" class="btn btn-n btn-s" data-cai="settings" hidden>' +
+    ico('settings') +
+    '<span>Apply these settings</span>' +
     '</button>' +
     '<button type="button" class="btn btn-n btn-s" data-cai="makefile">' +
     ico('download') +
@@ -337,7 +378,13 @@
     }
     var over = remaining !== null && remaining <= 0;
     var off = busy || !signedIn || over;
-    els.input.disabled = off;
+    // S-6.5 (owner 2026-10-22): the BOX stays open while the assistant writes.
+    // Disabling a focused textarea moves the caret to the page body, which is
+    // why typing a follow-up on desktop felt like the panel had grabbed the
+    // keyboard back. Only sign-in and the daily limit genuinely disable it;
+    // while busy the send button is off and send() already refuses a second
+    // question, so the box cannot queue anything on its own.
+    els.input.disabled = !signedIn || over;
     els.send.disabled = off;
     els.input.setAttribute(
       'placeholder',
@@ -607,7 +654,129 @@
       return;
     }
     els.paths.hidden = !proposal;
+    // S-6.1: a work proposal has TWO ways to price it - the rate book, or the
+    // user's own figure - so the question says both and the second button
+    // appears. A custom proposal is already the user's own rate, so it keeps
+    // the original question and hides that button.
+    var workPath = !!(proposal && proposal.work !== undefined && !proposal.custom);
+    var hasSettings = !!(proposal && proposal.settings && typeof proposal.settings === 'object');
+    if (els.pathq) {
+      els.pathq.textContent = workPath
+        ? 'Add it at the rate book figure, or use your own rate?'
+        : 'Populate the calculator so you can export, or generate a file to download?';
+    }
+    if (els.myrate) {
+      var canOwn = workPath && typeof window.MMGR_CALC_USER_RATE === 'function';
+      els.myrate.hidden = !canOwn;
+    }
+    if (els.settings) {
+      els.settings.hidden = !hasSettings;
+    }
     renderProposalChip();
+    renderSettingsChip();
+  }
+
+  // S-6.2: say IN PLAIN WORDS which settings the reply is offering, before a
+  // click can change anything. The label is built here, from an allowlist, so
+  // model text never becomes the wording.
+  var SETTING_LABELS = {
+    country: 'country (sets the tax)',
+    taxOverride: 'custom tax %',
+    overhead: 'overhead & margin %',
+    onCostPct: 'employer statutory costs %',
+    designC: 'design contingency %',
+    constrC: 'construction contingency %'
+  };
+  function renderSettingsChip() {
+    if (!els.paths) {
+      return;
+    }
+    var row = els.paths.querySelector('.bcp-ai-chip-settings');
+    if (!row) {
+      row = el('div', 'bcp-ai-chip bcp-ai-chip-settings');
+      els.paths.appendChild(row);
+    }
+    var st =
+      proposal && proposal.settings && typeof proposal.settings === 'object'
+        ? proposal.settings
+        : null;
+    if (!st) {
+      row.hidden = true;
+      row.textContent = '';
+      return;
+    }
+    var parts = [];
+    for (var k in SETTING_LABELS) {
+      if (!Object.prototype.hasOwnProperty.call(SETTING_LABELS, k)) {
+        continue;
+      }
+      if (st[k] === undefined || st[k] === null || st[k] === '') {
+        continue;
+      }
+      parts.push(SETTING_LABELS[k] + ': ' + String(st[k]));
+    }
+    row.hidden = false;
+    row.textContent = parts.length
+      ? 'Ready to change - ' + parts.join(', ') + '.'
+      : 'There are no settings I can change from that reply.';
+  }
+
+  // S-6.1: hand the job to the page so it can open the custom line with the
+  // same name, unit and quantity, and put the caret in the rate box. The
+  // panel writes NO rate - the user's number is the whole point.
+  function onMyRate() {
+    var fn = window.MMGR_CALC_USER_RATE;
+    if (typeof fn !== 'function') {
+      notice('This page cannot switch to your own rate right now.', 'bad');
+      return;
+    }
+    var out = null;
+    try {
+      out = fn(proposal || {});
+    } catch (e) {
+      out = { ok: false };
+    }
+    if (out && out.ok) {
+      notice(
+        'The line is ready for your own rate - type it in the rate box and I will price it that way.',
+        ''
+      );
+      return;
+    }
+    notice(
+      (out && out.error) ||
+        'I could not open your own rate for that line. Try the line on its own.',
+      'bad'
+    );
+  }
+
+  // S-6.2: apply the settings the user just agreed to. The page validates and
+  // reports what changed; a refusal is shown in plain words and nothing moves.
+  function onApplySettings() {
+    var fn = window.MMGR_CALC_SETTINGS;
+    if (typeof fn !== 'function') {
+      notice('This page cannot change those settings right now.', 'bad');
+      return;
+    }
+    var out = null;
+    try {
+      out = fn((proposal && proposal.settings) || {});
+    } catch (e) {
+      out = { ok: false };
+    }
+    if (out && out.ok) {
+      var changed = (out.changed || []).map(function (c) {
+        return c.label + ' ' + c.to;
+      });
+      notice(
+        changed.length
+          ? 'Updated: ' + changed.join(', ') + '. The estimate has been worked out again.'
+          : 'Nothing needed changing.',
+        ''
+      );
+      return;
+    }
+    notice((out && out.error) || 'Those settings could not be changed.', 'bad');
   }
 
   // B6: the exact rejection notice (DIRECTIVE section 3). Wording kept in
@@ -1493,6 +1662,14 @@
       onPopulate();
       return;
     }
+    if (what === 'myrate') {
+      onMyRate();
+      return;
+    }
+    if (what === 'settings') {
+      onApplySettings();
+      return;
+    }
     if (what === 'makefile') {
       onMakeFile();
       return;
@@ -1567,6 +1744,9 @@
     els.histlist = root.querySelector('[data-cai=histlist]');
     els.histempty = root.querySelector('[data-cai=histempty]');
     els.paths = root.querySelector('[data-cai=paths]');
+    els.pathq = root.querySelector('[data-cai=pathq]');
+    els.myrate = root.querySelector('[data-cai=myrate]');
+    els.settings = root.querySelector('[data-cai=settings]');
     root.classList.add('bcp-ai');
     draft = [];
     chats = [];

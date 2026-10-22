@@ -270,7 +270,7 @@ var MMGR = window.MMGR || {};
     <div class="meet-t">${U.escapeHtml(m.t)}</div>
     <div class="meet-dur"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clock"></use></svg> ${U.escapeHtml(m.dur)}</div>
     <div class="meet-d">${U.escapeHtml(m.d)}</div>
-    <div class="g6"><button class="btn btn-n btn-s" data-action="startMeeting" data-kind="${m.k}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> Start</button><button class="btn btn-n btn-s" data-action="copyMeetingTemplate" data-kind="${m.k}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
+    <div class="g6"><button class="btn btn-n btn-s" data-action="startMeeting" data-kind="${U.escapeHtml(m.k)}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> Start</button><button class="btn btn-n btn-s" data-action="copyMeetingTemplate" data-kind="${U.escapeHtml(m.k)}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
   </div>`;
     const rg = U.$('meet-recurring-grid');
     if (rg) {
@@ -892,11 +892,11 @@ var MMGR = window.MMGR || {};
       .map(m => {
         const covered = m.items.filter(i => i.done).length;
         return `<div class="meet-hist-row">
-        <div><span class="meet-hist-name">${U.escapeHtml(m.title)}</span><span class="meet-hist-meta">${(m.endedAt || '').slice(0, 10)} · ${m.durationMin || '-'} min</span></div>
+        <div><span class="meet-hist-name">${U.escapeHtml(m.title)}</span><span class="meet-hist-meta">${U.escapeHtml((m.endedAt || '').slice(0, 10))} · ${U.escapeHtml(m.durationMin || '-')} min</span></div>
         <div class="meet-hist-actions">
           <span class="badge ${covered === m.items.length ? 'bg' : 'ba'} meet-hist-badge">${covered}/${m.items.length} covered</span>
-          <button class="btn btn-n btn-s" data-action="copyMeetingMinutes" data-id="${m.id}" title="Copy a Word-ready minutes block to the clipboard"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy Minutes</button>
-          <button class="btn btn-d btn-s" data-action="delMeeting" data-id="${m.id}" title="Delete this meeting record and its linked entries (undo offered)"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete</button>
+          <button class="btn btn-n btn-s" data-action="copyMeetingMinutes" data-id="${U.escapeHtml(m.id)}" title="Copy a Word-ready minutes block to the clipboard"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy Minutes</button>
+          <button class="btn btn-d btn-s" data-action="delMeeting" data-id="${U.escapeHtml(m.id)}" title="Delete this meeting record and its linked entries (undo offered)"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete</button>
         </div>
       </div>`;
       })

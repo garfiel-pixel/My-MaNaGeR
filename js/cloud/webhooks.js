@@ -72,7 +72,7 @@ var MMGR = window.MMGR || {};
               : 'never fired') +
             '</span>' +
             '<button class="btn btn-o btn-s" data-action="cloudWebhookDel" data-id="' +
-            w.id +
+            esc(w.id) +
             '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Remove</button>' +
             '</div>'
           );

@@ -13,14 +13,19 @@ var MMGR = window.MMGR || {};
   const U = ns.Utils;
   const $ = U.$;
 
+  // S-5 (audit 2026-10-18): colspan is a column count and text is plain
+  // text, so both are escaped. actionsHtml is the caller's action-button
+  // MARKUP (every caller passes a literal <button>), so it is not text and
+  // must not be escaped.
   function emptyStateRow(colspan, text, actionsHtml) {
     return (
       '<tr><td colspan="' +
-      colspan +
+      U.escapeHtml(colspan) +
       '"><div class="es es-row">' +
       '<div>' +
-      text +
+      U.escapeHtml(text) +
       '</div>' +
+      // ok: actionsHtml is the caller's action-button markup, not user text
       (actionsHtml ? '<div class="es-actions">' + actionsHtml + '</div>' : '') +
       '</div></td></tr>'
     );
@@ -65,8 +70,8 @@ var MMGR = window.MMGR || {};
       <td><input type="text" value="${U.escapeHtml(r.question)}" data-action="updField" data-module="Rfis" data-field="question" data-idx="${i}" style="min-width:180px" placeholder="The question / discrepancy"></td>
       <td><input type="text" value="${U.escapeHtml(r.from || '')}" data-action="updField" data-module="Rfis" data-field="from" data-idx="${i}" placeholder="From"></td>
       <td><input type="text" value="${U.escapeHtml(r.to || '')}" data-action="updField" data-module="Rfis" data-field="to" data-idx="${i}" placeholder="To (designer / engineer)"></td>
-      <td><input type="date" value="${r.dateIssued || ''}" data-action="updField" data-module="Rfis" data-field="dateIssued" data-idx="${i}"></td>
-      <td><input type="date" value="${r.dueDate || ''}" data-action="updField" data-module="Rfis" data-field="dueDate" data-idx="${i}" title="Response due"></td>
+      <td><input type="date" value="${U.escapeHtml(r.dateIssued || '')}" data-action="updField" data-module="Rfis" data-field="dateIssued" data-idx="${i}"></td>
+      <td><input type="date" value="${U.escapeHtml(r.dueDate || '')}" data-action="updField" data-module="Rfis" data-field="dueDate" data-idx="${i}" title="Response due"></td>
       <td><select data-action="updField" data-module="Rfis" data-field="status" data-idx="${i}" style="color:${statusColor(r.status)}">${['open', 'routed', 'responded', 'closed'].map(v => `<option ${r.status === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
       <td><input type="text" value="${U.escapeHtml(r.ballInCourt || '')}" data-action="updField" data-module="Rfis" data-field="ballInCourt" data-idx="${i}" placeholder="Whose turn is it" title="Ball-in-court , whose turn to respond"></td>
       <td><input type="text" value="${U.escapeHtml(r.response || '')}" data-action="updField" data-module="Rfis" data-field="response" data-idx="${i}" style="min-width:140px" placeholder="Response / answer"></td>
@@ -118,9 +123,9 @@ var MMGR = window.MMGR || {};
       <td><input type="text" value="${U.escapeHtml(x.item)}" data-action="updField" data-module="Submittals" data-field="item" data-idx="${i}" style="min-width:180px" placeholder="Material / shop drawing"></td>
       <td><input type="text" value="${U.escapeHtml(x.trade || '')}" data-action="updField" data-module="Submittals" data-field="trade" data-idx="${i}" placeholder="Trade"></td>
       <td><input type="text" value="${U.escapeHtml(x.submittedTo || '')}" data-action="updField" data-module="Submittals" data-field="submittedTo" data-idx="${i}" placeholder="Architect / engineer"></td>
-      <td><input type="date" value="${x.dateSubmitted || ''}" data-action="updField" data-module="Submittals" data-field="dateSubmitted" data-idx="${i}"></td>
+      <td><input type="date" value="${U.escapeHtml(x.dateSubmitted || '')}" data-action="updField" data-module="Submittals" data-field="dateSubmitted" data-idx="${i}"></td>
       <td><select data-action="updField" data-module="Submittals" data-field="status" data-idx="${i}" style="color:${statusColor(x.status)}">${['pending', 'review', 'approved', 'approved-comments', 'rejected'].map(v => `<option ${x.status === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
-      <td><input type="date" value="${x.responseDate || ''}" data-action="updField" data-module="Submittals" data-field="responseDate" data-idx="${i}" title="Response date"></td>
+      <td><input type="date" value="${U.escapeHtml(x.responseDate || '')}" data-action="updField" data-module="Submittals" data-field="responseDate" data-idx="${i}" title="Response date"></td>
       <td><input type="text" value="${U.escapeHtml(x.ballInCourt || '')}" data-action="updField" data-module="Submittals" data-field="ballInCourt" data-idx="${i}" placeholder="Whose turn is it" title="Ball-in-court"></td>
       <td><input type="text" value="${U.escapeHtml(x.notes || '')}" data-action="updField" data-module="Submittals" data-field="notes" data-idx="${i}" placeholder="-"></td>
       <td><button class="btn btn-s btn-d" data-action="delSubmittal" data-idx="${i}">×</button></td>
@@ -155,7 +160,7 @@ var MMGR = window.MMGR || {};
     body.innerHTML = list
       .map(
         x => `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">
-      <span class="badge" style="color:${kindColor(x.kind)};border-color:${kindColor(x.kind)}">${x.kind}</span>
+      <span class="badge" style="color:${kindColor(x.kind)};border-color:${kindColor(x.kind)}">${U.escapeHtml(x.kind)}</span>
       <span style="flex:1;font-size:.8rem">${U.escapeHtml(x.ref)} , ${U.escapeHtml(x.who)}${x.due ? ' <span style="color:var(--slate)">due ' + U.escapeHtml(x.due) + '</span>' : ''}</span>
     </div>`
       )
@@ -189,7 +194,7 @@ var MMGR = window.MMGR || {};
       .map(
         (x, i) => `<tr>
       <td>${U.escapeHtml(x.id || 'DL' + (i + 1))}</td>
-      <td><input type="date" value="${x.date || ''}" data-action="updField" data-module="DrawingLog" data-field="date" data-idx="${i}"></td>
+      <td><input type="date" value="${U.escapeHtml(x.date || '')}" data-action="updField" data-module="DrawingLog" data-field="date" data-idx="${i}"></td>
       <td><input type="text" value="${U.escapeHtml(x.drawingNo)}" data-action="updField" data-module="DrawingLog" data-field="drawingNo" data-idx="${i}" style="min-width:100px" placeholder="Drawing no."></td>
       <td><input type="text" value="${U.escapeHtml(x.rev || '')}" data-action="updField" data-module="DrawingLog" data-field="rev" data-idx="${i}" style="width:50px" placeholder="Rev"></td>
       <td><input type="text" value="${U.escapeHtml(x.distributedTo || '')}" data-action="updField" data-module="DrawingLog" data-field="distributedTo" data-idx="${i}" style="min-width:120px" placeholder="Distributed to"></td>
@@ -261,8 +266,8 @@ var MMGR = window.MMGR || {};
       <td><input type="text" value="${U.escapeHtml(x.permitNo)}" data-action="updField" data-module="Permits" data-field="permitNo" data-idx="${i}" style="min-width:90px" placeholder="Permit no."></td>
       <td><input type="text" value="${U.escapeHtml(x.type || '')}" data-action="updField" data-module="Permits" data-field="type" data-idx="${i}" style="width:110px" placeholder="Type"></td>
       <td><input type="text" value="${U.escapeHtml(x.agency || '')}" data-action="updField" data-module="Permits" data-field="agency" data-idx="${i}" style="min-width:110px" placeholder="Agency"></td>
-      <td><input type="date" value="${x.dateIssued || ''}" data-action="updField" data-module="Permits" data-field="dateIssued" data-idx="${i}"></td>
-      <td><input type="date" value="${x.expires || ''}" data-action="updField" data-module="Permits" data-field="expires" data-idx="${i}">${expiryTxt}</td>
+      <td><input type="date" value="${U.escapeHtml(x.dateIssued || '')}" data-action="updField" data-module="Permits" data-field="dateIssued" data-idx="${i}"></td>
+      <td><input type="date" value="${U.escapeHtml(x.expires || '')}" data-action="updField" data-module="Permits" data-field="expires" data-idx="${i}">${expiryTxt}</td>
       <td><select data-action="updField" data-module="Permits" data-field="status" data-idx="${i}" style="color:${statusColor(x.status)}">${['applied', 'active', 'expiring', 'expired', 'closed'].map(v => `<option ${x.status === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
       <td><input type="text" value="${U.escapeHtml(x.notes || '')}" data-action="updField" data-module="Permits" data-field="notes" data-idx="${i}" placeholder="-"></td>
       <td><button class="btn btn-s btn-d" data-action="delPermit" data-idx="${i}">×</button></td>
@@ -333,9 +338,9 @@ var MMGR = window.MMGR || {};
       <td><input type="text" value="${U.escapeHtml(x.vendor || '')}" data-action="updField" data-module="Procurement" data-field="vendor" data-idx="${i}" style="min-width:100px" placeholder="Vendor"></td>
       <td><input type="text" value="${U.escapeHtml(x.quantity || '')}" data-action="updField" data-module="Procurement" data-field="quantity" data-idx="${i}" style="width:60px" placeholder="Qty"></td>
       <td><input type="text" value="${U.escapeHtml(x.unit || '')}" data-action="updField" data-module="Procurement" data-field="unit" data-idx="${i}" style="width:50px" placeholder="Unit"></td>
-      <td><input type="date" value="${x.orderDate || ''}" data-action="updField" data-module="Procurement" data-field="orderDate" data-idx="${i}"></td>
-      <td><input type="date" value="${x.expectedDate || ''}" data-action="updField" data-module="Procurement" data-field="expectedDate" data-idx="${i}">${etaTxt}</td>
-      <td><input type="date" value="${x.receivedDate || ''}" data-action="updField" data-module="Procurement" data-field="receivedDate" data-idx="${i}"></td>
+      <td><input type="date" value="${U.escapeHtml(x.orderDate || '')}" data-action="updField" data-module="Procurement" data-field="orderDate" data-idx="${i}"></td>
+      <td><input type="date" value="${U.escapeHtml(x.expectedDate || '')}" data-action="updField" data-module="Procurement" data-field="expectedDate" data-idx="${i}">${etaTxt}</td>
+      <td><input type="date" value="${U.escapeHtml(x.receivedDate || '')}" data-action="updField" data-module="Procurement" data-field="receivedDate" data-idx="${i}"></td>
       <td><select data-action="updField" data-module="Procurement" data-field="status" data-idx="${i}" style="color:${statusColor(x.status)}">${['ordered', 'in-transit', 'received', 'cancelled'].map(v => `<option ${x.status === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
       <td><input type="text" value="${U.escapeHtml(x.cost || '')}" data-action="updField" data-module="Procurement" data-field="cost" data-idx="${i}" style="width:80px" placeholder="$"></td>
       <td><input type="text" value="${U.escapeHtml(x.notes || '')}" data-action="updField" data-module="Procurement" data-field="notes" data-idx="${i}" placeholder="-"></td>
@@ -376,10 +381,10 @@ var MMGR = window.MMGR || {};
       <td><input type="text" value="${U.escapeHtml(d.docNo || '')}" data-action="updField" data-module="Documents" data-field="docNo" data-idx="${i}"></td>
       <td><input type="text" value="${U.escapeHtml(d.title)}" data-action="updField" data-module="Documents" data-field="title" data-idx="${i}"></td>
       <td><select data-action="updField" data-module="Documents" data-field="type" data-idx="${i}">${['Drawing', 'Contract', 'Permit', 'Specification', 'Report', 'Other'].map(t => `<option ${d.type === t ? 'selected' : ''}>${t}</option>`).join('')}</select></td>
-      <td><input type="text" value="${d.version || ''}" data-action="updField" data-module="Documents" data-field="version" data-idx="${i}" style="width:50px"></td>
+      <td><input type="text" value="${U.escapeHtml(d.version || '')}" data-action="updField" data-module="Documents" data-field="version" data-idx="${i}" style="width:50px"></td>
       <td><select data-action="updField" data-module="Documents" data-field="status" data-idx="${i}">${['current', 'pending-review', 'superseded', 'outstanding'].map(s => `<option ${d.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></td>
       <td><input type="text" value="${U.escapeHtml(d.responsible || '')}" data-action="updField" data-module="Documents" data-field="responsible" data-idx="${i}"></td>
-      <td><input type="date" value="${d.dateIssued || ''}" data-action="updField" data-module="Documents" data-field="dateIssued" data-idx="${i}"></td>
+      <td><input type="date" value="${U.escapeHtml(d.dateIssued || '')}" data-action="updField" data-module="Documents" data-field="dateIssued" data-idx="${i}"></td>
       <td><input type="text" value="${U.escapeHtml(d.notes || '')}" data-action="updField" data-module="Documents" data-field="notes" data-idx="${i}"></td>
       <td><button class="btn btn-s btn-d" data-action="delDoc" data-idx="${i}">×</button></td>
     </tr>`

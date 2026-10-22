@@ -12,14 +12,19 @@ var MMGR = window.MMGR || {};
   const U = ns.Utils;
   const $ = U.$;
 
+  // S-5 (audit 2026-10-18): colspan is a column count and text is plain
+  // text, so both are escaped. actionsHtml is the caller's action-button
+  // MARKUP (every caller passes a literal <button>), so it is not text and
+  // must not be escaped.
   function emptyStateRow(colspan, text, actionsHtml) {
     return (
       '<tr><td colspan="' +
-      colspan +
+      U.escapeHtml(colspan) +
       '"><div class="es es-row">' +
       '<div>' +
-      text +
+      U.escapeHtml(text) +
       '</div>' +
+      // ok: actionsHtml is the caller's action-button markup, not user text
       (actionsHtml ? '<div class="es-actions">' + actionsHtml + '</div>' : '') +
       '</div></td></tr>'
     );

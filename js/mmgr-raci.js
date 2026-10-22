@@ -22,7 +22,7 @@ var MMGR = window.MMGR || {};
       '<option value="">+ Task Row…</option>' +
       tasks
         .filter(t => !existing.has(t.id))
-        .map(t => `<option value="${t.id}">${U.escapeHtml(t.name)}</option>`)
+        .map(t => `<option value="${U.escapeHtml(t.id)}">${U.escapeHtml(t.name)}</option>`)
         .join('');
   }
 
@@ -59,7 +59,7 @@ var MMGR = window.MMGR || {};
         ...stakeholders.map(s => ({ id: s.id, name: s.name }))
       ]
         .filter(p => p.name && !existing.has(p.id))
-        .map(p => `<option value="${p.id}">${U.escapeHtml(p.name)}</option>`)
+        .map(p => `<option value="${U.escapeHtml(p.id)}">${U.escapeHtml(p.name)}</option>`)
         .join('');
   }
 

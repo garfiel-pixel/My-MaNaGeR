@@ -240,7 +240,7 @@ var MMGR = window.MMGR || {};
       .map((kpi, i) => {
         const st = kpiStatus(kpi);
         const statusBadge = st
-          ? `<span class="badge ${st.cls}" style="font-size:.6rem;padding:2px 7px">${st.txt}${st.live !== null ? ' · ' + st.live : ''}</span>`
+          ? `<span class="badge ${U.escapeHtml(st.cls)}" style="font-size:.6rem;padding:2px 7px">${U.escapeHtml(st.txt)}${st.live !== null ? ' · ' + U.escapeHtml(st.live) : ''}</span>`
           : '';
         return `<div class="kpi-row-wrap">
         <div class="kpi-row">
@@ -258,7 +258,7 @@ var MMGR = window.MMGR || {};
         </div>
         <div class="kpi-link-row">
           <span class="kpi-trace"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-link"></use></svg> Trace to live data:</span>
-          <select data-action="updKPILink" data-idx="${i}">${KPI_METRICS.map(m => `<option value="${m.key}" ${(kpi.linkedMetric || '') === m.key ? 'selected' : ''}>${m.label}</option>`).join('')}</select>
+          <select data-action="updKPILink" data-idx="${i}">${KPI_METRICS.map(m => `<option value="${U.escapeHtml(m.key)}" ${(kpi.linkedMetric || '') === m.key ? 'selected' : ''}>${U.escapeHtml(m.label)}</option>`).join('')}</select>
           <span style="font-size:.64rem;color:var(--slate)">Direction:</span>
           <select data-action="updKPIDir" data-idx="${i}"><option value="higher" ${kpi.dir !== 'lower' ? 'selected' : ''}>Higher is better</option><option value="lower" ${kpi.dir === 'lower' ? 'selected' : ''}>Lower is better</option></select>
           ${statusBadge}

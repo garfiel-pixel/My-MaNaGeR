@@ -15,14 +15,19 @@ var MMGR = window.MMGR || {};
   // Three-part empty state: explain why it's empty, give a direct primary
   // action (an EXISTING data-action, surfaced prominently), and keep the
   // chrome quiet. Used by every panel that renders a table from state data.
+  // S-5 (audit 2026-10-18): colspan is a column count and text is plain
+  // text, so both are escaped. actionsHtml is the caller's action-button
+  // MARKUP (every caller passes a literal <button>), so it is not text and
+  // must not be escaped.
   function emptyStateRow(colspan, text, actionsHtml) {
     return (
       '<tr><td colspan="' +
-      colspan +
+      U.escapeHtml(colspan) +
       '"><div class="es es-row">' +
       '<div>' +
-      text +
+      U.escapeHtml(text) +
       '</div>' +
+      // ok: actionsHtml is the caller's action-button markup, not user text
       (actionsHtml ? '<div class="es-actions">' + actionsHtml + '</div>' : '') +
       '</div></td></tr>'
     );
@@ -135,6 +140,18 @@ var MMGR = window.MMGR || {};
     const s = S();
     if (!s || !s.tasks) {
       return;
+    }
+    // S-6.5 (owner 2026-10-22): the dashboard repaints under the AI window, so
+    // a re-render can throw the caret out of the question box mid-sentence.
+    // Take the memo BEFORE the paint and put it back after the RAF sub-renders
+    // have settled - see MMGR.AiWin.restoreAiFocus for the exact rule.
+    if (ns.AiWin && typeof ns.AiWin.rememberAiFocus === 'function') {
+      ns.AiWin.rememberAiFocus();
+      requestAnimationFrame(function () {
+        if (ns.AiWin && typeof ns.AiWin.restoreAiFocus === 'function') {
+          ns.AiWin.restoreAiFocus();
+        }
+      });
     }
     // DIR-3: keep the Core-Mode onboarding callout in sync with pack state
     // (a pack toggled on elsewhere must hide it the moment the user returns
@@ -251,7 +268,7 @@ var MMGR = window.MMGR || {};
         n3.innerHTML = sorted
           .map(
             t =>
-              `<li><span title="${U.escapeHtml(t.name)}">${U.escapeHtml(t.name)}${t.critical ? ' <svg class="ico" aria-hidden="true" style="color:var(--gold)"><use href="css/mmgr-icons.svg#i-target"></use></svg>' : ''}${t.endDate ? ', due ' + U.fmtDateShort(t.endDate) : ''}</span></li>`
+              `<li><span title="${U.escapeHtml(t.name)}">${U.escapeHtml(t.name)}${t.critical ? ' <svg class="ico" aria-hidden="true" style="color:var(--gold)"><use href="css/mmgr-icons.svg#i-target"></use></svg>' : ''}${t.endDate ? ', due ' + U.escapeHtml(U.fmtDateShort(t.endDate)) : ''}</span></li>`
           )
           .join('');
       }
@@ -458,6 +475,7 @@ var MMGR = window.MMGR || {};
           bvt.innerHTML =
             '<tr><td colspan="4" style="text-align:center;color:var(--slate);padding:14px">Save a baseline to see per-task schedule variance.</td></tr>';
         } else {
+          // ok: number - schedVar is a day count, never text
           bvt.innerHTML = rows
             .map(
               r =>
@@ -621,7 +639,7 @@ var MMGR = window.MMGR || {};
         issEl.innerHTML = activeIssues
           .map(
             i =>
-              `<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">${U.escapeHtml(i.description)} <span class="badge br" style="font-size:.65rem">${i.status || 'open'}</span></div>`
+              `<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">${U.escapeHtml(i.description)} <span class="badge br" style="font-size:.65rem">${U.escapeHtml(i.status || 'open')}</span></div>`
           )
           .join('');
       }
@@ -695,7 +713,7 @@ var MMGR = window.MMGR || {};
           .map(function (it) {
             return (
               '<div class="fb-sm"><span>' +
-              it.label +
+              U.escapeHtml(it.label) +
               '</span><span class="dotstat"><span class="sdot ' +
               dot(it) +
               '"></span><span class="ds-num">!</span></span></div>'
@@ -850,7 +868,7 @@ var MMGR = window.MMGR || {};
       if (!list.length) {
         return '';
       }
-      const head = `<div class="tf-head" style="color:${color}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#${icon}"></use></svg> ${title} (${list.length})</div>`;
+      const head = `<div class="tf-head" style="color:${color}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#${icon}"></use></svg> ${title} (${list.length})</div>`; // ok: title, color and icon are string literals at every call site (871-874)
       const rows = list
         .map(
           t => `<div class="tf-row" style="border-left-color:${color}">
@@ -906,7 +924,7 @@ var MMGR = window.MMGR || {};
       </div>`
         )
         .join('');
-      return `<div class="tf-group"><div class="tf-head" style="color:${color}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> ${label} (${list.length})</div>${rows}</div>`;
+      return `<div class="tf-group"><div class="tf-head" style="color:${color}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> ${label} (${list.length})</div>${rows}</div>`; // ok: label, color are string literals at every call site (below)
     };
     const overdue = tasks.filter(t => t.endDate && new Date(t.endDate) < today);
     const wkStart = new Date(today);
@@ -972,6 +990,7 @@ var MMGR = window.MMGR || {};
         return `<div class="ppc-bar-row"><span class="ppc-bar-lbl">${lbl}</span><div class="ppc-bar-track"><div class="ppc-bar-fill" style="width:${Math.max(2, w)}%;background:${col}"></div></div><span class="ppc-bar-val">${h.pct === null ? '' : pct + '%'}${h.planned ? ' (' + h.completed + '/' + h.planned + ')' : ''}</span></div>`;
       })
       .join('');
+    // ok: number - now.pct is a percentage, never text
     el.innerHTML =
       `<div class="ppc-now">${now.planned ? `<span class="stat-xl" style="font-size:1.6rem;color:${now.pct >= 80 ? 'var(--green)' : now.pct >= 50 ? 'var(--amber)' : 'var(--danger)'}">${now.pct}%</span>` : '<span class="stat-xl" style="font-size:1.2rem;color:var(--slate)"></span>'}</div>` +
       '<div class="ppc-bars">' +
@@ -1031,6 +1050,7 @@ var MMGR = window.MMGR || {};
           : k === 'Permit'
             ? 'var(--amber)'
             : 'var(--danger)';
+    // ok: number - daysLeft is a day count, never text
     el.innerHTML = list
       .map(x => {
         const dlTxt =
@@ -1050,7 +1070,7 @@ var MMGR = window.MMGR || {};
                 ? 'var(--amber)'
                 : 'var(--slate)';
         return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">
-        <span class="badge" style="color:${kindColor(x.kind)};border-color:${kindColor(x.kind)}">${x.kind}</span>
+        <span class="badge" style="color:${kindColor(x.kind)};border-color:${kindColor(x.kind)}">${U.escapeHtml(x.kind)}</span>
         <span style="flex:1;font-size:.8rem">${U.escapeHtml(x.label)}${x.date ? ' <span style="color:var(--slate)">' + U.escapeHtml(x.date) + '</span>' : ''}</span>
         <span class="badge" style="color:${dlColor};border-color:${dlColor}">${dlTxt}</span>
       </div>`;
@@ -1136,14 +1156,15 @@ var MMGR = window.MMGR || {};
     }
     const color =
       t.overrunDays <= 0 ? 'var(--green)' : t.overrunDays <= 14 ? 'var(--amber)' : 'var(--danger)';
+    // ok: number - overrunDays and daysToTarget are day counts, never text
     wrap.innerHTML = `<div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
     <div style="text-align:center"><div style="font-size:1.9rem;font-weight:900;color:${color}">${t.overrunDays > 0 ? '+' : ''}${t.overrunDays}d</div><div style="font-size:.66rem;color:var(--slate)">vs Target Completion</div></div>
     <div style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:5px;font-size:.76rem">
-      <div>Target Completion: <strong>${t.target}</strong>${t.start ? ` <span style="color:var(--slate)">(mobilized ${t.start})</span>` : ''}</div>
-      <div>Current Planned Finish: <strong>${t.projected}</strong> <span style="color:var(--slate)">(latest scheduled task end date)</span></div>
+      <div>Target Completion: <strong>${U.escapeHtml(t.target)}</strong>${t.start ? ` <span style="color:var(--slate)">(mobilized ${U.escapeHtml(t.start)})</span>` : ''}</div>
+      <div>Current Planned Finish: <strong>${U.escapeHtml(t.projected)}</strong> <span style="color:var(--slate)">(latest scheduled task end date)</span></div>
       <div style="color:var(--slate)">${t.daysToTarget >= 0 ? t.daysToTarget + ' day(s) remaining to target' : Math.abs(t.daysToTarget) + ' day(s) past target date'}</div>
     </div>
-    <span class="st-txt${t.cls === 'bs' ? ' s' : ''}"><span class="sdot ${t.cls === 'bg' ? 'g' : t.cls === 'ba' ? 'a' : t.cls === 'br' ? 'r' : 'b'}"></span>${t.status}</span>
+    <span class="st-txt${t.cls === 'bs' ? ' s' : ''}"><span class="sdot ${t.cls === 'bg' ? 'g' : t.cls === 'ba' ? 'a' : t.cls === 'br' ? 'r' : 'b'}"></span>${U.escapeHtml(t.status)}</span>
   </div>`;
     if (hdrBadge) {
       if (t.overrunDays > 0) {
@@ -1190,7 +1211,7 @@ var MMGR = window.MMGR || {};
           : overdue
             ? '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg>'
             : '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-diamond"></use></svg>';
-        return `${i > 0 ? '<div style="height:2px;min-width:40px;background:var(--border);flex:1"></div>' : ''}<div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:100px;text-align:center"><div style="width:28px;height:28px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:.8rem;color:#0b0c10;font-weight:700;flex-shrink:0">${icon}</div><div style="font-size:.68rem;font-weight:700;color:${color};max-width:90px">${U.escapeHtml(m.name)}</div><div style="font-size:.62rem;color:var(--slate)">${m.endDate}</div>${overdue ? '<div style="font-size:.6rem;color:var(--danger)">OVERDUE</div>' : ''}</div>`;
+        return `${i > 0 ? '<div style="height:2px;min-width:40px;background:var(--border);flex:1"></div>' : ''}<div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:100px;text-align:center"><div style="width:28px;height:28px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:.8rem;color:#0b0c10;font-weight:700;flex-shrink:0">${icon}</div><div style="font-size:.68rem;font-weight:700;color:${color};max-width:90px">${U.escapeHtml(m.name)}</div><div style="font-size:.62rem;color:var(--slate)">${U.escapeHtml(m.endDate)}</div>${overdue ? '<div style="font-size:.6rem;color:var(--danger)">OVERDUE</div>' : ''}</div>`;
       })
       .join('')}</div>`;
   }
@@ -1225,6 +1246,7 @@ var MMGR = window.MMGR || {};
     const diff = U.daysBetween(target, latestEnd);
     if (diff > 0) {
       ind.classList.add('on', 'ti-br');
+      // ok: number - diff is a day count, never text
       ind.innerHTML =
         '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Over target by ' +
         diff +
@@ -1425,7 +1447,7 @@ var MMGR = window.MMGR || {};
         const tier = agingTier(it.age);
         return `<div class="aa-row${tier.stale ? ' aa-stale' : ''}">
         <div class="aa-txt">${U.escapeHtml(it.text)}<span class="aa-src">${U.escapeHtml(it.src)}${it.kind && it.kind !== 'comms' && it.kind !== 'log' ? ' · ' + U.escapeHtml(it.kind) : ''}</span></div>
-        <span class="badge ${tier.cls}" style="font-size:.62rem;white-space:nowrap">${tier.label}</span>
+        <span class="badge ${U.escapeHtml(tier.cls)}" style="font-size:.62rem;white-space:nowrap">${U.escapeHtml(tier.label)}</span>
       </div>`;
       })
       .join('');
@@ -1453,6 +1475,7 @@ var MMGR = window.MMGR || {};
     const st = (s && s.streak) || { count: 0, lastDate: null };
     const count = st.count || 0;
     const last = st.lastDate ? String(st.lastDate) : null;
+    // ok: number - count is a day count, never text
     el.innerHTML =
       '<div class="stk-row"><div class="stk-num">' +
       count +
@@ -1928,10 +1951,10 @@ var MMGR = window.MMGR || {};
                   const names = g.peers
                     .map(pid => {
                       const p = visibleTasks.find(x => String(x.id) === String(pid));
-                      return p ? p.name : pid;
+                      return p ? U.escapeHtml(p.name) : U.escapeHtml(pid);
                     })
                     .join(', ');
-                  const when = g.window.start + ' to ' + g.window.end;
+                  const when = U.escapeHtml(g.window.start) + ' to ' + U.escapeHtml(g.window.end);
                   return (
                     '<span class="badge bo" tabindex="0" role="img" aria-label="Runs in parallel with ' +
                     U.escapeHtml(names) +
@@ -1952,17 +1975,17 @@ var MMGR = window.MMGR || {};
           ${t.recurring ? '<span class="tt-rec-badge"><svg class="ico" aria-hidden="true" style="font-size:.6rem"><use href="css/mmgr-icons.svg#i-refresh"></use></svg></span>' : ''}
           ${t.weatherExposed ? '<svg class="ico" aria-hidden="true" style="color:#38bdf8;font-size:.7rem" title="Weather-exposed"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg>' : ''}
           ${t.comments && t.comments.length ? '<span class="badge" style="font-size:.6rem;padding:1px 5px;margin-left:4px;background:var(--gold);color:#fff;cursor:pointer" title="' + t.comments.length + ' comment(s)" data-action="toggleTaskComments" data-id="' + U.escapeHtml(t.id) + '">' + t.comments.length + ' cmnts</span>' : ''}
-          ${t.followUp ? '<span class="badge ' + (t.followUp.status === 'completed' ? 'bg' : 'bo') + '" style="font-size:.6rem;padding:1px 5px;margin-left:4px" title="Follow-up: ' + U.escapeHtml(t.followUp.assignee) + ' by ' + (t.followUp.dueDate || 'no date') + '"><svg class="ico" aria-hidden="true" style="font-size:.55rem"><use href="css/mmgr-icons.svg#i-flag"></use></svg> ' + U.escapeHtml(t.followUp.assignee) + '</span>' : ''}
+          ${t.followUp ? '<span class="badge ' + (t.followUp.status === 'completed' ? 'bg' : 'bo') + '" style="font-size:.6rem;padding:1px 5px;margin-left:4px" title="Follow-up: ' + U.escapeHtml(t.followUp.assignee) + ' by ' + U.escapeHtml(t.followUp.dueDate || 'no date') + '"><svg class="ico" aria-hidden="true" style="font-size:.55rem"><use href="css/mmgr-icons.svg#i-flag"></use></svg> ' + U.escapeHtml(t.followUp.assignee) + '</span>' : ''}
         </td>
         <td><input type="text" value="${U.escapeHtml(t.assignee || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="assignee" placeholder="--"></td>
         ${
           t.leadTime
-            ? `<td><label class="wbs-lt-lbl">Submitted</label><input type="date" value="${t.submittedDate || ''}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="submittedDate"></td>
-             <td><label class="wbs-lt-lbl">Expected</label><input type="date" value="${t.expectedDate || ''}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="expectedDate"></td>
+            ? `<td><label class="wbs-lt-lbl">Submitted</label><input type="date" value="${U.escapeHtml(t.submittedDate || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="submittedDate"></td>
+             <td><label class="wbs-lt-lbl">Expected</label><input type="date" value="${U.escapeHtml(t.expectedDate || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="expectedDate"></td>
              <td><span class="wbs-lt-note">Lead-time task, tracked by dates, not % done</span></td>`
             : `<td><input type="text" value="${U.escapeHtml(t.duration || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="duration" placeholder="days" style="width:60px"></td>
-             <td><input type="date" value="${t.startDate || ''}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="startDate"></td>
-             <td><input type="date" value="${t.endDate || ''}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="endDate"></td>`
+             <td><input type="date" value="${U.escapeHtml(t.startDate || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="startDate"></td>
+             <td><input type="date" value="${U.escapeHtml(t.endDate || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="endDate"></td>`
         }
         <td>
           <select data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="status">
@@ -2148,6 +2171,7 @@ var MMGR = window.MMGR || {};
         el.innerHTML = '';
         return;
       }
+      // ok: number - total is a count of warnings, never text
       el.innerHTML =
         '<button class="btn btn-n btn-s wbs-alert-show" data-action="tglWbsIssues" aria-label="Show schedule warnings"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg> Show ' +
         total +
@@ -2469,7 +2493,7 @@ var MMGR = window.MMGR || {};
       '</div>' +
       barsHtml +
       (todayLeft !== null
-        ? `<div class="gantt-today" style="left:${todayLeft}px" title="Today: ${todayStr}"></div>`
+        ? `<div class="gantt-today" style="left:${todayLeft}px" title="Today: ${U.escapeHtml(todayStr)}"></div>`
         : '');
     if (gl) {
       gl.innerHTML = labelsHtml;
@@ -3341,7 +3365,7 @@ var MMGR = window.MMGR || {};
         '<strong>' +
         U.escapeHtml(task.name) +
         '</strong><br>Start: ' +
-        U.fmtDate(newStart) +
+        U.escapeHtml(U.fmtDate(newStart)) +
         (constrained
           ? '<br><span style="color:var(--danger)">Constrained by predecessor / chart start</span>'
           : '');
@@ -3448,15 +3472,15 @@ var MMGR = window.MMGR || {};
       U.escapeHtml(task.startDate || '?') + ' to ' + U.escapeHtml(task.endDate || '?') + '<br>';
     html +=
       'Total float: ' +
-      (task.totalFloat === null || task.totalFloat === undefined ? 'n/a' : task.totalFloat + 'd') +
+      (task.totalFloat === null || task.totalFloat === undefined ? 'n/a' : task.totalFloat + 'd') + // ok: float is a day count computed by the schedule engine
       '<br>';
     html +=
       'Free float: ' +
-      (task.freeFloat === null || task.freeFloat === undefined ? 'n/a' : task.freeFloat + 'd') +
+      (task.freeFloat === null || task.freeFloat === undefined ? 'n/a' : task.freeFloat + 'd') + // ok: float is a day count computed by the schedule engine
       '<br>';
     const schedPad =
       task._schedPad !== undefined && task._schedPad !== null
-        ? task._schedPad
+        ? task._schedPad // ok: weather pad is a day count computed by the schedule engine
         : task.weatherSensitive
           ? pad
           : 0;

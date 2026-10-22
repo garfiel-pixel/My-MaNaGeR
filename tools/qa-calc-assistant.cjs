@@ -2089,6 +2089,239 @@ async function partBCustomLine(browser, errors) {
   }
 }
 
+/* S-6 (owner 2026-10-22) - the two-option rate choice and the settings the
+   calculator already has. Both are new contracts, so both get gates:
+
+     S6.1  a work proposal shows BOTH ways to price it (rate book, or the
+           user's own rate), and the own-rate button opens the custom line
+           carrying the same job with an EMPTY rate box in focus - the panel
+           must never write the user's rate for them.
+     S6.2  a settings proposal names every change BEFORE any click, applies
+           them only on that click, and refuses an unsupported key by name
+           (the 2% Contractors Levy is a withholding, not a cost).
+*/
+async function s6OwnRateAndSettings(browser, errors) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => errors.push('calc(s6): ' + String(e).slice(0, 140)));
+  await mockAuth(page);
+  const bodies = await mockRelay(page, i => {
+    if (i === 0) {
+      return (
+        'Block wall, 24 m2. From the rate book that comes to J$81,600. ' +
+        'Do you want that added, or would you prefer to use your own rate?\n' +
+        'PROPOSAL: {"work":"blockwall","units":"metric","measuredQty":24,"note":"block wall"}'
+      );
+    }
+    return (
+      'Jamaica charges 15% GCT on the works.\n' +
+      'PROPOSAL: {"settings":{"country":"JM","taxOverride":15,"overhead":10},"note":"Jamaica tax"}'
+    );
+  });
+  await seedCalcFx(page);
+  await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
+  await page.waitForFunction(() => !!window.MMGR_CALC_AI, null, { timeout: 20000 });
+  await page.waitForFunction(() => !!window.MMGR_JIC_FULL, null, { timeout: 8000 }).catch(() => {});
+
+  // S6.0 - both hooks exist and the panel reports the build that uses them.
+  const hooks = await page.evaluate(() => ({
+    user: typeof window.MMGR_CALC_USER_RATE,
+    settings: typeof window.MMGR_CALC_SETTINGS,
+    version: (window.MMGR_CALC_AI || {}).version
+  }));
+  check(
+    'S6.0 the page exposes the own-rate and settings hooks',
+    hooks.user === 'function' && hooks.settings === 'function',
+    hooks
+  );
+  check('S6.0 the panel is the build that offers them', hooks.version === 'calc-ai-4', hooks);
+
+  // S6.1a - the system prompt states BOTH options and the levy rule.
+  await sendQ(page, 'block wall 24 square metres');
+  const sys1 = sysOf(bodies[bodies.length - 1]);
+  check(
+    'S6.1a the prompt asks for the rate book figure AND the user rate',
+    /use your own rate/i.test(sys1) && /From the rate book/i.test(sys1),
+    sys1.slice(0, 200)
+  );
+  check(
+    'S6.1a the prompt says the Contractors Levy is not an extra cost',
+    /Contractors Levy/i.test(sys1) && /not an extra cost/i.test(sys1),
+    sys1.slice(0, 200)
+  );
+  check(
+    'S6.2a the prompt documents the settings proposal form',
+    /"settings":/.test(sys1),
+    sys1.slice(0, 200)
+  );
+
+  // S6.1b - the work proposal shows both choices, in words and in buttons.
+  const shown = await page.evaluate(() => {
+    const q = document.querySelector('[data-cai=pathq]');
+    const btn = document.querySelector('[data-cai=myrate]');
+    return {
+      pathsHidden: document.querySelector('[data-cai=paths]').hidden,
+      question: q ? q.textContent : '',
+      btnHidden: btn ? btn.hidden : null
+    };
+  });
+  check(
+    'S6.1b the work proposal asks for the rate book figure or the user rate',
+    shown.pathsHidden === false && /own rate/i.test(shown.question),
+    shown
+  );
+  check('S6.1b the own-rate button is offered', shown.btnHidden === false, shown);
+
+  // S6.1c - taking it fills the job and quantity, leaves the rate EMPTY.
+  await page.click('[data-cai=myrate]');
+  const own = await page.evaluate(() => ({
+    work: (document.getElementById('calc-work') || {}).value,
+    name: (document.getElementById('calc-custom-name') || {}).value,
+    qty: (document.getElementById('calc-custom-qty') || {}).value,
+    rate: (document.getElementById('calc-custom-rate') || {}).value,
+    focus: document.activeElement ? document.activeElement.id : '',
+    visible: !(document.getElementById('calc-custom-wrap') || {}).hidden
+  }));
+  check('S6.1c the own-rate path switches the line to custom', own.work === 'custom', own);
+  check('S6.1c the job name carries over', /\S/.test(String(own.name)), own);
+  check('S6.1c the quantity carries over', Number(own.qty) === 24, own);
+  check('S6.1c the rate box is EMPTY - the number is the user\u0027s', own.rate === '', own);
+  check('S6.1c the caret sits in the rate box', own.focus === 'calc-custom-rate', own);
+  check('S6.1c the custom boxes are visible', own.visible === true, own);
+
+  // S6.2a/2b - the settings proposal names the changes, then applies on click.
+  await sendQ(page, 'what about GCT?');
+  const stShown = await page.evaluate(() => {
+    const chip = document.querySelector('.bcp-ai-chip-settings');
+    const btn = document.querySelector('[data-cai=settings]');
+    return {
+      hidden: btn ? btn.hidden : null,
+      text: chip && !chip.hidden ? chip.textContent : ''
+    };
+  });
+  check(
+    'S6.2a each setting change is named before any click',
+    stShown.hidden === false &&
+      /country \(sets the tax\): JM/.test(stShown.text) &&
+      /custom tax %: 15/.test(stShown.text) &&
+      /overhead & margin %: 10/.test(stShown.text),
+    stShown
+  );
+  await page.evaluate(() => {
+    const c = document.getElementById('calc-country');
+    c.value = 'US';
+    c.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  const outBefore = await page.evaluate(
+    () => (document.getElementById('calc-output') || {}).textContent || ''
+  );
+  await page.click('[data-cai=settings]');
+  const stApp = await page.evaluate(() => ({
+    country: (document.getElementById('calc-country') || {}).value,
+    tax: (document.getElementById('calc-tax-override') || {}).value,
+    oh: (document.getElementById('calc-oh') || {}).value,
+    out: (document.getElementById('calc-output') || {}).textContent || ''
+  }));
+  check(
+    'S6.2b the click writes the country, the tax and the overhead',
+    stApp.country === 'JM' && String(stApp.tax) === '15' && String(stApp.oh) === '10',
+    stApp
+  );
+  check('S6.2b the estimate is worked out again', stApp.out !== outBefore, {
+    same: stApp.out === outBefore
+  });
+
+  // S6.2c - an unsupported key is refused by name, and nothing is written.
+  const refused = await page.evaluate(() => {
+    const before = (document.getElementById('calc-tax-override') || {}).value;
+    const out = window.MMGR_CALC_SETTINGS({ levy: 2 });
+    const after = (document.getElementById('calc-tax-override') || {}).value;
+    return { out: out, before: before, after: after };
+  });
+  check('S6.2c an unsupported setting is refused', refused.out.ok === false, refused);
+  check('S6.2c the refusal names the key', /levy/.test(String(refused.out.error)), refused);
+  check('S6.2c nothing is written by a refused call', refused.before === refused.after, refused);
+
+  // S6.4 - the "nice box" treatment reaches the fields that had NO styling:
+  // the document row, the save-name box and the client fields. One rule set,
+  // tokens only, so the radius and the padding match the .bcp-field boxes.
+  const fieldLook = await page.evaluate(() => {
+    const ids = ['calc-doc-title', 'calc-save-name', 'calc-client-name', 'calc-d1'];
+    const out = {};
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) {
+        out[id] = { missing: true };
+        return;
+      }
+      const cs = getComputedStyle(el);
+      out[id] = {
+        radius: cs.borderTopLeftRadius,
+        padTop: cs.paddingTop,
+        padLeft: cs.paddingLeft,
+        border: cs.borderTopStyle + ' ' + cs.borderTopWidth,
+        bg: cs.backgroundColor
+      };
+    });
+    return out;
+  });
+  // A toolbar field may be DENSER (the save-name box sits beside buttons and
+  // keeps its own 7px/10px padding) - what must match is the field LANGUAGE:
+  // the radius, the 1px border, the token fill. That is what "the same boxes"
+  // means on screen.
+  const styled = ['calc-doc-title', 'calc-save-name', 'calc-client-name', 'calc-d1'].every(id => {
+    const f = fieldLook[id] || {};
+    return (
+      !f.missing &&
+      f.radius !== '0px' &&
+      f.border === 'solid 1px' &&
+      parseFloat(f.padTop) >= 7 &&
+      parseFloat(f.padLeft) >= 10
+    );
+  });
+  check('S6.4 every estimate box shares the token field treatment', styled, fieldLook);
+  const matched = await page.evaluate(() => {
+    const a = getComputedStyle(document.getElementById('calc-doc-title'));
+    const b = getComputedStyle(document.getElementById('calc-d1'));
+    return {
+      a: a.borderTopLeftRadius + '/' + a.paddingTop + '/' + a.backgroundColor,
+      b: b.borderTopLeftRadius + '/' + b.paddingTop + '/' + b.backgroundColor
+    };
+  });
+  check('S6.4 the two sets of boxes match each other', matched.a === matched.b, matched);
+
+  // S6.5 - the caret stays in the question box across a reply on desktop.
+  await page.click('[data-cai=input]');
+  await page.fill('[data-cai=input]', 'and the roof?');
+  const n0 = await page.evaluate(
+    () => document.querySelectorAll('.bcp-ai-log .bcp-ai-msg.ai').length
+  );
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(
+    n => document.querySelectorAll('.bcp-ai-log .bcp-ai-msg.ai').length > n,
+    n0,
+    { timeout: 10000 }
+  );
+  await page.waitForTimeout(150);
+  const focusAfter = await page.evaluate(() => ({
+    active: document.activeElement ? document.activeElement.getAttribute('data-cai') : '',
+    disabled: document.querySelector('[data-cai=input]').disabled
+  }));
+  check(
+    'S6.5 the question box keeps the caret after a reply',
+    focusAfter.active === 'input' && focusAfter.disabled === false,
+    focusAfter
+  );
+
+  // S6.1d - a CUSTOM proposal is already the user's rate: no own-rate button.
+  const customBtn = await page.evaluate(() => {
+    window.MMGR_CALC_AI.mount(document.getElementById('calc-ai-mount'));
+    return true;
+  });
+  check('S6.1d the panel remounts cleanly after the wave', customBtn, null);
+  await ctx.close();
+}
+
 (async () => {
   let srv = null;
   const { chromium } = resolvePlaywright();
@@ -2116,6 +2349,7 @@ async function partBCustomLine(browser, errors) {
     await fileIntake(browser, errors);
     await partARateAccess(browser, errors);
     await partBCustomLine(browser, errors);
+    await s6OwnRateAndSettings(browser, errors);
     await contrastGates(browser, errors);
 
     const real = errors.filter(e => !/\/api\//.test(e));

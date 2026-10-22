@@ -45,7 +45,7 @@ var MMGR = window.MMGR || {};
       '<span>' +
       U.escapeHtml(t.assignee || '-') +
       '</span>' +
-      (t.endDate ? '<span>' + U.fmtDateShort(t.endDate) + '</span>' : '') +
+      (t.endDate ? '<span>' + U.escapeHtml(U.fmtDateShort(t.endDate)) + '</span>' : '') +
       (t.critical ? '<span class="badge bo" style="font-size:.6rem">CP</span>' : '') +
       '</div>' +
       '</div>'

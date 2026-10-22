@@ -13,14 +13,19 @@ var MMGR = window.MMGR || {};
   const U = ns.Utils;
   const $ = U.$;
 
+  // S-5 (audit 2026-10-18): colspan is a column count and text is plain
+  // text, so both are escaped. actionsHtml is the caller's action-button
+  // MARKUP (every caller passes a literal <button>), so it is not text and
+  // must not be escaped.
   function emptyStateRow(colspan, text, actionsHtml) {
     return (
       '<tr><td colspan="' +
-      colspan +
+      U.escapeHtml(colspan) +
       '"><div class="es es-row">' +
       '<div>' +
-      text +
+      U.escapeHtml(text) +
       '</div>' +
+      // ok: actionsHtml is the caller's action-button markup, not user text
       (actionsHtml ? '<div class="es-actions">' + actionsHtml + '</div>' : '') +
       '</div></td></tr>'
     );
@@ -167,11 +172,11 @@ var MMGR = window.MMGR || {};
         const cost = parseImpactCost(c.costImpact);
         const hasRipple = days > 0 || cost > 0 || exposedLines > 0;
         const rippleHtml = hasRipple
-          ? `<span style="color:${c.status === 'approved' ? 'var(--green)' : 'var(--amber)'}">~${days}d · ${exposedLines} lines${cost ? ' · $' + cost.toLocaleString() : ''}${downstreamTasks ? ' · ' + downstreamTasks + ' tasks' : ''}</span>`
+          ? `<span style="color:${c.status === 'approved' ? 'var(--green)' : 'var(--amber)'}">~${U.escapeHtml(days)}d · ${exposedLines} lines${cost ? ' · $' + cost.toLocaleString() : ''}${downstreamTasks ? ' · ' + downstreamTasks + ' tasks' : ''}</span>`
           : '-';
         return `<tr>
       <td>${U.escapeHtml(c.id || 'C' + (i + 1))}</td>
-      <td><input type="date" value="${c.date || ''}" data-action="updField" data-module="Changes" data-field="date" data-idx="${i}"></td>
+      <td><input type="date" value="${U.escapeHtml(c.date || '')}" data-action="updField" data-module="Changes" data-field="date" data-idx="${i}"></td>
       <td><input type="text" value="${U.escapeHtml(c.title)}" data-action="updField" data-module="Changes" data-field="title" data-idx="${i}"></td>
       <td><input type="text" value="${U.escapeHtml(c.requester || '')}" data-action="updField" data-module="Changes" data-field="requester" data-idx="${i}"></td>
       <td><input type="text" value="${U.escapeHtml(c.schedImpact || '')}" data-action="updField" data-module="Changes" data-field="schedImpact" data-idx="${i}" style="width:100px" title="e.g. +10 days / 2 weeks"></td>
@@ -260,13 +265,17 @@ var MMGR = window.MMGR || {};
       renderRaciAlerts();
       return;
     }
-    const esc = s2 => (s2 || '').replace(/"/g, '&quot;');
+    // S-5 (audit 2026-10-18): this used to escape ONLY the double quote,
+    // which is not an escaper - a name containing "<" reached the page as
+    // live markup. Use the shared escaper, which is safe in text AND in
+    // attribute position.
+    const esc = s2 => U.escapeHtml(s2);
     const legend =
       '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:12px;font-size:.7rem;color:var(--slate)">' +
       Raci.RACI_CYCLE_FILTERED()
         .map(
           k =>
-            `<span><span style="display:inline-block;width:18px;height:18px;line-height:18px;text-align:center;border-radius:4px;font-weight:800;background:${Raci.raciCellBg(k)};color:${Raci.raciCellFg(k)};border:1px solid ${Raci.raciCellFg(k)}">${k}</span> ${Raci.RACI_LABELS[k].split(' , ')[0]}</span>`
+            `<span><span style="display:inline-block;width:18px;height:18px;line-height:18px;text-align:center;border-radius:4px;font-weight:800;background:${U.escapeHtml(Raci.raciCellBg(k))};color:${U.escapeHtml(Raci.raciCellFg(k))};border:1px solid ${U.escapeHtml(Raci.raciCellFg(k))}">${U.escapeHtml(k)}</span> ${U.escapeHtml(Raci.RACI_LABELS[k].split(' , ')[0])}</span>`
         )
         .join('') +
       '<span style="margin-left:auto">Click a cell to cycle R → A → C → I → blank · Right-click to go back</span></div>';
@@ -333,7 +342,7 @@ var MMGR = window.MMGR || {};
           return `<div class="rw-cell">
           <div class="rw-head"><span class="rw-name">${U.escapeHtml(nm)}</span><span class="rw-load" style="color:${barColor}">${r.load.toFixed(1)}</span></div>
           <div class="rw-bar"><div class="rw-fill" style="width:${Math.max(4, r.pct)}%;background:${barColor}"></div></div>
-          <div class="rw-counts"><span class="rw-r">R ${c.R}</span><span class="rw-a">A ${c.A}</span><span class="rw-c">C ${c.C}</span><span class="rw-i">I ${c.I}</span></div>
+          <div class="rw-counts"><span class="rw-r">R ${U.escapeHtml(c.R)}</span><span class="rw-a">A ${U.escapeHtml(c.A)}</span><span class="rw-c">C ${U.escapeHtml(c.C)}</span><span class="rw-i">I ${U.escapeHtml(c.I)}</span></div>
         </div>`;
         })
         .join('') +
@@ -375,7 +384,10 @@ var MMGR = window.MMGR || {};
       }
     });
     el.innerHTML = alerts
-      .map(a => `<div style="font-size:.72rem;color:var(--amber);margin-bottom:3px">${a}</div>`)
+      .map(
+        a =>
+          `<div style="font-size:.72rem;color:var(--amber);margin-bottom:3px">${U.escapeHtml(a)}</div>`
+      )
       .join('');
   }
 
@@ -402,7 +414,7 @@ var MMGR = window.MMGR || {};
       .map(
         (e, i) => `<tr>
       <td>${U.escapeHtml(e.id || 'C' + (i + 1))}</td>
-      <td><input type="date" value="${e.date || ''}" data-action="updField" data-module="Comms" data-field="date" data-idx="${i}"></td>
+      <td><input type="date" value="${U.escapeHtml(e.date || '')}" data-action="updField" data-module="Comms" data-field="date" data-idx="${i}"></td>
       <td><select data-action="updField" data-module="Comms" data-field="type" data-idx="${i}">${['Meeting', 'Call', 'Email', 'Site Visit', 'Letter'].map(t => `<option ${e.type === t ? 'selected' : ''}>${t}</option>`).join('')}</select></td>
       <td><input type="text" value="${U.escapeHtml(e.attendees || '')}" data-action="updField" data-module="Comms" data-field="attendees" data-idx="${i}"></td>
       <td><input type="text" value="${U.escapeHtml(e.summary || '')}" data-action="updField" data-module="Comms" data-field="summary" data-idx="${i}" style="min-width:150px"></td>

@@ -502,6 +502,28 @@ var MMGR = window.MMGR || {};
       input.focus();
       input.click();
     });
+    // AUDIT 2026-10-22: the Card's Cancel button carried
+    // data-action="photos-cancel", and NOTHING anywhere answered it - the
+    // dispatcher only runs actions that exist in ACTION_MAP and silently
+    // ignores the rest, so the button did nothing at all since the panel
+    // shipped (git log -S photos-cancel: one commit, no handler). It now drops
+    // the picked file and the typed caption and returns the caret to the
+    // start control, which is exactly what it reads as.
+    var cancel = $('photos-cancel-btn');
+    if (cancel) {
+      cancel.addEventListener('click', function () {
+        input.value = '';
+        var cap = $('photos-caption-input');
+        if (cap) {
+          cap.value = '';
+        }
+        var note = $('photos-upload-note');
+        if (note) {
+          note.textContent = '';
+        }
+        btn.focus();
+      });
+    }
   }
   function _boot() {
     if (document.readyState === 'loading') {

@@ -288,3 +288,83 @@ each supplier's own rates), H7.2-H7.8 folded in. **Do NOT commit until the
 H5.11 gates are green** (owner: "you don't have to commit this"). PART I is
 COMPLETE (Phases 1+2 shipped and live-verified; Phase 3 parked by owner
 decision). Live probes: https://mymanagerworkspace.com (never mymanager.app).
+
+AUDIT 2026-10-22 - WIRING + SECURITY GAP SWEEP (owner-requested dig for real
+bugs, then documented as tasks). Method: mechanical sweeps whose results were
+each hand-verified against raw source, because the first pass lies in both
+directions (it reported 122 "missing" ids and ~200 "unwired" actions that were
+renderer-built ids and unquoted ACTION_MAP keys). Re-runnable probes live in
+`tmp/audit-wiring.cjs`, `tmp/audit-actions2.cjs`, `tmp/audit-css-classes.cjs`,
+`tmp/audit-links.cjs`, `tmp/audit-aria.cjs` (tmp/ is gitignored - re-create
+them from this description if they are gone).
+
+FOUND AND FIXED THIS PASS (shipped with the S-6.3b commit):
+- F1 ICONS THAT NEVER RENDERED. `css/mmgr-icons.svg` had no `i-pencil` and no
+  `i-image`, yet both are referenced: admin.html's team "Edit" button and the
+  photo placeholder in `js/cloud/photos-ui.js`. An unresolved `<use href>`
+  renders an empty box and no error anywhere. Both symbols added (rule 7).
+- F2 A CANCEL BUTTON THAT DID NOTHING. Project Photos' "Cancel" carried
+  `data-action="photos-cancel"`; `git log -S photos-cancel` shows one commit
+  and no handler ever existed. The click dispatcher only runs actions present
+  in ACTION_MAP and silently ignores the rest, so the button was dead since the
+  panel shipped. Wired in `js/cloud/photos-ui.js` (drops the picked file and
+  typed caption, returns focus to "Add photo").
+- F3 A DEAD ANCHOR. admin.html links "See Company plan" to
+  `pricing.html#company`; pricing.html had no `#company` id, so the buyer
+  landed at the top of the page. `id="company"` added to the plan card.
+
+TASKS STILL OPEN (in priority order):
+- T-1 GATE THE SPRITE. `tools/verify-icons.cjs`: every `mmgr-icons.svg#i-*`
+  reference in served HTML and in `js/` must resolve to a `<symbol>`. F1 was
+  invisible to every existing gate; this closes the class. Register in
+  docs/CI-TEST-COVERAGE.md + ci.yml T1.
+- T-2 GATE THE ACTION CONTRACT. `tools/verify-actions.cjs`: per page, every
+  `data-action` must appear in that page's own map (project.html ->
+  ACTION_MAP in mmgr-app.js, app.html -> DASH_ACTION_MAP in its inline script,
+  admin.html -> ADMIN_ACTION_MAP, calculator.html -> its ACTIONS map). F2
+  survived three waves of QA because nothing checked the markup against the
+  map. Static arm only; the live click paths stay with qa-full.
+- T-3 GATE INTERNAL LINKS. `tools/verify-links.cjs`: every relative href must
+  exist and every `page.html#anchor` must resolve to an id in that page. F3
+  passed every gate we have.
+- T-4 REDUNDANT ACTIONS (cleanup, no user impact). `calcDocType`,
+  `calcCashMode` (calculator.html) and `photos-upload` (project.html) carry
+  data-action but have no map entry; they work because their element ids have
+  their own listeners. Remove the attribute or add the entry - pick one and
+  make it uniform, so T-2 can be enforced without a suppression list.
+- T-5 REQUEST-BODY CAPS. 24 handlers call `await request.json()` directly;
+  only the project-data paths use `readCloudBody` (8 MiB streaming cap,
+  src/lib/http.js). Public ones (contact, reviews, auth, /api/ai/chat) rely on
+  rate limits alone. Route every JSON read through the capped helper (or a
+  small-by-payload variant) so a large body cannot be parsed for free.
+- T-6 SECURITY RE-VERIFICATION (not a defect, a gap in coverage). Session
+  cookie flags (HttpOnly/Secure/SameSite=Lax), parameterised D1 queries (no
+  template interpolation found), no SSRF in the AI relay (provider URLs come
+  from the fixed AI_PROVIDERS map, never from the request) and photo/auth
+  layering (`cloudAuthOwnerSession` -> code -> editor -> viewer) all read
+  correctly. Still unverified this pass: team/accept token lifetime,
+  api-keys scoping on every read path, client-code lookup timing. Give each a
+  browser/API gate in tools/qa-cloud-phase2.cjs style before the next release
+  of the cloud surface.
+
+
+- T-7 CLAIM PACK: ONE OVER-LONG LINE (unresolved, evidence recorded). qa-full
+  gate 86 ("counsel-ready print document") fails with maxLine=644 (it requires
+  <100); (187/0 earlier the same day, failing twice since).
+  Fresh-seed probes give 89; a 500-char decision text plus a 500-char task name
+  still give 85, so wrap() does wrap user text - either one section appends a
+  list unwrapped, or qa-full's earlier gates leak state into the pack. Fix: run
+  the gate hermetically first, then wrap the offending section. Never relax the
+  100-char assertion.
+- T-8 qa-full IS ORDER-SENSITIVE. Gate 07 (float watch) failed then passed with
+  no code change: 187 checks mutate and restore the demo state, so a gate that
+  depends on an earlier gate's leftovers is a false signal. Snapshot/restore
+  deterministically per check (gate 86's restore is best-effort and runs AFTER
+  its assertion).
+
+CORRECTED FALSE POSITIVES (do not re-open): the dashboard pager is FINE -
+`.pg-off{display:none}` lives in app.html's inline `<style>`, not
+css/mmgr.css (measured: `.pcard.pg-off` -> display:none). `client-scope`,
+`bcp-ai`, `pg-nav`, `pool-modal`, `import-modal`, `snap-daily-btn`,
+`calc-ratebook-card` are renderer-created or decorative hooks, not missing
+markup. All app.html/admin.html actions resolve. Zero broken aria references.

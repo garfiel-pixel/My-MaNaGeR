@@ -171,7 +171,10 @@
           <p class="pc-cta"><button type="button" class="btn btn-gold" data-pricing-upgrade data-tier="estimator">Start Estimator</button></p>
         </div>
 
-        <div class="pricing-card">
+        <!-- AUDIT 2026-10-22: this is the anchor admin.html's "See Company plan"
+             links to (pricing.html#company). Without the id the link landed at
+             the top of the page and the reader had to hunt for the plan. -->
+        <div class="pricing-card" id="company">
           <p class="pc-tier">Company</p>
           <p class="pc-name">Growing teams</p>
           <p class="pc-price">$49.99 <small>/ month</small></p>

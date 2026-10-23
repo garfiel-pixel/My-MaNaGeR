@@ -235,7 +235,21 @@
 // and gate G13 in qa-glass.cjs fails without it). css/mmgr.css and
 // dist/mmgr.min.css are shell assets, hence this bump. No inline script was
 // added or removed, so the CSP hash set is unchanged.
-const CACHE = 'mmgr-shell-v458';
+// v459 - AUDIT 2026-10-22 (owner-requested bug dig): three real wiring defects.
+// (1) The sprite had no i-pencil and no i-image, though admin.html's team Edit
+// button and the photo placeholder in js/cloud/photos-ui.js both reference
+// them - an unresolved <use href> renders an empty box with no error. Both
+// symbols added. (2) Project Photos' Cancel button carried
+// data-action="photos-cancel" and no handler ever existed (the dispatcher only
+// runs actions in ACTION_MAP and silently ignores the rest), so it did nothing
+// since the panel shipped; js/cloud/photos-ui.js wires it now. (3) admin.html
+// sends buyers to pricing.html#company and that id did not exist, so the link
+// landed at the top of the page; the Company plan card carries it now. The
+// open follow-ups (sprite/action/link gates, body-size caps) are recorded as
+// tasks in CONTINUATION-DIRECTIVE.md. Changed shell assets: css/mmgr-icons.svg,
+// pricing.html, js/cloud/photos-ui.js, dist/app-bundle.js - hence this bump. No
+// inline script was added or removed, so the CSP hash set is unchanged.
+const CACHE = 'mmgr-shell-v459';
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new
 // 'JIC rate book' choice on calculator.html) prices ANY shipped book row as

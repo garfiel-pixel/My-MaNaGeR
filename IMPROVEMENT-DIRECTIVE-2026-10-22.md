@@ -368,7 +368,11 @@ transition dates, so the exact dates must be checked with the Commissioner **[OW
 
 **Add to `privacy.html`** (short, plain, near the top):
 1. **Who we are:** the legal name of the operator, a postal address, and a contact for privacy requests
-   (a role address, `privacy@mymanagerworkspace.com`). **[OWNER]** decide the legal entity.
+   (a role address, `privacy@mymanagerworkspace.com`). **[OWNER] ANSWERED 2026-10-22:** the owner
+   supplied **Garfiel-pixels**, owned by Garfield Fairclough, as the body name to use (spelling
+   deliberate - no d, confirmed by the owner). **[COUNSEL]** one consistency check remains:
+   `terms.html` currently reads "trading as My MaNaGeR", so pick one trading name and use it in the
+   same places (Terms, Privacy, Refund). This file does not choose it for you.
 2. **Jamaica section:** "If you are in Jamaica, the Data Protection Act, 2020 applies. You may ask to see,
    correct or delete your personal data, object to processing and complain to the Information
    Commissioner." Registration status stated truthfully **[OWNER/COUNSEL]** (do not claim a registration
@@ -440,8 +444,9 @@ users. Only the UI changes - nothing is deleted:
 | Uploaded rate book (`data-action="calcBookImport"`, `mmgr_calc_books` / `mmgr_calc_book_active`) | unchanged and now linked to the assistant (UX-16) |
 
 The notice explains: the books are published in Jamaica and the trade association *references* them
-as the books to use [OWNER: give the exact body name before this ships - LEG-1 forbids an invented
-name]; a builder's prices come from the books they use or from their own rates; and a rate book of
+as the books to use, attributed to the body the owner named on 2026-10-22: **Garfiel-pixels**,
+owned by Garfield Fairclough (spelling is the owner's and is deliberate - the d in Garfield is left
+out in the entity name, owner confirmed 2026-10-22); a builder's prices come from the books they use or from their own rates; and a rate book of
 their own can be uploaded here and is saved, rather than us supplying the published one. The reason
 is stated plainly in this file, not in served copy: shipping someone else's published table inside a
 paid product is the copyright exposure.
@@ -736,7 +741,8 @@ builds `#calc-ratebook-card` in `renderRateBookCard()` (`js/calculator-page.js` 
 
 **Notice copy (plain language, no emoji, no en/em dash - owner rules 7 and 0.2):** a title, then
 three short sentences: (1) these rates come from published books and the trade association
-references them as the books to use [OWNER: exact body name before ship - do not invent one]; (2)
+references them as the books to use - attributed to **Garfiel-pixels** (owned by Garfield
+Fairclough, owner-supplied 2026-10-22, spelling deliberate, use it verbatim); (2)
 your prices come from the books you use, or from your own rates; (3) you can upload your own rate
 book here and it is saved on this device. Then one control: **Upload my rate book**, wired to the
 existing `data-action="calcBookImport"`, and one line saying rates can be typed anywhere and always

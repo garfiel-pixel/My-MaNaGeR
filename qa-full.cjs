@@ -2154,6 +2154,15 @@ async function check(name, expr, expected, hint) {
       st.weatherLog.push({date: wd, condition:'heavy rain', note:'Pour halted', affectedTaskIds:['t4'], manual:true});
       st.ldRate = 5000;
       st.userName = 'Jane Contractor';
+      // Hermetic long-line seed: the gate must exercise over-long USER text
+      // (the exact class that broke the print contract) regardless of what
+      // earlier gates left behind. All three are removed in the restore.
+      if (!st.commsEntries) st.commsEntries = [];
+      st.commsEntries.push({id:'c86-long', date:wd, type:'Site meeting', attendees:'', summary:'Kickoff actions for the window', actionItems:'Project Charter Walkthrough (scope, sponsor, targets, budget); Assumptions and Constraints Log documented explicitly, not implied; Formal Charter Sign-Off with sponsor and key stakeholders; WBS and Deliverables Review; Resource and Procurement Plan for long-lead items; Action Items, Next Steps and Minutes Distribution to the whole team', followUp:''});
+      if (!st.changes) st.changes = [];
+      st.changes.push({id:'c86-chg', date:wd, title:'Owner scope note', requester:'Owner', schedImpact:'', costImpact:'', status:'open', approvedBy:'', notes:'Long note seed: the owner asked for the additional storefront signage to be priced separately and carried through procurement before the next payment application is issued.'});
+      if (!st.meetingPromises) st.meetingPromises = {};
+      st.meetingPromises['c86'] = [{id:'c86-p', text:'Long promise seed: issue the revised procurement schedule to the quantity surveyor under drawing reference DRW-2026-0001-A-VERY-LONG-UNBREAKABLE-DOCUMENT-REFERENCE-THAT-EXCEEDS-ONE-PRINTED-LINE-OF-NINETY-TWO-CHARACTERS-BY-A-WIDE-MARGIN and confirm the award date', done:false, sourceMeetingId:'c86', sourceDate:wd, createdAt:wd}];
     });
     var txt = MMGR.Claim.claimPackText(MMGR.Claim.buildClaimPack(MMGR.State.getState(), fromD, toD));
     var lines = txt.split('\\n');
@@ -2163,15 +2172,26 @@ async function check(name, expr, expected, hint) {
     var titles = ['EXECUTIVE NARRATIVE','SCHEDULE DELTA','WEATHER DELAY LOG','AFFECTED WBS TASKS','LD / CONTRACT EXPOSURE','CHANGE CONTROL','MEETING DECISIONS','CARRIED-FORWARD','ATTESTATION'];
     var allTitles = titles.every(function(t){ return txt.indexOf(t) > -1; });
     var maxLine = Math.max.apply(null, lines.map(function(l){ return l.length; }));
+    var worst = {len:0,i:-1,text:''};
+    lines.forEach(function(l,idx){ if(l.length>worst.len){ worst={len:l.length,i:idx,text:l.slice(0,200)}; } });
     var firstLine = lines[0] || '';
     var headerOk = firstLine.indexOf('=') === 0 && txt.indexOf('CLAIM / DELAY PACKAGE') > -1 && txt.indexOf('Project:') > -1 && txt.indexOf('Reporting window:') > -1 && txt.indexOf('Prepared:') > -1 && txt.indexOf('Document ref:     CLAIM-') > -1;
     var attestOk = txt.indexOf('Signature:') > -1 && txt.indexOf('Name:          Jane Contractor') > -1 && txt.indexOf('Role:') > -1 && txt.indexOf('Date:') > -1;
     var aligned = txt.indexOf('TASK') > -1 && txt.indexOf('BASELINE END') > -1 && txt.indexOf('CURRENT END') > -1 && txt.indexOf('CAUSE') > -1;
     var foot = txt.split('\\n').slice(-2).join(' ').indexOf('Prepared by My MaNaGeR') > -1;
-    var ok = ordered && allTitles && headerOk && attestOk && aligned && foot && maxLine < 100 && txt.length > 1500;
-    MMGR.State.updateState(function(st){ st.weatherLog = []; st.ldRate = 0; st.userName = ''; var t=st.tasks.find(function(x){return x.id==='t4';}); if(t)t.endDate=orig; st.baseline=null; });
+    // No character of the seeded long records may be dropped by the wrap
+    // (wrap() splits over-long unbreakable tokens now; it used to truncate
+    // them). Whitespace-stripped contiguity: wrapping only ever inserts
+    // whitespace, so the seed text must survive verbatim in order.
+    var squash = function(s){ return s.split(' ').join('').split('\\n').join('').split('\\t').join(''); };
+    var seedActs = 'Project Charter Walkthrough (scope, sponsor, targets, budget); Assumptions and Constraints Log documented explicitly, not implied; Formal Charter Sign-Off with sponsor and key stakeholders; WBS and Deliverables Review; Resource and Procurement Plan for long-lead items; Action Items, Next Steps and Minutes Distribution to the whole team';
+    var seedPromise = 'Long promise seed: issue the revised procurement schedule to the quantity surveyor under drawing reference DRW-2026-0001-A-VERY-LONG-UNBREAKABLE-DOCUMENT-REFERENCE-THAT-EXCEEDS-ONE-PRINTED-LINE-OF-NINETY-TWO-CHARACTERS-BY-A-WIDE-MARGIN and confirm the award date';
+    var flat = squash(txt);
+    var noLoss = flat.indexOf(squash(seedActs)) > -1 && flat.indexOf(squash(seedPromise)) > -1;
+    var ok = ordered && allTitles && headerOk && attestOk && aligned && foot && noLoss && maxLine < 100 && txt.length > 1500;
+    MMGR.State.updateState(function(st){ st.weatherLog = []; st.ldRate = 0; st.userName = ''; st.commsEntries=(st.commsEntries||[]).filter(function(c){return c.id!=='c86-long';}); st.changes=(st.changes||[]).filter(function(c){return c.id!=='c86-chg';}); if(st.meetingPromises) delete st.meetingPromises['c86']; var t=st.tasks.find(function(x){return x.id==='t4';}); if(t)t.endDate=orig; st.baseline=null; });
     if (backup !== null) { localStorage.setItem('mmgr_state_demo-project', backup); }
-    return {val: ok, secs: secs.join(','), maxLine: maxLine, headerOk: headerOk, attestOk: attestOk, aligned: aligned, foot: foot, len: txt.length};
+    return {val: ok, secs: secs.join(','), maxLine: maxLine, worst: worst, noLoss: noLoss, headerOk: headerOk, attestOk: attestOk, aligned: aligned, foot: foot, len: txt.length};
   })()`
   );
   await check(

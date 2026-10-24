@@ -9,7 +9,7 @@
    cross-account reads. The client merges per-section by updatedAt
    stamps - the server never interprets the sections.
    ============================================================ */
-import { json, cloudForbidden, readSession } from '../lib/http.js';
+import { json, cloudForbidden, readSession, readJsonBody } from '../lib/http.js';
 
 const WS_CAP = 4000000; // 4 MB - the logo dataURL dominates the payload
 
@@ -39,16 +39,14 @@ export async function handleCalcWorkspacePut(request, env) {
   if (!session || !session.sub) {
     return cloudForbidden();
   }
-  const cl = Number(request.headers.get('content-length') || 0);
-  if (cl > WS_CAP) {
+  const read = await readJsonBody(request, WS_CAP);
+  if (read.tooLarge) {
     return json({ ok: false, error: 'workspace too large' }, 413);
   }
-  let body = null;
-  try {
-    body = await request.json();
-  } catch (e) {
+  if (read.bad) {
     return json({ ok: false, error: 'invalid JSON body' }, 400);
   }
+  const body = read.body;
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
     return json({ ok: false, error: 'workspace must be a JSON object' }, 400);
   }

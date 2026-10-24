@@ -6,8 +6,9 @@
    on the contact page. Email is REQUIRED (it is the reply-to);
    name stays optional. Rate limited 5 per 30 min per IP.
    ============================================================ */
-import { json, cloudRateCheck, sendAuthEmail } from './lib/http.js';
+import { json, cloudRateCheck, sendAuthEmail, readJsonBody } from './lib/http.js';
 
+const BODY_CAP = 16384; // T-5: a 2000-char message is up to 8 KB in UTF-8; headroom
 const CONTACT_TO = 'admin@mymanagerworkspace.com';
 const CONTACT_EMAIL_MAX = 120;
 const CONTACT_NAME_MAX = 60;
@@ -27,12 +28,11 @@ export async function handleContactCreate(request, env) {
   if (r.limited) {
     return json({ ok: false, error: 'too many messages - try again in a bit' }, 429);
   }
-  let body = null;
-  try {
-    body = await request.json();
-  } catch (e) {
-    body = null;
+  const read = await readJsonBody(request, BODY_CAP);
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
   }
+  const body = read.bad ? null : read.body;
   if (!body || typeof body !== 'object') {
     return json({ ok: false, error: 'bad request' }, 400);
   }

@@ -702,15 +702,27 @@ export function cloudRateLimited(retryAfter) {
   );
 }
 
-// ---- Cloud body reader -----------------------------------------------------
+// ---- Capped JSON body reader ------------------------------------------------
+// T-5 (2026-10-22 sweep): request.json() buffers and parses the WHOLE body
+// before anyone can inspect its size, so a large body gets parsed for free
+// and rate limits - which bound request COUNT, not BYTES - do nothing about
+// it. Every JSON body read goes through this one helper: Content-Length is
+// checked when the client sends it (cheap reject), then the stream is read
+// against a running byte budget and abandoned the moment it passes the cap,
+// so a chunked body that omits Content-Length cannot slip past. Callers pass
+// their own payload-sized cap (a contact message is not a project state).
 
 const CLOUD_BODY_LIMIT_BYTES = 8388608;
-export async function readCloudBody(request) {
+
+export async function readJsonBody(request, maxBytes) {
+  const cap = Number(maxBytes) > 0 ? Number(maxBytes) : CLOUD_BODY_LIMIT_BYTES;
   const cl = Number(request.headers.get('Content-Length') || 0);
-  if (cl > CLOUD_BODY_LIMIT_BYTES) {
+  if (cl > cap) {
     return { tooLarge: true };
   }
   if (!request.body) {
+    // No stream = no bytes to buffer, so this path needs no budget; json()
+    // here throws (caught below) instead of reading anything.
     try {
       return { body: await request.json() };
     } catch (e) {
@@ -726,7 +738,7 @@ export async function readCloudBody(request) {
     done = res.done;
     if (res.value) {
       total += res.value.byteLength;
-      if (total > CLOUD_BODY_LIMIT_BYTES) {
+      if (total > cap) {
         return { tooLarge: true };
       }
       chunks.push(res.value);
@@ -744,6 +756,13 @@ export async function readCloudBody(request) {
   } catch (e) {
     return { bad: true };
   }
+}
+
+// The project-data paths keep their name and their 8 MiB contract; every
+// other reader (reviews, ai, auth, forms) calls readJsonBody directly with a
+// cap sized to its own payload.
+export async function readCloudBody(request) {
+  return readJsonBody(request, CLOUD_BODY_LIMIT_BYTES);
 }
 
 // ---- Same-origin check -----------------------------------------------------

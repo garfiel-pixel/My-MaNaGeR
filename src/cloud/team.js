@@ -29,7 +29,8 @@ import {
   cloudAuthOwnerEither,
   authEmailConfigured,
   sendAuthEmail,
-  CLOUD_SECTIONS
+  CLOUD_SECTIONS,
+  readJsonBody
 } from '../lib/http.js';
 import { billingStatusActive } from '../billing.js';
 
@@ -104,18 +105,22 @@ function serializeMember(row) {
   };
 }
 
+const BODY_CAP = 8192; // T-5: team payloads are an email, a role or a token
+
 // POST /api/cloud/projects/:id/team { email, role, scope? }
 export async function handleTeamInvite(request, env, projectId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
   if (!auth) {
     return cloudForbidden();
   }
-  let body;
-  try {
-    body = await request.json();
-  } catch (e) {
+  const read = await readJsonBody(request, BODY_CAP);
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad) {
     return json({ ok: false, error: 'bad request' }, 400);
   }
+  const body = read.body;
   const email = String((body && body.email) || '')
     .trim()
     .toLowerCase();
@@ -231,12 +236,14 @@ export async function handleTeamUpdate(request, env, projectId, memberId) {
   if (!auth) {
     return cloudForbidden();
   }
-  let body;
-  try {
-    body = await request.json();
-  } catch (e) {
+  const read = await readJsonBody(request, BODY_CAP);
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad) {
     return json({ ok: false, error: 'bad request' }, 400);
   }
+  const body = read.body;
   const row = await env.DB.prepare(
     'SELECT id, role, scope FROM cloud_team_members WHERE id = ? AND project_id = ?'
   )
@@ -286,12 +293,14 @@ export async function handleTeamAccept(request, env) {
   if (!session || !session.sub) {
     return cloudForbidden();
   }
-  let body;
-  try {
-    body = await request.json();
-  } catch (e) {
+  const read = await readJsonBody(request, BODY_CAP);
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad) {
     return json({ ok: false, error: 'bad request' }, 400);
   }
+  const body = read.body;
   const token = String((body && body.token) || '').trim();
   if (!token) {
     return json({ ok: false, error: 'missing token' }, 400);

@@ -8,7 +8,7 @@
    echoed in any error response. Enforced: max body size + hard upstream
    timeout. Missing key -> 401; bad body -> 400.
    ============================================================ */
-import { json, readSession, authEmailConfigured } from './lib/http.js';
+import { json, readSession, readJsonBody, authEmailConfigured } from './lib/http.js';
 import { billingStatusActive } from './billing.js';
 
 const AI_PROVIDERS = {
@@ -38,6 +38,10 @@ function geminiUrl(model) {
 }
 const AI_BODY_LIMIT_BYTES = 262144; // 256 KB max request body
 const AI_TIMEOUT_MS = 30000; // hard upstream timeout
+
+// The capped reader lives in lib/http.js (T-5): Content-Length check plus a
+// running byte budget on the stream - Content-Length alone is not enough
+// (string bodies from browsers often omit it).
 
 /* ---- Managed free pool (owner 2026-10-08) ---------------------------------
    The free section runs on the OWNER'S OWN Google keys, held as Worker
@@ -233,51 +237,6 @@ function aiAnthropicPayload(model, messages) {
   }
   return p;
 }
-
-// Read + parse the JSON body with a hard size cap. Content-Length alone is
-// not enough (string bodies from browsers often omit it), so the stream is
-// read with a running byte budget and abandoned once it exceeds the limit.
-async function readAiBody(request) {
-  const cl = Number(request.headers.get('Content-Length') || 0);
-  if (cl > AI_BODY_LIMIT_BYTES) {
-    return { tooLarge: true };
-  }
-  if (!request.body) {
-    try {
-      return { body: await request.json() };
-    } catch (e) {
-      return { bad: true };
-    }
-  }
-  const reader = request.body.getReader();
-  const chunks = [];
-  let total = 0;
-  let done = false;
-  while (!done) {
-    const res = await reader.read();
-    done = res.done;
-    if (res.value) {
-      total += res.value.byteLength;
-      if (total > AI_BODY_LIMIT_BYTES) {
-        return { tooLarge: true };
-      }
-      chunks.push(res.value);
-    }
-  }
-  const bytes = new Uint8Array(total);
-  let off = 0;
-  for (const c of chunks) {
-    bytes.set(c, off);
-    off += c.byteLength;
-  }
-  const text = new TextDecoder().decode(bytes);
-  try {
-    return { body: JSON.parse(text) };
-  } catch (e) {
-    return { bad: true };
-  }
-}
-
 // MCP CONTEXT INJECTION: when the client sends mcpProjectId + mcpCode,
 // fetch the project state and inject it into the system prompt so the AI
 // can reference real project data (tasks, budget, risks, etc.).
@@ -376,7 +335,7 @@ async function buildMcpContext(env, projectId, code) {
 }
 
 export async function handleAiChat(request, env) {
-  const read = await readAiBody(request);
+  const read = await readJsonBody(request, AI_BODY_LIMIT_BYTES);
   if (read.tooLarge) {
     return json({ ok: false, error: 'body too large' }, 413);
   }

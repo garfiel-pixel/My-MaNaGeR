@@ -9,8 +9,11 @@ import {
   hashOwnerCode,
   randomSaltHex,
   cloudAuthOwnerEither,
-  codesEqual
+  codesEqual,
+  readJsonBody
 } from '../lib/http.js';
+
+const BODY_CAP = 8192; // T-5: a client-code payload is a code + section list
 
 // All possible section IDs that can be toggled
 const CLIENT_SECTIONS = [
@@ -89,7 +92,14 @@ export async function handleCloudClientCodeCreate(request, env, projectId) {
       return json({ ok: false, error: 'project_deleted' }, 403);
     }
 
-    const body = await request.json();
+    const read = await readJsonBody(request, BODY_CAP);
+    if (read.tooLarge) {
+      return json({ ok: false, error: 'body too large' }, 413);
+    }
+    if (read.bad) {
+      return json({ ok: false, error: 'bad request' }, 400);
+    }
+    const body = read.body;
     const sections = Array.isArray(body.sections) ? body.sections : ['dash'];
     // Validate sections
     const validSections = sections.filter(s => CLIENT_SECTIONS.includes(s));

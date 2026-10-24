@@ -1,186 +1,160 @@
 # My MaNaGeR - reflection.txt (active; last session only. Older sessions archived in docs/history/reflection-ARCHIVE-2026-10-18.txt)
 
-SESSION 2026-10-17 — WELDING UNITS + AI RATE GROUNDING (fix + QA + CI + deploy), PART H REVIEW, DOMAIN RECORDED
+SESSION 2026-10-23 - BUG DIG: CLAIM PACK PRINT WRAP (T-7) + NAV DROPDOWNS UNDER THEIR OWN ITEM, BOTH LIVE; CONTINUATION DIRECTIVE RESTRUCTURED
 
 CONTEXT
-Owner: wire the assistant to everything the calculator knows so it stops saying "I don't have access"; then run local QA, get CI green, and deploy. Also: mymanagerworkspace.com is the production custom domain ("drop it in there"), document the session, explain what "PART I" means, and review the PART H procurement plan for improvements.
+Owner: "dig for bugs and fix them then commit and deploy ... and when you done review the
+continuation directive." Mid-session additions: (1) the hero nav hover dropdown must open
+underneath the item being hovered - it opened in the middle of the page, so the reader had to
+swipe sideways and the tab switched under the pointer; (2) the continuation directive has
+outstanding tasks - look at them and restructure the file so it matches the code base.
 
 WHAT THIS SESSION DID
-  1. WELDING UNITS MONEY FIX. Probing the shipped app exposed a real bug: the synthetic
-     JIC book published welding's per-100mm figure against an INCH quantity with no
-     RATE_UNITS adapter (rf fell to 1) and the imperial ft->m default rewrote the typed
-     inches. 100 in priced J$19,800 metric / J$6,035 imperial instead of the book's own
-     J$50/in. Fix: per-100mm rows publish the per-inch pair ({ allIn: r.impRate, unit: 'in' })
-     and IMP_D1_FACTOR.welding = 1. Both modes now price 100 x 50 = J$5,000 materials
-     (+ the JIC row's own labour, 0.75 day x J$400 where present) - identical either way.
-     Reproduced in a real browser BEFORE, re-verified in a real browser on the LIVE site
-     AFTER (metric and imperial byte-identical; quantity label stays "100 in").
-  2. AI GROUNDING. The assistant already ranks the full 811-rate book through
-     window.MMGR_CALC_RATEBOOK, but "cement" matched ZERO rows - the commonest word on a
-     Jamaican site - which is exactly the "the book is silent / no access" experience the
-     owner reported. RATE_QUERY_EXPAND widens QUERY tokens only (site word -> book words,
-     same stemmer/ranker; the popup's own search stays exact): cement->concrete/mortar/
-     block/mix, plus dump/haul/debris, worker, wire, plumbing, toilet, kitchen, fence,
-     scaffold. Verified: "cement" now returns 12 concrete/mortar/block rows.
-  3. CI RED->GREEN (one cycle, per lesson 8). First run failed at qa-calc-assistant N2:
-     the speculative excavation -> [excavate, earth, trench] key fired on "rate for
-     excavation in stiff clay" and let the generic clay-shallow/earth/trench row outrank
-     the exact stiff-clay row. Root cause removed (the word already reached the book
-     without the key); assertion NOT weakened. Run 38989606512 on c6b25a1 = SUCCESS.
-  4. PRE-EXISTING HARNESS BUGS FIXED while building the WU gates: two bare-return evals
-     (`window.__MMGR_RR_AUTH = 'in'; return true;`) - "Illegal return statement" is a
-     PARSE error, so the whole eval never ran and the RB auth seam had NEVER actually
-     been set (the RB family passed only because the dev server's auth answer fails
-     open); and the WU4 eval's outer IIFE was an uncalled function expression (returned
-     the function object -> null).
-  5. PART H REVIEW (planning only, per owner request). Eight improvements written into
-     CONTINUATION-DIRECTIVE.md H7: reuse qa-calc-assistant's proven mockRelay/sendQ kit
-     + an "every J$ figure in the quote exists byte-for-byte in the serialised context"
-     gate (H7.2); name and gate the new XSS surface - vendor/item strings render
-     text-only through esc() (H7.3); CSV export + paste-import (H7.4); cross-vendor
-     compare grouped by item name with cheapest + staleness marked (H7.5); validation
-     specifics (H7.6); the two owner decisions that block markup - pack toggle vs
-     always-visible tab, grantable scope vs owner-only (H7.7); live probes against the
-     production domain (H7.8).
-     OWNER CORRECTION 2026-10-17 (H7.1): the first draft of H7.1 proposed prefilling
-     supplier items from the JIC rate book. The owner rejected it - CORRECTLY. The rate
-     book holds no supplier data; suppliers price at their OWN rates. The workflow, as
-     the owner stated it: supplier -> dropdown -> Add -> the items THEY offer, each
-     with their lowest-quantity price, entered BY HAND by the project manager from the
-     supplier's own quote or rate sheet when contacted; stays until updated. The JIC
-     rate book never prefills, suggests or validates a supplier line. H7.1 rewritten,
-     constraint added to H6.
-  6. DOMAIN RECORDED. https://mymanagerworkspace.com is production - verified this
-     session serving the deployed v430 worker + all fixes; canonical hrefs, og:url and
-     sitemap.xml already carry it. my-manager.garfieldprocis.workers.dev is the origin
-     alias (same bytes). mymanager.app is an UNRELATED third-party site (2019-era
-     firebase page) - this session's first probe hit it by mistake; never use that host.
+  1. DIG FIRST (evidence before claims). Re-ran the 2026-10-22 sweep probes:
+     tmp/audit-links.cjs (0 dead anchors; the 2 "dead files" are the ?v= query false
+     positive and the non-served "monolith html to reference from all features.html"),
+     tmp/audit-aria.cjs (0 broken aria references), tmp/audit-actions2.cjs (only the
+     documented T-4 trio: calcDocType, calcCashMode, photos-upload), tmp/audit-wiring.cjs
+     and tmp/audit-css-classes.cjs (all hits already listed as renderer-created or
+     corrected false positives in this file's 2026-10-22 block). ZERO new findings there.
+     Baseline npm run verify exit 0 (CSP 25/25 hashes, registry 115/115, 129 unit tests).
+     Tripwires run locally, all exit 0: verify-units, verify-export (34 checks),
+     verify-currency, verify-print-dom, verify-no-weak-random, verify-doc-size.
+     The live failing signal was qa-full gate 86.
+  2. CLAIM PACK PRINT WRAP (T-7, closed; commit 668b8d9).
+     - MEASURED DEFECT: qa-full.cjs gate 86 failed with maxLine=644 (contract: <100).
+       Hermetic repro FIRST (tmp/claim-hermetic.cjs, fresh seed, fresh page): maxLine 89,
+       so the gate was sound and the failure came from real state. Instrumented the gate's
+       failure payload (worst line + index) and re-ran the battery: the 644-char line was
+       section 7, a kickoff meeting's actionItems - "[ ] Action Items, Next Steps & Minutes
+       Distribution | Actions: Project Charter Walkthrough (scope, sponsor, targets, budget);
+       ..." - i.e. the very meeting the battery runs at qa-full.cjs:694-721, dated inside
+       gate 86's window. Sections 4, 6, 8 and the Project/Name header lines had the same
+       unwrapped class, so ANY user text over 92 chars broke the print contract on a real
+       project (the demo project itself produces this meeting).
+     - SECOND DEFECT (found while fixing): wrap() in claimPackText sliced an unbreakable
+       token longer than the line to `width` and DROPPED the rest - silent text loss in a
+       document meant for counsel.
+     - FIX (js/mmgr-claim.js): claimPackText at :420; new pushRow(head, text, cont, width)
+       at :484 wraps every unbounded user-text line at 92 chars with a hanging indent -
+       header Project/Name labels (18/15-char continuation indent), the weather row's
+       affected-task list under its 56-char column, WBS task lines, change-control lines,
+       meeting lines and promise lines (2-char indent). Table rows keep pad() alignment.
+       wrap() now SPLITS over-long tokens across lines instead of truncating them.
+     - GATE HARDENED, NEVER RELAXED (qa-full.cjs:2142): gate 86 seeds its OWN long
+       meeting + change + promise rows inside its own window (including a 132-char
+       unbreakable drawing reference: DRW-2026-0001-A-VERY-LONG-...), still asserts
+       maxLine < 100, adds `noLoss` (whitespace-stripped contiguity of BOTH seeded
+       records - wrap only ever inserts whitespace, so a truncated record cannot pass) and
+       a `worst` diagnostic (index + first 200 chars) in the failure payload.
+     - sw.js v459 -> v460 (changed shell asset js/mmgr-claim.js; node build.js rebuilt
+       dist/bundle.js - `repeat(18)` present in the minified bundle, manifest hash
+       refreshed).
+  3. NAV DROPDOWNS UNDER THEIR OWN ITEM (owner complaint; commit dc141ed).
+     - MEASURED DEFECT (tmp/probe-navdd.cjs, before): .nav-dd-menu (css/marketing.css:843)
+       was position:fixed with left:50% + translateX(-50%) - centred in the VIEWPORT. At
+       1280 wide the 700px Features menu sat at 290-990 while the hovered Features item's
+       centre was 247: underTrigger=false, centreGap=393px, vertical gap 15px (3px past the
+       12px hover bridge). A straight swipe down missed the box, hit the next nav item and
+       swapped ITS menu in - the owner's "it switches the tab" complaint.
+     - FIX: js/marketing.js placeNavMenu() at :823 writes left = item centre - half the
+       menu, clamped to [8, viewport - menu - 8], and top = item bottom + 8 (the ::before
+       bridge at -12px then covers the whole gap - no dead zone on the way down). Called at
+       wrapper creation, on every open (openWrap) and on resize (placeOpenNavMenus :840).
+       CSS drops translateX(-50%) from the base and open rules, keeps left:0 as fallback.
+       Pages load dist/marketing.min.css + dist/marketing-bundle.js, so node build.js ran
+       BEFORE anything was measured (first probe run still showed 640px - the stale-dist
+       trap, caught immediately).
+     - sw.js v460 -> v461 (changed shell assets css/marketing.css + js/marketing.js, both
+       bundled).
+  4. DIRECTIVE REVIEW + RESTRUCTURE (the third ask).
+     - OPEN WORK REGISTRY rewritten row by row against the code (git log, the live tracker
+       PLANNING-TODO-2026-09-03.txt, direct greps): SPRINT 1 DONE (log 2026-10-18); SPRINT 2
+       shipped G7+G1-G3 (03b671d), C4/C5b (efbbcc5, 664de52), C11 (js/calc-ai.js:249) with
+       C6 (no .bcp sticky rule in css/mmgr.css), C7 (zero class="tgl" in calculator.html),
+       X-1/X-2/X-4 (flag only at js/mmgr-state.js:343) measured still OPEN; SPRINT 3 shipped
+       G5/G6/G8, P5-P10 (b98ebde), S-2 (cd35eff), M-5, S-3/S-4/S-5 (files exist and run in
+       npm run verify) with the INP budget, the architecture survey
+       (docs/ARCHITECTURE-CANDIDATES-2026-10.html does NOT exist) and the re-audit table
+       still OPEN; PART H COMMITTED 4c012b7/b98ebde - the old MID-BUILD/UNCOMMITTED warning
+       was void (tree was clean at session start).
+     - STARTING POINT items 2-4 corrected: verify baseline fully green (the 2026-10-18
+       "verify:sw red" note was stale); tree clean; tripwire file names fixed -
+       tools/verify-gantt-export.cjs NEVER EXISTED (rule 0.6: correct the location; export
+       coverage is tools/verify-export.cjs + the G gates in qa-v11), qa-inp is EXTENDED
+       (local, baseline deliberately over budget until X-1/X-2 land).
+     - T-7 marked FIXED (668b8d9), T-8 marked partial (gate 86 hermetic; the rest of the
+       battery still leaks), the 2026-10-22 heading now says what is actually open.
+     - Byte-cap law applied: the two 2026-10-16 entries (8,049 bytes) moved verbatim into
+       docs/history/log-2026-10.md with one-line rollups left here; new status entry added.
+       Final size 39,595 / 40,960 (verify-doc-size exit 0).
+     - docs/CI-TEST-COVERAGE.md qa-full row 183/183 -> 187/187 (it was stale before this
+       session; the row now also records that gate 86 is hermetic).
 
-HARNESS CHANGES (tools/qa-calculator-page.cjs)
-  - New WU family: WU1 payload per-inch rows (w-1/8-torch J$50/in, w-1-torch J$117/in,
-    metric rows keep pairs); WU2/WU3 identical money in both unit modes with exact pins
-    (materials 5,000 via raw dump, subtotal 5,300) and cross-mode equality; WU4
-    assistant "cement" grounding e2e (WU-DUMP logs the money composition every run).
-  - WU family saves/restores calc-work + units so later families (U1) keep their state.
-  - Fixed the two bare-return evals + the WU4 uncalled-IIFE (above).
+FILES TOUCHED
+  js/mmgr-claim.js - pushRow + wrap chunking + 7 call sites (header, weather, WBS, changes,
+    meetings, promises, Name).
+  qa-full.cjs - gate 86: worst diagnostic, hermetic long seeds (c86-long/c86-chg/c86-p with
+    their filter-out restore), noLoss assertion.
+  css/marketing.css - .nav-dd-menu drops left:50% / translateX(-50%), gains left:0 + the
+    owner-2026-10-23 comment.
+  js/marketing.js - placeNavMenu/placeOpenNavMenus, placement at creation + open + resize.
+  sw.js - v460 (claim), v461 (nav), each with its comment block.
+  CONTINUATION-DIRECTIVE.md - registry restructure, starting point corrections, T-7/T-8
+    marks, 2026-10-16 rollup, new status entry.
+  docs/history/log-2026-10.md - the two rolled-up 2026-10-16 entries.
+  docs/CI-TEST-COVERAGE.md - qa-full row to 187/187.
+  reflection.txt - this record (the 2026-10-17 session it replaced is already in
+    docs/history/reflection-ARCHIVE-2026-10-18.txt).
 
-FILES MODIFIED (committed e158134 + c6b25a1, deployed)
-  - js/calculator-page.js - welding per-inch payload, IMP_D1_FACTOR.welding=1,
-    RATE_QUERY_EXPAND + rateExpandQuery in calcRateBookText's token path.
-  - tools/qa-calculator-page.cjs - WU family + eval fixes.
-  - sw.js - CACHE mmgr-shell-v427 -> v428 (feature) -> v429 (prettier) -> v430 (CI fix).
-  - CONTINUATION-DIRECTIVE.md - H7 procurement review + 2026-10-17 session record.
-  - reflection.txt - this entry (also carries the prior session's uncommitted
-    2026-10-13 record - left in the tree, owner's call to commit it).
+VERIFICATION (all run this session)
+  - npm run verify: exit 0 three times (baseline, after the claim fix, after the nav fix).
+  - Tripwires: verify-units / verify-export (34/34) / verify-currency / verify-print-dom /
+    verify-no-weak-random / verify-doc-size - all exit 0. verify-gantt-export.cjs does not
+    exist (logged above).
+  - qa-full.cjs: 186/187 BEFORE the fix (gate 86 maxLine=644) -> 187/187 AFTER, with the
+    hermetic seeds in the document (noLoss true proves they are in).
+  - qa-marketing.cjs 20/20 (mkt-15: zero console errors across 7 pages);
+    tools/qa-marketing-layout.cjs PASS; prettier + node --check clean on every edited file;
+    eslint 0 errors (pre-commit hook ran T4/T5/T8/ESLint green on both commits).
+  - Evidence probes: tmp/claim-evidence.cjs (maxLine 92, actsContiguous true,
+    longTokenPresent true, wrapped section 7/8 output pasted in the status log) and
+    tmp/navdd-swipe-test.cjs 22/22 (real mouse: hover item -> straight swipe down ->
+    hit-tested inside the menu, menu fits viewport, no horizontal page scroll, at 1280 and
+    1024). Both run locally AND against https://mymanagerworkspace.com after deploy.
 
-TEST RESULTS
-  - npm run verify: exit 0 (CSP, SW cache v430, CSS integrity, emoji, a11y labels,
-    eslint, prettier, test registry).
-  - qa-calculator-page: exit 0 incl. WU1-WU4; qa-calc-trade-coverage: 88/88 across
-    43 trades x 2 viewports; qa-calc-assistant: exit 0 after the N2 fix.
-  - CI: run 38989606512 on c6b25a1 = SUCCESS.
-  - Deploy: node tools/deploy.cjs exit 0 from the clean staging copy (byte-proved),
-    worker version 9ff0ac33, sw mmgr-shell-v430.
-  - Live (real headless browser): 100 in JIC Welding #1 = J$5,000 + 15% tax = J$5,750,
-    identical metric AND imperial; live calculator-page.js byte-carries every fix
-    (RATE_QUERY_EXPAND, welding:1, the 100mm ternary, cement map, no excavation key).
+SHIP
+  - Commits: 668b8d9 fix(claim) + dc141ed fix(nav) (plain Conventional Commits, no AI
+    attribution, pre-commit hook green). Push also carried the three previously unpushed
+    commits 44b9ff7/88eb5e8/cd4a649.
+  - CI: run 40052788117 SUCCESS (88/88) for the claim fix; run 40057049252 SUCCESS (88/88)
+    for the nav fix. No red run this session.
+  - Deploys (both from tools/deploy.cjs, staged to $HOME/mmgr-deploy, verify green inside,
+    "all 12 tracked deploy files byte-identical"): 7060d084-b065-4efa-8663-86af391dd150
+    (claim) then d58c81b0-8a25-4c04-bc2a-70fc8fada646 (nav).
+  - Live: sw mmgr-shell-v460 then v461; live dist/bundle.js + dist/marketing-bundle.js +
+    dist/marketing.min.css sha256 identical to local builds; the claim evidence probe and
+    the 22/22 nav swipe test both re-run against production.
 
-OWNER ANSWERS RECORDED THIS SESSION
-  - "PART I" is a LETTER: the directive's plans are lettered A...H, I in sequence.
-    PART I = the rate-coverage plan (planning only; Phase 1 "Use this rate" ready to
-    build per I5). There is no "Part II" - the next plan would be PART J.
-  - Production domain: mymanagerworkspace.com (already wired everywhere it matters).
+STILL OPEN (deliberately not touched; recorded in the directive, not guessed)
+  - 2026-10-22 sweep: T-1/T-2/T-3 gate files (verify-icons/verify-actions/verify-links do
+    not exist - measured), T-4 (the same 3 redundant data-action attributes), T-5 (uncapped
+    request.json() reads), T-6 (client-code lookup timing has no gate; the other T-6 items
+    are covered by qa-auth-limits / qa-team-rbac / qa-client-codes / qa-api-keys), T-8
+    (per-gate snapshot/restore beyond gate 86).
+  - Registry: SPRINT 2 C6/C7/X-1/X-2/X-4 + G4/M-3/M-4/M-6 state checks; SPRINT 3 INP budget,
+    architecture survey, sections 4-8 re-audit table, S-6 relay burst = state check.
 
-WHAT STILL OPEN
-  - PART I Phase 1 (Use this rate row action) - queued, not started.
-  - PART H Procurement - planned-only; H7 folds in; H7.7 owner decisions are the
-    only blockers before markup.
-
-SESSION 2026-10-17 (continued) — PART I PHASE 1 SHIPPED: USE THIS RATE (b4f5763, CI green, deployed 621e3169, live-verified)
-
-OWNER DIRECTION
-  - Rejected H7.1's first draft (supplier items seeded from the JIC rate book) -
-    CORRECTLY; the rate book has nothing to do with suppliers, suppliers price at
-    their OWN rates. H7.1 rewritten + H6 constraint, committed (263ab9a, CI green):
-    supplier -> dropdown -> Add -> what THEY offer with their lowest-quantity
-    price, entered BY HAND by the PM from the supplier's own quote/rate sheet.
-  - "Part I is good and in good condition. I would like to go forward on that."
-
-WHAT SHIPPED (I1 Option A, the recommended bridge)
-  - Every rate-book row (811) carries a compact SVG Use action: prefill Custom
-    with ref-first name (<= 60), the DISPLAYED unit system's unit + rate, qty
-    cleared; popup closes; focus lands in quantity. Pricing reuses the existing
-    custom path (qty x rate EXACT, normal on-costs + tax); workName() carries the
-    ref onto the bill line, CSV and history. The 711 browse-only rows are now
-    priceable with ZERO new money math.
-  - Files: js/calculator-page.js (rrUseRate + fifth Use column + card wiring;
-    no-positive-rate rows get no action, 811/811 + 100/100 verified positive),
-    css/mmgr.css (Rate keeps right alignment explicitly, .rr-use/.rr-use-btn
-    tokens), calculator.html (?v=38 JS, ?v=30 CSS), sw.js (mmgr-shell-v431),
-    dist/mmgr.min.css rebuilt. calculator-page.js is NOT bundled (raw shell).
-
-QA (new UR family, UR0-UR6, in tools/qa-calculator-page.cjs)
-  - UR0/UR1 full book, header Ref/Description/Unit/Rate/Use, Use on all 811 rows.
-  - UR2 prefill self-computing against the row's own cells; UR3/UR4 exact money
-    in BOTH book unit systems (5 x 198 metric = 990, 5 x 50 imperial = 250).
-  - UR5 landed bill line carries "Welding #1"; bill restored as found.
-  - UR6 OFFLINE: jic-rates-full.js blocked at the network layer (calculator.html
-    registers NO service worker - verified) -> inline 100-row fallback, every row
-    still actionable, prefill works. Two harness gotchas found by testing against
-    raw data instead of guessing: full book words welding #1 as
-    '1/8" Thick Metal Using Torch' vs inline '1/8 in...' (query pinned to the
-    full-book wording); the family's saved trade lives in localStorage because
-    UR6 reloads the page (window vars do not survive - that was U1's failure).
-  - Also fixed in this family's wake: none (no pre-existing issues beyond the
-    earlier session's bare-return evals).
-
-GATES
-  - npm run verify exit 0 (prettier, sw v431 > shell mtimes, CSP, CSS integrity,
-    registry). qa-calculator-page exit 0 (all families). qa-calc-trade-coverage
-    88/88 (43 trades x 2 viewports).
-  - CI run 38998747412 on b4f5763 = SUCCESS (263ab9a docs run also success).
-
-DEPLOY + LIVE (https://mymanagerworkspace.com)
-  - node tools/deploy.cjs exit 0, staging byte-proved, version 621e3169.
-  - Live bytes: calculator.html ?v=38 + ?v=30, sw mmgr-shell-v431, js carries
-    rrUseRate, min css carries rr-use-btn.
-  - Real browser e2e (tmp/live-use-rate.cjs): signed-out book gate INTACT
-    (sign-in card, 0 rows); with the QA seam - 811 rates, search -> 1 hit,
-    Welding #1 (J$198.00 / 100mm shown) -> Use -> prefill exact (name ref-first
-    <=60, unit 100mm, rate 198, qty cleared, popup closed) -> qty 5 -> Run ->
-    Subtotal J$990 = 5 x 198 EXACT -> 0 page errors. PASS.
-
-WHAT STILL OPEN
-  - PART I Phase 2 (generic JIC picker) + Phase 3 (selective variants) planned.
-  - PART H Procurement: planned-only; H7 folded in with H7.1 corrected; H7.7
-    owner decisions (pack toggle, editor scope) block markup.
-
-2026-10-17 (continued) — PART I PHASE 2 SHIPPED: the generic JIC picker (commit 822ffb5, CI green run 39044280704, deployed version af33909c, live-verified on mymanagerworkspace.com).
-WHAT: the "JIC rate book" work item (new option under Other on calculator.html) prices ANY of the shipped 811 book rows as a first-class estimate line: pick a trade (11 book trades, each with its row count), pick a rate (option = ref + description + unit + rate, with the book's own honesty notes and the "our conversion" marker on the converted side), type the quantity in the ROW'S OWN unit so quantity x rate is EXACT through the existing all-in identity (the RATE_UNITS adapter resolves to its identity — zero new money math; normal on-costs, overhead, tax follow). The rate prefills from the book and stays the user's to edit (the book is a default, never a lock); the row's ref + description name the bill line, history entry and CSV ("Welding #1 - Handle Mark Cut & Sand Smooth…").
-HOW (key decisions): the pick resolves from PURE state (tid+ref, memoized index per book source) so a recalled snapshot prices from the pick it was saved with; a _jicRecall hold stops applyState's re-render from re-seeding the rate from the book, so a recall re-creates its exact sum even if the book changed; the rate field carries the dataset.model book marker (D4 contract) so the CSV says "JIC rate book" while untouched and "(your rate)" once edited; matDesc is escaped at its ONE HTML insert (the book writes with ampersands) while the CSV takes the raw string; dimSlips skips jic (the row's unit governs the quantity box); the full book loads at most once per page life and after a failed load the hint says "showing the built-in set" — the inline 100 rows carry all 11 trades so the picker is fully usable offline. The picker carries the book's own sign-in gate (owner 2026-10-13): signed out online the pick reverts and the same sign-in card appears; offline or unverifiable it opens (offline-first is sacred). The assistant dry-run (MMGR_CALC_CHECK) names the missing pick instead of failing bare.
-GATES: new JP0-JP7 family in tools/qa-calculator-page.cjs (structure, sign-in gate, seed/note/label, the I2 exit gate = 11-trade walker with exact money parsed from the SHOWN option text, bill+CSV ref, imperial exactness, typed-rate + snapshot recall, offline inline); FM5 + both trade-coverage walkers + assistant T4/B1 re-baselined to exclude the non-trade option. Two traps worth remembering: regexes inside harness template literals need DOUBLE backslashes in the file (a single one is silently eaten by the template unescape — no syntax error, the regex just never matches), and a gate assertion had a double negative (!wrap.hidden reads false when correctly hidden) — instrument the fail message with every clause value before theorizing; that is what pinpointed both. The live probe also caught a real async nuance: without a pinned QA seam the gate's /api/auth/me probe rejects asynchronously, so act and read must be split with a settle delay.
-VERIFICATION: npm run verify 117/117, qa-calculator-page 247/247, qa-calc-trade-coverage 88/88, qa-calc-assistant 105/105, prettier clean, emoji scan clean on served files; CSP untouched (zero inline scripts); no CSS changes needed (existing .bcp-field rules style the picker). Live (tmp/live-jic-picker.cjs): signed-out gate intact; with the seam — welding's first row seeded J$198, quantity 5 → Subtotal J$990 = 5 x 198 exact; bill line + CSV carry the ref; snapshot roundtrip re-creates 990; zero page errors. PASS.
-FILES: js/calculator-page.js, calculator.html (option + picker wrap + buster v39), sw.js (v432), tools/qa-calculator-page.cjs, tools/qa-calc-trade-coverage.cjs, tools/qa-calc-assistant.cjs, CONTINUATION-DIRECTIVE.md, reflection.txt.
-NEXT: PART H Procurement (blocked only on the H7.7 owner decisions) or any owner directive; PART I Phase 3 remains owner-request-only.
-
-2026-10-18 (audit Sprint 1): the hard lesson of this session is that a
-correct fix and a green harness are two different things, and only one of them
-is negotiable. The C2 refusal broke 20 page gates and 7 assistant gates; every
-one of them had recorded the OLD lie as the expected value. Rewriting an
-assertion to match new behaviour is right, but only when the new behaviour is
-the thing the owner asked for - so each rewrite carries the reason in a
-comment, and each red gate got a probe before it got an edit. The page harness
-is 247/247; the assistant harness is still 98/7 and I did not paper over it.
-Second lesson: a raw `select.value = 'USD'` is not a currency change. The
-engine keeps its own state, so the harnesses spent months silently pricing on
-whatever currency the previous gate left behind.
-
-2026-10-18 (S1 close): two lessons worth more than the fixes. One: when a gate
-goes red after a correct change, the first question is not "how do I make the
-gate pass" but "was this gate ever testing the right thing". Here seven
-assistant gates looked like one story (state leaking) and were actually three
-stories, and one of them was a real bug I had introduced - the fail-closed
-quantity guard refused good lines because it re-derived a number the engine
-legitimately adjusts. Two: a document is a different artefact from a screen.
-Whole units are right on a card you glance at and wrong in a file someone adds
-up. That one distinction, two decimals on the way out, is most of C3.
+LESSONS
+  - Hermetic-first is what made T-7 diagnosable: fresh seed = 89 vs in-sequence = 644 told
+    us in one run that the gate was sound and the defect was real state. A gate result you
+    cannot reproduce alone is a clue, not a verdict.
+  - When a wrap helper silently truncates, the line-length gate keeps passing (shorter
+    lines!) - noLoss contiguity is the assertion that catches the opposite failure.
+  - Measure BOTH rects before touching a positioning rule: the 393px figure made the nav
+    fix objective, and the same numbers became the regression assertion.
+  - This directive's own tripwire list named a file that never existed
+    (tools/verify-gantt-export.cjs). Rule 0.6 applies to the directive itself: correct the
+    recorded location, do not trust the premise.
+  - Stale dist bit once (first nav probe still showed left:640px after the CSS edit):
+    pages load dist/, so build before measuring, every time.

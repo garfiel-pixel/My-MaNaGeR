@@ -13,6 +13,14 @@
   --gold-hover: #c25a1b; /* brand hover */
   --gold-deep: #a84a15; /* brand deep - text accent on white */
   --gold-rgb: 217, 107, 39;
+  /* -- Bullion (gold gradient, bronze border, readable ink) ---- */
+
+  /* -- Accent cyan (secondary, restrained) -- */
+  --accent-cyan: #00bcd4;
+  --accent-cyan-subtle: rgba(0, 188, 212, 0.08);
+  --gold-grad: linear-gradient(135deg, #d4af37 0%, #aa771c 50%, #855811 100%);
+  --gold-grad-hover: linear-gradient(135deg, #e6c547 0%, #bd8522 50%, #966416 100%);
+  --gold-text-on-light: #7a5a0b; /* gold used as WORDS on white: 6.37:1 */
   --teal: #00bcd4; /* secondary accent - cyan, used sparingly */
   --teal-deep: #00798a; /* cyan deep - 5.12:1 on white (was #0097a7 at 3.51) */
   --danger: #c62828;
@@ -700,12 +708,52 @@ body.dark-mode .site-nav a.nav-link[aria-current='page'] {
 .btn-gold:active {
   transform: translateY(0) scale(0.97);
 }
-.btn-ghost-light {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.28);
-  color: #fff;
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+
+.btn-bullion {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1;
+  border: 1px solid var(--bullion-edge);
+  background: var(--bullion);
+  color: var(--bullion-ink);
+  box-shadow: 0 1px 3px rgba(212, 175, 55, 0.2);
+  transition:
+    transform var(--tr),
+    background var(--tr),
+    border-color var(--tr),
+    box-shadow var(--tr),
+    color var(--tr);
+  white-space: nowrap;
+}
+.btn-bullion:active {
+  transform: scale(0.96);
+}
+.btn-bullion:hover {
+  background: var(--bullion-light);
+  border-color: var(--bullion-edge);
+  color: var(--bullion-ink);
+}
+/* Cyan theme btn-bullion override */
+[data-theme="cyan"] .btn-bullion {
+  border-color: var(--bullion-edge);
+  background: var(--bullion);
+  color: var(--bullion-ink);
+  box-shadow: 0 1px 3px rgba(212, 175, 55, 0.2);
+}
+[data-theme="cyan"] .btn-bullion:hover {
+  background: var(--bullion-light);
+  border-color: var(--bullion-edge);
+  color: var(--bullion-ink);
+}
+[data-theme="cyan"] .btn-bullion:focus-visible {
+  outline: 2px solid var(--bullion-ink);
+  outline-offset: 2px;
 }
 /* OWNER 2026-09-09 (P5.1): secondary glass buttons turn GOLD on hover
    (the CTA color family), matching the owner's directive. */
@@ -4792,3 +4840,41 @@ body.dark-mode .consent-table th {
 body.dark-mode .consent-table td {
   color: rgba(248, 250, 252, 0.78);
 }
+
+/* esbuild keep start */
+/* Performance Mode CSS kill block: when perf=on, svelte-backed backdrop-filter rules collapse to flat/cheap radii so the GPU gets a break. Written to match the js/mmgr-perf.js guard so the UI remains consistent regardless of load order. */
+[data-perf='on'] .dock,
+[data-perf='on'] #drw,
+[data-perf='on'] .db-sheet {
+  backdrop-filter: blur(0) saturate(100%);
+  -webkit-backdrop-filter: blur(0) saturate(100%);
+}
+[data-perf='on'] .dock {
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+[data-perf='on'] .drw-sheet {
+  backdrop-filter: blur(0) saturate(100%);
+  -webkit-backdrop-filter: blur(0) saturate(100%);
+}
+[data-perf='on'] body.db-page:not(.dark-mode) .top {
+  backdrop-filter: blur(0) saturate(100%);
+  -webkit-backdrop-filter: blur(0) saturate(100%);
+}
+/* esbuild keep end */
+
+/* Baseline nudge dot (owner 2026-09-19): visible signal that a schedulable
+   project still has no baseline. Hidden by default; BaselineGuard reveals. */
+  /* Cyan theme (data-theme="cyan") - these override gold tokens when active */
+  [data-theme="cyan"] --bullion-light: #e6c547;
+  [data-theme="cyan"] --bullion: #d4af37;
+  [data-theme="cyan"] --bullion-dark: #aa771c;
+  [data-theme="cyan"] --bullion-deep: #855811;
+  [data-theme="cyan"] --bullion-edge: #f3e5ab;
+  [data-theme="cyan"] --bullion-ink: #1a1a1a; /* text on a gold surface */
+  /* Magenta theme (data-theme="magenta") - these override gold tokens when active */
+  [data-theme="magenta"] --bullion-light: #e91e63;
+  [data-theme="magenta"] --bullion: #ec407a;
+  [data-theme="magenta"] --bullion-dark: #d81b60;
+  [data-theme="magenta"] --bullion-deep: #ad1457;
+  [data-theme="magenta"] --bullion-edge: #fce4ec;
+  [data-theme="magenta"] --bullion-ink: #212121;

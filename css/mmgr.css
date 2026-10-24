@@ -50,11 +50,28 @@ svg.ico use {
   --brand-on: #ffffff; /* foreground on brand surfaces */
   --gold: #d96b27; /* alias: gold = brand for backward compat */
   --gold-rgb: 217, 107, 39;
+  --cyan: #50E8F4; /* cyan theme accent - maps to existing token system, does not replace gold */
+  --cyan-rgb: 80, 232, 244;
+  --thin-air: #C7F8FE; /* cyan theme secondary accent */
+  --blue-charcoal: #001619; /* cyan theme deep canvas */
+  --cyan-text-on-light: #0d1a26; /* cyan text on light surface WCAG AA */
+  --cyan-bg-on-dark: #050a10; /* cyan background on dark mode */
+
   /* Gold used as TEXT on a light surface. The gold FILL keeps --gold; a gold
      word on white needs the deeper step to clear AA (owner 2026-10-10: the
      identity is gold, and the gold must stay readable - never swapped for a
      different hue). 5.74:1 on white, 4.90:1 on the soft-gold tint. */
   --gold-ink: #a84a15;
+  /* -- Bullion (gold gradient, bronze border, readable ink) ---- */
+  --bullion-light: #e6c547;
+  --bullion: #d4af37;
+  --bullion-dark: #aa771c;
+  --bullion-deep: #855811;
+  --bullion-edge: #f3e5ab;
+  --bullion-ink: #1a1a1a; /* text on a gold surface */
+  --gold-grad: linear-gradient(135deg, #d4af37 0%, #aa771c 50%, #855811 100%);
+  --gold-grad-hover: linear-gradient(135deg, #e6c547 0%, #bd8522 50%, #966416 100%);
+  --gold-text-on-light: #7a5a0b; /* gold used as WORDS on white: 6.37:1 */
   /* -- Accent cyan (secondary, restrained) -- */
   --accent-cyan: #00bcd4;
   --accent-cyan-subtle: rgba(0, 188, 212, 0.08);
@@ -133,15 +150,6 @@ svg.ico use {
     0.5,
     1
   ); /* ---- Surface tokens (light: glass is retired - solid, crisp surfaces) ---- */
-  --glass-blur: 0px;
-  --glass-saturate: 100%;
-  --glass-fill-dark: #ffffff; /* solid white - no frosted effect on light */
-  --glass-fill-dark-hover: #f8fafc;
-  --glass-fill-dark-active: #eef1f6;
-  --glass-rim: inset 0 1px 0 rgba(255, 255, 255, 0); /* transparent on light - hairline border carries the edge */
-  --glass-rim-strong: inset 0 1px 0 #ffffff;
-  --glass-border: 1px solid #e5e7eb;
-  --glass-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 6px 18px rgba(16, 24, 40, 0.06);
 
   /* ---- Squircle corner radii (spec §2) ---- */
   --squircle-sm: 14px;
@@ -7783,6 +7791,42 @@ header {
 .btn-warn:hover {
   background: #92400e;
 }
+
+.btn-bullion {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1;
+  border: 1px solid var(--bullion-edge);
+  background: var(--bullion);
+  color: var(--bullion-ink);
+  box-shadow: 0 1px 3px rgba(212, 175, 55, 0.2);
+  transition:
+    transform var(--tr),
+    background var(--tr),
+    border-color var(--tr),
+    box-shadow var(--tr),
+    color var(--tr);
+  white-space: nowrap;
+}
+.btn-bullion:active {
+  transform: scale(0.96);
+}
+.btn-bullion:hover {
+  background: var(--bullion-light);
+  border-color: var(--bullion-edge);
+  color: var(--bullion-ink);
+}
+.btn-bullion:focus-visible {
+  outline: 2px solid var(--bullion-ink);
+  outline-offset: 2px;
+}
+
 /* Dark mode: frosted translucent tints return */
 body.dark-mode .btn-g {
   background: rgba(16, 185, 129, 0.16);
@@ -15485,6 +15529,25 @@ body.view-3d .view-deck {
   -webkit-backdrop-filter: blur(6px) saturate(140%);
 }
 
+/* Performance Mode CSS kill block: when perf=on, svelte-backed backdrop-filter rules collapse to flat/cheap radii so the GPU gets a break. Written to match the js/mmgr-perf.js guard so the UI remains consistent regardless of load order. */
+[data-perf='on'] .dock,
+[data-perf='on'] #drw,
+[data-perf='on'] .db-sheet {
+  backdrop-filter: blur(0) saturate(100%);
+  -webkit-backdrop-filter: blur(0) saturate(100%);
+}
+[data-perf='on'] .dock {
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+[data-perf='on'] .drw-sheet {
+  backdrop-filter: blur(0) saturate(100%);
+  -webkit-backdrop-filter: blur(0) saturate(100%);
+}
+[data-perf='on'] body.db-page:not(.dark-mode) .top {
+  backdrop-filter: blur(0) saturate(100%);
+  -webkit-backdrop-filter: blur(0) saturate(100%);
+}
+
 /* Baseline nudge dot (owner 2026-09-19): visible signal that a schedulable
    project still has no baseline. Hidden by default; BaselineGuard reveals. */
 .nudge-dot {
@@ -17298,3 +17361,27 @@ textarea.pv-in {
     grid-template-columns: 1fr;
   }
 }
+  /* Cyan theme (data-theme="cyan") - these override gold tokens when active */
+  [data-theme="cyan"] --glass-blur: 0px;
+  [data-theme="cyan"] --glass-saturate: 100%;
+  [data-theme="cyan"] --glass-fill-dark: #050a10; /* solid dark - no frosted effect on cyan light */
+  [data-theme="cyan"] --glass-fill-dark-hover: #0a1420;
+  [data-theme="cyan"] --glass-fill-dark-active: #101c28;
+  [data-theme="cyan"] --glass-rim: inset 0 1px 0 rgba(5, 10, 16, 0.5); /* subtle rim on cyan light */
+  [data-theme="cyan"] --glass-rim-strong: inset 0 1px 0 #050a10;
+  /* Cyan theme (data-theme="cyan") - these override gold tokens when active */
+  [data-theme="cyan"] --glass-blur: 0px;
+  [data-theme="cyan"] --glass-saturate: 100%;
+  [data-theme="cyan"] --glass-fill-dark: #050a10; /* solid dark - no frosted effect on cyan light */
+  [data-theme="cyan"] --glass-fill-dark-hover: #0a1420;
+  [data-theme="cyan"] --glass-fill-dark-active: #101c28;
+  [data-theme="cyan"] --glass-rim: inset 0 1px 0 rgba(5, 10, 16, 0.5); /* subtle rim on cyan light */
+  [data-theme="cyan"] --glass-rim-strong: inset 0 1px 0 #050a10;
+  /* Magenta theme (data-theme="magenta") - these override gold tokens when active */
+  [data-theme="magenta"] --glass-blur: 0px;
+  [data-theme="magenta"] --glass-saturate: 100%;
+  [data-theme="magenta"] --glass-fill-dark: #1a0f17;
+  [data-theme="magenta"] --glass-fill-dark-hover: #2c1b24;
+  [data-theme="magenta"] --glass-fill-dark-active: #3a2832;
+  [data-theme="magenta"] --glass-rim: inset 0 1px 0 #1a0f17;
+  [data-theme="magenta"] --glass-rim-strong: inset 0 1px 0 #1a0f17;

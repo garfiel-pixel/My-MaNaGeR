@@ -10,9 +10,10 @@
      'light'  - warm gold accent on clean light interface
      'dark'   - muted gold accent on professional dark interface
      'system' - follow OS prefers-color-scheme (restored 2026-09-03, owner D6)
+     'cyan'   - cyan accent on light interface (Phase E)
 
-   Storage key: mmgr_theme = 'light' | 'dark' | 'system'
-   (backward-compatible: existing 'dark'/'light' values work;
+   Storage key: mmgr_theme = 'light' | 'dark' | 'system' | 'cyan'
+   (backward-compatible: existing 'dark'/'light'/'cyan' values work;
     old 'mmgr_palette' key is retired.)
 
    Default: LIGHT for new visitors (owner D12, 2026-09-03) - a fresh
@@ -23,7 +24,8 @@
      - body.dark-mode is toggled when effective mode is dark
      - :root in mmgr.css defines light tokens
      - body.dark-mode in mmgr.css overrides with dark tokens
-     - No palette switching - one brand, two appearances
+     - [data-theme="cyan"] in mmgr.css overrides with cyan tokens (Phase E)
+     - No palette switching - one brand, two appearances (light/dark) + cyan accent
 
    Persistence (owner 2026-09-12): DEVICE ONLY.
      1. localStorage - instant, works offline, never syncs to the account
@@ -38,9 +40,9 @@
 (function () {
   'use strict';
 
-  var MODE_KEY = 'mmgr_theme'; // 'light' | 'dark' | 'system'
+  var MODE_KEY = 'mmgr_theme'; // 'light' | 'dark' | 'system' | 'cyan'
   // 'mmgr_theme_backend' flag: retired 2026-09-12 with the account-sync.
-  var KNOWN = { light: 1, dark: 1, system: 1 };
+  var KNOWN = { light: 1, dark: 1, system: 1, cyan: 1, magenta: 1 };
 
   // SYNC (data-sync="1" script tag) is vestigial since the 2026-09-12
   // device-only change; retained only so nothing else keys off the tag.
@@ -63,7 +65,7 @@
   function currentMode() {
     var v = read(MODE_KEY);
     // No default-to-system here: a fresh browser (or a cleared pref) stays
-    // light until the user explicitly picks Light / Dark / System (D12).
+    // light until the user explicitly picks Light / Dark / System / Cyan (D12).
     return KNOWN[v] ? v : 'light';
   }
 
@@ -144,7 +146,7 @@
 
   /**
    * Set the theme mode and persist it.
-   * @param {string} mode - 'light' | 'dark' | 'system'
+   * @param {string} mode - 'light' | 'dark' | 'system' | 'cyan'
    */
   function setMode(mode) {
     mode = KNOWN[mode] ? mode : 'light'; // D12: never silently follow OS

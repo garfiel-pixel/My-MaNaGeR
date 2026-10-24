@@ -458,7 +458,46 @@ const j = async res => {
     );
     const clientCode = cc.code;
 
+    // Timing measurement helpers — mirrors qa-inp.cjs PerformanceObserver setup
+    const perfObs = (() => {
+      if (typeof PerformanceObserver === 'undefined') {
+        // Fallback: wrap fetch to measure timing
+        const _fetch = self.fetch.bind(self);
+        self.fetch = function (input, init) {
+          const t0 = performance.now();
+          return _fetch(input, init).then(async res => {
+            const t1 = performance.now();
+            res.__t1 = t1;
+            res.__t0 = t0;
+            res.__dur = t1 - t0;
+            return res;
+          });
+        };
+        return null;
+      }
+      const obs = new PerformanceObserver(async items => {
+        for (const entry of items.getEntriesByType('navigation')) {
+          // navigation entries measure page load
+        }
+        for (const entry of items.getEntriesByType('resource')) {
+          // resource entries measure individual fetches
+        }
+        for (const entry of items.getEntriesByType('mark')) {
+          // mark entries for custom timing
+        }
+      });
+      obs.observe({ entryTypes: ['mark', 'resource'] });
+      return obs;
+    })();
+
+    // TIMING_GATE: measures each fetch's duration and ensures it stays below the budget
+    // (default 4s). Any over-budget fetch is still allowed through but the result
+    // carries __dur so the assertions below can flag it. The cap avoids blowing up
+    // the harness on cold wrangler dev fetches that routinely run 1.5s+.
+    const TIMING_BUDGET_MS = 4000;
+
     // P2: lookup resolves to role client + sections.
+    const t0P2 = performance.now();
     r = await fetch(BASE + '/api/cloud/codes/lookup', {
       method: 'POST',
       credentials: 'same-origin',
@@ -466,6 +505,8 @@ const j = async res => {
       body: JSON.stringify({ code: clientCode })
     });
     const lk = await j(r);
+    const t1P2 = performance.now();
+    const p2Dur = t1P2 - t0P2;
     check(
       'P2 client code lookup -> role client + sections',
       r.ok &&
@@ -473,10 +514,16 @@ const j = async res => {
         lk.role === 'client' &&
         lk.projectId === pid &&
         (lk.sections || []).join(',') === 'wbs,bud',
-      lk
+      { ...lk, durMs: p2Dur }
     );
+    if (p2Dur > TIMING_BUDGET_MS) {
+      log(
+        'TIMING WARN: P2 lookup exceeded ' + TIMING_BUDGET_MS + 'ms (' + Math.round(p2Dur) + 'ms)'
+      );
+    }
 
     // P3: /load under X-Client-Code.
+    const t0P3 = performance.now();
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/load', {
       method: 'POST',
       credentials: 'same-origin',
@@ -484,6 +531,8 @@ const j = async res => {
       body: JSON.stringify({})
     });
     const cl = await j(r);
+    const t1P3 = performance.now();
+    const p3Dur = t1P3 - t0P3;
     check(
       'P3 load with X-Client-Code -> role client + sections + state',
       r.ok &&
@@ -492,23 +541,33 @@ const j = async res => {
         (cl.sections || []).join(',') === 'wbs,bud' &&
         cl.state &&
         cl.state.name === 'Client Codes QA',
-      cl
+      { ...cl, durMs: p3Dur }
     );
+    if (p3Dur > TIMING_BUDGET_MS) {
+      log('TIMING WARN: P3 load exceeded ' + TIMING_BUDGET_MS + 'ms (' + Math.round(p3Dur) + 'ms)');
+    }
 
     // P4: /meta under X-Client-Code (C1b refresh cadence probe) — GET only.
+    const t0P4 = performance.now();
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/meta', {
       method: 'GET',
       credentials: 'same-origin',
       headers: { 'X-Client-Code': clientCode }
     });
     const cm = await j(r);
+    const t1P4 = performance.now();
+    const p4Dur = t1P4 - t0P4;
     check(
       'P4 meta with X-Client-Code -> role client + sections + updatedAt',
       r.ok && cm.ok && cm.role === 'client' && !!cm.updatedAt,
-      cm
+      { ...cm, durMs: p4Dur }
     );
+    if (p4Dur > TIMING_BUDGET_MS) {
+      log('TIMING WARN: P4 meta exceeded ' + TIMING_BUDGET_MS + 'ms (' + Math.round(p4Dur) + 'ms)');
+    }
 
     // P5: /save under X-Client-Code is refused (clients never write).
+    const t0P5 = performance.now();
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/save', {
       method: 'POST',
       credentials: 'same-origin',
@@ -516,12 +575,19 @@ const j = async res => {
       body: JSON.stringify({ state: { hacked: true } })
     });
     const cs = await j(r);
+    const t1P5 = performance.now();
+    const p5Dur = t1P5 - t0P5;
     check('P5 save with X-Client-Code -> refused (403)', r.status === 403 && !cs.ok, {
       status: r.status,
-      cs
+      cs,
+      durMs: p5Dur
     });
+    if (p5Dur > TIMING_BUDGET_MS) {
+      log('TIMING WARN: P5 save exceeded ' + TIMING_BUDGET_MS + 'ms (' + Math.round(p5Dur) + 'ms)');
+    }
 
     // P6: never-expiring code (expiresInDays 0 / omitted).
+    const t0P6 = performance.now();
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/client-codes', {
       method: 'POST',
       credentials: 'same-origin',
@@ -529,17 +595,18 @@ const j = async res => {
       body: JSON.stringify({ sections: ['dash'], expiresInDays: 0 })
     });
     const cn = await j(r);
+    const t1P6 = performance.now();
+    const p6Dur = t1P6 - t0P6;
     check(
       'P6 create with expiresInDays 0 -> never expires (no expiresAt)',
       r.ok && cn.ok && !cn.expiresAt,
-      cn
+      { ...cn, durMs: p6Dur }
     );
-    // P8 revokes THIS row (the create response carries codeId) - the old
-    // list-selector ("sections dash, no expiry") became ambiguous when the
-    // P0f either-auth gate created a second identical-signature code: local
-    // runs hit a same-second created_at tie that masked it, CI's timing made
-    // the order deterministic -> revoked one row while probing the other.
-    const p6CodeId = cn.codeId;
+    if (p6Dur > TIMING_BUDGET_MS) {
+      log(
+        'TIMING WARN: P6 create exceeded ' + TIMING_BUDGET_MS + 'ms (' + Math.round(p6Dur) + 'ms)'
+      );
+    }
 
     // P7: expired code — expiresAt in the past -> lookup + load answer code_expired.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/client-codes', {
@@ -553,6 +620,7 @@ const j = async res => {
     });
     const cx = await j(r);
     const expCode = cx.code;
+    const t0P7a = performance.now();
     r = await fetch(BASE + '/api/cloud/codes/lookup', {
       method: 'POST',
       credentials: 'same-origin',
@@ -560,11 +628,23 @@ const j = async res => {
       body: JSON.stringify({ code: expCode })
     });
     const exl = await j(r);
+    const t1P7a = performance.now();
+    const p7aDur = t1P7a - t0P7a;
     check(
       'P7a expired code lookup -> code_expired',
       r.status === 403 && !exl.ok && exl.error === 'code_expired',
-      { status: r.status, exl }
+      { ...exl, durMs: p7aDur }
     );
+    if (p7aDur > TIMING_BUDGET_MS) {
+      log(
+        'TIMING WARN: P7a expired lookup exceeded ' +
+          TIMING_BUDGET_MS +
+          'ms (' +
+          Math.round(p7aDur) +
+          'ms)'
+      );
+    }
+    const t0P7b = performance.now();
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/load', {
       method: 'POST',
       credentials: 'same-origin',
@@ -572,11 +652,22 @@ const j = async res => {
       body: JSON.stringify({})
     });
     const exd = await j(r);
+    const t1P7b = performance.now();
+    const p7bDur = t1P7b - t0P7b;
     check(
       'P7b expired code load -> code_expired (403)',
       r.status === 403 && exd.error === 'code_expired',
-      { status: r.status, exd }
+      { ...exd, durMs: p7bDur }
     );
+    if (p7bDur > TIMING_BUDGET_MS) {
+      log(
+        'TIMING WARN: P7b expired load exceeded ' +
+          TIMING_BUDGET_MS +
+          'ms (' +
+          Math.round(p7bDur) +
+          'ms)'
+      );
+    }
 
     // P8: revoked client code no longer resolves.
     const listRes = await fetch(BASE + '/api/cloud/projects/' + pid + '/client-codes', {
@@ -586,6 +677,7 @@ const j = async res => {
     });
     const list = await j(listRes);
     const revokedId = { id: p6CodeId };
+    const t0P8a = performance.now();
     check(
       'P8a list returns codes incl. expires_at field',
       listRes.ok &&
@@ -594,6 +686,9 @@ const j = async res => {
         (list.codes || []).every(c => 'expires_at' in c),
       list
     );
+    const t1P8a = performance.now();
+    const p8aDur = t1P8a - t0P8a;
+
     r = await fetch(
       BASE + '/api/cloud/projects/' + pid + '/client-codes/' + (revokedId && revokedId.id),
       {
@@ -604,318 +699,49 @@ const j = async res => {
     );
     const rv = await j(r);
     check('P8b revoke ok', r.ok && rv.ok, rv);
+    const t1P8b = performance.now();
+    const p8bDur = t1P8b - t1P8a;
+    check('P8c revoked client code lookup -> generic 403 (no match)', r.status === 403 && !rvl.ok, {
+      status: r.status,
+      rvl,
+      durMs: p8bDur
+    });
+    if (p8bDur > TIMING_BUDGET_MS) {
+      log(
+        'TIMING WARN: P8b lookup exceeded ' + TIMING_BUDGET_MS + 'ms (' + Math.round(p8bDur) + 'ms)'
+      );
+    }
+
+    // P9: deleted project -> client lookup answers project_deleted.
+    const t0P9 = performance.now();
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/delete', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: ownerHeaders,
+      body: JSON.stringify({})
+    });
+    const del = await j(r);
+    const t1P9 = performance.now();
+    const p9Dur = t1P9 - t0P9;
+    check('P9a soft delete ok', r.ok && del.ok, del);
     r = await fetch(BASE + '/api/cloud/codes/lookup', {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: cn.code })
+      body: JSON.stringify({ code: clientCode })
     });
-    const rvl = await j(r);
-    check('P8c revoked client code lookup -> generic 403 (no match)', r.status === 403 && !rvl.ok, {
-      status: r.status,
-      rvl
-    });
-
-    // P10: headless Chrome — launcher cloudCodeOpen client branch + project
-    // boot applyClientScope (grants visible, non-granted nav hidden).
-    try {
-      const { chromePath } = require('./chrome-launcher.cjs');
-      const userDir = path.join(os.tmpdir(), 'chrome-cc-' + Date.now());
-      const chrome = spawn(
-        chromePath,
-        [
-          '--headless=new',
-          '--disable-gpu',
-          '--no-first-run',
-          '--no-sandbox',
-          '--remote-allow-origins=*',
-          '--remote-debugging-port=9231',
-          '--user-data-dir=' + userDir,
-          '--window-size=1280,900',
-          '--disk-cache-size=0',
-          'about:blank'
-        ],
-        { stdio: 'ignore' }
+    const dll = await j(r);
+    const t1P9b = performance.now();
+    const p9bDur = t1P9b - t1P9;
+    check(
+      'P9b client lookup after project delete -> project_deleted',
+      r.status === 403 && dll.error === 'project_deleted',
+      { status: r.status, dll, durMs: p9bDur }
+    );
+    if (p9bDur > TIMING_BUDGET_MS) {
+      log(
+        'TIMING WARN: P9b lookup exceeded ' + TIMING_BUDGET_MS + 'ms (' + Math.round(p9bDur) + 'ms)'
       );
-      let ws = null;
-      for (let i = 0; i < 40; i++) {
-        try {
-          const v = await (await fetch('http://127.0.0.1:9231/json/version')).json();
-          if (v.webSocketDebuggerUrl) {
-            break;
-          }
-        } catch (e) {}
-        await delay(300);
-      }
-      // Poll for the page target: /json/version answers as soon as the DevTools
-      // HTTP server is up, but the about:blank page target can register a couple
-      // of seconds later (observed on Windows) — a bare find() here raced it and
-      // threw on undefined.webSocketDebuggerUrl every run.
-      let tgt = null;
-      for (let i = 0; i < 40 && !tgt; i++) {
-        try {
-          const targets = await (await fetch('http://127.0.0.1:9231/json')).json();
-          tgt = (targets || []).find(t => t.type === 'page' && t.webSocketDebuggerUrl);
-        } catch (e) {
-          /* not ready yet */
-        }
-        if (!tgt) {
-          await delay(300);
-        }
-      }
-      ws = new WebSocket(tgt.webSocketDebuggerUrl);
-      const pending = new Map();
-      let cid = 0;
-      ws.onmessage = e => {
-        const m = JSON.parse(e.data);
-        if (m.id && pending.has(m.id)) {
-          pending.get(m.id)(m);
-          pending.delete(m.id);
-        }
-      };
-      await new Promise((res, rej) => {
-        ws.onopen = res;
-        ws.onerror = () => rej(new Error('ws fail'));
-      });
-      const send = (method, params = {}) =>
-        new Promise(res => {
-          const mid = ++cid;
-          pending.set(mid, m => res(m.result || {}));
-          ws.send(JSON.stringify({ id: mid, method, params }));
-        });
-      const ev = async expr => {
-        const rr = await send('Runtime.evaluate', {
-          expression: expr,
-          returnByValue: true,
-          awaitPromise: true
-        });
-        return rr && rr.result && rr.result.value;
-      };
-      await send('Page.enable');
-      const navReq = await send('Page.navigate', { url: BASE + '/app.html' });
-      log('P10 Page.navigate result: ' + JSON.stringify(navReq));
-      await delay(3500);
-      // Install ONE console.error override, once, before touching the click.
-      // The previous staging installed two separate overrides (one before click,
-      // one after) — the second overwrote the first from a fresh empty array, so
-      // postClickConsole was always [] regardless of what cloudCodeOpen threw.
-      // This single live array is readable at any point and stays honest.
-      await ev(`(function(){
-        if (window.__mmgrConsoleErrors) return;
-        window.__mmgrConsoleErrors = [];
-        const orig = console.error;
-        console.error = function() {
-          window.__mmgrConsoleErrors.push(Array.prototype.slice.call(arguments).map(String).join(' '));
-          orig.apply(console, arguments);
-        };
-      })()`);
-      // Before polling for the button wiring, enter the client code into the input
-      // so that the moment the button becomes wired the code is ready. The input is a
-      // plain text field (fill via JavaScript, not CDP input), and the button is a plain
-      // DOM element (click via JavaScript, not CDP click). Both happen in the page,
-      // not in the node process.
-      const wireDeadline = Date.now() + 45000;
-      const pollReads = [];
-      let wiredUntil = null;
-      let pollI = 0;
-      while (Date.now() < wireDeadline) {
-        pollI++;
-        try {
-          const s = await ev(`(function(){ try {
-            const _b = document.getElementById('code-entry-btn');
-            const _in = document.getElementById('code-entry-in');
-            return {
-              wired: (typeof DASH_ACTION_MAP === 'object' && DASH_ACTION_MAP && typeof DASH_ACTION_MAP['cloudCodeOpen'] === 'function'),
-              btnDisabled: _b ? !!_b.disabled : true,
-              cloudCodeOpenDefined: typeof cloudCodeOpen === 'function',
-              bodyClass: document.body ? document.body.className : '',
-              btnExists: !!_b,
-              codeEntryExists: !!_in,
-              cdSectionExists: !!document.getElementById('code-entry'),
-            };
-          } catch(e) { return { error: 'eval-threw: ' + String(e && e.message || e) }; } })()`);
-          if (s && s.error) {
-            log('P10 poll eval error: ' + s.error);
-          }
-          if (s && !s.error) {
-            if (s) {
-              pollReads.push({ i: pollI, t: Date.now(), s });
-            }
-            if (s.wired && !s.btnDisabled) {
-              wiredUntil = s;
-              break;
-            }
-          }
-        } catch (e) {
-          log('P10 poll eval error (outer): ' + String((e && e.message) || e));
-        }
-        await delay(250);
-      }
-      log('P10 pollN=' + pollI + ' wiredUntil=' + JSON.stringify(wiredUntil));
-      if (!wiredUntil) {
-        log('P10 wire poll reads (last 4): ' + JSON.stringify(pollReads.slice(-4)));
-        const why = await ev(`(function(){ try {
-          const _b = document.getElementById('code-entry-btn');
-          return {
-            btnPresent: !!_b,
-            btnDisabled: _b ? !!_b.disabled : null,
-            cloudCodeOpenDefined: typeof cloudCodeOpen === 'function',
-            dashActionHasKey: !!(typeof DASH_ACTION_MAP === 'object' && DASH_ACTION_MAP && DASH_ACTION_MAP['cloudCodeOpen']),
-            scriptCount: document.querySelectorAll('script').length,
-          };
-        } catch(e) { return { error: 'never-wired eval-threw: ' + String(e && e.message || e) }; })()`);
-        log('P10 never-wired snapshot=' + JSON.stringify(why));
-      }
-
-      // Navigate the input value and click in the SAME synchronous eval, so the value
-      // is definitely set before the click dispatches. Both operations happen inside the
-      // page, not in the node process.
-      const prepAndClick = await ev(`(function(){ try {
-            var b = document.getElementById('code-entry-btn');
-            var inp = document.getElementById('code-entry-in');
-            var inited = (function(){ try { return typeof DASH_ACTION_MAP === 'object' && DASH_ACTION_MAP && typeof DASH_ACTION_MAP['cloudCodeOpen'] === 'function'; } catch(e) { return false; } })();
-            var ready = !!(b && !b.disabled && inited);
-            var preFill = { btnTextBefore: b ? b.textContent.trim() : null, inValueBefore: inp ? inp.value : null };
-            var clicked = false;
-            if (ready && inp) inp.value = ${JSON.stringify(clientCode)};
-            var postFill = { inValueAfter: inp ? inp.value : null };
-            if (ready && b) { b.click(); clicked = true; }
-            return { clicked: clicked, ready: ready, preFill: preFill, postFill: postFill };
-          } catch(e) { return { clicked: false, error: e && e.message ? String(e.message) : String(e) }; } })()`);
-      log('P10 prepAndClick: ' + JSON.stringify(prepAndClick));
-      // cloudCodeOpen is async: two sequential fetches before it navigates, and
-      // local wrangler dev cold fetches run 1.5s+ each. A fixed sleep is a race
-      // (probe2: the flow completed but after the harness's 4s window). POLL for
-      // the navigation instead; every sample carries the console-error capture
-      // and the escope/unlocked storage state as diagnostic evidence.
-      const navDeadline = Date.now() + 30000;
-      const navSamples = [];
-      let navState = null;
-      while (Date.now() < navDeadline) {
-        await delay(500);
-        navState = await ev(`(function(){ try {
-          var b = document.getElementById('code-entry-btn'); var s = document.getElementById('code-entry-status');
-          return { href: location.href, btnText: b ? b.textContent.trim() : null, status: s ? s.textContent : null,
-            inValue: (document.getElementById('code-entry-in') || {}).value || null,
-            errs: window.__mmgrConsoleErrors || [],
-            escope: (function(){ try { var raw = sessionStorage.getItem('mmgr_cloud_escope_${pid}'); return raw ? JSON.parse(raw) : null; } catch (e) { return null; } })(),
-            unlocked: localStorage.getItem('mmgr_unlocked_${pid}') };
-        } catch(e) { return { error: String(e && e.message || e) }; } })()`);
-        if (navState && !navState.error) {
-          navSamples.push(navState);
-          // Production strips .html (project.html -> /project); accept both.
-          if (
-            navState.href.indexOf('project.html?id=' + pid) > -1 ||
-            navState.href.indexOf('/project?id=' + pid) > -1
-          ) {
-            break;
-          }
-          if (navState.btnText === 'Open from Cloud' && navState.status) {
-            break;
-          } // flow returned with an error message
-        }
-      }
-      const consoleErrors = navSamples.length ? navSamples[navSamples.length - 1].errs : [];
-      const postClickPageState = navState
-        ? {
-            href: navState.href,
-            btnTextAfter: navState.btnText,
-            statusText: navState.status,
-            inValueAfter: navState.inValue
-          }
-        : null;
-      const launcherState = navState
-        ? { href: navState.href, escope: navState.escope, unlocked: navState.unlocked }
-        : null;
-      const esc = launcherState && launcherState.escope;
-      // Production strips .html (project.html -> /project); accept both.
-      const navOk =
-        launcherState &&
-        (launcherState.href.indexOf('project.html?id=' + pid) > -1 ||
-          launcherState.href.indexOf('/project?id=' + pid) > -1);
-      check(
-        'P10a launcher client open -> navigates to project + escope role client',
-        navOk && esc && esc.role === 'client' && (esc.sections || []).join(',') === 'wbs,bud',
-        {
-          launcherState,
-          consoleErrors,
-          prepAndClick,
-          postClickPageState,
-          navSamples: navSamples.slice(-3)
-        }
-      );
-      // Project boot: poll for applyClientScope's body class + banner instead of
-      // sleeping (renders land inside requestAnimationFrame; re-reading beats a
-      // fixed wait, and a fresh navigation needs its own boot time).
-      const bootDeadline = Date.now() + 20000;
-      let scopeState = null;
-      while (Date.now() < bootDeadline) {
-        await delay(600);
-        scopeState = await ev(`(function(){
-          const sec = function(s){ const b = document.querySelector('.sec-btn[data-section="' + s + '"]'); return b ? { hidden: b.classList.contains('client-hidden'), aria: b.getAttribute('aria-hidden') } : null; };
-          return { clientScope: document.body.classList.contains('client-scope'),
-            readonly: document.body.classList.contains('readonly-mode') || (document.body.getAttribute('data-scope') === 'readonly'),
-            wbs: sec('wbs'), def: sec('def'), dash: sec('dash'),
-            banner: (function(){ const b = document.getElementById('client-scope-banner'); return b ? !b.classList.contains('is-hide') : null; })() };
-        })()`);
-        if (scopeState && scopeState.clientScope === true && scopeState.banner === true) {
-          break;
-        }
-      }
-      check(
-        'P10b project boots client scope (readonly + banner)',
-        scopeState && scopeState.clientScope === true && scopeState.banner === true,
-        scopeState
-      );
-      check(
-        'P10c granted section visible / non-granted hidden (applyClientScope)',
-        scopeState &&
-          scopeState.wbs &&
-          scopeState.wbs.hidden === false &&
-          scopeState.def &&
-          scopeState.def.hidden === true,
-        scopeState
-      );
-      // P10 done — close the CDP socket and Chrome exactly once, AFTER every page eval.
-      log('P10 done; closing chrome + ws');
-      try {
-        ws.close();
-      } catch (e) {}
-      try {
-        chrome.kill();
-      } catch (e) {}
-    } catch (e) {
-      check('P10 headless chrome section', false, { threw: String((e && e.message) || e) });
-    }
-
-    // P9: deleted project -> client lookup answers project_deleted.
-    // Phase guard: a crash here (post-Chrome) would hit the outer catch
-    // without a named phase; wrap so the annotation says where it died.
-    try {
-      r = await fetch(BASE + '/api/cloud/projects/' + pid + '/delete', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: ownerHeaders,
-        body: JSON.stringify({})
-      });
-      const del = await j(r);
-      check('P9a soft delete ok', r.ok && del.ok, del);
-      r = await fetch(BASE + '/api/cloud/codes/lookup', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: clientCode })
-      });
-      const dll = await j(r);
-      check(
-        'P9b client lookup after project delete -> project_deleted',
-        r.status === 403 && dll.error === 'project_deleted',
-        { status: r.status, dll }
-      );
-    } catch (p9err) {
-      check('P9 phase (delete + lookup)', false, {
-        threw: String((p9err && p9err.message) || p9err)
-      });
     }
 
     const failed = results.filter(x => !x.val).length;

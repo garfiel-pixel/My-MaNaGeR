@@ -450,9 +450,21 @@ var MMGR = window.MMGR || {};
       const out = [];
       let cur = '';
       words.forEach(function (w) {
-        // Hard fallback: a single unbreakable token longer than the width
-        // (URL, long task name) is sliced so a line can never overflow.
-        const word = w.length > width ? w.slice(0, width) : w;
+        // Hard fallback: a single unbreakable token longer than the line
+        // (URL, long task name) is split into width-sized pieces so a line
+        // can never overflow AND nothing is dropped from the record.
+        let word = w;
+        while (word.length > width) {
+          if (cur) {
+            out.push(cur);
+            cur = '';
+          }
+          out.push(word.slice(0, width));
+          word = word.slice(width);
+        }
+        if (!word) {
+          return;
+        }
         if (!cur) {
           cur = word;
           return;
@@ -469,13 +481,29 @@ var MMGR = window.MMGR || {};
       }
       return out;
     };
+    const pushRow = function (head, text, cont, width) {
+      // One printed row: `head` is a fixed prefix (label or table column
+      // block) that must never be broken, `text` is wrapped so no line
+      // exceeds `width`, continuation lines align under `cont`.
+      const lines = wrap(
+        String(text === undefined || text === null ? '' : text),
+        Math.max(16, (width || 92) - cont.length)
+      );
+      if (!lines.length) {
+        lines.push('');
+      }
+      L.push(head + lines[0]);
+      lines.slice(1).forEach(function (line) {
+        L.push(cont + line);
+      });
+    };
     const ref = ((pack.from || 'START') + '-' + (pack.to || 'TODAY')).replace(/[^0-9A-Za-z-]/g, '');
 
     // ---- Header block ----
     rule('=');
     L.push('CLAIM / DELAY PACKAGE');
     rule('=');
-    L.push('Project:          ' + pack.project);
+    pushRow('Project:          ', pack.project, ' '.repeat(18));
     L.push('Reporting window: ' + (pack.from || 'project start') + '  →  ' + (pack.to || 'today'));
     L.push('Prepared:         ' + pack.generatedAt);
     L.push('Document ref:     CLAIM-' + ref);
@@ -527,14 +555,14 @@ var MMGR = window.MMGR || {};
     L.push(wxHead);
     rule('-', wxHead.length);
     if (pack.weatherDelays.length) {
-      pack.weatherDelays.forEach(e =>
-        L.push(
-          pad(e.date, 12) +
-            pad(e.condition, 18) +
-            pad(e.note || '', 26) +
-            (e.affectedTaskIds.length ? e.affectedTaskIds.join(', ') : '-')
-        )
-      );
+      pack.weatherDelays.forEach(e => {
+        const head = pad(e.date, 12) + pad(e.condition, 18) + pad(e.note || '', 26);
+        pushRow(
+          head,
+          e.affectedTaskIds.length ? e.affectedTaskIds.join(', ') : '-',
+          ' '.repeat(head.length)
+        );
+      });
     } else {
       L.push('None logged in window.');
     }
@@ -543,14 +571,16 @@ var MMGR = window.MMGR || {};
     section(4, 'AFFECTED WBS TASKS');
     if (pack.affectedTasks.length) {
       pack.affectedTasks.forEach(t =>
-        L.push(
+        pushRow(
+          '',
           '[' +
             t.id +
             '] ' +
             t.name +
             ' , ' +
             (t.status || 'no status') +
-            (t.dates ? ' (' + t.dates + ')' : '')
+            (t.dates ? ' (' + t.dates + ')' : ''),
+          '  '
         )
       );
     } else {
@@ -589,7 +619,8 @@ var MMGR = window.MMGR || {};
     section(6, 'CHANGE CONTROL (WINDOW)');
     if (pack.changeControl.length) {
       pack.changeControl.forEach(c =>
-        L.push(
+        pushRow(
+          '',
           '[' +
             c.date +
             '] ' +
@@ -598,7 +629,8 @@ var MMGR = window.MMGR || {};
             c.status +
             (c.schedImpact ? ' | sched: ' + c.schedImpact : '') +
             (c.costImpact ? ' | cost: ' + c.costImpact : '') +
-            (c.notes ? ' | ' + c.notes : '')
+            (c.notes ? ' | ' + c.notes : ''),
+          '  '
         )
       );
     } else {
@@ -609,14 +641,16 @@ var MMGR = window.MMGR || {};
     section(7, 'MEETING DECISIONS & ACTION ITEMS (WINDOW)');
     if (pack.meetings.length) {
       pack.meetings.forEach(m =>
-        L.push(
+        pushRow(
+          '',
           '[' +
             m.date +
             '] ' +
             m.kind +
             (m.summary ? ' , ' + m.summary : '') +
             (m.actions ? ' | Actions: ' + m.actions : '') +
-            (m.followUp ? ' | Follow-up: ' + m.followUp : '')
+            (m.followUp ? ' | Follow-up: ' + m.followUp : ''),
+          '  '
         )
       );
     } else {
@@ -626,7 +660,7 @@ var MMGR = window.MMGR || {};
     // ---- 8. Carried-forward commitments ----
     section(8, 'CARRIED-FORWARD COMMITMENTS');
     if (pack.openPromises.length) {
-      pack.openPromises.forEach(p => L.push('• ' + p.text + ' (' + p.meeting + ')'));
+      pack.openPromises.forEach(p => pushRow('', '• ' + p.text + ' (' + p.meeting + ')', '  '));
     } else {
       L.push('None open.');
     }
@@ -639,7 +673,7 @@ var MMGR = window.MMGR || {};
     L.push('were hand-typed into this export.');
     blank();
     L.push('Signature:     ____________________________');
-    L.push('Name:          ' + (userName || '______________________________'));
+    pushRow('Name:          ', userName || '______________________________', ' '.repeat(15));
     L.push('Role:          ____________________________');
     L.push('Date:          ' + (pack.generatedAt || '____________________________'));
     blank();

@@ -249,7 +249,19 @@
 // tasks in CONTINUATION-DIRECTIVE.md. Changed shell assets: css/mmgr-icons.svg,
 // pricing.html, js/cloud/photos-ui.js, dist/app-bundle.js - hence this bump. No
 // inline script was added or removed, so the CSP hash set is unchanged.
-const CACHE = 'mmgr-shell-v459';
+// v460 - CLAIM PACK PRINT WRAP (2026-10-23). qa-full gate 86 measured a
+// 644-char line inside the "counsel-ready" claim export: section 7 pushed a
+// meeting's actionItems unwrapped (the kickoff agenda alone runs that long),
+// and sections 4, 6 and 8 plus the Project/Name header lines carried the same
+// unwrapped class, so ANY user text over ~92 chars broke the print contract.
+// claimPackText now routes every unbounded user-text line through pushRow()
+// (wrap at 92 with a hanging indent), and wrap() splits over-long unbreakable
+// tokens instead of silently dropping the tail of the record. Gate 86 is now
+// hermetic: it seeds its own long meeting/change/promise rows inside its own
+// window, so the class is exercised regardless of earlier gates' leftovers.
+// Changed shell asset: js/mmgr-claim.js (dist/bundle.js rebuilt) - hence this
+// bump. No inline script added or removed, so the CSP hash set is unchanged.
+const CACHE = 'mmgr-shell-v460';
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new
 // 'JIC rate book' choice on calculator.html) prices ANY shipped book row as

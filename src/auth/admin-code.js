@@ -31,7 +31,7 @@
    - One row per account (UPSERT); the newest code wins, mirroring
      the device-local model of a single current admin code.
    ============================================================ */
-import { json, readSession, cloudRateCheck } from '../lib/http.js';
+import { json, readSession, readJsonBody, cloudRateCheck } from '../lib/http.js';
 
 const ESCROW_VERSION = 1;
 
@@ -146,12 +146,14 @@ async function accountVerified(env, session) {
 }
 
 export async function handleAdminCodePut(request, env) {
-  let body;
-  try {
-    body = await request.json();
-  } catch (e) {
+  const read = await readJsonBody(request, 8192);
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad) {
     return json({ ok: false, error: 'bad request' }, 400);
   }
+  const body = read.body;
   const code = String((body && body.code) || '').trim();
   if (code.length < 8 || code.length > 128) {
     return json({ ok: false, error: 'bad request' }, 400);

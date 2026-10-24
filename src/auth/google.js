@@ -16,7 +16,8 @@ import {
   sessionKey,
   sessionSetCookie,
   SESSION_COOKIE,
-  SESSION_MAX_AGE
+  SESSION_MAX_AGE,
+  readJsonBody
 } from '../lib/http.js';
 
 // Public Client ID (safe to ship — also embedded in the frontend).
@@ -33,6 +34,7 @@ const SESSION_ABSOLUTE_CAP = 30 * 24 * 60 * 60; // 30 days, seconds
 // consumeSignInNonce.
 const NONCE_TTL_MS = 5 * 60 * 1000;
 const NONCE_RE = /^[0-9a-f]{32,128}$/;
+const BODY_CAP = 16384; // T-5: an ID token JWT is a few KB; headroom over it
 
 // Rollout flag (DIRECTIVE G-2.5, default OFF): while off, a request with NO
 // nonce still signs in (a cached old page keeps working) but a request that
@@ -214,12 +216,14 @@ export async function mintSession(user, env) {
 
 // POST /api/auth/google { idToken } -> verify -> Set-Cookie mmgr_session
 export async function handleAuthGoogle(request, env) {
-  let body;
-  try {
-    body = await request.json();
-  } catch (e) {
+  const read = await readJsonBody(request, BODY_CAP);
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad) {
     return json({ ok: false, error: 'bad request' }, 400);
   }
+  const body = read.body;
   const idToken = body && typeof body.idToken === 'string' ? body.idToken : '';
   if (!idToken) {
     return json({ ok: false, error: 'missing id_token' }, 400);

@@ -28,13 +28,15 @@ import {
   readSession,
   authEmailConfigured,
   sendAuthEmail,
-  cloudRateCheck
+  cloudRateCheck,
+  readJsonBody
 } from '../lib/http.js';
 
 const REC_ENABLED_KEY = 'EMAIL_RECOVERY_ENABLED';
 const REC_OTP_LEN = 8;
 const REC_OTP_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I/l
 const REC_TTL_MS = 15 * 60 * 1000; // owner confirmed
+const BODY_CAP = 8192; // T-5: the payload is an 8-char code
 const REC_MAX_PER_HOUR = 3;
 const REC_MAX_ATTEMPTS = 5;
 
@@ -208,12 +210,14 @@ export async function handleAdminRecoveryVerify(request, env) {
   if (!recFlagOn(env)) {
     return recEnabledOffResponse();
   }
-  let body;
-  try {
-    body = await request.json();
-  } catch (e) {
+  const read = await readJsonBody(request, BODY_CAP);
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad) {
     return json({ ok: false, error: 'bad request' }, 400);
   }
+  const body = read.body;
   const code = String((body && body.code) || '')
     .trim()
     .toUpperCase();

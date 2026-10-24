@@ -16,7 +16,8 @@ import {
   cloudEncryptState,
   cloudAuthOwnerEither,
   cloudAuthEditor,
-  cloudAuthAdoption
+  cloudAuthAdoption,
+  readJsonBody
 } from './lib/http.js';
 import { structuredLog } from './lib/observe.js';
 
@@ -24,46 +25,9 @@ const REVIEW_TEXT_MAX = 2000;
 const REVIEW_NAME_MAX = 60;
 const REVIEW_BODY_LIMIT_BYTES = 8192;
 
-async function readReviewBody(request) {
-  const cl = Number(request.headers.get('Content-Length') || 0);
-  if (cl > REVIEW_BODY_LIMIT_BYTES) {
-    return { tooLarge: true };
-  }
-  if (!request.body) {
-    try {
-      return { body: await request.json() };
-    } catch (e) {
-      return { bad: true };
-    }
-  }
-  const reader = request.body.getReader();
-  const chunks = [];
-  let total = 0;
-  let done = false;
-  while (!done) {
-    const res = await reader.read();
-    done = res.done;
-    if (res.value) {
-      total += res.value.byteLength;
-      if (total > REVIEW_BODY_LIMIT_BYTES) {
-        return { tooLarge: true };
-      }
-      chunks.push(res.value);
-    }
-  }
-  const bytes = new Uint8Array(total);
-  let off = 0;
-  for (const c of chunks) {
-    bytes.set(c, off);
-    off += c.byteLength;
-  }
-  const text = new TextDecoder().decode(bytes);
-  try {
-    return { body: JSON.parse(text) };
-  } catch (e) {
-    return { bad: true };
-  }
-}
+// The capped reader itself lives in lib/http.js (T-5): one implementation of
+// the Content-Length check + stream-with-byte-budget pattern, shared by every
+// endpoint instead of one copy per module.
 
 function reviewPlainTextProblem(s) {
   if (/[<>]/.test(s)) {
@@ -178,7 +142,7 @@ async function verifyTurnstileToken(token, remoteIp, env) {
 }
 
 export async function handleReviewsCreate(request, env) {
-  const read = await readReviewBody(request);
+  const read = await readJsonBody(request, REVIEW_BODY_LIMIT_BYTES);
   if (read.tooLarge) {
     return json({ ok: false, error: 'review too large' }, 413);
   }

@@ -15,6 +15,7 @@ import {
   cloudRatePeek,
   cloudRateRecord,
   readSession,
+  readJsonBody,
   authEmailConfigured,
   sendAuthEmail,
   mintAuthToken,
@@ -130,15 +131,18 @@ async function authHashPassword(password, saltHex) {
 // Deliberately says nothing about WHERE the account is or how it was made -
 // naming Google here would confirm to an attacker exactly which addresses
 // are Google accounts, which is the list they are trying to build.
+const BODY_CAP = 8192; // T-5: every session payload is an email + a field or two
 const AUTH_ACCOUNT_TAKEN = 'An account already uses this email address. Sign in instead.';
 
 export async function handleAuthRegister(request, env) {
-  let body;
-  try {
-    body = await request.json();
-  } catch (e) {
+  const read = await readJsonBody(request, BODY_CAP);
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad) {
     return json({ ok: false, error: 'bad request' }, 400);
   }
+  const body = read.body;
   const email = authNormalizeEmail(body && body.email);
   if (!authEmailValid(email)) {
     return json({ ok: false, error: 'invalid email address' }, 400);
@@ -192,12 +196,14 @@ export async function handleAuthRegister(request, env) {
 }
 
 export async function handleAuthLogin(request, env) {
-  let body;
-  try {
-    body = await request.json();
-  } catch (e) {
+  const read = await readJsonBody(request, BODY_CAP);
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad) {
     return json({ ok: false, error: 'bad request' }, 400);
   }
+  const body = read.body;
   const email = authNormalizeEmail(body && body.email);
   const password = String((body && body.password) || '');
   const guard = await env.DB.prepare(
@@ -271,12 +277,14 @@ export async function handleAuthPasswordChange(request, env) {
   if (session.sub.indexOf('email:') !== 0) {
     return json({ ok: false, error: 'this account has no password' }, 400);
   }
-  let body;
-  try {
-    body = await request.json();
-  } catch (e) {
+  const read = await readJsonBody(request, BODY_CAP);
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad) {
     return json({ ok: false, error: 'bad request' }, 400);
   }
+  const body = read.body;
   const email = session.sub.slice('email:'.length);
   const current = String((body && body.currentPassword) || '');
   const next = String((body && body.newPassword) || '');
@@ -335,12 +343,14 @@ export async function handleAuthVerifyPassword(request, env) {
   if (session.sub.indexOf('email:') !== 0) {
     return json({ ok: false, error: 'this account has no password' }, 400);
   }
-  let body;
-  try {
-    body = await request.json();
-  } catch (e) {
+  const read = await readJsonBody(request, BODY_CAP);
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad) {
     return json({ ok: false, error: 'bad request' }, 400);
   }
+  const body = read.body;
   const password = String((body && body.password) || '');
   if (!password) {
     return json({ ok: false, error: 'password is required' }, 400);
@@ -364,12 +374,14 @@ export async function handleAuthVerifyPassword(request, env) {
 }
 
 export async function handleAuthVerify(request, env) {
-  let body;
-  try {
-    body = await request.json();
-  } catch (e) {
+  const read = await readJsonBody(request, BODY_CAP);
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad) {
     return json({ ok: false, error: 'bad request' }, 400);
   }
+  const body = read.body;
   const email = await consumeAuthToken(env, String((body && body.token) || ''), 'verify');
   if (!email) {
     return json({ ok: false, error: 'invalid or expired verification link' }, 400);
@@ -402,12 +414,14 @@ export async function handleAuthForgot(request, env) {
   const recordSend = function () {
     return cloudRateRecord(request, 'authmail', env);
   };
-  let body;
-  try {
-    body = await request.json();
-  } catch (e) {
+  const read = await readJsonBody(request, BODY_CAP);
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad) {
     return json({ ok: false, error: 'bad request' }, 400);
   }
+  const body = read.body;
   const email = authNormalizeEmail(body && body.email);
   if (!authEmailValid(email)) {
     return json({ ok: false, error: 'invalid email address' }, 400);
@@ -451,12 +465,14 @@ export async function handleAuthForgot(request, env) {
 }
 
 export async function handleAuthReset(request, env) {
-  let body;
-  try {
-    body = await request.json();
-  } catch (e) {
+  const read = await readJsonBody(request, BODY_CAP);
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad) {
     return json({ ok: false, error: 'bad request' }, 400);
   }
+  const body = read.body;
   const next = String((body && body.newPassword) || '');
   const resetPwProblem = authPasswordProblem(next);
   if (resetPwProblem) {
@@ -503,12 +519,14 @@ export async function handleAuthReset(request, env) {
 }
 
 export async function handleAuthResendVerify(request, env) {
-  let body;
-  try {
-    body = await request.json();
-  } catch (e) {
+  const read = await readJsonBody(request, BODY_CAP);
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad) {
     return json({ ok: false, error: 'bad request' }, 400);
   }
+  const body = read.body;
   const email = authNormalizeEmail(body && body.email);
   if (!authEmailValid(email)) {
     return json({ ok: false, error: 'invalid email address' }, 400);
@@ -567,12 +585,14 @@ export async function handleAuthDeleteAccount(request, env) {
     return json({ ok: false, error: 'not signed in' }, 401);
   }
 
-  let body;
-  try {
-    body = await request.json();
-  } catch (e) {
+  const read = await readJsonBody(request, BODY_CAP);
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad) {
     return json({ ok: false, error: 'bad request' }, 400);
   }
+  const body = read.body;
 
   // 1. Confirm identity
   const isEmailAccount = session.sub.indexOf('email:') === 0;

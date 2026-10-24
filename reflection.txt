@@ -1,160 +1,106 @@
 # My MaNaGeR - reflection.txt (active; last session only. Older sessions archived in docs/history/reflection-ARCHIVE-2026-10-18.txt)
 
-SESSION 2026-10-23 - BUG DIG: CLAIM PACK PRINT WRAP (T-7) + NAV DROPDOWNS UNDER THEIR OWN ITEM, BOTH LIVE; CONTINUATION DIRECTIVE RESTRUCTURED
+SESSION 2026-10-24 - GOOGLE SIGN-IN SECURITY GAPS (state + nonce) SHIPPED, LIVE-PROBED, LEMONSQUEEZY DIAGNOSED
 
 CONTEXT
-Owner: "dig for bugs and fix them then commit and deploy ... and when you done review the
-continuation directive." Mid-session additions: (1) the hero nav hover dropdown must open
-underneath the item being hovered - it opened in the middle of the page, so the reader had to
-swipe sideways and the tab switched under the pointer; (2) the continuation directive has
-outstanding tasks - look at them and restructure the file so it matches the code base.
+Owner pasted DIRECTIVE: GOOGLE SIGN-IN SECURITY GAPS (state + nonce) - 2026-10-23: Google
+Project Checkup shows "Use secure flows" as a warning; best reading of the code is the Drive
+token request sends no `state` and Sign in with Google sends no `nonce`. Fix both (G-1, G-2),
+prove nothing else moved (G-3), commit with the exact given message, deploy from
+$HOME/mmgr-deploy, live-probe three cases on mymanagerworkspace.com, record the console and
+checkup items as owner-only. Rules: no emoji, no em/en dash in served copy, no new storage
+key, bump sw.js + verify:csp on served-file changes. Mid-session additions: (1) continue
+through the continuation directive's outstanding tasks; (2) LemonSqueezy emailed a renewal
+notice on a test address - investigate whether code triggers it, invalidate LS subscriptions,
+and record what the owner must personally do at LemonSqueezy as a PERSISTENT owner-to-do
+(explicitly: not chat-only).
 
 WHAT THIS SESSION DID
-  1. DIG FIRST (evidence before claims). Re-ran the 2026-10-22 sweep probes:
-     tmp/audit-links.cjs (0 dead anchors; the 2 "dead files" are the ?v= query false
-     positive and the non-served "monolith html to reference from all features.html"),
-     tmp/audit-aria.cjs (0 broken aria references), tmp/audit-actions2.cjs (only the
-     documented T-4 trio: calcDocType, calcCashMode, photos-upload), tmp/audit-wiring.cjs
-     and tmp/audit-css-classes.cjs (all hits already listed as renderer-created or
-     corrected false positives in this file's 2026-10-22 block). ZERO new findings there.
-     Baseline npm run verify exit 0 (CSP 25/25 hashes, registry 115/115, 129 unit tests).
-     Tripwires run locally, all exit 0: verify-units, verify-export (34 checks),
-     verify-currency, verify-print-dom, verify-no-weak-random, verify-doc-size.
-     The live failing signal was qa-full gate 86.
-  2. CLAIM PACK PRINT WRAP (T-7, closed; commit 668b8d9).
-     - MEASURED DEFECT: qa-full.cjs gate 86 failed with maxLine=644 (contract: <100).
-       Hermetic repro FIRST (tmp/claim-hermetic.cjs, fresh seed, fresh page): maxLine 89,
-       so the gate was sound and the failure came from real state. Instrumented the gate's
-       failure payload (worst line + index) and re-ran the battery: the 644-char line was
-       section 7, a kickoff meeting's actionItems - "[ ] Action Items, Next Steps & Minutes
-       Distribution | Actions: Project Charter Walkthrough (scope, sponsor, targets, budget);
-       ..." - i.e. the very meeting the battery runs at qa-full.cjs:694-721, dated inside
-       gate 86's window. Sections 4, 6, 8 and the Project/Name header lines had the same
-       unwrapped class, so ANY user text over 92 chars broke the print contract on a real
-       project (the demo project itself produces this meeting).
-     - SECOND DEFECT (found while fixing): wrap() in claimPackText sliced an unbreakable
-       token longer than the line to `width` and DROPPED the rest - silent text loss in a
-       document meant for counsel.
-     - FIX (js/mmgr-claim.js): claimPackText at :420; new pushRow(head, text, cont, width)
-       at :484 wraps every unbounded user-text line at 92 chars with a hanging indent -
-       header Project/Name labels (18/15-char continuation indent), the weather row's
-       affected-task list under its 56-char column, WBS task lines, change-control lines,
-       meeting lines and promise lines (2-char indent). Table rows keep pad() alignment.
-       wrap() now SPLITS over-long tokens across lines instead of truncating them.
-     - GATE HARDENED, NEVER RELAXED (qa-full.cjs:2142): gate 86 seeds its OWN long
-       meeting + change + promise rows inside its own window (including a 132-char
-       unbreakable drawing reference: DRW-2026-0001-A-VERY-LONG-...), still asserts
-       maxLine < 100, adds `noLoss` (whitespace-stripped contiguity of BOTH seeded
-       records - wrap only ever inserts whitespace, so a truncated record cannot pass) and
-       a `worst` diagnostic (index + first 200 chars) in the failure payload.
-     - sw.js v459 -> v460 (changed shell asset js/mmgr-claim.js; node build.js rebuilt
-       dist/bundle.js - `repeat(18)` present in the minified bundle, manifest hash
-       refreshed).
-  3. NAV DROPDOWNS UNDER THEIR OWN ITEM (owner complaint; commit dc141ed).
-     - MEASURED DEFECT (tmp/probe-navdd.cjs, before): .nav-dd-menu (css/marketing.css:843)
-       was position:fixed with left:50% + translateX(-50%) - centred in the VIEWPORT. At
-       1280 wide the 700px Features menu sat at 290-990 while the hovered Features item's
-       centre was 247: underTrigger=false, centreGap=393px, vertical gap 15px (3px past the
-       12px hover bridge). A straight swipe down missed the box, hit the next nav item and
-       swapped ITS menu in - the owner's "it switches the tab" complaint.
-     - FIX: js/marketing.js placeNavMenu() at :823 writes left = item centre - half the
-       menu, clamped to [8, viewport - menu - 8], and top = item bottom + 8 (the ::before
-       bridge at -12px then covers the whole gap - no dead zone on the way down). Called at
-       wrapper creation, on every open (openWrap) and on resize (placeOpenNavMenus :840).
-       CSS drops translateX(-50%) from the base and open rules, keeps left:0 as fallback.
-       Pages load dist/marketing.min.css + dist/marketing-bundle.js, so node build.js ran
-       BEFORE anything was measured (first probe run still showed 640px - the stale-dist
-       trap, caught immediately).
-     - sw.js v460 -> v461 (changed shell assets css/marketing.css + js/marketing.js, both
-       bundled).
-  4. DIRECTIVE REVIEW + RESTRUCTURE (the third ask).
-     - OPEN WORK REGISTRY rewritten row by row against the code (git log, the live tracker
-       PLANNING-TODO-2026-09-03.txt, direct greps): SPRINT 1 DONE (log 2026-10-18); SPRINT 2
-       shipped G7+G1-G3 (03b671d), C4/C5b (efbbcc5, 664de52), C11 (js/calc-ai.js:249) with
-       C6 (no .bcp sticky rule in css/mmgr.css), C7 (zero class="tgl" in calculator.html),
-       X-1/X-2/X-4 (flag only at js/mmgr-state.js:343) measured still OPEN; SPRINT 3 shipped
-       G5/G6/G8, P5-P10 (b98ebde), S-2 (cd35eff), M-5, S-3/S-4/S-5 (files exist and run in
-       npm run verify) with the INP budget, the architecture survey
-       (docs/ARCHITECTURE-CANDIDATES-2026-10.html does NOT exist) and the re-audit table
-       still OPEN; PART H COMMITTED 4c012b7/b98ebde - the old MID-BUILD/UNCOMMITTED warning
-       was void (tree was clean at session start).
-     - STARTING POINT items 2-4 corrected: verify baseline fully green (the 2026-10-18
-       "verify:sw red" note was stale); tree clean; tripwire file names fixed -
-       tools/verify-gantt-export.cjs NEVER EXISTED (rule 0.6: correct the location; export
-       coverage is tools/verify-export.cjs + the G gates in qa-v11), qa-inp is EXTENDED
-       (local, baseline deliberately over budget until X-1/X-2 land).
-     - T-7 marked FIXED (668b8d9), T-8 marked partial (gate 86 hermetic; the rest of the
-       battery still leaks), the 2026-10-22 heading now says what is actually open.
-     - Byte-cap law applied: the two 2026-10-16 entries (8,049 bytes) moved verbatim into
-       docs/history/log-2026-10.md with one-line rollups left here; new status entry added.
-       Final size 39,595 / 40,960 (verify-doc-size exit 0).
-     - docs/CI-TEST-COVERAGE.md qa-full row 183/183 -> 187/187 (it was stale before this
-       session; the row now also records that gate 86 is hermetic).
+  1. STATE CHECK FIRST (the directive's own rule). Greps proved neither protection existed
+     (zero state / nonce / email_verified anywhere) and that 0027 was the next free
+     migration. BEFORE writing code I fetched Google's own JS references and confirmed both
+     parameters round-trip: `state` on OverridableTokenClientConfig AND TokenResponse
+     ("optional, not recommended" on the token UX), `nonce` on IdConfiguration. This mattered:
+     had Google not echoed `state`, enforcing it would have broken every Drive connect in
+     production - the check turned an assumption into evidence.
+  2. G-1 (Drive token state). Per-request 16-byte CSPRNG hex in module memory, passed through
+     the requestAccessToken override config; driveTokenCallback runs takeDriveState FIRST:
+     clears on any response (one use), accepts only a match under 5 minutes, otherwise
+     discards the token (no sessionStorage, no grant flag, nothing to Drive) and rejects with
+     the directive's exact plain message. Cached-token restore and the silent path make no
+     request, so they are untouched by construction.
+  3. G-2 (nonce). New GET /api/auth/nonce (Sec-Fetch-Site gate, existing authToken bucket,
+     SHA-256-only D1 storage in migration 0027_auth_nonces, 5-minute expiry, 503 rather than
+     issuing a nonce that could not validate). Client: fetch into module memory at boot,
+     apply via initialize, post with idToken, burn before the request, refetch in finally -
+     zero new storage keys. Server: email_verified must be literally true (unconditional),
+     a posted nonce must match the token claim AND win the atomic single-use DELETE
+     (race-safe, fail-closed on D1 errors). GOOGLE_NONCE_REQUIRED ships false with the flip
+     documented in wrangler.jsonc; cron sweeps dead rows on the standard 7-day cutoff.
+  4. GATES - and a dead-harness resurrection. G-2 landed in tools/verify-auth-worker.mjs as
+     14 checks (39/39 total). That harness turned out to be DEAD since the src/ split: it
+     temp-copied only worker.js, died on ERR_MODULE_NOT_FOUND, and .mjs files are invisible
+     to verify-test-registry.cjs - which is exactly how its own `me:` gate rotted unnoticed
+     (readSession grew a jti DB lookup the no-DB env could not satisfy). Repaired: cpSync of
+     src/, a DB binding, and my sweep test re-seeded inside the real 7-day window (my first
+     version seeded a 1-second-expired row and failed - the TEST was wrong, fixed the test,
+     not the code). G-1 needed a NEW harness: the directive named qa-oauth.cjs, but that file
+     is TRIAGE-red on pre-local-first unlock checks and a gate cannot ride an already-red
+     harness - tools/qa-drive-state.cjs runs cases (a)-(e) in ONE atomic evaluate per case.
+     The first cross-evaluate design produced a flaky S01 (right state refused); fixed by
+     redesigning the harness to eliminate interleaving, not by weakening the assertion. Both
+     gates wired into ci.yml (T1/T4) and registered in docs/CI-TEST-COVERAGE.md.
+  5. BATTERY + SHIP. npm run verify exit 0 (registry 116/116), qa-consent 37/37 (STORAGE-
+     INVENTORY.md git-untouched), qa-full 187/187, em-dash/emoji scan clean on every added
+     line (3 em-dashes found in new src comments and fixed BEFORE commit). Commit a371982
+     with the directive's exact 75-char subject via the commit-msg hook's own documented
+     --no-verify bypass (hook caps at 72; pre-commit had just printed T4/T5/T8/ESLint green).
+     Migration 0027 applied to REMOTE D1 BEFORE the worker deploy - ordering was a real
+     break/fix decision: new client + missing table would 401 every sign-in. (0026 had been
+     stranded pending remotely and went with it.) CI 40070987465 success with both new gates
+     executing. tools/deploy.cjs staged from $HOME/mmgr-deploy: version 76e04573 with
+     GOOGLE_NONCE_REQUIRED=false visibly in the bindings. sw v461 -> v462.
+  6. LIVE PROBES. Endpoints: nonce 200 + remote D1 row proving SHA-256-only storage with an
+     exact 5-minute expiry, garbage token 401 with and without a nonce (rollout path),
+     cross-site 403, live bundle marker, sw v462. Full qa-drive-state against PRODUCTION
+     (QA_BASE override): 9/9 - tampered, replayed, missing and stale states all refused with
+     nothing persisted; right state connects (directive probe 3, done live). New
+     tmp/probe-live-signin-e2e against production: 5/5 - the deployed page fetched a REAL
+     nonce, initialize received it, handleCredentialResponse POSTed {idToken, nonce} to the
+     real Worker, forged credential 401 with no false signed-in state. NOT automatable:
+     completing a real Google sign-in and a real Drive consent - both need the owner's Google
+     account and interactive consent, and the AI must not touch secrets/console. Recorded in
+     OWNER TO DO, honestly labeled rather than claimed green. No user-visible change, so no
+     field-guide card (per directive).
+  7. LEMONSQUEEZY (owner add-on). Evidence-first diagnosis: NO LEMONSQUEEZY_* worker secrets
+     remain (wrangler secret list re-verified), billingProvider() resolves to paddle, the LS
+     webhook branch 401s, the cron never calls LS - therefore the renewal email is
+     LemonSqueezy renewing a never-cancelled test subscription on ITS schedule; no code
+     triggers it and none can. D1: row 1 (created 2026-08-15, provably before Paddle
+     existed) VOIDED (canceled + period nulled, verified by re-read). Rows 2-7 deliberately
+     NOT mass-cancelled: provenance is indeterminate (both providers live 10-05..10-14,
+     one-row-per-owner overwrites) and they may hold the owner's REAL Paddle purchases -
+     revoking a paying customer's entitlement for a guess is the wrong trade. The 30-second
+     LS-dashboard id cross-check that resolves them is OWNER TO DO A3. The dormant LS seam in
+     src/billing.js was left in place: it is inert by construction (its own comment says
+     retirement = secret delete; the secrets are gone), and ripping it out would churn
+     billing tests for zero production effect.
 
-FILES TOUCHED
-  js/mmgr-claim.js - pushRow + wrap chunking + 7 call sites (header, weather, WBS, changes,
-    meetings, promises, Name).
-  qa-full.cjs - gate 86: worst diagnostic, hermetic long seeds (c86-long/c86-chg/c86-p with
-    their filter-out restore), noLoss assertion.
-  css/marketing.css - .nav-dd-menu drops left:50% / translateX(-50%), gains left:0 + the
-    owner-2026-10-23 comment.
-  js/marketing.js - placeNavMenu/placeOpenNavMenus, placement at creation + open + resize.
-  sw.js - v460 (claim), v461 (nav), each with its comment block.
-  CONTINUATION-DIRECTIVE.md - registry restructure, starting point corrections, T-7/T-8
-    marks, 2026-10-16 rollup, new status entry.
-  docs/history/log-2026-10.md - the two rolled-up 2026-10-16 entries.
-  docs/CI-TEST-COVERAGE.md - qa-full row to 187/187.
-  reflection.txt - this record (the 2026-10-17 session it replaced is already in
-    docs/history/reflection-ARCHIVE-2026-10-18.txt).
+LESSONS / NOTES FOR NEXT SESSION
+  - .mjs harnesses are invisible to verify-test-registry.cjs - that is how
+    verify-auth-worker.mjs died silently. Consider extending the registry scan to .mjs.
+  - Cron sweeps in this repo use a 7-day cutoff; never write a sweep test that assumes
+    immediate expiry.
+  - Cross-evaluate CDP harness state is fragile; one atomic evaluate per case is the pattern.
+  - Check GOOGLE'S OWN reference before enforcing a protocol parameter - it cost one fetch
+    and it is the difference between hardening and breaking production.
+  - OWNER TO DO is now a STANDING section in CONTINUATION-DIRECTIVE.md (LS dashboard
+    cancel/webhook/API-key + id cross-check; Google Branding + Project Checkup; real-account
+    sign-in/Drive probes). Re-read it at session start; that is where owner work lives now.
 
-VERIFICATION (all run this session)
-  - npm run verify: exit 0 three times (baseline, after the claim fix, after the nav fix).
-  - Tripwires: verify-units / verify-export (34/34) / verify-currency / verify-print-dom /
-    verify-no-weak-random / verify-doc-size - all exit 0. verify-gantt-export.cjs does not
-    exist (logged above).
-  - qa-full.cjs: 186/187 BEFORE the fix (gate 86 maxLine=644) -> 187/187 AFTER, with the
-    hermetic seeds in the document (noLoss true proves they are in).
-  - qa-marketing.cjs 20/20 (mkt-15: zero console errors across 7 pages);
-    tools/qa-marketing-layout.cjs PASS; prettier + node --check clean on every edited file;
-    eslint 0 errors (pre-commit hook ran T4/T5/T8/ESLint green on both commits).
-  - Evidence probes: tmp/claim-evidence.cjs (maxLine 92, actsContiguous true,
-    longTokenPresent true, wrapped section 7/8 output pasted in the status log) and
-    tmp/navdd-swipe-test.cjs 22/22 (real mouse: hover item -> straight swipe down ->
-    hit-tested inside the menu, menu fits viewport, no horizontal page scroll, at 1280 and
-    1024). Both run locally AND against https://mymanagerworkspace.com after deploy.
-
-SHIP
-  - Commits: 668b8d9 fix(claim) + dc141ed fix(nav) (plain Conventional Commits, no AI
-    attribution, pre-commit hook green). Push also carried the three previously unpushed
-    commits 44b9ff7/88eb5e8/cd4a649.
-  - CI: run 40052788117 SUCCESS (88/88) for the claim fix; run 40057049252 SUCCESS (88/88)
-    for the nav fix. No red run this session.
-  - Deploys (both from tools/deploy.cjs, staged to $HOME/mmgr-deploy, verify green inside,
-    "all 12 tracked deploy files byte-identical"): 7060d084-b065-4efa-8663-86af391dd150
-    (claim) then d58c81b0-8a25-4c04-bc2a-70fc8fada646 (nav).
-  - Live: sw mmgr-shell-v460 then v461; live dist/bundle.js + dist/marketing-bundle.js +
-    dist/marketing.min.css sha256 identical to local builds; the claim evidence probe and
-    the 22/22 nav swipe test both re-run against production.
-
-STILL OPEN (deliberately not touched; recorded in the directive, not guessed)
-  - 2026-10-22 sweep: T-1/T-2/T-3 gate files (verify-icons/verify-actions/verify-links do
-    not exist - measured), T-4 (the same 3 redundant data-action attributes), T-5 (uncapped
-    request.json() reads), T-6 (client-code lookup timing has no gate; the other T-6 items
-    are covered by qa-auth-limits / qa-team-rbac / qa-client-codes / qa-api-keys), T-8
-    (per-gate snapshot/restore beyond gate 86).
-  - Registry: SPRINT 2 C6/C7/X-1/X-2/X-4 + G4/M-3/M-4/M-6 state checks; SPRINT 3 INP budget,
-    architecture survey, sections 4-8 re-audit table, S-6 relay burst = state check.
-
-LESSONS
-  - Hermetic-first is what made T-7 diagnosable: fresh seed = 89 vs in-sequence = 644 told
-    us in one run that the gate was sound and the defect was real state. A gate result you
-    cannot reproduce alone is a clue, not a verdict.
-  - When a wrap helper silently truncates, the line-length gate keeps passing (shorter
-    lines!) - noLoss contiguity is the assertion that catches the opposite failure.
-  - Measure BOTH rects before touching a positioning rule: the 393px figure made the nav
-    fix objective, and the same numbers became the regression assertion.
-  - This directive's own tripwire list named a file that never existed
-    (tools/verify-gantt-export.cjs). Rule 0.6 applies to the directive itself: correct the
-    recorded location, do not trust the premise.
-  - Stale dist bit once (first nav probe still showed left:640px after the CSS edit):
-    pages load dist/, so build before measuring, every time.
+LIMITATIONS (honest)
+  - Real Google sign-in and real Drive connect are NOT proven end-to-end (owner-account
+    step, OWNER TO DO B3).
+  - cloud_subscriptions rows 2-7 remain unattributed pending OWNER TO DO A3.
+  - qa-inp not run (known-red by design until X-1/X-2 land).
+  - "Use secure flows" checkup outcome is unknowable until 24-48h after deploy (owner step).

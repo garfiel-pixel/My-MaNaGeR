@@ -59,7 +59,7 @@ must get the audit's own state check (rule 0.1) before anyone claims it.
 | PART I Phase 3 (purpose-built measuring forms) | PARKED by owner decision (D1, 2026-10-17) | archive, D1 block |
 | Dashboard F1 budget actual double-system finding | OPEN suggestion, owner go-ahead needed | archive 2026-09-28 feature-gap entry |
 | Matt Pocock skills install (audit section 12) | NOT STARTED (optional; skip if no network) | audit section 12 |
-| 2026-10-22 sweep tasks T-1 to T-8 | T-7 FIXED (668b8d9, see STATUS LOG). Still open, measured today: T-1/T-2/T-3 gate files do not exist, T-4 = the same 3 redundant actions, T-5 = uncapped `request.json()` reads, T-6 mostly covered by CI gates (qa-auth-limits, qa-team-rbac, qa-client-codes, qa-api-keys) with client-code lookup timing not covered, T-8 open except gate 86 | audit 2026-10-22 block below |
+| 2026-10-22 sweep tasks T-1 to T-8 | T-1/T-2/T-3 GATES SHIPPED + T-4 CLEANUP DONE (e091b77, see STATUS LOG): tools/verify-{icons,actions,links}.cjs registered and wired as ci.yml T1 steps, each proven to bite 6/6. T-7 FIXED (668b8d9). Still open: T-5 = uncapped `request.json()` reads, T-6 mostly covered by CI gates (qa-auth-limits, qa-team-rbac, qa-client-codes, qa-api-keys) with client-code lookup timing not covered, T-8 open except gate 86 | audit 2026-10-22 block below |
 | IMPROVEMENT-DIRECTIVE-2026-10-22 (SEC / MKT / LEG / UX / ENG review waves) | OPEN - only docs edits have landed on it (88eb5e8, cd4a649); per-item wave status = state check | `IMPROVEMENT-DIRECTIVE-2026-10-22.md` |
 | GOOGLE SIGN-IN SECURITY GAPS directive 2026-10-23 (G-1 state, G-2 nonce, G-3 battery) | DONE - a371982, CI 40070987465 green with the 2 NEW gates it added (T1 verify-auth-worker 39/39, T4 qa-drive-state 9/9), migration 0027 applied remote BEFORE deploy, deployed 76e04573, live-probed (state gate 9/9 + sign-in e2e 5/5 on production). Real-account sign-in / Drive consent + Google console items = OWNER TO DO | STATUS LOG 2026-10-24 |
 
@@ -67,8 +67,8 @@ must get the audit's own state check (rule 0.1) before anyone claims it.
 
 1. Read this file, then `AUDIT-DIRECTIVE-2026-10-18.md`. SPRINT 1 is DONE - work the
    open S2/S3 remainder named in the registry (C6, C7, X-1/X-2/X-4, INP, arch survey).
-2. Run `npm run verify` first; baseline 2026-10-23: EVERYTHING green (exit 0,
-   registry 115/115, qa-full 187/187, sw shell v461).
+2. Run `npm run verify` first; baseline 2026-10-24: EVERYTHING green (exit 0,
+   registry 119/119, qa-full 187/187, sw shell v463).
 3. Working tree was CLEAN at the 2026-10-23 session start - Part H landed in
    4c012b7/b98ebde on 10-19 to 10-21, so the old "20 modified files" warning is
    void and audit task P1 is unblocked.
@@ -99,6 +99,8 @@ older entries (full text in `docs/history/log-2026-10.md` / `log-2026-09.md`):
 - 2026-09-28 (x3): calculator redesign wave (uncommitted), feature-gap audit (suggestions),
   kanban/gantt/geo defect wave (v328) plus rate-freedom and F4 calculator waves.
 - Before that: 210 entries archived under `docs/history/log-2026-08.md` and `log-2026-09.md`.
+
+**2026-10-24 (same session, third task): T-1/T-2/T-3 GATES SHIPPED - THE F1/F2/F3 BUG CLASSES CANNOT SHIP AGAIN (e091b77).** Owner order: build the sprite / action-contract / links gates from the 2026-10-22 audit. What landed: (1) `tools/verify-icons.cjs` - ARM 0 sprite integrity (file exists, >= 60 symbols, NO duplicate id: the shadowed second `i-palette` deleted), ARM 1 every literal `path.svg#id` in served html/js resolves (single- or double-quoted inside backticks), a `path#prefix` awaiting concatenation may live only inside the gate-verified `ico()` helper, ARM 2 the two dynamic builders (`ico()` in calc-ai.js, `renderGroup()` in mmgr-render.js) through a quote-aware argument parser - a non-literal arg fails loudly, never skips. (2) `tools/verify-actions.cjs` - per page every data-action answered by that page's dispatcher map (ACTION_MAP / DASH_ACTION_MAP / ADMIN_ACTION_MAP / ACTIONS) or a `[data-action]` selector or a dispatch literal, markup and templates, comments stripped, deliberately no suppression list. (3) `tools/verify-links.cjs` - every relative href exists (Worker routes /, /api, /auth, /cdn-cgi exempt) and every `#frag` / `page.html#frag` resolves to an id that exists STATICALLY in the target page. T-4 CLOSED BY REMOVAL: the survey found 4 unanswered attrs (audit said 3) - photos-upload, photos-cancel (project.html), calcDocType, calcCashMode (calculator.html) - their id listeners do the work. Scope mirrors .assetsignore (tools/, qa-*, images/pages/*-source.html and the monolith snippet excluded; the monolith is self-consistent, owner may retire it). TEETH: each gate injected with its bug class 6/6 bit and restored green (missing symbol, ghost ref, ghost concat, ghost ico(), duplicate id, variable arg; unanswered attr in markup and in a template; F3 replay, missing file, dead same-page + cross-page anchors, dead absolute path). Registered in docs/CI-TEST-COVERAGE.md (registry 119/119) + three ci.yml T1 steps; sw v463 (two HTML pages + the sprite are shell assets). GATES: `npm run verify` exit 0 (unit 134/134), qa-full **187/187**, `node build.js` green, prettier/eslint clean.
 
 **2026-10-24 — Session: GOOGLE SIGN-IN SECURITY GAPS SHIPPED (a371982, CI green with 2 new gates, deployed 76e04573, live-probed), LEMONSQUEEZY DIAGNOSED AND ITS FIRST ROW VOIDED.** The 2026-10-23 directive executed in full:
 
@@ -266,25 +268,28 @@ FOUND AND FIXED THIS PASS (shipped with the S-6.3b commit):
   `pricing.html#company`; pricing.html had no `#company` id, so the buyer
   landed at the top of the page. `id="company"` added to the plan card.
 
-TASKS (T-7 CLOSED 2026-10-23, 668b8d9; everything below still open, priority order):
-- T-1 GATE THE SPRITE. `tools/verify-icons.cjs`: every `mmgr-icons.svg#i-*`
-  reference in served HTML and in `js/` must resolve to a `<symbol>`. F1 was
-  invisible to every existing gate; this closes the class. Register in
-  docs/CI-TEST-COVERAGE.md + ci.yml T1.
-- T-2 GATE THE ACTION CONTRACT. `tools/verify-actions.cjs`: per page, every
-  `data-action` must appear in that page's own map (project.html ->
-  ACTION_MAP in mmgr-app.js, app.html -> DASH_ACTION_MAP in its inline script,
-  admin.html -> ADMIN_ACTION_MAP, calculator.html -> its ACTIONS map). F2
-  survived three waves of QA because nothing checked the markup against the
-  map. Static arm only; the live click paths stay with qa-full.
-- T-3 GATE INTERNAL LINKS. `tools/verify-links.cjs`: every relative href must
-  exist and every `page.html#anchor` must resolve to an id in that page. F3
-  passed every gate we have.
-- T-4 REDUNDANT ACTIONS (cleanup, no user impact). `calcDocType`,
-  `calcCashMode` (calculator.html) and `photos-upload` (project.html) carry
-  data-action but have no map entry; they work because their element ids have
-  their own listeners. Remove the attribute or add the entry - pick one and
-  make it uniform, so T-2 can be enforced without a suppression list.
+TASKS (T-7 CLOSED 2026-10-23, 668b8d9; T-1/T-2/T-3/T-4 CLOSED 2026-10-24,
+  e091b77 - all four shipped, teeth-tested, registered and wired in ci.yml T1;
+  everything below still open, priority order):
+- T-1 GATE THE SPRITE (CLOSED 2026-10-24, e091b77). `tools/verify-icons.cjs`:
+  every `mmgr-icons.svg#i-*` reference in served HTML and in `js/` resolves to
+  a `<symbol>`, plus sprite integrity (no duplicate ids), quote-aware dynamic
+  ico()/renderGroup() call-site checks, and non-literal construction failing
+  loudly. Registered in docs/CI-TEST-COVERAGE.md + ci.yml T1.
+- T-2 GATE THE ACTION CONTRACT (CLOSED 2026-10-24, e091b77).
+  `tools/verify-actions.cjs`: per page, every `data-action` in markup and in
+  templates is answered by that page's own map (project.html -> ACTION_MAP,
+  app.html -> DASH_ACTION_MAP, admin.html -> ADMIN_ACTION_MAP, calculator.html
+  -> ACTIONS), a `[data-action]` selector or a dispatch literal. Static arm
+  only; the live click paths stay with qa-full.
+- T-3 GATE INTERNAL LINKS (CLOSED 2026-10-24, e091b77).
+  `tools/verify-links.cjs`: every relative href exists and every
+  `page.html#anchor` resolves to a static id in that page (Worker routes
+  exempt). F3 passed every gate we had; now it cannot.
+- T-4 REDUNDANT ACTIONS (CLOSED 2026-10-24, e091b77). All FOUR unanswered
+  attrs removed rather than whitelisted - photos-upload AND photos-cancel
+  (project.html), calcDocType and calcCashMode (calculator.html) - so T-2 runs
+  with no suppression list. Their element-id listeners do the work.
 - T-5 REQUEST-BODY CAPS. 24 handlers call `await request.json()` directly;
   only the project-data paths use `readCloudBody` (8 MiB streaming cap,
   src/lib/http.js). Public ones (contact, reviews, auth, /api/ai/chat) rely on

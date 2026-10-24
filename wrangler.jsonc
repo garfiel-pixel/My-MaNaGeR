@@ -90,7 +90,14 @@
     // separate: PADDLE_PRICE_ID and PADDLE_API_KEY must come from the SAME one
     // this names. Set it to "sandbox" while testing, back to "live" to sell.
     // Never a secret - it selects a hostname, it is not a credential.
-    "PADDLE_ENV": "live"
+    "PADDLE_ENV": "live",
+    // G-2 (DIRECTIVE: GOOGLE SIGN-IN SECURITY GAPS, 2026-10-23): flip to
+    // true only after the fleet has re-fetched the nonce-sending client
+    // (js/mmgr-google-auth.js, sw bump shipped); while false a cached old
+    // page can still sign in without a nonce, but any request that DOES
+    // carry a nonce must pass every check (single-use row + payload match +
+    // email_verified). Rollback for a broken sign-in: set it back to false.
+    "GOOGLE_NONCE_REQUIRED": false
   },
   // Service binding: the Presence DO calls back to the Worker for code-based
   // auth validation (codes must not appear in the WebSocket URL query string).

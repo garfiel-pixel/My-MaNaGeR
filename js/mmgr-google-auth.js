@@ -48,6 +48,66 @@ var MMGR = window.MMGR || {};
   let _popupWarnShown = false; // BUG-2: popup-blocked warning shown at most once
   let _user = null; // signed-in operator (session restore, Google, or email) , display-only, never gates anything
 
+  // G-2 (DIRECTIVE: GOOGLE SIGN-IN SECURITY GAPS, 2026-10-23): Sign in with
+  // Google now carries a single-use nonce. Google's IdConfiguration documents
+  // `nonce` as "a random string used by the ID token to prevent replay
+  // attacks"; the Worker refuses a token whose nonce claim does not match a
+  // live row in auth_nonces (migration 0027). The nonce is fetched from
+  // GET /api/auth/nonce into MODULE MEMORY ONLY , no localStorage /
+  // sessionStorage / cookie key (the consent gate qa-consent phase S fails on
+  // any key not in docs/STORAGE-INVENTORY.md, and a nonce must not outlive
+  // the page anyway). It is refreshed after every sign-in attempt and
+  // re-applied through initialize() (a config update; the rendered button
+  // keeps working, no re-render).
+  const ID_NONCE_TTL_MS = 5 * 60 * 1000;
+  let _idNonce = '';
+  let _idNonceAt = 0;
+
+  function freshIdNonce() {
+    return _idNonce && Date.now() - _idNonceAt <= ID_NONCE_TTL_MS ? _idNonce : '';
+  }
+
+  // Push the current nonce into the GIS config. initialize() may be called
+  // again to update config; nonce is only included when fresh, so a stale
+  // fetch degrades to the old nonceless request (which the flag-off server
+  // still accepts) instead of sending an expired nonce.
+  function applyGisNonce() {
+    if (!gisReady()) {
+      return;
+    }
+    try {
+      const cfg = { client_id: CLIENT_ID, callback: handleCredentialResponse };
+      const n = freshIdNonce();
+      if (n) {
+        cfg.nonce = n;
+      }
+      window.google.accounts.id.initialize(cfg);
+    } catch (e) {
+      /* zero-throw */
+    }
+  }
+
+  function fetchSignInNonce() {
+    try {
+      fetch('/api/auth/nonce', { credentials: 'same-origin' })
+        .then(function (r) {
+          return r && r.ok ? r.json() : null;
+        })
+        .then(function (j) {
+          if (j && typeof j.nonce === 'string' && /^[0-9a-f]{32,128}$/.test(j.nonce)) {
+            _idNonce = j.nonce;
+            _idNonceAt = Date.now();
+            applyGisNonce();
+          }
+        })
+        .catch(function () {
+          /* offline or nonce route missing , sign-in still works nonceless */
+        });
+    } catch (e) {
+      /* zero-throw */
+    }
+  }
+
   function $(id) {
     return document.getElementById(id);
   }
@@ -126,16 +186,16 @@ var MMGR = window.MMGR || {};
       if (!gisReady()) {
         return false;
       }
-      window.google.accounts.id.initialize({
-        client_id: CLIENT_ID,
-        callback: handleCredentialResponse
-      });
+      // G-2: initialize through applyGisNonce so the config carries a fresh
+      // nonce when one is available (fetched below, re-applied on arrival).
+      applyGisNonce();
       const host = $('google-signin-button');
       if (host) {
         window.google.accounts.id.renderButton(host, gisButtonOptions(host));
         installPopupBlockDetector();
       }
       _gisInit = true;
+      fetchSignInNonce();
       return true;
     } catch (e) {
       if (window.console && window.console.warn) {
@@ -507,12 +567,21 @@ var MMGR = window.MMGR || {};
     if (!credential) {
       return;
     }
+    // G-2: post the nonce that was live when GIS composed this credential.
+    // It is cleared BEFORE the request (single use) and re-fetched in the
+    // finally so the next attempt starts fresh. An empty nonce omits the key
+    // entirely , the cached-old-page shape the flag-off server still accepts.
+    const posted = freshIdNonce();
+    _idNonce = '';
+    _idNonceAt = 0;
     try {
       const res = await fetch('/api/auth/google', {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken: credential })
+        body: JSON.stringify(
+          posted ? { idToken: credential, nonce: posted } : { idToken: credential }
+        )
       });
       let data = null;
       try {
@@ -537,6 +606,9 @@ var MMGR = window.MMGR || {};
       }
     } catch (e) {
       showButton();
+    } finally {
+      // G-2: every attempt burns the nonce it used - fetch the next one now.
+      fetchSignInNonce();
     }
   }
 
@@ -1653,13 +1725,58 @@ var MMGR = window.MMGR || {};
     return null;
   }
 
+  // G-1 (DIRECTIVE: GOOGLE SIGN-IN SECURITY GAPS, 2026-10-23): the OAuth2
+  // token response must echo the per-request `state` generated in
+  // requestDriveToken , same value, under 5 minutes old , or the token is
+  // discarded and nothing is written to Drive. Module memory only, single
+  // use (cleared the moment any response arrives). Google's oauth2 JS
+  // reference documents `state` on OverridableTokenClientConfig AND on
+  // TokenResponse ("the string value that your application uses to maintain
+  // state between your authorization request and the response"), so the
+  // popup flow round-trips it; Google labels it optional for the token UX,
+  // we enforce it.
+  const DRIVE_STATE_TTL_MS = 5 * 60 * 1000;
+  let _driveState = '';
+  let _driveStateAt = 0;
+
+  function newDriveState() {
+    const b = crypto.getRandomValues(new Uint8Array(16));
+    let hex = '';
+    for (let i = 0; i < b.length; i++) {
+      hex += b[i].toString(16).padStart(2, '0');
+    }
+    _driveState = hex;
+    _driveStateAt = Date.now();
+    return hex;
+  }
+
+  // Always clears (one use); answers whether THIS response carried the live
+  // state. Missing / mismatched / stale all answer false.
+  function takeDriveState(respState) {
+    const stored = _driveState;
+    const at = _driveStateAt;
+    _driveState = '';
+    _driveStateAt = 0;
+    if (!stored || typeof respState !== 'string' || respState !== stored) {
+      return false;
+    }
+    return at > 0 && Date.now() - at <= DRIVE_STATE_TTL_MS;
+  }
+
   function driveTokenCallback(resp) {
+    // G-1: validate BEFORE anything is persisted; a state failure discards
+    // the token outright (no sessionStorage, no grant flag, no Drive write).
+    const stateOk = takeDriveState(resp && resp.state);
     const w = _tokenWaiter;
     _tokenWaiter = null;
     if (!w) {
       return;
     }
     if (resp && resp.access_token) {
+      if (!stateOk) {
+        w.reject(new Error('could not connect Google Drive, try again'));
+        return;
+      }
       persistDriveToken(resp.access_token, Date.now() + (resp.expires_in || 3600) * 1000 - 30000); // 30s safety margin
       try {
         localStorage.setItem(DRIVE_GRANT_KEY, '1');
@@ -1709,10 +1826,15 @@ var MMGR = window.MMGR || {};
     }
     return new Promise(function (resolve, reject) {
       _tokenWaiter = { resolve: resolve, reject: reject };
+      // G-1: a fresh 16-byte CSPRNG state rides EVERY token request (single
+      // use, enforced in driveTokenCallback), consent pops included.
+      const st = newDriveState();
       try {
-        client.requestAccessToken(forceConsent ? { prompt: 'consent' } : {});
+        client.requestAccessToken(forceConsent ? { prompt: 'consent', state: st } : { state: st });
       } catch (e) {
         _tokenWaiter = null;
+        _driveState = '';
+        _driveStateAt = 0;
         reject(e);
       }
     });

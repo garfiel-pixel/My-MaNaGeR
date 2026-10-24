@@ -276,7 +276,20 @@
 // Changed shell assets: css/marketing.css, js/marketing.js (both bundled into
 // dist/marketing.min.css + dist/marketing-bundle.js, rebuilt) - hence this
 // bump. No inline script added or removed, so the CSP hash set is unchanged.
-const CACHE = 'mmgr-shell-v461';
+// v462 - GOOGLE SIGN-IN SECURITY GAPS (G-1 state + G-2 nonce, 2026-10-24).
+// js/mmgr-google-auth.js ships two new in-memory-only protections: (1) every
+// Drive OAuth2 token request carries a fresh 16-byte `state` and the callback
+// accepts only a matching, under-5-minutes, already-unused state (the token is
+// discarded with the plain 'could not connect Google Drive, try again'
+// message otherwise), and (2) Sign in with Google fetches a single-use nonce
+// from GET /api/auth/nonce before each sign-in and posts it with the idToken
+// (server gate GOOGLE_NONCE_REQUIRED ships OFF for safe rollout). Both values
+// live in module memory only - no new localStorage/sessionStorage/cookie key,
+// so docs/STORAGE-INVENTORY.md is unchanged. The module is a shell asset on
+// every auth page, hence this bump. Server side (worker routes + migration
+// 0027 auth_nonces) is not a shell asset. No inline script added or removed,
+// so the CSP hash set is unchanged.
+const CACHE = 'mmgr-shell-v462';
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new
 // 'JIC rate book' choice on calculator.html) prices ANY shipped book row as

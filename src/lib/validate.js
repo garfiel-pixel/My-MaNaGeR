@@ -16,7 +16,7 @@
    and constraints. No external dependencies.
    ============================================================ */
 
-import { json } from './http.js';
+import { json, readJsonBody } from './http.js';
 
 /* ============================================================
    CORE VALIDATORS
@@ -177,12 +177,14 @@ export function validateObject(value, schema = {}) {
  * @returns {object} - { ok: true, data: {...} } or { error: Response }
  */
 export async function validateBody(request, schema = {}, maxSize = 1048576) {
-  let body;
-  try {
-    body = await request.json();
-  } catch (e) {
+  const read = await readJsonBody(request, maxSize);
+  if (read.tooLarge) {
+    return { error: errorResponse('body too large', 413) };
+  }
+  if (read.bad) {
     return { error: errorResponse('invalid JSON body', 400) };
   }
+  const body = read.body;
 
   if (typeof body !== 'object' || body === null || Array.isArray(body)) {
     return { error: errorResponse('body must be a JSON object', 400) };

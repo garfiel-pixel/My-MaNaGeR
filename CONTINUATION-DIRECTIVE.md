@@ -59,7 +59,7 @@ must get the audit's own state check (rule 0.1) before anyone claims it.
 | PART I Phase 3 (purpose-built measuring forms) | PARKED by owner decision (D1, 2026-10-17) | archive, D1 block |
 | Dashboard F1 budget actual double-system finding | OPEN suggestion, owner go-ahead needed | archive 2026-09-28 feature-gap entry |
 | Matt Pocock skills install (audit section 12) | NOT STARTED (optional; skip if no network) | audit section 12 |
-| 2026-10-22 sweep tasks T-1 to T-8 | T-7 FIXED (668b8d9, see STATUS LOG). Still open, measured today: T-1/T-2/T-3 gate files do not exist, T-4 = the same 3 redundant actions, T-5 = uncapped `request.json()` reads, T-6 mostly covered by CI gates (qa-auth-limits, qa-team-rbac, qa-client-codes, qa-api-keys) with client-code lookup timing not covered, T-8 open except gate 86 | audit 2026-10-22 block below |
+| 2026-10-22 sweep tasks T-1 to T-8 | T-1/T-2/T-3 GATES SHIPPED + T-4 CLEANUP DONE (e091b77) + T-5 BODY CAPS DONE (9a701a4, all 24 request.json() reads through readJsonBody, unit 144/144). T-7 FIXED (668b8d9). Still open: T-6 mostly covered by CI gates (qa-auth-limits, qa-team-rbac, qa-client-codes, qa-api-keys) with client-code lookup timing not covered, T-8 open except gate 86 | audit 2026-10-22 block below |
 | IMPROVEMENT-DIRECTIVE-2026-10-22 (SEC / MKT / LEG / UX / ENG review waves) | OPEN - only docs edits have landed on it (88eb5e8, cd4a649); per-item wave status = state check | `IMPROVEMENT-DIRECTIVE-2026-10-22.md` |
 | GOOGLE SIGN-IN SECURITY GAPS directive 2026-10-23 (G-1 state, G-2 nonce, G-3 battery) | DONE - a371982, CI 40070987465 green with the 2 NEW gates it added (T1 verify-auth-worker 39/39, T4 qa-drive-state 9/9), migration 0027 applied remote BEFORE deploy, deployed 76e04573, live-probed (state gate 9/9 + sign-in e2e 5/5 on production). Real-account sign-in / Drive consent + Google console items = OWNER TO DO | STATUS LOG 2026-10-24 |
 
@@ -67,8 +67,8 @@ must get the audit's own state check (rule 0.1) before anyone claims it.
 
 1. Read this file, then `AUDIT-DIRECTIVE-2026-10-18.md`. SPRINT 1 is DONE - work the
    open S2/S3 remainder named in the registry (C6, C7, X-1/X-2/X-4, INP, arch survey).
-2. Run `npm run verify` first; baseline 2026-10-23: EVERYTHING green (exit 0,
-   registry 115/115, qa-full 187/187, sw shell v461).
+2. Run `npm run verify` first; baseline 2026-10-24: EVERYTHING green (exit 0,
+   registry 119/119, qa-full 187/187, sw shell v463).
 3. Working tree was CLEAN at the 2026-10-23 session start - Part H landed in
    4c012b7/b98ebde on 10-19 to 10-21, so the old "20 modified files" warning is
    void and audit task P1 is unblocked.
@@ -85,8 +85,11 @@ must get the audit's own state check (rule 0.1) before anyone claims it.
 
 ## STATUS LOG (newest entries kept here; full history in `docs/history/log-YYYY-MM.md`)
 
-Newest verbatim entries kept: 2026-10-23 (x1). One-line rollup of the next
+Newest verbatim entries kept: 2026-10-24 (x3). One-line rollup of the next
 older entries (full text in `docs/history/log-2026-10.md` / `log-2026-09.md`):
+- 2026-10-23 (x1): owner bugs - claim-pack print wrap (668b8d9, gate 86 hermetic,
+  sw v460) + nav dropdowns under their own item (dc141ed, sw v461), CI green twice,
+  deployed twice, directive restructured; full text archived to log-2026-10.md.
 - 2026-10-17 (x3): welding units money fix + AI rate grounding (e158134 + c6b25a1, v9ff0ac33);
   H7.1 corrected + PART I phase 1 (263ab9a, b4f5763, 621e3169); PART I phase 2 JIC picker
   (822ffb5, af33909c).
@@ -100,6 +103,10 @@ older entries (full text in `docs/history/log-2026-10.md` / `log-2026-09.md`):
   kanban/gantt/geo defect wave (v328) plus rate-freedom and F4 calculator waves.
 - Before that: 210 entries archived under `docs/history/log-2026-08.md` and `log-2026-09.md`.
 
+**2026-10-24 (same session, fourth task): T-5 REQUEST-BODY CAPS CLOSED (9a701a4).** The audit's 24 uncapped `await request.json()` reads all now route through `readJsonBody(request, maxBytes)` (src/lib/http.js): Content-Length checked when the client sends it, then a running byte budget on the stream - so a chunked body that omits Content-Length cannot slip past, and a large body is never parsed for free behind a rate limit that only counts requests. What was found while converting: readCloudBody keeps its name + 8 MiB contract as a one-line delegate (project-data paths behaviorally unchanged); TWO duplicate local readers existed (reviews.js readReviewBody at 8 KiB, ai-proxy.js readAiBody at 256 KiB) and were deleted in favor of the shared helper; validateBody's documented maxSize parameter was DEAD - never referenced - and now enforces (413 over cap); calc-workspace (4 MB) and cloud prefs (2 KB) had Content-Length-ONLY pre-checks that a chunked request bypasses, both stream-backed now; client-codes had a bare await that turned malformed JSON into a thrown error, now a clean 400. Caps are payload-sized per endpoint: 8192 for code/email payloads (session x9, recovery, admin-code, team x3, client-codes, presence-auth), 16384 for google sign-in (id-token JWT) and contact (2000-char message is up to 8 KB in UTF-8), prefs 2048, workspace 4000000. Every endpoint's existing error message/413 wording was preserved. GATES: `npm run verify` exit 0 (unit **144/144** - 10 NEW cases in test/body-cap.test.mjs: CL reject, chunked no-CL arm, exact-cap boundary, multi-byte byte-counting, malformed/no-body, the 8 MiB delegate, validateBody's cap), qa-email-auth **83/83** (register/login/prefs through the real Worker), qa-full **187/187**, prettier/eslint clean. No sw bump (src/ + test/ are not served assets). The 2026-10-23 verbatim entry above was rolled into docs/history/log-2026-10.md in this change to stay under verify-doc-size's 40,960-byte cap.
+
+**2026-10-24 (same session, third task): T-1/T-2/T-3 GATES SHIPPED - THE F1/F2/F3 BUG CLASSES CANNOT SHIP AGAIN (e091b77).** Owner order: build the sprite / action-contract / links gates from the 2026-10-22 audit. What landed: (1) `tools/verify-icons.cjs` - ARM 0 sprite integrity (file exists, >= 60 symbols, NO duplicate id: the shadowed second `i-palette` deleted), ARM 1 every literal `path.svg#id` in served html/js resolves (single- or double-quoted inside backticks), a `path#prefix` awaiting concatenation may live only inside the gate-verified `ico()` helper, ARM 2 the two dynamic builders (`ico()` in calc-ai.js, `renderGroup()` in mmgr-render.js) through a quote-aware argument parser - a non-literal arg fails loudly, never skips. (2) `tools/verify-actions.cjs` - per page every data-action answered by that page's dispatcher map (ACTION_MAP / DASH_ACTION_MAP / ADMIN_ACTION_MAP / ACTIONS) or a `[data-action]` selector or a dispatch literal, markup and templates, comments stripped, deliberately no suppression list. (3) `tools/verify-links.cjs` - every relative href exists (Worker routes /, /api, /auth, /cdn-cgi exempt) and every `#frag` / `page.html#frag` resolves to an id that exists STATICALLY in the target page. T-4 CLOSED BY REMOVAL: the survey found 4 unanswered attrs (audit said 3) - photos-upload, photos-cancel (project.html), calcDocType, calcCashMode (calculator.html) - their id listeners do the work. Scope mirrors .assetsignore (tools/, qa-*, images/pages/*-source.html and the monolith snippet excluded; the monolith is self-consistent, owner may retire it). TEETH: each gate injected with its bug class 6/6 bit and restored green (missing symbol, ghost ref, ghost concat, ghost ico(), duplicate id, variable arg; unanswered attr in markup and in a template; F3 replay, missing file, dead same-page + cross-page anchors, dead absolute path). Registered in docs/CI-TEST-COVERAGE.md (registry 119/119) + three ci.yml T1 steps; sw v463 (two HTML pages + the sprite are shell assets). GATES: `npm run verify` exit 0 (unit 134/134), qa-full **187/187**, `node build.js` green, prettier/eslint clean.
+
 **2026-10-24 — Session: GOOGLE SIGN-IN SECURITY GAPS SHIPPED (a371982, CI green with 2 new gates, deployed 76e04573, live-probed), LEMONSQUEEZY DIAGNOSED AND ITS FIRST ROW VOIDED.** The 2026-10-23 directive executed in full:
 
 1. **STATE CHECK FIRST (as ordered).** Neither gap existed: zero `state` client-side, zero `state`/`nonce`/`email_verified` server-side; next free migration was 0027. Google's own JS references were checked before writing code: `state` is documented on both OverridableTokenClientConfig AND TokenResponse ("optional, not recommended" on the token UX - it round-trips, so enforcing it cannot break the popup), and `nonce` is a documented IdConfiguration field ("a random string used by the ID token to prevent replay attacks").
@@ -111,12 +118,7 @@ older entries (full text in `docs/history/log-2026-10.md` / `log-2026-09.md`):
 7. **LIVE PROBES (mymanagerworkspace.com).** Marker probe green at sw v462. /api/auth/nonce -> 200 + 32-hex; the remote D1 row proves SHA-256-only storage with an exact 5-minute expiry. Garbage idToken -> 401 with AND without a nonce (rollout path), cross-site nonce -> 403, live app-bundle carries the nonce client. Full qa-drive-state run against PRODUCTION (QA_BASE=https://mymanagerworkspace.com) -> 9/9 (tampered, replayed, missing and stale states all refused with nothing persisted; right state connects). New tmp/probe-live-signin-e2e against production -> 5/5: the deployed page fetched a REAL nonce, initialize received it, handleCredentialResponse POSTed {idToken, nonce} to the real Worker, forged credential -> 401 with no false signed-in state. NOT automatable from here: completing a REAL Google sign-in and a REAL Drive consent - both need the owner's Google account and interactive consent; recorded in OWNER TO DO. No user-visible change, so no field-guide card (per directive).
 8. **LEMONSQUEEZY (owner add-on same session: LS emailed "your subscription will renew" on a test address).** Diagnosis with evidence: NOTHING in the current code calls LemonSqueezy - `billingProvider()` resolves to `paddle` (all Paddle secrets set), the LS webhook branch 401s because the four LEMONSQUEEZY_* worker secrets are GONE (wrangler secret list re-verified this session), the cron never calls LS, and checkout is Paddle. The renewal email is LemonSqueezy renewing a subscription created during testing on its own schedule; no code triggers it. D1: row 1 (created 2026-08-15, provably before Paddle existed) VOIDED (status=canceled, current_period_end nulled, verified by re-read). Rows 2-7 (created 10-05 to 10-14, both providers live, one-row-per-owner overwrites) cannot be attributed from here - the OWNER TO DO carries the 30-second LS-dashboard id cross-check. The dormant LS seam in src/billing.js was left in place: it is inert by construction (its own comment: retirement = secret delete; secrets deleted), so ripping it out would churn billing tests for zero production effect.
 
-**2026-10-23 — Session: TWO OWNER-REPORTED BUGS FIXED AND LIVE (668b8d9 claim pack, dc141ed nav dropdowns), CI GREEN TWICE, DEPLOYED TWICE, DIRECTIVE RESTRUCTURED.** Owner order: dig for real bugs, fix, commit, deploy, then review this file - its outstanding tasks included - and restructure it against the code base.
-
-1. **DIG (evidence before claims).** The 2026-10-22 sweep probes re-run (`tmp/audit-{links,aria,actions2,wiring,css-classes}.cjs`): zero NEW findings - 0 broken aria references, 0 dead anchors, links only the `?v=` probe false positive plus the non-served monolith note file, actions only the documented T-4 trio. Baseline `npm run verify` exit 0 (registry 115/115, 129 tests). Tripwires run locally, all exit 0: T1 units, T2 export (34/34), T3 currency, T4 print-dom, T5 no-weak-random, T8 doc-size. One live failing gate and one owner complaint came out of the dig.
-2. **CLAIM PACK PRINT WRAP (T-7, closed).** `claimPackText` (js/mmgr-claim.js:420) pushed section 7 meeting rows UNWRAPPED - a real kickoff meeting's actionItems measures 644 chars on one line - and sections 4, 6, 8 plus the Project/Name header lines carried the same class, so any user text over 92 chars broke the export's own print contract (qa-full 86, qa-full.cjs:2142: maxLine < 100). Hermetic first, as ordered: fresh seed on a fresh page = maxLine 89, so the gate was sound and the failure was real state (the kickoff meeting the battery runs lands inside gate 86's window). Second defect found while fixing: `wrap()` sliced over-long unbreakable tokens to `width` and DROPPED the tail - silent text loss in a document meant for counsel. Fix: `pushRow(head, text, cont)` (js/mmgr-claim.js:484) wraps every unbounded line at 92 with a hanging indent - header labels, weather task lists under their 56-char column, WBS lines, change lines, meeting lines, promise lines - table rows keep their pad() alignment, and `wrap()` now splits long tokens instead of truncating. Gate 86 is hermetic: it seeds its own long meeting/change/promise rows (including a 132-char unbreakable drawing reference) inside its own window, keeps the 100-char assertion, adds `noLoss` (whitespace-stripped contiguity of both seed records, so truncation can never pass) and a `worst` diagnostic. `sw.js` v459 -> v460. GATES: qa-full **187/187**; `npm run verify` exit 0; tripwires exit 0; `tmp/claim-evidence.cjs` measured maxLine 92, actsContiguous true, longTokenPresent true - locally AND on production. SHIP: commit `668b8d9`, CI `40052788117` SUCCESS 88/88, deploy `7060d084-b065-4efa-8663-86af391dd150`, live sw v460, live dist/bundle.js sha256 identical to local.
-3. **NAV DROPDOWNS UNDER THEIR OWN ITEM (owner complaint, same session).** The hover menu was `position:fixed; left:50%; translateX(-50%)` - centred in the VIEWPORT: measured 393px right of the hovered Features item at 1280 wide (menu 290-990, item centre 247), so a straight swipe down MISSED the box, hit the next nav item and swapped its menu in - the tab switched under the pointer. `placeNavMenu()` (js/marketing.js:823) now writes left = item centre - half the menu clamped to [8, viewport - menu - 8] and top = item bottom + 8 (the `::before` bridge covers the whole gap, no dead zone), re-placed on every open and on resize (`placeOpenNavMenus`, js/marketing.js:840); `.nav-dd-menu` (css/marketing.css:843) drops the translateX and keeps left:0 as fallback. GATES: real-mouse `tmp/navdd-swipe-test.cjs` **22/22** at 1280 and 1024 - menu spans the item, fits the viewport, no page horizontal overflow, swipe-down hit-tests the menu - locally AND live; `qa-marketing` 20/20; layout gate PASS; `npm run verify` exit 0; `sw.js` v461. SHIP: commit `dc141ed`, CI `40057049252` SUCCESS 88/88, deploy `d58c81b0-8a25-4c04-bc2a-70fc8fada646`, live sw v461, live marketing bundle + css sha256 identical to local.
-4. **DIRECTIVE RESTRUCTURED (the review).** OPEN WORK REGISTRY re-checked row by row against the code: SPRINT 1 DONE (log 2026-10-18); SPRINT 2 shipped G7+G1-G3, C4/C5b, C11 with C6, C7, X-1/X-2/X-4 measured still open; SPRINT 3 shipped G5/G6/G8, P5-P10, S-2, M-5, S-3/S-4/S-5 with the INP budget, the architecture survey (docs/ARCHITECTURE-CANDIDATES-2026-10.html does not exist) and the re-audit table still open; PART H COMMITTED 10-19 to 10-21 so the old MID-BUILD warning is void. STARTING POINT items 2-4 corrected (verify baseline fully green; tree clean; `verify-gantt-export.cjs` never existed - export coverage is `verify-export.cjs` plus the qa-v11 G gates; qa-inp is EXTENDED-local). T-7 marked FIXED, T-8 marked partial (gate 86 hermetic, the rest of the battery still leaks). The two 2026-10-16 entries rolled into `docs/history/log-2026-10.md` under the byte-cap law. **STILL OPEN, deliberately not touched:** T-1/T-2/T-3 gate files, T-4, T-5, the T-6 timing gate, T-8 (rest of battery), plus the registry rows above.
+**2026-10-24 (same session, owner add-on): RESEND "no-reply" WARNING FIXED (2a8f100, CI success, deployed e7096946).** Owner pasted Gemini's Resend-insights finding: the warning "Don't use 'no-reply'" fires on the FROM address. State check first: `no-reply` appears in ZERO code files - the sender came entirely from the RESEND_FROM_EMAIL secret, passed through raw by authEmailFrom (the single composition point; sendAuthEmail is the only Resend dispatch in src/). Two adjustments: (1) the SECRET re-uploaded as `My MaNaGeR Support <support@mail.mymanagerworkspace.com>` (wrangler secret put - takes effect on the already-deployed worker immediately, no deploy needed for the value itself); (2) src/lib/http.js authEmailFrom now guarantees a NAME-BACKED sender - a bare address becomes `My MaNaGeR <addr>`, an already-wrapped config passes byte-identical - pinned by NEW test/email-from.test.mjs (5 cases); .dev.vars.example documents the contract. VERIFIED: npm run verify exit 0 (unit 134/134), qa-email-auth 83/83 (its stub asserts no `from` value, so the wrap runs end-to-end through the real Worker with zero harness churn), prettier/eslint clean; commit 2a8f100, CI run 40077846954 success; deployed e7096946 via tools/deploy.cjs from $HOME/mmgr-deploy; live probe: /api/health ok, root 200, POST /api/auth/resend-verify answers the generic no-leak 200 (a real send only leaves for a registered+unverified address). No sw bump: src/ + tests are not served assets and no HTML/inline script was touched (verify:csp green inside the verify run). Owner follow-ups (insights re-check after the next send, optional reply routing) = OWNER TO DO D.
 
 ---
 
@@ -134,6 +136,11 @@ older entries (full text in `docs/history/log-2026-10.md` / `log-2026-09.md`):
 3. Real-account probes the AI cannot run (no owner credentials): on the live site, complete (a) Sign in with Google and (b) connect Google Drive. Both should finish; the tampered-state refusal is already proven on production (9/9) and the nonce round-trip is proven end-to-end (5/5).
 
 **C. Paddle subscription records (related, 2026-10-24).** Rows 2-7 of cloud_subscriptions stay untouched until A3 is answered - the owner's own Paddle purchases (if any) live there and must NOT be voided. Canceling them blindly would revoke real Paddle entitlements.
+
+**D. Resend "Don't use no-reply" warning (owner add-on 2026-10-24).**
+1. DONE by the AI: the no-reply address was the RESEND_FROM_EMAIL secret (zero `no-reply` in code) - re-uploaded as `My MaNaGeR Support <support@mail.mymanagerworkspace.com>` (live on the deployed worker immediately), and `authEmailFrom` now guarantees a name-backed sender for any future bare address (commit 2a8f100, test/email-from.test.mjs 5 cases, qa-email-auth 83/83).
+2. OWNER: re-open the Resend insights page after the next send and confirm "Don't use 'no-reply'" cleared. To force a real test send now: POST `/api/auth/resend-verify` with the test address used for signup (paloja9510@comzx.com) - generic response either way (no-leak design), the send shows in Resend insights only if that address is registered and unverified.
+3. OPTIONAL (owner DNS side): if replies to support@ should be RECEIVED, set up Cloudflare Email Routing for mail.mymanagerworkspace.com so the address forwards to a real inbox - nothing in code can do this.
 
 ---
 
@@ -259,30 +266,39 @@ FOUND AND FIXED THIS PASS (shipped with the S-6.3b commit):
   `pricing.html#company`; pricing.html had no `#company` id, so the buyer
   landed at the top of the page. `id="company"` added to the plan card.
 
-TASKS (T-7 CLOSED 2026-10-23, 668b8d9; everything below still open, priority order):
-- T-1 GATE THE SPRITE. `tools/verify-icons.cjs`: every `mmgr-icons.svg#i-*`
-  reference in served HTML and in `js/` must resolve to a `<symbol>`. F1 was
-  invisible to every existing gate; this closes the class. Register in
-  docs/CI-TEST-COVERAGE.md + ci.yml T1.
-- T-2 GATE THE ACTION CONTRACT. `tools/verify-actions.cjs`: per page, every
-  `data-action` must appear in that page's own map (project.html ->
-  ACTION_MAP in mmgr-app.js, app.html -> DASH_ACTION_MAP in its inline script,
-  admin.html -> ADMIN_ACTION_MAP, calculator.html -> its ACTIONS map). F2
-  survived three waves of QA because nothing checked the markup against the
-  map. Static arm only; the live click paths stay with qa-full.
-- T-3 GATE INTERNAL LINKS. `tools/verify-links.cjs`: every relative href must
-  exist and every `page.html#anchor` must resolve to an id in that page. F3
-  passed every gate we have.
-- T-4 REDUNDANT ACTIONS (cleanup, no user impact). `calcDocType`,
-  `calcCashMode` (calculator.html) and `photos-upload` (project.html) carry
-  data-action but have no map entry; they work because their element ids have
-  their own listeners. Remove the attribute or add the entry - pick one and
-  make it uniform, so T-2 can be enforced without a suppression list.
-- T-5 REQUEST-BODY CAPS. 24 handlers call `await request.json()` directly;
-  only the project-data paths use `readCloudBody` (8 MiB streaming cap,
-  src/lib/http.js). Public ones (contact, reviews, auth, /api/ai/chat) rely on
-  rate limits alone. Route every JSON read through the capped helper (or a
-  small-by-payload variant) so a large body cannot be parsed for free.
+TASKS (T-7 CLOSED 2026-10-23, 668b8d9; T-1/T-2/T-3/T-4 CLOSED 2026-10-24,
+  e091b77; T-5 CLOSED 2026-10-24, 9a701a4 - all five shipped, teeth-tested or
+  unit-pinned, registered and wired in ci.yml T1; everything below still open,
+  priority order):
+- T-1 GATE THE SPRITE (CLOSED 2026-10-24, e091b77). `tools/verify-icons.cjs`:
+  every `mmgr-icons.svg#i-*` reference in served HTML and in `js/` resolves to
+  a `<symbol>`, plus sprite integrity (no duplicate ids), quote-aware dynamic
+  ico()/renderGroup() call-site checks, and non-literal construction failing
+  loudly. Registered in docs/CI-TEST-COVERAGE.md + ci.yml T1.
+- T-2 GATE THE ACTION CONTRACT (CLOSED 2026-10-24, e091b77).
+  `tools/verify-actions.cjs`: per page, every `data-action` in markup and in
+  templates is answered by that page's own map (project.html -> ACTION_MAP,
+  app.html -> DASH_ACTION_MAP, admin.html -> ADMIN_ACTION_MAP, calculator.html
+  -> ACTIONS), a `[data-action]` selector or a dispatch literal. Static arm
+  only; the live click paths stay with qa-full.
+- T-3 GATE INTERNAL LINKS (CLOSED 2026-10-24, e091b77).
+  `tools/verify-links.cjs`: every relative href exists and every
+  `page.html#anchor` resolves to a static id in that page (Worker routes
+  exempt). F3 passed every gate we had; now it cannot.
+- T-4 REDUNDANT ACTIONS (CLOSED 2026-10-24, e091b77). All FOUR unanswered
+  attrs removed rather than whitelisted - photos-upload AND photos-cancel
+  (project.html), calcDocType and calcCashMode (calculator.html) - so T-2 runs
+  with no suppression list. Their element-id listeners do the work.
+- T-5 REQUEST-BODY CAPS (CLOSED 2026-10-24, 9a701a4). Every one of the 24
+  uncapped `await request.json()` reads now goes through
+  `readJsonBody(request, maxBytes)` in src/lib/http.js: Content-Length checked
+  when present, then a running byte budget on the stream so a chunked body
+  with no Content-Length cannot slip past. readCloudBody keeps its name and 8
+  MiB contract as a delegate; the duplicate local readers in reviews.js and
+  ai-proxy.js were deleted; validateBody's dead maxSize param now enforces
+  (413); calc-workspace (4 MB) and prefs (2 KB) are stream-backed. Caps are
+  payload-sized (8 KiB code/email, 16 KiB contact + Google id token). Pinned by
+  10 cases in test/body-cap.test.mjs (unit 144/144).
 - T-6 SECURITY RE-VERIFICATION (not a defect, a gap in coverage). Session
   cookie flags (HttpOnly/Secure/SameSite=Lax), parameterised D1 queries (no
   template interpolation found), no SSRF in the AI relay (provider URLs come

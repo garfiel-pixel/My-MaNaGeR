@@ -11,7 +11,8 @@ import {
   cloudAuthOwnerEither,
   cloudAuthAnyAccess,
   readCloudBody,
-  readSession
+  readSession,
+  readJsonBody
 } from '../lib/http.js';
 
 const CLOUD_PREFS_PREFIX = 'prefs/';
@@ -48,21 +49,21 @@ export async function handleCloudPrefsGet(request, env) {
   });
 }
 
+const PREFS_CAP = 2048; // T-5: palette/dark/sidebar is a tiny payload
+
 export async function handleCloudPrefsPut(request, env) {
   const session = await readSession(request, env);
   if (!session || !session.sub) {
     return cloudForbidden();
   }
-  const cl = Number(request.headers.get('content-length') || 0);
-  if (cl > 2048) {
+  const read = await readJsonBody(request, PREFS_CAP);
+  if (read.tooLarge) {
     return json({ ok: false, error: 'payload too large' }, 413);
   }
-  let body = null;
-  try {
-    body = await request.json();
-  } catch (e) {
+  if (read.bad) {
     return json({ ok: false, error: 'invalid JSON body' }, 400);
   }
+  const body = read.body;
   const palette = cloudSanitizePalette(body && body.palette);
   const dark = body && typeof body.dark === 'boolean' ? body.dark : null;
   const sidebar = cloudSanitizeSidebar(body && body.sidebar);

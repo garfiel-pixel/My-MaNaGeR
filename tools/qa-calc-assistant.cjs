@@ -1737,7 +1737,18 @@ async function partBCustomLine(browser, errors) {
         /(36,000|36000)/.test(c2.bill),
       c2.bill.slice(0, 240)
     );
-    await page.check('#calc-oncost-toggle');
+    // C7 (2026-10-24): the switch is a ROW now (.tgl input is 0x0 and not
+    // clickable). Click the row text - the audit's GATE C7 interaction -
+    // and assert the input actually flipped before building on it.
+    await page.evaluate(() => {
+      const c = document.getElementById('calc-oncost-toggle');
+      if (c.checked) c.click();
+    });
+    await page.click('.bcp-opt[data-opt="oncost"] .bcp-opt-name');
+    const oncostOn = await page.evaluate(
+      () => document.getElementById('calc-oncost-toggle').checked
+    );
+    if (!oncostOn) throw new Error('C7 row click did not turn the on-cost switch on');
     await page.fill('#calc-oncost-pct', '12.5');
     await page.click('[data-action="calcRun"]');
     await page.click('[data-action="calcBoqAdd"]');

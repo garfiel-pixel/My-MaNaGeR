@@ -251,11 +251,31 @@ var MMGR = window.MMGR || {};
     _glowEl = null;
   }
 
+  // X-2 (AUDIT-DIRECTIVE-2026-10-18): paint-cost caps on the shader. At
+  // most 30 frames per second (the field is ambient, nobody reads motion
+  // off it) and NO paint while a modal is open or an AI panel is typing -
+  // the effect must never burn GPU behind the thing the eye is on. The rAF
+  // keeps polling (cheap) so the loop resumes by itself when the busy
+  // signal drops; visibilitychange still cancels it outright as before.
+  function _busyNow() {
+    // Modal shells: the generic overlay (#om), the sign-in sheet (#siom),
+    // the AI window (#ai-win) and any .modal.open. Plus the AI panel while
+    // it is typing a reply (.bcp-ai-typing in the calculator panel).
+    return !!document.querySelector(
+      '#om.open, #siom.open, #ai-win.open, .modal.open, .bcp-ai-typing, .ai-typing'
+    );
+  }
   function _frame() {
     if (!_state.active || !_state.renderer) {
       return;
     }
     try {
+      const now = performance.now();
+      if (now - (_state.lastPaint || 0) < 33 || _busyNow()) {
+        _state.rafId = requestAnimationFrame(_frame);
+        return;
+      }
+      _state.lastPaint = now;
       _state.uniforms.uTime.value = _state.clock.getElapsedTime();
       _state.renderer.render(_state.scene, _state.camera);
       _state.rafId = requestAnimationFrame(_frame);

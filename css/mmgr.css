@@ -117,6 +117,16 @@ svg.ico use {
   --radius-card: 24px; /* outer card radius = control + pad (8 + 16) */
   --tr: 120ms cubic-bezier(0.25, 1, 0.5, 1);
   --ease-ios: cubic-bezier(0.25, 1, 0.5, 1);
+  /* X-2 (AUDIT-DIRECTIVE-2026-10-18, section 8.3): explicit transition-
+     property list. An all-properties transition animates every property
+     that moves (layout props included) and repaints far more than the eye
+     tracks. Controls declare exactly the set they change: transform leads
+     at 80ms, the rest ride the house 120ms curve. */
+  --tr-ui:
+    transform 80ms cubic-bezier(0.25, 1, 0.5, 1),
+    background-color 120ms cubic-bezier(0.25, 1, 0.5, 1),
+    border-color 120ms cubic-bezier(0.25, 1, 0.5, 1), color 120ms cubic-bezier(0.25, 1, 0.5, 1),
+    opacity 120ms cubic-bezier(0.25, 1, 0.5, 1), box-shadow 120ms cubic-bezier(0.25, 1, 0.5, 1);
   --spring: cubic-bezier(
     0.25,
     1,
@@ -864,7 +874,7 @@ body:not(.crosshair-on) #cy {
   justify-content: center;
   cursor: pointer;
   font-size: 0.95rem;
-  transition: all var(--tr);
+  transition: var(--tr-ui);
 }
 .settings-btn:focus-visible {
   outline: 2px solid var(--gold);
@@ -886,7 +896,7 @@ body:not(.crosshair-on) #cy {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--card);
-  transition: all var(--tr);
+  transition: var(--tr-ui);
   flex-shrink: 0;
   white-space: nowrap;
 }
@@ -969,7 +979,7 @@ body.focus-mode .focus-ind {
   color: var(--slate);
   border-radius: 10px;
   cursor: pointer;
-  transition: all var(--tr);
+  transition: var(--tr-ui);
   flex-shrink: 0;
 }
 .nav-btn:focus-visible {
@@ -1281,7 +1291,7 @@ body.sidebar-open .sb-close .ico {
   color: var(--slate);
   font-size: 0.8125rem;
   cursor: pointer;
-  transition: all var(--tr);
+  transition: var(--tr-ui);
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1957,14 +1967,18 @@ body.sidebar-open .sb-close .ico {
 /* ---- Cards ---- */
 /* PLAN-OF-ACTION-LIQUID-GLASS-UI 3.5.1: */
 .card {
-  background: var(--glass-fill-dark);
+  /* X-2 (audit 8.3): content is solid (rule 1.6). The card carries the
+     Level-1 surface token in every theme and keeps no backdrop-filter: the
+     frost was invisible on light (opaque fill already) and, on dark, put
+     the starfield in motion behind body copy. contain keeps layout and
+     paint local to the card so big cards cost less to reflow and repaint. */
+  background: var(--card);
   border: var(--glass-border);
   border-radius: var(--squircle-md);
   padding: 20px;
   margin-bottom: 18px;
   box-shadow: var(--glass-rim), var(--glass-shadow);
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  contain: layout paint;
   transition:
     border-color var(--tr),
     background var(--tr),
@@ -2306,7 +2320,7 @@ body.sidebar-open .sb-close .ico {
   justify-content: center;
   cursor: pointer;
   padding: 0;
-  transition: all var(--tr);
+  transition: var(--tr-ui);
   flex-shrink: 0;
 }
 .cl-toggle:focus-visible {
@@ -2414,7 +2428,13 @@ body.sidebar-open .sb-close .ico {
   font-weight: 800;
   font-size: 0.85rem;
   cursor: pointer;
-  transition: all var(--tr);
+  /* The one control that animates a filter (brightness on hover), so it
+     carries its own explicit list instead of the shared --tr-ui (X-2). */
+  transition:
+    transform 80ms var(--ease-ios),
+    filter 120ms var(--ease-ios),
+    background-color 120ms var(--ease-ios),
+    border-color 120ms var(--ease-ios);
   font-family: inherit;
 }
 .raci-cell:hover {
@@ -2607,7 +2627,7 @@ body.dark-mode .rm-active {
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all var(--tr);
+  transition: var(--tr-ui);
   line-height: 1.4;
 }
 .btn:focus-visible {
@@ -2870,7 +2890,7 @@ body.dark-mode .rm-active {
   color: #fff;
   white-space: nowrap;
   overflow: hidden;
-  transition: all var(--tr);
+  transition: var(--tr-ui);
   cursor: pointer;
 }
 .gb.crit {
@@ -5272,7 +5292,10 @@ body.readonly-mode
   inset: 0;
   background: var(--border);
   border-radius: 100px;
-  transition: all 0.4s var(--spring);
+  /* X-2: the track animates its own two properties only. */
+  transition:
+    background-color 0.4s var(--spring),
+    box-shadow 0.4s var(--spring);
 }
 .tsl::before {
   content: '';
@@ -5367,7 +5390,7 @@ body.readonly-mode
   border: none;
   background: none;
   border-bottom: 2px solid transparent;
-  transition: all var(--tr);
+  transition: var(--tr-ui);
 }
 .dtab.active {
   color: var(--gold);
@@ -6320,7 +6343,7 @@ hr.div {
   border-radius: 100px;
   background: rgba(255, 255, 255, 0.08);
   cursor: pointer;
-  transition: all var(--tr);
+  transition: var(--tr-ui);
   flex-shrink: 0;
   white-space: nowrap;
 }
@@ -6584,7 +6607,7 @@ a.bk-signin {
   padding: 3px 9px;
   border-radius: 100px;
   cursor: pointer;
-  transition: all var(--tr);
+  transition: var(--tr-ui);
 }
 .timeline-ind.on {
   display: inline-flex;
@@ -7832,7 +7855,12 @@ body.dark-mode .btn-warn:hover {
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   box-shadow: var(--glass-rim);
-  transition: all 0.4s var(--spring-press);
+  /* X-2: no `all`, and backdrop-filter is deliberately absent - the old
+     frosted-OFF to solid-ON blur change re-blurred the card every frame for
+     400ms. Background and shadow now carry the state change. */
+  transition:
+    background-color 0.4s var(--spring-press),
+    box-shadow 0.4s var(--spring-press);
 }
 .tgl .tsl::before {
   background: var(--toggle-off-fg);
@@ -7882,9 +7910,8 @@ body.dark-mode .btn-warn:hover {
     0 2px 8px rgba(0, 0, 0, 0.25);
 } /* §6.4 dashboard project cards - glass + hover lift & brighten */
 .pcard {
-  background: var(--glass-fill-dark);
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  /* X-2: dashboard project cards are content - solid surface, no frost. */
+  background: var(--card);
   border: var(--glass-border);
   border-radius: var(--squircle-md);
   box-shadow: var(--glass-rim), var(--glass-shadow);
@@ -7943,18 +7970,16 @@ body.dark-mode .pc-status {
   color: var(--text-secondary);
 }
 .badge.on-hold {
+  /* X-2: badges are content. Light fills were opaque already; dark keeps
+     the flat text-plus-hairline treatment from the dark block above. */
   background: var(--glass-fill-dark);
   color: var(--amber);
   border: 1px solid rgba(var(--amber-rgb), 0.35);
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
 }
 .badge.planning {
   background: var(--glass-fill-dark);
   color: var(--blue);
   border: 1px solid rgba(59, 130, 246, 0.35);
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
 }
 
 /* §8 anti-pattern guard: dense data views stay 100% flat & opaque */
@@ -8770,7 +8795,7 @@ body.dark-mode .ai-api-pill[data-state='error'] {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  transition: all var(--tr);
+  transition: var(--tr-ui);
 }
 .ai-clear-btn:hover {
   color: var(--danger);
@@ -9069,7 +9094,7 @@ body.dark-mode .ai-seg-btn.is-on {
   font-size: 0.7rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all var(--tr);
+  transition: var(--tr-ui);
 }
 .ai-chip:hover {
   border-color: var(--gold);
@@ -9087,7 +9112,7 @@ body.dark-mode .ai-seg-btn.is-on {
   background: var(--card);
   color: var(--green);
   cursor: pointer;
-  transition: all var(--tr);
+  transition: var(--tr-ui);
 }
 .ai-run .ico {
   width: 12px;
@@ -9576,6 +9601,84 @@ body.dark-mode .bcp-ico-moon {
 @media (max-width: 820px) {
   .bcp-grid {
     grid-template-columns: 1fr;
+  }
+}
+/* C6 (AUDIT-DIRECTIVE-2026-10-18): the estimate card pins under the top
+   area while the input column scrolls, and only from 901px up (below that
+   the page is single-column and the card follows the flow). The grid's
+   align-items:start (set above) is what makes sticky possible - the default
+   stretch would make the card as tall as its column, so there is nothing to
+   pin. The body class comes from the calcStickyPanel kill-switch in
+   js/calculator-page.js (mmgr_flag_calcStickyPanel=0 restores the old
+   scroll-away behaviour without a deploy). The print block already forces
+   position:static on this card, so the sheet never inherits the pin.
+   No ancestor of this card may set overflow other than visible - the
+   tools/verify-calc-s2.cjs gate walks the chain and fails if one appears. */
+@media (min-width: 901px) {
+  body.bcp-sticky-on .bcp-result {
+    position: sticky;
+    top: calc(var(--bcp-topbar-h, 64px) + 12px);
+    max-height: calc(100dvh - var(--bcp-topbar-h, 64px) - 24px);
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+}
+/* C6 mobile total bar (max-width 900px): read-only. Rule 1.14 - it carries
+   NO Calculate or Add-to-bill button; the only control is Show, which
+   scrolls the estimate card into view. Solid surface, content layer (no
+   backdrop-filter, no glass). aria-hidden in the markup: the card itself
+   carries aria-live=polite, so announcing this too would double-speak. */
+.bcp-totalbar {
+  display: none;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+@media (max-width: 900px) {
+  body.bcp-sticky-on .bcp-totalbar:not([hidden]) {
+    display: flex;
+  }
+}
+.bcp-totalbar-label {
+  color: var(--slate);
+}
+.bcp-totalbar-total {
+  color: var(--gold);
+  font-weight: 700;
+}
+.bcp-totalbar-show {
+  /* a span now (see calculator.html) - inline-flex restores the box that
+     min-height/padding need on a non-replaced inline element */
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--tile-bg);
+  color: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.bcp-totalbar-show:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+/* The IntersectionObserver hides the bar while the estimate card is
+   already on screen; is-off is display:none over the base none->flex. */
+@media (max-width: 900px) {
+  body.bcp-sticky-on .bcp-totalbar.is-off:not([hidden]) {
+    display: none;
   }
 }
 .bcp-row {
@@ -10282,12 +10385,52 @@ html.mmgr-tour-active .bcp-tour-nudge {
   flex-wrap: wrap;
   margin-top: 4px;
 }
-.bcp-inst-manual {
-  display: inline-flex;
+/* C7 switch rows (AUDIT-DIRECTIVE-2026-10-18): the calculator's five bare
+   checkboxes become setting rows - name + one-line hint on the left, the
+   app's OWN .tgl switch on the right (rule 1.4: reference the component,
+   never invent a second one), and the whole row is a single <label> so any
+   tap on the row toggles it. The inputs keep their ids and data-actions, so
+   no JS moved; native checkbox semantics are untouched (role=switch is a
+   mapping, not a behaviour change). 44px row = touch target. */
+.bcp-opt {
+  display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 12px;
+  flex: 1 0 100%;
+  min-height: 44px;
+  padding: 4px 0;
+  cursor: pointer;
+}
+.bcp-opt-txt {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.bcp-opt-name {
+  display: block;
   font-size: 0.8rem;
+  font-weight: 600;
   color: var(--slate);
+  letter-spacing: 0.02em;
+}
+.bcp-opt-hint {
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--slate);
+  margin-top: 2px;
+}
+/* The switch keeps its component geometry; the row only needs the hit area
+   and the motion contract (knob transform only, transition killed under
+   prefers-reduced-motion - the shared .tsl has no reduce coverage). */
+.bcp-opt .tgl {
+  flex-shrink: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bcp-opt .tsl,
+  .bcp-opt .tsl::before {
+    transition: none;
+  }
 }
 .bcp-inst-sum {
   display: block;
@@ -10444,13 +10587,6 @@ html.mmgr-tour-active .bcp-tour-nudge {
 .bcp-doc-row input {
   flex: 1;
   min-width: 0;
-}
-.bcp-sig-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.8rem;
-  flex: 1 0 100%;
 }
 /* W2 companion chips (one-tap add-on work suggestions). */
 .bcp-cp-row {
@@ -10953,7 +11089,7 @@ html.mmgr-tour-active .bcp-tour-nudge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--tr);
+  transition: var(--tr-ui);
 }
 .ai-voice-btn:hover {
   border-color: var(--gold);
@@ -11459,7 +11595,7 @@ body.glass-premium.dark-mode .mouse-glow {
   font-size: 0.68rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all var(--tr);
+  transition: var(--tr-ui);
 }
 .gchip-out:hover {
   border-color: var(--danger);
@@ -15913,6 +16049,18 @@ body.calculator-page .bcp-rr-x {
 /* ---- (9) THE CASH-PLAN MESSAGE -------------------------------- */
 #calc-cash-msg[hidden] {
   display: none !important;
+}
+
+/* X-2 (audit 8.3): below-the-fold calculator cards paint lazily. Content
+   that is off-screen is not laid out until it scrolls near the viewport,
+   and contain-intrinsic-size holds a steady 600px placeholder while it is
+   skipped so the scrollbar never jumps. */
+#calc-boq-card,
+#calc-prelims-card,
+#calc-hist-card,
+#calc-estimates-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 600px;
 }
 
 /* ---- (4) RATE BOOK AS A POPUP, NOT A SECTION ------------------

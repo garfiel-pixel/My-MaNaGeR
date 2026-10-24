@@ -271,9 +271,12 @@ function absolutizeChrome(p) {
     });
 
     await scenario('calc-switch', 200, async () => {
-      await page.click('#calc-oncost-toggle');
+      // C7 (2026-10-24): the bare checkbox became a switch ROW. The .tgl
+      // input is 0x0 (opacity 0) so it is not clickable - the row is what
+      // a person taps, and the row is what INP must measure.
+      await page.click('.bcp-opt[data-opt="oncost"] .bcp-opt-name');
       await delay(120);
-      await page.click('#calc-oncost-toggle');
+      await page.click('.bcp-opt[data-opt="oncost"] .bcp-opt-name');
       await delay(120);
     });
 

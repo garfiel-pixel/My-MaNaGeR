@@ -1212,6 +1212,7 @@ async function withChrome(fn) {
       document.getElementById('calc-d2').value = '10';
       document.getElementById('calc-d3').value = '100';
       document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
+      window.__calcFlushHeavy && window.__calcFlushHeavy(); // X-1: formwork box is a heavy-card render
       var boxShown = !document.getElementById('calc-formwork-box').hidden;
       var boxText = document.getElementById('calc-formwork-text').textContent;
       // Deterministic pricing state: the SX gates leave statutory on-costs
@@ -1468,6 +1469,7 @@ async function withChrome(fn) {
       document.getElementById('calc-d1').value = '10';
       document.getElementById('calc-d2').value = '2.4';
       document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
+      window.__calcFlushHeavy && window.__calcFlushHeavy(); // X-1: companion chips render in the heavy pass
       var wrap = document.getElementById('calc-companions');
       return { shown: !wrap.hidden, chips: wrap.querySelectorAll('.bcp-cp-chip').length };
     })()`);
@@ -1479,6 +1481,7 @@ async function withChrome(fn) {
     const cp4 = await ev(`(function(){
       document.querySelector('#calc-companions [data-cp="lineout"]').click();
       document.querySelector('#calc-companions [data-cp="brush"]').click();
+      window.__calcFlushHeavy && window.__calcFlushHeavy(); // X-1: chip removal re-renders in the heavy pass
       var lines = JSON.parse(localStorage.getItem('mmgr_calc_boq') || '[]');
       var first = lines[0] || {};
       var r = __calcEngine.computeFor(first.st || {});
@@ -1499,6 +1502,7 @@ async function withChrome(fn) {
     );
     const cp5 = await ev(`(function(){
       document.querySelector('#calc-companions [data-cp="cart"]').click();
+      window.__calcFlushHeavy && window.__calcFlushHeavy(); // X-1
       var wrap = document.getElementById('calc-companions');
       var lines = JSON.parse(localStorage.getItem('mmgr_calc_boq') || '[]');
       return { hidden: wrap.hidden, lines: lines.length };
@@ -1580,6 +1584,7 @@ async function withChrome(fn) {
       document.getElementById('calc-d1').value = '10';
       document.getElementById('calc-d2').value = '2.4';
       document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
+      window.__calcFlushHeavy && window.__calcFlushHeavy(); // X-1: rollup waterfall renders in the heavy pass
       var csv = __calcEngine.estimateCsv(__calcEngine.computeFor(__calcEngine.readState()));
       var body = document.getElementById('calc-rollup-body');
       var txt = body ? body.textContent : '';
@@ -1708,6 +1713,7 @@ async function withChrome(fn) {
     const bd5 = await ev(`(function(){
       document.getElementById('calc-client-name').value = 'Smith - 12 Church Rd';
       document.getElementById('calc-client-name').dispatchEvent(new Event('input', { bubbles: true }));
+      window.__calcFlushHeavy && window.__calcFlushHeavy(); // X-1: bill-to block renders in the heavy pass
       var bt = document.getElementById('calc-quote-billto');
       var st = __calcEngine.readState();
       var csv = __calcEngine.estimateCsv(__calcEngine.computeFor(__calcEngine.readState()));
@@ -1727,9 +1733,11 @@ async function withChrome(fn) {
     const sg1 = await ev(`(function(){
       document.getElementById('calc-doc-type').value = 'Invoice';
       document.getElementById('calc-doc-type').dispatchEvent(new Event('change', { bubbles: true }));
+      window.__calcFlushHeavy && window.__calcFlushHeavy(); // X-1: quote-doc signature block is a heavy render
       var inv = document.getElementById('calc-quote-sig').hidden;
       document.getElementById('calc-doc-type').value = 'Estimate';
       document.getElementById('calc-doc-type').dispatchEvent(new Event('change', { bubbles: true }));
+      window.__calcFlushHeavy && window.__calcFlushHeavy(); // X-1
       var est = document.getElementById('calc-quote-sig').hidden;
       return { invoice: inv, estimate: est };
     })()`);
@@ -1742,9 +1750,11 @@ async function withChrome(fn) {
       var box = document.getElementById('calc-sig-show');
       box.checked = true;
       box.dispatchEvent(new Event('change', { bubbles: true }));
+      window.__calcFlushHeavy && window.__calcFlushHeavy(); // X-1
       var estOn = document.getElementById('calc-quote-sig').hidden;
       box.checked = false;
       box.dispatchEvent(new Event('change', { bubbles: true }));
+      window.__calcFlushHeavy && window.__calcFlushHeavy(); // X-1
       var estOff = document.getElementById('calc-quote-sig').hidden;
       return { estOn: estOn, estOff: estOff, stored: (JSON.parse(localStorage.getItem('mmgr_calc_brand') || '{}').sigShow) };
     })()`);

@@ -28,7 +28,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" href="images/mpw-icon.png">
 <link rel="apple-touch-icon" href="images/mpw-icon.png">
-<link rel="stylesheet" href="dist/mmgr.min.css?v=32">
+<link rel="stylesheet" href="dist/mmgr.min.css?v=34">
 <script src="js/mmgr-theme.js" data-sync="1"></script>
 </head>
 <body class="db-page calculator-page">
@@ -287,7 +287,13 @@
       <div class="bcp-field bcp-inst" id="calc-quick">
         <span class="bcp-units-label" id="calc-quick-label">Quick total <span class="bcp-hist-note">- one quantity, priced at one rate</span></span>
         <div class="bcp-inst-actions">
-          <label class="bcp-inst-manual"><input type="checkbox" id="calc-measured-manual" data-action="calcInstToggle"> I know the total - let me type it</label>
+          <label class="bcp-opt" data-opt="measured">
+            <span class="bcp-opt-txt">
+              <span class="bcp-opt-name">I know the total - let me type it</span>
+              <span class="bcp-opt-hint" id="calc-measured-manual-hint">Type the finished total yourself instead of quantity times rate.</span>
+            </span>
+            <span class="tgl"><input type="checkbox" id="calc-measured-manual" data-action="calcInstToggle" role="switch" aria-describedby="calc-measured-manual-hint"><span class="tsl"></span></span>
+          </label>
         </div>
         <input type="number" id="calc-measured-qty" min="0" step="any" inputmode="decimal" placeholder="Total quantity" hidden aria-label="Total measured quantity (overrides the rows)">
         <span class="bcp-quick-line" id="calc-quick-line" role="status" hidden></span>
@@ -359,13 +365,25 @@
            12.5% suggestion is the Jamaica employer stack (NIS 3 + NHT 3 +
            HEART 3 + Education Tax 3.5, PwC 2026); any typed value wins. -->
       <div class="bcp-field bcp-oncost">
-        <label class="bcp-inst-manual" for="calc-oncost-toggle"><input type="checkbox" id="calc-oncost-toggle"> Add employer statutory costs on labor (NIS, NHT, HEART, Education Tax)</label>
+        <label class="bcp-opt" data-opt="oncost">
+          <span class="bcp-opt-txt">
+            <span class="bcp-opt-name">Add employer statutory costs on labor (NIS, NHT, HEART, Education Tax)</span>
+            <span class="bcp-opt-hint" id="calc-oncost-toggle-hint">Employer charges on top of labour. The percent box below stays off until you switch this on.</span>
+          </span>
+          <span class="tgl"><input type="checkbox" id="calc-oncost-toggle" role="switch" aria-describedby="calc-oncost-toggle-hint"><span class="tsl"></span></span>
+        </label>
         <input type="number" id="calc-oncost-pct" min="0" max="25" step="0.5" inputmode="decimal" placeholder="% of labor - e.g. 12.5 for Jamaica" disabled aria-label="Employer statutory costs percent of labor">
       </div>
       <!-- E6 (plan v2 Phase 1): labour-only pricing - price the work, list
            materials separately. A typed material rate still shows. -->
       <div class="bcp-field bcp-oncost">
-        <label class="bcp-inst-manual" for="calc-labour-only"><input type="checkbox" id="calc-labour-only"> Labour only - skip material prices (list them separately)</label>
+        <label class="bcp-opt" data-opt="labour">
+          <span class="bcp-opt-txt">
+            <span class="bcp-opt-name">Labour only - skip material prices (list them separately)</span>
+            <span class="bcp-opt-hint" id="calc-labour-only-hint">Prices the work only. Materials get their own list.</span>
+          </span>
+          <span class="tgl"><input type="checkbox" id="calc-labour-only" role="switch" aria-describedby="calc-labour-only-hint"><span class="tsl"></span></span>
+        </label>
       </div>
 
       <div class="bcp-rates-head">
@@ -490,8 +508,12 @@
            [hidden] guard + explicit display rule, because .bcp-row is
            display:grid and would otherwise outrank the UA hidden rule. -->
       <div class="bcp-field bcp-oncost" id="calc-piece-custom-wrap" hidden>
-        <label class="bcp-inst-manual" for="calc-piece-custom">
-          <input type="checkbox" id="calc-piece-custom"> My size is not in the rate sheet - price it myself
+        <label class="bcp-opt" data-opt="piece" for="calc-piece-custom">
+          <span class="bcp-opt-txt">
+            <span class="bcp-opt-name">My size is not in the rate sheet - price it myself</span>
+            <span class="bcp-opt-hint" id="calc-piece-custom-hint">Enter your own size and rate for this piece.</span>
+          </span>
+          <span class="tgl"><input type="checkbox" id="calc-piece-custom" role="switch" aria-describedby="calc-piece-custom-hint"><span class="tsl"></span></span>
         </label>
       </div>
       <div class="bcp-row bcp-row-2 bcp-piece-row" id="calc-piece-wrap">
@@ -577,7 +599,7 @@
       <div class="bcp-out-actions is-hide" id="calc-out-actions">
         <!-- OWNER 2026-09-30: export naming - the document type becomes the
              printed sheet's title and both names ride the export filename. -->
-        <select id="calc-doc-type" aria-label="Document type" data-action="calcDocType">
+        <select id="calc-doc-type" aria-label="Document type">
           <option value="Estimate" selected>Estimate</option>
           <option value="Quote">Quote</option>
           <option value="Invoice">Invoice</option>
@@ -591,7 +613,13 @@
           <button type="button" class="btn btn-g btn-s" data-action="calcSave"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-receipt"></use></svg> Save</button>
         </span>
         <input type="text" id="calc-biz-name" maxlength="60" placeholder="Your business name (appears on printed estimates)" aria-label="Your business name, shown on printed estimates">
-        <label class="bcp-sig-toggle"><input type="checkbox" id="calc-sig-show" data-action="calcBrandToggle"> Signature lines on the printed sheet</label>
+        <label class="bcp-opt" data-opt="sig">
+          <span class="bcp-opt-txt">
+            <span class="bcp-opt-name">Signature lines on the printed sheet</span>
+            <span class="bcp-opt-hint" id="calc-sig-show-hint">Adds signature blocks to printed sheets and exports.</span>
+          </span>
+          <span class="tgl"><input type="checkbox" id="calc-sig-show" data-action="calcBrandToggle" role="switch" aria-describedby="calc-sig-show-hint"><span class="tsl"></span></span>
+        </label>
         <!-- W3 (owner 2026-10-01) per-document fields: who it is for and
              which document number/date it carries. They ride the saved
              estimate so recall restores the whole document. -->
@@ -704,7 +732,7 @@
     <div class="bcp-cash-head">
       <div class="bcp-field">
         <label for="calc-cash-mode">Cash plan shape</label>
-        <select id="calc-cash-mode" data-action="calcCashMode" aria-label="Cash plan distribution">
+        <select id="calc-cash-mode" aria-label="Cash plan distribution">
           <option value="scurve" selected>S-curve (spend peaks mid-build)</option>
           <option value="straight">Straight-line (even months)</option>
         </select>
@@ -796,13 +824,30 @@
      change here must bump v, or returning calculator-only visitors keep
      the old script/styles for a year. -->
 <script src="js/mmgr-icon-restore.js?v=25"></script>
+<!-- C6 mobile total bar (AUDIT-DIRECTIVE-2026-10-18): read-only, fixed to
+     the bottom on phones only (css/mmgr.css, max-width 900px). Rule 1.14:
+     it carries NO Calculate or Add-to-bill button - Show only scrolls the
+     estimate card into view. aria-hidden on purpose: the card carries
+     aria-live=polite, so this bar must not double-announce the total. The
+     calcStickyPanel flag (mmgr_flag_calcStickyPanel=0) hides it and un-pins
+     the card without a deploy. -->
+<div class="bcp-totalbar" id="calc-totalbar" aria-hidden="true" hidden>
+  <span class="bcp-totalbar-label">Estimate</span>
+  <strong class="bcp-totalbar-total" id="calc-totalbar-total"></strong>
+  <!-- A span, not a <button>: the whole bar is aria-hidden (the estimate
+       card carries aria-live), and a focusable control inside aria-hidden
+       is an aria-hidden-focus violation the moment the flag unhides the
+       bar. Show is a tap affordance for a bar that is itself hidden from
+       assistive tech; the estimate card stays the keyboard path. -->
+  <span class="bcp-totalbar-show" id="calc-totalbar-show">Show</span>
+</div>
 <!-- OWNER 2026-10-13: the star field the app and admin already carry runs on
      the calculator now - the SAME modules, preferences and capability floor,
      loaded in the order app.html uses (viewport signal first, glass second). -->
 <script src="js/mmgr-viewport.js?v=1"></script>
-<script src="js/mmgr-glass.js?v=1"></script>
+<script src="js/mmgr-glass.js?v=2"></script>
 <script src="js/xlsx-lite.js?v=1"></script>
-<script src="js/calculator-page.js?v=42"></script>
+<script src="js/calculator-page.js?v=44"></script>
 <script src="js/calc-ai.js?v=10"></script>
 <!-- AUDIT 2026-10-18 M-5: keyboard shortcuts + the shortcut sheet.
      Its own script tag (not in the bundle) so the CSP inline-script

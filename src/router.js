@@ -28,7 +28,8 @@ import {
   cloudRateCheck,
   cloudRateLimited,
   readSession,
-  cloudForbidden
+  cloudForbidden,
+  readJsonBody
 } from './lib/http.js';
 import { trackError, structuredLog, privacySignalRequested } from './lib/observe.js';
 import {
@@ -188,6 +189,8 @@ function trackEvent(env, request, idx1, idx2, blob1, blob2) {
   }
 }
 
+const BODY_CAP = 8192; // T-5: presence-auth carries a projectId + a code
+
 /* ============================================================
    INTERNAL PRESENCE AUTH — validates a code for WebSocket upgrade
    (reached via INTERNAL_AUTH service binding from the Presence DO)
@@ -198,7 +201,12 @@ async function handlePresenceAuth(request, env) {
     return cloudRateLimited(rl.retryAfter);
   }
   try {
-    const body = await request.json();
+    const read = await readJsonBody(request, BODY_CAP);
+    if (read.tooLarge || read.bad) {
+      await Promise.all([cloudDummyHash(), cloudTimingSink()]);
+      return json({ ok: false });
+    }
+    const body = read.body;
     const projectId = String(body.projectId || '').slice(0, 64);
     const code = String(body.code || '').trim();
     if (!projectId || !code) {

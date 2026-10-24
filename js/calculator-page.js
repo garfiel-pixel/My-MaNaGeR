@@ -7559,6 +7559,7 @@
   }
 
   function downloadXlsx() {
+    flushHeavy();
     const f = buildXlsx();
     if (!f.ok) {
       return f;
@@ -7577,6 +7578,7 @@
   }
 
   function downloadCsv() {
+    flushHeavy();
     const f = buildCsv();
     if (!f.ok) {
       return f;
@@ -8048,6 +8050,118 @@
     lineEl.hidden = !txt;
   }
 
+  // ---- C6 / X-1 support (AUDIT-DIRECTIVE-2026-10-18) -------------------------
+  // Kill-switch reads mirror calcUnitFlagOn(): default ON, and
+  // mmgr_flag_<name>=0 in localStorage restores the old behaviour with no
+  // deploy (names documented in docs/STORAGE-INVENTORY.md via the flags
+  // block in js/mmgr-state.js).
+  function calcStickyFlagOn() {
+    try {
+      return localStorage.getItem('mmgr_flag_calcStickyPanel') !== '0';
+    } catch (e) {
+      return true;
+    }
+  }
+  function calcSchedulerOn() {
+    try {
+      return localStorage.getItem('mmgr_flag_calcRenderScheduler') !== '0';
+    } catch (e) {
+      return true;
+    }
+  }
+
+  // C6: the mobile total bar mirrors the live total in the LIGHT pass - a
+  // textContent write that skips when the string did not change.
+  function updateTotalBar(r) {
+    const el = $('calc-totalbar-total');
+    if (!el) {
+      return;
+    }
+    const v = r && !r.error ? fmtMoney(r.total) : '-';
+    if (el.textContent !== v) {
+      el.textContent = v;
+    }
+  }
+
+  // X-1 render scheduler: render() always computes and paints the result
+  // card and quick line NOW (the light pass - what the keystroke's event
+  // duration pays for); the document-shaped cards (prelims, rollup, cash,
+  // accessories, companions, quote) rebuild once the input settles, off the
+  // interaction. The heavy pass reads lastResult AT RUN TIME, so a queued
+  // pass always paints the newest state, never a stale closure. With the
+  // calcRenderScheduler flag off, the heavy pass runs inline - byte-for-byte
+  // the old pipeline.
+  let heavyQueued = false;
+  let heavyHandle = null;
+  let heavyUsedIdle = false;
+  function heavyPass(r) {
+    renderPrelims(r && !r.error ? r.sub : 0);
+    renderRollup();
+    renderCash();
+    renderAccessories();
+    renderCompanions(r);
+    renderQuoteDoc(r);
+  }
+  function scheduleHeavy(r) {
+    if (!calcSchedulerOn()) {
+      heavyPass(r);
+      return;
+    }
+    if (heavyQueued) {
+      return;
+    }
+    heavyQueued = true;
+    if (window.requestIdleCallback) {
+      heavyUsedIdle = true;
+      heavyHandle = window.requestIdleCallback(
+        function () {
+          heavyQueued = false;
+          heavyHandle = null;
+          heavyPass(lastResult);
+        },
+        { timeout: 250 }
+      );
+    } else {
+      heavyUsedIdle = false;
+      heavyHandle = setTimeout(function () {
+        heavyQueued = false;
+        heavyHandle = null;
+        heavyPass(lastResult);
+      }, 60);
+    }
+  }
+  // Exports, print and populate must never read half-updated cards: the
+  // queued pass runs synchronously first. No queue = cards already current.
+  function flushHeavy() {
+    if (!heavyQueued) {
+      return;
+    }
+    if (heavyHandle != null) {
+      if (heavyUsedIdle && window.cancelIdleCallback) {
+        window.cancelIdleCallback(heavyHandle);
+      } else {
+        clearTimeout(heavyHandle);
+      }
+    }
+    heavyQueued = false;
+    heavyHandle = null;
+    heavyPass(lastResult);
+  }
+  // QA hook (the __calcEngine pattern): the heavy pass is deferred by design
+  // (X-1), so a harness that dispatches events and reads a heavy card in ONE
+  // evaluate must flush first. Production paths (export, print, populate)
+  // call flushHeavy() themselves.
+  window.__calcFlushHeavy = flushHeavy;
+
+  // X-1: skip the result-card write when the HTML did not change - the
+  // rebuild is string work, but the browser reparse is the expensive half.
+  function setOut(html) {
+    const out = $('calc-output');
+    if (out && out.innerHTML !== html) {
+      out.innerHTML = html; // ok: every setOut() caller composes html from esc()-escaped fields and literals - this is only the skip-if-unchanged write point (X-1)
+    }
+  }
+
   function render() {
     const out = $('calc-output');
     if (!out) {
@@ -8062,20 +8176,14 @@
     // T4: the Quick total line and the quantity box's unit follow every
     // recompute, including an error state (r is null then).
     renderQuickLine(r && !r.error ? r : null);
-    // W3: the document sheet extras (logo, contact, doc number, bill-to,
-    // signature) follow their own fields on EVERY recompute - even before
-    // dims price. A document header is data-driven, not price-driven, and
-    // with no data it stays hidden (plain by default).
-    renderQuoteDoc(r);
-    // W4: the preliminaries amounts ride every recompute (works basis moves).
-    renderPrelims(r && !r.error ? r.sub : 0);
-    // W5: the planning waterfall follows the same works basis.
-    renderRollup();
-    // W6: the cash plan re-spreads whenever the numbers move.
-    renderCash();
-    // W7: the derived formwork box follows dims + trade.
-    renderAccessories();
-    renderCompanions(r);
+    // C6: the mobile total bar rides every recompute in the light pass.
+    updateTotalBar(r);
+    // X-1: the document-shaped cards (W3 quote sheet, W4 prelims, W5
+    // rollup, W6 cash, W7 accessories + companions) moved to the heavy
+    // pass - see scheduleHeavy above. They still ride every recompute,
+    // just off the keystroke's critical path, and flushHeavy() runs them
+    // synchronously before print/export/populate touch the DOM.
+    scheduleHeavy(r);
     if (!r || r.error) {
       lastResult = null;
       if ($('calc-out-actions')) {
@@ -8083,14 +8191,13 @@
       }
     }
     if (!r) {
-      out.innerHTML =
-        '<div class="calc-empty">Pick a work item, enter dimensions, then Calculate.</div>';
+      setOut('<div class="calc-empty">Pick a work item, enter dimensions, then Calculate.</div>');
       return;
     }
     if (r.error) {
       // D-9 (AUDIT-DIRECTIVE-2026-10-18): an engine error string now carries
       // the user's currency, so it is escaped at its one HTML insert.
-      out.innerHTML = '<div class="calc-empty">' + esc(r.error) + '</div>';
+      setOut('<div class="calc-empty">' + esc(r.error) + '</div>');
       return;
     }
     lastResult = r;
@@ -8155,7 +8262,7 @@
     }
     // W3: the full document sheet - logo, contact block, document number
     // and bill-to appear ONLY when their data exists (plain by default).
-    out.innerHTML =
+    setOut(
       (r.modelUnconverted
         ? '<p class="bcp-jm-note">Built-in model rates are US dollars - set a ' +
           esc(r.currency) +
@@ -8163,85 +8270,86 @@
           esc(r.currency) +
           '.</p>'
         : '') +
-      '<div class="calc-sum">' +
-      '<div class="calc-sum-main"><span class="calc-sum-label">' +
-      r.qtyLabel +
-      '</span>' +
-      '<strong class="calc-sum-qty">' +
-      esc(shown.main) +
-      '<span class="calc-qty-alt">' +
-      esc(shown.alt) +
-      '</span></strong></div>' +
-      '<div class="calc-sum-sub">' +
-      // PART I PHASE 2: a JIC line's matDesc carries the row's own ref +
-      // description (the book writes with & and quotes), so the ONE HTML
-      // insert escapes it; the CSV takes the same raw string.
-      esc(r.matDesc) +
-      '</div>' +
-      (r.orderCount
-        ? '<div class="calc-sum-sub">Order about <strong>' +
-          r.orderCount.n.toLocaleString() +
-          '</strong> ' +
-          esc(r.orderCount.lbl + ' at ' + r.orderCount.sizeTxt) +
-          '</div>'
-        : '') +
-      (r.hasOpenings && r.openings && r.openings.count
-        ? '<div class="calc-sum-sub">Minus ' +
-          r.openings.count +
-          ' ' +
-          (r.openings.count === 1 ? 'opening' : 'openings') +
-          ' (' +
-          r.openings.area +
-          ' m2) not built - window and door spaces</div>'
-        : '') +
-      '</div>' +
-      (r.slips && r.slips.length
-        ? r.slips
-            .map(function (s) {
-              return (
-                '<p class="bcp-jm-note">' +
-                esc(s.msg) +
-                (s.fix != null && s.fix !== ''
-                  ? ' <button type="button" class="btn btn-n btn-s" data-action="calcFixDim" data-field="' +
-                    esc(s.field) +
-                    '" data-val="' +
-                    esc(s.fix) +
-                    '">Use ' +
-                    esc(String(s.fix)) +
-                    '</button>'
-                  : '') +
-                '</p>'
-              );
-            })
-            .join('')
-        : '') +
-      (r.hasWaste ? row(r.wasteLbl + ' allowance', r.wastePct + '%') : '') +
-      matRowHtml +
-      labRowHtml +
-      (r.onCost > 0
-        ? row(
-            'Labor statutory costs (NIS, NHT, HEART, Education) ' + r.onCostPct + '%',
-            fmtMoney(r.onCost, moneyCode)
-          )
-        : '') +
-      (r.eq > 0 ? row('Equipment / plant hire', fmtMoney(r.eq, moneyCode)) : '') +
-      (r.ohPct > 0 ? row('Overhead & margin ' + r.ohPct + '%', fmtMoney(r.oh, moneyCode)) : '') +
-      row('Subtotal', fmtMoney(r.sub, moneyCode), 'calc-line-sub') +
-      // OWNER 2026-10-02: "No tax" is a CHOICE, so it says so. Three distinct
-      // zero-tax stories must never be confused: picked "none", typed 0, or a
-      // country whose rate genuinely is 0.
-      row(
-        r.noTax
-          ? 'No tax on this job'
-          : r.taxRate === 0 && r.overrideApplied
-            ? 'Tax (no tax - your rate)'
-            : 'Tax (' + r.taxRate + '%' + (r.overrideApplied ? ', your rate' : '') + ')',
-        fmtMoney(r.tax, moneyCode)
-      ) +
-      row('Estimated total', fmtMoney(r.total, moneyCode), 'calc-line-total') +
-      '<div class="calc-fine">Planning-grade estimate for ' +
-      esc(r.currency) +
-      '. Not a quote - every line becomes editable in the app once the project starts.</div>';
+        '<div class="calc-sum">' +
+        '<div class="calc-sum-main"><span class="calc-sum-label">' +
+        r.qtyLabel +
+        '</span>' +
+        '<strong class="calc-sum-qty">' +
+        esc(shown.main) +
+        '<span class="calc-qty-alt">' +
+        esc(shown.alt) +
+        '</span></strong></div>' +
+        '<div class="calc-sum-sub">' +
+        // PART I PHASE 2: a JIC line's matDesc carries the row's own ref +
+        // description (the book writes with & and quotes), so the ONE HTML
+        // insert escapes it; the CSV takes the same raw string.
+        esc(r.matDesc) +
+        '</div>' +
+        (r.orderCount
+          ? '<div class="calc-sum-sub">Order about <strong>' +
+            r.orderCount.n.toLocaleString() +
+            '</strong> ' +
+            esc(r.orderCount.lbl + ' at ' + r.orderCount.sizeTxt) +
+            '</div>'
+          : '') +
+        (r.hasOpenings && r.openings && r.openings.count
+          ? '<div class="calc-sum-sub">Minus ' +
+            r.openings.count +
+            ' ' +
+            (r.openings.count === 1 ? 'opening' : 'openings') +
+            ' (' +
+            r.openings.area +
+            ' m2) not built - window and door spaces</div>'
+          : '') +
+        '</div>' +
+        (r.slips && r.slips.length
+          ? r.slips
+              .map(function (s) {
+                return (
+                  '<p class="bcp-jm-note">' +
+                  esc(s.msg) +
+                  (s.fix != null && s.fix !== ''
+                    ? ' <button type="button" class="btn btn-n btn-s" data-action="calcFixDim" data-field="' +
+                      esc(s.field) +
+                      '" data-val="' +
+                      esc(s.fix) +
+                      '">Use ' +
+                      esc(String(s.fix)) +
+                      '</button>'
+                    : '') +
+                  '</p>'
+                );
+              })
+              .join('')
+          : '') +
+        (r.hasWaste ? row(r.wasteLbl + ' allowance', r.wastePct + '%') : '') +
+        matRowHtml +
+        labRowHtml +
+        (r.onCost > 0
+          ? row(
+              'Labor statutory costs (NIS, NHT, HEART, Education) ' + r.onCostPct + '%',
+              fmtMoney(r.onCost, moneyCode)
+            )
+          : '') +
+        (r.eq > 0 ? row('Equipment / plant hire', fmtMoney(r.eq, moneyCode)) : '') +
+        (r.ohPct > 0 ? row('Overhead & margin ' + r.ohPct + '%', fmtMoney(r.oh, moneyCode)) : '') +
+        row('Subtotal', fmtMoney(r.sub, moneyCode), 'calc-line-sub') +
+        // OWNER 2026-10-02: "No tax" is a CHOICE, so it says so. Three distinct
+        // zero-tax stories must never be confused: picked "none", typed 0, or a
+        // country whose rate genuinely is 0.
+        row(
+          r.noTax
+            ? 'No tax on this job'
+            : r.taxRate === 0 && r.overrideApplied
+              ? 'Tax (no tax - your rate)'
+              : 'Tax (' + r.taxRate + '%' + (r.overrideApplied ? ', your rate' : '') + ')',
+          fmtMoney(r.tax, moneyCode)
+        ) +
+        row('Estimated total', fmtMoney(r.total, moneyCode), 'calc-line-total') +
+        '<div class="calc-fine">Planning-grade estimate for ' +
+        esc(r.currency) +
+        '. Not a quote - every line becomes editable in the app once the project starts.</div>'
+    );
     return r;
   }
 
@@ -8943,6 +9051,8 @@
       // C3: the printed sheet is a document, so it renders with cents.
       docMoney = true;
       render();
+      // X-1: the sheet must never print half-updated cards.
+      flushHeavy();
       document.body.classList.add('print-estimate');
       window.print();
     },
@@ -12084,6 +12194,8 @@
   }
 
   function calcPopulate(v) {
+    // X-1: a load must read fully-updated cards, never a queued half-pass.
+    flushHeavy();
     try {
       if (!v || typeof v !== 'object') {
         return { ok: false, error: 'nothing to add' };
@@ -12490,6 +12602,37 @@
      runs here too - same mmgr-glass module, same glass preference, same
      capability floor (perf mode, weak hardware and narrow viewports stay on
      CSS). sync() is a no-op everywhere else. */
+  // C6 boot (AUDIT-DIRECTIVE-2026-10-18): when the calcStickyPanel flag is
+  // on, pin the estimate card (body class the CSS keys off) and wire the
+  // mobile total bar - Show scrolls the card into view (instant under
+  // prefers-reduced-motion), and an IntersectionObserver hides the bar
+  // while the card is already on screen. Flag off: the class never lands,
+  // the bar stays [hidden], and the page behaves exactly as before.
+  if (calcStickyFlagOn()) {
+    document.body.classList.add('bcp-sticky-on');
+    const c6bar = $('calc-totalbar');
+    const c6card = document.querySelector('.bcp-result');
+    const c6show = $('calc-totalbar-show');
+    if (c6bar) {
+      c6bar.hidden = false;
+    }
+    if (c6show && c6card) {
+      c6show.addEventListener('click', function () {
+        const reduce =
+          window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        c6card.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+      });
+    }
+    if (c6bar && c6card && 'IntersectionObserver' in window) {
+      new IntersectionObserver(
+        function (entries) {
+          c6bar.classList.toggle('is-off', entries[0].isIntersecting);
+        },
+        { threshold: 0.35 }
+      ).observe(c6card);
+    }
+  }
+
   if (window.MMGR && MMGR.Glass && MMGR.Glass.sync) {
     MMGR.Glass.sync();
   }

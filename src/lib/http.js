@@ -244,7 +244,14 @@ export function authEmailConfigured(env) {
 }
 export function authEmailFrom(env) {
   const f = env && typeof env.RESEND_FROM_EMAIL === 'string' ? env.RESEND_FROM_EMAIL.trim() : '';
-  return f || AUTH_FROM_FALLBACK;
+  const addr = f || AUTH_FROM_FALLBACK;
+  // RESEND INSIGHTS (owner 2026-10-24): Resend warns against a bare no-reply
+  // sender because it tells recipients and inbox providers that replies are
+  // ignored. The address itself stays config (RESEND_FROM_EMAIL); what this
+  // function guarantees is a NAME-BACKED sender: a configured "Name <a@b>"
+  // passes through byte-identical, and a bare address gets the brand in front
+  // of it instead of shipping anonymous. Pinned by test/email-from.test.mjs.
+  return addr.indexOf('<') === -1 ? 'My MaNaGeR <' + addr + '>' : addr;
 }
 export async function sendAuthEmail(env, to, subject, textBody) {
   if (!authEmailConfigured(env)) {

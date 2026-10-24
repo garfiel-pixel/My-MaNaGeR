@@ -8,6 +8,9 @@
 # signed up to Resend with — fine for dev testing; real users need the
 # verified domain (e.g. admin@mymanager.app).
 RESEND_API_KEY=
+# Sender address. A bare address is wrapped as "My MaNaGeR <...>" by
+# authEmailFrom (src/lib/http.js) so no send ships nameless - Resend's
+# no-reply rule, 2026-10-24. Production uses a name-backed value directly.
 RESEND_FROM_EMAIL=onboarding@resend.dev
 
 # TEST-ONLY seam: tools/qa-email-auth.cjs points the Worker at a local stub

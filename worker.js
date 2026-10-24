@@ -402,6 +402,17 @@ export default {
       } catch (e) {
         /* table may not exist yet (pre-migration) */
       }
+      // G-2 (2026-10-23): expired sign-in nonce rows (migration 0027).
+      // Nonces expire in 5 minutes and are single-use, so anything past its
+      // expiry is dead weight; the daily sweep bounds the table.
+      let nonceSweep = { meta: { changes: 0 } };
+      try {
+        nonceSweep = await env.DB.prepare('DELETE FROM auth_nonces WHERE expires_at < ?')
+          .bind(s7)
+          .run();
+      } catch (e) {
+        /* table may not exist yet (pre-migration) */
+      }
       console.log(
         'auth sweep: sessions=' +
           ((sessSweep.meta && sessSweep.meta.changes) || 0) +
@@ -410,7 +421,9 @@ export default {
           ' tokens=' +
           ((tokenSweep.meta && tokenSweep.meta.changes) || 0) +
           ' otp=' +
-          ((otpSweep.meta && otpSweep.meta.changes) || 0)
+          ((otpSweep.meta && otpSweep.meta.changes) || 0) +
+          ' nonces=' +
+          ((nonceSweep.meta && nonceSweep.meta.changes) || 0)
       );
     } catch (e) {
       console.error('auth sweep failed:', e && e.message);

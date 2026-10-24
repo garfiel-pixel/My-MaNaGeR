@@ -129,6 +129,7 @@ import { handleAiChat } from './ai-proxy.js';
 import { handleMcpServer } from './mcp/server.js';
 import {
   handleAuthGoogle,
+  handleAuthNonce,
   handleAuthMe,
   handleAuthLogout,
   handleAuthLogoutAll,
@@ -861,6 +862,17 @@ export async function routeApi(request, env, url) {
     }
 
     // 12. AUTH ROUTES
+    // G-2 (2026-10-23): GET /api/auth/nonce mints a single-use sign-in
+    // nonce the client passes to google.accounts.id.initialize({ nonce }).
+    // Same-origin gate lives in the handler; the authToken bucket already
+    // exists for the auth token family.
+    if (path === '/api/auth/nonce' && request.method === 'GET') {
+      const r = await rl(request, 'authToken', env);
+      if (r) {
+        return r;
+      }
+      return handleAuthNonce(request, env);
+    }
     if (path === '/api/auth/google' && request.method === 'POST') {
       structuredLog(env, 'info', 'auth-google-start');
       return handleAuthGoogle(request, env);

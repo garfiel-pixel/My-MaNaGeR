@@ -189,6 +189,13 @@ jobs:
         id: qa-owner-gate
         run: node tools/verify-owner-gate.cjs
 
+      # G-2 gate (DIRECTIVE: GOOGLE SIGN-IN SECURITY GAPS, 2026-10-23):
+      # in-process Worker route battery + the 14 sign-in nonce checks
+      # (wrong/reused/expired/forged, email_verified, flag on/off, sweep).
+      - name: "T1: Auth worker routes + sign-in nonce contract"
+        id: verify-auth-worker
+        run: node tools/verify-auth-worker.mjs
+
 
       # Chrome is needed from here on: the page-health sweep in T2 drives it
       # against wrangler dev, and the T3 batteries drive it directly.
@@ -474,6 +481,13 @@ jobs:
       - name: "T4: Full gap-list battery (qa-full)"
         id: qa-full
         run: node qa-full.cjs
+
+      # G-1 gate (DIRECTIVE: GOOGLE SIGN-IN SECURITY GAPS, 2026-10-23):
+      # Drive token request carries a per-request `state`, callback enforces
+      # right-state/age/single-use against a mocked GIS oauth2 client.
+      - name: "T4: Drive token state contract (state gate)"
+        id: qa-drive-state
+        run: node tools/qa-drive-state.cjs
 
       # Static arm only: this gate asserts the Paddle overlay CSP shape and
       # scoping. The live-browser arm needs the deployed site, so it runs in

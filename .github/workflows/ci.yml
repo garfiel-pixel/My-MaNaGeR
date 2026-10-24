@@ -189,6 +189,24 @@ jobs:
         id: qa-owner-gate
         run: node tools/verify-owner-gate.cjs
 
+      # T-1/T-2/T-3 gates from AUDIT-DIRECTIVE-2026-10-18 (bug classes
+      # F1/F2/F3, each invisible to every gate that existed before: an
+      # unresolved sprite <use href> renders an empty box with no error,
+      # an unanswered data-action does nothing, a dead page.html#anchor
+      # lands at the top of the page). Pure-static, no Chrome needed.
+      # Each was proven to bite by injecting its bug class (6/6 teeth).
+      - name: "T1: Icon sprite contract (F1 - every use href resolves)"
+        id: qa-icons
+        run: node tools/verify-icons.cjs
+
+      - name: "T1: data-action contract (F2 - every action answered)"
+        id: qa-actions
+        run: node tools/verify-actions.cjs
+
+      - name: "T1: Internal links (F3 - every href exists, anchor resolves)"
+        id: qa-links
+        run: node tools/verify-links.cjs
+
       # G-2 gate (DIRECTIVE: GOOGLE SIGN-IN SECURITY GAPS, 2026-10-23):
       # in-process Worker route battery + the 14 sign-in nonce checks
       # (wrong/reused/expired/forged, email_verified, flag on/off, sweep).

@@ -289,7 +289,18 @@
 // every auth page, hence this bump. Server side (worker routes + migration
 // 0027 auth_nonces) is not a shell asset. No inline script added or removed,
 // so the CSP hash set is unchanged.
-const CACHE = 'mmgr-shell-v462';
+// v463 - T-4 REDUNDANT data-action ATTRS REMOVED (audit tasks T-1/T-2/T-3,
+// 2026-10-24). Four markup attrs whose only "answer" was an element-id
+// listener were deleted: photos-upload (project.html) plus calcDocType and
+// calcCashMode (calculator.html), and photos-cancel already gone earlier in
+// the wave - the id listener does the work, the attr advertised nothing, so
+// the new T-2 gate (tools/verify-actions.cjs) can be suppression-list-free.
+// Also css/mmgr-icons.svg drops a duplicate i-palette symbol (browsers always
+// resolved to the first definition - byte-level no-op, but T-1's new
+// tools/verify-icons.cjs fails on duplicate ids). Changed shell assets:
+// project.html, calculator.html, css/mmgr-icons.svg - hence this bump. No
+// inline script added or removed, so the CSP hash set is unchanged.
+const CACHE = 'mmgr-shell-v463';
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new
 // 'JIC rate book' choice on calculator.html) prices ANY shipped book row as

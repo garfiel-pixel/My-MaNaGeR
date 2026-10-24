@@ -1,7 +1,7 @@
 # My MaNaGeR - Continuation Directive (active, small)
 
 **Read order for every session:** this file first, then the newest `AUDIT-DIRECTIVE-*.md`
-(now `AUDIT-DIRECTIVE-2026-10-18.md`) for the full work order. Do NOT open `docs/history/`
+(now `AUDIT-DIRECTIVE-2026-10-18.md`) plus `IMPROVEMENT-DIRECTIVE-2026-10-22.md` for the work orders. Do NOT open `docs/history/`
 unless a task cites it: the full history lives in
 `docs/history/CONTINUATION-DIRECTIVE-ARCHIVE-2026-10-18.md`, old status-log entries in
 `docs/history/log-YYYY-MM.md`, old reflections in `docs/history/reflection-ARCHIVE-2026-10-18.txt`.
@@ -60,10 +60,12 @@ must get the audit's own state check (rule 0.1) before anyone claims it.
 | Dashboard F1 budget actual double-system finding | OPEN suggestion, owner go-ahead needed | archive 2026-09-28 feature-gap entry |
 | Matt Pocock skills install (audit section 12) | NOT STARTED (optional; skip if no network) | audit section 12 |
 | 2026-10-22 sweep tasks T-1 to T-8 | T-7 FIXED (668b8d9, see STATUS LOG). Still open, measured today: T-1/T-2/T-3 gate files do not exist, T-4 = the same 3 redundant actions, T-5 = uncapped `request.json()` reads, T-6 mostly covered by CI gates (qa-auth-limits, qa-team-rbac, qa-client-codes, qa-api-keys) with client-code lookup timing not covered, T-8 open except gate 86 | audit 2026-10-22 block below |
+| IMPROVEMENT-DIRECTIVE-2026-10-22 (SEC / MKT / LEG / UX / ENG review waves) | OPEN - only docs edits have landed on it (88eb5e8, cd4a649); per-item wave status = state check | `IMPROVEMENT-DIRECTIVE-2026-10-22.md` |
 
 ## NEXT SESSION STARTING POINT (max 15 lines)
 
-1. Read this file, then `AUDIT-DIRECTIVE-2026-10-18.md`. Execute SPRINT 1 in order.
+1. Read this file, then `AUDIT-DIRECTIVE-2026-10-18.md`. SPRINT 1 is DONE - work the
+   open S2/S3 remainder named in the registry (C6, C7, X-1/X-2/X-4, INP, arch survey).
 2. Run `npm run verify` first; baseline 2026-10-23: EVERYTHING green (exit 0,
    registry 115/115, qa-full 187/187, sw shell v461).
 3. Working tree was CLEAN at the 2026-10-23 session start - Part H landed in
@@ -250,8 +252,8 @@ the next session: **start PART H Procurement and drive it to completion**
 ("start the other task to completion"). Phase 3 re-triggers any time by the
 owner naming rows they measure often (the entails list is in D1 above).
 
-NEXT SESSION STARTING POINT (updated 2026-10-17, **PART H MID-BUILD, READ H8
-FIRST**): **continue PART H at H5 step 5 (`js/mmgr-prompts.js`)** - steps
+NEXT SESSION STARTING POINT (2026-10-17 - SUPERSEDED 2026-10-23, PART H IS COMMITTED;
+the H-decisions below stand). Historical continue-spec kept with H8: **continue PART H at H5 step 5 (`js/mmgr-prompts.js`)** - steps
 1-4 are DONE and VERIFIED in the UNCOMMITTED working tree (see H8 for the
 file-by-file delta, the two namespace collisions `supplierBook` / `ns.Proc`,
 and the copy-ready H5.5-H5.6 edit specs with exact anchors - apply them

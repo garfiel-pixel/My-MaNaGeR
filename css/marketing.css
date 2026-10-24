@@ -832,13 +832,19 @@ html body.dark-mode .btn-gold:hover {
   display: inline-flex;
 }
 /* OWNER 2026-08-17: a dropdown is a SIMPLE LIGHT BOX - a compact white card
-   under the header (never the old full-width bar), plain text rows in
-   columns, and a page BLUR behind it so the reader focuses on the menu. */
+   (never the old full-width bar), plain text rows in columns.
+   OWNER 2026-10-23: the box opens DIRECTLY UNDER THE TRIGGER, not centred in
+   the viewport. Centring (left:50% + translateX(-50%)) measured 393px of
+   horizontal offset from the hovered Features item at 1280px wide, so a
+   straight swipe down from the item MISSED the box and hit the next nav item
+   instead (the "it switches the tab" complaint). js/marketing.js
+   placeNavMenu() writes left and top from the trigger's own rect, clamped to
+   the viewport; the values below are the fallback before that runs. */
 .nav-dd-menu {
   position: fixed;
   top: calc(var(--header-h) + 8px);
-  left: 50%;
-  transform: translateX(-50%) translateY(-6px);
+  left: 0;
+  transform: translateY(-6px);
   width: min(300px, calc(100vw - 32px));
   z-index: 130;
   padding: 20px 22px 12px;
@@ -871,7 +877,7 @@ html body.dark-mode .btn-gold:hover {
 .nav-dd.is-open .nav-dd-menu {
   opacity: 1;
   visibility: visible;
-  transform: translateX(-50%) translateY(0);
+  transform: translateY(0);
 }
 /* Note: no :focus-within here - keyboard open is handled in JS (focusin ->
    .is-open), and leaving :focus-within as a CSS trigger would re-open the menu

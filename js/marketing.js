@@ -810,6 +810,37 @@
   function ddNow() {
     return window.performance && performance.now ? performance.now() : Date.now();
   }
+  /* OWNER 2026-10-23: the menu opens DIRECTLY UNDER THE ITEM BEING HOVERED,
+     clamped to stay fully on screen - never centred in the viewport.
+     Centring (the old left:50% + translateX(-50%)) put the 700px Features
+     menu 393px right of its own trigger at 1280px wide (measured), so a
+     reader sweeping straight down from the item MISSED the box, landed on the
+     next nav item and swapped ITS menu in - the owner's "it switches the tab"
+     complaint. left = trigger centre - half the menu, clamped to
+     [8, viewport - menu - 8]; top = trigger bottom + 8, so the menu's ::before
+     bridge (12px) covers the whole gap and the pointer meets no dead zone on
+     the way down. Runs on creation, on every open, and on resize. */
+  function placeNavMenu(wrap) {
+    if (!wrap) {
+      return;
+    }
+    var trig = wrap.querySelector('a.nav-link');
+    var menu = wrap.querySelector('.nav-dd-menu');
+    if (!trig || !menu) {
+      return;
+    }
+    var r = trig.getBoundingClientRect();
+    var w = menu.offsetWidth;
+    var vw = document.documentElement.clientWidth;
+    var left = Math.round(r.left + r.width / 2 - w / 2);
+    left = Math.max(8, Math.min(left, Math.max(8, vw - w - 8)));
+    menu.style.left = left + 'px';
+    menu.style.top = Math.round(r.bottom + 8) + 'px';
+  }
+  function placeOpenNavMenus() {
+    document.querySelectorAll('.nav-dd.is-open').forEach(placeNavMenu);
+  }
+
   function closeDropdowns() {
     document.querySelectorAll('.nav-dd').forEach(function (w) {
       w.classList.remove('is-open');
@@ -886,6 +917,7 @@
         parent.replaceChild(wrap, a);
         wrap.appendChild(a);
         wrap.appendChild(menu);
+        placeNavMenu(wrap); // under its own trigger from the first paint
         // Open state: mouseenter/focusin opens (page blurs behind); the scrim
         // click, Escape, picking an item, or focus moving away closes it.
         var open = false;
@@ -897,6 +929,7 @@
             return;
           } /* Escape just closed it */
           closeDropdowns();
+          placeNavMenu(wrap); // layout can have changed since creation
           wrap.classList.add('is-open');
           open = true;
           sync();
@@ -916,6 +949,7 @@
         });
       });
     }
+    window.addEventListener('resize', placeOpenNavMenus);
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') {
         var trigger = null;

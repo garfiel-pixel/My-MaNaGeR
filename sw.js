@@ -261,7 +261,22 @@
 // window, so the class is exercised regardless of earlier gates' leftovers.
 // Changed shell asset: js/mmgr-claim.js (dist/bundle.js rebuilt) - hence this
 // bump. No inline script added or removed, so the CSP hash set is unchanged.
-const CACHE = 'mmgr-shell-v460';
+// v461 - NAV DROPDOWNS OPEN UNDER THEIR OWN ITEM (owner complaint 2026-10-23).
+// The hover menu was position:fixed with left:50% + translateX(-50%), i.e.
+// centred in the VIEWPORT: at 1280px wide the 700px Features menu measured
+// 393px to the right of the hovered Features item (menu 290-990, item centre
+// 247), so a straight swipe down from the item missed the box and hit the next
+// nav item - the tab switched under the pointer. js/marketing.js now places
+// each menu from its own trigger's rect (left = centre - half width clamped to
+// [8, viewport - width - 8]; top = trigger bottom + 8, so the ::before bridge
+// covers the whole gap), re-placed on every open and on resize. CSS drops the
+// translateX(-50%); left:0 stays as the fallback. Real-mouse proof at 1280 and
+// 1024 (tmp/navdd-swipe-test.cjs): 22/22, menu spans the item, fits the
+// viewport, no page horizontal overflow, swipe-down hit-tests the menu.
+// Changed shell assets: css/marketing.css, js/marketing.js (both bundled into
+// dist/marketing.min.css + dist/marketing-bundle.js, rebuilt) - hence this
+// bump. No inline script added or removed, so the CSP hash set is unchanged.
+const CACHE = 'mmgr-shell-v461';
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new
 // 'JIC rate book' choice on calculator.html) prices ANY shipped book row as

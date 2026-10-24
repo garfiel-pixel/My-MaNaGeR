@@ -44,27 +44,36 @@ entries" and the byte cap ever conflict, the byte cap wins (recorded in the log 
     when served files change and restart `serve.cjs` after inline-script edits.
 18. `skills-lock.json` is the source of truth for skills; never hand-edit hashes.
 
-## OPEN WORK REGISTRY (state as of 2026-10-18)
+## OPEN WORK REGISTRY (state as of 2026-10-23, every row re-checked against the code)
 
-| Item | Status | Where |
+Measured this session with git log, the live tracker (`PLANNING-TODO-2026-09-03.txt`)
+and direct greps. "state check" means the row could not be proven from here and
+must get the audit's own state check (rule 0.1) before anyone claims it.
+
+| Item | Status (2026-10-23) | Where / evidence |
 |---|---|---|
-| AUDIT SPRINT 1 (correct numbers, safe codes, readable plan) | IN PROGRESS - this session | `AUDIT-DIRECTIVE-2026-10-18.md` sections 4, 8.1, 10 |
-| AUDIT SPRINT 2 (exports, Gantt, UX, performance, Procurement core) | NOT STARTED - blocked on S1 exit gates | audit section 9 |
-| AUDIT SPRINT 3 (Gantt formats, Procurement P5-P10, consent, hardening) | NOT STARTED - blocked on S2 | audit sections 8.2, 9 |
-| PART H Procurement (H5.5 to H5.12, H8.3-H8.5) | MID-BUILD, UNCOMMITTED (20 modified + 2 new files in working tree at session start; "do not commit until H5.11 gates green") | archive PART H section; becomes audit task P1 in S2 |
+| AUDIT SPRINT 1 (correct numbers, safe codes, readable plan) | DONE - "S1 complete" logged 2026-10-18; tripwires T1-T5 and T8 all exit 0 today | `docs/history/log-2026-10.md` 2026-10-18 entries |
+| AUDIT SPRINT 2 (exports, Gantt, UX, performance, Procurement core) | SHIPPED: G7 + G1-G3 (03b671d), C4 CSV/XLSX and C5b PDF (efbbcc5, 664de52), X-3 baseline recorded, C11 file blocks (js/calc-ai.js:249). STILL OPEN: C6 sticky estimate panel (no .bcp sticky rule in css/mmgr.css), C7 switch rows (zero `class="tgl"` in calculator.html), X-1/X-2/X-4 (flag only at js/mmgr-state.js:343, no scheduler code, qa-inp baseline over budget), G4 header, M-3, M-4, M-6 = state check | audit section 9; measured 2026-10-23 |
+| AUDIT SPRINT 3 (Gantt formats, Procurement P5-P10, consent, hardening) | SHIPPED: G5, G6, G8 (4f5444b, 37c3326, 664de52, 19b1d9a), P5-P10 (b98ebde), S-2 consent (cd35eff plus 5 consent fixes), M-5 (log 2026-10-21), S-3 observe + S-4 csp-eval + S-5 escaping lint (all exist and run in `npm run verify`). STILL OPEN: INP under budget (blocked on X-1/X-2), the architecture survey (`docs/ARCHITECTURE-CANDIDATES-2026-10.html` does not exist), the sections 4-8 re-audit table, S-6 relay burst limit = state check | audit section 9; measured 2026-10-23 |
+| PART H Procurement (H5.5 to H5.12, H8.3-H8.5) | COMMITTED in waves 2026-10-19 to 10-21 (4c012b7, b98ebde); `qa-procurement` 51/0. The old MID-BUILD / UNCOMMITTED warning is void - the tree was clean at session start 2026-10-23. Remaining H items = state check against H5 | git log; tracker entries 2026-10-19 to 10-21 |
 | PART I Phase 3 (purpose-built measuring forms) | PARKED by owner decision (D1, 2026-10-17) | archive, D1 block |
 | Dashboard F1 budget actual double-system finding | OPEN suggestion, owner go-ahead needed | archive 2026-09-28 feature-gap entry |
 | Matt Pocock skills install (audit section 12) | NOT STARTED (optional; skip if no network) | audit section 12 |
+| 2026-10-22 sweep tasks T-1 to T-8 | T-7 FIXED (668b8d9, see STATUS LOG). Still open, measured today: T-1/T-2/T-3 gate files do not exist, T-4 = the same 3 redundant actions, T-5 = uncapped `request.json()` reads, T-6 mostly covered by CI gates (qa-auth-limits, qa-team-rbac, qa-client-codes, qa-api-keys) with client-code lookup timing not covered, T-8 open except gate 86 | audit 2026-10-22 block below |
 
 ## NEXT SESSION STARTING POINT (max 15 lines)
 
 1. Read this file, then `AUDIT-DIRECTIVE-2026-10-18.md`. Execute SPRINT 1 in order.
-2. Run `npm run verify` first; baseline 2026-10-18: everything green except `verify:sw`
-   (four HTML files newer than sw.js v433; bump at sprint exit, rule N8).
-3. Working tree at sprint start: 20 modified + 2 untracked files = Part H mid-build; finish or
-   commit them before touching Procurement (audit task P1).
-4. Tripwires T1-T8 are the gates: `tools/verify-{units,exports,currency,print-dom,
-   no-weak-random,gantt-export,doc-size}.cjs` + `tools/qa-inp.cjs`.
+2. Run `npm run verify` first; baseline 2026-10-23: EVERYTHING green (exit 0,
+   registry 115/115, qa-full 187/187, sw shell v461).
+3. Working tree was CLEAN at the 2026-10-23 session start - Part H landed in
+   4c012b7/b98ebde on 10-19 to 10-21, so the old "20 modified files" warning is
+   void and audit task P1 is unblocked.
+4. Tripwires T1-T8: `tools/verify-{units,export,currency,print-dom,
+   no-weak-random,doc-size}.cjs` all exit 0 (there is NO verify-gantt-export.cjs -
+   export coverage is verify-export.cjs plus the G gates in qa-v11). The
+   `tools/qa-inp.cjs` tripwire is EXTENDED: run it locally, its baseline is
+   deliberately over budget until X-1/X-2 land.
 5. Kill-switch flags go in `js/mmgr-state.js` flags block before each risky change (audit 11).
 6. Every C, G, S, X task ends with its GATE output pasted into the sprint log entry.
 7. Commits: plain Conventional Commits, small, per task. No AI attribution, no emoji.
@@ -73,8 +82,10 @@ entries" and the byte cap ever conflict, the byte cap wins (recorded in the log 
 
 ## STATUS LOG (newest entries kept here; full history in `docs/history/log-YYYY-MM.md`)
 
-Newest verbatim entries kept: 2026-10-16 (x2), 2026-10-17 (x3). One-line rollup of the next
+Newest verbatim entries kept: 2026-10-17 (x3), 2026-10-23 (x1). One-line rollup of the next
 older entries (full text in `docs/history/log-2026-10.md` / `log-2026-09.md`):
+- 2026-10-16 (x2): Reviews Turnstile P0 + promo note + honest dark-mode axe gate (v423-v426);
+  calculator family-filter option fix (f2ce6be) and the PART I rate-coverage plan.
 - 2026-10-13: in-chat hero tweak confirmation, documentation only, no commit/deploy.
 - 2026-10-07: marketing dot-rail + full-bleed layout rework (uncommitted at the time).
 - 2026-10-04: Controls terminal card + AI-credit commit-msg gate + 643-commit history rewrite
@@ -82,49 +93,6 @@ older entries (full text in `docs/history/log-2026-10.md` / `log-2026-09.md`):
 - 2026-09-28 (x3): calculator redesign wave (uncommitted), feature-gap audit (suggestions),
   kanban/gantt/geo defect wave (v328) plus rate-freedom and F4 calculator waves.
 - Before that: 210 entries archived under `docs/history/log-2026-08.md` and `log-2026-09.md`.
-**2026-10-16 — Session: PROMO SIDE NOTE SHIPPED, TURNSTILE P0 FIXED, DARK-MODE A11Y REPAIR, PROCUREMENT PLAN (PART H).** Four things landed, in the order they were found:
-1. **Reviews Turnstile was live and broken for every visitor (P0).** The bot gate was armed with a secret, but `js/reviews.js` guarded on the capital-T global `Turnstile` while Cloudflare only exposes lowercase `turnstile`, so `initTurnstile()` returned early every time and the widget rendered nothing (measured live: `divChildren: 0`, box 0x0, while a manual `turnstile.render()` in the same page succeeded). Fixed to read `window.turnstile`; verified live with a real headed browser issuing a 730-char token. Shell bumped to v423.
-2. **Launch-offer side note on pricing.html** (owner copy): `50% off your first 18 billing cycles, code 5JBXWUGZ8L at checkout`. Display only — no billing, pricing, checkout or backend change, and the code is not wired into the Paddle call. `.promo-note` / `.promo-code` in `css/marketing.css`, token-driven, `user-select:all` so one tap copies it on a phone.
-3. **CI failed on that note (T4 axe gate) and it was my note.** `.promo-code` put 13px bold `--gold-deep` (#a84a15) on the chip's gold tint, measured **4.09:1** against the 4.5:1 floor. Glyphs are now `--text-primary` (12.68:1 light, 9.69:1 dark measured in a real browser); the gold identity stays in the border and tint. v425.
-4. **The darker finding: dark mode was never being measured on marketing pages.** `qa-a11y-axe` labelled a run `[dark]` without checking that dark mode had engaged. No marketing page can become dark at all — none loads `mmgr-theme.js`, none has app/admin's inline FOUC script, `marketing.js` has no theme logic and `marketing.css` has no `prefers-color-scheme` block, so its whole `body.dark-mode` block is dormant. Every marketing `[dark]` row was the light page measured a second time (heading-order was being counted twice: 42 nodes before, 21 after). The gate now reads `body.dark-mode` after load, skips passes where dark cannot engage, fails a page that ignores `mmgr_theme=light`, and pins the light-only set in `LIGHT_ONLY`. It immediately caught a real discrepancy: `seed-test.html` is a redirect stub into `project.html` and inherits its palette, so it is deliberately NOT light-only. Fixing dark properly exposed 24 serious failures — the pricing comparison table's green checkmarks at 3.32:1 — now one token, `--status-success: #2fbd74` in `body.dark-mode` (7.40:1 on the canvas, 6.68:1 on the card). v426.
-5. **Procurement plan written as PART H** (planning only, no code): a Procurement tab with a supplier drop-down of items and minimum prices, plus an AI quote panel that indexes that data and writes an email-ready quote on the existing Gemini relay. H1 records the measured wiring with file:line so the next session does not re-derive it.
-
-WHAT THIS SESSION TOUCHED
-- `js/reviews.js` — Turnstile guard reads `window.turnstile`.
-- `pricing.html` — launch-offer side note.
-- `css/marketing.css` — `.promo-note`, `.promo-code`, dark `--status-success`.
-- `sw.js` — v423, v424, v425, v426.
-- `tools/qa-a11y-axe.cjs` — honest dark-mode measurement + `LIGHT_ONLY` gate.
-- `CONTINUATION-DIRECTIVE.md` — PART H (Procurement plan) + this record.
-
-VERIFICATION RUN THIS SESSION
-- `npm run verify` green after every change; `tools/qa-a11y-axe.cjs` 7/7 with `colour-contrast` absent from the rule list entirely.
-- Live-site probes in a real browser (CDP + Playwright): Turnstile widget 623x72 and issuing tokens; promo chip contrast measured 12.68:1 light and 9.69:1 dark against the actual composited background; zero serious/critical axe violations live.
-- `qa-marketing.cjs` 20/20 including `mkt-10 reviews.html zero console errors`.
-- An unregistered-harness check on the reviews module: `tools/qa-reviews.cjs` is the cloud review-queue gate, not the public form; `qa-marketing` is the gate that covers `reviews.html`.
-
-NEXT SESSION STARTING POINT
-- PART H is the live work item: ordered steps in H5, acceptance criteria in H4, and H6 lists the hard constraints not to violate.
-- Standing caution carried forward from this session: a gate that reports a state it did not actually produce is worse than no gate. When a harness labels a condition (`[dark]`, "signed in", "configured"), assert that condition in the browser before trusting the label.
-
-**2026-10-16 — Session (continued): CALCULATOR FAMILY-FILTER FIX SHIPPED (f2ce6be, live-verified), RATE-COVERAGE PLAN (PART I).** Owner asked whether the 811-rate book has a calculator for each rate and why welding was unfindable "under the trades". The audit (all numbers in PART I0) answered the question and exposed one real defect, which was then reproduced in a real browser BEFORE fixing and re-verified after:
-
-1. **The defect:** `#calc-family` ("Type of work") offered only 6 of the 8 families `FAMILY_META`/`WORK_FAMILY` define - `temporary-metal` and `joinery` had no `<option>`. A stored family therefore hid the scaffolding/welding and joinery optgroups with no way to show them short of All trades, and a recall that selected weld/scaffold while a family was stored stranded the select on a blank value (`syncFamily` writes a value no option matches - `fSel.selectedIndex === -1` with the view locked to one group). Root cause confirmed by the design comment itself (W2.5: families were designed as "six trades"; the JIC wave added the metadata but never the options).
-2. **Reproduced first, as ordered:** `tmp/repro-family-bug.cjs pre` = 4/4 in headless Chrome against serve.cjs (missing options; any stored family hides the welding group; the stranded blank-select chain; the locked single-group view). One harness lesson en route: the first P2 assertion was over-constrained - boot-time `syncFamily` flips a stored family to the persisted work item's own family, so the honest claim is "one non-JIC group shows", which held.
-3. **Fix:** two `<option>` elements in `calculator.html` with verbatim FAMILY_META labels (the FM gates and the new post-gate assert them). `sw.js` -> v427 (shell page). `node build.js` clean.
-4. **Verified:** `tmp/repro-family-bug.cjs post` 5/5 (options exist with correct labels; filter behavior unchanged; selecting Temporary-and-metal-works works and shows its label; the recall chain now leaves the select SHOWING its family; All trades restores all 9 groups); `npm run verify` green; `qa-calculator-page` 228/228 (FM1-FM5 intact); `qa-calc-trade-coverage` 88/88 across 43 trades both viewports, zero page errors.
-5. **Shipped:** commit `f2ce6be` (Conventional, no AI footer), pushed, CI full-suite SUCCESS (run 38897994087), deployed via `node tools/deploy.cjs` (version 7288e73a). Live proof: `/calculator` byte-identical to local (sha256 49bcd793...), both options present with exact labels, live `sw.js` = v427 and byte-identical. Live-check lesson re-learned: production 307-redirects `.html` URLs (curl needs -L; lesson 4).
-6. **PART I added** (planning only, no code): the full rate-coverage plan - measured baseline, Option A ("Use this rate" row action feeding the existing custom-item path - recommended, converts all 711 browse-only rows with zero new money math) vs rejected Option B (711 hand-wired variants) vs phase-2 Option C (generic JIC picker reusing RATE_UNITS), drawbacks (book truthiness: #100 caps, duplicate items at two rates, 'C'-basis conversions, "Welding" rows are cutting), acceptance criteria, ordered steps, and what NOT to do.
-
-WHAT THIS SESSION TOUCHED
-- `calculator.html` - two family `<option>` elements + explanatory comment.
-- `sw.js` - v426 -> v427.
-- `CONTINUATION-DIRECTIVE.md` - PART I (rate-coverage plan) + this record.
-- `tmp/repro-family-bug.cjs` - pre/post browser gate (gitignored scratch; promote to tools/ if the family filter is touched again).
-
-NEXT SESSION STARTING POINT
-- PART I is the live work item (phases in I2, steps in I5, constraints in I6). PART H (Procurement) remains the other queued plan - both are independent and either can start first.
-
 **2026-10-17 — Session: WELDING UNITS MONEY FIX + AI RATE GROUNDING SHIPPED (e158134 + c6b25a1, CI green, deployed v9ff0ac33, live-verified), PART H REVIEW (H7), DOMAIN RECORDED.** Owner asked that the assistant stop answering calculator/rate questions with "I don't have access", then the full ship order: local QA, CI green, deploy. Two real defects were found by probing the shipped app, fixed, gated, and shipped:
 
 1. **Welding money bug (fixed).** The synthetic JIC book published welding's per-100mm figure against an INCH quantity with no RATE_UNITS adapter (rf fell through to 1) and the imperial ft->m default rewrote the typed inches: 100 in priced J$19,800 metric / J$6,035 imperial instead of the book's own J$50/in. Fix in `js/calculator-page.js`: per-100mm rows now publish the per-inch pair (`{ allIn: r.impRate, unit: 'in' }`) and `IMP_D1_FACTOR.welding = 1`. Both modes now price 100 x J$50 = J$5,000 materials (+ the JIC row's own 0.75 day x J$400 labour where present) - identical either way. Reproduced in a real browser BEFORE the fix, re-verified in a real browser on the live site AFTER (metric and imperial byte-identical, quantity label stays "100 in").
@@ -188,6 +156,13 @@ Local: `npm run verify` 117/117, qa-calculator-page **247/247**, trade-coverage 
 
 NEXT SESSION STARTING POINT
 - **PART I Phases 1 AND 2 are DONE.** Only Phase 3 remains (owner-selected variant expansion, Option B selectively — on owner request only). Queued next: **PART H Procurement** (build per H5 with H7 folded in — H7.1 corrected; decide H7.7 first: pack toggle vs always-visible, grantable scope vs owner-only). Live probes against https://mymanagerworkspace.com.
+
+**2026-10-23 — Session: TWO OWNER-REPORTED BUGS FIXED AND LIVE (668b8d9 claim pack, dc141ed nav dropdowns), CI GREEN TWICE, DEPLOYED TWICE, DIRECTIVE RESTRUCTURED.** Owner order: dig for real bugs, fix, commit, deploy, then review this file - its outstanding tasks included - and restructure it against the code base.
+
+1. **DIG (evidence before claims).** The 2026-10-22 sweep probes re-run (`tmp/audit-{links,aria,actions2,wiring,css-classes}.cjs`): zero NEW findings - 0 broken aria references, 0 dead anchors, links only the `?v=` probe false positive plus the non-served monolith note file, actions only the documented T-4 trio. Baseline `npm run verify` exit 0 (registry 115/115, 129 tests). Tripwires run locally, all exit 0: T1 units, T2 export (34/34), T3 currency, T4 print-dom, T5 no-weak-random, T8 doc-size. One live failing gate and one owner complaint came out of the dig.
+2. **CLAIM PACK PRINT WRAP (T-7, closed).** `claimPackText` (js/mmgr-claim.js:420) pushed section 7 meeting rows UNWRAPPED - a real kickoff meeting's actionItems measures 644 chars on one line - and sections 4, 6, 8 plus the Project/Name header lines carried the same class, so any user text over 92 chars broke the export's own print contract (qa-full 86, qa-full.cjs:2142: maxLine < 100). Hermetic first, as ordered: fresh seed on a fresh page = maxLine 89, so the gate was sound and the failure was real state (the kickoff meeting the battery runs lands inside gate 86's window). Second defect found while fixing: `wrap()` sliced over-long unbreakable tokens to `width` and DROPPED the tail - silent text loss in a document meant for counsel. Fix: `pushRow(head, text, cont)` (js/mmgr-claim.js:484) wraps every unbounded line at 92 with a hanging indent - header labels, weather task lists under their 56-char column, WBS lines, change lines, meeting lines, promise lines - table rows keep their pad() alignment, and `wrap()` now splits long tokens instead of truncating. Gate 86 is hermetic: it seeds its own long meeting/change/promise rows (including a 132-char unbreakable drawing reference) inside its own window, keeps the 100-char assertion, adds `noLoss` (whitespace-stripped contiguity of both seed records, so truncation can never pass) and a `worst` diagnostic. `sw.js` v459 -> v460. GATES: qa-full **187/187**; `npm run verify` exit 0; tripwires exit 0; `tmp/claim-evidence.cjs` measured maxLine 92, actsContiguous true, longTokenPresent true - locally AND on production. SHIP: commit `668b8d9`, CI `40052788117` SUCCESS 88/88, deploy `7060d084-b065-4efa-8663-86af391dd150`, live sw v460, live dist/bundle.js sha256 identical to local.
+3. **NAV DROPDOWNS UNDER THEIR OWN ITEM (owner complaint, same session).** The hover menu was `position:fixed; left:50%; translateX(-50%)` - centred in the VIEWPORT: measured 393px right of the hovered Features item at 1280 wide (menu 290-990, item centre 247), so a straight swipe down MISSED the box, hit the next nav item and swapped its menu in - the tab switched under the pointer. `placeNavMenu()` (js/marketing.js:823) now writes left = item centre - half the menu clamped to [8, viewport - menu - 8] and top = item bottom + 8 (the `::before` bridge covers the whole gap, no dead zone), re-placed on every open and on resize (`placeOpenNavMenus`, js/marketing.js:840); `.nav-dd-menu` (css/marketing.css:843) drops the translateX and keeps left:0 as fallback. GATES: real-mouse `tmp/navdd-swipe-test.cjs` **22/22** at 1280 and 1024 - menu spans the item, fits the viewport, no page horizontal overflow, swipe-down hit-tests the menu - locally AND live; `qa-marketing` 20/20; layout gate PASS; `npm run verify` exit 0; `sw.js` v461. SHIP: commit `dc141ed`, CI `40057049252` SUCCESS 88/88, deploy `d58c81b0-8a25-4c04-bc2a-70fc8fada646`, live sw v461, live marketing bundle + css sha256 identical to local.
+4. **DIRECTIVE RESTRUCTURED (the review).** OPEN WORK REGISTRY re-checked row by row against the code: SPRINT 1 DONE (log 2026-10-18); SPRINT 2 shipped G7+G1-G3, C4/C5b, C11 with C6, C7, X-1/X-2/X-4 measured still open; SPRINT 3 shipped G5/G6/G8, P5-P10, S-2, M-5, S-3/S-4/S-5 with the INP budget, the architecture survey (docs/ARCHITECTURE-CANDIDATES-2026-10.html does not exist) and the re-audit table still open; PART H COMMITTED 10-19 to 10-21 so the old MID-BUILD warning is void. STARTING POINT items 2-4 corrected (verify baseline fully green; tree clean; `verify-gantt-export.cjs` never existed - export coverage is `verify-export.cjs` plus the qa-v11 G gates; qa-inp is EXTENDED-local). T-7 marked FIXED, T-8 marked partial (gate 86 hermetic, the rest of the battery still leaks). The two 2026-10-16 entries rolled into `docs/history/log-2026-10.md` under the byte-cap law. **STILL OPEN, deliberately not touched:** T-1/T-2/T-3 gate files, T-4, T-5, the T-6 timing gate, T-8 (rest of battery), plus the registry rows above.
 
 ---
 
@@ -313,7 +288,7 @@ FOUND AND FIXED THIS PASS (shipped with the S-6.3b commit):
   `pricing.html#company`; pricing.html had no `#company` id, so the buyer
   landed at the top of the page. `id="company"` added to the plan card.
 
-TASKS STILL OPEN (in priority order):
+TASKS (T-7 CLOSED 2026-10-23, 668b8d9; everything below still open, priority order):
 - T-1 GATE THE SPRITE. `tools/verify-icons.cjs`: every `mmgr-icons.svg#i-*`
   reference in served HTML and in `js/` must resolve to a `<symbol>`. F1 was
   invisible to every existing gate; this closes the class. Register in
@@ -348,7 +323,8 @@ TASKS STILL OPEN (in priority order):
   of the cloud surface.
 
 
-- T-7 CLAIM PACK: ONE OVER-LONG LINE (unresolved, evidence recorded). qa-full
+- T-7 CLAIM PACK: ONE OVER-LONG LINE (FIXED 2026-10-23, commit 668b8d9 - see STATUS LOG).
+  qa-full
   gate 86 ("counsel-ready print document") fails with maxLine=644 (it requires
   <100); (187/0 earlier the same day, failing twice since).
   Fresh-seed probes give 89; a 500-char decision text plus a 500-char task name
@@ -356,7 +332,8 @@ TASKS STILL OPEN (in priority order):
   list unwrapped, or qa-full's earlier gates leak state into the pack. Fix: run
   the gate hermetically first, then wrap the offending section. Never relax the
   100-char assertion.
-- T-8 qa-full IS ORDER-SENSITIVE. Gate 07 (float watch) failed then passed with
+- T-8 qa-full IS ORDER-SENSITIVE (gate 86 made hermetic 2026-10-23; the rest of the
+  battery still leaks). Gate 07 (float watch) failed then passed with
   no code change: 187 checks mutate and restore the demo state, so a gate that
   depends on an earlier gate's leftovers is a false signal. Snapshot/restore
   deterministically per check (gate 86's restore is best-effort and runs AFTER

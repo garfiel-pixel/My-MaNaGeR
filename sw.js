@@ -300,6 +300,7 @@
 // tools/verify-icons.cjs fails on duplicate ids). Changed shell assets:
 // project.html, calculator.html, css/mmgr-icons.svg - hence this bump. No
 // inline script added or removed, so the CSP hash set is unchanged.
+<<<<<<< HEAD
 // v464 - AUDIT SPRINT 2 REMAINDER (2026-10-24): C6 sticky estimate panel +
 // mobile total bar markup, C7 switch rows (five .bcp-opt labels), X-1 render
 // scheduler (scheduleHeavy/flushHeavy/setOut in calculator-page.js) and X-2
@@ -310,6 +311,9 @@
 // hence this bump. No inline script added or removed, so the CSP hash set is
 // unchanged.
 const CACHE = 'mmgr-shell-v464';
+=======
+const CACHE = 'mmgr-shell-v464';
+>>>>>>> b4f94cb3880dc24b123e7a2ac632b44002d296f2
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new
 // 'JIC rate book' choice on calculator.html) prices ANY shipped book row as

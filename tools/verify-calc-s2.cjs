@@ -218,14 +218,25 @@ assert(
   /--tr-ui:\s*[\s\S]*?transform 80ms[\s\S]*?background-color 120ms/.test(css),
   'X-2: explicit --tr-ui transition list exists'
 );
+// X-2 RE-BASELINE (2026-10-25): this count started as a raw line match, so
+// it tallied two things that apply no blur at all - PROSE that merely names
+// the property inside a comment, and the perf kill block's own blur(0) rules,
+// which X-2 ADDED to save paint. That read 27 against the "under 25" target
+// the same commit set, so the gate was red the moment it was written; it only
+// surfaced now because the three earlier red steps had always stopped CI
+// before this one ran. Count what the check is actually about: declarations
+// that apply a non-zero blur, in real rules. The count is 24 and the target
+// is unchanged.
 const blurRules = css
+  .replace(/\/\*[\s\S]*?\*\//g, '')
   .split('\n')
   .filter(
     l =>
       /backdrop-filter\s*:/.test(l) &&
       !/-webkit/.test(l) &&
       !/:\s*none/.test(l) &&
-      !/@supports/.test(l)
+      !/@supports/.test(l) &&
+      !/blur\(\s*0(px)?\s*\)/.test(l)
   );
 assert(
   blurRules.length < 25,

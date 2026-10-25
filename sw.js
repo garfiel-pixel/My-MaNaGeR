@@ -318,7 +318,19 @@
 // the tokens change. Also js/mmgr-perf-boot.js (Performance Mode boot read)
 // rides this bump. No inline script added or removed, so the CSP hash set is
 // unchanged.
-const CACHE = 'mmgr-shell-v467';
+// v468 - LIGHT-MODE SURFACE TOKENS RESTORED (2026-10-25): commit 29696d8
+// deleted the light --glass-* block out of css/mmgr.css while moving it into
+// [data-theme] rules that were written without braces (invalid CSS, never
+// applied), so every light-mode var(--glass-*) reference resolved to nothing -
+// buttons lost their background, border and shadow (the Calculate button
+// measured under the 34px tap floor), .card lost its surface, and the hero's
+// ghost CTAs on index.html lost their frosted button base in marketing.css.
+// Tokens restored, the cyan/magenta overrides rewritten as real rules, and
+// .btn-ghost-light's base rule put back. Changed shell assets: css/mmgr.css,
+// css/marketing.css, dist/mmgr.min.css + dist/marketing.min.css (rebuilt),
+// calculator.html (?v=34 -> ?v=35) - hence this bump. No inline script added
+// or removed, so the CSP hash set is unchanged.
+const CACHE = 'mmgr-shell-v468';
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new
 // 'JIC rate book' choice on calculator.html) prices ANY shipped book row as

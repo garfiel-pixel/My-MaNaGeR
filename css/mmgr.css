@@ -150,6 +150,24 @@ svg.ico use {
     0.5,
     1
   ); /* ---- Surface tokens (light: glass is retired - solid, crisp surfaces) ---- */
+  /* RESTORED 2026-10-25: the cyan/magenta theme commit (29696d8) deleted this
+     whole block by accident - it moved the values into [data-theme] rules that
+     were written WITHOUT braces, so they were invalid CSS and never applied.
+     With these tokens gone, every var(--glass-*) reference in LIGHT mode
+     resolved to nothing: .btn lost its background, its border and its shadow
+     (the Calculate button measured 33.9px tall - under the 34px tap floor the
+     M1 gate checks), .card lost its surface, and 121 references across the app
+     fell back to inherited defaults. Light mode keeps these solid, crisp
+     values; the cyan and magenta overrides live at the end of this file. */
+  --glass-blur: 0px;
+  --glass-saturate: 100%;
+  --glass-fill-dark: #ffffff; /* solid white - no frosted effect on light */
+  --glass-fill-dark-hover: #f8fafc;
+  --glass-fill-dark-active: #eef1f6;
+  --glass-rim: inset 0 1px 0 rgba(255, 255, 255, 0); /* transparent on light - hairline border carries the edge */
+  --glass-rim-strong: inset 0 1px 0 #ffffff;
+  --glass-border: 1px solid #e5e7eb;
+  --glass-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 6px 18px rgba(16, 24, 40, 0.06);
 
   /* ---- Squircle corner radii (spec §2) ---- */
   --squircle-sm: 14px;
@@ -17361,27 +17379,30 @@ textarea.pv-in {
     grid-template-columns: 1fr;
   }
 }
-  /* Cyan theme (data-theme="cyan") - these override gold tokens when active */
-  [data-theme="cyan"] --glass-blur: 0px;
-  [data-theme="cyan"] --glass-saturate: 100%;
-  [data-theme="cyan"] --glass-fill-dark: #050a10; /* solid dark - no frosted effect on cyan light */
-  [data-theme="cyan"] --glass-fill-dark-hover: #0a1420;
-  [data-theme="cyan"] --glass-fill-dark-active: #101c28;
-  [data-theme="cyan"] --glass-rim: inset 0 1px 0 rgba(5, 10, 16, 0.5); /* subtle rim on cyan light */
-  [data-theme="cyan"] --glass-rim-strong: inset 0 1px 0 #050a10;
-  /* Cyan theme (data-theme="cyan") - these override gold tokens when active */
-  [data-theme="cyan"] --glass-blur: 0px;
-  [data-theme="cyan"] --glass-saturate: 100%;
-  [data-theme="cyan"] --glass-fill-dark: #050a10; /* solid dark - no frosted effect on cyan light */
-  [data-theme="cyan"] --glass-fill-dark-hover: #0a1420;
-  [data-theme="cyan"] --glass-fill-dark-active: #101c28;
-  [data-theme="cyan"] --glass-rim: inset 0 1px 0 rgba(5, 10, 16, 0.5); /* subtle rim on cyan light */
-  [data-theme="cyan"] --glass-rim-strong: inset 0 1px 0 #050a10;
-  /* Magenta theme (data-theme="magenta") - these override gold tokens when active */
-  [data-theme="magenta"] --glass-blur: 0px;
-  [data-theme="magenta"] --glass-saturate: 100%;
-  [data-theme="magenta"] --glass-fill-dark: #1a0f17;
-  [data-theme="magenta"] --glass-fill-dark-hover: #2c1b24;
-  [data-theme="magenta"] --glass-fill-dark-active: #3a2832;
-  [data-theme="magenta"] --glass-rim: inset 0 1px 0 #1a0f17;
-  [data-theme="magenta"] --glass-rim-strong: inset 0 1px 0 #1a0f17;
+
+/* ---- Cyan theme (data-theme="cyan"): these override the LIGHT surface
+   tokens when that mode is active. FIXED 2026-10-25: the original version of
+   this block was written as bare "selector --prop: value;" lines with no
+   rule body (and the cyan half was duplicated), so the browser dropped every
+   line and the mode changed nothing. A custom property still needs a rule to
+   live in. ---- */
+[data-theme='cyan'] {
+  --glass-blur: 0px;
+  --glass-saturate: 100%;
+  --glass-fill-dark: #050a10; /* solid dark - no frosted effect on cyan light */
+  --glass-fill-dark-hover: #0a1420;
+  --glass-fill-dark-active: #101c28;
+  --glass-rim: inset 0 1px 0 rgba(5, 10, 16, 0.5); /* subtle rim on cyan light */
+  --glass-rim-strong: inset 0 1px 0 #050a10;
+}
+
+/* ---- Magenta theme (data-theme="magenta"): same contract as cyan above. ---- */
+[data-theme='magenta'] {
+  --glass-blur: 0px;
+  --glass-saturate: 100%;
+  --glass-fill-dark: #1a0f17;
+  --glass-fill-dark-hover: #2c1b24;
+  --glass-fill-dark-active: #3a2832;
+  --glass-rim: inset 0 1px 0 #1a0f17;
+  --glass-rim-strong: inset 0 1px 0 #1a0f17;
+}

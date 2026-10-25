@@ -40,14 +40,24 @@ if (!mb) {
 }
 const mapBody = mb[1];
 const mapKeys = new Set();
-const keyRe = /'([A-Za-z0-9]+)'\s*:/g;
+// Bare OR quoted key, at the map's own entry indent. Prettier Wave 8.7
+// (2026-10-07) stripped the quotes from object keys, so the old
+// /'([A-Za-z0-9]+)'\s*:/g found three keys and reported 178 markup actions
+// as handler-less. Entries sit at four spaces (the map is at two, nested
+// content deeper), which keeps nested literals inside a handler out of the
+// key set.
+const keyRe = /^    ['"]?([A-Za-z0-9]+)['"]?:/gm;
 let k;
 while ((k = keyRe.exec(mapBody)) !== null) {
   mapKeys.add(k[1]);
 }
 
 // Markup actions not defined in the map AND not referenced anywhere else.
-const missing = [...actions].filter(a => !mapKeys.has(a) && app.indexOf("'" + a + "'") === -1);
+// The "elsewhere" test used to search for the quoted form only; with the
+// quotes gone it searched for a string the file no longer contains, so every
+// action routed by a different dispatcher counted as missing. A word search
+// covers both spellings.
+const missing = [...actions].filter(a => !mapKeys.has(a) && app.indexOf(a) === -1);
 // Map keys never used in markup (informational — includes dynamic/legacy).
 const unused = [...mapKeys].filter(a => !actions.has(a));
 

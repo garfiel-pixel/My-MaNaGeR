@@ -67,7 +67,8 @@ need(
 need(
   're-sync + later actions wired in ACTION_MAP',
   'js/mmgr-app.js',
-  /'cloudResync'[\s\S]{0,300}'cloudBondLater'/
+  // bare or quoted keys (Prettier Wave 8.7 stripped the quotes, 2026-10-07)
+  /['"]?cloudResync['"]?[\s\S]{0,300}['"]?cloudBondLater['"]?/
 );
 need(
   'bond carries no credential (id pointer only)',

@@ -174,19 +174,35 @@ async function check(name, expr, hint) {
   await send('Runtime.enable');
   await send('Page.enable');
 
-  // DIR-2 CSP acceptance (spec: "tested explicitly after the CSP is applied —
-  // not assumed compatible"): under the LIVE served CSP, (a) a dynamic import
-  // of Three.js from unpkg (the Premium Glass path) and (b) a fetch of the
-  // whisper model from huggingface must both succeed. A malformed CSP blocks
-  // both with SecurityError — these checks catch exactly that.
+  // DIR-2 CSP acceptance (spec: "tested explicitly after the CSP is applied -
+  // not assumed compatible"): under the LIVE served CSP the Premium Glass
+  // dependency and the whisper model must both be reachable. A malformed CSP
+  // blocks them with SecurityError - these checks catch exactly that.
+  // CONTRACT CHANGED, Wave 8.4 (v377): three.js is now VENDORED at
+  // vendor/three/three.module.js and https://unpkg.com was removed from
+  // script-src in worker.js, serve.cjs and project.html's meta CSP, so the
+  // CDN import must now be REFUSED. Asserting the old expectation (CDN import
+  // succeeds) is what had this step red; the pair below pins BOTH halves - the
+  // third party is not trusted, and the same-origin replacement still loads.
   await send('Page.navigate', { url: BASE + '/project.html?id=demo-project' });
   await delay(3000);
   await check(
-    'D2b glass CDN import allowed under live CSP',
+    'D2b glass CDN import REFUSED (three.js is vendored same-origin)',
     `(async function(){
     try {
       await import('https://unpkg.com/three@0.160.0/build/three.module.js');
-      return { val: true };
+      return { val: false, err: 'CDN import unexpectedly succeeded - unpkg is trusted again' };
+    } catch (e) {
+      return { val: true, err: String(e && e.name) + ': ' + String(e && e.message).slice(0, 120) };
+    }
+  })()`
+  );
+  await check(
+    'D2b2 vendored three.js import allowed under live CSP',
+    `(async function(){
+    try {
+      var m = await import('/vendor/three/three.module.js');
+      return { val: !!m && typeof m.REVISION === 'string', rev: m && m.REVISION };
     } catch (e) {
       return { val: false, err: String(e && e.name) + ': ' + String(e && e.message).slice(0, 120) };
     }

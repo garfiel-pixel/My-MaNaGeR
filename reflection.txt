@@ -203,3 +203,76 @@ LIMITATIONS (honest)
     further red step may still be waiting behind it.
   - Not run this session: the extended QA battery as a whole (it is a scheduled workflow), and
     no deploy was made - the owner ships.
+
+================================================================================
+2026-10-25 (later) - EXTENDED QA BATTERY: FIRST FULL GREEN
+================================================================================
+
+The 2026-10-25 (earlier) note ended with "a further red step may still be
+waiting behind it". There were FIVE, and each was a different failure family.
+The battery is now fully green (run 40216321600, 51/51 steps, 10m19s).
+
+WHAT WAS RED, IN ORDER, AND WHY
+  1. verify-ai-import A8b - stale gate: Prettier 2026-10-07 stripped quotes
+     from object keys. Gate accepts bare or quoted (fixed earlier today).
+  2. qa-console-stress - died at require time: chromium.launch() with no
+     channel, while the workflow runs `npm install --ignore-scripts` so
+     Playwright's own browser was never downloaded. Fixed with
+     channel:'chrome' (same as every sibling harness).
+  3. qa-console-stress (real app bug) - privacy.html overflowed 7px at 320.
+     Both .consent-table tables are content-sized and a storage key like
+     mmgr_admin_pass_hash is ONE unbreakable word: min-content 286px inside
+     a 288px column. 2px of headroom held on this machine's font and broke
+     on the runner's wider one. overflow-wrap:anywhere below 480px drops
+     min-content to 96px. sw.js bumped to v471 (marketing.css is shell).
+  4. qa-glass G02 - the gate measured the RUNNER'S GPU, not our code. The
+     pretty-default contract is "a fresh CAPABLE device boots premium with
+     no opt-in", but G02 relied on natural detection AND a real WebGL
+     renderer. The Linux runner's headless Chrome has neither, so isHighEnd()
+     returned false and the engine correctly chose CSS-only. The boot page is
+     now forced capable plus the documented __mmgrThreeImport seam, so the
+     boot PATH is asserted on any hardware. Natural detection was never
+     uncovered: G03/G04 already drive isHighEnd() through both verdicts.
+
+  Also re-baselined the same way (stale contract, not app regressions):
+  qa-glass G02's .card clause (SOLID is the law since 1fbc18f), qa-hero-cards
+  (hero mock cards ship inert aria-hidden behind the globe, so hover/focus
+  can never happen), qa-signin-look fixedBig (consent banner excluded BY
+  NAME - S2 guards the email form becoming a popup, not a site-wide
+  dismissible banner), qa-spy-nav (required 'chromium', a package this repo
+  has never had, so it died at require time).
+
+THE DEBUGGING LESSONS THAT MATTER
+  - REPRODUCE THE RUNNER, DON'T ARGUE WITH IT. privacy.html passed locally
+    at 320 in every configuration I could build. The fix came from
+    CALIBRATING a proxy: force Verdana, confirm it reproduces the runner's
+    number (6px vs CI's 7px), then trust it. An uncalibrated proxy is a
+    guess; a calibrated one is a reproduction. Same trick proved the fix
+    (0px) before spending a CI cycle.
+  - MEASURE MIN-CONTENT ON THE RIGHT BOX. Reading minw off body/section gave
+    a constant 294 - which is .container's `width: min(..., 92vw)`, a
+    DEFINITE width, so every ancestor reported it. Only measuring the table
+    itself moved (286 -> 96). A number that never changes across ten
+    elements is measuring the container, not the content.
+  - A GATE THAT PASSES FOR THE WRONG REASON IS RED. qa-glass G02 was green
+    on Windows purely because this machine has a GPU. It was asserting
+    "our boot code works" via "this host has WebGL". Teeth were confirmed
+    mid-fix by watching it FAIL (canvasPresent:true, premiumOn:false) when
+    the engine could not boot.
+  - THE BATTERY STOPS AT ITS FIRST RED. Five sequential reds, five pushes.
+    Fixing one reveals the next, so pre-flight EVERY step after the failure
+    locally before pushing - that is what collapsed the last two rounds into
+    one.
+
+LIMITATIONS (honest)
+  - qa-inp fails 1-2 checks LOCALLY (calc-type-6-digits p75 120 vs 100
+    budget) and passes in CI. It is throttled timing on a machine that was
+    running several Chrome instances at once, and the registry already
+    flags it as noisy on shared runners. CI has no tmp/inp-baseline.json
+    (tmp/ is gitignored) so it takes the record-only branch and cannot fail
+    on budget. The recorded local baseline is from 2026-10-19 and stale.
+  - field-guide (13px) and calculator (20px) show min-content overruns under
+    the Verdana proxy but pass the real 320 gate across the full battery;
+    their wide content sits in scroll containers. Simulation artifacts, left
+    alone rather than "fixed".
+  - No deploy was made - the owner ships.

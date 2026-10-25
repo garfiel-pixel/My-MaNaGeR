@@ -4847,6 +4847,18 @@ body.dark-mode .consent-choose {
 .consent-table code {
   font-size: 12.5px;
 }
+/* PHONE (320): the table's min-content is the sum of its longest unbreakable
+   token + cell padding - measured 294px against 288px of room, so on a wider
+   font stack (the Linux QA runner) the page scrolled 7px sideways
+   (qa-console-stress, CI 40210053004). A long storage key is a single word:
+   allowing it to break only when the column is out of room lets the columns
+   fit any font, and at wider widths there is room so nothing breaks. */
+@media (max-width: 480px) {
+  .consent-table th,
+  .consent-table td {
+    overflow-wrap: anywhere;
+  }
+}
 body.dark-mode .consent-table th {
   color: var(--on-navy);
 }

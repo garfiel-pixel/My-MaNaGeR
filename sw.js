@@ -362,7 +362,18 @@
 // js/mmgr-google-auth.js (bundled into dist/app-bundle.js and
 // dist/admin-bundle.js, both rebuilt) - hence this bump. No inline script
 // added or removed, so the CSP hash set is unchanged.
-const CACHE = 'mmgr-shell-v470';
+// v471 - THE PRIVACY TABLE SCROLLED SIDEWAYS AT 320 (extended battery,
+// 2026-10-25, CI 40210053004). Both .consent-table tables on privacy.html
+// are content-sized, and a storage key like mmgr_admin_pass_hash is ONE
+// unbreakable word: min-content came out 286px inside a 288px column, so a
+// font stack wider than this machine's (the Linux QA runner) tipped the page
+// 7px sideways. The cells now allow overflow-wrap: anywhere below 480px, so
+// a key can break mid-word only when the column is out of room - measured
+// min-content drops 286px -> 96px, and the tables still render full width
+// with the same columns. Changed shell asset: css/marketing.css (bundled
+// into dist/marketing.min.css, rebuilt) - hence this bump. No inline script
+// added or removed, so the CSP hash set is unchanged.
+const CACHE = 'mmgr-shell-v471';
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new
 // 'JIC rate book' choice on calculator.html) prices ANY shipped book row as

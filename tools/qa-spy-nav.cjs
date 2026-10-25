@@ -16,7 +16,11 @@
 //   - phones: the rail is hidden and <main> is full-bleed (no gutter)
 //
 // Runs against serve.cjs (QA_BASE, default http://127.0.0.1:8765).
-const { chromium } = require('chromium');
+// playwright ships the chromium export this file launches (channel: chrome,
+// so the system browser is used and no download is needed). It was required
+// as 'chromium' - a package this repo has never had - so the harness died at
+// require time with MODULE_NOT_FOUND before asserting anything.
+const { chromium } = require('playwright');
 
 const BASE = process.env.QA_BASE || 'http://127.0.0.1:8765';
 let fails = 0;

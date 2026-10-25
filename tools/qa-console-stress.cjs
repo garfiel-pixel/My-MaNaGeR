@@ -107,7 +107,14 @@ function check(label, ok, extra) {
 }
 
 (async () => {
-  const browser = await chromium.launch();
+  // channel: chrome - this battery runs in the Extended QA workflow, where
+  // `npm install --ignore-scripts` deliberately skips Playwright's browser
+  // download. A bare launch() asks for that missing browser and dies with
+  // "Executable doesn't exist at .../chrome-headless-shell" (CI run
+  // 40205884436). Every other Playwright harness in the workflow already
+  // pins the system Chrome this way (qa-hero-cards, qa-paddle-csp,
+  // qa-spy-nav) or through chrome-launcher's executablePath.
+  const browser = await chromium.launch({ channel: 'chrome' });
 
   for (const pagePath of PAGES) {
     const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });

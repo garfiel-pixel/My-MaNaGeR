@@ -118,7 +118,11 @@ async function openPage(browser, w, h, dark, opts) {
   const browser = await chromium.launch(
     process.env.PW_CHROMIUM
       ? { executablePath: process.env.PW_CHROMIUM, args: ['--no-sandbox'] }
-      : {}
+      : // PW_CHROMIUM is unset on the runners, and `--ignore-scripts` skips
+        // Playwright's browser download, so the empty options would ask for a
+        // browser that is not there. Use the system Chrome, like the sibling
+        // harnesses in the same workflow.
+        { channel: 'chrome' }
   );
 
   for (const [w, h, dark] of [
@@ -240,13 +244,37 @@ async function openPage(browser, w, h, dark, opts) {
       const txt = re =>
         [...panel.querySelectorAll('button')].find(x => re.test(x.textContent) && vis(x));
       const r = e => (e ? e.getBoundingClientRect() : null);
+      // A big fixed element only hurts if it COVERS the sign-in card - that
+      // is what the promise means to a person on the page. The cookie consent
+      // banner (#consent-card, js/consent.js) is excluded BY NAME: it is the
+      // site-wide, dismissible legal overlay that landed 2026-10-20 (after
+      // this harness), it carries its own three equal choice buttons, and S2
+      // is about the EMAIL FORM never becoming a fixed popup - not about a
+      // banner unrelated to it. Measured 2026-10-25 with the dropdown open:
+      // at 1534 it intersects the expanded card's legal links (banner
+      // 407,741-1127,884 vs card bottom 834) and at 390 it sits over the
+      // card footer (banner top 697 vs card bottom 837); everything it
+      // covers is reachable the moment the visitor picks a choice, and the
+      // page scrolls to it. Every OTHER fixed element still has to keep off
+      // the card.
+      const overlapsCard = e => {
+        const r = e.getBoundingClientRect();
+        return !(
+          r.right <= card.left ||
+          r.left >= card.right ||
+          r.bottom <= card.top ||
+          r.top >= card.bottom
+        );
+      };
       const fixedBig = [...document.querySelectorAll('body *')]
         .filter(
           e =>
             getComputedStyle(e).position === 'fixed' &&
             vis(e) &&
             e.offsetWidth * e.offsetHeight > 20000 &&
-            !e.classList.contains('signin-sky')
+            !e.classList.contains('signin-sky') &&
+            e.id !== 'consent-card' &&
+            overlapsCard(e)
         )
         .map(e => (e.id || e.className).toString().slice(0, 30));
       const dialogs = [

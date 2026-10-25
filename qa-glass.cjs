@@ -16,8 +16,10 @@
    TRIAGE to EXTENDED.
 
    Covers:
-     - 3.5.1 CSS glass is the universal default (.glass-panel
-       recipe on .card) with zero JS/opt-in.
+     - 3.5.1 CSS glass is the universal default with zero JS/opt-in:
+       .card carries NO backdrop-filter (X-2 made content solid on
+       purpose, css/mmgr.css:1995) and a capable device still boots the
+       premium engine unprompted.
      - 3.5.2 Capability floor: a simulated LOW-END profile stays
        CSS-only regardless of any stored 'premium' preference —
        preference never overrides genuine incapability.
@@ -157,8 +159,14 @@ async function ev(expr) {
     b1
   );
 
-  // 3.5.1: CSS glass default — .card uses the glass recipe (blur var present
-  // in the rule), zero JS class needed.
+  // 3.5.1: CSS glass default.
+  // RE-BASELINED (X-2, commit 1fbc18f, 2026-10-24): the owner's glass law is
+  // "functional layer only, content stays solid", and that commit made
+  // .card SOLID on purpose (css/mmgr.css:1995 carries the comment: the frost
+  // was invisible on light and set the starfield moving behind body copy on
+  // dark). So the card clause flips - .card must carry NO backdrop-filter -
+  // while the engine half of the promise is unchanged: a fresh capable
+  // device still boots premium with no opt-in.
   // PRETTY DEFAULT (owner 2026-09-29): a fresh device boots with
   // effectiveGlassMode()=premium, and on this forced-capable profile the
   // engine activates at boot — body class + canvas present WITHOUT any
@@ -179,8 +187,8 @@ async function ev(expr) {
     })()`);
   }
   check(
-    'G02 pretty-default: .card keeps the CSS recipe AND the engine boots unprompted on capable devices',
-    g1.hasBackdrop && g1.premiumOn && g1.canvasPresent,
+    'G02 pretty-default: .card stays SOLID (content law) and the engine still boots unprompted',
+    !g1.hasBackdrop && g1.premiumOn && g1.canvasPresent,
     g1
   );
 

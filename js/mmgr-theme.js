@@ -10,10 +10,11 @@
      'light'  - warm gold accent on clean light interface
      'dark'   - muted gold accent on professional dark interface
      'system' - follow OS prefers-color-scheme (restored 2026-09-03, owner D6)
-     'cyan'   - cyan accent on light interface (Phase E)
+     'cyan'   - light interface with the cyan accent (Phase E)
+     'magenta'- light interface with the magenta accent (Phase F)
 
-   Storage key: mmgr_theme = 'light' | 'dark' | 'system' | 'cyan'
-   (backward-compatible: existing 'dark'/'light'/'cyan' values work;
+   Storage key: mmgr_theme = 'light' | 'dark' | 'system' | 'cyan' | 'magenta'
+   (backward-compatible: existing values work;
     old 'mmgr_palette' key is retired.)
 
    Default: LIGHT for new visitors (owner D12, 2026-09-03) - a fresh
@@ -24,8 +25,10 @@
      - body.dark-mode is toggled when effective mode is dark
      - :root in mmgr.css defines light tokens
      - body.dark-mode in mmgr.css overrides with dark tokens
-     - [data-theme="cyan"] in mmgr.css overrides with cyan tokens (Phase E)
-     - No palette switching - one brand, two appearances (light/dark) + cyan accent
+     - [data-theme="cyan"] / [data-theme="magenta"] on <html> carry the
+       accent tokens for those two modes (Phase E/F)
+     - No palette switching - one brand, two appearances (light/dark) plus
+       the two accent modes
 
    Persistence (owner 2026-09-12): DEVICE ONLY.
      1. localStorage - instant, works offline, never syncs to the account
@@ -94,13 +97,27 @@
 
   /**
    * Apply the current theme mode.
-   * Sets body.dark-mode class + updates picker aria states + syncs glass.
+   * Sets body.dark-mode class + data-theme on <html> for the accent modes
+   * (Phase E-F) + updates picker aria states + syncs glass.
    */
   function apply() {
     var dark = isDark();
     var mode = currentMode();
+    var de = document.documentElement;
     if (document.body) {
       document.body.classList.toggle('dark-mode', dark);
+    }
+    // Accent modes (cyan / magenta) hang off <html>: css/mmgr.css and
+    // css/marketing.css carry [data-theme='cyan'] / [data-theme='magenta']
+    // token rules. Light, dark and system carry NO attribute - those three
+    // are the stock tokens, so the attribute is removed rather than set to
+    // 'light' (a stale value would otherwise keep overriding the tokens).
+    if (de) {
+      if (mode === 'cyan' || mode === 'magenta') {
+        de.setAttribute('data-theme', mode);
+      } else {
+        de.removeAttribute('data-theme');
+      }
     }
     // Update all theme-mode picker buttons on the page.
     // Light/Dark/System buttons now live in #rail-customize (app.html)
@@ -146,7 +163,7 @@
 
   /**
    * Set the theme mode and persist it.
-   * @param {string} mode - 'light' | 'dark' | 'system' | 'cyan'
+   * @param {string} mode - 'light' | 'dark' | 'system' | 'cyan' | 'magenta'
    */
   function setMode(mode) {
     mode = KNOWN[mode] ? mode : 'light'; // D12: never silently follow OS

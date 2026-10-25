@@ -50,9 +50,9 @@ svg.ico use {
   --brand-on: #ffffff; /* foreground on brand surfaces */
   --gold: #d96b27; /* alias: gold = brand for backward compat */
   --gold-rgb: 217, 107, 39;
-  --cyan: #50E8F4; /* cyan theme accent - maps to existing token system, does not replace gold */
+  --cyan: #50e8f4; /* cyan theme accent - maps to existing token system, does not replace gold */
   --cyan-rgb: 80, 232, 244;
-  --thin-air: #C7F8FE; /* cyan theme secondary accent */
+  --thin-air: #c7f8fe; /* cyan theme secondary accent */
   --blue-charcoal: #001619; /* cyan theme deep canvas */
   --cyan-text-on-light: #0d1a26; /* cyan text on light surface WCAG AA */
   --cyan-bg-on-dark: #050a10; /* cyan background on dark mode */
@@ -17380,29 +17380,105 @@ textarea.pv-in {
   }
 }
 
-/* ---- Cyan theme (data-theme="cyan"): these override the LIGHT surface
-   tokens when that mode is active. FIXED 2026-10-25: the original version of
-   this block was written as bare "selector --prop: value;" lines with no
-   rule body (and the cyan half was duplicated), so the browser dropped every
-   line and the mode changed nothing. A custom property still needs a rule to
-   live in. ---- */
-[data-theme='cyan'] {
-  --glass-blur: 0px;
-  --glass-saturate: 100%;
-  --glass-fill-dark: #050a10; /* solid dark - no frosted effect on cyan light */
-  --glass-fill-dark-hover: #0a1420;
-  --glass-fill-dark-active: #101c28;
-  --glass-rim: inset 0 1px 0 rgba(5, 10, 16, 0.5); /* subtle rim on cyan light */
-  --glass-rim-strong: inset 0 1px 0 #050a10;
+/* ---- SHARED GOLD BUTTON (REFINEMENT-DIRECTIVE-2026-10-24.md 5.3) ----
+   One definition for every class that FILLS with the brand gold. The
+   gradient carries the fill, the dark ink carries the label (5.4: the label
+   must never sit on the deep end of the gradient), the bronze edge carries
+   the border. Sizes, padding, radius and the active-scale behaviour stay
+   whatever the button's own size rule set.
+   The dark-mode selectors are listed because they outrank a bare .btn-o and
+   would otherwise flip the CTA back to the outline treatment in dark mode
+   (5.5 / owner question 2 default: in dark mode BUTTONS get the gold
+   gradient, borders, rings and text keep today's dark tokens).
+   NOTE (5.4, recorded for the owner rather than papered over): the ink label
+   measures 8.28:1 on the light stop, 4.45:1 on the middle stop and 2.82:1 on
+   the deep stop. Labels are centred (they sit near the middle stop), weight
+   600, with the light text shadow. No new colour was invented to chase the
+   last 0.05 of the middle stop. */
+.btn-o,
+.btn-bullion,
+body.dark-mode .btn-o,
+body.dark-mode .btn-bullion,
+body.dark-mode:not(.db-page) .btn-o,
+body.dark-mode:not(.db-page) .btn-bullion {
+  background: var(--gold-grad);
+  color: var(--bullion-ink);
+  border: 1px solid var(--bullion-edge);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 4px 6px rgba(0, 0, 0, 0.2);
+  font-weight: 600;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.btn-o:hover,
+.btn-bullion:hover,
+body.dark-mode .btn-o:hover,
+body.dark-mode .btn-bullion:hover,
+body.dark-mode:not(.db-page) .btn-o:hover,
+body.dark-mode:not(.db-page) .btn-bullion:hover {
+  background: var(--gold-grad-hover);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 6px 10px rgba(0, 0, 0, 0.3);
+  color: var(--bullion-ink);
+}
+.btn-o:focus-visible,
+.btn-bullion:focus-visible,
+body.dark-mode .btn-o:focus-visible,
+body.dark-mode:not(.db-page) .btn-o:focus-visible {
+  outline: 2px solid var(--bullion-deep);
+  outline-offset: 2px;
+}
+.btn-o:disabled,
+.btn-bullion:disabled,
+body.dark-mode .btn-o:disabled,
+body.dark-mode:not(.db-page) .btn-o:disabled {
+  background: #c9b26a;
+  color: #4a4a4a;
+  border-color: #d8c98e;
+  box-shadow: none;
+  text-shadow: none;
+  cursor: not-allowed;
 }
 
-/* ---- Magenta theme (data-theme="magenta"): same contract as cyan above. ---- */
+/* ---- Cyan / magenta accent modes (Phase E-F, data-theme set on <html>) ----
+   REWRITTEN 2026-10-25. The commit that added these modes wrote them as bare
+   "selector --prop: value;" lines with no rule body (the cyan half duplicated
+   twice over), so the browser dropped every line: the mode changed nothing,
+   Prettier threw CssSyntaxError at that line, and both stylesheets were then
+   added to .prettierignore to silence the symptom.
+   They are also re-scoped. The original overrode --glass-fill-dark with
+   near-black (#050a10) while the mode leaves the LIGHT canvas in place, so
+   switching to Cyan would have blacked out every card, dock and panel under
+   dark text - unreadable. These are ACCENT themes on the light interface (the
+   contract js/mmgr-theme.js documents): surfaces, text hierarchy and status
+   colours are untouched; only the brand accent family is retinted. Every text
+   step clears AA on white: #00838f 4.52:1, #006972 6.43:1, #c2185b 5.87:1,
+   #ad1457 6.97:1, and white on the fill 4.52:1 / 5.87:1 (so --on-gold moves
+   from the dark ink to white - the ink would manage only 3.83:1 on cyan).
+   body.dark-mode is never applied alongside these modes (the mode is one
+   value: light | dark | system | cyan | magenta), so no dark block conflicts.
+   Status colours (green/red/blue/amber) never change - owner colour rule. */
+[data-theme='cyan'] {
+  --brand: #00838f;
+  --brand-hover: #006972;
+  --brand-subtle: rgba(0, 131, 143, 0.1);
+  --brand-on: #ffffff;
+  --gold: #00838f;
+  --gold-rgb: 0, 131, 143;
+  --gold-ink: #006972;
+  --on-gold: #ffffff;
+  /* The CTA keeps the gold gradient in the accent modes: the gradient stops
+     are graded for the ink label and the owner's rule keeps the identity
+     gold. The accent owns tabs, chips, icons, active states and washes. */
+}
 [data-theme='magenta'] {
-  --glass-blur: 0px;
-  --glass-saturate: 100%;
-  --glass-fill-dark: #1a0f17;
-  --glass-fill-dark-hover: #2c1b24;
-  --glass-fill-dark-active: #3a2832;
-  --glass-rim: inset 0 1px 0 #1a0f17;
-  --glass-rim-strong: inset 0 1px 0 #1a0f17;
+  --brand: #c2185b;
+  --brand-hover: #ad1457;
+  --brand-subtle: rgba(194, 24, 91, 0.1);
+  --brand-on: #ffffff;
+  --gold: #c2185b;
+  --gold-rgb: 194, 24, 91;
+  --gold-ink: #ad1457;
+  --on-gold: #ffffff;
 }

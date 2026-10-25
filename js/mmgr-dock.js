@@ -136,7 +136,15 @@
     } catch (e) {
       /* storage blocked */
     }
-    document.documentElement.removeAttribute('data-theme');
+    // Only the RETIRED palette value is scrubbed. data-theme is live again:
+    // js/mmgr-theme.js puts 'cyan' / 'magenta' there for the Phase E/F accent
+    // modes, and wiping the attribute outright erased them the moment this
+    // module booted (found by probe 2026-10-25 - the theme dropdown showed
+    // Cyan while <html> had no attribute at all).
+    var de = document.documentElement;
+    if (de && de.getAttribute('data-theme') === 'rose-gold') {
+      de.removeAttribute('data-theme');
+    }
   }
   function applyPalette() {
     scrubRetiredPalette();

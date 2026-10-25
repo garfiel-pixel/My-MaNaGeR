@@ -68,6 +68,3 @@ gitleaks-*
 **/*.svg
 *.wav
 **/*.wav
-# Cyan theme tokens - prettier cannot parse [data-theme="cyan"] attribute selectors with custom properties
-css/mmgr.css
-css/marketing.css

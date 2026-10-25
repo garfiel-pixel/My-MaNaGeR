@@ -14,6 +14,19 @@
   --gold-deep: #a84a15; /* brand deep - text accent on white */
   --gold-rgb: 217, 107, 39;
   /* -- Bullion (gold gradient, bronze border, readable ink) ---- */
+  /* RESTORED 2026-10-25: the cyan/magenta commit (29696d8) left the header
+     comment here with NO tokens under it - the six values were written as
+     bare "selector --prop: value;" lines at the end of this file, which is
+     invalid CSS, so --bullion* never resolved and .btn-bullion rendered with
+     no background, no border and no text colour. Values are byte-identical to
+     css/mmgr.css :root (the directive's rule: both sheets carry the same
+     block). */
+  --bullion-light: #e6c547;
+  --bullion: #d4af37;
+  --bullion-dark: #aa771c;
+  --bullion-deep: #855811;
+  --bullion-edge: #f3e5ab;
+  --bullion-ink: #1a1a1a; /* text on a gold surface */
 
   /* -- Accent cyan (secondary, restrained) -- */
   --accent-cyan: #00bcd4;
@@ -739,22 +752,11 @@ body.dark-mode .site-nav a.nav-link[aria-current='page'] {
   border-color: var(--bullion-edge);
   color: var(--bullion-ink);
 }
-/* Cyan theme btn-bullion override */
-[data-theme="cyan"] .btn-bullion {
-  border-color: var(--bullion-edge);
-  background: var(--bullion);
-  color: var(--bullion-ink);
-  box-shadow: 0 1px 3px rgba(212, 175, 55, 0.2);
-}
-[data-theme="cyan"] .btn-bullion:hover {
-  background: var(--bullion-light);
-  border-color: var(--bullion-edge);
-  color: var(--bullion-ink);
-}
-[data-theme="cyan"] .btn-bullion:focus-visible {
-  outline: 2px solid var(--bullion-ink);
-  outline-offset: 2px;
-}
+/* Cyan theme btn-bullion override: none. The bullion CTA keeps the gold
+   gradient in the accent modes - the stops are graded for the ink label and
+   the owner's colour rule keeps the identity gold. The ONE definition for
+   .btn-bullion, .btn-gold and .btn-o is the shared rule at the end of this
+   file (REFINEMENT-DIRECTIVE-2026-10-24.md 5.3). */
 /* RESTORED 2026-10-25: the cyan/magenta theme commit (29696d8) deleted this
    base rule while adding .btn-bullion next to it, so the hero's two ghost
    CTAs on index.html lost their frosted white surface and rendered as bare
@@ -4873,19 +4875,90 @@ body.dark-mode .consent-table td {
 }
 /* esbuild keep end */
 
-/* Baseline nudge dot (owner 2026-09-19): visible signal that a schedulable
-   project still has no baseline. Hidden by default; BaselineGuard reveals. */
-  /* Cyan theme (data-theme="cyan") - these override gold tokens when active */
-  [data-theme="cyan"] --bullion-light: #e6c547;
-  [data-theme="cyan"] --bullion: #d4af37;
-  [data-theme="cyan"] --bullion-dark: #aa771c;
-  [data-theme="cyan"] --bullion-deep: #855811;
-  [data-theme="cyan"] --bullion-edge: #f3e5ab;
-  [data-theme="cyan"] --bullion-ink: #1a1a1a; /* text on a gold surface */
-  /* Magenta theme (data-theme="magenta") - these override gold tokens when active */
-  [data-theme="magenta"] --bullion-light: #e91e63;
-  [data-theme="magenta"] --bullion: #ec407a;
-  [data-theme="magenta"] --bullion-dark: #d81b60;
-  [data-theme="magenta"] --bullion-deep: #ad1457;
-  [data-theme="magenta"] --bullion-edge: #fce4ec;
-  [data-theme="magenta"] --bullion-ink: #212121;
+/* ---- SHARED GOLD BUTTON (REFINEMENT-DIRECTIVE-2026-10-24.md 5.3) ----
+   One definition for every class that FILLS with the brand gold: .btn-gold
+   (marketing CTA), .btn-o (app CTA) and .btn-bullion. The gradient carries
+   the fill, the dark ink carries the label (5.4: the label must not sit on
+   the deep end of the gradient), the bronze edge carries the border.
+   Padding, height, radius, font-size and the active-scale behaviour are NOT
+   touched - they stay whatever the button's own size rule set.
+   The dark-mode selectors are listed here because they would otherwise
+   outrank this rule and flip the CTA back to a white/outline button.
+   NOTE (5.4, recorded for the owner): the label measures 8.28:1 on the light
+   stop, 4.45:1 on the middle stop and 2.82:1 on the deep stop; labels are
+   centred (they sit near the middle stop), weight 600, with the light text
+   shadow below. No new colours were invented to chase the last 0.05. */
+.btn-gold,
+.btn-bullion,
+body.dark-mode .btn-gold,
+html body.dark-mode .btn-gold,
+body.dark-mode .btn-bullion {
+  background: var(--gold-grad);
+  color: var(--bullion-ink);
+  border: 1px solid var(--bullion-edge);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 4px 6px rgba(0, 0, 0, 0.2);
+  font-weight: 600;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.btn-gold:hover,
+.btn-bullion:hover,
+body.dark-mode .btn-gold:hover,
+html body.dark-mode .btn-gold:hover,
+body.dark-mode .btn-bullion:hover {
+  background: var(--gold-grad-hover);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 6px 10px rgba(0, 0, 0, 0.3);
+}
+.btn-gold:focus-visible,
+.btn-bullion:focus-visible,
+body.dark-mode .btn-gold:focus-visible,
+html body.dark-mode .btn-gold:focus-visible {
+  outline: 2px solid var(--bullion-deep);
+  outline-offset: 2px;
+}
+.btn-gold:disabled,
+.btn-bullion:disabled,
+body.dark-mode .btn-gold:disabled,
+html body.dark-mode .btn-gold:disabled {
+  background: #c9b26a;
+  color: #4a4a4a;
+  border-color: #d8c98e;
+  box-shadow: none;
+  text-shadow: none;
+  cursor: not-allowed;
+}
+
+/* ---- Cyan / magenta accent modes (Phase E-F, data-theme on <html>) ----
+   FIXED 2026-10-25: the original block sat at the end of this file written as
+   bare "selector --prop: value;" lines with no rule body, so the browser
+   dropped every line, Prettier threw CssSyntaxError, and both stylesheets
+   were then hidden in .prettierignore to make the symptom go away.
+   A custom property needs a rule to live in.
+   These are ACCENT themes on the light interface (the contract mmgr-theme.js
+   documents): surfaces, text and status colours are untouched, only the brand
+   accent family is retinted, and every text step clears 4.5:1 on white
+   (#00838f 4.52, #006972 6.43, #c2185b 5.87, #ad1457 6.97). The bullion CTA
+   stays gold in both modes: the magenta bullion stops that came with the
+   commit measure 3.26:1 for the ink label on the mid stop, so they are held
+   back rather than shipped failing AA (directive 5.4: record, do not invent). */
+[data-theme='cyan'] {
+  --brand: #00838f;
+  --brand-hover: #006972;
+  --brand-subtle: rgba(0, 131, 143, 0.1);
+  --gold: #00838f;
+  --gold-hover: #006972;
+  --gold-deep: #006972;
+  --gold-rgb: 0, 131, 143;
+}
+[data-theme='magenta'] {
+  --brand: #c2185b;
+  --brand-hover: #ad1457;
+  --brand-subtle: rgba(194, 24, 91, 0.1);
+  --gold: #c2185b;
+  --gold-hover: #ad1457;
+  --gold-deep: #ad1457;
+  --gold-rgb: 194, 24, 91;
+}

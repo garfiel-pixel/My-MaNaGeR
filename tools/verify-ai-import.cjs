@@ -117,9 +117,12 @@ check(
     /accept="\.txt,\.md"/.test(htmlSrc),
   'modal wiring missing'
 );
+// Keys may be bare or quoted (Prettier Wave 8.7 stripped the quotes on
+// 2026-10-07); match either form so the gate tests the WIRING, not the
+// formatter's taste.
 check(
   'A8b action map wires idReadWithAi + idFilePick',
-  /'idReadWithAi'\s*:/.test(appSrc) && /'idFilePick'\s*:/.test(appSrc),
+  /['"]?idReadWithAi['"]?\s*:/.test(appSrc) && /['"]?idFilePick['"]?\s*:/.test(appSrc),
   'action map entries missing'
 );
 

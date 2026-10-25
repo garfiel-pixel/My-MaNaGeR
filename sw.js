@@ -330,7 +330,30 @@
 // css/marketing.css, dist/mmgr.min.css + dist/marketing.min.css (rebuilt),
 // calculator.html (?v=34 -> ?v=35) - hence this bump. No inline script added
 // or removed, so the CSP hash set is unchanged.
-const CACHE = 'mmgr-shell-v468';
+// v469 - PHASE E/F WIRING + GOLD-1 (REFINEMENT-DIRECTIVE-2026-10-24.md,
+// 2026-10-25). Four repairs the cyan/magenta commit left open:
+//  1. marketing.css's bullion tokens existed only as invalid bare
+//     "selector --prop: value;" lines at EOF, so .btn-bullion had no
+//     background/border/colour; the tokens are now in :root and the block is
+//     a real [data-theme] rule (Prettier threw CssSyntaxError there, which is
+//     why css/mmgr.css and css/marketing.css had been hidden in
+//     .prettierignore - both entries are removed, the formatting gate runs on
+//     the two stylesheets again).
+//  2. Cyan and magenta are reachable: js/mmgr-theme.js now puts data-theme on
+//     <html> (it only added the modes to KNOWN before, so the CSS never fired)
+//     and the theme dropdown on app/admin/project offers both. The [data-theme]
+//     blocks are re-scoped to ACCENT tokens - the old near-black glass fill
+//     would have blacked out every card on a light canvas.
+//  3. GOLD-1: one shared .btn-o / .btn-gold / .btn-bullion definition carries
+//     the gold gradient (directive 5.3), instead of an unused .btn-bullion.
+//  4. js/mmgr-perf-boot.js is loaded on sixteen pages (it was referenced by
+//     none) and rewritten: the shipped version threw a TypeError on its last
+//     line and stubbed window.ns.Perf, a namespace nothing reads.
+// Changed shell assets: 16 html pages, css/mmgr.css, css/marketing.css,
+// dist/mmgr.min.css + dist/marketing.min.css (rebuilt), js/mmgr-theme.js,
+// js/mmgr-perf-boot.js, calculator.html (?v=35 -> ?v=36). No inline script
+// added or removed, so the CSP hash set is unchanged.
+const CACHE = 'mmgr-shell-v469';
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new
 // 'JIC rate book' choice on calculator.html) prices ANY shipped book row as
@@ -884,6 +907,9 @@ const SHELL = [
   'images/hero-globe-poster.svg',
   // unbundled modules not in any bundle (loaded by non-project pages)
   'js/mmgr-theme.js',
+  // PERF-1 boot (REFINEMENT-DIRECTIVE-2026-10-24.md): loaded by <script src>
+  // on sixteen pages, so it must be precached or the offline shell loses it.
+  'js/mmgr-perf-boot.js',
   'js/mmgr-perf.js',
   'js/mmgr-dock.js',
   // AUDIT 2026-10-18 M-5: the keyboard shortcut module. It has its own

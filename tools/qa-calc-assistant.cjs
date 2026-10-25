@@ -1724,9 +1724,19 @@ async function partBCustomLine(browser, errors) {
       quick
     );
     await page.click('[data-action="calcBoqAdd"]');
+    // X-2 PAINT CAPS (audit 8.3, 2026-10-24): #calc-boq-card now carries
+    // content-visibility:auto, so a card parked below the fold has NO
+    // laid-out boxes and innerText reads "" while its lines sit in the DOM
+    // (the add-to-bill smooth scroll is what brings them on screen). A read
+    // here would therefore race a scroll animation and report an empty bill
+    // for a line that WAS added - measured: card top 1564 in a 900px
+    // viewport, rows 1, innerText "", textContent 170 chars. The gate reads
+    // textContent - the DOM truth, layout-independent - never innerText.
     const c2 = await page.evaluate(() => ({
       rows: document.querySelectorAll('[data-action="calcBoqRecall"]').length,
-      bill: ((document.getElementById('calc-boq-card') || {}).innerText || '').replace(/\s+/g, ' ')
+      bill: ((document.getElementById('calc-boq-card') || {}).textContent || '')
+        .replace(/\s+/g, ' ')
+        .trim()
     }));
     check(
       'C2 the bill line carries the name, 3 day, the rate and the total',
@@ -1753,8 +1763,12 @@ async function partBCustomLine(browser, errors) {
     await page.click('[data-action="calcRun"]');
     await page.click('[data-action="calcBoqAdd"]');
     const wantOn = Math.round(wantBase * 1.125);
+    // Same X-2 note as the C2 read above: textContent, not innerText - the
+    // card can still be off-screen here and content-visibility skips it.
     const c2b = await page.evaluate(() =>
-      ((document.getElementById('calc-boq-card') || {}).innerText || '').replace(/\s+/g, ' ')
+      ((document.getElementById('calc-boq-card') || {}).textContent || '')
+        .replace(/\s+/g, ' ')
+        .trim()
     );
     check(
       'C2 the on-cost total equals qty x rate + 12.5% (independent math)',
@@ -2053,8 +2067,11 @@ async function partBCustomLine(browser, errors) {
     await pop();
     rows = await rowCount();
     note = await lastNote();
+    // X-2 paint caps: textContent, not innerText - see the C2 read above.
     const c8bill = await page.evaluate(() =>
-      ((document.getElementById('calc-boq-card') || {}).innerText || '').replace(/\s+/g, ' ')
+      ((document.getElementById('calc-boq-card') || {}).textContent || '')
+        .replace(/\s+/g, ' ')
+        .trim()
     );
     check(
       'C8 the accepted JIC proposal lands at the file rate with the row unit',

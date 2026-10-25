@@ -309,6 +309,15 @@
 // dist/mmgr.min.css (rebuilt), js/calculator-page.js, js/mmgr-glass.js -
 // hence this bump. No inline script added or removed, so the CSP hash set is
 // unchanged.
+// v465-v467 - CYAN + MAGENTA THEME MODES (Phase E-F, 2026-10-24): js/mmgr-theme.js
+// gains cyan and magenta in its KNOWN modes, mmgr.css gains the matching
+// [data-theme="cyan"] / [data-theme="magenta"] glass-shader overrides and
+// marketing.css the bullion-token overrides for both. Two bumps inside the
+// same wave (v465 for cyan, v466 then v467 for magenta) because the CSS
+// theme files are shell assets - returning clients must re-fetch each time
+// the tokens change. Also js/mmgr-perf-boot.js (Performance Mode boot read)
+// rides this bump. No inline script added or removed, so the CSP hash set is
+// unchanged.
 const CACHE = 'mmgr-shell-v467';
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new

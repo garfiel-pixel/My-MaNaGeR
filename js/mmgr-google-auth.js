@@ -44,6 +44,8 @@ var MMGR = window.MMGR || {};
   const CLIENT_ID = '297970704704-m05hgt93lfaq286q90br8c96ffg1aph3.apps.googleusercontent.com';
   const GIS_SRC = 'https://accounts.google.com/gsi/client';
   let _gisInit = false; // GIS initialized exactly once
+  let _gisFitBound = false; // window resize listener attached once
+  let _gisFitTimer = 0; // debounce handle for fitGisButton()
   let _restored = false; // /api/auth/me consulted at most once per boot
   let _popupWarnShown = false; // BUG-2: popup-blocked warning shown at most once
   let _user = null; // signed-in operator (session restore, Google, or email) , display-only, never gates anything
@@ -195,6 +197,7 @@ var MMGR = window.MMGR || {};
         installPopupBlockDetector();
       }
       _gisInit = true;
+      bindGisFit();
       fetchSignInNonce();
       return true;
     } catch (e) {
@@ -249,6 +252,69 @@ var MMGR = window.MMGR || {};
       }
       return false;
     }
+  }
+
+  // T-D2 (extended battery, 2026-10-25): GIS measures the host ONCE, at render
+  // time, and bakes that pixel width into the button - it never re-measures.
+  // A page opened wide (signin.html's host is 374px at 1440) and then narrowed
+  // keeps the wide button, so the document grows past the viewport:
+  // qa-console-stress measured 27px of horizontal overflow at 320. On a phone
+  // that loads the page narrow the render is correct, so only the resize-after-
+  // load case is wrong - which is exactly what a window drag, a rotation or a
+  // split-screen does. data-gis-width="fill" means fill the HOST, so the
+  // button is re-drawn whenever it has stopped fitting it.
+  // Debounced 150ms and gap-checked, so a live drag re-draws once at the end
+  // and never flickers under the pointer; a host that is hidden (modal/rail
+  // closed, clientWidth 0) and our own CSS-sized offline fallback are left
+  // alone.
+  function fitGisButton() {
+    if (!_gisInit || !gisReady()) {
+      return;
+    }
+    const host = $('google-signin-button');
+    if (!host || host.hidden) {
+      return;
+    }
+    if (host.querySelector('.gis-fallback-btn')) {
+      return;
+    }
+    const drawn = host.querySelector('[role="button"]');
+    if (!drawn) {
+      return;
+    }
+    const hostW = host.clientWidth;
+    const drawnW = Math.round(drawn.getBoundingClientRect().width);
+    if (!hostW) {
+      return;
+    }
+    // Too wide for the host (the overflow bug), or far narrower than a host
+    // that can still take the button (data-gis-width="fill" promises fill).
+    const overflows = drawnW > hostW + 1;
+    const underfills = drawnW < hostW - 24 && hostW <= 400;
+    if (!overflows && !underfills) {
+      return;
+    }
+    try {
+      // GIS allows re-render after a wipe (same pattern as ensureGisButton).
+      host.innerHTML = '';
+      window.google.accounts.id.renderButton(host, gisButtonOptions(host));
+      installPopupBlockDetector();
+    } catch (e) {
+      if (window.console && window.console.warn) {
+        window.console.warn('mmgr-google-auth: GIS re-fit failed (identity unaffected)', e);
+      }
+    }
+  }
+
+  function bindGisFit() {
+    if (_gisFitBound) {
+      return;
+    }
+    _gisFitBound = true;
+    window.addEventListener('resize', function () {
+      window.clearTimeout(_gisFitTimer);
+      _gisFitTimer = window.setTimeout(fitGisButton, 150);
+    });
   }
 
   function showButton() {

@@ -353,7 +353,16 @@
 // dist/mmgr.min.css + dist/marketing.min.css (rebuilt), js/mmgr-theme.js,
 // js/mmgr-perf-boot.js, calculator.html (?v=35 -> ?v=36). No inline script
 // added or removed, so the CSP hash set is unchanged.
-const CACHE = 'mmgr-shell-v469';
+// v470 - THE GOOGLE BUTTON STOPPED FITTING (extended battery, 2026-10-25).
+// GIS bakes the pixel width it measures at RENDER time and never re-measures,
+// so a page opened wide and then narrowed kept the wide button: 27px of
+// horizontal overflow on signin.html at 320 (qa-console-stress). The host is
+// re-drawn - debounced, gap-checked, never over a hidden host or the offline
+// fallback - whenever the drawn button stops fitting it. Changed shell asset:
+// js/mmgr-google-auth.js (bundled into dist/app-bundle.js and
+// dist/admin-bundle.js, both rebuilt) - hence this bump. No inline script
+// added or removed, so the CSP hash set is unchanged.
+const CACHE = 'mmgr-shell-v470';
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new
 // 'JIC rate book' choice on calculator.html) prices ANY shipped book row as

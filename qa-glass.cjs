@@ -127,12 +127,50 @@ async function ev(expr) {
   // Fresh-device discipline: wipe every pref slot the engine family reads so
   // nothing counts as a stored choice (mmgr-perf's pretty default then
   // governs, and each gate sets exactly the state it asserts).
+  //
+  // CAPABLE PROFILE, DETERMINISTIC (fix 2026-10-25): G02 below asserts the
+  // pretty default - a fresh CAPABLE device boots premium with no opt-in -
+  // and it relied on the runner naturally reporting high-end AND being able
+  // to build a real WebGL renderer. isHighEnd() needs hasWebGL(), and the
+  // Linux runner's headless Chrome has none, so the engine correctly chose
+  // CSS-only and G02 failed (premiumOn:false, canvasPresent:false, extended
+  // run 40214003425). That was the gate measuring the runner's GPU, not our
+  // code: natural detection is already covered by G03/G04, which drive
+  // isHighEnd() through both verdicts via the documented hook. So the boot
+  // page is forced capable AND given the documented __mmgrThreeImport test
+  // seam (js/mmgr-glass.js:62 - the same seam G07 uses), so the boot PATH is
+  // what gets asserted on any hardware. The mock does not touch
+  // __mmgrGlassImportCalls, exactly like the real import branch, so G06/G07
+  // keep their own counting.
   await send('Page.addScriptToEvaluateOnNewDocument', {
     source: `
     (function() {
       ['mmgr_perf_mode', 'mmgr_glass_mode', 'mmgr_view_mode', 'mmgr_perf_nudge'].forEach(function(k) {
         try { localStorage.removeItem(k); } catch (e) {}
       });
+      window.__mmgrForceHighEnd = true;
+      window.__mmgrThreeImport = function() {
+        function FakeCtx() { this._ext = { loseContext: function() {} }; }
+        FakeCtx.prototype.getExtension = function() { return this._ext; };
+        function FakeRenderer(canvas) {
+          this.domElement = canvas;
+          this.setPixelRatio = function() {};
+          this.setSize = function() {};
+          this.render = function() {};
+          this.dispose = function() {};
+          this.getContext = function() { return new FakeCtx(); };
+        }
+        return Promise.resolve({
+          WebGLRenderer: FakeRenderer,
+          Scene: function() { return { add: function() {} }; },
+          OrthographicCamera: function() { return { position: { z: 0 } }; },
+          PlaneGeometry: function() { return {}; },
+          ShaderMaterial: function() { return {}; },
+          Mesh: function() { return {}; },
+          Vector2: function() { this.set = function() {}; return this; },
+          Clock: function() { this.getElapsedTime = function() { return 0.5; }; return this; }
+        });
+      };
     })();
   `
   });

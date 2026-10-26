@@ -6009,6 +6009,15 @@ select {
   border-radius: var(--radius);
   padding: 4px 26px 4px 8px;
   font-size: 0.78rem;
+  /* FONT-INDEPENDENT WIDTH: a select is as wide as its widest <option>, so
+     a long work-item or country name gave these a min-content of 452-542px
+     against 288px of room at 320 - invisible in a narrow font, sideways
+     scroll in a wide one (the Linux QA runner). min-width:0 clears the flex
+     automatic minimum (min-width:auto = min-content, which beats max-width)
+     and max-width caps it at its column; the native control then truncates
+     its own label. No effect when there is room. */
+  min-width: 0;
+  max-width: 100%;
   cursor: pointer;
   transition:
     border-color var(--tr),
@@ -9662,7 +9671,14 @@ body.dark-mode .bcp-ico-moon {
 }
 @media (max-width: 820px) {
   .bcp-grid {
-    grid-template-columns: 1fr;
+    /* FONT-INDEPENDENT WIDTH: `1fr` is minmax(auto,1fr) - the automatic
+       minimum is the item's min-content, so a wider font stack pushed the
+       cards 40px past their column (measured: card 320px inside a 280px
+       track = 20px of page overflow at 320). minmax(0,1fr) lets the track
+       win and the content wrap instead of widening the page. The desktop
+       tracks above already carry minmax(0,...), which is why only this
+       single-column breakpoint overflowed. */
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 /* C6 (AUDIT-DIRECTIVE-2026-10-18): the estimate card pins under the top

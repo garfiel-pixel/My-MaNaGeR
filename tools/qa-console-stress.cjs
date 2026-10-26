@@ -180,6 +180,52 @@ function check(label, ok, extra) {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.waitForTimeout(200);
 
+    // ---- stress 1b: FONT-INDEPENDENT width (added 2026-10-25).
+    //      The 320px check above runs in THIS machine's font stack, and a
+    //      layout that is 2px under budget in a narrow font can still widen
+    //      the page in a wider one - which is exactly how the Linux runner
+    //      found privacy.html 7px over while Windows measured 0 (CI
+    //      40210053004; the .consent-table fix that followed took min-content
+    //      286px -> 96px). Verdana is deliberately much wider than any UI
+    //      stack we ship, so forcing it at 320 reproduces that class of bug
+    //      HERE instead of on a runner. Calibrated against the real failure:
+    //      Verdana + the pre-fix table measured 6px where CI measured 7.
+    let fontOverflow = null;
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.waitForTimeout(250);
+    const f = await page.evaluate(() => {
+      const st = document.createElement('style');
+      st.id = '__qa-wide-font';
+      st.textContent =
+        'body, body * { font-family: Verdana, sans-serif !important; }' +
+        'code, pre { font-family: "Courier New", monospace !important; }';
+      document.head.appendChild(st);
+      const de = document.documentElement;
+      const over = de.scrollWidth - de.clientWidth;
+      const wide = [];
+      if (over > 2) {
+        document.querySelectorAll('body *').forEach(e => {
+          const r = e.getBoundingClientRect();
+          if (r.width > 0 && r.right > de.clientWidth + 1) {
+            wide.push(
+              e.tagName +
+                '.' +
+                (e.className || '').toString().slice(0, 20) +
+                '@' +
+                Math.round(r.right)
+            );
+          }
+        });
+      }
+      st.remove();
+      return { over, wide: wide.slice(0, 4) };
+    });
+    if (f.over > 2) {
+      fontOverflow = { by: f.over, where: f.wide };
+    }
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.waitForTimeout(200);
+
     // ---- stress 2: cheap interactive chrome, no destructive actions ----
     await page
       .evaluate(() => {
@@ -259,6 +305,11 @@ function check(label, ok, extra) {
       pagePath + ': no horizontal overflow at 320/390/768/1024/1440/2560',
       !overflow,
       overflow || undefined
+    );
+    check(
+      pagePath + ': no horizontal overflow at 320 in a WIDE font stack',
+      !fontOverflow,
+      fontOverflow || undefined
     );
     check(pagePath + ': no overflow after the dark-mode flip', darkOverflow <= 2, darkOverflow);
     check(

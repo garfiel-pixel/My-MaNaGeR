@@ -373,7 +373,7 @@
 // with the same columns. Changed shell asset: css/marketing.css (bundled
 // into dist/marketing.min.css, rebuilt) - hence this bump. No inline script
 // added or removed, so the CSP hash set is unchanged.
-const CACHE = 'mmgr-shell-v471';
+const CACHE = 'mmgr-shell-v472';
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new
 // 'JIC rate book' choice on calculator.html) prices ANY shipped book row as

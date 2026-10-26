@@ -412,7 +412,14 @@ code{overflow-wrap:anywhere;}
 @keyframes fadein{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
 
 /* ===== TABLE ===== */
-.tbl{width:100%;border-collapse:collapse;font-size:.86rem;margin:18px 0;}
+.tbl{width:100%;border-collapse:collapse;font-size:.86rem;margin:18px 0;
+  /* FONT-INDEPENDENT WIDTH: a table's min-content is the sum of its
+     columns' longest words - 307px against 268px of column in a wider font
+     stack (measured, 13px of page overflow at 320). anywhere lets a cell
+     break only when its column is out of room; in a narrow font nothing
+     changes. */
+  overflow-wrap:anywhere;
+}
 .tbl th{
   font-family:var(--mono);font-size:.64rem;text-transform:uppercase;letter-spacing:.08em;
   color:var(--text-dimmer);text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);font-weight:600;
@@ -524,6 +531,13 @@ code{overflow-wrap:anywhere;}
 .copy-demo pre{
   padding:20px 22px;font-family:var(--mono);font-size:.78rem;color:var(--text-dim);
   white-space:pre-wrap;line-height:1.75;max-height:340px;overflow-y:auto;
+  /* PHONE + wide fonts: the template is full of unbreakable runs (the
+     ==== rule line is 50 characters with no space), so its min-content was
+     418px against 288px of room at 320. pre-wrap only wraps AT spaces;
+     anywhere lets a rule line break when nothing else fits, so the block
+     can never widen the page whatever font stack the device has. */
+  overflow-wrap:anywhere;
+  min-width:0;
 }
 .copy-demo pre b{color:var(--cyan);}
 

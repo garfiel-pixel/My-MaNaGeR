@@ -5324,6 +5324,27 @@ window.MMGR = MMGR;
     if (!el) {
       return;
     }
+    // APP-4 (REFINEMENT-DIRECTIVE-2026-10-24, 2026-10-25): A CLICK ON A NATIVE
+    // CONTROL INSIDE A data-action CONTAINER KEEPS ITS DEFAULT.
+    // The dialog overlays are containers (data-action="closeGanttExportBg" and
+    // five siblings) that wrap real radios, checkboxes and selects. The
+    // dispatcher below called preventDefault() on the CONTAINER, which cancels
+    // the control's own default: a radio never checked, a checkbox never
+    // flipped - the export dialog's options could not be changed at all.
+    // When the nearest data-action is an ANCESTOR of a native control (and not
+    // the control itself), the container's handler still runs - backdrop
+    // handlers already test e.target === el, so they no-op on an inner click -
+    // and the event is NOT prevented, so the control does what it looks like
+    // it does. A control that carries its own data-action (ctl === el) is
+    // unaffected and takes the normal path below.
+    const ctl = e.target.closest('input, select, textarea, label, summary, button, a[href]');
+    if (ctl && ctl !== el && el.contains(ctl)) {
+      const h0 = ACTION_MAP[el.getAttribute('data-action')];
+      if (h0) {
+        h0(el, e);
+      }
+      return;
+    }
     // P0 ("the dates are fighting me" , real-click path): editable field
     // controls (text/date inputs, selects, textareas) own their change/input
     // events; the delegated change/input listeners below are their ONLY

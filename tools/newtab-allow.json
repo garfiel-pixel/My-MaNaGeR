@@ -1,0 +1,55 @@
+{
+  "_comment": "APP-2 (REFINEMENT-DIRECTIVE-2026-10-24). Every new-tab site that is allowed, with the reason it is allowed. tools/verify-newtab.cjs fails on any occurrence NOT listed here, and fails on an entry that no longer matches anything. `contains` is a substring of the source line.",
+  "allow": [
+    {
+      "file": "admin.html",
+      "contains": "data-newtab=\"project\"",
+      "reason": "The explicit 'Open in new tab' action beside a project row. The row itself is a same-tab <a href>; this is the deliberate popout the owner asked to keep."
+    },
+    {
+      "file": "js/marketing.js",
+      "contains": "window.open('about:blank'",
+      "reason": "Checkout: the tab must be opened SYNCHRONOUSLY inside the click, before the await, or Chrome blocks it."
+    },
+    {
+      "file": "js/marketing.js",
+      "contains": "checkoutUrl",
+      "reason": "Checkout: Paddle's hosted payment page opens in its own tab by design."
+    },
+    {
+      "file": "js/mmgr-cloud-dash.js",
+      "contains": "window.open('about:blank'",
+      "reason": "Checkout: the synchronous pre-open that Keeps Paddle's popup from being blocked."
+    },
+    {
+      "file": "js/mmgr-cloud-dash.js",
+      "contains": "checkoutUrl",
+      "reason": "Checkout: Paddle's hosted payment page."
+    },
+    {
+      "file": "js/mmgr-cloud.js",
+      "contains": "window.open('about:blank'",
+      "reason": "Checkout: the synchronous pre-open that keeps Paddle's popup from being blocked."
+    },
+    {
+      "file": "js/mmgr-cloud.js",
+      "contains": "checkoutUrl",
+      "reason": "Checkout: Paddle's hosted payment page."
+    },
+    {
+      "file": "js/mmgr-bids.js",
+      "contains": "window.open(/^https?:",
+      "reason": "A subcontractor's proposal lives on ANOTHER origin, so reading it is an external site by definition."
+    },
+    {
+      "file": "js/mmgr-cloud.js",
+      "contains": "mymanager-field-guide.html#connect-ai",
+      "reason": "A link to the Field Guide - one of the four things the owner's rule allows a new tab for."
+    },
+    {
+      "file": "js/mmgr-utils.js",
+      "contains": "window.open(u, opts.name",
+      "reason": "MMGR.Nav.go() - the ONE navigation helper. It opens a tab only for an external URL or an explicit opts.external; every core page it is given goes through location.assign."
+    }
+  ]
+}

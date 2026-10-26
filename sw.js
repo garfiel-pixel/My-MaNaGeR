@@ -395,7 +395,17 @@
 // min-width:0 + max-width:100% on selects, minmax(0,1fr) on the grid,
 // overflow-wrap:anywhere on cells and pre lines. Changed shell assets:
 // css/mmgr.css and mymanager-field-guide.html.
-const CACHE = 'mmgr-shell-v473';
+// ============================================================================
+// v474 - WAVE D: UI-1 the owned trade listbox, UI-3 the guide's Notes tab,
+// PERF-1 Performance Mode everywhere, APP-1 the closed rail's reserved gutter,
+// APP-2 one session one tab, SW-11 numeric keypads. Changed shell assets:
+// calculator.html, app.html, admin.html, project.html,
+// mymanager-field-guide.html, css/mmgr.css, css/marketing.css,
+// js/calculator-page.js, js/mmgr-app.js, js/mmgr-utils.js, js/mmgr-state.js,
+// js/mmgr-perf.js, js/mmgr-glass.js, js/marketing.js, js/marketing-globe.js,
+// js/mmgr-combobox.js (new), dist/marketing-bundle.js. No inline script block
+// changed, so the CSP hashes are untouched.
+const CACHE = 'mmgr-shell-v475';
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new
 // 'JIC rate book' choice on calculator.html) prices ANY shipped book row as
@@ -970,6 +980,11 @@ const SHELL = [
   'js/reset.js',
   'js/calculator-page.js',
   'js/calc-ai.js',
+  // UI-1 (REFINEMENT-DIRECTIVE-2026-10-24): the owned listbox that replaces the
+  // native popup on the two long trade lists. Loaded by <script src> on
+  // calculator.html, so it is not in any bundle; offline-first means the trade
+  // picker must keep working with no network.
+  'js/mmgr-combobox.js',
   // C4: the vendored spreadsheet writer. It sits beside calculator-page.js so
   // the Spreadsheet action still works with no network.
   'js/xlsx-lite.js'

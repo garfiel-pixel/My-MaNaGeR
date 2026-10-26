@@ -159,7 +159,16 @@ const APP_MODULES = [
 ];
 
 // ---- Marketing pages bundle ----
-const MARKETING_MODULES = ['js/marketing.js', 'js/reviews.js', 'js/verify.js', 'js/reset.js'];
+// REFINEMENT-DIRECTIVE-2026-10-24 (PERF-1): mmgr-perf.js leads the bundle so the
+// footer's "Lighter pages" switch has MMGR.Perf to call and the marketing pages
+// share the app's one storage key, one event and one sync.
+const MARKETING_MODULES = [
+  'js/mmgr-perf.js',
+  'js/marketing.js',
+  'js/reviews.js',
+  'js/verify.js',
+  'js/reset.js'
+];
 
 // ---- Hero globe bundle (index.html only, loaded after window load) ----
 const GLOBE_MODULES = ['js/marketing-globe.js'];

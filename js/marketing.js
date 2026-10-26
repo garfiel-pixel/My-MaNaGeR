@@ -105,6 +105,45 @@
     year.textContent = String(new Date().getFullYear());
   }
 
+  /* ---- PERF-1 (REFINEMENT-DIRECTIVE-2026-10-24): the "Lighter pages" switch ----
+     Performance Mode has to be reachable from any page, and the footer is the
+     one band every marketing page shares. The switch is the same control the app
+     offers (same storage key, same [data-action="tglPerfMode"], wired by
+     js/mmgr-perf.js's delegated change listener), so turning it on here follows
+     the visitor into the app and back. Injected rather than repeated in nine
+     footers: one piece of markup cannot drift out of sync with the other eight. */
+  (function mountPerfSwitch() {
+    var foot = document.querySelector('.site-footer .footer-bottom');
+    if (!foot || foot.querySelector('.ft-perf')) {
+      return;
+    }
+    var box = document.createElement('span');
+    box.className = 'ft-perf';
+    box.innerHTML =
+      '<label class="ft-perf-box">' +
+      '<input type="checkbox" class="ft-perf-in" data-action="tglPerfMode" ' +
+      'aria-label="Lighter pages: turn off heavy visual effects">' +
+      '<span class="ft-perf-track" aria-hidden="true"></span>' +
+      '<span class="ft-perf-text">Lighter pages</span>' +
+      '</label>';
+    foot.appendChild(box);
+    try {
+      if (window.MMGR && window.MMGR.Perf && window.MMGR.Perf.syncInputs) {
+        window.MMGR.Perf.syncInputs();
+      } else {
+        // No module on this page (a marketing page that never loaded one):
+        // read the stored choice directly so the switch never lies.
+        var on = false;
+        try {
+          on = localStorage.getItem('mmgr_perf_mode') === 'on';
+        } catch (e) {}
+        box.querySelector('input').checked = on;
+      }
+    } catch (e) {
+      /* a footer control must never block the page */
+    }
+  })();
+
   /* ---- E2 universal back-navigation (owner 2026-09-29) ----
      Every [data-back] control returns the visitor to where they came from:
      history.back() when the referrer is a same-origin page (came from the

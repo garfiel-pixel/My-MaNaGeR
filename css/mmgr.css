@@ -9551,6 +9551,79 @@ body.dark-mode .ai-byo-status[data-state='untested'] {
   min-width: 0;
 }
 /* SHAPE (owner 2026-10-02): rounded rectangle, not a pill circle. */
+/* ---- PERF-1: Performance Mode switch in the calculator's top bar --------
+   The app's .tgl is a 36x20 track with a 14px knob; this is the same switch in
+   a top-bar box, so the control reads identically on every surface that offers
+   it. The real checkbox stays in the DOM (focusable, announceable) and the
+   track is decoration. Below 560px the word "Lighter" drops and the switch
+   keeps its 36px, because the bar is already tight on a phone. */
+.bcp-perf {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 40px;
+  padding: 0 10px;
+  flex-shrink: 0;
+  border-radius: var(--radius-rect, 10px);
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--slate);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    color var(--tr),
+    border-color var(--tr);
+}
+.bcp-perf:hover {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+.bcp-perf-in {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.bcp-perf-track {
+  position: relative;
+  display: block;
+  width: 32px;
+  height: 18px;
+  border-radius: 100px;
+  background: var(--border);
+  transition: background-color 0.4s var(--spring);
+}
+.bcp-perf-track::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  bottom: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform var(--tr);
+}
+.bcp-perf-in:checked + .bcp-perf-track {
+  background: var(--gold);
+}
+.bcp-perf-in:checked + .bcp-perf-track::before {
+  transform: translateX(14px);
+}
+.bcp-perf-in:focus-visible + .bcp-perf-track {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+@media (max-width: 560px) {
+  .bcp-perf {
+    padding: 0 9px;
+  }
+  .bcp-perf-text {
+    display: none;
+  }
+}
 .bcp-theme {
   position: relative;
   display: inline-flex;
@@ -10510,6 +10583,134 @@ html.mmgr-tour-active .bcp-tour-nudge {
     transition: none;
   }
 }
+/* ---- UI-2 (REFINEMENT-DIRECTIVE-2026-10-24): SETTING ROWS ----------------
+   A row is one decision: the words on the left, the app's own switch on the
+   right, and - when the decision has fields - a drawer under both that opens
+   with the switch.
+
+   The whole row is the hit area: the text is a <label for> the switch, so a
+   click anywhere on the words toggles it with no JavaScript.
+
+   DEGRADATION (kill switch `settingRows`): the drawer is OPEN by default in
+   CSS and only collapses once js/calculator-page.js adds `.is-wired` - the
+   class it adds only while the flag is on. So with the flag off, or with the
+   script never running, every field is visible exactly as it was before this
+   wave. Nothing is hidden behind a switch that cannot open. */
+.set-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+  min-height: 44px;
+}
+.set-row:first-child {
+  border-top: 0;
+}
+.set-row[hidden] {
+  display: none;
+}
+/* A plain row has no decision to make: the fields are simply there. */
+.set-row.is-plain > .tgl {
+  display: none;
+}
+.set-row.is-plain .set-more {
+  grid-template-rows: 1fr;
+}
+.set-row.is-plain .set-more-in {
+  visibility: visible;
+}
+.bcp-out-actions .set-row {
+  flex: 1 0 100%;
+}
+.set-txt {
+  display: block;
+  min-width: 0;
+  cursor: pointer;
+}
+.set-name {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--slate);
+  letter-spacing: 0.02em;
+}
+.set-hint {
+  display: block;
+  color: var(--slate);
+  opacity: 0.82;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  margin-top: 2px;
+}
+.set-row > .tgl {
+  flex-shrink: 0;
+}
+.set-more {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.2s ease;
+}
+.set-row.is-wired:not(.is-on) .set-more {
+  grid-template-rows: 0fr;
+}
+.set-more-in {
+  overflow: hidden;
+  min-height: 0;
+}
+.set-more-pad {
+  display: grid;
+  gap: 10px;
+  padding: 10px 0 2px;
+}
+.set-row.is-wired:not(.is-on) .set-more-in {
+  /* A closed drawer is inert in the DOM as well as collapsed (the script sets
+     the attribute); visibility keeps its contents out of the tab order even
+     before that lands. */
+  visibility: hidden;
+}
+.set-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.set-total {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.set-reset {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  background: none;
+  padding: 4px 2px;
+  color: var(--gold-ink, var(--gold));
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.set-reset:hover {
+  color: var(--gold);
+}
+.set-reset:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .set-more {
+    transition: none;
+  }
+}
+
 .bcp-inst-sum {
   display: block;
   font-size: 0.78rem;
@@ -15539,47 +15740,49 @@ body.view-3d .view-deck {
 }
 
 /* ---- Performance Mode (mmgr-perf.js, pretty by default 2026-09-29) ----
-   Applies only when the USER turns Performance Mode on: big backdrop blurs
-   drop to a cheap radius, large blurred shadows collapse to flat ones.
-   Animations, transitions and small blurs are untouched - the UI keeps its
-   feel, the GPU gets a break. Fresh devices ship PRETTY (perf off) so the
-   artwork the owner put in is visible out of the box. The starry WebGL
-   shader is NOT affected by these CSS trims (capability-gated in viewport). */
+   THE ONE KILL BLOCK. PERF-1 (REFINEMENT-DIRECTIVE-2026-10-24): the six
+   ad-hoc rules that used to live here trimmed three containers and left
+   roughly ninety other backdrop-filter rules running, so Performance Mode
+   never actually delivered a quiet page. The contract is now stated once,
+   for the whole document, and mirrors the JS guards (isPerf() before a
+   WebGL scene, a tilt or an rAF decoration starts):
+     no backdrop-filter, no infinite animation, no smooth scrolling, no
+     large blurred shadow. Content, layout and colours stay exactly as they
+     are - a surface that used blur for legibility gets a SOLID card instead,
+     so text never sits on live content.
+   Loaded on every page because js/mmgr-perf-boot.js sets the attribute
+   before first paint; js/mmgr-perf.js is not needed for this to work. */
+[data-perf='on'] *,
+[data-perf='on'] *::before,
+[data-perf='on'] *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+}
+[data-perf='on'] [class*='glass'],
+[data-perf='on'] .card,
+[data-perf='on'] .top,
+[data-perf='on'] .dock,
+[data-perf='on'] .drw-sheet,
+[data-perf='on'] .db-sheet,
+[data-perf='on'] .bcp-top {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18) !important;
+}
+/* The surfaces that leaned on blur to stay readable now paint solid. */
+[data-perf='on'] .top,
 [data-perf='on'] .dock,
 [data-perf='on'] #drw,
-[data-perf='on'] .db-sheet {
-  backdrop-filter: blur(6px) saturate(140%);
-  -webkit-backdrop-filter: blur(6px) saturate(140%);
+[data-perf='on'] .db-sheet,
+[data-perf='on'] .drw-sheet,
+[data-perf='on'] .bcp-top {
+  background: var(--card) !important;
 }
-[data-perf='on'] .dock {
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
-}
-[data-perf='on'] .drw-sheet {
-  backdrop-filter: blur(8px) saturate(150%);
-  -webkit-backdrop-filter: blur(8px) saturate(150%);
-}
-[data-perf='on'] body.db-page:not(.dark-mode) .top {
-  backdrop-filter: blur(6px) saturate(140%);
-  -webkit-backdrop-filter: blur(6px) saturate(140%);
-}
-
-/* Performance Mode CSS kill block: when perf=on, svelte-backed backdrop-filter rules collapse to flat/cheap radii so the GPU gets a break. Written to match the js/mmgr-perf.js guard so the UI remains consistent regardless of load order. */
-[data-perf='on'] .dock,
-[data-perf='on'] #drw,
-[data-perf='on'] .db-sheet {
-  backdrop-filter: blur(0) saturate(100%);
-  -webkit-backdrop-filter: blur(0) saturate(100%);
-}
-[data-perf='on'] .dock {
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
-}
-[data-perf='on'] .drw-sheet {
-  backdrop-filter: blur(0) saturate(100%);
-  -webkit-backdrop-filter: blur(0) saturate(100%);
-}
-[data-perf='on'] body.db-page:not(.dark-mode) .top {
-  backdrop-filter: blur(0) saturate(100%);
-  -webkit-backdrop-filter: blur(0) saturate(100%);
+[data-perf='on'] canvas.bg-stars,
+[data-perf='on'] #marketing-globe canvas,
+[data-perf='on'] #stars,
+[data-perf='on'] .stars-canvas {
+  display: none !important;
 }
 
 /* Baseline nudge dot (owner 2026-09-19): visible signal that a schedulable
@@ -15679,6 +15882,19 @@ body.view-3d .view-deck {
   font-size: 0.8rem;
   color: var(--text);
   line-height: 1.45;
+}
+.ai-note-advice {
+  font-size: 0.78rem;
+  color: var(--text);
+  line-height: 1.45;
+  border-left: 2px solid var(--border);
+  padding-left: 8px;
+}
+.ai-note-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
 }
 .ai-note-meta {
   font-size: 0.68rem;
@@ -15990,6 +16206,64 @@ body:not(.db-page) .bs {
    fix the dark-mode dropdown, and make the rate book a popup.
    ============================================================ */
 
+/* ---- UI-3 (REFINEMENT-DIRECTIVE-2026-10-24): ONE line under the title, and
+   the How-to-use card's two tabs. The lede and the fine print moved into the
+   Notes tab, so the reading is 0.9rem at 1.5 line height instead of loose
+   small text above the form. ------------------------------------------------ */
+.bcp-lede-line {
+  margin: 6px 0 14px;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  max-width: 640px;
+}
+.bcp-guide-head #calc-guide-h {
+  margin-right: auto;
+}
+.bcp-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: var(--radius-control);
+  background: var(--tile-bg);
+  border: 1px solid var(--border);
+}
+.bcp-tab {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: max(2px, calc(var(--radius-control) - 2px));
+  cursor: pointer;
+}
+.bcp-tab:hover {
+  color: var(--text);
+}
+.bcp-tab.is-on {
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+.bcp-tab:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.bcp-notes {
+  margin: 0 0 10px;
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  max-width: 72ch;
+}
+.bcp-notes:last-child {
+  margin-bottom: 0;
+}
+
 /* ---- (15) DARK-MODE DROPDOWNS WERE UNREADABLE ------------------
    Owner: "when i try to chose kind of work on dark theme the main
    works are blacked out with white text and white bar".
@@ -16006,6 +16280,188 @@ body:not(.db-page) .bs {
 html.dark-mode,
 body.dark-mode {
   color-scheme: dark;
+}
+
+/* ---- UI-1 (REFINEMENT-DIRECTIVE-2026-10-24): the trade list in dark mode --
+   Owner: "All trades" dropped down fine, but the Work item list (entries in
+   <optgroup> headings) showed white boxes with white text. `select option` was
+   the only rule; NOTHING styled optgroup, and the group heading is a separate
+   native row the browser paints with its own default colours. The scheme above
+   makes Chrome draw the popup dark; these rules make the rows agree with it in
+   every palette (tokens, so rose-gold dark and the accent modes follow), and
+   give the selected row a gold wash instead of the system highlight.
+   This is the immediate layer. The lasting layer is js/mmgr-combobox.js, which
+   replaces the native popup on the two long lists with a listbox this project
+   owns - a native popup cannot be styled or tested reliably. */
+body.dark-mode select,
+body.dark-mode select option,
+body.dark-mode select optgroup,
+html.dark-mode select,
+html.dark-mode select option,
+html.dark-mode select optgroup {
+  background-color: var(--card);
+  color: var(--text);
+  color-scheme: dark;
+}
+body.dark-mode select optgroup,
+html.dark-mode select optgroup {
+  color: var(--text-muted);
+  font-weight: 700;
+  font-style: normal;
+}
+body.dark-mode select option:checked,
+html.dark-mode select option:checked {
+  background-color: rgba(var(--gold-rgb), 0.25);
+  color: var(--text);
+}
+
+/* ---- UI-1 layer two: the owned listbox (js/mmgr-combobox.js) -------------
+   The native popup is replaced on the two long lists, so what the user sees is
+   drawn from this project's tokens and can be measured by a test. The popup is
+   position:fixed so no card, grid or drawer can clip it; on a phone it becomes
+   a bottom sheet over a scrim. Content is SOLID (var(--card)) - the house rule
+   for anything holding text. */
+.mmcb {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+/* The original select stays in the DOM as the source of truth - value, change
+   events, recalls - but it is never shown and never focusable twice. */
+.mmcb-native {
+  display: none !important;
+}
+.mmcb-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 30px 4px 8px;
+  font-family: inherit;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  min-width: 0;
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+.mmcb-input:hover {
+  border-color: var(--gold);
+}
+.mmcb-input:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.14);
+}
+.mmcb.is-disabled .mmcb-input {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.mmcb-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+.mmcb-btn .ico {
+  width: 14px;
+  height: 14px;
+}
+.mmcb-pop {
+  position: fixed;
+  z-index: 1400;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+}
+.mmcb-sheet {
+  max-height: var(--mmcb-max, 60vh);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.mmcb-grp {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 8px 10px 4px;
+  background: var(--card);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.mmcb-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font-size: 0.82rem;
+  line-height: 1.35;
+  cursor: pointer;
+}
+.mmcb-opt-txt {
+  flex: 1;
+  min-width: 0;
+}
+.mmcb-opt:hover {
+  background: rgba(var(--gold-rgb), 0.08);
+}
+.mmcb-opt.is-active {
+  background: rgba(var(--gold-rgb), 0.12);
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+.mmcb-opt[aria-disabled='true'] {
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+.mmcb-tick {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--gold);
+}
+.mmcb-empty {
+  padding: 10px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+.mmcb-scrim {
+  display: none;
+}
+@media (max-width: 640px) {
+  .mmcb-pop {
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    bottom: 0;
+    width: auto !important;
+    transform: none !important;
+    border-radius: 16px 16px 0 0;
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+    box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.28);
+  }
+  .mmcb-sheet {
+    max-height: 70vh;
+  }
+  .mmcb-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: rgba(0, 0, 0, 0.42);
+  }
 }
 
 /* ---- (10) THE APP PAGE'S BACKGROUND EFFECT ---------------------

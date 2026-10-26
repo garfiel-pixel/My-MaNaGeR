@@ -344,6 +344,28 @@ var MMGR = window.MMGR || {};
       ganttExportV2: true, // G1-G8: the rewritten Gantt export
       procPo: true, // P9: purchase orders from an awarded quote
       consentBanner: true, // S-2: cookie and storage consent
+      // REFINEMENT-DIRECTIVE-2026-10-24 (section 13): the Wave D-F switches.
+      // Same contract as the block above - false restores the behaviour that
+      // shipped before the wave, with no logic redeploy. The calculator and the
+      // marketing pages have no State, so they read the same names straight
+      // from localStorage as mmgr_flag_<name> (the convention above); these
+      // defaults are what a project state carries.
+      ratebookApi: true, // RB-1: the signed-in /api/ratebook route
+      dialogClickFix: true, // APP-4: a control inside a dialog keeps its default
+      comboboxPicker: true, // UI-1: the owned listbox (off = native select + CSS)
+      settingRows: true, // UI-2: switch rows with drawers
+      itemisedMaterials: true, // MAT-1: itemised material lines (off = lump rates)
+      goldBullion: true, // GOLD-1: the one shared gold button block
+      perfBoot: true, // PERF-1: the early boot attribute and the kill block
+      sidebarGutter: true, // APP-1: the closed rail reserves its column
+      sameTabNav: true, // APP-2: core pages navigate in the same tab
+      expiryWatcher: true, // EXP-1: COI/licence/permit notices
+      finishWatcher: true, // RISK-1: the at-risk finish notice
+      ganttTidy: true, // GANTT-1: the Tidy view and link policies
+      aiDock: true, // AI-1: the docked assistant (off = overlay as today)
+      localModel: true, // AI-2: the on-device model
+      globeContinuous: true, // LAND-2: the continuous hero globe
+      dotRailGhost: true, // LAND-1: the marketing dot rail ghost
       // Phase 2: client-side error surface , last 20 errors, each with a
       // timestamp and the source action, surfaced in the Controls drawer.
       errorLog: [],

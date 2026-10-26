@@ -66,6 +66,15 @@
         <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-book"></use></svg>
         <span class="bcp-ratebook-text">Rate book</span>
       </button>
+      <!-- PERF-1 (REFINEMENT-DIRECTIVE-2026-10-24): Performance Mode is reachable
+           from the calculator too. Same switch as the app, same storage key, one
+           behaviour: js/mmgr-perf.js wires every [data-action="tglPerfMode"]
+           checkbox by delegation, so no per-page handler is needed. -->
+      <label class="bcp-perf" title="Lighter pages: turn off heavy visual effects">
+        <input type="checkbox" id="perf-tgl" class="bcp-perf-in" data-action="tglPerfMode" aria-label="Lighter pages: turn off heavy visual effects">
+        <span class="bcp-perf-track" aria-hidden="true"></span>
+        <span class="bcp-perf-text">Lighter</span>
+      </label>
       <button type="button" class="bcp-theme" data-action="tglTheme" title="Toggle dark mode">
         <svg class="ico bcp-ico-sun" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sun"></use></svg>
         <svg class="ico bcp-ico-moon" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg>
@@ -74,26 +83,48 @@
     </div>
   </header>
 
-  <p class="bcp-lede">Pick a work item, enter the dimensions, choose your currency and country. Quantities, labor, materials, tax and total - worked out on this device, and the pricing never leaves it. The assistant on this page sends only the question you type.</p>
+  <!-- UI-3 (REFINEMENT-DIRECTIVE-2026-10-24): ONE short line under the title.
+       The rest of the old lede and the fine print moved into the guide's
+       Notes tab, where reading is the point, instead of sitting as loose
+       small text above the form. -->
+  <p class="bcp-lede-line">Price a job in minutes. Everything is worked out on this device.</p>
 
   <!-- OWNER 2026-09-30 how-to guide: step slider following the form's own
-       field order (work item FIRST). Collapsible; state per device. -->
+       field order (work item FIRST). Collapsible; state per device.
+       UI-3 (REFINEMENT-DIRECTIVE-2026-10-24): two tabs - Steps (the slider,
+       unchanged) and Notes (the reading). The card opens on Steps. -->
   <section class="card bcp-guide" id="calc-guide-card" aria-labelledby="calc-guide-h">
     <div class="bcp-guide-head">
       <h2 id="calc-guide-h" class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-book"></use></svg> How to use</h2>
+      <div class="bcp-tabs" role="tablist" aria-label="How to use">
+        <button type="button" class="bcp-tab is-on" id="calc-guide-tab-steps" role="tab" aria-selected="true" aria-controls="calc-guide-panel-steps" data-action="calcGuideTab" data-tab="steps">Steps</button>
+        <button type="button" class="bcp-tab" id="calc-guide-tab-notes" role="tab" aria-selected="false" aria-controls="calc-guide-panel-notes" data-action="calcGuideTab" data-tab="notes" tabindex="-1">Notes</button>
+      </div>
       <button type="button" class="btn btn-n btn-s bcp-guide-kbd" data-mmks="open" aria-haspopup="dialog" title="Open the keyboard shortcut list">Shortcuts</button>
       <button type="button" class="btn btn-n btn-s" data-action="calcGuideClose" id="calc-guide-toggle" title="Hide the guide">Hide</button>
     </div>
     <div class="bcp-guide-body" id="calc-guide-body">
-      <div class="bcp-guide-row">
-        <button type="button" class="btn btn-n btn-s bcp-guide-nav" data-action="calcGuidePrev" aria-label="Previous step" title="Previous step"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-left"></use></svg></button>
-        <div class="bcp-guide-step" aria-live="polite">
-          <span class="bcp-guide-count" id="calc-guide-count">1 of 11</span>
-          <span class="bcp-guide-text" id="calc-guide-text"></span>
+      <div id="calc-guide-panel-steps" role="tabpanel" aria-labelledby="calc-guide-tab-steps" tabindex="0">
+        <div class="bcp-guide-row">
+          <button type="button" class="btn btn-n btn-s bcp-guide-nav" data-action="calcGuidePrev" aria-label="Previous step" title="Previous step"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-left"></use></svg></button>
+          <div class="bcp-guide-step" aria-live="polite">
+            <span class="bcp-guide-count" id="calc-guide-count">1 of 11</span>
+            <span class="bcp-guide-text" id="calc-guide-text"></span>
+          </div>
+          <button type="button" class="btn btn-n btn-s bcp-guide-nav" data-action="calcGuideNext" aria-label="Next step" title="Next step"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
         </div>
-        <button type="button" class="btn btn-n btn-s bcp-guide-nav" data-action="calcGuideNext" aria-label="Next step" title="Next step"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
+        <div class="bcp-guide-dots" id="calc-guide-dots" aria-hidden="true"></div>
       </div>
-      <div class="bcp-guide-dots" id="calc-guide-dots" aria-hidden="true"></div>
+      <!-- UI-3: the reading that used to be fine print under the form. Each
+           sentence is the one that shipped, verbatim - it is the same promise,
+           now somewhere a person can actually read it. -->
+      <div id="calc-guide-panel-notes" role="tabpanel" aria-labelledby="calc-guide-tab-notes" tabindex="0" hidden>
+        <p class="bcp-notes">Pick a work item, enter the dimensions, choose your currency and country. Quantities, labor, materials, tax and total - worked out on this device, and the pricing never leaves it. The assistant on this page sends only the question you type.</p>
+        <p class="bcp-notes">Rates are planning-grade averages for early estimates, not quotes - expect roughly 15 percent under to 30 percent over actual until drawings are priced. Every line item is editable in the app once the project starts.</p>
+        <p class="bcp-notes">Tax rates are the standard national rates (PwC VAT/GST table, 2026) - a custom rate field overrides them.</p>
+        <p class="bcp-notes">Dimensions can be typed in metric or imperial - the math is the same underneath.</p>
+        <p class="bcp-notes">Everything runs on this device - no internet needed. If you sign in, your history, bill, saved estimates and business details quietly follow your account to your other devices (that part uses the internet, never your work). Clearing your browser data clears the local copies; sign in again and your workspace comes back.</p>
+      </div>
     </div>
     <button type="button" class="btn btn-n btn-s bcp-guide-reopen" data-action="calcGuideOpen" id="calc-guide-reopen" hidden>How to use</button>
   </section>
@@ -287,17 +318,21 @@
            changed, so saved state, snapshots and the bill keep working. -->
       <div class="bcp-field bcp-inst" id="calc-quick">
         <span class="bcp-units-label" id="calc-quick-label">Quick total <span class="bcp-hist-note">- one quantity, priced at one rate</span></span>
-        <div class="bcp-inst-actions">
-          <label class="bcp-opt" data-opt="measured">
-            <span class="bcp-opt-txt">
-              <span class="bcp-opt-name">I know the total - let me type it</span>
-              <span class="bcp-opt-hint" id="calc-measured-manual-hint">Type the finished total yourself instead of quantity times rate.</span>
-            </span>
-            <span class="tgl"><input type="checkbox" id="calc-measured-manual" data-action="calcInstToggle" role="switch" aria-describedby="calc-measured-manual-hint"><span class="tsl"></span></span>
+        <div class="set-row" id="row-measured">
+          <label class="set-txt" for="calc-measured-manual">
+            <span class="set-name">I know the total - let me type it</span>
+            <span class="set-hint" id="calc-measured-manual-hint">Type the finished total yourself instead of quantity times rate.</span>
           </label>
+          <label class="tgl"><input type="checkbox" id="calc-measured-manual" data-action="calcInstToggle" role="switch" aria-describedby="calc-measured-manual-hint" aria-controls="row-measured-more" aria-expanded="false"><span class="tsl"></span></label>
+          <div class="set-more" id="row-measured-more">
+            <div class="set-more-in">
+              <div class="set-more-pad">
+                <input type="number" id="calc-measured-qty" min="0" step="any" inputmode="decimal" placeholder="Total quantity" hidden aria-label="Total measured quantity (overrides the rows)">
+                <span class="bcp-quick-line" id="calc-quick-line" role="status" hidden></span>
+              </div>
+            </div>
+          </div>
         </div>
-        <input type="number" id="calc-measured-qty" min="0" step="any" inputmode="decimal" placeholder="Total quantity" hidden aria-label="Total measured quantity (overrides the rows)">
-        <span class="bcp-quick-line" id="calc-quick-line" role="status" hidden></span>
       </div>
 
       <!-- W2.7 (owner 2026-10-01) openings: you wouldn't lay block in the
@@ -331,32 +366,53 @@
             <option value="JPY">JPY - Japanese yen</option>
           </select>
         </div>
-        <div class="bcp-field">
-          <label for="calc-country">Country (sets the tax)</label>
-          <!-- OWNER 2026-10-02: a new job defaults to Jamaica (GCT 15%), and
-               "No tax" is a first-class pick - not every job is taxed (a
-               minor repair, an internal job, an exempt client). The "none"
-               entry maps to TAX.NONE = 0 with overrideApplied false, so the
-               breakdown reads "No tax" rather than "Tax (0%)". -->
-          <select id="calc-country">
-            <option value="JM" selected>Jamaica (GCT 15%)</option>
-            <option value="NONE">No tax on this job</option>
-            <option value="US">United States (sales tax 0% here - set your local rate)</option>
-            <option value="GB">United Kingdom (VAT 20%)</option>
-            <option value="AU">Australia (GST 10%)</option>
-            <option value="CA">Canada (GST 5%)</option>
-            <option value="JP">Japan (consumption tax 10%)</option>
-            <option value="DE">Germany (VAT 19%)</option>
-          </select>
-        </div>
-      </div>      <div class="bcp-row bcp-row-2">
         <div class="bcp-field"><label for="calc-quality">Finish level</label>
           <select id="calc-quality">
             <option value="standard" selected>Standard</option>
             <option value="economy">Economy (-15%)</option>
             <option value="premium">Premium (+35%)</option>
           </select>
-        </div>          <div class="bcp-field"><label for="calc-tax-override">Custom tax % (optional)</label><input type="number" id="calc-tax-override" min="0" max="40" step="0.5" inputmode="decimal" placeholder="e.g. 8.25 - or 0 for no tax"></div>
+        </div>
+      </div>
+      <!-- UI-2 (REFINEMENT-DIRECTIVE-2026-10-24): the tax setting is one row
+           with a drawer. The switch is the whole tax decision; the drawer holds
+           the country rate and the custom percent. Switching it off writes the
+           page's own "No tax on this job" country value and remembers the
+           country it replaced, so the engine needs no new path and cannot
+           disagree with the screen. -->
+      <div class="set-row" id="row-tax">
+        <label class="set-txt" for="calc-tax-toggle">
+          <span class="set-name">Tax on this job</span>
+          <span class="set-hint" id="calc-tax-toggle-hint">Use the country rate, or set your own percent</span>
+        </label>
+        <label class="tgl"><input type="checkbox" id="calc-tax-toggle" role="switch" aria-describedby="calc-tax-toggle-hint" aria-controls="row-tax-more" aria-expanded="false"><span class="tsl"></span></label>
+        <div class="set-more" id="row-tax-more">
+          <div class="set-more-in">
+            <div class="set-more-pad">
+              <div class="bcp-row bcp-row-2">
+                <div class="bcp-field">
+                  <label for="calc-country">Country (sets the tax)</label>
+                  <!-- OWNER 2026-10-02: a new job defaults to Jamaica (GCT 15%), and
+                       "No tax" is a first-class pick - not every job is taxed (a
+                       minor repair, an internal job, an exempt client). The "none"
+                       entry maps to TAX.NONE = 0 with overrideApplied false, so the
+                       breakdown reads "No tax" rather than "Tax (0%)". -->
+                  <select id="calc-country">
+                    <option value="JM" selected>Jamaica (GCT 15%)</option>
+                    <option value="NONE">No tax on this job</option>
+                    <option value="US">United States (sales tax 0% here - set your local rate)</option>
+                    <option value="GB">United Kingdom (VAT 20%)</option>
+                    <option value="AU">Australia (GST 10%)</option>
+                    <option value="CA">Canada (GST 5%)</option>
+                    <option value="JP">Japan (consumption tax 10%)</option>
+                    <option value="DE">Germany (VAT 19%)</option>
+                  </select>
+                </div>
+                <div class="bcp-field"><label for="calc-tax-override">Custom tax % (optional)</label><input type="number" id="calc-tax-override" min="0" max="40" step="0.5" inputmode="decimal" placeholder="e.g. 8.25 - or 0 for no tax"></div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="bcp-row">
         <div class="bcp-field"><label for="calc-oh">Overhead &amp; margin % (optional)</label><input type="number" id="calc-oh" min="0" max="60" step="0.5" inputmode="decimal" placeholder="e.g. 10"></div>
@@ -364,27 +420,44 @@
       <!-- W3 (owner 2026-09-30): employer statutory costs on labor - opt-in
            because contractor labor prices usually already carry them. The
            12.5% suggestion is the Jamaica employer stack (NIS 3 + NHT 3 +
-           HEART 3 + Education Tax 3.5, PwC 2026); any typed value wins. -->
-      <div class="bcp-field bcp-oncost">
-        <label class="bcp-opt" data-opt="oncost">
-          <span class="bcp-opt-txt">
-            <span class="bcp-opt-name">Add employer statutory costs on labor (NIS, NHT, HEART, Education Tax)</span>
-            <span class="bcp-opt-hint" id="calc-oncost-toggle-hint">Employer charges on top of labour. The percent box below stays off until you switch this on.</span>
-          </span>
-          <span class="tgl"><input type="checkbox" id="calc-oncost-toggle" role="switch" aria-describedby="calc-oncost-toggle-hint"><span class="tsl"></span></span>
+           HEART 3 + Education Tax 3.5, PwC 2026); any typed value wins.
+           UI-2 (REFINEMENT-DIRECTIVE-2026-10-24): the switch now owns a
+           DRAWER holding the four parts. Each part is editable, the total
+           under them is read-only, and the total feeds the same
+           #calc-oncost-pct the engine already reads - so no maths moved. -->
+      <div class="set-row bcp-oncost" id="row-oncost">
+        <label class="set-txt" for="calc-oncost-toggle">
+          <span class="set-name">Add employer statutory costs on labour</span>
+          <span class="set-hint" id="calc-oncost-toggle-hint">NIS, NHT, Education Tax, HEART/NSTA Trust</span>
         </label>
-        <input type="number" id="calc-oncost-pct" min="0" max="25" step="0.5" inputmode="decimal" placeholder="% of labor - e.g. 12.5 for Jamaica" disabled aria-label="Employer statutory costs percent of labor">
+        <label class="tgl"><input type="checkbox" id="calc-oncost-toggle" role="switch" aria-describedby="calc-oncost-toggle-hint" aria-controls="row-oncost-more" aria-expanded="false"><span class="tsl"></span></label>
+        <div class="set-more" id="row-oncost-more">
+          <div class="set-more-in">
+            <div class="set-more-pad">
+              <div class="bcp-row bcp-oncost-parts" id="calc-oncost-parts">
+                <div class="bcp-field"><label for="calc-oncost-nis">NIS %</label><input type="number" id="calc-oncost-nis" data-oncost-part="nis" min="0" max="25" step="0.5" inputmode="decimal" value="3"></div>
+                <div class="bcp-field"><label for="calc-oncost-nht">NHT %</label><input type="number" id="calc-oncost-nht" data-oncost-part="nht" min="0" max="25" step="0.5" inputmode="decimal" value="3"></div>
+                <div class="bcp-field"><label for="calc-oncost-edtax">Education Tax %</label><input type="number" id="calc-oncost-edtax" data-oncost-part="edtax" min="0" max="25" step="0.5" inputmode="decimal" value="3.5"></div>
+                <div class="bcp-field"><label for="calc-oncost-heart">HEART %</label><input type="number" id="calc-oncost-heart" data-oncost-part="heart" min="0" max="25" step="0.5" inputmode="decimal" value="3"></div>
+              </div>
+              <input type="number" id="calc-oncost-pct" min="0" max="25" step="0.5" inputmode="decimal" placeholder="% of labor - e.g. 12.5 for Jamaica" disabled aria-label="Employer statutory costs percent of labor" hidden>
+              <div class="set-foot">
+                <span class="set-total" id="calc-oncost-total" role="status">Total 12.5% of labour</span>
+                <button type="button" class="set-reset" data-action="calcOncostReset">Reset to defaults</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       <!-- E6 (plan v2 Phase 1): labour-only pricing - price the work, list
-           materials separately. A typed material rate still shows. -->
-      <div class="bcp-field bcp-oncost">
-        <label class="bcp-opt" data-opt="labour">
-          <span class="bcp-opt-txt">
-            <span class="bcp-opt-name">Labour only - skip material prices (list them separately)</span>
-            <span class="bcp-opt-hint" id="calc-labour-only-hint">Prices the work only. Materials get their own list.</span>
-          </span>
-          <span class="tgl"><input type="checkbox" id="calc-labour-only" role="switch" aria-describedby="calc-labour-only-hint"><span class="tsl"></span></span>
+           materials separately. A typed material rate still shows.
+           UI-2: a setting row like the app's - the switch is the whole row. -->
+      <div class="set-row" id="row-labour">
+        <label class="set-txt" for="calc-labour-only">
+          <span class="set-name">Labour only - skip material prices</span>
+          <span class="set-hint" id="calc-labour-only-hint">Prices the work only. Materials get their own list.</span>
         </label>
+        <label class="tgl"><input type="checkbox" id="calc-labour-only" role="switch" aria-describedby="calc-labour-only-hint"><span class="tsl"></span></label>
       </div>
 
       <div class="bcp-rates-head">
@@ -508,21 +581,25 @@
            NO size list (tile, paint, drywall) keep the fields as they were.
            [hidden] guard + explicit display rule, because .bcp-row is
            display:grid and would otherwise outrank the UA hidden rule. -->
-      <div class="bcp-field bcp-oncost" id="calc-piece-custom-wrap" hidden>
-        <label class="bcp-opt" data-opt="piece" for="calc-piece-custom">
-          <span class="bcp-opt-txt">
-            <span class="bcp-opt-name">My size is not in the rate sheet - price it myself</span>
-            <span class="bcp-opt-hint" id="calc-piece-custom-hint">Enter your own size and rate for this piece.</span>
-          </span>
-          <span class="tgl"><input type="checkbox" id="calc-piece-custom" role="switch" aria-describedby="calc-piece-custom-hint"><span class="tsl"></span></span>
+      <div class="set-row" id="calc-piece-custom-wrap" hidden>
+        <label class="set-txt" for="calc-piece-custom">
+          <span class="set-name" id="calc-piece-custom-name">My size is not in the rate sheet - price it myself</span>
+          <span class="set-hint" id="calc-piece-custom-hint">Enter your own size and rate for this piece.</span>
         </label>
+        <label class="tgl"><input type="checkbox" id="calc-piece-custom" role="switch" aria-describedby="calc-piece-custom-hint" aria-controls="calc-piece-more" aria-expanded="false"><span class="tsl"></span></label>
+        <div class="set-more" id="calc-piece-more">
+          <div class="set-more-in">
+            <div class="set-more-pad">
+              <div class="bcp-row bcp-row-2 bcp-piece-row" id="calc-piece-wrap">
+                <div class="bcp-field"><label for="calc-piece-price" id="calc-piece-price-label">Price per piece</label><input type="number" id="calc-piece-price" min="0" step="any" inputmode="decimal" placeholder="e.g. 950 per tile"></div>
+                <div class="bcp-field"><label for="calc-piece-size" id="calc-piece-size-label">Piece size - width x length (cm)</label><input type="text" id="calc-piece-size" inputmode="decimal" placeholder="e.g. 30 x 60"></div>
+                <!-- size input is type=text: dimensioned specs take "W x L", volume specs take a single yield number -->
+              </div>
+              <div class="bcp-piece-hint" id="calc-piece-hint">Leave empty to price by the square meter with the rate above. Fill it in to price by the piece.</div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="bcp-row bcp-row-2 bcp-piece-row" id="calc-piece-wrap">
-        <div class="bcp-field"><label for="calc-piece-price" id="calc-piece-price-label">Price per piece</label><input type="number" id="calc-piece-price" min="0" step="any" inputmode="decimal" placeholder="e.g. 950 per tile"></div>
-        <div class="bcp-field"><label for="calc-piece-size" id="calc-piece-size-label">Piece size - width x length (cm)</label><input type="text" id="calc-piece-size" inputmode="decimal" placeholder="e.g. 30 x 60"></div>
-        <!-- size input is type=text: dimensioned specs take "W x L", volume specs take a single yield number -->
-      </div>
-      <div class="bcp-piece-hint" id="calc-piece-hint">Leave empty to price by the square meter with the rate above. Fill it in to price by the piece.</div>
 
       <div class="bcp-field bcp-waste-field" id="calc-waste-wrap" hidden>
         <label for="calc-waste" id="calc-waste-label">Waste &amp; cuts %</label>
@@ -614,13 +691,13 @@
           <button type="button" class="btn btn-g btn-s" data-action="calcSave"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-receipt"></use></svg> Save</button>
         </span>
         <input type="text" id="calc-biz-name" maxlength="60" placeholder="Your business name (appears on printed estimates)" aria-label="Your business name, shown on printed estimates">
-        <label class="bcp-opt" data-opt="sig">
-          <span class="bcp-opt-txt">
-            <span class="bcp-opt-name">Signature lines on the printed sheet</span>
-            <span class="bcp-opt-hint" id="calc-sig-show-hint">Adds signature blocks to printed sheets and exports.</span>
-          </span>
-          <span class="tgl"><input type="checkbox" id="calc-sig-show" data-action="calcBrandToggle" role="switch" aria-describedby="calc-sig-show-hint"><span class="tsl"></span></span>
-        </label>
+        <div class="set-row" id="row-sig">
+          <label class="set-txt" for="calc-sig-show">
+            <span class="set-name">Signature lines on the printed sheet</span>
+            <span class="set-hint" id="calc-sig-show-hint">Adds signature blocks to printed sheets and exports.</span>
+          </label>
+          <label class="tgl"><input type="checkbox" id="calc-sig-show" data-action="calcBrandToggle" role="switch" aria-describedby="calc-sig-show-hint"><span class="tsl"></span></label>
+        </div>
         <!-- W3 (owner 2026-10-01) per-document fields: who it is for and
              which document number/date it carries. They ride the saved
              estimate so recall restores the whole document. -->
@@ -779,7 +856,8 @@
     <div id="calc-compare" class="bcp-cmp"></div>
   </section>
 
-  <p class="bcp-fineprint">Rates are planning-grade averages for early estimates, not quotes - expect roughly 15 percent under to 30 percent over actual until drawings are priced. Every line item is editable in the app once the project starts. Tax rates are the standard national rates (PwC VAT/GST table, 2026) - a custom rate field overrides them. Dimensions can be typed in metric or imperial - the math is the same underneath. Everything runs on this device - no internet needed. If you sign in, your history, bill, saved estimates and business details quietly follow your account to your other devices (that part uses the internet, never your work). Clearing your browser data clears the local copies; sign in again and your workspace comes back.</p>
+  <!-- UI-3: the planning-grade, tax, units and device notes that lived here as
+       fine print now sit in the How-to-use card's Notes tab, verbatim. -->
 
   <!-- OWNER 2026-09-30 first-visit tutorial: click-to-start (never auto),
        spotlight walkthrough in guide order, once per device (the flag
@@ -846,8 +924,10 @@
      the calculator now - the SAME modules, preferences and capability floor,
      loaded in the order app.html uses (viewport signal first, glass second). -->
 <script src="js/mmgr-viewport.js?v=1"></script>
+<script src="js/mmgr-perf.js?v=2"></script>
 <script src="js/mmgr-glass.js?v=2"></script>
 <script src="js/xlsx-lite.js?v=1"></script>
+<script src="js/mmgr-combobox.js?v=1"></script>
 <script src="js/calculator-page.js?v=45"></script>
 <script src="js/calc-ai.js?v=10"></script>
 <!-- AUDIT 2026-10-18 M-5: keyboard shortcuts + the shortcut sheet.

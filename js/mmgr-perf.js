@@ -36,6 +36,16 @@
       /* ignore */
     }
     apply();
+    /* PERF-1 (REFINEMENT-DIRECTIVE-2026-10-24): tell the decorations, not just
+       the CSS. A WebGL scene, a tilt or an rAF loop that is already running
+       cannot be stopped by an attribute, so every decoration subscribes to
+       this one event and stands down (or restarts) at once. The attribute is
+       set first, so a listener that re-reads isOn() always sees the new value. */
+    try {
+      document.dispatchEvent(new CustomEvent('mmgr:perf', { detail: { on: isOn() } }));
+    } catch (e) {
+      /* an old browser without CustomEvent: the attribute still did its job */
+    }
   }
 
   /** Mirror the state onto <html> so CSS can react without JS. */
@@ -79,6 +89,12 @@
      artwork is active (perf off = pretty default) and only speaks up on a
      device that actually lags. */
   function startLagProbe() {
+    // PERF-1: the probe exists to offer the switch. On a page with no app shell
+    // (marketing, sign-in) there is no toast to offer it with, so it stays quiet
+    // rather than burning the device's one nudge.
+    if (!ns.App || !ns.App.showToast) {
+      return;
+    }
     var nudged = false;
     try {
       nudged = localStorage.getItem('mmgr_perf_nudge') === '1';
@@ -158,6 +174,21 @@
   } else {
     syncInputs();
   }
+
+  /* PERF-1 (REFINEMENT-DIRECTIVE-2026-10-24): the switch works on EVERY page
+     that loads this module, including the calculator's top bar and the marketing
+     footer - those pages have no action dispatcher, so the control is wired
+     here, once, by delegation. A page that does have a dispatcher (app.html,
+     project.html) calls set() from its own handler; set() is idempotent, so the
+     double call is harmless. */
+  document.addEventListener('change', function (e) {
+    var el = e.target;
+    if (!el || el.type !== 'checkbox' || el.getAttribute('data-action') !== 'tglPerfMode') {
+      return;
+    }
+    set(!!el.checked);
+  });
+  document.addEventListener('mmgr:perf', syncInputs);
 
   ns.Perf = {
     isOn: isOn,

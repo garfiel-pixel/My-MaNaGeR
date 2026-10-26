@@ -368,6 +368,359 @@ var MMGR = window.MMGR || {};
     return out;
   }
 
+  /* EXP-1 (REFINEMENT-DIRECTIVE-2026-10-24): compliance expiries reach the
+     notice box. COI, licensing and permits were visible on a dashboard card
+     and nowhere else, so nothing warned before a certificate lapsed. This
+     reads the SAME rollup the card draws (ns.Compliance.getExpiryRollup), so
+     the two can never list different items.
+
+     One notice per item per band, not per day: the text names the expiry DATE
+     and the band ("due within 30 days"), never a live day count, so the
+     existing kind+text dedupe raises each band exactly once and the next band
+     is a genuinely new notice. Bands: overdue, 7, 14, 30, 60 days. */
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  function findStakeholder(s, label) {
+    const sts = (s && s.stakeholders) || [];
+    for (const st of sts) {
+      const n = String(st.name || '').trim();
+      if (n && String(label || '').indexOf(n) === 0) {
+        return st;
+      }
+    }
+    return null;
+  }
+
+  function watchExpiries(s) {
+    if (s.expiryWatcher === false) {
+      return [];
+    }
+    if (!ns.Compliance || !ns.Compliance.getExpiryRollup) {
+      return [];
+    }
+    const items = ns.Compliance.getExpiryRollup(120) || [];
+    const out = [];
+    for (const it of items) {
+      const d = it.daysLeft;
+      // Null = the rollup knows the item but has no date to band (EMR
+      // re-verification). A notice needs a date to name, so it stays on the
+      // dashboard card rather than inventing one here.
+      if (d === null || d === undefined || d > 60) {
+        continue;
+      }
+      let band, sev, phrase;
+      if (d < 0) {
+        band = 'overdue';
+        sev = 'attention';
+        phrase = 'is overdue (was due ' + it.date + ')';
+      } else if (d <= 7) {
+        band = '7';
+        sev = 'attention';
+        phrase = 'is due within 7 days (' + it.date + ')';
+      } else if (d <= 14) {
+        band = '14';
+        sev = 'caution';
+        phrase = 'is due within 14 days (' + it.date + ')';
+      } else if (d <= 30) {
+        band = '30';
+        sev = 'caution';
+        phrase = 'is due within 30 days (' + it.date + ')';
+      } else {
+        band = '60';
+        sev = 'info';
+        phrase = 'is due within 60 days (' + it.date + ')';
+      }
+      const st = findStakeholder(s, it.label);
+      const contact = st && st.contact ? String(st.contact).trim() : '';
+      const email = EMAIL_RE.test(contact) ? contact : '';
+      const action = /licen[cs]e/i.test(it.kind + ' ' + it.label)
+        ? 'renewed licence'
+        : 'renewed insurance certificate';
+      const docWord =
+        it.kind === 'Permit'
+          ? 'permit'
+          : it.kind === 'Warranty'
+            ? 'warranty document'
+            : 'certificate';
+      const advice = email
+        ? 'Ask ' + contact + ' for the ' + action + ' before ' + it.date + '.'
+        : 'Add a contact for ' +
+          (st && st.name ? st.name : 'this item') +
+          ' so a reminder can go out before ' +
+          it.date +
+          '.';
+      const subject = 'Renewed ' + action + ' needed';
+      const body =
+        'Please send the ' +
+        action +
+        ' for ' +
+        it.label.replace(/\s*,\s*/g, ', ') +
+        ', which ' +
+        phrase +
+        '. Thank you.';
+      out.push({
+        kind: 'expiry',
+        band: band,
+        severity: sev,
+        text: it.label.replace(/\s*,\s*/g, ', ') + ' ' + phrase + ' - ' + docWord + '.',
+        advice: advice,
+        remind: email
+          ? 'mailto:' +
+            encodeURIComponent(email) +
+            '?subject=' +
+            encodeURIComponent(subject) +
+            '&body=' +
+            encodeURIComponent(body)
+          : ''
+      });
+    }
+    // Block the risk: a task handed to a subcontractor whose cover lapses
+    // before that task ends. Same fields, same dates - no invention.
+    const today = U.todayStr();
+    for (const t of s.tasks || []) {
+      if (!t.endDate || t.status === 'completed' || t.endDate < today) {
+        continue;
+      }
+      const who = String(t.assignee || '').trim();
+      if (!who) {
+        continue;
+      }
+      for (const st of s.stakeholders || []) {
+        const n = String(st.name || '').trim();
+        if (!n || (who !== n && who.indexOf(n) === -1 && n.indexOf(who) === -1)) {
+          continue;
+        }
+        const pairs = [
+          ['COI', st.coiExpiry],
+          ['licence', st.licenseExpiry]
+        ];
+        for (const [kind, date] of pairs) {
+          if (date && date < t.endDate) {
+            out.push({
+              kind: 'expiry',
+              band: 'task',
+              severity: 'caution',
+              text:
+                t.name +
+                ' is assigned to ' +
+                n +
+                ', whose ' +
+                kind +
+                ' expires ' +
+                date +
+                ', before this task ends on ' +
+                t.endDate +
+                '.',
+              advice: 'Ask ' + n + ' for the renewed ' + kind + ' before the task starts.'
+            });
+          }
+        }
+      }
+    }
+    return out;
+  }
+
+  /* RISK-1 (REFINEMENT-DIRECTIVE-2026-10-24): the finish target speaks.
+     The dashboard used to show "At Risk, 1d over target" with no reason and
+     no advice, and nothing raised it as a notice. Every cause below is traced
+     to a real stored field, and every suggestion states the number it rests
+     on. Never promises an outcome: each line is labelled a suggestion. */
+  function watchFinishTarget(s, today) {
+    if (s.finishWatcher === false) {
+      return [];
+    }
+    if (!ns.Schedule || !ns.Schedule.projectedFinish) {
+      return [];
+    }
+    const pf = ns.Schedule.projectedFinish(s);
+    if (!pf || pf.overrunDays <= 0) {
+      return [];
+    }
+    const todayStr = today || U.todayStr();
+    const tasks = (s.tasks || []).filter(t => !t.isPhase);
+    const crit = tasks.filter(t => t.critical);
+    const byId = new Map(tasks.map(t => [String(t.id), t]));
+    const over = pf.overrunDays;
+    const dayWord = over === 1 ? 'day' : 'days';
+
+    // ---- Causes. Ranked by the days each one can explain. ----
+    const causes = [];
+    for (const t of crit) {
+      const dur = parseInt(t.duration, 10) || 0;
+      if (t.status !== 'completed' && t.endDate && t.endDate < todayStr) {
+        const late = U.daysBetween(t.endDate, todayStr);
+        if (late > 0) {
+          causes.push({
+            days: late,
+            text: t.name + ' is ' + late + ' day(s) past its ' + t.endDate + ' end date'
+          });
+        }
+      }
+      if (t.leadTime && t.expectedDate && !t.delivered) {
+        causes.push({
+          days: dur,
+          text: t.name + ' waits on a lead time expected ' + t.expectedDate
+        });
+      }
+      if (t.weatherSensitive && dur >= 3) {
+        causes.push({
+          days: Math.max(1, Math.round(dur * 0.2)),
+          text: t.name + ' is weather-sensitive on the critical path (' + dur + ' days)'
+        });
+      }
+      const res = (s.resources || []).find(r => r.name && r.name === t.assignee);
+      if (res && (+res.allocation || 0) > 100) {
+        causes.push({
+          days: Math.max(1, Math.round(dur * 0.25)),
+          text: t.name + ' is held by ' + res.name + ', allocated ' + res.allocation + '%'
+        });
+      }
+      if (dur >= 5) {
+        causes.push({
+          days: Math.max(1, Math.round(dur * 0.1)),
+          text: t.name + ' is the longest critical task at ' + dur + ' days'
+        });
+      }
+    }
+    causes.sort((a, b) => b.days - a.days);
+    const top = [];
+    for (const c of causes) {
+      if (top.length >= 3) {
+        break;
+      }
+      if (!top.some(x => x.text === c.text)) {
+        top.push(c);
+      }
+    }
+    const causeText = top.length
+      ? 'Main causes: ' + top.map(c => c.text).join('; ') + '.'
+      : 'No single task explains it: the latest planned end date is simply past the target.';
+
+    // ---- Suggestions. At most three, ranked by the days each can recover. ----
+    const sugg = [];
+    const reserve = tasks.find(
+      t => /reserve|contingency|buffer/i.test(t.name || '') && (parseInt(t.duration, 10) || 0) >= 1
+    );
+    if (reserve) {
+      const rDur = parseInt(reserve.duration, 10) || 0;
+      if (rDur >= over) {
+        sugg.push({
+          save: over,
+          text:
+            'Use the management reserve (' +
+            rDur +
+            ' ' +
+            (rDur === 1 ? 'day' : 'days') +
+            ') to cover the ' +
+            over +
+            ' ' +
+            dayWord +
+            ' slip.'
+        });
+      }
+    }
+    for (const b of crit) {
+      for (const p of b.predecessors || []) {
+        const a = byId.get(String(p));
+        if (!a || !a.critical) {
+          continue;
+        }
+        const aDur = parseInt(a.duration, 10) || 0;
+        if (aDur >= 3) {
+          sugg.push({
+            save: Math.max(1, Math.round(aDur * 0.3)),
+            text: 'Start ' + b.name + ' when ' + a.name + ' is about 70 percent done.'
+          });
+        }
+      }
+    }
+    for (const t of crit) {
+      const dur = parseInt(t.duration, 10) || 0;
+      if (dur >= 2) {
+        sugg.push({
+          save: Math.max(1, Math.round(dur * 0.4)),
+          text: 'Add a second crew to ' + t.name + ' (' + dur + ' days).'
+        });
+      }
+    }
+    for (const t of tasks) {
+      if (t.critical || !t.assignee) {
+        continue;
+      }
+      const floatDays = parseInt(t.totalFloat !== undefined ? t.totalFloat : t.float, 10);
+      const shares = crit.some(c => c.assignee && c.assignee === t.assignee);
+      if (shares && !isNaN(floatDays) && floatDays >= over) {
+        sugg.push({
+          save: Math.min(over, floatDays),
+          text:
+            t.name +
+            ' has ' +
+            floatDays +
+            ' days of float: move it after ' +
+            crit.find(c => c.assignee === t.assignee).name +
+            ' to free the crew.'
+        });
+      }
+    }
+    if (over <= 3) {
+      sugg.push({
+        save: over,
+        text: 'Agree a ' + over + ' day extension with the client.'
+      });
+    }
+    const ldRate = +s.ldRate || 0;
+    if (ldRate > 0) {
+      sugg.push({
+        save: 0,
+        text: 'Each day costs about ' + ldRate.toLocaleString() + ' in the claim rate.'
+      });
+    }
+    sugg.sort((a, b) => b.save - a.save);
+    const seen = new Set();
+    const picked = [];
+    for (const g of sugg) {
+      if (picked.length >= 3) {
+        break;
+      }
+      if (!seen.has(g.text)) {
+        seen.add(g.text);
+        picked.push(g);
+      }
+    }
+    return [
+      {
+        kind: 'finish',
+        severity: over <= 14 ? 'caution' : 'attention',
+        text:
+          'Projected finish ' +
+          pf.projected +
+          ' is ' +
+          over +
+          ' ' +
+          dayWord +
+          ' past the target ' +
+          pf.target +
+          '. ' +
+          causeText,
+        advice: picked.length
+          ? 'Suggestion: ' + picked.map(g => g.text).join(' ')
+          : 'Suggestion: pull the latest critical task forward before agreeing a new date.',
+        ask:
+          'Explain this finish-target slip and what to do first: ' +
+          'projected finish ' +
+          pf.projected +
+          ', target ' +
+          pf.target +
+          ', ' +
+          over +
+          ' ' +
+          dayWord +
+          ' over. ' +
+          causeText
+      }
+    ];
+  }
+
   // Signed-in gate (Task 9): the assistant is part of the signed-in
   // experience. Signed-out, run() is a no-op and the mailbox shows the
   // plain-language card. The Entitlements seam is the only rule source.
@@ -395,7 +748,9 @@ var MMGR = window.MMGR || {};
         watchResources(s),
         watchWeather(s),
         watchSchedule(s),
-        watchParallel(s)
+        watchParallel(s),
+        watchExpiries(s),
+        watchFinishTarget(s, today)
       );
       if (!found.length) {
         return;
@@ -416,6 +771,14 @@ var MMGR = window.MMGR || {};
             kind: f.kind,
             severity: f.severity,
             text: f.text,
+            // EXP-1 / RISK-1: optional richer fields. advice is the plain
+            // next step; remind is a ready mailto built ONLY from the
+            // stakeholder's own contact; ask is the prompt the assistant
+            // button opens with. Absent fields simply do not render.
+            advice: f.advice || '',
+            remind: f.remind || '',
+            ask: f.ask || '',
+            band: f.band || '',
             read: false
           });
           added++;
@@ -496,12 +859,24 @@ var MMGR = window.MMGR || {};
               '<div class="ai-note-tx"><svg class="ico ai-sev-dot" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dot"></use></svg>' +
               U.escapeHtml(n.text) +
               '</div>' +
-              '<div class="ai-note-meta">' +
-              U.escapeHtml((n.at || '').slice(0, 10)) +
-              '</div>' +
+              (n.advice ? '<div class="ai-note-advice">' + U.escapeHtml(n.advice) + '</div>' : '') +
+              '<div class="ai-note-actions">' +
+              (n.remind
+                ? '<a class="btn btn-s btn-n" href="' +
+                  U.escapeHtml(n.remind) +
+                  '">Draft reminder</a>'
+                : '') +
+              (n.ask
+                ? '<button class="btn btn-s btn-n" data-action="askAboutNotice" data-id="' +
+                  U.escapeHtml(n.id) +
+                  '">Ask the assistant</button>'
+                : '') +
               '<button class="btn btn-s btn-n" data-action="dismissAiNote" data-id="' +
               U.escapeHtml(n.id) +
               '">Dismiss</button>' +
+              '</div>' +
+              '<div class="ai-note-meta">' +
+              U.escapeHtml((n.at || '').slice(0, 10)) +
               '</div>'
           )
           .join('') ||
@@ -539,6 +914,27 @@ var MMGR = window.MMGR || {};
     openMailbox();
   }
 
+  // RISK-1: Ask the assistant about a notice. Opens the AI window with the
+  // traced facts already in the composer - the numbers stay from the watcher,
+  // the assistant explains and elaborates. Nothing is sent automatically.
+  function askAboutNotice(id) {
+    const s = ns.State.getState();
+    const note = s && Array.isArray(s.aiInbox) ? s.aiInbox.find(n => n.id === id) : null;
+    if (!note || !note.ask) {
+      return;
+    }
+    if (!(ns.AiWin && ns.AiWin.open)) {
+      return;
+    }
+    closeMailbox();
+    ns.AiWin.open();
+    const input = document.getElementById('ai-q');
+    if (input) {
+      input.value = note.ask;
+      input.focus();
+    }
+  }
+
   ns.Watch = {
     run: run,
     openMailbox: openMailbox,
@@ -547,10 +943,13 @@ var MMGR = window.MMGR || {};
     clearMailbox: clearMailbox,
     unreadCount: unreadCount,
     renderBell: renderBell,
+    askAboutNotice: askAboutNotice,
     watchLeadTimes: watchLeadTimes,
     watchBudget: watchBudget,
     watchResources: watchResources,
-    watchWeather: watchWeather
+    watchWeather: watchWeather,
+    watchExpiries: watchExpiries,
+    watchFinishTarget: watchFinishTarget
   };
 })(MMGR);
 window.MMGR = MMGR;

@@ -207,6 +207,18 @@ jobs:
         id: qa-links
         run: node tools/verify-links.cjs
 
+      # APP-2 / PERF-1 static halves (REFINEMENT-DIRECTIVE-2026-10-24).
+      # The new-tab allow-list is a CONTRACT (a stale entry fails too), and
+      # every page that can start a GPU decoration must boot Performance Mode
+      # BEFORE the shader mounts.
+      - name: "T1: Same-tab navigation (T-NEWTAB static)"
+        id: verify-newtab
+        run: node tools/verify-newtab.cjs
+
+      - name: "T1: Performance Mode boot + kill block (T-PERF-WIRE static)"
+        id: verify-perf-boot
+        run: node tools/verify-perf-boot.cjs
+
       # G-2 gate (DIRECTIVE: GOOGLE SIGN-IN SECURITY GAPS, 2026-10-23):
       # in-process Worker route battery + the 14 sign-in nonce checks
       # (wrong/reused/expired/forged, email_verified, flag on/off, sweep).
@@ -580,6 +592,25 @@ jobs:
       - name: "T4: Dialog controls actually change (qa-modals)"
         id: qa-modals
         run: node tools/qa-modals.cjs
+
+      # Wave D (REFINEMENT-DIRECTIVE-2026-10-24): the app shell and the
+      # calculator controls. qa-appshell measures the closed rail against the
+      # page at five widths in both palettes and walks the app to prove one
+      # session is one tab. qa-calc-controls proves the owned listbox, the
+      # per-theme contrast of every option, the setting rows and drawers, and
+      # Performance Mode on the calculator. qa-notice-watchers drives the RISK-1
+      # finish notice and the EXP-1 expiry bands through fixtures.
+      - name: "T4: App shell - rail gutter + one tab (qa-appshell)"
+        id: qa-appshell
+        run: node tools/qa-appshell.cjs
+
+      - name: "T4: Calculator listbox, setting rows, Performance Mode (qa-calc-controls)"
+        id: qa-calc-controls
+        run: node tools/qa-calc-controls.cjs
+
+      - name: "T4: Finish-target and expiry notices (qa-notice-watchers)"
+        id: qa-notice-watchers
+        run: node tools/qa-notice-watchers.cjs
 
       # S2 remainder of AUDIT-DIRECTIVE-2026-10-18: C6 sticky panel +
       # mobile total bar, C7 switch rows, X-1 render scheduler, X-2 paint

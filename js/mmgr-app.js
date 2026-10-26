@@ -16,6 +16,25 @@ var MMGR = window.MMGR || {};
   const urlParams = new URLSearchParams(window.location.search);
   ns.projectId = urlParams.get('id') || localStorage.getItem('mmgr_current_project') || 'default';
 
+  /* APP-2 (REFINEMENT-DIRECTIVE-2026-10-24): the admin panel used to open a
+     project with `&code=` in the address, where it stayed in the history and
+     was visible in the bar. Nothing reads it from the URL (the unlock lives in
+     localStorage), so it is removed as soon as the page has booted - the
+     address the user can see and share carries only the project id. */
+  if (urlParams.has('code')) {
+    try {
+      urlParams.delete('code');
+      const q = urlParams.toString();
+      window.history.replaceState(
+        null,
+        '',
+        window.location.pathname + (q ? '?' + q : '') + window.location.hash
+      );
+    } catch (e) {
+      /* a scrub must never block boot */
+    }
+  }
+
   // OWNER 2026-09-17 (id-mismatch fix, boot migration): before the old
   // import fix, ids with spaces could enter the admin list and every
   // id-scoped key (mmgr_state_<id>, mmgr_unlocked_<id>, cloud routes) was
@@ -3932,6 +3951,7 @@ window.MMGR = MMGR;
       }
     },
     dismissAiNote: el => window.MMGR.Watch.dismissNote(el.getAttribute('data-id')),
+    askAboutNotice: el => window.MMGR.Watch.askAboutNotice(el.getAttribute('data-id')),
     clearAiMailbox: () => window.MMGR.Watch.clearMailbox(),
     // MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-2: Import Dates 'Copy List'.
     copyIdTemplate: () => window.MMGR.Tasks.copyIdTemplate(),
@@ -5133,6 +5153,9 @@ window.MMGR = MMGR;
     openAiMailbox: 1,
     closeAiMailbox: 1,
     closeAiMailboxBg: 1,
+    // RISK-1: opens the assistant with the notice's traced facts in the
+    // composer. Reads state and text; writes nothing.
+    askAboutNotice: 1,
     // Phase 7: wxRefresh (view the forecast) + wxCopyNotice (copy text) are
     // read-only; wxGeocode writes the site location config and wxLogToday /
     // wxLogManual write the LD-claim weather log , all stay blocked in

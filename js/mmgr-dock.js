@@ -211,6 +211,15 @@
     }
   });
 
+  /* PERF-1 (REFINEMENT-DIRECTIVE-2026-10-24): the 3D tilt is a GPU layer, so it
+     has to stand down the moment Performance Mode is switched on FROM ANYWHERE -
+     the rail's own toggle, the calculator's top bar, or a footer switch carried
+     over from the marketing pages. One listener re-runs the same decision
+     viewAllowed() already makes, so there is no second rule to drift. */
+  document.addEventListener('mmgr:perf', function () {
+    applyView();
+  });
+
   function boot() {
     // Boot-state sync: every perf toggle reflects the stored preference.
     try {

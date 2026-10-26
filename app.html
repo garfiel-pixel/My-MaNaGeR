@@ -234,6 +234,31 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;visibility:h
 @media(max-width:768px){
   body.db-page .sidebar-icons{display:none;}
 }
+/* APP-1 (REFINEMENT-DIRECTIVE-2026-10-24): the closed rail RESERVES its
+   gutter instead of floating over the page.
+   Owner: the collapsed strip sat on top of the first content column - the
+   cards and the first form field ran underneath it. A 38px icon + 8px from
+   the edge + 18px of breathing room is 64px: that width is taken out of the
+   content column while the rail is closed (and given back when it opens), so
+   nothing overlaps at any width. Below 1024 there is not enough room to keep
+   a column of icons at the side, so the same strip lies along the bottom
+   edge, and the page keeps a matching bottom padding.
+   Both colour modes: the rule is on body.db-page, not :not(.dark-mode). */
+:root{--rail-closed-w:64px;}
+@media (min-width:1024px){
+  body.db-page.side-closed .wrap{margin-left:var(--rail-closed-w);margin-right:auto;}
+}
+@media (min-width:769px) and (max-width:1023px){
+  body.db-page.side-closed .sidebar-icons{
+    top:auto;bottom:calc(10px + env(safe-area-inset-bottom));
+    left:50%;transform:translateX(-50%);
+    flex-direction:row;
+  }
+  /* The tooltip points right from a side rail; along the bottom edge it would
+     hang off the screen, so the button's own aria-label carries the name. */
+  body.db-page.side-closed .sidebar-icon .sidebar-tooltip{display:none;}
+  body.db-page.side-closed .wrap{padding-bottom:72px;}
+}
 @media (prefers-reduced-motion:reduce){
   body.db-page .sidebar-icons{transition:none;}
   body.db-page .sidebar-icon{transition:none;}
@@ -1851,6 +1876,11 @@ document.addEventListener('DOMContentLoaded', function() {
   } catch(e) { /* seeding must never block boot */ }
   syncDemoToggle();
   renderCards();
+  // The rail's All Projects list is drawn from the same allProjects() set as
+  // the grid, but its first render runs while the parser is still working -
+  // before the deferred app-bundle defines MMGR_PROJECTS - so it used to say
+  // "No projects yet" on every load. Draw it again once the bundle is in.
+  renderRailProjects();
   fetchCloudSync();   // W1b: sync chips re-render once the cloud list lands
   startCloudSyncRefresh();   // LIVE CHIP: keep them honest while the page stays open
   // recently opened codes list (owner 2026-09-12): one-click re-open of codes

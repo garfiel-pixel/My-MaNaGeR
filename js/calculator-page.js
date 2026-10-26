@@ -1714,7 +1714,27 @@
       dayRateStr: ($('calc-day-rate') || {}).value || '',
       verifiedOn: ($('calc-allin-verified') || {}).value || '',
       ohPct: ($('calc-oh') || {}).value || '',
-      onCostPct: ($('calc-oncost-pct') || {}).value || '',
+      // UI-2 (REFINEMENT-DIRECTIVE-2026-10-24): the row's switch decides whether
+      // the statutory drawer prices at all. A percent left in the box while the
+      // row is OFF is remembered (it is still there when the row comes back on)
+      // but it must not reach the maths - "switch off = drawer closed and its
+      // values out of the estimate", the contract the row pattern promises.
+      onCostPct: (function () {
+        const t = $('calc-oncost-toggle');
+        if (t && !t.checked) {
+          return '';
+        }
+        return ($('calc-oncost-pct') || {}).value || '';
+      })(),
+      // UI-2: the four statutory parts ride the snapshot too, so a recall shows
+      // the same breakdown the estimate was priced with instead of resetting
+      // the boxes to the defaults under a total that came from other numbers.
+      onCostParts: {
+        nis: ($('calc-oncost-nis') || {}).value || '',
+        nht: ($('calc-oncost-nht') || {}).value || '',
+        edtax: ($('calc-oncost-edtax') || {}).value || '',
+        heart: ($('calc-oncost-heart') || {}).value || ''
+      },
       docType: docType(),
       docTitle: docTitleRaw(),
       clientName: ($('calc-client-name') || {}).value || '',
@@ -1752,6 +1772,161 @@
       labourOnly: !!($('calc-labour-only') || {}).checked,
       units: _units
     };
+  }
+
+  // ==========================================================================
+  // UI-2 (REFINEMENT-DIRECTIVE-2026-10-24): SETTING ROWS
+  // One decision per row - the words, the app's own switch, and a drawer with
+  // the fields that belong to it. These helpers live at module scope because
+  // applyState() (a recall, a saved estimate, a history entry) has to re-sync
+  // the rows, and applyState runs long before the boot wiring at the bottom.
+  // ==========================================================================
+  const ONCOST_PARTS = [
+    { id: 'nis', name: 'NIS', pct: 3.0 },
+    { id: 'nht', name: 'NHT', pct: 3.0 },
+    { id: 'edtax', name: 'Education Tax', pct: 3.5 },
+    { id: 'heart', name: 'HEART/NSTA Trust', pct: 3.0 }
+  ]; // total 12.5 - the employer stack the page already suggested.
+
+  function settingRowsOn() {
+    try {
+      return localStorage.getItem('mmgr_flag_settingRows') !== '0';
+    } catch (e) {
+      return true;
+    }
+  }
+
+  /* Add the wiring class and mirror each switch onto its drawer. With the flag
+     off nothing is hidden: the drawer stays open, exactly as the page shipped
+     before this wave. */
+  function ui2RowsSync() {
+    const rows = document.querySelectorAll('.set-row');
+    const wired = settingRowsOn();
+    Array.prototype.forEach.call(rows, function (row) {
+      const more = row.querySelector('.set-more');
+      // A "plain" row has nothing to opt into (a trade's own piece fields):
+      // it is always open and its switch is not shown.
+      if (row.classList.contains('is-plain')) {
+        row.classList.add('is-wired', 'is-on');
+        if (more) {
+          more.removeAttribute('inert');
+        }
+        return;
+      }
+      if (!wired) {
+        row.classList.remove('is-wired', 'is-on');
+        if (more) {
+          more.removeAttribute('inert');
+        }
+        return;
+      }
+      row.classList.add('is-wired');
+      const cb = row.querySelector('input[type="checkbox"]');
+      if (!cb || !more) {
+        return;
+      }
+      const on = !!cb.checked;
+      row.classList.toggle('is-on', on);
+      if (on) {
+        more.removeAttribute('inert');
+      } else {
+        more.setAttribute('inert', '');
+      }
+      cb.setAttribute('aria-expanded', on ? 'true' : 'false');
+    });
+  }
+
+  /* The tax row's switch IS the country choice: off writes the page's own
+     "No tax" value, on restores the country it replaced. No second state, so
+     the screen and the engine cannot disagree. */
+  let taxCountryBefore = 'JM';
+  function ui2TaxSync() {
+    const t = $('calc-tax-toggle'),
+      c = $('calc-country');
+    if (!t || !c) {
+      return;
+    }
+    t.checked = c.value !== 'NONE';
+    ui2RowsSync();
+  }
+
+  function oncostPartEls() {
+    return ONCOST_PARTS.map(function (p) {
+      return $('calc-oncost-' + p.id);
+    });
+  }
+
+  function oncostSum() {
+    let sum = 0,
+      any = false;
+    oncostPartEls().forEach(function (el) {
+      if (!el) {
+        return;
+      }
+      const v = parseFloat(el.value);
+      if (isFinite(v)) {
+        sum += v;
+        any = true;
+      }
+    });
+    return any ? Math.round(sum * 100) / 100 : 0;
+  }
+
+  /* The live total under the four boxes. It reads the authoritative
+     #calc-oncost-pct when that has a number (a recall, the AI settings path,
+     the 12.5% suggestion), and otherwise the parts themselves - so the label is
+     never blank while four rates are on screen. */
+  function ui2OncostLabel() {
+    const lab = $('calc-oncost-total'),
+      p = $('calc-oncost-pct');
+    if (!lab) {
+      return;
+    }
+    const raw = p && p.value !== '' ? parseFloat(p.value) : NaN;
+    const v = isFinite(raw) ? raw : oncostSum();
+    lab.textContent = 'Total ' + Math.round(v * 100) / 100 + '% of labour';
+  }
+
+  /* Editing a part rewrites the total the engine reads. The parts are the
+     editor; #calc-oncost-pct is still the one value that prices. */
+  function ui2OncostWrite() {
+    const p = $('calc-oncost-pct');
+    if (!p) {
+      return;
+    }
+    const sum = oncostSum();
+    p.value = sum > 0 ? String(sum) : '';
+    p.dataset.touched = '1';
+    ui2OncostLabel();
+    render();
+  }
+
+  function ui2ResetOncost() {
+    oncostPartEls().forEach(function (el, i) {
+      if (el) {
+        el.value = String(ONCOST_PARTS[i].pct);
+      }
+    });
+    const p = $('calc-oncost-pct');
+    if (p) {
+      p.value = '';
+      delete p.dataset.touched;
+    }
+    const t = $('calc-oncost-toggle');
+    if (t && t.checked) {
+      if (p && $('calc-country').value === 'JM') {
+        p.value = '12.5';
+      }
+    }
+    ui2OncostLabel();
+    render();
+  }
+
+  /* One entry point for everything a snapshot or a boot changed. */
+  function ui2Sync() {
+    ui2TaxSync();
+    ui2RowsSync();
+    ui2OncostLabel();
   }
 
   // Restore a settings object written by readState(). Every field is
@@ -1926,6 +2101,17 @@
         t.checked = !!st.onCostPct;
       }
       $('calc-oncost-pct').disabled = !$('calc-oncost-toggle').checked;
+      // UI-2: restore the four parts, then re-read the total label. A snapshot
+      // from before this wave carries no parts - the total above is still the
+      // number that prices, and the boxes keep their defaults.
+      const parts = st.onCostParts || {};
+      ['nis', 'nht', 'edtax', 'heart'].forEach(function (k) {
+        const el = $('calc-oncost-' + k);
+        if (el && parts[k] !== undefined && parts[k] !== null) {
+          el.value = String(parts[k]);
+        }
+      });
+      ui2Sync();
     }
     if ($('calc-doc-type')) {
       $('calc-doc-type').value = st.docType || 'Estimate';
@@ -8582,6 +8768,28 @@
     }
   }
 
+  /* UI-3 (REFINEMENT-DIRECTIVE-2026-10-24): the guide's two tabs.
+     Steps is the slider that was always there; Notes is the reading that used
+     to be fine print under the form. Standard tablist behaviour: exactly one
+     tab is selected, the panels are role=tabpanel, Left/Right/Home/End move the
+     selection with a roving tabindex, and the card opens on Steps. */
+  function setGuideTab(name) {
+    const want = name === 'notes' ? 'notes' : 'steps';
+    ['steps', 'notes'].forEach(function (k) {
+      const tab = $('calc-guide-tab-' + k);
+      const panel = $('calc-guide-panel-' + k);
+      const on = k === want;
+      if (tab) {
+        tab.classList.toggle('is-on', on);
+        tab.setAttribute('aria-selected', on ? 'true' : 'false');
+        tab.tabIndex = on ? 0 : -1;
+      }
+      if (panel) {
+        panel.hidden = !on;
+      }
+    });
+  }
+
   // ---- First-visit tutorial (owner 2026-09-30) ----------------------------
   // Click-to-start spotlight walkthrough in the guide's field order. One
   // flag (mmgr_calc_tour_done) gates the nudge; clearing browser data
@@ -8873,6 +9081,10 @@
       } catch (e) {}
       renderGuide();
     },
+    // UI-3: switch the guide between its slider and its notes.
+    calcGuideTab: function (el) {
+      setGuideTab(el && el.getAttribute('data-tab'));
+    },
     // ---- Jamaica rate book card (owner 2026-10-02) ----
     // Owner 2026-10-13: gated behind SIGN IN (not premium).
     openRateBook: function () {
@@ -9078,6 +9290,10 @@
     calcBasisPick: function () {
       syncBasis();
       render();
+    },
+    // UI-2: put the four statutory parts back to the Jamaica defaults.
+    calcOncostReset: function () {
+      ui2ResetOncost();
     },
     // F4b: put the model rates back (the escape hatch from your own rates).
     calcRatesReset: function () {
@@ -10342,14 +10558,26 @@
       pw.classList.toggle('bcp-piece-custom-on', hasSizeList && !!(custom && custom.checked));
     }
     if (customWrap) {
-      customWrap.hidden = !hasSizeList;
+      // A trade with piece pricing but NO size list keeps the old behaviour: the
+      // price/size fields simply show, with no opt-in - so the row goes "plain"
+      // (switch hidden, drawer always open) instead of disappearing.
+      const hasPiece = !!(w && w.piece);
+      customWrap.hidden = !hasPiece;
+      customWrap.classList.toggle('is-plain', hasPiece && !hasSizeList);
       if (hasSizeList && custom && custom.dataset.phWork !== key) {
-        custom.parentElement.lastChild.textContent =
-          ' My ' +
-          (w.piece.priceLabel || 'piece').replace(/^Price per /i, '').toLowerCase() +
-          ' is not in the rate sheet - price it myself';
+        // UI-2: the row's words are now a real .set-name span. The old write
+        // went through custom.parentElement.lastChild, which is the .tgl's
+        // knob - it painted the label INSIDE the switch. Target the name by id.
+        const nameEl = $('calc-piece-custom-name');
+        if (nameEl) {
+          nameEl.textContent =
+            'My ' +
+            (w.piece.priceLabel || 'piece').replace(/^Price per /i, '').toLowerCase() +
+            ' is not in the rate sheet - price it myself';
+        }
         custom.dataset.phWork = key;
       }
+      ui2RowsSync();
     }
     if (w.piece && priceEl && sizeEl) {
       $('calc-piece-price-label').textContent = w.piece.priceLabel;
@@ -11245,10 +11473,67 @@
       }
       render();
     }
-    $('calc-oncost-toggle').addEventListener('change', onCostSuggest);
+    $('calc-oncost-toggle').addEventListener('change', function () {
+      onCostSuggest();
+      /* UI-2: the four parts are on screen in the drawer whatever the country,
+         so switching the row on must price what the drawer shows. Outside
+         Jamaica the suggestion above is silent, and leaving the total empty
+         would price 0% under a label that reads "Total 12.5% of labour" - the
+         screen and the bill would disagree. Write the parts' sum instead;
+         nothing is written when every part is blank, so "off" still means off. */
+      const p = $('calc-oncost-pct');
+      if (this.checked && p && !p.value && !p.dataset.touched) {
+        const sum = oncostSum();
+        if (sum > 0) {
+          p.value = String(sum);
+        }
+      }
+      ui2OncostLabel();
+      ui2RowsSync();
+      render();
+    });
     $('calc-oncost-pct').addEventListener('input', function () {
       this.dataset.touched = '1';
+      ui2OncostLabel();
       render();
+    });
+    // UI-2: the four statutory parts are the editor; their sum writes the one
+    // total the engine reads.
+    oncostPartEls().forEach(function (el) {
+      if (el) {
+        el.addEventListener('input', function () {
+          ui2OncostWrite();
+        });
+      }
+    });
+    // UI-2: the tax row's switch is the country choice.
+    if ($('calc-tax-toggle')) {
+      $('calc-tax-toggle').addEventListener('change', function () {
+        const c = $('calc-country');
+        if (!c) {
+          return;
+        }
+        if (this.checked) {
+          if (c.value === 'NONE') {
+            c.value = taxCountryBefore || 'JM';
+          }
+        } else {
+          if (c.value !== 'NONE') {
+            taxCountryBefore = c.value;
+          }
+          c.value = 'NONE';
+        }
+        c.dispatchEvent(new Event('change', { bubbles: true }));
+        ui2RowsSync();
+      });
+    }
+    // UI-2: any other row's switch opens or closes its own drawer. Delegated, so
+    // a row added later (MAT-1's itemise materials) works with no new wiring.
+    document.addEventListener('change', function (e) {
+      const cb = e.target;
+      if (cb && cb.type === 'checkbox' && cb.closest && cb.closest('.set-row')) {
+        ui2RowsSync();
+      }
     });
     // W4: preliminaries rows edit live (inputs + basis selects).
     function prelimEdit(e) {
@@ -11300,6 +11585,9 @@
       if (note) {
         note.hidden = $('calc-country').value !== 'JM';
       }
+      // UI-2: picking "No tax on this job" from the drawer closes the switch,
+      // and picking a real country opens it. One state, two controls.
+      ui2TaxSync();
       if ($('calc-oncost-toggle').checked) {
         onCostSuggest();
       } else {
@@ -11486,6 +11774,32 @@
   })();
   // How-to guide: paint the first step (open state decides visibility).
   renderGuide();
+  // UI-2: wire the setting rows once the page is fully painted - the drawers,
+  // the tax switch and the live statutory total all read the same helpers.
+  ui2Sync();
+  // UI-3: the guide opens on Steps, and its tablist answers the arrow keys.
+  (function wireGuideTabs() {
+    setGuideTab('steps');
+    const list = document.querySelector('#calc-guide-card .bcp-tabs');
+    if (!list) {
+      return;
+    }
+    list.addEventListener('keydown', function (e) {
+      const k = e.key;
+      if (k !== 'ArrowLeft' && k !== 'ArrowRight' && k !== 'Home' && k !== 'End') {
+        return;
+      }
+      e.preventDefault();
+      const cur = list.querySelector('[role="tab"][aria-selected="true"]');
+      const onSteps = !cur || cur.getAttribute('data-tab') === 'steps';
+      const to = k === 'Home' ? 'steps' : k === 'End' ? 'notes' : onSteps ? 'notes' : 'steps';
+      setGuideTab(to);
+      const next = $('calc-guide-tab-' + to);
+      if (next) {
+        next.focus();
+      }
+    });
+  })();
   // First-visit tutorial nudge: only when the flag is absent.
   (function () {
     const n = $('calc-tour-nudge');
@@ -11498,9 +11812,11 @@
   if (navigator.onLine) {
     setTimeout(wsProbe, 1500);
   }
-  // Swipe support on the guide body (40px threshold, horizontal only).
+  // Swipe support on the guide's steps panel (40px threshold, horizontal only).
+  // UI-3: scoped to the STEPS panel - a swipe while reading Notes must not
+  // flip a slider the reader cannot see.
   (function () {
-    const body = $('calc-guide-body');
+    const body = $('calc-guide-panel-steps');
     if (!body) {
       return;
     }

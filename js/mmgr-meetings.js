@@ -762,9 +762,9 @@ var MMGR = window.MMGR || {};
           ' ended (' +
           durationMin +
           ' min, ' +
-          m.items.filter(i => i.done).length +
+          (m.items || []).filter(i => i.done).length +
           '/' +
-          m.items.length +
+          (m.items || []).length +
           ' covered) , logged to Comms',
         'ok'
       );
@@ -890,11 +890,15 @@ var MMGR = window.MMGR || {};
     }
     body.innerHTML = meetings
       .map(m => {
-        const covered = m.items.filter(i => i.done).length;
+        // A meeting record restored from an older snapshot (the demo project's
+        // seeded data among them) can arrive without its agenda array. Render
+        // it as zero covered instead of throwing and taking the page down.
+        const items = m.items || [];
+        const covered = items.filter(i => i.done).length;
         return `<div class="meet-hist-row">
         <div><span class="meet-hist-name">${U.escapeHtml(m.title)}</span><span class="meet-hist-meta">${U.escapeHtml((m.endedAt || '').slice(0, 10))} · ${U.escapeHtml(m.durationMin || '-')} min</span></div>
         <div class="meet-hist-actions">
-          <span class="badge ${covered === m.items.length ? 'bg' : 'ba'} meet-hist-badge">${covered}/${m.items.length} covered</span>
+          <span class="badge ${covered === items.length ? 'bg' : 'ba'} meet-hist-badge">${covered}/${items.length} covered</span>
           <button class="btn btn-n btn-s" data-action="copyMeetingMinutes" data-id="${U.escapeHtml(m.id)}" title="Copy a Word-ready minutes block to the clipboard"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy Minutes</button>
           <button class="btn btn-d btn-s" data-action="delMeeting" data-id="${U.escapeHtml(m.id)}" title="Delete this meeting record and its linked entries (undo offered)"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete</button>
         </div>

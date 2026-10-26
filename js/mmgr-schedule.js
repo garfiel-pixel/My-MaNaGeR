@@ -1274,8 +1274,41 @@ var MMGR = window.MMGR || {};
     return changed;
   }
 
+  /* RISK-1 (REFINEMENT-DIRECTIVE-2026-10-24): ONE finish calculation.
+     The dashboard badge and the notice watcher both call this, so the number
+     they show cannot disagree. Pure: reads the state it is handed, returns
+     null when there is nothing honest to compare (no target, no dated task). */
+  function projectedFinish(s) {
+    s = s || {};
+    const f = s.charter || s.project || {};
+    const targetStr = f.targetCompletion || f.end;
+    if (!targetStr) {
+      return null;
+    }
+    const dated = (s.tasks || []).filter(t => t.endDate || t.end);
+    if (!dated.length) {
+      return null;
+    }
+    const target = new Date(targetStr);
+    const projected = new Date(
+      Math.max.apply(
+        null,
+        dated.map(t => new Date(t.endDate || t.end).getTime())
+      )
+    );
+    if (isNaN(target.getTime()) || isNaN(projected.getTime())) {
+      return null;
+    }
+    return {
+      target: String(targetStr).slice(0, 10),
+      projected: projected.toISOString().slice(0, 10),
+      overrunDays: Math.round((projected - target) / 86400000)
+    };
+  }
+
   ns.Schedule = {
     phaseSpan: phaseSpan,
+    projectedFinish: projectedFinish,
     rollupPhases: rollupPhases,
     lookaheadTasks: lookaheadTasks,
     computePpc: computePpc,

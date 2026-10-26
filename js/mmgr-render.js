@@ -1089,23 +1089,17 @@ var MMGR = window.MMGR || {};
       return null;
     }
     const f = s.charter || {};
-    if (!f.targetCompletion && !f.end) {
+    // RISK-1: the projection comes from the ONE shared helper, so the badge
+    // here and the finish-target notice can never quote different numbers.
+    const pf = ns.Schedule && ns.Schedule.projectedFinish ? ns.Schedule.projectedFinish(s) : null;
+    if (!pf) {
       return null;
     }
-    const dated = (s.tasks || []).filter(t => t.endDate || t.end);
-    if (!dated.length) {
-      return null;
-    }
-    const targetDate = f.targetCompletion || f.end;
+    const targetDate = pf.target;
     const target = new Date(targetDate);
-    const projected = new Date(
-      Math.max.apply(
-        null,
-        dated.map(t => new Date(t.endDate || t.end).getTime())
-      )
-    );
+    const projected = new Date(pf.projected);
     const msPerDay = 86400000;
-    const overrunDays = Math.round((projected - target) / msPerDay);
+    const overrunDays = pf.overrunDays;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const daysToTarget = Math.round((target - today) / msPerDay);
@@ -1123,7 +1117,7 @@ var MMGR = window.MMGR || {};
     return {
       target: targetDate,
       start: f.targetStart || f.start || null,
-      projected: projected.toISOString().slice(0, 10),
+      projected: pf.projected,
       overrunDays: overrunDays,
       daysToTarget: daysToTarget,
       status: status,
@@ -1165,6 +1159,7 @@ var MMGR = window.MMGR || {};
       <div style="color:var(--slate)">${t.daysToTarget >= 0 ? t.daysToTarget + ' day(s) remaining to target' : Math.abs(t.daysToTarget) + ' day(s) past target date'}</div>
     </div>
     <span class="st-txt${t.cls === 'bs' ? ' s' : ''}"><span class="sdot ${t.cls === 'bg' ? 'g' : t.cls === 'ba' ? 'a' : t.cls === 'br' ? 'r' : 'b'}"></span>${U.escapeHtml(t.status)}</span>
+    ${t.overrunDays > 0 ? '<button class="btn btn-s btn-n" data-action="openAiMailbox">What can I do?</button>' : ''}
   </div>`;
     if (hdrBadge) {
       if (t.overrunDays > 0) {

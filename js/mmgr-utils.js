@@ -484,5 +484,34 @@ var MMGR = window.MMGR || {};
       return n != null ? '$' + Number(n).toLocaleString() : '$0';
     }
   };
+
+  /* APP-2 (REFINEMENT-DIRECTIVE-2026-10-24): ONE navigation helper.
+     Owner rule (question 9, default yes): the core app pages - the dashboard,
+     the admin panel, a project and the calculator - always navigate in the
+     SAME tab, so one session is one tab. A new tab is for an external site, a
+     checkout, the field guide or a file, and for a real link the user chose to
+     open in a new tab (middle-click / Ctrl-click still work on any <a href>).
+
+     A helper rather than a scattered rule: a new feature calls go() and gets
+     the same behaviour, and the T-NEWTAB gate has one place to allow. */
+  ns.Nav = {
+    isExternal: function (url) {
+      return /^(?:[a-z][a-z0-9+.-]*:)?\/\//i.test(String(url || ''));
+    },
+    go: function (url, opts) {
+      opts = opts || {};
+      var u = String(url || '');
+      if (!u) {
+        return false;
+      }
+      if (opts.external === true || ns.Nav.isExternal(u)) {
+        // noopener: the opened page never gets a handle on this one.
+        window.open(u, opts.name || '_blank', 'noopener,noreferrer');
+        return true;
+      }
+      window.location.assign(u);
+      return true;
+    }
+  };
 })(MMGR);
 window.MMGR = MMGR;

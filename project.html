@@ -485,7 +485,7 @@
       <div class="wx-controls">
         <label class="wx-field">Season start <input type="date" id="wx-start"></label>
         <label class="wx-field">Season end <input type="date" id="wx-end"></label>
-        <label class="wx-field">Charter buffer (days) <input type="number" id="wx-buffer" min="0"></label>
+        <label class="wx-field">Charter buffer (days) <input type="number" id="wx-buffer" min="0" inputmode="numeric"></label>
       </div>
       <div id="weather-variance-body"></div>
     </div>
@@ -514,7 +514,7 @@
     <div class="card mt-lg" id="weather-log-card">
       <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Weather Delay Log<span class="ct-sub">Daily conditions + affected tasks · dispute-ready</span>
         <div class="g6">
-          <label class="wx-field">LD rate ($/day) <input type="number" id="wx-ld-rate" min="0" step="100" placeholder="0"></label>
+          <label class="wx-field">LD rate ($/day) <input type="number" id="wx-ld-rate" min="0" step="100" placeholder="0" inputmode="decimal"></label>
           <button class="btn btn-g btn-s" data-action="wxLogToday">+ Log Today</button>
           <label class="wx-field">Manual conditions <input type="text" id="wx-manual-cond" placeholder="On-site override, e.g. rain 30mm / wind 40km/h"></label>
           <label class="wx-field">Note <input type="text" id="wx-manual-note" placeholder="Affected work / claim note"></label>
@@ -554,7 +554,7 @@
         <div class="cf-field full"><label class="cf-label" for="ch-constraints">Constraints</label><textarea class="cf-ta" id="ch-constraints" placeholder="Budget caps, regulatory deadlines, resource limits" data-action="updCharter" data-charter-field="constraints"></textarea></div>
         <div class="cf-field full"><label class="cf-label" for="ch-assumptions">Assumptions</label><textarea class="cf-ta" id="ch-assumptions" placeholder="What must remain true for success" data-action="updCharter" data-charter-field="assumptions"></textarea></div>
         <div class="cf-field full"><label class="cf-label" for="ch-exclusions">Exclusions</label><textarea class="cf-ta" id="ch-exclusions" placeholder="What is explicitly out of scope" data-action="updCharter" data-charter-field="exclusions"></textarea></div>
-        <div class="cf-field"><label class="cf-label" for="ch-budget">Budget Envelope</label><input class="cf-input" type="number" id="ch-budget" min="0" step="100" placeholder="0" data-action="updCharter" data-charter-field="budgetEnvelope"></div>
+        <div class="cf-field"><label class="cf-label" for="ch-budget">Budget Envelope</label><input class="cf-input" type="number" id="ch-budget" min="0" step="100" placeholder="0" inputmode="decimal" data-action="updCharter" data-charter-field="budgetEnvelope"></div>
       </div>
       <hr class="div">
       <div class="def-section-title">Key Performance Indicators (KPIs)</div>
@@ -611,7 +611,7 @@
       <p class="t-xs mb14">Runs 1,000 simulated schedules using triangular per-task duration distributions (optimistic/likely/pessimistic) to produce a probability distribution of project completion dates.</p>
       <div class="g6 align-end">
         <div><label class="mc-field-label" for="mc-target">Target Completion Date</label><input type="date" id="mc-target" class="mc-input"></div>
-        <div><label class="mc-field-label" for="mc-risk-factor">Risk Factor (1.0 base , 2.0 high)</label><input type="number" id="mc-risk-factor" value="1.2" min="1.0" max="2.0" step="0.1" class="mc-input"></div>
+        <div><label class="mc-field-label" for="mc-risk-factor">Risk Factor (1.0 base , 2.0 high)</label><input type="number" id="mc-risk-factor" value="1.2" min="1.0" max="2.0" step="0.1" inputmode="decimal" class="mc-input"></div>
         <button class="btn btn-g btn-s" data-action="runMonteCarlo"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg> Run Simulation</button>
       </div>
       <div id="mc-result" class="is-hide">
@@ -721,7 +721,7 @@
             <div class="lbl-up">Total Authorized Budget</div>
             <div class="g6c">
               <span class="stat-sm">$</span>
-              <input type="number" id="bud-envelope" min="0" step="100" class="bud-in" placeholder="0" aria-label="Budget envelope amount" data-action="updEnvelope">
+              <input type="number" id="bud-envelope" min="0" step="100" class="bud-in" placeholder="0" inputmode="decimal" aria-label="Budget envelope amount" data-action="updEnvelope">
             </div>
           </div>
           <div class="bud-note">Set the total authorized project budget here.</div>
@@ -1644,7 +1644,7 @@
     <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Privacy</div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> Usage statistics</span><label class="tgl"><input type="checkbox" id="consent-stat-tgl" aria-label="Usage statistics: count visits to the public pages" data-action="tglConsentStat"><span class="tsl"></span></label></div>
     <div class="sr-hint">Counts visits to the public pages so we can see which parts get used. Never used for advertising. Your project data stays on this device.</div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> What we store</span><a class="btn btn-n btn-s" href="privacy.html" target="_blank" rel="noopener">Open</a></div>
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> What we store</span><a class="btn btn-n btn-s" href="privacy.html">Open</a></div>
 
     <!-- M-2 PRIVACY (audit 2026-10-18, 8.5): your data, in plain reach.
          Export is a client-side JSON of every mmgr_* key this browser holds
@@ -1944,7 +1944,7 @@
       </div>
       <div class="bp-field">
         <label for="bp-budget">Target baseline budget</label>
-        <input type="number" id="bp-budget" min="0" step="100" placeholder="0">
+        <input type="number" id="bp-budget" min="0" step="100" placeholder="0" inputmode="decimal">
       </div>
       <div class="bp-field">
         <label for="bp-deadline">Bid deadline</label>

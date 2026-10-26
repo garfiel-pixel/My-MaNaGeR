@@ -868,6 +868,17 @@
   // ---------------------------------------------------------------
   function shouldStart() {
     try {
+      // PERF-1 (REFINEMENT-DIRECTIVE-2026-10-24): Performance Mode turns the
+      // globe still. The poster in the markup is the static first frame, so the
+      // hero keeps its artwork - only the animation stops. Checked through the
+      // boot attribute as well as MMGR.Perf, because marketing pages set the
+      // attribute from storage before this module loads.
+      var perfAttr =
+        document.documentElement && document.documentElement.getAttribute('data-perf') === 'on';
+      var P = window.MMGR && window.MMGR.Perf;
+      if (perfAttr || (P && P.blocksHeavyLayers && P.blocksHeavyLayers())) {
+        return 'perf-mode';
+      }
       if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         return 'reduced-motion';
       }
@@ -950,6 +961,30 @@
     __advance: __advance,
     boot: boot
   };
+
+  // PERF-1 (REFINEMENT-DIRECTIVE-2026-10-24): the switch can be flipped while
+  // this page is open (the footer control writes the key and fires the event).
+  // Turning Performance Mode ON stops the loop at once and leaves the poster as
+  // the static first frame; turning it OFF starts the globe without a reload.
+  document.addEventListener('mmgr:perf', function (e) {
+    var on = !!(e && e.detail && e.detail.on);
+    if (!stage) {
+      return;
+    }
+    if (on) {
+      stopLoop();
+      return;
+    }
+    if (!state.started) {
+      state.refuseReason = '';
+      start();
+      return;
+    }
+    if (!_raf && !state.hidden && !state.frozen) {
+      _last = 0;
+      _raf = requestAnimationFrame(loop);
+    }
+  });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot, { once: true });

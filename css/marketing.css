@@ -2626,6 +2626,63 @@ body.dark-mode .hero-card .hc-stepdot {
   gap: 0.55em;
 }
 
+/* ---- PERF-1 (REFINEMENT-DIRECTIVE-2026-10-24): the footer's Performance Mode
+   switch. Same control as the app's .tgl - a 32x18 track with a 14px knob that
+   fills gold when on - sized for the footer line. "Lighter pages" is the visible
+   label; the real checkbox carries the accessible name and the keyboard. */
+.ft-perf {
+  display: inline-flex;
+  align-items: center;
+}
+.ft-perf-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: rgba(248, 250, 252, 0.72);
+  font-size: 0.74rem;
+}
+.ft-perf-box:hover {
+  color: var(--gold);
+}
+.ft-perf-in {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.ft-perf-track {
+  position: relative;
+  display: block;
+  width: 32px;
+  height: 18px;
+  border-radius: 100px;
+  background: rgba(248, 250, 252, 0.24);
+  transition: background-color 0.4s var(--spring, ease);
+}
+.ft-perf-track::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  bottom: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.22s ease;
+}
+.ft-perf-in:checked + .ft-perf-track {
+  background: var(--gold);
+}
+.ft-perf-in:checked + .ft-perf-track::before {
+  transform: translateX(14px);
+}
+.ft-perf-in:focus-visible + .ft-perf-track {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
 /* ---------- 13. Inner pages (about / features / contact) ---------- */
 .page-hero {
   background:
@@ -4867,23 +4924,42 @@ body.dark-mode .consent-table td {
 }
 
 /* esbuild keep start */
-/* Performance Mode CSS kill block: when perf=on, svelte-backed backdrop-filter rules collapse to flat/cheap radii so the GPU gets a break. Written to match the js/mmgr-perf.js guard so the UI remains consistent regardless of load order. */
+/* ---- Performance Mode: THE ONE KILL BLOCK (PERF-1) ----
+   Same contract as css/mmgr.css. js/mmgr-perf-boot.js sets data-perf before
+   first paint on every marketing page, so this holds even though these pages
+   never load js/mmgr-perf.js. No backdrop-filter, no infinite animation, no
+   smooth scrolling, no large blurred shadow; blurred surfaces paint solid so
+   text stays readable. Content, layout and colours are untouched. */
+[data-perf='on'] *,
+[data-perf='on'] *::before,
+[data-perf='on'] *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+}
+[data-perf='on'] [class*='glass'],
+[data-perf='on'] .card,
+[data-perf='on'] .top,
+[data-perf='on'] .dock,
+[data-perf='on'] .drw-sheet,
+[data-perf='on'] .db-sheet {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18) !important;
+}
+[data-perf='on'] .top,
 [data-perf='on'] .dock,
 [data-perf='on'] #drw,
-[data-perf='on'] .db-sheet {
-  backdrop-filter: blur(0) saturate(100%);
-  -webkit-backdrop-filter: blur(0) saturate(100%);
+[data-perf='on'] .db-sheet,
+[data-perf='on'] .drw-sheet,
+[data-perf='on'] .site-head,
+[data-perf='on'] .nav-dd-menu {
+  background: var(--card) !important;
 }
-[data-perf='on'] .dock {
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
-}
-[data-perf='on'] .drw-sheet {
-  backdrop-filter: blur(0) saturate(100%);
-  -webkit-backdrop-filter: blur(0) saturate(100%);
-}
-[data-perf='on'] body.db-page:not(.dark-mode) .top {
-  backdrop-filter: blur(0) saturate(100%);
-  -webkit-backdrop-filter: blur(0) saturate(100%);
+[data-perf='on'] canvas.bg-stars,
+[data-perf='on'] #marketing-globe canvas,
+[data-perf='on'] #stars,
+[data-perf='on'] .stars-canvas {
+  display: none !important;
 }
 /* esbuild keep end */
 

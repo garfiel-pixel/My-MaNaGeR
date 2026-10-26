@@ -50,6 +50,39 @@ async function seedCalcFx(page) {
   });
 }
 
+/* UI-1 (REFINEMENT-DIRECTIVE-2026-10-24): #calc-work and #calc-family are now
+   driven by the owned listbox (js/mmgr-combobox.js), so the native <select> is
+   display:none and Playwright's selectOption() can no longer reach it - it waits
+   for visibility and times out. The combobox's own pick() writes select.value
+   and dispatches the same bubbling `change` a real pick fires, so this helper
+   does exactly that and then refreshes the visible label through the module's
+   public API. The contract under test (one change event, one page reaction) is
+   unchanged; only the driver moved. */
+async function pickValue(page, id, value) {
+  const ok = await page.evaluate(
+    ([selId, v]) => {
+      const s = document.getElementById(selId);
+      if (!s) {
+        return false;
+      }
+      s.value = v;
+      s.dispatchEvent(new Event('change', { bubbles: true }));
+      try {
+        if (window.MMGR && window.MMGR.Combobox && window.MMGR.Combobox.refresh) {
+          window.MMGR.Combobox.refresh(s);
+        }
+      } catch (e) {
+        /* the label refresh is cosmetic */
+      }
+      return true;
+    },
+    [id, value]
+  );
+  if (!ok) {
+    throw new Error('no #' + id + ' on the page');
+  }
+}
+
 const ROOT = path.resolve(__dirname, '..');
 const log = s => process.stdout.write('[calc-ai] ' + s + '\n');
 const delay = ms => new Promise(r => setTimeout(r, ms));
@@ -1676,12 +1709,12 @@ async function partBCustomLine(browser, errors) {
 
     // C1: pick the custom choice with the real select - four fields show,
     // nothing else hides; any other choice hides them and leaves it empty.
-    await page.selectOption('#calc-work', 'custom');
+    await pickValue(page, 'calc-work', 'custom');
     const c1a = {
       fields: await page.isVisible('#calc-custom-wrap'),
       dims: await page.isVisible('#calc-d1')
     };
-    await page.selectOption('#calc-work', 'siteprep');
+    await pickValue(page, 'calc-work', 'siteprep');
     const c1b = {
       hidden: !(await page.isVisible('#calc-custom-wrap')),
       empty:
@@ -1697,7 +1730,7 @@ async function partBCustomLine(browser, errors) {
 
     // C3: every invalid input from B2, one at a time - a plain message beside
     // the field, no line added, and no undefined/NaN/[object] anywhere.
-    await page.selectOption('#calc-work', 'custom');
+    await pickValue(page, 'calc-work', 'custom');
     const c3cases = [
       { name: '', unit: 'day', qty: '3', rate: '12000', err: 'calc-custom-name-err' },
       { name: 'x'.repeat(61), unit: 'day', qty: '3', rate: '12000', err: 'calc-custom-name-err' },
@@ -1759,7 +1792,7 @@ async function partBCustomLine(browser, errors) {
     // C2: Generator hire, 3 day at 12000 - the expected figures are computed
     // IN THE TEST (quantity x rate, then the page's own 12.5% on-cost), never
     // read back from the page.
-    await page.selectOption('#calc-country', 'NONE');
+    await pickValue(page, 'calc-country', 'NONE');
     await page.fill('#calc-custom-name', 'Generator hire');
     await page.fill('#calc-custom-unit', 'day');
     await page.fill('#calc-custom-qty', '3');
@@ -1799,16 +1832,27 @@ async function partBCustomLine(browser, errors) {
     // C7 (2026-10-24): the switch is a ROW now (.tgl input is 0x0 and not
     // clickable). Click the row text - the audit's GATE C7 interaction -
     // and assert the input actually flipped before building on it.
+    // UI-2 (REFINEMENT-DIRECTIVE-2026-10-24): the row's words are now a
+    // `.set-name` inside a `.set-txt` label; the old `.bcp-opt` wrapper is gone.
     await page.evaluate(() => {
       const c = document.getElementById('calc-oncost-toggle');
       if (c.checked) c.click();
     });
-    await page.click('.bcp-opt[data-opt="oncost"] .bcp-opt-name');
+    await page.click('#row-oncost .set-name');
     const oncostOn = await page.evaluate(
       () => document.getElementById('calc-oncost-toggle').checked
     );
     if (!oncostOn) throw new Error('C7 row click did not turn the on-cost switch on');
-    await page.fill('#calc-oncost-pct', '12.5');
+    // UI-2: the percent box is the engine's one input and is now hidden behind
+    // the four parts. Switching the row on in Jamaica still suggests 12.5%,
+    // which is exactly what this gate prices with - assert the suggestion
+    // instead of pretending to type into a hidden field.
+    const oncostPct = await page.evaluate(
+      () => (document.getElementById('calc-oncost-pct') || {}).value
+    );
+    if (String(oncostPct) !== '12.5') {
+      throw new Error('C7 the Jamaica suggestion did not write 12.5% (got ' + oncostPct + ')');
+    }
     await page.click('[data-action="calcRun"]');
     await page.click('[data-action="calcBoqAdd"]');
     const wantOn = Math.round(wantBase * 1.125);
@@ -1828,7 +1872,7 @@ async function partBCustomLine(browser, errors) {
 
     // 5.4: screenshots of the custom form - 390 and 1280, light and dark -
     // and the hard rules probed, not eyeballed.
-    await page.selectOption('#calc-work', 'custom');
+    await pickValue(page, 'calc-work', 'custom');
     const formProbes = await shotSet(page, shots, 'custom-form', '#calc-custom-wrap');
     const badForm = formProbes.filter(
       p => !p.found || p.overflow > 1 || p.clipped || p.emoji || p.blue || p.lock || !p.gold

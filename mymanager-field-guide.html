@@ -7,6 +7,10 @@
 <meta name="description" content="A field guide to My MaNaGeR: the construction &amp; project management workspace. Learn every panel, template, and metric , sheet by sheet.">
 <link rel="icon" type="image/png" href="images/mpw-icon.png">
   <link rel="apple-touch-icon" href="images/mpw-icon.png">
+<!-- PERF-1 (REFINEMENT-DIRECTIVE-2026-10-24): the stored Performance Mode
+     choice lands on <html> before first paint, so this page's backdrop-filter
+     header obeys it even though the page never loads js/mmgr-perf.js. -->
+<script src="js/mmgr-perf-boot.js" data-sync="1"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
@@ -942,6 +946,8 @@ footer{padding:70px 64px 46px;position:relative;}
         <p class="prose">Compares the <strong>Target Completion Date</strong> you locked into the Charter against your <strong>Current Planned Finish</strong> , the latest end date across all scheduled tasks. Once you slip past target, a badge appears in the header from any panel; clicking it jumps straight back to this card.</p>
         <h4 class="h-mini">Baseline Variance</h4>
         <p class="prose">A different comparison: <strong>Settings ▸ Controls ▸ Save Baseline</strong> snapshots your schedule and budget at a moment in time. From then on, this card shows how far your live numbers have drifted from that snapshot , independent of the Charter's promised date.</p>
+        <h4 class="h-mini">At risk: why, and what to do</h4>
+        <p class="prose">When the badge says the plan is over target, the card now says why and offers a next step. The reasons are read from your own data: tasks already past their end date, work waiting on a lead time, weather-sensitive work on the critical path, an over-allocated crew, and the longest critical tasks. The suggestions are labelled as suggestions, never promises, and each one states the number it rests on. The same message arrives in the Assistant bell with a <strong>What can I do?</strong> link and an <strong>Ask the assistant</strong> button, and the assistant explains the facts the watcher found rather than inventing new ones.</p>
       </div>
 
       <div class="tab-panel" data-panel="confidence">
@@ -1757,6 +1763,7 @@ Date: ____________  Focus: ____________</pre>
       <h3 class="h-sub">The expiry dashboard</h3>
       <div class="flow">
         <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Expiry &amp; Renewals</h4><p>On the <strong>Dashboard</strong>. One card watches everything with a date on it , subcontractor COI and license expiries, EMR re-verification staleness, warranty end dates, and permit expiries , anything due inside 60 days (or already past), each with a days-left badge. Nothing due, the card hides itself entirely.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Expiry warnings reach you</h4><p>The dashboard card is the look-ahead; the <strong>Assistant bell</strong> is the tap on the shoulder. A COI, licence, permit or warranty is raised once as it enters each window: 60 days, 30, 14, 7, and again if it is overdue. Each notice says what expires, the date, and who to ask, and the <strong>Draft reminder</strong> button writes the email from that person's own contact details. If a task is assigned to someone whose cover lapses before that task ends, the task itself carries the caution.</p></div></div>
         <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Same-file rigor</h4><p>All ten features live in the existing project file , same export, same backup, same cloud sync, same offline behavior as every other panel. Nothing nags until a real date or a real row makes it true.</p></div></div>
       </div>
 
@@ -1951,6 +1958,14 @@ Date: ____________  Focus: ____________</pre>
         <div class="card bracket"><span class="cnum">TAX</span><h4>Not every job is taxed</h4><p>The country you pick sets the standard tax rate (Jamaica GCT 15%). For a job that carries no tax at all - a minor repair, an internal job, a client that does not charge - pick <strong>No tax on this job</strong> and the document says exactly that. Typing 0 in the custom tax field still works too, and reads differently, so you can tell the two apart on paper.</p></div>
         <div class="card bracket"><span class="cnum">BOOK</span><h4>Reading the rate book</h4><p>The <strong>Rate book</strong> button opens the JIC rates for 2025-2027 in a pop-up over the page. Read any of the 100 published rates without leaving the calculator, switch between metric and imperial, and close it with the X, by clicking outside it, or with the Escape key. Nothing you have entered is lost.</p></div>
         <div class="card bracket"><span class="cnum">SPECIAL</span><h4>A block size not on the list</h4><p>When a trade's sizes are already in the rate sheet - block sizes, blockwork pocket and elevation - the calculator does not ask you to type "price per block" again. If you are working a size the sheet does not list, tick <strong>My size is not in the rate sheet</strong> and the price and size fields appear for that special case.</p></div>
+      </div>
+
+      <h3 class="h-sub">Picking work, settings and reading the notes</h3>
+      <div class="grid grid-2">
+        <div class="card bracket"><span class="cnum">PICK</span><h4>Finding the work item</h4><p>Choose a trade family, then click the work-item box and either scroll or type. Typing filters across every family, the arrow keys move, Enter picks and Escape closes. Each family is a heading you cannot accidentally pick, and the current choice carries a tick. On a phone the same list opens from the bottom of the screen. It reads the same in light, dark and every accent theme.</p></div>
+        <div class="card bracket"><span class="cnum">ROWS</span><h4>Settings are rows now</h4><p>Statutory costs, tax, labour-only, itemise materials, signature lines and the size-not-in-the-rate-sheet choice are each a switch with a hint underneath. Turn one on and its fields slide open; turn it off and the values are remembered but left out of the maths. The statutory drawer shows the four parts (NIS, NHT, Education Tax, HEART/NSTA Trust), totals them live, and lets you edit each one.</p></div>
+        <div class="card bracket"><span class="cnum">NOTES</span><h4>The small print has a home</h4><p>The <strong>How to use</strong> card now has two tabs. <strong>Steps</strong> is the walkthrough it always had. <strong>Notes</strong> holds the planning guidance, the worked-out-on-this-device note, and the currency and unit notes at a size you can actually read, instead of a line of fine print under the title bar.</p></div>
+        <div class="card bracket"><span class="cnum">LIGHT</span><h4>Lighter pages on demand</h4><p>The calculator's top bar carries the same <strong>Performance Mode</strong> switch as the app: no background blur, no shader, no moving decoration, with the layout and colours unchanged. It is the same setting everywhere, so turning it on once carries across every page on this device.</p></div>
       </div>
 
       <div class="divider-note">

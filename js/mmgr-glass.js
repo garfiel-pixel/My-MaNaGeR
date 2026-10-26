@@ -533,5 +533,13 @@ var MMGR = window.MMGR || {};
     refreshTheme: refreshTheme,
     _importThree: _importThree
   };
+
+  /* PERF-1 (REFINEMENT-DIRECTIVE-2026-10-24): Performance Mode has to be able
+     to tear the shader down the moment it is switched on (and bring it back when
+     it is switched off) without a reload. sync() already owns that decision -
+     msg from mmgr-perf.js's set(), one listener, no second code path. */
+  document.addEventListener('mmgr:perf', function () {
+    sync();
+  });
 })(MMGR);
 window.MMGR = MMGR;

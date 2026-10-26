@@ -3245,13 +3245,15 @@ async function withChrome(fn) {
     const rb1 = await ev(`(function(){
       var btn = document.querySelector('.bcp-ratebook[data-action="openRateBook"]');
       return { hasBtn: !!btn, text: btn ? btn.textContent.replace(/\\s+/g,' ').trim() : '',
-               icon: btn ? !!btn.querySelector('svg.ico use[href*="i-book"]') : false };
+               icon: btn ? !!btn.querySelector('svg.ico use[href*="i-mpw"]') : false };
     })()`);
-    // OWNER 2026-10-02: the top-bar label is the short "Rate book" (the popup
-    // heading carries the full JIC name + years).
+    // OWNER 2026-10-02; REBASED 2026-10-26 (REFINEMENT-DIRECTIVE 3.2/UI-4):
+    // the top bar now carries the product name and the brand mark, and the
+    // mark alone below 640px (a longer label would squeeze the bar). The
+    // popup heading carries the name + years.
     check(
-      'RB1 top bar carries the rate book link (SVG i-book icon + text)',
-      rb1 && rb1.hasBtn && /rate book/i.test(rb1.text) && rb1.icon,
+      'RB1 top bar carries the rate book link (brand mark + product name)',
+      rb1 && rb1.hasBtn && /My MaNaGeR Rate Book/i.test(rb1.text) && rb1.icon,
       rb1
     );
     // RB-Auth1 (owner 2026-10-13): signed OUT, the button shows the sign-in
@@ -3362,13 +3364,13 @@ async function withChrome(fn) {
     // "JIC rates" plus the years the book governs, and NOTHING else (the old
     // line-item / trade-count / source sentence was removed).
     check(
-      'RB2 the link opens the rate book popup titled "JIC rates 2025-2027"',
+      'RB2 the link opens the rate book popup titled "My MaNaGeR Rate Book 2025-2027"',
       rb2 &&
         rb2.open &&
         rb2.role === 'dialog' &&
         rb2.modal === 'true' &&
         rb2.isOverlay &&
-        /JIC rates 2025-2027/.test(rb2.title) &&
+        /My MaNaGeR Rate Book 2025-2027/.test(rb2.title) &&
         rb2.closeBtn,
       rb2
     );

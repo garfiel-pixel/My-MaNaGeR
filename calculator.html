@@ -62,9 +62,9 @@
          rate book -> theme, both parked on the right. Wrapped in .bcp-top-right
          so justify-content:space-between keeps the cluster intact. -->
     <div class="bcp-top-right">
-      <button type="button" class="bcp-ratebook" data-action="openRateBook" title="Jamaica rate book 2025-2027" aria-haspopup="dialog">
-        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-book"></use></svg>
-        <span class="bcp-ratebook-text">Rate book</span>
+      <button type="button" class="bcp-ratebook" data-action="openRateBook" title="My MaNaGeR Rate Book 2025-2027" aria-haspopup="dialog">
+        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg>
+        <span class="bcp-ratebook-text">My MaNaGeR Rate Book</span>
       </button>
       <!-- PERF-1 (REFINEMENT-DIRECTIVE-2026-10-24): Performance Mode is reachable
            from the calculator too. Same switch as the app, same storage key, one
@@ -163,34 +163,34 @@
         <select id="calc-work">
           <optgroup label="Groundworks">
             <option value="siteprep">Site clearing &amp; strip (per m2)</option>
-            <option value="excav">Trench / bulk excavation (per m3, by JIC soil)</option>
+            <option value="excav">Trench / bulk excavation (per m3, by rate-book soil band)</option>
             <option value="slab">Concrete slab on grade (per m3 of concrete)</option>
             <option value="footings">Strip footings (per m run)</option>
-            <option value="formwork">Formwork by element (per m2 of contact area, JIC)</option>
+            <option value="formwork">Formwork by element (per m2 of contact area, rate book)</option>
             <option value="concrete-labour">Concrete labour only - rod, settle, ram (per m3)</option>
             <option value="septic-tank">Septic tank &amp; drain field (each)</option>
           </optgroup>
           <optgroup label="Structure">
-            <option value="blockwall">Blockwork wall (per m2, by JIC block/pocket/elevation)</option>
+            <option value="blockwall">Blockwork wall (per m2, by rate-book block, pocket and elevation)</option>
             <option value="brickwall">Brick veneer wall (per m2)</option>
             <option value="framing">Timber stud framing (per m2)</option>
             <option value="rebar">Rebar in concrete (per m3 of concrete)</option>
             <option value="rebar-size">Rebar by bar size (per lb of steel)</option>
-            <option value="stirrups">Stirrups / links (per dozen, JIC)</option>
-            <option value="fabric-mesh">Fabric mesh (per yd2 of mesh, JIC)</option>
+            <option value="stirrups">Stirrups / links (per dozen, rate book)</option>
+            <option value="fabric-mesh">Fabric mesh (per yd2 of mesh, rate book)</option>
           </optgroup>
           <optgroup label="Envelope">
             <option value="roof">Roof sheeting over purlins (per m2)</option>
             <option value="shingle-roof">Asphalt shingle roof (per roofing square)</option>
             <option value="render">Render / stucco (per m2)</option>
-            <option value="paint">Painting (by JIC surface/coats, per m2 or per ft run)</option>
+            <option value="paint">Painting (by rate-book surface and coats, per m2 or per ft run)</option>
             <option value="drywall">Drywall partition (per m2, per board)</option>
             <option value="window">Window install (each)</option>
             <option value="gutter">Gutter &amp; downpipe (per m run)</option>
             <option value="soffit-fascia">Soffit &amp; fascia (per m run)</option>
           </optgroup>
           <optgroup label="Finishes">
-            <option value="tile">Floor tiling (by JIC stage/material, per m2 or per ft run)</option>
+            <option value="tile">Floor tiling (by rate-book stage and material, per m2 or per ft run)</option>
             <option value="concrete-drive">Concrete driveway (per m2, thickness sets m3)</option>
             <option value="fencing">Chain-link fencing (per m run)</option>
             <option value="skirt">Skirting / baseboard (per m run - linear)</option>
@@ -200,11 +200,11 @@
             <option value="cabinet">Kitchen cabinets (per m run)</option>
           </optgroup>
           <optgroup label="Temporary and metal works">
-            <option value="scaffold">Scaffolding (per ft2, by JIC height band)</option>
-            <option value="welding">Welding &amp; metal cutting (per in, by JIC thickness/method)</option>
+            <option value="scaffold">Scaffolding (per ft2, by rate-book height band)</option>
+            <option value="welding">Welding &amp; metal cutting (per in, by rate-book thickness and method)</option>
           </optgroup>
           <optgroup label="Joinery">
-            <option value="joinery">Skirtings (per ft run, by JIC size/profile/species)</option>
+            <option value="joinery">Skirtings (per ft run, by rate-book size, profile and species)</option>
           </optgroup>
           <optgroup label="Plumbing">
             <option value="pipe-supply">Water supply pipe run (per m - linear)</option>
@@ -212,13 +212,13 @@
             <option value="fixture">Fixture install (each)</option>
             <option value="bath-rough">Bathroom rough-in package (each)</option>
             <option value="water-heater">Water heater install (each)</option>
-            <option value="plumbing-pipe">Plumbing pipes (per ft run, by JIC diameter)</option>
+            <option value="plumbing-pipe">Plumbing pipes (per ft run, by rate-book diameter)</option>
           </optgroup>
           <optgroup label="Electrical">
             <option value="wire-point">Wiring point (per point)</option>
             <option value="conduit">Conduit / cable run (per m - linear)</option>
             <option value="panel">Consumer panel / breaker box (each)</option>
-            <option value="electrical-conduit">Electrical conduit (per ft run, by JIC diameter)</option>
+            <option value="electrical-conduit">Electrical conduit (per ft run, by rate-book diameter)</option>
           </optgroup>
           <optgroup label="Other">
             <!-- B1: the ONE optional choice. When it is selected the form
@@ -228,7 +228,7 @@
             <!-- PART I PHASE 2 (owner, 2026-10-17): the generic JIC picker
                  (I1 Option C) - one item that prices ANY row of the shipped
                  rate book as a first-class estimate line. -->
-            <option value="jic">JIC rate book (pick a published rate)</option>
+            <option value="jic">My MaNaGeR Rate Book (pick a planning rate)</option>
           </optgroup>
         </select>
       </div>
@@ -480,7 +480,7 @@
           <label for="calc-basis">How do you price this work?</label>
           <select id="calc-basis" data-action="calcBasisPick" aria-label="How do you price this work">
             <option value="measured">Your own split - material rate plus labour rate</option>
-            <option value="allin">Book rate - one combined rate (JIC 2025 to 2027)</option>
+            <option value="allin">Book rate - one combined rate (My MaNaGeR Rate Book 2025 to 2027)</option>
             <option value="days">Crew days - a rate per day</option>
           </select>
         </div>
@@ -566,7 +566,7 @@
         <!-- Owner 2026-10-02: the Jamaica book ships with the app, built from
              the same 100 published rows the rate-book card shows. Loading it
              is one tap; every rate it holds is still yours to change. -->
-        <button type="button" class="btn btn-n btn-s" data-action="calcBookJic" title="Load the Jamaica rate book 2025-2027"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-book"></use></svg> Jamaica book</button>
+        <button type="button" class="btn btn-n btn-s" data-action="calcBookJic" title="Load the My MaNaGeR Rate Book 2025-2027"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg> Rate book</button>
         <button type="button" class="btn btn-n btn-s" data-action="calcBookClear" title="Stop using the active rate book">Use model rates</button>
         <input type="file" id="calc-book-file" accept="application/json,.json" hidden>
       </div>
@@ -667,6 +667,10 @@
       <div id="calc-output" class="bcp-out">
         <div class="calc-empty">Pick a work item, enter dimensions, then Calculate. The breakdown lands here.</div>
       </div>
+      <!-- RATE BOOK REBRAND (REFINEMENT-DIRECTIVE-2026-10-24 3.2): the same
+           planning notice the rate book carries, under every estimate. The
+           text comes from rateBookNotice() so there is one wording. -->
+      <p class="bcp-rate-notice" id="calc-rate-notice" hidden></p>
       <!-- W2 (owner 2026-10-01): companion work suggestions - the punch-list
            reality. One-tap add-on lines derived from the same dimensions;
            each becomes a normal editable bill line. -->

@@ -1129,7 +1129,7 @@
       d3: null,
       q: () => ({ qty: 1, unit: '', qtyLabel: 'Quantity' }),
       rate: { mat: 0, lab: 0 },
-      matDesc: 'JIC rate book - published rate, yours to edit'
+      matDesc: 'My MaNaGeR Rate Book - planning rate, yours to edit'
     }
   };
 
@@ -2264,14 +2264,16 @@
     // must resolve, the quantity must be positive, and the rate must be a
     // number (the book prefill satisfies that the moment a row is chosen).
     if (isJic && !jicRow) {
-      return { error: 'Pick a trade and a rate in the JIC picker before pricing.' };
+      return {
+        error: 'Pick a trade and a rate in the ' + RATEBOOK_NAME + ' picker before pricing.'
+      };
     }
     if (isJic && !(jicQty > 0)) {
-      return { error: 'Enter the quantity for this JIC rate - it prices as quantity x rate.' };
+      return { error: 'Enter the quantity for this planning rate - it prices as quantity x rate.' };
     }
     if (isJic && !jicRateOk) {
       return {
-        error: 'Type the rate for this JIC row - the book rate is prefilled and yours to edit.'
+        error: 'Type the rate for this row - the book rate is prefilled and yours to edit.'
       };
     }
     if (!isCustom && !isJic && !hasMq && (!raw1 || (w.d2 && !raw2) || (w.d3 && !raw3))) {
@@ -2442,7 +2444,9 @@
           'No exchange rate is set for ' +
           (st.currency || 'this currency') +
           ', so the planning model (US dollars) cannot price this line. Choose the book rate to ' +
-          'use the JIC rate book, type your own material and labour rates, or add the rate in ' +
+          'use the ' +
+          RATEBOOK_NAME +
+          ', type your own material and labour rates, or add the rate in ' +
           'Exchange rates.'
       };
     }
@@ -3229,6 +3233,24 @@
   // The popup title, the imported book's name and the CSV/documents all read it,
   // so they can never disagree about which years these rates cover.
   const JIC_YEARS = '2025-2027';
+
+  /* RATE BOOK REBRAND (REFINEMENT-DIRECTIVE-2026-10-24 section 3.2).
+     The book is the product's own named planning reference now. The figures
+     are still the published JIC rates until the owner changes RATEBOOK_STATUS
+     in src/data/ratebook.js, so the SOURCE line stays on screen and no claim
+     of independent production is made while the status is unresolved. */
+  const RATEBOOK_NAME = 'My MaNaGeR Rate Book';
+  const RATEBOOK_SOURCE = 'JIC Rate Book 2025-2027';
+  const RATEBOOK_STATUS = 'unresolved'; // unresolved | permission-granted | rebuilt
+  function rateBookNotice(status) {
+    const st = status || RATEBOOK_STATUS;
+    if (st === 'rebuilt') {
+      return "Planning rates built from this business's own costs. Check them against current supplier quotes before you send a price.";
+    }
+    return 'Starting rates for planning. Prices vary by site, supplier and date. Replace any rate with your own.';
+  }
+  const RATEBOOK_MARK =
+    '<svg class="ico rr-mark" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg>';
   const JIC_RATES = [
     // Excavation (9 items)
     {
@@ -4774,7 +4796,7 @@
     note.hidden = !untouched;
     if (untouched) {
       note.textContent =
-        'This rate came from the published JIC rate book. Rates change - type your own figure if yours differs.';
+        RATEBOOK_NAME + ' planning rate. Rates change - type your own figure if yours differs.';
     }
   }
   function renderJicPicker() {
@@ -4993,7 +5015,7 @@
     card.className = 'card rr-overlay';
     card.setAttribute('role', 'dialog');
     card.setAttribute('aria-modal', 'true');
-    card.setAttribute('aria-label', 'Jamaica rate book ' + JIC_YEARS);
+    card.setAttribute('aria-label', RATEBOOK_NAME + ' ' + JIC_YEARS);
     const curUnit = _rateBookUnits === 'imperial' ? 'imp' : 'met';
     const all = rrRows();
     const trades = rrTrades();
@@ -5092,6 +5114,8 @@
             '" aria-pressed="' +
             (_rrTrade === t.tid) +
             '">' +
+            RATEBOOK_MARK +
+            ' ' +
             esc(t.label) +
             ' (' +
             n +
@@ -5102,9 +5126,13 @@
     card.innerHTML =
       '<div class="rr-panel">' +
       '<div class="rr-head">' +
-      '<h2 class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-book"></use></svg> JIC rates ' +
+      '<h2 class="card-title">' +
+      RATEBOOK_MARK +
+      ' ' +
+      RATEBOOK_NAME +
+      ' <span class="rr-years">' +
       JIC_YEARS +
-      '</h2>' +
+      '</span></h2>' +
       '<div class="bcp-seg" role="group" aria-label="Rate book units">' +
       '<button type="button" class="bcp-seg-btn' +
       (_rateBookUnits === 'metric' ? ' active' : '') +
@@ -5149,6 +5177,15 @@
       (_rrWhy === 'signin'
         ? '<span class="rr-why">Sign in to open all 811 rates. The 100 built-in rows are showing.</span>'
         : '') +
+      '<span class="rr-notice">' +
+      esc(rateBookNotice()) +
+      '</span>' +
+      // Source line: kept while the status is unresolved or permission-granted
+      // (directive 3.3). It disappears only when the rates are rebuilt from the
+      // owner's own costs.
+      (RATEBOOK_STATUS === 'rebuilt'
+        ? ''
+        : '<span class="rr-source">Source data: ' + esc(RATEBOOK_SOURCE) + '</span>') +
       '</div>' +
       '</div>';
     document.body.appendChild(card);
@@ -5394,18 +5431,24 @@
     card.className = 'card rr-overlay';
     card.setAttribute('role', 'dialog');
     card.setAttribute('aria-modal', 'true');
-    card.setAttribute('aria-label', 'Sign in to open the rate book');
+    card.setAttribute('aria-label', 'Sign in to open the ' + RATEBOOK_NAME);
     card.innerHTML =
       '<div class="rr-panel rr-panel-s">' +
       '<div class="rr-head">' +
-      '<h2 class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-book"></use></svg> JIC rates ' +
+      '<h2 class="card-title">' +
+      RATEBOOK_MARK +
+      ' ' +
+      RATEBOOK_NAME +
+      ' <span class="rr-years">' +
       JIC_YEARS +
-      '</h2>' +
+      '</span></h2>' +
       '<button type="button" class="bcp-rr-x" data-action="rrClose" aria-label="Close" title="Close"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button>' +
       '</div>' +
       '<div class="rr-signin">' +
       '<h3>Sign in to open the rate book</h3>' +
-      '<p>The JIC rate book is free on every plan, Free included. Sign in so your rate views can follow you between devices. Your projects stay on this device either way.</p>' +
+      '<p>The ' +
+      RATEBOOK_NAME +
+      ' is free on every plan, Free included. Sign in so your rate views can follow you between devices. Your projects stay on this device either way.</p>' +
       '<div class="rr-signin-cta">' +
       '<a class="btn btn-g" href="app.html?next=calculator.html">Sign in</a>' +
       '<button type="button" class="btn btn-ghost" data-action="rrClose">Not now</button>' +
@@ -8483,6 +8526,18 @@
     // just off the keystroke's critical path, and flushHeavy() runs them
     // synchronously before print/export/populate touch the DOM.
     scheduleHeavy(r);
+    // RATE BOOK REBRAND: the planning notice rides every priced result, in
+    // the same words the rate book uses (rateBookNotice is the one source).
+    const notice = $('calc-rate-notice');
+    if (notice) {
+      if (r && !r.error) {
+        notice.textContent = rateBookNotice();
+        notice.hidden = false;
+      } else {
+        notice.textContent = '';
+        notice.hidden = true;
+      }
+    }
     if (!r || r.error) {
       lastResult = null;
       if ($('calc-out-actions')) {

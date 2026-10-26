@@ -219,6 +219,13 @@ jobs:
         id: verify-perf-boot
         run: node tools/verify-perf-boot.cjs
 
+      # Rate book rebrand (REFINEMENT-DIRECTIVE-2026-10-24 3.2/3.3): one name,
+      # one notice, the pricing count equal to the rows in the data, and no
+      # claim of independent production while the provenance is unresolved.
+      - name: "T1: Rate book name, notice and count"
+        id: verify-ratebook
+        run: node tools/verify-ratebook-wording.cjs
+
       # G-2 gate (DIRECTIVE: GOOGLE SIGN-IN SECURITY GAPS, 2026-10-23):
       # in-process Worker route battery + the 14 sign-in nonce checks
       # (wrong/reused/expired/forged, email_verified, flag on/off, sweep).

@@ -9704,6 +9704,20 @@ body.dark-mode .bcp-ico-moon {
 .bcp-ratebook-text {
   font-family: var(--font-sans);
 }
+/* UI-4 (REFINEMENT-DIRECTIVE-2026-10-24): the rate book button carries the
+   brand mark and the product name where there is room, and the mark alone
+   where there is not - the title attribute and aria would otherwise leave a
+   long label squeezing the top bar on a phone. */
+@media (max-width: 640px) {
+  .bcp-ratebook-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
 @media (max-width: 600px) {
   .bcp-top {
     padding: 10px 12px;
@@ -16671,6 +16685,35 @@ body.calculator-page .bcp-rr-x {
   border-top: 1px solid var(--border);
   color: var(--slate);
   font-size: 0.74rem;
+}
+/* RATE BOOK REBRAND (REFINEMENT-DIRECTIVE-2026-10-24 3.2). The brand mark is
+   the same sprite symbol the calculator header uses, at 18px, in the dialog
+   header and on every trade heading. */
+.rr-mark {
+  width: 18px;
+  height: 18px;
+  vertical-align: -4px;
+  margin-right: 4px;
+}
+.rr-years {
+  font-weight: 500;
+  color: var(--slate);
+}
+.rr-notice,
+.rr-source {
+  display: block;
+  margin-top: 6px;
+  line-height: 1.45;
+}
+.rr-source {
+  color: var(--slate);
+  font-size: 0.7rem;
+}
+.bcp-rate-notice {
+  margin: 10px 0 0;
+  color: var(--slate);
+  font-size: 0.78rem;
+  line-height: 1.45;
 }
 /* RB-1 (2026-10-25): the book is signed-in data now, so a session that went
    away between the gate and the load leaves the 100 built-in rows on screen.

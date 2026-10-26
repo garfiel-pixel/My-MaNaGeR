@@ -195,10 +195,24 @@
     var dotList = dotNav.querySelector('.dot-list');
     var dotStops = []; /* {dot, sec, frac} in page order */
 
+    /* LAND-1 (REFINEMENT-DIRECTIVE-2026-10-24): the hover label is read from
+       the section's own heading, so the rail can never drift out of sync with
+       the page. The hero's h1 is a sentence, not a label, so an h2 wins first
+       and the link's existing aria-label is the fallback. */
+    function dotLabel(sec, fallback) {
+      var h = sec.querySelector('h2');
+      var t = h ? (h.textContent || '').replace(/\s+/g, ' ').trim() : '';
+      return t || fallback || '';
+    }
+
     dotMajors.forEach(function (a, i) {
       var sec = document.getElementById((a.getAttribute('href') || '').slice(1));
       if (!sec) {
         return;
+      }
+      var label = dotLabel(sec, a.getAttribute('aria-label'));
+      if (label) {
+        a.setAttribute('data-label', label);
       }
       dotStops.push({ dot: a, sec: sec, frac: 0 });
       if (i === dotMajors.length - 1) {

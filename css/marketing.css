@@ -344,12 +344,73 @@ main {
   background: none;
   cursor: pointer;
   text-decoration: none;
+  /* LAND-1 (REFINEMENT-DIRECTIVE-2026-10-24): the rail is QUIET until it is
+     needed. At rest every dot sits at a ghost opacity; hovering or focusing the
+     rail raises the whole column, and the dot under the pointer goes solid. The
+     ACTIVE dot is always solid, so the reader can still see where they are in
+     one glance - the rail just stops competing with the copy. */
+  opacity: 0.24;
+  transition: opacity 0.18s ease;
 }
 .dot-item::before {
-  /* bigger click target; absolutely positioned so it adds no height */
+  /* WCAG 2.2 target size: a transparent 24 x 24 hit area around a 12px dot.
+     Absolutely positioned so it adds no height to the rail. */
   content: '';
   position: absolute;
-  inset: -4px -8px;
+  inset: -6px -10px;
+}
+.dot-rail-navigation:hover .dot-item,
+.dot-rail-navigation:focus-within .dot-item {
+  opacity: 0.72;
+}
+.dot-item:hover,
+.dot-item:focus-visible,
+.dot-item.active {
+  opacity: 1;
+}
+/* The rail labels itself from the section headings (set in js/marketing.js),
+   never from a second hand-typed list. Shown on hover or keyboard focus only. */
+.dot-item[data-label]::after {
+  content: attr(data-label);
+  position: absolute;
+  left: 26px;
+  top: 50%;
+  transform: translate(-4px, -50%);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+}
+.dot-item:hover::after,
+.dot-item:focus-visible::after {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+@media (hover: none) {
+  /* Touch has no hover, so the rail stays findable rather than near-invisible. */
+  .dot-item {
+    opacity: 0.5;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dot-item,
+  .dot-item::after {
+    transition: none;
+  }
+}
+[data-perf='on'] .dot-item,
+[data-perf='on'] .dot-item::after {
+  transition: none;
 }
 .dot {
   display: block;
@@ -381,17 +442,17 @@ main {
    and therefore the height of the rail - never changes as the marker travels. */
 .dot-item.major.active .dot {
   transform: scale(1.3333);
-  background: var(--gold);
+  background: var(--bullion);
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.7),
-    0 0 12px rgba(var(--gold-rgb), 0.75);
+    0 0 12px var(--bullion-dark);
 }
 .dot-item.minor.active .dot {
   transform: scale(1.6);
-  background: var(--gold);
+  background: var(--bullion);
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.7),
-    0 0 8px rgba(var(--gold-rgb), 0.75);
+    0 0 8px var(--bullion-dark);
 }
 /* Hover on a fine pointer: grow the marker and deepen its ring. The fill stays
    the neutral rest colour so hover can never read as "active" (which is gold). */
@@ -407,7 +468,7 @@ main {
   }
 }
 .dot-item:focus-visible .dot {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--bullion);
   outline-offset: 3px;
 }
 /* Reduced motion: the marker still moves, it just stops animating the move. */

@@ -515,14 +515,28 @@
       setCard(state.index, false);
     }
     var f = target();
-    // Continuous idle spin during the gap between cards, so the globe keeps
-    // rotating toward the next (random) node. While a card is showing the spin
-    // is off, so the node - and its tether - stay put.
-    if (state.t >= CARD_OUT) {
-      state.lon += (SPIN * dt) / 1000;
-    }
+    // LAND-2 (REFINEMENT-DIRECTIVE-2026-10-24): the globe turns CONTINUOUSLY.
+    // It used to stop dead while a card was showing, which read as a frozen
+    // globe. Now the spin never stops; a card follows its node through the
+    // rotation (positionCard reads the live projection every frame).
+    var spinStep = (SPIN * dt) / 1000;
+    var lonBefore = state.lon;
+    state.lon += spinStep;
     var k = 1 - Math.exp(-dt / EASE_TAU); // time-based damping, frame-rate safe
-    state.lon += lonDelta(f.lon, state.lon) * k;
+    // While a card is open the view must NOT ease back toward the node - that
+    // is what used to cancel the spin. The card simply travels with it.
+    if (_open === -1) {
+      state.lon += lonDelta(f.lon, state.lon) * k;
+    }
+    // The ease exists to bring a node to the front; it must never be able to
+    // cancel the rotation and leave the globe looking stuck. The check is on
+    // the SIGNED turn: if a frame ends up turning less than 60 percent of its
+    // spin forward (including turning backwards to reach a node behind us),
+    // the frame simply keeps the spin and the node is approached over more
+    // frames instead.
+    if (lonDelta(state.lon, lonBefore) < spinStep * 0.6) {
+      state.lon = lonBefore + spinStep;
+    }
     state.lat += (clamp(f.lat, -55, 60) - state.lat) * k;
     if (state.lon > 180) {
       state.lon -= 360;
@@ -536,6 +550,20 @@
       setCard(state.index, true);
     } else if (state.t >= CARD_OUT && _open !== -1) {
       setCard(state.index, false);
+    }
+    // A card whose node has turned away from the reader is closed early rather
+    // than left tethered to the back of the globe. Once the node is more than
+    // 70 degrees from the view centre, or has gone behind it, the card retracts
+    // and the normal gap runs before the next node pops.
+    if (_open !== -1) {
+      var away = Math.abs(lonDelta(FEATURES[_open].lon, state.lon));
+      var nodeP = project(FEATURES[_open].lat, FEATURES[_open].lon);
+      if (away > 70 || nodeP.z <= 0) {
+        setCard(_open, false);
+        if (state.t < CARD_OUT) {
+          state.t = CARD_OUT;
+        }
+      }
     }
 
     _shiftTarget = _open === -1 ? 0 : cardSide() === 'right' ? -0.1 * _cw : 0.1 * _cw;

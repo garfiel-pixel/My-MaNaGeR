@@ -612,6 +612,17 @@ jobs:
         id: qa-notice-watchers
         run: node tools/qa-notice-watchers.cjs
 
+      # Wave E (REFINEMENT-DIRECTIVE-2026-10-24): the landing rail goes quiet
+      # until hovered, the hero globe turns continuously, and every card stays
+      # tethered to its own node.
+      - name: "T4: Landing dot rail (qa-dot-rail)"
+        id: qa-dot-rail
+        run: node tools/qa-dot-rail.cjs
+
+      - name: "T4: Hero globe continuous spin (qa-globe-spin)"
+        id: qa-globe-spin
+        run: node tools/qa-globe-spin.cjs
+
       # S2 remainder of AUDIT-DIRECTIVE-2026-10-18: C6 sticky panel +
       # mobile total bar, C7 switch rows, X-1 render scheduler, X-2 paint
       # cost. Static checks + real DOM/CSSOM assertions (setContent, no

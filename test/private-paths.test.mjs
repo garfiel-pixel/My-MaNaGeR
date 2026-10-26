@@ -53,8 +53,29 @@ const ALSO_PRIVATE = [
   '/.git/config',
   '/_archive/executed-plans/x.md',
   '/node_modules/playwright/index.js',
-  '/package-lock.json'
+  '/package-lock.json',
+  // RB-1 (2026-10-25, REFINEMENT-DIRECTIVE-2026-10-24 3.4): the publisher's own
+  // PDF answered 200 with real content on the live deployment before the fix.
+  // No PDF is a served asset now (root-extension rule above), and the 811-rate
+  // data file is no longer a static file at all - it is a Worker module served
+  // only by GET /api/ratebook behind a session (see the retirement test below).
+  '/tru_jic_rate_book_2025-2027_imperial_metric.pdf',
+  '/src/data/ratebook.js'
 ];
+
+test('the retired rate-data file is GONE, not merely hidden', async () => {
+  // RB-1: /js/jic-rates-full.js used to be a public script. Deleting it is the
+  // fix; the prefix guard cannot catch it (js/ is a real asset tree), and the
+  // Worker's script-URL guard turns the SPA fallback into a 404 for the old
+  // URL. This test protects the deletion itself, which is what stops the leak
+  // coming back by accident.
+  const fs = await import('node:fs');
+  assert.equal(
+    fs.existsSync(new URL('../js/jic-rates-full.js', import.meta.url)),
+    false,
+    'the public rate-data file must stay deleted'
+  );
+});
 
 // Must keep working, or the app breaks.
 const ASSETS = [

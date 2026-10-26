@@ -16216,6 +16216,14 @@ body.calculator-page .bcp-rr-x {
   color: var(--slate);
   font-size: 0.74rem;
 }
+/* RB-1 (2026-10-25): the book is signed-in data now, so a session that went
+   away between the gate and the load leaves the 100 built-in rows on screen.
+   One line says why, in the footer where the other provenance sits. */
+.rr-why {
+  display: block;
+  margin-top: 4px;
+  color: var(--text);
+}
 
 /* ---- RATE BOOK: SEARCH + TRADE SCOPE (owner 2026-10-12) ------
    The card grew from 100 rows to the full 811, so it needed a

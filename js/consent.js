@@ -51,7 +51,7 @@
   // checks the SAME number (CONSENT_INVENTORY_VERSION in worker.js and
   // serve.cjs), so the three must be bumped together - tools/qa-consent.cjs
   // phase S fails the build if they drift.
-  var INVENTORY_VERSION = 1;
+  var INVENTORY_VERSION = 2;
   var MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000; // re-ask every 12 months
   var CLOCK_SKEW_MS = 24 * 60 * 60 * 1000; // a record dated in the future is not credible
   var CARD_ID = 'consent-card';

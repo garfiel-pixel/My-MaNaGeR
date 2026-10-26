@@ -112,3 +112,10 @@ tmp/
 # ignoring it by name too means a rename cannot leak it.
 *cookies*.json
 *cookies*.txt
+# 2026-10-25 (RB-1, REFINEMENT-DIRECTIVE-2026-10-24 3.4): the publisher's own
+# rate-book PDF is a private reference copy. It used to sit in the repo root,
+# where the static-asset upload served it to anyone (live probe: 200, 18,820
+# bytes). It now lives under docs/private/, which git and the deploy both
+# ignore - the rates themselves are generated into src/data/ratebook.js and
+# served only to a signed-in session by GET /api/ratebook.
+/docs/private/

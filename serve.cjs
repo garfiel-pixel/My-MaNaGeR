@@ -268,7 +268,7 @@ const MCP_AUTH_REFUSAL =
 // one older than twelve months, is refused here - the server judges the
 // cookie on its own, before any script runs. Keep this in lockstep with
 // worker.js: CONSENT_INVENTORY_VERSION and the parser below.
-const CONSENT_INVENTORY_VERSION = 1;
+const CONSENT_INVENTORY_VERSION = 2;
 const CONSENT_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000;
 const CONSENT_CLOCK_SKEW_MS = 24 * 60 * 60 * 1000;
 

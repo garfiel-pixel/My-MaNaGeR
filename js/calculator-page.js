@@ -4260,16 +4260,33 @@
   // the user was looking at.
   let _rrQuery = '';
   let _rrTrade = 'all';
-  // The full 811-row book is GENERATED (tools/gen-jic-full.cjs) and is fetched
+  // The full 811-row book is GENERATED (tools/gen-jic-full.cjs) and loaded
   // lazily the FIRST time the card opens, so the 100 rows shipped inline keep
   // first paint fast on a slow connection (owner: "load quickly based on
-  // someone's Internet"). Once loaded it stays for the session, and the file
-  // joins the service-worker shell so it is there offline next time.
+  // someone's Internet"). Once loaded it stays for the session.
+  //
+  // RB-1 (REFINEMENT-DIRECTIVE-2026-10-24, 2026-10-25): the book is NO LONGER
+  // a public script. It comes from GET /api/ratebook behind the signed-in
+  // session the card already asks for before it opens, and it is cached in the
+  // Cache API under RATEBOOK_CACHE so the book still works with no network
+  // after one signed-in load. Signing out clears that cache
+  // (js/mmgr-google-auth.js). The inline 100 rows stay as the offline floor
+  // for a client that has never had a signed-in load.
+  //
+  // BUMP RATEBOOK_CACHE WHEN THE GENERATED BOOK CHANGES. The read is
+  // cache-first - one fetch per client, ever - which is the point (no 100 KB
+  // request on every open) and the trap (new rates invisible until the name
+  // changes). One rename here is the whole refresh.
+  const RATEBOOK_CACHE = 'mmgr-ratebook-v1';
+  const RATEBOOK_URL = '/api/ratebook';
   let _rrFull = null;
   let _rrLoading = false;
+  // 'signin' | 'offline' | '' - WHY the 100 inline rows are showing, so the
+  // card can say the right sentence instead of guessing.
+  let _rrWhy = '';
   // A1: every caller waits its turn - the panel mount, the rate-book card
-  // and the send path all queue here, so exactly ONE script tag is ever
-  // created and every done callback fires when it lands (or fails).
+  // and the send path all queue here, so exactly ONE fetch is ever in flight
+  // and every done callback fires when it lands (or fails).
   let _rrWaiters = [];
   function rrFlushWaiters() {
     const ws = _rrWaiters;
@@ -4282,9 +4299,80 @@
       }
     });
   }
+  // The book payload the API returns, as the shape this page reads
+  // (years / trades / rows). Anything malformed is treated as no book, so a
+  // bad cache entry can never brick the dialog.
+  function rrBookOf(d) {
+    const b = d && d.book;
+    if (!b || !b.rows || !b.rows.length) {
+      return null;
+    }
+    return { years: b.years, trades: b.trades || [], rows: b.rows };
+  }
+  function rrCacheOpen() {
+    try {
+      if (typeof caches === 'undefined' || !caches.open) {
+        return Promise.resolve(null);
+      }
+      return caches.open(RATEBOOK_CACHE).then(
+        function (c) {
+          return c;
+        },
+        function () {
+          return null;
+        }
+      );
+    } catch (e) {
+      // Private-mode browsers disable the Cache API. The page still works:
+      // the fetch path below serves the book, it is just not kept offline.
+      return Promise.resolve(null);
+    }
+  }
+  function rrCacheRead() {
+    return rrCacheOpen().then(function (c) {
+      if (!c) {
+        return null;
+      }
+      return c
+        .match(RATEBOOK_URL)
+        .then(function (res) {
+          return res && res.ok ? res.json() : null;
+        })
+        .then(rrBookOf)
+        .catch(function () {
+          return null;
+        });
+    });
+  }
+  function rrCacheWrite(d) {
+    return rrCacheOpen().then(function (c) {
+      if (!c) {
+        return;
+      }
+      return c.put(
+        RATEBOOK_URL,
+        new Response(JSON.stringify(d), {
+          headers: { 'Content-Type': 'application/json; charset=utf-8' }
+        })
+      );
+    });
+  }
+  function rrSettle(book, why) {
+    _rrFull = book || null;
+    if (why) {
+      _rrWhy = why;
+    }
+    _rrLoading = false;
+    // QA seam (RB-1): the settled book, so a harness can wait for the ONE
+    // load to finish instead of racing it. It is the same object the page is
+    // already holding in memory - nothing new is exposed by publishing it, and
+    // it is null (not undefined) when the load settled on the inline rows, so
+    // a waiter can tell "done, no book" from "not done yet".
+    window.MMGR_RATEBOOK = _rrFull;
+    rrFlushWaiters();
+  }
   function rrLoadFull(done) {
-    if (window.MMGR_JIC_FULL) {
-      _rrFull = window.MMGR_JIC_FULL;
+    if (_rrFull) {
       if (typeof done === 'function') {
         done();
       }
@@ -4294,28 +4382,48 @@
       _rrWaiters.push(done);
     }
     if (_rrLoading) {
-      return; // in flight; its onload will flush every waiter
+      return; // in flight; it flushes every waiter
     }
     _rrLoading = true;
-    const s = document.createElement('script');
-    s.src = 'js/jic-rates-full.js?v=' + JIC_FULL_V;
-    s.onload = function () {
-      _rrLoading = false;
-      _rrFull = window.MMGR_JIC_FULL || null;
-      rrFlushWaiters();
-    };
-    s.onerror = function () {
-      // Offline before the shell cached it: fall back to the 100 shipped rows
-      // and say so in the footer. Never an empty book and never a spinner that
-      // never resolves.
-      _rrLoading = false;
-      rrFlushWaiters();
-    };
-    document.head.appendChild(s);
+    // 1. Cache first. Offline this is the only step that can answer, and a
+    //    warm client opens the whole book without touching the network.
+    rrCacheRead().then(function (cached) {
+      if (cached) {
+        rrSettle(cached);
+        return;
+      }
+      // 2. Network. A 401 means the session went away between the gate and
+      //    this fetch: say so and leave the inline rows in place.
+      return fetch(RATEBOOK_URL, {
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' }
+      })
+        .then(function (res) {
+          if (res.status === 401) {
+            rrSettle(null, 'signin');
+            return;
+          }
+          if (!res.ok) {
+            rrSettle(null, 'offline');
+            return;
+          }
+          return res.json().then(function (d) {
+            const book = rrBookOf(d);
+            if (!book) {
+              rrSettle(null, 'offline');
+              return;
+            }
+            rrCacheWrite({ ok: true, book: book }).catch(function () {
+              /* not fatal: the session copy still serves this page */
+            });
+            rrSettle(book);
+          });
+        })
+        .catch(function () {
+          rrSettle(null, 'offline');
+        });
+    });
   }
-  // Cache-buster for the generated book, kept next to JIC_YEARS so a bump is
-  // one edit.
-  const JIC_FULL_V = '1';
   // Trade list, in book order, from whichever source is loaded.
   function rrTrades() {
     if (_rrFull) {
@@ -4614,7 +4722,9 @@
       hint.textContent =
         _rrFull || !_jicOffline
           ? '- pick a trade, then a rate'
-          : '- pick a trade, then a rate (showing the built-in set)';
+          : _rrWhy === 'signin'
+            ? '- pick a trade, then a rate (built-in set; sign in for all 811)'
+            : '- pick a trade, then a rate (showing the built-in set)';
     }
     syncJicNote();
     kickJicFullLoad();
@@ -4629,7 +4739,7 @@
     }
     _jicTried = true;
     rrLoadFull(function () {
-      _jicOffline = !window.MMGR_JIC_FULL;
+      _jicOffline = !_rrFull;
       if (($('calc-work') || {}).value === 'jic') {
         renderJicPicker();
       }
@@ -4850,6 +4960,9 @@
       '<div class="rr-foot">' +
       'All amounts in Jamaican dollars (J$). ' +
       '<span class="rr-legend"><span class="rr-calc" aria-hidden="true">C</span> calculated by us from the imperial rate</span>' +
+      (_rrWhy === 'signin'
+        ? '<span class="rr-why">Sign in to open all 811 rates. The 100 built-in rows are showing.</span>'
+        : '') +
       '</div>' +
       '</div>';
     document.body.appendChild(card);

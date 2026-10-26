@@ -136,6 +136,26 @@ const check = (name, val, detail) => {
   );
 };
 
+/* ---- RB-1 (2026-10-25): the rate book is signed-in data now --------------
+   The 811 rates used to be a public script the page injected. They come from
+   GET /api/ratebook behind a session, and the page keeps its own offline copy
+   in the Cache API (mmgr-ratebook-v1). serve.cjs is static-only, so it cannot
+   answer that route - the harness seeds the SAME offline copy a signed-in
+   first load would leave behind, using the generated module the Worker
+   imports. The offline families (UR6, JP7) then delete that copy and block
+   the route, which is exactly the "cannot load the book" state they test. */
+function loadRatebook() {
+  const src = fs.readFileSync(path.join(ROOT, 'src', 'data', 'ratebook.js'), 'utf8');
+  const key = 'export const RATEBOOK = ';
+  const at = src.indexOf(key);
+  const end = src.lastIndexOf('};');
+  if (at < 0 || end < 0) {
+    throw new Error('src/data/ratebook.js shape changed');
+  }
+  return new Function('return ' + src.slice(at + key.length, end + 1))();
+}
+const RATEBOOK_BODY = JSON.stringify({ ok: true, book: loadRatebook() });
+
 function chromePath() {
   return require('./chrome-launcher.cjs').chromePath;
 }
@@ -242,6 +262,25 @@ async function withChrome(fn) {
   }
 
   await withChrome(async ({ ev, send }) => {
+    // RB-1 (2026-10-25): seed / clear the calculator's own offline rate-book
+    // copy. The seed writes the byte-for-byte shape a signed-in first load
+    // leaves in the Cache API, so every "the full book is open" gate measures
+    // the real 811 rows without a network route serve.cjs does not have.
+    const seedRatebook = () =>
+      ev(`(async function(){
+        try {
+          var c = await caches.open('mmgr-ratebook-v1');
+          await c.put('/api/ratebook', new Response(${JSON.stringify(RATEBOOK_BODY)}, {
+            headers: { 'Content-Type': 'application/json; charset=utf-8' }
+          }));
+          return true;
+        } catch (e) { return String((e && e.message) || e); }
+      })()`);
+    const clearRatebook = () =>
+      ev(`(async function(){
+        try { return await caches.delete('mmgr-ratebook-v1'); } catch (e) { return false; }
+      })()`);
+
     // ---------- CALCULATOR PAGE ----------
     await ev(`location.href = ${JSON.stringify(BASE + '/calculator.html')}`);
     await delay(1800);
@@ -3266,6 +3305,13 @@ async function withChrome(fn) {
     // which means the first paint is the 100-row inline fallback. This helper
     // waits for the real book to land and the card to re-render, so the gates
     // below measure the thing a user actually ends up looking at.
+    // RB-1: seed the signed-in offline copy first (see seedRatebook above).
+    const rbSeed = await seedRatebook();
+    check(
+      'RB0a the offline rate-book copy seeds from the generated module',
+      rbSeed === true,
+      rbSeed
+    );
     const rrWait = `
       (async function(){
         // The book loads lazily on FIRST OPEN, so the card has to be open
@@ -3274,10 +3320,10 @@ async function withChrome(fn) {
           document.querySelector('.bcp-ratebook[data-action="openRateBook"]').click();
         }
         var t0 = Date.now();
-        while (!window.MMGR_JIC_FULL && Date.now() - t0 < 8000) {
+        while (!window.MMGR_RATEBOOK && Date.now() - t0 < 8000) {
           await new Promise(r => setTimeout(r, 100));
         }
-        return !!window.MMGR_JIC_FULL;
+        return !!window.MMGR_RATEBOOK;
       })()`;
     const rbFull = await ev(rrWait);
     check('RB0 the full 811-rate book loads when the card opens', rbFull === true, rbFull);
@@ -3468,10 +3514,10 @@ async function withChrome(fn) {
         if (c) { c.remove(); document.body.classList.remove('rr-open'); }
         document.querySelector('.bcp-ratebook[data-action="openRateBook"]').click();
         var t0 = Date.now();
-        while (!window.MMGR_JIC_FULL && Date.now() - t0 < 8000) {
+        while (!window.MMGR_RATEBOOK && Date.now() - t0 < 8000) {
           await new Promise(r => setTimeout(r, 100));
         }
-        if (!window.MMGR_JIC_FULL) return false;
+        if (!window.MMGR_RATEBOOK) return false;
         // Re-render once the book is in, the same way a returning user sees it.
         c = document.getElementById('calc-ratebook-card');
         if (c) { c.remove(); document.body.classList.remove('rr-open'); }
@@ -3917,11 +3963,12 @@ async function withChrome(fn) {
 
     // UR6 - OFFLINE (I3): the SAME action on the inline 100-row fallback.
     // calculator.html registers NO service worker (verified - no
-    // serviceWorker reference on the page), so blocking the book script at
-    // the network layer exercises rrLoadFull's onerror fallback exactly as a
-    // first-open-with-no-network does: 100 rows, every one still actionable.
+    // serviceWorker reference on the page), so blocking the book ROUTE and
+    // deleting the offline copy exercises rrLoadFull's failure path exactly as
+    // a first open with no network does: 100 rows, every one still actionable.
+    await clearRatebook();
     await send('Network.enable');
-    await send('Network.setBlockedURLs', { urls: ['*jic-rates-full*'] });
+    await send('Network.setBlockedURLs', { urls: ['*api/ratebook*'] });
     await ev(`location.reload()`);
     await delay(1200);
     let ur6ready = false;
@@ -3961,11 +4008,13 @@ async function withChrome(fn) {
           cardGone: !document.getElementById('calc-ratebook-card')
         };
       }
-      return { full: !!window.MMGR_JIC_FULL, btns: btns.length, got: got };
+      return { full: !!window.MMGR_RATEBOOK, btns: btns.length, got: got };
     })()`);
     await send('Network.setBlockedURLs', { urls: [] });
+    // Put the signed-in copy back for the JP family below.
+    await seedRatebook();
     check(
-      'UR6 offline: the inline 100-row fallback renders Use actions and the prefill still works (full book script blocked)',
+      'UR6 offline: the inline 100-row fallback renders Use actions and the prefill still works (book route blocked, no offline copy)',
       ur6ready &&
         ur6hits !== null &&
         /100 rates/.test(ur6hits) &&
@@ -4335,13 +4384,14 @@ async function withChrome(fn) {
       jp6
     );
     // JP7 OFFLINE (I3): the SAME flow from the inline 100-row set. The page
-    // registers no service worker (verified in Phase 1), so blocking the
-    // full-book script at the network layer exercises the honest degrade
+    // registers no service worker (verified in Phase 1), so deleting the
+    // offline copy and blocking the book ROUTE exercises the honest degrade
     // exactly as a first-open-with-no-network does: all 11 trades still
     // listed, the pick + exact price still work, and the hint says the
     // built-in set is shown.
+    await clearRatebook();
     await send('Network.enable');
-    await send('Network.setBlockedURLs', { urls: ['*jic-rates-full*'] });
+    await send('Network.setBlockedURLs', { urls: ['*api/ratebook*'] });
     await ev(`(function(){
       // Save the PRE-JP work item from the Node side (the DOM now holds the
       // jic pick), so the reload restores what the F4 families expect.
@@ -4406,11 +4456,14 @@ async function withChrome(fn) {
       qty.dispatchEvent(new Event('input', { bubbles: true }));
       var r = __calcEngine.computeFor(__calcEngine.readState());
       var tSel = document.getElementById('calc-jic-trade');
-      return { full: !!window.MMGR_JIC_FULL, trades: tSel ? tSel.options.length - 1 : -1,
+      return { full: !!window.MMGR_RATEBOOK, trades: tSel ? tSel.options.length - 1 : -1,
         rows: rSel ? rSel.options.length : 0, ref: rSel ? rSel.value : '',
         unit: m ? m[2] : '', sub: r && !r.error ? r.sub : NaN, exp: 2 * rate };
     })()`);
     await send('Network.setBlockedURLs', { urls: [] });
+    // Put the signed-in copy back so any later gate that reads the full book
+    // (and a real returning user) sees it again.
+    await seedRatebook();
     check(
       'JP7 offline: the inline 100-row set carries all 11 trades, the pick + exact price still work, and the hint says the built-in set is shown',
       jp7ready &&

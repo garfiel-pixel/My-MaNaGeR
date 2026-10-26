@@ -113,6 +113,17 @@ fails the gate.
 |---|---|---|
 | `mmgr_voice` | Voice input recordings held briefly for dictation. Cleared after use. | necessary |
 
+## Cache API
+
+The Cache API holds response bodies the browser keeps on this device. It is
+origin-scoped, survives a reload, and is cleared by "Clear site data".
+
+| Cache name | Purpose | Category |
+|---|---|---|
+| `mmgr-ratebook-v1` | The rate book you opened, cached for offline use. Written only after a signed-in load of the rate book (all 811 planning rates) and deleted on sign-out, so the next person on this device does not inherit it. | necessary |
+| `mmgr-shell-v<number>` | The app shell: the pages, scripts and styles the service worker keeps so the app opens with no network. Replaced on each new version. | necessary |
+| `mmgr-whisper-model-v1` | The speech model the voice input downloads once, so dictation still works offline. | necessary |
+
 ## Optional (only after the visitor says yes)
 
 | Item | What it is | Category |

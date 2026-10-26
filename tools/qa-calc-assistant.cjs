@@ -1205,17 +1205,34 @@ async function assistantDiagnosis(page) {
 }
 
 // ---- DIRECTIVE 2026-10-13 (PART A, N1-N9): the assistant reads the book ----
+// RB-1 (2026-10-25): the 811 rates are no longer a public browser file. They
+// are generated into src/data/ratebook.js (a Worker module) and served only by
+// GET /api/ratebook behind a signed-in session. The harness reads the SAME
+// generated module the Worker imports, and mocks the API with it, so the test
+// still proves the page indexes the real book - it just gets it the way the
+// browser now does.
 function loadJicBook() {
-  const src = fs.readFileSync(path.join(ROOT, 'js', 'jic-rates-full.js'), 'utf8');
-  const key = 'window.MMGR_JIC_FULL = ';
+  const src = fs.readFileSync(path.join(ROOT, 'src', 'data', 'ratebook.js'), 'utf8');
+  const key = 'export const RATEBOOK = ';
   const at = src.indexOf(key);
   const end = src.lastIndexOf('};');
   if (at < 0 || end < 0) {
-    throw new Error('jic-rates-full.js shape changed');
+    throw new Error('src/data/ratebook.js shape changed');
   }
-  // The generated file is a JS object literal (unquoted keys), so it is
-  // evaluated rather than JSON-parsed - exactly what the browser does.
+  // The generated module is an object literal, so it is evaluated rather than
+  // JSON-parsed - exactly what the Worker's import does.
   return new Function('return ' + src.slice(at + key.length, end + 1))();
+}
+
+// The one API the calculator now loads the book from.
+async function mockRatebook(page, book) {
+  await page.route('**/api/ratebook', route =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true, book: book })
+    })
+  );
 }
 
 async function mockAuth(page) {
@@ -1401,12 +1418,13 @@ async function partARateAccess(browser, errors) {
         : 'Understood - those are the rates on this device.'
     );
     await seedCalcFx(page);
+    await mockRatebook(page, JIC);
     await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
     await page.waitForFunction(() => !!window.MMGR_CALC_RATEBOOK, null, { timeout: 20000 });
-    // A1: the panel mount starts the ONE full-book loader; give the local
-    // file a moment so the first question is answered from all 811 rows.
+    // A1: the panel mount starts the ONE full-book loader; give the mocked
+    // API a moment so the first question is answered from all 811 rows.
     await page
-      .waitForFunction(() => !!window.MMGR_JIC_FULL, null, { timeout: 8000 })
+      .waitForFunction(() => !!window.MMGR_RATEBOOK, null, { timeout: 8000 })
       .catch(() => {});
 
     await sendQ(page, 'what rates do you have');
@@ -1550,10 +1568,11 @@ async function partARateAccess(browser, errors) {
     const page = await ctx.newPage();
     page.on('pageerror', e => errors.push('calc(partA-n5): ' + String(e).slice(0, 140)));
     await seedCalcFx(page);
+    await mockRatebook(page, JIC);
     await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
     await page.waitForFunction(() => !!window.MMGR_CALC_RATEBOOK, null, { timeout: 20000 });
     await page
-      .waitForFunction(() => !!window.MMGR_JIC_FULL, null, { timeout: 8000 })
+      .waitForFunction(() => !!window.MMGR_RATEBOOK, null, { timeout: 8000 })
       .catch(() => {});
     const n5 = await page.evaluate(q => {
       const lines = window.MMGR_CALC_RATEBOOK(q).split('\n');
@@ -1568,14 +1587,16 @@ async function partARateAccess(browser, errors) {
     await ctx.close();
   }
 
-  // ---- N6: the file is blocked - the exact failure line, and no hang ------
+  // ---- N6: the API is blocked - the exact failure line, and no hang -------
   {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await ctx.newPage();
     page.on('pageerror', e => errors.push('calc(partA-n6): ' + String(e).slice(0, 140)));
     await mockAuth(page);
-    // The script carries a cache-buster query, so the glob needs the tail.
-    await page.route('**/jic-rates-full.js*', route => route.abort());
+    // RB-1: the book now arrives from GET /api/ratebook, so that is the call
+    // a dead network kills. The failure contract is unchanged and is what this
+    // gate protects: one honest line, the 100 inline rows, and no hang.
+    await page.route('**/api/ratebook*', route => route.abort());
     const bodies = await mockRelay(page, () => 'Masonry starts with the block work rows.');
     await seedCalcFx(page);
     await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
@@ -1592,21 +1613,49 @@ async function partARateAccess(browser, errors) {
     await ctx.close();
   }
 
-  // ---- N8: one script tag, even with the assistant AND the card open ------
+  // ---- N8: ONE load, even with the assistant AND the card open ------------
+  // RB-1 re-baseline: there is no rate-data script tag any more (that was the
+  // leak). The property worth protecting is the same one it protected - the
+  // book is fetched ONCE per page life, not once per consumer - so this counts
+  // the /api/ratebook requests instead of the script tags, and additionally
+  // asserts the retired script tag count is zero.
   {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await ctx.newPage();
     page.on('pageerror', e => errors.push('calc(partA-n8): ' + String(e).slice(0, 140)));
+    let apiCalls = 0;
+    page.on('request', r => {
+      if (r.url().indexOf('/api/ratebook') > -1) {
+        apiCalls++;
+      }
+    });
+    await mockAuth(page);
+    await mockRatebook(page, JIC);
     await seedCalcFx(page);
     await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
     await page.waitForFunction(() => !!window.MMGR_CALC_RATEBOOK, null, { timeout: 20000 });
     await page.click('[data-action="openRateBook"]');
     await page.waitForSelector('#calc-ratebook-card', { timeout: 5000 });
     await page.waitForTimeout(400);
+    // Close and reopen: the session copy must answer, not another request.
+    await page.evaluate(() => {
+      const x = document.querySelector('#calc-ratebook-card [data-action="rrClose"]');
+      if (x) {
+        x.click();
+      }
+    });
+    await page.waitForTimeout(200);
+    await page.click('[data-action="openRateBook"]');
+    await page.waitForTimeout(400);
     const tags = await page.evaluate(
       () => document.querySelectorAll('script[src*="jic-rates-full"]').length
     );
-    check('N8 exactly one jic-rates-full.js script tag after both open', tags === 1, tags);
+    check('N8a no rate-data script tag is injected any more (the RB-1 leak)', tags === 0, tags);
+    check(
+      'N8b exactly one /api/ratebook request for the whole page life',
+      apiCalls === 1,
+      apiCalls
+    );
     await ctx.close();
   }
 }
@@ -1943,10 +1992,11 @@ async function partBCustomLine(browser, errors) {
       return 'Understood.';
     });
     await seedCalcFx(page);
+    await mockRatebook(page, JIC);
     await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
     await page.waitForFunction(() => !!window.MMGR_CALC_POPULATE, null, { timeout: 20000 });
     await page
-      .waitForFunction(() => !!window.MMGR_JIC_FULL, null, { timeout: 8000 })
+      .waitForFunction(() => !!window.MMGR_RATEBOOK, null, { timeout: 8000 })
       .catch(() => {});
     const rowCount = () =>
       page.evaluate(() => document.querySelectorAll('[data-action="calcBoqRecall"]').length);
@@ -2147,9 +2197,13 @@ async function s6OwnRateAndSettings(browser, errors) {
     );
   });
   await seedCalcFx(page);
+  // RB-1: the book arrives from GET /api/ratebook now. Mocked with the same
+  // generated module the Worker imports, so the panel's book load settles the
+  // way it does in production.
+  await mockRatebook(page, loadJicBook());
   await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
   await page.waitForFunction(() => !!window.MMGR_CALC_AI, null, { timeout: 20000 });
-  await page.waitForFunction(() => !!window.MMGR_JIC_FULL, null, { timeout: 8000 }).catch(() => {});
+  await page.waitForFunction(() => !!window.MMGR_RATEBOOK, null, { timeout: 8000 }).catch(() => {});
 
   // S6.0 - both hooks exist and the panel reports the build that uses them.
   const hooks = await page.evaluate(() => ({

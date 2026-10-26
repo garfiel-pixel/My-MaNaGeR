@@ -73,7 +73,7 @@ const CONSENT_ANALYTICS_HOST = ' https://static.cloudflareinsights.com';
 // MUST match INVENTORY_VERSION in js/consent.js and
 // CONSENT_INVENTORY_VERSION in serve.cjs - tools/qa-consent.cjs phase S
 // fails the build if the three drift.
-const CONSENT_INVENTORY_VERSION = 1;
+const CONSENT_INVENTORY_VERSION = 2;
 // A choice is re-asked every 12 months (js/consent.js MAX_AGE_MS).
 const CONSENT_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000;
 // Tolerate a device clock a little ahead of this server's.
@@ -313,7 +313,7 @@ const PRIVATE_FILES = new Set([
 // Root-level only: a single-segment path carrying a file extension that is
 // never a runtime asset. Nested paths are left alone so real assets such as
 // /dist/*.json are never caught by accident.
-const PRIVATE_ROOT_EXT = /\.(md|txt|json|jsonc|ya?ml|lock|cjs|mjs|ts)$/i;
+const PRIVATE_ROOT_EXT = /\.(md|txt|json|jsonc|ya?ml|lock|cjs|mjs|ts|pdf)$/i;
 // The two root text files that ARE meant to be public. They are already served
 // by the SEO_FILES branch ABOVE this guard; listing them here too keeps the
 // predicate correct on its own, so it cannot 404 them if that branch ever
@@ -510,6 +510,22 @@ export default {
       }
 
       const response = await env.ASSETS.fetch(request);
+      // 8.5 (RB-1, 2026-10-25): A SCRIPT URL IS NEVER ANSWERED WITH A PAGE.
+      // not_found_handling is single-page-application, so a missing asset is
+      // served index.html with 200. That is right for a person mistyping a
+      // page URL and wrong for a script: the browser executes the homepage as
+      // JavaScript (a silent syntax error), and a RETIRED data file would keep
+      // answering 200 to anyone who asks for it by name. This is exactly the
+      // shape RB-1 left behind - js/jic-rates-full.js is now signed-in data -
+      // so the old URL must fail loudly instead of returning a page. Anchored
+      // to the extensions a page can never carry.
+      const reqExt = normalized.replace(/.*\./, '').toLowerCase();
+      if (
+        ['js', 'mjs', 'css', 'json', 'map', 'webmanifest', 'wasm'].indexOf(reqExt) !== -1 &&
+        (response.headers.get('Content-Type') || '').toLowerCase().indexOf('text/html') === 0
+      ) {
+        return privateNotFound();
+      }
       const decorated = new Response(response.body, response);
       for (const [name, value] of Object.entries(HEADERS)) {
         decorated.headers.set(name, value);

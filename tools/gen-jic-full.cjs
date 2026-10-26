@@ -1,20 +1,26 @@
 #!/usr/bin/env node
 /* ============================================================
-   gen-jic-full.cjs - generate js/jic-rates-full.js from
+   gen-jic-full.cjs - generate src/data/ratebook.js from
    JIC_Rate_Book_2025-2027_FULL.md (owner rate-book wave, P2b)
    ------------------------------------------------------------
    The FULL doc is the hand-verified source of truth: 811 unique
    rates across 11 trades, parsed out of section 7's tables. This
-   generator turns it into a plain browser data file so the
-   calculator's rate-book card can show the WHOLE book instead of
-   the 100 rows that were shipped inline.
+   generator turns it into a Worker module so the calculator's
+   rate-book card can show the WHOLE book instead of the 100 rows
+   that were shipped inline.
 
-   Why a generated file and not a fetch at runtime: the app is
-   offline-first (AGENTS rule 3). A fetch of a data file that is
-   not in the service-worker shell would leave the rate book
-   blank offline. A generated .js that joins the SHELL array is
-   cached like every other asset, so the book works with no
-   network.
+   RB-1 (REFINEMENT-DIRECTIVE-2026-10-24, 2026-10-25): the book
+   used to be a PUBLIC browser file (js/jic-rates-full.js) that
+   anyone could download - and the service worker precached it for
+   every visitor - while the sign-in gate was only a screen. The
+   output is now a Worker module, imported by src/ratebook.js and
+   served ONLY by GET /api/ratebook behind a signed-in session. It
+   is not a static asset (src/ is excluded in .assetsignore) and it
+   is not in the service-worker shell.
+
+   Offline still works: the calculator stores the fetched book in
+   the Cache API (mmgr-ratebook-v1) on the first signed-in load, so
+   the book opens with no network afterwards.
 
    RULE 7 (no emoji on a served page) is enforced HERE rather than
    trusted to memory: the source doc uses the heavy check mark
@@ -23,15 +29,20 @@
    loudly if it finds any other banned glyph, so the served data
    file cannot pick one up by accident.
 
-   Output shape (js/jic-rates-full.js):
-     window.MMGR_JIC_FULL = { years, generated, trades:[{tid,label}],
-                              rows:[{tid,ref,no,desc,impUnit,impRate,
-                                     metUnit,metRate,basis,note}] };
+   Output shape (src/data/ratebook.js, an ES module):
+     export const RATEBOOK_PROVENANCE = { source, publisher, edition, status };
+     export const RATEBOOK = { years, trades:[{tid,label}],
+                               rows:[{t,n,d,iu,ir,mu,mr,b?,note?,app?}] };
 
    `basis` is 'S' (the source's own metric figure) or 'C' (calculated
    from the imperial rate by section 6's rules) - the card shows a
    marker for C so the user knows which numbers are JIC's and which
    we derived.
+
+   `RATEBOOK_PROVENANCE` is the private record the directive asks for
+   (3.3): it names the source, the edition and the permission status,
+   is NEVER put in the API response, and is never rendered to a user.
+   Removing it later is the owner's decision, not a code cleanup.
 
    Usage:  node tools/gen-jic-full.cjs           (write the file)
            node tools/gen-jic-full.cjs --check   (verify in sync)
@@ -43,7 +54,7 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const SRC = path.join(ROOT, 'JIC_Rate_Book_2025-2027_FULL.md');
-const OUT = path.join(ROOT, 'js', 'jic-rates-full.js');
+const OUT = path.join(ROOT, 'src', 'data', 'ratebook.js');
 const CHECK = process.argv.indexOf('--check') > -1;
 
 // Display label -> stable id. These ids are the SAME ones js/calculator-page.js
@@ -216,23 +227,40 @@ function render(rows) {
     '   Regenerate with: node tools/gen-jic-full.cjs\n' +
     '   Verify in sync with: node tools/gen-jic-full.cjs --check\n' +
     '   811 rates across 11 trades. Carries no emoji (AGENTS rule 7).\n' +
-    '   Loaded by js/calculator-page.js when the rate-book card opens. */\n' +
-    '(function () {\n' +
-    "  'use strict';\n";
-  const body =
-    '  window.MMGR_JIC_FULL = {\n' +
-    "    years: '" +
+    '\n' +
+    '   PRIVATE (RB-1): imported by src/ratebook.js and served ONLY by\n' +
+    '   GET /api/ratebook behind a signed-in session. Not a static asset and\n' +
+    '   not in the service-worker shell. The calculator caches it in the Cache\n' +
+    '   API (mmgr-ratebook-v1) for offline use and clears that on sign-out. */\n' +
+    '\n';
+  const provenance =
+    '/* Provenance record, REQUIRED by REFINEMENT-DIRECTIVE-2026-10-24 3.3.\n' +
+    '   Never served to a user and never rendered: while `status` is not\n' +
+    "   'rebuilt', the served copy keeps the source line and makes no claim\n" +
+    '   that the figures are independently produced. The owner changes this\n' +
+    '   value deliberately, with advice; it is not a code cleanup. */\n' +
+    'export const RATEBOOK_PROVENANCE = {\n' +
+    "  source: 'JIC_Rate_Book_2025-2027_FULL.md',\n" +
+    "  publisher: 'Jamaica Institute of Construction (JIC)',\n" +
+    "  edition: '" +
     data.years +
     "',\n" +
-    '    trades: ' +
+    "  status: 'unresolved' // unresolved | permission-granted | rebuilt\n" +
+    '};\n' +
+    '\n';
+  const body =
+    'export const RATEBOOK = {\n' +
+    "  years: '" +
+    data.years +
+    "',\n" +
+    '  trades: ' +
     JSON.stringify(data.trades) +
     ',\n' +
-    '    rows: ' +
+    '  rows: ' +
     JSON.stringify(slim) +
     '\n' +
-    '  };\n' +
-    '})();\n';
-  return header + body;
+    '};\n';
+  return header + provenance + body;
 }
 
 const rows = parse();
@@ -251,7 +279,7 @@ if (CHECK) {
   const cur = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8') : '';
   if (cur !== out) {
     console.error(
-      '[gen-jic-full] OUT OF SYNC: js/jic-rates-full.js does not match the source doc.'
+      '[gen-jic-full] OUT OF SYNC: src/data/ratebook.js does not match the source doc.'
     );
     console.error('[gen-jic-full] Run: node tools/gen-jic-full.cjs');
     process.exit(1);
@@ -260,9 +288,10 @@ if (CHECK) {
   process.exit(0);
 }
 
+fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, out);
 console.log(
-  '[gen-jic-full] wrote js/jic-rates-full.js - ' +
+  '[gen-jic-full] wrote src/data/ratebook.js - ' +
     JSON.stringify(stats) +
     ' (' +
     (out.length / 1024).toFixed(1) +

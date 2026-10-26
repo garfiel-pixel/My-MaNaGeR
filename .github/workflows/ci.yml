@@ -365,6 +365,12 @@ jobs:
         env:
           QA_PORT: 8811
 
+      - name: "T2: Rate book is signed-in data (RB-1)"
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: node tools/qa-ratebook.cjs
+        env:
+          QA_PORT: 8812
+
       - name: "T2: Rank 9 API"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-rank9-api.cjs
@@ -562,6 +568,18 @@ jobs:
       - name: "T4: Quick total + dashboard card waves (qa-calc-assistant)"
         id: qa-calc-assistant
         run: node tools/qa-calc-assistant.cjs
+
+      # APP-4 (REFINEMENT-DIRECTIVE-2026-10-24): a click on a radio or
+      # checkbox INSIDE a dialog overlay kept its default. The six overlays in
+      # project.html are data-action containers, and the global dispatcher's
+      # preventDefault() cancelled the control the user had just clicked - so
+      # Export Schedule could only ever export its pre-selected options. This
+      # opens each dialog through its real trigger, clicks EVERY radio and
+      # checkbox and asserts the control took the change, closes on the
+      # backdrop, and reads the Export Schedule choices back out of the run.
+      - name: "T4: Dialog controls actually change (qa-modals)"
+        id: qa-modals
+        run: node tools/qa-modals.cjs
 
       # S2 remainder of AUDIT-DIRECTIVE-2026-10-18: C6 sticky panel +
       # mobile total bar, C7 switch rows, X-1 render scheduler, X-2 paint

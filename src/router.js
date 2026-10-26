@@ -15,12 +15,13 @@
      7. Cloud review queue
      8. Cloud admin
      9. Cloud editors/changelog
-    10. Health probe
-    11. Public reviews
-    12. Auth (Google, email, session)
-    13. Billing (status, checkout)
-    14. AI relay
-    15. 404 fallback
+    10. Rate book (signed-in data, RB-1)
+    11. Health probe
+    12. Public reviews
+    13. Auth (Google, email, session)
+    14. Billing (status, checkout)
+    15. AI relay
+    16. 404 fallback
    ============================================================ */
 import {
   json,
@@ -127,6 +128,7 @@ import {
 } from './reviews.js';
 import { handleContactCreate } from './contact.js';
 import { handleAiChat } from './ai-proxy.js';
+import { handleRatebook } from './ratebook.js';
 import { handleMcpServer } from './mcp/server.js';
 import {
   handleAuthGoogle,
@@ -829,7 +831,20 @@ export async function routeApi(request, env, url) {
       return handlePhotoMeta(request, env, cloudPhotoMetaMatch[1], cloudPhotoMetaMatch[2]);
     }
 
-    // 10. HEALTH PROBE
+    // 10. RATE BOOK (RB-1, 2026-10-25)
+    // The 811 planning rates are signed-in data, not a public file. The route
+    // sits AFTER the same-origin gate above, so a foreign Origin cannot read
+    // it even with a borrowed cookie. Rate-limited like every other read: the
+    // payload is ~100 KB and there is no reason to serve it in a loop.
+    if (path === '/api/ratebook' && request.method === 'GET') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handleRatebook(request, env);
+    }
+
+    // 10b. HEALTH PROBE
     if (path === '/api/health' && request.method === 'GET') {
       return json({ ok: true, status: 'ok', app: 'my-manager', time: new Date().toISOString() });
     }

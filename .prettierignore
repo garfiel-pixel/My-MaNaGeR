@@ -43,7 +43,11 @@ mcp/fixtures/
 # the file from 101 KB to 166 KB (15.9 KB to 17.9 KB gzipped) for no change in
 # behaviour, and the owner asked for the calculator to stay quick on a slow
 # connection - so it stays compact and out of the style gate.
+#
+# 2026-10-25 (RB-1): the same generated book now lands at src/data/ratebook.js
+# (a Worker module, not a public browser file), so the exclusion follows it.
 js/jic-rates-full.js
+src/data/ratebook.js
 
 # ---- CI-generated artifacts (not source) --------------------------------
 # The gitleaks step runs BEFORE this gate and writes its SARIF report into the

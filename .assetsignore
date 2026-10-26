@@ -83,3 +83,11 @@ CODEOWNERS
 # the repo's own robots.txt is 530 bytes and was never served.
 !robots.txt
 # 2026-10-24 (T-6): the monolith reference snippet excluded from deploy - see CONTINUATION-DIRECTIVE-2026-10-24.md
+# 2026-10-25 (RB-1, REFINEMENT-DIRECTIVE-2026-10-24 3.4): no PDF is a served
+# asset. The publisher's rate-book PDF used to sit in the repo root and the
+# upload served it to anyone (live probe: 200, 18,820 bytes). It now lives in
+# docs/private/ (already excluded via `docs`), and this rule means a future
+# PDF dropped anywhere in the repo cannot become a public download either.
+# worker.js also refuses *.pdf at the root via PRIVATE_ROOT_EXT - belt and
+# braces, because .assetsignore is what the upload honours.
+*.pdf

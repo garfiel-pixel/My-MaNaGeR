@@ -65,25 +65,31 @@ must get the audit's own state check (rule 0.1) before anyone claims it.
 
 ## NEXT SESSION STARTING POINT (max 15 lines)
 
-1. Read this file, then `AUDIT-DIRECTIVE-2026-10-18.md`. SPRINT 1 is DONE - work the
-   open S2/S3 remainder named in the registry (C6, C7, X-1/X-2/X-4, INP, arch survey).
-2. Run `npm run verify` first; baseline 2026-10-24: EVERYTHING green (exit 0,
-   registry 119/119, qa-full 187/187, sw shell v463).
-3. Working tree was CLEAN at the 2026-10-23 session start - Part H landed in
-   4c012b7/b98ebde on 10-19 to 10-21, so the old "20 modified files" warning is
-   void and audit task P1 is unblocked.
-4. Tripwires T1-T8: `tools/verify-{units,export,currency,print-dom,
-   no-weak-random,doc-size}.cjs` all exit 0 (there is NO verify-gantt-export.cjs -
-   export coverage is verify-export.cjs plus the G gates in qa-v11). The
-   `tools/qa-inp.cjs` tripwire is EXTENDED: run it locally, its baseline is
-   deliberately over budget until X-1/X-2 land.
-5. Kill-switch flags go in `js/mmgr-state.js` flags block before each risky change (audit 11).
-6. Every C, G, S, X task ends with its GATE output pasted into the sprint log entry.
+1. Read this file, then `REFINEMENT-DIRECTIVE-2026-10-24.md`. WAVE D IS DONE
+   (commit bab284d). Wave E is in progress: LAND-1, LAND-2 and the rate book
+   rebrand shipped (431260c, 3a3b55c). Work Wave E in listed order from MAT-1.
+2. Run `npm run verify` first; baseline 2026-10-26: EVERYTHING green (exit 0,
+   registry 127/127, sw shell v477).
+3. FIRST TASK IS MAT-1 (itemised materials). Drywall first, then Appendix A.
+   Add `ACCESSORIES`, keep the default OFF so every golden case holds, and pass
+   the +-15 percent reconciliation gate before adding a second family.
+4. Then MAT-2/MAT-3, AI-3, GANTT-1, the UI-4 bar measurement, SW-8/12/14, then
+   Wave F (AI-1, AI-2 spike, APP-3, SW-10).
+5. Every new harness needs THREE edits: the harness, its row in
+   docs/CI-TEST-COVERAGE.md, and a step in `.github/workflows/ci.yml` (or the
+   extended battery). The registry doc alone does not run it.
+6. Kill switches live in the `js/mmgr-state.js` flags block. Flip one rather
+   than reverting logic.
 7. Commits: plain Conventional Commits, small, per task. No AI attribution, no emoji.
 8. Deploy only from `$HOME/mmgr-deploy` after CI is green; live-probe `mymanagerworkspace.com`.
 9. Rewrite `reflection.txt` (last session only) and add `docs/history/log-2026-10.md` at end.
 
 ## STATUS LOG (newest entries kept here; full history in `docs/history/log-YYYY-MM.md`)
+
+- 2026-10-26 (x1): WAVE D CLOSED + Wave E started. RISK-1/EXP-1 watchers with
+  one shared projectedFinish (bab284d); LAND-1 ghost dot rail + LAND-2 continuous
+  globe (431260c); rate book renamed and gated (3a3b55c). verify green, registry
+  127/127, sw v477. MAT-1 onward still open. Full text in log-2026-10.md.
 
 Newest verbatim entries kept: 2026-10-24 (x3). One-line rollup of the next
 older entries (full text in `docs/history/log-2026-10.md` / `log-2026-09.md`):

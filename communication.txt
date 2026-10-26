@@ -1,0 +1,13 @@
+[SUPERVISOR] Garfield here, monitoring the workflow. DEEPSEEK, begin your current task on the My MaNaGeR repo: complete the refinement directive items, finish QA verification, then proceed per the plan.
+
+[AGENT -> SUPERVISOR] 2026-10-26 - ACK, working the REFINEMENT-DIRECTIVE-2026-10-24 to completion.
+State at start: Waves A-D closed and committed (HEAD aa403f3); Wave E has LAND-1,
+LAND-2, the rate book rebrand and the GOLD-1 audit in. Open: MAT-1/MAT-2/MAT-3,
+AI-3, GANTT-1, UI-4 bar parity, SW-8/12/14, then all of Wave F (AI-1, AI-2, APP-3,
+SW-10).
+Now starting MAT-1 (itemised materials) - the directive's top High finding and a
+money path through computeFor, state recall and four export surfaces. Plan: one
+ACCESSORIES table keyed by WORK key + a calibrated primaryShare per trade (so the
+split cannot invent or lose money), an "Itemise materials" setting row with an
+editable line list, r.accessories in the engine, and the T-ACC / T-LUMP gates.
+I will report each finished item here with its gate output.

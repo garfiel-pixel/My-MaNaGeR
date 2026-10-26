@@ -10719,6 +10719,138 @@ html.mmgr-tour-active .bcp-tour-nudge {
   outline-offset: 2px;
   border-radius: 4px;
 }
+/* ---- MAT-1 (REFINEMENT-DIRECTIVE-2026-10-24): THE ITEMISED MATERIAL LIST --
+   One row per material line inside the Itemise materials drawer: the line's own
+   switch, its name (and where the allowance comes from), the quantity, the
+   unit, the price and the money the line adds. The grid keeps the boxes under
+   their headings on a wide screen and stacks them on a phone, where a six
+   column row would be unreadable. */
+.acc-list {
+  display: grid;
+  gap: 2px;
+}
+.acc-row {
+  display: grid;
+  grid-template-columns: auto minmax(120px, 1.6fr) 84px 46px 96px 92px auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+}
+.acc-row:first-child {
+  border-top: 0;
+}
+.acc-row.is-off .acc-name,
+.acc-row.is-off .acc-unit,
+.acc-row.is-off .acc-line {
+  opacity: 0.65;
+}
+.acc-name {
+  display: block;
+  min-width: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.acc-src,
+.acc-none {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--slate);
+  opacity: 0.82;
+  line-height: 1.4;
+}
+.acc-none {
+  margin: 0;
+  padding: 6px 0;
+}
+.acc-unit {
+  font-size: 0.78rem;
+  color: var(--slate);
+}
+.acc-qty,
+.acc-price,
+.acc-name-in,
+.acc-unit-in {
+  min-width: 0;
+  width: 100%;
+}
+.acc-line {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  text-align: right;
+}
+.acc-btns {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+/* A small switch for a line: the app's OWN .tgl component (rule 1.4: reference
+   the component, never invent a second one), scaled down because it sits inside
+   a row rather than on one. The knob is .tsl::before, as everywhere else. */
+.tgl-sm {
+  width: 30px;
+  height: 18px;
+}
+.tgl-sm .tsl::before {
+  width: 12px;
+  height: 12px;
+}
+.tgl-sm input:checked + .tsl::before {
+  transform: translateX(12px);
+}
+@media (max-width: 640px) {
+  .acc-row {
+    grid-template-columns: auto minmax(0, 1fr) 74px 40px;
+    grid-template-areas:
+      'sw name name name'
+      '. qty unit price'
+      '. line line del';
+  }
+  .acc-row > .tgl {
+    grid-area: sw;
+  }
+  .acc-row > .acc-name,
+  .acc-row > .acc-name-in {
+    grid-area: name;
+  }
+  .acc-row > .acc-qty {
+    grid-area: qty;
+  }
+  .acc-row > .acc-unit,
+  .acc-row > .acc-unit-in {
+    grid-area: unit;
+  }
+  .acc-row > .acc-price {
+    grid-area: price;
+  }
+  .acc-row > .acc-line {
+    grid-area: line;
+    text-align: left;
+  }
+  .acc-row > .acc-del {
+    grid-area: del;
+  }
+}
+/* The material lines on the estimate: indented under the material row, in the
+   quieter voice of a breakdown, and they PRINT with the sheet (the card is what
+   the print stylesheet shows). */
+.calc-acc-lines {
+  margin: -2px 0 4px;
+  padding-left: 10px;
+  border-left: 2px solid var(--border);
+}
+.calc-line-acc {
+  font-size: 0.86rem;
+  padding: 2px 0;
+}
+.calc-acc-detail {
+  color: var(--slate);
+  font-size: 0.78rem;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .set-more {
     transition: none;

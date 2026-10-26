@@ -405,7 +405,18 @@
 // js/mmgr-perf.js, js/mmgr-glass.js, js/marketing.js, js/marketing-globe.js,
 // js/mmgr-combobox.js (new), dist/marketing-bundle.js. No inline script block
 // changed, so the CSP hashes are untouched.
-const CACHE = 'mmgr-shell-v477';
+const CACHE = 'mmgr-shell-v478';
+
+// v478 - MAT-1: ITEMISED MATERIALS (REFINEMENT-DIRECTIVE-2026-10-24 section 4).
+// The material rate of a trade was ONE number the user could not see into
+// ("Boards, studs, tape, screws"). The calculator now carries a per-trade
+// accessory table the "Itemise materials" setting row splits: the main material
+// keeps a calibrated share of the rate and every line (studs, mud, tape,
+// screws, and the user's own) is added at its own derived quantity and editable
+// price. Off is exactly the pricing that shipped before. Changed shell assets:
+// calculator.html (the row + its drawer, css/js busters), js/calculator-page.js
+// (the table, the engine split, the drawer, the exports), css/mmgr.css. No
+// inline script block changed, so the CSP hashes are untouched.
 
 // v432 - PART I PHASE 2: THE JIC PICKER (2026-10-17). One work item (the new
 // 'JIC rate book' choice on calculator.html) prices ANY shipped book row as

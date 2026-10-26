@@ -28,7 +28,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" href="images/mpw-icon.png">
 <link rel="apple-touch-icon" href="images/mpw-icon.png">
-<link rel="stylesheet" href="dist/mmgr.min.css?v=36">
+<link rel="stylesheet" href="dist/mmgr.min.css?v=37">
 <script src="js/mmgr-theme.js" data-sync="1"></script>
 <script src="js/mmgr-perf-boot.js" data-sync="1"></script>
 </head>
@@ -458,6 +458,35 @@
           <span class="set-hint" id="calc-labour-only-hint">Prices the work only. Materials get their own list.</span>
         </label>
         <label class="tgl"><input type="checkbox" id="calc-labour-only" role="switch" aria-describedby="calc-labour-only-hint"><span class="tsl"></span></label>
+      </div>
+
+      <!-- MAT-1 (REFINEMENT-DIRECTIVE-2026-10-24): ITEMISED MATERIALS. The
+           material rate of a trade covers several things the user cannot see
+           ("Boards, studs, tape, screws"). With this switch on, that rate is
+           split: the main material keeps its share of the rate and every
+           accessory line is added at its own quantity and price, each one
+           editable. Off is exactly the pricing this page has always done. -->
+      <div class="set-row" id="row-itemise">
+        <label class="set-txt" for="calc-itemise">
+          <span class="set-name">Itemise materials</span>
+          <span class="set-hint" id="calc-itemise-hint">Split the material rate into the main material plus the things it covers - studs, tape, screws - and your own lines.</span>
+        </label>
+        <label class="tgl"><input type="checkbox" id="calc-itemise" data-action="calcItemise" role="switch" aria-describedby="calc-itemise-hint" aria-controls="row-itemise-more" aria-expanded="false"><span class="tsl"></span></label>
+        <div class="set-more" id="row-itemise-more">
+          <div class="set-more-in">
+            <div class="set-more-pad">
+              <div id="calc-acc-list" class="acc-list" role="group" aria-label="Material lines for this work item"></div>
+              <div class="set-foot">
+                <span class="set-total" id="calc-acc-total" role="status"></span>
+                <span class="acc-btns">
+                  <button type="button" class="set-reset" data-action="calcAccAdd">Add my own item</button>
+                  <button type="button" class="set-reset" data-action="calcAccReset">Reset to the planning allowances</button>
+                </span>
+              </div>
+              <p class="set-hint" id="calc-acc-note"></p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="bcp-rates-head">
@@ -932,7 +961,7 @@
 <script src="js/mmgr-glass.js?v=2"></script>
 <script src="js/xlsx-lite.js?v=1"></script>
 <script src="js/mmgr-combobox.js?v=1"></script>
-<script src="js/calculator-page.js?v=45"></script>
+<script src="js/calculator-page.js?v=46"></script>
 <script src="js/calc-ai.js?v=10"></script>
 <!-- AUDIT 2026-10-18 M-5: keyboard shortcuts + the shortcut sheet.
      Its own script tag (not in the bundle) so the CSP inline-script

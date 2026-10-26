@@ -412,7 +412,13 @@ function absolutizeChrome(p) {
           dayRateStr: c.dayRate,
           _matModel: c.matModel,
           _labModel: c.labModel,
-          _allInModel: c.allInModel
+          _allInModel: c.allInModel,
+          // MAT-1: an itemised-material case pins the switch and its store, so
+          // the split itself has a hand-calculated expectation on record. A case
+          // without them prices the lump, exactly as it did before MAT-1.
+          matMode: c.matMode,
+          acc: c.acc,
+          _accFx: c.matMode === 'items' ? 1 : undefined
         };
         const r = window.__calcEngine.computeFor(st);
         if (!r) {
@@ -434,6 +440,10 @@ function absolutizeChrome(p) {
           allInCost: r.allInCost,
           days: r.days,
           allIn: r.allIn,
+          // MAT-1: the itemised part of the material money, so a case can pin it.
+          accessories: r.accessories.length,
+          accTotal: r.accTotal,
+          accUnpriced: r.accUnpriced,
           dayBasis: r.dayBasis,
           labourOnly: r.labourOnly,
           bookFilled: r.bookFilled,
@@ -469,6 +479,15 @@ function absolutizeChrome(p) {
     }
     if (e.onCost != null && !near(r.onCost, e.onCost, 1)) {
       parts.push('onCost ' + r.onCost + ' != ' + e.onCost);
+    }
+    if (e.accessories != null && r.accessories !== e.accessories) {
+      parts.push('material lines ' + r.accessories + ' != ' + e.accessories);
+    }
+    if (e.accTotal != null && !near(r.accTotal, e.accTotal, 1)) {
+      parts.push('accTotal ' + r.accTotal + ' != ' + e.accTotal);
+    }
+    if (e.accUnpriced != null && r.accUnpriced !== e.accUnpriced) {
+      parts.push('accUnpriced ' + r.accUnpriced + ' != ' + e.accUnpriced);
     }
     if (e.allInCost != null && !near(r.allInCost, e.allInCost, 1)) {
       parts.push('allInCost ' + r.allInCost + ' != ' + e.allInCost);

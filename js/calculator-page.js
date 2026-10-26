@@ -1133,6 +1133,1812 @@
     }
   };
 
+  // ---- MAT-1 (REFINEMENT-DIRECTIVE-2026-10-24): ITEMISED MATERIALS ------
+  // The owner asked the drywall question: the lump material rate for a trade
+  // covers several things ("Boards, studs, tape, screws") and the user cannot
+  // see or edit them. This is the per-trade list the "Itemise materials"
+  // setting row splits that lump into.
+  //
+  // EVERY quantity is an allowance per ONE unit of the priced work (m2, m3, m
+  // or each, per the trade), so the split reconciles at any size the user
+  // types - which is what the T-ACC gate proves. `rule.per` supports
+  // `perimeter` (the run around typed dims), `piece` (the count of a size)
+  // and `fixed` (a whole-job line) for a trade that needs them; the shipped
+  // allowances are all per-unit for the reason above.
+  //
+  // Prices are PLANNING ALLOWANCES in US dollars - the same currency the model
+  // rates are quoted in (rule N3: never charge USD as local money; with no
+  // exchange rate the price shows blank and the line is not priced).
+  // `primaryShare` is DERIVED, never guessed: it is 1 minus the accessory cost
+  // per unit over the trade rate, so the itemised total equals the lump at the
+  // default prices and the split can neither invent nor lose money.
+  const ACCESSORIES = {
+    slab: {
+      refLump: 150, // the material rate per priced unit this split was calibrated against
+      unit: 'm3',
+      primary: 'Ready-mix concrete',
+      primaryShare: 0.852,
+      items: [
+        {
+          id: 'mesh',
+          name: 'Steel mesh in the slab',
+          unit: 'kg',
+          rule: { per: 'area', qty: 14 },
+          waste: 5,
+          usd: 0.85,
+          src: 'planning: A142 mesh is about 2.2 kg per m2; a 150 mm slab carries 14 kg per m3'
+        },
+        {
+          id: 'barrier',
+          name: 'Vapour barrier under the slab',
+          unit: 'm2',
+          rule: { per: 'area', qty: 6.7 },
+          waste: 10,
+          usd: 0.55,
+          src: 'planning: one m2 of membrane per 0.15 m of slab depth'
+        },
+        {
+          id: 'spacers',
+          name: 'Mesh spacers and chairs',
+          unit: 'each',
+          rule: { per: 'area', qty: 12 },
+          waste: 5,
+          usd: 0.06,
+          src: 'planning: chairs at about one per m2 of mesh'
+        },
+        {
+          id: 'curing',
+          name: 'Curing compound',
+          unit: 'L',
+          rule: { per: 'area', qty: 1 },
+          waste: 5,
+          usd: 3.2,
+          src: 'planning: 0.15 L per m2 of exposed surface'
+        },
+        {
+          id: 'joint',
+          name: 'Expansion joint and sealant',
+          unit: 'm',
+          rule: { per: 'area', qty: 0.4 },
+          waste: 5,
+          usd: 3.5,
+          src: 'planning: joints at 4 to 6 m of slab'
+        }
+      ]
+    },
+    'concrete-drive': {
+      refLump: 145, // the material rate per priced unit this split was calibrated against
+      unit: 'm3',
+      primary: 'Concrete',
+      primaryShare: 0.85,
+      items: [
+        {
+          id: 'mesh',
+          name: 'Steel mesh in the drive',
+          unit: 'kg',
+          rule: { per: 'area', qty: 14 },
+          waste: 5,
+          usd: 0.85,
+          src: 'planning: A142 mesh over the whole drive'
+        },
+        {
+          id: 'barrier',
+          name: 'Vapour barrier',
+          unit: 'm2',
+          rule: { per: 'area', qty: 5.5 },
+          waste: 10,
+          usd: 0.55,
+          src: 'planning: one m2 of membrane per 0.18 m of depth'
+        },
+        {
+          id: 'spacers',
+          name: 'Mesh spacers and chairs',
+          unit: 'each',
+          rule: { per: 'area', qty: 12 },
+          waste: 5,
+          usd: 0.06,
+          src: 'planning: chairs at about one per m2 of mesh'
+        },
+        {
+          id: 'curing',
+          name: 'Curing compound',
+          unit: 'L',
+          rule: { per: 'area', qty: 1 },
+          waste: 5,
+          usd: 3.2,
+          src: 'planning: 0.15 L per m2 of surface'
+        },
+        {
+          id: 'joint',
+          name: 'Expansion joints and sealant',
+          unit: 'm',
+          rule: { per: 'area', qty: 0.5 },
+          waste: 5,
+          usd: 3.5,
+          src: 'planning: saw cuts and joints at 4 m centres'
+        }
+      ]
+    },
+    footings: {
+      refLump: 155, // the material rate per priced unit this split was calibrated against
+      unit: 'm3',
+      primary: 'Concrete and the rebar cage',
+      primaryShare: 0.871,
+      items: [
+        {
+          id: 'mesh',
+          name: 'Mesh and linking steel',
+          unit: 'kg',
+          rule: { per: 'area', qty: 8 },
+          waste: 5,
+          usd: 0.85,
+          src: 'planning: about 8 kg per m3 of footing'
+        },
+        {
+          id: 'chairs',
+          name: 'Chairs and spacers',
+          unit: 'each',
+          rule: { per: 'area', qty: 10 },
+          waste: 5,
+          usd: 0.06,
+          src: 'planning: chairs at about one per m2 of concrete face'
+        },
+        {
+          id: 'curing',
+          name: 'Curing compound',
+          unit: 'L',
+          rule: { per: 'area', qty: 1 },
+          waste: 5,
+          usd: 3.2,
+          src: 'planning: 0.15 L per m2 of exposed surface'
+        },
+        {
+          id: 'backfill',
+          name: 'Sand blinding and backfill',
+          unit: 'm3',
+          rule: { per: 'area', qty: 0.3 },
+          waste: 5,
+          usd: 28,
+          src: 'planning: a 50 mm blinding layer under the footing'
+        }
+      ]
+    },
+    blockwall: {
+      refLump: 22, // the material rate per priced unit this split was calibrated against
+      unit: 'm2',
+      primary: 'Blocks and the laying',
+      primaryShare: 0.711,
+      items: [
+        {
+          id: 'mortar',
+          name: 'Mortar - cement and sand',
+          unit: 'm3',
+          rule: { per: 'area', qty: 0.02 },
+          waste: 10,
+          usd: 140,
+          src: 'planning: 0.02 m3 of mortar per m2 of blockwork'
+        },
+        {
+          id: 'ties',
+          name: 'Wall ties',
+          unit: 'each',
+          rule: { per: 'area', qty: 5 },
+          waste: 5,
+          usd: 0.09,
+          src: 'planning: ties at 450 mm centres each way'
+        },
+        {
+          id: 'ladder',
+          name: 'Horizontal reinforcement (ladder)',
+          unit: 'm',
+          rule: { per: 'area', qty: 2.2 },
+          waste: 5,
+          usd: 0.35,
+          src: 'planning: ladder every second course'
+        },
+        {
+          id: 'corefill',
+          name: 'Fill concrete for cores',
+          unit: 'm3',
+          rule: { per: 'area', qty: 0.004 },
+          waste: 5,
+          usd: 200,
+          src: 'planning: cores filled at jambs, corners and fixing points'
+        },
+        {
+          id: 'lintels',
+          name: 'Lintels over openings',
+          unit: 'm',
+          rule: { per: 'area', qty: 0.12 },
+          waste: 5,
+          usd: 8,
+          src: 'planning: one lintel per opening across the wall run'
+        },
+        {
+          id: 'dpc',
+          name: 'Damp-proof course',
+          unit: 'm',
+          rule: { per: 'area', qty: 0.15 },
+          waste: 5,
+          usd: 1.2,
+          src: 'planning: one course of DPC at damp level'
+        }
+      ]
+    },
+    brickwall: {
+      refLump: 34, // the material rate per priced unit this split was calibrated against
+      unit: 'm2',
+      primary: 'Bricks and the laying',
+      primaryShare: 0.815,
+      items: [
+        {
+          id: 'mortar',
+          name: 'Mortar - cement and sand',
+          unit: 'm3',
+          rule: { per: 'area', qty: 0.03 },
+          waste: 10,
+          usd: 140,
+          src: 'planning: 0.03 m3 of mortar per m2 of brickwork'
+        },
+        {
+          id: 'ties',
+          name: 'Wall ties',
+          unit: 'each',
+          rule: { per: 'area', qty: 5 },
+          waste: 5,
+          usd: 0.09,
+          src: 'planning: ties at 450 mm centres each way'
+        },
+        {
+          id: 'dpc',
+          name: 'Damp-proof course',
+          unit: 'm',
+          rule: { per: 'area', qty: 0.15 },
+          waste: 5,
+          usd: 1.2,
+          src: 'planning: one course of DPC at damp level'
+        },
+        {
+          id: 'lintels',
+          name: 'Lintels over openings',
+          unit: 'm',
+          rule: { per: 'area', qty: 0.12 },
+          waste: 5,
+          usd: 8,
+          src: 'planning: one lintel per opening across the wall run'
+        }
+      ]
+    },
+    framing: {
+      refLump: 19, // the material rate per priced unit this split was calibrated against
+      unit: 'm2',
+      primary: 'Studs and plates',
+      primaryShare: 0.47,
+      items: [
+        {
+          id: 'sheathing',
+          name: 'Sheathing boards',
+          unit: 'm2',
+          rule: { per: 'area', qty: 1.05 },
+          waste: 5,
+          usd: 6.8,
+          src: 'planning: one m2 of sheathing per m2 of wall'
+        },
+        {
+          id: 'nails',
+          name: 'Nails and screws',
+          unit: 'kg',
+          rule: { per: 'area', qty: 0.12 },
+          waste: 5,
+          usd: 4.5,
+          src: 'planning: about 0.12 kg of fixings per m2'
+        },
+        {
+          id: 'straps',
+          name: 'Hurricane straps',
+          unit: 'each',
+          rule: { per: 'area', qty: 0.6 },
+          waste: 5,
+          usd: 1.4,
+          src: 'planning: straps at each rafter and stud intersection'
+        },
+        {
+          id: 'anchor',
+          name: 'Anchor bolts',
+          unit: 'each',
+          rule: { per: 'area', qty: 0.25 },
+          waste: 5,
+          usd: 1.1,
+          src: 'planning: bolts at 1.2 m centres along the plate'
+        },
+        {
+          id: 'plate',
+          name: 'Treated bottom plate',
+          unit: 'm',
+          rule: { per: 'area', qty: 0.25 },
+          waste: 5,
+          usd: 3.2,
+          src: 'planning: a treated plate under the run'
+        }
+      ]
+    },
+    rebar: {
+      refLump: 950, // the material rate per priced unit this split was calibrated against
+      unit: 't',
+      primary: 'Reinforcing bar',
+      primaryShare: 0.933,
+      items: [
+        {
+          id: 'wire',
+          name: 'Tie wire',
+          unit: 'kg',
+          rule: { per: 'area', qty: 9 },
+          waste: 5,
+          usd: 1.4,
+          src: 'planning: about 9 kg of wire per tonne of bar'
+        },
+        {
+          id: 'chairs',
+          name: 'Chairs and spacers',
+          unit: 'each',
+          rule: { per: 'area', qty: 60 },
+          waste: 5,
+          usd: 0.35,
+          src: 'planning: chairs at about 1 per m2 of steel'
+        },
+        {
+          id: 'primer',
+          name: 'Anti-rust primer',
+          unit: 'L',
+          rule: { per: 'area', qty: 6 },
+          waste: 5,
+          usd: 4.5,
+          src: 'planning: primer for cut ends and exposed steel'
+        }
+      ]
+    },
+    roof: {
+      refLump: 26, // the material rate per priced unit this split was calibrated against
+      unit: 'm2',
+      primary: 'Roof sheets',
+      primaryShare: 0.843,
+      items: [
+        {
+          id: 'underlay',
+          name: 'Underlayment or felt',
+          unit: 'm2',
+          rule: { per: 'area', qty: 1.05 },
+          waste: 5,
+          usd: 1.1,
+          src: 'planning: one m2 of felt per m2 of roof'
+        },
+        {
+          id: 'fixings',
+          name: 'Fixings and washers',
+          unit: 'each',
+          rule: { per: 'area', qty: 12 },
+          waste: 5,
+          usd: 0.09,
+          src: 'planning: fasteners at about 12 per m2 of sheet'
+        },
+        {
+          id: 'flashing',
+          name: 'Flashing and trim',
+          unit: 'm',
+          rule: { per: 'area', qty: 0.35 },
+          waste: 5,
+          usd: 3.4,
+          src: 'planning: flashings at ridges, valleys and abutments'
+        },
+        {
+          id: 'ridge',
+          name: 'Ridge caps',
+          unit: 'm',
+          rule: { per: 'area', qty: 0.06 },
+          waste: 5,
+          usd: 4.5,
+          src: 'planning: ridge caps along the ridge line'
+        },
+        {
+          id: 'sealant',
+          name: 'Sealant',
+          unit: 'L',
+          rule: { per: 'area', qty: 0.03 },
+          waste: 5,
+          usd: 6,
+          src: 'planning: sealant at laps and fixings'
+        }
+      ]
+    },
+    'shingle-roof': {
+      refLump: 250, // the material rate per priced unit this split was calibrated against
+      unit: 'm2',
+      primary: 'Asphalt shingles',
+      primaryShare: 0.984,
+      items: [
+        {
+          id: 'underlay',
+          name: 'Underlayment or felt',
+          unit: 'm2',
+          rule: { per: 'area', qty: 1.05 },
+          waste: 5,
+          usd: 1.4,
+          src: 'planning: one m2 of felt per m2 of roof'
+        },
+        {
+          id: 'starter',
+          name: 'Starter strip',
+          unit: 'm',
+          rule: { per: 'area', qty: 0.3 },
+          waste: 5,
+          usd: 3,
+          src: 'planning: starter course along the eaves'
+        },
+        {
+          id: 'ridge',
+          name: 'Ridge caps',
+          unit: 'm',
+          rule: { per: 'area', qty: 0.06 },
+          waste: 5,
+          usd: 4.5,
+          src: 'planning: ridge caps along the ridge line'
+        },
+        {
+          id: 'fixings',
+          name: 'Roofing nails',
+          unit: 'kg',
+          rule: { per: 'area', qty: 0.12 },
+          waste: 5,
+          usd: 4.5,
+          src: 'planning: nails at about 0.12 kg per m2'
+        },
+        {
+          id: 'drip',
+          name: 'Drip edge',
+          unit: 'm',
+          rule: { per: 'area', qty: 0.35 },
+          waste: 5,
+          usd: 1.8,
+          src: 'planning: drip edge at eaves and gables'
+        }
+      ]
+    },
+    render: {
+      refLump: 11, // the material rate per priced unit this split was calibrated against
+      unit: 'm2',
+      primary: 'Render mix',
+      primaryShare: 0.858,
+      items: [
+        {
+          id: 'beads',
+          name: 'Beads and stops',
+          unit: 'm',
+          rule: { per: 'area', qty: 0.12 },
+          waste: 5,
+          usd: 0.8,
+          src: 'planning: beads at corners, returns and stops'
+        },
+        {
+          id: 'primer',
+          name: 'Bonding primer',
+          unit: 'L',
+          rule: { per: 'area', qty: 0.15 },
+          waste: 5,
+          usd: 2.4,
+          src: 'planning: primer over the whole backing'
+        },
+        {
+          id: 'mesh',
+          name: 'Reinforcing mesh',
+          unit: 'm2',
+          rule: { per: 'area', qty: 0.15 },
+          waste: 5,
+          usd: 1.6,
+          src: 'planning: mesh on junctions and changes of material'
+        },
+        {
+          id: 'bags',
+          name: 'Bagged sand and cement',
+          unit: 'bag',
+          rule: { per: 'area', qty: 0.08 },
+          waste: 10,
+          usd: 6.5,
+          src: 'planning: bagged mix for patching and small areas'
+        },
+        {
+          id: 'scaffold',
+          name: 'Scaffold allowance',
+          unit: 'm2',
+          rule: { per: 'area', qty: 0.1 },
+          waste: 5,
+          usd: 2.5,
+          src: 'planning: a scaffold allowance above 2.5 m'
+        }
+      ]
+    },
+    drywall: {
+      refLump: 12, // the material rate per priced unit this split was calibrated against
+      unit: 'm2',
+      primary: 'Plasterboards',
+      primaryShare: 0.733,
+      items: [
+        {
+          id: 'studs',
+          name: 'Metal studs and track',
+          unit: 'm',
+          rule: { per: 'area', qty: 1.3 },
+          waste: 5,
+          usd: 1.05,
+          src: 'planning: studs at 0.6 m centres with track top and bottom'
+        },
+        {
+          id: 'compound',
+          name: 'Joint compound (mud)',
+          unit: 'L',
+          rule: { per: 'area', qty: 0.45 },
+          waste: 10,
+          usd: 2.6,
+          src: 'planning: three coats over the taped joints'
+        },
+        {
+          id: 'tape',
+          name: 'Joint tape',
+          unit: 'm',
+          rule: { per: 'area', qty: 0.4 },
+          waste: 10,
+          usd: 0.06,
+          src: 'planning: tape over every joint'
+        },
+        {
+          id: 'screws',
+          name: 'Drywall screws',
+          unit: 'each',
+          rule: { per: 'area', qty: 14 },
+          waste: 5,
+          usd: 0.018,
+          src: 'planning: screws at about 1 per 0.02 m2 of board'
+        },
+        {
+          id: 'bead',
+          name: 'Corner bead',
+          unit: 'm',
+          rule: { per: 'area', qty: 0.18 },
+          waste: 5,
+          usd: 0.85,
+          src: 'planning: bead at every external corner'
+        }
+      ]
+    },
+    ceiling: {
+      refLump: 55, // the material rate per priced unit this split was calibrated against
+      unit: 'm2',
+      primary: 'Ceiling tiles',
+      primaryShare: 0.933,
+      items: [
+        {
+          id: 'tees',
+          name: 'Main and cross tees',
+          unit: 'm',
+          rule: { per: 'area', qty: 1.6 },
+          waste: 5,
+          usd: 1.4,
+          src: 'planning: a 600 x 600 grid carries 1.6 m of tee per m2'
+        },
+        {
+          id: 'hangers',
+          name: 'Hangers and fixings',
+          unit: 'each',
+          rule: { per: 'area', qty: 0.8 },
+          waste: 5,
+          usd: 1.2,
+          src: 'planning: hangers at 1.2 m centres'
+        },
+        {
+          id: 'angle',
+          name: 'Perimeter angle',
+          unit: 'm',
+          rule: { per: 'area', qty: 0.35 },
+          waste: 5,
+          usd: 0.9,
+          src: 'planning: wall angle around the perimeter'
+        }
+      ]
+    },
+    fencing: {
+      refLump: 23.4, // the material rate per priced unit this split was calibrated against
+      unit: 'm',
+      primary: 'Chain-link mesh',
+      primaryShare: 0.642,
+      items: [
+        {
+          id: 'posts',
+          name: 'Fence posts',
+          unit: 'each',
+          rule: { per: 'area', qty: 0.35 },
+          waste: 5,
+          usd: 9,
+          src: 'planning: posts at about 2.8 m centres'
+        },
+        {
+          id: 'concrete',
+          name: 'Concrete backfill',
+          unit: 'm3',
+          rule: { per: 'area', qty: 0.02 },
+          waste: 5,
+          usd: 150,
+          src: 'planning: a 0.02 m3 collar per post'
+        },
+        {
+          id: 'wire',
+          name: 'Tie wire',
+          unit: 'kg',
+          rule: { per: 'area', qty: 0.05 },
+          waste: 5,
+          usd: 1.4,
+          src: 'planning: wire for tying mesh to posts'
+        },
+        {
+          id: 'gate',
+          name: 'Gate and hardware allowance',
+          unit: 'each',
+          rule: { per: 'area', qty: 0.01 },
+          waste: 5,
+          usd: 180,
+          src: 'planning: one gate per 100 m of run'
+        }
+      ]
+    },
+    'pipe-supply': {
+      refLump: 3, // the material rate per priced unit this split was calibrated against
+      unit: 'm',
+      primary: 'Pipe',
+      primaryShare: 0.837,
+      items: [
+        {
+          id: 'fittings',
+          name: 'Fittings and elbows',
+          unit: 'each',
+          rule: { per: 'area', qty: 0.3 },
+          waste: 5,
+          usd: 0.9,
+          src: 'planning: fittings at about one per 3 m of run'
+        },
+        {
+          id: 'cement',
+          name: 'Solvent cement',
+          unit: 'L',
+          rule: { per: 'area', qty: 0.005 },
+          waste: 5,
+          usd: 8,
+          src: 'planning'
+        },
+        {
+          id: 'primer',
+          name: 'Solvent primer',
+          unit: 'L',
+          rule: { per: 'area', qty: 0.005 },
+          waste: 5,
+          usd: 7,
+          src: 'planning'
+        },
+        {
+          id: 'clips',
+          name: 'Pipe clips and hangers',
+          unit: 'each',
+          rule: { per: 'area', qty: 0.5 },
+          waste: 5,
+          usd: 0.25,
+          src: 'planning: clips at about 1 m centres'
+        }
+      ]
+    },
+    'pipe-drain': {
+      refLump: 3, // the material rate per priced unit this split was calibrated against
+      unit: 'm',
+      primary: 'Pipe',
+      primaryShare: 0.785,
+      items: [
+        {
+          id: 'fittings',
+          name: 'Fittings and bends',
+          unit: 'each',
+          rule: { per: 'area', qty: 0.35 },
+          waste: 5,
+          usd: 1.1,
+          src: 'planning: fittings at about one per 3 m of run'
+        },
+        {
+          id: 'cement',
+          name: 'Solvent cement',
+          unit: 'L',
+          rule: { per: 'area', qty: 0.006 },
+          waste: 5,
+          usd: 8,
+          src: 'planning'
+        },
+        {
+          id: 'primer',
+          name: 'Solvent primer',
+          unit: 'L',
+          rule: { per: 'area', qty: 0.006 },
+          waste: 5,
+          usd: 7,
+          src: 'planning'
+        },
+        {
+          id: 'clips',
+          name: 'Pipe clips and brackets',
+          unit: 'each',
+          rule: { per: 'area', qty: 0.4 },
+          waste: 5,
+          usd: 0.35,
+          src: 'planning: a bracket every 1.5 m with fall'
+        }
+      ]
+    },
+    fixture: {
+      refLump: 130, // the material rate per priced unit this split was calibrated against
+      unit: 'each',
+      primary: 'Sanitary fixture',
+      primaryShare: 0.695,
+      items: [
+        {
+          id: 'trap',
+          name: 'Waste trap and fittings',
+          unit: 'each',
+          rule: { per: 'area', qty: 1 },
+          waste: 5,
+          usd: 18,
+          src: 'planning: one trap per fixture'
+        },
+        {
+          id: 'flex',
+          name: 'Flexible supply lines',
+          unit: 'each',
+          rule: { per: 'area', qty: 2 },
+          waste: 5,
+          usd: 9,
+          src: 'planning: hot and cold line per fixture'
+        },
+        {
+          id: 'sealant',
+          name: 'Silicone sealant',
+          unit: 'tube',
+          rule: { per: 'area', qty: 0.2 },
+          waste: 5,
+          usd: 6,
+          src: 'planning: one tube finishes several fixtures'
+        },
+        {
+          id: 'tape',
+          name: 'Thread tape',
+          unit: 'roll',
+          rule: { per: 'area', qty: 0.5 },
+          waste: 5,
+          usd: 1.2,
+          src: 'planning: tape on every threaded joint'
+        }
+      ]
+    },
+    'bath-rough': {
+      refLump: 500, // the material rate per priced unit this split was calibrated against
+      unit: 'each',
+      primary: 'Fixture set',
+      primaryShare: 0.682,
+      items: [
+        {
+          id: 'fittings',
+          name: 'Fittings and elbows',
+          unit: 'each',
+          rule: { per: 'area', qty: 12 },
+          waste: 5,
+          usd: 3.5,
+          src: 'planning: a full bathroom takes about 12 fittings'
+        },
+        {
+          id: 'dwv',
+          name: 'Drain-waste-vent pipe',
+          unit: 'm',
+          rule: { per: 'area', qty: 6 },
+          waste: 5,
+          usd: 3.2,
+          src: 'planning: about 6 m of DWV per bathroom'
+        },
+        {
+          id: 'traps',
+          name: 'Traps and wastes',
+          unit: 'each',
+          rule: { per: 'area', qty: 2 },
+          waste: 5,
+          usd: 18,
+          src: 'planning: a trap per fixture group'
+        },
+        {
+          id: 'valves',
+          name: 'Supply valves',
+          unit: 'each',
+          rule: { per: 'area', qty: 3 },
+          waste: 5,
+          usd: 14,
+          src: 'planning: isolation valves for the group'
+        },
+        {
+          id: 'hangers',
+          name: 'Hangers and clips',
+          unit: 'each',
+          rule: { per: 'area', qty: 10 },
+          waste: 5,
+          usd: 1.2,
+          src: 'planning: support at 1.5 m centres'
+        }
+      ]
+    },
+    'wire-point': {
+      refLump: 25, // the material rate per priced unit this split was calibrated against
+      unit: 'each',
+      primary: 'Socket, switch or light fitting',
+      primaryShare: 0.622,
+      items: [
+        {
+          id: 'box',
+          name: 'Box and pattress',
+          unit: 'each',
+          rule: { per: 'area', qty: 1 },
+          waste: 5,
+          usd: 2.8,
+          src: 'planning: one box per point'
+        },
+        {
+          id: 'cable',
+          name: 'Cable to the point',
+          unit: 'm',
+          rule: { per: 'area', qty: 6 },
+          waste: 5,
+          usd: 0.55,
+          src: 'planning: about 6 m of cable per point'
+        },
+        {
+          id: 'connectors',
+          name: 'Connectors and clamps',
+          unit: 'each',
+          rule: { per: 'area', qty: 2 },
+          waste: 5,
+          usd: 0.6,
+          src: 'planning'
+        },
+        {
+          id: 'plate',
+          name: 'Cover plate',
+          unit: 'each',
+          rule: { per: 'area', qty: 1 },
+          waste: 5,
+          usd: 1.5,
+          src: 'planning: one plate per point'
+        },
+        {
+          id: 'tape',
+          name: 'Insulation tape and labels',
+          unit: 'roll',
+          rule: { per: 'area', qty: 0.2 },
+          waste: 5,
+          usd: 1,
+          src: 'planning: labelling every circuit'
+        }
+      ]
+    },
+    conduit: {
+      refLump: 2, // the material rate per priced unit this split was calibrated against
+      unit: 'm',
+      primary: 'Conduit and cable',
+      primaryShare: 0.658,
+      items: [
+        {
+          id: 'clips',
+          name: 'Conduit clips',
+          unit: 'each',
+          rule: { per: 'area', qty: 0.6 },
+          waste: 5,
+          usd: 0.3,
+          src: 'planning: clips at about 1.5 m centres'
+        },
+        {
+          id: 'boxes',
+          name: 'Junction and drawing boxes',
+          unit: 'each',
+          rule: { per: 'area', qty: 0.12 },
+          waste: 5,
+          usd: 2.8,
+          src: 'planning: a box about every 8 m of run'
+        },
+        {
+          id: 'couplings',
+          name: 'Couplings and connectors',
+          unit: 'each',
+          rule: { per: 'area', qty: 0.15 },
+          waste: 5,
+          usd: 0.9,
+          src: 'planning: a coupling every 3 m of conduit'
+        }
+      ]
+    },
+    panel: {
+      refLump: 450, // the material rate per priced unit this split was calibrated against
+      unit: 'each',
+      primary: 'Consumer board',
+      primaryShare: 0.76,
+      items: [
+        {
+          id: 'breakers',
+          name: 'Breakers',
+          unit: 'each',
+          rule: { per: 'area', qty: 8 },
+          waste: 5,
+          usd: 9,
+          src: 'planning: eight ways on a domestic board'
+        },
+        {
+          id: 'labels',
+          name: 'Circuit labelling',
+          unit: 'each',
+          rule: { per: 'area', qty: 1 },
+          waste: 5,
+          usd: 2,
+          src: 'planning'
+        },
+        {
+          id: 'earth',
+          name: 'Earth rod and clamp',
+          unit: 'each',
+          rule: { per: 'area', qty: 1 },
+          waste: 5,
+          usd: 22,
+          src: 'planning: one rod per installation'
+        },
+        {
+          id: 'glands',
+          name: 'Glands and connectors',
+          unit: 'each',
+          rule: { per: 'area', qty: 2 },
+          waste: 5,
+          usd: 3.5,
+          src: 'planning'
+        }
+      ]
+    },
+    skirt: {
+      refLump: 3, // the material rate per priced unit this split was calibrated against
+      unit: 'm',
+      primary: 'Trim board',
+      primaryShare: 0.809,
+      items: [
+        {
+          id: 'fixings',
+          name: 'Fixings',
+          unit: 'each',
+          rule: { per: 'area', qty: 4 },
+          waste: 5,
+          usd: 0.05,
+          src: 'planning: a fixing about every 600 mm'
+        },
+        {
+          id: 'glue',
+          name: 'Wood glue',
+          unit: 'L',
+          rule: { per: 'area', qty: 0.01 },
+          waste: 5,
+          usd: 8,
+          src: 'planning: glue at every mitre and joint'
+        },
+        {
+          id: 'sealant',
+          name: 'Sealant and filler',
+          unit: 'L',
+          rule: { per: 'area', qty: 0.03 },
+          waste: 5,
+          usd: 6,
+          src: 'planning: caulk along the top and bottom edge'
+        },
+        {
+          id: 'nails',
+          name: 'Panel pins',
+          unit: 'kg',
+          rule: { per: 'area', qty: 0.02 },
+          waste: 5,
+          usd: 4.5,
+          src: 'planning'
+        }
+      ]
+    },
+    joinery: {
+      refLump: 29.528, // the material rate per priced unit this split was calibrated against
+      unit: 'm',
+      primary: 'Timber profile',
+      primaryShare: 0.984,
+      items: [
+        {
+          id: 'fixings',
+          name: 'Fixings',
+          unit: 'each',
+          rule: { per: 'area', qty: 4 },
+          waste: 5,
+          usd: 0.05,
+          src: 'planning: a fixing about every 600 mm'
+        },
+        {
+          id: 'glue',
+          name: 'Wood glue',
+          unit: 'L',
+          rule: { per: 'area', qty: 0.01 },
+          waste: 5,
+          usd: 8,
+          src: 'planning: glue at every mitre and joint'
+        },
+        {
+          id: 'sealant',
+          name: 'Sealant and filler',
+          unit: 'L',
+          rule: { per: 'area', qty: 0.03 },
+          waste: 5,
+          usd: 6,
+          src: 'planning: caulk along the top and bottom edge'
+        }
+      ]
+    },
+    door: {
+      refLump: 550, // the material rate per priced unit this split was calibrated against
+      unit: 'each',
+      primary: 'Door leaf',
+      primaryShare: 0.699,
+      items: [
+        {
+          id: 'frame',
+          name: 'Frame and lining',
+          unit: 'each',
+          rule: { per: 'area', qty: 1 },
+          waste: 5,
+          usd: 65,
+          src: 'planning: one frame per door'
+        },
+        {
+          id: 'ironmongery',
+          name: 'Hinges and lock set',
+          unit: 'each',
+          rule: { per: 'area', qty: 1 },
+          waste: 5,
+          usd: 85,
+          src: 'planning: one set per door'
+        },
+        {
+          id: 'trim',
+          name: 'Architrave and trim',
+          unit: 'm',
+          rule: { per: 'area', qty: 5.5 },
+          waste: 5,
+          usd: 1.2,
+          src: 'planning: trim around both faces'
+        },
+        {
+          id: 'sealant',
+          name: 'Sealant and filler',
+          unit: 'tube',
+          rule: { per: 'area', qty: 0.2 },
+          waste: 5,
+          usd: 6,
+          src: 'planning'
+        }
+      ]
+    },
+    window: {
+      refLump: 600, // the material rate per priced unit this split was calibrated against
+      unit: 'each',
+      primary: 'Window unit',
+      primaryShare: 0.97,
+      items: [
+        {
+          id: 'tape',
+          name: 'Flashing tape',
+          unit: 'm',
+          rule: { per: 'area', qty: 6 },
+          waste: 5,
+          usd: 0.9,
+          src: 'planning: tape around the whole frame'
+        },
+        {
+          id: 'sealant',
+          name: 'Sealant',
+          unit: 'tube',
+          rule: { per: 'area', qty: 0.5 },
+          waste: 5,
+          usd: 6,
+          src: 'planning: sealant inside and out'
+        },
+        {
+          id: 'trim',
+          name: 'Trim and sill',
+          unit: 'm',
+          rule: { per: 'area', qty: 5 },
+          waste: 5,
+          usd: 1.2,
+          src: 'planning: trim to both faces'
+        },
+        {
+          id: 'shims',
+          name: 'Packing shims',
+          unit: 'each',
+          rule: { per: 'area', qty: 1 },
+          waste: 5,
+          usd: 3,
+          src: 'planning'
+        }
+      ]
+    },
+    gutter: {
+      refLump: 18, // the material rate per priced unit this split was calibrated against
+      unit: 'm',
+      primary: 'Gutter profile',
+      primaryShare: 0.918,
+      items: [
+        {
+          id: 'brackets',
+          name: 'Gutter brackets',
+          unit: 'each',
+          rule: { per: 'area', qty: 0.6 },
+          waste: 5,
+          usd: 1.1,
+          src: 'planning: a bracket every 800 mm'
+        },
+        {
+          id: 'downpipe',
+          name: 'Downpipe',
+          unit: 'm',
+          rule: { per: 'area', qty: 0.15 },
+          waste: 5,
+          usd: 3.2,
+          src: 'planning: one downpipe per 10 m of gutter'
+        },
+        {
+          id: 'straps',
+          name: 'Downpipe straps',
+          unit: 'each',
+          rule: { per: 'area', qty: 0.1 },
+          waste: 5,
+          usd: 0.8,
+          src: 'planning'
+        },
+        {
+          id: 'sealant',
+          name: 'Sealant and end caps',
+          unit: 'tube',
+          rule: { per: 'area', qty: 0.03 },
+          waste: 5,
+          usd: 6,
+          src: 'planning'
+        }
+      ]
+    },
+    'soffit-fascia': {
+      refLump: 22, // the material rate per priced unit this split was calibrated against
+      unit: 'm',
+      primary: 'Fascia and soffit boards',
+      primaryShare: 0.937,
+      items: [
+        {
+          id: 'vents',
+          name: 'Vents',
+          unit: 'each',
+          rule: { per: 'area', qty: 0.15 },
+          waste: 5,
+          usd: 3,
+          src: 'planning: vents in the soffit for roof ventilation'
+        },
+        {
+          id: 'fixings',
+          name: 'Fixings',
+          unit: 'each',
+          rule: { per: 'area', qty: 6 },
+          waste: 5,
+          usd: 0.06,
+          src: 'planning: a fixing every 400 mm'
+        },
+        {
+          id: 'sealant',
+          name: 'Sealant',
+          unit: 'tube',
+          rule: { per: 'area', qty: 0.05 },
+          waste: 5,
+          usd: 6,
+          src: 'planning'
+        },
+        {
+          id: 'channel',
+          name: 'J-channel and trim',
+          unit: 'm',
+          rule: { per: 'area', qty: 0.2 },
+          waste: 5,
+          usd: 1.1,
+          src: 'planning: trim at the joints and returns'
+        }
+      ]
+    },
+    'floor-screed': {
+      refLump: 120, // the material rate per priced unit this split was calibrated against
+      unit: 'm2',
+      primary: 'Sand-cement screed',
+      primaryShare: 0.992,
+      items: [
+        {
+          id: 'level',
+          name: 'Levelling compound',
+          unit: 'kg',
+          rule: { per: 'area', qty: 0.3 },
+          waste: 5,
+          usd: 1.1,
+          src: 'planning: levelling at dips and doorways'
+        },
+        {
+          id: 'curing',
+          name: 'Curing compound',
+          unit: 'L',
+          rule: { per: 'area', qty: 0.05 },
+          waste: 5,
+          usd: 3.2,
+          src: 'planning'
+        },
+        {
+          id: 'mesh',
+          name: 'Anti-crack mesh',
+          unit: 'm2',
+          rule: { per: 'area', qty: 0.3 },
+          waste: 5,
+          usd: 1.6,
+          src: 'planning: mesh at doorways and changes of base'
+        }
+      ]
+    },
+    'water-heater': {
+      refLump: 900, // the material rate per priced unit this split was calibrated against
+      unit: 'each',
+      primary: 'Heater unit',
+      primaryShare: 0.857,
+      items: [
+        {
+          id: 'valves',
+          name: 'Stop and isolation valves',
+          unit: 'each',
+          rule: { per: 'area', qty: 2 },
+          waste: 5,
+          usd: 14,
+          src: 'planning'
+        },
+        {
+          id: 'flex',
+          name: 'Flexible connectors',
+          unit: 'each',
+          rule: { per: 'area', qty: 2 },
+          waste: 5,
+          usd: 9,
+          src: 'planning'
+        },
+        {
+          id: 'pan',
+          name: 'Drain pan',
+          unit: 'each',
+          rule: { per: 'area', qty: 1 },
+          waste: 5,
+          usd: 35,
+          src: 'planning: a pan under the unit where it can leak'
+        },
+        {
+          id: 'tpr',
+          name: 'Temperature and pressure valve',
+          unit: 'each',
+          rule: { per: 'area', qty: 1 },
+          waste: 5,
+          usd: 28,
+          src: 'planning'
+        },
+        {
+          id: 'fittings',
+          name: 'Fittings and pipe',
+          unit: 'each',
+          rule: { per: 'area', qty: 4 },
+          waste: 5,
+          usd: 3.5,
+          src: 'planning'
+        }
+      ]
+    },
+    'septic-tank': {
+      refLump: 3800, // the material rate per priced unit this split was calibrated against
+      unit: 'each',
+      primary: 'Tank unit',
+      primaryShare: 0.915,
+      items: [
+        {
+          id: 'gravel',
+          name: 'Gravel bed',
+          unit: 'm3',
+          rule: { per: 'area', qty: 3 },
+          waste: 5,
+          usd: 35,
+          src: 'planning: a gravel bed around the tank and lines'
+        },
+        {
+          id: 'geotextile',
+          name: 'Geotextile',
+          unit: 'm2',
+          rule: { per: 'area', qty: 12 },
+          waste: 5,
+          usd: 1.2,
+          src: 'planning: fabric over the gravel bed'
+        },
+        {
+          id: 'lines',
+          name: 'Distribution lines',
+          unit: 'm',
+          rule: { per: 'area', qty: 25 },
+          waste: 5,
+          usd: 3.2,
+          src: 'planning: about 25 m of distribution line'
+        },
+        {
+          id: 'covers',
+          name: 'Access covers',
+          unit: 'each',
+          rule: { per: 'area', qty: 2 },
+          waste: 5,
+          usd: 45,
+          src: 'planning: one cover per chamber'
+        },
+        {
+          id: 'excavation',
+          name: 'Excavation allowance',
+          unit: 'm3',
+          rule: { per: 'area', qty: 1 },
+          waste: 5,
+          usd: 18,
+          src: 'planning: plant time for the hole'
+        }
+      ]
+    },
+    formwork: {
+      refLump: 22, // the material rate per priced unit this split was calibrated against
+      unit: 'm2',
+      primary: 'Formwork boards',
+      primaryShare: 0.905,
+      items: [
+        {
+          id: 'props',
+          name: 'Props and braces',
+          unit: 'each',
+          rule: { per: 'area', qty: 0.6 },
+          waste: 5,
+          usd: 2.2,
+          src: 'planning: props at about 1.5 m centres'
+        },
+        {
+          id: 'release',
+          name: 'Release agent',
+          unit: 'L',
+          rule: { per: 'area', qty: 0.05 },
+          waste: 5,
+          usd: 5,
+          src: 'planning'
+        },
+        {
+          id: 'ties',
+          name: 'Form ties and bolts',
+          unit: 'each',
+          rule: { per: 'area', qty: 1.2 },
+          waste: 5,
+          usd: 0.35,
+          src: 'planning: ties at 600 mm centres'
+        }
+      ]
+    },
+    tile: {
+      refLump: 24, // the material rate per priced unit this split was calibrated against
+      unit: 'm2',
+      primary: 'Tiles',
+      primaryShare: 0.819,
+      items: [
+        {
+          id: 'adhesive',
+          name: 'Tile adhesive',
+          unit: 'kg',
+          rule: { per: 'area', qty: 3.5 },
+          waste: 10,
+          usd: 0.55,
+          src: 'planning: about 3.5 kg per m2 for a 6 mm bed'
+        },
+        {
+          id: 'grout',
+          name: 'Grout',
+          unit: 'kg',
+          rule: { per: 'area', qty: 0.6 },
+          waste: 10,
+          usd: 1.1,
+          src: 'planning: grout for a 3 mm joint'
+        },
+        {
+          id: 'spacers',
+          name: 'Spacers',
+          unit: 'each',
+          rule: { per: 'area', qty: 12 },
+          waste: 5,
+          usd: 0.02,
+          src: 'planning: spacers at every joint intersection'
+        },
+        {
+          id: 'trim',
+          name: 'Edge trim',
+          unit: 'm',
+          rule: { per: 'area', qty: 0.12 },
+          waste: 5,
+          usd: 2.4,
+          src: 'planning: trim at every exposed edge'
+        },
+        {
+          id: 'membrane',
+          name: 'Waterproofing membrane',
+          unit: 'm2',
+          rule: { per: 'area', qty: 0.2 },
+          waste: 5,
+          usd: 4.5,
+          src: 'planning: membrane at wet walls and floors'
+        }
+      ]
+    },
+    paint: {
+      refLump: 14, // the material rate per priced unit this split was calibrated against
+      unit: 'L',
+      primary: 'Emulsion',
+      primaryShare: 0.839,
+      items: [
+        {
+          id: 'primer',
+          name: 'Primer and sealer',
+          unit: 'L',
+          rule: { per: 'area', qty: 0.12 },
+          waste: 5,
+          usd: 9,
+          src: 'planning: one coat under two coats of emulsion'
+        },
+        {
+          id: 'filler',
+          name: 'Filler and stopper',
+          unit: 'kg',
+          rule: { per: 'area', qty: 0.05 },
+          waste: 5,
+          usd: 3,
+          src: 'planning: filler at holes and cracks'
+        },
+        {
+          id: 'paper',
+          name: 'Sandpaper',
+          unit: 'each',
+          rule: { per: 'area', qty: 0.1 },
+          waste: 5,
+          usd: 1.5,
+          src: 'planning'
+        },
+        {
+          id: 'masking',
+          name: 'Masking tape and drop sheets',
+          unit: 'each',
+          rule: { per: 'area', qty: 0.08 },
+          waste: 5,
+          usd: 3,
+          src: 'planning: masking and sheets per litre of paint'
+        },
+        {
+          id: 'roller',
+          name: 'Rollers and brushes',
+          unit: 'each',
+          rule: { per: 'area', qty: 0.05 },
+          waste: 5,
+          usd: 6,
+          src: 'planning'
+        },
+        {
+          id: 'thinner',
+          name: 'Thinners',
+          unit: 'L',
+          rule: { per: 'area', qty: 0.03 },
+          waste: 5,
+          usd: 4,
+          src: 'planning'
+        },
+        {
+          id: 'caulk',
+          name: 'Caulk',
+          unit: 'tube',
+          rule: { per: 'area', qty: 0.02 },
+          waste: 5,
+          usd: 5,
+          src: 'planning'
+        }
+      ]
+    },
+    'lining-out': {
+      refLump: 4, // the material rate per priced unit this split was calibrated against
+      unit: 'm',
+      primary: 'Profiles and lines',
+      primaryShare: 0.889,
+      items: [
+        {
+          id: 'pegs',
+          name: 'Setting-out pegs',
+          unit: 'each',
+          rule: { per: 'area', qty: 0.4 },
+          waste: 5,
+          usd: 0.6,
+          src: 'planning: pegs at about 2.5 m centres'
+        },
+        {
+          id: 'profiles',
+          name: 'Corner profiles',
+          unit: 'each',
+          rule: { per: 'area', qty: 0.02 },
+          waste: 5,
+          usd: 9,
+          src: 'planning: a profile at every corner'
+        }
+      ]
+    },
+    'post-holes': {
+      refLump: 5, // the material rate per priced unit this split was calibrated against
+      unit: 'each',
+      primary: 'Digging and backfill',
+      primaryShare: 0.363,
+      items: [
+        {
+          id: 'concrete',
+          name: 'Concrete backfill',
+          unit: 'm3',
+          rule: { per: 'area', qty: 0.02 },
+          waste: 5,
+          usd: 150,
+          src: 'planning: a 0.02 m3 collar per hole'
+        }
+      ]
+    },
+    siteprep: {
+      accessoriesNone:
+        'Clearing and stripping is plant and labour - the allowance is the whole cost.'
+    },
+    excav: {
+      accessoriesNone: 'Carting away is a haulage allowance, not material.'
+    },
+    scaffold: {
+      accessoriesNone:
+        'The rate is for scaffolding erected and stripped - the hire is the whole figure.'
+    },
+    welding: {
+      accessoriesNone: 'The rate is the cut and the finish; electrodes and discs are inside it.'
+    },
+    stirrups: {
+      accessoriesNone: 'The links arrive cut and bent - the rate is the link and the tying.'
+    },
+    'rebar-size': {
+      accessoriesNone: 'The rate is the bar itself, by size.'
+    },
+    'concrete-labour': {
+      accessoriesNone: 'Labour-only bands - there is no material in this rate.'
+    },
+    'plumbing-pipe': {
+      accessoriesNone:
+        'The diameter band carries the pipe; fittings have their own rows in the rate book.'
+    },
+    'electrical-conduit': {
+      accessoriesNone: 'The diameter band carries the conduit and the cable.'
+    },
+    'fabric-mesh': {
+      accessoriesNone: 'The rate is the mesh, lapped and tied.'
+    },
+    'cart-away': {
+      accessoriesNone: 'The rate is the disposal charge itself.'
+    },
+    debrush: {
+      accessoriesNone: 'The rate is cutting and clearing the line.'
+    },
+    custom: {
+      accessoriesNone: 'Your own combined figure - it does not split.'
+    },
+    jic: {
+      accessoriesNone: 'A published planning rate covers the whole item.'
+    },
+    cabinet: {
+      refLump: 800, // the material rate per priced unit this split was calibrated against
+      unit: 'm',
+      primary: 'Cabinet carcasses',
+      primaryShare: 0.913,
+      items: [
+        {
+          id: 'worktop',
+          name: 'Worktop',
+          unit: 'm2',
+          rule: { per: 'area', qty: 0.6 },
+          waste: 5,
+          usd: 55,
+          src: 'planning: a 600 mm deep worktop per metre of run'
+        },
+        {
+          id: 'handles',
+          name: 'Handles and knobs',
+          unit: 'each',
+          rule: { per: 'area', qty: 3 },
+          waste: 5,
+          usd: 4,
+          src: 'planning: a handle on every door and drawer'
+        },
+        {
+          id: 'hinges',
+          name: 'Hinges and runners',
+          unit: 'each',
+          rule: { per: 'area', qty: 6 },
+          waste: 5,
+          usd: 2.5,
+          src: 'planning'
+        },
+        {
+          id: 'plinth',
+          name: 'Plinth and kickboard',
+          unit: 'm',
+          rule: { per: 'area', qty: 1 },
+          waste: 5,
+          usd: 6,
+          src: 'planning: a plinth along the whole run'
+        }
+      ]
+    }
+  };
+
+  // ---- MAT-1 helpers -------------------------------------------------------
+  // The saved accessory store: { '<work>|<id>': { on, qty, price } }. One flat
+  // map keyed by BOTH the trade and the line, so editing drywall's screws and
+  // then pricing a wall do not overwrite one another. The user's own lines live
+  // under '@<work>' as an array. An absent entry means "the planning allowance,
+  // switched on" - which is what every estimate saved before this wave carries.
+  function accFor(key) {
+    const t = ACCESSORIES[key];
+    return t && !t.accessoriesNone && t.items && t.items.length ? t : null;
+  }
+  function accKeyOf(work, id) {
+    return work + '|' + id;
+  }
+  function parseAccStore(raw) {
+    if (raw && typeof raw === 'object') {
+      return raw;
+    }
+    try {
+      const v = JSON.parse(raw || '{}');
+      return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+    } catch (e) {
+      return {};
+    }
+  }
+  let accStore = {};
+  // MAT-1 rule kinds. `area` = per unit of the priced work (every shipped
+  // allowance), `perimeter` = the run around typed dims, `piece` = a count of a
+  // size, `fixed` = the number written in the rule itself. PURE.
+  function accQty(it, ctx) {
+    const r = (it && it.rule) || {};
+    const per = r.per || 'area';
+    const q = (ctx && ctx.qty) || 0;
+    if (per === 'perimeter') {
+      return r.qty * ((ctx && ctx.perimeter) || 0);
+    }
+    if (per === 'piece') {
+      return r.qty * Math.floor(q / (r.of || 1));
+    }
+    if (per === 'fixed') {
+      return r.qty || 0;
+    }
+    return r.qty * q;
+  }
+  // The itemised material lines for ONE trade. PURE: it reads the state's own
+  // store (never the DOM, never localStorage), so a recall, a proposal and the
+  // live form price the same lines. `fx` is units of the estimate currency per
+  // one US dollar - null means the planning price cannot be brought into this
+  // currency, so the line stays blank and is not priced (rule N3: never charge
+  // US dollars as local money).
+  function accLinesFor(key, ctx, fx, store) {
+    const t = accFor(key);
+    if (!t) {
+      return [];
+    }
+    const s = parseAccStore(store);
+    const out = [];
+    const round2 = function (n) {
+      return Math.round(n * 100) / 100;
+    };
+    const priceOf = function (raw, usd) {
+      const p = raw === '' || raw === undefined || raw === null ? NaN : parseFloat(raw);
+      if (isFinite(p) && p >= 0) {
+        return round2(p);
+      }
+      return fx == null ? null : round2(usd * fx);
+    };
+    // Every line is returned, switched off ones included, because the drawer
+    // shows them all; the engine filters on `on` before it prices. A line that
+    // is off is worth exactly zero and its own switch brings it back - nothing
+    // is deleted, which is what "values are remembered, not deleted" promises.
+    t.items.forEach(function (it) {
+      const e = s[accKeyOf(key, it.id)];
+      const derived = round2(accQty(it, ctx) * (1 + (it.waste || 0) / 100));
+      const qRaw = e ? parseFloat(e.qty) : NaN;
+      const qty = isFinite(qRaw) && qRaw >= 0 ? round2(qRaw) : derived;
+      const price = priceOf(e ? e.price : '', it.usd);
+      out.push({
+        key: accKeyOf(key, it.id),
+        id: it.id,
+        name: it.name,
+        unit: it.unit,
+        src: it.src,
+        on: !(e && e.on === false),
+        derived: derived,
+        qty: qty,
+        price: price,
+        unpriced: price === null,
+        total: price === null ? null : round2(qty * price),
+        custom: false
+      });
+    });
+    (s['@' + key] || []).forEach(function (cw, i) {
+      if (!cw) {
+        return;
+      }
+      const qRaw = parseFloat(cw.qty);
+      const qty = isFinite(qRaw) && qRaw >= 0 ? round2(qRaw) : 0;
+      const price = priceOf(cw.price, 0);
+      const nm = String(cw.name || '').trim();
+      out.push({
+        key: '@' + key + '|' + i,
+        id: 'custom-' + i,
+        name: nm,
+        // A line with no name yet is shown (the user is mid-typing) but it is
+        // not a line and never prices: `unnamed` is what the engine filters on.
+        unnamed: !nm,
+        unit: String(cw.unit || '').trim() || 'each',
+        src: 'your own line',
+        on: cw.on !== false,
+        derived: qty,
+        qty: qty,
+        price: price,
+        unpriced: price === null,
+        total: price === null ? null : round2(qty * price),
+        custom: true,
+        idx: i
+      });
+    });
+    return out;
+  }
+  function accTotalOf(lines) {
+    return (
+      Math.round(
+        (lines || []).reduce(function (s, a) {
+          return s + (a.total == null ? 0 : a.total);
+        }, 0) * 100
+      ) / 100
+    );
+  }
+  // Units of the estimate currency per one US dollar for the accessory prices.
+  // The live form passes the FX table's own factor; a hand-built state (a golden
+  // case, an import) states it or gets the honest default: the base currency
+  // needs no rate, anything else with no stated rate leaves the prices blank
+  // rather than charging US dollars as local money (rule N3).
+  function accFxOf(st) {
+    if (st && st._accFx !== undefined) {
+      return st._accFx;
+    }
+    const cur = (st && st.currency) || BASE_CURRENCY;
+    if (cur === BASE_CURRENCY) {
+      return 1;
+    }
+    return fxFactor(cur);
+  }
+
   // ---- W2 2026-10-01: COMPANION WORK SUGGESTIONS (the punch-list reality) --
   // Pricing one trade usually implies others (a wall needs lining out, clearing
   // and carting away; a fence needs the line debrushed). PURE: each suggestion
@@ -1770,6 +3576,11 @@
       openings: JSON.stringify(openRows || []),
       variant: ($('calc-variant') || {}).value || '',
       labourOnly: !!($('calc-labour-only') || {}).checked,
+      // MAT-1: the itemise switch and every accessory line's own numbers. A
+      // snapshot without them reads 'lump' - exactly today's pricing, so every
+      // estimate saved before this wave recalls to the same total.
+      matMode: ($('calc-itemise') || {}).checked ? 'items' : 'lump',
+      acc: JSON.stringify(accStore),
       units: _units
     };
   }
@@ -1980,6 +3791,13 @@
     if ($('calc-labour-only')) {
       $('calc-labour-only').checked = !!st.labourOnly;
     }
+    // MAT-1: restore the itemise switch and the line store BEFORE renderAcc
+    // rebuilds the drawer, so a recall shows the lines the estimate was priced
+    // with (and prices from them again).
+    accStore = parseAccStore(st.acc);
+    if ($('calc-itemise')) {
+      $('calc-itemise').checked = st.matMode === 'items';
+    }
     $('calc-d1').value = st.d1 || '';
     if ($('calc-d2')) {
       $('calc-d2').value = st.d2 || '';
@@ -2147,6 +3965,7 @@
     refreshRateFields();
     recallHold = false;
     syncBasis();
+    renderAcc();
   }
 
   // B2 (owner review 2026-09-29: 'exact count of tile boxes/units required').
@@ -2558,10 +4377,49 @@
     const labourOnly = !!st.labourOnly && !allIn;
     const pieceActive = !allIn && !!(piece && !piece.countOnly);
     const matExcluded = labourOnly && !matOverride;
+    // ---- MAT-1: ITEMISED MATERIALS ----------------------------------------
+    // With the "Itemise materials" switch ON the lump material rate is split:
+    // the primary material keeps `primaryShare` of it and every accessory line
+    // is added at its own derived quantity and price. The split is calibrated
+    // per trade (see ACCESSORIES) so the itemised cost per unit equals the lump
+    // it replaces - the table can neither invent nor lose money. OFF (or a
+    // trade with no list, an all-in line, a labour-only line, the custom line)
+    // prices exactly as before, so every saved estimate keeps its total.
+    const accTab = accFor(key);
+    const matItems = !!(
+      accTab &&
+      st.matMode === 'items' &&
+      !allIn &&
+      !labourOnly &&
+      !isCustom &&
+      !isJic
+    );
+    const primaryShare = matItems ? accTab.primaryShare : 1;
     // Area trades: $/m2 x m2 quantity. Fencing width-div: $/run-m x m run.
     // The qty x rate dimension check holds for both.
-    const effMat = allIn || matExcluded ? 0 : pieceActive ? piece.perUnit : mr * rf;
+    const effMat =
+      allIn || matExcluded
+        ? 0
+        : pieceActive
+          ? piece.perUnit * primaryShare
+          : mr * rf * primaryShare;
     const mat = allIn ? 0 : qty * effMat * quality;
+    // The run around the work, for an accessory rule that is priced per metre of
+    // edge rather than per unit of work (nothing shipped uses it yet; a typed
+    // measured total has no dims to derive it from, so it stays 0).
+    const accCtx = {
+      qty: qty,
+      perimeter: hasMq ? 0 : w.d2 && d2 ? 2 * (d1 + d2) : d1 || 0
+    };
+    const accessories = matItems
+      ? accLinesFor(key, accCtx, accFxOf(st), st.acc).filter(function (a) {
+          return a.on && !a.unnamed;
+        })
+      : [];
+    const accTotal = accTotalOf(accessories);
+    const accUnpriced = accessories.filter(function (a) {
+      return a.unpriced;
+    }).length;
     // D8 (locked): the finish-level multiplier scales the MATERIAL unit rate
     // only. A typed day rate is a price for one crew-day, not a unit rate, so
     // multiplying it by economy/standard/premium would silently inflate it.
@@ -2601,7 +4459,7 @@
     // all-in rate, then the normal on-costs and tax"). Every other line
     // unchanged.
     const onCost = ((lab + (isCustom || isJic ? allInCost : 0)) * onCostPct) / 100;
-    const sub = mat + lab + onCost + eq + allInCost;
+    const sub = mat + lab + onCost + eq + allInCost + accTotal;
     const oh = (sub * ohPct) / 100;
     const tax = ((sub + oh) * taxRate) / 100;
     const orderCount = pieceCount(qty, qr.unit, w.piece, (st.pieceSize || '').trim());
@@ -2633,6 +4491,17 @@
       modelMr,
       piece,
       mat,
+      // MAT-1: the itemised material lines that ride the subtotal above, plus
+      // the share the primary material kept. Empty on every other path.
+      accessories: accessories,
+      accTotal: accTotal,
+      // The drawer reads the engine's own context, so the quantity it shows a
+      // line derived from is the quantity the line is priced at.
+      accCtx: accCtx,
+      accUnpriced: accUnpriced,
+      accMode: matItems ? 'items' : 'lump',
+      accPrimary: matItems ? accTab.primary : null,
+      primaryShare: primaryShare,
       lab,
       sub,
       taxRate,
@@ -2682,6 +4551,10 @@
     // model's US dollars. Without it the engine charged USD 22 as J$22.
     const curNow = st.currency || DEFAULT_CURRENCY;
     st._fxMissing = curNow !== BASE_CURRENCY && fxFactor(curNow) == null;
+    // MAT-1: the accessory planning prices are US dollars, so the engine is told
+    // the same rate the rate fields were prefilled with (null = no rate, which
+    // blanks the price and leaves the line unpriced - rule N3).
+    st._accFx = fxFactor(curNow);
     st._matModel = $('calc-rate-mat') ? $('calc-rate-mat').dataset.model : undefined;
     st._labModel = $('calc-rate-lab') ? $('calc-rate-lab').dataset.model : undefined;
     st._allInModel = $('calc-allin') ? $('calc-allin').dataset.model : undefined;
@@ -6198,6 +8071,214 @@
       : '<div class="calc-empty">No site & other costs yet. Add the items that keep the site running.</div>';
   }
 
+  // ---- MAT-1 (REFINEMENT-DIRECTIVE-2026-10-24): THE ITEMISED MATERIAL LIST --
+  // The drawer behind the "Itemise materials" setting row. Every line is
+  // editable (quantity and price), every line has its own switch, and the
+  // quantities come from the ENGINE's own context (r.accCtx), never from a
+  // second derivation here - two copies of the same arithmetic is how a screen
+  // and a total start disagreeing.
+  function accRowHtml(a, cur) {
+    const on = a.on !== false;
+    const total = a.total == null ? (a.unpriced ? 'no rate' : '') : fmtMoney(a.total, cur);
+    const del = a.custom
+      ? '<button type="button" class="btn btn-n btn-s acc-del" data-action="calcAccDel" data-key="' +
+        esc(a.key) +
+        '" aria-label="Remove ' +
+        esc(a.name || 'this line') +
+        '">X</button>'
+      : '';
+    const nameCell = a.custom
+      ? '<input type="text" class="acc-name-in" data-acc-name maxlength="60" value="' +
+        esc(a.name) +
+        '" placeholder="Item name" aria-label="Your line name">'
+      : '<span class="acc-name">' +
+        esc(a.name) +
+        '<span class="acc-src">' +
+        esc(a.src || '') +
+        '</span></span>';
+    const unitCell = a.custom
+      ? '<input type="text" class="acc-unit-in" data-acc-unit maxlength="8" value="' +
+        esc(a.unit) +
+        '" placeholder="unit" aria-label="Unit for ' +
+        esc(a.name || 'this line') +
+        '">'
+      : '<span class="acc-unit">' + esc(a.unit) + '</span>';
+    return (
+      '<div class="acc-row' +
+      (on ? '' : ' is-off') +
+      (a.custom ? ' is-mine' : '') +
+      '" data-key="' +
+      esc(a.key) +
+      '">' +
+      '<label class="tgl tgl-sm"><input type="checkbox" data-acc-on role="switch"' +
+      (on ? ' checked' : '') +
+      ' aria-label="Price ' +
+      esc(a.name || 'this line') +
+      '"><span class="tsl"></span></label>' +
+      nameCell +
+      '<input type="number" class="acc-qty" data-acc-qty min="0" step="any" inputmode="decimal" value="' +
+      esc(String(a.qty)) +
+      '" aria-label="' +
+      esc((a.name || 'line') + ' quantity in ' + a.unit) +
+      '">' +
+      unitCell +
+      '<input type="number" class="acc-price" data-acc-price min="0" step="any" inputmode="decimal" value="' +
+      (a.price == null ? '' : esc(String(a.price))) +
+      '" placeholder="' +
+      (a.price == null ? 'no rate' : 'price') +
+      '" aria-label="' +
+      esc((a.name || 'line') + ' price per ' + a.unit) +
+      '">' +
+      '<span class="acc-line">' +
+      esc(total) +
+      '</span>' +
+      del +
+      '</div>'
+    );
+  }
+
+  // Rebuild the drawer for the CURRENT trade. Runs on a trade change, a recall,
+  // the switch itself and the add/reset buttons - never on a keystroke inside
+  // the drawer (that would replace the box being typed in).
+  function renderAcc() {
+    const row = $('row-itemise'),
+      wrap = $('calc-acc-list');
+    if (!row || !wrap) {
+      return;
+    }
+    const st = readState();
+    const cur = st.currency || DEFAULT_CURRENCY;
+    st._accFx = fxFactor(cur);
+    const tab = accFor(st.work);
+    const r = computeFor(st);
+    const priced = r && !r.error ? r : null;
+    // An all-in line carries its own material and a labour-only line has none:
+    // the row hides for both, exactly as the directive asks ("Labour only hides
+    // the whole drawer - accessories are materials"). The CHOOSER decides the
+    // all-in case, not the money: with the basis on all-in the user is pricing
+    // one combined figure, so the split goes whether or not the figure is typed
+    // yet - the same authority the engine gives the chooser.
+    row.hidden = !tab || !!st.labourOnly || st.basis === 'allin';
+    const totalEl = $('calc-acc-total'),
+      noteEl = $('calc-acc-note');
+    if (!tab) {
+      wrap.innerHTML = '';
+      if (totalEl) {
+        totalEl.textContent = '';
+      }
+      if (noteEl) {
+        noteEl.textContent = '';
+      }
+      ui2RowsSync();
+      return;
+    }
+    const ctx = priced && priced.accCtx ? priced.accCtx : { qty: 0, perimeter: 0 };
+    const lines = accLinesFor(st.work, ctx, st._accFx, accStore);
+    const body = lines
+      .map(function (a) {
+        return accRowHtml(a, cur);
+      })
+      .join('');
+    wrap.innerHTML =
+      body + (lines.length ? '' : '<p class="acc-none">No material lines for this trade yet.</p>');
+    if (totalEl) {
+      const on = lines.filter(function (a) {
+        return a.on !== false;
+      });
+      const priced2 = accTotalOf(on);
+      if (st.matMode !== 'items') {
+        totalEl.textContent = 'Off - the whole material rate is used as it is.';
+      } else {
+        totalEl.textContent =
+          tab.primary +
+          ' plus ' +
+          on.length +
+          (on.length === 1 ? ' line' : ' lines') +
+          ': ' +
+          fmtMoney(priced2, cur) +
+          ' of material';
+      }
+    }
+    if (noteEl) {
+      const none = st._accFx == null;
+      const un = lines.filter(function (a) {
+        return a.on !== false && a.unpriced;
+      });
+      noteEl.textContent = none
+        ? 'Planning allowances are US dollars. Set a ' +
+          cur +
+          ' exchange rate in Exchange rates below, or type a price on each line, to price them.'
+        : un.length
+          ? un.length +
+            (un.length === 1 ? ' line has' : ' lines have') +
+            ' no price yet - type one, or clear it to go back to the allowance.'
+          : 'Planning allowances, yours to edit. The main material keeps the rest of the rate.';
+    }
+    ui2RowsSync();
+  }
+
+  // The light refresh: keep the derived quantities and the line money current as
+  // the dimensions change, WITHOUT rebuilding the drawer (so a box being typed
+  // into is never replaced). A line the user has edited keeps their number.
+  function accSync() {
+    const wrap = $('calc-acc-list');
+    if (!wrap || !wrap.children.length) {
+      return;
+    }
+    const st = readState();
+    const cur = st.currency || DEFAULT_CURRENCY;
+    st._accFx = fxFactor(cur);
+    const tab = accFor(st.work);
+    if (!tab) {
+      return;
+    }
+    const r = computeFor(st);
+    const ctx = r && !r.error && r.accCtx ? r.accCtx : { qty: 0, perimeter: 0 };
+    const byKey = {};
+    accLinesFor(st.work, ctx, st._accFx, accStore).forEach(function (a) {
+      byKey[a.key] = a;
+    });
+    Array.prototype.forEach.call(wrap.querySelectorAll('.acc-row'), function (el) {
+      const a = byKey[el.getAttribute('data-key')];
+      if (!a) {
+        return;
+      }
+      const q = el.querySelector('[data-acc-qty]');
+      const p = el.querySelector('[data-acc-price]');
+      const line = el.querySelector('.acc-line');
+      const e = accStore[a.key] || {};
+      if (q && document.activeElement !== q && (e.qty === undefined || e.qty === '')) {
+        q.value = String(a.qty);
+      }
+      if (p && document.activeElement !== p && (e.price === undefined || e.price === '')) {
+        p.value = a.price == null ? '' : String(a.price);
+      }
+      if (line) {
+        line.textContent = a.total == null ? (a.unpriced ? 'no rate' : '') : fmtMoney(a.total, cur);
+      }
+    });
+  }
+
+  // One write path for a line's own numbers, for both a planning line
+  // ('<work>|<id>') and one of the user's own ('@<work>|<n>').
+  function accSetLine(key, patch) {
+    const m = /^@([^|]+)\|(\d+)$/.exec(key || '');
+    const target = m
+      ? (accStore['@' + m[1]] || (accStore['@' + m[1]] = []))[Number(m[2])] ||
+        (accStore['@' + m[1]][Number(m[2])] = {
+          name: '',
+          unit: 'each',
+          qty: '',
+          price: '',
+          on: true
+        })
+      : accStore[key] || (accStore[key] = {});
+    Object.keys(patch).forEach(function (k) {
+      target[k] = patch[k];
+    });
+    return target;
+  }
+
   // ---- W7 (owner 2026-09-30): CONCRETE ACCESSORIES - formwork + rebar laps --
   // Formwork is DERIVED, not estimated: for the trades this calculator prices,
   // the contact area comes straight from dimensions already entered - slab and
@@ -7084,6 +9165,20 @@
         num2(r.mr),
         num2(r.mat)
       );
+      // MAT-1: the itemised material lines ride the Cost section as their own
+      // rows, carrying the same money the card and the printed sheet show, so a
+      // reader adding the sheet down lands on the same subtotal.
+      (r.accessories || []).forEach(function (a) {
+        add(
+          'Cost',
+          a.name,
+          a.unpriced ? 'no price yet - set an exchange rate or type one' : a.src || '',
+          num2(a.qty),
+          a.unit,
+          a.price == null ? '' : num2(a.price),
+          a.total == null ? '' : num2(a.total)
+        );
+      });
       add(
         'Cost',
         'Labor',
@@ -7120,6 +9215,26 @@
     var qtyShownRow = qtyShown(r.qty, r.unit);
     var countryEl = ($('calc-country') || {}).value || '';
     add('Assumption', 'Work item', r.name, '', '', '', '');
+    // MAT-1: the sheet says how the material money was built, so a reader knows
+    // whether the lump rate was used or whether the lines above are its parts.
+    add(
+      'Assumption',
+      // "Material lines", not "Materials": on an ALL-IN line the sheet must not
+      // carry a row whose label reads like a material/labour split (D3), and this
+      // note belongs to the itemised measured path only.
+      'Material lines',
+      r.accMode === 'items'
+        ? 'itemised - ' +
+            r.accPrimary +
+            ' plus ' +
+            (r.accessories || []).length +
+            ((r.accessories || []).length === 1 ? ' line' : ' lines')
+        : 'one lump rate for the trade',
+      '',
+      '',
+      '',
+      ''
+    );
     add('Assumption', 'Quantity', qtyShownRow.main + qtyShownRow.alt, num2(qty), r.unit, '', '');
     add('Assumption', 'Rate basis', r.matDesc || '', '', '', '', '');
     add('Assumption', 'Variant', r.variantLabel || '-', '', '', '', '');
@@ -7760,6 +9875,28 @@
   // W1 engine hook (harness-only convenience; harmless in production).
   window.__calcEngine = {
     computeFor: computeFor,
+    // MAT-1: the itemised-material table and its pure helpers, so the T-ACC /
+    // T-LUMP gates read the SHIPPED table and the real derivation rather than
+    // a copy of either.
+    accessories: function () {
+      return ACCESSORIES;
+    },
+    accFor: accFor,
+    accQty: accQty,
+    accLinesFor: accLinesFor,
+    accStore: function () {
+      return accStore;
+    },
+    // The export row model, so the T-ACC gate can reconcile the CSV and the
+    // spreadsheet against the total the card shows (one model, two files).
+    exportRows: exportRows,
+    xlsxSheets: xlsxSheets,
+    // MAT-1 / T-LUMP: the trade table itself, so a harness walks the SHIPPED
+    // trades (including the companion-only ones the picker does not list)
+    // instead of a hand-kept copy of them.
+    work: function () {
+      return WORK;
+    },
     applyState: applyState,
     boqTotals: boqTotals,
     renderBoq: renderBoq,
@@ -7818,8 +9955,12 @@
       refreshRateFields();
       render();
     }
-    // E6: labour-only mode re-prices live.
+    // E6: labour-only mode re-prices live. MAT-1: it also takes the itemised
+    // material drawer away (there is no material to split), so the row is
+    // re-evaluated - syncLabels owns renderAcc, exactly like every other
+    // per-trade field.
     if (e.target && e.target.id === 'calc-labour-only') {
+      syncLabels();
       render();
     }
   });
@@ -8520,6 +10661,9 @@
     renderQuickLine(r && !r.error ? r : null);
     // C6: the mobile total bar rides every recompute in the light pass.
     updateTotalBar(r);
+    // MAT-1: the itemised lines follow the live quantities too, but WITHOUT
+    // rebuilding the drawer (the light refresh skips the box being typed in).
+    accSync();
     // X-1: the document-shaped cards (W3 quote sheet, W4 prelims, W5
     // rollup, W6 cash, W7 accessories + companions) moved to the heavy
     // pass - see scheduleHeavy above. They still ride every recompute,
@@ -8678,6 +10822,37 @@
           : '') +
         (r.hasWaste ? row(r.wasteLbl + ' allowance', r.wastePct + '%') : '') +
         matRowHtml +
+        // MAT-1: the itemised material lines sit UNDER the material row, because
+        // that is what they are - the parts of that one number. The rows are the
+        // same money the total below carries (rule N2: the printed rows sum to
+        // the total), so the sheet can be added up by a reader.
+        (r.accessories && r.accessories.length
+          ? '<div class="calc-acc-lines">' +
+            r.accessories
+              .map(function (a) {
+                return (
+                  '<div class="calc-line calc-line-acc"><span>' +
+                  esc(a.name) +
+                  ' <span class="calc-acc-detail">' +
+                  esc(
+                    a.qty.toLocaleString() + ' ' + a.unit + ' x ' + fmtMoney(a.price, moneyCode)
+                  ) +
+                  '</span></span><strong>' +
+                  (a.total == null ? '-' : fmtMoney(a.total, moneyCode)) +
+                  '</strong></div>'
+                );
+              })
+              .join('') +
+            '</div>'
+          : '') +
+        (r.accUnpriced > 0
+          ? '<p class="bcp-jm-note">' +
+            r.accUnpriced +
+            (r.accUnpriced === 1 ? ' material line has' : ' material lines have') +
+            ' no price yet - the planning allowances are US dollars and no ' +
+            esc(r.currency) +
+            ' exchange rate is set. Type a price on the line, or set the rate in Exchange rates, so the total is not short.</p>'
+          : '') +
         labRowHtml +
         (r.onCost > 0
           ? row(
@@ -9603,6 +11778,53 @@
           (rfq.length === 1 ? '' : 's') +
           ' sent to Procurement. Open a project, go to Procurement, and write the quote.';
       }
+    },
+    // ---- MAT-1 itemised materials ----
+    // The switch is the whole decision: on = the material rate is split, off =
+    // the lump rate is used as it is. Nothing is deleted either way.
+    calcItemise: function () {
+      renderAcc();
+      render();
+    },
+    calcAccAdd: function () {
+      const key = ($('calc-work') || {}).value || '';
+      if (!accFor(key)) {
+        return;
+      }
+      const list = accStore['@' + key] || (accStore['@' + key] = []);
+      list.push({ name: '', unit: 'each', qty: '', price: '', on: true });
+      renderAcc();
+      // Open on the name box, because a new line with no name is not a line yet.
+      const boxes = document.querySelectorAll('#calc-acc-list .is-mine .acc-name-in');
+      const last = boxes[boxes.length - 1];
+      if (last) {
+        last.focus();
+      }
+      render();
+    },
+    calcAccDel: function (el) {
+      const m = /^@([^|]+)\|(\d+)$/.exec(el.getAttribute('data-key') || '');
+      if (!m) {
+        return;
+      }
+      const list = accStore['@' + m[1]];
+      if (Array.isArray(list)) {
+        list.splice(Number(m[2]), 1);
+      }
+      renderAcc();
+      render();
+    },
+    // Back to the planning allowances for THIS trade: every edited line and every
+    // line of the user's own goes. The other trades keep theirs.
+    calcAccReset: function () {
+      const key = ($('calc-work') || {}).value || '';
+      Object.keys(accStore).forEach(function (k) {
+        if (k === '@' + key || k.indexOf(key + '|') === 0 || k.indexOf('@' + key + '|') === 0) {
+          delete accStore[k];
+        }
+      });
+      renderAcc();
+      render();
     },
     // ---- W2 element instances ----
     calcInstAdd: function () {
@@ -10915,6 +13137,9 @@
     }
     syncBasis();
     refreshRateFields();
+    // MAT-1: the itemised material list belongs to the trade, so it follows the
+    // work item (and a recall) here, like the element and opening editors do.
+    renderAcc();
   }
 
   // ---- Pricing basis: measured / all-in rate / crew days (owner 2026-10-02)
@@ -10941,6 +13166,12 @@
     if ($('calc-verified-wrap')) {
       $('calc-verified-wrap').hidden = !onAllin;
     }
+    // MAT-1: the basis decides whether a material rate splits at all - an all-in
+    // figure carries its own material and a crew-day line is labour, so the
+    // Itemise materials row belongs to the measured split only. syncBasis owns
+    // per-basis visibility (like the verified stamp above), so the row follows
+    // the chooser here, however the chooser changed.
+    renderAcc();
     if ($('calc-days-wrap')) {
       $('calc-days-wrap').hidden = !onDays;
     }
@@ -11436,6 +13667,46 @@
     if ($('calc-piece-custom')) {
       $('calc-piece-custom').addEventListener('change', function () {
         syncLabels();
+        render();
+      });
+    }
+    // MAT-1: the itemised material lines edit live, in the same shape the
+    // element rows use - the store is written in place and only the card is
+    // re-priced, so a keystroke never replaces the box being typed in.
+    const accListEl = $('calc-acc-list');
+    if (accListEl) {
+      accListEl.addEventListener('input', function (e) {
+        const el = e.target;
+        const row = el.closest ? el.closest('.acc-row') : null;
+        const key = row && row.getAttribute('data-key');
+        if (!key) {
+          return;
+        }
+        if (el.hasAttribute('data-acc-qty')) {
+          accSetLine(key, { qty: el.value });
+        } else if (el.hasAttribute('data-acc-price')) {
+          accSetLine(key, { price: el.value });
+        } else if (el.hasAttribute('data-acc-name')) {
+          accSetLine(key, { name: el.value });
+        } else if (el.hasAttribute('data-acc-unit')) {
+          accSetLine(key, { unit: el.value });
+        } else {
+          return;
+        }
+        render();
+      });
+      accListEl.addEventListener('change', function (e) {
+        const el = e.target;
+        if (!el.hasAttribute || !el.hasAttribute('data-acc-on')) {
+          return;
+        }
+        const row = el.closest ? el.closest('.acc-row') : null;
+        const key = row && row.getAttribute('data-key');
+        if (!key) {
+          return;
+        }
+        accSetLine(key, { on: !!el.checked });
+        row.classList.toggle('is-off', !el.checked);
         render();
       });
     }

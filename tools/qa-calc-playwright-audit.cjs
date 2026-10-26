@@ -104,13 +104,77 @@ function absolutizeChrome(p) {
   return undefined;
 }
 
-async function walkFocus(page) {
+// UI-1 re-baseline (CI repair, lesson 8.3): the trade picker is an OWNED
+// combobox now (js/mmgr-combobox.js), so `selectOption('#calc-work', ...)` can
+// never work - the native select is deliberately off-screen (it stays the source
+// of truth the rest of the page reads). This drives the control the user drives:
+// open the list, click the option row for the value, and let the module write
+// the select and fire its change.
+async function pickWork(page, value) {
+  await page.click('.mmcb[data-for="calc-work"] .mmcb-input');
+  await page.waitForSelector('.mmcb[data-for="calc-work"] .mmcb-pop:not([hidden])', {
+    timeout: 8000
+  });
+  const id = await page.evaluate(v => {
+    const sel = document.getElementById('calc-work');
+    const rows = Array.prototype.slice.call(
+      (sel.__mmcb && sel.__mmcb.list ? sel.__mmcb.list : document).querySelectorAll(
+        '[role="option"]'
+      )
+    );
+    const pick = rows.find(o => o.getAttribute('data-value') === v);
+    return pick ? pick.id : null;
+  }, value);
+  if (!id) {
+    throw new Error('no picker option for ' + value);
+  }
+  await page.click('#' + id);
+  await page.waitForFunction(
+    function (v) {
+      return document.getElementById('calc-work').value === v;
+    },
+    value,
+    { timeout: 8000 }
+  );
+}
+
+async function walkFocus(page, openDrawers) {
   // Keyboard-walk the form; count focusable controls that show NO visible
   // focus indicator (outline none/0 and no outline on the element).
-  return page.evaluate(() => {
-    const els = Array.from(document.querySelectorAll('button, input, select, [tabindex]')).filter(
+  //
+  // UI-2 re-baseline (REFINEMENT-DIRECTIVE-2026-10-24 + CI repair): a setting
+  // row's drawer is `inert` while its switch is off, so its fields are
+  // DELIBERATELY unreachable by keyboard ("hidden fields cannot be tabbed into"
+  // is the contract the row pattern promises). Those controls are counted as
+  // skipped here, and F1b then switches every row ON and re-walks, so a field
+  // that only LOOKS unreachable still has to show focus the moment it is
+  // reachable. Skipping without F1b would be a weakened gate; F1 alone could
+  // not tell a styled field behind a closed drawer from an unstyled one.
+  return page.evaluate(open => {
+    const rows = Array.from(document.querySelectorAll('.set-row'));
+    const saved = [];
+    if (open) {
+      rows.forEach(r => {
+        const cb = r.querySelector('.tgl input[type=checkbox]');
+        if (cb && !cb.checked) {
+          saved.push([cb, cb.checked]);
+          cb.checked = true;
+          cb.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      });
+    }
+    const behindInert = el => {
+      for (let n = el; n && n !== document.body; n = n.parentElement) {
+        if (n.hasAttribute && n.hasAttribute('inert')) {
+          return true;
+        }
+      }
+      return false;
+    };
+    const all = Array.from(document.querySelectorAll('button, input, select, [tabindex]')).filter(
       e => e.offsetParent !== null && !e.disabled
     );
+    const els = all.filter(e => !behindInert(e));
     let bad = 0;
     const names = [];
     for (const el of els) {
@@ -125,8 +189,20 @@ async function walkFocus(page) {
         names.push(el.id || el.getAttribute('data-action') || el.tagName);
       }
     }
-    return { total: els.length, bad, names: names.slice(0, 6) };
-  });
+    if (open) {
+      saved.forEach(pair => {
+        pair[0].checked = pair[1];
+        pair[0].dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    }
+    return {
+      total: all.length,
+      walked: els.length,
+      skipped: all.length - els.length,
+      bad: bad,
+      names: names.slice(0, 6)
+    };
+  }, !!openDrawers);
 }
 
 (async () => {
@@ -207,8 +283,22 @@ async function walkFocus(page) {
       });
       check('L3 [' + vp.n + '] estimate card reachable by scroll', reachable.ok, reachable);
 
-      // F: focus visibility (keyboard).
+      // F: focus visibility (keyboard). F1 walks what a keyboard can actually
+      // reach (a closed setting drawer is inert by design); F1b proves the
+      // skipped fields DO show focus once their row is switched on.
       const focus = await walkFocus(page);
+      const focusOpen = await walkFocus(page, true);
+      check(
+        'F1b [' +
+          vp.n +
+          '] controls behind a closed setting drawer show focus once their row is on (' +
+          focusOpen.walked +
+          ' walked, ' +
+          focusOpen.skipped +
+          ' skipped)',
+        focusOpen.bad === 0 && focusOpen.skipped === 0,
+        focusOpen
+      );
       check(
         'F1 [' + vp.n + '] every control shows keyboard focus (' + focus.total + ' controls)',
         focus.bad === 0,
@@ -223,7 +313,7 @@ async function walkFocus(page) {
       // REFUSE to price in JMD with no exchange rate since the currency-honesty
       // fix (that refusal is gated by tools/verify-currency.cjs C2a), so under
       // the old contract V2 was asserting the exact bug C2 removed.
-      await page.selectOption('#calc-work', 'excav');
+      await pickWork(page, 'excav');
       await page.fill('#calc-d1', '10');
       await page.fill('#calc-d2', '8');
       const live = await page.evaluate(() => document.getElementById('calc-output').textContent);
@@ -295,7 +385,7 @@ async function walkFocus(page) {
       // history row when the estimate priced without error, and the Recall
       // button lives on that row - an honest refusal (slab, no fx) leaves
       // nothing to recall and the click times out.
-      await page.selectOption('#calc-work', 'excav');
+      await pickWork(page, 'excav');
       await page.fill('#calc-d1', '10');
       await page.fill('#calc-d2', '8');
       await page.fill('#calc-d3', '150');
@@ -776,7 +866,7 @@ async function walkFocus(page) {
       // path with nothing to export and Populate correctly declining. 'blockwall'
       // prefills its JIC all-in rate and prices in JMD, and 12 m x 3 m IS the
       // blockwork strip the question below asks about.
-      await ap.selectOption('#calc-work', 'blockwall');
+      await pickWork(ap, 'blockwall');
       await ap.fill('#calc-d1', '12');
       await ap.fill('#calc-d2', '3');
       await ap.click('[data-action=calcRun]');

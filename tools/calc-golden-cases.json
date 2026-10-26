@@ -535,6 +535,44 @@
       "note": "deduction BEFORE waste: (24 - 1.44) x 1.10 = 24.816; mat x 12 = 297.79; lab x 17 = 421.87. (Waste only applies on trades with a waste spec - drywall has one, blockwall does not.)"
     },
     {
+      "id": "M-drywall-itemised",
+      "work": "drywall",
+      "dims": {
+        "d1": "10",
+        "d2": "2.4"
+      },
+      "matMode": "items",
+      "acc": "{}",
+      "expect": {
+        "qty": 26.4,
+        "mat": 232.21,
+        "lab": 448.8,
+        "accessories": 5,
+        "accTotal": 83.75,
+        "total": 764.76
+      },
+      "note": "MAT-1, all five planning lines ON at a 10 x 2.4 wall. qty 24 x 1.10 = 26.4. Main material keeps 0.733 of the 12 rate: 8.796 x 26.4 = 232.21. Lines (rule x qty, +waste, x USD price): studs 1.3 x 26.4 x 1.05 = 36.04 x 1.05 = 37.84; mud 0.45 x 26.4 x 1.1 = 13.07 x 2.6 = 33.98; tape 0.4 x 26.4 x 1.1 = 11.62 x 0.06 = 0.70; screws 14 x 26.4 x 1.05 = 388.08 x 0.018 = 6.99; bead 0.18 x 26.4 x 1.05 = 4.99 x 0.85 = 4.24 = 83.75. labour 26.4 x 17 = 448.8. Total 232.21 + 448.8 + 83.75 = 764.76 (US, no tax)."
+    },
+    {
+      "id": "M-drywall-one-line-off",
+      "work": "drywall",
+      "dims": {
+        "d1": "10",
+        "d2": "2.4"
+      },
+      "matMode": "items",
+      "acc": "{\"drywall|compound\":{\"on\":false}}",
+      "expect": {
+        "qty": 26.4,
+        "mat": 232.21,
+        "lab": 448.8,
+        "accessories": 4,
+        "accTotal": 49.77,
+        "total": 730.78
+      },
+      "note": "MAT-1, the joint compound switched off: the total drops by exactly that line (83.75 - 33.98 = 49.77 lines; 764.76 - 33.98 = 730.78), and the main material keeps its share of the rate - the removed money is the line, never the whole allowance."
+    },
+    {
       "id": "X-tile-piece",
       "work": "tile",
       "dims": {

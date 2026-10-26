@@ -226,6 +226,15 @@ jobs:
         id: verify-ratebook
         run: node tools/verify-ratebook-wording.cjs
 
+      # MAT-1 (REFINEMENT-DIRECTIVE-2026-10-24): the static half of the itemised
+      # material table - every WORK trade carries an itemised list or a written
+      # reason, every line is fully shaped, and no trade whose material
+      # description names more than one component is left as a bare lump.
+      # The browser half (T-ACC) is the qa-mat-items step in T4.
+      - name: "T1: Itemised materials table (T-LUMP static)"
+        id: verify-calc-lump
+        run: node tools/verify-calc-lump.cjs
+
       # G-2 gate (DIRECTIVE: GOOGLE SIGN-IN SECURITY GAPS, 2026-10-23):
       # in-process Worker route battery + the 14 sign-in nonce checks
       # (wrong/reused/expired/forged, email_verified, flag on/off, sweep).
@@ -587,6 +596,16 @@ jobs:
       - name: "T4: Quick total + dashboard card waves (qa-calc-assistant)"
         id: qa-calc-assistant
         run: node tools/qa-calc-assistant.cjs
+
+      # MAT-1 (REFINEMENT-DIRECTIVE-2026-10-24): itemised materials - the T-ACC
+      # gate. Per trade: the itemised material cost is within 15% of the lump it
+      # replaces, the switch off equals the pre-change total, one line off moves
+      # the total by exactly that line, no exchange rate blanks the planning
+      # prices (N3), the CSV + spreadsheet + card reconcile to the cent, and the
+      # drawer itself (add / remove / reset / hide / recall) behaves.
+      - name: "T4: Itemised materials (qa-mat-items)"
+        id: qa-mat-items
+        run: node tools/qa-mat-items.cjs
 
       # APP-4 (REFINEMENT-DIRECTIVE-2026-10-24): a click on a radio or
       # checkbox INSIDE a dialog overlay kept its default. The six overlays in

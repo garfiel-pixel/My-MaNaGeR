@@ -405,7 +405,96 @@
 // js/mmgr-perf.js, js/mmgr-glass.js, js/marketing.js, js/marketing-globe.js,
 // js/mmgr-combobox.js (new), dist/marketing-bundle.js. No inline script block
 // changed, so the CSP hashes are untouched.
-const CACHE = 'mmgr-shell-v478';
+const CACHE = 'mmgr-shell-v483';
+
+// v483 - GANTT-1: ONE VIEW BUILDER FOR SCREEN AND EXPORT, WIDE DIALOG,
+// TIDY, GATES POLICY (REFINEMENT-DIRECTIVE-2026-10-24 section 8). New
+// pure module js/mmgr-gantt-view.js (bundle + dev fallback) answers the
+// only question a Gantt picture may ask - which rows, over which span,
+// joined by which links, at which scale - and the PNG/SVG/PDF export now
+// draws from it instead of its own copy of the ordering, span, WBS,
+// milestone and link-policy rules. Tidy (the dialog's new View box) is a
+// VIEW switch: it collapses finished and after-window phases, reduces the
+// displayed links transitively, and never touches plan data; the Links
+// row grows to four policies with 'gates' (phase summaries + phase-gate
+// milestones + critical chain) as the zero-click default. The export
+// dialog is now wide (min(980px, 94vw), 3-column grid, sticky footer) so
+// every choice is visible at 1280x720. Changed shell assets:
+// project.html, js/mmgr-app.js, js/mmgr-gantt-view.js (new), dist/bundle.js.
+// project.html's dev-fallback inline list changed, so its SHA-256 changed:
+// the hashes were regenerated into worker.js + serve.cjs
+// (tools/regen-csp-hashes.cjs) and the new hash swapped into the page's own
+// meta CSP in place of the stale one (tools/verify-csp-hashes.cjs proves
+// parity).
+
+// v482 - AI-3: THE ASSISTANT REACHES EVERY FIELD, AND ASKS
+// (REFINEMENT-DIRECTIVE-2026-10-24 section 4). The settings proposal grows
+// from six keys to every field the owner named - gct, the four statutory cost
+// parts, labour-only, itemise materials and each material line's own on/off
+// and price - all validated page-side in calculator-page.js against the same
+// ranges the inputs carry (unknown keys refused by name, the four parts all
+// or nothing). New ASK line: one question per reply rendered as BUTTONS
+// (Yes/No/Custom) in calc-ai.js, so the user never types the answer; Custom
+// hands the caret to the real box through MMGR_CALC_FOCUS, and the settings
+// chip now lists a key the page does not support instead of dropping it. The
+// prompt gains the ASK form, its one-per-reply limit, the accepted key list
+// and the never-compute-money rule. Changed shell assets: js/calculator-page.js,
+// js/calc-ai.js, calculator.html (both js busters). No inline script changed,
+// so the CSP hashes are untouched.
+
+// v481 - UI-4: THE CALCULATOR BAR IS THE APP BAR (REFINEMENT-DIRECTIVE-2026-10-24
+// section 3, rule 1.4 consistency by reference). The calculator's top bar was a
+// flat strip on --tile-bg (and later its own gold gradient), so the two pages
+// read as different products. It now carries the app bar's own values, copied:
+// radius --squircle-md, the light two-layer background, the glass blur, the
+// two-layer lift, a 18px gap, and the 56px control band - the app bar has no
+// fixed height, but it reserves exactly 56px of padding-top for its corner
+// controls, and the calculator bar (7px + 40px controls + 7px + 1px borders,
+// border-box) now measures the same 56px. Also: a 1px divider between the title
+// and the actions, the bar capped to the content column from 1200px up so it
+// stops reading as a long band on a wide window, and the earlier per-page gold
+// gradient removed (that is the drift this task exists to end). The rate book
+// button's mark+name / mark-alone rule came with the UI-4 pass earlier; the gate
+// now measures it. Changed shell assets: css/mmgr.css, dist/mmgr.min.css,
+// calculator.html (css buster). No inline script changed, so the CSP hashes are
+// untouched. Gate: the UI-4 family in tools/qa-calc-controls.cjs (61/61), which
+// measures both bars' computed styles in light and dark.
+
+// v480 - MAT-3: PRICES THAT CHANGED AFTER A LINE WAS ADDED
+// (REFINEMENT-DIRECTIVE-2026-10-24 section 4). A bill line holds its own rate
+// fields, so a line quoted last week keeps last week's numbers when the book
+// moves - right, because a quote someone may have sent is never rewritten
+// silently, but nothing said so. Every line is now stamped when it is saved
+// with the date it was priced and a short signature of the PRICING SOURCE it
+// was quoted from: the book/model row for each field that is still a prefill,
+// and the exchange rate where the MAT-1 allowances convert. When that source
+// moves the line says "Prices changed since 12 Oct" with the only two honest
+// answers - Re-price this line (takes the current figure for the prefills,
+// touches nothing hand-typed, re-stamps that line and no other) and Keep as
+// quoted (hides the note for that signature until the source moves again). The
+// bill and the export carry the priced date, so an old quote is recognisable as
+// old; a hand-typed line never flags (nothing about its price can move but the
+// owner's own edit) and a line saved before this wave carries no stamp, because
+// we do not know when it was priced. Changed shell assets: js/calculator-page.js
+// (the stamp, the two actions), css/mmgr.css (.bcp-boq-flag), calculator.html
+// (css + js busters). No inline script block changed, so the CSP hashes are
+// untouched.
+
+// v479 - MAT-2: RELATED ITEMS THE USER WOULD OTHERWISE FORGET
+// (REFINEMENT-DIRECTIVE-2026-10-24 section 4). The companion chips offered only
+// WORK add-ons (line out, cart away, debrush), so a wall priced on its own came
+// out with no render, no paint and no skirting anywhere near it. The same
+// one-tap row now offers the RELATED TRADES from the directive's table - paint
+// the wall you lined, screed the floor you tiled, hang gutters and fascia on the
+// roof you covered - each quantity derived from the SAME typed dims (net wall
+// area less the openings, the run, the run around the space) or WITHHELD when
+// the dims do not say, plus one chip that opens the MAT-1 split to show the
+// material lines the rate hides (it adds no money). The X1 forgotten-work linter
+// grew the matching flags, and every fix that names a companion rides the
+// chip's own derivation, so a flag and a chip can never disagree about a
+// quantity. Changed shell assets: js/calculator-page.js (chips, lint rules,
+// the shared derivations), calculator.html (its cache buster). No inline script
+// block changed, so the CSP hashes are untouched.
 
 // v478 - MAT-1: ITEMISED MATERIALS (REFINEMENT-DIRECTIVE-2026-10-24 section 4).
 // The material rate of a trade was ONE number the user could not see into

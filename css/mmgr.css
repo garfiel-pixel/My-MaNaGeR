@@ -10524,6 +10524,29 @@ html.mmgr-tour-active .bcp-tour-nudge {
   font-size: 0.8rem;
   color: var(--slate);
 }
+/* MAT-3 (REFINEMENT-DIRECTIVE-2026-10-24 section 4): a bill line whose price
+   source moved after it was stamped. It sits UNDER its own row instead of
+   inside it - the row is one flex line with Edit and Remove on the end, so the
+   note would squeeze them off a phone. The tokens carry the alert colour and
+   the dark theme redefines them, so this rule needs no theme branch. */
+.bcp-boq-flag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  border: 1px solid var(--warning);
+  background: var(--warning-subtle);
+  border-radius: 10px;
+  padding: 7px 12px;
+  margin: -4px 0 8px;
+  font-size: 0.8rem;
+  color: var(--amber-ink);
+}
+.bcp-boq-flag-txt {
+  flex: 1 1 auto;
+  min-width: 140px;
+  font-weight: 700;
+}
 /* W2 element instances: compact grid rows (name, dims, count, remove). */
 .bcp-inst-row {
   display: grid;

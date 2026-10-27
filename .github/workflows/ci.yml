@@ -607,6 +607,18 @@ jobs:
         id: qa-mat-items
         run: node tools/qa-mat-items.cjs
 
+      # MAT-2 (REFINEMENT-DIRECTIVE-2026-10-24): related items the user would
+      # otherwise forget. The companion chips now offer the related TRADES from
+      # the directive's table (paint the wall, screed the floor, gutters on the
+      # roof) plus the chip that reveals the material lines the rate hides.
+      # Every chip derives its quantity from the typed dims or is withheld,
+      # every linter fix rides the chip's own derivation, the pair contract is
+      # read both directions so a new chip cannot drift from the linter, and
+      # the two one-tap paths (chip, lint fix) add a REAL priced bill line.
+      - name: "T4: Related items (qa-related-items)"
+        id: qa-related-items
+        run: node tools/qa-related-items.cjs
+
       # APP-4 (REFINEMENT-DIRECTIVE-2026-10-24): a click on a radio or
       # checkbox INSIDE a dialog overlay kept its default. The six overlays in
       # project.html are data-action containers, and the global dispatcher's

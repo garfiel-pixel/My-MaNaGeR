@@ -1510,11 +1510,23 @@ async function withChrome(fn) {
       document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
       window.__calcFlushHeavy && window.__calcFlushHeavy(); // X-1: companion chips render in the heavy pass
       var wrap = document.getElementById('calc-companions');
-      return { shown: !wrap.hidden, chips: wrap.querySelectorAll('.bcp-cp-chip').length };
+      var chips = wrap.querySelectorAll('.bcp-cp-chip');
+      return { shown: !wrap.hidden, chips: chips.length,
+        // MAT-2 re-baseline (2026-10-26): the row now also offers the RELATED
+        // TRADES from the directive's table (render the wall you built) and the
+        // material lines the rate hides. Same mechanism, more of the punch list.
+        works: Array.prototype.map.call(wrap.querySelectorAll('[data-cp]'), function(c) { return c.getAttribute('data-cp'); }),
+        materials: wrap.querySelectorAll('.bcp-cp-materials').length,
+        materialText: (wrap.querySelector('.bcp-cp-materials') || {}).textContent || '' };
     })()`);
     check(
-      'CP3 pricing a blockwall shows 3 companion chips; hidden before/after',
-      cp3 && cp3.shown && cp3.chips === 3,
+      'CP3 pricing a blockwall shows its companion chips: 4 related trades + the material-lines chip',
+      cp3 &&
+        cp3.shown &&
+        cp3.chips === 5 &&
+        cp3.works.join() === 'lineout,renderwalls,brush,cart' &&
+        cp3.materials === 1 &&
+        /material lines inside this rate/.test(cp3.materialText),
       cp3
     );
     const cp4 = await ev(`(function(){
@@ -1536,20 +1548,49 @@ async function withChrome(fn) {
         cp4.tag === 'blockwall:lineout' &&
         cp4.measured === '24.8' &&
         cp4.priced &&
-        cp4.left === 1,
+        // MAT-2 re-baseline: renderwalls + cart + the material chip remain.
+        cp4.left === 3,
       cp4
     );
     const cp5 = await ev(`(function(){
+      document.querySelector('#calc-companions [data-cp="renderwalls"]').click();
       document.querySelector('#calc-companions [data-cp="cart"]').click();
       window.__calcFlushHeavy && window.__calcFlushHeavy(); // X-1
       var wrap = document.getElementById('calc-companions');
       var lines = JSON.parse(localStorage.getItem('mmgr_calc_boq') || '[]');
-      return { hidden: wrap.hidden, lines: lines.length };
+      var renderLine = lines.filter(function(l) { return l.st && l.st.work === 'render'; })[0];
+      var rr = renderLine ? __calcEngine.computeFor(renderLine.st) : null;
+      return { hidden: wrap.hidden, lines: lines.length,
+        left: wrap.hidden ? 0 : wrap.querySelectorAll('.bcp-cp-chip').length,
+        renderQty: renderLine && renderLine.st && parseFloat(renderLine.st.measuredQty),
+        renderPriced: !!(rr && !rr.error && rr.qty > 0) };
+    })()`);
+    // MAT-2 re-baseline: four related-trade lines now exist (lining out, clear,
+    // render, cart) and the material chip is still offered, because it adds NO
+    // line - it only opens the split. Clicking it must leave the bill alone.
+    check(
+      'CP5 accepting every related-trade suggestion leaves only the material chip, and the render line prices',
+      cp5 &&
+        !cp5.hidden &&
+        cp5.left === 1 &&
+        cp5.lines === 4 &&
+        cp5.renderQty === 24 &&
+        cp5.renderPriced,
+      cp5
+    );
+    const cp5b = await ev(`(function(){
+      document.querySelector('#calc-companions .bcp-cp-materials').click();
+      window.__calcFlushHeavy && window.__calcFlushHeavy();
+      var wrap = document.getElementById('calc-companions');
+      var lines = JSON.parse(localStorage.getItem('mmgr_calc_boq') || '[]');
+      return { hidden: wrap.hidden, lines: lines.length,
+        split: document.getElementById('calc-itemise').checked,
+        drawer: document.querySelectorAll('#calc-acc-list .acc-row').length };
     })()`);
     check(
-      'CP5 accepting every suggestion hides the chips row; all three lines on the bill',
-      cp5 && cp5.hidden && cp5.lines === 3,
-      cp5
+      'CP5b the material chip opens the split and adds NOTHING to the bill (never priced silently)',
+      cp5b && cp5b.hidden && cp5b.lines === 4 && cp5b.split === true && cp5b.drawer === 6,
+      cp5b
     );
     await ev(`(function(){ try { localStorage.removeItem('mmgr_calc_boq'); } catch (e) {} })()`);
 
@@ -4061,17 +4102,29 @@ async function withChrome(fn) {
         pour: flags([mk('slab')]),
         wall: flags([mk('blockwall')]),
         dig: flags([mk('excav')]),
-        complete: flags([mk('rebar'), mk('slab'), mk('formwork'), mk('footings'), mk('blockwall'), mk('cart-away')]),
+        // MAT-2 additions (2026-10-26): the pairs the companion chips offer are
+        // read as forgotten work over the whole bill.
+        roof: flags([mk('shingle-roof')]),
+        tiled: flags([mk('tile')]),
+        lined: flags([mk('drywall')]),
+        // A complete bill now includes the render and the paint the new pairs
+        // ask for - that is what "complete" has to mean. A drywall line in it
+        // too would still want skirting, which is why "complete" is a finished
+        // room without a new lining: the linter must not invent work.
+        complete: flags([mk('rebar'), mk('slab'), mk('formwork'), mk('footings'), mk('blockwall'), mk('render'), mk('paint'), mk('cart-away')]),
         empty: flags([])
       };
     })()`);
     check(
-      'LX1 linter rules: steel-no-concrete, pour-no-formwork, wall-no-footing, excav-no-cart fire; a complete bill and an empty bill lint clean',
+      'LX1 linter rules: steel-no-concrete, pour-no-formwork, wall-no-footing + wall-no-render, excav-no-cart, roof-no-gutter, roof-no-fascia, tile-no-screed + floor-no-skirting, linings-no-paint + linings-no-skirting fire; a complete bill and an empty bill lint clean',
       lx1 &&
         lx1.steel.join() === 'steel-no-concrete' &&
         lx1.pour.join() === 'pour-no-formwork' &&
-        lx1.wall.join() === 'wall-no-footing' &&
+        lx1.wall.join() === 'wall-no-footing,wall-no-render' &&
         lx1.dig.join() === 'excav-no-cart' &&
+        lx1.roof.join() === 'roof-no-gutter,roof-no-fascia' &&
+        lx1.tiled.join() === 'tile-no-screed,floor-no-skirting' &&
+        lx1.lined.join() === 'linings-no-paint,linings-no-skirting' &&
         lx1.complete.length === 0 &&
         lx1.empty.length === 0,
       lx1

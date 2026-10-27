@@ -2944,23 +2944,79 @@
   // and carting away; a fence needs the line debrushed). PURE: each suggestion
   // derives its quantity from the SAME state - no re-typing. Suggestions are
   // one-tap adds to the bill; nothing is ever priced silently.
+  //
+  // MAT-2 (REFINEMENT-DIRECTIVE-2026-10-24 section 4) adds the RELATED TRADES
+  // from the directive's table: a wall gets painted and skirted, a tiled floor
+  // gets a screed, a roof gets gutters and fascia. The materials each rate hides
+  // (lintels, damp-proof course, reinforcement, masking, membrane) are the MAT-1
+  // line list instead - see the material chip in renderCompanions.
   const COMPANIONS = {
-    blockwall: ['lineout', 'brush', 'cart'],
-    brickwall: ['lineout', 'brush', 'cart'],
-    framing: ['lineout', 'cart'],
-    render: ['lineout', 'cart'],
+    blockwall: ['lineout', 'renderwalls', 'brush', 'cart'],
+    brickwall: ['lineout', 'renderwalls', 'brush', 'cart'],
+    framing: ['lineout', 'ceilgrid', 'cart'],
+    render: ['lineout', 'wallpaint', 'cart'],
     paint: ['cart'],
-    drywall: ['cart'],
+    drywall: ['wallpaint', 'skirt', 'ceilgrid', 'cart'],
     siteprep: ['cart'],
-    slab: ['cart3'],
+    slab: ['screed', 'cart3'],
     footings: ['cart3'],
     'concrete-drive': ['cart3'],
     rebar: ['cart3'],
-    fencing: ['debrush', 'holes']
+    fencing: ['debrush', 'holes'],
+    tile: ['screed', 'skirt', 'cart'],
+    'floor-screed': ['tile', 'cart'],
+    ceiling: ['wallpaint', 'cart'],
+    roof: ['gutterrun', 'fascia', 'cart'],
+    'shingle-roof': ['gutterrun', 'fascia', 'cart']
   };
   // A suggestion is { id, name, work, qty(st) -> number|null }. Quantities
   // derive from typed dims (already metric in st - readState stores raw typed
   // values, so imperial conversion mirrors computeFor's FT/IN rules here).
+  //
+  // MAT-2: three shared derivations, because a related trade measures the SAME
+  // thing a different way - the same wall area, the same run, or the run around
+  // the space. null means "the dims do not say", and a null suggestion is
+  // WITHHELD (never guessed, never priced silently).
+  function cpArea(st) {
+    const n1 = parseFloat(st.d1),
+      n2 = parseFloat(st.d2);
+    if (!(n1 > 0) || !(n2 > 0)) {
+      return null;
+    }
+    return st.units === 'imperial' ? n1 * FT * (n2 * FT) : n1 * n2;
+  }
+  function cpRun(st) {
+    const n1 = parseFloat(st.d1);
+    if (!(n1 > 0)) {
+      return null;
+    }
+    return st.units === 'imperial' ? n1 * FT : n1;
+  }
+  function cpPerimeter(st) {
+    const n1 = parseFloat(st.d1),
+      n2 = parseFloat(st.d2);
+    if (!(n1 > 0) || !(n2 > 0)) {
+      return null;
+    }
+    const d1 = st.units === 'imperial' ? n1 * FT : n1;
+    const d2 = st.units === 'imperial' ? n2 * FT : n2;
+    return 2 * (d1 + d2);
+  }
+  // The wall area less the openings already typed on the source line: you do not
+  // render or paint a window. Same deduction the engine makes, from the same
+  // rows, so the derived line is not a hand-waved number.
+  function cpWallNet(st) {
+    const area = cpArea(st);
+    if (area == null) {
+      return null;
+    }
+    try {
+      const op = openingsArea(st, st.units === 'imperial');
+      return Math.max(0, area - (op.area || 0));
+    } catch (e) {
+      return area;
+    }
+  }
   const COMPANION_DEFS = {
     lineout: {
       name: 'Lining out the walls (profiles and string lines)',
@@ -3044,6 +3100,58 @@
         const run = st.units === 'imperial' ? n1 * FT : n1;
         return Math.min(200, Math.ceil(run / 2.5));
       }
+    },
+    // ---- MAT-2 related trades (the directive's table) ----------------------
+    // Primer and paint for the same wall: the paint trade prices LITRES at 10
+    // square metres per litre per coat, so two coats over the net wall area.
+    wallpaint: {
+      name: 'Primer and paint for the same area',
+      work: 'paint',
+      qty: function (st) {
+        const area = cpWallNet(st);
+        return area == null ? null : Math.round(((area * 2) / 10) * 100) / 100;
+      }
+    },
+    // A grid ceiling over the same footprint (the drywall/lining question).
+    ceilgrid: {
+      name: 'Grid ceiling over the same area',
+      work: 'ceiling',
+      qty: cpArea
+    },
+    // Skirting around the same space: the run around the typed dims.
+    skirt: {
+      name: 'Skirting around the same space',
+      work: 'skirt',
+      qty: cpPerimeter
+    },
+    // Screed or levelling for the same area (under tile, over a slab).
+    screed: {
+      name: 'Screed or levelling for the same area',
+      work: 'floor-screed',
+      qty: cpArea
+    },
+    // Tile over a fresh screed.
+    tile: {
+      name: 'Tile over the same area',
+      work: 'tile',
+      qty: cpArea
+    },
+    // Render the same wall (openings deducted, the same rows).
+    renderwalls: {
+      name: 'Render the same walls',
+      work: 'render',
+      qty: cpWallNet
+    },
+    // Gutters and downpipes along the eaves: the roof length is the eaves run.
+    gutterrun: {
+      name: 'Gutters and downpipes along the eaves',
+      work: 'gutter',
+      qty: cpRun
+    },
+    fascia: {
+      name: 'Fascia and soffit along the eaves',
+      work: 'soffit-fascia',
+      qty: cpRun
     }
   };
   // PURE: the suggestions for a priced line's state, each with its derived
@@ -3112,6 +3220,101 @@
         return !w['cart-away'];
       },
       fix: { work: 'cart-away', label: 'Add a cart-away allowance' }
+    },
+    // ---- MAT-2 (REFINEMENT-DIRECTIVE-2026-10-24 section 4): the SAME pairs the
+    // companion chips offer, read as forgotten work over the whole bill. A flag
+    // whose fix carries `cp` reuses the companion's own derivation
+    // (calcCompAdd) instead of a second quantity rule, so the chip and the
+    // linter can never disagree about what the missing line measures.
+    {
+      id: 'roof-no-gutter',
+      msg: 'Roof is priced with no gutters or downpipes to take the water.',
+      when: function (w) {
+        return w.roof || w['shingle-roof'];
+      },
+      missing: function (w) {
+        return !w.gutter;
+      },
+      fix: { cp: 'gutterrun', work: 'gutter', label: 'Add gutters and downpipes' }
+    },
+    {
+      id: 'roof-no-fascia',
+      msg: 'Roof is priced with no fascia or soffit to close the eaves.',
+      when: function (w) {
+        return w.roof || w['shingle-roof'];
+      },
+      missing: function (w) {
+        return !w['soffit-fascia'];
+      },
+      fix: { cp: 'fascia', work: 'soffit-fascia', label: 'Add fascia and soffit' }
+    },
+    {
+      id: 'linings-no-paint',
+      msg: 'New walls or ceilings are priced with no paint.',
+      when: function (w) {
+        return w.drywall || w.ceiling || w.render;
+      },
+      missing: function (w) {
+        return !w.paint;
+      },
+      fix: { cp: 'wallpaint', work: 'paint', label: 'Add primer and paint' }
+    },
+    {
+      id: 'wall-no-render',
+      msg: 'Blockwork is priced with no render over it.',
+      when: function (w) {
+        return w.blockwall || w.brickwall;
+      },
+      missing: function (w) {
+        return !w.render;
+      },
+      fix: { cp: 'renderwalls', work: 'render', label: 'Add render to the same walls' }
+    },
+    {
+      id: 'tile-no-screed',
+      msg: 'Tiling is priced with no screed or levelling under it.',
+      when: function (w) {
+        return w.tile;
+      },
+      missing: function (w) {
+        return !w['floor-screed'];
+      },
+      fix: { cp: 'screed', work: 'floor-screed', label: 'Add a screed allowance' }
+    },
+    {
+      id: 'floor-no-skirting',
+      msg: 'A floor is priced with no skirting around it.',
+      when: function (w) {
+        return w.tile || w['floor-screed'];
+      },
+      missing: function (w) {
+        return !w.skirt;
+      },
+      fix: { cp: 'skirt', work: 'skirt', label: 'Add skirting around the space' }
+    },
+    {
+      id: 'linings-no-skirting',
+      msg: 'New lining is priced with no skirting.',
+      // Only a LINING line raises it: a room that was simply painted before we
+      // saw it is not a gap this bill owes anyone, so a painted bill stays clean.
+      when: function (w) {
+        return w.drywall;
+      },
+      missing: function (w) {
+        return !w.skirt;
+      },
+      fix: { cp: 'skirt', work: 'skirt', label: 'Add skirting around the space' }
+    },
+    {
+      id: 'screed-no-tile',
+      msg: 'A screed is priced with no covering over it.',
+      when: function (w) {
+        return w['floor-screed'];
+      },
+      missing: function (w) {
+        return !w.tile;
+      },
+      fix: { cp: 'tile', work: 'tile', label: 'Add the covering over the screed' }
     }
   ];
   // PURE: the flags for a bill (array of { st: { work } } lines).
@@ -8736,13 +8939,255 @@
     }
   }
   function persistBoq(lines) {
+    // MAT-3: a line is stamped ONCE, when it is first saved - that is the
+    // moment it was quoted. Later saves never move the stamp, so a line that
+    // has been kept as quoted stays recognisable as old.
+    const stamped = (lines || []).map(stampBoqLine);
     try {
-      localStorage.setItem(BKEY2, JSON.stringify(lines.slice(0, 60)));
+      localStorage.setItem(BKEY2, JSON.stringify(stamped.slice(0, 60)));
     } catch (e) {
       /* nicety, never a gate */
     }
     wsStampNow('boq');
     scheduleWsPut();
+  }
+
+  // ---- MAT-3 (REFINEMENT-DIRECTIVE-2026-10-24 section 4): PRICES THAT
+  // CHANGED AFTER A LINE WAS ADDED -------------------------------------------
+  // A bill line holds its OWN rate fields, so a line quoted last week keeps
+  // last week's numbers when the book moves. That is right - a quote someone
+  // may have sent is never rewritten silently - but nothing said so. Each line
+  // is stamped with the date it was priced and a short signature of the
+  // PRICING SOURCE it was quoted from (the book/model row for each field that
+  // is still a prefill, the exchange rate where it converts money). When that
+  // source moves the signature no longer matches the stamp and the line says
+  // so, offering the only two honest answers: take the new price, or keep this
+  // line as quoted.
+  const MAT3_MONTHS = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec'
+  ];
+  // '2026-10-12' -> '12 Oct'. Read from the string, never through Date(), so a
+  // device west of UTC cannot print the wrong day for a quote.
+  function stampDateText(iso) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
+    if (!m) {
+      return '';
+    }
+    // ok: digits plus a fixed month name from a literal table - the only shape
+    // this ever returns, and both render paths escape it anyway (esc()).
+    return String(parseInt(m[3], 10)) + ' ' + MAT3_MONTHS[parseInt(m[2], 10) - 1]; // ok: digits + a fixed month name
+  }
+  // D4's contract: a value that still equals its prefill marker came from the
+  // source (and follows it), an empty field is priced by the source, and
+  // anything else was typed by hand and is the user's own money - it never
+  // follows a book and is never overwritten by a re-price.
+  function followsSource(val, marker) {
+    const v = val == null ? '' : String(val).trim();
+    if (v === '') {
+      return true;
+    }
+    const mk = marker == null ? '' : String(marker).trim();
+    return mk !== '' && v === mk;
+  }
+  function stampMarker(st, plain, under) {
+    return st[under] != null ? st[under] : st[plain];
+  }
+  function sigRound2(n) {
+    return Math.round(n * 100) / 100;
+  }
+  // The metric dims modelRatesFor asks for (the same conversion the prefill
+  // makes from the form).
+  function stampDims(st) {
+    const imp = st.units === 'imperial';
+    const n1 = parseFloat(st.d1),
+      n2 = parseFloat(st.d2);
+    return {
+      d1: isFinite(n1) ? (imp ? n1 * FT : n1) : null,
+      d2: isFinite(n2) ? (imp ? n2 * FT : n2) : null
+    };
+  }
+  // PURE: the parts of this line's pricing source that can still move. One
+  // part per money field that follows the source, the exchange rate where the
+  // MAT-1 allowances convert at price time, and nothing at all for a line
+  // whose every figure is the user's own (nothing about it can change).
+  function rateSigParts(st0) {
+    const st = st0 || {};
+    const cur = st.currency || DEFAULT_CURRENCY;
+    const parts = ['w:' + (st.work || ''), 'c:' + cur];
+    const followMat = followsSource(st.rateMat, stampMarker(st, 'matModel', '_matModel'));
+    const followLab = followsSource(st.rateLab, stampMarker(st, 'labModel', '_labModel'));
+    const followAll = followsSource(st.allInRate, stampMarker(st, 'allInModel', '_allInModel'));
+    const usesSource = st.work !== 'custom' && (followMat || followLab || followAll);
+    if (usesSource) {
+      const d = stampDims(st);
+      const m = modelRatesFor(st.work, st.variant || '', cur, d.d1, d.d2);
+      if (!m || m.unconvertible) {
+        // No rate can reach this line's currency: the source says nothing, and
+        // the moment it DOES say something the signature changes with it.
+        parts.push('src:none');
+      } else {
+        if (followMat) {
+          parts.push('m:' + (m.mat == null ? '-' : sigRound2(m.mat)));
+        }
+        if (followLab) {
+          parts.push('l:' + (m.lab == null ? '-' : m.lab));
+        }
+        if (followAll) {
+          parts.push('a:' + (m.allIn == null ? '-' : sigRound2(m.allIn)));
+        }
+      }
+    } else if (st.matMode === 'items' && accFor(st.work)) {
+      // The itemised allowances are US dollars converted at price time, so an
+      // exchange-rate move changes this line's money even though every rate
+      // field is the user's own.
+      const f = fxFactor(cur);
+      parts.push('fx:' + (f == null ? 'none' : Math.round(f * 100000) / 100000));
+    }
+    return parts;
+  }
+  // A short, stable signature of that source. Six-ish characters: it is shown
+  // nowhere, it only has to tell two states apart.
+  function rateSig(st) {
+    const s = rateSigParts(st).join('|');
+    let h = 5381;
+    for (let i = 0; i < s.length; i++) {
+      h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+    }
+    return ('0000000' + h.toString(36)).slice(-7);
+  }
+  // Stamp a line the first time it is saved. Legacy lines (saved before this
+  // wave) carry no stamp and none is invented for them: we do not know when
+  // they were priced, so the bill claims nothing about them.
+  function stampBoqLine(line) {
+    if (line && !line.pricedAt) {
+      line.pricedAt = new Date().toISOString().slice(0, 10);
+      line.rateSig = rateSig(line.st || {});
+    }
+    return line;
+  }
+  // The line is flagged when its source has moved since the stamp, unless the
+  // owner has said "keep as quoted" about THAT signature - and a later change
+  // raises the flag again.
+  function boqStale(line) {
+    if (!line || !line.rateSig) {
+      return false;
+    }
+    const now = rateSig(line.st || {});
+    if (now === line.rateSig) {
+      return false;
+    }
+    return !(line.rateSigKeep && now === line.rateSigKeep);
+  }
+  // Re-price: take the CURRENT source figure for every field that was a source
+  // prefill, leave every hand-typed figure exactly as it is, and re-stamp.
+  function refillFromSource(st0) {
+    const st = st0 || {};
+    const cur = st.currency || DEFAULT_CURRENCY;
+    if (st.work === 'custom') {
+      return st;
+    }
+    const d = stampDims(st);
+    const m = modelRatesFor(st.work, st.variant || '', cur, d.d1, d.d2);
+    if (!m || m.unconvertible) {
+      // There is no figure to take, so nothing is taken and nothing is claimed.
+      return st;
+    }
+    const next = Object.assign({}, st);
+    // The value, its prefill marker and the marker under BOTH keys the page
+    // writes: readState stores the plain one and the live form adds the
+    // underscored one, and a re-priced line must read as a prefill in either
+    // place or it would announce "your rate" over a book figure.
+    const take = function (val, marker, plain, plainMarker, underMarker, source, round) {
+      if (!followsSource(val, marker)) {
+        return; // the user's own money - never touched
+      }
+      if (source == null) {
+        return; // the source has no figure for this field: leave it alone
+      }
+      const text = String(round ? sigRound2(source) : source);
+      next[plain] = text;
+      next[plainMarker] = text;
+      next[underMarker] = text;
+    };
+    take(
+      st.rateMat,
+      stampMarker(st, 'matModel', '_matModel'),
+      'rateMat',
+      'matModel',
+      '_matModel',
+      m.mat,
+      true
+    );
+    take(
+      st.rateLab,
+      stampMarker(st, 'labModel', '_labModel'),
+      'rateLab',
+      'labModel',
+      '_labModel',
+      m.lab,
+      false
+    );
+    take(
+      st.allInRate,
+      stampMarker(st, 'allInModel', '_allInModel'),
+      'allInRate',
+      'allInModel',
+      '_allInModel',
+      m.allIn,
+      true
+    );
+    return next;
+  }
+  // The money fields a quote is identified by, for matching the live estimate
+  // against the bill ("is what I am exporting the line I was quoted?").
+  const QUOTE_KEYS = [
+    'work',
+    'd1',
+    'd2',
+    'd3',
+    'currency',
+    'country',
+    'variant',
+    'units',
+    'rateMat',
+    'rateLab',
+    'allInRate',
+    'basis',
+    'piecePrice',
+    'pieceSize',
+    'wastePct',
+    'matMode',
+    'quality',
+    'labourOnly'
+  ];
+  function sameQuote(a, b) {
+    a = a || {};
+    b = b || {};
+    return QUOTE_KEYS.every(function (k) {
+      const av = a[k] == null ? '' : String(a[k]);
+      const bv = b[k] == null ? '' : String(b[k]);
+      return av === bv;
+    });
+  }
+  // The date this state was quoted on, if it IS one of the bill's lines. The
+  // export prints it only then - a document that was never quoted carries no
+  // quote date at all.
+  function pricedOnFor(st) {
+    const hit = loadBoq().filter(function (l) {
+      return l && l.pricedAt && sameQuote(l.st, st);
+    })[0];
+    return hit ? hit.pricedAt : '';
   }
   // PURE: per-line priced rows + rolled-up totals. No DOM. Shared by render,
   // the cash-flow wave and the CSV export.
@@ -8822,6 +9267,13 @@
                 ' - ' +
                 money;
             }
+            // MAT-3: the bill shows when each line was priced, so an old
+            // quote is recognisable as old without opening it.
+            const stamped = line.pricedAt ? stampDateText(line.pricedAt) : '';
+            if (stamped) {
+              meta += ' - priced ' + stamped;
+            }
+            const stale = boqStale(line);
             return (
               '<div class="bcp-est-row bcp-boq-line">' +
               '<span class="bcp-est-name">' +
@@ -8836,7 +9288,20 @@
               '<button type="button" class="btn btn-n btn-s" data-action="calcBoqRemove" data-idx="' +
               i +
               '" aria-label="Remove this line from the bill">X</button>' +
-              '</div>'
+              '</div>' +
+              (stale
+                ? '<div class="bcp-boq-flag">' +
+                  '<span class="bcp-boq-flag-txt">Prices changed since ' +
+                  esc(stamped) +
+                  '</span>' +
+                  '<button type="button" class="btn btn-n btn-s" data-action="calcBoqReprice" data-idx="' +
+                  i +
+                  '">Re-price this line</button>' +
+                  '<button type="button" class="btn btn-n btn-s" data-action="calcBoqKeep" data-idx="' +
+                  i +
+                  '">Keep as quoted</button>' +
+                  '</div>'
+                : '')
             );
           })
           .join('')
@@ -8850,7 +9315,23 @@
     if (!box) {
       return;
     }
-    const flags = billLint(lines);
+    // MAT-2: a fix that names a companion (`cp`) derives its quantity from the
+    // flagged line, not from whatever the form happens to be showing, so the
+    // source trade rides the flag.
+    const flags = billLint(lines).map(function (f) {
+      if (f.fix && f.fix.cp) {
+        const src = (lines || []).filter(function (l) {
+          if (!l || !l.st || !WORK[l.st.work]) {
+            return false;
+          }
+          const one = {};
+          one[l.st.work] = true;
+          return !!f.when(one);
+        })[0];
+        return Object.assign({}, f, { src: src && src.st ? src.st.work : '' });
+      }
+      return f;
+    });
     if (!flags.length) {
       box.hidden = true;
       box.innerHTML = '';
@@ -8866,9 +9347,13 @@
             esc(f.msg) +
             '</span>' +
             (f.fix
-              ? '<button type="button" class="btn btn-n btn-s" data-action="calcLintFix" data-fix="' +
-                esc(f.fix.work) +
-                '">' +
+              ? '<button type="button" class="btn btn-n btn-s" data-action="' +
+                (f.fix.cp ? 'calcCompAdd' : 'calcLintFix') +
+                '" ' +
+                (f.fix.cp
+                  ? 'data-cp="' + esc(f.fix.cp) + '" data-cp-src="' + esc(f.src || '') + '"'
+                  : 'data-fix="' + esc(f.fix.work) + '"') +
+                '>' +
                 esc(f.fix.label) +
                 '</button>'
               : '') +
@@ -9136,6 +9621,14 @@
     add('Document', 'Title', docTitleBase(), '', '', '', '');
     add('Document', 'Type', docType(), '', '', '', '');
     add('Document', 'Date', new Date().toISOString().slice(0, 10), '', '', '', '');
+    // MAT-3: when what is being exported IS a line the owner put on the bill,
+    // the sheet carries the date that line was priced - so an old quote is
+    // recognisable as old. An estimate that was never on the bill claims no
+    // price date at all.
+    var pricedOn = pricedOnFor(readState());
+    if (pricedOn) {
+      add('Document', 'Priced on', pricedOn, '', '', '', '');
+    }
     add('Document', 'Document no', ($('calc-doc-no') || {}).value || '', '', '', '', '');
     add('Document', 'Client', ($('calc-client-name') || {}).value || '', '', '', '', '');
     add('Document', 'Project address', ($('calc-client-addr') || {}).value || '', '', '', '', '');
@@ -9917,6 +10410,19 @@
     importPacks: importPacks,
     applyDiscount: applyDiscount,
     companionsFor: companionsFor,
+    // MAT-3: the price stamp itself, so the gate reads the SAME signature the
+    // bill stamps and compares rather than a copy of the algorithm.
+    rateSig: rateSig,
+    boqStale: boqStale,
+    stampDateText: stampDateText,
+    // MAT-2: the two shipped tables, so the pair gate reads the REAL chip
+    // definitions and the REAL linter rules instead of a hand-kept copy.
+    companionDefs: function () {
+      return COMPANION_DEFS;
+    },
+    lintRules: function () {
+      return LINT_RULES;
+    },
     billLint: billLint,
     syncFamily: syncFamily,
     brandLoad: brandLoad,
@@ -10460,13 +10966,41 @@
         return line.st && line.st.derivedFrom === st.work + ':' + c.id;
       });
     });
-    if (!list.length) {
+    let matLines = [];
+    const accTab = accFor(st.work);
+    if (accTab && st.matMode !== 'items' && res.accCtx) {
+      matLines = accLinesFor(
+        st.work,
+        res.accCtx,
+        fxFactor(res.currency || DEFAULT_CURRENCY),
+        st.acc
+      );
+    }
+    // A trade can have related work, material lines, or both: the row shows when
+    // there is anything to offer and hides only when there is nothing to say.
+    if (!list.length && !matLines.length) {
       wrap.hidden = true;
       return;
     }
     wrap.hidden = false;
     const cur = CURRENCY[res.currency] || '$';
     wrap.innerHTML = '<div class="bcp-cp-title">Commonly added with ' + esc(res.name) + '</div>';
+    // MAT-2: the materials this rate hides. One tap opens the MAT-1 split - it
+    // adds nothing to the bill, because the money those lines carry is the money
+    // the rate already holds; the user prices them line by line.
+    if (matLines.length) {
+      const mchip = document.createElement('button');
+      mchip.type = 'button';
+      mchip.className = 'bcp-cp-chip bcp-cp-materials';
+      mchip.setAttribute('data-action', 'calcItemiseOn');
+      mchip.textContent =
+        'See the ' +
+        matLines.length +
+        ' material lines inside this rate (' +
+        accTab.primary +
+        ' plus the rest)';
+      wrap.appendChild(mchip);
+    }
     list.forEach(function (c) {
       const chip = document.createElement('button');
       chip.type = 'button';
@@ -11719,6 +12253,46 @@
       );
       renderBoq();
     },
+    // ---- MAT-3: the two answers a price change allows, both user action ----
+    // Re-price takes the CURRENT figure for the fields that were book/model
+    // prefills and re-stamps this line only; every hand-typed figure on it is
+    // left exactly as the owner typed it.
+    calcBoqReprice: function (el) {
+      const idx = parseInt(el.getAttribute('data-idx'), 10);
+      if (isNaN(idx)) {
+        return;
+      }
+      const lines = loadBoq();
+      const line = lines[idx];
+      if (!line) {
+        return;
+      }
+      const next = refillFromSource(line.st || {});
+      lines[idx] = Object.assign({}, line, {
+        st: next,
+        pricedAt: new Date().toISOString().slice(0, 10),
+        rateSig: rateSig(next),
+        rateSigKeep: ''
+      });
+      persistBoq(lines);
+      renderBoq();
+    },
+    // Keep as quoted: the owner has seen the change and says this line stands.
+    // The note stays away until the source moves AGAIN.
+    calcBoqKeep: function (el) {
+      const idx = parseInt(el.getAttribute('data-idx'), 10);
+      if (isNaN(idx)) {
+        return;
+      }
+      const lines = loadBoq();
+      const line = lines[idx];
+      if (!line) {
+        return;
+      }
+      line.rateSigKeep = rateSig(line.st || {});
+      persistBoq(lines);
+      renderBoq();
+    },
     calcBoqClear: function () {
       persistBoq([]);
       renderBoq();
@@ -12105,13 +12679,41 @@
           ' line - edit it any time.'
       );
     },
+    // MAT-2: the material chip inside a rate. It adds NO money - it turns the
+    // MAT-1 split on so the user can see and price the lines the rate hides.
+    calcItemiseOn: function () {
+      const sw = $('calc-itemise');
+      if (sw && !sw.checked) {
+        sw.checked = true;
+        sw.dispatchEvent(new Event('change', { bubbles: true }));
+      } else {
+        renderAcc();
+      }
+      const row = $('row-itemise');
+      if (row && row.scrollIntoView) {
+        row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
+      render();
+    },
     calcCompAdd: function (el) {
       const id = el.getAttribute('data-cp');
       const def = COMPANION_DEFS[id];
       if (!def) {
         return;
       }
-      const st = readState();
+      // MAT-2: a lint fix carries the source trade it is missing FROM, so the
+      // quantity derives from that bill line. A companion chip carries none and
+      // derives from the line on screen.
+      let st = readState();
+      const srcWork = el.getAttribute('data-cp-src');
+      if (srcWork) {
+        const found = loadBoq().filter(function (l) {
+          return l && l.st && l.st.work === srcWork;
+        })[0];
+        if (found) {
+          st = found.st;
+        }
+      }
       const qty = def.qty(st);
       if (!(qty > 0)) {
         return;

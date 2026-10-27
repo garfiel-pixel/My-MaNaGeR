@@ -415,6 +415,20 @@ var MMGR = window.MMGR || {};
     }, 0);
   }
 
+  /* SW-12 (REFINEMENT-DIRECTIVE-2026-10-24 section 11): ONE currency table.
+     Every money figure prints its symbol from here, so no string in the app
+     types a '$' or 'J$' of its own. Default stays USD, exactly the output
+     this formatter produced before the table existed. */
+  const CURRENCY = {
+    USD: '$',
+    JMD: 'J$'
+  };
+
+  function fmtMoney(n, code) {
+    const sym = CURRENCY[String(code || 'USD').toUpperCase()] || CURRENCY.USD;
+    return n != null ? sym + Number(n).toLocaleString() : sym + '0';
+  }
+
   // ---- API ----
   ns.Utils = {
     parseDL: parseDL,
@@ -480,9 +494,11 @@ var MMGR = window.MMGR || {};
         ? ''
         : d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     },
-    fmtMoney: function (n) {
-      return n != null ? '$' + Number(n).toLocaleString() : '$0';
-    }
+    /* SW-12 (REFINEMENT-DIRECTIVE-2026-10-24 section 11): the symbol comes
+       from ONE currency table, never typed into a string. The workspace's own
+       figures are US dollars; pass a code to print another currency. */
+    fmtMoney: fmtMoney,
+    CURRENCY: CURRENCY
   };
 
   /* APP-2 (REFINEMENT-DIRECTIVE-2026-10-24): ONE navigation helper.

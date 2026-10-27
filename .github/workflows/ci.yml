@@ -235,6 +235,16 @@ jobs:
         id: verify-calc-lump
         run: node tools/verify-calc-lump.cjs
 
+      # SW-14 (REFINEMENT-DIRECTIVE-2026-10-24 section 11): the sweep's
+      # "unreachable settings" detector, made permanent. It fails if any
+      # stored setting has no field and no AI path, if the assistant's
+      # prompt and the page's allowlist disagree, and - the guard the sweep
+      # itself lacked - if an extraction comes back empty instead of
+      # silently reporting the code as clean.
+      - name: "T1: Settings reachability (SW-14 permanent test)"
+        id: verify-settings-reach
+        run: node tools/verify-settings-reach.cjs
+
       # G-2 gate (DIRECTIVE: GOOGLE SIGN-IN SECURITY GAPS, 2026-10-23):
       # in-process Worker route battery + the 14 sign-in nonce checks
       # (wrong/reused/expired/forged, email_verified, flag on/off, sweep).

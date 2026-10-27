@@ -16,8 +16,10 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  /* SW-12: the symbol comes from the shared currency table in mmgr-utils,
+     never typed into a string here. */
   function _fmtMoney(n) {
-    return '$' + Number(n || 0).toLocaleString();
+    return U.fmtMoney(n);
   }
 
   // ---- Copy All ----

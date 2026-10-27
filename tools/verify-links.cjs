@@ -86,6 +86,7 @@ const WORKER_ROUTE = h => h === '/' || /^\/(api|auth|cdn-cgi)(\/|$)/.test(h);
 // ---- gate -------------------------------------------------------------------
 let hrefs = 0;
 let anchors = 0;
+let dynamic = 0;
 const badFiles = [];
 const badAnchors = [];
 
@@ -107,6 +108,26 @@ for (const f of files) {
       // any served page, since the emitter cannot be attributed here.
       const hit = own ? own.has(frag) : [...ids.values()].some(s => s.has(frag));
       if (!hit) badAnchors.push(where + ' -> ' + raw + ' (no static id)');
+      continue;
+    }
+
+    // A template expression (href="${...}") has no static value to resolve.
+    // Validate the STATIC prefix - the file part written before the first
+    // expression - and count the dynamic remainder; a href that is entirely
+    // an expression has nothing static to check here, and the page that
+    // renders it is the one that owns its runtime target.
+    if (raw.includes('${')) {
+      const before = raw.split('${')[0];
+      const staticPath = before.split('#')[0].split('?')[0];
+      if (staticPath) {
+        const rel = staticPath.startsWith('/') ? staticPath.slice(1) : staticPath;
+        if (!fs.existsSync(path.join(ROOT, rel))) {
+          badFiles.push(
+            where + ' -> ' + raw + ' (static prefix does not exist: ' + staticPath + ')'
+          );
+        }
+      }
+      dynamic++;
       continue;
     }
 
@@ -144,7 +165,14 @@ for (const b of badFiles) fail('dead file: ' + b);
 for (const b of badAnchors) fail('dead anchor: ' + b);
 if (!badFiles.length && !badAnchors.length) {
   pass(
-    hrefs + ' path hrefs exist, ' + anchors + ' anchors resolve (' + files.length + ' served files)'
+    hrefs +
+      ' path hrefs exist, ' +
+      anchors +
+      ' anchors resolve, ' +
+      dynamic +
+      ' template hrefs checked by static prefix (' +
+      files.length +
+      ' served files)'
   );
 }
 

@@ -59,7 +59,7 @@
       clicks "Connect Google" in Settings > Controls. It is a device label,
       never a gate , offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-gfsHD0hWPHbqScBzCG03KThLx1uSZyAYZrc0ad1/amk=' 'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4=' 'sha256-1lQZ8ZnhADNPMPnTqfYPbBDeCin0qp40ehxDc065Fmc='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-fNIgcWTvFOaRyV8EJSISWzcaY2hNHzEoAnsVfC7iNls=' 'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4=' 'sha256-1lQZ8ZnhADNPMPnTqfYPbBDeCin0qp40ehxDc065Fmc='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
@@ -1851,11 +1851,14 @@
       </fieldset>
       <fieldset class="gx-set">
         <legend>Links</legend>
-        <label class="gx-opt"><input type="radio" name="gx-links" value="near" checked aria-label="Critical and near links"> Critical and near</label>
+        <label class="gx-opt"><input type="radio" name="gx-links" value="gates" checked aria-label="Phase gates and critical links"> Phase gates + critical</label>
+        <label class="gx-opt"><input type="radio" name="gx-links" value="critical" aria-label="Critical chain only"> Critical chain only</label>
+        <label class="gx-opt"><input type="radio" name="gx-links" value="near" aria-label="Critical and near links"> Critical and near</label>
         <label class="gx-opt"><input type="radio" name="gx-links" value="all" aria-label="All dependency links"> All links</label>
       </fieldset>
       <fieldset class="gx-set">
         <legend>Columns</legend>
+        <div class="gx-cols">
         <label class="gx-opt"><input type="checkbox" id="gx-c-wbs" checked aria-label="WBS column"> WBS</label>
         <label class="gx-opt"><input type="checkbox" checked disabled aria-label="Task column (always shown)"> Task</label>
         <label class="gx-opt"><input type="checkbox" id="gx-c-dur" checked aria-label="Duration column"> Duration</label>
@@ -1864,6 +1867,11 @@
         <label class="gx-opt"><input type="checkbox" id="gx-c-pct" checked aria-label="Percent complete column"> % complete</label>
         <label class="gx-opt"><input type="checkbox" id="gx-c-assignee" checked aria-label="Assignee column"> Assignee</label>
         <label class="gx-opt"><input type="checkbox" id="gx-baseline" checked aria-label="Baseline bars"> Baseline bars</label>
+        </div>
+      </fieldset>
+      <fieldset class="gx-set">
+        <legend>View</legend>
+        <label class="gx-opt"><input type="checkbox" id="gx-tidy" aria-label="Tidy view: collapse finished phases and reduce links"> Tidy (collapse finished phases)</label>
       </fieldset>
     </div>
     <div class="cu-actions">
@@ -2049,7 +2057,7 @@ document.addEventListener('DOMContentLoaded', function() {
    'js/mmgr-schedule.js','js/mmgr-resources.js','js/mmgr-health.js',
    'js/mmgr-evm.js','js/mmgr-dmaic.js','js/mmgr-meetings.js',
    'js/mmgr-voice.js','js/mmgr-errors.js','js/mmgr-report.js',
-   'js/app/components.js','js/app/confirm.js','js/app/copy-text.js','js/app/sidebar.js','js/mmgr-app.js','js/app/weather.js','js/app/backup.js',
+   'js/app/components.js','js/app/confirm.js','js/app/copy-text.js','js/app/sidebar.js','js/mmgr-gantt-view.js','js/mmgr-app.js','js/app/weather.js','js/app/backup.js',
    'js/app/export.js','js/app/history.js','js/app/definitions.js',
    'js/mmgr-presence.js','js/mmgr-tasks.js','js/mmgr-risks.js',
    'js/mmgr-stakeholders.js','js/mmgr-bids.js','js/mmgr-closure.js',

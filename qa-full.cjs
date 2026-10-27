@@ -1294,7 +1294,7 @@ async function check(name, expr, expected, hint) {
   })()`
   );
   await check(
-    '55c gantt export G5: link policy, lanes, cap with honest hidden count',
+    '55c gantt export G5/GANTT-1: links policy (gates default), lanes, cap with honest hidden count',
     `(function(){
     var snap=JSON.parse(JSON.stringify(MMGR.State.getState()));
     function d(n){var t=new Date();t.setDate(t.getDate()+n);return t.toISOString().slice(0,10);}
@@ -1315,8 +1315,21 @@ async function check(name, expr, expected, hint) {
         predecessors: i===0?[]:(i===59?['t58','t0']:['t'+(i-1)])});
     }
     MMGR.State.updateState(function(s){s.tasks=tasks;});
+    // GANTT-1 re-baseline (the contract changed on purpose): the zero-click
+    // default for exports is now 'gates' (phase summaries + phase-gate
+    // milestones + critical chain), no longer 'near'. On this phaseless
+    // chain fixture no gate link exists, so the default draws NOTHING -
+    // the wall of spaghetti is opt-in.
+    var def=exportMeta();
+    var defOk=!def.threw && def.m && def.m.linkPolicy==='gates' && def.m.linksDrawn===0 && def.m.linksHidden===0;
+    // 'near' still behaves exactly as it always did when asked for.
+    MMGR.State.updateState(function(s){s.ui.ganttLinkPolicy='near';});
     var near=exportMeta();
     var nearOk=!near.threw && near.m && near.m.linkPolicy==='near' && near.m.linksDrawn===59 && near.m.linksHidden===0;
+    // 'critical' is a real policy value now (accepted end-to-end, no throw).
+    MMGR.State.updateState(function(s){s.ui.ganttLinkPolicy='critical';});
+    var crit=exportMeta();
+    var critOk=!crit.threw && crit.m && crit.m.linkPolicy==='critical';
     // 'all' policy draws the far link too.
     MMGR.State.updateState(function(s){s.ui.ganttLinkPolicy='all';});
     var all=exportMeta();
@@ -1330,11 +1343,25 @@ async function check(name, expr, expected, hint) {
     }
     MMGR.State.updateState(function(s){s.tasks=mesh;});
     var cap=exportMeta();
+    // 'gates' really draws when a phase -> phase-gate milestone link exists:
+    // the phase summary, its child, and a same-day sign-off gate linked to
+    // the phase - the exact line the directive wants on every export.
+    var gateTasks=[
+      {id:'ph1',name:'Foundations',isPhase:true,startDate:d(0),endDate:d(6),status:'active'},
+      {id:'w',name:'Work',parentId:'ph1',startDate:d(0),endDate:d(4),duration:'5',status:'active'},
+      {id:'g1',name:'Sign-off gate',startDate:d(6),endDate:d(6),duration:'0',predecessors:['ph1']}
+    ];
+    MMGR.State.updateState(function(s){s.tasks=gateTasks;s.ui.ganttLinkPolicy='gates';});
+    var gt=exportMeta();
     MMGR.State.updateState(function(s){s.tasks=snap.tasks;s.ui=snap.ui||{};});
     window.__mmgrUnassignedNoticeShown=false;
     var capOk=!cap.threw && cap.m && cap.m.linksDrawn===1500 && cap.m.linksHidden>0;
-    return {val: nearOk&&allOk&&capOk,
+    var gtOk=!gt.threw && gt.m && gt.m.linkPolicy==='gates' && gt.m.linksDrawn>=1;
+    return {val: defOk&&nearOk&&critOk&&allOk&&capOk&&gtOk,
+      def: def.m?{p:def.m.linkPolicy,d:def.m.linksDrawn}:null,
       near: near.m?{p:near.m.linkPolicy,d:near.m.linksDrawn,h:near.m.linksHidden}:null,
+      crit: crit.m?{p:crit.m.linkPolicy,d:crit.m.linksDrawn}:null,
+      gt: gt.m?{p:gt.m.linkPolicy,d:gt.m.linksDrawn}:null,
       all: all.m?{p:all.m.linkPolicy,d:all.m.linksDrawn}:null,
       cap: cap.m?{d:cap.m.linksDrawn,h:cap.m.linksHidden}:null};
   })()`

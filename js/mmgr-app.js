@@ -1439,8 +1439,21 @@ var MMGR = window.MMGR || {};
       theme: saved.theme === 'dark' ? 'dark' : 'light',
       page: saved.page === 'a4' || saved.page === 'a3' ? saved.page : 'fit',
       // G5's key stays the source of truth for the link policy; the G8
-      // dialog's "All links" switch writes it.
-      links: ui.ganttLinkPolicy === 'all' ? 'all' : 'near',
+      // dialog's "All links" switch writes it. GANTT-1 adds 'critical' and
+      // 'gates', and the directive makes 'gates' the zero-click default for
+      // exports: the critical chain plus the links between phase summaries
+      // and phase-gate milestones is what a reader needs first - the wall of
+      // spaghetti stays one click away.
+      links:
+        ui.ganttLinkPolicy === 'all' ||
+        ui.ganttLinkPolicy === 'near' ||
+        ui.ganttLinkPolicy === 'critical'
+          ? ui.ganttLinkPolicy
+          : 'gates',
+      // GANTT-1: Tidy is a VIEW switch - this dialog's View box, applied
+      // at export time only (kill switch: flags.ganttTidy). Plan data is
+      // never touched either way.
+      tidy: (!s.flags || s.flags.ganttTidy !== false) && ui.ganttTidy === true,
       baseline: saved.baseline !== false,
       columns: {
         wbs: c.wbs !== false,
@@ -1558,6 +1571,15 @@ var MMGR = window.MMGR || {};
     if (!tasks.length) {
       return null;
     }
+    // GANTT-1: ONE view builder answers what to draw - rows, spans, WBS,
+    // links, milestones, in the order the live chart gets them. The
+    // painters below only lay ink on that answer, so screen and export can
+    // never drift. A page without the builder fails LOUDLY (null -> the
+    // export's own "nothing to draw" path) instead of inventing a picture.
+    if (!ns.GanttView || !ns.GanttView.build) {
+      return null;
+    }
+    const view = ns.GanttView.build(s, { links: o.links, tidy: !!o.tidy });
     const T = ganttTheme(o.theme);
     const prims = [];
     const mctx = document.createElement('canvas').getContext('2d');
@@ -1609,14 +1631,9 @@ var MMGR = window.MMGR || {};
     // G1 export layer (directive 2026-10-18): a phase displays its
     // CHILDREN's span, derived at export time - a static image must never
     // trust a stored phase date that an edit after Cascade left stale.
-    const spanOf = {};
-    tasks.forEach(t => {
-      let span = null;
-      if (t.isPhase && ns.Schedule && ns.Schedule.phaseSpan) {
-        span = ns.Schedule.phaseSpan(t, all);
-      }
-      spanOf[t.id] = span || { start: t.startDate, end: t.endDate };
-    });
+    // GANTT-1: the view owns the spans (a phase shows its children's
+    // rolled-up dates, derived fresh at read time).
+    const spanOf = view.spans;
     let minDate = null,
       maxDate = null;
     tasks.forEach(t => {
@@ -1686,38 +1703,10 @@ var MMGR = window.MMGR || {};
     // sorted by start date then WBS position; tasks whose parent cannot be
     // resolved collect under an "Unassigned tasks" group at the END (an
     // orphan must never print above P0 again). No task is ever dropped.
-    const ordered = [];
-    const placed = new Set();
-    const emitKids = parent => {
-      const kids = tasks.filter(
-        c =>
-          !c.isPhase &&
-          !placed.has(c.id) &&
-          (String(c.parentId) === String(parent.id) || c.parentName === parent.name)
-      );
-      kids.sort((a, b) => (a.startDate < b.startDate ? -1 : a.startDate > b.startDate ? 1 : 0));
-      kids.forEach(k => {
-        ordered.push(k);
-        placed.add(k.id);
-        emitKids(k);
-      });
-    };
-    tasks
-      .filter(t => t.isPhase)
-      .forEach(ph => {
-        ordered.push(ph);
-        placed.add(ph.id);
-        emitKids(ph);
-      });
-    const unassigned = tasks.filter(t => !placed.has(t.id));
-    if (unassigned.length) {
-      ordered.push({
-        id: '__unassigned__',
-        name: 'Unassigned tasks (' + unassigned.length + ')',
-        isGroupHeader: true
-      });
-      unassigned.forEach(t => ordered.push(t));
-    }
+    // GANTT-1: the VIEW builds this order once (and drops the rows a tidy
+    // collapse hid), so the export and the live chart can never disagree.
+    const ordered = view.rows.map(r => r.row);
+    const unassigned = view.orphans;
     // One-time notice in the APP (not the export): orphans are a data
     // problem the owner can fix, never something to silently drop.
     if (unassigned.length && !window.__mmgrUnassignedNoticeShown) {
@@ -1727,23 +1716,11 @@ var MMGR = window.MMGR || {};
         'err'
       );
     }
-    // WBS numbers for the table: phases 1,2,3; their children 1.1, 1.2 ...
+    // WBS numbers for the table (GANTT-1: the view numbered the FULL
+    // order before any tidy collapse, so hiding a row never renumbers
+    // the rest).
     const wbsOf = new Map();
-    let phNum = 0,
-      chNum = 0;
-    ordered.forEach(t => {
-      if (t.isGroupHeader) {
-        return;
-      }
-      if (t.isPhase) {
-        phNum++;
-        chNum = 0;
-        wbsOf.set(t.id, String(phNum));
-      } else if (phNum > 0) {
-        chNum++;
-        wbsOf.set(t.id, phNum + '.' + chNum);
-      }
-    });
+    Object.keys(view.wbs).forEach(id => wbsOf.set(id, view.wbs[id]));
     // Row geometry pass: y per task + phase gap before isPhase rows + phase
     // ownership for the tab strips (nearest preceding phase row).
     const rowY = new Map();
@@ -1948,11 +1925,9 @@ var MMGR = window.MMGR || {};
       const ssp = spanOf[sRow.id] || { start: sRow.startDate, end: sRow.endDate };
       const y1 = midY(p.id),
         y2 = midY(sRow.id);
-      // Policy: critical chain always; other links only when they stay
-      // near (<= 8 rows) or the reader asked for all of them.
-      if (!gold && linkPolicy !== 'all' && Math.abs(y2 - y1) / rowH > 8) {
-        return;
-      }
+      // GANTT-1: the policy already ran in the view builder (critical
+      // always, then 'near' / 'all' / 'critical' / 'gates', reduced when
+      // Tidy is on). Everything that reaches this function earns its line.
       if (linksDrawn >= 1500) {
         linksHidden++;
         return;
@@ -2007,11 +1982,7 @@ var MMGR = window.MMGR || {};
     function x1For(sp) {
       return X(sp.end) + Math.max(3, U.daysBetween(sp.start, sp.end) * dayWidth + dayWidth * 0.2);
     }
-    tasks.forEach(t =>
-      (t.predecessors || []).forEach(pid =>
-        connector(pid, t.id, !!(rowById.get(String(pid)) || {}).critical && !!t.critical)
-      )
-    );
+    view.links.forEach(l => connector(l.from, l.to, l.critical));
     // G6: progress fill - honest derivation from the status field (the
     // model carries no measured percentage): completed fills the bar;
     // in-progress fills the ELAPSED share of its own span, which is
@@ -2141,11 +2112,7 @@ var MMGR = window.MMGR || {};
       // G3: a milestone is a milestone by FLAG or by SHAPE - a zero-duration
       // row (or a same-day row whose name reads as a gate/sign-off) draws as
       // a diamond, never a 3px sliver.
-      const isMs =
-        !!t.milestone ||
-        Number(t.duration) === 0 ||
-        (t.startDate === t.endDate &&
-          /gate|sign-?off|complete|milestone|certificate/i.test(t.name || ''));
+      const isMs = ns.GanttView.isMilestone(t);
       if (isMs) {
         const cx = x0 + bw / 2,
           r = rowH / 2 - 4;
@@ -2271,16 +2238,9 @@ var MMGR = window.MMGR || {};
         rows: ordered.map(t => t.id),
         unassigned: unassigned.map(t => t.id),
         phaseSpans: spanOf,
-        milestones: ordered
-          .filter(
-            t =>
-              !t.isGroupHeader &&
-              (!!t.milestone ||
-                Number(t.duration) === 0 ||
-                (t.startDate === t.endDate &&
-                  /gate|sign-?off|complete|milestone|certificate/i.test(t.name || '')))
-          )
-          .map(t => t.id),
+        milestones: view.milestones,
+        tidy: view.tidy,
+        viewLinks: view.links.length,
         dayWidth: dayWidth,
         W: W,
         H: H,
@@ -2595,6 +2555,10 @@ var MMGR = window.MMGR || {};
     if (bl) {
       bl.checked = !!o.baseline;
     }
+    const tidy = document.getElementById('gx-tidy');
+    if (tidy) {
+      tidy.checked = !!o.tidy;
+    }
     const m = document.getElementById('gantt-export-modal');
     if (m) {
       m.classList.add('on');
@@ -2627,7 +2591,15 @@ var MMGR = window.MMGR || {};
       baseline: bl ? !!bl.checked : true
     };
     // G5's key stays the policy source; the dialog's Links row writes it.
-    s.ui.ganttLinkPolicy = val('gx-links') === 'all' ? 'all' : 'near';
+    // GANTT-1: four values now, 'gates' the default, and the Tidy box is a
+    // VIEW preference (ui) - it never reaches the plan itself.
+    const lp = val('gx-links');
+    s.ui.ganttLinkPolicy =
+      lp === 'all' || lp === 'near' || lp === 'critical' || lp === 'gates' ? lp : 'gates';
+    const tidyBox = document.getElementById('gx-tidy');
+    if (tidyBox) {
+      s.ui.ganttTidy = !!tidyBox.checked;
+    }
     ns.State.save(true);
     closeGanttExport();
     if (s.ui.ganttExport.format === 'svg') {

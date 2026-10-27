@@ -347,6 +347,62 @@ function resolvePlaywright() {
     });
     check('M4 Export Schedule runs with the CHOSEN values (svg, a3, dark, all)', m4.ok, m4);
 
+    // M6 (GANTT-1 part 1, REFINEMENT-DIRECTIVE-2026-10-24): the dialog is
+    // WIDE and it fits. 1280x720 and 1366x768 must show the whole dialog with
+    // NO scrolling; 390 must stack to a single column with Export still on
+    // screen (the footer is sticky inside the scrolling box). Before the
+    // restyle this box shrink-wrapped to 228px x 728px, unpainted, running
+    // off a 720px screen with Export below the fold.
+    const vpChecks = [
+      { w: 1280, h: 720, stacked: false },
+      { w: 1366, h: 768, stacked: false },
+      { w: 390, h: 844, stacked: true }
+    ];
+    for (const vp of vpChecks) {
+      await page.setViewportSize({ width: vp.w, height: vp.h });
+      await page.evaluate(() => window.MMGR.App.openGanttExport());
+      await delay(150);
+      const g = await page.evaluate(() => {
+        const modal = document.getElementById('gantt-export-modal');
+        const box = modal.querySelector('.gx-box');
+        const grid = modal.querySelector('.gx-grid');
+        const exp = modal.querySelector('[data-action="ganttExportRun"]');
+        const br = box.getBoundingClientRect();
+        const er = exp.getBoundingClientRect();
+        const cs = getComputedStyle(box);
+        return {
+          open: modal.classList.contains('on'),
+          painted: cs.backgroundColor !== 'rgba(0, 0, 0, 0)',
+          noScroll: box.scrollHeight <= box.clientHeight + 1,
+          onScreen: br.top >= -1 && br.bottom <= window.innerHeight + 1,
+          colCount: getComputedStyle(grid)
+            .gridTemplateColumns.split(' ')
+            .filter(t => t.endsWith('px')).length,
+          exportInBox: er.width > 0 && er.bottom <= br.bottom + 1 && er.top >= br.top - 1,
+          size: Math.round(br.width) + 'x' + Math.round(br.height)
+        };
+      });
+      const label = vp.w + 'x' + vp.h;
+      if (vp.stacked) {
+        check(
+          'M6 at ' + label + ' the dialog stacks to one column and Export stays visible',
+          g.open && g.painted && g.colCount === 1 && g.exportInBox && g.onScreen,
+          g
+        );
+      } else {
+        check(
+          'M6 at ' + label + ' the whole dialog is visible with no scrolling',
+          g.open && g.painted && g.noScroll && g.onScreen && g.colCount === 3 && g.exportInBox,
+          g
+        );
+      }
+    }
+    await page.setViewportSize({ width: 1400, height: 950 });
+    const cancel = await page.$('[data-action="closeGanttExport"]');
+    if (cancel) {
+      await cancel.click().catch(() => {});
+    }
+
     check('M5 no uncaught page error during the sweep', pageErrors.length === 0, pageErrors);
   } catch (e) {
     check('harness ran without throwing', false, String((e && e.stack) || e));

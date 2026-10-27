@@ -17880,14 +17880,62 @@ textarea.pv-in {
 #gantt-export-modal.on {
   display: flex;
 }
+/* GANTT-1 part 1 (REFINEMENT-DIRECTIVE-2026-10-24, owner: "too vertical,
+   make it go across"): the five sets sit in THREE columns - Format, Page size
+   and Theme across the top, Links and the two-wide Columns below - inside a
+   box that fits 1280x720 and 1366x768 with no scrolling. The box used to
+   shrink-wrap its fieldsets (228px wide, 728px tall, transparent, running off
+   a 720px screen), so it now takes the width it is given, carries the same
+   solid surface every other content modal paints, and its footer is STICKY:
+   even a phone that stacks the grid to one column keeps Export on screen. */
 #gantt-export-modal .gx-box {
-  max-width: 640px;
+  width: 100%;
+  max-width: min(980px, 94vw);
+  max-height: 90vh;
+  overflow: auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--squircle-lg, 28px);
+  padding: 18px 20px 0;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+}
+#gantt-export-modal .gx-box h3 {
+  color: var(--gold);
+  margin-bottom: 4px;
+  font-size: 1.02rem;
 }
 #gantt-export-modal .gx-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
   margin: 12px 0 14px;
+}
+#gantt-export-modal .gx-set:nth-child(5) {
+  grid-column: 2 / -1;
+}
+#gantt-export-modal .gx-set:nth-child(5) .gx-cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 14px;
+}
+#gantt-export-modal .cu-actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 10px 0 14px;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+}
+@media (max-width: 760px) {
+  #gantt-export-modal .gx-grid {
+    grid-template-columns: 1fr;
+  }
+  #gantt-export-modal .gx-set:nth-child(5) {
+    grid-column: auto;
+  }
 }
 #gantt-export-modal .gx-set {
   border: 1px solid var(--border);

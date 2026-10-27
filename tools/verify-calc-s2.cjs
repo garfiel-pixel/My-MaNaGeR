@@ -77,9 +77,15 @@ const assert = (cond, m) => (cond ? ok(m) : bad(m));
 console.log('\n=== CALC S2 GATE: C6 sticky panel, C7 switch rows, X-1 scheduler, X-2 paint ===');
 
 /* ---------------------------------------------------------------
-   1. STATIC: C7 markup - five option rows, each a whole-row label
-     wrapping the app's own .tgl switch (rule 1.4: reuse, do not
-     invent). IDs and role=switch must survive so no JS moves.
+   1. STATIC: C7 markup - five option rows, each a whole-row TEXT
+     label (label[for]) owning the app's own .tgl switch (rule 1.4:
+     reuse, do not invent). UI-2 re-based these rows on .set-row:
+     the words and the switch are siblings inside one row, and the
+     words are a <label for> the input, so a click on the text still
+     toggles it with no JavaScript. IDs and role=switch must survive
+     so no JS moves. (RE-BASELINE 2026-10-27: this gate used to hunt
+     `<label class="bcp-opt">` rows with data-opt; UI-2 replaced that
+     markup in the app, so the gate follows the app.)
 --------------------------------------------------------------- */
 console.log('\n--- C7 markup (calculator.html) ---');
 const OPTS = [
@@ -89,34 +95,33 @@ const OPTS = [
   ['piece', 'calc-piece-custom'],
   ['sig', 'calc-sig-show']
 ];
-const optRe = /<label class="bcp-opt"[\s\S]*?<\/label>/g;
-const optRows = html.match(optRe) || [];
-assert(optRows.length === 5, 'C7: exactly 5 .bcp-opt rows (found ' + optRows.length + ')');
 for (const [opt, id] of OPTS) {
-  const row = optRows.find(r => r.indexOf('data-opt="' + opt + '"') !== -1);
-  if (!row) {
-    bad('C7: row data-opt="' + opt + '" is missing');
-    continue;
-  }
-  const input = new RegExp('<input type="checkbox" id="' + id + '"').exec(row);
-  assert(!!input, 'C7: ' + opt + ' row wraps <input id="' + id + '"> (whole-row click contract)');
+  const txt = new RegExp('<label class="set-txt" for="' + id + '">').exec(html);
+  assert(!!txt, 'C7: ' + opt + ' row text is a <label for="' + id + '"> (whole-row click, no JS)');
+  const sw = new RegExp(
+    '<label class="tgl"><input type="checkbox" id="' +
+      id +
+      '"[^>]*><span class="tsl"></span></label>'
+  ).exec(html);
   assert(
-    row.indexOf('role="switch"') !== -1 && row.indexOf('aria-describedby=') !== -1,
-    'C7: ' + opt + ' input keeps role="switch" + aria-describedby'
-  );
-  assert(
-    row.indexOf('<span class="tgl">') !== -1 && row.indexOf('<span class="tsl">') !== -1,
+    !!sw,
     'C7: ' + opt + ' row carries the project page .tgl/.tsl switch (not an invented one)'
+  );
+  if (!sw) continue;
+  assert(
+    sw[0].indexOf('role="switch"') !== -1 && sw[0].indexOf('aria-describedby=') !== -1,
+    'C7: ' + opt + ' input keeps role="switch" + aria-describedby'
   );
 }
 assert(
-  /\.bcp-opt\s*\{[^}]*min-height:\s*44px/.test(css),
-  'C7: .bcp-opt row is >= 44px tall (min-height: 44px)'
+  /\.set-row\s*\{[^}]*min-height:\s*44px/.test(css),
+  'C7: .set-row is >= 44px tall (min-height: 44px)'
 );
 assert(
-  /prefers-reduced-motion: reduce\)\s*\{[\s\S]{0,160}\.bcp-opt \.tsl/.test(css) &&
-    /prefers-reduced-motion[\s\S]{0,400}transition: none/.test(css),
-  'C7: prefers-reduced-motion kills the .bcp-opt switch transition'
+  (css.match(/@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*?\n\}/g) || []).some(
+    b => /\.tgl\s*\.tsl/.test(b) && /transition:\s*none/.test(b)
+  ),
+  'C7: prefers-reduced-motion kills the switch (.tgl .tsl) transition'
 );
 
 /* ---------------------------------------------------------------
@@ -323,16 +328,24 @@ function chromeExecutable() {
 
     console.log('\n--- C7 GATE (Chromium): clicking the row text toggles the input ---');
     for (const [opt, id] of OPTS) {
-      const sel = '.bcp-opt[data-opt="' + opt + '"] .bcp-opt-name';
+      // UI-2: the row's words are a <label for> the switch, so clicking the
+      // name toggles the input through native label association - no JS.
+      const sel = 'label.set-txt[for="' + id + '"] .set-name';
+      const inRow = await page.evaluate(i => {
+        const r = document.getElementById(i).closest('.set-row');
+        return r ? r.id || '(anon)' : null;
+      }, id);
+      assert(!!inRow, 'C7: ' + opt + ' input lives in a .set-row (UI-2 settings row)');
       // Two rows ship inside containers that are closed by default: the
-      // piece row in its [hidden] opt-in wrap, the sig row inside
-      // .bcp-out-actions.is-hide (hidden until a result exists). Force
+      // piece row IS its own [hidden] opt-in wrap, the sig row sits inside a
+      // container hidden until a result exists. Force the row itself AND
       // every hidden ancestor visible for the click contract, then restore
       // it exactly - the gate must not change what it tests.
       const revealed = await page.evaluate(i => {
-        const row = document.getElementById(i).closest('.bcp-opt');
+        const row = document.getElementById(i).closest('.set-row');
+        if (!row) return -1;
         let n = 0;
-        let p = row.parentElement;
+        let p = row;
         while (p && p !== document.body) {
           if (p.hasAttribute('hidden')) {
             p.setAttribute('data-s2-reveal', 'attr');
@@ -354,7 +367,7 @@ function chromeExecutable() {
       const back = await page.evaluate(i => document.getElementById(i).checked, id);
       const h = await page.evaluate(
         i =>
-          Math.round(document.getElementById(i).closest('.bcp-opt').getBoundingClientRect().height),
+          Math.round(document.getElementById(i).closest('.set-row').getBoundingClientRect().height),
         id
       );
       await page.evaluate(() => {

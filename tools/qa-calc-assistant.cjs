@@ -2260,7 +2260,8 @@ async function s6OwnRateAndSettings(browser, errors) {
     hooks.user === 'function' && hooks.settings === 'function',
     hooks
   );
-  check('S6.0 the panel is the build that offers them', hooks.version === 'calc-ai-4', hooks);
+  // calc-ai-5 = the AI-3 build (every settings key + the ASK row).
+  check('S6.0 the panel is the build that offers them', hooks.version === 'calc-ai-5', hooks);
 
   // S6.1a - the system prompt states BOTH options and the levy rule.
   await sendQ(page, 'block wall 24 square metres');
@@ -2448,6 +2449,334 @@ async function s6OwnRateAndSettings(browser, errors) {
   await ctx.close();
 }
 
+/* AI-3 (REFINEMENT-DIRECTIVE-2026-10-24 section 4) - the assistant reaches
+   every field, and asks. Mocked relay throughout, five contracts:
+
+     AI3.1  the prompt names the accepted keys, the ASK form, its one-per-reply
+            limit and the never-compute-money rule; the page publishes its
+            allowlist so both sides count the same keys.
+     AI3.2  an ASK renders as THREE BUTTONS (never free text the user has to
+            type), the machine line stays out of the chat, and the chosen
+            value lands in the right field through the page's own validation.
+     AI3.3  a proposal carrying EVERY field populates every field - country,
+            GCT, the four statutory parts, labour-only, itemise materials, the
+            material line's own on/off and price, overhead and both
+            contingencies - and every one of them is proved by a FLIP: the
+            page is seeded with the opposite value first.
+     AI3.4  an unknown key is refused in plain words, named in the chip as
+            unsupported, and writes nothing.
+     AI3.5  the reply is the model's own words with no computed total in them,
+            and the chat appends no figure of its own.
+*/
+async function ai3SettingsAndAsk(browser, errors) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => errors.push('calc(ai3): ' + String(e).slice(0, 140)));
+  await mockAuth(page);
+  const bodies = await mockRelay(page, i => {
+    if (i === 0) {
+      return (
+        'Jamaica charges 15% GCT on this work.\n' +
+        'ASK: {"q":"Add GCT 15 percent to this estimate?","options":["Yes","No","Custom"],"field":"gct","value":15}'
+      );
+    }
+    if (i === 1) {
+      return (
+        'Here is every setting this page can change.\n' +
+        'PROPOSAL: {"settings":{"country":"JM","gct":15,"onCost":{"nis":3,"nht":3,"edtax":3.5,"heart":3},"labourOnly":false,"itemiseMaterials":true,"accessories":{"slab|mesh":{"on":false,"price":3200}},"overhead":10,"designC":10,"constrC":5},"note":"all fields"}'
+      );
+    }
+    if (i === 2) {
+      return 'Adding the two percent levy.\nPROPOSAL: {"settings":{"levy":2},"note":"levy"}';
+    }
+    return 'The page works the numbers out itself.';
+  });
+  await seedCalcFx(page);
+  await mockRatebook(page, loadJicBook());
+  await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
+  await page.waitForFunction(() => !!window.MMGR_CALC_AI, null, { timeout: 20000 });
+  await page.waitForFunction(() => !!window.MMGR_RATEBOOK, null, { timeout: 8000 }).catch(() => {});
+
+  // AI3.1 - what the system prompt promises, and what the page publishes.
+  await sendQ(page, 'can you set the tax?');
+  const sys = sysOf(bodies[bodies.length - 1]);
+  const KEYS = [
+    'country',
+    'gct',
+    'taxOverride',
+    'onCostPct',
+    'onCost',
+    'labourOnly',
+    'itemiseMaterials',
+    'accessories',
+    'overhead',
+    'designC',
+    'constrC'
+  ];
+  check(
+    'AI3.1 the prompt names every accepted settings key',
+    KEYS.every(k => sys.indexOf(k) !== -1),
+    sys.slice(0, 300)
+  );
+  check(
+    'AI3.1 the prompt gives the ASK form and its one-per-reply limit',
+    /ASK: \{"q"/.test(sys) && /AT MOST ONE ASK/i.test(sys),
+    sys.slice(0, 300)
+  );
+  check(
+    'AI3.1 the prompt forbids the model computing money',
+    /never compute money/i.test(sys) && /let the page do every calculation/i.test(sys),
+    sys.slice(0, 300)
+  );
+  const keys = await page.evaluate(() => window.MMGR_CALC_SETTING_KEYS);
+  check(
+    'AI3.1 the page publishes the same allowlist',
+    Array.isArray(keys) && KEYS.every(k => keys.indexOf(k) !== -1),
+    keys
+  );
+
+  // AI3.2 - the ASK is three buttons; the machine line never shows as prose.
+  const askShown = await page.evaluate(() => {
+    const box = document.querySelector('[data-cai=askbox]');
+    const q = box ? box.querySelector('[data-cai=askq]') : null;
+    const btns = box ? Array.prototype.slice.call(box.querySelectorAll('[data-cai=askopt]')) : [];
+    const log = document.querySelector('.bcp-ai-log');
+    return {
+      hidden: box ? box.hidden : null,
+      q: q ? q.textContent : '',
+      labels: btns.map(b => b.textContent),
+      machineInChat: log ? /\bASK:/.test(log.textContent) : null,
+      pathsHidden: document.querySelector('[data-cai=paths]').hidden
+    };
+  });
+  check(
+    'AI3.2 the ASK renders as three buttons',
+    askShown.hidden === false && askShown.labels.join(',') === 'Yes,No,Custom',
+    askShown
+  );
+  check(
+    'AI3.2 the question is shown and the machine line is not in the chat',
+    /GCT 15 percent/.test(askShown.q) && askShown.machineInChat === false,
+    askShown
+  );
+  check('AI3.2 an ASK alone does not fake a proposal', askShown.pathsHidden === true, askShown);
+
+  // AI3.2b - the chosen value lands in the right field. The box starts empty,
+  // so 15 can only have come from the button, through the page's validation.
+  await page.evaluate(() => {
+    const t = document.getElementById('calc-tax-override');
+    t.value = '';
+    t.dispatchEvent(new Event('input', { bubbles: true }));
+    t.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await page.click('[data-cai=askopt][data-i="0"]');
+  const landed = await page.evaluate(() => ({
+    tax: (document.getElementById('calc-tax-override') || {}).value,
+    askHidden: document.querySelector('[data-cai=askbox]').hidden,
+    note: (function () {
+      const n = document.querySelectorAll('.bcp-ai-log .bcp-ai-note');
+      return n.length ? n[n.length - 1].textContent : '';
+    })()
+  }));
+  check('AI3.2b the chosen value lands in the field', String(landed.tax) === '15', landed);
+  check('AI3.2b the question is answered and taken away', landed.askHidden === true, landed);
+  check('AI3.2b the page says what it changed', /Updated: GCT 15%/.test(landed.note), landed);
+
+  // AI3.2c - "Custom" answers the question by handing the caret to the REAL
+  // box (the figure is typed in the field, never as chat text), and a field
+  // this page does not have reports that honestly instead of pretending.
+  const focusHook = await page.evaluate(() => ({
+    keys: typeof window.MMGR_CALC_FOCUS,
+    got: window.MMGR_CALC_FOCUS('gct'),
+    active: document.activeElement ? document.activeElement.id : '',
+    unknown: window.MMGR_CALC_FOCUS('levy')
+  }));
+  check(
+    'AI3.2c Custom hands the caret to the real box',
+    focusHook.keys === 'function' &&
+      focusHook.got === true &&
+      focusHook.active === 'calc-tax-override',
+    focusHook
+  );
+  check(
+    'AI3.2c an unknown field is not focused and says so',
+    focusHook.unknown === false,
+    focusHook
+  );
+
+  // AI3.3 - seed the OPPOSITE of every field, so each assertion is a flip.
+  await page.evaluate(() => {
+    const set = (id, v) => {
+      const el = document.getElementById(id);
+      if (!el) {
+        return;
+      }
+      el.value = v;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    set('calc-country', 'US');
+    set('calc-oh', '5');
+    set('calc-design-c', '0');
+    set('calc-constr-c', '0');
+    ['nis', 'nht', 'edtax', 'heart'].forEach(p => set('calc-oncost-' + p, '0'));
+    const lo = document.getElementById('calc-labour-only');
+    if (lo.checked) {
+      lo.checked = false;
+      lo.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    const it = document.getElementById('calc-itemise');
+    if (it.checked) {
+      it.checked = false;
+      it.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  });
+  await pickValue(page, 'calc-work', 'slab');
+  // labour-only ON is the hardest starting point: the material drawer is
+  // hidden, and the proposal must still reach the line inside it.
+  await page.evaluate(() => {
+    const lo = document.getElementById('calc-labour-only');
+    if (!lo.checked) {
+      lo.checked = true;
+      lo.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  });
+
+  await sendQ(page, 'set everything please');
+  await page.click('[data-cai=settings]');
+  const all = await page.evaluate(() => {
+    const v = id => (document.getElementById(id) || {}).value;
+    const c = id => !!(document.getElementById(id) || {}).checked;
+    const mesh = document.querySelector('#calc-acc-list .acc-row[data-key="slab|mesh"]');
+    return {
+      country: v('calc-country'),
+      tax: v('calc-tax-override'),
+      oh: v('calc-oh'),
+      design: v('calc-design-c'),
+      constr: v('calc-constr-c'),
+      nis: v('calc-oncost-nis'),
+      nht: v('calc-oncost-nht'),
+      edtax: v('calc-oncost-edtax'),
+      heart: v('calc-oncost-heart'),
+      pct: v('calc-oncost-pct'),
+      tog: c('calc-oncost-toggle'),
+      labour: c('calc-labour-only'),
+      itemise: c('calc-itemise'),
+      rows: document.querySelectorAll('#calc-acc-list .acc-row').length,
+      meshOn: mesh ? mesh.querySelector('[data-acc-on]').checked : null,
+      meshPrice: mesh ? mesh.querySelector('[data-acc-price]').value : null
+    };
+  });
+  check(
+    'AI3.3 the country and the GCT land',
+    all.country === 'JM' && String(all.tax) === '15',
+    all
+  );
+  check(
+    'AI3.3 overhead and both contingencies land',
+    String(all.oh) === '10' && String(all.design) === '10' && String(all.constr) === '5',
+    all
+  );
+  check(
+    'AI3.3 all four statutory parts land and sum into the priced percent',
+    String(all.nis) === '3' &&
+      String(all.nht) === '3' &&
+      String(all.edtax) === '3.5' &&
+      String(all.heart) === '3' &&
+      String(all.pct) === '12.5' &&
+      all.tog === true,
+    all
+  );
+  check('AI3.3 labour-only and itemise land', all.labour === false && all.itemise === true, all);
+  check(
+    'AI3.3 the material line is reached even from behind the hidden drawer',
+    all.rows > 0 && all.meshOn === false && String(all.meshPrice) === '3200',
+    all
+  );
+
+  // AI3.4 - an unknown key: named in the chip first, then refused in plain
+  // words when the button is clicked. Nothing is written.
+  const taxBefore = all.tax;
+  await sendQ(page, 'add the two percent levy');
+  const chip = await page.evaluate(() => {
+    const c = document.querySelector('.bcp-ai-chip-settings');
+    return c ? { hidden: c.hidden, text: c.textContent } : { missing: true };
+  });
+  check(
+    'AI3.4 the chip names the unsupported key',
+    chip.hidden === false && /not supported: levy/i.test(chip.text),
+    chip
+  );
+  await page.click('[data-cai=settings]');
+  const refused = await page.evaluate(() => {
+    const n = document.querySelectorAll('.bcp-ai-log .bcp-ai-note');
+    return {
+      note: n.length ? n[n.length - 1].textContent : '',
+      tax: (document.getElementById('calc-tax-override') || {}).value
+    };
+  });
+  check(
+    'AI3.4 the refusal is plain and names the key',
+    /cannot change levy on this page/i.test(refused.note),
+    refused
+  );
+  check('AI3.4 a refused call writes nothing', refused.tax === taxBefore, refused);
+
+  // AI3.4b - the validation is the INPUTS' own validation: out of range, the
+  // wrong type, one bad part among four, and a material row this page is not
+  // showing are all refused - and the four parts are all-or-nothing, so a
+  // half-applied stack can never price.
+  const range = await page.evaluate(() => {
+    const gct = window.MMGR_CALC_SETTINGS({ gct: 99 });
+    const bool = window.MMGR_CALC_SETTINGS({ labourOnly: 'yes' });
+    const before = document.getElementById('calc-oncost-nis').value;
+    const parts = window.MMGR_CALC_SETTINGS({ onCost: { nis: 3, nht: 3, edtax: 99, heart: 3 } });
+    const after = document.getElementById('calc-oncost-nis').value;
+    const acc = window.MMGR_CALC_SETTINGS({ accessories: { 'slab|nope': { on: true } } });
+    return { gct: gct, bool: bool, parts: parts, before: before, after: after, acc: acc };
+  });
+  check(
+    'AI3.4b an out-of-range figure is refused by name',
+    range.gct.ok === false && /gct/.test(String(range.gct.error)),
+    range.gct
+  );
+  check(
+    'AI3.4b a switch takes a real boolean, not words',
+    range.bool.ok === false && /labourOnly/.test(String(range.bool.error)),
+    range.bool
+  );
+  check(
+    'AI3.4b one bad part refuses the whole statutory stack',
+    range.parts.ok === false && range.before === range.after,
+    range
+  );
+  check(
+    'AI3.4b a material line this page is not showing is refused by name',
+    range.acc.ok === false && /slab\|nope/.test(String(range.acc.error)),
+    range.acc
+  );
+
+  // AI3.5 - the reply is the model's own words, with no total in them and
+  // none appended by the panel: the money on this page is the page's own.
+  await sendQ(page, 'how is the total worked out?');
+  const txt = await page.evaluate(() => {
+    const msgs = document.querySelectorAll('.bcp-ai-log .bcp-ai-msg.ai');
+    const last = msgs[msgs.length - 1];
+    const t =
+      last && last.querySelector('.bcp-ai-text')
+        ? last.querySelector('.bcp-ai-text').textContent
+        : '';
+    return { text: t, hasMoney: /[$]\s?\d|J\$|\d\s*%/.test(t) };
+  });
+  check(
+    'AI3.5 the reply carries no computed total and none is appended',
+    txt.text === 'The page works the numbers out itself.' && txt.hasMoney === false,
+    txt
+  );
+
+  await ctx.close();
+}
+
 (async () => {
   let srv = null;
   const { chromium } = resolvePlaywright();
@@ -2476,6 +2805,7 @@ async function s6OwnRateAndSettings(browser, errors) {
     await partARateAccess(browser, errors);
     await partBCustomLine(browser, errors);
     await s6OwnRateAndSettings(browser, errors);
+    await ai3SettingsAndAsk(browser, errors);
     await contrastGates(browser, errors);
 
     const real = errors.filter(e => !/\/api\//.test(e));

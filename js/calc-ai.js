@@ -62,7 +62,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'calc-ai-4';
+  var VERSION = 'calc-ai-5';
   var ENDPOINT = '/api/ai/chat';
   var PROVIDER = 'google-gemini';
   var CAP = 5;
@@ -138,19 +138,40 @@
     // S-6.2 (owner 2026-10-22): the settings the calculator already supports,
     // and the one thing it does NOT support, said the page's way.
     'You may also help with the estimate settings this page already has: the ' +
-    'country tax (Jamaica is 15% GCT), a custom tax percentage, the overhead ' +
-    'and margin percentage, the employer statutory costs on labour, and the ' +
-    'design and construction contingency percentages. A 2% Contractors Levy is ' +
+    'country tax (Jamaica is 15% GCT), a custom GCT or tax percentage, the ' +
+    'overhead and margin percentage, the employer statutory costs on labour ' +
+    '(the four parts NIS, NHT, Education Tax and HEART, or one total percent), ' +
+    'labour-only mode, itemising the materials with each line on or off at its ' +
+    'own price, and the design and construction contingency percentages. ' +
+    'A 2% Contractors Levy is ' +
     'NOT an extra cost and this calculator has no line for it - when asked, say ' +
     'plainly that it is withheld from the contractor\u0027s payment and already ' +
     'comes out of the price, and do not add it to anything. ' +
+    // AI-3 (REFINEMENT-DIRECTIVE-2026-10-24): name the keys the page accepts,
+    // so an unsupported one is never sent, and give the ASK line its shape and
+    // its one-per-reply limit. The page renders ASK as BUTTONS - the user
+    // never types the answer - and it, not the model, does every calculation.
+    'The settings keys this page accepts are country, gct, taxOverride, ' +
+    'onCostPct, onCost, labourOnly, itemiseMaterials, accessories, overhead, ' +
+    'designC, constrC - any other key is refused by name, so never send one. ' +
     'When the user agrees to a settings change, END the reply with ONE final ' +
     'line in exactly this form (no code fences): ' +
-    'PROPOSAL: {"settings":{"country":"JM","taxOverride":15,"overhead":10,"onCostPct":12.5,"designC":10,"constrC":5},"note":"<one short line>"} - ' +
+    'PROPOSAL: {"settings":{"country":"JM","gct":15,"onCost":{"nis":3,"nht":3,"edtax":3.5,"heart":3},"labourOnly":false,"itemiseMaterials":true,"accessories":{"drywall.compound":{"on":true,"price":3200}},"overhead":10,"designC":10,"constrC":5},"note":"<one short line>"} - ' +
     'include ONLY the keys that change. A settings line may also carry "work" ' +
     'or "custom" if the same reply priced a line. Nothing is changed until the ' +
     'user clicks the button the page shows, so never say the settings are ' +
-    'already applied.';
+    'already applied. ' +
+    'BEFORE you send a settings change to tax, statutory costs or itemised ' +
+    'materials that the conversation has not already settled, ask about it ' +
+    'first with AT MOST ONE ASK line - never two in one reply, and never an ' +
+    'ASK about something the user just answered: ' +
+    'ASK: {"q":"<one short question>","options":["Yes","No","Custom"],"field":"<one key from the list above>","value":<the figure, or true for a switch>} - ' +
+    'one line, no code fences. The page turns those words into buttons and the ' +
+    'user never types the answer; send the PROPOSAL with their answer, after ' +
+    'the ASK in that same reply or in the next reply once they have clicked. ' +
+    'Never compute money: never add up costs, totals, tax or margins yourself ' +
+    '- copy the figures the user or the book gave and let the page do every ' +
+    'calculation, because only the page can show its working.';
 
   var root = null;
   var els = {};
@@ -164,6 +185,8 @@
   var remaining = null;
   var attach = null;
   var proposal = null;
+  // AI-3: the one question the last reply asked, waiting for its buttons.
+  var ask = null;
   // A1: when the assistant panel mounts, start loading the full 811-row JIC
   // book now (one script tag, reused if the card opens again), so it is ready
   // before the first question. The send path waits for this load for at most
@@ -241,6 +264,13 @@
     '<span>Add and download</span>' +
     '</button>' +
     '</div>' +
+    '</div>' +
+    // AI-3: the one question the last reply asked, as BUTTONS - the words of
+    // the question and of every option are model text, so both are written
+    // with textContent below, never as markup.
+    '<div class="bcp-ai-paths bcp-ai-ask" data-cai="askbox" hidden>' +
+    '<p class="bcp-ai-pathq" data-cai="askq"></p>' +
+    '<div class="bcp-ai-pathrow" data-cai="askrow"></div>' +
     '</div>' +
     '<form class="bcp-ai-form" data-cai="form" autocomplete="off">' +
     '<button type="button" class="btn btn-n bcp-ai-attach" data-cai="attach" aria-label="Attach a rate sheet or a document" title="Attach a rate sheet or a document">' +
@@ -542,16 +572,20 @@
     }
     els.log.textContent = '';
     proposal = null;
+    ask = null;
     var introDone = false;
     draft.forEach(function (m) {
       if (m.role === 'user') {
         push('user', m.content);
         return;
       }
-      var parsed = parseProposal(m.content);
+      var parsed = parseReply(m.content);
       push('assistant', parsed.text);
-      if (parsed.json) {
-        proposal = parsed.json;
+      if (parsed.proposal) {
+        proposal = parsed.proposal;
+      }
+      if (parsed.ask) {
+        ask = parsed.ask;
       }
       introDone = true;
     });
@@ -589,6 +623,53 @@
     }
     var clean = s.slice(0, m.index).replace(/\s+$/, '');
     return { text: json ? clean || s : s, json: json };
+  }
+
+  /* AI-3: the ASK line is a question the page must render as BUTTONS - the
+     user never types the answer. Same discipline as the proposal: one machine
+     line, stripped from what the chat shows, parsed defensively. A line that
+     is not well formed (or carries no question, no field or no options) is
+     left ON SCREEN as words rather than silently vanishing, so nothing the
+     model said is lost when the shape is wrong. */
+  function parseAsk(text) {
+    var s = String(text == null ? '' : text);
+    var m = /(^|\n)[ \t]*ASK:[ \t]*(\{[^\n]*\})[ \t]*(?=\r?\n|$)/.exec(s);
+    if (!m) {
+      return { text: s, ask: null };
+    }
+    var a = null;
+    try {
+      a = JSON.parse(m[2]);
+    } catch (e) {
+      a = null;
+    }
+    var valid =
+      a &&
+      typeof a === 'object' &&
+      typeof a.q === 'string' &&
+      a.q.replace(/^\s+|\s+$/g, '') &&
+      Object.prototype.toString.call(a.options) === '[object Array]' &&
+      a.options.length > 0 &&
+      a.options.length <= 4 &&
+      typeof a.field === 'string' &&
+      a.field.length > 0;
+    if (!valid) {
+      return { text: s, ask: null };
+    }
+    a.options = a.options.map(function (o) {
+      return String(o);
+    });
+    var clean = (s.slice(0, m.index) + s.slice(m.index + m[0].length)).replace(/^\s+|\s+$/g, '');
+    return { text: clean, ask: a };
+  }
+
+  // One reply can carry both: the ASK line (stripped first, wherever it sits)
+  // and the PROPOSAL line (anchored to the end). Parsing ASK before PROPOSAL
+  // is what keeps the proposal's end-anchor true when the ASK follows it.
+  function parseReply(text) {
+    var a = parseAsk(text);
+    var p = parseProposal(a.text);
+    return { text: p.text, proposal: p.json, ask: a.ask };
   }
 
   // B5: one chip under the two choices that reads "name - qty unit x cur rate".
@@ -674,19 +755,84 @@
     }
     renderProposalChip();
     renderSettingsChip();
+    renderAsk();
+  }
+
+  // AI-3: the question and its options are model text, so every word reaches
+  // the screen through textContent. The first option is the one the assistant
+  // is proposing (it reads "Yes"), so it takes the primary button; the rest
+  // stay quiet. Rebuilt on every render - a stale question must never sit
+  // over a conversation that already answered it.
+  function renderAsk() {
+    if (!els.askbox) {
+      return;
+    }
+    els.askbox.hidden = !ask;
+    if (!ask) {
+      if (els.askq) {
+        els.askq.textContent = '';
+      }
+      if (els.askrow) {
+        els.askrow.textContent = '';
+      }
+      return;
+    }
+    els.askq.textContent = ask.q;
+    els.askrow.textContent = '';
+    ask.options.forEach(function (opt, i) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = i === 0 ? 'btn btn-g btn-s' : 'btn btn-n btn-s';
+      b.setAttribute('data-cai', 'askopt');
+      b.setAttribute('data-i', String(i));
+      b.textContent = opt;
+      els.askrow.appendChild(b);
+    });
   }
 
   // S-6.2: say IN PLAIN WORDS which settings the reply is offering, before a
   // click can change anything. The label is built here, from an allowlist, so
   // model text never becomes the wording.
+  // AI-3: the list grows with every key the page now accepts, and a key the
+  // page does NOT know is listed as unsupported instead of being dropped - the
+  // owner must see that the assistant tried to reach something it cannot.
   var SETTING_LABELS = {
     country: 'country (sets the tax)',
+    gct: 'GCT %',
     taxOverride: 'custom tax %',
     overhead: 'overhead & margin %',
     onCostPct: 'employer statutory costs %',
+    onCost: 'statutory cost parts',
+    labourOnly: 'labour only',
+    itemiseMaterials: 'itemise materials',
+    accessories: 'material lines',
     designC: 'design contingency %',
     constrC: 'construction contingency %'
   };
+  // Object-valued keys read as plain words, never [object Object], and a
+  // boolean reads as on/off - the same words the apply notice will use.
+  function settingValueText(k, v) {
+    if (v === true) {
+      return 'on';
+    }
+    if (v === false) {
+      return 'off';
+    }
+    if (k === 'onCost' && v && typeof v === 'object') {
+      var nums = [];
+      ['nis', 'nht', 'edtax', 'heart'].forEach(function (p) {
+        if (v[p] !== undefined && v[p] !== null && v[p] !== '') {
+          nums.push(String(v[p]));
+        }
+      });
+      return nums.length ? nums.join('/') + '%' : 'no parts';
+    }
+    if (k === 'accessories' && v && typeof v === 'object') {
+      var n = Object.keys(v).length;
+      return n === 1 ? '1 line' : n + ' lines';
+    }
+    return String(v);
+  }
   function renderSettingsChip() {
     if (!els.paths) {
       return;
@@ -705,20 +851,37 @@
       row.textContent = '';
       return;
     }
+    // The page publishes its own allowlist; without it the labels above are
+    // all this side can know, and an unknown key is simply not claimed.
+    var allow = window.MMGR_CALC_SETTING_KEYS;
     var parts = [];
-    for (var k in SETTING_LABELS) {
-      if (!Object.prototype.hasOwnProperty.call(SETTING_LABELS, k)) {
+    var unsupported = [];
+    for (var k in st) {
+      if (!Object.prototype.hasOwnProperty.call(st, k)) {
         continue;
       }
       if (st[k] === undefined || st[k] === null || st[k] === '') {
         continue;
       }
-      parts.push(SETTING_LABELS[k] + ': ' + String(st[k]));
+      var known = Object.prototype.hasOwnProperty.call(SETTING_LABELS, k);
+      if (known && Object.prototype.toString.call(allow) === '[object Array]') {
+        known = allow.indexOf(k) !== -1;
+      }
+      if (!known) {
+        unsupported.push(k);
+        continue;
+      }
+      parts.push(SETTING_LABELS[k] + ': ' + settingValueText(k, st[k]));
     }
     row.hidden = false;
     row.textContent = parts.length
-      ? 'Ready to change - ' + parts.join(', ') + '.'
-      : 'There are no settings I can change from that reply.';
+      ? 'Ready to change - ' +
+        parts.join(', ') +
+        '.' +
+        (unsupported.length ? ' Not supported: ' + unsupported.join(', ') + '.' : '')
+      : unsupported.length
+        ? 'Not supported: ' + unsupported.join(', ') + '.'
+        : 'There are no settings I can change from that reply.';
   }
 
   // S-6.1: hand the job to the page so it can open the custom line with the
@@ -750,17 +913,19 @@
     );
   }
 
-  // S-6.2: apply the settings the user just agreed to. The page validates and
-  // reports what changed; a refusal is shown in plain words and nothing moves.
-  function onApplySettings() {
+  // S-6.2 / AI-3: ONE apply path for both ways a reply can ask for a settings
+  // change - the proposal's settings block, and an ASK the user just answered.
+  // The page validates and reports what changed; a refusal is shown in plain
+  // words and nothing moves.
+  function applySettings(patch) {
     var fn = window.MMGR_CALC_SETTINGS;
     if (typeof fn !== 'function') {
       notice('This page cannot change those settings right now.', 'bad');
-      return;
+      return false;
     }
     var out = null;
     try {
-      out = fn((proposal && proposal.settings) || {});
+      out = fn(patch || {});
     } catch (e) {
       out = { ok: false };
     }
@@ -768,15 +933,65 @@
       var changed = (out.changed || []).map(function (c) {
         return c.label + ' ' + c.to;
       });
+      var msg = changed.length
+        ? 'Updated: ' + changed.join(', ') + '. The estimate has been worked out again.'
+        : 'Nothing needed changing.';
+      if (out.refused && out.refused.length) {
+        msg += ' Not supported: ' + out.refused.join(', ') + '.';
+      }
+      notice(msg, '');
+      return true;
+    }
+    notice((out && out.error) || 'Those settings could not be changed.', 'bad');
+    return false;
+  }
+  function onApplySettings() {
+    applySettings((proposal && proposal.settings) || {});
+  }
+
+  // AI-3: the buttons answer the ASK. "No" lets it go, "Custom" hands the
+  // caret to the real box (the answer is typed in the field, never in chat),
+  // and anything else applies the value the line carried through the SAME
+  // page-side validation a settings proposal gets - so an unknown field is
+  // refused by name here too, and the model never decides what a press means.
+  function onAskOption(btn) {
+    if (!ask) {
+      return;
+    }
+    var i = parseInt(btn.getAttribute('data-i'), 10);
+    var opt = ask.options[i] === undefined ? '' : String(ask.options[i]);
+    var field = ask.field;
+    var low = opt.toLowerCase().replace(/[^a-z]/g, '');
+    if (low === 'no' || low === 'nothanks' || low === 'notnow') {
+      ask = null;
+      renderPaths();
+      return;
+    }
+    if (low === 'custom' || low === 'myown' || low === 'other') {
+      var focused = false;
+      try {
+        focused = typeof window.MMGR_CALC_FOCUS === 'function' && !!window.MMGR_CALC_FOCUS(field);
+      } catch (e) {
+        focused = false;
+      }
+      ask = null;
+      renderPaths();
       notice(
-        changed.length
-          ? 'Updated: ' + changed.join(', ') + '. The estimate has been worked out again.'
-          : 'Nothing needed changing.',
-        ''
+        focused
+          ? 'Type your own figure in that box on the page.'
+          : 'That box is not on this page - nothing was changed.',
+        focused ? '' : 'bad'
       );
       return;
     }
-    notice((out && out.error) || 'Those settings could not be changed.', 'bad');
+    var patch = ask.apply && typeof ask.apply === 'object' ? ask.apply : null;
+    if (!patch) {
+      patch = {};
+      patch[field] = ask.value === undefined ? true : ask.value;
+    }
+    applySettings(patch);
+    ask = null;
+    renderPaths();
   }
 
   // B6: the exact rejection notice (DIRECTIVE section 3). Wording kept in
@@ -1562,10 +1777,11 @@
           busy = false;
           hideTyping();
           if (r.ok && r.data.ok && typeof r.data.text === 'string' && r.data.text) {
-            var parsed = parseProposal(r.data.text);
+            var parsed = parseReply(r.data.text);
             draft.push({ role: 'assistant', content: r.data.text });
             push('assistant', parsed.text);
-            proposal = parsed.json;
+            proposal = parsed.proposal;
+            ask = parsed.ask;
             renderPaths();
             if (typeof r.data.remaining === 'number') {
               // Clamped to the client's own idea of the allowance: the server
@@ -1658,6 +1874,10 @@
       renderHistory();
       return;
     }
+    if (what === 'askopt') {
+      onAskOption(t);
+      return;
+    }
     if (what === 'pop') {
       onPopulate();
       return;
@@ -1747,6 +1967,9 @@
     els.pathq = root.querySelector('[data-cai=pathq]');
     els.myrate = root.querySelector('[data-cai=myrate]');
     els.settings = root.querySelector('[data-cai=settings]');
+    els.askbox = root.querySelector('[data-cai=askbox]');
+    els.askq = root.querySelector('[data-cai=askq]');
+    els.askrow = root.querySelector('[data-cai=askrow]');
     root.classList.add('bcp-ai');
     draft = [];
     chats = [];
@@ -1758,6 +1981,7 @@
     userEmail = '';
     attach = null;
     proposal = null;
+    ask = null;
     chipUrls = [];
     typingRow = null;
     typingTimer = null;

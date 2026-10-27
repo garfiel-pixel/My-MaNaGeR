@@ -15761,21 +15761,275 @@
      nothing else. Every key is allowlisted here, range-checked against the
      input's own min/max, and written through the same input/change events a
      person typing would fire, so one render path prices the change. A key the
-     page does not support is refused by name - never ignored, never invented. */
+     page does not support is refused by name - never ignored, never invented.
+
+     AI-3 (REFINEMENT-DIRECTIVE-2026-10-24): the assistant now reaches every
+     field the owner named, so the allowlist grows and each key declares HOW
+     it is validated rather than each caller deciding:
+
+       select  a value the <select> actually offers
+       num     a finite number inside that input's own min/max
+       bool    a real true/false written to the switch (a change fires)
+       parts   the four statutory boxes as one object, each 0-25
+       acc     the material rows keyed by their row key, each {on, price}
+
+     `tax: true` marks the two keys that ARE the tax figure: writing one while
+     the job says "No tax" would price a tax the breakdown then calls "No tax"
+     (the screen and the bill disagreeing), so the country comes back first -
+     exactly what the tax row's own switch does. */
   var SETTING_FIELDS = {
-    country: { id: 'calc-country', label: 'Country', select: true },
-    taxOverride: { id: 'calc-tax-override', label: 'Custom tax', min: 0, max: 40, unit: '%' },
-    overhead: { id: 'calc-oh', label: 'Overhead & margin', min: 0, max: 60, unit: '%' },
+    country: { id: 'calc-country', label: 'Country', type: 'select' },
+    gct: {
+      id: 'calc-tax-override',
+      label: 'GCT',
+      type: 'num',
+      min: 0,
+      max: 40,
+      unit: '%',
+      tax: true
+    },
+    taxOverride: {
+      id: 'calc-tax-override',
+      label: 'Custom tax',
+      type: 'num',
+      min: 0,
+      max: 40,
+      unit: '%',
+      tax: true
+    },
+    overhead: {
+      id: 'calc-oh',
+      label: 'Overhead & margin',
+      type: 'num',
+      min: 0,
+      max: 60,
+      unit: '%'
+    },
     onCostPct: {
       id: 'calc-oncost-pct',
       label: 'Statutory costs on labour',
+      type: 'num',
       min: 0,
       max: 25,
       unit: '%'
     },
-    designC: { id: 'calc-design-c', label: 'Design contingency', min: 0, max: 50, unit: '%' },
-    constrC: { id: 'calc-constr-c', label: 'Construction contingency', min: 0, max: 50, unit: '%' }
+    designC: {
+      id: 'calc-design-c',
+      label: 'Design contingency',
+      type: 'num',
+      min: 0,
+      max: 50,
+      unit: '%'
+    },
+    constrC: {
+      id: 'calc-constr-c',
+      label: 'Construction contingency',
+      type: 'num',
+      min: 0,
+      max: 50,
+      unit: '%'
+    },
+    labourOnly: { id: 'calc-labour-only', label: 'Labour only', type: 'bool' },
+    itemiseMaterials: { id: 'calc-itemise', label: 'Itemise materials', type: 'bool' },
+    onCost: { label: 'Statutory cost parts', type: 'parts' },
+    accessories: { label: 'Material line', type: 'acc' }
   };
+  // The apply order the page needs: switches decide what exists, the boxes
+  // follow, and the material rows come last (they only exist once the
+  // itemise switch has rendered the drawer).
+  var SETTING_ORDER = { bool: 0, select: 1, num: 2, parts: 3, acc: 4 };
+  function settingRank(k) {
+    var s = SETTING_FIELDS[k];
+    return s && SETTING_ORDER[s.type] !== undefined ? SETTING_ORDER[s.type] : 9;
+  }
+  // A number the model sent as text still counts; a boolean, null or empty
+  // string does not (Number(true) is 1 - that would silently price 1%).
+  function settingNum(x) {
+    if (typeof x === 'number') {
+      return x;
+    }
+    if (typeof x === 'string' && x.trim() !== '') {
+      return Number(x);
+    }
+    return NaN;
+  }
+  function settingPartLabel(id) {
+    for (var i = 0; i < ONCOST_PARTS.length; i++) {
+      if (ONCOST_PARTS[i].id === id) {
+        return ONCOST_PARTS[i].name;
+      }
+    }
+    return id;
+  }
+  /* The four statutory boxes as one object: {nis, nht, edtax, heart}, each
+     checked against the input's own 0-25 range. ALL OR NOTHING - a reply that
+     gets one part wrong changes nothing, so a half-applied stack can never
+     price. The boxes are the editor and #calc-oncost-pct is what prices, so
+     each write fires the same input event a keystroke does and the row's own
+     code re-sums the four into the one percent the engine reads. */
+  function settingParts(parts, changed, refused) {
+    if (!parts || typeof parts !== 'object') {
+      refused.push('onCost');
+      return;
+    }
+    var plan = [];
+    var bad = [];
+    Object.keys(parts).forEach(function (id) {
+      var el = $('calc-oncost-' + id);
+      var known = ONCOST_PARTS.some(function (p) {
+        return p.id === id;
+      });
+      var n = settingNum(parts[id]);
+      if (!el || !known) {
+        bad.push(id);
+        return;
+      }
+      if (!isFinite(n) || n < 0 || n > 25) {
+        bad.push(id);
+        return;
+      }
+      plan.push({ el: el, id: id, n: n });
+    });
+    if (bad.length) {
+      refused.push('onCost (' + bad.join(', ') + ')');
+      return;
+    }
+    // The switch first: its own change handler may suggest a country total,
+    // and the boxes below overwrite that with what the drawer really says.
+    var tog = $('calc-oncost-toggle');
+    if (tog && !tog.checked) {
+      tog.checked = true;
+      tog.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    plan.forEach(function (p) {
+      var before = String(p.el.value);
+      p.el.value = String(p.n);
+      p.el.dispatchEvent(new Event('input', { bubbles: true }));
+      if (before !== String(p.n)) {
+        changed.push({
+          field: 'onCost.' + p.id,
+          label: settingPartLabel(p.id),
+          from: before,
+          to: p.n + '%'
+        });
+      }
+    });
+  }
+  function accRowName(row) {
+    var box = row.querySelector('.acc-name-in');
+    if (box) {
+      return String(box.value || '').trim();
+    }
+    return '';
+  }
+  /* The material lines, keyed by the row's own key (the same key the bill
+     carries): {<key>: {on: true, price: 3200}}. Rows exist only for the work
+     item on screen with the drawer open, so a key this page is not showing is
+     refused BY NAME instead of being written into a hidden store, and only
+     `on` and `price` are accepted - every other field is refused. Each write
+     fires the row's own input/change event, so the line re-prices through the
+     exact path a keystroke takes. */
+  function settingAccessories(lines, changed, refused) {
+    if (!lines || typeof lines !== 'object') {
+      refused.push('accessories');
+      return;
+    }
+    var list = $('calc-acc-list');
+    var plan = [];
+    var bad = [];
+    Object.keys(lines).forEach(function (key) {
+      var patch = lines[key];
+      var row = list
+        ? list.querySelector('.acc-row[data-key="' + String(key).replace(/["\\]/g, '\\$&') + '"]')
+        : null;
+      if (!row || !patch || typeof patch !== 'object') {
+        bad.push('accessories.' + key);
+        return;
+      }
+      var unknown = Object.keys(patch).filter(function (s) {
+        return s !== 'on' && s !== 'price';
+      });
+      if (unknown.length || ('on' in patch && typeof patch.on !== 'boolean')) {
+        bad.push('accessories.' + key);
+        return;
+      }
+      if ('price' in patch) {
+        var pn = settingNum(patch.price);
+        if (!isFinite(pn) || pn < 0) {
+          bad.push('accessories.' + key);
+          return;
+        }
+      }
+      plan.push({ row: row, key: key, patch: patch });
+    });
+    if (bad.length) {
+      refused.push.apply(refused, bad);
+      return;
+    }
+    plan.forEach(function (ap) {
+      var label = accRowName(ap.row) || ap.key;
+      if ('on' in ap.patch) {
+        var cb = ap.row.querySelector('[data-acc-on]');
+        if (cb && !!cb.checked !== ap.patch.on) {
+          var wasOn = !!cb.checked;
+          cb.checked = ap.patch.on;
+          cb.dispatchEvent(new Event('change', { bubbles: true }));
+          changed.push({
+            field: 'accessories.' + ap.key,
+            label: 'Material line ' + label,
+            from: wasOn ? 'on' : 'off',
+            to: ap.patch.on ? 'on' : 'off'
+          });
+        }
+      }
+      if ('price' in ap.patch) {
+        var box = ap.row.querySelector('[data-acc-price]');
+        if (box) {
+          var n = settingNum(ap.patch.price);
+          var before = String(box.value);
+          box.value = String(n);
+          box.dispatchEvent(new Event('input', { bubbles: true }));
+          if (before !== String(n)) {
+            changed.push({
+              field: 'accessories.' + ap.key,
+              label: 'Material line ' + label,
+              from: before,
+              to: String(n)
+            });
+          }
+        }
+      }
+    });
+  }
+  /* AI-3: the ASK row's "Custom" button hands the caret to the real box - the
+     answer is typed in the field, never as chat text. Returns honestly: a
+     field this page does not have is NOT focused, and the panel says so. */
+  function calcSettingFocus(k) {
+    var spec = SETTING_FIELDS[k];
+    if (!spec) {
+      return false;
+    }
+    var el = null;
+    if (spec.type === 'parts') {
+      el = $('calc-oncost-nis');
+    } else if (spec.type === 'acc') {
+      el = document.querySelector('#calc-acc-list [data-acc-price]') || $('calc-itemise');
+    } else {
+      el = $(spec.id);
+    }
+    if (!el || typeof el.focus !== 'function') {
+      return false;
+    }
+    try {
+      el.focus();
+      if (typeof el.select === 'function' && el.tagName === 'INPUT' && el.type !== 'checkbox') {
+        el.select();
+      }
+    } catch (e) {
+      return false;
+    }
+    return true;
+  }
   function calcSettings(v) {
     try {
       if (!v || typeof v !== 'object') {
@@ -15783,60 +16037,100 @@
       }
       var changed = [];
       var refused = [];
-      Object.keys(v).forEach(function (k) {
-        var spec = SETTING_FIELDS[k];
-        if (!spec) {
-          refused.push(k);
-          return;
-        }
-        var el = $(spec.id);
-        if (!el) {
-          refused.push(k);
-          return;
-        }
-        if (spec.select) {
-          var want = String(v[k]);
-          var ok = false;
-          for (var i = 0; i < el.options.length; i++) {
-            if (el.options[i].value === want) {
-              ok = true;
-              break;
-            }
-          }
-          if (!ok) {
+      Object.keys(v)
+        .sort(function (a, b) {
+          return settingRank(a) - settingRank(b);
+        })
+        .forEach(function (k) {
+          var spec = SETTING_FIELDS[k];
+          if (!spec) {
             refused.push(k);
             return;
           }
-          if (el.value !== want) {
-            el.value = want;
-            el.dispatchEvent(new Event('change', { bubbles: true }));
-            changed.push({ field: k, label: spec.label, from: '', to: want });
+          var el = $(spec.id);
+          if (spec.type !== 'parts' && spec.type !== 'acc' && !el) {
+            refused.push(k);
+            return;
           }
-          return;
-        }
-        var n = Number(v[k]);
-        if (!isFinite(n) || n < spec.min || n > spec.max) {
-          refused.push(k);
-          return;
-        }
-        // The statutory-cost percent only prices when its toggle is on; the
-        // toggle is the person's switch, so applying a percent turns it on - a
-        // number written into a disabled box would look applied and do nothing.
-        if (k === 'onCostPct') {
-          var tog = $('calc-oncost-toggle');
-          if (tog && !tog.checked) {
-            tog.checked = true;
-            tog.dispatchEvent(new Event('change', { bubbles: true }));
+          if (spec.type === 'select') {
+            var want = String(v[k]);
+            var ok = false;
+            for (var i = 0; i < el.options.length; i++) {
+              if (el.options[i].value === want) {
+                ok = true;
+                break;
+              }
+            }
+            if (!ok) {
+              refused.push(k);
+              return;
+            }
+            if (el.value !== want) {
+              el.value = want;
+              el.dispatchEvent(new Event('change', { bubbles: true }));
+              changed.push({ field: k, label: spec.label, from: '', to: want });
+            }
+            return;
           }
-        }
-        var before = String(el.value);
-        el.value = String(n);
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-        el.dispatchEvent(new Event('change', { bubbles: true }));
-        if (before !== String(n)) {
-          changed.push({ field: k, label: spec.label, from: before, to: n + spec.unit });
-        }
-      });
+          if (spec.type === 'bool') {
+            if (typeof v[k] !== 'boolean') {
+              refused.push(k);
+              return;
+            }
+            if (!!el.checked !== v[k]) {
+              var wasOn = !!el.checked;
+              el.checked = v[k];
+              el.dispatchEvent(new Event('change', { bubbles: true }));
+              changed.push({
+                field: k,
+                label: spec.label,
+                from: wasOn ? 'on' : 'off',
+                to: v[k] ? 'on' : 'off'
+              });
+            }
+            return;
+          }
+          if (spec.type === 'parts') {
+            settingParts(v[k], changed, refused);
+            return;
+          }
+          if (spec.type === 'acc') {
+            settingAccessories(v[k], changed, refused);
+            return;
+          }
+          var n = settingNum(v[k]);
+          if (!isFinite(n) || n < spec.min || n > spec.max) {
+            refused.push(k);
+            return;
+          }
+          // The tax figure needs a taxed country under it (see SETTING_FIELDS).
+          if (spec.tax) {
+            var c = $('calc-country');
+            if (c && c.value === 'NONE') {
+              var back = taxCountryBefore && taxCountryBefore !== 'NONE' ? taxCountryBefore : 'JM';
+              c.value = back;
+              c.dispatchEvent(new Event('change', { bubbles: true }));
+              changed.push({ field: 'country', label: 'Country', from: 'NONE', to: back });
+            }
+          }
+          // The statutory-cost percent only prices when its toggle is on; the
+          // toggle is the person's switch, so applying a percent turns it on - a
+          // number written into a disabled box would look applied and do nothing.
+          if (k === 'onCostPct') {
+            var tog = $('calc-oncost-toggle');
+            if (tog && !tog.checked) {
+              tog.checked = true;
+              tog.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          }
+          var before = String(el.value);
+          el.value = String(n);
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+          if (before !== String(n)) {
+            changed.push({ field: k, label: spec.label, from: before, to: n + spec.unit });
+          }
+        });
       if (!changed.length) {
         return {
           ok: false,
@@ -15853,6 +16147,11 @@
   }
 
   window.MMGR_CALC_RATEBOOK = calcRateBookText;
+  // AI-3: the panel builds the settings chip from THESE, so an unknown key is
+  // named as unsupported before any click, and "Custom" on an ASK reaches the
+  // real box through the same allowlist the applier uses.
+  window.MMGR_CALC_SETTING_KEYS = Object.keys(SETTING_FIELDS);
+  window.MMGR_CALC_FOCUS = calcSettingFocus;
   // S-6.1 / S-6.2: the assistant's two powers over the form. Both are
   // optional hooks: a page without them loses those two buttons only.
   window.MMGR_CALC_USER_RATE = calcUserRate;

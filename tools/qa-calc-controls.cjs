@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /* ============================================================
    tools/qa-calc-controls.cjs
-   GATE: T-DARK (UI-1), T-ROWS (UI-2), UI-3 notes, T-PERF-WIRE (calculator)
+   GATE: T-DARK (UI-1), T-ROWS (UI-2), UI-3 notes, T-PERF-WIRE, UI-4 bar parity
    ------------------------------------------------------------
-   REFINEMENT-DIRECTIVE-2026-10-24, Wave D. Four contracts, one page:
+   REFINEMENT-DIRECTIVE-2026-10-24, Wave D + E. Five contracts, one page:
 
    UI-1 - the trade picker is an owned listbox (js/mmgr-combobox.js), not a
           native popup the browser paints and no test can see. This gate opens
@@ -28,6 +28,14 @@
    PERF-1 - with mmgr_perf_mode=on before load: data-perf is on, nothing has a
           computed backdrop-filter, no WebGL context is created, and flipping
           the switch off brings the effects back without a reload.
+
+   UI-4  - the calculator bar is the APP bar (body.db-page .top), measured
+          against it in light and dark: same radius, background and shadow,
+          the same 56px control band (the app bar's own reserved top row), the
+          same 18px gap, a 1px divider between title and actions, the width cap
+          that stops it running as a long band, the rate book button reading
+          mark + name wide and mark alone at 390, and Performance Mode taking
+          its blur and lift away.
 
    Usage:  node tools/qa-calc-controls.cjs
    Registry: docs/CI-TEST-COVERAGE.md -> CI row.
@@ -795,6 +803,189 @@ const CONTRAST_HELPERS = `window.__mmcbContrast = (function () {
       );
       check('T-PERF-WIRE no uncaught page error', errors.length === 0, errors);
       await page.context().close();
+    }
+
+    // ------------------------------------------------------------------
+    // UI-4: the calculator bar mirrors the app bar - measured, both themes,
+    // on the four properties the directive names (height, radius,
+    // background, shadow) plus the row gap.
+    //
+    // "Height" is the one property that needed an honest reading: the app bar
+    // (body.db-page .top) has no fixed height - it is a hero panel with an h1
+    // in it. What it does fix is the band its OWN controls sit in: 56px of
+    // padding-top, commented there as "top row = corner controls - h1 sits
+    // below". So 56px is the shared number: the calculator bar is that band
+    // exactly (7px + 40px controls + 7px + a 1px border each side, border-box),
+    // and the gate compares the app bar's reserved band against the calculator
+    // bar's measured height.
+    // ------------------------------------------------------------------
+    {
+      const measure = async (url, selector, theme, width) => {
+        const ctx = await browser.newContext({ viewport: { width: width, height: 900 } });
+        const page = await ctx.newPage();
+        const errors = [];
+        page.on('pageerror', e => errors.push(String((e && e.message) || e).slice(0, 160)));
+        await page.addInitScript(t => {
+          try {
+            localStorage.setItem('mmgr_theme', t);
+            localStorage.removeItem('mmgr_perf_mode');
+          } catch (e) {}
+        }, theme);
+        await page.goto(BASE + url, { waitUntil: 'load', timeout: 60000 });
+        await page.waitForFunction(sel => !!document.querySelector(sel), selector, {
+          timeout: 30000
+        });
+        await delay(300);
+        const m = await page.evaluate(sel => {
+          const el = document.querySelector(sel);
+          const cs = getComputedStyle(el);
+          const r = el.getBoundingClientRect();
+          const row = document.querySelector(sel + ' .db-hero-row');
+          return {
+            height: Math.round(r.height),
+            width: Math.round(r.width),
+            radius: cs.borderRadius,
+            bgImage: cs.backgroundImage,
+            bgColor: cs.backgroundColor,
+            shadow: cs.boxShadow,
+            gap: cs.gap,
+            rowGap: row ? getComputedStyle(row).gap : null,
+            paddingTop: cs.paddingTop,
+            minHeight: cs.minHeight,
+            backdrop: cs.backdropFilter || cs.webkitBackdropFilter || 'none'
+          };
+        }, selector);
+        await ctx.close();
+        return { m: m, errors: errors };
+      };
+
+      for (const theme of ['light', 'dark']) {
+        const app = await measure('/app.html', '.top', theme, 1280);
+        const calc = await measure('/calculator.html', '.bcp-top', theme, 1280);
+        const tag = 'UI-4 (' + theme + ') ';
+        check(
+          tag + 'both bars load with no page error',
+          app.errors.length === 0 && calc.errors.length === 0,
+          { app: app.errors, calc: calc.errors }
+        );
+        check(
+          tag + 'same radius, background and shadow as the app bar',
+          app.m.radius === calc.m.radius &&
+            (theme === 'light'
+              ? app.m.bgImage === calc.m.bgImage
+              : app.m.bgColor === calc.m.bgColor && app.m.bgColor !== 'rgba(0, 0, 0, 0)') &&
+            app.m.shadow === calc.m.shadow,
+          { app: app.m, calc: calc.m }
+        );
+        check(
+          tag +
+            'the bar is the app bar\u2019s 56px control band, 18px gap, glass blur on (functional layer)',
+          calc.m.height === 56 &&
+            calc.m.minHeight === '56px' &&
+            app.m.paddingTop === '56px' &&
+            calc.m.gap === '18px' &&
+            app.m.rowGap === '18px' &&
+            calc.m.backdrop &&
+            calc.m.backdrop !== 'none' &&
+            app.m.backdrop &&
+            app.m.backdrop !== 'none',
+          { calc: calc.m, appBand: app.m.paddingTop }
+        );
+      }
+
+      // The 1px divider between title and actions, and the width cap that
+      // stops the bar running as a long band on a wide window.
+      const wide = await measure('/calculator.html', '.bcp-top', 'light', 1440);
+      const divider = await (async () => {
+        const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+        const page = await ctx.newPage();
+        await page.goto(BASE + '/calculator.html', { waitUntil: 'load', timeout: 60000 });
+        await page.waitForFunction(() => !!document.querySelector('.bcp-top-right'), null, {
+          timeout: 30000
+        });
+        const d = await page.evaluate(() => {
+          const cs = getComputedStyle(document.querySelector('.bcp-top-right'));
+          return { w: cs.borderLeftWidth, style: cs.borderLeftStyle, pad: cs.paddingLeft };
+        });
+        // The rate book button: mark + name at wide widths, mark alone on a
+        // phone, so the label can never squeeze the bar.
+        const labelWide = await page.evaluate(() => {
+          const t = document.querySelector('.bcp-ratebook-text');
+          const b = document.querySelector('.bcp-ratebook');
+          return {
+            w: t ? Math.round(t.getBoundingClientRect().width) : 0,
+            btn: b ? Math.round(b.getBoundingClientRect().width) : 0,
+            clip: t ? getComputedStyle(t).clipPath : ''
+          };
+        });
+        await page.setViewportSize({ width: 390, height: 844 });
+        await delay(250);
+        const labelNarrow = await page.evaluate(() => {
+          const t = document.querySelector('.bcp-ratebook-text');
+          const b = document.querySelector('.bcp-ratebook');
+          const ico = document.querySelector('.bcp-ratebook .ico');
+          return {
+            w: t ? Math.round(t.getBoundingClientRect().width) : 0,
+            btn: b ? Math.round(b.getBoundingClientRect().width) : 0,
+            ico: ico ? Math.round(ico.getBoundingClientRect().width) : 0
+          };
+        });
+        await ctx.close();
+        return { d: d, labelWide: labelWide, labelNarrow: labelNarrow };
+      })();
+      check(
+        'UI-4 a 1px divider stands between the title and the actions',
+        divider.d.w === '1px' && divider.d.style === 'solid',
+        divider.d
+      );
+      check(
+        'UI-4 at 1440 the bar is capped to the content column instead of running the window',
+        wide.m.width <= 1080 && wide.errors.length === 0,
+        wide.m
+      );
+      check(
+        'UI-4 the rate book button reads mark + name wide, mark alone on a phone',
+        divider.labelWide.w > 60 &&
+          divider.labelWide.clip === 'none' &&
+          divider.labelNarrow.w <= 1 &&
+          divider.labelNarrow.ico >= 14 &&
+          divider.labelNarrow.btn > 20,
+        divider
+      );
+
+      // Performance Mode takes the blur AND the lift off this bar (UI-4 +
+      // PERF-1). T-PERF-WIRE above proves no element keeps a backdrop-filter;
+      // this pins the bar's own shadow to the flat one Performance Mode sets.
+      const perfCtx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+      const perfPage = await perfCtx.newPage();
+      await perfPage.addInitScript(() => {
+        try {
+          localStorage.setItem('mmgr_theme', 'light');
+          localStorage.setItem('mmgr_perf_mode', 'on');
+        } catch (e) {}
+      });
+      await perfPage.goto(BASE + '/calculator.html', { waitUntil: 'load', timeout: 60000 });
+      await perfPage.waitForFunction(() => !!document.querySelector('.bcp-top'), null, {
+        timeout: 30000
+      });
+      await delay(400);
+      const perf = await perfPage.evaluate(() => {
+        const cs = getComputedStyle(document.querySelector('.bcp-top'));
+        return {
+          perf: document.documentElement.getAttribute('data-perf'),
+          backdrop: cs.backdropFilter || cs.webkitBackdropFilter || 'none',
+          shadow: cs.boxShadow
+        };
+      });
+      await perfCtx.close();
+      check(
+        'UI-4 under Performance Mode the bar loses its blur and its lift',
+        perf.perf === 'on' &&
+          perf.backdrop === 'none' &&
+          // Chrome serialises the colour first in a computed box-shadow.
+          perf.shadow === 'rgba(0, 0, 0, 0.18) 0px 1px 2px 0px',
+        perf
+      );
     }
   } catch (e) {
     check('harness ran without throwing', false, String((e && e.stack) || e));

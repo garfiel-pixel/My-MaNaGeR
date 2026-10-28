@@ -68,14 +68,15 @@ must get the audit's own state check (rule 0.1) before anyone claims it.
 1. Read this file, then `REFINEMENT-DIRECTIVE-2026-10-24.md`, then `REFINEMENT-PROGRESS.md`.
    The progress file is the authority for what is DONE and what is LEFT, and its
    NEXT UP section is the build order.
-2. State at HEAD `a436862` (the CI-verified code commit; later docs-only commits do not
-   change served bytes): Wave D closed (12/12), Wave E closed (14/14), Wave F 1 of 6.
-   Waves D+E are DEPLOYED and LIVE-PROBED (Version ID 650dc6e1, probe 9/9). Open: Wave F
-   only (AI-1, AI-2, APP-3, SW-10) - AI-1 is NEXT UP.
-3. Run `npm run verify` first; baseline on `a436862`: green, 145/145 unit tests,
-   registry 138/138, sw shell v488. Browser gates: `qa-full` 194/194, `verify:gantt`,
-   `verify:gold`, `qa-calc-controls` 63/63, `qa-globe-spin` 15/15, `qa-hero-globe` 16/16,
-   `qa-dot-rail` 15/15.
+2. State at HEAD `e9def01` (CI-verified code; the closing docs commit after it changes no
+   behaviour): ALL WAVES CLOSED - Wave D 12/12, Wave E 14/14, Wave F 6/6, total 32/32 in
+   REFINEMENT-PROGRESS.md, with the directive's section 15 re-check table pasted into
+   docs/history/log-2026-10.md (zero open High items). Wave F is DEPLOYED and LIVE-PROBED
+   (Version ID eff0439e-51f6-44fe-9f85-3bb5b3a6f67c, probe 18/18). Two deliberate deferrals
+   are recorded, not open: APP-3's optional salt/PBKDF2 step-up and the AI-2 on-device ship.
+3. Run `npm run verify` first; baseline: green, 145/145 unit tests, registry 138/138,
+   sw shell v491. Browser gates: `qa-full`, `qa-ai-win` 22/22, `qa-code-names` 26/26,
+   `verify:gold`, `qa-calc-controls` 63/63, `qa-hero-globe` 16/16, `qa-globe-spin` 15/15.
 4. Every new harness needs THREE edits: the harness, its row in
    `docs/CI-TEST-COVERAGE.md`, and a step in `.github/workflows/ci.yml` (or the
    extended battery). The registry doc alone does not run it.
@@ -87,27 +88,38 @@ must get the audit's own state check (rule 0.1) before anyone claims it.
 
 ## STATUS LOG (newest entries kept here; full history in `docs/history/log-YYYY-MM.md`)
 
+- 2026-10-28: WAVE F CLOSED, DEPLOYED, LIVE-PROBED - ALL 32/32 TASKS DONE. AI-1 the docked
+  AI window (qa-ai-win 22/22, axe clean both palettes, T-AIWIN green, flag `aiDock`); AI-2
+  spike written up in docs/SPIKE-LOCALLLM-2026-10.md - WebLLM passes every laptop threshold,
+  three ship conditions unbuilt, ship DEFERRED with a GO recommendation, `localModel:false`,
+  T-LOCALLLM not applicable; APP-3 the three code names everywhere (qa-code-names 26/26,
+  its FIRST CI run) with the optional salt/PBKDF2 step-up recorded as a deferral; SW-10
+  (verify-sw10 9/9); the owner's gold retirement finished with T-GOLD rewritten (empty
+  allow-list, 0 retired orange across 144 files, white-on-gold arm; the SVG mutation exposed
+  a comment-stripper hole, fixed with a protocol guard); the owner's dropped contact jpg
+  re-encoded to a 67 KB webp (sw v491). THREE CI repair loops, each reproduced locally with
+  the skipped steps run after it: aiIcon registered under ico()'s contract (6cdc5e5); the
+  qa-calc-assistant border arm re-baselined to the deliberate --gold-ink border and its run
+  surfaced the undocumented mmgr_restore_recap key (b1cb54f); qa-code-names was launching
+  Playwright's bundled chromium, which CI never downloads - system Chrome via
+  chrome-launcher.cjs now (eec7835). CI run 40723602002 (e9def01) GREEN all 223 steps.
+  Deployed Version ID eff0439e-51f6-44fe-9f85-3bb5b3a6f67c; live probe 18/18 - its first
+  run's six failures were all probe bugs (subshell-empty $HOME, comment-blind grep, wrong
+  expected count, minified-identifier lookup, wrong page, invented 401), and a hash probe
+  must skip Cloudflare's edge-injected inline script. Re-check table pasted into
+  docs/history/log-2026-10.md; reflection.txt rewritten. NEXT: no open directive work -
+  owner items Q5/Q8/Q11 and the two recorded deferrals only.
 
-- 2026-10-27 (x6): WAVES D AND E CLOSED, DEPLOYED AND LIVE-PROBED. CI run
-  40628905493 (a436862) green on all 108 steps; deployed Version ID
-  650dc6e1-a4e8-4aaa-bc5b-703e979ccdb4 from the byte-verified $HOME/mmgr-deploy
-  copy; live probe 9/9 PASS against mymanagerworkspace.com (the same probe was
-  6 of 9 FAILING before the deploy). Two red CI runs were worked through first:
-  step 90 was W11 asserting authored text against a token (stale arm); step 96
-  was qa-calc-controls reading an animating track at a fixed 300 ms (the switch
-  was correct - the OFF transition even pauses while Performance Mode re-mounts
-  the heavy effects, so the arm now waits for the actual OFF colour). The
-  fifteen T4 suites CI had skipped were hiding TWO REAL DEFECTS: an expiry due
-  TODAY read as OVERDUE (a date-only string compared to the current instant;
-  the badge and the notice now share one local-calendar helper), and the
-  calculator's setting hints at 3.84:1 (.set-hint opacity removed; 5.74:1).
-  qa-shortcuts was re-baselined to the UI-1 listbox. Both app fixes are
-  mutation-proven WITH a rebuild. Tooling: both CI watchers compared gh's full
-  40-char headSha to a 7-char short SHA, so they reported "no run yet" through
-  two red runs - they now prefix-match. verify green, 145/145 unit tests,
-  registry 138/138, qa-full 194/194, sw v488. NEXT: Wave F, AI-1 (T-AIWIN).
-  Full x4 (LAND-2 Pause + field-guide cards) and x3 (GANTT-1 + GOLD-1) text is
-  archived in docs/history/log-2026-10.md under the byte-cap law.
+
+- 2026-10-27 (x6): WAVES D AND E CLOSED, DEPLOYED AND LIVE-PROBED. CI run 40628905493
+  (a436862) green on all 108 steps; deployed Version ID 650dc6e1-a4e8-4aaa-bc5b-703e979ccdb4;
+  live probe 9/9 (it was 6 of 9 failing before the deploy). Two red runs worked through first
+  (step 90 W11 stale arm; step 96 qa-calc-controls reading an animating track), and the
+  fifteen suites CI had skipped were holding two real defects (expiry due today read as
+  overdue; setting hints at 3.84:1), both fixed and mutation-proven with a rebuild.
+  qa-shortcuts re-baselined to the UI-1 listbox; both CI watchers fixed to prefix-match.
+  verify green, 145/145 unit tests, registry 138/138, qa-full 194/194, sw v488. Full text
+  in docs/history/log-2026-10.md under the byte-cap law.
 - 2026-10-27 (x1): SW-8 CLOSED and a real CSP defect fixed with it (f258b3e). The
   dev bundle fallback was armed by an inline onerror ATTRIBUTE, which a hash-only
   script-src blocks, so __mmgrBundleMissing could never be set and the fallback was

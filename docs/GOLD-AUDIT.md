@@ -116,7 +116,7 @@ Owner, on seeing the deployed gold: *"I like the gold look we got and have now, 
 
 ### What deliberately stays, and why
 
-- **Semantic status colours** — `--warning`/`--amber`/`--dot-yellow` (`#e65100`), `--amber-ink` (`#c24700`), `--status-warning` (`#b4740e`), the amber ramp (`#f59e0b`/`#d97706`/`#fef3c7`/`#fcd34d`) used by late/warning chips. Amber means "due soon"; gold is identity. Recolouring a status hue to the brand hue would make an alert look like decoration.
+- **Semantic status colours** — `--warning`/`--amber`/`--dot-yellow` (`#e65100`), `--amber-ink` (`#c24700`), `--status-warning` (`#b4740e`), the amber ramp (`#f59e0b`/`#d97706`/`#fef3c7`/`#fcd34d`) used by late/warning chips. Amber means "due soon"; gold is identity. Recolouring a status hue to the brand hue would make an alert look like decoration. Measured 2026-10-28 after the live probe flagged them: `css/mmgr.css` carries 11 amber-ramp declarations outside comments (the dark `.btn-o` / `.btn-warn` hover fills and the `.ai-user` bubble gradients) - all within this keep, and all outside T-GOLD ARM 1's ban list by design, which covers the nine retired brand-orange values only.
 - **Alternate palettes** — coral (`#ff6e52`/`#ff8a70`), teal (`#00838f`), magenta (`#c2185b`). Opt-in themes with their own identity; the default identity is the one that had to become gold.
 - **Categorical data-viz hues** — `#f97316` as one of ten Gantt phase colours in `js/mmgr-app.js`, `#8b5cf6` siblings. A category palette needs distinct hues; that is not branding.
 - **Design-spec-only tokens** — `--accent-primary: #e05624` (unused by any live rule; the comment already says the live identity stays warm gold) and the `--gold-500` amber ramp in `marketing.css`, used only by nav-dropdown chrome.

@@ -41,15 +41,18 @@ You are the terminal AI finishing the refinement directive. Follow these rules w
 |---|---|---|---|---|
 | D (fix what is broken or exposed) | 12 | 12 | 0 | 0 |
 | E (look, brand, materials) | 14 | 14 | 0 | 0 |
-| F (depth and structure) | 6 | 2 | 0 | 4 |
-| **Total** | **32** | **28** | **0** | **4** |
+| F (depth and structure) | 6 | 6 | 0 | 0 |
+| **Total** | **32** | **32** | **0** | **0** |
 
-Plain reading: Waves D and E are both closed - every look, brand and materials task is done and harness-backed. The
-four untouched ones are all in Wave F and they are the biggest pieces (AI window rebuild, in-browser model spike,
-the three admin codes, and the SW-10 sweep). Task count is not effort: expect Wave F to take as long as D and E did together.
+Plain reading: ALL THREE WAVES ARE CLOSED. Every task is done and harness-backed; the only two items not
+done are deliberate, recorded deferrals (APP-3's optional salt/PBKDF2 step-up and the AI-2 on-device ship),
+not open work. The directive's exit gates are met: T-AIWIN green, T-LOCALLLM not applicable (nothing
+shipped), and the section 15 re-check table is pasted into `docs/history/log-2026-10.md` with zero open
+High items.
 
-Cross-cutting: deploy and live probe for Waves D and E are DONE (2026-10-27, Version ID
-`650dc6e1-a4e8-4aaa-bc5b-703e979ccdb4`, probe 9/9). Nothing cross-cutting is open.
+Cross-cutting: Wave D+E deploy DONE (2026-10-27, Version ID `650dc6e1-a4e8-4aaa-bc5b-703e979ccdb4`,
+probe 9/9). Wave F deploy DONE (2026-10-28, Version ID `eff0439e-51f6-44fe-9f85-3bb5b3a6f67c`,
+live probe 18/18, CI run `40723602002` green on all 223 steps). Nothing cross-cutting is open.
 
 ---
 
@@ -314,12 +317,54 @@ deploy/live probe in NEXT UP step 6.
      is CAUGHT, then restored green. `qa-calc-controls` 63/63.
    - Lesson for the log: a fixed delay in a gate that reads an animated property is a flake with a timer, and
      "stable for two samples" is not the same as "arrived" - wait for the value the assertion names.
-7. [x] **AI-1** AI window layout, docking (docked at 1280 and up, overlay 1024 to 1279, sheet under 1024), Maximise, Float, Pin, `Ctrl+.`, history in project state. Directive section 9. Gate T-AIWIN. All failures fixed and gates green - 22/22 in qa-ai-win, axe clean in both palettes (dark measured through the real theme path), label-title-only fixed (aria-label added to #ai-tier and #ai-q), color-contrast failures fixed (--text-secondary for .ai-hist-when, --on-gold for #ai-seg-presets, --text-secondary for .ai-copy-btn, --on-gold for .ai-adv summary). `npm run verify` green (145/145 unit tests, registry 138/138). Deploy from `$HOME/mmgr-deploy` verified. **NEXT UP - start here.**
-8. [ ] **AI-2** in-browser model: two-day spike first (`tools/spike-localllm.html`, not shipped), results in `docs/SPIKE-LOCALLLM-2026-10.md`, ship only if the acceptance numbers pass (opt-in, under 400 MB, Cache API `mmgr-localllm-v1`, worker, fallback to the deterministic engine). Flag `localModel` exists and is set `true` with no feature behind it: set it to `false` until the feature ships.
-9. [ ] **APP-3** three code names everywhere (Site admin code, Admin panel code, Project and Client code), "Which code is this?" popover, "Backed up to your account" status, restore lists both project groups, optional salt and PBKDF2 for the local gate. Directive section 7. Note: only the "Site admin code" label exists today (`admin.html:422`).
-10. [ ] **SW-10** 16 clickable `div` or `span` with no role, tabindex or key handler (`admin.html:478`, `app.html:415`, `project.html:164, 187, 238, 644` and 10 more; re-run the sweep for the full list). Fix, then make the zero-hit sweep a permanent test.
-11. [ ] Wave F deploy and live probe (docked AI window pushes the page; three code names appear; restored admin shows both project groups).
-12. [ ] **Final re-check table** (directive section 15) filled and pasted into the log. Zero open High items.
+7. [x] **AI-1** AI window layout, docking (docked at 1280 and up, overlay 1024 to 1279, sheet under 1024), Maximise, Float, Pin, `Ctrl+.`, history in project state. Directive section 9. Gate T-AIWIN. All failures fixed and gates green - 22/22 in qa-ai-win, axe clean in both palettes (dark measured through the real theme path), label-title-only fixed (aria-label added to #ai-tier and #ai-q), color-contrast failures fixed (--text-secondary for .ai-hist-when, --on-gold for #ai-seg-presets, --text-secondary for .ai-copy-btn, --on-gold for .ai-adv summary). `npm run verify` green (145/145 unit tests, registry 138/138). Deploy from `$HOME/mmgr-deploy` verified. AI-1 CLOSED (`ac31152`).
+8. [x] **AI-2** in-browser model: spike run and reported 2026-10-28, `docs/SPIKE-LOCALLLM-2026-10.md`
+   committed. Two candidates, SmolLM2-360M 4-bit: MLC WebLLM (WebGPU) PASSES the laptop thresholds
+   (warm open 0.6 s + 0.22 s to first token, 22.8-25.7 tok/s, 60 MB heap, 0 long tasks) but three of the
+   five ship conditions are unmeasured/unbuilt (phone, worker isolation, no-WebGPU fallback) and the whole
+   opt-in download UI is unbuilt, so the ship is DEFERRED to a dedicated follow-up wave with a GO
+   recommendation; transformers.js WASM FAILS outright (112-284 s to answer, 1.4 s main-thread freeze,
+   Cache API put failing so even warm re-downloaded). Flag `localModel` set to `false` so the flag says
+   what ships. Note: the spike harness lives in `tools/` (excluded from deploy by `.assetsignore`).
+9. [x] **APP-3** three code names everywhere (Site admin code, Admin panel code, Project code and Client
+   code), the "Which code is this?" popover on all five code fields, the backup-status line in the admin
+   header, restore listing both project groups (local registry AND `GET /api/cloud/projects`, stubbed in
+   the gate), the plain sentence about what a code cannot restore, and the field guide telling the same
+   story. Gate `tools/qa-code-names.cjs` 26/26 (static arms + real browser walk), registered in ci.yml,
+   package.json and the coverage registry; teeth proven (renaming a label to the bare words fails S1).
+   **The optional security improvement (per-account salt + PBKDF2 local gate + step-up before the server
+   releases the escrowed value) is DEFERRED, not done**: `src/auth/admin-code.js` still seals an unsalted
+   SHA-256 under the fixed escrow salt. The directive marks it optional (Wave F); it touches the auth
+   release path, so it takes its own session with its own tests, and the required APP-3 gate is green
+   without it. Recorded here so the re-check table can answer "Deferred" honestly instead of "Done".
+10. [x] **SW-10** fixed and made permanent. The 16 hits were four kinds: three nav scrims and six dialog
+    backdrops (decorative click-to-dismiss, already have Esc + a visible close) now carry
+    `role=presentation` (+ `aria-hidden` where missing) and stay unfocusable; five Kanban drop columns are
+    `role=group`; only the two real controls (`#dirty-ind`, `#timeline-ind`) became `role=button` +
+    `tabindex=0`, activated by ONE delegated keydown in `js/mmgr-app.js` that fires a click for Enter and
+    Space and never touches an input, a native button or an ancestor. Permanent gate
+    `tools/verify-sw10.cjs` 9/9 (sweep zero, corpus of a dozen div/span data-action surfaces, both controls
+    carry the label AND the keydown exists, no focusable scrim, every backdrop keeps a close button),
+    registered in all three places; teeth proven (dropping `role=button` fails ARM 3a, 8/9, exit 1).
+11. [x] Wave F deploy and live probe. **CLOSED 2026-10-28.** Three CI repair loops worked in order,
+    each reproduced locally and each with its skipped steps run locally first: step 31 (`aiIcon()`
+    unverified dynamic prefix, gate extended to verify it like `ico()`, `6cdc5e5`), step 92
+    (`qa-calc-assistant` arm re-baselined to the deliberate `--gold-ink` border contract plus the
+    `mmgr_restore_recap` storage-inventory gap it exposed, `b1cb54f`), step 102 (`qa-code-names` was
+    launching Playwright's bundled chromium which CI never downloads - it now uses system Chrome via
+    `chrome-launcher.cjs` like every other T4 harness, `eec7835`). Final CI run `40723602002`
+    (`e9def01`, including the owner's contact-page photo) **GREEN on all 223 steps**. Deployed from
+    the byte-verified `$HOME/mmgr-deploy` copy, **Version ID `eff0439e-51f6-44fe-9f85-3bb5b3a6f67c`**.
+    Live probe against `https://mymanagerworkspace.com`: **18/18 PASS** - CSP header with all 14 own
+    inline hashes (Cloudflare's edge-injected challenge script skipped), 0 retired orange in the live
+    css (byte-identical to disk), `--brand: #d4af37`, gold hero poster, `mmgr-shell-v491`, aiIcon in
+    the served source, AI-window markup and dock rules live, the three code names on admin and
+    project, restore recap present, `/api/cloud/projects` 403 signed out (the long-standing
+    contract), `contact-desk.webp` 200. The probe's first run reported 6 failures and all six were
+    probe defects, diagnosed one by one against the source (details in the log entry).
+12. [x] **Final re-check table** (directive section 15) filled and pasted into
+    `docs/history/log-2026-10.md` under the 2026-10-28 Wave F entry. Zero open High items; both
+    deferrals (APP-3 salt/PBKDF2, AI-2 ship) named as deferrals, not marked done.
 
 Wave F items already covered: [x] "the rest of the accessory families" (T-LUMP passes for all 49 trades).
 
@@ -336,7 +381,9 @@ log any answer the owner gives here and apply it.
 - [ ] Q7 accessory prices: AI-proposed "starting value, edit it" (default). Owner review of those prices is still due
 - [ ] Q8 statutory rates 3.0 / 3.0 / 3.5 / 3.0 marked "confirm": default in force, owner to confirm
 - [ ] Q9 same-tab policy: default in force
-- [ ] Q10 in-browser model spike: default (run the spike)
+- [x] Q10 in-browser model spike: **RUN 2026-10-28**, results in `docs/SPIKE-LOCALLLM-2026-10.md`. WebLLM
+  passes the laptop thresholds, transformers.js fails; ship deferred (phone/worker/fallback unbuilt),
+  `localModel: false`
 - [ ] Q11 "limited ... combat purchase": still unanswered, no task depends on it
 
 ---
@@ -387,10 +434,40 @@ log any answer the owner gives here and apply it.
     defects. Rule: when CI stops, reproduce the failing step locally, then run every step after it.
   - 2026-10-27: **a watcher that cannot find the run is worse than no watcher.** Both CI watchers compared
     `gh`'s full 40-character `headSha` with a 7-character short SHA, so they printed "no CI run yet" through two
-    complete red runs. They now prefix-match. A silent watcher converts a red run into "still waiting".
-  - 2026-10-27: a fixed delay in a gate that reads an ANIMATED property is a flake with a timer, and "two equal
-    samples" is not "arrived": the Performance Mode track pauses for a couple of frames while the heavy effects
-    re-mount, which fooled the first settle helper at 15 percent of the way back. Wait for the value the assertion
-    names, bounded by a timeout.
+    complete red runs. They now prefix-match. A silent watcher converts a red run into "still waiting".  - 2026-10-27: a fixed delay in a gate that reads an ANIMATED property is a flake with a timer, and "two equal samples" is not "arrived": the Performance Mode track pauses for a couple of frames while the heavy effects re-mount, which fooled the first settle helper at 15 percent of the way back. Wait for the value the assertion names, bounded by a timeout.
+  - 2026-10-28: **the gold retirement (owner: "applied to all where oranges is covered, even on the branding")**
+  flipped every surviving orange token and art file to the bullion family and REWROTE T-GOLD to keep it:
+  the allow-list is now empty (0 orange across 144 served files or fail), the scan covers js/src/pages/
+  sw.js/images, and a new arm fails any gold fill paired with white ink. Three mutations proved it, and the
+  SVG one exposed a real hole: the comment stripper's `//` rule ate single-line SVGs after their `xmlns`
+  URL, so a re-introduced orange was invisible to the gate. Fixed with a `(?<!:)` guard. Lesson: a scanner
+  that strips comments must know the file's syntax - XML files are one line and their namespace IS a URL.  - 2026-10-28: **a CI-only gate is a gate the local battery cannot see.** `tools/verify-icons.cjs` (T1,
+    step 31) is not in `npm run verify`, so the wave's first push went red on a dynamic `#i-` prefix in
+    the AI history row's new `aiIcon()` helper while every local check was green. The fix was to make the
+    construction CHECKABLE (register `aiIcon()` with the same contract as `ico()`: prefix allowed only inside
+    its body, call sites must be literals that exist) rather than to special-case an exception. Steps 32-49,
+    which the failure skipped, were run locally before the re-push. When CI stops, reproduce the failing step
+    AND the ones it skipped - again.
+  - 2026-10-28: **a new harness's first CI run is its real first run.** `qa-code-names` passed 26/26 locally
+    for days and failed at CI step 102: it launched Playwright's bundled chromium, which exists on this
+    Windows machine but is never downloaded in CI (the devDep installs with `--ignore-scripts`, no browser
+    step - every other T4 harness takes system Chrome via `chrome-launcher.cjs`). Fixed to do the same
+    (`eec7835`); steps 103-109 were run locally green before the re-push, which is how qa-consent's
+    undocumented `mmgr_restore_recap` key surfaced. A browser harness must get its browser from the same
+    place its siblings do.
+  - 2026-10-28: **a live probe's first run tests the probe, not the site.** The Wave F probe reported 6
+    failures and all six were the script's own bugs: a `while-read` subshell emptying `$HOME` in the CSP
+    hash loop; a grep that cannot skip multi-line comment text; an expected count of 1 where the
+    stylesheet deliberately carries 2; `aiIcon` looked up in minified bundles where the identifier is
+    renamed (the served SOURCE is the contract); the AI window checked on `app.html` when it lives on
+    `project.html`; and an invented `401` where `cloudForbidden()` 403 has been the signed-out contract
+    since before this wave. Also: Cloudflare injects an inline challenge script (`__CF$cv$params`,
+    `/cdn-cgi/`) into every HTML response, so a hash probe must skip edge-injected blocks or it reports
+    phantom misses forever. Diagnose each failure against the source before believing any of them.
+  - 2026-10-28: **a gate's ban list is a contract with a documented scope.** The probe's orange scan
+    failed on the amber ramp (`#f59e0b`/`#d97706`) until it was read against `verify-gold`: those are
+    `docs/GOLD-AUDIT.md`'s documented "semantic status colours" keeps (amber means due soon; gold is
+    identity), and ARM 1's ban list is the nine retired brand-orange values with an empty allow-list.
+    Scan with the gate's list, not a guessed one.
 
 **End of progress file.**

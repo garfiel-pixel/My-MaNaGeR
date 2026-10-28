@@ -1,99 +1,123 @@
 # My MaNaGeR - reflection.txt (active; last session only. Older sessions archived in docs/history/reflection-ARCHIVE-2026-10-18.txt)
 
-SESSION 2026-10-27 - WAVES D AND E EXIT (the suites CI never reached)
+SESSION 2026-10-28 - WAVE F CLOSED (AI-1, AI-2, APP-3, SW-10, gold retirement, deploy)
 
 CONTEXT
 Owner: carry REFINEMENT-DIRECTIVE-2026-10-24.md to completion in NEXT UP order,
 updating REFINEMENT-PROGRESS.md after every task so another model can take over.
-This session took NEXT UP step 6: the exit gate for Waves D and E - npm run
-verify, the full qa-* battery, CI green, a deploy from $HOME/mmgr-deploy, and a
-live probe of the eight user-visible claims.
+This session finished Wave F: NEXT UP items 8-12 plus the owner's gold-retirement
+add-on ("applied to all where oranges is covered, even on the branding"), the owner's
+dropped contact-page jpg, three CI repair loops, the deploy and the live probe.
 
 WHAT THIS SESSION DID
-  1. CI run 40621517883 stopped at step 90 (qa-calc-assistant, arm W11) and
-     skipped steps 91-106. Fifteen T4 suites were therefore UNVERIFIED while
-     every local gate read green. Rather than assume, all fifteen were run
-     locally through tmp/run-t4.cjs: three red suites and two real app defects.
-  2. W11 itself was a stale arm, not an app bug. It asserted the authored text
-     /255, 255, 255/ against `color: var(--lit-white)`, so the tokenisation pass
-     turned a correct stylesheet into a red gate. It now resolves both
-     declarations through a probe element and compares computed colours, which
-     is stricter than the text match (an undefined token resolves to nothing and
-     still fails). qa-calc-assistant 156/156, commit 2f4f03b.
-  3. DEFECT, fixed: an expiry due TODAY was reported as OVERDUE. Banding compared
-     `new Date(dateOnlyString)` - parsed as UTC midnight - against the current
-     instant, so a certificate expiring that day came out at -1 day west of UTC.
-     The dashboard said "COI is overdue (was due today)" and the watcher filed it
-     in the overdue band instead of the 7-day band. EXP-1's 0-day fixture caught
-     it while the -3/6/13/29/59 fixtures passed: a boundary bug's signature.
-     Days are now counted between LOCAL calendar dates through one helper
-     (daysUntil), shared by the expiry rollup and getExpiringCompliance. They had
-     measured "N days out" two different ways, so the badge and the notice could
-     disagree about the same certificate. Commit 4821f3f.
-  4. DEFECT, fixed: the calculator's setting hints were 3.84:1. `.set-hint`
-     carried `opacity: 0.82`, compositing --slate (#666666) to #828282 on a white
-     card, under AA at 0.74rem. axe named every hint on the page. The opacity is
-     gone; --slate alone is 5.74:1 light and 5.5:1 dark. Commit 4821f3f.
-  5. One stale harness: qa-shortcuts crashed (not failed) at gate 11 because it
-     called selectOption('#calc-work') and UI-1 had replaced that native select
-     with the app's own listbox, leaving the native element display:none. It now
-     presses the real listbox row and asserts the pick landed, so a broken picker
-     fails by name instead of as a 30 s timeout. 15/15.
-  6. Mutation proof for both app fixes, with node build.js between the source
-     write and the gate: reverting the date math reddens the 0-day arm; putting
-     the opacity back reddens axe naming calc-measured-manual-hint. Both return
-     green byte-identical. (The first W11 proof reported "MISSED" twice against a
-     correct gate because it mutated css/mmgr.css and never rebuilt dist.)
-  7. Documentation: REFINEMENT-PROGRESS.md step 6 carries the per-item evidence
-     and the pre-deploy live baseline; section 6 records three corrections.
-     CONTINUATION-DIRECTIVE.md gained a status entry with older rollups
-     compressed to stay under the 40,960-byte cap (40,956 bytes).
-     docs/history/log-2026-10.md gained this session's entry; this file rewritten.
+  1. GOLD SWEEP TO COMPLETION (owner add-on). Every surviving brand-orange value and
+     art file flipped to the bullion family across css/mmgr.css, css/marketing.css,
+     js/marketing-globe.js and the hero SVGs; input borders and focus rings moved to
+     --gold-ink (6.37:1 - gold fill is 1.9:1 on white, under the 3:1 floor). T-GOLD
+     was REWRITTEN to keep it: allow-list empty (0 retired orange across 144 served
+     files or fail), scan widened to js/src/pages/sw.js/images, new arm fails gold
+     fill + white ink. Three mutations proved; the SVG mutation exposed that
+     stripCommentsAll's // rule ate single-line SVGs after their xmlns URL, fixed
+     with a (?<!:) guard. Zero white-on-gold pairings remain (53 elements measured).
+     docs/GOLD-AUDIT.md records the retirement and the two decisions.
+  2. AI-2 CLOSED HONESTLY. docs/SPIKE-LOCALLLM-2026-10.md written from the measured
+     spike (tmp/spike-results-tf.json): MLC WebLLM passes every laptop threshold
+     (0.6 s warm open, 0.22 s to first token, 22.8-25.7 tok/s, 60 MB heap) but three
+     of five ship conditions are unbuilt (phone, worker isolation, no-WebGPU
+     fallback) and the whole opt-in download UI does not exist, so ship = DEFERRED
+     with a GO recommendation for a dedicated wave; transformers.js WASM fails
+     outright (112-284 s answers, 1.4 s main-thread freeze). js/mmgr-state.js
+     localModel set to false so the flag says what ships. T-LOCALLLM not applicable.
+  3. CONTACT PAGE PHOTO (owner dropped a jpg at the repo root with the instruction in
+     its filename). Re-encoded 690 KB jpg -> 67 KB images/contact-desk.webp (sharp,
+     1376x768, same 16:9 as the file it replaces); contact.html src/alt/width/height
+     updated; only the contact page swapped (index and field guide keep
+     site-blueprint.webp, the ask was contact-only); instruction jpg deleted;
+     sw.js bumped to mmgr-shell-v491 (verify-sw-cache caught it, as designed).
+  4. THREE CI REPAIR LOOPS, each reproduced locally first, each skipped-step set run
+     locally before re-push (the Rule 8 loop):
+     - Step 31 (f2b45ea): aiIcon() dynamic #i- prefix unverifiable by T1 ICON. Fixed
+       by registering aiIcon() in tools/verify-icons.cjs with ico()'s contract
+       (prefix allowed only inside its body, literal call sites that must exist) -
+       make the construction checkable, never special-case an exception. Steps 32-49
+       run locally green. Commit 6cdc5e5.
+     - Step 92 (6cdc5e5): qa-calc-assistant arm asserted input border == --brand,
+       but the gold sweep moved borders to --gold-ink deliberately. App change right,
+       arm re-baselined to the new contract and mutation-proven (155/156, restore
+       156/156 byte-identical). Skipped steps 93-109 run locally -> qa-consent 36/37:
+       APP-3's new mmgr_restore_recap key missing from docs/STORAGE-INVENTORY.md.
+       Documented, 37/37. Commit b1cb54f.
+     - Step 102 (b1cb54f): qa-code-names (new this wave, first CI run) launched
+       Playwright's bundled chromium; CI never downloads it (devDep installed with
+       --ignore-scripts, no browser step - every other T4 harness uses system Chrome).
+       Harness now resolves the binary through tools/chrome-launcher.cjs like its
+       siblings. Steps 103-109 run locally green. Commit eec7835.
+     Final: CI run 40723602002 (e9def01, includes the contact photo) GREEN on all
+     223 steps, zero failures.
+  5. DEPLOY AND LIVE PROBE. Staged fresh to $HOME/mmgr-deploy (verified: v491, the
+     new image reference, aiIcon, localModel false, no stray files), deployed
+     Version ID eff0439e-51f6-44fe-9f85-3bb5b3a6f67c. Live probe 18/18 PASS after
+     fixing six PROBE defects (see lessons): CSP header and 14 own inline blocks all
+     hashed (Cloudflare's edge-injected challenge script skipped), 0 retired orange
+     in live css/mmgr.css (byte-identical to disk), --brand #d4af37, both --gold:
+     decls in marketing, gold hero poster, sw v491, aiIcon in served source, ai-win
+     markup and dock rules live, three code names on admin/project, restore recap,
+     /api/cloud/projects 403 signed out (the long-standing contract), contact-desk
+     webp 200.
+  6. DOCS. docs/history/log-2026-10.md gained the Wave F entry WITH the directive
+     section 15 re-check table pasted (zero open High items, both deferrals named);
+     REFINEMENT-PROGRESS.md scoreboard now 32/32, steps 11-12 ticked, corrections
+     added; this file rewritten; GOLD-AUDIT gains the amber-keep measurement note
+     (the 11 amber declarations in mmgr.css are the documented status ramp, not
+     retired orange).
 
 VERIFICATION (all run, all green)
-  npm run verify exit 0 (CSP, JS syntax, SW cache, CSS integrity 1361 mmgr rules,
-  accessibility lint, ESLint 0 errors, Prettier, registry 138/138, 145/145 unit
-  tests). qa-notice-watchers 19/19, qa-a11y-axe 7/7 (18 pages x 2 themes),
-  qa-shortcuts 15/15, qa-calc-assistant 156/156, qa-calc-controls 63/63,
-  qa-appshell 79/79, qa-full 194/194. The other eleven T4 suites green:
-  qa-mat-items 36, qa-related-items 13, qa-modals 12, verify-gold all,
-  qa-dot-rail 15, qa-globe-spin 15, verify-calc-s2 75, qa-procurement 51,
-  qa-consent 37, qa-widescreen 27, qa-hero-globe 16.
-  Commits 2f4f03b, 4821f3f, bb15d91, ecf09d2, a436862, pushed to main. sw.js at
-  mmgr-shell-v488. CI run 40628905493 (a436862) GREEN on all 108 steps.
-  Deployed from the byte-verified $HOME/mmgr-deploy copy (Version ID
-  650dc6e1-a4e8-4aaa-bc5b-703e979ccdb4). Live probe against
-  https://mymanagerworkspace.com: 9/9 PASS (baseline before the deploy: 6 of 9
-  FAILING).
+  npm run verify exit 0 (CSP, SW cache at v491, CSS integrity, ESLint 0 errors,
+  Prettier, registry, 145/145 unit tests). Local: qa-code-names 26/26 (after the
+  chrome fix), verify-calc-s2 75, qa-procurement 51, qa-consent 37, qa-shortcuts 15,
+  qa-widescreen 27, qa-a11y-axe 7, qa-hero-globe 16 - i.e. every step CI skipped at
+  least once. verify-gold green with 0 retired orange across 144 files, three
+  mutations proven. CI 40723602002 (e9def01): GREEN all 223 steps. Deploy
+  eff0439e-51f6-44fe-9f85-3bb5b3a6f67c. Live probe 18/18 against
+  https://mymanagerworkspace.com.
 
 LESSONS
-  - When CI stops early, the remaining steps are UNVERIFIED, not passing. A green
-    local verify plus a green qa-full said nothing about the fifteen suites CI
-    skipped - and those suites were holding two real user-facing defects.
-  - Read a red suite before re-baselining it. Twice in this wave the "stale
-    harness" assumption was wrong in the opposite direction: once the harness was
-    right and the app was wrong (expiry, contrast), once the harness was wrong
-    and the app was right (W11, qa-shortcuts).
-  - A mutation proof must rebuild. Pages load dist/mmgr.min.css and dist/*.js, so
-    a source mutation without node build.js proves nothing. The proof was the
-    broken thing, not the gate.
-  - Two consumers of the same number must call one helper. "N days out" existed
-    twice, computed two ways; they now share daysUntil.
-  - A fixed delay in a gate that reads an ANIMATED property is a flake with a
-    timer, and "two equal samples" is not "arrived": the Performance Mode track
-    pauses while the heavy effects re-mount, which fooled the first settle helper
-    at 15 percent of the way back. Wait for the value the assertion names.
-  - A watcher that cannot find the run is worse than no watcher. Both CI watchers
-    compared the full 40-char headSha to a short SHA and reported "no CI run yet"
-    through two entire red runs.
-  - PowerShell cannot host inline node -e with regexes or quotes. Write scripts
-    to tmp/*.cjs. This session lost two calls to that trap.
+  - A NEW HARNESS'S FIRST CI RUN IS ITS REAL FIRST RUN. qa-code-names passed 26/26
+    locally for days and failed the moment CI ran it, because locally Playwright's
+    chromium exists (Windows cache) and in CI it never downloads. A browser harness
+    must take its browser from the same place its siblings do.
+  - WHEN CI STOPS, RUN EVERY STEP IT SKIPPED - again, and read what falls out. The
+    steps after the qa-calc-assistant failure surfaced qa-consent's undocumented
+    storage key, a defect no green gate was looking at.
+  - RE-BASELINE THE ARM ONLY AFTER PROVING THE APP CHANGE WAS DELIBERATE. The
+    calc-assistant border arm was wrong because the gold sweep had moved borders on
+    purpose (contrast floor); the mutation proof (155/156) shows the new arm still
+    bites.
+  - A LIVE PROBE IS A CLAIM ABOUT PRODUCTION, AND ITS FIRST RUN TESTS THE PROBE.
+    All six first-run failures were the script's bugs: a while-read subshell that
+    emptied $HOME, a grep that cannot skip multi-line comment text, an expected
+    count of 1 where the stylesheet has 2, a minified bundle where the identifier is
+    renamed (the served SOURCE is the contract), the wrong page (the AI window lives
+    on project.html), and an invented status code (403 has been the cloudForbidden
+    contract since before this wave). Diagnose each against the source before
+    believing any of them - and note Cloudflare injects an inline challenge script
+    (__CF$cv$params/cdn-cgi) into every HTML response, so a CSP hash probe must skip
+    edge-injected blocks or it reports phantom misses forever.
+  - A GATE'S BAN LIST IS A CONTRACT WITH A DOCUMENTED SCOPE. The probe's orange scan
+    failed on the amber ramp (#f59e0b/#d97706) until read against verify-gold: those
+    are GOLD-AUDIT's documented "semantic status colours" keeps (amber means due
+    soon; gold is identity), and the ban list is the nine retired brand-orange
+    values. Scan with the gate's list, not with a guessed one.
 
 LIMITATIONS (honest, nothing claimed that was not run)
-  - Wave F is untouched: AI-1 (AI window docking/layout, T-AIWIN), AI-2 (the
-    in-browser model spike), APP-3 (the three code names), SW-10 (16 clickable
-    div/span). Step 6 was the last item of Waves D and E; AI-1 is next.
-  - The rate-book provenance question (Q5) is still unresolved by the owner; the
-    source line stays on screen and no independence claim is made.
-  - AI-1's gate (T-AIWIN) is not written yet, so nothing about the new layout is
-    claimed here.
+  - Two deliberate deferrals, recorded not hidden: APP-3's optional per-account salt
+    + PBKDF2 step-up (src/auth/admin-code.js still seals unsalted SHA-256 under the
+    fixed escrow salt; auth release path, needs its own session), and the AI-2
+    on-device model ship (spike says GO; phone, worker isolation, no-WebGPU fallback
+    and the whole opt-in download UI are unbuilt; localModel: false).
+  - The live probe is HTTP-level; the browser behaviours it names (docking pushes
+    the page, the popover opens, restore lists both groups) are proven by
+    qa-ai-win 22/22 and qa-code-names 26/26 against the byte-identical deployed
+    tree, not re-driven in a browser on the live origin.
+  - Owner questions Q5 (rate-book provenance), Q8 (statutory rates) and Q11 are
+    still unanswered; conservative defaults in force, none blocks a task.

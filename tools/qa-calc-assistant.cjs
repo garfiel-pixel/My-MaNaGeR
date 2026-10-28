@@ -1063,9 +1063,15 @@ async function loadButton(browser, errors) {
   // :focus-visible shares that declaration block. Assert against the SHIPPED
   // stylesheet the browser parsed (the block that paints green on hover must
   // also carry the :focus-visible selector and the same two declarations).
+  // RE-BASELINED 2026-10-27: the rule now paints `color: var(--lit-white)`
+  // (the token pass), and this arm asserted the AUTHORED text `255, 255, 255`,
+  // so a correct tokenisation read as a failure. It resolves the declaration
+  // through a real element instead - which is stricter, not looser: an
+  // undefined token resolves to nothing and still fails, while a token that
+  // means white passes because it IS white.
   const focusRule = await page.evaluate(sel => {
     const want = sel + ':focus-visible';
-    const seen = { found: false, bg: '', color: '' };
+    const seen = { found: false, bg: '', color: '', bgResolved: '', colorResolved: '' };
     const walk = rules => {
       for (const r of rules) {
         if (r.selectorText && r.selectorText.indexOf(want) > -1) {
@@ -1087,13 +1093,27 @@ async function loadButton(browser, errors) {
       }
       walk(rr);
     }
+    const probe = document.createElement('span');
+    probe.style.display = 'none';
+    document.body.appendChild(probe);
+    const rgbOf = (prop, v) => {
+      probe.style[prop] = '';
+      if (!v) {
+        return '';
+      }
+      probe.style[prop] = v;
+      return getComputedStyle(probe)[prop === 'background' ? 'backgroundColor' : 'color'];
+    };
+    seen.bgResolved = rgbOf('background', seen.bg);
+    seen.colorResolved = rgbOf('color', seen.color);
+    probe.remove();
     return seen;
   }, BTN);
   check(
     'W11 the same block paints green + white for :focus-visible',
     focusRule.found &&
-      /rgb\(46, 125, 50\)|var\(--green\)/.test(focusRule.bg) &&
-      /255, 255, 255/.test(focusRule.color),
+      focusRule.bgResolved === 'rgb(46, 125, 50)' &&
+      focusRule.colorResolved === 'rgb(255, 255, 255)',
     focusRule
   );
 

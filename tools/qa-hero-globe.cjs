@@ -18,16 +18,19 @@
      G4  the RANDOM auto-cycle pops MANY distinct feature cards,
          never repeats a node back-to-back, and every card
          retracts on its own (owner re-baseline 2026-10-13)
-     G5  no Pause/Play button and no feature tab chips remain,
-         and the globe still cycles by itself (owner 2026-10-13)
+     G5  no feature tab chips remain, exactly ONE control (the Pause
+         button, WCAG 2.2.2), and the globe still cycles by itself
+         (re-baselined 2026-10-27 to directive section 10 - the old
+         owner note removed the chips AND the control)
      G6  the globe is not interactable by design: pointer
          presses/drags change nothing while the cycle runs
      G7  manifest integrity: every feature's href resolves to a
          real page, its anchor id exists there, tiers are
          'free'/'premium' and MCP is labelled Premium
-     G8  prefers-reduced-motion: the module refuses to start -
-         poster and the three existing hero cards stay exactly
-         as they were, nothing is removed
+     G8  prefers-reduced-motion: the module refuses to start - the
+         STILL globe (the poster) shows with the Play control, the mock
+         cards step aside by visibility (no layout shift), and nothing
+         moves on its own (re-baselined 2026-10-27)
      G9  zero layout shift from the globe: the stage and the hero
          column keep their box through boot and first frame
      G10 hygiene: zero console/page errors, no emoji anywhere in
@@ -329,13 +332,21 @@ const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{
     cycle
   );
 
-  // G5: OWNER 2026-10-13 - the Pause/Play button and the feature tab chips
-  // are GONE (they were the "little boxes" cluttering the Android view).
-  // The globe must keep cycling on its own without any control to press.
+  // G5: RE-BASELINED 2026-10-27 to the current owner contract.
+  // The 2026-10-13 note removed the old cluster of feature TAB CHIPS and a
+  // Pause/Play button because they were "little boxes" cluttering the Android
+  // view. REFINEMENT-DIRECTIVE-2026-10-24 section 10 (LAND-2) then made a
+  // visible Pause control a hard requirement: WCAG 2.2.2 says moving content
+  // that runs longer than five seconds needs a mechanism to stop it, and this
+  // globe never stops on its own. So the contract now is: NO tab chips, exactly
+  // ONE control - the Pause button - and the cycle still carries itself with
+  // nobody touching anything. This arm used to assert the control was absent,
+  // which is how a missing control passed a gate for weeks.
   const noCtl = await page.evaluate(function () {
     var G = window.MMGR_GLOBE;
     var buttons = document.querySelectorAll('.hg-controls button, .hg-play');
     var tabs = document.querySelectorAll('.hg-tab, .hg-tabs');
+    var one = buttons[0];
     var wrapsBefore = G.state.wraps;
     for (var i = 0; i < 50; i++) {
       G.__advance(500);
@@ -343,6 +354,9 @@ const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{
     return {
       controls: buttons.length,
       tabs: tabs.length,
+      controlText: one ? one.textContent.trim() : null,
+      controlAria: one ? one.getAttribute('aria-label') : null,
+      controlVisible: one ? !!(one.offsetWidth || one.offsetHeight) : false,
       // The wrap counter is the deterministic signal: with RANDOM selection
       // the index can legally land back on the same feature across wraps
       // (~1 in 9), so index inequality alone is a flaky gate.
@@ -350,8 +364,14 @@ const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{
     };
   });
   check(
-    'G5 no Pause/Play button and no tab chips remain, and the globe still cycles by itself',
-    noCtl && noCtl.controls === 0 && noCtl.tabs === 0 && noCtl.cycled === true,
+    'G5 no tab chips remain, exactly one Pause control, and the globe still cycles by itself',
+    noCtl &&
+      noCtl.controls === 1 &&
+      noCtl.tabs === 0 &&
+      noCtl.controlText === 'Pause' &&
+      noCtl.controlAria === 'Pause the globe' &&
+      noCtl.controlVisible === true &&
+      noCtl.cycled === true,
     noCtl
   );
 
@@ -576,28 +596,46 @@ const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{
     var stage = document.querySelector('.hg-stage');
     var visual = document.querySelector('.hero-visual');
     var cards = visual ? visual.querySelector('.hero-cards') : null;
+    var play = document.querySelector('.hg-controls .hg-play');
+    var box = document.querySelector('.hg-controls');
     return {
       started: G.state.started,
       refuse: G.state.refuseReason || '',
       hgOn: stage ? stage.classList.contains('hg-on') : null,
-      // On DESKTOP the stage stays display:none under reduced motion - the
-      // three hero cards are the fallback there. (On phones the media query
-      // keeps the stage in flow so the static poster shows; the phone run
-      // below covers that.)
+      // RE-BASELINED 2026-10-27: directive section 10 asks for "the still globe
+      // plus that control so a person can choose to play it". The still globe is
+      // the poster in the stage, so the stage is shown and the mock cards step
+      // aside by VISIBILITY (never display - the column keeps its height, so
+      // there is no layout shift). It used to be display:none with the cards
+      // left alone, which gave a reduced-motion visitor no globe and no control.
       stageDisplay: stage ? getComputedStyle(stage).display : null,
       hgLive: visual ? visual.classList.contains('hg-live') : null,
       cardsVisibility: cards ? getComputedStyle(cards).visibility : null,
+      control: play
+        ? {
+            text: play.textContent.trim(),
+            aria: play.getAttribute('aria-label'),
+            visible: !!(play.offsetWidth || play.offsetHeight),
+            boxHidden: box ? box.hidden : null
+          }
+        : null,
       lonUnmoved: Math.abs(G.state.lon - -30) < 0.001
     };
   });
   check(
-    'G8 under prefers-reduced-motion the module refuses and the three hero cards stay untouched',
+    'G8 under prefers-reduced-motion the globe stays still but shows, with the Play control',
     rm.started === false &&
       rm.refuse === 'reduced-motion' &&
-      rm.hgOn === false &&
-      rm.stageDisplay === 'none' &&
-      rm.hgLive !== true &&
-      rm.cardsVisibility === 'visible' &&
+      rm.hgOn === true &&
+      rm.stageDisplay === 'block' &&
+      rm.hgLive === true &&
+      rm.cardsVisibility === 'hidden' &&
+      rm.control &&
+      rm.control.text === 'Play' &&
+      rm.control.aria === 'Play the globe' &&
+      rm.control.visible === true &&
+      rm.control.boxHidden === false &&
+      rm.lonUnmoved === true &&
       rmErrors.length === 0,
     { rm: rm, errors: rmErrors }
   );

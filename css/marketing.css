@@ -4756,6 +4756,12 @@ body.dark-mode .pricing-card .pc-list li {
   gap: 10px;
   flex-wrap: wrap;
 }
+/* [hidden] guard REQUIRED: the flex rule above outranks the UA hidden rule,
+   so without this the Pause control would keep showing on a page that has
+   deliberately turned heavy motion off (Performance Mode, data saver). */
+.hg-controls[hidden] {
+  display: none;
+}
 .hg-play {
   display: inline-flex;
   align-items: center;

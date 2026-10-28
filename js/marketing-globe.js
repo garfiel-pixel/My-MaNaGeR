@@ -282,6 +282,9 @@
     tetherLine = null,
     cardsBox = null,
     controls = null,
+    playBtn = null,
+    playIcon = null,
+    playTxt = null,
     cardEls = [],
     tabEls = [];
 
@@ -800,7 +803,99 @@
     });
 
     wireHost();
+    buildControls();
     return true;
+  }
+
+  // ---------------------------------------------------------------
+  // The Pause / Play control.
+  // WCAG 2.2.2: moving content that runs for more than five seconds needs a
+  // mechanism to pause it. The globe spins continuously, so this button is not
+  // optional decoration - it is the mechanism. It is created in build(), which
+  // runs BEFORE the refuse decision, because the directive asks for the still
+  // globe to keep its control under reduced motion so a person can choose to
+  // play it. It is hidden when the page has deliberately turned heavy motion
+  // off (Performance Mode, data saver) or when the canvas cannot run at all:
+  // there is nothing to play there, and a dead button is worse than none.
+  // ---------------------------------------------------------------
+  function playLabel() {
+    if (state.started && !state.paused) {
+      return { text: 'Pause', icon: 'i-pause', aria: 'Pause the globe' };
+    }
+    return { text: 'Play', icon: 'i-play', aria: 'Play the globe' };
+  }
+
+  function syncPlay() {
+    if (!playBtn) {
+      return;
+    }
+    var dead =
+      state.refuseReason === 'perf-mode' ||
+      state.refuseReason === 'save-data' ||
+      state.refuseReason === 'no-canvas' ||
+      state.refuseReason === 'error';
+    if (dead) {
+      if (controls) {
+        controls.hidden = true;
+      }
+      return;
+    }
+    if (controls) {
+      controls.hidden = false;
+    }
+    var want = playLabel();
+    if (playTxt) {
+      playTxt.textContent = want.text;
+    }
+    playBtn.setAttribute('aria-label', want.aria);
+    playBtn.setAttribute('title', want.aria);
+    if (playIcon) {
+      playIcon.setAttribute('data-icon', want.icon);
+      var use = playIcon.querySelector('use');
+      if (use) {
+        use.setAttribute('href', 'css/mmgr-icons.svg#' + want.icon);
+      }
+    }
+  }
+
+  function togglePlay() {
+    if (state.started && !state.paused) {
+      state.paused = true;
+      stopLoop();
+      render();
+      if (_open !== -1) {
+        positionCard();
+      }
+    } else {
+      state.paused = false;
+      if (!state.started) {
+        // Reduced motion left the globe still. A click is the person choosing
+        // motion, so this is the one path allowed to override that preference.
+        state.refuseReason = '';
+        start();
+      } else if (!_raf && !state.hidden && !state.frozen) {
+        _last = 0;
+        _raf = requestAnimationFrame(loop);
+      }
+    }
+    syncPlay();
+  }
+
+  function buildControls() {
+    if (!controls || playBtn) {
+      return;
+    }
+    playBtn = document.createElement('button');
+    playBtn.type = 'button';
+    playBtn.className = 'hg-play';
+    playIcon = svgIcon('i-pause');
+    playIcon.setAttribute('data-icon', 'i-pause');
+    playTxt = document.createElement('span');
+    playBtn.appendChild(playIcon);
+    playBtn.appendChild(playTxt);
+    playBtn.addEventListener('click', togglePlay);
+    _listeners.push(['click', playBtn, togglePlay]);
+    controls.appendChild(playBtn);
   }
 
   function bump() {
@@ -940,9 +1035,27 @@
       reason = shouldStart();
       if (reason) {
         state.refuseReason = reason;
-        return; // the existing cards stay exactly as they are
+        // The control still lands, so a person on a reduced-motion machine can
+        // start the globe by choosing to (directive section 10). syncPlay hides
+        // it for the reasons where there is nothing to play.
+        syncPlay();
+        // Reduced motion is the one refusal that still shows the STILL globe:
+        // the directive asks for "the still globe plus that control so a person
+        // can choose to play it". The poster in the markup is that still frame,
+        // and the mock cards step aside the same way they do once the canvas
+        // draws - by visibility, so the column keeps its height and the page
+        // cannot shift. Every other reason leaves the cards exactly as they are.
+        if (reason === 'reduced-motion' && stage) {
+          stage.classList.add('hg-on');
+          var stillVisual = stage.closest('.hero-visual');
+          if (stillVisual) {
+            stillVisual.classList.add('hg-live');
+          }
+        }
+        return;
       }
       start();
+      syncPlay();
     } catch (e) {
       // Any initialisation error leaves the cards and the static layout alone.
       state.refuseReason = 'error';
@@ -1000,18 +1113,22 @@
       return;
     }
     if (on) {
+      state.refuseReason = 'perf-mode';
       stopLoop();
+      syncPlay();
       return;
     }
     if (!state.started) {
       state.refuseReason = '';
       start();
+      syncPlay();
       return;
     }
     if (!_raf && !state.hidden && !state.frozen) {
       _last = 0;
       _raf = requestAnimationFrame(loop);
     }
+    syncPlay();
   });
 
   if (document.readyState === 'loading') {

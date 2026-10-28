@@ -405,7 +405,29 @@
 // js/mmgr-perf.js, js/mmgr-glass.js, js/marketing.js, js/marketing-globe.js,
 // js/mmgr-combobox.js (new), dist/marketing-bundle.js. No inline script block
 // changed, so the CSP hashes are untouched.
-const CACHE = 'mmgr-shell-v486';
+const CACHE = 'mmgr-shell-v487';
+
+// v487 - LAND-2's Pause control, actually built
+// (REFINEMENT-DIRECTIVE-2026-10-24 section 10). The directive asks for "a
+// visible Pause and Play control" because WCAG 2.2.2 requires a mechanism to
+// stop moving content that runs longer than five seconds, and the globe spins
+// continuously. What shipped in 431260c was the spin, the card that follows its
+// node and a .hg-play CSS rule - but no button: build() read .hg-controls into
+// a variable it never used, nothing ever set state.paused, and qa-globe-spin
+// passed 7/7 by setting that flag directly, so the gate proved the LOOP honours
+// pause while the control a person needs never existed. The button is now
+// created in build() (before the refuse decision, so reduced motion keeps it),
+// a real click pauses and resumes, the label and icon flip between Pause/i-pause
+// and Play/i-play, and the container is hidden under Performance Mode and data
+// saver with a .hg-controls[hidden] guard because the flex rule outranks the UA
+// hidden rule. Under reduced motion the still globe (the poster) now shows WITH
+// the control, which is the directive's own wording. Gate is 15/15 and clicks
+// the real button. Changed shell assets: js/marketing-globe.js, css/marketing.css,
+// css/mmgr-icons.svg (two new symbols), dist/marketing-globe.js,
+// mymanager-field-guide.html (three new card sections: the Gantt view controls,
+// the calculator's materials/suggestions/price-drift/assistant asks, and the
+// public site's dot rail plus globe Pause). No inline script block changed, so
+// the CSP hashes are untouched.
 
 // v486 - GOLD-1, GOLD THAT IS ACTUALLY READABLE
 // (REFINEMENT-DIRECTIVE-2026-10-24 section 5). The identity is gold; the old

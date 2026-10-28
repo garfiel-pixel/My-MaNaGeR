@@ -148,7 +148,9 @@ function resolvePlaywright() {
         const delta = Math.abs(norm(st.lon - before));
         windows.push(Number(delta.toFixed(2)));
       }
-      // Pause and resume through the module state the control writes.
+      // Pause and resume through the module state the control writes. The DOM
+      // arm below proves the CONTROL writes it; this arm proves the loop honours
+      // it, which is a different claim.
       const lonBeforePause = st.lon;
       st.paused = true;
       G.__advance(1000);
@@ -205,8 +207,182 @@ function resolvePlaywright() {
     );
     check('LAND-2 Pause holds the rotation still', out.pauseHeld === true, out);
     check('LAND-2 Play resumes the rotation', out.resumed === true, out);
+
+    // ---- THE REAL CONTROL (WCAG 2.2.2) --------------------------------
+    // The gate above proves the LOOP honours state.paused. This arm proves a
+    // person can reach that flag: the button has to exist in the DOM, a real
+    // click has to pause it, a second real click has to resume it, and it has
+    // to disappear when the page has deliberately turned heavy motion off.
+    // Before this arm existed the gate poked the flag directly and passed on a
+    // control that was never built (CSS rule, empty container, no button).
+    const ctl = await page.evaluate(() => {
+      const b = document.querySelector('.hg-controls .hg-play');
+      const box = document.querySelector('.hg-controls');
+      return {
+        exists: !!b,
+        text: b ? b.textContent.trim() : null,
+        aria: b ? b.getAttribute('aria-label') : null,
+        icon: b ? (b.querySelector('use') || {}).getAttribute?.('href') || null : null,
+        visible: b ? !!(b.offsetWidth || b.offsetHeight) : false,
+        boxHidden: box ? box.hidden : null,
+        paused: window.MMGR_GLOBE.state.paused
+      };
+    });
+    check(
+      'LAND-2 the Pause control is a real, visible button in the DOM',
+      ctl.exists && ctl.visible && ctl.text === 'Pause' && ctl.boxHidden === false,
+      ctl
+    );
+    check(
+      'LAND-2 the control names its action and carries an SVG icon (no emoji)',
+      ctl.aria === 'Pause the globe' && /mmgr-icons\.svg#i-pause$/.test(ctl.icon || ''),
+      ctl
+    );
+
+    let clickPause = { ok: false };
+    let clickPlay = { ok: false };
+    if (ctl.exists) {
+      await page.click('.hg-controls .hg-play');
+      await delay(150);
+      const pausedUi = await page.evaluate(() => {
+        const b = document.querySelector('.hg-controls .hg-play');
+        const st = window.MMGR_GLOBE.state;
+        const lon0 = st.lon;
+        window.MMGR_GLOBE.__advance(1000);
+        return {
+          paused: st.paused,
+          text: b.textContent.trim(),
+          aria: b.getAttribute('aria-label'),
+          icon: (b.querySelector('use') || {}).getAttribute?.('href') || null,
+          held: Math.abs(st.lon - lon0) < 0.01
+        };
+      });
+      clickPause = pausedUi;
+      check(
+        'LAND-2 clicking Pause stops the globe and flips the control to Play',
+        pausedUi.paused === true &&
+          pausedUi.held === true &&
+          pausedUi.text === 'Play' &&
+          pausedUi.aria === 'Play the globe' &&
+          /#i-play$/.test(pausedUi.icon || ''),
+        pausedUi
+      );
+
+      await page.click('.hg-controls .hg-play');
+      await delay(150);
+      const playedUi = await page.evaluate(() => {
+        const b = document.querySelector('.hg-controls .hg-play');
+        const st = window.MMGR_GLOBE.state;
+        // the click focused the button, and focus deliberately holds the cycle
+        // for four seconds; the harness releases it the way a real pointer
+        // leaving the stage would, then advances.
+        st.interacting = false;
+        const lon0 = st.lon;
+        window.MMGR_GLOBE.__advance(1000);
+        return {
+          paused: st.paused,
+          text: b.textContent.trim(),
+          aria: b.getAttribute('aria-label'),
+          moved: Math.abs(st.lon - lon0) >= 1
+        };
+      });
+      clickPlay = playedUi;
+      check(
+        'LAND-2 clicking Play starts it again and flips the control back to Pause',
+        playedUi.paused === false &&
+          playedUi.moved === true &&
+          playedUi.text === 'Pause' &&
+          playedUi.aria === 'Pause the globe',
+        playedUi
+      );
+
+      // Performance Mode: nothing to play, so no dead button.
+      await page.evaluate(() => {
+        document.documentElement.setAttribute('data-perf', 'on');
+        document.dispatchEvent(new CustomEvent('mmgr:perf', { detail: { on: true } }));
+      });
+      await delay(200);
+      const perfUi = await page.evaluate(() => {
+        const box = document.querySelector('.hg-controls');
+        const b = box.querySelector('.hg-play');
+        return {
+          hidden: box.hidden,
+          display: getComputedStyle(box).display,
+          visible: !!(b.offsetWidth || b.offsetHeight)
+        };
+      });
+      check(
+        'LAND-2 the control is hidden when Performance Mode turns motion off (no dead button)',
+        perfUi.hidden === true && perfUi.display === 'none' && perfUi.visible === false,
+        perfUi
+      );
+      await page.evaluate(() => {
+        document.documentElement.removeAttribute('data-perf');
+        document.dispatchEvent(new CustomEvent('mmgr:perf', { detail: { on: false } }));
+      });
+      await delay(200);
+    }
+
     check('LAND-2 no uncaught page error', errors.length === 0, errors);
     await ctx.close();
+
+    // ---- REDUCED MOTION: the still globe KEEPS its control --------------
+    // Directive section 10: "Reduced motion shows the still globe plus that
+    // control so a person can choose to play it." The globe must not start on
+    // its own, and the button must be there and work.
+    const rmCtx = await browser.newContext({
+      viewport: { width: 1360, height: 900 },
+      reducedMotion: 'reduce'
+    });
+    const rmPage = await rmCtx.newPage();
+    const rmErrors = [];
+    rmPage.on('pageerror', e => rmErrors.push(String((e && e.message) || e).slice(0, 160)));
+    await rmPage.goto(BASE + '/index.html', { waitUntil: 'load', timeout: 60000 });
+    await rmPage.waitForFunction(() => !!(window.MMGR_GLOBE && window.MMGR_GLOBE.state), null, {
+      timeout: 45000
+    });
+    await delay(800);
+    const rm = await rmPage.evaluate(() => {
+      const b = document.querySelector('.hg-controls .hg-play');
+      const st = window.MMGR_GLOBE.state;
+      return {
+        started: st.started,
+        reason: st.refuseReason,
+        exists: !!b,
+        text: b ? b.textContent.trim() : null,
+        visible: b ? !!(b.offsetWidth || b.offsetHeight) : false
+      };
+    });
+    check(
+      'LAND-2 reduced motion keeps the globe still but leaves the control there to press',
+      rm.started === false && rm.reason === 'reduced-motion' && rm.exists && rm.visible,
+      rm
+    );
+    let rmPlay = { ok: false };
+    if (rm.exists) {
+      await rmPage.click('.hg-controls .hg-play');
+      await delay(400);
+      rmPlay = await rmPage.evaluate(() => {
+        const b = document.querySelector('.hg-controls .hg-play');
+        const st = window.MMGR_GLOBE.state;
+        st.interacting = false;
+        const lon0 = st.lon;
+        window.MMGR_GLOBE.__advance(1000);
+        return {
+          started: st.started,
+          paused: st.paused,
+          text: b.textContent.trim(),
+          moved: Math.abs(st.lon - lon0) >= 1
+        };
+      });
+    }
+    check(
+      'LAND-2 pressing Play under reduced motion starts it (a click is a person choosing motion)',
+      rmPlay.started === true && rmPlay.paused === false && rmPlay.moved === true,
+      rmPlay
+    );
+    check('LAND-2 reduced motion arm raises no page error', rmErrors.length === 0, rmErrors);
+    await rmCtx.close();
   } catch (e) {
     check('harness ran without throwing', false, String((e && e.stack) || e));
   } finally {

@@ -705,8 +705,20 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
      only fetched from the pinned CDN when the engine actually activates. -->
 <!-- Scripts: single minified bundle (3 modules). Falls back to individual
      source files for local dev when dist/admin-bundle.js does not exist. -->
-<script defer src="dist/admin-bundle.js" onerror="window.__mmgrAdminBundleMissing=1"></script>
+<script defer src="dist/admin-bundle.js"></script>
 <script>
+/* CSP (2026-10-27): an inline onerror ATTRIBUTE is blocked by our
+   hash-only script-src (no unsafe-hashes), so __mmgrAdminBundleMissing could never
+   be set and the dev fallback below never ran - this block was dead
+   code on every page that carried it. This listener is an ordinary
+   hashed inline script, so it runs: it hears THIS bundle fail to load
+   and sets the same flag the attribute used to set. */
+document.addEventListener('error', function (e) {
+  var t = e.target;
+  if (t && t.tagName === 'SCRIPT' && String(t.src || '').indexOf('dist/admin-bundle.js') > -1) {
+    window.__mmgrAdminBundleMissing = 1;
+  }
+}, true);
 /* Dev fallback: when dist/admin-bundle.js is missing (local dev),
    inject the individual source files. */
 document.addEventListener('DOMContentLoaded', function() {

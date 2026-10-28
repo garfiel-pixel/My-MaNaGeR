@@ -405,7 +405,27 @@
 // js/mmgr-perf.js, js/mmgr-glass.js, js/marketing.js, js/marketing-globe.js,
 // js/mmgr-combobox.js (new), dist/marketing-bundle.js. No inline script block
 // changed, so the CSP hashes are untouched.
-const CACHE = 'mmgr-shell-v483';
+const CACHE = 'mmgr-shell-v484';
+
+// v484 - SW-8 NEUTRAL TOKENS, AND THE DEV FALLBACK THAT NEVER RAN
+// (REFINEMENT-DIRECTIVE-2026-10-24 section 11). Two changes that arrived in
+// one working tree. First, every neutral literal (white, black, the greys and
+// their alpha washes) inside component rules now reads a --lit-* token in both
+// stylesheets, so the neutral layer has one home; the swap is proven
+// value-neutral (each token resolves to the exact literal it replaced), and
+// chromatic colours stay out of the block by design - they belong with the
+// gold work. Second, a real defect: the dev bundle fallback was armed by an
+// inline onerror ATTRIBUTE, which a hash-only script-src blocks (no
+// unsafe-hashes), so window.__mmgrBundleMissing could never be set and the
+// fallback below it was dead code on all twelve pages that carried it. It is
+// now an ordinary hashed inline listener that hears the bundle's error event
+// and sets the same flag. Changed shell assets: css/mmgr.css,
+// css/marketing.css, all twelve served pages that carried the attribute
+// (about, admin, app, contact, features, index, pricing, privacy, project,
+// refund, reviews, terms), dist/bundle.js, dist/marketing-bundle.js. Every
+// page's inline blocks changed, so the CSP hash set changed: worker.js and
+// serve.cjs were regenerated and each page's own meta CSP carries the new
+// hash (tools/verify-csp-hashes.cjs proves parity).
 
 // v483 - GANTT-1: ONE VIEW BUILDER FOR SCREEN AND EXPORT, WIDE DIALOG,
 // TIDY, GATES POLICY (REFINEMENT-DIRECTIVE-2026-10-24 section 8). New

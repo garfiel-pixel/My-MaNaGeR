@@ -671,8 +671,20 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;visibility:h
 
 <!-- Scripts: single minified bundle (7 modules). Falls back to individual
      source files for local dev when dist/app-bundle.js does not exist. -->
-<script defer src="dist/app-bundle.js" onerror="window.__mmgrAppBundleMissing=1"></script>
+<script defer src="dist/app-bundle.js"></script>
 <script>
+/* CSP (2026-10-27): an inline onerror ATTRIBUTE is blocked by our
+   hash-only script-src (no unsafe-hashes), so __mmgrAppBundleMissing could never
+   be set and the dev fallback below never ran - this block was dead
+   code on every page that carried it. This listener is an ordinary
+   hashed inline script, so it runs: it hears THIS bundle fail to load
+   and sets the same flag the attribute used to set. */
+document.addEventListener('error', function (e) {
+  var t = e.target;
+  if (t && t.tagName === 'SCRIPT' && String(t.src || '').indexOf('dist/app-bundle.js') > -1) {
+    window.__mmgrAppBundleMissing = 1;
+  }
+}, true);
 /* Dev fallback: when dist/app-bundle.js is missing (local dev),
    inject the individual source files. */
 document.addEventListener('DOMContentLoaded', function() {

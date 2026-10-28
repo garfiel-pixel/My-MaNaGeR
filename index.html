@@ -589,8 +589,20 @@
 
 <script src="js/mmgr-google-auth.js"></script>
 <script src="js/consent.js" defer></script>
-<script defer src="dist/marketing-bundle.js" onerror="window.__mmgrBundleMissing=1"></script>
+<script defer src="dist/marketing-bundle.js"></script>
 <script>
+/* CSP (2026-10-27): an inline onerror ATTRIBUTE is blocked by our
+   hash-only script-src (no unsafe-hashes), so __mmgrBundleMissing could never
+   be set and the dev fallback below never ran - this block was dead
+   code on every page that carried it. This listener is an ordinary
+   hashed inline script, so it runs: it hears THIS bundle fail to load
+   and sets the same flag the attribute used to set. */
+document.addEventListener('error', function (e) {
+  var t = e.target;
+  if (t && t.tagName === 'SCRIPT' && String(t.src || '').indexOf('dist/marketing-bundle.js') > -1) {
+    window.__mmgrBundleMissing = 1;
+  }
+}, true);
 /* Dev fallback: when dist/marketing-bundle.js is missing (local dev without
    a build), inject the source scripts in dependency order. In production
    the bundle loads, __mmgrBundleMissing stays undefined, and this whole

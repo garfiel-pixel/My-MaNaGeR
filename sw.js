@@ -405,7 +405,16 @@
 // js/mmgr-perf.js, js/mmgr-glass.js, js/marketing.js, js/marketing-globe.js,
 // js/mmgr-combobox.js (new), dist/marketing-bundle.js. No inline script block
 // changed, so the CSP hashes are untouched.
-const CACHE = 'mmgr-shell-v490';
+const CACHE = 'mmgr-shell-v491';
+
+// v491 - CONTACT PAGE'S NEW PHOTO (owner dropped the replacement jpg in the
+// repo root). contact.html's photo band now points at images/contact-desk.webp
+// (the construction-desk shot with the live dashboard on the laptop),
+// re-encoded from the owner's 690 KB jpg to a 67 KB webp at its native
+// 1376x768; alt text and width/height updated to match. index.html and the
+// field guide keep images/site-blueprint.webp - the owner asked only for the
+// contact page. Bump-only otherwise: no inline script changed, so the CSP
+// hashes are untouched.
 
 // v488 - two real defects the CI-skipped T4 suites were holding
 // (REFINEMENT-PROGRESS.md NEXT UP step 6). Both were found by running the

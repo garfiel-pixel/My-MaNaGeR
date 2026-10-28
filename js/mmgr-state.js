@@ -363,7 +363,11 @@ var MMGR = window.MMGR || {};
       finishWatcher: true, // RISK-1: the at-risk finish notice
       ganttTidy: true, // GANTT-1: the Tidy view and link policies
       aiDock: true, // AI-1: the docked assistant (off = overlay as today)
-      localModel: true, // AI-2: the on-device model
+      // AI-2: spike ran 2026-10-28 (docs/SPIKE-LOCALLLM-2026-10.md). WebLLM
+      // passes the laptop thresholds, but phone/worker/fallback and the
+      // opt-in download UI are unbuilt, so nothing of this feature ships
+      // yet and the flag says exactly that.
+      localModel: false, // AI-2: the on-device model (NOT shipped)
       globeContinuous: true, // LAND-2: the continuous hero globe
       dotRailGhost: true, // LAND-1: the marketing dot rail ghost
       // Phase 2: client-side error surface , last 20 errors, each with a

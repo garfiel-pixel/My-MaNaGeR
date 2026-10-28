@@ -161,7 +161,7 @@
          aria-haspopup / aria-expanded / aria-controls - axe flagged them as
          ARIA attributes not allowed on a generic element. The title keeps the
          same explanation for everyone who hovers; when this chip becomes a
-         keyboard-operable disclosure it gets role=button with it. --><div class="dirty-ind" id="dirty-ind" data-action="bkToggle" title="Changes save to this browser automatically. Click to back up , to the cloud (automatic once linked) or to a .json file.">Not backed up</div>
+         keyboard-operable disclosure it gets role=button with it. --><div class="dirty-ind" id="dirty-ind" data-action="bkToggle" role="button" tabindex="0" title="Changes save to this browser automatically. Click to back up , to the cloud (automatic once linked) or to a .json file.">Not backed up</div>
     <div class="bk-pop" id="bk-pop" hidden role="dialog" aria-label="Backup options">
       <div class="bk-pop-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-save"></use></svg> Backup</div>
       <button type="button" class="bk-opt" data-action="bkCloud">
@@ -184,7 +184,7 @@
       </a>
       <div class="bk-pop-foot" id="bk-foot"></div>
     </div></span>
-    <div class="timeline-ind" id="timeline-ind" data-action="jumpToDashTimeline" title="Current planned finish vs the Target Completion Date set in Charter. Click to view on the Dashboard."></div>
+    <div class="timeline-ind" id="timeline-ind" data-action="jumpToDashTimeline" role="button" tabindex="0" title="Current planned finish vs the Target Completion Date set in Charter. Click to view on the Dashboard."></div>
     <div class="presence-chip" id="presence-chip" hidden role="status" aria-live="polite"><span class="pdot" aria-hidden="true"></span><span data-presence-label>0 online</span></div>
     <div class="lock-ind" id="lk-ind"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> <span id="lk-lbl">Methodology</span> Locked</div>
     <button class="settings-btn" id="ai-bell" data-action="openAiMailbox" aria-label="Assistant notices"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bell"></use></svg><span class="nudge-dot" data-bell-dot hidden></span></button>
@@ -235,7 +235,7 @@
     </div>
   </nav>
   <!-- Mobile nav scrim (closes the drawer on tap-out; see tglNav) -->
-  <div id="nav-scrim" data-action="tglNav" aria-hidden="true"></div>
+  <div id="nav-scrim" data-action="tglNav" role="presentation" aria-hidden="true"></div>
 
   <!-- Methodology Learning Card -->
   <div id="meth-learn-card" class="mlc-card is-hide">
@@ -660,23 +660,23 @@
         <div><label class="slb" for="sp-en">End</label><input type="date" id="sp-en" data-action="saveSprint" class="sp-in"></div>
       </div>
       <div class="kb">
-        <div class="kcol col-todo" id="col-todo" data-action="dragDrop" data-drop-status="todo">
+        <div class="kcol col-todo" id="col-todo" data-action="dragDrop" data-drop-status="todo" role="group">
           <div class="kch"><span class="kct">To Do</span><span class="wip" id="w-todo">0</span></div>
           <div class="kcc" id="kc-todo"></div>
         </div>
-        <div class="kcol col-ip" id="col-ip" data-action="dragDrop" data-drop-status="inprogress">
+        <div class="kcol col-ip" id="col-ip" data-action="dragDrop" data-drop-status="inprogress" role="group">
           <div class="kch"><span class="kct">In Progress</span><span class="wip" id="w-ip">0</span></div>
           <div class="kcc" id="kc-ip"></div>
         </div>
-        <div class="kcol col-bl" id="col-bl" data-action="dragDrop" data-drop-status="blocked">
+        <div class="kcol col-bl" id="col-bl" data-action="dragDrop" data-drop-status="blocked" role="group">
           <div class="kch"><span class="kct">Blocked</span><span class="wip" id="w-bl">0</span></div>
           <div class="kcc" id="kc-bl"></div>
         </div>
-        <div class="kcol col-dn" id="col-dn" data-action="dragDrop" data-drop-status="completed">
+        <div class="kcol col-dn" id="col-dn" data-action="dragDrop" data-drop-status="completed" role="group">
           <div class="kch"><span class="kct">Completed</span><span class="wip" id="w-dn">0</span></div>
           <div class="kcc" id="kc-dn"></div>
         </div>
-        <div class="kcol col-leadtime is-hide" id="col-leadtime" data-action="dragDrop" data-drop-status="leadtime">
+        <div class="kcol col-leadtime is-hide" id="col-leadtime" data-action="dragDrop" data-drop-status="leadtime" role="group">
           <div class="kch"><span class="kct"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clock"></use></svg> Lead-Time</span><span class="wip" id="w-lt">0</span></div>
           <div class="kcc" id="kc-lt"></div>
         </div>
@@ -1345,7 +1345,7 @@
 <!-- Task 6 (owner 2026-09-19): background assistant mailbox. Notices are
      deterministic findings from local watchers, kept in s.aiInbox on this
      machine until the user dismisses them. -->
-<div id="ai-mailbox" data-action="closeAiMailboxBg">
+<div id="ai-mailbox" data-action="closeAiMailboxBg" role="presentation">
   <div class="ai-mailbox-box">
     <div class="ai-mailbox-head">
       <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bell"></use></svg>
@@ -1838,8 +1838,7 @@
   </div>
 </div>
 
-<!-- Charter Upload Modal -->
-<div id="chartup-modal" data-action="closeChartUpBg">
+<!-- Charter Upload Modal -->    <div id="chartup-modal" data-action="closeChartUpBg" role="presentation">
   <div class="cu-box">
     <h3><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Charter Auto-Fill</h3>
     <div class="cu-step">
@@ -1880,8 +1879,7 @@
   </div>
 </div>
 
-<!-- Gantt Export Modal (G8): format, theme, columns, links, baseline -->
-<div id="gantt-export-modal" data-action="closeGanttExportBg">
+<!-- Gantt Export Modal (G8): format, theme, columns, links, baseline -->    <div id="gantt-export-modal" data-action="closeGanttExportBg" role="presentation">
   <div class="cu-box gx-box">
     <h3><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Export Schedule</h3>
     <div class="gx-grid">
@@ -1934,8 +1932,7 @@
   </div>
 </div>
 
-<!-- WBS Import Modal -->
-<div id="wbsimport-modal" data-action="closeWbsImportBg">
+<!-- WBS Import Modal -->    <div id="wbsimport-modal" data-action="closeWbsImportBg" role="presentation">
   <div class="wi-box">
     <h3><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Import WBS from Text</h3>
     <div class="wi-step">
@@ -1953,8 +1950,7 @@
   </div>
 </div>
 
-<!-- Import Dates Modal -->
-<div id="importdates-modal" data-action="closeImportDatesBg">
+<!-- Import Dates Modal -->    <div id="importdates-modal" data-action="closeImportDatesBg" role="presentation">
   <div class="wi-box">
     <h3><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Import Dates</h3>
     <div class="wi-step">
@@ -1990,8 +1986,7 @@
      2026-08-16): package name, CSI Division Code, target baseline budget,
      bid deadline and scope line items. Draft inputs are read on Save (no
      state mutation per keystroke); the CSI options are filled from
-     MMGR.Bids' canonical CSI_DIVISIONS list on open. -->
-<div id="bidpkg-modal" data-action="closeBidPkgBg">
+     MMGR.Bids' canonical CSI_DIVISIONS list on open. -->    <div id="bidpkg-modal" data-action="closeBidPkgBg" role="presentation">
   <div class="bp-box">
     <h3 id="bp-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Add Bid Package</h3>
     <div class="bp-field">
@@ -2242,5 +2237,17 @@ if ('serviceWorker' in navigator &&
      Its own script tag (not in the bundle) so the CSP inline-script
      hashes never move. -->
 <script defer src="js/mmgr-shortcuts.js"></script>
+<!-- APP-3 (REFINEMENT-DIRECTIVE 2026-10-24, section 7): ONE shared
+     "Which code is this?" popover behind every code field. Native popover
+     API - keyboard reachable, Esc closes, click outside closes, no JS. -->
+<div id="which-code-pop" popover class="code-pop" aria-labelledby="which-code-pop-t">
+  <h3 id="which-code-pop-t">Which code is this?</h3>
+  <dl class="code-pop-list">
+    <div><dt>Site admin code</dt><dd>Opens the cloud admin for this site (Cloud Projects in the admin panel). Set when the site was deployed. It stays in this tab.</dd></div>
+    <div><dt>Admin panel code</dt><dd>Opens your own projects admin panel, on this device only. Backed up to your account when you are signed in.</dd></div>
+    <div><dt>Project code and Client code</dt><dd>Open one project with a role. One code per project, given to you by the project owner.</dd></div>
+  </dl>
+  <button type="button" class="btn btn-n btn-s" popovertarget="which-code-pop" popovertargetaction="hide">Close</button>
+</div>
 </body>
 </html>

@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SPIKE - on-device assistant (not shipped)</title>
+    <style>
+      body {
+        font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+        margin: 24px;
+        color: #111;
+        background: #fff;
+      }
+      h1 {
+        font-size: 18px;
+      }
+      button {
+        font: inherit;
+        padding: 6px 12px;
+        margin-right: 8px;
+      }
+      pre {
+        background: #f4f4f4;
+        padding: 12px;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .row {
+        margin: 10px 0;
+      }
+      #status {
+        color: #555;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>SPIKE: on-device assistant (REFINEMENT-DIRECTIVE AI-2, not shipped)</h1>
+    <p>
+      Measures download size, time to first token, tokens per second, peak JS heap and main-thread
+      blocking for each candidate. Results land in <code>window.__SPIKE</code>.
+    </p>
+    <div class="row">
+      <button id="run-webllm" type="button">Run A: WebLLM (WebGPU)</button>
+      <button id="run-tf" type="button">Run B: transformers.js (WASM)</button>
+      <button id="run-tf-worker" type="button">Run B2: transformers.js in a Worker</button>
+    </div>
+    <div id="status">idle</div>
+    <pre id="log"></pre>
+
+    <script type="module">
+      const WEBLLM_URL = 'https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.86/lib/index.js';
+      const TF_URL = 'https://esm.sh/@huggingface/transformers@4.3.2?target=es2022';
+      const WEBLLM_MODEL = 'SmolLM2-360M-Instruct-q4f16_1-MLC';
+      const TF_MODEL = 'HuggingFaceTB/SmolLM2-360M-Instruct';
+      const PROMPT =
+        'You are a project assistant for a construction team. In three short bullets, list the main risks a site manager should check before concrete pours start.';
+      const MAX_NEW_TOKENS = 120;
+
+      const el = id => document.getElementById(id);
+      const logEl = el('log');
+      const statusEl = el('status');
+      const say = s => {
+        statusEl.textContent = s;
+        logEl.textContent += s + '\n';
+      };
+
+      window.__SPIKE = { env: null, runs: [] };
+      window.__SPIKE_DONE = false;
+
+      // ---- byte counting: wrap fetch so every model shard is metered ----
+      const bytes = { total: 0, files: {} };
+      const realFetch = window.fetch.bind(window);
+      window.fetch = async (input, init) => {
+        const res = await realFetch(input, init);
+        try {
+          const url = typeof input === 'string' ? input : input.url;
+          const len = Number(res.headers.get('content-length') || 0);
+          if (len && /onnx|\.wasm|safetensors|\.json|tokenizer|vocab|merges|huggingface|mlc-ai/i.test(url)) {
+            bytes.total += len;
+            bytes.files[url] = (bytes.files[url] || 0) + len;
+          }
+        } catch (e) {}
+        return res;
+      };
+
+      // ---- main-thread blocking measurement ----
+      let longTasks = [];
+      try {
+        new PerformanceObserver(list => {
+          for (const e of list.getEntries()) longTasks.push(Math.round(e.duration));
+        }).observe({ entryTypes: ['longtask'] });
+      } catch (e) {}
+
+      // ---- JS heap sampling ----
+      let heapTimer = null;
+      let peakHeap = 0;
+      const startHeap = () => {
+        peakHeap = 0;
+        heapTimer = setInterval(() => {
+          const m = performance.memory;
+          if (m && m.usedJSHeapSize > peakHeap) peakHeap = m.usedJSHeapSize;
+        }, 200);
+      };
+      const stopHeap = () => {
+        clearInterval(heapTimer);
+        return peakHeap;
+      };
+
+      function envInfo() {
+        return {
+          ua: navigator.userAgent,
+          cores: navigator.hardwareConcurrency || 0,
+          deviceMemory: navigator.deviceMemory || null,
+          webgpu: !!navigator.gpu,
+          crossOriginIsolated: window.crossOriginIsolated,
+        };
+      }
+      window.__SPIKE.env = envInfo();
+
+      function newRun(cand) {
+        return {
+          candidate: cand,
+          startedAt: new Date().toISOString(),
+          bytesBefore: bytes.total,
+          bytesDownloaded: 0,
+          loadMs: 0,
+          ttftMs: 0,
+          genMs: 0,
+          tokens: 0,
+          tps: 0,
+          peakHeapMB: 0,
+          maxLongTaskMs: 0,
+          text: '',
+          error: null,
+        };
+      }
+
+      function finishRun(run) {
+        run.bytesDownloaded = bytes.total - run.bytesBefore;
+        run.totalMs = Date.now() - Date.parse(run.startedAt);
+        run.peakHeapMB = Math.round((peakHeap / 1048576) * 10) / 10;
+        run.tps = run.genMs > 0 ? Math.round((run.tokens / (run.genMs / 1000)) * 10) / 10 : 0;
+        window.__SPIKE.runs.push(run);
+        say(
+          run.candidate +
+            ' DONE load=' +
+            run.loadMs +
+            'ms ttft=' +
+            run.ttftMs +
+            'ms tps=' +
+            run.tps +
+            ' heap=' +
+            run.peakHeapMB +
+            'MB bytes=' +
+            Math.round(run.bytesDownloaded / 1048576) +
+            'MB'
+        );
+        return run;
+      }
+
+      const resetMetrics = () => {
+        longTasks = [];
+      };
+
+      // ---------------- Candidate A: WebLLM (WebGPU) ----------------
+      async function runWebLLM() {
+        const run = newRun('webllm+webgpu+SmolLM2-360M-q4f16');
+        if (!navigator.gpu) {
+          run.error = 'no navigator.gpu';
+          return finishRun(run);
+        }
+        let t0 = performance.now();
+        try {
+          say('loading webllm ...');
+          const webllm = await import(/* @vite-ignore */ WEBLLM_URL);
+          run.loadMs = Math.round(performance.now() - t0);
+
+          const adapter = await navigator.gpu.requestAdapter();
+          const info = adapter && adapter.info ? { ...adapter.info } : null;
+          run.adapter = info;
+
+          t0 = performance.now();
+          const engine = await webllm.CreateMLCEngine(WEBLLM_MODEL, {
+            initProgressCallback: p => {
+              if (p && p.text) say('webllm: ' + p.text);
+            },
+          });
+          run.loadMs = Math.round(performance.now() - t0);
+          say('webllm engine ready in ' + run.loadMs + 'ms');
+
+          resetMetrics();
+          startHeap();
+          const t1 = performance.now();
+          let first = 0;
+          let n = 0;
+          const chunks = [];
+          const ch = await engine.chat.completions.create({
+            messages: [{ role: 'user', content: PROMPT }],
+            stream: true,
+            stream_options: { include_usage: false },
+            max_tokens: MAX_NEW_TOKENS,
+            temperature: 0.2,
+          });
+          for await (const c of ch) {
+            const d = c.choices && c.choices[0] && c.choices[0].delta ? c.choices[0].delta.content : null;
+            if (d) {
+              if (!first) first = performance.now();
+              chunks.push(d);
+              n++;
+            }
+          }
+          const end = performance.now();
+          stopHeap();
+          run.ttftMs = Math.round(first - t1);
+          run.genMs = Math.round(end - first);
+          run.tokens = n;
+          run.text = chunks.join('').slice(0, 400);
+          run.maxLongTaskMs = longTasks.length ? Math.max(...longTasks) : 0;
+          await engine.unload();
+
+          // warm reopen: same session, model already on disk (acceptance: <20s
+          // after the first download)
+          resetMetrics();
+          const w0 = performance.now();
+          const engine2 = await webllm.CreateMLCEngine(WEBLLM_MODEL, {
+            initProgressCallback: () => {},
+          });
+          const warmLoad = Math.round(performance.now() - w0);
+          startHeap();
+          const w1 = performance.now();
+          let wFirst = 0;
+          let wN = 0;
+          const ch2 = await engine2.chat.completions.create({
+            messages: [{ role: 'user', content: PROMPT }],
+            stream: true,
+            max_tokens: MAX_NEW_TOKENS,
+            temperature: 0.2,
+          });
+          for await (const c of ch2) {
+            const d = c.choices && c.choices[0] && c.choices[0].delta ? c.choices[0].delta.content : null;
+            if (d) {
+              if (!wFirst) wFirst = performance.now();
+              wN++;
+            }
+          }
+          const wEnd = performance.now();
+          stopHeap();
+          run.warm = {
+            loadMs: warmLoad,
+            ttftMs: Math.round(wFirst - w1),
+            genMs: Math.round(wEnd - wFirst),
+            tokens: wN,
+            tps: wFirst ? Math.round((wN / ((wEnd - wFirst) / 1000)) * 10) / 10 : 0,
+            peakHeapMB: Math.round((peakHeap / 1048576) * 10) / 10,
+            bytesDuring: bytes.total,
+          };
+          await engine2.unload();
+        } catch (e) {
+          stopHeap();
+          run.error = String(e && e.message ? e.message : e);
+        }
+        return finishRun(run);
+      }
+
+      // ---------------- Candidate B / B2: transformers.js (WASM) ----------------
+      async function runTransformers(inWorker) {
+        const tag = inWorker ? 'transformers-worker+wasm+SmolLM2-360M-q4' : 'transformers-main+wasm+SmolLM2-360M-q4';
+        const run = newRun(tag);
+        resetMetrics();
+        startHeap();
+        const t0 = performance.now();
+        try {
+          if (inWorker) {
+            const worker = new Worker(new URL('./spike-localllm-worker.js', import.meta.url), {
+              type: 'module',
+            });
+            const done = new Promise((resolve, reject) => {
+              worker.onmessage = e => resolve(e.data);
+              worker.onerror = e => reject(new Error(String(e.message || e)));
+              setTimeout(() => reject(new Error('worker timeout')), 900000);
+            });
+            worker.postMessage({ model: TF_MODEL, prompt: PROMPT, maxTokens: MAX_NEW_TOKENS });
+            const res = await done;
+            worker.terminate();
+            run.loadMs = res.loadMs;
+            run.ttftMs = res.ttftMs;
+            run.genMs = res.genMs;
+            run.tokens = res.tokens;
+            run.text = (res.text || '').slice(0, 400);
+            run.workerBytes = res.bytes || 0;
+            run.error = res.error || null;
+          } else {
+            const tf = await import(/* @vite-ignore */ TF_URL);
+            say('transformers.js loaded, fetching model ...');
+            const pickText = out => {
+              const g = out && out[0] ? out[0].generated_text : null;
+              if (typeof g === 'string') return g;
+              if (Array.isArray(g)) {
+                const last = g.slice().reverse().find(x => x && x.role === 'assistant') || g[g.length - 1];
+                return typeof last === 'string' ? last : (last && (last.content || last.text)) || '';
+              }
+              return g ? JSON.stringify(g) : '';
+            };
+            const countTokens = (pipe, txt) => {
+              try {
+                const ids = pipe.tokenizer(txt).input_ids;
+                return ids && ids.length ? ids.length : 0;
+              } catch (e) {
+                return (txt.match(/\S+/g) || []).length;
+              }
+            };
+            const tLoad = performance.now();
+            let pipe = null;
+            let dtype = 'q4';
+            const cb = p => {
+              if (p && p.status === 'progress') say('tf: ' + (p.name || '') + ' ' + Math.round(p.progress || 0) + '%');
+            };
+            try {
+              pipe = await tf.pipeline('text-generation', TF_MODEL, { dtype: 'q4', device: 'wasm', progress_callback: cb });
+            } catch (e) {
+              say('q4 refused (' + (e && e.message) + '), falling back to q8');
+              run.note = 'dtype q4 refused: ' + String(e && e.message ? e.message : e);
+              dtype = 'q8';
+              pipe = await tf.pipeline('text-generation', TF_MODEL, { dtype: 'q8', device: 'wasm', progress_callback: cb });
+            }
+            run.dtype = dtype;
+            run.loadMs = Math.round(performance.now() - tLoad);
+            run.bytesCold = bytes.total;
+            say('transformers pipeline ready in ' + run.loadMs + 'ms');
+
+            // COLD generation (batch pipeline: no streaming, so the batch time
+            // is both first token and last token)
+            const t1 = performance.now();
+            const out = await pipe([{ role: 'user', content: PROMPT }], {
+              max_new_tokens: MAX_NEW_TOKENS,
+              do_sample: false,
+              return_full_text: false,
+            });
+            const t2 = performance.now();
+            const text = pickText(out);
+            run.raw = JSON.stringify(out).slice(0, 600);
+            run.ttftMs = Math.round(t2 - t1);
+            run.genMs = Math.round(t2 - t1);
+            run.tokens = countTokens(pipe, text);
+            run.tps = Math.round((run.tokens / ((t2 - t1) / 1000)) * 10) / 10;
+            run.text = text.slice(0, 400);
+            run.streaming = false;
+
+            // WARM reopen: build the pipeline again with the model already fetched
+            const bBefore = bytes.total;
+            const w0 = performance.now();
+            const pipe2 = await tf.pipeline('text-generation', TF_MODEL, { dtype: dtype, device: 'wasm' });
+            const warmLoad = Math.round(performance.now() - w0);
+            const w1 = performance.now();
+            const wOut = await pipe2([{ role: 'user', content: PROMPT }], { max_new_tokens: MAX_NEW_TOKENS, do_sample: false, return_full_text: false });
+            const w2 = performance.now();
+            const wText = pickText(wOut);
+            const wTokens = countTokens(pipe2, wText);
+            run.warm = {
+              loadMs: warmLoad,
+              ttftMs: Math.round(w2 - w1),
+              genMs: Math.round(w2 - w1),
+              tokens: wTokens,
+              tps: Math.round((wTokens / ((w2 - w1) / 1000)) * 10) / 10,
+              bytesDuring: bytes.total - bBefore,
+            };
+          }
+          run.maxLongTaskMs = longTasks.length ? Math.max(...longTasks) : 0;
+        } catch (e) {
+          run.error = String(e && e.message ? e.message : e);
+        }
+        stopHeap();
+        return finishRun(run);
+      }
+
+      async function runAll(which) {
+        window.__SPIKE_DONE = false;
+        try {
+          if (which === 'webllm') await runWebLLM();
+          else if (which === 'tf') await runTransformers(false);
+          else if (which === 'tf-worker') await runTransformers(true);
+        } finally {
+          window.__SPIKE_DONE = true;
+          console.log('SPIKE_RESULT ' + JSON.stringify(window.__SPIKE));
+        }
+      }
+
+      el('run-webllm').onclick = () => runAll('webllm');
+      el('run-tf').onclick = () => runAll('tf');
+      el('run-tf-worker').onclick = () => runAll('tf-worker');
+
+      const q = new URLSearchParams(location.search);
+      if (q.get('auto')) runAll(q.get('auto'));
+    </script>
+  </body>
+</html>

@@ -25,28 +25,28 @@
   <polyline points="60,367 150,337 320,257 490,337 660,257 810,182 855,157"
     fill="none" stroke="#0B0B0D" stroke-width="28" stroke-linejoin="round" stroke-linecap="round" opacity="0.45"/>
   <polyline points="60,360 150,330 320,250 490,330 660,250 810,175 855,150"
-    fill="none" stroke="#E8923A" stroke-width="26" stroke-linejoin="round" stroke-linecap="round"/>
+    fill="none" stroke="#D4AF37" stroke-width="26" stroke-linejoin="round" stroke-linecap="round"/>
   <polyline points="60,360 150,330 320,250 490,330 660,250 810,175 855,150"
     fill="none" stroke="#F5EFE6" stroke-width="3" stroke-dasharray="16 12" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
 
   <!-- start marker -->
-  <circle cx="60" cy="360" r="10" fill="#FFFFFF" stroke="#D96B27" stroke-width="3"/>
+  <circle cx="60" cy="360" r="10" fill="#FFFFFF" stroke="#D4AF37" stroke-width="3"/>
   <text x="60" y="384" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-size="11" letter-spacing="2.5" fill="#E0DAD2">START</text>
 
   <!-- station 1: Ask -->
-  <circle cx="150" cy="330" r="27" fill="#FFFFFF" stroke="#D96B27" stroke-width="3"/>
+  <circle cx="150" cy="330" r="27" fill="#FFFFFF" stroke="#D4AF37" stroke-width="3"/>
   <text x="150" y="337" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700" fill="#1C1917">1</text>
   <text x="192" y="322" font-family="Inter,system-ui,sans-serif" font-size="20" font-weight="700" fill="#F8FAFC">Ask</text>
   <text x="192" y="346" font-family="Inter,system-ui,sans-serif" font-size="13.5" fill="#D8CFC2">Questions about your project</text>
 
   <!-- station 2: Digest -->
-  <circle cx="320" cy="250" r="27" fill="#FFFFFF" stroke="#D96B27" stroke-width="3"/>
+  <circle cx="320" cy="250" r="27" fill="#FFFFFF" stroke="#D4AF37" stroke-width="3"/>
   <text x="320" y="257" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700" fill="#1C1917">2</text>
   <text x="362" y="242" font-family="Inter,system-ui,sans-serif" font-size="20" font-weight="700" fill="#F8FAFC">Digest</text>
   <text x="362" y="266" font-family="Inter,system-ui,sans-serif" font-size="13.5" fill="#D8CFC2">Weekly digest, status report</text>
 
   <!-- station 3: Audit -->
-  <circle cx="490" cy="330" r="27" fill="#FFFFFF" stroke="#D96B27" stroke-width="3"/>
+  <circle cx="490" cy="330" r="27" fill="#FFFFFF" stroke="#D4AF37" stroke-width="3"/>
   <text x="490" y="337" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700" fill="#1C1917">3</text>
   <text x="532" y="322" font-family="Inter,system-ui,sans-serif" font-size="20" font-weight="700" fill="#F8FAFC">Audit</text>
   <text x="532" y="346" font-family="Inter,system-ui,sans-serif" font-size="13.5" fill="#D8CFC2">Schedule audit, confidence tags</text>
@@ -58,7 +58,7 @@
   <text x="702" y="266" font-family="Inter,system-ui,sans-serif" font-size="13.5" fill="#D8CFC2">Gemini, OpenAI, Claude</text>
 
   <!-- station 5: Fallback (label to the left) -->
-  <circle cx="810" cy="175" r="27" fill="#FFFFFF" stroke="#D96B27" stroke-width="3"/>
+  <circle cx="810" cy="175" r="27" fill="#FFFFFF" stroke="#D4AF37" stroke-width="3"/>
   <text x="810" y="182" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700" fill="#1C1917">5</text>
   <text x="768" y="167" text-anchor="end" font-family="Inter,system-ui,sans-serif" font-size="20" font-weight="700" fill="#F8FAFC">Fallback</text>
   <text x="768" y="191" text-anchor="end" font-family="Inter,system-ui,sans-serif" font-size="13.5" fill="#D8CFC2">Auto model ladder</text>

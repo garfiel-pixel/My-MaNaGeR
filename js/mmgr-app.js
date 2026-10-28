@@ -5389,6 +5389,33 @@ window.MMGR = MMGR;
     return false;
   }
 
+  // SW-10 (REFINEMENT-DIRECTIVE 2026-10-24, section 11): a div that carries
+  // data-action AND role="button" is a real control for mouse users, so keyboard
+  // users get the two keys a native button gives them. The focused element must
+  // BE that control (never an input, never an ancestor container), native
+  // buttons and links keep their own behaviour, and Space must not scroll the
+  // page. Containers marked role="presentation" (scrims, dialog backdrops) are
+  // deliberately NOT activated here: they have a visible close control and Esc.
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+    if (e.defaultPrevented) return;
+    const el = e.target;
+    if (!el || el.nodeType !== 1 || !el.hasAttribute('data-action')) return;
+    if (el.getAttribute('role') !== 'button') return;
+    const tag = el.tagName;
+    if (
+      tag === 'BUTTON' ||
+      tag === 'A' ||
+      tag === 'INPUT' ||
+      tag === 'TEXTAREA' ||
+      tag === 'SELECT'
+    ) {
+      return;
+    }
+    e.preventDefault();
+    el.click();
+  });
+
   // Click event delegation
   document.addEventListener('click', function (e) {
     const el = e.target.closest('[data-action]');

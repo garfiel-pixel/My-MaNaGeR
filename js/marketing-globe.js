@@ -401,9 +401,9 @@
 
     // Rim glow, drawn first so the dots sit on it.
     var g = ctx.createRadialGradient(_cx + _shift, _cy, _R * 0.72, _cx + _shift, _cy, _R + 26);
-    g.addColorStop(0, 'rgba(217,107,39,0)');
-    g.addColorStop(0.92, 'rgba(217,107,39,0.30)');
-    g.addColorStop(1, 'rgba(217,107,39,0)');
+    g.addColorStop(0, 'rgba(212,175,55,0)');
+    g.addColorStop(0.92, 'rgba(212,175,55,0.30)');
+    g.addColorStop(1, 'rgba(212,175,55,0)');
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.arc(_cx + _shift, _cy, _R + 26, 0, TAU);
@@ -467,7 +467,7 @@
     var home = project(HOME.lat, HOME.lon);
     if (home.z > 0) {
       var pulse = (now() % 2400) / 2400;
-      ctx.strokeStyle = '#d96b27';
+      ctx.strokeStyle = '#d4af37';
       ctx.globalAlpha = 0.34 * (1 - pulse);
       ctx.lineWidth = 1.5;
       ctx.beginPath();
@@ -1041,11 +1041,16 @@
         syncPlay();
         // Reduced motion is the one refusal that still shows the STILL globe:
         // the directive asks for "the still globe plus that control so a person
-        // can choose to play it". The poster in the markup is that still frame,
-        // and the mock cards step aside the same way they do once the canvas
-        // draws - by visibility, so the column keeps its height and the page
-        // cannot shift. Every other reason leaves the cards exactly as they are.
-        if (reason === 'reduced-motion' && stage) {
+        // can choose to play it". PERF-1 says the same thing about Performance
+        // Mode: "the poster in the markup is the static first frame, so the
+        // hero keeps its artwork - only the animation stops". Both therefore
+        // show the stage (the poster, canvas opacity 0) and let the mock cards
+        // step aside the way they do once the canvas draws - by visibility, so
+        // the column keeps its height and the page cannot shift. The Pause
+        // control stays hidden for perf-mode (syncPlay above): there is no
+        // motion to pause, and the button would be dead. Every other reason
+        // leaves the cards exactly as they are.
+        if ((reason === 'reduced-motion' || reason === 'perf-mode') && stage) {
           stage.classList.add('hg-on');
           var stillVisual = stage.closest('.hero-visual');
           if (stillVisual) {

@@ -6,13 +6,23 @@
    the machine. Every arm is a claim the directive makes; none of them is
    taken on trust.
 
-   ARM 1  STATIC  no old orange survives outside the allow-list.
-          Scans css/*.css for #d96b27, #c25a1b, #a84a15, #f97316 and the
-          `217, 107, 39` triple. Comments are stripped first (a comment that
-          quotes a colour is documentation, not paint). Every allowed hit is
-          an explicit anchor with the reason it is still orange, and the gate
-          FAILS if an allowed anchor has disappeared - a stale allow-list is
-          how an exception quietly becomes a lie.
+   ARM 1  STATIC  no old orange survives anywhere (owner 2026-10-28: the
+          orange is RETIRED, the identity is gold, and the allow-list is now
+          EMPTY - no exception is carried). Scans css/*.css for the nine
+          brand-orange values and every other served surface (js, src, the
+          pages, sw.js, images/*.svg) for the eight brand-orange values -
+          #f97316 stays banned in css but is not banned in js, because the
+          Gantt export's phase palette is categorical data-viz, not branding.
+          Comments are stripped first (a comment that quotes a colour is
+          documentation, not paint), and a future exception must be re-added
+          as an explicit anchor with the written reason it is still orange.
+
+   ARM 1b STATIC  a gold fill never carries a white label. The gold flip
+          (orange #d96b27 -> gold #d4af37) kept every dark-ink pairing, but
+          a rule that still pairs `background: var(--gold|brand)` with white
+          ink (--lit-white / --on-primary / --card / #fff) is invisible on
+          gold: white on #d4af37 is 2.0:1. Same-rule pairing, so a dead copy
+          that a later rule overrides is caught too.
 
    ARM 2  STATIC  the two stylesheets carry the SAME gold tokens.
           marketing and app must not drift: the --bullion* values, both
@@ -75,62 +85,83 @@ const BANNED = [
   { label: '#c25a1b', re: /#c25a1b/gi },
   { label: '#a84a15', re: /#a84a15/gi },
   { label: '#f97316', re: /#f97316/gi },
-  { label: '217, 107, 39', re: /217\s*,\s*107\s*,\s*39/g }
+  { label: '217, 107, 39', re: /217\s*,\s*107\s*,\s*39/g },
+  // the marketing dark-mode orange set (retired with the rest, 2026-10-28)
+  { label: '#e8923a', re: /#e8923a/gi },
+  { label: '#f0a050', re: /#f0a050/gi },
+  { label: '#ffd080', re: /#ffd080/gi },
+  { label: '232, 146, 58', re: /232\s*,\s*146\s*,\s*58/g }
 ];
+// Outside css/ the categorical Gantt phase hue (#f97316, one of ten
+// data-viz hues in js/mmgr-app.js) is NOT branding and stays allowed, so
+// the wider scan uses the brand subset only.
+const BANNED_JS = BANNED.filter(b => b.label !== '#f97316');
 
-/* Every anchor is (file, exact declaration text, why it is still orange).
-   The reason is the audit's, not a shrug: these are the token plumbing the
-   owner deliberately kept (a wash on a plain page stays at today's opacity),
-   and one dark-mode FAB that must keep its brand orange so its glyph stays
-   visible. */
-const ALLOW = [
-  [
-    'css/mmgr.css',
-    '--brand: #d96b27',
-    'brand orange: the token itself, 331 rules resolve through it'
-  ],
-  ['css/mmgr.css', '--brand-hover: #c25a1b', 'brand hover step'],
-  ['css/mmgr.css', '--brand-subtle: rgba(217, 107, 39, 0.08)', 'subtle brand tint (wash at 0.08)'],
-  [
-    'css/mmgr.css',
-    '--gold: #d96b27',
-    'gold FILL alias: a fill, never text (text reads --gold-text)'
-  ],
-  ['css/mmgr.css', '--gold-rgb: 217, 107, 39', 'rgb triple for the gold wash'],
-  ['css/mmgr.css', '--gold-ink: #a84a15', 'the pre-existing gold-as-text step on light surfaces'],
-  [
-    'css/mmgr.css',
-    'background: #d96b27;',
-    'body.dark-mode .calc-fab keeps brand orange so the glyph stays visible'
-  ],
-  ['css/mmgr.css', '--gold-accent: #d96b27', 'hover accent only'],
-  ['css/mmgr.css', '--gold-accent-rgb: 217, 107, 39', 'hover accent rgb triple'],
-  ['css/marketing.css', '--gold: #d96b27', 'marketing gold FILL'],
-  ['css/marketing.css', '--gold-hover: #c25a1b', 'marketing hover step'],
-  ['css/marketing.css', '--gold-deep: #a84a15', 'marketing deep step'],
-  ['css/marketing.css', '--gold-rgb: 217, 107, 39', 'marketing rgb triple'],
-  [
-    'css/marketing.css',
-    '--hero-glow-1: radial-gradient(120% 90% at 50% -10%, rgba(217, 107, 39, 0.28)',
-    'hero glow wash (a light wash behind the hero, opacity unchanged)'
-  ]
-];
+/* The allow-list is EMPTY: the owner retired the orange on 2026-10-28
+   ("I want the gold everywhere the orange was, branding included"). If a
+   value ever needs an exception again it goes here as an anchor with a
+   written reason - the gate requires every anchor to still exist. */
+const ALLOW = [];
 
 const stripComments = css => css.replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' '));
+// js/html/svg surfaces also carry // and <!-- --> comments. The (?<!:)
+// guard keeps `http://...` URLs (and the single-line SVGs whose xmlns is a
+// URL) from being eaten as comments.
+const stripCommentsAll = s =>
+  s
+    .replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' '))
+    .replace(/<!--[\s\S]*?-->/g, m => m.replace(/[^\n]/g, ' '))
+    .replace(/(?<!:)\/\/[^\n]*/g, m => m.replace(/[^\n]/g, ' '));
+
+const walkFiles = (dir, exts) => {
+  const out = [];
+  const walk = d => {
+    let entries;
+    try {
+      entries = fs.readdirSync(path.join(ROOT, d), { withFileTypes: true });
+    } catch (e) {
+      return;
+    }
+    for (const e of entries) {
+      const rel = d + '/' + e.name;
+      if (e.isDirectory()) {
+        walk(rel);
+      } else if (exts.indexOf(path.extname(e.name).toLowerCase()) >= 0) {
+        out.push(rel);
+      }
+    }
+  };
+  walk(dir);
+  return out;
+};
+const rootPages = fs
+  .readdirSync(ROOT, { withFileTypes: true })
+  .filter(e => e.isFile() && e.name.endsWith('.html'))
+  .map(e => e.name);
+const SCAN_CSS = ['css/mmgr.css', 'css/marketing.css'];
+const SCAN_OTHERS = [].concat(
+  walkFiles('js', ['.js']),
+  walkFiles('src', ['.js']),
+  walkFiles('images', ['.svg']),
+  rootPages,
+  ['sw.js']
+);
 
 {
   const hits = [];
-  for (const file of ['css/mmgr.css', 'css/marketing.css']) {
-    const src = stripComments(read(file));
+  const scan = (file, banned) => {
+    const src = stripCommentsAll(read(file));
     src.split(/\r?\n/).forEach((line, i) => {
-      BANNED.forEach(b => {
+      banned.forEach(b => {
         b.re.lastIndex = 0;
         if (b.re.test(line)) {
           hits.push({ file, line: i + 1, text: line.trim(), token: b.label });
         }
       });
     });
-  }
+  };
+  SCAN_CSS.forEach(f => scan(f, BANNED));
+  SCAN_OTHERS.forEach(f => scan(f, BANNED_JS));
   // a hit is allowed only if its line contains an allow anchor for that file
   const unexplained = hits.filter(
     h => !ALLOW.some(([f, anchor]) => f === h.file && h.text.indexOf(anchor) >= 0)
@@ -147,10 +178,18 @@ const stripComments = css => css.replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^
     stale.length === 0,
     stale
   );
+  ok(
+    'the allow-list is empty (the orange was retired owner 2026-10-28)',
+    ALLOW.length === 0,
+    ALLOW
+  );
   log(
     '      ' +
       hits.length +
-      ' orange declaration(s) in css/, all of them allow-listed with a written reason'
+      ' orange declaration(s) across ' +
+      (SCAN_CSS.length + SCAN_OTHERS.length) +
+      ' served file(s), allow-list ' +
+      ALLOW.length
   );
   // a comment that quotes an orange must NOT count as paint (that is the trap
   // this strip exists for: the token comment quotes #d96b27 twice)
@@ -158,6 +197,32 @@ const stripComments = css => css.replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^
   ok(
     'comments are not counted as paint (the token comment quotes the hex)',
     raw.indexOf('which is #d96b27') > 0 && stripComments(raw).indexOf('which is #d96b27') < 0
+  );
+
+  // ARM 1b - a gold fill never carries a white label. Same-rule pairing, so
+  // a dead copy that a later rule overrides is caught too (the cascade is
+  // the browser's job; the ink choice is the rule's own).
+  const whiteInk =
+    /(^|[^-\w])color:\s*(var\(--lit-white\)|var\(--on-primary\)|var\(--card\)|#ffffff|#fff)\s*;/i;
+  const goldFill = /background(?:-color)?:\s*var\(--(?:gold|brand)\)\s*;/;
+  const whiteOnGold = [];
+  for (const file of SCAN_CSS) {
+    const src = stripComments(read(file));
+    let m;
+    const re = /([^{}]+)\{([^{}]*)\}/g;
+    while ((m = re.exec(src))) {
+      if (goldFill.test(m[2]) && whiteInk.test(m[2])) {
+        const sel = (m[1].trim().split('\n').pop() || '').trim();
+        whiteOnGold.push(
+          file + ':' + src.slice(0, m.index).split('\n').length + ' ' + sel.slice(0, 60)
+        );
+      }
+    }
+  }
+  ok(
+    'no rule pairs a gold fill with white ink (white on #d4af37 is 2.0:1)',
+    whiteOnGold.length === 0,
+    whiteOnGold
   );
 }
 
@@ -174,7 +239,9 @@ const stripComments = css => css.replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^
     '--bullion-ink',
     '--gold-grad',
     '--gold-grad-hover',
-    '--gold-text-on-light'
+    '--gold-text-on-light',
+    '--gold',
+    '--gold-rgb'
   ];
   const grab = (css, name) => {
     // the FIRST :root definition wins for the comparison (dark-mode blocks

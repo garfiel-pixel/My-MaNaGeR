@@ -26,7 +26,7 @@ Both stylesheets carry the same block in `:root` (`css/mmgr.css` and `css/market
 
 Marketing pages use `.btn-gold` (index, about, contact, features, pricing): one shared rule, no per-page copy.
 
-## 4. Old orange still in the stylesheets (listing only)
+## 4. Old orange still in the stylesheets (listing only) — SUPERSEDED by section 8 (2026-10-28): every declaration listed here has been flipped to gold; the table is kept for the record.
 
 These are NOT buttons and were deliberately left alone: the owner rule (5.5) is that only elements already gold change, and a wash on a plain light page stays at today's opacity or lower.
 
@@ -90,6 +90,40 @@ The second token exists because the gate caught the first one landing on the mar
 ### Decision 3: borders keep the accent
 
 The first pass of the swap also caught `border-color:`, `outline-color:`, `accent-color:` and `border-top-color:` (63 declarations) because `color:` appears inside those property names. Those are borders and native-control accents, not words; they were reverted to `var(--gold)`. T-GOLD now asserts that no rule paints gold **words** with the fill token, with a property-boundary regex that cannot repeat the mistake.
+
+## 8. The orange is retired (owner, 2026-10-28)
+
+Owner, on seeing the deployed gold: *"I like the gold look we got and have now, and I would like it applied to all where oranges is covered, even on the branding... I want it to persist."* Sections 4 and 5 above are therefore closed: every surviving orange declaration in the allow-list, plus several the allow-list never covered, has been flipped to the bullion gold family.
+
+### What changed
+
+| Surface | Before | After |
+|---|---|---|
+| `--brand`, `--brand-hover`, `--brand-subtle` (both blocks that carried them) | `#d96b27` / `#c25a1b` / `rgba(217,107,39,.08)` | `#d4af37` / `#bd8522` / `rgba(212,175,55,.08)` |
+| `--gold`, `--gold-rgb` (both stylesheets) | `#d96b27` / `217,107,39` | `#d4af37` / `212,175,55` |
+| `--gold-ink`, marketing `--gold-deep` (gold as words on white) | `#a84a15` (5.74:1) | `#7a5a0b` (6.37:1) |
+| marketing dark `--gold` / `--gold-hover` / `--gold-deep` | `#e8923a` / `#f0a050` / `#ffd080` | `#d4af37` / `#e6c547` / `#e6c547` |
+| `--gold-accent` + rgb (dark hover accents) | `#d96b27` / `217,107,39` | `#d4af37` / `212,175,55` |
+| `body.dark-mode .calc-fab` | `background: #d96b27` (white glyph) | `background: var(--bullion)` + `color: var(--on-gold)` |
+| white-on-gold labels (`.calc-fab`, `.calc-action`, `.calc-eq`, `.rm-count`, `.bcp-ai-ava`, `.btn-o` copy 1) | `--lit-white` / `--on-primary` / `--card` (2.0:1 on gold) | `var(--on-gold)` (dark ink, 8.4:1) |
+| focus rings (57 mmgr + 14 marketing + one hardcoded `#e8923a`) | `outline: 2px solid var(--gold)` (1.9:1 on white) | `var(--gold-ink)` / `var(--gold-deep)` (6.37:1; white in dark) |
+| `.bcp-field-custom input` border | `var(--brand)` (1.9:1 on white) | `var(--gold-ink)` (6.37:1; an input boundary owes 3:1) |
+| four `color: var(--brand)` text rules (photo thumb hover light+dark, `:hover` on `.ctl-sec[data-ctl-toggle]`) | brand orange / white | `var(--gold-text)` — now measured by T-GOLD ARM 4 |
+| marketing sign-in sheet hardcodes (`#e8923a`, `#f0a050`, `rgba(232,146,58,.16)`) | orange | `var(--gold)` / `var(--gold-hover)` / `#e6c547` (accents on the dark card) / `rgba(212,175,55,.16)` |
+| hero glow `--hero-glow-1` | `rgba(217,107,39,.28)` | `rgba(212,175,55,.28)` (opacity unchanged) |
+| globe canvas (`js/marketing-globe.js`) rim glow + home pin | `rgba(217,107,39,…)` / `#d96b27` | `rgba(212,175,55,…)` / `#d4af37` |
+| hero art (`images/hero-ai-roadmap.svg`, `hero-evm-chart.svg`, `hero-schedule.svg`, `hero-globe-poster.svg`) | 17 orange fills/strokes | gold (`#D4AF37`) |
+
+### What deliberately stays, and why
+
+- **Semantic status colours** — `--warning`/`--amber`/`--dot-yellow` (`#e65100`), `--amber-ink` (`#c24700`), `--status-warning` (`#b4740e`), the amber ramp (`#f59e0b`/`#d97706`/`#fef3c7`/`#fcd34d`) used by late/warning chips. Amber means "due soon"; gold is identity. Recolouring a status hue to the brand hue would make an alert look like decoration.
+- **Alternate palettes** — coral (`#ff6e52`/`#ff8a70`), teal (`#00838f`), magenta (`#c2185b`). Opt-in themes with their own identity; the default identity is the one that had to become gold.
+- **Categorical data-viz hues** — `#f97316` as one of ten Gantt phase colours in `js/mmgr-app.js`, `#8b5cf6` siblings. A category palette needs distinct hues; that is not branding.
+- **Design-spec-only tokens** — `--accent-primary: #e05624` (unused by any live rule; the comment already says the live identity stays warm gold) and the `--gold-500` amber ramp in `marketing.css`, used only by nav-dropdown chrome.
+
+### The gate now enforces the decision
+
+T-GOLD ARM 1 was rewritten for the retirement: nine banned values in `css/`, the eight brand values across **every other served surface** (`js/`, `src/`, `images/*.svg`, all root pages, `sw.js`), and the allow-list is **empty** — 0 orange declarations across 144 files or the gate fails. A new ARM 1b fails any rule that pairs a `var(--gold|brand)` fill with white ink (the exact bug class the flip could have introduced). ARM 2 now compares `--gold` and `--gold-rgb` byte-for-byte between the stylesheets as well. Mutation-proven on 2026-10-28: re-introducing `#d96b27` into a token fails ARM 1 and ARM 2; re-introducing it into a hero SVG fails ARM 1 (this exposed and fixed a real hole — the `//` comment stripper was eating single-line SVGs after their `xmlns` URL); pairing `.rm-count` with `#ffffff` fails ARM 1b. Each mutation restored the file byte-identical.
 
 ### The 14 orange declarations that remain
 

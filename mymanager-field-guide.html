@@ -1693,6 +1693,14 @@ Date: ____________  Focus: ____________</pre>
         <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Revoke and delete, with Undo</h4><p>Revoking a code in the Codes manager stops it immediately , its next use answers "This code was revoked by the project admin." Deleting a project row confirms first, then removes it from the cloud too: every code stops loading it ("This project was deleted by the admin."), and a <strong>Undo</strong> button in the toast restores everything , local, cloud, and codes , for a few seconds after the delete. Recipients never get a delete: they can only remove the project from their own device.</p></div></div>
       </div>
 
+      <h3 class="h-sub">Which code is this?</h3>
+      <div class="grid grid-3">
+        <div class="card bracket"><span class="cnum">SITE</span><h4>Site admin code</h4><p>Opens the cloud admin for this site (Cloud Projects inside the admin panel). It is set when the site was deployed, stays in this tab, and project codes never unlock it.</p></div>
+        <div class="card bracket"><span class="cnum">PANEL</span><h4>Admin panel code</h4><p>Opens your own projects admin panel, on this device. Sign in and it backs up to your account automatically. The admin header then reads Backed up to your account, or Not backed up: sign in to back it up while no copy exists.</p></div>
+        <div class="card bracket"><span class="cnum">PROJECT</span><h4>Project code and Client code</h4><p>One project, with a role. Paste it into Have a code? on the launcher, or into the code box in a project's Cloud Backup card.</p></div>
+      </div>
+      <p class="prose">Every code field carries a <strong>Which code is this?</strong> button that opens that table in one click. After <strong>Restore access</strong> on a new device the admin panel opens with <strong>What your code brought back</strong>: <strong>On this device</strong> and <strong>In your cloud</strong>, side by side, so you can see at once what came with you. Restoring the code restores access to the panel. Projects that exist only on another device are not copied here unless they were linked to the cloud.</p>
+
       <div class="divider-note">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 11V7a6 6 0 0 1 11-3.5"/><rect x="4" y="11" width="16" height="10" rx="2"/></svg>
         <p><strong>Local-first, always.</strong> Creating a project never requires an account, a deploy, or the cloud. The admin workshop, the password hash, and your created projects all live in this browser , publishing is a deliberate extra step that gates only other people's access, never yours.</p>

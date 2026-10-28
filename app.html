@@ -412,7 +412,7 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;visibility:h
     </div>
   </div>
 </aside>
-<div class="db-scrim" id="db-scrim" data-action="toggleSidebar"></div>
+<div class="db-scrim" id="db-scrim" data-action="toggleSidebar" role="presentation" aria-hidden="true"></div>
 
 <!-- Sidebar-closed icon strip (desktop only): when the rail is closed,
      show navigation icons along the left edge with hover tooltips. -->
@@ -552,7 +552,7 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;visibility:h
   <div class="cloud-dash" id="code-entry" aria-label="Open a project with a code" style="margin-top:8px;">
     <div class="cd-head">
       <h2><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-unlock"></use></svg> Have a code?
-        <span class="code-help" tabindex="0" role="note" aria-label="A code is what an admin or a project owner gives you. Paste it here to open their project."><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-help"></use></svg><span class="code-help-tip" role="tooltip">A code is what an admin or a project owner gives you. Paste it here to open their project.</span></span></h2>
+        <button type="button" class="code-which" popovertarget="which-code-pop"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-help"></use></svg> Which code is this?</button></h2>
       <span class="cd-sub">Paste the code you were given and open the project</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -613,6 +613,7 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;visibility:h
     <div class="mbody">
       <p id="om-desc">Enter the access code your admin shared with you.</p>
       <input id="code-input" type="text" maxlength="16" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ACCESS CODE" aria-label="Access code">
+      <div class="code-which-row"><button type="button" class="code-which" popovertarget="which-code-pop"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-help"></use></svg> Which code is this?</button></div>
       <div class="gerr" id="gerr" aria-live="polite"></div>
     </div>
     <div class="mf">
@@ -2086,5 +2087,17 @@ if ('serviceWorker' in navigator &&
 
 
 <script defer src="js/mmgr-dock.js"></script>
+<!-- APP-3 (REFINEMENT-DIRECTIVE 2026-10-24, section 7): ONE shared
+     "Which code is this?" popover behind every code field. Native popover
+     API - keyboard reachable, Esc closes, click outside closes, no JS. -->
+<div id="which-code-pop" popover class="code-pop" aria-labelledby="which-code-pop-t">
+  <h3 id="which-code-pop-t">Which code is this?</h3>
+  <dl class="code-pop-list">
+    <div><dt>Site admin code</dt><dd>Opens the cloud admin for this site (Cloud Projects in the admin panel). Set when the site was deployed. It stays in this tab.</dd></div>
+    <div><dt>Admin panel code</dt><dd>Opens your own projects admin panel, on this device only. Backed up to your account when you are signed in.</dd></div>
+    <div><dt>Project code and Client code</dt><dd>Open one project with a role. One code per project, given to you by the project owner.</dd></div>
+  </dl>
+  <button type="button" class="btn btn-n btn-s" popovertarget="which-code-pop" popovertargetaction="hide">Close</button>
+</div>
 </body>
 </html>

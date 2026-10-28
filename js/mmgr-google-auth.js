@@ -339,7 +339,7 @@ var MMGR = window.MMGR || {};
       const hintEl = siom.querySelector('.si-hint');
       if (hintEl) {
         hintEl.textContent =
-          'Sign in with Google or use your email. Optional, for cloud sync, backups, and your cloud projects. Your admin code backs up here automatically.';
+          'Sign in with Google or use your email. Optional, for cloud sync, backups, and your cloud projects. Your Admin panel code backs up here automatically.';
       }
     }
     // OWNER 2026-08-15: project.html header chip hides when signed out.
@@ -460,7 +460,9 @@ var MMGR = window.MMGR || {};
       const who = user.email || user.name || user.sub || 'your account';
       if (hintEl) {
         hintEl.textContent =
-          'Signed in as ' + who + '. Your admin code and cloud backups are tied to this account.';
+          'Signed in as ' +
+          who +
+          '. Your Admin panel code and cloud backups are tied to this account.';
       }
     }
     // Page-level notification covering EVERY signed-in path (session

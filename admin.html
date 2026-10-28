@@ -263,22 +263,23 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
     <div class="gerr" id="setup-err" role="alert"></div>
     <button class="btn btn-g full" data-action="adminSetupPassword" type="submit"><span class="btn-txt">Create Admin Password</span><span class="spin-dot" aria-hidden="true"></span></button>
     <!-- OWNER 2026-09-09: a signed-in admin on a NEW device gets a restore
-         path here instead of only "create a new admin code". Hidden until
+         path here instead of only "create a new Admin panel code". Hidden until
          the session restore reports signed-in (initGate + mmgr:user-changed). -->
     <div class="rc-divider" id="setup-restore-divider" hidden>or restore access</div>
     <div id="setup-restore" hidden>
-      <label class="sr-only" for="setup-restore-code">Admin code</label>
+      <label class="sr-only" for="setup-restore-code">Admin panel code</label>
       <span class="pw-wrap">
-        <input id="setup-restore-code" type="password" placeholder="Enter my admin code" autocomplete="off">
+        <input id="setup-restore-code" type="password" placeholder="Enter my Admin panel code" autocomplete="off">
         <button type="button" class="pw-eye" data-action="tglPwVis" data-target="setup-restore-code" aria-pressed="false" aria-controls="setup-restore-code"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg><span class="sr-only">Show password</span></button>
       </span>
+      <div class="code-which-row"><button type="button" class="code-which" popovertarget="which-code-pop"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-help"></use></svg> Which code is this?</button></div>
       <div class="gerr" id="setup-restore-err" role="alert"></div>
       <button class="btn btn-n full" data-action="restoreAdminCode" type="button"><span class="btn-txt">Restore access</span></button>
       <!-- OWNER 2026-09-17: the code is backed up to the account once you
            sign in - pull it back with one click, no retyping. -->
-      <button class="btn btn-g full" data-action="restoreAdminCodeFromAccount" type="button" style="margin-top:8px"><span class="btn-txt">Get my admin code from my account</span><span class="spin-dot" aria-hidden="true"></span></button>
+      <button class="btn btn-g full" data-action="restoreAdminCodeFromAccount" type="button" style="margin-top:8px"><span class="btn-txt">Get my Admin panel code from my account</span><span class="spin-dot" aria-hidden="true"></span></button>
       <p class="gbox-sub" id="setup-restore-hint" hidden>A backed-up copy is waiting with your account.</p>
-      <p class="gbox-sub" style="margin:8px 0 0">Use the admin code you set on your other device, or pull the backed-up copy from your account.</p>
+      <p class="gbox-sub" style="margin:8px 0 0">Use the Admin panel code you set on your other device, or pull the backed-up copy from your account.</p>
     </div>
   </form>
 </div>
@@ -392,6 +393,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
       <h1><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> <span class="mark">Admin</span> Panel</h1>
     </div>
     <div class="hdr-actions">
+      <span class="escrow-badge" id="escrow-status" role="status">Not backed up: sign in to back it up</span>
       <a class="btn btn-n btn-s" href="app.html"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> Dashboard</a>
       <button class="btn btn-n btn-s" data-action="changePassword"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Password</button>
       <button class="btn btn-n btn-s" data-action="lockAdmin" style="color:var(--dot-red);" title="Lock the admin panel"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Lock</button>
@@ -399,6 +401,25 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
   </header>
 
   <main class="view-deck">
+    <!-- APP-3 (REFINEMENT-DIRECTIVE 2026-10-24, section 7): after "Restore
+         access" on a new device the owner sees at once what the code brought
+         back - BOTH groups side by side, plus the honest limit on what a code
+         can restore. -->
+    <div class="card restore-recap" id="restore-recap" hidden>
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-unlock"></use></svg> What your code brought back</div>
+      <div class="rr-grid">
+        <div class="rr-group">
+          <h4>On this device</h4>
+          <ul id="rr-local"></ul>
+        </div>
+        <div class="rr-group">
+          <h4>In your cloud</h4>
+          <ul id="rr-cloud"></ul>
+        </div>
+      </div>
+      <div class="hint">Restoring the code restores access to the panel. Projects that exist only on another device are not copied here unless they were linked to the cloud.</div>
+      <button class="btn btn-n btn-s" data-action="dismissRestoreRecap">Got it</button>
+    </div>
     <div class="toolbar">
       <!-- OWNER 2026-09-17 (declutter): the toolbar keeps only creation
            actions. The two download buttons live in the rail's Export group;
@@ -424,6 +445,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
           <input id="cloud-admin-code" type="password" autocomplete="off" placeholder="Site admin code" style="flex:1">
           <button class="btn btn-g" data-action="cloudAdminList"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Load</button>
         </div>
+        <div class="code-which-row"><button type="button" class="code-which" popovertarget="which-code-pop"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-help"></use></svg> Which code is this?</button></div>
         <div class="hint">The site admin code set when the site was deployed. Project codes do not work here. It stays in this tab only.</div>
       </div>
       <div class="t-xs mb8" id="cloud-admin-status"></div>
@@ -475,7 +497,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
       <div class="db-user auth-bar" id="rail-user"></div>
     </div>
   </aside>
-  <div class="db-scrim" id="nav-scrim" data-action="tglNav"></div>
+  <div class="db-scrim" id="nav-scrim" data-action="tglNav" role="presentation" aria-hidden="true"></div>
 </div>
 
 <!-- ═══ Add / Edit project modal ═══ -->
@@ -991,7 +1013,7 @@ async function initGate(){
   showScreen('login-screen');
   setTimeout(()=>document.getElementById('login-pass').focus(), 50);
 }
-/* ---- OWNER 2026-09-09: NEW-DEVICE ADMIN RESTORE ("Enter my admin code") ----
+/* ---- OWNER 2026-09-09: NEW-DEVICE ADMIN RESTORE ("Enter my Admin panel code") ----
    The admin password is a device-local SHA-256 of the code itself, so the
    SAME admin code produces the SAME hash on any device. A signed-in admin
    opening admin.html on a fresh device sees a restore field on the setup
@@ -1015,7 +1037,7 @@ async function restoreAdminCode(){
   const err = document.getElementById('setup-restore-err');
   const btn = document.querySelector('#setup-restore [data-action="restoreAdminCode"]');
   const code = String(input && input.value || '').trim();
-  if (!code){ if (err) err.textContent = 'Enter your admin code first.'; return; }
+  if (!code){ if (err) err.textContent = 'Enter your Admin panel code first.'; return; }
   if (btn){ btn.disabled = true; }
   try{
     // Deterministic hash: the same admin code always yields the same
@@ -1027,6 +1049,7 @@ async function restoreAdminCode(){
     syncAdminCodeToAccount(code);
     // AREA G: a restored admin gets the one-time recovery code flow too.
     const rcode = await rcStoreNewCode();
+    markRestoredNow();
     openRecoveryModal(rcode, enterAdmin);
   }catch(e){
     if (err) err.textContent = 'Could not restore access. Try again.';
@@ -1471,6 +1494,7 @@ document.addEventListener('mmgr:user-changed', function(e){
   // signed-in (setup screen only; other screens ignore it).
   setupRestoreVisibility(e);
   fetchEscrowStatusAndMaybeSync(); // backed-up copy? surface it on the gate
+  refreshEscrowStatus();           // APP-3: header backup status line
 });
 document.addEventListener('mmgr:google-signed-out', function(){
   renderRailUser(null);
@@ -1549,7 +1573,7 @@ async function submitPasswordChange(){
      version, stored with keys it holds (never readable from the
      outside, and never the plaintext code).
    - On a fresh device (no local admin password yet), the signed-in
-     owner clicks "Get my admin code" on the setup screen: the
+     owner clicks "Get my Admin panel code" on the setup screen: the
      server checks the account is real (verified email or Google),
      returns the code's hash (never the plaintext), and access is
      rebuilt right there.
@@ -1570,10 +1594,10 @@ async function syncAdminCodeToAccount(code){
     });
     const data = await res.json().catch(function(){ return {}; });
     if (res.ok && data && data.ok){
-      toast('Admin code backed up to your account.', 'ok');
+      toast('Admin panel code backed up to your account.', 'ok');
       return true;
     }
-    if (data && data.verifyRequired) toast('Verify your email to back up your admin code.', 'warn');
+    if (data && data.verifyRequired) toast('Verify your email to back up your Admin panel code.', 'warn');
     return false;
   }catch(e){
     return false; // offline - the next sign-in/setup retries
@@ -1592,7 +1616,7 @@ async function restoreAdminCodeFromAccount(){
       if (err) err.textContent = (data && data.error) || 'Could not reach your account. Try again.';
       return;
     }
-    if (!data.hasCode){ if (err) err.textContent = 'No admin code is backed up for this account yet. Enter it once on the device where you set it up, signed in, and it will back up.'; return; }
+    if (!data.hasCode){ if (err) err.textContent = 'No Admin panel code is backed up for this account yet. Enter it once on the device where you set it up, signed in, and it will back up.'; return; }
     if (data.verified === false){ if (err) err.textContent = 'Confirm your email first (check your inbox for the link), then try again.'; return; }
     if (!data.readable || !data.hash){ if (err) err.textContent = 'The backed-up copy could not be opened. Set the code again on your main device.'; return; }
     // The server returns the code's hash (the exact value the local gate
@@ -1601,8 +1625,9 @@ async function restoreAdminCodeFromAccount(){
     localStorage.setItem('mmgr_admin_pass_hash', data.hash);
     sessionStorage.setItem('mmgr_admin_session','1');
     if (err) err.textContent = '';
-    toast('Admin code restored from your account.', 'ok');
+    toast('Admin panel code restored from your account.', 'ok');
     const rcode = await rcStoreNewCode();
+    markRestoredNow();
     openRecoveryModal(rcode, enterAdmin);
   }catch(e){
     if (err) err.textContent = 'Could not reach your account. Check the connection and try again.';
@@ -1665,10 +1690,62 @@ function admLoadTheirs(){
   toast('Loaded the other tab\'s version.');
 }
 
+/* ============================================================
+   APP-3 (REFINEMENT-DIRECTIVE 2026-10-24, section 7) - the three code
+   names, the backup status line, and what a restore brought back.
+   ============================================================ */
+function refreshEscrowStatus(){
+  const el = document.getElementById('escrow-status');
+  if (!el) return;
+  const GA = window.MMGR && window.MMGR.GoogleAuth;
+  const signedIn = !!(GA && GA.isSignedIn && GA.isSignedIn());
+  if (!signedIn){ el.textContent = 'Not backed up: sign in to back it up'; el.className = 'escrow-badge off'; return; }
+  el.textContent = 'Checking your account...'; el.className = 'escrow-badge';
+  fetch('/api/auth/admin-code', { credentials: 'same-origin' })
+    .then(function(res){ return res.ok ? res.json() : Promise.reject(0); })
+    .then(function(d){
+      const has = !!(d && d.ok && d.hasCode);
+      el.textContent = has ? 'Backed up to your account' : 'Not backed up yet';
+      el.className = 'escrow-badge ' + (has ? 'on' : 'off');
+    })
+    .catch(function(){ el.textContent = 'Not backed up yet'; el.className = 'escrow-badge off'; });
+}
+function markRestoredNow(){
+  try{ sessionStorage.setItem('mmgr_restore_recap','1'); }catch(e){}
+}
+function renderRestoreRecap(){
+  const card = document.getElementById('restore-recap');
+  if (!card) return;
+  let flag = '';
+  try{ flag = sessionStorage.getItem('mmgr_restore_recap') || ''; sessionStorage.removeItem('mmgr_restore_recap'); }catch(e){}
+  if (!flag){ card.hidden = true; return; }
+  const local = document.getElementById('rr-local');
+  const cloud = document.getElementById('rr-cloud');
+  const mine = (projects || []).filter(function(p){ return !p.isDemo && !(p.id && String(p.id).indexOf('demo-') === 0); });
+  if (local) local.innerHTML = mine.length
+    ? mine.map(function(p){ return '<li>' + escapeHtml(p.title || 'Untitled project') + '</li>'; }).join('')
+    : '<li class="hint">No projects on this device yet.</li>';
+  if (cloud) cloud.innerHTML = '<li class="hint">Checking your account...</li>';
+  card.hidden = false;
+  // [VERIFY] (directive section 7): the cloud group is fetched AFTER restore
+  // through GET /api/cloud/projects and shown here, not inferred.
+  fetch('/api/cloud/projects', { credentials: 'same-origin' })
+    .then(function(res){ return res.ok ? res.json() : Promise.reject(res.status); })
+    .then(function(d){
+      const list = (d && d.projects) || [];
+      if (!cloud) return;
+      cloud.innerHTML = list.length
+        ? list.map(function(x){ return '<li>' + escapeHtml(x.label || x.linkedName || x.projectId) + '</li>'; }).join('')
+        : '<li class="hint">Nothing in your cloud yet. Link a project from its Cloud Backup card to put one there.</li>';
+    })
+    .catch(function(){ if (cloud) cloud.innerHTML = '<li class="hint">Could not reach your account. Sign in and open Cloud Backup in a project to check.</li>'; });
+}
 function enterAdmin(){
   showScreen('admin-app');
   syncAdminHdr();
   loadProjects();
+  refreshEscrowStatus();
+  renderRestoreRecap();
   _admLastWritten = JSON.stringify(projects);
   renderProjects();
   mergeLiveData();
@@ -2409,7 +2486,7 @@ async function cloudAdminList(){
     const res = await fetch('/api/cloud/admin/projects', { headers:{ 'X-Admin-Code': code } });
     const data = await res.json().catch(()=>({}));
     if(!res.ok || !data.ok){
-      cloudAdminStatus((data && data.error) || 'Failed (HTTP ' + res.status + '). ' + (res.status === 503 ? 'The site has no admin code configured.' : res.status === 403 ? 'That is not the site admin code. Project codes (owner/editor/viewer) do NOT unlock this section. Enter those on the launcher (app.html). The site admin code is set when the site is deployed.' : ''), 'err');
+      cloudAdminStatus((data && data.error) || 'Failed (HTTP ' + res.status + '). ' + (res.status === 503 ? 'No site admin code is set for this site.' : res.status === 403 ? 'That is not the site admin code. Project codes (owner/editor/viewer) do NOT unlock this section. Enter those on the launcher (app.html). The site admin code is set when the site is deployed.' : ''), 'err');
       return;
     }
     const list = document.getElementById('cloud-admin-list');
@@ -3183,6 +3260,7 @@ const ADMIN_ACTION_MAP = {
   'restoreAdminCodeFromAccount': () => restoreAdminCodeFromAccount(),
   'adminLogin': () => handleLogin(),
   'restoreAdminCode': () => restoreAdminCode(),
+  'dismissRestoreRecap': (el) => { const c = document.getElementById('restore-recap'); if (c) c.hidden = true; },
   'tglPwVis': (el) => tglPwVis(el),
   'openForgot': () => openForgot(),
   'forgotBack': () => forgotBack(),
@@ -3366,5 +3444,17 @@ if (window.location.protocol === 'http:' || window.location.protocol === 'https:
 
 
 <script defer src="js/mmgr-dock.js"></script>
+<!-- APP-3 (REFINEMENT-DIRECTIVE 2026-10-24, section 7): ONE shared
+     "Which code is this?" popover behind every code field. Native popover
+     API - keyboard reachable, Esc closes, click outside closes, no JS. -->
+<div id="which-code-pop" popover class="code-pop" aria-labelledby="which-code-pop-t">
+  <h3 id="which-code-pop-t">Which code is this?</h3>
+  <dl class="code-pop-list">
+    <div><dt>Site admin code</dt><dd>Opens the cloud admin for this site (Cloud Projects in the admin panel). Set when the site was deployed. It stays in this tab.</dd></div>
+    <div><dt>Admin panel code</dt><dd>Opens your own projects admin panel, on this device only. Backed up to your account when you are signed in.</dd></div>
+    <div><dt>Project code and Client code</dt><dd>Open one project with a role. One code per project, given to you by the project owner.</dd></div>
+  </dl>
+  <button type="button" class="btn btn-n btn-s" popovertarget="which-code-pop" popovertargetaction="hide">Close</button>
+</div>
 </body>
 </html>

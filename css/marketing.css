@@ -49,11 +49,12 @@
   --header-navy: #1c1917; /* warm charcoal - footer/page-hero/guide band/photo overlays */
   --card: #ffffff;
   --border: #e5e0d8; /* warm neutral border */
-  /* Brand: orange/gold = identity. Cyan = secondary accent. */
-  --gold: #d96b27; /* primary brand orange */
-  --gold-hover: #c25a1b; /* brand hover */
-  --gold-deep: #a84a15; /* brand deep - text accent on white */
-  --gold-rgb: 217, 107, 39;
+  /* Brand: GOLD = identity. The orange is retired (owner 2026-10-28).
+     Cyan = secondary accent. */
+  --gold: #d4af37; /* primary brand gold = the bullion fill */
+  --gold-hover: #bd8522; /* brand hover step - the gradient's deep end */
+  --gold-deep: #7a5a0b; /* brand deep - gold as words on white (6.37:1) */
+  --gold-rgb: 212, 175, 55;
   /* -- Bullion (gold gradient, bronze border, readable ink) ---- */
   /* RESTORED 2026-10-25: the cyan/magenta commit (29696d8) left the header
      comment here with NO tokens under it - the six values were written as
@@ -94,7 +95,7 @@
   --border-subtle: rgba(255, 255, 255, 0.12);
 
   /* Radial ambient for hero visual cards (warm off-white only, no repaint on dark). */
-  --hero-glow-1: radial-gradient(120% 90% at 50% -10%, rgba(217, 107, 39, 0.28), transparent 60%);
+  --hero-glow-1: radial-gradient(120% 90% at 50% -10%, rgba(212, 175, 55, 0.28), transparent 60%);
   --hero-glow-2: radial-gradient(100% 70% at 0% 110%, rgba(0, 188, 212, 0.18), transparent 55%);
   --hero-glow-3: radial-gradient(90% 80% at 100% 20%, rgba(129, 140, 248, 0.16), transparent 60%);
 
@@ -161,10 +162,10 @@ body.dark-mode {
   --header-navy: #1a1614;
   --card: #242019;
   --border: #3a342c;
-  --gold: #e8923a;
-  --gold-hover: #f0a050;
-  --gold-deep: #ffd080;
-  --gold-rgb: 232, 146, 58;
+  --gold: #d4af37;
+  --gold-hover: #e6c547;
+  --gold-deep: #e6c547;
+  --gold-rgb: 212, 175, 55;
   --gold-text: var(--gold); /* gold words in dark follow the accent, unchanged */
   --teal: #4dd0e1;
   --teal-deep: #26c6da;
@@ -228,7 +229,7 @@ body.dark-mode {
   color: var(--lit-white);
 }
 .pal-btn:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-deep);
   outline-offset: 1px;
 }
 .pal-btn[aria-pressed='true'] {
@@ -284,7 +285,7 @@ button {
   cursor: pointer;
 }
 :focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-deep);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -951,7 +952,7 @@ body.dark-mode .nav-toggle {
   border-color: var(--gold);
 }
 .signin-btn:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-deep);
   outline-offset: 1px;
 }
 .signin-btn[aria-expanded='true'] {
@@ -1091,7 +1092,7 @@ html body.dark-mode .btn-gold:hover {
   background: var(--gold-50);
 }
 .nav-dd-item:focus-visible {
-  outline: 2px solid var(--gold-500);
+  outline: 2px solid var(--gold-deep);
   outline-offset: -1px;
   border-radius: 8px;
 }
@@ -1476,7 +1477,7 @@ body.dark-mode .nav-dd-item:hover {
   color: var(--lit-white);
 }
 .signin-sheet .email-auth-pw-btn:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-deep);
   outline-offset: 1px;
   border-radius: var(--radius-sm);
 }
@@ -1502,7 +1503,7 @@ body.dark-mode .nav-dd-item:hover {
   background: var(--gold-hover);
 }
 .signin-sheet .email-auth-pw-submit:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-deep);
   outline-offset: 1px;
 }
 .signin-sheet .email-auth-pw-submit:disabled {
@@ -1524,7 +1525,7 @@ body.dark-mode .nav-dd-item:hover {
   color: var(--lit-white);
 }
 .signin-sheet .email-auth-pw-cancel:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-deep);
   outline-offset: 1px;
   border-radius: var(--radius-sm);
 }
@@ -1626,7 +1627,7 @@ body.dark-mode .nav-dd-item:hover {
   color: var(--status-danger);
 }
 .signin-sheet .signin-out:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-deep);
   outline-offset: 1px;
 }
 
@@ -2298,7 +2299,7 @@ body.dark-mode .hero-card .hc-stepdot {
   transform: translateY(-1px);
 }
 .feat-btn:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-deep);
   outline-offset: 2px;
 }
 .feat-btn:active {
@@ -2791,7 +2792,7 @@ body.dark-mode .hero-card .hc-stepdot {
   transform: translateX(14px);
 }
 .ft-perf-in:focus-visible + .ft-perf-track {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-deep);
   outline-offset: 2px;
 }
 
@@ -3052,7 +3053,7 @@ body.dark-mode .hero-card .hc-stepdot {
   color: currentColor;
 }
 .rv-star-btn input:focus-visible + .ico {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-deep);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -3767,7 +3768,7 @@ body.dark-mode .hero-card .hc-stepdot {
   font-size: var(--fs-body);
 }
 .auth-field input:focus {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-deep);
   outline-offset: 1px;
   border-color: var(--gold);
 }
@@ -3813,7 +3814,7 @@ body.dark-mode .hero-card .hc-stepdot {
   font-size: var(--fs-small);
 }
 .auth-recover input:focus {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-deep);
   outline-offset: 1px;
   border-color: var(--gold);
 }
@@ -4212,24 +4213,24 @@ body.dark-mode .hero-card .hc-stepdot {
   cursor: pointer;
 }
 .signin-card #marketing-email-auth .email-auth-eye:hover {
-  color: #e8923a;
+  color: #e6c547;
 }
 .signin-card #marketing-email-auth .email-auth-eye:focus-visible {
-  outline: 2px solid #e8923a;
+  outline: 2px solid #e6c547;
   outline-offset: -2px;
 }
 .signin-card #marketing-email-auth .email-auth-submit {
-  background: #e8923a;
+  background: var(--gold);
   color: #1c1917;
   box-shadow: none;
 }
 .signin-card #marketing-email-auth .email-auth-submit:hover {
-  background: #f0a050;
+  background: var(--gold-hover);
   box-shadow: 0 0 20px rgba(var(--gold-rgb), 0.35);
 }
 .signin-card #marketing-email-auth .email-auth-submit:focus-visible,
 .signin-card #marketing-email-auth .email-auth-input:focus-visible {
-  outline: 2px solid #e8923a;
+  outline: 2px solid #e6c547;
   outline-offset: 2px;
 }
 .signin-card #marketing-email-auth .email-auth-trust {
@@ -4249,7 +4250,7 @@ body.dark-mode .hero-card .hc-stepdot {
   text-decoration: underline;
 }
 .signin-card #marketing-email-auth .auth-legal a:hover {
-  color: #e8923a;
+  color: #e6c547;
 }
 .signin-card .gis-fallback-btn.is-wide {
   align-self: stretch;
@@ -4271,7 +4272,7 @@ body.dark-mode .hero-card .hc-stepdot {
   background: #f4f4f5;
 }
 .signin-card .gis-fallback-btn.is-wide:focus-visible {
-  outline: 2px solid #e8923a;
+  outline: 2px solid #e6c547;
   outline-offset: 2px;
 }
 .signin-card .gis-fallback-note {
@@ -4907,7 +4908,7 @@ body.dark-mode .pricing-card .pc-list li {
   border-color: var(--gold);
 }
 .consent-btn:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-deep);
   outline-offset: 2px;
 }
 .consent-btn:active {
@@ -4952,7 +4953,7 @@ body.dark-mode .pricing-card .pc-list li {
   color: var(--gold-deep);
 }
 .consent-link:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-deep);
   outline-offset: 2px;
   border-radius: 3px;
 }
@@ -4975,7 +4976,7 @@ body.dark-mode .consent-btn {
   color: var(--on-navy);
 }
 body.dark-mode .consent-btn:hover {
-  background: rgba(232, 146, 58, 0.16);
+  background: rgba(212, 175, 55, 0.16);
   border-color: var(--gold-300);
 }
 body.dark-mode .consent-choose {

@@ -84,13 +84,13 @@ svg.ico use {
   --text-secondary: #555555; /* secondary text */
   --text-muted: #666666; /* muted/supporting text */
   --slate: #666666;
-  /* -- Brand (orange/gold = identity) -- */
-  --brand: #d96b27; /* primary brand orange */
-  --brand-hover: #c25a1b; /* brand hover state */
-  --brand-subtle: rgba(217, 107, 39, 0.08); /* subtle brand tint */
-  --brand-on: #ffffff; /* foreground on brand surfaces */
-  --gold: #d96b27; /* alias: gold = brand for backward compat */
-  --gold-rgb: 217, 107, 39;
+  /* -- Brand (GOLD = identity; the orange is retired, owner 2026-10-28) -- */
+  --brand: #d4af37; /* primary brand gold = the bullion fill */
+  --brand-hover: #bd8522; /* brand hover step - the gradient's deep end */
+  --brand-subtle: rgba(212, 175, 55, 0.08); /* subtle brand tint */
+  --brand-on: #1a1a1a; /* ink ON a gold surface (never white: 2.0:1 on gold) */
+  --gold: #d4af37; /* alias: gold = brand for backward compat */
+  --gold-rgb: 212, 175, 55;
   --cyan: #50e8f4; /* cyan theme accent - maps to existing token system, does not replace gold */
   --cyan-rgb: 80, 232, 244;
   --thin-air: #c7f8fe; /* cyan theme secondary accent */
@@ -98,11 +98,12 @@ svg.ico use {
   --cyan-text-on-light: #0d1a26; /* cyan text on light surface WCAG AA */
   --cyan-bg-on-dark: #050a10; /* cyan background on dark mode */
 
-  /* Gold used as TEXT on a light surface. The gold FILL keeps --gold; a gold
-     word on white needs the deeper step to clear AA (owner 2026-10-10: the
-     identity is gold, and the gold must stay readable - never swapped for a
-     different hue). 5.74:1 on white, 4.90:1 on the soft-gold tint. */
-  --gold-ink: #a84a15;
+  /* Gold used as TEXT and as focus rings / meaningful borders on a light
+     surface. The gold FILL keeps --gold; a gold word on white needs the deep
+     bronze step to clear AA (owner 2026-10-10: the identity is gold, and the
+     gold must stay readable - never swapped for a different hue). 6.37:1 on
+     white, so it also clears the 3:1 floor a focus ring or input border owes. */
+  --gold-ink: #7a5a0b;
   /* -- Bullion (gold gradient, bronze border, readable ink) ---- */
   --bullion-light: #e6c547;
   --bullion: #d4af37;
@@ -465,8 +466,8 @@ body.dark-mode .sec-btn:hover path {
   font-size: 0.78rem;
 }
 .photo-item a:hover .photo-thumb {
-  color: var(--brand);
-  border-color: var(--brand);
+  color: var(--gold-text);
+  border-color: var(--gold-ink);
 }
 body.dark-mode .photo-item {
   border-color: var(--lit-white-18);
@@ -477,8 +478,8 @@ body.dark-mode .photo-thumb-link {
   background: var(--lit-white-05);
 }
 body.dark-mode .photo-item a:hover .photo-thumb {
-  color: var(--brand);
-  border-color: var(--brand);
+  color: var(--gold-text);
+  border-color: var(--gold-ink);
 }
 
 /* Photos panel controls (owner 2026-10-11). These used to be hidden by
@@ -639,7 +640,7 @@ body {
   color: var(--text);
 }
 .pal-btn:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 1px;
 }
 .pal-btn[aria-pressed='true'] {
@@ -714,7 +715,7 @@ body {
   padding: 4px 10px;
 }
 .dock:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 /* Reserve scroll space so page content never hides behind the dock. */
@@ -925,7 +926,7 @@ body:not(.crosshair-on) #cy {
   transition: color var(--tr);
 }
 .tab-btn:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 .tab-btn:hover {
@@ -967,7 +968,7 @@ body:not(.crosshair-on) #cy {
   transition: var(--tr-ui);
 }
 .settings-btn:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 .settings-btn:hover {
@@ -1073,7 +1074,7 @@ body.focus-mode .focus-ind {
   flex-shrink: 0;
 }
 .nav-btn:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 .nav-btn:hover {
@@ -1188,7 +1189,7 @@ body.nav-open #nav-scrim {
   background: color-mix(in oklch, var(--gold) 10%, transparent);
 }
 .sb-close:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 1px;
 }
 body.sidebar-open .nav-btn .ico,
@@ -1288,7 +1289,7 @@ body.sidebar-open .sb-close .ico {
   margin-left: auto;
 }
 .rail-link:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
   border-radius: var(--radius-control);
 }
@@ -1387,7 +1388,7 @@ body.sidebar-open .sb-close .ico {
   gap: 6px;
 }
 .sec-btn:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 .sec-btn.active {
@@ -1810,7 +1811,7 @@ body.sidebar-open .sb-close .ico {
   color: var(--gold-text);
 }
 .gn-star:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 1px;
   border-radius: 3px;
 }
@@ -2414,7 +2415,7 @@ body.sidebar-open .sb-close .ico {
   flex-shrink: 0;
 }
 .cl-toggle:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 1px;
 }
 .cl-toggle:hover {
@@ -2431,7 +2432,7 @@ body.sidebar-open .sb-close .ico {
   transform: rotate(90deg);
 }
 .cl-toggle:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 1px;
 }
 .cl-diffs {
@@ -2532,7 +2533,7 @@ body.sidebar-open .sb-close .ico {
   filter: brightness(1.25);
 }
 .raci-cell:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 .raci-legend-chip {
@@ -2664,7 +2665,7 @@ body.dark-mode .rm-hi {
   border-color: var(--gold);
 }
 .rm-cell:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 .rm-active {
@@ -2680,7 +2681,7 @@ body.dark-mode .rm-hi {
   padding: 0 6px;
   border-radius: 100px;
   background: var(--gold);
-  color: var(--on-primary);
+  color: var(--on-gold);
   font-size: 0.68rem;
   font-weight: 800;
 }
@@ -2721,7 +2722,7 @@ body.dark-mode .rm-active {
   line-height: 1.4;
 }
 .btn:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 .btn:active,
@@ -2738,7 +2739,7 @@ body.dark-mode .rm-active {
 }
 .btn-o {
   background: var(--gold);
-  color: var(--on-primary);
+  color: var(--on-gold);
 }
 .btn-o:hover {
   background: var(--gold-dark, #7c2d12);
@@ -2926,7 +2927,7 @@ body.dark-mode .rm-active {
   transition: transform var(--tr);
 }
 .cbtn:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -3360,7 +3361,7 @@ body.dark-mode .rm-active {
   gap: 6px;
 }
 .cu-tab:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 .cu-tab:hover {
@@ -4927,7 +4928,7 @@ body.gantt-dragging .gb {
 }
 .wbs-row:focus-visible,
 .wbs-row.wbs-sel {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: -2px;
   background: rgba(var(--gold-rgb), 0.06);
 }
@@ -5498,7 +5499,7 @@ body.readonly-mode
   background: var(--gold);
 }
 .tgl input:focus-visible + .tsl {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 
@@ -5709,7 +5710,7 @@ body.readonly-mode
   color: var(--on-gold);
 }
 .share-subtab:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 .share-subpane[hidden] {
@@ -5754,7 +5755,7 @@ body.readonly-mode
   background: color-mix(in oklch, var(--gold) 8%, transparent);
 }
 .rail-ctl-row:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
   border-radius: var(--radius-control);
 }
@@ -5808,7 +5809,7 @@ body.readonly-mode
   padding-right: 24px;
 }
 .ctl-sec[data-ctl-toggle]:hover {
-  color: var(--brand);
+  color: var(--gold-text);
 }
 .ctl-sec[data-ctl-toggle] .ico-caret {
   position: absolute;
@@ -6640,7 +6641,7 @@ body.db-page .db-user[hidden] {
 @media (prefers-reduced-motion: reduce) {
   .pulse-attn {
     animation: none;
-    outline: 2px solid var(--gold);
+    outline: 2px solid var(--gold-ink);
   }
 }
 .dirty-ind.on {
@@ -6727,7 +6728,7 @@ body.db-page .db-user[hidden] {
   background: color-mix(in oklch, var(--gold) 10%, transparent);
 }
 .bk-opt:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 1px;
 }
 .bk-opt-ico {
@@ -9701,7 +9702,7 @@ body.dark-mode .ai-byo-status[data-state='untested'] {
   transform: scale(var(--press-scale, 0.96));
 }
 .bcp-back:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 .bcp-back .ico {
@@ -9811,7 +9812,7 @@ body.dark-mode .ai-byo-status[data-state='untested'] {
   transform: translateX(14px);
 }
 .bcp-perf-in:focus-visible + .bcp-perf-track {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 @media (max-width: 560px) {
@@ -9844,7 +9845,7 @@ body.dark-mode .ai-byo-status[data-state='untested'] {
   border-color: var(--gold);
 }
 .bcp-theme:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 .bcp-theme .ico {
@@ -9896,7 +9897,7 @@ body.dark-mode .bcp-ico-moon {
   background: color-mix(in oklch, var(--gold) 10%, var(--card));
 }
 .bcp-ratebook:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 .bcp-ratebook-text {
@@ -10034,7 +10035,7 @@ body.dark-mode .bcp-ico-moon {
   cursor: pointer;
 }
 .bcp-totalbar-show:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 /* The IntersectionObserver hides the bar while the estimate card is
@@ -10335,7 +10336,7 @@ body.dark-mode .bcp-ico-moon {
   color: var(--gold-ink);
 }
 .bcp-seg-btn:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: -2px;
 }
 /* F4-2 result actions (print / CSV / save) under the live estimate. */
@@ -10941,7 +10942,7 @@ html.mmgr-tour-active .bcp-tour-nudge {
   color: var(--gold-text);
 }
 .set-reset:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -11971,7 +11972,7 @@ body.ai-overlay::after {
   padding: 6px 8px;
 }
 .ai-hist-search:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 1px;
 }
 .ai-hist-list {
@@ -12148,7 +12149,7 @@ body.dark-mode .ai-hist-when {
   color: var(--gold-text);
 }
 .ai-tier-badge:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 /* Thread: centred reading column, never a wall of text edge to edge. */
@@ -13171,7 +13172,7 @@ body.db-page:not(.dark-mode) .db-link .ico {
   flex-shrink: 0;
 }
 body.db-page:not(.dark-mode) .db-link:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
   border-radius: var(--radius-control);
 }
@@ -13201,7 +13202,7 @@ body.db-page:not(.dark-mode) .db-link:focus-visible {
     flex-shrink: 0;
   }
   body.db-page:not(.dark-mode) .db-hamb:focus-visible {
-    outline: 2px solid var(--gold);
+    outline: 2px solid var(--gold-ink);
     outline-offset: 2px;
   }
   body.db-page:not(.dark-mode) .db-hamb .ico {
@@ -13307,7 +13308,7 @@ body.db-page:not(.dark-mode) .db-link:focus-visible {
 }
 .email-auth-toggle:focus-visible,
 .email-auth-alt button:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 1px;
   border-radius: var(--radius);
 }
@@ -13414,7 +13415,7 @@ body.db-page:not(.dark-mode) .db-link:focus-visible {
   background: rgba(var(--gold-rgb), 0.08);
 }
 .email-auth-eye:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 1px;
 }
 .email-auth-eye .ico {
@@ -13538,7 +13539,7 @@ body.db-page:not(.dark-mode) .db-link:focus-visible {
   color: var(--gold-text);
 }
 .email-auth-pw-btn:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 1px;
   border-radius: var(--radius);
 }
@@ -13560,7 +13561,7 @@ body.db-page:not(.dark-mode) .db-link:focus-visible {
   color: var(--gold-text);
 }
 .email-auth-pw-cancel:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 1px;
   border-radius: var(--radius);
 }
@@ -13617,7 +13618,7 @@ body.db-page:not(.dark-mode) .db-link:focus-visible {
   color: var(--gold-text);
 }
 .gis-fallback-btn:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 .gis-fallback-btn:disabled {
@@ -13656,7 +13657,7 @@ body.db-page .db-hamb.is-open .ico {
   transform: rotate(180deg);
 }
 body.db-page .db-hamb:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 /* Moon/sun quick toggle (owner 2026-08-15): the square box around the icon
@@ -13688,7 +13689,7 @@ body.db-page .db-quick:hover {
   color: var(--gold-text);
 }
 body.db-page .db-quick:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 /* desktop: */
@@ -13775,7 +13776,7 @@ body.db-page .db-project:hover {
   background: color-mix(in oklch, var(--gold) 8%, transparent);
 }
 body.db-page .db-project:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 body.db-page .db-project .db-project-ico {
@@ -13828,7 +13829,7 @@ body.db-page .db-btn:hover {
   border-color: var(--gold);
 }
 body.db-page .db-btn:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 body.db-page .db-btn .ico {
@@ -13862,7 +13863,7 @@ body.db-page .db-pass {
   color: var(--text);
 }
 body.db-page .db-pass:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 body.db-page .db-backup .drive-status {
@@ -13988,7 +13989,7 @@ body.dark-mode.db-page .db-foot {
   color: var(--text-heading);
 }
 .theme-select:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 1px;
 }
 .theme-select option {
@@ -14041,7 +14042,7 @@ body.db-page .db-upgrade:hover {
   filter: brightness(1.08);
 }
 body.db-page .db-upgrade:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 body.db-page .db-user {
@@ -14102,7 +14103,7 @@ body.db-page .db-signin:hover {
   color: var(--gold-text);
 }
 body.db-page .db-signin:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 body.db-page .db-signin .ico {
@@ -14597,7 +14598,7 @@ body.db-page .db-btn:hover .ico {
   background: color-mix(in oklch, var(--gold) 20%, transparent);
 }
 body.db-page .db-btn:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 body.db-page .db-pass {
@@ -14632,7 +14633,7 @@ body.db-page .db-avatar:hover {
   background: color-mix(in oklch, var(--gold) 9%, transparent);
 }
 body.db-page .db-avatar:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
   border-radius: 100px;
 }
@@ -15160,7 +15161,7 @@ body.db-page .cd-card .cd-title {
   color: var(--slate);
 }
 .recent-card:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 /* ---- PART F T9 (2026-08-16): shared-project pin cards ----
@@ -15724,7 +15725,7 @@ body.dark-mode.db-page .db-auto-lbl {
   color: var(--gold-text);
 }
 .toast-act:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 1px;
 }
 @keyframes toast-in {
@@ -15847,7 +15848,7 @@ body.dark-mode.db-page .db-auto-lbl {
   border: none;
   cursor: grab;
   background: var(--gold);
-  color: var(--lit-white);
+  color: var(--on-gold);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -15867,10 +15868,12 @@ body.dark-mode.db-page .db-auto-lbl {
 /* OWNER 2026-09-09: dark mode remaps --gold to white, which rendered this
    FAB as a white circle with a white icon (the "pure white blob"). The AI
    FAB keeps its fixed brand color across themes (same pattern); the
-   calculator keeps its light-theme brand orange in dark so the glyph stays
-   visible. Light mode (incl. rose palette) still follows --gold. */
+   calculator pins the bullion gold in dark so the blob stays gold, and the
+   ink token (--on-gold) keeps the glyph visible on it. Light mode (incl.
+   rose palette) still follows --gold. */
 body.dark-mode .calc-fab {
-  background: #d96b27;
+  background: var(--bullion);
+  color: var(--on-gold);
 }
 .calc-fab .ico {
   width: 22px;
@@ -16104,7 +16107,7 @@ body.dark-mode .calc-fab {
   border: none;
   border-radius: var(--radius-control);
   background: var(--gold);
-  color: var(--lit-white);
+  color: var(--on-gold);
   font-size: 0.76rem;
   font-weight: 700;
   cursor: pointer;
@@ -16213,7 +16216,7 @@ body.dark-mode .calc-fab {
 }
 .calc-eq {
   background: var(--gold);
-  color: var(--lit-white);
+  color: var(--on-gold);
 }
 .calc-eq:hover {
   opacity: 0.9;
@@ -16261,7 +16264,7 @@ body.dark-mode .calc-fab {
 .calc-action:focus-visible,
 .calc-fab:focus-visible,
 .calc-close:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 @media (prefers-reduced-motion: reduce) {
@@ -16684,8 +16687,8 @@ body.view-3d .view-deck {
    ============================================================ */
 body.dark-mode:not(.db-page) {
   --radius-rect: 10px; /* rounded-rectangle control radius (owner 2026-09-20) */
-  --gold-accent: #d96b27; /* the brand gold returns for HOVER accents only */
-  --gold-accent-rgb: 217, 107, 39;
+  --gold-accent: #d4af37; /* the brand gold returns for HOVER accents only */
+  --gold-accent-rgb: 212, 175, 55;
 }
 body.dark-mode:not(.db-page) .btn {
   background: transparent;
@@ -16937,6 +16940,142 @@ body:not(.db-page) .bs {
 }
 
 /* ============================================================
+   APP-3 (REFINEMENT-DIRECTIVE 2026-10-24, section 7) - the three code
+   names: a "Which code is this?" trigger beside every code field, the
+   native popover it opens (one per page), the header backup status and
+   the post-restore "what came back" card on the admin panel.
+   ============================================================ */
+.code-which-row {
+  margin-top: 6px;
+}
+button.code-which {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--gold-text);
+  cursor: pointer;
+}
+button.code-which .ico {
+  width: 0.95em;
+  height: 0.95em;
+}
+button.code-which:hover {
+  text-decoration: underline;
+}
+button.code-which:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 2px;
+}
+/* The popover is centred in the top layer: solid content surface, no glass,
+   no blur, so Performance Mode and reduced transparency need no extra rule. */
+.code-pop {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(430px, calc(100vw - 32px));
+  max-height: min(80vh, 520px);
+  overflow: auto;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.3);
+}
+.code-pop::backdrop {
+  background: rgba(15, 23, 42, 0.45);
+}
+.code-pop h3 {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+}
+.code-pop-list {
+  margin: 0 0 12px;
+}
+.code-pop-list div {
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+.code-pop-list div:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.code-pop-list dt {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--gold-text);
+}
+.code-pop-list dd {
+  margin: 2px 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+/* Header backup status (admin panel). Small, one line, no interaction. */
+.escrow-badge {
+  display: inline-flex;
+  align-items: center;
+  max-width: 230px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  color: var(--slate);
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.escrow-badge.on {
+  color: var(--gold-text);
+  border-color: var(--gold);
+}
+@media (max-width: 760px) {
+  .escrow-badge {
+    display: none;
+  }
+}
+/* Post-restore recap card (admin panel, first thing after Restore access).
+   The id-qualified guard outranks the dashboard grid's display:flex rule,
+   which otherwise paints the card while it still carries the hidden state. */
+.restore-recap {
+  border-left: 3px solid var(--gold);
+}
+#restore-recap[hidden],
+#panel-dash .g3 > .card[hidden] {
+  display: none;
+}
+.rr-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 10px 0;
+}
+.rr-group h4 {
+  margin: 0 0 6px;
+  font-size: 0.8rem;
+}
+.rr-group ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.8rem;
+}
+.rr-group li {
+  margin: 2px 0;
+}
+.restore-recap .btn {
+  margin-top: 4px;
+}
+
+/* ============================================================
    BUILD COST CALCULATOR - OWNER WAVE 2026-10-02
    One block for the owner directive: replicate the app page's
    visual signature on the calculator, replace the pill icons,
@@ -16987,7 +17126,7 @@ body:not(.db-page) .bs {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 .bcp-tab:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 .bcp-notes {
@@ -17312,10 +17451,10 @@ body.calculator-page .bcp-rr-x {
 }
 .bcp-field-custom input {
   /* --gold-500 is a MARKETING token and is not defined on this page, so it
-     resolved to nothing and the gold accent silently vanished. --brand is
-     this page's own gold identity (defined light and dark), so the custom
-     fields keep the accent the rest of the calculator uses. */
-  border-color: var(--brand);
+     resolved to nothing and the gold accent silently vanished. The deep
+     bronze step carries the accent HERE because an input's border is a UI
+     boundary: the plain gold fill is 1.9:1 on white, under the 3:1 floor. */
+  border-color: var(--gold-ink);
   border-radius: var(--radius-control);
   padding: 8px 10px;
   font-size: 15px;
@@ -17472,7 +17611,7 @@ body.calculator-page .bcp-rr-x {
   color: var(--slate);
 }
 .rr-q:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 1px;
 }
 .rr-hits {
@@ -17686,7 +17825,7 @@ body.calculator-page .bcp-rr-x {
   border-color: var(--gold);
 }
 .bcp-rr-x:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 .bcp-rr-x .ico {
@@ -17922,7 +18061,7 @@ body.rr-open {
   border-radius: 12px;
 }
 .bcp-ai-input:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 .bcp-ai-input:disabled {
@@ -18023,7 +18162,7 @@ body.rr-open {
   border-color: var(--gold);
 }
 .bcp-ai-histopen:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
 .bcp-ai-histtitle {
@@ -18142,7 +18281,7 @@ body.rr-open {
   border-radius: 50%;
   font-size: 0.7rem;
   font-weight: 800;
-  color: var(--card);
+  color: var(--on-gold);
   background: var(--gold);
 }
 .bcp-ai-me-mail {

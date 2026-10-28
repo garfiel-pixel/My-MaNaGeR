@@ -257,6 +257,19 @@ jobs:
         id: verify-sweep13
         run: node tools/verify-sweep13.cjs
 
+      # SW-10 (REFINEMENT-DIRECTIVE-2026-10-24 section 11, Wave F): the
+      # sweep's "clickable div/span with no role, tabindex or key handler"
+      # detector made permanent. Baseline was 16 hits across admin.html,
+      # app.html and project.html. This gate asserts the sweep now reports
+      # zero, that the surfaces it judges still exist (a regex that matches
+      # nothing also reports zero), that the two real controls carry
+      # role=button + tabindex=0 with a delegated keydown that turns Enter
+      # and Space into a click, and that no aria-hidden scrim became
+      # focusable along the way.
+      - name: "T1: Clickable div/span a11y (SW-10 permanent test)"
+        id: verify-sw10
+        run: node tools/verify-sw10.cjs
+
       # GANTT-1 (REFINEMENT-DIRECTIVE-2026-10-24 section 8): ONE view builder
       # feeds the live chart and the PNG / SVG / PDF exports. Runs the pure
       # module in a vm sandbox against the committed bank fixture, proves the
@@ -711,6 +724,15 @@ jobs:
         id: qa-globe-spin
         run: node tools/qa-globe-spin.cjs
 
+      # APP-3 (REFINEMENT-DIRECTIVE-2026-10-24 section 7, Wave F): the three
+      # code names, the "Which code is this?" popover beside every code field,
+      # the admin header backup status, and the restore panel that lists BOTH
+      # groups (On this device / In your cloud from GET /api/cloud/projects).
+      # Static word scan plus real clicks in a fresh browser profile.
+      - name: "T4: Three code names + restore recap (qa-code-names)"
+        id: qa-code-names
+        run: node tools/qa-code-names.cjs
+
       # S2 remainder of AUDIT-DIRECTIVE-2026-10-18: C6 sticky panel +
       # mobile total bar, C7 switch rows, X-1 render scheduler, X-2 paint
       # cost. Static checks + real DOM/CSSOM assertions (setContent, no
@@ -794,6 +816,7 @@ jobs:
           echo "| CSS integrity | ${{ steps.css.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| A11y labels | ${{ steps.a11y.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| A11y axe (serious/critical = 0) | ${{ steps.qa-a11y-axe.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Three code names + restore recap | ${{ steps.qa-code-names.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Unit tests | ${{ steps.unit.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| ESLint | ${{ steps.eslint.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Prettier | ${{ steps.prettier.outcome }} |" >> $GITHUB_STEP_SUMMARY

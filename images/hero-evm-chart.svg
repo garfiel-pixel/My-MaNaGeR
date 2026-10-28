@@ -44,7 +44,7 @@
        renderers that ignore SMIL (they show the finished curve, never a
        blank one). -->
   <polyline id="evm-planned" points="70,120 240,150 410,190 580,240 840,330"
-    fill="none" stroke="#E8923A" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"
+    fill="none" stroke="#D4AF37" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"
     stroke-dasharray="900" stroke-dashoffset="0">
     <animate attributeName="stroke-dashoffset" from="900" to="0" dur="1.5s"
       begin="0s" fill="freeze" calcMode="spline"
@@ -62,18 +62,18 @@
 
   <!-- today marker -->
   <line x1="580" y1="60" x2="580" y2="380" stroke="#8B5CF6" stroke-width="2" stroke-dasharray="5 7" opacity="0.85"/>
-  <circle cx="580" cy="240" r="10" fill="#FFFFFF" stroke="#D96B27" stroke-width="3.5"/>
+  <circle cx="580" cy="240" r="10" fill="#FFFFFF" stroke="#D4AF37" stroke-width="3.5"/>
   <circle cx="580" cy="215" r="8" fill="#FFFFFF" stroke="#8B5CF6" stroke-width="3"/>
 
   <!-- variance callout -->
   <line x1="580" y1="240" x2="680" y2="150" stroke="#F5EFE6" stroke-opacity="0.5" stroke-width="1.5"/>
-  <rect x="628" y="96" width="164" height="46" rx="9" fill="#FFFFFF" stroke="#D96B27" stroke-width="2.5"/>
+  <rect x="628" y="96" width="164" height="46" rx="9" fill="#FFFFFF" stroke="#D4AF37" stroke-width="2.5"/>
   <text x="710" y="116" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-size="13" fill="#57534E">CPI 1.04</text>
   <text x="710" y="134" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-size="12" fill="#A8A29E">under budget</text>
 
   <!-- legend -->
   <g font-family="Inter,system-ui,sans-serif" font-size="14" fill="#D8CFC2">
-    <line x1="88" y1="426" x2="122" y2="426" stroke="#E8923A" stroke-width="7" stroke-linecap="round"/>
+    <line x1="88" y1="426" x2="122" y2="426" stroke="#D4AF37" stroke-width="7" stroke-linecap="round"/>
     <text x="132" y="431">Planned spend</text>
     <line x1="290" y1="426" x2="324" y2="426" stroke="#F5EFE6" stroke-width="5" stroke-linecap="round"/>
     <text x="334" y="431">Actual spend</text>

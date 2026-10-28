@@ -3541,7 +3541,12 @@ var MMGR = window.MMGR || {};
     return s && Array.isArray(s.aiChats) ? s.aiChats : [];
   }
   function aiChatId() {
-    return 'chat-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+    return (
+      'chat-' +
+      Date.now().toString(36) +
+      '-' +
+      crypto.getRandomValues(new Uint32Array(1))[0].toString(36).slice(2, 10)
+    );
   }
   function aiStamp() {
     return new Date().toISOString();

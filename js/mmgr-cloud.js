@@ -3067,6 +3067,7 @@ var MMGR = window.MMGR || {};
         '<div class="sr-hint">Enter the owner code you copied when this project was first linked, or an editor code you were given (the code lives only in the creator\u2019s session, so a new device needs it typed in here):</div>' +
         '<div class="exp-row">' +
         '<input type="text" id="cloud-code-in" class="ctl-in w150" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false" autocapitalize="characters" style="font-family:ui-monospace,monospace;letter-spacing:.05em">' +
+        '<button type="button" class="code-which" popovertarget="which-code-pop"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-help"></use></svg> Which code is this?</button>' +
         '<button class="btn btn-n btn-s" data-action="cloudLoadWithCode"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Load with Code</button>' +
         '</div>';
     } else if (ecode && !code) {

@@ -10874,7 +10874,12 @@ html.mmgr-tour-active .bcp-tour-nudge {
 .set-hint {
   display: block;
   color: var(--slate);
-  opacity: 0.82;
+  /* NO opacity. The 0.82 that used to be here composited --slate (#666666)
+     down to #828282 on a white card, which is 3.84:1 at this 0.74rem size -
+     under AA for body text, and axe caught it on every setting hint on the
+     calculator (measured-manual, tax-toggle, on-cost). --slate alone is
+     5.74:1 on white and 5.5:1 on the dark card, so the hint stays quiet by
+     size and colour rather than by being made see-through. */
   font-size: 0.74rem;
   line-height: 1.45;
   margin-top: 2px;

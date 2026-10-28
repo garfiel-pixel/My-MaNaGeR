@@ -129,6 +129,36 @@ async function ensureServer() {
   throw new Error('serve.cjs did not come up');
 }
 
+// UI-1 replaced the calculator's native pickers with the app's own listbox
+// (js/mmgr-combobox.js). The native select stays in the DOM as the source of
+// truth but is display:none, so `selectOption` can never resolve it. This picks
+// a value the way a person does - open the listbox, press the row - and asserts
+// the pick actually landed before returning, so a broken picker fails loudly
+// here instead of surfacing as a mystery timeout three steps later.
+async function pickCalcWork(page, value) {
+  await page.click('.mmcb[data-for="calc-work"] .mmcb-input');
+  await page.waitForSelector('.mmcb[data-for="calc-work"] [role="option"]', { timeout: 8000 });
+  const id = await page.evaluate(v => {
+    const sel = document.getElementById('calc-work');
+    const rows = sel && sel.__mmcb ? sel.__mmcb.list.querySelectorAll('[role="option"]') : [];
+    for (const r of rows) {
+      if (r.getAttribute('data-value') === v) {
+        return r.id;
+      }
+    }
+    return null;
+  }, value);
+  if (!id) {
+    throw new Error('no listbox row for calc-work value "' + value + '"');
+  }
+  await page.click('#' + id);
+  await page.waitForTimeout(250);
+  const landed = await page.evaluate(() => document.getElementById('calc-work').value);
+  if (landed !== value) {
+    throw new Error('the pick did not land: wanted "' + value + '", select reads "' + landed + '"');
+  }
+}
+
 (async () => {
   const { chromium } = resolvePlaywright();
   let executablePath;
@@ -397,7 +427,13 @@ async function ensureServer() {
     await calc.waitForTimeout(200);
 
     // Price a custom item, then press Enter in a price box.
-    await calc.selectOption('#calc-work', 'custom');
+    // RE-BASELINED 2026-10-27: `#calc-work` is no longer a native select you can
+    // drive with selectOption - UI-1 replaced it with the app's own listbox
+    // (`#calc-work` is display:none, aria-hidden and still the source of truth),
+    // so Playwright waits forever for a hidden element to become visible. The
+    // pick now goes through the control a person actually presses: open the
+    // listbox, then click the `custom` row.
+    await pickCalcWork(calc, 'custom');
     await calc.waitForTimeout(400);
     await calc.waitForSelector('#calc-custom-qty', { state: 'visible', timeout: 8000 });
     await calc.fill('#calc-custom-name', 'Harness item');

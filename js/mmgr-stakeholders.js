@@ -39,24 +39,48 @@ var MMGR = window.MMGR || {};
   // trade-license expiry falls within `withinDays` (default 30). Returns the
   // flagged subset with per-item expiry flags so the UI can badge precisely.
   // Same dependency-free pattern as the schedule audit helpers.
+  // ONE definition of "how many days from today", shared by the compliance
+  // badge and the expiry rollup, so the two can never disagree about whether an
+  // item is "expiring within 30 days" or how urgent it is.
+  //
+  // Calendar days, not elapsed hours. A date-only string ("2026-10-27") is
+  // parsed by `new Date()` as UTC midnight, so comparing it to the current
+  // instant made an expiry due TODAY read as overdue for anyone west of UTC
+  // (and after local midnight relative to the UTC date). The dashboard then
+  // said "COI is overdue (was due today)" and the watcher filed it in the
+  // overdue band instead of the 7-day band - the EXP-1 gate caught it with a
+  // 0-day fixture. Both sides are now LOCAL calendar dates via the shared
+  // parser, which is what every other date comparison in the app does.
+  function daysUntil(d, from) {
+    if (!d) {
+      return null;
+    }
+    const dt = U.parseDL(String(d));
+    if (!dt || isNaN(dt.getTime())) {
+      return null;
+    }
+    const today = new Date((from || new Date()).getTime());
+    today.setHours(0, 0, 0, 0);
+    dt.setHours(0, 0, 0, 0);
+    return Math.round((dt.getTime() - today.getTime()) / 86400000);
+  }
+
   function getExpiringCompliance(stakeholders, withinDays) {
     const days = withinDays === undefined || withinDays === null ? 30 : +withinDays;
-    const now = new Date();
-    const soon = new Date(now.getTime() + days * 86400000);
     return (stakeholders || [])
       .filter(function (s) {
-        const coi = s.coiExpiry ? new Date(s.coiExpiry) : null;
-        const lic = s.licenseExpiry ? new Date(s.licenseExpiry) : null;
-        return (coi && coi <= soon) || (lic && lic <= soon);
+        const coi = daysUntil(s.coiExpiry);
+        const lic = daysUntil(s.licenseExpiry);
+        return (coi !== null && coi <= days) || (lic !== null && lic <= days);
       })
       .map(function (s) {
-        const coi = s.coiExpiry ? new Date(s.coiExpiry) : null;
-        const lic = s.licenseExpiry ? new Date(s.licenseExpiry) : null;
+        const coi = daysUntil(s.coiExpiry);
+        const lic = daysUntil(s.licenseExpiry);
         return {
           id: s.id,
           name: s.name,
-          coiExpiring: !!(coi && coi <= soon),
-          licenseExpiring: !!(lic && lic <= soon)
+          coiExpiring: coi !== null && coi <= days,
+          licenseExpiring: lic !== null && lic <= days
         };
       });
   }
@@ -185,15 +209,9 @@ var MMGR = window.MMGR || {};
       return [];
     }
     const out = [];
+    // Same helper the compliance badge uses - one definition of "days out".
     function dueIn(d) {
-      if (!d) {
-        return null;
-      }
-      const dt = new Date(d);
-      if (isNaN(dt.getTime())) {
-        return null;
-      }
-      return Math.round((dt.getTime() - now.getTime()) / 86400000);
+      return daysUntil(d, now);
     }
     (s.stakeholders || []).forEach(function (st) {
       const coi = dueIn(st.coiExpiry);

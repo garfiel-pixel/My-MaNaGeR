@@ -405,7 +405,34 @@
 // js/mmgr-perf.js, js/mmgr-glass.js, js/marketing.js, js/marketing-globe.js,
 // js/mmgr-combobox.js (new), dist/marketing-bundle.js. No inline script block
 // changed, so the CSP hashes are untouched.
-const CACHE = 'mmgr-shell-v487';
+const CACHE = 'mmgr-shell-v488';
+
+// v488 - two real defects the CI-skipped T4 suites were holding
+// (REFINEMENT-PROGRESS.md NEXT UP step 6). Both were found by running the
+// fifteen suites CI never reached after step 90 failed, and both are app bugs,
+// not stale harnesses.
+//
+// 1. AN EXPIRY DUE TODAY WAS REPORTED AS OVERDUE. mmgr-stakeholders.js banded
+//    COI / licence / permit expiries by comparing `new Date(dateOnlyString)` -
+//    which the language parses as UTC midnight - against the CURRENT instant.
+//    West of UTC that is yesterday evening, so a certificate expiring today
+//    came out at -1 day: the dashboard said "COI is overdue (was due today)"
+//    and the watcher filed it in the overdue band instead of the 7-day band
+//    (EXP-1 caught it with its 0-day fixture). Days are now counted between
+//    LOCAL calendar dates through ONE shared helper, and the compliance badge
+//    and the expiry rollup both use it, so the "expiring within 30 days"
+//    banner and the notice can no longer disagree about the same item.
+//
+// 2. THE CALCULATOR'S SETTING HINTS WERE 3.84:1. `.set-hint` carried
+//    `opacity: 0.82`, which composited --slate (#666666) down to #828282 on a
+//    white card - under AA for 0.74rem text. axe flagged every hint on the
+//    page (measured-manual, tax-toggle, on-cost). The opacity is gone;
+//    --slate alone is 5.74:1 on white and 5.5:1 on the dark card, so the hint
+//    still reads as secondary by size and colour instead of being see-through.
+//
+// Changed shell assets: js/mmgr-stakeholders.js, css/mmgr.css,
+// dist/mmgr.min.css, dist/bundle.js. No inline script block changed, so the
+// CSP hashes are untouched.
 
 // v487 - LAND-2's Pause control, actually built
 // (REFINEMENT-DIRECTIVE-2026-10-24 section 10). The directive asks for "a

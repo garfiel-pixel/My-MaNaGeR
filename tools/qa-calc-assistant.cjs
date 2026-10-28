@@ -1382,11 +1382,15 @@ async function shotSet(page, dir, name, selector) {
                   return b > 120 && b > r && b > g;
                 })
               : false;
-            // The custom fields must carry the page's OWN accent token
-            // (--brand: warm gold in light, white in dark - see mmgr.css),
-            // not a blue and not a lost/absent accent. Comparing the border
-            // to the live --brand value makes "gold accent, no blue" a
-            // measurable, mode-agnostic rule.
+            // The custom fields must carry the page's OWN accent token,
+            // not a blue and not a lost/absent accent. The border reads
+            // --gold-ink (the deep bronze step): since the 2026-10-28 gold
+            // retirement the plain --brand fill is #d4af37, 1.9:1 on white,
+            // under the 3:1 an input boundary owes, so the rule pairs the
+            // accent with its readable step (both tokens flip together in
+            // dark: --gold-ink and --brand are #ffffff there). Comparing to
+            // the live token keeps "gold accent, no blue" measurable in
+            // every mode without hard-coding a hex.
             const parse = c => {
               const m = /#([0-9a-f]{6})/i.exec(c || '');
               if (m) {
@@ -1399,7 +1403,7 @@ async function shotSet(page, dir, name, selector) {
             const gold = el
               ? Array.from(el.querySelectorAll('input')).every(i => {
                   const cs = getComputedStyle(i);
-                  const want = parse(cs.getPropertyValue('--brand'));
+                  const want = parse(cs.getPropertyValue('--gold-ink'));
                   const got = parse(cs.borderTopColor || '');
                   return (
                     !!want &&

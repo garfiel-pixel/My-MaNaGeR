@@ -144,17 +144,17 @@ async function ev(expr) {
     // real on-screen state. tier is seeded 'local'.
     MMGR.AiWin.syncSettingsUI();
     return { rightExists: !!right,
-      rightHasTier: right && !!right.querySelector('#ai-tier'),
       rightHasEngine: right && !!right.querySelector('#ai-engine-pill'),
       rightHasApi: right && !!right.querySelector('#ai-api-pill'),
+      composerHasTier: !!document.querySelector('.ai-composer-row #ai-tier'),
       labelGone: !hasLabel,
       connGoneWhenLocal: !connRow || connRow.classList.contains('is-hide'),
       secKept: !!sec && sec.textContent.indexOf('session only') > -1,
       tierSel: !!tier, engine: !!engine, api: !!api };
   })()`);
   check(
-    'polish: header control cluster groups tier + engine pill + API pill',
-    lay.rightExists && lay.rightHasTier && lay.rightHasEngine && lay.rightHasApi,
+    'polish: header keeps the engine + API pills; the tier badge lives in the composer (AI-1)',
+    lay.rightExists && lay.rightHasEngine && lay.rightHasApi && lay.composerHasTier,
     lay
   );
   check('polish: verbose cloud-connection label removed', lay.labelGone === true, lay);

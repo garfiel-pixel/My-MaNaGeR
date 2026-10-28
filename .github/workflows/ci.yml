@@ -590,6 +590,10 @@ jobs:
         id: qa-ai
         run: node qa-ai.cjs
 
+      - name: "T4: T-AIWIN - AI window layout and docking (qa-ai-win)"
+        id: qa-ai-win
+        run: node tools/qa-ai-win.cjs
+
       - name: "T4: v11 feature battery (qa-v11)"
         id: qa-v11
         run: node qa-v11.cjs

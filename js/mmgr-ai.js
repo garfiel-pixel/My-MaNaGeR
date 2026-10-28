@@ -247,10 +247,19 @@ var MMGR = window.MMGR || {};
     }
     syncSettingsUI();
     checkApiHealth(); // live backend-API status badge (plan §3)
-    seedThreadFromState();
+    renderQuickPresets();
+    syncPinUI();
+    syncMaxUI();
     setAiTab('chat'); // DIR-1: reopen on the Chat view (matches the welcome hint)
     applyAiSizePref(); // AI-WINDOW-RESIZE: restore the saved size (and re-center) before showing
     modal.classList.add('open');
+    applyAiMode(); // AI-1: docked / overlay / sheet, and the page reserve
+    renderHist();
+    // AI-1: resume the conversation the user was in; only a project with no
+    // saved chat falls back to the last preset result.
+    if (!restoreActiveChat()) {
+      seedThreadFromState();
+    }
     const q = U.$('ai-q');
     if (q) {
       setTimeout(function () {
@@ -286,7 +295,10 @@ var MMGR = window.MMGR || {};
     const modal = U.$('ai-win');
     if (modal) {
       modal.classList.remove('open');
+      modal.classList.remove('hist-open');
     }
+    // AI-1: a closed window reserves no page space and paints no dim.
+    applyAiMode();
     // OWNER 2026-09-17 (wave 3 W8): closing the AI window always stops the
     // mic - voice input never outlives the window it belongs to.
     if (ns.Voice && ns.Voice.stopAiDictation) {
@@ -2662,6 +2674,9 @@ var MMGR = window.MMGR || {};
     if (prompt && String(prompt).trim()) {
       addBubble('user', escHtml(prompt).replace(/\n/g, '<br>'));
     }
+    // AI-1: the exchange lands in the conversation history (project state),
+    // so the thread survives a reload and the history column can reopen it.
+    captureExchange(prompt, res);
     if (!res) {
       return;
     }
@@ -2934,7 +2949,7 @@ var MMGR = window.MMGR || {};
   // coordinates inside the drawer's overflow:hidden box - the first drag sent
   // the UI out of the clip and the window went blank. One handle, one axis,
   // zero repositioning: the panel can never leave the clip or break.
-  const AI_SIZE_DEFAULT_W = 420;
+  const AI_SIZE_DEFAULT_W = 520;
   const AI_W_MIN = 320;
   const AI_W_MAX = 720;
 
@@ -3325,6 +3340,9 @@ var MMGR = window.MMGR || {};
       syncFloatState(id);
       toast('Floating. Drag the header to move it; the pop-out button minimizes it back.', 'ok');
     }
+    // AI-1: float/dock changes the regime, so the page reserve and the
+    // history layout are re-decided here.
+    applyAiMode();
   }
   [setupFloatSurface('ai-win'), setupFloatSurface('drw')];
   // OWNER 2026-09-21: closing the settings drawer while it floats must dock
@@ -3500,6 +3518,732 @@ var MMGR = window.MMGR || {};
     ].join('\n');
   }
 
+  // ---- AI-1 (REFINEMENT-DIRECTIVE-2026-10-24, section 9) ---------------
+  // The window's layout, its three docking regimes and the conversation
+  // history that lives in the unified project state.
+  //
+  // History shape (one entry per conversation):
+  //   { id, title, pinned, updated, messages: [{ role, text, at, tier,
+  //     model, trace, error }] }
+  // Caps: 30 conversations, 200 messages each. No new storage key: the
+  // list rides in the project state, so export and delete include it.
+  const AI_CHAT_CAP = 30;
+  const AI_MSG_CAP = 200;
+  const AI_HIST_INLINE_MIN = 480; // below this the list becomes a slide-over
+  const AI_TITLE_MAX = 60;
+  let _activeChat = '';
+
+  function aiState() {
+    return ns.State && ns.State.getState ? ns.State.getState() : null;
+  }
+  function aiChatList() {
+    const s = aiState();
+    return s && Array.isArray(s.aiChats) ? s.aiChats : [];
+  }
+  function aiChatId() {
+    return 'chat-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+  }
+  function aiStamp() {
+    return new Date().toISOString();
+  }
+  function aiTitle(text) {
+    const line = String(text === undefined || text === null ? '' : text)
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!line) {
+      return 'New chat';
+    }
+    return line.length > AI_TITLE_MAX ? line.slice(0, AI_TITLE_MAX - 1) + '\u2026' : line;
+  }
+  function aiFindChat(id) {
+    const list = aiChatList();
+    for (let i = 0; i < list.length; i++) {
+      if (list[i] && list[i].id === id) {
+        return list[i];
+      }
+    }
+    return null;
+  }
+  function aiActiveChat() {
+    if (!_activeChat) {
+      const s = aiState();
+      _activeChat = (s && s.ui && s.ui.aiActiveChat) || '';
+    }
+    let chat = _activeChat ? aiFindChat(_activeChat) : null;
+    if (!chat) {
+      const list = aiChatList();
+      chat = list.length ? list[0] : null;
+      _activeChat = chat ? chat.id : '';
+    }
+    return chat;
+  }
+  // Every history write goes through here so the cap and the active-chat
+  // pointer can never drift apart from the list itself.
+  function aiSaveChats(mutator) {
+    if (!(ns.State && ns.State.updateState)) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      if (!Array.isArray(s.aiChats)) {
+        s.aiChats = [];
+      }
+      if (!s.ui || typeof s.ui !== 'object') {
+        s.ui = {};
+      }
+      mutator(s.aiChats, s);
+      if (s.aiChats.length > AI_CHAT_CAP) {
+        // Pinned conversations survive; the rest fall oldest-first.
+        const keep = s.aiChats
+          .slice()
+          .sort(function (a, b) {
+            if (!!a.pinned !== !!b.pinned) {
+              return a.pinned ? -1 : 1;
+            }
+            return String(b.updated || '').localeCompare(String(a.updated || ''));
+          })
+          .slice(0, AI_CHAT_CAP);
+        s.aiChats = keep;
+      }
+      s.ui.aiActiveChat = _activeChat;
+    });
+    renderHist();
+  }
+  function aiWhen(iso) {
+    if (!iso) {
+      return '';
+    }
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) {
+      return '';
+    }
+    const now = new Date();
+    const sameDay =
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate();
+    if (sameDay) {
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  }
+  function aiIcon(name) {
+    return (
+      '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-' +
+      name +
+      '"></use></svg>'
+    );
+  }
+  function renderHist() {
+    const list = U.$('ai-hist-list');
+    if (!list) {
+      return;
+    }
+    const search = U.$('ai-hist-search');
+    const q = String((search && search.value) || '')
+      .toLowerCase()
+      .trim();
+    const active = aiActiveChat();
+    const chats = aiChatList()
+      .filter(function (c) {
+        if (!c || !c.id) {
+          return false;
+        }
+        if (!q) {
+          return true;
+        }
+        return (
+          String(c.title || '')
+            .toLowerCase()
+            .indexOf(q) > -1
+        );
+      })
+      .sort(function (a, b) {
+        if (!!a.pinned !== !!b.pinned) {
+          return a.pinned ? -1 : 1;
+        }
+        return String(b.updated || '').localeCompare(String(a.updated || ''));
+      });
+    if (!chats.length) {
+      list.innerHTML =
+        '<div class="ai-hist-empty">' +
+        (q ? 'No chats match that search.' : 'No chats yet. Ask a question to start one.') +
+        '</div>';
+      return;
+    }
+    list.innerHTML = chats
+      .map(function (c) {
+        const isActive = active && active.id === c.id;
+        const id = U.escapeHtml(c.id);
+        return (
+          '<div class="ai-hist-item' +
+          (isActive ? ' is-active' : '') +
+          '" role="listitem" data-id="' +
+          id +
+          '">' +
+          '<button type="button" class="ai-hist-open" data-action="aiOpenChat" data-id="' +
+          id +
+          '">' +
+          '<span class="ai-hist-name">' +
+          U.escapeHtml(c.title || 'New chat') +
+          '</span>' +
+          '<span class="ai-hist-when">' +
+          U.escapeHtml(aiWhen(c.updated)) +
+          '</span>' +
+          '</button>' +
+          '<span class="ai-hist-tools">' +
+          '<button type="button" data-action="aiPinChat" data-id="' +
+          id +
+          '" aria-pressed="' +
+          (c.pinned ? 'true' : 'false') +
+          '" title="' +
+          (c.pinned ? 'Unpin this chat' : 'Pin this chat') +
+          '" aria-label="' +
+          (c.pinned ? 'Unpin this chat' : 'Pin this chat') +
+          '">' +
+          aiIcon('pin') +
+          '</button>' +
+          '<button type="button" data-action="aiRenameChat" data-id="' +
+          id +
+          '" title="Rename this chat" aria-label="Rename this chat">' +
+          aiIcon('edit') +
+          '</button>' +
+          '<button type="button" data-action="aiDeleteChat" data-id="' +
+          id +
+          '" title="Delete this chat" aria-label="Delete this chat">' +
+          aiIcon('trash') +
+          '</button>' +
+          '</span>' +
+          '</div>'
+        );
+      })
+      .join('');
+  }
+  function renderStoredMessage(m) {
+    if (!m || !m.text) {
+      return;
+    }
+    if (m.role === 'user') {
+      addBubble('user', escHtml(m.text).replace(/\n/g, '<br>'), m.text);
+      return;
+    }
+    const engine =
+      m.tier === 'local'
+        ? 'Local engine'
+        : m.tier === 'cloud'
+          ? 'Cloud' + (m.model ? ' \u00b7 ' + m.model : '')
+          : m.tier || 'Answer';
+    const trace =
+      m.trace && m.trace.length
+        ? '<div class="ai-trace-inline">Traceable to: ' + escHtml(m.trace.join(', ')) + '</div>'
+        : '';
+    addBubble(
+      'bot',
+      botBubbleHtml(
+        escHtml(m.text).replace(/\n/g, '<br>'),
+        botMeta(engine, copyBtnHtml()),
+        fallbackBadgeHtml(m.tier, m.model, m.fellBackFrom),
+        trace
+      ),
+      m.text
+    );
+  }
+  function renderChat(chat) {
+    resetThread();
+    if (!chat || !Array.isArray(chat.messages) || !chat.messages.length) {
+      return;
+    }
+    hideWelcome();
+    chat.messages.forEach(renderStoredMessage);
+    scrollThread();
+  }
+  function captureExchange(prompt, res) {
+    if (!prompt || !String(prompt).trim()) {
+      return;
+    }
+    aiSaveChats(function (list) {
+      let chat = null;
+      for (let i = 0; i < list.length; i++) {
+        if (list[i] && list[i].id === _activeChat) {
+          chat = list[i];
+          break;
+        }
+      }
+      if (!chat) {
+        chat = {
+          id: aiChatId(),
+          title: 'New chat',
+          pinned: false,
+          updated: aiStamp(),
+          messages: []
+        };
+        list.unshift(chat);
+        _activeChat = chat.id;
+      }
+      chat.messages.push({ role: 'user', text: String(prompt), at: aiStamp() });
+      if (res) {
+        chat.messages.push({
+          role: 'bot',
+          text: res.ok ? String(res.text || '') : String(res.error || 'Something went wrong.'),
+          at: aiStamp(),
+          tier: res.tier,
+          model: res.model,
+          fellBackFrom: res.fellBackFrom,
+          trace: res.trace || [],
+          error: !res.ok
+        });
+      }
+      if (chat.messages.length > AI_MSG_CAP) {
+        chat.messages = chat.messages.slice(-AI_MSG_CAP);
+      }
+      if (!chat.title || chat.title === 'New chat') {
+        chat.title = aiTitle(prompt);
+      }
+      chat.updated = aiStamp();
+    });
+  }
+  function restoreActiveChat() {
+    const chat = aiActiveChat();
+    if (chat && Array.isArray(chat.messages) && chat.messages.length) {
+      renderChat(chat);
+      return true;
+    }
+    return false;
+  }
+  function openChat(id) {
+    const chat = aiFindChat(id);
+    if (!chat) {
+      return;
+    }
+    _activeChat = id;
+    if (ns.State && ns.State.updateState) {
+      ns.State.updateState(function (s) {
+        if (!s.ui || typeof s.ui !== 'object') {
+          s.ui = {};
+        }
+        s.ui.aiActiveChat = id;
+      });
+    }
+    const win = U.$('ai-win');
+    if (win) {
+      win.classList.remove('hist-open');
+    }
+    renderChat(chat);
+    renderHist();
+    const q = U.$('ai-q');
+    if (q) {
+      q.focus();
+    }
+  }
+  function newChat() {
+    _activeChat = aiChatId();
+    aiSaveChats(function (list) {
+      list.unshift({
+        id: _activeChat,
+        title: 'New chat',
+        pinned: false,
+        updated: aiStamp(),
+        messages: []
+      });
+    });
+    const win = U.$('ai-win');
+    if (win) {
+      win.classList.remove('hist-open');
+    }
+    renderChat(null);
+    renderHist();
+    const q = U.$('ai-q');
+    if (q) {
+      q.focus();
+    }
+    toast('New chat started.', 'ok');
+  }
+  function clearAllChats() {
+    if (!aiChatList().length) {
+      toast('No chats to clear.', 'warn');
+      return;
+    }
+    const ok =
+      typeof window.confirm === 'function'
+        ? window.confirm('Delete every chat? This cannot be undone.')
+        : true;
+    if (!ok) {
+      return;
+    }
+    _activeChat = '';
+    aiSaveChats(function (list) {
+      list.length = 0;
+    });
+    resetThread();
+    renderHist();
+    toast('All chats cleared.', 'ok');
+  }
+  function deleteChat(id) {
+    const chat = aiFindChat(id);
+    if (!chat) {
+      return;
+    }
+    const ok =
+      typeof window.confirm === 'function'
+        ? window.confirm('Delete "' + (chat.title || 'this chat') + '"?')
+        : true;
+    if (!ok) {
+      return;
+    }
+    const wasActive = _activeChat === id;
+    aiSaveChats(function (list) {
+      for (let i = list.length - 1; i >= 0; i--) {
+        if (list[i] && list[i].id === id) {
+          list.splice(i, 1);
+        }
+      }
+    });
+    if (wasActive) {
+      _activeChat = '';
+      const next = aiActiveChat();
+      if (next) {
+        renderChat(next);
+      } else {
+        resetThread();
+      }
+    }
+    renderHist();
+  }
+  function pinChat(id) {
+    aiSaveChats(function (list) {
+      for (let i = 0; i < list.length; i++) {
+        if (list[i] && list[i].id === id) {
+          list[i].pinned = !list[i].pinned;
+        }
+      }
+    });
+  }
+  function renameChat(id) {
+    const list = U.$('ai-hist-list');
+    if (!list) {
+      return;
+    }
+    let row = null;
+    Array.prototype.forEach.call(list.querySelectorAll('.ai-hist-item'), function (r) {
+      if (r.getAttribute('data-id') === id) {
+        row = r;
+      }
+    });
+    if (!row) {
+      return;
+    }
+    const name = row.querySelector('.ai-hist-name');
+    if (!name || row.querySelector('.ai-hist-rename')) {
+      return;
+    }
+    const current = name.textContent;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'ai-hist-rename';
+    input.value = current;
+    input.setAttribute('aria-label', 'Chat name');
+    name.replaceWith(input);
+    input.focus();
+    input.select();
+    let done = false;
+    function commit(save) {
+      if (done) {
+        return;
+      }
+      done = true;
+      const value = input.value.trim();
+      if (save && value && value !== current) {
+        aiSaveChats(function (l) {
+          for (let i = 0; i < l.length; i++) {
+            if (l[i] && l[i].id === id) {
+              l[i].title = aiTitle(value);
+            }
+          }
+        });
+      } else {
+        renderHist();
+      }
+    }
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        commit(true);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        commit(false);
+      }
+    });
+    input.addEventListener('blur', function () {
+      commit(true);
+    });
+  }
+  function toggleHist() {
+    const win = U.$('ai-win');
+    if (win) {
+      win.classList.toggle('hist-open');
+    }
+  }
+  function renderQuickPresets() {
+    const box = U.$('ai-quick-presets');
+    if (!box || box.dataset.filled) {
+      return;
+    }
+    const types = (ns.Prompts && ns.Prompts.list ? ns.Prompts.list() : []).slice(0, 4);
+    box.innerHTML = types
+      .map(function (t) {
+        return (
+          '<button type="button" class="ai-chip" data-action="aiPreset" data-type="' +
+          U.escapeHtml(t) +
+          '">' +
+          U.escapeHtml(PRESET_LABELS[t] || t) +
+          '</button>'
+        );
+      })
+      .join('');
+    box.dataset.filled = '1';
+  }
+
+  // ---- Docking regimes -------------------------------------------------
+  function aiMode(win) {
+    if (!win || !win.classList.contains('open')) {
+      return 'closed';
+    }
+    if (win.classList.contains('max-mode')) {
+      return 'max';
+    }
+    if (win.classList.contains('float-mode')) {
+      return 'float';
+    }
+    const w = window.innerWidth;
+    if (w >= 1280) {
+      return 'docked';
+    }
+    if (w >= 1024) {
+      return 'overlay';
+    }
+    return 'sheet';
+  }
+  function syncAiWidthVar() {
+    const win = U.$('ai-win');
+    if (!win) {
+      return;
+    }
+    const w = Math.round(win.getBoundingClientRect().width) || AI_SIZE_DEFAULT_W;
+    document.body.style.setProperty('--ai-w', w + 'px');
+  }
+  function updateHistLayout() {
+    const win = U.$('ai-win');
+    if (!win) {
+      return;
+    }
+    const w = Math.round(win.getBoundingClientRect().width) || 0;
+    win.classList.toggle('hist-inline', w >= AI_HIST_INLINE_MIN);
+    if (!win.classList.contains('hist-inline')) {
+      win.classList.remove('hist-open');
+    }
+  }
+  function applyAiMode() {
+    const win = U.$('ai-win');
+    if (!win) {
+      return;
+    }
+    const mode = aiMode(win);
+    const b = document.body.classList;
+    b.toggle('ai-docked', mode === 'docked');
+    b.toggle('ai-overlay', mode === 'overlay');
+    b.toggle('ai-sheet', mode === 'sheet');
+    b.toggle('ai-max', mode === 'max');
+    syncAiWidthVar();
+    updateHistLayout();
+  }
+  function syncMaxUI() {
+    const win = U.$('ai-win');
+    const btn = U.$('ai-max-btn');
+    if (!win || !btn) {
+      return;
+    }
+    const on = win.classList.contains('max-mode');
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    const label = on ? 'Restore the assistant' : 'Maximise the assistant';
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
+    const use = btn.querySelector('use');
+    if (use) {
+      use.setAttribute('href', 'css/mmgr-icons.svg#' + (on ? 'i-collapse' : 'i-expand'));
+    }
+  }
+  function toggleMax() {
+    const win = U.$('ai-win');
+    if (!win) {
+      return;
+    }
+    if (!win.classList.contains('open')) {
+      open();
+    }
+    if (win.classList.contains('float-mode')) {
+      toggleFloat('ai-win');
+    }
+    win.classList.toggle('max-mode');
+    syncMaxUI();
+    applyAiMode();
+  }
+  function syncPinUI() {
+    const s = aiState();
+    const on = !!(s && s.ui && s.ui.aiPinned);
+    const btn = U.$('ai-pin-btn');
+    if (!btn) {
+      return;
+    }
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    const label = on ? 'Unpin the assistant' : 'Keep the assistant open across pages';
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
+  }
+  function togglePin() {
+    if (!(ns.State && ns.State.updateState)) {
+      return;
+    }
+    let on = false;
+    ns.State.updateState(function (s) {
+      if (!s.ui || typeof s.ui !== 'object') {
+        s.ui = {};
+      }
+      s.ui.aiPinned = !s.ui.aiPinned;
+      on = !!s.ui.aiPinned;
+    });
+    syncPinUI();
+    toast(on ? 'Assistant pinned. It reopens with this project.' : 'Assistant unpinned.', 'ok');
+  }
+  // Pin keeps the assistant open across pages: on load, reopen it for a
+  // signed-in user when the project carries the pin. open() keeps its own
+  // entitlement gate, so this can never surface a window to a visitor.
+  function restorePinned() {
+    const s = aiState();
+    if (!s || !s.ui || !s.ui.aiPinned) {
+      return;
+    }
+    if (!(ns.Entitlements && ns.Entitlements.aiAssistant && ns.Entitlements.aiAssistant())) {
+      return;
+    }
+    const win = U.$('ai-win');
+    if (win && !win.classList.contains('open')) {
+      open();
+    }
+  }
+  function toggle() {
+    const win = U.$('ai-win');
+    if (!win) {
+      return;
+    }
+    if (win.classList.contains('open')) {
+      close();
+    } else {
+      open();
+    }
+  }
+  // Esc: the sheet and the overlay close; Maximise steps back to the dock;
+  // in docked mode Esc closes only while focus is inside the assistant, so
+  // it never steals the drawer's own Esc.
+  document.addEventListener(
+    'keydown',
+    function (e) {
+      if (e.key !== 'Escape') {
+        return;
+      }
+      const win = U.$('ai-win');
+      if (!win || !win.classList.contains('open')) {
+        return;
+      }
+      if (win.classList.contains('hist-open')) {
+        win.classList.remove('hist-open');
+        return;
+      }
+      if (win.classList.contains('max-mode')) {
+        toggleMax();
+        return;
+      }
+      const mode = aiMode(win);
+      const inside = win.contains(document.activeElement);
+      if (mode === 'overlay' || mode === 'sheet' || inside) {
+        close();
+      }
+    },
+    true
+  );
+  window.addEventListener('resize', applyAiMode);
+  // Focus trap, only in the regimes that cover the page (overlay, sheet and
+  // Maximise). Docked mode leaves the page reachable, so Tab behaves as usual.
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Tab') {
+      return;
+    }
+    const win = U.$('ai-win');
+    if (!win) {
+      return;
+    }
+    const mode = aiMode(win);
+    if (mode !== 'overlay' && mode !== 'sheet' && mode !== 'max') {
+      return;
+    }
+    const nodes = win.querySelectorAll(
+      'a[href],button:not([disabled]),select:not([disabled]),textarea:not([disabled]),input:not([disabled]),[tabindex]:not([tabindex="-1"])'
+    );
+    const list = Array.prototype.filter.call(nodes, function (el) {
+      return el.offsetParent !== null;
+    });
+    if (!list.length) {
+      return;
+    }
+    const first = list[0];
+    const last = list[list.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  });
+  // History search filters as the user types; no state write.
+  (function () {
+    const search = U.$('ai-hist-search');
+    if (search) {
+      search.addEventListener('input', renderHist);
+    }
+  })();
+  // The width handle writes an inline width; mirror it into --ai-w so the
+  // page reserve always equals the panel the user actually sees. Observing
+  // the style attribute catches every writer (restore, drag, reset, resize).
+  (function () {
+    const win = U.$('ai-win');
+    if (!win || typeof MutationObserver === 'undefined') {
+      return;
+    }
+    new MutationObserver(function () {
+      if (win.classList.contains('open')) {
+        syncAiWidthVar();
+        updateHistLayout();
+      }
+    }).observe(win, { attributes: true, attributeFilter: ['style'] });
+  })();
+  // Boot: reflect the pinned state on the button, then reopen the assistant
+  // once the project state is on screen (a pinned project resumes it).
+  (function () {
+    const boot = function () {
+      syncPinUI();
+      syncMaxUI();
+      renderHist();
+      restorePinned();
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function () {
+        setTimeout(boot, 300);
+      });
+    } else {
+      setTimeout(boot, 300);
+    }
+  })();
+
   // ---- API ----
   ns.AiWin = {
     open: open,
@@ -3545,7 +4289,20 @@ var MMGR = window.MMGR || {};
     applyAiSizePref: applyAiSizePref,
     // S-6.5: focus retention helpers (exported so the harness can prove them)
     rememberAiFocus: rememberAiFocus,
-    restoreAiFocus: restoreAiFocus
+    restoreAiFocus: restoreAiFocus,
+    // AI-1 (section 9): layout regimes + conversation history
+    toggle: toggle,
+    toggleMax: toggleMax,
+    togglePin: togglePin,
+    toggleHist: toggleHist,
+    newChat: newChat,
+    clearAllChats: clearAllChats,
+    openChat: openChat,
+    deleteChat: deleteChat,
+    pinChat: pinChat,
+    renameChat: renameChat,
+    applyAiMode: applyAiMode,
+    getChats: aiChatList
   };
 })(MMGR);
 window.MMGR = MMGR;

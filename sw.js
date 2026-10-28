@@ -405,7 +405,7 @@
 // js/mmgr-perf.js, js/mmgr-glass.js, js/marketing.js, js/marketing-globe.js,
 // js/mmgr-combobox.js (new), dist/marketing-bundle.js. No inline script block
 // changed, so the CSP hashes are untouched.
-const CACHE = 'mmgr-shell-v488';
+const CACHE = 'mmgr-shell-v489';
 
 // v488 - two real defects the CI-skipped T4 suites were holding
 // (REFINEMENT-PROGRESS.md NEXT UP step 6). Both were found by running the

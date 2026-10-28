@@ -1082,7 +1082,7 @@ async function ev(expr) {
   // ---- AI-WINDOW-DOCKED-RESIZE: left-edge strip + per-device width persistence
   // A18a: save/apply round-trip — the WIDTH persists to localStorage
   // (mmgr_ai_size), is applied as inline style on #ai-win, and clearing the
-  // pref restores the 420px dock default. A18b: a synthetic pointer drag on
+  // pref restores the 520px dock default. A18b: a synthetic pointer drag on
   // the left-edge handle widens the drawer AND persists the new width (the
   // drag wiring runs on real pointer events, so this exercises the actual
   // handlers). A18c: the drag never repositions the drawer (the retired
@@ -1099,7 +1099,7 @@ async function ev(expr) {
     var pref = JSON.parse(localStorage.getItem('mmgr_ai_size') || '{}');
     try { localStorage.removeItem('mmgr_ai_size'); } catch(e){}
     MMGR.AiWin.applyAiSizePref();
-    var clearedW = parseFloat(win.style.width) === 420;
+    var clearedW = parseFloat(win.style.width) === 520;
     return { appliedW: appliedW, prefW: pref.w, clearedW: clearedW };
   })()`);
   check(
@@ -1151,12 +1151,14 @@ async function ev(expr) {
 
   // ---- A19: docked-sidebar default size regression gate ----
   // With NO saved size pref the AI window renders as the right-docked
-  // sidebar panel: #ai-win is width:420px fixed to the right edge (the
+  // sidebar panel: #ai-win is width:520px fixed to the right edge (the
   // a5497ea SIDEBAR-AI-PANEL redesign superseded the AI-WINDOW-DOUBLED-SIZE
-  // overlay), and the inner .mb fills it (100% x 100%). The gate asserts the
-  // docked contract so a regression to a collapsed/undocked modal is caught:
-  // full-height rail at the docked width, and the 8 resize handles still
-  // present (users can still widen the panel per device via mmgr_ai_size).
+  // overlay; AI-1 raised the default from 420 to 520 so the conversation
+  // column fits beside the thread), and the inner .mb fills it (100% x 100%).
+  // The gate asserts the docked contract so a regression to a collapsed or
+  // undocked modal is caught: full-height rail at the docked width, and the
+  // single left-edge resize strip still present (users can still widen the
+  // panel per device via mmgr_ai_size).
   // Thresholds hold for the suite's fixed 1440x1200 window (height ~905px
   // measured = 100% of the rail) and any reasonably sized screen.
   const rz3 = await ev(`(async function(){
@@ -1173,8 +1175,8 @@ async function ev(expr) {
       hasHandles: modal.querySelectorAll('.ai-rz').length === 1 };
   })()`);
   check(
-    'A19 size: AI window renders as the right-docked sidebar (modal ~420px wide, full height, docked right within the rail border, left-edge resize strip, no saved pref)',
-    rz3.w >= 380 && rz3.w <= 460 && rz3.h >= 700 && rz3.winRight >= rz3.vw - 12 && rz3.hasHandles,
+    'A19 size: AI window renders as the right-docked sidebar (modal ~520px wide, full height, docked right within the rail border, left-edge resize strip, no saved pref)',
+    rz3.w >= 480 && rz3.w <= 560 && rz3.h >= 700 && rz3.winRight >= rz3.vw - 12 && rz3.hasHandles,
     rz3
   );
 

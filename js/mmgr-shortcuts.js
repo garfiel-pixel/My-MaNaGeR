@@ -38,6 +38,7 @@
     app: [
       { keys: '?', what: 'Show this list of shortcuts' },
       { keys: '/', what: 'Open the assistant and start typing your question' },
+      { keys: 'Ctrl/⌘ + .', what: 'Open or close the assistant' },
       { keys: 'F', what: 'Focus Mode , isolate the active panel' },
       { keys: 'Ctrl/⌘ + Z', what: 'Undo (outside text fields)' },
       { keys: 'Ctrl/⌘ + Shift + Z', what: 'Redo' },
@@ -306,6 +307,18 @@
 
   function onKeyDown(e) {
     if (!pageKind()) {
+      return;
+    }
+    // AI-1 (section 9): Ctrl+. (and Cmd+. on a Mac) opens and closes the
+    // assistant. Checked BEFORE the modifier guard below, because this is the
+    // one shortcut that is meant to carry Ctrl. Shift+Ctrl+. reports ">" on
+    // some layouts, so both spellings are accepted.
+    if (!isOpen() && (e.ctrlKey || e.metaKey) && !e.altKey && (e.key === '.' || e.key === '>')) {
+      if (MMGR.AiWin && typeof MMGR.AiWin.toggle === 'function') {
+        e.preventDefault();
+        e.stopPropagation();
+        MMGR.AiWin.toggle();
+      }
       return;
     }
     if (e.ctrlKey || e.metaKey || e.altKey) {

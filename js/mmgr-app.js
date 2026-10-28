@@ -4306,6 +4306,19 @@ window.MMGR = MMGR;
       window.MMGR.AiWin.setAiCfg({ tier: el.value });
       window.MMGR.AiWin.syncSettingsUI();
     },
+    // AI-1 (section 9): layout + conversation history. The chat actions write
+    // state.aiChats and stay blocked in view-only. aiMaxToggle and
+    // aiHistToggle only paint the window; aiPinToggle writes s.ui.aiPinned,
+    // so it is deliberately NOT in the read-only list.
+    aiMaxToggle: () => window.MMGR.AiWin.toggleMax(),
+    aiPinToggle: () => window.MMGR.AiWin.togglePin(),
+    aiHistToggle: () => window.MMGR.AiWin.toggleHist(),
+    aiNewChat: () => window.MMGR.AiWin.newChat(),
+    aiClearAllChats: () => window.MMGR.AiWin.clearAllChats(),
+    aiOpenChat: el => window.MMGR.AiWin.openChat(el.getAttribute('data-id')),
+    aiPinChat: el => window.MMGR.AiWin.pinChat(el.getAttribute('data-id')),
+    aiRenameChat: el => window.MMGR.AiWin.renameChat(el.getAttribute('data-id')),
+    aiDeleteChat: el => window.MMGR.AiWin.deleteChat(el.getAttribute('data-id')),
     aiToggleMcp: el => {
       var pid = window.MMGR && MMGR.App && MMGR.App.projectId ? MMGR.App.projectId : '';
       if (pid) {
@@ -5206,6 +5219,10 @@ window.MMGR = MMGR;
     openAiWin: 1,
     closeAiWin: 1,
     closeAiWinBg: 1,
+    // AI-1: layout controls only paint the window (no project write).
+    // aiPinToggle writes s.ui.aiPinned, so it stays blocked in view-only.
+    aiMaxToggle: 1,
+    aiHistToggle: 1,
     aiPreset: 1,
     aiAttachContext: 1,
     aiCopy: 1,

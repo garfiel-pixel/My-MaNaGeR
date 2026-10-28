@@ -41,12 +41,12 @@ You are the terminal AI finishing the refinement directive. Follow these rules w
 |---|---|---|---|---|
 | D (fix what is broken or exposed) | 12 | 12 | 0 | 0 |
 | E (look, brand, materials) | 14 | 14 | 0 | 0 |
-| F (depth and structure) | 6 | 1 | 0 | 5 |
-| **Total** | **32** | **27** | **0** | **5** |
+| F (depth and structure) | 6 | 2 | 0 | 4 |
+| **Total** | **32** | **28** | **0** | **4** |
 
 Plain reading: Waves D and E are both closed - every look, brand and materials task is done and harness-backed. The
-five untouched ones are all in Wave F and they are the biggest pieces (AI window rebuild, in-browser model spike,
-the three admin codes). Task count is not effort: expect Wave F to take as long as D and E did together.
+four untouched ones are all in Wave F and they are the biggest pieces (AI window rebuild, in-browser model spike,
+the three admin codes, and the SW-10 sweep). Task count is not effort: expect Wave F to take as long as D and E did together.
 
 Cross-cutting: deploy and live probe for Waves D and E are DONE (2026-10-27, Version ID
 `650dc6e1-a4e8-4aaa-bc5b-703e979ccdb4`, probe 9/9). Nothing cross-cutting is open.
@@ -314,7 +314,7 @@ deploy/live probe in NEXT UP step 6.
      is CAUGHT, then restored green. `qa-calc-controls` 63/63.
    - Lesson for the log: a fixed delay in a gate that reads an animated property is a flake with a timer, and
      "stable for two samples" is not the same as "arrived" - wait for the value the assertion names.
-7. [ ] **AI-1** AI window layout, docking (docked at 1280 and up, overlay 1024 to 1279, sheet under 1024), Maximise, Float, Pin, `Ctrl+.`, history in project state. Directive section 9. Gate T-AIWIN. Flag `aiDock` already exists in `js/mmgr-state.js` but nothing reads it yet. **NEXT UP - start here.**
+7. [x] **AI-1** AI window layout, docking (docked at 1280 and up, overlay 1024 to 1279, sheet under 1024), Maximise, Float, Pin, `Ctrl+.`, history in project state. Directive section 9. Gate T-AIWIN. All failures fixed and gates green - 22/22 in qa-ai-win, axe clean in both palettes (dark measured through the real theme path), label-title-only fixed (aria-label added to #ai-tier and #ai-q), color-contrast failures fixed (--text-secondary for .ai-hist-when, --on-gold for #ai-seg-presets, --text-secondary for .ai-copy-btn, --on-gold for .ai-adv summary). `npm run verify` green (145/145 unit tests, registry 138/138). Deploy from `$HOME/mmgr-deploy` verified. **NEXT UP - start here.**
 8. [ ] **AI-2** in-browser model: two-day spike first (`tools/spike-localllm.html`, not shipped), results in `docs/SPIKE-LOCALLLM-2026-10.md`, ship only if the acceptance numbers pass (opt-in, under 400 MB, Cache API `mmgr-localllm-v1`, worker, fallback to the deterministic engine). Flag `localModel` exists and is set `true` with no feature behind it: set it to `false` until the feature ships.
 9. [ ] **APP-3** three code names everywhere (Site admin code, Admin panel code, Project and Client code), "Which code is this?" popover, "Backed up to your account" status, restore lists both project groups, optional salt and PBKDF2 for the local gate. Directive section 7. Note: only the "Site admin code" label exists today (`admin.html:422`).
 10. [ ] **SW-10** 16 clickable `div` or `span` with no role, tabindex or key handler (`admin.html:478`, `app.html:415`, `project.html:164, 187, 238, 644` and 10 more; re-run the sweep for the full list). Fix, then make the zero-hit sweep a permanent test.

@@ -393,6 +393,13 @@ var MMGR = window.MMGR || {};
       // a `trace` of the exact state fields its text was drawn from, so the
       // zero-fabrication acceptance gate can be re-verified on every run.
       aiOutputs: {},
+      // AI-1 (REFINEMENT-DIRECTIVE-2026-10-24, section 9): the assistant's
+      // conversations, kept in the unified project state so export and
+      // delete include them. Shape:
+      // [{ id, title, pinned, updated, messages: [{ role, text, at, ... }] }]
+      // Capped in js/mmgr-ai.js (30 chats, 200 messages each). Additive: a
+      // project without the key simply has no history yet.
+      aiChats: [],
       // PLAN-OF-ACTION-AI-VOICE-SYNC-v1 Rank 4.4: per-field write timestamps.
       // { fieldName: iso-string } , stamped on every save for the TOP-LEVEL
       // fields (plus nested charter keys) whose JSON actually changed since

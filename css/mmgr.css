@@ -11840,6 +11840,371 @@ body.dark-mode .ai-q:focus.at-cap {
     inset 0 16px 14px -12px var(--lit-black-70);
 }
 
+/* ============================================================
+   AI-1 (REFINEMENT-DIRECTIVE-2026-10-24, section 9): the assistant
+   window as a three-region workspace.
+   ------------------------------------------------------------
+   Left: the conversation column. Centre: the thread. Bottom: one
+   composer bar carrying the tier badge, the mic, the message box
+   and Send. Presets stay as chips directly above the composer; the
+   context dump is the collapsed "What the assistant can see" row in
+   project.html.
+   Docking regimes, decided by viewport width in js/mmgr-ai.js:
+     1280 and wider  docked - the page column gives up --ai-w
+     1024 to 1279   overlay - slides over a dimmed edge, Esc closes
+     under 1024     full-screen sheet with safe-area insets
+   Maximise covers the workspace; Float keeps its own geometry.
+   Thread and composer are solid card surfaces (content layer); the
+   header keeps its gold wash. No blur is added here, so Performance
+   Mode has nothing extra to strip.
+   ============================================================ */
+:root {
+  --ai-w: 520px;
+}
+#ai-win .mb {
+  display: flex;
+  flex-direction: row;
+}
+.ai-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+/* Docked: the page column gives up exactly the panel width, so nothing
+   of the page is ever covered. .bcp-main is listed for the day the
+   assistant reaches the calculator page; the rule is inert elsewhere. */
+body.ai-docked #app-main,
+body.ai-docked .bcp-main {
+  margin-right: var(--ai-w);
+}
+/* The floating entry point and the bottom dock move left with the page, so
+   the assistant never sits on top of a control the user needs. */
+body.ai-docked #ai-fab {
+  right: calc(var(--ai-w) + 22px);
+}
+body.ai-docked .dock {
+  left: calc((100% - var(--ai-w)) / 2);
+}
+/* Overlay: a dimmed edge over the page, never a blocking scrim - the
+   page stays readable and usable while the panel floats above it. */
+body.ai-overlay::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(9, 10, 15, 0.16);
+  z-index: 1990;
+  pointer-events: none;
+}
+
+/* ---- Conversation column ---- */
+.ai-hist {
+  display: none;
+  flex: 0 0 176px;
+  width: 176px;
+  min-height: 0;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 10px;
+  border-right: 1px solid var(--border);
+  background: var(--card);
+  overflow: hidden;
+}
+#ai-win.hist-inline .ai-hist,
+#ai-win.hist-open .ai-hist {
+  display: flex;
+}
+#ai-win.hist-open .ai-hist {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: min(84%, 300px);
+  z-index: 30;
+  box-shadow: 12px 0 40px var(--lit-black-35);
+  animation: aiHistIn 0.22s var(--ease-ios);
+}
+@keyframes aiHistIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+.ai-hist-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ai-hist-title {
+  flex: 1;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--slate);
+}
+.ai-hist-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--border);
+  background: var(--tile-bg);
+  color: var(--gold-text);
+  border-radius: 100px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 4px 9px;
+  cursor: pointer;
+  transition: var(--tr-ui);
+}
+.ai-hist-new:hover {
+  border-color: var(--gold);
+}
+.ai-hist-search {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--tile-bg);
+  color: var(--text);
+  border-radius: var(--radius-control);
+  font-size: 0.72rem;
+  padding: 6px 8px;
+}
+.ai-hist-search:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+}
+.ai-hist-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ai-hist-item {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: var(--radius-control);
+  padding: 2px;
+}
+.ai-hist-item:hover {
+  background: var(--tile-bg);
+}
+.ai-hist-item.is-active {
+  background: color-mix(in oklch, var(--gold) 12%, transparent);
+}
+.ai-hist-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  padding: 6px;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+}
+.ai-hist-name {
+  width: 100%;
+  font-size: 0.74rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ai-hist-when {
+  font-size: 0.62rem;
+  color: var(--slate);
+}
+/* Dark: the timestamp rides on the active row's white wash (12% of the
+   accent over --card), where the slate step measures 4.04:1 - under the
+   WCAG 2.2 AA floor for 10px text. One step up to --text-secondary
+   (#c9c9cf) reads 8.7:1 on the same wash and 11:1 on the plain card. */
+body.dark-mode .ai-hist-when {
+  color: var(--text-secondary);
+}
+.ai-hist-tools {
+  display: none;
+  gap: 1px;
+}
+.ai-hist-item:hover .ai-hist-tools,
+.ai-hist-item.is-active .ai-hist-tools {
+  display: inline-flex;
+}
+.ai-hist-tools button {
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: var(--slate);
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.ai-hist-tools button:hover {
+  color: var(--gold-text);
+  background: var(--card);
+}
+.ai-hist-tools button[aria-pressed='true'] {
+  color: var(--gold-text);
+}
+.ai-hist-empty {
+  font-size: 0.7rem;
+  color: var(--slate);
+  padding: 8px 6px;
+}
+.ai-hist-clear {
+  border: none;
+  background: transparent;
+  color: var(--slate);
+  font-size: 0.68rem;
+  padding: 4px;
+  cursor: pointer;
+  text-align: left;
+}
+.ai-hist-clear:hover {
+  color: var(--danger-ink);
+}
+.ai-hist-rename {
+  width: 100%;
+  border: 1px solid var(--gold);
+  border-radius: 6px;
+  font-size: 0.74rem;
+  padding: 3px 5px;
+  background: var(--card);
+  color: var(--text);
+}
+/* The column only appears when there is room for it; below that the
+   header's list button opens it as a slide-over. */
+.ai-hist-btn {
+  display: none;
+}
+#ai-win:not(.hist-inline) .ai-hist-btn {
+  display: inline-flex;
+}
+
+/* ---- Header states ---- */
+.ai-max-btn[aria-pressed='true'],
+.ai-pin-btn[aria-pressed='true'] {
+  color: var(--gold-text);
+  background: color-mix(in oklch, var(--gold) 14%, transparent);
+  border-color: var(--gold);
+}
+
+/* ---- Composer ---- */
+.ai-inputbar {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.ai-quick-presets {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+.ai-quick-presets:empty {
+  display: none;
+}
+.ai-quick-presets .ai-chip {
+  flex: 0 0 auto;
+  font-size: 0.7rem;
+  padding: 5px 10px;
+}
+.ai-composer-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+.ai-composer-row .ai-q {
+  flex: 1;
+  min-width: 0;
+}
+.ai-tier-badge {
+  flex-shrink: 0;
+  height: 34px;
+  max-width: 128px;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  background: var(--tile-bg);
+  color: var(--slate);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0 8px;
+  cursor: pointer;
+}
+.ai-tier-badge:hover {
+  border-color: var(--gold);
+  color: var(--gold-text);
+}
+.ai-tier-badge:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+/* Thread: centred reading column, never a wall of text edge to edge. */
+.ai-thread {
+  padding-inline: clamp(14px, 5%, 40px);
+}
+
+/* ---- Maximise: the workspace, nothing behind it ---- */
+#ai-win.max-mode {
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: auto !important;
+  max-width: none;
+  border-left: none;
+  z-index: 2100;
+  animation: none;
+}
+#ai-win.max-mode .ai-rz-w {
+  display: none;
+}
+
+/* ---- Sheet under 1024: the whole screen, safe areas respected ---- */
+body.ai-sheet #ai-win {
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: auto !important;
+  border-left: none;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+}
+body.ai-sheet #ai-win .ai-rz-w {
+  display: none;
+}
+body.ai-sheet .ai-head {
+  padding: 10px 12px;
+}
+body.ai-sheet .ai-thread {
+  padding: 16px 14px 8px;
+}
+body.ai-sheet .ai-inputbar {
+  padding: 10px 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #ai-win.open,
+  #ai-win.hist-open .ai-hist {
+    animation: none;
+  }
+}
+
 /* dark mode */
 body.dark-mode .ai-user {
   background: linear-gradient(135deg, #f59e0b, #b45309);

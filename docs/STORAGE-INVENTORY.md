@@ -44,6 +44,7 @@ fails the gate.
 | `mmgr_admin_setup` | Whether admin access is set up on this device. | necessary |
 | `mmgr_admin_session` | Admin signed-in flag on this device. | necessary |
 | `mmgr_admin_cloud_code` | Cached admin cloud code. | necessary |
+| `mmgr_restore_recap` | One-time flag so "What your code brought back" (the restore recap) is shown once after a restore instead of on every panel entry. Session only: set after the recap is seen, removed as soon as it is read. | necessary |
 | `mmgr_current_project` | The project you had open last. | necessary |
 | `mmgr_state_<id>` | A project's full data. | necessary |
 | `mmgr_unlocked_<id>` | Whether a project was unlocked on this device. | necessary |

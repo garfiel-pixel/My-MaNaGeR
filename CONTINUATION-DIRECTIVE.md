@@ -68,12 +68,12 @@ must get the audit's own state check (rule 0.1) before anyone claims it.
 1. Read this file, then `REFINEMENT-DIRECTIVE-2026-10-24.md`, then `REFINEMENT-PROGRESS.md`.
    The progress file is the authority for what is DONE and what is LEFT, and its
    NEXT UP section is the build order.
-2. State at HEAD `ee5ddfe`: Wave D closed (12/12), Wave E closed (14/14), Wave F 1 of 6.
-   Open: the six field-guide cards, the four Wave D small checks, the shared Wave D+E
-   deploy and live probe, then Wave F (AI-1, AI-2, APP-3, SW-10).
-3. Run `npm run verify` first; baseline on `ee5ddfe`: green, 145/145 unit tests,
-   registry 137/137, sw shell v486. Browser gates: `qa-full` 194/194,
-   `verify:gantt` (T-GANTT) and `verify:gold` (T-GOLD) green.
+2. State at HEAD `c2816a0`: Wave D closed (12/12), Wave E closed (14/14), Wave F 1 of 6.
+   Open: the four Wave D small checks (NEXT UP step 5), the shared Wave D+E deploy and
+   live probe, then Wave F (AI-1, AI-2, APP-3, SW-10).
+3. Run `npm run verify` first; baseline on `c2816a0`: green, 145/145 unit tests,
+   registry 137/137, sw shell v487. Browser gates: `qa-full` 194/194, `verify:gantt`,
+   `verify:gold`, `qa-globe-spin` 15/15, `qa-hero-globe` 16/16, `qa-dot-rail` 15/15.
 4. Every new harness needs THREE edits: the harness, its row in
    `docs/CI-TEST-COVERAGE.md`, and a step in `.github/workflows/ci.yml` (or the
    extended battery). The registry doc alone does not run it.
@@ -85,6 +85,20 @@ must get the audit's own state check (rule 0.1) before anyone claims it.
 
 ## STATUS LOG (newest entries kept here; full history in `docs/history/log-YYYY-MM.md`)
 
+
+- 2026-10-27 (x4): LAND-2 WAS FALSE-DONE AND IS NOW REAL, and the six field-guide cards
+  are written (c2816a0). The directive asks for "a visible Pause and Play control"
+  (WCAG 2.2.2, moving content over 5 s). What existed was an empty .hg-controls div, a
+  .hg-play CSS rule and a state.paused flag nothing ever set - build() read the
+  container into an unused variable - while qa-globe-spin passed 7/7 by setting the flag
+  directly. The button is now created in build(), a real click pauses and resumes, label
+  and icon flip Pause/i-pause <-> Play/i-play (two new sprite symbols), it hides under
+  Performance Mode with a .hg-controls[hidden] guard, and reduced motion shows the still
+  globe WITH the control. Gate 15/15 clicking the real button; qa-hero-globe's stale G5
+  ("no Pause/Play button") and G8 ("cards untouched") re-baselined to the new contract,
+  16/16; 9 mutations caught across the two harnesses. Cards: A-04 view controls, A-30
+  materials/prices/ASK, A-17 public site. verify green, 145/145 unit tests, registry
+  137/137, qa-full 194/194, sw v487. NEXT: Wave D small checks (NEXT UP step 5).
 - 2026-10-27 (x3): WAVE E CLOSED. GANTT-1 (dfdc751): js/mmgr-gantt-view.js is the
   only answer to which rows, over which span, joined by which links, at which scale;
   the chart, the arrow overlay and all three exports read it. Group by Phase/Trade/

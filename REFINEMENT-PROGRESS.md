@@ -48,8 +48,7 @@ Plain reading: Waves D and E are both closed - every look, brand and materials t
 five untouched ones are all in Wave F and they are the biggest pieces (AI window rebuild, in-browser model spike,
 the three admin codes). Task count is not effort: expect Wave F to take as long as D and E did together.
 
-Cross-cutting still open: deploy and live probe for Waves D and E (none recorded), field-guide cards for several
-Wave E features, stale session log.
+Cross-cutting still open: deploy and live probe for Waves D and E (none recorded), stale session log.
 
 ---
 
@@ -85,7 +84,28 @@ Small checks left from Wave D (do these inside section 4, step 3):
 - [x] **MAT-3** price-change stamp and badge (`rateSig`, `pricedAt`, "Re-price this line"). `a3b7aae`. Harness: `tools/qa-calc-prices-changed.cjs`.
 - [x] **AI-3** assistant reaches every field and asks. `e59aeeb`. `verify-settings-reach` passes (11 keys); `ASK:` line parsed in `js/calc-ai.js`.
 - [x] **LAND-1** ghost dot rail. `431260c`. `qa-dot-rail` 15/15 (logged).
-- [x] **LAND-2** continuous globe plus Pause control. `431260c`. `qa-globe-spin` 7/7 (logged).
+- [x] **LAND-2** continuous globe plus Pause control. Spin `431260c`; **the Pause control itself was never built and
+  is fixed in `c2816a0`**. `431260c` shipped the
+  spin, the card-follows-node behaviour and a `.hg-play` CSS rule, but nothing created the button: `build()` read
+  `.hg-controls` into a variable it never used and no code ever set `state.paused`. `qa-globe-spin` passed 7/7
+  because it set `st.paused = true` directly, so the gate proved the LOOP honours the flag while the directive's
+  claim ("a visible Pause and Play control", WCAG 2.2.2) was never tested. Now: the button is created in `build()`
+  (before the refuse decision), a real click pauses and resumes, the label and icon flip between Pause/`i-pause` and
+  Play/`i-play` (two symbols added to `css/mmgr-icons.svg`), it is hidden under Performance Mode and data saver
+  (with the `.hg-controls[hidden] { display: none }` guard, because the flex rule outranks the UA hidden rule), and
+  under reduced motion the still globe (the poster) now shows WITH the control so a person can choose to play it,
+  which is the directive's own wording. Gate `qa-globe-spin` is 15/15: it now clicks the real button, asserts the
+  label/icon flip, asserts the Performance Mode hide and runs a second reduced-motion context. Five mutations
+  caught (control never built, click does not set paused, the `[hidden]` guard dropped, reduced motion hides the
+  still globe again, the label never flips) and it returns green byte-identical. Two arms of `qa-hero-globe` were
+  measuring the OLD contract and are re-baselined with it: G5 asserted that **no** Pause/Play button existed (the
+  2026-10-13 note that cleared the feature tab chips) and G8 asserted that reduced motion left the mock cards in
+  place with no globe at all. G5 now requires zero tab chips, exactly one visible Pause control and a self-carrying
+  cycle; G8 requires the still globe with its Play control and the cards stepping aside by visibility, so the column
+  keeps its height and the page cannot shift. Four mutations caught there too; `qa-hero-globe` 16/16.
+  `npm run verify` green (145/145 unit tests, registry 137/137), `qa-globe-spin` 15/15, `qa-hero-globe` 16/16,
+  `qa-dot-rail` 15/15, `qa-full` 194/194, `sw.js` at `mmgr-shell-v487`. Field-guide cards for the whole wave
+  (A-04 view controls, A-30 materials and prices, A-17 public site) landed in the same commit.
 - [x] **Pricing page wording** (`pricing.html:122-123`, count gated against the data).
 - [x] **SW-12** one currency table. `5e0f732`. Sweep SW-12 = 0.
 - [x] **SW-14** every setting reachable. `5e0f732`. Sweep SW-14 = 0, `verify:reach` is in `npm run verify`.
@@ -148,18 +168,25 @@ Partial or in progress:
   armed the dev bundle fallback was blocked by the hash-only `script-src`, so the fallback was dead code
   on twelve pages; it is now a hashed listener.
 
-Field-guide cards (locked rule 8). Check each exists in `mymanager-field-guide.html`, add what is missing:
-- [ ] Itemised materials (1 mention found; confirm it covers accessory lines and the switch)
-- [ ] Tidy view and link policies (0 mentions found) - now also the Group and Window controls
-- [ ] "Prices changed" badge and Re-price (0 mentions found)
-- [ ] Related items suggestions (0 mentions found)
-- [ ] Quiet dot rail and globe Pause control (0 mentions found)
-- [ ] AI `ASK` buttons and the new settings the assistant can set
+Field-guide cards (locked rule 8). All six written in `c2816a0`, verified 0 em/en dashes and 0 emoji:
+- [x] Itemised materials - A-30 "Materials, suggestions, and prices that moved": the switch, the accessory
+      lines at their own price, add-my-own-item and reset to planning allowances
+- [x] Tidy view and link policies - A-04 "Changing what you see, never what you planned": Tidy, Group, Window and
+      the four link policies in Export Schedule, with the derived phase-gate line called a picture, not a dependency
+- [x] "Prices changed" badge and Re-price - A-30: the priced-at stamp, re-price this line, keep as quoted, and why
+      the total never moves on its own
+- [x] Related items suggestions - A-30 "Work you would have forgotten": one-tap chips, quantity from the same
+      dimensions, withheld when the dimensions cannot give an honest number
+- [x] Quiet dot rail and globe Pause control - A-17 "On the public site": the rail's big/small dot rule and the
+      Pause/Play control including reduced motion and Performance Mode
+- [x] AI `ASK` buttons and the new settings the assistant can set - A-30 "The assistant asks before it guesses":
+      one question per reply, answers as buttons, nothing changes until clicked, the page does the arithmetic
 
 Wave E exit: T-GOLD, T-ACC, T-LUMP, T-GANTT, T-GLOBE green, wording check green, contrast report attached, `npm run verify`.
 Status: all five gates are green and wired, and the contrast report is `docs/GOLD-AUDIT.md` sections 6 and 7
 (the measurements, the three decisions, the 14 remaining oranges with reasons). Wave E is closed on its own
-terms; what is left for Wave E is the field-guide cards below and the shared deploy/live probe.
+terms: every field-guide card is written (`c2816a0`), and the only thing left for Wave E is the shared
+deploy/live probe in NEXT UP step 6.
 
 ---
 
@@ -178,8 +205,18 @@ terms; what is left for Wave E is the field-guide cards below and the shared dep
    gold-as-words elements. Two measured decisions recorded in `docs/GOLD-AUDIT.md` section 7: the two-stop
    gradient (the three-stop form was 3.19-3.70:1 on every real label) and two gold-as-words tokens (the
    single token landed on the marketing hero at 2.74:1). Harness registered in all three places.
-4. [ ] Field-guide cards listed above.
-5. [ ] Wave D small checks listed in section 2.
+4. [x] Field-guide cards listed above. `c2816a0`. **The state check found a real gap first:** the card
+   "Quiet dot rail and globe Pause control" could not be written because **there was no Pause control**. The
+   directive (section 10, LAND-2) requires "a visible Pause and Play control (WCAG 2.2.2: moving content over 5
+   seconds needs a pause)", and the T-GLOBE gate is worded "the Pause control stops and restarts the loop". What
+   existed was `index.html`'s empty `<div class="hg-controls">`, a `.hg-play` CSS rule, and a `state.paused` flag
+   nothing ever set: `marketing-globe.js` queried `.hg-controls` into a variable it never used, and
+   `tools/qa-globe-spin.cjs` poked `st.paused = true` directly instead of clicking anything, so the gate passed on
+   a control that was never built. LAND-2 was PARTIAL, not done; it is now complete (`c2816a0`), the gate clicks
+   the real button (15/15) and `qa-hero-globe`'s two stale arms are re-baselined to the new contract (16/16).
+   All six cards written, 0 em/en dashes, 0 emoji. `npm run verify` green (145/145 unit tests, registry 137/137),
+   `qa-full` 194/194, `sw.js` at `mmgr-shell-v487`.
+5. [ ] Wave D small checks listed in section 2. **NEXT UP - start here.**
 6. [ ] End of Waves D and E: `npm run verify`, full `qa-*` battery, CI green, commit, deploy from `$HOME/mmgr-deploy`, live probe. Probe list: old PDF path returns 404; `/api/ratebook` returns 401 signed out; every Export Schedule option changes and downloads; Work item list readable in dark; admin to dashboard leaves one tab; Performance Mode on the calculator stops the background; buttons gold with readable labels in both modes; drywall shows its accessory lines.
 7. [ ] **AI-1** AI window layout, docking (docked at 1280 and up, overlay 1024 to 1279, sheet under 1024), Maximise, Float, Pin, `Ctrl+.`, history in project state. Directive section 9. Gate T-AIWIN. Flag `aiDock` already exists in `js/mmgr-state.js` but nothing reads it yet.
 8. [ ] **AI-2** in-browser model: two-day spike first (`tools/spike-localllm.html`, not shipped), results in `docs/SPIKE-LOCALLLM-2026-10.md`, ship only if the acceptance numbers pass (opt-in, under 400 MB, Cache API `mmgr-localllm-v1`, worker, fallback to the deterministic engine). Flag `localModel` exists and is set `true` with no feature behind it: set it to `false` until the feature ships.
@@ -225,5 +262,11 @@ log any answer the owner gives here and apply it.
     the default and there is no narrow-button case to special-case. Recorded in `docs/GOLD-AUDIT.md` section 7.
   - 2026-10-27: `docs/GOLD-AUDIT.md` section 6's stop-sampled 4.45:1 was optimistic. The real worst pixel under a
     label is 3.19-3.70:1. Section 7 supersedes it and keeps section 6 for the record.
+  - 2026-10-27: **LAND-2 was ticked as done when the Pause control did not exist.** `431260c` shipped the spin and
+    a `.hg-play` CSS rule, but no code created a button and nothing set `state.paused`; `qa-globe-spin` set the flag
+    directly, so the gate measured the loop instead of the control the directive and WCAG 2.2.2 ask for. Fixed in
+    `c2816a0`; the gate now clicks the real button and `qa-hero-globe`'s two stale arms (G5 "no Pause/Play button",
+    G8 "cards stay untouched under reduced motion") are re-baselined to the current contract. Lesson: a gate that
+    reaches past the UI to set state can pass while the UI does not exist.
 
 **End of progress file.**

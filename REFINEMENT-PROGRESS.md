@@ -40,16 +40,16 @@ You are the terminal AI finishing the refinement directive. Follow these rules w
 | Wave | Tasks | Done | Partial or in progress | Not started |
 |---|---|---|---|---|
 | D (fix what is broken or exposed) | 12 | 12 | 0 | 0 |
-| E (look, brand, materials) | 14 | 12 | 2 (GOLD-1, GANTT-1) | 0 |
+| E (look, brand, materials) | 14 | 13 | 1 (GOLD-1) | 0 |
 | F (depth and structure) | 6 | 1 | 0 | 5 |
-| **Total** | **32** | **25** | **2** | **5** |
+| **Total** | **32** | **26** | **1** | **5** |
 
-Plain reading: Wave D is closed and Wave E has only its two harness-backed look tasks left. The five untouched
-ones are all in Wave F and they are the biggest pieces (AI window rebuild, in-browser model spike, the three
-admin codes). Task count is not effort: expect Wave F to take as long as D and E did together.
+Plain reading: Wave D is closed and Wave E has only its last harness-backed look task left (GOLD-1). The five
+untouched ones are all in Wave F and they are the biggest pieces (AI window rebuild, in-browser model spike, the
+three admin codes). Task count is not effort: expect Wave F to take as long as D and E did together.
 
-Cross-cutting still open: deploy and live probe for Waves D and E (none recorded), field-guide cards for
-several Wave E features, two missing gate harnesses (T-GANTT, T-GOLD), stale session log.
+Cross-cutting still open: deploy and live probe for Waves D and E (none recorded), field-guide cards for several
+Wave E features, one missing gate harness (T-GOLD), stale session log.
 
 ---
 
@@ -96,13 +96,25 @@ Partial or in progress:
   - [ ] T-GOLD gate script. None exists. It must: list remaining orange hexes against an allow-list built from `docs/GOLD-AUDIT.md` (the directive's "zero hits" wording cannot pass because the audit deliberately leaves some); Playwright-check label contrast on every `.btn-o` and `.btn-gold` in light and dark (4.5:1 for 14 px text, 3:1 for 18 px bold); assert `.btn-g` still computes green; assert `--bullion*` values are identical in `css/mmgr.css` and `css/marketing.css`.
   - [ ] Directive 5.6 step 3: re-point text uses of the old gold on light surfaces to `--gold-text-on-light`. Not verified as done.
   - [ ] Narrow-button (under 96 px) two-stop gradient needs a class on the button to work. Implement with a class, or log as DEFERRED with this reason.
-- [~] **GANTT-1** built: `ns.GanttView.build` (`js/mmgr-gantt-view.js`), `reduceLinks`, link policies including `gates` (default for exports), wide export dialog CSS, a Tidy checkbox in the export dialog (`project.html:1874`). STILL OPEN (state check each first, names may differ):
-  - [ ] Tidy control on the Gantt toolbar (today it exists only inside the export dialog).
-  - [ ] Group by Phase | Trade | Assignee, and sort within a group by start then WBS.
-  - [ ] Time window: Whole project | Next 90 days | Custom, with automatic scale.
-  - [ ] Phase gates and milestones drawn as distinct diamonds with a right-hand label.
-  - [ ] Screen, PNG, SVG and PDF all drawn from `GanttView.build` (confirm no second code path).
-  - [ ] T-GANTT harness. None exists. Bank-renovation fixture: exported row, span, link and milestone counts equal `build()`; `gates` link count under 25 percent of `all`; no link crosses more than 10 rows except critical ones; three formats list the same tasks.
+- [x] **GANTT-1** one view builder for the screen and all three exports. `dfdc751`. `js/mmgr-gantt-view.js`
+  is the only answer to "which rows, over which span, joined by which links, at which scale"; `renderGantt`,
+  `drawDependencyArrows` and PNG/SVG/PDF all read it (`ganttViewFor`, `buildGanttDrawList`). Group by
+  Phase / Trade / Assignee (a band is a value, so phases leave the trade and assignee axes; a task with no
+  value lands in a named band, never dropped), Window Whole project / Next 90 days / Custom with an
+  automatic scale ladder (day under 45 days, week under 200, month beyond), Tidy on the toolbar as well as
+  in the export dialog. Phase gates draw as distinct gold diamonds with a right-hand label. All three are
+  VIEW state in `s.ui`; the plan, its dates and its links are never touched. Two real defects fixed: a
+  zero-duration PHASE was classified as a milestone diamond, and a `Utils.addDays` Date leaked into
+  `scale.to` and the header tick cursor (the header rendered one cell). Link honesty: a derived
+  phase-to-own-gate line is drawn only by `gates` and is never clickable, because the overlay offers
+  "remove this dependency" and the plan does not contain that edge. Gate: `tools/verify-gantt-view.cjs`
+  (T-GANTT, 121 checks) over the committed fixture `tools/fixtures/gantt-bank.json` (45 tasks, 5 phases,
+  40 real, 63 links, 24 critical) - `all` 63 / `near` 56 / `critical` 23 / `gates` 28 (5 derived + 23
+  critical), tidy 22 rows collapsing p1-p3 with 11 links, 21 trade bands, 20 assignee bands, next90 =
+  2027-01-20 to 2027-04-20 (week, 91), 20-day window = day, 792-day = month, inverted window falls back to
+  `all`. Wired in three places: the harness, `docs/CI-TEST-COVERAGE.md` and the `ci.yml` T1 step, plus
+  `verify:gantt` in `npm run verify`. Teeth proven: five deliberate mutations each turn it red and it
+  returns green byte-identical. Browser: `qa-full` 13e-13k cover the three controls, 194/194.
 - [x] **SW-8** hard-coded colours to tokens. `f258b3e`. The `--lit-*` neutral token block is in BOTH
   stylesheets (29 tokens each, identical names) and every substituted value is proven identical to the
   literal it replaced (`tmp/check-lit-tokens.cjs` resolved each token back and compared to HEAD with
@@ -114,13 +126,14 @@ Partial or in progress:
 
 Field-guide cards (locked rule 8). Check each exists in `mymanager-field-guide.html`, add what is missing:
 - [ ] Itemised materials (1 mention found; confirm it covers accessory lines and the switch)
-- [ ] Tidy view and link policies (0 mentions found)
+- [ ] Tidy view and link policies (0 mentions found) - now also the Group and Window controls
 - [ ] "Prices changed" badge and Re-price (0 mentions found)
 - [ ] Related items suggestions (0 mentions found)
 - [ ] Quiet dot rail and globe Pause control (0 mentions found)
 - [ ] AI `ASK` buttons and the new settings the assistant can set
 
 Wave E exit: T-GOLD, T-ACC, T-LUMP, T-GANTT, T-GLOBE green, wording check green, contrast report attached, `npm run verify`.
+Status: T-ACC, T-LUMP and T-GANTT are green and wired. T-GOLD and the contrast report are the remaining ones.
 
 ---
 
@@ -129,7 +142,9 @@ Wave E exit: T-GOLD, T-ACC, T-LUMP, T-GANTT, T-GLOBE green, wording check green,
 1. [x] Resolve the uncommitted SW-8 work (see above). Commit. `f258b3e` - token swap proven
    value-neutral, the CSP fallback defect fixed with it, `npm run verify` green (145/145 unit tests,
    registry 135/135), `sw.js` bumped to `mmgr-shell-v484`.
-2. [ ] Finish GANTT-1 (open items) and write T-GANTT. Add the harness to `docs/CI-TEST-COVERAGE.md` AND `ci.yml` (all three edits, per the starting-point rule).
+2. [x] GANTT-1 finished with T-GANTT. `dfdc751`. 121 static checks green, five mutations caught,
+   `qa-full` 194/194 with 13e-13k covering the three view controls, `npm run verify` green (145/145
+   unit tests, registry 136/136), `sw.js` at `mmgr-shell-v485`. Harness registered in all three places.
 3. [ ] Finish GOLD-1 (T-GOLD, text re-point, narrow-button decision).
 4. [ ] Field-guide cards listed above.
 5. [ ] Wave D small checks listed in section 2.

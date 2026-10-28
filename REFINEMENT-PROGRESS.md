@@ -253,10 +253,44 @@ deploy/live probe in NEXT UP step 6.
    (SW-1/7/11/12/13/14 all 0; 893 findings across 14 sweeps). `npm run verify` green (145/145 unit tests, registry
    138/138).
 6. [ ] End of Waves D and E: `npm run verify`, full `qa-*` battery, CI green, commit, deploy from `$HOME/mmgr-deploy`,
-   live probe. **NEXT UP - start here.** Probe list: old PDF path returns 404; `/api/ratebook` returns 401 signed out;
+   live probe. **NEXT UP - start here. IN PROGRESS 2026-10-27.**
+   Probe list: old PDF path returns 404; `/api/ratebook` returns 401 signed out;
    every Export Schedule option changes and downloads; Work item list readable in dark; admin to dashboard leaves one
    tab; Performance Mode on the calculator stops the background; buttons gold with readable labels in both modes;
    drywall shows its accessory lines.
+
+   Progress so far, and it earned its keep:
+   - **CI run `40621517883` stopped at step 90**, so fifteen T4 suites never ran. Running all fifteen locally
+     (`tmp/run-t4.cjs`) found **three red suites and two real app defects** that no gate had reached.
+   - Step 90 itself was a stale arm, not an app bug: W11 asserted the AUTHORED text `/255, 255, 255/` against
+     `color: var(--lit-white)`, so a correct tokenisation read as a failure. It now resolves both declarations
+     through a probe element (`bgResolved === 'rgb(46, 125, 50)'`, `colorResolved === 'rgb(255, 255, 255)'`),
+     which is stricter: an undefined token resolves to nothing and still fails. `qa-calc-assistant` 156/156.
+   - **DEFECT 1 (real): an expiry due TODAY was reported as OVERDUE.** `mmgr-stakeholders.js` banded expiries with
+     `new Date(dateOnlyString)` - parsed as UTC midnight - against the CURRENT instant, so a certificate expiring
+     that day came out at -1 day: the dashboard read "COI is overdue (was due today)" and the watcher filed it in
+     the overdue band instead of the 7-day band. EXP-1's 0-day fixture caught it; the -3/6/13/29/59 fixtures all
+     passed, which is the signature of a boundary bug. Days are now counted between LOCAL calendar dates through
+     one shared helper (`daysUntil`), used by BOTH the rollup and `getExpiringCompliance` - they previously
+     measured "N days out" two different ways, so the badge and the notice could disagree about the same item.
+   - **DEFECT 2 (real): the calculator's setting hints were 3.84:1.** `.set-hint` carried `opacity: 0.82`, which
+     composited `--slate` (#666666) to #828282 on a white card, under AA at 0.74rem. axe named every hint on the
+     page. Opacity removed; `--slate` alone is 5.74:1 light and 5.5:1 dark.
+   - **One stale harness**: `qa-shortcuts` crashed (not failed) at gate 11 because it called
+     `selectOption('#calc-work')` and UI-1 had replaced that native select with the app's own listbox, leaving the
+     native element `display:none`. It now presses the real listbox row and asserts the pick landed.
+   - Teeth proven for both app fixes by mutation, with `node build.js` between the write and the gate: reverting the
+     date math reddens the 0-day arm; putting the opacity back reddens axe naming `calc-measured-manual-hint`. Both
+     return green byte-identical. (The first W11 proof looked toothless for exactly this reason - a source mutation
+     that never reaches `dist/` proves nothing.)
+   - Gates: `qa-notice-watchers` 19/19, `qa-a11y-axe` 7/7, `qa-shortcuts` 15/15, `qa-calc-controls` 63/63,
+     `qa-appshell` 79/79, `verify-gold` all checks, `qa-mat-items` 36, `qa-related-items` 13, `qa-modals` 12,
+     `qa-dot-rail` 15, `qa-globe-spin` 15, `verify-calc-s2` 75, `qa-procurement` 51, `qa-consent` 37,
+     `qa-widescreen` 27, `qa-hero-globe` 16, `npm run verify` green. `sw.js` at `mmgr-shell-v488`.
+   - Still to do for this step: commit and push, CI green, deploy from `$HOME/mmgr-deploy`, live probe. The
+     pre-deploy live baseline was measured (6 of 9 probe checks failing: the retired rate file and PDF still
+     answer 200, `/api/ratebook` 404, the sprite and globe bundle predate this wave, the field guide lacks the
+     three new headings), so the probe is a real before/after rather than a ceremony.
 7. [ ] **AI-1** AI window layout, docking (docked at 1280 and up, overlay 1024 to 1279, sheet under 1024), Maximise, Float, Pin, `Ctrl+.`, history in project state. Directive section 9. Gate T-AIWIN. Flag `aiDock` already exists in `js/mmgr-state.js` but nothing reads it yet.
 8. [ ] **AI-2** in-browser model: two-day spike first (`tools/spike-localllm.html`, not shipped), results in `docs/SPIKE-LOCALLLM-2026-10.md`, ship only if the acceptance numbers pass (opt-in, under 400 MB, Cache API `mmgr-localllm-v1`, worker, fallback to the deterministic engine). Flag `localModel` exists and is set `true` with no feature behind it: set it to `false` until the feature ships.
 9. [ ] **APP-3** three code names everywhere (Site admin code, Admin panel code, Project and Client code), "Which code is this?" popover, "Backed up to your account" status, restore lists both project groups, optional salt and PBKDF2 for the local gate. Directive section 7. Note: only the "Site admin code" label exists today (`admin.html:422`).
@@ -307,5 +341,20 @@ log any answer the owner gives here and apply it.
     `c2816a0`; the gate now clicks the real button and `qa-hero-globe`'s two stale arms (G5 "no Pause/Play button",
     G8 "cards stay untouched under reduced motion") are re-baselined to the current contract. Lesson: a gate that
     reaches past the UI to set state can pass while the UI does not exist.
+  - 2026-10-27: **the fifteen T4 suites CI never reached were hiding two real app defects.** CI run `40621517883`
+    failed at step 90 and skipped 91-106, so a green local `npm run verify` and a green `qa-full` said nothing about
+    them. Running all fifteen (`tmp/run-t4.cjs`) found: an expiry due TODAY reported as OVERDUE (a date-only string
+    compared to the current instant, so the band was one day off west of UTC - the dashboard said "was due today"
+    and the watcher said "overdue"), and the calculator's setting hints at 3.84:1 because `.set-hint` was 82 percent
+    opaque over white. Both are fixed and both have mutation proof. Lesson: when CI stops early, the remaining steps
+    are UNVERIFIED, not passing - and a red suite is worth reading before it is re-baselined, because twice in this
+    wave the "stale harness" assumption was wrong.
+  - 2026-10-27: a mutation proof must rebuild. `css/mmgr.css` and `js/*.js` are not what the pages load - they load
+    `dist/mmgr.min.css` and `dist/bundle.js` - so writing a mutation and running the gate proves nothing unless
+    `node build.js` runs between them. The first W11 proof reported "MISSED" twice for exactly this reason and the
+    gate was in fact correct; the proof was the thing that was broken.
+  - 2026-10-27: the compliance badge and the expiry notice measured "N days out" two different ways (badge:
+    now + N days, rollup: the current instant, both against a UTC-parsed date). They now share ONE helper, because
+    two definitions of the same question is how a card and a notice end up disagreeing about one certificate.
 
 **End of progress file.**

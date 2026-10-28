@@ -86,6 +86,15 @@ must get the audit's own state check (rule 0.1) before anyone claims it.
 ## STATUS LOG (newest entries kept here; full history in `docs/history/log-YYYY-MM.md`)
 
 
+- 2026-10-27 (x5): STEP 6 IN PROGRESS, and it earned its keep. CI run 40621517883
+  stopped at step 90, so fifteen T4 suites never ran; all fifteen found THREE red
+  suites and TWO REAL DEFECTS. (1) An expiry due TODAY read as OVERDUE: a date-only
+  string parsed as UTC midnight compared to the current instant, so the band was a
+  day off west of UTC. The badge and the notice now share one local-calendar helper.
+  (2) The calculator's setting hints were 3.84:1 (.set-hint at 0.82 opacity over
+  white; now 5.74:1). (3) qa-shortcuts drove a native select that UI-1 had hidden.
+  Step 90 was a stale arm, not a bug. Both app fixes are mutation-proven WITH a
+  rebuild. verify green, qa-full 194/194, sw v488. NEXT: push, CI, deploy.
 - 2026-10-27 (x4): LAND-2 WAS FALSE-DONE AND IS NOW REAL, and the six field-guide cards
   are written (c2816a0). The directive asks for "a visible Pause and Play control"
   (WCAG 2.2.2, moving content over 5 s). What existed was an empty .hg-controls div, a
@@ -131,20 +140,12 @@ must get the audit's own state check (rule 0.1) before anyone claims it.
 
 Newest verbatim entries kept: 2026-10-24 (x3). One-line rollup of the next
 older entries (full text in `docs/history/log-2026-10.md` / `log-2026-09.md`):
-- 2026-10-23 (x1): owner bugs - claim-pack print wrap (668b8d9, gate 86 hermetic,
-  sw v460) + nav dropdowns under their own item (dc141ed, sw v461), CI green twice,
-  deployed twice, directive restructured; full text archived to log-2026-10.md.
-- 2026-10-17 (x3): welding units money fix + AI rate grounding (e158134 + c6b25a1, v9ff0ac33);
-  H7.1 corrected + PART I phase 1 (263ab9a, b4f5763, 621e3169); PART I phase 2 JIC picker
-  (822ffb5, af33909c).
-- 2026-10-16 (x2): Reviews Turnstile P0 + promo note + honest dark-mode axe gate (v423-v426);
-  calculator family-filter option fix (f2ce6be) and the PART I rate-coverage plan.
-- 2026-10-13: in-chat hero tweak confirmation, documentation only, no commit/deploy.
-- 2026-10-07: marketing dot-rail + full-bleed layout rework (uncommitted at the time).
-- 2026-10-04: Controls terminal card + AI-credit commit-msg gate + 643-commit history rewrite
-  (shipped v356).
-- 2026-09-28 (x3): calculator redesign wave (uncommitted), feature-gap audit (suggestions),
-  kanban/gantt/geo defect wave (v328) plus rate-freedom and F4 calculator waves.
+- 2026-10-16 to 2026-10-23 (x6): claim-pack print wrap + nav dropdowns (sw v460/461,
+  deployed twice), welding units + AI rate grounding, PART I phases 1-2, Reviews
+  Turnstile P0, family-filter fix (v423-v426). Full text in log-2026-10.md.
+- 2026-09-28 to 2026-10-13 (x6): calculator redesign wave, Controls terminal card, AI-credit
+  commit-msg gate, marketing dot-rail/full-bleed rework, hero tweak; full text archived in
+  `docs/history/log-2026-09.md` and `log-2026-10.md`.
 - Before that: 210 entries archived under `docs/history/log-2026-08.md` and `log-2026-09.md`.
 
 **2026-10-24 (same session, fourth task): T-5 REQUEST-BODY CAPS CLOSED (9a701a4).** The audit's 24 uncapped `await request.json()` reads all now route through `readJsonBody(request, maxBytes)` (src/lib/http.js): Content-Length checked when the client sends it, then a running byte budget on the stream - so a chunked body that omits Content-Length cannot slip past, and a large body is never parsed for free behind a rate limit that only counts requests. What was found while converting: readCloudBody keeps its name + 8 MiB contract as a one-line delegate (project-data paths behaviorally unchanged); TWO duplicate local readers existed (reviews.js readReviewBody at 8 KiB, ai-proxy.js readAiBody at 256 KiB) and were deleted in favor of the shared helper; validateBody's documented maxSize parameter was DEAD - never referenced - and now enforces (413 over cap); calc-workspace (4 MB) and cloud prefs (2 KB) had Content-Length-ONLY pre-checks that a chunked request bypasses, both stream-backed now; client-codes had a bare await that turned malformed JSON into a thrown error, now a clean 400. Caps are payload-sized per endpoint: 8192 for code/email payloads (session x9, recovery, admin-code, team x3, client-codes, presence-auth), 16384 for google sign-in (id-token JWT) and contact (2000-char message is up to 8 KB in UTF-8), prefs 2048, workspace 4000000. Every endpoint's existing error message/413 wording was preserved. GATES: `npm run verify` exit 0 (unit **144/144** - 10 NEW cases in test/body-cap.test.mjs: CL reject, chunked no-CL arm, exact-cap boundary, multi-byte byte-counting, malformed/no-body, the 8 MiB delegate, validateBody's cap), qa-email-auth **83/83** (register/login/prefs through the real Worker), qa-full **187/187**, prettier/eslint clean. No sw bump (src/ + test/ are not served assets). The 2026-10-23 verbatim entry above was rolled into docs/history/log-2026-10.md in this change to stay under verify-doc-size's 40,960-byte cap.

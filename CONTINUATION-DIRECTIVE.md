@@ -68,12 +68,12 @@ must get the audit's own state check (rule 0.1) before anyone claims it.
 1. Read this file, then `REFINEMENT-DIRECTIVE-2026-10-24.md`, then `REFINEMENT-PROGRESS.md`.
    The progress file is the authority for what is DONE and what is LEFT, and its
    NEXT UP section is the build order.
-2. State at HEAD `f258b3e`: Wave D closed (12/12), Wave E 12 of 14 done, Wave F 1 of 6.
-   Open: GANTT-1 (grouping, time window, toolbar Tidy, T-GANTT), GOLD-1 (T-GOLD, the
-   text re-point, the narrow-button decision), the field-guide cards, the four Wave D
-   small checks, then Wave F (AI-1, AI-2, APP-3, SW-10).
-3. Run `npm run verify` first; baseline on `f258b3e`: green, 145/145 unit tests,
-   registry 135/135, sw shell v484.
+2. State at HEAD `ee5ddfe`: Wave D closed (12/12), Wave E closed (14/14), Wave F 1 of 6.
+   Open: the six field-guide cards, the four Wave D small checks, the shared Wave D+E
+   deploy and live probe, then Wave F (AI-1, AI-2, APP-3, SW-10).
+3. Run `npm run verify` first; baseline on `ee5ddfe`: green, 145/145 unit tests,
+   registry 137/137, sw shell v486. Browser gates: `qa-full` 194/194,
+   `verify:gantt` (T-GANTT) and `verify:gold` (T-GOLD) green.
 4. Every new harness needs THREE edits: the harness, its row in
    `docs/CI-TEST-COVERAGE.md`, and a step in `.github/workflows/ci.yml` (or the
    extended battery). The registry doc alone does not run it.
@@ -85,6 +85,24 @@ must get the audit's own state check (rule 0.1) before anyone claims it.
 
 ## STATUS LOG (newest entries kept here; full history in `docs/history/log-YYYY-MM.md`)
 
+- 2026-10-27 (x3): WAVE E CLOSED. GANTT-1 (dfdc751): js/mmgr-gantt-view.js is the
+  only answer to which rows, over which span, joined by which links, at which scale;
+  the chart, the arrow overlay and all three exports read it. Group by Phase/Trade/
+  Assignee, Window whole/next 90/custom with an automatic day-week-month ladder, Tidy
+  on the toolbar, all VIEW state in s.ui. Two real defects fixed (a zero-duration PHASE
+  drew as a milestone diamond; a Utils.addDays Date leaked into scale.to and the header
+  tick cursor so the header rendered one cell). Gate T-GANTT 121 checks over a committed
+  45-task fixture, 5 mutations caught. GOLD-1 (ee5ddfe): gold as WORDS now reads
+  --gold-text (deep bronze on light, the accent in dark) or --gold-text-on-dark for the
+  hero band and footer; 161 rules re-pointed, 63 border/outline/accent declarations
+  reverted after an over-broad swap. The shared button gradient became the TWO-stop
+  form: rasterising the computed gradient at each button's real size measured the worst
+  pixel under a real label at 3.19-3.70 on all 13 gold buttons with three stops (AA
+  needs 4.5) and 4.83-4.95 rest / 5.91-6.11 hover with two. Gate T-GOLD, 5 arms,
+  48 labels and 53 gold-as-words elements measured, 5 mutations caught; it also caught
+  the deep bronze landing on the marketing hero at 2.74:1 and a real toolbar defect
+  (the Tidy switch lost the cascade to .tgl). verify green, 145/145 unit tests,
+  registry 137/137, qa-full 194/194, sw v486. NEXT: the field-guide cards.
 - 2026-10-27 (x1): SW-8 CLOSED and a real CSP defect fixed with it (f258b3e). The
   dev bundle fallback was armed by an inline onerror ATTRIBUTE, which a hash-only
   script-src blocks, so __mmgrBundleMissing could never be set and the fallback was

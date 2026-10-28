@@ -40,16 +40,16 @@ You are the terminal AI finishing the refinement directive. Follow these rules w
 | Wave | Tasks | Done | Partial or in progress | Not started |
 |---|---|---|---|---|
 | D (fix what is broken or exposed) | 12 | 12 | 0 | 0 |
-| E (look, brand, materials) | 14 | 13 | 1 (GOLD-1) | 0 |
+| E (look, brand, materials) | 14 | 14 | 0 | 0 |
 | F (depth and structure) | 6 | 1 | 0 | 5 |
-| **Total** | **32** | **26** | **1** | **5** |
+| **Total** | **32** | **27** | **0** | **5** |
 
-Plain reading: Wave D is closed and Wave E has only its last harness-backed look task left (GOLD-1). The five
-untouched ones are all in Wave F and they are the biggest pieces (AI window rebuild, in-browser model spike, the
-three admin codes). Task count is not effort: expect Wave F to take as long as D and E did together.
+Plain reading: Waves D and E are both closed - every look, brand and materials task is done and harness-backed. The
+five untouched ones are all in Wave F and they are the biggest pieces (AI window rebuild, in-browser model spike,
+the three admin codes). Task count is not effort: expect Wave F to take as long as D and E did together.
 
 Cross-cutting still open: deploy and live probe for Waves D and E (none recorded), field-guide cards for several
-Wave E features, one missing gate harness (T-GOLD), stale session log.
+Wave E features, stale session log.
 
 ---
 
@@ -92,10 +92,34 @@ Small checks left from Wave D (do these inside section 4, step 3):
 
 Partial or in progress:
 
-- [~] **GOLD-1** tokens, shared `.btn-o` / `.btn-gold` block and `docs/GOLD-AUDIT.md` are done (`aa403f3` and earlier). STILL OPEN:
-  - [ ] T-GOLD gate script. None exists. It must: list remaining orange hexes against an allow-list built from `docs/GOLD-AUDIT.md` (the directive's "zero hits" wording cannot pass because the audit deliberately leaves some); Playwright-check label contrast on every `.btn-o` and `.btn-gold` in light and dark (4.5:1 for 14 px text, 3:1 for 18 px bold); assert `.btn-g` still computes green; assert `--bullion*` values are identical in `css/mmgr.css` and `css/marketing.css`.
-  - [ ] Directive 5.6 step 3: re-point text uses of the old gold on light surfaces to `--gold-text-on-light`. Not verified as done.
-  - [ ] Narrow-button (under 96 px) two-stop gradient needs a class on the button to work. Implement with a class, or log as DEFERRED with this reason.
+- [x] **GOLD-1** gold that is readable as words and as a fill. `ee5ddfe`. Gold as WORDS reads one of two semantic
+  tokens instead of the fill alias: `--gold-text` (deep bronze step `#7a5a0b` on a light or glass surface, 6.37:1
+  on white; the theme accent in dark, where those rules always resolved to white and were right) and
+  `--gold-text-on-dark` (`#d4af37` for surfaces dark in BOTH themes - the marketing hero band and the site footer,
+  8.32:1 on `#1c1917`). 161 rules re-pointed (136 app, 25 marketing); the gold FILL still reads `--gold`, so every
+  gradient, wash, shadow and ring is untouched. Two measured decisions, both recorded in `docs/GOLD-AUDIT.md`
+  section 7:
+  - **The gradient is the two-stop form.** The directive samples the three STOPS and says the label "sits near the
+    middle stop" (4.45:1). A label is not a point: rasterising the computed gradient at each button's real size and
+    sampling every pixel under the text's own box measured **3.19-3.70:1 on all 13 gold buttons**, light and dark.
+    The directive's own narrow-button two-stop form measures **4.83-4.95:1 at rest, 5.91-6.11:1 on hover**, so it is
+    the default for every label. Both stops are directive values; the three-stop form was used nowhere else.
+  - **The narrow-button item closes by construction.** No class, no runtime width measuring, nothing dead.
+  The first pass of the swap also caught `border-color:`, `outline-color:`, `accent-color:` and `border-top-color:`
+  (63 declarations) because `color:` is a substring of those names; they were reverted to `var(--gold)` - a border
+  is not a word, and the gate's regex now anchors on the property. Gate: `tools/verify-gold.cjs` (T-GOLD, five
+  arms). ARM 1 static orange scan against the 14-declaration allow-list, which also FAILS if an allowed anchor
+  disappears (a stale exception is how an exception becomes a lie). ARM 2 token parity between the two stylesheets
+  plus "no rule paints gold words with the fill token". ARM 3 the rasterised label measurement, 6 pages x 2 themes
+  x rest and hover. ARM 4 gold-as-words against each element's composited background - this caught the deep bronze
+  landing on the marketing hero at 2.74:1 and the wordmark rule shared by a light glass header and a dark footer.
+  ARM 5 `.btn-g` still computes `rgb(46, 125, 50)`. Measured 48 gold button labels and 53 gold-as-words elements.
+  Five mutations each turn it red and it returns green byte-identical. Wired in three places (harness,
+  `docs/CI-TEST-COVERAGE.md`, `ci.yml` T4) plus `verify:gold`. A screenshot pass also found a real toolbar defect:
+  the Tidy switch lost the cascade to `.tgl` (same specificity, later in the file), so the word sat on the switch
+  track; the selector is now `.gv-tgl.tgl` and T-GANTT asserts it. Noted, not changed: `.btn-g` is defined twice
+  (first copy dead) and `.btn-o` twice with different `color` - harmless, and a cleanup for a non-colour wave.
+  `npm run verify` green (145/145 unit tests, registry 137/137), `qa-full` 194/194, `sw.js` at `mmgr-shell-v486`.
 - [x] **GANTT-1** one view builder for the screen and all three exports. `dfdc751`. `js/mmgr-gantt-view.js`
   is the only answer to "which rows, over which span, joined by which links, at which scale"; `renderGantt`,
   `drawDependencyArrows` and PNG/SVG/PDF all read it (`ganttViewFor`, `buildGanttDrawList`). Group by
@@ -133,7 +157,9 @@ Field-guide cards (locked rule 8). Check each exists in `mymanager-field-guide.h
 - [ ] AI `ASK` buttons and the new settings the assistant can set
 
 Wave E exit: T-GOLD, T-ACC, T-LUMP, T-GANTT, T-GLOBE green, wording check green, contrast report attached, `npm run verify`.
-Status: T-ACC, T-LUMP and T-GANTT are green and wired. T-GOLD and the contrast report are the remaining ones.
+Status: all five gates are green and wired, and the contrast report is `docs/GOLD-AUDIT.md` sections 6 and 7
+(the measurements, the three decisions, the 14 remaining oranges with reasons). Wave E is closed on its own
+terms; what is left for Wave E is the field-guide cards below and the shared deploy/live probe.
 
 ---
 
@@ -145,7 +171,13 @@ Status: T-ACC, T-LUMP and T-GANTT are green and wired. T-GOLD and the contrast r
 2. [x] GANTT-1 finished with T-GANTT. `dfdc751`. 121 static checks green, five mutations caught,
    `qa-full` 194/194 with 13e-13k covering the three view controls, `npm run verify` green (145/145
    unit tests, registry 136/136), `sw.js` at `mmgr-shell-v485`. Harness registered in all three places.
-3. [ ] Finish GOLD-1 (T-GOLD, text re-point, narrow-button decision).
+3. [x] GOLD-1 finished with T-GOLD. `ee5ddfe`. 15 checks green (static orange allow-list with no stale
+   exception, token parity, the two-stop gradient, gold-as-words contrast on 6 pages x 2 themes x rest and
+   hover, `.btn-g` still green), 5 mutations caught, `npm run verify` green (145/145 unit tests, registry
+   137/137), `qa-full` 194/194, `sw.js` at `mmgr-shell-v486`. Measured 48 gold button labels and 53
+   gold-as-words elements. Two measured decisions recorded in `docs/GOLD-AUDIT.md` section 7: the two-stop
+   gradient (the three-stop form was 3.19-3.70:1 on every real label) and two gold-as-words tokens (the
+   single token landed on the marketing hero at 2.74:1). Harness registered in all three places.
 4. [ ] Field-guide cards listed above.
 5. [ ] Wave D small checks listed in section 2.
 6. [ ] End of Waves D and E: `npm run verify`, full `qa-*` battery, CI green, commit, deploy from `$HOME/mmgr-deploy`, live probe. Probe list: old PDF path returns 404; `/api/ratebook` returns 401 signed out; every Export Schedule option changes and downloads; Work item list readable in dark; admin to dashboard leaves one tab; Performance Mode on the calculator stops the background; buttons gold with readable labels in both modes; drywall shows its accessory lines.
@@ -178,7 +210,9 @@ log any answer the owner gives here and apply it.
 
 ## 6. HOUSEKEEPING AND CORRECTIONS LOG
 
-- [ ] `CONTINUATION-DIRECTIVE.md` "NEXT SESSION STARTING POINT" is STALE. It still says "first task is MAT-1" and the status log says MAT-1, MAT-2, MAT-3, AI-3, GANTT-1, SW-8/12/14 were not started. Git shows MAT-1 to MAT-3, AI-3, GANTT-1 (partial), UI-4 and SW-12/14 landed on 2026-10-26 and 2026-10-27 (`d6f97eb` to `acf2462`). Update it and keep the file under 40,960 bytes (it is 37,611 now).
+- [x] `CONTINUATION-DIRECTIVE.md` "NEXT SESSION STARTING POINT" was STALE (it said "first task is MAT-1"). Refreshed
+  2026-10-27 at HEAD `ee5ddfe`: Waves D and E closed, Wave F 1 of 6, verify baseline 145/145 unit tests and
+  registry 137/137 at sw shell v486, and a STATUS LOG entry for GANTT-1 and GOLD-1. File is 39,665 bytes (cap 40,960).
 - [ ] Add a 2026-10-27 entry to `docs/history/log-2026-10.md` and rewrite `reflection.txt` (last session only) at the end of each session.
 - [x] `npm run verify` baseline was green on 2026-10-26 (registry 127/127, sw shell v477). Re-run on the
   current tree: **GREEN on `f258b3e`** - all 19 static gates pass, 145/145 unit tests, registry 135/135,
@@ -186,6 +220,10 @@ log any answer the owner gives here and apply it.
   `serve.cjs` and `worker.js`), which is why the uncommitted SW-8 work had never been verified.
 - [ ] A second copy of the directive sits at `tmp/wt-baf/REFINEMENT-DIRECTIVE-2026-10-24.md` (byte-identical). Ignore it; the root copy is the one to edit.
 - Corrections to this file go below, one line each, with date and reason:
-  - (none yet)
+  - 2026-10-27: GOLD-1's scoreboard row said the narrow-button gradient "needs a class". It does not. The
+    measurement (T-GOLD ARM 3) showed the three-stop gradient fails AA on every label, so the two-stop form is now
+    the default and there is no narrow-button case to special-case. Recorded in `docs/GOLD-AUDIT.md` section 7.
+  - 2026-10-27: `docs/GOLD-AUDIT.md` section 6's stop-sampled 4.45:1 was optimistic. The real worst pixel under a
+    label is 3.19-3.70:1. Section 7 supersedes it and keeps section 6 for the record.
 
 **End of progress file.**

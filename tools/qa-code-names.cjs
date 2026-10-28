@@ -194,8 +194,32 @@ function bareAdminCodeHits(text) {
     );
 
     // ---------- BROWSER ----------
+    // Use the system Chrome (chrome-launcher.cjs), never Playwright's own
+    // bundled chromium: CI installs the playwright devDep with
+    // --ignore-scripts and has no browser download step (see ci.yml "T4:
+    // Install test deps"), so chromium.launch() with no executablePath
+    // fails there with "Executable doesn't exist" while passing locally.
+    let chromePath;
+    try {
+      chromePath = require('./chrome-launcher.cjs').chromePath || undefined;
+    } catch (e) {}
+    if (chromePath && !path.isAbsolute(chromePath)) {
+      try {
+        chromePath =
+          require('child_process')
+            .execSync((process.platform === 'win32' ? 'where' : 'command -v') + ' ' + chromePath, {
+              stdio: ['ignore', 'pipe', 'ignore']
+            })
+            .toString()
+            .trim()
+            .split(/\r?\n/)[0] || undefined;
+      } catch (e) {
+        chromePath = undefined;
+      }
+    }
+    if (chromePath && !fs.existsSync(chromePath)) chromePath = undefined;
     browser = await chromium.launch({
-      executablePath: undefined,
+      executablePath: chromePath,
       headless: true,
       args: ['--no-sandbox', '--disable-dev-shm-usage']
     });

@@ -23,10 +23,13 @@
    file containing that symbol; a bare `#i-*` fragment must be in
    that file's own inline symbol set.
 
-   ARM 2 - dynamic construction. Two helpers build the href at
+   ARM 2 - dynamic construction. Three helpers build the href at
    runtime: js/calc-ai.js' ico(name) (prefix '#i-', verified from the
-   helper body) and js/mmgr-render.js' renderGroup(..., icon). Every
-   call site is scanned with a quote-aware argument parser, so a ')'
+   helper body), js/mmgr-render.js' renderGroup(..., icon), and
+   js/mmgr-ai.js' aiIcon(name) (same '#i-' prefix contract as ico(),
+   registered 2026-10-28 when the AI history row grew its own builder).
+   Every call site is scanned with a quote-aware argument parser, so a
+   ')'
    inside a string ('var(--danger)') or a ternary branch
    (kind === 'bad' ? 'alert-triangle' : 'info') cannot confuse it.
    Each icon argument must be a plain string literal or a ternary of
@@ -129,19 +132,29 @@ function symbolsOf(abs) {
 }
 const inlineSets = new Map(files.map(f => [f, symbolsOf(path.join(ROOT, f))]));
 
-// The ONE gate-verified dynamic href builder: js/calc-ai.js's ico()
-// helper. Any OTHER path#prefix literal awaiting concatenation is an
+// The gate-verified dynamic href builders: js/calc-ai.js's ico() and
+// js/mmgr-ai.js's aiIcon() - both prefix '#i-' from their own helper
+// body. Any OTHER path#prefix literal awaiting concatenation is an
 // F1-shaped construction this gate cannot read - fail it loudly rather
 // than skip it (a silent skip is how F1 hid).
 const ICO_FILE = 'js/calc-ai.js';
 const ICO_DEF = 'function ico(name)';
-const icoBody = (() => {
-  const abs = path.join(ROOT, ICO_FILE);
+const bodyOf = (rel, re) => {
+  const abs = path.join(ROOT, rel);
   if (!fs.existsSync(abs)) return null;
   const src = fs.readFileSync(abs, 'utf8');
-  const m = /function ico\([^)]*\)\s*\{[\s\S]{0,300}?\}/.exec(src);
+  const m = re.exec(src);
   return m ? { from: m.index, to: m.index + m[0].length } : null;
-})();
+};
+const icoBody = bodyOf(ICO_FILE, /function ico\([^)]*\)\s*\{[\s\S]{0,300}?\}/);
+const AIICON_FILE = 'js/mmgr-ai.js';
+const aiIconBody = bodyOf(AIICON_FILE, /function aiIcon\([^)]*\)\s*\{[\s\S]{0,300}?\}/);
+// True when index lands inside a verified helper's own body in file f.
+const inVerifiedHelper = (f, idx) =>
+  [
+    { file: ICO_FILE, body: icoBody },
+    { file: AIICON_FILE, body: aiIconBody }
+  ].some(h => h.file === f && h.body && idx >= h.body.from && idx <= h.body.to);
 
 // ---- ARM 1: literal references ---------------------------------------------
 console.log('--- literal references ---');
@@ -158,7 +171,7 @@ for (const f of files) {
     // (js/calc-ai.js' ico(): '#i-' + name). Allowed only inside that
     // verified helper; anywhere else it is unverifiable dynamic building.
     if (id.endsWith('-')) {
-      if (f !== ICO_FILE || !icoBody || m.index < icoBody.from || m.index > icoBody.to) {
+      if (!inVerifiedHelper(f, m.index)) {
         badPath.push(
           f +
             ' @' +
@@ -167,7 +180,7 @@ for (const f of files) {
             target +
             '#' +
             id +
-            '") outside the gate-verified ico() helper - F1 cannot be checked here'
+            '") outside a gate-verified dynamic helper - F1 cannot be checked here'
         );
       }
       continue;
@@ -188,14 +201,14 @@ for (const f of files) {
     const frag = m[1];
     if (!frag.startsWith('#i-')) continue;
     if (frag.endsWith('-')) {
-      if (f !== ICO_FILE || !icoBody || m.index < icoBody.from || m.index > icoBody.to) {
+      if (!inVerifiedHelper(f, m.index)) {
         badPath.push(
           f +
             ' @' +
             t.slice(0, m.index).split('\n').length +
             ': dynamic href prefix ("' +
             frag +
-            '") outside the gate-verified ico() helper - F1 cannot be checked here'
+            '") outside a gate-verified dynamic helper - F1 cannot be checked here'
         );
       }
       continue;
@@ -332,6 +345,75 @@ const ternaryRe = /^(.+?)\s*\?\s*['"]([^'"]*)['"]\s*:\s*['"]([^'"]*)['"]$/;
     if (ok)
       pass(
         'ico() in ' +
+          rel +
+          ': ' +
+          calls.length +
+          ' call sites, ' +
+          ok +
+          ' literal icon names all exist'
+      );
+  }
+}
+
+// aiIcon(name) in js/mmgr-ai.js - same '#i-' prefix contract as ico(),
+// registered 2026-10-28 (the AI history row's own builder). Same rule:
+// only literal (or literal-ternary) names can be verified.
+{
+  const rel = AIICON_FILE;
+  const t = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+  const body = /function aiIcon\([^)]*\)\s*\{[\s\S]{0,300}?\}/.exec(t);
+  if (!body) {
+    fail(rel + ': aiIcon() helper not found - pattern drifted, update verify-icons.cjs');
+  } else if (!body[0].includes('#i-')) {
+    fail(rel + ': aiIcon() no longer prefixes "#i-" - update the prefix assumption in this gate');
+  } else {
+    const calls = extractCalls(t, 'aiIcon');
+    if (calls.length < 1) {
+      fail(rel + ': no aiIcon() call sites extracted - extractor drift');
+    }
+    let ok = 0;
+    for (const c of calls) {
+      const arg = c.args[0] === undefined ? '' : c.args[0];
+      let names = null;
+      if (isSingleLiteral(arg)) {
+        names = quoted(arg);
+      } else {
+        const tm = ternaryRe.exec(arg);
+        if (tm && !/[$()[\]{}]/.test(tm[1])) names = [tm[2], tm[3]];
+      }
+      if (!names) {
+        fail(
+          rel +
+            ' @' +
+            c.line +
+            ': non-literal aiIcon() argument (' +
+            arg.trim().slice(0, 60) +
+            ') - the gate can only verify literals; make the icon name a literal or extend verify-icons.cjs'
+        );
+        continue;
+      }
+      for (const n of names) {
+        const id = 'i-' + n;
+        if (!spriteSymbols.has(id)) {
+          fail(
+            rel +
+              ' @' +
+              c.line +
+              ": aiIcon('" +
+              n +
+              "') -> #" +
+              id +
+              ' has no <symbol> in ' +
+              SPRITE
+          );
+        } else {
+          ok++;
+        }
+      }
+    }
+    if (ok)
+      pass(
+        'aiIcon() in ' +
           rel +
           ': ' +
           calls.length +

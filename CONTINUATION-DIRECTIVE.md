@@ -65,27 +65,33 @@ must get the audit's own state check (rule 0.1) before anyone claims it.
 
 ## NEXT SESSION STARTING POINT (max 15 lines)
 
-1. Read this file, then `REFINEMENT-DIRECTIVE-2026-10-24.md`. WAVE D IS DONE
-   (commit bab284d). Wave E is in progress: LAND-1, LAND-2 and the rate book
-   rebrand shipped (431260c, 3a3b55c). Work Wave E in listed order from MAT-1.
-2. Run `npm run verify` first; baseline 2026-10-26: EVERYTHING green (exit 0,
-   registry 127/127, sw shell v477).
-3. FIRST TASK IS MAT-1 (itemised materials). Drywall first, then Appendix A.
-   Add `ACCESSORIES`, keep the default OFF so every golden case holds, and pass
-   the +-15 percent reconciliation gate before adding a second family.
-4. Then MAT-2/MAT-3, AI-3, GANTT-1, the UI-4 bar measurement, SW-8/12/14, then
-   Wave F (AI-1, AI-2 spike, APP-3, SW-10).
-5. Every new harness needs THREE edits: the harness, its row in
-   docs/CI-TEST-COVERAGE.md, and a step in `.github/workflows/ci.yml` (or the
+1. Read this file, then `REFINEMENT-DIRECTIVE-2026-10-24.md`, then `REFINEMENT-PROGRESS.md`.
+   The progress file is the authority for what is DONE and what is LEFT, and its
+   NEXT UP section is the build order.
+2. State at HEAD `f258b3e`: Wave D closed (12/12), Wave E 12 of 14 done, Wave F 1 of 6.
+   Open: GANTT-1 (grouping, time window, toolbar Tidy, T-GANTT), GOLD-1 (T-GOLD, the
+   text re-point, the narrow-button decision), the field-guide cards, the four Wave D
+   small checks, then Wave F (AI-1, AI-2, APP-3, SW-10).
+3. Run `npm run verify` first; baseline on `f258b3e`: green, 145/145 unit tests,
+   registry 135/135, sw shell v484.
+4. Every new harness needs THREE edits: the harness, its row in
+   `docs/CI-TEST-COVERAGE.md`, and a step in `.github/workflows/ci.yml` (or the
    extended battery). The registry doc alone does not run it.
-6. Kill switches live in the `js/mmgr-state.js` flags block. Flip one rather
+5. Kill switches live in the `js/mmgr-state.js` flags block. Flip one rather
    than reverting logic.
-7. Commits: plain Conventional Commits, small, per task. No AI attribution, no emoji.
-8. Deploy only from `$HOME/mmgr-deploy` after CI is green; live-probe `mymanagerworkspace.com`.
-9. Rewrite `reflection.txt` (last session only) and add `docs/history/log-2026-10.md` at end.
+6. Commits: plain Conventional Commits, small, per task. No AI attribution, no emoji.
+7. Deploy only from `$HOME/mmgr-deploy` after CI is green; live-probe `mymanagerworkspace.com`.
+8. Rewrite `reflection.txt` (last session only) and add `docs/history/log-2026-10.md` at end.
 
 ## STATUS LOG (newest entries kept here; full history in `docs/history/log-YYYY-MM.md`)
 
+- 2026-10-27 (x1): SW-8 CLOSED and a real CSP defect fixed with it (f258b3e). The
+  dev bundle fallback was armed by an inline onerror ATTRIBUTE, which a hash-only
+  script-src blocks, so __mmgrBundleMissing could never be set and the fallback was
+  dead code on twelve pages; it is now an ordinary hashed listener. 29 --lit-*
+  neutral tokens in BOTH stylesheets, proven value-neutral (each token resolves to
+  the literal it replaced). verify green, 145/145 unit tests, registry 135/135,
+  sw v484. NEXT: finish GANTT-1 and write T-GANTT.
 - 2026-10-26 (x1): WAVE D CLOSED + Wave E started. RISK-1/EXP-1 watchers with
   one shared projectedFinish (bab284d); LAND-1 ghost dot rail + LAND-2 continuous
   globe (431260c); rate book renamed and gated (3a3b55c). verify green, registry

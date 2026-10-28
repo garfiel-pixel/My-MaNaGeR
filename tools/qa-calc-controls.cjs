@@ -57,9 +57,38 @@ const check = (name, ok, detail) => {
     (ok ? 'PASS' : 'FAIL') +
       '  ' +
       name +
-      (ok ? '' : '  <-- ' + JSON.stringify(detail === undefined ? null : detail).slice(0, 500))
+      (ok ? '' : '  <-- ' + JSON.stringify(detail === undefined ? null : detail).slice(0, 4000))
   );
 };
+
+// A .tgl track animates its colour, so a fixed delay measures the transition
+// rather than the state. This gate read the Performance Mode switch 300 ms after
+// each click; on a slower CI runner the colour was still mid-flight
+// (rgb(229, 223, 215) heading for rgb(229, 224, 216)) and the gate went red
+// while the switch itself was correct - CI run 40625949216. Poll until the
+// predicate holds AND two consecutive samples are identical, so the gate reads
+// the settled state without guessing a duration. A switch that never settles
+// still fails: the last sample is returned after the timeout and the assertions
+// are unchanged.
+async function settle(fn, ok, ms) {
+  const deadline = Date.now() + (ms || 3000);
+  let prev = null;
+  const trace = [];
+  for (;;) {
+    const cur = await fn();
+    trace.push(JSON.stringify(cur));
+    if (prev && ok(cur) && JSON.stringify(cur) === JSON.stringify(prev)) {
+      if (process.env.QA_TRACE_SETTLE) console.log('SETTLE OK ' + trace.join(' | '));
+      return cur;
+    }
+    if (Date.now() > deadline) {
+      if (process.env.QA_TRACE_SETTLE) console.log('SETTLE TIMEOUT ' + trace.join(' | '));
+      return cur;
+    }
+    prev = cur;
+    await delay(60);
+  }
+}
 
 function resolvePlaywright() {
   try {
@@ -464,13 +493,15 @@ const CONTRAST_HELPERS = `window.__mmcbContrast = (function () {
             knob: knob ? { w: knob.width, transform: knob.transform } : null
           };
         });
-      const perfOff = await readPerf();
+      const perfOff = await settle(readPerf, s => s.checked === false);
       await page.click('.bcp-perf');
-      await delay(300);
-      const perfOn = await readPerf();
+      const perfOn = await settle(readPerf, s => s.checked === true);
       await page.click('.bcp-perf');
-      await delay(300);
-      const perfBack = await readPerf();
+      const perfBack = await settle(
+        readPerf,
+        s => s.checked === false && s.track && s.track.bg === perfOff.track.bg,
+        8000
+      );
       check(
         'T-ROWS the Performance Mode exception is one named switch, visually hidden input over a painted track',
         perfOff.count === 1 &&

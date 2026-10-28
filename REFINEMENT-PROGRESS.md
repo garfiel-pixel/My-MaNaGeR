@@ -291,6 +291,19 @@ deploy/live probe in NEXT UP step 6.
      pre-deploy live baseline was measured (6 of 9 probe checks failing: the retired rate file and PDF still
      answer 200, `/api/ratebook` 404, the sprite and globe bundle predate this wave, the field guide lacks the
      three new headings), so the probe is a real before/after rather than a ceremony.
+   - **CI run `40625949216` (bb15d91) is RED at step 96**, `qa-calc-controls` 62/63: "T-ROWS clicking the switch
+     flips it, recolours the track and moves the knob". It is a HARNESS race, not an app bug - and proving that
+     took three measurements. The switch flipped (`checked` false -> true), the track recoloured
+     (`rgb(229,224,216)` -> `rgb(217,108,40)`) and the knob moved; the failing clause was the RETURN to the OFF
+     colour. The track animates `background-color 0.4s`, and the arm read it at a fixed 300 ms - on the slower CI
+     runner it sampled mid-flight (`rgb(229,223,215)` heading for `rgb(229,224,216)`). A settle helper was added,
+     and its first version was ALSO wrong: "two consecutive identical samples" declared the transition finished at
+     `rgb(227,206,189)` because turning Performance Mode off pauses the transition for a couple of frames while the
+     heavy effects re-mount. The arm now waits for the actual OFF colour (bounded at 8 s); the assertions are
+     unchanged. Teeth proven: pinning the checked track to `var(--border)` (a switch that does not show its state)
+     is CAUGHT, then restored green. `qa-calc-controls` 63/63.
+   - Lesson for the log: a fixed delay in a gate that reads an animated property is a flake with a timer, and
+     "stable for two samples" is not the same as "arrived" - wait for the value the assertion names.
 7. [ ] **AI-1** AI window layout, docking (docked at 1280 and up, overlay 1024 to 1279, sheet under 1024), Maximise, Float, Pin, `Ctrl+.`, history in project state. Directive section 9. Gate T-AIWIN. Flag `aiDock` already exists in `js/mmgr-state.js` but nothing reads it yet.
 8. [ ] **AI-2** in-browser model: two-day spike first (`tools/spike-localllm.html`, not shipped), results in `docs/SPIKE-LOCALLLM-2026-10.md`, ship only if the acceptance numbers pass (opt-in, under 400 MB, Cache API `mmgr-localllm-v1`, worker, fallback to the deterministic engine). Flag `localModel` exists and is set `true` with no feature behind it: set it to `false` until the feature ships.
 9. [ ] **APP-3** three code names everywhere (Site admin code, Admin panel code, Project and Client code), "Which code is this?" popover, "Backed up to your account" status, restore lists both project groups, optional salt and PBKDF2 for the local gate. Directive section 7. Note: only the "Site admin code" label exists today (`admin.html:422`).
@@ -323,7 +336,7 @@ log any answer the owner gives here and apply it.
 - [x] `CONTINUATION-DIRECTIVE.md` "NEXT SESSION STARTING POINT" was STALE (it said "first task is MAT-1"). Refreshed
   2026-10-27 at HEAD `ee5ddfe`: Waves D and E closed, Wave F 1 of 6, verify baseline 145/145 unit tests and
   registry 137/137 at sw shell v486, and a STATUS LOG entry for GANTT-1 and GOLD-1. File is 39,665 bytes (cap 40,960).
-- [ ] Add a 2026-10-27 entry to `docs/history/log-2026-10.md` and rewrite `reflection.txt` (last session only) at the end of each session.
+- [x] Add a 2026-10-27 entry to `docs/history/log-2026-10.md` and rewrite `reflection.txt` (last session only) at the end of each session. Done for the Waves D+E exit: the log entry records the three CI-skipped defects and the W11 stale arm; `reflection.txt` is rewritten to this session with the verification list and the honest pending items (CI/deploy/probe).
 - [x] `npm run verify` baseline was green on 2026-10-26 (registry 127/127, sw shell v477). Re-run on the
   current tree: **GREEN on `f258b3e`** - all 19 static gates pass, 145/145 unit tests, registry 135/135,
   `sw.js` at `mmgr-shell-v484`. Before the Prettier fix the same tree was RED (Prettier flagged

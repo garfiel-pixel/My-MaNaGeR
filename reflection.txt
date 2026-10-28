@@ -1,90 +1,89 @@
 # My MaNaGeR - reflection.txt (active; last session only. Older sessions archived in docs/history/reflection-ARCHIVE-2026-10-18.txt)
 
-SESSION 2026-10-26 - WAVE D CLOSED, WAVE E OPENED (rails, globe, rate book, gold audit)
+SESSION 2026-10-27 - WAVES D AND E EXIT (the suites CI never reached)
 
 CONTEXT
-Owner: "read REFINEMENT-DIRECTIVE-2026-10-24.md and then read the codebase and
-continue based on where the plan is to completion." State check first: Waves D/E/F
-had been partly built in an uncommitted tree (combobox, setting rows, perf boot,
-same-tab nav). RB-1, APP-4 and the sweep were already committed. This session
-finished Wave D, then shipped three Wave E items.
+Owner: carry REFINEMENT-DIRECTIVE-2026-10-24.md to completion in NEXT UP order,
+updating REFINEMENT-PROGRESS.md after every task so another model can take over.
+This session took NEXT UP step 6: the exit gate for Waves D and E - npm run
+verify, the full qa-* battery, CI green, a deploy from $HOME/mmgr-deploy, and a
+live probe of the eight user-visible claims.
 
 WHAT THIS SESSION DID
-  1. BASELINE. `npm run verify` was red on Prettier for nine files from the
-     previous session; formatted them and the tree went green before any edit.
-  2. WAVE D CLOSED. The two tasks that had no code at all were EXP-1 and RISK-1.
-     RISK-1: one shared `ns.Schedule.projectedFinish(s)` now feeds BOTH the
-     dashboard badge (`mmgr-render.js` computeTimelineStatus) and a new
-     `watchFinishTarget` in `mmgr-watch.js`, so the number they show cannot
-     disagree. Causes are traced (late tasks, lead times, weather-sensitive
-     critical work, over-allocated crews, longest critical tasks) and at most
-     three suggestions are ranked by days saved (reserve, overlap, second crew,
-     reuse float, extension, claim rate). EXP-1: `watchExpiries` reads the SAME
-     rollup the dashboard card draws, raises one notice per band (60/30/14/7/
-     overdue) using band-stable text so the existing dedupe cannot repeat daily,
-     builds a ready mailto from the stakeholder's own contact, and adds the
-     "assigned to someone whose cover lapses before the task ends" caution.
-     New harness `tools/qa-notice-watchers.cjs` (19/19) drives both through
-     fixtures, including delete-and-resurface.
-  3. THE PREVIOUS SESSION'S GATES WERE NOT IN CI. docs/CI-TEST-COVERAGE.md listed
-     qa-appshell, qa-calc-controls, verify-newtab and verify-perf-boot, but
-     `.github/workflows/ci.yml` never ran them - exactly the registry/orphan
-     failure mode AGENTS.md warns about. They are wired now (T1 static pair,
-     T4 browser trio with the two new harnesses).
-  4. WAVE E - LAND-1. The dot rail rests at 0.24 opacity, raises on hover or
-     focus-within, keeps the active dot solid, gets a real 24x24 target from its
-     resolved `::before` inset, and labels itself from each section's own h2.
-     Active dot is `--bullion`, not the old orange. `tools/qa-dot-rail.cjs`
-     (15/15) measures all of it in a browser; hit area is computed from the
-     pseudo-element inset because hit-testing in a 22px column just lands on the
-     neighbouring dot.
-  5. WAVE E - LAND-2. The globe now spins continuously; while a card is open the
-     view no longer eases back to the node (that was what cancelled the spin),
-     the card travels with its node, and a card closes early once its node is
-     more than 70 degrees away or behind the globe. The ease is not allowed to
-     cancel the turn: a SIGNED floor keeps at least 60 percent of each frame's
-     spin. `tools/qa-globe-spin.cjs` (7/7) drives the module's own advance seam
-     through 20 seconds of cycle. The owner's 2026-10-13 removal of the Pause
-     button is respected, not reversed.
-  6. WAVE E - RATE BOOK REBRAND. One constant `RATEBOOK_NAME`, the brand mark at
-     18px from the shared sprite, `rateBookNotice(status)` with the directive's
-     sentence, the source line kept while provenance is unresolved, and the
-     pricing page's 811 checked against `src/data/ratebook.js` by
-     `tools/verify-ratebook-wording.cjs` (12/12). The calculator's top bar now
-     carries the name and the mark (icon only under 640px).
-  7. GOLD-1 AUDIT recorded in `docs/GOLD-AUDIT.md`: the shared button block for
-     `.btn-o` and `.btn-gold` is in place in both stylesheets; the remaining
-     orange hexes are listed for the owner rather than changed.
+  1. CI run 40621517883 stopped at step 90 (qa-calc-assistant, arm W11) and
+     skipped steps 91-106. Fifteen T4 suites were therefore UNVERIFIED while
+     every local gate read green. Rather than assume, all fifteen were run
+     locally through tmp/run-t4.cjs: three red suites and two real app defects.
+  2. W11 itself was a stale arm, not an app bug. It asserted the authored text
+     /255, 255, 255/ against `color: var(--lit-white)`, so the tokenisation pass
+     turned a correct stylesheet into a red gate. It now resolves both
+     declarations through a probe element and compares computed colours, which
+     is stricter than the text match (an undefined token resolves to nothing and
+     still fails). qa-calc-assistant 156/156, commit 2f4f03b.
+  3. DEFECT, fixed: an expiry due TODAY was reported as OVERDUE. Banding compared
+     `new Date(dateOnlyString)` - parsed as UTC midnight - against the current
+     instant, so a certificate expiring that day came out at -1 day west of UTC.
+     The dashboard said "COI is overdue (was due today)" and the watcher filed it
+     in the overdue band instead of the 7-day band. EXP-1's 0-day fixture caught
+     it while the -3/6/13/29/59 fixtures passed: a boundary bug's signature.
+     Days are now counted between LOCAL calendar dates through one helper
+     (daysUntil), shared by the expiry rollup and getExpiringCompliance. They had
+     measured "N days out" two different ways, so the badge and the notice could
+     disagree about the same certificate. Commit 4821f3f.
+  4. DEFECT, fixed: the calculator's setting hints were 3.84:1. `.set-hint`
+     carried `opacity: 0.82`, compositing --slate (#666666) to #828282 on a white
+     card, under AA at 0.74rem. axe named every hint on the page. The opacity is
+     gone; --slate alone is 5.74:1 light and 5.5:1 dark. Commit 4821f3f.
+  5. One stale harness: qa-shortcuts crashed (not failed) at gate 11 because it
+     called selectOption('#calc-work') and UI-1 had replaced that native select
+     with the app's own listbox, leaving the native element display:none. It now
+     presses the real listbox row and asserts the pick landed, so a broken picker
+     fails by name instead of as a 30 s timeout. 15/15.
+  6. Mutation proof for both app fixes, with node build.js between the source
+     write and the gate: reverting the date math reddens the 0-day arm; putting
+     the opacity back reddens axe naming calc-measured-manual-hint. Both return
+     green byte-identical. (The first W11 proof reported "MISSED" twice against a
+     correct gate because it mutated css/mmgr.css and never rebuilt dist.)
+  7. Documentation: REFINEMENT-PROGRESS.md step 6 carries the per-item evidence
+     and the pre-deploy live baseline; section 6 records three corrections.
+     CONTINUATION-DIRECTIVE.md gained a status entry with older rollups
+     compressed to stay under the 40,960-byte cap (40,956 bytes).
+     docs/history/log-2026-10.md gained this session's entry; this file rewritten.
 
 VERIFICATION (all run, all green)
-  npm run verify exit 0 (CSP, JS syntax, SW v477, CSS integrity, JSLint-class
-  A11Y, ESLint 0 errors, Prettier, marketing markup, observability, unit suite,
-  registry 127/127). qa-notice-watchers 19/19, qa-dot-rail 15/15, qa-globe-spin
-  7/7, qa-hero-globe 16/16, qa-appshell 63/63, qa-calc-controls 51/51,
-  qa-calculator-page 249/249, qa-calc-golden 83/83, verify-ratebook-wording
-  12/12, verify-newtab, verify-perf-boot. Commits bab284d, 431260c, 3a3b55c.
+  npm run verify exit 0 (CSP, JS syntax, SW cache, CSS integrity 1361 mmgr rules,
+  accessibility lint, ESLint 0 errors, Prettier, registry 138/138, 145/145 unit
+  tests). qa-notice-watchers 19/19, qa-a11y-axe 7/7 (18 pages x 2 themes),
+  qa-shortcuts 15/15, qa-calc-assistant 156/156, qa-calc-controls 63/63,
+  qa-appshell 79/79, qa-full 194/194. The other eleven T4 suites green:
+  qa-mat-items 36, qa-related-items 13, qa-modals 12, verify-gold all,
+  qa-dot-rail 15, qa-globe-spin 15, verify-calc-s2 75, qa-procurement 51,
+  qa-consent 37, qa-widescreen 27, qa-hero-globe 16.
+  Commits 2f4f03b, 4821f3f, bb15d91, pushed to main. sw.js at mmgr-shell-v488.
 
 LESSONS
-  - A listing in docs/CI-TEST-COVERAGE.md is not a gate. Read ci.yml, not the
-    registry, before claiming a new harness "runs in CI".
-  - Two consumers of the same number must call one helper. The badge and the
-    notice now share projectedFinish; before, they were two copies of the same
-    arithmetic.
-  - When a watcher's text contains a live day count, its own dedupe makes it
-    fire every day. Band the text, name the date.
-  - A 2,400-line directive is not one session. Wave D is 18 tasks and took two;
-    Waves E and F are 20+ each.
+  - When CI stops early, the remaining steps are UNVERIFIED, not passing. A green
+    local verify plus a green qa-full said nothing about the fifteen suites CI
+    skipped - and those suites were holding two real user-facing defects.
+  - Read a red suite before re-baselining it. Twice in this wave the "stale
+    harness" assumption was wrong in the opposite direction: once the harness was
+    right and the app was wrong (expiry, contrast), once the harness was wrong
+    and the app was right (W11, qa-shortcuts).
+  - A mutation proof must rebuild. Pages load dist/mmgr.min.css and dist/*.js, so
+    a source mutation without node build.js proves nothing. The proof was the
+    broken thing, not the gate.
+  - Two consumers of the same number must call one helper. "N days out" existed
+    twice, computed two ways; they now share daysUntil.
+  - PowerShell cannot host inline node -e with regexes or quotes. Write scripts
+    to tmp/*.cjs. This session lost two calls to that trap.
 
 LIMITATIONS (honest, nothing claimed that was not run)
-  - MAT-1 (itemised materials, 16 trade families) is NOT started. It is a money
-    path in a 12k-line engine with export reconciliation; half-building it would
-    risk wrong estimates, so it is the next session's first task.
-  - MAT-2, MAT-3, AI-3, GANTT-1, UI-4's app-bar parity check and SW-8/12/14 are
-    not done. The rate book button got the UI-4 label, but the bar itself has not
-    been re-measured against the app bar.
-  - GOLD-1 shipped its tokens and shared button (previous session plus the audit
-    now); the 17 remaining orange declarations are listed, not changed, per the
-    owner's colour rule.
-  - APP-3 (three "admin code" names, restore listing both project groups) and
-    AI-1/AI-2 (AI window docking, in-browser model spike) are Wave F, untouched.
-  - No deploy was made. The owner ships.
+  - CI for bb15d91 was still queued when this file was written; the deploy and the
+    nine-check live probe follow only after the run is green. The pre-deploy live
+    baseline was measured and 6 of 9 probe checks fail against the current
+    production build, so the probe is a real before/after, not a ceremony.
+  - Wave F is untouched: AI-1 (AI window docking/layout, T-AIWIN), AI-2 (the
+    in-browser model spike), APP-3 (the three code names), SW-10 (16 clickable
+    div/span). Step 6 is the last item of Waves D and E.
+  - The rate-book provenance question (Q5) is still unresolved by the owner; the
+    source line stays on screen and no independence claim is made.

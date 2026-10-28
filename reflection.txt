@@ -59,7 +59,12 @@ VERIFICATION (all run, all green)
   qa-mat-items 36, qa-related-items 13, qa-modals 12, verify-gold all,
   qa-dot-rail 15, qa-globe-spin 15, verify-calc-s2 75, qa-procurement 51,
   qa-consent 37, qa-widescreen 27, qa-hero-globe 16.
-  Commits 2f4f03b, 4821f3f, bb15d91, pushed to main. sw.js at mmgr-shell-v488.
+  Commits 2f4f03b, 4821f3f, bb15d91, ecf09d2, a436862, pushed to main. sw.js at
+  mmgr-shell-v488. CI run 40628905493 (a436862) GREEN on all 108 steps.
+  Deployed from the byte-verified $HOME/mmgr-deploy copy (Version ID
+  650dc6e1-a4e8-4aaa-bc5b-703e979ccdb4). Live probe against
+  https://mymanagerworkspace.com: 9/9 PASS (baseline before the deploy: 6 of 9
+  FAILING).
 
 LESSONS
   - When CI stops early, the remaining steps are UNVERIFIED, not passing. A green
@@ -74,16 +79,21 @@ LESSONS
     broken thing, not the gate.
   - Two consumers of the same number must call one helper. "N days out" existed
     twice, computed two ways; they now share daysUntil.
+  - A fixed delay in a gate that reads an ANIMATED property is a flake with a
+    timer, and "two equal samples" is not "arrived": the Performance Mode track
+    pauses while the heavy effects re-mount, which fooled the first settle helper
+    at 15 percent of the way back. Wait for the value the assertion names.
+  - A watcher that cannot find the run is worse than no watcher. Both CI watchers
+    compared the full 40-char headSha to a short SHA and reported "no CI run yet"
+    through two entire red runs.
   - PowerShell cannot host inline node -e with regexes or quotes. Write scripts
     to tmp/*.cjs. This session lost two calls to that trap.
 
 LIMITATIONS (honest, nothing claimed that was not run)
-  - CI for bb15d91 was still queued when this file was written; the deploy and the
-    nine-check live probe follow only after the run is green. The pre-deploy live
-    baseline was measured and 6 of 9 probe checks fail against the current
-    production build, so the probe is a real before/after, not a ceremony.
   - Wave F is untouched: AI-1 (AI window docking/layout, T-AIWIN), AI-2 (the
     in-browser model spike), APP-3 (the three code names), SW-10 (16 clickable
-    div/span). Step 6 is the last item of Waves D and E.
+    div/span). Step 6 was the last item of Waves D and E; AI-1 is next.
   - The rate-book provenance question (Q5) is still unresolved by the owner; the
     source line stays on screen and no independence claim is made.
+  - AI-1's gate (T-AIWIN) is not written yet, so nothing about the new layout is
+    claimed here.

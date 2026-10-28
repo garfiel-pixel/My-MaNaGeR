@@ -68,12 +68,14 @@ must get the audit's own state check (rule 0.1) before anyone claims it.
 1. Read this file, then `REFINEMENT-DIRECTIVE-2026-10-24.md`, then `REFINEMENT-PROGRESS.md`.
    The progress file is the authority for what is DONE and what is LEFT, and its
    NEXT UP section is the build order.
-2. State at HEAD `c2816a0`: Wave D closed (12/12), Wave E closed (14/14), Wave F 1 of 6.
-   Open: the four Wave D small checks (NEXT UP step 5), the shared Wave D+E deploy and
-   live probe, then Wave F (AI-1, AI-2, APP-3, SW-10).
-3. Run `npm run verify` first; baseline on `c2816a0`: green, 145/145 unit tests,
-   registry 137/137, sw shell v487. Browser gates: `qa-full` 194/194, `verify:gantt`,
-   `verify:gold`, `qa-globe-spin` 15/15, `qa-hero-globe` 16/16, `qa-dot-rail` 15/15.
+2. State at HEAD `a436862` (the CI-verified code commit; later docs-only commits do not
+   change served bytes): Wave D closed (12/12), Wave E closed (14/14), Wave F 1 of 6.
+   Waves D+E are DEPLOYED and LIVE-PROBED (Version ID 650dc6e1, probe 9/9). Open: Wave F
+   only (AI-1, AI-2, APP-3, SW-10) - AI-1 is NEXT UP.
+3. Run `npm run verify` first; baseline on `a436862`: green, 145/145 unit tests,
+   registry 138/138, sw shell v488. Browser gates: `qa-full` 194/194, `verify:gantt`,
+   `verify:gold`, `qa-calc-controls` 63/63, `qa-globe-spin` 15/15, `qa-hero-globe` 16/16,
+   `qa-dot-rail` 15/15.
 4. Every new harness needs THREE edits: the harness, its row in
    `docs/CI-TEST-COVERAGE.md`, and a step in `.github/workflows/ci.yml` (or the
    extended battery). The registry doc alone does not run it.
@@ -86,46 +88,26 @@ must get the audit's own state check (rule 0.1) before anyone claims it.
 ## STATUS LOG (newest entries kept here; full history in `docs/history/log-YYYY-MM.md`)
 
 
-- 2026-10-27 (x5): STEP 6 IN PROGRESS, and it earned its keep. CI run 40621517883
-  stopped at step 90, so fifteen T4 suites never ran; all fifteen found THREE red
-  suites and TWO REAL DEFECTS. (1) An expiry due TODAY read as OVERDUE: a date-only
-  string parsed as UTC midnight compared to the current instant, so the band was a
-  day off west of UTC. The badge and the notice now share one local-calendar helper.
-  (2) The calculator's setting hints were 3.84:1 (.set-hint at 0.82 opacity over
-  white; now 5.74:1). (3) qa-shortcuts drove a native select that UI-1 had hidden.
-  Step 90 was a stale arm, not a bug. Both app fixes are mutation-proven WITH a
-  rebuild. verify green, qa-full 194/194, sw v488. NEXT: push, CI, deploy.
-- 2026-10-27 (x4): LAND-2 WAS FALSE-DONE AND IS NOW REAL, and the six field-guide cards
-  are written (c2816a0). The directive asks for "a visible Pause and Play control"
-  (WCAG 2.2.2, moving content over 5 s). What existed was an empty .hg-controls div, a
-  .hg-play CSS rule and a state.paused flag nothing ever set - build() read the
-  container into an unused variable - while qa-globe-spin passed 7/7 by setting the flag
-  directly. The button is now created in build(), a real click pauses and resumes, label
-  and icon flip Pause/i-pause <-> Play/i-play (two new sprite symbols), it hides under
-  Performance Mode with a .hg-controls[hidden] guard, and reduced motion shows the still
-  globe WITH the control. Gate 15/15 clicking the real button; qa-hero-globe's stale G5
-  ("no Pause/Play button") and G8 ("cards untouched") re-baselined to the new contract,
-  16/16; 9 mutations caught across the two harnesses. Cards: A-04 view controls, A-30
-  materials/prices/ASK, A-17 public site. verify green, 145/145 unit tests, registry
-  137/137, qa-full 194/194, sw v487. NEXT: Wave D small checks (NEXT UP step 5).
-- 2026-10-27 (x3): WAVE E CLOSED. GANTT-1 (dfdc751): js/mmgr-gantt-view.js is the
-  only answer to which rows, over which span, joined by which links, at which scale;
-  the chart, the arrow overlay and all three exports read it. Group by Phase/Trade/
-  Assignee, Window whole/next 90/custom with an automatic day-week-month ladder, Tidy
-  on the toolbar, all VIEW state in s.ui. Two real defects fixed (a zero-duration PHASE
-  drew as a milestone diamond; a Utils.addDays Date leaked into scale.to and the header
-  tick cursor so the header rendered one cell). Gate T-GANTT 121 checks over a committed
-  45-task fixture, 5 mutations caught. GOLD-1 (ee5ddfe): gold as WORDS now reads
-  --gold-text (deep bronze on light, the accent in dark) or --gold-text-on-dark for the
-  hero band and footer; 161 rules re-pointed, 63 border/outline/accent declarations
-  reverted after an over-broad swap. The shared button gradient became the TWO-stop
-  form: rasterising the computed gradient at each button's real size measured the worst
-  pixel under a real label at 3.19-3.70 on all 13 gold buttons with three stops (AA
-  needs 4.5) and 4.83-4.95 rest / 5.91-6.11 hover with two. Gate T-GOLD, 5 arms,
-  48 labels and 53 gold-as-words elements measured, 5 mutations caught; it also caught
-  the deep bronze landing on the marketing hero at 2.74:1 and a real toolbar defect
-  (the Tidy switch lost the cascade to .tgl). verify green, 145/145 unit tests,
-  registry 137/137, qa-full 194/194, sw v486. NEXT: the field-guide cards.
+- 2026-10-27 (x6): WAVES D AND E CLOSED, DEPLOYED AND LIVE-PROBED. CI run
+  40628905493 (a436862) green on all 108 steps; deployed Version ID
+  650dc6e1-a4e8-4aaa-bc5b-703e979ccdb4 from the byte-verified $HOME/mmgr-deploy
+  copy; live probe 9/9 PASS against mymanagerworkspace.com (the same probe was
+  6 of 9 FAILING before the deploy). Two red CI runs were worked through first:
+  step 90 was W11 asserting authored text against a token (stale arm); step 96
+  was qa-calc-controls reading an animating track at a fixed 300 ms (the switch
+  was correct - the OFF transition even pauses while Performance Mode re-mounts
+  the heavy effects, so the arm now waits for the actual OFF colour). The
+  fifteen T4 suites CI had skipped were hiding TWO REAL DEFECTS: an expiry due
+  TODAY read as OVERDUE (a date-only string compared to the current instant;
+  the badge and the notice now share one local-calendar helper), and the
+  calculator's setting hints at 3.84:1 (.set-hint opacity removed; 5.74:1).
+  qa-shortcuts was re-baselined to the UI-1 listbox. Both app fixes are
+  mutation-proven WITH a rebuild. Tooling: both CI watchers compared gh's full
+  40-char headSha to a 7-char short SHA, so they reported "no run yet" through
+  two red runs - they now prefix-match. verify green, 145/145 unit tests,
+  registry 138/138, qa-full 194/194, sw v488. NEXT: Wave F, AI-1 (T-AIWIN).
+  Full x4 (LAND-2 Pause + field-guide cards) and x3 (GANTT-1 + GOLD-1) text is
+  archived in docs/history/log-2026-10.md under the byte-cap law.
 - 2026-10-27 (x1): SW-8 CLOSED and a real CSP defect fixed with it (f258b3e). The
   dev bundle fallback was armed by an inline onerror ATTRIBUTE, which a hash-only
   script-src blocks, so __mmgrBundleMissing could never be set and the fallback was

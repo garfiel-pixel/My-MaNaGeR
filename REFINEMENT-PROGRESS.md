@@ -48,7 +48,8 @@ Plain reading: Waves D and E are both closed - every look, brand and materials t
 five untouched ones are all in Wave F and they are the biggest pieces (AI window rebuild, in-browser model spike,
 the three admin codes). Task count is not effort: expect Wave F to take as long as D and E did together.
 
-Cross-cutting still open: deploy and live probe for Waves D and E (none recorded), stale session log.
+Cross-cutting: deploy and live probe for Waves D and E are DONE (2026-10-27, Version ID
+`650dc6e1-a4e8-4aaa-bc5b-703e979ccdb4`, probe 9/9). Nothing cross-cutting is open.
 
 ---
 
@@ -252,8 +253,10 @@ deploy/live probe in NEXT UP step 6.
    registered + `ci.yml` T1 + `verify:sweep13`), with teeth proven both ways. `docs/SWEEP-2026-10.md` regenerated
    (SW-1/7/11/12/13/14 all 0; 893 findings across 14 sweeps). `npm run verify` green (145/145 unit tests, registry
    138/138).
-6. [ ] End of Waves D and E: `npm run verify`, full `qa-*` battery, CI green, commit, deploy from `$HOME/mmgr-deploy`,
-   live probe. **NEXT UP - start here. IN PROGRESS 2026-10-27.**
+6. [x] End of Waves D and E: `npm run verify`, full `qa-*` battery, CI green, commit, deploy from `$HOME/mmgr-deploy`,
+   live probe. **CLOSED 2026-10-27.** CI run `40628905493` (`a436862`) is **green on all 108 steps**; deployed
+   Version ID `650dc6e1-a4e8-4aaa-bc5b-703e979ccdb4`; live probe **9/9 PASS** against `https://mymanagerworkspace.com`
+   (baseline before the deploy was 6 of 9 FAILING). Probe list and evidence below.
    Probe list: old PDF path returns 404; `/api/ratebook` returns 401 signed out;
    every Export Schedule option changes and downloads; Work item list readable in dark; admin to dashboard leaves one
    tab; Performance Mode on the calculator stops the background; buttons gold with readable labels in both modes;
@@ -287,10 +290,17 @@ deploy/live probe in NEXT UP step 6.
      `qa-appshell` 79/79, `verify-gold` all checks, `qa-mat-items` 36, `qa-related-items` 13, `qa-modals` 12,
      `qa-dot-rail` 15, `qa-globe-spin` 15, `verify-calc-s2` 75, `qa-procurement` 51, `qa-consent` 37,
      `qa-widescreen` 27, `qa-hero-globe` 16, `npm run verify` green. `sw.js` at `mmgr-shell-v488`.
-   - Still to do for this step: commit and push, CI green, deploy from `$HOME/mmgr-deploy`, live probe. The
-     pre-deploy live baseline was measured (6 of 9 probe checks failing: the retired rate file and PDF still
-     answer 200, `/api/ratebook` 404, the sprite and globe bundle predate this wave, the field guide lacks the
-     three new headings), so the probe is a real before/after rather than a ceremony.
+   - **FINAL EVIDENCE (2026-10-27).** Two red CI runs were worked through in order, each with a local reproduction
+     first: step 90 (W11, stale arm) and step 96 (`qa-calc-controls`, a fixed-delay race reading an animating
+     track). After the second fix CI run `40628905493` (`a436862`) is **green on all 108 steps**. Deployed from
+     the byte-verified `$HOME/mmgr-deploy` copy (`Version ID 650dc6e1-a4e8-4aaa-bc5b-703e979ccdb4`). Live probe
+     against `https://mymanagerworkspace.com`: **9/9 PASS** - the retired rate-data file and the rate-book PDF
+     both 404, `/api/ratebook` 401 signed out, the home page 200 with its CSP header, the deployed globe bundle
+     carries the Pause control, the sprite carries both new symbols, the field guide carries the three new card
+     sections, and the project page answers 200/307. The same probe was 6 of 9 FAILING before the deploy.
+   - **CI watcher defect (tooling, fixed):** both watchers compared `gh`'s full 40-character `headSha` to the
+     7-character short SHA, so they printed "no CI run yet" through two entire red runs. They now prefix-match.
+     A watcher that silently never finds the run is worse than no watcher: it converts a red run into silence.
    - **CI run `40625949216` (bb15d91) is RED at step 96**, `qa-calc-controls` 62/63: "T-ROWS clicking the switch
      flips it, recolours the track and moves the knob". It is a HARNESS race, not an app bug - and proving that
      took three measurements. The switch flipped (`checked` false -> true), the track recoloured
@@ -304,7 +314,7 @@ deploy/live probe in NEXT UP step 6.
      is CAUGHT, then restored green. `qa-calc-controls` 63/63.
    - Lesson for the log: a fixed delay in a gate that reads an animated property is a flake with a timer, and
      "stable for two samples" is not the same as "arrived" - wait for the value the assertion names.
-7. [ ] **AI-1** AI window layout, docking (docked at 1280 and up, overlay 1024 to 1279, sheet under 1024), Maximise, Float, Pin, `Ctrl+.`, history in project state. Directive section 9. Gate T-AIWIN. Flag `aiDock` already exists in `js/mmgr-state.js` but nothing reads it yet.
+7. [ ] **AI-1** AI window layout, docking (docked at 1280 and up, overlay 1024 to 1279, sheet under 1024), Maximise, Float, Pin, `Ctrl+.`, history in project state. Directive section 9. Gate T-AIWIN. Flag `aiDock` already exists in `js/mmgr-state.js` but nothing reads it yet. **NEXT UP - start here.**
 8. [ ] **AI-2** in-browser model: two-day spike first (`tools/spike-localllm.html`, not shipped), results in `docs/SPIKE-LOCALLLM-2026-10.md`, ship only if the acceptance numbers pass (opt-in, under 400 MB, Cache API `mmgr-localllm-v1`, worker, fallback to the deterministic engine). Flag `localModel` exists and is set `true` with no feature behind it: set it to `false` until the feature ships.
 9. [ ] **APP-3** three code names everywhere (Site admin code, Admin panel code, Project and Client code), "Which code is this?" popover, "Backed up to your account" status, restore lists both project groups, optional salt and PBKDF2 for the local gate. Directive section 7. Note: only the "Site admin code" label exists today (`admin.html:422`).
 10. [ ] **SW-10** 16 clickable `div` or `span` with no role, tabindex or key handler (`admin.html:478`, `app.html:415`, `project.html:164, 187, 238, 644` and 10 more; re-run the sweep for the full list). Fix, then make the zero-hit sweep a permanent test.
@@ -369,5 +379,18 @@ log any answer the owner gives here and apply it.
   - 2026-10-27: the compliance badge and the expiry notice measured "N days out" two different ways (badge:
     now + N days, rollup: the current instant, both against a UTC-parsed date). They now share ONE helper, because
     two definitions of the same question is how a card and a notice end up disagreeing about one certificate.
+
+  - 2026-10-27: **CI stopped early TWICE and each time the skipped steps were unverified, not passing.** Run
+    `40621517883` died at step 90 (W11, a stale arm) and run `40625949216` at step 96 (`qa-calc-controls`, a
+    fixed-delay race that read an animating track mid-flight). Neither was an app defect, but finding that out
+    required a local reproduction each time - and the fifteen suites the first run skipped WERE hiding two real
+    defects. Rule: when CI stops, reproduce the failing step locally, then run every step after it.
+  - 2026-10-27: **a watcher that cannot find the run is worse than no watcher.** Both CI watchers compared
+    `gh`'s full 40-character `headSha` with a 7-character short SHA, so they printed "no CI run yet" through two
+    complete red runs. They now prefix-match. A silent watcher converts a red run into "still waiting".
+  - 2026-10-27: a fixed delay in a gate that reads an ANIMATED property is a flake with a timer, and "two equal
+    samples" is not "arrived": the Performance Mode track pauses for a couple of frames while the heavy effects
+    re-mount, which fooled the first settle helper at 15 percent of the way back. Wait for the value the assertion
+    names, bounded by a timeout.
 
 **End of progress file.**

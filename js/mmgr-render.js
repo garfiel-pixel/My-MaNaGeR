@@ -2220,6 +2220,40 @@ var MMGR = window.MMGR || {};
   // from what is actually on screen.
   let _ganttMeta = null; // { minDate, maxDate, dayWidth } set by renderGantt
 
+  // GANTT-1: ONE place reads the view options off the project state, so the
+  // chart, the arrow overlay and the export dialog can never disagree about
+  // the link policy, the Tidy switch, the swimlane axis or the window.
+  function ganttViewFor(s) {
+    if (!ns.GanttView || !ns.GanttView.build) {
+      return null;
+    }
+    const ui = (s && s.ui) || {};
+    const flagOn = k => !s.flags || s.flags[k] !== false;
+    const linkPolicy =
+      ui.ganttLinkPolicy === 'all' ||
+      ui.ganttLinkPolicy === 'near' ||
+      ui.ganttLinkPolicy === 'critical'
+        ? ui.ganttLinkPolicy
+        : 'gates';
+    const groupBy =
+      ui.ganttGroupBy === 'trade' || ui.ganttGroupBy === 'assignee' ? ui.ganttGroupBy : 'phase';
+    const windowMode =
+      ui.ganttWindow === 'next90' || ui.ganttWindow === 'custom' ? ui.ganttWindow : 'all';
+    const winOpt =
+      windowMode === 'next90'
+        ? 'next90'
+        : windowMode === 'custom' && ui.ganttWindowFrom && ui.ganttWindowTo
+          ? { from: ui.ganttWindowFrom, to: ui.ganttWindowTo }
+          : 'all';
+    return ns.GanttView.build(s, {
+      links: linkPolicy,
+      tidy: flagOn('ganttTidy') && ui.ganttTidy === true,
+      groupBy: groupBy,
+      window: winOpt,
+      today: U.todayStr()
+    });
+  }
+
   function renderGantt() {
     const s = S();
     if (!s || !s.tasks) {
@@ -2264,8 +2298,57 @@ var MMGR = window.MMGR || {};
       dl.value = s.projectDeadline || '';
     }
 
-    const tasks = s.tasks.filter(t => t.startDate && t.endDate);
-    if (tasks.length === 0) {
+    // GANTT-1: the toolbar mirrors the view state, the same rule the deadline
+    // input follows - a value arriving from a cloud merge or a restore must
+    // show up on the controls. A custom window field the user is typing in is
+    // never overwritten.
+    const vui = s.ui || {};
+    const vGroup =
+      vui.ganttGroupBy === 'trade' || vui.ganttGroupBy === 'assignee' ? vui.ganttGroupBy : 'phase';
+    const vWindow =
+      vui.ganttWindow === 'next90' || vui.ganttWindow === 'custom' ? vui.ganttWindow : 'all';
+    const tidyBox = $('gantt-tidy');
+    if (tidyBox) {
+      tidyBox.checked = !!vui.ganttTidy;
+    }
+    const grpSel = $('gantt-group');
+    if (grpSel && grpSel.value !== vGroup) {
+      grpSel.value = vGroup;
+    }
+    const winSel = $('gantt-window');
+    if (winSel && winSel.value !== vWindow) {
+      winSel.value = vWindow;
+    }
+    const customRow = $('gantt-window-custom');
+    if (customRow) {
+      customRow.hidden = vWindow !== 'custom';
+    }
+    const fromInp = $('gantt-from');
+    if (fromInp && document.activeElement !== fromInp) {
+      fromInp.value = vui.ganttWindowFrom || '';
+    }
+    const toInp = $('gantt-to');
+    if (toInp && document.activeElement !== toInp) {
+      toInp.value = vui.ganttWindowTo || '';
+    }
+
+    // ---- GANTT-1: ONE view builder for screen and export. Everything
+    // below paints the answer GanttView.build returns - rows, spans,
+    // milestones, links and the visible time window - so the live chart
+    // and the PNG / SVG / PDF can never drift apart. Nothing here
+    // re-derives order, spans or links.
+    const view = ganttViewFor(s);
+    if (!view) {
+      gc.innerHTML =
+        '<div class="es"><div class="ic"><svg class="ico" style="font-size:2rem" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg></div><div>The schedule view is unavailable on this page.</div></div>';
+      if (gl) {
+        gl.innerHTML = '';
+      }
+      _ganttMeta = null;
+      return;
+    }
+    const tasks = view.rows.filter(r => !r.row.isGroupHeader).map(r => r.row);
+    if (!tasks.length) {
       gc.innerHTML =
         '<div class="es"><div class="ic"><svg class="ico" style="font-size:2rem" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg></div><div>Add tasks with dates to see the Gantt chart.</div><button class="btn btn-g btn-s" data-action="showSec" data-section="wbs">+ Add Task</button></div>';
       if (gl) {
@@ -2274,31 +2357,25 @@ var MMGR = window.MMGR || {};
       _ganttMeta = null;
       return;
     }
-
-    // Find date range (no hard limit)
-    let minDate = null,
-      maxDate = null;
-    for (const t of tasks) {
-      if (!minDate || t.startDate < minDate) {
-        minDate = t.startDate;
-      }
-      if (!maxDate || t.endDate > maxDate) {
-        maxDate = t.endDate;
-      }
-    }
-    if (!minDate || !maxDate) {
-      gc.innerHTML = '<div class="es">No valid date range.</div>';
-      return;
-    }
+    const minDate = view.scale.from;
+    const maxDate = view.scale.to;
+    const totalDays = view.scale.totalDays;
+    // The scale unit is chosen by the builder from the WINDOW length, so a
+    // ninety-day window gets weeks and a three-year plan gets months; the
+    // pixels per day follow, which is what keeps header labels from
+    // colliding without any per-page tuning.
+    const unit = view.scale.unit;
+    const dayWidth = unit === 'day' ? 28 : unit === 'week' ? 9 : 4;
+    const msSet = {};
+    view.milestones.forEach(id => {
+      msSet[id] = true;
+    });
 
     // Parallel groups (owner go-ahead 2026-09-28): same source as the WBS
     // name-cell badges (Schedule.parallelGroups), computed once per render.
     // Surfaces as a badge on the label row + a tooltip line on the bar.
     const parGroups =
       ns.Schedule && ns.Schedule.parallelGroups ? ns.Schedule.parallelGroups(tasks) : null;
-
-    const totalDays = U.daysBetween(minDate, maxDate) + 1;
-    const dayWidth = 28;
 
     // Stash chart geometry for pointer drags (see ganttDrag section)
     _ganttMeta = { minDate: minDate, maxDate: maxDate, dayWidth: dayWidth };
@@ -2322,19 +2399,75 @@ var MMGR = window.MMGR || {};
       hlChip.classList.toggle('is-on', hlOn);
     }
 
-    // Render header (show week numbers + day numbers) + weekend bands
+    // Render header + weekend bands. The TICK GRANULARITY comes from the
+    // builder's automatic scale: day numbers on a short window, one cell
+    // per week on a medium one, one per month on a long one - so labels
+    // never collide no matter how long the plan or how narrow the window.
     // C2 (visual directive 2026-09-26): Sat/Sun columns shaded; the Monday
     // gd-hl stays as the week-start divider - two different signals.
     let headerHtml = '<div class="gh">';
     let weekendBandsHtml = '';
-    for (let i = 0; i < totalDays; i++) {
-      const d = U.addDays(minDate, i);
-      const isMonday = d.getDay() === 1;
-      const isFirst = i === 0;
-      const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-      headerHtml += `<div class="gd${isMonday || isFirst ? ' gd-hl' : ''}${isWeekend ? ' gd-wknd' : ''}">${d.getDate()}</div>`;
-      if (isWeekend) {
-        weekendBandsHtml += `<div class="gantt-wknd-band" style="left:${i * dayWidth}px;width:${dayWidth}px"></div>`;
+    if (unit === 'day') {
+      for (let i = 0; i < totalDays; i++) {
+        const d = U.addDays(minDate, i);
+        const isMonday = d.getDay() === 1;
+        const isFirst = i === 0;
+        const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+        headerHtml += `<div class="gd${isMonday || isFirst ? ' gd-hl' : ''}${isWeekend ? ' gd-wknd' : ''}" style="width:${dayWidth}px">${d.getDate()}</div>`;
+        if (isWeekend) {
+          weekendBandsHtml += `<div class="gantt-wknd-band" style="left:${i * dayWidth}px;width:${dayWidth}px"></div>`;
+        }
+      }
+    } else {
+      // Week or month cells: one cell per tick, width in days, label at
+      // the tick's start. No weekend shading (a 1px band would read as a
+      // smudge, not as a weekend).
+      const months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec'
+      ];
+      // U.addDays returns a DATE (see js/mmgr-utils.js) and U.fmtDate turns
+      // it back into 'YYYY-MM-DD'. The cursor is kept as a STRING because the
+      // loop compares it to maxDate and because U.daysBetween measures the
+      // cell width from it - a Date here would end the loop after one cell.
+      const toDL = d => (typeof d === 'string' ? d.slice(0, 10) : U.fmtDate(d));
+      let cursor = minDate;
+      let guard = 0;
+      while (cursor <= maxDate && guard++ < 400) {
+        const d = U.parseDL(cursor);
+        if (!d) {
+          break;
+        }
+        let next;
+        let label;
+        if (unit === 'week') {
+          const dow = (d.getDay() + 6) % 7; // Monday-first
+          next = toDL(U.addDays(cursor, 7 - dow));
+          label = d.getDate() + ' ' + months[d.getMonth()];
+        } else {
+          next = toDL(U.addDays(cursor, 32 - d.getDate()));
+          label = months[d.getMonth()] + ' ' + String(d.getFullYear()).slice(2);
+        }
+        // A tick that does not advance would spin the guard to 400 cells:
+        // step at least one day.
+        if (!next || next <= cursor) {
+          next = toDL(U.addDays(cursor, 1));
+        }
+        const edge = toDL(U.addDays(maxDate, 1));
+        const clipped = next > edge ? edge : next;
+        const w = Math.max(1, U.daysBetween(cursor, clipped)) * dayWidth;
+        headerHtml += `<div class="gd gd-tick" style="width:${w}px">${label}</div>`;
+        cursor = next;
       }
     }
     headerHtml += '</div>';
@@ -2352,15 +2485,31 @@ var MMGR = window.MMGR || {};
     let barsHtml = '';
     let labelsHtml = '';
 
-    for (const t of tasks) {
+    for (const r of view.rows) {
+      const t = r.row;
+      // GANTT-1: a swimlane band (or the orphan group) is a header row, not
+      // a task: it labels the rows under it and carries no bar.
+      if (t.isGroupHeader) {
+        barsHtml += `<div class="gr gr-group"></div>`;
+        labelsHtml += `<div class="gr gr-group"><span class="gr-group-name">${U.escapeHtml(t.name)}</span></div>`;
+        continue;
+      }
       const start = U.parseDL(t.startDate);
       const end = U.parseDL(t.endDate);
       if (!start || !end) {
         continue;
       }
 
-      const left = Math.max(0, U.daysBetween(minDate, t.startDate)) * dayWidth;
-      const width = Math.max(U.daysBetween(t.startDate, t.endDate), 1) * dayWidth;
+      // Bars are clamped to the visible window: a task that starts before a
+      // custom window begins draws from the left edge instead of painting
+      // over the label column, and a task entirely outside it keeps its row
+      // (the reader can still see it in the plan) with no bar.
+      const sp = view.spans[t.id] || { start: t.startDate, end: t.endDate };
+      const visStart = sp.start < minDate ? minDate : sp.start;
+      const visEnd = sp.end > maxDate ? maxDate : sp.end;
+      const outside = visEnd < minDate || visStart > maxDate;
+      const left = Math.max(0, U.daysBetween(minDate, visStart)) * dayWidth;
+      const width = outside ? 0 : Math.max(U.daysBetween(visStart, visEnd), 1) * dayWidth;
 
       // Baseline grey overlay bar (same row, from baseline dates)
       let baseBar = '';
@@ -2436,13 +2585,25 @@ var MMGR = window.MMGR || {};
         ? '<svg class="ico" aria-hidden="true" style="font-size:.6rem"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg>'
         : '';
 
-      // C4: phase rows band in BOTH columns (chart chunking on long charts)
-      const isPhaseRow = !!(t.isPhase || (t.level || 0) === 0);
+      // C4: phase rows band in BOTH columns (chart chunking on long charts).
+      // GANTT-1: depth comes from the builder, so a phase is a phase by the
+      // view's own reading (not by a stored level that can go stale).
+      const isPhaseRow = r.kind === 'phase';
+      // C3 + GANTT-1: the builder decides what a diamond is (flag, shape or
+      // name), once, for screen and paper. A phase GATE is a distinct
+      // diamond (gold, one step larger) so a gate never reads as an
+      // ordinary milestone, and the name rides to the RIGHT of it.
+      const isMs = !!msSet[t.id];
+      const isGate = isMs && ns.GanttView.isGateMilestone(t);
+      const msLabel =
+        isMs && !outside
+          ? `<span class="gb-ms-label${isGate ? ' gate' : ''}" style="left:${left + width / 2 + 10}px">${U.escapeHtml(t.name)}</span>`
+          : '';
       // C3: milestones render as diamonds, not one-day rectangles; click-only
       // (date edits via the task detail) - drag handlers key on .gb and the
       // diamond is a different class, so no ambiguous drag on a diamond.
-      const barInner = t.milestone
-        ? `<div class="gb-milestone ${t.critical ? 'crit' : ''}" data-id="${U.escapeHtml(t.id)}" style="left:${left + width / 2 - 8}px" title="${U.escapeHtml(t.name)} [Milestone]${t.critical ? ' [Critical Path]' : ''}"></div>`
+      const barInner = isMs
+        ? `<div class="gb-milestone${isGate ? ' gate' : ''} ${t.critical ? 'crit' : ''}" data-id="${U.escapeHtml(t.id)}" style="left:${left + width / 2 - 8}px" title="${U.escapeHtml(t.name)} [${isGate ? 'Phase gate' : 'Milestone'}]${t.critical ? ' [Critical Path]' : ''}"></div>${msLabel}`
         : `<div class="gb ${classes.join(' ')}" data-id="${U.escapeHtml(t.id)}" style="left:${left}px;width:${width}px" title="${U.escapeHtml(t.name)}${t.weatherExposed ? ' [Weather-exposed]' : ''}${t.critical ? ' [Critical Path]' : ''}${t.totalFloat !== null ? ' [Float: ' + t.totalFloat + 'd]' : ''}${
             parGroups && parGroups.has(t.id)
               ? ' [Parallel with: ' +
@@ -2470,7 +2631,7 @@ var MMGR = window.MMGR || {};
       // (#gantt-labels .gr) - keeps the whole-document inline-style census
       // (qa-full 38) honest; dynamic geometry stays inline.
       labelsHtml += `<div class="gr ${isPhaseRow ? 'gr-phase' : ''} ${hlOn && !t.critical ? 'hl-dim' : ''}">
-        ${t.milestone ? '<span class="ms-diamond" aria-hidden="true">&#9670;</span>' : ''}
+        ${isMs ? `<span class="ms-diamond${isGate ? ' gate' : ''}" aria-hidden="true">&#9670;</span>` : ''}
         <span class="${t.critical ? 'cp-lbl' : ''}" style="${isPhaseRow ? 'font-weight:700;font-size:.78rem;' : ''}${t.critical ? 'color:var(--gold);font-weight:700' : ''}">${U.escapeHtml(t.name)}</span>
         ${floatStr}
         ${parBadge}
@@ -2494,8 +2655,9 @@ var MMGR = window.MMGR || {};
       gl.innerHTML = labelsHtml;
     }
 
-    // Draw dependency arrows (SVG overlay)
-    drawDependencyArrows(tasks);
+    // Draw dependency arrows (SVG overlay) from the VIEW's link list, so the
+    // arrows on screen are the same edges the export draws.
+    drawDependencyArrows(view);
   }
 
   // ---- Dependency Arrows (SVG overlay) ----
@@ -2503,7 +2665,9 @@ var MMGR = window.MMGR || {};
   // arrowhead at the successor end. The overlay lives INSIDE the scrolling
   // chart container (#gantt-chart) and uses content-relative coordinates
   // (rect offset + scroll), so arrows stay glued to the bars while scrolling.
-  function drawDependencyArrows(tasks) {
+  // GANTT-1: the edge list is the builder's (policy applied, tidy applied,
+  // collapsed rows already absent), never a second pass over predecessors.
+  function drawDependencyArrows(view) {
     const gc = $('gantt-chart');
     if (!gc) {
       return;
@@ -2522,9 +2686,9 @@ var MMGR = window.MMGR || {};
       return;
     }
 
-    // Only draw if there are predecessor links
-    const hasPreds = tasks.some(t => t.predecessors && t.predecessors.length);
-    if (!hasPreds) {
+    // Only draw if the view carries links
+    const links = (view && view.links) || [];
+    if (!links.length) {
       return;
     }
 
@@ -2574,59 +2738,59 @@ var MMGR = window.MMGR || {};
     const scrollX = gc.scrollLeft || 0;
     const scrollY = gc.scrollTop || 0;
 
-    tasks.forEach(t => {
-      const preds = t.predecessors || [];
-      if (!preds.length) {
-        return;
-      }
-      const b2 = barMap[t.id];
-      if (!b2) {
+    links.forEach(l => {
+      const b2 = barMap[l.to];
+      const b1 = barMap[l.from];
+      if (!b1 || !b2) {
         return;
       }
       const rect2 = b2.getBoundingClientRect();
       const x2 = rect2.left - gcRect.left + scrollX;
       const y2 = rect2.top + rect2.height / 2 - gcRect.top + scrollY;
-      for (const predId of preds) {
-        const b1 = barMap[predId];
-        if (!b1) {
-          continue;
-        }
-        const rect1 = b1.getBoundingClientRect();
-        const x1 = rect1.right - gcRect.left + scrollX;
-        const y1 = rect1.top + rect1.height / 2 - gcRect.top + scrollY;
+      const rect1 = b1.getBoundingClientRect();
+      const x1 = rect1.right - gcRect.left + scrollX;
+      const y1 = rect1.top + rect1.height / 2 - gcRect.top + scrollY;
 
-        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        line.setAttribute('x1', x1);
-        line.setAttribute('y1', y1);
-        line.setAttribute('x2', x2);
-        line.setAttribute('y2', y2);
-        line.setAttribute('stroke', 'var(--gold)');
-        line.setAttribute('stroke-width', '1.5');
-        line.setAttribute('stroke-dasharray', '4,3');
-        line.setAttribute('opacity', '0.55');
-        line.setAttribute('marker-end', 'url(#gantt-arrowhead)');
-        // Clickable dependency link (Phase C): hover + click to remove/edit
-        line.setAttribute('class', 'gan-link');
-        line.setAttribute('data-from', predId);
-        line.setAttribute('data-to', t.id);
-        line.style.pointerEvents = 'stroke';
-        line.style.cursor = 'pointer';
-        // Transparent wide hit target so tiny links are still clickable
-        const hit = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        hit.setAttribute('x1', x1);
-        hit.setAttribute('y1', y1);
-        hit.setAttribute('x2', x2);
-        hit.setAttribute('y2', y2);
-        hit.setAttribute('stroke', 'transparent');
-        hit.setAttribute('stroke-width', '12');
-        hit.setAttribute('class', 'gan-link');
-        hit.setAttribute('data-from', predId);
-        hit.setAttribute('data-to', t.id);
-        hit.style.pointerEvents = 'stroke';
-        hit.style.cursor = 'pointer';
-        svg.appendChild(hit);
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', x1);
+      line.setAttribute('y1', y1);
+      line.setAttribute('x2', x2);
+      line.setAttribute('y2', y2);
+      line.setAttribute('stroke', 'var(--gold)');
+      line.setAttribute('stroke-width', '1.5');
+      line.setAttribute('stroke-dasharray', '4,3');
+      line.setAttribute('opacity', l.critical ? '0.8' : '0.55');
+      line.setAttribute('marker-end', 'url(#gantt-arrowhead)');
+      // GANTT-1: a DERIVED line (phase summary -> its own gate milestone) is
+      // a reading of the plan, not a row in it. It is drawn, but it carries
+      // no click handler: offering "remove this dependency" on a link the
+      // plan does not contain would be a lie.
+      if (l.derived) {
+        line.setAttribute('class', 'gan-derived');
         svg.appendChild(line);
+        return;
       }
+      // Clickable dependency link (Phase C): hover + click to remove/edit
+      line.setAttribute('class', 'gan-link');
+      line.setAttribute('data-from', l.from);
+      line.setAttribute('data-to', l.to);
+      line.style.pointerEvents = 'stroke';
+      line.style.cursor = 'pointer';
+      // Transparent wide hit target so tiny links are still clickable
+      const hit = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      hit.setAttribute('x1', x1);
+      hit.setAttribute('y1', y1);
+      hit.setAttribute('x2', x2);
+      hit.setAttribute('y2', y2);
+      hit.setAttribute('stroke', 'transparent');
+      hit.setAttribute('stroke-width', '12');
+      hit.setAttribute('class', 'gan-link');
+      hit.setAttribute('data-from', l.from);
+      hit.setAttribute('data-to', l.to);
+      hit.style.pointerEvents = 'stroke';
+      hit.style.cursor = 'pointer';
+      svg.appendChild(hit);
+      svg.appendChild(line);
     });
 
     gc.appendChild(svg);
@@ -2652,11 +2816,10 @@ var MMGR = window.MMGR || {};
       if (!s || !s.tasks) {
         return;
       }
-      const tasks = s.tasks.filter(t => t.startDate && t.endDate);
       // Draw even with zero tasks: drawDependencyArrows removes any stale
       // overlay before its empty-early-return, so a chart emptied without a
       // full re-render never keeps dead arrows on screen.
-      drawDependencyArrows(tasks);
+      drawDependencyArrows(ganttViewFor(s));
     });
   }
 

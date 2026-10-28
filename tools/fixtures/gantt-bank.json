@@ -1,0 +1,718 @@
+{
+  "name": "Bank Renovation (T-GANTT fixture)",
+  "today": "2027-01-20",
+  "note": "Synthetic but realistic bank-renovation schedule for the T-GANTT gate. Five phases with parented children, a single critical chain, one gate milestone per phase, one plain milestone (m0, not a gate), one orphan (t34, parentId p99) and a finish-to-start web across trades.",
+  "tasks": [
+    {
+      "id": "p1",
+      "name": "P1 Mobilization & Pre-Construction",
+      "isPhase": true,
+      "startDate": "2026-11-02",
+      "endDate": "2026-11-20",
+      "duration": 0,
+      "status": "in-progress",
+      "predecessors": []
+    },
+    {
+      "id": "t01",
+      "name": "Site survey and measured drawings",
+      "parentId": "p1",
+      "isPhase": false,
+      "startDate": "2026-11-02",
+      "endDate": "2026-11-04",
+      "duration": 3,
+      "trade": "Survey",
+      "assignedTo": "Site Manager",
+      "status": "completed",
+      "critical": true,
+      "predecessors": []
+    },
+    {
+      "id": "t02",
+      "name": "Building permit lodgement",
+      "parentId": "p1",
+      "isPhase": false,
+      "startDate": "2026-11-04",
+      "endDate": "2026-11-06",
+      "duration": 3,
+      "trade": "Approvals",
+      "assignedTo": "Project Manager",
+      "status": "completed",
+      "critical": true,
+      "predecessors": [
+        "t01"
+      ]
+    },
+    {
+      "id": "t03",
+      "name": "Site hoarding and access control",
+      "parentId": "p1",
+      "isPhase": false,
+      "startDate": "2026-11-06",
+      "endDate": "2026-11-10",
+      "duration": 5,
+      "trade": "Site Setup",
+      "assignedTo": "Foreman",
+      "status": "completed",
+      "critical": false,
+      "predecessors": [
+        "t02"
+      ]
+    },
+    {
+      "id": "t04",
+      "name": "Temporary power and water",
+      "parentId": "p1",
+      "isPhase": false,
+      "startDate": "2026-11-06",
+      "endDate": "2026-11-09",
+      "duration": 4,
+      "trade": "Electrical",
+      "assignedTo": "Electrician",
+      "status": "completed",
+      "critical": false,
+      "predecessors": [
+        "t02"
+      ]
+    },
+    {
+      "id": "t05",
+      "name": "Scaffold and edge protection",
+      "parentId": "p1",
+      "isPhase": false,
+      "startDate": "2026-11-10",
+      "endDate": "2026-11-13",
+      "duration": 4,
+      "trade": "Site Setup",
+      "assignedTo": "Foreman",
+      "status": "completed",
+      "critical": false,
+      "predecessors": [
+        "t03"
+      ]
+    },
+    {
+      "id": "t06",
+      "name": "Asbestos clearance certificate",
+      "parentId": "p1",
+      "isPhase": false,
+      "startDate": "2026-11-13",
+      "endDate": "2026-11-16",
+      "duration": 4,
+      "trade": "Compliance",
+      "assignedTo": "Project Manager",
+      "status": "completed",
+      "critical": true,
+      "predecessors": [
+        "t03",
+        "t04"
+      ]
+    },
+    {
+      "id": "m0",
+      "name": "Crew mobilised",
+      "parentId": "p1",
+      "isPhase": false,
+      "startDate": "2026-11-02",
+      "endDate": "2026-11-02",
+      "duration": 0,
+      "trade": "Site Setup",
+      "assignedTo": "Foreman",
+      "status": "not-started",
+      "critical": false,
+      "predecessors": []
+    },
+    {
+      "id": "g1",
+      "name": "Phase gate: pre-construction complete",
+      "parentId": "p1",
+      "isPhase": false,
+      "startDate": "2026-11-20",
+      "endDate": "2026-11-20",
+      "duration": 0,
+      "trade": "Commissioning",
+      "assignedTo": "Project Manager",
+      "status": "not-started",
+      "critical": true,
+      "predecessors": [
+        "t06",
+        "t05"
+      ]
+    },
+    {
+      "id": "p2",
+      "name": "P2 Demolition & Structural",
+      "isPhase": true,
+      "startDate": "2026-11-23",
+      "endDate": "2026-12-18",
+      "duration": 0,
+      "status": "in-progress",
+      "predecessors": []
+    },
+    {
+      "id": "t07",
+      "name": "Strip-out existing partitions",
+      "parentId": "p2",
+      "isPhase": false,
+      "startDate": "2026-11-23",
+      "endDate": "2026-12-02",
+      "duration": 10,
+      "trade": "Demolition",
+      "assignedTo": "Foreman",
+      "status": "completed",
+      "critical": true,
+      "predecessors": [
+        "g1"
+      ]
+    },
+    {
+      "id": "t08",
+      "name": "Remove vault door assembly",
+      "parentId": "p2",
+      "isPhase": false,
+      "startDate": "2026-11-23",
+      "endDate": "2026-11-27",
+      "duration": 5,
+      "trade": "Demolition",
+      "assignedTo": "Vault Technician",
+      "status": "completed",
+      "critical": false,
+      "predecessors": [
+        "g1",
+        "t06"
+      ]
+    },
+    {
+      "id": "t09",
+      "name": "Structural steel frame install",
+      "parentId": "p2",
+      "isPhase": false,
+      "startDate": "2026-12-02",
+      "endDate": "2026-12-11",
+      "duration": 10,
+      "trade": "Steel",
+      "assignedTo": "Steel Fixer",
+      "status": "completed",
+      "critical": true,
+      "predecessors": [
+        "t07",
+        "t08"
+      ]
+    },
+    {
+      "id": "t10",
+      "name": "Concrete slab repair",
+      "parentId": "p2",
+      "isPhase": false,
+      "startDate": "2026-12-02",
+      "endDate": "2026-12-08",
+      "duration": 7,
+      "trade": "Concrete",
+      "assignedTo": "Concreter",
+      "status": "completed",
+      "critical": false,
+      "predecessors": [
+        "t07"
+      ]
+    },
+    {
+      "id": "t11",
+      "name": "New roof penetration and flashing",
+      "parentId": "p2",
+      "isPhase": false,
+      "startDate": "2026-12-08",
+      "endDate": "2026-12-15",
+      "duration": 8,
+      "trade": "Roofing",
+      "assignedTo": "Roofer",
+      "status": "completed",
+      "critical": true,
+      "predecessors": [
+        "t09",
+        "t10"
+      ]
+    },
+    {
+      "id": "t12",
+      "name": "Structural engineer inspection",
+      "parentId": "p2",
+      "isPhase": false,
+      "startDate": "2026-12-11",
+      "endDate": "2026-12-15",
+      "duration": 5,
+      "trade": "Compliance",
+      "assignedTo": "Engineer",
+      "status": "completed",
+      "critical": false,
+      "predecessors": [
+        "t09",
+        "t10"
+      ]
+    },
+    {
+      "id": "t13",
+      "name": "Temporary weather seal",
+      "parentId": "p2",
+      "isPhase": false,
+      "startDate": "2026-12-15",
+      "endDate": "2026-12-18",
+      "duration": 4,
+      "trade": "Roofing",
+      "assignedTo": "Roofer",
+      "status": "completed",
+      "critical": true,
+      "predecessors": [
+        "t11"
+      ]
+    },
+    {
+      "id": "g2",
+      "name": "Phase gate: structure signed off",
+      "parentId": "p2",
+      "isPhase": false,
+      "startDate": "2026-12-18",
+      "endDate": "2026-12-18",
+      "duration": 0,
+      "trade": "Commissioning",
+      "assignedTo": "Engineer",
+      "status": "not-started",
+      "critical": true,
+      "predecessors": [
+        "t12",
+        "t13"
+      ]
+    },
+    {
+      "id": "p3",
+      "name": "P3 Vault & Security Installation",
+      "isPhase": true,
+      "startDate": "2026-12-21",
+      "endDate": "2027-01-15",
+      "duration": 0,
+      "status": "in-progress",
+      "predecessors": []
+    },
+    {
+      "id": "t14",
+      "name": "Vault room blockwork",
+      "parentId": "p3",
+      "isPhase": false,
+      "startDate": "2026-12-21",
+      "endDate": "2026-12-30",
+      "duration": 10,
+      "trade": "Blockwork",
+      "assignedTo": "Bricklayer",
+      "status": "completed",
+      "critical": true,
+      "predecessors": [
+        "g2"
+      ]
+    },
+    {
+      "id": "t15",
+      "name": "Vault door frame set",
+      "parentId": "p3",
+      "isPhase": false,
+      "startDate": "2026-12-30",
+      "endDate": "2027-01-05",
+      "duration": 7,
+      "trade": "Security",
+      "assignedTo": "Vault Technician",
+      "status": "completed",
+      "critical": true,
+      "predecessors": [
+        "t14"
+      ]
+    },
+    {
+      "id": "t16",
+      "name": "Vault door rehang and align",
+      "parentId": "p3",
+      "isPhase": false,
+      "startDate": "2027-01-05",
+      "endDate": "2027-01-08",
+      "duration": 4,
+      "trade": "Security",
+      "assignedTo": "Vault Technician",
+      "status": "completed",
+      "critical": true,
+      "predecessors": [
+        "t15"
+      ]
+    },
+    {
+      "id": "t17",
+      "name": "Alarm panel rough-in",
+      "parentId": "p3",
+      "isPhase": false,
+      "startDate": "2026-12-21",
+      "endDate": "2026-12-29",
+      "duration": 9,
+      "trade": "Security",
+      "assignedTo": "Security Installer",
+      "status": "completed",
+      "critical": false,
+      "predecessors": [
+        "g2",
+        "t04"
+      ]
+    },
+    {
+      "id": "t18",
+      "name": "CCTV head-end cabling",
+      "parentId": "p3",
+      "isPhase": false,
+      "startDate": "2026-12-29",
+      "endDate": "2027-01-06",
+      "duration": 9,
+      "trade": "Security",
+      "assignedTo": "Security Installer",
+      "status": "completed",
+      "critical": false,
+      "predecessors": [
+        "t17"
+      ]
+    },
+    {
+      "id": "t19",
+      "name": "Access control readers",
+      "parentId": "p3",
+      "isPhase": false,
+      "startDate": "2027-01-06",
+      "endDate": "2027-01-12",
+      "duration": 7,
+      "trade": "Security",
+      "assignedTo": "Security Installer",
+      "status": "completed",
+      "critical": false,
+      "predecessors": [
+        "t18",
+        "t16"
+      ]
+    },
+    {
+      "id": "t20",
+      "name": "Vault certification and compliance sign-off",
+      "parentId": "p3",
+      "isPhase": false,
+      "startDate": "2027-01-12",
+      "endDate": "2027-01-15",
+      "duration": 4,
+      "trade": "Compliance",
+      "assignedTo": "Project Manager",
+      "status": "completed",
+      "critical": true,
+      "predecessors": [
+        "t16",
+        "t19"
+      ]
+    },
+    {
+      "id": "g3",
+      "name": "Phase gate: vault certified",
+      "parentId": "p3",
+      "isPhase": false,
+      "startDate": "2027-01-15",
+      "endDate": "2027-01-15",
+      "duration": 0,
+      "trade": "Commissioning",
+      "assignedTo": "Project Manager",
+      "status": "not-started",
+      "critical": true,
+      "predecessors": [
+        "t20",
+        "t19"
+      ]
+    },
+    {
+      "id": "p4",
+      "name": "P4 Interior Fit-Out",
+      "isPhase": true,
+      "startDate": "2027-01-18",
+      "endDate": "2027-02-12",
+      "duration": 0,
+      "status": "in-progress",
+      "predecessors": []
+    },
+    {
+      "id": "t21",
+      "name": "Partitions and drywall",
+      "parentId": "p4",
+      "isPhase": false,
+      "startDate": "2027-01-18",
+      "endDate": "2027-01-26",
+      "duration": 9,
+      "trade": "Drywall",
+      "assignedTo": "Carpenter",
+      "status": "in-progress",
+      "critical": true,
+      "predecessors": [
+        "g3"
+      ]
+    },
+    {
+      "id": "t22",
+      "name": "Ceiling grid and tiles",
+      "parentId": "p4",
+      "isPhase": false,
+      "startDate": "2027-01-26",
+      "endDate": "2027-02-02",
+      "duration": 8,
+      "trade": "Ceiling",
+      "assignedTo": "Ceiling Fixer",
+      "status": "not-started",
+      "critical": true,
+      "predecessors": [
+        "t21",
+        "t17"
+      ]
+    },
+    {
+      "id": "t23",
+      "name": "Floor screed and vinyl",
+      "parentId": "p4",
+      "isPhase": false,
+      "startDate": "2027-01-26",
+      "endDate": "2027-02-03",
+      "duration": 9,
+      "trade": "Flooring",
+      "assignedTo": "Floor Layer",
+      "status": "not-started",
+      "critical": false,
+      "predecessors": [
+        "t21"
+      ]
+    },
+    {
+      "id": "t24",
+      "name": "Joinery and counter install",
+      "parentId": "p4",
+      "isPhase": false,
+      "startDate": "2027-02-02",
+      "endDate": "2027-02-08",
+      "duration": 7,
+      "trade": "Joinery",
+      "assignedTo": "Joiner",
+      "status": "not-started",
+      "critical": true,
+      "predecessors": [
+        "t22",
+        "t23"
+      ]
+    },
+    {
+      "id": "t25",
+      "name": "Paint and decoration",
+      "parentId": "p4",
+      "isPhase": false,
+      "startDate": "2027-02-03",
+      "endDate": "2027-02-09",
+      "duration": 7,
+      "trade": "Painting",
+      "assignedTo": "Painter",
+      "status": "not-started",
+      "critical": true,
+      "predecessors": [
+        "t23",
+        "t24"
+      ]
+    },
+    {
+      "id": "t26",
+      "name": "HVAC diffusers and commissioning",
+      "parentId": "p4",
+      "isPhase": false,
+      "startDate": "2027-02-02",
+      "endDate": "2027-02-09",
+      "duration": 8,
+      "trade": "HVAC",
+      "assignedTo": "HVAC Technician",
+      "status": "not-started",
+      "critical": false,
+      "predecessors": [
+        "t22",
+        "t18"
+      ]
+    },
+    {
+      "id": "t27",
+      "name": "Fire alarm devices",
+      "parentId": "p4",
+      "isPhase": false,
+      "startDate": "2027-02-08",
+      "endDate": "2027-02-11",
+      "duration": 4,
+      "trade": "Fire",
+      "assignedTo": "Fire Technician",
+      "status": "not-started",
+      "critical": false,
+      "predecessors": [
+        "t24",
+        "t26"
+      ]
+    },
+    {
+      "id": "g4",
+      "name": "Phase gate: fit-out substantial completion",
+      "parentId": "p4",
+      "isPhase": false,
+      "startDate": "2027-02-12",
+      "endDate": "2027-02-12",
+      "duration": 0,
+      "trade": "Commissioning",
+      "assignedTo": "Project Manager",
+      "status": "not-started",
+      "critical": true,
+      "predecessors": [
+        "t25",
+        "t27",
+        "t26"
+      ]
+    },
+    {
+      "id": "p5",
+      "name": "P5 Closeout & Handover",
+      "isPhase": true,
+      "startDate": "2027-02-15",
+      "endDate": "2027-02-26",
+      "duration": 0,
+      "status": "not-started",
+      "predecessors": []
+    },
+    {
+      "id": "t28",
+      "name": "Snag list walk",
+      "parentId": "p5",
+      "isPhase": false,
+      "startDate": "2027-02-15",
+      "endDate": "2027-02-17",
+      "duration": 3,
+      "trade": "Commissioning",
+      "assignedTo": "Site Manager",
+      "status": "not-started",
+      "critical": true,
+      "predecessors": [
+        "g4"
+      ]
+    },
+    {
+      "id": "t29",
+      "name": "Deep clean",
+      "parentId": "p5",
+      "isPhase": false,
+      "startDate": "2027-02-17",
+      "endDate": "2027-02-19",
+      "duration": 3,
+      "trade": "Cleaning",
+      "assignedTo": "Cleaner",
+      "status": "not-started",
+      "critical": true,
+      "predecessors": [
+        "t28",
+        "t25"
+      ]
+    },
+    {
+      "id": "t30",
+      "name": "Signage and branding",
+      "parentId": "p5",
+      "isPhase": false,
+      "startDate": "2027-02-17",
+      "endDate": "2027-02-22",
+      "duration": 6,
+      "trade": "Joinery",
+      "assignedTo": "Joiner",
+      "status": "not-started",
+      "critical": false,
+      "predecessors": [
+        "t28",
+        "t24"
+      ]
+    },
+    {
+      "id": "t31",
+      "name": "IT and network cutover",
+      "parentId": "p5",
+      "isPhase": false,
+      "startDate": "2027-02-19",
+      "endDate": "2027-02-23",
+      "duration": 5,
+      "trade": "IT",
+      "assignedTo": "IT Technician",
+      "status": "not-started",
+      "critical": true,
+      "predecessors": [
+        "t29",
+        "t19",
+        "t26"
+      ]
+    },
+    {
+      "id": "t32",
+      "name": "Staff training",
+      "parentId": "p5",
+      "isPhase": false,
+      "startDate": "2027-02-22",
+      "endDate": "2027-02-24",
+      "duration": 3,
+      "trade": "Commissioning",
+      "assignedTo": "Project Manager",
+      "status": "not-started",
+      "critical": true,
+      "predecessors": [
+        "t30",
+        "t31"
+      ]
+    },
+    {
+      "id": "t33",
+      "name": "Certificate of occupancy amendment",
+      "parentId": "p5",
+      "isPhase": false,
+      "startDate": "2027-02-23",
+      "endDate": "2027-02-26",
+      "duration": 4,
+      "trade": "Compliance",
+      "assignedTo": "Project Manager",
+      "status": "not-started",
+      "critical": false,
+      "predecessors": [
+        "t31",
+        "t27"
+      ]
+    },
+    {
+      "id": "g5",
+      "name": "Phase gate: handover accepted",
+      "parentId": "p5",
+      "isPhase": false,
+      "startDate": "2027-02-26",
+      "endDate": "2027-02-26",
+      "duration": 0,
+      "trade": "Commissioning",
+      "assignedTo": "Project Manager",
+      "status": "not-started",
+      "critical": true,
+      "predecessors": [
+        "t33",
+        "t32"
+      ]
+    },
+    {
+      "id": "t34",
+      "name": "Warranty register setup",
+      "parentId": "p99",
+      "isPhase": false,
+      "startDate": "2027-02-24",
+      "endDate": "2027-02-26",
+      "duration": 3,
+      "trade": "Commissioning",
+      "assignedTo": "Project Manager",
+      "status": "not-started",
+      "critical": false,
+      "predecessors": [
+        "t33"
+      ]
+    }
+  ]
+}

@@ -612,6 +612,82 @@ async function check(name, expr, expected, hint) {
     'expected predecessor removed: ' + JSON.stringify(linkInfo)
   );
 
+  // ---- GANTT-1: the view controls (Group / Window / Tidy) ----
+  // These are VIEW switches: they must repaint the chart, persist into s.ui,
+  // and leave the plan's own dates and links untouched. The demo plan carries
+  // no trade or assignee, so the trade axis is given two values first - a
+  // single "No trade" band could hide a broken axis. Restored at the end so
+  // every later check sees the default view.
+  await ev(
+    `(function(){var ids=MMGR.State.getState().tasks.filter(function(t){return !t.isPhase&&t.startDate&&t.endDate;}).slice(0,2).map(function(t){return t.id;});
+      MMGR.State.updateState(function(st){st.tasks.forEach(function(t){var i=ids.indexOf(t.id);if(i===0){t.trade='Demolition';t.assignedTo='Foreman';}else if(i===1){t.trade='Electrical';t.assignedTo='Sparky';}});});
+      return true;})()`
+  );
+  await delay(300);
+  const viewBase = await ev(
+    `(function(){var s=MMGR.State.getState();return {rows:document.querySelectorAll('#gantt-labels .gr').length,links:document.querySelectorAll('#gantt-chart .gantt-arrows line').length,plan:JSON.stringify(s.tasks.map(function(t){return [t.id,t.startDate,t.endDate,(t.predecessors||[]).join('+')];}))};})()`
+  );
+  await ev(
+    `(function(){var el=document.getElementById('gantt-group');el.value='trade';el.dispatchEvent(new Event('change',{bubbles:true}));return true;})()`
+  );
+  await delay(500);
+  await check(
+    '13e gantt view: Group=Trade draws swimlane bands and persists',
+    `(function(){var s=MMGR.State.getState();var g=document.querySelectorAll('#gantt-labels .gr-group');var names=Array.prototype.map.call(g,function(x){return (x.textContent||'').trim();});return {val: g.length >= 2 && s.ui.ganttGroupBy === 'trade' && names.join('|').indexOf('Unassigned') < 0};})()`
+  );
+  await ev(
+    `(function(){var el=document.getElementById('gantt-group');el.value='phase';el.dispatchEvent(new Event('change',{bubbles:true}));return true;})()`
+  );
+  await delay(400);
+  await check(
+    '13f gantt view: Group=Phase restores one row per phase',
+    `(function(){var s=MMGR.State.getState();var phases=s.tasks.filter(function(t){return t.isPhase;}).length;
+      var bandNames=Array.prototype.map.call(document.querySelectorAll('#gantt-labels .gr-group'),function(x){return (x.textContent||'').trim();});
+      return {val: s.ui.ganttGroupBy === 'phase' &&
+        document.querySelectorAll('#gantt-labels .gr-phase').length === phases &&
+        bandNames.indexOf('Demolition') < 0 && bandNames.indexOf('Electrical') < 0 &&
+        document.querySelectorAll('#gantt-labels .gr').length === ${viewBase.rows},
+        phases: phases, bandNames: bandNames};})()`
+  );
+  await ev(
+    `(function(){var el=document.getElementById('gantt-window');el.value='custom';el.dispatchEvent(new Event('change',{bubbles:true}));return true;})()`
+  );
+  await delay(400);
+  await check(
+    '13g gantt view: Window=Custom reveals the two date fields',
+    `(function(){var s=MMGR.State.getState();var row=document.getElementById('gantt-window-custom');var st=getComputedStyle(row);return {val: s.ui.ganttWindow === 'custom' && !row.hidden && st.display !== 'none'};})()`
+  );
+  await ev(
+    `(function(){var f=document.getElementById('gantt-from');var t=document.getElementById('gantt-to');f.focus();f.value='2026-01-01';f.dispatchEvent(new Event('change',{bubbles:true}));t.focus();t.value='2026-12-31';t.dispatchEvent(new Event('change',{bubbles:true}));return true;})()`
+  );
+  await delay(500);
+  await check(
+    '13h gantt view: a custom window narrows the drawn scale',
+    `(function(){var s=MMGR.State.getState();var ticks=document.querySelectorAll('#gantt-chart .gd').length;return {val: s.ui.ganttWindowFrom === '2026-01-01' && s.ui.ganttWindowTo === '2026-12-31' && ticks >= 3 && ticks <= 60, ticks: ticks, from: s.ui.ganttWindowFrom, to: s.ui.ganttWindowTo};})()`,
+    undefined,
+    'a one-cell header means the tick loop stopped after its first step'
+  );
+  await ev(
+    `(function(){var el=document.getElementById('gantt-window');el.value='all';el.dispatchEvent(new Event('change',{bubbles:true}));return true;})()`
+  );
+  await delay(400);
+  await check(
+    '13i gantt view: Window=All hides the date fields again',
+    `(function(){var s=MMGR.State.getState();return {val: s.ui.ganttWindow === 'all' && document.getElementById('gantt-window-custom').hidden === true};})()`
+  );
+  await ev(`(function(){var el=document.getElementById('gantt-tidy');el.click();return true;})()`);
+  await delay(500);
+  await check(
+    '13j gantt view: Tidy collapses the view and persists',
+    `(function(){var s=MMGR.State.getState();return {val: s.ui.ganttTidy === true && document.getElementById('gantt-tidy').checked === true && document.querySelectorAll('#gantt-labels .gr').length <= ${viewBase.rows}};})()`
+  );
+  await ev(`(function(){var el=document.getElementById('gantt-tidy');el.click();return true;})()`);
+  await delay(400);
+  await check(
+    '13k gantt view: the switches never touched the plan',
+    `(function(){var s=MMGR.State.getState();var now=JSON.stringify(s.tasks.map(function(t){return [t.id,t.startDate,t.endDate,(t.predecessors||[]).join('+')];}));return {val: s.ui.ganttTidy === false && now === ${JSON.stringify(viewBase.plan)} && document.querySelectorAll('#gantt-labels .gr').length === ${viewBase.rows}};})()`
+  );
+
   // ---- GAP 11: Spend Log + S-curve ----
   await ev(`document.querySelector('.sec-btn[data-section=bud]').click()`);
   await delay(400);

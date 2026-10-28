@@ -597,6 +597,25 @@
           <button class="btn btn-g btn-s" data-action="cascadeGantt" data-def="Cascade Dates"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Cascade Dates</button>
           <label class="wx-field" data-def="Project deadline - the engine gives terminal chains float when the plan finishes before it"><span class="t-xs">Deadline</span> <input type="date" id="deadline-input" data-action="setDeadline"></label>
           <button class="btn btn-o btn-s toggle-chip is-off" data-action="toggleCritical" data-def="Critical Path"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-target"></use></svg> Highlight Critical</button>
+          <label class="gv-tgl tgl" data-def="Tidy the view: collapse finished phases and thin the links. The plan itself is never changed."><input type="checkbox" id="gantt-tidy" data-action="ganttTidy" role="switch" aria-label="Tidy view"><span class="tsl"></span><span class="gv-tgl-txt">Tidy</span></label>
+          <label class="wx-field" data-def="Group the chart into swimlanes: by phase (the plan), by trade or by the person doing the work"><span class="t-xs">Group</span>
+            <select id="gantt-group" data-action="setGanttGroup" aria-label="Group the chart by">
+              <option value="phase">Phase</option>
+              <option value="trade">Trade</option>
+              <option value="assignee">Assignee</option>
+            </select>
+          </label>
+          <label class="wx-field" data-def="Show the whole project, the next ninety days, or your own date window. The scale follows the window automatically."><span class="t-xs">Window</span>
+            <select id="gantt-window" data-action="setGanttWindow" aria-label="Time window">
+              <option value="all">Whole project</option>
+              <option value="next90">Next 90 days</option>
+              <option value="custom">Custom</option>
+            </select>
+          </label>
+          <span class="gv-custom" id="gantt-window-custom" hidden>
+            <input type="date" id="gantt-from" data-action="setGanttWindowDate" aria-label="Window start date">
+            <input type="date" id="gantt-to" data-action="setGanttWindowDate" aria-label="Window end date">
+          </span>
           <button class="btn btn-n btn-s" data-action="openGanttExport" title="Choose the format, theme and columns, then download the schedule (baseline + critical path + weather hatching included)"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Export Chart</button>
         </div>
       </div>

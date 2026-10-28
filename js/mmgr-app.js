@@ -1454,6 +1454,16 @@ var MMGR = window.MMGR || {};
       // at export time only (kill switch: flags.ganttTidy). Plan data is
       // never touched either way.
       tidy: (!s.flags || s.flags.ganttTidy !== false) && ui.ganttTidy === true,
+      // GANTT-1: the swimlane axis and the time window are the SAME view
+      // state the live chart reads, so "what I see" is "what I export".
+      groupBy:
+        ui.ganttGroupBy === 'trade' || ui.ganttGroupBy === 'assignee' ? ui.ganttGroupBy : 'phase',
+      window:
+        ui.ganttWindow === 'next90'
+          ? 'next90'
+          : ui.ganttWindow === 'custom' && ui.ganttWindowFrom && ui.ganttWindowTo
+            ? { from: ui.ganttWindowFrom, to: ui.ganttWindowTo }
+            : 'all',
       baseline: saved.baseline !== false,
       columns: {
         wbs: c.wbs !== false,
@@ -1579,7 +1589,12 @@ var MMGR = window.MMGR || {};
     if (!ns.GanttView || !ns.GanttView.build) {
       return null;
     }
-    const view = ns.GanttView.build(s, { links: o.links, tidy: !!o.tidy });
+    const view = ns.GanttView.build(s, {
+      links: o.links,
+      tidy: !!o.tidy,
+      groupBy: o.groupBy,
+      window: o.window
+    });
     const T = ganttTheme(o.theme);
     const prims = [];
     const mctx = document.createElement('canvas').getContext('2d');
@@ -1634,17 +1649,11 @@ var MMGR = window.MMGR || {};
     // GANTT-1: the view owns the spans (a phase shows its children's
     // rolled-up dates, derived fresh at read time).
     const spanOf = view.spans;
-    let minDate = null,
-      maxDate = null;
-    tasks.forEach(t => {
-      const sp = spanOf[t.id];
-      if (!minDate || sp.start < minDate) {
-        minDate = sp.start;
-      }
-      if (!maxDate || sp.end > maxDate) {
-        maxDate = sp.end;
-      }
-    });
+    // GANTT-1: the export's x-axis is the VIEW's scale, not a fresh scan of
+    // every task, so a time window (next 90 days / custom) draws the same
+    // span on paper as it does on screen.
+    const minDate = view.scale.from;
+    const maxDate = view.scale.to;
     const rowH = 26,
       headerH = 96; // G4: title block + three header bands (month/week/day)
     // ---- G6 left table: fixed columns around a measured Task column.
@@ -2883,6 +2892,49 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // ---- GANTT-1 view controls (the Gantt toolbar) ----
+  // Tidy, the swimlane axis and the time window change the VIEW only: the
+  // plan, its dates and its links are never touched. They live in s.ui, the
+  // same place the export dialog reads, so "what I see" is "what I export".
+  function setGanttView(patch) {
+    ns.State.updateState(function (st) {
+      st.ui = st.ui || {};
+      Object.keys(patch).forEach(function (k) {
+        st.ui[k] = patch[k];
+      });
+    });
+    R.renderGantt();
+  }
+
+  function ganttTidy(el) {
+    // A checkbox: Chrome has already flipped `checked` before this runs.
+    var on = el && el.type === 'checkbox' ? !!el.checked : !(S().ui && S().ui.ganttTidy);
+    setGanttView({ ganttTidy: on });
+  }
+
+  function setGanttGroup(el) {
+    var v =
+      el && el.value === 'trade' ? 'trade' : el && el.value === 'assignee' ? 'assignee' : 'phase';
+    setGanttView({ ganttGroupBy: v });
+  }
+
+  function setGanttWindow(el) {
+    var v = el && el.value === 'next90' ? 'next90' : el && el.value === 'custom' ? 'custom' : 'all';
+    setGanttView({ ganttWindow: v });
+  }
+
+  function setGanttWindowDate(el) {
+    if (!el) {
+      return;
+    }
+    var which = el.id === 'gantt-from' ? 'ganttWindowFrom' : 'ganttWindowTo';
+    var patch = {};
+    patch[which] = el.value || '';
+    // A custom window needs both ends; until it has them the chart stays on
+    // the whole project, so a half-typed window never blanks the plan.
+    setGanttView(patch);
+  }
+
   function tglLeadtimeLane(btn) {
     // Monolith kb-leadtime-tgl: dedicated Kanban swimlane for Lead-Time /
     // third-party tasks. Persisted so re-renders keep the lane state.
@@ -2894,7 +2946,6 @@ var MMGR = window.MMGR || {};
       btn.classList.toggle('is-on', !!S().kbShowLeadtime);
     }
   }
-
   // ---- Kanban ----
   let dragTaskId = null;
 
@@ -3619,6 +3670,10 @@ var MMGR = window.MMGR || {};
     restoreBaseline: restoreBaseline,
     cascadeGantt: cascadeGantt,
     toggleCritical: toggleCritical,
+    ganttTidy: ganttTidy,
+    setGanttGroup: setGanttGroup,
+    setGanttWindow: setGanttWindow,
+    setGanttWindowDate: setGanttWindowDate,
     tglLeadtimeLane: tglLeadtimeLane,
     dragCard: dragCard,
     dropCard: dropCard,
@@ -4706,6 +4761,10 @@ window.MMGR = MMGR;
     cloudDeleteConfirm: () => {},
     cascadeGantt: () => window.MMGR.App.cascadeGantt(),
     toggleCritical: el => window.MMGR.App.toggleCritical(el),
+    ganttTidy: el => window.MMGR.App.ganttTidy(el),
+    setGanttGroup: el => window.MMGR.App.setGanttGroup(el),
+    setGanttWindow: el => window.MMGR.App.setGanttWindow(el),
+    setGanttWindowDate: el => window.MMGR.App.setGanttWindowDate(el),
     tglLeadtimeLane: el => window.MMGR.App.tglLeadtimeLane(el),
     populateSprint: () => window.MMGR.App.populateSprint(),
     openPrompt: el => window.MMGR.App.openPrompt(el.getAttribute('data-type')),
@@ -5409,6 +5468,9 @@ window.MMGR = MMGR;
         action === 'setWorkWeek' ||
         action === 'setRegion' ||
         action === 'setDeadline' ||
+        action === 'setGanttGroup' ||
+        action === 'setGanttWindow' ||
+        action === 'setGanttWindowDate' ||
         action === 'loadProjectFile' ||
         action === 'mergeProjectFile' ||
         action === 'updCharter' ||

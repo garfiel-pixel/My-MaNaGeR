@@ -245,6 +245,16 @@ jobs:
         id: verify-settings-reach
         run: node tools/verify-settings-reach.cjs
 
+      # GANTT-1 (REFINEMENT-DIRECTIVE-2026-10-24 section 8): ONE view builder
+      # feeds the live chart and the PNG / SVG / PDF exports. Runs the pure
+      # module in a vm sandbox against the committed bank fixture, proves the
+      # link policies (all / near / critical / gates), the tidy reduction, the
+      # swimlane axes and the automatic scale, then proves STATICALLY that all
+      # four painters read that one builder.
+      - name: "T1: Gantt view builder (T-GANTT)"
+        id: verify-gantt-view
+        run: node tools/verify-gantt-view.cjs
+
       # G-2 gate (DIRECTIVE: GOOGLE SIGN-IN SECURITY GAPS, 2026-10-23):
       # in-process Worker route battery + the 14 sign-in nonce checks
       # (wrong/reused/expired/forged, email_verified, flag on/off, sweep).

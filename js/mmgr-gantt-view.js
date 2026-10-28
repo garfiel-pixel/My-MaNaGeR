@@ -14,24 +14,36 @@
    changes the view, never the data).
 
    Options (all optional):
-     links : 'all' | 'near' | 'critical' | 'gates'   (default 'gates' -
-             the directive's default for exports: the critical chain plus
-             the links between phase summaries and phase-gate milestones)
-     tidy  : collapse finished phases and phases that start after the
-             window, and reduce the displayed links to what still earns
-             its line (transitive reduction) - default false
-     today : 'YYYY-MM-DD' for the tidy maths (default: the page's date)
+     links   : 'all' | 'near' | 'critical' | 'gates'   (default 'gates' -
+               the directive's default for exports: the critical chain
+               plus the links between phase summaries and phase-gate
+               milestones)
+     tidy    : collapse finished phases and phases that start after the
+               window, and reduce the displayed links to what still earns
+               its line (transitive reduction) - default false
+     groupBy : 'phase' (default) | 'trade' | 'assignee' - the swimlane
+               axis. Phase mode draws phases with their children; the
+               other two draw one band per value, tasks sorted by start
+               date then WBS, and leave phases out (a phase is a
+               different axis, not a band).
+     window  : 'all' (default) | 'next90' | { from, to } - the visible
+               time window. The scale unit is chosen automatically from
+               its length so labels never overlap.
+     today   : 'YYYY-MM-DD' for the tidy maths and 'next90' (default:
+               the page's date)
 
    Returns:
-     { rows, wbs, spans, links, milestones, scale, orphans, policy, tidy }
+     { rows, wbs, spans, links, milestones, scale, orphans, policy,
+       tidy, collapsed, groupBy, window }
 
      rows       [{ row, kind:'phase'|'task'|'group', depth }] in draw
-                order; `row` is the task itself (or the synthetic
-                "Unassigned tasks" header the export has always drawn).
-                Rows inside a collapsed phase are absent - the phase row
-                itself stays, showing its rolled-up span.
-     wbs        { taskId: '1.2' } - numbered over the FULL order before
-                any collapse, so hiding a child never renumbers the rest.
+                order; `row` is the task itself (or the synthetic group
+                header the export has always drawn). Rows inside a
+                collapsed phase are absent - the phase row itself stays,
+                showing its rolled-up span.
+     wbs        { taskId: '1.2' } - numbered over the FULL phase order
+                before any collapse or grouping, so hiding a child or
+                switching the swimlane axis never renumbers the plan.
      spans      { taskId: { start, end } } - a phase spans its CHILDREN,
                 derived at read time through Schedule.phaseSpan: a static
                 image must never trust a stored date a stale rollup left
@@ -50,12 +62,45 @@ var MMGR = window.MMGR || {};
 
   var U = ns.Utils;
 
-  // Both painters use these numbers: the chart's rows are 26px and a phase
-  // row breathes 7px before it. The link policy measures row distance with
-  // them, so a policy answer means the same thing on screen and on paper.
+  // The export's rows are 26px; the live chart's rows are 34px (css .gr).
+  // The 'near' policy is a ROW-COUNT measure ("no line longer than eight
+  // rows"), so it uses one nominal height for both painters rather than
+  // reading the DOM - a pure module must not measure the page.
   var ROW_H = 26;
   var PHASE_GAP = 7;
   var NEAR_ROWS = 8;
+
+  // The directive's two extra link policies both rest on this reading of a
+  // phase gate: a milestone that names itself a gate, a sign-off, an
+  // inspection or a completion. Kept here (not in the painters) so the
+  // screen, the PNG, the SVG and the PDF cannot disagree about it.
+  var GATE_NAME = /gate|sign-?off|complete|milestone|certificat|inspection|handover|practical/i;
+
+  // ---- date helpers. Utils.addDays returns a DATE, not a string (the chart's
+  // day loop reads `.getDay()` off it), and Utils.fmtDate turns either back
+  // into 'YYYY-MM-DD'. The builder promises STRING dates everywhere, so every
+  // value that leaves these helpers is normalised - a Date leaking into
+  // scale.to or into a window bound would make `'2026-05-01' > Date` silently
+  // false and a "starts after the window" test would never fire.
+  function toDL(d) {
+    if (!d) {
+      return '';
+    }
+    if (typeof d === 'string') {
+      return d.slice(0, 10);
+    }
+    if (U && U.fmtDate) {
+      return U.fmtDate(d) || '';
+    }
+    if (d instanceof Date && !isNaN(d.getTime())) {
+      var m = String(d.getMonth() + 1);
+      var dd = String(d.getDate());
+      return (
+        d.getFullYear() + '-' + (m.length < 2 ? '0' + m : m) + '-' + (dd.length < 2 ? '0' + dd : dd)
+      );
+    }
+    return '';
+  }
 
   function daysBetween(a, b) {
     if (U && U.daysBetween) {
@@ -66,32 +111,45 @@ var MMGR = window.MMGR || {};
 
   function addDays(d, n) {
     if (U && U.addDays) {
-      return U.addDays(d, n);
+      return toDL(U.addDays(d, n));
     }
     var x = new Date(d);
     x.setDate(x.getDate() + n);
-    return x.toISOString().slice(0, 10);
+    return toDL(x);
   }
 
   function todayStr() {
     if (U && U.todayStr) {
-      return U.todayStr();
+      return toDL(U.todayStr());
     }
-    return new Date().toISOString().slice(0, 10);
+    return toDL(new Date());
   }
 
   /* G3's milestone rule, in ONE place: a diamond is a diamond by FLAG
      (t.milestone), by SHAPE (zero duration), or by NAME when a same-day
      row reads as a gate or sign-off. The export used to carry its own
      copy of this test - two copies of the same rule is how a screen and
-     a picture start disagreeing. */
+     a picture start disagreeing.
+
+     A PHASE is never a diamond: its duration is a rollup that can legitimately
+     be zero (a phase whose children share one day), and a phase summary
+     drawn as a diamond would say "this is a single date" about a whole
+     body of work. Nor is a synthetic group header. */
   function isMilestone(t) {
+    if (!t || t.isPhase || t.isGroupHeader) {
+      return false;
+    }
     return !!(
       t.milestone ||
       Number(t.duration) === 0 ||
-      (t.startDate === t.endDate &&
-        /gate|sign-?off|complete|milestone|certificate/i.test(t.name || ''))
+      (t.startDate === t.endDate && GATE_NAME.test(t.name || ''))
     );
+  }
+
+  /* A phase gate is a milestone that names itself one. Used only by the
+     'gates' policy: it is the line a reader needs, not a new data field. */
+  function isGateMilestone(t) {
+    return isMilestone(t) && GATE_NAME.test(t.name || '');
   }
 
   /* Directive algorithm: transitive reduction of DISPLAYED links. If A
@@ -185,6 +243,97 @@ var MMGR = window.MMGR || {};
     return { rows: ordered, orphans: orphans };
   }
 
+  /* ---- GANTT-1: the swimlane axis. A band is a VALUE (a trade, a
+     person); tasks sort by start date then WBS inside it. Phases are not
+     a value on either axis, so they are left out of these two modes -
+     they are the default axis, not a row that fits every band. ---- */
+  function groupKeyOf(t, groupBy) {
+    var v =
+      groupBy === 'trade'
+        ? t.trade || t.category || t.discipline || t.workType
+        : t.assignedTo || t.assignee || t.owner;
+    v = String(v == null ? '' : v).trim();
+    if (v) {
+      return v;
+    }
+    return groupBy === 'trade' ? 'No trade' : 'Unassigned';
+  }
+
+  // '1.10' sorts after '1.9': WBS numbers are dotted, not strings.
+  function wbsCmp(a, b) {
+    var pa = String(a || '').split('.');
+    var pb = String(b || '').split('.');
+    for (var i = 0; i < Math.max(pa.length, pb.length); i++) {
+      var na = Number(pa[i] || 0);
+      var nb = Number(pb[i] || 0);
+      if (na !== nb) {
+        return na - nb;
+      }
+    }
+    return 0;
+  }
+
+  function orderGroupRows(tasks, groupBy, wbs) {
+    var buckets = {};
+    var order = [];
+    tasks.forEach(function (t) {
+      if (t.isPhase) {
+        return;
+      }
+      var k = groupKeyOf(t, groupBy);
+      if (!buckets[k]) {
+        buckets[k] = [];
+        order.push(k);
+      }
+      buckets[k].push(t);
+    });
+    order.sort(function (a, b) {
+      return a < b ? -1 : a > b ? 1 : 0;
+    });
+    var rows = [];
+    order.forEach(function (k) {
+      rows.push({
+        row: {
+          id: '__group__' + k,
+          name: k,
+          isGroupHeader: true,
+          groupKey: k
+        },
+        kind: 'group',
+        depth: 0
+      });
+      buckets[k]
+        .sort(function (a, b) {
+          if (a.startDate !== b.startDate) {
+            return a.startDate < b.startDate ? -1 : 1;
+          }
+          return wbsCmp(wbs[a.id], wbs[b.id]);
+        })
+        .forEach(function (t) {
+          rows.push({ row: t, kind: 'task', depth: 1 });
+        });
+    });
+    return rows;
+  }
+
+  /* ---- GANTT-1: the visible time window. 'all' is the whole project;
+     'next90' runs from today (or the project's own start if that is
+     later) for ninety days; a { from, to } pair is the owner's custom
+     window. An unusable custom pair falls back to the whole project
+     rather than drawing a zero-width chart. ---- */
+  function resolveWindow(opt, min, max, today) {
+    if (opt === 'next90') {
+      var from = today > min ? today : min;
+      return { from: from, to: addDays(today, 90), mode: 'next90' };
+    }
+    if (opt && typeof opt === 'object' && opt.from && opt.to) {
+      if (opt.from <= opt.to) {
+        return { from: opt.from, to: opt.to, mode: 'custom' };
+      }
+    }
+    return { from: min, to: max, mode: 'all' };
+  }
+
   function build(state, options) {
     var o = options || {};
     var s = state || {};
@@ -195,6 +344,7 @@ var MMGR = window.MMGR || {};
     var policy =
       o.links === 'all' || o.links === 'near' || o.links === 'critical' ? o.links : 'gates';
     var tidy = o.tidy === true;
+    var groupBy = o.groupBy === 'trade' || o.groupBy === 'assignee' ? o.groupBy : 'phase';
     var today = typeof o.today === 'string' && o.today ? o.today : todayStr();
 
     // ---- spans: every row's bar comes from here, phases from their kids.
@@ -207,7 +357,7 @@ var MMGR = window.MMGR || {};
       spans[t.id] = span || { start: t.startDate, end: t.endDate };
     });
 
-    // ---- the whole-project range (the title block and the day ladder).
+    // ---- the project range (the window's default).
     var min = null;
     var max = null;
     tasks.forEach(function (t) {
@@ -223,13 +373,17 @@ var MMGR = window.MMGR || {};
       min = today;
       max = today;
     }
-    var totalDays = daysBetween(min, max) + 1;
+    var win = resolveWindow(o.window, min, max, today);
+    var totalDays = daysBetween(win.from, win.to) + 1;
+    if (totalDays < 1) {
+      totalDays = 1;
+    }
     // Labels never overlap: day ticks on a short window, week on a
     // medium one, month on the long ones.
     var unit = totalDays <= 45 ? 'day' : totalDays <= 200 ? 'week' : 'month';
 
-    // ---- rows, WBS over the FULL order (a collapsed child must never
-    // renumber the ones still on screen), then the tidy pass.
+    // ---- rows, WBS over the FULL phase order (a collapsed child or a
+    // swimlane switch must never renumber the plan), then the tidy pass.
     var phOrdered = orderPhaseRows(tasks);
     var wbs = {};
     var phNum = 0;
@@ -249,9 +403,9 @@ var MMGR = window.MMGR || {};
       }
     });
 
-    var rows = phOrdered.rows;
+    var rows = groupBy === 'phase' ? phOrdered.rows : orderGroupRows(tasks, groupBy, wbs);
     var collapsed = {};
-    if (tidy) {
+    if (tidy && groupBy === 'phase') {
       // Collapse what is FINISHED (every child done, or the rolled-up span
       // already behind us) and what starts after the visible window. Active
       // phases stay open - the owner is reading the live end of the plan.
@@ -270,7 +424,7 @@ var MMGR = window.MMGR || {};
             kids.every(function (k) {
               return k.status === 'completed';
             }));
-        var afterWindow = sp.start > max;
+        var afterWindow = sp.start > win.to;
         if (finished || afterWindow) {
           collapsed[ph.id] = true;
         }
@@ -330,6 +484,15 @@ var MMGR = window.MMGR || {};
     // reduction. The critical chain survives every policy - it is the
     // one line a reader can never be allowed to lose.
     var links = [];
+    var seenLink = {};
+    var pushLink = function (from, to, critical, derived) {
+      var key = from + '>' + to;
+      if (seenLink[key]) {
+        return;
+      }
+      seenLink[key] = true;
+      links.push({ from: from, to: to, critical: !!critical, derived: !!derived });
+    };
     rows.forEach(function (r) {
       var t = r.row;
       if (t.isGroupHeader) {
@@ -341,11 +504,29 @@ var MMGR = window.MMGR || {};
         if (!rowTask[from] || !rowTask[to]) {
           return;
         }
-        links.push({
-          from: from,
-          to: to,
-          critical: !!(rowTask[from].critical && t.critical)
-        });
+        pushLink(from, to, rowTask[from].critical && t.critical);
+      });
+    });
+    // GANTT-1: a phase-gate milestone is often parented to its phase but
+    // not wired to the phase SUMMARY as a predecessor, so the gates view
+    // used to draw no arrow at all on a plan whose gates live inside the
+    // phase. The phase row is the summary the reader is following, so the
+    // band is drawn phase -> its own gate milestone. It is marked
+    // `derived`: it is a READING of the plan, not a row in it, so the
+    // gates policy may draw it but nothing may offer to delete it.
+    rows.forEach(function (r) {
+      if (r.kind !== 'phase') {
+        return;
+      }
+      var ph = r.row;
+      rows.forEach(function (r2) {
+        if (r2.kind !== 'task' || !isGateMilestone(r2.row)) {
+          return;
+        }
+        if (!parentOf(r2.row, ph)) {
+          return;
+        }
+        pushLink(String(ph.id), String(r2.row.id), r2.row.critical && ph.critical, true);
       });
     });
     var isGateLink = function (l) {
@@ -357,6 +538,12 @@ var MMGR = window.MMGR || {};
       return (a.isPhase && isMilestone(b)) || (isMilestone(a) && b.isPhase);
     };
     var shown = links.filter(function (l) {
+      if (l.derived) {
+        // A derived summary line belongs to the gates reading and nowhere
+        // else: 'all' promises the plan's own lines, and 'near'/'critical'
+        // measure real edges.
+        return policy === 'gates';
+      }
       if (l.critical) {
         return true;
       }
@@ -395,11 +582,13 @@ var MMGR = window.MMGR || {};
       spans: spans,
       links: shown,
       milestones: milestones,
-      scale: { from: min, to: max, totalDays: totalDays, unit: unit },
+      scale: { from: win.from, to: win.to, totalDays: totalDays, unit: unit },
       orphans: phOrdered.orphans,
       policy: policy,
       tidy: tidy,
-      collapsed: collapsed
+      collapsed: collapsed,
+      groupBy: groupBy,
+      window: win.mode
     };
   }
 
@@ -407,6 +596,8 @@ var MMGR = window.MMGR || {};
     build: build,
     reduceLinks: reduceLinks,
     isMilestone: isMilestone,
+    isGateMilestone: isGateMilestone,
+    groupKeyOf: groupKeyOf,
     ROW_H: ROW_H,
     PHASE_GAP: PHASE_GAP
   };

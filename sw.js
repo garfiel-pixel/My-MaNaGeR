@@ -405,7 +405,31 @@
 // js/mmgr-perf.js, js/mmgr-glass.js, js/marketing.js, js/marketing-globe.js,
 // js/mmgr-combobox.js (new), dist/marketing-bundle.js. No inline script block
 // changed, so the CSP hashes are untouched.
-const CACHE = 'mmgr-shell-v484';
+const CACHE = 'mmgr-shell-v485';
+
+// v485 - GANTT-1, THE VIEW SWITCHES AND THE ONE-ANSWER CHART
+// (REFINEMENT-DIRECTIVE-2026-10-24 section 8). The chart, the arrow overlay
+// and all three exports already shared one builder; this wave gives that
+// builder the rest of the directive's view controls and pins it with a gate.
+// Group draws the chart as swimlanes by trade or by assignee (a band is a
+// value, so phases are left out of those two axes); Window narrows the plan
+// to the whole project, the next ninety days or the owner's own dates, and
+// the scale unit is chosen from the window length (day under 45 days, week
+// under 200, month beyond) so header ticks can never collide; Tidy collapses
+// finished phases and reduces the displayed links transitively. All three are
+// VIEW state in s.ui: the plan, its dates and its links are never touched.
+// Two defects fixed on the way. A phase with a zero duration was classified
+// as a milestone diamond (a phase is a summary, never a single date). And a
+// derived phase-to-gate line - a reading of the plan, not a row in it - is
+// now drawn only by the gates policy and is never clickable, because the
+// arrow overlay offers "remove this dependency" and the plan does not
+// contain that edge. The new gate tools/verify-gantt-view.cjs (121 checks
+// over tools/fixtures/gantt-bank.json) is wired into npm run verify and
+// ci.yml.
+// Changed shell assets: js/mmgr-gantt-view.js, js/mmgr-render.js,
+// js/mmgr-app.js, css/mmgr.css, project.html, dist/bundle.js,
+// dist/mmgr.min.css. No inline script block changed, so the CSP hashes are
+// untouched.
 
 // v484 - SW-8 NEUTRAL TOKENS, AND THE DEV FALLBACK THAT NEVER RAN
 // (REFINEMENT-DIRECTIVE-2026-10-24 section 11). Two changes that arrived in

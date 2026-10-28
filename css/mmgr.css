@@ -4634,6 +4634,98 @@ body.dark-mode .dmaic-chip {
 .gr-phase .gb {
   opacity: 0.92;
 }
+
+/* ---- GANTT-1: swimlane band, phase gate, scale ticks, view controls ---- */
+/* A swimlane band (Group: trade or assignee) is a header row, not a task:
+   it labels the rows beneath it and carries no bar. Neutral, because the
+   gold phase tint already means "this is a phase". */
+.gr-group {
+  background: var(--lit-fog);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.gr-group-name {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--slate);
+}
+/* A phase gate is a diamond with a name: the name rides to the right of it
+   so a gate reads as a gate without hovering. */
+.gb-ms-label {
+  position: absolute;
+  top: 10px;
+  font-size: 0.6rem;
+  line-height: 1;
+  color: var(--slate);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 3;
+}
+.gb-ms-label.gate {
+  color: var(--gold-text-on-light);
+  font-weight: 700;
+}
+.gb-milestone.gate {
+  background: var(--gold);
+  box-shadow: 0 0 0 2px rgba(var(--gold-rgb), 0.25);
+}
+.ms-diamond.gate {
+  color: var(--gold-text-on-light);
+  font-size: 0.7rem;
+}
+/* Week and month header cells: the width comes from the scale, so the
+   built-in 28px floor must not stretch a clipped edge cell. */
+.gd-tick {
+  min-width: 0;
+  padding: 7px 3px;
+  font-size: 0.6rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The custom time window's two date fields. [hidden] needs its own guard:
+   the display below outranks the UA stylesheet's [hidden] rule. */
+.gv-custom {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.gv-custom[hidden] {
+  display: none;
+}
+.gv-custom input {
+  font-size: 0.7rem;
+  background: var(--canvas);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 3px 6px;
+}
+/* The Tidy switch with a visible label: the track keeps its own 36x20 box
+   instead of filling the whole label, so the word sits beside it. */
+.gv-tgl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  height: auto;
+  min-height: 20px;
+  cursor: pointer;
+}
+.gv-tgl .tsl {
+  position: relative;
+  inset: auto;
+  width: 36px;
+  height: 20px;
+  flex: 0 0 36px;
+}
+.gv-tgl-txt {
+  font-size: 0.72rem;
+  color: var(--slate);
+}
+
 /* Dark-theme parity for the visual wave (token-driven, same hues both themes). */
 body.dark-mode .gd-wknd {
   background: rgba(148, 163, 184, 0.08);
@@ -4641,12 +4733,8 @@ body.dark-mode .gd-wknd {
 body.dark-mode .gantt-wknd-band {
   background: rgba(148, 163, 184, 0.07);
 }
-/* Dark-theme parity for the visual wave (token-driven, same hues both themes). */
-body.dark-mode .gd-wknd {
-  background: rgba(148, 163, 184, 0.08);
-}
-body.dark-mode .gantt-wknd-band {
-  background: rgba(148, 163, 184, 0.07);
+body.dark-mode .gr-group {
+  background: var(--lit-white-04);
 }
 
 /* ---- Gantt interactions (drag / tooltip / baseline overlay) ---- */

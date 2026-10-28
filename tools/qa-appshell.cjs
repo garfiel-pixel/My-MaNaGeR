@@ -267,33 +267,106 @@ function overlaps(a, b) {
           }
         });
         await delay(450);
-        const pj = await page.evaluate(() => {
-          const sb = document.getElementById('app-sidebar');
-          if (!sb) {
-            return { missing: true };
-          }
-          const r = sb.getBoundingClientRect();
-          const cs = getComputedStyle(sb);
-          const main =
-            document.getElementById('app-main') || document.querySelector('.main, .wrap');
-          const mr = main ? main.getBoundingClientRect() : null;
-          return {
-            missing: false,
-            x: r.x,
-            right: r.x + r.width,
-            width: r.width,
-            visibility: cs.visibility,
-            transform: cs.transform,
-            mainLeft: mr ? mr.x : null
-          };
-        });
+        const readRail = () =>
+          page.evaluate(() => {
+            function vis(el) {
+              if (!el) {
+                return null;
+              }
+              const r = el.getBoundingClientRect();
+              if (!r.width && !r.height) {
+                return null;
+              }
+              const cs = getComputedStyle(el);
+              if (
+                cs.display === 'none' ||
+                cs.visibility === 'hidden' ||
+                Number(cs.opacity) < 0.05
+              ) {
+                return null;
+              }
+              return { x: r.x, y: r.y, width: r.width, height: r.height };
+            }
+            const sb = document.getElementById('app-sidebar');
+            const main =
+              document.getElementById('app-main') || document.querySelector('.main, .wrap');
+            const mr = main ? main.getBoundingClientRect() : null;
+            // A real piece of the page, not the column itself: if the closed
+            // rail were floating over content, this is what it would cover.
+            const probe = main
+              ? vis(
+                  main.querySelector(
+                    '.card, .panel, .gv-wrap, button, input, select, a, table, canvas'
+                  )
+                )
+              : null;
+            return {
+              missing: !sb,
+              open: document.body.classList.contains('sidebar-open'),
+              railBox: sb
+                ? (() => {
+                    const r = sb.getBoundingClientRect();
+                    return { x: r.x, y: r.y, width: r.width, height: r.height };
+                  })()
+                : null,
+              right: sb ? sb.getBoundingClientRect().right : null,
+              width: sb ? sb.getBoundingClientRect().width : null,
+              visibility: sb ? getComputedStyle(sb).visibility : null,
+              position: sb ? getComputedStyle(sb).position : null,
+              mainLeft: mr ? mr.x : null,
+              probe: probe,
+              scrollW: document.documentElement.scrollWidth,
+              clientW: document.documentElement.clientWidth
+            };
+          });
+
+        const pjClosed = await readRail();
         check(
-          'APP-1 [' + tag + '] the project page keeps its closed rail off-canvas',
-          !pj.missing &&
-            (pj.right <= 1 || pj.visibility === 'hidden') &&
-            (pj.mainLeft === null || pj.mainLeft >= 0),
-          pj
+          'APP-1 [' + tag + '] the project page keeps its closed rail off-canvas and invisible',
+          !pjClosed.missing &&
+            pjClosed.open === false &&
+            pjClosed.right <= 1 &&
+            pjClosed.visibility === 'hidden' &&
+            pjClosed.position === 'fixed',
+          pjClosed
         );
+        check(
+          'APP-1 [' +
+            tag +
+            '] no content sits under the project page closed rail, and the column starts at 0',
+          !overlaps(pjClosed.railBox, pjClosed.probe) &&
+            pjClosed.mainLeft !== null &&
+            pjClosed.mainLeft <= 1 &&
+            pjClosed.scrollW <= pjClosed.clientW + 1,
+          { railBox: pjClosed.railBox, probe: pjClosed.probe, mainLeft: pjClosed.mainLeft }
+        );
+
+        // And the OPEN state is the other half of the claim: the rail becomes a
+        // real column and the page moves over for it, so the two never overlap.
+        // DESKTOP ONLY: at 768 and below the rail is the off-canvas drawer and
+        // `sidebar-open` does not open it (the drawer is `body.nav-open`), so
+        // that state belongs to the drawer arms above, not to this claim.
+        if (width > 768) {
+          await page.evaluate(() => {
+            const btn = document.querySelector('[data-action="tglSidebarOpen"]');
+            if (btn) {
+              btn.click();
+            }
+          });
+          await delay(500);
+          const pjOpen = await readRail();
+          check(
+            'APP-1 [' +
+              tag +
+              '] opening the project rail moves the column over instead of covering it',
+            pjOpen.open === true &&
+              pjOpen.visibility === 'visible' &&
+              pjOpen.right > 100 &&
+              pjOpen.mainLeft >= 200 &&
+              !overlaps(pjOpen.railBox, pjOpen.probe),
+            pjOpen
+          );
+        }
 
         await ctx.close();
       }

@@ -60,6 +60,29 @@ const SRC = readdir('src', f => f.endsWith('.js')).concat(
 );
 const SCANNED = PAGES.concat(JS, CSS, SRC, ['worker.js']);
 
+// Every JavaScript file under js/, including its sub-directories (render/, app/,
+// cloud/). The flat JS list above is what most detectors want, but an id can be
+// written from ANY module - the first SW-13 pass reported five renderer-built
+// containers as dead precisely because it only looked at js/*.js.
+const JS_TREE = (() => {
+  const out = [];
+  (function walk(dir) {
+    const abs = path.join(ROOT, dir);
+    if (!fs.existsSync(abs)) {
+      return;
+    }
+    fs.readdirSync(abs, { withFileTypes: true }).forEach(e => {
+      const rel = dir + '/' + e.name;
+      if (e.isDirectory()) {
+        walk(rel);
+      } else if (e.name.endsWith('.js')) {
+        out.push(rel);
+      }
+    });
+  })('js');
+  return out;
+})();
+
 const cache = new Map();
 function text(rel) {
   if (!cache.has(rel)) {
@@ -486,26 +509,59 @@ DETECTORS.push(() => {
   };
 });
 
-// SW-13 - notices that exist as a dashboard card but have no watcher.
+// SW-13 - notice containers that NOTHING ever writes.
+// The first version asked "does js/mmgr-watch.js mention this id", which is a
+// different question, and it produced 14 false positives of four kinds:
+// renderer-built ids (expiry-body, risk-matrix, raci-alerts), form controls
+// (mc-risk-factor, client-code-expiry), preview/print blocks (pv-tpl-risk) and
+// marketing anchors (f-risk on index and features). Every one of the 14 has a
+// producer; only the detector was wrong.
+// The defect this row exists to catch is a container no code anywhere fills, so
+// the question is now: an element in a WORKSPACE page whose id looks like a
+// notice surface, which appears in NO producer at all - no js/src module, no
+// worker, no inline script in any page. That is a dead card, and renaming a
+// renderer without renaming its container is exactly how one appears.
 DETECTORS.push(() => {
   const hits = [];
-  const watch = text('js/mmgr-watch.js');
+  const WORKSPACE = ['project.html', 'app.html', 'admin.html', 'calculator.html'];
+  const controls = /^(input|select|textarea|option|pre|a|button|label|script|style)$/i;
+  // Everything that could write an id, except the markup that declares it.
+  let corpus = JS_TREE.concat(SRC, ['worker.js']).map(text).join('\n');
   PAGES.forEach(rel => {
-    eachMatch(rel, /id="([a-z0-9-]*(?:notice|alert|expiry|risk)[a-z0-9-]*)"/gi, (m, line) => {
+    const inline = /<script\b[^>]*>([\s\S]*?)<\/script>/gi;
+    const src = text(rel);
+    let s;
+    while ((s = inline.exec(src))) {
+      if (s[1]) {
+        corpus += '\n' + s[1];
+      }
+    }
+  });
+  WORKSPACE.forEach(rel => {
+    if (PAGES.indexOf(rel) < 0) {
+      return;
+    }
+    eachMatch(rel, /id="([a-z0-9-]*(?:notice|alert|expiry|risk)[a-z0-9-]*)"/gi, (m, line, src) => {
       const id = m[1];
       if (/^panel-/.test(id)) {
         return; // a panel is a region, not a notice
       }
-      const key = id.replace(/-(card|box|list|wrap)$/, '');
-      if (watch.indexOf(key) > -1 || watch.indexOf(id) > -1) {
+      // The tag this id sits on: a setting or a preview is not a notice card.
+      const open = src.lastIndexOf('<', m.index);
+      const tag = (src.slice(open + 1).match(/^[a-z0-9]+/i) || [''])[0];
+      if (controls.test(tag)) {
         return;
       }
-      hits.push({ file: rel, line, note: id + ' has no watch-module producer' });
+      const key = id.replace(/-(card|box|list|wrap)$/, '');
+      if (corpus.indexOf(key) > -1 || corpus.indexOf(id) > -1) {
+        return;
+      }
+      hits.push({ file: rel, line, note: id + ' is declared but nothing ever writes it' });
     });
   });
   return {
     id: 'SW-13',
-    title: 'notices that exist as a card but have no watcher',
+    title: 'notice containers that no code ever fills',
     fix: 'Wave D (EXP-1, RISK-1)',
     hits
   };
@@ -558,7 +614,13 @@ if (WRITE) {
       'finding can be opened directly.'
   );
   lines.push('');
-  lines.push('Scanned: ' + PAGES.length + ' served pages, ' + JS.length + ' `js/` modules, ');
+  lines.push(
+    'Scanned: ' +
+      PAGES.length +
+      ' served pages, ' +
+      JS_TREE.length +
+      ' `js/` modules (every sub-directory included), '
+  );
   lines.push(CSS.length + ' stylesheets, ' + SRC.length + ' Worker modules and `worker.js`.');
   lines.push('');
   lines.push('| ID | Hits | Question | Fix lands in |');

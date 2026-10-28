@@ -416,9 +416,12 @@ const CONTRAST_HELPERS = `window.__mmcbContrast = (function () {
               return false;
             }
             // The Performance Mode switch is a top-bar control (PERF-1), not a
-            // calculator SETTING: it is a .tgl-shaped switch in .bcp-perf and
-            // owns no fields, so it is out of UI-2's scope by design.
-            if (cb.closest('.bcp-perf')) {
+            // calculator SETTING: it owns no fields, so it is out of UI-2's
+            // scope by design. The exception is NAMED, not "anything inside
+            // .bcp-perf" - a blanket class exemption would excuse the next bare
+            // checkbox someone drops in that wrapper. The arm below proves the
+            // one it names is a real switch.
+            if (cb.id === 'perf-tgl' && cb.getAttribute('data-action') === 'tglPerfMode') {
               return false;
             }
             return true;
@@ -433,6 +436,64 @@ const CONTRAST_HELPERS = `window.__mmcbContrast = (function () {
         'T-ROWS no bare checkbox remains: every one is a .tgl inside a .set-row',
         bare.length === 0,
         bare
+      );
+
+      // The named exception has to be a SWITCH, not a checkbox wearing a
+      // wrapper: one input, visually hidden, a painted track with a knob that
+      // moves, and a label click that flips it. Measured in both states.
+      const readPerf = () =>
+        page.evaluate(() => {
+          const cb = document.getElementById('perf-tgl');
+          const track = cb ? cb.nextElementSibling : null;
+          const knob = track ? getComputedStyle(track, '::before') : null;
+          return {
+            count: document.querySelectorAll('.bcp-perf input[type="checkbox"]').length,
+            id: cb ? cb.id : null,
+            action: cb ? cb.getAttribute('data-action') : null,
+            aria: cb ? cb.getAttribute('aria-label') : null,
+            checked: cb ? cb.checked : null,
+            inputOpacity: cb ? getComputedStyle(cb).opacity : null,
+            track:
+              track && getComputedStyle(track).display !== 'none'
+                ? {
+                    w: Math.round(track.getBoundingClientRect().width),
+                    h: Math.round(track.getBoundingClientRect().height),
+                    bg: getComputedStyle(track).backgroundColor
+                  }
+                : null,
+            knob: knob ? { w: knob.width, transform: knob.transform } : null
+          };
+        });
+      const perfOff = await readPerf();
+      await page.click('.bcp-perf');
+      await delay(300);
+      const perfOn = await readPerf();
+      await page.click('.bcp-perf');
+      await delay(300);
+      const perfBack = await readPerf();
+      check(
+        'T-ROWS the Performance Mode exception is one named switch, visually hidden input over a painted track',
+        perfOff.count === 1 &&
+          perfOff.id === 'perf-tgl' &&
+          perfOff.action === 'tglPerfMode' &&
+          !!perfOff.aria &&
+          perfOff.inputOpacity === '0' &&
+          perfOff.track &&
+          perfOff.track.w === 32 &&
+          perfOff.track.h === 18 &&
+          perfOff.track.bg !== 'rgba(0, 0, 0, 0)' &&
+          perfOff.knob &&
+          parseFloat(perfOff.knob.w) >= 12,
+        { perfOff }
+      );
+      check(
+        'T-ROWS clicking the switch flips it, recolours the track and moves the knob',
+        perfOn.checked === true &&
+          perfOn.track.bg !== perfOff.track.bg &&
+          perfOn.knob.transform !== perfOff.knob.transform &&
+          perfBack.checked === false &&
+          perfBack.track.bg === perfOff.track.bg,
+        { perfOff, perfOn, perfBack }
       );
 
       // The rows the directive names must exist.

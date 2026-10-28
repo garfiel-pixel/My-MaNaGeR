@@ -245,6 +245,18 @@ jobs:
         id: verify-settings-reach
         run: node tools/verify-settings-reach.cjs
 
+      # SW-13 (REFINEMENT-DIRECTIVE-2026-10-24 section 11): the sweep's
+      # "notice containers that no code ever fills" detector made permanent.
+      # Its first version asked the wrong question and reported 14 false
+      # positives, and the sweep only read js/*.js, so renderer-built ids in
+      # js/render/ were invisible. This gate asserts the sweep now reports
+      # zero, that the containers it judges still exist (a regex that matches
+      # nothing also reports zero), and that the producers it relies on are in
+      # files it actually scans.
+      - name: "T1: Notice containers (SW-13 permanent test)"
+        id: verify-sweep13
+        run: node tools/verify-sweep13.cjs
+
       # GANTT-1 (REFINEMENT-DIRECTIVE-2026-10-24 section 8): ONE view builder
       # feeds the live chart and the PNG / SVG / PDF exports. Runs the pure
       # module in a vm sandbox against the committed bank fixture, proves the

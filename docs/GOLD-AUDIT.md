@@ -59,3 +59,43 @@ These are NOT buttons and were deliberately left alone: the owner rule (5.5) is 
 ## 6. Contrast facts recorded, not papered over
 
 The ink label on the gradient measures 8.28:1 on the light stop, 4.45:1 on the middle stop and 2.82:1 on the deep stop. Labels are centred (near the middle stop), weight 600, with a light text shadow. No colour was invented to chase the last 0.05 of the middle stop; the owner decides if a different label colour is wanted.
+
+## 7. What the T-GOLD gate measured, and the three decisions it forced (2026-10-27)
+
+Section 6 above samples the gradient's three STOPS. A label is not a point. T-GOLD rasterises the **computed** gradient into a canvas at each button's real rendered size, samples every pixel under the text's own bounding box, and takes the worst one - which is what a person actually reads against.
+
+| Gradient | Worst pixel under a real label | Verdict |
+|---|---|---|
+| three-stop (section 5.2 as written) | **3.19 - 3.70:1** on all 13 gold buttons | under the 4.5 AA floor |
+| two-stop (`#d4af37` to `#aa771c`, the directive's narrow-button form) | **4.83 - 4.95:1** | passes |
+| two-stop, hover (`#e6c547` to `#bd8522`) | **5.91 - 6.11:1** | passes |
+
+### Decision 1: the two-stop gradient is the default for every label
+
+The directive keeps the three-stop form as the default and prescribes the two-stop only for buttons narrower than 96 px. The measurement says the three-stop form fails AA on **every** button, narrow or wide, because the label's right-hand edge always reaches the deep end. So `--gold-grad` and `--gold-grad-hover` now carry the two-stop values, which are the directive's own stops - no colour was invented. The three-stop form is used nowhere else (4 uses in total, all in the shared button rule), so nothing was lost.
+
+This also settles the open "narrow-button class" item: there is no narrow-button special case to implement, because every label now sits on the readable gradient. No class, no dead CSS, no runtime width measuring.
+
+### Decision 2: gold used as words has two semantic tokens, not one
+
+224 rules said `color: var(--gold)`. On a light page that is `#d96b27` - **3.45:1 on white**, under AA - while the same rules resolve to the white accent in dark mode, where white on near-black is exactly right. They now read one of two tokens:
+
+| Token | Light | Dark | Used for |
+|---|---|---|---|
+| `--gold-text` | `#7a5a0b` (6.37:1 on white) | the theme's `--gold` | gold words on a light or glass surface |
+| `--gold-text-on-dark` | `#d4af37` | `#d4af37` | gold words on a surface that is dark in **both** themes: the marketing hero band and the site footer |
+
+The second token exists because the gate caught the first one landing on the marketing hero at **2.74:1** (deep bronze on charcoal) and the wordmark rule being shared by a light glass header **and** a dark footer. Section 5.4 of the directive already says `#d4af37` text is fine on dark surfaces (8.32:1 on the header's `#1c1917`).
+
+### Decision 3: borders keep the accent
+
+The first pass of the swap also caught `border-color:`, `outline-color:`, `accent-color:` and `border-top-color:` (63 declarations) because `color:` appears inside those property names. Those are borders and native-control accents, not words; they were reverted to `var(--gold)`. T-GOLD now asserts that no rule paints gold **words** with the fill token, with a property-boundary regex that cannot repeat the mistake.
+
+### The 14 orange declarations that remain
+
+ARM 1 of T-GOLD lists them and requires a written reason for each: the `--brand` / `--gold` / `--gold-rgb` / `--gold-ink` / `--gold-accent` plumbing in both stylesheets, one hero glow wash, and `body.dark-mode .calc-fab` keeping its brand orange so its glyph stays visible. Any new orange hex fails the gate. Renaming `--gold` itself is still a separate, owner-approved change (331 rules resolve through it).
+
+### One thing noticed, not changed
+
+`.btn-g` is defined twice in `css/mmgr.css` (around line 2732 and line 7933) with the same declarations, so the first copy is dead. `.btn-o` is also defined twice with different `color` values (`--on-primary` then `--on-gold`). The cascade is currently harmless and the gate measures the computed result, so this is recorded for a later cleanup rather than changed inside a colour wave.
+

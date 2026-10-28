@@ -405,7 +405,27 @@
 // js/mmgr-perf.js, js/mmgr-glass.js, js/marketing.js, js/marketing-globe.js,
 // js/mmgr-combobox.js (new), dist/marketing-bundle.js. No inline script block
 // changed, so the CSP hashes are untouched.
-const CACHE = 'mmgr-shell-v485';
+const CACHE = 'mmgr-shell-v486';
+
+// v486 - GOLD-1, GOLD THAT IS ACTUALLY READABLE
+// (REFINEMENT-DIRECTIVE-2026-10-24 section 5). The identity is gold; the old
+// burnt orange was not gold, and the gold-as-words rules were 3.45:1 on white.
+// Gold used as WORDS now reads one of two semantic tokens: --gold-text (the
+// deep bronze step on a light or glass surface, the theme accent in dark) and
+// --gold-text-on-dark (#d4af37, for the marketing hero band and the site
+// footer, which are dark in both themes). Gold used as a FILL still reads
+// --gold, and borders, outlines and accent-color keep the accent - the first
+// pass of the swap caught 63 of those because "color:" is a substring of
+// "border-color:", and they were reverted. The shared button gradient is now
+// the TWO-stop form: a canvas rasterisation of the computed gradient at each
+// button's real size measured the worst pixel under a real label at 3.19-3.70
+// on all 13 gold buttons with the three-stop form (AA needs 4.5), and 4.83-4.95
+// at rest / 5.91-6.11 on hover with the two stops the directive already names.
+// The new gate tools/verify-gold.cjs (T-GOLD, five arms) is wired into ci.yml
+// and npm run verify:gold. Changed shell assets: css/mmgr.css,
+// css/marketing.css, dist/bundle.js, dist/marketing-bundle.js,
+// dist/mmgr.min.css, dist/marketing.min.css. No inline script block changed,
+// so the CSP hashes are untouched.
 
 // v485 - GANTT-1, THE VIEW SWITCHES AND THE ONE-ANSWER CHART
 // (REFINEMENT-DIRECTIVE-2026-10-24 section 8). The chart, the arrow overlay

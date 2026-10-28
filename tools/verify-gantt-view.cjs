@@ -752,7 +752,7 @@ ok(
   '.ms-diamond.gate',
   '.gd-tick',
   '.gv-custom',
-  '.gv-tgl',
+  '.gv-tgl.tgl',
   '.gv-tgl-txt'
 ].forEach(sel => {
   ok('css/mmgr.css defines ' + sel, CSS.indexOf(sel + ' {') >= 0 || CSS.indexOf(sel + '{') >= 0);

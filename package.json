@@ -31,6 +31,7 @@
     "verify:lump": "node tools/verify-calc-lump.cjs",
     "verify:reach": "node tools/verify-settings-reach.cjs",
     "verify:gantt": "node tools/verify-gantt-view.cjs",
+    "verify:gold": "node tools/verify-gold.cjs",
     "verify:a11y": "node tools/verify-a11y-labels.cjs",
     "verify:eslint": "node tools/verify-eslint.cjs",
     "verify:prettier": "node tools/verify-prettier.cjs",

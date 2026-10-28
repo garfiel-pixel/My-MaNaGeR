@@ -72,9 +72,14 @@
   /* -- Accent cyan (secondary, restrained) -- */
   --accent-cyan: #00bcd4;
   --accent-cyan-subtle: rgba(0, 188, 212, 0.08);
-  --gold-grad: linear-gradient(135deg, #d4af37 0%, #aa771c 50%, #855811 100%);
-  --gold-grad-hover: linear-gradient(135deg, #e6c547 0%, #bd8522 50%, #966416 100%);
+  /* Two stops, not three - see the measurement note in css/mmgr.css :root. The
+     three-stop form measured 3.19-3.70:1 under real label edges; this one
+     measures 4.83-4.95:1 at rest. Same two directive values, no new colour. */
+  --gold-grad: linear-gradient(135deg, #d4af37 0%, #aa771c 100%);
+  --gold-grad-hover: linear-gradient(135deg, #e6c547 0%, #bd8522 100%);
   --gold-text-on-light: #7a5a0b; /* gold used as WORDS on white: 6.37:1 */
+  --gold-text: var(--gold-text-on-light); /* semantic gold-as-words (see css/mmgr.css) */
+  --gold-text-on-dark: var(--bullion); /* gold words on a surface dark in both themes */
   --teal: #00bcd4; /* secondary accent - cyan, used sparingly */
   --teal-deep: #00798a; /* cyan deep - 5.12:1 on white (was #0097a7 at 3.51) */
   --danger: #c62828;
@@ -160,6 +165,7 @@ body.dark-mode {
   --gold-hover: #f0a050;
   --gold-deep: #ffd080;
   --gold-rgb: 232, 146, 58;
+  --gold-text: var(--gold); /* gold words in dark follow the accent, unchanged */
   --teal: #4dd0e1;
   --teal-deep: #26c6da;
   --danger: #ef5350;
@@ -678,7 +684,7 @@ body.dark-mode .brand {
   font-weight: 800;
 }
 .brand b span {
-  color: var(--gold);
+  color: var(--gold-text);
 }
 .brand small {
   display: block;
@@ -699,7 +705,7 @@ body.dark-mode .brand small {
   color: var(--on-navy);
 }
 .site-footer .brand b span {
-  color: var(--gold);
+  color: var(--gold-text-on-dark);
 }
 .site-footer .brand small {
   color: rgba(248, 250, 252, 0.66);
@@ -875,7 +881,7 @@ body.dark-mode .site-nav a.nav-link[aria-current='page'] {
 .btn-ghost-light:hover {
   background: rgba(var(--gold-rgb), 0.16);
   border-color: var(--gold);
-  color: var(--gold);
+  color: var(--gold-text);
   transform: translateY(-1px);
 }
 .btn-ghost {
@@ -1094,7 +1100,7 @@ body.dark-mode .nav-dd-item {
   color: var(--text-primary);
 }
 body.dark-mode .nav-dd-item:hover {
-  color: var(--gold);
+  color: var(--gold-text);
   background: rgba(var(--gold-rgb), 0.12);
 }
 /* Foot = one long horizontal hairline, then the link text. */
@@ -1784,10 +1790,10 @@ body.dark-mode .nav-dd-item:hover {
   margin: 18px 0 18px;
 }
 .hero h1 .gold {
-  color: var(--gold);
+  color: var(--gold-text-on-dark);
 }
 .hero h1 .teal {
-  color: var(--gold);
+  color: var(--gold-text-on-dark);
 }
 /* the h1 spans sit on the warm charcoal photo overlay - always bright */
 .hero-sub {
@@ -2126,7 +2132,7 @@ body.dark-mode .hero-card .hc-badge-glow {
     0 0 14px rgba(var(--gold-rgb), 0.3);
 }
 body.dark-mode .hero-card .hc-stepdot {
-  color: var(--gold);
+  color: var(--gold-text);
   background: rgba(var(--gold-rgb), 0.16);
 }
 
@@ -2559,7 +2565,7 @@ body.dark-mode .hero-card .hc-stepdot {
 .pb-brand .ico {
   width: 18px;
   height: 18px;
-  color: var(--gold);
+  color: var(--gold-text);
 }
 @media (max-width: 480px) {
   .pb-brand {
@@ -2720,7 +2726,7 @@ body.dark-mode .hero-card .hc-stepdot {
   color: rgba(248, 250, 252, 0.55);
 }
 .footer-bottom a:hover {
-  color: var(--gold);
+  color: var(--gold-text);
 }
 .footer-legal .ico {
   height: auto;
@@ -2749,7 +2755,7 @@ body.dark-mode .hero-card .hc-stepdot {
   font-size: 0.74rem;
 }
 .ft-perf-box:hover {
-  color: var(--gold);
+  color: var(--gold-text);
 }
 .ft-perf-in {
   position: absolute;
@@ -3055,22 +3061,22 @@ body.dark-mode .hero-card .hc-stepdot {
 }
 .rv-pick-row:hover .rv-star-btn:hover,
 .rv-pick-row:hover .rv-star-btn:hover ~ .rv-star-btn {
-  color: var(--gold);
+  color: var(--gold-text);
 }
 .rv-pick-row[data-val='1'] .rv-star-btn:nth-child(-n + 1) {
-  color: var(--gold);
+  color: var(--gold-text);
 }
 .rv-pick-row[data-val='2'] .rv-star-btn:nth-child(-n + 2) {
-  color: var(--gold);
+  color: var(--gold-text);
 }
 .rv-pick-row[data-val='3'] .rv-star-btn:nth-child(-n + 3) {
-  color: var(--gold);
+  color: var(--gold-text);
 }
 .rv-pick-row[data-val='4'] .rv-star-btn:nth-child(-n + 4) {
-  color: var(--gold);
+  color: var(--gold-text);
 }
 .rv-pick-row[data-val='5'] .rv-star-btn:nth-child(-n + 5) {
-  color: var(--gold);
+  color: var(--gold-text);
 }
 .rv-form-foot {
   display: flex;
@@ -3197,7 +3203,7 @@ body.dark-mode .hero-card .hc-stepdot {
   color: var(--border);
 }
 .rv-star.on {
-  color: var(--gold);
+  color: var(--gold-text);
 }
 .rv-text {
   font-size: 0.92rem;
@@ -3477,7 +3483,7 @@ body.dark-mode .hero-card .hc-stepdot {
 }
 .scroll-spy a.active .spy-label,
 .scroll-spy a:hover .spy-label {
-  color: var(--gold);
+  color: var(--gold-text);
   opacity: 1;
   font-weight: 700;
 }
@@ -3568,7 +3574,7 @@ body.dark-mode .hero-card .hc-stepdot {
     0 0 14px rgba(var(--gold-rgb), 0.55);
 }
 .scroll-spy a.active .spy-label {
-  color: var(--gold);
+  color: var(--gold-text);
   opacity: 1;
   font-weight: 700;
 }
@@ -3698,7 +3704,7 @@ body.dark-mode .hero-card .hc-stepdot {
   color: var(--status-danger);
 }
 .auth-icon.head {
-  color: var(--gold);
+  color: var(--gold-text);
 }
 .auth-spinner {
   width: 38px;
@@ -3878,7 +3884,7 @@ body.dark-mode .hero-card .hc-stepdot {
   text-decoration: underline;
 }
 .auth-legal a:hover {
-  color: var(--gold);
+  color: var(--gold-text);
 }
 
 /* ---- PRICING PAGE UPGRADE CTA (owner report 2026-10-04) -------------
@@ -4062,7 +4068,7 @@ body.dark-mode .hero-card .hc-stepdot {
   display: none;
 }
 .signin-card .signin-return .ico {
-  color: var(--gold);
+  color: var(--gold-text);
   flex-shrink: 0;
   margin-top: 2px;
 }
@@ -4126,7 +4132,7 @@ body.dark-mode .hero-card .hc-stepdot {
   transform: scale(0.99);
 }
 .signin-disclosure .ico {
-  color: var(--gold);
+  color: var(--gold-text);
 }
 .signin-disclosure .signin-caret {
   margin-left: auto;
@@ -4290,7 +4296,7 @@ body.dark-mode .hero-card .hc-stepdot {
   text-decoration: underline;
 }
 .signin-legal a:hover {
-  color: var(--gold);
+  color: var(--gold-text);
 }
 
 .signin-done .btn {
@@ -4311,7 +4317,7 @@ body.dark-mode .hero-card .hc-stepdot {
   color: rgba(244, 244, 245, 0.72);
 }
 .signin-foot a:hover {
-  color: var(--gold);
+  color: var(--gold-text);
 }
 
 /* Dark mode: the sky already reads dark, so the card leans on its border

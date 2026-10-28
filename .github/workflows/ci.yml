@@ -651,6 +651,20 @@ jobs:
         id: qa-modals
         run: node tools/qa-modals.cjs
 
+      # GOLD-1 (REFINEMENT-DIRECTIVE-2026-10-24 section 5): the gold gate.
+      # Static arms prove no old orange survives outside the documented
+      # allow-list, that the allow-list has no stale entries, and that the app
+      # and marketing stylesheets carry identical gold tokens. The browser arms
+      # rasterise the COMPUTED gradient at each button's real size and measure
+      # the worst pixel under the label (the audit's stop-sampling said 4.45;
+      # the real label edges measured 3.19-3.70, which is why the gradient is
+      # now the two-stop form), then sweep every element that paints gold words
+      # against its composited background, in light and dark, and prove .btn-g
+      # is still green.
+      - name: "T4: Gold buttons and gold words (verify-gold)"
+        id: verify-gold
+        run: node tools/verify-gold.cjs
+
       # Wave D (REFINEMENT-DIRECTIVE-2026-10-24): the app shell and the
       # calculator controls. qa-appshell measures the closed rail against the
       # page at five widths in both palettes and walks the app to prove one

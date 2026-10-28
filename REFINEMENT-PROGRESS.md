@@ -67,11 +67,38 @@ Cross-cutting still open: deploy and live probe for Waves D and E (none recorded
 - [x] **RISK-1** `watchFinishTarget` (`js/mmgr-watch.js:528`) with shared `ns.Schedule.projectedFinish`. Same harness.
 - [x] **SW-11** numeric inputs have `inputmode`. Sweep SW-11 = 0.
 
-Small checks left from Wave D (do these inside section 4, step 3):
-- [ ] [VERIFY] `calculator.html:74` `perf-tgl` is a bare checkbox with class `bcp-perf-in`. Confirm T-ROWS allows it or wrap it in `.tgl`.
-- [ ] [VERIFY] APP-1 on `project.html` (`#app-sidebar`, `body.sidebar-on`): closed state does not overlap content.
-- [ ] [VERIFY] Sweep SW-13 still lists 14 "card with no watcher" items (including `project.html` expiry card). `watchExpiries` exists, so most are probably heuristic false positives. Read each, fix the heuristic or the gap.
-- [ ] Regenerate `docs/SWEEP-2026-10.md` with `node tools/sweep/sweep.cjs --write`. The committed copy is old (it still shows SW-1 at 29 hits; a fresh run shows 0).
+Small checks left from Wave D - all four done 2026-10-27, three of them by making a gate measure the thing the
+item actually asks about:
+- [x] [VERIFY] `calculator.html:74` `perf-tgl` is a bare checkbox with class `bcp-perf-in`. **Confirmed allowed, and
+  the allowance is now honest.** T-ROWS excused *any* checkbox inside `.bcp-perf`; it now excuses only the one named
+  switch (`#perf-tgl` + `data-action="tglPerfMode"`), and two new arms prove the exception is a real switch rather
+  than a bare input in a wrapper: exactly one input in the container, opacity 0, a 32x18 painted track with a knob,
+  and a label click that flips `checked`, recolours the track and moves the knob (both directions). `qa-calc-controls`
+  63/63.
+- [x] [VERIFY] APP-1 on `project.html` (`#app-sidebar`, `body.sidebar-on`): **closed state does not overlap content,
+  now measured instead of inferred.** The old arm passed on `right <= 1 || visibility === 'hidden'` (either was
+  enough) and `mainLeft >= 0` (nearly always true). It now requires both off-canvas *and* invisible, the column
+  starting at x=0, no visible page element overlapping the rail's box (real overlap test, 1px tolerance), and no
+  sideways overflow - at 1280/1024/900/768/390 in both themes. A third arm covers the other half of the claim on
+  desktop: opening the rail makes it visible, moves the column to >= 200px and still overlaps nothing.
+  `qa-appshell` 79/79.
+- [x] [VERIFY] Sweep SW-13 listed 14 "card with no watcher" items. **All 14 were detector false positives, and the
+  detector had two defects.** (1) It asked "does `js/mmgr-watch.js` mention this id", which is not the question:
+  renderer-built ids (`expiry-body`, `wbs-alerts`, `risk-matrix`, `raci-alerts`), form controls (`mc-risk-factor`,
+  `client-code-expiry`), a print preview (`pv-tpl-risk`) and marketing anchors (`f-risk`) were never watch-module
+  cards. (2) Worse, the sweep's file list was `js/*.js` only, so five containers written from `js/render/*.js` were
+  invisible to it - the recursive `JS_TREE` walk (88 modules) is the real fix. The detector now asks the honest
+  question: an element on a workspace page whose id looks like a notice surface and which appears in NO producer at
+  all (no js/src module, no worker, no inline script in any page). SW-13 reads 0. Permanent gate
+  `tools/verify-sweep13.cjs` (4 checks) keeps it honest in the three ways a count cannot: zero hits, the judged
+  containers must still exist (a regex matching nothing also reports zero), and the producers it relies on must be in
+  files it scans. Registered in `docs/CI-TEST-COVERAGE.md` (138 rows), wired in `ci.yml` T1 and
+  `npm run verify:sweep13`. Teeth proven: renaming `id="expiry-body"` fails with exactly one hit; renaming the form
+  control stays out of scope; both files restored byte-identical.
+- [x] Regenerate `docs/SWEEP-2026-10.md` with `node tools/sweep/sweep.cjs --write`. The stale copy showed SW-1 at 29
+  hits, SW-4 at 25, SW-7 at 1, SW-8 at 539, SW-11 at 6, SW-12 at 1 and SW-13 at 14. The fresh run shows SW-1 0, SW-7
+  0, SW-11 0, SW-12 0, SW-13 0, SW-14 0, SW-4 29, SW-5 57, SW-6 2, SW-8 333, SW-9 433, SW-10 16, 893 findings
+  across 14 sweeps. The header now counts the whole `js/` tree (88 modules), not just the flat list.
 
 ---
 
@@ -216,8 +243,20 @@ deploy/live probe in NEXT UP step 6.
    the real button (15/15) and `qa-hero-globe`'s two stale arms are re-baselined to the new contract (16/16).
    All six cards written, 0 em/en dashes, 0 emoji. `npm run verify` green (145/145 unit tests, registry 137/137),
    `qa-full` 194/194, `sw.js` at `mmgr-shell-v487`.
-5. [ ] Wave D small checks listed in section 2. **NEXT UP - start here.**
-6. [ ] End of Waves D and E: `npm run verify`, full `qa-*` battery, CI green, commit, deploy from `$HOME/mmgr-deploy`, live probe. Probe list: old PDF path returns 404; `/api/ratebook` returns 401 signed out; every Export Schedule option changes and downloads; Work item list readable in dark; admin to dashboard leaves one tab; Performance Mode on the calculator stops the background; buttons gold with readable labels in both modes; drywall shows its accessory lines.
+5. [x] Wave D small checks listed in section 2. Done 2026-10-27 (section 2 carries the detail). Three of the four
+   were closed by making the gate measure what the item asks: T-ROWS now names the one Performance Mode switch and
+   proves it is a real switch (`qa-calc-controls` 63/63); APP-1's project-page arm now requires off-canvas AND
+   invisible AND no overlap AND a column at x=0, plus the open state moving the column over (`qa-appshell` 79/79);
+   SW-13's 14 "dead card" hits were all false positives caused by a wrong question and a file list that skipped
+   `js/render/`, now a permanent 4-check gate `tools/verify-sweep13.cjs` (0 hits, surface-exists and corpus arms,
+   registered + `ci.yml` T1 + `verify:sweep13`), with teeth proven both ways. `docs/SWEEP-2026-10.md` regenerated
+   (SW-1/7/11/12/13/14 all 0; 893 findings across 14 sweeps). `npm run verify` green (145/145 unit tests, registry
+   138/138).
+6. [ ] End of Waves D and E: `npm run verify`, full `qa-*` battery, CI green, commit, deploy from `$HOME/mmgr-deploy`,
+   live probe. **NEXT UP - start here.** Probe list: old PDF path returns 404; `/api/ratebook` returns 401 signed out;
+   every Export Schedule option changes and downloads; Work item list readable in dark; admin to dashboard leaves one
+   tab; Performance Mode on the calculator stops the background; buttons gold with readable labels in both modes;
+   drywall shows its accessory lines.
 7. [ ] **AI-1** AI window layout, docking (docked at 1280 and up, overlay 1024 to 1279, sheet under 1024), Maximise, Float, Pin, `Ctrl+.`, history in project state. Directive section 9. Gate T-AIWIN. Flag `aiDock` already exists in `js/mmgr-state.js` but nothing reads it yet.
 8. [ ] **AI-2** in-browser model: two-day spike first (`tools/spike-localllm.html`, not shipped), results in `docs/SPIKE-LOCALLLM-2026-10.md`, ship only if the acceptance numbers pass (opt-in, under 400 MB, Cache API `mmgr-localllm-v1`, worker, fallback to the deterministic engine). Flag `localModel` exists and is set `true` with no feature behind it: set it to `false` until the feature ships.
 9. [ ] **APP-3** three code names everywhere (Site admin code, Admin panel code, Project and Client code), "Which code is this?" popover, "Backed up to your account" status, restore lists both project groups, optional salt and PBKDF2 for the local gate. Directive section 7. Note: only the "Site admin code" label exists today (`admin.html:422`).

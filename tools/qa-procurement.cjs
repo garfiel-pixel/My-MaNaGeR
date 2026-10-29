@@ -400,6 +400,7 @@ function quoteFromBody(body) {
       const issues = MMGR.State.validate ? MMGR.State.validate(s) : null;
       return {
         v: s.schemaVersion,
+        live: MMGR.State.SCHEMA_VERSION,
         seeded: !!(
           s.supplierBook &&
           Array.isArray(s.supplierBook.vendors) &&
@@ -411,12 +412,16 @@ function quoteFromBody(body) {
       };
     });
     check(
-      'M2 migration seeds supplierBook + packs.procurement=false, keeps the C10 material-order row, schema 23',
+      'M2 migration runs the v19 fixture up to the LIVE schema version and seeds supplierBook + packs.procurement=false, keeping the C10 material-order row',
       // Re-baselined 2026-10-21: the P5 quantity-break wave bumped
       // SCHEMA_VERSION 21 -> 22 (additive back-fill of priceTiers).
       // Re-baselined 2026-10-29: Kanban task 1 bumped 22 -> 23 (state.kanban
       // and task.boardPosition, additive back-fill in js/mmgr-state.js).
-      m2.v === 23 &&
+      // Re-baselined 2026-10-29 again (relations wave, bumped 23 -> 24): the
+      // gate now compares against MMGR.State.SCHEMA_VERSION instead of a
+      // frozen number, so an additive migration no longer reds this step
+      // while the migration ladder itself is still proven end to end.
+      m2.v === m2.live &&
         m2.seeded &&
         m2.packSeeded &&
         m2.c10 &&

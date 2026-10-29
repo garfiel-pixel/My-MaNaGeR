@@ -691,6 +691,14 @@ jobs:
         id: qa-related-items
         run: node tools/qa-related-items.cjs
 
+      # PLAN-OPENPROJECT Task 4: work package relations - the badge/sheet
+      # entry point (the badge must exist at ZERO links), the blocked-by
+      # board lens both ways, the soft move warning, persistence across a
+      # reload, and the view-only refusal of "Add link".
+      - name: "T4: Work package relations (qa-relations)"
+        id: qa-relations
+        run: node tools/qa-relations.cjs
+
       # APP-4 (REFINEMENT-DIRECTIVE-2026-10-24): a click on a radio or
       # checkbox INSIDE a dialog overlay kept its default. The six overlays in
       # project.html are data-action containers, and the global dispatcher's

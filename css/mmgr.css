@@ -4827,6 +4827,48 @@ body.gantt-dragging .gb {
   max-width: 100%;
   max-height: 82vh;
 }
+/* Kanban column limits. Same overlay shell as #cfm-modal. */
+#kbwip-modal {
+  position: fixed;
+  inset: 0;
+  background: var(--lit-black-75);
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+#kbwip-modal.on {
+  display: flex;
+}
+#kbwip-modal .mb {
+  width: 420px;
+  max-width: 100%;
+  max-height: 82vh;
+}
+.kbwip-grid {
+  display: grid;
+  grid-template-columns: 1fr 90px;
+  gap: 10px 14px;
+  align-items: center;
+  margin-top: 14px;
+}
+.kbwip-l {
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.kbwip-in {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
+body.dark-mode .kbwip-in {
+  background: rgba(0, 0, 0, 0.25);
+}
 .cfm-list-label {
   font-size: 0.7rem;
   color: var(--slate);
@@ -5884,6 +5926,16 @@ body.readonly-mode
   border-radius: 100px;
   padding: 2px 8px;
   color: var(--slate);
+}
+.wip.over {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: var(--danger);
+  color: var(--danger);
+  font-weight: 700;
+}
+.kcol-over {
+  border-color: var(--danger);
+  box-shadow: inset 0 3px 0 var(--danger);
 }
 .kcc {
   padding: 10px;

@@ -114,10 +114,10 @@ var MMGR = window.MMGR || {};
       return;
     }
     const cols = [
-      ['todo', 'kc-todo', 'w-todo'],
-      ['inprogress', 'kc-ip', 'w-ip'],
-      ['blocked', 'kc-bl', 'w-bl'],
-      ['completed', 'kc-dn', 'w-dn']
+      ['todo', 'kc-todo', 'w-todo', 'col-todo'],
+      ['inprogress', 'kc-ip', 'w-ip', 'col-ip'],
+      ['blocked', 'kc-bl', 'w-bl', 'col-bl'],
+      ['completed', 'kc-dn', 'w-dn', 'col-dn']
     ];
     const kbShow = !!s.kbShowLeadtime;
     const ltFlagOff = !!(s.flags && s.flags.leadtimeLane === false);
@@ -139,9 +139,28 @@ var MMGR = window.MMGR || {};
       }
       // Order and filtering are model concerns. The renderer only draws.
       const tasks = K.columnTasks(s, status);
+      const info = K.wip(s, status);
       const wip = $(col[2]);
       if (wip) {
-        wip.textContent = tasks.length;
+        wip.textContent = info.limit ? info.count + ' / ' + info.limit : String(info.count);
+        wip.classList.toggle('over', info.over);
+        wip.setAttribute(
+          'title',
+          info.limit ? info.count + ' cards, limit ' + info.limit : info.count + ' cards, no limit'
+        );
+      }
+      const colEl = $(col[3]);
+      if (colEl) {
+        colEl.classList.toggle('kcol-over', info.over);
+        const visible = tasks.length !== info.count ? ', ' + tasks.length + ' shown by filter' : '';
+        colEl.setAttribute(
+          'aria-label',
+          K.LABELS[status] +
+            ', ' +
+            info.count +
+            (info.limit ? ' of ' + info.limit + ' planned' : ' cards') +
+            visible
+        );
       }
       if (noTasksAtAll) {
         el.innerHTML =

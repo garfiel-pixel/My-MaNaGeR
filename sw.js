@@ -405,7 +405,14 @@
 // js/mmgr-perf.js, js/mmgr-glass.js, js/marketing.js, js/marketing-globe.js,
 // js/mmgr-combobox.js (new), dist/marketing-bundle.js. No inline script block
 // changed, so the CSP hashes are untouched.
-const CACHE = 'mmgr-shell-v496';
+const CACHE = 'mmgr-shell-v497';
+
+// v497 - KANBAN TASK 2 (plan 2026-10-25): soft column limits. Column Limits
+// opens a sheet with one number per column, 0 meaning no limit. The header
+// badge reads "count / limit" and turns red with the column's top edge when the
+// limit is passed, but a card still moves: the limit is a warning, never a
+// block. The badge counts every card, not only the filtered ones, so a filter
+// can never make a column look under its target.
 
 // v495 - KANBAN TASK 1 (plan 2026-10-25): the board gets a model. A new pure
 // module js/mmgr-kanban.js owns what a card is, the order inside a column

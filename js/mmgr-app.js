@@ -2946,6 +2946,73 @@ var MMGR = window.MMGR || {};
       btn.classList.toggle('is-on', !!S().kbShowLeadtime);
     }
   }
+
+  // ---- Kanban column limits (soft) ----
+  // Kanboard semantics: task_limit = 0 means unlimited, and exceeding a
+  // limit is a warning, never a hard block. A site manager must still be
+  // able to drag the one urgent card into a full column.
+  function kbWip() {
+    const s = S();
+    const k = (s && s.kanban) || ns.Kanban.defaultSettings();
+    const readOnly = isReadonly();
+    ns.Kanban.COLUMNS.forEach(function (key) {
+      const el = document.getElementById('kbwip-' + key);
+      if (el) {
+        el.value = String((k.wip && k.wip[key]) || 0);
+        // The sheet still opens in view-only so the limits can be read, but
+        // the inputs cannot be edited into a misleading unsaved value.
+        el.disabled = readOnly;
+      }
+    });
+    const modal = document.getElementById('kbwip-modal');
+    if (modal) {
+      modal.classList.add('on');
+    }
+    const first = document.getElementById('kbwip-todo');
+    if (first) {
+      first.focus();
+    }
+  }
+
+  function kbWipClose() {
+    const modal = document.getElementById('kbwip-modal');
+    if (modal) {
+      modal.classList.remove('on');
+    }
+  }
+
+  function saveKbWip(el) {
+    if (!el || isReadonly()) {
+      if (isReadonly()) {
+        showToast('View-only access: the board can be read but not changed.', 'err');
+      }
+      return;
+    }
+    const status = el.getAttribute('data-kb-wip');
+    if (ns.Kanban.COLUMNS.indexOf(status) === -1) {
+      return;
+    }
+    const raw = parseInt(el.value, 10);
+    const n = isNaN(raw) ? 0 : Math.max(0, Math.min(99, raw));
+    el.value = String(n);
+    ns.State.updateState(function (s) {
+      ns.Kanban.ensureSettings(s);
+      s.kanban.wip[status] = n;
+    });
+    R.renderKanban();
+    const info = ns.Kanban.wip(S(), status);
+    if (info.over) {
+      showToast(
+        ns.Kanban.LABELS[status] +
+          ' is over its limit (' +
+          info.count +
+          ' of ' +
+          n +
+          '). The limit is a warning, not a block.',
+        'warn'
+      );
+    }
+  }
   // ---- Kanban ----
   let dragTaskId = null;
 
@@ -3675,6 +3742,9 @@ var MMGR = window.MMGR || {};
     setGanttWindow: setGanttWindow,
     setGanttWindowDate: setGanttWindowDate,
     tglLeadtimeLane: tglLeadtimeLane,
+    kbWip: kbWip,
+    kbWipClose: kbWipClose,
+    saveKbWip: saveKbWip,
     dragCard: dragCard,
     dropCard: dropCard,
     endBoardDrag: endBoardDrag,
@@ -4779,6 +4849,9 @@ window.MMGR = MMGR;
     setGanttWindow: el => window.MMGR.App.setGanttWindow(el),
     setGanttWindowDate: el => window.MMGR.App.setGanttWindowDate(el),
     tglLeadtimeLane: el => window.MMGR.App.tglLeadtimeLane(el),
+    kbWip: () => window.MMGR.App.kbWip(),
+    kbWipClose: () => window.MMGR.App.kbWipClose(),
+    saveKbWip: el => window.MMGR.App.saveKbWip(el),
     populateSprint: () => window.MMGR.App.populateSprint(),
     openPrompt: el => window.MMGR.App.openPrompt(el.getAttribute('data-type')),
     openDrwToSave: () => window.MMGR.App.openDrwToSave(),
@@ -5121,6 +5194,10 @@ window.MMGR = MMGR;
     showSec: 1,
     cpAllPage: 1,
     print: 1,
+    // Reading or closing the column-limit sheet mutates nothing. The inputs
+    // themselves stay blocked by saveKbWip's own guard.
+    kbWip: 1,
+    kbWipClose: 1,
     openDrw: 1,
     closeDrw: 1,
     // OWNER 2026-09-06: the sign-in sheet is identity UI, never project
@@ -5524,6 +5601,7 @@ window.MMGR = MMGR;
         action === 'addRaciPersonFromPicker' ||
         action === 'updField' ||
         action === 'updTaskField' ||
+        action === 'saveKbWip' ||
         action === 'updKPI' ||
         action === 'updKPILink' ||
         action === 'updKPIDir' ||

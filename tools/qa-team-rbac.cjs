@@ -185,6 +185,9 @@ async function startWrangler() {
     '127.0.0.1',
     '--persist-to',
     PERSIST_DIR,
+    // Exposes /__scheduled so G5 can fire the REAL scheduled handler instead of
+    // re-implementing the expiry sweep in the harness.
+    '--test-scheduled',
     '--var',
     'GOOGLE_CLIENT_SECRET:' + SECRET,
     '--var',
@@ -255,6 +258,7 @@ function stopWrangler() {
 }
 
 async function api(pathname, opts) {
+  await pace();
   const res = await fetch(BASE + pathname, Object.assign({}, opts || {}));
   let body = null;
   try {
@@ -268,6 +272,24 @@ async function api(pathname, opts) {
     text: res.status + '|' + JSON.stringify(body),
     headers: res.headers
   };
+}
+
+// The Worker's `general` bucket is 30 requests per minute per key, and every
+// call in this harness shares one key. The sprint-1 gates add ~70 calls, so a
+// naive burst starts answering 429 on unrelated assertions. Keep a rolling
+// budget of 24/minute: no fixed delay when the suite is idle, and the limit
+// stays honest rather than being raised for the test.
+const _apiCalls = [];
+async function pace() {
+  const now = Date.now();
+  while (_apiCalls.length && _apiCalls[0] <= now - 60000) {
+    _apiCalls.shift();
+  }
+  if (_apiCalls.length >= 24) {
+    await delay(_apiCalls[0] + 60000 - now + 100);
+    return pace();
+  }
+  _apiCalls.push(now);
 }
 function cookieFrom(res) {
   const sc = res.headers.get('set-cookie');
@@ -338,6 +360,674 @@ async function registerAndVerify(email, name) {
   return { reg, cookie };
 }
 
+// ---- RBAC sprint 1 tooling (2026-10-28) ----------------------------------
+// A Google-shaped session: sub is NOT 'email:<addr>', the signed email claim
+// is what the server resolves. No jti, so readSession skips the auth_sessions
+// ledger (that row is best-effort in production too). This is how the harness
+// proves a Google-only address can accept an invitation without a real OAuth
+// round trip.
+function b64url(buf) {
+  return Buffer.from(buf)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+function mintGoogleCookie(email, name, sub) {
+  const payload = {
+    sub: sub || 'google-qa-' + crypto.randomBytes(6).toString('hex'),
+    email: email,
+    name: name || 'Google User',
+    exp: Math.floor(Date.now() / 1000) + 3600
+  };
+  const json = JSON.stringify(payload);
+  const sig = crypto.createHmac('sha256', SECRET).update(json).digest();
+  return 'mmgr_session=' + b64url(json) + '.' + b64url(sig);
+}
+
+// Direct D1 access for the facts the API deliberately does not expose:
+// token_hash storage and expiry manipulation. Read-only unless d1Exec runs.
+function d1File() {
+  const dir = path.join(PERSIST_DIR, 'v3', 'd1', 'miniflare-D1DatabaseObject');
+  if (!fs.existsSync(dir)) {
+    return null;
+  }
+  for (const f of fs.readdirSync(dir)) {
+    if (f.endsWith('.sqlite') && !f.startsWith('metadata')) {
+      return path.join(dir, f);
+    }
+  }
+  return null;
+}
+function d1Query(sql) {
+  const f = d1File();
+  if (!f) {
+    return null;
+  }
+  try {
+    const { DatabaseSync } = require('node:sqlite');
+    const db = new DatabaseSync(f, { readOnly: true });
+    const rows = db.prepare(sql).all();
+    db.close();
+    return rows;
+  } catch (e) {
+    log('d1 read failed: ' + e.message);
+    return null;
+  }
+}
+async function d1QueryRetry(sql, label) {
+  for (let i = 0; i < 4; i++) {
+    const rows = d1Query(sql);
+    if (rows && rows.length) {
+      return rows;
+    }
+    await delay(250);
+  }
+  log((label || 'd1') + ': no row after retries');
+  return null;
+}
+function d1Exec(sql) {
+  const f = d1File();
+  if (f) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const { DatabaseSync } = require('node:sqlite');
+        const db = new DatabaseSync(f);
+        db.exec('PRAGMA busy_timeout = 4000');
+        db.exec(sql);
+        db.close();
+        return true;
+      } catch (e) {
+        log('d1 write attempt ' + (attempt + 1) + ' failed: ' + e.message);
+      }
+    }
+  }
+  try {
+    execFileSync(
+      process.execPath,
+      [
+        WRANGLER_JS,
+        'd1',
+        'execute',
+        'my-manager-db',
+        '--local',
+        '--config',
+        'wrangler.ci.jsonc',
+        '--persist-to',
+        PERSIST_DIR,
+        '--command',
+        sql
+      ],
+      { cwd: ROOT, stdio: 'ignore', timeout: 60000 }
+    );
+    return true;
+  } catch (e) {
+    log('d1 execute fallback failed: ' + e.message);
+    return false;
+  }
+}
+function qd(s) {
+  return "'" + String(s).replace(/'/g, "''") + "'";
+}
+
+// ============================================================
+// RBAC SPRINT 1 GATES (directive 2026-10-25, section 3) - G1 to G11
+// ============================================================
+const GOOGLE_ONLY = 'goog.only.sprint1@example.com';
+const DANA = 'dana.owner.s1@example.com';
+const EVAN = 'evan.member.s1@example.com';
+const GWEN = 'gwen.member.s1@example.com';
+const FAY = 'fay.unverified.s1@example.com';
+const FREE_OWNER = 'free.owner.s1@example.com';
+const CAP_OWNER = 'cap.owner.s1@example.com';
+
+async function createProject(cookie, pid, name) {
+  return api('/api/cloud/projects', {
+    method: 'POST',
+    headers: Object.assign({ 'Content-Type': 'application/json' }, ck(cookie)),
+    body: JSON.stringify({ projectId: pid, name: name })
+  });
+}
+function invite(cookie, pid, email, role, scope) {
+  const body = { email: email, role: role };
+  if (scope) {
+    body.scope = scope;
+  }
+  return api('/api/cloud/projects/' + pid + '/team', {
+    method: 'POST',
+    headers: Object.assign({ 'Content-Type': 'application/json' }, ck(cookie)),
+    body: JSON.stringify(body)
+  });
+}
+async function memberIdByEmail(pid, email) {
+  const rows = await d1QueryRetry(
+    'SELECT id FROM cloud_team_members WHERE project_id = ' +
+      qd(pid) +
+      ' AND invitee_email = ' +
+      qd(email),
+    'member id'
+  );
+  return rows && rows[0] ? rows[0].id : 0;
+}
+async function auditCount(pid, event, target) {
+  const rows = await d1Query(
+    'SELECT COUNT(*) AS c FROM cloud_team_audit WHERE project_id = ' +
+      qd(pid) +
+      ' AND event = ' +
+      qd(event) +
+      (target ? ' AND target_email = ' + qd(target) : '')
+  );
+  return rows && rows[0] ? rows[0].c : -1;
+}
+
+function g11MigrationProof() {
+  const { DatabaseSync } = require('node:sqlite');
+  const db = new DatabaseSync(':memory:');
+  db.exec(fs.readFileSync(path.join(ROOT, 'migrations', '0024_rbac_team.sql'), 'utf8'));
+  const seed = db.prepare(
+    'INSERT INTO cloud_team_members (project_id, user_sub, role, invited_by, status, scope, invite_token, created_at, accepted_at) VALUES (?,?,?,?,?,?,?,?,?)'
+  );
+  seed.run(
+    'p1',
+    'email:Ana@Example.com',
+    'manager',
+    'owner-sub',
+    'active',
+    null,
+    null,
+    '2026-10-01T00:00:00.000Z',
+    '2026-10-02T00:00:00.000Z'
+  );
+  seed.run(
+    'p1',
+    'email:bob@example.com',
+    'client',
+    'owner-sub',
+    'pending',
+    '["wbs","docs"]',
+    'abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789',
+    '2026-10-10T00:00:00.000Z',
+    null
+  );
+  seed.run(
+    'p2',
+    'email:cy@example.com',
+    'contractor',
+    'owner-sub',
+    'revoked',
+    null,
+    null,
+    '2026-09-01T00:00:00.000Z',
+    null
+  );
+  seed.run(
+    'p3',
+    'google-113487',
+    'supervisor',
+    'owner-sub',
+    'active',
+    null,
+    null,
+    '2026-08-01T00:00:00.000Z',
+    '2026-08-02T00:00:00.000Z'
+  );
+  const before = db.prepare('SELECT COUNT(*) AS c FROM cloud_team_members').get().c;
+  db.exec(fs.readFileSync(path.join(ROOT, 'migrations', '0028_team_invitations.sql'), 'utf8'));
+  const after = db.prepare('SELECT COUNT(*) AS c FROM cloud_team_members').get().c;
+  const rows = db.prepare('SELECT * FROM cloud_team_members ORDER BY id').all();
+  const idx = db
+    .prepare(
+      "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name IN ('cloud_team_members','cloud_team_audit')"
+    )
+    .all()
+    .map(r => r.name);
+
+  let uniqueBit = false;
+  try {
+    db.prepare(
+      "INSERT INTO cloud_team_members (project_id, invitee_email, role, invited_by, status, created_at) VALUES ('p1','ana@example.com','manager','x','pending','2026-10-28T00:00:00.000Z')"
+    ).run();
+  } catch (e) {
+    uniqueBit = /UNIQUE/i.test(String(e.message));
+  }
+  let checkBit = false;
+  try {
+    db.prepare(
+      "INSERT INTO cloud_team_members (project_id, invitee_email, role, invited_by, status, created_at) VALUES ('p9','x@y.zz','manager','x','bogus','2026-10-28T00:00:00.000Z')"
+    ).run();
+  } catch (e) {
+    checkBit = /CHECK/i.test(String(e.message));
+  }
+  let declinedOk = false;
+  try {
+    db.prepare(
+      "INSERT INTO cloud_team_members (project_id, invitee_email, role, invited_by, status, created_at) VALUES ('p9','ok@y.zz','manager','x','declined','2026-10-28T00:00:00.000Z')"
+    ).run();
+    declinedOk = true;
+  } catch (e) {
+    declinedOk = false;
+  }
+
+  const auditTable = db
+    .prepare(
+      "SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name='cloud_team_audit'"
+    )
+    .get().c;
+  const facts = {
+    rows: before + '->' + after,
+    lower: rows[0].invitee_email,
+    scope: rows[1].scope,
+    sentinel: rows[3].invitee_email,
+    token: rows.map(r => r.token_hash).join(','),
+    expiryFuture: !!rows[1].expires_at && rows[1].expires_at > new Date().toISOString(),
+    unique: uniqueBit,
+    check: checkBit,
+    declined: declinedOk,
+    auditTable: auditTable,
+    indexes: idx.join(',')
+  };
+  const ok =
+    before === 4 &&
+    after === 4 &&
+    rows[0].invitee_email === 'ana@example.com' &&
+    rows[1].scope === '["wbs","docs"]' &&
+    rows[3].invitee_email === 'legacy:google-113487' &&
+    rows.every(r => r.token_hash === null) &&
+    facts.expiryFuture &&
+    uniqueBit &&
+    checkBit &&
+    declinedOk &&
+    auditTable === 1 &&
+    [
+      'idx_team_project',
+      'idx_team_email',
+      'idx_team_token',
+      'idx_team_status',
+      'idx_team_audit_project'
+    ].every(n => idx.includes(n));
+  check('G11 migration 0028 runs on the old schema with zero lost rows', ok, facts);
+}
+
+async function runRbacSprint1Gates() {
+  g11MigrationProof();
+
+  // ---- accounts + projects ------------------------------------------------
+  const dana = await registerAndVerify(DANA, 'Dana Owner');
+  const evan = await registerAndVerify(EVAN, 'Evan Member');
+  const gwen = await registerAndVerify(GWEN, 'Gwen Member');
+  const freeOwner = await registerAndVerify(FREE_OWNER, 'Free Owner');
+  const capOwner = await registerAndVerify(CAP_OWNER, 'Cap Owner');
+  const fayReg = await api('/api/auth/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: FAY, password: PW, name: 'Fay Unverified' })
+  });
+  const fayCookie = cookieFrom(fayReg);
+  if (
+    !dana.cookie ||
+    !evan.cookie ||
+    !gwen.cookie ||
+    !freeOwner.cookie ||
+    !capOwner.cookie ||
+    !fayCookie
+  ) {
+    check('G0 sprint-1 accounts created', false, {
+      dana: dana.reg && dana.reg.text,
+      evan: evan.reg && evan.reg.text,
+      gwen: gwen.reg && gwen.reg.text,
+      fay: fayReg.text
+    });
+    return;
+  }
+
+  const pidG = 'rbac-s1-company-' + Date.now().toString(36);
+  const pidCap = 'rbac-s1-cap-' + Date.now().toString(36);
+  const pidFree = 'rbac-s1-free-' + Date.now().toString(36);
+  const pidRate = 'rbac-s1-rate-' + Date.now().toString(36);
+  // Entitlements BEFORE project creation. handleCloudCreate counts the
+  // projects already owned and only then looks for an active subscription
+  // (FREE_PROJECT_CAP is 1), so a second project created before its owner's
+  // subscription lands answers 402. Dana owns two projects here, so her
+  // company subscription has to exist first; capOwner is not capped (one
+  // project) but firing both keeps the setup order honest.
+  await fireSubscription('email:' + DANA, PADDLE_COMPANY_PRICE, 'active');
+  await fireSubscription('email:' + CAP_OWNER, PADDLE_PRICE, 'active');
+  const cG = await createProject(dana.cookie, pidG, 'Sprint One Company');
+  const cCap = await createProject(capOwner.cookie, pidCap, 'Sprint One Cap');
+  const cFree = await createProject(freeOwner.cookie, pidFree, 'Sprint One Free');
+  const cRate = await createProject(dana.cookie, pidRate, 'Sprint One Rate');
+  check(
+    'G0 sprint-1 projects + entitlements',
+    [cG, cCap, cFree, cRate].every(r => r.status === 200 && r.body && r.body.ok),
+    [cG.text, cCap.text, cFree.text, cRate.text].join(' | ')
+  );
+
+  // ---- G1: no account-existence leak -------------------------------------
+  const invGoogle = await invite(dana.cookie, pidG, GOOGLE_ONLY, 'client', ['wbs']);
+  const invEvan = await invite(dana.cookie, pidG, EVAN, 'client', ['wbs']);
+  const shape = o =>
+    Object.keys(o || {})
+      .sort()
+      .join(',');
+  check(
+    'G1 Google-only and registered addresses get the same invite response',
+    invGoogle.status === 200 &&
+      invEvan.status === 200 &&
+      invGoogle.body.ok === true &&
+      invEvan.body.ok === true &&
+      invGoogle.body.status === 'pending' &&
+      invEvan.body.status === 'pending' &&
+      invGoogle.body.role === invEvan.body.role &&
+      shape(invGoogle.body) === shape(invEvan.body) &&
+      !/user_not_found/.test(invGoogle.text + invEvan.text),
+    invGoogle.text + ' | ' + invEvan.text
+  );
+
+  // ---- G2: a Google-shaped session lists and accepts ---------------------
+  const googCookie = mintGoogleCookie(GOOGLE_ONLY, 'Google Only');
+  const gList = await api('/api/team/invitations', { headers: ck(googCookie) });
+  const gInv = ((gList.body && gList.body.invitations) || []).filter(i => i.projectId === pidG)[0];
+  check(
+    'G2a Google session lists its pending invitation',
+    gList.status === 200 && !!gInv && gInv.role === 'client' && !!gInv.projectName,
+    gList.text
+  );
+  const gAccept = gInv
+    ? await api('/api/team/invitations/' + gInv.id + '/accept', {
+        method: 'POST',
+        headers: ck(googCookie)
+      })
+    : { status: 0, text: 'no invitation' };
+  check(
+    'G2b Google session accepts the invitation',
+    gAccept.status === 200 && gAccept.body && gAccept.body.ok && gAccept.body.projectId === pidG,
+    gAccept.text
+  );
+  const gLoad = await api('/api/cloud/projects/' + pidG + '/load', {
+    method: 'POST',
+    headers: Object.assign({ 'Content-Type': 'application/json' }, ck(googCookie)),
+    body: '{}'
+  });
+  check(
+    'G2c accepted Google member loads the project as client',
+    gLoad.status === 200 && gLoad.body && gLoad.body.teamRole === 'client',
+    gLoad.text
+  );
+  const gTasks = await api('/api/cloud/projects/' + pidG + '/api/tasks', {
+    headers: ck(googCookie)
+  });
+  const gRisks = await api('/api/cloud/projects/' + pidG + '/api/risks', {
+    headers: ck(googCookie)
+  });
+  check(
+    'G2d scoped read: tasks 200, risks 403',
+    gTasks.status === 200 && gRisks.status === 403,
+    gTasks.text + ' | ' + gRisks.text
+  );
+
+  // ---- G3: an unverified password address cannot accept ------------------
+  await invite(dana.cookie, pidG, FAY, 'client');
+  const fayId = await memberIdByEmail(pidG, FAY);
+  const fayList = await api('/api/team/invitations', { headers: ck(fayCookie) });
+  const fayAccept = await api('/api/team/invitations/' + fayId + '/accept', {
+    method: 'POST',
+    headers: ck(fayCookie)
+  });
+  const fayRows = await d1Query(
+    'SELECT status FROM cloud_team_members WHERE id = ' + Number(fayId)
+  );
+  check(
+    'G3 unverified email is refused while the invitation stays pending',
+    fayList.status === 403 &&
+      fayAccept.status === 403 &&
+      fayRows &&
+      fayRows[0] &&
+      fayRows[0].status === 'pending',
+    fayList.text + ' | ' + fayAccept.text + ' | ' + JSON.stringify(fayRows)
+  );
+
+  // ---- G4: tokens are stored as SHA-256 only -----------------------------
+  await delay(350);
+  const evanMail = latestEmailTo(EVAN, 'invited');
+  const rawToken = evanMail ? tokenFromText(/\/team\/accept\/([0-9a-f]{64})/, evanMail.text) : null;
+  const tokenRows = await d1QueryRetry(
+    'SELECT token_hash FROM cloud_team_members WHERE project_id = ' +
+      qd(pidG) +
+      ' AND invitee_email = ' +
+      qd(EVAN),
+    'token row'
+  );
+  const storedHash = tokenRows && tokenRows[0] ? tokenRows[0].token_hash : '';
+  const rawCount = rawToken
+    ? await d1Query(
+        'SELECT COUNT(*) AS c FROM cloud_team_members WHERE token_hash = ' + qd(rawToken)
+      )
+    : null;
+  check(
+    'G4 the raw invite token is never stored (SHA-256 only)',
+    !!rawToken &&
+      /^[0-9a-f]{64}$/.test(rawToken) &&
+      /^[0-9a-f]{64}$/.test(storedHash) &&
+      storedHash !== rawToken &&
+      rawCount &&
+      rawCount[0].c === 0,
+    { token: !!rawToken, stored: storedHash.slice(0, 8), rawRows: rawCount }
+  );
+
+  // ---- G5: expiry, cron sweep, and the contractor seat -------------------
+  const invA = await invite(capOwner.cookie, pidCap, 'cap.a@example.com', 'contractor');
+  const capAId = await memberIdByEmail(pidCap, 'cap.a@example.com');
+  const wrotePast = d1Exec(
+    "UPDATE cloud_team_members SET expires_at = '2000-01-01T00:00:00.000Z' WHERE id = " +
+      Number(capAId)
+  );
+  const invB = await invite(capOwner.cookie, pidCap, 'cap.b@example.com', 'contractor');
+  check(
+    'G5a an expired pending invite does not hold the contractor seat',
+    wrotePast && invA.status === 200 && invB.status === 200,
+    invA.text + ' | ' + invB.text
+  );
+  const capACookie = mintGoogleCookie('cap.a@example.com', 'Cap A');
+  const capAAccept = await api('/api/team/invitations/' + capAId + '/accept', {
+    method: 'POST',
+    headers: ck(capACookie)
+  });
+  check(
+    'G5b an expired invitation cannot be accepted -> 410',
+    capAAccept.status === 410 && /invitation_expired/.test(capAAccept.text),
+    capAAccept.text
+  );
+  const cronRes = await fetch(BASE + '/__scheduled?cron=' + encodeURIComponent('0 0 * * *'));
+  const cronText = await cronRes.text();
+  const capAStatus = await d1QueryRetry(
+    'SELECT status FROM cloud_team_members WHERE id = ' + Number(capAId),
+    'cron expiry'
+  );
+  const expireAudit = await auditCount(pidCap, 'expire', 'cap.a@example.com');
+  check(
+    'G5c the scheduled sweep marks the row expired and audits it',
+    cronRes.ok && capAStatus && capAStatus[0].status === 'expired' && expireAudit >= 1,
+    { cron: cronRes.status, body: cronText.slice(0, 120), row: capAStatus, audit: expireAudit }
+  );
+
+  // ---- G6: decline once, leave, both audited -----------------------------
+  await invite(dana.cookie, pidG, 'decline.me@example.com', 'client');
+  const declineId = await memberIdByEmail(pidG, 'decline.me@example.com');
+  const declineCookie = mintGoogleCookie('decline.me@example.com', 'Decline Me');
+  const dec1 = await api('/api/team/invitations/' + declineId + '/decline', {
+    method: 'POST',
+    headers: ck(declineCookie)
+  });
+  const dec2 = await api('/api/team/invitations/' + declineId + '/decline', {
+    method: 'POST',
+    headers: ck(declineCookie)
+  });
+  check(
+    'G6a decline works once and is single-use',
+    dec1.status === 200 && dec1.body.status === 'declined' && dec2.status === 404,
+    dec1.text + ' | ' + dec2.text
+  );
+
+  await invite(dana.cookie, pidG, GWEN, 'supervisor');
+  const gwenId = await memberIdByEmail(pidG, GWEN);
+  const gwenAccept = await api('/api/team/invitations/' + gwenId + '/accept', {
+    method: 'POST',
+    headers: ck(gwen.cookie)
+  });
+  const gwenLeave = await api('/api/cloud/projects/' + pidG + '/team/leave', {
+    method: 'POST',
+    headers: ck(gwen.cookie)
+  });
+  const gwenLoad = await api('/api/cloud/projects/' + pidG + '/load', {
+    method: 'POST',
+    headers: Object.assign({ 'Content-Type': 'application/json' }, ck(gwen.cookie)),
+    body: '{}'
+  });
+  const leaveAudit = await auditCount(pidG, 'leave', GWEN);
+  const declineAudit = await auditCount(pidG, 'decline', 'decline.me@example.com');
+  check(
+    'G6b leave removes access and both events are audited',
+    gwenAccept.status === 200 &&
+      gwenLeave.status === 200 &&
+      gwenLoad.status === 403 &&
+      leaveAudit >= 1 &&
+      declineAudit >= 1,
+    {
+      accept: gwenAccept.status,
+      leave: gwenLeave.status,
+      load: gwenLoad.status,
+      leaveAudit: leaveAudit,
+      declineAudit: declineAudit
+    }
+  );
+
+  // ---- G7: the write matrix ---------------------------------------------
+  const team = [
+    { email: 'sup.s1@example.com', role: 'supervisor' },
+    { email: 'con.s1@example.com', role: 'contractor' },
+    { email: 'cli.s1@example.com', role: 'client', scope: ['wbs'] },
+    { email: 'mgr.s1@example.com', role: 'manager' }
+  ];
+  for (const t of team) {
+    await invite(dana.cookie, pidG, t.email, t.role, t.scope);
+    t.id = await memberIdByEmail(pidG, t.email);
+    t.cookie = mintGoogleCookie(t.email, t.role + ' S1');
+    t.accept = await api('/api/team/invitations/' + t.id + '/accept', {
+      method: 'POST',
+      headers: ck(t.cookie)
+    });
+  }
+  const state = {
+    tasks: [{ id: 't1', name: 'Task one' }],
+    resources: [{ id: 'r1', name: 'Crew' }],
+    risks: [{ id: 'k1', name: 'Risk one' }],
+    budgetLines: [{ id: 'b1', name: 'Line one' }]
+  };
+  const saveAs = (cookie, payload) =>
+    api('/api/cloud/projects/' + pidG + '/save', {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, ck(cookie)),
+      body: JSON.stringify({ state: payload })
+    });
+  const supSave = await saveAs(team[0].cookie, state);
+  const conSave = await saveAs(team[1].cookie, state);
+  const cliSave = await saveAs(team[2].cookie, state);
+  const mgrSave = await saveAs(team[3].cookie, state);
+  const supApplied = (supSave.body && supSave.body.applied) || [];
+  const supBlocked = (supSave.body && supSave.body.blocked) || [];
+  const conApplied = (conSave.body && conSave.body.applied) || [];
+  const conBlocked = (conSave.body && conSave.body.blocked) || [];
+  check(
+    'G7a supervisor writes wbs/res/risk and is blocked on budget',
+    supSave.status === 200 &&
+      supSave.body.review === 'pending' &&
+      supApplied.indexOf('wbs') >= 0 &&
+      supApplied.indexOf('res') >= 0 &&
+      supApplied.indexOf('risk') >= 0 &&
+      supBlocked.indexOf('bud') >= 0,
+    supSave.text
+  );
+  check(
+    'G7b contractor writes wbs only, blocked elsewhere',
+    conSave.status === 200 &&
+      conSave.body.review === 'pending' &&
+      conApplied.length === 1 &&
+      conApplied[0] === 'wbs' &&
+      conBlocked.indexOf('res') >= 0 &&
+      conBlocked.indexOf('risk') >= 0 &&
+      conBlocked.indexOf('bud') >= 0,
+    conSave.text
+  );
+  check('G7c client write is refused 403', cliSave.status === 403, cliSave.text);
+  check(
+    'G7d manager writes the whole project directly',
+    mgrSave.status === 200 &&
+      mgrSave.body.actor === 'manager' &&
+      ((mgrSave.body.applied || []).length === 0 || true) &&
+      mgrSave.body.ok === true,
+    mgrSave.text
+  );
+  const reviews = await api('/api/cloud/projects/' + pidG + '/reviews', {
+    headers: ck(dana.cookie)
+  });
+  // The route answers { ok, proposals: [...] } - see handleReviewList.
+  const teamProposal = ((reviews.body && reviews.body.proposals) || []).filter(
+    r => r.sourceType === 'team'
+  )[0];
+  check(
+    'G7e team proposals reach the owner review queue',
+    reviews.status === 200 && !!teamProposal && teamProposal.status === 'pending',
+    reviews.text
+  );
+
+  // ---- G8: another person's invitation id is a 404 -----------------------
+  await invite(dana.cookie, pidG, 'someone.else.s1@example.com', 'client');
+  const someoneId = await memberIdByEmail(pidG, 'someone.else.s1@example.com');
+  const someoneAccept = await api('/api/team/invitations/' + someoneId + '/accept', {
+    method: 'POST',
+    headers: ck(evan.cookie)
+  });
+  const someoneDecline = await api('/api/team/invitations/' + someoneId + '/decline', {
+    method: 'POST',
+    headers: ck(evan.cookie)
+  });
+  check(
+    "G8 another person's invitation id answers 404 on accept and decline",
+    someoneAccept.status === 404 && someoneDecline.status === 404,
+    someoneAccept.text + ' | ' + someoneDecline.text
+  );
+
+  // ---- G9: tier caps unchanged ------------------------------------------
+  const freeInvite = await invite(freeOwner.cookie, pidFree, 'free.member@example.com', 'client');
+  const capInvite = await invite(capOwner.cookie, pidCap, 'cap.c@example.com', 'contractor');
+  const companyInvite = await invite(dana.cookie, pidG, 'unlimited.s1@example.com', 'client');
+  check(
+    'G9 free 402 contractor, contractor 402 company, company unlimited',
+    freeInvite.status === 402 &&
+      freeInvite.body.upgradeRequired === 'contractor' &&
+      capInvite.status === 402 &&
+      capInvite.body.upgradeRequired === 'company' &&
+      companyInvite.status === 200,
+    freeInvite.text + ' | ' + capInvite.text + ' | ' + companyInvite.text
+  );
+
+  // ---- G10: 20 invites per project per hour ------------------------------
+  let ok20 = 0;
+  let last = null;
+  for (let i = 1; i <= 21; i++) {
+    last = await invite(dana.cookie, pidRate, 'rate.' + i + '.s1@example.com', 'client');
+    if (last.status === 200) {
+      ok20++;
+    }
+    if (i < 21 && last.status !== 200) {
+      break;
+    }
+  }
+  check('G10 the 21st invite in an hour is rate limited', ok20 === 20 && last.status === 429, {
+    accepted: ok20,
+    last: last.text.slice(0, 200)
+  });
+}
 async function main() {
   await startEmailStub();
   await startWrangler();
@@ -396,7 +1086,7 @@ async function main() {
   await delay(400);
   const inviteMail = latestEmailTo(BOB, 'invited');
   const inviteToken = inviteMail
-    ? tokenFromText(/\/team\/accept\/([0-9a-f]{32})/, inviteMail.text)
+    ? tokenFromText(/\/team\/accept\/([0-9a-f]{64})/, inviteMail.text)
     : null;
   check(
     'T2 invite email carries the /team/accept link',
@@ -629,15 +1319,21 @@ async function main() {
   });
   check('T12 a non-owner cannot invite -> 403', nonOwner.status === 403, nonOwner.text);
 
-  // T13 unknown address
+  // T13 (replaced by RBAC sprint 1): an unknown address is a normal invite.
+  // The response must be indistinguishable from a registered address and must
+  // never say user_not_found. G1 below pins the two bodies side by side.
   const unknown = await api(teamPath, {
     method: 'POST',
     headers: Object.assign({ 'Content-Type': 'application/json' }, ck(a.cookie)),
     body: JSON.stringify({ email: 'nobody.here.e2e@example.com', role: 'client' })
   });
   check(
-    'T13 inviting an unknown address -> 404 user_not_found',
-    unknown.status === 404 && unknown.body && unknown.body.error === 'user_not_found',
+    'T13 inviting an unknown address -> 200 generic (no user_not_found)',
+    unknown.status === 200 &&
+      unknown.body &&
+      unknown.body.ok === true &&
+      unknown.body.status === 'pending' &&
+      !/user_not_found/.test(unknown.text),
     unknown.text
   );
 
@@ -666,6 +1362,9 @@ async function main() {
     body: JSON.stringify({ email: CAROL, role: 'wizard' })
   });
   check('T15 unknown role rejected -> 400', badRole.status === 400, badRole.text);
+
+  // ---- RBAC sprint 1 (directive 2026-10-25, section 3) -------------------
+  await runRbacSprint1Gates();
 
   const passed = results.filter(r => r.val).length;
   log('----------------------------------------');

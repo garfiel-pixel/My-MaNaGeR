@@ -543,7 +543,12 @@ const CLOUD_RATE = {
   //   costs an upstream model call, and until now the route had no rl() guard
   //   at all. 60 per minute matches the RATE_LIMITER binding's own window, so
   //   the local fallback and production answer the same number.
-  ai: { max: 60, windowMs: 60000 }
+  ai: { max: 60, windowMs: 60000 },
+  //   teamInvite: RBAC sprint 1 (directive 2026-10-25). 20 invitations per hour
+  //   PER PROJECT, keyed by an explicit override so one owner cannot mail-bomb
+  //   a batch by accident. Counted only after the owner is authenticated, so a
+  //   stranger who guesses a project id cannot spend the owner's budget.
+  teamInvite: { max: 20, windowMs: 60 * 60 * 1000 }
 };
 const _cloudBuckets = new Map();
 
@@ -587,9 +592,9 @@ export function randomIdSuffix(len = 8) {
   return out;
 }
 
-export async function cloudRateCheck(request, bucket, env) {
+export async function cloudRateCheck(request, bucket, env, keyOverride) {
   const headers = bucket === 'recover' ? ['X-Owner-Code'] : ['X-Owner-Code', 'X-Editor-Code'];
-  const key = await cloudRateKey(request, headers);
+  const key = keyOverride ? String(keyOverride) : await cloudRateKey(request, headers);
   const ns = bucket + ':' + key;
   // Resolved once, used by BOTH limiters below. An unknown bucket falls back
   // to the general allowance - it still gets a limit of its own (the ns is
@@ -1437,25 +1442,72 @@ export async function cloudAuthOwnerEither(request, env, projectId) {
 }
 
 // Returns { sub, role, source } or null.
+// ---- Named-team identity (RBAC directive 2026-10-25, sprint 1) ------------
+// A membership belongs to a VERIFIED EMAIL ADDRESS, never to a sub. The same
+// person can hold a Google account and a password account with different subs,
+// and every pre-2026-10-28 invite was written as the fake sub
+// 'email:<addr>' - which is why a Google sign-in could never accept one.
+//
+// Google sessions: src/auth/google.js refuses to mint a session unless the ID
+// token carried email_verified === true (G-2.4, 2026-10-23), so the signed
+// email claim is already verified.
+// Password sessions: signup mints a session BEFORE the address is confirmed
+// (src/auth/session.js handleAuthRegister), so the row is checked here on
+// every call. A D1 fault fails CLOSED.
+export async function resolveVerifiedIdentity(request, env) {
+  const session = await readSession(request, env);
+  if (!session || !session.sub) {
+    return null;
+  }
+  const email = String(session.email || '')
+    .trim()
+    .toLowerCase();
+  if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+    return null;
+  }
+  if (session.sub.indexOf('email:') === 0) {
+    let row;
+    try {
+      row = await env.DB.prepare('SELECT email_verified FROM auth_users WHERE email = ?')
+        .bind(email)
+        .first();
+    } catch (e) {
+      return null;
+    }
+    if (!row || Number(row.email_verified) !== 1) {
+      return null;
+    }
+  }
+  return { email: email, session: session };
+}
+
+export async function resolveVerifiedEmail(request, env) {
+  const identity = await resolveVerifiedIdentity(request, env);
+  return identity ? identity.email : null;
+}
+
 // source: 'owner' | 'code' | 'team'
 // role:   'owner' | 'manager' | 'supervisor' | 'contractor' | 'client'
 // Owner auth is tried first; only then does an ACTIVE named team member
 // authenticated by a session qualify. Used by routes that must serve
 // project data to collaborators, not just the owner (Wave 7).
+// RBAC sprint 1: the member is matched on the VERIFIED EMAIL, and an active
+// row whose expires_at has passed no longer qualifies.
 export async function cloudAuthWithRole(request, env, projectId) {
   const ownerAuth = await cloudAuthOwnerEither(request, env, projectId);
   if (ownerAuth) {
     const sub = (ownerAuth.row && ownerAuth.row.google_sub) || '';
     return { sub: sub, role: 'owner', source: 'owner', ownerAuth: ownerAuth };
   }
-  const session = await readSession(request, env);
-  if (!session || !session.sub) {
+  const identity = await resolveVerifiedIdentity(request, env);
+  if (!identity) {
+    await cloudTimingSink();
     return null;
   }
   const member = await env.DB.prepare(
-    'SELECT role, scope FROM cloud_team_members WHERE project_id = ? AND user_sub = ? AND status = ?'
+    "SELECT role, scope FROM cloud_team_members WHERE project_id = ? AND invitee_email = ? AND status = 'active' AND (expires_at IS NULL OR expires_at > ?)"
   )
-    .bind(projectId, session.sub, 'active')
+    .bind(projectId, identity.email, new Date().toISOString())
     .first();
   if (!member) {
     await cloudTimingSink();
@@ -1472,7 +1524,14 @@ export async function cloudAuthWithRole(request, env, projectId) {
       scope = null;
     }
   }
-  return { sub: session.sub, role: member.role, source: 'team', scope: scope, session: session };
+  return {
+    sub: identity.session.sub,
+    email: identity.email,
+    role: member.role,
+    source: 'team',
+    scope: scope,
+    session: identity.session
+  };
 }
 
 // Wave 7 read gate (owner 2026-10-06): READ access to a project data route for

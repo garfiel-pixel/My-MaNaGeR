@@ -1,6 +1,7 @@
 import { routeApi } from './src/router.js';
 import { Presence } from './src/cloud/presence.js';
 import { purgeStaleCloudProjects } from './src/cloud/projects.js';
+import { sweepExpiredInvitations } from './src/cloud/team.js';
 import { evaluateWebhooks } from './src/webhooks.js';
 
 export { Presence }; // wrangler requires DO classes in the entrypoint
@@ -427,6 +428,17 @@ export default {
       );
     } catch (e) {
       console.error('auth sweep failed:', e && e.message);
+    }
+    // RBAC sprint 1 (2026-10-28): pending invitations past their 7-day expiry
+    // become 'expired' and lose their token, so a late link cannot be replayed
+    // and the row stops counting against the contractor cap. Try/catch: the
+    // table arrives with migration 0028 and a not-yet-migrated database must
+    // not fail the rest of the sweep.
+    try {
+      const teamSweep = await sweepExpiredInvitations(env);
+      console.log('team invitation sweep: expired=' + teamSweep.expired);
+    } catch (e) {
+      console.error('team invitation sweep failed:', e && e.message);
     }
     // IDEMPOTENCY SWEEP: clean up expired idempotency keys.
     try {

@@ -270,6 +270,61 @@ export async function queueEditorProposal(env, projectId, a, submitted, prev, no
   };
 }
 
+// RBAC sprint 1 (2026-10-28): supervisor and contractor writes take the same
+// path as an editor code - merged under the role's section scope, queued as a
+// proposal, applied only if the owner accepts. `source_type` labels it 'team'
+// so the review queue can say who proposed it. editor_code_id stays NULL (the
+// column means an editor CODE; a member has none), which also means the
+// editor-code de-duplication below never touches these rows.
+export async function queueTeamProposal(env, projectId, member, submitted, prev, now) {
+  const scope = teamScopeForRole(member.role, member.scope);
+  const merged = cloudScopeMerge(prev, submitted, scope);
+  const label = member.name || member.email || 'Team member';
+  if (!merged.applied.length) {
+    return {
+      status: 'noop',
+      reviewId: null,
+      applied: merged.applied,
+      blocked: merged.blocked,
+      scope: scope
+    };
+  }
+  let diffs = cloudDiffState(prev, merged.next) || [];
+  diffs = diffs.filter(function (d) {
+    return String(d.path).indexOf('fieldTs') !== 0;
+  });
+  // One pending proposal per member per project: a second save from the same
+  // person replaces their own queued one instead of stacking a queue.
+  await env.DB.prepare(
+    "DELETE FROM cloud_reviews WHERE project_id = ? AND source_type = 'team' AND source_label = ? AND status = 'pending'"
+  )
+    .bind(projectId, label)
+    .run();
+  const res = await env.DB.prepare(
+    'INSERT INTO cloud_reviews (project_id, proposal_type, source_type, source_label, editor_code_id, scope, submitted_json, diffs_json, status, proposed_at) VALUES (?,?,?,?,?,?,?,?,?,?)'
+  )
+    .bind(
+      projectId,
+      'save',
+      'team',
+      label,
+      null,
+      JSON.stringify(scope),
+      JSON.stringify(stripStateSecrets(submitted)),
+      JSON.stringify(diffs),
+      'pending',
+      now
+    )
+    .run();
+  return {
+    status: 'pending',
+    reviewId: res.meta.last_row_id,
+    applied: merged.applied,
+    blocked: merged.blocked,
+    scope: scope
+  };
+}
+
 export async function handleCloudSave(request, env, projectId, cloudPushRevChangedIfCopies) {
   const read = await readCloudBody(request);
   if (read.tooLarge) {
@@ -347,6 +402,8 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
   const editorCode =
     String(request.headers.get('X-Editor-Code') || '').trim() ||
     (typeof read.body.editorCode === 'string' ? read.body.editorCode.trim() : '');
+  const now = new Date().toISOString();
+  const key = 'projects/' + projectId + '/latest.json';
   let adoptAuth = null;
   let sessOwner = null;
   let teamAuth = null;
@@ -368,19 +425,62 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
       // sessFallback so save + auto-sync work wherever /load worked.
       sessOwner = await cloudAuthOwnerSession(request, env, projectId);
       if (!sessOwner) {
-        // WAVE 7: an active named team member with the manager role writes
-        // like the owner (minus owner-only routes). Supervisor, contractor
-        // and client are read-only.
+        // WAVE 7 + RBAC sprint 1 (2026-10-28): the owner always writes.
+        // A named MANAGER writes like the owner (minus owner-only routes).
+        // Supervisor and contractor write through the SAME scoped merge the
+        // editor codes use, queued for owner review, so a submitted payload
+        // can only touch keys inside their sections. Client is read-only.
         teamAuth = await cloudAuthWithRole(request, env, projectId);
-        if (!teamAuth || teamAuth.source !== 'team' || teamAuth.role !== 'manager') {
+        if (!teamAuth || teamAuth.source !== 'team' || teamAuth.role === 'client') {
           await Promise.all([cloudDummyHash(), cloudTimingSink()]);
           return cloudForbidden();
+        }
+        if (teamAuth.role !== 'manager') {
+          const projRow = await env.DB.prepare(
+            'SELECT owner_code_hash, owner_code_salt, deleted_at FROM cloud_projects WHERE project_id = ?'
+          )
+            .bind(projectId)
+            .first();
+          if (!projRow) {
+            return cloudForbidden();
+          }
+          if (projRow.deleted_at) {
+            return cloudProjectDeleted();
+          }
+          const prev = await cloudReadState(
+            env,
+            key,
+            projRow.owner_code_hash,
+            projRow.owner_code_salt
+          );
+          const queued = await queueTeamProposal(
+            env,
+            projectId,
+            {
+              role: teamAuth.role,
+              scope: teamAuth.scope,
+              name: (teamAuth.session && teamAuth.session.name) || teamAuth.email,
+              email: teamAuth.email
+            },
+            read.body.state,
+            prev,
+            now
+          );
+          return json({
+            ok: true,
+            review: queued.status,
+            reviewId: queued.reviewId,
+            actor: 'team',
+            teamRole: teamAuth.role,
+            scope: queued.scope,
+            applied: queued.applied,
+            blocked: queued.blocked,
+            previousUpdatedAt: (prev && prev.updatedAt) || null
+          });
         }
       }
     }
   }
-  const now = new Date().toISOString();
-  const key = 'projects/' + projectId + '/latest.json';
   let next;
   let actor;
   let authRow = null;
@@ -397,7 +497,9 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
       )
         .bind(projectId)
         .first();
-      const lbl = teamAuth ? 'Team manager' : sessOwner.label || rowFull.google_name || 'Owner';
+      const lbl = teamAuth
+        ? (teamAuth.session && teamAuth.session.name) || teamAuth.email
+        : sessOwner.label || rowFull.google_name || 'Owner';
       a = rowFull ? { label: lbl, row: rowFull } : null;
     }
     if (!a) {

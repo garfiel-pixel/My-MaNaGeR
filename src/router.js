@@ -115,7 +115,12 @@ import {
   handleTeamList,
   handleTeamUpdate,
   handleTeamRevoke,
-  handleTeamAccept
+  handleTeamAccept,
+  handleTeamInvitations,
+  handleTeamInvitationAccept,
+  handleTeamInvitationDecline,
+  handleTeamMemberships,
+  handleTeamLeave
 } from './cloud/team.js';
 import { handleAdminCloudList } from './admin.js';
 import {
@@ -444,6 +449,44 @@ export async function routeApi(request, env, url) {
     }
 
     // 4b. TEAM MEMBERS (named-role RBAC)
+    // A member leaves a project themselves. Keep this match BEFORE the
+    // numeric :mid route: 'leave' is not a member id.
+    const teamLeaveMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/team\/leave$/
+    );
+    if (teamLeaveMatch && request.method === 'POST') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handleTeamLeave(request, env, teamLeaveMatch[1]);
+    }
+    // Caller-side invitation inbox and membership list (RBAC sprint 1).
+    if (path === '/api/team/invitations' && request.method === 'GET') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handleTeamInvitations(request, env);
+    }
+    const teamInviteActionMatch = path.match(/^\/api\/team\/invitations\/(\d+)\/(accept|decline)$/);
+    if (teamInviteActionMatch && request.method === 'POST') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      if (teamInviteActionMatch[2] === 'accept') {
+        return handleTeamInvitationAccept(request, env, Number(teamInviteActionMatch[1]));
+      }
+      return handleTeamInvitationDecline(request, env, Number(teamInviteActionMatch[1]));
+    }
+    if (path === '/api/team/memberships' && request.method === 'GET') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handleTeamMemberships(request, env);
+    }
     const teamListMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/team$/);
     if (teamListMatch) {
       const r = await rl(request, 'general', env);

@@ -9,6 +9,7 @@
 #   T4  tools/verify-print-dom.cjs      a print selector must match the real DOM
 #   T5  tools/verify-no-weak-random.cjs no Math.random under src/ or worker.js
 #   T8  tools/verify-doc-size.cjs       plan docs stay readable (<= 40 KB)
+#   EOL tools/verify-eol.cjs            no CR bytes in the staged text files
 #   Lint tools/verify-eslint.cjs        errors + the frozen warning ceiling
 #
 # Escape hatch, used sparingly and deliberately: git commit --no-verify
@@ -29,6 +30,7 @@ run() {
 run "T4 print-selector gate" tools/verify-print-dom.cjs
 run "T5 weak-random gate" tools/verify-no-weak-random.cjs
 run "T8 doc-size gate" tools/verify-doc-size.cjs
+run "EOL line-ending gate" tools/verify-eol.cjs
 run "ESLint gate" tools/verify-eslint.cjs
 
-echo "pre-commit: T4, T5, T8 and ESLint green"
+echo "pre-commit: T4, T5, T8, EOL and ESLint green"

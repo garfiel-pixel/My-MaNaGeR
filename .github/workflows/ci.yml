@@ -67,17 +67,15 @@ jobs:
 
       - name: Verify no CRLF in tracked text files
         id: eol
-        # --cached: check the COMMITTED bytes (eol=lf filters normalize at add),
-        # immune to working-tree/text-mode differences between OSes. Note: plain
-        # grep in Git Bash is blind to \r (MSYS text-mode translation) - git grep
-        # reads raw bytes and is the only reliable detector here.
-        run: |
-          BAD=$(git grep --cached -Il $'\r' -- '*.js' '*.cjs' '*.mjs' '*.md' '*.json' '*.jsonc' '*.sql' '*.yml' '*.css' '*.txt' '*.html' '*.svg' || true)
-          if [ -n "$BAD" ]; then
-            echo "CRLF line endings found in:"
-            echo "$BAD"
-            exit 1
-          fi
+        # ONE definition, shared with `npm run verify` and the pre-commit hook.
+        # It reads the INDEX (--cached), so it checks the committed bytes that
+        # eol=lf filters produce at add, immune to working-tree/text-mode
+        # differences between OSes. Plain grep in Git Bash is blind to \r
+        # (MSYS text-mode translation); git grep reads raw bytes and is the
+        # only reliable detector, so the tool uses it too. Before 2026-10-28
+        # this logic existed ONLY here, which is how ebc0720 passed every local
+        # gate and went red at step 10 (two stray CRs in a plan doc).
+        run: npm run verify:eol
 
       - name: Verify service-worker cache version
         id: sw

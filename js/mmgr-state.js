@@ -43,6 +43,11 @@ var MMGR = window.MMGR || {};
  * @property {boolean} [isPhase]    - true if this is a phase row
  * @property {Array<string|number>} [predecessors] - predecessor task ids
  * @property {string} [assignedTo]  - resource name
+ * @property {Array<Object>} [relations] - symmetric typed links to other tasks
+ * @property {string} [relations[].id] - relation id, shared by both sides
+ * @property {string} [relations[].type] - one of MMGR.Relations.TYPES
+ * @property {string} [relations[].targetId] - the other task id
+ * @property {number} [relations[].lag] - days of lag on precedes/follows
  */
 
 /**
@@ -177,7 +182,7 @@ var MMGR = window.MMGR || {};
   'use strict';
 
   const STORAGE_KEY = 'mmgr_state';
-  const SCHEMA_VERSION = 23;
+  const SCHEMA_VERSION = 24;
 
   // ---- Default State ----
   /** @returns {AppState} */
@@ -306,6 +311,10 @@ var MMGR = window.MMGR || {};
       wxWindow: { start: '', end: '', bufferDays: 0 },
       // V3.3 port: dedicated Kanban lead-time swimlane toggle
       kbShowLeadtime: false,
+      // Work package relations (schema v24, OpenProject-inspired).
+      // `relLens` is the persisted Kanban lens. The graph itself lives on
+      // task.relations, never in a second table.
+      relLens: 'all',
       // Kanban board mechanics (schema v23). Shared, persisted board
       // configuration only: per-column WIP limits and the lane grouping.
       // 0 means "no limit", matching Kanboard's task_limit convention.
@@ -843,6 +852,27 @@ var MMGR = window.MMGR || {};
       }
       return state;
     },
+    24: function (state) {
+      // V23 -> V24: work package relations (OpenProject-inspired). Additive
+      // and lossless:
+      // - every task gets an empty relations array;
+      // - the persisted board lens defaults to "all";
+      // - no task is deleted, renamed, or re-statused.
+      if (Array.isArray(state.tasks)) {
+        state.tasks.forEach(function (t) {
+          if (!t || typeof t !== 'object') {
+            return;
+          }
+          if (!Array.isArray(t.relations)) {
+            t.relations = [];
+          }
+        });
+      }
+      if (state.relLens !== 'blocked' && state.relLens !== 'ready') {
+        state.relLens = 'all';
+      }
+      return state;
+    },
     23: function (state) {
       // V22 -> V23: Kanban board mechanics. Additive and lossless:
       // - state.kanban carries column WIP limits and the lane mode.
@@ -1233,6 +1263,7 @@ var MMGR = window.MMGR || {};
     'wxViewDays',
     'wxWindow',
     'kbShowLeadtime',
+    'relLens',
     'hlCritical',
     'dailySnapshot',
     'focusMode',

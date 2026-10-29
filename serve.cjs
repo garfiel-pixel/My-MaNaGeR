@@ -294,7 +294,7 @@ function analyticsAllowed(cookieHeader) {
 const INLINE_SCRIPT_HASHES = [
   "'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk='",
   "'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M='",
-  "'sha256-QtsseVVTyWhdR4sO26yJcivU6m/bSILxR7se6RhpW1s='",
+  "'sha256-VI10LfQVcA0Gp+BXgRtfkutRbOktU4clN9qwD4pE5TI='",
   "'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4='",
   "'sha256-6n6X5blbus8T7LO3a/rxKTOOdes6mm9KXmC/gWtOr1M='",
   "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='",

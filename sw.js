@@ -405,7 +405,17 @@
 // js/mmgr-perf.js, js/mmgr-glass.js, js/marketing.js, js/marketing-globe.js,
 // js/mmgr-combobox.js (new), dist/marketing-bundle.js. No inline script block
 // changed, so the CSP hashes are untouched.
-const CACHE = 'mmgr-shell-v500';
+const CACHE = 'mmgr-shell-v502';
+
+// v501 - RELATIONS TASK 1 (plan-openproject 2026-10-29): new pure model
+// js/mmgr-relations.js (typed work package links, explicit reverse pairs,
+// loop validation, symmetric add/remove, open-blocker queries, the persisted
+// board lens), schema v24 (migration 24 gives every task an empty
+// relations array and seeds relLens), and the module wired into build.js's
+// APP_MODULES and the project.html dev fallback. The inline dev-fallback
+// script changed, so the CSP hashes were regenerated in worker.js and
+// serve.cjs. Changed shell assets: project.html, js/mmgr-state.js,
+// js/mmgr-tasks.js, js/mmgr-relations.js (new), dist/bundle.js.
 
 // v500 - SIDEBAR SCROLL CONTAINMENT (owner 2026-10-29): wheeling past the
 // bottom of the sections sidebar (#app-sidebar) and the mobile .sec-nav

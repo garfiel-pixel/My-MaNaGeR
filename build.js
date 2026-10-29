@@ -48,13 +48,17 @@ function writeManifest(manifest) {
   console.log('  manifest:  dist/manifest.json');
 }
 
-// ---- Project.html bundle (55 modules) ----
+// ---- Project.html bundle (56 modules) ----
 // Order must match the <script> tags in project.html - each module
 // extends the global MMGR namespace created by mmgr-state.js.
 const APP_MODULES = [
   // Core (loaded first - defines MMGR namespace + utilities)
   'js/mmgr-state.js',
   'js/mmgr-utils.js',
+  // Work package relations (OpenProject-inspired). Pure model: must load
+  // before the renderers and the domain modules, because both read
+  // MMGR.Relations at call time.
+  'js/mmgr-relations.js',
   // Kanban board model. Must load before the renderer and the domain
   // modules, because both read MMGR.Kanban at call time.
   'js/mmgr-kanban.js',

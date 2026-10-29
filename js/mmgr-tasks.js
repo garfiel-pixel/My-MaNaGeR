@@ -136,7 +136,9 @@ var MMGR = window.MMGR || {};
         boardPosition:
           ns.Kanban && typeof ns.Kanban.nextPosition === 'function'
             ? ns.Kanban.nextPosition(s.tasks, status)
-            : 0
+            : 0,
+        // V24: the graph is empty until the user links the card.
+        relations: []
       };
       s.tasks.push(task);
       id = task.id;

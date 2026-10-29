@@ -469,5 +469,15 @@ log any answer the owner gives here and apply it.
     `docs/GOLD-AUDIT.md`'s documented "semantic status colours" keeps (amber means due soon; gold is
     identity), and ARM 1's ban list is the nine retired brand-orange values with an empty allow-list.
     Scan with the gate's list, not a guessed one.
+  - 2026-10-28: **the closing commit `ebc0720` turned CI red at step 10, and no local gate could see it.**
+    Two lines of `CONTINUATION-DIRECTIVE.md` carried a stray CR INSIDE the content (on disk they ended
+    `\r\r\n`): the `.gitattributes` `eol=lf` filter rewrites the line ending but cannot remove a CR that
+    is part of the line, so 2 CR bytes reached the index. The check for this lived ONLY in `ci.yml`,
+    which is the same "CI-only gate is a gate the local battery cannot see" pattern recorded on
+    2026-10-28 for `verify-icons`. Fixed both lines and moved the rule to `tools/verify-eol.cjs` with ONE
+    definition used by three callers (`npm run verify:eol`, the pre-commit hook, and the CI step that used
+    to inline the shell). Two arms: zero CR bytes in the index, and a corpus floor so a broken pathspec
+    cannot report a clean scan of nothing. Each arm proven to fail on its own defect, restored
+    byte-identical. The registry baseline above was also stale (claimed 138, measured 142).
 
 **End of progress file.**

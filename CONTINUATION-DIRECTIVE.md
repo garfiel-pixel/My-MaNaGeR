@@ -74,7 +74,7 @@ must get the audit's own state check (rule 0.1) before anyone claims it.
    docs/history/log-2026-10.md (zero open High items). Wave F is DEPLOYED and LIVE-PROBED
    (Version ID eff0439e-51f6-44fe-9f85-3bb5b3a6f67c, probe 18/18). Two deliberate deferrals
    are recorded, not open: APP-3's optional salt/PBKDF2 step-up and the AI-2 on-device ship.
-3. Run `npm run verify` first; baseline: green, 145/145 unit tests, registry 138/138,
+3. Run `npm run verify` first; baseline: green, 145/145 unit tests, registry 142/142,
    sw shell v491. Browser gates: `qa-full`, `qa-ai-win` 22/22, `qa-code-names` 26/26,
    `verify:gold`, `qa-calc-controls` 63/63, `qa-hero-globe` 16/16, `qa-globe-spin` 15/15.
 4. Every new harness needs THREE edits: the harness, its row in

@@ -305,8 +305,8 @@ async function check(name, expr, expected, hint) {
     `(function(){var el=document.getElementById('kc-lt');var t=el?el.textContent:'';return {val: !!el && t.indexOf('Expected') > -1 && (t.indexOf('d left') > -1 || t.indexOf('OVERDUE') > -1) && t.indexOf('elapsed') > -1};})()`
   );
   await check(
-    '11e kanban drop guard: leadtime card refused in work column',
-    `(function(){MMGR.App.dragCard({dataTransfer:{effectAllowed:'move'}},'t3');var before=MMGR.State.getState().tasks.find(function(t){return t.id==='t3';}).status;MMGR.App.dropCard({preventDefault:function(){}},'inprogress');var after=MMGR.State.getState().tasks.find(function(t){return t.id==='t3';}).status;var toast=document.querySelector('.toast');var ttxt=(toast?toast.textContent:'').toLowerCase();return {val: before===after && ttxt.indexOf('lead-time lane') > -1,before:before,after:after,toast:toast?toast.textContent:null};})()`
+    '11e kanban drop guard: leadtime card refused in another work column',
+    `(function(){MMGR.App.dragCard({dataTransfer:{effectAllowed:'move'}},'t3');var before=MMGR.State.getState().tasks.find(function(t){return t.id==='t3';}).status;MMGR.App.dropCard({preventDefault:function(){}},'blocked');var t3=MMGR.State.getState().tasks.find(function(t){return t.id==='t3';});var after=t3.status;var toast=document.querySelector('.toast');var ttxt=(toast?toast.textContent:'').toLowerCase();return {val: before===after && t3.leadTime===true && ttxt.indexOf('lead-time lane') > -1,before:before,after:after,toast:toast?toast.textContent:null};})()`
   );
   await check(
     '11f kanban drop guard: normal card still moves',

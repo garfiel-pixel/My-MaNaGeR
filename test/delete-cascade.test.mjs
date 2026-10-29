@@ -38,7 +38,11 @@ function fakeEnv(opts = {}) {
   };
   const prepare = statement => {
     const record = args => {
-      if (opts.failTable && statement.indexOf('FROM ' + opts.failTable) !== -1) {
+      if (
+        opts.failTable &&
+        (statement.indexOf('FROM ' + opts.failTable) !== -1 ||
+          statement.indexOf('UPDATE ' + opts.failTable) !== -1)
+      ) {
         throw new Error('no such table: ' + opts.failTable);
       }
       if (opts.hardFail) {
@@ -134,17 +138,50 @@ test('every project-scoped delete is bound to that project id only', async () =>
   });
 });
 
+// RE-BASELINED 2026-10-28 (RBAC sprint 1): membership is keyed by verified
+// email, not by sub, so the purge now binds BOTH. A Google member's sub never
+// equals the address the owner invited, so deleting by sub alone left the row
+// inside someone else's project.
 test('account purge removes team memberships, adoptions and pool rows', async () => {
   const f = fakeEnv();
-  const sub = 'email:user@example.com';
-  await cloudPurgeAccountRows(f.env, sub);
+  const sub = 'google-113487';
+  await cloudPurgeAccountRows(f.env, sub, 'User@Example.com');
   const done = tablesDeleted(f.sql);
   ['cloud_team_members', 'cloud_adoptions', 'cloud_pool_links', 'cloud_pool_items'].forEach(t => {
     assert.equal(done.indexOf(t) !== -1, true, 'account purge missed ' + t);
   });
-  f.sql.forEach(s => {
-    assert.deepEqual(s.args, [sub], 'wrong bind for: ' + s.statement);
+  const team = f.sql.filter(s => /DELETE FROM cloud_team_members/.test(s.statement))[0];
+  assert.deepEqual(team.args, [sub, 'user@example.com'], 'membership delete must bind sub + email');
+  f.sql
+    .filter(s => s.statement.indexOf('DELETE FROM') === 0 && s !== team)
+    .forEach(s => {
+      assert.deepEqual(s.args, [sub], 'wrong bind for: ' + s.statement);
+    });
+});
+
+test('account purge anonymises the membership audit trail but keeps the events', async () => {
+  const f = fakeEnv();
+  await cloudPurgeAccountRows(f.env, 'email:user@example.com', 'user@example.com');
+  const updates = f.sql.filter(s => s.statement.indexOf('UPDATE cloud_team_audit') === 0);
+  assert.equal(updates.length, 2, 'both the target and the actor side must be cleared');
+  updates.forEach(u => {
+    assert.match(u.statement, /SET .*NULL/);
+    assert.deepEqual(u.args, ['user@example.com']);
   });
+  assert.equal(
+    updates.some(u => /invitee_email/i.test(u.statement)),
+    false,
+    'audit rows must survive: they are the project history, only identifiers go'
+  );
+});
+
+// Production has been one migration behind before (0025), and account
+// deletion must not break on a database without 0028.
+test('a database without the audit table still deletes the account', async () => {
+  const f = fakeEnv({ failTable: 'cloud_team_audit' });
+  await cloudPurgeAccountRows(f.env, 'email:user@example.com', 'user@example.com');
+  assert.equal(f.deleted.includes('calc-ws/email:user@example.com.json'), true);
+  assert.equal(tablesDeleted(f.sql).includes('cloud_team_members'), true);
 });
 
 test('account purge deletes pool links BEFORE pool items (they reference the ids)', async () => {

@@ -670,7 +670,7 @@ export async function handleAuthDeleteAccount(request, env) {
   // and its calculator workspace blob. Deleting the account used to leave all
   // of these behind, which contradicts the policy's promise that account
   // deletion removes every server-side record.
-  await cloudPurgeAccountRows(env, session.sub);
+  await cloudPurgeAccountRows(env, session.sub, session.email);
   await env.DB.prepare('DELETE FROM auth_sessions WHERE sub = ?').bind(session.sub).run();
   if (isEmailAccount) {
     const email = session.sub.slice('email:'.length);

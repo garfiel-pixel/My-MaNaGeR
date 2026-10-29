@@ -1353,8 +1353,19 @@ export async function cloudDeleteProjectFully(env, projectId) {
 // test coverage at all.
 // Pool LINKS go first: they reference the pool item ids that are about to be
 // deleted, and nothing guarantees a foreign key cascade.
-export async function cloudPurgeAccountRows(env, sub) {
-  await env.DB.prepare('DELETE FROM cloud_team_members WHERE user_sub = ?').bind(sub).run();
+export async function cloudPurgeAccountRows(env, sub, email) {
+  // RBAC sprint 1 (2026-10-28): a team membership is keyed by the verified
+  // email, and user_sub is only a cache, so a Google member's sub never equals
+  // the invited address. Deleting by sub alone would leave that row - and the
+  // account's name - inside someone else's project, contradicting the privacy
+  // policy's promise that account deletion removes every server-side record.
+  // Both columns are cleared; an absent email binds '' and matches nothing.
+  const cleanEmail = String(email || '')
+    .trim()
+    .toLowerCase();
+  await env.DB.prepare('DELETE FROM cloud_team_members WHERE user_sub = ? OR invitee_email = ?')
+    .bind(sub, cleanEmail)
+    .run();
   await env.DB.prepare('DELETE FROM cloud_adoptions WHERE recipient_sub = ?').bind(sub).run();
   await env.DB.prepare(
     'DELETE FROM cloud_pool_links WHERE pool_item_id IN (SELECT id FROM cloud_pool_items WHERE owner_sub = ?)'
@@ -1362,6 +1373,23 @@ export async function cloudPurgeAccountRows(env, sub) {
     .bind(sub)
     .run();
   await env.DB.prepare('DELETE FROM cloud_pool_items WHERE owner_sub = ?').bind(sub).run();
+  // The membership audit trail is the PROJECT's history, so the events stay;
+  // the personal identifiers inside them do not. Same tolerance rule as the
+  // project purge: a database without migration 0028 must still be deletable.
+  try {
+    await env.DB.prepare('UPDATE cloud_team_audit SET target_email = NULL WHERE target_email = ?')
+      .bind(cleanEmail)
+      .run();
+    await env.DB.prepare(
+      'UPDATE cloud_team_audit SET actor_email = NULL, actor_name = NULL WHERE actor_email = ?'
+    )
+      .bind(cleanEmail)
+      .run();
+  } catch (e) {
+    if (String((e && e.message) || '').indexOf('no such table') === -1) {
+      throw e;
+    }
+  }
   // calc-ws/<sub>.json - the calculator workspace blob, keyed in
   // src/cloud/calc-workspace.js. Deleted best-effort so a storage blip cannot
   // fail the rest of the account deletion.

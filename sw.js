@@ -405,7 +405,16 @@
 // js/mmgr-perf.js, js/mmgr-glass.js, js/marketing.js, js/marketing-globe.js,
 // js/mmgr-combobox.js (new), dist/marketing-bundle.js. No inline script block
 // changed, so the CSP hashes are untouched.
-const CACHE = 'mmgr-shell-v497';
+const CACHE = 'mmgr-shell-v498';
+
+// v498 - KANBAN TASK 3 (plan 2026-10-25): the board becomes a board.
+// Cards carry an explicit slot, so a drop lands above or below the card it
+// was dropped on instead of always appending. Every move now goes through
+// one helper that stamps completedDate and startedDate, which fixes the old
+// bug where dropping a card into Completed left the completion metrics blind.
+// Cards are focusable and move with Alt plus an arrow, each column has a
+// one-line quick add that understands @assignee and due:YYYY-MM-DD, and both
+// the shortcut sheet and the field guide list the new keys.
 
 // v497 - KANBAN TASK 2 (plan 2026-10-25): soft column limits. Column Limits
 // opens a sheet with one number per column, 0 meaning no limit. The header
@@ -414,7 +423,7 @@ const CACHE = 'mmgr-shell-v497';
 // block. The badge counts every card, not only the filtered ones, so a filter
 // can never make a column look under its target.
 
-// v495 - KANBAN TASK 1 (plan 2026-10-25): the board gets a model. A new pure
+// v496 - KANBAN TASK 1 (plan 2026-10-25): the board gets a model. A new pure
 // module js/mmgr-kanban.js owns what a card is, the order inside a column
 // (task.boardPosition, seeded for existing projects by schema v23), and the
 // renderer now asks it instead of re-deriving the rules. state.kanban carries

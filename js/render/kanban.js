@@ -40,7 +40,9 @@ var MMGR = window.MMGR || {};
       rec +
       ' ' +
       wx +
-      '" draggable="true" data-drag-id="' +
+      '" draggable="true" tabindex="0" role="button" aria-label="' +
+      U.escapeHtml(t.name + ', ' + (t.status || 'todo')) +
+      '" data-drag-id="' +
       U.escapeHtml(t.id) +
       '" data-id="' +
       U.escapeHtml(t.id) +
@@ -86,7 +88,9 @@ var MMGR = window.MMGR || {};
       overdue +
       ' ' +
       pulse +
-      '" draggable="true" data-drag-id="' +
+      '" draggable="true" tabindex="0" role="button" aria-label="' +
+      U.escapeHtml(t.name + ', lead time') +
+      '" data-drag-id="' +
       U.escapeHtml(t.id) +
       '" data-id="' +
       U.escapeHtml(t.id) +
@@ -131,6 +135,21 @@ var MMGR = window.MMGR || {};
     }
     const K = boardModel();
     const noTasksAtAll = K.workItems(s).length === 0;
+    function quickAddMarkup(colStatus) {
+      return (
+        '<div class="kqa">' +
+        '<button type="button" class="kqa-add" data-action="kbQuickAdd" data-status="' +
+        colStatus +
+        '">+ Add card</button>' +
+        '<input class="kqa-in is-hide" type="text" maxlength="140" autocomplete="off" ' +
+        'data-status="' +
+        colStatus + // ok: colStatus is one of the four fixed column keys from the cols table
+        '" placeholder="Name @who due:2026-11-01" aria-label="New card name for ' +
+        U.escapeHtml(K.LABELS[colStatus]) +
+        '">' +
+        '</div>'
+      );
+    }
     for (const col of cols) {
       const status = col[0];
       const el = $(col[1]);
@@ -169,7 +188,7 @@ var MMGR = window.MMGR || {};
             : '';
         continue;
       }
-      el.innerHTML = tasks.map(kanbanCard).join('');
+      el.innerHTML = tasks.map(kanbanCard).join('') + quickAddMarkup(status);
     }
     const ltEl = $('kc-lt');
     if (ltEl) {

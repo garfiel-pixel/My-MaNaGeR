@@ -5981,6 +5981,46 @@ body.readonly-mode
   border-color: var(--green);
   background: rgba(0, 155, 58, 0.05);
 }
+.kc:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.kc.drop-before {
+  box-shadow: 0 -3px 0 var(--gold);
+}
+.kqa {
+  margin-top: 4px;
+}
+.kqa-add {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  padding: 7px 8px;
+  font: inherit;
+  font-size: 0.74rem;
+  color: var(--slate);
+  cursor: pointer;
+}
+.kqa-add:hover {
+  border-color: var(--gold);
+  color: var(--gold-ink);
+}
+.kqa-in {
+  width: 100%;
+  margin-top: 6px;
+  padding: 8px;
+  border: 1px solid var(--gold);
+  border-radius: 4px;
+  font: inherit;
+  font-size: 0.78rem;
+  background: #fff;
+  color: var(--ink);
+}
+body.dark-mode .kqa-in {
+  background: rgba(0, 0, 0, 0.25);
+}
 .cn {
   font-size: 0.78rem;
   font-weight: 600;

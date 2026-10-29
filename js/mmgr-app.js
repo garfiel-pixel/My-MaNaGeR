@@ -3016,6 +3016,202 @@ var MMGR = window.MMGR || {};
   // ---- Kanban ----
   let dragTaskId = null;
 
+  // Every board move, whatever triggered it (drag, keyboard, future touch
+  // controls), goes through here. Ordering, status stamping, lead-time exit,
+  // WIP warnings, and the three affected renders stay in one place.
+  function warnWip(status, info) {
+    showToast(
+      ns.Kanban.LABELS[status] +
+        ' is over its limit (' +
+        info.count +
+        ' of ' +
+        info.limit +
+        '). The move is kept.',
+      'warn'
+    );
+  }
+
+  function applyMove(id, status, beforeId) {
+    let moved = null;
+    let info = null;
+    ns.State.updateState(function (s) {
+      const task = (s.tasks || []).find(function (t) {
+        return t && t.id === id;
+      });
+      if (!task) {
+        return;
+      }
+      const result = ns.Kanban.moveTo(s, id, status, beforeId);
+      if (!result.changed) {
+        return;
+      }
+      // A same-column reorder must NOT clear leadTime. The card only leaves
+      // the Lead-Time lane when it actually changes status column.
+      if (result.from !== result.to) {
+        task.leadTime = false;
+        ns.Kanban.stampStatus(task, status);
+      }
+      moved = result;
+      info = ns.Kanban.wip(s, status);
+    });
+    if (!moved) {
+      return false;
+    }
+    R.renderKanban();
+    R.renderWbs();
+    R.renderDash();
+    if (info && info.over) {
+      warnWip(status, info);
+    }
+    return true;
+  }
+
+  // ---- Kanban quick add ----
+  function kbQuickAdd(el) {
+    if (!el) {
+      return;
+    }
+    const wrap = el.closest('.kqa');
+    const input = wrap && wrap.querySelector('.kqa-in');
+    if (!input) {
+      return;
+    }
+    input.classList.remove('is-hide');
+    input.setAttribute('data-status', el.getAttribute('data-status') || 'todo');
+    input.value = '';
+    input.focus();
+  }
+
+  function hideQuickAdd(input) {
+    if (!input) {
+      return;
+    }
+    input.value = '';
+    input.classList.add('is-hide');
+  }
+
+  function commitQuickAdd(input) {
+    if (!input || input.classList.contains('is-hide')) {
+      return;
+    }
+    if (isReadonly()) {
+      showToast('View-only access: the board can be read but not changed.', 'err');
+      hideQuickAdd(input);
+      return;
+    }
+    const parsed = ns.Kanban.parseQuickAdd(input.value);
+    const status = input.getAttribute('data-status') || 'todo';
+    if (!parsed) {
+      hideQuickAdd(input);
+      return;
+    }
+    ns.Tasks.createTask({
+      name: parsed.name,
+      assignee: parsed.assignee,
+      endDate: parsed.endDate,
+      status: status
+    });
+    hideQuickAdd(input);
+    R.renderKanban();
+    R.renderWbs();
+    R.renderDash();
+    const info = ns.Kanban.wip(S(), status);
+    if (info.over) {
+      warnWip(status, info);
+    }
+    showToast('Card added to ' + ns.Kanban.LABELS[status] + '.', 'ok');
+  }
+
+  // Keyboard entry points. The document-level listeners live outside this
+  // closure, so they stay thin routers and the board rules (read-only guard,
+  // lead-time guard, focus restore) live here with the rest of the board.
+  // Returns true when the key was consumed, so the router can preventDefault.
+  function kbCardKey(card, key, alt) {
+    if (!card) {
+      return false;
+    }
+    if (key === 'Enter' && !alt) {
+      if (window.MMGR.KanbanCard && window.MMGR.KanbanCard.open) {
+        window.MMGR.KanbanCard.open(card.getAttribute('data-drag-id'));
+        return true;
+      }
+      return false;
+    }
+    if (!alt) {
+      return false;
+    }
+    if (key !== 'ArrowLeft' && key !== 'ArrowRight' && key !== 'ArrowUp' && key !== 'ArrowDown') {
+      return false;
+    }
+    if (isReadonly()) {
+      showToast('View-only access: the board can be read but not changed.', 'err');
+      return true;
+    }
+    const id = card.getAttribute('data-drag-id');
+    const task = (S().tasks || []).find(t => t.id === id);
+    if (!task) {
+      return true;
+    }
+    if (key === 'ArrowUp' || key === 'ArrowDown') {
+      const delta = key === 'ArrowUp' ? -1 : 1;
+      let changed = false;
+      ns.State.updateState(function (s) {
+        changed = ns.Kanban.moveBy(s, id, delta).changed;
+      });
+      if (changed) {
+        R.renderKanban();
+        R.renderWbs();
+        R.renderDash();
+      } else {
+        showToast('That card is already at the ' + (delta < 0 ? 'top' : 'bottom') + '.', 'warn');
+      }
+    } else {
+      if (task.leadTime) {
+        showToast(
+          'Lead-time cards belong in the Lead-Time lane. WIP columns are for crew-driven work.',
+          'err'
+        );
+        return true;
+      }
+      const at = ns.Kanban.COLUMNS.indexOf(task.status || 'todo');
+      const next = at + (key === 'ArrowLeft' ? -1 : 1);
+      if (next < 0 || next >= ns.Kanban.COLUMNS.length) {
+        showToast(
+          'That card is already in the ' + (next < 0 ? 'first' : 'last') + ' column.',
+          'warn'
+        );
+        return true;
+      }
+      applyMove(id, ns.Kanban.COLUMNS[next], null);
+    }
+    // The board re-rendered, so the old node is gone. Restore focus to the
+    // same card, otherwise the next key press goes nowhere. In lane mode the
+    // hidden status columns still hold stale nodes, so pick the visible one.
+    const again = document.querySelectorAll('.kc[data-id="' + id + '"]');
+    for (let i = 0; i < again.length; i++) {
+      if (again[i].offsetParent !== null) {
+        again[i].focus();
+        break;
+      }
+    }
+    return true;
+  }
+
+  function kbQuickKey(input, key) {
+    if (!input) {
+      return false;
+    }
+    if (key === 'Enter') {
+      commitQuickAdd(input);
+      return true;
+    }
+    if (key === 'Escape') {
+      hideQuickAdd(input);
+      return true;
+    }
+    return false;
+  }
+
   // OWNER 2026-09-28: dragend fires on the drag SOURCE element. A successful
   // drop re-renders the board, which detaches that element, so the event
   // never bubbles to document and the dragend cleanup would never run -
@@ -3051,7 +3247,25 @@ var MMGR = window.MMGR || {};
     ev.dataTransfer.effectAllowed = 'move';
   }
 
-  function dropCard(ev, status) {
+  // The card the dragged card should be inserted BEFORE, or null to append.
+  // Uses the pointer's Y against each card's midpoint, so dropping on the top
+  // half of a card inserts above it and the bottom half inserts below it.
+  function dropBeforeId(colEl, clientY) {
+    const cards = Array.prototype.slice.call(colEl.querySelectorAll('.kc'));
+    for (let i = 0; i < cards.length; i++) {
+      // Never treat the card being dragged as its own insertion point.
+      if (cards[i].getAttribute('data-id') === dragTaskId) {
+        continue;
+      }
+      const rect = cards[i].getBoundingClientRect();
+      if (clientY < rect.top + rect.height / 2) {
+        return cards[i].getAttribute('data-id');
+      }
+    }
+    return null;
+  }
+
+  function dropCard(ev, status, beforeId) {
     ev.preventDefault();
     // Second guard (defense in depth): the drop is the state mutation.
     if (isReadonly()) {
@@ -3062,38 +3276,24 @@ var MMGR = window.MMGR || {};
     }
     if (dragTaskId) {
       const task = (S().tasks || []).find(t => t.id === dragTaskId);
-      // Monolith drop guard: lead-time cards belong in the Lead-Time lane ,
-      // WIP columns are for crew-driven work. Refuse the drop with a toast
-      // instead of silently moving a third-party wait into a work column.
-      if (task && task.leadTime) {
+      // Lead-time cards belong in the Lead-Time lane. Reordering one inside
+      // its current status column is fine; moving it into a different work
+      // column is not.
+      if (task && task.leadTime && (task.status || 'todo') !== status) {
         showToast(
-          'Lead-time cards belong in the Lead-Time lane , WIP columns are for crew-driven work.',
+          'Lead-time cards belong in the Lead-Time lane. WIP columns are for crew-driven work.',
           'err'
         );
         dragTaskId = null;
         document.querySelectorAll('.kcol').forEach(c => c.classList.remove('dov'));
         return;
       }
-      ns.State.updateState(function (s) {
-        const task = (s.tasks || []).find(t => t.id === dragTaskId);
-        if (task) {
-          task.status = status;
-        }
-        // OWNER 2026-09-28: a card that enters a status column LEAVES the
-        // Lead-Time lane. The old render kept it in both places, so dragging
-        // it out changed nothing and dropping it back toggled leadTime off -
-        // the card silently vanished from the lane.
-        if (task) {
-          task.leadTime = false;
-        }
-      });
-      R.renderKanban();
-      R.renderWbs();
-      R.renderDash();
+      applyMove(dragTaskId, status, beforeId || null);
     }
     dragTaskId = null;
     endBoardDrag();
     document.querySelectorAll('.kcol').forEach(c => c.classList.remove('dov'));
+    document.querySelectorAll('.kc.drop-before').forEach(c => c.classList.remove('drop-before'));
   }
 
   function dropCardLeadtime(ev) {
@@ -3745,6 +3945,11 @@ var MMGR = window.MMGR || {};
     kbWip: kbWip,
     kbWipClose: kbWipClose,
     saveKbWip: saveKbWip,
+    kbQuickAdd: kbQuickAdd,
+    kbCardKey: kbCardKey,
+    kbQuickKey: kbQuickKey,
+    hideQuickAdd: hideQuickAdd,
+    dropBeforeId: dropBeforeId,
     dragCard: dragCard,
     dropCard: dropCard,
     endBoardDrag: endBoardDrag,
@@ -4852,6 +5057,7 @@ window.MMGR = MMGR;
     kbWip: () => window.MMGR.App.kbWip(),
     kbWipClose: () => window.MMGR.App.kbWipClose(),
     saveKbWip: el => window.MMGR.App.saveKbWip(el),
+    kbQuickAdd: el => window.MMGR.App.kbQuickAdd(el),
     populateSprint: () => window.MMGR.App.populateSprint(),
     openPrompt: el => window.MMGR.App.openPrompt(el.getAttribute('data-type')),
     openDrwToSave: () => window.MMGR.App.openDrwToSave(),
@@ -5799,9 +6005,18 @@ window.MMGR = MMGR;
 
   document.addEventListener('dragover', function (e) {
     const col = e.target.closest('[data-drop-status]');
-    if (col) {
-      e.preventDefault();
-      col.classList.add('dov');
+    if (!col) {
+      return;
+    }
+    e.preventDefault();
+    col.classList.add('dov');
+    const before = window.MMGR.App.dropBeforeId(col, e.clientY);
+    document.querySelectorAll('.kc.drop-before').forEach(c => c.classList.remove('drop-before'));
+    if (before) {
+      const target = col.querySelector('.kc[data-id="' + before + '"]');
+      if (target) {
+        target.classList.add('drop-before');
+      }
     }
   });
 
@@ -5809,6 +6024,7 @@ window.MMGR = MMGR;
     const col = e.target.closest('[data-drop-status]');
     if (col) {
       col.classList.remove('dov');
+      col.querySelectorAll('.kc.drop-before').forEach(c => c.classList.remove('drop-before'));
     }
   });
 
@@ -5822,7 +6038,39 @@ window.MMGR = MMGR;
     if (status === 'leadtime') {
       window.MMGR.App.dropCardLeadtime(e);
     } else {
-      window.MMGR.App.dropCard(e, status);
+      window.MMGR.App.dropCard(e, status, window.MMGR.App.dropBeforeId(col, e.clientY));
+    }
+  });
+
+  // Kanban keyboard moves. The board must be usable without a mouse:
+  //   Alt + Left / Right  move the focused card to the previous / next column
+  //   Alt + Up / Down     reorder inside the current column
+  //   Enter               open the card sheet (Task 5 wires the opener)
+  // Plain arrows are left alone so page scrolling keeps working.
+  document.addEventListener('keydown', function (e) {
+    const card = e.target && e.target.closest ? e.target.closest('.kc[data-drag-id]') : null;
+    if (!card) {
+      return;
+    }
+    if (window.MMGR.App.kbCardKey(card, e.key, e.altKey)) {
+      e.preventDefault();
+    }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    const input = e.target && e.target.closest ? e.target.closest('.kqa-in') : null;
+    if (!input) {
+      return;
+    }
+    if (window.MMGR.App.kbQuickKey(input, e.key)) {
+      e.preventDefault();
+    }
+  });
+
+  document.addEventListener('focusout', function (e) {
+    const input = e.target && e.target.closest ? e.target.closest('.kqa-in') : null;
+    if (input && !input.value.trim()) {
+      window.MMGR.App.hideQuickAdd(input);
     }
   });
 

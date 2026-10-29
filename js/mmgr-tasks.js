@@ -102,36 +102,53 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- Task CRUD ----
-  function addTask() {
+  // One shape for every new card, whatever created it: the WBS button, the
+  // Kanban quick add, or a future import. Callers own the re-render.
+  function createTask(fields) {
+    const f = fields || {};
+    const status = f.status || 'todo';
+    let id = '';
     ns.State.updateState(function (s) {
       if (!s.tasks) {
         s.tasks = [];
       }
-      s.tasks.push({
+      const task = {
         id: U.genId('t'),
-        name: 'New Task',
+        name: f.name || 'New Task',
         level: 0,
         indent: 0,
         isPhase: false,
-        status: 'todo',
-        startDate: '',
-        endDate: '',
-        duration: '',
-        assignee: '',
+        status: status,
+        startDate: f.startDate || '',
+        endDate: f.endDate || '',
+        duration: f.duration || '',
+        assignee: f.assignee || '',
         critical: false,
         leadTime: false,
         recurring: false,
         weatherExposed: false,
         confidence: 'high',
         predecessors: [],
-        notes: '',
+        notes: f.notes || '',
         weatherSensitive: false,
-        // V23: cards sort by an explicit slot, and flow metrics need a
-        // creation date that is not guessed later.
+        // V23: explicit board slot and an honest creation date.
         createdDate: U.todayStr(),
-        boardPosition: ns.Kanban ? ns.Kanban.nextPosition(s.tasks, 'todo') : 0
-      });
+        boardPosition:
+          ns.Kanban && typeof ns.Kanban.nextPosition === 'function'
+            ? ns.Kanban.nextPosition(s.tasks, status)
+            : 0
+      };
+      s.tasks.push(task);
+      id = task.id;
+      if (ns.Kanban && ns.Kanban.stampStatus) {
+        ns.Kanban.stampStatus(task, status);
+      }
     });
+    return id;
+  }
+
+  function addTask() {
+    createTask({});
     R.renderWbs();
   }
 
@@ -201,14 +218,22 @@ var MMGR = window.MMGR || {};
     ns.State.updateState(function (s) {
       const task = (s.tasks || []).find(t => t.id === id);
       if (task) {
-        task[field] = value;
-        // C9: stamp completedDate when status changes to completed
-        if (field === 'status' && value === 'completed' && !task.completedDate) {
-          task.completedDate = U.todayStr();
-        }
-        // Clear completedDate if status changes away from completed
-        if (field === 'status' && value !== 'completed' && task.completedDate) {
-          delete task.completedDate;
+        if (field === 'status') {
+          // One transition helper for drag, keyboard, select, and WBS edits.
+          // It also records startedDate and statusSince.
+          if (ns.Kanban) {
+            const before = task.status || 'todo';
+            ns.Kanban.stampStatus(task, value);
+            // A real column change also leaves the Lead-Time lane. Reordering
+            // inside the same column (applyMove) does not.
+            if (before !== value) {
+              task.leadTime = false;
+            }
+          } else {
+            task.status = value;
+          }
+        } else {
+          task[field] = value;
         }
         if (field === 'duration' || field === 'startDate') {
           if (task.startDate && task.duration) {
@@ -1116,6 +1141,7 @@ var MMGR = window.MMGR || {};
   // ---- API ----
   ns.Tasks = {
     addTask: addTask,
+    createTask: createTask,
     durationFromDates: durationFromDates,
     updTaskField: updTaskField,
     tglMilestone: tglMilestone,

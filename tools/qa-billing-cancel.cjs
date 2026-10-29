@@ -65,7 +65,14 @@ function jsonFetch(url, opts = {}) {
       headers: Object.assign(
         {
           Accept: 'application/json',
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          // The Worker keys its rate limiter on CF-Connecting-IP (src/lib/
+          // http.js). Every CI suite reaches this one local server from
+          // 127.0.0.1, so a TEST-NET-3 address (RFC 5737, never routed) keeps
+          // this suite's budget separate from the suites that ran before it
+          // without switching any limit off. A caller passing its own value
+          // still wins - Object.assign below puts opts.headers last.
+          'CF-Connecting-IP': '203.0.113.14'
         },
         opts.headers || {}
       )

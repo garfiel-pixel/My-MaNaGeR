@@ -392,6 +392,25 @@ const { chromePath: CHROME, BASE: _BASE, PORT } = require('./chrome-launcher.cjs
 // (127.0.0.1:8765) where nothing listens in CI/nightly - nightly runs 10-15
 // all failed at 'T2: Cloud phase 2' with 404s for this single missing line.
 const BASE = process.env.WRANGLER_DEV_URL || _BASE;
+
+// The Worker keys its rate limiter on CF-Connecting-IP (src/lib/http.js). In
+// production every client has its own address, but every suite in CI's T2
+// chain reaches the same local server from 127.0.0.1, so this suite alone
+// spends the shared 30-per-minute budget and the suites after it answer 429
+// instead of the 403 they assert. A TEST-NET-3 address (RFC 5737, never
+// routed) gives this suite its own budget without switching any limit off -
+// the same seam tools/qa-team-ui.cjs already uses.
+const QA_IP = '203.0.113.12';
+const _realFetch = globalThis.fetch;
+globalThis.fetch = function (input, init) {
+  const o = Object.assign({}, init || {});
+  const h = new Headers(o.headers || undefined);
+  if (!h.has('CF-Connecting-IP')) {
+    h.set('CF-Connecting-IP', QA_IP);
+  }
+  o.headers = h;
+  return _realFetch.call(globalThis, input, o);
+};
 let ws = null;
 let msgId = 0;
 const pending = new Map();

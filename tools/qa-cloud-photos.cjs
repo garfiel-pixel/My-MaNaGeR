@@ -34,6 +34,25 @@
 const BASE = process.env.WRANGLER_DEV_URL || process.env.QA_BASE || 'http://127.0.0.1:8787';
 const TAG = '[photos]';
 
+// The Worker keys its rate limiter on CF-Connecting-IP (src/lib/http.js). In
+// production every client has its own address, but every suite in CI's T2
+// chain reaches this one local server from 127.0.0.1, so phase1+phase2 spend
+// the shared 30-per-minute budget and the viewer checks here answered 429
+// instead of the 403 they assert. A TEST-NET-3 address (RFC 5737, never
+// routed) gives this suite its own budget without switching any limit off -
+// the same seam tools/qa-team-ui.cjs already uses.
+const QA_IP = '203.0.113.13';
+const _realFetch = globalThis.fetch;
+globalThis.fetch = function (input, init) {
+  const o = Object.assign({}, init || {});
+  const h = new Headers(o.headers || undefined);
+  if (!h.has('CF-Connecting-IP')) {
+    h.set('CF-Connecting-IP', QA_IP);
+  }
+  o.headers = h;
+  return _realFetch.call(globalThis, input, o);
+};
+
 let pass = 0;
 let fail = 0;
 

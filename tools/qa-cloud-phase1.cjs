@@ -29,6 +29,25 @@ const crypto = require('crypto');
 const { chromePath: CHROME, BASE: _BASE, PORT } = require('./chrome-launcher.cjs');
 const BASE = process.env.WRANGLER_DEV_URL || _BASE;
 
+// The Worker keys its rate limiter on CF-Connecting-IP (src/lib/http.js). In
+// production every client has its own address, but every suite in CI's T2
+// chain reaches the same local server from 127.0.0.1, so this suite alone
+// spends the shared 30-per-minute budget and the suites after it answer 429
+// instead of the 403 they assert. A TEST-NET-3 address (RFC 5737, never
+// routed) gives this suite its own budget without switching any limit off -
+// the same seam tools/qa-team-ui.cjs already uses.
+const QA_IP = '203.0.113.11';
+const _realFetch = globalThis.fetch;
+globalThis.fetch = function (input, init) {
+  const o = Object.assign({}, init || {});
+  const h = new Headers(o.headers || undefined);
+  if (!h.has('CF-Connecting-IP')) {
+    h.set('CF-Connecting-IP', QA_IP);
+  }
+  o.headers = h;
+  return _realFetch.call(globalThis, input, o);
+};
+
 // ---- R2 blob decryption (mirrors src/lib/http.js cloudDecryptState) -------
 const R2_ENC_VERSION = 2;
 const R2_ENC_KDF_ITERS = 100000;

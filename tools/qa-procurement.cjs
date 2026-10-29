@@ -411,10 +411,12 @@ function quoteFromBody(body) {
       };
     });
     check(
-      'M2 migration seeds supplierBook + packs.procurement=false, keeps the C10 material-order row, schema 22',
+      'M2 migration seeds supplierBook + packs.procurement=false, keeps the C10 material-order row, schema 23',
       // Re-baselined 2026-10-21: the P5 quantity-break wave bumped
       // SCHEMA_VERSION 21 -> 22 (additive back-fill of priceTiers).
-      m2.v === 22 &&
+      // Re-baselined 2026-10-29: Kanban task 1 bumped 22 -> 23 (state.kanban
+      // and task.boardPosition, additive back-fill in js/mmgr-state.js).
+      m2.v === 23 &&
         m2.seeded &&
         m2.packSeeded &&
         m2.c10 &&

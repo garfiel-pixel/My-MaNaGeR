@@ -405,7 +405,16 @@
 // js/mmgr-perf.js, js/mmgr-glass.js, js/marketing.js, js/marketing-globe.js,
 // js/mmgr-combobox.js (new), dist/marketing-bundle.js. No inline script block
 // changed, so the CSP hashes are untouched.
-const CACHE = 'mmgr-shell-v499';
+const CACHE = 'mmgr-shell-v500';
+
+// v500 - SIDEBAR SCROLL CONTAINMENT (owner 2026-10-29): wheeling past the
+// bottom of the sections sidebar (#app-sidebar) and the mobile .sec-nav
+// drawer used to chain into the page beside it, dragging the content the
+// user was reading. Both scroll containers now carry
+// overscroll-behavior: contain, so their scroll ends at their own edge.
+// Verified A/B in a real browser (control 0 -> 2400px chained, contain
+// 0 -> 0). Changed shell assets: css/mmgr.css. No inline script touched,
+// so the CSP hash set is unchanged.
 
 // v499 - CI REPAIR (2026-10-29): team-accept.html pointed its icon link at a
 // favicon.svg that has never existed, so the T1 internal-links gate failed on

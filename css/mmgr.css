@@ -1134,6 +1134,9 @@ body.nav-open #nav-scrim {
   flex-direction: column;
   overflow-y: auto;
   overflow-x: hidden;
+  /* OWNER 2026-10-29: wheeling past the sidebar's last section must NOT drag
+     the page beside it - scroll chaining is contained at this boundary. */
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
 /* Rail head: same hamburger as the header button, bare icon (no box),    rotated 90deg while the rail is open - one smooth spring (doctrine 3). */
@@ -7971,6 +7974,9 @@ body.dark-mode .wbs-alert-item {
     gap: 12px;
     overflow-y: auto;
     overflow-x: hidden;
+    /* OWNER 2026-10-29: same rule as #app-sidebar - the drawer's own scroll
+       ends at the drawer, never on the page behind it. */
+    overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     background: var(--card);
     border-right: 1px solid var(--border);

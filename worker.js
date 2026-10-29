@@ -35,7 +35,7 @@ const INLINE_SCRIPT_HASHES = [
   "'sha256-7BIp3SE8LrjSq5puH0lRtmP51SnLzcmBy32sBq0Zcps='",
   "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='",
   "'sha256-hkXebphLbybaZt8yNpjkxPc3WjJNQDh0zB2AxsplVEg='",
-  "'sha256-zjRzZPnYvqpVdClbBFbiwhQZD8YBm2Dr4K6ouDQj3PA='",
+  "'sha256-wjOuhsI1FCfav4UibtrbppahfLCkC3f4swEtg0ZGS30='",
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='",
   "'sha256-pmiUsOqQa0BPAXsieggzTCopGA0jQO863MBE2hEoBb8='",
   "'sha256-7cQZf8bzyvMY1EwebBo5YuL3PZ9T/X5CTWFRXO3Aq5E='",
@@ -216,8 +216,9 @@ const PADDLE_CSP = [
 // single-page-application) answered 200 with index.html for ANY unknown
 // path, so a typo looked like a working page and crawlers indexed junk.
 // These are the served page paths, extension-less (wrangler maps /pricing to
-// pricing.html by itself). /team/ is exempt because the RBAC invite link
-// (/team/accept/<token>) is a real app route awaiting its UI.
+// pricing.html by itself). /team/accept/<token> is handled by an explicit
+// rewrite in fetch() before this guard, so it is not listed here: the guard
+// sees the rewritten /team-accept.html path instead.
 const PAGE_ROUTES = new Set([
   '/',
   '/index',
@@ -237,6 +238,7 @@ const PAGE_ROUTES = new Set([
   '/reviews',
   '/seed-test',
   '/signin',
+  '/team-accept',
   '/terms',
   '/verify'
 ]);
@@ -456,7 +458,7 @@ export default {
   async fetch(request, env) {
     try {
       const url = new URL(request.url);
-      const normalized = normalizePathname(url.pathname);
+      let normalized = normalizePathname(url.pathname);
 
       // API routes run BEFORE the ASSETS binding.
       if (normalized.indexOf('/api/') === 0) {
@@ -504,15 +506,29 @@ export default {
         return privateNotFound();
       }
 
+      // RBAC sprint 2: /team/accept/<token> is a real app route. The static
+      // asset layer cannot serve a parameterised path, so the request is
+      // rewritten to the standalone page HERE - before the 404 guard - and
+      // then travels the normal document path (CSP + security headers + cache
+      // rules) below. js/team-accept.js reads the token from location.pathname;
+      // nothing is copied into the query string, so it cannot leak through a
+      // Referer header. A malformed token shape is deliberately NOT rewritten,
+      // so it reaches the guard and answers a real 404 instead of the SPA
+      // shell.
+      const teamAcceptMatch = /^\/team\/accept\/([A-Za-z0-9_-]{8,256})\/?$/.exec(normalized);
+      if (teamAcceptMatch && (request.method === 'GET' || request.method === 'HEAD')) {
+        const pageUrl = new URL(url.toString());
+        pageUrl.pathname = '/team-accept.html';
+        pageUrl.search = '';
+        request = new Request(pageUrl.toString(), request);
+        normalized = '/team-accept.html';
+      }
+
       // 8.3: a real 404 for unknown, extension-less paths (never the SPA
       // fallback). Paths with a file extension are left to the asset layer,
       // which already answers 404 for a genuinely missing asset.
       const lastSeg = normalized.slice(normalized.lastIndexOf('/') + 1);
-      if (
-        lastSeg.indexOf('.') === -1 &&
-        normalized.indexOf('/team/') !== 0 &&
-        !PAGE_ROUTES.has(normalized)
-      ) {
+      if (lastSeg.indexOf('.') === -1 && !PAGE_ROUTES.has(normalized)) {
         const headers = Object.assign(
           { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
           HEADERS
@@ -521,7 +537,20 @@ export default {
         return new Response(notFoundPage(), { status: 404, headers: headers });
       }
 
-      const response = await env.ASSETS.fetch(request);
+      let response = await env.ASSETS.fetch(request);
+      // The asset layer answers /page.html with a 307 to /page (its
+      // extensionless html_handling). On the invitation route that redirect
+      // would move the browser to /team-accept and the token - which only ever
+      // lives in the path - would be gone. The Worker therefore resolves the
+      // redirect itself and serves the document at the URL the person opened,
+      // so the address bar keeps /team/accept/<token>.
+      if (teamAcceptMatch && response.status >= 300 && response.status < 400) {
+        const loc = response.headers.get('Location');
+        if (loc) {
+          const target = new URL(loc, url);
+          response = await env.ASSETS.fetch(new Request(target.toString()));
+        }
+      }
       // 8.5 (RB-1, 2026-10-25): A SCRIPT URL IS NEVER ANSWERED WITH A PAGE.
       // not_found_handling is single-page-application, so a missing asset is
       // served index.html with 200. That is right for a person mistyping a

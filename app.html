@@ -407,6 +407,12 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;visibility:h
          the plan + identity never scroll away with the nav. -->
     <div class="db-plan" id="rail-plan" hidden></div>
     <button type="button" id="rail-upgrade" class="db-upgrade" data-cd-upgrade="1" hidden>Upgrade to Premium</button>
+    <!-- RBAC sprint 2: invitations and collaborators. Lives in the rail
+         because the launcher's top row is already at its width budget at
+         360px - a header button there would shift the layout. Hidden until a
+         verified session answers, so a signed-out visitor never sees a control
+         that can only 403. -->
+    <button type="button" class="db-team-bell" data-team-bell aria-label="Invitations and collaborators" aria-haspopup="dialog" aria-expanded="false" aria-controls="team-pop" hidden><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> <span>Invitations</span><span class="team-badge" id="team-bell-count" hidden>0</span></button>
     <div class="db-user" id="rail-user">
       <button type="button" class="db-signin" data-action="openSignIn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Sign in</button>
     </div>
@@ -538,6 +544,19 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;visibility:h
     </div>
     <div class="cd-list" id="cloud-dash-list" role="list"></div>
     <div class="cd-status" id="cloud-dash-status" role="status" aria-live="polite"></div>
+  </div>
+
+  <!-- RBAC sprint 2: projects other people shared with this verified email.
+       Rendered by js/cloud/team-ui.js from /api/team/memberships and hidden
+       when there are none, so an owner who never collaborates sees no extra
+       section. Opening one seeds the team scope slot and goes to project.html
+       exactly like My Cloud Projects does. -->
+  <div class="cloud-dash" id="shared-dash" hidden>
+    <div class="cd-head">
+      <h2><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Shared with me</h2>
+      <span class="cd-sub">Projects other owners gave you access to</span>
+    </div>
+    <div class="cd-list" id="shared-list" role="list"></div>
   </div>
 
   <!-- CLOUD-CODES-AND-DELETE (2026-08-16): the ONE place to enter any cloud

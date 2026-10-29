@@ -424,6 +424,18 @@ jobs:
         env:
           QA_PORT: 8812
 
+      # The browser half of RBAC sprint 2. It spawns its own wrangler + D1/R2
+      # (like every T3 suite) and drives the real Chrome over the invitation
+      # bell, the accept landing page, the member scope, a queued supervisor
+      # save, a read-only client, and a live revoke. Ports are unique.
+      - name: "T3: Team UI (bell, invitation link, member scope, revoke)"
+        id: qa-team-ui
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: node tools/qa-team-ui.cjs
+        env:
+          QA_PORT: 8813
+          QA_CDP_PORT: 9246
+
       - name: "T2: Reviews"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-reviews.cjs
@@ -804,6 +816,7 @@ jobs:
           echo "| Inline JS parse | ${{ steps.inline.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Line endings | ${{ steps.eol.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Client codes E2E | ${{ steps.qa-client-codes.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Team UI E2E | ${{ steps.qa-team-ui.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Billing cancel contract | ${{ steps.qa-billing-cancel.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| API keys E2E | ${{ steps.qa-api-keys.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Sync bond E2E | ${{ steps.qa-sync-bond.outcome }} |" >> $GITHUB_STEP_SUMMARY

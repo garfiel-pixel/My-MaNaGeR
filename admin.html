@@ -622,7 +622,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
            sub-section reacts to the 402 member_limit upsell. -->
       <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px" id="team-section">
         <div class="sub-head"><svg class="ico" aria-hidden="true" style="width:14px;height:14px"><use href="css/mmgr-icons.svg#i-users"></use></svg> Named Team Members</div>
-        <p class="t-note">Invite someone who already has a My MaNaGeR account and give them a role. Code sharing above keeps working alongside these roles.</p>
+        <p class="t-note">Invite any email address and give it a role. The invitation appears in that person's notifications when they sign in, so no account has to exist first and email is optional. Code sharing above keeps working alongside these roles.</p>
         <div id="team-upsell" hidden role="status" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:0 0 10px;font-size:.76rem"></div>
         <div id="team-invite-row" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
           <input id="team-invite-email" type="email" maxlength="160" placeholder="name@example.com" style="flex:1;min-width:180px" autocomplete="off" aria-label="Team member email address">
@@ -2693,17 +2693,41 @@ async function teamList(){
     const members = data.members || [];
     if (!members.length){ wrap.textContent = 'No named members yet. Invite someone above.'; return; }
     wrap.innerHTML = members.map(function(m){
-      const scopeTxt = (m.role === 'client' && Array.isArray(m.scope) && m.scope.length) ? ' · ' + escapeHtml(m.scope.join(', ')) : '';
+      const scopeTxt = (m.role === 'client' && Array.isArray(m.scope) && m.scope.length)
+        ? ' · Sections: ' + escapeHtml(m.scope.join(', '))
+        : '';
+      // Pending invitations carry their own deadline; the sender is the person
+      // who needs that number, not the invitee (who sees it in the app).
+      let when = '';
+      if (m.status === 'pending' && m.expiresAt) when = ' · Expires ' + escapeHtml(teamShortDate(m.expiresAt));
+      else if (m.status === 'active' && m.acceptedAt) when = ' · Joined ' + escapeHtml(teamShortDate(m.acceptedAt));
+      // Resend is the recovery for every non-active state that is still
+      // useful: pending (lost the link), expired, declined. Revoked rows are
+      // intentionally dead - a row is never resurrected by accident.
+      const canResend = m.status === 'pending' || m.status === 'expired' || m.status === 'declined';
+      const canEdit = m.status !== 'revoked';
+      const canRevoke = m.status !== 'revoked';
       return '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:4px 0;border-bottom:1px solid var(--border)">' +
         '<span style="color:var(--title,var(--text));font-weight:600">' + escapeHtml(m.userSub.replace(/^email:/,'')) + '</span>' +
-        '<span style="color:var(--slate)">' + escapeHtml(teamRoleLabel(m.role)) + ' · ' + escapeHtml(m.status) + scopeTxt + '</span>' +
-        (m.status === 'revoked' ? '' : '<button class="btn btn-n btn-s" data-action="teamRevoke" data-id="' + m.id + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Revoke</button>') +
-        '<button class="btn btn-n btn-s" data-action="teamUpdate" data-id="' + m.id + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-pencil"></use></svg> Edit</button>' +
-        '</div>';
+        '<span style="color:var(--slate)">' + escapeHtml(teamRoleLabel(m.role)) + ' · ' + escapeHtml(m.status) + when + scopeTxt + '</span>' +
+        '<span style="margin-left:auto;display:flex;gap:4px;flex-wrap:wrap">' +
+        (canResend ? '<button class="btn btn-n btn-s" data-action="teamResend" data-id="' + m.id + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Resend</button>' : '') +
+        (canRevoke ? '<button class="btn btn-n btn-s" data-action="teamRevoke" data-id="' + m.id + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> ' + (m.status === 'pending' ? 'Cancel invite' : 'Revoke') + '</button>' : '') +
+        (canEdit ? '<button class="btn btn-n btn-s" data-action="teamUpdate" data-id="' + m.id + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-pencil"></use></svg> Edit</button>' : '') +
+        '</span></div>';
     }).join('');
   }catch(e){
     wrap.textContent = 'Cloud API unreachable on this host.';
   }
+}
+// Local-friendly date for the owner's table. The full ISO string is useless
+// here; the day the invitation dies is the whole point of the column.
+function teamShortDate(iso){
+  try{
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso).slice(0, 10);
+    return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  }catch(e){ return String(iso).slice(0, 10); }
 }
 function teamShowUpsell(msg){
   const box = document.getElementById('team-upsell');
@@ -2737,12 +2761,13 @@ async function teamInvite(){
       toast('Member limit reached.', 'warn');
       return;
     }
-    if (res.status === 404 && data && data.error === 'user_not_found'){ toast('That email has no My MaNaGeR account yet. Ask them to sign up first.', 'warn'); return; }
     if (res.status === 409){ toast('That person is already on this project.', 'warn'); return; }
 
     if (!res.ok || !data.ok){ toast((data && data.error) || 'Invite failed.', 'error'); return; }
     document.getElementById('team-invite-email').value = '';
-    toast('Invitation sent to ' + email + '.');
+    // The invitation lives in the app's notification bell whether or not mail
+    // is configured, so the confirmation never promises an email.
+    toast('Invitation created for ' + email + '. It appears in their notifications when they sign in.');
     teamList();
   }catch(e){
     toast('Cloud API unreachable on this host.', 'error');
@@ -2814,6 +2839,25 @@ async function teamRevoke(id){
     const data = await res.json().catch(()=>({}));
     if (!res.ok || !data.ok){ toast((data && data.error) || 'Revoke failed.', 'error'); return; }
     toast('Member access revoked.');
+    teamList();
+  }catch(e){
+    toast('Cloud API unreachable on this host.', 'error');
+  }
+}
+// A fresh 7-day token for a pending, expired or declined invitation. The same
+// route also mails the new link when mail is configured; the in-app invitation
+// is refreshed either way.
+async function teamResend(id){
+  const p = teamCurrentProject();
+  const code = teamOwnerCode();
+  if (!p || !code || !id){ toast('No valid project or owner code for this resend.', 'error'); return; }
+  try{
+    const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/team/' + encodeURIComponent(id) + '/resend', {
+      method: 'POST', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
+    });
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok || !data.ok){ toast((data && data.error) || 'Resend failed.', 'error'); return; }
+    toast('Invitation renewed for seven days.');
     teamList();
   }catch(e){
     toast('Cloud API unreachable on this host.', 'error');
@@ -3329,6 +3373,7 @@ const ADMIN_ACTION_MAP = {
   },
   'codesCopyReveal': (el) => { const c = el.getAttribute('data-code'); if (c && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(c).then(()=>toast('Code copied.')).catch(()=>toast('Copy manually.','warn')); },
   'teamInvite': () => teamInvite(),
+  'teamResend': (el) => teamResend(el.getAttribute('data-id')),
   'teamRevoke': (el) => teamRevoke(el.getAttribute('data-id')),
   'teamUpdate': (el) => teamUpdate(el.getAttribute('data-id'))
 };

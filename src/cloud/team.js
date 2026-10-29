@@ -305,28 +305,37 @@ export async function handleTeamInvite(request, env, projectId) {
     detail: { expiresAt: expiresAt }
   });
 
-  if (authEmailConfigured(env)) {
-    const origin = new URL(request.url).origin;
-    const link = origin + '/team/accept/' + token;
-    try {
-      await sendAuthEmail(
-        env,
-        email,
-        'You have been invited to a My MaNaGeR project',
-        'You have been invited to collaborate on a My MaNaGeR project as a ' +
-          role +
-          '.\n\n' +
-          'Open this link while signed in to accept the invitation:\n' +
-          link +
-          '\n\n' +
-          'This invitation expires in 7 days. If you were not expecting it, you can ignore this email.'
-      );
-    } catch (e) {
-      /* a mail failure must not fail the invite */
-    }
-  }
+  await sendInviteEmail(request, env, email, role, token);
 
   return json({ ok: true, memberId: memberId, role: role, status: 'pending' });
+}
+
+// One mail path for invite and resend. Email is an OPTIONAL extra: the caller
+// wraps this and a failure must never fail the invitation itself, because the
+// invitation already lives in the database and shows in the app.
+async function sendInviteEmail(request, env, email, role, token) {
+  if (!authEmailConfigured(env)) {
+    return false;
+  }
+  const origin = new URL(request.url).origin;
+  const link = origin + '/team/accept/' + token;
+  try {
+    await sendAuthEmail(
+      env,
+      email,
+      'You have been invited to a My MaNaGeR project',
+      'You have been invited to collaborate on a My MaNaGeR project as a ' +
+        role +
+        '.\n\n' +
+        'Open this link while signed in to accept the invitation:\n' +
+        link +
+        '\n\n' +
+        'This invitation expires in 7 days. If you were not expecting it, you can ignore this email.'
+    );
+    return true;
+  } catch (e) {
+    return false; // a mail failure must not fail the invite
+  }
 }
 
 // GET /api/cloud/projects/:id/team
@@ -390,6 +399,69 @@ export async function handleTeamUpdate(request, env, projectId, memberId) {
     detail: { fromRole: row.role, toRole: role, scope: parseScope(scope) }
   });
   return json({ ok: true, memberId: Number(memberId), role: role });
+}
+
+// POST /api/cloud/projects/:id/team/:mid/resend
+// Issues a fresh 7-day token for a pending, expired or declined invitation and
+// mails the new link. The row keeps its history (same id, same audit trail).
+export async function handleTeamResend(request, env, projectId, memberId) {
+  const auth = await cloudAuthOwnerEither(request, env, projectId);
+  if (!auth) {
+    return cloudForbidden();
+  }
+  const rl = await cloudRateCheck(request, 'teamInvite', env, 'project:' + projectId);
+  if (rl.limited) {
+    return cloudRateLimited(rl.retryAfter);
+  }
+  const row = await env.DB.prepare(
+    'SELECT id, invitee_email, role, scope, status FROM cloud_team_members WHERE id = ? AND project_id = ?'
+  )
+    .bind(memberId, projectId)
+    .first();
+  if (!row) {
+    return json({ ok: false, error: 'member_not_found' }, 404);
+  }
+  if (row.status === 'active') {
+    return json({ ok: false, error: 'already_member' }, 409);
+  }
+  if (row.status === 'revoked') {
+    return json({ ok: false, error: 'member_not_editable', status: row.status }, 409);
+  }
+  const sess = await readSession(request, env);
+  const ownerSub = (auth.row && auth.row.google_sub) || (sess && sess.sub) || '';
+  const tier = await ownerTier(env, ownerSub);
+  if (tier === 'free') {
+    return json({ ok: false, error: 'member_limit', upgradeRequired: 'contractor' }, 402);
+  }
+  // A live pending row already holds its seat; reviving an expired or
+  // declined one has to take a seat like a fresh invitation would.
+  if (
+    row.status !== 'pending' &&
+    tier === 'contractor' &&
+    (await countedMemberCount(env, projectId, row.id)) >= 1
+  ) {
+    return json({ ok: false, error: 'member_limit', upgradeRequired: 'company' }, 402);
+  }
+  const actor = await actorFromRequest(request, env, auth);
+  const token = randomInviteToken();
+  const tokenHash = await hashInviteToken(token);
+  const ts = nowIso();
+  const expiresAt = new Date(Date.now() + INVITE_TTL_MS).toISOString();
+  await env.DB.prepare(
+    "UPDATE cloud_team_members SET status = 'pending', token_hash = ?, expires_at = ?, created_at = ?, accepted_at = NULL, revoked_at = NULL, revoked_by = NULL WHERE id = ? AND project_id = ?"
+  )
+    .bind(tokenHash, expiresAt, ts, row.id, projectId)
+    .run();
+  await teamAudit(env, projectId, 'resend', {
+    memberId: row.id,
+    actorEmail: actor.email,
+    actorName: actor.name,
+    targetEmail: row.invitee_email,
+    role: row.role,
+    detail: { expiresAt: expiresAt }
+  });
+  await sendInviteEmail(request, env, row.invitee_email, row.role, token);
+  return json({ ok: true, memberId: row.id, status: 'pending', expiresAt: expiresAt });
 }
 
 // DELETE /api/cloud/projects/:id/team/:mid  (soft revoke, never hard-delete)

@@ -226,6 +226,13 @@ function freePort(start) {
   // path (normalizePathname resolves dot segments); in the dev server
   // on the RESOLVED path. Either way a /vendor/whisper/../../ style
   // path must not reach the relaxed policy.
+  //
+  // The binding may be const OR let: RBAC sprint 2 added a worker-owned
+  // route rewrite (/team/accept/<token> -> /team-accept.html), and a rewrite
+  // has to move the path the rest of fetch() sees, or the page would be
+  // judged as an unknown extensionless path. What matters here is the SOURCE
+  // of the value - normalizePathname - so a `let` is accepted and anything
+  // that skips normalisation is not.
   const workerGuard = workerSrc.indexOf("normalized.indexOf('/vendor/whisper/') === 0");
   check('the Worker hands out the relaxed policy only under /vendor/whisper/', workerGuard > -1, {
     guard: workerGuard > -1
@@ -233,7 +240,7 @@ function freePort(start) {
   check(
     'the Worker tests the NORMALISED path (dot segments cannot smuggle)',
     workerSrc.indexOf('function normalizePathname') > -1 &&
-      workerSrc.indexOf('const normalized = normalizePathname(url.pathname)') > -1,
+      /(?:const|let)\s+normalized\s*=\s*normalizePathname\(url\.pathname\)/.test(workerSrc),
     { normalised: workerSrc.indexOf('normalizePathname(url.pathname)') > -1 }
   );
   check(

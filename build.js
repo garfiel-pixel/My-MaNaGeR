@@ -146,6 +146,9 @@ const APP_MODULES = [
   // Cloud sub-modules (extracted from mmgr-cloud.js)
   'js/cloud/diffs.js',
   'js/cloud/scope.js',
+  // RBAC sprint 2: the team bell + panel. Independent of MMGR.Cloud at load
+  // time so the same file can ride both the project and launcher bundles.
+  'js/cloud/team-ui.js',
   'js/cloud/share.js',
   'js/cloud/review.js',
   'js/cloud/photos-ui.js',
@@ -185,6 +188,9 @@ const APP_LAUNCHER_MODULES = [
   'js/app/components.js',
   'js/mmgr-google-auth.js',
   'js/mmgr-cloud-dash.js',
+  // RBAC sprint 2: the launcher's own bell + "Shared with me" list. The
+  // launcher has no mmgr-cloud.js, so team-ui.js is deliberately standalone.
+  'js/cloud/team-ui.js',
   'js/mmgr-viewport.js',
   'js/mmgr-glass.js',
   // bfcache sprite restore (2026-09-30): same module as the project

@@ -170,22 +170,29 @@ var MMGR = window.MMGR || {};
       // CLOUD-CODES-AND-DELETE: role ('editor' | 'view' | 'client') , legacy
       // stored scopes (pre-migration) were always editor; default them here
       // so no caller ever reads an undefined role.
-      if (p.role !== 'view' && p.role !== 'client') {
+      // RBAC sprint 2 adds 'team': a named member with no code. `teamRole`
+      // carries supervisor/contractor/client, and a team client ALSO stores
+      // role 'client' so every existing read-only path applies unchanged.
+      if (p.role !== 'view' && p.role !== 'client' && p.role !== 'team') {
         p.role = 'editor';
+      }
+      if (typeof p.teamRole !== 'string') {
+        p.teamRole = '';
       }
       return p;
     } catch (e) {
       return null;
     }
   }
-  function setEScope(label, sections, role) {
+  function setEScope(label, sections, role, teamRole) {
     try {
       sessionStorage.setItem(
         escopeKey(),
         JSON.stringify({
           label: label || '',
           sections: sections || [],
-          role: role === 'view' || role === 'client' ? role : 'editor'
+          role: role === 'view' || role === 'client' || role === 'team' ? role : 'editor',
+          teamRole: teamRole || ''
         })
       );
     } catch (e) {
@@ -1014,6 +1021,13 @@ var MMGR = window.MMGR || {};
         header: r === 'view' ? 'X-View-Code' : r === 'client' ? 'X-Client-Code' : 'X-Editor-Code'
       };
     }
+    // RBAC sprint 2: a named team member holds no code. The session cookie is
+    // the credential and the server resolves the membership from the verified
+    // email; the client only needs to know that a credential exists.
+    const es = getEScope();
+    if (es && es.teamRole) {
+      return { code: '', header: null, team: true, teamRole: es.teamRole };
+    }
     if (_sessOwner) {
       return { code: '', header: null };
     } // signed-in account owner: no code header, the cookie authenticates
@@ -1051,6 +1065,16 @@ var MMGR = window.MMGR || {};
       );
       return;
     }
+    // RBAC sprint 2: a team client is read-only, and a supervisor or
+    // contractor save is a PROPOSAL the owner reviews - the server never
+    // writes it directly. Say so up front so the status line is honest.
+    if (cred.team && cred.teamRole === 'client') {
+      setStatus(
+        'Clients can view the sections shared with them but cannot save. Ask the project owner for an editing role.',
+        'warn'
+      );
+      return;
+    }
     const state = readProjectState();
     if (!state) {
       setStatus('No local project state to save yet.', 'warn');
@@ -1079,7 +1103,15 @@ var MMGR = window.MMGR || {};
             'Project too large for cloud (8 MB cap) , trim voice/claim data or use export/import instead.';
         }
         if (res.status === 403) {
-          if (cred.header === 'X-Owner-Code') {
+          if (cred.team) {
+            // The membership was revoked or expired between page load and this
+            // save. Say so instead of a bare "forbidden", and stop offering the
+            // save control - re-checking on a timer would otherwise keep the
+            // person clicking a button that can never work again.
+            if (ns.TeamUI && ns.TeamUI.showAccessRemoved) {
+              ns.TeamUI.showAccessRemoved();
+            }
+          } else if (cred.header === 'X-Owner-Code') {
             clearCode();
           } else if (cred.header) {
             clearECode();
@@ -1097,7 +1129,38 @@ var MMGR = window.MMGR || {};
       }
       let statusMsg =
         'Saved to cloud , ' + (data.savedAt || '').slice(0, 19).replace('T', ' ') + '.';
-      if (data.actor === 'editor') {
+      if (data.actor === 'team') {
+        const scopeTxt = (data.scope || []).map(sectionLabel).join(', ');
+        const who = (data.teamRole || 'member').replace(/^./, function (c) {
+          return c.toUpperCase();
+        });
+        // A manager writes directly; supervisor and contractor saves queue a
+        // proposal. Both answer actor:'team', so read the review field rather
+        // than guessing from the role.
+        if (data.review === 'pending') {
+          statusMsg =
+            'Sent for owner review as team ' +
+            who +
+            ' , your change is pending acceptance. Scope: ' +
+            scopeTxt +
+            '.';
+          if (data.blocked && data.blocked.length) {
+            statusMsg += ' Outside your role: ' + data.blocked.map(sectionLabel).join(', ') + '.';
+          }
+        } else if (data.review === 'noop') {
+          statusMsg =
+            'Nothing new within your role to send for review' +
+            (data.blocked && data.blocked.length
+              ? '. Outside your role: ' + data.blocked.map(sectionLabel).join(', ')
+              : '') +
+            '.';
+        } else {
+          statusMsg = 'Saved to cloud as team ' + who + '.';
+          if (data.applied && data.applied.length) {
+            statusMsg += ' Applied: ' + data.applied.map(sectionLabel).join(', ') + '.';
+          }
+        }
+      } else if (data.actor === 'editor') {
         const scopeTxt = (data.scope || []).map(sectionLabel).join(', ');
         // REVIEW QUEUE (approved 2026-08-17, always on): an editor save is a
         // PROPOSAL , the cloud does not move until the owner accepts it.
@@ -1267,7 +1330,13 @@ var MMGR = window.MMGR || {};
               ? 'This project was deleted by the admin. It is no longer available from the cloud.'
               : raw || 'Cloud load failed (HTTP ' + res.status + ').';
         if (res.status === 403) {
-          if (cred.header === 'X-Owner-Code') {
+          if (cred.team) {
+            // Revoked between page load and this load: the banner explains it
+            // and the save control is retired, instead of a raw 403 string.
+            if (ns.TeamUI && ns.TeamUI.showAccessRemoved) {
+              ns.TeamUI.showAccessRemoved();
+            }
+          } else if (cred.header === 'X-Owner-Code') {
             clearCode();
           } else if (cred.header) {
             clearECode();
@@ -1294,7 +1363,18 @@ var MMGR = window.MMGR || {};
       } catch (e) {
         /* storage blocked , status below still reports the outcome */
       }
-      if (data.role === 'view') {
+      // RBAC sprint 2: a named team member is identified by teamRole, not by a
+      // code. A team client stores role 'client' so every existing read-only
+      // path applies unchanged, and teamRole on the side tells the UI (and the
+      // access-removed poll) that this grant came from a membership.
+      if (data.teamRole) {
+        setEScope(
+          'Team ' + data.teamRole,
+          data.teamRole === 'client' ? data.sections || [] : data.scope || [],
+          data.teamRole === 'client' ? 'client' : 'team',
+          data.teamRole
+        );
+      } else if (data.role === 'view') {
         setEScope(data.viewerLabel || data.editorLabel, data.scope || [], 'view');
       } else if (data.role === 'editor') {
         setEScope(data.editorLabel, data.scope || []);
@@ -4100,7 +4180,11 @@ var MMGR = window.MMGR || {};
   let _clientPoll = null;
   function isClientSession() {
     const es = getEScope();
-    return !!getECode() && !getCode() && es && es.role === 'client';
+    if (!es || es.role !== 'client' || getCode()) {
+      return false;
+    }
+    // A team client holds no code at all: the membership is the grant.
+    return !!getECode() || !!es.teamRole;
   }
   async function clientMetaUpdatedAt() {
     const cred = activeCredential();

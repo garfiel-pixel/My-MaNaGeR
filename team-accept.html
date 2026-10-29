@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<!--
+  My MaNaGeR - team invitation landing page (RBAC sprint 2, directive
+  2026-10-25).
+
+  WHY THIS PAGE EXISTS
+  An invitation email carries /team/accept/<token>. Email is an OPTIONAL
+  extra in this design: the invitation always appears inside the app's bell
+  first. But when a mail does go out, the link needs somewhere to land that
+  can (a) explain the state to a signed-out visitor, and (b) accept on the
+  spot for a signed-in one.
+
+  THE TOKEN STAYS IN THE PATH
+  It is never copied into a query string or a fragment, and the page is
+  noindex. js/team-accept.js reads it from location.pathname, posts it once,
+  and never writes it to storage. The server hashes it, matches it against a
+  pending row, and refuses unless the signed-in verified email is the invited
+  address - holding the link alone is never enough.
+
+  NO INLINE SCRIPT. The whole behaviour lives in js/team-accept.js, so this
+  page adds no CSP hash to worker.js.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- This page is served at /team/accept/<token>, two levels deep. Without a
+     base, every relative URL in the markup (stylesheet, icons, scripts)
+     resolves under /team/accept/ and 404s - the page would load with no CSS
+     and, worse, no JS to accept the invitation. One base fixes them all and
+     keeps the token in the address bar, where the server expects it. -->
+<base href="/">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Project invitation - My MaNaGeR</title>
+<meta name="description" content="Accept a My MaNaGeR project invitation.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0b0b0d">
+<link rel="stylesheet" href="dist/marketing.min.css">
+<script src="js/mmgr-theme.js"></script>
+<script src="js/mmgr-perf-boot.js" data-sync="1"></script>
+</head>
+<body data-consent-banner="on" class="auth-page signin-page">
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<div class="signin-sky" aria-hidden="true"></div>
+
+<header class="auth-header">
+  <a class="brand" href="index.html">
+    <span class="brand-mark" aria-hidden="true">
+      <svg class="ico" aria-hidden="true" style="width:21px;height:21px;"><use href="css/mmgr-icons.svg#i-mpw"></use></svg>
+    </span>
+    <span><b>My <span>MaNaGeR</span></b></span>
+  </a>
+</header>
+
+<main id="main" class="auth-main">
+  <div class="auth-card signin-card">
+
+    <!-- CHECKING: the default state. Shown while /api/auth/me answers, so a
+         slow connection never flashes the wrong message. -->
+    <div id="ta-checking">
+      <h1>Project invitation</h1>
+      <p class="signin-lede" id="ta-lede">Checking this invitation.</p>
+    </div>
+
+    <!-- SIGNED OUT: sign in, then come straight back here. -->
+    <div class="auth-state" id="ta-signedout" hidden>
+      <h1>Sign in to accept</h1>
+      <p id="ta-signedout-msg">Sign in with the email address this invitation was sent to, then return here to accept it.</p>
+      <a class="btn btn-gold" id="ta-signin" href="signin.html">Sign in</a>
+      <a class="btn btn-ghost" href="app.html">Go to My MaNaGeR</a>
+    </div>
+
+    <!-- DONE. -->
+    <div class="auth-state" id="ta-ok" hidden>
+      <svg class="auth-icon ok" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg>
+      <h1>Invitation accepted</h1>
+      <p id="ta-ok-msg">You now have access to this project.</p>
+      <a class="btn btn-gold" id="ta-open" href="app.html">Open the project</a>
+      <a class="btn btn-ghost" href="app.html">Go to My MaNaGeR</a>
+    </div>
+
+    <!-- REFUSED: expired, already used, or addressed to another email. -->
+    <div class="auth-state" id="ta-err" hidden>
+      <svg class="auth-icon" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg>
+      <h1 id="ta-err-title">This invitation cannot be used</h1>
+      <p id="ta-err-msg">Ask the project owner to send a fresh invitation.</p>
+      <a class="btn btn-gold" href="app.html">Go to My MaNaGeR</a>
+    </div>
+
+    <p class="signin-legal">
+      Invitations are tied to the email address they were sent to. Signing in
+      with a different address will not accept this one. Read our
+      <a href="terms.html">Terms of Service</a> and
+      <a href="privacy.html">Privacy Policy</a>.
+    </p>
+
+  </div>
+</main>
+
+<footer class="signin-foot">
+  <a href="index.html">Home</a>
+  <a href="pricing.html">Pricing</a>
+  <a href="contact.html">Contact</a>
+  <button type="button" class="consent-link" data-consent-open>Cookie settings</button>
+</footer>
+
+<script src="js/consent.js" defer></script>
+<script src="js/team-accept.js" defer></script>
+</body>
+</html>

@@ -5231,6 +5231,402 @@ body.gantt-dragging .gb {
 #client-scope-banner.is-hide {
   display: none;
 }
+/* RBAC sprint 2 (directive 2026-10-25): named team members.
+   Two banners, one bell and one panel. Every colour comes from the theme
+   variables so light, dark and the seasonal palettes stay in step; nothing
+   here hardcodes a surface. */
+#team-scope-banner {
+  position: sticky;
+  top: 0;
+  z-index: 1500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(46, 125, 50, 0.1);
+  border-bottom: 1px solid rgba(46, 125, 50, 0.3);
+  color: var(--green);
+  font-size: 0.72rem;
+  padding: 6px 14px;
+  letter-spacing: 0.3px;
+}
+#team-scope-banner.is-hide {
+  display: none;
+}
+body.dark-mode #team-scope-banner {
+  background: var(--lit-black-35);
+  color: var(--text);
+}
+#team-access-banner {
+  position: sticky;
+  top: 0;
+  z-index: 1600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(214, 58, 58, 0.12);
+  border-bottom: 1px solid rgba(214, 58, 58, 0.4);
+  color: var(--danger);
+  font-size: 0.72rem;
+  padding: 6px 14px;
+  letter-spacing: 0.3px;
+}
+#team-access-banner.is-hide {
+  display: none;
+}
+body.dark-mode #team-access-banner {
+  background: var(--lit-black-35);
+  color: var(--text-heading);
+}
+/* The generic settings button rotates 45 degrees on hover, which is right for
+   a gear and wrong for a people icon. */
+.settings-btn.team-bell:hover {
+  transform: none;
+}
+/* The hidden attribute is only display:none via the UA sheet, and the author
+   .settings-btn display rule outranks it. Same guard as .db-sub[hidden]. */
+.settings-btn[hidden] {
+  display: none;
+}
+.team-bell {
+  position: relative;
+}
+.team-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 100px;
+  background: var(--gold);
+  color: #111;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 17px;
+  text-align: center;
+}
+.team-badge[hidden] {
+  display: none;
+}
+/* Launcher rail: a full-width row above the identity chip. */
+.db-team-bell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 2px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+  transition: color var(--tr);
+}
+.db-team-bell:hover {
+  color: var(--gold-text);
+}
+.db-team-bell[hidden] {
+  display: none;
+}
+.db-team-bell .team-badge {
+  position: static;
+  margin-left: auto;
+}
+/* The panel is fixed and placed from the bell's measured rect by
+   js/cloud/team-ui.js, because the launcher anchors it on the left edge and
+   the project page on the right edge of a header that changes height. */
+.team-pop {
+  position: fixed;
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  overflow: auto;
+  background: var(--card);
+  border: var(--glass-border);
+  border-radius: var(--squircle-md);
+  box-shadow:
+    var(--glass-rim),
+    0 12px 32px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+}
+.team-pop[hidden] {
+  display: none;
+}
+.team-pop-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.team-tabs {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.team-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  background: transparent;
+  color: var(--slate);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.team-tab.is-on {
+  background: var(--tile-bg);
+  color: var(--text-heading);
+  border-color: var(--gold);
+}
+.team-tab:focus-visible,
+.team-link:focus-visible,
+.team-x:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 2px;
+}
+.team-tab-count {
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 100px;
+  background: var(--gold);
+  color: #111;
+  font-size: 0.6rem;
+  line-height: 16px;
+  text-align: center;
+}
+.team-x {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  color: var(--slate);
+  cursor: pointer;
+}
+.team-pane {
+  min-height: 60px;
+}
+.team-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.team-card {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--tile-bg);
+}
+.team-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.team-card-top b {
+  font-size: 0.82rem;
+  color: var(--text-heading);
+  overflow-wrap: anywhere;
+}
+.team-card-sub,
+.team-card-scope {
+  margin: 4px 0 0;
+  font-size: 0.7rem;
+  color: var(--slate);
+  line-height: 1.45;
+}
+.team-card-scope {
+  overflow-wrap: anywhere;
+}
+.team-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.team-ok {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--green);
+}
+body.dark-mode .team-ok {
+  color: var(--text-heading);
+}
+.team-role {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--slate);
+  white-space: nowrap;
+}
+.team-role-manager,
+.team-role-supervisor {
+  border-color: rgba(46, 125, 50, 0.45);
+  color: var(--green);
+}
+.team-role-client {
+  border-color: rgba(147, 51, 234, 0.4);
+  color: var(--purple);
+}
+body.dark-mode .team-role-manager,
+body.dark-mode .team-role-supervisor,
+body.dark-mode .team-role-client {
+  color: var(--text-heading);
+}
+.team-empty {
+  padding: 18px 8px;
+  text-align: center;
+  color: var(--slate);
+}
+.team-empty .ico {
+  width: 26px;
+  height: 26px;
+  opacity: 0.5;
+}
+.team-empty p {
+  margin: 6px 0 0;
+  font-size: 0.78rem;
+  color: var(--text-heading);
+}
+.team-empty-sub {
+  margin: 6px 0 0;
+  font-size: 0.7rem;
+  color: var(--slate);
+  line-height: 1.45;
+}
+.team-block + .team-block {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.team-block h4 {
+  margin: 0 0 6px;
+  font-size: 0.68rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--slate);
+}
+.team-person,
+.team-project-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+}
+.team-person-id {
+  flex: 1;
+  min-width: 0;
+}
+.team-person-id b {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text-heading);
+  overflow-wrap: anywhere;
+}
+.team-person-sub {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--slate);
+  line-height: 1.4;
+}
+.team-project-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.78rem;
+  color: var(--text-heading);
+  overflow-wrap: anywhere;
+}
+.team-role-select {
+  max-width: 108px;
+  padding: 3px 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--tile-bg);
+  color: var(--text);
+  font-size: 0.7rem;
+}
+.team-person-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.team-link {
+  padding: 2px 0;
+  border: none;
+  background: none;
+  color: var(--gold-ink);
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.team-link-danger {
+  color: var(--danger);
+}
+body.dark-mode .team-link-danger {
+  color: var(--text-heading);
+}
+.team-people {
+  padding: 2px 0 8px;
+}
+.team-people[hidden] {
+  display: none;
+}
+.team-pop-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 16px;
+}
+.team-status {
+  font-size: 0.68rem;
+  color: var(--slate);
+  overflow-wrap: anywhere;
+}
+.team-status.is-err {
+  color: var(--danger);
+}
+body.dark-mode .team-status.is-err {
+  color: var(--text-heading);
+}
+.team-offline {
+  flex-shrink: 0;
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--danger);
+}
+.team-offline[hidden] {
+  display: none;
+}
+@media (max-width: 480px) {
+  .team-person-row {
+    flex-wrap: wrap;
+  }
+  .team-person-row .team-person-id {
+    flex-basis: 100%;
+  }
+}
 /* Rank 10 item 21 - Heat/Cold SAFETY banner (promoted 2026-08-13): */
 #safety-banner {
   display: flex;

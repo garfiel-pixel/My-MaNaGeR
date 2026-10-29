@@ -214,7 +214,14 @@ for (const file of appFiles) {
 
 console.log('\n=== A1: cloud module export completeness ===\n');
 const cloudDir = path.join(ROOT, 'js', 'cloud');
-const cloudFiles = fs.readdirSync(cloudDir).filter(f => f.endsWith('.js'));
+// team-ui.js is a standalone DOM module (RBAC sprint 2, 2026-10-25): the
+// invitation bell, its panel and the "Shared with me" list. It rides BOTH the
+// project bundle and the launcher bundle, and the launcher carries no
+// mmgr-cloud.js at all - so mmgr-cloud.js cannot be its entry point. Its API
+// is reached directly as MMGR.TeamUI.* and from markup (data-team-bell), the
+// same arrangement components.js and entitlements.js use on the app track.
+const CLOUD_EXCLUDE = new Set(['team-ui.js']);
+const cloudFiles = fs.readdirSync(cloudDir).filter(f => f.endsWith('.js') && !CLOUD_EXCLUDE.has(f));
 const cloudSrc = fs.readFileSync(path.join(ROOT, 'js', 'mmgr-cloud.js'), 'utf8');
 
 for (const file of cloudFiles) {

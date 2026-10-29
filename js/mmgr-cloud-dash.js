@@ -706,6 +706,29 @@
               /* ignore , server still enforces */
             }
           }
+          // RBAC sprint 2: a named member opening a project from "Shared with
+          // me". The load answers role editor/client like an adoption does, so
+          // this block runs AFTER and re-stamps the slot with teamRole - that
+          // field is what the header banner, the access-removed poll and the
+          // credential selector read. A team client also becomes read-only.
+          if (data.teamRole) {
+            try {
+              sessionStorage.setItem(
+                'mmgr_cloud_escope_' + projectId,
+                JSON.stringify({
+                  label: 'Team ' + data.teamRole,
+                  sections: data.teamRole === 'client' ? data.sections || [] : data.scope || [],
+                  role: data.teamRole === 'client' ? 'client' : 'team',
+                  teamRole: data.teamRole
+                })
+              );
+              if (data.teamRole === 'client') {
+                localStorage.setItem('mmgr_scope_' + projectId, 'readonly');
+              }
+            } catch (e) {
+              /* ignore , server still enforces */
+            }
+          }
         } catch (e) {
           setStatus('Storage unavailable , could not open the project.', true);
           return;

@@ -132,6 +132,14 @@
   <div id="readonly-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg> View Only</div>
   <div id="editor-scope-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Editing as a scoped editor code , some panels are locked for this code (enforced by the server).</div>
   <div id="client-scope-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Viewing as a client , read-only. Only the sections the admin granted you are shown.</div>
+  <!-- RBAC sprint 2: a named team member (no code) gets its own row. The copy
+       is written by CloudScope.applyTeamBanner from the role, so it always
+       names what the person can actually edit. -->
+  <div id="team-scope-banner" class="is-hide" role="status" aria-live="polite"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> <span id="team-scope-text"></span></div>
+  <!-- Shown when a membership is revoked while the page is open. The
+       access-removed poll flips it on within one cycle (60s) or immediately on
+       a 403 from a save/load. -->
+  <div id="team-access-banner" class="is-hide" role="alert"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Access removed , this project is no longer shared with you. Your local copy stays readable, but you cannot save it.</div>
   <!-- E1 (owner 2026-09-29 header-balance review): navigation clusters LEFT
        (Projects back-link, section hamburger, greeting, methodology pills);
        .hdr-right keeps STRICTLY utility toggles. Pure markup regroup - no id
@@ -188,6 +196,11 @@
     <div class="presence-chip" id="presence-chip" hidden role="status" aria-live="polite"><span class="pdot" aria-hidden="true"></span><span data-presence-label>0 online</span></div>
     <div class="lock-ind" id="lk-ind"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> <span id="lk-lbl">Methodology</span> Locked</div>
     <button class="settings-btn" id="ai-bell" data-action="openAiMailbox" aria-label="Assistant notices"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bell"></use></svg><span class="nudge-dot" data-bell-dot hidden></span></button>
+    <!-- RBAC sprint 2: invitations and collaborators. Hidden until a verified
+         session answers (TeamUI.setSignedIn), so a signed-out visitor never
+         sees a control that can only 403. The badge counts pending
+         invitations addressed to this verified email. -->
+    <button type="button" class="settings-btn team-bell" data-team-bell aria-label="Invitations and collaborators" aria-haspopup="dialog" aria-expanded="false" aria-controls="team-pop" hidden><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg><span class="team-badge" id="team-bell-count" hidden>0</span></button>
     <button class="settings-btn" data-action="openDrw" aria-label="Open settings"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> </button>
   </div>
 </header>

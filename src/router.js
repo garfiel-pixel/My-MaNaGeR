@@ -115,6 +115,7 @@ import {
   handleTeamList,
   handleTeamUpdate,
   handleTeamRevoke,
+  handleTeamResend,
   handleTeamAccept,
   handleTeamInvitations,
   handleTeamInvitationAccept,
@@ -499,6 +500,16 @@ export async function routeApi(request, env, url) {
       if (request.method === 'GET') {
         return handleTeamList(request, env, teamListMatch[1]);
       }
+    }
+    const teamResendMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/team\/(\d+)\/resend$/
+    );
+    if (teamResendMatch && request.method === 'POST') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handleTeamResend(request, env, teamResendMatch[1], Number(teamResendMatch[2]));
     }
     const teamMemberMatch = path.match(
       /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/team\/(\d+)$/

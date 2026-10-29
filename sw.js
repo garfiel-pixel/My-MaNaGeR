@@ -405,7 +405,23 @@
 // js/mmgr-perf.js, js/mmgr-glass.js, js/marketing.js, js/marketing-globe.js,
 // js/mmgr-combobox.js (new), dist/marketing-bundle.js. No inline script block
 // changed, so the CSP hashes are untouched.
-const CACHE = 'mmgr-shell-v491';
+const CACHE = 'mmgr-shell-v493';
+
+// v493 - RBAC SPRINT 2 (directive 2026-10-25): the in-app half of named team
+// members. A bell with an invitation count in the launcher rail and the project
+// header, a focus-trapped glass panel with Invitations and Collaborators tabs,
+// accept/decline, owner resend/revoke/role change, a "Shared with me" list that
+// opens a member project with its role, and a live access check that retires the
+// save control the moment an owner revokes. New standalone /team/accept/<token>
+// landing page for the emailed link: the Worker rewrites that path to
+// team-accept.html before the 404 guard and follows the asset layer's own 307 so
+// the token stays in the address bar. A team client sees one role banner (never
+// the code-holder banner) and only the sections shared with them. Opening a
+// project with no cloud snapshot now says so instead of bouncing the member back
+// to the launcher with no explanation. Shell assets: js/cloud/team-ui.js (new),
+// js/cloud/scope.js, js/mmgr-cloud.js, js/mmgr-cloud-dash.js, js/team-accept.js
+// (new), team-accept.html (new), css/mmgr.css, dist/*. No inline script block
+// changed, so the CSP hashes are untouched.
 
 // v491 - CONTACT PAGE'S NEW PHOTO (owner dropped the replacement jpg in the
 // repo root). contact.html's photo band now points at images/contact-desk.webp
@@ -1132,6 +1148,7 @@ const SHELL = [
   'verify.html',
   'reset.html',
   'signin.html',
+  'team-accept.html',
   'calculator.html',
   'project.html',
   'app.html',
@@ -1197,6 +1214,11 @@ const SHELL = [
   // still appear (and the choice must still be readable) with no network, so
   // the module is in the shell, not fetched on demand.
   'js/consent.js',
+  // RBAC sprint 2: the invitation landing page reads the token from its path
+  // and posts it once. It is loaded by team-accept.html only, so it is not in
+  // any bundle; the page must survive a cold offline open with a clear error
+  // rather than a blank screen.
+  'js/team-accept.js',
   'js/reviews.js',
   'js/verify.js',
   'js/reset.js',

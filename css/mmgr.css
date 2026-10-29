@@ -4949,6 +4949,18 @@ button.rel-badge {
     flex-basis: 100%;
   }
 }
+
+/* Board lens (Task 3): sits in the Kanban header's control row with the
+   other board chips. */
+#kb-lens {
+  min-width: 128px;
+  font-size: 0.72rem;
+}
+@media (max-width: 560px) {
+  #kb-lens {
+    flex-basis: 100%;
+  }
+}
 .cfm-list-label {
   font-size: 0.7rem;
   color: var(--slate);

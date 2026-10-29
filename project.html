@@ -665,6 +665,11 @@
           <button class="btn btn-n btn-s" data-action="cpAllPage" data-section="kan"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy All</button>
           <button class="btn btn-n btn-s" data-action="kbWip"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-target"></use></svg> Column Limits</button>
           <button class="btn btn-o btn-s toggle-chip is-off" data-action="tglLeadtimeLane" id="kb-lt-tgl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clock"></use></svg> Show Lead-Time Lane</button>
+          <select id="kb-lens" class="ctl-in" data-action="setRelLens" aria-label="Board lens" title="Show all cards, only blocked cards, or only ready cards">
+            <option value="all">All cards</option>
+            <option value="blocked">Blocked only</option>
+            <option value="ready">Ready only</option>
+          </select>
           <button class="btn btn-d btn-s" data-action="startHold" data-section="kan"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Clear All</button>
         </div>
       </div>

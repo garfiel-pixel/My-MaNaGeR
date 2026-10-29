@@ -405,7 +405,17 @@
 // js/mmgr-perf.js, js/mmgr-glass.js, js/marketing.js, js/marketing-globe.js,
 // js/mmgr-combobox.js (new), dist/marketing-bundle.js. No inline script block
 // changed, so the CSP hashes are untouched.
-const CACHE = 'mmgr-shell-v503';
+const CACHE = 'mmgr-shell-v504';
+
+// v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
+// board lens (#kb-lens select in the Kanban header, setRelLens delegated
+// change action, column + lead-time filters in renderKanban, per-column
+// empty-lens note) and the soft blocked warning (warnIfBlocked, called
+// from applyMove so BOTH the drag path and the Alt+Arrow keyboard path
+// name the open blockers while still allowing the move). The lens is a
+// project-state write, so it stays out of READONLY_SAFE_ACTIONS like the
+// other view toggles. Changed shell assets: project.html, js/mmgr-app.js,
+// js/render/kanban.js, css/mmgr.css, mymanager-field-guide.html.
 
 // v503 - RELATIONS TASK 2 (plan-openproject 2026-10-29): relation badges
 // in the WBS name cell and on Kanban cards, plus the task-links sheet

@@ -152,6 +152,22 @@ var MMGR = window.MMGR || {};
       ['blocked', 'kc-bl', 'w-bl', 'col-bl'],
       ['completed', 'kc-dn', 'w-dn', 'col-dn']
     ];
+    // One lens narrows what is DRAWN; it never writes to a task. The select
+    // is kept in sync here, so a re-render or a reload always shows the lens
+    // that is actually applied.
+    const lens = ns.Relations ? ns.Relations.boardLens(s) : 'all';
+    const lensIds =
+      ns.Relations && lens !== 'all'
+        ? new Set(
+            ns.Relations.lensTasks(s, lens).map(function (t) {
+              return String(t.id);
+            })
+          )
+        : null;
+    const lensSelect = $('kb-lens');
+    if (lensSelect && lensSelect.value !== lens) {
+      lensSelect.value = lens;
+    }
     const kbShow = !!s.kbShowLeadtime;
     const ltFlagOff = !!(s.flags && s.flags.leadtimeLane === false);
     const ltLane = $('col-leadtime');
@@ -186,7 +202,7 @@ var MMGR = window.MMGR || {};
         continue;
       }
       // Order and filtering are model concerns. The renderer only draws.
-      const tasks = K.columnTasks(s, status);
+      const tasks = K.columnTasks(s, status).filter(t => !lensIds || lensIds.has(String(t.id)));
       const info = K.wip(s, status);
       const wip = $(col[2]);
       if (wip) {
@@ -217,12 +233,20 @@ var MMGR = window.MMGR || {};
             : '';
         continue;
       }
+      if (lensIds && !tasks.length) {
+        // Under a lens an empty column says WHY it is empty, and the add row
+        // is hidden: a card added here would land outside the lens and look
+        // like it vanished.
+        el.innerHTML =
+          '<div class="es" style="padding:16px;font-size:.72rem">No cards match this lens.</div>';
+        continue;
+      }
       el.innerHTML = tasks.map(kanbanCard).join('') + quickAddMarkup(status);
     }
     const ltEl = $('kc-lt');
     if (ltEl) {
       const ltTasks = K.workItems(s)
-        .filter(t => t.leadTime)
+        .filter(t => t.leadTime && (!lensIds || lensIds.has(String(t.id))))
         .sort((a, b) => K.positionOf(a) - K.positionOf(b));
       const wlt = $('w-lt');
       if (wlt) {

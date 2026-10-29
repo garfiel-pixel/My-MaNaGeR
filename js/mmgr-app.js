@@ -3054,6 +3054,40 @@ var MMGR = window.MMGR || {};
     R.renderKanban();
   }
 
+  // The board lens (one persisted view over the same cards): all / blocked /
+  // ready. It writes ONLY state.relLens - never a task - but it is still a
+  // project-state write, so it stays out of READONLY_SAFE_ACTIONS exactly
+  // like tglLeadtimeLane and the gantt view setters.
+  function setRelLens(el) {
+    const lens = el && el.value ? el.value : 'all';
+    ns.State.updateState(function (st) {
+      ns.Relations.setBoardLens(st, lens);
+    });
+    R.renderKanban();
+  }
+
+  // A block is a warning, not a hard lock. Construction sites need the
+  // override: moving a blocked card into In Progress or Completed names the
+  // open blockers and lets the move happen anyway.
+  function warnIfBlocked(task, nextStatus) {
+    if (!task || !ns.Relations) {
+      return;
+    }
+    if (nextStatus !== 'inprogress' && nextStatus !== 'completed') {
+      return;
+    }
+    const blockers = ns.Relations.blockersOf(S(), task.id);
+    if (!blockers.length) {
+      return;
+    }
+    const names = blockers
+      .map(function (b) {
+        return b.task.name || b.task.id;
+      })
+      .join(', ');
+    showToast('Blocked by ' + names + '. Move allowed.', 'warn');
+  }
+
   function tglLeadtimeLane(btn) {
     // Monolith kb-leadtime-tgl: dedicated Kanban swimlane for Lead-Time /
     // third-party tasks. Persisted so re-renders keep the lane state.
@@ -3153,6 +3187,7 @@ var MMGR = window.MMGR || {};
   function applyMove(id, status, beforeId) {
     let moved = null;
     let info = null;
+    let movedTask = null;
     ns.State.updateState(function (s) {
       const task = (s.tasks || []).find(function (t) {
         return t && t.id === id;
@@ -3160,6 +3195,7 @@ var MMGR = window.MMGR || {};
       if (!task) {
         return;
       }
+      movedTask = task;
       const result = ns.Kanban.moveTo(s, id, status, beforeId);
       if (!result.changed) {
         return;
@@ -3175,6 +3211,13 @@ var MMGR = window.MMGR || {};
     });
     if (!moved) {
       return false;
+    }
+    // The soft blocked warning lives HERE (one choke point) rather than in
+    // dropCard: the keyboard move (Alt+Arrow) calls applyMove directly, and
+    // the guide promises the warning for any move. A same-column reorder is
+    // not a move INTO the status, so from === to stays silent.
+    if (moved.from !== moved.to) {
+      warnIfBlocked(movedTask, moved.to);
     }
     R.renderKanban();
     R.renderWbs();
@@ -4065,6 +4108,7 @@ var MMGR = window.MMGR || {};
     closeRel: closeRel,
     addRel: addRel,
     delRel: delRel,
+    setRelLens: setRelLens,
     kbWip: kbWip,
     kbWipClose: kbWipClose,
     saveKbWip: saveKbWip,
@@ -5181,6 +5225,7 @@ window.MMGR = MMGR;
     closeRel: () => window.MMGR.App.closeRel(),
     addRel: () => window.MMGR.App.addRel(),
     delRel: el => window.MMGR.App.delRel(el),
+    setRelLens: el => window.MMGR.App.setRelLens(el),
     kbWip: () => window.MMGR.App.kbWip(),
     kbWipClose: () => window.MMGR.App.kbWipClose(),
     saveKbWip: el => window.MMGR.App.saveKbWip(el),
@@ -5533,8 +5578,9 @@ window.MMGR = MMGR;
     kbWipClose: 1,
     // Work package relations: opening / closing the task-links sheet is a
     // pure read (view-only sessions can inspect the graph). addRel / delRel
-    // mutate task.relations and are deliberately NOT listed - guardReadonly
-    // refuses them with the standard view-only toast.
+    // mutate task.relations and setRelLens persists state.relLens - all
+    // deliberately NOT listed, guardReadonly refuses them with the standard
+    // view-only toast (same policy as tglLeadtimeLane).
     openRel: 1,
     closeRel: 1,
     openDrw: 1,
@@ -5941,6 +5987,7 @@ window.MMGR = MMGR;
         action === 'updField' ||
         action === 'updTaskField' ||
         action === 'saveKbWip' ||
+        action === 'setRelLens' ||
         action === 'updKPI' ||
         action === 'updKPILink' ||
         action === 'updKPIDir' ||

@@ -17,15 +17,43 @@
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('./chrome-launcher.cjs');
+const net = require('net');
+const { chromePath: CHROME, BASE, DEBUG_PORT: DEFAULT_PORT } = require('./chrome-launcher.cjs');
 
 const ROOT = path.join(__dirname, '..');
 const PROFILE = path.join(require('os').tmpdir(), 'mmgr-ai-win-' + Date.now());
+// CI incident 2026-10-29: qa-ai.cjs runs in the step immediately before this
+// one on the SAME DevTools port (9228) and kills its Chrome in teardown. The
+// dying Chrome still holds the port for a moment, so this probe's Chrome could
+// not bind and exited - the step then died with a bare `fetch failed` after
+// the 24s launch poll. Pick a port nothing is using, and retry the launch once
+// rather than losing the whole gate to a teardown race.
+let PORT = DEFAULT_PORT;
 let ws,
   msgId = 0;
 const pending = new Map();
 const log = s => process.stdout.write('[aiwin] ' + s + '\n');
 const delay = ms => new Promise(r => setTimeout(r, ms));
+
+function portFree(p) {
+  return new Promise(res => {
+    const s = net.createServer();
+    s.once('error', () => res(false));
+    s.once('listening', () => s.close(() => res(true)));
+    s.listen(p, '127.0.0.1');
+  });
+}
+
+async function pickPort(skip) {
+  const wanted = parseInt(process.env.CHROME_DEBUG_PORT || '0', 10);
+  const candidates = [wanted, DEFAULT_PORT, 9229, 9233, 9244].filter(Boolean);
+  for (const p of candidates) {
+    if (p !== skip && (await portFree(p))) {
+      return p;
+    }
+  }
+  return skip || DEFAULT_PORT;
+}
 
 setTimeout(() => {
   log('WATCHDOG');
@@ -87,7 +115,10 @@ function axeSource() {
   throw new Error('axe-core not found - npm i -D axe-core');
 }
 
-(async () => {
+// Launch Chrome and wait for its DevTools endpoint. Captures stderr so a
+// launch failure names its reason in the CI log instead of a bare fetch error.
+async function launchChrome(port) {
+  let stderr = '';
   const proc = spawn(
     CHROME,
     [
@@ -95,22 +126,53 @@ function axeSource() {
       '--disable-gpu',
       '--no-first-run',
       '--disk-cache-size=0',
-      '--remote-debugging-port=' + PORT,
-      '--user-data-dir=' + PROFILE,
+      '--remote-debugging-port=' + port,
+      '--user-data-dir=' + PROFILE + '-' + port,
       '--window-size=1440,1000',
       'about:blank'
     ],
-    { stdio: 'ignore' }
+    { stdio: ['ignore', 'ignore', 'pipe'] }
   );
+  proc.stderr.on('data', d => {
+    stderr = (stderr + d.toString()).slice(-2000);
+  });
+  let up = false;
   for (let i = 0; i < 80; i++) {
     try {
-      const r = await fetch('http://127.0.0.1:' + PORT + '/json/version');
+      const r = await fetch('http://127.0.0.1:' + port + '/json/version');
       if (r.ok) {
+        up = true;
         break;
       }
     } catch (e) {}
     await delay(300);
   }
+  return { proc, up, stderr: () => stderr };
+}
+
+(async () => {
+  PORT = await pickPort();
+  let launch = await launchChrome(PORT);
+  if (!launch.up) {
+    // One relaunch on a different port before failing the gate.
+    log('DevTools silent on :' + PORT + ' - relaunching Chrome on a free port');
+    try {
+      launch.proc.kill();
+    } catch (e) {}
+    PORT = await pickPort(PORT);
+    launch = await launchChrome(PORT);
+    if (!launch.up) {
+      throw new Error(
+        'Chrome DevTools never answered on :' +
+          PORT +
+          ' (chrome: ' +
+          CHROME +
+          ') - stderr: ' +
+          (launch.stderr() || '(empty)')
+      );
+    }
+  }
+  const proc = launch.proc;
   const targets = await (await fetch('http://127.0.0.1:' + PORT + '/json')).json();
   ws = new WebSocket(targets.find(t => t.type === 'page').webSocketDebuggerUrl);
   await new Promise((res, rej) => {

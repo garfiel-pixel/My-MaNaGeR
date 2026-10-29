@@ -724,6 +724,39 @@
   </div>
 </div>
 
+  <!-- ═══ TASK LINKS (OpenProject-inspired work package relations) ═══ -->
+<div id="rel-modal" role="dialog" aria-modal="true" aria-labelledby="rel-title">
+  <div class="mb">
+    <div class="mh">
+      <span class="mt" id="rel-title">Task links</span>
+      <button class="dc" data-action="closeRel" aria-label="Close task links"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button>
+    </div>
+    <div class="mbody">
+      <div id="rel-list" class="rel-list"></div>
+      <div class="rel-add">
+        <input type="hidden" id="rel-from" value="">
+        <select id="rel-type" class="ctl-in" aria-label="Relation type">
+          <option value="relates">Relates to</option>
+          <option value="blocks">Blocks</option>
+          <option value="blocked">Blocked by</option>
+          <option value="precedes">Precedes</option>
+          <option value="follows">Follows</option>
+          <option value="duplicates">Duplicates</option>
+          <option value="duplicated">Duplicated by</option>
+          <option value="includes">Includes</option>
+          <option value="partof">Part of</option>
+          <option value="requires">Requires</option>
+          <option value="required">Required by</option>
+        </select>
+        <select id="rel-target" class="ctl-in" aria-label="Linked task"></select>
+        <input type="number" id="rel-lag" class="ctl-in" min="-2000" max="2000" step="1" value="0" aria-label="Lag days" title="Lag days, used by precedes and follows">
+        <button class="btn btn-g btn-s" data-action="addRel">Add link</button>
+      </div>
+      <div class="rel-hint">A link is stored on both tasks. Remove it from either side and both entries go.</div>
+    </div>
+  </div>
+</div>
+
   <!-- ═══ RESOURCES ═══ -->
   <div class="panel" id="panel-res">
     <div class="card">

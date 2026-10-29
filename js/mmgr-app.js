@@ -2935,6 +2935,125 @@ var MMGR = window.MMGR || {};
     setGanttView(patch);
   }
 
+  // ---- Work package relations (OpenProject-inspired) ----
+  // One sheet over the WBS or the board. Every mutation runs INSIDE
+  // State.updateState so the link is stamped and persisted (debounced save +
+  // change listeners); validation runs BEFORE that, so a refused add never
+  // touches the file at all.
+  function renderRelList(taskId) {
+    const box = U.$('rel-list');
+    if (!box) {
+      return;
+    }
+    const s = S();
+    const links = ns.Relations ? ns.Relations.linksOf(s, taskId) : [];
+    if (!links.length) {
+      box.innerHTML =
+        '<div class="es" style="padding:10px;font-size:.78rem">No links yet. Add one below.</div>';
+      return;
+    }
+    box.innerHTML = links
+      .map(function (l) {
+        const lag = l.group === 'schedule' && l.lag ? ' (' + l.lag + 'd lag)' : '';
+        return (
+          '<div class="rel-row">' +
+          '<span class="rel-type">' +
+          U.escapeHtml(l.label) +
+          '</span>' +
+          '<span class="rel-task">' +
+          U.escapeHtml(l.task.name || l.task.id) +
+          lag +
+          '</span>' +
+          '<button class="btn btn-s btn-d" data-action="delRel" data-id="' +
+          U.escapeHtml(taskId) +
+          '" data-rel="' +
+          U.escapeHtml(l.id) +
+          '" aria-label="Remove link">Remove</button>' +
+          '</div>'
+        );
+      })
+      .join('');
+  }
+
+  function openRel(el) {
+    const taskId = el && el.getAttribute('data-id');
+    const s = S();
+    const task = ns.Relations ? ns.Relations.findTask(s, taskId) : null;
+    if (!task) {
+      return;
+    }
+    const modal = U.$('rel-modal');
+    const from = U.$('rel-from');
+    const target = U.$('rel-target');
+    if (!modal || !from || !target) {
+      return;
+    }
+    from.value = task.id;
+    target.innerHTML = (s.tasks || [])
+      .filter(function (t) {
+        return t && String(t.id) !== String(task.id);
+      })
+      .map(function (t) {
+        return (
+          '<option value="' + U.escapeHtml(t.id) + '">' + U.escapeHtml(t.name || t.id) + '</option>'
+        );
+      })
+      .join('');
+    renderRelList(task.id);
+    modal.classList.add('on');
+  }
+
+  function closeRel() {
+    const modal = U.$('rel-modal');
+    if (modal) {
+      modal.classList.remove('on');
+    }
+  }
+
+  function addRel() {
+    const from = U.$('rel-from');
+    const type = U.$('rel-type');
+    const target = U.$('rel-target');
+    const lag = U.$('rel-lag');
+    if (!from || !type || !target || !ns.Relations) {
+      return;
+    }
+    const check = ns.Relations.validate(S(), from.value, type.value, target.value);
+    if (!check.ok) {
+      showToast(check.reason, 'warn');
+      return;
+    }
+    ns.State.updateState(function (st) {
+      ns.Relations.addRelation(st, from.value, type.value, target.value, lag ? lag.value : 0);
+    });
+    showToast('Link added.', 'ok');
+    renderRelList(from.value);
+    R.renderWbs();
+    R.renderKanban();
+  }
+
+  function delRel(el) {
+    const taskId = el && el.getAttribute('data-id');
+    const relId = el && el.getAttribute('data-rel');
+    if (!taskId || !relId || !ns.Relations) {
+      return;
+    }
+    const exists = ns.Relations.linksOf(S(), taskId).some(function (l) {
+      return String(l.id) === String(relId);
+    });
+    if (!exists) {
+      showToast('That link was already removed.', 'warn');
+      return;
+    }
+    ns.State.updateState(function (st) {
+      ns.Relations.removeRelation(st, taskId, relId);
+    });
+    showToast('Link removed.', 'ok');
+    renderRelList(taskId);
+    R.renderWbs();
+    R.renderKanban();
+  }
+
   function tglLeadtimeLane(btn) {
     // Monolith kb-leadtime-tgl: dedicated Kanban swimlane for Lead-Time /
     // third-party tasks. Persisted so re-renders keep the lane state.
@@ -3942,6 +4061,10 @@ var MMGR = window.MMGR || {};
     setGanttWindow: setGanttWindow,
     setGanttWindowDate: setGanttWindowDate,
     tglLeadtimeLane: tglLeadtimeLane,
+    openRel: openRel,
+    closeRel: closeRel,
+    addRel: addRel,
+    delRel: delRel,
     kbWip: kbWip,
     kbWipClose: kbWipClose,
     saveKbWip: saveKbWip,
@@ -5054,6 +5177,10 @@ window.MMGR = MMGR;
     setGanttWindow: el => window.MMGR.App.setGanttWindow(el),
     setGanttWindowDate: el => window.MMGR.App.setGanttWindowDate(el),
     tglLeadtimeLane: el => window.MMGR.App.tglLeadtimeLane(el),
+    openRel: el => window.MMGR.App.openRel(el),
+    closeRel: () => window.MMGR.App.closeRel(),
+    addRel: () => window.MMGR.App.addRel(),
+    delRel: el => window.MMGR.App.delRel(el),
     kbWip: () => window.MMGR.App.kbWip(),
     kbWipClose: () => window.MMGR.App.kbWipClose(),
     saveKbWip: el => window.MMGR.App.saveKbWip(el),
@@ -5404,6 +5531,12 @@ window.MMGR = MMGR;
     // themselves stay blocked by saveKbWip's own guard.
     kbWip: 1,
     kbWipClose: 1,
+    // Work package relations: opening / closing the task-links sheet is a
+    // pure read (view-only sessions can inspect the graph). addRel / delRel
+    // mutate task.relations and are deliberately NOT listed - guardReadonly
+    // refuses them with the standard view-only toast.
+    openRel: 1,
+    closeRel: 1,
     openDrw: 1,
     closeDrw: 1,
     // OWNER 2026-09-06: the sign-in sheet is identity UI, never project

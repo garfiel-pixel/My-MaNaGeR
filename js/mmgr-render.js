@@ -1867,6 +1867,42 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- WBS ----
+  // A compact graph badge in the WBS name cell. The count includes both
+  // directions, because the user cares that a link exists, not which side
+  // of it the current row happens to be on. The badge is the door to the
+  // task-links sheet, so it is a real button (keyboard reachable, named)
+  // and it is ALWAYS there - a task with no links yet is exactly the task
+  // whose links you are about to create (owner plan check 3).
+  function relationBadge(task) {
+    const R = ns.Relations;
+    if (!R || !task) {
+      return '';
+    }
+    const state = S();
+    const count = R.relationCount(state, task.id);
+    const blocked = R.blockersOf(state, task.id).length;
+    const cls = blocked ? 'br' : 'bo';
+    const label = blocked ? 'Blocked ' + blocked : count ? 'Links ' + count : 'Links';
+    const title = blocked
+      ? 'Blocked by ' + blocked + ' open task(s) - open task links'
+      : count
+        ? count + ' task link(s) - open task links'
+        : 'No task links yet - open task links';
+    return (
+      '<button type="button" class="badge ' +
+      cls +
+      ' rel-badge" data-action="openRel" data-id="' +
+      U.escapeHtml(task.id) +
+      '" title="' +
+      U.escapeHtml(title) +
+      '" aria-label="' +
+      U.escapeHtml(title) +
+      '">' +
+      U.escapeHtml(label) +
+      '</button>'
+    );
+  }
+
   function renderWbs() {
     const s = S();
     if (!s) {
@@ -1939,6 +1975,7 @@ var MMGR = window.MMGR || {};
           <label class="wb-milestone" title="Mark as Milestone"><input type="checkbox" ${t.milestone ? 'checked' : ''} data-action="tglMilestone" data-id="${U.escapeHtml(t.id)}"> <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-flag"></use></svg></label>
           ${t.critical ? '<span class="badge bo" style="font-size:.6rem;padding:1px 4px;margin-left:4px">CP</span>' : ''}
           ${chainRisk ? '<span class="badge br" style="font-size:.6rem;padding:1px 4px;margin-left:4px" title="A predecessor is overdue, this downstream chain is at risk (2.1)">CHAIN</span>' : ''}
+          ${relationBadge(t)}
           ${
             parGroups && parGroups.has(t.id)
               ? (() => {

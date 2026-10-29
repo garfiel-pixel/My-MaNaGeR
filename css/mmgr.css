@@ -4872,6 +4872,83 @@ body.gantt-dragging .gb {
 body.dark-mode .kbwip-in {
   background: rgba(0, 0, 0, 0.25);
 }
+
+/* ---- Work package relation badge + task links sheet (OpenProject-inspired)
+   The sheet is the house modal shape (scrim + .mb surface + .mh header +
+   scrolling .mbody), same as #kbwip-modal above it, so both themes and the
+   z-order come from the shared tokens - no local colours. ---- */
+.rel-badge {
+  font-size: 0.6rem;
+  padding: 1px 5px;
+  margin-left: 4px;
+  line-height: 1.5;
+}
+/* Only the WBS badge is a real button that opens the sheet; the card badge
+   is a read-only span, so the pointer stays honest. */
+button.rel-badge {
+  cursor: pointer;
+}
+#rel-modal {
+  position: fixed;
+  inset: 0;
+  background: var(--lit-black-75);
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+#rel-modal.on {
+  display: flex;
+}
+#rel-modal .mb {
+  width: min(560px, 100%);
+  max-height: 82vh;
+}
+.rel-list {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+.rel-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.8rem;
+}
+.rel-row:last-child {
+  border-bottom: 0;
+}
+.rel-type {
+  color: var(--gold-ink);
+  min-width: 96px;
+}
+.rel-task {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.rel-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.rel-add .ctl-in {
+  min-width: 0;
+  flex: 1 1 130px;
+}
+.rel-hint {
+  margin-top: 8px;
+  font-size: 0.7rem;
+  color: var(--slate);
+}
+@media (max-width: 560px) {
+  .rel-add .ctl-in {
+    flex-basis: 100%;
+  }
+}
 .cfm-list-label {
   font-size: 0.7rem;
   color: var(--slate);

@@ -405,7 +405,16 @@
 // js/mmgr-perf.js, js/mmgr-glass.js, js/marketing.js, js/marketing-globe.js,
 // js/mmgr-combobox.js (new), dist/marketing-bundle.js. No inline script block
 // changed, so the CSP hashes are untouched.
-const CACHE = 'mmgr-shell-v502';
+const CACHE = 'mmgr-shell-v503';
+
+// v503 - RELATIONS TASK 2 (plan-openproject 2026-10-29): relation badges
+// in the WBS name cell and on Kanban cards, plus the task-links sheet
+// (house modal shape: #rel-modal + .mb/.mh/.mbody) with openRel/closeRel/
+// addRel/delRel delegated actions. addRel/delRel persist through
+// State.updateState; openRel/closeRel are in READONLY_SAFE_ACTIONS so
+// view-only sessions can inspect the graph while mutations stay refused.
+// Changed shell assets: project.html, js/mmgr-app.js, js/mmgr-render.js,
+// js/render/kanban.js, css/mmgr.css, mymanager-field-guide.html.
 
 // v501 - RELATIONS TASK 1 (plan-openproject 2026-10-29): new pure model
 // js/mmgr-relations.js (typed work package links, explicit reverse pairs,

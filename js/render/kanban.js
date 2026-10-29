@@ -12,6 +12,34 @@ var MMGR = window.MMGR || {};
   const U = ns.Utils;
   const $ = U.$;
 
+  // The card's relation badge: same words as the WBS badge, but a plain
+  // span - the card itself is the interactive element here (drag, focus,
+  // quick add), and a nested button would fight it. Clicking through to
+  // the links sheet happens from the WBS badge.
+  function relationBadge(task) {
+    const R = ns.Relations;
+    if (!R || !task) {
+      return '';
+    }
+    const state = S();
+    const count = R.relationCount(state, task.id);
+    if (!count) {
+      return '';
+    }
+    const blocked = R.blockersOf(state, task.id).length;
+    const cls = blocked ? 'br' : 'bo';
+    const label = blocked ? 'Blocked ' + blocked : 'Links ' + count;
+    return (
+      '<span class="badge ' +
+      cls +
+      ' rel-badge" title="' +
+      U.escapeHtml(label) +
+      '">' +
+      U.escapeHtml(label) +
+      '</span>'
+    );
+  }
+
   // Load-order guard: the model must exist before any board render.
   function boardModel() {
     if (!ns.Kanban) {
@@ -49,6 +77,7 @@ var MMGR = window.MMGR || {};
       '">' +
       '<div class="cn">' +
       crit +
+      relationBadge(t) +
       U.escapeHtml(t.name) +
       '</div>' +
       '<div class="cm">' +

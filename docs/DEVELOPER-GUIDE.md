@@ -51,6 +51,7 @@ attaches (e.g. `MMGR.Cloud`).
 |---|---|---|---|
 | `mmgr-state.js` | 1,216 | `State` | Schema versioning, load/save/persistence, migration, and the **JSDoc typedef block** (Charter, Task, Risk, BudgetLine, Resource… — the canonical state shapes; keep current). `getDefaultState()` seeds the whole schema. |
 | `mmgr-utils.js` | 353 | `Utils` | Shared helpers: date parsing (`parseDL`), DOM `$`, formatting, escape, misc. |
+| `mmgr-kanban.js` | ~430 | `Kanban` | Kanban board model: card membership and order, WIP limits, ephemeral filters, derived swimlanes, lead and cycle time. Pure functions over the state object, no DOM. Loads before the renderer and the domain modules. |
 | `mmgr-net.js` | 248 | `Config`, `Net` | Central config object (future API keys/endpoints — empty by design) + fetch wrapper. |
 | `mmgr-perf.js` | 95 | `Perf` | Device-level Performance Mode. ON/OFF gates WebGL starfield, 3D tilt, heavy CSS blur layers. Must load before viewport/dock read it. |
 | `mmgr-theme.js` | 183 | `Theme` | Light/Dark/System helper, early-load so theme applies before first paint. Shared by every page. |

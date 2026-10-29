@@ -125,7 +125,11 @@ var MMGR = window.MMGR || {};
         confidence: 'high',
         predecessors: [],
         notes: '',
-        weatherSensitive: false
+        weatherSensitive: false,
+        // V23: cards sort by an explicit slot, and flow metrics need a
+        // creation date that is not guessed later.
+        createdDate: U.todayStr(),
+        boardPosition: ns.Kanban ? ns.Kanban.nextPosition(s.tasks, 'todo') : 0
       });
     });
     R.renderWbs();

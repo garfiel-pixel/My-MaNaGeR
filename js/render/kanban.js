@@ -12,6 +12,14 @@ var MMGR = window.MMGR || {};
   const U = ns.Utils;
   const $ = U.$;
 
+  // Load-order guard: the model must exist before any board render.
+  function boardModel() {
+    if (!ns.Kanban) {
+      throw new Error('mmgr-kanban.js must load before js/render/kanban.js');
+    }
+    return ns.Kanban;
+  }
+
   function kanbanCard(t) {
     const overdue = t.status !== 'completed' && U.isOverdue(t.endDate) ? 'overdue' : '';
     const pulse = U.isDueSoon(t.endDate, 3) && t.status !== 'completed' ? 'pls' : '';
@@ -121,21 +129,16 @@ var MMGR = window.MMGR || {};
     if (ltChip) {
       ltChip.classList.toggle('is-on', kbShow);
     }
-    const noTasksAtAll = s.tasks.length === 0;
-    const rollupParents = new Set();
-    s.tasks.forEach(t => {
-      if (t.parentName) {
-        rollupParents.add(t.parentName);
-      }
-    });
-    const isWorkItem = t => !t.isPhase && !((t.level || 0) === 0 && rollupParents.has(t.name));
+    const K = boardModel();
+    const noTasksAtAll = K.workItems(s).length === 0;
     for (const col of cols) {
       const status = col[0];
       const el = $(col[1]);
       if (!el) {
         continue;
       }
-      const tasks = s.tasks.filter(t => (t.status || 'todo') === status && isWorkItem(t));
+      // Order and filtering are model concerns. The renderer only draws.
+      const tasks = K.columnTasks(s, status);
       const wip = $(col[2]);
       if (wip) {
         wip.textContent = tasks.length;
@@ -151,7 +154,9 @@ var MMGR = window.MMGR || {};
     }
     const ltEl = $('kc-lt');
     if (ltEl) {
-      const ltTasks = (s.tasks || []).filter(t => t.leadTime && isWorkItem(t));
+      const ltTasks = K.workItems(s)
+        .filter(t => t.leadTime)
+        .sort((a, b) => K.positionOf(a) - K.positionOf(b));
       const wlt = $('w-lt');
       if (wlt) {
         wlt.textContent = ltTasks.length;

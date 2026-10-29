@@ -177,7 +177,7 @@ var MMGR = window.MMGR || {};
   'use strict';
 
   const STORAGE_KEY = 'mmgr_state';
-  const SCHEMA_VERSION = 22;
+  const SCHEMA_VERSION = 23;
 
   // ---- Default State ----
   /** @returns {AppState} */
@@ -306,6 +306,13 @@ var MMGR = window.MMGR || {};
       wxWindow: { start: '', end: '', bufferDays: 0 },
       // V3.3 port: dedicated Kanban lead-time swimlane toggle
       kbShowLeadtime: false,
+      // Kanban board mechanics (schema v23). Shared, persisted board
+      // configuration only: per-column WIP limits and the lane grouping.
+      // 0 means "no limit", matching Kanboard's task_limit convention.
+      kanban: {
+        wip: { todo: 0, inprogress: 0, blocked: 0, completed: 0 },
+        swimlane: 'none'
+      },
       // Monolith Critical Path Highlighter: dim non-critical Gantt bars
       hlCritical: false,
       // Monolith Daily Field snapshot: { date, taskStates } , the state map
@@ -836,6 +843,51 @@ var MMGR = window.MMGR || {};
       }
       return state;
     },
+    23: function (state) {
+      // V22 -> V23: Kanban board mechanics. Additive and lossless:
+      // - state.kanban carries column WIP limits and the lane mode.
+      // - task.boardPosition gives every existing card a stable slot,
+      //   seeded from the current WBS array order so no board reshuffles
+      //   on the upgrade.
+      // No task is deleted, renamed, or re-statused.
+      if (!state.kanban || typeof state.kanban !== 'object') {
+        state.kanban = {};
+      }
+      if (!state.kanban.wip || typeof state.kanban.wip !== 'object') {
+        state.kanban.wip = {};
+      }
+      const columns = ['todo', 'inprogress', 'blocked', 'completed'];
+      columns.forEach(function (key) {
+        const n = parseInt(state.kanban.wip[key], 10);
+        state.kanban.wip[key] = n > 0 ? n : 0;
+      });
+      if (state.kanban.swimlane !== 'assignee' && state.kanban.swimlane !== 'parent') {
+        state.kanban.swimlane = 'none';
+      }
+      if (Array.isArray(state.tasks)) {
+        const next = {};
+        state.tasks.forEach(function (t) {
+          if (!t || typeof t !== 'object') {
+            return;
+          }
+          const st = t.status || 'todo';
+          if (typeof t.boardPosition === 'number' && isFinite(t.boardPosition)) {
+            next[st] = Math.max(next[st] === undefined ? -1 : next[st], t.boardPosition);
+          }
+        });
+        state.tasks.forEach(function (t) {
+          if (!t || typeof t !== 'object') {
+            return;
+          }
+          const st = t.status || 'todo';
+          if (typeof t.boardPosition !== 'number' || !isFinite(t.boardPosition)) {
+            next[st] = (next[st] === undefined ? -1 : next[st]) + 1;
+            t.boardPosition = next[st];
+          }
+        });
+      }
+      return state;
+    },
     22: function (state) {
       // V21 -> V22: P5 quantity break pricing + P6 landed cost (directive
       // 2026-10-18). Additive back-fill only - every supplier-book item gains
@@ -1149,6 +1201,7 @@ var MMGR = window.MMGR || {};
     'userName',
     'charter',
     'tasks',
+    'kanban',
     'meetings',
     'meetingPromises',
     'activeMeeting',

@@ -405,7 +405,14 @@
 // js/mmgr-perf.js, js/mmgr-glass.js, js/marketing.js, js/marketing-globe.js,
 // js/mmgr-combobox.js (new), dist/marketing-bundle.js. No inline script block
 // changed, so the CSP hashes are untouched.
-const CACHE = 'mmgr-shell-v494';
+const CACHE = 'mmgr-shell-v496';
+
+// v495 - KANBAN TASK 1 (plan 2026-10-25): the board gets a model. A new pure
+// module js/mmgr-kanban.js owns what a card is, the order inside a column
+// (task.boardPosition, seeded for existing projects by schema v23), and the
+// renderer now asks it instead of re-deriving the rules. state.kanban carries
+// the board settings envelope for the tasks that follow. The dev-fallback list
+// in project.html changed, so the CSP hashes were regenerated.
 
 // v494 - RBAC SPRINT 3 (directive 2026-10-25): the enterprise layer on top of
 // named members. A member's access is now a per-section grid (No access, View,

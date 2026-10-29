@@ -55,6 +55,9 @@ const APP_MODULES = [
   // Core (loaded first - defines MMGR namespace + utilities)
   'js/mmgr-state.js',
   'js/mmgr-utils.js',
+  // Kanban board model. Must load before the renderer and the domain
+  // modules, because both read MMGR.Kanban at call time.
+  'js/mmgr-kanban.js',
   'js/mmgr-net.js',
   // Performance Mode (owner 2026-09-06): gates heavy layers; must load
   // before mmgr-viewport.js / mmgr-dock.js read it.

@@ -45,8 +45,19 @@ var MMGR = window.MMGR || {};
     comms: 'Comms Log',
     docs: 'Documents',
     dmaic: 'DMAIC',
+    proc: 'Procurement',
+    meet: 'Meetings',
+    photos: 'Photos',
     supplierBook: 'Supplier Price Book'
   };
+  // Sprint 3 (directive 2026-10-25): the three levels a section can carry. The
+  // wording is plain on purpose - "Change" is what happens to the project, not
+  // "edit", which means nothing to a site manager.
+  var PERM_LEVELS = [
+    { value: 'none', label: 'No access' },
+    { value: 'view', label: 'View' },
+    { value: 'edit', label: 'Change' }
+  ];
 
   var state = {
     signedIn: false,
@@ -58,7 +69,11 @@ var MMGR = window.MMGR || {};
     tab: 'invitations',
     pendingDecline: 0,
     accepted: {},
-    peopleOpen: {}
+    peopleOpen: {},
+    accessOpen: {},
+    templates: [],
+    templatesLoaded: false,
+    templateBusy: false
   };
   var els = {};
 
@@ -84,6 +99,126 @@ var MMGR = window.MMGR || {};
       return '';
     }
     return scope.map(sectionLabel).join(', ');
+  }
+
+  // ---- Sprint 3: enterprise access tools ----------------------------------
+  // The client never decides access; the Worker does. This gate only decides
+  // whether the owner is OFFERED the tools, so a free or contractor account
+  // never sees a control whose save would answer "upgrade required".
+  function enterprise() {
+    try {
+      return !!(
+        ns.Entitlements &&
+        typeof ns.Entitlements.rbacEnterprise === 'function' &&
+        ns.Entitlements.rbacEnterprise()
+      );
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function sectionKeys() {
+    var seen = {};
+    Object.keys(state.sections).forEach(function (k) {
+      seen[k] = 1;
+    });
+    Object.keys(FALLBACK_SECTIONS).forEach(function (k) {
+      seen[k] = 1;
+    });
+    return Object.keys(seen);
+  }
+
+  // One section per row: the name, then the level. A grid of 16 rows is long,
+  // so it lives inside a collapsed block the owner opens per person.
+  function matrixEditorHtml(prefix, matrix) {
+    var m = matrix || {};
+    var rows = sectionKeys()
+      .map(function (key) {
+        var current = m[key] === 'view' || m[key] === 'edit' ? m[key] : 'none';
+        var options = PERM_LEVELS.map(function (lvl) {
+          return (
+            '<option value="' +
+            lvl.value +
+            '"' +
+            (current === lvl.value ? ' selected' : '') +
+            '>' +
+            lvl.label +
+            '</option>'
+          );
+        }).join('');
+        return (
+          '<div class="team-matrix-row"><span class="team-matrix-label">' +
+          esc(sectionLabel(key)) +
+          '</span><select class="team-matrix-select" data-team-matrix-key="' +
+          esc(key) +
+          '" aria-label="' +
+          esc(sectionLabel(key) + ' access') +
+          '">' +
+          options +
+          '</select></div>'
+        );
+      })
+      .join('');
+    return '<div class="team-matrix" data-team-matrix="' + esc(prefix) + '">' + rows + '</div>';
+  }
+
+  function readMatrix(prefix) {
+    var box = document.querySelector('[data-team-matrix="' + prefix + '"]');
+    var out = {};
+    if (!box) {
+      return out;
+    }
+    var selects = box.querySelectorAll('[data-team-matrix-key]');
+    for (var i = 0; i < selects.length; i++) {
+      out[selects[i].getAttribute('data-team-matrix-key')] = selects[i].value;
+    }
+    return out;
+  }
+
+  function writeMatrix(prefix, matrix) {
+    var box = document.querySelector('[data-team-matrix="' + prefix + '"]');
+    if (!box || !matrix) {
+      return;
+    }
+    var selects = box.querySelectorAll('[data-team-matrix-key]');
+    for (var i = 0; i < selects.length; i++) {
+      var key = selects[i].getAttribute('data-team-matrix-key');
+      var lvl = matrix[key] === 'view' || matrix[key] === 'edit' ? matrix[key] : 'none';
+      selects[i].value = lvl;
+    }
+  }
+
+  // A date input holds YYYY-MM-DD in local time. Access ends at the END of the
+  // chosen day, so a subcontractor working the last afternoon is not locked out
+  // at midnight before it.
+  function isoFromDateInput(value) {
+    if (!value) {
+      return null;
+    }
+    var parts = String(value).split('-');
+    if (parts.length !== 3) {
+      return null;
+    }
+    var d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]), 23, 59, 59, 0);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  function dateInputFromIso(iso) {
+    if (!iso) {
+      return '';
+    }
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) {
+      return '';
+    }
+    var mm = String(d.getMonth() + 1);
+    var dd = String(d.getDate());
+    return (
+      d.getFullYear() +
+      '-' +
+      (mm.length < 2 ? '0' + mm : mm) +
+      '-' +
+      (dd.length < 2 ? '0' + dd : dd)
+    );
   }
   function fmtDate(iso) {
     if (!iso) {
@@ -205,7 +340,7 @@ var MMGR = window.MMGR || {};
   function onPanelClick(ev) {
     var t = ev.target.closest
       ? ev.target.closest(
-          '[data-team-close],[data-team-tab],[data-team-accept],[data-team-decline],[data-team-open],[data-team-people],[data-team-resend],[data-team-revoke],[data-team-role]'
+          '[data-team-close],[data-team-tab],[data-team-accept],[data-team-decline],[data-team-open],[data-team-people],[data-team-resend],[data-team-revoke],[data-team-role],[data-team-access],[data-team-access-save],[data-team-extend],[data-team-bulk],[data-team-bulk-send],[data-team-tpls],[data-team-tpl-new],[data-team-tpl-save],[data-team-tpl-cancel],[data-team-tpl-apply],[data-team-tpl-del]'
         )
       : null;
     if (!t) {
@@ -248,6 +383,65 @@ var MMGR = window.MMGR || {};
         t.getAttribute('data-team-project'),
         Number(t.getAttribute('data-team-role')),
         t.value
+      );
+      return;
+    }
+    // ---- sprint 3 ----
+    if (t.hasAttribute('data-team-access')) {
+      toggleAccess(Number(t.getAttribute('data-team-access')), t);
+      return;
+    }
+    if (t.hasAttribute('data-team-access-save')) {
+      saveAccess(
+        t.getAttribute('data-team-project'),
+        Number(t.getAttribute('data-team-access-save')),
+        t
+      );
+      return;
+    }
+    if (t.hasAttribute('data-team-extend')) {
+      extendAccess(t.getAttribute('data-team-project'), Number(t.getAttribute('data-team-extend')));
+      return;
+    }
+    if (t.hasAttribute('data-team-bulk')) {
+      toggleBlock('team-bulk-' + t.getAttribute('data-team-bulk'), t, 'Invite several people');
+      return;
+    }
+    if (t.hasAttribute('data-team-bulk-send')) {
+      sendBulk(t.getAttribute('data-team-bulk-send'), t);
+      return;
+    }
+    if (t.hasAttribute('data-team-tpls')) {
+      openTemplates(t.getAttribute('data-team-tpls'), t);
+      return;
+    }
+    if (t.hasAttribute('data-team-tpl-new')) {
+      var pe = $('team-tpl-editor-' + t.getAttribute('data-team-tpl-new'));
+      if (pe) {
+        pe.hidden = false;
+      }
+      return;
+    }
+    if (t.hasAttribute('data-team-tpl-cancel')) {
+      var pc = $('team-tpl-editor-' + t.getAttribute('data-team-tpl-cancel'));
+      if (pc) {
+        pc.hidden = true;
+      }
+      return;
+    }
+    if (t.hasAttribute('data-team-tpl-save')) {
+      saveTemplate(t.getAttribute('data-team-tpl-save'), t);
+      return;
+    }
+    if (t.hasAttribute('data-team-tpl-apply')) {
+      applyTemplate(Number(t.getAttribute('data-team-tpl-apply')));
+      return;
+    }
+    if (t.hasAttribute('data-team-tpl-del')) {
+      deleteTemplate(
+        t.getAttribute('data-team-project'),
+        Number(t.getAttribute('data-team-tpl-del')),
+        t
       );
     }
   }
@@ -555,6 +749,14 @@ var MMGR = window.MMGR || {};
           esc(pid) +
           '">Resend</button>'
         : '';
+    if (enterprise()) {
+      actions +=
+        '<button type="button" class="team-link" data-team-access="' +
+        esc(m.id) +
+        '" aria-expanded="false" aria-controls="team-access-' +
+        esc(m.id) +
+        '">Access</button>';
+    }
     actions +=
       '<button type="button" class="team-link team-link-danger" data-team-revoke="' +
       esc(m.id) +
@@ -567,7 +769,30 @@ var MMGR = window.MMGR || {};
         : m.acceptedAt
           ? 'Joined ' + fmtDate(m.acceptedAt)
           : esc(m.status);
-    return (
+    // Sprint 3: the 7-day notice. The server computes `accessExpiringSoon`, so
+    // the page cannot disagree with what the Worker will enforce.
+    var box = '';
+    if (m.accessExpiresAt) {
+      box =
+        '<span class="team-person-sub team-access-note' +
+        (m.accessExpiringSoon ? ' is-soon' : '') +
+        '">' +
+        (m.accessExpired
+          ? 'Access ended ' + fmtDate(m.accessExpiresAt)
+          : m.accessExpiringSoon
+            ? 'Access ends in under 7 days, on ' + fmtDate(m.accessExpiresAt)
+            : 'Access ends ' + fmtDate(m.accessExpiresAt)) +
+        '</span>';
+    }
+    var extend =
+      enterprise() && m.accessExpiresAt
+        ? '<button type="button" class="team-link" data-team-extend="' +
+          esc(m.id) +
+          '" data-team-project="' +
+          esc(pid) +
+          '">Add 30 days</button>'
+        : '';
+    var row =
       '<div class="team-person team-person-row">' +
       '<div class="team-person-id"><b>' +
       esc(m.inviteeEmail) +
@@ -575,11 +800,133 @@ var MMGR = window.MMGR || {};
       esc(m.status) +
       ' &middot; ' +
       when +
-      '</span></div>' +
+      '</span>' +
+      box +
+      '</div>' +
       roleSelect +
       '<div class="team-person-actions">' +
       actions +
-      '</div></div>'
+      extend +
+      '</div></div>';
+    if (!enterprise()) {
+      return row;
+    }
+    // The access editor: one row per section, the date the access ends, and a
+    // save. It is collapsed until the owner asks for it, because 16 rows per
+    // person would bury the list.
+    var tplOptions =
+      '<option value="">Pick a template</option>' +
+      state.templates
+        .map(function (t) {
+          return '<option value="' + esc(t.id) + '">' + esc(t.name) + '</option>';
+        })
+        .join('');
+    return (
+      row +
+      '<div class="team-access" id="team-access-' +
+      esc(m.id) +
+      '" hidden>' +
+      '<p class="team-note">' +
+      (m.role === 'client'
+        ? 'A client can never change the project. A level saved as Change is kept as View.'
+        : 'Choose what this person can see and change, then save.') +
+      '</p>' +
+      '<div class="team-sub-row"><label class="team-sub-label" for="team-tpl-pick-' +
+      esc(m.id) +
+      '">Start from a template</label>' +
+      '<select id="team-tpl-pick-' +
+      esc(m.id) +
+      '" class="team-role-select">' +
+      tplOptions +
+      '</select>' +
+      '<button type="button" class="team-link" data-team-tpl-apply="' +
+      esc(m.id) +
+      '">Use it</button></div>' +
+      matrixEditorHtml('m' + m.id, m.perm) +
+      '<div class="team-access-row"><label class="team-sub-label" for="team-exp-' +
+      esc(m.id) +
+      '">Access ends (optional)</label>' +
+      '<input type="date" class="team-date" id="team-exp-' +
+      esc(m.id) +
+      '" value="' +
+      esc(dateInputFromIso(m.accessExpiresAt)) +
+      '"></div>' +
+      '<div class="team-sub-row"><button type="button" class="btn btn-g btn-s" data-team-access-save="' +
+      esc(m.id) +
+      '" data-team-project="' +
+      esc(pid) +
+      '">Save access</button></div>' +
+      '</div>'
+    );
+  }
+
+  function toolsHtml(pid) {
+    if (!enterprise()) {
+      return '';
+    }
+    var base = '/api/cloud/projects/' + encodeURIComponent(pid) + '/team';
+    return (
+      '<div class="team-tools">' +
+      '<button type="button" class="team-link" data-team-bulk="' +
+      esc(pid) +
+      '">Invite several people</button>' +
+      '<button type="button" class="team-link" data-team-tpls="' +
+      esc(pid) +
+      '">Templates</button>' +
+      '<a class="team-link" href="' +
+      esc(base) +
+      '/audit.csv" download>Audit log (CSV)</a>' +
+      '</div>' +
+      '<div class="team-sub" id="team-bulk-' +
+      esc(pid) +
+      '" hidden>' +
+      '<label class="team-sub-label" for="team-bulk-emails-' +
+      esc(pid) +
+      '">One email per line, up to 100</label>' +
+      '<textarea class="team-bulk-box" id="team-bulk-emails-' +
+      esc(pid) +
+      '" rows="3" spellcheck="false"></textarea>' +
+      '<div class="team-sub-row"><select class="team-role-select" id="team-bulk-role-' +
+      esc(pid) +
+      '" aria-label="Role for the new people">' +
+      ['manager', 'supervisor', 'contractor', 'client']
+        .map(function (r) {
+          return '<option value="' + r + '">' + roleLabel(r) + '</option>';
+        })
+        .join('') +
+      '</select>' +
+      '<button type="button" class="btn btn-g btn-s" data-team-bulk-send="' +
+      esc(pid) +
+      '">Send invitations</button></div>' +
+      '<p class="team-note" id="team-bulk-out-' +
+      esc(pid) +
+      '" role="status"></p>' +
+      '</div>' +
+      '<div class="team-sub" id="team-tpls-' +
+      esc(pid) +
+      '" hidden>' +
+      '<p class="team-note">A template is a saved set of section permissions you can reuse on any of your projects.</p>' +
+      '<div class="team-tpl-list" id="team-tpl-list-' +
+      esc(pid) +
+      '"></div>' +
+      '<div class="team-sub-row"><input class="team-tpl-name" id="team-tpl-name-' +
+      esc(pid) +
+      '" maxlength="60" placeholder="Template name" aria-label="Template name">' +
+      '<button type="button" class="btn btn-o btn-s" data-team-tpl-new="' +
+      esc(pid) +
+      '">New template</button></div>' +
+      '<div id="team-tpl-editor-' +
+      esc(pid) +
+      '" hidden>' +
+      matrixEditorHtml('tpl' + pid, {}) +
+      '<div class="team-sub-row"><button type="button" class="btn btn-g btn-s" data-team-tpl-save="' +
+      esc(pid) +
+      '">Save template</button>' +
+      '<button type="button" class="team-link" data-team-tpl-cancel="' +
+      esc(pid) +
+      '">Cancel</button></div>' +
+      '</div>' +
+      '</div>'
     );
   }
 
@@ -596,16 +943,63 @@ var MMGR = window.MMGR || {};
       return;
     }
     var members = (r.body && r.body.members) || [];
-    box.innerHTML = members.length
-      ? members
-          .map(function (m) {
-            return personRow(pid, m);
-          })
-          .join('')
-      : '<p class="team-empty-sub">Nobody else is on this project yet.</p>';
+    if (enterprise() && !state.templatesLoaded) {
+      await ensureTemplates();
+    }
+    box.innerHTML =
+      toolsHtml(pid) +
+      (members.length
+        ? members
+            .map(function (m) {
+              return personRow(pid, m);
+            })
+            .join('')
+        : '<p class="team-empty-sub">Nobody else is on this project yet.</p>');
     if (els.offline) {
       els.offline.hidden = online();
     }
+  }
+
+  async function ensureTemplates() {
+    var r = await jfetch('/api/team/templates');
+    if (r.ok && r.body && r.body.ok) {
+      state.templates = r.body.templates || [];
+      state.templatesLoaded = true;
+    }
+    return state.templates;
+  }
+
+  function renderTemplateList(pid) {
+    var box = $('team-tpl-list-' + pid);
+    if (!box) {
+      return;
+    }
+    if (!state.templates.length) {
+      box.innerHTML = '<p class="team-empty-sub">No templates yet.</p>';
+      return;
+    }
+    box.innerHTML = state.templates
+      .map(function (t) {
+        return (
+          '<div class="team-person"><div class="team-person-id"><b>' +
+          esc(t.name) +
+          '</b><span class="team-person-sub">' +
+          esc(
+            sectionList(
+              Object.keys(t.perm || {}).filter(function (k) {
+                return t.perm[k] === 'view' || t.perm[k] === 'edit';
+              })
+            )
+          ) +
+          '</span></div>' +
+          '<button type="button" class="team-link team-link-danger" data-team-tpl-del="' +
+          esc(t.id) +
+          '" data-team-project="' +
+          esc(pid) +
+          '">Delete</button></div>'
+        );
+      })
+      .join('');
   }
 
   async function togglePeople(pid, btn) {
@@ -722,6 +1116,240 @@ var MMGR = window.MMGR || {};
     setStatus('Access revoked.', false);
     toast('Access revoked.', 'ok');
     loadPeople(pid);
+  }
+
+  // ---- sprint 3 actions ---------------------------------------------------
+  function toggleBlock(id, btn, label) {
+    var box = $(id);
+    if (!box) {
+      return;
+    }
+    box.hidden = !box.hidden;
+    if (btn && btn.tagName === 'BUTTON') {
+      btn.setAttribute('aria-expanded', box.hidden ? 'false' : 'true');
+      btn.textContent = box.hidden ? label : 'Hide';
+    }
+  }
+
+  function toggleAccess(mid, btn) {
+    var box = $('team-access-' + mid);
+    if (!box) {
+      return;
+    }
+    box.hidden = !box.hidden;
+    state.accessOpen[mid] = !box.hidden;
+    btn.setAttribute('aria-expanded', box.hidden ? 'false' : 'true');
+  }
+
+  async function saveAccess(pid, mid, btn) {
+    if (!online()) {
+      setStatus('Needs a connection to save access.', true);
+      return;
+    }
+    var matrix = readMatrix('m' + mid);
+    var dateInput = $('team-exp-' + mid);
+    var body = { perm: matrix };
+    // An empty date clears the time box: access runs until revoked.
+    body.accessExpiresAt = isoFromDateInput(dateInput ? dateInput.value : '');
+    btn.disabled = true;
+    var r = await jfetch('/api/cloud/projects/' + encodeURIComponent(pid) + '/team/' + mid, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    btn.disabled = false;
+    if (!r.ok || !r.body.ok) {
+      setStatus(
+        (r.body && r.body.error === 'enterprise_feature'
+          ? 'Custom access is not part of this plan.'
+          : r.body && r.body.error) || 'Could not save that access.',
+        true
+      );
+      return;
+    }
+    setStatus('Access saved.', false);
+    toast('Access saved.', 'ok');
+    await loadPeople(pid);
+  }
+
+  async function extendAccess(pid, mid) {
+    if (!online()) {
+      setStatus('Needs a connection to extend access.', true);
+      return;
+    }
+    var r = await jpost(
+      '/api/cloud/projects/' + encodeURIComponent(pid) + '/team/' + mid + '/extend',
+      { days: 30 }
+    );
+    if (!r.ok || !r.body.ok) {
+      setStatus(
+        (r.body && r.body.error === 'enterprise_feature'
+          ? 'Adding days is not part of this plan.'
+          : r.body && r.body.error) || 'Could not add the days.',
+        true
+      );
+      return;
+    }
+    setStatus('Access extended by 30 days.', false);
+    toast('Access extended by 30 days.', 'ok');
+    await loadPeople(pid);
+  }
+
+  var BULK_REASON = {
+    invited: 'invited',
+    already_member: 'already on the project',
+    invalid: 'not a valid email',
+    member_limit: 'over the seat limit',
+    enterprise_feature: 'not included in the plan',
+    template_not_found: 'the template was deleted'
+  };
+
+  async function sendBulk(pid, btn) {
+    var ta = $('team-bulk-emails-' + pid);
+    var out = $('team-bulk-out-' + pid);
+    var roleSel = $('team-bulk-role-' + pid);
+    var raw = ta ? ta.value : '';
+    var list = raw
+      .split(/[\s,;]+/)
+      .map(function (s) {
+        return s.trim();
+      })
+      .filter(function (s) {
+        return !!s;
+      });
+    if (!list.length) {
+      if (out) {
+        out.textContent = 'Add at least one email address.';
+      }
+      return;
+    }
+    if (list.length > 100) {
+      if (out) {
+        out.textContent = 'One batch holds up to 100 addresses. Split the list and send again.';
+      }
+      return;
+    }
+    btn.disabled = true;
+    if (out) {
+      out.textContent = 'Sending.';
+    }
+    var r = await jpost('/api/cloud/projects/' + encodeURIComponent(pid) + '/team/bulk', {
+      emails: list,
+      role: roleSel ? roleSel.value : 'contractor'
+    });
+    btn.disabled = false;
+    if (!r.ok || !r.body.ok) {
+      if (out) {
+        out.textContent =
+          r.body && r.body.error === 'enterprise_feature'
+            ? 'Inviting several people at once is not part of this plan.'
+            : (r.body && r.body.error) || 'Could not send the invitations.';
+      }
+      return;
+    }
+    var counts = {};
+    var rows = r.body.results || [];
+    rows.forEach(function (row) {
+      counts[row.status] = (counts[row.status] || 0) + 1;
+    });
+    var parts = [];
+    Object.keys(counts).forEach(function (k) {
+      parts.push(counts[k] + ' ' + (BULK_REASON[k] || 'not added'));
+    });
+    if (out) {
+      out.textContent = 'Results: ' + parts.join(', ') + '.';
+    }
+    if (ta) {
+      ta.value = '';
+    }
+    await loadPeople(pid);
+    var again = $('team-bulk-out-' + pid);
+    if (again) {
+      again.textContent = 'Results: ' + parts.join(', ') + '.';
+    }
+  }
+
+  async function openTemplates(pid, btn) {
+    var box = $('team-tpls-' + pid);
+    if (!box) {
+      return;
+    }
+    box.hidden = !box.hidden;
+    btn.setAttribute('aria-expanded', box.hidden ? 'false' : 'true');
+    btn.textContent = box.hidden ? 'Templates' : 'Hide templates';
+    if (box.hidden) {
+      return;
+    }
+    await ensureTemplates();
+    renderTemplateList(pid);
+  }
+
+  async function saveTemplate(pid, btn) {
+    var nameBox = $('team-tpl-name-' + pid);
+    var name = nameBox ? String(nameBox.value || '').trim() : '';
+    if (name.length < 2) {
+      setStatus('Give the template a name first.', true);
+      return;
+    }
+    btn.disabled = true;
+    var r = await jpost('/api/team/templates', { name: name, perm: readMatrix('tpl' + pid) });
+    btn.disabled = false;
+    if (!r.ok || !r.body.ok) {
+      setStatus(
+        r.body && r.body.error === 'template_limit'
+          ? 'You already have the most templates this plan allows.'
+          : (r.body && r.body.error) || 'Could not save the template.',
+        true
+      );
+      return;
+    }
+    if (nameBox) {
+      nameBox.value = '';
+    }
+    var ed = $('team-tpl-editor-' + pid);
+    if (ed) {
+      ed.hidden = true;
+    }
+    state.templatesLoaded = false;
+    await ensureTemplates();
+    renderTemplateList(pid);
+    setStatus('Template saved.', false);
+  }
+
+  async function deleteTemplate(pid, id, btn) {
+    if (btn.getAttribute('data-confirm') !== '1') {
+      btn.setAttribute('data-confirm', '1');
+      btn.textContent = 'Confirm delete';
+      return;
+    }
+    btn.removeAttribute('data-confirm');
+    var r = await jfetch('/api/team/templates/' + id, { method: 'DELETE' });
+    if (!r.ok || !r.body.ok) {
+      setStatus((r.body && r.body.error) || 'Could not delete the template.', true);
+      return;
+    }
+    state.templates = state.templates.filter(function (t) {
+      return Number(t.id) !== Number(id);
+    });
+    renderTemplateList(pid);
+    setStatus('Template deleted.', false);
+  }
+
+  function applyTemplate(mid) {
+    var sel = $('team-tpl-pick-' + mid);
+    var tpl = null;
+    if (sel && sel.value) {
+      tpl =
+        state.templates.filter(function (t) {
+          return String(t.id) === String(sel.value);
+        })[0] || null;
+    }
+    if (!tpl) {
+      setStatus('Pick a template first.', true);
+      return;
+    }
+    writeMatrix('m' + mid, tpl.perm);
+    setStatus('Template filled in. Save access to keep it.', false);
   }
 
   // Opens a project this person does not own. Mirrors the launcher's own

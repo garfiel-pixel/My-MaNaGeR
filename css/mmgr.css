@@ -5592,6 +5592,140 @@ body.dark-mode .team-link-danger {
 .team-people[hidden] {
   display: none;
 }
+/* ---- RBAC sprint 3: access tools ---------------------------------------- */
+.team-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0 0 6px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.team-tools .team-link {
+  text-decoration: none;
+}
+.team-sub {
+  padding: 8px 0 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+.team-sub[hidden] {
+  display: none;
+}
+.team-sub-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.team-sub-label {
+  font-size: 0.68rem;
+  color: var(--slate);
+}
+.team-note {
+  margin: 4px 0 0;
+  font-size: 0.68rem;
+  line-height: 1.45;
+  color: var(--slate);
+}
+.team-bulk-box {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--tile-bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.74rem;
+  resize: vertical;
+}
+.team-tpl-name {
+  flex: 1;
+  min-width: 120px;
+  padding: 5px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--tile-bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.74rem;
+}
+.team-tpl-list .team-person:first-child {
+  padding-top: 0;
+}
+.team-access {
+  padding: 8px 0 10px 10px;
+  margin: 2px 0 6px;
+  border-left: 2px solid var(--gold);
+  background: rgba(var(--gold-rgb), 0.05);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+.team-access[hidden] {
+  display: none;
+}
+.team-access-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.team-date {
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--tile-bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.72rem;
+}
+/* The matrix: name on the left, level on the right, two columns at >= 420px so
+   sixteen rows stay scannable without six screens of scrolling. */
+.team-matrix {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px 14px;
+  margin-top: 6px;
+}
+@media (min-width: 420px) {
+  .team-matrix {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.team-matrix-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+.team-matrix-label {
+  font-size: 0.72rem;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.team-matrix-select {
+  flex-shrink: 0;
+  max-width: 96px;
+  padding: 2px 3px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--tile-bg);
+  color: var(--text);
+  font-size: 0.7rem;
+}
+.team-access-note {
+  margin-top: 2px;
+}
+.team-access-note.is-soon {
+  color: var(--gold-ink);
+  font-weight: 700;
+}
+body.dark-mode .team-access-note.is-soon {
+  color: var(--text-heading);
+}
 .team-pop-foot {
   display: flex;
   align-items: center;

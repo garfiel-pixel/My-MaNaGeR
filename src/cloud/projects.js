@@ -13,6 +13,7 @@ import {
   cloudReadState,
   cloudDeepEqual,
   cloudScopeMerge,
+  cloudClampToWriteScope,
   cloudDiffState,
   cloudLogSave,
   cloudPathDelete,
@@ -277,7 +278,12 @@ export async function queueEditorProposal(env, projectId, a, submitted, prev, no
 // column means an editor CODE; a member has none), which also means the
 // editor-code de-duplication below never touches these rows.
 export async function queueTeamProposal(env, projectId, member, submitted, prev, now) {
-  const scope = teamScopeForRole(member.role, member.scope);
+  // Sprint 3: the caller passes the member's WRITE set (matrix 'edit' sections).
+  // Only fall back to the role template when it did not, so a custom matrix is
+  // never widened back to the role default.
+  const scope = Array.isArray(member.scope)
+    ? member.scope
+    : teamScopeForRole(member.role, member.scope);
   const merged = cloudScopeMerge(prev, submitted, scope);
   const label = member.name || member.email || 'Team member';
   if (!merged.applied.length) {
@@ -458,7 +464,9 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
             projectId,
             {
               role: teamAuth.role,
-              scope: teamAuth.scope,
+              // The WRITE set: a section the matrix marks view-only is
+              // readable but can never be changed through a proposal.
+              scope: teamAuth.writeScope,
               name: (teamAuth.session && teamAuth.session.name) || teamAuth.email,
               email: teamAuth.email
             },
@@ -511,6 +519,12 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
     const prev = await cloudReadState(env, key, authRow.owner_code_hash, authRow.owner_code_salt);
     next = JSON.parse(JSON.stringify(read.body.state));
     stripStateSecrets(next);
+    // Sprint 3: a manager's matrix can mark sections view-only. The save stays
+    // direct (no review queue) but may not write those sections, so their
+    // previous values are restored before the blob is stored.
+    if (teamAuth && teamAuth.role === 'manager' && Array.isArray(teamAuth.writeScope)) {
+      next = cloudClampToWriteScope(next, prev, teamAuth.writeScope);
+    }
     await cloudTouchOwner(env, projectId);
     if (authRow && authRow.deleted_at) {
       return cloudProjectDeleted();
@@ -775,7 +789,11 @@ export async function handleCloudLoad(request, env, projectId) {
       editorAuth = adoptFallback;
     }
   } else if (teamFallback) {
-    // Role view: manager reads the whole project, the other roles a slice.
+    // Role view: the member's matrix decides. A manager's default template is
+    // every section, so a manager still reads the whole project; a client stays
+    // read-only; the other roles read their granted slice. `teamFallback.scope`
+    // is already the READ set (view + edit) resolved by cloudAuthWithRole, so it
+    // is never re-derived from the role here - a custom matrix would be lost.
     if (teamFallback.role === 'manager') {
       ownerAuth = true;
     } else if (teamFallback.role === 'client') {
@@ -783,7 +801,7 @@ export async function handleCloudLoad(request, env, projectId) {
     } else {
       editorAuth = {
         label: teamFallback.role === 'supervisor' ? 'Team supervisor' : 'Team contractor',
-        scope: teamScopeForRole(teamFallback.role, teamFallback.scope)
+        scope: teamFallback.scope
       };
     }
   }
@@ -799,7 +817,9 @@ export async function handleCloudLoad(request, env, projectId) {
       base.teamRole = teamFallback.role;
       base.source = 'team';
       base.role = teamFallback.role === 'client' ? 'client' : 'editor';
-      base.scope = teamScopeForRole(teamFallback.role, teamFallback.scope);
+      base.scope = teamFallback.scope;
+      base.perm = teamFallback.perm || null;
+      base.accessExpiresAt = teamFallback.accessExpiresAt || null;
     }
     if (editorAuth) {
       base.role = 'editor';
@@ -838,8 +858,15 @@ export async function handleCloudLoad(request, env, projectId) {
   );
   const resp = { ok: true, state: state, savedAt: row.updated_at };
   if (teamFallback) {
+    // Sprint 3: a named member receives a PROJECTION of the snapshot, not the
+    // whole blob. Without this a client could read sections the owner never
+    // shared with them by looking at the response. Read set = view + edit.
+    resp.state = cloudScopeState(state, teamFallback.scope);
     resp.teamRole = teamFallback.role;
     resp.source = 'team';
+    resp.scope = teamFallback.scope;
+    resp.perm = teamFallback.perm || null;
+    resp.accessExpiresAt = teamFallback.accessExpiresAt || null;
   }
   if (editorAuth) {
     resp.role = 'editor';

@@ -436,6 +436,19 @@ jobs:
           QA_PORT: 8813
           QA_CDP_PORT: 9246
 
+      # RBAC sprint 3, API half. Its own wrangler + D1/R2, migration 0029: the
+      # per-section matrix (read set vs write set), a manager clamp, a client
+      # downgrade, a closed access window refused at accept and on the next
+      # request, the 7-day notice, extend, templates with account isolation,
+      # bulk 100 with no existence leak, the audit CSV, and the lower-tier
+      # refusals.
+      - name: "T2: Team Enterprise (matrix, expiry, templates, bulk, audit)"
+        id: qa-team-enterprise
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: node tools/qa-team-enterprise.cjs
+        env:
+          QA_PORT: 8814
+
       - name: "T2: Reviews"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-reviews.cjs
@@ -817,6 +830,7 @@ jobs:
           echo "| Line endings | ${{ steps.eol.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Client codes E2E | ${{ steps.qa-client-codes.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Team UI E2E | ${{ steps.qa-team-ui.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Team Enterprise | ${{ steps.qa-team-enterprise.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Billing cancel contract | ${{ steps.qa-billing-cancel.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| API keys E2E | ${{ steps.qa-api-keys.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Sync bond E2E | ${{ steps.qa-sync-bond.outcome }} |" >> $GITHUB_STEP_SUMMARY

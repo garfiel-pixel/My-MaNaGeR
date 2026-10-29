@@ -741,6 +741,7 @@ footer{padding:70px 64px 46px;position:relative;}
         <a class="nav-link" href="#deadline"><span class="idx">A-29</span>Project Deadline &amp; Float</a>
         <a class="nav-link" href="#build-cost"><span class="idx">A-30</span>Build Cost Calculator</a>
         <a class="nav-link" href="#procurement"><span class="idx">A-31</span>Procurement &amp; Quotes</a>
+        <a class="nav-link" href="#named-team"><span class="idx">A-32</span>Named Team Members</a>
       </div>
     </nav>
   </aside>
@@ -2044,15 +2045,49 @@ Date: ____________  Focus: ____________</pre>
       </div>
     </section>
 
+    <!-- ============ A-32 NAMED TEAM MEMBERS ============ -->
+    <section class="sheet reveal" id="named-team">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-32</span><h2>Named Team Members</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>People detail</div></div>
+      </div>
+      <span class="kicker">Give each person their own sign-in instead of handing out one shared code, then decide exactly what they can see and change</span>
+      <p class="lede">A code gets one person into a project. A named member gets the right person into the right parts of it, with their own record: who they are, what they were given, and when it ends. The bell beside the project header and on the launcher counts invitations waiting for you; the same panel manages the people on the projects you own.</p>
+
+      <div class="grid grid-2">
+        <div class="card bracket"><span class="cnum">BELL</span><h4>The bell and its count</h4><p>The bell carries a count of invitations addressed to the email you signed in with. It stays hidden while you are signed out, because there is nothing it could usefully open. Choose <strong>Invitations</strong> to accept or decline, or <strong>Collaborators</strong> to see the people on your projects and the projects shared with you.</p></div>
+        <div class="card bracket"><span class="cnum">LINK</span><h4>The emailed link</h4><p>An invitation email carries a link to a page that explains itself. Open it signed out and it asks you to sign in, then brings you straight back to the same invitation. Open it signed in with the invited address and one click accepts. The token in the address stays exactly where it is; it is single use and expires after seven days.</p></div>
+        <div class="card bracket"><span class="cnum">SHARED</span><h4>Shared with me</h4><p>Accepted projects appear on the launcher under <strong>Shared with me</strong> with the owner's name. Open one and it loads with your role's banner, the panels you were given, and nothing else: the server hands your browser only those sections, so a panel you were not given is not merely greyed out, it was never sent.</p></div>
+        <div class="card bracket"><span class="cnum">WRITES</span><h4>A proposal, not a change</h4><p>A supervisor or contractor who saves sends the owner a review proposal with a field-level difference. Nothing lands in the project until the owner accepts it. A manager saves straight to the project, as before. A client can never write at all, whatever the access grid says.</p></div>
+        <div class="card bracket"><span class="cnum">LIVE</span><h4>A revoke lands immediately</h4><p>Revoking someone answers their next save with a plain refusal, and the open project checks access on a timer, so every save control retires on its own within a minute of the revoke. They keep their local copy, because offline work is theirs, but the cloud will not accept it.</p></div>
+        <div class="card bracket"><span class="cnum">OWNER</span><h4>What the owner sees</h4><p>On the Collaborators tab each project you own has a <strong>People</strong> button. Every person shows their email, status, role and a role picker. Pending invitations offer Resend, everyone offers Revoke, and a revoked or expired row stays on the record instead of quietly disappearing.</p></div>
+      </div>
+
+      <h3 class="h-sub">Section by section, on the Company plan</h3>
+      <div class="grid grid-2">
+        <div class="card bracket"><span class="cnum">GRID</span><h4>Access, per person</h4><p>Choose <strong>Access</strong> beside a person to open the grid: one row per section, each with <strong>No access</strong>, <strong>View</strong> or <strong>Change</strong>. The four roles fill it in as a starting point, then you adjust. Save and the server resolves two sets from it: what they can read, and what they can change. A section left on View is readable but can never be written through a proposal or a manager save.</p></div>
+        <div class="card bracket"><span class="cnum">TEMPLATES</span><h4>Set it once, reuse it</h4><p><strong>Templates</strong> saves the grid you built under a name, on your account rather than on one project, so the same custom role applies everywhere you work. Pick a template in a person's Access panel and the grid fills in; adjust and save, and the template itself stays as you saved it. Twenty-five templates per account is the limit.</p></div>
+        <div class="card bracket"><span class="cnum">TIME</span><h4>Access that ends on a date</h4><p>Give a subcontractor a window: <strong>Access ends</strong> takes a date, and the login stops working at the end of that day, whatever the app happens to be doing. The server refuses the very next request, so no midnight sweep is required for the lock to hold. Seven days before the date the person's row says so, with an <strong>Add 30 days</strong> button beside it.</p></div>
+        <div class="card bracket"><span class="cnum">BULK</span><h4>Up to 100 at once</h4><p><strong>Invite several people</strong> takes one email per line, up to 100, with one role for the batch. Duplicates collapse, and every row answers the same shape whether or not that address already has an account, so the form cannot be used to discover who is registered. The result line says how many were invited and why the rest were not.</p></div>
+        <div class="card bracket"><span class="cnum">AUDIT</span><h4>The audit log</h4><p><strong>Audit log (CSV)</strong> downloads every membership event for the project: invited, accepted, declined, role changed, access changed, extended, expired, revoked, left. One row per event with the time, who did it and to whom, so a handover pack or a client question has an answer that is not a memory.</p></div>
+        <div class="card bracket"><span class="cnum">PLAN</span><h4>Which plan you need</h4><p>Named members start on Contractor, which carries one. Company lifts the seat cap and adds everything on this sheet: the access grid, templates, time-boxed access, bulk invite and the audit download. On a lower plan the controls stay hidden and the server answers plainly if they are called anyway.</p></div>
+      </div>
+
+      <div class="divider-note">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v6c0 4.4-3 7.4-7 9-4-1.6-7-4.6-7-9V6l7-3z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <p><strong>The habit:</strong> when a new person joins the site, invite them by email rather than sending a code, give them the grid they actually need, and put an end date on anyone who is only there for one phase. When they leave, revoke in the Collaborators tab and the next save of theirs is refused.</p>
+      </div>
+    </section>
+
     <!-- ============ CLOSING CTA BAND ============ -->
     <!-- Local photo (completed kitchen) , the finished job. -->
     <div class="band reveal" style="min-height:420px">
       <div class="band-bg" style="background-image:url('images/completed-kitchen.webp')"></div>
       <div class="band-overlay"></div>
       <div class="band-content" style="max-width:680px">
-        <span class="kicker">Sheet A-31 and beyond</span>
+        <span class="kicker">Sheet A-32 and beyond</span>
         <h3>This index has room for what's next.</h3>
-        <p>New panels and features get their own sheet, numbered and slotted in , the guide grows the same way the app does. Thirty-two sheets so far, from Welcome (A-00) through Procurement &amp; Quotes (A-31). For now: open My MaNaGeR in the next tab over, start with the Charter, and keep this page bookmarked.</p>
+        <p>New panels and features get their own sheet, numbered and slotted in , the guide grows the same way the app does. Thirty-three sheets so far, from Welcome (A-00) through Named Team Members (A-32). For now: open My MaNaGeR in the next tab over, start with the Charter, and keep this page bookmarked.</p>
         <div class="hero-cta" style="margin-top:28px">
           <a href="#top" class="btn btn-brass">Back to the top ↑</a>
           <a href="#quickstart" class="btn btn-ghost">Revisit Quick Start</a>
@@ -2100,6 +2135,7 @@ Date: ____________  Focus: ____________</pre>
             <a href="#deadline">A-29 Project Deadline &amp; Float</a>
             <a href="#build-cost">A-30 Build Cost Calculator</a>
             <a href="#procurement">A-31 Procurement &amp; Quotes</a>
+            <a href="#named-team">A-32 Named Team Members</a>
           </div>
           <div class="footer-col">
             <b>Site</b>

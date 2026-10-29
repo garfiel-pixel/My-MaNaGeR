@@ -62,6 +62,13 @@
   function rbacUnlimited() {
     return _tier === 'company' || _tier === 'enterprise';
   }
+  // RBAC sprint 3 (directive 2026-10-25): the enterprise layer - a custom
+  // permission matrix, time-boxed access, bulk invite, reusable templates and
+  // the audit export. Same two tiers as rbacUnlimited, kept as its own name so
+  // a future change to seat caps cannot silently move these features.
+  function rbacEnterprise() {
+    return _tier === 'company' || _tier === 'enterprise';
+  }
 
   ns.Entitlements = {
     setBillingTier: setBillingTier,
@@ -70,6 +77,7 @@
     unlimitedCloud: unlimitedCloud,
     estimatorAccess: estimatorAccess,
     rbacAccess: rbacAccess,
-    rbacUnlimited: rbacUnlimited
+    rbacUnlimited: rbacUnlimited,
+    rbacEnterprise: rbacEnterprise
   };
 })((window.MMGR = window.MMGR || {}));

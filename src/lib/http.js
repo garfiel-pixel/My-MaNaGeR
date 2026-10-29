@@ -1001,24 +1001,101 @@ CLOUD_CONTENT_KEYS.forEach(function (k) {
 // supervisor = the field panels; contractor = the task list; client = the
 // owner-chosen scope stored on the membership row.
 export const TEAM_FIELD_SECTIONS = ['wbs', 'res', 'risk', 'meet'];
-export function teamScopeForRole(role, memberScope) {
+
+// RBAC sprint 3 (directive 2026-10-25): the roles are TEMPLATES. A member row
+// may carry its own matrix (member.perm), and when it does that matrix decides
+// both halves of the answer:
+//   READ  = every section at 'view' or 'edit'
+//   WRITE = every section at 'edit' only
+// With no matrix on the row the template is used, and for every pre-existing
+// row the template's read set equals the old scope and its write set equals the
+// old scope too (supervisor/contractor wrote their own sections before, client
+// never wrote at all), so nothing about an existing member changes.
+export const TEAM_PERM_LEVELS = ['none', 'view', 'edit'];
+
+export function teamMatrixForRole(role, memberScope) {
+  const matrix = {};
+  Object.keys(CLOUD_SECTIONS).forEach(function (k) {
+    matrix[k] = 'none';
+  });
   if (role === 'manager') {
-    return Object.keys(CLOUD_SECTIONS);
-  }
-  if (role === 'supervisor') {
-    return TEAM_FIELD_SECTIONS.filter(function (k) {
-      return !!CLOUD_SECTIONS[k];
+    Object.keys(CLOUD_SECTIONS).forEach(function (k) {
+      matrix[k] = 'edit';
+    });
+  } else if (role === 'supervisor') {
+    TEAM_FIELD_SECTIONS.forEach(function (k) {
+      if (CLOUD_SECTIONS[k]) {
+        matrix[k] = 'edit';
+      }
+    });
+  } else if (role === 'contractor') {
+    if (CLOUD_SECTIONS.wbs) {
+      matrix.wbs = 'edit';
+    }
+  } else if (role === 'client') {
+    (Array.isArray(memberScope) ? memberScope : []).forEach(function (k) {
+      if (CLOUD_SECTIONS[k]) {
+        matrix[k] = 'view';
+      }
     });
   }
-  if (role === 'contractor') {
-    return ['wbs'].filter(function (k) {
-      return !!CLOUD_SECTIONS[k];
-    });
+  return matrix;
+}
+
+// Validates an untrusted matrix. Unknown sections are DROPPED (never trusted
+// into existence), unknown levels become 'none', and a non-object answers null
+// so the caller keeps the role template instead of silently granting nothing.
+export function normalizeTeamMatrix(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return null;
   }
+  const out = {};
+  Object.keys(CLOUD_SECTIONS).forEach(function (k) {
+    const lvl = String(raw[k] || '').toLowerCase();
+    out[k] = TEAM_PERM_LEVELS.indexOf(lvl) > -1 ? lvl : 'none';
+  });
+  return out;
+}
+
+export function parseTeamMatrix(raw) {
+  if (!raw) {
+    return null;
+  }
+  try {
+    return normalizeTeamMatrix(JSON.parse(raw));
+  } catch (e) {
+    return null;
+  }
+}
+
+export function teamReadSections(matrix) {
+  return Object.keys(matrix || {}).filter(function (k) {
+    return matrix[k] === 'view' || matrix[k] === 'edit';
+  });
+}
+
+export function teamWriteSections(matrix) {
+  return Object.keys(matrix || {}).filter(function (k) {
+    return matrix[k] === 'edit';
+  });
+}
+
+// Third argument is optional so every existing caller keeps working: without a
+// matrix the role template answers, which is byte-identical to the old rule.
+export function teamScopeForRole(role, memberScope, matrix) {
+  const m = matrix || teamMatrixForRole(role, memberScope);
+  return teamReadSections(m);
+}
+
+export function teamWriteScopeForRole(role, memberScope, matrix) {
+  const m = matrix || teamMatrixForRole(role, memberScope);
   if (role === 'client') {
-    return Array.isArray(memberScope) ? memberScope : [];
+    // A client is read-only by contract. Allowing the template to be raised to
+    // 'edit' would silently turn a read-only share into a write share, so the
+    // write set stays empty no matter what the matrix says.
+    return [];
   }
-  return [];
+  return teamWriteSections(m);
 }
 
 // Changelog leaf-diff cap
@@ -1032,6 +1109,33 @@ export function handleCloudSections() {
 }
 
 // ---- Server-side scope enforcement ----------------------------------------
+
+// Sprint 3: a manager keeps the owner-equivalent save path, but a custom matrix
+// can still make some sections view-only. Start from the submitted state (so
+// non-section keys like config and schemaVersion keep flowing as they always
+// did) and restore every content key the member may not write from the previous
+// snapshot.
+export function cloudClampToWriteScope(submitted, prev, writeScope) {
+  const next =
+    submitted && typeof submitted === 'object' ? JSON.parse(JSON.stringify(submitted)) : {};
+  const writable = {};
+  (writeScope || []).forEach(function (sec) {
+    (CLOUD_SECTIONS[sec] || { keys: [] }).keys.forEach(function (k) {
+      writable[k] = 1;
+    });
+  });
+  CLOUD_CONTENT_KEYS.forEach(function (k) {
+    if (writable[k]) {
+      return;
+    }
+    if (prev && typeof prev === 'object' && Object.prototype.hasOwnProperty.call(prev, k)) {
+      next[k] = prev[k];
+    } else {
+      delete next[k];
+    }
+  });
+  return next;
+}
 
 export function cloudScopeMerge(prev, submitted, scope) {
   const base =
@@ -1505,11 +1609,29 @@ export async function cloudAuthWithRole(request, env, projectId) {
     return null;
   }
   const member = await env.DB.prepare(
-    "SELECT role, scope FROM cloud_team_members WHERE project_id = ? AND invitee_email = ? AND status = 'active' AND (expires_at IS NULL OR expires_at > ?)"
+    "SELECT id, role, scope, perm, access_expires_at FROM cloud_team_members WHERE project_id = ? AND invitee_email = ? AND status = 'active' AND (expires_at IS NULL OR expires_at > ?)"
   )
     .bind(projectId, identity.email, new Date().toISOString())
     .first();
   if (!member) {
+    await cloudTimingSink();
+    return null;
+  }
+  const now = new Date().toISOString();
+  // Time-boxed access (sprint 3). The row may still read 'active' because the
+  // cron sweep has not run yet; the auth decision must not wait for it. The
+  // conditional UPDATE runs at most once per row and keeps the audit honest for
+  // the owner's next look at the team list.
+  if (member.access_expires_at && member.access_expires_at <= now) {
+    try {
+      await env.DB.prepare(
+        "UPDATE cloud_team_members SET status = 'expired' WHERE id = ? AND project_id = ? AND status = 'active' AND access_expires_at IS NOT NULL AND access_expires_at <= ?"
+      )
+        .bind(member.id, projectId, now)
+        .run();
+    } catch (e) {
+      /* the refusal below is the enforcement; the write is bookkeeping */
+    }
     await cloudTimingSink();
     return null;
   }
@@ -1524,12 +1646,21 @@ export async function cloudAuthWithRole(request, env, projectId) {
       scope = null;
     }
   }
+  const matrix = parseTeamMatrix(member.perm);
   return {
     sub: identity.session.sub,
     email: identity.email,
     role: member.role,
     source: 'team',
-    scope: scope,
+    // `scope` stays the READ set (same meaning every existing caller expects).
+    scope: teamScopeForRole(member.role, scope, matrix),
+    // Sprint 3: what this member may actually WRITE. Supervisor/contractor
+    // proposals and manager saves clamp to this set.
+    writeScope: teamWriteScopeForRole(member.role, scope, matrix),
+    matrix: matrix || teamMatrixForRole(member.role, scope),
+    perm: matrix,
+    accessExpiresAt: member.access_expires_at || null,
+    memberId: member.id,
     session: identity.session
   };
 }

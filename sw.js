@@ -405,7 +405,24 @@
 // js/mmgr-perf.js, js/mmgr-glass.js, js/marketing.js, js/marketing-globe.js,
 // js/mmgr-combobox.js (new), dist/marketing-bundle.js. No inline script block
 // changed, so the CSP hashes are untouched.
-const CACHE = 'mmgr-shell-v493';
+const CACHE = 'mmgr-shell-v494';
+
+// v494 - RBAC SPRINT 3 (directive 2026-10-25): the enterprise layer on top of
+// named members. A member's access is now a per-section grid (No access, View,
+// Change) rather than only one of four fixed roles; the roles stay as templates
+// that fill the grid in. The owner can save a grid as a reusable template on the
+// account, put an end date on a subcontractor's access with a seven-day notice
+// and a one-click Add 30 days, invite up to 100 addresses in one batch, and
+// download the membership audit trail as a CSV. Server side this is migration
+// 0029 plus the read/write split in src/lib/http.js: what a member READS is
+// every section at View or Change, what they may WRITE is only Change, a
+// manager's save is clamped back to those sections, and a closed access window
+// is refused on the very next request instead of waiting for the nightly sweep.
+// The panel renders the new controls only for a company or enterprise account
+// (MMGR.Entitlements.rbacEnterprise). Shell assets: js/cloud/team-ui.js,
+// js/app/entitlements.js, css/mmgr.css, dist/*. Pages: pricing.html,
+// features.html, privacy.html and the field guide's new Sheet A-32. No inline
+// script block changed, so the CSP hashes are untouched.
 
 // v493 - RBAC SPRINT 2 (directive 2026-10-25): the in-app half of named team
 // members. A bell with an invitation count in the launcher rail and the project

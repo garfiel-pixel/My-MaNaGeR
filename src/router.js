@@ -121,8 +121,17 @@ import {
   handleTeamInvitationAccept,
   handleTeamInvitationDecline,
   handleTeamMemberships,
-  handleTeamLeave
+  handleTeamLeave,
+  handleTeamBulkInvite,
+  handleTeamAuditExport,
+  handleTeamExtend
 } from './cloud/team.js';
+import {
+  handleTemplatesList,
+  handleTemplatesCreate,
+  handleTemplatesUpdate,
+  handleTemplatesDelete
+} from './cloud/team-templates.js';
 import { handleAdminCloudList } from './admin.js';
 import {
   handleReviewsCreate,
@@ -510,6 +519,63 @@ export async function routeApi(request, env, url) {
         return r;
       }
       return handleTeamResend(request, env, teamResendMatch[1], Number(teamResendMatch[2]));
+    }
+    // Sprint 3: one-click extend behind the 7-day notice.
+    const teamExtendMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/team\/(\d+)\/extend$/
+    );
+    if (teamExtendMatch && request.method === 'POST') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handleTeamExtend(request, env, teamExtendMatch[1], Number(teamExtendMatch[2]));
+    }
+    // Sprint 3: bulk invite (cap 100) and the audit CSV export.
+    const teamBulkMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/team\/bulk$/);
+    if (teamBulkMatch && request.method === 'POST') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handleTeamBulkInvite(request, env, teamBulkMatch[1]);
+    }
+    const teamAuditMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/team\/audit(?:\.csv)?$/
+    );
+    if (teamAuditMatch && request.method === 'GET') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handleTeamAuditExport(request, env, teamAuditMatch[1]);
+    }
+    // Sprint 3: reusable role templates belong to the signed-in account, not to
+    // a project, so they live under /api/team.
+    if (path === '/api/team/templates') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      if (request.method === 'GET') {
+        return handleTemplatesList(request, env);
+      }
+      if (request.method === 'POST') {
+        return handleTemplatesCreate(request, env);
+      }
+    }
+    const templateMatch = path.match(/^\/api\/team\/templates\/(\d+)$/);
+    if (templateMatch) {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      if (request.method === 'PUT') {
+        return handleTemplatesUpdate(request, env, Number(templateMatch[1]));
+      }
+      if (request.method === 'DELETE') {
+        return handleTemplatesDelete(request, env, Number(templateMatch[1]));
+      }
     }
     const teamMemberMatch = path.match(
       /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/team\/(\d+)$/

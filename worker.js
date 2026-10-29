@@ -1,7 +1,7 @@
 import { routeApi } from './src/router.js';
 import { Presence } from './src/cloud/presence.js';
 import { purgeStaleCloudProjects } from './src/cloud/projects.js';
-import { sweepExpiredInvitations } from './src/cloud/team.js';
+import { sweepExpiredInvitations, sweepExpiredAccess } from './src/cloud/team.js';
 import { evaluateWebhooks } from './src/webhooks.js';
 
 export { Presence }; // wrangler requires DO classes in the entrypoint
@@ -441,6 +441,14 @@ export default {
       console.log('team invitation sweep: expired=' + teamSweep.expired);
     } catch (e) {
       console.error('team invitation sweep failed:', e && e.message);
+    }
+    // Sprint 3: the same sweep for a member whose time-boxed access has ended.
+    // Try/catch for the same reason: the columns arrive with migration 0029.
+    try {
+      const accessSweep = await sweepExpiredAccess(env);
+      console.log('team access sweep: expired=' + accessSweep.expired);
+    } catch (e) {
+      console.error('team access sweep failed:', e && e.message);
     }
     // IDEMPOTENCY SWEEP: clean up expired idempotency keys.
     try {

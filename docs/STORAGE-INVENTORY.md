@@ -62,6 +62,7 @@ fails the gate.
 | `mmgr_cloud_pending_ecode_<id>` | An editor code waiting to be confirmed. | necessary |
 | `mmgr_offline_copy_<id>` | Marks an offline copy of a cloud project. | necessary |
 | `mmgr_pool_pending_<id>` | Cloud writes waiting for the connection to return. | necessary |
+| `mmgr_team_cache` | Your pending invitations and your "Shared with me" projects, kept on this device so the bell count and the panel open straight away instead of waiting on a fresh load. Refreshed about once a minute while the app is open. | necessary |
 | `mmgr_theme_backend` | Retired theme-sync flag, kept so old devices migrate cleanly. | necessary |
 | `mmgr_glass_mode` | Glass appearance preference. | necessary |
 | `mmgr_palette` | Colour palette choice (gold or rose). | necessary |

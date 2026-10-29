@@ -405,7 +405,12 @@
 // js/mmgr-perf.js, js/mmgr-glass.js, js/marketing.js, js/marketing-globe.js,
 // js/mmgr-combobox.js (new), dist/marketing-bundle.js. No inline script block
 // changed, so the CSP hashes are untouched.
-const CACHE = 'mmgr-shell-v498';
+const CACHE = 'mmgr-shell-v499';
+
+// v499 - CI REPAIR (2026-10-29): team-accept.html pointed its icon link at a
+// favicon.svg that has never existed, so the T1 internal-links gate failed on
+// both RBAC commits. It now uses the same images/mpw-icon.png link every other
+// served page carries. No script changed, so the CSP hashes are untouched.
 
 // v498 - KANBAN TASK 3 (plan 2026-10-25): the board becomes a board.
 // Cards carry an explicit slot, so a drop lands above or below the card it

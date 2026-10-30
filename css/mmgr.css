@@ -10048,6 +10048,91 @@ body.dark-mode .ai-seg-btn.is-on {
   margin-top: 8px;
   line-height: 1.6;
 }
+/* D-1 step 5: the empty state. Centred mark, one question, four full-width
+   preset rows generated from the same list as the chip strip. */
+.ai-welcome {
+  align-self: stretch;
+  display: block;
+  max-width: 100%;
+  margin: auto 0;
+  padding: 8px 0;
+}
+.ai-welcome-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+.ai-welcome-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--squircle-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in oklch, var(--gold) 14%, transparent);
+  color: var(--gold-text);
+}
+.ai-welcome-mark .ico {
+  width: 22px;
+  height: 22px;
+}
+.ai-welcome-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text);
+}
+.ai-welcome-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  max-width: 420px;
+  margin-top: 2px;
+}
+.ai-welcome-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--card);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: var(--tr-ui);
+}
+.ai-welcome-row span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ai-welcome-row .ico {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  color: var(--gold-text);
+}
+.ai-welcome-row .ai-welcome-chev {
+  color: var(--slate);
+}
+.ai-welcome-row:hover {
+  border-color: var(--gold);
+  color: var(--gold-text);
+}
+.ai-welcome-row:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 2px;
+}
 .ai-err {
   color: var(--danger);
   font-weight: 500;
@@ -12671,28 +12756,30 @@ html.mmgr-tour-active .bcp-tour-nudge {
   width: 18px;
   height: 18px;
 }
+/* D-1 step 4: the box is a bare textarea INSIDE the composer card, so it has
+   no border, no fill and no radius of its own. The card carries the frame and
+   the focus ring. */
 .ai-q {
-  flex: 1;
-  background: var(--tile-bg);
-  border: 1px solid var(--border);
-  border-radius: 22px;
+  flex: 1 1 auto;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
   color: var(--text);
   font-size: 0.88rem;
-  padding: 12px 48px 12px 18px;
+  padding: 2px 2px 0;
   font-family: inherit;
   resize: none;
   box-sizing: border-box;
-  min-height: 48px;
-  max-height: 120px;
+  min-height: 44px;
+  max-height: 160px;
   line-height: 1.5;
-  transition:
-    border-color var(--tr),
-    box-shadow var(--tr);
 }
 .ai-q:focus {
   outline: none;
-  border-color: var(--gold);
-  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.14);
+  box-shadow: none;
 }
 .ai-q::placeholder {
   color: var(--slate);
@@ -13009,13 +13096,21 @@ body.dark-mode .ai-hist-when {
   flex-direction: column;
   align-items: stretch;
   gap: 8px;
+  padding: 10px 12px 12px;
 }
 .ai-quick-presets {
   display: flex;
   gap: 6px;
   overflow-x: auto;
   padding-bottom: 2px;
-  scrollbar-width: thin;
+  /* D-1 step 5: a horizontal strip with no visible scrollbar; the edge fade
+     says there is more to the right without a scrollbar eating the row. */
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 20px), transparent 100%);
+  mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 20px), transparent 100%);
+}
+.ai-quick-presets::-webkit-scrollbar {
+  display: none;
 }
 .ai-quick-presets:empty {
   display: none;
@@ -13025,19 +13120,55 @@ body.dark-mode .ai-hist-when {
   font-size: 0.7rem;
   padding: 5px 10px;
 }
+/* D-1 step 4: ONE card. Textarea on top, tools underneath. */
 .ai-composer-row {
   display: flex;
-  align-items: flex-end;
-  gap: 8px;
+  flex-direction: column;
+  gap: 4px;
   min-width: 0;
+  padding: 10px 12px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--squircle-sm);
+  background: var(--card);
+  transition:
+    border-color var(--tr),
+    box-shadow var(--tr);
+}
+.ai-composer-row:focus-within {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.14);
 }
 .ai-composer-row .ai-q {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
+}
+.ai-composer-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.ai-composer-tools .ai-send-wrap {
+  margin-left: auto;
+}
+/* The tools row is one height: tier badge, mic and Send all 32px. */
+.ai-composer-tools .ai-send {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--radius-control);
+}
+.ai-composer-tools .ai-voice-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-control);
+}
+.ai-composer-tools .ai-voice-btn .ico {
+  width: 15px;
+  height: 15px;
 }
 .ai-tier-badge {
   flex-shrink: 0;
-  height: 34px;
+  height: 32px;
   max-width: 128px;
   border: 1px solid var(--border);
   border-radius: var(--radius-control);

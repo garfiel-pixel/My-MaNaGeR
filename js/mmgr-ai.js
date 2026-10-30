@@ -2577,6 +2577,12 @@ var MMGR = window.MMGR || {};
     if (w) {
       w.classList.add('is-hide');
     }
+    // D-1 step 5: the first message retires the chip strip too. The Presets tab
+    // stays, so a one-click prompt is still one tab away.
+    const qp = U.$('ai-quick-presets');
+    if (qp) {
+      qp.classList.add('is-hide');
+    }
   }
   function hideTyping() {
     if (_typingEl) {
@@ -2601,6 +2607,10 @@ var MMGR = window.MMGR || {};
     const w = U.$('ai-welcome');
     if (w) {
       w.classList.remove('is-hide');
+    }
+    const qp = U.$('ai-quick-presets');
+    if (qp) {
+      qp.classList.remove('is-hide');
     }
   }
   function showTyping() {
@@ -2865,9 +2875,11 @@ var MMGR = window.MMGR || {};
     });
     const grow = function () {
       q.style.height = 'auto';
-      q.style.height = Math.min(q.scrollHeight, 120) + 'px';
-      // DIR-2: when the box is capped at 120px and internally scrollable, mark
-      // it so CSS can show the top-edge fade (scrollable, not clipped).
+      // D-1 step 4: the cap is 160px (about six lines) so a real prompt fits
+      // without the box taking over the thread.
+      q.style.height = Math.min(q.scrollHeight, 160) + 'px';
+      // DIR-2: when the box is capped and internally scrollable, mark it so
+      // CSS can show the top-edge fade (scrollable, not clipped).
       q.classList.toggle('at-cap', q.scrollHeight > q.offsetHeight + 2);
     };
     q.addEventListener('input', grow);
@@ -4157,22 +4169,41 @@ var MMGR = window.MMGR || {};
   })();
   function renderQuickPresets() {
     const box = U.$('ai-quick-presets');
-    if (!box || box.dataset.filled) {
+    const rows = U.$('ai-welcome-rows');
+    if ((!box || box.dataset.filled) && (!rows || rows.dataset.filled)) {
       return;
     }
     const types = (ns.Prompts && ns.Prompts.list ? ns.Prompts.list() : []).slice(0, 4);
-    box.innerHTML = types
-      .map(function (t) {
-        return (
-          '<button type="button" class="ai-chip" data-action="aiPreset" data-type="' +
-          U.escapeHtml(t) +
-          '">' +
-          U.escapeHtml(PRESET_LABELS[t] || t) +
-          '</button>'
-        );
-      })
-      .join('');
-    box.dataset.filled = '1';
+    if (box && !box.dataset.filled) {
+      box.innerHTML = types
+        .map(function (t) {
+          return (
+            '<button type="button" class="ai-chip" data-action="aiPreset" data-type="' +
+            U.escapeHtml(t) +
+            '">' +
+            U.escapeHtml(PRESET_LABELS[t] || t) +
+            '</button>'
+          );
+        })
+        .join('');
+      box.dataset.filled = '1';
+    }
+    // D-1 step 5: the empty-state rows come from the SAME list and do the same
+    // thing as the chips (aiPreset loads the prompt into the composer).
+    if (rows && !rows.dataset.filled) {
+      rows.innerHTML = types
+        .map(function (t) {
+          return (
+            '<button type="button" class="ai-welcome-row" data-action="aiPreset" data-type="' +
+            U.escapeHtml(t) +
+            '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg><span>' +
+            U.escapeHtml(PRESET_LABELS[t] || t) +
+            '</span><svg class="ico ai-welcome-chev" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>'
+          );
+        })
+        .join('');
+      rows.dataset.filled = '1';
+    }
   }
 
   // ---- Docking regimes -------------------------------------------------

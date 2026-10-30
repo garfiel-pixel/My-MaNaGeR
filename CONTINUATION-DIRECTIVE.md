@@ -8,7 +8,7 @@
 
 ## Status log (newest at top)
 
-- **2026-10-30** - Phase B D-1 and D-4 done. CI is six parallel jobs (24.4 to 7.6 min). Phase E (repo trim E0 to E5) done: 706 -> 601 tracked files, finished plans in `docs/history/`, `verify-sizes` in CI. F and G queued (see the reliability directive). Phase B close (deploy) still owed.
+- **2026-10-30** - UI is the top priority (owner): landing improvement pass done (23/43), F1 tenant fence done (19/19, one real leak fixed). Next: finish the landing UI items, then the CSS split. Phase B D-1 and D-4 were done earlier the same day. CI is six parallel jobs (24.4 to 7.6 min). Phase E (repo trim E0 to E5) done: 706 -> 601 tracked files, finished plans in `docs/history/`, `verify-sizes` in CI. F and G queued (see the reliability directive). Phase B close (deploy) still owed.
 
 ---
 
@@ -43,6 +43,10 @@
 | B3 | **D-1** AI window, steps 1 to 7 | **DONE 2026-10-30** | `qa-ai-window-layout` 83/83, `qa-ai-win` 23/23, `qa-ai` PASS, `qa-fixed-containment` 10/10, axe, gold, `npm run verify` green |
 | B4 | **D-4** CI split into five jobs | **DONE 2026-10-30** | Six jobs green, slowest 7.6 min (baseline 24.4); `verify-ci-coverage` 12/12 |
 | E | Repo housekeeping E0 to E5 | **DONE 2026-10-30** | 706 -> 601 tracked files; `_archive` + 42 shots untracked, guards kept; 5 finished plans in `docs/history/` plus README index; `verify-sizes` 9/9. Run 596 all six jobs green |
+| 1.1 | UI improvement pass (landing) | **DONE 2026-10-30** | `qa-landing-ui` 8/43 -> 23/43; gold ramp, buttons, pills, header, rail, cards; sw v514 |
+| 1.2 | UI backlog (U-02, U-07, U-08, U-09, U-10, U-12, U-13) | **NEXT** | `qa-landing-ui` to 43/43, then CI. Pause leaves the globe; Performance Mode is the 2.2.2 mechanism |
+| 1.3 | **F1** cross-tenant isolation | **DONE 2026-10-30** | `qa-tenant-isolation` 19/19 in `cloud-auth`; found and fixed a `claim` existence oracle |
+| 1.4-1.6 | E6 CSS coverage, dead rules, layered split | **QUEUED** | Coverage number first; `verify-css-integrity` proves every rule survives |
 | C1 | NocoBase custom task fields | **QUEUED** | Its DoD; schema v25 |
 | C2 | Leantime idea intake + merged agenda | **QUEUED** | Its 16-gate harness; schema v26 |
 | C3 | AppFlowy project book | **Needs drafting pass** | Four phases; schema v27 |

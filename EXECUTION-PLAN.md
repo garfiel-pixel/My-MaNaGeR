@@ -46,27 +46,59 @@ OpenProject is code-complete but its untracked spec still shows unticked
 Definition of Done boxes. Phase A below closes that book with evidence; it is
 not new feature work.
 
-## 2. The single queue
+## 2. The queue, by wave and phase
 
-One plan at a time. No parallel plans, no reordering without an owner decision
-recorded here. The status is the only place to look.
+One order. Each row is a shippable phase with its own gate, so a session that
+stops mid-wave leaves the next one an exact position. **Position: Wave 1,
+phases 1.1 and 1.3 done; 1.2 (remaining landing UI) is next, then 1.4-1.6 (CSS).** UI is the owner's top priority (2026-10-30) and leads the wave; the
+wave's other purpose is to freeze the ground every later plan builds on (the
+tenant fence, then the stylesheet split).
 
-| # | Work | Status | Exit gate |
+### Wave 1 - ground and gates (in progress)
+
+| # | Phase | Status | Gate / evidence |
 |---|---|---|---|
-| A | Close the OpenProject books | **DONE 2026-10-29** | Section 3 result; all gates green |
-| B1 | **D-3** calculator listbox portal + containment gate | **DONE 2026-10-29** | Section B1 result; `qa-fixed-containment` 8/8, `qa-calc-controls` 94/94, audit 61/61, shortcuts 15/15, `npm run verify` green |
-| B2 | **D-2** dictation echo and leading `null` | **DONE 2026-10-29** | Section B2 result; `qa-ai-dictation` 14/14, `qa-ai.cjs`, `qa-ai-win` 22/22, `npm run verify` green |
-| B3 | **D-1** AI window, steps 1 to 7 | **DONE 2026-10-30** | Section B3 result; `qa-ai-window-layout` 83/83, `qa-ai-win` 23/23, `qa-ai` PASS, `qa-fixed-containment` 10/10, axe, gold, `npm run verify` green |
-| B4 | **D-4** CI split into five jobs | **DONE 2026-10-30** | `verify-ci-coverage` 12/12; run `41015996950` all six jobs green, 0 skipped; slowest job 7.6 min (baseline 24.4); summary populated |
-| E | Repo housekeeping E0 to E5 | **DONE 2026-10-30** (E0 to E5) | 706 -> 601 tracked files; `_archive` + 42 shots untracked with their deny rules kept; 5 finished plans moved to `docs/history/` with an index; `verify-sizes` 9/9 in `static`, teeth proven. E6 (CSS split) waits for its coverage number, E7 (`checkJs`) follows C1 |
-| C1 | NocoBase custom task fields | Queued | Its DoD; schema v25 |
-| C2 | Leantime idea intake + merged agenda | Queued | Its 16-gate harness; schema v26 |
-| C3 | AppFlowy project book | Needs drafting pass | Four phases; schema v27 |
-| C4 | Platform guarded transitions, audit, rules | Needs drafting pass | Four phases; schema v28 |
-| C5 | Plane cycles and modules | Needs drafting pass | Four phases; schema v29 |
-| F | Reliability evidence F1 to F5 | Queued after C2 (F1 first) | Cross-tenant harness, load numbers, restore drill, targets |
-| G | Market proof G1 to G3 | **Owner-owned** | G1 permission decision; pilots; activation metrics |
-| D | Parked UI plans (`plan-ui`, `UI-FIXES-SPEC`) | Owner-parked | Only when the owner delivers the extended versions |
+| 1.1 | **UI improvement pass**, landing first (gold ramp, one button language, no pills, header scroll state, dot-rail tone, card art/icons) | **DONE 2026-10-30** | `qa-landing-ui` **8/43 -> 23/43**; `qa-dot-rail` 15/15 with the raised rest-opacity threshold; `verify-gold` green; `npm run verify` green; sw v514 |
+| 1.2 | **UI backlog, landing** - the seven deferred items: U-02 icon pack + manifest + og, U-07 grouped dropdown, U-08 delete fallback hero cards, U-09 globe hover/spin fix, U-10 remove on-globe Pause (page-wide Performance Mode is the WCAG 2.2.2 mechanism), U-12 bento grid, U-13 phase rail | **NEXT** | `qa-landing-ui` to 43/43, then register it CI. Gates to re-baseline in the same commit: `qa-hero-globe` G5/G8, `qa-globe-spin`, `qa-hero-cards`, `qa-console-stress`. Owner decision recorded: Pause leaves the globe, Performance Mode stays |
+| 1.3 | **F1 cross-tenant isolation** | **DONE 2026-10-30** | `qa-tenant-isolation` **19/19** in the `cloud-auth` job. Found and fixed a live existence oracle in `claim` |
+| 1.4 | **E6.1 CSS coverage measurement** - Playwright CSS coverage over `project.html`, `calculator.html`, `app.html`; record the dead-rule percentage, delete nothing yet | Queued | A number written into the directive, not a change |
+| 1.5 | **E6.2 dead-rule removal** (only if 1.4 shows >15% dead) | Queued | `verify-css-integrity` + `qa-health-sweep` + visual pass |
+| 1.6 | **E6.3 CSS split** into `css/src/*` layers (tokens, shell, panels, tables, calculator, ai, print) bundled by `build.js`; the type/spacing/breakpoint tokens land here as the `tokens` layer | Queued | `verify-css-integrity` proves every source rule survives into `dist`; `verify-sizes`; one commit per layer |
+
+### Wave 2 - feature plans (schema order is the contract)
+
+| # | Phase | Status | Gate / evidence |
+|---|---|---|---|
+| 2.1 | **C1 NocoBase** custom task fields, schema v25 | Queued | Its DoD; write JSDoc on the new fields as they land |
+| 2.2 | **E7 `checkJs`** on state, cloud, billing | Queued - immediately after 2.1 | `npm run typecheck` in `static`; no silencer casts |
+| 2.3 | **C2 Leantime** idea intake + merged agenda, v26 | Queued - **split at its own phase boundary first** (4,634 lines, 60 tasks) | Its 16-gate harness |
+| 2.4 | **C4 Platform** guarded transitions, audit, rules, v28 | Queued after 2.3 | Its DoD |
+| 2.5 | **C3 AppFlowy** project book, v27 | Needs drafting pass, then build | Drafting pass first: anchors from code, task-level steps, gates |
+| 2.6 | **C5 Plane** cycles and modules, v29 | Needs drafting pass, then build | Same |
+
+### Wave 3 - evidence, then customers
+
+| # | Phase | Status | Gate / evidence |
+|---|---|---|---|
+| 3.1 | **F2 load test** (local wrangler + D1 first, staging later) | Queued | p50/p95/p99 per scenario committed under `load/results/` |
+| 3.2 | **F4 D1 backup restore drill** | Queued - before any pilot | `docs/RESTORE-DRILL-*.md`, timed, owner access |
+| 3.3 | **F5 targets + incident log** | Queued (targets may be written now; no published number before 3.1/3.2) | `docs/RELIABILITY-TARGETS.md`, `docs/INCIDENTS.md` |
+| 3.4 | **G3 activation/retention/tickets + feedback button** | Queued after 2.1 (schema collision) | In-app surface reusing the notice pattern |
+| 3.5 | **G1 provenance decision, then G4 currency/market copy** | **Owner** | G4 currently blocked: `JMD`, `J$`, `Jamaica` appear zero times on index/pricing/features |
+| 3.6 | **G2 pilots** (5-10 contractors) | **Owner**, last | Only after 1.3, 3.2 and the deploy |
+
+### Closed
+
+| # | Phase | Closed | Evidence |
+|---|---|---|---|
+| A | Close the OpenProject books | 2026-10-29 | all gates green |
+| B1 | D-3 calculator listbox portal | 2026-10-29 | `qa-fixed-containment` 8/8 |
+| B2 | D-2 dictation echo + leading `null` | 2026-10-29 | `qa-ai-dictation` 14/14 |
+| B3 | D-1 AI window | 2026-10-30 | `qa-ai-window-layout` 83/83 |
+| B4 | D-4 CI split | 2026-10-30 | six jobs, slowest 7.6 min |
+| B5 | Phase B close: deploy + live probe | 2026-10-30 | version `cb60a457`, sw v513 live, `/project` 200 |
+| E | E0-E5 repo housekeeping | 2026-10-30 | 706 -> 601 tracked files; `verify-sizes` 9/9 |
+| D | Parked UI plans | **UNPARKED 2026-10-30** - UI is now top priority | Absorbed into 1.1 / 1.2 |
 
 ### Why this order
 

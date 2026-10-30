@@ -42,9 +42,12 @@
 | B2 | **D-2** dictation echo and leading `null` | **DONE 2026-10-29** | Section B2 result; `qa-ai-dictation` 14/14, `qa-ai.cjs`, `qa-ai-win` 22/22, `npm run verify` green |
 | B3 | **D-1** AI window, steps 1 to 7 | **DONE 2026-10-30** | `qa-ai-window-layout` 83/83, `qa-ai-win` 23/23, `qa-ai` PASS, `qa-fixed-containment` 10/10, axe, gold, `npm run verify` green |
 | B4 | **D-4** CI split into five jobs | **DONE 2026-10-30** | Six jobs green, slowest 7.6 min (baseline 24.4); `verify-ci-coverage` 12/12 |
+| E | Repo housekeeping E0 to E5 | **IN PROGRESS** (E0, E5 done) | E0: 706 -> 597 tracked files, `_archive` + 42 shots untracked, guards kept. E5: `verify-sizes` 9/9 in `static` and `npm run verify`. E1 to E4 next |
 | C1 | NocoBase custom task fields | **QUEUED** | Its DoD; schema v25 |
 | C2 | Leantime idea intake + merged agenda | **QUEUED** | Its 16-gate harness; schema v26 |
 | C3 | AppFlowy project book | **Needs drafting pass** | Four phases; schema v27 |
 | C4 | Platform (workspace as shared workspace) | **QUEUED** | Its DoD; schema v28 |
 | C5 | Plane (expense tracking) | **QUEUED** | Its DoD; schema v29 |
+| F | Reliability evidence F1 to F5 | **QUEUED** after C2 | Cross-tenant harness first; no published numbers until measured |
+| G | Market proof G1 to G4 | **OWNER** | G1 rate-book provenance decision unblocks the code half; G4 positioning copy |
 | D | parked UI plans (post-launch refinement) | **QUEUED** | No current owner-provided spec |

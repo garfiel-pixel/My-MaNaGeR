@@ -12,11 +12,13 @@ Read in this order:
 1. `CONTINUATION-DIRECTIVE.md` - locked rules and owner standing rules.
 2. **This file** - what runs, in what order, with which gates.
 3. `adittion to scope/UI-CI-DIRECTIVE.md` (v2) - task detail for D-3, D-2, D-1, D-4.
-4. `the last update towrads maintainance mode/plan-*.md` - task detail for the
+4. `adittion to scope/REPO-RELIABILITY-DIRECTIVE-2026-10-30.md` - repo trim
+   (E), reliability evidence (F), market proof (G). Verified 2026-10-30.
+5. `the last update towrads maintainance mode/plan-*.md` - task detail for the
    five feature plans.
-5. The code - when an anchor has drifted, the code wins; re-derive by selector
+6. The code - when an anchor has drifted, the code wins; re-derive by selector
    or function name and record the drift in the log.
-6. `AUDIT-DIRECTIVE-2026-10-18.md` and `IMPROVEMENT-DIRECTIVE-2026-10-22.md` -
+7. `AUDIT-DIRECTIVE-2026-10-18.md` and `IMPROVEMENT-DIRECTIVE-2026-10-22.md` -
    open audit rows only after a state check proves the row is still open.
 
 **Not in scope until the owner un-parks them:** `UI-FIXES-SPEC.md`,
@@ -56,11 +58,14 @@ recorded here. The status is the only place to look.
 | B2 | **D-2** dictation echo and leading `null` | **DONE 2026-10-29** | Section B2 result; `qa-ai-dictation` 14/14, `qa-ai.cjs`, `qa-ai-win` 22/22, `npm run verify` green |
 | B3 | **D-1** AI window, steps 1 to 7 | **DONE 2026-10-30** | Section B3 result; `qa-ai-window-layout` 83/83, `qa-ai-win` 23/23, `qa-ai` PASS, `qa-fixed-containment` 10/10, axe, gold, `npm run verify` green |
 | B4 | **D-4** CI split into five jobs | **DONE 2026-10-30** | `verify-ci-coverage` 12/12; run `41015996950` all six jobs green, 0 skipped; slowest job 7.6 min (baseline 24.4); summary populated |
+| E | Repo housekeeping E0 to E5 | **IN PROGRESS** (E0, E5 done) | E0: 706 -> 597 tracked files, `_archive` and 42 shots untracked, guards kept. E5: `verify-sizes` 9/9, in `npm run verify` and `static`, teeth proven (a 166 KB stray CSS fails by name). E1 to E4 next |
 | C1 | NocoBase custom task fields | Queued | Its DoD; schema v25 |
 | C2 | Leantime idea intake + merged agenda | Queued | Its 16-gate harness; schema v26 |
 | C3 | AppFlowy project book | Needs drafting pass | Four phases; schema v27 |
 | C4 | Platform guarded transitions, audit, rules | Needs drafting pass | Four phases; schema v28 |
 | C5 | Plane cycles and modules | Needs drafting pass | Four phases; schema v29 |
+| F | Reliability evidence F1 to F5 | Queued after C2 (F1 first) | Cross-tenant harness, load numbers, restore drill, targets |
+| G | Market proof G1 to G3 | **Owner-owned** | G1 permission decision; pilots; activation metrics |
 | D | Parked UI plans (`plan-ui`, `UI-FIXES-SPEC`) | Owner-parked | Only when the owner delivers the extended versions |
 
 ### Why this order
@@ -537,6 +542,44 @@ release. Migration takes **schema v29**.
   existing log surface, do not add a second feed.
 - D-1's `.ai-main` containment and D-3's gate bind every later panel: no new
   `position: fixed` descendant inside a contained ancestor.
+
+---
+
+## 5b. Phase E, F, G - the 2026-10-30 review
+
+Source: `adittion to scope/REPO-RELIABILITY-DIRECTIVE-2026-10-30.md`, written
+from the owner's review note and verified against the tree before it was
+queued. Measured baseline: 706 tracked files, 40 root `.md`/`.txt`, 48
+`tools/*.png`, `_archive/` 12 MB (67 files), `vendor/` 16 MB, `css/mmgr.css`
+20,016 lines / 484 KB, `js/calculator-page.js` 562 KB. No load test, no
+cross-tenant probe, no uptime or error tracking, no D1 restore drill, no
+file-size gate, no type checking.
+
+**E (housekeeping, this queue).** E0 parked material ignored; E1 finished plans
+into `docs/history/` under three explicit conditions; E2 the history index;
+E3 `_archive/` untracked with its deny rule and exclude lists kept; E4
+`tools/*.png` per-file, referenced shots moved and their docs updated; E5
+`tools/verify-sizes.cjs` with caps taken from today's sizes. E6 (CSS split)
+needs its coverage number first; E7 (`checkJs` on state, cloud, billing) comes
+after C1. One commit per task, `chore(repo): ...`.
+
+**F (reliability, after C2).** F1 cross-tenant isolation harness (tenant A
+against B on every cloud endpoint, refusals generic, no bytes leak) is the one
+that changes what we may claim. F2 load test with p50/p95/p99 published, F3
+uptime plus error tracking plus a status page (owner picks vendors; the CSP
+allows one origin per provider), F4 one timed D1 restore written up as a
+runbook, F5 targets (99.9 percent on `/api/health`, p95 under 300 ms) and an
+incident log. No marketing number until F2 and F4 exist.
+
+**G (market, owner).** G1 rate-book provenance: permission for the JIC data or
+a fully rebranded book from the owner's own site data; `pricing.html` already
+says "My MaNaGeR Rate Book", the calculator is the last place that says "JIC".
+G2 pilot contractors. G3 activation, week-4 retention, tickets, feedback
+button (queued after C1 so it does not share schema v25). G4 (added by the
+second review pass): the landing and pricing copy never names the currency or
+the market - "JMD", "J$" and "Jamaica" appear zero times on `index.html`,
+`pricing.html` and `features.html`, while offline-first is already the
+headline. Small copy task, blocked by G1's wording decision.
 
 ---
 

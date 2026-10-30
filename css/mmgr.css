@@ -10393,6 +10393,7 @@ body.dark-mode .ai-seg-btn.is-on {
 /* D-1 step 3: a one-line banner, only on screen when the Cloud tier still
    needs a key. Gold text at banner weight, never a gold fill. */
 .ai-conn-banner {
+  position: relative;
   padding: 8px 12px;
   gap: 8px;
   background: color-mix(in oklch, var(--gold) 6%, var(--tile-bg));
@@ -10455,17 +10456,25 @@ body.dark-mode .ai-seg-btn.is-on {
   border-color: var(--gold);
   transform: rotate(25deg);
 }
+/* D-1 step 7: absolute, never fixed (the banner sits inside .ai-main's
+   containment). Anchored to the banner, inset so it can never leave the
+   window edge. */
 .ai-byo-pop {
-  flex-basis: 100%;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 12px;
+  right: 12px;
+  z-index: 35;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 7px;
-  margin-top: 6px;
+  margin-top: 0;
   padding: 9px 10px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-control);
   background: var(--card);
+  box-shadow: 0 18px 40px var(--lit-black-35);
 }
 .ai-byo-pop .ai-byo-key {
   flex: 1;
@@ -12879,6 +12888,12 @@ body.dark-mode .ai-q:focus.at-cap {
   flex: 1;
   min-width: 0;
   min-height: 0;
+  /* D-1 step 7: every responsive tier is measured on THIS box's inline size,
+     never on the viewport (the window can be 480 docked at 1440, or 480 as a
+     sheet at 480). inline-size also applies layout containment, so nothing
+     inside .ai-main may be position: fixed; the More menu and the key popover
+     are absolute, and tools/qa-fixed-containment.cjs enforces it. */
+  container: aiwin / inline-size;
 }
 /* Docked: the page column gives up exactly the panel width, so nothing
    of the page is ever covered. .bcp-main is listed for the day the
@@ -13206,6 +13221,46 @@ body.dark-mode .ai-hist-when {
 /* Thread: centred reading column, never a wall of text edge to edge. */
 .ai-thread {
   padding-inline: clamp(14px, 5%, 40px);
+}
+
+/* ---- D-1 step 7: responsive tiers on .ai-main's own width ----
+   compact  under 440: bubbles use the full column, tight gutters
+   regular  440 to 599: bubbles cap at the reading measure
+   wide     600 and up: thread and composer centre in a 760px column */
+@container aiwin (max-width: 439px) {
+  .ai-thread {
+    padding-inline: 12px;
+  }
+  .ai-bubble,
+  .ai-bot {
+    max-width: 100%;
+  }
+  .ai-welcome-rows {
+    max-width: 100%;
+  }
+}
+@container aiwin (min-width: 440px) {
+  .ai-bubble,
+  .ai-bot {
+    max-width: min(100%, 760px);
+  }
+}
+@container aiwin (min-width: 600px) {
+  .ai-thread {
+    width: 100%;
+    max-width: 760px;
+    margin-inline: auto;
+  }
+  .ai-inputbar > .ai-composer-row,
+  .ai-inputbar > .ai-quick-presets,
+  .ai-inputbar > .ai-adv {
+    width: 100%;
+    max-width: 760px;
+    margin-inline: auto;
+  }
+  .ai-welcome-rows {
+    max-width: 520px;
+  }
 }
 
 /* ---- Maximise: the workspace, nothing behind it ---- */

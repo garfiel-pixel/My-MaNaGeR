@@ -53,8 +53,8 @@ recorded here. The status is the only place to look.
 |---|---|---|---|
 | A | Close the OpenProject books | **DONE 2026-10-29** | Section 3 result; all gates green |
 | B1 | **D-3** calculator listbox portal + containment gate | **DONE 2026-10-29** | Section B1 result; `qa-fixed-containment` 8/8, `qa-calc-controls` 94/94, audit 61/61, shortcuts 15/15, `npm run verify` green |
-| B2 | **D-2** dictation echo and leading `null` | **NEXT** | `qa-ai-dictation` 9/9; `qa-ai`; `qa-ai-win`; `npm run verify` |
-| B3 | **D-1** AI window, steps 1 to 7 | Queued | `qa-ai-window-layout` matrix; `qa-ai-win` re-baseline; axe; gold; `npm run verify` |
+| B2 | **D-2** dictation echo and leading `null` | **DONE 2026-10-29** | Section B2 result; `qa-ai-dictation` 14/14, `qa-ai.cjs`, `qa-ai-win` 22/22, `npm run verify` green |
+| B3 | **D-1** AI window, steps 1 to 7 | **NEXT** | `qa-ai-window-layout` matrix; `qa-ai-win` re-baseline; axe; gold; `npm run verify` |
 | B4 | **D-4** CI split into five jobs | Queued | `verify-ci-coverage`; live run all steps executed; slowest job at most 8 min; summary job |
 | C1 | NocoBase custom task fields | Queued | Its DoD; schema v25 |
 | C2 | Leantime idea intake + merged agenda | Queued | Its 16-gate harness; schema v26 |
@@ -235,8 +235,23 @@ final without interim, duplicate final, tooltip text, and a net-zero listener
 count after stop. Stub `webkitSpeechRecognition` before page scripts; click the
 real `#ai-voice-btn`; assert on `#ai-q`.
 
-Gate: new harness green, `qa-ai.cjs` and `qa-ai-win.cjs` still green.
+Gate: new harness green, `qa-ai.cjs` and `qa-ai-win` 22/22.
 Commit: `fix(ai): stop dictation echo and the leading null`.
+
+**Result (2026-10-29): DONE.** Evidence:
+
+| Gate | Result |
+|---|---|
+| `node tools/qa-ai-dictation.cjs` | 14/14 (the nine contract checks plus five no-page-error gates) |
+| `node qa-ai.cjs` | PASS (AI23_GATE) |
+| `node tools/qa-ai-win.cjs` | PASS 22/22 |
+| Teeth | restoring `q.value + chunk` reproduces the echo (`it's echoing it's echoing`) and fails gate 1; restoring `_aiBase = null` fails the typed-prefix gate |
+| `npm run verify` | exit 0 |
+
+One addition beyond the directive's letter, recorded: `aiJoin` coerces its base,
+so a `null` base can never be stringified even if a future call site forgets to
+seed it. The typing listener is also removed when `rec.start()` throws, so a
+failed start cannot leave it attached.
 
 ### B3. D-1 - AI window fits any width, one slim header, one composer card
 
@@ -569,4 +584,9 @@ of every session.
   empty allowlist, teeth proven) is in CI; `qa-calc-controls` 94/94,
   `qa-calc-playwright-audit` 61/61, `qa-shortcuts` 15/15, `npm run verify`
   green (171 unit, registry 146/146). Schema unchanged; SW v505.
-- **Next:** B2 D-2, then B3 D-1, B4 D-4.
+- **2026-10-29 - B2 D-2 done.** Dictation commits each final chunk once into a
+  seeded base, renders the interim from that base, and can no longer paint
+  `null` (`aiJoin` coerces). The mic tooltip now says browser speech
+  recognition. New `qa-ai-dictation` (14/14, teeth proven both ways) is in CI;
+  `qa-ai` and `qa-ai-win` 22/22 green. Schema unchanged; SW v507.
+- **Next:** B3 D-1, then B4 D-4.

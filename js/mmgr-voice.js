@@ -1488,6 +1488,36 @@ var MMGR = window.MMGR || {};
   // recording already ships in CSS). Turns itself off when the AI window
   // closes or the tier is switched (stopped from mmgr-ai.js close()).
   let _aiRec = null;
+  let _aiBase = '';
+  let _aiLastFinal = '';
+  let _aiLastFinalAt = 0;
+  let _aiTypeNode = null;
+
+  /* D-2 (UI-CI-DIRECTIVE section 4): one joiner for every dictation write. The
+     old code concatenated `_aiBase` before it was ever assigned, so the first
+     interim painted the literal word `null` into the composer, and it rebuilt
+     the base from the live box value (which already held the interim), so the
+     final echoed the interim. Both are fixed here: a chunk is trimmed, an empty
+     chunk changes nothing, and a chunk lands after exactly one space. */
+  function aiJoin(a, b) {
+    a = String(a || '');
+    b = String(b || '').trim();
+    if (!b) {
+      return a;
+    }
+    return a + (a && !/\s$/.test(a) ? ' ' : '') + b;
+  }
+
+  /* Typing during dictation moves the committed base to whatever the user now
+     has, so the next result appends instead of overwriting their words. The
+     synthetic `input` this module dispatches has isTrusted === false, so it
+     cannot re-enter here. One named listener, added once and removed on stop. */
+  function aiOnType(ev) {
+    if (ev.isTrusted && _aiRec) {
+      _aiBase = this.value;
+    }
+  }
+
   function aiBtn() {
     return document.getElementById('ai-voice-btn');
   }
@@ -1495,6 +1525,12 @@ var MMGR = window.MMGR || {};
     return !!_aiRec;
   }
   function stopAiDictation() {
+    if (_aiTypeNode) {
+      _aiTypeNode.removeEventListener('input', aiOnType);
+      _aiTypeNode = null;
+    }
+    _aiLastFinal = '';
+    _aiLastFinalAt = 0;
     if (!_aiRec) {
       return;
     }
@@ -1551,20 +1587,30 @@ var MMGR = window.MMGR || {};
       if (!q) {
         return;
       }
-      let finalText = '';
+      let fin = '';
       let interim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
         if (e.results[i].isFinal) {
-          finalText += e.results[i][0].transcript;
+          fin += t;
         } else {
-          interim += e.results[i][0].transcript;
+          interim += t;
         }
       }
-      if (finalText) {
-        _aiBase = q.value + (q.value && !/\s$/.test(q.value) ? ' ' : '') + finalText.trim();
-        q.value = _aiBase;
+      const now = Date.now();
+      if (fin) {
+        const chunk = fin.trim();
+        // Android Chrome sometimes re-emits the same final; skip an identical
+        // chunk within 1 s so it is committed once.
+        if (!(chunk === _aiLastFinal && now - _aiLastFinalAt < 1000)) {
+          _aiBase = aiJoin(_aiBase, chunk);
+          _aiLastFinal = chunk;
+          _aiLastFinalAt = now;
+        }
       }
-      q.value = _aiBase + (interim ? (q.value && !/\s$/.test(q.value) ? ' ' : '') + interim : '');
+      // Interim is display only and is recomputed from the committed base on
+      // every event, so it can never be folded back into the base.
+      q.value = aiJoin(_aiBase, interim);
       q.dispatchEvent(new Event('input', { bubbles: true }));
       try {
         q.focus({ preventScroll: true });
@@ -1606,16 +1652,29 @@ var MMGR = window.MMGR || {};
         }
       }
     };
-    _aiBase = null;
+    // D-2: seed the base from what is already typed, so dictation appends to
+    // the user's words instead of replacing them, and never from null.
+    const q0 = document.getElementById('ai-q');
+    _aiBase = q0 ? q0.value : '';
+    _aiLastFinal = '';
+    _aiLastFinalAt = 0;
+    if (q0) {
+      q0.removeEventListener('input', aiOnType);
+      q0.addEventListener('input', aiOnType);
+      _aiTypeNode = q0;
+    }
     try {
       rec.start();
     } catch (e) {
+      if (_aiTypeNode) {
+        _aiTypeNode.removeEventListener('input', aiOnType);
+        _aiTypeNode = null;
+      }
       if (ns.App && ns.App.showToast) {
         ns.App.showToast('Voice input could not start. Is the microphone in use?', 'warn');
       }
     }
   }
-  let _aiBase = null;
 
   // ---- API ----
   ns.Voice = {

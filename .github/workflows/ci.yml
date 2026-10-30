@@ -630,6 +630,14 @@ jobs:
         id: qa-ai-win
         run: node tools/qa-ai-win.cjs
 
+      # D-2 (UI-CI-DIRECTIVE section 4): the composer mic must append the final
+      # transcript once, must never paint the word null, and must keep what the
+      # user typed before or during dictation. Drives the real button against a
+      # stub Web Speech engine; every assertion reads #ai-q.
+      - name: "T4: AI composer dictation (qa-ai-dictation)"
+        id: qa-ai-dictation
+        run: node tools/qa-ai-dictation.cjs
+
       - name: "T4: v11 feature battery (qa-v11)"
         id: qa-v11
         run: node qa-v11.cjs

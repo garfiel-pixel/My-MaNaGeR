@@ -1,0 +1,4 @@
+{
+  "note": "Offenders that the fixed-containment gate may ignore. Every entry names one fixed element, one ancestor and one property, and carries a one-line reason. Do not add a page-wide or wildcard entry; an entry is a proof, not a mute.",
+  "allow": []
+}

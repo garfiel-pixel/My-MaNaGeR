@@ -112,7 +112,7 @@ function absolutizeChrome(p) {
 // the select and fire its change.
 async function pickWork(page, value) {
   await page.click('.mmcb[data-for="calc-work"] .mmcb-input');
-  await page.waitForSelector('.mmcb[data-for="calc-work"] .mmcb-pop:not([hidden])', {
+  await page.waitForSelector('.mmcb-pop[data-for="calc-work"]:not([hidden])', {
     timeout: 8000
   });
   const id = await page.evaluate(v => {

@@ -52,8 +52,8 @@ recorded here. The status is the only place to look.
 | # | Work | Status | Exit gate |
 |---|---|---|---|
 | A | Close the OpenProject books | **DONE 2026-10-29** | Section 3 result; all gates green |
-| B1 | **D-3** calculator listbox portal + containment gate | **NEXT** | `qa-fixed-containment` green; `qa-calc-controls` 63+; `qa-calc-playwright-audit`; `qa-shortcuts`; `npm run verify` |
-| B2 | **D-2** dictation echo and leading `null` | Queued | `qa-ai-dictation` 9/9; `qa-ai`; `qa-ai-win`; `npm run verify` |
+| B1 | **D-3** calculator listbox portal + containment gate | **DONE 2026-10-29** | Section B1 result; `qa-fixed-containment` 8/8, `qa-calc-controls` 94/94, audit 61/61, shortcuts 15/15, `npm run verify` green |
+| B2 | **D-2** dictation echo and leading `null` | **NEXT** | `qa-ai-dictation` 9/9; `qa-ai`; `qa-ai-win`; `npm run verify` |
 | B3 | **D-1** AI window, steps 1 to 7 | Queued | `qa-ai-window-layout` matrix; `qa-ai-win` re-baseline; axe; gold; `npm run verify` |
 | B4 | **D-4** CI split into five jobs | Queued | `verify-ci-coverage`; live run all steps executed; slowest job at most 8 min; summary job |
 | C1 | NocoBase custom task fields | Queued | Its DoD; schema v25 |
@@ -193,6 +193,24 @@ silently choosing.
 
 Commit: `fix(calc): portal the listbox out of the contained card`.
 Deploy is not required per task; Phase B deploys once at the end.
+
+**Result (2026-10-29): DONE.** Evidence:
+
+| Gate | Result |
+|---|---|
+| `node tools/qa-fixed-containment.cjs` | 8/8, allowlist empty (no offender exists) |
+| `node tools/qa-calc-controls.cjs` | 94/94 (31 new UI-5 gates: mount, geometry, 4 viewports x 2 pickers, frame lock, orphan, dark tokens) |
+| `node tools/qa-calc-playwright-audit.cjs` | 61/61 |
+| `node tools/qa-shortcuts.cjs` | 15/15 (its option wait moved to the portal selector; it did fail on the old one) |
+| `npm run verify` | exit 0, 171 unit tests, registry 146/146 |
+| Teeth | reverting the portal into the card turns `qa-fixed-containment` red with `div.mmcb-pop in section#calc-input-card.card (contain: layout paint)` |
+
+Two additions beyond the directive's letter, both recorded: the frame loop
+also stops when the popup or wrapper leaves the document (the orphan sweep
+removes the node, and a loop still writing to a detached node would spin
+forever), and removing a control now detaches the portal's document/window
+listeners as well. The gate group follows D4.2 (`browser-calc`); the D4.2
+table and section 3.3 disagree, and D4.2 is the later, more specific rule.
 
 ### B2. D-2 - voice dictation echoes and starts with `null`
 
@@ -545,4 +563,10 @@ of every session.
   removal arms added), model tests 12/12, `npm run verify` green (171 unit,
   registry 145/145), `verify-actions` and `verify-render-exports` green, remote
   CI `40948194942` 117/117. No app code changed.
-- **Next:** B1 D-3, then B2 D-2, B3 D-1, B4 D-4.
+- **2026-10-29 - B1 D-3 done.** The listbox is portalled to `<body>` with a
+  per-frame tracker, `visualViewport` listeners, a horizontal clamp and an
+  orphan sweep that stops the frame loop. New `qa-fixed-containment` (8/8,
+  empty allowlist, teeth proven) is in CI; `qa-calc-controls` 94/94,
+  `qa-calc-playwright-audit` 61/61, `qa-shortcuts` 15/15, `npm run verify`
+  green (171 unit, registry 146/146). Schema unchanged; SW v505.
+- **Next:** B2 D-2, then B3 D-1, B4 D-4.

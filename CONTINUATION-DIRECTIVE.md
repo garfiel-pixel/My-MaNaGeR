@@ -92,7 +92,10 @@ must get the audit's own state check (rule 0.1) before anyone claims it.
   `EXECUTION-PLAN.md` (D-3, D-2, D-1, D-4), then NocoBase, Leantime, AppFlowy,
   Platform, Plane. `UI-FIXES-SPEC.md` and `plan-ui.md` remain parked. Phase A
   closed the same day: qa-relations 9/9 (removal and view-only arms added),
-  model tests 12/12, verify green, CI `40948194942` 117/117. Next: D-3.
+  model tests 12/12, verify green, CI `40948194942` 117/117. D-3 then landed:
+  the listbox portals to `<body>` with a frame tracker, and the new
+  `qa-fixed-containment` gate is in CI (8/8, allowlist empty, teeth proven).
+  Next: D-2.
 - 2026-10-28: WAVE F CLOSED, DEPLOYED, LIVE-PROBED - ALL 32/32 TASKS DONE. AI-1 the docked
   AI window (qa-ai-win 22/22, axe clean both palettes, T-AIWIN green, flag `aiDock`); AI-2
   spike written up in docs/SPIKE-LOCALLLM-2026-10.md - WebLLM passes every laptop threshold,

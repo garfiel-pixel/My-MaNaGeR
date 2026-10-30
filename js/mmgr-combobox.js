@@ -35,6 +35,22 @@
   var seq = 0;
   var openInst = null;
 
+  /* The listbox is mounted on <body> (see Enhance), OUTSIDE the .card that
+     holds the control. A card that re-renders can therefore drop the control
+     (and its wrapper) while the popup stays behind, with no input left to
+     close it. A popup is live only while the wrapper that owns it is in the
+     document; everything else is removed. Called at boot, before every
+     enhance (a re-render is when an orphan appears) and exposed for the gate. */
+  function sweepOrphans() {
+    var pops = document.querySelectorAll('.mmcb-pop');
+    Array.prototype.forEach.call(pops, function (pop) {
+      var inst = pop.__mmcbInst;
+      if (!inst || !inst.wrap || !inst.wrap.isConnected) {
+        pop.remove();
+      }
+    });
+  }
+
   function flagOn(name) {
     try {
       return localStorage.getItem('mmgr_flag_' + name) !== '0';
@@ -77,6 +93,7 @@
   function Enhance(sel) {
     var uid = String(++seq); // ok: an increasing counter - digits only, never free text
     var inst = { sel: sel, uid: uid, filtering: false, items: [], active: -1 };
+    var raf = 0; // the live tracking frame, 0 when the popup is closed
 
     var wrap = document.createElement('div');
     wrap.className = 'mmcb';
@@ -110,6 +127,10 @@
 
     var pop = document.createElement('div');
     pop.className = 'mmcb-pop';
+    // The same key the wrapper carries, so one selector reaches both sides:
+    // `.mmcb[data-for="calc-work"]` (the control) and
+    // `.mmcb-pop[data-for="calc-work"]` (the portal).
+    pop.setAttribute('data-for', sel.id || '');
     pop.hidden = true;
     pop.innerHTML =
       // ok: literal markup; the only interpolation is our own numeric uid and
@@ -125,7 +146,11 @@
 
     wrap.appendChild(input);
     wrap.appendChild(btn);
-    wrap.appendChild(pop);
+    // Portal: a .card carries `contain: layout paint`, which makes the card the
+    // containing block for a position:fixed descendant and clips it. Moving the
+    // popup to <body> restores viewport coordinates (place() writes rect values)
+    // and lets it paint over the card edge it belongs to.
+    document.body.appendChild(pop);
     sel.insertAdjacentElement('afterend', wrap);
 
     // The select stays in the DOM as the source of truth, but it must not be
@@ -138,6 +163,7 @@
     inst.input = input;
     inst.pop = pop;
     inst.list = pop.querySelector('.mmcb-list');
+    pop.__mmcbInst = inst;
     sel.__mmcb = inst;
 
     function syncLabel() {
@@ -252,17 +278,40 @@
       }
     }
 
+    function detach() {
+      document.removeEventListener('pointerdown', onDocDown, true);
+      window.removeEventListener('scroll', onScroll, { capture: true });
+      window.removeEventListener('resize', onScroll);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', onScroll);
+        window.visualViewport.removeEventListener('scroll', onScroll);
+      }
+    }
+
     function close() {
+      if (!wrap.isConnected) {
+        // The card re-rendered without us: there is nothing to close, so take
+        // the portal and its listeners with it instead of leaving a stranded
+        // popup on <body> that only a dead instance can hear.
+        cancelAnimationFrame(raf);
+        raf = 0;
+        detach();
+        pop.remove();
+        if (openInst === inst) {
+          openInst = null;
+        }
+        return;
+      }
       if (pop.hidden) {
         return;
       }
       pop.hidden = true;
+      cancelAnimationFrame(raf);
+      raf = 0;
       input.setAttribute('aria-expanded', 'false');
       input.removeAttribute('aria-activedescendant');
       inst.filtering = false;
-      document.removeEventListener('pointerdown', onDocDown, true);
-      window.removeEventListener('scroll', onScroll, { capture: true });
-      window.removeEventListener('resize', onScroll);
+      detach();
       if (openInst === inst) {
         openInst = null;
       }
@@ -283,8 +332,12 @@
       }
       var r = input.getBoundingClientRect();
       var below = window.innerHeight - r.bottom >= 240;
-      pop.style.left = Math.round(r.left) + 'px';
-      pop.style.width = Math.round(r.width) + 'px';
+      // Never let the portal run off the right edge (a narrow window or a field
+      // near the edge). The width still matches the control where it fits.
+      var width = Math.min(Math.round(r.width), Math.max(120, window.innerWidth - 16));
+      var left = Math.max(8, Math.min(Math.round(r.left), window.innerWidth - width - 8));
+      pop.style.left = left + 'px';
+      pop.style.width = width + 'px';
       pop.style.top = Math.round(below ? r.bottom + 4 : r.top - 4) + 'px';
       pop.style.transform = below ? 'none' : 'translateY(-100%)';
       var room = Math.max(
@@ -294,6 +347,21 @@
       pop.style.setProperty('--mmcb-max', Math.round(room) + 'px');
     }
 
+    /* Frame-accurate anchoring. Scroll and resize listeners alone miss a pure
+       layout shift (something 120px tall inserted above the field) and can land
+       a frame late during smooth or momentum scrolling; one rAF loop per open
+       popup re-reads the control and rewrites the portal every frame. */
+    function track() {
+      if (pop.hidden || !pop.isConnected || !wrap.isConnected) {
+        // Nothing left to anchor to (the card re-rendered): stop the loop
+        // instead of rewriting geometry on a detached node forever.
+        raf = 0;
+        return;
+      }
+      place();
+      raf = requestAnimationFrame(track);
+    }
+
     function onScroll() {
       if (!pop.hidden) {
         place();
@@ -301,6 +369,16 @@
     }
 
     function open(withFilter) {
+      if (!wrap.isConnected) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+        detach();
+        pop.remove();
+        if (openInst === inst) {
+          openInst = null;
+        }
+        return;
+      }
       if (sel.disabled) {
         return;
       }
@@ -315,6 +393,14 @@
       document.addEventListener('pointerdown', onDocDown, true);
       window.addEventListener('scroll', onScroll, { passive: true, capture: true });
       window.addEventListener('resize', onScroll, { passive: true });
+      if (window.visualViewport) {
+        // The mobile keyboard shrinks the visual viewport without a window
+        // resize; the sheet has to be told, or it lands under the keyboard.
+        window.visualViewport.addEventListener('resize', onScroll);
+        window.visualViewport.addEventListener('scroll', onScroll);
+      }
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(track);
     }
 
     function pick(row) {
@@ -351,7 +437,9 @@
     }
 
     function onDocDown(e) {
-      if (!wrap.contains(e.target)) {
+      // The portal is not a descendant of the wrapper, so a press inside the
+      // list would otherwise read as "outside" and close it before the pick.
+      if (!wrap.contains(e.target) && !pop.contains(e.target)) {
         syncLabel();
         close();
       }
@@ -523,6 +611,9 @@
     if (sel.__mmcb) {
       return sel.__mmcb;
     }
+    // A re-render path calls enhance again; that is exactly when a popup from
+    // the previous markup can be stranded, so clear the ground first.
+    sweepOrphans();
     return Enhance(sel);
   }
 
@@ -534,6 +625,9 @@
     if (!flagOn('comboboxPicker')) {
       return;
     }
+    // A fresh document normally has no portal, but a page that restores markup
+    // from a snapshot can; never leave one without a control to close it.
+    sweepOrphans();
     // The two long lists the directive names: Type of work, Work item. Both
     // carry real families and long labels; the short pickers stay native.
     ['calc-family', 'calc-work'].forEach(function (id) {
@@ -552,7 +646,10 @@
     isEnhanced: function (id) {
       var el = byId(id);
       return !!(el && el.__mmcb);
-    }
+    },
+    // The orphan sweep, exposed so a gate can prove a removed control takes its
+    // portal with it (and so a feature can sweep after replacing markup).
+    sweep: sweepOrphans
   };
 
   if (document.readyState === 'loading') {

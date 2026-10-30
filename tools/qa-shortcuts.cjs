@@ -137,7 +137,7 @@ async function ensureServer() {
 // here instead of surfacing as a mystery timeout three steps later.
 async function pickCalcWork(page, value) {
   await page.click('.mmcb[data-for="calc-work"] .mmcb-input');
-  await page.waitForSelector('.mmcb[data-for="calc-work"] [role="option"]', { timeout: 8000 });
+  await page.waitForSelector('.mmcb-pop[data-for="calc-work"] [role="option"]', { timeout: 8000 });
   const id = await page.evaluate(v => {
     const sel = document.getElementById('calc-work');
     const rows = sel && sel.__mmcb ? sel.__mmcb.list.querySelectorAll('[role="option"]') : [];

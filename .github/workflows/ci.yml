@@ -740,6 +740,15 @@ jobs:
         id: qa-calc-controls
         run: node tools/qa-calc-controls.cjs
 
+      # D-3 (UI-CI-DIRECTIVE section 3): a position:fixed element must never sit
+      # inside an ancestor that takes over its containing block or clips it.
+      # Walks every rendered fixed element on the calculator (both trade lists
+      # open), the project with the AI window open, and the launcher; fails on
+      # any offender not evidenced in tools/fixed-containment-allow.json.
+      - name: "T4: Fixed-element containment (qa-fixed-containment)"
+        id: qa-fixed-containment
+        run: node tools/qa-fixed-containment.cjs
+
       - name: "T4: Finish-target and expiry notices (qa-notice-watchers)"
         id: qa-notice-watchers
         run: node tools/qa-notice-watchers.cjs

@@ -202,8 +202,10 @@ const CONTRAST_HELPERS = `window.__mmcbContrast = (function () {
 
   /* Open a page with a chosen theme (and optionally Performance Mode) already
      in storage, so the boot scripts apply it before first paint. */
-  async function open(theme, perfOn) {
-    const ctx = await browser.newContext({ viewport: { width: 1280, height: 950 } });
+  async function open(theme, perfOn, viewport) {
+    const ctx = await browser.newContext({
+      viewport: viewport || { width: 1280, height: 950 }
+    });
     const page = await ctx.newPage();
     const errors = [];
     page.on('pageerror', e => errors.push(String((e && e.message) || e).slice(0, 200)));
@@ -254,7 +256,9 @@ const CONTRAST_HELPERS = `window.__mmcbContrast = (function () {
 
       // The change contract every existing handler depends on.
       await page.click('.mmcb[data-for="calc-work"] .mmcb-input');
-      await page.waitForSelector('.mmcb[data-for="calc-work"] [role="option"]', { timeout: 8000 });
+      await page.waitForSelector('.mmcb-pop[data-for="calc-work"] [role="option"]', {
+        timeout: 8000
+      });
       const target = await page.evaluate(() => {
         const sel = document.getElementById('calc-work');
         const rows = Array.prototype.slice.call(
@@ -299,6 +303,232 @@ const CONTRAST_HELPERS = `window.__mmcbContrast = (function () {
     }
 
     // ------------------------------------------------------------------
+    // UI-5 (D-3): the listbox is portal-mounted on <body> and anchored to
+    // its control every frame - at four viewports, for both pickers.
+    // ------------------------------------------------------------------
+    const VIEWPORTS = [
+      { w: 1920, h: 1000 },
+      { w: 1100, h: 800 },
+      { w: 800, h: 700 },
+      { w: 700, h: 900 }
+    ];
+
+    /* Open one picker and report where its portal landed, in viewport
+       coordinates. The page is scrolled so the control is on screen first:
+       a fixed element cannot be "fully visible" for a control that is not. */
+    async function measurePortal(page, id) {
+      await page.evaluate(sel => {
+        document
+          .querySelector('.mmcb[data-for="' + sel + '"] .mmcb-input')
+          .scrollIntoView({ block: 'center' });
+      }, id);
+      await delay(120);
+      await page.click('.mmcb[data-for="' + id + '"] .mmcb-input');
+      await page.waitForSelector('.mmcb-pop[data-for="' + id + '"]:not([hidden])', {
+        timeout: 8000
+      });
+      await delay(80);
+      return page.evaluate(sel => {
+        const input = document.querySelector('.mmcb[data-for="' + sel + '"] .mmcb-input');
+        const pop = document.querySelector('.mmcb-pop[data-for="' + sel + '"]');
+        const r = input.getBoundingClientRect();
+        const p = pop.getBoundingClientRect();
+        const hit = document.elementFromPoint(p.left + p.width / 2, p.top + p.height / 2);
+        return {
+          parentIsBody: pop.parentElement === document.body,
+          dx: Math.round((p.left - r.left) * 100) / 100,
+          below: window.innerHeight - r.bottom >= 240,
+          topGap: Math.round((p.top - r.bottom) * 100) / 100,
+          flippedGap: Math.round((p.bottom - (r.top - 4)) * 100) / 100,
+          inView:
+            p.left >= -0.5 &&
+            p.top >= -0.5 &&
+            p.right <= window.innerWidth + 0.5 &&
+            p.bottom <= window.innerHeight + 0.5,
+          centreHit: !!(hit && pop.contains(hit)),
+          rect: { l: p.left, t: p.top, r: p.right, b: p.bottom },
+          vp: { w: window.innerWidth, h: window.innerHeight }
+        };
+      }, id);
+    }
+
+    const spread = (rows, key) =>
+      Math.max.apply(
+        null,
+        rows.map(r => r[key])
+      ) -
+      Math.min.apply(
+        null,
+        rows.map(r => r[key])
+      );
+
+    for (const vp of VIEWPORTS) {
+      const { page, errors } = await open('light', false, { width: vp.w, height: vp.h });
+      for (const id of ['calc-work', 'calc-family']) {
+        const m = await measurePortal(page, id);
+        check(
+          'UI-5 [' +
+            vp.w +
+            'x' +
+            vp.h +
+            '] #' +
+            id +
+            ' portal sits on body, flush left and 4px under the control',
+          m.parentIsBody &&
+            m.dx >= -1 &&
+            m.dx <= 1 &&
+            (m.below ? m.topGap >= 3 && m.topGap <= 5 : Math.abs(m.flippedGap) <= 1),
+          m
+        );
+        check(
+          'UI-5 [' +
+            vp.w +
+            'x' +
+            vp.h +
+            '] #' +
+            id +
+            ' listbox is fully on screen and hit-testable',
+          m.inView && m.centreHit,
+          m
+        );
+        await page.keyboard.press('Escape');
+        await delay(60);
+      }
+      check('UI-5 [' + vp.w + 'x' + vp.h + '] no uncaught page error', errors.length === 0, errors);
+      await page.context().close();
+    }
+
+    // Frame lock: with the popup open, scroll the page three ways (wheel,
+    // smooth programmatic scroll, a 120px block inserted above the field) and
+    // read the portal against the control on EVERY animation frame. The two
+    // distances may round, never drift.
+    for (const vp of [
+      { w: 1100, h: 800 },
+      { w: 800, h: 700 }
+    ]) {
+      for (const id of ['calc-work', 'calc-family']) {
+        const { page, errors } = await open('light', false, { width: vp.w, height: vp.h });
+        await page.evaluate(sel => {
+          document
+            .querySelector('.mmcb[data-for="' + sel + '"] .mmcb-input')
+            .scrollIntoView({ block: 'center' });
+        }, id);
+        await delay(120);
+        await page.click('.mmcb[data-for="' + id + '"] .mmcb-input');
+        await page.waitForSelector('.mmcb-pop[data-for="' + id + '"]:not([hidden])', {
+          timeout: 8000
+        });
+
+        const sampling = page.evaluate(sel => {
+          return new Promise(resolve => {
+            const input = document.querySelector('.mmcb[data-for="' + sel + '"] .mmcb-input');
+            const pop = document.querySelector('.mmcb-pop[data-for="' + sel + '"]');
+            const rows = [];
+            const t0 = performance.now();
+            function frame() {
+              const r = input.getBoundingClientRect();
+              const p = pop.getBoundingClientRect();
+              rows.push({
+                dx: p.left - r.left,
+                dy: p.top - r.bottom,
+                dh: p.height,
+                top: r.top,
+                scroll: window.scrollY
+              });
+              if (performance.now() - t0 < 1400) {
+                requestAnimationFrame(frame);
+              } else {
+                resolve(rows);
+              }
+            }
+            requestAnimationFrame(frame);
+          });
+        }, id);
+
+        await delay(150);
+        for (let i = 0; i < 8; i++) {
+          await page.mouse.wheel(0, 60);
+          await delay(60);
+        }
+        await page.evaluate(() => window.scrollBy({ top: 300, behavior: 'smooth' }));
+        await delay(320);
+        await page.evaluate(() => {
+          const spacer = document.createElement('div');
+          spacer.id = 'mmcb-spacer';
+          spacer.style.height = '120px';
+          const card = document.getElementById('calc-input-card');
+          card.parentNode.insertBefore(spacer, card);
+        });
+
+        const rows = await sampling;
+        const moved = spread(rows, 'top') >= 100;
+        const locked = spread(rows, 'dx') <= 1 && spread(rows, 'dy') <= 1;
+        check(
+          'UI-5 [' +
+            vp.w +
+            'x' +
+            vp.h +
+            '] #' +
+            id +
+            ' stays locked to the control through wheel, smooth scroll and a layout shift',
+          rows.length >= 25 && moved && locked,
+          {
+            frames: rows.length,
+            spreadDx: spread(rows, 'dx'),
+            spreadDy: spread(rows, 'dy'),
+            // Informational: --mmcb-max resizes the list as the space above or
+            // below the control changes, so its height is allowed to vary.
+            spreadHeight: spread(rows, 'dh'),
+            movedPx: spread(rows, 'top')
+          }
+        );
+        check(
+          'UI-5 [' + vp.w + 'x' + vp.h + '] tracking run had no page error',
+          errors.length === 0,
+          errors
+        );
+        await page.context().close();
+      }
+    }
+
+    // Orphan: a re-rendered card must not leave a listbox on <body>. Open one,
+    // drop both controls, sweep, and confirm nothing is left - even a beat
+    // later, which proves the frame loop stopped instead of re-placing it.
+    {
+      const { page, errors } = await open('light', false, { width: 1280, height: 950 });
+      await page.click('.mmcb[data-for="calc-work"] .mmcb-input');
+      await page.waitForSelector('.mmcb-pop[data-for="calc-work"]:not([hidden])', {
+        timeout: 8000
+      });
+      const orphan = await page.evaluate(() => {
+        document.querySelectorAll('.mmcb').forEach(function (w) {
+          w.remove();
+        });
+        const beforeSweep = document.querySelectorAll('.mmcb-pop').length;
+        if (window.MMGR && window.MMGR.Combobox && window.MMGR.Combobox.sweep) {
+          window.MMGR.Combobox.sweep();
+        }
+        return {
+          beforeSweep,
+          afterSweep: document.querySelectorAll('.mmcb-pop').length,
+          wraps: document.querySelectorAll('.mmcb').length
+        };
+      });
+      await delay(200);
+      const settled = await page.evaluate(() => document.querySelectorAll('.mmcb-pop').length);
+      check(
+        'UI-5 a removed control takes its portal with it and the frame loop stops',
+        orphan.beforeSweep === 2 &&
+          orphan.afterSweep === orphan.wraps &&
+          orphan.wraps === 0 &&
+          settled === 0,
+        { orphan, settled }
+      );
+      check('UI-5 orphan run had no page error', errors.length === 0, errors);
+      await page.context().close();
+    }
+
+    // ------------------------------------------------------------------
     // T-DARK: contrast of every option and family heading, per theme.
     // ------------------------------------------------------------------
     for (const mode of MODES) {
@@ -307,14 +537,13 @@ const CONTRAST_HELPERS = `window.__mmcbContrast = (function () {
 
       // The work list is the one with <optgroup> families - the reported bug.
       await page.click('.mmcb[data-for="calc-work"] .mmcb-input');
-      await page.waitForSelector('.mmcb[data-for="calc-work"] .mmcb-pop:not([hidden])', {
+      await page.waitForSelector('.mmcb-pop[data-for="calc-work"]:not([hidden])', {
         timeout: 8000
       });
 
       const probe = await page.evaluate(() => {
         const R = window.__mmcbContrast.ratio;
-        const wrap = document.querySelector('.mmcb[data-for="calc-work"]');
-        const pop = wrap.querySelector('.mmcb-pop');
+        const pop = document.querySelector('.mmcb-pop[data-for="calc-work"]');
         const opts = Array.prototype.slice.call(pop.querySelectorAll('[role="option"]'));
         const grps = Array.prototype.slice.call(pop.querySelectorAll('.mmcb-grp'));
         const measured = opts.map(function (o) {
@@ -379,6 +608,38 @@ const CONTRAST_HELPERS = `window.__mmcbContrast = (function () {
         /^rgba?\([^)]*\)$/.test(probe.popBg) && !/rgba\([^)]*,\s*0(\.0*)?\)$/.test(probe.popBg),
         probe.popBg
       );
+      if (mode === 'dark') {
+        // The portal left the card, so prove the dark theme still reaches it:
+        // its own background and an option's text must equal the token values
+        // resolved on <body>, and the pair must still clear 4.5:1.
+        const token = await page.evaluate(() => {
+          const pop = document.querySelector('.mmcb-pop[data-for="calc-work"]');
+          const opt = pop.querySelector('[role="option"]');
+          const probeEl = document.createElement('div');
+          probeEl.style.cssText =
+            'position:absolute;left:-9999px;top:-9999px;background:var(--card);color:var(--text)';
+          document.body.appendChild(probeEl);
+          const tokens = getComputedStyle(probeEl);
+          const out = {
+            dark: document.body.classList.contains('dark-mode'),
+            popBg: getComputedStyle(pop).backgroundColor,
+            tokenBg: tokens.backgroundColor,
+            optColor: getComputedStyle(opt).color,
+            tokenColor: tokens.color,
+            ratio: Math.round(window.__mmcbContrast.ratio(opt) * 100) / 100
+          };
+          probeEl.remove();
+          return out;
+        });
+        check(
+          'T-DARK [dark] the portalled listbox paints the theme card and text tokens',
+          token.dark &&
+            token.popBg === token.tokenBg &&
+            token.optColor === token.tokenColor &&
+            token.ratio >= 4.5,
+          token
+        );
+      }
       if (mode === 'light' || mode === 'dark') {
         check(
           'T-DARK [' + mode + '] dark mode agrees with the stored theme',
@@ -407,7 +668,7 @@ const CONTRAST_HELPERS = `window.__mmcbContrast = (function () {
       await page.click('.mmcb[data-for="calc-work"] .mmcb-input');
       await page.keyboard.type('block');
       const filtered = await page.evaluate(() => {
-        const pop = document.querySelector('.mmcb[data-for="calc-work"] .mmcb-pop');
+        const pop = document.querySelector('.mmcb-pop[data-for="calc-work"]');
         return Array.prototype.slice
           .call(pop.querySelectorAll('[role="option"]'))
           .map(o => String(o.textContent || '').toLowerCase());
@@ -416,7 +677,7 @@ const CONTRAST_HELPERS = `window.__mmcbContrast = (function () {
       await page.keyboard.press('Enter');
       const picked = await page.evaluate(() => {
         const sel = document.getElementById('calc-work');
-        const pop = document.querySelector('.mmcb[data-for="calc-work"] .mmcb-pop');
+        const pop = document.querySelector('.mmcb-pop[data-for="calc-work"]');
         return { value: sel.value, closed: pop.hidden, label: sel.__mmcb.input.value };
       });
       check(

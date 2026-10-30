@@ -267,7 +267,8 @@ async function launchChrome(port) {
       w: wr.width, left: wr.left, mainW: m.width, mainRight: m.right,
       aiVar: getComputedStyle(document.body).getPropertyValue('--ai-w').trim(),
       histInline: w.classList.contains('hist-inline'),
-      histVisible: (function(){ var h = document.getElementById('ai-hist'); return !!h && h.offsetParent !== null; })() };
+      histVisible: (function(){ var h = document.getElementById('ai-hist'); return !!h && h.offsetParent !== null; })(),
+      histBtnVisible: (function(){ var b = document.getElementById('ai-hist-btn'); return !!b && b.offsetParent !== null; })() };
   })()`);
   check('1440: the assistant opens docked', opened && opened.open && opened.docked, opened);
   check(
@@ -285,11 +286,36 @@ async function launchChrome(port) {
     opened && Math.abs(parseFloat(opened.aiVar) - opened.w) <= 1,
     opened
   );
+  // D-1 step 1 (UI-CI-DIRECTIVE section 5.2): the inline threshold moved from
+  // 480 to 720, so at the 520 dock default the list is a slide-over behind
+  // the History button. Two checks replace the old single one: the default
+  // state, then the state once the window is wide enough (Maximise is the
+  // real mechanism, no CSS override).
   check(
-    '1440: the conversation column is visible at the default width',
-    opened && opened.histInline && opened.histVisible,
+    '1440: at the 520 default the chat list is a slide-over and the History button is visible',
+    opened && !opened.histInline && !opened.histVisible && !!opened.histBtnVisible,
     opened
   );
+  const widened = await ev(`(function(){
+    document.getElementById('ai-max-btn').click();
+    var w = document.getElementById('ai-win');
+    var h = document.getElementById('ai-hist');
+    var btn = document.getElementById('ai-hist-btn');
+    return { max: w.classList.contains('max-mode'),
+      histInline: w.classList.contains('hist-inline'),
+      histVisible: !!h && h.offsetParent !== null,
+      histBtnVisible: !!btn && btn.offsetParent !== null,
+      w: w.getBoundingClientRect().width };
+  })()`);
+  check(
+    '1440: at 720 and wider the conversation column is inline and the History button is hidden',
+    widened && widened.histInline && widened.histVisible && !widened.histBtnVisible,
+    widened
+  );
+  // Back to the docked default so the composer and history checks below run
+  // in the same regime this harness has always measured.
+  await ev(`document.getElementById('ai-max-btn').click()`);
+  await delay(300);
 
   // ---- Composer: Enter sends, Shift+Enter keeps a new line --------------
   await ev(`MMGR.AiWin.setAiCfg({ tier: 'local' }); MMGR.AiWin.syncSettingsUI();`);

@@ -3529,7 +3529,12 @@ var MMGR = window.MMGR || {};
   // list rides in the project state, so export and delete include it.
   const AI_CHAT_CAP = 30;
   const AI_MSG_CAP = 200;
-  const AI_HIST_INLINE_MIN = 480; // below this the list becomes a slide-over
+  // D-1 step 1 (UI-CI-DIRECTIVE section 5.2): the conversation column costs
+  // 176px, and the docked default is 520px. At 480 the thread was squeezed to
+  // 344px on the DEFAULT width, so the list now only goes inline once the
+  // window can carry it and still leave the thread a reading column. Below
+  // 720 the History button opens the list as a slide-over.
+  const AI_HIST_INLINE_MIN = 720; // below this the list becomes a slide-over
   const AI_TITLE_MAX = 60;
   let _activeChat = '';
 

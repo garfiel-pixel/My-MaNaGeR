@@ -1591,22 +1591,6 @@
         <div class="ai-presets" id="ai-presets"></div>
       </div>
       </div>
-      <!-- Project context + engine settings (collapsed by default , sits below
-           both panes; all ids/actions unchanged for Rank 2.3 wiring) -->
-      <details class="ai-adv">
-        <summary><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg> What the assistant can see</summary>
-        <div class="ai-adv-body">
-          <div class="dsec">Project context (auto-generated grounding for both tiers)</div>
-          <textarea id="ai-ctx" class="ai-ctx" readonly aria-label="AI project context (read-only)" placeholder="Project context appears here , charter, health, EVM, timeline, risks, critical path, weather."></textarea>
-          <div class="ai-actions">
-            <button class="btn btn-n btn-s" data-action="aiAttachContext"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Attach Project Context</button>
-            <button class="btn btn-n btn-s" data-action="aiCopy"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Copy Prompt + Context</button>
-            <button class="btn btn-n btn-s" data-action="aiCopyOut"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy Result</button>
-            <button class="btn btn-n btn-s" data-action="aiClear">Clear</button>
-          </div>
-          <p class="ai-note">Tier A runs a zero-key engine in this browser , every line traces to a real project field, offline. Tier B uses your own OpenAI / Google Gemini / Anthropic Claude key for this session only (never stored, never exported, cleared on close) through the Worker relay or the same circuit-broken network path as weather. Connect &amp; Test verifies the key with a live provider check before Send unlocks. The copy-first flow still works for any external tool.</p>
-        </div>
-      </details>
       <!-- Result store , hidden; copyOut() reads it and runs render as bubbles -->
       <textarea id="ai-out" class="ai-out" readonly aria-label="AI response output"></textarea>
       <div class="ai-trace" id="ai-trace"></div>
@@ -1637,6 +1621,24 @@
           <span class="ai-send-wrap" id="ai-send-wrap" title="Send"><button class="ai-send" id="ai-send" data-action="aiRun" title="Send"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Send</button></span>
         </div>
       </div>
+      <!-- D-1 step 6: the context disclosure is ONE collapsed line under
+           the composer now, chevron only, no border box. Contents unchanged. -->
+      <!-- Project context + engine settings (collapsed by default; all
+           ids/actions unchanged for Rank 2.3 wiring) -->
+      <details class="ai-adv">
+        <summary><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg> What the assistant can see<svg class="ico ai-adv-chev" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-down"></use></svg></summary>
+          <div class="ai-adv-body">
+            <div class="dsec">Project context (auto-generated grounding for both tiers)</div>
+            <textarea id="ai-ctx" class="ai-ctx" readonly aria-label="AI project context (read-only)" placeholder="Project context appears here , charter, health, EVM, timeline, risks, critical path, weather."></textarea>
+            <div class="ai-actions">
+              <button class="btn btn-n btn-s" data-action="aiAttachContext"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Attach Project Context</button>
+              <button class="btn btn-n btn-s" data-action="aiCopy"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Copy Prompt + Context</button>
+              <button class="btn btn-n btn-s" data-action="aiCopyOut"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy Result</button>
+              <button class="btn btn-n btn-s" data-action="aiClear">Clear</button>
+            </div>
+            <p class="ai-note">Tier A runs a zero-key engine in this browser , every line traces to a real project field, offline. Tier B uses your own OpenAI / Google Gemini / Anthropic Claude key for this session only (never stored, never exported, cleared on close) through the Worker relay or the same circuit-broken network path as weather. Connect &amp; Test verifies the key with a live provider check before Send unlocks. The copy-first flow still works for any external tool.</p>
+          </div>
+        </details>
     </div>
     </div><!-- /.ai-main -->
   </div>

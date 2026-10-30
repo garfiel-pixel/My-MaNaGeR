@@ -10303,22 +10303,33 @@ body.dark-mode .ai-seg-btn.is-on {
 }
 
 /* advanced panel: project context + engine settings (collapsed by default) */
+/* D-1 step 6: one collapsed line under the composer. No border box, no fill;
+   the chevron on the right rotates when the panel is open. */
 .ai-adv {
-  border-top: 1px solid var(--border);
-  background: var(--card);
+  border: 0;
+  background: transparent;
 }
 .ai-adv summary {
   list-style: none;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 10px 18px;
-  font-size: 0.7rem;
+  gap: 6px;
+  padding: 2px 2px 2px;
+  font-size: 0.68rem;
   font-weight: 600;
   color: var(--slate);
   user-select: none;
   transition: color var(--tr);
+}
+.ai-adv summary .ico {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+}
+.ai-adv summary .ai-adv-chev {
+  margin-left: auto;
+  transition: transform var(--tr);
 }
 .ai-adv summary::-webkit-details-marker {
   display: none;
@@ -10327,11 +10338,16 @@ body.dark-mode .ai-seg-btn.is-on {
   color: var(--gold-text);
 }
 .ai-adv[open] summary {
-  border-bottom: 1px solid var(--border);
   color: var(--gold-text);
 }
+.ai-adv[open] summary .ai-adv-chev {
+  transform: rotate(180deg);
+}
 .ai-adv .ai-adv-body {
-  padding: 14px 20px 18px;
+  margin-top: 6px;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
   background: var(--tile-bg);
   max-height: min(46vh, 420px);
   overflow-y: auto;

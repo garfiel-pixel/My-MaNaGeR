@@ -599,6 +599,15 @@ jobs:
         env:
           QA_PORT: 8814
 
+      # F1 (REPO-RELIABILITY-DIRECTIVE 2026-10-30): the cross-tenant fence.
+      # Self-contained (its own wrangler dev on 8799), so it does not share the
+      # job's state and cannot pass by accident on another tenant's rows.
+      - name: "T2: Tenant isolation (F1 - B cannot touch A)"
+        if: success()
+        run: node tools/qa-tenant-isolation.cjs
+        env:
+          QA_PORT: 8799
+
       - name: "T2: Reviews"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-reviews.cjs

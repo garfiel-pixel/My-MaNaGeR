@@ -975,8 +975,13 @@ export async function handleCloudProjectClaim(request, env, projectId) {
   }
   const hash = await hashOwnerCode(code, row.owner_code_salt);
   if (!codesEqual(hash, row.owner_code_hash)) {
+    // F1 (2026-10-30): this branch used to answer "owner code does not match
+    // this project", while an UNKNOWN project answered "invalid project or
+    // owner code". The two messages let a stranger tell a real project id from
+    // a made-up one with one request - an existence oracle on a route whose
+    // ids are user-chosen. Same generic refusal as every other failed lookup.
     await cloudTimingSink();
-    return json({ ok: false, error: 'owner code does not match this project' }, 403);
+    return cloudForbidden();
   }
   if (row.google_sub) {
     if (row.google_sub === session.sub) {

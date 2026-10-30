@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, ci-split]
   pull_request:
     branches: [main]
 
@@ -11,8 +11,15 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# D-4 (UI-CI-DIRECTIVE section 6): five parallel jobs. One job used to run
+# every step in order: a 25 minute wall clock, and one red step hid every
+# later step (AGENTS.md section 8 item 1). Each job now carries only the
+# setup it needs, and a final summary job reads needs.<job>.result.
+# tools/verify-ci-coverage.cjs proves no step was dropped or duplicated
+# outside the per-job setup lines.
 jobs:
-  verify:
+  static:
+    name: static
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,7 +30,12 @@ jobs:
         with:
           node-version: 22
 
-      # ── Secrets scanning (Backend Security #2) ──────────────────────
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Build JS/CSS bundles
+        run: npm run build
+
       - name: Gitleaks secrets scan
         id: gitleaks
         uses: gitleaks/gitleaks-action@v2
@@ -37,14 +49,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install dependencies
-        run: npm install --ignore-scripts --no-audit --no-fund
-
-      # ── Build dist/ assets (needed for verify:sw SHELL checks) ────
-      - name: Build JS/CSS bundles
-        run: npm run build
-
-      # ── Static integrity checks (no Cloudflare bindings needed) ─────
       - name: Verify CSP inline-script hashes
         id: csp
         run: npm run verify:csp
@@ -52,6 +56,7 @@ jobs:
       # Parse gate: every inline <script> must parse as JS. Catches CSS-in-
       # script mis-pastes (the 2026-09-13 launcher outage, commit b5ae4bb)
       # and any syntax breakage that silently kills a page's logic.
+
       - name: Verify inline scripts parse (JS syntax gate)
         id: inline
         run: npm run verify:inline
@@ -61,6 +66,7 @@ jobs:
       # is loaded straight by calculator.html - can carry a hard SyntaxError
       # and kill its whole page with every other gate still green. That is
       # exactly how the calculator died on unquoted hyphenated object keys.
+
       - name: Verify every source script parses (standalone scripts included)
         id: jssyntax
         run: npm run verify:js
@@ -98,6 +104,7 @@ jobs:
       # with a status token (CI/EXTENDED/TRIAGE/MANUAL). qa-full, qa-ai, qa-v11
       # and qa-p1 sat stale for weeks precisely because nothing tracked which
       # harnesses existed - this makes orphaning a battery a red build.
+
       - name: Verify test registry (no orphaned harnesses)
         id: registry
         run: node tools/verify-test-registry.cjs
@@ -108,6 +115,7 @@ jobs:
       # comments in css/mmgr.css had silently killed .t-sm and .btn.full in
       # dist for weeks. ARM 1 catches the stray closer, ARM 2 proves every
       # source rule survives into the minified bundle.
+
       - name: Verify CSS integrity (comment traps, dropped rules)
         id: css
         run: node tools/verify-css-integrity.cjs
@@ -121,6 +129,7 @@ jobs:
       # `npm run verify` chain never included it and CI calls its steps
       # individually, so a regression in tier derivation or the free-project cap
       # could ship green. This step is the one that actually executes them.
+
       - name: Unit tests (node:test billing helpers)
         id: unit
         run: npm test
@@ -138,6 +147,7 @@ jobs:
       # invocation logs off, query string redacted, errors unsampled) and
       # the log scrubber in src/lib/observe.js must keep every credential
       # OUT of the log tail while leaving the useful context in.
+
       - name: "T1: Observability sampling + redaction (S-3)"
         id: qa-observe
         run: node tools/verify-observability-redaction.cjs
@@ -149,16 +159,28 @@ jobs:
       # every HTML page and reads the header it comes back with - with a
       # control that proves the whisper runtime really does get the
       # relaxed policy, so the check cannot pass by being vacuous.
+
       - name: "T1: CSP scoping - no unsafe-eval on any HTML page (S-4)"
         id: qa-csp-eval
         run: node tools/verify-csp-unsafe-eval.cjs
 
       # ── Deploy validation (dry-run, no credentials needed) ──────────
+
+      # D-4 (UI-CI-DIRECTIVE section D4.3): the split moved 112 run: blocks
+      # into five jobs. verify-test-registry proves every harness is
+      # REGISTERED; this proves every one is still EXECUTED, that the run:
+      # multiset is unchanged outside the per-job setup lines, and that no
+      # if: reads steps.<id>.outcome from another job.
+      - name: Verify CI coverage (no step dropped by the split)
+        id: ci-coverage
+        run: node tools/verify-ci-coverage.cjs
+
       - name: Wrangler deploy dry-run
         id: deploy
         run: npx wrangler deploy --dry-run
 
       # ── TIER 1: Pure-static QA gates (no Chrome, no wrangler dev) ──
+
       - name: "T1: Dashboard spec (tokens, markup, icons, contrast)"
         id: qa-dashboard
         run: node tools/qa-dashboard-spec.cjs
@@ -193,6 +215,7 @@ jobs:
       # an unanswered data-action does nothing, a dead page.html#anchor
       # lands at the top of the page). Pure-static, no Chrome needed.
       # Each was proven to bite by injecting its bug class (6/6 teeth).
+
       - name: "T1: Icon sprite contract (F1 - every use href resolves)"
         id: qa-icons
         run: node tools/verify-icons.cjs
@@ -209,6 +232,7 @@ jobs:
       # The new-tab allow-list is a CONTRACT (a stale entry fails too), and
       # every page that can start a GPU decoration must boot Performance Mode
       # BEFORE the shader mounts.
+
       - name: "T1: Same-tab navigation (T-NEWTAB static)"
         id: verify-newtab
         run: node tools/verify-newtab.cjs
@@ -220,6 +244,7 @@ jobs:
       # Rate book rebrand (REFINEMENT-DIRECTIVE-2026-10-24 3.2/3.3): one name,
       # one notice, the pricing count equal to the rows in the data, and no
       # claim of independent production while the provenance is unresolved.
+
       - name: "T1: Rate book name, notice and count"
         id: verify-ratebook
         run: node tools/verify-ratebook-wording.cjs
@@ -229,6 +254,7 @@ jobs:
       # reason, every line is fully shaped, and no trade whose material
       # description names more than one component is left as a bare lump.
       # The browser half (T-ACC) is the qa-mat-items step in T4.
+
       - name: "T1: Itemised materials table (T-LUMP static)"
         id: verify-calc-lump
         run: node tools/verify-calc-lump.cjs
@@ -239,6 +265,7 @@ jobs:
       # prompt and the page's allowlist disagree, and - the guard the sweep
       # itself lacked - if an extraction comes back empty instead of
       # silently reporting the code as clean.
+
       - name: "T1: Settings reachability (SW-14 permanent test)"
         id: verify-settings-reach
         run: node tools/verify-settings-reach.cjs
@@ -251,6 +278,7 @@ jobs:
       # zero, that the containers it judges still exist (a regex that matches
       # nothing also reports zero), and that the producers it relies on are in
       # files it actually scans.
+
       - name: "T1: Notice containers (SW-13 permanent test)"
         id: verify-sweep13
         run: node tools/verify-sweep13.cjs
@@ -264,6 +292,7 @@ jobs:
       # role=button + tabindex=0 with a delegated keydown that turns Enter
       # and Space into a click, and that no aria-hidden scrim became
       # focusable along the way.
+
       - name: "T1: Clickable div/span a11y (SW-10 permanent test)"
         id: verify-sw10
         run: node tools/verify-sw10.cjs
@@ -274,6 +303,7 @@ jobs:
       # link policies (all / near / critical / gates), the tidy reduction, the
       # swimlane axes and the automatic scale, then proves STATICALLY that all
       # four painters read that one builder.
+
       - name: "T1: Gantt view builder (T-GANTT)"
         id: verify-gantt-view
         run: node tools/verify-gantt-view.cjs
@@ -281,6 +311,7 @@ jobs:
       # G-2 gate (DIRECTIVE: GOOGLE SIGN-IN SECURITY GAPS, 2026-10-23):
       # in-process Worker route battery + the 14 sign-in nonce checks
       # (wrong/reused/expired/forged, email_verified, flag on/off, sweep).
+
       - name: "T1: Auth worker routes + sign-in nonce contract"
         id: verify-auth-worker
         run: node tools/verify-auth-worker.mjs
@@ -288,11 +319,13 @@ jobs:
 
       # Chrome is needed from here on: the page-health sweep in T2 drives it
       # against wrangler dev, and the T3 batteries drive it directly.
+
       - name: Chrome available
         id: chrome
         run: google-chrome --version || (sudo apt-get update && sudo apt-get install -y google-chrome-stable)
 
       # AUDIT-DIRECTIVE-2026-10-18 tripwires that need a real browser.
+
       - name: "T1: Measured-quantity unit boundary (golden table)"
         id: qa-units
         run: node tools/verify-units.cjs
@@ -317,6 +350,30 @@ jobs:
         run: node tools/verify-doc-size.cjs
 
       # ── TIER 2: Needs wrangler dev (D1/R2 emulation) ────────────────
+
+      - name: Job summary (static)
+        if: always()
+        run: |
+          echo "### static: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"
+
+  cloud-core:
+    name: cloud-core
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for gitleaks
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Build JS/CSS bundles
+        run: npm run build
+
       - name: "T2: Start wrangler dev (background)"
         id: wrangler-start
         run: |
@@ -381,6 +438,7 @@ jobs:
       # cookie-dependent gates N/A; with QA_BILLING_CANCEL_COOKIE set it also
       # runs the typed-confirmation and error-message gates. Registered as CI in
       # docs/CI-TEST-COVERAGE.md, which is only true while this step exists.
+
       - name: "T2: Billing cancel contract"
         id: qa-billing-cancel
         if: success() && steps.wrangler-start.outcome == 'success'
@@ -400,6 +458,7 @@ jobs:
       # a browser-verified check that every source CSS rule is live in the
       # CSSOM. Expected signed-out/localhost noise is classified, so a red run
       # means real breakage.
+
       - name: "T2: Page health sweep (console/CSP/emoji/CSS coverage)"
         id: health
         if: success() && steps.wrangler-start.outcome == 'success'
@@ -411,12 +470,6 @@ jobs:
       # Each self-hosting suite gets a UNIQUE QA_PORT: a leaked wrangler from
       # an earlier step must never answer for a later one (qa-presence used to
       # leak onto :8796 and break qa-offline-copies — 2026-09-13).
-      - name: "T2: Email auth"
-        if: success() && steps.wrangler-start.outcome == 'success'
-        run: node tools/qa-email-auth.cjs
-        env:
-          MMGR_QA_NO_BROWSER: 1
-          QA_PORT: 8801
 
       - name: "T2: Team RBAC (named members, tier caps)"
         if: success() && steps.wrangler-start.outcome == 'success'
@@ -428,6 +481,94 @@ jobs:
       # (like every T3 suite) and drives the real Chrome over the invitation
       # bell, the accept landing page, the member scope, a queued supervisor
       # save, a read-only client, and a live revoke. Ports are unique.
+
+      - name: "T2: AI badge E2E"
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: node tools/qa-ai-badge-e2e.cjs
+        env:
+          MMGR_QA_NO_BROWSER: 1
+          WRANGLER_DEV_URL: http://127.0.0.1:8787
+
+      - name: "T2: Market features"
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: node tools/qa-market-features.cjs
+        env:
+          WRANGLER_DEV_URL: http://127.0.0.1:8787
+          QA_BASE: http://127.0.0.1:8787
+
+      - name: "Stop wrangler dev"
+        if: always()
+        run: |
+          echo "--- Final wrangler log ---"
+          cat /tmp/wrangler.log 2>/dev/null || true
+          pkill -f "wrangler" || true
+          sleep 2
+          pkill -9 -f "wrangler" || true
+          rm -rf /tmp/mmgr-ci-staging 2>/dev/null || true
+
+      # ── TIER 3: Headless-Chrome E2E (these suites spawn their OWN wrangler,
+      # so they run AFTER the shared :8787 wrangler is stopped) ───────────
+
+      - name: Job summary (cloud-core)
+        if: always()
+        run: |
+          echo "### cloud-core: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"
+
+  cloud-auth:
+    name: cloud-auth
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for gitleaks
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Build JS/CSS bundles
+        run: npm run build
+
+      - name: "T2: Start wrangler dev (background)"
+        id: wrangler-start
+        run: |
+          rm -rf .wrangler/
+          echo 'ADMIN_CODE=QA-ADMIN-CI' > .dev.vars
+          npx wrangler d1 migrations apply my-manager-db --local --config wrangler.ci.jsonc --persist-to /tmp/mmgr-wrangler-state
+          # Use tee so wrangler output is both logged and captured
+          npx wrangler dev --config wrangler.ci.jsonc --port 8787 --ip 127.0.0.1 --persist-to /tmp/mmgr-wrangler-state 2>&1 | tee /tmp/wrangler.log &
+          WPID=$!
+          echo "Wrangler PID: $WPID"
+          READY=0
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8787/api/health > /dev/null 2>&1; then
+              READY=1
+              echo "Wrangler dev is ready on 127.0.0.1:8787"
+              break
+            fi
+            echo "Attempt $i: waiting for wrangler..."
+            sleep 2
+          done
+          if [ $READY -eq 0 ]; then
+            echo "FATAL: wrangler not responding after 60s"
+            echo "--- Wrangler startup log (last 100 lines) ---"
+            tail -100 /tmp/wrangler.log
+            exit 1
+          fi
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: "T2: Email auth"
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: node tools/qa-email-auth.cjs
+        env:
+          MMGR_QA_NO_BROWSER: 1
+          QA_PORT: 8801
+
       - name: "T3: Team UI (bell, invitation link, member scope, revoke)"
         id: qa-team-ui
         if: success() && steps.wrangler-start.outcome == 'success'
@@ -442,6 +583,7 @@ jobs:
       # request, the 7-day notice, extend, templates with account isolation,
       # bulk 100 with no existence leak, the audit CSV, and the lower-tier
       # refusals.
+
       - name: "T2: Team Enterprise (matrix, expiry, templates, bulk, audit)"
         id: qa-team-enterprise
         if: success() && steps.wrangler-start.outcome == 'success'
@@ -491,20 +633,6 @@ jobs:
         env:
           MMGR_QA_NO_BROWSER: 1
           QA_PORT: 8806
-
-      - name: "T2: AI badge E2E"
-        if: success() && steps.wrangler-start.outcome == 'success'
-        run: node tools/qa-ai-badge-e2e.cjs
-        env:
-          MMGR_QA_NO_BROWSER: 1
-          WRANGLER_DEV_URL: http://127.0.0.1:8787
-
-      - name: "T2: Market features"
-        if: success() && steps.wrangler-start.outcome == 'success'
-        run: node tools/qa-market-features.cjs
-        env:
-          WRANGLER_DEV_URL: http://127.0.0.1:8787
-          QA_BASE: http://127.0.0.1:8787
 
       - name: "T2: Offline copies"
         if: success() && steps.wrangler-start.outcome == 'success'
@@ -558,6 +686,7 @@ jobs:
 
       # ── TIER 3: Headless-Chrome E2E (these suites spawn their OWN wrangler,
       # so they run AFTER the shared :8787 wrangler is stopped) ───────────
+
       - name: "T3: Client codes E2E (launcher code-entry -> project client scope)"
         id: qa-client-codes
         run: node tools/qa-client-codes.cjs
@@ -582,6 +711,33 @@ jobs:
       # :8765 (no wrangler). They existed for months WITHOUT being wired into
       # CI, which is exactly how they drifted out of date while every gate
       # stayed green. Every one of them is green as of 2026-09-22.
+
+      - name: Job summary (cloud-auth)
+        if: always()
+        run: |
+          echo "### cloud-auth: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"
+
+  browser-calc:
+    name: browser-calc
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for gitleaks
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Build JS/CSS bundles
+        run: npm run build
+
+      - name: "T4: Install test deps (playwright devDep)"
+        run: npm install --ignore-scripts --no-audit --no-fund
+
       - name: "T4: Start static QA server (serve.cjs)"
         id: serve-static
         run: |
@@ -605,67 +761,6 @@ jobs:
       # G-1 gate (DIRECTIVE: GOOGLE SIGN-IN SECURITY GAPS, 2026-10-23):
       # Drive token request carries a per-request `state`, callback enforces
       # right-state/age/single-use against a mocked GIS oauth2 client.
-      - name: "T4: Drive token state contract (state gate)"
-        id: qa-drive-state
-        run: node tools/qa-drive-state.cjs
-
-      # Static arm only: this gate asserts the Paddle overlay CSP shape and
-      # scoping. The live-browser arm needs the deployed site, so it runs in
-      # extended-qa (see docs/CI-TEST-COVERAGE.md).
-      - name: "T4: Paddle checkout CSP shape (static arm)"
-        id: qa-paddle-csp
-        env:
-          MMGR_QA_NO_BROWSER: 1
-        run: node tools/qa-paddle-csp.cjs
-
-      - name: "T4: Auth limits (reset/day, lockout ladder, generic collision)"
-        id: qa-auth-limits
-        run: node tools/qa-auth-limits.cjs
-
-      - name: "T4: AI + model wiring battery (qa-ai)"
-        id: qa-ai
-        run: node qa-ai.cjs
-
-      - name: "T4: T-AIWIN - AI window layout and docking (qa-ai-win)"
-        id: qa-ai-win
-        run: node tools/qa-ai-win.cjs
-
-      # D-2 (UI-CI-DIRECTIVE section 4): the composer mic must append the final
-      # transcript once, must never paint the word null, and must keep what the
-      # user typed before or during dictation. Drives the real button against a
-      # stub Web Speech engine; every assertion reads #ai-q.
-      - name: "T4: AI composer dictation (qa-ai-dictation)"
-        id: qa-ai-dictation
-        run: node tools/qa-ai-dictation.cjs
-
-      # D-1 (UI-CI-DIRECTIVE section 5.4): the assistant must fit any width.
-      # Sheet at 360/420/480, docked at 480/520/658/900, Maximise at 1900,
-      # light and dark: no overflow, a 56px one-row header, a composer card
-      # the message box fills, no pill radii, hist-inline only from 720, plus
-      # accessible names, tab order, the More menu's Esc hand-back, the empty
-      # state and the absolute key popover.
-      - name: "T4: AI window fits any width (qa-ai-window-layout)"
-        id: qa-ai-window-layout
-        run: node tools/qa-ai-window-layout.cjs
-
-      - name: "T4: v11 feature battery (qa-v11)"
-        id: qa-v11
-        run: node qa-v11.cjs
-
-      - name: "T4: P1 core battery (qa-p1)"
-        id: qa-p1
-        run: node qa-p1.cjs
-
-      - name: "T4: Theme persistence + system follow (verify-theme-cdp)"
-        id: qa-theme
-        run: node tools/verify-theme-cdp.cjs
-
-      # Playwright-based calculator batteries (owner 2026-10-01: every trade
-      # covered the same way). playwright is a devDependency; installed here
-      # because the batteries use the system Chrome via chrome-launcher, so
-      # no browser download is needed.
-      - name: "T4: Install test deps (playwright devDep)"
-        run: npm install --ignore-scripts --no-audit --no-fund
 
       - name: "T4: Calculator page battery (qa-calculator-page)"
         id: qa-calc-page
@@ -693,6 +788,7 @@ jobs:
       # the total by exactly that line, no exchange rate blanks the planning
       # prices (N3), the CSV + spreadsheet + card reconcile to the cent, and the
       # drawer itself (add / remove / reset / hide / recall) behaves.
+
       - name: "T4: Itemised materials (qa-mat-items)"
         id: qa-mat-items
         run: node tools/qa-mat-items.cjs
@@ -705,6 +801,7 @@ jobs:
       # every linter fix rides the chip's own derivation, the pair contract is
       # read both directions so a new chip cannot drift from the linter, and
       # the two one-tap paths (chip, lint fix) add a REAL priced bill line.
+
       - name: "T4: Related items (qa-related-items)"
         id: qa-related-items
         run: node tools/qa-related-items.cjs
@@ -713,6 +810,7 @@ jobs:
       # entry point (the badge must exist at ZERO links), the blocked-by
       # board lens both ways, the soft move warning, persistence across a
       # reload, and the view-only refusal of "Add link".
+
       - name: "T4: Work package relations (qa-relations)"
         id: qa-relations
         run: node tools/qa-relations.cjs
@@ -725,6 +823,141 @@ jobs:
       # opens each dialog through its real trigger, clicks EVERY radio and
       # checkbox and asserts the control took the change, closes on the
       # backdrop, and reads the Export Schedule choices back out of the run.
+
+      - name: "T4: Calculator listbox, setting rows, Performance Mode (qa-calc-controls)"
+        id: qa-calc-controls
+        run: node tools/qa-calc-controls.cjs
+
+      # D-3 (UI-CI-DIRECTIVE section 3): a position:fixed element must never sit
+      # inside an ancestor that takes over its containing block or clips it.
+      # Walks every rendered fixed element on the calculator (both trade lists
+      # open), the project with the AI window open, and the launcher; fails on
+      # any offender not evidenced in tools/fixed-containment-allow.json.
+
+      - name: "T4: Fixed-element containment (qa-fixed-containment)"
+        id: qa-fixed-containment
+        run: node tools/qa-fixed-containment.cjs
+
+      - name: "T4: Calc S2 gate (C6 sticky + C7 switch rows + X-1/X-2)"
+        id: calc-s2
+        run: node tools/verify-calc-s2.cjs
+
+      # PART H / audit task P1: the Procurement pack (supplier price book +
+      # AI quote writer). Promoted TRIAGE -> CI in the same change that
+      # finished H5.5-H5.12 (docs/CI-TEST-COVERAGE.md). Reuses the serve.cjs
+      # server started above; it starts its own only if :8765 is down.
+
+      - name: "T4: Stop static QA server"
+        if: always()
+        run: pkill -f "node serve.cjs" || true
+
+      # ── CI Summary ──────────────────────────────────────────────────
+
+      - name: Job summary (browser-calc)
+        if: always()
+        run: |
+          echo "### browser-calc: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"
+
+  browser-app:
+    name: browser-app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for gitleaks
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Build JS/CSS bundles
+        run: npm run build
+
+      - name: "T4: Install test deps (playwright devDep)"
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: "T4: Start static QA server (serve.cjs)"
+        id: serve-static
+        run: |
+          node serve.cjs > /tmp/serve-static.log 2>&1 &
+          READY=0
+          for i in $(seq 1 20); do
+            if curl -sf http://127.0.0.1:8765/app.html > /dev/null 2>&1; then READY=1; break; fi
+            sleep 1
+          done
+          if [ $READY -eq 0 ]; then
+            echo "FATAL: serve.cjs did not answer on :8765"
+            tail -50 /tmp/serve-static.log
+            exit 1
+          fi
+          echo "serve.cjs ready on 127.0.0.1:8765"
+
+      - name: "T4: Drive token state contract (state gate)"
+        id: qa-drive-state
+        run: node tools/qa-drive-state.cjs
+
+      # Static arm only: this gate asserts the Paddle overlay CSP shape and
+      # scoping. The live-browser arm needs the deployed site, so it runs in
+      # extended-qa (see docs/CI-TEST-COVERAGE.md).
+
+      - name: "T4: Paddle checkout CSP shape (static arm)"
+        id: qa-paddle-csp
+        env:
+          MMGR_QA_NO_BROWSER: 1
+        run: node tools/qa-paddle-csp.cjs
+
+      - name: "T4: Auth limits (reset/day, lockout ladder, generic collision)"
+        id: qa-auth-limits
+        run: node tools/qa-auth-limits.cjs
+
+      - name: "T4: AI + model wiring battery (qa-ai)"
+        id: qa-ai
+        run: node qa-ai.cjs
+
+      - name: "T4: T-AIWIN - AI window layout and docking (qa-ai-win)"
+        id: qa-ai-win
+        run: node tools/qa-ai-win.cjs
+
+      # D-2 (UI-CI-DIRECTIVE section 4): the composer mic must append the final
+      # transcript once, must never paint the word null, and must keep what the
+      # user typed before or during dictation. Drives the real button against a
+      # stub Web Speech engine; every assertion reads #ai-q.
+
+      - name: "T4: AI composer dictation (qa-ai-dictation)"
+        id: qa-ai-dictation
+        run: node tools/qa-ai-dictation.cjs
+
+      # D-1 (UI-CI-DIRECTIVE section 5.4): the assistant must fit any width.
+      # Sheet at 360/420/480, docked at 480/520/658/900, Maximise at 1900,
+      # light and dark: no overflow, a 56px one-row header, a composer card
+      # the message box fills, no pill radii, hist-inline only from 720, plus
+      # accessible names, tab order, the More menu's Esc hand-back, the empty
+      # state and the absolute key popover.
+
+      - name: "T4: AI window fits any width (qa-ai-window-layout)"
+        id: qa-ai-window-layout
+        run: node tools/qa-ai-window-layout.cjs
+
+      - name: "T4: v11 feature battery (qa-v11)"
+        id: qa-v11
+        run: node qa-v11.cjs
+
+      - name: "T4: P1 core battery (qa-p1)"
+        id: qa-p1
+        run: node qa-p1.cjs
+
+      - name: "T4: Theme persistence + system follow (verify-theme-cdp)"
+        id: qa-theme
+        run: node tools/verify-theme-cdp.cjs
+
+      # Playwright-based calculator batteries (owner 2026-10-01: every trade
+      # covered the same way). playwright is a devDependency; installed here
+      # because the batteries use the system Chrome via chrome-launcher, so
+      # no browser download is needed.
+
       - name: "T4: Dialog controls actually change (qa-modals)"
         id: qa-modals
         run: node tools/qa-modals.cjs
@@ -739,6 +972,7 @@ jobs:
       # now the two-stop form), then sweep every element that paints gold words
       # against its composited background, in light and dark, and prove .btn-g
       # is still green.
+
       - name: "T4: Gold buttons and gold words (verify-gold)"
         id: verify-gold
         run: node tools/verify-gold.cjs
@@ -750,22 +984,10 @@ jobs:
       # per-theme contrast of every option, the setting rows and drawers, and
       # Performance Mode on the calculator. qa-notice-watchers drives the RISK-1
       # finish notice and the EXP-1 expiry bands through fixtures.
+
       - name: "T4: App shell - rail gutter + one tab (qa-appshell)"
         id: qa-appshell
         run: node tools/qa-appshell.cjs
-
-      - name: "T4: Calculator listbox, setting rows, Performance Mode (qa-calc-controls)"
-        id: qa-calc-controls
-        run: node tools/qa-calc-controls.cjs
-
-      # D-3 (UI-CI-DIRECTIVE section 3): a position:fixed element must never sit
-      # inside an ancestor that takes over its containing block or clips it.
-      # Walks every rendered fixed element on the calculator (both trade lists
-      # open), the project with the AI window open, and the launcher; fails on
-      # any offender not evidenced in tools/fixed-containment-allow.json.
-      - name: "T4: Fixed-element containment (qa-fixed-containment)"
-        id: qa-fixed-containment
-        run: node tools/qa-fixed-containment.cjs
 
       - name: "T4: Finish-target and expiry notices (qa-notice-watchers)"
         id: qa-notice-watchers
@@ -774,6 +996,7 @@ jobs:
       # Wave E (REFINEMENT-DIRECTIVE-2026-10-24): the landing rail goes quiet
       # until hovered, the hero globe turns continuously, and every card stays
       # tethered to its own node.
+
       - name: "T4: Landing dot rail (qa-dot-rail)"
         id: qa-dot-rail
         run: node tools/qa-dot-rail.cjs
@@ -787,6 +1010,7 @@ jobs:
       # the admin header backup status, and the restore panel that lists BOTH
       # groups (On this device / In your cloud from GET /api/cloud/projects).
       # Static word scan plus real clicks in a fresh browser profile.
+
       - name: "T4: Three code names + restore recap (qa-code-names)"
         id: qa-code-names
         run: node tools/qa-code-names.cjs
@@ -795,14 +1019,7 @@ jobs:
       # mobile total bar, C7 switch rows, X-1 render scheduler, X-2 paint
       # cost. Static checks + real DOM/CSSOM assertions (setContent, no
       # server needed - it only needs the playwright devDep installed above).
-      - name: "T4: Calc S2 gate (C6 sticky + C7 switch rows + X-1/X-2)"
-        id: calc-s2
-        run: node tools/verify-calc-s2.cjs
 
-      # PART H / audit task P1: the Procurement pack (supplier price book +
-      # AI quote writer). Promoted TRIAGE -> CI in the same change that
-      # finished H5.5-H5.12 (docs/CI-TEST-COVERAGE.md). Reuses the serve.cjs
-      # server started above; it starts its own only if :8765 is down.
       - name: "T4: Procurement pack (qa-procurement)"
         id: qa-procurement
         run: node tools/qa-procurement.cjs
@@ -811,6 +1028,7 @@ jobs:
       # end to end, the storage-key inventory, and the cookie-gated analytics
       # CSP in worker.js AND serve.cjs. Reuses the serve.cjs server started
       # above; it starts its own only if :8765 is down.
+
       - name: "T4: Cookie consent + storage inventory (qa-consent)"
         id: qa-consent
         run: node tools/qa-consent.cjs
@@ -819,6 +1037,7 @@ jobs:
       # "?" opens the sheet, "/" reaches the assistant, Enter works out the
       # estimate on the calculator, and neither one eats what the user is
       # typing. Reuses the serve.cjs server started above.
+
       - name: "T4: Keyboard shortcuts + help sheet (qa-shortcuts)"
         id: qa-shortcuts
         run: node tools/qa-shortcuts.cjs
@@ -828,6 +1047,7 @@ jobs:
       # 1080px reading width below 1200px, never push a horizontal scrollbar,
       # and leave the printed sheet at its capped width. Reuses the serve.cjs
       # server started above.
+
       - name: "T4: Wide-monitor fill (qa-widescreen)"
         id: qa-widescreen
         run: node tools/qa-widescreen.cjs
@@ -835,6 +1055,7 @@ jobs:
       # axe-core accessibility gate (T10-B): every served page in light + dark,
       # zero serious/critical violations. axe-core is a devDependency; the run
       # injects it through CDP, which the page CSP does not block.
+
       - name: "T4: Accessibility gate (axe-core, qa-a11y-axe)"
         id: qa-a11y-axe
         run: node tools/qa-a11y-axe.cjs
@@ -843,6 +1064,7 @@ jobs:
       # markup-first stage, post-load bundle injection, real land mask, the
       # nine-feature cycle through the __advance QA seam, pause/play, drag,
       # manifest integrity, reduced-motion refusal, CLS zero, emoji + SW.
+
       - name: "T4: Hero globe battery (qa-hero-globe)"
         id: qa-hero-globe
         run: node tools/qa-hero-globe.cjs
@@ -852,47 +1074,34 @@ jobs:
         run: pkill -f "node serve.cjs" || true
 
       # ── CI Summary ──────────────────────────────────────────────────
-      - name: CI Summary
+
+      - name: Job summary (browser-app)
         if: always()
         run: |
-          echo "## CI Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Gitleaks scan | ${{ steps.gitleaks.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| CSP hashes | ${{ steps.csp.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Inline JS parse | ${{ steps.inline.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Line endings | ${{ steps.eol.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Client codes E2E | ${{ steps.qa-client-codes.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Team UI E2E | ${{ steps.qa-team-ui.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Team Enterprise | ${{ steps.qa-team-enterprise.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Billing cancel contract | ${{ steps.qa-billing-cancel.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| API keys E2E | ${{ steps.qa-api-keys.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Sync bond E2E | ${{ steps.qa-sync-bond.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Service Worker | ${{ steps.sw.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Hidden attributes | ${{ steps.hidden.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Skills lock | ${{ steps.skills.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Module exports | ${{ steps.exports.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| CSS integrity | ${{ steps.css.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| A11y labels | ${{ steps.a11y.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| A11y axe (serious/critical = 0) | ${{ steps.qa-a11y-axe.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Three code names + restore recap | ${{ steps.qa-code-names.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Unit tests | ${{ steps.unit.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| ESLint | ${{ steps.eslint.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Prettier | ${{ steps.prettier.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Test registry | ${{ steps.registry.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Page health sweep | ${{ steps.health.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Wrangler dry-run | ${{ steps.deploy.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Dashboard spec | ${{ steps.qa-dashboard.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Changelog diffs | ${{ steps.qa-changelog.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| AI relay | ${{ steps.qa-ai-relay.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Report issue | ${{ steps.qa-report.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Dynamic labels | ${{ steps.qa-labels.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Delegate gate | ${{ steps.qa-delegate.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| CSS integrity | ${{ steps.css.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Page health sweep | ${{ steps.wrangler-start.outcome == 'success' && 'ran in T2' || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| qa-full battery | ${{ steps.qa-full.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| qa-ai battery | ${{ steps.qa-ai.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| qa-v11 battery | ${{ steps.qa-v11.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| qa-p1 battery | ${{ steps.qa-p1.outcome }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Theme persistence | ${{ steps.qa-theme.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "### browser-app: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"
+
+  summary:
+    name: summary
+    runs-on: ubuntu-latest
+    needs: [static, cloud-core, cloud-auth, browser-calc, browser-app]
+    if: always()
+    steps:
+      - name: CI Summary
+        run: |
+          {
+            echo "## CI result"
+            echo ""
+            echo "| job | result |"
+            echo "|---|---|"
+            echo "| static | ${{ needs['static'].result }} |"
+            echo "| cloud-core | ${{ needs['cloud-core'].result }} |"
+            echo "| cloud-auth | ${{ needs['cloud-auth'].result }} |"
+            echo "| browser-calc | ${{ needs['browser-calc'].result }} |"
+            echo "| browser-app | ${{ needs['browser-app'].result }} |"
+            echo ""
+            echo "Each job page lists its own steps."
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ contains(needs.*.result, 'failure') }}" = "true" ]; then
+            echo "One or more jobs failed."
+            exit 1
+          fi

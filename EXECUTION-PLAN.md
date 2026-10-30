@@ -1,102 +1,524 @@
-# EXECUTION PLAN — My MaNaGeR
+# EXECUTION PLAN - My MaNaGeR
 
-**Status date: 2026-10-29.** This file replaces `FINAL-EXECUTION-PLAN.md`,
-`IMPLEMENTATION-PLAN.md`, `IMPLEMENTATION-REINFORCEMENT.md` and
-`IMPLEMENTATION-STRATEGY.md`, which were removed on the owner's instruction:
-they restated each other, their "critical blocking" item (commit authorship) was
-resolved on 2026-10-29, parts of their text were corrupted, and their
-parallel-multi-team sequencing does not describe this repo (one branch, one
-agent — everything is sequential). The real specifications are the plans in
-`the last update towrads maintainance mode/`.
+**Status date: 2026-10-29 (aligned).** This file is the single build order for
+the maintenance-mode build-out. It replaces the stale sequencing in its own
+earlier version and the stale "NEXT SESSION" block in
+`CONTINUATION-DIRECTIVE.md`.
 
----
+## 0. Sources and authority
+
+Read in this order:
+
+1. `CONTINUATION-DIRECTIVE.md` - locked rules and owner standing rules.
+2. **This file** - what runs, in what order, with which gates.
+3. `adittion to scope/UI-CI-DIRECTIVE.md` (v2) - task detail for D-3, D-2, D-1, D-4.
+4. `the last update towrads maintainance mode/plan-*.md` - task detail for the
+   five feature plans.
+5. The code - when an anchor has drifted, the code wins; re-derive by selector
+   or function name and record the drift in the log.
+6. `AUDIT-DIRECTIVE-2026-10-18.md` and `IMPROVEMENT-DIRECTIVE-2026-10-22.md` -
+   open audit rows only after a state check proves the row is still open.
+
+**Not in scope until the owner un-parks them:** `UI-FIXES-SPEC.md`,
+`plan-ui.md`, `qa-landing-ui.cjs`.
+
+**Never stage:** `adittion to scope/`, `the last update towrads maintainance
+mode/`, `AUTHORS-FIX-ISSUE.md` (stale: history is already clean; one author
+everywhere), and `.githooks/pre-commit` unless the task is the hook itself.
 
 ## 1. Where the repo stands
 
-- **CI: green.** Local `npm run verify` green; GitHub Actions green on the
-  current history (116/116 steps, 0 failed, 0 skipped).
-- **History: clean.** One author everywhere —
-  `Garfield Fairclough <garfieldprocis@gmail.com>`; zero AI attribution
-  footers (`Generated with …` / `Co-Authored-By …`) anywhere in history.
-  The `.githooks/commit-msg` hook enforces Conventional Commits.
-- **Schema:** `SCHEMA_VERSION = 23` (the Kanban mechanics wave took 23).
-  **D1 migrations:** through `0029_team_enterprise.sql`.
-- **Service worker:** `mmgr-shell-v500`.
-- **Shipped recently:** Kanban board model, soft WIP limits, card ordering /
-  keyboard moves / quick add; per-suite rate-limit client addresses for the
-  cloud harnesses; `qa-full` lead-time gate re-baselined to the new
-  same-column-reorder contract; sidebar scroll containment (owner 2026-10-29:
-  wheeling past the sidebar's edge no longer drags the page).
+Verified 2026-10-29 at HEAD `9d703e0`:
 
-## 2. Parked by the owner: the UI plans
+| Fact | Value |
+|---|---|
+| CI | Green; `ci.yml` is 871 lines, one `verify` job, 111 named steps (116 in the GitHub UI), 84 `id:` fields, 24 wrangler-start gates |
+| Client schema | `SCHEMA_VERSION = 24` (`js/mmgr-state.js`) |
+| D1 migrations | Through `0029_team_enterprise.sql` |
+| Service worker | `mmgr-shell-v504` |
+| OpenProject plan | **Landed**: `4323f91` model, `0b56f69` badges/sheet, `fddfd69` blocked-by lens, `24b44ff` browser gate + registry + CI |
+| New harnesses from the scope addition | None yet: `qa-fixed-containment`, `qa-ai-dictation`, `qa-ai-window-layout`, `verify-ci-coverage` |
+| Untracked, owner files | `adittion to scope/`, `the last update towrads maintainance mode/`, `AUTHORS-FIX-ISSUE.md` |
 
-`UI-FIXES-SPEC.md` (+ `qa-landing-ui.cjs`, 43-check gate) and `plan-ui.md`
-are **parked**. The owner has reviewed the current UI against them and they do
-not cover everything he wants; he will extend them later. Nothing from either
-plan executes until the extended versions land. When they do:
+OpenProject is code-complete but its untracked spec still shows unticked
+Definition of Done boxes. Phase A below closes that book with evidence; it is
+not new feature work.
 
-- `UI-FIXES-SPEC` runs in its §14 wave order (0→6), one commit per wave,
-  with its stated gate updates in the same commit that breaks them.
-- `plan-ui.md` runs phases 1→4 and should land **before** the feature plans
-  write new markup, so the type/spacing scale and panel header already exist
-  for that markup to inherit. If it lands later, its phases 3–4 sweep
-  whatever arrived in between.
+## 2. The single queue
 
-## 3. Active track: the feature plans, one at a time
+One plan at a time. No parallel plans, no reordering without an owner decision
+recorded here. The status is the only place to look.
 
-Order and reason:
-
-| # | Plan | State of the plan | Notes |
+| # | Work | Status | Exit gate |
 |---|---|---|---|
-| 1 | **plan-openproject.md** (relations + blocked-by lens) | code-complete: full module, model tests, browser harness | Smallest complete plan; proves the renumber/re-anchor workflow below. **IN PROGRESS.** |
-| 2 | plan-nocobase.md (custom task fields) | code-complete, with an errata section | Must follow its own "Remaining work": build the Fields sheet on the existing house modal (not a bespoke overlay) and map its draft CSS to real tokens — the draft names four tokens that do not exist. |
-| 3 | plan-leantime.md (idea intake + merged agenda) | code-complete, largest (~1900 new lines, 6 new files) | Two pure models, two renderers, one 16-gate harness. |
-| 4 | plan-appflowy.md (project book) | prose-only, 4 phases | Needs a drafting pass to the task-by-task level before execution. |
-| 5 | plan-platform.md (guarded transitions, audit, rules) | prose-only, 4 phases | Same drafting pass needed. |
-| 6 | plan-plane.md (cycles, modules) | prose-only, 4 phases | Same drafting pass needed. |
+| A | Close the OpenProject books | **NEXT** | Its section 5 DoD run and recorded; CI green |
+| B1 | **D-3** calculator listbox portal + containment gate | Queued | `qa-fixed-containment` green; `qa-calc-controls` 63+; `qa-calc-playwright-audit`; `qa-shortcuts`; `npm run verify` |
+| B2 | **D-2** dictation echo and leading `null` | Queued | `qa-ai-dictation` 9/9; `qa-ai`; `qa-ai-win`; `npm run verify` |
+| B3 | **D-1** AI window, steps 1 to 7 | Queued | `qa-ai-window-layout` matrix; `qa-ai-win` re-baseline; axe; gold; `npm run verify` |
+| B4 | **D-4** CI split into five jobs | Queued | `verify-ci-coverage`; live run all steps executed; slowest job at most 8 min; summary job |
+| C1 | NocoBase custom task fields | Queued | Its DoD; schema v25 |
+| C2 | Leantime idea intake + merged agenda | Queued | Its 16-gate harness; schema v26 |
+| C3 | AppFlowy project book | Needs drafting pass | Four phases; schema v27 |
+| C4 | Platform guarded transitions, audit, rules | Needs drafting pass | Four phases; schema v28 |
+| C5 | Plane cycles and modules | Needs drafting pass | Four phases; schema v29 |
+| D | Parked UI plans (`plan-ui`, `UI-FIXES-SPEC`) | Owner-parked | Only when the owner delivers the extended versions |
 
-### Rules of engagement (every plan, every task)
+### Why this order
 
-1. **Re-derive every anchor.** Plans were written against schema v22, SW
-   cache v481 and old line numbers; the repo is at v500 with later waves
-   (Kanban) having rewritten the same regions. The plan's *intent* is the
-   contract; quoted line numbers are not. The OpenProject plan's
-   `K.columnTasks` alternative branch is the live one — the Kanban wave landed.
-2. **Migration numbering.** Every plan claims migration 23, already taken.
-   The next plan takes **24** (`SCHEMA_VERSION` and the migration key move
-   together), then 25, 26… One migration number per landing plan.
-3. **One commit per task**, Conventional Commits, **no AI attribution lines**
-   (hard gate), and stop at each plan checkpoint until the owner confirms.
-4. **Build ritual per task:** `node build.js`, bump `sw.js` `CACHE`,
-   `npm run verify`, plus the plan's explicit gates (`verify-actions`,
-   `verify-render-exports`, model tests, the new harness).
-5. **Regenerate CSP hashes** whenever an inline script block changes
-   (`node tools/regen-csp-hashes.cjs`, commit `worker.js` + `serve.cjs`).
-6. **New harness = three places:** harness file, registry row in
-   `docs/CI-TEST-COVERAGE.md` with a status token, and the CI workflow step.
-7. **Read-only stays read-only:** mutating actions out of
+1. **D-3 before D-1.** D-3 fixes a real defect and installs the permanent
+   fixed-descendant containment gate. D-1 adds `container-type: inline-size`
+   to `.ai-main`, which creates the same containing-block condition; the gate
+   must already exist before that lands.
+2. **D-2 before D-1.** Dictation is a small independent fix in the same window.
+   Fix its base behaviour before the composer card is rebuilt around it.
+3. **D-1 before the feature plans.** The AI window is the one shared surface
+   the feature plans do not touch. Stabilise it first, then no later plan has
+   to re-derive its markup.
+4. **D-4 before the feature plans.** The split turns a 24-minute feedback loop
+   into a 6 to 8 minute one for every remaining plan. It must run after D-1 so
+   the three new browser harnesses are placed by the split, not appended to it.
+5. **Code-complete plans before prose plans.** NocoBase and Leantime already
+   carry task-level steps; AppFlowy, Platform and Plane need a drafting pass
+   first. NocoBase runs before Leantime because both touch `addTask()`,
+   `delTask()`, `project.html` and the nav, and the smaller complete plan goes
+   first so the larger one re-derives against a landed baseline.
+6. **Parked UI last.** `plan-ui.md` should ideally land before new markup, but
+   the owner has parked it. It now sweeps later. Recorded, not re-litigated.
+
+### Open audit rows are not a second queue
+
+`CONTINUATION-DIRECTIVE.md`'s Open Work Registry still lists items that are not
+part of this build order: C6/C7, X-1/X-2/X-4, G4, M-3/M-4/M-6, S-6, the
+architecture survey, T-8's remaining order-sensitivity, and the
+`IMPROVEMENT-DIRECTIVE-2026-10-22` waves. They are state-check rows, not plans.
+
+- Do not start one mid-plan.
+- At each phase boundary, state-check the row against the code. A row that is
+  already fixed is closed with evidence; a row that blocks a queued plan jumps
+  the queue with its own exit gate.
+- A row the owner wants promoted gets a named place in section 2 first.
+- `PART I Phase 3` and the Dashboard F1 double-system suggestion stay parked by
+  owner decision; do not reopen them without a new owner instruction.
+
+---
+
+## 3. Phase A - close the OpenProject books
+
+The code is already in `4323f91..24b44ff`, with `109760c` and `9d703e0` as
+test follow-ups. Do this before starting D-3:
+
+1. Run the plan's own gates: `node --test test/relations-model.test.mjs`,
+   `node tools/qa-relations.cjs` (against `node serve.cjs`), `npm run verify`,
+   `node tools/verify-actions.cjs`, `node tools/verify-render-exports.cjs`.
+2. Walk the plan's section 5 Definition of Done list: badges on WBS and card,
+   remove from either side removes both, `Blocked only` / `Ready only` lens,
+   blocked move warning, view-only refusal, reload persistence, developer
+   guide row, field-guide card.
+3. Poll the Actions API for the run on `9d703e0`. A green local run is not the
+   truth; the remote run is.
+4. Record the result in section 10 here. If a gate fails, fix it under
+   OpenProject before touching D-3; do not carry a red gate forward.
+5. No commit unless a real fix is needed. The close is a record, not churn.
+
+Exit: every DoD line has evidence, or a named blocker.
+
+---
+
+## 4. Phase B - the scope addition (D-3, D-2, D-1, D-4)
+
+Read `adittion to scope/UI-CI-DIRECTIVE.md` before each task. Its anchors were
+verified at `9d703e0`; the code has not moved since. If it moves, re-derive by
+selector and log the drift. The directive's section 2 build ritual, git
+hygiene, three-edit harness rule and CI repair loop all apply.
+
+### B1. D-3 - calculator dropdowns detach and scroll with the page
+
+The cause is real and confirmed: `.card { contain: layout paint }`
+(`css/mmgr.css:2075`), `.mmcb-pop { position: fixed }` (`:17970`), and
+`wrap.appendChild(pop)` (`js/mmgr-combobox.js:128`). The card becomes the
+containing block for the fixed popup.
+
+Land exactly the directive's section 3.2 changes:
+
+- Portal the popup to `document.body`; put `data-for` on the popup as well as
+  the wrapper; make outside-click test both trees.
+- Add the `requestAnimationFrame` tracker, `visualViewport` listeners, the
+  8 px horizontal clamp, and the orphan cleanup.
+- Keep every existing id: `aria-controls`, `aria-labelledby`,
+  `mmcb-list-<uid>`, `.mmcb-input`.
+- Bump `js/mmgr-combobox.js?v=1` to `?v=2` in `calculator.html:963`; bump the
+  `sw.js` cache.
+- Do **not** use `.card:has(.mmcb) { contain: none }`; it restores the cost the
+  X-2 change removed.
+
+New gate `tools/qa-fixed-containment.cjs` plus
+`tools/fixed-containment-allow.json` (empty unless an offender is proven
+intentional, one-line reason each). It loads `calculator.html`, `project.html`
+and `app.html`, opens the AI window and the calculator lists where applicable,
+walks every `position: fixed` element, and fails on a `contain:
+layout|paint`, `transform`, `filter`, `backdrop-filter`, `perspective`,
+`container-type` or `will-change` ancestor that is not allow-listed.
+
+Same-commit harness updates: `qa-calc-controls` lines 310, 317, 410, 419 and
+`qa-calc-playwright-audit` line 115 move from the wrapper-child selector to
+`document.querySelector('.mmcb-pop[data-for="calc-work"]')` (same for
+`calc-family`). Verify `qa-shortcuts` still passes; change nothing unless it
+fails. The existing 63 checks stay green.
+
+Placement note: the directive's section 3.3 says to put the new harness in the
+`browser-app` group, while its D4.2 table puts `qa-fixed-containment` in
+`browser-calc`. Follow D4.2, the later and more specific instruction, because
+both calculator pages live there. Record the discrepancy in the log rather than
+silently choosing.
+
+Commit: `fix(calc): portal the listbox out of the contained card`.
+Deploy is not required per task; Phase B deploys once at the end.
+
+### B2. D-2 - voice dictation echoes and starts with `null`
+
+Confirmed: `rec.onresult` at `js/mmgr-voice.js:1549` builds `q.value` from the
+interim text already in the field, and `_aiBase` is `null` until the first
+final result (`:1609`, declared `:1618`). The mic tooltip at
+`project.html:1614` also lies about Whisper.
+
+Land the directive's section 4.2 changes:
+
+- Add `aiJoin(a, b)`; commit final chunks into `_aiBase`; render
+  `aiJoin(_aiBase, interim)`; never concatenate `null`.
+- One named `aiOnType` listener, added at start and removed in
+  `stopAiDictation()`; the synthetic input event is untrusted and must not
+  overwrite the base.
+- De-duplicate an identical final within 1 second.
+- Tooltip becomes `Voice input (browser speech recognition)`.
+
+New gate `tools/qa-ai-dictation.cjs` with the directive's nine checks: interim
+then final, no `null`, pre-typed prefix, mid-dictation typing, `onend` restart,
+final without interim, duplicate final, tooltip text, and a net-zero listener
+count after stop. Stub `webkitSpeechRecognition` before page scripts; click the
+real `#ai-voice-btn`; assert on `#ai-q`.
+
+Gate: new harness green, `qa-ai.cjs` and `qa-ai-win.cjs` still green.
+Commit: `fix(ai): stop dictation echo and the leading null`.
+
+### B3. D-1 - AI window fits any width, one slim header, one composer card
+
+Precondition: B1 and B2 committed, CI green. Read the directive's section 5
+and the mockup in the same folder. The mockup is a visual reference only:
+
+- It uses Tabler icons and hardcoded hex colours. This app uses the SVG sprite
+  (`css/mmgr-icons.svg#i-*`) and existing gold tokens only. No new colour
+  variables, no icon font.
+- Read the real preset list from `mmgr-ai.js` `open()`; do not copy the
+  mockup's labels.
+- No em dash or en dash in any new string.
+
+The directive's must-not-change list is a hard gate: every existing id and
+`data-action` stays (`ai-win`, `ai-q`, `ai-send`, `ai-send-wrap`, `ai-tier`,
+`ai-voice-btn`, `ai-hist`, `ai-hist-btn`, `ai-max-btn`, `ai-pin-btn`,
+`ai-engine-pill`, `ai-api-pill`, `ai-api-pill-label`, `ai-cfg-cloud`,
+`ai-byo-*`, `ai-welcome`, `ai-quick-presets`, `ai-presets`, `ai-seg-*`,
+`ai-pane-*`, `ai-ctx`, `ai-out`, `ai-trace`). Docking regimes, resize strip,
+`Ctrl+.`, history in project state, Enter/Shift+Enter all stay.
+
+Seven steps, one commit each:
+
+1. **History threshold.** `AI_HIST_INLINE_MIN` 480 to 720. Re-baseline the one
+   `qa-ai-win` check into two: at 520 the History button is visible and
+   `hist-inline` is false; at 760 or Maximise it is true and `#ai-hist` is
+   visible. If the owner answers Q2 "keep 480", skip this step and delete the
+   re-baseline.
+2. **Slim header.** One row, at most 56 px: sparkle, title, status dot; New,
+   History, Maximise, More, Close as 32x32 icon buttons. `#ai-api-pill`
+   becomes the dot; keep `#ai-api-pill-label` visually hidden and mirror its
+   text to title and aria-label. Move the engine pill into the More menu.
+   Add `#ai-more-btn` / `aiMoreToggle` to `ACTION_MAP`; menu is `absolute`,
+   `role="menu"`, Esc returns focus, arrows move. Move Float into the menu in
+   `setupFloatSurface`. Radii move to `var(--radius-control)`.
+3. **Connection row only when needed.** One dismissible banner when the tier
+   is Cloud and the key is not connected; extend the existing `syncSettingsUI`
+   `is-hide` condition; do not add a second mechanism.
+4. **Composer card.** One card: `#ai-q` on top, `.ai-composer-tools` below
+   with `#ai-tier`, `#ai-voice-btn`, send at the right edge. Auto-grow cap
+   120 to 160 px. Send right edge at least 8 px inside the window.
+5. **Empty state.** Centred mark, "What are we working on?", four full-width
+   rows generated from the same four presets as `#ai-quick-presets`. Clicking
+   a row does what the chip does. First message hides the welcome block and
+   the chip strip; the Presets tab stays.
+6. **"What the assistant can see".** Keep the `<details>`; restyle as one
+   collapsed line under the composer; contents unchanged.
+7. **Thread and responsive tiers.** `container: aiwin / inline-size` on
+   `.ai-main`; compact under 440, regular 440 to 599, wide 600 and up. No
+   `position: fixed` descendant inside `.ai-main`; the More menu and the key
+   popover are `absolute`. D-3's gate is the permanent check.
+
+New gate `tools/qa-ai-window-layout.cjs`: sheet 360/420/480; docked at 1440
+with 480/520/658/900; Max at 1900; light and dark. Assert no horizontal
+overflow, header at most 56 px and one row, composer proportions, no radius
+99 px or more outside avatar/status, `hist-inline` only at 720+, accessible
+names and Tab order, welcome block present/absent, Esc focus return. Save the
+directive's screenshot set (360, 420, 480, 520, 900, 1400, light and dark)
+under `tmp/ai-layout/`, do not commit them.
+
+Same-commit harness updates: `qa-ai-win` history check;
+`tools/qa-ai-polish.cjs` 139-149 container names (stay TRIAGE); note
+`qa-ai.cjs:792` keeps passing because the ids remain. Update the field guide
+text that describes the removed pills or the old header. Run `qa-ai`,
+`qa-ai-win`, `qa-ai-relay`, `qa-ai-badge-e2e`, `qa-a11y-axe`, `verify:gold`,
+`audit-action-map`, the action contract gate, and `npm run verify`.
+
+Commits: one per step, `feat(ai): ...`; fixes as `fix(ai): ...`.
+
+### B4. D-4 - CI from about 25 minutes to about 6 to 8
+
+Run only after B1 to B3 are committed. Follow the directive's section 6.
+
+1. **Measure first (D4.0).** Pull the latest green run and its jobs from the
+   Actions API, record every step with `started_at` and `completed_at` in
+   `tmp/ci-baseline.md`. If the measurements differ from the directive's
+   estimate by more than 25 percent, rebuild the split from the measurements
+   and say so in the log.
+2. **Split into five jobs.** `static`, `cloud-core`, `cloud-auth`,
+   `browser-calc`, `browser-app`, per the directive's table, with a final
+   `summary` job using `needs` and `if: always()`. Move the new harnesses with
+   the split: `qa-fixed-containment` in `browser-calc`,
+   `qa-ai-dictation` and `qa-ai-window-layout` in `browser-app`,
+   `verify-ci-coverage` in `static`.
+3. **Classify every T2 step mechanically** by grepping its harness and env for
+   `8787`, `WRANGLER_DEV_URL`, `QA_BASE` and wrangler spawns. Steps that need
+   the shared wrangler stay with it; steps that spawn their own on a unique
+   port can move, but their `if: steps.wrangler-start.outcome == 'success'`
+   proxy must be removed if that id is not in the same job. Keep the restart
+   boundary and `Controls admin` together. Keep each suite's rate-limit client
+   address and `.dev.vars` write.
+4. **Prove it.** New `tools/verify-ci-coverage.cjs`: the `run:` multiset equals
+   the old workflow modulo the per-job setup lines; every
+   `steps.<id>.outcome` reference points to an id in the same job; all 36
+   `T4:` steps still exist. Add `yaml` as a devDependency only if no YAML
+   parser is already present.
+5. **Branch route (Q1 default).** Direct pushes to `main` for B1 to B3; D-4 on
+   `ci-split`, widen the trigger in the first branch commit, remove it before
+   merging, fast-forward `main`. No force push, no `reset --hard`.
+6. **Close.** Live run shows every step executed, zero skipped; slowest job at
+   most 8 minutes; summary populated. Update `AGENTS.md` section 8 and
+   `docs/CI-TEST-COVERAGE.md` for five jobs, under the 40,960-byte cap.
+
+Commit style: `ci: ...`, one commit per coherent step, explicit paths.
+No service-worker bump: `.github/`, `tools/` and `docs/` are not served assets.
+
+### Phase B close
+
+`node build.js`, `npm run verify`, full affected browser battery, CI green,
+commit, then deploy from `$HOME/mmgr-deploy` and live-probe
+`https://mymanagerworkspace.com`. D-3, D-2 and D-1 are user-facing; D-4 is not.
+The deploy carries the three fixes and the window redesign; the CI split goes
+out as workflow-only change.
+
+---
+
+## 5. Phase C - the five feature plans
+
+Rules for every plan:
+
+1. **Re-derive every anchor.** The plans were written against schema v22, SW
+   v481 and old line numbers. The repo is at schema v24 and SW v504. The plan's
+   intent is the contract; quoted lines are hints. Note every drift in the log.
+2. **Take the next schema number from the ledger below.** Never paste the
+   plan's claimed number.
+3. **One commit per task**, Conventional Commits, no AI attribution, explicit
+   paths only.
+4. **Build ritual per task:** `node build.js`, bump `sw.js` cache, regen CSP
+   hashes if an inline script changed, restart `serve.cjs`, `npm run verify`,
+   the plan's own gates.
+5. **New harness = three edits:** harness file, registry row in
+   `docs/CI-TEST-COVERAGE.md` with a status token, step in `ci.yml` inside the
+   job that owns its environment. After D-4 that is a specific job, not the old
+   `verify` job.
+6. **Field guide** entry in the same change for every user-facing feature.
+7. **Read-only stays read-only:** mutating actions stay out of
    `READONLY_SAFE_ACTIONS`; `guardReadonly()` covers them.
+8. **Plan end:** full battery, CI green on `main`, deploy from staging, live
+   probe, progress log entry. Then start the next plan without waiting for a
+   second permission round unless a gate is red or an owner decision is
+   missing.
 
-### Known cross-plan collisions (re-anchor, don't paste)
+### C1. NocoBase - custom task fields (schema v25)
 
-- OpenProject and NocoBase both insert their sheet "after the Kanban panel",
-  both add a badge at the same WBS name-cell anchor, both add handlers beside
-  `tglLeadtimeLane`, and both add `relations` / `custom` to the same
-  `addTask()` push object.
-- Leantime adds the `Intake` nav group between `Plan` and `Collaborate` and
-  also touches `addTask()` / `delTask()`.
-- Whichever lands second re-derives its anchors against the first and
-  renumbers its migration.
+Code-complete with an errata section. Follow its own "Remaining work before
+this plan is implemented":
 
-## 4. Definition of done for this plan file
+- Build the Fields sheet on the existing house modal, not a bespoke overlay.
+- Map the draft CSS to real tokens. The draft names four tokens that do not
+  exist; use the actual token set and prove every `var()` resolves.
+- Type is immutable after creation; a change creates a new field and copies
+  values.
+- `custom` joins the `addTask()` push object; `fields` and `cfFilter` join
+  `FIELD_KEYS`; `js/mmgr-custom-fields.js` loads after `mmgr-utils.js`.
+- WBS cells, Kanban chips and the board filter share one field list.
+- New model tests and the browser harness, three edits, field-guide card.
+- Migration takes **schema v25**, not the plan's v23.
 
-- The active plan's tasks are checked off here as they land.
-- CI stays green after every push (poll the Actions run — a green local run
-  is not the truth; the remote run is).
+### C2. Leantime - idea intake and merged agenda (schema v26)
 
-## 5. Progress log
+The largest plan: two pure models, two renderers, one 16-gate harness, roughly
+1,900 new lines and six new files. It adds the `Intake` nav group between
+`Plan` and `Collaborate`, and touches `addTask()` / `delTask()`. Re-derive
+those anchors against the NocoBase landing; whichever of C1 and C2 lands
+second re-derives the shared push object and the nav insertion point.
+Migration takes **schema v26**.
 
-- **2026-10-29** — Repo stabilized: attribution + footer history rewrite
-  (CI green), wrapper docs replaced by this file, sidebar scroll containment
-  shipped (`9ccbf72`).
-- **Next:** plan-openproject Task 1 (relation model, migration 24).
+### C3. AppFlowy - the project book (schema v27)
+
+Prose-only, four phases: page tree and body; blocks that read the project;
+templates that carry pages; the project book and handover pack. Before code,
+do a drafting pass that turns each phase into numbered tasks with files, exact
+steps, gates and commit subjects, saved in the plan file itself. No code until
+that pass is done. Migration takes **schema v27**.
+
+### C4. Platform - guarded transitions, audit, rules (schema v28)
+
+Prose-only, four phases: guarded transitions; transition history; rules; the
+approval pack and outbound summary. Same drafting pass first. Rules run after
+the triggering change, never veto it; fixed action vocabulary; imported rules
+arrive disabled. Migration takes **schema v28**.
+
+### C5. Plane - cycles and modules (schema v29)
+
+Prose-only, four phases: cycles as records; backlog and cycle board; modules;
+honest cycle analytics and review. Same drafting pass first. The existing
+sprint object converts into the first cycle and stays readable for one
+release. Migration takes **schema v29**.
+
+### Cross-plan collisions
+
+- NocoBase and Leantime both insert a sheet after the Kanban panel, add a badge
+  at the same WBS name-cell anchor, add handlers beside `tglLeadtimeLane`, and
+  add keys to the same `addTask()` push object. The second one re-derives.
+- Leantime adds `Intake` between `Plan` and `Collaborate`; re-derive after
+  NocoBase's nav work.
+- AppFlowy does not add custom fields; NocoBase owns them. Two field systems on
+  one task record is a guaranteed disagreement.
+- Platform's rules and Plane's cycle close both write log entries; use the
+  existing log surface, do not add a second feed.
+- D-1's `.ai-main` containment and D-3's gate bind every later panel: no new
+  `position: fixed` descendant inside a contained ancestor.
+
+---
+
+## 6. Phase D - parked UI plans
+
+`UI-FIXES-SPEC.md` (43-check `qa-landing-ui`) and `plan-ui.md` are parked. The
+owner will extend them. When the extended versions land:
+
+- Run `plan-ui.md` phases 1 to 4 first, so the type and spacing scale and the
+  panel header exist before new markup inherits them.
+- Then run `UI-FIXES-SPEC` in its section 14 wave order 0 to 6, one commit per
+  wave, with the stated gate updates in the same commit that breaks them.
+- If they land after C1 to C5, phases 3 and 4 sweep the markup those plans
+  added; that is accepted cost, not a reason to reorder now.
+- `qa-landing-ui.cjs` stays in the parked folder until the spec is alive; when
+  promoted it needs the three edits.
+
+---
+
+## 7. Ledgers
+
+### Client schema numbers
+
+| Plan | Takes |
+|---|---|
+| Current | `SCHEMA_VERSION = 24` |
+| NocoBase | 25 |
+| Leantime | 26 |
+| AppFlowy | 27 |
+| Platform | 28 |
+| Plane | 29 |
+
+Every plan's "migration 23" means this client migration, not a D1 SQL file.
+Move `SCHEMA_VERSION` and the `migrate()` key together. One number per landing
+plan.
+
+### D1 migrations
+
+Through `0029_team_enterprise.sql`. None of C1 to C5 needs a D1 file by
+default; they are local project state, synced as blobs. If a plan does add
+server-side data, it takes **0030** and every later one shifts by one. Apply to
+remote D1 before the Worker deploy; never renumber an applied migration.
+
+### Service worker and CSP
+
+- `mmgr-shell-v504` now. Bump one integer per commit that changes a served
+  file. D-4 does not bump.
+- Any inline `<script>` edit: `node tools/regen-csp-hashes.cjs`, commit
+  `worker.js` + `serve.cjs`, restart `serve.cjs`, and prove the live header's
+  hashes match disk before trusting a browser gate.
+
+### Harness placement after D-4
+
+| Job | Harnesses added by this plan |
+|---|---|
+| `static` | `verify-ci-coverage` |
+| `cloud-core` | none new |
+| `cloud-auth` | none new |
+| `browser-calc` | `qa-fixed-containment`, `qa-relations` per the split, calc suites |
+| `browser-app` | `qa-ai-dictation`, `qa-ai-window-layout`, AI and full batteries |
+
+Later plan harnesses go into the job that owns their environment. The registry
+row alone does not run a harness.
+
+---
+
+## 8. Decisions
+
+The scope addition asks its five questions once. Do not open a second round:
+if the owner has not overridden a default before the task that needs it, apply
+the default and record the assumption in the log. These defaults apply until
+the owner overrides them here; an override before D-1 step 1 changes only that
+step, nothing else.
+
+| # | Question | Default |
+|---|---|---|
+| Q1 | CI branch route and direct pushes | D-3, D-2, D-1 direct to `main`; D-4 on `ci-split` with a temporary trigger, fast-forward after green |
+| Q2 | Raise inline history threshold 480 to 720 | Yes, with the one `qa-ai-win` re-baseline |
+| Q3 | Move Pin and Float into a More menu, two pills to one dot | Yes, ids kept, engine text into the menu |
+| Q4 | Dictation engine | Keep browser speech recognition |
+| Q5 | Top-layer popover plus anchor positioning | No; portal and JS tracking only |
+
+**Flow rule.** Inside a plan: continue while gates are green; do not stop
+between tasks. Stop only when a gate is red and the fix would change a
+must-not-change item, when an owner decision is genuinely missing, or when the
+owner says stop. A plan checkpoint is a report, not a permission gate. Phase B
+also has a deploy checkpoint because three user-facing fixes are waiting.
+
+**Deploy rule.** Deploy at the end of Phase B and at the end of each feature
+plan, never mid-plan. CI green first, clean staging under `$HOME/mmgr-deploy`,
+live probe, then log.
+
+---
+
+## 9. Definition of done
+
+**A task** is done when its stated gate is green, the build ran, the service
+worker bumped if a served file changed, CSP hashes regenerated if an inline
+script changed, the commit is plain Conventional Commits with no attribution,
+and the relevant harness is registered and wired.
+
+**A plan** is done when every task is checked off here, the plan's own
+Definition of Done is satisfied, `npm run verify` and the full affected
+browser battery are green, the remote CI run is green, the field guide and
+developer guide are updated, and the deploy plus live probe are recorded.
+
+**A phase** is done when its plans are done and a status entry exists in
+`CONTINUATION-DIRECTIVE.md` (one line, under the 40,960-byte cap) plus the full
+entry in `docs/history/log-2026-10.md`. `reflection.txt` is rewritten at the end
+of every session.
+
+---
+
+## 10. Progress log
+
+- **2026-10-29 - plan aligned.** OpenProject landed (`4323f91`, `0b56f69`,
+  `fddfd69`, `24b44ff`; schema v24; SW v504). The scope addition
+  `adittion to scope/UI-CI-DIRECTIVE.md` is queued as Phase B (D-3, D-2, D-1,
+  D-4). The five feature plans follow, in the order in section 2. This
+  supersedes the old "plan-openproject IN PROGRESS" line.
+- **Next:** Phase A verification, then B1 D-3.

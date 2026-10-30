@@ -1,7 +1,8 @@
 # AGENTS.md - Instructions for AI agents working in this repository
 
-> **READ ORDER: `CONTINUATION-DIRECTIVE.md` first, then the newest `AUDIT-DIRECTIVE-*.md`.
-> Do not open `docs/history/` unless a task cites it.**
+> **READ ORDER: `CONTINUATION-DIRECTIVE.md` first, then `EXECUTION-PLAN.md` for the
+> build order, then the newest `AUDIT-DIRECTIVE-*.md`. Do not open `docs/history/`
+> unless a task cites it.**
 >
 > Read this file before making ANY change. It tells you which skills to load first.
 

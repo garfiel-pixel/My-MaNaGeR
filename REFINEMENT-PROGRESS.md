@@ -1,8 +1,9 @@
-# My MaNaGeR - REFINEMENT PROGRESS (live checklist)
+# My MaNaGeR - REFINEMENT PROGRESS (historical, closed 2026-10-28)
 
-Mirror of `REFINEMENT-DIRECTIVE-2026-10-24.md` (waves D, E, F). That file stays the authority for WHAT each
-task means. THIS file is the authority for what is DONE and what is LEFT. Put it at the repo root
-(`*.md` is never deployed).
+**This file is a closed record, not the current queue.** `EXECUTION-PLAN.md` is
+the authority for what runs next; this file is kept only as the evidence trail
+for waves D, E and F. Mirror of `REFINEMENT-DIRECTIVE-2026-10-24.md`, which
+remains the authority for what each of those closed tasks meant.
 
 Measured: 2026-10-27, HEAD `acf2462`, from the uploaded tree. Evidence = code read, git log, and the
 static gates run on that tree (verify-calc-lump, verify-settings-reach, verify-ratebook-wording,

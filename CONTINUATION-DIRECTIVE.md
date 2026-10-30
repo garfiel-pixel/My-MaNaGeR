@@ -1,7 +1,9 @@
 # My MaNaGeR - Continuation Directive (active, small)
 
-**Read order for every session:** this file first, then the newest `AUDIT-DIRECTIVE-*.md`
-(now `AUDIT-DIRECTIVE-2026-10-18.md`) plus `IMPROVEMENT-DIRECTIVE-2026-10-22.md` for the work orders. Do NOT open `docs/history/`
+**Read order for every session:** this file first, then `EXECUTION-PLAN.md` for
+the build order, then the newest `AUDIT-DIRECTIVE-*.md` (now
+`AUDIT-DIRECTIVE-2026-10-18.md`) plus `IMPROVEMENT-DIRECTIVE-2026-10-22.md` for
+open work orders. Do NOT open `docs/history/`
 unless a task cites it: the full history lives in
 `docs/history/CONTINUATION-DIRECTIVE-ARCHIVE-2026-10-18.md`, old status-log entries in
 `docs/history/log-YYYY-MM.md`, old reflections in `docs/history/reflection-ARCHIVE-2026-10-18.txt`.
@@ -65,29 +67,30 @@ must get the audit's own state check (rule 0.1) before anyone claims it.
 
 ## NEXT SESSION STARTING POINT (max 15 lines)
 
-1. Read this file, then `REFINEMENT-DIRECTIVE-2026-10-24.md`, then `REFINEMENT-PROGRESS.md`.
-   The progress file is the authority for what is DONE and what is LEFT, and its
-   NEXT UP section is the build order.
-2. State at HEAD `e9def01` (CI-verified code; the closing docs commit after it changes no
-   behaviour): ALL WAVES CLOSED - Wave D 12/12, Wave E 14/14, Wave F 6/6, total 32/32 in
-   REFINEMENT-PROGRESS.md, with the directive's section 15 re-check table pasted into
-   docs/history/log-2026-10.md (zero open High items). Wave F is DEPLOYED and LIVE-PROBED
-   (Version ID eff0439e-51f6-44fe-9f85-3bb5b3a6f67c, probe 18/18). Two deliberate deferrals
-   are recorded, not open: APP-3's optional salt/PBKDF2 step-up and the AI-2 on-device ship.
-3. Run `npm run verify` first; baseline: green, 145/145 unit tests, registry 142/142,
-   sw shell v491. Browser gates: `qa-full`, `qa-ai-win` 22/22, `qa-code-names` 26/26,
-   `verify:gold`, `qa-calc-controls` 63/63, `qa-hero-globe` 16/16, `qa-globe-spin` 15/15.
-4. Every new harness needs THREE edits: the harness, its row in
+1. Read this file, then `EXECUTION-PLAN.md`, then the newest `AUDIT-DIRECTIVE-*.md`.
+   `EXECUTION-PLAN.md` is the build order; its section 2 status table is the only
+   queue. Do not re-derive an order from older files.
+2. State at HEAD `9d703e0`: OpenProject landed (`4323f91..24b44ff`, schema v24,
+   SW v504). CI recorded green; re-poll the Actions run before trusting it.
+3. Run `npm run verify` first. Baseline is green; do not quote older hard-coded
+   counts from this file without re-running.
+4. New scope is queued as Phase B of `EXECUTION-PLAN.md`: D-3, D-2, D-1, D-4 from
+   `adittion to scope/UI-CI-DIRECTIVE.md`, then NocoBase, Leantime, AppFlowy,
+   Platform, Plane. `UI-FIXES-SPEC.md` and `plan-ui.md` stay parked.
+5. Every new harness needs THREE edits: the harness, its row in
    `docs/CI-TEST-COVERAGE.md`, and a step in `.github/workflows/ci.yml` (or the
-   extended battery). The registry doc alone does not run it.
-5. Kill switches live in the `js/mmgr-state.js` flags block. Flip one rather
-   than reverting logic.
+   extended battery). After D-4, use the job that owns its environment.
 6. Commits: plain Conventional Commits, small, per task. No AI attribution, no emoji.
 7. Deploy only from `$HOME/mmgr-deploy` after CI is green; live-probe `mymanagerworkspace.com`.
 8. Rewrite `reflection.txt` (last session only) and add `docs/history/log-2026-10.md` at end.
 
 ## STATUS LOG (newest entries kept here; full history in `docs/history/log-YYYY-MM.md`)
 
+- 2026-10-29: PLANS ALIGNED, OPENPROJECT CLOSED. Relations plan landed
+  (`4323f91..24b44ff`, schema v24, SW v504); the new scope addition
+  (`adittion to scope/UI-CI-DIRECTIVE.md`) is queued as Phase B of
+  `EXECUTION-PLAN.md` (D-3, D-2, D-1, D-4), then NocoBase, Leantime, AppFlowy,
+  Platform, Plane. `UI-FIXES-SPEC.md` and `plan-ui.md` remain parked.
 - 2026-10-28: WAVE F CLOSED, DEPLOYED, LIVE-PROBED - ALL 32/32 TASKS DONE. AI-1 the docked
   AI window (qa-ai-win 22/22, axe clean both palettes, T-AIWIN green, flag `aiDock`); AI-2
   spike written up in docs/SPIKE-LOCALLLM-2026-10.md - WebLLM passes every laptop threshold,

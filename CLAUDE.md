@@ -1,7 +1,8 @@
 # CLAUDE.md
 
-**Read `CONTINUATION-DIRECTIVE.md` first, then the newest `AUDIT-DIRECTIVE-*.md`. Do not
-open `docs/history/` unless a task cites it.**
+**Read `CONTINUATION-DIRECTIVE.md` first, then `EXECUTION-PLAN.md` for the build
+order, then the newest `AUDIT-DIRECTIVE-*.md`. Do not open `docs/history/` unless a
+task cites it.**
 
 Then read **`AGENTS.md`** at the repository root - it is the single source of
 truth for this project: mandatory skill loading from `.agents/skills/`,

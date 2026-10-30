@@ -17,6 +17,14 @@ tmp
 dogfood-output
 serve.cjs
 planners/
+# E0 (2026-10-30): parked plans/specs and reference material, never served.
+_archive
+# Owner parked specs and the untracked maintenance-mode folder. They are
+# docs and mockups, not app files - the *.md rule hid the markdown but NOT
+# the mockup .html or its icon pack, which would have been publicly
+# fetchable as static assets.
+adittion to scope
+the last update towrads maintainance mode
 *.txt
 qa-*.cjs
 tools

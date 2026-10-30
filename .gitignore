@@ -119,3 +119,20 @@ tmp/
 # ignore - the rates themselves are generated into src/data/ratebook.js and
 # served only to a signed-in session by GET /api/ratebook.
 /docs/private/
+
+# E0 (REPO-RELIABILITY-DIRECTIVE 2026-10-30): owner material that is never
+# staged and never deployed. The folder is an untracked parking space for
+# parked plans and specs; AUTHORS-FIX-ISSUE.md is a stale note about a history
+# problem that was already fixed. Neither may ever be committed.
+/the last update towrads maintainance mode/
+/AUTHORS-FIX-ISSUE.md
+# E0 continued: parked material stays on disk but out of the tracked tree, so
+# `git ls-files` shows what the product needs. Checked 2026-10-30 before
+# untracking: no harness reads a tools/*.png, eslint only ignores _archive/,
+# and the full battery passes. Six screenshots stay tracked because current
+# history docs cite them by name (newui-app-light/dark, newui-project-pinned,
+# newui-admin-rail, front-page-modernize-light, auth-signin-check-light) - a
+# tracked file is unaffected by this pattern. No history was rewritten, so the
+# other 42 are still recoverable from the log.
+/_archive/
+/tools/*.png

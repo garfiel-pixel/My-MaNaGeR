@@ -58,7 +58,7 @@ recorded here. The status is the only place to look.
 | B2 | **D-2** dictation echo and leading `null` | **DONE 2026-10-29** | Section B2 result; `qa-ai-dictation` 14/14, `qa-ai.cjs`, `qa-ai-win` 22/22, `npm run verify` green |
 | B3 | **D-1** AI window, steps 1 to 7 | **DONE 2026-10-30** | Section B3 result; `qa-ai-window-layout` 83/83, `qa-ai-win` 23/23, `qa-ai` PASS, `qa-fixed-containment` 10/10, axe, gold, `npm run verify` green |
 | B4 | **D-4** CI split into five jobs | **DONE 2026-10-30** | `verify-ci-coverage` 12/12; run `41015996950` all six jobs green, 0 skipped; slowest job 7.6 min (baseline 24.4); summary populated |
-| E | Repo housekeeping E0 to E5 | **IN PROGRESS** (E0, E5 done) | E0: 706 -> 597 tracked files, `_archive` and 42 shots untracked, guards kept. E5: `verify-sizes` 9/9, in `npm run verify` and `static`, teeth proven (a 166 KB stray CSS fails by name). E1 to E4 next |
+| E | Repo housekeeping E0 to E5 | **DONE 2026-10-30** (E0 to E5) | 706 -> 601 tracked files; `_archive` + 42 shots untracked with their deny rules kept; 5 finished plans moved to `docs/history/` with an index; `verify-sizes` 9/9 in `static`, teeth proven. E6 (CSS split) waits for its coverage number, E7 (`checkJs`) follows C1 |
 | C1 | NocoBase custom task fields | Queued | Its DoD; schema v25 |
 | C2 | Leantime idea intake + merged agenda | Queued | Its 16-gate harness; schema v26 |
 | C3 | AppFlowy project book | Needs drafting pass | Four phases; schema v27 |

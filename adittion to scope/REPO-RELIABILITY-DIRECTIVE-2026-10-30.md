@@ -228,7 +228,7 @@ recommendation it makes is already half-shipped in a place it did not look.
 
 | Its claim | Checked now | Where it is handled |
 |---|---|---|
-| 701 tracked files | **597** after E0 (was 706 at the review's baseline) | E0 done |
+| 701 tracked files | **601** now (706 at the review's baseline, 597 right after E0) | E0 done |
 | 36 loose `.md`/`.txt` at the root | **40**, of which 39 are documents and `robots.txt` must stay | E1, E2 |
 | 48 screenshots in `tools/` | **48**; 42 untracked, 6 kept because history docs cite them by name | E4 done |
 | `_archive/` about 11.8 MB | **12,220,014 bytes, 67 files** | E3 done |
@@ -263,7 +263,7 @@ recommendation it makes is already half-shipped in a place it did not look.
    history entries, and rewriting a history log to fix a path is a worse edit
    than keeping six files tracked. They stay in `tools/` and stay tracked; the
    other 42 are untracked and ignored.
-4. **What the trim did not change.** Tracked files fell from 706 to 597 and the
+4. **What the trim did not change.** Tracked files fell from 706 to 601 and the
    asset bundle lost `_archive` (42 of the 48 screenshots were never uploaded -
    `tools` is already excluded from assets). No served byte changed, so no
    customer-visible claim changed. The review's own closing line stands: the

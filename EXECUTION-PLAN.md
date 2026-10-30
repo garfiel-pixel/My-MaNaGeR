@@ -55,7 +55,7 @@ recorded here. The status is the only place to look.
 | B1 | **D-3** calculator listbox portal + containment gate | **DONE 2026-10-29** | Section B1 result; `qa-fixed-containment` 8/8, `qa-calc-controls` 94/94, audit 61/61, shortcuts 15/15, `npm run verify` green |
 | B2 | **D-2** dictation echo and leading `null` | **DONE 2026-10-29** | Section B2 result; `qa-ai-dictation` 14/14, `qa-ai.cjs`, `qa-ai-win` 22/22, `npm run verify` green |
 | B3 | **D-1** AI window, steps 1 to 7 | **DONE 2026-10-30** | Section B3 result; `qa-ai-window-layout` 83/83, `qa-ai-win` 23/23, `qa-ai` PASS, `qa-fixed-containment` 10/10, axe, gold, `npm run verify` green |
-| B4 | **D-4** CI split into five jobs | Queued | `verify-ci-coverage`; live run all steps executed; slowest job at most 8 min; summary job |
+| B4 | **D-4** CI split into five jobs | **DONE 2026-10-30** | `verify-ci-coverage` 12/12; run `41015996950` all six jobs green, 0 skipped; slowest job 7.6 min (baseline 24.4); summary populated |
 | C1 | NocoBase custom task fields | Queued | Its DoD; schema v25 |
 | C2 | Leantime idea intake + merged agenda | Queued | Its 16-gate harness; schema v26 |
 | C3 | AppFlowy project book | Needs drafting pass | Four phases; schema v27 |
@@ -406,6 +406,41 @@ Run only after B1 to B3 are committed. Follow the directive's section 6.
 Commit style: `ci: ...`, one commit per coherent step, explicit paths.
 No service-worker bump: `.github/`, `tools/` and `docs/` are not served assets.
 
+**Result (2026-10-30): DONE.** Evidence:
+
+| Gate | Result |
+|---|---|
+| `node tools/verify-ci-coverage.cjs` | 12/12 (and teeth: deleting `qa-shortcuts` fails it by name) |
+| Run `41014918383` on `3bd9325` (first split) | 6/6 jobs green, 0 failed, 0 skipped |
+| Run `41015996950` on `1d60df7` (rebalanced) | 6/6 jobs green, 0 failed, 0 skipped |
+| Slowest job | 457s (7.6 min) `cloud-core`; then 437s app, 383s calc, 379s auth, 53s static |
+| Baseline to beat | 24.4 min single job, 1531 step-seconds |
+| Summary job | `needs` all five, `if: always()`, one row per job |
+
+Measured baseline (`tmp/ci-baseline.md`, not committed): 24.4 min wall clock,
+T2 770s, T4 630s, T3 67s, static 64s; Team RBAC alone 256s.
+
+The split: `static` (53s), `cloud-core` (shared :8787, 7.6 min), `cloud-auth`
+(its own :8787, 6.3 min), `browser-calc` (own `serve.cjs`, 6.4 min),
+`browser-app` (own `serve.cjs`, 7.3 min), `summary`.
+
+Notes and additions:
+
+1. **`yaml` added as a devDependency** (it was the only way to parse both
+   workflows in `verify-ci-coverage`, and nothing in the tree could).
+2. **Team RBAC moved to `cloud-core`** and **Sync bond to `browser-calc`**
+   after the first measured run (cloud-auth was 8.2 min). The rebalanced run
+   puts every job under 8 minutes.
+3. **The two browser jobs each start and stop their own `serve.cjs`** and each
+   run the `install test deps` step; the coverage gate allowlists exactly those
+   three repeated step names. `cloud-core` and `cloud-auth` each own a
+   `wrangler-start` (auth needs it for the restart + Controls admin pair).
+4. **The old single CI Summary block was replaced**, not preserved: the
+   summary job reads `needs.<job>.result`, and each job writes its own status
+   row to `$GITHUB_STEP_SUMMARY`, so per-step detail stays on each job page.
+5. **`docs/CI-TEST-COVERAGE.md` now documents the six jobs** instead of the old
+   static/T1/T2/T3/T4-only list, and `AGENTS.md` section 8 gained item 6b.
+
 ### Phase B close
 
 `node build.js`, `npm run verify`, full affected browser battery, CI green,
@@ -646,4 +681,10 @@ of every session.
   `npm run verify` green (registry 148/148). The gate found two real defects
   (Esc fell through to the workspace handler and closed the window; the 82vh
   modal cap left a dead strip), both fixed. SW v513. Schema unchanged.
-- **Next:** B4 D-4 on branch `ci-split`.
+- **2026-10-30 - B4 D-4 done on `ci-split`, merged.** Five parallel jobs plus
+  a summary. Baseline 24.4 min to 7.6 min slowest job (`cloud-core`); all six
+  jobs green in run `41015996950`, 0 skipped. New `verify-ci-coverage` (12/12,
+  teeth proven) is in `static`. `yaml` added as a devDependency. CI-only: no
+  served file changed, so no service-worker bump.
+- **Next:** Phase B close (deploy from `$HOME/mmgr-deploy` + live probe), then
+  C1 NocoBase.

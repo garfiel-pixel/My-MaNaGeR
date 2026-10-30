@@ -106,3 +106,30 @@ STATE LEFT BEHIND
   job on branch ci-split, with tools/verify-ci-coverage.cjs as the proof.
   Deploy still owed at the end of Phase B (D-3, D-2, D-1 are user-facing), from
   $HOME/mmgr-deploy, after the CI split is green.
+
+SESSION 2026-10-30, SECOND PART - PHASE B4 (D-4): CI SPLIT
+
+MEASURED
+  Baseline run 40991435134: 24.4 min, 1531 step-seconds. T2 770, T4 630,
+  T3 67, static 64. Longest: Team RBAC 256s, qa-full 101s, Sync bond 95s,
+  axe 81s.
+
+BUILT (branch ci-split)
+  `.github/workflows/ci.yml` regenerated from the single job into six jobs by a
+  textual splitter (tmp/split-ci.py, not committed) that sliced the original
+  116 step blocks and re-emitted them under static (50), cloud-core (21),
+  cloud-auth (28), browser-calc (24), browser-app (35) plus summary. Per-job
+  setup is checkout, node 22, install, build; both browser jobs install the
+  playwright devDep and start/stop their own serve.cjs; cloud-core and
+  cloud-auth each own a wrangler-start.
+  `tools/verify-ci-coverage.cjs` (new, 12/12) proves the run: multiset, the
+  T4 count, same-job id references and the summary job. `yaml` added as a
+  devDependency (package.json, package-lock).
+  `docs/CI-TEST-COVERAGE.md` "Jobs inside ci.yml" section rewritten for six
+  jobs; `AGENTS.md` section 8 gained item 6b.
+
+RESULTS
+  Run 41014918383 (3bd9325): all six green, cloud-auth 490s.
+  Run 41015996950 (1d60df7, after moving Sync bond to browser-calc): all six
+  green; cloud-core 457s, browser-app 437s, browser-calc 383s, cloud-auth
+  379s, static 53s, summary 4s, 0 skipped.

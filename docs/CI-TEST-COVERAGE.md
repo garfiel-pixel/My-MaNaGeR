@@ -13,15 +13,26 @@ Status tokens used below: **CI** (runs on every push), **EXTENDED** (runs in
 or too niche for the deploy gate), **TRIAGE** (known-drifting, findings listed),
 **MANUAL** (needs live credentials or a human, never automated).
 
-## Tiers inside ci.yml
+## Jobs inside ci.yml (D-4, five parallel jobs)
 
-- **Static** — CSP hashes, inline-JS parse, service-worker cache, `[hidden]`
-  wiring, skills lock, render exports, CSS integrity.
-- **T1** — pure-static QA gates (no browser, no server).
-- **T2** — `wrangler dev` on :8787 (D1/R2 emulation), including the page-health
-  sweep against the real Worker.
-- **T3** — headless-Chrome suites that spawn their own wrangler.
-- **T4** — headless-Chrome batteries against the static server (`serve.cjs`, :8765).
+`ci.yml` runs six jobs. Five do the work in parallel; `summary` reports them.
+A job carries only the setup it needs (checkout, node 22, install, build), and
+The coverage gate in `static` proves the `run:` multiset is unchanged by the
+split. Measured 2026-10-30 on `1d60df7`: wall clock 24.4 min before, 7.6 min
+for the slowest job after.
+
+| Job | Contents |
+|---|---|
+| `static` | Gitleaks, build, CSP hashes, inline-JS parse, service-worker cache, `[hidden]` wiring, skills lock, render exports, CSS integrity, units, every T1 gate, the doc/plan size gate, `verify-ci-coverage`, wrangler dry-run. 53s. |
+| `cloud-core` | The shared `wrangler dev` on :8787: cloud phases 1 and 2, photos, codes, billing cancel, import, page-health sweep, AI badge E2E, market features, Team RBAC, then stop. 7.6 min. |
+| `cloud-auth` | Its own :8787: email auth, Team UI, Team Enterprise, Reviews, calc workspace, rate book, rank 9, T9, presence, prefs, offline copies, autosave + signin, the restart, Controls admin, then the self-contained Client codes and API keys suites. 6.3 min. |
+| `browser-calc` | Its own `serve.cjs`: calculator page, audit, trade coverage, golden cases, assistant, mat items, related items, relations, calc controls, fixed containment, Calc S2, Sync bond E2E. 6.4 min. |
+| `browser-app` | Its own `serve.cjs`: qa-full, Drive, Paddle CSP, auth limits, the AI battery and its window layout gates, v11, p1, theme, modals, gold, appshell, notices, dot rail, globes, code names, procurement, consent, shortcuts, widescreen, axe, hero globe. 7.3 min. |
+| `summary` | `needs` all five, `if: always()`, one row per job from `needs.<job>.result`. |
+
+Tier vocabulary (unchanged): **Static** and **T1** need no browser or server,
+**T2** uses `wrangler dev`, **T3** spawns its own wrangler, **T4** drives
+headless Chrome against `serve.cjs` on :8765.
 
 ## Static / build guards
 

@@ -274,6 +274,17 @@ reports a CI failure:
    before CI burns a cycle (qa-dashboard-spec, qa-changelog-diffs,
    qa-ai-relay, verify-report-issue, verify-dynamic-labels,
    verify-delegate-gate, verify-render-exports, wrangler dry-run).
+6b. **D-4 split (2026-10-30).** `ci.yml` is now six jobs: `static`,
+   `cloud-core`, `cloud-auth`, `browser-calc`, `browser-app`, plus a
+   `summary` job that needs all five. Each job installs its own checkout,
+   node 22 and build, and the two browser jobs start and stop their own
+   `serve.cjs`. A T2 step that spawns its own wrangler on a unique port can
+   live in ANY job, but its `if: steps.wrangler-start.outcome == 'success'`
+   proxy is only valid where `wrangler-start` is defined; the coverage gate
+   fails on a cross-job reference. `tools/verify-ci-coverage.cjs` (in
+   `static`) proves the `run:` multiset, the T4 count and those id references
+   after any workflow edit. Baseline: 24.4 min -> 7.6 min slowest job.
+
 6. **Record the fix in the tracker** (PLANNING-TODO-2026-09-03.txt) -    commit message + which harness/app contract changed - so future waves
    don't re-break the same gate.
 

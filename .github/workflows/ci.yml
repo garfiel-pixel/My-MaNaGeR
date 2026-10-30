@@ -700,18 +700,6 @@ jobs:
         env:
           QA_PORT: 8809
 
-      - name: "T2: Sync bond E2E (file trip keeps the cloud twin link + re-sync merge)"
-        id: qa-sync-bond
-        run: node tools/qa-sync-bond.cjs
-        env:
-          QA_PORT: 8810
-
-      # ── TIER 4: static-server browser batteries ─────────────────────
-      # These root-level suites drive headless Chrome against serve.cjs on
-      # :8765 (no wrangler). They existed for months WITHOUT being wired into
-      # CI, which is exactly how they drifted out of date while every gate
-      # stayed green. Every one of them is green as of 2026-09-22.
-
       - name: Job summary (cloud-auth)
         if: always()
         run: |
@@ -833,6 +821,18 @@ jobs:
       # Walks every rendered fixed element on the calculator (both trade lists
       # open), the project with the AI window open, and the launcher; fails on
       # any offender not evidenced in tools/fixed-containment-allow.json.
+
+      - name: "T2: Sync bond E2E (file trip keeps the cloud twin link + re-sync merge)"
+        id: qa-sync-bond
+        run: node tools/qa-sync-bond.cjs
+        env:
+          QA_PORT: 8810
+
+      # ── TIER 4: static-server browser batteries ─────────────────────
+      # These root-level suites drive headless Chrome against serve.cjs on
+      # :8765 (no wrangler). They existed for months WITHOUT being wired into
+      # CI, which is exactly how they drifted out of date while every gate
+      # stayed green. Every one of them is green as of 2026-09-22.
 
       - name: "T4: Fixed-element containment (qa-fixed-containment)"
         id: qa-fixed-containment

@@ -1464,6 +1464,80 @@
     }, 150);
   }
 
+  /* Dot rail tone: the dot must read on cream AND on the dark hero, so it
+     follows the section behind it. elementsFromPoint at the rail's own edge,
+     rAF-throttled, and skipped entirely when the rail is absent. */
+  (function wireRailTone() {
+    var rail = document.querySelector('.dot-rail-navigation');
+    if (!rail || typeof document.elementsFromPoint !== 'function') {
+      return;
+    }
+    function tone() {
+      var r = rail.getBoundingClientRect();
+      if (!r.width || !r.height) {
+        return;
+      }
+      var hit = document.elementsFromPoint(r.right + 24, r.top + r.height / 2) || [];
+      var shade = 'light';
+      for (var i = 0; i < hit.length; i++) {
+        if (rail.contains(hit[i])) {
+          continue;
+        }
+        var band = hit[i].closest ? hit[i].closest('[data-tone]') : null;
+        if (band) {
+          shade = band.getAttribute('data-tone') || 'light';
+          break;
+        }
+      }
+      if (rail.getAttribute('data-tone') !== shade) {
+        rail.setAttribute('data-tone', shade);
+      }
+    }
+    var queued = false;
+    function schedule() {
+      if (queued) {
+        return;
+      }
+      queued = true;
+      requestAnimationFrame(function () {
+        queued = false;
+        tone();
+      });
+    }
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    tone();
+  })();
+
+  /* UI pass 2026-10-30: the header used to be frosted at every scroll position,
+     so it never read as part of the page. Solid at rest, frosted once content is
+     under it. Passive listener + one rAF, no layout reads on the scroll thread,
+     and the class is absent when the element is missing (every marketing page
+     shares this script, not all of them have a header). */
+  (function wireHeaderState() {
+    var hdr = document.querySelector('.site-header');
+    if (!hdr) {
+      return;
+    }
+    var queued = false;
+    function apply() {
+      queued = false;
+      var y = window.pageYOffset || document.documentElement.scrollTop || 0;
+      hdr.setAttribute('data-scrolled', y > 8 ? 'true' : 'false');
+    }
+    window.addEventListener(
+      'scroll',
+      function () {
+        if (!queued) {
+          queued = true;
+          requestAnimationFrame(apply);
+        }
+      },
+      { passive: true }
+    );
+    apply();
+  })();
+
   /* ORDER MATTERS: Paddle must initialise (and read ?_ptxn=) before anything else touches the URL. */
   initPaddleWhenReady();
   handlePaddleReturn();

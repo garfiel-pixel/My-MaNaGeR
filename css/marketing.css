@@ -100,12 +100,12 @@
   --hero-glow-3: radial-gradient(90% 80% at 100% 20%, rgba(129, 140, 248, 0.16), transparent 60%);
 
   /* Gold ramp + locked status palette */
-  --gold-50: #fffbeb; /* tinted surfaces, hover fills */
-  --gold-100: #fef3c7; /* subtle fills, disabled states */
-  --gold-300: #fcd34d; /* borders/icons on dark surfaces */
-  --gold-500: #f59e0b; /* gold primary */
-  --gold-700: #b45309; /* gold hover/pressed, headings on white */
-  --gold-900: #78350f; /* gold deep surfaces, dark-mode chrome */
+  --gold-50: #fbf6e3; /* tinted surfaces, hover fills */
+  --gold-100: #f6ecc4; /* subtle fills, disabled states */
+  --gold-300: #e6c547; /* borders/icons on dark surfaces */
+  --gold-500: #d4af37; /* gold primary - BULLION, not amber (UI pass 2026-10-30) */
+  --gold-700: #7a5a0b; /* 6.37:1 on white: hover/pressed, headings on white */
+  --gold-900: #3d2e06; /* gold deep surfaces, dark-mode chrome */
   --canvas: #f9fafb; /* app background (neutral) */
   --ink: #1f2937; /* body text (neutral) */
   --status-danger: #c4342b; /* over budget, blocked, critical risk */
@@ -397,7 +397,9 @@ main {
      rail raises the whole column, and the dot under the pointer goes solid. The
      ACTIVE dot is always solid, so the reader can still see where they are in
      one glance - the rail just stops competing with the copy. */
-  opacity: 0.24;
+  /* UI pass 2026-10-30: 0.24 measured 1.27:1 on cream - not quiet, invisible.
+     0.6 clears 3:1 while staying out of the copy's way. */
+  opacity: 0.6;
   transition: opacity 0.18s ease;
 }
 .dot-item::before {
@@ -581,14 +583,34 @@ main {
   top: 0;
   z-index: 100;
   height: var(--header-h); /* OWNER 2026-08-17: */
-  background: rgba(255, 255, 255, 0.82);
+  background: #fff;
+  border-bottom: 1px solid transparent;
+  box-shadow: none;
+  transition:
+    background-color 0.28s var(--ease-out),
+    border-color 0.28s var(--ease-out),
+    box-shadow 0.28s var(--ease-out);
+}
+/* UI pass 2026-10-30: the header used to be frosted at every scroll position,
+   so it never read as part of the page. Solid at rest, frosted once content is
+   beneath it - the class is set by a passive scroll listener in marketing.js. */
+.site-header[data-scrolled='true'] {
+  background: rgba(255, 255, 255, 0.72);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  border-bottom-color: rgba(15, 23, 42, 0.08);
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-header {
+    transition: none;
+  }
 }
 
 body.dark-mode .site-header {
+  background: #1a1614;
+}
+body.dark-mode .site-header[data-scrolled='true'] {
   background: var(--glass-specular), var(--glass-tint);
   border-bottom: var(--glass-edge);
   box-shadow: var(--glass-shadow);
@@ -809,9 +831,17 @@ body.dark-mode .site-nav a.nav-link[aria-current='page'] {
   /* OWNER 2026-09-09 (P5.1): standard landing-page CTA size, ~1.2x down
      from the old 60px (research: 44-48px tap target, 51.76px high-converting
      average, radius ~30% of height). */
-  padding: 15px 28px;
-  border-radius: 14px;
-  font-size: 1.05rem;
+  /* UI pass 2026-10-30 (improvement, no behaviour change): one rectangular
+     button language. The 14px radius on a 40px box read as a pill, and the
+     hero CTA was the same height as the header one. Radius comes from
+     --radius-sm; the large size is one explicit class, not a cascade fight. */
+  border-radius: var(--radius-sm);
+}
+.btn-gold.btn-lg,
+.btn-bullion.btn-lg {
+  height: 48px;
+  padding: 0 26px;
+  font-size: 1rem;
 }
 .btn-gold.btn-sm {
   height: 40px;
@@ -2239,14 +2269,20 @@ body.dark-mode .hero-card .hc-stepdot {
    under reduced transparency keeps the card fully readable. */
 .fcard .fc-art {
   position: absolute;
-  right: -10px;
-  bottom: -10px;
-  width: 56px;
-  height: 56px;
-  color: var(--gold-deep);
-  opacity: 0.1;
+  right: -6%;
+  bottom: -14%;
+  width: clamp(150px, 62%, 260px);
+  height: auto;
+  aspect-ratio: 1;
+  color: var(--gold-300);
+  opacity: 0.14;
   pointer-events: none;
   z-index: 0;
+  -webkit-mask-image: linear-gradient(135deg, transparent 8%, #000 70%);
+  mask-image: linear-gradient(135deg, transparent 8%, #000 70%);
+  transition:
+    opacity 0.3s var(--ease-out),
+    transform 0.5s var(--ease-out);
 }
 .fcard .fc-art svg {
   width: 100%;
@@ -2257,7 +2293,8 @@ body.dark-mode .hero-card .hc-stepdot {
   z-index: 1;
 }
 .fcard:hover .fc-art {
-  opacity: 0.14;
+  opacity: 0.24;
+  transform: translate(-4px, -4px) scale(1.03);
 }
 @media (prefers-reduced-transparency: reduce) {
   .fcard .fc-art {
@@ -2281,7 +2318,7 @@ body.dark-mode .hero-card .hc-stepdot {
   justify-content: center;
   width: 40px;
   height: 40px;
-  border-radius: 100px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: var(--card);
   color: var(--gold-deep);
@@ -2322,9 +2359,15 @@ body.dark-mode .hero-card .hc-stepdot {
   border-radius: 13px;
   display: grid;
   place-items: center;
-  color: var(--gold-deep);
-  background: rgba(var(--gold-rgb), 0.14);
-  border: 1px solid rgba(var(--gold-rgb), 0.28);
+  /* UI pass 2026-10-30: the ink-on-wash tile measured #7a5a0b on a 14% wash,
+     which reads brown. A light gold gradient with dark ink labels it as gold
+     and keeps the glyph at 8:1 (the gradient uses the light stops only). */
+  color: #241c05;
+  background: linear-gradient(135deg, #e6c547, #d4af37);
+  border: 1px solid rgba(var(--gold-rgb), 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 2px 6px rgba(var(--gold-rgb), 0.3);
   transition:
     background var(--tr),
     color var(--tr),
@@ -2359,7 +2402,7 @@ body.dark-mode .hero-card .hc-stepdot {
   color: var(--text-secondary);
   border: 1px solid var(--border);
   padding: 4px 10px;
-  border-radius: 100px;
+  border-radius: var(--radius-sm);
 }
 
 /* ---------- 9. How it works ---------- */
@@ -2554,7 +2597,7 @@ body.dark-mode .hero-card .hc-stepdot {
   align-items: center;
   gap: 8px;
   padding: 7px 13px;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: rgba(8, 14, 28, 0.62);
   border: 1px solid rgba(240, 195, 90, 0.4);
   color: #f5f7fa;
@@ -4709,7 +4752,7 @@ body.dark-mode .pricing-card .pc-list li {
   text-transform: uppercase;
   color: var(--on-gold);
   background: var(--gold);
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   padding: 2px 8px;
 }
 .hg-card-blurb {
@@ -4775,7 +4818,7 @@ body.dark-mode .pricing-card .pc-list li {
   color: var(--on-navy);
   background: var(--lit-white-08);
   border: 1px solid var(--lit-white-22);
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   padding: 7px 14px;
   cursor: pointer;
   transition: background var(--tr);
@@ -5168,4 +5211,64 @@ html body.dark-mode .btn-gold:disabled {
   --gold-hover: #ad1457;
   --gold-deep: #ad1457;
   --gold-rgb: 194, 24, 91;
+}
+
+/* ============================================================
+   UI pass 2026-10-30 (market surfaces): depth from light, not borders.
+   Three surface steps let a section, a card and a quiet band separate without
+   adding another border. Values are warm-neutral so the bullion accent reads
+   as the only saturated thing on the page. Improvement only - no layout,
+   no new component, no behaviour.
+   ============================================================ */
+:root {
+  --surface-0: #faf7f0; /* quiet band */
+  --surface-1: #ffffff; /* card */
+  --surface-2: #f3ede0; /* tinted inset */
+  --hairline: rgba(61, 46, 6, 0.1);
+}
+.section-alt {
+  background: var(--surface-0);
+}
+.card,
+.step,
+.fcard {
+  border: 1px solid var(--hairline);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 2px rgba(61, 46, 6, 0.06),
+    0 12px 28px -16px rgba(61, 46, 6, 0.18);
+}
+.card:hover,
+.step:hover {
+  border-color: rgba(var(--gold-rgb), 0.55);
+  transform: translateY(-2px);
+}
+.card-accent {
+  background: linear-gradient(180deg, var(--gold-50), #fff 60%);
+}
+/* Accent modes follow the ramp, not the old amber. */
+[data-theme='cyan'],
+[data-theme='magenta'] {
+  --gold-500: var(--gold);
+}
+
+/* Dot rail: tone-adaptive so the same dot clears 3:1 on cream and on the dark
+   hero. The rail sets [data-tone] from the section behind it (marketing.js). */
+.dot-rail-navigation[data-tone='light'] .dot {
+  background: #4a4036;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7);
+}
+.dot-rail-navigation[data-tone='dark'] .dot {
+  background: #f3e5ab;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.dot-rail-navigation:hover .dot-item,
+.dot-rail-navigation:focus-within .dot-item {
+  opacity: 0.85;
+}
+.dot-item.active .dot {
+  background: var(--gold);
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.25),
+    0 0 0 4px rgba(212, 175, 55, 0.35);
 }

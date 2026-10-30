@@ -6,7 +6,7 @@
 
    The landing dot rail was always visible at full strength, competing with the
    copy it points at. The contract now:
-     - at rest every inactive dot is a ghost (opacity 0.3 or less)
+     - at rest every inactive dot is quiet but visible (opacity 0.5 to 0.75)
      - hovering or keyboard-focusing the rail raises the whole column
      - the active dot is ALWAYS solid, so the reader can see their place
      - each dot keeps a hit area of at least 24 x 24 CSS px (WCAG 2.2 target)
@@ -177,8 +177,10 @@ function resolvePlaywright() {
       );
       if (!rail.missing) {
         check(
-          'LAND-1 [' + tag + '] inactive dots are ghosts at rest (opacity <= 0.3)',
-          rail.restMax !== null && rail.restMax <= 0.3,
+          'LAND-1/UI-2026-10-30 [' +
+            tag +
+            '] inactive dots are quiet but visible at rest (0.5 <= opacity <= 0.75)',
+          rail.restMax !== null && rail.restMax >= 0.5 && rail.restMax <= 0.75,
           rail.rest
         );
         check(

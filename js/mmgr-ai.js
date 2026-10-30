@@ -151,6 +151,13 @@ var MMGR = window.MMGR || {};
     if (lbl) {
       lbl.textContent = label;
     }
+    // D-1 step 2: the badge is a bare dot now, so the same text is mirrored to
+    // title and aria-label. One source, so the visible label and the
+    // announced name can never disagree.
+    if (pill) {
+      pill.setAttribute('title', label + ', click to re-check');
+      pill.setAttribute('aria-label', label);
+    }
   }
 
   // Pings /api/health with a SHORT timeout and zero retries (a health check
@@ -297,6 +304,8 @@ var MMGR = window.MMGR || {};
       modal.classList.remove('open');
       modal.classList.remove('hist-open');
     }
+    // D-1 step 2: the More menu never outlives the window it belongs to.
+    closeAiMore(false);
     // AI-1: a closed window reserves no page space and paints no dim.
     applyAiMode();
     // OWNER 2026-09-17 (wave 3 W8): closing the AI window always stops the
@@ -682,10 +691,7 @@ var MMGR = window.MMGR || {};
       }
     };
     set('ai-tier', cfg.tier || 'off');
-    const cloudRow = U.$('ai-cfg-cloud');
-    if (cloudRow) {
-      cloudRow.classList.toggle('is-hide', (cfg.tier || 'off') !== 'cloud');
-    }
+    syncConnRow();
     syncByoStatus();
     syncMcpToggle();
     syncSendGate();
@@ -771,9 +777,27 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // D-1 step 3: one banner, shown only when it is needed (Cloud chosen and no
+  // verified key). Same is-hide mechanism as before, one condition, and the
+  // dismissal resets whenever the tier changes so it is never a dead end.
+  function syncConnRow() {
+    const row = U.$('ai-cfg-cloud');
+    if (!row) {
+      return;
+    }
+    const tier = getAiCfg().tier || 'off';
+    if (row.dataset.tierFor !== tier) {
+      row.dataset.tierFor = tier;
+      row.dataset.dismissed = '0';
+    }
+    const needKey = tier === 'cloud' && getConnectionState() !== 'connected';
+    row.classList.toggle('is-hide', !needKey || row.dataset.dismissed === '1');
+  }
+
   function syncByoStatus() {
     const st = U.$('ai-byo-status');
     if (!st) {
+      syncConnRow();
       return;
     }
     const txt = st.querySelector('.ai-byo-status-txt');
@@ -794,6 +818,8 @@ var MMGR = window.MMGR || {};
         txt.textContent = 'Disconnected';
       }
     }
+    // The banner exists for the missing-key state; a verified key retires it.
+    syncConnRow();
   }
 
   // STEP-4 + DIR-1: live chat is gated on the CANONICAL status, not on key
@@ -2893,6 +2919,30 @@ var MMGR = window.MMGR || {};
       pop.classList.toggle('is-hide', !open);
       gear.setAttribute('aria-expanded', open ? 'true' : 'false');
     });
+    // D-1 step 3: dismiss collapses the banner for this tier choice only.
+    const dismiss = U.$('ai-cfg-dismiss');
+    if (dismiss) {
+      dismiss.addEventListener('click', function () {
+        const row = U.$('ai-cfg-cloud');
+        if (row) {
+          row.dataset.dismissed = '1';
+        }
+        syncConnRow();
+        const q = U.$('ai-q');
+        if (q) {
+          q.focus({ preventScroll: true });
+        }
+      });
+    }
+    // Esc closes the key popover and hands focus back to its gear.
+    pop.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        pop.classList.add('is-hide');
+        gear.setAttribute('aria-expanded', 'false');
+        gear.focus();
+      }
+    });
   })();
 
   // INTEGRATED-STRUCTURE-API-WINDOW (plan §3): click (or Enter/Space on) the
@@ -3147,6 +3197,20 @@ var MMGR = window.MMGR || {};
       btn.setAttribute('data-float-toggle', id);
       btn.setAttribute('aria-label', 'Pop out into a floating window');
       btn.setAttribute('title', 'Pop out / dock (drag the header while floating)');
+      if (id === 'ai-win') {
+        // D-1 step 2: the assistant's layout switches live in the More menu,
+        // so Float is injected there as a menu row (icon + word) instead of
+        // as a bare header icon. Same [data-float-toggle] hook, same drag
+        // exclusion, same click handler.
+        btn.className = 'ai-more-item float-tgl';
+        btn.innerHTML =
+          '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-popout"></use></svg> Float';
+        const menu = el.querySelector('#ai-more-menu');
+        if (menu) {
+          menu.appendChild(btn);
+        }
+        return;
+      }
       btn.innerHTML =
         '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-popout"></use></svg>';
       // BROWSER-CAUGHT (wave-2 probe): on #drw the .dc close button is NOT a
@@ -3993,6 +4057,104 @@ var MMGR = window.MMGR || {};
       win.classList.toggle('hist-open');
     }
   }
+
+  // ---- More menu (D-1 step 2) --------------------------------------------
+  // Holds the read-only engine row, Pin and Float. Absolute inside the header
+  // (never fixed: .ai-main carries container-type). Esc closes it and returns
+  // focus to the button, arrows move between rows, outside click closes.
+  function aiMoreMenu() {
+    return U.$('ai-more-menu');
+  }
+  function aiMoreItems() {
+    const menu = aiMoreMenu();
+    if (!menu) {
+      return [];
+    }
+    return Array.prototype.filter.call(
+      menu.querySelectorAll('[role="menuitemcheckbox"],button'),
+      function (el) {
+        return el.offsetParent !== null;
+      }
+    );
+  }
+  function setAiMore(open) {
+    const menu = aiMoreMenu();
+    const btn = U.$('ai-more-btn');
+    if (!menu || !btn) {
+      return;
+    }
+    menu.classList.toggle('is-hide', !open);
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) {
+      const items = aiMoreItems();
+      if (items.length) {
+        items[0].focus();
+      }
+    }
+  }
+  function closeAiMore(refocus) {
+    const menu = aiMoreMenu();
+    if (!menu || menu.classList.contains('is-hide')) {
+      return false;
+    }
+    setAiMore(false);
+    if (refocus) {
+      const btn = U.$('ai-more-btn');
+      if (btn) {
+        btn.focus();
+      }
+    }
+    return true;
+  }
+  function toggleAiMore() {
+    const menu = aiMoreMenu();
+    if (!menu) {
+      return;
+    }
+    const willOpen = menu.classList.contains('is-hide');
+    setAiMore(willOpen);
+    if (!willOpen) {
+      closeAiMore(true);
+    }
+  }
+  (function () {
+    const menu = aiMoreMenu();
+    if (!menu) {
+      return;
+    }
+    menu.addEventListener('keydown', function (e) {
+      const items = aiMoreItems();
+      if (!items.length) {
+        return;
+      }
+      const at = items.indexOf(document.activeElement);
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        items[(at + 1) % items.length].focus();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        items[(at - 1 + items.length) % items.length].focus();
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        items[0].focus();
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        items[items.length - 1].focus();
+      }
+    });
+    // Outside click closes. Capture phase so a control's own handler still
+    // runs (the menu row it belongs to is inside the wrapper).
+    document.addEventListener(
+      'click',
+      function (e) {
+        const wrap = e.target.closest && e.target.closest('.ai-more-wrap');
+        if (!wrap) {
+          closeAiMore(false);
+        }
+      },
+      true
+    );
+  })();
   function renderQuickPresets() {
     const box = U.$('ai-quick-presets');
     if (!box || box.dataset.filled) {
@@ -4105,6 +4267,9 @@ var MMGR = window.MMGR || {};
       return;
     }
     btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    // role=menuitemcheckbox announces aria-checked, aria-pressed keeps the
+    // existing contract (and the harness) intact. Both track the same state.
+    btn.setAttribute('aria-checked', on ? 'true' : 'false');
     const label = on ? 'Unpin the assistant' : 'Keep the assistant open across pages';
     btn.title = label;
     btn.setAttribute('aria-label', label);
@@ -4162,6 +4327,12 @@ var MMGR = window.MMGR || {};
       }
       const win = U.$('ai-win');
       if (!win || !win.classList.contains('open')) {
+        return;
+      }
+      // The More menu is the innermost layer: Esc closes it first and hands
+      // focus back to its button, before the sheet/overlay/history handling.
+      if (closeAiMore(true)) {
+        e.preventDefault();
         return;
       }
       if (win.classList.contains('hist-open')) {
@@ -4305,6 +4476,9 @@ var MMGR = window.MMGR || {};
     toggleMax: toggleMax,
     togglePin: togglePin,
     toggleHist: toggleHist,
+    // D-1 step 2: the header's More menu (engine row, Pin, Float)
+    toggleMore: toggleAiMore,
+    closeMore: closeAiMore,
     newChat: newChat,
     clearAllChats: clearAllChats,
     openChat: openChat,

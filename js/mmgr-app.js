@@ -4755,6 +4755,9 @@ window.MMGR = MMGR;
     aiMaxToggle: () => window.MMGR.AiWin.toggleMax(),
     aiPinToggle: () => window.MMGR.AiWin.togglePin(),
     aiHistToggle: () => window.MMGR.AiWin.toggleHist(),
+    // D-1 step 2: the header More menu only paints (engine row, Pin, Float),
+    // so it is read-only safe exactly like aiMaxToggle and aiHistToggle.
+    aiMoreToggle: () => window.MMGR.AiWin.toggleMore(),
     aiNewChat: () => window.MMGR.AiWin.newChat(),
     aiClearAllChats: () => window.MMGR.AiWin.clearAllChats(),
     aiOpenChat: el => window.MMGR.AiWin.openChat(el.getAttribute('data-id')),
@@ -5685,6 +5688,7 @@ window.MMGR = MMGR;
     // aiPinToggle writes s.ui.aiPinned, so it stays blocked in view-only.
     aiMaxToggle: 1,
     aiHistToggle: 1,
+    aiMoreToggle: 1,
     aiPreset: 1,
     aiAttachContext: 1,
     aiCopy: 1,

@@ -144,8 +144,11 @@ async function ev(expr) {
     // real on-screen state. tier is seeded 'local'.
     MMGR.AiWin.syncSettingsUI();
     return { rightExists: !!right,
+      // D-1 step 2: the engine pill moved into the More menu (still inside the
+      // right cluster) and the API pill became one dot next to the title, so
+      // the two assertions name their new homes instead of the old cluster.
       rightHasEngine: right && !!right.querySelector('#ai-engine-pill'),
-      rightHasApi: right && !!right.querySelector('#ai-api-pill'),
+      rightHasApi: !!document.querySelector('.ai-head #ai-api-pill'),
       composerHasTier: !!document.querySelector('.ai-composer-row #ai-tier'),
       labelGone: !hasLabel,
       connGoneWhenLocal: !connRow || connRow.classList.contains('is-hide'),

@@ -1460,38 +1460,44 @@
       <button type="button" class="ai-hist-clear" data-action="aiClearAllChats">Clear all</button>
     </aside>
     <div class="ai-main">
+    <!-- D-1 step 2 (UI-CI-DIRECTIVE section 5.2): ONE slim row, 56px at most.
+         Left: sparkle, title, one status dot. Right: five 32x32 icon buttons
+         (New, History, Maximise, More, Close). The two status pills became a
+         single dot, and the engine pill plus Pin and Float moved into the More
+         menu. Every id and data-action above is unchanged, so the existing
+         getElementById wiring and the action map still resolve them. -->
     <div class="mh ai-head">
       <span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI Assistant</span>
-      <!-- AI-WINDOW-POLISH: engine pills + tier select grouped into one
-           right-side cluster so the header reads as [title] [controls]. All
-           ids/actions unchanged , getElementById wiring is nesting-agnostic. -->
+      <!-- INTEGRATED-STRUCTURE-API-WINDOW plan §1/§3: backend health dot,
+           pings the same-origin Worker relay health route (GET /api/health)
+           when the window opens and reports checking / online / error /
+           offline. Wired in mmgr-ai.js checkApiHealth(); click to re-check.
+           The visible label is gone, the text still lands in
+           #ai-api-pill-label (visually hidden) and is mirrored to title and
+           aria-label, so the state is still announced and asserted.
+           NOTE: this is the BACKEND server health, not the user's AI key
+           connection , that lives in ai-byo-status below. -->
+      <button type="button" class="ai-api-dot" id="ai-api-pill" data-state="checking" title="Backend API connection, click to re-check" aria-label="Backend checking"><span class="ai-pill-dot"></span><span id="ai-api-pill-label" class="sr-only">Backend · checking</span></button>
       <div class="ai-head-right">
-        <!-- AI-1: the tier CHOICE moved into the composer as a compact badge
-             (same id + action, so syncSettingsUI/aiSetTier wiring is intact).
-             The header keeps the two status pills. -->
-        <span class="ai-pill" id="ai-engine-pill" data-tier="off"><span class="ai-pill-dot"></span><span id="ai-engine-pill-label">Engine</span></span>
-        <!-- INTEGRATED-STRUCTURE-API-WINDOW plan §1/§3: backend health badge
-             , pings the same-origin Worker relay health route
-             (GET /api/health) when the window opens and reports
-             checking / online / error / offline. Wired in
-             mmgr-ai.js checkApiHealth(); click to re-check.
-             NOTE: this is the BACKEND server health, not the user's
-             AI key connection , that lives in ai-byo-status below. -->
-        <span class="ai-pill ai-api-pill" id="ai-api-pill" data-state="checking" title="Backend API connection , click to re-check"><span class="ai-pill-dot"></span><span id="ai-api-pill-label">Backend · checking</span></span>
-      </div>
-      <div class="ai-head-actions">
-        <button class="ai-clear-btn" data-action="aiClear" title="Start a new conversation"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> New</button>
+        <button type="button" class="ai-icon-btn" data-action="aiClear" title="New chat" aria-label="New chat"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg></button>
         <!-- AI-1: on narrow windows the conversation column becomes a
              slide-over, so the header carries the list button. It hides
              itself whenever the column is inline (see css/mmgr.css). -->
-        <button class="ai-clear-btn ai-hist-btn" data-action="aiHistToggle" id="ai-hist-btn" title="Show chats" aria-label="Show chats"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-list"></use></svg></button>
-        <!-- AI-1: Maximise fills the workspace (history + thread), Pin keeps the
-             dock open across pages, Float is injected by setupFloatSurface.
-             All three are real buttons with aria-pressed so the state is
-             announced, not just painted. -->
-        <button class="ai-clear-btn ai-max-btn" data-action="aiMaxToggle" id="ai-max-btn" aria-pressed="false" title="Maximise the assistant" aria-label="Maximise the assistant"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-expand"></use></svg></button>
-        <button class="ai-clear-btn ai-pin-btn" data-action="aiPinToggle" id="ai-pin-btn" aria-pressed="false" title="Keep the assistant open across pages" aria-label="Keep the assistant open across pages"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-pin"></use></svg></button>
-        <button class="dc" data-action="closeAiWin" aria-label="Close AI Assistant" title="Close"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button>
+        <button type="button" class="ai-icon-btn ai-hist-btn" data-action="aiHistToggle" id="ai-hist-btn" title="Show chats" aria-label="Show chats"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-list"></use></svg></button>
+        <button type="button" class="ai-icon-btn ai-max-btn" data-action="aiMaxToggle" id="ai-max-btn" aria-pressed="false" title="Maximise the assistant" aria-label="Maximise the assistant"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-expand"></use></svg></button>
+        <!-- D-1: the More menu holds the read-only engine row and the two
+             layout switches. It is absolute (never fixed): .ai-main carries
+             container-type, which makes it the containing block for fixed
+             descendants (the D-3 bug class). -->
+        <div class="ai-more-wrap">
+          <button type="button" class="ai-icon-btn" id="ai-more-btn" data-action="aiMoreToggle" aria-haspopup="menu" aria-expanded="false" aria-controls="ai-more-menu" title="More options" aria-label="More options"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-more"></use></svg></button>
+          <div class="ai-more-menu is-hide" id="ai-more-menu" role="menu" aria-labelledby="ai-more-btn">
+            <span class="ai-more-engine" id="ai-engine-pill" data-tier="off" role="presentation"><span class="ai-pill-dot"></span><span id="ai-engine-pill-label">Engine</span></span>
+            <button type="button" class="ai-more-item" id="ai-pin-btn" data-action="aiPinToggle" role="menuitemcheckbox" aria-checked="false" aria-pressed="false" title="Keep the assistant open across pages" aria-label="Keep the assistant open across pages"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-pin"></use></svg> Pin</button>
+            <!-- Float is injected here by setupFloatSurface (js/mmgr-ai.js). -->
+          </div>
+        </div>
+        <button class="dc ai-icon-btn" data-action="closeAiWin" aria-label="Close AI Assistant" title="Close"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button>
       </div>
       <!-- AI-WINDOW-DOCKED-RESIZE: the resize affordance moves to the drawer's
            left edge (standard for docked side panels) - appended by JS with a
@@ -1516,16 +1522,23 @@
          ai-byo-pop), so the window header no longer carries a large key box.
          Same ids/classes for the QA wiring (ai-byo-status, ai-byo-provider,
          ai-byo-connect, ai-byo-clear, .ai-byo-sec) , all still in the DOM. -->
-    <div class="ai-conn-row" id="ai-cfg-cloud">
+    <!-- D-1 step 3: the connection row is a BANNER that only exists when it is
+         needed, which is Cloud chosen and no verified key yet. Visibility is
+         driven by syncSettingsUI/syncByoStatus through is-hide, the existing
+         mechanism, not a second one. Dismiss collapses it until the tier
+         changes again. -->
+    <div class="ai-conn-row ai-conn-banner" id="ai-cfg-cloud">
+      <span class="ai-conn-msg">Connect your API key to use Cloud</span>
       <span class="ai-byo-status" id="ai-byo-status" data-state="off"><span class="ai-byo-dot"></span><span class="ai-byo-status-txt">Disconnected</span></span>
-      <!-- Provider list must match MMGR.AiKey.PROVIDERS (js/mmgr-ai-key.js) , keep in sync -->
-      <select id="ai-byo-provider" title="AI provider for this session">
-        <option value="openai">OpenAI</option>
-        <option value="google-gemini">Google Gemini</option>
-        <option value="anthropic">Anthropic Claude</option>
-      </select>
       <button class="ai-byo-gear" id="ai-byo-gear" type="button" aria-expanded="false" aria-label="API key settings" title="API key settings , paste your key and Connect &amp; Test"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg></button>
+      <button class="ai-conn-dismiss" id="ai-cfg-dismiss" type="button" aria-label="Dismiss this notice" title="Dismiss"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button>
       <div class="ai-byo-pop is-hide" id="ai-byo-pop" role="group" aria-label="API key setup">
+        <!-- Provider list must match MMGR.AiKey.PROVIDERS (js/mmgr-ai-key.js) , keep in sync -->
+        <select id="ai-byo-provider" title="AI provider for this session">
+          <option value="openai">OpenAI</option>
+          <option value="google-gemini">Google Gemini</option>
+          <option value="anthropic">Anthropic Claude</option>
+        </select>
         <input type="text" id="ai-byo-key" class="ai-byo-key" placeholder="Paste your API key (session-only)" autocomplete="off" spellcheck="false" title="Session-only: your key stays in this browser, is never exported, and clears when you close the tab">
         <button class="btn btn-g btn-s" id="ai-byo-connect" title="Save this session key and verify it with a live provider check"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-link"></use></svg> Connect &amp; Test</button>
         <button class="btn btn-n btn-s" id="ai-byo-clear" title="Forget the key in this session"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Clear</button>

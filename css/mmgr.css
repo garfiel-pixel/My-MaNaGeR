@@ -9603,36 +9603,113 @@ body.drw-float-open::after {
   animation: none;
 }
 
-/* header: title + compact control cluster (tier select + engine/API pills) */
+/* Header (D-1 step 2, UI-CI-DIRECTIVE section 5.2): ONE row, 56px at most.
+   [sparkle + title] [status dot] ......... [New][History][Max][More][Close]
+   Five 32x32 icon buttons still fit at 360px, so the row never wraps. */
 .ai-head {
-  padding: 13px 18px;
+  padding: 8px 12px;
+  height: 56px;
+  min-height: 56px;
+  box-sizing: border-box;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 8px;
+  flex-wrap: nowrap;
   background: linear-gradient(180deg, rgba(245, 158, 11, 0.08), transparent);
 }
 .ai-head .mt {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.95rem;
+  gap: 7px;
+  font-size: 0.86rem;
   font-weight: 800;
   color: var(--gold-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 .ai-head .mt .ico {
-  font-size: 1rem;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
 }
-/* AI-WINDOW-POLISH: engine status + API badge + tier select grouped into one    right-aligned cluster - the header now reads [title] [controls] instead of
-   six loose items scattered across the bar. */
+/* Right cluster: the five icon buttons, right aligned, never wrapping. */
 .ai-head-right {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 4px;
   margin-left: auto;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+/* Every header control is the same 32x32 square, radius-control. */
+.ai-icon-btn {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--card);
+  color: var(--slate);
+  cursor: pointer;
+  transition: var(--tr-ui);
+}
+.ai-icon-btn .ico {
+  width: 16px;
+  height: 16px;
+}
+.ai-icon-btn:hover {
+  color: var(--gold-text);
+  border-color: var(--gold);
+}
+.ai-icon-btn:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 2px;
+}
+/* The backend health badge is one 10px dot (was a labelled pill). Click to
+   re-check, wired in mmgr-ai.js; the label text still lands in the hidden
+   #ai-api-pill-label span and is mirrored to title and aria-label. */
+.ai-api-dot {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  background: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.ai-api-dot .ai-pill-dot {
+  width: 10px;
+  height: 10px;
+}
+.ai-api-dot:hover .ai-pill-dot,
+.ai-api-dot:focus-visible .ai-pill-dot {
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--gold) 30%, transparent);
+}
+.ai-api-dot:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 2px;
+}
+.ai-api-dot[data-state='connected'] .ai-pill-dot {
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+}
+.ai-api-dot[data-state='error'] .ai-pill-dot {
+  background: var(--danger);
+  box-shadow: 0 0 6px var(--danger);
+}
+.ai-api-dot[data-state='checking'] .ai-pill-dot {
+  animation: aiTyping 1.2s ease-in-out infinite;
 }
 .ai-pill {
   display: inline-flex;
@@ -9642,7 +9719,7 @@ body.drw-float-open::after {
   font-weight: 600;
   color: var(--slate);
   border: 1px solid var(--border);
-  border-radius: 100px;
+  border-radius: var(--radius-control);
   padding: 2px 9px;
   background: var(--card);
   white-space: nowrap;
@@ -9700,14 +9777,84 @@ body.dark-mode .ai-api-pill[data-state='connected'] {
 body.dark-mode .ai-api-pill[data-state='error'] {
   background: rgba(239, 68, 68, 0.1);
 }
-.ai-head-actions {
+/* More menu (D-1 step 2): the engine row and the two layout switches live
+   here. ABSOLUTE, never fixed: .ai-main carries container-type (step 7), so
+   it becomes the containing block for fixed descendants (the D-3 bug class).
+   D-3's containment gate checks this menu open. */
+.ai-more-wrap {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+.ai-more-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  min-width: 208px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--card);
+  box-shadow: 0 18px 40px var(--lit-black-35);
+}
+.ai-more-engine {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  padding: 5px 8px 8px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--slate);
+  white-space: nowrap;
 }
-.ai-head-actions .dc {
-  font-size: 1.15rem;
-  padding: 6px;
+.ai-more-engine[data-tier='local'] .ai-pill-dot {
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+}
+.ai-more-engine[data-tier='cloud'] .ai-pill-dot {
+  background: var(--gold);
+  box-shadow: 0 0 6px var(--gold);
+}
+.ai-more-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.ai-more-item .ico {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+.ai-more-item:hover {
+  background: var(--tile-bg);
+  color: var(--gold-text);
+}
+.ai-more-item:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: -2px;
+}
+.ai-more-item[aria-pressed='true'] {
+  color: var(--gold-text);
+}
+.ai-more-item .ico use {
+  pointer-events: none;
 }
 /* MERGED-AI-CONTROL (audit 1.2): the tier selector promoted into the AI
    window header, styled to sit beside the engine pill without expanding the
@@ -9716,7 +9863,7 @@ body.dark-mode .ai-api-pill[data-state='error'] {
   border: 1px solid var(--border);
   background-color: var(--card);
   color: var(--text);
-  border-radius: 100px;
+  border-radius: var(--radius-control);
   padding: 2px 20px 2px 9px;
   font-size: 0.6rem;
   font-weight: 600;
@@ -9732,7 +9879,7 @@ body.dark-mode .ai-api-pill[data-state='error'] {
   background: none;
   border: 1px solid var(--border);
   color: var(--slate);
-  border-radius: 100px;
+  border-radius: var(--radius-control);
   padding: 4px 11px;
   font-size: 0.66rem;
   font-weight: 600;
@@ -9760,6 +9907,7 @@ body.dark-mode .ai-api-pill[data-state='error'] {
   min-width: 0;
   padding: 9px 14px;
   border: none;
+  border-radius: var(--radius-control);
   background: none;
   color: var(--slate);
   font-size: 0.72rem;
@@ -9770,7 +9918,7 @@ body.dark-mode .ai-api-pill[data-state='error'] {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border-radius: 100px;
+  border-radius: var(--radius-control);
   transition:
     color var(--tr),
     background var(--tr),
@@ -9928,7 +10076,7 @@ body.dark-mode .ai-seg-btn.is-on {
   font-weight: 600;
   font-family: inherit;
   padding: 2px 8px;
-  border-radius: 100px;
+  border-radius: var(--radius-control);
   cursor: pointer;
   transition:
     color var(--tr),
@@ -10034,7 +10182,7 @@ body.dark-mode .ai-seg-btn.is-on {
   border: 1px solid var(--border);
   background: var(--tile-bg);
   color: var(--text);
-  border-radius: 100px;
+  border-radius: var(--radius-control);
   padding: 5px 12px;
   font-size: 0.7rem;
   font-weight: 500;
@@ -10141,6 +10289,45 @@ body.dark-mode .ai-seg-btn.is-on {
   border-bottom: 1px solid var(--border);
   background: var(--tile-bg);
 }
+/* D-1 step 3: a one-line banner, only on screen when the Cloud tier still
+   needs a key. Gold text at banner weight, never a gold fill. */
+.ai-conn-banner {
+  padding: 8px 12px;
+  gap: 8px;
+  background: color-mix(in oklch, var(--gold) 6%, var(--tile-bg));
+}
+.ai-conn-msg {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.ai-conn-dismiss {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--slate);
+  cursor: pointer;
+}
+.ai-conn-dismiss .ico {
+  width: 13px;
+  height: 13px;
+}
+.ai-conn-dismiss:hover {
+  color: var(--danger);
+}
+.ai-conn-dismiss:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 1px;
+}
 .ai-byo-gear {
   flex-shrink: 0;
   display: inline-flex;
@@ -10148,7 +10335,7 @@ body.dark-mode .ai-seg-btn.is-on {
   justify-content: center;
   width: 26px;
   height: 26px;
-  border-radius: 100px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--border);
   background: var(--card);
   color: var(--slate);
@@ -10197,7 +10384,7 @@ body.dark-mode .ai-byo-pop {
   gap: 6px;
   font-size: 0.66rem;
   font-weight: 700;
-  border-radius: 100px;
+  border-radius: var(--radius-control);
   padding: 3px 10px;
   border: 1px solid var(--border);
   background: var(--tile-bg);
@@ -12514,7 +12701,7 @@ html.mmgr-tour-active .bcp-tour-nudge {
 .ai-send {
   flex-shrink: 0;
   border: none;
-  border-radius: 100px;
+  border-radius: var(--radius-control);
   padding: 12px 24px;
   background: linear-gradient(135deg, #f59e0b, #d97706);
   color: var(--lit-coal);
@@ -12669,7 +12856,7 @@ body.ai-overlay::after {
   border: 1px solid var(--border);
   background: var(--tile-bg);
   color: var(--gold-text);
-  border-radius: 100px;
+  border-radius: var(--radius-control);
   font-size: 0.68rem;
   font-weight: 700;
   padding: 4px 9px;
@@ -12853,7 +13040,7 @@ body.dark-mode .ai-hist-when {
   height: 34px;
   max-width: 128px;
   border: 1px solid var(--border);
-  border-radius: 100px;
+  border-radius: var(--radius-control);
   background: var(--tile-bg);
   color: var(--slate);
   font-size: 0.68rem;

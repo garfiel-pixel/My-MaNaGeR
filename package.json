@@ -44,7 +44,7 @@
     "verify:csp-eval": "node tools/verify-csp-unsafe-eval.cjs",
     "verify:exports": "node tools/verify-render-exports.cjs",
     "test": "node --test test/*.test.mjs",
-    "verify": "npm run verify:csp && npm run verify:inline && npm run verify:js && npm run verify:eol && npm run verify:sw && npm run verify:hidden && npm run verify:skills && npm run verify:exports && npm run verify:css && npm run verify:jic && npm run verify:ratebook && npm run verify:lump && npm run verify:reach && npm run verify:sweep13 && npm run verify:sw10 && npm run verify:gantt && npm run verify:a11y && npm run verify:eslint && npm run verify:prettier && npm run verify:marketing && npm run verify:observe && npm run verify:csp-eval && npm test && npm run verify:registry",
+    "verify": "npm run verify:csp && npm run verify:inline && npm run verify:js && npm run verify:eol && npm run verify:sw && npm run verify:hidden && npm run verify:skills && npm run verify:exports && npm run verify:css && npm run verify:jic && npm run verify:ratebook && npm run verify:lump && npm run verify:reach && npm run verify:sweep13 && npm run verify:sw10 && npm run verify:gantt && npm run verify:a11y && npm run verify:eslint && npm run verify:prettier && npm run verify:marketing && npm run verify:observe && npm run verify:csp-eval && npm test && npm run verify:sizes && npm run verify:registry",
     "qa:cloud": "node tools/qa-cloud-phase1.cjs",
     "qa:cloud-import": "node tools/qa-cloud-import.cjs",
     "qa:changelog-diffs": "node tools/qa-changelog-diffs.cjs",
@@ -70,6 +70,7 @@
     "deploy:stage": "node tools/deploy.cjs --stage-only",
     "verify:sweep13": "node tools/verify-sweep13.cjs",
     "verify:sw10": "node tools/verify-sw10.cjs",
-    "qa:code-names": "node tools/qa-code-names.cjs"
+    "qa:code-names": "node tools/qa-code-names.cjs",
+    "verify:sizes": "node tools/verify-sizes.cjs"
   }
 }

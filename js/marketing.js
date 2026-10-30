@@ -105,7 +105,11 @@
     year.textContent = String(new Date().getFullYear());
   }
 
-  /* ---- PERF-1 (REFINEMENT-DIRECTIVE-2026-10-24): the "Lighter pages" switch ----
+  /* ---- PERF-1 (REFINEMENT-DIRECTIVE-2026-10-24): the motion switch ----
+     U-10 (owner 2026-10-30): this control is now THE WCAG 2.2.2 mechanism,
+     not a nice-to-have. The globe's own Pause button was removed because a
+     control per widget is not what the criterion asks for - a page-wide one
+     is. The label says what it does in plain words. ----
      Performance Mode has to be reachable from any page, and the footer is the
      one band every marketing page shares. The switch is the same control the app
      offers (same storage key, same [data-action="tglPerfMode"], wired by
@@ -122,9 +126,9 @@
     box.innerHTML =
       '<label class="ft-perf-box">' +
       '<input type="checkbox" class="ft-perf-in" data-action="tglPerfMode" ' +
-      'aria-label="Lighter pages: turn off heavy visual effects">' +
+      'aria-label="Pause animations: stops the globe and other motion on this page">' +
       '<span class="ft-perf-track" aria-hidden="true"></span>' +
-      '<span class="ft-perf-text">Lighter pages</span>' +
+      '<span class="ft-perf-text">Pause animations</span>' +
       '</label>';
     foot.appendChild(box);
     try {
@@ -782,52 +786,217 @@
      a target on another page navigates, and the on-load hash handler
      flashes it on arrival. Menus open on hover/focus (CSS), close on Escape
      or focus-out, and every lookup is null-guarded , never throws. */
+  /* U-07 (2026-10-30): grouped, described, icon-tiled mega menu.
+     The old menu was 700x590 of bare labels in a <span> (so `columns: 3` never
+     applied) with no descriptions and no icons. Now each item carries the
+     group it belongs to, a one-line description and an existing sprite icon
+     (never an invented glyph, never an emoji). Order is the reading order the
+     owner sees on the page: plan, control, field, then platform. */
   var NAV_DD = {
-    /* OWNER 2026-08-17: hover dropdowns ONLY for small topics. The Field Guide
-       is a whole destination, not a menu , its nav link is a plain link now. */
     'index.html#features': {
-      items: [
-        { id: 'f-wbs', label: 'WBS + Gantt' },
-        { id: 'f-kanban', label: 'Kanban Board' },
-        { id: 'f-raci', label: 'RACI Matrix' },
-        { id: 'f-risk', label: 'Risk + Monte Carlo' },
-        { id: 'f-budget', label: 'Budget / EVM' },
-        { id: 'f-ai', label: 'Built-In AI' },
-        { id: 'f-voice', label: 'Voice to Notes & Claims' },
-        { id: 'f-weather', label: 'Weather-Aware' },
-        { id: 'f-offline', label: 'Offline-First' },
-        { id: 'f-health', label: 'Health & Portfolio' },
-        { id: 'f-meetings', label: 'Meetings & Decisions' },
-        { id: 'f-claims', label: 'Claims & Digests' },
-        { id: 'f-registers', label: 'Registers & Compliance' },
-        { id: 'f-gonogo', label: 'Bid Leveling & Go/No-Go' },
-        { id: 'f-lookahead', label: 'Lookahead & Field Metrics' }
+      groups: [
+        {
+          name: 'Plan and schedule',
+          items: [
+            {
+              id: 'f-wbs',
+              label: 'WBS + Gantt',
+              desc: 'Outline in, live schedule out',
+              icon: 'i-calendar'
+            },
+            {
+              id: 'f-kanban',
+              label: 'Kanban Board',
+              desc: 'Lead-time lanes for permits',
+              icon: 'i-clipboard'
+            },
+            {
+              id: 'f-raci',
+              label: 'RACI Matrix',
+              desc: 'Roles built live from your WBS',
+              icon: 'i-users'
+            },
+            {
+              id: 'f-lookahead',
+              label: 'Lookahead and Field Metrics',
+              desc: 'Two-week lookaheads and PPC',
+              icon: 'i-clock'
+            }
+          ]
+        },
+        {
+          name: 'Control and forecast',
+          items: [
+            {
+              id: 'f-budget',
+              label: 'Budget and EVM',
+              desc: 'S-curve, SPI, CPI, EAC, TCPI',
+              icon: 'i-dollar'
+            },
+            {
+              id: 'f-risk',
+              label: 'Risk and Monte Carlo',
+              desc: 'Monte Carlo on your finish date',
+              icon: 'i-dice'
+            },
+            {
+              id: 'f-health',
+              label: 'Health and Portfolio',
+              desc: 'One score across every project',
+              icon: 'i-activity'
+            },
+            {
+              id: 'f-gonogo',
+              label: 'Bid Leveling and Go/No-Go',
+              desc: 'Compare bids, decide by score',
+              icon: 'i-target'
+            }
+          ]
+        },
+        {
+          name: 'Field and records',
+          items: [
+            {
+              id: 'f-voice',
+              label: 'Voice to Notes and Claims',
+              desc: 'Dictate on site, even offline',
+              icon: 'i-mic'
+            },
+            {
+              id: 'f-weather',
+              label: 'Weather-Aware',
+              desc: 'Flags tasks the rain will hit',
+              icon: 'i-cloud-rain'
+            },
+            {
+              id: 'f-meetings',
+              label: 'Meetings and Decisions',
+              desc: 'Minutes, actions, decision log',
+              icon: 'i-list'
+            },
+            {
+              id: 'f-claims',
+              label: 'Claims and Digests',
+              desc: 'Evidence-backed claims, digests',
+              icon: 'i-receipt'
+            },
+            {
+              id: 'f-registers',
+              label: 'Registers and Compliance',
+              desc: 'RFIs, submittals, permits',
+              icon: 'i-folder'
+            }
+          ]
+        },
+        {
+          name: 'Platform',
+          platform: true,
+          items: [
+            {
+              id: 'f-ai',
+              label: 'Built-In AI',
+              desc: 'Ask your project questions',
+              icon: 'i-sparkle'
+            },
+            {
+              id: 'f-offline',
+              label: 'Offline-First',
+              desc: 'No signal, no account needed',
+              icon: 'i-download'
+            }
+          ]
+        }
       ],
       foot: { href: 'features.html', label: 'See every feature in detail' }
     },
     'about.html': {
-      items: [
-        { id: 'about-what', label: 'What it is' },
-        { id: 'about-why', label: 'Why it exists' },
-        { id: 'about-values', label: 'What matters to us' }
+      groups: [
+        {
+          name: 'About',
+          items: [
+            {
+              id: 'about-what',
+              label: 'What it is',
+              desc: 'One offline-first workspace',
+              icon: 'i-compass'
+            },
+            {
+              id: 'about-why',
+              label: 'Why it exists',
+              desc: 'Built from a real site',
+              icon: 'i-flag'
+            },
+            {
+              id: 'about-values',
+              label: 'What matters to us',
+              desc: 'Your data stays yours',
+              icon: 'i-lock'
+            }
+          ]
+        }
       ]
     },
     'contact.html': {
-      items: [
-        { id: 'ct-email', label: 'Email' },
-        { id: 'ct-phone', label: 'Phone' },
-        { id: 'ct-access', label: 'Project access' },
-        { id: 'ct-learn', label: 'Learn the app' },
-        { id: 'ct-feedback', label: 'Feedback' }
+      groups: [
+        {
+          name: 'Contact',
+          items: [
+            { id: 'ct-email', label: 'Email', desc: 'Write to us directly', icon: 'i-mail' },
+            { id: 'ct-phone', label: 'Phone', desc: 'Talk to a person', icon: 'i-phone' },
+            {
+              id: 'ct-access',
+              label: 'Project access',
+              desc: 'Bring your team on board',
+              icon: 'i-users'
+            },
+            {
+              id: 'ct-learn',
+              label: 'Learn the app',
+              desc: 'The field guide, start to finish',
+              icon: 'i-book'
+            },
+            {
+              id: 'ct-feedback',
+              label: 'Feedback',
+              desc: 'Tell us what to fix next',
+              icon: 'i-info'
+            }
+          ]
+        }
       ]
     },
     'reviews.html': {
-      items: [
-        { id: 'rv-leave', label: 'Leave a review' },
-        { id: 'rv-field', label: 'From the field' }
+      groups: [
+        {
+          name: 'Reviews',
+          items: [
+            {
+              id: 'rv-leave',
+              label: 'Leave a review',
+              desc: 'Tell others how it went',
+              icon: 'i-star'
+            },
+            {
+              id: 'rv-field',
+              label: 'From the field',
+              desc: 'What crews say after a job',
+              icon: 'i-users'
+            }
+          ]
+        }
       ]
     }
   };
+  /* Flatten once so the "does this target exist on this page" check stays
+     cheap and the menu builder has a single source of truth. */
+  var NAV_DD_ITEMS = {};
+  Object.keys(NAV_DD).forEach(function (k) {
+    (NAV_DD[k].groups || []).forEach(function (g) {
+      g.items.forEach(function (it) {
+        NAV_DD_ITEMS[it.id] = true;
+      });
+    });
+  });
 
   var ddFlashTimer = null;
   function ddFlash(id) {
@@ -905,37 +1074,69 @@
 
   function wireNavDropdowns() {
     var links = document.querySelectorAll('.site-nav a.nav-link');
-    var known = {};
-    Object.keys(NAV_DD).forEach(function (k) {
-      NAV_DD[k].items.forEach(function (it) {
-        known[it.id] = true;
-      });
-    });
-    if (links.length) {
-      Array.prototype.forEach.call(links, function (a) {
-        if (a.closest('.nav-dd')) {
-          return;
-        } // idempotent , never re-wrap
-        var cfg = NAV_DD[a.getAttribute('href')];
-        if (!cfg) {
-          return;
-        }
-        var wrap = document.createElement('span');
-        wrap.className =
-          'nav-dd' +
-          (cfg.items.length > 8 ? ' nav-dd-cols' : '') +
-          (cfg.items.length > 15 ? ' nav-dd-tall' : '');
-        var menu = document.createElement('span');
-        menu.className = 'nav-dd-menu';
-        menu.setAttribute('aria-label', String(a.textContent || '').trim() + ' sections');
-        var list = document.createElement('span');
-        list.className = 'nav-dd-list';
-        var page = (a.getAttribute('href') || '#').split('#')[0];
-        cfg.items.forEach(function (it) {
+    var known = NAV_DD_ITEMS;
+    if (!links.length) {
+      return;
+    }
+    /* U-07 timings (NN/g mega-menu study, Radix defaults): open after a short
+       stillness so a sweep across the nav does not fire every menu, close a
+       moment after the pointer leaves so the diagonal journey down into the
+       panel never dies in the gutter, and skip the open delay when the reader
+       moves between two triggers quickly. */
+    var OPEN_DELAY = 140;
+    var CLOSE_DELAY = 280;
+    var SKIP_DELAY = 300;
+    var lastCloseAt = 0;
+    var skipUntil = 0;
+
+    Array.prototype.forEach.call(links, function (a) {
+      if (a.closest('.nav-dd')) {
+        return;
+      } // idempotent , never re-wrap
+      var cfg = NAV_DD[a.getAttribute('href')];
+      if (!cfg || !cfg.groups) {
+        return;
+      }
+      var wrap = document.createElement('div');
+      wrap.className = 'nav-dd';
+      var menu = document.createElement('div');
+      menu.className = 'nav-dd-menu';
+      menu.setAttribute('aria-label', String(a.textContent || '').trim() + ' sections');
+      var page = (a.getAttribute('href') || '#').split('#')[0];
+      var itemCount = 0;
+      cfg.groups.forEach(function (g) {
+        var col = document.createElement('div');
+        col.className = 'nav-dd-col' + (g.platform ? ' is-platform' : '');
+        var head = document.createElement('h6');
+        head.className = 'nav-dd-head';
+        head.textContent = g.name;
+        col.appendChild(head);
+        g.items.forEach(function (it) {
+          itemCount++;
           var itA = document.createElement('a');
           itA.href = page + '#' + it.id;
           itA.className = 'nav-dd-item';
-          itA.textContent = it.label;
+          var ico = document.createElement('span');
+          ico.className = 'nav-dd-ico';
+          ico.setAttribute('aria-hidden', 'true');
+          var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          svg.setAttribute('class', 'ico');
+          svg.setAttribute('aria-hidden', 'true');
+          var use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+          use.setAttribute('href', 'css/mmgr-icons.svg#' + (it.icon || 'i-dot'));
+          svg.appendChild(use);
+          ico.appendChild(svg);
+          var txt = document.createElement('span');
+          txt.className = 'nav-dd-txt';
+          var b = document.createElement('b');
+          b.textContent = it.label;
+          var small = document.createElement('small');
+          small.className = 'nav-dd-desc';
+          small.textContent = it.desc || '';
+          txt.appendChild(b);
+          txt.appendChild(small);
+          itA.appendChild(ico);
+          itA.appendChild(txt);
           itA.addEventListener('click', function (ev) {
             closeDropdowns();
             if (document.getElementById(it.id)) {
@@ -948,86 +1149,128 @@
               }
             }
           });
-          list.appendChild(itA);
+          col.appendChild(itA);
         });
-        menu.appendChild(list);
-        if (cfg.foot) {
-          var footA = document.createElement('a');
-          footA.href = cfg.foot.href;
-          footA.className = 'nav-dd-foot';
-          footA.textContent = cfg.foot.label;
-          menu.appendChild(footA);
-        }
-        a.setAttribute('aria-haspopup', 'true');
-        a.setAttribute('aria-expanded', 'false');
-        // Swap the link for the wrapper FIRST (the link is still a child of
-        // its parent at that moment), then move the link + menu INTO the
-        // wrapper. The reverse order is a trap: wrap.appendChild(a) removes
-        // the link from its parent, so a later parent.replaceChild(wrap, a)
-        // throws "node to be replaced is not a child" , the link ends up in a
-        // detached wrapper and the loop aborts.
-        var parent = a.parentNode;
-        parent.replaceChild(wrap, a);
-        wrap.appendChild(a);
-        wrap.appendChild(menu);
-        placeNavMenu(wrap); // under its own trigger from the first paint
-        // Open state: mouseenter/focusin opens (page blurs behind); the scrim
-        // click, Escape, picking an item, or focus moving away closes it.
-        var open = false;
-        function sync() {
-          a.setAttribute('aria-expanded', open ? 'true' : 'false');
-        }
-        function openWrap() {
-          if (ddNow() < ddSuppressUntil) {
-            return;
-          } /* Escape just closed it */
-          closeDropdowns();
-          placeNavMenu(wrap); // layout can have changed since creation
-          wrap.classList.add('is-open');
-          open = true;
-          sync();
-        }
-        function closeWrap() {
-          wrap.classList.remove('is-open');
-          open = false;
-          sync();
-        }
-        wrap.addEventListener('mouseenter', openWrap);
-        wrap.addEventListener('mouseleave', closeWrap);
-        wrap.addEventListener('focusin', openWrap);
-        wrap.addEventListener('focusout', function (e) {
-          if (!wrap.contains(e.relatedTarget)) {
-            closeWrap();
-          }
-        });
+        menu.appendChild(col);
       });
-    }
-    window.addEventListener('resize', placeOpenNavMenus);
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') {
-        var trigger = null;
-        document.querySelectorAll('.nav-dd').forEach(function (w) {
-          var a = w.querySelector('a.nav-link');
-          if (a && a.getAttribute('aria-expanded') === 'true') {
-            trigger = a;
-          }
-        });
-        closeDropdowns();
-        if (trigger) {
-          ddSuppressUntil = ddNow() + 60;
-          trigger.focus(); /* focus returns to the trigger; it must not re-open */
+      wrap.classList.add(itemCount > 8 ? 'nav-dd-cols' : 'nav-dd-single');
+      if (cfg.foot) {
+        var footA = document.createElement('a');
+        footA.href = cfg.foot.href;
+        footA.className = 'nav-dd-foot';
+        footA.textContent = cfg.foot.label;
+        menu.appendChild(footA);
+      }
+      a.setAttribute('aria-haspopup', 'true');
+      a.setAttribute('aria-expanded', 'false');
+      // Swap the link for the wrapper FIRST (the link is still a child of its
+      // parent at that moment), then move the link + menu INTO the wrapper.
+      // The reverse order is a trap: wrap.appendChild(a) detaches the link,
+      // and a later parent.replaceChild(wrap, a) throws.
+      var parent = a.parentNode;
+      parent.replaceChild(wrap, a);
+      wrap.appendChild(a);
+      wrap.appendChild(menu);
+      placeNavMenu(wrap); // under its own trigger from the first paint
+
+      var openT = 0;
+      var closeT = 0;
+      var open = false;
+      function sync() {
+        a.setAttribute('aria-expanded', open ? 'true' : 'false');
+      }
+      function clearTimers() {
+        if (openT) {
+          clearTimeout(openT);
+          openT = 0;
+        }
+        if (closeT) {
+          clearTimeout(closeT);
+          closeT = 0;
         }
       }
+      function doOpen() {
+        if (ddNow() < ddSuppressUntil) {
+          return;
+        } /* Escape just closed it */
+        closeDropdowns();
+        placeNavMenu(wrap);
+        wrap.classList.add('is-open');
+        open = true;
+        sync();
+      }
+      function openWrap() {
+        clearTimers();
+        if (open) {
+          return;
+        }
+        var now = ddNow();
+        var wait = now < skipUntil && now - lastCloseAt < SKIP_DELAY ? 0 : OPEN_DELAY;
+        openT = setTimeout(doOpen, wait);
+      }
+      function closeWrap() {
+        clearTimers();
+        if (!open && !openT) {
+          return;
+        }
+        closeT = setTimeout(function () {
+          wrap.classList.remove('is-open');
+          open = false;
+          lastCloseAt = ddNow();
+          skipUntil = lastCloseAt + SKIP_DELAY;
+          sync();
+        }, CLOSE_DELAY);
+      }
+      wrap.addEventListener('mouseenter', openWrap);
+      wrap.addEventListener('mouseleave', closeWrap);
+      wrap.addEventListener('focusin', openWrap);
+      wrap.addEventListener('focusout', function (e) {
+        if (!wrap.contains(e.relatedTarget)) {
+          closeWrap();
+        }
+      });
+      /* Touch and keyboard: a click on the trigger opens immediately (there is
+         no hover to wait for) and a second click closes it. */
+      a.addEventListener('click', function (ev) {
+        if (!open) {
+          ev.preventDefault();
+          clearTimers();
+          doOpen();
+          return;
+        }
+        if (!document.getElementById(a.getAttribute('href').split('#')[1] || '')) {
+          return;
+        }
+      });
     });
-    // Cross-page deep link: an arriving hash that names a known section
-    // target scrolls to it and flashes on arrival (the dropdown item was
-    // the navigator). Runs even on pages without .site-nav (the field
-    // guide) so a dropdown click there lands with the same highlight.
+
+    window.addEventListener('resize', placeOpenNavMenus);
+
+    /* Escape: close every menu and return focus to the trigger it came from. */
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') {
+        return;
+      }
+      var trig = null;
+      document.querySelectorAll('.nav-dd').forEach(function (w) {
+        var l = w.querySelector('a.nav-link');
+        if (l && l.getAttribute('aria-expanded') === 'true') {
+          trig = l;
+        }
+      });
+      closeDropdowns();
+      if (trig) {
+        ddSuppressUntil = ddNow() + 60;
+        trig.focus();
+      }
+    });
+
+    /* On arrival from another page with #target, flash it once. */
     if (location.hash) {
-      var t = decodeURIComponent(location.hash.slice(1));
-      if (known[t] && document.getElementById(t)) {
+      var id = decodeURIComponent(location.hash.slice(1));
+      if (known[id] && document.getElementById(id)) {
         setTimeout(function () {
-          ddFlash(t);
+          ddFlash(id);
         }, 120);
       }
     }
@@ -1075,158 +1318,14 @@
     }
   }
 
-  /* ---- FEATURE BAR (OWNER 2026-08-17: "a flat horizontal bar where it just
-         slowly ticked to the side... you see the first 4 or 5 and then it
-         skips over to the next one, going around and around") ----
-     The .features row auto-ticks one card at a time, looping continuously.
-     The reader can steer it with the prev/next buttons but never has to.
-     Seamless loop: the first few cards are CLONED to the end of the track;
-     when the tick reaches the clone region it snaps back to the start with no
-     transition (identical pixels, invisible). Auto-tick pauses on
-     hover/focus/touch and while the tab is hidden; prefers-reduced-motion
-     disables it entirely (the bar stays manually scrollable). Never throws. */
-  var featTrack = document.querySelector('.features');
-  var featPrev = document.getElementById('feat-prev');
-  var featNext = document.getElementById('feat-next');
-  if (featTrack) {
-    (function () {
-      var GAP = 18,
-        TICK_MS = 3400;
-      var originals = Array.prototype.slice.call(featTrack.children);
-      if (originals.length < 2) {
-        return;
-      }
-      var rm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
-      var paused = !!(rm && rm.matches);
-      /* clone the first few cards for the seamless loop (aria-hidden copies) */
-      var CLONES = Math.min(5, originals.length);
-      var realScroll = 0;
-      originals.slice(0, CLONES).forEach(function (c) {
-        var cl = c.cloneNode(true);
-        cl.setAttribute('aria-hidden', 'true');
-        /* clones must not inherit the reveal-on-scroll state (they are the
-           seamless-loop copies , always fully visible) */
-        cl.classList.remove('rv', 'rv-in');
-        cl.style.removeProperty('--rv-i');
-        featTrack.appendChild(cl);
-      });
-      var all = Array.prototype.slice.call(featTrack.children);
-      realScroll = all.slice(0, originals.length).reduce(function (w, c) {
-        return w + c.getBoundingClientRect().width + GAP;
-      }, -GAP);
-      function stepW() {
-        return (all[0] ? all[0].getBoundingClientRect().width : 300) + GAP;
-      }
-      function tick() {
-        if (paused) {
-          return;
-        }
-        /* reached the clones: snap back to the start, invisible */
-        if (featTrack.scrollLeft >= realScroll - 4) {
-          featTrack.scrollLeft = 0;
-        }
-        try {
-          featTrack.scrollBy({ left: stepW(), behavior: rm && rm.matches ? 'auto' : 'smooth' });
-        } catch (e) {
-          featTrack.scrollLeft += stepW();
-        }
-      }
-      var timer = null,
-        resumeT = 0;
-      function play() {
-        if (paused || timer) {
-          return;
-        }
-        timer = setInterval(tick, TICK_MS);
-      }
-      function stop() {
-        if (timer) {
-          clearInterval(timer);
-          timer = null;
-        }
-        if (resumeT) {
-          clearTimeout(resumeT);
-          resumeT = 0;
-        }
-      }
-      function go(dir) {
-        var w = stepW();
-        var target = featTrack.scrollLeft + dir * w;
-        if (target >= realScroll) {
-          target = 0;
-        } /* wrap forward */
-        if (target < 0) {
-          target = realScroll - featTrack.clientWidth;
-        } /* wrap back */
-        try {
-          featTrack.scrollTo({ left: target, behavior: rm && rm.matches ? 'auto' : 'smooth' });
-        } catch (e) {
-          featTrack.scrollLeft = target;
-        }
-      }
-      if (featPrev) {
-        featPrev.addEventListener('click', function () {
-          go(-1);
-        });
-      }
-      if (featNext) {
-        featNext.addEventListener('click', function () {
-          go(1);
-        });
-      }
-      ['mouseenter', 'focusin', 'touchstart', 'pointerdown'].forEach(function (ev) {
-        featTrack.addEventListener(ev, stop, { passive: true });
-      });
-      featTrack.addEventListener('mouseleave', play);
-      /* Touch has no mouseleave, so the auto-tick used to die on the first
-         tap and never come back (owner: "they are not going to the side by
-         themselves"). Resume a few seconds after the finger lifts. */
-      ['touchend', 'touchcancel', 'pointerup'].forEach(function (ev) {
-        featTrack.addEventListener(
-          ev,
-          function () {
-            if (paused) {
-              return;
-            }
-            if (resumeT) {
-              clearTimeout(resumeT);
-            }
-            resumeT = setTimeout(play, 3200);
-          },
-          { passive: true }
-        );
-      });
-      document.addEventListener('visibilitychange', function () {
-        if (document.hidden) {
-          stop();
-        } else {
-          play();
-        }
-      });
-      /* Restart the auto-tick when the feature bar scrolls back into view
-         (owner: "when a user interacts and leaves for a while, the animation
-         doesn't restart"). IntersectionObserver watches the track element;
-         when it becomes visible again after being hidden, play() restarts. */
-      if (window.IntersectionObserver) {
-        var featIO = new IntersectionObserver(
-          function (entries) {
-            entries.forEach(function (entry) {
-              if (entry.isIntersecting) {
-                play();
-              } else {
-                stop();
-              }
-            });
-          },
-          { threshold: 0.1 }
-        );
-        featIO.observe(featTrack);
-      }
-      if (!paused) {
-        play();
-      }
-    })();
-  }
+  /* ---- FEATURE PANELS (U-12, 2026-10-30) ----
+     The auto-ticking carousel is GONE. It cloned five cards to fake a
+     seamless loop (duplicate ids on the page), hid three quarters of the
+     content behind a horizontal scroll, and needed a timer to keep moving -
+     which is precisely the auto-advancing content WCAG 2.2.2 exists to
+     prevent. The fifteen panels are a static bento grid now: everything is
+     visible at once, nothing moves on its own, and there is no JS to run.
+     Do not reintroduce a timer here; the grid replaced the mechanism. */
 
   /* ---- contact form (CONTACT 2026-09-14) ----
      contact.html form composes a ready-to-send email to the admin and

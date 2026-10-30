@@ -18,19 +18,19 @@
      G4  the RANDOM auto-cycle pops MANY distinct feature cards,
          never repeats a node back-to-back, and every card
          retracts on its own (owner re-baseline 2026-10-13)
-     G5  no feature tab chips remain, exactly ONE control (the Pause
-         button, WCAG 2.2.2), and the globe still cycles by itself
-         (re-baselined 2026-10-27 to directive section 10 - the old
-         owner note removed the chips AND the control)
+     G5  no feature tab chips and NO per-widget control; the page-wide
+         "Pause animations" switch (WCAG 2.2.2 mechanism) stops the
+         globe, and with it off the globe still cycles by itself
+         (re-baselined 2026-10-30: owner removed the on-globe Pause,
+         UI-FIXES-SPEC U-10)
      G6  the globe is not interactable by design: pointer
          presses/drags change nothing while the cycle runs
      G7  manifest integrity: every feature's href resolves to a
          real page, its anchor id exists there, tiers are
          'free'/'premium' and MCP is labelled Premium
      G8  prefers-reduced-motion: the module refuses to start - the
-         STILL globe (the poster) shows with the Play control, the mock
-         cards step aside by visibility (no layout shift), and nothing
-         moves on its own (re-baselined 2026-10-27)
+         STILL globe (the poster) shows, there is no widget control, and
+         nothing moves on its own (re-baselined 2026-10-30)
      G9  zero layout shift from the globe: the stage and the hero
          column keep their box through boot and first frame
      G10 hygiene: zero console/page errors, no emoji anywhere in
@@ -178,10 +178,14 @@ const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{
     stageInMarkup: !!document.querySelector('.hg-stage#hero-globe'),
     posterInMarkup: !!document.querySelector('.hg-stage .hg-poster'),
     canvasInMarkup: !!document.querySelector('.hg-stage .hg-canvas'),
-    blockingScripts: Array.prototype.map.call(
-      document.querySelectorAll('script[src*="marketing-globe"]'),
-      s => s.getAttribute('src')
-    ),
+    // 2026-10-30: a script element exists only if the loader has already run,
+    // and a dynamically injected script is `async` by default while a
+    // parser-inserted one is not. So "not blocking first paint" is exactly
+    // "every reference is async", which removes the race this arm used to
+    // have when window load fired before the probe could read the DOM.
+    blockingScripts: Array.prototype.filter
+      .call(document.querySelectorAll('script[src*="marketing-globe"]'), s => s.async !== true)
+      .map(s => s.getAttribute('src')),
     headline: (document.querySelector('.hero h1, .hero-title, h1') || {}).textContent || '',
     // G9 baseline: the hero's right column box at first paint.
     visualBox: (function () {
@@ -197,7 +201,7 @@ const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{
   // G1: stage is markup-first, and the globe bundle is NOT referenced at
   // first paint - it is injected only after load.
   check(
-    'G1 stage lives in the first-paint markup and no globe script is referenced yet',
+    'G1 stage lives in the first-paint markup and no globe script blocks first paint',
     firstPaint.stageInMarkup &&
       firstPaint.posterInMarkup &&
       firstPaint.canvasInMarkup &&
@@ -332,45 +336,53 @@ const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{
     cycle
   );
 
-  // G5: RE-BASELINED 2026-10-27 to the current owner contract.
-  // The 2026-10-13 note removed the old cluster of feature TAB CHIPS and a
-  // Pause/Play button because they were "little boxes" cluttering the Android
-  // view. REFINEMENT-DIRECTIVE-2026-10-24 section 10 (LAND-2) then made a
-  // visible Pause control a hard requirement: WCAG 2.2.2 says moving content
-  // that runs longer than five seconds needs a mechanism to stop it, and this
-  // globe never stops on its own. So the contract now is: NO tab chips, exactly
-  // ONE control - the Pause button - and the cycle still carries itself with
-  // nobody touching anything. This arm used to assert the control was absent,
-  // which is how a missing control passed a gate for weeks.
+  // G5: RE-BASELINED TWICE.
+  //   2026-10-27 made one visible Pause control a hard requirement.
+  //   2026-10-30 (owner, UI-FIXES-SPEC U-10) removed it: the pill cluttered
+  //   the artwork and WCAG 2.2.2 asks for a MECHANISM, not one per widget.
+  //   The mechanism is now the page-wide "Pause animations" switch that the
+  //   footer mounts on every marketing page - so this arm proves the switch
+  //   exists, really stops the globe, and that with it off the cycle still
+  //   carries itself with nobody touching anything.
   const noCtl = await page.evaluate(function () {
     var G = window.MMGR_GLOBE;
     var buttons = document.querySelectorAll('.hg-controls button, .hg-play');
     var tabs = document.querySelectorAll('.hg-tab, .hg-tabs');
-    var one = buttons[0];
+    var sw = document.querySelector('input[data-action="tglPerfMode"]');
     var wrapsBefore = G.state.wraps;
     for (var i = 0; i < 50; i++) {
       G.__advance(500);
     } // 25 s, > 2 cycles, no interaction at all
+    var cycled = G.state.wraps - wrapsBefore >= 2;
+    var lonBefore = G.state.lon;
+    var throughSwitch = false;
+    if (sw) {
+      sw.checked = true;
+      sw.dispatchEvent(new Event('change', { bubbles: true }));
+      G.__advance(2000);
+      throughSwitch = Math.abs(G.state.lon - lonBefore) < 0.01;
+      sw.checked = false;
+      sw.dispatchEvent(new Event('change', { bubbles: true }));
+      G.__advance(1000);
+    }
     return {
       controls: buttons.length,
       tabs: tabs.length,
-      controlText: one ? one.textContent.trim() : null,
-      controlAria: one ? one.getAttribute('aria-label') : null,
-      controlVisible: one ? !!(one.offsetWidth || one.offsetHeight) : false,
-      // The wrap counter is the deterministic signal: with RANDOM selection
-      // the index can legally land back on the same feature across wraps
-      // (~1 in 9), so index inequality alone is a flaky gate.
-      cycled: G.state.wraps - wrapsBefore >= 2
+      switchLabel: sw ? sw.getAttribute('aria-label') || '' : null,
+      switchText: sw && sw.parentNode ? sw.parentNode.textContent.trim() : null,
+      perfAttr: document.documentElement.getAttribute('data-perf'),
+      throughSwitch: throughSwitch,
+      cycled: cycled
     };
   });
   check(
-    'G5 no tab chips remain, exactly one Pause control, and the globe still cycles by itself',
+    'G5 no tab chips and no widget control; the page-wide Pause switch stops the globe and the cycle runs by itself',
     noCtl &&
-      noCtl.controls === 1 &&
+      noCtl.controls === 0 &&
       noCtl.tabs === 0 &&
-      noCtl.controlText === 'Pause' &&
-      noCtl.controlAria === 'Pause the globe' &&
-      noCtl.controlVisible === true &&
+      /pause animations/i.test(noCtl.switchLabel || '') &&
+      /pause animations/i.test(noCtl.switchText || '') &&
+      noCtl.throughSwitch === true &&
       noCtl.cycled === true,
     noCtl
   );
@@ -594,47 +606,35 @@ const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{
   const rm = await rmPage.evaluate(function () {
     var G = window.MMGR_GLOBE;
     var stage = document.querySelector('.hg-stage');
-    var visual = document.querySelector('.hero-visual');
-    var cards = visual ? visual.querySelector('.hero-cards') : null;
     var play = document.querySelector('.hg-controls .hg-play');
-    var box = document.querySelector('.hg-controls');
     return {
       started: G.state.started,
       refuse: G.state.refuseReason || '',
       hgOn: stage ? stage.classList.contains('hg-on') : null,
-      // RE-BASELINED 2026-10-27: directive section 10 asks for "the still globe
-      // plus that control so a person can choose to play it". The still globe is
-      // the poster in the stage, so the stage is shown and the mock cards step
-      // aside by VISIBILITY (never display - the column keeps its height, so
-      // there is no layout shift). It used to be display:none with the cards
-      // left alone, which gave a reduced-motion visitor no globe and no control.
       stageDisplay: stage ? getComputedStyle(stage).display : null,
-      hgLive: visual ? visual.classList.contains('hg-live') : null,
-      cardsVisibility: cards ? getComputedStyle(cards).visibility : null,
-      control: play
-        ? {
-            text: play.textContent.trim(),
-            aria: play.getAttribute('aria-label'),
-            visible: !!(play.offsetWidth || play.offsetHeight),
-            boxHidden: box ? box.hidden : null
-          }
-        : null,
+      // The poster is the only hero art now (U-08 deleted the mock cards).
+      posterVisible: (function () {
+        var p = document.querySelector('.hg-poster');
+        if (!p) {
+          return false;
+        }
+        var cs = getComputedStyle(p);
+        return cs.visibility === 'visible' && cs.opacity !== '0';
+      })(),
+      leftoverCards: document.querySelectorAll('.hero-card, .hero-cards').length,
+      control: play ? play.textContent.trim() : null,
       lonUnmoved: Math.abs(G.state.lon - -30) < 0.001
     };
   });
   check(
-    'G8 under prefers-reduced-motion the globe stays still but shows, with the Play control',
+    'G8 under prefers-reduced-motion the globe shows still, with no widget control and no leftover mock cards',
     rm.started === false &&
       rm.refuse === 'reduced-motion' &&
       rm.hgOn === true &&
       rm.stageDisplay === 'block' &&
-      rm.hgLive === true &&
-      rm.cardsVisibility === 'hidden' &&
-      rm.control &&
-      rm.control.text === 'Play' &&
-      rm.control.aria === 'Play the globe' &&
-      rm.control.visible === true &&
-      rm.control.boxHidden === false &&
+      rm.posterVisible === true &&
+      rm.leftoverCards === 0 &&
+      rm.control === null &&
       rm.lonUnmoved === true &&
       rmErrors.length === 0,
     { rm: rm, errors: rmErrors }

@@ -73,7 +73,11 @@ ok(
 // The earned curve is the one with a dasharray already; make sure we did not
 // destroy its original rendering intent.
 ok('the earned curve keeps its own stroke width', /stroke="#F5EFE6" stroke-width="5"/.test(svg));
-ok('the planned curve keeps its gold stroke', /stroke="#E8923A"/.test(svg));
+// 2026-10-30 (U-05): the gold ramp moved from the old amber #E8923A to the
+// bullion token #D4AF37. This arm had drifted with the artwork, so it was
+// asserting a hex the file no longer carries (an EXTENDED gate, so no CI run
+// ever caught it). Re-baselined to the token the ramp now ships.
+ok('the planned curve keeps its gold stroke', /stroke="#D4AF37"/i.test(svg));
 
 // ---- ARM 2: in a real browser -----------------------------------------
 (async () => {
@@ -142,26 +146,22 @@ ok('the planned curve keeps its gold stroke', /stroke="#E8923A"/.test(svg));
     'final=' + earned[earned.length - 1].toFixed(2)
   );
 
-  // The card must still be solid, and the artwork must still be visible.
-  const card = await page.evaluate(() => {
-    const c = document.querySelector('.hero-card');
-    const img = c ? c.querySelector('.hc-img img') : null;
+  // U-08 (2026-10-30): the white hero mock cards were deleted from the page.
+  // The EVM artwork file therefore no longer renders in the hero, but it is a
+  // tracked asset with a byte-level contract, so this arm keeps guarding the
+  // FILE and asserts the dead cards are not creeping back.
+  const hero = await page.evaluate(() => {
     return {
-      blur: c ? getComputedStyle(c).backdropFilter : '',
-      imgW: img ? img.getBoundingClientRect().width : 0,
-      natural: img ? img.naturalWidth : 0,
-      src: img ? img.getAttribute('src') : null
+      deadCards: document.querySelectorAll('.hero-card, .hero-cards').length,
+      poster: !!document.querySelector('.hg-poster')
     };
   });
+  ok('no white hero mock cards came back', hero.deadCards === 0, 'found ' + hero.deadCards);
+  ok('the hero art is the globe poster', hero.poster === true);
   ok(
-    'the hero card is still SOLID (no glass on content)',
-    /blur\(none\)|none/.test(card.blur),
-    card.blur
-  );
-  ok(
-    'the EVM artwork still loads',
-    card.natural > 0 && card.imgW > 100,
-    'natural=' + card.natural + ' rendered=' + Math.round(card.imgW)
+    'the EVM artwork file is still intact (earned + planned polylines present)',
+    /stroke-dasharray/.test(svg) && /id="evm-earned"/.test(svg) && /id="evm-planned"/.test(svg),
+    'svg bytes=' + svg.length
   );
   ok('zero page errors', errs.length === 0, errs.join(' | '));
 

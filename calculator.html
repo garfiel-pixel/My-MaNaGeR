@@ -26,8 +26,9 @@
 <title>Build Cost Calculator | My MaNaGeR</title>
 <meta name="description" content="Estimate build costs: quantities, labor, materials, tax by country. Free, on-device, no account.">
 <meta name="robots" content="noindex">
-<link rel="icon" type="image/png" href="images/mpw-icon.png">
-<link rel="apple-touch-icon" href="images/mpw-icon.png">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/svg+xml" href="/images/mpw-favicon.svg">
+<link rel="apple-touch-icon" href="/images/mpw-apple-touch-180.png">
 <link rel="stylesheet" href="dist/mmgr.min.css?v=39">
 <script src="js/mmgr-theme.js" data-sync="1"></script>
 <script src="js/mmgr-perf-boot.js" data-sync="1"></script>
@@ -70,8 +71,8 @@
            from the calculator too. Same switch as the app, same storage key, one
            behaviour: js/mmgr-perf.js wires every [data-action="tglPerfMode"]
            checkbox by delegation, so no per-page handler is needed. -->
-      <label class="bcp-perf" title="Lighter pages: turn off heavy visual effects">
-        <input type="checkbox" id="perf-tgl" class="bcp-perf-in" data-action="tglPerfMode" aria-label="Lighter pages: turn off heavy visual effects">
+      <label class="bcp-perf" title="Pause animations: stops the globe and other motion on this page">
+        <input type="checkbox" id="perf-tgl" class="bcp-perf-in" data-action="tglPerfMode" aria-label="Pause animations: stops the globe and other motion on this page">
         <span class="bcp-perf-track" aria-hidden="true"></span>
         <span class="bcp-perf-text">Lighter</span>
       </label>

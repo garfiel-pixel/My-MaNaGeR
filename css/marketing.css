@@ -1040,28 +1040,36 @@ html body.dark-mode .btn-gold:hover {
    instead (the "it switches the tab" complaint). js/marketing.js
    placeNavMenu() writes left and top from the trigger's own rect, clamped to
    the viewport; the values below are the fallback before that runs. */
+/* U-07 (2026-10-30): grouped, described, icon-tiled mega menu.
+   The panel is one box of labelled columns. The old one was a <span> list
+   (so `columns: 3` never applied) that grew to 590px tall of bare labels. */
 .nav-dd-menu {
   position: fixed;
   top: calc(var(--header-h) + 8px);
   left: 0;
-  transform: translateY(-6px);
-  width: min(300px, calc(100vw - 32px));
+  transform: translateY(-8px) scale(0.985);
+  transform-origin: 50% 0;
+  width: min(980px, calc(100vw - 32px));
   z-index: 130;
-  padding: 20px 22px 12px;
-  border-radius: 18px;
-  background: var(--card);
-  border: 1px solid var(--gold-100);
+  padding: 10px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
   box-shadow:
-    0 20px 50px -12px rgba(15, 23, 42, 0.18),
-    0 0 0 1px rgba(var(--gold-rgb), 0.08);
+    0 24px 60px -16px rgba(15, 23, 42, 0.28),
+    0 2px 6px rgba(15, 23, 42, 0.06);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr) 1fr;
+  gap: 4px;
   opacity: 0;
   visibility: hidden;
   transition:
-    opacity var(--tr),
-    transform var(--tr),
-    visibility var(--tr);
+    opacity var(--tr-menu, 0.2s) ease,
+    transform var(--tr-menu, 0.2s) ease,
+    visibility 0s linear var(--tr-menu, 0.2s);
 }
-/* Invisible bridge: */
+/* Invisible bridge across the 8px gap, so the pointer never leaves the box
+   on the way down from the trigger. */
 .nav-dd-menu::before {
   content: '';
   position: absolute;
@@ -1071,62 +1079,97 @@ html body.dark-mode .btn-gold:hover {
   height: 12px;
 }
 .nav-dd-cols .nav-dd-menu {
-  width: min(700px, calc(100vw - 32px));
+  /* explicit: the four groups above already lay out 3 + platform */
+  grid-template-columns: repeat(3, 1fr) 1fr;
+}
+/* Small menus (About, Contact, Reviews) stay one column. */
+.nav-dd-single .nav-dd-menu {
+  width: min(340px, calc(100vw - 32px));
+  grid-template-columns: 1fr;
 }
 .nav-dd:hover .nav-dd-menu,
 .nav-dd.is-open .nav-dd-menu {
   opacity: 1;
   visibility: visible;
-  transform: translateY(0);
+  transform: none;
+  transition-delay: 0s;
 }
 /* Note: no :focus-within here - keyboard open is handled in JS (focusin ->
    .is-open), and leaving :focus-within as a CSS trigger would re-open the menu
    the moment Escape moves focus back to the trigger. */
-/* Nav dropdown scrim REMOVED (owner 2026-08-19): the full-viewport overlay
-   blurred the entire page behind the dropdown. Dropdowns now open as clean
-   popups without the page-wide dim. */
-/* The list is one multi-column text flow: features (15) fills 3x5, small
-   menus stay a single column. column-rule draws the LONG VERTICAL LINE
-   between each column pair - the "long line in between" the owner asked for. */
-.nav-dd-list {
-  max-width: 1180px;
-  margin: 0 auto;
-  columns: 1;
-  column-gap: 44px;
-  column-rule: 1px solid var(--border);
-}
-.nav-dd-cols .nav-dd-list {
-  columns: 3;
-}
-.nav-dd-tall .nav-dd-list {
-  columns: 4;
-}
-/* Free-flowing text rows: plain links that hover to the accent.
-   Gold tokens: --gold-500 primary, --gold-50 hover fill.
-   break-inside:avoid keeps a row from splitting across columns. */
-.nav-dd-item {
+.nav-dd-col {
   display: block;
-  break-inside: avoid;
-  padding: 7px 10px;
-  border-radius: 8px;
+  padding: 8px 6px;
+}
+.nav-dd-col.is-platform {
+  background: var(--gold-50);
+  border-radius: 12px;
+}
+.nav-dd-head {
+  margin: 4px 10px 8px;
+  font-weight: 700;
+  font-size: 0.68rem;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-700);
+}
+.nav-dd-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 7px 9px;
+  border-radius: 10px;
   color: var(--ink);
-  font-size: 0.86rem;
-  font-weight: 600;
-  line-height: 1.45;
   transition:
     color var(--tr),
     background var(--tr);
 }
-.nav-dd-item:hover {
-  color: var(--gold-700);
+.nav-dd-ico {
+  flex: 0 0 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
   background: var(--gold-50);
+  color: var(--gold-700);
+  border: 1px solid var(--gold-100);
+}
+.nav-dd-ico .ico {
+  width: 18px;
+  height: 18px;
+}
+.nav-dd-txt b {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 650;
+  line-height: 1.3;
+  color: var(--ink);
+}
+.nav-dd-desc {
+  display: block;
+  margin-top: 1px;
+  font-size: 0.74rem;
+  line-height: 1.3;
+  color: var(--text-secondary);
+}
+.nav-dd-item:hover,
+.nav-dd-item:focus-visible {
+  background: var(--gold-50);
+}
+.nav-dd-item:hover .nav-dd-ico {
+  background: var(--gold);
+  color: var(--on-gold);
+  border-color: var(--gold);
 }
 .nav-dd-item:focus-visible {
   outline: 2px solid var(--gold-deep);
   outline-offset: -1px;
-  border-radius: 8px;
 }
-/* Dark mode: ensure dropdown items are always readable against the panel background */
+body.dark-mode .nav-dd-menu {
+  background: #1f1a17;
+  border-color: rgba(255, 255, 255, 0.08);
+}
 body.dark-mode .nav-dd-item {
   color: var(--text-primary);
 }
@@ -1134,20 +1177,31 @@ body.dark-mode .nav-dd-item:hover {
   color: var(--gold-text);
   background: rgba(var(--gold-rgb), 0.12);
 }
-/* Foot = one long horizontal hairline, then the link text. */
+body.dark-mode .nav-dd-txt b {
+  color: var(--text-primary);
+}
+body.dark-mode .nav-dd-ico {
+  background: rgba(212, 175, 55, 0.14);
+  border-color: rgba(212, 175, 55, 0.3);
+  color: var(--gold-text);
+}
+body.dark-mode .nav-dd-col.is-platform {
+  background: rgba(212, 175, 55, 0.08);
+}
+/* Foot = one long hairline across the whole panel, then the link. */
 .nav-dd-foot {
+  grid-column: 1 / -1;
   display: block;
-  max-width: 1180px;
-  margin: 14px auto 0;
-  padding: 12px 10px 0;
-  border-top: 1px solid var(--gold-100);
+  margin: 4px 0 0;
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
   color: var(--text-secondary);
-  font-size: 0.78rem;
-  font-weight: 600;
+  font-size: 0.82rem;
+  font-weight: 650;
+  border-radius: 8px;
   transition:
     color var(--tr),
     background var(--tr);
-  border-radius: 8px;
 }
 .nav-dd-foot:hover {
   color: var(--gold-700);
@@ -1172,8 +1226,10 @@ body.dark-mode .nav-dd-item:hover {
 }
 @media (prefers-reduced-motion: reduce) {
   .nav-dd-menu {
-    transition: opacity 0.12s ease;
     transform: none;
+    transition:
+      opacity 0.12s linear,
+      visibility 0s;
   }
   .dd-flash {
     animation-duration: 1.4s;
@@ -1740,7 +1796,12 @@ body.dark-mode .nav-dd-item:hover {
   overflow: hidden;
   background: var(--header-navy); /* solid fallback while the photo loads */
   color: var(--on-navy);
-  padding: 96px 0 104px;
+  /* U-08 follow-up (2026-10-30): the mock cards used to make this column
+     ~600px tall, so the centred inner block sat high on the screen. With the
+     globe stage in the flow it is ~410px, and centring pushed the headline
+     down to y=275. Asymmetric padding puts the composition slightly above
+     centre - where the eye expects a hero - without shrinking the band. */
+  padding: 56px 0 120px;
 } /* hero photo layer - full-bleed, solid content (never glass) */
 .hero-photo {
   position: absolute;
@@ -1862,325 +1923,14 @@ body.dark-mode .nav-dd-item:hover {
   color: rgba(248, 250, 252, 0.6);
 }
 
-/* hero visual - solid mock of the app's project cards */
+/* Hero visual (U-08, 2026-10-30). The three white mock cards are gone. The
+   globe stage IS the hero art now, and it sits in the normal flow with its own
+   aspect ratio, so the poster is the first paint and there is nothing left to
+   hide once the canvas draws - which means no flash and no layout shift. */
 .hero-visual {
   position: relative;
   display: grid;
   gap: 14px;
-}
-.hero-card {
-  /* OWNER 2026-08-17: the home page was TOO GLASSY - the preview cards are
-     SOLID WHITE cards now (never translucent, never backdrop-filter). The
-     glass stays only on the functional layer (header/sheets). */
-  background: var(--card);
-  color: var(--text-primary);
-  /* OWNER 2026-09-14: border removed - the light hairline read as a box
-     around the imagery; shadow alone separates the cards now. */
-  border: none;
-  border-radius: var(--radius-md);
-  padding: 18px 20px;
-  box-shadow: 0 20px 44px -12px rgba(15, 23, 42, 0.35);
-  transition:
-    transform var(--tr-slow),
-    box-shadow var(--tr-slow);
-}
-.hero-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 26px 58px rgba(15, 23, 42, 0.5);
-}
-/* HERO IMAGES (owner 2026-08-17): */
-.hero-card .hc-img {
-  margin: -18px -20px 14px;
-  overflow: hidden;
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
-}
-.hero-card .hc-img img {
-  display: block;
-  width: 100%;
-  height: auto;
-  aspect-ratio: 900/491;
-  /* Capped so the three-card column stops dictating a 1485px-tall hero (owner
-     2026-10-07). Top-anchored crop keeps the chart's headline content. */
-  max-height: 190px;
-  object-fit: cover;
-  object-position: 50% 0;
-}
-.hero-card .hc-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-.hero-card .hc-top b {
-  font-size: 0.86rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.hero-card .hc-top b .ico {
-  color: var(--gold-deep);
-}
-.hero-card .hc-badge {
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--gold-deep);
-  background: rgba(var(--gold-rgb), 0.12);
-  padding: 4px 9px;
-  border-radius: 100px;
-  border: 1px solid rgba(var(--gold-rgb), 0.3);
-}
-.hero-card .hc-row {
-  display: grid;
-  gap: 8px;
-}
-.hc-bar {
-  height: 10px;
-  border-radius: 6px;
-  background: var(--border);
-  position: relative;
-  overflow: hidden;
-}
-.hc-bar i {
-  position: absolute;
-  inset: 0 auto 0 0;
-  border-radius: 6px;
-}
-.hc-bar.gold i {
-  background: linear-gradient(90deg, var(--gold), var(--gold-hover));
-  width: 68%;
-}
-.hc-bar.teal i {
-  background: linear-gradient(90deg, var(--gold-700), var(--gold-500));
-  width: 84%;
-}
-.hc-bar.navy i {
-  background: linear-gradient(90deg, var(--gold-deep), var(--header-navy));
-  width: 41%;
-}
-.hc-meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.68rem;
-  color: var(--text-secondary);
-  margin-top: 7px;
-}
-.hero-card.offset {
-  margin-left: auto;
-  width: 86%;
-}
-
-/* ---------- HERO PANEL HEADER + MOTION (owner 2026-10-05) ----------
-   The three preview cards read as application panels rather than loose
-   cards: a numbered panel header sits above the artwork, the bars explain
-   themselves on hover/focus, the CPI badge carries the gold glow, and the
-   assistant's steps pulse in sequence.
-   Cards stay SOLID (owner 2026-08-17 glass law): motion and depth only,
-   never translucency or backdrop-filter on content.
-   Accent is --gold, the live brand token used by every button and badge. */
-.hero-card .hc-panelhead {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: -4px 0 12px;
-  padding-bottom: 9px;
-  border-bottom: 1px solid var(--border);
-}
-.hero-card .hc-panelno {
-  /* Quieted (owner 2026-10-07): the filled number chip out-weighed the card's
-     own title and metadata. Same information, caption weight, no pill. */
-  font-size: 0.56rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  color: var(--text-secondary);
-  background: none;
-  border: none;
-  padding: 0;
-  line-height: 1.4;
-  font-variant-numeric: tabular-nums;
-}
-.hero-card .hc-paneltitle {
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--text-secondary);
-}
-/* Pull the artwork back up under the new header rule. */
-.hero-card .hc-panelhead + .hc-img {
-  margin-top: 0;
-}
-
-/* CPI badge glow: a soft gold ring, no colour change, so the value keeps
-   reading as data rather than as a button. */
-.hero-card .hc-badge-glow {
-  box-shadow:
-    0 0 0 1px rgba(var(--gold-rgb), 0.18),
-    0 0 14px rgba(var(--gold-rgb), 0.28);
-  animation: hc-glow 3.6s ease-in-out infinite;
-}
-@keyframes hc-glow {
-  0%,
-  100% {
-    box-shadow:
-      0 0 0 1px rgba(var(--gold-rgb), 0.18),
-      0 0 10px rgba(var(--gold-rgb), 0.22);
-  }
-  50% {
-    box-shadow:
-      0 0 0 1px rgba(var(--gold-rgb), 0.26),
-      0 0 18px rgba(var(--gold-rgb), 0.38);
-  }
-}
-
-/* Bar tooltip: pure CSS off data-tip, so it works with no JS and stays
-   correct if the page is cached. Hover AND focus, since the bar is
-   focusable - a mouse-only tooltip would be unreachable by keyboard. */
-.hc-bar[data-tip] {
-  cursor: help;
-}
-.hc-bar[data-tip]::after {
-  content: attr(data-tip);
-  position: absolute;
-  left: 0;
-  bottom: calc(100% + 9px);
-  z-index: 6;
-  width: max-content;
-  max-width: 260px;
-  padding: 7px 10px;
-  border-radius: 8px;
-  background: var(--header-navy);
-  color: var(--lit-white);
-  font-size: 0.66rem;
-  line-height: 1.45;
-  letter-spacing: 0;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.32);
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(4px);
-  transition:
-    opacity var(--tr),
-    transform var(--tr),
-    visibility var(--tr);
-  pointer-events: none;
-}
-.hc-bar[data-tip]:hover::after,
-.hc-bar[data-tip]:focus-visible::after {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-}
-/* The bar clips its own fill, so the tooltip needs an unclipped wrapper. */
-.hc-bar {
-  overflow: visible;
-}
-.hc-bar i {
-  overflow: hidden;
-}
-
-/* Assistant steps: four numbered nodes that pulse in sequence to show the
-   zero-key path. Numbered via CSS counters - no emoji, no glyphs. */
-.hero-card .hc-steps {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 8px;
-}
-.hero-card .hc-steps li {
-  counter-increment: hc-step;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.66rem;
-  color: var(--text-secondary);
-  line-height: 1.4;
-}
-.hero-card .hc-steps {
-  counter-reset: hc-step;
-}
-.hero-card .hc-stepdot {
-  position: relative;
-  width: 16px;
-  height: 16px;
-  flex: 0 0 16px;
-  border-radius: 50%;
-  background: rgba(var(--gold-rgb), 0.1);
-  border: 1px solid rgba(var(--gold-rgb), 0.34);
-  font-size: 0.56rem;
-  font-weight: 700;
-  color: var(--gold-deep);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.hero-card .hc-stepdot::before {
-  content: counter(hc-step);
-}
-.hero-card .hc-steps li:nth-child(1) .hc-stepdot {
-  animation: hc-pulse 2.8s ease-in-out infinite;
-}
-.hero-card .hc-steps li:nth-child(2) .hc-stepdot {
-  animation: hc-pulse 2.8s ease-in-out 0.35s infinite;
-}
-.hero-card .hc-steps li:nth-child(3) .hc-stepdot {
-  animation: hc-pulse 2.8s ease-in-out 0.7s infinite;
-}
-.hero-card .hc-steps li:nth-child(4) .hc-stepdot {
-  animation: hc-pulse 2.8s ease-in-out 1.05s infinite;
-}
-@keyframes hc-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(var(--gold-rgb), 0.34);
-    border-color: rgba(var(--gold-rgb), 0.34);
-  }
-  50% {
-    box-shadow: 0 0 0 5px rgba(var(--gold-rgb), 0);
-    border-color: rgba(var(--gold-rgb), 0.6);
-  }
-}
-
-/* Dark mode: the panel rule and the glow need re-tinting or they vanish
-   against a dark surface. Owner doctrine: remap BOTH surface and accent. */
-body.dark-mode .hero-card .hc-panelhead {
-  border-bottom-color: rgba(var(--gold-rgb), 0.24);
-}
-body.dark-mode .hero-card .hc-panelno {
-  color: rgba(248, 250, 252, 0.6);
-  background: none;
-}
-body.dark-mode .hero-card .hc-paneltitle {
-  color: var(--text-secondary);
-}
-body.dark-mode .hero-card .hc-badge-glow {
-  box-shadow:
-    0 0 0 1px rgba(var(--gold-rgb), 0.3),
-    0 0 14px rgba(var(--gold-rgb), 0.3);
-}
-body.dark-mode .hero-card .hc-stepdot {
-  color: var(--gold-text);
-  background: rgba(var(--gold-rgb), 0.16);
-}
-
-/* Motion is decoration: kill every one of these animations for anyone who
-   has asked for less motion, and keep every value readable without them. */
-@media (prefers-reduced-motion: reduce) {
-  .hero-card .hc-badge-glow,
-  .hero-card .hc-stepdot,
-  .hero-card .hc-steps li:nth-child(1) .hc-stepdot,
-  .hero-card .hc-steps li:nth-child(2) .hc-stepdot,
-  .hero-card .hc-steps li:nth-child(3) .hc-stepdot,
-  .hero-card .hc-steps li:nth-child(4) .hc-stepdot {
-    animation: none;
-  }
-  .hc-bar[data-tip]::after {
-    transition: none;
-  }
 }
 
 /* ---------- 7. Trusted-by / audience ---------- */
@@ -2224,22 +1974,107 @@ body.dark-mode .hero-card .hc-stepdot {
   display: block;
 }
 
-/* 8 */
+/* 8 - U-12 (2026-10-30): a bento grid, not a sliding row.
+   The auto-advancing carousel cloned five cards (duplicate ids), hid three
+   quarters of the content behind a scroll, and needed a timer to keep
+   moving - which is exactly what WCAG 2.2.2 exists to prevent. Fifteen
+   panels, all visible, no timer, no clones. The DOM order is the reading
+   order; the grid-area rules below decide the visual placement. */
 .features {
-  display: flex;
-  gap: 18px;
-  overflow-x: auto;
-  scroll-snap-type: x proximity;
-  padding-bottom: 10px;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: minmax(190px, auto);
+  gap: 16px;
+  overflow: visible;
 }
-.features::-webkit-scrollbar {
-  display: none;
+/* The map tiles the 4x6 grid exactly (24 cells, no holes):
+   r1 AI AI WBS Kanban | r2 AI AI Budget Budget | r3 Risk RACI Voice Voice
+   r4 Weather Offline Voice Voice | r5 Health Meetings Claims Claims
+   r6 Registers Bid Lookahead Lookahead */
+#f-ai {
+  grid-area: 1 / 1 / 3 / 3;
+}
+#f-wbs {
+  grid-area: 1 / 3 / 2 / 4;
+}
+#f-kanban {
+  grid-area: 1 / 4 / 2 / 5;
+}
+#f-budget {
+  grid-area: 2 / 3 / 3 / 5;
+}
+#f-risk {
+  grid-area: 3 / 1 / 4 / 2;
+}
+#f-raci {
+  grid-area: 3 / 2 / 4 / 3;
+}
+#f-voice {
+  grid-area: 3 / 3 / 5 / 5;
+}
+#f-weather {
+  grid-area: 4 / 1 / 5 / 2;
+}
+#f-offline {
+  grid-area: 4 / 2 / 5 / 3;
+}
+#f-health {
+  grid-area: 5 / 1 / 6 / 2;
+}
+#f-meetings {
+  grid-area: 5 / 2 / 6 / 3;
+}
+#f-claims {
+  grid-area: 5 / 3 / 6 / 5;
+}
+#f-registers {
+  grid-area: 6 / 1 / 7 / 2;
+}
+#f-gonogo {
+  grid-area: 6 / 2 / 7 / 3;
+}
+#f-lookahead {
+  grid-area: 6 / 3 / 7 / 5;
+}
+/* The two hero cards carry a bigger headline and a little more air. */
+#f-ai h3,
+#f-voice h3 {
+  font-size: 1.35rem;
+}
+/* Surprise pass (2026-10-30), beyond the U-12 spec: the two big panels are the
+   ONLY ones with a tinted surface, so the bento reads as "two things to notice,
+   thirteen to scan" instead of fifteen equal boxes. This is U-15's
+   one-featured-per-group rule applied to the grid. The tint is --gold-50
+   (cream), so ink text keeps its measured contrast; dark mode gets a 6% gold
+   wash rather than the light gradient. */
+#f-ai,
+#f-voice {
+  background: linear-gradient(180deg, var(--gold-50), #fff 62%);
+  border-color: rgba(var(--gold-rgb), 0.4);
+}
+#f-ai:hover,
+#f-voice:hover {
+  border-color: rgba(var(--gold-rgb), 0.75);
+}
+body.dark-mode #f-ai,
+body.dark-mode #f-voice {
+  background: linear-gradient(180deg, rgba(var(--gold-rgb), 0.1), var(--card) 70%);
+}
+@media (max-width: 1023px) {
+  .features {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: minmax(170px, auto);
+  }
+  .fcard {
+    grid-area: auto;
+  }
+}
+@media (max-width: 639px) {
+  .features {
+    grid-template-columns: 1fr;
+  }
 }
 .fcard {
-  flex: 0 0 min(300px, 78vw);
-  scroll-snap-align: start;
   background: var(--card);
   /* OWNER 2026-09-15: border toned down (was full-strength --border, read
      too loud when 15 cards sat in a row); identity now comes from the
@@ -2303,48 +2138,6 @@ body.dark-mode .hero-card .hc-stepdot {
   .fcard {
     border-color: var(--border);
   }
-}
-/* carousel controls (auto-tick pauses on hover/focus of the bar) */
-.feat-ctl {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 24px;
-  justify-content: flex-end;
-}
-.feat-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--gold-deep);
-  cursor: pointer;
-  transition:
-    background var(--tr),
-    border-color var(--tr),
-    color var(--tr),
-    transform var(--tr);
-}
-.feat-btn:hover {
-  background: var(--gold);
-  border-color: var(--gold);
-  color: var(--on-gold);
-  transform: translateY(-1px);
-}
-.feat-btn:focus-visible {
-  outline: 2px solid var(--gold-deep);
-  outline-offset: 2px;
-}
-.feat-btn:active {
-  transform: scale(0.95);
-}
-.feat-btn .ico {
-  width: 22px;
-  height: 22px;
 }
 .fcard:hover {
   transform: translateY(-4px);
@@ -2581,47 +2374,8 @@ body.dark-mode .hero-card .hc-stepdot {
 .pb-content {
   position: relative;
   z-index: 1;
-  max-width: 620px;
-}
-/* OWNER 2026-10-13 ("brand all of the images we have uploaded"): a discreet
-   house mark on every photo band. Sits above the overlay, top-right of the
-   photo, never inside the reading column. Decorative - the brand already
-   speaks in the header - so it is aria-hidden. Gold on a deep navy pill
-   clears AA against any photo behind it. */
-.pb-brand {
-  position: absolute;
-  top: 18px;
-  right: 22px;
-  z-index: 2;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 13px;
-  border-radius: var(--radius-sm);
-  background: rgba(8, 14, 28, 0.62);
-  border: 1px solid rgba(240, 195, 90, 0.4);
-  color: #f5f7fa;
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  pointer-events: none;
-}
-.pb-brand .ico {
-  width: 18px;
-  height: 18px;
-  color: var(--gold-text);
-}
-@media (max-width: 480px) {
-  .pb-brand {
-    top: 12px;
-    right: 12px;
-    padding: 5px 10px;
-    font-size: 0.72rem;
-  }
-  .pb-brand .ico {
-    width: 16px;
-    height: 16px;
-  }
+  /* U-13: no max-width here any more - the phase rail has to span the whole
+     container. .pb-lede keeps the 52ch reading measure. */
 }
 .pb-content .eyebrow {
   color: var(--accent-on-navy);
@@ -2641,6 +2395,87 @@ body.dark-mode .hero-card .hc-stepdot {
 .pb-content p:only-child {
   font-size: clamp(1.05rem, 1.8vw, 1.2rem);
   font-weight: 600;
+}
+.pb-lede {
+  max-width: 52ch;
+}
+/* U-13 (2026-10-30): "One site, every phase" proves its own promise with the
+   five phases of a project, each naming features that already exist on this
+   page. Gold rail above the numbers, square nodes (no pills - U-04), 7:1+ text
+   on the photo overlay. */
+.phase-rail {
+  list-style: none;
+  margin: 40px 0 36px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0;
+  position: relative;
+}
+.phase-rail::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 14px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(212, 175, 55, 0.8), rgba(212, 175, 55, 0.2));
+}
+.phase-rail li {
+  position: relative;
+  padding: 36px 16px 0 0;
+}
+.phase-rail li::before {
+  content: '';
+  position: absolute;
+  top: 9px;
+  left: 0;
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  background: var(--gold);
+  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.2);
+}
+.phase-rail b {
+  display: block;
+  font-weight: 700;
+  font-size: 0.72rem;
+  line-height: 1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.14em;
+  color: var(--gold-300);
+}
+.phase-rail h3 {
+  margin: 6px 0 4px;
+  font-size: 1.05rem;
+  color: #fff;
+}
+.phase-rail p {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.82);
+}
+@media (max-width: 767px) {
+  .phase-rail {
+    grid-template-columns: 1fr;
+    margin: 28px 0 26px;
+  }
+  .phase-rail::before {
+    top: 0;
+    bottom: 0;
+    left: 5px;
+    right: auto;
+    width: 1px;
+    height: auto;
+    background: linear-gradient(180deg, rgba(212, 175, 55, 0.8), rgba(212, 175, 55, 0.2));
+  }
+  .phase-rail li {
+    padding: 0 0 22px 28px;
+  }
+  .phase-rail li::before {
+    top: 4px;
+  }
 }
 .pb-cta {
   display: flex;
@@ -3367,12 +3202,6 @@ body.dark-mode .hero-card .hc-stepdot {
   .hero-inner {
     grid-template-columns: 1fr;
     gap: 44px;
-  }
-  /* HERO GLOBE (2026-10-12): phones never showed the mock cards, so the
-     stage - carrying its generated poster - takes the column from the FIRST
-     PAINT. Nothing is added to the flow later, so nothing shifts. */
-  .hero-cards {
-    display: none;
   }
   .hero-visual {
     display: block;
@@ -4649,20 +4478,13 @@ body.dark-mode .pricing-card .pc-list li {
   position: relative;
 }
 .hg-stage {
-  display: none;
-  position: absolute;
-  inset: 0;
+  /* U-08: in the flow from the first paint, never display:none. The frame's
+     aspect ratio gives the column its height, so the poster cannot pop in and
+     the page cannot shift when the canvas takes over. */
+  display: block;
+  position: relative;
   z-index: 4;
   overflow: hidden;
-}
-.hg-stage.hg-on {
-  display: block;
-}
-/* First frame drawn: the mock cards go away by VISIBILITY, never display,
-   so the column keeps its height and the page cannot shift. Set on
-   .hero-visual by js/marketing-globe.js once the canvas has painted. */
-.hero-visual.hg-live .hero-cards {
-  visibility: hidden;
 }
 .hg-frame {
   position: relative;
@@ -4718,11 +4540,16 @@ body.dark-mode .pricing-card .pc-list li {
   pointer-events: auto;
   width: min(248px, 46%);
   display: block;
-  background: var(--card);
-  color: var(--text-primary);
+  /* U-09: the pop-outs belong to the same gold-on-dark system as the rest of
+     the hero. They used to be white cards floating over a navy globe, which
+     read as a hole punched in the artwork. White on #1a1614 is 17.97:1,
+     --gold-300 on it 10.65:1. */
+  background: #1a1614;
+  color: #f5efe6;
+  border: 1px solid rgba(212, 175, 55, 0.45);
   border-radius: var(--radius-md);
   padding: 13px 15px;
-  box-shadow: 0 20px 44px -12px rgba(15, 23, 42, 0.45);
+  box-shadow: 0 20px 44px -12px rgba(0, 0, 0, 0.55);
   text-decoration: none;
   opacity: 0;
   transform: translateY(-50%) scale(0.86);
@@ -4750,8 +4577,9 @@ body.dark-mode .pricing-card .pc-list li {
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--on-gold);
-  background: var(--gold);
+  color: var(--gold-300);
+  background: rgba(212, 175, 55, 0.16);
+  border: 1px solid rgba(212, 175, 55, 0.4);
   border-radius: var(--radius-sm);
   padding: 2px 8px;
 }
@@ -4760,7 +4588,7 @@ body.dark-mode .pricing-card .pc-list li {
   margin-top: 6px;
   font-size: 0.82rem;
   line-height: 1.5;
-  color: var(--text-secondary);
+  color: rgba(245, 239, 230, 0.82);
 }
 .hg-card img {
   display: block;
@@ -4779,7 +4607,10 @@ body.dark-mode .pricing-card .pc-list li {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--gold-deep);
+  /* U-09: the pop-out is a dark card now (#1a1614), so the label uses the
+     light gold step. --gold-deep measured 2.82:1 on it; --gold-300 measures
+     10.65:1, and verify-gold enforces that. */
+  color: var(--gold-300);
 }
 .hg-card-foot .ico {
   width: 14px;
@@ -4790,6 +4621,8 @@ body.dark-mode .pricing-card .pc-list li {
   transform: translateY(-52%) scale(1.02);
 }
 .hg-controls {
+  /* U-10: kept as an empty host so old markup cannot break the layout; the
+     Pause button that used to live here was removed by owner decision. */
   position: absolute;
   top: 100%;
   left: 0;
@@ -4806,31 +4639,11 @@ body.dark-mode .pricing-card .pc-list li {
 .hg-controls[hidden] {
   display: none;
 }
-.hg-play {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font: inherit;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--on-navy);
-  background: var(--lit-white-08);
-  border: 1px solid var(--lit-white-22);
-  border-radius: var(--radius-sm);
-  padding: 7px 14px;
-  cursor: pointer;
-  transition: background var(--tr);
-}
-.hg-play:hover,
-.hg-play:focus-visible {
-  background: rgba(var(--gold-rgb), 0.28);
-}
-.hg-play .ico {
-  width: 13px;
-  height: 13px;
-}
+/* U-10 (owner 2026-10-30): there is no per-widget Pause any more. The
+   page-wide "Pause animations" switch in the footer is the WCAG 2.2.2
+   mechanism (it sets data-perf=on, which stops the globe). Do not re-add a
+   .hg-play control; removing every control would fail SC 2.2.2, one
+   page-wide control satisfies it. */
 .hg-tabs {
   display: flex;
   flex-wrap: wrap;

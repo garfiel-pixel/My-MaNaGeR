@@ -50,19 +50,21 @@ not new feature work.
 
 One order. Each row is a shippable phase with its own gate, so a session that
 stops mid-wave leaves the next one an exact position. **Position: Wave 1,
-phases 1.1 and 1.3 done; 1.2 (remaining landing UI) is next, then 1.4-1.6 (CSS).** UI is the owner's top priority (2026-10-30) and leads the wave; the
-wave's other purpose is to freeze the ground every later plan builds on (the
-tenant fence, then the stylesheet split).
+phases 1.1, 1.2 and 1.3 done; 1.4 (CSS coverage measurement) is next, then
+1.5-1.6 (dead rules, then the split).** UI is the owner's top priority
+(2026-10-30) and leads the wave; the wave's other purpose is to freeze the
+ground every later plan builds on (the tenant fence, then the stylesheet
+split).
 
 ### Wave 1 - ground and gates (in progress)
 
 | # | Phase | Status | Gate / evidence |
 |---|---|---|---|
 | 1.1 | **UI improvement pass**, landing first (gold ramp, one button language, no pills, header scroll state, dot-rail tone, card art/icons) | **DONE 2026-10-30** | `qa-landing-ui` **8/43 -> 23/43**; `qa-dot-rail` 15/15 with the raised rest-opacity threshold; `verify-gold` green; `npm run verify` green; sw v514 |
-| 1.2 | **UI backlog, landing** - the seven deferred items: U-02 icon pack + manifest + og, U-07 grouped dropdown, U-08 delete fallback hero cards, U-09 globe hover/spin fix, U-10 remove on-globe Pause (page-wide Performance Mode is the WCAG 2.2.2 mechanism), U-12 bento grid, U-13 phase rail | **NEXT** | `qa-landing-ui` to 43/43, then register it CI. Gates to re-baseline in the same commit: `qa-hero-globe` G5/G8, `qa-globe-spin`, `qa-hero-cards`, `qa-console-stress`. Owner decision recorded: Pause leaves the globe, Performance Mode stays |
+| 1.2 | **UI backlog, landing** - the seven deferred items: U-02 icon pack + manifest + og, U-07 grouped dropdown, U-08 delete fallback hero cards, U-09 globe hover/spin fix, U-10 remove on-globe Pause (page-wide Performance Mode is the WCAG 2.2.2 mechanism), U-12 bento grid, U-13 phase rail | **DONE 2026-10-30** | `qa-landing-ui` **23/43 -> 43/43**, now a CI step (`browser-app`). Re-baselined in the same commit: `qa-hero-globe` G5/G8 (no widget control; the footer switch stops the globe), `qa-globe-spin` (switch arm, reduced-motion arm), `qa-scurve` (dead hero-card arms replaced), `qa-hero-cards` **retired** (it tested cards that no longer exist). `verify-gold` green (one real regression caught: the dark pop-out label at 2.82:1). Surprise pass: the two bento hero panels carry the accent surface |
 | 1.3 | **F1 cross-tenant isolation** | **DONE 2026-10-30** | `qa-tenant-isolation` **19/19** in the `cloud-auth` job. Found and fixed a live existence oracle in `claim` |
-| 1.4 | **E6.1 CSS coverage measurement** - Playwright CSS coverage over `project.html`, `calculator.html`, `app.html`; record the dead-rule percentage, delete nothing yet | Queued | A number written into the directive, not a change |
-| 1.5 | **E6.2 dead-rule removal** (only if 1.4 shows >15% dead) | Queued | `verify-css-integrity` + `qa-health-sweep` + visual pass |
+| 1.4 | **E6.1 CSS coverage measurement** | **DONE 2026-10-30** | `tools/measure-css-coverage.cjs` (MANUAL, read-only): **816 / 2,572 class-id selectors in `css/mmgr.css` (31.7%)** and **152 / 526 in `css/marketing.css` (28.9%)** carry no evidence in the rendered DOM of five pages or in `js/`. Above the 15% trigger, so 1.5 is unlocked. DevTools `startRuleUsageTracking` was rejected as the metric: it reported 319 rules for a 3,139-block file, so its totals cannot be a denominator |
+| 1.5 | **E6.2 dead-rule removal** (unlocked: 31.7% / 28.9% measured) | **NEXT** | `node tools/measure-css-coverage.cjs --list` is the work list; delete in file-sized batches with `verify-css-integrity` (every source rule must reach `dist`) + `qa-health-sweep` + the visual gates after each batch |
 | 1.6 | **E6.3 CSS split** into `css/src/*` layers (tokens, shell, panels, tables, calculator, ai, print) bundled by `build.js`; the type/spacing/breakpoint tokens land here as the `tokens` layer | Queued | `verify-css-integrity` proves every source rule survives into `dist`; `verify-sizes`; one commit per layer |
 
 ### Wave 2 - feature plans (schema order is the contract)

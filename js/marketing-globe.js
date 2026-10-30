@@ -281,10 +281,6 @@
     tether = null,
     tetherLine = null,
     cardsBox = null,
-    controls = null,
-    playBtn = null,
-    playIcon = null,
-    playTxt = null,
     cardEls = [],
     tabEls = [];
 
@@ -316,16 +312,24 @@
     _cardTimer = 0,
     _open = -1;
 
-  function running() {
+  // U-09 (2026-10-30): two separate questions, which the old single
+  // `running()` answer conflated.
+  //   animating() - may this page draw motion at all?
+  //   holding()    - is the CARD CYCLE held by the pointer?
+  // The spin is no longer a casualty of a hover: it belongs to animating().
+  function animating() {
     return (
       state.started &&
       !state.paused &&
       !state.hidden &&
       !state.offscreen &&
       !state.dragging &&
-      !state.frozen &&
-      (!state.interacting || now() >= state.resumeAt)
+      !state.frozen
     );
+  }
+
+  function holding() {
+    return state.interacting && now() < state.resumeAt;
   }
 
   // ---------------------------------------------------------------
@@ -506,16 +510,19 @@
   }
 
   function step(dt) {
-    if (!running()) {
+    if (!animating()) {
       return;
     }
-    state.t += dt;
-    if (state.t >= CYCLE) {
-      state.t -= CYCLE;
-      state.wraps++;
-      state.index = state.next;
-      state.next = pickOther(state.index);
-      setCard(state.index, false);
+    // The pointer holds the CYCLE, never the turn (U-09).
+    if (!holding()) {
+      state.t += dt;
+      if (state.t >= CYCLE) {
+        state.t -= CYCLE;
+        state.wraps++;
+        state.index = state.next;
+        state.next = pickOther(state.index);
+        setCard(state.index, false);
+      }
     }
     var f = target();
     // LAND-2 (REFINEMENT-DIRECTIVE-2026-10-24): the globe turns CONTINUOUSLY.
@@ -746,8 +753,7 @@
     canvas = stage.querySelector('.hg-canvas');
     tether = stage.querySelector('.hg-tether');
     cardsBox = stage.querySelector('.hg-cards');
-    controls = stage.querySelector('.hg-controls');
-    if (!frame || !canvas || !cardsBox || !controls) {
+    if (!frame || !canvas || !cardsBox) {
       return false;
     }
     if (!canvas.getContext || !canvas.getContext('2d')) {
@@ -803,107 +809,27 @@
     });
 
     wireHost();
-    buildControls();
     return true;
   }
 
   // ---------------------------------------------------------------
-  // The Pause / Play control.
-  // WCAG 2.2.2: moving content that runs for more than five seconds needs a
-  // mechanism to pause it. The globe spins continuously, so this button is not
-  // optional decoration - it is the mechanism. It is created in build(), which
-  // runs BEFORE the refuse decision, because the directive asks for the still
-  // globe to keep its control under reduced motion so a person can choose to
-  // play it. It is hidden when the page has deliberately turned heavy motion
-  // off (Performance Mode, data saver) or when the canvas cannot run at all:
-  // there is nothing to play there, and a dead button is worse than none.
+  // WCAG 2.2.2 mechanism (owner decision 2026-10-30, supersedes 2026-10-27).
+  // There is NO per-widget Pause button any more. The page-wide "Pause
+  // animations" switch in the footer (marketing.js) is the mechanism: it sets
+  // data-perf=on, which stops this globe through the mmgr:perf event below.
+  // SC 2.2.2 asks for a mechanism, not for one per widget, so deleting this
+  // button does not weaken compliance - removing every control would.
   // ---------------------------------------------------------------
-  function playLabel() {
-    if (state.started && !state.paused) {
-      return { text: 'Pause', icon: 'i-pause', aria: 'Pause the globe' };
-    }
-    return { text: 'Play', icon: 'i-play', aria: 'Play the globe' };
-  }
-
-  function syncPlay() {
-    if (!playBtn) {
-      return;
-    }
-    var dead =
-      state.refuseReason === 'perf-mode' ||
-      state.refuseReason === 'save-data' ||
-      state.refuseReason === 'no-canvas' ||
-      state.refuseReason === 'error';
-    if (dead) {
-      if (controls) {
-        controls.hidden = true;
-      }
-      return;
-    }
-    if (controls) {
-      controls.hidden = false;
-    }
-    var want = playLabel();
-    if (playTxt) {
-      playTxt.textContent = want.text;
-    }
-    playBtn.setAttribute('aria-label', want.aria);
-    playBtn.setAttribute('title', want.aria);
-    if (playIcon) {
-      playIcon.setAttribute('data-icon', want.icon);
-      var use = playIcon.querySelector('use');
-      if (use) {
-        use.setAttribute('href', 'css/mmgr-icons.svg#' + want.icon);
-      }
-    }
-  }
-
-  function togglePlay() {
-    if (state.started && !state.paused) {
-      state.paused = true;
-      stopLoop();
-      render();
-      if (_open !== -1) {
-        positionCard();
-      }
-    } else {
-      state.paused = false;
-      if (!state.started) {
-        // Reduced motion left the globe still. A click is the person choosing
-        // motion, so this is the one path allowed to override that preference.
-        state.refuseReason = '';
-        start();
-      } else if (!_raf && !state.hidden && !state.frozen) {
-        _last = 0;
-        _raf = requestAnimationFrame(loop);
-      }
-    }
-    syncPlay();
-  }
-
-  function buildControls() {
-    if (!controls || playBtn) {
-      return;
-    }
-    playBtn = document.createElement('button');
-    playBtn.type = 'button';
-    playBtn.className = 'hg-play';
-    playIcon = svgIcon('i-pause');
-    playIcon.setAttribute('data-icon', 'i-pause');
-    playTxt = document.createElement('span');
-    playBtn.appendChild(playIcon);
-    playBtn.appendChild(playTxt);
-    playBtn.addEventListener('click', togglePlay);
-    _listeners.push(['click', playBtn, togglePlay]);
-    controls.appendChild(playBtn);
-  }
-
   function bump() {
     state.resumeAt = now() + RESUME_AFTER; // 4 s, then the cycle carries on
   }
   function wireHost() {
-    // Hover and focus-within pause the cycle; it resumes 4 s later unless the
-    // user pressed Pause.
+    // U-09: the hover area is the VISIBLE globe, not the whole column. The
+    // stage box is 486x1058 in a tall layout while the drawn frame is about
+    // 486x410, so listening on the stage made empty space below the globe
+    // "interacting". The frame is the thing a person points at.
+    var host = frame || stage;
+    // Hover and focus-within hold the CARD CYCLE for 4 s; the spin carries on.
     var enter = function () {
       state.interacting = true;
       bump();
@@ -912,14 +838,14 @@
       state.interacting = false;
       bump();
     };
-    stage.addEventListener('pointerenter', enter);
-    stage.addEventListener('pointerleave', leave);
-    stage.addEventListener('focusin', enter);
-    stage.addEventListener('focusout', leave);
-    _listeners.push(['pointerenter', stage, enter]);
-    _listeners.push(['pointerleave', stage, leave]);
-    _listeners.push(['focusin', stage, enter]);
-    _listeners.push(['focusout', stage, leave]);
+    host.addEventListener('pointerenter', enter);
+    host.addEventListener('pointerleave', leave);
+    host.addEventListener('focusin', enter);
+    host.addEventListener('focusout', leave);
+    _listeners.push(['pointerenter', host, enter]);
+    _listeners.push(['pointerleave', host, leave]);
+    _listeners.push(['focusin', host, enter]);
+    _listeners.push(['focusout', host, leave]);
 
     var onVis = function () {
       var wasHidden = state.hidden;
@@ -1035,21 +961,14 @@
       reason = shouldStart();
       if (reason) {
         state.refuseReason = reason;
-        // The control still lands, so a person on a reduced-motion machine can
-        // start the globe by choosing to (directive section 10). syncPlay hides
-        // it for the reasons where there is nothing to play.
-        syncPlay();
-        // Reduced motion is the one refusal that still shows the STILL globe:
-        // the directive asks for "the still globe plus that control so a person
-        // can choose to play it". PERF-1 says the same thing about Performance
-        // Mode: "the poster in the markup is the static first frame, so the
-        // hero keeps its artwork - only the animation stops". Both therefore
-        // show the stage (the poster, canvas opacity 0) and let the mock cards
-        // step aside the way they do once the canvas draws - by visibility, so
-        // the column keeps its height and the page cannot shift. The Pause
-        // control stays hidden for perf-mode (syncPlay above): there is no
-        // motion to pause, and the button would be dead. Every other reason
-        // leaves the cards exactly as they are.
+        // Reduced motion and Performance Mode keep showing the STILL globe:
+        // the poster in the markup is the static first frame, so the hero
+        // keeps its artwork and only the animation stops. Both show the stage
+        // (poster, canvas at opacity 0) and drop the owning column's hg-live
+        // flag, which by visibility alone keeps the column height stable and
+        // means the page cannot shift. The page-wide "Pause animations" switch
+        // is what turns Performance Mode on and off; there is no widget-level
+        // control any more (U-10).
         if ((reason === 'reduced-motion' || reason === 'perf-mode') && stage) {
           stage.classList.add('hg-on');
           var stillVisual = stage.closest('.hero-visual');
@@ -1060,7 +979,6 @@
         return;
       }
       start();
-      syncPlay();
     } catch (e) {
       // Any initialisation error leaves the cards and the static layout alone.
       state.refuseReason = 'error';
@@ -1119,21 +1037,22 @@
     }
     if (on) {
       state.refuseReason = 'perf-mode';
+      // paused, not merely un-scheduled: step() must refuse even if something
+      // else drives it (the QA seam does exactly that).
+      state.paused = true;
       stopLoop();
-      syncPlay();
       return;
     }
+    state.paused = false;
     if (!state.started) {
       state.refuseReason = '';
       start();
-      syncPlay();
       return;
     }
     if (!_raf && !state.hidden && !state.frozen) {
       _last = 0;
       _raf = requestAnimationFrame(loop);
     }
-    syncPlay();
   });
 
   if (document.readyState === 'loading') {

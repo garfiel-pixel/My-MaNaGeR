@@ -42,7 +42,7 @@
 | B2 | **D-2** dictation echo and leading `null` | **DONE 2026-10-29** | Section B2 result; `qa-ai-dictation` 14/14, `qa-ai.cjs`, `qa-ai-win` 22/22, `npm run verify` green |
 | B3 | **D-1** AI window, steps 1 to 7 | **DONE 2026-10-30** | `qa-ai-window-layout` 83/83, `qa-ai-win` 23/23, `qa-ai` PASS, `qa-fixed-containment` 10/10, axe, gold, `npm run verify` green |
 | B4 | **D-4** CI split into five jobs | **DONE 2026-10-30** | Six jobs green, slowest 7.6 min (baseline 24.4); `verify-ci-coverage` 12/12 |
-| E | Repo housekeeping E0 to E5 | **DONE 2026-10-30** | 706 -> 601 tracked files; `_archive` + 42 shots untracked, guards kept; 5 finished plans in `docs/history/` plus README index; `verify-sizes` 9/9. Run 596 all six jobs green |
+| E | Repo housekeeping E0 to E6 | **E0-E5 DONE, E6.1 DONE 2026-10-30** | 706 -> 601 tracked files; `_archive` + 42 shots untracked, guards kept; 5 finished plans in `docs/history/`; `verify-sizes` 9/9. E6.1 measured with `tools/measure-css-coverage.cjs`: 816/2,572 mmgr selectors (31.7%) and 152/526 marketing (28.9%) have no DOM or JS evidence, so E6.2 (deletion) and E6.3 (the split) are unlocked |
 | 1.1 | UI improvement pass (landing) | **DONE 2026-10-30** | `qa-landing-ui` 8/43 -> 23/43; gold ramp, buttons, pills, header, rail, cards; sw v514 |
 | 1.2 | UI backlog (U-02, U-07, U-08, U-09, U-10, U-12, U-13) | **NEXT** | `qa-landing-ui` to 43/43, then CI. Pause leaves the globe; Performance Mode is the 2.2.2 mechanism |
 | 1.3 | **F1** cross-tenant isolation | **DONE 2026-10-30** | `qa-tenant-isolation` 19/19 in `cloud-auth`; found and fixed a `claim` existence oracle |
@@ -52,6 +52,6 @@
 | C3 | AppFlowy project book | **Needs drafting pass** | Four phases; schema v27 |
 | C4 | Platform (workspace as shared workspace) | **QUEUED** | Its DoD; schema v28 |
 | C5 | Plane (expense tracking) | **QUEUED** | Its DoD; schema v29 |
-| F | Reliability evidence F1 to F5 | **QUEUED** after C2 | Cross-tenant harness first; no published numbers until measured |
+| F | Reliability evidence F1 to F5 | **F1 DONE 2026-10-30**; F2-F5 queued | `qa-tenant-isolation` 19/19 in `cloud-auth`, and it found a live existence oracle in `claim` (fixed). No published numbers until F2/F4 measure them |
 | G | Market proof G1 to G4 | **OWNER** | G1 rate-book provenance decision unblocks the code half; G4 positioning copy |
-| D | parked UI plans (post-launch refinement) | **QUEUED** | No current owner-provided spec |
+| D | parked UI plans (post-launch refinement) | **UNPARKED 2026-10-30** | UI is the owner's top priority; U-02/U-07/U-08/U-09/U-10/U-12/U-13 landed, `qa-landing-ui` 43/43 and now a CI gate |

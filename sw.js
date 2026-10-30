@@ -405,7 +405,7 @@
 // js/mmgr-perf.js, js/mmgr-glass.js, js/marketing.js, js/marketing-globe.js,
 // js/mmgr-combobox.js (new), dist/marketing-bundle.js. No inline script block
 // changed, so the CSP hashes are untouched.
-const CACHE = 'mmgr-shell-v514';
+const CACHE = 'mmgr-shell-v515';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated
@@ -1250,11 +1250,15 @@ const SHELL = [
   'dist/mmgr.min.css',
   'dist/marketing.min.css',
   'css/mmgr-icons.svg',
-  // Images
-  'icon.svg',
-  'primary-icon.png',
-  'high-contrast-icon.png',
-  'images/mpw-icon.png',
+  // Images (U-02, 2026-10-30: one icon pack, one coat of arms)
+  'favicon.ico',
+  'images/mpw-favicon.svg',
+  'images/mpw-icon-192.png',
+  'images/mpw-icon-512.png',
+  'images/mpw-icon-maskable-192.png',
+  'images/mpw-icon-maskable-512.png',
+  'images/mpw-apple-touch-180.png',
+  'images/og-image.png',
   // Data
   'projects-data.js',
   'demo-data.js',

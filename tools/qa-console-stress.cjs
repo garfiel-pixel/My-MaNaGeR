@@ -112,7 +112,7 @@ function check(label, ok, extra) {
   // download. A bare launch() asks for that missing browser and dies with
   // "Executable doesn't exist at .../chrome-headless-shell" (CI run
   // 40205884436). Every other Playwright harness in the workflow already
-  // pins the system Chrome this way (qa-hero-cards, qa-paddle-csp,
+  // pins the system Chrome this way (qa-hero-globe, qa-paddle-csp,
   // qa-spy-nav) or through chrome-launcher's executablePath.
   const browser = await chromium.launch({ channel: 'chrome' });
 

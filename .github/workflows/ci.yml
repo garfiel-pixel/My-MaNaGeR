@@ -1086,6 +1086,17 @@ jobs:
         id: qa-hero-globe
         run: node tools/qa-hero-globe.cjs
 
+      # LANDING UI GATE (owner 2026-10-30, UI-FIXES-SPEC U-02..U-14): the
+      # landing page is measured against the spec the owner signed off - one
+      # icon pack, one button system, no pills, grouped dropdown, no white
+      # fallback cards, a globe that keeps turning, the bento grid, the phase
+      # rail and the tone-adaptive dot rail. 43 checks, all of them measured in
+      # a real browser. Reuses the serve.cjs server started above.
+
+      - name: "T4: Landing UI spec (qa-landing-ui)"
+        id: qa-landing-ui
+        run: node tools/qa-landing-ui.cjs
+
       - name: "T4: Stop static QA server"
         if: always()
         run: pkill -f "node serve.cjs" || true

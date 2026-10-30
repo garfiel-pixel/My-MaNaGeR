@@ -10,16 +10,23 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="My MaNaGeR | Construction Project Management, Done Right">
 <meta property="og:description" content="Offline-first construction project management. Charter, WBS, Gantt, Kanban, budget, EVM, risks, claims, meetings. No account required.">
-<meta property="og:image" content="https://mymanagerworkspace.com/icon.svg">
+<meta property="og:image" content="https://mymanagerworkspace.com/images/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="My MaNaGeR - construction project workspace, gold monogram on a dark card">
 <meta property="og:url" content="https://mymanagerworkspace.com/">
-<meta name="twitter:card" content="summary">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="My MaNaGeR | Construction Project Management">
 <meta name="twitter:description" content="Offline-first construction project management. No account required.">
+<meta name="twitter:image" content="https://mymanagerworkspace.com/images/og-image.png">
 <link rel="canonical" href="https://mymanagerworkspace.com/">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"SoftwareApplication","name":"My MaNaGeR","operatingSystem":"Web Browser","applicationCategory":"BusinessApplication","description":"Offline-first construction project management. Charter, WBS, Gantt, Kanban, budget, EVM, risks, claims, meetings. No account required.","url":"https://mymanagerworkspace.com/","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
 </script>
-<link rel="icon" type="image/png" href="images/mpw-icon.png">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="/images/mpw-favicon.svg">
+<link rel="apple-touch-icon" href="/images/mpw-apple-touch-180.png">
 <link rel="stylesheet" href="dist/marketing.min.css">
 <script src="js/mmgr-perf-boot.js" data-sync="1"></script>
 <link rel="preload" href="images/hero-landing.webp" as="image" type="image/webp">
@@ -138,82 +145,34 @@
         </div>
       </div>
 
-      <!-- solid mock visual of the app's project cards (content layer).
-           HERO ART (owner 2026-09-14): all three cards now carry custom
-           SVG illustrations in the marketing navy/gold palette -
-           images/hero-schedule.svg (schedule), images/hero-evm-chart.svg
-           (EVM), images/hero-ai-roadmap.svg (AI roadmap). Photos retired:
-           the old webp photos are removed (owner: SVG art direction). -->
-      <!-- T10-A (owner 2026-10-10): decorative mock-ups. The cards carry
-           focusable bars for their hover tips, and a focusable element inside
-           aria-hidden is unreachable-but-tabbable; inert removes the whole
-           mock from the tab order and the accessibility tree. The globe stage
-           below must NOT sit inside the inert box (its cards and controls are
-           real, focusable links and buttons), so inert wraps only the three
-           mock cards. -->
+      <!-- HERO ART (owner 2026-09-14 -> 2026-10-30): the hero artwork is the
+           globe's own poster plus its generated feature cards. The three
+           static white mock panels and their SVG illustrations were removed
+           by U-08: they flashed before the canvas drew and read as white
+           boxes on a dark hero. images/hero-evm-chart.svg is still used by
+           tools/qa-scurve.cjs and stays on disk. -->
       <div class="hero-visual">
         <!-- HERO GLOBE (owner 2026-10-12). The stage lives in the markup from
              the FIRST PAINT: on phones it holds the generated poster, on wider
              screens it sits over this card column, so switching the poster for
              the live canvas never moves the page (CLS stays at zero). It lives
              INSIDE .hero-visual (its positioned parent) so the absolute stage
-             overlays the card column and never the headline, and so
-             stage.closest('.hero-visual') finds the column to mark hg-live.
-             Nothing here removes the cards - js/marketing-globe.js hides them
-             by visibility only after the canvas has drawn its first frame, and
-             it never starts at all under prefers-reduced-motion, save-data or
-             an initialisation error. The bundle itself loads after window
-             load, so the headline is still the LCP. -->
+             overlays the hero column and never the headline.
+             U-08 (2026-10-30): the three white mock cards that used to sit
+             under the globe are GONE. They flashed on first paint and read as
+             "white boxes". The poster inside the frame is now the first
+             paint, and under prefers-reduced-motion, Performance Mode,
+             save-data or an initialisation error the poster simply stays: the
+             stage is in the flow with its own aspect ratio, so nothing shifts.
+             The bundle loads after window load, so the headline is still the
+             LCP. -->
         <div class="hg-stage" id="hero-globe">
           <div class="hg-frame">
             <img class="hg-poster" src="images/hero-globe-poster.svg" alt="" width="900" height="760" fetchpriority="low" decoding="async" draggable="false">
             <canvas class="hg-canvas" aria-hidden="true"></canvas>
             <svg class="hg-tether" aria-hidden="true" focusable="false"></svg>
             <div class="hg-cards"></div>
-            <div class="hg-controls"></div>
           </div>
-        </div>
-        <div class="hero-cards" inert aria-hidden="true">
-        <div class="hero-card">
-          <div class="hc-panelhead"><span class="hc-panelno">01</span><span class="hc-paneltitle">Schedule, Gantt</span></div>
-          <div class="hc-img"><img src="images/hero-schedule.svg" alt="" loading="lazy" width="900" height="491" draggable="false"></div>
-          <div class="hc-top">
-            <b><svg class="ico"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> Riverside Residences</b>
-            <span class="hc-badge">Hybrid</span>
-          </div>
-          <div class="hc-row">
-            <div class="hc-bar gold" tabindex="0" role="img" aria-label="Schedule 68 percent complete, on track. Baseline finish 12 September, forecast finish 19 September." data-tip="Baseline finish 12 Sep &#183; forecast finish 19 Sep &#183; 7 days of float left"><i></i></div>
-            <div class="hc-meta"><span>Schedule, 68%</span><span>On track</span></div>
-          </div>
-        </div>
-        <div class="hero-card offset">
-          <div class="hc-panelhead"><span class="hc-panelno">02</span><span class="hc-paneltitle">Budget, EVM</span></div>
-          <div class="hc-img"><img src="images/hero-evm-chart.svg" alt="" loading="lazy" width="900" height="491" draggable="false"></div>
-          <div class="hc-top">
-            <b><svg class="ico"><use href="css/mmgr-icons.svg#i-dollar"></use></svg> Budget, EVM</b>
-            <span class="hc-badge hc-badge-glow">CPI 1.04</span>
-          </div>
-          <div class="hc-row">
-            <div class="hc-bar teal" tabindex="0" role="img" aria-label="Earned value, planned against actual. Cost performance index 1.04, under budget." data-tip="Planned value $412k &#183; earned value $428k &#183; CPI 1.04 means $1.04 of work for every $1 spent"><i></i></div>
-            <div class="hc-meta"><span>Planned vs actual</span><span>Under budget</span></div>
-          </div>
-        </div>
-        <div class="hero-card">
-          <div class="hc-panelhead"><span class="hc-panelno">03</span><span class="hc-paneltitle">My MaNaGeR AI</span></div>
-          <div class="hc-img"><img src="images/hero-ai-roadmap.svg" alt="" loading="lazy" width="900" height="491" draggable="false"></div>
-          <div class="hc-top">
-            <b><svg class="ico"><use href="css/mmgr-icons.svg#i-cpu"></use></svg> My MaNaGeR AI</b>
-            <span class="hc-badge">Local, zero key</span>
-          </div>
-          <div class="hc-row">
-            <ol class="hc-steps" aria-label="How the assistant reads your project">
-              <li><span class="hc-stepdot"></span>Point at a project</li>
-              <li><span class="hc-stepdot"></span>Ask in plain words</li>
-              <li><span class="hc-stepdot"></span>Read your real numbers</li>
-              <li><span class="hc-stepdot"></span>Get a written answer</li>
-            </ol>
-          </div>
-        </div>
         </div>
       </div>
     </div>
@@ -258,107 +217,99 @@
       <div class="section-head">
         <h2>Everything a real project needs</h2>
         <!-- Phase 2 copy: features intro. -->
-        <p>Eighteen panels, wired together. Enter a number once and it shows up everywhere it matters. No re-entry, no drift.</p>
+        <p>Fifteen panels, wired together. Enter a number once and it shows up everywhere it matters. No re-entry, no drift.</p>
       </div>
-      <div class="features" tabindex="0" role="group" aria-label="Feature panels">
-        <article class="fcard" id="f-wbs">
-          <span class="fc-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18M3 12h12M3 19h6" /></svg></span>
-          <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg></div>
-          <h3>WBS + Gantt</h3>
-          <p>Paste a plain-text outline and a live schedule builds itself. Dates cascade from predecessors, the critical path lights up in gold, and near-deadline tasks pulse amber.</p>
-        </article>
-        <article class="fcard" id="f-kanban">
-          <span class="fc-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="5" height="14" rx="1"/><rect x="10" y="4" width="5" height="9" rx="1"/><rect x="17" y="4" width="4" height="12" rx="1"/></svg></span>
-          <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg></div>
-          <h3>Kanban Board</h3>
-          <p>Move cards To Do → In Progress → Done, with a dedicated lead-time lane for permits and procurement, plus sprint tools when you're running Agile.</p>
-        </article>
-        <article class="fcard" id="f-raci">
-          <span class="fc-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="3"/><circle cx="17" cy="8" r="3"/><circle cx="8" cy="17" r="3"/><circle cx="17" cy="17" r="3"/></svg></span>
-          <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg></div>
-          <h3>RACI Matrix</h3>
-          <p>Built live from your WBS and people lists. Click any cell to cycle R → A → C → I. No re-entry, no stale matrix.</p>
-        </article>
-        <article class="fcard" id="f-risk">
-          <span class="fc-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3L22 20H2L12 3Z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".6"/></svg></span>
-          <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dice"></use></svg></div>
-          <h3>Risk + Monte Carlo</h3>
-          <p>Log risks and issues, then run 1,000-trial simulations for real odds on your finish date. P50 and hit probability included.</p>
-        </article>
-        <article class="fcard" id="f-budget">
-          <span class="fc-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M7 15l4-5 3 3 5-7"/></svg></span>
-          <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dollar"></use></svg></div>
-          <h3>Budget / EVM</h3>
-          <p>Budget lines and a spend log roll straight into an S-curve and earned-value metrics: SPI, CPI, EAC, TCPI, computed, not guessed.</p>
-        </article>
-        <article class="fcard" id="f-ai">
+      <div class="features" role="list" aria-label="Feature panels">
+        <article class="fcard" role="listitem" id="f-ai">
           <span class="fc-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/></svg></span>
           <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg></div>
           <h3>My MaNaGeR AI, Not a Middleman</h3>
           <p>A real AI engine that runs in your browser with zero keys and zero cloud. Every answer traces to your actual project numbers, and one-click presets write digests, reports, and claim arguments straight back into the project.</p>
         </article>
-        <article class="fcard" id="f-voice">
+        <article class="fcard" role="listitem" id="f-wbs">
+          <span class="fc-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18M3 12h12M3 19h6" /></svg></span>
+          <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg></div>
+          <h3>WBS + Gantt</h3>
+          <p>Paste a plain-text outline and a live schedule builds itself. Dates cascade from predecessors, the critical path lights up in gold, and near-deadline tasks pulse amber.</p>
+        </article>
+        <article class="fcard" role="listitem" id="f-kanban">
+          <span class="fc-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="5" height="14" rx="1"/><rect x="10" y="4" width="5" height="9" rx="1"/><rect x="17" y="4" width="4" height="12" rx="1"/></svg></span>
+          <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg></div>
+          <h3>Kanban Board</h3>
+          <p>Move cards To Do → In Progress → Done, with a dedicated lead-time lane for permits and procurement, plus sprint tools when you're running Agile.</p>
+        </article>
+        <article class="fcard" role="listitem" id="f-budget">
+          <span class="fc-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M7 15l4-5 3 3 5-7"/></svg></span>
+          <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dollar"></use></svg></div>
+          <h3>Budget / EVM</h3>
+          <p>Budget lines and a spend log roll straight into an S-curve and earned-value metrics: SPI, CPI, EAC, TCPI, computed, not guessed.</p>
+        </article>
+        <article class="fcard" role="listitem" id="f-risk">
+          <span class="fc-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3L22 20H2L12 3Z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".6"/></svg></span>
+          <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dice"></use></svg></div>
+          <h3>Risk + Monte Carlo</h3>
+          <p>Log risks and issues, then run 1,000-trial simulations for real odds on your finish date. P50 and hit probability included.</p>
+        </article>
+        <article class="fcard" role="listitem" id="f-raci">
+          <span class="fc-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="3"/><circle cx="17" cy="8" r="3"/><circle cx="8" cy="17" r="3"/><circle cx="17" cy="17" r="3"/></svg></span>
+          <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg></div>
+          <h3>RACI Matrix</h3>
+          <p>Built live from your WBS and people lists. Click any cell to cycle R → A → C → I. No re-entry, no stale matrix.</p>
+        </article>
+        <article class="fcard" role="listitem" id="f-voice">
           <span class="fc-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></span>
           <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mic"></use></svg></div>
           <h3>Voice → Notes &amp; Claims</h3>
           <p>Dictate a site meeting and it transcribes offline. Whisper runs in your browser, no cloud, no per-minute fee. A recorded dispute becomes a counsel-ready Claim Pack on the spot.</p>
         </article>
-        <article class="fcard" id="f-weather">
+        <article class="fcard" role="listitem" id="f-weather">
           <span class="fc-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 15a4 4 0 1 1 .6-7.9A5 5 0 0 1 17 9a3.5 3.5 0 0 1 0 6H7Z"/><path d="M8 19l-1 2M12 19l-1 2M16 19l-1 2"/></svg></span>
           <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg></div>
           <h3>Weather-Aware</h3>
           <p>Site forecasts and weather windows flag exposed tasks before the rain does, and a delay log keeps the record dispute-ready.</p>
         </article>
-        <article class="fcard" id="f-offline">
+        <article class="fcard" role="listitem" id="f-offline">
           <span class="fc-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10M8 9l4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></span>
           <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg></div>
           <h3>Offline-First</h3>
           <p>Autosaves to your browser, exports a portable file, and never uploads a byte. Your data stays on your device, not someone's server.</p>
         </article>
-        <article class="fcard" id="f-health">
+        <article class="fcard" role="listitem" id="f-health">
           <span class="fc-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg></span>
           <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg></div>
           <h3>Health &amp; Portfolio</h3>
           <p>A live health score across schedule, budget and risk on every project, and a portfolio view when you run more than one.</p>
         </article>
-        <article class="fcard" id="f-meetings">
+        <article class="fcard" role="listitem" id="f-meetings">
           <span class="fc-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="13" rx="2"/><path d="M8 21h8M12 18v3"/></svg></span>
           <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg></div>
           <h3>Meetings &amp; Decisions</h3>
           <p>Run a meeting, log decisions in one tap, and turn minutes into follow-up actions that land straight in the schedule.</p>
         </article>
-        <article class="fcard" id="f-claims">
+        <article class="fcard" role="listitem" id="f-claims">
           <span class="fc-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6V3Z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg></span>
           <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg></div>
           <h3>Claims &amp; Digests</h3>
           <p>Weekly digests and counsel-ready claim packs generated from your live project numbers, every claim traceable to its evidence.</p>
         </article>
-        <article class="fcard" id="f-registers">
+        <article class="fcard" role="listitem" id="f-registers">
           <span class="fc-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3 8.5-8 10-5-1.5-8-5.5-8-10V6l8-3Z"/></svg></span>
           <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg></div>
           <h3>Registers &amp; Compliance</h3>
           <p>RFIs, submittals, punch lists, COIs, permits and warranties, each with its own lifecycle and expiry tracking.</p>
         </article>
-        <article class="fcard" id="f-gonogo">
+        <article class="fcard" role="listitem" id="f-gonogo">
           <span class="fc-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.6 6.3L21 9l-5 4.4L17.5 20 12 16.6 6.5 20 8 13.4 3 9l6.4-.7L12 2Z"/></svg></span>
           <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-star"></use></svg></div>
           <h3>Bid Leveling &amp; Go/No-Go</h3>
           <p>Level subcontractor bids line by line and score each opportunity with a weighted Go/No-Go questionnaire.</p>
         </article>
-        <article class="fcard" id="f-lookahead">
+        <article class="fcard" role="listitem" id="f-lookahead">
           <span class="fc-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 4h13l-2.5 4L18 12H5"/></svg></span>
           <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-flag"></use></svg></div>
           <h3>Lookahead &amp; Field Metrics</h3>
           <p>Two-week lookaheads, percent-plan-complete tracking, and weather windows that flag exposed tasks before the rain does.</p>
         </article>
-      </div>
-      <div class="feat-ctl">
-        <button type="button" class="feat-btn" id="feat-prev" aria-label="Previous features">
-          <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-left"></use></svg>
-        </button>
-        <button type="button" class="feat-btn" id="feat-next" aria-label="Next features">
-          <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>
-        </button>
       </div>
     </div>
   </section>
@@ -366,12 +317,18 @@
   <!-- ===================== SITE PHOTO BAND (solid layer , never glass) ===================== -->
   <section class="photo-band slide" data-tone="dark">
     <img class="pb-img" src="images/site-blueprint.webp" alt="Architectural blueprint drawings of a building project" loading="lazy" width="1600" height="900" draggable="false">
-    <span class="pb-brand" aria-hidden="true"><svg class="ico"><use href="css/mmgr-icons.svg#i-mpw"></use></svg>My MaNaGeR</span>
     <div class="pb-overlay" aria-hidden="true"></div>
     <div class="container pb-content">
       <span class="eyebrow">One site, every phase</span>
       <h2>See the whole job from above.</h2>
-      <p>What the crews build on site is exactly what your WBS, budget, and forecast are tracking, every number feeding every other.</p>
+      <p class="pb-lede">What the crews build on site is exactly what your WBS, budget and forecast are tracking, every number feeding every other.</p>
+      <ol class="phase-rail">
+        <li><b>01</b><h3>Initiate</h3><p>Charter, bid leveling, go/no-go</p></li>
+        <li><b>02</b><h3>Plan</h3><p>WBS, Gantt, RACI</p></li>
+        <li><b>03</b><h3>Execute</h3><p>Kanban, lookaheads, voice notes</p></li>
+        <li><b>04</b><h3>Monitor</h3><p>Budget and EVM, risk, weather</p></li>
+        <li><b>05</b><h3>Close</h3><p>Claims, registers, digests</p></li>
+      </ol>
       <div class="pb-cta">
         <a class="btn btn-gold btn-lg" href="app.html">
           Get Started
@@ -449,7 +406,6 @@
   <!-- ===================== INTERIOR PHOTO BAND (solid layer , never glass) ===================== -->
   <section class="photo-band slide" data-tone="dark">
     <img class="pb-img" src="images/finished-interior-living.webp" alt="Finished living room interior with natural light" loading="lazy" width="1200" height="896" draggable="false">
-    <span class="pb-brand" aria-hidden="true"><svg class="ico"><use href="css/mmgr-icons.svg#i-mpw"></use></svg>My MaNaGeR</span>
     <div class="pb-overlay" aria-hidden="true"></div>
     <div class="container pb-content">
       <!-- OWNER 2026-09-09 (P5.2): the "The finish line" eyebrow (and its decorative dash) removed per owner directive - plain flow rough-in to final walkthrough. -->

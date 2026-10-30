@@ -1,123 +1,108 @@
 # My MaNaGeR - reflection.txt (active; last session only. Older sessions archived in docs/history/reflection-ARCHIVE-2026-10-18.txt)
 
-SESSION 2026-10-28 - WAVE F CLOSED (AI-1, AI-2, APP-3, SW-10, gold retirement, deploy)
+SESSION 2026-10-30 - PHASE B3 (D-1): THE AI WINDOW FITS ANY WIDTH
 
 CONTEXT
-Owner: carry REFINEMENT-DIRECTIVE-2026-10-24.md to completion in NEXT UP order,
-updating REFINEMENT-PROGRESS.md after every task so another model can take over.
-This session finished Wave F: NEXT UP items 8-12 plus the owner's gold-retirement
-add-on ("applied to all where oranges is covered, even on the branding"), the owner's
-dropped contact-page jpg, three CI repair loops, the deploy and the live probe.
+Owner: continue the build. The previous session had finished D-3 and D-2 but
+left D-2 uncommitted (HEAD was still the D-3 commit). This session closed that
+book (committed D-2 as `e033cc8` after rebuilding and re-running its gates),
+then took D-1 (UI-CI-DIRECTIVE section 5, steps 1 to 7) from "ready" to done,
+with a new permanent gate and a green local battery.
 
 WHAT THIS SESSION DID
-  1. GOLD SWEEP TO COMPLETION (owner add-on). Every surviving brand-orange value and
-     art file flipped to the bullion family across css/mmgr.css, css/marketing.css,
-     js/marketing-globe.js and the hero SVGs; input borders and focus rings moved to
-     --gold-ink (6.37:1 - gold fill is 1.9:1 on white, under the 3:1 floor). T-GOLD
-     was REWRITTEN to keep it: allow-list empty (0 retired orange across 144 served
-     files or fail), scan widened to js/src/pages/sw.js/images, new arm fails gold
-     fill + white ink. Three mutations proved; the SVG mutation exposed that
-     stripCommentsAll's // rule ate single-line SVGs after their xmlns URL, fixed
-     with a (?<!:) guard. Zero white-on-gold pairings remain (53 elements measured).
-     docs/GOLD-AUDIT.md records the retirement and the two decisions.
-  2. AI-2 CLOSED HONESTLY. docs/SPIKE-LOCALLLM-2026-10.md written from the measured
-     spike (tmp/spike-results-tf.json): MLC WebLLM passes every laptop threshold
-     (0.6 s warm open, 0.22 s to first token, 22.8-25.7 tok/s, 60 MB heap) but three
-     of five ship conditions are unbuilt (phone, worker isolation, no-WebGPU
-     fallback) and the whole opt-in download UI does not exist, so ship = DEFERRED
-     with a GO recommendation for a dedicated wave; transformers.js WASM fails
-     outright (112-284 s answers, 1.4 s main-thread freeze). js/mmgr-state.js
-     localModel set to false so the flag says what ships. T-LOCALLLM not applicable.
-  3. CONTACT PAGE PHOTO (owner dropped a jpg at the repo root with the instruction in
-     its filename). Re-encoded 690 KB jpg -> 67 KB images/contact-desk.webp (sharp,
-     1376x768, same 16:9 as the file it replaces); contact.html src/alt/width/height
-     updated; only the contact page swapped (index and field guide keep
-     site-blueprint.webp, the ask was contact-only); instruction jpg deleted;
-     sw.js bumped to mmgr-shell-v491 (verify-sw-cache caught it, as designed).
-  4. THREE CI REPAIR LOOPS, each reproduced locally first, each skipped-step set run
-     locally before re-push (the Rule 8 loop):
-     - Step 31 (f2b45ea): aiIcon() dynamic #i- prefix unverifiable by T1 ICON. Fixed
-       by registering aiIcon() in tools/verify-icons.cjs with ico()'s contract
-       (prefix allowed only inside its body, literal call sites that must exist) -
-       make the construction checkable, never special-case an exception. Steps 32-49
-       run locally green. Commit 6cdc5e5.
-     - Step 92 (6cdc5e5): qa-calc-assistant arm asserted input border == --brand,
-       but the gold sweep moved borders to --gold-ink deliberately. App change right,
-       arm re-baselined to the new contract and mutation-proven (155/156, restore
-       156/156 byte-identical). Skipped steps 93-109 run locally -> qa-consent 36/37:
-       APP-3's new mmgr_restore_recap key missing from docs/STORAGE-INVENTORY.md.
-       Documented, 37/37. Commit b1cb54f.
-     - Step 102 (b1cb54f): qa-code-names (new this wave, first CI run) launched
-       Playwright's bundled chromium; CI never downloads it (devDep installed with
-       --ignore-scripts, no browser step - every other T4 harness uses system Chrome).
-       Harness now resolves the binary through tools/chrome-launcher.cjs like its
-       siblings. Steps 103-109 run locally green. Commit eec7835.
-     Final: CI run 40723602002 (e9def01, includes the contact photo) GREEN on all
-     223 steps, zero failures.
-  5. DEPLOY AND LIVE PROBE. Staged fresh to $HOME/mmgr-deploy (verified: v491, the
-     new image reference, aiIcon, localModel false, no stray files), deployed
-     Version ID eff0439e-51f6-44fe-9f85-3bb5b3a6f67c. Live probe 18/18 PASS after
-     fixing six PROBE defects (see lessons): CSP header and 14 own inline blocks all
-     hashed (Cloudflare's edge-injected challenge script skipped), 0 retired orange
-     in live css/mmgr.css (byte-identical to disk), --brand #d4af37, both --gold:
-     decls in marketing, gold hero poster, sw v491, aiIcon in served source, ai-win
-     markup and dock rules live, three code names on admin/project, restore recap,
-     /api/cloud/projects 403 signed out (the long-standing contract), contact-desk
-     webp 200.
-  6. DOCS. docs/history/log-2026-10.md gained the Wave F entry WITH the directive
-     section 15 re-check table pasted (zero open High items, both deferrals named);
-     REFINEMENT-PROGRESS.md scoreboard now 32/32, steps 11-12 ticked, corrections
-     added; this file rewritten; GOLD-AUDIT gains the amber-keep measurement note
-     (the 11 amber declarations in mmgr.css are the documented status ramp, not
-     retired orange).
 
-VERIFICATION (all run, all green)
-  npm run verify exit 0 (CSP, SW cache at v491, CSS integrity, ESLint 0 errors,
-  Prettier, registry, 145/145 unit tests). Local: qa-code-names 26/26 (after the
-  chrome fix), verify-calc-s2 75, qa-procurement 51, qa-consent 37, qa-shortcuts 15,
-  qa-widescreen 27, qa-a11y-axe 7, qa-hero-globe 16 - i.e. every step CI skipped at
-  least once. verify-gold green with 0 retired orange across 144 files, three
-  mutations proven. CI 40723602002 (e9def01): GREEN all 223 steps. Deploy
-  eff0439e-51f6-44fe-9f85-3bb5b3a6f67c. Live probe 18/18 against
-  https://mymanagerworkspace.com.
+1. D-2 COMMIT (was finished, never committed). `js/mmgr-voice.js` (aiJoin,
+   committed base, duplicate-final guard, one named typing listener),
+   `project.html` mic tooltip, `sw.js`, `.github/workflows/ci.yml` step,
+   `docs/CI-TEST-COVERAGE.md` row, `tools/qa-ai-dictation.cjs` new. Re-ran:
+   qa-ai-dictation 14/14, qa-ai PASS, qa-ai-win 22/22, npm run verify exit 0.
+   It failed the first re-run only because serve.cjs was not running; both AI
+   harnesses need :8765 and say so in their usage lines. Also removed a
+   duplicated B2 result block from EXECUTION-PLAN.md.
 
-LESSONS
-  - A NEW HARNESS'S FIRST CI RUN IS ITS REAL FIRST RUN. qa-code-names passed 26/26
-    locally for days and failed the moment CI ran it, because locally Playwright's
-    chromium exists (Windows cache) and in CI it never downloads. A browser harness
-    must take its browser from the same place its siblings do.
-  - WHEN CI STOPS, RUN EVERY STEP IT SKIPPED - again, and read what falls out. The
-    steps after the qa-calc-assistant failure surfaced qa-consent's undocumented
-    storage key, a defect no green gate was looking at.
-  - RE-BASELINE THE ARM ONLY AFTER PROVING THE APP CHANGE WAS DELIBERATE. The
-    calc-assistant border arm was wrong because the gold sweep had moved borders on
-    purpose (contrast floor); the mutation proof (155/156) shows the new arm still
-    bites.
-  - A LIVE PROBE IS A CLAIM ABOUT PRODUCTION, AND ITS FIRST RUN TESTS THE PROBE.
-    All six first-run failures were the script's bugs: a while-read subshell that
-    emptied $HOME, a grep that cannot skip multi-line comment text, an expected
-    count of 1 where the stylesheet has 2, a minified bundle where the identifier is
-    renamed (the served SOURCE is the contract), the wrong page (the AI window lives
-    on project.html), and an invented status code (403 has been the cloudForbidden
-    contract since before this wave). Diagnose each against the source before
-    believing any of them - and note Cloudflare injects an inline challenge script
-    (__CF$cv$params/cdn-cgi) into every HTML response, so a CSP hash probe must skip
-    edge-injected blocks or it reports phantom misses forever.
-  - A GATE'S BAN LIST IS A CONTRACT WITH A DOCUMENTED SCOPE. The probe's orange scan
-    failed on the amber ramp (#f59e0b/#d97706) until read against verify-gold: those
-    are GOLD-AUDIT's documented "semantic status colours" keeps (amber means due
-    soon; gold is identity), and the ban list is the nine retired brand-orange
-    values. Scan with the gate's list, not with a guessed one.
+2. D-1 STEP 1 - history threshold. `js/mmgr-ai.js` `AI_HIST_INLINE_MIN`
+   480 to 720 (with the reason written next to it). `tools/qa-ai-win.cjs`:
+   the "conversation column is visible at the default width" check became two
+   checks and now also reads `#ai-hist-btn` visibility; Maximise is the real
+   mechanism used to reach 720, then it is clicked back. 23/23.
 
-LIMITATIONS (honest, nothing claimed that was not run)
-  - Two deliberate deferrals, recorded not hidden: APP-3's optional per-account salt
-    + PBKDF2 step-up (src/auth/admin-code.js still seals unsalted SHA-256 under the
-    fixed escrow salt; auth release path, needs its own session), and the AI-2
-    on-device model ship (spike says GO; phone, worker isolation, no-WebGPU fallback
-    and the whole opt-in download UI are unbuilt; localModel: false).
-  - The live probe is HTTP-level; the browser behaviours it names (docking pushes
-    the page, the popover opens, restore lists both groups) are proven by
-    qa-ai-win 22/22 and qa-code-names 26/26 against the byte-identical deployed
-    tree, not re-driven in a browser on the live origin.
-  - Owner questions Q5 (rate-book provenance), Q8 (statutory rates) and Q11 are
-    still unanswered; conservative defaults in force, none blocks a task.
+3. D-1 STEP 2+3 - header and banner (`15e8108`). `project.html` header block
+   rebuilt: `.mt`, `#ai-api-pill` (now a dot BUTTON with the hidden label span),
+   five `ai-icon-btn` controls, `#ai-more-btn` + `#ai-more-menu` (role=menu,
+   absolute, engine row `#ai-engine-pill`, `#ai-pin-btn` as
+   role=menuitemcheckbox with aria-pressed AND aria-checked, Float injected by
+   `setupFloatSurface`). `js/mmgr-ai.js`: setApiStatus mirrors the label to
+   title/aria-label; `aiMoreMenu/aiMoreItems/setAiMore/closeAiMore/toggleAiMore`
+   with outside-click close; Esc handled first in the existing document capture
+   handler; `close()` closes the menu; exports `toggleMore`/`closeMore`.
+   `js/mmgr-app.js`: `aiMoreToggle` in ACTION_MAP and READONLY_SAFE_ACTIONS.
+   `css/mmgr.css`: `.ai-head` 56px single row, `.ai-icon-btn`, `.ai-api-dot`,
+   `.ai-more-*`, and ten 100px pill radii moved to `var(--radius-control)`.
+   Step 3: `#ai-cfg-cloud` is a banner (message + chip + gear + dismiss + pop),
+   `syncConnRow()` is the single visibility rule, dismissal resets on tier
+   change, provider select moved into the popover.
+   `tools/qa-ai-polish.cjs` (TRIAGE) assertions updated to the new homes.
+
+4. D-1 STEP 4+5 - composer and empty state (`76bc5a8`). `project.html`:
+   textarea first, `.ai-composer-tools` underneath (tier, mic, send with
+   margin-left:auto). `css` `.ai-q` is a bare textarea inside the card,
+   `.ai-composer-row` is the card (`--squircle-sm`, focus ring), tools 32px.
+   `js` auto-grow cap 160. `#ai-welcome` rebuilt: mark, "What are we working
+   on?", `#ai-welcome-rows`; `renderQuickPresets()` fills the chip strip AND
+   the rows from one `ns.Prompts.list()` slice; `hideWelcome()` also hides the
+   strip and `resetThread()` restores both; strip gets no scrollbar + edge fade.
+
+5. D-1 STEP 6 - context row (`e71716b`). The `<details class="ai-adv">` block
+   moved out of `.ai-body` to the end of `.ai-inputbar`; summary now carries a
+   sprite chevron that rotates when open; CSS is one line with no box.
+
+6. D-1 STEP 7 - container tiers (`cd4341e`). `.ai-main` gets
+   `container: aiwin / inline-size`; `@container` rules for compact (under
+   440), regular (440 to 599) and wide (600+, thread and composer capped at
+   760 and centred). `#ai-byo-pop` is absolute, inset 12px inside the banner.
+
+7. THE GATE (`eb9e7d8`). `tools/qa-ai-window-layout.cjs`: one context per
+   palette, sheet 360/420/480, docked 480/520/658/900 via mmgr_ai_size and
+   close/open, Maximise at 1900; per width it asserts no horizontal overflow,
+   no dead strip (`boxGap`), a 56px one-row header, the message box at least
+   80 percent of the card, Send at least 8px inside the window, no radius of
+   99px or more, and hist-inline exactly at 720 and up; once it asserts
+   accessible names, DOM order (header, body, composer, context row), the More
+   menu (absolute, inside, Esc closes and returns focus WITHOUT closing the
+   window), the four-row empty state retiring on one message, and the absolute
+   key popover. Screenshots to tmp/ai-layout (not committed). Registered in
+   docs/CI-TEST-COVERAGE.md (CI) and wired as a T4 step in ci.yml.
+   `tools/qa-fixed-containment.cjs` now also scans with the More menu and the
+   key popover open: 10/10.
+
+8. TWO DEFECTS THE GATE FOUND, FIXED (`3cf1d3f`):
+   - Esc in the More menu closed the menu and then the whole window, because
+     `js/mmgr-app.js` (~line 640) has a document Escape handler that calls
+     `ns.AiWin.close()`. The assistant's inner layers now call
+     `stopImmediatePropagation()`.
+   - The generic `.mb { max-height: 82vh }` (line ~6785) clamped the drawer, so
+     at 360x800 the panel was 656 tall with a 144px page-coloured strip under
+     the composer. `#ai-win .mb` now sets `max-height: none`.
+
+VERIFICATION (all run this session, in this order)
+  npm run verify                       exit 0, 171 unit tests, registry 148/148
+  tools/qa-ai-window-layout.cjs        83/83
+  tools/qa-ai-win.cjs                  23/23
+  qa-ai.cjs                            PASS (AI23_GATE)
+  tools/qa-ai-dictation.cjs            14/14
+  tools/qa-fixed-containment.cjs       10/10
+  tools/qa-ai-relay.cjs                RELAY_GATE PASS
+  tools/qa-ai-badge-e2e.cjs            API phase 5/5
+  tools/qa-a11y-axe.cjs                7/7
+  npm run verify:gold                  all checks passed
+  tools/audit-action-map.cjs           no missing handler
+  tools/verify-actions.cjs             T-2 ACTION CONTRACT PASS
+  npm run build                        run after every js/css edit
+
+STATE LEFT BEHIND
+  SW mmgr-shell-v513. Schema unchanged (v24). Phase B is complete except D-4,
+  which is next: measure the latest green run first (D4.0), then split ci.yml
+  into static, cloud-core, cloud-auth, browser-calc, browser-app plus a summary
+  job on branch ci-split, with tools/verify-ci-coverage.cjs as the proof.
+  Deploy still owed at the end of Phase B (D-3, D-2, D-1 are user-facing), from
+  $HOME/mmgr-deploy, after the CI split is green.

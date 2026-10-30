@@ -8,7 +8,7 @@
 
 ## Status log (newest at top)
 
-- **2026-10-29** - Phase A closed, then D-3, D-2 done. D-1 pending.
+- **2026-10-30** - Phase B D-1 done (slim header, one composer card, width tiers, 83-gate layout harness). D-4 next.
 
 ---
 
@@ -40,7 +40,7 @@
 | A | Close the OpenProject books | **DONE 2026-10-29** | Section 3 result; all gates green |
 | B1 | **D-3** calculator listbox portal + containment gate | **DONE 2026-10-29** | Section B1 result; `qa-fixed-containment` 8/8, `qa-calc-controls` 94/94, audit 61/61, shortcuts 15/15, `npm run verify` green |
 | B2 | **D-2** dictation echo and leading `null` | **DONE 2026-10-29** | Section B2 result; `qa-ai-dictation` 14/14, `qa-ai.cjs`, `qa-ai-win` 22/22, `npm run verify` green |
-| B3 | **D-1** AI window, steps 1 to 7 | **NEXT** | `qa-ai-window-layout` matrix; `qa-ai-win` re-baseline; axe; gold; `npm run verify` |
+| B3 | **D-1** AI window, steps 1 to 7 | **DONE 2026-10-30** | `qa-ai-window-layout` 83/83, `qa-ai-win` 23/23, `qa-ai` PASS, `qa-fixed-containment` 10/10, axe, gold, `npm run verify` green |
 | B4 | **D-4** CI from about 25 minutes to about 6-8 | **QUEUED** | Measure first (section 4.0), then split into 5 jobs |
 | C1 | NocoBase custom task fields | **QUEUED** | Its DoD; schema v25 |
 | C2 | Leantime idea intake + merged agenda | **QUEUED** | Its 16-gate harness; schema v26 |

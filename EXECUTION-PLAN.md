@@ -54,7 +54,7 @@ recorded here. The status is the only place to look.
 | A | Close the OpenProject books | **DONE 2026-10-29** | Section 3 result; all gates green |
 | B1 | **D-3** calculator listbox portal + containment gate | **DONE 2026-10-29** | Section B1 result; `qa-fixed-containment` 8/8, `qa-calc-controls` 94/94, audit 61/61, shortcuts 15/15, `npm run verify` green |
 | B2 | **D-2** dictation echo and leading `null` | **DONE 2026-10-29** | Section B2 result; `qa-ai-dictation` 14/14, `qa-ai.cjs`, `qa-ai-win` 22/22, `npm run verify` green |
-| B3 | **D-1** AI window, steps 1 to 7 | **NEXT** | `qa-ai-window-layout` matrix; `qa-ai-win` re-baseline; axe; gold; `npm run verify` |
+| B3 | **D-1** AI window, steps 1 to 7 | **DONE 2026-10-30** | Section B3 result; `qa-ai-window-layout` 83/83, `qa-ai-win` 23/23, `qa-ai` PASS, `qa-fixed-containment` 10/10, axe, gold, `npm run verify` green |
 | B4 | **D-4** CI split into five jobs | Queued | `verify-ci-coverage`; live run all steps executed; slowest job at most 8 min; summary job |
 | C1 | NocoBase custom task fields | Queued | Its DoD; schema v25 |
 | C2 | Leantime idea intake + merged agenda | Queued | Its 16-gate harness; schema v26 |
@@ -320,6 +320,54 @@ text that describes the removed pills or the old header. Run `qa-ai`,
 `audit-action-map`, the action contract gate, and `npm run verify`.
 
 Commits: one per step, `feat(ai): ...`; fixes as `fix(ai): ...`.
+
+**Result (2026-10-30): DONE.** Evidence:
+
+| Gate | Result |
+|---|---|
+| `node tools/qa-ai-window-layout.cjs` | 83/83 (sheet 360/420/480, docked 480/520/658/900, Maximise 1900, light and dark; screenshots in `tmp/ai-layout/`) |
+| `node tools/qa-ai-win.cjs` | 23/23 (the old single history check replaced by two) |
+| `node qa-ai.cjs` | PASS (AI23_GATE) |
+| `node tools/qa-ai-dictation.cjs` | 14/14 |
+| `node tools/qa-fixed-containment.cjs` | 10/10 (the More menu and the key popover are scanned open) |
+| `node tools/qa-ai-relay.cjs`, `qa-ai-badge-e2e` | RELAY_GATE PASS, API phase 5/5 |
+| `node tools/qa-a11y-axe.cjs` | 7/7 |
+| `npm run verify:gold` | all checks passed |
+| `audit-action-map`, `verify-actions` | no missing handler; T-2 ACTION CONTRACT PASS |
+| `npm run verify` | exit 0, registry 148/148 |
+
+Commits, one per coherent step: `feb6a5f` threshold, `15e8108` header + banner,
+`76bc5a8` composer + empty state, `e71716b` context row, `cd4341e` container
+tiers, `3cf1d3f` the two defects the gate found, `eb9e7d8` the gate itself.
+
+Drift and additions to the directive's letter, all recorded:
+
+1. **Steps 2 and 3 share `15e8108`**, and **4 and 5 share `76bc5a8`**. The
+   banner is part of the same header block and the same sync function, and the
+   empty state is rendered by the same preset builder as the composer chips;
+   splitting them would have meant committing a half-wired intermediate state.
+2. **`AI_W_MAX` is 720**, so the directive's "docked at 900" lands at 720. That
+   is also exactly the new inline-history threshold, so the 900 case proves the
+   boundary. The gate asserts `hist-inline` is true exactly when the window is
+   720 or wider.
+3. **The radius check forced nine radii changes**, not the three the directive
+   named: `.ai-pill`, `.ai-clear-btn`, `.ai-tier-badge`, `.ai-seg-btn`,
+   `.ai-copy-btn`, `.ai-chip`, `.ai-send`, `.ai-hist-new`, `.ai-byo-gear` and
+   `.ai-byo-status` all moved from 100px to `var(--radius-control)`. Without
+   that, a document-wide "no pill radius" gate could never be green.
+4. **Two real defects surfaced while building the gate** (fixed in `3cf1d3f`):
+   the workspace's document Escape handler (`mmgr-app.js`) closes the assistant,
+   so one Esc in the More menu closed the menu AND the window; the assistant's
+   inner layers now `stopImmediatePropagation`. And the generic `.mb` modal cap
+   (`max-height: 82vh`) clamped the drawer, leaving a dead page-coloured strip
+   under the composer at every width; `#ai-win .mb` now clears it. The gate
+   measures both (`boxGap <= 1`, Esc focus return).
+5. **The key popover is absolute** and inset 12px inside the banner, so it can
+   never leave the window; the More menu is absolute inside the header.
+6. **The engine pill kept its id** and now lives in the More menu as a
+   read-only row; `#ai-api-pill` became a 10px dot button, still click-to-check,
+   with `#ai-api-pill-label` visually hidden and mirrored to `title` and
+   `aria-label`, so `qa-ai` A16 keeps passing unchanged.
 
 ### B4. D-4 - CI from about 25 minutes to about 6 to 8
 
@@ -589,4 +637,13 @@ of every session.
   `null` (`aiJoin` coerces). The mic tooltip now says browser speech
   recognition. New `qa-ai-dictation` (14/14, teeth proven both ways) is in CI;
   `qa-ai` and `qa-ai-win` 22/22 green. Schema unchanged; SW v507.
-- **Next:** B3 D-1, then B4 D-4.
+- **2026-10-30 - B3 D-1 done.** The assistant is one 56px header row, one
+  composer card, and three width tiers measured on `.ai-main` itself. History
+  goes inline only at 720, so the 520 dock default keeps its full reading
+  column. New `qa-ai-window-layout` (83/83, light and dark, eight widths) is in
+  CI; `qa-ai-win` 23/23, `qa-ai` PASS, `qa-ai-dictation` 14/14,
+  `qa-fixed-containment` 10/10, axe, gold, action contract and
+  `npm run verify` green (registry 148/148). The gate found two real defects
+  (Esc fell through to the workspace handler and closed the window; the 82vh
+  modal cap left a dead strip), both fixed. SW v513. Schema unchanged.
+- **Next:** B4 D-4 on branch `ci-split`.

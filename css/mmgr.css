@@ -9557,6 +9557,9 @@ body.drw-float-open::after {
   position: relative;
   width: 100%;
   height: 100%;
+  /* D-1: without this the generic .mb modal cap (82vh) clamped the drawer and
+     left a dead page-coloured strip under the composer. */
+  max-height: none;
   border-radius: 0;
   border: none;
   box-shadow: none;

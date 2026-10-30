@@ -2946,15 +2946,6 @@ var MMGR = window.MMGR || {};
         }
       });
     }
-    // Esc closes the key popover and hands focus back to its gear.
-    pop.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        pop.classList.add('is-hide');
-        gear.setAttribute('aria-expanded', 'false');
-        gear.focus();
-      }
-    });
   })();
 
   // INTEGRATED-STRUCTURE-API-WINDOW (plan §3): click (or Enter/Space on) the
@@ -4360,10 +4351,26 @@ var MMGR = window.MMGR || {};
       if (!win || !win.classList.contains('open')) {
         return;
       }
-      // The More menu is the innermost layer: Esc closes it first and hands
-      // focus back to its button, before the sheet/overlay/history handling.
+      // D-1: the innermost layer wins. Esc must close the key popover, then
+      // the More menu, and STOP there: the workspace has its own document
+      // Escape handler (mmgr-app.js) that closes the assistant outright, so
+      // without stopImmediatePropagation one Esc would close the menu AND the
+      // window. stopPropagation is not enough, both handlers share document.
+      const pop = U.$('ai-byo-pop');
+      if (pop && !pop.classList.contains('is-hide')) {
+        pop.classList.add('is-hide');
+        const gear = U.$('ai-byo-gear');
+        if (gear) {
+          gear.setAttribute('aria-expanded', 'false');
+          gear.focus();
+        }
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        return;
+      }
       if (closeAiMore(true)) {
         e.preventDefault();
+        e.stopImmediatePropagation();
         return;
       }
       if (win.classList.contains('hist-open')) {

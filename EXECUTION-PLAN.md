@@ -32,7 +32,7 @@ Verified 2026-10-29 at HEAD `9d703e0`:
 
 | Fact | Value |
 |---|---|
-| CI | Green; `ci.yml` is 871 lines, one `verify` job, 111 named steps (116 in the GitHub UI), 84 `id:` fields, 24 wrangler-start gates |
+| CI | Green; run `40948194942` on `9d703e0` is 117/117 steps, 0 failed, 0 skipped. `ci.yml` is 871 lines, one `verify` job, 111 named steps (116 in the GitHub UI), 84 `id:` fields, 24 wrangler-start gates |
 | Client schema | `SCHEMA_VERSION = 24` (`js/mmgr-state.js`) |
 | D1 migrations | Through `0029_team_enterprise.sql` |
 | Service worker | `mmgr-shell-v504` |
@@ -51,8 +51,8 @@ recorded here. The status is the only place to look.
 
 | # | Work | Status | Exit gate |
 |---|---|---|---|
-| A | Close the OpenProject books | **NEXT** | Its section 5 DoD run and recorded; CI green |
-| B1 | **D-3** calculator listbox portal + containment gate | Queued | `qa-fixed-containment` green; `qa-calc-controls` 63+; `qa-calc-playwright-audit`; `qa-shortcuts`; `npm run verify` |
+| A | Close the OpenProject books | **DONE 2026-10-29** | Section 3 result; all gates green |
+| B1 | **D-3** calculator listbox portal + containment gate | **NEXT** | `qa-fixed-containment` green; `qa-calc-controls` 63+; `qa-calc-playwright-audit`; `qa-shortcuts`; `npm run verify` |
 | B2 | **D-2** dictation echo and leading `null` | Queued | `qa-ai-dictation` 9/9; `qa-ai`; `qa-ai-win`; `npm run verify` |
 | B3 | **D-1** AI window, steps 1 to 7 | Queued | `qa-ai-window-layout` matrix; `qa-ai-win` re-baseline; axe; gold; `npm run verify` |
 | B4 | **D-4** CI split into five jobs | Queued | `verify-ci-coverage`; live run all steps executed; slowest job at most 8 min; summary job |
@@ -121,6 +121,26 @@ test follow-ups. Do this before starting D-3:
 5. No commit unless a real fix is needed. The close is a record, not churn.
 
 Exit: every DoD line has evidence, or a named blocker.
+
+**Result (2026-10-29): CLOSED.** Evidence:
+
+| DoD line | Evidence |
+|---|---|
+| Relation model tests | `node --test test/relations-model.test.mjs` 12/12 |
+| Browser gate | `node tools/qa-relations.cjs` 9/9 (the missing removal and view-only-remove arms were added to the harness while closing this book) |
+| Full battery | `npm run verify` exit 0: 171/171 unit tests, registry 145/145, all static gates green |
+| Action + export contracts | `verify-actions` and `verify-render-exports` green |
+| Badge on WBS and Kanban | qa-relations checks 2 and 3 |
+| Remove from either side removes both | qa-relations check 8 plus the model test's symmetric remove |
+| Blocked only / Ready only | qa-relations check 4 |
+| Blocked move warns and still moves | qa-relations check 5 |
+| View-only can open, cannot add or remove | qa-relations check 7 |
+| Reload keeps relation and lens | qa-relations check 6 |
+| Developer guide + field guide | `docs/DEVELOPER-GUIDE.md` row and `mymanager-field-guide.html` "Task links" card present |
+| Remote CI | Run `40948194942` on `9d703e0`: 117/117 steps, 0 failed, 0 skipped |
+
+No app code changed. The harness gained two browser arms (removal, view-only
+removal) so the DoD is gated rather than inspected.
 
 ---
 
@@ -521,4 +541,8 @@ of every session.
   `adittion to scope/UI-CI-DIRECTIVE.md` is queued as Phase B (D-3, D-2, D-1,
   D-4). The five feature plans follow, in the order in section 2. This
   supersedes the old "plan-openproject IN PROGRESS" line.
-- **Next:** Phase A verification, then B1 D-3.
+- **2026-10-29 - Phase A closed.** `qa-relations` 9/9 (removal and view-only
+  removal arms added), model tests 12/12, `npm run verify` green (171 unit,
+  registry 145/145), `verify-actions` and `verify-render-exports` green, remote
+  CI `40948194942` 117/117. No app code changed.
+- **Next:** B1 D-3, then B2 D-2, B3 D-1, B4 D-4.

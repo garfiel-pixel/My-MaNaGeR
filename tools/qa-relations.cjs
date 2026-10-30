@@ -19,8 +19,11 @@
      (6) the relation AND the lens both survive a reload
          (State.updateState -> debounced save);
      (7) a view-only session can OPEN the sheet, but "Add link"
-         is refused with the standard view-only toast;
-     (8) no uncaught page error during the run.
+         and "Remove" are both refused with the standard view-only
+         toast;
+     (8) removing the link from the target's sheet removes the
+         forward and reverse entries and restores the Links badge;
+     (9) no uncaught page error during the run.
 
    Usage:  node tools/qa-relations.cjs
    Registry: docs/CI-TEST-COVERAGE.md -> CI row (T4 battery).
@@ -332,7 +335,7 @@ const goKan = page =>
     g6
   );
 
-  // ---- (7) view-only: the badge opens, "Add link" is refused ----
+  // ---- (7) view-only: the badge opens, add and remove are refused ----
   await page.evaluate(id => localStorage.setItem('mmgr_scope_' + id, 'readonly'), pid);
   await page.goto(url, { waitUntil: 'load', timeout: 60000 });
   await page.waitForFunction(() => window.MMGR && window.MMGR.App && window.MMGR.Render, null, {
@@ -349,26 +352,82 @@ const goKan = page =>
     const modal = document.getElementById('rel-modal');
     const opened =
       !!modal && modal.classList.contains('on') && getComputedStyle(modal).display !== 'none';
-    const before = (window.MMGR.State.getState().tasks || []).reduce(
-      (n, t) => n + (t.relations || []).length,
-      0
-    );
+    const count = () =>
+      (window.MMGR.State.getState().tasks || []).reduce(
+        (n, t) => n + (t.relations || []).length,
+        0
+      );
+    const before = count();
     document.querySelector('[data-action="addRel"]').click();
-    const after = (window.MMGR.State.getState().tasks || []).reduce(
-      (n, t) => n + (t.relations || []).length,
-      0
-    );
-    return { exists: true, opened, before, after };
+    const afterAdd = count();
+    const remove = document.querySelector('#rel-list [data-action="delRel"]');
+    if (remove) {
+      remove.click();
+    }
+    const afterRemove = count();
+    return { exists: true, opened, before, afterAdd, afterRemove, remove: !!remove };
   });
   await page.waitForTimeout(200);
   const g7toast = await toastText(page);
   check(
-    'view-only: the badge opens the sheet, Add link is refused with the view-only toast',
-    g7.exists && g7.opened && g7.before === 2 && g7.after === 2 && /View-only mode/.test(g7toast),
+    'view-only: the badge opens the sheet, Add link and Remove are refused with the view-only toast',
+    g7.exists &&
+      g7.opened &&
+      g7.remove &&
+      g7.before === 2 &&
+      g7.afterAdd === 2 &&
+      g7.afterRemove === 2 &&
+      /View-only mode/.test(g7toast),
     { g7, toast: g7toast }
   );
 
-  // ---- (8) no uncaught page error during the run ----
+  // ---- (8) removing from the target's sheet clears both sides ----
+  await page.evaluate(id => localStorage.removeItem('mmgr_scope_' + id), pid);
+  await page.goto(url, { waitUntil: 'load', timeout: 60000 });
+  await page.waitForFunction(() => window.MMGR && window.MMGR.App && window.MMGR.Render, null, {
+    timeout: 45000
+  });
+  await goWbs(page);
+  await page.waitForTimeout(400);
+  const g8 = await page.evaluate(() => {
+    const badge = document.querySelector('[data-action="openRel"][data-id="B"]');
+    if (!badge) {
+      return { exists: false };
+    }
+    badge.click();
+    const remove = document.querySelector('#rel-list [data-action="delRel"]');
+    if (!remove) {
+      return { exists: true, remove: false };
+    }
+    remove.click();
+    const s = window.MMGR.State.getState();
+    const a = (s.tasks || []).find(t => t.id === 'A');
+    const b = (s.tasks || []).find(t => t.id === 'B');
+    const bBadge = document.querySelector('[data-action="openRel"][data-id="B"]');
+    const list = document.getElementById('rel-list');
+    return {
+      exists: true,
+      remove: true,
+      aLinks: a ? (a.relations || []).length : -1,
+      bLinks: b ? (b.relations || []).length : -1,
+      total: (s.tasks || []).reduce((n, t) => n + (t.relations || []).length, 0),
+      bLabel: bBadge ? bBadge.textContent.trim() : null,
+      listText: list ? list.textContent : ''
+    };
+  });
+  check(
+    "removing the link from B's sheet clears both sides and restores the Links badge",
+    g8.exists &&
+      g8.remove &&
+      g8.aLinks === 0 &&
+      g8.bLinks === 0 &&
+      g8.total === 0 &&
+      g8.bLabel === 'Links' &&
+      /No links yet/.test(g8.listText),
+    g8
+  );
+
+  // ---- (9) no uncaught page error during the run ----
   check('no uncaught page error during the run', pageErrors === 0, pageErrors);
 
   await browser.close();

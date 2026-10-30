@@ -290,6 +290,27 @@ function scanFixed() {
       await delay(500);
       check('project.html: the AI window really opened for the scan', aiOpen, aiOpen);
       await scan(page, 'project.html with the AI window open');
+      // D-1 step 7: .ai-main carries container-type now, so the header More
+      // menu and the Cloud key popover are the two new absolute layers inside
+      // it. Both must stay in the scan, not just the closed window.
+      await page.evaluate(() => {
+        const b = document.getElementById('ai-more-btn');
+        if (b) {
+          b.click();
+        }
+      });
+      await delay(300);
+      await scan(page, 'project.html with the assistant More menu open');
+      await page.evaluate(() => {
+        MMGR.AiWin.setAiCfg({ tier: 'cloud' });
+        MMGR.AiWin.syncSettingsUI();
+        const g = document.getElementById('ai-byo-gear');
+        if (g) {
+          g.click();
+        }
+      });
+      await delay(300);
+      await scan(page, 'project.html with the assistant key popover open');
       check('project.html: no uncaught page error', errors.length === 0, errors);
       await ctx.close();
     }

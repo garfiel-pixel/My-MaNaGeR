@@ -638,6 +638,16 @@ jobs:
         id: qa-ai-dictation
         run: node tools/qa-ai-dictation.cjs
 
+      # D-1 (UI-CI-DIRECTIVE section 5.4): the assistant must fit any width.
+      # Sheet at 360/420/480, docked at 480/520/658/900, Maximise at 1900,
+      # light and dark: no overflow, a 56px one-row header, a composer card
+      # the message box fills, no pill radii, hist-inline only from 720, plus
+      # accessible names, tab order, the More menu's Esc hand-back, the empty
+      # state and the absolute key popover.
+      - name: "T4: AI window fits any width (qa-ai-window-layout)"
+        id: qa-ai-window-layout
+        run: node tools/qa-ai-window-layout.cjs
+
       - name: "T4: v11 feature battery (qa-v11)"
         id: qa-v11
         run: node qa-v11.cjs

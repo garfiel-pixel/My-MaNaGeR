@@ -21,8 +21,11 @@ Read in this order:
 7. `AUDIT-DIRECTIVE-2026-10-18.md` and `IMPROVEMENT-DIRECTIVE-2026-10-22.md` -
    open audit rows only after a state check proves the row is still open.
 
-**Not in scope until the owner un-parks them:** `UI-FIXES-SPEC.md`,
-`plan-ui.md`, `qa-landing-ui.cjs`.
+**Un-parked 2026-10-30 (owner: UI is the top priority):** `UI-FIXES-SPEC.md`,
+`plan-ui.md` and `qa-landing-ui.cjs` are live again. The spec's U-02 to U-14
+items landed in Wave 1.1/1.2, and `qa-landing-ui` is now a CI step in
+`browser-app` (43/43). `plan-ui.md`'s type/spacing scale still waits for the
+`tokens` layer in phase 1.6.
 
 **Never stage:** `adittion to scope/`, `the last update towrads maintainance
 mode/`, `AUTHORS-FIX-ISSUE.md` (stale: history is already clean; one author
@@ -50,8 +53,9 @@ not new feature work.
 
 One order. Each row is a shippable phase with its own gate, so a session that
 stops mid-wave leaves the next one an exact position. **Position: Wave 1,
-phases 1.1, 1.2 and 1.3 done; 1.4 (CSS coverage measurement) is next, then
-1.5-1.6 (dead rules, then the split).** UI is the owner's top priority
+phases 1.1 to 1.4 done; 1.6 (the CSS split into `css/src/*` layers) is next.
+1.5 (dead-rule removal) was demoted when the corrected measurement came in at
+11.8% / 9.7%, below the 15% trigger this plan set.** UI is the owner's top priority
 (2026-10-30) and leads the wave; the wave's other purpose is to freeze the
 ground every later plan builds on (the tenant fence, then the stylesheet
 split).
@@ -63,9 +67,9 @@ split).
 | 1.1 | **UI improvement pass**, landing first (gold ramp, one button language, no pills, header scroll state, dot-rail tone, card art/icons) | **DONE 2026-10-30** | `qa-landing-ui` **8/43 -> 23/43**; `qa-dot-rail` 15/15 with the raised rest-opacity threshold; `verify-gold` green; `npm run verify` green; sw v514 |
 | 1.2 | **UI backlog, landing** - the seven deferred items: U-02 icon pack + manifest + og, U-07 grouped dropdown, U-08 delete fallback hero cards, U-09 globe hover/spin fix, U-10 remove on-globe Pause (page-wide Performance Mode is the WCAG 2.2.2 mechanism), U-12 bento grid, U-13 phase rail | **DONE 2026-10-30** | `qa-landing-ui` **23/43 -> 43/43**, now a CI step (`browser-app`). Re-baselined in the same commit: `qa-hero-globe` G5/G8 (no widget control; the footer switch stops the globe), `qa-globe-spin` (switch arm, reduced-motion arm), `qa-scurve` (dead hero-card arms replaced), `qa-hero-cards` **retired** (it tested cards that no longer exist). `verify-gold` green (one real regression caught: the dark pop-out label at 2.82:1). Surprise pass: the two bento hero panels carry the accent surface |
 | 1.3 | **F1 cross-tenant isolation** | **DONE 2026-10-30** | `qa-tenant-isolation` **19/19** in the `cloud-auth` job. Found and fixed a live existence oracle in `claim` |
-| 1.4 | **E6.1 CSS coverage measurement** | **DONE 2026-10-30** | `tools/measure-css-coverage.cjs` (MANUAL, read-only): **816 / 2,572 class-id selectors in `css/mmgr.css` (31.7%)** and **152 / 526 in `css/marketing.css` (28.9%)** carry no evidence in the rendered DOM of five pages or in `js/`. Above the 15% trigger, so 1.5 is unlocked. DevTools `startRuleUsageTracking` was rejected as the metric: it reported 319 rules for a 3,139-block file, so its totals cannot be a denominator |
-| 1.5 | **E6.2 dead-rule removal** (unlocked: 31.7% / 28.9% measured) | **NEXT** | `node tools/measure-css-coverage.cjs --list` is the work list; delete in file-sized batches with `verify-css-integrity` (every source rule must reach `dist`) + `qa-health-sweep` + the visual gates after each batch |
-| 1.6 | **E6.3 CSS split** into `css/src/*` layers (tokens, shell, panels, tables, calculator, ai, print) bundled by `build.js`; the type/spacing/breakpoint tokens land here as the `tokens` layer | Queued | `verify-css-integrity` proves every source rule survives into `dist`; `verify-sizes`; one commit per layer |
+| 1.4 | **E6.1 CSS coverage measurement** | **DONE 2026-10-30, corrected the same day** | `tools/measure-css-coverage.cjs` (MANUAL, read-only): **303 / 2,572 class-id selectors in `css/mmgr.css` (11.8%)** and **51 / 526 in `css/marketing.css` (9.7%)** carry no evidence in the rendered DOM of 16 pages plus the unlocked project workspace, or in `js/`. **The first number was 31.7% / 28.9% and was wrong**: the tool loaded `project.html` with no project id, so it 307'd to `app.html?locked=default` and the whole workspace contributed nothing, and it measured only `index.html` of the 13 pages that link `marketing.css`. It now unlocks the workspace, measures every marketing page, reports any page that fails or redirects, and exits non-zero when incomplete (teeth proven: 31.6% returns with the unlock removed). DevTools `startRuleUsageTracking` was rejected as the metric: it reported 319 rules for a 3,139-block file |
+| 1.5 | **E6.2 dead-rule removal** | **DEMOTED 2026-10-30: below the 15% trigger, not a wave of its own** | The plan's own rule was "above 15% unlocks deletion". The honest measurement is 11.8% / 9.7%, so there is no 300-selector purge to run. The remaining candidates are states only reached by clicking (modals, drawers, tabs) that no load-time render proves, and a deletion pass would be guesswork. Take them opportunistically: any rule a later change proves dead goes in that change, with `verify-css-integrity` + `qa-health-sweep` + the visual gates |
+| 1.6 | **E6.3 CSS split** into `css/src/*` layers (tokens, shell, panels, tables, calculator, ai, print) bundled by `build.js`; the type/spacing/breakpoint tokens land here as the `tokens` layer | **NEXT** | `verify-css-integrity` proves every source rule survives into `dist`; `verify-sizes`; one commit per layer |
 
 ### Wave 2 - feature plans (schema order is the contract)
 
@@ -763,5 +767,18 @@ of every session.
   jobs green in run `41015996950`, 0 skipped. New `verify-ci-coverage` (12/12,
   teeth proven) is in `static`. `yaml` added as a devDependency. CI-only: no
   served file changed, so no service-worker bump.
-- **Next:** Phase B close (deploy from `$HOME/mmgr-deploy` + live probe), then
-  C1 NocoBase.
+- **2026-10-30 - Wave 1.1 to 1.4 done, then two corrections.** The landing UI
+  pass and its backlog landed (`qa-landing-ui` 8/43 to 43/43, now a CI step),
+  F1 tenant isolation 19/19 with a live existence oracle fixed, and the CSS
+  coverage measurement ran. Two things it got wrong were caught the same day:
+  (a) `qa-landing-ui` launched Playwright's bundled browser, which CI never
+  downloads, so the first green-looking wave went RED on the new step (run
+  `41095901556`); it now pins system Chrome like every other Playwright gate
+  (`59f05a7`, run `41155753538` 6/6 jobs green, slowest 458s). (b) the coverage
+  tool reported 31.7% / 28.9% dead CSS because it never rendered the project
+  workspace (`project.html` gate-redirected to `app.html?locked=...`) and
+  measured one of the 13 marketing pages; corrected, it is **11.8% / 9.7%**,
+  below the 15% trigger, so E6.2 deletion is demoted and the CSS split (1.6)
+  is the next real work.
+- **Next:** 1.6 CSS split into `css/src/*` layers, then Wave 2 C1 NocoBase.
+  The landing wave's deploy is recorded under Wave 1 in the log.

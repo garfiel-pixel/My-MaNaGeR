@@ -8,7 +8,7 @@
 
 ## Status log (newest at top)
 
-- **2026-10-30** - UI is the top priority (owner): landing improvement pass done (23/43), F1 tenant fence done (19/19, one real leak fixed). Next: finish the landing UI items, then the CSS split. Phase B D-1 and D-4 were done earlier the same day. CI is six parallel jobs (24.4 to 7.6 min). Phase E (repo trim E0 to E5) done: 706 -> 601 tracked files, finished plans in `docs/history/`, `verify-sizes` in CI. F and G queued (see the reliability directive). Phase B close (deploy) still owed.
+- **2026-10-30** - UI is the top priority (owner): landing improvement pass done (23/43), F1 tenant fence done (19/19, one real leak fixed), then the landing backlog to 43/43 and the CSS coverage number. Two same-day corrections: `qa-landing-ui` launched Playwright's bundled browser, which CI never downloads, so the wave went red on its own new CI step (now pins system Chrome, run `41155753538` 6/6 green), and the coverage tool never rendered the project workspace, so its 31.7% / 28.9% was really 11.8% / 9.7% (below the 15% trigger, so E6.2 deletion is demoted). Next: 1.6 CSS split, then C1 NocoBase. Phase B D-1 and D-4 were done earlier the same day. CI is six parallel jobs (24.4 to 7.6 min). Phase E (repo trim E0 to E5) done: 706 -> 601 tracked files, finished plans in `docs/history/`, `verify-sizes` in CI. F and G queued (see the reliability directive).
 
 ---
 
@@ -46,7 +46,7 @@
 | 1.1 | UI improvement pass (landing) | **DONE 2026-10-30** | `qa-landing-ui` 8/43 -> 23/43; gold ramp, buttons, pills, header, rail, cards; sw v514 |
 | 1.2 | UI backlog (U-02, U-07, U-08, U-09, U-10, U-12, U-13) | **NEXT** | `qa-landing-ui` to 43/43, then CI. Pause leaves the globe; Performance Mode is the 2.2.2 mechanism |
 | 1.3 | **F1** cross-tenant isolation | **DONE 2026-10-30** | `qa-tenant-isolation` 19/19 in `cloud-auth`; found and fixed a `claim` existence oracle |
-| 1.4-1.6 | E6 CSS coverage, dead rules, layered split | **QUEUED** | Coverage number first; `verify-css-integrity` proves every rule survives |
+| 1.4-1.6 | E6 CSS coverage, dead rules, layered split | **1.4 DONE** (corrected 11.8% / 9.7%); **1.5 DEMOTED** (below the plan's 15% trigger); **1.6 NEXT** | The split into `css/src/*` layers, one commit per layer; `verify-css-integrity` proves every rule survives into `dist` |
 | C1 | NocoBase custom task fields | **QUEUED** | Its DoD; schema v25 |
 | C2 | Leantime idea intake + merged agenda | **QUEUED** | Its 16-gate harness; schema v26 |
 | C3 | AppFlowy project book | **Needs drafting pass** | Four phases; schema v27 |

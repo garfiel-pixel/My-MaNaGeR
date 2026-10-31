@@ -56,9 +56,15 @@ async function newPage(browser, opts) {
 }
 
 (async () => {
-  const browser = await chromium.launch(
-    process.env.QA_CHANNEL ? { channel: process.env.QA_CHANNEL } : {}
-  );
+  // CI installs the playwright devDep but never downloads its browser, so a
+  // bare launch() dies on "Executable doesn't exist at .../chrome-headless-shell"
+  // (run 41095901556). Every other Playwright gate in the workflow pins the
+  // runner's system Chrome (qa-scurve, qa-spy-nav, qa-console-stress); QA_CHANNEL
+  // overrides it when a local machine only has the bundled build.
+  const browser = await chromium.launch({
+    channel: process.env.QA_CHANNEL || 'chrome',
+    args: ['--disk-cache-size=0']
+  });
 
   // ---------- first paint ----------
   {

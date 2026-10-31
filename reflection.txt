@@ -1,135 +1,137 @@
 # My MaNaGeR - reflection.txt (active; last session only. Older sessions archived in docs/history/reflection-ARCHIVE-2026-10-18.txt)
 
-SESSION 2026-10-30 - PHASE B3 (D-1): THE AI WINDOW FITS ANY WIDTH
+SESSION 2026-10-30, LAST PART - CLOSE THE CI BOOK, DEPLOY THE LANDING WAVE,
+AND CORRECT THE CSS NUMBER
 
 CONTEXT
-Owner: continue the build. The previous session had finished D-3 and D-2 but
-left D-2 uncommitted (HEAD was still the D-3 commit). This session closed that
-book (committed D-2 as `e033cc8` after rebuilding and re-running its gates),
-then took D-1 (UI-CI-DIRECTIVE section 5, steps 1 to 7) from "ready" to done,
-with a new permanent gate and a green local battery.
+The session before this one finished Wave 1.2 (landing UI backlog, 43/43) and
+Wave 1.4 (CSS coverage) and left exactly one TODO: "commit, push, and confirm
+the CI run is green". The commit and the push had happened; nobody had read the
+run. It was RED. Two further things were true and unrecorded: the landing wave
+had never been deployed (live served mmgr-shell-v513, the repo was on v515),
+and the 31.7% / 28.9% dead-CSS number that had just re-ordered the queue was
+measured with a broken evidence set.
 
 WHAT THIS SESSION DID
 
-1. D-2 COMMIT (was finished, never committed). `js/mmgr-voice.js` (aiJoin,
-   committed base, duplicate-final guard, one named typing listener),
-   `project.html` mic tooltip, `sw.js`, `.github/workflows/ci.yml` step,
-   `docs/CI-TEST-COVERAGE.md` row, `tools/qa-ai-dictation.cjs` new. Re-ran:
-   qa-ai-dictation 14/14, qa-ai PASS, qa-ai-win 22/22, npm run verify exit 0.
-   It failed the first re-run only because serve.cjs was not running; both AI
-   harnesses need :8765 and say so in their usage lines. Also removed a
-   duplicated B2 result block from EXECUTION-PLAN.md.
+1. CI REPAIR (`59f05a7`). Run 41095901556 on 87e4275 failed `browser-app` at
+   "T4: Landing UI spec (qa-landing-ui)"; `summary` failed only because of it.
+   The step died before its first check:
+   `browserType.launch: Executable doesn't exist at
+   /home/runner/.cache/ms-playwright/chromium_headless_shell-1243/...`.
+   tools/qa-landing-ui.cjs:59 called `chromium.launch({})`, so it wanted the
+   browser Playwright downloads, and CI installs only the devDep. Every other
+   Playwright gate in the workflow pins the runner's system Chrome (qa-scurve,
+   qa-spy-nav, qa-console-stress pass `channel: 'chrome'`; qa-hero-globe
+   resolves an executablePath). The harness now launches
+   `channel: process.env.QA_CHANNEL || 'chrome'` with `--disk-cache-size=0`
+   (AGENTS lesson 5), so a local machine can still override.
+   Run 41155753538 on 59f05a7: 6/6 jobs green - cloud-core 453s, browser-app
+   458s, cloud-auth 399s, browser-calc 373s, static 61s, summary 4s.
 
-2. D-1 STEP 1 - history threshold. `js/mmgr-ai.js` `AI_HIST_INLINE_MIN`
-   480 to 720 (with the reason written next to it). `tools/qa-ai-win.cjs`:
-   the "conversation column is visible at the default width" check became two
-   checks and now also reads `#ai-hist-btn` visibility; Maximise is the real
-   mechanism used to reach 720, then it is clicked back. 23/23.
+2. THE CSS NUMBER WAS WRONG, AND THE TOOL IS FIXED (`19d84cd`).
+   tools/measure-css-coverage.cjs loaded `project.html` with no project id, so
+   serve.cjs gate-redirected it to `app.html?locked=default` (by design) and the
+   ENTIRE project workspace contributed zero DOM evidence; it measured only
+   `index.html` out of the 13 root pages that link marketing.css; and its
+   `page.goto` failure was swallowed by `catch { continue }`, so a page that
+   never rendered read as 100% dead CSS. `--list` also stopped at 80 rows per
+   file, hiding 736 of 816 candidates. Deleting from that list would have
+   removed live CSS on contact.html, reviews.html and the dashboard.
+   The tool now:
+     - unlocks the workspace the way qa-full does (seed the demo project,
+       localStorage.mmgr_scope_demo-project = 'full', then
+       project.html?id=demo-project - verified landing on the workspace with
+       4,216 elements instead of the 476-element launcher);
+     - measures every root page whose source links a marketing stylesheet
+       (13, discovered by scanning, not hardcoded);
+     - prints any page that FAILED TO LOAD or landed on a different URL, and
+       sets a non-zero exit code when the measurement is incomplete;
+     - prints every candidate under --list.
+   Corrected measurement: 303 / 2,572 mmgr selectors (11.8%) and 51 / 526
+   marketing selectors (9.7%), not 31.7% / 28.9%.
+   Teeth: removing the unlock reproduces 31.6%, prints
+   "project.html?id=demo-project REDIRECTED to /app.html?locked=demo-project"
+   and exits 1.
+   CONSEQUENCE: Wave 1.5 (E6.2 dead-rule removal) was unlocked by a 15% trigger
+   the honest number does not meet, so it is demoted out of the queue. The
+   residual candidates are states only reached by clicking, which no load-time
+   render can prove. The CSS split (1.6) is next.
 
-3. D-1 STEP 2+3 - header and banner (`15e8108`). `project.html` header block
-   rebuilt: `.mt`, `#ai-api-pill` (now a dot BUTTON with the hidden label span),
-   five `ai-icon-btn` controls, `#ai-more-btn` + `#ai-more-menu` (role=menu,
-   absolute, engine row `#ai-engine-pill`, `#ai-pin-btn` as
-   role=menuitemcheckbox with aria-pressed AND aria-checked, Float injected by
-   `setupFloatSurface`). `js/mmgr-ai.js`: setApiStatus mirrors the label to
-   title/aria-label; `aiMoreMenu/aiMoreItems/setAiMore/closeAiMore/toggleAiMore`
-   with outside-click close; Esc handled first in the existing document capture
-   handler; `close()` closes the menu; exports `toggleMore`/`closeMore`.
-   `js/mmgr-app.js`: `aiMoreToggle` in ACTION_MAP and READONLY_SAFE_ACTIONS.
-   `css/mmgr.css`: `.ai-head` 56px single row, `.ai-icon-btn`, `.ai-api-dot`,
-   `.ai-more-*`, and ten 100px pill radii moved to `var(--radius-control)`.
-   Step 3: `#ai-cfg-cloud` is a banner (message + chip + gear + dismiss + pop),
-   `syncConnRow()` is the single visibility rule, dismissal resets on tier
-   change, provider select moved into the popover.
-   `tools/qa-ai-polish.cjs` (TRIAGE) assertions updated to the new homes.
+3. DEPLOYED THE LANDING WAVE (owner asked for it in this session, `7d8ca39`
+   carries the record). Live was serving mmgr-shell-v513 while the repo was on
+   v515, so the whole 1.1/1.2 UI wave was local only.
+   Staged from C:\Users\Garfield\mmgr-deploy with robocopy, excluding `.git`,
+   `.wrangler`, `node_modules`, `.agents`, `_archive`, `tmp`, `dogfood-output`
+   and the two owner folders: 935 files. Verified BEFORE deploying: index.html,
+   sw.js, css/mmgr.css, css/marketing.css, dist/bundle.js,
+   dist/marketing.min.css, manifest.webmanifest and js/mmgr-app.js all
+   hash-identical to the repo; phase-rail / hg-stage / hg-poster present; shell
+   version v515; and `.dev.vars` deleted from the stage (it is in
+   .assetsignore, but a stage that never carries secrets cannot leak them).
+   `wrangler deploy`: 982 files read, 53 uploaded, 533.27 KiB total (101.13 KiB
+   gzip), version d712b2e8-e091-4028-9e7d-c443ed046c69.
+   LIVE PROBE on https://mymanagerworkspace.com: sw.js serves
+   mmgr-shell-v515; /, /index.html, /project, /app.html, /pricing.html,
+   /manifest.webmanifest, /images/og-image.png and /favicon.ico all 200; the
+   served landing page carries phase-rail, hg-stage and hg-poster; the CSP
+   still carries its 25 inline-script hashes; / links dist/marketing.min.css,
+   the SVG favicon and the opaque 180px apple-touch icon; /.gitignore is 404.
 
-4. D-1 STEP 4+5 - composer and empty state (`76bc5a8`). `project.html`:
-   textarea first, `.ai-composer-tools` underneath (tier, mic, send with
-   margin-left:auto). `css` `.ai-q` is a bare textarea inside the card,
-   `.ai-composer-row` is the card (`--squircle-sm`, focus ring), tools 32px.
-   `js` auto-grow cap 160. `#ai-welcome` rebuilt: mark, "What are we working
-   on?", `#ai-welcome-rows`; `renderQuickPresets()` fills the chip strip AND
-   the rows from one `ns.Prompts.list()` slice; `hideWelcome()` also hides the
-   strip and `resetThread()` restores both; strip gets no scrollbar + edge fade.
+4. STALE RECORDS CORRECTED (same commit as 3). EXECUTION-PLAN.md still called
+   qa-landing-ui.cjs parked and out of scope (it is a CI step now), its position
+   line still pointed at 1.4, and its "Next" line still owed a Phase B deploy
+   that B5 had already done. docs/CI-TEST-COVERAGE.md described qa-hero-globe G5
+   as a Pause widget and G8 as "leaves the three hero cards untouched", both
+   retired by the 1.2 re-baseline, and still quoted the wrong coverage numbers.
 
-5. D-1 STEP 6 - context row (`e71716b`). The `<details class="ai-adv">` block
-   moved out of `.ai-body` to the end of `.ai-inputbar`; summary now carries a
-   sprite chevron that rotates when open; CSS is one line with no box.
-
-6. D-1 STEP 7 - container tiers (`cd4341e`). `.ai-main` gets
-   `container: aiwin / inline-size`; `@container` rules for compact (under
-   440), regular (440 to 599) and wide (600+, thread and composer capped at
-   760 and centred). `#ai-byo-pop` is absolute, inset 12px inside the banner.
-
-7. THE GATE (`eb9e7d8`). `tools/qa-ai-window-layout.cjs`: one context per
-   palette, sheet 360/420/480, docked 480/520/658/900 via mmgr_ai_size and
-   close/open, Maximise at 1900; per width it asserts no horizontal overflow,
-   no dead strip (`boxGap`), a 56px one-row header, the message box at least
-   80 percent of the card, Send at least 8px inside the window, no radius of
-   99px or more, and hist-inline exactly at 720 and up; once it asserts
-   accessible names, DOM order (header, body, composer, context row), the More
-   menu (absolute, inside, Esc closes and returns focus WITHOUT closing the
-   window), the four-row empty state retiring on one message, and the absolute
-   key popover. Screenshots to tmp/ai-layout (not committed). Registered in
-   docs/CI-TEST-COVERAGE.md (CI) and wired as a T4 step in ci.yml.
-   `tools/qa-fixed-containment.cjs` now also scans with the More menu and the
-   key popover open: 10/10.
-
-8. TWO DEFECTS THE GATE FOUND, FIXED (`3cf1d3f`):
-   - Esc in the More menu closed the menu and then the whole window, because
-     `js/mmgr-app.js` (~line 640) has a document Escape handler that calls
-     `ns.AiWin.close()`. The assistant's inner layers now call
-     `stopImmediatePropagation()`.
-   - The generic `.mb { max-height: 82vh }` (line ~6785) clamped the drawer, so
-     at 360x800 the panel was 656 tall with a 144px page-coloured strip under
-     the composer. `#ai-win .mb` now sets `max-height: none`.
-
-VERIFICATION (all run this session, in this order)
-  npm run verify                       exit 0, 171 unit tests, registry 148/148
-  tools/qa-ai-window-layout.cjs        83/83
-  tools/qa-ai-win.cjs                  23/23
-  qa-ai.cjs                            PASS (AI23_GATE)
-  tools/qa-ai-dictation.cjs            14/14
-  tools/qa-fixed-containment.cjs       10/10
-  tools/qa-ai-relay.cjs                RELAY_GATE PASS
-  tools/qa-ai-badge-e2e.cjs            API phase 5/5
-  tools/qa-a11y-axe.cjs                7/7
-  npm run verify:gold                  all checks passed
-  tools/audit-action-map.cjs           no missing handler
-  tools/verify-actions.cjs             T-2 ACTION CONTRACT PASS
-  npm run build                        run after every js/css edit
+VERIFICATION (all run this session)
+  node tools/qa-landing-ui.cjs            43/43 (system Chrome channel)
+  node tools/measure-css-coverage.cjs     16 pages + the project workspace,
+                                          11.8% mmgr / 9.7% marketing
+  teeth (unlock removed)                  31.6%, prints the redirect, exit 1
+  node build.js                           clean, no dist churn
+  npm run verify                          exit 0 (171 unit, registry 151/151,
+                                          sizes green, CSP + SW green)
+  node tools/verify-prettier.cjs          all files formatted
+  node tools/verify-eslint.cjs            0 errors
+  wrangler deploy                         version d712b2e8, exit 0
+  live probe                              sw v515, 8 URLs 200, markers present
+  CI run 41155753538 (59f05a7)            6/6 jobs green
+  CI run 41157502659 (7d8ca39)            6/6 jobs green - browser-app 467s,
+                                          cloud-core 454s, browser-calc 365s,
+                                          cloud-auth 354s, static 70s, summary 2s
 
 STATE LEFT BEHIND
-  SW mmgr-shell-v513. Schema unchanged (v24). Phase B is complete except D-4,
-  which is next: measure the latest green run first (D4.0), then split ci.yml
-  into static, cloud-core, cloud-auth, browser-calc, browser-app plus a summary
-  job on branch ci-split, with tools/verify-ci-coverage.cjs as the proof.
-  Deploy still owed at the end of Phase B (D-3, D-2, D-1 are user-facing), from
-  $HOME/mmgr-deploy, after the CI split is green.
+  SW mmgr-shell-v515, LIVE. Schema unchanged (v24). Wave 1.1 to 1.4 done and
+  deployed; 1.5 demoted; 1.6 (the CSS split into css/src/* layers, tokens first)
+  is the next piece of work, then Wave 2 C1 NocoBase (schema v25).
+  CI is green on main at 7d8ca39.
+
+---
+
+SESSION 2026-10-30, THIRD PART - PHASE B3 (D-1): THE AI WINDOW FITS ANY WIDTH
+
+The assistant is one 56px header row (sparkle, title, status dot; New, History,
+Maximise, More, Close as 32x32 icon buttons), one composer card, and three width
+tiers measured on `.ai-main` itself (`container: aiwin / inline-size`). History
+goes inline only at 720, so the 520 dock default keeps its reading column. The
+engine pill moved into the More menu and `#ai-api-pill` became a 10px dot with
+its label visually hidden and mirrored to title and aria-label, so qa-ai A16
+kept passing. The gate found two real defects: the workspace document Escape
+handler closed the window from inside the More menu (inner layers now
+stopImmediatePropagation), and the generic `.mb` modal cap (82vh) left a dead
+page-coloured strip under the composer at every width (`#ai-win .mb` now clears
+it). qa-ai-window-layout 83/83, qa-ai-win 23/23, qa-ai PASS, qa-ai-dictation
+14/14, qa-fixed-containment 10/10, axe 7/7, verify:gold green, npm run verify
+exit 0. Shell v513 at the time.
 
 SESSION 2026-10-30, SECOND PART - PHASE B4 (D-4): CI SPLIT
 
-MEASURED
-  Baseline run 40991435134: 24.4 min, 1531 step-seconds. T2 770, T4 630,
-  T3 67, static 64. Longest: Team RBAC 256s, qa-full 101s, Sync bond 95s,
-  axe 81s.
-
-BUILT (branch ci-split)
-  `.github/workflows/ci.yml` regenerated from the single job into six jobs by a
-  textual splitter (tmp/split-ci.py, not committed) that sliced the original
-  116 step blocks and re-emitted them under static (50), cloud-core (21),
-  cloud-auth (28), browser-calc (24), browser-app (35) plus summary. Per-job
-  setup is checkout, node 22, install, build; both browser jobs install the
-  playwright devDep and start/stop their own serve.cjs; cloud-core and
-  cloud-auth each own a wrangler-start.
-  `tools/verify-ci-coverage.cjs` (new, 12/12) proves the run: multiset, the
-  T4 count, same-job id references and the summary job. `yaml` added as a
-  devDependency (package.json, package-lock).
-  `docs/CI-TEST-COVERAGE.md` "Jobs inside ci.yml" section rewritten for six
-  jobs; `AGENTS.md` section 8 gained item 6b.
-
-RESULTS
-  Run 41014918383 (3bd9325): all six green, cloud-auth 490s.
-  Run 41015996950 (1d60df7, after moving Sync bond to browser-calc): all six
-  green; cloud-core 457s, browser-app 437s, browser-calc 383s, cloud-auth
-  379s, static 53s, summary 4s, 0 skipped.
+Baseline run 40991435134: 24.4 min, 1531 step-seconds. ci.yml regenerated from
+one job into six (static, cloud-core, cloud-auth, browser-calc, browser-app,
+summary) by a textual splitter that sliced the 116 original step blocks.
+`tools/verify-ci-coverage.cjs` (12/12) proves the run: the run: multiset, the T4
+count, same-job id references and the summary job; `yaml` added as a devDep.
+Runs 41014918383 (3bd9325) and 41015996950 (1d60df7, after moving Sync bond to
+browser-calc): all six green, slowest 457s, 0 skipped.

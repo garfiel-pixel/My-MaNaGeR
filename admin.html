@@ -140,6 +140,12 @@ header h1 .mark{color:var(--gold);}
 .hdr-actions a{font-size:.74rem;color:var(--slate);text-decoration:none;margin-right:4px;transition:color var(--tr);}
 .hdr-actions a:hover{color:var(--gold);}
 .hdr-actions a:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px;}
+  /* OWNER 2026-10-31: the admin header actions are text, not pills. No fill,
+     no border and no rounded chrome at rest; the highlight appears on hover
+     and the focus ring stays for keyboard users. */
+  .hdr-actions .btn{background:transparent;border:0;border-radius:6px;padding:5px 7px;color:var(--slate);box-shadow:none;}
+  .hdr-actions .btn:hover{color:var(--gold-text);background:color-mix(in srgb, var(--gold) 10%, transparent);}
+  .hdr-actions .btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
 main{max-width:1000px;margin:0 auto;padding:26px 24px 70px;}
 /* Wide monitors (owner 2026-10-19): the create/admin flow fills the screen it
    is opened on instead of a 1000px strip with empty canvas either side. Under

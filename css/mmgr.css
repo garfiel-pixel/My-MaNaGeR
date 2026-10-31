@@ -983,17 +983,23 @@ body:not(.crosshair-on) #cy {
   font-size: 0.72rem;
   color: var(--slate);
   text-decoration: none;
-  padding: 4px 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--card);
+  padding: 5px 7px;
+  /* OWNER 2026-10-31: no box around the back link. The control is text plus
+     its arrow at rest; the highlight appears only under the pointer. */
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
   transition: var(--tr-ui);
   flex-shrink: 0;
   white-space: nowrap;
 }
 .hdr-back:hover {
   color: var(--gold-text);
-  border-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 10%, transparent);
+}
+.hdr-back:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 2px;
 }
 .hdr-back .ico {
   width: 14px;
@@ -1065,10 +1071,11 @@ body.focus-mode .focus-ind {
   justify-content: center;
   width: 38px;
   height: 38px;
-  border: 1px solid var(--border);
-  background: var(--card);
+  /* OWNER 2026-10-31: the menu control is an icon, not a boxed button. */
+  border: 0;
+  background: transparent;
   color: var(--slate);
-  border-radius: 10px;
+  border-radius: 6px;
   cursor: pointer;
   transition: var(--tr-ui);
   flex-shrink: 0;
@@ -1079,7 +1086,7 @@ body.focus-mode .focus-ind {
 }
 .nav-btn:hover {
   color: var(--gold-text);
-  border-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 10%, transparent);
 }
 /* Owner 2026-08-15 (corrected): the thin icon was the Project Completion    RING, not the hamburger - the hamburger keeps its normal 2px weight but
    is a bit LARGER (20px) so it's easily visible in the header bar. */
@@ -2096,6 +2103,18 @@ body.sidebar-open .sb-close .ico {
   justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
+  min-width: 0;
+  /* OWNER 2026-10-31: action buttons used to sit in a bare <div> with no
+     spacing, so Save / Upload / Print read as one welded strip. Scoped with
+     :has() to divs that actually hold buttons, so no other card-head layout
+     moves. Only the direct wrapper is affected; the buttons keep their own
+     sizing. */
+}
+.card-title > div:has(> .btn):not([hidden]) {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -7317,28 +7336,28 @@ body.db-page .db-user[hidden] {
 .dirty-ind {
   display: none;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   font-size: 0.7rem;
   font-weight: 600;
   color: var(--amber-ink);
-  padding: 3px 8px;
+  padding: 2px 0;
   border: none;
-  border-radius: 100px;
+  border-radius: 6px;
   background: transparent;
   cursor: pointer;
   transition: background var(--tr);
 }
 .dirty-ind::before {
   content: '';
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  flex-shrink: 0;
+  flex: 0 0 8px;
   background: var(--dot-yellow);
   box-shadow: 0 0 6px color-mix(in srgb, var(--dot-yellow) 55%, transparent);
 }
 .dirty-ind:hover {
-  background: color-mix(in srgb, var(--dot-yellow) 12%, transparent);
+  color: var(--gold-text);
 }
 @keyframes pulseAttn {
   0%,
@@ -7505,31 +7524,47 @@ a.bk-signin {
   }
 }
 
+/* OWNER 2026-10-31: the schedule state is a notifier DOT, not a pill. The
+   dot carries the colour and the text stays plain, so the header reads as one
+   line instead of a row of boxes. Same treatment as .dirty-ind below. */
 .timeline-ind {
   display: none;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   font-size: 0.7rem;
-  padding: 3px 9px;
-  border-radius: 100px;
+  font-weight: 600;
+  padding: 2px 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
   cursor: pointer;
   transition: var(--tr-ui);
 }
 .timeline-ind.on {
   display: inline-flex;
 }
+.timeline-ind::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: var(--dot-yellow);
+}
 .timeline-ind.ti-ba {
-  color: var(--amber);
-  border: 1px solid var(--amber);
-  background: rgba(var(--amber-rgb), 0.08);
+  color: var(--amber-ink);
+}
+.timeline-ind.ti-ba::before {
+  background: var(--amber);
 }
 .timeline-ind.ti-br {
   color: var(--danger);
-  border: 1px solid var(--danger);
-  background: rgba(239, 68, 68, 0.08);
+}
+.timeline-ind.ti-br::before {
+  background: var(--danger);
 }
 .timeline-ind:hover {
-  filter: brightness(1.2);
+  color: var(--gold-text);
 }
 
 /* ---- Empty State ---- */
@@ -10701,10 +10736,12 @@ body.dark-mode .ai-byo-status[data-state='untested'] {
   width: 40px;
   height: 40px;
   flex-shrink: 0;
-  border-radius: var(--radius-rect, 10px);
-  background: color-mix(in oklch, var(--gold) 16%, transparent);
-  color: var(--gold-text);
-  border: 1px solid color-mix(in oklch, var(--gold) 35%, transparent);
+  /* OWNER 2026-10-31: the calculator's back arrow loses its surround. Hit
+     area stays 40px; the tint is a hover affordance, not a resting box. */
+  border-radius: 8px;
+  background: transparent;
+  color: var(--slate);
+  border: 0;
   cursor: pointer;
   transition:
     background var(--tr),
@@ -10712,7 +10749,7 @@ body.dark-mode .ai-byo-status[data-state='untested'] {
     transform var(--tr);
 }
 .bcp-back:hover {
-  background: color-mix(in oklch, var(--gold) 26%, transparent);
+  background: color-mix(in oklch, var(--gold) 14%, transparent);
   color: var(--gold-text);
 }
 .bcp-back:active {
@@ -10778,11 +10815,13 @@ body.dark-mode .ai-byo-status[data-state='untested'] {
   align-items: center;
   gap: 7px;
   height: 40px;
-  padding: 0 10px;
+  padding: 0 8px;
   flex-shrink: 0;
-  border-radius: var(--radius-rect, 10px);
-  background: var(--card);
-  border: 1px solid var(--border);
+  /* OWNER 2026-10-31: Performance Mode is a switch, not a boxed pill. The
+     track carries the affordance; the label sits on the bar itself. */
+  border-radius: 8px;
+  background: transparent;
+  border: 0;
   color: var(--slate);
   font-size: 0.78rem;
   font-weight: 600;
@@ -10793,7 +10832,7 @@ body.dark-mode .ai-byo-status[data-state='untested'] {
 }
 .bcp-perf:hover {
   color: var(--gold-text);
-  border-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 10%, transparent);
 }
 .bcp-perf-in {
   position: absolute;
@@ -10848,9 +10887,10 @@ body.dark-mode .ai-byo-status[data-state='untested'] {
   width: 40px;
   height: 40px;
   flex-shrink: 0;
-  border-radius: var(--radius-rect, 10px);
-  background: var(--card);
-  border: 1px solid var(--border);
+  /* OWNER 2026-10-31: the moon is an icon, not a boxed button. */
+  border-radius: 8px;
+  background: transparent;
+  border: 0;
   color: var(--slate);
   cursor: pointer;
   transition:
@@ -10859,7 +10899,7 @@ body.dark-mode .ai-byo-status[data-state='untested'] {
 }
 .bcp-theme:hover {
   color: var(--gold-text);
-  border-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 10%, transparent);
 }
 .bcp-theme:focus-visible {
   outline: 2px solid var(--gold-ink);
@@ -12460,7 +12500,7 @@ html.mmgr-tour-active .bcp-tour-nudge {
 /* S-6.4 (owner 2026-10-22) - "the same nice boxes throughout".
    The estimate screen carried TWO field languages: the boxes inside a
    .bcp-field took the token treatment, while the document row, the brand
-   grid, the client fields, the save-name box, the JIC rate and every
+   grid, the client fields, the save-name box, the book rate and every
    element/opening row fell back to the browser default - the "stepping into
    the past" boxes the owner pointed at.
 
@@ -18130,11 +18170,13 @@ button.code-which:focus-visible {
 .escrow-badge {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   max-width: 230px;
-  padding: 4px 8px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface-raised);
+  /* OWNER 2026-10-31: backup state is a notifier line, not a pill. */
+  padding: 2px 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
   color: var(--slate);
   font-size: 0.68rem;
   font-weight: 600;
@@ -18143,9 +18185,22 @@ button.code-which:focus-visible {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.escrow-badge::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: var(--dot-yellow);
+}
 .escrow-badge.on {
   color: var(--gold-text);
-  border-color: var(--gold);
+}
+.escrow-badge.on::before {
+  background: var(--dot-green);
+}
+.escrow-badge.off::before {
+  background: var(--dot-red);
 }
 @media (max-width: 760px) {
   .escrow-badge {
@@ -18801,7 +18856,7 @@ body.calculator-page .bcp-rr-x {
   font-size: 0.7rem;
 }
 /* 'C' marks a rate we calculated from the imperial figure rather
-   than one JIC printed. Always carries a title, never a bare
+   than one book printed. Always carries a title, never a bare
    letter the user has to guess at. */
 .rr-calc {
   display: inline-block;

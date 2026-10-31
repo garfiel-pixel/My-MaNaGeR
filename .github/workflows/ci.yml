@@ -855,6 +855,19 @@ jobs:
         id: qa-fixed-containment
         run: node tools/qa-fixed-containment.cjs
 
+      # OWNER AUDIT 2026-10-31 (S1): no boxes around text/icon controls. Proves
+      # at 390 and 1280, in both themes, that each named control has no resting
+      # border/fill, keeps a hover highlight, and keeps its focus-visible rule.
+      - name: "T4: Quiet chrome, no pill boxes (qa-chrome)"
+        id: qa-chrome
+        run: node tools/qa-chrome.cjs
+
+      # OWNER AUDIT 2026-10-31 (S3): card-head button rows keep an 8px gap, and
+      # the schedule/backup states are 8px dots rather than bordered pills.
+      - name: "T4: Toolbar spacing and dot states (qa-toolbar-spacing)"
+        id: qa-toolbar-spacing
+        run: node tools/qa-toolbar-spacing.cjs
+
       - name: "T4: Calc S2 gate (C6 sticky + C7 switch rows + X-1/X-2)"
         id: calc-s2
         run: node tools/verify-calc-s2.cjs

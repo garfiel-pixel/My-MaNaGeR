@@ -57,8 +57,27 @@ phases 1.1 to 1.4 done; 1.6 (the CSS split into `css/src/*` layers) is next.
 1.5 (dead-rule removal) was demoted when the corrected measurement came in at
 11.8% / 9.7%, below the 15% trigger this plan set.** UI is the owner's top priority
 (2026-10-30) and leads the wave; the wave's other purpose is to freeze the
-ground every later plan builds on (the tenant fence, then the stylesheet
-split).
+ground every later plan builds on (the tenant fence, then the stylesheet split).
+
+### 1.7 - Owner UI audit batch: S1-S3 DONE 2026-10-31, S4-S7 open
+
+Twelve findings from the owner's live walk. No commit has touched any of them:
+`JIC rate book` is still user-facing in `js/calculator-page.js` and
+`calculator.html`, the admin header still carries `.escrow-badge` pills,
+`.hdr-back` still has box chrome, and `.card-title > div` has no gap.
+
+**S1 (quiet chrome), S2 (the rate book's name plus a zero-occurrence gate) and
+S3 (toolbar gaps, dot states) shipped 2026-10-31: `qa-chrome` 82/82,
+`qa-toolbar-spacing` 12/12, `verify-ratebook-wording` 12/12, shell v517. S4
+(theme/perf coupling), S5 (cloud refresh), S6 (assistant float) and S7
+(enterprise diagnostic) are still open.**
+
+**The order, the scope, the gate and the verified/disproved claims live in
+[`docs/SPRINTS.md`](docs/SPRINTS.md).** It supersedes the untracked
+`IMPLEMENTATION-PLAN-2026-10-30.md`, `FINAL-IMPLEMENTATION-PLAN.md` and
+`TOOLS-CHECKLIST.md`, which were written without reading the code (they call a
+shipped, gated team panel "missing", cite `mmgr-ai.js:4284` as proof of a float
+bug when it is the pin sync, and call a `saveFloatState()` that does not exist).
 
 ### Wave 1 - ground and gates (in progress)
 

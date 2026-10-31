@@ -27,6 +27,21 @@ not just `js/calculator-page.js`.
 
 ## The sprints
 
+**Status 2026-10-31: S1-S4 and S6 are DONE; S5 and S7 remain.**
+
+- **S4** shipped with `tools/qa-theme-perf.cjs` (15/15). The standard paths were
+  already sound, so the gate proved the contract instead of "fixing" it - and
+  then found the case the owner actually described: an open tab did not follow a
+  preference changed in another tab. Both modules now listen for `storage` and
+  re-apply only their own key.
+- **S6** shipped with `tools/qa-ai-float.cjs` (12/12), the first gate to touch
+  `.float-mode`. It found two real defects: D-1's More-menu injection `return`ed
+  early, so the Float row had no click handler and the header had no drag wiring
+  (float did nothing at all); and closing a floating window left `float-mode`
+  and its inline geometry behind, so the next open came back mid-screen. Both
+  fixed in `js/mmgr-ai.js`, with the dock/close path factored into `dockFloat()`
+  so the drawer and the assistant cannot drift apart again.
+
 **Status 2026-10-31: S1, S2 and S3 are DONE** (owner greenlit all three plus the
 full initials purge). Evidence: `qa-chrome` 82/82, `qa-toolbar-spacing` 12/12,
 `verify-ratebook-wording` 12/12 with the new zero-occurrence arm, and the

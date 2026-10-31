@@ -59,17 +59,18 @@ phases 1.1 to 1.4 done; 1.6 (the CSS split into `css/src/*` layers) is next.
 (2026-10-30) and leads the wave; the wave's other purpose is to freeze the
 ground every later plan builds on (the tenant fence, then the stylesheet split).
 
-### 1.7 - Owner UI audit batch: S1-S3 DONE 2026-10-31, S4-S7 open
+### 1.7 - Owner UI audit batch: S1-S4 + S6 DONE 2026-10-31, S5 + S7 open
 
 Twelve findings from the owner's live walk. No commit has touched any of them:
 `JIC rate book` is still user-facing in `js/calculator-page.js` and
 `calculator.html`, the admin header still carries `.escrow-badge` pills,
 `.hdr-back` still has box chrome, and `.card-title > div` has no gap.
 
-**S1 (quiet chrome), S2 (the rate book's name plus a zero-occurrence gate) and
-S3 (toolbar gaps, dot states) shipped 2026-10-31: `qa-chrome` 82/82,
-`qa-toolbar-spacing` 12/12, `verify-ratebook-wording` 12/12, shell v517. S4
-(theme/perf coupling), S5 (cloud refresh), S6 (assistant float) and S7
+**S1 (quiet chrome), S2 (the rate book's name plus a zero-occurrence gate),
+S3 (toolbar gaps, dot states), S4 (theme/perf independence + cross-tab sync) and
+S6 (assistant float and pin) shipped 2026-10-31: `qa-chrome` 82/82,
+`qa-toolbar-spacing` 12/12, `qa-theme-perf` 15/15, `qa-ai-float` 12/12,
+`verify-ratebook-wording` 12/12, shell v518. S5 (cloud refresh) and S7
 (enterprise diagnostic) are still open.**
 
 **The order, the scope, the gate and the verified/disproved claims live in

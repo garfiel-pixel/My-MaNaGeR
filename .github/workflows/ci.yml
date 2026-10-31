@@ -855,6 +855,11 @@ jobs:
         id: qa-fixed-containment
         run: node tools/qa-fixed-containment.cjs
 
+      # OWNER AUDIT 2026-10-31 (S6): float and pin, the contract nothing covered.
+      - name: "T4: Assistant float and pin (qa-ai-float)"
+        id: qa-ai-float
+        run: node tools/qa-ai-float.cjs
+
       # OWNER AUDIT 2026-10-31 (S1): no boxes around text/icon controls. Proves
       # at 390 and 1280, in both themes, that each named control has no resting
       # border/fill, keeps a hover highlight, and keeps its focus-visible rule.
@@ -867,6 +872,12 @@ jobs:
       - name: "T4: Toolbar spacing and dot states (qa-toolbar-spacing)"
         id: qa-toolbar-spacing
         run: node tools/qa-toolbar-spacing.cjs
+
+      # OWNER AUDIT 2026-10-31 (S4): theme and Performance Mode stay independent,
+      # survive reloads and page changes, and an open tab follows the other.
+      - name: "T4: Theme and Performance Mode independence (qa-theme-perf)"
+        id: qa-theme-perf
+        run: node tools/qa-theme-perf.cjs
 
       - name: "T4: Calc S2 gate (C6 sticky + C7 switch rows + X-1/X-2)"
         id: calc-s2

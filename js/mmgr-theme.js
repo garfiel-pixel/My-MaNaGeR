@@ -174,6 +174,29 @@
     pushBackend();
   }
 
+  /**
+   * OWNER 2026-10-31 (audit finding 11): a theme changed in ANOTHER TAB must
+   * reach this one. The owner keeps a project open while pricing in the
+   * calculator; before this, the second tab kept the old look until a reload,
+   * which reads exactly as "the theme does not reach the app". `storage` is
+   * the only signal a same-origin tab receives, and it fires only when the
+   * value really changed - so no echo loop is possible (apply() never writes).
+   */
+  function watchOtherTabs() {
+    window.addEventListener('storage', function (e) {
+      if (!e || e.key !== MODE_KEY) {
+        return;
+      }
+      apply();
+      syncGlass();
+      // Keep any Appearance select on this page showing the new mode.
+      var sels = document.querySelectorAll('select#theme-select');
+      for (var i = 0; i < sels.length; i++) {
+        sels[i].value = currentMode();
+      }
+    });
+  }
+
   /** Listen for OS preference changes when mode is 'system'. */
   function watchSystemPreference() {
     if (!window.matchMedia) {
@@ -204,6 +227,7 @@
 
   // --- Boot ---
   apply();
+  watchOtherTabs();
   // On pages where the script loads in <head>, body doesn't exist yet.
   // Re-apply once DOM is ready so body.dark-mode engages on marketing pages.
   if (!document.body) {

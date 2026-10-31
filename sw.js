@@ -423,7 +423,12 @@
 // changed, so the CSP hashes are untouched. v517 is the same wave: the
 // formatter re-touched js/calculator-page.js AFTER the v516 stamp, so the
 // version moves again - no asset differs from v516.
-const CACHE = 'mmgr-shell-v517';
+// v518 - OWNER UI AUDIT, SPRINT S4 (2026-10-31). Theme and Performance Mode
+// stay two independent device preferences, and an OPEN TAB now follows a
+// change made in another tab: js/mmgr-theme.js and js/mmgr-perf.js listen for
+// `storage` and re-apply their own preference only, so neither can drag the
+// other. Changed shell assets: js/mmgr-theme.js, js/mmgr-perf.js.
+const CACHE = 'mmgr-shell-v518';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

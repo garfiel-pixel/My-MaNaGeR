@@ -190,6 +190,25 @@
   });
   document.addEventListener('mmgr:perf', syncInputs);
 
+  /* OWNER 2026-10-31 (audit finding 11): Performance Mode changed in another
+     tab must reach this one - theme and perf are two independent device
+     preferences, and neither may sit stale while the other tab is open. The
+     `storage` event only fires for a real change in another tab, so this can
+     never echo the write made here. It re-applies the attribute, mirrors the
+     switches and tells the decorations (the same event set() fires). */
+  window.addEventListener('storage', function (e) {
+    if (!e || e.key !== KEY) {
+      return;
+    }
+    apply();
+    syncInputs();
+    try {
+      document.dispatchEvent(new CustomEvent('mmgr:perf', { detail: { on: isOn() } }));
+    } catch (err) {
+      /* old browser: the attribute still did its job */
+    }
+  });
+
   ns.Perf = {
     isOn: isOn,
     set: set,

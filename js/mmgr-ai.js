@@ -301,6 +301,13 @@ var MMGR = window.MMGR || {};
   function close() {
     const modal = U.$('ai-win');
     if (modal) {
+      // OWNER 2026-10-31 (audit finding 4, found by tools/qa-ai-float.cjs):
+      // a floating window that closes must DOCK first. Class removal alone
+      // left `float-mode` and its inline geometry behind, so the next open
+      // came back mid-screen at stale coordinates while the Float row still
+      // read "Float" - the same dead state the settings drawer already had a
+      // watcher for. Silent: the window is closing, not moving.
+      dockFloat('ai-win', true);
       modal.classList.remove('open');
       modal.classList.remove('hist-open');
     }
@@ -3205,6 +3212,11 @@ var MMGR = window.MMGR || {};
         // so Float is injected there as a menu row (icon + word) instead of
         // as a bare header icon. Same [data-float-toggle] hook, same drag
         // exclusion, same click handler.
+        //
+        // OWNER 2026-10-31 (audit finding 4): this branch used to `return`
+        // here - which skipped the click listener AND the header drag wiring
+        // below, so Float did nothing at all and a floating window could not
+        // be moved. Only the injection differs now; the wiring is shared.
         btn.className = 'ai-more-item float-tgl';
         btn.innerHTML =
           '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-popout"></use></svg> Float';
@@ -3212,19 +3224,20 @@ var MMGR = window.MMGR || {};
         if (menu) {
           menu.appendChild(btn);
         }
-        return;
-      }
-      btn.innerHTML =
-        '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-popout"></use></svg>';
-      // BROWSER-CAUGHT (wave-2 probe): on #drw the .dc close button is NOT a
-      // direct child of .dh (nested deeper), so head.insertBefore(btn, dc)
-      // threw NotFoundError and killed the whole module load (AiWin gone).
-      // A broken injection must never break the surface: fall back to append.
-      const dc = head.querySelector('.dc');
-      if (dc && dc.parentNode === head) {
-        head.insertBefore(btn, dc);
       } else {
-        head.appendChild(btn);
+        btn.innerHTML =
+          '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-popout"></use></svg>';
+        // BROWSER-CAUGHT (wave-2 probe): on #drw the .dc close button is NOT a
+        // direct child of .dh (nested deeper), so head.insertBefore(btn, dc)
+        // threw NotFoundError and killed the whole module load (AiWin gone).
+        // A broken injection must never break the surface: fall back to
+        // append.
+        const dc = head.querySelector('.dc');
+        if (dc && dc.parentNode === head) {
+          head.insertBefore(btn, dc);
+        } else {
+          head.appendChild(btn);
+        }
       }
     }
     let drag = null;
@@ -3349,6 +3362,31 @@ var MMGR = window.MMGR || {};
       wireDimClick();
     }
   }
+  /**
+   * Put a floating surface back where it was docked. `quiet` skips the toast
+   * for the close path, where "Docked back." would announce a window that is
+   * about to disappear.
+   */
+  function dockFloat(id, quiet) {
+    const el = U.$(id);
+    if (!el || !el.classList.contains('float-mode')) {
+      return false;
+    }
+    const saved = el.__dockGeom || {};
+    el.classList.remove('float-mode');
+    el.style.left = saved.left || '';
+    el.style.top = saved.top || '';
+    el.style.width = saved.width || '';
+    el.style.height = saved.height || '';
+    el.style.right = saved.right || '';
+    el.style.transform = '';
+    clearFloatPos(id);
+    syncFloatState(id);
+    if (!quiet) {
+      toast('Docked back.', 'ok');
+    }
+    return true;
+  }
   function toggleFloat(id) {
     const el = U.$(id);
     if (!el) {
@@ -3357,17 +3395,7 @@ var MMGR = window.MMGR || {};
     if (el.classList.contains('float-mode')) {
       // DOCK (minimize): restore the pre-float inline geometry (saved on
       // float-on) and put the drawer back into its sidebar.
-      const saved = el.__dockGeom || {};
-      el.classList.remove('float-mode');
-      el.style.left = saved.left || '';
-      el.style.top = saved.top || '';
-      el.style.width = saved.width || '';
-      el.style.height = saved.height || '';
-      el.style.right = saved.right || '';
-      el.style.transform = '';
-      clearFloatPos(id);
-      syncFloatState(id);
-      toast('Docked back.', 'ok');
+      dockFloat(id, false);
     } else {
       // FLOAT: remember the docked geometry, then pop out CENTERED at a
       // decent size (66vw x 80vh, clamped). No stale per-device position:

@@ -91,7 +91,7 @@ fails the gate.
 | `mmgr_calc_fx` | Exchange rates you entered. | necessary |
 | `mmgr_calc_estimates` | Saved estimates. | necessary |
 | `mmgr_calc_rate_sheets` | Rate sheets. | necessary |
-| `mmgr_calc_books` , `mmgr_calc_book_active` , `mmgr_calc_jic_default` | Rate books and which one is active. | necessary |
+| `mmgr_calc_books` , `mmgr_calc_book_active` , `mmgr_calc_book_default` | Rate books and which one is active. | necessary |
 | `mmgr_calc_prelims` | Preliminaries settings. | necessary |
 | `mmgr_calc_locpacks` | Local packs. | necessary |
 | `mmgr_calc_rollup` , `mmgr_calc_boq` , `mmgr_calc_biz_name` , `mmgr_calc_family` | Estimate breakdowns and business details. | necessary |

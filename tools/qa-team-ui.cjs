@@ -1068,6 +1068,12 @@ async function main() {
         var wbs = document.querySelector('.sec-btn[data-section="wbs"]');
         var bud = document.querySelector('.sec-btn[data-section="bud"]');
         if (!wbs || !bud) return false;
+        // The banner and body class land one render BEFORE the per-section
+        // scope marks, so this predicate must wait for the thing it asserts
+        // (budget hidden, WBS shared). On a slow CI runner the old predicate
+        // returned early and read wbsHidden:false while the scope was still
+        // being applied - a harness race, not a product defect.
+        if (!bud.classList.contains('client-hidden')) return false;
         return {
           clientScope: true,
           teamBanner: true,

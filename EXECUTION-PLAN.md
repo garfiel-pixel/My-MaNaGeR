@@ -121,6 +121,33 @@ bug when it is the pin sync, and call a `saveFloatState()` that does not exist).
 | 3.5 | **G1 provenance decision, then G4 currency/market copy** | **Owner** | G4 currently blocked: `JMD`, `J$`, `Jamaica` appear zero times on index/pricing/features |
 | 3.6 | **G2 pilots** (5-10 contractors) | **Owner**, last | Only after 1.3, 3.2 and the deploy |
 
+### Wave 4 - security hygiene (calibrated 2026-10-31)
+
+Source: [`SECURITY-HYGIENE-DIRECTIVE.md`](SECURITY-HYGIENE-DIRECTIVE.md). Its §9
+is the calibration review that produced this table: 16 proposed items, **12
+accepted** (2 with a narrowed fix), **2 corrected**, **2 merged** into wave 3.
+Read §9 before executing - it carries the evidence command behind every claim
+and the list of decisions that are the **owner's**, not the AI's.
+
+Wave 4 runs **beside** wave 2, not after it: 4.1 and 4.2 touch `.github/` and
+the Worker's request path, not the feature files wave 2 rewrites. Do not start
+4.2 until 4.1 is merged green (the new gates guard the rest).
+
+| # | Phase | Status | Gate / evidence |
+|---|---|---|---|
+| 4.1 | **CI least privilege + supply chain**: top-level `permissions: contents: read` in all 3 workflows, third-party actions pinned to SHAs, `npm audit --audit-level=high` in `static`, `vendor/MANIFEST.json` + `verify-vendor.cjs`, CodeQL workflow, `docs/SECURITY-REGISTER.md` skeleton | Queued | new `tools/verify-workflow-security.cjs` in `static` (fails on a missing `permissions:` or an unpinned third-party `uses:`); `verify-vendor.cjs`; register seeded from §9 |
+| 4.2 | **Request-path hardening**: SEC-03 rate-limit keying (per-code bucket **and** an IP bucket, never IP-only - the general cap is 30/min and a site office shares one NAT) + failed-auth lockout ladder; SEC-04 photo signature sniffing, stored type from the bytes, `sandbox` CSP on photo responses | Queued after 4.1 | `tools/qa-ratelimit-keying.cjs` (429 by request 31 with 100 rotating codes from one IP; a valid owner unaffected) and the photo arms in a cloud harness; `qa-ai-relay` M3 must stay green (binding call stays first) |
+| 4.3 | **CSP report-only + secrets runbook**: `connect-src` candidate with the evidence-backed origin list (§9.3 note), a small rate-limited report endpoint, `verify-csp-connect.cjs`; `docs/RUNBOOK-SECRETS.md` + gitleaks in `.githooks/pre-commit` | Queued | report-only header live on every page; gate fails on a bare `https:` in an enforced `connect-src` or a dead allow-list entry; history scan clean or rotated |
+| 4.4 | **Lint ratchet + header gate**: `WARN_CEILING` 4600 → current + 10 with per-rule ceilings (curly 224, no-unused-vars 200, no-undef 95, no-redeclare 31), `no-unsanitized-html` to `error`; `qa-security-headers.cjs` over 7 surfaces incl. a photo and an API 404 | Queued | `verify-eslint` per-rule ceilings; header harness registered in `browser-app` |
+| 4.5 | **Password upgrade path, then owner calls**: hash version + iteration count stored per hash so a stronger KDF can upgrade on next login; 12-char minimum, HIBP screening and Turnstile on register/contact are **owner decisions** | Queued after the owner answers | a legacy 8-char account still logs in and is silently upgraded; no forced resets, ever |
+| 4.6 | **MCP owner-code deprecation**, then enforce the CSP | Queued, +30 days of counter first | deprecation counter in observability; nothing cut without an in-app notice |
+| 4.7 | **Owner-only, not AI work**: branch protection + force-push block, secret scanning + push protection, 2FA on GitHub/Cloudflare/inbox, Cloudflare token audit, WAF/bot rules, three.js upgrade-or-accept | **Owner** | the register shows each box with a date and evidence |
+
+**Explicitly not in wave 4** (already planned elsewhere, do not duplicate):
+the restore drill and incident log are 3.2/3.3; uptime, error tracking and a
+status page are F3; cross-tenant isolation is `qa-tenant-isolation` (19/19)
+and only gains the "every router route has a matrix row" sweep.
+
 ### Closed
 
 | # | Phase | Closed | Evidence |

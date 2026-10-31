@@ -27,7 +27,25 @@ not just `js/calculator-page.js`.
 
 ## The sprints
 
-**Status 2026-10-31: S1-S6 are DONE; S7 remains.**
+**Status 2026-10-31: S1-S7 are DONE** (S7 was diagnostic and produced one
+product fix; see below).
+
+- **S7** shipped with `tools/qa-team-tier.cjs` (8/8). The answer to the owner's
+  report is not "the tier is wrong" - the SERVER was right and the client never
+  asked: `Entitlements` starts at `'free'` and only `/api/billing/status` moves
+  it, but on `project.html` the one caller was the header chip's
+  `refreshPlan()`, and the chip is deliberately hidden on the sections page.
+  Two consequences, both real: a paying account read `free` for the whole
+  session on the workspace, and (measured in a browser) for the first ~10
+  seconds of every load while the Google script settled, because session
+  restore sat behind `initGIS()`. Every enterprise control - Access editor,
+  bulk invite, templates - was therefore suppressed. Fixed in
+  `js/app/entitlements.js`: the module now owns a `hydrate()` that asks the
+  session-gated endpoint once per page at parse time, never overwriting an
+  answer a caller already adopted. Panel state after the fix: reachable, the
+  Collaborators tab lists the project, its People list carries the per-member
+  Access editor and the bulk/template tools for enterprise, and none of it
+  appears for free.
 
 - **S5** shipped with `tools/qa-cloud-refresh.cjs` (8/8). The real defect was
   narrower than the report and worse than it sounded: nothing was lost, but
@@ -205,7 +223,7 @@ the `browser-app` job.
 `qa-ai-dictation`, `qa-fixed-containment` all still green.
 **Size:** one session. **Risk:** high (recently rebuilt surface).
 
-### S7 - Close the enterprise claim  (finding 3)
+### S7 - Close the enterprise claim  (finding 3)  [DONE]
 **Why:** the owner says the team panel does not appear with an enterprise plan.
 The UI and its API are shipped and gated, so either the tier is not actually
 active or the panel is hidden by a separate condition.
@@ -217,6 +235,10 @@ result, panel state) in this file. Only if the panel is genuinely missing for a
 true enterprise tier does a code sprint follow.
 **Gate:** `qa-team-ui`, `qa-team-enterprise` (both already registered).
 **Size:** half a session, diagnostic. **Risk:** none.
+
+**Outcome 2026-10-31:** the tier string was never the problem, the fetch was
+missing. See the S7 entry at the top of this file for the measurements and the
+fix.
 
 ## Order and dependencies
 

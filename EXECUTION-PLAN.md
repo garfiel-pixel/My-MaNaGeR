@@ -59,7 +59,7 @@ phases 1.1 to 1.4 done; 1.6 (the CSS split into `css/src/*` layers) is next.
 (2026-10-30) and leads the wave; the wave's other purpose is to freeze the
 ground every later plan builds on (the tenant fence, then the stylesheet split).
 
-### 1.7 - Owner UI audit batch: S1-S4 + S6 DONE 2026-10-31, S5 + S7 open
+### 1.7 - Owner UI audit batch: S1-S7 ALL DONE 2026-10-31
 
 Twelve findings from the owner's live walk. No commit has touched any of them:
 `JIC rate book` is still user-facing in `js/calculator-page.js` and
@@ -67,11 +67,19 @@ Twelve findings from the owner's live walk. No commit has touched any of them:
 `.hdr-back` still has box chrome, and `.card-title > div` has no gap.
 
 **S1 (quiet chrome), S2 (the rate book's name plus a zero-occurrence gate),
-S3 (toolbar gaps, dot states), S4 (theme/perf independence + cross-tab sync) and
-S6 (assistant float and pin) shipped 2026-10-31: `qa-chrome` 82/82,
-`qa-toolbar-spacing` 12/12, `qa-theme-perf` 15/15, `qa-ai-float` 12/12,
-`verify-ratebook-wording` 12/12, shell v518. S5 (cloud refresh) and S7
-(enterprise diagnostic) are still open.**
+S3 (toolbar gaps, dot states), S4 (theme/perf independence + cross-tab sync),
+S5 (cloud list survives a refresh), S6 (assistant float and pin) and S7 (the
+workspace adopts the plan the server reports) all shipped 2026-10-31:
+`qa-chrome` 82/82, `qa-toolbar-spacing` 12/12, `qa-theme-perf` 15/15,
+`qa-ai-float` 12/12, `qa-cloud-refresh` 8/8, `qa-team-tier` 8/8,
+`qa-team-ui` 23/23, `verify-ratebook-wording` 12/12, shell v519.
+
+S7 was the only finding that turned out to be a product bug of a different
+shape than reported: the tier was never wrong, the workspace simply never
+asked. `Entitlements` now hydrates itself from `/api/billing/status` once per
+page (`js/app/entitlements.js`), so a paying account's team panel is complete
+from the first render instead of ten seconds in - or never, on a page whose
+header chip is hidden by design.**
 
 **The order, the scope, the gate and the verified/disproved claims live in
 [`docs/SPRINTS.md`](docs/SPRINTS.md).** It supersedes the untracked

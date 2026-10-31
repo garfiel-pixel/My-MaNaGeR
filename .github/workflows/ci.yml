@@ -883,6 +883,10 @@ jobs:
         id: qa-cloud-refresh
         run: node tools/qa-cloud-refresh.cjs
 
+      - name: "T4: The workspace adopts the plan the server reports (qa-team-tier)"
+        id: qa-team-tier
+        run: node tools/qa-team-tier.cjs
+
       - name: "T4: Calc S2 gate (C6 sticky + C7 switch rows + X-1/X-2)"
         id: calc-s2
         run: node tools/verify-calc-s2.cjs

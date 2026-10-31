@@ -82,7 +82,8 @@ const check = (name, ok, detail) => {
   } else {
     check(
       'the source line is present while the status is unresolved',
-      calc.indexOf('Source data: ') > -1 && calc.indexOf('JIC Rate Book 2025-2027') > -1,
+      calc.indexOf('Source data: ') > -1 &&
+        calc.indexOf('published Jamaican construction rate book, 2025-2027 edition') > -1,
       'source line'
     );
     check(
@@ -107,19 +108,44 @@ const check = (name, ok, detail) => {
     { claimed, rowCount }
   );
 
-  // 5. The old public name is gone from served copy.
-  const served = ['calculator.html', 'pricing.html', 'mymanager-field-guide.html'];
-  const leftovers = [];
-  served.forEach(p => {
-    const html = read(p);
-    // "JIC" may survive as a row reference ("JIC #12") and in the provenance
-    // line, but not as the product's name.
-    const bad = html.match(/(JIC rate book|Jamaica rate book|JIC rates)/gi) || [];
-    if (bad.length) {
-      leftovers.push(p + ': ' + bad.join(', '));
-    }
-  });
-  check('no served page calls the book by its old public name', leftovers.length === 0, leftovers);
+  // 5. ZERO OCCURRENCES of the old institution's initials, anywhere in code.
+  // Owner override 2026-10-31: no wording from the old institution may appear
+  // in the code base - the book is My MaNaGeR Rate Book, all the way through.
+  //
+  // This arm exists because the previous one was a lie: it scanned three served
+  // pages for three exact phrases, so the 99 rows of `ref: '<initials> #n'`,
+  // the estimate string `' (<initials> rate book)'`, the CSV string, the picker hint and
+  // all 188 calculator references sailed through a 12/12 green gate. The tokens
+  // are built from parts here so this file does not match itself - the scan
+  // covers every code file, including this one.
+  const OLD = ['J', 'I', 'C'].join('');
+  const ALT = ['G', 'I', 'C'].join('');
+  const BRAND = new RegExp('\\b(' + OLD + '|' + ALT + ')\\b');
+  const CODE = /\.(js|cjs|mjs|html|css|json|jsonc|webmanifest)$/i;
+  const SKIP = /(^|[\\/])(node_modules|dist|tmp|_archive|docs[\\/]history|\.git)([\\/]|$)/;
+  const offenders = [];
+  (function walk(dir) {
+    fs.readdirSync(dir, { withFileTypes: true }).forEach(function (e) {
+      const full = path.join(dir, e.name);
+      const rel = path.relative(ROOT, full).split(path.sep).join('/');
+      if (SKIP.test(rel)) {
+        return;
+      }
+      if (e.isDirectory()) {
+        walk(full);
+      } else if (CODE.test(e.name)) {
+        const hit = fs.readFileSync(full, 'utf8').match(BRAND);
+        if (hit) {
+          offenders.push(rel + ': ' + hit[0]);
+        }
+      }
+    });
+  })(ROOT);
+  check(
+    'no code file carries the old institution initials (the book is My MaNaGeR Rate Book only)',
+    offenders.length === 0,
+    offenders.slice(0, 12)
+  );
 
   const failed = results.filter(r => !r.ok);
   console.log('');

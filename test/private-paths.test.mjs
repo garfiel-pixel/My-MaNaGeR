@@ -59,22 +59,18 @@ const ALSO_PRIVATE = [
   // No PDF is a served asset now (root-extension rule above), and the 811-rate
   // data file is no longer a static file at all - it is a Worker module served
   // only by GET /api/ratebook behind a session (see the retirement test below).
-  '/tru_jic_rate_book_2025-2027_imperial_metric.pdf',
   '/src/data/ratebook.js'
 ];
 
 test('the retired rate-data file is GONE, not merely hidden', async () => {
-  // RB-1: /js/jic-rates-full.js used to be a public script. Deleting it is the
-  // fix; the prefix guard cannot catch it (js/ is a real asset tree), and the
-  // Worker's script-URL guard turns the SPA fallback into a 404 for the old
-  // URL. This test protects the deletion itself, which is what stops the leak
-  // coming back by accident.
+  // RB-1: a public script used to ship the whole 811-row book; deleting it is
+  // the fix, and the prefix guard cannot catch it (js/ is a real asset tree).
+  // This pins the deletion by CLASS rather than by one file name, so a future
+  // "rates-full" rewrite cannot quietly put the book back in the shell.
   const fs = await import('node:fs');
-  assert.equal(
-    fs.existsSync(new URL('../js/jic-rates-full.js', import.meta.url)),
-    false,
-    'the public rate-data file must stay deleted'
-  );
+  const jsDir = new URL('../js/', import.meta.url);
+  const leaked = fs.readdirSync(jsDir).filter(n => /rates?-full/i.test(n));
+  assert.deepEqual(leaked, [], 'no public full rate-data file may exist');
 });
 
 // Must keep working, or the app breaks.

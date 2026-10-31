@@ -10,7 +10,7 @@
    AiWin.runPreset('quote'), so keys, quota, the sign-in gate
    and error copy are all inherited. No second AI window.
    Vendor lines are entered BY HAND from each supplier's OWN
-   rates (owner 2026-10-17): the JIC rate book never touches
+   rates (owner 2026-10-17): the published rate book never touches
    this tab.
    ============================================================ */
 var MMGR = window.MMGR || {};

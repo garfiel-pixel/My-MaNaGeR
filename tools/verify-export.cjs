@@ -123,17 +123,17 @@ const GOLDEN = [
     }
   },
   {
-    // A JIC picker line prices from ITS OWN picked row + typed rate. The trade
+    // A book picker line prices from ITS OWN picked row + typed rate. The trade
     // and reference are resolved from the page's picker, because inventing a
     // ref would test a line the book cannot resolve.
-    name: 'JIC picker line',
-    jic: true,
+    name: 'Book picker line',
+    book: true,
     st: {
-      work: 'jic',
+      work: 'book',
       measuredQty: '69',
       measuredEntry: 'eng',
       basis: 'allin',
-      jicRate: '120',
+      bookRate: '120',
       currency: 'JMD',
       country: 'JM',
       taxOverride: '',
@@ -177,21 +177,21 @@ const GOLDEN = [
     check('C4 the spreadsheet writer and the export hook both loaded', xlsxOk);
 
     for (const g of GOLDEN) {
-      if (g.jic) {
+      if (g.book) {
         // The picker's trade list only renders for an entitled session; the page
         // reads the same seam the other harnesses set.
         await page.evaluate(() => {
           window.__MMGR_RR_AUTH = 'in';
           const w = document.getElementById('calc-work');
-          w.value = 'jic';
+          w.value = 'book';
           w.dispatchEvent(new Event('change', { bubbles: true }));
         });
       }
       const out = await page.evaluate(
         ([st, isJic]) => {
           if (isJic) {
-            const t = document.getElementById('calc-jic-trade');
-            const r = document.getElementById('calc-jic-row');
+            const t = document.getElementById('calc-book-trade');
+            const r = document.getElementById('calc-book-row');
             if (t && r && !r.options.length && t.options.length) {
               t.dispatchEvent(new Event('change', { bubbles: true }));
             }
@@ -206,7 +206,7 @@ const GOLDEN = [
               r.value = firstRow;
               r.dispatchEvent(new Event('change', { bubbles: true }));
             }
-            st = Object.assign({}, st, { jicTrade: firstTrade, jicRef: firstRow });
+            st = Object.assign({}, st, { bookTrade: firstTrade, bookRef: firstRow });
           }
           __calcEngine.applyState(st);
           // The exports read `lastResult`, which only the real Run path sets, so
@@ -243,7 +243,7 @@ const GOLDEN = [
             xlsxRows: book && book.rows
           };
         },
-        [g.st, !!g.jic]
+        [g.st, !!g.book]
       );
 
       if (out.error) {

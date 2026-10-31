@@ -429,7 +429,7 @@ XLSX and CSV footer (one constant, `ESTIMATE_NOTICE`, used everywhere).
 ### LEG-7. Rate book: the book stops being a UI (CONFIRMED-STATIC fact, OWNER DECISION 2026-10-22)
 
 **What the code does today:** the product embeds 811 published JIC rates
-(`JIC_Rate_Book_2025-2027*.md`, `tools/gen-jic-full.cjs`), a `Rate book` button opens a modal of the
+(`RATE-BOOK-2025-2027*.md`, `tools/gen-ratebook.cjs`), a `Rate book` button opens a modal of the
 published rows, and plans have been sold alongside them. The open question this item used to carry
 was permission to reproduce and sell access.
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* ============================================================
-   gen-jic-full.cjs - generate src/data/ratebook.js from
-   JIC_Rate_Book_2025-2027_FULL.md (owner rate-book wave, P2b)
+   gen-ratebook.cjs - generate src/data/ratebook.js from
+   RATE-BOOK-2025-2027-FULL.md (owner rate-book wave, P2b)
    ------------------------------------------------------------
    The FULL doc is the hand-verified source of truth: 811 unique
    rates across 11 trades, parsed out of section 7's tables. This
@@ -10,7 +10,7 @@
    that were shipped inline.
 
    RB-1 (REFINEMENT-DIRECTIVE-2026-10-24, 2026-10-25): the book
-   used to be a PUBLIC browser file (js/jic-rates-full.js) that
+   used to be a PUBLIC browser file (js/rates-full.js) that
    anyone could download - and the service worker precached it for
    every visitor - while the sign-in gate was only a screen. The
    output is now a Worker module, imported by src/ratebook.js and
@@ -36,7 +36,7 @@
 
    `basis` is 'S' (the source's own metric figure) or 'C' (calculated
    from the imperial rate by section 6's rules) - the card shows a
-   marker for C so the user knows which numbers are JIC's and which
+   marker for C so the user knows which numbers are the book's own and which
    we derived.
 
    `RATEBOOK_PROVENANCE` is the private record the directive asks for
@@ -44,8 +44,8 @@
    is NEVER put in the API response, and is never rendered to a user.
    Removing it later is the owner's decision, not a code cleanup.
 
-   Usage:  node tools/gen-jic-full.cjs           (write the file)
-           node tools/gen-jic-full.cjs --check   (verify in sync)
+   Usage:  node tools/gen-ratebook.cjs           (write the file)
+           node tools/gen-ratebook.cjs --check   (verify in sync)
    Registry: CI-TEST-COVERAGE.md -> T1 row (static).
    ============================================================ */
 'use strict';
@@ -53,7 +53,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const SRC = path.join(ROOT, 'JIC_Rate_Book_2025-2027_FULL.md');
+const SRC = path.join(ROOT, 'RATE-BOOK-2025-2027-FULL.md');
 const OUT = path.join(ROOT, 'src', 'data', 'ratebook.js');
 const CHECK = process.argv.indexOf('--check') > -1;
 
@@ -223,9 +223,9 @@ function render(rows) {
   });
   const header =
     '/* GENERATED FILE - do not edit by hand.\n' +
-    '   Source: JIC_Rate_Book_2025-2027_FULL.md (section 7 tables).\n' +
-    '   Regenerate with: node tools/gen-jic-full.cjs\n' +
-    '   Verify in sync with: node tools/gen-jic-full.cjs --check\n' +
+    '   Source: RATE-BOOK-2025-2027-FULL.md (section 7 tables).\n' +
+    '   Regenerate with: node tools/gen-ratebook.cjs\n' +
+    '   Verify in sync with: node tools/gen-ratebook.cjs --check\n' +
     '   811 rates across 11 trades. Carries no emoji (AGENTS rule 7).\n' +
     '\n' +
     '   PRIVATE (RB-1): imported by src/ratebook.js and served ONLY by\n' +
@@ -240,8 +240,8 @@ function render(rows) {
     '   that the figures are independently produced. The owner changes this\n' +
     '   value deliberately, with advice; it is not a code cleanup. */\n' +
     'export const RATEBOOK_PROVENANCE = {\n' +
-    "  source: 'JIC_Rate_Book_2025-2027_FULL.md',\n" +
-    "  publisher: 'Jamaica Institute of Construction (JIC)',\n" +
+    "  source: 'RATE-BOOK-2025-2027-FULL.md',\n" +
+    "  publisher: 'Jamaica Institute of Construction',\n" +
     "  edition: '" +
     data.years +
     "',\n" +
@@ -279,19 +279,19 @@ if (CHECK) {
   const cur = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8') : '';
   if (cur !== out) {
     console.error(
-      '[gen-jic-full] OUT OF SYNC: src/data/ratebook.js does not match the source doc.'
+      '[gen-ratebook] OUT OF SYNC: src/data/ratebook.js does not match the source doc.'
     );
-    console.error('[gen-jic-full] Run: node tools/gen-jic-full.cjs');
+    console.error('[gen-ratebook] Run: node tools/gen-ratebook.cjs');
     process.exit(1);
   }
-  console.log('[gen-jic-full] in sync - ' + JSON.stringify(stats));
+  console.log('[gen-ratebook] in sync - ' + JSON.stringify(stats));
   process.exit(0);
 }
 
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, out);
 console.log(
-  '[gen-jic-full] wrote src/data/ratebook.js - ' +
+  '[gen-ratebook] wrote src/data/ratebook.js - ' +
     JSON.stringify(stats) +
     ' (' +
     (out.length / 1024).toFixed(1) +

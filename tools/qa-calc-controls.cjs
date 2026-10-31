@@ -265,12 +265,12 @@ const CONTRAST_HELPERS = `window.__mmcbContrast = (function () {
           sel.__mmcb.list.querySelectorAll('[role="option"]')
         );
         // Skip the two special paths at the end of the list: `custom` opens its
-        // own four fields and `jic` starts a two-step book pick that re-selects
+        // own four fields and `book` starts a two-step book pick that re-selects
         // a trade. Both are covered by their own suites; this gate is about the
         // picker's change contract.
         const normal = rows.filter(r => {
           const v = r.getAttribute('data-value');
-          return v !== 'custom' && v !== 'jic';
+          return v !== 'custom' && v !== 'book';
         });
         const pick = normal[normal.length - 1];
         window.__mmcbChanges = 0;

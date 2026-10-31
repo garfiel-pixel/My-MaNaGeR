@@ -565,7 +565,7 @@ export default {
       // page URL and wrong for a script: the browser executes the homepage as
       // JavaScript (a silent syntax error), and a RETIRED data file would keep
       // answering 200 to anyone who asks for it by name. This is exactly the
-      // shape RB-1 left behind - js/jic-rates-full.js is now signed-in data -
+      // shape RB-1 left behind - the full book is now signed-in data -
       // so the old URL must fail loudly instead of returning a page. Anchored
       // to the extensions a page can never carry.
       const reqExt = normalized.replace(/.*\./, '').toLowerCase();

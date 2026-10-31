@@ -872,7 +872,7 @@
         "lab": 510.97,
         "total": 789.68
       },
-      "note": "Phase 2 gate (imperial): 100 ft2 = 9.290304 m2. JIC 2025-2027 re-baseline (2026-10-02): the suspended-slab-floor formwork rate moved from the pre-Phase-2 45/85 to the official JIC Carpentry #5 rate 30/55. 30 x 9.290304 = 278.71; 55 x 9.290304 = 510.97"
+      "note": "Phase 2 gate (imperial): 100 ft2 = 9.290304 m2. 2025-2027 book re-baseline (2026-10-02): the suspended-slab-floor formwork rate moved from the pre-Phase-2 45/85 to the official book Carpentry #5 rate 30/55. 30 x 9.290304 = 278.71; 55 x 9.290304 = 510.97"
     },
     {
       "id": "G-rebar-size",
@@ -949,7 +949,7 @@
         "lab": 720,
         "total": 1296
       },
-      "note": "G5: JIC 2025-2027 re-baseline (2026-10-02) - the variant id '8in' was REPLACED by the official JIC masonry ids; '8in-ff' is the 8 in block at FF and above, rate 24/30. The old id silently fell back to the standard 22/28 rate, so this case was pricing the wrong block size. 24 m2 x 24 = 576; x 30 = 720"
+      "note": "G5: 2025-2027 book re-baseline (2026-10-02) - the variant id '8in' was REPLACED by the official book masonry ids; '8in-ff' is the 8 in block at FF and above, rate 24/30. The old id silently fell back to the standard 22/28 rate, so this case was pricing the wrong block size. 24 m2 x 24 = 576; x 30 = 720"
     },
     {
       "id": "G-concrete-labour",
@@ -983,7 +983,7 @@
         "total": 1600,
         "allIn": true
       },
-      "note": "D3: all-in (JIC combined) rate - 10 x 8 = 80 m2 x $20 = $1600. The figure is the WHOLE work cost, so mat and lab read 0 (no faked split); allInCost carries $1600 into sub/total unchanged."
+      "note": "D3: all-in (book combined) rate - 10 x 8 = 80 m2 x $20 = $1600. The figure is the WHOLE work cost, so mat and lab read 0 (no faked split); allInCost carries $1600 into sub/total unchanged."
     },
     {
       "id": "G-allin-imperial-runit",

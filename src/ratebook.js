@@ -2,7 +2,7 @@
    RATE BOOK API - GET /api/ratebook (RB-1, 2026-10-25)
    ------------------------------------------------------------
    REFINEMENT-DIRECTIVE-2026-10-24 3.4: the 811 planning rates used
-   to be a PUBLIC static file (js/jic-rates-full.js) that anyone
+   to be a PUBLIC static file that anyone
    could download, and the service worker precached it for every
    visitor - so the sign-in gate on the rate-book card was a screen,
    not a lock. The book now comes from here instead.

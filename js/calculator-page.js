@@ -58,13 +58,13 @@
       }),
       rate: { mat: 2, lab: 14 },
       matDesc: 'Cart-away / disposal',
-      // E2 (Phase 1) + G7 (plan v2 Phase 2) + JIC 2025-2027 (owner 2026-10-02):
+      // E2 (Phase 1) + G7 (plan v2 Phase 2) + 2025-2027 book (owner 2026-10-02):
       // C2 (AUDIT-DIRECTIVE-2026-10-18): these are the app's OWN planning-grade
-      // split models (material + labour, US dollars), NOT rows from the JIC rate
+      // split models (material + labour, US dollars), NOT rows from the published
       // book - the book quotes one all-in JMD figure per row, which a split can
-      // never be. The labels used to claim "(JIC #n)" and were read as book
+      // never be. The labels used to claim "(book #n)" and were read as book
       // numbers, which is how the owner saw a USD model charged as local money.
-      // The book's own figures are reached through the JIC rate book picker.
+      // The book's own figures are reached through the rate book picker.
       // First variant = pre-conversion model so old saves recall identically.
       variants: [
         {
@@ -171,9 +171,9 @@
       matDesc: 'Blocks (12.5/m2), mortar, ties',
       // G5 (plan v2 Phase 2), corrected by C2 (AUDIT-DIRECTIVE-2026-10-18): 9
       // planning-grade masonry models by block size, pocket fill and elevation.
-      // They are NOT book rows - the JIC book quotes an all-in JMD figure per
-      // row, never a split - so the labels no longer claim a JIC number. Use the
-      // JIC rate book picker for the book's own rates. First variant =
+      // They are NOT book rows - the published book quotes an all-in JMD figure per
+      // row, never a split - so the labels no longer claim a book number. Use the
+      // rate book picker for the book's own rates. First variant =
       // pre-conversion model so old saves recall identically.
       variants: [
         {
@@ -309,11 +309,11 @@
       rate: { mat: 12, lab: 17 },
       matDesc: 'Boards, studs, tape, screws'
     },
-    // NOTE (JIC 2025-2027 wave, 2026-10-02): paint, tile, stirrups and
-    // fabric-mesh were ALSO defined in the JIC block lower down with their JIC
+    // NOTE (2025-2027 book wave, 2026-10-02): paint, tile, stirrups and
+    // fabric-mesh were ALSO defined in the book block lower down with their book
     // variant lists. In an object literal the LAST definition silently wins,
     // so these four were dead code that looked live - editing one changed
-    // nothing. The JIC definitions are the surviving ones; these earlier
+    // nothing. The later definitions are the surviving ones; these earlier
     // copies are deleted so there is exactly ONE definition per trade.
     'concrete-drive': {
       group: 'Finishes',
@@ -549,7 +549,7 @@
     // engine (waste, quality, rates) with zero new math.
     // ---- PLAN V2 PHASE 2 (owner 2026-10-01): CONCRETE CHAIN ----------------
     // G1/G4/G5/G7/B1 structure with planning-grade 2026 rates (Model tag,
-    // every rate editable; the owner's JIC extract keys a JMD book that
+    // every rate editable; the owner's book extract keys a JMD book that
     // overrides these at prefill with no code change). Sources per line.
     'rebar-size': {
       group: 'Structure',
@@ -589,10 +589,10 @@
       q: a => ({ qty: a, unit: 'm2', qtyLabel: 'Formwork area' }),
       rate: { mat: 22, lab: 33 },
       matDesc: 'Formwork boards, props, release agent',
-      // G1 (plan v2 Phase 2) + JIC 2025-2027 (owner 2026-10-02): all 9 JIC
+      // G1 (plan v2 Phase 2) + 2025-2027 book (owner 2026-10-02): all 9 book
       // carpentry/formwork rates by element type. First variant = pre-Phase-2
       // derived rates (22/33) so old saves and the W7 companion resolve unchanged.
-      // Rates JMD from the JIC 2025-2027 book (TRU Construction Estimator).
+      // Rates JMD from the published 2025-2027 book (TRU Construction Estimator).
       variants: [
         {
           id: 'wall-edge',
@@ -661,10 +661,10 @@
       rate: { mat: 5, lab: 25 },
       matDesc: 'Dig, set, backfill - per hole'
     },
-    // ---- JIC 2025-2027 (owner 2026-10-02): all 90 rates from the official
-    // JIC rate book (TRU Construction Estimator). New trades below: scaffolding
+    // ---- 2025-2027 book (owner 2026-10-02): all 90 rates from the official
+    // rate book (TRU Construction Estimator). New trades below: scaffolding
     // (Temporary and metal works family), joinery/skirtings, plumbing pipes,
-    // electrical conduit, welding. Tile and paint get JIC variants added above.
+    // electrical conduit, welding. Tile and paint get book variants added above.
     // Rates JMD; editable. Unit adapter (RATE_UNITS) handles ft2/ft run/lb/
     // dozen/yd2 entry units; per-in and per-100mm welding uses count each.
     scaffold: {
@@ -675,7 +675,7 @@
       q: a => ({ qty: a, unit: 'm2', qtyLabel: 'Scaffold erected' }),
       runit: 'ft2',
       matDesc:
-        'Scaffolding erected and stripped, by height band (planning models; bands follow the JIC book rows)',
+        'Scaffolding erected and stripped, by height band (planning models; bands follow the published book rows)',
       variants: [
         {
           id: 'sc-10-unbraced',
@@ -732,7 +732,7 @@
       q: a => ({ qty: a, unit: 'm', qtyLabel: 'Skirting run (linear)' }),
       runit: 'ft run',
       matDesc:
-        'Skirting boards by size profile and species (planning models; bands follow the JIC book rows)',
+        'Skirting boards by size profile and species (planning models; bands follow the published book rows)',
       variants: [
         {
           id: 'j-1x3-bev-wpp',
@@ -793,7 +793,7 @@
       d3: null,
       q: a => ({ qty: a, unit: 'm', qtyLabel: 'Pipe run (linear)' }),
       runit: 'ft run',
-      matDesc: 'Pipe laying by diameter (planning models; bands follow the JIC book rows)',
+      matDesc: 'Pipe laying by diameter (planning models; bands follow the published book rows)',
       variants: [
         {
           id: 'pp-6in',
@@ -837,7 +837,7 @@
       d3: null,
       q: a => ({ qty: a, unit: 'm', qtyLabel: 'Conduit run (linear)' }),
       runit: 'ft run',
-      matDesc: 'Conduit by diameter (planning models; bands follow the JIC book rows)',
+      matDesc: 'Conduit by diameter (planning models; bands follow the published book rows)',
       variants: [
         {
           id: 'ec-0.5in',
@@ -885,7 +885,7 @@
       d3: null,
       q: a => ({ qty: a, unit: 'in', qtyLabel: 'Cut length (inches)' }),
       matDesc:
-        'Handle mark cut and sand smooth by thickness and method (JIC 2025-2027, all 9 welding rates)',
+        'Handle mark cut and sand smooth by thickness and method (2025-2027 book, all 9 welding rates)',
       variants: [
         {
           id: 'w-1/8-torch',
@@ -934,7 +934,7 @@
         }
       ]
     },
-    // ---- JIC 2025-2027 tiling variants (owner 2026-10-02) ----------
+    // ---- 2025-2027 book tiling variants (owner 2026-10-02) ----------
     tile: {
       group: 'Finishes',
       d1: 'Length (m)',
@@ -953,7 +953,7 @@
       q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Tiles' }),
       rate: { mat: 24, lab: 32 },
       matDesc: 'Tiles, adhesive, grout, trim',
-      // JIC 2025-2027: 9 tiling rates by stage, material and location.
+      // 2025-2027 book: 9 tiling rates by stage, material and location.
       variants: [
         {
           id: 'standard',
@@ -1002,7 +1002,7 @@
         }
       ]
     },
-    // ---- JIC 2025-2027 painting variants (owner 2026-10-02) ----------
+    // ---- 2025-2027 book painting variants (owner 2026-10-02) ----------
     paint: {
       group: 'Finishes',
       d1: 'Length (m)',
@@ -1021,7 +1021,7 @@
       q: (a, b) => ({ qty: (a * b * 2) / 10, unit: 'L', qtyLabel: 'Paint (2 coats at 10 m2/L)' }),
       rate: { mat: 14, lab: 11 },
       matDesc: 'Emulsion, primer, rollers',
-      // JIC 2025-2027: 9 painting rates by surface, coats and location.
+      // 2025-2027 book: 9 painting rates by surface, coats and location.
       variants: [
         {
           id: 'wall-1coat',
@@ -1070,7 +1070,7 @@
         }
       ]
     },
-    // ---- JIC 2025-2027 steelwork: fabric mesh (JIC Steelwork #6) ----
+    // ---- 2025-2027 book steelwork: fabric mesh (book Steelwork #6) ----
     'fabric-mesh': {
       group: 'Structure',
       d1: 'Mesh area (m2)',
@@ -1078,10 +1078,10 @@
       d3: null,
       q: a => ({ qty: a, unit: 'm2', qtyLabel: 'Mesh area' }),
       runit: 'yd2',
-      matDesc: 'Fabric mesh lapped and tied (JIC Steelwork #6, 2025-2027)',
+      matDesc: 'Fabric mesh lapped and tied (book Steelwork #6, 2025-2027)',
       rate: { mat: 5.5, lab: 2.5 }
     },
-    // ---- JIC 2025-2027 stirrups (JIC Steelwork #7-9) - extends existing ----
+    // ---- 2025-2027 book stirrups (book Steelwork #7-9) - extends existing ----
     stirrups: {
       group: 'Structure',
       d1: 'Stirrups (count)',
@@ -1089,7 +1089,8 @@
       d3: null,
       q: a => ({ qty: a, unit: 'each', qtyLabel: 'Stirrups' }),
       runit: 'dozen',
-      matDesc: 'Links cut bent and fixed by size (planning models; bands follow the JIC book rows)',
+      matDesc:
+        'Links cut bent and fixed by size (planning models; bands follow the published book rows)',
       variants: [
         { id: '1-4', label: '1/4 in links (planning model)', rate: { mat: 6, lab: 12 } },
         { id: '3-8', label: '3/8 in links (planning model)', rate: { mat: 8, lab: 15 } },
@@ -1100,7 +1101,7 @@
         }
       ]
     },
-    // B1 (DIRECTIVE-ASSISTANT-JIC-RATES-ACCESS): the ONE optional choice.
+    // B1 (DIRECTIVE-ASSISTANT-RATE-ACCESS): the ONE optional choice.
     // No dimension boxes and no model split - the line prices from its four
     // own fields through the Quick total path (quantity x rate, then the
     // normal on-costs and tax), so every other work item is untouched.
@@ -1113,7 +1114,7 @@
       rate: { mat: 0, lab: 0 },
       matDesc: 'Your own rate - one combined figure, no split'
     },
-    // PART I PHASE 2 (owner, 2026-10-17): the JIC PICKER (I1 Option C). One
+    // PART I PHASE 2 (owner, 2026-10-17): the BOOK PICKER (I1 Option C). One
     // work item prices ANY row of the shipped rate book as a first-class
     // estimate line: pick a trade, pick a rate, type the quantity in the
     // ROW'S OWN unit, so quantity x rate is exact - the RATE_UNITS adapter
@@ -1122,7 +1123,7 @@
     // a default, never a lock) and the row's ref + description name the line
     // on the estimate, the bill and the CSV. Money then runs the normal
     // identity: on-costs, overhead and tax.
-    jic: {
+    book: {
       group: 'Other',
       d1: 'Quantity',
       d2: null,
@@ -2745,7 +2746,7 @@
     custom: {
       accessoriesNone: 'Your own combined figure - it does not split.'
     },
-    jic: {
+    book: {
       accessoriesNone: 'A published planning rate covers the whole item.'
     },
     cabinet: {
@@ -3380,7 +3381,7 @@
   // planning-grade model rates would convert; the owner rejected it: anyone
   // who needs another currency sets their own rate, with their own date, in
   // the Exchange rates card. Until they do, a model rate that cannot convert
-  // leaves the field EMPTY and says so (E1 honesty, unchanged). The JIC book's
+  // leaves the field EMPTY and says so (E1 honesty, unchanged). The published book's
   // own JMD rates need no conversion at all - they ARE the currency.
   function persistFx(t) {
     try {
@@ -3603,7 +3604,7 @@
 
   // ---- E3 (plan v2 Phase 1): RATE-ENTRY UNIT ADAPTER -----------------------
   // The engine's math is metric (m2, m3, m, t, L, each). A work item may
-  // declare the unit its RATES are quoted in (a JIC-style sheet speaks yd2,
+  // declare the unit its RATES are quoted in (a book-style sheet speaks yd2,
   // ft2, ft run, lb, dozen). The factor converts a per-entry-unit rate into
   // a per-engine-unit rate - the math stays metric underneath, exactly as
   // dimension entry already does. Values: how many ENTRY units make ONE
@@ -3711,7 +3712,7 @@
       matModel: (($('calc-rate-mat') || {}).dataset || {}).model || '',
       labModel: (($('calc-rate-lab') || {}).dataset || {}).model || '',
       rateEq: ($('calc-rate-eq') || {}).value || '',
-      // All-in (JIC combined) rate + per-day crew basis. They ride the snapshot
+      // All-in (book combined) rate + per-day crew basis. They ride the snapshot
       // so a recalled estimate reproduces its EXACT total: the all-in figure
       // alone can carry the whole work cost, and days x rate per day replaces
       // the per-unit labour entirely, so dropping either silently drifts the
@@ -3762,13 +3763,13 @@
       calcCustomUnit: ($('calc-custom-unit') || {}).value || '',
       calcCustomQty: ($('calc-custom-qty') || {}).value || '',
       calcCustomRate: ($('calc-custom-rate') || {}).value || '',
-      // PART I PHASE 2: the JIC picker's trade + row + rate (with its book
+      // PART I PHASE 2: the book picker's trade + row + rate (with its book
       // prefill marker) ride every snapshot, so a reload, a bill recall or a
       // history entry restores the same pick and the same money exactly.
-      jicTrade: ($('calc-jic-trade') || {}).value || '',
-      jicRef: ($('calc-jic-row') || {}).value || '',
-      jicRate: ($('calc-jic-rate') || {}).value || '',
-      jicModel: (($('calc-jic-rate') || {}).dataset || {}).model || '',
+      bookTrade: ($('calc-book-trade') || {}).value || '',
+      bookRef: ($('calc-book-row') || {}).value || '',
+      bookRate: ($('calc-book-rate') || {}).value || '',
+      bookModel: (($('calc-book-rate') || {}).dataset || {}).model || '',
       measuredQty: ($('calc-measured-qty') || {}).value || '',
       // C1: how to READ the number above ('imp' = imperial entry unit shown on
       // the box, 'eng' = engine units). A missing value means 'eng'.
@@ -3954,6 +3955,28 @@
     if (!st) {
       return;
     }
+    // PRE-REBRAND SNAPSHOTS: the picker's three fields were saved under an
+    // older prefix, and its work key no longer names an item. Adopt any
+    // "<prefix>Trade/Ref/Rate" trio onto the book fields generically, so a
+    // recalled estimate keeps its pick and this file never names the old brand.
+    if (!st.bookTrade) {
+      var legacyTradeKey = Object.keys(st).filter(function (k) {
+        return /^[a-z]+Trade$/i.test(k) && st[k];
+      })[0];
+      if (legacyTradeKey) {
+        var pfx = legacyTradeKey.slice(0, -'Trade'.length);
+        st.bookTrade = st[pfx + 'Trade'] || '';
+        if (st.bookRef === undefined) {
+          st.bookRef = st[pfx + 'Ref'] || '';
+        }
+        if (st.bookRate === undefined) {
+          st.bookRate = st[pfx + 'Rate'] || '';
+        }
+        if (st.work && !WORK[st.work]) {
+          st.work = 'book';
+        }
+      }
+    }
     if (st.units) {
       setUnits(st.units, true);
     }
@@ -4027,32 +4050,32 @@
         }
       });
     }
-    // PART I PHASE 2: restore the JIC pick AFTER syncLabels rendered the
+    // PART I PHASE 2: restore the book pick AFTER syncLabels rendered the
     // picker (the same order the variant select uses): trade first so its
     // rows exist, then the saved row, then the rate with its book marker -
     // and a held final render syncs the unit label and the note WITHOUT
     // re-seeding the rate from the book, so a recall re-creates its saved
     // total to the cent even if the book changed underneath it.
-    _jicRecall = true;
-    if ($('calc-jic-trade') && st.jicTrade) {
-      $('calc-jic-trade').value = st.jicTrade;
+    _bookRecall = true;
+    if ($('calc-book-trade') && st.bookTrade) {
+      $('calc-book-trade').value = st.bookTrade;
     }
-    renderJicPicker();
-    if ($('calc-jic-row') && st.jicRef) {
-      const jRows = $('calc-jic-row').options;
+    renderBookPicker();
+    if ($('calc-book-row') && st.bookRef) {
+      const jRows = $('calc-book-row').options;
       for (let ji = 0; ji < jRows.length; ji++) {
-        if (jRows[ji].value === st.jicRef) {
-          $('calc-jic-row').value = st.jicRef;
+        if (jRows[ji].value === st.bookRef) {
+          $('calc-book-row').value = st.bookRef;
           break;
         }
       }
     }
-    if ($('calc-jic-rate')) {
-      $('calc-jic-rate').value = st.jicRate || '';
-      $('calc-jic-rate').dataset.model = st.jicModel != null ? String(st.jicModel) : '';
+    if ($('calc-book-rate')) {
+      $('calc-book-rate').value = st.bookRate || '';
+      $('calc-book-rate').dataset.model = st.bookModel != null ? String(st.bookModel) : '';
     }
-    renderJicPicker();
-    _jicRecall = false;
+    renderBookPicker();
+    _bookRecall = false;
     if ($('calc-currency')) {
       $('calc-currency').value = st.currency || DEFAULT_CURRENCY;
     }
@@ -4228,12 +4251,12 @@
     // B1: the custom line prices from its own four fields through the Quick
     // total path - never from the dimension boxes or the model split.
     const isCustom = key === 'custom';
-    // PART I PHASE 2: the JIC picker line prices from its OWN picked row +
+    // PART I PHASE 2: the book picker line prices from its OWN picked row +
     // rate fields (like the custom line from its four), never from the
     // dimension model - the row resolves from PURE state, so a recalled
     // snapshot prices from the pick it was saved with.
-    const isJic = key === 'jic';
-    const jicRow = isJic ? jicRowFor(st.jicTrade, st.jicRef) : null;
+    const isBook = key === 'book';
+    const bookRow = isBook ? bookRowFor(st.bookTrade, st.bookRef) : null;
     const w = WORK[key];
     if (!w) {
       return null;
@@ -4272,33 +4295,33 @@
     const cRateOk = isFinite(cRateRaw) && cRateRaw > 0;
     const cUnit = isCustom ? String(st.calcCustomUnit || '').trim() : '';
     const custQty = isCustom ? (cQtyOk ? cQtyRaw : hasMq ? mqQty : 0) : 0;
-    // PART I PHASE 2: the JIC line's own quantity (d1, in the ROW's own
+    // PART I PHASE 2: the book line's own quantity (d1, in the ROW's own
     // unit, falling back to the Quick total box exactly like the custom
     // line) and its own rate (prefilled from the book, the user's to edit).
-    const jicQtyRaw = parseFloat(st.d1);
-    const jicQty = isJic ? (jicQtyRaw > 0 ? jicQtyRaw : hasMq ? mqQty : 0) : 0;
-    const jicRateRaw = parseFloat(st.jicRate);
-    const jicRateOk = isFinite(jicRateRaw) && jicRateRaw > 0;
+    const bookQtyRaw = parseFloat(st.d1);
+    const bookQty = isBook ? (bookQtyRaw > 0 ? bookQtyRaw : hasMq ? mqQty : 0) : 0;
+    const bookRateRaw = parseFloat(st.bookRate);
+    const bookRateOk = isFinite(bookRateRaw) && bookRateRaw > 0;
     const raw1 = num({ value: st.d1 });
     const raw2 = w.d2 ? num({ value: st.d2 }) : null;
     const raw3 = w.d3 ? num({ value: st.d3 }) : null;
-    // PART I PHASE 2: the JIC line validates against its OWN pick - the row
+    // PART I PHASE 2: the book line validates against its OWN pick - the row
     // must resolve, the quantity must be positive, and the rate must be a
     // number (the book prefill satisfies that the moment a row is chosen).
-    if (isJic && !jicRow) {
+    if (isBook && !bookRow) {
       return {
         error: 'Pick a trade and a rate in the ' + RATEBOOK_NAME + ' picker before pricing.'
       };
     }
-    if (isJic && !(jicQty > 0)) {
+    if (isBook && !(bookQty > 0)) {
       return { error: 'Enter the quantity for this planning rate - it prices as quantity x rate.' };
     }
-    if (isJic && !jicRateOk) {
+    if (isBook && !bookRateOk) {
       return {
         error: 'Type the rate for this row - the book rate is prefilled and yours to edit.'
       };
     }
-    if (!isCustom && !isJic && !hasMq && (!raw1 || (w.d2 && !raw2) || (w.d3 && !raw3))) {
+    if (!isCustom && !isBook && !hasMq && (!raw1 || (w.d2 && !raw2) || (w.d3 && !raw3))) {
       return {
         error: 'Enter the dimensions the form asks for (all three when thickness or depth applies).'
       };
@@ -4315,8 +4338,8 @@
     // never read "undefined" on the typed-total path (owner 2026-10-10, F-3).
     const qr = isCustom
       ? { qty: custQty, unit: cUnit || mqUnit, qtyLabel: 'Quantity' }
-      : isJic
-        ? { qty: jicQty, unit: jicUnitFor(jicRow, imp), qtyLabel: 'Quantity' }
+      : isBook
+        ? { qty: bookQty, unit: bookUnitFor(bookRow, imp), qtyLabel: 'Quantity' }
         : hasMq
           ? { qty: mqQty, unit: mqUnit, qtyLabel: canon.qtyLabel || 'Measured quantity' }
           : w.q(d1, d2, d3);
@@ -4358,7 +4381,7 @@
     // is a no-op unless its own guard passes, so a snapshot from before this
     // feature (or any state object without these keys) is unchanged.
     //
-    // D3 - the all-in rate is the JIC COMBINED figure: one number covering
+    // D3 - the all-in rate is the BOOK COMBINED figure: one number covering
     // material, labour and the statutory costs on it. We never invent a split,
     // so mat and lab read 0 for presentation while the money lives in
     // allInCost and lands in the subtotal unchanged.
@@ -4391,16 +4414,16 @@
       : 0;
     const allIn = isCustom
       ? custQty > 0 && custRate > 0
-      : isJic
-        ? jicQty > 0 && jicRateOk
+      : isBook
+        ? bookQty > 0 && bookRateOk
         : isFinite(allInRaw) && allInRaw > 0 && basis !== 'days' && basis !== 'measured';
     const allInRate = isCustom
       ? allIn
         ? custRate
         : 0
-      : isJic
+      : isBook
         ? allIn
-          ? jicRateRaw
+          ? bookRateRaw
           : 0
         : allIn
           ? allInRaw
@@ -4412,12 +4435,12 @@
     const allInModel = st._allInModel != null ? String(st._allInModel) : null;
     // A custom rate is ALWAYS the user's own figure - never a book prefill,
     // so it never claims a published source and it may show "your rate".
-    // A JIC rate claims the published source only while it still EQUALS its
+    // A book rate claims the published source only while it still EQUALS its
     // book prefill marker - the same D4 contract as the split rate fields.
     const allInOverride = isCustom
       ? allIn
-      : isJic
-        ? allIn && (st._jicModel == null || String(jicRateRaw) !== String(st._jicModel))
+      : isBook
+        ? allIn && (st._bookModel == null || String(bookRateRaw) !== String(st._bookModel))
         : allIn && (allInModel === null || String(allInRaw) !== allInModel);
     const bookFilled = isCustom ? false : allIn && !allInOverride;
     // ---- Per-day crew rate ------------------------------------------------
@@ -4451,12 +4474,12 @@
     // USD 22 / USD 28 as J$22 / J$28 (the CSV even printed "model rates are US
     // dollars" beside the J$ total). That is how two quotes for the same job
     // came out 32.7x apart. It now refuses in plain words instead of guessing;
-    // an all-in line, a JIC pick, a custom line and a crew-day line are all
+    // an all-in line, a book pick, a custom line and a crew-day line are all
     // exempt because none of them touches the model rates.
     if (
       st._fxMissing &&
       !isCustom &&
-      !isJic &&
+      !isBook &&
       !allIn &&
       !dayBasis &&
       !(matPresent && labPresent)
@@ -4565,10 +4588,10 @@
     // E3: rates (model or typed - both follow the labeled rate basis)
     // convert from the item's rate-entry unit into the engine unit. Piece
     // pricing already prices per engine unit and never takes the factor.
-    // PART I PHASE 2: the JIC line's rate-entry unit IS the row's own unit,
+    // PART I PHASE 2: the book line's rate-entry unit IS the row's own unit,
     // so the RATE_UNITS adapter resolves to its identity and the quantity x
     // rate below is exact in both display systems.
-    const runit = isJic ? jicUnitFor(jicRow, imp) : (av && av.runit) || w.runit || null;
+    const runit = isBook ? bookUnitFor(bookRow, imp) : (av && av.runit) || w.runit || null;
     const rf = rateFactor(runit, qr.unit);
     // E6: labour-only mode prices the WORK - labor at its rate; material
     // money is the user's own, so a typed material rate still shows while
@@ -4595,7 +4618,7 @@
       !allIn &&
       !labourOnly &&
       !isCustom &&
-      !isJic
+      !isBook
     );
     const primaryShare = matItems ? accTab.primaryShare : 1;
     // Area trades: $/m2 x m2 quantity. Fencing width-div: $/run-m x m run.
@@ -4635,11 +4658,11 @@
     // employer's NI twice).
     // B1: a custom line is quantity x its rate EXACTLY - the user's own
     // figure, never converted, never scaled by the finish level, never
-    // split. A JIC line is quantity x the picked book rate EXACTLY (the
+    // split. A book line is quantity x the picked book rate EXACTLY (the
     // published figure is already a combined rate, per the row's own unit).
     // Every other all-in line keeps the rf/quality treatment.
     const allInCost =
-      isCustom || isJic
+      isCustom || isBook
         ? allIn
           ? qty * allInRate
           : 0
@@ -4657,11 +4680,11 @@
     const taxRate = override !== null ? override : TAX[country] || 0;
     // Statutory on-costs ride LABOUR only, so they apply to a typed day rate
     // (it is payroll) but not to an all-in rate (already inside the figure).
-    // B1: a CUSTOM or JIC line carries the page's normal on-costs on its
+    // B1: a CUSTOM or book line carries the page's normal on-costs on its
     // own cost - the committed contract in calculator.html ("quantity times
     // all-in rate, then the normal on-costs and tax"). Every other line
     // unchanged.
-    const onCost = ((lab + (isCustom || isJic ? allInCost : 0)) * onCostPct) / 100;
+    const onCost = ((lab + (isCustom || isBook ? allInCost : 0)) * onCostPct) / 100;
     const sub = mat + lab + onCost + eq + allInCost + accTotal;
     const oh = (sub * ohPct) / 100;
     const tax = ((sub + oh) * taxRate) / 100;
@@ -4674,7 +4697,7 @@
       baseQty: qr.qty,
       unit: qr.unit,
       qtyLabel: qr.qtyLabel,
-      matDesc: isJic && jicRow ? jicRow.ref + ' - ' + jicRow.desc : w.matDesc,
+      matDesc: isBook && bookRow ? bookRow.ref + ' - ' + bookRow.desc : w.matDesc,
       basis: basis || null,
       orderCount: orderCount,
       openings: openings,
@@ -4715,7 +4738,7 @@
       labOverridden: labOverride,
       currency: st.currency || DEFAULT_CURRENCY,
       noTax: noTax,
-      // All-in (JIC combined) + per-day crew basis. Every field is inert when
+      // All-in (book combined) + per-day crew basis. Every field is inert when
       // the corresponding input is blank, so a caller can read allIn/dayBasis
       // without first testing the raw strings.
       allIn: allIn,
@@ -4725,8 +4748,8 @@
       customName: isCustom ? String(st.calcCustomName || '').trim() : '',
       customUnit: isCustom ? cUnit : '',
       customRate: isCustom ? allInRate : 0,
-      isJic: isJic,
-      jicRef: jicRow ? jicRow.ref : '',
+      isBook: isBook,
+      bookRef: bookRow ? bookRow.ref : '',
       allInOverridden: allInOverride,
       bookFilled: bookFilled,
       dayBasis: dayBasis,
@@ -4761,7 +4784,7 @@
     st._matModel = $('calc-rate-mat') ? $('calc-rate-mat').dataset.model : undefined;
     st._labModel = $('calc-rate-lab') ? $('calc-rate-lab').dataset.model : undefined;
     st._allInModel = $('calc-allin') ? $('calc-allin').dataset.model : undefined;
-    st._jicModel = $('calc-jic-rate') ? $('calc-jic-rate').dataset.model : undefined;
+    st._bookModel = $('calc-book-rate') ? $('calc-book-rate').dataset.model : undefined;
     const r = computeFor(st);
     if (r && !r.error) {
       r.name = workName(st.work);
@@ -4773,7 +4796,7 @@
       // own money = nothing to flag.
       // OWNER 2026-10-02: an ALL-IN line is exempt. It charges only allInCost,
       // which comes from the single figure sitting in #calc-allin - and when
-      // that figure came from the JIC book it is already in the book's own
+      // that figure came from the published book it is already in the book's own
       // currency (JMD), i.e. the estimate's currency. The split model rates it
       // never uses are not on the document, so flagging them would print a
       // false "these are US dollars" banner over a correct Jamaican total.
@@ -5024,8 +5047,8 @@
   // JSON through the same pattern as rate sheets; validation rejects
   // unknown work keys and negative rates; an expired book shows a banner.
   // The ACTIVE book feeds the model prefill (book rate first, WORK model
-  // second), so a full JIC-style schedule switches as ONE object - fixing
-  // audit A4 ("rate sheets are not rate books"). The official JIC sheet is
+  // second), so a full book-style schedule switches as ONE object - fixing
+  // audit A4 ("rate sheets are not rate books"). The official sheet is
   // a paid IMAJ publication: we ship STRUCTURE with no built-in rates and
   // each user imports the book they bought (the licensing-safe route from
   // plan section 4). The schema is identical either way.
@@ -5034,7 +5057,7 @@
   // OWNER 2026-10-02: marks that the shipped Jamaica book has been installed on
   // this device. Set once on the FIRST visit so the default happens exactly
   // once - afterwards the user's own book choice is never overridden.
-  const JICSEEN = 'mmgr_calc_jic_default';
+  const BOOKSEEN = 'mmgr_calc_book_default';
   function loadBooks() {
     try {
       return JSON.parse(localStorage.getItem(BKKEY) || '[]');
@@ -5171,7 +5194,7 @@
             aOk = isFinite(a) && a > 0;
           // A rate carries EITHER a split (mat + lab) OR a single all-in
           // figure. Requiring both was the quiet failure this gate exists for:
-          // an all-in-only JIC book imported as EMPTY with no error at all,
+          // an all-in-only published book imported as EMPTY with no error at all,
           // because every one of its rates was silently counted as skipped.
           if ((mOk && lOk) || aOk) {
             /* valid in at least one form */
@@ -5301,22 +5324,22 @@
       }
     }
   }
-  // ---- JIC 2025-2027 rate book card (owner 2026-10-02) ----
+  // ---- The rate book card (owner 2026-10-02) ----
   // Shows the full Jamaica rate book to the user in a modal-style card with
-  // imperial/metric toggle. The JIC_RATES data carries all 100 line items from
-  // the official JIC 2025-2027 book (TRU Construction Estimator, all amounts JMD).
-  // OWNER 2026-10-02: the year span the JIC book governs lives in ONE constant.
+  // imperial/metric toggle. The BOOK_RATES data carries all 100 line items from
+  // the official 2025-2027 book (TRU Construction Estimator, all amounts JMD).
+  // OWNER 2026-10-02: the year span the published book governs lives in ONE constant.
   // The popup title, the imported book's name and the CSV/documents all read it,
   // so they can never disagree about which years these rates cover.
-  const JIC_YEARS = '2025-2027';
+  const BOOK_YEARS = '2025-2027';
 
   /* RATE BOOK REBRAND (REFINEMENT-DIRECTIVE-2026-10-24 section 3.2).
      The book is the product's own named planning reference now. The figures
-     are still the published JIC rates until the owner changes RATEBOOK_STATUS
+     are still the published published rates until the owner changes RATEBOOK_STATUS
      in src/data/ratebook.js, so the SOURCE line stays on screen and no claim
      of independent production is made while the status is unresolved. */
   const RATEBOOK_NAME = 'My MaNaGeR Rate Book';
-  const RATEBOOK_SOURCE = 'JIC Rate Book 2025-2027';
+  const RATEBOOK_SOURCE = 'published Jamaican construction rate book, 2025-2027 edition';
   const RATEBOOK_STATUS = 'unresolved'; // unresolved | permission-granted | rebuilt
   function rateBookNotice(status) {
     const st = status || RATEBOOK_STATUS;
@@ -5327,12 +5350,12 @@
   }
   const RATEBOOK_MARK =
     '<svg class="ico rr-mark" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg>';
-  const JIC_RATES = [
+  const BOOK_RATES = [
     // Excavation (9 items)
     {
       trade: 'Excavation',
       tid: 'excavation',
-      ref: 'JIC #1',
+      ref: 'Book #1',
       desc: 'Compacted earth to 5 ft deep',
       impUnit: 'Yd.Cu.',
       impRate: 1428,
@@ -5342,7 +5365,7 @@
     {
       trade: 'Excavation',
       tid: 'excavation',
-      ref: 'JIC #2',
+      ref: 'Book #2',
       desc: 'Asphaltic concrete (Barber Green)',
       impUnit: 'Yd.Cu.',
       impRate: 3264,
@@ -5352,7 +5375,7 @@
     {
       trade: 'Excavation',
       tid: 'excavation',
-      ref: 'JIC #3',
+      ref: 'Book #3',
       desc: 'Compacted marl up to 5 ft deep',
       impUnit: 'Yd.Cu.',
       impRate: 1904,
@@ -5362,7 +5385,7 @@
     {
       trade: 'Excavation',
       tid: 'excavation',
-      ref: 'JIC #4',
+      ref: 'Book #4',
       desc: 'Compacted sand up to 5 ft deep',
       impUnit: 'Yd.Cu.',
       impRate: 1143,
@@ -5372,7 +5395,7 @@
     {
       trade: 'Excavation',
       tid: 'excavation',
-      ref: 'JIC #5',
+      ref: 'Book #5',
       desc: 'Stiff clay up to 5 ft deep',
       impUnit: 'Yd.Cu.',
       impRate: 1632,
@@ -5382,7 +5405,7 @@
     {
       trade: 'Excavation',
       tid: 'excavation',
-      ref: 'JIC #6',
+      ref: 'Book #6',
       desc: 'Stiff clay 5 to 10 ft deep',
       impUnit: 'Yd.Cu.',
       impRate: 1904,
@@ -5392,7 +5415,7 @@
     {
       trade: 'Excavation',
       tid: 'excavation',
-      ref: 'JIC #7',
+      ref: 'Book #7',
       desc: 'Rock/concrete no compressor',
       impUnit: 'Yd.Cu.',
       impRate: 11425,
@@ -5402,7 +5425,7 @@
     {
       trade: 'Excavation',
       tid: 'excavation',
-      ref: 'JIC #8',
+      ref: 'Book #8',
       desc: 'Rock/concrete compressor incl. labourers',
       impUnit: 'Yd.Cu.',
       impRate: 7141,
@@ -5412,7 +5435,7 @@
     {
       trade: 'Excavation',
       tid: 'excavation',
-      ref: 'JIC #9',
+      ref: 'Book #9',
       desc: 'Rock/concrete compressor labourers only',
       impUnit: 'Yd.Cu.',
       impRate: 2856,
@@ -5423,7 +5446,7 @@
     {
       trade: 'Carpentry (Formwork)',
       tid: 'carpentry',
-      ref: 'JIC #1',
+      ref: 'Book #1',
       desc: 'Erect and strip forms to belt and stiffener',
       impUnit: 'Ft.Sq.',
       impRate: 177,
@@ -5433,7 +5456,7 @@
     {
       trade: 'Carpentry (Formwork)',
       tid: 'carpentry',
-      ref: 'JIC #2',
+      ref: 'Book #2',
       desc: 'Erect and strip forms to columns',
       impUnit: 'Ft.Sq.',
       impRate: 189,
@@ -5443,7 +5466,7 @@
     {
       trade: 'Carpentry (Formwork)',
       tid: 'carpentry',
-      ref: 'JIC #3',
+      ref: 'Book #3',
       desc: 'Erect and strip forms to beams',
       impUnit: 'Ft.Sq.',
       impRate: 189,
@@ -5453,7 +5476,7 @@
     {
       trade: 'Carpentry (Formwork)',
       tid: 'carpentry',
-      ref: 'JIC #4',
+      ref: 'Book #4',
       desc: 'Erect and strip forms to suspended slabs (stairs)',
       impUnit: 'Ft.Sq.',
       impRate: 158,
@@ -5463,7 +5486,7 @@
     {
       trade: 'Carpentry (Formwork)',
       tid: 'carpentry',
-      ref: 'JIC #5',
+      ref: 'Book #5',
       desc: 'Erect and strip forms to suspended slabs (floor)',
       impUnit: 'Ft.Sq.',
       impRate: 189,
@@ -5473,7 +5496,7 @@
     {
       trade: 'Carpentry (Formwork)',
       tid: 'carpentry',
-      ref: 'JIC #6',
+      ref: 'Book #6',
       desc: 'Erect and strip forms to walls',
       impUnit: 'Ft.Sq.',
       impRate: 168,
@@ -5483,7 +5506,7 @@
     {
       trade: 'Carpentry (Formwork)',
       tid: 'carpentry',
-      ref: 'JIC #7',
+      ref: 'Book #7',
       desc: 'Erect and strip circular forms',
       impUnit: 'Ft.Sq.',
       impRate: 197,
@@ -5493,7 +5516,7 @@
     {
       trade: 'Carpentry (Formwork)',
       tid: 'carpentry',
-      ref: 'JIC #8',
+      ref: 'Book #8',
       desc: 'Erect and strip forms to sides and deck of manholes',
       impUnit: 'Ft.Sq.',
       impRate: 249,
@@ -5503,7 +5526,7 @@
     {
       trade: 'Carpentry (Formwork)',
       tid: 'carpentry',
-      ref: 'JIC #9',
+      ref: 'Book #9',
       desc: 'Make new formwork (columns, beam, belt, stiffener)',
       impUnit: 'Ft.Sq.',
       impRate: 60,
@@ -5514,7 +5537,7 @@
     {
       trade: 'Steelwork',
       tid: 'steelwork',
-      ref: 'JIC #1',
+      ref: 'Book #1',
       desc: '3/8 in mild steel rebar',
       impUnit: 'Lb.',
       impRate: 30,
@@ -5524,7 +5547,7 @@
     {
       trade: 'Steelwork',
       tid: 'steelwork',
-      ref: 'JIC #2',
+      ref: 'Book #2',
       desc: '1/2 in mild steel rebar',
       impUnit: 'Lb.',
       impRate: 30,
@@ -5534,7 +5557,7 @@
     {
       trade: 'Steelwork',
       tid: 'steelwork',
-      ref: 'JIC #3',
+      ref: 'Book #3',
       desc: '5/8 in mild steel rebar',
       impUnit: 'Lb.',
       impRate: 30,
@@ -5544,7 +5567,7 @@
     {
       trade: 'Steelwork',
       tid: 'steelwork',
-      ref: 'JIC #4',
+      ref: 'Book #4',
       desc: '3/4 in mild steel rebar',
       impUnit: 'Lb.',
       impRate: 30,
@@ -5554,7 +5577,7 @@
     {
       trade: 'Steelwork',
       tid: 'steelwork',
-      ref: 'JIC #5',
+      ref: 'Book #5',
       desc: '1 in mild steel rebar',
       impUnit: 'Lb.',
       impRate: 30,
@@ -5564,7 +5587,7 @@
     {
       trade: 'Steelwork',
       tid: 'steelwork',
-      ref: 'JIC #6',
+      ref: 'Book #6',
       // OWNER 2026-10-12: the metric figure used to be 276, which is the
       // imperial 125 multiplied by the pounds-to-kilograms factor - a unit
       // mix-up copied off the source page. Every other per-yd2 row in the book
@@ -5580,7 +5603,7 @@
     {
       trade: 'Steelwork',
       tid: 'steelwork',
-      ref: 'JIC #7',
+      ref: 'Book #7',
       desc: '1/4 in stirrups',
       impUnit: 'Doz.',
       impRate: 699,
@@ -5590,7 +5613,7 @@
     {
       trade: 'Steelwork',
       tid: 'steelwork',
-      ref: 'JIC #8',
+      ref: 'Book #8',
       desc: '3/8 in stirrups',
       impUnit: 'Doz.',
       impRate: 734,
@@ -5600,7 +5623,7 @@
     {
       trade: 'Steelwork',
       tid: 'steelwork',
-      ref: 'JIC #9',
+      ref: 'Book #9',
       desc: '3/8 in stirrups (large, over 6 ft girth)',
       impUnit: 'Doz.',
       impRate: 917,
@@ -5611,7 +5634,7 @@
     {
       trade: 'Masonry',
       tid: 'masonry',
-      ref: 'JIC #1',
+      ref: 'Book #1',
       desc: 'Lay 8 in blocks fill all pockets GF to FF',
       impUnit: 'Yd.Sq.',
       impRate: 1461,
@@ -5621,7 +5644,7 @@
     {
       trade: 'Masonry',
       tid: 'masonry',
-      ref: 'JIC #2',
+      ref: 'Book #2',
       desc: 'Lay 8 in blocks fill all pockets FF and above',
       impUnit: 'Yd.Sq.',
       impRate: 1704,
@@ -5631,7 +5654,7 @@
     {
       trade: 'Masonry',
       tid: 'masonry',
-      ref: 'JIC #3',
+      ref: 'Book #3',
       desc: 'Lay 8 in blocks fill all pockets manholes drains',
       impUnit: 'Yd.Sq.',
       impRate: 1947,
@@ -5641,7 +5664,7 @@
     {
       trade: 'Masonry',
       tid: 'masonry',
-      ref: 'JIC #4',
+      ref: 'Book #4',
       desc: 'Lay 8 in blocks fill alternate pockets GF to FF',
       impUnit: 'Yd.Sq.',
       impRate: 1239,
@@ -5651,7 +5674,7 @@
     {
       trade: 'Masonry',
       tid: 'masonry',
-      ref: 'JIC #5',
+      ref: 'Book #5',
       desc: 'Lay 8 in blocks fill alternate pockets FF and above',
       impUnit: 'Yd.Sq.',
       impRate: 1410,
@@ -5661,7 +5684,7 @@
     {
       trade: 'Masonry',
       tid: 'masonry',
-      ref: 'JIC #6',
+      ref: 'Book #6',
       desc: 'Lay 6 in blocks fill all pockets GF to FF',
       impUnit: 'Yd.Sq.',
       impRate: 1278,
@@ -5671,7 +5694,7 @@
     {
       trade: 'Masonry',
       tid: 'masonry',
-      ref: 'JIC #7',
+      ref: 'Book #7',
       desc: 'Lay 6 in blocks fill all pockets FF and above',
       impUnit: 'Yd.Sq.',
       impRate: 1461,
@@ -5681,7 +5704,7 @@
     {
       trade: 'Masonry',
       tid: 'masonry',
-      ref: 'JIC #8',
+      ref: 'Book #8',
       desc: 'Lay 6 in blocks fill all pockets manholes drains gully basins',
       impUnit: 'Yd.Sq.',
       impRate: 1704,
@@ -5691,7 +5714,7 @@
     {
       trade: 'Masonry',
       tid: 'masonry',
-      ref: 'JIC #9',
+      ref: 'Book #9',
       desc: 'Lay 6 in blocks fill alternate pockets GF to FF',
       impUnit: 'Yd.Sq.',
       impRate: 1105,
@@ -5702,7 +5725,7 @@
     {
       trade: 'Scaffolding',
       tid: 'scaffolding',
-      ref: 'JIC #1',
+      ref: 'Book #1',
       desc: 'Erect scaffolding up to 10 ft high unbraced',
       impUnit: 'Ft.Sq.',
       impRate: 16,
@@ -5712,7 +5735,7 @@
     {
       trade: 'Scaffolding',
       tid: 'scaffolding',
-      ref: 'JIC #2',
+      ref: 'Book #2',
       desc: 'Erect scaffolding up to 10 ft high ties to building',
       impUnit: 'Ft.Sq.',
       impRate: 25,
@@ -5722,7 +5745,7 @@
     {
       trade: 'Scaffolding',
       tid: 'scaffolding',
-      ref: 'JIC #3',
+      ref: 'Book #3',
       desc: 'Erect scaffolding 10 to 20 ft tied to building',
       impUnit: 'Ft.Sq.',
       impRate: 29,
@@ -5732,7 +5755,7 @@
     {
       trade: 'Scaffolding',
       tid: 'scaffolding',
-      ref: 'JIC #4',
+      ref: 'Book #4',
       desc: 'Erect scaffolding 20 to 30 ft tied to building',
       impUnit: 'Ft.Sq.',
       impRate: 39,
@@ -5742,7 +5765,7 @@
     {
       trade: 'Scaffolding',
       tid: 'scaffolding',
-      ref: 'JIC #5',
+      ref: 'Book #5',
       desc: 'Erect scaffolding 30 to 40 ft tied to building',
       impUnit: 'Ft.Sq.',
       impRate: 54,
@@ -5752,7 +5775,7 @@
     {
       trade: 'Scaffolding',
       tid: 'scaffolding',
-      ref: 'JIC #6',
+      ref: 'Book #6',
       desc: 'Erect scaffolding 40 to 50 ft tied to building',
       impUnit: 'Ft.Sq.',
       impRate: 60,
@@ -5762,7 +5785,7 @@
     {
       trade: 'Scaffolding',
       tid: 'scaffolding',
-      ref: 'JIC #7',
+      ref: 'Book #7',
       desc: 'Erect scaffolding 50 to 60 ft tied to building',
       impUnit: 'Ft.Sq.',
       impRate: 64,
@@ -5772,7 +5795,7 @@
     {
       trade: 'Scaffolding',
       tid: 'scaffolding',
-      ref: 'JIC #8',
+      ref: 'Book #8',
       desc: 'Erect scaffolding 60 to 70 ft tied to building',
       impUnit: 'Ft.Sq.',
       impRate: 68,
@@ -5782,7 +5805,7 @@
     {
       trade: 'Scaffolding',
       tid: 'scaffolding',
-      ref: 'JIC #9',
+      ref: 'Book #9',
       desc: 'Erect scaffolding 70 to 80 ft tied to building',
       impUnit: 'Ft.Sq.',
       impRate: 70,
@@ -5793,7 +5816,7 @@
     {
       trade: 'Tiling',
       tid: 'tiling',
-      ref: 'JIC #1',
+      ref: 'Book #1',
       desc: 'Terrazzo tiles lay and grout',
       impUnit: 'Yd.Sq.',
       impRate: 1715,
@@ -5803,7 +5826,7 @@
     {
       trade: 'Tiling',
       tid: 'tiling',
-      ref: 'JIC #2',
+      ref: 'Book #2',
       desc: 'Terrazzo tiles first cut',
       impUnit: 'Yd.Sq.',
       impRate: 778,
@@ -5813,7 +5836,7 @@
     {
       trade: 'Tiling',
       tid: 'tiling',
-      ref: 'JIC #3',
+      ref: 'Book #3',
       desc: 'Terrazzo tile final cut and polish',
       impUnit: 'Yd.Sq.',
       impRate: 1167,
@@ -5823,7 +5846,7 @@
     {
       trade: 'Tiling',
       tid: 'tiling',
-      ref: 'JIC #4',
+      ref: 'Book #4',
       desc: 'Extra for terrazzo tiling to upper floors',
       impUnit: 'Yd.Sq.',
       impRate: 125,
@@ -5833,7 +5856,7 @@
     {
       trade: 'Tiling',
       tid: 'tiling',
-      ref: 'JIC #5',
+      ref: 'Book #5',
       desc: 'Terrazzo tiles to treads 10 in wide finished',
       impUnit: 'Ft.Run',
       impRate: 414,
@@ -5843,7 +5866,7 @@
     {
       trade: 'Tiling',
       tid: 'tiling',
-      ref: 'JIC #6',
+      ref: 'Book #6',
       desc: 'Terrazzo tiles to treads 11 to 12 in wide finished',
       impUnit: 'Ft.Run',
       impRate: 522,
@@ -5853,7 +5876,7 @@
     {
       trade: 'Tiling',
       tid: 'tiling',
-      ref: 'JIC #7',
+      ref: 'Book #7',
       desc: 'Terrazzo tiles to riser 6 to 8 in high',
       impUnit: 'Ft.Run',
       impRate: 458,
@@ -5863,7 +5886,7 @@
     {
       trade: 'Tiling',
       tid: 'tiling',
-      ref: 'JIC #8',
+      ref: 'Book #8',
       desc: 'Lay and grout marble tiles 12 in plus edges floors',
       impUnit: 'Yd.Sq.',
       impRate: 3098,
@@ -5873,7 +5896,7 @@
     {
       trade: 'Tiling',
       tid: 'tiling',
-      ref: 'JIC #9',
+      ref: 'Book #9',
       desc: 'Lay and grout marble tiles 12 in plus cutting walls',
       impUnit: 'Yd.Sq.',
       impRate: 3335,
@@ -5884,7 +5907,7 @@
     {
       trade: 'Painting',
       tid: 'painting',
-      ref: 'JIC #1',
+      ref: 'Book #1',
       desc: 'Emulsion paint wall one coat',
       impUnit: 'Yd.Sq.',
       impRate: 107,
@@ -5894,7 +5917,7 @@
     {
       trade: 'Painting',
       tid: 'painting',
-      ref: 'JIC #2',
+      ref: 'Book #2',
       desc: 'Emulsion paint wall two coats',
       impUnit: 'Yd.Sq.',
       impRate: 206,
@@ -5904,7 +5927,7 @@
     {
       trade: 'Painting',
       tid: 'painting',
-      ref: 'JIC #3',
+      ref: 'Book #3',
       desc: 'Emulsion paint pebble dash one coat',
       impUnit: 'Yd.Sq.',
       impRate: 140,
@@ -5914,7 +5937,7 @@
     {
       trade: 'Painting',
       tid: 'painting',
-      ref: 'JIC #4',
+      ref: 'Book #4',
       desc: 'Emulsion paint pebble dash two coats',
       impUnit: 'Yd.Sq.',
       impRate: 268,
@@ -5924,7 +5947,7 @@
     {
       trade: 'Painting',
       tid: 'painting',
-      ref: 'JIC #5',
+      ref: 'Book #5',
       desc: 'Emulsion paint cutting to line',
       impUnit: 'Ft.Run',
       impRate: 9,
@@ -5934,7 +5957,7 @@
     {
       trade: 'Painting',
       tid: 'painting',
-      ref: 'JIC #6',
+      ref: 'Book #6',
       desc: 'Emulsion paint skirting 3 to 4 in one coat',
       impUnit: 'Ft.Run',
       impRate: 9,
@@ -5944,7 +5967,7 @@
     {
       trade: 'Painting',
       tid: 'painting',
-      ref: 'JIC #7',
+      ref: 'Book #7',
       desc: 'Emulsion paint skirting 3 to 4 in two coats',
       impUnit: 'Ft.Run',
       impRate: 26,
@@ -5954,7 +5977,7 @@
     {
       trade: 'Painting',
       tid: 'painting',
-      ref: 'JIC #8',
+      ref: 'Book #8',
       desc: 'Emulsion paint ceiling one coat',
       impUnit: 'Yd.Sq.',
       impRate: 119,
@@ -5964,7 +5987,7 @@
     {
       trade: 'Painting',
       tid: 'painting',
-      ref: 'JIC #9',
+      ref: 'Book #9',
       desc: 'Emulsion paint ceiling two coats',
       impUnit: 'Yd.Sq.',
       impRate: 233,
@@ -5975,7 +5998,7 @@
     {
       trade: 'Joinery (Skirtings)',
       tid: 'joinery',
-      ref: 'JIC #1',
+      ref: 'Book #1',
       desc: '1x3 skirtings bevelled top WPP',
       impUnit: 'Ft.Run',
       impRate: 66,
@@ -5985,7 +6008,7 @@
     {
       trade: 'Joinery (Skirtings)',
       tid: 'joinery',
-      ref: 'JIC #2',
+      ref: 'Book #2',
       desc: '1x4 skirtings bevelled top WPP',
       impUnit: 'Ft.Run',
       impRate: 73,
@@ -5995,7 +6018,7 @@
     {
       trade: 'Joinery (Skirtings)',
       tid: 'joinery',
-      ref: 'JIC #3',
+      ref: 'Book #3',
       desc: '1x6 skirtings bevelled top WPP',
       impUnit: 'Ft.Run',
       impRate: 90,
@@ -6005,7 +6028,7 @@
     {
       trade: 'Joinery (Skirtings)',
       tid: 'joinery',
-      ref: 'JIC #4',
+      ref: 'Book #4',
       desc: '1x3 skirtings bevelled to Mah etc.',
       impUnit: 'Ft.Run',
       impRate: 73,
@@ -6015,7 +6038,7 @@
     {
       trade: 'Joinery (Skirtings)',
       tid: 'joinery',
-      ref: 'JIC #5',
+      ref: 'Book #5',
       desc: '1x4 skirtings bevelled to Mah etc.',
       impUnit: 'Ft.Run',
       impRate: 84,
@@ -6025,7 +6048,7 @@
     {
       trade: 'Joinery (Skirtings)',
       tid: 'joinery',
-      ref: 'JIC #6',
+      ref: 'Book #6',
       desc: '1x6 skirtings bevelled to Mah etc.',
       impUnit: 'Ft.Run',
       impRate: 99,
@@ -6035,7 +6058,7 @@
     {
       trade: 'Joinery (Skirtings)',
       tid: 'joinery',
-      ref: 'JIC #7',
+      ref: 'Book #7',
       desc: '1x3 skirtings molded top WPP',
       impUnit: 'Ft.Run',
       impRate: 99,
@@ -6045,7 +6068,7 @@
     {
       trade: 'Joinery (Skirtings)',
       tid: 'joinery',
-      ref: 'JIC #8',
+      ref: 'Book #8',
       desc: '1x4 skirtings molded top WPP',
       impUnit: 'Ft.Run',
       impRate: 110,
@@ -6055,7 +6078,7 @@
     {
       trade: 'Joinery (Skirtings)',
       tid: 'joinery',
-      ref: 'JIC #9',
+      ref: 'Book #9',
       desc: '1x6 skirtings molded top WPP',
       impUnit: 'Ft.Run',
       impRate: 122,
@@ -6065,7 +6088,7 @@
     {
       trade: 'Joinery (Skirtings)',
       tid: 'joinery',
-      ref: 'JIC #10',
+      ref: 'Book #10',
       desc: '1x3 skirtings molded top Mah etc.',
       impUnit: 'Ft.Run',
       impRate: 110,
@@ -6076,7 +6099,7 @@
     {
       trade: 'Plumbing',
       tid: 'plumbing',
-      ref: 'JIC #1',
+      ref: 'Book #1',
       desc: '6 in diameter pipes',
       impUnit: 'Ft.Run',
       impRate: 323,
@@ -6086,7 +6109,7 @@
     {
       trade: 'Plumbing',
       tid: 'plumbing',
-      ref: 'JIC #2',
+      ref: 'Book #2',
       desc: '4 in diameter pipes',
       impUnit: 'Ft.Run',
       impRate: 244,
@@ -6096,7 +6119,7 @@
     {
       trade: 'Plumbing',
       tid: 'plumbing',
-      ref: 'JIC #3',
+      ref: 'Book #3',
       desc: '3 in diameter pipes',
       impUnit: 'Ft.Run',
       impRate: 229,
@@ -6106,7 +6129,7 @@
     {
       trade: 'Plumbing',
       tid: 'plumbing',
-      ref: 'JIC #4',
+      ref: 'Book #4',
       desc: '2 in diameter pipes',
       impUnit: 'Ft.Run',
       impRate: 151,
@@ -6116,7 +6139,7 @@
     {
       trade: 'Plumbing',
       tid: 'plumbing',
-      ref: 'JIC #5',
+      ref: 'Book #5',
       desc: '1.5 in diameter pipes',
       impUnit: 'Ft.Run',
       impRate: 125,
@@ -6126,7 +6149,7 @@
     {
       trade: 'Plumbing',
       tid: 'plumbing',
-      ref: 'JIC #6',
+      ref: 'Book #6',
       desc: '1.25 in diameter pipes',
       impUnit: 'Ft.Run',
       impRate: 125,
@@ -6136,7 +6159,7 @@
     {
       trade: 'Plumbing',
       tid: 'plumbing',
-      ref: 'JIC #7',
+      ref: 'Book #7',
       desc: '300mm 12 ft push fit pipes',
       impUnit: 'Ft.Run',
       impRate: 656,
@@ -6146,7 +6169,7 @@
     {
       trade: 'Plumbing',
       tid: 'plumbing',
-      ref: 'JIC #8',
+      ref: 'Book #8',
       desc: '250mm 10 ft push fit pipes',
       impUnit: 'Ft.Run',
       impRate: 534,
@@ -6156,7 +6179,7 @@
     {
       trade: 'Plumbing',
       tid: 'plumbing',
-      ref: 'JIC #9',
+      ref: 'Book #9',
       desc: '200mm 8 ft push fit pipes',
       impUnit: 'Ft.Run',
       impRate: 417,
@@ -6167,7 +6190,7 @@
     {
       trade: 'Electrical (Conduit)',
       tid: 'electrical',
-      ref: 'JIC #1',
+      ref: 'Book #1',
       desc: '1/2 in diameter pipe',
       impUnit: 'Ft.Run',
       impRate: 35.73,
@@ -6177,7 +6200,7 @@
     {
       trade: 'Electrical (Conduit)',
       tid: 'electrical',
-      ref: 'JIC #2',
+      ref: 'Book #2',
       desc: '3/4 in diameter pipe',
       impUnit: 'Ft.Run',
       impRate: 41.94,
@@ -6187,7 +6210,7 @@
     {
       trade: 'Electrical (Conduit)',
       tid: 'electrical',
-      ref: 'JIC #3',
+      ref: 'Book #3',
       desc: '1 in diameter pipe',
       impUnit: 'Ft.Run',
       impRate: 48.23,
@@ -6197,7 +6220,7 @@
     {
       trade: 'Electrical (Conduit)',
       tid: 'electrical',
-      ref: 'JIC #4',
+      ref: 'Book #4',
       desc: '1-1/4 in diameter pipe',
       impUnit: 'Ft.Run',
       impRate: 56.75,
@@ -6207,7 +6230,7 @@
     {
       trade: 'Electrical (Conduit)',
       tid: 'electrical',
-      ref: 'JIC #5',
+      ref: 'Book #5',
       desc: '1-1/2 in diameter pipe',
       impUnit: 'Ft.Run',
       impRate: 68.91,
@@ -6217,7 +6240,7 @@
     {
       trade: 'Electrical (Conduit)',
       tid: 'electrical',
-      ref: 'JIC #6',
+      ref: 'Book #6',
       desc: '2 in diameter pipe',
       impUnit: 'Ft.Run',
       impRate: 80.39,
@@ -6227,7 +6250,7 @@
     {
       trade: 'Electrical (Conduit)',
       tid: 'electrical',
-      ref: 'JIC #7',
+      ref: 'Book #7',
       desc: '1 in diameter pipe (higher rate)',
       impUnit: 'Ft.Run',
       impRate: 83.89,
@@ -6237,7 +6260,7 @@
     {
       trade: 'Electrical (Conduit)',
       tid: 'electrical',
-      ref: 'JIC #8',
+      ref: 'Book #8',
       desc: '1-1/4 in diameter pipe (higher rate)',
       impUnit: 'Ft.Run',
       impRate: 96.47,
@@ -6247,7 +6270,7 @@
     {
       trade: 'Electrical (Conduit)',
       tid: 'electrical',
-      ref: 'JIC #9',
+      ref: 'Book #9',
       desc: '1-1/2 in diameter pipe (higher rate)',
       impUnit: 'Ft.Run',
       impRate: 107.19,
@@ -6258,7 +6281,7 @@
     {
       trade: 'Welding',
       tid: 'welding',
-      ref: 'JIC #1',
+      ref: 'Book #1',
       desc: 'Handle Mark Cut & Sand Smooth: 1/8 in thick metal using torch',
       impUnit: 'In.',
       impRate: 50,
@@ -6268,7 +6291,7 @@
     {
       trade: 'Welding',
       tid: 'welding',
-      ref: 'JIC #2',
+      ref: 'Book #2',
       desc: 'Handle Mark Cut & Sand Smooth: 1/4 in thick metal using torch',
       impUnit: 'In.',
       impRate: 64,
@@ -6278,7 +6301,7 @@
     {
       trade: 'Welding',
       tid: 'welding',
-      ref: 'JIC #3',
+      ref: 'Book #3',
       desc: 'Handle Mark Cut & Sand Smooth: 3/8 in thick metal using torch',
       impUnit: 'In.',
       impRate: 70,
@@ -6288,7 +6311,7 @@
     {
       trade: 'Welding',
       tid: 'welding',
-      ref: 'JIC #4',
+      ref: 'Book #4',
       desc: 'Handle Mark Cut & Sand Smooth: 1/2 in thick metal using torch',
       impUnit: 'In.',
       impRate: 78,
@@ -6298,7 +6321,7 @@
     {
       trade: 'Welding',
       tid: 'welding',
-      ref: 'JIC #5',
+      ref: 'Book #5',
       desc: 'Handle Mark Cut & Sand Smooth: 5/8 in thick metal using torch',
       impUnit: 'In.',
       impRate: 88,
@@ -6308,7 +6331,7 @@
     {
       trade: 'Welding',
       tid: 'welding',
-      ref: 'JIC #6',
+      ref: 'Book #6',
       desc: 'Handle Mark Cut & Sand Smooth: 3/4 in thick metal using torch',
       impUnit: 'In.',
       impRate: 97,
@@ -6318,7 +6341,7 @@
     {
       trade: 'Welding',
       tid: 'welding',
-      ref: 'JIC #7',
+      ref: 'Book #7',
       desc: 'Handle Mark Cut & Sand Smooth: 1 in thick metal using torch',
       impUnit: 'In.',
       impRate: 117,
@@ -6328,7 +6351,7 @@
     {
       trade: 'Welding',
       tid: 'welding',
-      ref: 'JIC #8',
+      ref: 'Book #8',
       desc: 'Handle Mark Cut & Sand Smooth 1/16 in thick metal using CPSAW',
       impUnit: 'In.',
       impRate: 25,
@@ -6338,7 +6361,7 @@
     {
       trade: 'Welding',
       tid: 'welding',
-      ref: 'JIC #9',
+      ref: 'Book #9',
       desc: 'Handle Mark Cut & Sand Smooth 1/8 in thick metal using CPSAW',
       impUnit: 'In.',
       impRate: 39,
@@ -6346,7 +6369,7 @@
       metRate: 153
     }
   ];
-  const JIC_BOOK_MAP = [
+  const BOOK_MAP = [
     ['excavation', 1, 'excav', 'standard'],
     ['excavation', 2, 'excav', 'asphalt'],
     ['excavation', 3, 'excav', 'marl'],
@@ -6449,23 +6472,23 @@
     ['welding', 9, 'welding', 'w-1/8-cpsaw']
   ];
 
-  // The shipped Jamaica book (owner 2026-10-02, Task 5). The JIC combined rate
+  // The shipped Jamaica book (owner 2026-10-02, Task 5). The book combined rate
   // IS the all-in figure - one number covering material and labour - so the
-  // book carries no split. Built by GENERATING from JIC_RATES (the same rows
+  // book carries no split. Built by GENERATING from BOOK_RATES (the same rows
   // the rate-book card shows) rather than re-keying 100 figures by hand: this
   // table holds only the two identifiers per row, and the money is read out of
-  // JIC_RATES at runtime, so the book can never drift from the table the user
+  // BOOK_RATES at runtime, so the book can never drift from the table the user
   // reads on screen. Metric rates are used because the engine is metric-first
   // and rateFactor converts for the trades quoted per yd2/ft2/ft-run/lb/dozen.
   // ---- Owner 2026-10-12 (G1): the split UNDER the all-in headline --------
-  // JIC publishes ONE combined figure per row, so there is no split to read
+  // The book publishes ONE combined figure per row, so there is no split to read
   // off the sheet. Rather than one invented global percentage, the split is
   // derived from each trade's OWN model mat/lab pair - the numbers this
   // calculator has always priced that trade with - so the two bases tell the
   // same story and nothing is fabricated.
   // Clamped to 15%-85% so neither side can ever render as a zero line: the
   // welding model carries lab 0, which would put "Labour J$0" under a real
-  // JIC figure. FALLBACK is an even split for any trade with no usable pair.
+  // book figure. FALLBACK is an even split for any trade with no usable pair.
   function matShareFor(workId) {
     const r = WORK[workId] && WORK[workId].rate;
     if (r && typeof r.mat === 'number' && typeof r.lab === 'number') {
@@ -6477,18 +6500,18 @@
     return 0.5;
   }
 
-  function jicBookPayload() {
+  function bookPayload() {
     const rates = {};
     let entries = 0;
-    // JIC_RATES rows are identified by their trade plus the row number inside
-    // the ref ('JIC #3' -> 3); the ref itself can carry a prefix, so the number
+    // BOOK_RATES rows are identified by their trade plus the row number inside
+    // the ref ('book #3' -> 3); the ref itself can carry a prefix, so the number
     // is read off the end rather than parsing the whole string.
     const rowNo = function (ref) {
       const n = String(ref || '').match(/(\d+)\s*$/);
       return n ? Number(n[1]) : 0;
     };
-    JIC_RATES.forEach(function (r) {
-      const m = JIC_BOOK_MAP.find(function (x) {
+    BOOK_RATES.forEach(function (r) {
+      const m = BOOK_MAP.find(function (x) {
         return x[0] === r.tid && x[1] === rowNo(r.ref);
       });
       if (!m) {
@@ -6523,8 +6546,8 @@
       entries++;
     });
     const book = {
-      name: 'Jamaica rate book ' + JIC_YEARS,
-      source: 'Jamaica Institute of Construction (JIC) published rate book',
+      name: 'Jamaica rate book ' + BOOK_YEARS,
+      source: 'published Jamaican construction rate book',
       effective_from: '2025-01-01',
       effective_to: '2027-12-31',
       tier: 'published combined (all-in)',
@@ -6544,7 +6567,7 @@
   // the user was looking at.
   let _rrQuery = '';
   let _rrTrade = 'all';
-  // The full 811-row book is GENERATED (tools/gen-jic-full.cjs) and loaded
+  // The full 811-row book is GENERATED (tools/gen-ratebook.cjs) and loaded
   // lazily the FIRST time the card opens, so the 100 rows shipped inline keep
   // first paint fast on a slow connection (owner: "load quickly based on
   // someone's Internet"). Once loaded it stays for the session.
@@ -6714,7 +6737,7 @@
       return _rrFull.trades;
     }
     const seen = [];
-    JIC_RATES.forEach(function (r) {
+    BOOK_RATES.forEach(function (r) {
       if (
         !seen.some(function (x) {
           return x.tid === r.tid;
@@ -6750,7 +6773,7 @@
         };
       });
     }
-    return JIC_RATES.map(function (r) {
+    return BOOK_RATES.map(function (r) {
       return {
         tid: r.tid,
         trade: r.trade,
@@ -6806,7 +6829,7 @@
       Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     );
   }
-  // ---- PART I PHASE 2 (owner, 2026-10-17): the JIC PICKER (I1 Option C) ----
+  // ---- PART I PHASE 2 (owner, 2026-10-17): the BOOK PICKER (I1 Option C) ----
   // Choose a trade, choose one of its book rates, type the quantity - any of
   // the 811 shipped rows prices as a first-class estimate line. Field
   // visibility follows syncLabels (the custom/variant convention); the data
@@ -6815,20 +6838,20 @@
   // the book prefill marker (dataset.model) exactly like the split rate
   // fields: equal = the published figure, anything else = the user's own
   // (the book is a default, never a lock).
-  let _jicIdxSrc = null;
-  let _jicIdx = null;
-  let _jicRecall = false;
-  let _jicTried = false;
-  let _jicOffline = false;
+  let _bookIdxSrc = null;
+  let _bookIdx = null;
+  let _bookRecall = false;
+  let _bookTried = false;
+  let _bookOffline = false;
   let _prevWork = null;
   // PURE row resolution over whichever book source is loaded - never the DOM
   // - so computeFor prices a recalled pick from its own saved trade + ref and
   // workName() names the line from the same row. Memoized per source (inline
   // 100 / full 811), so a render never re-maps the whole book.
-  function jicRowIndex() {
+  function bookRowIndex() {
     const src = _rrFull ? 'full' : 'inline';
-    if (_jicIdx && _jicIdxSrc === src) {
-      return _jicIdx;
+    if (_bookIdx && _bookIdxSrc === src) {
+      return _bookIdx;
     }
     const idx = {};
     rrRows().forEach(function (r) {
@@ -6837,33 +6860,33 @@
         idx[k] = r;
       }
     });
-    _jicIdx = idx;
-    _jicIdxSrc = src;
+    _bookIdx = idx;
+    _bookIdxSrc = src;
     return idx;
   }
-  function jicRowFor(tid, ref) {
+  function bookRowFor(tid, ref) {
     if (!tid || !ref) {
       return null;
     }
-    return jicRowIndex()[tid + '|' + ref] || null;
+    return bookRowIndex()[tid + '|' + ref] || null;
   }
   // The row's money speaks the ROW's own unit: the displayed unit system
   // picks the side (both shipped books carry a positive rate on both sides -
   // verified 811/811 and 100/100), and each side's unit follows its own
   // rate, so quantity x rate is exact with no conversion anywhere.
-  function jicUnitFor(row, imp) {
+  function bookUnitFor(row, imp) {
     return (imp ? row.impUnit : row.metUnit) || (imp ? row.metUnit : row.impUnit) || 'each';
   }
-  function jicRateFor(row, imp) {
+  function bookRateFor(row, imp) {
     const v = imp ? row.impRate : row.metRate;
     return isFinite(v) && v > 0 ? v : imp ? row.metRate : row.impRate;
   }
   // The published-rate note follows the PICKED row: it says the figure is
   // the book's own while the field still equals the prefill marker, and
   // hides the moment the user's own figure lands.
-  function syncJicNote() {
-    const note = $('calc-jic-note');
-    const rateEl = $('calc-jic-rate');
+  function syncBookPickNote() {
+    const note = $('calc-book-pick-note');
+    const rateEl = $('calc-book-rate');
     if (!note || !rateEl) {
       return;
     }
@@ -6875,20 +6898,20 @@
         RATEBOOK_NAME + ' planning rate. Rates change - type your own figure if yours differs.';
     }
   }
-  function renderJicPicker() {
-    const wrap = $('calc-jic-wrap');
+  function renderBookPicker() {
+    const wrap = $('calc-book-wrap');
     const key = ($('calc-work') || {}).value;
     if (!wrap) {
       return;
     }
-    wrap.hidden = key !== 'jic';
-    const tSel = $('calc-jic-trade'),
-      rSel = $('calc-jic-row'),
-      rateEl = $('calc-jic-rate');
+    wrap.hidden = key !== 'book';
+    const tSel = $('calc-book-trade'),
+      rSel = $('calc-book-row'),
+      rateEl = $('calc-book-rate');
     if (!tSel || !rSel || !rateEl) {
       return;
     }
-    if (key !== 'jic') {
+    if (key !== 'book') {
       // Leaving the picker drops the pick the way leaving Custom clears its
       // four fields: the next open starts clean, a recall restores its own
       // pick through applyState - and the last seen work item is remembered
@@ -6899,7 +6922,7 @@
       rSel.disabled = true;
       rateEl.value = '';
       delete rateEl.dataset.model;
-      syncJicNote();
+      syncBookPickNote();
       return;
     }
     const imp = _units === 'imperial';
@@ -6932,8 +6955,8 @@
       rSel.disabled = true;
       rateEl.value = '';
       delete rateEl.dataset.model;
-      syncJicNote();
-      kickJicFullLoad();
+      syncBookPickNote();
+      kickBookFullLoad();
       return;
     }
     rSel.disabled = false;
@@ -6948,8 +6971,8 @@
     const prevR = rSel.value;
     rSel.innerHTML = rows
       .map(function (r) {
-        const unit = jicUnitFor(r, imp);
-        const rate = jicRateFor(r, imp);
+        const unit = bookUnitFor(r, imp);
+        const rate = bookRateFor(r, imp);
         const d = r.desc.length > 46 ? r.desc.slice(0, 43) + '...' : r.desc;
         return (
           '<option value="' +
@@ -6975,7 +6998,7 @@
     if (!hadRow) {
       rSel.value = rows.length ? rows[0].ref : '';
     }
-    const row = jicRowFor(tid, rSel.value);
+    const row = bookRowFor(tid, rSel.value);
     if (row) {
       // The rate follows the row: a fresh pick (or a trade change) seeds the
       // book figure; an untouched book figure follows its row across a unit
@@ -6984,13 +7007,13 @@
       // the sum it showed is the sum it must re-create.
       const m = rateEl.dataset.model;
       const untouched = m != null && m !== '' && String(rateEl.value) === String(m);
-      if (!_jicRecall && (!hadRow || rateEl.value === '' || untouched)) {
-        const v = Math.round(jicRateFor(row, imp) * 100) / 100;
+      if (!_bookRecall && (!hadRow || rateEl.value === '' || untouched)) {
+        const v = Math.round(bookRateFor(row, imp) * 100) / 100;
         rateEl.value = String(v);
         rateEl.dataset.model = String(v);
       }
-      const unit = jicUnitFor(row, imp);
-      const uEl = $('calc-jic-unit');
+      const unit = bookUnitFor(row, imp);
+      const uEl = $('calc-book-unit');
       if (uEl) {
         uEl.textContent = unit;
       }
@@ -7001,31 +7024,31 @@
     }
     // The hint stays honest about the source: after a FAILED full-book load
     // (a first open with no network) it says the built-in set is shown.
-    const hint = $('calc-jic-hint');
+    const hint = $('calc-book-hint');
     if (hint) {
       hint.textContent =
-        _rrFull || !_jicOffline
+        _rrFull || !_bookOffline
           ? '- pick a trade, then a rate'
           : _rrWhy === 'signin'
             ? '- pick a trade, then a rate (built-in set; sign in for all 811)'
             : '- pick a trade, then a rate (showing the built-in set)';
     }
-    syncJicNote();
-    kickJicFullLoad();
+    syncBookPickNote();
+    kickBookFullLoad();
   }
   // The full 811-row book loads on the first picker (or card) ask, AT MOST
   // once per page life: a failed fetch (offline, first visit) settles on the
   // inline 100 rows - which carry all 11 trades - instead of retrying on
   // every render. A page refresh is a fresh attempt.
-  function kickJicFullLoad() {
-    if (_rrFull || _jicTried) {
+  function kickBookFullLoad() {
+    if (_rrFull || _bookTried) {
       return;
     }
-    _jicTried = true;
+    _bookTried = true;
     rrLoadFull(function () {
-      _jicOffline = !_rrFull;
-      if (($('calc-work') || {}).value === 'jic') {
-        renderJicPicker();
+      _bookOffline = !_rrFull;
+      if (($('calc-work') || {}).value === 'book') {
+        renderBookPicker();
       }
     });
   }
@@ -7035,9 +7058,9 @@
   // item and shows the same sign-in card the book uses; offline or with an
   // unverifiable answer it OPENS (offline-first is sacred - same rule as the
   // book card). window.__MMGR_RR_AUTH is the QA seam, exactly as for the card.
-  function jicGateOnWorkChange() {
+  function bookGateOnWorkChange() {
     const sel = $('calc-work');
-    if (!sel || sel.value !== 'jic') {
+    if (!sel || sel.value !== 'book') {
       return;
     }
     const known =
@@ -7045,7 +7068,7 @@
         ? window.__MMGR_RR_AUTH
         : _rrAuth;
     const reject = function () {
-      if (($('calc-work') || {}).value !== 'jic') {
+      if (($('calc-work') || {}).value !== 'book') {
         return;
       }
       renderRateBookSigninCard();
@@ -7091,7 +7114,7 @@
     card.className = 'card rr-overlay';
     card.setAttribute('role', 'dialog');
     card.setAttribute('aria-modal', 'true');
-    card.setAttribute('aria-label', RATEBOOK_NAME + ' ' + JIC_YEARS);
+    card.setAttribute('aria-label', RATEBOOK_NAME + ' ' + BOOK_YEARS);
     const curUnit = _rateBookUnits === 'imperial' ? 'imp' : 'met';
     const all = rrRows();
     const trades = rrTrades();
@@ -7141,7 +7164,7 @@
         '</td><td class="rr-desc">' +
         esc(r.desc) +
         // 'C' marks a rate WE calculated from the imperial figure rather than
-        // one JIC printed. The owner asked for the marker; the title spells out
+        // one the book printed. The owner asked for the marker; the title spells out
         // what it means so it is never an unexplained letter.
         (r.basis === 'C'
           ? '<span class="rr-calc" title="Calculated from the imperial rate using the published conversion rule">C</span>'
@@ -7207,7 +7230,7 @@
       ' ' +
       RATEBOOK_NAME +
       ' <span class="rr-years">' +
-      JIC_YEARS +
+      BOOK_YEARS +
       '</span></h2>' +
       '<div class="bcp-seg" role="group" aria-label="Rate book units">' +
       '<button type="button" class="bcp-seg-btn' +
@@ -7516,7 +7539,7 @@
       ' ' +
       RATEBOOK_NAME +
       ' <span class="rr-years">' +
-      JIC_YEARS +
+      BOOK_YEARS +
       '</span></h2>' +
       '<button type="button" class="bcp-rr-x" data-action="rrClose" aria-label="Close" title="Close"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button>' +
       '</div>' +
@@ -7683,7 +7706,7 @@
   // engine fallback. A legacy save (or a state with no variant) resolves to
   // the FIRST variant, whose rates must equal the pre-conversion model - so
   // old recalls reproduce the same total (Phase 1 exit gate). Phase 2 fills
-  // the real JIC variant sets from the official sheet; no invented numbers.
+  // the real book variant sets from the official sheet; no invented numbers.
   function activeVariant(w, st) {
     if (!w || !w.variants || !w.variants.length) {
       return null;
@@ -7797,11 +7820,11 @@
     if (!w) {
       return [];
     }
-    // PART I PHASE 2: the JIC picker's quantity is in the ROW's own unit
+    // PART I PHASE 2: the book picker's quantity is in the ROW's own unit
     // (metres, sq m, each, yd3 - whatever the chosen rate is per), so the
     // metre and length bands below would flag honest quantities as unit
     // mistakes. The row's own unit on the quantity label is the guard here.
-    if (st.work === 'jic') {
+    if (st.work === 'book') {
       return [];
     }
     const imp = st && st.units === 'imperial';
@@ -9813,7 +9836,7 @@
       r.allIn
         ? (r.runit ? 'per ' + r.runit + ' - ' : '') +
             Math.round(r.allInRate) +
-            (r.allInOverridden ? ' (your rate)' : r.bookFilled ? ' (JIC rate book)' : '')
+            (r.allInOverridden ? ' (your rate)' : r.bookFilled ? ' (book rate)' : '')
         : '-',
       '',
       '',
@@ -10440,7 +10463,7 @@
     fxBetween: fxBetween,
     modelRatesFor: modelRatesFor,
     importBooks: importBooks,
-    jicBookPayload: jicBookPayload,
+    bookPayload: bookPayload,
     bookChecksum: bookChecksum,
     setActiveBook: setActiveBook,
     activeBook: activeBook,
@@ -10596,14 +10619,14 @@
         return cn;
       }
     }
-    // PART I PHASE 2: a JIC line is named by its ROW - the ref first, then
+    // PART I PHASE 2: a book line is named by its ROW - the ref first, then
     // the book's own description - so bill lines, history and the CSV say
     // which published rate was priced (no 60-char field contract here: the
     // full ref + description rides, capped only for readability).
-    if (key === 'jic') {
-      const tSel = $('calc-jic-trade');
-      const rSel = $('calc-jic-row');
-      const row = tSel && rSel ? jicRowFor(tSel.value, rSel.value) : null;
+    if (key === 'book') {
+      const tSel = $('calc-book-trade');
+      const rSel = $('calc-book-row');
+      const row = tSel && rSel ? bookRowFor(tSel.value, rSel.value) : null;
       if (row) {
         let jn = row.ref + ' - ' + row.desc;
         if (jn.length > 90) {
@@ -10668,7 +10691,7 @@
     if (!r || !r.allIn) {
       return '';
     }
-    return r.allInOverridden ? ' - your rate' : r.bookFilled ? ' - JIC rate book' : '';
+    return r.allInOverridden ? ' - your rate' : r.bookFilled ? ' - book rate' : '';
   }
   function matRowLabel(r) {
     if (r.allIn) {
@@ -11038,7 +11061,7 @@
     }
     const manual = $('calc-measured-manual');
     let txt = '';
-    // B1: a custom or JIC line always shows its arithmetic (quantity x the
+    // B1: a custom or book line always shows its arithmetic (quantity x the
     // rate) even outside the Quick total box; every other line keeps the
     // original condition unchanged.
     if (
@@ -11046,7 +11069,7 @@
       r.allIn &&
       isFinite(Number(r.qty)) &&
       Number(r.qty) > 0 &&
-      ((manual && manual.checked) || r.isCustom || r.isJic)
+      ((manual && manual.checked) || r.isCustom || r.isBook)
     ) {
       // C1: the quantity printed here is ALWAYS the system on screen, and the
       // hero above carries the secondary reading. This line stays the owner's
@@ -11312,7 +11335,7 @@
         esc(shown.alt) +
         '</span></strong></div>' +
         '<div class="calc-sum-sub">' +
-        // PART I PHASE 2: a JIC line's matDesc carries the row's own ref +
+        // PART I PHASE 2: a book line's matDesc carries the row's own ref +
         // description (the book writes with & and quotes), so the ONE HTML
         // insert escapes it; the CSV takes the same raw string.
         esc(r.matDesc) +
@@ -11959,8 +11982,8 @@
     // Load the shipped Jamaica rate book (owner 2026-10-02). One tap, on device.
     // The rates are a DEFAULT: they prefill the all-in field, the user can type
     // over any of them, and the published-rate note says where they came from.
-    calcBookJic: function () {
-      const payload = jicBookPayload();
+    calcBookPick: function () {
+      const payload = bookPayload();
       const res = importBooks(payload);
       const list = loadBooks();
       const b = list.find(function (x) {
@@ -11995,7 +12018,7 @@
         !b
           ? 'That Jamaica book could not be loaded - try importing it from a file instead.'
           : 'Jamaica rate book ' +
-              JIC_YEARS +
+              BOOK_YEARS +
               ' loaded: ' +
               payload.entryCount +
               ' rates. Its rates prefill the all-in field, and you can type over any of them.'
@@ -12008,15 +12031,15 @@
     // and then left entirely to the user. Only the FIRST visit installs it; after
     // that the user's own choice (including "none") is never overridden again.
     calcBookDefault: function () {
-      if (localStorage.getItem(JICSEEN)) {
+      if (localStorage.getItem(BOOKSEEN)) {
         return;
       }
       try {
-        localStorage.setItem(JICSEEN, '1');
+        localStorage.setItem(BOOKSEEN, '1');
       } catch (e) {
         /* nicety */
       }
-      const payload = jicBookPayload();
+      const payload = bookPayload();
       const res = importBooks(payload);
       const b = loadBooks().find(function (x) {
         return (x.name || '').indexOf('Jamaica rate book') === 0;
@@ -12028,7 +12051,7 @@
         return;
       }
       setActiveBook(b.id);
-      // OWNER 2026-10-02 (final): with the JIC book selected and JMD as the
+      // OWNER 2026-10-02 (final): with the published book selected and JMD as the
       // currency, the pricing basis must follow the BOOK. The book carries
       // all-in combined rates and no material/labour split, so leaving the
       // basis on 'measured' made every line fall back to the USD planning-grade
@@ -12042,7 +12065,7 @@
       }
       sheetMsg(
         'Loaded the Jamaica rate book ' +
-          JIC_YEARS +
+          BOOK_YEARS +
           ': ' +
           payload.entryCount +
           ' rates. Every rate is yours to change, and you can swap or remove the book at any time.'
@@ -13522,7 +13545,7 @@
       label: 'Electrical - points, conduit, panels',
       hint: 'Power and light: wiring points, conduit runs and panels.'
     },
-    // JIC 2025-2027 (owner 2026-10-02): new families for the 90-rate book
+    // 2025-2027 book (owner 2026-10-02): new families for the 90-rate book
     'temporary-metal': {
       label: 'Temporary and metal works - scaffolding, welding',
       hint: 'Temporary access and metal work: scaffolding by height band and welding by thickness and method.'
@@ -13572,7 +13595,7 @@
     'wire-point': 'electrical',
     conduit: 'electrical',
     panel: 'electrical',
-    // JIC 2025-2027 (owner 2026-10-02): new trades added to the picker
+    // 2025-2027 book (owner 2026-10-02): new trades added to the picker
     scaffold: 'temporary-metal',
     joinery: 'joinery',
     'plumbing-pipe': 'plumbing',
@@ -13724,9 +13747,9 @@
     renderOpenings();
     // E2: the variant selector follows the trade.
     renderVariant();
-    // PART I PHASE 2: the JIC picker follows the work item (the same owner
+    // PART I PHASE 2: the book picker follows the work item (the same owner
     // as the variant selector - per-item field visibility lives in syncLabels).
-    renderJicPicker();
+    renderBookPicker();
     // W7: the rebar laps field rides the rebar trade only (same home as the
     // d2/d3 wrap hiding - syncLabels owns per-trade field visibility).
     const rlWrap = $('calc-rebar-laps-wrap'),
@@ -13764,7 +13787,7 @@
     if ($('calc-allin-wrap')) {
       $('calc-allin-wrap').hidden = !onAllin;
     }
-    // The "checked against JIC on" stamp only means anything on an all-in line.
+    // The "checked against current quotes on" stamp only means anything on an all-in line.
     if ($('calc-verified-wrap')) {
       $('calc-verified-wrap').hidden = !onAllin;
     }
@@ -13828,7 +13851,7 @@
     const verified = ($('calc-allin-verified') || {}).value || '';
     n.hidden = !filled;
     n.textContent =
-      'This rate came from a published rate book. Rates change, so check it against JIC before you price' +
+      'This rate came from a published rate book. Rates change, so check it against current quotes before you price' +
       (verified ? ' (you checked it on ' + verified + ')' : '') +
       '.';
   }
@@ -13899,14 +13922,14 @@
   }
 
   // ---- Owner 2026-10-12 (G1): the split is a FORM-layer view, not book data --
-  // The JIC book publishes ONE figure, so there is no stored material/labour
+  // The published book publishes ONE figure, so there is no stored material/labour
   // pair to show. The breakdown under the all-in headline is derived HERE,
   // only while the all-in basis is chosen, from the trade's own mat/lab share
   // (matShareFor) of that headline: mat = headline x share, lab = the REMAINDER,
   // which is what makes the two sides add up to the figure above them exactly,
   // at any figure and on any row.
   //
-  // DELIBERATELY not inside jicBookPayload: a split stored in the book would
+  // DELIBERATELY not inside bookPayload: a split stored in the book would
   // travel through modelRatesFor into the MEASURED basis too and re-price every
   // covered trade away from its WORK model. Measured pricing must keep working
   // exactly as it did before this feature - which is why a value this function
@@ -14108,7 +14131,7 @@
     return map[code] || code;
   }
 
-  // ---- B2/B3 (DIRECTIVE-ASSISTANT-JIC-RATES-ACCESS): the custom line ---
+  // ---- B2/B3 (DIRECTIVE-ASSISTANT-RATE-ACCESS): the custom line ---
   // Four fields, validated IN the page - never trusted from the model. One
   // plain message per field, shown beside that field; a line that fails
   // never reaches the bill. Declared BEFORE init: wireCustomFields() runs
@@ -14191,27 +14214,27 @@
   // local restore here, a second writer would fight the helper.
   if ($('calc-work')) {
     $('calc-work').addEventListener('change', syncLabels);
-    // PART I PHASE 2: picking the JIC rate item steps through the book's own
+    // PART I PHASE 2: picking the book rate item steps through the book's own
     // sign-in gate (registered after syncLabels, so the revert re-renders).
     _prevWork = ($('calc-work') || {}).value || 'custom';
-    $('calc-work').addEventListener('change', jicGateOnWorkChange);
+    $('calc-work').addEventListener('change', bookGateOnWorkChange);
     wireCustomFields();
     // PART I PHASE 2: trade and row picks rebuild the picker (the row seeds
     // its book rate) and re-price the line at once; typing over the rate
     // re-prices live and drops the published-rate note the moment the figure
     // stops matching it.
-    ['calc-jic-trade', 'calc-jic-row'].forEach(function (id) {
+    ['calc-book-trade', 'calc-book-row'].forEach(function (id) {
       const el = $(id);
       if (el) {
         el.addEventListener('change', function () {
-          renderJicPicker();
+          renderBookPicker();
           render();
         });
       }
     });
-    if ($('calc-jic-rate')) {
-      $('calc-jic-rate').addEventListener('input', function () {
-        syncJicNote();
+    if ($('calc-book-rate')) {
+      $('calc-book-rate').addEventListener('input', function () {
+        syncBookNote();
         render();
       });
     }
@@ -14536,7 +14559,7 @@
   // E1/E4: the exchange-rate card and the rate-book picker paint on load.
   renderFx();
   // OWNER 2026-10-02: the shipped Jamaica book is the default on FIRST visit
-  // (self-guarding via JICSEEN, so the user's own choice is never overridden
+  // (self-guarding via BOOKSEEN, so the user's own choice is never overridden
   // afterwards). Runs BEFORE renderBooks so the picker paints already-selected.
   if (ACTIONS.calcBookDefault) {
     ACTIONS.calcBookDefault();
@@ -14798,7 +14821,7 @@
   // the book sends only the rate rows that match it (the old fixed window was
   // the first 12 families x 3 variants, so the relevant rate could be missing
   // entirely); with none it behaves exactly as before.
-  /* A2-A4 (DIRECTIVE-ASSISTANT-JIC-RATES-ACCESS, 2026-10-13 - rate access).
+  /* A2-A4 (DIRECTIVE-ASSISTANT-RATE-ACCESS, 2026-10-13 - rate access).
      The assistant's window onto the rates used to be the IMPORTED book only:
      on a normal visit there is none, so it said "no rates" while 811
      published rows sat on the device. It now:
@@ -15082,7 +15105,7 @@
       // what years, how many rates, how many per trade. The full file is
       // loaded by the panel mount / the rate-book card through rrLoadFull.
       var full = _rrFull && _rrFull.rows && _rrFull.rows.length ? _rrFull : null;
-      var years = (full && full.years) || JIC_YEARS;
+      var years = (full && full.years) || BOOK_YEARS;
       if (full) {
         var counts = {};
         full.rows.forEach(function (r) {
@@ -15104,7 +15127,7 @@
         );
       } else {
         out.push(
-          'The full JIC book could not load on this device; only the rates already on this page are available.'
+          'The full rate book could not load on this device; only the rates already on this page are available.'
         );
       }
       var b = activeBook();
@@ -15165,7 +15188,7 @@
             ' | J$' +
             r.metRate +
             (r.metUnit ? ' per ' + r.metUnit : '') +
-            ' | source: JIC ' +
+            ' | source: published book ' +
             years +
             ' | in calculator: ' +
             (r.inApp ? 'yes' : 'no')
@@ -15369,34 +15392,34 @@
     if (v.custom || key === 'custom') {
       return customCheck(v, out);
     }
-    // PART I PHASE 2: the JIC picker validates its OWN pick before the
+    // PART I PHASE 2: the book picker validates its OWN pick before the
     // standard flow - a row must be chosen (trade + row resolve together and
     // the book prefills its rate), so the dry run NAMES that box instead of
     // failing bare. The quantity itself follows the normal rules below (the
     // box or the Quick total), and a picked row's rate is prefilled by the
     // page, so an empty rate is only ever the user clearing it.
-    if (key === 'jic') {
-      var jT = v.jicTrade || ($('calc-jic-trade') || {}).value || '';
-      var jR = v.jicRef || ($('calc-jic-row') || {}).value || '';
-      if (!jT || !jR || !jicRowFor(jT, jR)) {
-        out.work = 'jic';
+    if (key === 'book') {
+      var jT = v.bookTrade || ($('calc-book-trade') || {}).value || '';
+      var jR = v.bookRef || ($('calc-book-row') || {}).value || '';
+      if (!jT || !jR || !bookRowFor(jT, jR)) {
+        out.work = 'book';
         out.missing.push({
-          field: 'jicRow',
-          label: 'a trade and a rate in the JIC picker',
+          field: 'bookRow',
+          label: 'a trade and a rate in the book picker',
           unit: '',
-          hint: 'Pick a trade, then one of its published rates, in the JIC rate book picker.'
+          hint: 'Pick a trade, then one of its published rates, in the My MaNaGeR Rate Book picker.'
         });
         return out;
       }
       var jRateRaw =
-        v.jicRate !== undefined && v.jicRate !== null && v.jicRate !== ''
-          ? v.jicRate
-          : ($('calc-jic-rate') || {}).value || '';
+        v.bookRate !== undefined && v.bookRate !== null && v.bookRate !== ''
+          ? v.bookRate
+          : ($('calc-book-rate') || {}).value || '';
       if (!(Number(jRateRaw) > 0)) {
-        out.work = 'jic';
+        out.work = 'book';
         out.missing.push({
-          field: 'jicRate',
-          label: 'the rate for that JIC row',
+          field: 'bookRate',
+          label: 'the rate for that book row',
           unit: '',
           hint: 'The published rate is prefilled - type your own figure if yours is newer.'
         });
@@ -15477,7 +15500,7 @@
   // B6 (DIRECTIVE section 3): self-enforcing guards, because the model can be
   // wrong. The rate proof for source:"user" lives in js/calc-ai.js - only the
   // panel can see the conversation. Everything the PAGE can prove - markup or
-  // control characters in the name or unit, a JIC source whose rate differs
+  // control characters in the name or unit, a book source whose rate differs
   // from the loaded book by a cent, and a bill already at its 60-line cap -
   // rejects here, before a single field is touched: no line, no fill.
   var B6_RATE_NOTICE =
@@ -15490,8 +15513,11 @@
       return 'I could not add that line because the name or the unit contained markup. Ask for it again in plain words and I will add it.';
     }
     var src = str(c.source);
-    if (/^JIC\s+/.test(src)) {
-      var ref = src.replace(/^JIC\s+/, '');
+    if (/#\s*\d/.test(src)) {
+      // A row source arrives as "<label> <Trade> #<n>"; drop the leading
+      // label word and match the rest against the loaded book, so a legacy
+      // prefix from an older conversation still resolves.
+      var ref = src.replace(/^[A-Za-z]+\s+/, '');
       var rows = rrRows();
       var hit = null;
       for (var i = 0; i < rows.length; i++) {
@@ -16160,7 +16186,7 @@
   // used to be looked up as a bare global that never existed, so the
   // 811-row book never loaded outside the rate-book card - the assistant
   // could not index the rates the owner published.
-  window.MMGR_JIC_FULL_LOAD = rrLoadFull;
+  window.MMGR_BOOK_FULL_LOAD = rrLoadFull;
   // B1: the dry run, so the panel can ask for ONE missing box in plain words
   // instead of being told the figures failed.
   window.MMGR_CALC_CHECK = calcCheck;

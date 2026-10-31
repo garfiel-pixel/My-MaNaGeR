@@ -2,7 +2,7 @@
    VERIFY-JS-SYNTAX — every shipped source script PARSES
    ------------------------------------------------------------
    WHY THIS EXISTS (owner directive 2026-10-02, incident during
-   the JIC 2025-2027 rate wave):
+   the 2025-2027 rate-book wave):
 
    js/calculator-page.js shipped with UNQUOTED HYPHENATED OBJECT
    KEYS (`plumbing-pipe:` instead of `'plumbing-pipe':`). That

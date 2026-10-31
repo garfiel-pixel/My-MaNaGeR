@@ -147,7 +147,7 @@
           <option value="finishes">Finishes - tiling, drives, fencing, trims</option>
           <option value="plumbing">Plumbing - pipe runs, fixtures</option>
           <option value="electrical">Electrical - points, conduit, panels</option>
-          <!-- JIC wave gap fix (2026-10-16): FAMILY_META/WORK_FAMILY define EIGHT
+          <!-- Rate-book wave gap fix (2026-10-16): FAMILY_META/WORK_FAMILY define EIGHT
                families, but these two options were never added, so the filter
                could never SHOW the scaffolding/welding or joinery groups - and a
                recall that selected weld/scaffold while any family was stored
@@ -226,10 +226,10 @@
                  reveals name + unit + quantity + rate and hides nothing else;
                  every other pick leaves the form byte-for-byte as before. -->
             <option value="custom">Custom item (your own rate)</option>
-            <!-- PART I PHASE 2 (owner, 2026-10-17): the generic JIC picker
+            <!-- PART I PHASE 2 (owner, 2026-10-17): the generic book picker
                  (I1 Option C) - one item that prices ANY row of the shipped
                  rate book as a first-class estimate line. -->
-            <option value="jic">My MaNaGeR Rate Book (pick a planning rate)</option>
+            <option value="book">My MaNaGeR Rate Book (pick a planning rate)</option>
           </optgroup>
         </select>
       </div>
@@ -254,26 +254,26 @@
         <span class="bcp-error-line" id="calc-custom-rate-err" hidden></span>
       </div>
 
-      <!-- PART I PHASE 2 (owner, 2026-10-17): the JIC PICKER - price ANY row
+      <!-- PART I PHASE 2 (owner, 2026-10-17): the BOOK PICKER - price ANY row
            of the shipped rate book as a first-class estimate line: pick a
            trade, pick a rate, type the quantity. The rate prefills from the
            book and stays yours to type over (the book is a default, never a
-           lock) and the JIC ref names the line on the estimate, the bill and
-           the CSV. Visible only while the JIC rate choice is on the form;
+           lock) and the book ref names the line on the estimate, the bill and
+           the CSV. Visible only while the book rate choice is on the form;
            pricing maths lives in the page, not here. -->
-      <div class="bcp-field bcp-field-jic" id="calc-jic-wrap" hidden>
-        <span class="bcp-units-label" id="calc-jic-label">JIC rate <span class="bcp-hist-note" id="calc-jic-hint">- pick a trade, then a rate</span></span>
-        <label for="calc-jic-trade">Trade</label>
-        <select id="calc-jic-trade">
+      <div class="bcp-field bcp-field-book" id="calc-book-wrap" hidden>
+        <span class="bcp-units-label" id="calc-book-label">My MaNaGeR rate <span class="bcp-hist-note" id="calc-book-hint">- pick a trade, then a rate</span></span>
+        <label for="calc-book-trade">Trade</label>
+        <select id="calc-book-trade">
           <option value="">Pick a trade</option>
         </select>
-        <label for="calc-jic-row">Rate</label>
-        <select id="calc-jic-row" disabled>
+        <label for="calc-book-row">Rate</label>
+        <select id="calc-book-row" disabled>
           <option value="">Pick a trade first</option>
         </select>
-        <label for="calc-jic-rate">Rate per <span id="calc-jic-unit">unit</span></label>
-        <input type="number" id="calc-jic-rate" min="0" step="any" inputmode="decimal" placeholder="the book rate">
-        <p class="bcp-note-info" id="calc-jic-note" hidden></p>
+        <label for="calc-book-rate">Rate per <span id="calc-book-unit">unit</span></label>
+        <input type="number" id="calc-book-rate" min="0" step="any" inputmode="decimal" placeholder="the book rate">
+        <p class="bcp-note-info" id="calc-book-pick-note" hidden></p>
       </div>
 
       <!-- E2 (plan v2 Phase 1): one work item, several priced versions
@@ -528,7 +528,7 @@
           <input type="number" id="calc-allin" min="0" step="any" inputmode="decimal" placeholder="one rate covering the whole job">
         </div>
         <div class="bcp-field bcp-basis-verified" id="calc-verified-wrap" hidden>
-          <label for="calc-allin-verified">Checked against JIC on</label>
+          <label for="calc-allin-verified">Checked against the book on</label>
           <input type="date" id="calc-allin-verified">
         </div>
         <div class="bcp-field bcp-basis-days" id="calc-days-wrap" hidden>
@@ -596,7 +596,7 @@
         <!-- Owner 2026-10-02: the Jamaica book ships with the app, built from
              the same 100 published rows the rate-book card shows. Loading it
              is one tap; every rate it holds is still yours to change. -->
-        <button type="button" class="btn btn-n btn-s" data-action="calcBookJic" title="Load the My MaNaGeR Rate Book 2025-2027"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg> Rate book</button>
+        <button type="button" class="btn btn-n btn-s" data-action="calcBookPick" title="Load the My MaNaGeR Rate Book 2025-2027"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg> Rate book</button>
         <button type="button" class="btn btn-n btn-s" data-action="calcBookClear" title="Stop using the active rate book">Use model rates</button>
         <input type="file" id="calc-book-file" accept="application/json,.json" hidden>
       </div>

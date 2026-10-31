@@ -180,11 +180,11 @@ async function quickTotalMatrix(page) {
     return sel
       ? Array.from(sel.options)
           .map(o => o.value)
-          // 'jic' (JIC rate book, PART I Phase 2) is NOT quick-total walkable
+          // 'book' (the rate-book choice, PART I Phase 2) is NOT quick-total walkable
           // - it needs a picked book row; its contract is the JP family in
           // tools/qa-calculator-page.cjs. Everything else, custom included,
           // prices through the measured-total + all-in flow below.
-          .filter(v => v && v !== 'jic')
+          .filter(v => v && v !== 'book')
       : [];
   });
   check(
@@ -1264,7 +1264,7 @@ async function assistantDiagnosis(page) {
 // generated module the Worker imports, and mocks the API with it, so the test
 // still proves the page indexes the real book - it just gets it the way the
 // browser now does.
-function loadJicBook() {
+function loadBook() {
   const src = fs.readFileSync(path.join(ROOT, 'src', 'data', 'ratebook.js'), 'utf8');
   const key = 'export const RATEBOOK = ';
   const at = src.indexOf(key);
@@ -1446,20 +1446,20 @@ async function shotSet(page, dir, name, selector) {
 }
 
 async function partARateAccess(browser, errors) {
-  let JIC;
+  let BOOK;
   try {
-    JIC = loadJicBook();
+    BOOK = loadBook();
   } catch (e) {
     check('N0 the 811-row file parses', false, String(e));
     return;
   }
   check(
-    'N0 the JIC file parses (811 rows, 11 trades)',
-    JIC.rows.length === 811 && JIC.trades.length === 11,
-    { rows: JIC.rows.length, trades: JIC.trades.length }
+    'N0 the book file parses (811 rows, 11 trades)',
+    BOOK.rows.length === 811 && BOOK.trades.length === 11,
+    { rows: BOOK.rows.length, trades: BOOK.trades.length }
   );
   const counts = {};
-  JIC.rows.forEach(r => {
+  BOOK.rows.forEach(r => {
     counts[r.t] = (counts[r.t] || 0) + 1;
   });
 
@@ -1475,7 +1475,7 @@ async function partARateAccess(browser, errors) {
         : 'Understood - those are the rates on this device.'
     );
     await seedCalcFx(page);
-    await mockRatebook(page, JIC);
+    await mockRatebook(page, BOOK);
     await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
     await page.waitForFunction(() => !!window.MMGR_CALC_RATEBOOK, null, { timeout: 20000 });
     // A1: the panel mount starts the ONE full-book loader; give the mocked
@@ -1492,7 +1492,7 @@ async function partARateAccess(browser, errors) {
       rb1.indexOf('811 rates across 11 trades') > -1,
       rb1.slice(0, 160)
     );
-    const missing = JIC.trades
+    const missing = BOOK.trades
       .filter(t => !rb1.includes(t.label + ' ' + counts[t.tid]))
       .map(t => t.label + ' ' + counts[t.tid]);
     check('N1 all 11 trade names appear with their counts', missing.length === 0, missing);
@@ -1501,7 +1501,7 @@ async function partARateAccess(browser, errors) {
     await sendQ(page, 'rate for excavation in stiff clay');
     const rb2 = rateBlock(sysOf(bodies[bodies.length - 1]));
     const firstRow2 = rb2.split('\n').find(l => l.indexOf(' | ') > -1) || '';
-    const stiff = JIC.rows.find(r => /stiff clay/i.test(r.d || ''));
+    const stiff = BOOK.rows.find(r => /stiff clay/i.test(r.d || ''));
     check('N2 the first rate line is the stiff clay row', /stiff clay/i.test(firstRow2), firstRow2);
     check(
       'N2 its metric rate comes from the file, not the test',
@@ -1518,7 +1518,7 @@ async function partARateAccess(browser, errors) {
 
     // N3: one representative question per trade - a row OF that trade first.
     const n3bad = [];
-    for (const t of JIC.trades) {
+    for (const t of BOOK.trades) {
       const first = await page.evaluate(q => {
         const row =
           window
@@ -1602,15 +1602,15 @@ async function partARateAccess(browser, errors) {
   // ---- N5: the imported book takes the slot ahead of the published row ----
   {
     const same =
-      JIC.rows.find(r => r.t === 'masonry' && Number(r.n) === 1) ||
-      JIC.rows.find(r => r.t === 'masonry');
+      BOOK.rows.find(r => r.t === 'masonry' && Number(r.n) === 1) ||
+      BOOK.rows.find(r => r.t === 'masonry');
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     await ctx.addInitScript(
       ({ book, active }) => {
         try {
           localStorage.setItem('mmgr_calc_books', JSON.stringify([book]));
           localStorage.setItem('mmgr_calc_book_active', JSON.stringify(active));
-          localStorage.setItem('mmgr_calc_jic_default', '1');
+          localStorage.setItem('mmgr_calc_book_default', '1');
         } catch (e) {}
       },
       {
@@ -1625,7 +1625,7 @@ async function partARateAccess(browser, errors) {
     const page = await ctx.newPage();
     page.on('pageerror', e => errors.push('calc(partA-n5): ' + String(e).slice(0, 140)));
     await seedCalcFx(page);
-    await mockRatebook(page, JIC);
+    await mockRatebook(page, BOOK);
     await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
     await page.waitForFunction(() => !!window.MMGR_CALC_RATEBOOK, null, { timeout: 20000 });
     await page
@@ -1634,13 +1634,17 @@ async function partARateAccess(browser, errors) {
     const n5 = await page.evaluate(q => {
       const lines = window.MMGR_CALC_RATEBOOK(q).split('\n');
       const imp = lines.findIndex(l => l.indexOf('source: Owner import') > -1);
-      const jic = lines.findIndex(
-        l => l.indexOf('source: JIC ') > -1 && l.indexOf(q.slice(0, 18)) > -1
+      const bookLine = lines.findIndex(
+        l => l.indexOf('source: published book ') > -1 && l.indexOf(q.slice(0, 18)) > -1
       );
-      return { imp, jic, impLine: lines[imp] || '', jicLine: lines[jic] || '' };
+      return { imp, book: bookLine, impLine: lines[imp] || '', bookLine: lines[bookLine] || '' };
     }, same.d);
-    check('N5 both sources appear for the same item', n5.imp > -1 && n5.jic > -1, n5);
-    check('N5 the imported row is listed first', n5.imp > -1 && n5.jic > -1 && n5.imp < n5.jic, n5);
+    check('N5 both sources appear for the same item', n5.imp > -1 && n5.book > -1, n5);
+    check(
+      'N5 the imported row is listed first',
+      n5.imp > -1 && n5.book > -1 && n5.imp < n5.book,
+      n5
+    );
     await ctx.close();
   }
 
@@ -1661,7 +1665,7 @@ async function partARateAccess(browser, errors) {
     await sendQ(page, 'what rates do you have for masonry');
     const rb = rateBlock(sysOf(bodies[bodies.length - 1]));
     const FAIL =
-      'The full JIC book could not load on this device; only the rates already on this page are available.';
+      'The full rate book could not load on this device; only the rates already on this page are available.';
     check('N6 the exact A2 failure line is sent', rb.indexOf(FAIL) > -1, rb.slice(0, 200));
     const ai = await page.evaluate(
       () => document.querySelectorAll('.bcp-ai-log .bcp-ai-msg.ai').length
@@ -1687,7 +1691,7 @@ async function partARateAccess(browser, errors) {
       }
     });
     await mockAuth(page);
-    await mockRatebook(page, JIC);
+    await mockRatebook(page, BOOK);
     await seedCalcFx(page);
     await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
     await page.waitForFunction(() => !!window.MMGR_CALC_RATEBOOK, null, { timeout: 20000 });
@@ -1705,7 +1709,7 @@ async function partARateAccess(browser, errors) {
     await page.click('[data-action="openRateBook"]');
     await page.waitForTimeout(400);
     const tags = await page.evaluate(
-      () => document.querySelectorAll('script[src*="jic-rates-full"]').length
+      () => document.querySelectorAll('script[src*="rates-full"]').length
     );
     check('N8a no rate-data script tag is injected any more (the RB-1 leak)', tags === 0, tags);
     check(
@@ -1719,7 +1723,7 @@ async function partARateAccess(browser, errors) {
 
 // ---- DIRECTIVE 2026-10-13 (PART B, C1-C11): the custom rate line ----------
 async function partBCustomLine(browser, errors) {
-  const JIC = loadJicBook();
+  const BOOK = loadBook();
   const shots = path.join(ROOT, 'tmp', 'directive-shots');
 
   // ---- C1 / C2 / C3 / C9 / C10: the real form, real clicks ---------------
@@ -2001,9 +2005,9 @@ async function partBCustomLine(browser, errors) {
   // ---- C4-C8 + C11: scripted conversations through the real panel --------
   {
     const stiff =
-      JIC.rows.find(r => r.t === 'excavation' && Number(r.n) === 5) ||
-      JIC.rows.find(r => /stiff clay/i.test(r.d || ''));
-    const demo = JIC.rows.find(r => r.t === 'excavation' && Number(r.n) === 19) || stiff;
+      BOOK.rows.find(r => r.t === 'excavation' && Number(r.n) === 5) ||
+      BOOK.rows.find(r => /stiff clay/i.test(r.d || ''));
+    const demo = BOOK.rows.find(r => r.t === 'excavation' && Number(r.n) === 19) || stiff;
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await ctx.newPage();
     page.on('pageerror', e => errors.push('calc(partB-chat): ' + String(e).slice(0, 140)));
@@ -2036,7 +2040,7 @@ async function partBCustomLine(browser, errors) {
           stiff.mu,
           10,
           stiff.mr + 0.01,
-          'JIC Excavation #' + stiff.n
+          'Book Excavation #' + stiff.n
         );
       }
       if (i === 4) {
@@ -2045,14 +2049,14 @@ async function partBCustomLine(browser, errors) {
           stiff.mu,
           10,
           stiff.mr,
-          'JIC Excavation #' + stiff.n
+          'Book Excavation #' + stiff.n
         );
       }
       if (i === 5) {
-        return custom('<b>Slab hire</b>', 'day', 2, stiff.mr, 'JIC Excavation #' + stiff.n);
+        return custom('<b>Slab hire</b>', 'day', 2, stiff.mr, 'Book Excavation #' + stiff.n);
       }
       if (i === 6) {
-        return custom('Demolish block walls', demo.mu, 40, demo.mr, 'JIC Excavation #' + demo.n);
+        return custom('Demolish block walls', demo.mu, 40, demo.mr, 'Book Excavation #' + demo.n);
       }
       if (i === 7) {
         return 'One wall, 12 m long and 2.4 m high.\nPROPOSAL: {"work":"blockwall","d1":12,"d2":2.4,"note":"one wall"}';
@@ -2060,7 +2064,7 @@ async function partBCustomLine(browser, errors) {
       return 'Understood.';
     });
     await seedCalcFx(page);
-    await mockRatebook(page, JIC);
+    await mockRatebook(page, BOOK);
     await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
     await page.waitForFunction(() => !!window.MMGR_CALC_POPULATE, null, { timeout: 20000 });
     await page
@@ -2135,12 +2139,12 @@ async function partBCustomLine(browser, errors) {
       badNotice
     );
 
-    // C6: a JIC source one cent off the file - rejected; exact - accepted.
+    // C6: a book source one cent off the file - rejected; exact - accepted.
     await sendQ(page, 'use the book for that excavation rate');
     await pop();
     rows = await rowCount();
     note = await lastNote();
-    check('C6 a JIC rate one cent off the file is rejected', rows === 1 && note.indexOf(B6) > -1, {
+    check('C6 a book rate one cent off the file is rejected', rows === 1 && note.indexOf(B6) > -1, {
       rows,
       note
     });
@@ -2192,7 +2196,7 @@ async function partBCustomLine(browser, errors) {
         .trim()
     );
     check(
-      'C8 the accepted JIC proposal lands at the file rate with the row unit',
+      'C8 the accepted book proposal lands at the file rate with the row unit',
       rows === 3 &&
         /Added to the bill/.test(note) &&
         /Demolish block walls/.test(c8bill) &&
@@ -2268,7 +2272,7 @@ async function s6OwnRateAndSettings(browser, errors) {
   // RB-1: the book arrives from GET /api/ratebook now. Mocked with the same
   // generated module the Worker imports, so the panel's book load settles the
   // way it does in production.
-  await mockRatebook(page, loadJicBook());
+  await mockRatebook(page, loadBook());
   await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
   await page.waitForFunction(() => !!window.MMGR_CALC_AI, null, { timeout: 20000 });
   await page.waitForFunction(() => !!window.MMGR_RATEBOOK, null, { timeout: 8000 }).catch(() => {});
@@ -2516,7 +2520,7 @@ async function ai3SettingsAndAsk(browser, errors) {
     return 'The page works the numbers out itself.';
   });
   await seedCalcFx(page);
-  await mockRatebook(page, loadJicBook());
+  await mockRatebook(page, loadBook());
   await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
   await page.waitForFunction(() => !!window.MMGR_CALC_AI, null, { timeout: 20000 });
   await page.waitForFunction(() => !!window.MMGR_RATEBOOK, null, { timeout: 8000 }).catch(() => {});

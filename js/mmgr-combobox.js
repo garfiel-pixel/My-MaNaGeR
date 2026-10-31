@@ -15,7 +15,7 @@
    The original <select> is NOT replaced. It stays in the DOM, hidden, as the
    source of truth: the combobox writes its value and dispatches `change`, so
    every handler that already reads `#calc-work` / `#calc-family` - recalls,
-   saved estimates, the family filter, the JIC picker - keeps working with no
+   saved estimates, the family filter, the book picker - keeps working with no
    change and no second code path. Fragment snapshots keep reading the select.
 
    ACCESSIBILITY
@@ -547,7 +547,7 @@
       }
     });
 
-    // The page rewrites these lists (the JIC picker, variants) by replacing
+    // The page rewrites these lists (the book picker, variants) by replacing
     // options. Rebuild what is on screen and keep the closed label honest.
     if (window.MutationObserver) {
       var mo = new MutationObserver(function () {
@@ -564,7 +564,7 @@
       });
     }
 
-    // A programmatic `select.value = x` (a recall, a saved estimate, the JIC
+    // A programmatic `select.value = x` (a recall, a saved estimate, the book
     // picker) must update the visible label too, and it fires no event. The
     // instance keeps the native accessor and adds one sync - reads are
     // untouched, and anything else on the page still sees a real select.

@@ -145,7 +145,7 @@ override any rate.
 
 - **Do not write "independent proprietary estimates of My MaNaGeR" (or any claim that the figures are
   the product's own, independently produced rates) unless status is (c).** Right now the 811 rates are
-  generated from `JIC_Rate_Book_2025-2027_FULL.md` by `tools/gen-jic-full.cjs`. A new name and a new
+  generated from `RATE-BOOK-2025-2027-FULL.md` by `tools/gen-ratebook.cjs`. A new name and a new
   logo do not change where the numbers came from. A disclaimer to the customer protects against bad
   estimates; it does not answer whether copying the numbers is allowed. Claiming independence that
   does not exist would add a false statement on top of the permission question.

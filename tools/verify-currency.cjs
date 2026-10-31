@@ -15,7 +15,7 @@
          returns the plain error and NEVER a total
      C2b USD currency still prices the model exactly as before
          (10 m2 x (22 + 28) = 500 before on-costs)
-     C2c no variant label anywhere in the shipped source claims "JIC" beside a
+     C2c no variant label anywhere in the shipped source claims a book row beside a
          rate that is not the book's (the label-lies defect)
      C2d JMD WITH an exchange rate converts and flags nothing
      C2e the rate comparison reports the three candidate rates per unit and the
@@ -143,15 +143,17 @@ async function ensureServer() {
       c2b
     );
 
-    // ---- C2c: no shipped label claims JIC beside a non-book rate
+    // ---- C2c: no shipped label claims a book number beside a non-book rate
     const src = fs.readFileSync(path.join(ROOT, 'js', 'calculator-page.js'), 'utf8');
     // Only VARIANT labels are in scope, and the lie had a specific shape: a row
-    // claim in parentheses, e.g. '8 in blocks ... (JIC Masonry #1)'. The
-    // assistant's own field labels legitimately mention the JIC picker, so the
-    // pattern is the parenthetical row claim, not the letters JIC.
-    const labelClaims = [...src.matchAll(/label:\s*'([^']*\(JIC[^']*\)[^']*)'/g)].map(m => m[1]);
+    // claim in parentheses, e.g. '8 in blocks ... (book Masonry #1)'. The
+    // assistant's own field labels legitimately mention the book picker, so the
+    // pattern is the parenthetical row claim, not the word itself.
+    const labelClaims = [...src.matchAll(/label:\s*'([^']*\(book\s+[^']*\)[^']*)'/g)].map(
+      m => m[1]
+    );
     check(
-      'C2c no variant label claims JIC (the book figures live in the JIC picker)',
+      'C2c no variant label claims a book row (the book figures live in the book picker)',
       labelClaims.length === 0,
       labelClaims.slice(0, 5)
     );

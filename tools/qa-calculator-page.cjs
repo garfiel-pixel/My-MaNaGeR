@@ -978,7 +978,7 @@ async function withChrome(fn) {
       document.getElementById('calc-country').value = 'US';
       document.getElementById('calc-quality').value = 'standard';
       document.getElementById('calc-oh').value = '10';
-      // OWNER 2026-10-02: pin the SPLIT basis. The JIC book is selected by
+      // OWNER 2026-10-02: pin the SPLIT basis. The rate book is selected by
       // default and speaks all-in, so a first visit now lands on the all-in
       // basis; these gates are about statutory on-costs riding LABOUR, which
       // only exists on the split path. Pinned once here for SX1-SX4.
@@ -1431,7 +1431,7 @@ async function withChrome(fn) {
       var n = Array.prototype.filter.call(document.querySelectorAll('#calc-work optgroup'), function(g) { return !g.hidden; }).length;
       return { all: n, stored: localStorage.getItem('mmgr_calc_family'), work: document.getElementById('calc-work').value };
     })()`);
-    // JIC 2025-2027 re-baseline (2026-10-02): the JIC wave added two families
+    // 2025-2027 book re-baseline (2026-10-02): the book wave added two families
     // (Temporary and metal works, Joinery), so the picker now carries 8 groups.
     // Custom-item re-baseline (2026-10-14): the custom rate line added a 9th
     // group ("Other"), so "All trades" now shows every one of the 9 groups.
@@ -1442,38 +1442,38 @@ async function withChrome(fn) {
     );
     const fm5 =
       await ev(`(function(){      var vals = Array.prototype.map.call(document.getElementById('calc-work').options, function (o) { return o.value; });
-      // Count only trades: 'custom' (Custom item) and 'jic' (JIC rate book,
+      // Count only trades: 'custom' (Custom item) and 'book' (the rate book,
       // PART I Phase 2) are NOT trades - they live in the "Other" group with
       // no family and price via their own pickers.
-      var trades = vals.filter(function (v) { return v !== 'custom' && v !== 'jic'; });
+      var trades = vals.filter(function (v) { return v !== 'custom' && v !== 'book'; });
       return { n: trades.length, total: vals.length,
         // G1 (plan v2 Phase 2): formwork by element is INTENTIONALLY pickable
         // now; the still-derived lines stay invisible.
         hiddenDerived: ['cart-away', 'lining-out', 'debrush', 'post-holes'].filter(function(k) { return vals.indexOf(k) > -1; }),
         phase2: ['formwork', 'rebar-size', 'stirrups', 'fabric-mesh', 'concrete-labour'].every(function(k) { return vals.indexOf(k) > -1; }) };
     })()`);
-    // JIC 2025-2027 re-baseline (2026-10-02): 38 -> 43 trades. The five new
-    // JIC trades are scaffolding, welding, joinery, plumbing-pipe and
+    // 2025-2027 book re-baseline (2026-10-02): 38 -> 43 trades. The five new
+    // book trades are scaffolding, welding, joinery, plumbing-pipe and
     // electrical-conduit (scaffold/welding/joinery/plumbing-pipe/
     // electrical-conduit), all verified pickable below.
     // Custom-item re-baseline (2026-10-14): the picker now carries a 44th
     // option - "Custom item (your own rate)" in the new "Other" group - but
     // that is NOT a trade, so this gate counts only trades and still asserts
     // 43. Its real contract lives in qa-calc-assistant.cjs C1-C11.
-    // JIC-picker re-baseline (2026-10-17, PART I Phase 2): a 45th option -
-    // "JIC rate book (pick a published rate)" in the same "Other" group -
+    // book-picker re-baseline (2026-10-17, PART I Phase 2): a 45th option -
+    // "My MaNaGeR Rate Book (pick a planning rate)" in the same "Other" group -
     // is also NOT a trade; its contract is the JP family below.
     check(
-      'FM5 picker carries exactly the 43 user trades (38 + the 5 JIC-2025 trades) - formwork pickable, derived lines stay invisible',
+      'FM5 picker carries exactly the 43 user trades (38 + the 5 2025-2027 book trades) - formwork pickable, derived lines stay invisible',
       fm5 && fm5.n === 43 && fm5.phase2 && fm5.hiddenDerived.length === 0,
       fm5
     );
-    // NEW (JIC wave): the five JIC trades must actually be selectable.
+    // NEW (book wave): the five book trades must actually be selectable.
     const fm6 = await ev(`(function(){
       var vals = Array.prototype.map.call(document.getElementById('calc-work').options, function(o) { return o.value; });
-      return { jic: ['scaffold','welding','joinery','plumbing-pipe','electrical-conduit'].filter(function(k) { return vals.indexOf(k) === -1; }) };
+      return { book: ['scaffold','welding','joinery','plumbing-pipe','electrical-conduit'].filter(function(k) { return vals.indexOf(k) === -1; }) };
     })()`);
-    check('FM6 the 5 JIC 2025-2027 trades are in the picker', fm6 && fm6.jic.length === 0, fm6);
+    check('FM6 the 5 book trades are in the picker', fm6 && fm6.book.length === 0, fm6);
 
     // ---------- W2 2026-10-01: COMPANION SUGGESTIONS (CP family) ----------
     const cp1 = await ev(`(function(){
@@ -2347,17 +2347,17 @@ async function withChrome(fn) {
                first: sel.options.length ? sel.options[0].textContent : '', val: sel.value };
     })()`);
     check(
-      'EV1 variant selector: hidden on slab, shown on excavation, model variant labelled plainly (never JIC)',
+      'EV1 variant selector: hidden on slab, shown on excavation, model variant labelled plainly (never a book row)',
       // C2b re-baseline (audit 2026-10-18): the first excav variant keeps id
       // 'standard' so old saves recall unchanged, but it carries the US-DOLLAR
-      // planning model - so it may never be labelled "JIC #1". The label now
-      // says what the figure is; the JIC soil rates live in the book picker.
+      // planning model - so it may never be labelled "book #1". The label now
+      // says what the figure is; the published soil rates live in the book picker.
       ev1 &&
         ev1.slabHidden &&
         ev1.shown &&
         ev1.opts === 9 &&
         ev1.first === 'Compacted earth to 5 ft deep (planning model)' &&
-        ev1.first.indexOf('JIC') === -1 &&
+        !/book\s*#\d/i.test(ev1.first) &&
         ev1.val === 'standard',
       ev1
     );
@@ -2389,9 +2389,9 @@ async function withChrome(fn) {
     })()`);
     check(
       'EV3 excavation variant conversion: picked variant = legacy save = the pre-conversion model total (1600)',
-      // The MONEY invariant is unchanged by the JIC wave (still 1600 - the
+      // The MONEY invariant is unchanged by the book wave (still 1600 - the
       // first variant deliberately keeps the pre-conversion rates); only the
-      // variant label is now the official JIC #1 wording.
+      // variant label is now the official book #1 wording.
       ev3 &&
         ev3.same === true &&
         ev3.vId === 'standard' &&
@@ -2633,7 +2633,7 @@ async function withChrome(fn) {
       lm2
     );
 
-    // ---- AB: ALL-IN (JIC combined) RATE + DB: PER-DAY CREW RATE ----------
+    // ---- AB: ALL-IN (book combined) RATE + DB: PER-DAY CREW RATE ----------
     // Owner directive 2026-10-02, decisions D1-D9. These two families are the
     // proof that a combined figure is NEVER split into a fabricated
     // Materials/Labour pair on any document, and that a day rate is ONE
@@ -2707,7 +2707,7 @@ async function withChrome(fn) {
         ab2.filled === true &&
         ab2.overridden === false &&
         ab2.noteShown &&
-        /JIC/i.test(ab2.noteTxt || ''),
+        /(book|rate book)/i.test(ab2.noteTxt || ''),
       ab2
     );
     const ab3 = await ev(`(function(){
@@ -2779,7 +2779,7 @@ async function withChrome(fn) {
     );
     const ab7 = await ev(`(function(){
       var E = __calcEngine;
-      var p = E.jicBookPayload();
+      var p = E.bookPayload();
       var entries = Object.keys(p.books[0].rates).reduce(function(n,k){ return n + Object.keys(p.books[0].rates[k]).length; }, 0);
       var res = E.importBooks(p);
       var books = JSON.parse(localStorage.getItem('mmgr_calc_books') || '[]');
@@ -2805,7 +2805,7 @@ async function withChrome(fn) {
     );
     // OWNER 2026-10-02 (final, "we are not a converter - no negotiable").
     // Locks the contract so it cannot drift back: NOTHING seeds an exchange
-    // rate, the JIC book's own JMD all-in rate fills the field with no
+    // rate, the published book's own JMD all-in rate fills the field with no
     // conversion involved, and a trade the book does not cover keeps the
     // honest empty-field note rather than borrowing a converted figure.
     const nc = await ev(`(function(){
@@ -2825,7 +2825,7 @@ async function withChrome(fn) {
       co.value = 'JM'; co.dispatchEvent(new Event('change',{bubbles:true}));
       out.cur = cc.value;
       out.country = co.value;
-      // 3. A JIC-covered trade: the all-in field fills from the book itself.
+      // 3. A book-covered trade: the all-in field fills from the book itself.
       var w = document.getElementById('calc-work');
       w.value = 'blockwall'; w.dispatchEvent(new Event('change',{bubbles:true}));
       out.allinFilled = document.getElementById('calc-allin').value !== '';
@@ -2862,7 +2862,7 @@ async function withChrome(fn) {
       return out;
     })()`);
     check(
-      'NC1 we are not a converter: no seeded FX rate, JMD default, the JIC book fills its own all-in rate in J$, and an uncovered trade stays empty with the honest note',
+      'NC1 we are not a converter: no seeded FX rate, JMD default, the published book fills its own all-in rate in J$, and an uncovered trade stays empty with the honest note',
       nc &&
         nc.fxKeys.length === 0 &&
         !nc.seededFlag &&
@@ -2886,7 +2886,7 @@ async function withChrome(fn) {
       // would not reliably pick the Jamaican one.
       try { localStorage.removeItem('mmgr_calc_fx'); } catch (e) {}
       var E = __calcEngine;
-      E.importBooks(E.jicBookPayload());
+      E.importBooks(E.bookPayload());
       var books = JSON.parse(localStorage.getItem('mmgr_calc_books') || '[]');
       var jb = books.filter(function(b) { return b.name === 'Jamaica rate book 2025-2027'; })[0];
       if (!jb) return { bookActive: false };
@@ -2916,7 +2916,7 @@ async function withChrome(fn) {
     );
 
     // ---- AB9/AB10: the split UNDER the all-in headline (owner 2026-10-12, G1)
-    // JIC publishes ONE figure, so the split is derived from the trade's own
+    // The book publishes ONE figure, so the split is derived from the trade's own
     // mat/lab share of it (see matShareFor). These gates pin the three
     // promises: the split is VISIBLE and sums to the headline exactly, editing
     // either side moves the headline, and a typed headline re-derives the sides.
@@ -2925,7 +2925,7 @@ async function withChrome(fn) {
       // G1 needs a book that publishes an ALL-IN figure, because that is what
       // the split is derived from. The BOOK family deliberately ends with no
       // book active, so this gate installs its own JMD book carrying ONLY an
-      // all-in rate - the exact JIC shape: one published number, no split.
+      // all-in rate - the exact book shape: one published number, no split.
       __calcEngine.importBooks({ books: [{ name: 'G1 split book', currency: 'JMD',
         effective_from: '2026-10-01', effective_to: '2027-09-30',
         rates: { tile: { '*': { allIn: 2500 } } } }] });
@@ -3209,7 +3209,7 @@ async function withChrome(fn) {
                matLbl: matLbl, stirrupLbl: stirrupLbl, meshLbl: meshLbl };
     })()`);
     check(
-      'NV1 variant trades: rebar-size shows 5 bar sizes; rate labels speak JIC units (per lb / per dozen / per yd2)',
+      'NV1 variant trades: rebar-size shows 5 bar sizes; rate labels speak book units (per lb / per dozen / per yd2)',
       nv1 &&
         nv1.rebarOpts === 5 &&
         nv1.matLbl.indexOf('per lb') > -1 &&
@@ -3248,9 +3248,9 @@ async function withChrome(fn) {
       return { blockOpts: blockOpts, soilOpts: soilOpts, fwOpts: fwOpts, wallEdge: r ? r.total : null, d1l: d1l };
     })()`);
     check(
-      'NV3 variant sets: blockwall 9 JIC masonry, excavation 9 JIC soils, formwork 9 JIC carpentry; first formwork variant = the old derived rates (20 m2 = 1100)',
-      // JIC 2025-2027 re-baseline (2026-10-02): each of these three trades now
-      // carries the full 9-rate official JIC list. The wall-edge formwork
+      'NV3 variant sets: blockwall 9 book masonry, excavation 9 book soils, formwork 9 book carpentry; first formwork variant = the old derived rates (20 m2 = 1100)',
+      // 2025-2027 book re-baseline (2026-10-02): each of these three trades now
+      // carries the full 9-rate official book list. The wall-edge formwork
       // first-variant total is still 1100 (pre-conversion rates preserved).
       nv3 &&
         nv3.blockOpts === 9 &&
@@ -3272,7 +3272,7 @@ async function withChrome(fn) {
       nv4
     );
 
-    // ---------- RB family: the JAMERICA RATE BOOK card (JIC 2025-2027) ----------
+    // ---------- RB family: the JAMAICA RATE BOOK card (2025-2027 book) ----------
     // The card and its top-bar link shipped with NO gate covering them
     // (lesson 14: a feature nothing asserts rots silently). These lock the
     // open/render/toggle/close contract AND the copy's own honesty - the
@@ -3402,7 +3402,7 @@ async function withChrome(fn) {
                segs: c.querySelectorAll('[data-action="rrUnits"]').length };
     })()`);
     // OWNER 2026-10-02: the popup is titled for what the owner asked to see -
-    // "JIC rates" plus the years the book governs, and NOTHING else (the old
+    // "book rates" plus the years the book governs, and NOTHING else (the old
     // line-item / trade-count / source sentence was removed).
     check(
       'RB2 the link opens the rate book popup titled "My MaNaGeR Rate Book 2025-2027"',
@@ -3679,7 +3679,7 @@ async function withChrome(fn) {
 
     // WU family (2026-10-16): the WELDING UNITS fix + the assistant's rate
     // grounding. Two shipped defects drove this family: (1) the synthetic
-    // JIC book published welding's per-100mm figure against an INCH
+    // published book quoted welding's per-100mm figure against an INCH
     // quantity with no adapter ('100mm' has no RATE_UNITS entry, rf fell to
     // 1), and imperial entry multiplied the inches by the ft->m default -
     // 100 in priced J$19,800 metric / J$6,035 imperial instead of the
@@ -3687,10 +3687,10 @@ async function withChrome(fn) {
     // ZERO rows for "cement" - the commonest word on a Jamaican site - so
     // it answered "the rate book is silent" on real questions.
     // Contract (WU-DUMP logs it every run): 100 in x J$50/in = J$5,000
-    // materials + the JIC row's own labour (0.75 days x J$400) = J$5,300
+    // materials + the book row's own labour (0.75 days x J$400) = J$5,300
     // - the SAME figure in BOTH unit modes.
     const wu1 = await ev(`(function(){
-      var b = window.__calcEngine.jicBookPayload().books[0];
+      var b = window.__calcEngine.bookPayload().books[0];
       return {
         one: (b.rates.welding || {})['w-1/8-torch'] || null,
         seven: (b.rates.welding || {})['w-1-torch'] || null,
@@ -3748,7 +3748,7 @@ async function withChrome(fn) {
     const wuNum = x => (x && x.sub ? parseFloat(String(x.sub).replace(/,/g, '')) : NaN);
     log('WU-DUMP ' + JSON.stringify({ metric: wuM, imperial: wuI }));
     check(
-      'WU2 metric: 100 in prices the book per-inch rate (materials J$5,000, subtotal J$5,300 with the JIC labour)',
+      'WU2 metric: 100 in prices the book per-inch rate (materials J$5,000, subtotal J$5,300 with the book labour)',
       wuM &&
         wuM.sub === '5,300' &&
         wuM.raw.indexOf('5,000') > -1 &&
@@ -3795,7 +3795,7 @@ async function withChrome(fn) {
                     first: rows[0] ? rows[0].slice(0, 90) : null });
               return;
             }
-            if (typeof window.MMGR_JIC_FULL_LOAD === 'function') window.MMGR_JIC_FULL_LOAD(function(){});
+            if (typeof window.MMGR_BOOK_FULL_LOAD === 'function') window.MMGR_BOOK_FULL_LOAD(function(){});
           } catch (e) {
             res({ err: String((e && e.message) || e) });
             return;
@@ -3815,7 +3815,7 @@ async function withChrome(fn) {
     // Owner 2026-10-17. Every book row must price through the EXISTING custom
     // item path (I1 Option A): ref-first name (<= 60 chars), the DISPLAYED
     // unit system's unit + rate, quantity x rate EXACTLY (B1 - no new money
-    // math), the JIC ref on the landed bill line, and the same action working
+    // math), the book ref on the landed bill line, and the same action working
     // on the inline 100-row fallback when the full book cannot load (I3).
     const urSaved = await ev(`(function(){
       var w = document.getElementById('calc-work');
@@ -3981,7 +3981,7 @@ async function withChrome(fn) {
       }
     );
 
-    // UR5 - traceability: the landed bill line carries the JIC ref, and the
+    // UR5 - traceability: the landed bill line carries the book ref, and the
     // bill is left exactly as it was found (later families set their own).
     const ur5 = await ev(`(function(){
       var prev = null;
@@ -3999,7 +3999,7 @@ async function withChrome(fn) {
       return { added: !!add, lines: lines.length, name: last ? last.name || '' : '' };
     })()`);
     check(
-      'UR5 the landed bill line carries the JIC ref for traceability',
+      'UR5 the landed bill line carries the book ref for traceability',
       ur5 && ur5.added && ur5.name.indexOf('Welding #1') > -1,
       ur5
     );
@@ -4156,7 +4156,7 @@ async function withChrome(fn) {
     // the dev server's real (signed-out) answer again.
     await ev(`window.__MMGR_RR_AUTH = null; true;`);
 
-    // ---------- JP family: PART I PHASE 2 - the generic JIC PICKER --------
+    // ---------- JP family: PART I PHASE 2 - the generic BOOK PICKER --------
     // Owner 2026-10-17 (I1 Option C). One work item prices ANY shipped book
     // row as a first-class estimate line: pick a trade, pick a rate (seeded
     // from the book, the user's to edit), type the quantity in the ROW'S OWN
@@ -4172,7 +4172,7 @@ async function withChrome(fn) {
     const jpSavedWork = await ev(`(function(){
       var w = document.getElementById('calc-work');
       var prev = w ? w.value : '';
-      if (!prev || prev === 'jic') { prev = 'tile'; }
+      if (!prev || prev === 'book') { prev = 'tile'; }
       // Always re-dispatch the change: syncLabels re-runs renderJicPicker,
       // which hides + clears the picker, so the default-hidden contract the
       // next gate asserts is deterministic no matter what ran before.
@@ -4184,15 +4184,15 @@ async function withChrome(fn) {
     // JP0 structure: the choice exists under Other, hidden picker until the
     // pick, then the picker with all 11 book trades and a row select waiting.
     const jp0 = await ev(`(function(){
-      var opt = document.querySelector('#calc-work option[value="jic"]');
+      var opt = document.querySelector('#calc-work option[value="book"]');
       var grp = opt ? opt.parentElement : null;
-      var wrap = document.getElementById('calc-jic-wrap');
+      var wrap = document.getElementById('calc-book-wrap');
       var before = wrap ? wrap.hidden : null;
       var w = document.getElementById('calc-work');
-      w.value = 'jic';
+      w.value = 'book';
       w.dispatchEvent(new Event('change', { bubbles: true }));
-      var tSel = document.getElementById('calc-jic-trade');
-      var rSel = document.getElementById('calc-jic-row');
+      var tSel = document.getElementById('calc-book-trade');
+      var rSel = document.getElementById('calc-book-row');
       return {
         opt: !!opt, group: grp ? grp.label : '', beforeHidden: before,
         work: w.value, wrapShown: wrap ? !wrap.hidden : false,
@@ -4202,12 +4202,12 @@ async function withChrome(fn) {
       };
     })()`);
     check(
-      'JP0 the JIC choice exists under Other; picking it shows the picker (11 book trades, row select waits for a trade)',
+      'JP0 the book choice exists under Other; picking it shows the picker (11 book trades, row select waits for a trade)',
       jp0 &&
         jp0.opt &&
         jp0.group === 'Other' &&
         jp0.beforeHidden &&
-        jp0.work === 'jic' &&
+        jp0.work === 'book' &&
         jp0.wrapShown &&
         jp0.trades === 11 &&
         jp0.rowDisabled &&
@@ -4219,11 +4219,11 @@ async function withChrome(fn) {
     await ev(`window.__MMGR_RR_AUTH = 'out'; true;`);
     const jp1 = await ev(`(function(){
       var w = document.getElementById('calc-work');
-      w.value = 'jic';
+      w.value = 'book';
       w.dispatchEvent(new Event('change', { bubbles: true }));
       var c = document.getElementById('calc-ratebook-card');
       var signin = c ? c.querySelector('.rr-signin') : null;
-      var wrap = document.getElementById('calc-jic-wrap');
+      var wrap = document.getElementById('calc-book-wrap');
       var out = { work: w.value, signin: !!signin,
         cta: !!(signin && signin.querySelector('a[href*="app.html"]')),
         wrapShown: wrap ? !wrap.hidden : false };
@@ -4233,7 +4233,7 @@ async function withChrome(fn) {
     await ev(`window.__MMGR_RR_AUTH = 'in'; true;`);
     check(
       'JP1 the picker carries the book sign-in gate: signed out online it reverts to the previous item and shows the sign-in card',
-      jp1 && jp1.work !== 'jic' && jp1.signin && jp1.cta && !jp1.wrapShown,
+      jp1 && jp1.work !== 'book' && jp1.signin && jp1.cta && !jp1.wrapShown,
       jp1
     );
     // JP2 the seed: a picked trade lists its rows, the first row auto-seeds
@@ -4241,17 +4241,17 @@ async function withChrome(fn) {
     // and the quantity label carries the row's own unit.
     const jp2 = await ev(`(function(){
       var w = document.getElementById('calc-work');
-      w.value = 'jic';
+      w.value = 'book';
       w.dispatchEvent(new Event('change', { bubbles: true }));
-      var tSel = document.getElementById('calc-jic-trade');
+      var tSel = document.getElementById('calc-book-trade');
       var firstT = tSel.options[1] ? tSel.options[1].value : '';
       tSel.value = firstT;
       tSel.dispatchEvent(new Event('change', { bubbles: true }));
-      var rSel = document.getElementById('calc-jic-row');
+      var rSel = document.getElementById('calc-book-row');
       var opt = rSel.options[0];
       var m = opt ? opt.textContent.match(/^([\\s\\S]*)\\(([^(]+) - J\\$([0-9,.]+)\\)/) : null;
-      var rate = document.getElementById('calc-jic-rate');
-      var note = document.getElementById('calc-jic-note');
+      var rate = document.getElementById('calc-book-rate');
+      var note = document.getElementById('calc-book-pick-note');
       var d1l = document.getElementById('calc-d1-label');
       return {
         trade: firstT, rows: rSel.options.length, rowVal: rSel.value,
@@ -4261,7 +4261,7 @@ async function withChrome(fn) {
         model: rate ? rate.dataset.model : '',
         noteShown: note ? !note.hidden : null,
         d1Label: d1l ? d1l.textContent : '',
-        unitSpan: (document.getElementById('calc-jic-unit') || {}).textContent || ''
+        unitSpan: (document.getElementById('calc-book-unit') || {}).textContent || ''
       };
     })()`);
     check(
@@ -4283,14 +4283,14 @@ async function withChrome(fn) {
     // prices 3 x its displayed first rate EXACTLY through the new path - the
     // all-in identity, zero fabricated mat/lab, then the page's own tax.
     const jp3 = await ev(`(function(){
-      var tSel = document.getElementById('calc-jic-trade');
+      var tSel = document.getElementById('calc-book-trade');
       var fails = [];
       var n = 0;
       for (var i = 1; i < tSel.options.length; i++) {
         var tid = tSel.options[i].value;
         tSel.value = tid;
         tSel.dispatchEvent(new Event('change', { bubbles: true }));
-        var rSel = document.getElementById('calc-jic-row');
+        var rSel = document.getElementById('calc-book-row');
         var opt = rSel.options[0];
         var m = opt ? opt.textContent.match(/^([\\s\\S]*)\\(([^(]+) - J\\$([0-9,.]+)\\)/) : null;
         var rate = m ? parseFloat(m[3].replace(/,/g, '')) : NaN;
@@ -4324,12 +4324,12 @@ async function withChrome(fn) {
       jp3
     );
     // JP4 identity on the DOCUMENTS: the landed bill line and the CSV both
-    // name the JIC ref (welding's first row - the owner-named cutting rows).
+    // name the book ref (welding's first row - the owner-named cutting rows).
     const jp4 = await ev(`(function(){
-      var tSel = document.getElementById('calc-jic-trade');
+      var tSel = document.getElementById('calc-book-trade');
       tSel.value = 'welding';
       tSel.dispatchEvent(new Event('change', { bubbles: true }));
-      var rSel = document.getElementById('calc-jic-row');
+      var rSel = document.getElementById('calc-book-row');
       var ref = rSel.value;
       var qty = document.getElementById('calc-d1');
       qty.value = '5';
@@ -4352,7 +4352,7 @@ async function withChrome(fn) {
       return out;
     })()`);
     check(
-      'JP4 the bill line and the CSV both name the JIC ref for traceability',
+      'JP4 the bill line and the CSV both name the book ref for traceability',
       jp4 &&
         jp4.added &&
         /#/.test(jp4.ref || '') &&
@@ -4373,9 +4373,9 @@ async function withChrome(fn) {
       var impBtn = document.querySelector('[data-action="calcUnits"][data-units="imperial"]');
       var wasImp = impBtn.getAttribute('aria-pressed') === 'true';
       if (!wasImp) { impBtn.click(); }
-      var rSel = document.getElementById('calc-jic-row');
+      var rSel = document.getElementById('calc-book-row');
       var m = rSel.options[0].textContent.match(/^([\\s\\S]*)\\(([^(]+) - J\\$([0-9,.]+)\\)/);
-      var rate = document.getElementById('calc-jic-rate');
+      var rate = document.getElementById('calc-book-rate');
       var qty = document.getElementById('calc-d1');
       qty.value = '7';
       qty.dispatchEvent(new Event('input', { bubbles: true }));
@@ -4401,10 +4401,10 @@ async function withChrome(fn) {
     // drops, the result claims "your rate", the CSV says so - and the full
     // snapshot roundtrip re-creates the exact total with the pick restored.
     const jp6 = await ev(`(function(){
-      var rate = document.getElementById('calc-jic-rate');
+      var rate = document.getElementById('calc-book-rate');
       rate.value = '250';
       rate.dispatchEvent(new Event('input', { bubbles: true }));
-      var note = document.getElementById('calc-jic-note');
+      var note = document.getElementById('calc-book-note');
       var st = __calcEngine.readState();
       var r1 = __calcEngine.computeFor(st);
       var csv1 = window.MMGR_CALC_FILE ? (window.MMGR_CALC_FILE().text || '') : '';
@@ -4420,8 +4420,8 @@ async function withChrome(fn) {
         csvYours: /your rate/.test(csv1),
         r1sub: r1 && !r1.error ? r1.sub : NaN,
         restoredSub: r2 && !r2.error ? r2.sub : NaN,
-        restoredRate: (document.getElementById('calc-jic-rate') || {}).value || '',
-        restoredNote: (document.getElementById('calc-jic-note') || {}).hidden,
+        restoredRate: (document.getElementById('calc-book-rate') || {}).value || '',
+        restoredNote: (document.getElementById('calc-book-note') || {}).hidden,
         restoredWork: (document.getElementById('calc-work') || {}).value || ''
       };
     })()`);
@@ -4435,7 +4435,7 @@ async function withChrome(fn) {
         Math.abs(jp6.restoredSub - jp6.r1sub) < 0.005 &&
         jp6.restoredRate === '250' &&
         jp6.restoredNote === true &&
-        jp6.restoredWork === 'jic',
+        jp6.restoredWork === 'book',
       jp6
     );
     // JP7 OFFLINE (I3): the SAME flow from the inline 100-row set. The page
@@ -4449,7 +4449,7 @@ async function withChrome(fn) {
     await send('Network.setBlockedURLs', { urls: ['*api/ratebook*'] });
     await ev(`(function(){
       // Save the PRE-JP work item from the Node side (the DOM now holds the
-      // jic pick), so the reload restores what the F4 families expect.
+      // book pick), so the reload restores what the F4 families expect.
       try { localStorage.setItem('mmgr_jp_saved_work', ${JSON.stringify(jpSavedWork || 'tile')}); } catch (e) {}
       location.reload();
       return true;
@@ -4485,9 +4485,9 @@ async function withChrome(fn) {
     })()`);
     await ev(`(function(){
       var w = document.getElementById('calc-work');
-      w.value = 'jic';
+      w.value = 'book';
       w.dispatchEvent(new Event('change', { bubbles: true }));
-      var tSel = document.getElementById('calc-jic-trade');
+      var tSel = document.getElementById('calc-book-trade');
       tSel.value = 'welding';
       tSel.dispatchEvent(new Event('change', { bubbles: true }));
       return true;
@@ -4496,12 +4496,12 @@ async function withChrome(fn) {
     for (let i = 0; i < 10 && jp7hint === null; i++) {
       await delay(400);
       jp7hint = await ev(`(function(){
-        var h = document.getElementById('calc-jic-hint');
+        var h = document.getElementById('calc-book-hint');
         return h && /built-in/.test(h.textContent) ? h.textContent : null;
       })()`);
     }
     const jp7 = await ev(`(function(){
-      var rSel = document.getElementById('calc-jic-row');
+      var rSel = document.getElementById('calc-book-row');
       var m = rSel && rSel.options[0]
         ? rSel.options[0].textContent.match(/^([\\s\\S]*)\\(([^(]+) - J\\$([0-9,.]+)\\)/)
         : null;
@@ -4510,7 +4510,7 @@ async function withChrome(fn) {
       qty.value = '2';
       qty.dispatchEvent(new Event('input', { bubbles: true }));
       var r = __calcEngine.computeFor(__calcEngine.readState());
-      var tSel = document.getElementById('calc-jic-trade');
+      var tSel = document.getElementById('calc-book-trade');
       return { full: !!window.MMGR_RATEBOOK, trades: tSel ? tSel.options.length - 1 : -1,
         rows: rSel ? rSel.options.length : 0, ref: rSel ? rSel.value : '',
         unit: m ? m[2] : '', sub: r && !r.error ? r.sub : NaN, exp: 2 * rate };

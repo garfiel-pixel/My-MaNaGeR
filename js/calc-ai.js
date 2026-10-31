@@ -187,7 +187,7 @@
   var proposal = null;
   // AI-3: the one question the last reply asked, waiting for its buttons.
   var ask = null;
-  // A1: when the assistant panel mounts, start loading the full 811-row JIC
+  // A1: when the assistant panel mounts, start loading the full 811-row book
   // book now (one script tag, reused if the card opens again), so it is ready
   // before the first question. The send path waits for this load for at most
   // 2 seconds, then proceeds either way. The card opens the same loader
@@ -1080,7 +1080,7 @@
           return;
         }
       }
-      // A JIC source is proved against the loaded book by the PAGE (it owns
+      // A book source is proved against the loaded rate book by the PAGE (it owns
       // the book); its rejection arrives as out.error below.
     }
     var out = null;
@@ -1703,7 +1703,7 @@
       });
   }
 
-  // A1: the first question waits for the full JIC book to land, but only
+  // A1: the first question waits for the full rate book to land, but only
   // for 2 seconds. The book stays async after that - a fresh page load in a
   // tab keeps downloading it silently, so a slow device still gets its answer.
   // A1: the page exposes its ONE loader (one script tag, never two). The
@@ -1711,7 +1711,7 @@
   // book never loaded outside the rate-book card, so the assistant could
   // never index the 811 published rates on a normal visit.
   function rrLoad(done) {
-    var load = window.MMGR_JIC_FULL_LOAD;
+    var load = window.MMGR_BOOK_FULL_LOAD;
     if (typeof load === 'function') {
       load(done);
       return true;
@@ -1999,7 +1999,7 @@
       els.form.addEventListener('submit', onSubmit);
     }
     checkAuth();
-    // A1: begin loading the full JIC book the moment the panel mounts, so the
+    // A1: begin loading the full rate book the moment the panel mounts, so the
     // assistant can answer from the book on a normal visit and always says so
     // honestly when it cannot. The load is async and never blocks the panel;
     // the first question waits at most 2 seconds for it.

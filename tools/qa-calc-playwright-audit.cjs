@@ -307,7 +307,7 @@ async function walkFocus(page, openDrawers) {
 
       // V: live recompute + error guidance + actions row gating.
       // C2 re-baseline (2026-10-19, CI repair, lesson 8.3): run on 'excav',
-      // the one work item that is BOTH book-covered (JIC all-in prefills and
+      // the one work item that is BOTH book-covered (the book all-in prefills and
       // prices in JMD without an exchange rate) AND has all three dimension
       // fields visible. 'slab', 'footings' and 'concrete-drive' deliberately
       // REFUSE to price in JMD with no exchange rate since the currency-honesty
@@ -428,7 +428,7 @@ async function walkFocus(page, openDrawers) {
       const m = await page.evaluate(() => {
         const seg = document.querySelector('.bcp-seg').getBoundingClientRect();
         // OWNER 2026-10-02: measure the rate control that is actually ON
-        // SCREEN for the chosen basis. The JIC book is selected by default
+        // SCREEN for the chosen basis. The rate book is selected by default
         // and speaks all-in, so #calc-rate-mat is legitimately hidden on the
         // all-in basis and its rect is 0 - measuring it unconditionally made
         // this gate assert a box nobody can see.
@@ -745,7 +745,7 @@ async function walkFocus(page, openDrawers) {
       // C2 re-baseline (2026-10-19): the PROPOSAL must price. 'siteprep' has
       // no book rate, so with JMD and no exchange rate the page refuses it
       // (correct currency-honesty behaviour) and Populate declines with a
-      // notice instead of adding. 'blockwall' prices from its JIC all-in rate,
+      // notice instead of adding. 'blockwall' prices from its book all-in rate,
       // which is also what the page flow above now sits on.
       const PROPOSAL_JSON = '{"work":"blockwall","d1":12,"d2":3,"note":"strip and clear"}';
       await ap.route('**/api/auth/me', r =>
@@ -864,7 +864,7 @@ async function walkFocus(page, openDrawers) {
       // C2 re-baseline (2026-10-19): 'siteprep' stopped pricing under the
       // currency-honesty refusal (no book rate, no fx), which left the export
       // path with nothing to export and Populate correctly declining. 'blockwall'
-      // prefills its JIC all-in rate and prices in JMD, and 12 m x 3 m IS the
+      // prefills its book all-in rate and prices in JMD, and 12 m x 3 m IS the
       // blockwork strip the question below asks about.
       await pickWork(ap, 'blockwall');
       await ap.fill('#calc-d1', '12');

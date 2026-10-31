@@ -97,8 +97,8 @@
     },
     {
       id: 'calculator',
-      title: 'Cost calculator with JIC rates',
-      blurb: 'Price a build in minutes with the published JIC 2025-2027 rate book built in.',
+      title: 'Cost calculator with published rates',
+      blurb: 'Price a build in minutes with the My MaNaGeR Rate Book built in.',
       href: 'calculator.html',
       tier: 'free',
       lat: 17.97,

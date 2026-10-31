@@ -96,7 +96,7 @@ function absolutizeChrome(p) {
 
   // ---- Conversion band (owner 2026-10-12, "Fix the wrong Fabric metric rate") --
   // Every metric rate in the shipped book has to sit inside the rounding band of
-  // its imperial rate, converted by the rules in JIC_Rate_Book_2025-2027_FULL.md
+  // its imperial rate, converted by the rules in RATE-BOOK-2025-2027-FULL.md
   // section 6. This is STATIC - it reads the source table out of
   // js/calculator-page.js - so it runs before any browser boots and a boot
   // failure cannot skip it.
@@ -110,7 +110,7 @@ function absolutizeChrome(p) {
   // every honest row, far tighter than the 85% fault it exists to catch.
   {
     const src = fs.readFileSync(path.join(ROOT, 'js', 'calculator-page.js'), 'utf8');
-    const at = src.indexOf('const JIC_RATES = [');
+    const at = src.indexOf('const BOOK_RATES = [');
     const open = at < 0 ? -1 : src.indexOf('[', at);
     // Bracket scan that skips strings, so a '[' inside a description cannot end
     // the slice early.
@@ -197,7 +197,7 @@ function absolutizeChrome(p) {
       }
     }
     check(
-      'every metric rate sits inside the 6% conversion band (JIC conversion gate)',
+      'every metric rate sits inside the 6% conversion band (book conversion gate)',
       far.length === 0,
       far.slice(0, 10)
     );
@@ -216,7 +216,7 @@ function absolutizeChrome(p) {
     // the footer to agree - and require it to agree with the app's table too,
     // because a book that drifts from the calculator is worse than one that is
     // merely miscounted.
-    const md = fs.readFileSync(path.join(ROOT, 'JIC_Rate_Book_2025-2027.md'), 'utf8');
+    const md = fs.readFileSync(path.join(ROOT, 'RATE-BOOK-2025-2027.md'), 'utf8');
     // Data rows live under a '## Trade' heading, stop at the next heading or
     // the Unit Key, and never carry a 'Ref' header.
     let inKey = false,
@@ -311,8 +311,8 @@ function absolutizeChrome(p) {
 
   const near = (a, b, tol) => Math.abs((Number(a) || 0) - (Number(b) || 0)) <= tol;
 
-  // ---- The shipped JIC book payload (P2a, stable trade ids) ----------------
-  // jicBookPayload() maps JIC_RATES into the importable book by matching each
+  // ---- The shipped book payload (P2a, stable trade ids) ----------------
+  // bookPayload() maps BOOK_RATES into the importable book by matching each
   // row against JIC_BOOK_MAP. That match USED to be on the trade's DISPLAY
   // LABEL, so renaming a trade - which the owner asked for - would have made
   // every row in that trade silently stop producing a rate: no error, no
@@ -324,7 +324,7 @@ function absolutizeChrome(p) {
   // another gained a row.
   {
     const p = await page.evaluate(function () {
-      var out = window.__calcEngine.jicBookPayload();
+      var out = window.__calcEngine.bookPayload();
       var book = (out.books && out.books[0]) || {};
       var rates = book.rates || {};
       var fams = {};
@@ -338,20 +338,20 @@ function absolutizeChrome(p) {
       return { entryCount: out.entryCount, filled: filled, fams: fams };
     });
     check(
-      'JIC book payload carries every mapped row (100) after the stable-id refactor',
+      'book payload carries every mapped row (100) after the stable-id refactor',
       p.entryCount === 100 && p.filled === 100,
       p
     );
     // Spot-check a real rate so an empty-but-counted family cannot pass.
     const spot = await page.evaluate(function () {
-      var b = window.__calcEngine.jicBookPayload().books[0];
+      var b = window.__calcEngine.bookPayload().books[0];
       return {
         excav: (b.rates.excav || {})['standard'] || null,
         welding: (b.rates.welding || {})['w-1-torch'] || null
       };
     });
     check(
-      'JIC book payload still prices a spot-checked family (excavation + welding)',
+      'book payload still prices a spot-checked family (excavation + welding)',
       !!(spot.excav && spot.excav.allIn > 0) && !!(spot.welding && spot.welding.allIn > 0),
       spot
     );
@@ -406,7 +406,7 @@ function absolutizeChrome(p) {
           openings: c.openings ? JSON.stringify(c.openings) : undefined,
           variant: c.variant,
           labourOnly: c.labourOnly,
-          // All-in (JIC combined) + per-day crew basis (owner 2026-10-02).
+          // All-in (book combined) + per-day crew basis (owner 2026-10-02).
           allInRate: c.allInRate,
           daysStr: c.days,
           dayRateStr: c.dayRate,

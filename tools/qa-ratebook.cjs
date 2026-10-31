@@ -12,8 +12,8 @@
    the questions the gate asks.
 
      R1  signed-out GET /api/ratebook -> 401 and no book in the body
-     R2  signed-out GET /js/jic-rates-full.js -> 404
-     R3  signed-out GET /tru_jic_rate_book_2025-2027_imperial_metric.pdf -> 404
+     R2  signed-out GET /js/rates-full.js -> 404
+     R3  signed-out GET of the old publisher PDF -> 404
      R4  a FORGED session cookie -> 401 (a cookie is not a session)
      R5  signed-in GET -> 200, 811 rates, 11 trades
      R6  the signed-in answer carries Cache-Control: private and never
@@ -172,9 +172,12 @@ function read(rel) {
   }
 
   // ---- static half: the pieces that must not exist, and the source contract.
+  // The retired public data file is checked by CLASS, not by one name, so a
+  // rename cannot quietly reintroduce it.
+  const PUBLIC_DATA = /rates?-full/i;
   check(
-    'R7a js/jic-rates-full.js is gone from disk',
-    !fs.existsSync(path.join(ROOT, 'js', 'jic-rates-full.js'))
+    'R7a no public full rate-data file sits in js/',
+    fs.readdirSync(path.join(ROOT, 'js')).every(n => !PUBLIC_DATA.test(n))
   );
   const shell = read('sw.js');
   const shellList = shell
@@ -183,14 +186,13 @@ function read(rel) {
     .replace(/^\s*\/\/.*$/gm, '');
   check(
     'R7b the service-worker shell lists no rate file',
-    !/jic-rates-full/.test(shellList) && !/ratebook/i.test(shellList),
+    !PUBLIC_DATA.test(shellList) && !/ratebook/i.test(shellList),
     { hit: (shellList.match(/.*rate.*/i) || [''])[0].slice(0, 120) }
   );
   const calc = read('js/calculator-page.js');
   check(
     'R8a the calculator no longer injects a rate-data script',
-    !/createElement\('script'\)[\s\S]{0,200}jic-rates-full/.test(calc) &&
-      !/jic-rates-full/.test(calc)
+    !/createElement\('script'\)[\s\S]{0,200}rates?-full/i.test(calc) && !/rates?-full/i.test(calc)
   );
   check('R8b it fetches /api/ratebook', /RATEBOOK_URL\s*=\s*'\/api\/ratebook'/.test(calc));
   check(
@@ -225,11 +227,11 @@ function read(rel) {
     );
 
     // R2: the old public data file.
-    const r2 = await fetch(BASE + '/js/jic-rates-full.js');
+    const r2 = await fetch(BASE + '/js/rates-full.js');
     check('R2 old rate-data path -> 404', r2.status === 404, { status: r2.status });
 
     // R3: the publisher's PDF that used to sit in the root.
-    const r3 = await fetch(BASE + '/tru_jic_rate_book_2025-2027_imperial_metric.pdf');
+    const r3 = await fetch(BASE + '/rate-book-2025-2027-imperial-metric.pdf');
     check('R3 old rate-book PDF path -> 404', r3.status === 404, { status: r3.status });
 
     // R4: a cookie is not a session. Forged HMAC must not open the book.

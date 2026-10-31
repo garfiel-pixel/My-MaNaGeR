@@ -451,7 +451,7 @@ var MMGR = window.MMGR || {};
       packsEverEnabled: false,
       // PART H (owner 2026-10-16): the supplier price book , vendors and their
       // hand-entered quote lines (H7.1: prices are typed from the SUPPLIER'S
-      // OWN rate sheet, never prefilled from the JIC book). Deliberately NOT
+      // OWN rate sheet, never prefilled from the published book). Deliberately NOT
       // named `procurement`: that key is taken by the C10 Procurement Log
       // (material orders, an ARRAY - see mmgr-closure.js), and reusing it
       // would overwrite existing users' material-order rows.

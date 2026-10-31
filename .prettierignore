@@ -35,18 +35,15 @@ vendor/
 **/*.jsonc
 mcp/fixtures/
 
-# js/jic-rates-full.js is GENERATED from JIC_Rate_Book_2025-2027_FULL.md by
-# tools/gen-jic-full.cjs (same class as projects-data.js / demo-data.js below:
-# data, not hand-written source). Nobody edits it by hand - the header says so
-# and `npm run verify:jic` fails if it drifts from the generator. Prettier
-# would expand the one-row-per-line rate array to one OBJECT per line, taking
-# the file from 101 KB to 166 KB (15.9 KB to 17.9 KB gzipped) for no change in
-# behaviour, and the owner asked for the calculator to stay quick on a slow
-# connection - so it stays compact and out of the style gate.
-#
-# 2026-10-25 (RB-1): the same generated book now lands at src/data/ratebook.js
-# (a Worker module, not a public browser file), so the exclusion follows it.
-js/jic-rates-full.js
+# src/data/ratebook.js is GENERATED from RATE-BOOK-2025-2027-FULL.md by
+# tools/gen-ratebook.cjs (same class as projects-data.js / demo-data.js
+# below: data, not hand-written source). Nobody edits it by hand - the
+# header says so and `npm run verify:ratebook-sync` fails if it drifts
+# from the generator. Prettier would expand the one-row-per-line rate
+# array to one OBJECT per line (101 KB -> 166 KB, 15.9 KB -> 17.9 KB
+# gzipped) for no change in behaviour, and the owner asked for the
+# calculator to stay quick on a slow connection - so it stays compact
+# and out of the style gate.
 src/data/ratebook.js
 
 # ---- CI-generated artifacts (not source) --------------------------------

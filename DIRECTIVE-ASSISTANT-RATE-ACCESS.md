@@ -78,7 +78,7 @@ Bump the cache-buster query strings for `calculator-page.js` and `calc-ai.js` in
 
 ## 5. Verify
 
-1. Run `npm run verify:jic` and `npm run verify`. Both must pass in full. Do not edit a gate to make it pass. Run, and confirm still green and unchanged in output: `tools/qa-calc-golden.cjs`, `tools/qa-calc-trade-coverage.cjs`, `tools/qa-calculator.cjs`, `tools/qa-calculator-page.cjs`, `tools/qa-calc-assistant.cjs` (existing assertions), `tools/qa-calc-workspace.cjs`.
+1. Run `npm run verify:ratebook-sync` and `npm run verify`. Both must pass in full. Do not edit a gate to make it pass. Run, and confirm still green and unchanged in output: `tools/qa-calc-golden.cjs`, `tools/qa-calc-trade-coverage.cjs`, `tools/qa-calculator.cjs`, `tools/qa-calculator-page.cjs`, `tools/qa-calc-assistant.cjs` (existing assertions), `tools/qa-calc-workspace.cjs`.
 2. Produce a diff summary listing every function changed. Confirm none of the forbidden files or work items in section 1 appear. If one does, revert it and redo.
 3. Extend `tools/qa-calc-assistant.cjs` with Playwright checks, new browser profile, intercepting `/api/ai/chat` to capture the system message and to feed scripted model replies. Register them in the test registry. Each is a named assertion.
 
@@ -124,7 +124,7 @@ The owner requested the complete test battery against the deployed worker and do
    - verify:sw - cache version mmgr-shell-v421 newer than all 49 SHELL assets
    - verify:hidden - every [hidden] element matched by no unguarded non-none display rule (3990 CSS rules checked)
    - verify:css - ARM 1 no stray comment closer; ARM 2 all 1229 (mmgr) + 256 (marketing) class rules survive into dist
-   - verify:jic - in sync {"rows":811,"trades":11,"inApp":100,"calc":711}
+   - verify:ratebook-sync - in sync {"rows":811,"trades":11,"inApp":100,"calc":711}
    - verify:a11y - 19/19 pages clean
    - verify:eslint - 0 errors, 255 warnings (ceiling 4600, headroom 4345) - PASS, no new lint debt
    - verify:prettier - all matched files use Prettier code style

@@ -1,7 +1,7 @@
 /* GENERATED FILE - do not edit by hand.
-   Source: JIC_Rate_Book_2025-2027_FULL.md (section 7 tables).
-   Regenerate with: node tools/gen-jic-full.cjs
-   Verify in sync with: node tools/gen-jic-full.cjs --check
+   Source: RATE-BOOK-2025-2027-FULL.md (section 7 tables).
+   Regenerate with: node tools/gen-ratebook.cjs
+   Verify in sync with: node tools/gen-ratebook.cjs --check
    811 rates across 11 trades. Carries no emoji (AGENTS rule 7).
 
    PRIVATE (RB-1): imported by src/ratebook.js and served ONLY by
@@ -15,8 +15,8 @@
    that the figures are independently produced. The owner changes this
    value deliberately, with advice; it is not a code cleanup. */
 export const RATEBOOK_PROVENANCE = {
-  source: 'JIC_Rate_Book_2025-2027_FULL.md',
-  publisher: 'Jamaica Institute of Construction (JIC)',
+  source: 'RATE-BOOK-2025-2027-FULL.md',
+  publisher: 'Jamaica Institute of Construction',
   edition: '2025-2027',
   status: 'unresolved' // unresolved | permission-granted | rebuilt
 };

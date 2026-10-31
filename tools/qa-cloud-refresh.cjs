@@ -21,7 +21,7 @@
      S5g  zero page errors through the walk
 
    Usage:  node tools/qa-cloud-refresh.cjs
-   Registry: docs/CI-TEST-COVERAGE.md -> CI row (browser-app).
+   Registry: docs/CI-TEST-COVERAGE.md -> CI row (browser-calc, next to qa-theme-perf).
    ============================================================ */
 'use strict';
 const path = require('path');
@@ -109,7 +109,11 @@ const SNAP = () => {
 (async () => {
   let srv = await ensureServer();
   const { chromium } = require('playwright');
-  const browser = await chromium.launch({ args: ['--disk-cache-size=0'] });
+  const browser = await chromium.launch({
+    headless: true,
+    executablePath: require('./chrome-launcher.cjs').chromePath,
+    args: ['--disk-cache-size=0', '--no-sandbox']
+  });
 
   // One context for the whole walk: localStorage is the state under test, so
   // a fresh profile per step would erase the very cache being proven.

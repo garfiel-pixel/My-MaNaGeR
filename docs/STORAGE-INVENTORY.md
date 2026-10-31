@@ -59,6 +59,7 @@ fails the gate.
 | `mmgr_admin_recovery_created_at` , `mmgr_admin_recovery_hash` , `mmgr_admin_recovery_attempts` , `mmgr_admin_recovery_locked_until` | Admin recovery code state and its retry lockout. | necessary |
 | `mmgr_recent_codes` | Recently used access codes, for quick re-entry. | necessary |
 | `mmgr_cloud_last_seen_<id>` | Last time a cloud project was seen on this device. | necessary |
+| `mmgr_cloud_dash_cache` | The launcher's last good cloud project list, so a refresh or an offline boot shows real cards instead of an empty section. Removed on sign-out. | necessary |
 | `mmgr_cloud_pending_ecode_<id>` | An editor code waiting to be confirmed. | necessary |
 | `mmgr_offline_copy_<id>` | Marks an offline copy of a cloud project. | necessary |
 | `mmgr_pool_pending_<id>` | Cloud writes waiting for the connection to return. | necessary |

@@ -27,7 +27,17 @@ not just `js/calculator-page.js`.
 
 ## The sprints
 
-**Status 2026-10-31: S1-S4 and S6 are DONE; S5 and S7 remain.**
+**Status 2026-10-31: S1-S6 are DONE; S7 remains.**
+
+- **S5** shipped with `tools/qa-cloud-refresh.cjs` (8/8). The real defect was
+  narrower than the report and worse than it sounded: nothing was lost, but
+  EVERY failure path in `loadList()` hid the whole section and then blamed the
+  wrong thing ("Cloud sync is unavailable on this host" to a signed-in owner) -
+  so one slow or failed request emptied the launcher's cloud list. The last
+  good answer is now cached in `mmgr_cloud_dash_cache` and painted first, a
+  failure keeps the cards and states the reason in the status line, sign-out
+  drops the cache AND clears the DOM, and the list painter is one function
+  (`paintList()`) shared by the fetch and the cache.
 
 - **S4** shipped with `tools/qa-theme-perf.cjs` (15/15). The standard paths were
   already sound, so the gate proved the contract instead of "fixing" it - and
@@ -156,8 +166,14 @@ plus reload).
 **Size:** one session. **Risk:** medium (theme boot runs before paint; a bad fix
 flashes the wrong theme on every page).
 
-### S5 - Cloud projects survive a hard refresh  (finding 12)
+### S5 - Cloud projects survive a hard refresh  (finding 12)  [DONE]
 **Why:** data appears lost to the owner; that is worse than any styling issue.
+**Outcome:** the list was never actually lost - it was hidden. The gate proved
+`/api/cloud/projects` answers correctly after a hard reload, then proved every
+failure path blanked the section and mislabelled the cause. Fixed with a
+device-side display cache (`mmgr_cloud_dash_cache`) painted before the fetch,
+`keepOrHide()` for failures, and one `paintList()` for both sources. Gate:
+`tools/qa-cloud-refresh.cjs`, 8/8.
 **Scope:** reproduce in `verify-cloud-autosave-signin` (it already signs in and
 saves) with a real hard reload (`--disk-cache-size=0`), then follow the trail:
 `js/mmgr-cloud-dash.js:196-206` writes `mmgr_state_<id>` / `mmgr_unlocked_<id>`

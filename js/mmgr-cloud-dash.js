@@ -293,6 +293,44 @@
     );
   }
 
+  // ---- THE LIST'S LAST GOOD ANSWER (owner report 2026-10-31) ------------
+  // "Cloud projects disappear after a hard refresh": every failure path below
+  // used to HIDE the section, so one slow or failed request emptied the only
+  // door to a project this device has not opened yet - and the status line
+  // blamed the host ("Cloud sync is unavailable") or the account ("Sign in")
+  // even for a signed-in owner with a full list a second earlier. The last
+  // good answer is now kept on the device and painted FIRST, so a refresh
+  // shows the real list immediately and a failure is a note, not a wipeout.
+  // This is a DISPLAY cache only: it holds what the server already returned
+  // to this browser, nothing more, and /load still gates every open.
+  const CACHE_KEY = 'mmgr_cloud_dash_cache';
+  function readCache() {
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      const c = raw ? JSON.parse(raw) : null;
+      return c && Array.isArray(c.projects) ? c : null;
+    } catch (e) {
+      return null;
+    }
+  }
+  function writeCache(projects) {
+    try {
+      localStorage.setItem(
+        CACHE_KEY,
+        JSON.stringify({ at: new Date().toISOString(), projects: projects })
+      );
+    } catch (e) {
+      /* display cache is best-effort */
+    }
+  }
+  function dropCache() {
+    try {
+      localStorage.removeItem(CACHE_KEY);
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
   // ---- fetch the session-gated project list ----
   async function loadList() {
     const dash = $(DASH);
@@ -300,52 +338,97 @@
     if (!dash || !list) {
       return;
     }
+    // Paint the device's last good list straight away. A hard refresh shows
+    // the real cards while the request is in flight; a failed request then
+    // has something honest to fall back to instead of an empty section.
+    const cached = readCache();
+    if (cached) {
+      paintList(cached.projects);
+    }
     // Paint skeletons BEFORE the fetch so the section shows progress instead
     // of popping in. The offline catch below hides it again immediately, so
     // static-host visitors never see a shimmer over a hanging request.
     dash.hidden = false;
-    dash.setAttribute('aria-busy', 'true');
-    list.innerHTML = dashSkeleton(3);
-    const railPre = $(RAIL_CLOUD);
-    if (railPre && !railPre.hidden && !railPre.innerHTML.trim()) {
-      railPre.innerHTML = railSkeleton();
+    if (!cached) {
+      dash.setAttribute('aria-busy', 'true');
+      list.innerHTML = dashSkeleton(3);
+      const railPre = $(RAIL_CLOUD);
+      if (railPre && !railPre.hidden && !railPre.innerHTML.trim()) {
+        railPre.innerHTML = railSkeleton();
+      }
     }
     let res;
     try {
       res = await fetch('/api/cloud/projects', { method: 'GET', credentials: 'same-origin' });
     } catch (e) {
-      // Static host / offline , no Worker API. Leave the section hidden.
-      dash.hidden = true;
-      dash.removeAttribute('aria-busy');
-      setRailCloudEmpty('Cloud sync is unavailable on this host.');
+      // Offline / static host: keep whatever the device already showed and say
+      // so plainly. Nothing cached means there is nothing honest to show.
+      keepOrHide(
+        'Showing the last cloud list saved on this device. The cloud service could not be reached.'
+      );
       return;
     }
     if (!res.ok) {
-      dash.hidden = true;
-      dash.removeAttribute('aria-busy');
-      setRailCloudEmpty('Sign in to see your cloud projects.');
+      if (res.status === 401 || res.status === 403) {
+        // A real signed-out answer: never keep another account's list.
+        dropCache();
+        dash.hidden = true;
+        dash.removeAttribute('aria-busy');
+        // ...and out of the DOM: a hidden section that still holds account
+        // project names is one devtools tab away from the next person.
+        list.innerHTML = '';
+        setRailCloudEmpty('Sign in to see your cloud projects.');
+        return;
+      }
+      keepOrHide('Showing the last cloud list saved on this device (error ' + res.status + ').');
       return;
     }
     let data = null;
     try {
       data = await res.json();
     } catch (e) {
-      dash.hidden = true;
-      dash.removeAttribute('aria-busy');
-      setRailCloudEmpty('Could not load cloud projects.');
+      keepOrHide('Showing the last cloud list saved on this device. Its answer was unreadable.');
       return;
     }
     const projects = data && data.ok && Array.isArray(data.projects) ? data.projects : null;
     if (!projects) {
-      dash.hidden = true;
-      dash.removeAttribute('aria-busy');
-      setRailCloudEmpty('Could not load cloud projects.');
+      keepOrHide('Showing the last cloud list saved on this device. Its answer was unreadable.');
+      return;
+    }
+    setStatus('');
+    writeCache(projects);
+    paintList(projects);
+    loadPlan();
+  }
+
+  // A request failed AFTER boot: keep the cards on screen when the device has
+  // a list, and state the failure in the status line. Falls back to the old
+  // hide-and-forget behaviour only when there is nothing cached.
+  function keepOrHide(msg) {
+    const dash = $(DASH);
+    if (!dash) {
+      return;
+    }
+    dash.removeAttribute('aria-busy');
+    const cached = readCache();
+    if (cached) {
+      paintList(cached.projects);
+      setStatus(msg, true);
+      return;
+    }
+    dash.hidden = true;
+    setRailCloudEmpty('Could not load cloud projects.');
+  }
+
+  // One painter for both the fetch and the cache, so the two can never drift.
+  function paintList(projects) {
+    const dash = $(DASH);
+    const list = $(LIST);
+    if (!dash || !list) {
       return;
     }
     dash.hidden = false;
     dash.removeAttribute('aria-busy');
-    setStatus('');
-    loadPlan();
     renderRailCloud(projects);
     if (!projects.length) {
       list.innerHTML =
@@ -1167,6 +1250,9 @@
     if (rl) {
       rl.innerHTML = '<div class="db-sub-empty">Sign in to see your cloud projects.</div>';
     }
+    // Signing out is the one failure this cache must never outlive: the next
+    // person on the device must not see the previous account's project names.
+    dropCache();
     // SIGN-OUT LEAVES THE PREMIUM BADGE (owner report 2026-10-04): this
     // handler cleared the project list but never the plan strip, so signing
     // out of a Premium account left "Premium" on screen for the next person

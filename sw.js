@@ -428,7 +428,7 @@
 // change made in another tab: js/mmgr-theme.js and js/mmgr-perf.js listen for
 // `storage` and re-apply their own preference only, so neither can drag the
 // other. Changed shell assets: js/mmgr-theme.js, js/mmgr-perf.js.
-const CACHE = 'mmgr-shell-v518';
+const CACHE = 'mmgr-shell-v519';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

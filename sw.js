@@ -444,7 +444,14 @@
 // The client now posts the nonce the credential itself proves, redraws the
 // button when the nonce changes, and retries once nonceless when that nonce's
 // single-use row is gone. Changed shell assets: js/mmgr-google-auth.js.
-const CACHE = 'mmgr-shell-v522';
+// v523 - PHONE PICKER + LIGHT-THEME EDGE (owner report 2026-11-01). The
+// calculator's choosers are bottom sheets: below 640px the control is readOnly
+// (no soft keyboard), the sheet is offset by the visual-viewport gap so the
+// keyboard cannot cover it, and it picks/closes on click instead of pointerdown
+// so a scroll gesture is just a scroll. Filled accent buttons stop wearing the
+// pale glass edge in light mode ("we do not need a white outline"). Changed
+// shell assets: js/mmgr-combobox.js, css/mmgr.css.
+const CACHE = 'mmgr-shell-v523';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

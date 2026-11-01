@@ -51,6 +51,23 @@
     });
   }
 
+  /* OWNER REPORT 2026-11-01 (mobile calculator): "I try to toggle type of work
+     and my screen becomes completely grayed out and I cannot scroll". Three
+     separate faults made one symptom on a phone:
+       1. the visible control was a live text input, so tapping it raised the
+          soft keyboard - it is a CHOOSER, not a field (owner: "it is not a
+          typing area"),
+       2. the sheet is a bottom sheet, and position:fixed resolves against the
+          LAYOUT viewport, so the keyboard covered it: all the user saw was the
+          scrim,
+       3. rows (and the scrim) acted on pointerdown, which a scroll gesture
+          fires - so the first attempt to scroll picked a row or closed the
+          sheet. Below 640px the sheet now closes and picks on click only.
+     This helper is the one place that decides "phone layout". */
+  function narrow() {
+    return !!(window.matchMedia && window.matchMedia('(max-width: 640px)').matches);
+  }
+
   function flagOn(name) {
     try {
       return localStorage.getItem('mmgr_flag_' + name) !== '0';
@@ -321,13 +338,25 @@
       // The popup is position:fixed (see css/mmgr.css) so no card, grid or
       // drawer can clip it. Below 640px it becomes a bottom sheet and CSS
       // owns the geometry, so these inline values are cleared.
-      var narrow = window.matchMedia && window.matchMedia('(max-width: 640px)').matches;
-      if (narrow) {
+      if (narrow()) {
         pop.style.left = '';
         pop.style.top = '';
         pop.style.width = '';
         pop.style.transform = '';
         pop.style.removeProperty('--mmcb-max');
+        // Sit above the soft keyboard. position:fixed is laid out against the
+        // LAYOUT viewport, so bottom:0 lands under it; the visual viewport is
+        // what the user can actually see, and its gap is the keyboard.
+        var gap = 0;
+        if (window.visualViewport) {
+          gap = Math.max(
+            0,
+            Math.round(
+              window.innerHeight - (window.visualViewport.height + window.visualViewport.offsetTop)
+            )
+          );
+        }
+        pop.style.bottom = gap + 'px';
         return;
       }
       var r = input.getBoundingClientRect();
@@ -445,6 +474,17 @@
       }
     }
 
+    /* The control on a phone is a chooser, not a field: readOnly keeps the
+       keyboard down while the input stays focusable, so arrow keys, Enter and
+       Escape still work with a hardware keyboard and screen readers keep the
+       role="combobox" semantics. Re-applied on resize, since a tablet can cross
+       the 640px line by rotating. */
+    function syncMode() {
+      input.readOnly = narrow();
+    }
+    syncMode();
+    window.addEventListener('resize', syncMode, { passive: true });
+
     // ---- events ---------------------------------------------------------
     input.addEventListener('focus', function () {
       syncLabel();
@@ -533,8 +573,36 @@
       }
     });
 
+    function rowOf(e) {
+      return e.target && e.target.closest ? e.target.closest('[role="option"]') : null;
+    }
+
     pop.addEventListener('pointerdown', function (e) {
-      var row = e.target.closest ? e.target.closest('[role="option"]') : null;
+      // A phone opens the sheet as a bottom sheet, and a scroll starts with a
+      // pointerdown on whatever is under the finger: picking or closing there
+      // made the list impossible to scroll. Below 640px the click handler
+      // below does the work instead (a click never follows a scroll).
+      if (narrow()) {
+        return;
+      }
+      var row = rowOf(e);
+      if (row) {
+        e.preventDefault();
+        pick(row);
+        return;
+      }
+      if (e.target.classList && e.target.classList.contains('mmcb-scrim')) {
+        e.preventDefault();
+        syncLabel();
+        close();
+      }
+    });
+
+    pop.addEventListener('click', function (e) {
+      if (!narrow()) {
+        return;
+      }
+      var row = rowOf(e);
       if (row) {
         e.preventDefault();
         pick(row);

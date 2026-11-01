@@ -903,6 +903,13 @@ jobs:
         id: qa-google-nonce
         run: node tools/qa-google-nonce.cjs
 
+      # PHONE PICKER (owner report 2026-11-01): the calculator's choosers are
+      # bottom sheets that must not raise the keyboard and must survive a
+      # scroll gesture instead of picking or closing on it.
+      - name: "T4: Phone picker is a chooser, not a field (qa-calc-picker-mobile)"
+        id: qa-calc-picker-mobile
+        run: node tools/qa-calc-picker-mobile.cjs
+
       - name: "T4: Calc S2 gate (C6 sticky + C7 switch rows + X-1/X-2)"
         id: calc-s2
         run: node tools/verify-calc-s2.cjs

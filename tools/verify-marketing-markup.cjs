@@ -89,15 +89,29 @@ if (baseDot) {
     const m = new RegExp(prop + '\\s*:\\s*(\\d+)px').exec(body || '');
     return m ? Number(m[1]) : null;
   };
+  // OWNER 2026-11-01: "the bigger dots can be cut down, they are a lot bigger -
+  // the smaller one looks fine". The old floor was >= 12px because the rail had
+  // to read at a glance next to 5px minors; 8px is the owner's chosen size, so
+  // the arm now pins the RANK relationship rather than the old absolute: a major
+  // dot must be visible (>= 6px) and distinctly larger than a minor (>= 1.4x).
+  // That is the property the rail actually needs; 12px was one way to meet it.
   if (major) {
     const mj = px(major[1], 'width');
-    ok('.dot-item.major .dot width >= 12px', mj !== null && mj >= 12, 'width=' + mj + 'px');
+    ok('.dot-item.major .dot width >= 6px', mj !== null && mj >= 6, 'width=' + mj + 'px');
   } else {
     ok('.dot-item.major .dot rule present', false);
   }
   if (minor) {
     const mn = px(minor[1], 'width');
     ok('.dot-item.minor .dot width <= 8px', mn !== null && mn <= 8, 'width=' + mn + 'px');
+    if (major) {
+      const mj = px(major[1], 'width');
+      ok(
+        'a major dot stays distinctly larger than a minor one',
+        mj !== null && mn !== null && mj >= mn * 1.4,
+        'major=' + mj + 'px minor=' + mn + 'px'
+      );
+    }
   } else {
     ok('.dot-item.minor .dot rule present', false);
   }

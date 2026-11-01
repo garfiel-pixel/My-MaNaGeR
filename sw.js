@@ -444,6 +444,13 @@
 // The client now posts the nonce the credential itself proves, redraws the
 // button when the nonce changes, and retries once nonceless when that nonce's
 // single-use row is gone. Changed shell assets: js/mmgr-google-auth.js.
+// v524 - LANDING PASS (owner 2026-11-01, both breakpoints). The features
+// bento releases its desktop grid map below 1024px (ID pins were outranking the
+// reset, squeezing cards into slivers at 390px); the photo band drops its
+// eyebrow and marks one word; the rail's big dots are 8px and lighter; audience
+// cards gain a sprite watermark; the hero card rotates its content through the
+// other features. Changed shell assets: js/marketing.js, css/marketing.css,
+// index.html.
 // v523 - PHONE PICKER + LIGHT-THEME EDGE (owner report 2026-11-01). The
 // calculator's choosers are bottom sheets: below 640px the control is readOnly
 // (no soft keyboard), the sheet is offset by the visual-viewport gap so the
@@ -451,7 +458,7 @@
 // so a scroll gesture is just a scroll. Filled accent buttons stop wearing the
 // pale glass edge in light mode ("we do not need a white outline"). Changed
 // shell assets: js/mmgr-combobox.js, css/mmgr.css.
-const CACHE = 'mmgr-shell-v523';
+const CACHE = 'mmgr-shell-v524';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

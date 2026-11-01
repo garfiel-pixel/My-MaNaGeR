@@ -480,9 +480,14 @@ main {
     background 0.22s ease-out,
     box-shadow 0.22s ease-out;
 }
+/* OWNER 2026-11-01: "the bigger dots can be cut down, they are a lot bigger -
+   the smaller one looks fine". 12px read almost three times the 5px minor at a
+   glance; 8px keeps the two ranks distinct without the rail shouting, and the
+   active scale keeps the settled 12px so the marker still reads as "you are
+   here". Painted with transform, so the rail height still never moves. */
 .dot-item.major .dot {
-  width: 12px;
-  height: 12px;
+  width: 8px;
+  height: 8px;
 }
 .dot-item.minor .dot {
   width: 5px;
@@ -491,7 +496,7 @@ main {
 /* Active is the SAME dot scaled up (16px major, 8px minor), so the layout box -
    and therefore the height of the rail - never changes as the marker travels. */
 .dot-item.major.active .dot {
-  transform: scale(1.3333);
+  transform: scale(1.5);
   background: var(--bullion);
   box-shadow:
     0 0 0 1px var(--lit-white-70),
@@ -1940,6 +1945,8 @@ body.dark-mode .nav-dd-col.is-platform {
   gap: 14px;
 }
 .aud-item {
+  position: relative;
+  overflow: hidden;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -1949,6 +1956,34 @@ body.dark-mode .nav-dd-col.is-platform {
     transform var(--tr),
     border-color var(--tr),
     box-shadow var(--tr);
+}
+/* OWNER 2026-11-01: "we could add some more SVG ... a simple background SVG,
+   nothing crazy". Each card carries the same symbol it already uses, at
+   watermark scale behind the copy: one sprite reference per card, no
+   duplicated paths, and the ranked icon stays the crisp one. */
+.aud-item .aud-art {
+  position: absolute;
+  right: -10px;
+  bottom: -14px;
+  width: 92px;
+  height: 92px;
+  color: var(--gold);
+  opacity: 0.12;
+  pointer-events: none;
+  z-index: 0;
+}
+.aud-item > .ico,
+.aud-item > b,
+.aud-item > span {
+  position: relative;
+  z-index: 1;
+}
+@media (max-width: 639px) {
+  .aud-item .aud-art {
+    width: 68px;
+    height: 68px;
+    opacity: 0.1;
+  }
 }
 .aud-item:hover {
   transform: translateY(-3px);
@@ -2065,13 +2100,34 @@ body.dark-mode #f-voice {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-auto-rows: minmax(170px, auto);
   }
-  .fcard {
+  /* OWNER 2026-11-01: "it looks excellent on computer but on mobile it looks like
+     trash". The cause was SPECIFICITY, not the breakpoint: every card carries an
+     explicit `#f-ai { grid-area: ... }`, and an ID (1,0,0) outranks the
+     `.fcard { grid-area: auto }` reset (0,1,0) - so the 4x6 desktop map survived
+     into a 1-column grid, the browser invented implicit columns to satisfy it,
+     and at 390px the cards were squeezed into ~120px slivers with one word per
+     line. `#features .fcard` is (1,1,0) and wins, so the map is genuinely
+     released below 1024px. */
+  #features .fcard {
     grid-area: auto;
   }
 }
 @media (max-width: 639px) {
   .features {
     grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  #features .fcard {
+    padding: 22px 18px;
+  }
+  #features .fcard .fc-art {
+    width: 120px;
+    height: 120px;
+  }
+  #features .fcard h3,
+  #f-ai h3,
+  #f-voice h3 {
+    font-size: 1.12rem;
   }
 }
 .fcard {
@@ -2091,9 +2147,21 @@ body.dark-mode #f-voice {
   transition:
     transform var(--tr),
     border-color var(--tr),
+    opacity 0.38s ease,
     box-shadow var(--tr);
   position: relative;
   overflow: hidden;
+}
+/* The hero's content rotation (js/marketing.js, owner 2026-11-01): the panel
+   keeps its tile and its type scale; only the words, icon and watermark
+   crossfade, so the 4x6 map never acquires a hole. */
+#features .fcard.is-swapping {
+  opacity: 0.35;
+}
+@media (prefers-reduced-motion: reduce) {
+  #features .fcard.is-swapping {
+    opacity: 1;
+  }
 }
 /* OWNER 2026-09-15 (card SVG backgrounds): each feature card carries a
    faint topical watermark (inline <svg class="fc-art"> in the markup) that
@@ -2379,6 +2447,12 @@ body.dark-mode #f-voice {
 }
 .pb-content .eyebrow {
   color: var(--accent-on-navy);
+}
+/* Owner 2026-11-01: one word carries the headline ("you can highlight a
+   specific word"). Gold on the dark photo band keeps the contrast the rest of
+   that band is measured against. */
+.pb-content h2 .hl {
+  color: var(--bullion, #e8c465);
 }
 .pb-content h2 {
   font-size: clamp(1.6rem, 3.2vw, 2.3rem);
@@ -5083,8 +5157,11 @@ html body.dark-mode .btn-gold:disabled {
 /* Dot rail: tone-adaptive so the same dot clears 3:1 on cream and on the dark
    hero. The rail sets [data-tone] from the section behind it (marketing.js). */
 .dot-rail-navigation[data-tone='light'] .dot {
-  background: #4a4036;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7);
+  /* OWNER 2026-11-01: "their brightness can be turned on as well". #4a4036 was
+     a near-ink dot on cream and read as a heavy blemish at 12px; at 8px it now
+     carries a warm mid tone that still clears 3:1 as a UI marker. */
+  background: #7a6f64;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.6);
 }
 .dot-rail-navigation[data-tone='dark'] .dot {
   background: #f3e5ab;

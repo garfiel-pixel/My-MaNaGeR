@@ -1637,6 +1637,140 @@
     apply();
   })();
 
+  /* HERO ROTATION (owner 2026-11-01): "the big bar says My MaNaGeR AI ... we have
+     a lot of smaller bars below. Periodically a smaller bar should slide into
+     that position and become the big bar, and they cycle through the others."
+
+     The bento is a FIXED 4x6 tile map with no holes (see the map in
+     css/marketing.css: 24 cells, exactly filled). A 1x1 card cannot take the
+     2x2 hero slot without leaving three empty cells behind, and releasing every
+     card's grid-area to let dense flow backfill would rebuild the composition
+     the owner called excellent. So the big bar keeps its tile and rotates its
+     CONTENT instead: title, copy, icon and watermark crossfade to the next
+     feature, in the hero's own type scale. The movement is the same, the
+     composition is unchanged. */
+  (function wireHeroRotation() {
+    var grid = document.querySelector('#features .features');
+    var hero = document.getElementById('f-ai');
+    if (!grid || !hero) {
+      return;
+    }
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return;
+    }
+    var others = Array.prototype.slice.call(grid.querySelectorAll('.fcard')).filter(function (c) {
+      return c !== hero;
+    });
+    if (others.length < 2) {
+      return;
+    }
+
+    function snapshot(card) {
+      var h = card.querySelector('h3');
+      var p = card.querySelector('p');
+      var icon = card.querySelector('.fc-icon');
+      var art = card.querySelector('.fc-art');
+      return {
+        title: h ? h.innerHTML : '',
+        body: p ? p.innerHTML : '',
+        icon: icon ? icon.innerHTML : '',
+        art: art ? art.innerHTML : ''
+      };
+    }
+
+    var own = snapshot(hero);
+    var frames = others.map(snapshot);
+    var at = -1;
+    var timer = 0;
+    var paused = false;
+    var swapping = false;
+    var heroH3 = hero.querySelector('h3');
+    var heroP = hero.querySelector('p');
+    var heroIcon = hero.querySelector('.fc-icon');
+    var heroArt = hero.querySelector('.fc-art');
+
+    function paint(frame) {
+      if (!heroH3 || !heroP) {
+        return;
+      }
+      swapping = true;
+      hero.classList.add('is-swapping');
+      window.setTimeout(function () {
+        // ok: every value here was READ off another .fcard in this same static
+        // document a moment ago (snapshot()); nothing user-supplied and nothing
+        // from the network reaches this line, so re-inserting it cannot inject.
+        heroH3.innerHTML = frame.title; // ok: static markup copied from a sibling card
+        heroP.innerHTML = frame.body; // ok: static markup copied from a sibling card
+        if (heroIcon && frame.icon) {
+          heroIcon.innerHTML = frame.icon; // ok: static markup copied from a sibling card
+        }
+        if (heroArt && frame.art) {
+          heroArt.innerHTML = frame.art; // ok: static markup copied from a sibling card
+        }
+        hero.classList.remove('is-swapping');
+        swapping = false;
+      }, 380);
+    }
+
+    function step() {
+      if (paused || swapping || document.visibilityState !== 'visible') {
+        return;
+      }
+      at = (at + 1) % frames.length;
+      paint(frames[at]);
+    }
+
+    function start() {
+      if (!timer) {
+        timer = window.setInterval(step, 7000);
+      }
+    }
+
+    function stop(restore) {
+      if (timer) {
+        window.clearInterval(timer);
+        timer = 0;
+      }
+      if (restore) {
+        at = -1;
+        paint(own);
+      }
+    }
+
+    /* Only while the grid is on screen, and only while nobody is reading it:
+       hover, keyboard focus and a hidden tab all pause it, which is also what
+       keeps auto-updating copy on the right side of WCAG 2.2.2. */
+    grid.addEventListener('pointerenter', function () {
+      paused = true;
+    });
+    grid.addEventListener('pointerleave', function () {
+      paused = false;
+    });
+    grid.addEventListener('focusin', function () {
+      paused = true;
+    });
+    grid.addEventListener('focusout', function () {
+      paused = false;
+    });
+
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              start();
+            } else {
+              stop(true);
+            }
+          });
+        },
+        { threshold: 0.2 }
+      ).observe(grid);
+    } else {
+      start();
+    }
+  })();
+
   /* ORDER MATTERS: Paddle must initialise (and read ?_ptxn=) before anything else touches the URL. */
   initPaddleWhenReady();
   handlePaddleReturn();

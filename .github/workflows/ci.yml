@@ -172,6 +172,15 @@ jobs:
         id: qa-csp-eval
         run: node tools/verify-csp-unsafe-eval.cjs
 
+      # Google sign-in wiring + domain gate (owner 2026-10-31). One client ID
+      # everywhere, the CSP origins GIS needs, a mount and a module on every
+      # page that loads GIS, the Authorized JavaScript Origins checklist in
+      # docs/GOOGLE-SIGNIN-SETUP.md tracking every canonical domain, and a
+      # tripwire on the tokeninfo wire shape that broke sign-in for a week.
+      - name: "T1: Google sign-in wiring + domain checklist"
+        id: google-signin
+        run: npm run verify:google
+
       # ── Deploy validation (dry-run, no credentials needed) ──────────
 
       # D-4 (UI-CI-DIRECTIVE section D4.3): the split moved 112 run: blocks

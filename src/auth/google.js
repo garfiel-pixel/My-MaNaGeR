@@ -110,6 +110,43 @@ async function consumeSignInNonce(env, nonce) {
   }
 }
 
+// OWNER REPORT 2026-10-31 (sign-in dead after a sign-out): tokeninfo is a
+// Google-specific endpoint that serialises EVERY claim as a string, so the
+// email_verified claim arrives as "true" / "false" even though the signed ID
+// token claim is a boolean (Google OpenID Connect reference, "Tokeninfo
+// Endpoint": "email_verified | string | Value is a string "true" or "false"").
+// G-2.4 shipped `payload.email_verified !== true`, which therefore refused
+// every real sign-in with 401 while the browser saw its own sign-in sheet
+// (the account chooser pops up, Google returns a credential, the Worker
+// rejects it, the client silently re-draws the button). Accept both spellings
+// and nothing else: an absent claim, "false", or any unknown value is a
+// refusal.
+function emailVerified(claim) {
+  return claim === true || claim === 1 || claim === 'true' || claim === '1';
+}
+
+// Decode the CLAIMS SEGMENT of an ID token that tokeninfo has ALREADY
+// validated (a 200 from tokeninfo means the signature, issuer and expiry of
+// this exact string are good, so reading its own payload adds no trust).
+// Needed for the nonce: the documented tokeninfo response body does not list
+// `nonce` among its fields, while the signed token always carries the claim
+// the client asked Google to put there. Returns null on any malformed input.
+function idTokenClaims(idToken) {
+  const parts = String(idToken || '').split('.');
+  if (parts.length !== 3 || !parts[1]) {
+    return null;
+  }
+  try {
+    const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
+    const bytes = Uint8Array.from(atob(padded), c => c.charCodeAt(0));
+    const parsed = JSON.parse(new TextDecoder().decode(bytes));
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 // Verify a Google ID token with oauth2.googleapis.com/tokeninfo.
 // G-2 (2026-10-23): also enforces email_verified and the sign-in nonce
 // contract. nonce/env are optional so legacy call shapes keep working.
@@ -145,8 +182,8 @@ async function verifyGoogleIdToken(idToken, clientId, nonce, env) {
     return null;
   }
   // G-2.4: an unverified (or silently absent) email claim is not an identity
-  // this app will mint a session for.
-  if (payload.email_verified !== true) {
+  // this app will mint a session for. tokeninfo spells the value as a string.
+  if (!emailVerified(payload.email_verified)) {
     return null;
   }
   // G-2.3: nonce contract. No nonce posted + flag off -> legacy path (a
@@ -165,7 +202,18 @@ async function verifyGoogleIdToken(idToken, clientId, nonce, env) {
       picture: typeof payload.picture === 'string' ? payload.picture : ''
     };
   }
-  if (typeof payload.nonce !== 'string' || payload.nonce !== postNonce) {
+  // The nonce claim is read from the token's OWN payload first (the
+  // documented tokeninfo response body does not list `nonce`), then from
+  // tokeninfo's copy when the payload cannot be decoded. Either way it is a
+  // claim of a token tokeninfo has just validated.
+  const claims = idTokenClaims(idToken);
+  const nonceClaim =
+    claims && typeof claims.nonce === 'string'
+      ? claims.nonce
+      : typeof payload.nonce === 'string'
+        ? payload.nonce
+        : '';
+  if (!nonceClaim || nonceClaim !== postNonce) {
     return null;
   }
   if (!(await consumeSignInNonce(env, postNonce))) {

@@ -105,16 +105,30 @@ function validPayload(over = {}) {
     {
       aud: PUBLIC_CLIENT_ID,
       iss: 'accounts.google.com',
-      exp: Math.floor(Date.now() / 1000) + 3600,
+      // tokeninfo serialises EVERY claim as a string, including iat/exp. The
+      // first fixture used numbers and a boolean email_verified, which is how
+      // a production-only sign-in break (2026-10-24 to 2026-10-31) passed CI:
+      // the wire shape has `"email_verified": "true"`, not `true`.
+      exp: String(Math.floor(Date.now() / 1000) + 3600),
+      iat: String(Math.floor(Date.now() / 1000)),
       sub: USER.sub,
       email: USER.email,
       name: USER.name,
       picture: USER.picture,
-      // G-2 (2026-10-23): the Worker now refuses any token whose
-      // email_verified is not literally true, so the fixture carries it.
-      email_verified: true
+      email_verified: 'true'
     },
     over
+  );
+}
+// A credential shaped like a real ID token (three dot-separated segments). The
+// nonce is a claim of the SIGNED token, and the tokeninfo response body does
+// not document it, so the Worker reads it from here.
+function fakeJwt(claims) {
+  return (
+    b64u(JSON.stringify({ alg: 'RS256', typ: 'JWT' })) +
+    '.' +
+    b64u(JSON.stringify(claims || {})) +
+    '.signature-not-checked-by-tokeninfo-stub'
   );
 }
 function b64u(str) {
@@ -428,11 +442,14 @@ async function mintNonce(e = dbEnv) {
   return { status: res.status, nonce: body && body.nonce };
 }
 async function signInWithNonce(e, postedNonce, over) {
-  setToken(Object.assign({ nonce: postedNonce }, over || {}));
+  setToken(over || {});
+  const idToken = fakeJwt(
+    Object.assign({ sub: USER.sub, email: USER.email }, postedNonce ? { nonce: postedNonce } : {})
+  );
   const res = await worker.fetch(
     req('/api/auth/google', {
       method: 'POST',
-      body: postedNonce ? { idToken: 'tok', nonce: postedNonce } : { idToken: 'tok' }
+      body: postedNonce ? { idToken, nonce: postedNonce } : { idToken }
     }),
     e
   );
@@ -467,9 +484,12 @@ check('nonce: valid nonce -> 200', (await signInWithNonce(dbEnv, n4.nonce)) === 
 // N5: wrong nonce (posted value differs from the token's claim) -> 401.
 const n5a = await mintNonce();
 const n5b = await mintNonce();
-setToken({ nonce: n5a.nonce });
+setToken({});
 const n5 = await worker.fetch(
-  req('/api/auth/google', { method: 'POST', body: { idToken: 'tok', nonce: n5b.nonce } }),
+  req('/api/auth/google', {
+    method: 'POST',
+    body: { idToken: fakeJwt({ nonce: n5a.nonce }), nonce: n5b.nonce }
+  }),
   dbEnv
 );
 check('nonce: wrong nonce -> 401', n5.status === 401, n5.status);
@@ -520,6 +540,62 @@ await worker.scheduled({}, dbEnv);
 check('nonce: scheduled sweep removes expired rows', !nonceRows.has(deadKey), [
   ...nonceRows.keys()
 ]);
+
+// ---- G-2.4 REGRESSION: the tokeninfo WIRE SHAPE (owner report 2026-10-31) ---
+// Every check above now runs against tokeninfo's real serialisation (string
+// claims). These arms name the failure so a future edit cannot silently
+// reintroduce it: sign-in worked in CI and failed in production for a week
+// because the fixture said `email_verified: true` and the endpoint said
+// `"email_verified": "true"`.
+setToken({});
+const v1 = await worker.fetch(
+  req('/api/auth/google', { method: 'POST', body: { idToken: fakeJwt({}) } }),
+  dbEnv
+);
+check(
+  'signin: tokeninfo email_verified "true" (string, real wire shape) -> 200',
+  v1.status === 200,
+  v1.status
+);
+setToken({ email_verified: 'false' });
+const v2 = await worker.fetch(
+  req('/api/auth/google', { method: 'POST', body: { idToken: fakeJwt({}) } }),
+  dbEnv
+);
+check('signin: email_verified "false" (string) -> 401', v2.status === 401, v2.status);
+setToken({ email_verified: 'yes' });
+const v3 = await worker.fetch(
+  req('/api/auth/google', { method: 'POST', body: { idToken: fakeJwt({}) } }),
+  dbEnv
+);
+check('signin: unknown email_verified value -> 401', v3.status === 401, v3.status);
+setToken({ email_verified: true });
+const v4 = await worker.fetch(
+  req('/api/auth/google', { method: 'POST', body: { idToken: fakeJwt({}) } }),
+  dbEnv
+);
+check(
+  'signin: email_verified boolean true (signed-claim spelling) -> 200',
+  v4.status === 200,
+  v4.status
+);
+// The nonce lives in the SIGNED TOKEN, and the tokeninfo body does not
+// document it: this arm proves the Worker reads it from the credential rather
+// than from tokeninfo, which is what every nonce check above now exercises.
+const v5n = await mintNonce();
+setToken({ nonce: undefined });
+const v5 = await worker.fetch(
+  req('/api/auth/google', {
+    method: 'POST',
+    body: { idToken: fakeJwt({ nonce: v5n.nonce }), nonce: v5n.nonce }
+  }),
+  dbEnv
+);
+check(
+  'signin: nonce read from the ID token when tokeninfo omits it -> 200',
+  v5.status === 200,
+  v5.status
+);
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
 process.exit(failed ? 1 : 0);

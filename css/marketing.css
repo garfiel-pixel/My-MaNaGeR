@@ -4046,6 +4046,21 @@ body.dark-mode #f-voice {
   padding: 0;
   margin-top: 4px;
 }
+/* A failed Google attempt must say so (owner report 2026-10-31: the account
+   chooser opened, the Worker refused the credential, and the page stayed
+   silent). js/mmgr-google-auth.js inserts this line directly under the Google
+   button, on the CARD rather than in the email sheet, so it needs its own
+   type rule here. */
+.signin-card #google-signin-status {
+  margin: 2px 0 6px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #fca5a5;
+  text-align: center;
+}
+.signin-card #google-signin-status[hidden] {
+  display: none;
+}
 .signin-page .auth-header .brand b {
   color: var(--lit-white);
 }

@@ -117,6 +117,35 @@ var MMGR = window.MMGR || {};
     return !!(window.google && window.google.accounts && window.google.accounts.id);
   }
 
+  // A nonce lives 5 minutes (NONCE_TTL_MS on the Worker). A page left open
+  // longer than that would hand GIS an expired one; with GOOGLE_NONCE_REQUIRED
+  // on, that is a user who cannot sign in on the tab they already had open.
+  // Refreshed in module memory only, while the tab is visible, plus once when
+  // it becomes visible again so the click after a long pause is always live.
+  let _nonceTimer = 0;
+  let _nonceVisibilityBound = false;
+  function scheduleNonceRefresh() {
+    if (_nonceTimer) {
+      return;
+    }
+    _nonceTimer = window.setInterval(
+      function () {
+        if (document.visibilityState === 'visible') {
+          fetchSignInNonce();
+        }
+      },
+      4 * 60 * 1000
+    );
+    if (!_nonceVisibilityBound) {
+      _nonceVisibilityBound = true;
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') {
+          fetchSignInNonce();
+        }
+      });
+    }
+  }
+
   // BUG-2: detect when the GIS popup is blocked by the browser. The GIS
   // library logs to console.error (GSI_LOGGER) but provides no callback for
   // popup failure. We intercept window.open during the GIS button click ,
@@ -144,12 +173,9 @@ var MMGR = window.MMGR || {};
                 'err'
               );
             } else {
-              const statusEl = $('google-signin-status') || $('drive-sync-status');
-              if (statusEl) {
-                statusEl.textContent =
-                  'Popup blocked , allow popups for this site, or use email sign-in.';
-                statusEl.classList.add('is-err');
-              }
+              setGisStatus(
+                'Your browser blocked the Google sign-in popup. Allow popups for this site, or use the email sign-in below.'
+              );
             }
           }
           return w;
@@ -157,6 +183,38 @@ var MMGR = window.MMGR || {};
       },
       { capture: true, once: true }
     );
+  }
+
+  // OWNER REPORT 2026-10-31 (sign-in appeared to do nothing after a sign-out):
+  // the Google attempt went account chooser -> credential -> POST
+  // /api/auth/google -> 401, and every failure path called showButton() in
+  // silence, so the page looked exactly as it did before the click. A failed
+  // attempt now says so, in one status line under the button that every Google
+  // failure path shares. Plain language, no emoji, no dashes (owner copy
+  // rules). Created on demand so a working page never grows an empty line.
+  function gisStatusEl() {
+    const host = $('google-signin-button');
+    if (!host || !host.parentNode) {
+      return null;
+    }
+    let el = $('google-signin-status');
+    if (!el) {
+      el = document.createElement('p');
+      el.id = 'google-signin-status';
+      el.className = 'email-auth-err gis-status';
+      el.setAttribute('role', 'status');
+      el.setAttribute('aria-live', 'polite');
+      host.parentNode.insertBefore(el, host.nextSibling);
+    }
+    return el;
+  }
+  function setGisStatus(msg) {
+    const el = gisStatusEl();
+    if (!el) {
+      return;
+    }
+    el.textContent = msg || '';
+    el.hidden = !msg;
   }
 
   // The Google button's look is set by data-gis-* attributes on its host, so a
@@ -199,6 +257,7 @@ var MMGR = window.MMGR || {};
       _gisInit = true;
       bindGisFit();
       fetchSignInNonce();
+      scheduleNonceRefresh();
       return true;
     } catch (e) {
       if (window.console && window.console.warn) {
@@ -658,6 +717,7 @@ var MMGR = window.MMGR || {};
         /* non-JSON failure */
       }
       if (res.ok && data && data.ok && data.user) {
+        setGisStatus('');
         showUser(data.user);
         document.dispatchEvent(new CustomEvent('mmgr:google-signed-in', { detail: data.user }));
         if (typeof window.mmgrOnGoogleSignIn === 'function') {
@@ -669,11 +729,16 @@ var MMGR = window.MMGR || {};
         }
       } else {
         // Worker rejected the token (or a stale/forged credential) , no false
-        // signed-in state, no redirect, no unlock.
+        // signed-in state, no redirect, no unlock. It must not be silent: the
+        // user clicked, chose an account, and is owed a reason.
         showButton();
+        setGisStatus('Google sign in did not finish. Try again, or use the email sign in below.');
       }
     } catch (e) {
       showButton();
+      setGisStatus(
+        'Google sign in did not reach the server. Check your connection, then try again.'
+      );
     } finally {
       // G-2: every attempt burns the nonce it used - fetch the next one now.
       fetchSignInNonce();

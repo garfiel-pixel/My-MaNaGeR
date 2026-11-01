@@ -428,7 +428,14 @@
 // change made in another tab: js/mmgr-theme.js and js/mmgr-perf.js listen for
 // `storage` and re-apply their own preference only, so neither can drag the
 // other. Changed shell assets: js/mmgr-theme.js, js/mmgr-perf.js.
-const CACHE = 'mmgr-shell-v520';
+// v521 - GOOGLE SIGN-IN REPAIR (owner report 2026-10-31). The Worker's token
+// verifier compared `email_verified` with boolean true while the tokeninfo
+// endpoint serialises it as the STRING "true", so every real sign-in since
+// cd5a90a returned 401 with no message on the page. src/auth/google.js now
+// normalises the claim and reads the nonce from the ID token; the client
+// reports a refused credential instead of failing silently. Changed shell
+// assets: js/mmgr-google-auth.js, css/marketing.css (signin status line).
+const CACHE = 'mmgr-shell-v521';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

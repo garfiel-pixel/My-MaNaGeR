@@ -149,9 +149,21 @@ check(
   'app rail: navigation does not close the desktop rail',
   /const desktop = window\.matchMedia/.test(appHtml) && /if \(desktop\) return;/.test(appHtml)
 );
+// OWNER 2026-11-01: the app page arrives FLAT. The 2026-08 desktop pin (rail
+// open pre-paint, re-asserted on pageshow) is overturned, so the arms below
+// assert the NEW contract: no pre-paint open, a one-time nudge instead, and a
+// pageshow handler that only re-syncs the controls.
 check(
-  'app rail: re-asserts the pinned-open state on pageshow',
-  /addEventListener\('pageshow'/.test(appHtml) && /classList\.add\('side-open'\)/.test(appHtml)
+  'app rail: no pre-paint side-open (the page loads flat)',
+  !/document\.documentElement\.classList\.add\('side-open'\)/.test(appHtml)
+);
+check(
+  'app rail: first-run nudge opens and closes the rail once',
+  /mmgr_rail_nudge/.test(appHtml) && /classList\.add\('side-open', 'rail-nudge'\)/.test(appHtml)
+);
+check(
+  'app rail: pageshow re-syncs the controls without forcing the rail open',
+  /addEventListener\('pageshow', function\(\)\{\s*\n\s*syncSidebarAria\(\);/.test(appHtml)
 );
 check(
   'admin rail: navigation does not close the desktop rail',

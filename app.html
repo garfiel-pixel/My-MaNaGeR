@@ -287,15 +287,16 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;visibility:h
    first paint from the same localStorage slot every theme toggle writes, so a
    dark choice made anywhere persists everywhere with no flash. Kept inline in
    <head> so the class is set before any content renders (FOUC prevention).
-   NEW-UI-CREATION-BRIEF I1 follow-up: on desktop (>=769px) the launcher rail
-   is PINNED OPEN by default , body.side-open is set pre-paint here so there
-   is no layout flash; the hamburger toggles it (closes/reopens) on every
-   viewport. Mobile stays drawer-closed by default. */
+   OWNER 2026-11-01: the launcher rail no longer opens itself on load. The
+   page arrives FLAT at every width - the icon strip and the hamburger are the
+   only rail affordances until the user asks for the panel. (This overturns the
+   2026-08 desktop pin: a page that moves under the user before they touch
+   anything reads as a bug, not as onboarding.) First-run guidance lives in
+   the one-time open-close nudge at the bottom of the boot block. */
 (function(){ try {
   var t = localStorage.getItem('mmgr_theme');
   var dark = t === 'dark' || (t === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
   if (dark) document.documentElement.classList.add('dark-mode');
-  if (window.matchMedia && window.matchMedia('(min-width:769px)').matches) document.documentElement.classList.add('side-open');
 } catch (e) {} })();
 </script>
 </head>
@@ -1961,16 +1962,41 @@ syncThemeQuick();
 syncSidebarAria();
 syncSidebarIcons();
 
-/* Rail restore (owner 2026-10-09): a page restored from the back/forward
-   cache must come back with the desktop rail exactly as the design pins it
-   (open), and its icon strip in step. Without this, leaving the launcher for
-   admin/calculator and pressing Back returned to a rail-less, icon-less page. */
+/* Rail restore (owner 2026-10-09, revised 2026-11-01): a page restored from the
+   back/forward cache must come back with its hamburger and icon strip in step
+   with whatever rail state it had. It no longer force-opens the rail - the
+   owner asked for a flat first paint, so a restored page stays flat too and the
+   controls simply re-read the class that is already there. */
 window.addEventListener('pageshow', function(){
-  if (!(window.matchMedia && window.matchMedia('(min-width:769px)').matches)) return;
-  document.body.classList.add('side-open');
   syncSidebarAria();
   syncSidebarIcons();
 });
+
+/* OWNER 2026-11-01 (first-run rail nudge): "if it is a first-time user, a little
+   animation where it pops out to show the user it can come out, and goes back
+   in." Once per device, desktop only, after the page has settled: the rail
+   opens, holds for a beat and closes itself. No state is written until the
+   nudge runs, and reduced motion gets no nudge at all - the icon strip and the
+   hamburger already say where the rail lives. */
+(function(){
+  try {
+    var mq = window.matchMedia && window.matchMedia('(min-width:769px)');
+    if (!mq || !mq.matches) return;
+    if (localStorage.getItem('mmgr_rail_nudge') === '1') return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    localStorage.setItem('mmgr_rail_nudge', '1');
+    setTimeout(function(){
+      document.body.classList.add('side-open', 'rail-nudge');
+      syncSidebarAria();
+      syncSidebarIcons();
+      setTimeout(function(){
+        document.body.classList.remove('side-open', 'rail-nudge');
+        syncSidebarAria();
+        syncSidebarIcons();
+      }, 1500);
+    }, 900);
+  } catch (e) {}
+})();
 
 // Sidebar icon strip navigation: clicking an icon opens the sidebar and
 // navigates to the corresponding section/page.

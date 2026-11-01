@@ -462,7 +462,7 @@
 // so a scroll gesture is just a scroll. Filled accent buttons stop wearing the
 // pale glass edge in light mode ("we do not need a white outline"). Changed
 // shell assets: js/mmgr-combobox.js, css/mmgr.css.
-const CACHE = 'mmgr-shell-v526';
+const CACHE = 'mmgr-shell-v527';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

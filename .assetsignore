@@ -83,6 +83,10 @@ docs
 eslint.config.js
 package-lock.json
 CODEOWNERS
+# 2026-10-31 (E6.3): css/src/*.css are the AUTHORED layers; css/mmgr.css is
+# their concatenation and is what pages link. Uploading the layers ships the
+# same bytes twice for no runtime reason.
+css/src
 # robots.txt must be UPLOADED, not ignored: worker.js serves it (and
 # sitemap.xml) through env.ASSETS.fetch() in its SEO_FILES branch, so '*.txt'
 # above made that branch 404 forever. Without this negation the repo's

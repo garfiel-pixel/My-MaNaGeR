@@ -296,6 +296,39 @@ function buildBundle(modules, outputFile, label) {
   return { name: path.basename(outputFile), hashed: hashedName, hash: hash };
 }
 
+// ---- App stylesheet assembly (E6.3, 2026-10-31) ----
+// css/src/*.css are the SOURCE of the app stylesheet; css/mmgr.css is the
+// generated document every page links. Files are concatenated in filename
+// order, which is also cascade order - the numeric prefixes exist so moving a
+// rule between layers cannot silently reorder it against its neighbours.
+// The banner is what tells a future session that editing css/mmgr.css is a
+// dead end.
+const CSS_SRC = path.join(ROOT, 'css', 'src');
+const CSS_BANNER =
+  '/* GENERATED FROM css/src/*.css BY build.js. Edit the layer files, never this file. */\n\n';
+
+function bundleAppCSS() {
+  const start = Date.now();
+  if (!fs.existsSync(CSS_SRC)) {
+    console.log('  app CSS layers: css/src missing, leaving css/mmgr.css untouched');
+    return false;
+  }
+  const layers = fs
+    .readdirSync(CSS_SRC)
+    .filter(f => f.endsWith('.css'))
+    .sort();
+  if (!layers.length) {
+    console.error('  ERROR: css/src holds no .css layer');
+    process.exit(1);
+  }
+  const body = layers.map(f => fs.readFileSync(path.join(CSS_SRC, f), 'utf8')).join('');
+  fs.writeFileSync(path.join(ROOT, 'css', 'mmgr.css'), CSS_BANNER + body);
+  console.log('  app CSS layers:');
+  console.log('    layers:   ' + layers.length + ' (' + layers.join(', ') + ')');
+  console.log('    time:     ' + (Date.now() - start) + 'ms');
+  return true;
+}
+
 // ---- CSS minification ----
 function buildCSS(inputFile, outputFile, label) {
   const start = Date.now();
@@ -371,6 +404,7 @@ if (buildGlobe) {
   buildBundle(GLOBE_MODULES, 'dist/marketing-globe.js', 'marketing globe bundle');
 }
 if (buildCss) {
+  bundleAppCSS();
   buildCSS('css/mmgr.css', 'dist/mmgr.min.css', 'app CSS');
   buildCSS('css/marketing.css', 'dist/marketing.min.css', 'marketing CSS');
 }

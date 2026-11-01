@@ -1,0 +1,1755 @@
+/* ---- Dark Mode (opt-in only) ---- */
+/* OWNER 2026-09-07: dark theme is PURE BLACK & WHITE (rose gold stays a
+   light-theme accent; it does not suit the starfield). Neutrals go true
+   mono; semantic colors collapse to white text + hairline borders so state
+   still reads without color. Primary actions invert: white surface, black
+   label. Status pills elsewhere keep their light-theme hues. */
+body.dark-mode {
+  /* True mono surfaces - starfield canvas shows through unchanged */
+  --canvas: var(--lit-night); /* near-black neutral (starfield sky base) */
+  --sidebar: #101013; /* neutral dark sidebar */
+  --card: #151518; /* neutral dark surface */
+  --surface: #151518;
+  /* Skeleton sheen re-map: light alpha fills read as boxes on the dark
+     canvas (never dark-on-dark). */
+  --skel-base: var(--lit-white-06);
+  --skel-sheen: rgba(255, 255, 255, 0.13);
+  --surface-raised: #1c1c20;
+  --border: #2c2c31; /* neutral dark border */
+  --text: #f5f5f5; /* true white text */
+  --text-heading: #ffffff;
+  --text-secondary: #c9c9cf;
+  --text-muted: #8f8f97;
+  --slate: #8f8f97;
+  /* Brand: WHITE - the accent IS white in dark */
+  --brand: #ffffff;
+  --brand-hover: #e6e6e6;
+  --brand-subtle: var(--lit-white-08);
+  --brand-on: var(--lit-night);
+  --gold: #ffffff;
+  --gold-rgb: 255, 255, 255;
+  --gold-ink: #ffffff; /* the accent IS white in dark mode */
+  --gold-text: var(--gold); /* gold words in dark follow the accent, unchanged */
+  --danger-ink: #ffffff; /* the accent IS white in dark mode */
+  --amber-ink: #ffffff; /* the accent IS white in dark mode */
+  /* Accent cyan: white */
+  --accent-cyan: #e8e8ec;
+  --accent-cyan-subtle: var(--lit-white-06);
+  /* Semantic: white text - state carried by borders/dots, not hue */
+  --success: #ffffff;
+  --success-subtle: rgba(255, 255, 255, 0.07);
+  --info: #ffffff;
+  --info-subtle: rgba(255, 255, 255, 0.07);
+  --warning: #ffffff;
+  --warning-subtle: rgba(255, 255, 255, 0.07);
+  --danger: #ffffff;
+  --danger-subtle: rgba(255, 255, 255, 0.09);
+  --green: #ffffff;
+  --amber: #ffffff;
+  --blue: #ffffff;
+  /* OWNER 2026-09-17 (NOTIFIER-DARK-RULE): status DOTS keep their true hue
+     in dark mode - a red 'not published' dot collapsing to white/grey fails
+     the message. Text and badges stay black-and-white (the starfield theme);
+     only dots read color. Dark variants are slightly brighter for contrast
+     against #0b0b0d surfaces. Every dot consumer references these, never
+     --green/--amber/--blue/--danger directly. */
+  --dot-red: #ff5f56;
+  --dot-yellow: #ffc53d;
+  --dot-green: #3ddc84;
+  --dot-blue: #6db3ff;
+  --dot-red-rgb: 255, 95, 86;
+  --dot-yellow-rgb: 255, 197, 61;
+  --dot-green-rgb: 61, 220, 132;
+  --dot-blue-rgb: 109, 179, 255;
+  --purple: #c9c9cf;
+  --purple-rgb: 201, 201, 207;
+  --amber-rgb: 255, 255, 255;
+  --on-gold: var(--lit-night);
+  --on-primary: var(--lit-night);
+  --tile-bg: var(--lit-white-05);
+  --track-bg: var(--lit-white-08);
+  /* Glass: pure white hairline over the starfield; no frost tint */
+  --glass-blur: 12px;
+  --glass-saturate: 100%;
+  --glass-fill-dark: var(--lit-white-04);
+  --glass-fill-dark-hover: rgba(255, 255, 255, 0.07);
+  --glass-fill-dark-active: var(--lit-white-10);
+  --glass-rim: inset 0 1px 0 var(--lit-white-10);
+  --glass-rim-strong: inset 0 1px 0 var(--lit-white-22);
+  --glass-border: 1px solid var(--lit-white-10);
+  --glass-shadow: 0 4px 16px var(--lit-black-35);
+  --toggle-on-bg: #ffffff;
+  --toggle-on-fg: var(--lit-night);
+  --toggle-off-bg: var(--lit-white-10);
+  --toggle-off-fg: #f5f5f5;
+}
+
+/* ---- Dark-mode status language: text + hairline, not colored pills ---- */
+/* OWNER 2026-09-07: in dark, badges drop their green/amber/blue fills;
+   the label + a hairline border carry state (the dot variants below add
+   a colored dot in the light theme only). */
+body.dark-mode .badge {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--glass-border);
+}
+body.dark-mode .badge.active,
+body.dark-mode .badge.completed {
+  background: transparent;
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.45);
+}
+body.dark-mode .badge.on-hold {
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: var(--glass-border);
+}
+body.dark-mode .badge.planning {
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: var(--glass-border);
+}
+body.dark-mode .badge.br,
+body.dark-mode .badge.ba,
+body.dark-mode .badge.bg,
+body.dark-mode .badge.bs {
+  background: transparent;
+  color: var(--text);
+}
+/* Primary nav + tabs invert: white surface, black label (the highlight the
+   owner asked for), white glow edge instead of green/gold. */
+body.dark-mode .tab-btn.active {
+  color: var(--lit-night);
+  background: #ffffff;
+}
+body.dark-mode .sec-btn.active {
+  border-color: var(--lit-white-70);
+  color: var(--lit-night);
+  background: #ffffff;
+  font-weight: 700;
+}
+body.dark-mode .sec-nav .sec-btn.active {
+  box-shadow:
+    0 0 0 1px var(--lit-white-70),
+    0 0 14px var(--lit-white-18);
+}
+/* HOVER-INVISIBILITY FIX (owner 2026-09-07): .sec-btn:hover set the text
+   green; on the ACTIVE section the background is also green/white, so the
+   label vanished. Active buttons keep their inverted label on hover. */
+.sec-btn.active:hover {
+  color: #ffffff; /* green fill, light mode - not a gold fill */
+}
+.sec-btn.active:hover .ic-svg,
+.sec-btn.active:hover path {
+  stroke: #ffffff; /* green fill, light mode */
+}
+body.dark-mode .sec-btn.active:hover {
+  color: var(--lit-night);
+}
+body.dark-mode .sec-btn.active:hover .ic-svg,
+body.dark-mode .sec-btn.active:hover path {
+  stroke: var(--lit-night);
+}
+body.dark-mode .sec-btn:hover {
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+body.dark-mode .sec-btn:hover .ic-svg,
+body.dark-mode .sec-btn:hover path {
+  stroke: #ffffff;
+}
+
+/* ---- Project Photos panel (2026-10-09) ---- */
+.photos-body {
+  margin-top: 6px;
+}
+.photos-body .photo-empty {
+  color: var(--text-muted);
+}
+.photo-item {
+  display: flex;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  margin-bottom: 8px;
+}
+.photo-thumb-link {
+  flex: 0 0 84px;
+  width: 84px;
+  height: 84px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(var(--gold-rgb), 0.06);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+.photo-thumb {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--slate);
+}
+.photo-placeholder-ico {
+  width: 28px;
+  height: 28px;
+  stroke-width: 1.6;
+}
+.photo-caption {
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.photo-meta {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+.photo-item a:hover .photo-thumb {
+  color: var(--gold-text);
+  border-color: var(--gold-ink);
+}
+body.dark-mode .photo-item {
+  border-color: var(--lit-white-18);
+  background: var(--lit-white-04);
+}
+body.dark-mode .photo-thumb-link {
+  border-color: var(--lit-white-14);
+  background: var(--lit-white-05);
+}
+body.dark-mode .photo-item a:hover .photo-thumb {
+  color: var(--gold-text);
+  border-color: var(--gold-ink);
+}
+
+/* Photos panel controls (owner 2026-10-11). These used to be hidden by
+   inline style attributes on project.html. Two reasons they move here:
+   the project page keeps a zero-inline-styles contract (qa-full 37), and
+   the rendered inline-style census counted them (qa-full 38). The CAPTION
+   box is deliberately left visible: the upload handler reads its value the
+   moment a file is chosen, so a hidden caption field meant a caption could
+   never be recorded. The file input stays invisible because it is opened
+   by its button, and the cancel button has no handler yet. */
+#photos-upload-input {
+  display: none;
+}
+#photos-cancel-btn {
+  display: none;
+}
+#photos-upload-note {
+  margin-top: 4px;
+}
+
+/* Theme picker pressed state: white in dark, gold kept for light */
+body.dark-mode .pal-btn[aria-pressed='true'] {
+  color: var(--lit-night);
+  background: #ffffff;
+}
+body.dark-mode .tgl input:checked + .tsl {
+  background: #ffffff;
+}
+body.dark-mode .tgl input:checked + .tsl::after {
+  background: var(--lit-night);
+}
+
+/* SYSTEM THEME - follows OS prefers-color-scheme */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* OWNER 2026-09-12 (Android scroll-shrink review): Chrome Android's Text
+   Autosizer (font boosting) reads the text-size-adjust property from the ROOT
+   element - a body-only declaration does not fully suppress per-cluster
+   boosting, and the autosizer RE-COMPUTES its multipliers every time the URL
+   bar collapses on scroll (viewport relayout). That was the launcher's
+   "everything shrinks and reforms while I scroll" defect: headline rewraps,
+   cards resize, Android only, iPhone immune (Safari has no autosizer).
+   Root-level 100% pins every cluster to the authored clamp()/rem sizes, so
+   the responsive scaling keeps its cap and never re-fires on scroll. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  font-family:
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    'SF Pro Display',
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  background: var(--canvas);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  cursor: default;
+  letter-spacing: -0.01em;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+/* Safe area insets for notch devices (iPhone X+, Android 10+) */
+@supports (padding: max(0px)) {
+  body {
+    padding: max(0px, env(safe-area-inset-bottom));
+  }
+}
+
+/* ---- Wrong-code modal shake (CLAUDE-BUG-AUDIT-2026-08-11 #2) ---- */
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-6px);
+  }
+  40%,
+  80% {
+    transform: translateX(6px);
+  }
+}
+.shake {
+  animation: shake 0.4s ease-in-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .shake {
+    animation: none;
+  }
+}
+
+/* Icon strokes that shipped hardcoded now follow the theme tokens */
+/* Nav icons: neutral by default (Phase 5). Color only for active, status, alerts. */
+.sec-btn .ic-svg,
+.sec-btn path {
+  stroke: var(--slate);
+  transition: stroke var(--tr);
+}
+.sec-btn:hover .ic-svg,
+.sec-btn:hover path {
+  stroke: var(--green);
+}
+.sec-btn.active .ic-svg,
+.sec-btn.active path {
+  stroke: #ffffff; /* green fill, light mode */
+}
+/* Status-colored icons: keep red for Risk, amber for Changes */
+.sec-btn[data-section='risk'] .ic-svg path {
+  stroke: var(--danger);
+}
+.sec-btn[data-section='chg'] .ic-svg path {
+  stroke: var(--amber);
+}
+
+/* ---- Color-theme palette picker (THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §4.1) ---- */
+.pal-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  background: var(--track-bg);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+}
+.pal-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--slate);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 5px 12px;
+  border-radius: 100px;
+  cursor: pointer;
+  transition:
+    color var(--tr),
+    background var(--tr);
+}
+.pal-btn:hover {
+  color: var(--text);
+}
+.pal-btn:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 1px;
+}
+.pal-btn[aria-pressed='true'] {
+  color: var(--on-gold);
+  background: var(--gold);
+}
+
+/* BOTTOM DOCK (owner D3/D6/D11, 2026-09-03) - the ONE full */
+/* Shared vertical theme stack (D5/D6): promoted from the old
+   db-ctl-col pattern. Apply to a .pal-switch to stack options. */
+.pal-col {
+  flex-direction: column;
+  gap: 0;
+  border-radius: var(--radius);
+}
+.pal-col .pal-btn {
+  width: 100%;
+  text-align: center;
+  border-radius: 0;
+}
+.pal-col .pal-btn:first-child {
+  border-radius: var(--radius) var(--radius) 0 0;
+  border-bottom: 1px solid var(--border);
+}
+.pal-col .pal-btn:last-child {
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+.dock {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 16px;
+  z-index: 95; /* above header/gate, below drawer (1000) + modals + toasts */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+  min-width: 148px;
+  padding: 10px 12px;
+  border: var(--glass-border);
+  border-radius: 18px;
+  background: var(--glass-fill-dark);
+  box-shadow: var(--glass-rim), var(--glass-shadow);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+}
+.dock .pal-switch {
+  margin: 0;
+}
+.dock-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.7rem;
+  color: var(--slate);
+}
+.dock-item > .ico {
+  width: 14px;
+  height: 14px;
+  color: var(--gold-text);
+  flex-shrink: 0;
+}
+.dock-item .dock-lbl {
+  flex: 1;
+  min-width: 0;
+}
+.dock-item .tgl {
+  margin: 0;
+}
+.dock .pal-btn {
+  font-size: 0.66rem;
+  padding: 4px 10px;
+}
+.dock:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 2px;
+}
+/* Reserve scroll space so page content never hides behind the dock. */
+body.has-dock {
+  padding-bottom: calc(var(--dock-h) + 24px);
+}
+@media (max-width: 600px) {
+  .dock {
+    left: 10px;
+    right: 10px;
+    transform: none;
+    width: auto;
+    min-width: 0;
+    gap: 6px;
+    padding: 8px 10px;
+    border-radius: 16px;
+  }
+}
+
+/* Inline dock variant: */
+.dock.dock-inline {
+  position: static;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  top: auto;
+  transform: none;
+  z-index: auto;
+  display: block;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--squircle-md);
+  background: var(--card);
+  box-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.04),
+    0 4px 10px rgba(16, 24, 40, 0.06);
+}
+.dock.dock-inline .dock-item {
+  display: inline-flex;
+}
+.dock.dock-inline .pal-switch {
+  margin: 0;
+}
+.dock.dock-inline .db-ctl-row,
+.dock.dock-inline .rail-ctl-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-top: 1px solid var(--border);
+}
+.dock.dock-inline .db-ctl-row:first-child,
+.dock.dock-inline .rail-ctl-row:first-child {
+  border-top: none;
+}
+.dock.dock-inline .db-ctl-row > svg,
+.dock.dock-inline .rail-ctl-row > svg {
+  width: 14px;
+  height: 14px;
+  color: var(--gold-text);
+  flex-shrink: 0;
+}
+.dock.dock-inline .db-ctl-row .sl,
+.dock.dock-inline .rail-ctl-row .sl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--slate);
+}
+.dock.dock-inline .rail-locked-row,
+.dock.dock-inline .db-locked-row {
+  opacity: 0.7;
+  font-size: 0.76rem;
+  padding: 6px 10px;
+  border-top: 1px solid var(--border);
+}
+.dock.dock-inline .rail-locked-row > svg,
+.dock.dock-inline .db-locked-row > svg {
+  color: var(--slate);
+}
+.dock.dock-inline .pal-hint {
+  font-size: 0.64rem;
+  color: var(--slate);
+  display: block;
+  margin-top: 2px;
+}
+@media (max-width: 600px) {
+  .dock.dock-inline {
+    border-radius: 12px;
+  }
+  .dock.dock-inline .db-ctl-row,
+  .dock.dock-inline .rail-ctl-row {
+    padding: 5px 8px;
+  }
+}
+/* When the dock is inline, the page no longer needs bottom scroll reserve
+   (nothing floats above the footer). */
+body.has-dock.dock-inline-active {
+  padding-bottom: 0;
+}
+@media (max-width: 600px) {
+  .dock.dock-inline {
+    left: auto;
+    right: auto;
+    transform: none;
+    width: auto;
+    min-width: 0;
+    gap: 6px;
+    padding: 8px 10px;
+    border-radius: 16px;
+  }
+}
+
+/* ---- Crosshair cursor (opt-in only) ---- */
+body.crosshair-on {
+  cursor: crosshair;
+}
+#cx,
+#cy {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  background: rgba(var(--gold-rgb), 0.15);
+}
+#cx {
+  width: 100vw;
+  height: 1px;
+  left: 0;
+  top: 0;
+}
+#cy {
+  width: 1px;
+  height: 100vh;
+  left: 0;
+  top: 0;
+}
+body:not(.crosshair-on) #cx,
+body:not(.crosshair-on) #cy {
+  display: none;
+}
+
+/* ---- Header ---- */
+#app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+/* E1 (owner 2026-09-29 header-balance review): navigation clusters LEFT,
+   utility toggles strictly right. .hdr-left carries the back link, section
+   hamburger, greeting and methodology pills; margin-left:auto pins
+   .hdr-right to the right edge so utility never drifts inward. */
+#app-header .hdr-left {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+#app-header .hdr-left .tab-ctrl {
+  margin-left: 6px;
+}
+#app-header .hdr-right {
+  margin-left: auto;
+}
+#app-header .greeting {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.greeting {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+.tab-ctrl {
+  display: flex;
+  background: var(--track-bg);
+  border-radius: 100px;
+  padding: 4px;
+  gap: 2px;
+}
+.tab-btn {
+  position: relative;
+  z-index: 1;
+  padding: 8px 18px;
+  border: none;
+  background: transparent;
+  color: var(--slate);
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 100px;
+  cursor: pointer;
+  transition: color var(--tr);
+}
+.tab-btn:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 2px;
+}
+.tab-btn:hover {
+  color: var(--green);
+}
+.tab-btn.active {
+  color: var(--on-gold);
+  background: var(--gold);
+}
+.hdr-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.lock-ind {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--gold-text);
+  opacity: 0;
+  transition: opacity var(--tr);
+}
+.lock-ind.on {
+  opacity: 1;
+}
+.settings-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--slate);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: var(--tr-ui);
+}
+.settings-btn:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 2px;
+}
+.settings-btn:hover {
+  color: var(--gold-text);
+  border-color: var(--gold);
+  transform: rotate(45deg);
+}
+.hdr-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: var(--slate);
+  text-decoration: none;
+  padding: 5px 7px;
+  /* OWNER 2026-10-31: no box around the back link. The control is text plus
+     its arrow at rest; the highlight appears only under the pointer. */
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  transition: var(--tr-ui);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.hdr-back:hover {
+  color: var(--gold-text);
+  background: color-mix(in srgb, var(--gold) 10%, transparent);
+}
+.hdr-back:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 2px;
+}
+.hdr-back .ico {
+  width: 14px;
+  height: 14px;
+}
+
+/* ---- Focus Mode ---- */ /* Only the active panel + the exit chip remain */
+body.focus-mode #app-header,
+body.focus-mode .vl,
+body.focus-mode .tab-ctrl,
+body.focus-mode .hdr-left,
+body.focus-mode .hdr-right,
+body.focus-mode .sec-nav,
+body.focus-mode #drw,
+body.focus-mode #ub,
+body.focus-mode #om,
+body.focus-mode #cx,
+body.focus-mode #cy,
+body.focus-mode #meth-learn-card,
+body.focus-mode #gantt-tip,
+body.focus-mode #cfm-modal,
+body.focus-mode #conflict-modal,
+body.focus-mode #chartup-modal,
+body.focus-mode #wbsimport-modal,
+body.focus-mode #importdates-modal,
+body.focus-mode #nav-scrim,
+body.focus-mode #app-sidebar,
+body.focus-mode .hp {
+  display: none !important;
+}
+/* Focus Mode owns the whole viewport: a sidebar-on left margin must not leave
+   a dead band beside the focused panel. */
+body.focus-mode #app-main {
+  margin-left: 0;
+}
+body.focus-mode .panel {
+  display: none !important;
+}
+body.focus-mode .panel.active {
+  display: block !important;
+}
+.focus-ind {
+  display: none;
+}
+body.focus-mode .focus-ind {
+  display: flex;
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background: rgba(var(--gold-rgb), 0.1);
+  border: 1px solid var(--gold);
+  border-radius: 100px;
+  padding: 5px 14px;
+  font-size: 0.7rem;
+  color: var(--gold-text);
+  z-index: 200;
+  align-items: center;
+  gap: 6px;
+  box-shadow: var(--glass-rim);
+}
+
+/* Mobile nav drawer (THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §4.2) */
+/* BUG-9: hamburger is ALWAYS visible on desktop (overlay sidebar pattern).    On mobile (≤768px) it stays visible too - it opens the off-canvas .sec-nav
+   drawer. The old sidebar-on gate is removed: the hamburger is now a permanent
+   header element on every viewport. */
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  /* OWNER 2026-10-31: the menu control is an icon, not a boxed button. */
+  border: 0;
+  background: transparent;
+  color: var(--slate);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: var(--tr-ui);
+  flex-shrink: 0;
+}
+.nav-btn:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 2px;
+}
+.nav-btn:hover {
+  color: var(--gold-text);
+  background: color-mix(in srgb, var(--gold) 10%, transparent);
+}
+/* Owner 2026-08-15 (corrected): the thin icon was the Project Completion    RING, not the hamburger - the hamburger keeps its normal 2px weight but
+   is a bit LARGER (20px) so it's easily visible in the header bar. */
+.nav-btn .ico {
+  width: 20px;
+  height: 20px;
+  transition: transform var(--release-duration) var(--ease-ios);
+}
+#nav-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 22, 25, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--tr);
+  z-index: 94;
+}
+body.nav-open #nav-scrim {
+  opacity: 1;
+  pointer-events: auto;
+}
+/* SIDEBAR IS THE ONLY VIEW on desktop (owner 2026-08-15) */
+#nav-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 22, 25, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--tr);
+  z-index: 94;
+}
+body.nav-open #nav-scrim {
+  opacity: 1;
+  pointer-events: auto;
+}
+#app-sidebar {
+  position: fixed;
+  top: var(--hdr-h, 64px);
+  left: 0;
+  bottom: 0;
+  width: 240px;
+  z-index: 96;
+  background: var(--sidebar);
+  border-right: 1px solid var(--border);
+  transform: translateX(-105%);
+  visibility: hidden;
+  transition:
+    transform var(--release-duration) var(--ease-ios),
+    visibility var(--release-duration);
+  box-shadow: 0 12px 40px var(--lit-black-18);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* OWNER 2026-10-29: wheeling past the sidebar's last section must NOT drag
+     the page beside it - scroll chaining is contained at this boundary. */
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+/* Rail head: same hamburger as the header button, bare icon (no box),    rotated 90deg while the rail is open - one smooth spring (doctrine 3). */
+.sb-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  background: var(--sidebar);
+  z-index: 1;
+}
+.sb-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gold-ink);
+}
+.sb-title .ico {
+  font-size: 0.8rem;
+}
+.sb-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: var(--slate);
+  border-radius: var(--radius);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    color var(--tr),
+    background var(--tr);
+}
+.sb-close .ico {
+  width: 20px;
+  height: 20px;
+  transition: transform var(--release-duration) var(--ease-ios);
+}
+.sb-close:hover {
+  color: var(--gold-text);
+  background: color-mix(in oklch, var(--gold) 10%, transparent);
+}
+.sb-close:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 1px;
+}
+body.sidebar-open .nav-btn .ico,
+body.sidebar-open .sb-close .ico {
+  transform: rotate(90deg);
+}
+/* The sidebar stacks each nav group vertically (the shared .nav-group rules
+   are built for the horizontal pill row; the drawer media-query below applies
+   the same vertical treatment to the off-canvas drawer). */
+#app-sidebar .nav-group {
+  display: block;
+  margin: 0 0 14px;
+  padding: 0 12px;
+}
+#app-sidebar .nav-group + .nav-group {
+  padding-left: 12px;
+  margin-left: 0;
+}
+#app-sidebar .nav-group + .nav-group::before {
+  display: none;
+}
+#app-sidebar .nav-group-label {
+  display: block;
+  margin: 0 4px 6px;
+}
+#app-sidebar .sec-btn {
+  width: 100%;
+  justify-content: flex-start;
+  padding: 8px 12px;
+  border-radius: var(--radius-control);
+  margin-bottom: 4px;
+}
+/* MMGR-NEW-UI-CREATION-BRIEF I1: */
+.rail-group {
+  display: block;
+  margin: 0 0 14px;
+  padding: 0 12px;
+}
+.rail-label {
+  display: block;
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--slate);
+  margin: 0 4px 6px;
+}
+.rail-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: var(--radius-control);
+  color: var(--slate);
+  font-weight: 600;
+  font-size: 0.84rem;
+  width: 100%;
+  justify-content: flex-start;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  text-decoration: none;
+  transition:
+    background var(--tr),
+    color var(--tr);
+}
+.rail-link .ico {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: currentColor;
+}
+.rail-link:hover {
+  color: var(--text);
+  background: color-mix(in oklch, var(--gold) 8%, transparent);
+}
+.rail-ctl-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  font-size: 0.72rem;
+  color: var(--slate);
+}
+.rail-ctl-row > .ico {
+  width: 15px;
+  height: 15px;
+  color: var(--gold-text);
+  flex-shrink: 0;
+}
+.rail-ctl-row .tgl {
+  margin: 0 0 0 auto;
+}
+.rail-ctl-row .pal-switch {
+  margin-left: auto;
+}
+.rail-link:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 2px;
+  border-radius: var(--radius-control);
+}
+.rail-link.active {
+  color: var(--on-gold);
+  background: var(--gold);
+}
+.rail-link + .rail-link {
+  margin-top: 2px;
+}
+/* MMGR-NEW-UI-CREATION-BRIEF §2.1 (repurposed 2026-08-15): */
+@media (min-width: 769px) {
+  body.sidebar-on #app-sidebar {
+    box-shadow: none;
+    border-right: 1px solid var(--border);
+  }
+  body.sidebar-on.sidebar-open #app-sidebar {
+    transform: translateX(0);
+    visibility: visible;
+  }
+  body.sidebar-on.sidebar-open #app-main {
+    margin-left: 248px;
+  }
+  body.sidebar-on .sec-nav {
+    display: none !important;
+  }
+  body.sidebar-on #nav-scrim {
+    display: none;
+  }
+}
+
+/* ---- Section Navigation ---- */
+#app-main {
+  padding: 18px 24px;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+/* Drawer close row is a MOBILE-only control: its entire styling lives in the
+   max-width:768px block below. Without this desktop guard the bare markup
+   renders as an unstyled static div at the top of #app-main on desktop
+   (stray floating X). The mobile body.nav-open rule (2 classes) outranks
+   this 1-class rule, so the drawer close button still shows on phones. */
+.nav-close-row {
+  display: none;
+}
+.sec-nav {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+  /* PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE DIR-2: */
+  position: sticky;
+  top: var(--hdr-h, 0px);
+  z-index: 90;
+  background: var(--canvas);
+} /* STRUCTURAL-IA §2: grouped nav (Option A) - eyebrow labels + divider */
+.nav-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.nav-group + .nav-group {
+  position: relative;
+  padding-left: 14px;
+  margin-left: 4px;
+}
+.nav-group + .nav-group::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 18%;
+  height: 64%;
+  width: 1px;
+  background: var(--border);
+}
+.nav-group-label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--slate);
+  margin-right: 2px;
+  white-space: nowrap;
+}
+.sec-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  background: transparent;
+  color: var(--slate);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: var(--tr-ui);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.sec-btn:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 2px;
+}
+.sec-btn.active {
+  border-color: var(--green);
+  color: #ffffff; /* GREEN fill - ink would be 3.16:1 here */
+  background: var(--green);
+  font-weight: 700;
+}
+.sec-btn:hover {
+  border-color: var(--green);
+  color: var(--green);
+}
+/* The active pill is the strongest signal in the nav - filled background */
+.sec-nav .sec-btn.active {
+  box-shadow: 0 0 0 1px var(--green);
+}
+.ic-svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  vertical-align: -3px;
+}
+.ic-ct {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-right: 4px;
+  vertical-align: -4px;
+}
+/* UI-MODERNIZATION 2026-08-14 (dashboard-alignment audit, follow-up): */
+@media (min-width: 769px) {
+  .sec-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--slate) 35%, transparent) transparent;
+  }
+  .sec-nav::-webkit-scrollbar {
+    height: 6px;
+  }
+  .sec-nav::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--slate) 30%, transparent);
+    border-radius: 3px;
+  }
+  .sec-nav::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .sec-nav .nav-group {
+    flex-shrink: 0;
+  }
+}
+/* MARKET-FEATURE-ROADMAP A1: expiring-compliance count pill on the
+   Stakeholders nav button (sec-nav + sidebar clone share the same span).
+   Tiny red dot-style badge; hidden at zero via .is-hide. */
+.sec-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: var(--lit-white);
+  font-size: 0.58rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-left: 2px;
+}
+.sec-badge.is-hide {
+  display: none;
+}
+.stk-exp-bad {
+  border-color: rgba(239, 68, 68, 0.65) !important;
+  background: rgba(239, 68, 68, 0.08);
+} /* A1 heads-up banner on the Stakeholder Register - card language, amber
+   accent border + icon tile per UI doctrine 1, hidden until something is due. */
+.stk-cmp {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.1), var(--card) 60%);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: var(--squircle-md);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-size: 0.76rem;
+  color: var(--text);
+}
+.stk-cmp .ico {
+  color: var(--amber);
+  flex-shrink: 0;
+}
+.stk-cmp.is-hide {
+  display: none;
+}
+/* MARKET-FEATURE-ROADMAP A3/A4 (T8 REBUILD 2026-08-16): */
+.bid-pkg {
+  background: var(--glass-fill-dark);
+  border: var(--glass-border);
+  border-radius: var(--squircle-md);
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  box-shadow: var(--glass-rim), var(--glass-shadow);
+  transition:
+    border-color var(--tr),
+    background var(--tr),
+    box-shadow var(--tr);
+}
+.bid-pkg-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.bid-pkg-head input[type='text'] {
+  font-weight: 700;
+  font-size: 0.78rem;
+  background: var(--tile-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font-family: inherit;
+  padding: 6px 10px;
+  outline: none;
+  transition:
+    border-color var(--tr),
+    box-shadow var(--tr);
+}
+.bid-pkg-head input:focus-visible,
+.bp-box input:focus-visible,
+.bp-box select:focus-visible,
+.gn-cat-head input:focus-visible,
+.gn-crit input:focus-visible,
+.lvl-grid input:focus-visible {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(var(--gold-rgb), 0.22);
+}
+.bid-chips {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.bid-chip {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--slate);
+  background: var(--tile-bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 9px;
+}
+.bid-chip-muted {
+  font-weight: 500;
+  color: var(--text-secondary, var(--slate));
+}
+/* Leveled grid - transparent .dt inline-edit cells; totals rows bold. */
+.lvl-grid {
+  min-width: 640px;
+  margin-top: 2px;
+}
+.lvl-grid th,
+.lvl-grid td {
+  padding: 5px 8px;
+  font-size: 0.72rem;
+  vertical-align: top;
+}
+.lvl-item-col {
+  min-width: 200px;
+}
+.lvl-tgt-col {
+  min-width: 96px;
+}
+.lvl-del-col {
+  width: 34px;
+}
+.lvl-sub {
+  min-width: 170px;
+}
+.lvl-sub-name {
+  font-weight: 700;
+  font-size: 0.74rem;
+  background: var(--tile-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font-family: inherit;
+  padding: 5px 8px;
+  outline: none;
+  width: 100%;
+}
+.lvl-sub-mini {
+  font-size: 0.64rem;
+  background: var(--tile-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font-family: inherit;
+  padding: 3px 7px;
+  outline: none;
+  width: 100%;
+  margin-top: 4px;
+}
+.lvl-sub .btn {
+  display: block;
+  margin-top: 5px;
+}
+.lvl-awarded {
+  display: inline-block;
+  margin-top: 5px;
+  font-size: 0.58rem;
+}
+.lvl-item-cell input,
+.lvl-tgt-cell input {
+  min-width: 120px;
+}
+.lvl-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.lvl-var-ok {
+  color: var(--green);
+}
+.lvl-var-over {
+  color: var(--danger);
+  font-weight: 800;
+}
+.lvl-var-na {
+  color: var(--slate);
+  font-weight: 400;
+}
+.lvl-label {
+  font-weight: 700;
+  color: var(--slate);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.lvl-total td {
+  border-top: 1px solid var(--border);
+}
+.lvl-base td,
+.lvl-adj td {
+  font-weight: 500;
+}
+.lvl-true td {
+  font-weight: 800;
+  border-top-width: 2px;
+}
+.lvl-actions td {
+  border-top: 2px solid var(--border);
+}
+.lvl-act {
+  font-size: 0.6rem;
+  padding: 3px 7px;
+  margin: 0 4px 4px 0;
+}
+.lvl-act-cell {
+  min-width: 250px;
+}
+.lvl-lowest {
+  font-size: 0.56rem;
+  margin-top: 2px;
+}
+.lvl-tools {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+} /* Go/No-Go weighted scorecard - categories with weights + 1-5 star rows. */
+.gn-card {
+  background: var(--glass-fill-dark);
+  border: var(--glass-border);
+  border-radius: var(--squircle-md);
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  box-shadow: var(--glass-rim), var(--glass-shadow);
+  transition:
+    border-color var(--tr),
+    background var(--tr),
+    box-shadow var(--tr);
+}
+.gn-badge {
+  font-size: 0.62rem;
+}
+.gn-scorebar {
+  position: relative;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--tile-bg);
+  border: 1px solid var(--border);
+  margin: 4px 0 12px;
+  overflow: hidden;
+}
+.gn-scorebar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+.gn-scorebar-fill.go {
+  background: var(--green);
+}
+.gn-scorebar-fill.review {
+  background: var(--amber);
+}
+.gn-scorebar-fill.nogo {
+  background: var(--danger);
+}
+.gn-scorebar-fill.empty {
+  background: var(--border);
+}
+.gn-scorebar-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.6);
+}
+.gn-scorebar-mark.m50 {
+  left: 50%;
+}
+.gn-scorebar-mark.m75 {
+  left: 75%;
+}
+.gn-cats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.gn-cat {
+  background: var(--tile-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--squircle-sm);
+  padding: 10px 12px;
+}
+.gn-cat-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+.gn-cat-head input[type='text'] {
+  flex: 1;
+  min-width: 120px;
+  background: var(--glass-fill-dark);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font-size: 0.74rem;
+  font-family: inherit;
+  padding: 5px 9px;
+  outline: none;
+  font-weight: 700;
+}
+.gn-wt {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--slate);
+}
+.gn-wt input {
+  width: 52px;
+  background: var(--glass-fill-dark);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font-size: 0.72rem;
+  font-family: inherit;
+  padding: 4px 6px;
+  outline: none;
+}
+.gn-crit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+  flex-wrap: wrap;
+}
+.gn-crit input {
+  flex: 1;
+  min-width: 140px;
+  background: var(--glass-fill-dark);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font-size: 0.76rem;
+  font-family: inherit;
+  padding: 5px 9px;
+  outline: none;
+  transition:
+    border-color var(--tr),
+    box-shadow var(--tr);
+}
+.gn-stars {
+  display: inline-flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.gn-star {
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  color: var(--border);
+  line-height: 0;
+}
+.gn-star .ico {
+  width: 17px;
+  height: 17px;
+}
+.gn-star.on {
+  color: var(--gold-text);
+}
+.gn-star:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 1px;
+  border-radius: 3px;
+}
+.gn-addcrit {
+  margin-top: 6px;
+}
+.gn-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.gn-score-txt {
+  font-size: 0.72rem;
+  color: var(--slate);
+  font-weight: 600;
+}
+@media (max-width: 900px) {
+  .gn-cats {
+    grid-template-columns: 1fr;
+  }
+} /* Add Bid Package modal (T8) - same surface + input recipe as the other
+   content modals (.cu-box/.wi-box); dense form content is solid, never
+   glass (Gate 6.1). */
+#bidpkg-modal {
+  position: fixed;
+  inset: 0;
+  background: var(--lit-black-70);
+  z-index: 2100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+#bidpkg-modal.on {
+  display: flex;
+}
+#bidpkg-modal .bp-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  max-width: 720px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: auto;
+  padding: 20px;
+  box-shadow: 0 24px 70px var(--lit-black-45);
+}
+#bidpkg-modal .bp-box h3 {
+  font-size: 0.95rem;
+  margin: 0 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+}
+#bidpkg-modal .bp-box h3 .ico {
+  color: var(--gold-text);
+}
+.bp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+.bp-field {
+  margin-bottom: 14px;
+}
+.bp-field label,
+.bp-lbl {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--slate);
+  margin-bottom: 5px;
+  letter-spacing: 0.02em;
+}
+.bp-field input[type='text'],
+.bp-field input[type='number'],
+.bp-field input[type='date'],
+.bp-field select {
+  width: 100%;
+  background: var(--tile-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 8px 11px;
+  outline: none;
+}
+.bp-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.bp-item .bp-item-desc {
+  flex: 1;
+}
+.bp-item .bp-item-cost {
+  width: 130px;
+}
+/* Add Bid Package modal footer (same right-aligned row language as #chartup-modal .cu-actions) */
+.bp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+  justify-content: flex-end;
+}
+@media (max-width: 640px) {
+  .bp-grid {
+    grid-template-columns: 1fr;
+  }
+}
+/* DIR-3 (PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE): */
+.core-callout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  background: linear-gradient(180deg, rgba(var(--gold-rgb), 0.09), var(--card) 55%);
+  border: 1px solid rgba(var(--gold-rgb), 0.38);
+  border-radius: var(--squircle-md);
+  padding: 14px 18px;
+  margin-bottom: 18px;
+}
+.core-callout-txt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--text);
+  max-width: 660px;
+}
+.core-callout-txt .ico {
+  color: var(--gold-text);
+  flex-shrink: 0;
+}
+.core-callout-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+} /* Attention card (UI-UX doc §7.1) - gold-tinted when items are pending */
+#attention-card.has-items {
+  border-color: rgba(var(--amber-rgb), 0.4);
+  background: linear-gradient(180deg, rgba(var(--amber-rgb), 0.06), var(--card) 50%);
+}
+#attention-card .fb-sm .dotstat .ds-num {
+  min-width: 24px;
+  text-align: right;
+}
+/* This Week card */
+#this-week-card .fb-sm .dotstat .ds-num {
+  min-width: 24px;
+  text-align: right;
+}
+/* Health Score Why? toggle */
+#health-breakdown-wrap summary {
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+#health-breakdown-wrap summary::before {
+  content: '\25B8';
+  font-size: 0.6rem;
+  transition: transform var(--tr);
+}
+#health-breakdown-wrap[open] summary::before {
+  transform: rotate(90deg);
+}
+#health-breakdown-wrap summary::-webkit-details-marker {
+  display: none;
+}
+.panel {
+  display: none;
+}
+.panel.active {
+  display: block;
+}

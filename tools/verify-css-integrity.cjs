@@ -14,8 +14,12 @@
    stray. (Writing this very header tripped the gate - the guard earns
    its place.)
 
+   ARM 0 — assembly drift. css/mmgr.css is GENERATED from the ordered
+   css/src/*.css layers; a hand edit to the generated file (the easy mistake
+   once a file is "just CSS") is caught as a byte mismatch.
+
    ARM 2 — rule dropped by the pipeline. Every single-class selector
-   defined in css/mmgr.css / css/marketing.css must still be present in
+   defined in css/src/*.css / css/marketing.css must still be present in
    the matching minified bundle, so a minifier/parse failure can never
    silently remove a rule again.
 
@@ -26,9 +30,20 @@
    ============================================================ */
 const fs = require('fs');
 
+// E6.3 (2026-10-31): css/src/*.css are the authored source of the app
+// stylesheet and css/mmgr.css is the assembled document pages link. Sorted
+// filename order IS cascade order, so the numeric prefixes are load-bearing.
+const APP_LAYERS = fs.existsSync('css/src')
+  ? fs
+      .readdirSync('css/src')
+      .filter(f => f.endsWith('.css'))
+      .sort()
+      .map(f => 'css/src/' + f)
+  : ['css/mmgr.css'];
+
 const PAIRS = [
-  { src: 'css/mmgr.css', dist: 'dist/mmgr.min.css' },
-  { src: 'css/marketing.css', dist: 'dist/marketing.min.css' }
+  { srcs: APP_LAYERS, dist: 'dist/mmgr.min.css' },
+  { srcs: ['css/marketing.css'], dist: 'dist/marketing.min.css' }
 ];
 
 let failed = 0;
@@ -51,16 +66,18 @@ function lineOf(text, index) {
 console.log('\n=== CSS integrity: ARM 1 stray comment closers ===');
 
 const HTML_PAGES = fs.readdirSync('.').filter(f => f.endsWith('.html'));
-const targets = PAIRS.map(p => p.src).concat(
-  PAIRS.map(p => p.dist).filter(f => fs.existsSync(f)),
-  HTML_PAGES.filter(f => {
-    try {
-      return /<style[\s>]/i.test(fs.readFileSync(f, 'utf8'));
-    } catch (e) {
-      return false;
-    }
-  })
-);
+const targets = PAIRS.map(p => p.srcs)
+  .flat()
+  .concat(
+    PAIRS.map(p => p.dist).filter(f => fs.existsSync(f)),
+    HTML_PAGES.filter(f => {
+      try {
+        return /<style[\s>]/i.test(fs.readFileSync(f, 'utf8'));
+      } catch (e) {
+        return false;
+      }
+    })
+  );
 
 for (const file of targets) {
   const raw = fs.readFileSync(file, 'utf8');
@@ -99,6 +116,28 @@ for (const file of targets) {
   }
 }
 
+console.log('\n=== CSS integrity: ARM 0 the served stylesheet is the assembled layers ===');
+
+if (!fs.existsSync('css/src')) {
+  pass('no css/src layer directory - single-file stylesheet, nothing to assemble');
+} else {
+  const body = APP_LAYERS.map(f => fs.readFileSync(f, 'utf8')).join('');
+  const served = fs.readFileSync('css/mmgr.css', 'utf8');
+  const stripped = served.replace(/^\/\*[\s\S]*?\*\/\n\n/, '');
+  if (stripped === body) {
+    pass(
+      'css/mmgr.css is byte-identical to ' +
+        APP_LAYERS.length +
+        ' layer(s): ' +
+        APP_LAYERS.join(', ')
+    );
+  } else {
+    fail(
+      'css/mmgr.css differs from css/src/*.css - either it was hand-edited or the build is stale. Edit the layer, then run `node build.js --css`'
+    );
+  }
+}
+
 console.log('\n=== CSS integrity: ARM 2 rules dropped by the build ===');
 
 for (const pair of PAIRS) {
@@ -106,7 +145,10 @@ for (const pair of PAIRS) {
     fail(pair.dist + ' missing - run `npm run build` first');
     continue;
   }
-  const srcCss = fs.readFileSync(pair.src, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const srcCss = pair.srcs
+    .map(f => fs.readFileSync(f, 'utf8'))
+    .join('')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
   const dist = fs.readFileSync(pair.dist, 'utf8');
   const classes = new Set();
   for (const m of srcCss.matchAll(/([^{}]+)\{/g)) {
@@ -133,7 +175,7 @@ for (const pair of PAIRS) {
   }
   if (missing.length) {
     fail(
-      pair.src +
+      pair.srcs.join(' + ') +
         ': ' +
         missing.length +
         ' class rule(s) absent from ' +
@@ -142,7 +184,13 @@ for (const pair of PAIRS) {
         missing.slice(0, 12).join(', ')
     );
   } else {
-    pass(pair.src + ': all ' + classes.size + ' class rules survive the build into ' + pair.dist);
+    pass(
+      pair.srcs.join(' + ') +
+        ': all ' +
+        classes.size +
+        ' class rules survive the build into ' +
+        pair.dist
+    );
   }
 }
 

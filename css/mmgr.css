@@ -1,3 +1,5 @@
+/* GENERATED FROM css/src/*.css BY build.js. Edit the layer files, never this file. */
+
 /* ============================================================    My MaNaGeR - Core Stylesheet
    ============================================================ */
 
@@ -252,7 +254,6 @@ svg.ico use {
   --toggle-off-bg: rgba(15, 23, 42, 0.07);
   --toggle-off-fg: #334155;
 }
-
 /* ---- Dark Mode (opt-in only) ---- */
 /* OWNER 2026-09-07: dark theme is PURE BLACK & WHITE (rose gold stays a
    light-theme accent; it does not suit the starfield). Neutrals go true
@@ -2008,7 +2009,6 @@ body.sidebar-open .sb-close .ico {
 .panel.active {
   display: block;
 }
-
 /* ---- STRUCTURAL-IA §4 hierarchy: Tier 3 (passive) cards recede ---- */
 .tier3 .stat {
   font-size: 0.95rem;

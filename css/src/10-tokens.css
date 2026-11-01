@@ -1,0 +1,254 @@
+/* ============================================================    My MaNaGeR - Core Stylesheet
+   ============================================================ */
+
+/* ---- SVG Icon System ---- */
+.ico {
+  width: 1em;
+  height: 1em;
+  display: inline-block;
+  vertical-align: -0.14em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+.ico-dot {
+  stroke: none;
+}
+svg.ico use {
+  fill: inherit;
+  stroke: inherit;
+}
+
+/* ---- Design Tokens ---- */
+/* SW-8 (refinement directive section 11), HEAD ONLY, owner decision
+   2026-10-27: the repeated NEUTRAL literals live here once, in one block,
+   in BOTH stylesheets (marketing and app must not drift). The values are
+   unchanged - each token is defined exactly once and never redefined, so
+   every rule that now reads var(...) computes to what it computed to
+   before, in both themes. They are named for the value they hold, not for
+   a role: making them theme-aware is a later, owner-facing step. Chromatic
+   values (gold, amber, red, green, blue) are deliberately NOT here - they
+   belong to their semantic families and go with the gold pass. */
+:root {
+  --lit-white: #ffffff;
+  --lit-fog: #f8fafc;
+  --lit-night: #0b0b0d;
+  --lit-ink: #111111;
+  --lit-black: #000000;
+  --lit-graphite: #444444;
+  --lit-coal: #0b0c10;
+  --lit-white-14: rgba(255, 255, 255, 0.14);
+  --lit-white-70: rgba(255, 255, 255, 0.7);
+  --lit-white-04: rgba(255, 255, 255, 0.04);
+  --lit-white-08: rgba(255, 255, 255, 0.08);
+  --lit-white-05: rgba(255, 255, 255, 0.05);
+  --lit-white-18: rgba(255, 255, 255, 0.18);
+  --lit-white-35: rgba(255, 255, 255, 0.35);
+  --lit-white-06: rgba(255, 255, 255, 0.06);
+  --lit-white-22: rgba(255, 255, 255, 0.22);
+  --lit-white-10: rgba(255, 255, 255, 0.1);
+  --lit-white-16: rgba(255, 255, 255, 0.16);
+  --lit-black-18: rgba(0, 0, 0, 0.18);
+  --lit-black-25: rgba(0, 0, 0, 0.25);
+  --lit-black-30: rgba(0, 0, 0, 0.3);
+  --lit-black-35: rgba(0, 0, 0, 0.35);
+  --lit-black-20: rgba(0, 0, 0, 0.2);
+  --lit-black-70: rgba(0, 0, 0, 0.7);
+  --lit-black-45: rgba(0, 0, 0, 0.45);
+  --lit-black-75: rgba(0, 0, 0, 0.75);
+  --lit-navy-05: rgba(15, 23, 42, 0.05);
+  --lit-navy-04: rgba(15, 23, 42, 0.04);
+  --lit-fog-72: rgba(248, 250, 252, 0.72);
+}
+
+:root {
+  /* My MaNaGeR brand: warm orange-gold identity, warm off-white canvas,
+     restrained high-contrast accents. Dark mode is an opt-in override      (body.dark-mode) - never the default presentation. */
+  /* -- Surface hierarchy -- */
+  --canvas: #f5efe6; /* warm off-white - Level 0 */
+  --sidebar: #fdfbf7; /* very light warm - sidebar background */
+  /* Skeleton screens (2026-09-29): placeholder box fill + moving sheen.
+     Derived from the existing track/tile surfaces so both themes hold. */
+  --skel-base: var(--track-bg);
+  --skel-sheen: var(--tile-bg);
+  --card: #ffffff; /* crisp white - Level 1 cards */
+  --surface: #ffffff; /* Level 1: work surfaces / cards / panels */
+  --surface-raised: #f8f5f0; /* Level 2: focused / elevated surfaces */
+  --border: #e5e0d8; /* warm neutral border */
+  /* -- Text hierarchy -- */
+  --text: #333333; /* body text */
+  --text-heading: #000000; /* headings - pure black */
+  --text-secondary: #555555; /* secondary text */
+  --text-muted: #666666; /* muted/supporting text */
+  --slate: #666666;
+  /* -- Brand (GOLD = identity; the orange is retired, owner 2026-10-28) -- */
+  --brand: #d4af37; /* primary brand gold = the bullion fill */
+  --brand-hover: #bd8522; /* brand hover step - the gradient's deep end */
+  --brand-subtle: rgba(212, 175, 55, 0.08); /* subtle brand tint */
+  --brand-on: #1a1a1a; /* ink ON a gold surface (never white: 2.0:1 on gold) */
+  --gold: #d4af37; /* alias: gold = brand for backward compat */
+  --gold-rgb: 212, 175, 55;
+  --cyan: #50e8f4; /* cyan theme accent - maps to existing token system, does not replace gold */
+  --cyan-rgb: 80, 232, 244;
+  --thin-air: #c7f8fe; /* cyan theme secondary accent */
+  --blue-charcoal: #001619; /* cyan theme deep canvas */
+  --cyan-text-on-light: #0d1a26; /* cyan text on light surface WCAG AA */
+  --cyan-bg-on-dark: #050a10; /* cyan background on dark mode */
+
+  /* Gold used as TEXT and as focus rings / meaningful borders on a light
+     surface. The gold FILL keeps --gold; a gold word on white needs the deep
+     bronze step to clear AA (owner 2026-10-10: the identity is gold, and the
+     gold must stay readable - never swapped for a different hue). 6.37:1 on
+     white, so it also clears the 3:1 floor a focus ring or input border owes. */
+  --gold-ink: #7a5a0b;
+  /* -- Bullion (gold gradient, bronze border, readable ink) ---- */
+  --bullion-light: #e6c547;
+  --bullion: #d4af37;
+  --bullion-dark: #aa771c;
+  --bullion-deep: #855811;
+  --bullion-edge: #f3e5ab;
+  --bullion-ink: #1a1a1a; /* text on a gold surface */
+  /* MEASURED, NOT ASSUMED (GOLD-1, T-GOLD): the directive's three-stop
+     gradient puts #855811 under the right-hand edge of every label, and a
+     canvas rasterisation of the real gradient at the real button size measured
+     the worst pixel under the text at 3.19-3.70:1 on all 13 gold buttons - the
+     AA floor is 4.5. The directive's OWN narrow-button form (two stops, the
+     deep end dropped) measures 4.83-4.95:1 at rest and 5.91-6.11:1 on hover,
+     so it is the default for every label instead of a special case for narrow
+     buttons. Both stops are directive values; no colour was invented. The
+     three-stop form survives nowhere because nothing but a button fill ever
+     used it (4 uses, all in the shared rule). */
+  --gold-grad: linear-gradient(135deg, #d4af37 0%, #aa771c 100%);
+  --gold-grad-hover: linear-gradient(135deg, #e6c547 0%, #bd8522 100%);
+  --gold-text-on-light: #7a5a0b; /* gold used as WORDS on white: 6.37:1 */
+  /* THE SEMANTIC "gold as words" token. Gold text used to be written as
+     `color: var(--gold)`, which is #d96b27 on a light page - 3.45:1 on white,
+     under the AA floor - while the SAME rules resolve to #ffffff in dark mode,
+     where white on near-black is exactly right. One token, two themes: light
+     pages get the deep bronze step, dark pages keep the white accent. Every
+     rule that paints gold WORDS reads this; the gold FILL still reads --gold. */
+  --gold-text: var(--gold-text-on-light);
+  /* Gold words on a surface that is dark in BOTH themes - the marketing header
+     and the hero photo overlay. The directive (§5.4): on dark surfaces #d4af37
+     text is fine (8.32:1 on the header's #1c1917). Without this the deep
+     bronze step lands on charcoal and measures 2.74:1. */
+  --gold-text-on-dark: var(--bullion);
+  /* -- Accent cyan (secondary, restrained) -- */
+  --accent-cyan: #00bcd4;
+  --accent-cyan-subtle: rgba(0, 188, 212, 0.08);
+  /* -- Semantic status -- */
+  --success: #2e7d32; /* green = active/healthy */
+  --success-subtle: rgba(46, 125, 50, 0.08);
+  --info: #1565c0; /* blue = planning/informational */
+  --info-subtle: rgba(21, 101, 192, 0.08);
+  --warning: #e65100; /* orange = alert/attention */
+  --warning-subtle: rgba(230, 81, 0, 0.08);
+  --danger: #d63a3a; /* red = blocked/danger - OWNER 2026-09-12 (P2-13):
+                           brightened from #C62828; the brightest step that
+                           still holds WCAG AA (4.64:1) on the light canvas. */
+  /* Red used as TEXT on the raised surface (#f8f5f0), where --danger measures
+     4.27:1 and fails. Owner 2026-10-10 (T10-A). */
+  --danger-ink: #b83030;
+  /* Amber used as TEXT (Not backed up chip, planning notes, Due This Week):
+     --amber measures 3.79:1 on white and fails AA. Same law as the gold and
+     the red - the hue stays, the text step deepens. Owner 2026-10-10 (T10-A). */
+  --amber-ink: #c24700;
+  --danger-subtle: rgba(214, 58, 58, 0.08);
+  --purple: #8b5cf6; /* DMAIC/quality accents */
+  /* -- Status DOTS (owner 2026-09-17): true hue in BOTH themes - light
+     matches the legacy aliases; the dark block re-points these at brighter
+     variants. Dot consumers use these, never --green/--amber/--blue. -- */
+  --dot-red: #d63a3a;
+  --dot-yellow: #e65100;
+  --dot-green: #2e7d32;
+  --dot-blue: #1565c0;
+  --dot-red-rgb: 214, 58, 58;
+  --dot-yellow-rgb: 230, 81, 0;
+  --dot-green-rgb: 46, 125, 50;
+  --dot-blue-rgb: 21, 101, 192;
+  /* -- Legacy aliases (kept for backward compat, migrate to semantic) -- */
+  --green: #2e7d32;
+  --amber: #e65100;
+  --blue: #1565c0;
+  /* -- Foreground on brand -- */
+  /* Label sitting ON the gold FILL (owner 2026-10-10, T10-A / D2): white on
+     brand gold is 3.45:1 and fails AA, so the fill keeps its gold and the
+     label moves to the dark ink step - #1c1917 on #d96b27 = 5.07:1, matching
+     css/marketing.css. The light-mode rules whose fill is GREEN or DARK
+     (.sec-btn.active*, .btn-o:hover, .db-new-project:hover) override this
+     with a literal white, because ink on those fills would be worse. */
+  --on-gold: #1c1917;
+  --on-primary: #ffffff;
+  /* -- Functional surfaces -- */
+  --tile-bg: #f8f5f0;
+  --track-bg: #e8e2da;
+  /* -- Premium gold accent -- */
+  --premium-gold: #ffe082;
+  --radius: 8px; /* MMGR-NEW-UI-CREATION-BRIEF §4.1 - Law of Nested Radii: outer = inner + padding */
+  --radius-control: 8px; /* inner controls: buttons, inputs, rail links */
+  --radius-rect: 10px; /* rounded-rectangle control radius (owner 2026-09-20):
+                             defined at :root so the LIGHT-theme shape pass resolves it;
+                             the dark block re-declares the same value for its scope */
+  --pad-card: 16px; /* card padding */
+  --dock-h: 120px; /* bottom dock height (owner D3): toasts, the calc
+                             FAB and body padding-bottom clear it via calc */
+  --radius-card: 24px; /* outer card radius = control + pad (8 + 16) */
+  --tr: 120ms cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-ios: cubic-bezier(0.25, 1, 0.5, 1);
+  /* X-2 (AUDIT-DIRECTIVE-2026-10-18, section 8.3): explicit transition-
+     property list. An all-properties transition animates every property
+     that moves (layout props included) and repaints far more than the eye
+     tracks. Controls declare exactly the set they change: transform leads
+     at 80ms, the rest ride the house 120ms curve. */
+  --tr-ui:
+    transform 80ms cubic-bezier(0.25, 1, 0.5, 1),
+    background-color 120ms cubic-bezier(0.25, 1, 0.5, 1),
+    border-color 120ms cubic-bezier(0.25, 1, 0.5, 1), color 120ms cubic-bezier(0.25, 1, 0.5, 1),
+    opacity 120ms cubic-bezier(0.25, 1, 0.5, 1), box-shadow 120ms cubic-bezier(0.25, 1, 0.5, 1);
+  --spring: cubic-bezier(
+    0.25,
+    1,
+    0.5,
+    1
+  ); /* ---- Surface tokens (light: glass is retired - solid, crisp surfaces) ---- */
+  /* RESTORED 2026-10-25: the cyan/magenta theme commit (29696d8) deleted this
+     whole block by accident - it moved the values into [data-theme] rules that
+     were written WITHOUT braces, so they were invalid CSS and never applied.
+     With these tokens gone, every var(--glass-*) reference in LIGHT mode
+     resolved to nothing: .btn lost its background, its border and its shadow
+     (the Calculate button measured 33.9px tall - under the 34px tap floor the
+     M1 gate checks), .card lost its surface, and 121 references across the app
+     fell back to inherited defaults. Light mode keeps these solid, crisp
+     values; the cyan and magenta overrides live at the end of this file. */
+  --glass-blur: 0px;
+  --glass-saturate: 100%;
+  --glass-fill-dark: #ffffff; /* solid white - no frosted effect on light */
+  --glass-fill-dark-hover: var(--lit-fog);
+  --glass-fill-dark-active: #eef1f6;
+  --glass-rim: inset 0 1px 0 rgba(255, 255, 255, 0); /* transparent on light - hairline border carries the edge */
+  --glass-rim-strong: inset 0 1px 0 #ffffff;
+  --glass-border: 1px solid #e5e7eb;
+  --glass-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 6px 18px rgba(16, 24, 40, 0.06);
+
+  /* ---- Squircle corner radii (spec §2) ---- */
+  --squircle-sm: 14px;
+  --squircle-md: 20px;
+  --squircle-lg: 28px;
+  --squircle-pill: 999px;
+
+  /* ---- Motion (spec §4) ---- */
+  --spring-press: cubic-bezier(0.34, 1.56, 0.64, 1); /* overshoot spring, release */
+  --spring-in: cubic-bezier(0.4, 0, 0.2, 1); /* press-down, no overshoot */
+  --press-scale: 0.96;
+  --press-duration: 90ms;
+  --release-duration: 260ms;
+
+  /* ---- Android toggle-state contrast (spec §5) ---- */
+  --toggle-on-bg: #111827;
+  --toggle-on-fg: #ffffff;
+  --toggle-off-bg: rgba(15, 23, 42, 0.07);
+  --toggle-off-fg: #334155;
+}

@@ -718,8 +718,9 @@ remote D1 before the Worker deploy; never renumber an applied migration.
 
 ### Service worker and CSP
 
-- `mmgr-shell-v504` now. Bump one integer per commit that changes a served
-  file. D-4 does not bump.
+- `mmgr-shell-v521` now (v520 at the 1.7 close, v521 for the 2026-10-31
+  sign-in repair). Bump one integer per commit that changes a served file. D-4
+  does not bump.
 - Any inline `<script>` edit: `node tools/regen-csp-hashes.cjs`, commit
   `worker.js` + `serve.cjs`, restart `serve.cjs`, and prove the live header's
   hashes match disk before trusting a browser gate.
@@ -835,5 +836,28 @@ of every session.
   measured one of the 13 marketing pages; corrected, it is **11.8% / 9.7%**,
   below the 15% trigger, so E6.2 deletion is demoted and the CSS split (1.6)
   is the next real work.
+- **2026-10-31 - unplanned: Google sign-in repaired and gated.** The owner
+  signed out and could not sign back in; the account chooser opened and the
+  page did nothing. Root cause was server-side and had been live since
+  `cd5a90a` (2026-10-24): `src/auth/google.js` compared
+  `payload.email_verified !== true`, but `oauth2.googleapis.com/tokeninfo`
+  serialises every claim as a string, so the real value is `"true"` and every
+  real sign-in returned 401. CI stayed green because the only harness on that
+  route faked a boolean. The deleted account was not involved. Fix: an
+  `emailVerified()` normaliser (true/1/"true"/"1" only), the nonce claim read
+  from the validated ID token payload (tokeninfo documents no `nonce` field)
+  with the tokeninfo copy as fallback, a visible status line under the Google
+  button for a refused credential or a dead connection, and a nonce refresh
+  while the tab is visible. New `tools/verify-google-signin.cjs`
+  (`npm run verify:google`, ci.yml `static` step `google-signin`, 5 arms:
+  one client ID in all six writers, the CSP origins GIS needs, a mount plus a
+  module on every GIS page, the Authorized JavaScript Origins checklist in
+  `docs/GOOGLE-SIGNIN-SETUP.md` tracking every canonical host, and a tripwire
+  on the broken comparison). `verify-auth-worker.mjs` now posts the real wire
+  shape and names the regression arms (44/44). `npm run verify` green,
+  registry 158/158, CI run `41267966202` 6/6 jobs green, deployed as
+  `74da0f28` (live `/signin` 200, `/api/auth/me` signed out, shell v521).
+  `qa-oauth` keeps its 3 documented TRIAGE failures (old unlock flow, header
+  bar moved); its 7 sign-in arms pass. Recorded as `74817a9`.
 - **Next:** 1.6 CSS split into `css/src/*` layers, then Wave 2 C1 NocoBase.
   The landing wave's deploy is recorded under Wave 1 in the log.

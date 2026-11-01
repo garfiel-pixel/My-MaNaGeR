@@ -296,6 +296,55 @@ function check(name, val, detail) {
     { hostLen: m2.hostHtml.length }
   );
 
+  // ---- S6: the settings drawer must never trap the user ---------------------
+  // OWNER 2026-11-01: the drawer opened from the Core-Mode callout appeared to
+  // have no exit. Its header X works, but there was no gesture-based way out
+  // and Focus Mode made the whole panel invisible. Three exits pinned here:
+  // the header close, Escape, and a click on the workspace behind it; plus a
+  // jump from Focus Mode must land on a visible drawer, not a hidden one.
+  const s6 = await ev(`(async function(){
+    function clear(){ var d = document.getElementById('drw'); if (d) d.classList.remove('open'); document.body.classList.remove('focus-mode'); }
+    function isOpen(){ var d = document.getElementById('drw'); return !!(d && d.classList.contains('open')); }
+    function visible(){ var d = document.getElementById('drw'); if (!d || !d.classList.contains('open')) return false; var s = getComputedStyle(d); return s.display !== 'none' && s.visibility !== 'hidden'; }
+    clear();
+    MMGR.App.openDrw();
+    var afterOpen = isOpen();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    var afterEsc = isOpen();
+    clear();
+    MMGR.App.openDrw();
+    document.body.click();
+    var afterOutside = isOpen();
+    clear();
+    // Real Focus Mode (state + body class); openPacks must leave it.
+    if (!document.body.classList.contains('focus-mode')) MMGR.App.tglFocusMode();
+    var inFocus = document.body.classList.contains('focus-mode');
+    MMGR.App.openPacks();
+    var fromFocus = visible();
+    var stillFocus = document.body.classList.contains('focus-mode');
+    var x = document.querySelector('#drw .dh button[data-action="closeDrw"]');
+    if (x) x.click();
+    var afterX = isOpen();
+    document.body.classList.remove('focus-mode');
+    return { afterOpen: afterOpen, afterEsc: afterEsc, afterOutside: afterOutside, inFocus: inFocus, fromFocus: fromFocus, stillFocus: stillFocus, afterX: afterX, closeBtn: !!x };
+  })()`);
+  check(
+    'S6 drawer: opens, and the header close button closes it',
+    !!s6 && s6.afterOpen === true && s6.closeBtn === true && s6.afterX === false,
+    s6
+  );
+  check('S6 drawer: Escape closes it', !!s6 && s6.afterEsc === false, s6);
+  check(
+    'S6 drawer: a click on the workspace behind it closes it',
+    !!s6 && s6.afterOutside === false,
+    s6
+  );
+  check(
+    'S6 drawer: the packs jump from Focus Mode lands on a VISIBLE panel',
+    !!s6 && s6.inFocus === true && s6.fromFocus === true && s6.stillFocus === false,
+    s6
+  );
+
   try {
     await send('Page.close');
   } catch (e) {}

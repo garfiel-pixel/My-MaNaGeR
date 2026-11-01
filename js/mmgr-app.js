@@ -1236,6 +1236,29 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // OWNER 2026-11-01: the settings drawer had a close button but no way out
+  // by gesture - a click on the workspace behind it left it parked over the
+  // page. Docked only: a floated drawer is a moveable window and a stray click
+  // on the canvas must not dismiss it (it has its own close + dock controls).
+  document.addEventListener('click', function (e) {
+    const drw = U.$('drw');
+    if (!drw || !drw.classList.contains('open') || drw.classList.contains('float-mode')) {
+      return;
+    }
+    if (e.target === drw || drw.contains(e.target)) {
+      return;
+    }
+    // A click that OPENS the drawer (the gear, the packs callout) is the same
+    // event that reaches document - let the opener win, close on the next one.
+    if (
+      e.target.closest &&
+      e.target.closest('[data-action="openDrw"],[data-action="openPacks"],[data-action="tglDrw"]')
+    ) {
+      return;
+    }
+    closeDrw();
+  });
+
   function swDtab(tab, btn) {
     document.querySelectorAll('.dtab').forEach(b => b.classList.remove('active'));
     if (btn) {
@@ -1259,6 +1282,13 @@ var MMGR = window.MMGR || {};
   // Controls tab (the packs live there), and bring the section into view.
   // Instant scroll (behavior 'auto'): zero motion, motion-preference safe.
   function openPacks() {
+    // OWNER 2026-11-01: Focus Mode hides the drawer (display:none), so jumping
+    // to the packs from a focused workspace opened an invisible panel that
+    // could not be closed - there was nothing on screen to close. Leave Focus
+    // Mode first; the drawer then opens where the user can actually see it.
+    if (document.body.classList.contains('focus-mode')) {
+      tglFocusMode();
+    }
     openDrw();
     swDtab('ctrl', document.querySelector('.dtab[data-tab="ctrl"]'));
     const el = U.$('adv-packs-section');

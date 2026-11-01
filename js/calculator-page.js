@@ -8050,7 +8050,7 @@
           '" data-field="n" min="1" step="1" inputmode="numeric" value="' +
           esc(String(rw.n || 1)) +
           '" aria-label="How many identical">' +
-          '<button type="button" class="btn btn-n btn-s" data-action="calcInstDel" data-idx="' +
+          '<button type="button" class="bcp-x" data-action="calcInstDel" data-idx="' +
           i +
           '" aria-label="Remove this element">X</button>' +
           '</div>'
@@ -8119,7 +8119,7 @@
           '" data-field="n" min="1" step="1" inputmode="numeric" value="' +
           esc(String(rw.n || 1)) +
           '" aria-label="How many identical">' +
-          '<button type="button" class="btn btn-n btn-s" data-action="calcOpenDel" data-idx="' +
+          '<button type="button" class="bcp-x" data-action="calcOpenDel" data-idx="' +
           i +
           '" aria-label="Remove this opening">X</button>' +
           '</div>'
@@ -8307,7 +8307,7 @@
     const on = a.on !== false;
     const total = a.total == null ? (a.unpriced ? 'no rate' : '') : fmtMoney(a.total, cur);
     const del = a.custom
-      ? '<button type="button" class="btn btn-n btn-s acc-del" data-action="calcAccDel" data-key="' +
+      ? '<button type="button" class="bcp-x acc-del" data-action="calcAccDel" data-key="' +
         esc(a.key) +
         '" aria-label="Remove ' +
         esc(a.name || 'this line') +
@@ -9305,10 +9305,10 @@
               '<span class="bcp-est-meta">' +
               esc(meta) +
               '</span>' +
-              '<button type="button" class="btn btn-n btn-s" data-action="calcBoqRecall" data-idx="' +
+              '<button type="button" class="bcp-link" data-action="calcBoqRecall" data-idx="' +
               i +
               '">Edit</button>' +
-              '<button type="button" class="btn btn-n btn-s" data-action="calcBoqRemove" data-idx="' +
+              '<button type="button" class="bcp-x" data-action="calcBoqRemove" data-idx="' +
               i +
               '" aria-label="Remove this line from the bill">X</button>' +
               '</div>' +

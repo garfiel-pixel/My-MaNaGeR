@@ -545,6 +545,44 @@ body.dark-mode .bcp-ico-moon {
   justify-content: center;
   margin-top: 6px;
 }
+/* OWNER 2026-11-01: "for the dark theme, I'm seeing the calculate button be
+   green. Change it to pulsing gold ... blinking gold, punching in and out, with
+   a nice smoothness." Dark mode's --gold is white by contract, so the accent
+   here is the gold FILL those palettes actually carry (--gold-accent), and the
+   ink is near-black: the pulse is a glow + brightness cycle on the button, never
+   a colour that drops the label under 4.5:1 at any point in the cycle. Light
+   mode keeps its green run button. */
+body.dark-mode .bcp-run {
+  background: linear-gradient(180deg, #f2c94c 0%, #d4a017 100%);
+  border-color: transparent;
+  color: #1a1204;
+  font-weight: 700;
+  animation: bcp-run-gold 2.8s ease-in-out infinite;
+}
+body.dark-mode .bcp-run:hover,
+body.dark-mode .bcp-run:focus-visible {
+  background: linear-gradient(180deg, #ffd869 0%, #e0ad1c 100%);
+}
+@keyframes bcp-run-gold {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(242, 201, 76, 0),
+      0 4px 14px rgba(212, 160, 23, 0.24);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow:
+      0 0 0 5px rgba(242, 201, 76, 0.16),
+      0 8px 26px rgba(242, 201, 76, 0.42);
+    filter: brightness(1.08);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.dark-mode .bcp-run {
+    animation: none;
+  }
+}
 /* F4-1 unit toggle (owner 2026-09-28): metric/imperial segmented control.
    Tokens only - active state rides the brand gold wash, both themes hold. */
 .bcp-units-label {
@@ -672,6 +710,57 @@ body.dark-mode .bcp-ico-moon {
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+}
+/* OWNER 2026-11-01 (calculator walkthrough): "there is a rectangle around the X
+   and the X is not in the centre of it ... you do not need a rectangle around
+   Add area either. We do not need pill icons everywhere." A row's own remove
+   and edit controls are now bare: one glyph, no border, no fill, and a hover
+   colour that names what it does (red for remove, gold for edit). The crowded
+   card-head actions keep their boxes - there, the box is what groups them. */
+.bcp-x,
+.bcp-link {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 4px 2px;
+}
+.bcp-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--gold-ink, var(--gold));
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.bcp-link .ico {
+  width: 13px;
+  height: 13px;
+}
+.bcp-link:hover {
+  color: var(--gold-text);
+}
+.bcp-x {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  color: var(--slate);
+  font-size: 0.8rem;
+  line-height: 1;
+}
+.bcp-x:hover {
+  color: var(--danger);
+}
+.bcp-x:focus-visible,
+.bcp-link:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 2px;
 }
 .bcp-hist-head {
   display: flex;

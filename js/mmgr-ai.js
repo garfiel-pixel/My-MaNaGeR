@@ -2475,6 +2475,13 @@ var MMGR = window.MMGR || {};
     }
     const q = U.$('ai-q');
     const c = U.$('ai-ctx');
+    // OWNER 2026-11-01: sending is the end of the dictation session. Leaving the
+    // engine listening meant the next thing said was appended to the prompt that
+    // had just been sent, and the composer refilled with the old text. Stopping
+    // here also drops the committed base (see stopAiDictation).
+    if (ns.Voice && typeof ns.Voice.stopAiDictation === 'function') {
+      ns.Voice.stopAiDictation();
+    }
     const prompt = (q && q.value) || '';
     if (!prompt.trim()) {
       toast('Type a question first.', 'err');
@@ -2517,6 +2524,11 @@ var MMGR = window.MMGR || {};
     const q = U.$('ai-q');
     if (!q) {
       return;
+    }
+    // A second guard for the paths that clear the box without going through
+    // runQuestion (presets): no dictation may survive into an empty composer.
+    if (ns.Voice && typeof ns.Voice.stopAiDictation === 'function') {
+      ns.Voice.stopAiDictation();
     }
     q.value = '';
     q.style.height = '';

@@ -3058,7 +3058,6 @@ body.dark-mode .btn-warn:hover {
 .pcard:active,
 .tab-btn:active,
 .sec-btn:active,
-.settings-btn:active,
 .dc:active,
 .toggle-chip:active {
   transform: scale(var(--press-scale));
@@ -3067,14 +3066,15 @@ body.dark-mode .btn-warn:hover {
     transform var(--press-duration) var(--spring-in),
     background var(--tr);
 }
-/* Header / toolbar / modal icon buttons get glass; table icon buttons stay flat */
-.settings-btn {
-  background: var(--glass-fill-dark);
-  border: var(--glass-border);
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  box-shadow: var(--glass-rim), var(--glass-shadow);
+/* Bare header icons keep the press *scale* only, never the glass wash. */
+.settings-btn:active {
+  transform: scale(var(--press-scale));
+  transition: transform var(--press-duration) var(--spring-in);
 }
+/* OWNER 2026-11-01: the glass disc around the header icon buttons is gone -
+   at rest the bell, gear and collaborators icons are bare glyphs, and the ring
+   is drawn by the hover / focus / open state in 20-shell.css. Do not reintroduce a fill
+   here: this layer loads after 20-shell and would win the cascade. */
 /* OWNER 2026-09-17 (wave 3 W6/W7): the close X is BARE everywhere - no
    glass circle, no border, no box. It was a plain icon before the glass
    layer wrapped it; the owner asked twice. Hover still lights it up. */
@@ -3269,7 +3269,6 @@ body.dark-mode .pc-status {
   .toggle-chip,
   .tab-btn,
   .sec-btn,
-  .settings-btn,
   .dc,
   .tgl .tsl,
   .badge.on-hold,
@@ -3308,7 +3307,6 @@ body.dark-mode .pc-status {
   .toggle-chip,
   .tab-btn,
   .sec-btn,
-  .settings-btn,
   .dc,
   .tgl .tsl,
   .badge.on-hold,

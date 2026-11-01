@@ -193,6 +193,48 @@ const SET_PERF = on => {
       c2
     );
 
+    // ---- T1c (owner 2026-11-01): in dark the run button is pulsing gold ---
+    const runBtn = async () =>
+      page.evaluate(() => {
+        const el = document.querySelector('.bcp-run');
+        if (!el) {
+          return null;
+        }
+        const cs = getComputedStyle(el);
+        const anim = cs.animationName;
+        // The gold fill is what the button paints, not a token name: read the
+        // image first so a gradient and a flat colour both answer.
+        return {
+          dark: document.body.classList.contains('dark-mode'),
+          bg: cs.backgroundColor,
+          img: cs.backgroundImage, // ignore: probe value, never inserted into the DOM
+          anim: anim,
+          duration: cs.animationDuration,
+          color: cs.color
+        };
+      });
+    const goldish = v => {
+      const m = /rgba?\((\d+), (\d+), (\d+)/.exec(String(v || ''));
+      if (!m) {
+        return false;
+      }
+      const r = Number(m[1]);
+      const g = Number(m[2]);
+      const b = Number(m[3]);
+      return r > 180 && g > 130 && b < 120 && r > b;
+    };
+    const darkRun = await runBtn();
+    check(
+      'T1c in dark the Calculate button is gold, not green',
+      !!darkRun && darkRun.dark === true && (goldish(darkRun.bg) || goldish(darkRun.img)),
+      darkRun
+    );
+    check(
+      'T1c the gold Calculate button pulses',
+      !!darkRun && darkRun.anim === 'bcp-run-gold' && parseFloat(darkRun.duration) > 0,
+      darkRun && { anim: darkRun.anim, duration: darkRun.duration }
+    );
+
     // ---- T3a: both survive a reload, still independent -------------------
     await page.reload({ waitUntil: 'domcontentloaded' });
     await delay(700);

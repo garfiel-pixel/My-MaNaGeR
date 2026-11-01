@@ -81,7 +81,10 @@ const CONTROLS = [
   { page: 'calculator.html', sel: '.bcp-theme', label: 'theme (moon) button' },
   { page: 'calculator.html', sel: '.bcp-perf', label: 'Performance Mode switch' },
   { page: 'seed-test.html', sel: '.hdr-back', label: 'project back link' },
-  { page: 'seed-test.html', sel: '.nav-btn', label: 'project menu control' }
+  { page: 'seed-test.html', sel: '.nav-btn', label: 'project menu control' },
+  // OWNER 2026-11-01: the top-bar icons (notices, collaborators, settings) are
+  // bare at rest and grow their ring only on hover or focus.
+  { page: 'seed-test.html', sel: '.settings-btn', label: 'top-bar icon control' }
 ];
 
 // Returns the parsed computed style we gate on, plus whether the CSSOM has a
@@ -225,6 +228,59 @@ const PROBE = sel => {
         css.replace(/\s+/g, '')
       ),
     badge.slice(0, 260)
+  );
+
+  // C6 (owner 2026-11-01): the completion ring grew to 120px WITHOUT getting
+  // thicker. The SVG keeps its 96-unit viewBox and r=39 (circumference 245,
+  // which js/mmgr-render.js depends on), so the scale factor is 1.25 and the
+  // painted stroke must stay 18: 14.4 x 1.25. This arm pins all four numbers
+  // together, so the next person to touch one of them is told what breaks.
+  const pring = (css.match(/\.pring\s*\{[^}]*\}/) || [''])[0];
+  const ringStroke = (css.match(/\.ring-fill\s*\{[^}]*stroke-width:\s*([\d.]+)/) || [])[1];
+  const projHtml = fs.readFileSync(path.join(ROOT, 'project.html'), 'utf8');
+  // Scoped to the ring's OWN svg: project.html carries a 24-unit icon sprite
+  // earlier in the document, and a loose match read that one instead.
+  const viewBox = /class="pring">[\s\S]{0,400}?viewBox="0 0 (\d+) \1"/.exec(projHtml);
+  const boxPx = Number((pring.match(/width:\s*(\d+)px/) || [])[1] || 0);
+  const apparent = viewBox ? Number(ringStroke || 0) * (boxPx / Number(viewBox[1])) : 0;
+  check(
+    'C6 the completion ring is bigger at the same stroke weight',
+    boxPx >= 112 && viewBox !== null && /r="39"/.test(projHtml) && Math.abs(apparent - 18) < 0.6,
+    { box: boxPx, viewBox: viewBox && viewBox[1], stroke: ringStroke, apparent: apparent }
+  );
+
+  // C7 (owner 2026-11-01): "you do not need a rectangle around the X, and you
+  // do not need a pill around Add area." The calculator's PER-ROW remove and
+  // edit controls are bare glyphs (.bcp-x / .bcp-link); the crowded card-head
+  // action groups keep their boxes. Both arms read source, so a regenerated
+  // bundle can't hide a reintroduced pill.
+  const calcHtml = fs.readFileSync(path.join(ROOT, 'calculator.html'), 'utf8');
+  const calcJs = fs.readFileSync(path.join(ROOT, 'js', 'calculator-page.js'), 'utf8');
+  const boxedRowAction = (src, action) =>
+    new RegExp('class="btn btn-n btn-s[^"]*"[^>]*data-action="' + action + '"').test(src) ||
+    new RegExp('data-action="' + action + '"[^>]*class="btn btn-n btn-s').test(src);
+  const boxed = [
+    'calcInstDel',
+    'calcOpenDel',
+    'calcBoqRemove',
+    'calcBoqRecall',
+    'calcAccDel'
+  ].filter(a => boxedRowAction(calcJs, a));
+  check('C7 calculator row remove/edit controls carry no box', boxed.length === 0, boxed);
+  const xRule = (css.match(/\.bcp-x\s*\{[^}]*\}/) || [''])[0];
+  const linkRule = (css.match(/\.bcp-link\s*\{[^}]*\}/) || [''])[0];
+  // border / fill live in the shared base rule both classes open with.
+  const bareBase = (css.match(/\.bcp-x,\s*\.bcp-link\s*\{[^}]*\}/) || [''])[0];
+  check(
+    'C7 .bcp-x and .bcp-link are borderless with no fill',
+    xRule !== '' &&
+      linkRule !== '' &&
+      /border:\s*0;/.test(bareBase) &&
+      /background:\s*none;/.test(bareBase) &&
+      !/border-radius:\s*999px/.test(xRule + linkRule) &&
+      /class="bcp-link" data-action="calcClearHistory">\s*<svg class="ico"/.test(
+        calcHtml.replace(/\s+/g, ' ')
+      )
   );
 
   const admin = fs.readFileSync(path.join(ROOT, 'admin.html'), 'utf8');

@@ -404,6 +404,59 @@ function pageBootstrap() {
     }
 
     // --------------------------------------------------------------
+    // Gate 10 (owner 2026-11-01): SENDING ends the dictation session.
+    // "Once I send a message ... the whisper doesn't turn off, it stays on and
+    // when I try to talk again it continues from where it left off. So the
+    // prompt I sent before is still there plus the new content."
+    // --------------------------------------------------------------
+    {
+      const { ctx, page, errors } = await open();
+      await startDictation(page);
+      await page.evaluate(() =>
+        window.__dict.fire(0, [{ text: 'what is the float', final: true }])
+      );
+      const mid = await value(page);
+      await page.click('#ai-send');
+      await delay(900);
+      const after = await page.evaluate(() => ({
+        recording: document.getElementById('ai-voice-btn').classList.contains('recording'),
+        active: !!(window.MMGR.Voice && window.MMGR.Voice.aiRecActive()),
+        stopped: !!window.__dict.inst && window.__dict.inst.stopped === true
+      }));
+      check(
+        'sending stops the dictation engine',
+        mid === 'what is the float' &&
+          after.recording === false &&
+          after.active === false &&
+          after.stopped === true,
+        { dictated: mid, after }
+      );
+
+      // A fresh session must carry nothing from the sent one.
+      await page.evaluate(() => {
+        const c = document.querySelector('[data-action="aiClear"]');
+        if (c) {
+          c.click();
+        }
+      });
+      await delay(250);
+      await startDictation(page);
+      const fresh = await page.evaluate(() => {
+        window.__dict.fire(0, [{ text: 'second message', final: true }]);
+        return document.getElementById('ai-q').value;
+      });
+      check(
+        'the next dictation starts from an empty base, never the sent prompt',
+        fresh === 'second message',
+        { got: fresh }
+      );
+      await page.click('#ai-voice-btn');
+      await delay(200);
+      check('the send run had no page error', errors.length === 0, errors);
+      await ctx.close();
+    }
+
+    // --------------------------------------------------------------
     // Gate 9: stop detaches the listener it added.
     // --------------------------------------------------------------
     {

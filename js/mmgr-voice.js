@@ -1531,6 +1531,12 @@ var MMGR = window.MMGR || {};
     }
     _aiLastFinal = '';
     _aiLastFinalAt = 0;
+    // OWNER 2026-11-01: sending a message left dictation running, so the next
+    // utterance was appended to the PREVIOUS prompt and the composer refilled
+    // with old text. The committed base is part of the dictation session, not of
+    // the page: when the session ends it goes with it, and the next start seeds
+    // itself from whatever the box holds then.
+    _aiBase = '';
     if (!_aiRec) {
       return;
     }

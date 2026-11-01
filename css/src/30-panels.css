@@ -204,23 +204,32 @@
 }
 
 /* ---- Progress Ring ---- */
+/* OWNER 2026-11-01: "the circle can be bigger while keeping its thickness - it
+   is in a very large rectangle and it is not taking up anything there." The box
+   grows 96px to 120px. The SVG keeps its 96-unit viewBox (r=39, circumference
+   245, unchanged in the markup and in js/mmgr-render.js), so the browser scales
+   it 1.25x - which is why the stroke is re-specified as 14.4: 14.4 x 1.25 = 18,
+   the exact thickness it painted before. Bigger ring, same weight, and not one
+   number in the arc maths moves. */
 .pring {
   position: relative;
-  width: 96px;
-  height: 96px;
+  width: 120px;
+  height: 120px;
 }
 .pring svg {
+  width: 100%;
+  height: 100%;
   transform: rotate(-90deg);
 } /* Owner 2026-08-15: */
 .ring-bg {
   fill: none;
   stroke: var(--border);
-  stroke-width: 18;
+  stroke-width: 14.4;
 }
 .ring-fill {
   fill: none;
   stroke: var(--green);
-  stroke-width: 18;
+  stroke-width: 14.4;
   stroke-linecap: round;
   transition: stroke-dashoffset 0.5s ease;
 }

@@ -954,13 +954,22 @@ body:not(.crosshair-on) #cy {
 .lock-ind.on {
   opacity: 1;
 }
+/* OWNER 2026-11-01: "we are not going to keep those circles around the control
+   tab and the notification tab and the collaboration UI ... once someone hovers
+   over it, the ring will appear around it." At rest the top-bar icons are bare
+   glyphs. The ring is the hover / focus / open state, drawn with a box-shadow so
+   it costs no layout, and the gear's old 45 degree rotate is gone with it: the
+   same class also carries the bell and the collaborators icon, and a bell must
+   not spin. */
 .settings-btn {
   background: none;
-  border: 1px solid var(--border);
+  border: 0;
   color: var(--slate);
   width: 34px;
   height: 34px;
-  border-radius: 50%;
+  /* At rest there is no shape at all - the ring only exists in the states
+     below. (The chrome gate reads a rest radius as a box.) */
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -972,10 +981,13 @@ body:not(.crosshair-on) #cy {
   outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
-.settings-btn:hover {
+.settings-btn:hover,
+.settings-btn:focus-visible,
+.settings-btn[aria-expanded='true'] {
   color: var(--gold-text);
-  border-color: var(--gold);
-  transform: rotate(45deg);
+  background: rgba(var(--gold-rgb), 0.08);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--gold);
 }
 .hdr-back {
   display: inline-flex;
@@ -2215,23 +2227,32 @@ body.sidebar-open .sb-close .ico {
 }
 
 /* ---- Progress Ring ---- */
+/* OWNER 2026-11-01: "the circle can be bigger while keeping its thickness - it
+   is in a very large rectangle and it is not taking up anything there." The box
+   grows 96px to 120px. The SVG keeps its 96-unit viewBox (r=39, circumference
+   245, unchanged in the markup and in js/mmgr-render.js), so the browser scales
+   it 1.25x - which is why the stroke is re-specified as 14.4: 14.4 x 1.25 = 18,
+   the exact thickness it painted before. Bigger ring, same weight, and not one
+   number in the arc maths moves. */
 .pring {
   position: relative;
-  width: 96px;
-  height: 96px;
+  width: 120px;
+  height: 120px;
 }
 .pring svg {
+  width: 100%;
+  height: 100%;
   transform: rotate(-90deg);
 } /* Owner 2026-08-15: */
 .ring-bg {
   fill: none;
   stroke: var(--border);
-  stroke-width: 18;
+  stroke-width: 14.4;
 }
 .ring-fill {
   fill: none;
   stroke: var(--green);
-  stroke-width: 18;
+  stroke-width: 14.4;
   stroke-linecap: round;
   transition: stroke-dashoffset 0.5s ease;
 }
@@ -8805,7 +8826,6 @@ body.dark-mode .btn-warn:hover {
 .pcard:active,
 .tab-btn:active,
 .sec-btn:active,
-.settings-btn:active,
 .dc:active,
 .toggle-chip:active {
   transform: scale(var(--press-scale));
@@ -8814,14 +8834,15 @@ body.dark-mode .btn-warn:hover {
     transform var(--press-duration) var(--spring-in),
     background var(--tr);
 }
-/* Header / toolbar / modal icon buttons get glass; table icon buttons stay flat */
-.settings-btn {
-  background: var(--glass-fill-dark);
-  border: var(--glass-border);
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  box-shadow: var(--glass-rim), var(--glass-shadow);
+/* Bare header icons keep the press *scale* only, never the glass wash. */
+.settings-btn:active {
+  transform: scale(var(--press-scale));
+  transition: transform var(--press-duration) var(--spring-in);
 }
+/* OWNER 2026-11-01: the glass disc around the header icon buttons is gone -
+   at rest the bell, gear and collaborators icons are bare glyphs, and the ring
+   is drawn by the hover / focus / open state in 20-shell.css. Do not reintroduce a fill
+   here: this layer loads after 20-shell and would win the cascade. */
 /* OWNER 2026-09-17 (wave 3 W6/W7): the close X is BARE everywhere - no
    glass circle, no border, no box. It was a plain icon before the glass
    layer wrapped it; the owner asked twice. Hover still lights it up. */
@@ -9016,7 +9037,6 @@ body.dark-mode .pc-status {
   .toggle-chip,
   .tab-btn,
   .sec-btn,
-  .settings-btn,
   .dc,
   .tgl .tsl,
   .badge.on-hold,
@@ -9055,7 +9075,6 @@ body.dark-mode .pc-status {
   .toggle-chip,
   .tab-btn,
   .sec-btn,
-  .settings-btn,
   .dc,
   .tgl .tsl,
   .badge.on-hold,
@@ -11364,6 +11383,44 @@ body.dark-mode .bcp-ico-moon {
   justify-content: center;
   margin-top: 6px;
 }
+/* OWNER 2026-11-01: "for the dark theme, I'm seeing the calculate button be
+   green. Change it to pulsing gold ... blinking gold, punching in and out, with
+   a nice smoothness." Dark mode's --gold is white by contract, so the accent
+   here is the gold FILL those palettes actually carry (--gold-accent), and the
+   ink is near-black: the pulse is a glow + brightness cycle on the button, never
+   a colour that drops the label under 4.5:1 at any point in the cycle. Light
+   mode keeps its green run button. */
+body.dark-mode .bcp-run {
+  background: linear-gradient(180deg, #f2c94c 0%, #d4a017 100%);
+  border-color: transparent;
+  color: #1a1204;
+  font-weight: 700;
+  animation: bcp-run-gold 2.8s ease-in-out infinite;
+}
+body.dark-mode .bcp-run:hover,
+body.dark-mode .bcp-run:focus-visible {
+  background: linear-gradient(180deg, #ffd869 0%, #e0ad1c 100%);
+}
+@keyframes bcp-run-gold {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(242, 201, 76, 0),
+      0 4px 14px rgba(212, 160, 23, 0.24);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow:
+      0 0 0 5px rgba(242, 201, 76, 0.16),
+      0 8px 26px rgba(242, 201, 76, 0.42);
+    filter: brightness(1.08);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.dark-mode .bcp-run {
+    animation: none;
+  }
+}
 /* F4-1 unit toggle (owner 2026-09-28): metric/imperial segmented control.
    Tokens only - active state rides the brand gold wash, both themes hold. */
 .bcp-units-label {
@@ -11491,6 +11548,57 @@ body.dark-mode .bcp-ico-moon {
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+}
+/* OWNER 2026-11-01 (calculator walkthrough): "there is a rectangle around the X
+   and the X is not in the centre of it ... you do not need a rectangle around
+   Add area either. We do not need pill icons everywhere." A row's own remove
+   and edit controls are now bare: one glyph, no border, no fill, and a hover
+   colour that names what it does (red for remove, gold for edit). The crowded
+   card-head actions keep their boxes - there, the box is what groups them. */
+.bcp-x,
+.bcp-link {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 4px 2px;
+}
+.bcp-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--gold-ink, var(--gold));
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.bcp-link .ico {
+  width: 13px;
+  height: 13px;
+}
+.bcp-link:hover {
+  color: var(--gold-text);
+}
+.bcp-x {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  color: var(--slate);
+  font-size: 0.8rem;
+  line-height: 1;
+}
+.bcp-x:hover {
+  color: var(--danger);
+}
+.bcp-x:focus-visible,
+.bcp-link:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 2px;
 }
 .bcp-hist-head {
   display: flex;

@@ -698,13 +698,22 @@ body:not(.crosshair-on) #cy {
 .lock-ind.on {
   opacity: 1;
 }
+/* OWNER 2026-11-01: "we are not going to keep those circles around the control
+   tab and the notification tab and the collaboration UI ... once someone hovers
+   over it, the ring will appear around it." At rest the top-bar icons are bare
+   glyphs. The ring is the hover / focus / open state, drawn with a box-shadow so
+   it costs no layout, and the gear's old 45 degree rotate is gone with it: the
+   same class also carries the bell and the collaborators icon, and a bell must
+   not spin. */
 .settings-btn {
   background: none;
-  border: 1px solid var(--border);
+  border: 0;
   color: var(--slate);
   width: 34px;
   height: 34px;
-  border-radius: 50%;
+  /* At rest there is no shape at all - the ring only exists in the states
+     below. (The chrome gate reads a rest radius as a box.) */
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -716,10 +725,13 @@ body:not(.crosshair-on) #cy {
   outline: 2px solid var(--gold-ink);
   outline-offset: 2px;
 }
-.settings-btn:hover {
+.settings-btn:hover,
+.settings-btn:focus-visible,
+.settings-btn[aria-expanded='true'] {
   color: var(--gold-text);
-  border-color: var(--gold);
-  transform: rotate(45deg);
+  background: rgba(var(--gold-rgb), 0.08);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--gold);
 }
 .hdr-back {
   display: inline-flex;

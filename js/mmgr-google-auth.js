@@ -89,6 +89,32 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // Read the nonce CLAIM out of the credential GIS just handed us. This is
+  // not a trust decision - the Worker still validates the token with Google.
+  // It answers one question only: which nonce does this exact credential
+  // prove? Posting the module's newest nonce instead of this one is what made
+  // sign-in fail with "did not finish" (owner report 2026-11-01): the button
+  // is rendered before the first nonce lands, and the 4-minute refresh moves
+  // the module nonce, so the two routinely disagree - the Worker sees a
+  // posted nonce the token does not carry and answers 401.
+  function nonceOfIdToken(token) {
+    const parts = String(token || '').split('.');
+    if (parts.length !== 3 || !parts[1]) {
+      return '';
+    }
+    try {
+      let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      b64 += '='.repeat((4 - (b64.length % 4)) % 4);
+      const bytes = Uint8Array.from(atob(b64), function (c) {
+        return c.charCodeAt(0);
+      });
+      const json = JSON.parse(new TextDecoder().decode(bytes));
+      return json && typeof json.nonce === 'string' ? json.nonce : '';
+    } catch (e) {
+      return '';
+    }
+  }
+
   function fetchSignInNonce() {
     try {
       fetch('/api/auth/nonce', { credentials: 'same-origin' })
@@ -97,9 +123,16 @@ var MMGR = window.MMGR || {};
         })
         .then(function (j) {
           if (j && typeof j.nonce === 'string' && /^[0-9a-f]{32,128}$/.test(j.nonce)) {
+            const changed = j.nonce !== _idNonce;
             _idNonce = j.nonce;
             _idNonceAt = Date.now();
             applyGisNonce();
+            // GIS composes the credential from the config live at click time,
+            // but a button drawn before this fetch keeps its first config. Redraw
+            // once the nonce actually changes so the NEXT credential carries it.
+            if (changed) {
+              redrawGisButton();
+            }
           }
         })
         .catch(function () {
@@ -107,6 +140,25 @@ var MMGR = window.MMGR || {};
         });
     } catch (e) {
       /* zero-throw */
+    }
+  }
+
+  // Re-draw an already-rendered GIS button so it picks up the current config.
+  // No-op until a host has been rendered (initGIS owns the first draw).
+  function redrawGisButton() {
+    if (!_gisInit || !gisReady()) {
+      return;
+    }
+    const host = $('google-signin-button');
+    if (!host || !host.firstChild) {
+      return;
+    }
+    try {
+      host.innerHTML = '';
+      window.google.accounts.id.renderButton(host, gisButtonOptions(host));
+      installPopupBlockDetector();
+    } catch (e) {
+      /* zero-throw: a stale button still signs in on the legacy path */
     }
   }
 
@@ -694,21 +746,20 @@ var MMGR = window.MMGR || {};
     if (!credential) {
       return;
     }
-    // G-2: post the nonce that was live when GIS composed this credential.
-    // It is cleared BEFORE the request (single use) and re-fetched in the
-    // finally so the next attempt starts fresh. An empty nonce omits the key
-    // entirely , the cached-old-page shape the flag-off server still accepts.
-    const posted = freshIdNonce();
+    // G-2: post the nonce THIS credential carries, not the newest one we hold.
+    // The Worker requires the two to be equal; taking the value from the token
+    // is the only way that always holds, because GIS composes the credential
+    // from whatever config was live at the moment of the click.
+    const claimNonce = nonceOfIdToken(credential);
+    const posted = /^[0-9a-f]{32,128}$/.test(claimNonce) ? claimNonce : '';
     _idNonce = '';
     _idNonceAt = 0;
-    try {
+    async function postCredential(token, nonce) {
       const res = await fetch('/api/auth/google', {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(
-          posted ? { idToken: credential, nonce: posted } : { idToken: credential }
-        )
+        body: JSON.stringify(nonce ? { idToken: token, nonce: nonce } : { idToken: token })
       });
       let data = null;
       try {
@@ -716,7 +767,22 @@ var MMGR = window.MMGR || {};
       } catch (e) {
         /* non-JSON failure */
       }
-      if (res.ok && data && data.ok && data.user) {
+      return { ok: !!(res.ok && data && data.ok && data.user), data: data };
+    }
+    let result = null;
+    try {
+      result = await postCredential(credential, posted);
+      // SECOND CHANCE (owner report 2026-11-01): a credential whose nonce row
+      // is gone - a second click, a page open past the 5-minute TTL, a token GIS
+      // composed before we minted one - is still a genuine Google credential for
+      // this client ID. When the nonce arm refuses it, retry once on the legacy
+      // nonceless path the Worker still accepts; replay protection lives in the
+      // single-use row, which is exactly what was missing.
+      if (!result.ok && posted) {
+        result = await postCredential(credential, '');
+      }
+      const data = result.data;
+      if (result.ok) {
         setGisStatus('');
         showUser(data.user);
         document.dispatchEvent(new CustomEvent('mmgr:google-signed-in', { detail: data.user }));

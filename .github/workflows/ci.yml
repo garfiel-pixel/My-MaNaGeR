@@ -896,6 +896,13 @@ jobs:
         id: qa-team-tier
         run: node tools/qa-team-tier.cjs
 
+      # SIGN-IN NONCE (owner report 2026-11-01): the client must post the nonce
+      # the CREDENTIAL carries, not the newest one it fetched - posting the
+      # latter refused every real Google sign-in with "did not finish".
+      - name: "T4: Sign-in posts the nonce the credential proves (qa-google-nonce)"
+        id: qa-google-nonce
+        run: node tools/qa-google-nonce.cjs
+
       - name: "T4: Calc S2 gate (C6 sticky + C7 switch rows + X-1/X-2)"
         id: calc-s2
         run: node tools/verify-calc-s2.cjs

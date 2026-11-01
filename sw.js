@@ -435,7 +435,16 @@
 // normalises the claim and reads the nonce from the ID token; the client
 // reports a refused credential instead of failing silently. Changed shell
 // assets: js/mmgr-google-auth.js, css/marketing.css (signin status line).
-const CACHE = 'mmgr-shell-v521';
+// v522 - SIGN-IN NONCE ORDERING (owner report 2026-11-01, "Google sign in did
+// not finish"). v521 let the email_verified check pass for the first time, so
+// the next gate in line answered instead: the client posted the NEWEST nonce
+// it held, while the credential carried the nonce GIS had live when it was
+// composed - the two disagree whenever the button was drawn before the first
+// nonce landed or the 4-minute refresh moved it, and the Worker answered 401.
+// The client now posts the nonce the credential itself proves, redraws the
+// button when the nonce changes, and retries once nonceless when that nonce's
+// single-use row is gone. Changed shell assets: js/mmgr-google-auth.js.
+const CACHE = 'mmgr-shell-v522';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

@@ -150,41 +150,46 @@ function idTokenClaims(idToken) {
 // Verify a Google ID token with oauth2.googleapis.com/tokeninfo.
 // G-2 (2026-10-23): also enforces email_verified and the sign-in nonce
 // contract. nonce/env are optional so legacy call shapes keep working.
+// Every refusal carries a machine reason. It is logged for the operator and
+// never returned to the browser: without it a live sign-in failure is a blind
+// 401 and the only way to diagnose it is to guess (owner outage 2026-10-24
+// cost two days that a one-word reason would have saved).
 async function verifyGoogleIdToken(idToken, clientId, nonce, env) {
+  const fail = reason => ({ user: null, reason: reason });
   let payload;
   try {
     const res = await fetch(
       'https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken)
     );
     if (!res.ok) {
-      return null;
+      return fail('tokeninfo_' + res.status);
     }
     payload = await res.json();
   } catch (e) {
-    return null;
+    return fail('tokeninfo_unreachable');
   }
   if (!payload || typeof payload !== 'object') {
-    return null;
+    return fail('tokeninfo_shape');
   }
   if (payload.aud !== clientId) {
-    return null;
+    return fail('audience');
   }
   const iss = String(payload.iss || '');
   if (iss !== 'accounts.google.com' && iss !== 'https://accounts.google.com') {
-    return null;
+    return fail('issuer');
   }
   const exp = Number(payload.exp);
   if (!Number.isFinite(exp) || exp * 1000 <= Date.now()) {
-    return null;
+    return fail('expired');
   }
   const sub = payload.sub ? String(payload.sub) : '';
   if (!sub) {
-    return null;
+    return fail('no_subject');
   }
   // G-2.4: an unverified (or silently absent) email claim is not an identity
   // this app will mint a session for. tokeninfo spells the value as a string.
   if (!emailVerified(payload.email_verified)) {
-    return null;
+    return fail('email_unverified');
   }
   // G-2.3: nonce contract. No nonce posted + flag off -> legacy path (a
   // cached old page keeps signing in). Anything else must fully prove: the
@@ -193,13 +198,16 @@ async function verifyGoogleIdToken(idToken, clientId, nonce, env) {
   const postNonce = typeof nonce === 'string' && NONCE_RE.test(nonce) ? nonce : '';
   if (!postNonce) {
     if (googleNonceRequired(env)) {
-      return null;
+      return fail('nonce_required');
     }
     return {
-      sub: sub,
-      email: typeof payload.email === 'string' ? payload.email : '',
-      name: typeof payload.name === 'string' ? payload.name : '',
-      picture: typeof payload.picture === 'string' ? payload.picture : ''
+      user: {
+        sub: sub,
+        email: typeof payload.email === 'string' ? payload.email : '',
+        name: typeof payload.name === 'string' ? payload.name : '',
+        picture: typeof payload.picture === 'string' ? payload.picture : ''
+      },
+      reason: ''
     };
   }
   // The nonce claim is read from the token's OWN payload first (the
@@ -213,17 +221,23 @@ async function verifyGoogleIdToken(idToken, clientId, nonce, env) {
       : typeof payload.nonce === 'string'
         ? payload.nonce
         : '';
-  if (!nonceClaim || nonceClaim !== postNonce) {
-    return null;
+  if (!nonceClaim) {
+    return fail('nonce_absent');
+  }
+  if (nonceClaim !== postNonce) {
+    return fail('nonce_mismatch');
   }
   if (!(await consumeSignInNonce(env, postNonce))) {
-    return null;
+    return fail('nonce_not_live');
   }
   return {
-    sub: sub,
-    email: typeof payload.email === 'string' ? payload.email : '',
-    name: typeof payload.name === 'string' ? payload.name : '',
-    picture: typeof payload.picture === 'string' ? payload.picture : ''
+    user: {
+      sub: sub,
+      email: typeof payload.email === 'string' ? payload.email : '',
+      name: typeof payload.name === 'string' ? payload.name : '',
+      picture: typeof payload.picture === 'string' ? payload.picture : ''
+    },
+    reason: ''
   };
 }
 
@@ -289,8 +303,12 @@ export async function handleAuthGoogle(request, env) {
     env && typeof env.GOOGLE_CLIENT_ID === 'string' && env.GOOGLE_CLIENT_ID
       ? env.GOOGLE_CLIENT_ID
       : GOOGLE_CLIENT_ID;
-  const user = await verifyGoogleIdToken(idToken, clientId, nonce, env);
+  const verdict = await verifyGoogleIdToken(idToken, clientId, nonce, env);
+  const user = verdict && verdict.user;
   if (!user) {
+    // Logged, never returned: the client gets the same generic refusal it
+    // always did, and a stale token still reveals nothing to a probe.
+    console.warn('google sign-in refused: ' + ((verdict && verdict.reason) || 'unknown'));
     return json({ ok: false, error: 'invalid token' }, 401);
   }
   const s = await mintSession(user, env);

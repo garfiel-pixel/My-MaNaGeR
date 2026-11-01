@@ -865,5 +865,25 @@ of every session.
   `74da0f28` (live `/signin` 200, `/api/auth/me` signed out, shell v521).
   `qa-oauth` keeps its 3 documented TRIAGE failures (old unlock flow, header
   bar moved); its 7 sign-in arms pass. Recorded as `74817a9`.
-- **Next:** 1.6 CSS split into `css/src/*` layers, then Wave 2 C1 NocoBase.
-  The landing wave's deploy is recorded under Wave 1 in the log.
+- **2026-11-01 - unplanned: sign-in, the second cause.** The owner reported
+  "Google sign in did not finish" after the v521 repair. v521 fixed the first
+  refusal, which let the next gate in line answer: the client posted the
+  NEWEST nonce it held, while the credential carries the nonce GIS had live
+  when it composed the token. `GET /api/auth/nonce` lands AFTER the button is
+  drawn, and the 4-minute refresh moves the module's copy, so the two
+  routinely disagree and `verifyGoogleIdToken` refused a genuine credential
+  with a blind 401. Fix: `nonceOfIdToken()` reads the claim out of the
+  credential (not a trust decision - the Worker still validates with Google)
+  and that is what travels; a changed nonce now re-initialises and redraws the
+  GIS button so the next credential carries a live one; a refusal on the
+  nonce arm retries ONCE nonceless, which is the path the flag-off server
+  already accepts. The Worker's refusals carry a machine reason into
+  `console.warn` (`nonce_absent`, `nonce_mismatch`, `nonce_not_live`,
+  `email_unverified`, `audience`, `tokeninfo_*`) and still answer the same
+  generic 401 body. New `tools/qa-google-nonce.cjs` (11 arms, ci.yml
+  `browser-calc`, drives the real callback on `about.html` with a nonce that
+  differs from the page's own; proven to fail 7/11 on the pre-fix client,
+  where it reproduces the owner's message verbatim). Shell v522.
+- **Next:** 1.6 CSS split into `css/src/*` layers (six carved, `50-calculator`
+  landed 2026-11-01 with the assembled byte-order unchanged), then Wave 2 C1
+  NocoBase. The landing wave's deploy is recorded under Wave 1 in the log.

@@ -1,0 +1,552 @@
+/* DASHBOARD-UI-REFRESH-SPEC - dark dashboard treatment (app.html ONLY) */
+.db-side,
+.db-hamb,
+.db-scrim {
+  display: none;
+}
+body.dark-mode.db-page {
+  /* OWNER 2026-09-07: app dark theme joins the pure B&W system */
+  --db-gold: #ffffff; /* accent = white in dark */
+  --db-gold-soft: #e6e6e6;
+  --db-jet-black: var(--lit-night); /* neutral near-black canvas */
+  --db-muted-slate: #8f8f97; /* neutral muted secondary text */
+  /* TIER 2 - semantic (dashboard-scoped; --db- prefix so nothing can leak) */
+  --db-canvas: var(--db-jet-black);
+  /* OWNER 2026-09-09 (P4.2): pure B&W surfaces - the old warm-brown family
+     (#242019/#2e2922/#3a342c) read as brown card interiors. Now neutral
+     dark greys consistent with the B&W contract (--db-jet-black family). */
+  --db-surface: #141416;
+  --db-surface-raised: #1d1d20;
+  --db-accent: var(--db-gold);
+  --db-accent-soft: var(--db-gold-soft);
+  --db-border: #2b2b30;
+  --db-text-secondary: var(--db-muted-slate);
+  background: var(--db-canvas);
+  color: var(--text); /* #e2e8f0 - 16.06:1 on canvas, 15.20:1 on surface (AAA) */
+}
+/* ---- Header chrome (.top) + sidebar (chrome is glass per spec §3; the
+        content below is solid per Gate 6.1) ---- */
+body.dark-mode.db-page .top {
+  background: var(--glass-fill-dark);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: var(--glass-border);
+  border-radius: var(--squircle-md);
+  padding: 18px 22px;
+  margin-bottom: 18px;
+}
+body.dark-mode.db-page .top h1 .mark {
+  color: var(--db-accent);
+}
+body.dark-mode.db-page .top p {
+  color: var(--db-text-secondary);
+}
+body.dark-mode.db-page .theme-ctl {
+  color: var(--db-text-secondary);
+}
+body.dark-mode.db-page .auth-bar .btn-n {
+  color: var(--db-text-secondary);
+  border-color: var(--db-border);
+}
+body.dark-mode.db-page .db-side {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 240px;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px 14px;
+  background: var(--glass-fill-dark);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border-right: var(--glass-border);
+  box-shadow: var(--glass-rim), var(--glass-shadow);
+  overflow-y: auto;
+  overflow-x: hidden; /* rail scrolls; .db-foot stays pinned (sticky) */
+  scrollbar-width: thin;
+}
+body.dark-mode.db-page .db-side-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 4px 12px;
+  border-bottom: 1px solid var(--db-border);
+  margin-bottom: 6px;
+}
+body.dark-mode.db-page .db-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--text);
+}
+body.dark-mode.db-page .db-brand .ico {
+  color: var(--db-accent);
+}
+body.dark-mode.db-page .db-side-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: var(--db-text-secondary);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+body.dark-mode.db-page .db-side-close:hover {
+  color: var(--db-accent);
+  background: color-mix(in oklch, var(--db-accent) 12%, transparent);
+}
+body.dark-mode.db-page .db-g {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--db-text-secondary);
+  margin: 14px 10px 4px;
+}
+body.dark-mode.db-page .db-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: var(--radius);
+  color: var(--db-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  /* OWNER 2026-09-17: the admin rail mixes <button> and <a> under one class;
+     bare the buttons (no UA grey chrome, inherited font) so every row matches
+     the anchor rows. Hover keeps its own accent background. */
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+body.dark-mode.db-page .db-link:hover {
+  color: var(--db-accent);
+  background: color-mix(in oklch, var(--db-accent) 12%, transparent);
+}
+/* OWNER 2026-09-12 (P2-15): the rail's SVG icons enlarge slightly on hover -
+   a desktop-only affordance (no hover on touch), transform-only so layout
+   never shifts. */
+@media (hover: hover) {
+  body.dark-mode.db-page .db-link:hover .ico {
+    transform: scale(1.18);
+  }
+  body.db-page:not(.dark-mode) .db-link:hover .ico {
+    transform: scale(1.18);
+  }
+  body.db-page .db-link .ico {
+    transition:
+      transform var(--tr),
+      stroke var(--tr);
+  }
+}
+body.dark-mode.db-page .db-link .ico {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+body.dark-mode.db-page .db-link:focus-visible {
+  outline: 2px solid var(--db-accent);
+  outline-offset: 2px;
+}
+/* ---- Content surfaces: SOLID (Gate 6.1 - dense content never glass) ---- */
+body.dark-mode.db-page .pcard,
+body.dark-mode.db-page .cd-card {
+  background: var(--db-surface);
+  border: 1px solid var(--db-border);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: 0 4px 16px var(--lit-black-35);
+}
+body.dark-mode.db-page .pcard:hover {
+  border-color: var(--db-accent);
+  background: var(--db-surface-raised);
+}
+body.dark-mode.db-page .pcard.unlocked {
+  box-shadow:
+    inset 0 3px 0 var(--db-accent),
+    0 4px 16px var(--lit-black-35);
+}
+body.dark-mode.db-page .pc-title,
+body.dark-mode.db-page .cd-title {
+  color: var(--text);
+}
+body.dark-mode.db-page .pc-desc,
+body.dark-mode.db-page .cd-meta,
+body.dark-mode.db-page .cd-sub,
+body.dark-mode.db-page .cd-empty,
+body.dark-mode.db-page .foot a {
+  color: var(--db-text-secondary);
+}
+/* BILLING-UPGRADE-UI (app.html plan strip): solid surface + muted secondary
+   text on the dark dashboard canvas (Gate 6.1 - dense content never glass). */
+body.dark-mode.db-page .cd-plan {
+  background: var(--db-surface);
+  border-color: var(--db-border);
+}
+body.dark-mode.db-page .cd-plan .cd-plan-txt {
+  color: var(--db-text-secondary);
+}
+body.dark-mode.db-page .cd-plan .cd-plan-txt strong {
+  color: var(--text);
+}
+body.dark-mode.db-page .cd-plan.at-limit {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: var(--lit-white-08);
+}
+body.dark-mode.db-page .cd-plan.at-limit .cd-plan-txt,
+body.dark-mode.db-page .cd-plan.at-limit .cd-plan-txt strong {
+  color: var(--db-accent);
+}
+body.dark-mode.db-page .pcard:not(.unlocked) .pc-cta {
+  color: var(--db-text-secondary);
+}
+/* ---- Desktop: content shifts right of the fixed rail ONLY while it is
+        open (body.side-open - NEW-UI-CREATION-BRIEF I1 follow-up: the
+        hamburger closes/reopens the rail on desktop too, so the wrap margin
+        follows the open state). ---- */
+@media (min-width: 769px) {
+  body.dark-mode.db-page.side-open .wrap {
+    margin-left: 264px;
+    margin-right: auto;
+  }
+  body.dark-mode.db-page .db-side {
+    transition: transform var(--release-duration) var(--ease-ios);
+  }
+  body.dark-mode.db-page .wrap {
+    transition: margin-left var(--release-duration) var(--ease-ios);
+  }
+}
+/* ---- Mobile (≤768px): rail becomes an off-canvas drawer + hamburger ---- */
+@media (max-width: 768px) {
+  body.dark-mode.db-page .db-hamb {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--db-border);
+    background: var(--db-surface);
+    color: var(--db-accent);
+    border-radius: var(--radius);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  body.dark-mode.db-page .db-hamb:focus-visible {
+    outline: 2px solid var(--db-accent);
+    outline-offset: 2px;
+  }
+  body.dark-mode.db-page .db-hamb .ico {
+    width: 18px;
+    height: 18px;
+  }
+  body.dark-mode.db-page .top {
+    position: relative;
+    padding-top: 56px;
+  }
+  body.dark-mode.db-page .db-hamb {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+  }
+  body.dark-mode.db-page .db-side {
+    transform: translateX(-100%);
+    transition: transform var(--release-duration) var(--ease-ios);
+  }
+  body.dark-mode.db-page.side-open .db-side {
+    transform: translateX(0);
+  }
+  body.dark-mode.db-page .db-scrim {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 110;
+  }
+  body.dark-mode.db-page.side-open .db-scrim {
+    display: block;
+  }
+}
+/* MASTER-ACTION-PLAN RANK 8 (8.1) - projects-list visual weight */
+body.db-page:not(.dark-mode) #grid {
+  position: relative;
+  isolation: isolate;
+}
+/* OWNER 2026-09-21: the wash was clamped to #grid's box (top:-70px), which
+   drew a hard horizontal edge partway down the page - the tint stopped
+   short of the viewport top and read as a cut-off band. It is now a fixed
+   full-viewport ambient layer: same --gold-rgb token, same three washes,
+   anchored to the viewport so the tint meets the true top of the page with
+   no interior seam. position:fixed cannot overflow the viewport, so the
+   Phase 7 right-side clamp and the mobile inset guard are retired. Still
+   app-page-only (#grid exists nowhere else) and still off in dark mode. */
+body.db-page:not(.dark-mode) #grid::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  /* Only the existing --gold-rgb token (per 8.1: no new colors) - three
+     layered washes at different positions/opacities so it reads as depth,
+     not a single blob. */
+  background:
+    radial-gradient(46% 42% at 14% 6%, rgba(var(--gold-rgb), 0.1) 0%, rgba(var(--gold-rgb), 0) 70%),
+    radial-gradient(
+      40% 38% at 86% 16%,
+      rgba(var(--gold-rgb), 0.07) 0%,
+      rgba(var(--gold-rgb), 0) 68%
+    ),
+    radial-gradient(
+      52% 46% at 52% 96%,
+      rgba(var(--gold-rgb), 0.05) 0%,
+      rgba(var(--gold-rgb), 0) 72%
+    );
+}
+/* Dark db-page: the glow layer is OFF (the dashboard treatment owns the
+   canvas there); this guard keeps the light-mode rule from leaking. */
+body.db-page.dark-mode #grid::before {
+  display: none;
+}
+/* (Mobile overflow guard retired 2026-09-21: the fixed inset:0 wash cannot
+   overflow the viewport, so the small-screen clamp is no longer needed.) */
+/* 8.2 consistency: cards keep full contrast - their own surface is opaque
+   enough that the wash never sits between text and background. */
+@media (prefers-reduced-motion: reduce) {
+  body.db-page:not(.dark-mode) #grid::before {
+    transition: none;
+  }
+}
+
+/* ---- Reliability + a11y fallbacks (Gates 6.2 / 8.1) ---- */
+@supports not (backdrop-filter: blur(1px)) {
+  body.dark-mode.db-page .top,
+  body.dark-mode.db-page .db-side {
+    background: var(--db-surface-raised);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  body.dark-mode.db-page .top,
+  body.dark-mode.db-page .db-side {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: var(--db-surface-raised);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.dark-mode.db-page .db-side {
+    transition: none !important;
+  }
+}
+/* MMGR-NEW-UI-CREATION-BRIEF I1 - app.html LIGHT-mode rail */
+body.db-page:not(.dark-mode) .db-side {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 240px;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px 14px;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  box-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.04),
+    0 6px 18px rgba(16, 24, 40, 0.06);
+  overflow-y: auto;
+  overflow-x: hidden; /* rail scrolls; .db-foot stays pinned (sticky) */
+  scrollbar-width: thin;
+}
+body.db-page:not(.dark-mode) .db-side-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 4px 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+body.db-page:not(.dark-mode) .db-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--text);
+}
+body.db-page:not(.dark-mode) .db-brand .ico {
+  color: var(--gold-text);
+}
+body.db-page:not(.dark-mode) .db-side-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: var(--slate);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+}
+body.db-page:not(.dark-mode) .db-side-close:hover {
+  color: var(--gold-text);
+  background: color-mix(in oklch, var(--gold) 8%, transparent);
+}
+body.db-page:not(.dark-mode) .db-g {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--slate);
+  margin: 14px 10px 4px;
+}
+body.db-page:not(.dark-mode) .db-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: var(--radius-control);
+  color: var(--slate);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  /* OWNER 2026-09-17: bare-button reset (see the dark-mode twin above). */
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+body.db-page:not(.dark-mode) .db-link:hover {
+  color: var(--gold-text);
+  background: color-mix(in oklch, var(--gold) 8%, transparent);
+}
+body.db-page:not(.dark-mode) .db-link .ico {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+body.db-page:not(.dark-mode) .db-link:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 2px;
+  border-radius: var(--radius-control);
+}
+/* OWNER 2026-09-12 (P2-10): the rail's Soon chip is retired with its markup
+   (Dashboard link renders plain now); rules removed. */
+/* Desktop: content shifts right of the fixed light rail ONLY while it is
+   open (body.side-open - the hamburger closes/reopens it on desktop too). */
+@media (min-width: 769px) {
+  body.db-page:not(.dark-mode).side-open .wrap {
+    margin-left: 264px;
+    margin-right: auto;
+  }
+}
+/* Mobile (≤768px): rail becomes off-canvas drawer + hamburger + scrim. */
+@media (max-width: 768px) {
+  body.db-page:not(.dark-mode) .db-hamb {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--gold-text);
+    border-radius: var(--radius-control);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  body.db-page:not(.dark-mode) .db-hamb:focus-visible {
+    outline: 2px solid var(--gold-ink);
+    outline-offset: 2px;
+  }
+  body.db-page:not(.dark-mode) .db-hamb .ico {
+    width: 18px;
+    height: 18px;
+  }
+  body.db-page:not(.dark-mode) .top {
+    position: relative;
+    padding-top: 56px;
+  }
+  body.db-page:not(.dark-mode) .db-hamb {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+  }
+  body.db-page:not(.dark-mode) .db-side {
+    transform: translateX(-100%);
+    transition: transform var(--release-duration) var(--ease-ios);
+  }
+  body.db-page:not(.dark-mode).side-open .db-side {
+    transform: translateX(0);
+  }
+  body.db-page:not(.dark-mode) .db-scrim {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    z-index: 110;
+  }
+  body.db-page:not(.dark-mode).side-open .db-scrim {
+    display: block;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.db-page:not(.dark-mode) .db-side {
+    transition: none !important;
+  }
+}
+
+/* REAL-TIME PRESENCE (2026-08-12) - "N online" header chip on */
+.presence-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--green);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.08);
+  border-radius: 100px;
+  padding: 4px 10px;
+  white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.presence-chip[hidden] {
+  display: none;
+}
+.presence-chip .pdot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--dot-green);
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.22);
+}
+.presence-chip .ico {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  color: var(--dot-green);
+}
+@media (max-width: 768px) {
+  .presence-chip {
+    max-width: 110px;
+    font-size: 0.58rem;
+    padding: 3px 8px;
+  }
+}

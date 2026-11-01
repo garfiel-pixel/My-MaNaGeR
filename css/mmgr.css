@@ -13878,7 +13878,6 @@ body.dark-mode .sync-suggest {
   background: rgba(245, 158, 11, 0.1);
   border-color: rgba(245, 158, 11, 0.4);
 }
-
 /* DASHBOARD-UI-REFRESH-SPEC - dark dashboard treatment (app.html ONLY) */
 .db-side,
 .db-hamb,
@@ -14431,7 +14430,6 @@ body.db-page:not(.dark-mode) .db-link:focus-visible {
     padding: 3px 8px;
   }
 }
-
 /* EMAIL+PASSWORD SIGN-IN (deferred cloud item #14, completed */
 .email-auth {
   display: flex;
@@ -14772,7 +14770,6 @@ body.db-page:not(.dark-mode) .db-link:focus-visible {
   opacity: 0.6;
   cursor: default;
 }
-
 /* MMGR-NEW-UI-CREATION-BRIEF I1 follow-up - app.html launcher */
 /* ---- hero corner chrome: hamburger + moon/sun (Fitts edges) ---- */
 body.db-page .top {

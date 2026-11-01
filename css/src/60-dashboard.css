@@ -1,0 +1,372 @@
+/* ---- 7.1 forecast view toggle (7d / 16d) ---- */
+.wx-view-tgl {
+  display: inline-flex;
+  gap: 2px;
+}
+.wx-view-tgl .btn {
+  border-radius: 6px;
+  padding: 3px 9px;
+  font-size: 0.66rem;
+}
+.wx-view-tgl .btn.is-on {
+  border-color: var(--gold);
+  color: var(--gold-text);
+}
+
+/* OWNER 2026-08-15: guidance line under the weather card's location row -
+   tells users the site is looked up online for exact coordinates and that
+   "Use my current location" tailors the forecast to exactly where they are. */
+.wx-hint {
+  font-size: 0.64rem;
+  color: var(--slate);
+  line-height: 1.45;
+  margin: 7px 2px 0;
+  max-width: 760px;
+}
+.wx-hint strong {
+  color: var(--gold-ink);
+  font-weight: 700;
+}
+
+/* Interaction audit: the WBS task name is click-to-edit - signal editability. */
+.wbs-name {
+  cursor: text;
+}
+.wbs-name:hover {
+  color: var(--gold-text);
+}
+
+/* ---- MASTER-ACTION-PLAN-v3-STRICT Rank 1: Claim Pack ---- */
+.cause-sel {
+  background-color: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 3px 22px 3px 6px;
+  font-size: 0.74rem;
+  cursor: pointer;
+  max-width: 150px;
+}
+.claim-narr {
+  font-style: italic;
+  color: var(--slate);
+  font-size: 0.78rem;
+  margin-bottom: 8px;
+  line-height: 1.55;
+}
+body.dark-mode .cause-sel {
+  background-color: var(--lit-black-25);
+}
+
+/* ---- MASTER-ACTION-PLAN-v3-STRICT Rank 2: Weekly/Daily Digest card ---- */
+.digest-meta {
+  font-size: 0.7rem;
+  color: var(--slate);
+  padding: 8px 0 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+.digest-sec {
+  margin: 8px 0;
+}
+.digest-sec-title {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gold-ink);
+  margin-bottom: 3px;
+}
+.digest-sec .bn-item {
+  border-bottom: none;
+  padding: 2.5px 0;
+}
+
+/* PLAN-OF-ACTION-LIQUID-GLASS-UI Rank 3.5 - Dual-Engine Glass */
+.glass-panel {
+  background: var(--glass-fill-dark);
+  border: var(--glass-border);
+  border-radius: var(--squircle-md);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow: var(--glass-rim), var(--glass-shadow);
+}
+.card.glass-panel {
+  padding: 18px;
+  margin-bottom: 18px;
+}
+
+/* 3.5.4 premium backdrop canvas - fixed, behind the app, inert until the
+   engine renders into it (zero cost while off). */
+#glass-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+  display: block;
+}
+body.glass-premium #app-main {
+  position: relative;
+  z-index: 1;
+}
+/* OWNER 2026-10-13: the star field runs on the calculator now - its content
+   must paint above the fixed z-0 canvas exactly like #app-main does. */
+body.glass-premium .bcp-main {
+  position: relative;
+  z-index: 1;
+}
+body.glass-premium #app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--card);
+}
+body.glass-premium .sec-nav {
+  position: relative;
+  z-index: 1;
+}
+/* Premium Glass: keep sidebar fixed + on top so it never detaches from the header */
+body.glass-premium .db-side {
+  z-index: 200 !important;
+}
+/* Premium Glass performance: containment + reduced glow for weaker devices */
+@supports (contain: layout style) {
+  body.glass-premium .pcard,
+  body.glass-premium .cd-card {
+    contain: layout style;
+  }
+}
+body.glass-premium .mouse-glow {
+  width: 260px;
+  height: 260px;
+  margin: -130px 0 0 -130px;
+  transition: opacity 0.5s ease;
+}
+body.glass-premium.dark-mode .mouse-glow {
+  background: radial-gradient(
+    circle,
+    rgba(99, 102, 241, 0.14) 0%,
+    rgba(99, 102, 241, 0.06) 34%,
+    rgba(99, 102, 241, 0) 70%
+  );
+}
+/* INTEGRATED-STRUCTURE-API-WINDOW plan §2: */
+.mouse-glow {
+  position: fixed;
+  left: var(--mouse-x, -100px);
+  top: var(--mouse-y, -100px);
+  width: 340px;
+  height: 340px;
+  margin: -170px 0 0 -170px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  display: block;
+  background: radial-gradient(
+    circle,
+    rgba(99, 102, 241, 0.16) 0%,
+    rgba(99, 102, 241, 0.07) 34%,
+    rgba(99, 102, 241, 0) 70%
+  );
+  transition: opacity 0.35s ease;
+  opacity: 0;
+}
+body.glass-premium .mouse-glow {
+  opacity: 1;
+}
+body.glass-premium.dark-mode .mouse-glow {
+  background: radial-gradient(
+    circle,
+    rgba(99, 102, 241, 0.22) 0%,
+    rgba(99, 102, 241, 0.1) 34%,
+    rgba(99, 102, 241, 0) 70%
+  );
+}
+
+/* GOOGLE-OPERATOR-IDENTITY-v1: */
+.auth-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-height: 44px;
+}
+#google-signin-button {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+}
+#google-user-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 6px 3px 3px;
+  border: var(--glass-border);
+  border-radius: 100px;
+  background: var(--glass-fill-dark);
+  box-shadow: var(--glass-rim);
+  font-size: 0.74rem;
+  color: var(--text);
+  max-width: 100%;
+}
+#google-signin-button[hidden],
+#google-user-chip[hidden] {
+  display: none;
+}
+.gchip-avatar {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--slate);
+  color: var(--lit-white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.82rem;
+}
+.gchip-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.gchip-name {
+  font-weight: 600;
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gchip-out {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--slate);
+  border-radius: 100px;
+  padding: 4px 10px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--tr-ui);
+}
+.gchip-out:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+/* ---- GOOGLE-DRIVE-BACKUP: cloud sync controls beside the identity chip ---- */
+/* The auth-bar buttons must override app.html's dashboard .btn{width:100%}
+   (that rule targets modal footers) - this scoped rule (0,2,0) wins. */
+.cloud-sync-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cloud-sync-controls .btn {
+  white-space: nowrap;
+  width: auto;
+  padding: 6px 12px;
+}
+.drive-auto {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.68rem;
+  color: var(--slate);
+  white-space: nowrap;
+}
+.drive-auto svg {
+  font-size: 0.72rem;
+}
+.drive-auto-select {
+  background-color: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 3px 24px 3px 8px;
+  font-size: 0.68rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.drive-auto-select option {
+  background: var(--card);
+  color: var(--text);
+}
+.drive-pass-in {
+  max-width: 150px;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 5px 10px;
+  font-size: 0.68rem;
+  font-family: inherit;
+}
+.drive-pass-in::placeholder {
+  color: var(--slate);
+  opacity: 0.8;
+}
+.drive-status {
+  font-size: 0.68rem;
+  color: var(--slate);
+  max-width: 260px;
+  line-height: 1.35;
+}
+.drive-status.ds-ok {
+  color: var(--green);
+}
+.drive-status.ds-err {
+  color: var(--danger);
+}
+.drive-status.ds-warn {
+  color: var(--amber);
+}
+.drive-status.ds-busy {
+  color: var(--gold-text);
+}
+.auth-bar .btn[disabled] {
+  opacity: 0.55;
+  cursor: default;
+}
+@media (max-width: 640px) {
+  .auth-bar {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .cloud-sync-controls {
+    justify-content: center;
+    width: 100%;
+  }
+  .drive-status {
+    text-align: center;
+    max-width: 100%;
+  }
+}
+
+/* ---- Rank 4.5 sync section (Controls drawer) ---- */
+.sync-gis-btn {
+  margin: 4px 0 8px;
+  min-height: 40px;
+}
+.sync-suggest {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 6px 0 4px;
+  padding: 8px 10px;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  background: rgba(var(--gold-rgb), 0.08);
+  border: 1px solid rgba(var(--gold-rgb), 0.35);
+  border-radius: var(--radius);
+  color: var(--text);
+}
+body.dark-mode .sync-suggest {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.4);
+}

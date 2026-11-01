@@ -1,0 +1,340 @@
+/* EMAIL+PASSWORD SIGN-IN (deferred cloud item #14, completed */
+.email-auth {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.email-auth-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--blue);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.email-auth-toggle:hover {
+  color: var(--gold-text);
+}
+.email-auth-toggle:focus-visible,
+.email-auth-alt button:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 1px;
+  border-radius: var(--radius);
+}
+.email-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--tile-bg);
+  align-items: stretch;
+}
+.email-auth-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.email-auth .btn {
+  width: auto;
+  white-space: nowrap;
+} /* app.html's dashboard .btn{width:100%} is modal-footer-scoped - keep the submit pill sized to its label */
+.email-auth-input {
+  flex: 0 1 150px;
+  min-width: 110px;
+  font-size: 0.72rem;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--text);
+}
+.email-auth-name {
+  flex-basis: 140px;
+}
+.email-auth-alt {
+  font-size: 0.66rem;
+  color: var(--text-secondary);
+}
+.email-auth-alt button {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: var(--blue);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.email-auth-err {
+  font-size: 0.66rem;
+  color: var(--danger);
+  min-height: 0.9em;
+}
+@media (max-width: 640px) {
+  .email-auth {
+    align-items: stretch;
+  }
+  .email-auth-row {
+    flex-direction: column;
+  }
+  .email-auth-input {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+}
+/* SIGN-IN MODAL REWORK (owner 2026-09-06): the email form is the primary
+   path. In the centered sheet the inputs go full-width and stacked, the
+   show-password eye tucks inside the field, the submit is a real primary
+   button, and the gap before the Google divider is deliberately wider so
+   the two paths read as separate groups. The legacy compact bar (auth-bar
+   hosts in admin rail) keeps the old densities. */
+.email-auth-pwwrap {
+  position: relative;
+  display: flex;
+  flex: 1 1 100%;
+  align-items: center;
+}
+.email-auth-pwwrap .email-auth-pass {
+  flex: 1 1 100%;
+  padding-right: 34px;
+}
+.email-auth-eye {
+  position: absolute;
+  right: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  color: var(--slate);
+  cursor: pointer;
+  transition:
+    color var(--tr),
+    background var(--tr);
+}
+.email-auth-eye:hover {
+  color: var(--gold-text);
+  background: rgba(var(--gold-rgb), 0.08);
+}
+.email-auth-eye:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 1px;
+}
+.email-auth-eye .ico {
+  width: 15px;
+  height: 15px;
+}
+#siom .email-auth {
+  align-items: stretch;
+  width: 100%;
+}
+#siom .email-auth-form {
+  border: none;
+  background: transparent;
+  padding: 0;
+  gap: 10px;
+}
+#siom .email-auth-row {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 10px;
+}
+#siom .email-auth-input {
+  flex: 1 1 100%;
+  width: 100%;
+  min-width: 0;
+  font-size: 0.8rem;
+  padding: 10px 12px;
+}
+#siom .email-auth-submit {
+  width: 100%;
+  justify-content: center;
+  padding: 10px 16px;
+  font-size: 0.78rem;
+  margin-top: 2px;
+}
+#siom .email-auth-alt {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+#siom .email-auth-err {
+  min-height: 1em;
+}
+#siom .email-auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 18px 0 14px;
+  color: var(--slate);
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+/* OWNER 2026-09-07: Google path shown properly - centered GIS button with
+   reserved height so the sheet never jumps while the iframe loads. */
+#siom #google-signin-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+}
+#siom #google-signin-button iframe {
+  border-radius: 6px;
+}
+#siom .email-auth-form .email-auth-submit {
+  box-shadow: 0 6px 18px -10px color-mix(in oklch, var(--gold) 70%, transparent);
+}
+#siom .email-auth-divider::before,
+#siom .email-auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+#siom .email-auth .google-fallback {
+  margin-top: 10px;
+}
+/* AUTH MAINFRAME 2026-08-17 - password-change control (shared trigger + */
+.email-auth-pw {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+}
+.email-auth-pw[hidden] {
+  display: none;
+}
+.email-auth-pw .email-auth-row[hidden] {
+  display: none;
+}
+.email-auth-pw-title {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--text);
+}
+.email-auth-pw-msg {
+  margin: 0;
+  font-size: 0.66rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.email-auth-pw .email-auth-input {
+  flex: 1 1 150px;
+  min-width: 110px;
+}
+.email-auth-pw-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--blue);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.email-auth-pw-btn:hover {
+  color: var(--gold-text);
+}
+.email-auth-pw-btn:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 1px;
+  border-radius: var(--radius);
+}
+.email-auth-pw-btn[hidden] {
+  display: none;
+}
+.email-auth-pw-cancel {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.email-auth-pw-cancel:hover {
+  color: var(--gold-text);
+}
+.email-auth-pw-cancel:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 1px;
+  border-radius: var(--radius);
+}
+.email-auth-pw-ok {
+  margin: 0;
+  font-size: 0.7rem;
+  color: var(--green);
+}
+/* Grid row variant used by the password-change fields (and the delete-account
+   confirm sheet): three password inputs side by side, stacking on phones. */
+.email-auth-pw-fields {
+  flex: 1 1 100%;
+  gap: 6px;
+}
+.email-auth-pw-fields .email-auth-input {
+  flex: 1 1 120px;
+}
+@media (max-width: 640px) {
+  .email-auth-pw-fields {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+.pw-host {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+/* GIS-unavailable fallback button (js/mmgr-google-auth.js creates it with only
+   this class when the Google Identity script never readies): matches the
+   email-auth control language so it does not render as a raw default button. */
+.gis-fallback-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 9px 16px;
+  cursor: pointer;
+  transition:
+    border-color var(--tr),
+    color var(--tr);
+}
+.gis-fallback-btn:hover {
+  border-color: var(--gold);
+  color: var(--gold-text);
+}
+.gis-fallback-btn:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 2px;
+}
+.gis-fallback-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

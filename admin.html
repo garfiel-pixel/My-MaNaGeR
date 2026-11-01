@@ -848,20 +848,46 @@ const DEMO_SEED = [{
   status: 'active',
   file: 'project.html?id=starter-project',
   code: 'START2026',
-  codeHash: ''
+  // OWNER 2026-11-01: the seed shipped an empty hash, so the project gate -
+  // which only ever compares hashes - asked for a code it could never accept.
+  // This is sha256('START2026'), the same value codeHashOf() computes.
+  codeHash: '8ccd749ce7a96ed0d224ca29f8a0cd1d8678b530654a6fec97a2f41e8561ad74'
 }];
 
 let projects = [];
 
 function loadProjects(){
+  let seeded = false;
   try{
     const raw = localStorage.getItem('mmgr_admin_projects');
     projects = raw ? JSON.parse(raw) : JSON.parse(JSON.stringify(DEMO_SEED));
-  }catch(e){ projects = JSON.parse(JSON.stringify(DEMO_SEED)); }
+    seeded = !raw;
+  }catch(e){ projects = JSON.parse(JSON.stringify(DEMO_SEED)); seeded = true; }
+  // OWNER 2026-11-01: the seed used to live in memory only, so on a fresh
+  // admin panel the starter project was NOT in mmgr_admin_projects - and the
+  // project gate treats an id it cannot find there as a stranger: it bounced
+  // the owner out of their own starter project and demanded a code. Write the
+  // seed down on first run so the record exists before anyone opens it.
+  if(seeded) saveProjects();
 }
 function saveProjects(){
   _admLastWritten = JSON.stringify(projects);
   localStorage.setItem('mmgr_admin_projects', _admLastWritten);
+}
+
+/* OWNER 2026-11-01: a stored record can carry a plaintext code with no hash -
+   the seed above (on devices that saved the old copy) and anything written by
+   an older build. The project gate compares hashes only, so such a project
+   demanded a code it could never accept. Backfill from the code we already
+   hold, then re-render so the row and the manifest agree. */
+async function repairCodeHashes(){
+  if (!window.crypto || !window.crypto.subtle) return;
+  let changed = false;
+  for (const p of projects) {
+    if (p.code && !p.codeHash) { p.codeHash = await codeHashOf(p.code); changed = true; }
+    if (p.roCode && !p.roCodeHash) { p.roCodeHash = await codeHashOf(p.roCode); changed = true; }
+  }
+  if (changed) { saveProjects(); renderProjects(); }
 }
 
 /* Merge in anything published live that this device doesn't know about
@@ -1751,6 +1777,7 @@ function enterAdmin(){
   showScreen('admin-app');
   syncAdminHdr();
   loadProjects();
+  repairCodeHashes();
   refreshEscrowStatus();
   renderRestoreRecap();
   _admLastWritten = JSON.stringify(projects);

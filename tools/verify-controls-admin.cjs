@@ -185,6 +185,39 @@ function check(name, val, detail) {
   check('S3 admin: project rows rendered', a2.rows > 0, a2);
   check('S3 admin: Publish to Cloud button on rows', a2.anyPub, a2);
 
+  // ---- S5: the starter project must open, never ask for a code --------------
+  // OWNER 2026-11-01: the seed lived in memory only, so a fresh admin panel
+  // never wrote it to mmgr_admin_projects - and the project gate treats an id
+  // it cannot find there as a stranger, bouncing the owner out of their own
+  // starter project with "enter your access code". Two contracts pinned here:
+  // the seed is persisted with a working hash, and a legacy record (plaintext
+  // code, no hash) is repaired so its code can actually be accepted.
+  const s5 = await ev(`(async function(){
+    var seeded = null;
+    try { seeded = JSON.parse(localStorage.getItem('mmgr_admin_projects') || 'null'); } catch(e) {}
+    var starter = (seeded || []).filter(function(p){ return p && p.id === 'starter-project'; })[0] || null;
+    localStorage.setItem('mmgr_admin_projects', JSON.stringify([{ id:'legacy-proj', title:'Legacy', description:'', status:'active', file:'project.html?id=legacy-proj', code:'LEGACY123', codeHash:'' }]));
+    loadProjects();
+    await repairCodeHashes();
+    var repaired = JSON.parse(localStorage.getItem('mmgr_admin_projects') || '[]')[0];
+    return {
+      starterHash: starter ? starter.codeHash : '',
+      starterCode: starter ? starter.code : '',
+      repairedHash: repaired ? repaired.codeHash : '',
+      repairedLen: repaired ? (repaired.codeHash || '').length : 0
+    };
+  })()`);
+  check(
+    'S5 admin: the starter project is persisted with a usable code hash',
+    !!s5 && !!s5.starterCode && !!(s5.starterHash && s5.starterHash.length === 64),
+    s5
+  );
+  check(
+    'S5 admin: a record with a plaintext code but no hash is repaired',
+    !!s5 && s5.repairedLen === 64,
+    s5
+  );
+
   // ---- S4: project.html Controls tab -----------------------------------------
   await send('Page.navigate', { url: BASE + '/project.html?id=qa-ctrl' });
   await delay(3500);

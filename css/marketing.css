@@ -403,11 +403,14 @@ main {
   transition: opacity 0.18s ease;
 }
 .dot-item::before {
-  /* WCAG 2.2 target size: a transparent 24 x 24 hit area around a 12px dot.
-     Absolutely positioned so it adds no height to the rail. */
+  /* WCAG 2.2 target size: a transparent hit area at least 24 x 24 around the
+     dot. It is computed FROM the dot, so shrinking the marker (owner
+     2026-11-01: 12px to 8px) would otherwise have shrunk the touch target with
+     it - 8px + 2 x 9px = 26px tall, which is what qa-dot-rail measures.
+     Absolutely positioned so it adds no height to the rail itself. */
   content: '';
   position: absolute;
-  inset: -6px -10px;
+  inset: -9px -10px;
 }
 .dot-rail-navigation:hover .dot-item,
 .dot-rail-navigation:focus-within .dot-item {

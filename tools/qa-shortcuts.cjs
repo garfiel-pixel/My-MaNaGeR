@@ -368,6 +368,67 @@ async function pickCalcWork(page, value) {
       await page.waitForTimeout(150);
     }
 
+    // ---- A7b/A7c (owner 2026-11-01): the side arrows are the cheap section
+    // switcher - step forward/back through the sidebar in nav order, skipping
+    // packs that are off, and stay out of text fields where the arrows belong
+    // to the caret.
+    const readActive = () =>
+      page.evaluate(() => {
+        const b = document.querySelector('#sec-nav .sec-btn.active');
+        const p = document.querySelector('.panel.active');
+        const list = Array.prototype.slice
+          .call(document.querySelectorAll('#sec-nav .sec-btn[data-section]'))
+          .filter(x => !x.classList.contains('is-hide') && !x.disabled)
+          .map(x => x.getAttribute('data-section'));
+        return { sec: b ? b.getAttribute('data-section') : null, panel: p ? p.id : null, list };
+      });
+    await page.evaluate(() => {
+      const dash = document.querySelector('.sec-btn[data-section="dash"]');
+      if (dash && !dash.classList.contains('active')) {
+        dash.click();
+      }
+      if (document.activeElement && document.activeElement.blur) {
+        document.activeElement.blur();
+      }
+    });
+    await page.waitForTimeout(350);
+    const navStart = await readActive();
+    await page.keyboard.press('ArrowRight');
+    await page.waitForTimeout(350);
+    const navRight = await readActive();
+    await page.keyboard.press('ArrowLeft');
+    await page.waitForTimeout(350);
+    const navBack = await readActive();
+    const nextSec = navStart.list[navStart.list.indexOf(navStart.sec) + 1];
+    check(
+      'A7b the side arrows step forward and back through the sidebar sections',
+      !!nextSec && navRight.sec === nextSec && navBack.sec === navStart.sec,
+      { navStart, navRight, navBack, nextSec }
+    );
+    const field = await page.evaluate(() => {
+      const inp = document.getElementById('ai-command-input');
+      if (!inp) {
+        return null;
+      }
+      inp.focus();
+      return document.activeElement === inp;
+    });
+    await page.keyboard.press('ArrowRight');
+    await page.waitForTimeout(300);
+    const navInField = await readActive();
+    check(
+      'A7c an arrow inside a text field moves the caret, never the section',
+      field === true && navInField.sec === navStart.sec,
+      { field, navStart: navStart.sec, navInField: navInField.sec }
+    );
+    await page.evaluate(() => {
+      const el = document.getElementById('ai-command-input');
+      if (el) {
+        el.value = '';
+        el.blur();
+      }
+    });
+
     check('A8 zero page errors on the workspace', pageErrors.length === 0, { pageErrors });
 
     // ---------------- calculator (calculator.html) ----------------

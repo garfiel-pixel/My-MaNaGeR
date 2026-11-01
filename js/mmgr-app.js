@@ -637,6 +637,44 @@ var MMGR = window.MMGR || {};
           tglFocusMode();
         }
       }
+      // OWNER 2026-11-01: the side arrows step through the sidebar sections in
+      // nav order - the cheap version of a task switcher, built on the nav we
+      // already have instead of a new feature. Hidden and disabled sections
+      // (packs off, editor scope) are skipped, and it stays out of text fields
+      // and open overlays so it never fights a caret or a dialog.
+      if (
+        (e.key === 'ArrowRight' || e.key === 'ArrowLeft') &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey &&
+        !e.shiftKey
+      ) {
+        const inField =
+          e.target.closest &&
+          e.target.closest(
+            // A RACI cell owns the side arrows too (they step the letter), so
+            // the section jump must not steal them from a focused cell.
+            'input,textarea,select,[contenteditable="true"],[role="textbox"],[data-action="cycleRaci"]'
+          );
+        if (!inField && !document.querySelector('#drw.open, #ai-win.open, #om.open, .mb.open')) {
+          const secBtns = Array.prototype.slice
+            .call(document.querySelectorAll('#sec-nav .sec-btn[data-section]'))
+            .filter(function (b) {
+              return !b.classList.contains('is-hide') && !b.disabled;
+            });
+          if (secBtns.length > 1) {
+            const cur = secBtns.findIndex(function (b) {
+              return b.classList.contains('active');
+            });
+            const step = e.key === 'ArrowRight' ? 1 : -1;
+            const from = cur < 0 ? (step > 0 ? -1 : 0) : cur;
+            const next = secBtns[(from + step + secBtns.length) % secBtns.length];
+            e.preventDefault();
+            showSec(next.getAttribute('data-section'), next);
+            return;
+          }
+        }
+      }
       if (e.key === 'Escape') {
         closeDrw();
         closeOM();

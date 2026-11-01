@@ -44,7 +44,8 @@
       { keys: 'Ctrl/⌘ + Shift + Z', what: 'Redo' },
       { keys: 'Esc', what: 'Close drawer / modals' },
       { keys: 'Enter / Space', what: 'Change the RACI letter in the cell you are on' },
-      { keys: '← / →', what: 'Go back or forward through the RACI letters' },
+      { keys: '← / →', what: 'Step back or forward through the sidebar sections' },
+      { keys: '← / → in a RACI cell', what: 'Go back or forward through the RACI letters' },
       { keys: 'Alt + Left/Right', what: 'Move the focused Kanban card to another column' },
       { keys: 'Alt + Up/Down', what: 'Reorder the focused Kanban card inside its column' }
     ],

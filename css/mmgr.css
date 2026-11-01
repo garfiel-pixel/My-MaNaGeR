@@ -8727,6 +8727,20 @@ header {
 .btn-warn:hover {
   background: #92400e;
 }
+/* OWNER 2026-11-01: "why do we have a white outline in the light theme? it
+   does not need one - the background is already white." The shared .btn rule
+   gives every button the pale glass edge (--glass-border is 1px solid #e5e7eb
+   in light mode), which is invisible on a white fill and reads as a WHITE
+   OUTLINE around a filled accent button - the green admin buttons and the
+   green New project door. A filled button has no edge to trace: its fill is
+   the edge. Text and neutral buttons keep the hairline because on them it is
+   the only boundary there is. Dark mode is untouched (its own body.dark-mode
+   rules define the edge it wants). */
+body:not(.dark-mode) .btn-g,
+body:not(.dark-mode) .btn-o,
+body:not(.dark-mode) .btn-warn {
+  border-color: transparent;
+}
 
 .btn-bullion {
   display: inline-flex;

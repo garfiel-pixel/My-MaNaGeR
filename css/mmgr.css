@@ -13506,7 +13506,6 @@ body.dark-mode .ltr-seg {
 body.dark-mode .sent-bar {
   border: 1px solid var(--lit-black-20);
 }
-
 /* ---- 7.1 forecast view toggle (7d / 16d) ---- */
 .wx-view-tgl {
   display: inline-flex;

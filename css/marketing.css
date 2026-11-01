@@ -1967,7 +1967,9 @@ body.dark-mode .nav-dd-col.is-platform {
   bottom: -14px;
   width: 92px;
   height: 92px;
-  color: var(--gold);
+  /* --gold-deep, not --gold: this is the ICON tone the ranked mark already uses
+     (verify-gold forbids the gold FILL token on anything that carries words). */
+  color: var(--gold-deep);
   opacity: 0.12;
   pointer-events: none;
   z-index: 0;

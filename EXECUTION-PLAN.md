@@ -124,6 +124,25 @@ bug when it is the pin sync, and call a `saveFloatState()` that does not exist).
 | 3.5 | **G1 provenance decision, then G4 currency/market copy** | **Owner** | G4 currently blocked: `JMD`, `J$`, `Jamaica` appear zero times on index/pricing/features |
 | 3.6 | **G2 pilots** (5-10 contractors) | **Owner**, last | Only after 1.3, 3.2 and the deploy |
 
+### Wave 5 - owner walkthrough 2026-11-01 (admin panel, project UI, landing)
+
+Source: [`AUDIT-DIRECTIVE-2026-11-01.md`](AUDIT-DIRECTIVE-2026-11-01.md). Captured on
+instruction, not started: the owner asked for the audit to be written down first. Its
+section 6 proposes the order; the entries there are the contract, this table is the
+schedule.
+
+| # | Phase | Status | Gate / evidence |
+|---|---|---|---|
+| 5.1 | **Cloud identity** (D1): `owner_email` on `cloud_projects`, list by verified email as well as sub, owner-code claim path for rows created before the column existed | Queued, highest value | `qa-tenant-isolation` extension: same verified email sees it, a different one does not, a wrong claim code fails |
+| 5.2 | **Orphaned subscription cleanup** (D2): operator path that cancels at Paddle before clearing the row | Queued | `qa-billing-orphan.cjs` with stubbed Paddle, cancel-failure path included |
+| 5.3 | **Collaboration + session truth** (B1, B2): the team and notification controls are always present and gated by state (dimmed plus an upgrade sentence), never absent; a pending session reads as loading, never as "sign in" | Queued | `qa-team-tier` re-baselined to the new contract, plus `qa-auth-ready.cjs` |
+| 5.4 | **Admin panel credibility** (A1, A2, A5): a fresh instance is empty, no access-code bounce, credential kinds named correctly, a cloud project's own owner code can load it, the control panel always closes | Queued | `qa-admin-credentials.cjs`, `verify-controls-admin` extension, close-three-ways arm |
+| 5.5 | **Admin ergonomics** (A3, A4): auto-update cloud projects toggle with visible status; back control first on every shell | Queued | autosave coalescing/retry arm, `qa-chrome` header-order arm |
+| 5.6 | **Small visible fixes** (B10 whisper on send, B5 pulsing gold Calculate in dark, B4 completion ring size, B3 no resting rings, B7 no auto-opened sidebar plus one-shot demo) | Queued | `qa-ai-dictation` extension, `verify-gold` arm, ring geometry arm, resting-vs-hover arm, `qa-shell-first-load.cjs` |
+| 5.7 | **Project photos** (B11): paid tiers only, 500 MB quota with a usage bar, description/date/uploader, download and delete | Queued | `qa-project-photos.cjs` |
+| 5.8 | **Guidance** (B8 first-project tour, B9 section accelerator via the existing navigation and mouse side buttons, capped at 5 pins) | Queued | `qa-first-project-tour.cjs`, `qa-section-accelerator.cjs` |
+| 5.9 | **Craft** (B12 skeleton mirrors the workspace, B6 theme-reactive particle line, C1 band transition, C2 landing AI, C3 gold outline judged on measurement) | Queued | structure arm, throttle and reduced-motion arms, `qa-landing-ai.cjs` |
+
 ### Wave 4 - security hygiene (calibrated 2026-10-31)
 
 Source: [`SECURITY-HYGIENE-DIRECTIVE.md`](SECURITY-HYGIENE-DIRECTIVE.md). Its §9

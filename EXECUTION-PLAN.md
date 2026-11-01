@@ -33,16 +33,17 @@ everywhere), and `.githooks/pre-commit` unless the task is the hook itself.
 
 ## 1. Where the repo stands
 
-Verified 2026-10-29 at HEAD `9d703e0`:
+Verified 2026-10-31 at HEAD `74817a9` (the row values that moved since the
+2026-10-29 snapshot are marked):
 
 | Fact | Value |
 |---|---|
-| CI | Green; run `40948194942` on `9d703e0` is 117/117 steps, 0 failed, 0 skipped. `ci.yml` is 871 lines, one `verify` job, 111 named steps (116 in the GitHub UI), 84 `id:` fields, 24 wrangler-start gates |
+| CI | Green; run `41267966202` on `74817a9` is 6/6 jobs green (`static`, `cloud-core`, `cloud-auth`, `browser-calc`, `browser-app`, `summary`), 0 failed, 0 skipped. **Six jobs since D-4**, not the single `verify` job the 2026-10-29 snapshot recorded; `tools/verify-ci-coverage.cjs` proves the step set |
 | Client schema | `SCHEMA_VERSION = 24` (`js/mmgr-state.js`) |
 | D1 migrations | Through `0029_team_enterprise.sql` |
-| Service worker | `mmgr-shell-v504` |
+| Service worker | `mmgr-shell-v521` |
 | OpenProject plan | **Landed**: `4323f91` model, `0b56f69` badges/sheet, `fddfd69` blocked-by lens, `24b44ff` browser gate + registry + CI |
-| New harnesses from the scope addition | None yet: `qa-fixed-containment`, `qa-ai-dictation`, `qa-ai-window-layout`, `verify-ci-coverage` |
+| New harnesses since the scope addition | `qa-fixed-containment`, `qa-ai-dictation`, `qa-ai-window-layout`, `verify-ci-coverage`, `verify-google-signin` (2026-10-31), `verify-observability-redaction`, `verify-csp-unsafe-eval` |
 | Untracked, owner files | `adittion to scope/`, `the last update towrads maintainance mode/`, `AUTHORS-FIX-ISSUE.md` |
 
 OpenProject is code-complete but its untracked spec still shows unticked
@@ -61,10 +62,12 @@ ground every later plan builds on (the tenant fence, then the stylesheet split).
 
 ### 1.7 - Owner UI audit batch: S1-S7 ALL DONE 2026-10-31
 
-Twelve findings from the owner's live walk. No commit has touched any of them:
-`JIC rate book` is still user-facing in `js/calculator-page.js` and
-`calculator.html`, the admin header still carries `.escrow-badge` pills,
-`.hdr-back` still has box chrome, and `.card-title > div` has no gap.
+Twelve findings came out of the owner's live walk. The four the first draft of
+this section listed as untouched (`JIC rate book` in `js/calculator-page.js`
+and `calculator.html`, `.escrow-badge` pills, `.hdr-back` box chrome, the
+`.card-title > div` gap) were all addressed by S1/S2 - the rate book wording is
+now gated by `verify-ratebook-wording` and the header badges are a dot plus
+text, not a pill.
 
 **S1 (quiet chrome), S2 (the rate book's name plus a zero-occurrence gate),
 S3 (toolbar gaps, dot states), S4 (theme/perf independence + cross-tab sync),
@@ -106,8 +109,8 @@ bug when it is the pin sync, and call a `saveFloatState()` that does not exist).
 | 2.1 | **C1 NocoBase** custom task fields, schema v25 | Queued | Its DoD; write JSDoc on the new fields as they land |
 | 2.2 | **E7 `checkJs`** on state, cloud, billing | Queued - immediately after 2.1 | `npm run typecheck` in `static`; no silencer casts |
 | 2.3 | **C2 Leantime** idea intake + merged agenda, v26 | Queued - **split at its own phase boundary first** (4,634 lines, 60 tasks) | Its 16-gate harness |
-| 2.4 | **C4 Platform** guarded transitions, audit, rules, v28 | Queued after 2.3 | Its DoD |
-| 2.5 | **C3 AppFlowy** project book, v27 | Needs drafting pass, then build | Drafting pass first: anchors from code, task-level steps, gates |
+| 2.4 | **C3 AppFlowy** project book, v27 | Needs drafting pass, then build - **moved ahead of C4 2026-10-31**: "schema order is the contract" and v27 precedes v28 | Drafting pass first: anchors from code, task-level steps, gates |
+| 2.5 | **C4 Platform** guarded transitions, audit, rules, v28 | Queued after 2.3 and 2.4 | Its DoD |
 | 2.6 | **C5 Plane** cycles and modules, v29 | Needs drafting pass, then build | Same |
 
 ### Wave 3 - evidence, then customers
@@ -656,7 +659,9 @@ E3 `_archive/` untracked with its deny rule and exclude lists kept; E4
 needs its coverage number first; E7 (`checkJs` on state, cloud, billing) comes
 after C1. One commit per task, `chore(repo): ...`.
 
-**F (reliability, after C2).** F1 cross-tenant isolation harness (tenant A
+**F (reliability, after C1).** F2 load test sits at 3.1 in the queue (after C1
+NocoBase, before the rest of C2) because it measures the cloud surface C1
+touches; the rest of F follows C2. F1 cross-tenant isolation harness (tenant A
 against B on every cloud endpoint, refusals generic, no bytes leak) is the one
 that changes what we may claim. F2 load test with p50/p95/p99 published, F3
 uptime plus error tracking plus a status page (owner picks vendors; the CSP
@@ -676,19 +681,20 @@ headline. Small copy task, blocked by G1's wording decision.
 
 ---
 
-## 6. Phase D - parked UI plans
+## 6. Phase D - UI plans (UNPARKED 2026-10-30 - kept for its unfinished tail)
 
-`UI-FIXES-SPEC.md` (43-check `qa-landing-ui`) and `plan-ui.md` are parked. The
-owner will extend them. When the extended versions land:
+`UI-FIXES-SPEC.md` (43-check `qa-landing-ui`) and `plan-ui.md` are live again -
+UI is the owner's top priority - and the spec's U-02 to U-14 landed in Wave
+1.1/1.2, with `qa-landing-ui` now a CI step in `browser-app` (43/43). What is
+still parked is the type and spacing scale in `plan-ui.md`, which waits on the
+`tokens` layer in phase 1.6. Once that layer exists:
 
 - Run `plan-ui.md` phases 1 to 4 first, so the type and spacing scale and the
   panel header exist before new markup inherits them.
-- Then run `UI-FIXES-SPEC` in its section 14 wave order 0 to 6, one commit per
+- Then run any remaining `UI-FIXES-SPEC` section 14 waves, one commit per
   wave, with the stated gate updates in the same commit that breaks them.
 - If they land after C1 to C5, phases 3 and 4 sweep the markup those plans
   added; that is accepted cost, not a reason to reorder now.
-- `qa-landing-ui.cjs` stays in the parked folder until the spec is alive; when
-  promoted it needs the three edits.
 
 ---
 

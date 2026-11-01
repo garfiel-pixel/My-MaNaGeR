@@ -1,137 +1,113 @@
 # My MaNaGeR - reflection.txt (active; last session only. Older sessions archived in docs/history/reflection-ARCHIVE-2026-10-18.txt)
 
-SESSION 2026-10-30, LAST PART - CLOSE THE CI BOOK, DEPLOY THE LANDING WAVE,
-AND CORRECT THE CSS NUMBER
+SESSION 2026-11-01 - VALIDATE THE HANDOFF, THEN FIX THE SIGN-IN THAT WAS STILL
+BROKEN, AND FINISH THE STYLESHEET SPLIT'S FIRST HALF
 
 CONTEXT
-The session before this one finished Wave 1.2 (landing UI backlog, 43/43) and
-Wave 1.4 (CSS coverage) and left exactly one TODO: "commit, push, and confirm
-the CI run is green". The commit and the push had happened; nobody had read the
-run. It was RED. Two further things were true and unrecorded: the landing wave
-had never been deployed (live served mmgr-shell-v513, the repo was on v515),
-and the 31.7% / 28.9% dead-CSS number that had just re-ordered the queue was
-measured with a broken evidence set.
+The session opened on a handoff report claiming the Google sign-in was "fully
+repaired, gated and deployed" and that the CSS split had "6 of 7 layers done".
+The owner also had a live complaint: the page was showing "Google sign in did
+not finish. Try again, or use the email sign in below." That string only
+appears in js/mmgr-google-auth.js:735, on a non-ok answer from
+POST /api/auth/google - so the claimed repair was real but incomplete.
 
-WHAT THIS SESSION DID
+WHAT THE VALIDATION FOUND (claim by claim)
+1. Sign-in repair - TRUE. src/auth/google.js:124 has the emailVerified()
+   normaliser (true/1/"true"/"1"), src/auth/google.js:134 decodes the token's
+   own claims, and npm run verify:google passes all 5 arms (client ID in six
+   writers, CSP origins, mount+module per GIS page, the Authorized JavaScript
+   Origins checklist, and the tripwire on the broken comparison). CI run
+   41267966202 is green in the run list; sw.js was at v521.
+2. CSS split "6 layers" - HALF TRUE. css/src held 10-tokens, 20-shell,
+   30-panels, 40-ai and 99-remainder, and 50-calculator.css existed only as an
+   UNTRACKED working-tree file with css/mmgr.css and 99-remainder.css modified
+   and uncommitted. The report's own "the 7th commit will carve the calculator"
+   therefore described work that had already been done on disk but never
+   landed. Committed as 50a59fb after proving it: build assembles 6 layers,
+   verify-css-integrity ARM 0 byte-identical, ARM 2 all 1,485 rules survive,
+   and (the check the earlier sessions never ran) the assembled body is
+   byte-identical to HEAD's apart from one blank line, so the cascade did not
+   move.
+3. tools/qa-cloud-refresh.cjs showed as modified - FALSE. Same blob hash in the
+   index and the worktree; a filemode/stat artefact. `git checkout --` cleared
+   it. Nothing was lost.
 
-1. CI REPAIR (`59f05a7`). Run 41095901556 on 87e4275 failed `browser-app` at
-   "T4: Landing UI spec (qa-landing-ui)"; `summary` failed only because of it.
-   The step died before its first check:
-   `browserType.launch: Executable doesn't exist at
-   /home/runner/.cache/ms-playwright/chromium_headless_shell-1243/...`.
-   tools/qa-landing-ui.cjs:59 called `chromium.launch({})`, so it wanted the
-   browser Playwright downloads, and CI installs only the devDep. Every other
-   Playwright gate in the workflow pins the runner's system Chrome (qa-scurve,
-   qa-spy-nav, qa-console-stress pass `channel: 'chrome'`; qa-hero-globe
-   resolves an executablePath). The harness now launches
-   `channel: process.env.QA_CHANNEL || 'chrome'` with `--disk-cache-size=0`
-   (AGENTS lesson 5), so a local machine can still override.
-   Run 41155753538 on 59f05a7: 6/6 jobs green - cloud-core 453s, browser-app
-   458s, cloud-auth 399s, browser-calc 373s, static 61s, summary 4s.
+THE SIGN-IN BUG (the real work)
+The v521 fix let the FIRST refusal pass, which exposed the next gate in line.
+js/mmgr-google-auth.js posted `freshIdNonce()` - the newest nonce the page
+held - while the credential carries the nonce GIS had live when it composed the
+token. initGIS() draws the button BEFORE fetchSignInNonce() resolves, and the
+4-minute refresher moves the module's copy, so the two routinely disagree.
+src/auth/google.js compares nonceClaim !== postNonce and answered 401 for a
+genuine, Google-signed credential.
 
-2. THE CSS NUMBER WAS WRONG, AND THE TOOL IS FIXED (`19d84cd`).
-   tools/measure-css-coverage.cjs loaded `project.html` with no project id, so
-   serve.cjs gate-redirected it to `app.html?locked=default` (by design) and the
-   ENTIRE project workspace contributed zero DOM evidence; it measured only
-   `index.html` out of the 13 root pages that link marketing.css; and its
-   `page.goto` failure was swallowed by `catch { continue }`, so a page that
-   never rendered read as 100% dead CSS. `--list` also stopped at 80 rows per
-   file, hiding 736 of 816 candidates. Deleting from that list would have
-   removed live CSS on contact.html, reviews.html and the dashboard.
-   The tool now:
-     - unlocks the workspace the way qa-full does (seed the demo project,
-       localStorage.mmgr_scope_demo-project = 'full', then
-       project.html?id=demo-project - verified landing on the workspace with
-       4,216 elements instead of the 476-element launcher);
-     - measures every root page whose source links a marketing stylesheet
-       (13, discovered by scanning, not hardcoded);
-     - prints any page that FAILED TO LOAD or landed on a different URL, and
-       sets a non-zero exit code when the measurement is incomplete;
-     - prints every candidate under --list.
-   Corrected measurement: 303 / 2,572 mmgr selectors (11.8%) and 51 / 526
-   marketing selectors (9.7%), not 31.7% / 28.9%.
-   Teeth: removing the unlock reproduces 31.6%, prints
-   "project.html?id=demo-project REDIRECTED to /app.html?locked=demo-project"
-   and exits 1.
-   CONSEQUENCE: Wave 1.5 (E6.2 dead-rule removal) was unlocked by a 15% trigger
-   the honest number does not meet, so it is demoted out of the queue. The
-   residual candidates are states only reached by clicking, which no load-time
-   render can prove. The CSS split (1.6) is next.
+FIX (8e7cbcc)
+- nonceOfIdToken() reads the claim out of the credential (base64url payload,
+  TextDecoder). Not a trust decision: the Worker still validates with Google.
+  That value is what travels.
+- fetchSignInNonce() re-initialises AND redraws the GIS button when the nonce
+  actually changes (redrawGisButton), so the next credential carries a live one
+  - this matters when GOOGLE_NONCE_REQUIRED is turned on.
+- A refusal on the nonce arm retries ONCE nonceless, the path the flag-off
+  server already accepts; replay protection stays in the single-use row.
+- The Worker's refusals carry a machine reason into console.warn
+  (nonce_absent, nonce_mismatch, nonce_not_live, email_unverified, audience,
+  tokeninfo_*) and still return the same generic 401 body. Before this, a live
+  failure was a blind 401 and the only diagnosis method was guessing.
 
-3. DEPLOYED THE LANDING WAVE (owner asked for it in this session, `7d8ca39`
-   carries the record). Live was serving mmgr-shell-v513 while the repo was on
-   v515, so the whole 1.1/1.2 UI wave was local only.
-   Staged from C:\Users\Garfield\mmgr-deploy with robocopy, excluding `.git`,
-   `.wrangler`, `node_modules`, `.agents`, `_archive`, `tmp`, `dogfood-output`
-   and the two owner folders: 935 files. Verified BEFORE deploying: index.html,
-   sw.js, css/mmgr.css, css/marketing.css, dist/bundle.js,
-   dist/marketing.min.css, manifest.webmanifest and js/mmgr-app.js all
-   hash-identical to the repo; phase-rail / hg-stage / hg-poster present; shell
-   version v515; and `.dev.vars` deleted from the stage (it is in
-   .assetsignore, but a stage that never carries secrets cannot leak them).
-   `wrangler deploy`: 982 files read, 53 uploaded, 533.27 KiB total (101.13 KiB
-   gzip), version d712b2e8-e091-4028-9e7d-c443ed046c69.
-   LIVE PROBE on https://mymanagerworkspace.com: sw.js serves
-   mmgr-shell-v515; /, /index.html, /project, /app.html, /pricing.html,
-   /manifest.webmanifest, /images/og-image.png and /favicon.ico all 200; the
-   served landing page carries phase-rail, hg-stage and hg-poster; the CSP
-   still carries its 25 inline-script hashes; / links dist/marketing.min.css,
-   the SVG favicon and the opaque 180px apple-touch icon; /.gitignore is 404.
+GATE (new, verified to bite)
+tools/qa-google-nonce.cjs, 11 arms, ci.yml browser-calc, registry row CI.
+It drives the REAL callback on about.html with a three-segment ID token whose
+payload nonce differs from the nonce the page fetched (route-stubbed), then
+asserts: the token's nonce is posted and the page's never is; a nonceless
+credential posts no nonce key; a refused nonce yields exactly one nonceless
+retry that signs in with no refusal line left behind; a double refusal states
+the reason on the page; a changed nonce re-initialises and redraws the button;
+zero page errors. Teeth proven by reverting js/mmgr-google-auth.js only and
+re-running: 7 of 11 fail, and N3b reproduces the owner's exact string
+("Google sign in did not finish. Try again, or use the email sign in below.").
 
-4. STALE RECORDS CORRECTED (same commit as 3). EXECUTION-PLAN.md still called
-   qa-landing-ui.cjs parked and out of scope (it is a CI step now), its position
-   line still pointed at 1.4, and its "Next" line still owed a Phase B deploy
-   that B5 had already done. docs/CI-TEST-COVERAGE.md described qa-hero-globe G5
-   as a Pause widget and G8 as "leaves the three hero cards untouched", both
-   retired by the 1.2 re-baseline, and still quoted the wrong coverage numbers.
+THE CSS SPLIT, CONTINUED (50a59fb)
+Cut the remainder as ORDERED PREFIXES only (a contiguous run from the front),
+so the concatenation keeps the rule order it already had. That is why 6 layers
+became 10 with the assembled body byte-identical: 60-dashboard (373 lines),
+70-chrome (553), 80-auth (341), and the remainder down to 133 KB.
+30-panels was 158 KB, over the 160,000-byte css directory cap in
+tools/verify-sizes.cjs, so it split at the scoped-editor workspace boundary
+into 30-panels (78 KB) and 35-workspace (80 KB). verify-sizes PASS,
+verify-css-integrity PASS (10 layers, 1,485 rules), and dist/mmgr.min.css
+hashes to c384340d - the SAME file the pre-split tree built, so the shipped
+CSS is unchanged in effect. Prettier reformatted the three new
+layers; the only remaining diff against HEAD is three blank lines.
 
-VERIFICATION (all run this session)
-  node tools/qa-landing-ui.cjs            43/43 (system Chrome channel)
-  node tools/measure-css-coverage.cjs     16 pages + the project workspace,
-                                          11.8% mmgr / 9.7% marketing
-  teeth (unlock removed)                  31.6%, prints the redirect, exit 1
-  node build.js                           clean, no dist churn
-  npm run verify                          exit 0 (171 unit, registry 151/151,
-                                          sizes green, CSP + SW green)
-  node tools/verify-prettier.cjs          all files formatted
-  node tools/verify-eslint.cjs            0 errors
-  wrangler deploy                         version d712b2e8, exit 0
-  live probe                              sw v515, 8 URLs 200, markers present
-  CI run 41155753538 (59f05a7)            6/6 jobs green
-  CI run 41157502659 (7d8ca39)            6/6 jobs green - browser-app 467s,
-                                          cloud-core 454s, browser-calc 365s,
-                                          cloud-auth 354s, static 70s, summary 2s
+VERIFICATION ACTUALLY RUN
+npm run verify exit 0 (CSP, SW v522 vs 59 shell assets, JS 126/126, CSS
+integrity, sizes, ESLint 0 errors, Prettier, test registry 159/159),
+qa-google-nonce 11/11 (and 7/11 on the pre-fix client), qa-relations 9/9
+locally, qa-team-tier, qa-theme-perf, qa-cloud-refresh, qa-ai-float green
+earlier in the session. CI run 41278020398: static, cloud-core, cloud-auth,
+browser-app, browser-calc and summary all success; the new step passed.
 
-STATE LEFT BEHIND
-  SW mmgr-shell-v515, LIVE. Schema unchanged (v24). Wave 1.1 to 1.4 done and
-  deployed; 1.5 demoted; 1.6 (the CSS split into css/src/* layers, tokens first)
-  is the next piece of work, then Wave 2 C1 NocoBase (schema v25).
-  CI is green on main at 7d8ca39.
+DEPLOY
+Built with build.js, staged at $HOME/mmgr-deploy (never /tmp, never the repo
+root), staged copy verified to carry nonceOfIdToken and nonce_not_live before
+upload. Version 32b13275-3191-4763-b046-83467a0d3068. Live: / 200, /signin
+200, /api/health 200, served js/mmgr-google-auth.js carries nonceOfIdToken,
+/api/auth/nonce mints a nonce (the auth_nonces write works in production),
+/sw.js serves mmgr-shell-v522.
 
----
-
-SESSION 2026-10-30, THIRD PART - PHASE B3 (D-1): THE AI WINDOW FITS ANY WIDTH
-
-The assistant is one 56px header row (sparkle, title, status dot; New, History,
-Maximise, More, Close as 32x32 icon buttons), one composer card, and three width
-tiers measured on `.ai-main` itself (`container: aiwin / inline-size`). History
-goes inline only at 720, so the 520 dock default keeps its reading column. The
-engine pill moved into the More menu and `#ai-api-pill` became a 10px dot with
-its label visually hidden and mirrored to title and aria-label, so qa-ai A16
-kept passing. The gate found two real defects: the workspace document Escape
-handler closed the window from inside the More menu (inner layers now
-stopImmediatePropagation), and the generic `.mb` modal cap (82vh) left a dead
-page-coloured strip under the composer at every width (`#ai-win .mb` now clears
-it). qa-ai-window-layout 83/83, qa-ai-win 23/23, qa-ai PASS, qa-ai-dictation
-14/14, qa-fixed-containment 10/10, axe 7/7, verify:gold green, npm run verify
-exit 0. Shell v513 at the time.
-
-SESSION 2026-10-30, SECOND PART - PHASE B4 (D-4): CI SPLIT
-
-Baseline run 40991435134: 24.4 min, 1531 step-seconds. ci.yml regenerated from
-one job into six (static, cloud-core, cloud-auth, browser-calc, browser-app,
-summary) by a textual splitter that sliced the 116 original step blocks.
-`tools/verify-ci-coverage.cjs` (12/12) proves the run: the run: multiset, the T4
-count, same-job id references and the summary job; `yaml` added as a devDep.
-Runs 41014918383 (3bd9325) and 41015996950 (1d60df7, after moving Sync bond to
-browser-calc): all six green, slowest 457s, 0 skipped.
+WHAT IS STILL OPEN
+- Wave 1 item 1.6 is now 10 layers of 10 complete for THIS cut, but the split
+  is not "finished" in the sense the plan first imagined (tables and print as
+  their own layers): the print blocks are scattered through 30-panels,
+  35-workspace and 99-remainder, and extracting them would REORDER them against
+  base rules - the one move ordered-prefix carving cannot make safely. Treat
+  the print layer as a separate, browser-gated change, not a mechanical carve.
+- CI flake to watch: qa-relations failed once on run 41278020398 and passed on
+  re-run with no code change; it uses fixed waitForTimeout waits. Same family
+  as the qa-cloud-refresh failure on run 41183777104.
+- Wave 4 (security hygiene, calibrated in SECURITY-HYGIENE-DIRECTIVE.md §9)
+  is scheduled and unstarted: 4.1 CI least privilege + supply chain, then 4.2
+  request-path hardening.
+- The owner should sign in once on a phone and once on desktop to confirm the
+  nonce fix end to end; no harness here can drive real Google.

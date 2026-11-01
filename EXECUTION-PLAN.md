@@ -883,7 +883,16 @@ of every session.
   generic 401 body. New `tools/qa-google-nonce.cjs` (11 arms, ci.yml
   `browser-calc`, drives the real callback on `about.html` with a nonce that
   differs from the page's own; proven to fail 7/11 on the pre-fix client,
-  where it reproduces the owner's message verbatim). Shell v522.
+  where it reproduces the owner's message verbatim). Shell v522. Registry
+  159/159, `npm run verify` exit 0, CI run `41278020398` 6/6 jobs green (its
+  first attempt failed `qa-relations`, which passes 9/9 locally and went green
+  on re-run with no change - the fixed `waitForTimeout` waits in that harness
+  are the suspect if it recurs). Deployed from the `$HOME/mmgr-deploy`
+  staging copy as version `32b13275-3191-4763-b046-83467a0d3068`; live probes:
+  `/` 200, `/signin` 200, `/api/health` 200, the served
+  `js/mmgr-google-auth.js` carries `nonceOfIdToken`, `/api/auth/nonce` mints
+  a nonce in production (so the `auth_nonces` row writes), `/sw.js` serves
+  v522.
 - **Next:** 1.6 CSS split into `css/src/*` layers (six carved, `50-calculator`
   landed 2026-11-01 with the assembled byte-order unchanged), then Wave 2 C1
   NocoBase. The landing wave's deploy is recorded under Wave 1 in the log.

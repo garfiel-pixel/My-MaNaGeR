@@ -1,113 +1,88 @@
 # My MaNaGeR - reflection.txt (active; last session only. Older sessions archived in docs/history/reflection-ARCHIVE-2026-10-18.txt)
 
-SESSION 2026-11-01 - VALIDATE THE HANDOFF, THEN FIX THE SIGN-IN THAT WAS STILL
-BROKEN, AND FINISH THE STYLESHEET SPLIT'S FIRST HALF
+SESSION 2026-11-01 (second) - FINISH THE STYLESHEET SPLIT, COMMIT THE IN-FLIGHT
+SESSION FIX, AND MAKE THE PLAN DESCRIBE THE TREE AGAIN
 
 CONTEXT
-The session opened on a handoff report claiming the Google sign-in was "fully
-repaired, gated and deployed" and that the CSS split had "6 of 7 layers done".
-The owner also had a live complaint: the page was showing "Google sign in did
-not finish. Try again, or use the email sign in below." That string only
-appears in js/mmgr-google-auth.js:735, on a non-ok answer from
-POST /api/auth/google - so the claimed repair was real but incomplete.
+The session opened on "see where we are in the execution plans". The plan said
+"Position: Wave 1, 1.6 (the CSS split) is next" and marked every Wave 5 row
+Queued. The tree disagreed: eight commits after the wave-5 capture (85a6cc8,
+018c706, c59cdf9, ad0b712, 02bfd49 plus three small ones) had shipped B3, B4,
+B5, B10, B7, A5, half of A1, half of B9 and the calculator chrome strip, and
+four files sat uncommitted (the B1 session fix). The plan was stale by a day
+and one wave, which is exactly the drift AGENTS.md lesson 14 warns about.
 
-WHAT THE VALIDATION FOUND (claim by claim)
-1. Sign-in repair - TRUE. src/auth/google.js:124 has the emailVerified()
-   normaliser (true/1/"true"/"1"), src/auth/google.js:134 decodes the token's
-   own claims, and npm run verify:google passes all 5 arms (client ID in six
-   writers, CSP origins, mount+module per GIS page, the Authorized JavaScript
-   Origins checklist, and the tripwire on the broken comparison). CI run
-   41267966202 is green in the run list; sw.js was at v521.
-2. CSS split "6 layers" - HALF TRUE. css/src held 10-tokens, 20-shell,
-   30-panels, 40-ai and 99-remainder, and 50-calculator.css existed only as an
-   UNTRACKED working-tree file with css/mmgr.css and 99-remainder.css modified
-   and uncommitted. The report's own "the 7th commit will carve the calculator"
-   therefore described work that had already been done on disk but never
-   landed. Committed as 50a59fb after proving it: build assembles 6 layers,
-   verify-css-integrity ARM 0 byte-identical, ARM 2 all 1,485 rules survive,
-   and (the check the earlier sessions never ran) the assembled body is
-   byte-identical to HEAD's apart from one blank line, so the cascade did not
-   move.
-3. tools/qa-cloud-refresh.cjs showed as modified - FALSE. Same blob hash in the
-   index and the worktree; a filemode/stat artefact. `git checkout --` cleared
-   it. Nothing was lost.
+1. CSS SPLIT (1.6) - FINISHED
+The split had nine carved layers and a 136 KB `css/src/99-remainder.css`.
+`build.js` concatenates `css/src/*.css` in filename order (build.js:310-330),
+so the only safe carve is a contiguous slice. I cut the remainder at its own
+top-level section boundaries into fifteen named layers:
 
-THE SIGN-IN BUG (the real work)
-The v521 fix let the FIRST refusal pass, which exposed the next gate in line.
-js/mmgr-google-auth.js posted `freshIdNonce()` - the newest nonce the page
-held - while the credential carries the nonce GIS had live when it composed the
-token. initGIS() draws the button BEFORE fetchSignInNonce() resolves, and the
-4-minute refresher moves the module's copy, so the two routinely disagree.
-src/auth/google.js compares nonceClaim !== postNonce and answered 401 for a
-genuine, Google-signed credential.
+  82-launcher (1..2212), 83-floating-calculator (2213..2725), 84-themes
+  (2726..2853), 85-performance-mode (2854..2914), 86-assistant-mailbox
+  (2915..3019), 87-signin-polish (3020..3038), 88-dark-buttons (3039..3313),
+  89-code-names (3314..3464), 90-calc-owner-wave (3465..4688), 91-design-system
+  (4689..4750), 92-procurement (4751..4932), 93-wide-and-export (4933..5049),
+  94-procurement-extra (5050..5192), 95-gold-buttons (5193..5253),
+  96-accent-modes (5254..5294)
 
-FIX (8e7cbcc)
-- nonceOfIdToken() reads the claim out of the credential (base64url payload,
-  TextDecoder). Not a trust decision: the Worker still validates with Google.
-  That value is what travels.
-- fetchSignInNonce() re-initialises AND redraws the GIS button when the nonce
-  actually changes (redrawGisButton), so the next credential carries a live one
-  - this matters when GOOGLE_NONCE_REQUIRED is turned on.
-- A refusal on the nonce arm retries ONCE nonceless, the path the flag-off
-  server already accepts; replay protection stays in the single-use row.
-- The Worker's refusals carry a machine reason into console.warn
-  (nonce_absent, nonce_mismatch, nonce_not_live, email_unverified, audience,
-  tokeninfo_*) and still return the same generic 401 body. Before this, a live
-  failure was a blind 401 and the only diagnosis method was guessing.
+Proof of safety, in order of strength: the esbuild output is byte-identical
+(`dist/mmgr.min.eb522108.css`, the file every page links); `css/mmgr.css`
+differs only by the fourteen seam blank lines Prettier strips at end of file;
+`verify-css-integrity` ARM 0 (assembly), ARM 1 (comment closers) and ARM 2
+(all 1,487 class rules survive into dist) pass; `verify-sizes` passes; `npm run
+verify` exits 0. `css/src/README.md` (layer map at :25) documents the rules, and
+`docs/DEVELOPER-GUIDE.md` now points at it. No `tables` or `print` layer exists
+on purpose: those rules live inside the surfaces they style.
 
-GATE (new, verified to bite)
-tools/qa-google-nonce.cjs, 11 arms, ci.yml browser-calc, registry row CI.
-It drives the REAL callback on about.html with a three-segment ID token whose
-payload nonce differs from the nonce the page fetched (route-stubbed), then
-asserts: the token's nonce is posted and the page's never is; a nonceless
-credential posts no nonce key; a refused nonce yields exactly one nonceless
-retry that signs in with no refusal line left behind; a double refusal states
-the reason on the page; a changed nonce re-initialises and redraws the button;
-zero page errors. Teeth proven by reverting js/mmgr-google-auth.js only and
-re-running: 7 of 11 fail, and N3b reproduces the owner's exact string
-("Google sign in did not finish. Try again, or use the email sign in below.").
+2. B1 SESSION FIX - COMMITTED, AND ITS FIRST DRAFT HAD A REAL DEFECT
+The uncommitted work added `Entitlements.ensureSession()`
+(js/app/entitlements.js:82), a boot-time `restoreSession()` in
+js/mmgr-app.js:750, and a "Checking your sign-in" branch in the assistant
+(js/mmgr-ai.js:207-246). Its gate, `qa-ai-win`, hung twice at its own watchdog
+(240s, then 600s), which was not a slow test: `open()` called itself again
+whenever `ensureSession()` resolved true, so a valid session behind a gate that
+still refused re-entered the same branch forever and froze the tab. Fixed at
+js/mmgr-ai.js:229: re-enter only when `aiAssistant()` can now pass, otherwise
+fall through to the refusal. A third arm pins that rule.
 
-THE CSS SPLIT, CONTINUED (50a59fb)
-Cut the remainder as ORDERED PREFIXES only (a contiguous run from the front),
-so the concatenation keeps the rule order it already had. That is why 6 layers
-became 10 with the assembled body byte-identical: 60-dashboard (373 lines),
-70-chrome (553), 80-auth (341), and the remainder down to 133 KB.
-30-panels was 158 KB, over the 160,000-byte css directory cap in
-tools/verify-sizes.cjs, so it split at the scoped-editor workspace boundary
-into 30-panels (78 KB) and 35-workspace (80 KB). verify-sizes PASS,
-verify-css-integrity PASS (10 layers, 1,485 rules), and dist/mmgr.min.css
-hashes to c384340d - the SAME file the pre-split tree built, so the shipped
-CSS is unchanged in effect. Prettier reformatted the three new
-layers; the only remaining diff against HEAD is three blank lines.
+The harness needed the same correction: it stubbed `aiAssistant()` closed while
+opening the session, a state the app cannot reach. The stub now mirrors the real
+relationship (`aiAssistant()` follows `isSignedIn()`), and the watchdog is 300s
+and env-overridable (`MMGR_QA_WATCHDOG_MS`, tools/qa-ai-win.cjs:59-68) because
+the gate grew polling arms.
 
-VERIFICATION ACTUALLY RUN
-npm run verify exit 0 (CSP, SW v522 vs 59 shell assets, JS 126/126, CSS
-integrity, sizes, ESLint 0 errors, Prettier, test registry 159/159),
-qa-google-nonce 11/11 (and 7/11 on the pre-fix client), qa-relations 9/9
-locally, qa-team-tier, qa-theme-perf, qa-cloud-refresh, qa-ai-float green
-earlier in the session. CI run 41278020398: static, cloud-core, cloud-auth,
-browser-app, browser-calc and summary all success; the new step passed.
+3. PLAN RECONCILIATION
+`EXECUTION-PLAN.md`: the position line, the 1.6 row, the wave-1 heading, the
+whole wave-5 table (5.3, 5.4, 5.6, 5.8 now say which half shipped and name the
+gate), a progress-log entry and a new Next line. `CONTINUATION-DIRECTIVE.md`:
+one status-log entry, the E row's stale 31.7 / 28.9 coverage figures corrected
+to the measured 11.8 / 9.7, and the 1.4-1.6 row closed.
 
-DEPLOY
-Built with build.js, staged at $HOME/mmgr-deploy (never /tmp, never the repo
-root), staged copy verified to carry nonceOfIdToken and nonce_not_live before
-upload. Version 32b13275-3191-4763-b046-83467a0d3068. Live: / 200, /signin
-200, /api/health 200, served js/mmgr-google-auth.js carries nonceOfIdToken,
-/api/auth/nonce mints a nonce (the auth_nonces write works in production),
-/sw.js serves mmgr-shell-v522.
+DRIFT FLAGGED, NOT FIXED
+B9 (`02bfd49`) binds ArrowLeft/ArrowRight globally and wraps at the ends.
+`AUDIT-DIRECTIVE-2026-11-01.md` says mouse side buttons only, "never the
+keyboard arrows", and stop at the ends; it also asks for five pins, an
+off-by-default toggle and a reset, none of which exist. Recorded in the 5.8 row
+as needing an owner ruling before the item can close.
 
-WHAT IS STILL OPEN
-- Wave 1 item 1.6 is now 10 layers of 10 complete for THIS cut, but the split
-  is not "finished" in the sense the plan first imagined (tables and print as
-  their own layers): the print blocks are scattered through 30-panels,
-  35-workspace and 99-remainder, and extracting them would REORDER them against
-  base rules - the one move ordered-prefix carving cannot make safely. Treat
-  the print layer as a separate, browser-gated change, not a mechanical carve.
-- CI flake to watch: qa-relations failed once on run 41278020398 and passed on
-  re-run with no code change; it uses fixed waitForTimeout waits. Same family
-  as the qa-cloud-refresh failure on run 41183777104.
-- Wave 4 (security hygiene, calibrated in SECURITY-HYGIENE-DIRECTIVE.md §9)
-  is scheduled and unstarted: 4.1 CI least privilege + supply chain, then 4.2
-  request-path hardening.
-- The owner should sign in once on a phone and once on desktop to confirm the
-  nonce fix end to end; no harness here can drive real Google.
+VERIFICATION (all run in this session)
+  node build.js / --css                green, 24 layers, dist hash eb522108
+  node tools/verify-css-integrity.cjs  PASS (ARM 0, 1, 2)
+  node tools/verify-sizes.cjs          PASS (152 files)
+  node tools/qa-ai-win.cjs             PASS 27/27, exit 0
+  teeth (js changes stashed, rebuilt)  FAIL 2/27, reproducing the owner report
+  npm run verify                       exit 0, fail 0, 160 harnesses registered
+  node tools/verify-doc-size.cjs       PASS
+
+COMMITS
+  42500e7 refactor(css): carve the remaining tail into named layers
+  a183fee fix(ai): read the session before refusing sign-in (shell v531, which
+          also backfills the missing v526 to v530 changelog entries)
+  b6c1686 docs(plan): reconcile wave 1 and wave 5 with the shipped tree
+
+STILL OPEN
+Wave 5: 5.1 (cloud identity), 5.2 (orphaned subscriptions), 5.5 (admin
+ergonomics), 5.7 (photos), 5.9 (craft), B2 (collab controls always present),
+A1's empty-panel half, A2, B7's one-shot demo, B8, B9's remaining scope.
+Not pushed and not deployed in this session.

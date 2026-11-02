@@ -80,9 +80,50 @@ COMMITS
   a183fee fix(ai): read the session before refusing sign-in (shell v531, which
           also backfills the missing v526 to v530 changelog entries)
   b6c1686 docs(plan): reconcile wave 1 and wave 5 with the shipped tree
+  ab8dc80 docs(reflection): record the CSS split close and the session fix
+  8e5d85c test(qa): re-baseline three gates against the shipped behaviour
+  f0c5ec7 test(qa): wait for the rail nudge to finish, not for its flag
+
+4. CI REPAIR LOOP (pushed, then polled)
+The nine commits went to origin/main (ee64a2e..ab8dc80). CI run 41380641177
+came back RED on three browser gates. Each was the HARNESS reading a state the
+app no longer has, not the app being wrong, and each fix keeps its teeth:
+
+- qa-full 68b (signed-out AI click) read ONE synchronous tick. The click now
+  answers "Checking your sign-in" first and refuses only once the Worker has
+  answered (ensureSession, <=2.5s), so the gate saw the interim copy. It now
+  polls to the FINAL answer (<=4s), still fails a dead click or an opened
+  window, and ignores "checking" so the interim state alone cannot pass it.
+- qa-appshell APP-1 measured INSIDE the owner's first-run rail nudge (pops out
+  at +0.9s, holds 1.5s, closes at +2.4s, once per device). CI read the nudge as
+  "the rail is open" at 1280/1024/900. The first fix waited on the nudge's
+  once-per-device FLAG - which app.html writes when it schedules the nudge, so
+  it is already set before the rail moves - and CI failed the same three
+  viewports again (run 41382632796). The gate now watches the rail-nudge CLASS:
+  appear, then go away, 6s cap. A probe on a fresh profile at 1280 shows the
+  nudge running from about 0 to 1.3s after load, which is why the old
+  click-to-close masked it on this machine and never could on CI.
+- qa-team-ui G9/G11 met the Worker's general bucket (30 a minute) keyed by the
+  CODE header - cloudRateKey prefers X-Owner-Code/X-Editor-Code over the
+  address, so the harness's per-request CF-Connecting-IP rotation cannot give
+  these calls their own allowance - and CI saw 429 on every call. Both arms now
+  retry until the sliding window opens (6 attempts, 8s apart), which is what
+  the app's own 60s poll does. No limit was weakened.
+
+Local proof before pushing 8e5d85c: qa-full 194/194, qa-appshell 79/79,
+qa-team-ui 23/23 (and again after Prettier reflowed the file).
+
+KNOWN RED, EXTENDED ONLY: tools/verify-contrast.cjs fails "gold on card 2.10:1
+(min 3:1)" in css/marketing.css. --gold (#d4af37) is the BULLION FILL; gold as
+words is --gold-text-on-light (#7a5a0b, 6.37:1). The pair predates the
+2026-10-30 gold identity (--gold was #d96b27, an orange) and measures a fill
+token against the text/UI floor. It is not in ci.yml and does not gate a
+deploy. Two honest fixes, both owner calls: point the pair at --gold-text, or
+darken the fill (a brand change).
 
 STILL OPEN
 Wave 5: 5.1 (cloud identity), 5.2 (orphaned subscriptions), 5.5 (admin
 ergonomics), 5.7 (photos), 5.9 (craft), B2 (collab controls always present),
-A1's empty-panel half, A2, B7's one-shot demo, B8, B9's remaining scope.
-Not pushed and not deployed in this session.
+A1's empty-panel half, A2, B7's one-shot demo, B8, B9's remaining scope (B9
+needs the owner's ruling on arrow keys versus mouse side buttons).
+Not deployed in this session.

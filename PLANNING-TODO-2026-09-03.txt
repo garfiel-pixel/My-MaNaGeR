@@ -2466,3 +2466,44 @@ narrower reading of §14.3).
   assets). Registry rows updated for both harnesses.
 - VERIFIED: node build.js; npm run verify EXIT=0; qa-glass PASS (15 gates);
   verify-print-dom PASS; qa-health-sweep 15/15 clean pages.
+
+2026-11-01 (second) - CI REPAIR LOOP, run 41380641177: three browser gates.
+- All three were HARNESS-side: each read a state the app no longer has. Read the
+  first red step, reproduced locally, fixed the gate, never the app.
+  1. qa-full 68b (signed-out AI click) read one synchronous tick. The click
+     now answers 'Checking your sign-in' first and refuses once the Worker
+     answers (ensureSession, <=2.5s), so the gate saw the interim copy.
+     Re-baselined: poll to the FINAL answer (<=4s); still fails a dead click or
+     an opened window; ignores 'checking' so the interim state cannot pass it.
+  2. qa-appshell APP-1 measured inside the owner's first-run rail nudge (pops
+     out at +0.9s, holds 1.5s, closes at +2.4s, once per device). CI read the
+     nudge as 'rail open' at 1280/1024/900 while a faster machine measured
+     after it. The gate now waits for the nudge to finish (flag set and class
+     gone; reduced motion and widths below 769 resolve at once).
+  3. qa-team-ui G9/G11 met the Worker's general bucket (30/min) keyed by the
+     CODE header - cloudRateKey prefers X-Owner-Code/X-Editor-Code over the
+     address, so the harness's per-request CF-Connecting-IP rotation gives
+     these calls no separate allowance - and CI saw 429 on every call. Both
+     arms now retry until the sliding window opens (6 attempts, 8s apart),
+     which is what the app's own 60s poll does. No limit weakened.
+- VERIFIED: qa-full 194/194, qa-appshell 79/79, qa-team-ui 23/23 (and again
+  after Prettier reflowed it). Commit 8e5d85c.
+- STILL RED, EXTENDED ONLY: tools/verify-contrast.cjs fails 'gold on card'
+  2.10:1 (min 3:1) in css/marketing.css. --gold (#d4af37) is the BULLION FILL;
+  gold as WORDS is --gold-text-on-light (#7a5a0b, 6.37:1). The pair predates
+  the 2026-10-30 gold identity (it was #d96b27, an orange) and measures a fill
+  token against the text/UI floor. Not a ci.yml gate. Needs an owner ruling:
+  point the pair at --gold-text, or darken the fill (a brand change).
+- CORRECTION (same day): the first appshell fix waited on the nudge's
+  once-per-device flag, but app.html writes that flag when it SCHEDULES the
+  nudge, so it is already '1' before the rail moves and the wait returned
+  instantly - CI 41382632796 failed the same three viewports again. The gate
+  now watches the rail-nudge CLASS (appear, then go away, 6s cap). Probe on a
+  fresh profile at 1280: the nudge runs from about 0 to 1.3s after load, so
+  the old click-to-close only masked it locally. Commit f0c5ec7.
+- FOLLOW-UP (app, not done): app.html sets mmgr_rail_nudge at schedule time,
+  so a tab backgrounded inside the 0.9s window (or a navigation away) burns
+  the once-per-device nudge without ever showing it, and a throttled timer
+  can fire it late. Moving the write into the timer callback fixes both, but
+  it needs a CSP hash regen and a shell bump - do it with the next app.html
+  change, not inside a CI chase.

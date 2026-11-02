@@ -7,7 +7,9 @@ shippable on its own, with a gate that fails if the fix regresses later.
 written without reading the code and contain claims disproved below.
 
 Position in the main queue: these are sub-phases of **Wave 1.7**. Wave 1.6
-(the `css/src/*` split) still comes after 1.7 closes.
+(the `css/src/*` split) was the item that used to follow 1.7; it closed on
+2026-11-01, so the sprints and the split are both done and the next work sits
+in `EXECUTION-PLAN.md` (wave 5, starting with 5.2).
 
 ## What the earlier plans got wrong (checked against the code)
 
@@ -254,8 +256,10 @@ fix.
 
 ## Not in these sprints (still queued in EXECUTION-PLAN)
 
-- **1.6 E6.3** - split `css/mmgr.css` into `css/src/*` layers. Do it AFTER S1
-  and S3, or their new rules land in a file that is about to be split.
+- ~~**1.6 E6.3** - split `css/mmgr.css` into `css/src/*` layers.~~ **DONE
+  2026-11-01**, after S1 and S3 as this file required: 24 layers in `css/src/`,
+  no catch-all remainder, esbuild output unchanged. Nothing here is left open
+  by the split.
 - **E7** - `tsc --checkJs` + JSDoc on state / cloud / billing (no `tsconfig.json`
   today). Unblocks nothing urgent.
 - **F2** - load test against a staging Worker (D1 write-heavy p50/p95/p99).

@@ -53,12 +53,15 @@ not new feature work.
 ## 2. The queue, by wave and phase
 
 One order. Each row is a shippable phase with its own gate, so a session that
-stops mid-wave leaves the next one an exact position. **Position: Wave 1,
-phases 1.1 to 1.4 done; 1.6 (the CSS split into `css/src/*` layers) is next.
-1.5 (dead-rule removal) was demoted when the corrected measurement came in at
-11.8% / 9.7%, below the 15% trigger this plan set.** UI is the owner's top priority
-(2026-10-30) and leads the wave; the wave's other purpose is to freeze the
-ground every later plan builds on (the tenant fence, then the stylesheet split).
+stops mid-wave leaves the next one an exact position. **Position: Wave 1 is
+CLOSED (1.6, the CSS split, finished 2026-11-01 at 24 layers with no catch-all
+remainder) and Wave 5 is IN PROGRESS: 5.6, the A1 and A5 halves of 5.4, the B9
+half of 5.8 and the B1 half of 5.3 shipped on 2026-11-01; 5.1, 5.2, 5.5, 5.7
+and 5.9 are untouched. 1.5 (dead-rule removal) stays demoted: the corrected
+measurement was 11.8% / 9.7%, below the 15% trigger this plan set.** UI is the
+owner's top priority (2026-10-30); the wave's other purpose was to freeze the
+ground every later plan builds on (the tenant fence, then the stylesheet
+split), and both are now done.
 
 ### 1.7 - Owner UI audit batch: S1-S7 ALL DONE 2026-10-31
 
@@ -91,7 +94,7 @@ header chip is hidden by design.**
 shipped, gated team panel "missing", cite `mmgr-ai.js:4284` as proof of a float
 bug when it is the pin sync, and call a `saveFloatState()` that does not exist).
 
-### Wave 1 - ground and gates (in progress)
+### Wave 1 - ground and gates (CLOSED 2026-11-01)
 
 | # | Phase | Status | Gate / evidence |
 |---|---|---|---|
@@ -100,7 +103,7 @@ bug when it is the pin sync, and call a `saveFloatState()` that does not exist).
 | 1.3 | **F1 cross-tenant isolation** | **DONE 2026-10-30** | `qa-tenant-isolation` **19/19** in the `cloud-auth` job. Found and fixed a live existence oracle in `claim` |
 | 1.4 | **E6.1 CSS coverage measurement** | **DONE 2026-10-30, corrected the same day** | `tools/measure-css-coverage.cjs` (MANUAL, read-only): **303 / 2,572 class-id selectors in `css/mmgr.css` (11.8%)** and **51 / 526 in `css/marketing.css` (9.7%)** carry no evidence in the rendered DOM of 16 pages plus the unlocked project workspace, or in `js/`. **The first number was 31.7% / 28.9% and was wrong**: the tool loaded `project.html` with no project id, so it 307'd to `app.html?locked=default` and the whole workspace contributed nothing, and it measured only `index.html` of the 13 pages that link `marketing.css`. It now unlocks the workspace, measures every marketing page, reports any page that fails or redirects, and exits non-zero when incomplete (teeth proven: 31.6% returns with the unlock removed). DevTools `startRuleUsageTracking` was rejected as the metric: it reported 319 rules for a 3,139-block file |
 | 1.5 | **E6.2 dead-rule removal** | **DEMOTED 2026-10-30: below the 15% trigger, not a wave of its own** | The plan's own rule was "above 15% unlocks deletion". The honest measurement is 11.8% / 9.7%, so there is no 300-selector purge to run. The remaining candidates are states only reached by clicking (modals, drawers, tabs) that no load-time render proves, and a deletion pass would be guesswork. Take them opportunistically: any rule a later change proves dead goes in that change, with `verify-css-integrity` + `qa-health-sweep` + the visual gates |
-| 1.6 | **E6.3 CSS split** into `css/src/*` layers (tokens, shell, panels, tables, calculator, ai, print) bundled by `build.js`; the type/spacing/breakpoint tokens land here as the `tokens` layer | **NEXT** | `verify-css-integrity` proves every source rule survives into `dist`; `verify-sizes`; one commit per layer |
+| 1.6 | **E6.3 CSS split** into `css/src/*` layers assembled by `build.js` in filename order; the type/spacing/breakpoint tokens landed in `10-tokens.css` | **DONE 2026-11-01** | **24 layers, no catch-all remainder.** The 136 KB `99-remainder` was sliced at its own section boundaries into fifteen named layers (`82-launcher` to `96-accent-modes`), each a contiguous run of the original bytes, so cascade order could not move. Proof: the esbuild output is unchanged (`dist/mmgr.min.eb522108.css`, the file every page links), `css/mmgr.css` differs only by the fourteen seam blank lines Prettier strips at end of file, `verify-css-integrity` ARM 0/1/2 pass (all 1,487 class rules survive into `dist`), `verify-sizes` passes, `npm run verify` exits 0. `css/src/README.md` now carries the layer map. There are deliberately no standalone `tables` or `print` layers: those rules live inside the surfaces they style, and a separate file would only have split a surface in half |
 
 ### Wave 2 - feature plans (schema order is the contract)
 
@@ -127,20 +130,21 @@ bug when it is the pin sync, and call a `saveFloatState()` that does not exist).
 ### Wave 5 - owner walkthrough 2026-11-01 (admin panel, project UI, landing)
 
 Source: [`AUDIT-DIRECTIVE-2026-11-01.md`](AUDIT-DIRECTIVE-2026-11-01.md). Captured on
-instruction, not started: the owner asked for the audit to be written down first. Its
-section 6 proposes the order; the entries there are the contract, this table is the
-schedule.
+instruction, then worked. Nine items shipped on 2026-11-01 before this table was
+reconciled, so the status column now says which half of each item is done and which
+is still open; the rows are the contract, and every row names the gate that must
+exist before the item can be called done.
 
 | # | Phase | Status | Gate / evidence |
 |---|---|---|---|
 | 5.1 | **Cloud identity** (D1): `owner_email` on `cloud_projects`, list by verified email as well as sub, owner-code claim path for rows created before the column existed | Queued, highest value | `qa-tenant-isolation` extension: same verified email sees it, a different one does not, a wrong claim code fails |
 | 5.2 | **Orphaned subscription cleanup** (D2): operator path that cancels at Paddle before clearing the row | Queued | `qa-billing-orphan.cjs` with stubbed Paddle, cancel-failure path included |
-| 5.3 | **Collaboration + session truth** (B1, B2): the team and notification controls are always present and gated by state (dimmed plus an upgrade sentence), never absent; a pending session reads as loading, never as "sign in" | Queued | `qa-team-tier` re-baselined to the new contract, plus `qa-auth-ready.cjs` |
-| 5.4 | **Admin panel credibility** (A1, A2, A5): a fresh instance is empty, no access-code bounce, credential kinds named correctly, a cloud project's own owner code can load it, the control panel always closes | Queued | `qa-admin-credentials.cjs`, `verify-controls-admin` extension, close-three-ways arm |
+| 5.3 | **Collaboration + session truth** (B1, B2): the team and notification controls are always present and gated by state (dimmed plus an upgrade sentence), never absent; a pending session reads as loading, never as "sign in" | **B1 DONE 2026-11-01, B2 QUEUED** | B1: the workspace restores the session from the Worker cookie at boot instead of waiting for the Google script, and `Entitlements.ensureSession()` asks the Worker once, so a slow session reads as "checking" and then opens the assistant while a genuinely signed-out visitor still gets the prompt. Two arms added to `qa-ai-win` (`AIWIN_PROBE`); the standalone `qa-auth-ready.cjs` was not created, the existing gate carries the contract. B2 is untouched and `qa-team-tier` still holds the old "suppress the control" reading |
+| 5.4 | **Admin panel credibility** (A1, A2, A5): a fresh instance is empty, no access-code bounce, credential kinds named correctly, a cloud project's own owner code can load it, the control panel always closes | **A5 DONE, A1 PARTIAL, A2 QUEUED** | A5 (`ad0b712`): the drawer closes by X, Escape, a click on the workspace behind a docked drawer, and a Focus Mode exit before the jump; four exits pinned in `verify-controls-admin`. A1 (`c59cdf9`): the admin seed is persisted with the real hash of its code, so the project gate recognises the device's own starter project instead of asking for a code. Still open in A1: a brand-new instance renders zero rows with "create your first project" as the first action, and the demo projects stay off the admin list. A2 untouched; `qa-admin-credentials.cjs` does not exist |
 | 5.5 | **Admin ergonomics** (A3, A4): auto-update cloud projects toggle with visible status; back control first on every shell | Queued | autosave coalescing/retry arm, `qa-chrome` header-order arm |
-| 5.6 | **Small visible fixes** (B10 whisper on send, B5 pulsing gold Calculate in dark, B4 completion ring size, B3 no resting rings, B7 no auto-opened sidebar plus one-shot demo) | Queued | `qa-ai-dictation` extension, `verify-gold` arm, ring geometry arm, resting-vs-hover arm, `qa-shell-first-load.cjs` |
+| 5.6 | **Small visible fixes** (B10 whisper on send, B5 pulsing gold Calculate in dark, B4 completion ring size, B3 no resting rings, B7 no auto-opened sidebar plus one-shot demo) | **B3, B4, B5, B10 DONE; B7 PARTIAL** | `85a6cc8`: the top-bar bell, gear and collaborators are bare glyphs with the gold ring only on hover/focus/open (`qa-chrome` 101/101, C1/C6/C7 new arms), the completion ring grows 96 to 120px at the same stroke weight, dark-theme Calculate pulses gold while light keeps its green run button (`qa-theme-perf` 17/17), sending stops dictation so the next utterance starts empty (`qa-ai-dictation` 17/17), and the calculator's per-row remove and edit controls lose their boxes (the owner's chrome-strip note). B7 (`018c706`): the sidebar no longer opens itself on load (`qa-dashboard-spec`); the one-shot first-load demo and `qa-shell-first-load.cjs` are still open |
 | 5.7 | **Project photos** (B11): paid tiers only, 500 MB quota with a usage bar, description/date/uploader, download and delete | Queued | `qa-project-photos.cjs` |
-| 5.8 | **Guidance** (B8 first-project tour, B9 section accelerator via the existing navigation and mouse side buttons, capped at 5 pins) | Queued | `qa-first-project-tour.cjs`, `qa-section-accelerator.cjs` |
+| 5.8 | **Guidance** (B8 first-project tour, B9 section accelerator via the existing navigation and mouse side buttons, capped at 5 pins) | **B8 QUEUED; B9 PARTIAL, with a directive conflict to settle** | B9 shipped as `feat(nav)` (`02bfd49`) but not to the directive's letter: it binds `ArrowLeft`/`ArrowRight`, which `AUDIT-DIRECTIVE-2026-11-01.md` forbids ("use the mouse side buttons (button 3 / 4) only, never the keyboard arrows"), it wraps at the ends where the directive says stop, and it has no pins, no off-by-default toggle, no reset and no `qa-section-accelerator.cjs`. `qa-shortcuts` A7b/A7c pin the shipped behaviour. Do not call B9 done until the owner rules on arrows versus mouse buttons |
 | 5.9 | **Craft** (B12 skeleton mirrors the workspace, B6 theme-reactive particle line, C1 band transition, C2 landing AI, C3 gold outline judged on measurement) | Queued | structure arm, throttle and reduced-motion arms, `qa-landing-ai.cjs` |
 
 ### Wave 4 - security hygiene (calibrated 2026-10-31)
@@ -912,6 +916,28 @@ of every session.
   `js/mmgr-google-auth.js` carries `nonceOfIdToken`, `/api/auth/nonce` mints
   a nonce in production (so the `auth_nonces` row writes), `/sw.js` serves
   v522.
-- **Next:** 1.6 CSS split into `css/src/*` layers (six carved, `50-calculator`
-  landed 2026-11-01 with the assembled byte-order unchanged), then Wave 2 C1
-  NocoBase. The landing wave's deploy is recorded under Wave 1 in the log.
+- **2026-11-01 - Wave 1 closed: the CSS split finished, and wave 5 reconciled.**
+  1.6 carved the last 136 KB `99-remainder` into fifteen named layers at its own
+  section boundaries (`82-launcher` to `96-accent-modes`), so the stylesheet is
+  24 layers with no catch-all. The carve is byte-exact per slice and the
+  minified build is unchanged (`dist/mmgr.min.eb522108.css`), which is the file
+  every page links; `css/mmgr.css` differs only by the fourteen seam blank
+  lines Prettier strips. `verify-css-integrity` ARM 0/1/2 (1,487 class rules
+  survive), `verify-sizes` and `npm run verify` green. `css/src/README.md` now
+  carries the layer map and the rules, and `docs/DEVELOPER-GUIDE.md` points at
+  it. No standalone `tables` or `print` layer exists on purpose: those rules
+  live inside the surfaces they style.
+  The same session reconciled the wave-5 work that had shipped without a plan
+  record (B3, B4, B5, B10, the calculator chrome strip, B7, A1 partial, A5, B9
+  partial) and landed B1: the workspace restores the session at boot and the
+  assistant reads "checking" instead of "sign in". B1's first draft recursed
+  forever when the session resolved but the gate still refused, freezing the
+  tab; `qa-ai-win` caught it by hanging until its watchdog. That gate now has
+  three session arms (27/27, and 2/27 on the pre-fix tree, so the arms have
+  teeth) plus a 300s env-overridable ceiling. Shell v531.
+- **Next:** Wave 5 in the audit's section 6 order. 5.1 cloud identity
+  (`owner_email` plus the owner-code claim for rows created before it) and 5.2
+  orphaned subscriptions first, because data the owner cannot see is the
+  highest-cost defect; then 5.3's B2 (bell and team controls always present,
+  dimmed by state); then the rest of 5.4 to 5.9. B9 needs an owner answer
+  first: the shipped code binds the arrow keys, which the audit forbids.

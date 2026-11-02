@@ -21,6 +21,11 @@ The order lives in exactly one place:
 - Each module opens with `var MMGR = window.MMGR || {};` and attaches itself to
   the namespace (e.g. `ns.State = {...}`). Cross-module calls are therefore just
   global lookups: `MMGR.Utils.$(...)`, `MMGR.State.getState()`.
+- **Stylesheets are generated too.** `node build.js --css` concatenates
+  `css/src/*.css` in filename order (that order IS cascade order) into
+  `css/mmgr.css`, the file every page links. Edit the layer, never the
+  assembled file; the layer map and the rules live in
+  [`css/src/README.md`](../css/src/README.md).
 
 ### De-facto layers (top = loaded first, can be used by everything below)
 

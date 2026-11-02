@@ -963,6 +963,28 @@ async function loadButton(browser, errors) {
   );
   await page.goto(BASE + '/app.html', { waitUntil: 'load' });
   await page.waitForSelector('.cd-card .btn[data-cd-load]', { timeout: 20000 });
+  // The first-run rail nudge (owner 2026-11-01) slides the sidebar out 0.9s
+  // after load and closes it again, which MOVES the card under the pointer: a
+  // hover dispatched inside that window lands on empty space and the button
+  // never gets :hover (CI measured the resting tone and failed W11 dark hover
+  // on 2026-11-02). Wait for the demo to finish before any pointer work.
+  await page.evaluate(
+    () =>
+      new Promise(res => {
+        const started = Date.now();
+        let seen = false;
+        const iv = setInterval(() => {
+          const on = document.body.classList.contains('rail-nudge');
+          if (on) {
+            seen = true;
+          }
+          if ((seen && !on) || Date.now() - started > 6000) {
+            clearInterval(iv);
+            res(true);
+          }
+        }, 50);
+      })
+  );
   const n = await page.locator('.cd-actions .btn[data-cd-load]').count();
   check('W11 three cloud cards rendered with a Load button each', n === 3, n);
   const BTN = '.cd-actions .btn[data-cd-load]';
@@ -997,6 +1019,27 @@ async function loadButton(browser, errors) {
     await page.evaluate(
       () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
     );
+  };
+  // A hover that lands on empty space (a layout shift, a scrim, a card that
+  // moved after scrollIntoView) leaves the button un-hovered and the read then
+  // reports the RESTING tone - the gate fails on a pointer miss, not on a
+  // colour. Re-point until the button really is :hover, and say so if it never
+  // is rather than measuring the wrong state.
+  const hoverBtn = async () => {
+    for (let i = 0; i < 3; i++) {
+      await page.hover(BTN);
+      await settle();
+      const on = await page.evaluate(sel => {
+        const b = document.querySelector(sel);
+        return !!b && b.matches(':hover');
+      }, BTN);
+      if (on) {
+        return true;
+      }
+      await page.mouse.move(2, 2);
+      await page.waitForTimeout(150);
+    }
+    return false;
   };
   const rest = await readBtn();
   check(
@@ -1035,8 +1078,7 @@ async function loadButton(browser, errors) {
     dark.border === 'rgb(43, 43, 48)',
     dark
   );
-  await page.hover(BTN);
-  await settle();
+  const darkHovered = await hoverBtn();
   const darkHover = await readBtn();
   check(
     'W11 dark hover still lands on a usable green + white',
@@ -1048,9 +1090,12 @@ async function loadButton(browser, errors) {
   await settle();
 
   // A REAL pointer hover (Playwright dispatches the mouse), not a forced class.
-  await page.hover(BTN);
-  await settle();
+  const hovered = await hoverBtn();
   const hover = await readBtn();
+  check('W11 the pointer actually landed on the card button', hovered && darkHovered, {
+    hovered,
+    darkHovered
+  });
   check('W11 hover paints the green fill (#2e7d32)', hover.bg === 'rgb(46, 125, 50)', hover);
   check(
     'W11 hover label is white (5.13:1 on that green)',

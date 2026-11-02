@@ -55,13 +55,17 @@ async function pickPort(skip) {
   return skip || DEFAULT_PORT;
 }
 
+// The gate grew two session-timing arms (owner 2026-11-01), each with its own
+// poll, so the ceiling is measured rather than assumed. MMGR_QA_WATCHDOG_MS
+// lets a session time a slow machine without patching this file.
+const WATCHDOG_MS = Number(process.env.MMGR_QA_WATCHDOG_MS || 300000);
 setTimeout(() => {
   log('WATCHDOG');
   try {
     ws && ws.close();
   } catch (e) {}
   process.exit(2);
-}, 240000);
+}, WATCHDOG_MS);
 
 function send(method, params) {
   return new Promise(res => {
@@ -583,6 +587,113 @@ async function launchChrome(port) {
     restored && restored.chats === beforeReload && restored.msgs >= 2,
     restored
   );
+
+  // ---- Session timing (owner 2026-11-01) -------------------------------
+  // "I'm already signed in and the project page tells me to sign in." The
+  // session is a cookie; until GoogleAuth reads it the gate answered "not
+  // signed in". Two contracts: a slow session says "checking" and then opens
+  // the assistant, and a genuinely signed-out visitor still gets the prompt.
+  // The stubs must mirror the REAL relationship (aiAssistant follows the
+  // session). Stubbing the gate closed while the session opens describes a
+  // state the app cannot reach, and the first draft of the fix recursed
+  // through it forever, freezing the tab until this harness hit its watchdog.
+  // Every wait below happens in Node (waitFor) - no long in-page timers.
+  await ev(`(function(){
+    var E = MMGR.Entitlements, GA = MMGR.GoogleAuth;
+    window.__qa = { signed: false, prompted: false, toast: '',
+      savedAi: E.aiAssistant, savedIs: GA.isSignedIn,
+      savedRestore: GA.restoreSession, savedPrompt: GA.openSignInPrompt,
+      savedEnsure: E.ensureSession };
+    E.aiAssistant = function(){ return GA.isSignedIn(); };
+    GA.isSignedIn = function(){ return window.__qa.signed; };
+    GA.restoreSession = function(){ return new Promise(function(r){ setTimeout(function(){ window.__qa.signed = true; r(); }, 250); }); };
+    GA.openSignInPrompt = function(){ window.__qa.prompted = true; };
+    MMGR.AiWin.close();
+    var btn = document.getElementById('ai-command-btn');
+    if (btn) btn.click();
+    return true;
+  })()`);
+  const slowOpened = await waitFor(
+    `(function(){ var w = document.getElementById('ai-win'); return !!(w && w.classList.contains('open')) && window.__qa.prompted === false ? true : null; })()`,
+    12000
+  );
+  const slowState = await ev(`(function(){
+    var t = document.querySelector('.toast');
+    return { opened: !!document.querySelector('#ai-win.open'), prompted: window.__qa.prompted, toast: t ? t.textContent : '' };
+  })()`);
+  check(
+    'a slow session opens the assistant instead of refusing sign-in',
+    !!slowOpened && slowState && slowState.opened === true && slowState.prompted === false,
+    slowState
+  );
+  check(
+    'the in-flight answer reads as a session check, never as "not signed in"',
+    slowState && /checking/i.test(slowState.toast || ''),
+    slowState
+  );
+  await ev(`(function(){
+    var E = MMGR.Entitlements, GA = MMGR.GoogleAuth;
+    E.ensureSession = function(){ return Promise.resolve(false); };
+    GA.isSignedIn = function(){ return false; };
+    window.__qa.signed = false;
+    window.__qa.prompted = false;
+    MMGR.AiWin.close();
+    var btn = document.getElementById('ai-command-btn');
+    if (btn) btn.click();
+    return true;
+  })()`);
+  const signedOutPrompted = await waitFor(
+    `(function(){ return window.__qa && window.__qa.prompted === true ? true : null; })()`,
+    12000
+  );
+  const signedOutState = await ev(`(function(){
+    return { opened: !!document.querySelector('#ai-win.open'), prompted: window.__qa.prompted };
+  })()`);
+  check(
+    'a genuinely signed-out visitor still gets the sign-in prompt',
+    !!signedOutPrompted &&
+      signedOutState &&
+      signedOutState.opened === false &&
+      signedOutState.prompted === true,
+    signedOutState
+  );
+  // A session that is valid while a stricter gate still refuses must refuse
+  // ONCE. This is the state that froze the tab before the guard existed: the
+  // re-entry only happens when the gate can now pass. If the page is stuck in
+  // a microtask loop this evaluation never answers and the watchdog ends the
+  // run, so "the page still answers" is the assertion that matters.
+  await ev(`(function(){
+    var E = MMGR.Entitlements, GA = MMGR.GoogleAuth, q = window.__qa;
+    E.aiAssistant = function(){ return false; };
+    E.ensureSession = function(){ return Promise.resolve(true); };
+    GA.isSignedIn = function(){ return true; };
+    q.prompted = false;
+    MMGR.AiWin.close();
+    var btn = document.getElementById('ai-command-btn');
+    if (btn) btn.click();
+    return true;
+  })()`);
+  await delay(1200);
+  const closedGate = await ev(`(function(){
+    return { opened: !!document.querySelector('#ai-win.open'), answers: 1 + 1 };
+  })()`);
+  check(
+    'a valid session behind a closed gate refuses once and leaves the page responsive',
+    closedGate && closedGate.answers === 2 && closedGate.opened === false,
+    closedGate
+  );
+  await ev(`(function(){
+    var E = MMGR.Entitlements, GA = MMGR.GoogleAuth, q = window.__qa;
+    E.aiAssistant = q.savedAi;
+    E.ensureSession = q.savedEnsure;
+    GA.isSignedIn = q.savedIs;
+    GA.restoreSession = q.savedRestore;
+    GA.openSignInPrompt = q.savedPrompt;
+    delete window.__qa;
+    MMGR.AiWin.close();
+    return true;
+  })()`);
+  await delay(300);
 
   check('no console errors', consoleErrors.length === 0, consoleErrors);
 

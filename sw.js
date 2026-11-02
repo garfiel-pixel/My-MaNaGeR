@@ -462,7 +462,38 @@
 // so a scroll gesture is just a scroll. Filled accent buttons stop wearing the
 // pale glass edge in light mode ("we do not need a white outline"). Changed
 // shell assets: js/mmgr-combobox.js, css/mmgr.css.
-const CACHE = 'mmgr-shell-v530';
+// v526 - OWNER WALKTHROUGH, SMALL VISIBLE FIXES (2026-11-01): the top-bar
+// bell, gear and collaborators are bare glyphs that grow a ring only on
+// hover, focus or open (B3); the completion ring grows 96 to 120px at the
+// same stroke weight (B4); dark-theme Calculate pulses gold instead of
+// sitting green (B5); sending a message stops dictation and starts the next
+// one from an empty composer (B10); the calculator's per-row remove and edit
+// controls lose their boxes. Changed shell assets: css/mmgr.css,
+// js/calculator-page.js, js/mmgr-ai.js, js/mmgr-voice.js, calculator.html.
+// v527 - LAUNCHER LOADS FLAT (owner 2026-11-01): the sidebar no longer opens
+// itself on load at any width; the hamburger is the only opener. Changed
+// shell assets: app.html.
+// v528 - ADMIN STARTER PROJECT OPENS (owner 2026-11-01): the admin seed is
+// persisted with the real hash of its code, so the project gate recognises
+// the device's own starter project instead of bouncing it to a code prompt.
+// Changed shell assets: admin.html.
+// v529 - CONTROL PANEL ALWAYS CLOSES (owner 2026-11-01): Escape, a click on
+// the workspace behind a docked drawer, and a Focus Mode exit before the jump
+// mean the panel can be dismissed from every entry path. Changed shell
+// assets: js/mmgr-app.js.
+// v530 - SIDE ARROWS STEP SECTIONS (owner 2026-11-01): left and right walk
+// the visible sidebar order, skipping hidden and scoped-out sections and
+// staying out of text fields, RACI cells and open overlays. Changed shell
+// assets: js/mmgr-app.js, js/mmgr-shortcuts.js, project.html.
+// v531 - SESSION READ BEFORE REFUSAL (owner report 2026-11-01, "I'm already
+// signed in and the project page asks me to sign in"): the session is a
+// cookie, but the workspace only learned that once the Google script reported
+// ready, so a slow script made every gate answer "not signed in". The
+// workspace now restores the session at boot, and the assistant asks the
+// Worker once and says "checking" while that answer is in flight instead of
+// refusing. Changed shell assets: js/app/entitlements.js, js/mmgr-ai.js,
+// js/mmgr-app.js.
+const CACHE = 'mmgr-shell-v531';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

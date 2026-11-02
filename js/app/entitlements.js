@@ -71,6 +71,53 @@
     }
   }
 
+  /* OWNER 2026-11-01: "I'm already signed in and the project page asks me to
+     sign in." The session IS a cookie - but GoogleAuth only restores it once
+     the Google script reports ready, which can take ten seconds when that
+     script is slow or blocked. Until then isSignedIn() is false, and the
+     assistant read that as "not signed in" for a user who plainly was.
+     ensureSession() asks the Worker directly, once, and resolves to the real
+     answer; callers show "checking" instead of a refusal, then act. */
+  var _sessionProbe = null;
+  function ensureSession(timeoutMs) {
+    if (signedIn()) {
+      return Promise.resolve(true);
+    }
+    if (!_sessionProbe) {
+      _sessionProbe = (function () {
+        var GA = ns.GoogleAuth;
+        if (!GA || typeof GA.restoreSession !== 'function') {
+          return Promise.resolve(false);
+        }
+        var call;
+        try {
+          call = Promise.resolve(GA.restoreSession());
+        } catch (e) {
+          call = Promise.resolve();
+        }
+        return call.then(
+          function () {
+            return signedIn();
+          },
+          function () {
+            return false;
+          }
+        );
+      })();
+    }
+    // A hung request must never hang the click: race a short timer, then let
+    // the caller fall back to the sign-in prompt (a retry reuses the probe).
+    var ms = typeof timeoutMs === 'number' ? timeoutMs : 2500;
+    return Promise.race([
+      _sessionProbe,
+      new Promise(function (resolve) {
+        setTimeout(function () {
+          resolve(signedIn());
+        }, ms);
+      })
+    ]);
+  }
+
   // Feature gates - add new ones here, never in callers
   function aiAssistant() {
     return signedIn();
@@ -115,6 +162,8 @@
   ns.Entitlements = {
     setBillingTier: setBillingTier,
     hydrate: hydrate,
+    ensureSession: ensureSession,
+    signedIn: signedIn,
     tier: tier,
     aiAssistant: aiAssistant,
     unlimitedCloud: unlimitedCloud,

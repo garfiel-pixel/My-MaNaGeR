@@ -216,13 +216,46 @@ var MMGR = window.MMGR || {};
     // window a visitor cannot use.
     if (!(ns.Entitlements && ns.Entitlements.aiAssistant && ns.Entitlements.aiAssistant())) {
       _aiOpenPending = true;
+      // OWNER 2026-11-01: a signed-in user was told to sign in because the
+      // session cookie had not been read yet (GoogleAuth waits on the Google
+      // script). Ask the Worker directly first, and say "one moment" - never
+      // "you are not signed in" - while that answer is in flight.
+      const E = ns.Entitlements;
+      if (E && typeof E.ensureSession === 'function') {
+        if (ns.App && ns.App.showToast) {
+          ns.App.showToast('Checking your sign-in , one moment.', 'ok');
+        }
+        E.ensureSession().then(function (ok) {
+          // Re-enter ONLY when the gate can now pass. A session that is valid
+          // while a stricter gate still refuses (a tier check, for instance)
+          // must fall through to the refusal below: calling open() again there
+          // re-enters this same branch forever and freezes the tab. Found by
+          // qa-ai-win, which stubs the gate closed and hung on the recursion.
+          if (ok && ns.Entitlements.aiAssistant && ns.Entitlements.aiAssistant()) {
+            open();
+            return;
+          }
+          if (ns.App && ns.App.showToast) {
+            ns.App.showToast('AI features need sign-in , sign in and the assistant opens.', 'warn');
+          }
+          const GA = ns.GoogleAuth;
+          if (GA && typeof GA.openSignInPrompt === 'function') {
+            try {
+              GA.openSignInPrompt();
+            } catch (e) {
+              /* fallback surfaces via the header */
+            }
+          }
+        });
+        return;
+      }
       if (ns.App && ns.App.showToast) {
         ns.App.showToast('AI features need sign-in , sign in and the assistant opens.', 'warn');
       }
-      const GA = ns.GoogleAuth;
-      if (GA && typeof GA.openSignInPrompt === 'function') {
+      const GAFallback = ns.GoogleAuth;
+      if (GAFallback && typeof GAFallback.openSignInPrompt === 'function') {
         try {
-          GA.openSignInPrompt();
+          GAFallback.openSignInPrompt();
         } catch (e) {
           /* fallback surfaces via the header */
         }

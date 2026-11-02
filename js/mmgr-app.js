@@ -747,6 +747,20 @@ var MMGR = window.MMGR || {};
       ns.GoogleAuth.renderDriveSection();
     }
 
+    // OWNER 2026-11-01: read the session straight from the Worker cookie at
+    // boot instead of waiting for the Google script to report ready. Restoring
+    // early is what makes the workspace agree with the launcher: signed in
+    // there means signed in here, from the first click, and every gate that
+    // answers from isSignedIn() (assistant, team panel, plan chip) sees the
+    // truth instead of a slow-load penalty. restoreSession() is idempotent.
+    if (ns.GoogleAuth && ns.GoogleAuth.restoreSession) {
+      try {
+        ns.GoogleAuth.restoreSession();
+      } catch (e) {
+        /* static host / offline , the gates stay closed as before */
+      }
+    }
+
     // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 1: render the optional Cloud
     // Backup (D1 + R2 owner-code storage) section into the Controls drawer.
     // Strictly additive and never gating , the module no-ops without

@@ -140,30 +140,30 @@ function overlaps(a, b) {
         // seen it, the rail pops out 0.9s after load, holds for 1.5s and closes
         // itself. Measuring inside that window reads the nudge as "the rail is
         // open" - which is exactly what CI did at 1280, 1024 and 900 while this
-        // machine, faster to the same line, measured the resting state. Wait for
-        // the nudge to finish (it writes its own once-per-device flag first, so
-        // this resolves as soon as the class is gone). Reduced motion skips the
-        // nudge entirely and the flag stays unset, so that case resolves at once.
-        await page.waitForFunction(
-          () => {
-            if (document.body.classList.contains('rail-nudge')) {
-              return false;
-            }
-            if (localStorage.getItem('mmgr_rail_nudge') === '1') {
-              return true;
-            }
-            if (
-              window.matchMedia &&
-              window.matchMedia('(prefers-reduced-motion: reduce)').matches
-            ) {
-              return true;
-            }
-            // Below 769px the nudge is skipped outright (it is a desktop
-            // affordance), so there is nothing to wait for.
-            return !(window.matchMedia && window.matchMedia('(min-width:769px)').matches);
-          },
-          null,
-          { timeout: 15000 }
+        // machine, faster to the same line, measured the resting state.
+        //
+        // The once-per-device flag cannot be the signal: the app writes it when
+        // it SCHEDULES the nudge, so it is already '1' before the rail moves
+        // (the first version of this wait returned instantly for that reason).
+        // Watch the class instead: wait for `rail-nudge` to appear and go away,
+        // and cap the wait so a device that skips the nudge (reduced motion, a
+        // warm profile, a viewport below 769px) still proceeds.
+        await page.evaluate(
+          () =>
+            new Promise(res => {
+              const started = Date.now();
+              let seen = false;
+              const iv = setInterval(() => {
+                const on = document.body.classList.contains('rail-nudge');
+                if (on) {
+                  seen = true;
+                }
+                if ((seen && !on) || Date.now() - started > 6000) {
+                  clearInterval(iv);
+                  res(true);
+                }
+              }, 50);
+            })
         );
 
         // Close the rail through the real hamburger (pinned open by default).

@@ -941,3 +941,23 @@ of every session.
   highest-cost defect; then 5.3's B2 (bell and team controls always present,
   dimmed by state); then the rest of 5.4 to 5.9. B9 needs an owner answer
   first: the shipped code binds the arrow keys, which the audit forbids.
+- **2026-11-02 - CI repaired to 6/6 green on `b088c09`; three gates had drifted
+  from the app, no product defect behind any of them.** The run that started the
+  session (`41383952911`) failed on ONE step, `qa-procurement` T2: the gate
+  pinned `quotedBy === 'local (this device)'`, which was only ever true while
+  the session resolved late - B1's boot-time session read made
+  `actorLabel()` answer with the account, so the stamped value is now
+  `owner@example.com`. The gate accepts either label and still rejects a blank
+  stamp. That exposed two more, each found by the NEXT run because a red step
+  hides every step after it:
+  `qa-consent` S1 failed because B7's `mmgr_rail_nudge` was written to
+  `app.html` without a row in `docs/STORAGE-INVENTORY.md` (row added; the
+  inventory VERSION stays 2, since a necessary key changes no category and
+  re-asking every visitor for an unchanged question is not a privacy gain); and
+  `qa-calc-assistant` W11 dark hover failed because the first-run rail demo
+  slides the sidebar out 0.9s after load and MOVED the card out from under the
+  pointer, so the gate measured the resting tone. The fix waits for the demo to
+  finish, re-points until the button really is `:hover`, and adds an arm that
+  fails when the pointer never lands - 157/157. Same class of bug as the
+  `qa-appshell` fix in `f0c5ec7`, and the same lesson: measure after the nudge.
+  Wave 5 order is unchanged and 5.1 is still first.

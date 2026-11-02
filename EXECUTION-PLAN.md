@@ -56,12 +56,12 @@ One order. Each row is a shippable phase with its own gate, so a session that
 stops mid-wave leaves the next one an exact position. **Position: Wave 1 is
 CLOSED (1.6, the CSS split, finished 2026-11-01 at 24 layers with no catch-all
 remainder) and Wave 5 is IN PROGRESS: 5.6, the A1 and A5 halves of 5.4, the B9
-half of 5.8 and the B1 half of 5.3 shipped on 2026-11-01; 5.1, 5.2, 5.5, 5.7
-and 5.9 are untouched. 1.5 (dead-rule removal) stays demoted: the corrected
-measurement was 11.8% / 9.7%, below the 15% trigger this plan set.** UI is the
-owner's top priority (2026-10-30); the wave's other purpose was to freeze the
-ground every later plan builds on (the tenant fence, then the stylesheet
-split), and both are now done.
+half of 5.8, the B1 half of 5.3 and 5.1 (cloud identity, 2026-11-02) shipped;
+**5.2 is next**, then 5.5, 5.7 and 5.9. 1.5 (dead-rule removal) stays demoted:
+the corrected measurement was 11.8% / 9.7%, below the 15% trigger this plan
+set.** UI is the owner's top priority (2026-10-30); the wave's other purpose was
+to freeze the ground every later plan builds on (the tenant fence, then the
+stylesheet split), and both are now done.
 
 ### 1.7 - Owner UI audit batch: S1-S7 ALL DONE 2026-10-31
 
@@ -137,7 +137,7 @@ exist before the item can be called done.
 
 | # | Phase | Status | Gate / evidence |
 |---|---|---|---|
-| 5.1 | **Cloud identity** (D1): `owner_email` on `cloud_projects`, list by verified email as well as sub, owner-code claim path for rows created before the column existed | Queued, highest value | `qa-tenant-isolation` extension: same verified email sees it, a different one does not, a wrong claim code fails |
+| 5.1 | **Cloud identity** (D1): `owner_email` on `cloud_projects`, list by verified email as well as sub, owner-code claim path for rows created before the column existed | **DONE 2026-11-02** | Migration `0030_cloud_owner_email.sql` (column, index, exact backfill of `email:` subs only - a Google sub is opaque and is never guessed). `provenEmail()` in `src/lib/http.js` is the one rule: a Google session is verified by construction, a password session only after `auth_users.email_verified = 1` (the exact gate the create route already applied). Applied to the list, `cloudAuthOwnerSession` (so a project you can SEE is one you can SAVE - listing without write access would be worse than not listing), create, claim, the free-cap count and `/api/billing/status`, and account deletion (a sweep that only matched the sub would leave rows the deleted address could still reach). `qa-tenant-isolation` **19 -> 26 gates**: I19a/I19b with the row's `google_sub` set to NULL the verified email alone lists it and B still cannot see it, I19c a session-only save through that identity, I20a/I20b the row is hidden the moment the address is unverified and returns when it is verified (the fence cannot be widened by registering an address you do not own), I21 the email identity opens nothing for B. Teeth proven: with the list reverted to sub-only, I19a and I20b fail (24/26). |
 | 5.2 | **Orphaned subscription cleanup** (D2): operator path that cancels at Paddle before clearing the row | Queued | `qa-billing-orphan.cjs` with stubbed Paddle, cancel-failure path included |
 | 5.3 | **Collaboration + session truth** (B1, B2): the team and notification controls are always present and gated by state (dimmed plus an upgrade sentence), never absent; a pending session reads as loading, never as "sign in" | **B1 DONE 2026-11-01, B2 QUEUED** | B1: the workspace restores the session from the Worker cookie at boot instead of waiting for the Google script, and `Entitlements.ensureSession()` asks the Worker once, so a slow session reads as "checking" and then opens the assistant while a genuinely signed-out visitor still gets the prompt. Two arms added to `qa-ai-win` (`AIWIN_PROBE`); the standalone `qa-auth-ready.cjs` was not created, the existing gate carries the contract. B2 is untouched and `qa-team-tier` still holds the old "suppress the control" reading |
 | 5.4 | **Admin panel credibility** (A1, A2, A5): a fresh instance is empty, no access-code bounce, credential kinds named correctly, a cloud project's own owner code can load it, the control panel always closes | **A5 DONE, A1 PARTIAL, A2 QUEUED** | A5 (`ad0b712`): the drawer closes by X, Escape, a click on the workspace behind a docked drawer, and a Focus Mode exit before the jump; four exits pinned in `verify-controls-admin`. A1 (`c59cdf9`): the admin seed is persisted with the real hash of its code, so the project gate recognises the device's own starter project instead of asking for a code. Still open in A1: a brand-new instance renders zero rows with "create your first project" as the first action, and the demo projects stay off the admin list. A2 untouched; `qa-admin-credentials.cjs` does not exist |
@@ -740,10 +740,11 @@ plan.
 
 ### D1 migrations
 
-Through `0029_team_enterprise.sql`. None of C1 to C5 needs a D1 file by
-default; they are local project state, synced as blobs. If a plan does add
-server-side data, it takes **0030** and every later one shifts by one. Apply to
-remote D1 before the Worker deploy; never renumber an applied migration.
+Through `0030_cloud_owner_email.sql` (5.1: `owner_email` + index + the exact
+backfill of `email:` subs). None of C1 to C5 needs a D1 file by default; they are
+local project state, synced as blobs. If a plan does add server-side data, it
+takes **0031** and every later one shifts by one. Apply to remote D1 before the
+Worker deploy; never renumber an applied migration.
 
 ### Service worker and CSP
 

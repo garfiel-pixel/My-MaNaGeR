@@ -30,6 +30,16 @@
      I16 B's project list does not contain A's project
      I17 B's own project still works (the fence is not simply broken)
 
+   Cloud identity (plan 5.1, owner 2026-11-01): a project may belong to an
+   account by sub OR by verified address. These arms keep the second half from
+   becoming a second, looser fence:
+     I18 A sees its own project in the list (baseline)
+     I19 with the sub REMOVED, the verified email alone still lists it and
+         still allows a session save - and still hides it from B
+     I20 the same row is hidden the moment the address is unverified, and
+         comes back when it is verified again
+     I21 after every identity arm, B still cannot save into it
+
    Usage:  node tools/qa-tenant-isolation.cjs
    Env:    QA_PORT (default 8799), QA_KEEP=1 keeps the persist dir.
    ============================================================ */
@@ -39,6 +49,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const http = require('http');
+const { DatabaseSync } = require('node:sqlite');
 
 const PORT = parseInt(process.env.QA_PORT || '8799', 10);
 const BASE = 'http://127.0.0.1:' + PORT;
@@ -261,6 +272,50 @@ async function register(email, name) {
   return { cookie, reg };
 }
 
+// ---- direct local D1 (the identity arms need to change a stored row) ------
+// Same approach as tools/qa-admin-code-escrow.cjs: the persist dir holds the
+// miniflare D1 sqlite file, so the harness can make the state the CLAIM says it
+// is making. Writes are retried because wrangler dev may hold the file in WAL
+// (see AGENTS.md lesson 6: a Worker write is not always visible to a direct
+// reader at once).
+function findD1Sqlite() {
+  const base = path.join(PERSIST_DIR, 'v3', 'd1', 'miniflare-D1DatabaseObject');
+  if (!fs.existsSync(base)) {
+    return null;
+  }
+  const files = fs.readdirSync(base).filter(f => f.endsWith('.sqlite') && f !== 'metadata.sqlite');
+  return files.length ? path.join(base, files[0]) : null;
+}
+
+async function d1Run(sql, ...params) {
+  const dbPath = findD1Sqlite();
+  if (!dbPath) {
+    throw new Error('local D1 sqlite not found under ' + PERSIST_DIR);
+  }
+  let lastErr = null;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const db = new DatabaseSync(dbPath);
+    try {
+      db.prepare(sql).run(...params);
+      db.close();
+      return;
+    } catch (e) {
+      lastErr = e;
+      try {
+        db.close();
+      } catch (e2) {
+        /* already closed */
+      }
+      await delay(200);
+    }
+  }
+  throw lastErr;
+}
+
+function idsOf(body) {
+  return ((body && (body.projects || body.rows)) || []).map(p => p.projectId || p.project_id);
+}
+
 // ---- the suite -----------------------------------------------------------
 async function main() {
   await startEmailStub();
@@ -455,6 +510,81 @@ async function main() {
     saveBown.status === 200,
     saveBown.status
   );
+
+  // ---- cloud identity (plan 5.1) -----------------------------------------
+  const listA = await api('/api/cloud/projects', { method: 'GET', headers: { Cookie: a.cookie } });
+  check(
+    'I18 A sees its own project in its list (baseline for the identity arms)',
+    idsOf(listA.body).indexOf(pid) > -1,
+    JSON.stringify(idsOf(listA.body))
+  );
+
+  // The owner's real case: the project exists, but the SUB cannot be the key -
+  // it was published from a signed-out admin panel, or the person signed in
+  // through the other door (password vs Google) and got a different sub for
+  // the same address. The verified email must carry it, and only the email.
+  await d1Run('UPDATE cloud_projects SET google_sub = NULL WHERE project_id = ?', pid);
+  const listAEmail = await api('/api/cloud/projects', {
+    method: 'GET',
+    headers: { Cookie: a.cookie }
+  });
+  const listBEmail = await api('/api/cloud/projects', {
+    method: 'GET',
+    headers: { Cookie: b.cookie }
+  });
+  check(
+    'I19a with the sub removed, the verified email alone still lists the project',
+    idsOf(listAEmail.body).indexOf(pid) > -1,
+    JSON.stringify(idsOf(listAEmail.body))
+  );
+  check(
+    'I19b and B still cannot see it',
+    idsOf(listBEmail.body).indexOf(pid) === -1,
+    JSON.stringify(idsOf(listBEmail.body))
+  );
+  // Listing something you cannot save would be worse than not listing it: the
+  // SESSION-ONLY save (no owner code in the header) must work for the address.
+  const saveByEmail = await api('/api/cloud/projects/' + pid + '/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: a.cookie },
+    body: JSON.stringify({ state: { projectName: MARKER, tasks: [], schema: 24 } })
+  });
+  check(
+    'I19c a session-only save works through the verified-email identity',
+    saveByEmail.status === 200,
+    saveByEmail.status + ' ' + JSON.stringify(saveByEmail.body && saveByEmail.body.error)
+  );
+
+  // The verification gate on the email half: an unconfirmed password account
+  // must not inherit the identity, or registering an address you do not own
+  // would open someone else's projects.
+  await d1Run('UPDATE auth_users SET email_verified = 0 WHERE email = ?', OWNER);
+  const listUnverified = await api('/api/cloud/projects', {
+    method: 'GET',
+    headers: { Cookie: a.cookie }
+  });
+  check(
+    'I20a an UNVERIFIED address does not match the project',
+    idsOf(listUnverified.body).indexOf(pid) === -1,
+    JSON.stringify(idsOf(listUnverified.body))
+  );
+  await d1Run('UPDATE auth_users SET email_verified = 1 WHERE email = ?', OWNER);
+  const listReverified = await api('/api/cloud/projects', {
+    method: 'GET',
+    headers: { Cookie: a.cookie }
+  });
+  check(
+    'I20b it comes back once the address is verified again',
+    idsOf(listReverified.body).indexOf(pid) > -1,
+    JSON.stringify(idsOf(listReverified.body))
+  );
+
+  const saveBEmail = await api('/api/cloud/projects/' + pid + '/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: b.cookie },
+    body: JSON.stringify({ state: { projectName: 'pwned-through-email', tasks: [] } })
+  });
+  check('I21 the email identity opens nothing for B', saveBEmail.status === 403, saveBEmail.status);
 
   const passed = results.filter(r => r.ok).length;
   log('');

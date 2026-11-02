@@ -37,6 +37,7 @@ import {
   cloudAuthAdoption,
   readCloudBody,
   readSession,
+  provenEmail,
   CLOUD_SECTIONS,
   authEmailConfigured,
   CLOUD_ORPHAN_WARN_MS,
@@ -67,10 +68,18 @@ export async function handleCloudProjectList(request, env) {
   if (!session || !session.sub) {
     return cloudForbidden();
   }
+  // CLOUD IDENTITY (plan 5.1): a project belongs to the signed-in account when
+  // the sub matches OR when the verified address matches. The second half is
+  // what makes a project published from a signed-out admin panel (google_sub
+  // NULL) and a person who used a password on one device and Google on another
+  // (two different subs, one address) show up under one human. `provenEmail`
+  // returns null for an unverified password account, and '' matches no row, so
+  // the fence is never wider than the create route's own rule.
+  const email = await provenEmail(session, env);
   const owned = await env.DB.prepare(
-    'SELECT project_id, owner_label, google_name, latest_r2_key, created_at, updated_at, last_owner_seen_at FROM cloud_projects WHERE google_sub = ? AND deleted_at IS NULL'
+    'SELECT project_id, owner_label, google_name, latest_r2_key, created_at, updated_at, last_owner_seen_at FROM cloud_projects WHERE (google_sub = ? OR owner_email = ?) AND deleted_at IS NULL'
   )
-    .bind(session.sub)
+    .bind(session.sub, email || '')
     .all();
   const adopted = await env.DB.prepare(
     'SELECT p.project_id, p.owner_label, p.google_name, p.latest_r2_key, p.created_at, p.updated_at, p.last_owner_seen_at, p.deleted_at, a.role AS adopted_role, a.created_at AS adopted_at ' +
@@ -175,10 +184,13 @@ export async function handleCloudCreate(request, env) {
     }
   }
   if (session && session.sub && billingConfigured(env)) {
+    // The free cap counts what the list would SHOW, not just the sub, so a
+    // person cannot double their allowance by publishing through both doors.
+    const capEmail = await provenEmail(session, env);
     const cnt = await env.DB.prepare(
-      'SELECT COUNT(*) AS c FROM cloud_projects WHERE google_sub = ? AND deleted_at IS NULL'
+      'SELECT COUNT(*) AS c FROM cloud_projects WHERE (google_sub = ? OR owner_email = ?) AND deleted_at IS NULL'
     )
-      .bind(session.sub)
+      .bind(session.sub, capEmail || '')
       .first();
     const owned = (cnt && cnt.c) || 0;
     if (owned >= billingFreeCap(env)) {
@@ -202,9 +214,10 @@ export async function handleCloudCreate(request, env) {
   const hash = await hashOwnerCode(ownerCode, salt);
   const ownerFp = await fingerprintOf(ownerCode);
   const now = new Date().toISOString();
+  const ownerEmail = session ? await provenEmail(session, env) : null;
   try {
     await env.DB.prepare(
-      'INSERT INTO cloud_projects (project_id, owner_code_salt, owner_code_hash, owner_code_fingerprint, owner_label, google_sub, google_name, latest_r2_key, created_at, updated_at, last_owner_seen_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)'
+      'INSERT INTO cloud_projects (project_id, owner_code_salt, owner_code_hash, owner_code_fingerprint, owner_label, google_sub, google_name, owner_email, latest_r2_key, created_at, updated_at, last_owner_seen_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
     )
       .bind(
         projectId,
@@ -214,6 +227,7 @@ export async function handleCloudCreate(request, env) {
         name,
         session ? session.sub : null,
         session ? session.name : null,
+        ownerEmail,
         null,
         now,
         now,
@@ -990,11 +1004,16 @@ export async function handleCloudProjectClaim(request, env, projectId) {
     await cloudTimingSink();
     return json({ ok: false, error: 'already linked to another account' }, 409);
   }
+  // The claim links the project to this account AND records the verified
+  // address, so a later sign-in through the other door (password vs Google)
+  // still finds it. COALESCE keeps an address already on the row rather than
+  // overwriting it with null.
   const now = new Date().toISOString();
+  const claimEmail = await provenEmail(session, env);
   await env.DB.prepare(
-    'UPDATE cloud_projects SET google_sub = ?, google_name = ?, last_owner_seen_at = ? WHERE project_id = ? AND google_sub IS NULL'
+    'UPDATE cloud_projects SET google_sub = ?, google_name = ?, owner_email = COALESCE(?, owner_email), last_owner_seen_at = ? WHERE project_id = ? AND google_sub IS NULL'
   )
-    .bind(session.sub, session.name || null, now, projectId)
+    .bind(session.sub, session.name || null, claimEmail, now, projectId)
     .run();
   await cloudTouchOwner(env, projectId);
   return json({ ok: true, projectId: projectId, linked: true, claimedAt: now });

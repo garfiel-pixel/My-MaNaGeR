@@ -646,8 +646,17 @@ export async function handleAuthDeleteAccount(request, env) {
   }
 
   // 3. Delete every owned project fully (R2 + all referencing D1 rows)
-  const owned = await env.DB.prepare('SELECT project_id FROM cloud_projects WHERE google_sub = ?')
-    .bind(session.sub)
+  // CLOUD IDENTITY (plan 5.1): deletion must sweep every project this account
+  // can SEE. The list route matches the sub OR the verified address, so
+  // sweeping only the sub would leave projects behind that the (now deleted)
+  // address could still reach - the policy promises every server-side record
+  // goes. `session.email` is the verified address in the signed payload; the
+  // comparison is lower-cased to match what is stored.
+  const delEmail = typeof session.email === 'string' ? session.email.trim().toLowerCase() : '';
+  const owned = await env.DB.prepare(
+    'SELECT project_id FROM cloud_projects WHERE google_sub = ? OR owner_email = ?'
+  )
+    .bind(session.sub, delEmail)
     .all();
   for (const row of owned.results || []) {
     await cloudDeleteProjectFully(env, row.project_id);

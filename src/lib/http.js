@@ -124,6 +124,38 @@ export async function signSession(payload, key) {
   return base64UrlEncode(jsonStr) + '.' + bytesToBase64Url(new Uint8Array(sig));
 }
 
+/* CLOUD IDENTITY (plan 5.1, owner 2026-11-01): the verified address behind a
+   session, or null when the session has none we can trust.
+   - A Google session is verified by construction (the ID token's
+     email_verified was checked before the session was minted).
+   - An email+password session counts only after the account clicked its
+     confirmation link (auth_users.email_verified = 1) - the exact rule the
+     cloud-create route applies, so listing can never show more than
+     creating would allow.
+   Callers use it as an identity key for reads. It is never taken from a
+   request body or header, so it cannot be spoofed. */
+export async function provenEmail(session, env) {
+  if (!session || !session.sub) {
+    return null;
+  }
+  if (session.sub.indexOf('email:') !== 0) {
+    const addr = typeof session.email === 'string' ? session.email.trim().toLowerCase() : '';
+    return addr || null;
+  }
+  const own = session.sub.slice('email:'.length).trim().toLowerCase();
+  if (!own || !env || !env.DB) {
+    return null;
+  }
+  try {
+    const row = await env.DB.prepare('SELECT email_verified FROM auth_users WHERE email = ?')
+      .bind(own)
+      .first();
+    return row && row.email_verified ? own : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 export async function readSession(request, env) {
   const cookieHeader = request.headers.get('Cookie') || '';
   let raw = null;
@@ -1523,13 +1555,25 @@ export async function cloudAuthOwnerSession(request, env, projectId) {
     return null;
   }
   const row = await env.DB.prepare(
-    'SELECT google_sub, google_name FROM cloud_projects WHERE project_id = ?'
+    'SELECT google_sub, google_name, owner_email FROM cloud_projects WHERE project_id = ?'
   )
     .bind(projectId)
     .first();
-  if (!row || !row.google_sub || row.google_sub !== session.sub) {
+  if (!row) {
     await cloudTimingSink();
     return null;
+  }
+  // CLOUD IDENTITY (plan 5.1): the sub is the primary key, and the verified
+  // address is the fallback - the same rule `handleCloudProjectList` uses, so
+  // a project a person can SEE is one they can SAVE. Without this a password
+  // sign-in could list a project created under a Google sub and then 403 on
+  // every write, which is worse than not listing it at all.
+  if (row.google_sub !== session.sub) {
+    const email = await provenEmail(session, env);
+    if (!email || !row.owner_email || row.owner_email !== email) {
+      await cloudTimingSink();
+      return null;
+    }
   }
   return { role: 'owner', label: row.google_name || session.name || 'Owner', row: row };
 }

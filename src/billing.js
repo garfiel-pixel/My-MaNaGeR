@@ -37,6 +37,7 @@
 import {
   json,
   readSession,
+  provenEmail,
   cloudForbidden,
   codesEqual,
   authEmailConfigured,
@@ -468,8 +469,14 @@ export async function handleBillingStatus(request, env) {
   }
   const provider = billingProvider(env);
   const cap = billingFreeCap(env);
-  const cnt = await env.DB.prepare('SELECT COUNT(*) AS c FROM cloud_projects WHERE google_sub = ?')
-    .bind(session.sub)
+  // CLOUD IDENTITY (plan 5.1): the reported count must be the number the
+  // create route refuses on, or the panel says "2 of 5" while the sixth
+  // publish is rejected. Same sub-or-verified-address rule as the list.
+  const countEmail = await provenEmail(session, env);
+  const cnt = await env.DB.prepare(
+    'SELECT COUNT(*) AS c FROM cloud_projects WHERE google_sub = ? OR owner_email = ?'
+  )
+    .bind(session.sub, countEmail || '')
     .first();
   const projectCount = (cnt && cnt.c) || 0;
   if (!provider) {

@@ -80,6 +80,7 @@ fails the gate.
 | `mmgr_byo_ai` | Bring-your-own-key connection preference. | necessary |
 | `mmgr_errors_webhook` | Error report webhook address (opt-in debugging). | necessary |
 | `mmgr_perf_mode` , `mmgr_perf_nudge` | Performance mode preference and its one-time prompt. | necessary |
+| `mmgr_rail_nudge` | Set once the first-load sidebar demo has played, so the rail shows itself one time instead of on every load. | necessary |
 | `mmgr_drive_token` , `mmgr_drive_token_exp` , `mmgr_drive_auto` , `mmgr_drive_last` , `mmgr_drive_granted` , `mmgr_drive_enc` | Google Drive backup connection and its state. Opt-in feature; nothing is stored until you connect Drive. | necessary |
 
 ## localStorage - calculator

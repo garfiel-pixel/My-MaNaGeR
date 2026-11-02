@@ -958,15 +958,28 @@ async function main() {
       })()`
     );
     await cdp.ev(`MMGR.Cloud.render(); MMGR.Cloud.saveToCloud();`);
-    const saveUi = await until(
-      cdp,
-      `(function(){
+    // A 429 here is not a contract failure. The Worker's general bucket is 30
+    // requests a minute, keyed by the code header (src/lib/http.js cloudRateKey
+    // prefers X-Owner-Code / X-Editor-Code over the address, so the harness's
+    // per-request CF-Connecting-IP rotation cannot give this save its own
+    // allowance), and one project page's own boot spends most of it. A run that
+    // opens several pages therefore meets the limit before this arm, and CI did:
+    // the save came back 429, the status line never said "owner review" and the
+    // gate read a correct app as broken. Retry until the sliding window opens
+    // rather than weakening a limit the API suite proves still bites.
+    const saveStatusExpr = `(function(){
         var s = document.getElementById('cloud-status');
         var t = s ? s.textContent : '';
         return /owner review|pending acceptance|Saved to cloud/i.test(t) ? { text: t } : false;
-      })()`,
-      18000
-    );
+      })()`;
+    let saveUi = null;
+    for (let attempt = 0; attempt < 6 && !saveUi; attempt++) {
+      if (attempt) {
+        await delay(8000);
+        await cdp.ev(`MMGR.Cloud.render(); MMGR.Cloud.saveToCloud();`);
+      }
+      saveUi = await until(cdp, saveStatusExpr, 12000);
+    }
     const proposalQueue = await reviews(ownerCookie, projA);
     const teamProposal = (
       proposalQueue.body && proposalQueue.body.proposals ? proposalQueue.body.proposals : []
@@ -1148,11 +1161,11 @@ async function main() {
     )[0];
     const revoked = memberB ? await revoke(ownerCookie, projB, memberB.id) : { status: 0 };
     // checkAccess() is the exact body the 60s poll runs; calling it directly
-    // proves the same code path without making the suite wait a minute.
-    await cdp.ev(`MMGR.TeamUI.checkAccess()`);
-    const removed = await until(
-      cdp,
-      `(function(){
+    // proves the same code path without making the suite wait a minute. Same
+    // 429 tolerance as G9: the page's own boot can spend the code's 30-a-minute
+    // allowance, so one refused call is not evidence that a revoke failed to
+    // reach the page - the app's real poll would simply try again 60s later.
+    const removedExpr = `(function(){
         var b = document.getElementById('team-access-banner');
         var escope = sessionStorage.getItem('mmgr_cloud_escope_' + '${projB}');
         var saveBtns = document.querySelectorAll('[data-action="cloudSave"]');
@@ -1175,9 +1188,25 @@ async function main() {
           };
         }
         return false;
-      })()`,
-      15000
-    );
+      })()`;
+    const removedOk = v =>
+      !!v &&
+      v.banner === true &&
+      v.escopeCleared === true &&
+      v.savesDisabled === true &&
+      v.count > 0;
+    let removed = null;
+    for (let attempt = 0; attempt < 6 && !removedOk(removed); attempt++) {
+      if (attempt) {
+        await delay(8000);
+      }
+      // Reset the in-page give-up marker, or a second attempt answers with the
+      // previous attempt's diagnostic before the fetch has even returned.
+      await cdp.ev(
+        `(function(){ window.__qaRemovedSince = 0; return MMGR.TeamUI.checkAccess(); })()`
+      );
+      removed = await until(cdp, removedExpr, 12000);
+    }
     check(
       'G11 a revoke reaches the open page and retires the save control',
       revoked.status === 200 &&

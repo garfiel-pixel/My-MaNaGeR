@@ -136,6 +136,36 @@ function overlaps(a, b) {
         });
         await delay(400);
 
+        // OWNER 2026-11-01, first-run rail nudge: on a device that has never
+        // seen it, the rail pops out 0.9s after load, holds for 1.5s and closes
+        // itself. Measuring inside that window reads the nudge as "the rail is
+        // open" - which is exactly what CI did at 1280, 1024 and 900 while this
+        // machine, faster to the same line, measured the resting state. Wait for
+        // the nudge to finish (it writes its own once-per-device flag first, so
+        // this resolves as soon as the class is gone). Reduced motion skips the
+        // nudge entirely and the flag stays unset, so that case resolves at once.
+        await page.waitForFunction(
+          () => {
+            if (document.body.classList.contains('rail-nudge')) {
+              return false;
+            }
+            if (localStorage.getItem('mmgr_rail_nudge') === '1') {
+              return true;
+            }
+            if (
+              window.matchMedia &&
+              window.matchMedia('(prefers-reduced-motion: reduce)').matches
+            ) {
+              return true;
+            }
+            // Below 769px the nudge is skipped outright (it is a desktop
+            // affordance), so there is nothing to wait for.
+            return !(window.matchMedia && window.matchMedia('(min-width:769px)').matches);
+          },
+          null,
+          { timeout: 15000 }
+        );
+
         // Close the rail through the real hamburger (pinned open by default).
         await page.evaluate(() => {
           if (document.body.classList.contains('side-open')) {

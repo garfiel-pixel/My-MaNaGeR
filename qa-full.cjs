@@ -1821,16 +1821,34 @@ async function check(name, expr, expected, hint) {
   // sign-in flow and never the window. Assert that contract first, then
   // install the documented QA seam so the window's own mechanics (presets,
   // context dump, copy, Escape close, view-only allowance) stay covered.
+  //
+  // OWNER 2026-11-01 re-baseline: the click no longer refuses in the same
+  // tick. Because the session is a cookie the page may not have read yet, the
+  // first answer is "Checking your sign-in", and the refusal plus the sign-in
+  // prompt follow once the Worker has answered (ensureSession, <= 2.5s). The
+  // contract is unchanged - the window must never open and the visitor must be
+  // told to sign in - so this polls to the FINAL answer instead of reading one
+  // synchronous tick. It still fails a dead click (no toast at all) and a
+  // window that opens, and it ignores the interim copy so "checking" alone
+  // cannot satisfy the gate.
   await check(
     '68b v10 AI window: signed-out click refuses + shows the sign-in toast',
-    `(function(){
+    `new Promise(function(res){
     var win=document.getElementById('ai-win');
     win.classList.remove('open');
     document.querySelector('[data-action=openAiWin]').click();
-    var open=win.classList.contains('open');
-    var toast=(document.querySelector('.toast')||{}).textContent||'';
-    return {val: !open && toast.indexOf('sign in')>-1, open:open, toast:toast.slice(0,70)};
-  })()`
+    var first=(document.querySelector('.toast')||{}).textContent||'';
+    var until=Date.now()+4000;
+    var iv=setInterval(function(){
+      var open=win.classList.contains('open');
+      var toast=(document.querySelector('.toast')||{}).textContent||'';
+      var refused=/sign[- ]in/i.test(toast) && !/checking/i.test(toast);
+      if(open || refused || Date.now()>until){
+        clearInterval(iv);
+        res({val: !open && refused, open:open, first:first.slice(0,70), toast:toast.slice(0,70)});
+      }
+    },100);
+  })`
   );
   // QA seam for the entitlement (the ONE door the callers ask): stub it true
   // for this document AND every later navigation (check 70b re-navigates).

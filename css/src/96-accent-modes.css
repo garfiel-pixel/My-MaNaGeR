@@ -1,0 +1,41 @@
+/* ---- Cyan / magenta accent modes (Phase E-F, data-theme set on <html>) ----
+   REWRITTEN 2026-10-25. The commit that added these modes wrote them as bare
+   "selector --prop: value;" lines with no rule body (the cyan half duplicated
+   twice over), so the browser dropped every line: the mode changed nothing,
+   Prettier threw CssSyntaxError at that line, and both stylesheets were then
+   added to .prettierignore to silence the symptom.
+   They are also re-scoped. The original overrode --glass-fill-dark with
+   near-black (#050a10) while the mode leaves the LIGHT canvas in place, so
+   switching to Cyan would have blacked out every card, dock and panel under
+   dark text - unreadable. These are ACCENT themes on the light interface (the
+   contract js/mmgr-theme.js documents): surfaces, text hierarchy and status
+   colours are untouched; only the brand accent family is retinted. Every text
+   step clears AA on white: #00838f 4.52:1, #006972 6.43:1, #c2185b 5.87:1,
+   #ad1457 6.97:1, and white on the fill 4.52:1 / 5.87:1 (so --on-gold moves
+   from the dark ink to white - the ink would manage only 3.83:1 on cyan).
+   body.dark-mode is never applied alongside these modes (the mode is one
+   value: light | dark | system | cyan | magenta), so no dark block conflicts.
+   Status colours (green/red/blue/amber) never change - owner colour rule. */
+[data-theme='cyan'] {
+  --brand: #00838f;
+  --brand-hover: #006972;
+  --brand-subtle: rgba(0, 131, 143, 0.1);
+  --brand-on: #ffffff;
+  --gold: #00838f;
+  --gold-rgb: 0, 131, 143;
+  --gold-ink: #006972;
+  --on-gold: #ffffff;
+  /* The CTA keeps the gold gradient in the accent modes: the gradient stops
+     are graded for the ink label and the owner's rule keeps the identity
+     gold. The accent owns tabs, chips, icons, active states and washes. */
+}
+[data-theme='magenta'] {
+  --brand: #c2185b;
+  --brand-hover: #ad1457;
+  --brand-subtle: rgba(194, 24, 91, 0.1);
+  --brand-on: #ffffff;
+  --gold: #c2185b;
+  --gold-rgb: 194, 24, 91;
+  --gold-ink: #ad1457;
+  --on-gold: #ffffff;
+}

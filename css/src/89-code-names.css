@@ -1,0 +1,150 @@
+/* ============================================================
+   APP-3 (REFINEMENT-DIRECTIVE 2026-10-24, section 7) - the three code
+   names: a "Which code is this?" trigger beside every code field, the
+   native popover it opens (one per page), the header backup status and
+   the post-restore "what came back" card on the admin panel.
+   ============================================================ */
+.code-which-row {
+  margin-top: 6px;
+}
+button.code-which {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--gold-text);
+  cursor: pointer;
+}
+button.code-which .ico {
+  width: 0.95em;
+  height: 0.95em;
+}
+button.code-which:hover {
+  text-decoration: underline;
+}
+button.code-which:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 2px;
+}
+/* The popover is centred in the top layer: solid content surface, no glass,
+   no blur, so Performance Mode and reduced transparency need no extra rule. */
+.code-pop {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(430px, calc(100vw - 32px));
+  max-height: min(80vh, 520px);
+  overflow: auto;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.3);
+}
+.code-pop::backdrop {
+  background: rgba(15, 23, 42, 0.45);
+}
+.code-pop h3 {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+}
+.code-pop-list {
+  margin: 0 0 12px;
+}
+.code-pop-list div {
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+.code-pop-list div:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.code-pop-list dt {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--gold-text);
+}
+.code-pop-list dd {
+  margin: 2px 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+/* Header backup status (admin panel). Small, one line, no interaction. */
+.escrow-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 230px;
+  /* OWNER 2026-10-31: backup state is a notifier line, not a pill. */
+  padding: 2px 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--slate);
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.escrow-badge::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: var(--dot-yellow);
+}
+.escrow-badge.on {
+  color: var(--gold-text);
+}
+.escrow-badge.on::before {
+  background: var(--dot-green);
+}
+.escrow-badge.off::before {
+  background: var(--dot-red);
+}
+@media (max-width: 760px) {
+  .escrow-badge {
+    display: none;
+  }
+}
+/* Post-restore recap card (admin panel, first thing after Restore access).
+   The id-qualified guard outranks the dashboard grid's display:flex rule,
+   which otherwise paints the card while it still carries the hidden state. */
+.restore-recap {
+  border-left: 3px solid var(--gold);
+}
+#restore-recap[hidden],
+#panel-dash .g3 > .card[hidden] {
+  display: none;
+}
+.rr-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 10px 0;
+}
+.rr-group h4 {
+  margin: 0 0 6px;
+  font-size: 0.8rem;
+}
+.rr-group ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.8rem;
+}
+.rr-group li {
+  margin: 2px 0;
+}
+.restore-recap .btn {
+  margin-top: 4px;
+}

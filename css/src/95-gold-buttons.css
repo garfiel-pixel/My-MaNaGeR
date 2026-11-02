@@ -1,0 +1,60 @@
+/* ---- SHARED GOLD BUTTON (REFINEMENT-DIRECTIVE-2026-10-24.md 5.3) ----
+   One definition for every class that FILLS with the brand gold. The
+   gradient carries the fill, the dark ink carries the label (5.4: the label
+   must never sit on the deep end of the gradient), the bronze edge carries
+   the border. Sizes, padding, radius and the active-scale behaviour stay
+   whatever the button's own size rule set.
+   The dark-mode selectors are listed because they outrank a bare .btn-o and
+   would otherwise flip the CTA back to the outline treatment in dark mode
+   (5.5 / owner question 2 default: in dark mode BUTTONS get the gold
+   gradient, borders, rings and text keep today's dark tokens).
+   NOTE (5.4, recorded for the owner rather than papered over): the ink label
+   measures 8.28:1 on the light stop, 4.45:1 on the middle stop and 2.82:1 on
+   the deep stop. Labels are centred (they sit near the middle stop), weight
+   600, with the light text shadow. No new colour was invented to chase the
+   last 0.05 of the middle stop. */
+.btn-o,
+.btn-bullion,
+body.dark-mode .btn-o,
+body.dark-mode .btn-bullion,
+body.dark-mode:not(.db-page) .btn-o,
+body.dark-mode:not(.db-page) .btn-bullion {
+  background: var(--gold-grad);
+  color: var(--bullion-ink);
+  border: 1px solid var(--bullion-edge);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 4px 6px var(--lit-black-20);
+  font-weight: 600;
+  text-shadow: 0 1px 0 var(--lit-white-35);
+}
+.btn-o:hover,
+.btn-bullion:hover,
+body.dark-mode .btn-o:hover,
+body.dark-mode .btn-bullion:hover,
+body.dark-mode:not(.db-page) .btn-o:hover,
+body.dark-mode:not(.db-page) .btn-bullion:hover {
+  background: var(--gold-grad-hover);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 6px 10px var(--lit-black-30);
+  color: var(--bullion-ink);
+}
+.btn-o:focus-visible,
+.btn-bullion:focus-visible,
+body.dark-mode .btn-o:focus-visible,
+body.dark-mode:not(.db-page) .btn-o:focus-visible {
+  outline: 2px solid var(--bullion-deep);
+  outline-offset: 2px;
+}
+.btn-o:disabled,
+.btn-bullion:disabled,
+body.dark-mode .btn-o:disabled,
+body.dark-mode:not(.db-page) .btn-o:disabled {
+  background: #c9b26a;
+  color: #4a4a4a;
+  border-color: #d8c98e;
+  box-shadow: none;
+  text-shadow: none;
+  cursor: not-allowed;
+}

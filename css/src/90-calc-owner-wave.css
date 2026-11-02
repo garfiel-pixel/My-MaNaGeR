@@ -1,0 +1,1223 @@
+/* ============================================================
+   BUILD COST CALCULATOR - OWNER WAVE 2026-10-02
+   One block for the owner directive: replicate the app page's
+   visual signature on the calculator, replace the pill icons,
+   fix the dark-mode dropdown, and make the rate book a popup.
+   ============================================================ */
+
+/* ---- UI-3 (REFINEMENT-DIRECTIVE-2026-10-24): ONE line under the title, and
+   the How-to-use card's two tabs. The lede and the fine print moved into the
+   Notes tab, so the reading is 0.9rem at 1.5 line height instead of loose
+   small text above the form. ------------------------------------------------ */
+.bcp-lede-line {
+  margin: 6px 0 14px;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  max-width: 640px;
+}
+.bcp-guide-head #calc-guide-h {
+  margin-right: auto;
+}
+.bcp-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: var(--radius-control);
+  background: var(--tile-bg);
+  border: 1px solid var(--border);
+}
+.bcp-tab {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: max(2px, calc(var(--radius-control) - 2px));
+  cursor: pointer;
+}
+.bcp-tab:hover {
+  color: var(--text);
+}
+.bcp-tab.is-on {
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+.bcp-tab:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 2px;
+}
+.bcp-notes {
+  margin: 0 0 10px;
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  max-width: 72ch;
+}
+.bcp-notes:last-child {
+  margin-bottom: 0;
+}
+
+/* ---- (15) DARK-MODE DROPDOWNS WERE UNREADABLE ------------------
+   Owner: "when i try to chose kind of work on dark theme the main
+   works are blacked out with white text and white bar".
+   Cause: the stylesheet never declared `color-scheme`, so Chrome
+   rendered the NATIVE select popup with its LIGHT default (a white
+   list, a white scrollbar) while our dark option colours painted
+   underneath it - white text on the dark option background, plus a
+   white scrollbar. Declaring the scheme makes Chrome draw the
+   popup itself dark, and - critically - it also fixes the
+   scrollbar, which no `color`/`background` rule can reach. */
+:root {
+  color-scheme: light;
+}
+html.dark-mode,
+body.dark-mode {
+  color-scheme: dark;
+}
+
+/* ---- UI-1 (REFINEMENT-DIRECTIVE-2026-10-24): the trade list in dark mode --
+   Owner: "All trades" dropped down fine, but the Work item list (entries in
+   <optgroup> headings) showed white boxes with white text. `select option` was
+   the only rule; NOTHING styled optgroup, and the group heading is a separate
+   native row the browser paints with its own default colours. The scheme above
+   makes Chrome draw the popup dark; these rules make the rows agree with it in
+   every palette (tokens, so rose-gold dark and the accent modes follow), and
+   give the selected row a gold wash instead of the system highlight.
+   This is the immediate layer. The lasting layer is js/mmgr-combobox.js, which
+   replaces the native popup on the two long lists with a listbox this project
+   owns - a native popup cannot be styled or tested reliably. */
+body.dark-mode select,
+body.dark-mode select option,
+body.dark-mode select optgroup,
+html.dark-mode select,
+html.dark-mode select option,
+html.dark-mode select optgroup {
+  background-color: var(--card);
+  color: var(--text);
+  color-scheme: dark;
+}
+body.dark-mode select optgroup,
+html.dark-mode select optgroup {
+  color: var(--text-muted);
+  font-weight: 700;
+  font-style: normal;
+}
+body.dark-mode select option:checked,
+html.dark-mode select option:checked {
+  background-color: rgba(var(--gold-rgb), 0.25);
+  color: var(--text);
+}
+
+/* ---- UI-1 layer two: the owned listbox (js/mmgr-combobox.js) -------------
+   The native popup is replaced on the two long lists, so what the user sees is
+   drawn from this project's tokens and can be measured by a test. The popup is
+   position:fixed so no card, grid or drawer can clip it; on a phone it becomes
+   a bottom sheet over a scrim. Content is SOLID (var(--card)) - the house rule
+   for anything holding text. */
+.mmcb {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+/* The original select stays in the DOM as the source of truth - value, change
+   events, recalls - but it is never shown and never focusable twice. */
+.mmcb-native {
+  display: none !important;
+}
+.mmcb-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 30px 4px 8px;
+  font-family: inherit;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  min-width: 0;
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+.mmcb-input:hover {
+  border-color: var(--gold);
+}
+.mmcb-input:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.14);
+}
+.mmcb.is-disabled .mmcb-input {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.mmcb-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+.mmcb-btn .ico {
+  width: 14px;
+  height: 14px;
+}
+.mmcb-pop {
+  position: fixed;
+  z-index: 1400;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: 0 12px 32px var(--lit-black-18);
+}
+.mmcb-sheet {
+  max-height: var(--mmcb-max, 60vh);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.mmcb-grp {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 8px 10px 4px;
+  background: var(--card);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.mmcb-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font-size: 0.82rem;
+  line-height: 1.35;
+  cursor: pointer;
+}
+.mmcb-opt-txt {
+  flex: 1;
+  min-width: 0;
+}
+.mmcb-opt:hover {
+  background: rgba(var(--gold-rgb), 0.08);
+}
+.mmcb-opt.is-active {
+  background: rgba(var(--gold-rgb), 0.12);
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+.mmcb-opt[aria-disabled='true'] {
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+.mmcb-tick {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--gold-text);
+}
+.mmcb-empty {
+  padding: 10px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+.mmcb-scrim {
+  display: none;
+}
+@media (max-width: 640px) {
+  .mmcb-pop {
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    bottom: 0;
+    width: auto !important;
+    transform: none !important;
+    border-radius: 16px 16px 0 0;
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+    box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.28);
+  }
+  .mmcb-sheet {
+    max-height: 70vh;
+  }
+  .mmcb-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: rgba(0, 0, 0, 0.42);
+  }
+}
+
+/* ---- (10) THE APP PAGE'S BACKGROUND EFFECT ---------------------
+   Owner: "use the special effect for the background we use on the
+   app page for the calculator background, dont go overboard - make
+   it minimal but still truly visible".
+   Reference, not invention: the app page washes its canvas with
+   three layered --gold-rgb radial gradients (body.db-page
+   #grid::before) over a warm --canvas. The calculator shares the
+   body.db-page class but has no #grid, so it got none of it. Same
+   three washes, same tokens, same opacities - just anchored to
+   the page instead of the dashboard grid, and off in dark mode
+   (where the dashboard treatment owns the canvas). */
+body.calculator-page:not(.dark-mode)::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      46% 42% at 14% 4%,
+      rgba(var(--gold-rgb), 0.11) 0%,
+      rgba(var(--gold-rgb), 0) 70%
+    ),
+    radial-gradient(
+      40% 38% at 86% 14%,
+      rgba(var(--gold-rgb), 0.08) 0%,
+      rgba(var(--gold-rgb), 0) 68%
+    ),
+    radial-gradient(
+      52% 46% at 52% 98%,
+      rgba(var(--gold-rgb), 0.06) 0%,
+      rgba(var(--gold-rgb), 0) 72%
+    );
+}
+/* Dark: the wash is off (the starry canvas shows through), matching
+   the dashboard's own dark-mode guard. */
+body.calculator-page.dark-mode::before {
+  display: none;
+}
+/* The page's own stacking context must not paint over the wash. */
+body.calculator-page {
+  position: relative;
+  isolation: isolate;
+}
+@media (prefers-reduced-motion: reduce) {
+  body.calculator-page:not(.dark-mode)::before {
+    transition: none;
+  }
+}
+
+/* ---- (13) THE APP BAR'S SURFACE, ON THE CALCULATOR (UI-4) -------
+   An earlier pass tinted this bar with its own gold gradient, which is exactly
+   what UI-4 calls "does not mirror the app bar": the two bars read as different
+   products. The light surface now comes from .bcp-top itself (the app bar's own
+   values, copied), and this block only carries the DARK half of the same
+   mirror - background, glass blur, hairline and lift, taken from
+   body.dark-mode.db-page .top. Both themes are checked against the app bar by
+   computed style in tools/qa-calc-controls.cjs (the UI-4 family). */
+body.dark-mode.calculator-page .bcp-top {
+  background: var(--glass-fill-dark);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border-color: var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 var(--lit-white-06),
+    0 14px 34px -18px rgba(0, 0, 0, 0.55);
+}
+
+/* ---- (11) NO PILL ICONS ANYWHERE ON THIS PAGE -----------------
+   Owner: "move away from pill shaped icon and go to rectangle
+   with curved edges - make the pill icons gone". Every control on
+   this page uses the app's rectangular radius. Scoped to
+   .calculator-page so the project's other pill toasts are
+   untouched. */
+body.calculator-page .bcp-seg-btn {
+  border-radius: var(--radius-control);
+}
+body.calculator-page .bcp-rr-x {
+  border-radius: var(--radius-rect, 10px);
+}
+
+/* ---- (6) SPECIAL-CASE PIECE ROW -------------------------------
+   The opt-in row and the piece row it reveals. Hidden guards are
+   mandatory here: .bcp-row is display:grid and would outrank the
+   UA hidden rule, and verify:hidden only scans STATIC markup so it
+   cannot see these JS-driven flips. */
+#calc-piece-custom-wrap[hidden] {
+  display: none !important;
+}
+.bcp-piece-row[hidden] {
+  display: none !important;
+}
+/* Once the user opts in, the row is marked so it reads as
+   deliberate rather than accidental. */
+.bcp-piece-row.bcp-piece-custom-on {
+  border-left: 3px solid color-mix(in oklch, var(--warning) 60%, transparent);
+  padding-left: 12px;
+  margin-left: -3px;
+}
+/* B1: the custom item's four fields. Same design tokens as the special-case
+   piece row, in the gold accent, no blue, no lock icon - the name input
+   replaces the rate-book value, the unit the quantity's unit. */
+#calc-custom-wrap[hidden] {
+  display: none !important;
+}
+.bcp-field-custom label {
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+.bcp-field-custom input {
+  /* --gold-500 is a MARKETING token and is not defined on this page, so it
+     resolved to nothing and the gold accent silently vanished. The deep
+     bronze step carries the accent HERE because an input's border is a UI
+     boundary: the plain gold fill is 1.9:1 on white, under the 3:1 floor. */
+  border-color: var(--gold-ink);
+  border-radius: var(--radius-control);
+  padding: 8px 10px;
+  font-size: 15px;
+}
+.bcp-error-line {
+  color: var(--status-danger);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+/* ---- (9) THE CASH-PLAN MESSAGE -------------------------------- */
+#calc-cash-msg[hidden] {
+  display: none !important;
+}
+
+/* X-2 (audit 8.3): below-the-fold calculator cards paint lazily. Content
+   that is off-screen is not laid out until it scrolls near the viewport,
+   and contain-intrinsic-size holds a steady 600px placeholder while it is
+   skipped so the scrollbar never jumps. */
+#calc-boq-card,
+#calc-prelims-card,
+#calc-hist-card,
+#calc-estimates-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 600px;
+}
+
+/* ---- (4) RATE BOOK AS A POPUP, NOT A SECTION ------------------
+   Owner: "why is it being open at the bottom of the page, polish
+   it and make it be a pop up user can view and exit when needed".
+   Overlay + panel, app-dialog language: a scrim you click to leave,
+   Escape to leave, and the close button. The scrim also stops the
+   page behind scrolling under the sheet. */
+#calc-ratebook-card {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background: rgba(9, 10, 15, 0.46);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: rgba(9, 10, 15, 0.46);
+}
+.rr-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(980px, 100%);
+  max-height: min(86vh, 900px);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 16px);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+  overflow: hidden;
+}
+.rr-panel .rr-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.rr-panel .rr-head .card-title {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+.rr-scroll {
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+}
+.rr-foot {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  color: var(--slate);
+  font-size: 0.74rem;
+}
+/* RATE BOOK REBRAND (REFINEMENT-DIRECTIVE-2026-10-24 3.2). The brand mark is
+   the same sprite symbol the calculator header uses, at 18px, in the dialog
+   header and on every trade heading. */
+.rr-mark {
+  width: 18px;
+  height: 18px;
+  vertical-align: -4px;
+  margin-right: 4px;
+}
+.rr-years {
+  font-weight: 500;
+  color: var(--slate);
+}
+.rr-notice,
+.rr-source {
+  display: block;
+  margin-top: 6px;
+  line-height: 1.45;
+}
+.rr-source {
+  color: var(--slate);
+  font-size: 0.7rem;
+}
+.bcp-rate-notice {
+  margin: 10px 0 0;
+  color: var(--slate);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+/* RB-1 (2026-10-25): the book is signed-in data now, so a session that went
+   away between the gate and the load leaves the 100 built-in rows on screen.
+   One line says why, in the footer where the other provenance sits. */
+.rr-why {
+  display: block;
+  margin-top: 4px;
+  color: var(--text);
+}
+
+/* ---- RATE BOOK: SEARCH + TRADE SCOPE (owner 2026-10-12) ------
+   The card grew from 100 rows to the full 811, so it needed a
+   way to actually find a rate: a search box that indexes every
+   column including the money, and a trade picker that scopes the
+   view (and the search) to one trade. Token-driven, so light and
+   dark both hold with no override. */
+.rr-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--tile-bg);
+}
+.rr-search .ico {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  color: var(--slate);
+}
+.rr-q {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+}
+.rr-q::placeholder {
+  color: var(--slate);
+}
+.rr-q:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 1px;
+}
+.rr-hits {
+  flex-shrink: 0;
+  color: var(--slate);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+/* The trade picker wraps rather than scrolls sideways, so every
+   trade is reachable without a hidden gesture. */
+/* OWNER 2026-10-13 ("get the tabs optimized properly"): the trade chips used
+   to WRAP into a five-row pill stack on a phone - one long tab bar the eye
+   could not scan. They are a single horizontal scroll strip now: no wrap,
+   snap-aligned, scrollbar hidden, and the chosen trade is scrolled into view
+   by the card itself so the active tab is always on screen. */
+.rr-trades {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.rr-trades::-webkit-scrollbar {
+  display: none;
+}
+.rr-trades .bcp-seg-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  scroll-snap-align: start;
+  font-size: 0.72rem;
+}
+/* Section heading: each trade is its own group with its own
+   count, so the book is never one endless scroll. Sticky, so the
+   trade you are reading stays named while rows pass under it. */
+/* Base: the table had no rule of its own before the full book
+   landed (100 rows fit on generic table styling). 811 rows need
+   the padding and the row separation to stay scannable. */
+.rr-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.rr-table th,
+.rr-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  font-size: 0.8rem;
+  vertical-align: top;
+}
+.rr-table .rr-trade th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 9px 12px;
+  background: var(--tile-bg);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text);
+}
+/* OWNER 2026-10-13 ("the data is formatted better"): money reads down the
+   RIGHT edge - the Rate column is right-aligned with tabular numerals so
+   digit columns line up. Scoped to cells only, so the trade group headings
+   (th colspan) keep their left anchor. */
+.rr-table thead th:last-child,
+.rr-table tbody td:last-child {
+  text-align: right;
+}
+.rr-count {
+  margin-left: 8px;
+  color: var(--slate);
+  font-weight: 400;
+  font-size: 0.7rem;
+}
+/* 'C' marks a rate we calculated from the imperial figure rather
+   than one book printed. Always carries a title, never a bare
+   letter the user has to guess at. */
+.rr-calc {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 4px;
+  border: 1px solid color-mix(in oklch, var(--gold) 45%, transparent);
+  border-radius: var(--radius);
+  color: var(--gold-text);
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.4;
+  vertical-align: 1px;
+}
+/* Row notes (duplicate warnings, corrected rates) sit under the
+   description, quiet, so the table stays scannable. */
+.rr-note {
+  display: block;
+  margin-top: 2px;
+  color: var(--slate);
+  font-size: 0.68rem;
+}
+.rr-ref,
+.rr-unit {
+  white-space: nowrap;
+  color: var(--slate);
+}
+.rr-rate {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+/* PART I PHASE 1 (2026-10-17): the "Use this rate" row action added a fifth
+   column, so the Rate cells are no longer the last child - right alignment
+   is now explicit per class (header and cells), and the new Use column takes
+   the right-edge slot with a compact icon button. Tokens only: light and dark
+   palettes both follow the existing card variables. */
+.rr-table thead th.rr-rate-h,
+.rr-table tbody td.rr-rate {
+  text-align: right;
+}
+.rr-use {
+  width: 1%;
+  white-space: nowrap;
+}
+.rr-use-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  background: var(--tile-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--slate);
+  cursor: pointer;
+}
+.rr-use-btn:hover,
+.rr-use-btn:focus-visible {
+  border-color: var(--gold);
+  color: var(--gold-text);
+}
+.rr-empty {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--slate);
+  font-size: 0.82rem;
+}
+.rr-legend {
+  display: inline-flex;
+  align-items: center;
+}
+/* OWNER 2026-10-13: the signed-out gate for the rate book - the same shell as
+   the book, narrowed to its copy, one gold CTA and one quiet way out. */
+.rr-panel.rr-panel-s {
+  width: min(440px, 100%);
+  max-height: none;
+}
+.rr-signin {
+  padding: 26px 22px 24px;
+}
+.rr-signin h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+.rr-signin p {
+  margin: 0 0 18px;
+  color: var(--slate);
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+.rr-signin-cta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+/* Phones: the four columns are tight at 390px, so the rate and
+   the description get the room and the ref/unit stay compact. */
+@media (max-width: 520px) {
+  .rr-search,
+  .rr-trades {
+    padding: 8px 12px;
+  }
+  .rr-table th,
+  .rr-table td {
+    padding: 7px 6px;
+    font-size: 0.74rem;
+  }
+  .rr-hits {
+    display: none;
+  }
+}
+.bcp-rr-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  background: var(--tile-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-rect, 10px);
+  color: var(--slate);
+  cursor: pointer;
+  transition:
+    color var(--tr),
+    border-color var(--tr);
+}
+.bcp-rr-x:hover {
+  color: var(--gold-text);
+  border-color: var(--gold);
+}
+.bcp-rr-x:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 2px;
+}
+.bcp-rr-x .ico {
+  width: 16px;
+  height: 16px;
+}
+/* While the popup is open the page behind must not scroll. */
+body.rr-open {
+  overflow: hidden;
+}
+/* Print: the popup is never part of a document.
+   OWNER INCIDENT 2026-10-02: this rule sat OUTSIDE any @media print, so
+   `display:none !important` applied on screen too and the rate book popup
+   was invisible the moment it opened - the "Rate book" button looked dead
+   again (the exact defect the popup work was meant to kill). Any hide-this
+   rule that is NOT [hidden]-scoped must be wrapped in @media print here. */
+@media print {
+  #calc-ratebook-card {
+    display: none !important;
+  }
+}
+
+/* Assistant panel on the calculator page (owner 2026-10-08).
+   The page owns .bcp-ai-card; js/calc-ai.js renders everything inside it.
+   Theme tokens only, so light and dark both hold with no override; the
+   transcript is a plain list of labelled rows, and the send control is the
+   shared gold button with a sprite icon in it. */
+.bcp-ai-card {
+  margin-top: 18px;
+}
+.bcp-ai-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.bcp-ai-status {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text-secondary, var(--text));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.bcp-ai-signin {
+  flex-shrink: 0;
+}
+.bcp-ai-log {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 16px);
+  background: var(--tile-bg);
+}
+.bcp-ai-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: 92%;
+}
+.bcp-ai-msg.user {
+  align-self: flex-end;
+  align-items: flex-end;
+  text-align: right;
+}
+.bcp-ai-who {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary, var(--text));
+}
+.bcp-ai-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  padding: 8px 11px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+.bcp-ai-msg.user .bcp-ai-text {
+  border-color: var(--gold);
+  background: rgba(var(--gold-rgb), 0.12);
+}
+.bcp-ai-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  padding: 8px 11px;
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+  color: var(--text-secondary, var(--text));
+}
+.bcp-ai-note.bad {
+  border-color: var(--danger);
+  color: var(--danger-ink);
+}
+/* OWNER 2026-10-10 (T3, R9): the assistant's in-flight bubble - three gold
+   dots inside the conversation, so the wait is visible where the answer will
+   land. Gold is the identity: the dots take the text-weight gold on the light
+   canvas and the white accent in dark mode (both themes declare the token). */
+.bcp-ai-typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 9px 13px;
+  border-radius: 14px 14px 14px 4px;
+  border: 1px solid var(--border);
+  background: var(--surface-raised, var(--card));
+  width: fit-content;
+}
+.bcp-ai-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gold-ink);
+  animation: bcp-ai-bounce 1.05s infinite ease-in-out;
+}
+.bcp-ai-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.bcp-ai-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes bcp-ai-bounce {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  40% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+.bcp-ai-still {
+  display: inline-block;
+  font-size: 0.72rem;
+  color: var(--text-muted, var(--slate));
+  margin-left: 4px;
+}
+.bcp-ai-still[hidden] {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bcp-ai-dot {
+    animation: none;
+    opacity: 0.7;
+  }
+}
+/* One download chip: the file the assistant built, with its real size and row
+   count, and the link that actually fetches it (T2). */
+.bcp-ai-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  flex-wrap: wrap;
+}
+.bcp-ai-chip-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.bcp-ai-chip-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text);
+  word-break: break-all;
+}
+.bcp-ai-chip-sub {
+  font-size: 0.7rem;
+  color: var(--text-muted, var(--slate));
+}
+/* B5: the proposal chip shows the agreed line the user can then price. */
+.bcp-ai-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+.bcp-ai-chip:empty {
+  display: none;
+}
+.bcp-ai-ico {
+  flex-shrink: 0;
+  display: inline-flex;
+}
+.bcp-ai-ico .ico {
+  width: 15px;
+  height: 15px;
+}
+.bcp-ai-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+.bcp-ai-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  resize: vertical;
+  font: inherit;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  padding: 9px 11px;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.bcp-ai-input:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 2px;
+}
+.bcp-ai-input:disabled {
+  opacity: 0.7;
+}
+.bcp-ai-send {
+  flex-shrink: 0;
+  min-height: 40px;
+}
+.bcp-ai-send .ico {
+  width: 16px;
+  height: 16px;
+}
+.bcp-ai-send:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+@media (max-width: 560px) {
+  .bcp-ai-log {
+    max-height: 300px;
+  }
+  .bcp-ai-msg {
+    max-width: 100%;
+  }
+  .bcp-ai-tools {
+    width: 100%;
+  }
+  .bcp-ai-tools .btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
+
+/* OWNER 2026-10-09 (item 4.3-4.6): the bigger assistant window.
+   A taller transcript with room to read, a history control, the two next-step
+   buttons, the attach control, and the signed-in identity pinned along the
+   bottom. Token-driven only, so light and dark both hold with no override. */
+.bcp-ai-log {
+  min-height: 260px;
+  max-height: 520px;
+}
+.bcp-ai-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.bcp-ai-tools .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.bcp-ai-tools .ico {
+  width: 14px;
+  height: 14px;
+}
+.bcp-ai-hist {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 16px);
+  background: var(--tile-bg);
+  padding: 8px;
+  margin-bottom: 10px;
+}
+.bcp-ai-histlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.bcp-ai-histrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.bcp-ai-histopen {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  font: inherit;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  padding: 7px 10px;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-rect, 10px);
+  cursor: pointer;
+}
+.bcp-ai-histopen:hover {
+  border-color: var(--gold);
+}
+.bcp-ai-histopen:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 2px;
+}
+.bcp-ai-histtitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bcp-ai-histat {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  color: var(--text-secondary, var(--text));
+}
+.bcp-ai-histdel {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  color: var(--text-secondary, var(--text));
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-rect, 10px);
+  cursor: pointer;
+}
+.bcp-ai-histdel:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.bcp-ai-histdel .ico {
+  width: 14px;
+  height: 14px;
+}
+.bcp-ai-histempty {
+  margin: 4px 2px 2px;
+  font-size: 0.76rem;
+  color: var(--text-secondary, var(--text));
+}
+.bcp-ai-paths {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-lg, 16px);
+  background: rgba(var(--gold-rgb), 0.08);
+}
+.bcp-ai-pathq {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+.bcp-ai-pathrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.bcp-ai-pathrow .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.bcp-ai-pathrow .ico {
+  width: 14px;
+  height: 14px;
+}
+.bcp-ai-badge {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 6px;
+  border: 1px solid currentColor;
+}
+.bcp-ai-attach {
+  flex-shrink: 0;
+  min-height: 40px;
+  padding: 8px 10px;
+}
+.bcp-ai-attach .ico {
+  width: 16px;
+  height: 16px;
+}
+.bcp-ai-fileinfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 8px 0 0;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--text-secondary, var(--text));
+}
+.bcp-ai-fileinfo .ico {
+  width: 14px;
+  height: 14px;
+}
+.bcp-ai-me {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--border);
+  font-size: 0.78rem;
+  color: var(--text-secondary, var(--text));
+}
+.bcp-ai-ava {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--on-gold);
+  background: var(--gold);
+}
+.bcp-ai-me-mail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bcp-ai-me-out {
+  flex: 1 1 auto;
+}
+.bcp-ai-me-link {
+  margin-left: auto;
+  font-weight: 700;
+  /* gold on white measured 3.45:1 - the text step carries it (T10-A). */
+  color: var(--gold-ink);
+}

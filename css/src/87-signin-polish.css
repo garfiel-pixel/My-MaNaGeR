@@ -1,0 +1,18 @@
+/* ---- SIGN-IN-POLISH (owner 2026-09-19): trust line + legal links ---- */
+.email-auth-trust {
+  font-size: 0.72rem;
+  color: var(--slate);
+  margin: 6px 0 0;
+  line-height: 1.4;
+}
+.auth-legal {
+  font-size: 0.72rem;
+  margin: 4px 0 0;
+}
+.auth-legal a {
+  color: var(--slate);
+  text-decoration: underline;
+}
+.auth-legal a:hover {
+  color: var(--text);
+}

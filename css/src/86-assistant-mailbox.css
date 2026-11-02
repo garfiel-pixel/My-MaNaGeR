@@ -1,0 +1,104 @@
+/* ---- Task 6: assistant mailbox (token-driven, sibling-drawer language) ---- */
+#ai-mailbox {
+  position: fixed;
+  inset: 0;
+  background: var(--lit-black-45);
+  z-index: 9997;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 60px 16px 16px;
+}
+#ai-mailbox.on {
+  display: flex;
+}
+.ai-mailbox-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  max-width: 520px;
+  width: 100%;
+  max-height: 75vh;
+  overflow: auto;
+  padding: 14px;
+  box-shadow: 0 24px 70px var(--lit-black-45);
+}
+.ai-mailbox-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+.ai-mailbox-head .ico {
+  color: var(--gold-text);
+}
+.ai-mailbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ai-note {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--slate);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ai-note-hot {
+  border-left-color: var(--danger);
+}
+/* Severity tiers (owner 2026-09-28): colored dot + left border from the
+   theme-aware --dot-* status tokens. attention=red (hurt now), caution=yellow
+   (act before it hurts), info=blue (opportunity). Both themes re-point the
+   tokens, so contrast holds without per-theme rules here. */
+.ai-note-caution {
+  border-left-color: var(--dot-yellow);
+}
+.ai-note-info {
+  border-left-color: var(--dot-blue);
+}
+.ai-sev-dot {
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  vertical-align: baseline;
+}
+.ai-note-hot .ai-sev-dot {
+  color: var(--dot-red);
+}
+.ai-note-caution .ai-sev-dot {
+  color: var(--dot-yellow);
+}
+.ai-note-info .ai-sev-dot {
+  color: var(--dot-blue);
+}
+.ai-note-tx {
+  font-size: 0.8rem;
+  color: var(--text);
+  line-height: 1.45;
+}
+.ai-note-advice {
+  font-size: 0.78rem;
+  color: var(--text);
+  line-height: 1.45;
+  border-left: 2px solid var(--border);
+  padding-left: 8px;
+}
+.ai-note-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+.ai-note-meta {
+  font-size: 0.68rem;
+  color: var(--slate);
+}
+.ai-note-empty {
+  border-left-color: var(--border);
+  color: var(--slate);
+}

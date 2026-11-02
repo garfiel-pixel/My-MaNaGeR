@@ -1,0 +1,127 @@
+/* ---- ROSE-GOLD palette, light ---- */
+html[data-theme='rose-gold'] body:not(.dark-mode) {
+  /* PRESERVED-CODE-OFF 2026-09-05: palette axis kept but not surfaced */
+  --canvas: #fbf1ec;
+  --sidebar: #fef9f6;
+  --card: #fffdfb;
+  --surface: #fffdfb;
+  --surface-raised: #faf1ec;
+  --border: #e9d8cf;
+  --text: #2e272c; /* espresso (audit #9) */
+  --text-heading: #221b20;
+  --text-secondary: #4e4147;
+  --text-muted: #7a6b72;
+  --slate: #7a6b72;
+  --brand: #ff6e52; /* coral */
+  --brand-hover: #e0563b;
+  --brand-subtle: rgba(255, 110, 82, 0.09);
+  --brand-on: #2e272c; /* espresso ON coral */
+  --gold: #ff6e52;
+  --gold-rgb: 255, 110, 82;
+  --on-gold: #2e272c;
+  --tile-bg: #f7ebe5;
+  --track-bg: #eddcd2;
+  --toggle-on-bg: #2e272c;
+  --toggle-on-fg: #fff6f2;
+  --toggle-off-bg: rgba(46, 39, 44, 0.08);
+  --toggle-off-fg: #4e4147;
+  --glass-fill-dark: #fffbf8;
+  --glass-fill-dark-hover: #fbf1eb;
+  --glass-fill-dark-active: #f6e7df;
+  --glass-border: 1px solid #f0dcd2;
+  --glass-rim: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+/* 3-stop ambient canvas (E10), light + dark. body{} sets the color via
+   background shorthand; this higher-specificity rule overlays the gradient. */
+html[data-theme='rose-gold'] body {
+  /* PRESERVED-CODE-OFF */
+  background-image: linear-gradient(172deg, #fef7f3 0%, #f7e7df 58%, #f1d9cf 100%);
+  background-attachment: fixed;
+}
+
+/* ---- ROSE-GOLD palette, dark ---- */
+html[data-theme='rose-gold'] body.dark-mode {
+  /* PRESERVED-CODE-OFF */
+  --canvas: #251611;
+  --sidebar: #2a1915;
+  --card: #2e1d18;
+  --surface: #2e1d18;
+  --surface-raised: #3a251e;
+  --border: #4a2f27;
+  --text: #f3e7e1;
+  --text-heading: #fbf2ed;
+  --text-secondary: #d0b7ac;
+  --text-muted: #b79c90;
+  --slate: #b79c90;
+  --brand: #ff8a70;
+  --brand-hover: #ff6e52;
+  --brand-subtle: rgba(255, 138, 112, 0.1);
+  --brand-on: #241713;
+  --gold: #ff8a70;
+  --gold-rgb: 255, 138, 112;
+  --on-gold: #241713;
+  --tile-bg: #332019;
+  --track-bg: #3f2a22;
+  --toggle-on-bg: #ff8a70;
+  --toggle-on-fg: #241713;
+  --toggle-off-bg: rgba(255, 138, 112, 0.1);
+  --toggle-off-fg: #e6cfc4;
+  --glass-fill-dark: #35211a;
+  --glass-fill-dark-hover: #3e2920;
+  --glass-fill-dark-active: #472f25;
+  --glass-border: 1px solid rgba(255, 138, 112, 0.18);
+  --glass-rim: inset 0 1px 0 rgba(255, 138, 112, 0.12);
+  background-image: linear-gradient(172deg, #231310 0%, #2c1a15 58%, #3a2018 100%);
+  background-attachment: fixed;
+}
+@media (prefers-reduced-transparency: reduce) {
+  html[data-theme='rose-gold'] body,
+  html[data-theme='rose-gold'] body.dark-mode {
+    background-image: none;
+  }
+  /* PRESERVED-CODE-OFF: rose palette block end */
+}
+
+/* 3D VIEW DECK (audits #6/#7/#8 solved structurally) */
+body.view-3d .view-deck {
+  /* PRESERVED-CODE-OFF */
+  transform: perspective(1500px) rotateX(9deg) rotateY(-14deg) rotateZ(2.5deg);
+  transform-origin: 50% 30%;
+  transition: transform 0.65s cubic-bezier(0.25, 1, 0.5, 1);
+  will-change: transform;
+}
+/* WebKit 3D+blur bug (audit #8): while tilted, deck surfaces drop blur -
+   live backdrop blur stays confined to non-transformed chrome (dock, header). */
+body.view-3d .view-deck {
+  --glass-blur: 0px;
+}
+/* Mobile auto-flat + reduced motion + print (audit #5): the repo's own
+   narrow boundary (769px desktop columns = 768px max, same as line 1110). */
+@media (max-width: 768px) {
+  body.view-3d .view-deck {
+    transform: none !important;
+    will-change: auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.view-3d .view-deck {
+    transform: none !important;
+    transition: none !important;
+    will-change: auto;
+  }
+}
+@media print {
+  body.view-3d .view-deck {
+    transform: none !important;
+  }
+}
+/* PRESERVED-CODE-OFF: 3D view block end */
+
+/* Dock now carries the Palette (Gold/Rose) and View (Flat/3D) rows - a
+   little wider so label + segmented control fit on one line each. */
+.dock {
+  min-width: 188px;
+}
+.dock .dock-item {
+  gap: 10px;
+}

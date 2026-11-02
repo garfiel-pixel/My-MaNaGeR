@@ -1,0 +1,512 @@
+/* ============================================================
+   FLOATING CALCULATOR (2026-09-01)
+   ============================================================ */
+.calc-fab {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  cursor: grab;
+  background: var(--gold);
+  color: var(--on-gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 4px 16px var(--lit-black-25),
+    0 0 0 3px rgba(var(--gold-rgb), 0.2);
+  transition:
+    transform var(--release-duration) var(--ease-ios),
+    box-shadow 0.2s;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.calc-fab:active {
+  cursor: grabbing;
+  transform: scale(0.92);
+}
+/* OWNER 2026-09-09: dark mode remaps --gold to white, which rendered this
+   FAB as a white circle with a white icon (the "pure white blob"). The AI
+   FAB keeps its fixed brand color across themes (same pattern); the
+   calculator pins the bullion gold in dark so the blob stays gold, and the
+   ink token (--on-gold) keeps the glyph visible on it. Light mode (incl.
+   rose palette) still follows --gold. */
+body.dark-mode .calc-fab {
+  background: var(--bullion);
+  color: var(--on-gold);
+}
+.calc-fab .ico {
+  width: 22px;
+  height: 22px;
+}
+.calc-fab-active {
+  box-shadow:
+    0 6px 24px var(--lit-black-35),
+    0 0 0 4px rgba(var(--gold-rgb), 0.35);
+}
+.calc-panel {
+  position: fixed;
+  z-index: 1501;
+  display: none;
+  flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--squircle-md);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.22),
+    var(--glass-rim);
+  opacity: 0;
+  transform: scale(0.9) translateY(12px);
+  transform-origin: bottom right;
+  transition:
+    opacity 0.25s cubic-bezier(0.25, 1, 0.5, 1),
+    transform 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+  overflow: hidden;
+  max-height: calc(100vh - 100px);
+  width: 380px;
+}
+.calc-panel.calc-open {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+.calc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--canvas);
+}
+.calc-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.calc-title .ico {
+  width: 16px;
+  height: 16px;
+  color: var(--gold-text);
+}
+.calc-close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--slate);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+.calc-close:hover {
+  color: var(--danger);
+  background: rgba(239, 68, 68, 0.1);
+}
+.calc-close .ico {
+  width: 16px;
+  height: 16px;
+}
+.calc-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.calc-gear {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--slate);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+.calc-gear:hover {
+  color: var(--text);
+  background: color-mix(in oklch, var(--gold) 8%, transparent);
+}
+.calc-gear.active {
+  color: var(--gold-text);
+  background: color-mix(in oklch, var(--gold) 12%, transparent);
+}
+.calc-gear .ico {
+  width: 16px;
+  height: 16px;
+}
+/* Phase 5 settings list */
+.calc-set-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--text);
+  padding: 5px 2px;
+  cursor: pointer;
+}
+.calc-set-row input {
+  accent-color: var(--gold);
+  width: 16px;
+  height: 16px;
+}
+.calc-set-note {
+  font-size: 0.7rem;
+  color: var(--slate);
+  margin: 0 0 4px;
+}
+.calc-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+.calc-tab {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--slate);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color 0.15s,
+    background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+}
+.calc-tab:hover {
+  color: var(--text);
+  background: color-mix(in oklch, var(--gold) 8%, transparent);
+}
+.calc-tab.active {
+  color: var(--gold-text);
+  background: color-mix(in oklch, var(--gold) 12%, transparent);
+}
+.calc-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+.calc-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.calc-section.is-hide {
+  display: none;
+}
+.calc-card {
+  background: var(--canvas);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.calc-card-title {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.calc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+.calc-field label {
+  font-size: 0.66rem;
+  color: var(--slate);
+  font-weight: 600;
+}
+.calc-field input,
+.calc-field select {
+  width: 100%;
+  background: var(--glass-fill-dark);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font-size: 0.82rem;
+  padding: 7px 9px;
+  font-family: inherit;
+  outline: none;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.calc-field input:focus,
+.calc-field select:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(var(--gold-rgb), 0.14);
+}
+.calc-field-row {
+  display: flex;
+  gap: 8px;
+}
+.calc-action {
+  padding: 8px 14px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: var(--gold);
+  color: var(--on-gold);
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    opacity 0.15s,
+    transform 0.1s;
+}
+.calc-action:hover {
+  opacity: 0.9;
+}
+.calc-action:active {
+  transform: scale(0.97);
+}
+.calc-result {
+  margin-top: 4px;
+  padding: 8px 10px;
+  border-radius: var(--radius-control);
+  background: color-mix(in oklch, var(--gold) 8%, transparent);
+  border: 1px solid rgba(var(--gold-rgb), 0.25);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.4;
+  word-break: break-word;
+  cursor: pointer;
+  transition: opacity 0.3s;
+}
+.calc-result[hidden] {
+  display: none;
+}
+.calc-result-show {
+  animation: calcFadeIn 0.3s ease;
+}
+@keyframes calcFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.calc-result.copied {
+  border-color: var(--green);
+  background: rgba(16, 185, 129, 0.1);
+}
+/* General calc grid */
+.calc-display {
+  padding: 4px;
+}
+.calc-display-input {
+  width: 100%;
+  background: var(--glass-fill-dark);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font-size: 1.3rem;
+  font-weight: 700;
+  padding: 10px 12px;
+  text-align: right;
+  font-family: ui-monospace, monospace;
+  outline: none;
+}
+.calc-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding: 4px;
+}
+.calc-btn {
+  padding: 12px 4px;
+  border: none;
+  border-radius: var(--radius-control);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    transform 0.08s;
+}
+.calc-btn:active {
+  transform: scale(0.93);
+}
+.calc-num {
+  background: var(--canvas);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.calc-num:hover {
+  background: color-mix(in oklch, var(--gold) 6%, var(--canvas));
+}
+.calc-fn {
+  background: color-mix(in oklch, var(--slate) 10%, var(--canvas));
+  color: var(--slate);
+}
+.calc-fn:hover {
+  background: color-mix(in oklch, var(--slate) 18%, var(--canvas));
+}
+.calc-op {
+  background: color-mix(in oklch, var(--gold) 12%, var(--canvas));
+  color: var(--gold-text);
+}
+.calc-op:hover {
+  background: color-mix(in oklch, var(--gold) 20%, var(--canvas));
+}
+.calc-eq {
+  background: var(--gold);
+  color: var(--on-gold);
+}
+.calc-eq:hover {
+  opacity: 0.9;
+}
+.calc-wide {
+  grid-column: span 2;
+}
+/* History */
+.calc-history {
+  border-top: 1px solid var(--border);
+  padding: 8px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.calc-history[hidden] {
+  display: none;
+}
+.calc-history-title {
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--slate);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+.calc-history-item {
+  font-size: 0.72rem;
+  color: var(--text);
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.12s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.calc-history-item:hover {
+  background: color-mix(in oklch, var(--gold) 8%, transparent);
+}
+.calc-history-item.calc-history-copied {
+  background: rgba(16, 185, 129, 0.15);
+}
+.calc-btn:focus-visible,
+.calc-tab:focus-visible,
+.calc-action:focus-visible,
+.calc-fab:focus-visible,
+.calc-close:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .calc-panel {
+    transition: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+  .calc-result-show {
+    animation: none !important;
+  }
+}
+
+/* Resize handles (owner 2026-09-28): 8-way drag to any size, remembered per
+   device (mmgr_calc_size). Invisible hit zones; edge zones are 7px, corner
+   zones 16x16 with the diagonal cursors. All inside the panel bounds, so
+   the panel's overflow:hidden stays untouched. */
+.calc-rz {
+  position: absolute;
+  z-index: 6;
+  touch-action: none;
+}
+.calc-rz-n {
+  top: -3px;
+  left: 10px;
+  right: 10px;
+  height: 7px;
+  cursor: ns-resize;
+}
+.calc-rz-s {
+  bottom: -3px;
+  left: 10px;
+  right: 10px;
+  height: 7px;
+  cursor: ns-resize;
+}
+.calc-rz-e {
+  right: -3px;
+  top: 10px;
+  bottom: 10px;
+  width: 7px;
+  cursor: ew-resize;
+}
+.calc-rz-w {
+  left: -3px;
+  top: 10px;
+  bottom: 10px;
+  width: 7px;
+  cursor: ew-resize;
+}
+.calc-rz-ne {
+  top: -3px;
+  right: -3px;
+  width: 16px;
+  height: 16px;
+  cursor: nesw-resize;
+}
+.calc-rz-nw {
+  top: -3px;
+  left: -3px;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+}
+.calc-rz-se {
+  bottom: -3px;
+  right: -3px;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+}
+.calc-rz-sw {
+  bottom: -3px;
+  left: -3px;
+  width: 16px;
+  height: 16px;
+  cursor: nesw-resize;
+}
+@media (max-width: 600px) {
+  .calc-rz {
+    display: none;
+  }
+}
+
+/* PHASE 3 - ROSE-GOLD PALETTE + 3D VIEW DECK (owner D7/D9/E10, */

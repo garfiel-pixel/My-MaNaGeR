@@ -1,0 +1,61 @@
+/* ============================================
+   v78: DESIGN-SYSTEM CARD + CHART SPEC
+   (vendor UI/UX task 5 - dashboard card + chart label tokens)
+   Scope note from project review 2026-10-06:
+   The served app currently renders dashboard cards as .card / .evm-tile
+   and does NOT ship .dashboard-card / .chart-legend / .chart-axis-label /
+   .chart-container anywhere in app.html / admin.html / project.html or
+   the dashboard JS. This block defines the requested selectors so they bind
+   as soon as any downstream dashboard component adopts them, and is inert
+   until then. --accent-primary is referenced here ONLY (the live marketing
+   identity stays warm gold; the amber accent is a design-token-only addition
+   on the marketing :root).
+   ============================================ */
+
+/* 5.1 Dashboard overlay cards - elevation, border, radius, padding */
+.dashboard-card {
+  background: var(--bg-surface, var(--card));
+  border: 1px solid var(--border-subtle, var(--border));
+  border-radius: var(--radius-lg, 16px);
+  box-shadow: var(
+    --shadow-card,
+    0 20px 25px -5px rgba(0, 0, 0, 0.6),
+    0 8px 10px -6px rgba(0, 0, 0, 0.5)
+  );
+  padding: 24px;
+}
+body.dark-mode .dashboard-card {
+  background: var(--bg-surface, #242019);
+}
+
+/* 5.2 Chart axis labels + legend - readable at small sizes on every surface */
+.chart-axis-label,
+.chart-legend {
+  font-size: 12px !important;
+  color: var(--text-secondary) !important;
+}
+
+/* 5.3 Chart container bottom breathing room */
+.chart-container {
+  padding-bottom: 16px;
+}
+
+/* 5.4 Marketing hero visual cards - ambient glow only (no repaint of art) */
+.hero-card {
+  position: relative;
+  overflow: visible;
+}
+.hero-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    var(--hero-glow-1, transparent), var(--hero-glow-2, transparent),
+    var(--hero-glow-3, transparent);
+  z-index: 0;
+  pointer-events: none;
+}
+.hero-card > * {
+  position: relative;
+  z-index: 1;
+}

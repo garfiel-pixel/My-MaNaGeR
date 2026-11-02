@@ -17103,7 +17103,6 @@ body.dark-mode.db-page .db-auto-lbl {
     animation-duration: 0s !important;
   }
 }
-
 /* ============================================================
    FLOATING CALCULATOR (2026-09-01)
    ============================================================ */
@@ -17616,7 +17615,6 @@ body.dark-mode .calc-fab {
 }
 
 /* PHASE 3 - ROSE-GOLD PALETTE + 3D VIEW DECK (owner D7/D9/E10, */
-
 /* ---- ROSE-GOLD palette, light ---- */
 html[data-theme='rose-gold'] body:not(.dark-mode) {
   /* PRESERVED-CODE-OFF 2026-09-05: palette axis kept but not surfaced */
@@ -17744,7 +17742,6 @@ body.view-3d .view-deck {
 .dock .dock-item {
   gap: 10px;
 }
-
 /* ---- Performance Mode (mmgr-perf.js, pretty by default 2026-09-29) ----
    THE ONE KILL BLOCK. PERF-1 (REFINEMENT-DIRECTIVE-2026-10-24): the six
    ad-hoc rules that used to live here trimmed three containers and left
@@ -17805,7 +17802,6 @@ body.view-3d .view-deck {
 .nudge-dot[hidden] {
   display: none;
 }
-
 /* ---- Task 6: assistant mailbox (token-driven, sibling-drawer language) ---- */
 #ai-mailbox {
   position: fixed;
@@ -17910,7 +17906,6 @@ body.view-3d .view-deck {
   border-left-color: var(--border);
   color: var(--slate);
 }
-
 /* ---- SIGN-IN-POLISH (owner 2026-09-19): trust line + legal links ---- */
 .email-auth-trust {
   font-size: 0.72rem;
@@ -17929,7 +17924,6 @@ body.view-3d .view-deck {
 .auth-legal a:hover {
   color: var(--text);
 }
-
 /* ============================================================
    DARK BUTTON LANGUAGE (owner 2026-09-20) , project pages only
    (body.dark-mode:not(.db-page); app/admin keep their own look).
@@ -18204,7 +18198,6 @@ body:not(.db-page) .bs {
   opacity: 1;
   visibility: visible;
 }
-
 /* ============================================================
    APP-3 (REFINEMENT-DIRECTIVE 2026-10-24, section 7) - the three code
    names: a "Which code is this?" trigger beside every code field, the
@@ -18355,7 +18348,6 @@ button.code-which:focus-visible {
 .restore-recap .btn {
   margin-top: 4px;
 }
-
 /* ============================================================
    BUILD COST CALCULATOR - OWNER WAVE 2026-10-02
    One block for the owner directive: replicate the app page's
@@ -19579,7 +19571,6 @@ body.rr-open {
   /* gold on white measured 3.45:1 - the text step carries it (T10-A). */
   color: var(--gold-ink);
 }
-
 /* ============================================
    v78: DESIGN-SYSTEM CARD + CHART SPEC
    (vendor UI/UX task 5 - dashboard card + chart label tokens)
@@ -19641,7 +19632,6 @@ body.dark-mode .dashboard-card {
   position: relative;
   z-index: 1;
 }
-
 /* ============================================================
    PART H (owner 2026-10-16): Procurement tab - supplier price
    book + AI quote panel. Token-driven: body.dark-mode re-maps
@@ -19823,7 +19813,6 @@ textarea.pv-in {
   content: 'Your quote will appear here. Copy it straight into an email.';
   color: var(--slate);
 }
-
 /* ---- WIDE MONITORS (owner 2026-10-19): the app must fill the screen it is
    opened on. Above 1200px each workspace column stops being a fixed reading
    width (.wrap 1080, #app-main 1600, .bcp-main 1080) and grows into the space
@@ -19940,7 +19929,6 @@ textarea.pv-in {
   accent-color: var(--gold);
   flex: none;
 }
-
 /* ---- Procurement P2/P3/P4 (2026-10-20): price-history sparkline,
    import dry-run panel, compare matrix. ---- */
 .ph-spark {
@@ -20083,7 +20071,6 @@ textarea.pv-in {
     grid-template-columns: 1fr;
   }
 }
-
 /* ---- SHARED GOLD BUTTON (REFINEMENT-DIRECTIVE-2026-10-24.md 5.3) ----
    One definition for every class that FILLS with the brand gold. The
    gradient carries the fill, the dark ink carries the label (5.4: the label
@@ -20144,7 +20131,6 @@ body.dark-mode:not(.db-page) .btn-o:disabled {
   text-shadow: none;
   cursor: not-allowed;
 }
-
 /* ---- Cyan / magenta accent modes (Phase E-F, data-theme set on <html>) ----
    REWRITTEN 2026-10-25. The commit that added these modes wrote them as bare
    "selector --prop: value;" lines with no rule body (the cyan half duplicated

@@ -1,0 +1,274 @@
+/* ============================================================
+   DARK BUTTON LANGUAGE (owner 2026-09-20) , project pages only
+   (body.dark-mode:not(.db-page); app/admin keep their own look).
+   Reference: GitHub-style enterprise buttons , rectangular with
+   smooth edges, NOT pills.
+   - SHAPE: pills die inside the project. Rounded rectangles via
+     --radius-rect (deeper smooth than 8px, still clearly a rectangle).
+   - REST: the button MIMICS THE BACKGROUND , transparent fill on the
+     pitch-black canvas, one thin hairline, white label. No green/gold/
+     cyan fills standing around; the color mixture is gone. The gray
+     glass-box read dies too (no blur, no fill, no rim on controls).
+   - HOVER: the accent lives here , real brand gold border + label + a
+     faint gold fill. The fill is how you know you are on it.
+   - STATEFUL toggles (weather / lead-time ON) mark state with a gold
+     hairline + gold label, not a filled tint block.
+   - DESTRUCTIVE keeps its red identity (hairline + label), neutral fill.
+   - Sizing never changes: same padding, same hairline weight, only the
+     corner geometry and the color story move.
+   - Icons inside buttons grow 1.2x: small but important.
+   Light theme: untouched (every rule is dark-mode scoped).
+   ============================================================ */
+body.dark-mode:not(.db-page) {
+  --radius-rect: 10px; /* rounded-rectangle control radius (owner 2026-09-20) */
+  --gold-accent: #d4af37; /* the brand gold returns for HOVER accents only */
+  --gold-accent-rgb: 212, 175, 55;
+}
+body.dark-mode:not(.db-page) .btn {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid var(--lit-white-14);
+  border-radius: var(--radius-rect);
+  color: var(--text);
+  box-shadow: none;
+}
+body.dark-mode:not(.db-page) .btn-g,
+body.dark-mode:not(.db-page) .btn-o,
+body.dark-mode:not(.db-page) .btn-warn,
+body.dark-mode:not(.db-page) .btn-n {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--lit-white-14);
+  box-shadow: none;
+}
+body.dark-mode:not(.db-page) .btn:hover,
+body.dark-mode:not(.db-page) .btn-g:hover,
+body.dark-mode:not(.db-page) .btn-o:hover,
+body.dark-mode:not(.db-page) .btn-warn:hover,
+body.dark-mode:not(.db-page) .btn-n:hover {
+  background: rgba(var(--gold-accent-rgb), 0.08);
+  border-color: rgba(var(--gold-accent-rgb), 0.65);
+  color: var(--gold-accent);
+}
+body.dark-mode:not(.db-page) .btn-ghost {
+  background: transparent;
+}
+body.dark-mode:not(.db-page) .btn-ghost:hover {
+  color: var(--gold-accent);
+  background: rgba(var(--gold-accent-rgb), 0.08);
+}
+body.dark-mode:not(.db-page) .btn-d {
+  background: transparent;
+  border: 1px solid rgba(var(--dot-red-rgb), 0.4);
+  color: var(--dot-red);
+  box-shadow: none;
+}
+body.dark-mode:not(.db-page) .btn-d:hover {
+  background: rgba(var(--dot-red-rgb), 0.08);
+  border-color: var(--dot-red);
+  color: var(--dot-red);
+}
+/* Stateful ON toggles: a gold mark, not a filled tint block. */
+body.dark-mode:not(.db-page) .btn-lt,
+body.dark-mode:not(.db-page) .btn-wx {
+  background: transparent;
+  border: 1px solid rgba(var(--gold-accent-rgb), 0.55);
+  color: var(--gold-accent);
+  box-shadow: none;
+}
+body.dark-mode:not(.db-page) .btn-lt:hover,
+body.dark-mode:not(.db-page) .btn-wx:hover {
+  background: rgba(var(--gold-accent-rgb), 0.08);
+  border-color: rgba(var(--gold-accent-rgb), 0.8);
+}
+body.dark-mode:not(.db-page) .btn-pill {
+  border-radius: var(--radius-rect);
+}
+body.dark-mode:not(.db-page) .btn .ico {
+  font-size: 1.2em;
+}
+/* ---- OWNER 2026-09-20 (UI AUTHORIZATION RESTORE) ------------------------
+   Commit 0e4b5ac styled the WRONG selector: its rounded-rectangle block
+   landed on .tab-btn (the methodology switch: Waterfall / Agile / Hybrid)
+   when the owner's instruction was aimed at the section tabs (.sec-btn).
+   The methodology tabs' look was NEVER authorized to change. EXACT RESTORE
+   (owner-confirmed): the unauthorized dark-theme overrides are deleted so
+   the pre-0e4b5ac rules govern again - pill shape (base .tab-btn,
+   border-radius:100px), transparent rest, hover green label (base),
+   selected = white box with black label (body.dark-mode .tab-btn.active,
+   line ~198). No re-implementation here on purpose - the originals carry
+   the look. The --radius-rect token stays for the rules that legitimately
+   use it (dark-theme .btn language + the light-theme shape pass below).
+   Owner 2026-09-20.
+   ============================================================ */
+/* Card toolbars (Add Task / Import from Text / ...): a teensy bit more
+   breathing room between the controls. */
+body.dark-mode:not(.db-page) .card-title .g6 {
+  gap: 9px;
+}
+
+/* ---- OWNER 2026-09-20 (SECTION TABS - the instruction 0e4b5ac missed) ---
+   The rounded-rectangle background-mimic treatment was meant for THESE
+   buttons (the 22 section selectors + the desktop sidebar clones - one
+   class, .sec-btn), but 0e4b5ac wrote it onto .tab-btn instead. Spec agreed
+   with the owner, 2026-09-20:
+   - Rest: background-mimic (transparent - the fully dark project shows
+     through, no gray/frosted fill) + mandatory gray hairline outline that
+     frames the icon (inset ring, so sizing never shifts) + white label.
+     Kills the shared .tab-btn,.sec-btn glass fill (line ~1885) for these
+     buttons - that frosted white fill was the gray the owner rejected.
+   - Hover: soft WHITE glow on the outline + a faint white film, label
+     readable - monochrome, NO gold on these buttons.
+   - Selected (.active): solid white box, black label - today's highlight,
+     kept exactly (owner confirmed).
+   - Black-and-white theme only; light theme sees the SHAPE change only
+     (separate rule below - no color changes there).
+   Specificity note: each rule doubles a class (>= .tab-btn,.sec-btn's
+   0-2-0) so it wins the cascade without !important.
+   ============================================================ */
+body.dark-mode:not(.db-page) .sec-btn.sec-btn {
+  border-radius: var(--radius-rect);
+  color: var(--text);
+  background: transparent;
+  border-color: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: inset 0 0 0 1px var(--lit-white-22);
+}
+body.dark-mode:not(.db-page) .sec-btn.sec-btn:hover {
+  color: #ffffff;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.85),
+    0 0 10px var(--lit-white-18),
+    inset 0 0 0 100px var(--lit-white-08);
+}
+body.dark-mode:not(.db-page) .sec-btn.sec-btn.active,
+body.dark-mode:not(.db-page) .sec-nav .sec-btn.active {
+  border-color: var(--lit-white-70);
+  color: var(--lit-night);
+  background: #ffffff;
+  font-weight: 700;
+  box-shadow:
+    0 0 0 1px var(--lit-white-70),
+    0 0 14px var(--lit-white-18);
+}
+/* The sidebar clones carry the same look (they share .sec-btn by design -
+   one source of truth); width rules below stay layout-only. The clone
+   radius needs the #app-sidebar ID in the chain: #app-sidebar .sec-btn
+   (1-1-0, line ~412) out-ranks class-only rules, so the 10px rectangle
+   would otherwise lose to the 8px --radius-control default. */
+body.dark-mode:not(.db-page) #app-sidebar .sec-btn {
+  border-radius: var(--radius-rect);
+}
+
+/* ---- OWNER 2026-09-20 (LIGHT THEME: SHAPE ONLY, REVISED SAME DAY) -------
+   Owner correction: the METHODOLOGY tabs (.tab-btn) are NEVER rectangular
+   in any theme - their pill look is untouched everywhere (the light rule
+   that caught them is removed; the dark theme never touched them either).
+   The light-theme rectangle pass covers:
+   - .sec-btn section tabs + the #app-sidebar clones (already rank-correct),
+   - .btn INSIDE-PAGE action buttons (Import from Text / Add Dates / the
+     budget, Gantt and WBS card controls) - the same family the dark wave
+     rectangularized, mirrored to light at the owner's instruction.
+   SHAPE ONLY: radius changes, zero color/hover/icon changes. Scoped to
+   project pages (:not(.db-page), mirroring the dark pass) so the launcher
+   is never caught. Specificity doubling outranks the base radius rules.
+   ============================================================ */
+body:not(.dark-mode):not(.db-page) .sec-btn.sec-btn,
+body:not(.dark-mode):not(.db-page) .btn.btn {
+  border-radius: var(--radius-rect);
+}
+body:not(.dark-mode):not(.db-page) .btn-pill.btn-pill {
+  border-radius: var(--radius-rect);
+}
+/* Light-theme sidebar clone joins the rectangle pass (same ID-rank reason
+   as the dark rule above); its colors stay exactly as they were. */
+body:not(.dark-mode):not(.db-page) #app-sidebar .sec-btn {
+  border-radius: var(--radius-rect);
+}
+/* ---- OWNER 2026-10-09 (ROUNDED-RECTANGLE LANGUAGE, NOW EVERYWHERE) ----
+   Owner: "way too much pill icons... we're gonna work with our rectangular
+   with curved edges... and we're gonna use that strictly", then extended it
+   to the app page and the project viewer as well as the admin panel. This
+   mirrors the 2026-09-20 project-page shape pass and adds the .db-page
+   surfaces - launcher (app.html), admin panel and the calculator page - plus
+   the status badge chips that read as "pill icons". Both themes: the rule is
+   deliberately not theme-scoped, so dark and light match.
+   DELIBERATELY NOT TOUCHED: elements whose roundness carries meaning - the
+   circular count badge (.sec-badge), avatars, status dots, the health-count
+   circles (fixed 28px circles per the earlier owner pass) - and the toast
+   chip language. SHAPE ONLY: zero colour, hover, icon or size changes. */
+.db-page .btn.btn,
+.db-page .btn-pill.btn-pill,
+.db-page .sec-btn.sec-btn,
+.db-page #app-sidebar .sec-btn,
+.db-page .badge,
+.db-page .bg,
+.db-page .ba,
+.db-page .br,
+.db-page .bo,
+.db-page .bs {
+  border-radius: var(--radius-rect);
+}
+/* The project viewer already took buttons/tabs in the 2026-09-20 pass; its
+   status chips join the same language here so the two surfaces match. */
+body:not(.db-page) .badge,
+body:not(.db-page) .bg,
+body:not(.db-page) .ba,
+body:not(.db-page) .br,
+body:not(.db-page) .bo,
+body:not(.db-page) .bs {
+  border-radius: var(--radius-rect);
+}
+
+/* ---- HAVE A CODE? (owner 2026-09-20, app.html) ------------------------
+   The question mark beside the section heading explains what a code IS on
+   hover or keyboard focus. Pure CSS tooltip: no JS, no handlers, no CSP
+   surface. Hidden from the tab order reading flow except the focusable
+   trigger, and the tip text doubles as the aria-label on the trigger. */
+.code-help {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  color: var(--slate);
+  cursor: help;
+  vertical-align: middle;
+}
+.code-help .ico {
+  width: 0.95em;
+  height: 0.95em;
+}
+.code-help:hover,
+.code-help:focus {
+  color: var(--gold-text);
+  outline: none;
+}
+.code-help-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  width: 230px;
+  background: var(--surface-raised);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1.45;
+  text-align: left;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity var(--tr);
+  z-index: 60;
+  box-shadow: 0 8px 24px var(--lit-black-25);
+}
+.code-help:hover .code-help-tip,
+.code-help:focus .code-help-tip {
+  opacity: 1;
+  visibility: visible;
+}

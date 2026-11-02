@@ -1,0 +1,60 @@
+/* ---- Performance Mode (mmgr-perf.js, pretty by default 2026-09-29) ----
+   THE ONE KILL BLOCK. PERF-1 (REFINEMENT-DIRECTIVE-2026-10-24): the six
+   ad-hoc rules that used to live here trimmed three containers and left
+   roughly ninety other backdrop-filter rules running, so Performance Mode
+   never actually delivered a quiet page. The contract is now stated once,
+   for the whole document, and mirrors the JS guards (isPerf() before a
+   WebGL scene, a tilt or an rAF decoration starts):
+     no backdrop-filter, no infinite animation, no smooth scrolling, no
+     large blurred shadow. Content, layout and colours stay exactly as they
+     are - a surface that used blur for legibility gets a SOLID card instead,
+     so text never sits on live content.
+   Loaded on every page because js/mmgr-perf-boot.js sets the attribute
+   before first paint; js/mmgr-perf.js is not needed for this to work. */
+[data-perf='on'] *,
+[data-perf='on'] *::before,
+[data-perf='on'] *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+}
+[data-perf='on'] [class*='glass'],
+[data-perf='on'] .card,
+[data-perf='on'] .top,
+[data-perf='on'] .dock,
+[data-perf='on'] .drw-sheet,
+[data-perf='on'] .db-sheet,
+[data-perf='on'] .bcp-top {
+  box-shadow: 0 1px 2px var(--lit-black-18) !important;
+}
+/* The surfaces that leaned on blur to stay readable now paint solid. */
+[data-perf='on'] .top,
+[data-perf='on'] .dock,
+[data-perf='on'] #drw,
+[data-perf='on'] .db-sheet,
+[data-perf='on'] .drw-sheet,
+[data-perf='on'] .bcp-top {
+  background: var(--card) !important;
+}
+[data-perf='on'] canvas.bg-stars,
+[data-perf='on'] #marketing-globe canvas,
+[data-perf='on'] #stars,
+[data-perf='on'] .stars-canvas {
+  display: none !important;
+}
+
+/* Baseline nudge dot (owner 2026-09-19): visible signal that a schedulable
+   project still has no baseline. Hidden by default; BaselineGuard reveals. */
+.nudge-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.nudge-dot[hidden] {
+  display: none;
+}

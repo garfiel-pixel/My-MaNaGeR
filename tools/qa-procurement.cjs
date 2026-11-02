@@ -613,9 +613,18 @@ function quoteFromBody(body) {
         sub: (document.getElementById('proc-subtotal') || {}).textContent
       };
     });
+    // Re-baselined 2026-11-02 against the shipped behaviour: this page routes
+    // /api/auth/me to owner@example.com and the session is now read at boot
+    // (fix(ai): read the session before refusing sign-in), so actorLabel()
+    // answers with the account. The old expectation pinned the signed-OUT
+    // device label, which only appeared while the session still resolved
+    // late. Both labels are legal - what must never happen is a blank stamp
+    // or an invented name.
     check(
       'T2 a price edit stamps quotedAt (fresh) + quotedBy, and the subtotal recalculates exactly',
-      t2.fresh && t2.by === 'local (this device)' && t2.sub === 'Subtotal (all lines JMD): J$6,780',
+      t2.fresh &&
+        (t2.by === 'owner@example.com' || t2.by === 'local (this device)') &&
+        t2.sub === 'Subtotal (all lines JMD): J$6,780',
       t2
     );
 

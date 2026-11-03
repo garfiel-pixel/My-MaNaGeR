@@ -393,6 +393,13 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
 <div class="hidden" id="admin-app">
   <header>
     <div class="hdr-left">
+      <!-- 5.5 A4 (owner 2026-11-01): BACK GOES LEFT EVERYWHERE. The dashboard
+           link used to sit in .hdr-actions on the RIGHT of the header - the
+           exact thing the owner flagged ("I don't want to see in the admin
+           panel where dashboard and the back one is to the right"). It is
+           now the FIRST element in the header, left arrow, same .hdr-back
+           convention project.html and calculator.html already use. -->
+      <a class="hdr-back" href="app.html" title="Back to the projects dashboard"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-left"></use></svg> Dashboard</a>
       <!-- MMGR-NEW-UI-CREATION-BRIEF I1: shared shell , hamburger (i-menu)
            opens the left rail/drawer. Theme stays theme-only (never reused
            as the menu control , brief §2.1). -->
@@ -401,7 +408,6 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
     </div>
     <div class="hdr-actions">
       <span class="escrow-badge" id="escrow-status" role="status">Not backed up: sign in to back it up</span>
-      <a class="btn btn-n btn-s" href="app.html"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> Dashboard</a>
       <button class="btn btn-n btn-s" data-action="changePassword"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Password</button>
       <button class="btn btn-n btn-s" data-action="lockAdmin" style="color:var(--dot-red);" title="Lock the admin panel"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Lock</button>
     </div>
@@ -475,6 +481,23 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
       <div class="t-xs mb8" id="billing-admin-status"></div>
       <div id="billing-admin-list"><div class="empty">Load to list the subscriptions on this site.</div></div>
       <div class="hint">A subscription is listed as an orphan only when nothing in the app still holds its account: no account, no project, no shared project, no team membership and no live session. Cancelling at the provider happens before the row is removed, every time.</div>
+    </div>
+
+    <!-- 5.5 A3 (owner 2026-11-01): AUTO-UPDATE FOR CLOUD PROJECTS. Off by
+         default, persisted per device (mmgr_autosave_cloud). ON: an edit to a
+         cloud-linked project schedules ONE debounced push through
+         updateCloudSnapshot - the same path the row button uses, never a
+         second one - waits for the connection when the browser is offline,
+         and retries a failed push. The status line is the visible contract:
+         last pushed at, pending, failed with reason. -->
+    <div class="card" id="autosave-section" style="margin-top:16px">
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Cloud auto-update</div>
+      <div class="code-row mb8" style="justify-content:space-between">
+        <span>Auto-update cloud projects</span>
+        <label class="tgl"><input type="checkbox" id="autosave-tgl" data-action="tglAutosave" aria-label="Auto-update cloud projects"><span class="tsl"></span></label>
+      </div>
+      <div class="t-xs mb8" id="autosave-status">Auto-update is off. Edits push when you click Update Cloud Snapshot.</div>
+      <div class="hint">When this is on, a change to a cloud-linked project is pushed about a second after you make it, through the same Update path the row button uses. It waits for your connection if you are offline and retries a failed push; the line above always says what happened.</div>
     </div>
 
     <div id="project-list"></div>
@@ -1800,6 +1823,7 @@ function enterAdmin(){
   renderRestoreRecap();
   _admLastWritten = JSON.stringify(projects);
   renderProjects();
+  autoRenderStatus();
   mergeLiveData();
   fetchCloudTruth();
   // Storage events fire in OTHER tabs only , this tab is notified whenever a
@@ -2140,8 +2164,16 @@ async function saveProjectForm(){
   const cloudLinked = !!(projects[editedIdx] && projects[editedIdx].cloudId);
   closeProjectModal();
   if (cloudLinked){
-    toast('Project saved. Syncing your changes to the cloud…');
-    updateCloudSnapshot(editedIdx);
+    // 5.5 A3: with auto-update ON the push is SCHEDULED (debounced, one per
+    // burst, online-aware, retried) instead of immediate; OFF keeps the
+    // 2026-09-21 behaviour exactly - push now, no scheduler involved.
+    if (autoUpdateEnabled()){
+      toast('Project saved. Auto-update is on - it will sync in a moment.');
+      autoNoteChange(editedIdx);
+    } else {
+      toast('Project saved. Syncing your changes to the cloud…');
+      updateCloudSnapshot(editedIdx);
+    }
   } else {
     toast('Project saved. Download the static manifest (toolbar) to publish this change.');
   }
@@ -2330,12 +2362,18 @@ document.addEventListener('mmgr:google-signed-in', function(){
    labeled toolbar action ("Download Static Manifest") for
    non-cloud, self-hosted deployments.
    ============================================================ */
-async function updateCloudSnapshot(i){
+async function updateCloudSnapshot(i, opts){
+  /* 5.5 A3: auto-update calls this SAME path with {auto:true} - never a
+     second save implementation. It returns {ok, reason, retryable} so the
+     scheduler can show the reason in the status line and decide whether a
+     retry is honest; manual callers ignore the return value exactly as
+     before. */
+  const auto = !!(opts && opts.auto);
   const p = projects[i];
-  if (!p){ return; }
+  if (!p){ return { ok:false, reason:'no such project', retryable:false }; }
   if (!p.cloudId || !p.cloudOwnerCode){
-    toast('This project is not cloud-linked with a recorded owner code on this device. Use Publish to Cloud to link it (or Copy Cloud Code if it was linked elsewhere).', 'warn');
-    return;
+    if (!auto) toast('This project is not cloud-linked with a recorded owner code on this device. Use Publish to Cloud to link it (or Copy Cloud Code if it was linked elsewhere).', 'warn');
+    return { ok:false, reason:'not cloud-linked', retryable:false };
   }
   const isSessionAuth = p.cloudOwnerCode === 'session';
   if (isSessionAuth){
@@ -2343,11 +2381,14 @@ async function updateCloudSnapshot(i){
     // session's role - a non-owner session push can only be refused, so say
     // the truth before the attempt instead of failing mid-flight.
     if (_cloudTruthRoles && _cloudTruthRoles[p.cloudId] && _cloudTruthRoles[p.cloudId] !== 'owner'){
-      toast('This cloud project belongs to another owner - this device holds a ' + _cloudTruthRoles[p.cloudId] + ' link, and only the owner pushes updates.', 'warn');
-      return;
+      if (!auto) toast('This cloud project belongs to another owner - this device holds a ' + _cloudTruthRoles[p.cloudId] + ' link, and only the owner pushes updates.', 'warn');
+      return { ok:false, reason:'this device holds a ' + _cloudTruthRoles[p.cloudId] + ' link, and only the owner pushes updates', retryable:false };
     }
     const GA = window.MMGR && window.MMGR.GoogleAuth;
-    if (!(GA && GA.isSignedIn && GA.isSignedIn())){ toast('This project is linked through your account. Sign in (hamburger menu) to push updates.', 'warn'); return; }
+    if (!(GA && GA.isSignedIn && GA.isSignedIn())){
+      if (!auto) toast('This project is linked through your account. Sign in (hamburger menu) to push updates.', 'warn');
+      return { ok:false, reason:'sign in required to push this project', retryable:false };
+    }
   }
   const btn = document.querySelector('#project-list [data-action="updateCloudSnapshot"][data-idx="' + i + '"]');
   if (btn){ btn.disabled = true; btn.textContent = 'Updating…'; }
@@ -2386,20 +2427,154 @@ async function updateCloudSnapshot(i){
     });
     const data = await res.json().catch(function(){ return {}; });
     if (!res.ok || !data.ok){
-      toast(((data && data.error) || 'Cloud snapshot update failed (HTTP ' + res.status + ').') + (res.status === 402 ? '. Upgrade needed.' : ''), 'error');
-      return;
+      const reason = ((data && data.error) || ('HTTP ' + res.status)) + (res.status === 402 ? ' (upgrade needed)' : '');
+      if (!auto) toast(((data && data.error) || 'Cloud snapshot update failed (HTTP ' + res.status + ').') + (res.status === 402 ? '. Upgrade needed.' : ''), 'error');
+      // 5xx is transient (retry can succeed); 4xx is an answer, not an
+      // outage - retrying it would loop on a refusal.
+      return { ok:false, reason: reason, retryable: res.status >= 500 };
     }
     // OWNER 2026-09-21: stamp the push on the record so the row shows when
     // it last pushed (visible "it updated itself"), and persist the stamp.
     p.lastCloudPushAt = new Date().toISOString();
     saveProjects();
-    toast('Cloud snapshot updated at ' + String(data.savedAt || '').slice(0,19).replace('T',' ') + '. Visitors loading from My Cloud Projects see the latest state.');
+    if (!auto) toast('Cloud snapshot updated at ' + String(data.savedAt || '').slice(0,19).replace('T',' ') + '. Visitors loading from My Cloud Projects see the latest state.');
     fetchCloudTruth();   /* refresh server truth so the row flips to green */
+    return { ok:true };
   }catch(e){
-    toast('Cloud snapshot update failed. Is the cloud backend reachable?', 'error');
+    if (!auto) toast('Cloud snapshot update failed. Is the cloud backend reachable?', 'error');
+    return { ok:false, reason:'cloud backend unreachable', retryable:true };
   }finally{
     if (btn){ btn.disabled = false; btn.textContent = 'Update Cloud Snapshot'; }
   }
+}
+
+/* ============================================================
+   5.5 A3 - AUTO-UPDATE FOR CLOUD PROJECTS (owner 2026-11-01)
+   ------------------------------------------------------------
+   "when you click the auto update ... a user['s] projects are automatically
+   updated. They don't have to go and manually click update."
+
+   One toggle, persisted PER DEVICE (mmgr_autosave_cloud), OFF by default.
+   ON: an edit to a cloud-linked project schedules a push through
+   updateCloudSnapshot - the ONE save path, shared with the row button -
+   debounced so a burst of edits coalesces into a single push, held while
+   the browser is offline and flushed on the online event, retried on a 5xx
+   with a small backoff. The status line carries the visible contract the
+   audit asks for: last pushed at, pending, failed with reason.
+   ============================================================ */
+const AUTOSAVE_KEY = 'mmgr_autosave_cloud';
+const AUTOSAVE_DEBOUNCE_MS = 1200;
+const AUTOSAVE_MAX_RETRY = 2;
+let _asTimer = null;
+let _asQueue = [];
+let _asFlushing = false;
+let _asState = { kind:'idle', reason:'' };
+
+function autoUpdateEnabled(){
+  try { return localStorage.getItem(AUTOSAVE_KEY) === '1'; } catch(e){ return false; }
+}
+function autoSetEnabled(on){
+  try {
+    if (on) localStorage.setItem(AUTOSAVE_KEY, '1');
+    else { localStorage.removeItem(AUTOSAVE_KEY); }
+  } catch(e){ /* private mode: the toggle still works for this session */ }
+  clearTimeout(_asTimer);
+  if (!on) _asQueue = [];   // opting out must not fire pushes already queued
+  _asState = { kind: on ? 'idle' : 'off', reason:'' };
+  autoRenderStatus();
+  toast(on
+    ? 'Auto-update is on. Cloud-linked projects now push themselves about a second after a change.'
+    : 'Auto-update is off. Use Update Cloud Snapshot to push by hand.');
+}
+function autoLastPushedAt(){
+  let last = null;
+  for (const p of projects){
+    if (p.lastCloudPushAt && (!last || String(p.lastCloudPushAt) > String(last))) last = p.lastCloudPushAt;
+  }
+  return last;
+}
+function autoRenderStatus(){
+  const tgl = document.getElementById('autosave-tgl');
+  if (tgl) tgl.checked = autoUpdateEnabled();
+  const el = document.getElementById('autosave-status');
+  if (!el) return;
+  const on = autoUpdateEnabled();
+  let text;
+  if (!on){
+    text = 'Auto-update is off. Edits push when you click Update Cloud Snapshot.';
+  } else if (_asState.kind === 'pending'){
+    text = 'Pending - pushing your latest change…';
+  } else if (_asState.kind === 'offline'){
+    text = 'Offline - the push waits for the connection.';
+  } else if (_asState.kind === 'retrying'){
+    text = 'Retrying after a failed push: ' + _asState.reason + '…';
+  } else if (_asState.kind === 'failed'){
+    text = 'Failed: ' + _asState.reason + '. Use Update Cloud Snapshot to push by hand.';
+  } else if (_asState.kind === 'pushed'){
+    text = 'Last pushed: ' + String(_asState.at || '').slice(0,19).replace('T',' ') + '.';
+  } else {
+    const last = autoLastPushedAt();
+    text = last
+      ? 'Auto-update is on. Last pushed: ' + String(last).slice(0,19).replace('T',' ') + '.'
+      : 'Auto-update is on. Changes push about a second after you make them.';
+  }
+  el.textContent = text;
+}
+function autoSetState(kind, reason){
+  _asState = {
+    kind: kind,
+    reason: reason || '',
+    at: kind === 'pushed' ? new Date().toISOString() : (_asState.at || null)
+  };
+  autoRenderStatus();
+}
+/* Called instead of the immediate push when the toggle is ON. Returns true
+   when the change is SCHEDULED (the caller must not push a second time). */
+function autoNoteChange(i){
+  if (!autoUpdateEnabled()) return false;
+  if (_asQueue.indexOf(i) === -1) _asQueue.push(i);
+  if (!navigator.onLine){ autoSetState('offline'); return true; }  // flushed on 'online'
+  autoSetState('pending');
+  clearTimeout(_asTimer);
+  _asTimer = setTimeout(autoFlush, AUTOSAVE_DEBOUNCE_MS);   // debounce = the burst coalesces here
+  return true;
+}
+window.addEventListener('online', function(){
+  if (autoUpdateEnabled() && _asQueue.length){
+    clearTimeout(_asTimer);
+    autoFlush();
+  }
+});
+async function autoFlush(){
+  if (_asFlushing) return;
+  if (!navigator.onLine){ autoSetState('offline'); return; }
+  _asFlushing = true;
+  try {
+    while (_asQueue.length){
+      const i = _asQueue.shift();
+      await autoPushWithRetry(i, 0);
+    }
+  } finally {
+    _asFlushing = false;
+  }
+}
+async function autoPushWithRetry(i, attempt){
+  const r = await updateCloudSnapshot(i, { auto:true });
+  if (r && r.ok){ autoSetState('pushed'); return true; }
+  const reason = (r && r.reason) || 'unknown error';
+  if (r && r.retryable && !navigator.onLine){
+    if (_asQueue.indexOf(i) === -1) _asQueue.push(i);   // re-queue for the online flush
+    autoSetState('offline');
+    return false;
+  }
+  if (r && r.retryable && attempt < AUTOSAVE_MAX_RETRY){
+    autoSetState('retrying', reason);
+    await new Promise(function(res){ setTimeout(res, 1200 * (attempt + 1)); });
+    return autoPushWithRetry(i, attempt + 1);
+  }
+  autoSetState('failed', reason);
+  toast('Auto-update failed: ' + reason, 'error');
+  return false;
 }
 
 async function publishToCloud(i){
@@ -3506,6 +3681,7 @@ const ADMIN_ACTION_MAP = {
     // OWNER 2026-09-15: perf mode now also gates the starry WebGL shader.
     if (window.MMGR && MMGR.Glass && MMGR.Glass.sync) MMGR.Glass.sync();
   },
+  'tglAutosave': (el) => { autoSetEnabled(!!el.checked); },
   'codesCopyReveal': (el) => { const c = el.getAttribute('data-code'); if (c && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(c).then(()=>toast('Code copied.')).catch(()=>toast('Copy manually.','warn')); },
   'teamInvite': () => teamInvite(),
   'teamResend': (el) => teamResend(el.getAttribute('data-id')),

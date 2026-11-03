@@ -22,6 +22,9 @@
      C4  .escrow-badge is a notifier line: no border, no pill radius,
          and a dot drawn by ::before with a state colour
      C5  admin.html's own stylesheet quiets .hdr-actions .btn
+     C8  BACK GOES LEFT EVERYWHERE (5.5 A4): the back/dashboard control
+         is the FIRST control in the header on admin, project and
+         calculator; app.html carries no header because it IS the root
 
    Usage:  node tools/qa-chrome.cjs
    Registry: docs/CI-TEST-COVERAGE.md -> CI row (browser-calc).
@@ -289,6 +292,40 @@ const PROBE = sel => {
     /\.hdr-actions \.btn\{background:transparent;border:0;/.test(admin) &&
       /\.hdr-actions \.btn:hover\{color:var\(--gold-text\)/.test(admin),
     'admin.html inline style'
+  );
+
+  /* C8 (5.5 A4, owner 2026-11-01): BACK GOES LEFT EVERYWHERE. The back /
+     dashboard control must be the FIRST control inside the header on every
+     shell. Measured from the source with comments stripped, because admin's
+     header sits behind a password and project.html redirects to the unlock
+     screen without a project id - markup order IS DOM order for these rows
+     (no flex `order` touches them). app.html carries NO header: it IS the
+     dashboard root, and asserting that means a future header there has to
+     make the back-first decision consciously instead of by accident. */
+  const headerInfo = file => {
+    const src = fs.readFileSync(path.join(ROOT, file), 'utf8').replace(/<!--[\s\S]*?-->/g, ' ');
+    const m = src.match(/<header\b[\s\S]*?<\/header>/i);
+    if (!m) return { hasHeader: false };
+    const first = m[0].match(/<(a|button|input|select|textarea)\b[^>]*>/i);
+    return {
+      hasHeader: true,
+      first: first ? first[0].slice(0, 160) : null,
+      ok: first ? /class="[^"]*\b(hdr-back|bcp-back)\b/.test(first[0]) : false
+    };
+  };
+  for (const f of ['admin.html', 'project.html', 'calculator.html']) {
+    const info = headerInfo(f);
+    check(
+      'C8 ' + f + ' has the back control as the FIRST header control',
+      !!(info.hasHeader && info.ok),
+      info
+    );
+  }
+  const appInfo = headerInfo('app.html');
+  check(
+    'C8 app.html carries no header bar (it IS the dashboard root)',
+    appInfo.hasHeader === false,
+    appInfo
   );
 
   console.log('');

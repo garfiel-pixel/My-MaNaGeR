@@ -888,6 +888,14 @@ jobs:
         id: qa-chrome
         run: node tools/qa-chrome.cjs
 
+      # WAVE 5.5 (A3): auto-update for cloud projects. Admin gate + real
+      # Chrome, /api/cloud/* stubbed at the network layer, so the save path's
+      # debounce coalescing, retry-then-fail status and offline hold are all
+      # exercised without a Worker. Registered in docs/CI-TEST-COVERAGE.md.
+      - name: "T4: Admin auto-update for cloud projects (qa-admin-autosave)"
+        id: qa-admin-autosave
+        run: node tools/qa-admin-autosave.cjs
+
       # OWNER AUDIT 2026-10-31 (S3): card-head button rows keep an 8px gap, and
       # the schedule/backup states are 8px dots rather than bordered pills.
       - name: "T4: Toolbar spacing and dot states (qa-toolbar-spacing)"

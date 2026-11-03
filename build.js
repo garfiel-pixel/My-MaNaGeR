@@ -165,6 +165,10 @@ const APP_MODULES = [
   // Calculator (floating draggable FAB)
   'js/mmgr-calculator.js',
   'js/mmgr-templates.js',
+  // B8 (owner audit 2026-11-01): the first-project walkthrough. Load-order
+  // independent (it builds its own overlay and waits for #sec-nav), so it
+  // sits here rather than in the core block.
+  'js/mmgr-tour.js',
   // bfcache sprite restore (2026-09-30): icons vanish after Back when
   // Chrome restores the page from the back/forward cache; load-order
   // independent, DOM-only, so it sits last.

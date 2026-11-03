@@ -637,44 +637,11 @@ var MMGR = window.MMGR || {};
           tglFocusMode();
         }
       }
-      // OWNER 2026-11-01: the side arrows step through the sidebar sections in
-      // nav order - the cheap version of a task switcher, built on the nav we
-      // already have instead of a new feature. Hidden and disabled sections
-      // (packs off, editor scope) are skipped, and it stays out of text fields
-      // and open overlays so it never fights a caret or a dialog.
-      if (
-        (e.key === 'ArrowRight' || e.key === 'ArrowLeft') &&
-        !e.ctrlKey &&
-        !e.metaKey &&
-        !e.altKey &&
-        !e.shiftKey
-      ) {
-        const inField =
-          e.target.closest &&
-          e.target.closest(
-            // A RACI cell owns the side arrows too (they step the letter), so
-            // the section jump must not steal them from a focused cell.
-            'input,textarea,select,[contenteditable="true"],[role="textbox"],[data-action="cycleRaci"]'
-          );
-        if (!inField && !document.querySelector('#drw.open, #ai-win.open, #om.open, .mb.open')) {
-          const secBtns = Array.prototype.slice
-            .call(document.querySelectorAll('#sec-nav .sec-btn[data-section]'))
-            .filter(function (b) {
-              return !b.classList.contains('is-hide') && !b.disabled;
-            });
-          if (secBtns.length > 1) {
-            const cur = secBtns.findIndex(function (b) {
-              return b.classList.contains('active');
-            });
-            const step = e.key === 'ArrowRight' ? 1 : -1;
-            const from = cur < 0 ? (step > 0 ? -1 : 0) : cur;
-            const next = secBtns[(from + step + secBtns.length) % secBtns.length];
-            e.preventDefault();
-            showSec(next.getAttribute('data-section'), next);
-            return;
-          }
-        }
-      }
+      // OWNER 2026-11-03 (B9 ruling): the arrow keys are NOT a section
+      // switcher. Some people scroll with them, so the arrow binding that
+      // shipped on 2026-11-01 is removed - the section accelerator uses the
+      // mouse side buttons only. qa-shortcuts A7b pins that the arrows leave
+      // the section alone.
       if (e.key === 'Escape') {
         closeDrw();
         closeOM();
@@ -4234,6 +4201,17 @@ window.MMGR = MMGR;
    ============================================================ */
 (function () {
   const ACTION_MAP = {
+    // B8 (owner audit 2026-11-01): replay the first-project walkthrough from
+    // the help surface. The tour auto-opens once per device; this is the way
+    // back to it later, so nobody has to clear storage to see it again.
+    startTour: () => {
+      // window.MMGR, not the closure's ns: ACTION_MAP is built outside this
+      // module's closure (see the note above the delegation IIFE).
+      const t = window.MMGR && window.MMGR.Tour;
+      if (t && t.start) {
+        t.start();
+      }
+    },
     // App controller
     showSec: el => {
       const section = el.getAttribute('data-section');

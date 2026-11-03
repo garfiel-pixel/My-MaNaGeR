@@ -896,6 +896,13 @@ jobs:
         id: qa-admin-autosave
         run: node tools/qa-admin-autosave.cjs
 
+      # WAVE 5.8 (B8): the first-project walkthrough. Proves it opens once by
+      # itself, walks the owner's eight sections, is keyboard operable, closes
+      # on Escape, stays silent on the next open and is replayable from help.
+      - name: "T4: First-project tour (qa-first-project-tour)"
+        id: qa-first-project-tour
+        run: node tools/qa-first-project-tour.cjs
+
       # OWNER AUDIT 2026-10-31 (S3): card-head button rows keep an 8px gap, and
       # the schedule/backup states are 8px dots rather than bordered pills.
       - name: "T4: Toolbar spacing and dot states (qa-toolbar-spacing)"

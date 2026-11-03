@@ -368,10 +368,13 @@ async function pickCalcWork(page, value) {
       await page.waitForTimeout(150);
     }
 
-    // ---- A7b/A7c (owner 2026-11-01): the side arrows are the cheap section
-    // switcher - step forward/back through the sidebar in nav order, skipping
-    // packs that are off, and stay out of text fields where the arrows belong
-    // to the caret.
+    // ---- A7b/A7c (owner 2026-11-03, B9 ruling): the arrows are NOT a section
+    // switcher. The 2026-11-01 binding walked the sidebar with them, which took
+    // the keys away from people who scroll with arrows, so it is removed: the
+    // side buttons (mouse 3/4) are the section accelerator and the arrows keep
+    // their usual meaning everywhere. These arms pin the ABSENCE of the old
+    // behaviour - the reverse of what they pinned before - so it cannot come
+    // back by accident.
     const readActive = () =>
       page.evaluate(() => {
         const b = document.querySelector('#sec-nav .sec-btn.active');
@@ -399,11 +402,12 @@ async function pickCalcWork(page, value) {
     await page.keyboard.press('ArrowLeft');
     await page.waitForTimeout(350);
     const navBack = await readActive();
-    const nextSec = navStart.list[navStart.list.indexOf(navStart.sec) + 1];
     check(
-      'A7b the side arrows step forward and back through the sidebar sections',
-      !!nextSec && navRight.sec === nextSec && navBack.sec === navStart.sec,
-      { navStart, navRight, navBack, nextSec }
+      'A7b the arrows leave the section alone (the side-button accelerator owns that, not the keys)',
+      navRight.sec === navStart.sec &&
+        navBack.sec === navStart.sec &&
+        navRight.panel === navStart.panel,
+      { navStart, navRight, navBack }
     );
     const field = await page.evaluate(() => {
       const inp = document.getElementById('ai-command-input');
@@ -421,6 +425,8 @@ async function pickCalcWork(page, value) {
       field === true && navInField.sec === navStart.sec,
       { field, navStart: navStart.sec, navInField: navInField.sec }
     );
+    // The two arms above must be able to fail: if a later change rebinds the
+    // arrows, ArrowRight on the page moves navRight.sec and A7b goes red.
     await page.evaluate(() => {
       const el = document.getElementById('ai-command-input');
       if (el) {

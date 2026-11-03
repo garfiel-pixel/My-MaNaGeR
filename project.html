@@ -1665,6 +1665,9 @@
     <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Generate Output</div><div class="fd">Compiles full project state into timestamped JSON.</div></div>
     <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-save"></use></svg> Auto-Save</div><div class="fd">Every change saves to LocalStorage automatically.</div></div>
     <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg> Focus Mode (F)</div><div class="fd">Press F to collapse everything except your working panel.</div></div>
+    <!-- B8 (owner audit 2026-11-01): the tour is shown once on the first
+         project, never again automatically. This is the way back to it. -->
+    <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-book"></use></svg> Take the tour<button type="button" class="btn btn-o btn-s" data-action="startTour" style="margin-left:8px">Replay</button></div><div class="fd">The short walkthrough of every section, shown once when you open your first project.</div></div>
   </div>
   <div class="db is-hide" id="db-qa">
     <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Do I need an account or an internet connection?</div><div class="fd">No. Everything saves to your browser (LocalStorage) and works fully offline. You only need a connection for optional extras: the Cloud AI tier with your own key, live weather forecasts, voice caption downloads, and Google sign-in sync.</div></div>
@@ -1898,8 +1901,7 @@
         <span class="kbd">Ctrl/⌘ + Shift + Z</span> Redo
         <span class="kbd">Esc</span> Close drawer / modals
         <span class="kbd">Enter / Space</span> Change the RACI letter in the cell you are on
-        <span class="kbd">← / →</span> Step back or forward through the sidebar sections
-        <span class="kbd">← / → in a RACI cell</span> Go back or forward through the RACI letters
+        <span class="kbd">← / →</span> Go back or forward through the RACI letters
       </div>
     </div>
     <hr class="div">

@@ -498,7 +498,7 @@
 // longer exists anywhere in the app, and clears one only after the payment
 // provider has accepted the cancel - a refusal leaves the row in place and
 // shows the reason. Changed shell assets: admin.html.
-const CACHE = 'mmgr-shell-v533';
+const CACHE = 'mmgr-shell-v534';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

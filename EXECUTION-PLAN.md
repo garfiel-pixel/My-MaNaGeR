@@ -144,7 +144,7 @@ exist before the item can be called done.
 | 5.5 | **Admin ergonomics** (A3, A4): auto-update cloud projects toggle with visible status; back control first on every shell | Queued | autosave coalescing/retry arm, `qa-chrome` header-order arm |
 | 5.6 | **Small visible fixes** (B10 whisper on send, B5 pulsing gold Calculate in dark, B4 completion ring size, B3 no resting rings, B7 no auto-opened sidebar plus one-shot demo) | **B3, B4, B5, B10 DONE; B7 PARTIAL** | `85a6cc8`: the top-bar bell, gear and collaborators are bare glyphs with the gold ring only on hover/focus/open (`qa-chrome` 101/101, C1/C6/C7 new arms), the completion ring grows 96 to 120px at the same stroke weight, dark-theme Calculate pulses gold while light keeps its green run button (`qa-theme-perf` 17/17), sending stops dictation so the next utterance starts empty (`qa-ai-dictation` 17/17), and the calculator's per-row remove and edit controls lose their boxes (the owner's chrome-strip note). B7 (`018c706`): the sidebar no longer opens itself on load (`qa-dashboard-spec`); the one-shot first-load demo and `qa-shell-first-load.cjs` are still open |
 | 5.7 | **Project photos** (B11): paid tiers only, 500 MB quota with a usage bar, description/date/uploader, download and delete | Queued | `qa-project-photos.cjs` |
-| 5.8 | **Guidance** (B8 first-project tour, B9 section accelerator via the existing navigation and mouse side buttons, capped at 5 pins) | **B8 QUEUED; B9 PARTIAL, with a directive conflict to settle** | B9 shipped as `feat(nav)` (`02bfd49`) but not to the directive's letter: it binds `ArrowLeft`/`ArrowRight`, which `AUDIT-DIRECTIVE-2026-11-01.md` forbids ("use the mouse side buttons (button 3 / 4) only, never the keyboard arrows"), it wraps at the ends where the directive says stop, and it has no pins, no off-by-default toggle, no reset and no `qa-section-accelerator.cjs`. `qa-shortcuts` A7b/A7c pin the shipped behaviour. Do not call B9 done until the owner rules on arrows versus mouse buttons |
+| 5.8 | **Guidance** (B8 first-project tour, B9 section accelerator via the existing navigation and mouse side buttons, capped at 5 pins) | **B8 QUEUED; B9 PARTIAL, with a directive conflict to settle** | B9 shipped as `feat(nav)` (`02bfd49`) but not to the directive's letter: it binds `ArrowLeft`/`ArrowRight`, which `AUDIT-DIRECTIVE-2026-11-01.md` forbids ("use the mouse side buttons (button 3 / 4) only, never the keyboard arrows"), it wraps at the ends where the directive says stop, and it has no pins, no off-by-default toggle, no reset and no `qa-section-accelerator.cjs`. `qa-shortcuts` A7b/A7c pin the shipped behaviour. **Owner ruled 2026-11-03: side buttons (3/4) only - they navigate without scrolling, arrows keep scrolling - and the feature is off by default, enabled in the control panel.** The directive's letter stands; the arrow binding in `02bfd49` comes out. B9 still needs the rest of its scope (pins, toggle, reset, persistence, stop-at-ends, the gate) before it can be called done |
 | 5.9 | **Craft** (B12 skeleton mirrors the workspace, B6 theme-reactive particle line, C1 band transition, C2 landing AI, C3 gold outline judged on measurement) | Queued | structure arm, throttle and reduced-motion arms, `qa-landing-ai.cjs` |
 
 ### Wave 4 - security hygiene (calibrated 2026-10-31)
@@ -940,8 +940,14 @@ of every session.
   (`owner_email` plus the owner-code claim for rows created before it) and 5.2
   orphaned subscriptions first, because data the owner cannot see is the
   highest-cost defect; then 5.3's B2 (bell and team controls always present,
-  dimmed by state); then the rest of 5.4 to 5.9. B9 needs an owner answer
-  first: the shipped code binds the arrow keys, which the audit forbids.
+  dimmed by state); then the rest of 5.4 to 5.9. B9's owner answer landed
+  2026-11-03: side buttons only (arrows keep scrolling), off by default - build
+  the rest of 5.8 to the directive's letter with the arrow binding removed.
+- **2026-11-03 - B9 ruled.** The owner confirmed the directive as written:
+  mouse side buttons navigate, they do not scroll, arrows are left alone, and
+  the accelerator is a feature you turn on in the control panel. No directive
+  change; `02bfd49`'s arrow binding is now a defect to remove rather than a
+  behaviour to defend.
 - **2026-11-02 - CI repaired to 6/6 green on `b088c09`; three gates had drifted
   from the app, no product defect behind any of them.** The run that started the
   session (`41383952911`) failed on ONE step, `qa-procurement` T2: the gate

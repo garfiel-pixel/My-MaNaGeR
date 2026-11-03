@@ -19,7 +19,12 @@
      2. every `if:` that reads `steps.<id>.outcome` names an id defined in the
         SAME job (a reference into another job is empty, and the step silently
         skips while its job stays green);
-     3. every step name that contains `T4:` still exists, with the same count;
+     3. no step name that contains `T4:` was DROPPED or DUPLICATED by the
+        split. A name the base does not carry at all is a NEW step (a gate
+        added after the split), exactly as the run-block check treats a new
+        command - the base is origin/main, so refusing new names would forbid
+        ever registering another browser gate while the guard is really about
+        losses;
      4. the five worker jobs plus a `summary` job exist, and `summary` needs
         all five and runs with `if: always()`.
 
@@ -221,11 +226,23 @@ function multiset(list) {
     check('no run: step was duplicated outside the per-job setup lines', extra.length === 0, extra);
     log('old run blocks: ' + o.runs.length + ', new run blocks: ' + n.runs.length);
     const t4Missing = o.t4.filter(x => n.t4.indexOf(x) === -1);
-    const t4Extra = n.t4.filter(x => o.t4.indexOf(x) === -1 && T4_SETUP_NAMES.indexOf(x) === -1);
+    // New names are allowed (see rule 3); a pre-existing name that now appears
+    // MORE times than the base is the duplication this arm must still catch,
+    // including the per-job setup names the drop arm tolerates repeating.
+    const t4Added = n.t4.filter(x => o.t4.indexOf(x) === -1);
+    const t4Duped = [...new Set(o.t4)].filter(
+      x => n.t4.filter(y => y === x).length > o.t4.filter(y => y === x).length
+    );
     check(
-      'every T4: step survived, and only the per-job server steps repeated',
-      o.t4.length > 0 && t4Missing.length === 0 && t4Extra.length === 0,
-      { old: o.t4.length, now: n.t4.length, missing: t4Missing, unexpected: t4Extra }
+      'no T4: step was dropped or duplicated (new gates are allowed)',
+      o.t4.length > 0 && t4Missing.length === 0 && t4Duped.length === 0,
+      {
+        old: o.t4.length,
+        now: n.t4.length,
+        missing: t4Missing,
+        duplicated: t4Duped,
+        added: t4Added
+      }
     );
   }
 

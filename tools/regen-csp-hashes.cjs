@@ -61,7 +61,13 @@ for (const f of HTML_FILES) {
   computedFlat.push(...computeHashes(f));
 }
 
-const ARRAY_BODY = computedFlat.map(h => '  "' + h + '",').join('\n');
+// No trailing comma on the LAST element: this repo's Prettier config drops it,
+// so emitting one made every regen leave serve.cjs/worker.js unformatted and
+// turned the mirror's ritual order (regen then format) into a trap - a later
+// regen would re-break the format gate with no visible cause.
+const ARRAY_BODY = computedFlat
+  .map((h, i) => '  "' + h + '"' + (i === computedFlat.length - 1 ? '' : ','))
+  .join('\n');
 
 // Anchor tightly to the array literal. Both files join the array into a
 // string with .join(' '); the [^;]*? guard stops at the first semicolon so

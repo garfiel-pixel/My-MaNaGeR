@@ -150,47 +150,89 @@ const goKan = page =>
 
   // ---- boot: seed-test writes the demo projects, then a real workspace ----
   await page.goto(BASE + '/seed-test.html', { waitUntil: 'load', timeout: 60000 });
+  // BOOT COMPLETION, not namespace presence (flake fix 2026-11-03). init()
+  // calls State.load(), which REPLACES the in-memory state with localStorage;
+  // a fixture written before that lands is silently discarded and the demo
+  // project comes back - which is exactly how this gate went red in CI on
+  // 4ed740a with ready:["t2","t3","t3"] while passing on a fast machine.
+  // init() hides #boot-splash only AFTER State.load(), so its `off` class is
+  // the signal that the state has settled.
   await page.waitForFunction(
-    () =>
-      /project\.html/.test(location.pathname + location.search) && window.MMGR && window.MMGR.App,
+    () => {
+      const sp = document.getElementById('boot-splash');
+      return (
+        /project\.html/.test(location.pathname + location.search) &&
+        window.MMGR &&
+        window.MMGR.App &&
+        window.MMGR.projectId &&
+        (!sp || sp.classList.contains('off'))
+      );
+    },
     null,
     { timeout: 45000 }
   );
   const url = page.url();
   const pid = await page.evaluate(() => window.MMGR.projectId);
 
-  // Three plain todo tasks, no links, fresh lens - the plan's fixture.
-  await page.evaluate(() => {
-    window.MMGR.State.updateState(s => {
-      s.tasks = [
-        {
-          id: 'A',
-          name: 'A',
-          status: 'todo',
-          level: 0,
-          indent: 0,
-          predecessors: [],
-          relations: []
-        },
-        {
-          id: 'B',
-          name: 'B',
-          status: 'todo',
-          level: 0,
-          indent: 0,
-          predecessors: [],
-          relations: []
-        },
-        { id: 'C', name: 'C', status: 'todo', level: 0, indent: 0, predecessors: [], relations: [] }
-      ];
-      s.relLens = 'all';
+  // Three plain todo tasks, no links, fresh lens - the plan's fixture. Applied
+  // through a helper and verified afterwards: a later State.load() or journal
+  // restore can still replace the fixture, and the walk below must not start
+  // on the demo project.
+  const seedFixture = async () => {
+    await page.evaluate(() => {
+      window.MMGR.State.updateState(s => {
+        s.tasks = [
+          {
+            id: 'A',
+            name: 'A',
+            status: 'todo',
+            level: 0,
+            indent: 0,
+            predecessors: [],
+            relations: []
+          },
+          {
+            id: 'B',
+            name: 'B',
+            status: 'todo',
+            level: 0,
+            indent: 0,
+            predecessors: [],
+            relations: []
+          },
+          {
+            id: 'C',
+            name: 'C',
+            status: 'todo',
+            level: 0,
+            indent: 0,
+            predecessors: [],
+            relations: []
+          }
+        ];
+        s.relLens = 'all';
+      });
+      window.MMGR.Render.renderWbs();
+      window.MMGR.Render.renderKanban();
     });
-    window.MMGR.Render.renderWbs();
-    window.MMGR.Render.renderKanban();
+    await page.waitForTimeout(400);
+    await goWbs(page);
+    await page.waitForTimeout(400);
+  };
+  let adopted = false;
+  for (let attempt = 1; attempt <= 4 && !adopted; attempt++) {
+    if (attempt > 1) {
+      log('fixture had been replaced after the seed, re-seeding (attempt ' + attempt + ')');
+      await page.waitForTimeout(300);
+    }
+    await seedFixture();
+    adopted = await page.evaluate(
+      () => !!document.querySelector('[data-action="openRel"][data-id="A"]')
+    );
+  }
+  check('the A/B/C fixture is in state and rendered before the walk starts', adopted, {
+    adopted
   });
-  await page.waitForTimeout(500);
-  await goWbs(page);
-  await page.waitForTimeout(400);
 
   // ---- (1) the zero-link badge opens the sheet ----
   const g1 = await page.evaluate(() => {

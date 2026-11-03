@@ -56,8 +56,9 @@ One order. Each row is a shippable phase with its own gate, so a session that
 stops mid-wave leaves the next one an exact position. **Position: Wave 1 is
 CLOSED (1.6, the CSS split, finished 2026-11-01 at 24 layers with no catch-all
 remainder) and Wave 5 is IN PROGRESS: 5.6, the A1 and A5 halves of 5.4, the B9
-half of 5.8, the B1 half of 5.3 and 5.1 (cloud identity, 2026-11-02) shipped;
-**5.2 is next**, then 5.5, 5.7 and 5.9. 1.5 (dead-rule removal) stays demoted:
+half of 5.8, the B1 half of 5.3, 5.1 (cloud identity, 2026-11-02) and **5.2
+(orphaned subscriptions, 2026-11-03)** shipped; **5.5 is next**, then 5.7,
+5.9, 5.3's B2, 5.4's A1 remainder and A2, and 5.8's B8. 1.5 (dead-rule removal) stays demoted:
 the corrected measurement was 11.8% / 9.7%, below the 15% trigger this plan
 set.** UI is the owner's top priority (2026-10-30); the wave's other purpose was
 to freeze the ground every later plan builds on (the tenant fence, then the
@@ -138,7 +139,7 @@ exist before the item can be called done.
 | # | Phase | Status | Gate / evidence |
 |---|---|---|---|
 | 5.1 | **Cloud identity** (D1): `owner_email` on `cloud_projects`, list by verified email as well as sub, owner-code claim path for rows created before the column existed | **DONE 2026-11-02** | Migration `0030_cloud_owner_email.sql` (column, index, exact backfill of `email:` subs only - a Google sub is opaque and is never guessed). `provenEmail()` in `src/lib/http.js` is the one rule: a Google session is verified by construction, a password session only after `auth_users.email_verified = 1` (the exact gate the create route already applied). Applied to the list, `cloudAuthOwnerSession` (so a project you can SEE is one you can SAVE - listing without write access would be worse than not listing), create, claim, the free-cap count and `/api/billing/status`, and account deletion (a sweep that only matched the sub would leave rows the deleted address could still reach). `qa-tenant-isolation` **19 -> 26 gates**: I19a/I19b with the row's `google_sub` set to NULL the verified email alone lists it and B still cannot see it, I19c a session-only save through that identity, I20a/I20b the row is hidden the moment the address is unverified and returns when it is verified (the fence cannot be widened by registering an address you do not own), I21 the email identity opens nothing for B. Teeth proven: with the list reverted to sub-only, I19a and I20b fail (24/26). |
-| 5.2 | **Orphaned subscription cleanup** (D2): operator path that cancels at Paddle before clearing the row | Queued | `qa-billing-orphan.cjs` with stubbed Paddle, cancel-failure path included |
+| 5.2 | **Orphaned subscription cleanup** (D2): operator path that cancels at Paddle before clearing the row | **DONE 2026-11-03** | `tools/qa-billing-orphan.cjs` **21/21** against a real wrangler with Paddle stubbed at the loopback `paddleApiBase()` seam: the admin list names each ghost and its five-proof evidence, a row anything still holds is untouchable (409 stage `orphan`, provider never called), the clear route cancels AT PADDLE FIRST - a refusal answers 409 `keptRow:true` with the provider's reason AND THE ROW STAYS, 404 counts as already-gone, wrong admin code 403, validation before any provider call. Teeth proven: deleting the row despite a refusal turns G8b red (20/21, exit 1). Registered in `docs/CI-TEST-COVERAGE.md` and wired into `cloud-core` (QA_PORT 8816); `npm run verify` green (registry 161/161), `verify-ci-coverage` 12/12 (139 run blocks, new step allowed). Unit test pins the new `always-alreadyGone` success shape. Commit `6d5e930`, SW v532, CSP hashes regenerated. Not yet deployed. |
 | 5.3 | **Collaboration + session truth** (B1, B2): the team and notification controls are always present and gated by state (dimmed plus an upgrade sentence), never absent; a pending session reads as loading, never as "sign in" | **B1 DONE 2026-11-01, B2 QUEUED** | B1: the workspace restores the session from the Worker cookie at boot instead of waiting for the Google script, and `Entitlements.ensureSession()` asks the Worker once, so a slow session reads as "checking" and then opens the assistant while a genuinely signed-out visitor still gets the prompt. Two arms added to `qa-ai-win` (`AIWIN_PROBE`); the standalone `qa-auth-ready.cjs` was not created, the existing gate carries the contract. B2 is untouched and `qa-team-tier` still holds the old "suppress the control" reading |
 | 5.4 | **Admin panel credibility** (A1, A2, A5): a fresh instance is empty, no access-code bounce, credential kinds named correctly, a cloud project's own owner code can load it, the control panel always closes | **A5 DONE, A1 PARTIAL, A2 QUEUED** | A5 (`ad0b712`): the drawer closes by X, Escape, a click on the workspace behind a docked drawer, and a Focus Mode exit before the jump; four exits pinned in `verify-controls-admin`. A1 (`c59cdf9`): the admin seed is persisted with the real hash of its code, so the project gate recognises the device's own starter project instead of asking for a code. Still open in A1: a brand-new instance renders zero rows with "create your first project" as the first action, and the demo projects stay off the admin list. A2 untouched; `qa-admin-credentials.cjs` does not exist |
 | 5.5 | **Admin ergonomics** (A3, A4): auto-update cloud projects toggle with visible status; back control first on every shell | Queued | autosave coalescing/retry arm, `qa-chrome` header-order arm |
@@ -968,3 +969,16 @@ of every session.
   fails when the pointer never lands - 157/157. Same class of bug as the
   `qa-appshell` fix in `f0c5ec7`, and the same lesson: measure after the nudge.
   Wave 5 order is unchanged and 5.1 is still first.
+- **2026-11-03 - B9 ruled, 5.2 shipped.** The owner confirmed B9's input
+  method: mouse side buttons (3/4) only - they navigate without scrolling,
+  arrows keep scrolling - and the accelerator is off by default, enabled in
+  the control panel. The directive stands; `02bfd49`'s arrow binding becomes a
+  defect to remove with the rest of 5.8. Then 5.2 landed as `6d5e930`: the
+  admin panel's Subscriptions card, the two admin routes, the loopback-only
+  `paddleApiBase()` seam and the shared `paddleCancelSubscription()`, with
+  `tools/qa-billing-orphan.cjs` (21/21, refusal path teeth-proven) registered
+  and wired into `cloud-core`. One unit test needed the new success shape
+  (`alreadyGone` now rides on every cancel result). Pre-commit's print gate
+  flaked once on a Chrome launch and passed standalone and on re-commit - if
+  it recurs, that is the harness, not the change. Not deployed; CI runs on
+  push.

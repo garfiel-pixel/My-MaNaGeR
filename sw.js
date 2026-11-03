@@ -493,7 +493,12 @@
 // Worker once and says "checking" while that answer is in flight instead of
 // refusing. Changed shell assets: js/app/entitlements.js, js/mmgr-ai.js,
 // js/mmgr-app.js.
-const CACHE = 'mmgr-shell-v531';
+// v532 - ORPHAN SUBSCRIPTIONS PANEL (owner 2026-11-01, 5.2): the admin panel
+// can list every subscription on the site, marks the ones whose account no
+// longer exists anywhere in the app, and clears one only after the payment
+// provider has accepted the cancel - a refusal leaves the row in place and
+// shows the reason. Changed shell assets: admin.html.
+const CACHE = 'mmgr-shell-v532';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

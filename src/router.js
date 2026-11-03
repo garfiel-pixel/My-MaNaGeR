@@ -132,7 +132,11 @@ import {
   handleTemplatesUpdate,
   handleTemplatesDelete
 } from './cloud/team-templates.js';
-import { handleAdminCloudList } from './admin.js';
+import {
+  handleAdminCloudList,
+  handleAdminSubscriptionList,
+  handleAdminSubscriptionClear
+} from './admin.js';
 import {
   handleReviewsCreate,
   handleReviewsList,
@@ -730,6 +734,25 @@ export async function routeApi(request, env, url) {
         return r;
       }
       return handleAdminCloudList(request, env);
+    }
+
+    // 8b. BILLING ADMIN (5.2) - the site admin code, never a session, is what
+    // opens these. The list is read-only; the clear route cancels at Paddle
+    // BEFORE it deletes anything, and answers 409 with the provider's reason
+    // when Paddle refuses, leaving the row untouched.
+    if (path === '/api/admin/billing/subscriptions' && request.method === 'GET') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handleAdminSubscriptionList(request, env);
+    }
+    if (path === '/api/admin/billing/subscriptions/clear' && request.method === 'POST') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handleAdminSubscriptionClear(request, env);
     }
 
     // 9. CLOUD EDITORS / CHANGELOG

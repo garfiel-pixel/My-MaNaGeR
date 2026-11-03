@@ -459,6 +459,24 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
       <div id="cloud-admin-list"></div>
     </div>
 
+    <!-- 5.2 (owner 2026-11-01): a subscription row that outlived its account is
+         a billable ghost. Paddle keeps charging, the app grants a paid tier to
+         nobody, and no customer screen can show the row - only this panel can.
+         Same site admin code as the list above. "Cancel and clear" asks Paddle
+         FIRST; if Paddle refuses, the row stays exactly where it is and the
+         reason is shown. Clearing the row first would delete the only handle
+         on a live charge. -->
+    <div class="card" id="billing-admin-section" style="margin-top:16px">
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-receipt"></use></svg> Subscriptions</div>
+      <div class="code-row mb8">
+        <button class="btn btn-g" data-action="billingAdminList"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Load</button>
+        <span class="t-xs" id="billing-admin-count"></span>
+      </div>
+      <div class="t-xs mb8" id="billing-admin-status"></div>
+      <div id="billing-admin-list"><div class="empty">Load to list the subscriptions on this site.</div></div>
+      <div class="hint">A subscription is listed as an orphan only when nothing in the app still holds its account: no account, no project, no shared project, no team membership and no live session. Cancelling at the provider happens before the row is removed, every time.</div>
+    </div>
+
     <div id="project-list"></div>
   </main>
 
@@ -2547,6 +2565,87 @@ async function cloudAdminList(){
     cloudAdminStatus('Cloud API unreachable on this host.', 'err');
   }
 }
+/* 5.2 (owner 2026-11-01) , ORPHANED SUBSCRIPTIONS. Same site admin code as
+   the Cloud Projects card above, same status line style. The clear action is
+   deliberately two steps: confirm here, then the Worker asks the payment
+   provider FIRST and only removes the row when the provider has answered. A
+   refusal leaves the row exactly where it was and says why, because clearing
+   the row first would delete the only handle on a live charge. */
+function billingAdminStatus(msg, kind){
+  const el = document.getElementById('billing-admin-status');
+  if(!el) return;
+  el.textContent = msg || '';
+  el.style.color = kind === 'err' ? 'var(--danger)' : kind === 'ok' ? 'var(--green)' : 'var(--slate)';
+}
+async function billingAdminList(){
+  const inp = document.getElementById('cloud-admin-code');
+  const code = (inp && inp.value.trim()) || cloudAdminCode();
+  if(!code){ billingAdminStatus('Enter the site admin code first, it is the field in the card above.', 'err'); return; }
+  cloudAdminSetCode(code);
+  billingAdminStatus('Loading subscriptions\u2026', '');
+  try{
+    const res = await fetch('/api/admin/billing/subscriptions', { headers:{ 'X-Admin-Code': code } });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok || !data.ok){
+      billingAdminStatus((data && data.error) || ('Failed (HTTP ' + res.status + ').'), 'err');
+      return;
+    }
+    const list = document.getElementById('billing-admin-list');
+    const rows = data.subscriptions || [];
+    const count = document.getElementById('billing-admin-count');
+    if(count) count.textContent = rows.length + (rows.length === 1 ? ' subscription' : ' subscriptions');
+    if(!rows.length){ list.innerHTML = '<div class="empty">No subscriptions on this site.</div>'; billingAdminStatus('', ''); return; }
+    const canClear = !!data.cancellable;
+    list.innerHTML = rows.map(function(s){
+      const orphan = !!s.orphaned;
+      const badge = orphan
+        ? '<span class="badge del"><span class="sdot"></span>orphan</span>'
+        : (s.billable ? '<span class="badge active"><span class="sdot"></span>live</span>' : '<span class="badge planning"><span class="sdot"></span>' + escapeHtml(String(s.status || 'unknown')) + '</span>');
+      const action = orphan && canClear
+        ? '<div class="prow-actions"><button class="btn btn-d btn-s" data-action="billingAdminClear" data-id="' + escapeAttr(s.ownerSub) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Cancel and clear</button></div>'
+        : '';
+      return '<div class="prow"><div class="prow-top"><div><div class="prow-title">' + escapeHtml(s.ownerSub) + '</div>' +
+        '<div class="prow-desc">Plan: ' + escapeHtml(String(s.tier || 'unknown')) + ' \u00b7 provider id: ' +
+        (s.subscriptionId ? '<code>' + escapeHtml(s.subscriptionId) + '</code>' : '<em>none</em>') +
+        ' \u00b7 why: ' + escapeHtml(s.evidence) + '</div></div>' + badge + '</div>' +
+        '<div class="prow-meta"><span>Status: ' + escapeHtml(String(s.status || '')) + '</span>' +
+        '<span>Updated: ' + escapeHtml(String(s.updatedAt || '').slice(0, 19).replace('T', ' ')) + '</span>' + action + '</div></div>';
+    }).join('');
+    const orphans = rows.filter(function(s){ return !!s.orphaned; }).length;
+    billingAdminStatus(orphans + ' orphaned of ' + rows.length + ' listed.', orphans ? 'err' : 'ok');
+  }catch(e){
+    billingAdminStatus('Cloud API unreachable on this host.', 'err');
+  }
+}
+async function billingAdminClear(ownerSub){
+  const code = cloudAdminCode() || '';
+  if(!code){ billingAdminStatus('Enter the site admin code first.', 'err'); return; }
+  admConfirm({
+    title: 'Cancel and clear this subscription?',
+    message: ownerSub + ' has no account, project, sharing, team row or live session anywhere in the app, so nothing can reach this subscription from a customer screen. The provider is asked to cancel it first. The row is only removed if the provider accepts; if it refuses, the row stays and the reason is shown.',
+    danger: true,
+    confirmLabel: 'Cancel and clear',
+    onOk: async function(){
+      billingAdminStatus('Asking the payment provider to cancel\u2026', '');
+      try{
+        const res = await fetch('/api/admin/billing/subscriptions/clear', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Admin-Code': code },
+          body: JSON.stringify({ ownerSub: ownerSub })
+        });
+        const data = await res.json().catch(()=>({}));
+        if(!res.ok || !data.ok){
+          billingAdminStatus('Not cleared: ' + ((data && data.error) || ('HTTP ' + res.status)) + ((data && data.keptRow) ? ' The subscription row is still in place.' : ''), 'err');
+          return;
+        }
+        billingAdminStatus('Cancelled at the provider and cleared. That account is on the free plan now.', 'ok');
+        billingAdminList();
+      }catch(e){
+        billingAdminStatus('Cloud API unreachable on this host.', 'err');
+      }
+    }
+  });
+}
 async function cloudAdminReissue(projectId){
   let label = projectId;
   const row = document.querySelector('#cloud-admin-list [data-action="cloudAdminReissue"][data-id="' + String(projectId).replace(/"/g,'&quot;') + '"]');
@@ -3385,6 +3484,8 @@ const ADMIN_ACTION_MAP = {
   'openSignIn': () => { var GA = window.MMGR && MMGR.GoogleAuth ? MMGR.GoogleAuth : null; if (GA && GA.openSignInPrompt) GA.openSignInPrompt(); openSignInModal(); },
   'closeSignIn': () => closeSignInModal(),
   'cloudAdminList': () => cloudAdminList(),
+  'billingAdminList': () => billingAdminList(),
+  'billingAdminClear': (el) => billingAdminClear(el.getAttribute('data-id')),
   'cloudAdminReissue': (el) => cloudAdminReissue(el.getAttribute('data-id')),
   'cloudAdminRestore': (el) => cloudAdminRestore(el.getAttribute('data-id')),
   'cloudAdminPurge': (el) => cloudAdminPurge(el.getAttribute('data-id')),

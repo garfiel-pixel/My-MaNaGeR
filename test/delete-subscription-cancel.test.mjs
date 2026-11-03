@@ -81,7 +81,9 @@ test('an ACTIVE subscription is cancelled with effective_from immediately', asyn
     },
     () => billingCancelForDeletion(env, 'email:a@b.co')
   );
-  assert.deepEqual(out, { ok: true });
+  // alreadyGone rides on EVERY cancel result now (5.2 shares one cancel path
+  // with the orphan cleanup), so the success shape is pinned exactly.
+  assert.deepEqual(out, { ok: true, alreadyGone: false });
   assert.equal(seen.url, 'https://api.paddle.com/subscriptions/sub_123/cancel');
   assert.equal(seen.init.method, 'POST');
   assert.equal(seen.init.headers.Authorization, 'Bearer test_key');

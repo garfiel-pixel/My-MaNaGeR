@@ -51,6 +51,28 @@ const PADDLE_SANDBOX_BASE = 'https://sandbox-api.paddle.com';
 // fail verification are retried by Paddle, so a tight window is safe.
 const PADDLE_TS_TOLERANCE_SEC = 5;
 
+// 5.2 (orphaned-subscription cleanup, owner 2026-11-01): the Paddle API root,
+// resolved in ONE place so a cancel path can be proven instead of trusted.
+//
+// The override is loopback-only BY CONSTRUCTION: only an absolute http(s) URL
+// whose host is 127.0.0.1, localhost or [::1] is honoured, and everything else
+// falls back to the real base. A request can never set an env var, and even the
+// deployer cannot make this send PADDLE_API_KEY to a remote host, so the seam
+// that lets a gate stub Paddle can never become a credential leak.
+const LOOPBACK_API_BASE = /^(https?:\/\/)(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/i;
+
+export function paddleApiBase(env) {
+  const raw =
+    env && typeof env.PADDLE_API_BASE === 'string'
+      ? env.PADDLE_API_BASE.trim().replace(/\/+$/, '')
+      : '';
+  if (raw && LOOPBACK_API_BASE.test(raw)) {
+    return raw;
+  }
+  const sandbox = env && String(env.PADDLE_ENV || '') === 'sandbox';
+  return sandbox ? PADDLE_SANDBOX_BASE : PADDLE_API_BASE;
+}
+
 // Which provider (if any) this deployment is configured for. Paddle wins
 // when both sets exist - that is the migration direction (LS -> Paddle).
 export function billingProvider(env) {
@@ -525,7 +547,7 @@ async function paddleCheckout(env, session, priceId, tierParam) {
   // against the live API and vice versa - so a mismatch has to be diagnosable
   // rather than surfacing as a bare 502.
   const sandbox = String(env.PADDLE_ENV || '') === 'sandbox';
-  const base = sandbox ? PADDLE_SANDBOX_BASE : PADDLE_API_BASE;
+  const base = paddleApiBase(env);
   const auth = {
     Authorization: 'Bearer ' + env.PADDLE_API_KEY,
     'Content-Type': 'application/json'
@@ -775,8 +797,29 @@ export async function billingCancelForDeletion(env, sub) {
   if (!subId) {
     return { ok: false, error: 'subscription reference missing' };
   }
-  const sandbox = String(env.PADDLE_ENV || '') === 'sandbox';
-  const base = sandbox ? PADDLE_SANDBOX_BASE : PADDLE_API_BASE;
+  const r = await paddleCancelSubscription(env, subId);
+  if (!r.ok) {
+    console.error(
+      'billing cancel for deletion failed: subId=' +
+        subId +
+        ' http=' +
+        (r.http || '') +
+        ' detail=' +
+        (r.detail || '')
+    );
+    return { ok: false, error: r.error };
+  }
+  return { ok: true, alreadyGone: !!r.alreadyGone };
+}
+
+// POST /subscriptions/{id}/cancel with `effective_from: immediately`, shared by
+// account deletion and by the operator's orphan cleanup (5.2). 404 is a
+// SUCCESS there - the subscription is already gone at Paddle, so nothing will
+// bill again - while any other refusal is a failure the CALLER must report and
+// act on, which is exactly the contract the orphan gate pins: a cancel that
+// fails leaves the row in place, with the provider's reason attached.
+export async function paddleCancelSubscription(env, subId) {
+  const base = paddleApiBase(env);
   let res;
   try {
     res = await fetch(base + '/subscriptions/' + encodeURIComponent(subId) + '/cancel', {
@@ -803,15 +846,12 @@ export async function billingCancelForDeletion(env, sub) {
     } catch (e) {
       detail = '';
     }
-    console.error(
-      'billing cancel for deletion failed: subId=' +
-        subId +
-        ' http=' +
-        res.status +
-        ' detail=' +
-        detail
-    );
-    return { ok: false, error: 'the payment provider refused to cancel the subscription' };
+    return {
+      ok: false,
+      error: 'the payment provider refused to cancel the subscription',
+      detail: detail,
+      http: res.status
+    };
   }
   return { ok: true };
 }
@@ -879,7 +919,7 @@ export async function handleBillingCancel(request, env) {
     return json({ ok: false, error: 'subscription reference missing' }, 409);
   }
   const sandbox = String(env.PADDLE_ENV || '') === 'sandbox';
-  const base = sandbox ? PADDLE_SANDBOX_BASE : PADDLE_API_BASE;
+  const base = paddleApiBase(env);
   const auth = {
     Authorization: 'Bearer ' + env.PADDLE_API_KEY,
     'Content-Type': 'application/json'

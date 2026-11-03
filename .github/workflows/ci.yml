@@ -494,6 +494,18 @@ jobs:
         env:
           QA_PORT: 8812
 
+      # 5.2 orphaned-subscription cleanup. Self-hosting like Team RBAC: its own
+      # wrangler on QA_PORT with PADDLE_API_BASE pointed at a loopback stub, so
+      # the cancel-failure path (provider refuses -> row stays) runs against the
+      # real Worker code. Registered in docs/CI-TEST-COVERAGE.md, which is only
+      # true while this step exists.
+
+      - name: "T2: Billing orphan cleanup (stubbed Paddle)"
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: node tools/qa-billing-orphan.cjs
+        env:
+          QA_PORT: 8816
+
       # The browser half of RBAC sprint 2. It spawns its own wrangler + D1/R2
       # (like every T3 suite) and drives the real Chrome over the invitation
       # bell, the accept landing page, the member scope, a queued supervisor

@@ -167,6 +167,11 @@
       'inset:0',
       'z-index:9000',
       'display:none',
+      // The coach-mark NEVER blocks the app. A first-run tour that eats the
+      // person's first click (or a gate's click) is worse than no tour: the
+      // card takes its own clicks, everything else passes through and simply
+      // dismisses the tour.
+      'pointer-events:none',
       'background:rgba(8,9,11,.72)'
     ].join(';');
 
@@ -189,6 +194,7 @@
     card.setAttribute('aria-describedby', 'tour-text');
     card.style.cssText = [
       'position:absolute',
+      'pointer-events:auto',
       'max-width:340px',
       'background:var(--panel,#15171b)',
       'color:var(--tx,#e8eaee)',
@@ -227,12 +233,21 @@
         end();
       }
     });
-    // Clicking the dim area closes, like every other overlay in this app.
-    root.addEventListener('mousedown', function (e) {
-      if (e.target === root) {
+    // Any press outside the card dismisses it, and the press still reaches
+    // the control it was aimed at, because the root takes no pointer events.
+    document.addEventListener(
+      'mousedown',
+      function (e) {
+        if (!isOpen()) {
+          return;
+        }
+        if (card && card.contains(e.target)) {
+          return;
+        }
         end();
-      }
-    });
+      },
+      true
+    );
   }
 
   function place(el) {
@@ -240,6 +255,22 @@
     const vh = window.innerHeight;
     const cw = card.offsetWidth || 340;
     const ch = card.offsetHeight || 180;
+    // Narrow screens: the card becomes a bottom sheet. A floating card there
+    // is nearly as wide as the phone, and anchoring it beside a header control
+    // covers the very controls the person is being told about.
+    if (vw < 700) {
+      card.style.left = '12px';
+      card.style.right = '12px';
+      card.style.width = 'auto';
+      card.style.maxWidth = 'none';
+      card.style.top = 'auto';
+      card.style.bottom = '12px';
+    } else {
+      card.style.right = 'auto';
+      card.style.bottom = 'auto';
+      card.style.width = '';
+      card.style.maxWidth = '340px';
+    }
     if (!el) {
       ring.style.display = 'none';
       card.style.left = Math.max(12, (vw - cw) / 2) + 'px';
@@ -252,6 +283,9 @@
     ring.style.top = Math.round(r.top - 6) + 'px';
     ring.style.width = Math.round(r.width + 12) + 'px';
     ring.style.height = Math.round(r.height + 12) + 'px';
+    if (vw < 700) {
+      return;
+    }
     // Prefer right of the target, fall back to left, then below/above; keep
     // the card on screen whatever the viewport is doing.
     let left = r.right + 14;
@@ -367,12 +401,17 @@
     render();
   }
 
-  function end() {
+  function end(seen) {
     if (!isOpen()) {
       return;
     }
     idx = -1;
-    markDone();
+    // seen === false is an interruption (the app took the screen), not the
+    // person finishing the walk, so the flag stays unset and it shows again
+    // next time a project is opened.
+    if (seen !== false) {
+      markDone();
+    }
     if (root) {
       root.style.display = 'none';
     }
@@ -394,6 +433,14 @@
     'keydown',
     function (e) {
       if (!isOpen()) {
+        return;
+      }
+      // If the app already has an overlay of its own up (drawer, modal, AI
+      // window), the tour is the wrong thing to be holding the keyboard: it
+      // steps aside WITHOUT recording that it was seen, and the key goes to
+      // the overlay the person actually opened.
+      if (document.querySelector('#drw.open, .mb.open, #om.open, #ai-win.open')) {
+        end(false);
         return;
       }
       if (e.key === 'Escape') {

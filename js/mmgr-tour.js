@@ -206,11 +206,11 @@
     ].join(';');
 
     card.innerHTML = [
-      '<div id="tour-count" style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--slate,#8a95a5);margin-bottom:6px"></div>',
+      '<div id="tour-count" style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx-sub,#a0acbe);margin-bottom:6px"></div>',
       '<div id="tour-title" style="font-weight:600;margin-bottom:6px"></div>',
       '<div id="tour-text" style="margin-bottom:12px"></div>',
       '<div style="display:flex;gap:8px;justify-content:flex-end">',
-      '<button type="button" id="tour-skip" style="background:transparent;border:0;color:var(--slate,#8a95a5);font:inherit;cursor:pointer;padding:6px 8px">Skip</button>',
+      '<button type="button" id="tour-skip" style="background:transparent;border:0;color:var(--tx-sub,#a0acbe);font:inherit;cursor:pointer;padding:6px 8px">Skip</button>',
       '<button type="button" id="tour-back" style="background:transparent;border:0;color:var(--tx,#e8eaee);font:inherit;cursor:pointer;padding:6px 8px">Back</button>',
       '<button type="button" id="tour-next" style="background:var(--gold,#D4AF37);border:0;border-radius:8px;color:#111;font:inherit;font-weight:600;cursor:pointer;padding:7px 12px">Next</button>',
       '</div>'

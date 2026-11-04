@@ -81,6 +81,7 @@ fails the gate.
 | `mmgr_errors_webhook` | Error report webhook address (opt-in debugging). | necessary |
 | `mmgr_perf_mode` , `mmgr_perf_nudge` | Performance mode preference and its one-time prompt. | necessary |
 | `mmgr_rail_nudge` | Set once the first-load sidebar demo has played, so the rail shows itself one time instead of on every load. | necessary |
+| `mmgr_first_project_tour_v1` | Set once the first-project walkthrough has been shown, so it only appears automatically once per device and can still be replayed from Settings. | necessary |
 | `mmgr_autosave_cloud` | Auto-update cloud projects preference (admin panel toggle, off by default). A setting the owner asked to remember, so it is necessary and `INVENTORY_VERSION` stays 2 - same reasoning as `mmgr_rail_nudge`: re-asking every visitor for an unchanged question is not a privacy gain. | necessary |
 | `mmgr_drive_token` , `mmgr_drive_token_exp` , `mmgr_drive_auto` , `mmgr_drive_last` , `mmgr_drive_granted` , `mmgr_drive_enc` | Google Drive backup connection and its state. Opt-in feature; nothing is stored until you connect Drive. | necessary |
 

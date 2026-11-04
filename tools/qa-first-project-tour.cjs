@@ -136,7 +136,8 @@ const tourState = page =>
 (async () => {
   const srv = await ensureServer();
   const pw = require('playwright');
-  const browser = await pw.chromium.launch({ headless: true });
+  const executablePath = require('./chrome-launcher.cjs').chromePath || undefined;
+  const browser = await pw.chromium.launch({ executablePath, headless: true });
   const errors = [];
   const watch = p =>
     p.on('pageerror', e => errors.push(String((e && e.message) || e).slice(0, 200)));

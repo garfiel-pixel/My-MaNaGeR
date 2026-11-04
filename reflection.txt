@@ -1,68 +1,47 @@
-# My MaNaGeR - reflection.txt (active; last session only. Older sessions archived in docs/history/reflection-2026-11-01.md and reflection-ARCHIVE-2026-10-18.txt)
+# My MaNaGeR - reflection.txt (active; last session only)
 
-SESSION 2026-11-02 - REPAIR CI FROM THE REAL LOG, THEN CHECK THE PLAN AGAINST
-THE TREE
+SESSION 2026-11-04 - TRACE THE RED CI STEPS, NOT THE DOCUMENTATION TRIGGER
 
 CONTEXT
-The owner reported "the CI is broken, correct it" plus a hand-off list from
-another session claiming three browser harnesses had to be fixed
-(`qa-appshell`, `qa-full`, `qa-team-ui`). That list was stale: it described run
-`41380641177` (`ab8dc80`). Two of the three had already been repaired
-(`8e5d85c`, `f0c5ec7`) and `qa-full` was green in the run the owner was looking
-at. The actual red step, read from the Actions API rather than from memory, was
-`qa-procurement` T2 in `browser-app`.
+The owner suspected CI was executing instructions from directive files. Checked
+the latest two CI runs, workflow commands, the required directives, and the
+relevant validation scripts. Markdown directives are not executed. The static
+job does scan tracked text for line endings and checks selected documentation
+sizes; both gates passed in the latest run.
 
-WHAT WAS ACTUALLY BROKEN, AND WHY
+WHAT WAS BROKEN
 
-1. `qa-procurement` T2 pinned `quotedBy === 'local (this device)'`. That value
-   only ever appeared while the session resolved late; B1's boot-time session
-   read (a183fee) makes `actorLabel()` answer with the account, so a signed-in
-   price edit stamps `owner@example.com`. The gate now accepts either label and
-   still rejects a blank stamp - 51/51. The harness routes `/api/auth/me` to
-   that exact address, so the expectation follows the fixture it already owns.
+1. Latest run `41644842198` on `e9402f5` failed `qa-first-project-tour` at
+   browser startup: Playwright's bundled Chromium was not installed. Other
+   browser harnesses use `tools/chrome-launcher.cjs`, which selects the system
+   Chrome provided by CI. The tour harness now uses that same helper and falls
+   back to Playwright's browser when no system Chrome is found.
 
-2. `qa-consent` S1 then failed, because a red step hides every step after it.
-   Cause is mine, from B7: `mmgr_rail_nudge` is written in `app.html:1987` and
-   was never added to `docs/STORAGE-INVENTORY.md`. Row added. The inventory
-   VERSION stays at 2 on purpose - `js/consent.js:49-54` says to bump on a
-   CATEGORY change, the banner asks nothing about a necessary one-time flag,
-   and re-asking every visitor a question whose answer cannot differ is cost
-   without a privacy gain. 37/37.
+2. The same run failed `qa-consent` S1 because the B8 tour writes
+   `mmgr_first_project_tour_v1`, but the key was absent from
+   `docs/STORAGE-INVENTORY.md`. Added it as a necessary one-time feature flag;
+   the consent inventory version remains unchanged, consistent with the
+   neighboring necessary flags.
 
-3. `qa-calc-assistant` W11 dark hover failed on the next run. Not a colour
-   defect: the first-run rail nudge slides the sidebar out 0.9s after load and
-   moved the card out from under the pointer, so the gate measured the RESTING
-   tone. Proven by probe: the same selector in isolation reports
-   `rgb(46, 125, 50)` on hover. The harness now waits for `rail-nudge` to
-   appear and clear, re-points until `el.matches(':hover')` is true, and fails
-   with a named arm ("the pointer actually landed") if it never is - 157/157.
-   This is the same bug class `f0c5ec7` fixed in `qa-appshell`; the lesson is
-   now written into `EXECUTION-PLAN.md`.
-
-CI: run `41394843556` on `b088c09` is 6/6 green (static, browser-app,
-browser-calc, cloud-auth, cloud-core, summary).
-
-VERIFIED STATE OF THE PLAN (checked against the code, not the prose)
-- Wave 1: 1.1/1.3/1.4/1.6 done, 1.5 demoted (11.8% / 9.7% dead CSS, under the
-  15% trigger), 1.2 (landing backlog to 43/43) still open.
-- Wave 5 rows that are genuinely absent from the tree: 5.1 has no `owner_email`
-  anywhere in `src/` or `migrations/`; 5.2, 5.5, 5.7 and 5.8's B8 have no gate
-  file and no UI (`grep` for `auto-update` in `admin.html` returns 0).
-- 5.7's server half exists (`migrations/0025_project_photos.sql`,
-  `src/cloud/photos.js`, `js/cloud/photos-ui.js` is in `build.js` and in
-  `dist/bundle.js`), so the owner's "I cannot upload a photo" is a wiring or
-  gate question to reproduce, not a feature to invent.
+The earlier run `41641525725` was triggered by the docs-only commit
+`00a5165`, but that commit changed only `EXECUTION-PLAN.md`; the preceding
+feature commit `0b506c4` introduced the tour and its harness. The run's static
+doc-size gate passed. The trigger was documentation, not directive execution.
 
 FILES TOUCHED
-`tools/qa-procurement.cjs` (T2 expectation), `docs/STORAGE-INVENTORY.md`
-(`mmgr_rail_nudge` row), `tools/qa-calc-assistant.cjs` (nudge wait, `hoverBtn()`,
-new pointer arm), `EXECUTION-PLAN.md` (2026-11-02 progress entry),
-`CONTINUATION-DIRECTIVE.md` (status entry), `reflection.txt` (this file), and
-the previous session's reflection moved to
-`docs/history/reflection-2026-11-01.md`.
+`tools/qa-first-project-tour.cjs` (use shared Chrome launcher),
+`docs/STORAGE-INVENTORY.md` (register tour flag), and this reflection.
+`package-lock.json` was already modified in the worktree and was left alone.
+
+VERIFICATION
+`node --check tools/qa-first-project-tour.cjs` passed. `npm run verify` passed,
+including the test registry and file-size gates. `qa-consent`'s static phase
+passed, including S1. Full browser validation could not run in this container:
+after installing Playwright Chromium, launch failed because system library
+`libatk-1.0.so.0` is absent. No remote CI run has been triggered for these
+uncommitted changes.
 
 NEXT
-5.1 cloud identity first: `owner_email` on `cloud_projects`, list by verified
-email as well as `sub`, and the owner-code claim path for rows created before
-the column existed. It is the root of the owner's cross-device and admin-panel
-reports, and it needs `qa-tenant-isolation` extended before any code moves.
+After these changes are pushed, confirm the new Actions run is green. The
+browser gates are the remaining proof; the local container lacks their OS
+browser dependency.

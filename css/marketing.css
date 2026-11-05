@@ -558,6 +558,74 @@ main {
 .section-alt {
   background: var(--bg-warm);
 }
+
+/* ---------- 4c. BAND-TRANSITION SEAM (owner C1, 2026-11-01) ----------
+   One deliberate treatment where two bands of different tone meet. The seam
+   is a full-bleed gradient that blends the upper band's colour into the lower
+   band's colour, with a construction survey mark on the join. It is a direct
+   child of <main>, so it paints edge to edge like every other band.
+
+   Cheap by construction: the mark is inline SVG and the grid is a CSS
+   background, so there is no JS, no canvas and no rAF loop. It sits after the
+   hero in the DOM and cannot delay first paint or LCP. Under
+   prefers-reduced-motion the decoration is switched off and only the smooth
+   gradient blend remains. */
+.band-seam {
+  position: relative;
+  width: 100%;
+  height: 56px;
+  overflow: hidden;
+}
+.band-seam[data-seam='dl'] {
+  background: linear-gradient(to bottom, var(--header-navy) 0%, var(--bg) 100%);
+}
+.band-seam[data-seam='wd'] {
+  background: linear-gradient(to bottom, var(--bg-warm) 0%, var(--header-navy) 100%);
+}
+/* the join line */
+.band-seam::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  transform: translateY(-0.5px);
+  background: color-mix(in srgb, var(--gold) 34%, transparent);
+}
+/* faint blueprint tick marks, faded at the edges */
+.band-seam::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--gold) 12%, transparent) 0 1px,
+    transparent 1px 64px
+  );
+  mask-image: radial-gradient(58% 100% at 50% 50%, #000 12%, transparent 84%);
+  -webkit-mask-image: radial-gradient(58% 100% at 50% 50%, #000 12%, transparent 84%);
+}
+.seam-mark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 40px;
+  height: 40px;
+  transform: translate(-50%, -50%);
+  color: var(--gold);
+}
+@media (prefers-reduced-motion: reduce) {
+  .band-seam {
+    height: 40px;
+  }
+  .band-seam::before,
+  .band-seam::after,
+  .seam-mark {
+    display: none;
+  }
+}
 .eyebrow {
   display: inline-flex;
   align-items: center;

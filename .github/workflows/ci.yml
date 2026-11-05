@@ -1136,6 +1136,10 @@ jobs:
         id: qa-particle-line
         run: node tools/qa-particle-line.cjs
 
+      - name: "T4: Band-transition seam is cheap and off under reduced motion (qa-band-seam)"
+        id: qa-band-seam
+        run: node tools/qa-band-seam.cjs
+
       - name: "T4: Finish-target and expiry notices (qa-notice-watchers)"
         id: qa-notice-watchers
         run: node tools/qa-notice-watchers.cjs

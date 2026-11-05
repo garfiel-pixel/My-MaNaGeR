@@ -512,7 +512,10 @@
 // v538 - B9 SECTION ACCELERATOR: new js/app/section-accelerator.js (dist
 // bundle rebuilt), the control-panel toggle markup in project.html, and the
 // pin-dot CSS in css/src/20-shell.css (dist/mmgr.min.css rebuilt).
-const CACHE = 'mmgr-shell-v538';
+// v539 - C1 BAND SEAM (audit 2026-11-01): six themeable, static
+// band-transition seams between the landing bands in index.html, styled in
+// css/marketing.css. Changed shell assets: index.html, dist/marketing.min.css.
+const CACHE = 'mmgr-shell-v539';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

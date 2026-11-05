@@ -1116,6 +1116,10 @@ jobs:
         id: qa-appshell
         run: node tools/qa-appshell.cjs
 
+      - name: "T4: First-load shell - flat + one-shot rail demo (qa-shell-first-load)"
+        id: qa-shell-first-load
+        run: node tools/qa-shell-first-load.cjs
+
       - name: "T4: Finish-target and expiry notices (qa-notice-watchers)"
         id: qa-notice-watchers
         run: node tools/qa-notice-watchers.cjs

@@ -60,7 +60,8 @@ import {
   handlePhotoList,
   handlePhotoGet,
   handlePhotoDelete,
-  handlePhotoMeta
+  handlePhotoMeta,
+  handlePhotoUsage
 } from './cloud/photos.js';
 import {
   handleCloudEditorCreate,
@@ -940,6 +941,19 @@ export async function routeApi(request, env, url) {
       if (request.method === 'GET') {
         return handlePhotoList(request, env, cloudPhotosMatch[1]);
       }
+    }
+    // Quota bar (B11): the account's used bytes and the 500 MB limit. Matched
+    // BEFORE the single-photo route, which would otherwise read "usage" as a
+    // photo id and answer 404 for a handler that exists.
+    const cloudPhotoUsageMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/photos\/usage$/
+    );
+    if (cloudPhotoUsageMatch && request.method === 'GET') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handlePhotoUsage(request, env, cloudPhotoUsageMatch[1]);
     }
     const cloudPhotoMatch = path.match(
       /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/photos\/([A-Za-z0-9_-]{1,128})$/

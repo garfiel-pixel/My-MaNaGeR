@@ -274,27 +274,12 @@
     <div class="panel-head"><span class="panel-title">Project Photos</span></div>
     <div id="photos-body" class="photos-body"></div>
   </div>
-  <!-- Project Photos upload affordance (C24) - rendered behind the gate by
-       js/cloud/photos-ui.js. Only visible to owner/editor sessions on a
-       cloud-linked project; viewer/client/reader paths get the panel's list
-       only. -->
-  <div id="photos-wrap" class="photos-wrap is-hide">
-    <div class="card m0a" id="photos-upload-card">
-      <div class="card-title">Add a photo
-        <div class="g6">
-          <button class="btn btn-g btn-s" id="photos-upload-btn" type="button">+ Add photo</button>
-          <input type="file" id="photos-upload-input" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" aria-label="Choose a photo">
-          <button class="btn btn-n btn-s" id="photos-cancel-btn" type="button">Cancel</button>
-        </div>
-      </div>
-      <div class="card card-tint">
-        <div class="g12">
-          <input type="text" id="photos-caption-input" class="in" placeholder="Optional caption (what / where / when)" maxlength="200" aria-label="Photo caption">
-          <div class="txt-sl t-xs" id="photos-upload-note"></div>
-        </div>
-      </div>
-    </div>
-  </div>  <div class="nav-close-row">
+  <!-- B11 (5.7): the photos panel is rendered IN FULL by
+       js/cloud/photos-ui.js into the #photos-body above (quota bar, upload
+       form, cards). The separate #photos-wrap card that used to sit here was
+       never reachable: its ids were bound by a module that looked for a
+       #sec-photos section the page does not have. -->
+  <div class="nav-close-row">
     <button type="button" class="nav-close-btn" data-action="tglNav" aria-label="Close navigation menu"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button>
   </div>
 

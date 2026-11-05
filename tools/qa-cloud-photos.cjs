@@ -137,6 +137,8 @@ async function main() {
   const form = new FormData();
   form.append('file', new Blob([PNG], { type: 'image/png' }), 'site.png');
   form.append('caption', 'Foundation pour');
+  form.append('stage', 'before');
+  form.append('capturedAt', '2026-11-05');
   res = await fetch(BASE + '/api/cloud/projects/' + pid + '/photos', {
     method: 'POST',
     headers: auth,
@@ -184,19 +186,38 @@ async function main() {
     res.status + '|' + JSON.stringify(data).slice(0, 200)
   );
 
+  // B11 (5.7): the uploader's identity is resolved SERVER-side (never sent by
+  // the browser) and travels back on the photo so the panel can print it.
+  ok(
+    'the upload carries the owner identity and the stage it was given',
+    !!data.photo &&
+      data.photo.uploadedRole === 'Owner' &&
+      !!data.photo.uploadedBy &&
+      data.photo.stage === 'before' &&
+      !!data.usage &&
+      data.usage.usedBytes === PNG.length &&
+      data.usage.limitBytes === 524288000,
+    JSON.stringify({ photo: data.photo, usage: data.usage }).slice(0, 240)
+  );
+
   // ---- 4. list shows it, with the caption ----
   res = await fetch(BASE + '/api/cloud/projects/' + pid + '/photos', { headers: auth });
   data = await res.json().catch(function () {
     return {};
   });
   ok(
-    'list returns the uploaded photo with its caption',
+    'list returns the uploaded photo with its caption, stage and uploader role',
     res.status === 200 &&
       data.ok === true &&
       Array.isArray(data.photos) &&
       data.photos.length === 1 &&
-      data.photos[0].caption === 'Foundation pour',
-    JSON.stringify(data).slice(0, 200)
+      data.photos[0].caption === 'Foundation pour' &&
+      data.photos[0].stage === 'before' &&
+      data.photos[0].uploadedRole === 'Owner' &&
+      data.canUpload === true &&
+      !!data.usage &&
+      data.usage.usedBytes === PNG.length,
+    JSON.stringify(data).slice(0, 260)
   );
 
   if (photoId) {
@@ -243,6 +264,54 @@ async function main() {
       'the photo is still listed after being viewed (no destructive self-heal)',
       data.ok === true && Array.isArray(data.photos) && data.photos.length === 1,
       JSON.stringify(data).slice(0, 160)
+    );
+
+    // ---- 7b. the quota endpoint the panel's bar reads ----
+    res = await fetch(BASE + '/api/cloud/projects/' + pid + '/photos/usage', {
+      headers: auth
+    });
+    data = await res.json().catch(function () {
+      return {};
+    });
+    ok(
+      'the usage endpoint reports the account quota and its used bytes',
+      res.status === 200 &&
+        data.ok === true &&
+        !!data.usage &&
+        data.usage.usedBytes === PNG.length &&
+        data.usage.limitBytes === 524288000 &&
+        data.usage.photos === 1 &&
+        data.canUpload === true,
+      res.status + '|' + JSON.stringify(data).slice(0, 200)
+    );
+
+    // ---- 7c. download disposition is the server's, not the page's ----
+    res = await fetch(BASE + '/api/cloud/projects/' + pid + '/photos/' + photoId, {
+      headers: auth
+    });
+    const inlineCd = res.headers.get('content-disposition') || '';
+    try {
+      await res.arrayBuffer();
+    } catch (e) {
+      /* drain */
+    }
+    res = await fetch(BASE + '/api/cloud/projects/' + pid + '/photos/' + photoId + '?download=1', {
+      headers: auth
+    });
+    const attachCd = res.headers.get('content-disposition') || '';
+    let dlLen = -1;
+    try {
+      dlLen = Buffer.from(await res.arrayBuffer()).length;
+    } catch (e) {
+      dlLen = -1;
+    }
+    ok(
+      'the plain URL is inline and ?download=1 is an attachment with the same bytes',
+      /^inline;/.test(inlineCd) &&
+        /^attachment;/.test(attachCd) &&
+        /filename="site\.png"/.test(attachCd) &&
+        dlLen === PNG.length,
+      { inline: inlineCd, attachment: attachCd, bytes: dlLen }
     );
   }
 
@@ -293,6 +362,62 @@ async function main() {
     ok('viewer code CANNOT upload (403)', res.status === 403, String(res.status));
   } else {
     skip('viewer role checks', 'no viewer code returned: ' + JSON.stringify(data).slice(0, 140));
+  }
+
+  // ---- 10b. an editor upload is stamped with ITS label, not the owner's ----
+  res = await fetch(BASE + '/api/cloud/projects/' + pid + '/editors', {
+    method: 'POST',
+    headers: Object.assign({ 'Content-Type': 'application/json' }, auth),
+    body: JSON.stringify({ label: 'QA Editor', role: 'editor', scope: ['photos'] })
+  });
+  data = await res.json().catch(function () {
+    return {};
+  });
+  const editorCode = data.editorCode || data.code || (data.editor && data.editor.code);
+  if (editorCode) {
+    const eForm = new FormData();
+    eForm.append('file', new Blob([PNG], { type: 'image/png' }), 'editor.png');
+    eForm.append('caption', 'Editor shot');
+    eForm.append('stage', 'after');
+    res = await fetch(BASE + '/api/cloud/projects/' + pid + '/photos', {
+      method: 'POST',
+      headers: { 'X-Editor-Code': editorCode },
+      body: eForm
+    });
+    data = await res.json().catch(function () {
+      return {};
+    });
+    const editorPhotoId = data.photo && data.photo.id;
+    ok(
+      'an editor upload is stamped with the code label and the Editor role',
+      res.status === 200 &&
+        !!data.photo &&
+        data.photo.uploadedBy === 'QA Editor' &&
+        data.photo.uploadedRole === 'Editor' &&
+        data.photo.stage === 'after' &&
+        !!data.usage &&
+        data.usage.usedBytes === PNG.length * 2,
+      res.status + '|' + JSON.stringify(data).slice(0, 240)
+    );
+    if (editorPhotoId) {
+      res = await fetch(
+        BASE + '/api/cloud/projects/' + pid + '/photos/' + editorPhotoId + '/delete',
+        { method: 'POST', headers: auth }
+      );
+      data = await res.json().catch(function () {
+        return {};
+      });
+      ok(
+        'the owner can remove the editor photo, returning the quota',
+        res.status === 200 && data.ok === true,
+        res.status + '|' + JSON.stringify(data).slice(0, 160)
+      );
+    }
+  } else {
+    skip(
+      'editor upload identity',
+      'no editor code returned: ' + JSON.stringify(data).slice(0, 140)
+    );
   }
 
   // ---- 11. delete, then it is gone from the list ----

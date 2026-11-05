@@ -109,7 +109,7 @@ headless Chrome against `serve.cjs` on :8765.
 | `tools/qa-cloud-phase1.cjs` | CI | cloud create/save/load/meta, owner codes, codes never logged (29/29) |
 | `tools/qa-cloud-phase2.cjs` | CI | editor codes, section scope, changelog + revert (85/85) |
 | `tools/qa-cloud-codes-delete.cjs` | CI | code escrow + purge/restore after delete (23/23) |
-| `tools/qa-cloud-photos.cjs` | CI | Project Photos: code-created project accepts photos (the row is the cloud gate, not google_sub), upload/list/single-bytes/meta/delete round trip with content type + exact byte length, no destructive self-heal on view, and the role gates (wrong code 403, local-only project 403, viewer reads but cannot upload) (14/14) |
+| `tools/qa-cloud-photos.cjs` | CI | Project Photos (server half): code-created project accepts photos (the gate keys on the cloud_projects ROW, not google_sub), upload carries the uploader identity + stage, list/round-trip/single-bytes/meta assertions with content type + exact byte length, no destructive self-heal on view, usage endpoint reports quota + used bytes, inline vs ?download=1 attachment, and the role gates (wrong code 403, local-only project 403, viewer reads but cannot upload, editor stamped with its label/role, owner removal returns quota) (19/19) |
 | `tools/qa-cloud-import.cjs` | CI | CLI import ledger + id mapping (35/35) |
 | `tools/qa-market-features.cjs` | CI | dashboard/market feature aggregations (61/61) |
 | `tools/verify-controls-admin.cjs` | CI | Controls drawer surfaces + admin copy/labels (11/11) |
@@ -133,6 +133,7 @@ headless Chrome against `serve.cjs` on :8765.
 |---|---|---|
 | `tools/qa-client-codes.cjs` | CI | client-code entry -> project client scope, soft delete |
 | `tools/qa-api-keys.cjs` | CI | scoped API key read + review-queue writes, MCP PATH-A |
+| `tools/qa-project-photos.cjs` | CI | Project Photos (browser half): the panel a person uses, in real Chrome against its own wrangler/D1/R2. The storage bar reads 0 B of 500 MB, two uploads land as cards, every card names its uploader + role + stage chip, the quota text and the usage endpoint move with the exact byte count, Download returns the uploaded bytes under their name, Remove asks then drops the card + bytes, and a view code sees + downloads but gets no Add/Remove. The free-account 402 refusal is a documented SKIP (billing dormant without Paddle secrets); the upgrade sentence is pinned by test/photo-tier.test.mjs. 13/13. |
 | `tools/qa-sync-bond.cjs` | CI | file trip keeps the cloud twin link; re-sync merge (20/20) |
 | `tools/qa-mcp-live-e2e.cjs` | EXTENDED | MCP propose -> owner review Accept end-to-end in a real browser: scoped key + PATH-A, queue gating, never-auto-apply, zero-diff accept warns (v318), revoke/delete hygiene (20 gates). Runs nightly + extended battery; self-contained (own wrangler/Chrome, never a live site) |
 | `tools/qa-engine-parity.cjs` | EXTENDED | ENGINE-PARITY LAW (owner 2026-09-27): the REAL served schedule engine must catch hand-authored/MCP-seeded schedule fiction - seeded dependency violation corrected to the exact engine date in the served page, MCP reads (get_tasks vs /load predecessors contract) and apply_changes remediation queueing asserted. Self-contained (own wrangler + Chrome); born green 12/12 |

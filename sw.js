@@ -505,7 +505,11 @@
 // (2.4:1 on a light page). The rail selector, the card's colour tokens and a
 // short placement retry while the rail lays out all change. Changed shell
 // assets: js/mmgr-tour.js.
-const CACHE = 'mmgr-shell-v535';
+// v536 - PROJECT PHOTOS (5.7): the Photos panel now renders its own quota
+// bar, upload form and cards, and shows who uploaded each photo and in which
+// stage. Changed shell assets: js/cloud/photos-ui.js, js/mmgr-render.js,
+// css/mmgr.css, project.html.
+const CACHE = 'mmgr-shell-v536';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

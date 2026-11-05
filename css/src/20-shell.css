@@ -238,11 +238,90 @@ body.dark-mode .photo-item a:hover .photo-thumb {
 #photos-upload-input {
   display: none;
 }
-#photos-cancel-btn {
-  display: none;
+
+/* B11 (5.7) panel layout: quota bar, upload form, photo cards. The file input
+   stays hidden because its "Choose photo" button opens it; every other
+   control is real and reachable by keyboard. */
+.photos-head {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
 }
-#photos-upload-note {
-  margin-top: 4px;
+.photos-quota {
+  flex: 1 1 240px;
+  min-width: 200px;
+}
+.photos-quota-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+.photos-quota-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: var(--gold-ink);
+  transition: width 0.2s ease;
+}
+.photos-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px 10px;
+  align-items: center;
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.photos-form-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.photo-info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.photo-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 6px;
+}
+.photo-stage {
+  display: inline-block;
+  padding: 1px 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+}
+.photo-confirm {
+  color: var(--text);
+  font-size: 0.82rem;
+}
+.photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+#photos-note {
+  margin: 0 0 10px;
+}
+#photos-note.note-warn {
+  color: var(--danger-ink);
+}
+body.dark-mode .photos-quota-track {
+  background: var(--lit-white-14);
 }
 
 /* Theme picker pressed state: white in dark, gold kept for light */

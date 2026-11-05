@@ -1,29 +1,27 @@
 /* ============================================================
-   My MaNaGeR , Project Photos UI
+   My MaNaGeR , Project Photos UI (B11, 5.7)
    ------------------------------------------------------------
-   Renders the Project Photos panel into the project page's section
-   nav + content area. Cloud-only, login-gated, role-checked.
+   Renders the whole Project Photos panel into #photos-body on the project
+   page's Photos section. Before this rewrite the module painted only a bare
+   list, into a #sec-photos that does not exist, and never fetched anything
+   on open: the panel was permanently empty and the server route it talks to
+   had no caller.
 
-   Upload: owner + editor only.
-   View / delete photo: owner, editor, viewer, client (read-only).
-   The server is the real gate (src/cloud/photos.js); this module is
-   UX defense-in-depth. If the project is not cloud-linked or there is
-   no authenticated credential, the upload affordance is disabled with a
-   plain explanation instead of silently no-op.
+   What the panel shows:
+     - the account's storage bar (500 MB per account, server-owned numbers)
+     - an upload form: file, description, date taken, stage (before / after /
+       in progress)
+     - each photo with a real thumbnail, description, stage, size, date, the
+       UPLOADER NAME AND ROLE, plus Download and Remove
 
-   Reuses ns.Cloud patterns:
-     - pid(), getCode(), getECode(), getEScope(), activeCredential()
-     - _sessOwner / probeOwnerSession()
-     - hasCloudLink()
-     - fetchSections() / sectionLabel()
-     - setStatus()
-     - escape helper
+   Auth: every request carries the credential header the cloud module already
+   resolved (owner code, editor code, view code, client code), or the session
+   cookie when there is no code. Blobs are fetched with those same headers
+   because a <img src> cannot send them.
 
-   Layout hook: the panel is mounted into #sec-photos (the page's section
-   system). The section nav button is <button class="sec-btn" data-section="photos"
-   data-action="showSec"> so the existing section switcher can open it, and the
-   scope module can grey it out / hide it for editor clients the same way it
-   does for every other section.
+   The server (src/cloud/photos.js) is the real gate. This module mirrors the
+   rule so the form is never offered to a role the server would refuse, and
+   shows the server's own sentence when it refuses anyway (paid plan, quota).
    ============================================================ */
 var MMGR = window.MMGR || {};
 (function (ns) {
@@ -32,61 +30,71 @@ var MMGR = window.MMGR || {};
   var C = ns.Cloud;
   if (!C) {
     return;
-  } // not on a page that loads the cloud module
+  } // page does not load the cloud module
 
   var $ = function (id) {
     return document.getElementById(id);
   };
   var esc =
-    C.esc ||
+    C._esc ||
     function (v) {
-      return String(v == null ? '' : v).replace(/[&<>\"']/g, function (c) {
-        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', "'": '&#39;' }[c];
+      return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
       });
     };
 
-  var _photos = null; // last loaded photo list
+  var ICON =
+    '<svg class="ico photo-placeholder-ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-image"></use></svg>';
+
+  var _photos = null; // null = never loaded
+  var _usage = null;
+  var _role = '';
+  var _canUpload = null; // null = not known until the first list response
   var _loading = false;
   var _uploading = false;
+  var _confirmId = ''; // two-step remove: the photo awaiting confirmation
+  var _note = { text: '', kind: '' };
+  var _thumbs = {}; // photoId -> object URL (revoked when the photo goes)
+  var _built = false;
 
-  // ---- cloud-only gate ----
+  function pid() {
+    return C._pid ? C._pid() : 'default';
+  }
 
+  function apiUrl(suffix) {
+    return '/api/cloud/projects/' + encodeURIComponent(pid()) + '/photos' + (suffix || '');
+  }
+
+  function credHeaders(json) {
+    var cred = C._activeCredential ? C._activeCredential() : null;
+    var headers = json ? { 'Content-Type': 'application/json' } : {};
+    if (cred && cred.header && cred.code) {
+      headers[cred.header] = cred.code;
+    }
+    return headers;
+  }
+
+  // ---- gates ---------------------------------------------------------------
+
+  // A project can hold photos when the cloud module says it is cloud-linked,
+  // by ANY route: stored id, owner session, or a held code. The old check also
+  // required isSessionOwner, which hid the panel from every editor code user
+  // even though the server lets editors upload.
   function isCloudProject() {
-    // A cloud-linked project either carries a stored cloud id override, or
-    // the cloud module already resolved one. hasCloudLink() is the same
-    // predicate the rest of the cloud module uses for "can this project talk
-    // to the cloud at all".
-    if (!C.hasCloudLink) {
+    if (!C._hasCloudLink) {
       return false;
     }
-    if (!C.isSessionOwner) {
-      return false;
-    }
-    if (!C.activeCredential) {
-      return false;
-    }
-    // Defense-in-depth: a project with no stored cloud id is not cloud-linked
-    // even if some local code slot is occupied (demo / code-based projects).
-    try {
-      var id = C.pid ? C.pid() : 'default';
-      var stored = localStorage.getItem('mmgr_cloud_id_' + id);
-      if (stored) {
-        return true;
-      }
-    } catch (e) {
-      /* storage blocked */
-    }
-    return false;
+    return !!C._hasCloudLink();
   }
 
   function canUpload() {
-    // Upload is the part the owner explicitly called out: only owner + editor.
-    // Viewer / client / api-key / read-only sessions cannot upload.
-    var cred = C.activeCredential ? C.activeCredential() : null;
+    if (_canUpload !== null) {
+      return _canUpload;
+    }
+    var cred = C._activeCredential ? C._activeCredential() : null;
     if (!cred) {
       return false;
     }
-    // viewer and client headers are read-only.
     if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') {
       return false;
     }
@@ -95,460 +103,725 @@ var MMGR = window.MMGR || {};
 
   function uploadGateMessage() {
     if (!isCloudProject()) {
-      return 'This project is not linked to the cloud , so it cannot receive photos. Cloud-linked projects only.';
+      return 'This project is not linked to the cloud, so it cannot hold photos. Link it from Cloud Backup first.';
     }
-    var cred = C.activeCredential ? C.activeCredential() : null;
+    var cred = C._activeCredential ? C._activeCredential() : null;
     if (!cred) {
-      return 'Sign in or load this project with a code first , photos are only available to signed-in cloud sessions.';
+      return 'Sign in, or open this project with a code, to use photos.';
     }
     if (cred.header === 'X-View-Code') {
-      return 'Viewer codes are read-only , so they cannot upload photos. Ask for an editor or owner code to add photos.';
+      return 'Viewer codes are read-only: they can see photos but not add them.';
     }
     if (cred.header === 'X-Client-Code') {
-      return 'Client codes are read-only , so they cannot upload photos. Ask for an editor or owner code to add photos.';
+      return 'Client codes are read-only: they can see photos but not add them.';
     }
-    if (C.isClientSession && C.isClientSession()) {
-      return 'Client access is read-only , so it cannot upload photos. Ask for editor or owner access to add photos.';
-    }
-    return 'Only the project owner or an editor can upload photos.';
+    return 'Only the project owner or an editor can add photos.';
   }
 
-  // ---- photo list fetch ----
-
-  function photosApiUrl() {
-    return '/api/cloud/projects/' + encodeURIComponent(C.pid ? C.pid() : 'default') + '/photos';
-  }
-
-  async function fetchPhotos(renderErr) {
-    if (_loading) {
-      return;
-    }
-    _loading = true;
-    try {
-      var cred = C.activeCredential ? C.activeCredential() : null;
-      var headers = { 'Content-Type': 'application/json' };
-      if (cred && cred.header) {
-        headers[cred.header] = cred.code;
-      }
-      var res = await fetch(photosApiUrl(), {
-        method: 'GET',
-        credentials: 'same-origin',
-        headers: headers
-      });
-      var data = await res.json().catch(function () {
-        return {};
-      });
-      if (!res.ok || !data || !data.ok) {
-        var raw = (data && data.error) || '';
-        var msg =
-          raw === 'code_revoked'
-            ? 'This code was revoked , photos may no longer be available.'
-            : raw === 'project_deleted'
-              ? 'This project was deleted , so its photos are gone.'
-              : raw || 'Could not load photos (HTTP ' + res.status + ').';
-        if (renderErr) {
-          renderErr(msg);
-        }
-        if (C.setStatus) {
-          C.setStatus(msg, 'err');
-        }
-        _photos = [];
-        return;
-      }
-      _photos = Array.isArray(data.photos) ? data.photos : [];
-    } catch (e) {
-      var detail = (e && (e.message || e.name || String(e))) || 'unknown';
-      var errMsg = 'Cloud is unavailable on this host (needs the Worker API). [' + detail + ']';
-      if (renderErr) {
-        renderErr(errMsg);
-      }
-      if (C.setStatus) {
-        C.setStatus(errMsg, 'err');
-      }
-      _photos = [];
-    } finally {
-      _loading = false;
-    }
-  }
+  // ---- formatting ----------------------------------------------------------
 
   function humanSize(bytes) {
     if (bytes == null || isNaN(bytes)) {
       return '';
     }
-    bytes = Number(bytes);
-    if (bytes < 1024) {
-      return bytes + ' B';
+    var n = Number(bytes);
+    if (n < 1024) {
+      return n + ' B';
     }
-    if (bytes < 1024 * 1024) {
-      return (bytes / 1024).toFixed(1) + ' KB';
+    if (n < 1024 * 1024) {
+      return (n / 1024).toFixed(1) + ' KB';
     }
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    return (n / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function stageLabel(stage) {
+    if (stage === 'before') {
+      return 'Before';
+    }
+    if (stage === 'after') {
+      return 'After';
+    }
+    if (stage === 'progress') {
+      return 'In progress';
+    }
+    return '';
+  }
+
+  function dayOf(photo) {
+    var raw = (photo && (photo.capturedAt || photo.createdAt)) || '';
+    return raw ? String(raw).slice(0, 10) : '';
   }
 
   function photoUrlFor(photo) {
     if (!photo || !photo.id) {
       return '';
     }
+    return apiUrl('/' + encodeURIComponent(photo.id));
+  }
+
+  // ---- data ----------------------------------------------------------------
+
+  function errorSentence(raw, fallback) {
+    if (raw === 'code_revoked' || raw === 'code_expired') {
+      return 'This code was revoked, so photos are not available.';
+    }
+    if (raw === 'project_deleted') {
+      return 'This project was deleted, so its photos are gone.';
+    }
+    if (raw === 'forbidden') {
+      return 'You do not have access to this project\u2019s photos.';
+    }
+    return raw || fallback;
+  }
+
+  async function fetchPhotos() {
+    if (_loading) {
+      return false;
+    }
+    if (!isCloudProject()) {
+      _photos = [];
+      _canUpload = false;
+      paint();
+      return false;
+    }
+    _loading = true;
+    paint();
+    try {
+      var res = await fetch(apiUrl(''), {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: credHeaders(false)
+      });
+      var data = await res.json().catch(function () {
+        return {};
+      });
+      if (!res.ok || !data || !data.ok) {
+        var msg = errorSentence(
+          data && data.error,
+          'Could not load photos (HTTP ' + res.status + ').'
+        );
+        _photos = [];
+        _canUpload = false;
+        _note = { text: msg, kind: 'warn' };
+        if (C._setStatus) {
+          C._setStatus(msg, 'err');
+        }
+        return false;
+      }
+      _photos = Array.isArray(data.photos) ? data.photos : [];
+      _usage = data.usage || null;
+      _role = data.role || '';
+      _canUpload = data.canUpload !== false;
+      if (!canUpload()) {
+        _note = { text: uploadGateMessage(), kind: '' };
+      } else if (_note.text && _note.kind === 'warn') {
+        _note = { text: '', kind: '' };
+      }
+      return true;
+    } catch (e) {
+      var detail = (e && (e.message || e.name || String(e))) || 'unknown';
+      _photos = [];
+      _canUpload = false;
+      _note = {
+        text: 'Cloud is unavailable on this host, so photos cannot load. [' + detail + ']',
+        kind: 'warn'
+      };
+      return false;
+    } finally {
+      _loading = false;
+      paint();
+    }
+  }
+
+  // ---- paint ---------------------------------------------------------------
+
+  function quotaText() {
+    if (_loading && !_usage) {
+      return 'Checking storage\u2026';
+    }
+    if (!_usage) {
+      return '';
+    }
+    return humanSize(_usage.usedBytes) + ' of ' + humanSize(_usage.limitBytes) + ' used';
+  }
+
+  function quotaPercent() {
+    if (!_usage || !_usage.limitBytes) {
+      return 0;
+    }
+    var pct = (Number(_usage.usedBytes) / Number(_usage.limitBytes)) * 100;
+    if (isNaN(pct) || pct < 0) {
+      return 0;
+    }
+    return Math.min(100, Math.round(pct));
+  }
+
+  function scaffold() {
+    var body = $('photos-body');
+    if (!body || _built) {
+      return body;
+    }
+    body.innerHTML =
+      '<div class="photos-head">' +
+      '<div class="photos-quota">' +
+      '<div class="photos-quota-track" id="photos-quota-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Photo storage used">' +
+      '<span class="photos-quota-fill" id="photos-quota-fill"></span>' +
+      '</div>' +
+      '<div class="photo-meta" id="photos-quota-text">Checking storage\u2026</div>' +
+      '</div>' +
+      '<button class="btn btn-g btn-s is-hide" id="photos-add-btn" type="button">Add photo</button>' +
+      '</div>' +
+      '<form class="photos-form is-hide" id="photos-form" novalidate>' +
+      '<input type="file" id="photos-upload-input" accept="image/jpeg,image/png,image/webp,image/gif,image/avif">' +
+      '<div class="photos-form-actions">' +
+      '<button class="btn btn-n btn-s" id="photos-pick-btn" type="button">Choose photo</button>' +
+      '<span class="photo-meta" id="photos-file-name">No photo chosen</span>' +
+      '</div>' +
+      '<input class="in" type="text" id="photos-caption-input" maxlength="200" placeholder="Description (what and where)" aria-label="Photo description">' +
+      '<input class="in" type="date" id="photos-date-input" aria-label="Date taken">' +
+      '<select class="in" id="photos-stage-input" aria-label="Stage">' +
+      '<option value="">Stage (optional)</option>' +
+      '<option value="before">Before</option>' +
+      '<option value="after">After</option>' +
+      '<option value="progress">In progress</option>' +
+      '</select>' +
+      '<div class="photos-form-actions">' +
+      '<button class="btn btn-g btn-s" id="photos-submit-btn" type="submit">Upload</button>' +
+      '<button class="btn btn-n btn-s" id="photos-cancel-btn" type="button">Cancel</button>' +
+      '</div>' +
+      '</form>' +
+      '<div class="txt-sl t-xs is-hide" id="photos-note" role="status"></div>' +
+      '<div id="photos-list"></div>';
+    bind();
+    _built = true;
+    return body;
+  }
+
+  function bind() {
+    var addBtn = $('photos-add-btn');
+    var form = $('photos-form');
+    var pick = $('photos-pick-btn');
+    var input = $('photos-upload-input');
+    var cancel = $('photos-cancel-btn');
+    var list = $('photos-list');
+
+    if (addBtn && form) {
+      addBtn.addEventListener('click', function () {
+        form.classList.remove('is-hide');
+        addBtn.classList.add('is-hide');
+        if (input) {
+          input.focus();
+        }
+      });
+    }
+    // File inputs cannot be styled, so the visible button opens the hidden one.
+    if (pick && input) {
+      pick.addEventListener('click', function () {
+        input.click();
+      });
+      input.addEventListener('change', function () {
+        var file = input.files && input.files[0];
+        var name = $('photos-file-name');
+        if (name) {
+          name.textContent = file
+            ? file.name + ' (' + humanSize(file.size) + ')'
+            : 'No photo chosen';
+        }
+      });
+    }
+    if (cancel && form) {
+      cancel.addEventListener('click', function () {
+        resetForm();
+        form.classList.add('is-hide');
+        if (addBtn) {
+          addBtn.classList.remove('is-hide');
+          addBtn.focus();
+        }
+      });
+    }
+    if (form) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        submitUpload();
+      });
+    }
+    if (list) {
+      list.addEventListener('click', function (e) {
+        var t = e.target;
+        if (!t || !t.closest) {
+          return;
+        }
+        var dl = t.closest('[data-photo-download]');
+        if (dl) {
+          downloadPhoto(dl.getAttribute('data-photo-download'));
+          return;
+        }
+        var rm = t.closest('[data-photo-remove]');
+        if (rm) {
+          _confirmId = rm.getAttribute('data-photo-remove');
+          paint();
+          return;
+        }
+        var yes = t.closest('[data-photo-remove-confirm]');
+        if (yes) {
+          var id = yes.getAttribute('data-photo-remove-confirm');
+          _confirmId = '';
+          removePhoto(id);
+          return;
+        }
+        var keep = t.closest('[data-photo-keep]');
+        if (keep) {
+          _confirmId = '';
+          paint();
+        }
+      });
+    }
+  }
+
+  function resetForm() {
+    var input = $('photos-upload-input');
+    var cap = $('photos-caption-input');
+    var date = $('photos-date-input');
+    var stage = $('photos-stage-input');
+    var name = $('photos-file-name');
+    if (input) {
+      input.value = '';
+    }
+    if (cap) {
+      cap.value = '';
+    }
+    if (date) {
+      date.value = '';
+    }
+    if (stage) {
+      stage.value = '';
+    }
+    if (name) {
+      name.textContent = 'No photo chosen';
+    }
+  }
+
+  function noteHtml() {
+    if (!_note.text) {
+      return '';
+    }
+    return esc(_note.text);
+  }
+
+  function cardHtml(p) {
+    var caption = p.caption || p.filename || 'Untitled photo';
+    var stage = stageLabel(p.stage);
+    var who = p.uploadedBy || '';
+    var role = p.uploadedRole || '';
+    var meta = [];
+    if (stage) {
+      meta.push('<span class="photo-stage">' + esc(stage) + '</span>');
+    }
+    if (p.sizeBytes != null) {
+      meta.push(esc(humanSize(p.sizeBytes)));
+    }
+    if (dayOf(p)) {
+      meta.push(esc(dayOf(p)));
+    }
+    var by = who ? esc(who) + (role ? ' (' + esc(role) + ')' : '') : '';
+    var actions =
+      _confirmId === p.id
+        ? '<span class="photo-confirm">Remove this photo?</span>' +
+          '<button class="btn btn-n btn-s" type="button" data-photo-remove-confirm="' +
+          esc(p.id) +
+          '">Yes, remove</button>' +
+          '<button class="btn btn-n btn-s" type="button" data-photo-keep="' +
+          esc(p.id) +
+          '">Keep</button>'
+        : '<button class="btn btn-n btn-s" type="button" data-photo-download="' +
+          esc(p.id) +
+          '">Download</button>' +
+          (canUpload()
+            ? '<button class="btn btn-n btn-s" type="button" data-photo-remove="' +
+              esc(p.id) +
+              '">Remove</button>'
+            : '');
     return (
-      '/api/cloud/projects/' +
-      encodeURIComponent(C.pid ? C.pid() : 'default') +
-      '/photos/' +
-      encodeURIComponent(photo.id)
+      '<figure class="photo-item" data-photo="' +
+      esc(p.id) +
+      '">' +
+      '<div class="photo-thumb-link"><div class="photo-thumb" data-photo-thumb="' +
+      esc(p.id) +
+      '">' +
+      ICON +
+      '</div></div>' +
+      '<figcaption class="photo-info">' +
+      '<div class="photo-caption">' +
+      esc(caption) +
+      '</div>' +
+      (meta.length ? '<div class="photo-meta">' + meta.join(' \u00b7 ') + '</div>' : '') +
+      (by ? '<div class="photo-meta">Uploaded by ' + by + '</div>' : '') +
+      '<div class="photo-actions">' +
+      actions +
+      '</div>' +
+      '</figcaption>' +
+      '</figure>'
     );
   }
 
-  function renderPhotoList(container, opts) {
-    opts = opts || {};
-    if (!container) {
-      return;
+  function listHtml() {
+    if (_loading && _photos === null) {
+      return '<div class="photo-empty">Loading photos\u2026</div>';
     }
-    if (_loading) {
-      container.innerHTML = '<div class="sr-hint" style="margin:0">Loading photos…</div>';
-      return;
-    }
-    if (!Array.isArray(_photos) || !_photos.length) {
-      var emptyNote = opts.emptyNote || 'No photos yet.';
-      container.innerHTML = '<div class="sr-hint" style="margin:0">' + esc(emptyNote) + '</div>';
-      return;
+    if (!_photos || !_photos.length) {
+      if (!isCloudProject()) {
+        return '<div class="photo-empty">' + esc(uploadGateMessage()) + '</div>';
+      }
+      return '<div class="photo-empty">No photos yet. Add before and after shots so the record shows how the work changed.</div>';
     }
     var html = '';
     for (var i = 0; i < _photos.length; i++) {
-      var p = _photos[i];
-      var thumbUrl = photoUrlFor(p);
-      var caption = p.caption || '';
-      var uploadedBy = p.uploadedBy || '';
-      var when = p.createdAt ? p.createdAt.slice(0, 10) : '';
-      html +=
-        '<figure class="photo-item">' +
-        '<a class="photo-thumb-link" href="' +
-        esc(thumbUrl) +
-        '" target="_blank" rel="noopener">' +
-        '<div class="photo-thumb" data-photo-id="' +
-        esc(p.id) +
-        '" style="background:rgba(var(--gold-rgb),.06);border:1px solid var(--border)">' +
-        '<svg class="ico photo-placeholder-ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-image"></use></svg>' +
-        '</div>' +
-        '</a>' +
-        '<figcaption>' +
-        (caption ? '<div class="photo-caption">' + esc(caption) + '</div>' : '') +
-        (uploadedBy ? '<div class="photo-meta">' + esc(uploadedBy) + '</div>' : '') +
-        (when ? '<div class="photo-meta t-xs">' + esc(when) + '</div>' : '') +
-        '</figcaption>' +
-        '</figure>';
+      html += cardHtml(_photos[i]);
     }
-    container.innerHTML = html;
+    return html;
   }
 
-  // ---- upload ----
-
-  function uploadApiUrl() {
-    return '/api/cloud/projects/' + encodeURIComponent(C.pid ? C.pid() : 'default') + '/photos';
+  function paint() {
+    var body = scaffold();
+    if (!body) {
+      return;
+    }
+    var addBtn = $('photos-add-btn');
+    var can = canUpload() && isCloudProject();
+    if (addBtn) {
+      addBtn.classList.toggle('is-hide', !can);
+    }
+    if (!can) {
+      var form = $('photos-form');
+      if (form) {
+        form.classList.add('is-hide');
+      }
+    }
+    var bar = $('photos-quota-bar');
+    var fill = $('photos-quota-fill');
+    var text = $('photos-quota-text');
+    var pct = quotaPercent();
+    if (bar) {
+      bar.setAttribute('aria-valuenow', String(pct));
+    }
+    if (fill) {
+      fill.style.width = pct + '%';
+    }
+    if (text) {
+      text.textContent = quotaText();
+    }
+    var note = $('photos-note');
+    if (note) {
+      note.textContent = noteHtml();
+      note.classList.toggle('is-hide', !_note.text);
+      note.classList.toggle('note-warn', _note.kind === 'warn');
+    }
+    var list = $('photos-list');
+    if (list) {
+      list.innerHTML = listHtml();
+      for (var i = 0; i < (_photos || []).length; i++) {
+        loadThumb(_photos[i]);
+      }
+    }
+    var submit = $('photos-submit-btn');
+    if (submit) {
+      submit.disabled = !!_uploading;
+      submit.textContent = _uploading ? 'Uploading\u2026' : 'Upload';
+    }
   }
 
-  async function doUpload(file, caption) {
-    if (_uploading) {
-      return { ok: false, error: 'A photo is already uploading.' };
+  // Thumbnails need the credential header, so each one is fetched as a blob
+  // and shown through an object URL. Cached per photo id for the session and
+  // revoked when the photo is removed.
+  // A blob: URL from URL.createObjectURL is browser-generated, not user text,
+  // but it still goes through the DOM API rather than innerHTML so the
+  // no-unsanitized-html gate keeps its meaning for real markup.
+  function showThumb(slot, src) {
+    var img = document.createElement('img');
+    img.className = 'photo-img';
+    img.alt = '';
+    img.src = src;
+    slot.innerHTML = '';
+    slot.appendChild(img);
+  }
+
+  function loadThumb(photo) {
+    var slot = document.querySelector('[data-photo-thumb="' + photo.id + '"]');
+    if (!slot) {
+      return;
     }
+    if (_thumbs[photo.id]) {
+      showThumb(slot, _thumbs[photo.id]);
+      return;
+    }
+    var url = photoUrlFor(photo);
+    if (!url) {
+      return;
+    }
+    fetch(url, { method: 'GET', credentials: 'same-origin', headers: credHeaders(false) })
+      .then(function (res) {
+        if (!res.ok) {
+          throw new Error('HTTP ' + res.status);
+        }
+        return res.blob();
+      })
+      .then(function (blob) {
+        var obj = URL.createObjectURL(blob);
+        _thumbs[photo.id] = obj;
+        var again = document.querySelector('[data-photo-thumb="' + photo.id + '"]');
+        if (again) {
+          showThumb(again, obj);
+        }
+      })
+      .catch(function () {
+        /* the sprite placeholder stays, which is the honest state */
+      });
+  }
+
+  function forgetThumb(id) {
+    if (_thumbs[id]) {
+      try {
+        URL.revokeObjectURL(_thumbs[id]);
+      } catch (e) {
+        /* ignore */
+      }
+      delete _thumbs[id];
+    }
+  }
+
+  // ---- actions -------------------------------------------------------------
+
+  async function submitUpload() {
+    var input = $('photos-upload-input');
+    var file = input && input.files && input.files[0];
     if (!file) {
+      _note = { text: 'Choose a photo first.', kind: 'warn' };
+      paint();
       return { ok: false, error: 'No photo selected.' };
     }
-    if (!(file instanceof File)) {
-      return { ok: false, error: 'That is not a photo file.' };
-    }
-    if (file.size === 0) {
-      return { ok: false, error: 'That photo is empty.' };
-    }
     if (file.size > 8 * 1024 * 1024) {
-      return { ok: false, error: 'This photo is too large. Keep it under 8 MB.' };
+      _note = { text: 'This photo is larger than 8 MB. Resize it, then try again.', kind: 'warn' };
+      paint();
+      return { ok: false, error: 'too large' };
     }
+    var cap = $('photos-caption-input');
+    var date = $('photos-date-input');
+    var stage = $('photos-stage-input');
+    var caption = cap ? String(cap.value || '').slice(0, 200) : '';
+    var capturedAt = date ? String(date.value || '') : '';
+    var stageValue = stage ? String(stage.value || '') : '';
 
     _uploading = true;
+    _note = { text: '', kind: '' };
+    paint();
     try {
       var form = new FormData();
       form.append('file', file);
       if (caption) {
-        form.append('caption', String(caption).slice(0, 200));
+        form.append('caption', caption);
       }
-
-      var cred = C.activeCredential ? C.activeCredential() : null;
-      var headers = {};
-      if (cred && cred.header) {
-        headers[cred.header] = cred.code;
+      if (capturedAt) {
+        form.append('capturedAt', capturedAt);
       }
-
-      var res = await fetch(uploadApiUrl(), {
+      if (stageValue) {
+        form.append('stage', stageValue);
+      }
+      var res = await fetch(apiUrl(''), {
         method: 'POST',
         credentials: 'same-origin',
-        headers: headers,
+        headers: credHeaders(false),
         body: form
       });
       var data = await res.json().catch(function () {
         return {};
       });
       if (!res.ok || !data || !data.ok) {
-        var raw = (data && data.error) || '';
-        var msg =
-          raw === 'code_revoked'
-            ? 'This code was revoked , the upload was not accepted.'
-            : raw === 'project_deleted'
-              ? 'This project was deleted , so the upload was not accepted.'
-              : raw || 'Upload failed (HTTP ' + res.status + ').';
-        if (C.setStatus) {
-          C.setStatus(msg, 'err');
-        }
+        // The server owns the refusal sentence (paid plan, quota, role), and
+        // it is shown verbatim: rewriting it here is how upgrade copy drifts.
+        var msg = errorSentence(data && data.error, 'Upload failed (HTTP ' + res.status + ').');
+        _note = { text: msg, kind: 'warn' };
+        paint();
         return { ok: false, error: msg };
       }
-      if (C.setStatus) {
-        C.setStatus('Photo added.', 'ok');
+      resetForm();
+      var f = $('photos-form');
+      if (f) {
+        f.classList.add('is-hide');
       }
+      _note = { text: 'Photo added.', kind: '' };
+      await fetchPhotos();
       return { ok: true, photo: data.photo };
     } catch (e) {
       var detail = (e && (e.message || e.name || String(e))) || 'unknown';
-      var errMsg = 'Cloud is unavailable on this host (needs the Worker API). [' + detail + ']';
-      if (C.setStatus) {
-        C.setStatus(errMsg, 'err');
-      }
+      var errMsg =
+        'Cloud is unavailable on this host, so the photo was not uploaded. [' + detail + ']';
+      _note = { text: errMsg, kind: 'warn' };
+      paint();
       return { ok: false, error: errMsg };
     } finally {
       _uploading = false;
+      paint();
     }
   }
 
-  // ---- delete ----
-
-  function deleteApiUrl(photoId) {
-    return (
-      '/api/cloud/projects/' +
-      encodeURIComponent(C.pid ? C.pid() : 'default') +
-      '/photos/' +
-      encodeURIComponent(photoId) +
-      '/delete'
-    );
-  }
-
-  async function doDelete(photoId, confirmMsg) {
+  async function removePhoto(photoId) {
     if (!photoId) {
       return { ok: false, error: 'No photo selected.' };
     }
-    if (!confirmMsg) {
-      confirmMsg = 'Remove this photo from the project? This cannot be undone.';
-    }
-    if (!window.confirm(confirmMsg)) {
-      return { ok: false, error: 'cancelled' };
-    }
-    var cred = C.activeCredential ? C.activeCredential() : null;
-    var headers = { 'Content-Type': 'application/json' };
-    if (cred && cred.header) {
-      headers[cred.header] = cred.code;
-    }
-    var res = await fetch(deleteApiUrl(photoId), {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: headers
-    });
-    var data = await res.json().catch(function () {
-      return {};
-    });
-    if (!res.ok || !data || !data.ok) {
-      var raw = (data && data.error) || '';
-      var msg =
-        raw === 'code_revoked'
-          ? 'This code was revoked , the photo was not removed.'
-          : raw === 'project_deleted'
-            ? 'This project was deleted , so the photo was not removed.'
-            : raw || 'Delete failed (HTTP ' + res.status + ').';
-      if (C.setStatus) {
-        C.setStatus(msg, 'err');
+    try {
+      var res = await fetch(apiUrl('/' + encodeURIComponent(photoId) + '/delete'), {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: credHeaders(true)
+      });
+      var data = await res.json().catch(function () {
+        return {};
+      });
+      if (!res.ok || !data || !data.ok) {
+        var msg = errorSentence(
+          data && data.error,
+          'The photo was not removed (HTTP ' + res.status + ').'
+        );
+        _note = { text: msg, kind: 'warn' };
+        paint();
+        return { ok: false, error: msg };
       }
-      return { ok: false, error: msg };
+      forgetThumb(photoId);
+      if (_usage && data.photo && data.photo.sizeBytes) {
+        _usage.usedBytes = Math.max(0, Number(_usage.usedBytes) - Number(data.photo.sizeBytes));
+      }
+      _note = { text: 'Photo removed.', kind: '' };
+      await fetchPhotos();
+      return { ok: true, deleted: photoId };
+    } catch (e) {
+      var detail = (e && (e.message || e.name || String(e))) || 'unknown';
+      var errMsg =
+        'Cloud is unavailable on this host, so the photo was not removed. [' + detail + ']';
+      _note = { text: errMsg, kind: 'warn' };
+      paint();
+      return { ok: false, error: errMsg };
     }
-    if (C.setStatus) {
-      C.setStatus('Photo removed.', 'ok');
-    }
-    return { ok: true, deleted: photoId };
   }
 
-  // ---- public API ----
-
-  // Export keys follow the repo's domain-prefixed convention for extracted
-  // cloud sub-modules (cloudReviewList, webhookList, ...): the key names match
-  // the delegating wrappers in js/mmgr-cloud.js one-for-one, which is what the
-  // export-completeness gate (tools/verify-render-exports.cjs) checks.
-  ns.CloudPhotos = {
-    cloudPhotosIsCloudProject: isCloudProject,
-    cloudPhotosCanUpload: canUpload,
-    cloudPhotosUploadGateMessage: uploadGateMessage,
-    cloudPhotosFetchPhotos: fetchPhotos,
-    cloudPhotosRenderPhotoList: renderPhotoList,
-    cloudPhotosDoUpload: doUpload,
-    cloudPhotosDoDelete: doDelete,
-    cloudPhotosHumanSize: humanSize,
-    cloudPhotosPhotoUrlFor: photoUrlFor,
-    cloudPhotosPhotosUrl: photosApiUrl,
-    cloudPhotosUploadUrl: uploadApiUrl,
-    cloudPhotosGetPhotos: function () {
-      return _photos;
-    },
-    // Paint-the-panel entry the cloud module calls after it renders. Kept on
-    // the same object so a photos re-render needs no second lookup path.
-    _renderPhotosPanel: function () {
-      renderPhotosPanel();
+  // Download goes through fetch + blob so the credential header rides along
+  // (a plain link cannot send it) and the filename is the server's.
+  async function downloadPhoto(photoId) {
+    var photo = null;
+    for (var i = 0; i < (_photos || []).length; i++) {
+      if (_photos[i].id === photoId) {
+        photo = _photos[i];
+      }
     }
-  };
-
-  function photoBody() {
-    if (!C.pid) {
+    if (!photo) {
       return;
     }
-    var body = $('photos-body');
-    if (!body) {
-      return;
+    try {
+      var res = await fetch(photoUrlFor(photo) + '?download=1', {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: credHeaders(false)
+      });
+      if (!res.ok) {
+        throw new Error('HTTP ' + res.status);
+      }
+      var blob = await res.blob();
+      var obj = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = obj;
+      a.download = photo.filename || 'photo.jpg';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () {
+        URL.revokeObjectURL(obj);
+      }, 4000);
+      _note = { text: 'Downloading ' + (photo.filename || 'photo') + '.', kind: '' };
+      paint();
+    } catch (e) {
+      _note = { text: 'The download failed. Check the connection and try again.', kind: 'warn' };
+      paint();
     }
-    if (body.classList.contains('is-hide') && !body.dataset.photosRendered) {
-      return;
-    }
-    renderPhotosPanel();
   }
+
+  // ---- section entry -------------------------------------------------------
+
   function renderPhotosPanel() {
     var body = $('photos-body');
     if (!body) {
       return;
     }
-    renderPhotoList(body);
+    scaffold();
+    // The cloud module also calls this at boot. Painting then is harmless and
+    // keeps the section ready, but fetching is not: no network for a panel
+    // nobody opened. Only an active Photos panel (or an explicit refresh)
+    // reads the list.
+    var panel = $('panel-photos');
+    if (!panel || !panel.classList.contains('active')) {
+      paint();
+      return;
+    }
+    if (!isCloudProject()) {
+      _photos = _photos || [];
+      _canUpload = false;
+      paint();
+      return;
+    }
+    if (_photos === null) {
+      // First open: paint the shell, then fill it. The nav switch must not
+      // wait on the network.
+      paint();
+      fetchPhotos();
+      return;
+    }
+    // Re-entering the section re-reads the list: another device may have
+    // added or removed photos since the last visit.
+    fetchPhotos();
   }
-  function enableUploadAffordance() {
-    if (!C.pid) {
-      return;
-    }
-    var uploadRow = $('photos-upload-row');
-    if (!uploadRow) {
-      return;
-    }
-    var gate = uploadGateMessage();
-    var blocked = !C.isSessionOwner && !C.canUpload();
-    uploadRow.classList.toggle('is-hide', blocked);
-    var note = $('photos-upload-note');
-    if (note) {
-      note.textContent = gate;
-    }
-    var btn = $('photos-upload-btn');
-    if (btn) {
-      btn.disabled = !!blocked;
-      btn.setAttribute('aria-disabled', blocked ? 'true' : 'false');
-    }
-  }
-  function onSectionShow() {
-    if (!C.pid) {
-      return;
-    }
-    if (event && event.sections && event.sections.indexOf('photos') === -1) {
-      return;
-    }
-    if (event && event.sections && event.sections.indexOf('photos') !== -1) {
-      var wrap = $('photos-wrap');
-      if (wrap) {
-        wrap.classList.remove('is-hide');
-        enableUploadAffordance();
-      }
-      photoBody();
-    }
-  }
-  function bootPhotos() {
-    if (!C.pid) {
-      return;
-    }
-    if (document.activeElement && document.activeElement.id === 'photos-upload-input') {
-      return;
-    }
-    var wrap = $('photos-wrap');
-    if (!wrap) {
-      return;
-    }
-    var active = $('sec-photos') && $('sec-photos').classList.contains('active');
-    if (active) {
-      wrap.classList.remove('is-hide');
-      enableUploadAffordance();
-    }
-    photoBody();
-  }
-  function _bindLiveUpload() {
-    var input = $('photos-upload-input');
-    var btn = $('photos-upload-btn');
-    if (!input || !btn) {
-      return;
-    }
-    input.addEventListener('change', function (e) {
-      var file = e.target.files && e.target.files[0];
-      if (!file) {
-        return;
-      }
-      var cap = $('photos-caption-input');
-      var caption = cap ? String(cap.value || '').slice(0, 200) : '';
-      doUpload(file, caption).then(function (r) {
-        if (r.ok) {
-          $('photos-upload-input').value = '';
-          $('photos-caption-input').value = '';
-          fetchPhotos();
-          renderPhotosPanel();
-          enableUploadAffordance();
-        } else if (r.error) {
-          if (C.setStatus) {
-            C.setStatus(r.error, 'err');
-          }
-        }
-      });
-    });
-    btn.addEventListener('click', function () {
-      input.focus();
-      input.click();
-    });
-    // AUDIT 2026-10-22: the Card's Cancel button carried
-    // data-action="photos-cancel", and NOTHING anywhere answered it - the
-    // dispatcher only runs actions that exist in ACTION_MAP and silently
-    // ignores the rest, so the button did nothing at all since the panel
-    // shipped (git log -S photos-cancel: one commit, no handler). It now drops
-    // the picked file and the typed caption and returns the caret to the
-    // start control, which is exactly what it reads as.
-    var cancel = $('photos-cancel-btn');
-    if (cancel) {
-      cancel.addEventListener('click', function () {
-        input.value = '';
-        var cap = $('photos-caption-input');
-        if (cap) {
-          cap.value = '';
-        }
-        var note = $('photos-upload-note');
-        if (note) {
-          note.textContent = '';
-        }
-        btn.focus();
-      });
-    }
-  }
-  function _boot() {
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', function () {
-        if (C && C.pid) {
-          bootPhotos();
-          _bindLiveUpload();
-          document.addEventListener('mmgr:sections-changed', onSectionShow);
-        }
-      });
-    } else {
-      if (C && C.pid) {
-        bootPhotos();
-        _bindLiveUpload();
-        document.addEventListener('mmgr:sections-changed', onSectionShow);
-      }
-    }
-  }
-  _boot();
 
-  // Keep the photos panel fresh after a cloud render cycle. Boot already
-  // ran above; this is a no-op if the panel is already up to date.
-  try {
-    MMGR.Cloud._renderPhotosPanel();
-  } catch (e) {
-    /* guard */
-  }
+  // ---- public API ----------------------------------------------------------
+
+  ns.CloudPhotos = {
+    cloudPhotosIsCloudProject: isCloudProject,
+    cloudPhotosCanUpload: canUpload,
+    cloudPhotosUploadGateMessage: uploadGateMessage,
+    cloudPhotosFetchPhotos: fetchPhotos,
+    cloudPhotosRenderPhotoList: function (container, opts) {
+      if (!container) {
+        return null;
+      }
+      var empty = opts && opts.emptyNote;
+      container.innerHTML = empty && !(_photos || []).length ? esc(empty) : listHtml();
+      return container;
+    },
+    cloudPhotosDoUpload: function (file, caption) {
+      var cap = $('photos-caption-input');
+      if (cap) {
+        cap.value = caption || '';
+      }
+      var input = $('photos-upload-input');
+      if (input && file) {
+        try {
+          var dt = new DataTransfer();
+          dt.items.add(file);
+          input.files = dt.files;
+        } catch (e) {
+          /* older browsers: caller must use the form */
+        }
+      }
+      return submitUpload();
+    },
+    cloudPhotosDoDelete: removePhoto,
+    cloudPhotosHumanSize: humanSize,
+    cloudPhotosPhotoUrlFor: photoUrlFor,
+    cloudPhotosPhotosUrl: function () {
+      return apiUrl('');
+    },
+    cloudPhotosUploadUrl: function () {
+      return apiUrl('');
+    },
+    cloudPhotosGetPhotos: function () {
+      return _photos || [];
+    },
+    _renderPhotosPanel: renderPhotosPanel
+  };
 })(MMGR);

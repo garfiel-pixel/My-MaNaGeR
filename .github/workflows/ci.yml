@@ -738,6 +738,12 @@ jobs:
         env:
           QA_PORT: 8809
 
+      - name: "T3: Project Photos browser half (panel, uploader identity, stage, upload, download, delete, view read-only)"
+        id: qa-project-photos
+        run: node tools/qa-project-photos.cjs
+        env:
+          QA_PORT: 8815
+
       - name: Job summary (cloud-auth)
         if: always()
         run: |

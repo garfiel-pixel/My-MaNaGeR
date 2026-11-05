@@ -394,3 +394,22 @@ SESSION START STATE
 - Next action: run the increment-1 checks and mark Wave 1/3 as completed
   in this plan, then move to Wave 5
 
+
+--------------------------------------------------------------------------------
+WAVE 5.7 — PROJECT PHOTOS (completed 2026-11-05)
+--------------------------------------------------------------------------------
+- Feature: src/cloud/photos.js, src/router.js, migration 0031, js/cloud/photos-ui.js
+  rewrite, section wiring, CSS, project.html cleanup, sw.js -> mmgr-shell-v536.
+- Bug fixed during the gate: photos panel called public cloud names (C.pid,
+  C.activeCredential, C.hasCloudLink) that mmgr-cloud.js only exports with an
+  underscore. Repointed to C._pid / C._activeCredential / C._hasCloudLink so the
+  panel stops reporting "not linked to the cloud". This bug would have made the
+  whole Photos feature look dead in the browser.
+- Gates: tools/qa-project-photos.cjs 13/13 (browser, own wrangler, T3 in
+  cloud-auth) + tools/qa-cloud-photos.cjs 19/19 (API, cloud-core). Free-account
+  402 arm is a documented SKIP (billing dormant without Paddle secrets); the
+  upgrade sentence is pinned by test/photo-tier.test.mjs.
+- CI: qa-cloud-photos.cjs already in cloud-core; qa-project-photos.cjs added to
+  cloud-auth T3 section; registry rows updated; verify-test-registry + 
+  verify-ci-coverage green.
+- Commit: plain Conventional Commit (feat(photos): ...), no AI attribution.

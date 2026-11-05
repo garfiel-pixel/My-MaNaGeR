@@ -1750,8 +1750,25 @@ var MMGR = window.MMGR || {};
     dmaic: renderDmaic,
     meet: renderMeetingsPanel,
     charter: renderCharter,
-    claim: renderClaimPanel
+    claim: renderClaimPanel,
+    photos: renderPhotosPanel
   };
+
+  // Project Photos panel (B11, 5.7). The panel's DOM, quota bar and upload
+  // form all belong to js/cloud/photos-ui.js, which needs the cloud module;
+  // without it (offline page with no cloud module) the section explains
+  // itself instead of rendering an empty box.
+  function renderPhotosPanel() {
+    if (ns.CloudPhotos && ns.CloudPhotos._renderPhotosPanel) {
+      ns.CloudPhotos._renderPhotosPanel();
+      return;
+    }
+    const body = $('photos-body');
+    if (body && !body.childNodes.length) {
+      body.innerHTML =
+        '<div class="photo-empty">Photos live in the cloud. Sign in or open this project with a code, then link it from Cloud Backup.</div>';
+    }
+  }
 
   // Definitions glossary (data + render live in js/mmgr-defs.js).
   function renderDefs() {

@@ -38,6 +38,17 @@ import { billingConfigured, billingStatusActive } from '../billing.js';
 const PHOTO_R2_PREFIX = 'photos/';
 const MAX_PHOTO_BYTES = 8 * 1024 * 1024; // 8 MB per photo
 const MAX_PHOTOS_PER_PROJECT = 200; // soft cap, enforced at upload
+
+// B11 (5.7): 500 MB per ACCOUNT, not per project. The account is the paying
+// identity the photos are billed against: the project owner's google_sub when
+// the project came from a signed-in account, and the project itself when it
+// did not (a code-created project has no account to sum). Summing per project
+// would let one account fill R2 through project after project, which is
+// exactly the hole the paid gate exists to close.
+const PHOTO_ACCOUNT_QUOTA_BYTES = 500 * 1024 * 1024;
+const PHOTO_STAGES = new Set(['', 'before', 'after', 'progress']);
+const PHOTO_UPGRADE_SENTENCE =
+  'Project photos are part of every paid plan, Estimator included. Upgrade to add photos to this project.';
 const ALLOWED_CONTENT_TYPES = new Set([
   'image/jpeg',
   'image/png',
@@ -70,6 +81,22 @@ function photoR2Key(projectId, photoId, ext) {
 
 function rolesWithUpload(role) {
   return role === 'owner' || role === 'editor';
+}
+
+// Human-readable uploader identity, stored as name + role (B11: "uploader
+// identity (name and role of whoever uploaded, including a scoped editor
+// code's name)"). The label is the name the credential carries: a code's own
+// label, the signed-in account's Google name, or the project owner's label.
+function uploaderIdentity(access, proj) {
+  const role = access.role === 'owner' ? 'Owner' : 'Editor';
+  let name = String(access.label || '').trim();
+  if (!name && access.role === 'owner' && proj) {
+    name = String(proj.google_name || proj.owner_label || '').trim();
+  }
+  if (!name) {
+    name = role;
+  }
+  return { name: name.slice(0, 120), role: role };
 }
 
 function rolesWithView(role) {
@@ -131,6 +158,39 @@ async function photoUploadPaid(env, proj, request) {
     }
   }
   return false;
+}
+
+// ---- quota ---------------------------------------------------------------
+// Used bytes for the ACCOUNT that pays for this project's photos. One query
+// either way: joined on google_sub when the project has one, scoped to the
+// project when it does not. Deleted photos stop counting the moment they are
+// soft-deleted, because the row is what the bar and the cap read.
+async function photoUsage(env, proj, projectId) {
+  const subject = proj && proj.google_sub ? String(proj.google_sub) : '';
+  let row = null;
+  if (subject) {
+    row = await env.DB.prepare(
+      'SELECT COALESCE(SUM(p.size_bytes),0) AS used, COUNT(*) AS photos FROM cloud_project_photos p JOIN cloud_projects c ON c.project_id = p.project_id WHERE p.deleted_at IS NULL AND c.google_sub = ?'
+    )
+      .bind(subject)
+      .first();
+  } else {
+    row = await env.DB.prepare(
+      'SELECT COALESCE(SUM(size_bytes),0) AS used, COUNT(*) AS photos FROM cloud_project_photos WHERE project_id = ? AND deleted_at IS NULL'
+    )
+      .bind(projectId)
+      .first();
+  }
+  const usedBytes = Number(row && row.used) || 0;
+  const photos = Number(row && row.photos) || 0;
+  const limitBytes = PHOTO_ACCOUNT_QUOTA_BYTES;
+  return {
+    usedBytes: usedBytes,
+    limitBytes: limitBytes,
+    remainingBytes: Math.max(0, limitBytes - usedBytes),
+    photos: photos,
+    accountScoped: !!subject
+  };
 }
 
 // ---- helpers: project row + auth resolution (mirrors handleCloudMeta) ----
@@ -317,7 +377,7 @@ export async function handlePhotoUpload(request, env, projectId) {
         ok: false,
         code: 'upgrade_required',
         upgrade: true,
-        error: 'photos are part of a paid plan - upgrade to add photos to this project'
+        error: PHOTO_UPGRADE_SENTENCE
       },
       402
     );
@@ -371,7 +431,25 @@ export async function handlePhotoUpload(request, env, projectId) {
     return json(
       {
         ok: false,
-        error: 'this project already has the most photos it can hold — delete an older photo first'
+        error: 'this project already has the most photos it can hold , delete an older photo first'
+      },
+      413
+    );
+  }
+
+  // B11 quota: 500 MB per account. Checked BEFORE the metadata row and the R2
+  // write, so a refused upload leaves neither behind. The numbers travel with
+  // the refusal so the panel can paint the bar it already shows at the truth.
+  const usage = await photoUsage(env, proj, projectId);
+  if (usage.usedBytes + file.size > usage.limitBytes) {
+    return json(
+      {
+        ok: false,
+        code: 'quota_exceeded',
+        upgrade: true,
+        error:
+          'this account has used its 500 MB of photo storage , delete a photo to free space, or upgrade for more',
+        usage: usage
       },
       413
     );
@@ -382,8 +460,19 @@ export async function handlePhotoUpload(request, env, projectId) {
   const caption = String(formData.get('caption') || '')
     .slice(0, 200)
     .trim();
-  const capturedAt = String(formData.get('capturedAt') || '').trim();
-  const uploadedBy = access.label || (access.role === 'owner' ? 'Owner' : 'Editor');
+  const capturedAt = String(formData.get('capturedAt') || '')
+    .slice(0, 32)
+    .trim();
+  const stageRaw = String(formData.get('stage') || '')
+    .trim()
+    .toLowerCase();
+  const stage = PHOTO_STAGES.has(stageRaw) ? stageRaw : '';
+  // Name AND role, both resolved server-side: the browser is never trusted to
+  // say who uploaded a photo, and a scoped editor code's label is the only
+  // name that code has.
+  const who = uploaderIdentity(access, proj);
+  const uploadedBy = who.name;
+  const uploadedRole = who.role;
 
   // Persist metadata first, then the blob. If the blob write fails we leave a
   // dangling metadata row; the list path hides deleted_at rows and a delete path
@@ -400,7 +489,7 @@ export async function handlePhotoUpload(request, env, projectId) {
   let metaId;
   try {
     const ins = await env.DB.prepare(
-      'INSERT INTO cloud_project_photos (project_id, photo_id, filename, caption, captured_at, uploaded_by, content_type, size_bytes, sort_order, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)'
+      'INSERT INTO cloud_project_photos (project_id, photo_id, filename, caption, captured_at, uploaded_by, uploaded_role, stage, content_type, size_bytes, sort_order, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
     )
       .bind(
         projectId,
@@ -409,6 +498,8 @@ export async function handlePhotoUpload(request, env, projectId) {
         caption,
         capturedAt,
         uploadedBy,
+        uploadedRole,
+        stage,
         type,
         file.size,
         sortOrder,
@@ -438,7 +529,7 @@ export async function handlePhotoUpload(request, env, projectId) {
   }
 
   const meta = await env.DB.prepare(
-    'SELECT id, photo_id, filename, caption, captured_at, uploaded_by, content_type, size_bytes, sort_order, created_at FROM cloud_project_photos WHERE id = ?'
+    'SELECT id, photo_id, filename, caption, captured_at, uploaded_by, uploaded_role, stage, content_type, size_bytes, sort_order, created_at FROM cloud_project_photos WHERE id = ?'
   )
     .bind(metaId)
     .first();
@@ -451,11 +542,14 @@ export async function handlePhotoUpload(request, env, projectId) {
       caption: meta.caption,
       capturedAt: meta.captured_at,
       uploadedBy: meta.uploaded_by,
+      uploadedRole: meta.uploaded_role,
+      stage: meta.stage,
       contentType: meta.content_type,
       sizeBytes: meta.size_bytes,
       sortOrder: meta.sort_order,
       createdAt: meta.created_at
-    }
+    },
+    usage: await photoUsage(env, proj, projectId)
   });
 }
 
@@ -503,7 +597,7 @@ export async function handlePhotoList(request, env, projectId) {
   }
 
   const rows = await env.DB.prepare(
-    'SELECT id, photo_id, filename, caption, captured_at, uploaded_by, content_type, size_bytes, sort_order, created_at FROM cloud_project_photos WHERE project_id = ? AND deleted_at IS NULL ORDER BY sort_order DESC, created_at DESC'
+    'SELECT id, photo_id, filename, caption, captured_at, uploaded_by, uploaded_role, stage, content_type, size_bytes, sort_order, created_at FROM cloud_project_photos WHERE project_id = ? AND deleted_at IS NULL ORDER BY sort_order DESC, created_at DESC'
   )
     .bind(projectId)
     .all();
@@ -515,6 +609,8 @@ export async function handlePhotoList(request, env, projectId) {
       caption: r.caption,
       capturedAt: r.captured_at,
       uploadedBy: r.uploaded_by,
+      uploadedRole: r.uploaded_role || '',
+      stage: r.stage || '',
       contentType: r.content_type,
       sizeBytes: r.size_bytes,
       sortOrder: r.sort_order,
@@ -527,7 +623,51 @@ export async function handlePhotoList(request, env, projectId) {
     };
   });
 
-  return json({ ok: true, photos: photos, role: access.role });
+  // The panel needs the quota bar on the same round trip as the list: one
+  // request per render, and the bar can never disagree with the rows it sits
+  // above. canUpload mirrors the server's own role rule so the button is never
+  // offered to a role the upload path would refuse.
+  return json({
+    ok: true,
+    photos: photos,
+    role: access.role,
+    canUpload: rolesWithUpload(access.role),
+    usage: await photoUsage(env, proj, projectId)
+  });
+}
+
+// ---- usage (quota bar; no rows, no blob reads) ----
+
+export async function handlePhotoUsage(request, env, projectId) {
+  const proj = await projectRow(env, projectId);
+  if (!proj) {
+    return cloudForbidden();
+  }
+  if (proj.deleted_at) {
+    return cloudProjectDeleted();
+  }
+
+  const access = await resolvePhotoAccess(request, env, projectId);
+  if (!access.ok) {
+    if (access.ok === 'expired') {
+      return json({ ok: false, error: 'code_expired', expiresAt: access.expiresAt }, 403);
+    }
+    if (access.ok === 'revoked' || access.ok === 'deleted') {
+      return cloudForbidden();
+    }
+    await cloudTimingSink();
+    return cloudForbidden();
+  }
+  if (!rolesWithView(access.role)) {
+    return json({ ok: false, error: 'you do not have access to this project\u2019s photos' }, 403);
+  }
+
+  return json({
+    ok: true,
+    role: access.role,
+    canUpload: rolesWithUpload(access.role),
+    usage: await photoUsage(env, proj, projectId)
+  });
 }
 
 // ---- single photo (blob + metadata) ----
@@ -557,7 +697,7 @@ export async function handlePhotoGet(request, env, projectId, photoId) {
   }
 
   const meta = await env.DB.prepare(
-    'SELECT id, photo_id, filename, caption, captured_at, uploaded_by, content_type, size_bytes, sort_order, created_at FROM cloud_project_photos WHERE project_id = ? AND photo_id = ? AND deleted_at IS NULL'
+    'SELECT id, photo_id, filename, caption, captured_at, uploaded_by, uploaded_role, stage, content_type, size_bytes, sort_order, created_at FROM cloud_project_photos WHERE project_id = ? AND photo_id = ? AND deleted_at IS NULL'
   )
     .bind(projectId, photoId)
     .first();
@@ -589,13 +729,22 @@ export async function handlePhotoGet(request, env, projectId, photoId) {
     return json({ ok: false, error: 'photo not found' }, 404);
   }
 
+  // ?download=1 turns the same authorised read into a saved file. The panel's
+  // Download button cannot rely on the browser's own <a download>: a code
+  // session authenticates with a header, which a plain link cannot send, so
+  // the panel fetches the blob and saves it itself. This flag exists so the
+  // filename and disposition are the SERVER's, not the page's guess.
+  const wantsDownload = new URL(request.url).searchParams.get('download') === '1';
+  const safeName = meta.filename.replace(/"/g, '');
+
   const body = await obj.arrayBuffer();
   return new Response(body, {
     headers: {
       'Content-Type': meta.content_type,
       'Content-Length': String(meta.size_bytes),
       'Cache-Control': 'public, max-age=86400, immutable',
-      'Content-Disposition': 'inline; filename="' + meta.filename.replace(/"/g, '') + '"'
+      'Content-Disposition':
+        (wantsDownload ? 'attachment' : 'inline') + '; filename="' + safeName + '"'
     }
   });
 }
@@ -684,7 +833,7 @@ export async function handlePhotoMeta(request, env, projectId, photoId) {
   }
 
   const meta = await env.DB.prepare(
-    'SELECT id, photo_id, filename, caption, captured_at, uploaded_by, content_type, size_bytes, sort_order, created_at FROM cloud_project_photos WHERE project_id = ? AND photo_id = ? AND deleted_at IS NULL'
+    'SELECT id, photo_id, filename, caption, captured_at, uploaded_by, uploaded_role, stage, content_type, size_bytes, sort_order, created_at FROM cloud_project_photos WHERE project_id = ? AND photo_id = ? AND deleted_at IS NULL'
   )
     .bind(projectId, photoId)
     .first();
@@ -700,6 +849,8 @@ export async function handlePhotoMeta(request, env, projectId, photoId) {
       caption: meta.caption,
       capturedAt: meta.captured_at,
       uploadedBy: meta.uploaded_by,
+      uploadedRole: meta.uploaded_role || '',
+      stage: meta.stage || '',
       contentType: meta.content_type,
       sizeBytes: meta.size_bytes,
       sortOrder: meta.sort_order,

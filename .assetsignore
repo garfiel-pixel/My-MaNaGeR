@@ -77,6 +77,10 @@ build.js
 test
 mcp
 docs
+# F2 load-test evidence (load/results/*.json and *.md). The *.json and *.md
+# rules above already cover today's files; naming the directory means a future
+# .csv or .html result cannot become a public download either.
+load
 .github
 .githooks
 .freebuff

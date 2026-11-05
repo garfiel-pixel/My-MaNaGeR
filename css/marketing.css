@@ -5250,3 +5250,213 @@ html body.dark-mode .btn-gold:disabled {
     0 0 0 2px rgba(0, 0, 0, 0.25),
     0 0 0 4px rgba(212, 175, 55, 0.35);
 }
+
+/* ---------- 24. LANDING AI TOUR (C2, 2026-11-01) ----------
+   A dark console card that matches the app's own AI panel. It is a contained
+   surface inside a light band, so it reads as the product, not as another
+   marketing tile. The module that fills it is loaded lazily; the static
+   fallback inside #landing-ai is the no-JS / no-network experience. */
+.landing-ai {
+  position: relative;
+  background: var(--header-navy);
+  color: var(--on-navy);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  min-height: 230px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+  overflow: hidden;
+}
+.landing-ai::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(var(--lit-white-04) 1px, transparent 1px);
+  background-size: 100% 44px;
+  mask-image: linear-gradient(180deg, var(--lit-black), transparent 85%);
+  -webkit-mask-image: linear-gradient(180deg, var(--lit-black), transparent 85%);
+}
+.landing-ai-fallback {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 18px 4px;
+}
+.landing-ai-fallback p {
+  margin: 0;
+  color: rgba(248, 250, 252, 0.78);
+}
+.lai {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.lai-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.lai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.lai-badge .ico {
+  width: 16px;
+  height: 16px;
+}
+.lai-status {
+  margin: 0;
+  font-size: 0.82rem;
+  color: rgba(248, 250, 252, 0.7);
+}
+.lai-log {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 4px 2px;
+}
+.lai-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: 92%;
+}
+.lai-msg.user {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+.lai-who {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.5);
+}
+.lai-text {
+  font-size: 0.92rem;
+  line-height: 1.5;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.07);
+  border: 1px solid rgba(248, 250, 252, 0.1);
+}
+.lai-msg.user .lai-text {
+  background: color-mix(in srgb, var(--gold) 20%, transparent);
+  border-color: color-mix(in srgb, var(--gold) 36%, transparent);
+}
+.lai-note {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  padding: 8px 11px;
+  border-radius: 10px;
+  color: rgba(248, 250, 252, 0.82);
+  background: rgba(248, 250, 252, 0.05);
+  border-left: 2px solid var(--gold);
+}
+.lai-note.bad {
+  border-left-color: #e0a23a;
+  background: rgba(224, 162, 58, 0.1);
+}
+.lai-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.lai-q {
+  flex: 1 0 100%;
+  margin: 0 0 2px;
+  font-size: 0.82rem;
+  color: rgba(248, 250, 252, 0.7);
+}
+.lai-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.82rem;
+  line-height: 1.2;
+  color: var(--on-navy);
+  background: rgba(248, 250, 252, 0.08);
+  border: 1px solid rgba(248, 250, 252, 0.18);
+  cursor: pointer;
+  text-decoration: none;
+}
+.lai-chip:hover {
+  border-color: color-mix(in srgb, var(--gold) 60%, transparent);
+  background: color-mix(in srgb, var(--gold) 14%, transparent);
+}
+.lai-chip:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.lai-chip-go {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #1c1917;
+  font-weight: 700;
+}
+.lai-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lai-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 10px 13px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--on-navy);
+  background: rgba(248, 250, 252, 0.08);
+  border: 1px solid rgba(248, 250, 252, 0.2);
+}
+.lai-input::placeholder {
+  color: rgba(248, 250, 252, 0.55);
+}
+.lai-input:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+}
+.lai-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.lai-send {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+}
+.lai-send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+@media (max-width: 560px) {
+  .landing-ai {
+    padding: 16px;
+  }
+  .lai-msg {
+    max-width: 100%;
+  }
+}

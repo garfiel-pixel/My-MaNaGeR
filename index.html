@@ -404,6 +404,29 @@
     </div>
   </section>
 
+  <!-- ===================== TRY THE AI (C2) ===================== -->
+  <section class="section slide" id="try-ai">
+    <div class="container">
+      <div class="section-head">
+        <h2>Try the AI before you sign up</h2>
+        <p>Ask what the workspace does, where your data stays, or whether it fits how you already work. The tour needs no account and no key.</p>
+      </div>
+      <!-- C2 (2026-11-01): the landing assistant is lazy. Its module is injected
+           only when this section nears the viewport or the visitor acts, so it
+           never competes with the hero for first paint. If the module cannot
+           load at all, the fallback below is the whole experience: open the app. -->
+      <div class="landing-ai" id="landing-ai" data-lai-phase="idle">
+        <div class="landing-ai-fallback">
+          <p>The assistant loads when you reach this section.</p>
+          <a class="btn btn-gold btn-sm" href="app.html">
+            Open the app
+            <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ===================== YOUR DATA, YOUR TERMS ===================== -->
   <section class="section section-alt slide" id="data">
     <div class="container">

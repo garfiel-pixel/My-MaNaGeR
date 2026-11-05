@@ -192,6 +192,11 @@ const MARKETING_MODULES = [
 // ---- Hero globe bundle (index.html only, loaded after window load) ----
 const GLOBE_MODULES = ['js/marketing-globe.js'];
 
+// ---- Landing AI tour bundle (C2; index.html only, loaded LAZILY when the
+// #try-ai section nears the viewport or the visitor acts, so it never competes
+// with the hero for first paint or LCP) ----
+const MARKETING_AI_MODULES = ['js/marketing-ai.js'];
+
 // ---- app.html bundle (launcher / project list) ----
 const APP_LAUNCHER_MODULES = [
   'projects-data.js',
@@ -409,6 +414,11 @@ if (buildMkt) {
 if (buildGlobe) {
   buildBundle(GLOBE_MODULES, 'dist/marketing-globe.js', 'marketing globe bundle');
 }
+// C2: the landing AI tour is its own lazily-loaded bundle, built with the
+// marketing set so a `--marketing` build always produces it.
+if (buildMkt) {
+  buildBundle(MARKETING_AI_MODULES, 'dist/marketing-ai.js', 'marketing AI bundle');
+}
 if (buildCss) {
   bundleAppCSS();
   buildCSS('css/mmgr.css', 'dist/mmgr.min.css', 'app CSS');
@@ -434,6 +444,8 @@ if (buildAdmin) {
 if (buildMkt) {
   manifest['marketing-bundle.js'] =
     'marketing-bundle.' + contentHash(path.join(DIST, 'marketing-bundle.js')) + '.js';
+  manifest['marketing-ai.js'] =
+    'marketing-ai.' + contentHash(path.join(DIST, 'marketing-ai.js')) + '.js';
 }
 if (buildGlobe) {
   manifest['marketing-globe.js'] =

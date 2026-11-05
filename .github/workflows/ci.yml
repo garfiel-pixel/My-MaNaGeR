@@ -1140,6 +1140,10 @@ jobs:
         id: qa-band-seam
         run: node tools/qa-band-seam.cjs
 
+      - name: "T4: Landing AI is lazy, waits, answers, offline fallback (qa-landing-ai)"
+        id: qa-landing-ai
+        run: node tools/qa-landing-ai.cjs
+
       - name: "T4: Finish-target and expiry notices (qa-notice-watchers)"
         id: qa-notice-watchers
         run: node tools/qa-notice-watchers.cjs

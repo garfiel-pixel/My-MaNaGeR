@@ -515,7 +515,11 @@
 // v539 - C1 BAND SEAM (audit 2026-11-01): six themeable, static
 // band-transition seams between the landing bands in index.html, styled in
 // css/marketing.css. Changed shell assets: index.html, dist/marketing.min.css.
-const CACHE = 'mmgr-shell-v539';
+// v540 - C2 LANDING AI (audit 2026-11-01): a lazy "Try the AI" section in
+// index.html, its loader in js/marketing.js and the new js/marketing-ai.js
+// bundle (loaded only near the viewport). Changed shell assets: index.html,
+// dist/marketing-bundle.js, dist/marketing.min.css.
+const CACHE = 'mmgr-shell-v540';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

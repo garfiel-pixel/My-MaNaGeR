@@ -146,14 +146,19 @@ const bodyOf = (rel, re) => {
   const m = re.exec(src);
   return m ? { from: m.index, to: m.index + m[0].length } : null;
 };
-const icoBody = bodyOf(ICO_FILE, /function ico\([^)]*\)\s*\{[\s\S]{0,300}?\}/);
+const icoBody = bodyOf(ICO_FILE, /function ico\([^)]*\)\s*\{[\s\S]{0,500}?\}/);
 const AIICON_FILE = 'js/mmgr-ai.js';
 const aiIconBody = bodyOf(AIICON_FILE, /function aiIcon\([^)]*\)\s*\{[\s\S]{0,300}?\}/);
+// C2 (audit 2026-11-01): the landing assistant builds the same '#i-' href with
+// its own ico(name) helper (DOM-built SVG, not innerHTML). Verified below.
+const MKT_ICO_FILE = 'js/marketing-ai.js';
+const mktIcoBody = bodyOf(MKT_ICO_FILE, /function ico\([^)]*\)\s*\{[\s\S]{0,500}?\}/);
 // True when index lands inside a verified helper's own body in file f.
 const inVerifiedHelper = (f, idx) =>
   [
     { file: ICO_FILE, body: icoBody },
-    { file: AIICON_FILE, body: aiIconBody }
+    { file: AIICON_FILE, body: aiIconBody },
+    { file: MKT_ICO_FILE, body: mktIcoBody }
   ].some(h => h.file === f && h.body && idx >= h.body.from && idx <= h.body.to);
 
 // ---- ARM 1: literal references ---------------------------------------------
@@ -294,7 +299,7 @@ const ternaryRe = /^(.+?)\s*\?\s*['"]([^'"]*)['"]\s*:\s*['"]([^'"]*)['"]$/;
 {
   const rel = 'js/calc-ai.js';
   const t = fs.readFileSync(path.join(ROOT, rel), 'utf8');
-  const body = /function ico\([^)]*\)\s*\{[\s\S]{0,300}?\}/.exec(t);
+  const body = /function ico\([^)]*\)\s*\{[\s\S]{0,500}?\}/.exec(t);
   if (!body) {
     fail(rel + ': ico() helper not found - pattern drifted, update verify-icons.cjs');
   } else if (!body[0].includes('#i-')) {
@@ -351,6 +356,59 @@ const ternaryRe = /^(.+?)\s*\?\s*['"]([^'"]*)['"]\s*:\s*['"]([^'"]*)['"]$/;
           ' call sites, ' +
           ok +
           ' literal icon names all exist'
+      );
+  }
+}
+
+// ico(name) in js/marketing-ai.js (C2) - the landing assistant builds its
+// SVG via DOM and prefixes '#i-' from this helper. Same rule: only literal
+// (or literal-ternary) names can be verified.
+{
+  const rel = MKT_ICO_FILE;
+  const t = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+  const body = /function ico\([^)]*\)\s*\{[\s\S]{0,500}?\}/.exec(t);
+  if (!body) {
+    fail(rel + ': ico() helper not found - pattern drifted, update verify-icons.cjs');
+  } else if (!body[0].includes('#i-')) {
+    fail(rel + ': ico() no longer prefixes "#i-" - update the prefix assumption in this gate');
+  } else {
+    const calls = extractCalls(t, 'ico');
+    if (calls.length < 2) {
+      fail(rel + ': only ' + calls.length + ' ico() call sites extracted (expected >= 2)');
+    }
+    let ok = 0;
+    for (const c of calls) {
+      const arg = c.args[0] === undefined ? '' : c.args[0];
+      let names = null;
+      if (isSingleLiteral(arg)) {
+        names = quoted(arg);
+      } else {
+        const tm = ternaryRe.exec(arg);
+        if (tm && !/[$()[\]{}]/.test(tm[1])) names = [tm[2], tm[3]];
+      }
+      if (!names) {
+        fail(
+          rel +
+            ' @' +
+            c.line +
+            ': non-literal ico() argument (' +
+            arg.trim().slice(0, 60) +
+            ') - make the icon name a literal or extend verify-icons.cjs'
+        );
+        continue;
+      }
+      for (const n of names) {
+        const id = 'i-' + n;
+        if (!spriteSymbols.has(id)) {
+          fail(rel + ' @' + c.line + ": ico('" + n + "') -> #" + id + ' has no <symbol> in ' + SPRITE);
+        } else {
+          ok++;
+        }
+      }
+    }
+    if (ok)
+      pass(
+        'ico() in ' + rel + ': ' + calls.length + ' call sites, ' + ok + ' literal icon names all exist'
       );
   }
 }

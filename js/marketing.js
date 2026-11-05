@@ -1772,6 +1772,53 @@
   })();
 
   /* ORDER MATTERS: Paddle must initialise (and read ?_ptxn=) before anything else touches the URL. */
+  /* ---- C2 landing assistant: lazy loader ----
+     Nothing heavy loads until the visitor reaches the section or acts. This
+     block only watches #try-ai and injects the assistant module on proximity
+     or the first pointer/focus inside it, so the hero stays the LCP. */
+  (function () {
+    var mount = document.getElementById('landing-ai');
+    if (!mount) {
+      return;
+    }
+    var loaded = false;
+    function load() {
+      if (loaded) {
+        return;
+      }
+      loaded = true;
+      var s = document.createElement('script');
+      s.src = 'dist/marketing-ai.js';
+      s.async = true;
+      s.onerror = function () {
+        var t = document.createElement('script');
+        t.src = 'js/marketing-ai.js';
+        t.async = true;
+        document.body.appendChild(t);
+      };
+      document.body.appendChild(s);
+    }
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(
+        function (entries) {
+          for (var i = 0; i < entries.length; i++) {
+            if (entries[i].isIntersecting) {
+              io.disconnect();
+              load();
+              return;
+            }
+          }
+        },
+        { rootMargin: '300px 0px' }
+      );
+      io.observe(mount);
+    } else {
+      load();
+    }
+    mount.addEventListener('pointerdown', load, { once: true });
+    mount.addEventListener('focusin', load, { once: true });
+  })();
+
   initPaddleWhenReady();
   handlePaddleReturn();
   wireUpgradeButtons();

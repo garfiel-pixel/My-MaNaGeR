@@ -558,7 +558,9 @@ export async function passwordIsPwned(password, env) {
     const lines = body.split(/\r\n+/);
     for (const line of lines) {
       const sep = line.indexOf(':');
-      if (sep === -1) continue;
+      if (sep === -1) {
+        continue;
+      }
       if (line.slice(0, sep).toUpperCase() === suffix) {
         return true;
       }

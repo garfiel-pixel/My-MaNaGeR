@@ -20,7 +20,8 @@
      E2  the team panel is reachable (bell present, panel opens)
      E3  a collaborator row offers the enterprise tools: Access editor
      E4  the panel offers bulk invite and the access templates
-     E5  a FREE account gets none of them (no leak, no dead control)
+     E5  a FREE account sees the enterprise tools present but dimmed with an
+         upgrade sentence (never absent, never an unmarked dead control)
      E6  a contractor keeps rbacAccess but not the enterprise layer
      E7  zero page errors through the walk
 
@@ -231,7 +232,9 @@ const errors = [];
       access: !!(pop && pop.querySelector('[data-team-access]')),
       extend: !!(pop && pop.querySelector('[data-team-extend]')),
       bulk: !!(pop && pop.querySelector('[data-team-bulk]')),
-      tpl: !!(pop && pop.querySelector('[data-team-tpls], [data-team-tpl-apply]'))
+      tpl: !!(pop && pop.querySelector('[data-team-tpls], [data-team-tpl-apply]')),
+      lockedTools: !!(pop && pop.querySelector('.team-tools-locked [disabled]')),
+      lockedNote: !!(pop && pop.querySelector('.team-locked-note'))
     };
   };
 
@@ -301,12 +304,14 @@ const errors = [];
     }));
     const fPanel = await openCollaborators(page);
     check(
-      'E5 a free account is told free and is offered no enterprise tool',
+      'E5 a free account sees the enterprise tools present but dimmed with an upgrade path',
       free.tier === 'free' &&
         free.rbac === false &&
-        !fPanel.access &&
-        !fPanel.extend &&
-        !fPanel.bulk,
+        fPanel.access === true &&
+        fPanel.bulk === true &&
+        fPanel.tpl === true &&
+        fPanel.lockedTools === true &&
+        fPanel.lockedNote === true,
       { free: free, panel: fPanel }
     );
     await page.close();

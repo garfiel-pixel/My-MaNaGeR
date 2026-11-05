@@ -749,14 +749,20 @@ var MMGR = window.MMGR || {};
           esc(pid) +
           '">Resend</button>'
         : '';
-    if (enterprise()) {
-      actions +=
-        '<button type="button" class="team-link" data-team-access="' +
-        esc(m.id) +
-        '" aria-expanded="false" aria-controls="team-access-' +
-        esc(m.id) +
-        '">Access</button>';
-    }
+    // B2 (2026-11-05): the Access control is always present so a free
+    // account can see the capability; when the account cannot use the
+    // enterprise layer it is dimmed and inert, with the upgrade note living
+    // in toolsHtml().
+    actions +=
+      '<button type="button" class="team-link' +
+      (enterprise() ? '' : ' is-locked') +
+      '"' +
+      (enterprise() ? '' : ' disabled aria-disabled="true"') +
+      ' data-team-access="' +
+      esc(m.id) +
+      '" aria-expanded="false" aria-controls="team-access-' +
+      esc(m.id) +
+      '">Access</button>';
     actions +=
       '<button type="button" class="team-link team-link-danger" data-team-revoke="' +
       esc(m.id) +
@@ -784,14 +790,17 @@ var MMGR = window.MMGR || {};
             : 'Access ends ' + fmtDate(m.accessExpiresAt)) +
         '</span>';
     }
-    var extend =
-      enterprise() && m.accessExpiresAt
-        ? '<button type="button" class="team-link" data-team-extend="' +
-          esc(m.id) +
-          '" data-team-project="' +
-          esc(pid) +
-          '">Add 30 days</button>'
-        : '';
+    var extend = m.accessExpiresAt
+      ? '<button type="button" class="team-link' +
+        (enterprise() ? '' : ' is-locked') +
+        '"' +
+        (enterprise() ? '' : ' disabled aria-disabled="true"') +
+        ' data-team-extend="' +
+        esc(m.id) +
+        '" data-team-project="' +
+        esc(pid) +
+        '">Add 30 days</button>'
+      : '';
     var row =
       '<div class="team-person team-person-row">' +
       '<div class="team-person-id"><b>' +
@@ -861,10 +870,26 @@ var MMGR = window.MMGR || {};
   }
 
   function toolsHtml(pid) {
-    if (!enterprise()) {
-      return '';
-    }
     var base = '/api/cloud/projects/' + encodeURIComponent(pid) + '/team';
+    // B2 (2026-11-05): the bulk-invite, templates and audit tools stay on the
+    // page for every signed-in owner - never silently absent - but are dimmed
+    // and clearly gated behind an upgrade when the account cannot use them.
+    // The buttons are inert (disabled), so a click cannot reach a server
+    // endpoint that would answer "upgrade required".
+    if (!enterprise()) {
+      return (
+        '<div class="team-tools team-tools-locked">' +
+        '<button type="button" class="team-link" data-team-bulk="' +
+        esc(pid) +
+        '" disabled aria-disabled="true">Invite several people</button>' +
+        '<button type="button" class="team-link" data-team-tpls="' +
+        esc(pid) +
+        '" disabled aria-disabled="true">Templates</button>' +
+        '<button type="button" class="team-link" disabled aria-disabled="true">Audit log (CSV)</button>' +
+        '</div>' +
+        '<p class="team-locked-note">Bulk invites, permission templates and the audit export are part of the Company or Enterprise plan. Upgrade to use them on this project.</p>'
+      );
+    }
     return (
       '<div class="team-tools">' +
       '<button type="button" class="team-link" data-team-bulk="' +

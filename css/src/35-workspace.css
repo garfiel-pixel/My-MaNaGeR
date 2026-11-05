@@ -3659,3 +3659,26 @@ body.dark-mode .ltr-roll td {
   font-size: 0.68rem;
   color: var(--slate);
 }
+
+/* B2 (2026-11-05): the locked surface - tools stay on the page for every tier
+   but are dimmed and clearly gated behind an upgrade. */
+.team-tools-locked .team-link {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.team-link.is-locked {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.team-locked-note {
+  margin: 6px 0 8px;
+  padding: 8px 10px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  font-size: 0.68rem;
+  line-height: 1.5;
+  color: var(--slate);
+  background: var(--tile-bg);
+}

@@ -1,0 +1,81 @@
+{
+  "generated": "2026-11-05",
+  "verifiedBy": "CI gate tools/verify-vendor.cjs (fails on hash drift)",
+  "note": "Vendored code is invisible to Dependabot. Hashes are the source of truth; r160 three.js is accepted per SEC-07 (no known exploitable issue in this usage). Revisit only if a global effect breaks.",
+  "items": [
+    {
+      "name": "three",
+      "version": "r160",
+      "upstream": "https://github.com/mrdoob/three.js",
+      "license": "MIT",
+      "vendored": "2023-11",
+      "files": {
+        "vendor/three/three.module.js": {
+          "sha256": "76dea8151bc9352aef3528b4262e249b2604f62543828328db978d060d61a495",
+          "bytes": 1272972
+        }
+      }
+    },
+    {
+      "name": "whisper",
+      "version": "vendored-wasm",
+      "upstream": "https://github.com/ggerganov/whisper.cpp",
+      "license": "MIT (see vendor/whisper/README.md)",
+      "vendored": "unknown",
+      "files": {
+        "vendor/whisper/README.md": {
+          "sha256": "9941276a57c26eed717af5fae86a517cf31f774b0b77c81ac60de6cd0698cccf",
+          "bytes": 2368
+        },
+        "vendor/whisper/index.js": {
+          "sha256": "e4c2d364f37b0b1684b7e0fc6ac901ced42dd36731469e756ae009d60ab3b481",
+          "bytes": 52288
+        },
+        "vendor/whisper/package.json": {
+          "sha256": "bd86774b2ff7d25b9731bd3e60e93017be68eedf137b225ef489138422041cfc",
+          "bytes": 1116
+        },
+        "vendor/whisper/samples/jfk.wav": {
+          "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+          "bytes": 352078
+        },
+        "vendor/whisper/samples/messy-meeting.wav": {
+          "sha256": "cfb56657b20d0b5b4b8521c51a02189ee8a2e1521f150227ba6b43ab047efe8c",
+          "bytes": 2784900
+        },
+        "vendor/whisper/samples/tts-babble.wav": {
+          "sha256": "225360dfeb441a6b085c028765de59a9e67a00d74cafa68f3a3544dd0020cd05",
+          "bytes": 792354
+        },
+        "vendor/whisper/samples/tts-fm.wav": {
+          "sha256": "b60cae313943df58c438d47c08d9d8fb3205f68787593b5f10dcb94f3c4ab027",
+          "bytes": 1206166
+        },
+        "vendor/whisper/samples/tts-pm.wav": {
+          "sha256": "1db09f995f2c4078490f79abede1762dc6d52a4f129c32e1120eaf26507883e2",
+          "bytes": 1326324
+        },
+        "vendor/whisper/wasm/whisper-node.js": {
+          "sha256": "a4d431f3f715f7b9d0d486dc97b7b7a9ab911c3bff13cf39759359a54ad251be",
+          "bytes": 132474
+        },
+        "vendor/whisper/wasm/whisper-node.threads.js": {
+          "sha256": "99f94c88c0dd36534c1b156666532dd0b953f27077878220a7e98c7967bee578",
+          "bytes": 148874
+        },
+        "vendor/whisper/wasm/whisper-node.threads.wasm": {
+          "sha256": "47aadfe196379b3224277c877ecc4b5791ef31556c1b2ff0ed83eae1fa74f757",
+          "bytes": 4223519
+        },
+        "vendor/whisper/wasm/whisper-node.wasm": {
+          "sha256": "12984ab3c8b9ffcb90fd0437f21e46c5a4cb7b8799cff5270d86d7ba0abda63e",
+          "bytes": 4034890
+        },
+        "vendor/whisper/worker.js": {
+          "sha256": "186b85437f7b3b28cef28d50ff0058b3bfde11ba56e268b124d408ef0f651bfd",
+          "bytes": 7610
+        }
+      }
+    }
+  ]
+}

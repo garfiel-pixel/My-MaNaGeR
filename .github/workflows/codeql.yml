@@ -1,0 +1,35 @@
+name: CodeQL
+
+# SEC-08: static analysis in its own workflow so it never lengthens the main CI.
+on:
+  schedule:
+    - cron: ''0 5 * * 1''  # Monday 05:00 UTC
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Least-privilege: read the code, write only the security events.
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Analyze (JavaScript / TypeScript)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@9418214df1f2c4b8128c770156c409013b07d6b9 # v3
+        with:
+          languages: javascript-typescript
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@9418214df1f2c4b8128c770156c409013b07d6b9 # v3
+        with:
+          category: "/language:javascript-typescript"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

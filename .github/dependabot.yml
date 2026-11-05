@@ -17,6 +17,11 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+    # SEC-07: roll every npm bump into one PR to cut notification noise.
+    groups:
+      npm-dependencies:
+        patterns:
+          - "*"
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
@@ -27,3 +32,8 @@ updates:
     labels:
       - "dependencies"
       - "ci"
+    # SEC-07: roll every action bump into one PR.
+    groups:
+      github-actions:
+        patterns:
+          - "*"

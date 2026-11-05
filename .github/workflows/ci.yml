@@ -17,6 +17,13 @@ concurrency:
 # setup it needs, and a final summary job reads needs.<job>.result.
 # tools/verify-ci-coverage.cjs proves no step was dropped or duplicated
 # outside the per-job setup lines.
+
+# SEC-01: least-privilege token. Every job inherits this; jobs that need more
+# (e.g. CodeQL) declare it locally. No workflow here deploys for real, so read
+# is enough for the whole file.
+permissions:
+  contents: read
+
 jobs:
   static:
     name: static
@@ -35,10 +42,21 @@ jobs:
 
       - name: Build JS/CSS bundles
         run: npm run build
+      - name: npm audit (high+ only; fails CI on high/critical)  # SEC-07
+        id: audit
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Verify workflow security (SEC-01 gate)  # 4.1
+        id: wfsec
+        run: node tools/verify-workflow-security.cjs
+
+      - name: Verify vendored code provenance (SEC-07 gate)  # 4.1
+        id: vendor
+        run: node tools/verify-vendor.cjs
 
       - name: Gitleaks secrets scan
         id: gitleaks
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         # Explicit, so the repo's own config is the one that runs. The default
         # ruleset is otherwise unchanged - .gitleaks.toml allowlists ONLY the
         # Paddle client-side token in pricing.html (public by design; it can

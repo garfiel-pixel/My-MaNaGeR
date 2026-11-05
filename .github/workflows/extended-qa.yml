@@ -15,6 +15,10 @@ on:
     - cron: '0 4 * * 0'
   workflow_dispatch: # Allow manual trigger
 
+# SEC-01: least-privilege token for the whole workflow.
+permissions:
+  contents: read
+
 jobs:
   extended:
     runs-on: ubuntu-latest

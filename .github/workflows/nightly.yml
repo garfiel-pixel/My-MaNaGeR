@@ -6,6 +6,10 @@ on:
     - cron: '0 3 * * *'
   workflow_dispatch: # Allow manual trigger
 
+# SEC-01: least-privilege token for the whole workflow.
+permissions:
+  contents: read
+
 jobs:
   full-suite:
     runs-on: ubuntu-latest
@@ -18,6 +22,10 @@ jobs:
 
       - name: Install dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: npm audit (all levels; summary only, never fails nightly)  # SEC-07
+        id: audit
+        run: npm audit --omit=dev || true
 
       - name: Build JS/CSS bundles
         run: npm run build

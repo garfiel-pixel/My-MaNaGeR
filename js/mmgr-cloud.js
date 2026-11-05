@@ -2634,6 +2634,7 @@ var MMGR = window.MMGR || {};
       '<p>' +
       _mcpSignInHint() +
       '</p>' +
+      '<p><strong>Use a project API key as YOUR-KEY, not your owner code.</strong> Owner codes stop working as an MCP credential on 5 December 2026. A project API key is scoped to the sections you choose, can expire, and can be revoked at any time.</p>' +
       '<p>The claude.ai web panel (Add custom connector) has no place to paste a key today - use Claude Code or an editor client. Full walkthrough: <a href="mymanager-field-guide.html#connect-ai" target="_blank" rel="noopener">field guide, Connect an Outside AI</a>.</p>' +
       '</div></details>'
     );

@@ -519,7 +519,11 @@
 // index.html, its loader in js/marketing.js and the new js/marketing-ai.js
 // bundle (loaded only near the viewport). Changed shell assets: index.html,
 // dist/marketing-bundle.js, dist/marketing.min.css.
-const CACHE = 'mmgr-shell-v540';
+// v541 - SEC-14 MCP DEPRECATION NOTICE (audit 2026-11-01): the MCP settings
+// card now says an owner code stops working as an MCP credential on
+// 5 December 2026 and points at a project API key. Changed shell assets:
+// js/mmgr-cloud.js (dist bundle rebuilt).
+const CACHE = 'mmgr-shell-v541';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

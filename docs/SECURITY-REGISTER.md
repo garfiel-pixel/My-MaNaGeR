@@ -20,7 +20,7 @@ Statuses: DONE | PARTIAL | QUEUED | OWNER-CHECK (needs owner, not AI) | N-A
 | SEC-11 | (merged → wave 3.2/3.3) | N-A | |
 | SEC-12 | Lint ratchet: no-unsanitized-html as error | **PARTIAL (4.4)** | `no-unsanitized-html` is already `error` and at 0. `verify-eslint.cjs` now freezes the global ceiling at the measured count + 10 (**1286**; was 4600, which could never fail) **and** freezes each rule: `curly` 598, `no-unused-vars` 411, `no-undef` 202, `no-redeclare` 65. An unlisted rule has a ceiling of 0. DOM-sink conversion (`setHTML`) still open. |
 | SEC-13 | Header gate | **DONE (4.4)** | `tools/qa-security-headers.cjs` (60/60) drives worker.js over seven surfaces. It found a real gap - `/api/*` carried neither `nosniff` nor HSTS - now fixed in `json()` / `cloudRateLimited()` via `API_HARDENING`. |
-| SEC-14 | MCP owner-code deprecation | QUEUED (4.6) | |
+| SEC-14 | MCP owner-code deprecation | **PARTIAL (4.6)** | Phase 1: every owner-code Bearer use logs `mcp-owner-code-deprecated {result:accepted}`; `MCP_REQUIRE_API_KEY=1` switches the same branch to a JSON-RPC `-32001` refusal (HTTP 200, PATH-A preserved) that names a project API key. The settings card tells users now that owner codes stop working as an MCP credential on 5 December 2026 (shell cache v541). Proven by `test/mcp-owner-code-gate.test.mjs` (5/5), including "the gate decides before D1 is queried". Phase 2 (flip the flag) waits on 30 days of counter data. |
 | SEC-15 | (merged → F3) | N-A | |
 | SEC-16 | Register skeleton | **DONE (4.1)** | this file |
 

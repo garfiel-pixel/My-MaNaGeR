@@ -50,6 +50,7 @@ import {
 } from '../lib/http.js';
 import { API_SHAPES } from '../api/shapes.js';
 import { ownerTier } from '../cloud/team.js';
+import { structuredLog } from '../lib/observe.js';
 
 // ---- MCP protocol constants ----
 
@@ -1203,6 +1204,32 @@ export async function handleMcpServer(request, env, projectId) {
     auth = await cloudAuthApiKey(request, env, projectId, apiKey);
   }
   if (!auth && bearer && bearer.lastIndexOf('sk-mmgr-', 0) !== 0) {
+    // SEC-14 (audit 2026-11-01): the full-power owner code as a Bearer is on
+    // its way out. Phase 1 (now) COUNTS every use so the cut can be justified
+    // by data rather than by hope; phase 2 flips MCP_REQUIRE_API_KEY=1 and
+    // refuses, with a message that names the replacement. Nothing is cut
+    // silently, and the switch is one environment variable to roll back.
+    structuredLog(env, 'warn', 'mcp-owner-code-deprecated', {
+      projectId: projectId,
+      result: env && env.MCP_REQUIRE_API_KEY === '1' ? 'refused' : 'accepted'
+    });
+    if (env && env.MCP_REQUIRE_API_KEY === '1') {
+      // Answer inside the protocol (200 + JSON-RPC error) rather than with a
+      // transport 401: PATH-A exists so an MCP client does not mistake this
+      // server for an OAuth resource, and that stays true after the cut.
+      return json(
+        {
+          jsonrpc: '2.0',
+          id: null,
+          error: {
+            code: -32001,
+            message:
+              'Owner codes are no longer accepted by the MCP server. Create a project API key (scoped to the sections you choose, expiring, revocable) and send it as Authorization: Bearer sk-mmgr-... instead.'
+          }
+        },
+        200
+      );
+    }
     const authHeaders = new Headers(request.headers);
     authHeaders.set('X-Owner-Code', bearer);
     const authReq = new Request(request.url, {

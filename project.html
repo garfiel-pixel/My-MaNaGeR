@@ -93,15 +93,36 @@
      (.skel-box in css/mmgr.css), reduced-motion renders static boxes. -->
 <div id="boot-splash" role="status" aria-live="polite" aria-busy="true" aria-label="Loading project">
   <div class="bs-skel">
+    <!-- header: mirrors #app-header -->
     <div class="skel-row bs-skel-header">
       <span class="skel-box skel-avatar"></span>
       <span class="skel-box skel-line t-lg skel-w-40"></span>
       <span class="skel-box skel-line skel-w-20"></span>
     </div>
-    <div class="skel-boot-grid">
-      <div class="skel-boot-col"><div class="skel-box skel-card"></div></div>
-      <div class="skel-boot-col"><div class="skel-box skel-card"></div></div>
-      <div class="skel-boot-col"><div class="skel-box skel-card"></div></div>
+    <!-- section nav: mirrors #sec-nav (.sec-btn strip) -->
+    <div class="bs-skel-nav" aria-hidden="true">
+      <span class="skel-box skel-sec"></span>
+      <span class="skel-box skel-sec"></span>
+      <span class="skel-box skel-sec"></span>
+      <span class="skel-box skel-sec"></span>
+      <span class="skel-box skel-sec"></span>
+      <span class="skel-box skel-sec skel-sec-on"></span>
+      <span class="skel-box skel-sec"></span>
+    </div>
+    <!-- body: rail + panel grid, mirrors #app-sidebar + .panel grid -->
+    <div class="bs-skel-body">
+      <div class="bs-skel-rail" aria-hidden="true">
+        <span class="skel-dot skel-dot-on"></span>
+        <span class="skel-dot"></span>
+        <span class="skel-dot"></span>
+        <span class="skel-dot"></span>
+        <span class="skel-dot"></span>
+      </div>
+      <div class="skel-boot-grid">
+        <div class="skel-boot-col"><div class="skel-box skel-card"></div></div>
+        <div class="skel-boot-col"><div class="skel-box skel-card"></div></div>
+        <div class="skel-boot-col"><div class="skel-box skel-card"></div></div>
+      </div>
     </div>
     <div class="skel-boot-col bs-skel-wide"><div class="skel-box skel-card bs-skel-tall"></div></div>
   </div>

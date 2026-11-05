@@ -1124,6 +1124,10 @@ jobs:
         id: qa-section-accelerator
         run: node tools/qa-section-accelerator.cjs
 
+      - name: "T4: Boot skeleton mirrors the real shell (qa-shell-skeleton)"
+        id: qa-shell-skeleton
+        run: node tools/qa-shell-skeleton.cjs
+
       - name: "T4: Finish-target and expiry notices (qa-notice-watchers)"
         id: qa-notice-watchers
         run: node tools/qa-notice-watchers.cjs

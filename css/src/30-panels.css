@@ -3268,6 +3268,58 @@ button.rel-badge {
 .bs-skel-tall {
   height: 200px;
 }
+/* B12 (audit 2026-11-01): the boot skeleton must mirror the real workspace
+   shape - header, section nav, panel grid, rail - not generic grey blocks.
+   The regions below give the splash a #sec-nav strip and a #app-sidebar rail
+   so the loading state reads as the same app it is about to reveal. */
+.bs-skel-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+.skel-sec {
+  height: 28px;
+  flex: 1 1 70px;
+  min-width: 64px;
+  border-radius: var(--radius-rect, 10px);
+}
+.skel-sec-on {
+  /* mirrors the active .sec-btn: a touch of the gold accent edge */
+  border: 1px solid var(--gold-ink, rgba(212, 175, 55, 0.5));
+  box-shadow: 0 0 0 1px var(--gold-ink, rgba(212, 175, 55, 0.18)) inset;
+}
+.bs-skel-body {
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+  width: 100%;
+}
+.bs-skel-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  width: 24px;
+  flex-shrink: 0;
+  padding-top: 8px;
+}
+.skel-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--skel-base);
+}
+.skel-dot-on {
+  width: 14px;
+  height: 14px;
+  background: var(--gold-ink, rgba(212, 175, 55, 0.55));
+}
+@media (max-width: 600px) {
+  .bs-skel-rail {
+    display: none;
+  }
+}
 .skel-w-20 {
   width: 20%;
 } /* ACTION-PLAN 4.1: view-only scope - a static amber strip under the header */

@@ -10,10 +10,10 @@ Cloudflare Time Travel, and it needs the owner.
 
 | Step | Time |
 |---|---|
-| migrate a fresh D1 (all migrations) | 12807 ms |
-| export (backup) | 1184 ms |
-| import (restore) | 1354 ms |
-| **restore RTO (import only)** | **1354 ms** |
+| migrate a fresh D1 (all migrations) | 12585 ms |
+| export (backup) | 1186 ms |
+| import (restore) | 1395 ms |
+| **restore RTO (import only)** | **1395 ms** |
 
 Dump size: 19262 bytes. Rows per table: {"cloud_projects":2,"cloud_changelog":2,"cloud_project_photos":1,"auth_users":1}.
 

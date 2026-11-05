@@ -6,6 +6,7 @@
    ============================================================ */
 const { spawn } = require('child_process');
 const path = require('path');
+const net = require('net');
 const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('./tools/chrome-launcher.cjs');
 const PROFILE = path.join(require('os').tmpdir(), 'mmgr-qa-' + Date.now());
 let ws,
@@ -67,7 +68,34 @@ async function check(name, expr, expected, hint) {
   return v;
 }
 
+// The DevTools port is shared with every other harness that uses
+// chrome-launcher (9228 by default). A Chrome left behind by an earlier step
+// still owns it, the new Chrome cannot bind, and the launch loop below then
+// dies with a bare "FATAL: fetch failed" 18s later (seen in CI 2026-11-05).
+// Pick the first free port instead, so one leaked browser cannot take the
+// whole battery down.
+function portFree(p) {
+  return new Promise(res => {
+    const srv = net.createServer();
+    srv.once('error', () => res(false));
+    srv.once('listening', () => srv.close(() => res(true)));
+    srv.listen(p, '127.0.0.1');
+  });
+}
+async function pickPort(start) {
+  for (let p = start; p < start + 20; p++) {
+    if (await portFree(p)) {
+      return p;
+    }
+  }
+  return start;
+}
+
 (async () => {
+  const CDP = await pickPort(PORT);
+  if (CDP !== PORT) {
+    log('Chrome DevTools port ' + PORT + ' is taken, using ' + CDP);
+  }
   const proc = spawn(
     CHROME,
     [
@@ -75,7 +103,7 @@ async function check(name, expr, expected, hint) {
       '--disable-gpu',
       '--no-first-run',
       '--disk-cache-size=0',
-      '--remote-debugging-port=' + PORT,
+      '--remote-debugging-port=' + CDP,
       '--user-data-dir=' + PROFILE,
       '--window-size=1440,1200',
       'about:blank'
@@ -84,14 +112,14 @@ async function check(name, expr, expected, hint) {
   );
   for (let i = 0; i < 60; i++) {
     try {
-      const r = await fetch('http://127.0.0.1:' + PORT + '/json/version');
+      const r = await fetch('http://127.0.0.1:' + CDP + '/json/version');
       if (r.ok) {
         break;
       }
     } catch (e) {}
     await delay(300);
   }
-  const targets = await (await fetch('http://127.0.0.1:' + PORT + '/json')).json();
+  const targets = await (await fetch('http://127.0.0.1:' + CDP + '/json')).json();
   ws = new WebSocket(targets.find(t => t.type === 'page').webSocketDebuggerUrl);
   ws.onmessage = ev => {
     const m = JSON.parse(ev.data);

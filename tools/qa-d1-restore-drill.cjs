@@ -30,7 +30,6 @@
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 
 const ROOT = path.resolve(__dirname, '..');
 const WRANGLER = path.join(ROOT, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
@@ -240,7 +239,6 @@ function main() {
   check('8 no changelog row is orphaned from its project', orphan === 0, { orphans: orphan });
 
   const rtoMs = restore.ms;
-  const totalMs = migrate.ms + backup.ms + restore.ms;
 
   const md = [
     '# D1 restore drill - ' + new Date().toISOString().slice(0, 10),

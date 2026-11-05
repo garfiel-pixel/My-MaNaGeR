@@ -509,7 +509,7 @@
 // bar, upload form and cards, and shows who uploaded each photo and in which
 // stage. Changed shell assets: js/cloud/photos-ui.js, js/mmgr-render.js,
 // css/mmgr.css, project.html.
-const CACHE = 'mmgr-shell-v536';
+const CACHE = 'mmgr-shell-v537';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

@@ -438,7 +438,7 @@ body.db-page:not(.dark-mode) .db-link .ico {
   flex-shrink: 0;
 }
 body.db-page:not(.dark-mode) .db-link:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: var(--radius-control);
 }
@@ -468,7 +468,7 @@ body.db-page:not(.dark-mode) .db-link:focus-visible {
     flex-shrink: 0;
   }
   body.db-page:not(.dark-mode) .db-hamb:focus-visible {
-    outline: 2px solid var(--gold-ink);
+    outline: 2px solid var(--focus-ring);
     outline-offset: 2px;
   }
   body.db-page:not(.dark-mode) .db-hamb .ico {

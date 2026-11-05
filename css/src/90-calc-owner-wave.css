@@ -49,7 +49,7 @@
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 .bcp-tab:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 .bcp-notes {
@@ -534,7 +534,7 @@ body.calculator-page .bcp-rr-x {
   color: var(--slate);
 }
 .rr-q:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 .rr-hits {
@@ -748,7 +748,7 @@ body.calculator-page .bcp-rr-x {
   border-color: var(--gold);
 }
 .bcp-rr-x:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 .bcp-rr-x .ico {
@@ -984,7 +984,7 @@ body.rr-open {
   border-radius: 12px;
 }
 .bcp-ai-input:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 .bcp-ai-input:disabled {
@@ -1085,7 +1085,7 @@ body.rr-open {
   border-color: var(--gold);
 }
 .bcp-ai-histopen:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 .bcp-ai-histtitle {

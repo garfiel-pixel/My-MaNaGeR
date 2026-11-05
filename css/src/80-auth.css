@@ -21,7 +21,7 @@
 }
 .email-auth-toggle:focus-visible,
 .email-auth-alt button:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
   border-radius: var(--radius);
 }
@@ -128,7 +128,7 @@
   background: rgba(var(--gold-rgb), 0.08);
 }
 .email-auth-eye:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 .email-auth-eye .ico {
@@ -252,7 +252,7 @@
   color: var(--gold-text);
 }
 .email-auth-pw-btn:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
   border-radius: var(--radius);
 }
@@ -274,7 +274,7 @@
   color: var(--gold-text);
 }
 .email-auth-pw-cancel:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
   border-radius: var(--radius);
 }
@@ -331,7 +331,7 @@
   color: var(--gold-text);
 }
 .gis-fallback-btn:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 .gis-fallback-btn:disabled {

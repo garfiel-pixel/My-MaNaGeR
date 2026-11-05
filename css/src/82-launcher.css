@@ -29,7 +29,7 @@ body.db-page .db-hamb.is-open .ico {
   transform: rotate(180deg);
 }
 body.db-page .db-hamb:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 /* Moon/sun quick toggle (owner 2026-08-15): the square box around the icon
@@ -61,7 +61,7 @@ body.db-page .db-quick:hover {
   color: var(--gold-text);
 }
 body.db-page .db-quick:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 /* desktop: */
@@ -148,7 +148,7 @@ body.db-page .db-project:hover {
   background: color-mix(in oklch, var(--gold) 8%, transparent);
 }
 body.db-page .db-project:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 body.db-page .db-project .db-project-ico {
@@ -201,7 +201,7 @@ body.db-page .db-btn:hover {
   border-color: var(--gold);
 }
 body.db-page .db-btn:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 body.db-page .db-btn .ico {
@@ -235,7 +235,7 @@ body.db-page .db-pass {
   color: var(--text);
 }
 body.db-page .db-pass:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 body.db-page .db-backup .drive-status {
@@ -361,7 +361,7 @@ body.dark-mode.db-page .db-foot {
   color: var(--text-heading);
 }
 .theme-select:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 .theme-select option {
@@ -414,7 +414,7 @@ body.db-page .db-upgrade:hover {
   filter: brightness(1.08);
 }
 body.db-page .db-upgrade:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 body.db-page .db-user {
@@ -475,7 +475,7 @@ body.db-page .db-signin:hover {
   color: var(--gold-text);
 }
 body.db-page .db-signin:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 body.db-page .db-signin .ico {
@@ -970,7 +970,7 @@ body.db-page .db-btn:hover .ico {
   background: color-mix(in oklch, var(--gold) 20%, transparent);
 }
 body.db-page .db-btn:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 body.db-page .db-pass {
@@ -1005,7 +1005,7 @@ body.db-page .db-avatar:hover {
   background: color-mix(in oklch, var(--gold) 9%, transparent);
 }
 body.db-page .db-avatar:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: 100px;
 }
@@ -1533,7 +1533,7 @@ body.db-page .cd-card .cd-title {
   color: var(--slate);
 }
 .recent-card:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 /* ---- PART F T9 (2026-08-16): shared-project pin cards ----
@@ -2097,7 +2097,7 @@ body.dark-mode.db-page .db-auto-lbl {
   color: var(--gold-text);
 }
 .toast-act:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 @keyframes toast-in {

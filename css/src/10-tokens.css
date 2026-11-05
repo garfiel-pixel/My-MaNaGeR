@@ -104,6 +104,11 @@ svg.ico use {
      gold must stay readable - never swapped for a different hue). 6.37:1 on
      white, so it also clears the 3:1 floor a focus ring or input border owes. */
   --gold-ink: #7a5a0b;
+  /* C3 (audit 2026-11-01): the focus-edge token. In light mode it mirrors the
+     gold ink; in dark mode it is a soft gold rather than the pure-white
+     --gold-ink, so keyboard focus reads as a deliberate gold edge instead of a
+     forced white "whiteboard" line. Width is unchanged (2px) so a11y holds. */
+  --focus-ring: var(--gold-ink);
   /* -- Bullion (gold gradient, bronze border, readable ink) ---- */
   --bullion-light: #e6c547;
   --bullion: #d4af37;

@@ -435,7 +435,7 @@
   flex-shrink: 0;
 }
 .cl-toggle:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 .cl-toggle:hover {
@@ -452,7 +452,7 @@
   transform: rotate(90deg);
 }
 .cl-toggle:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 .cl-diffs {
@@ -553,7 +553,7 @@
   filter: brightness(1.25);
 }
 .raci-cell:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 .raci-legend-chip {
@@ -685,7 +685,7 @@ body.dark-mode .rm-hi {
   border-color: var(--gold);
 }
 .rm-cell:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 .rm-active {
@@ -742,7 +742,7 @@ body.dark-mode .rm-active {
   line-height: 1.4;
 }
 .btn:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 .btn:active,
@@ -947,7 +947,7 @@ body.dark-mode .rm-active {
   transition: transform var(--tr);
 }
 .cbtn:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -1381,7 +1381,7 @@ body.dark-mode .rm-active {
   gap: 6px;
 }
 .cu-tab:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 .cu-tab:hover {
@@ -3079,7 +3079,7 @@ button.rel-badge {
 }
 .wbs-row:focus-visible,
 .wbs-row.wbs-sel {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
   background: rgba(var(--gold-rgb), 0.06);
 }
@@ -3595,7 +3595,7 @@ body.dark-mode #team-access-banner {
 .team-tab:focus-visible,
 .team-link:focus-visible,
 .team-x:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 .team-tab-count {

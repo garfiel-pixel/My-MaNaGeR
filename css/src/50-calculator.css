@@ -62,7 +62,7 @@
   transform: translateX(14px);
 }
 .bcp-perf-in:focus-visible + .bcp-perf-track {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 @media (max-width: 560px) {
@@ -96,7 +96,7 @@
   background: color-mix(in srgb, var(--gold) 10%, transparent);
 }
 .bcp-theme:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 .bcp-theme .ico {
@@ -148,7 +148,7 @@ body.dark-mode .bcp-ico-moon {
   background: color-mix(in oklch, var(--gold) 10%, var(--card));
 }
 .bcp-ratebook:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 .bcp-ratebook-text {
@@ -286,7 +286,7 @@ body.dark-mode .bcp-ico-moon {
   cursor: pointer;
 }
 .bcp-totalbar-show:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 /* The IntersectionObserver hides the bar while the estimate card is
@@ -625,7 +625,7 @@ body.dark-mode .bcp-run:focus-visible {
   color: var(--gold-ink);
 }
 .bcp-seg-btn:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
 }
 /* F4-2 result actions (print / CSV / save) under the live estimate. */
@@ -759,7 +759,7 @@ body.dark-mode .bcp-run:focus-visible {
 }
 .bcp-x:focus-visible,
 .bcp-link:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 .bcp-hist-head {
@@ -1282,7 +1282,7 @@ html.mmgr-tour-active .bcp-tour-nudge {
   color: var(--gold-text);
 }
 .set-reset:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -2320,7 +2320,7 @@ body.ai-overlay::after {
   padding: 6px 8px;
 }
 .ai-hist-search:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 .ai-hist-list {
@@ -2541,7 +2541,7 @@ body.dark-mode .ai-hist-when {
   color: var(--gold-text);
 }
 .ai-tier-badge:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 /* Thread: centred reading column, never a wall of text edge to edge. */

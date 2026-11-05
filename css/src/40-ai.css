@@ -310,7 +310,7 @@ body.drw-float-open::after {
   border-color: var(--gold);
 }
 .ai-icon-btn:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 /* The backend health badge is one 10px dot (was a labelled pill). Click to
@@ -338,7 +338,7 @@ body.drw-float-open::after {
   box-shadow: 0 0 0 3px color-mix(in oklch, var(--gold) 30%, transparent);
 }
 .ai-api-dot:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 .ai-api-dot[data-state='connected'] .ai-pill-dot {
@@ -488,7 +488,7 @@ body.dark-mode .ai-api-pill[data-state='error'] {
   color: var(--gold-text);
 }
 .ai-more-item:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
 }
 .ai-more-item[aria-pressed='true'] {
@@ -771,7 +771,7 @@ body.dark-mode .ai-seg-btn.is-on {
   color: var(--gold-text);
 }
 .ai-welcome-row:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 .ai-err {
@@ -1068,7 +1068,7 @@ body.dark-mode .ai-seg-btn.is-on {
   color: var(--danger);
 }
 .ai-conn-dismiss:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 .ai-byo-gear {
@@ -1359,7 +1359,7 @@ body.dark-mode .ai-byo-status[data-state='untested'] {
   transform: scale(var(--press-scale, 0.96));
 }
 .bcp-back:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 .bcp-back .ico {

@@ -485,7 +485,7 @@ body.dark-mode .kqa-in {
   background: var(--gold);
 }
 .tgl input:focus-visible + .tsl {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -696,7 +696,7 @@ body.dark-mode .kqa-in {
   color: var(--on-gold);
 }
 .share-subtab:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 .share-subpane[hidden] {
@@ -741,7 +741,7 @@ body.dark-mode .kqa-in {
   background: color-mix(in oklch, var(--gold) 8%, transparent);
 }
 .rail-ctl-row:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: var(--radius-control);
 }
@@ -1627,7 +1627,7 @@ body.db-page .db-user[hidden] {
 @media (prefers-reduced-motion: reduce) {
   .pulse-attn {
     animation: none;
-    outline: 2px solid var(--gold-ink);
+    outline: 2px solid var(--focus-ring);
   }
 }
 .dirty-ind.on {
@@ -1714,7 +1714,7 @@ body.db-page .db-user[hidden] {
   background: color-mix(in oklch, var(--gold) 10%, transparent);
 }
 .bk-opt:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 .bk-opt-ico {

@@ -29,6 +29,9 @@ body.dark-mode {
   --gold: #ffffff;
   --gold-rgb: 255, 255, 255;
   --gold-ink: #ffffff; /* the accent IS white in dark mode */
+  /* C3 (audit 2026-11-01): the focus edge softens to a gold ring in dark mode,
+     not a hard white outline. --gold-ink stays white for fills/borders. */
+  --focus-ring: #e6c878;
   --gold-text: var(--gold); /* gold words in dark follow the accent, unchanged */
   --danger-ink: #ffffff; /* the accent IS white in dark mode */
   --amber-ink: #ffffff; /* the accent IS white in dark mode */
@@ -464,7 +467,7 @@ body {
   color: var(--text);
 }
 .pal-btn:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 .pal-btn[aria-pressed='true'] {
@@ -539,7 +542,7 @@ body {
   padding: 4px 10px;
 }
 .dock:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 /* Reserve scroll space so page content never hides behind the dock. */
@@ -750,7 +753,7 @@ body:not(.crosshair-on) #cy {
   transition: color var(--tr);
 }
 .tab-btn:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 .tab-btn:hover {
@@ -801,7 +804,7 @@ body:not(.crosshair-on) #cy {
   transition: var(--tr-ui);
 }
 .settings-btn:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 .settings-btn:hover,
@@ -834,7 +837,7 @@ body:not(.crosshair-on) #cy {
   background: color-mix(in srgb, var(--gold) 10%, transparent);
 }
 .hdr-back:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 .hdr-back .ico {
@@ -917,7 +920,7 @@ body.focus-mode .focus-ind {
   flex-shrink: 0;
 }
 .nav-btn:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 .nav-btn:hover {
@@ -1035,7 +1038,7 @@ body.nav-open #nav-scrim {
   background: color-mix(in oklch, var(--gold) 10%, transparent);
 }
 .sb-close:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 body.sidebar-open .nav-btn .ico,
@@ -1135,7 +1138,7 @@ body.sidebar-open .sb-close .ico {
   margin-left: auto;
 }
 .rail-link:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: var(--radius-control);
 }
@@ -1234,7 +1237,7 @@ body.sidebar-open .sb-close .ico {
   gap: 6px;
 }
 .sec-btn:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 .sec-btn.active {
@@ -1723,7 +1726,7 @@ body.sidebar-open .sb-close .ico {
   color: var(--gold-text);
 }
 .gn-star:focus-visible {
-  outline: 2px solid var(--gold-ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
   border-radius: 3px;
 }

@@ -1132,6 +1132,10 @@ jobs:
         id: qa-gold-edge
         run: node tools/qa-gold-edge.cjs
 
+      - name: "T4: Particle line pauses offscreen + reduced-motion (qa-particle-line)"
+        id: qa-particle-line
+        run: node tools/qa-particle-line.cjs
+
       - name: "T4: Finish-target and expiry notices (qa-notice-watchers)"
         id: qa-notice-watchers
         run: node tools/qa-notice-watchers.cjs

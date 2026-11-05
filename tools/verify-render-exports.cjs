@@ -181,7 +181,15 @@ const appDir = path.join(ROOT, 'js', 'app');
 // it self-initializes at DOMContentLoaded and is reached directly as
 // MMGR.SectionAccelerator.* (the control-panel wiring and the test harness both
 // call it that way), so it carries no monolith wrappers by design.
-const APP_EXCLUDE = new Set(['components.js', 'entitlements.js', 'section-accelerator.js']);
+// particle-line.js (B6, 2026-11-05) is the same shape: a decorative, self-contained
+// canvas widget that self-inits and is reached as MMGR.ParticleLine.*; no monolith
+// wrapper is expected.
+const APP_EXCLUDE = new Set([
+  'components.js',
+  'entitlements.js',
+  'section-accelerator.js',
+  'particle-line.js'
+]);
 const appFiles = fs.readdirSync(appDir).filter(f => f.endsWith('.js') && !APP_EXCLUDE.has(f));
 const appSrc = fs.readFileSync(path.join(ROOT, 'js', 'mmgr-app.js'), 'utf8');
 

@@ -1311,7 +1311,15 @@ body.sidebar-open .sb-close .ico {
   display: none;
 }
 /* B9 (owner audit 2026-11-01): section accelerator pin controls. A small dot
-   on each nav button pins or unpins it; the control panel lists the pins. */
+   on each nav button pins or unpins it; the control panel lists the pins.
+   The dot must be a SIBLING of the nav button, never a child: `.sec-btn` is a
+   <button>, and a focusable control inside it is invalid markup that axe's
+   nested-interactive rule fails on every section (48 nodes, 2026-11-05). The
+   wrapper carries the positioning the dot used to take from .sec-btn. */
+.sec-btn-wrap {
+  position: relative;
+  display: inline-flex;
+}
 .sec-btn {
   position: relative;
 }
@@ -1333,8 +1341,8 @@ body.sidebar-open .sb-close .ico {
   align-items: center;
   justify-content: center;
 }
-.sec-btn:hover .sec-pin-dot,
-.sec-btn:focus-within .sec-pin-dot,
+.sec-btn-wrap:hover .sec-pin-dot,
+.sec-btn-wrap:focus-within .sec-pin-dot,
 .sec-pin-dot.on {
   opacity: 1;
 }

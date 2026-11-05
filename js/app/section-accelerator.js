@@ -181,11 +181,11 @@
       const empty = U.$('sec-accel-pins-empty');
       if (empty) empty.classList.toggle('is-hide', pins.length > 0);
     }
-    // per-button pinned state
-    const all = document.querySelectorAll('.sec-btn[data-section] .sec-pin-dot');
+    // per-button pinned state (the dot is a sibling of the button, inside
+    // .sec-btn-wrap, so the section id comes from the dot's own attribute)
+    const all = document.querySelectorAll('#sec-nav .sec-pin-dot');
     for (let i = 0; i < all.length; i++) {
-      const b = all[i].closest('.sec-btn');
-      const sec = b ? b.getAttribute('data-section') : null;
+      const sec = all[i].getAttribute('data-section');
       all[i].classList.toggle('on', !!sec && pins.indexOf(sec) >= 0);
     }
   }
@@ -199,14 +199,25 @@
   }
 
   // A small pin dot on every section button - clicking it pins/unpins
-  // without needing a parallel toolbar.
+  // without needing a parallel toolbar. The dot is a SIBLING of the button,
+  // never a child: `.sec-btn` is a <button>, and a focusable control inside
+  // another button is invalid markup that axe's nested-interactive rule
+  // fails on every section (48 nodes, 2026-11-05). The wrapper is what the
+  // dot positions itself against.
   function installPinDots() {
     const nav = U.$('sec-nav');
     if (!nav) return;
     const btns = nav.querySelectorAll('.sec-btn[data-section]');
     for (let i = 0; i < btns.length; i++) {
       const b = btns[i];
-      if (b.querySelector('.sec-pin-dot')) continue;
+      let wrap = b.parentElement;
+      if (!wrap || !wrap.classList || !wrap.classList.contains('sec-btn-wrap')) {
+        wrap = document.createElement('span');
+        wrap.className = 'sec-btn-wrap';
+        b.parentNode.insertBefore(wrap, b);
+        wrap.appendChild(b);
+      }
+      if (wrap.querySelector('.sec-pin-dot')) continue;
       const dot = document.createElement('button');
       dot.type = 'button';
       dot.className = 'sec-pin-dot';
@@ -220,7 +231,7 @@
         if (getPins().indexOf(sec) >= 0) unpin(sec);
         else pinCurrent();
       });
-      b.appendChild(dot);
+      wrap.appendChild(dot);
     }
   }
 

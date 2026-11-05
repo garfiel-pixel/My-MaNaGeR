@@ -527,7 +527,12 @@
 // mmgr_sec_pins) were being written without an inventory row, so the consent
 // gate failed. Rows added and INVENTORY_VERSION raised 2 -> 3 in js/consent.js,
 // worker.js and serve.cjs together. Changed shell asset: js/consent.js.
-const CACHE = 'mmgr-shell-v542';
+// v543 - PIN DOT OUTSIDE THE BUTTON (a11y 2026-11-05): the section pin dot
+// was a <button> nested inside the .sec-btn <button>, which axe flags as
+// nested-interactive on every section. It is now a sibling inside
+// .sec-btn-wrap. Changed shell assets: js/app/section-accelerator.js
+// (dist/bundle.js) and css/mmgr.css.
+const CACHE = 'mmgr-shell-v543';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

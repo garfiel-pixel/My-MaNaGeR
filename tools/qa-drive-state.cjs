@@ -129,8 +129,14 @@ const PRELOAD = `(function(){
   };
 })();`;
 
-(async () => {
-  const proc = spawn(
+// Launch Chrome and wait for its DevTools port. The port used to be polled for
+// 18s with no verdict, so a launch that never came up surfaced as a bare
+// `TypeError: fetch failed` from the next line and failed the whole step with
+// no diagnosis (CI run 41882415836). Now: up to 30s, one relaunch, and a named
+// error that says which binary was tried.
+let proc = null;
+async function launchChrome() {
+  proc = spawn(
     CHROME,
     [
       '--headless=new',
@@ -143,14 +149,30 @@ const PRELOAD = `(function(){
     ],
     { stdio: 'ignore' }
   );
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < 100; i++) {
     try {
       const r = await fetch('http://127.0.0.1:' + PORT + '/json/version');
       if (r.ok) {
-        break;
+        return true;
       }
     } catch (e) {}
     await delay(300);
+  }
+  return false;
+}
+
+(async () => {
+  if (!(await launchChrome())) {
+    log('Chrome did not answer on :' + PORT + ' (binary: ' + CHROME + ') - relaunching once');
+    try {
+      proc.kill();
+    } catch (e) {}
+    await delay(1000);
+    if (!(await launchChrome())) {
+      throw new Error(
+        'Chrome never answered on the DevTools port ' + PORT + ' (binary: ' + CHROME + ')'
+      );
+    }
   }
   const targets = await (await fetch('http://127.0.0.1:' + PORT + '/json')).json();
   ws = new WebSocket(targets.find(t => t.type === 'page').webSocketDebuggerUrl);

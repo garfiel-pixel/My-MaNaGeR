@@ -498,7 +498,14 @@
 // longer exists anywhere in the app, and clears one only after the payment
 // provider has accepted the cancel - a refusal leaves the row in place and
 // shows the reason. Changed shell assets: admin.html.
-const CACHE = 'mmgr-shell-v534';
+// v535 - FIRST-PROJECT TOUR REPAIR (CI red 2026-11-04): the opening card
+// pointed at `.app-sidebar`, which is an ID in this markup (`#app-sidebar`),
+// so step 1 had no spotlight at all; the card also used --panel/--tx, two
+// tokens that do not exist, which painted a dark card under light-theme text
+// (2.4:1 on a light page). The rail selector, the card's colour tokens and a
+// short placement retry while the rail lays out all change. Changed shell
+// assets: js/mmgr-tour.js.
+const CACHE = 'mmgr-shell-v535';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

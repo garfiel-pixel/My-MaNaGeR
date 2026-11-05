@@ -37,10 +37,12 @@
   // no spotlight (the calculator's final step works the same way).
   const STEPS = [
     {
-      // The rail is .app-sidebar on desktop and #sec-nav in the compact
+      // The rail is #app-sidebar on desktop and #sec-nav in the compact
       // layout; aim at a nav group inside it, because the rail containers
-      // themselves report no box while their children do.
-      sel: ['.app-sidebar .nav-group', '#sec-nav .nav-group', '.sec-btn[data-section="dash"]'],
+      // themselves report no box while their children do. The desktop rail is
+      // an ID (`<aside id="app-sidebar">`), not a class: a class selector
+      // matches nothing and the step loses its spotlight.
+      sel: ['#app-sidebar .nav-group', '#sec-nav .nav-group', '.sec-btn[data-section="dash"]'],
       title: 'Your project, in sections',
       text: 'Everything lives in one project. This rail switches between the sections - the tour walks the ones you will use most, then gets out of your way.'
     },
@@ -98,6 +100,7 @@
   let card = null;
   let ring = null;
   let prevFocus = null;
+  let placeTimer = null;
 
   function done() {
     try {
@@ -192,12 +195,16 @@
     card.setAttribute('aria-modal', 'true');
     card.setAttribute('aria-labelledby', 'tour-title');
     card.setAttribute('aria-describedby', 'tour-text');
+    // Real theme tokens only. --panel and --tx do not exist in this app, so
+    // their fallbacks painted a dark card under light-theme text: on a light
+    // page the muted lines measured 2.4:1. --card/--text/--text-secondary
+    // exist in both palettes, so the card stays readable either way.
     card.style.cssText = [
       'position:absolute',
       'pointer-events:auto',
       'max-width:340px',
-      'background:var(--panel,#15171b)',
-      'color:var(--tx,#e8eaee)',
+      'background:var(--card,#15171b)',
+      'color:var(--text,#e8eaee)',
       'border:1px solid rgba(212,175,55,.45)',
       'border-radius:12px',
       'padding:16px 16px 12px',
@@ -206,12 +213,12 @@
     ].join(';');
 
     card.innerHTML = [
-      '<div id="tour-count" style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx-sub,#a0acbe);margin-bottom:6px"></div>',
+      '<div id="tour-count" style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-secondary);margin-bottom:6px"></div>',
       '<div id="tour-title" style="font-weight:600;margin-bottom:6px"></div>',
       '<div id="tour-text" style="margin-bottom:12px"></div>',
       '<div style="display:flex;gap:8px;justify-content:flex-end">',
-      '<button type="button" id="tour-skip" style="background:transparent;border:0;color:var(--tx-sub,#a0acbe);font:inherit;cursor:pointer;padding:6px 8px">Skip</button>',
-      '<button type="button" id="tour-back" style="background:transparent;border:0;color:var(--tx,#e8eaee);font:inherit;cursor:pointer;padding:6px 8px">Back</button>',
+      '<button type="button" id="tour-skip" style="background:transparent;border:0;color:var(--text-secondary);font:inherit;cursor:pointer;padding:6px 8px">Skip</button>',
+      '<button type="button" id="tour-back" style="background:transparent;border:0;color:var(--text,#e8eaee);font:inherit;cursor:pointer;padding:6px 8px">Back</button>',
       '<button type="button" id="tour-next" style="background:var(--gold,#D4AF37);border:0;border-radius:8px;color:#111;font:inherit;font-weight:600;cursor:pointer;padding:7px 12px">Next</button>',
       '</div>'
     ].join('');
@@ -303,6 +310,10 @@
 
   function render() {
     build();
+    if (placeTimer) {
+      clearTimeout(placeTimer);
+      placeTimer = null;
+    }
     const st = STEPS[idx];
     if (!st) {
       return end();
@@ -341,9 +352,18 @@
       }
     }
     // Position after the scroll lands, on the next frame, from the live box.
+    // The rail is still laying out when the tour opens, so a step whose target
+    // has no box yet is retried briefly instead of being left unringed: the
+    // first card used to point at nothing for the whole step.
+    let tries = 0;
     const flush = function () {
-      if (idx >= 0 && STEPS[idx] === st) {
-        place(pick(st.sel));
+      if (idx < 0 || STEPS[idx] !== st) {
+        return;
+      }
+      const target = pick(st.sel);
+      place(target);
+      if (st.sel && !target && tries++ < 10) {
+        placeTimer = setTimeout(flush, 150);
       }
     };
     if (reduceMotion()) {
@@ -406,6 +426,10 @@
       return;
     }
     idx = -1;
+    if (placeTimer) {
+      clearTimeout(placeTimer);
+      placeTimer = null;
+    }
     // seen === false is an interruption (the app took the screen), not the
     // person finishing the walk, so the flag stays unset and it shows again
     // next time a project is opened.

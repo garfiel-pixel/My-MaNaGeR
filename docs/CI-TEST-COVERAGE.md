@@ -251,6 +251,7 @@ headless Chrome against `serve.cjs` on :8765.
 | `qa-drive-smoke.cjs` | MANUAL | needs a live Google Drive session; parks on its watchdog after the offline arms pass |
 | `qa-admin-recovery.cjs` | MANUAL | points a mock mail server at the recovery flow; run per release |
 | `tools/qa-admin-code-escrow.cjs` | MANUAL | admin-code escrow round trip needs an account-scoped run |
+| `tools/qa-load-test.cjs` | MANUAL | F2 load test: boots its own wrangler with local D1 + R2, seeds 20 throwaway projects and rotates their owner codes (the per-code bucket is 30/min, so one code would only measure the limiter), then publishes p50/p95/p99 for `/api/health`, the app shell, a cloud load and a cloud save under `load/results/`. Manual because a shared CI runner cannot produce an honest latency number and the cloud arms are CPU-bound on the 100k-round owner-code KDF (the dev server serialises them), so the figures are local evidence for the internal targets, not a CI gate. The gate itself is still real: it fails on any 5xx, any 429 (a 429 means the harness outran the product's own limit and every latency in that scenario is suspect) and a health p95 over 300 ms |
 
 ## Verification commands
 

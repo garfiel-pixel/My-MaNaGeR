@@ -123,7 +123,7 @@ bug when it is the pin sync, and call a `saveFloatState()` that does not exist).
 
 | # | Phase | Status | Gate / evidence |
 |---|---|---|---|
-| 3.1 | **F2 load test** (local wrangler + D1 first, staging later) | Queued | p50/p95/p99 per scenario committed under `load/results/` |
+| 3.1 | **F2 load test** (local wrangler + D1 first, staging later) | **DONE (3.1, local)** - staging run still to do | `tools/qa-load-test.cjs` boots its own wrangler (local D1 + R2), seeds 20 throwaway projects and rotates their owner codes so the per-code bucket (30/min) never becomes the thing being measured, then publishes p50/p95/p99 to `load/results/`. First run `2026-11-05T22-24-47Z-2151d86.json`: health 57/79/114 ms, shell 269/320/332 ms, cloud load 784/796/806 ms, cloud save 314/1287/1337 ms, 0 5xx, 0 429, 200 samples each for the cloud arms. The cloud figures are dev-server bound - every request pays the 100k-round owner-code KDF and the local isolate serialises it - so they are evidence for the internal targets, not a production claim. Registered MANUAL with that reason. |
 | 3.2 | **F4 D1 backup restore drill** | Queued - before any pilot | `docs/RESTORE-DRILL-*.md`, timed, owner access |
 | 3.3 | **F5 targets + incident log** | Queued (targets may be written now; no published number before 3.1/3.2) | `docs/RELIABILITY-TARGETS.md`, `docs/INCIDENTS.md` |
 | 3.4 | **G3 activation/retention/tickets + feedback button** | Queued after 2.1 (schema collision) | In-app surface reusing the notice pattern |

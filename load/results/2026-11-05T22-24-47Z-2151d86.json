@@ -1,0 +1,64 @@
+{
+  "date": "2026-11-05T22:24:47.714Z",
+  "commit": "2151d86",
+  "node": "v26.12.1",
+  "platform": "win32 x64",
+  "base": "http://127.0.0.1:8791",
+  "secondsPerScenario": 20,
+  "concurrency": 8,
+  "codes": 20,
+  "scenarios": [
+    {
+      "name": "health",
+      "n": 1200,
+      "ok": 1200,
+      "limited": 0,
+      "serverError": 0,
+      "transportError": 0,
+      "p50": 57.2,
+      "p95": 79.4,
+      "p99": 114.2,
+      "max": 207.9,
+      "rps": 133.6
+    },
+    {
+      "name": "shell",
+      "n": 600,
+      "ok": 600,
+      "limited": 0,
+      "serverError": 0,
+      "transportError": 0,
+      "p50": 268.8,
+      "p95": 319.8,
+      "p99": 331.5,
+      "max": 342.2,
+      "rps": 29.9
+    },
+    {
+      "name": "load",
+      "n": 200,
+      "ok": 200,
+      "limited": 0,
+      "serverError": 0,
+      "transportError": 0,
+      "p50": 784,
+      "p95": 796.3,
+      "p99": 805.5,
+      "max": 811.8,
+      "rps": 2.6
+    },
+    {
+      "name": "save",
+      "n": 200,
+      "ok": 200,
+      "limited": 0,
+      "serverError": 0,
+      "transportError": 0,
+      "p50": 313.7,
+      "p95": 1286.7,
+      "p99": 1337.1,
+      "max": 1353.4,
+      "rps": 2.9
+    }
+  ]
+}

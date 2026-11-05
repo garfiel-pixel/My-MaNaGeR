@@ -35,8 +35,12 @@ operator, and the exact commands used.
   (SEC-15, owner decision on vendors). Until one exists, availability is
   measured after the fact, not alerted in real time.
 - The load test (F2) publishes p50/p95/p99 per scenario under `load/results/`.
-  Those numbers are the evidence for the latency rows above; until they exist,
-  the latency targets are intentions, not commitments.
+  First run: `2026-11-05T22-24-47Z-2151d86.json` - health p95 79 ms against the
+  300 ms target, 0 5xx, 0 429. The cloud arms (load p95 796 ms, save p95
+  1287 ms) are local dev-server figures: every request pays the 100k-round
+  owner-code KDF and the local isolate serialises it, so they are NOT a
+  production claim. A staging run is still owed before any of this is quoted
+  outside the repo.
 
 ## Review
 

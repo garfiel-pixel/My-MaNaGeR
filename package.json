@@ -72,6 +72,7 @@
     "verify:sweep13": "node tools/verify-sweep13.cjs",
     "verify:sw10": "node tools/verify-sw10.cjs",
     "qa:code-names": "node tools/qa-code-names.cjs",
-    "verify:sizes": "node tools/verify-sizes.cjs"
+    "verify:sizes": "node tools/verify-sizes.cjs",
+    "qa:load": "node tools/qa-load-test.cjs"
   }
 }

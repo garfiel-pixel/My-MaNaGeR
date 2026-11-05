@@ -9,7 +9,7 @@ import {
   json,
   cloudTimingSink,
   randomSaltHex,
-  hashOwnerCode,
+  hashPasswordWith,
   passwordIsPwned,
   codesEqual,
   cloudRateCheck,
@@ -125,8 +125,66 @@ function authEmailValid(email) {
   return email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
 }
 
-async function authHashPassword(password, saltHex) {
-  return hashOwnerCode(password, saltHex);
+/* ============================================================
+   PASSWORD HASH FORMAT (SEC-05 / wave 4.5, audit 2026-11-01)
+   ------------------------------------------------------------
+   Stored forms, newest first:
+
+     v2:<iterations>:<saltHex>:<hashHex>   current
+     <saltHex>:<hashHex>                   legacy (v1, 100000 iterations)
+
+   Why the version and the count live WITH the hash: Workers' WebCrypto caps
+   PBKDF2 at 100,000 iterations, which is below current OWASP guidance for
+   PBKDF2-HMAC-SHA256, so the KDF has to be replaceable. With the parameters
+   stored per row, a later scrypt/Argon2 path is a new version number - every
+   account upgrades itself on its next successful sign-in, and nobody is ever
+   asked to reset. A row whose format we do not recognise is a FAILED
+   verification, never a crash.
+   ============================================================ */
+const AUTH_HASH_VERSION = 2;
+const AUTH_HASH_ITERS = 100000;
+
+function authHashFormat(saltHex, hashHex) {
+  return 'v' + AUTH_HASH_VERSION + ':' + AUTH_HASH_ITERS + ':' + saltHex + ':' + hashHex;
+}
+
+function authParseHash(stored) {
+  const parts = String(stored || '').split(':');
+  if (parts.length === 4 && parts[0] === 'v2') {
+    const iters = Number(parts[1]);
+    return {
+      version: 2,
+      iters: Number.isFinite(iters) && iters > 0 ? Math.floor(iters) : AUTH_HASH_ITERS,
+      salt: parts[2],
+      hash: parts[3]
+    };
+  }
+  if (parts.length === 2 && parts[0] && parts[1]) {
+    return { version: 1, iters: AUTH_HASH_ITERS, salt: parts[0], hash: parts[1] };
+  }
+  return null;
+}
+
+// True when a successful sign-in should quietly re-hash with current settings.
+// Best-effort by contract: the caller must never fail a login over it.
+function authHashNeedsUpgrade(parsed) {
+  return !parsed || parsed.version < AUTH_HASH_VERSION || parsed.iters < AUTH_HASH_ITERS;
+}
+
+async function authUpgradeHash(env, email, password) {
+  try {
+    const salt = randomSaltHex();
+    const next = await authHashPassword(password, salt, AUTH_HASH_ITERS);
+    await env.DB.prepare('UPDATE auth_users SET password_hash = ? WHERE email = ?')
+      .bind(authHashFormat(salt, next), email)
+      .run();
+  } catch (e) {
+    /* an upgrade that fails must never cost the user their session */
+  }
+}
+
+async function authHashPassword(password, saltHex, iterations) {
+  return hashPasswordWith(password, saltHex, iterations || AUTH_HASH_ITERS);
 }
 
 // OWNER 2026-10-05: one message for EVERY collision, whatever the cause.
@@ -176,13 +234,13 @@ export async function handleAuthRegister(request, env) {
     return json({ ok: false, error: AUTH_ACCOUNT_TAKEN }, 409);
   }
   const salt = randomSaltHex();
-  const hash = await authHashPassword(password, salt);
+  const hash = await authHashPassword(password, salt, AUTH_HASH_ITERS);
   const now = new Date().toISOString();
   try {
     await env.DB.prepare(
       'INSERT INTO auth_users (email, password_hash, name, created_at) VALUES (?,?,?,?)'
     )
-      .bind(email, salt + ':' + hash, name, now)
+      .bind(email, authHashFormat(salt, hash), name, now)
       .run();
   } catch (e) {
     const raced = await env.DB.prepare('SELECT email FROM auth_users WHERE email = ?')
@@ -257,12 +315,13 @@ export async function handleAuthLogin(request, env) {
     await authHashPassword('x'.repeat(AUTH_MIN_PASSWORD), CLOUD_DUMMY_SALT);
     return json({ ok: false, error: 'invalid email or password' }, 401);
   }
-  const sep = row.password_hash.indexOf(':');
-  if (sep <= 0) {
+  const parsed = authParseHash(row.password_hash);
+  if (!parsed) {
+    await authHashPassword('x'.repeat(AUTH_MIN_PASSWORD), CLOUD_DUMMY_SALT);
     return json({ ok: false, error: 'invalid email or password' }, 401);
   }
-  const hash = await authHashPassword(password, row.password_hash.slice(0, sep));
-  if (!codesEqual(hash, row.password_hash.slice(sep + 1))) {
+  const hash = await authHashPassword(password, parsed.salt, parsed.iters);
+  if (!codesEqual(hash, parsed.hash)) {
     const fails = (guard ? Number(guard.failed_attempts) || 0 : 0) + 1;
     const lockMs = authLockMsForFails(fails);
     const lockedUntil = lockMs ? new Date(Date.now() + lockMs).toISOString() : null;
@@ -281,6 +340,11 @@ export async function handleAuthLogin(request, env) {
     await env.DB.prepare('DELETE FROM auth_login_guard WHERE email = ?').bind(email).run();
   } catch (e) {
     /* best-effort */
+  }
+  // Wave 4.5: a legacy or under-strength row upgrades itself here, while the
+  // plaintext is still in hand. Nobody is ever asked to reset for it.
+  if (authHashNeedsUpgrade(parsed)) {
+    await authUpgradeHash(env, email, password);
   }
   return authSessionResponse({ sub: 'email:' + row.email, email: row.email, name: row.name }, env);
 }
@@ -324,18 +388,18 @@ export async function handleAuthPasswordChange(request, env) {
   if (!row) {
     return json({ ok: false, error: 'account not found' }, 404);
   }
-  const sep = row.password_hash.indexOf(':');
-  if (sep <= 0) {
+  const parsed = authParseHash(row.password_hash);
+  if (!parsed) {
     return json({ ok: false, error: 'account not found' }, 404);
   }
-  const hash = await authHashPassword(current, row.password_hash.slice(0, sep));
-  if (!codesEqual(hash, row.password_hash.slice(sep + 1))) {
+  const hash = await authHashPassword(current, parsed.salt, parsed.iters);
+  if (!codesEqual(hash, parsed.hash)) {
     return json({ ok: false, error: 'current password is incorrect' }, 401);
   }
   const salt = randomSaltHex();
-  const newHash = await authHashPassword(next, salt);
+  const newHash = await authHashPassword(next, salt, AUTH_HASH_ITERS);
   await env.DB.prepare('UPDATE auth_users SET password_hash = ? WHERE email = ?')
-    .bind(salt + ':' + newHash, email)
+    .bind(authHashFormat(salt, newHash), email)
     .run();
   try {
     const toRevoke = await env.DB.prepare(
@@ -388,13 +452,16 @@ export async function handleAuthVerifyPassword(request, env) {
   if (!row) {
     return json({ ok: false, error: 'account not found' }, 404);
   }
-  const sep = row.password_hash.indexOf(':');
-  if (sep <= 0) {
+  const parsed = authParseHash(row.password_hash);
+  if (!parsed) {
     return json({ ok: false, error: 'account not found' }, 404);
   }
-  const hash = await authHashPassword(password, row.password_hash.slice(0, sep));
-  if (!codesEqual(hash, row.password_hash.slice(sep + 1))) {
+  const hash = await authHashPassword(password, parsed.salt, parsed.iters);
+  if (!codesEqual(hash, parsed.hash)) {
     return json({ ok: false, error: 'password is incorrect' }, 401);
+  }
+  if (authHashNeedsUpgrade(parsed)) {
+    await authUpgradeHash(env, email, password);
   }
   return json({ ok: true, verified: true });
 }
@@ -525,9 +592,9 @@ export async function handleAuthReset(request, env) {
     return json({ ok: false, error: 'invalid or expired reset link' }, 400);
   }
   const salt = randomSaltHex();
-  const newHash = await authHashPassword(next, salt);
+  const newHash = await authHashPassword(next, salt, AUTH_HASH_ITERS);
   await env.DB.prepare('UPDATE auth_users SET password_hash = ? WHERE email = ?')
-    .bind(salt + ':' + newHash, email)
+    .bind(authHashFormat(salt, newHash), email)
     .run();
   try {
     const toRevoke = await env.DB.prepare(
@@ -644,12 +711,12 @@ export async function handleAuthDeleteAccount(request, env) {
     if (!row) {
       return json({ ok: false, error: 'account not found' }, 404);
     }
-    const sep = row.password_hash.indexOf(':');
-    if (sep <= 0) {
+    const parsed = authParseHash(row.password_hash);
+    if (!parsed) {
       return json({ ok: false, error: 'account not found' }, 404);
     }
-    const hash = await authHashPassword(password, row.password_hash.slice(0, sep));
-    if (!codesEqual(hash, row.password_hash.slice(sep + 1))) {
+    const hash = await authHashPassword(password, parsed.salt, parsed.iters);
+    if (!codesEqual(hash, parsed.hash)) {
       return json({ ok: false, error: 'password is incorrect' }, 401);
     }
   } else {

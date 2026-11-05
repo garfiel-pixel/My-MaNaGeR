@@ -413,3 +413,40 @@ WAVE 5.7 — PROJECT PHOTOS (completed 2026-11-05)
   cloud-auth T3 section; registry rows updated; verify-test-registry + 
   verify-ci-coverage green.
 - Commit: plain Conventional Commit (feat(photos): ...), no AI attribution.
+
+--------------------------------------------------------------------------------
+WAVE 4.1 — SECURITY HYGIENE PART 1 (completed 2026-11-05)
+--------------------------------------------------------------------------------
+Scope (SEC-01 + SEC-07 audit gate + SEC-08 + SEC-16, per SECURITY-HYGIENE-DIRECTIVE
+§9.4 step 4.1):
+- SEC-01: top-level permissions: block added to all 4 workflows (ci/extended-qa/
+  nightly/codeql); gitleaks-action@v2 SHA-pinned to ff98106e...; new gate
+  tools/verify-workflow-security.cjs (fails on missing top-level permissions,
+  pull_request_target, or non-SHA-pinned third-party action). First-party
+  actions/* allowed on tags by policy (documented in the gate).
+- SEC-07: npm audit --audit-level=high in static job (0 vulns, gate green);
+  nightly.yml runs full-level audit weekly; vendor/MANIFEST.json with SHA-256 of
+  all 14 vendored files (three r160, whisper wasm); tools/verify-vendor.cjs fails
+  on hash/size drift; Dependabot groups roll bumps into single PRs.
+- SEC-08: .github/workflows/codeql.yml (JS/TS, own workflow, SHA-pinned action,
+  security-events: write) so it never lengthens main CI.
+- SEC-16: docs/SECURITY-REGISTER.md is the status table for every SEC item.
+Both new gates wired into the static job and registered in CI-TEST-COVERAGE.md
+(test-registry 166/166, verify-ci-coverage 12/12, npm run verify green).
+Commit b7f5a28 (ci(security): ...4.1); CI green. No AI attribution footer.
+Next: Wave 5 remainder (5.3 B2, 5.4 A1+A2, 5.8 B9, 5.9, B7), then 4.2-4.7,
+then Wave 2, Wave 3, then security seven rules. Rate-book provenance (G1) is moot
+- codebase is 100% My MaNaGeR's own rates, no JIC/GIC licensed content.
+
+--------------------------------------------------------------------------------
+CONTINUATION POINTER (2026-11-05, end of session)
+--------------------------------------------------------------------------------
+4.1 shipped (b7f5a28, CI green). The remaining waves are a multi-session program
+(Wave 5 tail -> 4.2-4.7 -> Wave 2 -> Wave 3 -> security-seven-rules). Precise
+ordered TODO + the worktree-Edit-redirect quirk + rate-book clarification are in
+tmp/HANDOFF-WAVES-2026-11-05.md (gitignored). Next session reads it and continues
+from 5.3 B2. Memory updated: feedback_complete_waves_autonomously.md,
+project_rate_book_is_my_manager.md.
+Environment note: in the "create" worktree, Edit/Write tools redirect into
+.codebuddy/worktrees/bg-01a1aaf0 — do all writes via Bash (cd real repo) and
+commit/push on the real main. Read tool reads the real repo correctly.

@@ -244,6 +244,10 @@ jobs:
         id: qa-owner-gate
         run: node tools/verify-owner-gate.cjs
 
+      - name: "T1: First-project CTA + admin credential kinds (5.4 A1+A2)"
+        id: qa-admin-credentials
+        run: node tools/qa-admin-credentials.cjs
+
       # T-1/T-2/T-3 gates from AUDIT-DIRECTIVE-2026-10-18 (bug classes
       # F1/F2/F3, each invisible to every gate that existed before: an
       # unresolved sprite <use href> renders an empty box with no error,

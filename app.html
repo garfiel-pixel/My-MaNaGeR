@@ -850,7 +850,14 @@ function renderCards(){
   try { demosHidden = localStorage.getItem('mmgr_demos_hidden') === '1'; } catch(e) {}
   // Render user projects
   if(!userProjects.length){
-    grid.innerHTML = '<div class="empty">No projects yet. Add one from the Admin panel.</div>';
+    grid.innerHTML =
+      '<div class="empty empty-first">' +
+        '<h2 class="empty-title">Create your first project</h2>' +
+        '<p class="empty-sub">You have no projects yet. Build your workspace in the Admin panel to get started.</p>' +
+        '<button type="button" class="btn btn-g btn-pill" data-nav="admin">' +
+          '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg>' +
+          'Create your first project</button>' +
+      '</div>';
     if (hint) hint.hidden = false;
   } else {
     if (hint) hint.hidden = true;

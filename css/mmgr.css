@@ -9529,6 +9529,29 @@ body.dark-mode .ltr-roll td {
   color: var(--slate);
   background: var(--tile-bg);
 }
+
+/* 5.4 A1 (2026-11-05): brand-new-instance empty state becomes a primary CTA.
+   Leads with "Create your first project" and routes to the Admin panel.
+   Scoped to .empty.empty-first so other .empty notes (admin list, etc.) keep
+   their existing inline styling. */
+.empty.empty-first {
+  max-width: 440px;
+  margin: 8vh auto;
+  padding: 24px 20px;
+  text-align: center;
+}
+.empty-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 8px;
+}
+.empty-sub {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--slate);
+  margin: 0 0 16px;
+}
 /* ---- AI Assistant window (chat-style) ---- */
 /* TRACK B3: distinct visual presence - the AI is the strongest
    differentiator and its entry point should feel like one.  A persistent

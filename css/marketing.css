@@ -614,7 +614,7 @@ main {
   width: 40px;
   height: 40px;
   transform: translate(-50%, -50%);
-  color: var(--gold);
+  color: var(--gold-deep);
 }
 @media (prefers-reduced-motion: reduce) {
   .band-seam {
@@ -5310,7 +5310,7 @@ html body.dark-mode .btn-gold:disabled {
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--gold);
+  color: var(--accent-on-navy);
 }
 .lai-badge .ico {
   width: 16px;
@@ -5447,6 +5447,13 @@ html body.dark-mode .btn-gold:disabled {
   align-items: center;
   justify-content: center;
   border-radius: 999px;
+  background: var(--gold);
+  border: 1px solid var(--gold);
+  color: #1c1917;
+}
+.lai-send .ico {
+  width: 18px;
+  height: 18px;
 }
 .lai-send:disabled {
   opacity: 0.5;

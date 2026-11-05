@@ -400,7 +400,9 @@ const ternaryRe = /^(.+?)\s*\?\s*['"]([^'"]*)['"]\s*:\s*['"]([^'"]*)['"]$/;
       for (const n of names) {
         const id = 'i-' + n;
         if (!spriteSymbols.has(id)) {
-          fail(rel + ' @' + c.line + ": ico('" + n + "') -> #" + id + ' has no <symbol> in ' + SPRITE);
+          fail(
+            rel + ' @' + c.line + ": ico('" + n + "') -> #" + id + ' has no <symbol> in ' + SPRITE
+          );
         } else {
           ok++;
         }
@@ -408,7 +410,13 @@ const ternaryRe = /^(.+?)\s*\?\s*['"]([^'"]*)['"]\s*:\s*['"]([^'"]*)['"]$/;
     }
     if (ok)
       pass(
-        'ico() in ' + rel + ': ' + calls.length + ' call sites, ' + ok + ' literal icon names all exist'
+        'ico() in ' +
+          rel +
+          ': ' +
+          calls.length +
+          ' call sites, ' +
+          ok +
+          ' literal icon names all exist'
       );
   }
 }

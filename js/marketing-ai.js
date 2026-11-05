@@ -524,7 +524,7 @@
     input.setAttribute('placeholder', 'Ask a question...');
     input.setAttribute('data-lai', 'input');
     input.disabled = true;
-    var sendBtn = el('button', 'btn btn-gold lai-send');
+    var sendBtn = el('button', 'btn lai-send');
     sendBtn.type = 'submit';
     sendBtn.setAttribute('aria-label', 'Send question');
     sendBtn.appendChild(ico('arrow-right'));

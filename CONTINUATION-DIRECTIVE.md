@@ -8,6 +8,31 @@
 
 ## Status log (newest at top)
 
+- **2026-11-05** - CI repaired after the B8 tour wave went red five runs in a row
+  (`41641525725`, `41644842198`, `41876327034`, `41882415836`; `9d50792` was a
+  cancelled no-op trigger). Each run hid the next failure, so the first red step
+  of every run was read rather than the run. Four were the harness catching up to
+  the tour and were fixed in `e9402f5`, `ba0b024`: the overlay ate presses meant
+  for the workspace (drawer Escape, `qa-full` 28), `project.html` carried one
+  inline style (`qa-full` 37), the tour key was missing from the storage
+  inventory (`qa-consent` S1), and the tour harness launched Playwright's bundled
+  browser instead of runner Chrome. Three defects were still live and are fixed
+  here. **Step 1 had no spotlight at all**: the selector said `.app-sidebar` but
+  the desktop rail is `<aside id="app-sidebar">`, so the first card rang nothing
+  (probe: 0 matches for the class, 6 boxes for the ID); it now names the ID and
+  placement retries for 1.5 s while the rail lays out instead of giving up on the
+  first frame. **The card was unreadable on a light page**: `--panel` and `--tx`
+  do not exist, so the fallbacks painted a dark card under `--text-secondary`
+  (#555555), 2.4:1 - the committed "contrast fix" had made it worse (3.12:1 at
+  `ba0b024`); it now uses `--card`/`--text`, which exist in both palettes.
+  **`qa-drive-state` died on a bare `TypeError: fetch failed`** because Chrome
+  never answered the DevTools port inside the 18 s poll and the next line threw;
+  the wait is now 30 s, names the binary, relaunches once, and only then fails.
+  Verified: `qa-first-project-tour` 13/13, `qa-a11y-axe` 7/7, `qa-full` 194/194,
+  `qa-ai-win` 27/27, `qa-drive-state` 9/9, `qa-consent` 37/37,
+  `verify-controls-admin` 20/20, `qa-hero-globe` 16/16, `qa-landing-ui` 43/43,
+  `npm run verify` exit 0. Shell v535. Not committed, not pushed.
+
 - **2026-11-02** - **5.1 cloud identity done**, the queued highest-value phase and the root of the owner's cross-device report. `cloud_projects` gains `owner_email` (migration `0030`, index, and an exact backfill of `email:` subs only - a Google sub is an opaque id and is never guessed from). `provenEmail()` in `src/lib/http.js` is now the ONE rule for the email half of an identity: a Google session is verified by construction, a password session only after `auth_users.email_verified = 1`, which is the gate the create route already applied. It is wired into the list, `cloudAuthOwnerSession`, create, claim, the free-cap count, `/api/billing/status` and account deletion - the last one matters: a deletion sweep that matched only the sub would leave rows behind that the deleted address could still reach. Saving by session was widened too, because a project you can see but cannot save is worse than one you cannot see. `qa-tenant-isolation` 19 -> 26 gates (I18 to I21), teeth proven at 24/26 with the list reverted to sub-only. **5.2 is next.** Also corrected: the directive's own registry still showed 1.2 as NEXT when it closed on 2026-10-30.
 
 - **2026-11-02** - CI repaired to 6/6 green (`b088c09`, run `41394843556`) after three gates had drifted from the shipped app; no product defect sat behind any of them. `qa-procurement` T2 pinned the signed-out device label for `quotedBy`, which B1's boot-time session read made unreachable (it is `owner@example.com` now; both labels accepted, a blank stamp still fails). That exposed two more, each surfacing only after the previous red step passed: `qa-consent` S1 because B7's `mmgr_rail_nudge` was written to `app.html` without an inventory row (row added, inventory VERSION stays 2 - a necessary key changes no category), and `qa-calc-assistant` W11 dark hover because the first-run rail demo moves the card under the pointer, so the gate read the resting tone (now waits for the nudge, re-points until the button is really `:hover`, and adds a named pointer arm; 157/157). Wave 5 order unchanged: 5.1 first.

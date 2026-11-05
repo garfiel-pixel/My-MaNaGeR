@@ -2507,3 +2507,17 @@ narrower reading of §14.3).
   can fire it late. Moving the write into the timer callback fixes both, but
   it needs a CSP hash regen and a shell bump - do it with the next app.html
   change, not inside a CI chase.
+- CI REPAIR 2026-11-05 (B8 tour wave, five red runs): the tour overlay took the
+  first visit (fixed in e9402f5: pointer-events pass-through, outside-press
+  dismissal, step aside when a drawer/modal/AI window is open, inline style
+  removed), the tour key was missing from docs/STORAGE-INVENTORY.md and the tour
+  harness launched Playwright's bundled browser (fixed in ba0b024). Three
+  defects were still live and fixed here: step 1 named `.app-sidebar`, which is
+  an ID in project.html (`#app-sidebar`), so the opening card rang nothing; the
+  card used --panel/--tx/--tx-sub, none of which exist, so light-theme text
+  measured 2.4:1; and qa-drive-state threw `TypeError: fetch failed` when Chrome
+  missed an 18s DevTools wait (now 30s, named error, one relaunch).
+  VERIFIED: qa-first-project-tour 13/13, qa-a11y-axe 7/7, qa-full 194/194,
+  qa-ai-win 27/27, qa-drive-state 9/9, qa-consent 37/37, verify-controls-admin
+  20/20, qa-hero-globe 16/16, qa-landing-ui 43/43, npm run verify exit 0.
+  Shell v535. Uncommitted at the time of writing.

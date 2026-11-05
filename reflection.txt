@@ -1,47 +1,91 @@
 # My MaNaGeR - reflection.txt (active; last session only)
 
-SESSION 2026-11-04 - TRACE THE RED CI STEPS, NOT THE DOCUMENTATION TRIGGER
+SESSION 2026-11-05 - CI REPAIR AFTER THE FIRST-PROJECT TOUR WAVE
 
 CONTEXT
-The owner suspected CI was executing instructions from directive files. Checked
-the latest two CI runs, workflow commands, the required directives, and the
-relevant validation scripts. Markdown directives are not executed. The static
-job does scan tracked text for line endings and checks selected documentation
-sizes; both gates passed in the latest run.
+The last five CI runs on `main` were red: `41641525725` on `00a5165`,
+`41644842198` on `e9402f5`, `41876327034` on `ba0b024`, `41882415836` on
+`ed0091a`. (`9d50792` was a cancelled no-op trigger commit, not a failure.)
+Every run failed a *different* step, because a red step skips every step after
+it, so each push surfaced the next latent failure. That is the CI repair loop
+in `AGENTS.md` section 8, taken one run at a time.
 
-WHAT WAS BROKEN
+WHAT WAS ALREADY FIXED IN THE BRANCH (confirmed here, not re-changed)
+1. `qa-full` checks 28 and 37, `qa-ai-win` 3 arms and `verify-controls-admin`
+   S6 all failed because the tour overlay took the first visit: it ate presses
+   aimed at the workspace and held Escape. `e9402f5` made the root
+   `pointer-events:none`, the card `auto`, added the outside-press dismissal,
+   stepped the tour aside when a drawer/modal/AI window is open, and dropped
+   the one inline style in `project.html`. Verified: 194/194, 27/27, 20/20.
+2. `qa-consent` S1 failed because `mmgr_first_project_tour_v1` was not in
+   `docs/STORAGE-INVENTORY.md`. `ba0b024` added the row (`INVENTORY_VERSION`
+   correctly unchanged: a necessary key). Verified 37/37.
+3. `qa-first-project-tour` never ran a check: it launched Playwright's bundled
+   Chromium, which CI does not download. `ba0b024` moved it to
+   `tools/chrome-launcher.cjs` like every other browser harness.
 
-1. Latest run `41644842198` on `e9402f5` failed `qa-first-project-tour` at
-   browser startup: Playwright's bundled Chromium was not installed. Other
-   browser harnesses use `tools/chrome-launcher.cjs`, which selects the system
-   Chrome provided by CI. The tour harness now uses that same helper and falls
-   back to Playwright's browser when no system Chrome is found.
+WHAT WAS STILL BROKEN AND IS FIXED HERE
 
-2. The same run failed `qa-consent` S1 because the B8 tour writes
-   `mmgr_first_project_tour_v1`, but the key was absent from
-   `docs/STORAGE-INVENTORY.md`. Added it as a necessary one-time feature flag;
-   the consent inventory version remains unchanged, consistent with the
-   neighboring necessary flags.
+1. `js/mmgr-tour.js` step 1 had no spotlight. The selector list named
+   `.app-sidebar`, but `project.html:1400` renders `<aside id="app-sidebar">`,
+   an ID. A live probe at 1440x900 returned 0 elements for the class selector
+   and 6 boxes for `#app-sidebar .nav-group`; the ring was `display:none` for
+   the whole step, which is why `qa-first-project-tour` T2c reported
+   `overlap:false` on exactly that one card. Fixed the selector to
+   `#app-sidebar .nav-group` (compact `#sec-nav` fallback kept).
 
-The earlier run `41641525725` was triggered by the docs-only commit
-`00a5165`, but that commit changed only `EXECUTION-PLAN.md`; the preceding
-feature commit `0b506c4` introduced the tour and its harness. The run's static
-doc-size gate passed. The trigger was documentation, not directive execution.
+2. The same function placed the ring ONCE (rAF + a 420 ms settle). The tour
+   auto-starts the moment `#sec-nav .sec-btn` exists, which can be before the
+   desktop rail is laid out, so a step could stay unringed forever. `render()`
+   now retries placement every 150 ms for up to 1.5 s while the target has no
+   box, with `placeTimer` cleared on the next step and on `end()`.
+
+3. The card's colours were broken in light theme. Line ~199 used
+   `var(--panel,#15171b)` and `var(--tx,#e8eaee)`, and lines ~216/220 used
+   `var(--tx-sub,#a0acbe)`. None of `--panel`, `--tx`, `--tx-sub` exists in
+   `css/src` (probe: all three compute empty). The card therefore painted the
+   dark fallback `#15171b` while the two muted strings resolved through a real
+   token, `--text-secondary` = `#555555` in light: 2.4:1. The committed
+   "contrast fix" (`ed0091a`) changed `--tx-sub` to `--text-secondary` and made
+   it worse than the 3.12:1 `#666666` `ba0b024` measured. The card now uses
+   `--card` and `--text`, both defined in `10-tokens.css` (light) and in
+   `body.dark-mode` (20-shell.css), so it is a light surface with `#333333` text
+   on a light page and `#151518` with `#f5f5f5` in dark. `--text-secondary`
+   stays for the muted lines (7.4:1 light, 8.9:1 dark).
+
+4. `tools/qa-drive-state.cjs` failed the whole browser-app job with
+   `TypeError: fetch failed` at the `/json` line. The 60 x 300 ms wait for
+   Chrome's DevTools port expired and the next fetch threw. It now waits 30 s,
+   logs the binary it tried, kills and relaunches once, and only then raises a
+   named error (`Chrome never answered on the DevTools port ...`). The nine
+   contract arms are untouched - no assertion was weakened.
 
 FILES TOUCHED
-`tools/qa-first-project-tour.cjs` (use shared Chrome launcher),
-`docs/STORAGE-INVENTORY.md` (register tour flag), and this reflection.
-`package-lock.json` was already modified in the worktree and was left alone.
+`js/mmgr-tour.js` (selector, colour tokens, placement retry),
+`tools/qa-drive-state.cjs` (launch wait + one relaunch + named error),
+`sw.js` (CACHE `mmgr-shell-v535` + v535 note; `js/mmgr-tour.js` is a shell
+asset), `CONTINUATION-DIRECTIVE.md` (status entry),
+`PLANNING-TODO-2026-09-03.txt` (CI repair record), this file.
+`dist/*` rebuilt with `node build.js` (bundle `dist/bundle.067c4c60.js`).
 
-VERIFICATION
-`node --check tools/qa-first-project-tour.cjs` passed. `npm run verify` passed,
-including the test registry and file-size gates. `qa-consent`'s static phase
-passed, including S1. Full browser validation could not run in this container:
-after installing Playwright Chromium, launch failed because system library
-`libatk-1.0.so.0` is absent. No remote CI run has been triggered for these
-uncommitted changes.
+VERIFICATION (all run locally on Windows, Chrome, serve.cjs on :8765)
+- `node tools/qa-first-project-tour.cjs` 13/13 (was 12/13, T2c red)
+- `node tools/qa-a11y-axe.cjs` 7/7 (was 6/7, 4 serious contrast nodes)
+- `node qa-full.cjs` 194/194
+- `node tools/qa-ai-win.cjs` 27/27
+- `node tools/qa-drive-state.cjs` 9/9
+- `node tools/qa-consent.cjs` 37/37
+- `node tools/verify-controls-admin.cjs` 20/20
+- `node tools/qa-hero-globe.cjs` 16/16, `node tools/qa-landing-ui.cjs` 43/43
+  (the two browser-app steps that never ran after the last red step)
+- `npm run verify` exit 0 (CSP hashes, SW, CSS integrity, eslint, prettier,
+  171 unit tests, sizes, registry 163/163)
+
+NOT DONE
+Nothing is committed or pushed. The remote run is the only proof that the
+repair holds, and the drive-state flake was environmental (Chrome did not come
+up on that runner); the relaunch is a mitigation, not a root cause.
 
 NEXT
-After these changes are pushed, confirm the new Actions run is green. The
-browser gates are the remaining proof; the local container lacks their OS
-browser dependency.
+Commit (plain Conventional Commits, no AI footer), push, then poll the Actions
+API until the run completes and re-enter the loop if a new step goes red.

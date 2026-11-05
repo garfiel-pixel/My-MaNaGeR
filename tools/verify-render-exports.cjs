@@ -177,7 +177,11 @@ const appDir = path.join(ROOT, 'js', 'app');
 // entitlements.js is likewise a standalone cross-cutting gate (Task 3/9,
 // 2026-09-19): callers ask MMGR.Entitlements.aiAssistant() directly; it owns
 // no state and mutates nothing, so no delegation wrapper applies.
-const APP_EXCLUDE = new Set(['components.js', 'entitlements.js']);
+// section-accelerator.js (B9, 2026-11-05) is a self-contained feature module:
+// it self-initializes at DOMContentLoaded and is reached directly as
+// MMGR.SectionAccelerator.* (the control-panel wiring and the test harness both
+// call it that way), so it carries no monolith wrappers by design.
+const APP_EXCLUDE = new Set(['components.js', 'entitlements.js', 'section-accelerator.js']);
 const appFiles = fs.readdirSync(appDir).filter(f => f.endsWith('.js') && !APP_EXCLUDE.has(f));
 const appSrc = fs.readFileSync(path.join(ROOT, 'js', 'mmgr-app.js'), 'utf8');
 

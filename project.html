@@ -1650,6 +1650,13 @@
     <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Generate Output</div><div class="fd">Compiles full project state into timestamped JSON.</div></div>
     <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-save"></use></svg> Auto-Save</div><div class="fd">Every change saves to LocalStorage automatically.</div></div>
     <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg> Focus Mode (F)</div><div class="fd">Press F to collapse everything except your working panel.</div></div>
+    <!-- B9 (owner audit 2026-11-01): the section accelerator extends the EXISTING
+         nav. Off by default. Mouse side buttons step sections; up to five pins. -->
+    <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-list"></use></svg> Section Accelerator <label class="tgl"><input type="checkbox" id="sec-accel-toggle" aria-label="Section accelerator: step sections with the mouse side buttons"><span class="tsl"></span></label></div><div class="fd">Step one section each way with the mouse side buttons (back = previous, forward = next). Off by default. Pin up to five sections for quick jumps.</div>
+      <div class="fd mt6"><button type="button" class="btn btn-o btn-s" id="sec-accel-pin">Pin current section</button> <button type="button" class="lnk-btn" id="sec-accel-reset">Reset pins</button></div>
+      <div class="sec-accel-pins" id="sec-accel-pins"></div>
+      <div class="fd is-hide" id="sec-accel-pins-empty">No pinned sections yet.</div>
+    </div>
     <!-- B8 (owner audit 2026-11-01): the tour is shown once on the first
          project, never again automatically. This is the way back to it. -->
     <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-book"></use></svg> Take the tour <button type="button" class="btn btn-o btn-s" data-action="startTour">Replay</button></div><div class="fd">The short walkthrough of every section, shown once when you open your first project.</div></div>

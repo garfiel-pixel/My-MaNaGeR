@@ -1307,6 +1307,72 @@ body.sidebar-open .sb-close .ico {
 .sec-badge.is-hide {
   display: none;
 }
+/* B9 (owner audit 2026-11-01): section accelerator pin controls. A small dot
+   on each nav button pins or unpins it; the control panel lists the pins. */
+.sec-btn {
+  position: relative;
+}
+.sec-pin-dot {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 1px solid var(--card);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--slate) 40%, transparent);
+  color: var(--lit-white);
+  cursor: pointer;
+  opacity: 0;
+  transition: var(--tr-ui);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.sec-btn:hover .sec-pin-dot,
+.sec-btn:focus-within .sec-pin-dot,
+.sec-pin-dot.on {
+  opacity: 1;
+}
+.sec-pin-dot:hover,
+.sec-pin-dot.on {
+  background: var(--gold-ink);
+}
+.sec-pin-dot::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--lit-white);
+}
+.sec-accel-pins {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.sec-pin-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+.sec-pin-chip:hover {
+  border-color: var(--gold-ink);
+  color: var(--gold-ink);
+}
+.sec-pin-x {
+  font-weight: 700;
+  line-height: 1;
+}
+
 .stk-exp-bad {
   border-color: rgba(239, 68, 68, 0.65) !important;
   background: rgba(239, 68, 68, 0.08);

@@ -105,6 +105,7 @@ const APP_MODULES = [
   'js/app/confirm.js',
   'js/app/copy-text.js',
   'js/app/sidebar.js',
+  'js/app/section-accelerator.js',
   // GANTT-1: pure view builder (rows/spans/links/scale) - the export in
   // mmgr-app.js calls it at runtime; needs Utils + Schedule at call time.
   'js/mmgr-gantt-view.js',

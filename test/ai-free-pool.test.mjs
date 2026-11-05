@@ -1,7 +1,13 @@
-import { test } from 'node:test';
+import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { handleAiChat } from '../src/ai-proxy.js';
-import { signSession, sessionKey } from '../src/lib/http.js';
+import { signSession, sessionKey, __resetRateStateForTest } from '../src/lib/http.js';
+
+// SEC-03 added a per-account AI burst bucket (20/min). These tests make many
+// calls for the same account in milliseconds, so reset the in-memory state
+// between tests; the burst behaviour itself is proven in
+// tools/qa-ratelimit-keying.cjs.
+beforeEach(() => __resetRateStateForTest());
 
 // ---------------------------------------------------------------------------
 // The managed free pool (owner 2026-10-08): the free section's AI runs on the

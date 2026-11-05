@@ -8,7 +8,13 @@
    echoed in any error response. Enforced: max body size + hard upstream
    timeout. Missing key -> 401; bad body -> 400.
    ============================================================ */
-import { json, readSession, readJsonBody, authEmailConfigured } from './lib/http.js';
+import {
+  json,
+  readSession,
+  readJsonBody,
+  authEmailConfigured,
+  cloudRateAccountCheck
+} from './lib/http.js';
 import { billingStatusActive } from './billing.js';
 
 const AI_PROVIDERS = {
@@ -440,6 +446,23 @@ export async function handleAiChat(request, env) {
       }
     }
     const paid = await poolIsPaid(env, session.sub);
+    // SEC-03 (audit 2026-11-01): a per-ACCOUNT burst limit on the free pool.
+    // The route-level `ai` bucket counts the network identity, so an account
+    // can dodge it by rotating egress, and several accounts on one office NAT
+    // share it. This one counts the account itself - 20 model calls a minute,
+    // well past human pace, and it never applies to a caller's own key.
+    const burst = await cloudRateAccountCheck(session.sub, 'aiAccount', env);
+    if (burst.limited) {
+      return json(
+        {
+          ok: false,
+          error: 'That is a lot of questions at once - give it a minute and ask again.',
+          tier: 'free-pool',
+          retryAfter: burst.retryAfter
+        },
+        429
+      );
+    }
     const used = paid ? 0 : await freeQuotaUsed(env, session.sub);
     if (!paid && used >= FREE_DAILY_MESSAGE_CAP) {
       // The allowance is never advertised up front - only this reached-limit

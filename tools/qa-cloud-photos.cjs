@@ -238,6 +238,29 @@ async function main() {
       res.status === 200 && ct.indexOf('image/png') === 0 && len === PNG.length,
       res.status + '|' + ct + '|' + len
     );
+    // SEC-04: even a real photo is served inert.
+    const csp = res.headers.get('content-security-policy') || '';
+    const nosniff = (res.headers.get('x-content-type-options') || '').toLowerCase();
+    ok(
+      'served photo carries the sandbox CSP and nosniff (SEC-04)',
+      /sandbox/.test(csp) && nosniff === 'nosniff',
+      csp + '|' + nosniff
+    );
+
+    // SEC-04: a renamed HTML file must be refused by content sniffing, not by
+    // its (attacker-controlled) Content-Type claim.
+    const fakeForm = new FormData();
+    fakeForm.append(
+      'file',
+      new Blob(['<!DOCTYPE html><script>alert(1)</script>'], { type: 'image/jpeg' }),
+      'evil.jpg'
+    );
+    res = await fetch(BASE + '/api/cloud/projects/' + pid + '/photos', {
+      method: 'POST',
+      headers: auth,
+      body: fakeForm
+    });
+    ok('a renamed HTML file is refused (SEC-04 sniffing)', res.status === 400, res.status);
 
     // ---- 6. metadata endpoint ----
     res = await fetch(BASE + '/api/cloud/projects/' + pid + '/photos/' + photoId + '/meta', {

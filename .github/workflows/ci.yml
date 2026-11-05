@@ -228,6 +228,10 @@ jobs:
         id: qa-ai-relay
         run: node tools/qa-ai-relay.cjs
 
+      - name: "T1: Rate-limit keying (SEC-03: rotating codes, per-IP bucket, fail ladder)"
+        id: qa-ratelimit-keying
+        run: node tools/qa-ratelimit-keying.cjs
+
       - name: "T1: Report-issue payload (PII/budget exclusion)"
         id: qa-report
         run: node tools/verify-report-issue.cjs

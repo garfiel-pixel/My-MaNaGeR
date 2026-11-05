@@ -9,8 +9,8 @@ Statuses: DONE | PARTIAL | QUEUED | OWNER-CHECK (needs owner, not AI) | N-A
 |---|---|---|---|
 | SEC-01 | GitHub Actions least privilege + pinning | **DONE (4.1)** | `permissions:` blocks on all 4 workflows; `gitleaks-action@v2` SHA-pinned (`ff98106...`); `verify-workflow-security.cjs` gate in `static` |
 | SEC-02 | Repository governance checklist | OWNER-CHECK | branch protection, secret scanning, 2FA, token audit — owner only |
-| SEC-03 | Rate limiter keying on attacker input | QUEUED (4.2) | `qa-ratelimit-keying.cjs` not yet written |
-| SEC-04 | Photo upload MIME trust | QUEUED (4.2) | content sniffing + EXIF strip (owner: strip) not yet done |
+| SEC-03 | Rate limiter keying on attacker input | **DONE (4.2)** | `qa-ratelimit-keying.cjs` (13/13): per-code bucket kept, per-IP bucket added (more generous), failed-auth ladder (10/15min IP, 30/hour project), per-account AI burst (20/min) |
+| SEC-04 | Photo upload MIME trust | **DONE (4.2)** | signature sniffing + EXIF strip (JPEG/PNG/WebP) + `sandbox` CSP on serve; `test/photo-sniff.test.mjs` (8) + `qa-cloud-photos.cjs` arms |
 | SEC-05 | Passwords: policy, breach, friction | PARTIAL | 12-char floor + HIBP screen done (tests green); hash-versioning + Turnstile (defer) open |
 | SEC-06 | CSP tighten (report-only first) | QUEUED (4.3) | no `verify-csp-connect` yet |
 | SEC-07 | Supply chain: audit gate + provenance | **DONE (4.1)** | `npm audit --audit-level=high` in `static`; weekly all-levels in `nightly`; `vendor/MANIFEST.json` + `verify-vendor.cjs` |

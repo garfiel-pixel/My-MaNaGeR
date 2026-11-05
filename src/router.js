@@ -28,6 +28,9 @@ import {
   sameOriginOnly,
   cloudRateCheck,
   cloudRateLimited,
+  cloudAuthBlocked,
+  cloudAuthFail,
+  cloudAuthClear,
   readSession,
   cloudForbidden,
   readJsonBody
@@ -222,6 +225,12 @@ async function handlePresenceAuth(request, env) {
   if (rl.limited) {
     return cloudRateLimited(rl.retryAfter);
   }
+  // SEC-03: a code-guessing caller is locked out on a failure ladder as well
+  // as the request bucket. The IP check runs before the body is read.
+  const ipBlocked = cloudAuthBlocked(request, null);
+  if (ipBlocked.over) {
+    return json({ ok: false, retryAfter: ipBlocked.retryAfter }, 429);
+  }
   try {
     const read = await readJsonBody(request, BODY_CAP);
     if (read.tooLarge || read.bad) {
@@ -235,26 +244,40 @@ async function handlePresenceAuth(request, env) {
       await Promise.all([cloudDummyHash(), cloudTimingSink()]);
       return json({ ok: false });
     }
+    const projBlocked = cloudAuthBlocked(request, projectId);
+    if (projBlocked.over) {
+      return json({ ok: false, retryAfter: projBlocked.retryAfter }, 429);
+    }
     const row = await env.DB.prepare(
       'SELECT owner_code_salt, owner_code_hash, google_sub FROM cloud_projects WHERE project_id = ?'
     )
       .bind(projectId)
       .first();
     if (!row) {
+      cloudAuthFail(request, projectId);
       await Promise.all([cloudDummyHash(), cloudTimingSink()]);
       return json({ ok: false });
     }
     const hash = await hashOwnerCode(code, row.owner_code_salt);
     if (codesEqual(hash, row.owner_code_hash)) {
+      cloudAuthClear(request, projectId);
       return json({ ok: true, name: 'Owner' });
     }
     const ed = await cloudAuthEditor(request, env, projectId, code);
     if (ed) {
+      cloudAuthClear(request, projectId);
       return json({ ok: true, name: ed.label || 'Editor' });
     }
     if (await cloudManifestCodeOk(env, projectId, code)) {
+      cloudAuthClear(request, projectId);
       return json({ ok: true, name: 'Viewer' });
     }
+    // SEC-03: one strike for this request. The editor helper above already
+    // recorded its own strike when it rejected the code, so a request that
+    // fails as an editor counts twice on this one route - deliberately: this
+    // is a WebSocket-upgrade gate, and erring strict here is cheaper than
+    // letting a guesser hold the socket path open.
+    cloudAuthFail(request, projectId);
     await Promise.all([cloudDummyHash(), cloudTimingSink()]);
     return json({ ok: false });
   } catch (e) {

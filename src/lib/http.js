@@ -614,6 +614,13 @@ const CLOUD_RATE = {
   //   at all. 60 per minute matches the RATE_LIMITER binding's own window, so
   //   the local fallback and production answer the same number.
   ai: { max: 60, windowMs: 60000 },
+  //   aiAccount: SEC-03 (audit 2026-11-01). The `ai` bucket above is keyed on
+  //   the caller's network identity, so ONE account behind a rotating egress
+  //   (or several accounts on one office NAT) can still hammer the free pool.
+  //   This bucket is keyed on the ACCOUNT instead - 20 model calls a minute is
+  //   far beyond human typing but stops a script that pays nothing. It guards
+  //   only the free-pool rung; a caller's OWN key never touches it.
+  aiAccount: { max: 20, windowMs: 60000 },
   //   teamInvite: RBAC sprint 1 (directive 2026-10-25). 20 invitations per hour
   //   PER PROJECT, keyed by an explicit override so one owner cannot mail-bomb
   //   a batch by accident. Counted only after the owner is authenticated, so a
@@ -662,21 +669,50 @@ export function randomIdSuffix(len = 8) {
   return out;
 }
 
-export async function cloudRateCheck(request, bucket, env, keyOverride) {
-  const headers = bucket === 'recover' ? ['X-Owner-Code'] : ['X-Owner-Code', 'X-Editor-Code'];
-  const key = keyOverride ? String(keyOverride) : await cloudRateKey(request, headers);
-  const ns = bucket + ':' + key;
-  // Resolved once, used by BOTH limiters below. An unknown bucket falls back
-  // to the general allowance - it still gets a limit of its own (the ns is
-  // namespaced), it just does not get a stricter one.
-  const cfg = CLOUD_RATE[bucket] || CLOUD_RATE.general;
-  const now = Date.now();
+// SEC-03 (audit 2026-11-01): the per-IP bucket is deliberately MORE GENEROUS
+// than the per-code bucket. Re-keying every bucket on IP alone would put an
+// entire site office behind one NAT on a shared 30/min budget, which is worse
+// than the vulnerability it fixes. The per-code bucket keeps per-tenant
+// fairness; this factor (and the RATE_LIMITER binding's own 60/min backstop)
+// only catches a caller who rotates the code header to get a fresh bucket.
+const IP_RATE_FACTOR = 2;
 
-  // 1. SHARED BINDING (cross-isolate, eventually consistent). Deliberately
-  //    still checked FIRST and unchanged: several harnesses assert this call
-  //    is MADE (tools/qa-ai-relay.cjs M3 counts limiter invocations, not just
-  //    the resulting 429), and moving it would turn a true assertion into a
-  //    false one.
+function requestIp(request) {
+  return String(request.headers.get('CF-Connecting-IP') || '').trim() || 'anon';
+}
+
+// Cloudflare always supplies a real client address in production. Local dev and
+// the whole T2 harness chain reach wrangler dev from loopback, so the new
+// network-keyed buckets and the failure ladder deliberately do not apply there:
+// otherwise one shared 127.0.0.1 would lock the entire suite out. The security
+// property is proven directly in tools/qa-ratelimit-keying.cjs with synthetic
+// public addresses.
+function isLocalIp(ip) {
+  return (
+    !ip ||
+    ip === 'anon' ||
+    ip === 'unknown' ||
+    ip === 'localhost' ||
+    ip === '127.0.0.1' ||
+    ip === '::1' ||
+    ip === '0:0:0:0:0:0:0:1'
+  );
+}
+
+function hasCodeHeader(request, headers) {
+  for (let i = 0; i < headers.length; i++) {
+    if (String(request.headers.get(headers[i]) || '').trim()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// One bucket = the shared binding (cross-isolate) plus the in-memory table
+// (per-isolate, stricter). The binding is called FIRST and unchanged for the
+// per-code namespace: tools/qa-ai-relay.cjs M3 counts that invocation.
+async function checkRateBucket(ns, cfg, env) {
+  const now = Date.now();
   if (env && env.RATE_LIMITER) {
     try {
       const { success } = await env.RATE_LIMITER.limit({ key: ns });
@@ -687,17 +723,6 @@ export async function cloudRateCheck(request, bucket, env, keyOverride) {
       /* binding unavailable - fall through to the table below */
     }
   }
-
-  // 2. THE CONFIGURED PER-BUCKET LIMIT (W7, owner 2026-10-15): this window
-  //    used to run ONLY when the binding was absent. Production has the
-  //    binding, so production never reached this table and every bucket ran
-  //    at the binding's flat 60 per minute - including `contact` and
-  //    `authmail`, which the owner ordered at 5 per 30 minutes on 2026-09-14,
-  //    and the public review form, designed for 10 per minute. A limit that
-  //    is written down but never reached reads as enforced in every audit
-  //    while doing nothing in production, which is worse than having no
-  //    limit at all. Both limiters now apply and the stricter one wins: the
-  //    table is the ceiling, the binding stays as the cross-isolate backstop.
   let list = _cloudBuckets.get(ns);
   if (!list) {
     list = [];
@@ -721,6 +746,160 @@ export async function cloudRateCheck(request, bucket, env, keyOverride) {
     }
   }
   return { limited: false };
+}
+
+export async function cloudRateCheck(request, bucket, env, keyOverride) {
+  const headers = bucket === 'recover' ? ['X-Owner-Code'] : ['X-Owner-Code', 'X-Editor-Code'];
+  const key = keyOverride ? String(keyOverride) : await cloudRateKey(request, headers);
+  // An unknown bucket falls back to the general allowance - it still gets a
+  // limit of its own (the ns is namespaced), it just does not get a stricter
+  // one.
+  const cfg = CLOUD_RATE[bucket] || CLOUD_RATE.general;
+
+  // 1. PER-CODE bucket (unchanged). Per-tenant fairness: one owner or editor
+  //    gets its own allowance.
+  const perCode = await checkRateBucket(bucket + ':' + key, cfg, env);
+  if (perCode.limited) {
+    return perCode;
+  }
+
+  // 2. PER-IP bucket (SEC-03). Only when the request actually carried a code
+  //    header, and never for an explicit project override (teamInvite is
+  //    keyed per project on purpose). This is what stops 100 different random
+  //    codes from getting 100 fresh buckets: the per-tenant bucket above stays
+  //    as it was, and this one counts the network identity at a deliberately
+  //    more generous cap so a site office sharing one NAT is not squeezed.
+  if (!keyOverride && hasCodeHeader(request, headers) && !isLocalIp(requestIp(request))) {
+    const ipCfg = { max: cfg.max * IP_RATE_FACTOR, windowMs: cfg.windowMs };
+    // NOTE the ':net:' segment. cloudRateKey already returns 'ip:<addr>' for a
+    // header-less request, so a plain ':ip:' prefix here would land in the
+    // SAME namespace as the anonymous per-code bucket - the generous bucket
+    // and the strict one would then share one list, and the anon cap (30)
+    // would start refusing code-bearing traffic the moment a burst had filled
+    // it. The two must never collide.
+    const perIp = await checkRateBucket(bucket + ':net:' + requestIp(request), ipCfg, env);
+    if (perIp.limited) {
+      return perIp;
+    }
+    // 3. FAILED-AUTH LOCK (SEC-03). The strict half of the fix, and the only
+    //    strict one: after the ladder trips, a code-bearing request from that
+    //    network identity is answered 429 HERE, before any PBKDF2 work runs.
+    //    Scoped to code-bearing requests on purpose - a locked IP can still
+    //    sign in, reset a password or reach the assistant, so the ladder can
+    //    never become a general API outage for a shared office address. A
+    //    successful comparison (or a session sign-in) clears the counters.
+    const lock = cloudAuthBlocked(request, null);
+    if (lock.over) {
+      return { limited: true, retryAfter: lock.retryAfter };
+    }
+  }
+  return { limited: false };
+}
+
+// SEC-03: an ACCOUNT-keyed bucket. Same limiter, different namespace - used
+// where the thing worth protecting is a person's allowance rather than a
+// network address (the free AI pool). The id is already a trusted server-side
+// value (session.sub), never a header, so it cannot be rotated by the caller.
+export async function cloudRateAccountCheck(accountId, bucket, env) {
+  const cfg = CLOUD_RATE[bucket] || CLOUD_RATE.general;
+  const key = String(accountId || '')
+    .trim()
+    .toLowerCase();
+  return checkRateBucket(bucket + ':acct:' + (key || 'anon'), cfg, env);
+}
+
+// ---- SEC-03: failed-auth lockout ladder -----------------------------------
+// Separate from the request rate: only FAILED code comparisons count, so a
+// legitimate owner is never penalised for a busy office. A success clears the
+// counters. Kept in its own map (a different window from the request buckets,
+// so the rate-bucket cleanup cannot evict it early). Best-effort per isolate;
+// the per-IP request bucket above is the cross-isolate backstop.
+const AUTH_FAIL_IP = { max: 10, windowMs: 15 * 60000 };
+const AUTH_FAIL_PROJECT = { max: 30, windowMs: 60 * 60000 };
+const _authFails = new Map();
+
+function failKey(kind, id) {
+  return kind + ':' + id;
+}
+
+function failBump(key, cfg) {
+  const now = Date.now();
+  let list = _authFails.get(key);
+  if (!list) {
+    list = [];
+    _authFails.set(key, list);
+  }
+  while (list.length && list[0] <= now - cfg.windowMs) {
+    list.shift();
+  }
+  list.push(now);
+  if (_authFails.size > 5000) {
+    for (const [k, v] of _authFails) {
+      if (!v.length || v[v.length - 1] <= now - 60 * 60000) {
+        _authFails.delete(k);
+      }
+    }
+  }
+}
+
+function failOver(key, cfg) {
+  const now = Date.now();
+  const list = _authFails.get(key);
+  if (!list) {
+    return { over: false, retryAfter: 0 };
+  }
+  while (list.length && list[0] <= now - cfg.windowMs) {
+    list.shift();
+  }
+  if (list.length >= cfg.max) {
+    return {
+      over: true,
+      retryAfter: Math.max(1, Math.ceil((list[0] + cfg.windowMs - now) / 1000))
+    };
+  }
+  return { over: false, retryAfter: 0 };
+}
+
+export function cloudAuthBlocked(request, projectId) {
+  if (isLocalIp(requestIp(request))) {
+    return { over: false, retryAfter: 0 };
+  }
+  const ip = failOver(failKey('ip', requestIp(request)), AUTH_FAIL_IP);
+  if (ip.over) {
+    return ip;
+  }
+  if (projectId) {
+    const proj = failOver(failKey('proj', projectId), AUTH_FAIL_PROJECT);
+    if (proj.over) {
+      return proj;
+    }
+  }
+  return { over: false, retryAfter: 0 };
+}
+
+export function cloudAuthFail(request, projectId) {
+  if (isLocalIp(requestIp(request))) {
+    return;
+  }
+  failBump(failKey('ip', requestIp(request)), AUTH_FAIL_IP);
+  if (projectId) {
+    failBump(failKey('proj', projectId), AUTH_FAIL_PROJECT);
+  }
+}
+
+export function cloudAuthClear(request, projectId) {
+  _authFails.delete(failKey('ip', requestIp(request)));
+  if (projectId) {
+    _authFails.delete(failKey('proj', projectId));
+  }
+}
+
+// Test-only: clear the in-memory rate/failure state so a unit test does not
+// inherit a burst bucket from the test before it. Production never calls this;
+// the cross-isolate RATE_LIMITER binding is the real limiter there.
+export function __resetRateStateForTest() {
+  _cloudBuckets.clear();
+  _authFails.clear();
 }
 
 // OWNER 2026-09-14: peek/record pair for flows that must answer UNKNOWN
@@ -1565,6 +1744,10 @@ export function cloudRevertDiff(s, d) {
 export const CLOUD_EDITOR_AUTH_SLOTS = 4;
 
 export async function cloudAuthOwnerByCode(request, env, projectId, code) {
+  if (cloudAuthBlocked(request, projectId).over) {
+    await cloudTimingSink();
+    return null;
+  }
   if (!code) {
     await Promise.all([cloudDummyHash(), cloudTimingSink()]);
     return null;
@@ -1575,14 +1758,17 @@ export async function cloudAuthOwnerByCode(request, env, projectId, code) {
     .bind(projectId)
     .first();
   if (!row) {
+    cloudAuthFail(request, projectId);
     await Promise.all([cloudDummyHash(), cloudTimingSink()]);
     return null;
   }
   const hash = await hashOwnerCode(code, row.owner_code_salt);
   if (!codesEqual(hash, row.owner_code_hash)) {
+    cloudAuthFail(request, projectId);
     await cloudTimingSink();
     return null;
   }
+  cloudAuthClear(request, projectId);
   return { role: 'owner', label: row.google_name || 'Owner', row: row };
 }
 
@@ -1624,7 +1810,13 @@ export async function cloudAuthOwnerEither(request, env, projectId) {
       return a;
     }
   }
-  return cloudAuthOwnerSession(request, env, projectId);
+  const sessionAuth = await cloudAuthOwnerSession(request, env, projectId);
+  if (sessionAuth) {
+    // A signed-in owner with a stale code header must not carry a failed-auth
+    // strike from that header into the next request.
+    cloudAuthClear(request, projectId);
+  }
+  return sessionAuth;
 }
 
 // Returns { sub, role, source } or null.
@@ -1771,6 +1963,10 @@ export async function cloudAuthProjectRead(request, env, projectId, teamRoles) {
 }
 
 export async function cloudAuthSharedCode(request, env, projectId, code, role) {
+  if (cloudAuthBlocked(request, projectId).over) {
+    await cloudTimingSink();
+    return null;
+  }
   if (!code) {
     await Promise.all([cloudDummyHash(), cloudTimingSink()]);
     return null;
@@ -1798,6 +1994,7 @@ export async function cloudAuthSharedCode(request, env, projectId, code, role) {
       } catch (e) {
         scope = [];
       }
+      cloudAuthClear(request, projectId);
       return {
         role: role,
         editorId: row.id,
@@ -1807,6 +2004,7 @@ export async function cloudAuthSharedCode(request, env, projectId, code, role) {
       };
     }
   }
+  cloudAuthFail(request, projectId);
   await cloudTimingSink();
   return null;
 }
@@ -1827,6 +2025,10 @@ export async function cloudAuthViewer(request, env, projectId, code) {
 // last_used_at (best-effort, never blocks auth) and returns the key's
 // scope so callers can enforce the section grant exactly like editor codes.
 export async function cloudAuthApiKey(request, env, projectId, apiKey) {
+  if (cloudAuthBlocked(request, projectId).over) {
+    await cloudTimingSink();
+    return null;
+  }
   // Accept the key verbatim OR with surrounding whitespace; also accept a
   // case-insensitive sk-mmgr- prefix so a copied key still matches even if
   // the consumer's tool uppercased it. The stored fingerprint is over the
@@ -1850,15 +2052,20 @@ export async function cloudAuthApiKey(request, env, projectId, apiKey) {
   if (!row) {
     // Unknown fingerprint: burn the same PBKDF2 work so timing cannot
     // distinguish a wrong key from a right one.
+    cloudAuthFail(request, projectId);
     await hashOwnerCode(key, CLOUD_DUMMY_SALT);
     await cloudTimingSink();
     return null;
   }
   const hash = await hashOwnerCode(key, row.key_salt);
   if (!codesEqual(hash, row.key_hash)) {
+    cloudAuthFail(request, projectId);
     await cloudTimingSink();
     return null;
   }
+  // The key is genuinely ours; an expiry or a deleted project below is a
+  // policy refusal, not a failed comparison, so the ladder is cleared here.
+  cloudAuthClear(request, projectId);
   // API-KEY-AUDIT F5 (2026-09-16): expired and deleted-project rejections
   // used to return immediately, measurably faster than the wrong-hash branch
   // above - a timing leak against this function's own documented invariant

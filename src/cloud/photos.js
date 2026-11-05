@@ -75,6 +75,174 @@ function extForContentType(type) {
   return null;
 }
 
+// ---- SEC-04 (audit 2026-11-01): the stored type must be TRUE --------------
+// File.type is attacker-controlled, so a renamed HTML file can claim
+// image/jpeg. Read the first bytes and require a real image signature; store
+// the SNIFFED type, never the claim. EXIF is stripped before the blob reaches
+// R2 so job-site GPS coordinates do not travel in every photo (owner decision:
+// strip).
+function asciiAt(bytes, offset, len) {
+  let s = '';
+  for (let i = 0; i < len; i++) {
+    const b = bytes[offset + i];
+    if (b === undefined) {
+      return '';
+    }
+    s += String.fromCharCode(b);
+  }
+  return s;
+}
+
+export function sniffImageType(head) {
+  const b = head || new Uint8Array(0);
+  if (b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) {
+    return 'image/jpeg';
+  }
+  if (
+    b.length >= 8 &&
+    b[0] === 0x89 &&
+    b[1] === 0x50 &&
+    b[2] === 0x4e &&
+    b[3] === 0x47 &&
+    b[4] === 0x0d &&
+    b[5] === 0x0a &&
+    b[6] === 0x1a &&
+    b[7] === 0x0a
+  ) {
+    return 'image/png';
+  }
+  if (b.length >= 12 && asciiAt(b, 0, 4) === 'RIFF' && asciiAt(b, 8, 4) === 'WEBP') {
+    return 'image/webp';
+  }
+  if (b.length >= 6) {
+    const sig = asciiAt(b, 0, 6);
+    if (sig === 'GIF87a' || sig === 'GIF89a') {
+      return 'image/gif';
+    }
+  }
+  if (b.length >= 12 && asciiAt(b, 4, 4) === 'ftyp') {
+    const brand = asciiAt(b, 8, 4);
+    if (brand === 'avif' || brand === 'avis') {
+      return 'image/avif';
+    }
+  }
+  return '';
+}
+
+// A real image can still carry markup after its signature (a polyglot). Reject
+// anything whose first kilobyte reads like a document or a script.
+export function looksLikeMarkup(bytes) {
+  const head = asciiAt(bytes, 0, Math.min(1024, bytes.length)).toLowerCase();
+  return (
+    head.indexOf('<script') > -1 ||
+    head.indexOf('<html') > -1 ||
+    head.indexOf('<?php') > -1 ||
+    head.indexOf('<svg') > -1
+  );
+}
+
+function stripJpegExif(bytes) {
+  const n = bytes.length;
+  const out = [bytes[0], bytes[1]];
+  let i = 2;
+  while (i < n) {
+    if (bytes[i] !== 0xff) {
+      for (let k = i; k < n; k++) out.push(bytes[k]);
+      break;
+    }
+    const marker = bytes[i + 1];
+    if (marker === undefined) break;
+    if (
+      marker === 0xd8 ||
+      marker === 0xd9 ||
+      marker === 0x01 ||
+      (marker >= 0xd0 && marker <= 0xd7)
+    ) {
+      out.push(0xff, marker);
+      i += 2;
+      if (marker === 0xd9) break;
+      continue;
+    }
+    const len = (bytes[i + 2] << 8) | bytes[i + 3];
+    if (len < 2 || i + 2 + len > n) {
+      for (let k = i; k < n; k++) out.push(bytes[k]);
+      break;
+    }
+    const segEnd = i + 2 + len;
+    const isExif =
+      marker === 0xe1 &&
+      asciiAt(bytes, i + 4, 4) === 'Exif' &&
+      bytes[i + 8] === 0 &&
+      bytes[i + 9] === 0;
+    if (!isExif) {
+      for (let k = i; k < segEnd; k++) out.push(bytes[k]);
+    }
+    i = segEnd;
+    if (marker === 0xda) {
+      for (let k = i; k < n; k++) out.push(bytes[k]);
+      break;
+    }
+  }
+  return Uint8Array.from(out);
+}
+
+function stripPngExif(bytes) {
+  const n = bytes.length;
+  const out = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  let i = 8;
+  while (i + 12 <= n) {
+    const len =
+      ((bytes[i] << 24) | (bytes[i + 1] << 16) | (bytes[i + 2] << 8) | bytes[i + 3]) >>> 0;
+    const type = asciiAt(bytes, i + 4, 4);
+    const chunkEnd = i + 12 + len;
+    if (chunkEnd > n) break;
+    if (type !== 'eXIf') {
+      for (let k = i; k < chunkEnd; k++) out.push(bytes[k]);
+    }
+    i = chunkEnd;
+    if (type === 'IEND') break;
+  }
+  return Uint8Array.from(out);
+}
+
+function stripWebpExif(bytes) {
+  const n = bytes.length;
+  if (n < 12) return bytes;
+  const out = [];
+  for (let k = 0; k < 12; k++) out.push(bytes[k]);
+  let i = 12;
+  while (i + 8 <= n) {
+    const fourcc = asciiAt(bytes, i, 4);
+    const size =
+      (bytes[i + 4] | (bytes[i + 5] << 8) | (bytes[i + 6] << 16) | (bytes[i + 7] << 24)) >>> 0;
+    const chunkEnd = i + 8 + size + (size % 2);
+    if (chunkEnd > n) break;
+    if (fourcc !== 'EXIF' && fourcc !== 'XMP ') {
+      for (let k = i; k < chunkEnd; k++) out.push(bytes[k]);
+    }
+    i = chunkEnd;
+  }
+  const result = Uint8Array.from(out);
+  const total = result.length - 8;
+  result[4] = total & 0xff;
+  result[5] = (total >>> 8) & 0xff;
+  result[6] = (total >>> 16) & 0xff;
+  result[7] = (total >>> 24) & 0xff;
+  return result;
+}
+
+export function stripExif(type, bytes) {
+  try {
+    if (type === 'image/jpeg') return stripJpegExif(bytes);
+    if (type === 'image/png') return stripPngExif(bytes);
+    if (type === 'image/webp') return stripWebpExif(bytes);
+  } catch (e) {
+    // A malformed container must not become a 500; the signature already
+    // proved the header, so fall back to the original bytes.
+  }
+  return bytes;
+}
+
 function photoR2Key(projectId, photoId, ext) {
   return PHOTO_R2_PREFIX + projectId + '/' + photoId + ext;
 }
@@ -415,7 +583,22 @@ export async function handlePhotoUpload(request, env, projectId) {
       400
     );
   }
-  const ext = extForContentType(type);
+  // SEC-04: the bytes must match the claim. Read the signature and reject a
+  // mismatch (a renamed HTML file, or a polyglot that carries markup after a
+  // real image header), then store the SNIFFED type and strip EXIF.
+  const head = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+  const sniffed = sniffImageType(head);
+  if (!sniffed || sniffed !== type) {
+    return json({ ok: false, error: 'that file type is not accepted here' }, 400);
+  }
+  const originalBytes = new Uint8Array(await file.arrayBuffer());
+  if (looksLikeMarkup(originalBytes)) {
+    return json({ ok: false, error: 'that file type is not accepted here' }, 400);
+  }
+  const storedBytes = stripExif(sniffed, originalBytes);
+  const storedType = sniffed;
+  const storedSize = storedBytes.byteLength;
+  const ext = extForContentType(storedType);
   if (!ext) {
     return json({ ok: false, error: 'that file type is not accepted here' }, 400);
   }
@@ -441,7 +624,7 @@ export async function handlePhotoUpload(request, env, projectId) {
   // write, so a refused upload leaves neither behind. The numbers travel with
   // the refusal so the panel can paint the bar it already shows at the truth.
   const usage = await photoUsage(env, proj, projectId);
-  if (usage.usedBytes + file.size > usage.limitBytes) {
+  if (usage.usedBytes + storedSize > usage.limitBytes) {
     return json(
       {
         ok: false,
@@ -500,8 +683,8 @@ export async function handlePhotoUpload(request, env, projectId) {
         uploadedBy,
         uploadedRole,
         stage,
-        type,
-        file.size,
+        storedType,
+        storedSize,
         sortOrder,
         now
       )
@@ -516,9 +699,8 @@ export async function handlePhotoUpload(request, env, projectId) {
   // Write the blob.
   const r2Key = photoR2Key(projectId, photoId, ext);
   try {
-    const blob = await file.arrayBuffer();
-    await env.R2.put(r2Key, blob, {
-      httpMetadata: { contentType: type }
+    await env.R2.put(r2Key, storedBytes, {
+      httpMetadata: { contentType: storedType }
     });
   } catch (e) {
     // Best-effort cleanup of the metadata row we just wrote.
@@ -743,6 +925,11 @@ export async function handlePhotoGet(request, env, projectId, photoId) {
       'Content-Type': meta.content_type,
       'Content-Length': String(meta.size_bytes),
       'Cache-Control': 'public, max-age=86400, immutable',
+      // SEC-04: even a byte-perfect image cannot act as a document. The
+      // sandbox CSP plus nosniff keeps a stored photo inert if it is ever
+      // opened directly.
+      'Content-Security-Policy': "sandbox; default-src 'none'",
+      'X-Content-Type-Options': 'nosniff',
       'Content-Disposition':
         (wantsDownload ? 'attachment' : 'inline') + '; filename="' + safeName + '"'
     }

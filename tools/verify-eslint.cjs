@@ -35,7 +35,42 @@ const ESLINT_BIN = path.join(ROOT, 'node_modules', 'eslint', 'bin', 'eslint.js')
 // Headroom absorbs dependency-level drift; new debt trips the gate.
 // Make the ceiling configurable via ESLINT_CEILING env var so CI can adjust
 // deliberately when a reviewed change needs to ratchet the baseline.
-const WARN_CEILING = Number(process.env.ESLINT_CEILING || 4600);
+//
+// SEC-06 follow-on (audit 2026-11-01, wave 4.4): the single global ceiling was
+// too blunt to ratchet. A change that removed 200 `curly` warnings while
+// adding 200 `no-undef` ones would have passed, even though `no-undef` is the
+// one that hides real bugs. The ceiling is therefore ratcheted to the measured
+// count (1276 across 714 files, 2026-11-05) plus ten, AND frozen per rule.
+const WARN_CEILING = Number(process.env.ESLINT_CEILING || 1286);
+
+// Frozen per-rule ceilings, measured 2026-11-05 with the tree at 1276 total.
+// A rule that is not listed here has a ceiling of 0: a warning from a rule
+// this project has never tripped is new debt by definition, whatever the
+// global total says. Lower these as the debt is paid; never raise one without
+// the same deliberate-review note the global ceiling needs.
+const PER_RULE_CEILING = {
+  curly: 598,
+  'no-unused-vars': 411,
+  'no-undef': 202,
+  'no-redeclare': 65
+};
+
+function ruleCeiling(ruleId) {
+  const override = process.env.ESLINT_RULE_CEILINGS;
+  if (override) {
+    try {
+      const parsed = JSON.parse(override);
+      if (parsed && Object.prototype.hasOwnProperty.call(parsed, ruleId)) {
+        return Number(parsed[ruleId]);
+      }
+    } catch (e) {
+      /* a malformed override is ignored; the frozen map still applies */
+    }
+  }
+  return Object.prototype.hasOwnProperty.call(PER_RULE_CEILING, ruleId)
+    ? PER_RULE_CEILING[ruleId]
+    : 0;
+}
 
 function fail(msg) {
   process.stderr.write('\nESLINT GATE FAIL: ' + msg + '\n');
@@ -81,6 +116,7 @@ let errors = 0;
 let warnings = 0;
 let fatal = 0;
 const errorLines = [];
+const byRule = {};
 
 results.forEach(function (f) {
   (f.messages || []).forEach(function (m) {
@@ -93,6 +129,8 @@ results.forEach(function (f) {
       errorLines.push('  ' + where + '  ' + m.message + (m.ruleId ? '  (' + m.ruleId + ')' : ''));
     } else if (m.severity === 1) {
       warnings++;
+      const id = m.ruleId || '(no rule)';
+      byRule[id] = (byRule[id] || 0) + 1;
     }
   });
 });
@@ -132,6 +170,32 @@ if (warnings > WARN_CEILING) {
   );
 }
 
+// Per-rule ratchet. The global total can hide a swap (pay down 200 `curly`,
+// add 200 `no-undef`), so each rule is frozen on its own count too.
+const ruleBreaches = Object.keys(byRule).filter(function (id) {
+  return byRule[id] > ruleCeiling(id);
+});
+if (ruleBreaches.length) {
+  console.error('\nESLint per-rule ceilings exceeded:');
+  ruleBreaches.forEach(function (id) {
+    console.error('  ' + id + ': ' + byRule[id] + ' (ceiling ' + ruleCeiling(id) + ')');
+  });
+  console.error(
+    'A new warning from a rule this project has never tripped is new debt by definition.'
+  );
+  console.error('Override deliberately with ESLINT_RULE_CEILINGS=\'{"rule":n}\' if reviewed.');
+  fail(ruleBreaches.length + ' rule(s) over their frozen ceiling');
+}
+
+const ruleTable = Object.keys(byRule)
+  .sort(function (a, b) {
+    return byRule[b] - byRule[a];
+  })
+  .map(function (id) {
+    return id + ' ' + byRule[id] + '/' + ruleCeiling(id);
+  })
+  .join(', ');
+
 console.log(
   'ESLint: 0 errors, ' +
     warnings +
@@ -143,4 +207,7 @@ console.log(
     (WARN_CEILING - warnings) +
     ')'
 );
+if (ruleTable) {
+  console.log('ESLint per-rule (count/frozen): ' + ruleTable);
+}
 process.exit(0);

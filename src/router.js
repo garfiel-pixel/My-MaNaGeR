@@ -111,6 +111,7 @@ import {
   presencePushRevChanged,
   cloudManifestCodeOk
 } from './cloud/presence.js';
+import { handleCspReport } from './csp-report.js';
 import { handleCalcWorkspaceGet, handleCalcWorkspacePut } from './cloud/calc-workspace.js';
 import { API_SHAPES, handleApiShape } from './api/shapes.js';
 import { handleWebhookCreate, handleWebhookList, handleWebhookDelete } from './webhooks.js';
@@ -319,6 +320,14 @@ export async function routeApi(request, env, url) {
     // 3. SAME-ORIGIN GATE
     if (!sameOriginOnly(request)) {
       return json({ ok: false, error: 'cross-origin requests are not allowed' }, 403);
+    }
+
+    // 3b. CSP REPORT SINK (SEC-06). The tightened connect-src ships in
+    // report-only first, and this is where the browser's reports land. It is
+    // deliberately behind the same-origin gate but before every auth path: a
+    // report carries no credentials and must never be able to touch one.
+    if (path === '/api/csp-report' && request.method === 'POST') {
+      return handleCspReport(request, env);
     }
 
     // 4. CLOUD PROJECT ROUTES (/api/cloud/projects)

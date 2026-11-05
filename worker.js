@@ -114,6 +114,92 @@ function cspFor(request, normalized, isDocument) {
   return base.replace('%%ANALYTICS%%', allow);
 }
 
+/* ============================================================
+   SEC-06 (audit 2026-11-01): connect-src tightening, REPORT-ONLY first
+   ------------------------------------------------------------
+   The enforced policy carries `connect-src 'self' https: ...`, and a bare
+   `https:` scheme source is an exfiltration channel: any injected script can
+   POST to any TLS host. This is the candidate that replaces it with the
+   origins the app actually talks to, listed one by one.
+
+   It ships as Content-Security-Policy-Report-Only, never enforced, until two
+   weeks of reports (see /api/csp-report) show nothing real is being blocked.
+   Promote by setting CSP_CONNECT_ENFORCE=1 in the Worker environment - the
+   enforced policy is swapped, not edited, so rollback is the same switch.
+
+   Every origin below is either referenced by the client code (the
+   verify-csp-connect gate proves that) or listed in its BEACON_HOSTS
+   exemption with the reason. Server-side hosts (api.resend.com,
+   api.pwnedpasswords.com, api.paddle.com, sandbox-api.paddle.com) are NOT
+   here on purpose: the Worker calls those, not the browser, and connect-src
+   never governs the Worker's own outbound fetch.
+   ============================================================ */
+const CONNECT_SRC_CANDIDATE = [
+  "'self'",
+  'blob:',
+  // Google sign-in (GIS script + the auth endpoints it calls).
+  'https://accounts.google.com',
+  'https://oauth2.googleapis.com',
+  // Google Drive export/sync - browser-direct in js/mmgr-google-auth.js.
+  'https://www.googleapis.com',
+  // Turnstile.
+  'https://challenges.cloudflare.com',
+  // Paddle: the loader, and the API calls Paddle.js makes back to its own CDN.
+  // The overlay's checkout hosts (buy / sandbox-buy / checkout.paddle.com) are
+  // deliberately NOT listed: the overlay is a cross-origin IFRAME, and an
+  // iframe's requests are governed by that document's policy, not this one.
+  // If the report-only window shows Paddle.js itself connecting there, that
+  // is evidence to add them - not a guess to pre-load.
+  'https://cdn.paddle.com',
+  // Weather + geocoding (js/mmgr-forecast.js).
+  'https://api.open-meteo.com',
+  'https://geocoding-api.open-meteo.com',
+  // Offline whisper model download, cached on first use.
+  'https://huggingface.co',
+  // BYO-AI providers, called browser-direct with the user's own key.
+  'https://generativelanguage.googleapis.com',
+  'https://api.openai.com',
+  'https://api.anthropic.com',
+  // Cloudflare Web Analytics beacon POST target (consented documents only).
+  'https://cloudflareinsights.com'
+].join(' ');
+
+// Swaps the connect-src directive in a policy string, leaving every other
+// directive byte-identical. There is exactly one connect-src per policy.
+function withConnectSrc(policy, candidate) {
+  return policy.replace(/connect-src [^;]*/, 'connect-src ' + candidate);
+}
+
+// Report-only policy for DOCUMENTS. Two extra directives ride along:
+//   upgrade-insecure-requests - expected to be silent (the app is HTTPS-only)
+//   require-trusted-types-for 'script' - maps every DOM sink for SEC-12, but
+//     it reports on EVERY innerHTML write, which this app does by the hundred
+//     per render. That one is therefore opt-in via CSP_TT_REPORT=1 and is not
+//     part of the standing observation window: turning it on is a deliberate
+//     mapping session, not a permanent firehose.
+function cspReportOnlyFor(request, normalized, isDocument, env) {
+  if (!isDocument || (env && env.CSP_REPORT_ONLY === 'off')) {
+    return null;
+  }
+  const parts = [withConnectSrc(cspFor(request, normalized, true), CONNECT_SRC_CANDIDATE)];
+  parts.push('upgrade-insecure-requests');
+  if (env && env.CSP_TT_REPORT === '1') {
+    parts.push("require-trusted-types-for 'script'");
+  }
+  parts.push('report-uri /api/csp-report');
+  return parts.join('; ');
+}
+
+// The one switch that promotes the candidate to enforced. Off by default: the
+// observation window comes first, and a rollback is the same flag.
+function enforcedCspFor(request, normalized, isDocument, env) {
+  const policy = cspFor(request, normalized, isDocument);
+  if (!isDocument || !env || env.CSP_CONNECT_ENFORCE !== '1') {
+    return policy;
+  }
+  return withConnectSrc(policy, CONNECT_SRC_CANDIDATE);
+}
+
 const CSP = [
   "default-src 'self'",
   "script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com%%ANALYTICS%% https://challenges.cloudflare.com https://cdn.paddle.com " +
@@ -541,7 +627,11 @@ export default {
           { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
           HEADERS
         );
-        headers['Content-Security-Policy'] = cspFor(request, normalized, true);
+        headers['Content-Security-Policy'] = enforcedCspFor(request, normalized, true, env);
+        const ro404 = cspReportOnlyFor(request, normalized, true, env);
+        if (ro404) {
+          headers['Content-Security-Policy-Report-Only'] = ro404;
+        }
         return new Response(notFoundPage(), { status: 404, headers: headers });
       }
 
@@ -605,7 +695,17 @@ export default {
       // Keeping the host out of every other response means no cacheable
       // response (a script with an hour-long TTL) ever holds a header that
       // depends on one visitor's choice.
-      decorated.headers.set('Content-Security-Policy', cspFor(request, normalized, isDocument));
+      decorated.headers.set(
+        'Content-Security-Policy',
+        enforcedCspFor(request, normalized, isDocument, env)
+      );
+      // SEC-06: the same document, with the candidate connect-src observed
+      // rather than enforced. Documents only, for the same reason the enforced
+      // policy is: an asset's policy never reaches a visitor.
+      const roPolicy = cspReportOnlyFor(request, normalized, isDocument, env);
+      if (roPolicy) {
+        decorated.headers.set('Content-Security-Policy-Report-Only', roPolicy);
+      }
 
       // Cache-Control strategy
       //

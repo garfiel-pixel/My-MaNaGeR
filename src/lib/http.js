@@ -3,13 +3,28 @@
 
 // ---- JSON responses --------------------------------------------------------
 
+// SEC-06 follow-on (wave 4.4): the asset path has always carried the worker's
+// hardening set, but every API answer was built here with Content-Type and
+// Cache-Control only - so /api/* was the one surface without `nosniff` and
+// without HSTS. Neither is dramatic on an `application/json` body, and that is
+// exactly why it went unnoticed; the point is that the header set is now
+// uniform across all seven surfaces the app serves, so a future route cannot
+// silently ship a weaker one.
+const API_HARDENING = {
+  'X-Content-Type-Options': 'nosniff',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'
+};
+
 export function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Cache-Control': 'no-store'
-    }
+    headers: Object.assign(
+      {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store'
+      },
+      API_HARDENING
+    )
   });
 }
 
@@ -621,6 +636,11 @@ const CLOUD_RATE = {
   //   far beyond human typing but stops a script that pays nothing. It guards
   //   only the free-pool rung; a caller's OWN key never touches it.
   aiAccount: { max: 20, windowMs: 60000 },
+  //   csp: SEC-06 (audit 2026-11-01). The report-only policy's sink. A browser
+  //   posts these anonymously, so it needs its own small bucket: a page stuck
+  //   in a report loop must cost a bounded number of Worker invocations, and
+  //   30 a minute is far above any real page's violation count.
+  csp: { max: 30, windowMs: 60000 },
   //   teamInvite: RBAC sprint 1 (directive 2026-10-25). 20 invitations per hour
   //   PER PROJECT, keyed by an explicit override so one owner cannot mail-bomb
   //   a batch by accident. Counted only after the owner is authenticated, so a
@@ -947,11 +967,14 @@ export function cloudRateLimited(retryAfter) {
     JSON.stringify({ ok: false, error: 'too many requests - slow down and try again in a minute' }),
     {
       status: 429,
-      headers: {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Cache-Control': 'no-store',
-        'Retry-After': String(retryAfter || 60)
-      }
+      headers: Object.assign(
+        {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Cache-Control': 'no-store',
+          'Retry-After': String(retryAfter || 60)
+        },
+        API_HARDENING
+      )
     }
   );
 }

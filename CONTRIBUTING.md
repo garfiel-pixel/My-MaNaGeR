@@ -55,6 +55,19 @@ one-off, bypass with:
 git commit --no-verify
 ```
 
+### Pre-commit hook
+
+`.githooks/pre-commit` runs the cheap tripwires before a commit is created: the
+print-selector gate, the weak-random gate, the doc-size gate, the line-ending
+gate, the ESLint gate (errors plus the frozen global **and per-rule** warning
+ceilings), and a staged **gitleaks** secret scan.
+
+`gitleaks` is optional locally. If the binary is not on `PATH` the hook prints a
+visible `SKIPPED` line and continues - it never pretends the scan ran. CI's
+`gitleaks` job scans the full pushed history and cannot be bypassed, so a local
+skip is not a way past the gate. Rotation and leak-response procedure:
+`docs/RUNBOOK-SECRETS.md`.
+
 ## Workflow
 
 1. Load the skills `AGENTS.md` requires and follow them.

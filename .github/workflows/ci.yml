@@ -232,6 +232,14 @@ jobs:
         id: qa-ratelimit-keying
         run: node tools/qa-ratelimit-keying.cjs
 
+      - name: "T1: CSP connect-src candidate (SEC-06: report-only, no bare scheme, sink)"
+        id: verify-csp-connect
+        run: node tools/verify-csp-connect.cjs
+
+      - name: "T1: Security headers over seven surfaces (nosniff, HSTS, CSP, COOP/CORP)"
+        id: qa-security-headers
+        run: node tools/qa-security-headers.cjs
+
       - name: "T1: Report-issue payload (PII/budget exclusion)"
         id: qa-report
         run: node tools/verify-report-issue.cjs

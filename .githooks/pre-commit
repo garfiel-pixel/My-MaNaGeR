@@ -10,7 +10,9 @@
 #   T5  tools/verify-no-weak-random.cjs no Math.random under src/ or worker.js
 #   T8  tools/verify-doc-size.cjs       plan docs stay readable (<= 40 KB)
 #   EOL tools/verify-eol.cjs            no CR bytes in the staged text files
-#   Lint tools/verify-eslint.cjs        errors + the frozen warning ceiling
+#   Lint tools/verify-eslint.cjs        errors + the frozen global/per-rule ceilings
+#   Secret gitleaks (staged)            no credential reaches a commit; skipped
+#                                       with a visible line when the binary is absent
 #
 # Escape hatch, used sparingly and deliberately: git commit --no-verify
 # ============================================================
@@ -33,4 +35,30 @@ run "T8 doc-size gate" tools/verify-doc-size.cjs
 run "EOL line-ending gate" tools/verify-eol.cjs
 run "ESLint gate" tools/verify-eslint.cjs
 
-echo "pre-commit: T4, T5, T8, EOL and ESLint green"
+# SECRET SCAN (SEC-10, audit 2026-11-01). The staged blob is what is about to
+# become permanent, so it is scanned here - CI scans the pushed history, which
+# is already too late to stop a value entering the repo. A missing binary is
+# reported LOUDLY and skipped: a silent skip would let a machine believe it was
+# scanned when it was not.
+if command -v gitleaks >/dev/null 2>&1; then
+  if out=$(gitleaks protect --staged --config .gitleaks.toml --no-banner 2>&1); then
+    :
+  elif printf '%s' "$out" | grep -qi "unknown command\|deprecated\|not a gitleaks command"; then
+    # gitleaks v8.19+ replaced `protect` with `git --staged`.
+    if ! out=$(gitleaks git --staged --config .gitleaks.toml --no-banner 2>&1); then
+      printf '%s\n' "$out" | tail -25
+      echo ""
+      echo "pre-commit: gitleaks FAILED - a secret is staged. Remove it; if it was ever pushed, rotate it (docs/RUNBOOK-SECRETS.md)."
+      exit 1
+    fi
+  else
+    printf '%s\n' "$out" | tail -25
+    echo ""
+    echo "pre-commit: gitleaks FAILED - a secret is staged. Remove it; if it was ever pushed, rotate it (docs/RUNBOOK-SECRETS.md)."
+    exit 1
+  fi
+else
+  echo "pre-commit: gitleaks NOT INSTALLED - staged secret scan SKIPPED (CI still scans the pushed history)."
+fi
+
+echo "pre-commit: T4, T5, T8, EOL, ESLint and the staged secret scan green"

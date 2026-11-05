@@ -153,7 +153,7 @@
     }
   }
 
-  function init() {
+  function bootParticleLine() {
     canvas = document.getElementById('adv-particle-line');
     if (!canvas) return;
     ctx = canvas.getContext('2d');
@@ -221,7 +221,7 @@
   }
 
   ns.ParticleLine = {
-    init: init,
+    init: bootParticleLine,
     start: start,
     stop: stop,
     isRunning: function () {
@@ -230,8 +230,8 @@
   };
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', bootParticleLine);
   } else {
-    init();
+    bootParticleLine();
   }
 })((window.MMGR = window.MMGR || {}));

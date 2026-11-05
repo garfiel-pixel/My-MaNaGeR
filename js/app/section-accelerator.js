@@ -224,7 +224,7 @@
     }
   }
 
-  function init() {
+  function bootSectionAccelerator() {
     // Mouse side buttons (back = 3, forward = 4). Only when enabled, and
     // never over an editable field. preventDefault stops the browser's own
     // back/forward so the gesture means "next/previous section" instead.
@@ -261,7 +261,7 @@
   }
 
   ns.SectionAccelerator = {
-    init: init,
+    init: bootSectionAccelerator,
     go: go,
     pinCurrent: pinCurrent,
     unpin: unpin,
@@ -292,8 +292,8 @@
   };
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', bootSectionAccelerator);
   } else {
-    init();
+    bootSectionAccelerator();
   }
 })((window.MMGR = window.MMGR || {}));

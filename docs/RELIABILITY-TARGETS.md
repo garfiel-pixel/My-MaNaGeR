@@ -27,6 +27,12 @@ These are **not** confirmed until the F4 drill is run and timed. The drill
 record belongs in `docs/RESTORE-DRILL-<date>.md` with the measured RTO/RPO, the
 operator, and the exact commands used.
 
+First drill (2026-11-05, LOCAL): `docs/RESTORE-DRILL-2026-11-05.md` - a 19 KB
+dump of a seeded throwaway database re-imported in **1354 ms** after the D1
+storage directory was deleted. That is a rehearsal of the mechanics, not the
+production RTO: the remote path adds the dump download, the network and Time
+Travel, and it needs the owner. RTO/RPO stay unconfirmed until that run exists.
+
 ## Measurement and gaps
 
 - Edge analytics and the structured logs in `src/lib/observe.js` are the

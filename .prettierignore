@@ -13,6 +13,9 @@ dist/
 tmp/
 _archive/
 vendor/
+# The agent runtime drops a nested-git worktree under .codebuddy/; it is never
+# project source and does not exist on CI, so the check must not sweep it.
+.codebuddy/
 
 # ---- HTML is deliberately NOT Prettier-managed --------------------------
 # Reformatting a served page rewrites its inline <script> blocks, which

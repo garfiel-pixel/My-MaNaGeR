@@ -523,7 +523,11 @@
 // card now says an owner code stops working as an MCP credential on
 // 5 December 2026 and points at a project API key. Changed shell assets:
 // js/mmgr-cloud.js (dist bundle rebuilt).
-const CACHE = 'mmgr-shell-v541';
+// v542 - STORAGE INVENTORY v3: two section-accelerator keys (mmgr_sec_accel,
+// mmgr_sec_pins) were being written without an inventory row, so the consent
+// gate failed. Rows added and INVENTORY_VERSION raised 2 -> 3 in js/consent.js,
+// worker.js and serve.cjs together. Changed shell asset: js/consent.js.
+const CACHE = 'mmgr-shell-v542';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

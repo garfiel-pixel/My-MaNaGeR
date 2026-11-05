@@ -74,7 +74,7 @@ const CONSENT_ANALYTICS_HOST = ' https://static.cloudflareinsights.com';
 // MUST match INVENTORY_VERSION in js/consent.js and
 // CONSENT_INVENTORY_VERSION in serve.cjs - tools/qa-consent.cjs phase S
 // fails the build if the three drift.
-const CONSENT_INVENTORY_VERSION = 2;
+const CONSENT_INVENTORY_VERSION = 3;
 // A choice is re-asked every 12 months (js/consent.js MAX_AGE_MS).
 const CONSENT_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000;
 // Tolerate a device clock a little ahead of this server's.
@@ -170,19 +170,22 @@ function withConnectSrc(policy, candidate) {
   return policy.replace(/connect-src [^;]*/, 'connect-src ' + candidate);
 }
 
-// Report-only policy for DOCUMENTS. Two extra directives ride along:
-//   upgrade-insecure-requests - expected to be silent (the app is HTTPS-only)
+// Report-only policy for DOCUMENTS. One extra directive rides along:
 //   require-trusted-types-for 'script' - maps every DOM sink for SEC-12, but
 //     it reports on EVERY innerHTML write, which this app does by the hundred
 //     per render. That one is therefore opt-in via CSP_TT_REPORT=1 and is not
 //     part of the standing observation window: turning it on is a deliberate
 //     mapping session, not a permanent firehose.
+// NOTE: upgrade-insecure-requests is deliberately NOT added here. The spec
+// ignores it in a report-only policy, and Chrome says so in the console on
+// EVERY page ("... is ignored when delivered in a report-only policy"), which
+// qa-health-sweep counts as a CSP violation on an otherwise clean page. The
+// enforced policy is where that directive belongs.
 function cspReportOnlyFor(request, normalized, isDocument, env) {
   if (!isDocument || (env && env.CSP_REPORT_ONLY === 'off')) {
     return null;
   }
   const parts = [withConnectSrc(cspFor(request, normalized, true), CONNECT_SRC_CANDIDATE)];
-  parts.push('upgrade-insecure-requests');
   if (env && env.CSP_TT_REPORT === '1') {
     parts.push("require-trusted-types-for 'script'");
   }

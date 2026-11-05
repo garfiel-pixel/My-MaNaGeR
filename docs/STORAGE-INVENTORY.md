@@ -37,6 +37,8 @@ fails the gate.
 | `mmgr_consent` | Your cookie choice (`{v, iv, analytics, ts}`). | necessary |
 | `mmgr_theme` | Dark or light appearance. | necessary |
 | `mmgr_sidebar` , `mmgr_sidebar_backend` | Sidebar layout preference. | necessary |
+| `mmgr_sec_accel` | Whether the section accelerator (the side shortcut buttons) is switched on. | necessary |
+| `mmgr_sec_pins` | The sections you pinned to the accelerator, in order. | necessary |
 | `mmgr_cross_project` | Admin cross-project search preference. | necessary |
 | `mmgr_projects` | Project list kept on this device. | necessary |
 | `mmgr_admin_projects` | Projects created or published on this device. | necessary |

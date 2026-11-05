@@ -130,10 +130,9 @@ function directives(header) {
     { reportUri: roDir['report-uri'] }
   );
   check(
-    'ARM 1 upgrade-insecure-requests is observed (report-only), not enforced',
-    Object.prototype.hasOwnProperty.call(roDir, 'upgrade-insecure-requests') &&
-      !/upgrade-insecure-requests/.test(ro.enforced),
-    { enforced: ro.enforced.slice(0, 80) }
+    'ARM 1 upgrade-insecure-requests is NOT in the report-only policy (the spec ignores it there and Chrome logs a violation on every page)',
+    !Object.prototype.hasOwnProperty.call(roDir, 'upgrade-insecure-requests'),
+    { reportOnly: ro.reportOnly.slice(0, 160) }
   );
   check(
     'ARM 1 require-trusted-types-for is NOT switched on by default (it reports on every innerHTML write)',

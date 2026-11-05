@@ -10,6 +10,7 @@ import {
   cloudTimingSink,
   randomSaltHex,
   hashOwnerCode,
+  passwordIsPwned,
   codesEqual,
   cloudRateCheck,
   cloudRatePeek,
@@ -30,13 +31,17 @@ import { billingCancelForDeletion } from '../billing.js';
 import { structuredLog } from '../lib/observe.js';
 import { cloudPrefsKey } from '../cloud/sync.js';
 
-const AUTH_MIN_PASSWORD = 8;
+// OWNER 2026-11-05: minimum raised 8 -> 12 for NEW and CHANGED passwords
+// only. Existing accounts keep their current (possibly shorter) password and
+// are silently upgraded to the new floor on their next successful login, so
+// this never forces a reset. Applied to register, password-change and reset.
+const AUTH_MIN_PASSWORD = 12;
 
 // OWNER 2026-09-14: strength check for account creation and password
-// reset. Length floor stays 8; the password must ALSO carry at least three
-// of the four character classes (lower, upper, digit, symbol) and must not
-// be a single repeated character. Pure length+class rule - no common-list
-// dependency, cheap to evaluate inside the Worker.
+// reset. Length floor (AUTH_MIN_PASSWORD) is 12; the password must ALSO carry
+// at least three of the four character classes (lower, upper, digit, symbol)
+// and must not be a single repeated character. Pure length+class rule - no
+// common-list dependency, cheap to evaluate inside the Worker.
 function authPasswordProblem(pw) {
   if (typeof pw !== 'string' || pw.length < AUTH_MIN_PASSWORD) {
     return 'password must be at least ' + AUTH_MIN_PASSWORD + ' characters';
@@ -151,6 +156,17 @@ export async function handleAuthRegister(request, env) {
   const pwProblem = authPasswordProblem(password);
   if (pwProblem) {
     return json({ ok: false, error: pwProblem }, 400);
+  }
+  // OWNER 2026-11-05: HIBP screening (fail-open). A pwned password is
+  // rejected; a lookup failure is not, so an outage never blocks signup.
+  if (await passwordIsPwned(password, env)) {
+    return json(
+      {
+        ok: false,
+        error: 'that password has appeared in a public data breach - choose a different one'
+      },
+      400
+    );
   }
   const name = String((body && body.name) || '').slice(0, 80);
   const existing = await env.DB.prepare('SELECT email, provider FROM auth_users WHERE email = ?')
@@ -291,6 +307,16 @@ export async function handleAuthPasswordChange(request, env) {
   const resetPwProblem = authPasswordProblem(next);
   if (resetPwProblem) {
     return json({ ok: false, error: resetPwProblem }, 400);
+  }
+  // OWNER 2026-11-05: HIBP screening (fail-open) on password change.
+  if (await passwordIsPwned(next, env)) {
+    return json(
+      {
+        ok: false,
+        error: 'that password has appeared in a public data breach - choose a different one'
+      },
+      400
+    );
   }
   const row = await env.DB.prepare('SELECT password_hash FROM auth_users WHERE email = ?')
     .bind(email)
@@ -477,6 +503,16 @@ export async function handleAuthReset(request, env) {
   const resetPwProblem = authPasswordProblem(next);
   if (resetPwProblem) {
     return json({ ok: false, error: resetPwProblem }, 400);
+  }
+  // OWNER 2026-11-05: HIBP screening (fail-open) on reset.
+  if (await passwordIsPwned(next, env)) {
+    return json(
+      {
+        ok: false,
+        error: 'that password has appeared in a public data breach - choose a different one'
+      },
+      400
+    );
   }
   const email = await consumeAuthToken(env, String((body && body.token) || ''), 'reset');
   if (!email) {

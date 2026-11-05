@@ -532,6 +532,42 @@ export async function hashOwnerCode(code, saltHex) {
   }
   return hex;
 }
+// ---- Have I Been Pwned (k-anonymity) password screening ----------------
+// OWNER 2026-11-05: screen NEW and CHANGED passwords against HIBP's range API
+// using k-anonymity - only the first 5 hex of the SHA-1 ever leaves the
+// Worker. FAIL-OPEN by design: if the lookup fails for any reason (network,
+// outage, non-200), we answer "not pwned" so a vendor outage can never lock a
+// registrant out. No password ever leaves the Worker.
+const HIBP_RANGE_URL = 'https://api.pwnedpasswords.com/range/';
+export async function passwordIsPwned(password, env) {
+  if (!password || (env && env.HIBP_ENABLED === 'false')) {
+    return false;
+  }
+  try {
+    const buf = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(String(password)));
+    const hex = [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+    const prefix = hex.slice(0, 5).toUpperCase();
+    const suffix = hex.slice(5).toUpperCase();
+    const res = await fetch(HIBP_RANGE_URL + prefix, {
+      headers: { 'User-Agent': 'My-MaNaGeR-Worker' }
+    });
+    if (!res.ok) {
+      return false; // fail-open
+    }
+    const body = await res.text();
+    const lines = body.split(/\r\n+/);
+    for (const line of lines) {
+      const sep = line.indexOf(':');
+      if (sep === -1) continue;
+      if (line.slice(0, sep).toUpperCase() === suffix) {
+        return true;
+      }
+    }
+    return false;
+  } catch (e) {
+    return false; // fail-open
+  }
+}
 
 export async function fingerprintOf(code) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(code || '')));

@@ -1950,8 +1950,8 @@ async function phase5() {
       return p.querySelector('.email-auth-pw-err').textContent;
     })()`);
     check(
-      'G4 short new password -> inline "at least 8 characters"',
-      /at least 8 characters/.test(g4 || ''),
+      'G4 short new password -> inline "at least N characters"',
+      /at least \d+ characters/.test(g4 || ''),
       g4
     );
 

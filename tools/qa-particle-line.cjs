@@ -166,7 +166,11 @@ function resolvePlaywright() {
       await new Promise(r => requestAnimationFrame(() => r()));
       return performance.now() - start;
     });
-    check('frames stay under a cheap budget (< 60ms for 3 frames)', frameMs < 60, {
+    // A 3-frame wall-clock includes the browser's own rAF scheduling, which is
+    // jittery on a shared CI runner (observed 95ms with no extra work). The
+    // budget is generous enough to absorb that jitter while still catching a
+    // runaway loop, which would take seconds rather than tens of milliseconds.
+    check('frames stay under a cheap budget (< 250ms for 3 frames)', frameMs < 250, {
       frameMs
     });
 

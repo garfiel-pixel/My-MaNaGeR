@@ -522,10 +522,17 @@ export function randomSaltHex() {
   return hex;
 }
 
-export async function hashOwnerCode(code, saltHex) {
+// SEC-05 / wave 4.5 (audit 2026-11-01): the iteration count is a PARAMETER.
+// Cloudflare Workers' WebCrypto caps PBKDF2 at 100,000, which is below OWASP's
+// current guidance for PBKDF2-HMAC-SHA256, so the stored hash now carries its
+// own version and iteration count and a stronger KDF can be introduced later
+// without a migration day: a login re-hashes with the current parameters.
+// Callers that do not care (owner codes, API keys) keep the default.
+export async function hashPasswordWith(password, saltHex, iterations) {
+  const iters = Number(iterations) > 0 ? Math.floor(Number(iterations)) : CLOUD_PBKDF2_ITERS;
   const key = await crypto.subtle.importKey(
     'raw',
-    new TextEncoder().encode(code),
+    new TextEncoder().encode(password),
     'PBKDF2',
     false,
     ['deriveBits']
@@ -534,7 +541,7 @@ export async function hashOwnerCode(code, saltHex) {
     {
       name: 'PBKDF2',
       salt: new TextEncoder().encode(saltHex),
-      iterations: CLOUD_PBKDF2_ITERS,
+      iterations: iters,
       hash: 'SHA-256'
     },
     key,
@@ -546,6 +553,10 @@ export async function hashOwnerCode(code, saltHex) {
     hex += bytes[i].toString(16).padStart(2, '0');
   }
   return hex;
+}
+
+export async function hashOwnerCode(code, saltHex) {
+  return hashPasswordWith(code, saltHex, CLOUD_PBKDF2_ITERS);
 }
 // ---- Have I Been Pwned (k-anonymity) password screening ----------------
 // OWNER 2026-11-05: screen NEW and CHANGED passwords against HIBP's range API
@@ -695,7 +706,7 @@ export function randomIdSuffix(len = 8) {
 // than the vulnerability it fixes. The per-code bucket keeps per-tenant
 // fairness; this factor (and the RATE_LIMITER binding's own 60/min backstop)
 // only catches a caller who rotates the code header to get a fresh bucket.
-const IP_RATE_FACTOR = 2;
+const IP_RATE_FACTOR = 10;
 
 function requestIp(request) {
   return String(request.headers.get('CF-Connecting-IP') || '').trim() || 'anon';
@@ -731,9 +742,14 @@ function hasCodeHeader(request, headers) {
 // One bucket = the shared binding (cross-isolate) plus the in-memory table
 // (per-isolate, stricter). The binding is called FIRST and unchanged for the
 // per-code namespace: tools/qa-ai-relay.cjs M3 counts that invocation.
-async function checkRateBucket(ns, cfg, env) {
+//
+// useBinding=false is for the SEC-03 per-IP bucket: the binding enforces a
+// flat 60/min on every key, which is exactly the shared-office squeeze the
+// review warned about. That bucket is table-only with a generous cap; the
+// strict failed-auth ladder is the real code-guessing defence.
+async function checkRateBucket(ns, cfg, env, useBinding) {
   const now = Date.now();
-  if (env && env.RATE_LIMITER) {
+  if (useBinding !== false && env && env.RATE_LIMITER) {
     try {
       const { success } = await env.RATE_LIMITER.limit({ key: ns });
       if (!success) {
@@ -797,7 +813,7 @@ export async function cloudRateCheck(request, bucket, env, keyOverride) {
     // and the strict one would then share one list, and the anon cap (30)
     // would start refusing code-bearing traffic the moment a burst had filled
     // it. The two must never collide.
-    const perIp = await checkRateBucket(bucket + ':net:' + requestIp(request), ipCfg, env);
+    const perIp = await checkRateBucket(bucket + ':net:' + requestIp(request), ipCfg, env, false);
     if (perIp.limited) {
       return perIp;
     }

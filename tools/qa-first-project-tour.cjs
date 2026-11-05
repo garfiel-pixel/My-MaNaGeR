@@ -223,7 +223,17 @@ const tourState = page =>
       for (let s = 0; s < sels.length && !tr; s++) {
         const list = document.querySelectorAll(sels[s]);
         for (let k = 0; k < list.length; k++) {
-          const r = list[k].getBoundingClientRect();
+          const el = list[k];
+          // Mirror the app's own target picker (js/mmgr-tour.js pick()): a
+          // visibility:hidden duplicate rail keeps a layout box (width/height
+          // > 0) but is not the control the person sees, so the spotlight must
+          // never be measured against it. Without this the harness can lock onto
+          // the hidden copy while the app highlights the visible one, a mismatch
+          // the runner image change (Ubuntu 26) began to trigger.
+          if (getComputedStyle(el).visibility === 'hidden') {
+            continue;
+          }
+          const r = el.getBoundingClientRect();
           if (r.width > 0 && r.height > 0) {
             tr = r;
             break;

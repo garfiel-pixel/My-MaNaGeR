@@ -3,7 +3,7 @@ name: CodeQL
 # SEC-08: static analysis in its own workflow so it never lengthens the main CI.
 on:
   schedule:
-    - cron: ''0 5 * * 1''  # Monday 05:00 UTC
+    - cron: '0 5 * * 1'  # Monday 05:00 UTC
   pull_request:
     branches: [main]
   workflow_dispatch:

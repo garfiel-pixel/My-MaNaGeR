@@ -6240,6 +6240,72 @@ body.dark-mode .team-link-danger {
 .bud-actions .btn + .btn {
   margin-left: 4px;
 }
+
+/* ---- H-4 (BUDGET-BOQ directive 2026-11-05): Weekly tracking ---- */
+.wk-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin: 0 0 14px;
+}
+.wk-card {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2, transparent);
+}
+.wk-k {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--slate);
+}
+.wk-v {
+  margin-top: 4px;
+  font-size: 1.02rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.wk-n {
+  margin-top: 2px;
+  font-size: 0.7rem;
+  color: var(--slate);
+}
+.wk-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.wk-ontrack {
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+  color: var(--green);
+}
+.wk-watch {
+  background: color-mix(in srgb, var(--amber) 16%, transparent);
+  color: var(--amber);
+}
+.wk-over {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+}
+.wk-price {
+  background: color-mix(in srgb, var(--gold) 20%, transparent);
+  color: var(--gold-ink, var(--gold));
+}
+#bud-week select {
+  max-width: 220px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card-bg, transparent);
+  color: inherit;
+  font: inherit;
+  font-size: 0.78rem;
+}
 /* ---- RBAC sprint 3: access tools ---------------------------------------- */
 .team-tools {
   display: flex;

@@ -4512,6 +4512,21 @@ window.MMGR = MMGR;
       window.MMGR.Spend && window.MMGR.Spend.openDelivery(el && el.getAttribute('data-id')),
     deliveryClose: () => window.MMGR.Spend && window.MMGR.Spend.closeDelivery(),
     deliverySave: () => window.MMGR.Spend && window.MMGR.Spend.saveDelivery(),
+    // H-4: the weekly view. Picking a week re-renders only; nothing is saved.
+    weekPick: el => window.MMGR.Weekly && window.MMGR.Weekly.setWeek(el && el.value),
+    weekPdf: () => window.MMGR.Weekly && window.MMGR.Weekly.exportPdf(),
+    weekXlsx: () => window.MMGR.Weekly && window.MMGR.Weekly.exportXlsx(),
+    // H-4: the cash-flow chart's step is a view preference, not project data.
+    cashStep: el => {
+      try {
+        localStorage.setItem('mmgr_cash_step', el && el.value === '7' ? '7' : '14');
+      } catch (e) {
+        /* nicety */
+      }
+      if (window.MMGR.RenderFinancials) {
+        window.MMGR.RenderFinancials.renderCashFlowChart();
+      }
+    },
     delBudgetLine: el => window.MMGR.Budget.delBudgetLine(parseInt(el.getAttribute('data-idx'))),
     updEnvelope: (el, e) => window.MMGR.Budget.updEnvelope(el.value, e && e.type),
     addStake: () => window.MMGR.Stakeholders.addStake(),
@@ -6089,7 +6104,11 @@ window.MMGR = MMGR;
         action === 'procQuoteVendor' ||
         action === 'procQuoteTone' ||
         action === 'procQuoteTerm' ||
-        action === 'idFilePick')
+        action === 'idFilePick' ||
+        // H-4: the weekly view's week picker is a one-time change, not a
+        // keystroke field - it re-renders and writes nothing.
+        action === 'weekPick' ||
+        action === 'cashStep')
     ) {
       handler(el, e);
     }

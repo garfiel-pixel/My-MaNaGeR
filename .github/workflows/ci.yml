@@ -941,6 +941,11 @@ jobs:
       - name: "T4: Record a delivery (qa-delivery)"
         id: qa-delivery
         run: node tools/qa-delivery.cjs
+      # H-4: three weeks of deliveries must read the same week totals on
+      # screen, in the PDF and in the spreadsheet.
+      - name: "T4: Weekly tracking and report (qa-weekly)"
+        id: qa-weekly
+        run: node tools/qa-weekly.cjs
       # WAVE 5.5 (A3): auto-update for cloud projects. Admin gate + real
       # Chrome, /api/cloud/* stubbed at the network layer, so the save path's
       # debounce coalescing, retry-then-fail status and offline hold are all

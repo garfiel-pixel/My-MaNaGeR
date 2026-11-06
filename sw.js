@@ -664,7 +664,15 @@
 // overspend says whether it was price or amount. An ordered entry is a
 // commitment, not money out. Changed shell assets: project.html,
 // dist/bundle.js.
-const CACHE = 'mmgr-shell-v560';
+// v561 - WEEKLY TRACKING (H-4, same directive). A week at a time, Monday to
+// Sunday: spent this week, spent to date against plan to date, money used
+// against work done, a status chip per line at the Q5 thresholds, forecast at
+// completion from the latest price paid, and the variance split into price
+// and quantity. The week on screen exports to PDF and to a spreadsheet with
+// the same numbers, and changing the week writes nothing. The cash-flow chart
+// can step weekly as well as fortnightly. Changed shell assets: project.html,
+// dist/bundle.js.
+const CACHE = 'mmgr-shell-v561';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

@@ -115,7 +115,23 @@ var MMGR = window.MMGR || {};
     const projStart = new Date(Math.min.apply(null, starts));
     const projEnd = new Date(Math.max.apply(null, ends));
     const totalDays = Math.max(1, Math.round((projEnd - projStart) / 86400000));
-    const buckets = Math.min(24, Math.max(6, Math.round(totalDays / 14)));
+    // H-4: the chart can step weekly as well as fortnightly. The choice is a
+    // view preference, so it lives in localStorage and never in project state.
+    const stepDays = (function () {
+      try {
+        return localStorage.getItem('mmgr_cash_step') === '7' ? 7 : 14;
+      } catch (e) {
+        return 14;
+      }
+    })();
+    const stepSel = $('cash-step');
+    if (stepSel) {
+      stepSel.value = stepDays === 7 ? '7' : '14';
+    }
+    const buckets =
+      stepDays === 7
+        ? Math.min(52, Math.max(6, Math.round(totalDays / 7)))
+        : Math.min(24, Math.max(6, Math.round(totalDays / 14)));
     const step = totalDays / buckets;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -370,6 +386,9 @@ var MMGR = window.MMGR || {};
     }
     if (SpendMod && SpendMod.renderDeliveries) {
       SpendMod.renderDeliveries();
+    }
+    if (ns.Weekly && ns.Weekly.render) {
+      ns.Weekly.render();
     }
     renderPayApps();
   }

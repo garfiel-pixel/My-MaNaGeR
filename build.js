@@ -120,6 +120,9 @@ const APP_MODULES = [
   // top-level domain module (not an mmgr-app.js sub-module), so it sits here
   // with the other domain modules and reads State/Utils/Spend at call time.
   'js/mmgr-boq-bridge.js',
+  // H-4 (BUDGET-BOQ directive 2026-11-05): the weekly tracking view and its
+  // two exports. Reads State/Spend/Utils at call time only.
+  'js/mmgr-weekly.js',
   // Entitlements seam (owner 2026-09-19): the one future door for gating AI
   // features on sign-in; premium rules land inside later, callers never change.
   'js/app/entitlements.js',

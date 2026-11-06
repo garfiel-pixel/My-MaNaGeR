@@ -61,7 +61,7 @@
       clicks "Connect Google" in Settings > Controls. It is a device label,
       never a gate , offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-4D8rs30PyLySPxEZzIGd93S02zTiIGiLGsKyshfHmts=' 'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4=' 'sha256-1lQZ8ZnhADNPMPnTqfYPbBDeCin0qp40ehxDc065Fmc='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-1CPmicLTNIRFcqY15XBznG84jXT0uyMn0dztD2Dt2vI=' 'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4=' 'sha256-1lQZ8ZnhADNPMPnTqfYPbBDeCin0qp40ehxDc065Fmc='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
@@ -870,7 +870,15 @@
       </tr></thead><tbody id="bud-body"></tbody></table></div>
       <!-- Cash-Flow S-Curve + Spend Log (MONOLITH-PORTING-GUIDE feature 2) -->
       <div class="card m0a mt16">
-        <div class="card-title">Cash-Flow Forecast</div>
+        <div class="card-title">Cash-Flow Forecast
+          <div class="g6">
+            <label class="sr-only" for="cash-step">Chart step</label>
+            <select id="cash-step" data-action="cashStep" aria-label="Chart step">
+              <option value="14">Fortnightly steps</option>
+              <option value="7">Weekly steps</option>
+            </select>
+          </div>
+        </div>
         <div id="cashflow-chart"></div>
       </div>
       <!-- Risk-to-Budget Contingency Linkage (ACTION-PLAN 2.5) -->
@@ -906,6 +914,22 @@
         <div class="ox"><table class="dt"><thead><tr>
           <th class="w110">Date</th><th>Budget Line</th><th class="w100">Quantity</th><th class="w110">Unit price</th><th class="w110">Amount</th><th>Supplier / ref</th><th class="w100">Status</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
         </tr></thead><tbody id="spendlog-body"></tbody></table></div>
+      </div>
+      <!-- H-4 (BUDGET-BOQ directive 2026-11-05): one week at a time, Monday
+           to Sunday, with the money used against the work done. -->
+      <div class="card m0a mt16" id="bud-weekly-wrap">
+        <div class="card-title">Weekly tracking<span class="ct-sub" id="bud-weekly-sub"></span>
+          <div class="g6">
+            <label class="sr-only" for="bud-week">Week</label>
+            <select id="bud-week" data-action="weekPick" aria-label="Week to show"></select>
+            <button class="btn btn-n btn-s" data-action="weekPdf"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> PDF</button>
+            <button class="btn btn-n btn-s" data-action="weekXlsx"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Spreadsheet</button>
+          </div>
+        </div>
+        <div class="wk-cards" id="bud-weekly-cards"></div>
+        <div class="ox"><table class="dt"><thead><tr>
+          <th>Budget Line</th><th class="w120">Planned</th><th class="w120">Spent</th><th class="w120">This week</th><th class="w90">Used</th><th class="w150">Status</th><th class="w140">Forecast</th>
+        </tr></thead><tbody id="bud-weekly-body"></tbody></table></div>
       </div>
       <!-- H-3 (BUDGET-BOQ directive 2026-11-05): what each line has received,
            what is left, and whether an overspend is price or quantity. -->
@@ -2261,7 +2285,7 @@ document.addEventListener('DOMContentLoaded', function() {
    'js/mmgr-schedule.js','js/mmgr-resources.js','js/mmgr-health.js',
    'js/mmgr-evm.js','js/mmgr-dmaic.js','js/mmgr-meetings.js',
    'js/mmgr-voice.js','js/mmgr-errors.js','js/mmgr-report.js',
-   'js/app/components.js','js/app/confirm.js','js/app/copy-text.js','js/app/sidebar.js','js/mmgr-gantt-view.js','js/mmgr-app.js','js/app/weather.js','js/app/backup.js','js/mmgr-boq-bridge.js',
+   'js/app/components.js','js/app/confirm.js','js/app/copy-text.js','js/app/sidebar.js','js/mmgr-gantt-view.js','js/mmgr-app.js','js/app/weather.js','js/app/backup.js','js/mmgr-boq-bridge.js','js/mmgr-weekly.js',
    'js/app/export.js','js/app/history.js','js/app/definitions.js',
    'js/mmgr-presence.js','js/mmgr-tasks.js','js/mmgr-risks.js',
    'js/mmgr-stakeholders.js','js/mmgr-bids.js','js/mmgr-closure.js',

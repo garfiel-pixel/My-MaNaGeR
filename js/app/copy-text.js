@@ -317,7 +317,7 @@ var MMGR = window.MMGR || {};
         'Subject: Project Digest , ' +
         (s.projectName || '') +
         '\n\nHi team,\n\n' +
-        body.replace(/\n/g, '\n') +
+        body +
         '\n\n, My MaNaGeR\n'
       );
     } else if (kind === 'client') {

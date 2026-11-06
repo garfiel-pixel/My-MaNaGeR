@@ -623,7 +623,14 @@
 // instead of only quoting a code, and it broadcasts mmgr:cloud-linked so the
 // launcher list re-fetches at the moment of linking. Changed shell assets:
 // dist/bundle.js, dist/app-bundle.js.
-const CACHE = 'mmgr-shell-v555';
+// v556 - TEAM AND ROLES IS FINDABLE (I-3, owner 2026-11-06: "I still do not
+// see any UI for role based access"). The panel existed but its only door was
+// an unlabelled header bell, and the team endpoints were failing because
+// migrations 0028 and 0029 were unapplied. Both are fixed; the settings drawer
+// now carries a named entry that opens the same panel, and a signed-out
+// visitor is told to sign in instead of meeting an empty sheet. Changed shell
+// assets: project.html, dist/bundle.js.
+const CACHE = 'mmgr-shell-v556';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

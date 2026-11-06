@@ -337,6 +337,25 @@ const PROBE = sel => {
     appInfo
   );
 
+  // C9 (I-3, owner 2026-11-06): "I still do not see any UI for role based
+  // access." The team panel was reachable only through an unlabelled header
+  // bell, so it read as missing. The settings drawer now carries a NAMED
+  // entry, and the module binds it. Static arms: the entry exists with the
+  // words a person would search for, and the binding is not commented out.
+  const teamJs = fs.readFileSync(path.join(ROOT, 'js', 'cloud', 'team-ui.js'), 'utf8');
+  check(
+    'C9 the project settings drawer names Team and roles and opens the team panel',
+    /data-team-panel/.test(projHtml) &&
+      /Team and roles/.test(projHtml) &&
+      /querySelectorAll\('\[data-team-panel\]'\)/.test(teamJs) &&
+      /openPanel\(\)/.test(teamJs),
+    {
+      entry: /data-team-panel/.test(projHtml),
+      label: /Team and roles/.test(projHtml),
+      bound: /querySelectorAll\('\[data-team-panel\]'\)/.test(teamJs)
+    }
+  );
+
   console.log('');
   const total = pass + fails.length;
   if (fails.length) {

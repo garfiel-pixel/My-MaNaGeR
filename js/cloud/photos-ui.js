@@ -212,10 +212,7 @@ var MMGR = window.MMGR || {};
         return {};
       });
       if (!res.ok || !data || !data.ok) {
-        var msg = errorSentence(
-          data && data.error,
-          loadFailureSentence(res.status)
-        );
+        var msg = errorSentence(data && data.error, loadFailureSentence(res.status));
         _photos = [];
         _canUpload = false;
         _note = { text: msg, kind: 'warn', retry: true };

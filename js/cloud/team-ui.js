@@ -1631,6 +1631,27 @@ var MMGR = window.MMGR || {};
       ev.preventDefault();
       togglePanel();
     });
+    // I-3 (owner 2026-11-06): the header bell is an icon, so the feature read
+    // as missing. The settings drawer carries a named "Team and roles" entry
+    // that opens the same panel. A signed-out visitor gets the reason instead
+    // of an empty sheet.
+    Array.prototype.forEach.call(document.querySelectorAll('[data-team-panel]'), function (btn) {
+      btn.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        if (!state.signedIn) {
+          setStatus('Sign in to invite people and manage roles.', true);
+          if (typeof ns.App !== 'undefined' && ns.App && ns.App.showToast) {
+            ns.App.showToast('Sign in to invite people and manage roles.', 'warn');
+          }
+          return;
+        }
+        if (els.pop && !els.pop.hidden) {
+          closePanel();
+        } else {
+          openPanel();
+        }
+      });
+    });
     document.addEventListener('keydown', onKey);
     // "Open project" also lives in the launcher's Shared-with-me list, which is
     // OUTSIDE the panel - the panel's own delegated handler cannot see it. One

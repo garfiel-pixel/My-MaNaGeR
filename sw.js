@@ -543,7 +543,12 @@
 // (data-drive-host). The site-wide Subscriptions card ships hidden until the
 // site admin code is accepted. Changed shell assets: admin.html (inline
 // script), js/mmgr-google-auth.js, css/mmgr.css (dist bundles rebuilt).
-const CACHE = 'mmgr-shell-v545';
+// v546 - ADMIN BACKUP PANEL (owner 2026-11-05): the duplicate "Cloud
+// auto-update" card is gone. Cloud-project backup (on by default; off is
+// stored as '0') and the optional Google Drive backup share the header panel,
+// and a click after hover no longer closes it. Changed shell assets:
+// admin.html (inline script), css/mmgr.css.
+const CACHE = 'mmgr-shell-v546';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

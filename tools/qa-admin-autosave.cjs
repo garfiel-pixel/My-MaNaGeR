@@ -10,10 +10,10 @@
    stubbed at the network layer (Playwright route):
 
      AU0  a fresh profile unlocks (setup -> recovery modal -> panel)
-     AU1  the toggle is OFF by default and the status line says so
-     AU2  turning it ON persists the preference across a reload (per device)
+     AU1  the toggle is ON by default and the status line says so
+     AU2  turning it OFF persists the preference across a reload (per device)
      AU3  one edit with the toggle on pushes EXACTLY ONCE and the status
-          reads "Last pushed"
+          reads "Backed up"
      AU4  a burst of state changes in one debounce window coalesces into
           ONE push (autoNoteChange is the entry every save uses)
      AU5  a 500 is retried and the retry lands (2 requests, then success)
@@ -225,7 +225,8 @@ const SEED = [
 
   const snap = () =>
     page.evaluate(() => ({
-      on: localStorage.getItem('mmgr_autosave_cloud') === '1',
+      // Owner 2026-11-05: cloud backup is ON unless the device stored '0'.
+      on: localStorage.getItem('mmgr_autosave_cloud') !== '0',
       checked: !!(document.getElementById('autosave-tgl') || {}).checked,
       status: ((document.getElementById('autosave-status') || {}).textContent || '').trim(),
       rows: document.querySelectorAll('#project-list .prow').length
@@ -247,43 +248,48 @@ const SEED = [
     const ok0 = await unlock();
     check('AU0 a fresh profile unlocks through setup and the recovery modal', ok0);
 
-    // ---- AU1: OFF by default -------------------------------------------
+    // ---- AU1: ON by default --------------------------------------------
     let s = await snap();
     check(
-      'AU1 the toggle is OFF by default and the status line says so',
-      !s.on && !s.checked && /Auto-update is off/.test(s.status) && s.rows > 0,
+      'AU1 the toggle is ON by default and the status line says so',
+      s.on && s.checked && /Auto-backup is on/.test(s.status) && s.rows > 0,
       s
     );
 
-    // ---- AU2: ON persists across a reload (per device) ------------------
-    await page.click('#autosave-section label.tgl');
+    // ---- AU2: OFF persists across a reload (per device) ------------------
+    await page.click('#escrow-status');
+    await page.evaluate(() => document.getElementById('autosave-tgl').closest('label').click());
     s = await snap();
     check(
-      'AU2a turning it ON flips the status and stores the preference',
-      s.on && s.checked && /Auto-update is on/.test(s.status),
+      'AU2a turning it OFF flips the status and stores the preference',
+      !s.on && !s.checked && /Auto-backup is off/.test(s.status),
       s
     );
     await page.reload({ waitUntil: 'domcontentloaded' });
     const ok2 = await unlock();
     s = await snap();
     check(
-      'AU2b the preference survives a reload (persisted per device)',
-      ok2 && s.on && s.checked,
+      'AU2b the OFF choice survives a reload (persisted per device)',
+      ok2 && !s.on && !s.checked,
       {
         ok2,
         s
       }
     );
+    // Back ON for the push arms below.
+    await page.click('#escrow-status');
+    await page.evaluate(() => document.getElementById('autosave-tgl').closest('label').click());
+    s = await snap();
 
     // ---- AU3: one edit pushes ONCE --------------------------------------
     cloud.saves = 0;
     await page.click('#project-list button[data-action="openProjectModal"][data-idx="0"]');
     await page.fill('#pf-title', 'QA Auto Project Renamed');
     await page.click('#om [data-action="saveProjectForm"]');
-    s = await waitStatus(/Last pushed/, 1, 40);
+    s = await waitStatus(/Backed up/, 1, 40);
     check(
-      'AU3 one edit pushes exactly once and the status reads Last pushed',
-      cloud.saves === 1 && /Last pushed/.test(s.status),
+      'AU3 one edit pushes exactly once and the status reads Backed up',
+      cloud.saves === 1 && /Backed up/.test(s.status),
       { saves: cloud.saves, status: s.status }
     );
 
@@ -306,7 +312,7 @@ const SEED = [
     cloud.mode = 'flaky';
     cloud.flakyFired = 0;
     await page.evaluate(() => autoNoteChange(0));
-    s = await waitStatus(/Last pushed/, 2, 40);
+    s = await waitStatus(/Backed up/, 2, 40);
     check('AU5 a 500 is retried and the retry lands (2 requests)', cloud.saves === 2, {
       saves: cloud.saves,
       status: s && s.status
@@ -317,10 +323,10 @@ const SEED = [
     cloud.saves = 0;
     cloud.mode = 'fail';
     await page.evaluate(() => autoNoteChange(0));
-    s = await waitStatus(/Failed:/, undefined, 60);
+    s = await waitStatus(/Backup failed:/, undefined, 60);
     check(
       'AU6 the status shows Failed with the provider reason after the retries',
-      !!s && /Failed:/.test(s.status) && /stubbed save failure/.test(s.status),
+      !!s && /Backup failed:/.test(s.status) && /stubbed save failure/.test(s.status),
       s && s.status
     );
     check('AU6b the failure path made the initial attempt plus two retries', cloud.saves === 3, {
@@ -346,7 +352,7 @@ const SEED = [
       if (on) break;
       await delay(150);
     }
-    const landed = await waitStatus(/Last pushed/, 1, 30);
+    const landed = await waitStatus(/Backed up/, 1, 30);
     check(
       'AU7 an offline edit holds at zero pushes and fires when the connection returns',
       heldOffline && cloud.saves === 1,

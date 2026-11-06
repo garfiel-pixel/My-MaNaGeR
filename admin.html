@@ -417,10 +417,16 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
         </button>
         <div class="escrow-pop" id="escrow-pop" role="group" aria-label="Backup settings" hidden>
           <div class="escrow-pop-h">Backup</div>
-          <p class="escrow-pop-p" id="escrow-escrow-line">Your Admin panel code is sealed to your Google account, so a new device can recover access with it.</p>
+          <p class="escrow-pop-p">Cloud-linked projects back up in your account automatically. An edit pushes about a second after you make it.</p>
           <div class="escrow-pop-row">
-            <span class="escrow-pop-lbl">Auto-backup to Drive</span>
-            <label class="tgl"><input type="checkbox" id="escrow-auto-tgl" aria-label="Auto-backup to Google Drive"><span class="tsl"></span></label>
+            <span class="escrow-pop-lbl">Back up cloud projects</span>
+            <label class="tgl"><input type="checkbox" id="autosave-tgl" data-action="tglAutosave" aria-label="Back up cloud projects automatically"><span class="tsl"></span></label>
+          </div>
+          <div class="escrow-pop-status" id="autosave-status">Auto-backup is off. Edits stay on this device until you click Update Cloud Snapshot.</div>
+          <div class="escrow-pop-sep"></div>
+          <div class="escrow-pop-row">
+            <span class="escrow-pop-lbl">Back up to Google Drive</span>
+            <label class="tgl"><input type="checkbox" id="escrow-auto-tgl" aria-label="Back up to Google Drive automatically"><span class="tsl"></span></label>
           </div>
           <div class="escrow-pop-row" id="escrow-auto-int-row" hidden>
             <label class="escrow-pop-lbl" for="escrow-auto-int">How often</label>
@@ -431,6 +437,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
             </select>
           </div>
           <div class="escrow-pop-status" id="escrow-auto-status"></div>
+          <p class="escrow-pop-note" id="escrow-escrow-line">Your Admin panel code is sealed to your Google account, so a new device can recover access with it.</p>
         </div>
       </div>
       <button class="btn btn-n btn-s" data-action="changePassword"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Password</button>
@@ -511,23 +518,6 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
       <div class="t-xs mb8" id="billing-admin-status"></div>
       <div id="billing-admin-list"><div class="empty">Load to list the subscriptions on this site.</div></div>
       <div class="hint"><strong>Site-wide, not your own plan.</strong> Your own subscription is the rail's Manage subscription. A row is listed here as an orphan only when nothing in the app still holds its account: no account, no project, no shared project, no team membership and no live session. Cancelling at the provider happens before the row is removed, every time.</div>
-    </div>
-
-    <!-- 5.5 A3 (owner 2026-11-01): AUTO-UPDATE FOR CLOUD PROJECTS. Off by
-         default, persisted per device (mmgr_autosave_cloud). ON: an edit to a
-         cloud-linked project schedules ONE debounced push through
-         updateCloudSnapshot - the same path the row button uses, never a
-         second one - waits for the connection when the browser is offline,
-         and retries a failed push. The status line is the visible contract:
-         last pushed at, pending, failed with reason. -->
-    <div class="card" id="autosave-section" style="margin-top:16px">
-      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Cloud auto-update</div>
-      <div class="code-row mb8" style="justify-content:space-between">
-        <span>Auto-update cloud projects</span>
-        <label class="tgl"><input type="checkbox" id="autosave-tgl" data-action="tglAutosave" aria-label="Auto-update cloud projects"><span class="tsl"></span></label>
-      </div>
-      <div class="t-xs mb8" id="autosave-status">Auto-update is off. Edits push when you click Update Cloud Snapshot.</div>
-      <div class="hint">When this is on, a change to a cloud-linked project is pushed about a second after you make it, through the same Update path the row button uses. It waits for your connection if you are offline and retries a failed push; the line above always says what happened.</div>
     </div>
 
     <div id="project-list"></div>
@@ -1598,7 +1588,7 @@ document.addEventListener('mmgr:user-changed', function(e){
   // signed-in (setup screen only; other screens ignore it).
   setupRestoreVisibility(e);
   fetchEscrowStatusAndMaybeSync(); // backed-up copy? surface it on the gate
-  refreshEscrowStatus();           // APP-3: header backup status line
+  refreshBackupStatus();           // APP-3: header backup status line
 });
 document.addEventListener('mmgr:google-signed-out', function(){
   renderRailUser(null);
@@ -1804,6 +1794,8 @@ function admLoadTheirs(){
    switch on the same mmgr_drive_auto pref the workspace reads. */
 var _escrowHasCode = null;
 var _escrowWired = false;
+var _escrowHoverOpen = false;
+var _escrowOpenedAt = 0;
 function escrowEls(){
   return {
     wrap: document.getElementById('escrow-wrap'),
@@ -1822,7 +1814,10 @@ function escrowOpen(open){
   if (!e.pop || !e.btn) return;
   e.pop.hidden = !open;
   e.btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-  if (open) syncEscrowPop();
+  if (open){
+    _escrowOpenedAt = Date.now();
+    syncEscrowPop();
+  }
 }
 function escrowAgo(iso){
   var d = new Date(iso);
@@ -1840,6 +1835,12 @@ function syncEscrowPop(){
   var cur = (GA && GA.getAutoInterval) ? GA.getAutoInterval() : 'off';
   var granted = false;
   try { granted = localStorage.getItem('mmgr_drive_granted') === '1'; } catch(err){}
+  // Cloud projects are the primary backup: the same mmgr_autosave_cloud pref
+  // the push engine reads, never a second setting. It works signed out when
+  // the project holds a plain owner code, so it is never disabled here - the
+  // engine reports the sign-in refusal for session-linked projects itself.
+  if (typeof autoRenderStatus === 'function') autoRenderStatus();
+  // Google Drive is the optional extra.
   e.tgl.checked = cur !== 'off';
   e.tgl.disabled = !signedIn;
   if (e.sel){ e.sel.value = cur !== 'off' ? cur : '30'; e.sel.disabled = !signedIn; }
@@ -1853,9 +1854,9 @@ function syncEscrowPop(){
   }
   var msg;
   if (!signedIn){
-    msg = 'Sign in with Google to back up automatically.';
+    msg = 'Sign in with Google to back up to Drive.';
   } else if (cur === 'off'){
-    msg = 'Off. The workspace only backs up when you run Backup to Drive in a project.';
+    msg = 'Off. The workspace only backs up to Drive when you run Backup to Drive in a project.';
   } else if (!granted){
     msg = 'Waiting for Google Drive access. Run Backup to Drive once in a project to grant it.';
   } else {
@@ -1881,8 +1882,8 @@ function escrowSetAuto(on){
     GA.runAutoBackupCheck().catch(function(){});
   }
   toast(on
-    ? 'Auto-backup is on. The workspace backs up to Google Drive every ' + v + ' minutes while this tab is open.'
-    : 'Auto-backup is off.');
+    ? 'Drive backup is on. The workspace backs up every ' + v + ' minutes while this tab is open.'
+    : 'Drive backup is off.');
 }
 function escrowSetInterval(v){
   var GA = window.MMGR && window.MMGR.GoogleAuth;
@@ -1898,16 +1899,30 @@ function wireEscrowPop(){
   // Hover only where the device really hovers; on touch the tap handler below
   // is the only opener, so a tap cannot open and immediately re-close.
   if (window.matchMedia && window.matchMedia('(hover: hover)').matches){
-    e.wrap.addEventListener('mouseenter', function(){ escrowOpen(true); });
+    e.wrap.addEventListener('mouseenter', function(){
+      _escrowHoverOpen = true;
+      escrowOpen(true);
+    });
     e.wrap.addEventListener('mouseleave', function(){
+      _escrowHoverOpen = false;
       if (!e.wrap.contains(document.activeElement)) escrowOpen(false);
     });
   }
   e.btn.addEventListener('click', function(ev){
     ev.preventDefault();
+    // OWNER 2026-11-05: a click that follows the hover-open (or the focus
+    // that a click itself gives the button) must not close what just opened.
+    // That double-fire is the "it pops off" report. Touch has no hover, so a
+    // tap still toggles normally.
+    if (!e.pop.hidden && (_escrowHoverOpen || Date.now() - _escrowOpenedAt < 500)) return;
+    _escrowHoverOpen = false;
     escrowOpen(!!e.pop.hidden);
   });
-  e.wrap.addEventListener('focusin', function(){ escrowOpen(true); });
+  // Keyboard focus opens the panel; a mouse click focuses the button too, so
+  // gate on :focus-visible or every click would open then immediately close.
+  e.wrap.addEventListener('focusin', function(){
+    if (e.btn.matches(':focus-visible')) escrowOpen(true);
+  });
   e.wrap.addEventListener('focusout', function(){
     setTimeout(function(){
       if (!e.wrap.contains(document.activeElement)) escrowOpen(false);
@@ -1922,27 +1937,32 @@ function wireEscrowPop(){
   if (e.tgl) e.tgl.addEventListener('change', function(){ escrowSetAuto(!!e.tgl.checked); });
   if (e.sel) e.sel.addEventListener('change', function(){ escrowSetInterval(e.sel.value); });
 }
-function refreshEscrowStatus(){
+/* The badge is the backup state, not the escrow state: green when cloud
+   projects back up automatically, red when they do not. The Admin panel code
+   (recovery) is a note inside the panel, not the headline. */
+function paintBackupBadge(){
   const el = document.getElementById('escrow-status');
   const txt = document.getElementById('escrow-status-text');
   if (!el || !txt) return;
-  function paint(label, state){
-    txt.textContent = label;
-    el.className = 'escrow-badge' + (state ? ' ' + state : '');
-    el.setAttribute('aria-label', label + ' - open backup settings');
-  }
+  const on = autoUpdateEnabled();
+  const label = on ? 'Backed up' : 'Not backed up';
+  txt.textContent = label;
+  el.className = 'escrow-badge ' + (on ? 'on' : 'off');
+  el.setAttribute('aria-label', label + ' - open backup settings');
+}
+function refreshBackupStatus(){
+  paintBackupBadge();
   const GA = window.MMGR && window.MMGR.GoogleAuth;
   const signedIn = !!(GA && GA.isSignedIn && GA.isSignedIn());
-  if (!signedIn){ _escrowHasCode = null; paint('Not backed up', 'off'); syncEscrowPop(); return; }
-  paint('Checking...', '');
+  if (!signedIn){ _escrowHasCode = null; syncEscrowPop(); return; }
+  // The escrow note is secondary; a failure here must not change the badge.
   fetch('/api/auth/admin-code', { credentials: 'same-origin' })
     .then(function(res){ return res.ok ? res.json() : Promise.reject(0); })
     .then(function(d){
       _escrowHasCode = !!(d && d.ok && d.hasCode);
-      paint(_escrowHasCode ? 'Backed up' : 'Not backed up', _escrowHasCode ? 'on' : 'off');
       syncEscrowPop();
     })
-    .catch(function(){ _escrowHasCode = false; paint('Not backed up', 'off'); syncEscrowPop(); });
+    .catch(function(){ _escrowHasCode = false; syncEscrowPop(); });
 }
 wireEscrowPop();
 function markRestoredNow(){
@@ -1980,7 +2000,7 @@ function enterAdmin(){
   syncAdminHdr();
   loadProjects();
   repairCodeHashes();
-  refreshEscrowStatus();
+  refreshBackupStatus();
   renderRestoreRecap();
   _admLastWritten = JSON.stringify(projects);
   renderProjects();
@@ -2329,7 +2349,7 @@ async function saveProjectForm(){
     // burst, online-aware, retried) instead of immediate; OFF keeps the
     // 2026-09-21 behaviour exactly - push now, no scheduler involved.
     if (autoUpdateEnabled()){
-      toast('Project saved. Auto-update is on - it will sync in a moment.');
+      toast('Project saved. Auto-backup is on - it will sync in a moment.');
       autoNoteChange(editedIdx);
     } else {
       toast('Project saved. Syncing your changes to the cloud…');
@@ -2615,7 +2635,10 @@ async function updateCloudSnapshot(i, opts){
    "when you click the auto update ... a user['s] projects are automatically
    updated. They don't have to go and manually click update."
 
-   One toggle, persisted PER DEVICE (mmgr_autosave_cloud), OFF by default.
+   One toggle, persisted PER DEVICE (mmgr_autosave_cloud), ON by default
+   (owner 2026-11-05: cloud projects back up automatically; only an explicit
+   off, stored as '0', turns it off). The toggle lives in the header backup
+   panel next to the optional Google Drive backup.
    ON: an edit to a cloud-linked project schedules a push through
    updateCloudSnapshot - the ONE save path, shared with the row button -
    debounced so a burst of edits coalesces into a single push, held while
@@ -2632,20 +2655,23 @@ let _asFlushing = false;
 let _asState = { kind:'idle', reason:'' };
 
 function autoUpdateEnabled(){
-  try { return localStorage.getItem(AUTOSAVE_KEY) === '1'; } catch(e){ return false; }
+  // OWNER 2026-11-05: cloud projects back up automatically. Absent means ON;
+  // only an explicit '0' turns it off, and that choice survives a reload.
+  try { return localStorage.getItem(AUTOSAVE_KEY) !== '0'; } catch(e){ return true; }
 }
 function autoSetEnabled(on){
   try {
     if (on) localStorage.setItem(AUTOSAVE_KEY, '1');
-    else { localStorage.removeItem(AUTOSAVE_KEY); }
+    else { localStorage.setItem(AUTOSAVE_KEY, '0'); }
   } catch(e){ /* private mode: the toggle still works for this session */ }
   clearTimeout(_asTimer);
   if (!on) _asQueue = [];   // opting out must not fire pushes already queued
   _asState = { kind: on ? 'idle' : 'off', reason:'' };
   autoRenderStatus();
+  if (typeof paintBackupBadge === 'function') paintBackupBadge();
   toast(on
-    ? 'Auto-update is on. Cloud-linked projects now push themselves about a second after a change.'
-    : 'Auto-update is off. Use Update Cloud Snapshot to push by hand.');
+    ? 'Auto-backup is on. Cloud-linked projects now push themselves about a second after a change.'
+    : 'Auto-backup is off. Use Update Cloud Snapshot to push by hand.');
 }
 function autoLastPushedAt(){
   let last = null;
@@ -2662,22 +2688,22 @@ function autoRenderStatus(){
   const on = autoUpdateEnabled();
   let text;
   if (!on){
-    text = 'Auto-update is off. Edits push when you click Update Cloud Snapshot.';
+    text = 'Auto-backup is off. Edits stay on this device until you click Update Cloud Snapshot.';
   } else if (_asState.kind === 'pending'){
-    text = 'Pending - pushing your latest change…';
+    text = 'Pending - backing up your latest change…';
   } else if (_asState.kind === 'offline'){
-    text = 'Offline - the push waits for the connection.';
+    text = 'Offline - the backup waits for the connection.';
   } else if (_asState.kind === 'retrying'){
-    text = 'Retrying after a failed push: ' + _asState.reason + '…';
+    text = 'Retrying the backup: ' + _asState.reason + '…';
   } else if (_asState.kind === 'failed'){
-    text = 'Failed: ' + _asState.reason + '. Use Update Cloud Snapshot to push by hand.';
+    text = 'Backup failed: ' + _asState.reason + '. Use Update Cloud Snapshot to push by hand.';
   } else if (_asState.kind === 'pushed'){
-    text = 'Last pushed: ' + String(_asState.at || '').slice(0,19).replace('T',' ') + '.';
+    text = 'Backed up: ' + String(_asState.at || '').slice(0,19).replace('T',' ') + '.';
   } else {
     const last = autoLastPushedAt();
     text = last
-      ? 'Auto-update is on. Last pushed: ' + String(last).slice(0,19).replace('T',' ') + '.'
-      : 'Auto-update is on. Changes push about a second after you make them.';
+      ? 'Auto-backup is on. Last backed up: ' + String(last).slice(0,19).replace('T',' ') + '.'
+      : 'Auto-backup is on. Changes back up about a second after you make them.';
   }
   el.textContent = text;
 }
@@ -2693,6 +2719,11 @@ function autoSetState(kind, reason){
    when the change is SCHEDULED (the caller must not push a second time). */
 function autoNoteChange(i){
   if (!autoUpdateEnabled()) return false;
+  // Default-ON (owner 2026-11-05): a local-only project has nothing to push,
+  // so it must not enter the queue and surface "not cloud-linked" as a
+  // failure toast on every edit.
+  const p = projects[i];
+  if (!p || !p.cloudId || !p.cloudOwnerCode) return false;
   if (_asQueue.indexOf(i) === -1) _asQueue.push(i);
   if (!navigator.onLine){ autoSetState('offline'); return true; }  // flushed on 'online'
   autoSetState('pending');
@@ -2734,7 +2765,7 @@ async function autoPushWithRetry(i, attempt){
     return autoPushWithRetry(i, attempt + 1);
   }
   autoSetState('failed', reason);
-  toast('Auto-update failed: ' + reason, 'error');
+  toast('Auto-backup failed: ' + reason, 'error');
   return false;
 }
 

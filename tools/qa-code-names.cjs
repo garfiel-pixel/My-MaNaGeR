@@ -22,9 +22,9 @@
 
    BROWSER half (serve.cjs + Playwright, real clicks only):
      B1  signed out, the admin header reads "Not backed up"; the badge opens
-         the backup panel, auto-backup is off and disabled with a reason, the
-         site-wide Subscriptions card ships hidden, and the switch writes the
-         shared mmgr_drive_auto pref
+         the backup panel, cloud backup is on by default and writes
+         mmgr_autosave_cloud, Drive is off/disabled with a reason and writes
+         mmgr_drive_auto, and the site-wide Subscriptions card ships hidden
      B2  the trigger on the restore field opens the popover with all
          three names, Escape closes it
      B3  the launcher's "Have a code?" trigger opens the same popover
@@ -303,6 +303,20 @@ function bareAdminCodeHits(text) {
         popup.disabled && !popup.checked && /Sign in with Google/.test(popup.status),
         popup
       );
+      const cloud = await page.evaluate(() => {
+        const tgl = document.getElementById('autosave-tgl');
+        const st = document.getElementById('autosave-status');
+        return {
+          disabled: !!(tgl && tgl.disabled),
+          checked: !!(tgl && tgl.checked),
+          status: (st && st.textContent) || ''
+        };
+      });
+      check(
+        'B1b2 signed out, cloud backup stays available on the shared pref',
+        !cloud.disabled && cloud.checked && /Auto-backup is on/.test(cloud.status),
+        cloud
+      );
       await page.evaluate(() => document.getElementById('escrow-status').click());
 
       // The site-wide billing card is operator-only; a normal user must never
@@ -357,6 +371,49 @@ function bareAdminCodeHits(text) {
           autoPref.on === '30' &&
           autoPref.off === 'off',
         autoPref
+      );
+
+      // B1e: cloud projects are the primary backup. The switch must write the
+      // same mmgr_autosave_cloud pref the push engine reads, on and off.
+      const cloudPref = await page.evaluate(() => {
+        const GA = window.MMGR && window.MMGR.GoogleAuth;
+        if (!GA) return { ok: false, why: 'no GoogleAuth module' };
+        const realSignedIn = GA.isSignedIn;
+        GA.isSignedIn = function () {
+          return true;
+        };
+        try {
+          const btn = document.getElementById('escrow-status');
+          const pop = document.getElementById('escrow-pop');
+          pop.hidden = true;
+          btn.click();
+          const tgl = document.getElementById('autosave-tgl');
+          const start = tgl.checked;
+          // The delegated action listens for click (the same event a label
+          // tap produces), not change.
+          tgl.click();
+          const off = localStorage.getItem('mmgr_autosave_cloud');
+          tgl.click();
+          const on = localStorage.getItem('mmgr_autosave_cloud');
+          return { ok: true, start, off, on };
+        } finally {
+          try {
+            globalThis.escrowOpen(false);
+          } catch (e) {
+            /* older page without the popup */
+          }
+          GA.isSignedIn = realSignedIn;
+          try {
+            globalThis.paintBackupBadge();
+          } catch (e) {
+            /* older page without the badge painter */
+          }
+        }
+      });
+      check(
+        'B1e the cloud backup switch writes the shared mmgr_autosave_cloud pref',
+        cloudPref.ok && cloudPref.start === true && cloudPref.off === '0' && cloudPref.on === '1',
+        cloudPref
       );
 
       const revealed = await revealRestore(page);

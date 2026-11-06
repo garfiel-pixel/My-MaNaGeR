@@ -482,3 +482,32 @@ log any answer the owner gives here and apply it.
     byte-identical. The registry baseline above was also stale (claimed 138, measured 142).
 
 **End of progress file.**
+
+---
+
+## 7. WAVE H (BUDGET FROM BOQ, MCP APPROVALS) — added 2026-11-06
+
+Per BUDGET-BOQ-MCP-DIRECTIVE-2026-11-05.md section 0.4. H-0/H-1 recorded done in
+CONTINUATION-DIRECTIVE.md (2026-11-06). H-6 implemented and CI-green this session.
+
+- [x] **H-0** Reconnaissance — `docs/BUDGET-MAP-2026-11.md` written; every A# has a verdict.
+- [x] **H-1** One source of truth, empty envelope — `qa-budget-truth` 13/13 (CONTINUATION 2026-11-06).
+- [ ] **H-2** Budget from BOQ (the bridge) — open; needs T-BOQ harness.
+- [ ] **H-3** Record a delivery / expense — open; spend table partly built (qty/unit/status in `js/render/financials.js`); needs T-DELIVERY harness.
+- [ ] **H-4** Weekly tracking and report — open; weekly cash-step pref exists (`mmgr_cash_step`); needs T-WEEK harness.
+- [~] **H-5** MCP budget access — partial: key switches `budgetRead`/`budgetWrite` stored and toggled in `src/cloud/api-keys.js`; `get_budget`/propose tools, server money validation, `get_proposal_status`, and T-MCP-BUDGET still open.
+- [x] **H-6** Approval UI v2 — done. Commit `837e19b` (+ `d4e1cbf`, `e8894a8` CI-gate fixes). `tools/qa-approval.cjs` 23/23; registered in `docs/CI-TEST-COVERAGE.md` and wired into `ci.yml` (cloud-auth, QA_PORT 8818). CI run `42290318078` green. GATE T-APPROVE met: edit-before-approve (writes edited value), changelog records proposed+approved+edited, revert, partial approval, stale-proposal block, reject-with-reason to `get_proposal_status`. Also fixed a real cloud data-integrity bug (`getLiveState`/`readProjectState`).
+- [ ] **H-7** Roles and permissions — open; **BLOCKED**: references `RBAC-DIRECTIVE-2026-10-25.md`, which is absent from the tree. Team roles/invites are built (`qa-team-ui` 23/23), but the budget-specific approver model (Q3) and server-side enforcement need that directive. Gate T-BUD-RBAC.
+- [ ] **H-8** Documentation and closing — open; needs field-guide cards for H-2/H-3/H-4/H-5/H-6, STORAGE-INVENTORY/CI-COVERAGE updates, reflection rewrite, full qa battery.
+
+## 8. WAVE I (OWNER UI AUDIT) — added 2026-11-06
+
+Per BUDGET-BOQ-MCP-DIRECTIVE-2026-11-05.md section 4B. Sprint 0 (I-0 to I-3) runs after
+Wave G (FIELD-FINDINGS-DIRECTIVE-2026-10-28.md — also absent from the tree; blocks I-0/I-1/I-3 start).
+Many items (I-4..I-10 photography/fonts/motion) need owner visual sign-off on defaults.
+
+- [ ] **I-0** Screenshot review and map — blocked on Wave G prereq.
+- [ ] **I-1** Cloud projects do not show up (data bug) — needs reproduction harness T-CLOUDLIST.
+- [ ] **I-2** "Could not load photos HTTP 500" on empty project — needs T-PHOTO-EMPTY.
+- [ ] **I-3** Role-based access no visible UI — needs T-RBAC-UI.
+- [ ] **I-4** to **I-15** — open; several need owner visual choices (Q9 font, Q12 photos, motion language).

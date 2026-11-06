@@ -8,6 +8,19 @@
 
 ## Status log (newest at top)
 
+- **2026-11-06 (later)** - **Wave H started.** H-0 wrote `docs/BUDGET-MAP-2026-11.md`: every
+  A1-A10 assumption gets a verdict against the live tree, and every later task is annotated
+  "as written" or "adapted as follows". Three assumptions moved under the directive: A3 is
+  already gone (H-1's baseline), A10 is only half gone (the per-line variance and the
+  risk-contingency strip still print `$`), and A2's per-line columns still read the typed
+  `actual` box while every other screen reads `budgetLineActual` - H-1b closes both. The map
+  also records the three write paths (local storage, D1+R2 snapshot, review queue), the
+  client-side `SCHEMA_VERSION` 24 migration map, the D1 migration rule, the calculator's
+  `mmgr_calc_boq` bill and its price-free `mmgr_rfq_draft` handoff. Separately: the agent's own
+  `.codebuddy/worktrees` were being staged into the asset bundle (nothing excluded the folder);
+  it is now named in `.gitignore`, `.assetsignore` and `tools/deploy.cjs`, the two stale
+  worktrees are removed, and the paths no longer resolve to a file after the deploy
+  (`934bdcea`).
 - **2026-11-06** - **Production D1 was four migrations behind the code**, and that single fact
   explains both of the owner's reports. `0028` to `0031` were never applied, so the project list
   filtered on a missing `owner_email` (a project uploaded on one device never followed the account)

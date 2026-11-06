@@ -94,8 +94,57 @@ const TOOLS = [
   {
     name: 'get_budget',
     description:
-      'Get budget lines with planned vs actual costs, EVM metrics (SPI, CPI, EAC, ETC, VAC).',
+      'Get budget lines with planned vs actual costs, EVM metrics (SPI, CPI, EAC, ETC, VAC). H-5: each line also carries its BOQ quantity, unit, rate, deliveries, remaining quantity and a status chip; the frozen baseline and the variation count are included. Needs the Budget section AND the key\'s "Read budget" switch.',
     inputSchema: { type: 'object', properties: {}, required: [] }
+  },
+  {
+    name: 'get_deliveries',
+    description:
+      'Get every recorded delivery (quantity, unit price, supplier reference, status, amount) with the per-line rollup: quantity received, quantity left, money left, price variance and quantity variance. Needs the Budget section AND the key\'s "Read budget" switch.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        lineId: {
+          type: 'string',
+          description: 'Optional budget line id to narrow the answer to one line'
+        }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'get_weekly_summary',
+    description:
+      'Get the weekly budget view for one Monday-to-Sunday week: money spent that week, spent to date, plan to date, money used vs work done, forecast at completion, the price/quantity variance split and a status chip per line. Defaults to the latest week that has money in it. Needs the Budget section AND the key\'s "Read budget" switch.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        week: {
+          type: 'string',
+          description: 'Any ISO date inside the week (YYYY-MM-DD); the week starts on Monday'
+        }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'get_proposal_status',
+    description:
+      "Check what the owner decided about a proposal this key queued: pending, accepted, edited-and-accepted or rejected, with the owner's reason when one was given. Without an id it returns the most recent proposals for this key.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        proposalId: {
+          type: 'integer',
+          description: 'The proposal number returned by apply_changes'
+        },
+        limit: {
+          type: 'integer',
+          description: 'How many recent proposals to list (default 10, max 50)'
+        }
+      },
+      required: []
+    }
   },
   {
     name: 'get_risks',
@@ -158,7 +207,7 @@ const TOOLS = [
   {
     name: 'apply_changes',
     description:
-      'Submit changes to the project: edit existing records with diffs, or create new records with creates. Everything goes through the owner review queue - never auto-applied. diffs: array of {path, recordId, field, before, after}. creates: array of {path, record} where record needs at least {name} (tasks also accept startDate/endDate/assignee/status; resources accept name/role/rate/type).',
+      'Submit changes to the project: edit existing records with diffs, or create new records with creates. Everything goes through the owner review queue - never auto-applied. diffs: array of {path, recordId, field, before, after}. creates: array of {path, record} where record needs at least {name} (tasks also accept startDate/endDate/assignee/status; resources accept name/role/rate/type). budget: budget-only proposals (addLine, changeLine, addDelivery) - these need the key\'s "Propose budget changes" switch, every money value is checked on the server, and the server computes the delivery amount itself.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -195,6 +244,44 @@ const TOOLS = [
               }
             },
             required: ['path', 'record']
+          }
+        },
+        budget: {
+          type: 'array',
+          description:
+            'Budget proposals. addLine: {kind, line:{name, category, planned, qty, unit, rate, boqRef, linkedTaskId}}. changeLine: {kind, lineId, field, value}. addDelivery: {kind, lineId, qty, unitPrice, date, unit, supplierRef, status, note}. The amount of a delivery is qty x unitPrice, computed by the server. Deleting a budget line is not available.',
+          items: {
+            type: 'object',
+            properties: {
+              kind: { type: 'string', description: 'addLine, changeLine or addDelivery' },
+              line: { type: 'object', description: 'For addLine: the new line' },
+              lineId: {
+                type: 'string',
+                description: 'For changeLine and addDelivery: the line id'
+              },
+              field: {
+                type: 'string',
+                description: 'For changeLine: name, category, planned, qty, unit, rate or boqRef'
+              },
+              value: { description: 'For changeLine: the new value' },
+              qty: { type: 'number', description: 'For addDelivery: quantity received' },
+              unitPrice: { type: 'number', description: 'For addDelivery: price per unit' },
+              unit: {
+                type: 'string',
+                description: 'For addDelivery: unit; must match the line unit'
+              },
+              date: { type: 'string', description: 'For addDelivery: YYYY-MM-DD' },
+              supplierRef: {
+                type: 'string',
+                description: 'For addDelivery: delivery note or invoice'
+              },
+              status: {
+                type: 'string',
+                description: 'For addDelivery: ordered, received or paid (default received)'
+              },
+              note: { type: 'string', description: 'For addDelivery: a short note' }
+            },
+            required: ['kind']
           }
         },
         label: { type: 'string', description: 'Human-readable label for this change set' }
@@ -581,7 +668,401 @@ function sectionRefusal(scope) {
   );
 }
 
-function executeTool(name, state, projectId, label, scope, args) {
+// ---- H-5 budget access (BUDGET-BOQ directive 2026-11-05) ------------------
+//
+// Two switches, separate from the section scope and both OFF until the owner
+// turns them on. The section decides what a key can see at all; these decide
+// what it can do with money. An owner-code caller is not an API key and is
+// never limited by them.
+//
+// The read tools below mirror the app's own money functions
+// (js/mmgr-resources.js spendIsSpent / budgetLineActual / deliveryRollup and
+// js/mmgr-weekly.js summary) so an AI client and the owner's screen can never
+// disagree about the same project. When one of those changes, change this too.
+const BUDGET_READ_REFUSAL =
+  'This API key may not read the budget. The project owner can turn on "Read budget" for this key in Cloud, Share, API Keys. No budget figures are included in this answer.';
+const BUDGET_WRITE_REFUSAL =
+  'This API key may not propose budget changes. The owner can turn on "Propose budget changes" for this key in Cloud, Share, API Keys. A proposal never changes a live figure - the owner approves it inside the project.';
+const BUDGET_PROPOSAL_LIMIT = 25; // changes in one proposal
+const BUDGET_LARGE_PER_DAY = 10; // large changes one key may queue in a day
+const BUDGET_LARGE_ABS = 50000; // Q5: 10 percent of the line, or this, whichever is smaller
+
+function budgetReadAllowed(auth) {
+  return !auth || auth.role !== 'api' || auth.budgetRead === true;
+}
+function budgetWriteAllowed(auth) {
+  return !auth || auth.role !== 'api' || (auth.budgetRead === true && auth.budgetWrite === true);
+}
+function round2(n) {
+  return Math.round((+n || 0) * 100) / 100;
+}
+function isMoney(v) {
+  return typeof v === 'number' && isFinite(v);
+}
+function spendIsSpent(e) {
+  const st = (e && e.status) || 'received';
+  return st !== 'ordered';
+}
+function spendIsPaid(e) {
+  return ((e && e.status) || 'received') === 'paid';
+}
+function lineActual(line, spendLog) {
+  const log = (spendLog || []).filter(e => e.budgetLineId === line.id && spendIsSpent(e));
+  if (log.length) {
+    return log.reduce((sum, e) => sum + (+e.amount || 0), 0);
+  }
+  return +line.actual || 0;
+}
+// Same shape as Spend.deliveryRollup in js/mmgr-resources.js.
+function deliveryRollup(line, spendLog) {
+  const log = (spendLog || []).filter(e => e.budgetLineId === line.id);
+  const baseQty = line.qty == null ? null : +line.qty || 0;
+  const baseRate = line.rate == null ? null : +line.rate || 0;
+  let qty = 0;
+  let spent = 0;
+  let paid = 0;
+  let committed = 0;
+  let priceVar = 0;
+  let anyQty = false;
+  log.forEach(e => {
+    if (!spendIsSpent(e)) {
+      committed += +e.amount || 0;
+      return;
+    }
+    spent += +e.amount || 0;
+    if (spendIsPaid(e)) {
+      paid += +e.amount || 0;
+    }
+    if (e.qty != null && e.unitPrice != null) {
+      anyQty = true;
+      const q = +e.qty || 0;
+      qty += q;
+      priceVar += (Math.round((+e.unitPrice || 0) * 1e6) / 1e6 - (baseRate || 0)) * q;
+    }
+  });
+  const planned = +line.planned || 0;
+  return {
+    hasQty: anyQty && baseQty != null,
+    qtyReceived: qty,
+    qtyLeft: baseQty == null ? null : Math.max(0, baseQty - qty),
+    qtyPct: baseQty ? Math.round((qty / baseQty) * 100) : 0,
+    moneyLeft: planned - spent,
+    planned: planned,
+    spent: spent,
+    committed: committed,
+    paid: paid,
+    owed: Math.max(0, spent - paid),
+    priceVar: priceVar,
+    qtyVar: baseQty == null || baseRate == null ? null : planned - baseRate * qty
+  };
+}
+// Q5 chips: watch at 80 percent of plan, over above 100 percent, and price
+// when the average price paid is above the BOQ rate.
+function chipFor(planned, spent, priceVar) {
+  const usedPct = planned ? (spent / planned) * 100 : 0;
+  let chip = 'ontrack';
+  if (planned && usedPct > 100) {
+    chip = 'over';
+  } else if (planned && usedPct >= 80) {
+    chip = 'watch';
+  }
+  if (priceVar > 0.005) {
+    chip = chip === 'over' ? 'over' : 'price';
+  }
+  return { usedPct: usedPct, chip: chip };
+}
+function baselineOf(state) {
+  const list = Array.isArray(state && state.budgetBaselines) ? state.budgetBaselines : [];
+  return list.length ? list[list.length - 1] : null;
+}
+
+// ---- week helpers (UTC; the client uses local dates for the same rule) ----
+function isoOf(d) {
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return d.getUTCFullYear() + '-' + m + '-' + day;
+}
+function parseISO(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || '').slice(0, 10));
+  if (!m) {
+    return null;
+  }
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  return isNaN(d.getTime()) ? null : d;
+}
+function weekStartOf(iso) {
+  const d = parseISO(iso);
+  if (!d) {
+    return '';
+  }
+  const day = d.getUTCDay(); // 0 Sunday .. 6 Saturday
+  const back = day === 0 ? 6 : day - 1;
+  d.setUTCDate(d.getUTCDate() - back);
+  return isoOf(d);
+}
+function addDaysIso(iso, n) {
+  const d = parseISO(iso);
+  if (!d) {
+    return '';
+  }
+  d.setUTCDate(d.getUTCDate() + n);
+  return isoOf(d);
+}
+function weeksOf(state) {
+  const set = {};
+  (state.spendLog || []).forEach(e => {
+    if (e && e.date) {
+      const w = weekStartOf(e.date);
+      if (w) {
+        set[w] = 1;
+      }
+    }
+  });
+  const now = weekStartOf(isoOf(new Date()));
+  if (now) {
+    set[now] = 1;
+  }
+  return Object.keys(set).sort();
+}
+function earnedFraction(line, state) {
+  const tasks = state.tasks || [];
+  const linkId = line.linkedTaskId || line.taskId || null;
+  if (linkId) {
+    const t = tasks.find(x => String(x.id) === String(linkId));
+    if (t) {
+      return t.status === 'completed' ? 1 : 0;
+    }
+  }
+  return tasks.length ? tasks.filter(t => t.status === 'completed').length / tasks.length : 0;
+}
+function curveFraction(t, shape) {
+  t = Math.max(0, Math.min(1, t));
+  const s =
+    shape === 'bell'
+      ? 'scurve'
+      : shape === 'front-loaded'
+        ? 'front'
+        : shape === 'back-loaded'
+          ? 'back'
+          : shape;
+  switch (s) {
+    case 'scurve':
+      return t * t * (3 - 2 * t);
+    case 'front':
+      return 1 - Math.pow(1 - t, 2);
+    case 'back':
+      return t * t;
+    default:
+      return t;
+  }
+}
+function lineWindowMs(line, state) {
+  const linkId = line.linkedTaskId || line.taskId || null;
+  const tasks = (state && state.tasks) || [];
+  if (linkId) {
+    const t = tasks.find(x => String(x.id) === String(linkId));
+    if (t && t.startDate && t.endDate && parseISO(t.startDate) && parseISO(t.endDate)) {
+      return { start: parseISO(t.startDate).getTime(), end: parseISO(t.endDate).getTime() };
+    }
+  }
+  const dated = tasks.filter(
+    t => t.startDate && t.endDate && parseISO(t.startDate) && parseISO(t.endDate)
+  );
+  if (!dated.length) {
+    return null;
+  }
+  const starts = dated.map(t => parseISO(t.startDate).getTime());
+  const ends = dated.map(t => parseISO(t.endDate).getTime());
+  return { start: Math.min.apply(null, starts), end: Math.max.apply(null, ends) };
+}
+function lineCumulativeAt(line, asOfMs, state) {
+  const planned = +line.planned || 0;
+  const w = lineWindowMs(line, state);
+  if (!w) {
+    const tasks = (state && state.tasks) || [];
+    const tot = tasks.length;
+    const dn = tasks.filter(t => t.status === 'completed').length;
+    return planned * (tot ? dn / tot : 0);
+  }
+  const span = w.end - w.start;
+  if (asOfMs <= w.start) {
+    return 0;
+  }
+  if (asOfMs >= w.end || span <= 0) {
+    return planned;
+  }
+  return (
+    planned * curveFraction((asOfMs - w.start) / span, line.curveShape || line.curve || 'linear')
+  );
+}
+// Same numbers as the Weekly card (js/mmgr-weekly.js summary), as of the
+// selected week's last day. `taskSource` is the UNSCOPED state: the money
+// rules need task dates and completion, but only aggregate figures (a
+// percentage, a plan-to-date total) ever leave this function - no task names,
+// no task rows.
+function weeklySummary(state, weekISO, taskSource) {
+  const sched = taskSource || state;
+  const all = weeksOf(state);
+  const w =
+    weekISO && all.indexOf(weekISO) > -1
+      ? weekISO
+      : all[all.length - 1] || weekStartOf(isoOf(new Date()));
+  const from = w;
+  const to = addDaysIso(w, 6);
+  const toMs = parseISO(to).getTime();
+  const log = (state.spendLog || []).filter(e => e && spendIsSpent(e));
+  const lines = state.budgetLines || [];
+  const rows = lines.map(l => {
+    const own = log.filter(e => e.budgetLineId === l.id);
+    const asOf = own.filter(e => !e.date || e.date <= to);
+    const planned = +l.planned || 0;
+    const spent = own.length ? asOf.reduce((n, e) => n + (+e.amount || 0), 0) : +l.actual || 0;
+    const spentWeek = own
+      .filter(e => e.date && e.date >= from && e.date <= to)
+      .reduce((n, e) => n + (+e.amount || 0), 0);
+    const frac = earnedFraction(l, sched);
+    const baseQty = l.qty == null ? null : +l.qty || 0;
+    const baseRate = l.rate == null ? null : +l.rate || 0;
+    let qty = 0;
+    let priceVar = 0;
+    let latest = null;
+    let anyQty = false;
+    asOf.forEach(e => {
+      if (e.qty != null && e.unitPrice != null) {
+        anyQty = true;
+        const q = +e.qty || 0;
+        qty += q;
+        priceVar += (Math.round((+e.unitPrice || 0) * 1e6) / 1e6 - (baseRate || 0)) * q;
+        if (!latest || (e.date || '') >= (latest.date || '')) {
+          latest = { date: e.date || '', price: +e.unitPrice || 0 };
+        }
+      }
+    });
+    const qtyLeft = baseQty == null ? null : Math.max(0, baseQty - qty);
+    let fcac = null;
+    if (anyQty && baseQty != null && latest) {
+      fcac = spent + qtyLeft * latest.price;
+    } else if (frac > 0) {
+      fcac = spent / frac;
+    } else {
+      fcac = planned;
+    }
+    const chipInfo = chipFor(planned, spent, priceVar);
+    return {
+      id: l.id,
+      name: l.category || l.id,
+      planned: planned,
+      spent: spent,
+      spentWeek: spentWeek,
+      usedPct: chipInfo.usedPct,
+      chip: chipInfo.chip,
+      priceVar: priceVar,
+      qtyVar: baseQty == null || baseRate == null ? null : planned - baseRate * qty,
+      fcac: fcac,
+      qty: baseQty,
+      unit: l.unit || null,
+      qtyReceived: qty,
+      hasQty: anyQty && baseQty != null
+    };
+  });
+  const spentToDate = rows.reduce((n, r) => n + r.spent, 0);
+  const spentWeek = rows.reduce((n, r) => n + r.spentWeek, 0);
+  const planned = rows.reduce((n, r) => n + r.planned, 0);
+  const fcac = rows.reduce((n, r) => n + (r.fcac || 0), 0);
+  const priceVar = rows.reduce((n, r) => n + (r.priceVar || 0), 0);
+  const qtyVar = rows.reduce((n, r) => n + (r.qtyVar || 0), 0);
+  const planToDate = (state.budgetLines || []).reduce(
+    (n, l) => n + lineCumulativeAt(l, toMs, sched),
+    0
+  );
+  const tasks = sched.tasks || [];
+  const workPct = tasks.length
+    ? (tasks.filter(t => t.status === 'completed').length / tasks.length) * 100
+    : 0;
+  return {
+    week: w,
+    from: from,
+    to: to,
+    weeks: all,
+    currency: state.currency || 'USD',
+    spentWeek: spentWeek,
+    spentToDate: spentToDate,
+    planToDate: planToDate,
+    planned: planned,
+    moneyPct: planned ? (spentToDate / planned) * 100 : 0,
+    workPct: workPct,
+    forecast: fcac,
+    priceVar: priceVar,
+    qtyVar: qtyVar,
+    rows: rows
+  };
+}
+
+// ---- H-5 unit families ----------------------------------------------------
+// A delivery's unit must belong to the same family as its line's unit, so
+// "20 loads" can never be recorded against a line priced in cubic metres.
+// Unknown units are compared literally (case and spaces normalised).
+const UNIT_FAMILY = {
+  m: 'length',
+  metre: 'length',
+  meter: 'length',
+  lm: 'length',
+  'lin m': 'length',
+  'linear m': 'length',
+  ft: 'length',
+  'lin ft': 'length',
+  m2: 'area',
+  'm²': 'area',
+  sqm: 'area',
+  'sq m': 'area',
+  'sq ft': 'area',
+  ft2: 'area',
+  m3: 'volume',
+  'm³': 'volume',
+  cum: 'volume',
+  'cu m': 'volume',
+  'cu yd': 'volume',
+  yd3: 'volume',
+  kg: 'mass',
+  t: 'mass',
+  tonne: 'mass',
+  ton: 'mass',
+  lb: 'mass',
+  hr: 'time',
+  hour: 'time',
+  h: 'time',
+  day: 'time',
+  wk: 'time',
+  week: 'time',
+  ea: 'count',
+  each: 'count',
+  no: 'count',
+  pc: 'count',
+  pcs: 'count',
+  unit: 'count',
+  load: 'load',
+  trip: 'load',
+  bag: 'bag',
+  roll: 'roll',
+  sheet: 'sheet'
+};
+function unitFamily(u) {
+  const k = String(u == null ? '' : u)
+    .trim()
+    .toLowerCase()
+    .replace(/\.$/, '');
+  return UNIT_FAMILY[k] || (k ? 'custom:' + k : '');
+}
+function unitsMatch(a, b) {
+  const fa = unitFamily(a);
+  const fb = unitFamily(b);
+  if (!fa || !fb) {
+    return true;
+  }
+  return fa === fb;
+}
+
+function executeTool(name, state, projectId, label, scope, args, auth, fullState) {
   if (!state) {
     return {
       content: [{ type: 'text', text: 'No project data available. Save a snapshot first.' }],
@@ -668,35 +1149,80 @@ function executeTool(name, state, projectId, label, scope, args) {
       if (!sectionAllowed(scope, 'bud')) {
         return { content: [{ type: 'text', text: sectionRefusal(scope) }], isError: true };
       }
+      if (!budgetReadAllowed(auth)) {
+        return { content: [{ type: 'text', text: BUDGET_READ_REFUSAL }], isError: true };
+      }
       const lines = Array.isArray(state.budgetLines) ? state.budgetLines : [];
       const spendLog = Array.isArray(state.spendLog) ? state.spendLog : [];
       const enriched = lines.map(line => {
-        const log = spendLog.filter(e => e.budgetLineId === line.id);
-        const actual = log.length
-          ? log.reduce((s, e) => s + (+e.amount || 0), 0)
-          : +line.actual || 0;
+        const roll = deliveryRollup(line, spendLog);
+        const actual = lineActual(line, spendLog);
+        const chipInfo = chipFor(roll.planned, actual, roll.priceVar);
+        const own = spendLog.filter(e => e.budgetLineId === line.id);
         return {
           id: line.id,
           name: line.name || line.id,
           category: line.category || null,
-          planned: +line.planned || 0,
-          actual,
-          variance: (+line.planned || 0) - actual,
+          source: line.source || 'manual',
+          boqRef: line.boqRef || null,
+          planned: roll.planned,
+          actual: actual,
+          committed: roll.committed,
+          paid: roll.paid,
+          owed: roll.owed,
+          variance: roll.planned - actual,
+          usedPct: Math.round(chipInfo.usedPct),
+          status: chipInfo.chip,
+          qty: line.qty == null ? null : +line.qty || 0,
+          unit: line.unit || null,
+          rate: line.rate == null ? null : +line.rate || 0,
+          qtyReceived: roll.qtyReceived,
+          qtyLeft: roll.qtyLeft,
+          qtyPct: roll.qtyPct,
+          moneyLeft: roll.moneyLeft,
+          priceVar: roll.priceVar,
+          qtyVar: roll.qtyVar,
+          deliveryCount: own.length,
+          lastDelivery: own.length
+            ? own
+                .map(e => e.date || '')
+                .filter(Boolean)
+                .sort()
+                .slice(-1)[0] || null
+            : null,
           linkedTaskId: line.linkedTaskId || line.taskId || null
         };
       });
       const totalPlanned = enriched.reduce((s, l) => s + l.planned, 0);
       const totalActual = enriched.reduce((s, l) => s + l.actual, 0);
+      const base = baselineOf(fullState || state);
+      const variations = Array.isArray((fullState || state).budgetVariations)
+        ? (fullState || state).budgetVariations
+        : [];
+      const envelope = state.budgetEnvelope == null ? null : +state.budgetEnvelope || 0;
       return {
         content: [
           {
             type: 'text',
             text: JSON.stringify(
               {
+                currency: (fullState || state).currency || 'USD',
                 totalPlanned,
                 totalActual,
                 variance: totalPlanned - totalActual,
                 lineCount: enriched.length,
+                envelope: envelope,
+                envelopeRemaining: envelope == null ? null : envelope - totalPlanned,
+                baseline: base
+                  ? {
+                      id: base.id,
+                      name: base.name || null,
+                      total: +base.total || 0,
+                      frozenAt: base.at || null,
+                      frozenBy: base.by || null
+                    }
+                  : null,
+                variationCount: variations.length,
                 lines: enriched
               },
               null,
@@ -705,6 +1231,114 @@ function executeTool(name, state, projectId, label, scope, args) {
           }
         ]
       };
+    }
+    case 'get_deliveries': {
+      if (!sectionAllowed(scope, 'bud')) {
+        return { content: [{ type: 'text', text: sectionRefusal(scope) }], isError: true };
+      }
+      if (!budgetReadAllowed(auth)) {
+        return { content: [{ type: 'text', text: BUDGET_READ_REFUSAL }], isError: true };
+      }
+      const onlyLine = args && args.lineId ? String(args.lineId) : '';
+      const lines = (Array.isArray(state.budgetLines) ? state.budgetLines : []).filter(
+        l => !onlyLine || String(l.id) === onlyLine
+      );
+      if (onlyLine && !lines.length) {
+        return {
+          content: [{ type: 'text', text: 'No budget line with id ' + onlyLine + '.' }],
+          isError: true
+        };
+      }
+      const spendLog = Array.isArray(state.spendLog) ? state.spendLog : [];
+      const byId = {};
+      lines.forEach(l => {
+        byId[String(l.id)] = l;
+      });
+      const rows = lines.map(l => {
+        const roll = deliveryRollup(l, spendLog);
+        return {
+          lineId: l.id,
+          name: l.name || l.id,
+          category: l.category || null,
+          planned: roll.planned,
+          qty: l.qty == null ? null : +l.qty || 0,
+          unit: l.unit || null,
+          rate: l.rate == null ? null : +l.rate || 0,
+          qtyReceived: roll.qtyReceived,
+          qtyLeft: roll.qtyLeft,
+          qtyPct: roll.qtyPct,
+          spent: roll.spent,
+          committed: roll.committed,
+          paid: roll.paid,
+          owed: roll.owed,
+          moneyLeft: roll.moneyLeft,
+          priceVar: roll.priceVar,
+          qtyVar: roll.qtyVar
+        };
+      });
+      const deliveries = spendLog
+        .filter(e => e && byId[String(e.budgetLineId)])
+        .map(e => ({
+          id: e.id || null,
+          date: e.date || null,
+          lineId: e.budgetLineId,
+          lineName: byId[String(e.budgetLineId)].name || byId[String(e.budgetLineId)].id,
+          qty: e.qty == null ? null : +e.qty || 0,
+          unit: e.unit || byId[String(e.budgetLineId)].unit || null,
+          unitPrice: e.unitPrice == null ? null : +e.unitPrice || 0,
+          amount: +e.amount || 0,
+          supplierRef: e.supplierRef || null,
+          status: e.status || 'received',
+          note: e.note || null
+        }))
+        .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                currency: (fullState || state).currency || 'USD',
+                lineCount: rows.length,
+                deliveryCount: deliveries.length,
+                lines: rows,
+                deliveries: deliveries
+              },
+              null,
+              2
+            )
+          }
+        ]
+      };
+    }
+    case 'get_weekly_summary': {
+      if (!sectionAllowed(scope, 'bud')) {
+        return { content: [{ type: 'text', text: sectionRefusal(scope) }], isError: true };
+      }
+      if (!budgetReadAllowed(auth)) {
+        return { content: [{ type: 'text', text: BUDGET_READ_REFUSAL }], isError: true };
+      }
+      const asked = args && args.week ? String(args.week).slice(0, 10) : '';
+      if (asked && !parseISO(asked)) {
+        return {
+          content: [{ type: 'text', text: 'The week must be a date in the form YYYY-MM-DD.' }],
+          isError: true
+        };
+      }
+      const weekISO = asked ? weekStartOf(asked) : '';
+      const out = weeklySummary(state, weekISO, fullState || state);
+      out.currency = (fullState || state).currency || 'USD';
+      const base = baselineOf(fullState || state);
+      out.baseline = base
+        ? {
+            id: base.id,
+            name: base.name || null,
+            total: +base.total || 0,
+            frozenAt: base.at || null
+          }
+        : null;
+      out.weekStartsOn = 'Monday';
+      return { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }] };
     }
     case 'get_risks': {
       if (!sectionAllowed(scope, 'risk')) {
@@ -834,6 +1468,449 @@ function executeTool(name, state, projectId, label, scope, args) {
   }
 }
 
+// ---- H-5 budget proposals -------------------------------------------------
+//
+// The only write path a key with the "Propose budget changes" switch gets.
+// Everything here is validated on the SERVER before the proposal is queued:
+// a text amount, a negative amount, a missing price or a unit outside the
+// line's family is refused, and the delivery amount is computed here rather
+// than trusted from the caller. Nothing touches live project state - the
+// proposal becomes a cloud_reviews row the owner accepts or rejects.
+//
+// Kinds: addLine, changeLine, addDelivery. There is deliberately NO delete:
+// v1 cannot remove a budget line through MCP at all, so the option to enable
+// it per key can be added later without a migration.
+const BUDGET_LINE_FIELDS = ['name', 'category', 'planned', 'qty', 'unit', 'rate', 'boqRef'];
+const BUDGET_MONEY_FIELDS = { planned: 1, qty: 1, rate: 1 };
+const DELIVERY_STATUSES = { ordered: 1, received: 1, paid: 1 };
+
+function fmtNum(n) {
+  const v = Math.round((+n || 0) * 100) / 100;
+  const parts = String(Math.abs(v)).split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return (v < 0 ? '-' : '') + parts.join('.');
+}
+
+function buildBudgetProposal(prev, rawList, currency) {
+  const refused = [];
+  const changes = [];
+  const base = JSON.parse(JSON.stringify(prev || {}));
+  const lines = Array.isArray(base.budgetLines) ? base.budgetLines : (base.budgetLines = []);
+  const spend = Array.isArray(base.spendLog) ? base.spendLog : (base.spendLog = []);
+  const nowIso = new Date().toISOString();
+  const today = nowIso.slice(0, 10);
+  let nspid = +base.nspid || 1;
+  let nextLineNo = 1;
+  const usedIds = {};
+  lines.forEach(l => {
+    usedIds[String(l.id)] = 1;
+    const m = /^B(\d+)$/.exec(String(l.id || ''));
+    if (m) {
+      nextLineNo = Math.max(nextLineNo, +m[1] + 1);
+    }
+  });
+  const newLineId = function () {
+    let id = 'B' + nextLineNo++;
+    while (usedIds[id]) {
+      id = 'B' + nextLineNo++;
+    }
+    usedIds[id] = 1;
+    return id;
+  };
+  const findLine = function (id) {
+    for (let i = 0; i < lines.length; i++) {
+      if (String(lines[i].id) === String(id)) {
+        return lines[i];
+      }
+    }
+    return null;
+  };
+  const largeThreshold = function (planned) {
+    return Math.min(Math.abs(planned || 0) * 0.1, BUDGET_LARGE_ABS);
+  };
+
+  rawList.forEach((raw, i) => {
+    const at = 'budget ' + (i + 1);
+    if (!raw || typeof raw !== 'object') {
+      refused.push(at + ': not an object');
+      return;
+    }
+    const kind = String(raw.kind || '');
+
+    if (kind === 'addLine') {
+      const src = raw.line && typeof raw.line === 'object' ? raw.line : null;
+      if (!src) {
+        refused.push(at + ': addLine needs a line object');
+        return;
+      }
+      const name = String(src.name || src.category || '').trim();
+      if (!name) {
+        refused.push(at + ': the new line needs a name');
+        return;
+      }
+      let planned = src.planned;
+      if (planned === undefined && isMoney(src.qty) && isMoney(src.rate)) {
+        planned = round2(src.qty * src.rate);
+      }
+      if (!isMoney(planned)) {
+        refused.push(at + ': planned must be a number (no text, no blanks)');
+        return;
+      }
+      if (planned < 0) {
+        refused.push(at + ': planned cannot be negative');
+        return;
+      }
+      if (src.qty !== undefined && (!isMoney(src.qty) || src.qty < 0)) {
+        refused.push(at + ': quantity must be a number and cannot be negative');
+        return;
+      }
+      if (src.rate !== undefined && (!isMoney(src.rate) || src.rate < 0)) {
+        refused.push(at + ': rate must be a number and cannot be negative');
+        return;
+      }
+      const line = {
+        id: newLineId(),
+        name: name,
+        category: String(src.category || name),
+        planned: round2(planned),
+        actual: 0,
+        qty: isMoney(src.qty) ? src.qty : null,
+        unit: src.unit == null ? '' : String(src.unit).slice(0, 24),
+        rate: isMoney(src.rate) ? src.rate : null,
+        boqRef: src.boqRef == null ? '' : String(src.boqRef).slice(0, 80),
+        source: 'manual',
+        notes: src.notes == null ? '' : String(src.notes).slice(0, 500),
+        taskId: '',
+        linkedTaskId: src.linkedTaskId == null ? '' : String(src.linkedTaskId).slice(0, 64),
+        curve: 'linear',
+        waiverStatus: 'pending',
+        waiverReceivedAt: '',
+        committed: null
+      };
+      lines.push(line);
+      const large = line.planned >= BUDGET_LARGE_ABS;
+      changes.push({
+        kind: 'addLine',
+        lineId: line.id,
+        before: null,
+        after: {
+          name: line.name,
+          planned: line.planned,
+          qty: line.qty,
+          unit: line.unit,
+          rate: line.rate
+        },
+        amount: line.planned,
+        large: large,
+        summary:
+          'Add a budget line ' +
+          line.name +
+          ' planned at ' +
+          fmtNum(line.planned) +
+          (line.qty != null && line.rate != null
+            ? ' (' +
+              fmtNum(line.qty) +
+              ' ' +
+              (line.unit || 'units') +
+              ' at ' +
+              fmtNum(line.rate) +
+              ')'
+            : '')
+      });
+      return;
+    }
+
+    if (kind === 'changeLine') {
+      const line = findLine(raw.lineId);
+      if (!line) {
+        refused.push(at + ': no budget line with id ' + String(raw.lineId || '(none)'));
+        return;
+      }
+      const field = String(raw.field || '');
+      if (BUDGET_LINE_FIELDS.indexOf(field) === -1) {
+        refused.push(
+          at +
+            ': ' +
+            (field || '(no field)') +
+            ' cannot be changed here. Allowed: ' +
+            BUDGET_LINE_FIELDS.join(', ') +
+            '.'
+        );
+        return;
+      }
+      const before = line[field];
+      let after = raw.value;
+      if (BUDGET_MONEY_FIELDS[field]) {
+        if (!isMoney(after)) {
+          refused.push(at + ': ' + field + ' must be a number (no text, no blanks)');
+          return;
+        }
+        if (after < 0) {
+          refused.push(at + ': ' + field + ' cannot be negative');
+          return;
+        }
+        after = round2(after);
+      } else {
+        if (after === undefined || after === null) {
+          refused.push(at + ': ' + field + ' needs a value');
+          return;
+        }
+        after = String(after).slice(0, field === 'unit' ? 24 : 120);
+      }
+      if (String(before == null ? '' : before) === String(after)) {
+        refused.push(at + ': ' + field + ' already has that value');
+        return;
+      }
+      const delta = BUDGET_MONEY_FIELDS[field] ? after - (+before || 0) : 0;
+      line[field] = after;
+      const large = BUDGET_MONEY_FIELDS[field] && Math.abs(delta) >= largeThreshold(+before || 0);
+      const label = line.category || line.name || line.id;
+      changes.push({
+        kind: 'changeLine',
+        lineId: line.id,
+        field: field,
+        before: before == null ? null : before,
+        after: after,
+        delta: BUDGET_MONEY_FIELDS[field] ? round2(delta) : null,
+        large: large,
+        summary:
+          'Change ' +
+          label +
+          ' ' +
+          field +
+          ' from ' +
+          (BUDGET_MONEY_FIELDS[field]
+            ? fmtNum(before)
+            : String(before == null ? '(blank)' : before)) +
+          ' to ' +
+          (BUDGET_MONEY_FIELDS[field] ? fmtNum(after) : String(after)) +
+          (BUDGET_MONEY_FIELDS[field] && delta
+            ? ' (' + (delta > 0 ? '+' : '') + fmtNum(delta) + ')'
+            : '')
+      });
+      return;
+    }
+
+    if (kind === 'addDelivery') {
+      const line = findLine(raw.lineId);
+      if (!line) {
+        refused.push(at + ': no budget line with id ' + String(raw.lineId || '(none)'));
+        return;
+      }
+      if (!isMoney(raw.qty) || raw.qty <= 0) {
+        refused.push(at + ': quantity must be a number greater than zero');
+        return;
+      }
+      if (!isMoney(raw.unitPrice)) {
+        refused.push(at + ': unit price is required and must be a number (no text, no blanks)');
+        return;
+      }
+      if (raw.unitPrice < 0) {
+        refused.push(at + ': unit price cannot be negative');
+        return;
+      }
+      const lineUnit = line.unit == null ? '' : String(line.unit);
+      const unit = raw.unit == null ? lineUnit : String(raw.unit).slice(0, 24);
+      if (raw.unit != null && lineUnit && !unitsMatch(unit, lineUnit)) {
+        refused.push(
+          at +
+            ': unit ' +
+            unit +
+            ' does not match this line, which is measured in ' +
+            lineUnit +
+            '.'
+        );
+        return;
+      }
+      const date = raw.date == null || raw.date === '' ? today : String(raw.date).slice(0, 10);
+      if (!parseISO(date)) {
+        refused.push(at + ': date must be YYYY-MM-DD');
+        return;
+      }
+      const status = raw.status == null ? 'received' : String(raw.status);
+      if (!DELIVERY_STATUSES[status]) {
+        refused.push(at + ': status must be ordered, received or paid');
+        return;
+      }
+      const amount = round2(raw.qty * raw.unitPrice);
+      const entry = {
+        id: 'S' + nspid++,
+        date: date,
+        budgetLineId: line.id,
+        amount: amount,
+        qty: raw.qty,
+        unitPrice: raw.unitPrice,
+        unit: unit,
+        supplierRef: raw.supplierRef == null ? '' : String(raw.supplierRef).slice(0, 80),
+        status: status,
+        notes: raw.note == null ? '' : String(raw.note).slice(0, 500)
+      };
+      spend.push(entry);
+      const label = line.category || line.name || line.id;
+      const large = amount >= largeThreshold(+line.planned || 0);
+      changes.push({
+        kind: 'addDelivery',
+        lineId: line.id,
+        deliveryId: entry.id,
+        before: null,
+        after: entry,
+        amount: amount,
+        large: large,
+        summary:
+          'Record ' +
+          fmtNum(raw.qty) +
+          ' ' +
+          (unit || 'units') +
+          ' of ' +
+          label +
+          ' at ' +
+          fmtNum(raw.unitPrice) +
+          ' per ' +
+          (unit || 'unit') +
+          ' (' +
+          fmtNum(amount) +
+          '), ' +
+          status
+      });
+      return;
+    }
+
+    if (kind === 'deleteLine' || kind === 'removeLine') {
+      refused.push(at + ': deleting a budget line is not available through MCP');
+      return;
+    }
+    refused.push(
+      at + ': unknown kind ' + (kind || '(none)') + ' (addLine, changeLine, addDelivery)'
+    );
+  });
+
+  const submitted = {};
+  if (changes.some(c => c.kind === 'addLine' || c.kind === 'changeLine')) {
+    submitted.budgetLines = lines;
+  }
+  if (changes.some(c => c.kind === 'addDelivery')) {
+    submitted.spendLog = spend;
+    submitted.nspid = nspid;
+  }
+  const summary = changes.length
+    ? changes.length +
+      ' budget change' +
+      (changes.length === 1 ? '' : 's') +
+      ': ' +
+      changes.map(c => c.summary).join('; ')
+    : '';
+  return {
+    submitted: submitted,
+    changes: changes,
+    refused: refused,
+    summary: summary,
+    currency: currency || 'USD'
+  };
+}
+
+// H-5: what happened to a proposal. An API key only ever sees proposals that
+// carry its own label (source_type 'api'), so one agent cannot read another
+// agent's queue. The owner's reason comes back verbatim - that is the whole
+// point of the tool: a refused proposal must be able to explain itself.
+async function proposalStatusResult(env, projectId, auth, args, rpcId) {
+  const isApi = auth.role === 'api';
+  const one = args && args.proposalId != null ? parseInt(args.proposalId, 10) : 0;
+  let limit = args && args.limit != null ? parseInt(args.limit, 10) : 10;
+  if (!isFinite(limit) || limit < 1) {
+    limit = 10;
+  }
+  if (limit > 50) {
+    limit = 50;
+  }
+  let sql =
+    'SELECT id, proposal_type, source_type, source_label, status, diffs_json, proposal_json, proposed_at, decided_at, decided_by, decision_note, decision_edited, accepted_entry_id FROM cloud_reviews WHERE project_id = ?';
+  const binds = [projectId];
+  if (isApi) {
+    sql += ' AND source_type = ? AND source_label = ?';
+    binds.push('api', auth.label || 'MCP AI');
+  }
+  if (one) {
+    sql += ' AND id = ?';
+    binds.push(one);
+  }
+  sql += ' ORDER BY id DESC LIMIT ' + (one ? 1 : limit);
+  const rows = await env.DB.prepare(sql)
+    .bind(...binds)
+    .all();
+  const list = (rows.results || []).map(function (r) {
+    let proposal = null;
+    try {
+      proposal = r.proposal_json ? JSON.parse(r.proposal_json) : null;
+    } catch (e) {
+      proposal = null;
+    }
+    let diffCount = 0;
+    try {
+      const d = r.diffs_json ? JSON.parse(r.diffs_json) : [];
+      diffCount = Array.isArray(d) ? d.length : 0;
+    } catch (e) {
+      diffCount = 0;
+    }
+    const edited = r.decision_edited === 1;
+    return {
+      proposalId: r.id,
+      status: r.status,
+      outcome:
+        r.status === 'pending'
+          ? 'pending'
+          : r.status === 'rejected'
+            ? 'rejected'
+            : edited
+              ? 'edited-and-accepted'
+              : 'accepted',
+      summary: proposal && proposal.summary ? proposal.summary : diffCount + ' field change(s)',
+      changeCount:
+        proposal && Array.isArray(proposal.changes) ? proposal.changes.length : diffCount,
+      changes: proposal && Array.isArray(proposal.changes) ? proposal.changes : null,
+      proposedAt: r.proposed_at || null,
+      decidedAt: r.decided_at || null,
+      decidedBy: r.decided_by || null,
+      decisionNote: r.decision_note || '',
+      edited: edited,
+      acceptedEntryId: r.accepted_entry_id == null ? null : r.accepted_entry_id
+    };
+  });
+  if (one && !list.length) {
+    return {
+      jsonrpc: '2.0',
+      id: rpcId,
+      result: {
+        content: [
+          {
+            type: 'text',
+            text:
+              'No proposal #' +
+              one +
+              ' belongs to this key on this project. Use get_proposal_status without an id to list the recent ones.'
+          }
+        ],
+        isError: true
+      }
+    };
+  }
+  return {
+    jsonrpc: '2.0',
+    id: rpcId,
+    result: {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(
+            { projectId: projectId, count: list.length, proposals: list },
+            null,
+            2
+          )
+        }
+      ]
+    }
+  };
+}
+
 // ---- MCP protocol handler ----
 
 async function handleMcpRequest(body, projectId, env, auth) {
@@ -906,6 +1983,13 @@ async function handleMcpRequest(body, projectId, env, auth) {
         result: { content: [{ type: 'text', text: MCP_PREMIUM_REFUSAL }], isError: true }
       };
     }
+    // H-5: the decision feed needs the database, not the project snapshot, so
+    // it answers before the state read. An AI client can see what the owner
+    // decided but can never decide anything itself - there is no approve tool
+    // and the review endpoints are owner-auth only.
+    if (toolName === 'get_proposal_status') {
+      return await proposalStatusResult(env, projectId, auth, toolArgs, id);
+    }
     const state =
       row && row.latest_r2_key
         ? await cloudReadState(env, key, row.owner_code_hash, row.owner_code_salt)
@@ -919,7 +2003,9 @@ async function handleMcpRequest(body, projectId, env, auth) {
       projectId,
       auth.label || 'MCP AI',
       auth.role === 'api' ? auth.scope : null,
-      toolArgs
+      toolArgs,
+      auth,
+      state
     );
 
     // Handle apply_changes - queue a pending review proposal (API-KEY-AUDIT
@@ -931,7 +2017,8 @@ async function handleMcpRequest(body, projectId, env, auth) {
     if (result.pendingApply) {
       const diffs = Array.isArray(toolArgs.diffs) ? toolArgs.diffs : [];
       const creates = Array.isArray(toolArgs.creates) ? toolArgs.creates : [];
-      if (diffs.length === 0 && creates.length === 0) {
+      const budgetRaw = Array.isArray(toolArgs.budget) ? toolArgs.budget : [];
+      if (diffs.length === 0 && creates.length === 0 && budgetRaw.length === 0) {
         return {
           jsonrpc: '2.0',
           id,
@@ -939,7 +2026,35 @@ async function handleMcpRequest(body, projectId, env, auth) {
             content: [
               {
                 type: 'text',
-                text: 'Nothing provided. Supply diffs as {path, recordId, field, after} and/or creates as {path, record} objects.'
+                text: 'Nothing provided. Supply diffs as {path, recordId, field, after}, creates as {path, record} objects, or budget changes as {kind, ...} objects.'
+              }
+            ],
+            isError: true
+          }
+        };
+      }
+      // H-5: the write switch. A key without it cannot queue a budget
+      // proposal AT ALL - the whole call is refused rather than silently
+      // dropping the budget part and queuing the rest.
+      if (budgetRaw.length && !budgetWriteAllowed(auth)) {
+        return {
+          jsonrpc: '2.0',
+          id,
+          result: { content: [{ type: 'text', text: BUDGET_WRITE_REFUSAL }], isError: true }
+        };
+      }
+      if (budgetRaw.length > BUDGET_PROPOSAL_LIMIT) {
+        return {
+          jsonrpc: '2.0',
+          id,
+          result: {
+            content: [
+              {
+                type: 'text',
+                text:
+                  'A proposal can carry at most ' +
+                  BUDGET_PROPOSAL_LIMIT +
+                  ' budget changes. Split this into smaller proposals.'
               }
             ],
             isError: true
@@ -1071,6 +2186,74 @@ async function handleMcpRequest(body, projectId, env, auth) {
         arr2.push(buildCreatedRecord(cpath, recInput, nowMs, counterRef));
         submitted[cpath] = arr2;
       }
+      // H-5: budget proposals. Built and validated on the server, then folded
+      // into the same review row as any other change set.
+      let budgetBuilt = { submitted: {}, changes: [], refused: [], summary: '' };
+      if (budgetRaw.length) {
+        if (granted.indexOf('bud') === -1) {
+          refusedCreates.push('budget: outside the granted sections');
+        } else {
+          budgetBuilt = buildBudgetProposal(base, budgetRaw, base.currency);
+          Object.keys(budgetBuilt.submitted).forEach(function (k) {
+            submitted[k] = budgetBuilt.submitted[k];
+          });
+          if (budgetBuilt.refused.length) {
+            refusedCreates.push.apply(refusedCreates, budgetBuilt.refused);
+          }
+          // Q5 + the per-key daily cap: a large change is 10 percent of the
+          // line or 50,000 in project currency, whichever is smaller. Count
+          // what this key already queued today before accepting more.
+          const newLarge = budgetBuilt.changes.filter(function (c) {
+            return c.large;
+          }).length;
+          if (newLarge) {
+            const dayStart = new Date();
+            dayStart.setUTCHours(0, 0, 0, 0);
+            let usedLarge = 0;
+            try {
+              const todayRows = await env.DB.prepare(
+                "SELECT proposal_json FROM cloud_reviews WHERE project_id = ? AND source_type = 'api' AND source_label = ? AND proposed_at >= ?"
+              )
+                .bind(projectId, auth.label || 'MCP AI', dayStart.toISOString())
+                .all();
+              (todayRows.results || []).forEach(function (r) {
+                try {
+                  const p = r.proposal_json ? JSON.parse(r.proposal_json) : null;
+                  if (p && Array.isArray(p.changes)) {
+                    usedLarge += p.changes.filter(function (c) {
+                      return c.large;
+                    }).length;
+                  }
+                } catch (e) {
+                  /* a malformed old row must not block a new proposal */
+                }
+              });
+            } catch (e) {
+              usedLarge = 0;
+            }
+            if (usedLarge + newLarge > BUDGET_LARGE_PER_DAY) {
+              return {
+                jsonrpc: '2.0',
+                id,
+                result: {
+                  content: [
+                    {
+                      type: 'text',
+                      text:
+                        'This key has already queued ' +
+                        usedLarge +
+                        ' large budget change(s) today and a day allows ' +
+                        BUDGET_LARGE_PER_DAY +
+                        '. Ask the owner to decide those first, then send this one.'
+                    }
+                  ],
+                  isError: true
+                }
+              };
+            }
+          }
+        }
+      }
       const allRefused = refused.concat(refusedCreates);
       if (!Object.keys(submitted).length) {
         return {
@@ -1112,9 +2295,16 @@ async function handleMcpRequest(body, projectId, env, auth) {
         return String(d.path).indexOf('fieldTs') !== 0;
       });
       let res;
+      const proposalJson = budgetBuilt.changes.length
+        ? JSON.stringify({
+            summary: budgetBuilt.summary,
+            currency: budgetBuilt.currency,
+            changes: budgetBuilt.changes
+          })
+        : null;
       try {
         res = await env.DB.prepare(
-          'INSERT INTO cloud_reviews (project_id, proposal_type, source_type, source_label, editor_code_id, scope, submitted_json, diffs_json, status, proposed_at) VALUES (?,?,?,?,?,?,?,?,?,?)'
+          'INSERT INTO cloud_reviews (project_id, proposal_type, source_type, source_label, editor_code_id, scope, submitted_json, diffs_json, status, proposed_at, proposal_json) VALUES (?,?,?,?,?,?,?,?,?,?,?)'
         )
           .bind(
             projectId,
@@ -1126,7 +2316,8 @@ async function handleMcpRequest(body, projectId, env, auth) {
             JSON.stringify(submitted),
             JSON.stringify(diffsJson),
             'pending',
-            now
+            now,
+            proposalJson
           )
           .run();
       } catch (e) {
@@ -1157,7 +2348,8 @@ async function handleMcpRequest(body, projectId, env, auth) {
                 ' field change(s) for owner review (proposal #' +
                 res.meta.last_row_id +
                 ').' +
-                (refused.length ? ' Refused: ' + refused.join('; ') + '.' : '') +
+                (budgetBuilt.summary ? ' ' + budgetBuilt.summary + '.' : '') +
+                (allRefused.length ? ' Refused: ' + allRefused.join('; ') + '.' : '') +
                 ' Nothing changes until the owner accepts it inside the project.'
             }
           ]

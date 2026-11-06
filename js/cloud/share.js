@@ -336,6 +336,16 @@ var MMGR = window.MMGR || {};
       '<span class="sr-hint" style="margin:0">Sections the key may read and propose changes to:</span>' +
       '<span id="cloud-apikey-scope-load" class="sr-hint" style="margin:0">loading\u2026</span>' +
       '</div>' +
+      // H-5 (BUDGET-BOQ directive 2026-11-05): two budget switches, both off
+      // by default. They are deliberately SEPARATE from the section ticks:
+      // a section decides what the key can see at all, these decide what it
+      // can do with money. Proposing requires reading - a client that cannot
+      // see the budget cannot make a sensible proposal, so the pair is
+      // enforced both here and on the server.
+      '<div class="sr" style="margin:10px 0 4px;padding:0"><span class="sl" style="font-size:.72rem;font-weight:700"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dollar"></use></svg> Budget permission</span></div>' +
+      '<div class="sr-hint" style="margin:0 0 6px">Separate from the sections above, and off unless you tick them. A proposal waits for your approval and never changes a live figure.</div>' +
+      '<label class="pref" style="margin:0 0 4px;font-size:.75rem;display:flex;align-items:center;gap:6px"><input type="checkbox" id="cloud-apikey-budget-read" data-action="apiKeyBudgetToggle" style="margin:0"><span><b>Read budget</b> \u2014 budget lines, deliveries and the weekly figures.</span></label>' +
+      '<label class="pref" style="margin:0 0 8px;font-size:.75rem;display:flex;align-items:center;gap:6px"><input type="checkbox" id="cloud-apikey-budget-write" data-action="apiKeyBudgetToggle" style="margin:0"><span><b>Propose budget changes</b> \u2014 queue a budget line or a delivery for your approval. It cannot approve anything.</span></label>' +
       '<div id="cloud-apikey-list"></div>'
     );
   }

@@ -479,14 +479,17 @@ async function withChrome(fn) {
     await mcp({ jsonrpc: '2.0', method: 'notifications/initialized' });
     const list = await mcp({ jsonrpc: '2.0', id: 2, method: 'tools/list' });
     check(
-      'B2 tools/list has 9 tools (B3 wave: get_table + run_monte_carlo)',
+      'B2 tools/list carries the B3 wave (get_table + run_monte_carlo) and the H-5 budget tools',
       !!(
         list &&
         list.result &&
         list.result.tools &&
-        list.result.tools.length === 9 &&
+        list.result.tools.length === 12 &&
         list.result.tools.some(t => t.name === 'get_table') &&
-        list.result.tools.some(t => t.name === 'run_monte_carlo')
+        list.result.tools.some(t => t.name === 'run_monte_carlo') &&
+        list.result.tools.some(t => t.name === 'get_deliveries') &&
+        list.result.tools.some(t => t.name === 'get_weekly_summary') &&
+        list.result.tools.some(t => t.name === 'get_proposal_status')
       ),
       list && list.result && list.result.tools && list.result.tools.length
     );

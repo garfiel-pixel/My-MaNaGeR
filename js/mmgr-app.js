@@ -4527,6 +4527,16 @@ window.MMGR = MMGR;
         window.MMGR.RenderFinancials.renderCashFlowChart();
       }
     },
+    // H-5: the two API-key budget switches keep their dependency in the UI
+    // (propose requires read) so the server's 400 is never the first warning.
+    apiKeyBudgetToggle: el => window.MMGR.Cloud && window.MMGR.Cloud.apiKeyBudgetToggle(el),
+    cloudApiKeyBudget: el =>
+      window.MMGR.Cloud &&
+      window.MMGR.Cloud.setApiKeyBudget(
+        el && el.getAttribute('data-id'),
+        el && el.getAttribute('data-field'),
+        (el && el.getAttribute('data-on')) === '1'
+      ),
     delBudgetLine: el => window.MMGR.Budget.delBudgetLine(parseInt(el.getAttribute('data-idx'))),
     updEnvelope: (el, e) => window.MMGR.Budget.updEnvelope(el.value, e && e.type),
     addStake: () => window.MMGR.Stakeholders.addStake(),
@@ -6108,7 +6118,9 @@ window.MMGR = MMGR;
         // H-4: the weekly view's week picker is a one-time change, not a
         // keystroke field - it re-renders and writes nothing.
         action === 'weekPick' ||
-        action === 'cashStep')
+        action === 'cashStep' ||
+        // H-5: a checkbox change, not a keystroke field.
+        action === 'apiKeyBudgetToggle')
     ) {
       handler(el, e);
     }

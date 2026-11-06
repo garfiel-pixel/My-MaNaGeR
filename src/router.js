@@ -74,7 +74,8 @@ import {
 import {
   handleCloudApiKeyCreate,
   handleCloudApiKeyList,
-  handleCloudApiKeyRevoke
+  handleCloudApiKeyRevoke,
+  handleCloudApiKeyPatch
 } from './cloud/api-keys.js';
 import {
   handleCloudClientCodeCreate,
@@ -844,6 +845,14 @@ export async function routeApi(request, env, url) {
         return r;
       }
       return handleCloudApiKeyRevoke(request, env, cloudApiKeyDelMatch[1], cloudApiKeyDelMatch[2]);
+    }
+    // H-5: the two budget switches, toggled after the key was minted.
+    if (cloudApiKeyDelMatch && request.method === 'PATCH') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handleCloudApiKeyPatch(request, env, cloudApiKeyDelMatch[1], cloudApiKeyDelMatch[2]);
     }
     // C19: Client Codes (read-only, section-filtered access)
     const cloudClientMatch = path.match(

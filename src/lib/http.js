@@ -2082,7 +2082,7 @@ export async function cloudAuthApiKey(request, env, projectId, apiKey) {
   }
   const fp = await fingerprintOf(key);
   const row = await env.DB.prepare(
-    'SELECT k.id, k.key_salt, k.key_hash, k.label, k.scope, k.expires_at, p.deleted_at ' +
+    'SELECT k.id, k.key_salt, k.key_hash, k.label, k.scope, k.expires_at, k.budget_read, k.budget_write, p.deleted_at ' +
       'FROM cloud_api_keys k JOIN cloud_projects p ON p.project_id = k.project_id ' +
       'WHERE k.key_fingerprint = ? AND k.project_id = ? AND k.active = 1'
   )
@@ -2139,7 +2139,19 @@ export async function cloudAuthApiKey(request, env, projectId, apiKey) {
   } catch (e) {
     /* stamping usage is best-effort */
   }
-  return { role: 'api', apiKeyId: row.id, label: row.label || 'API key', scope: scope };
+  return {
+    role: 'api',
+    apiKeyId: row.id,
+    label: row.label || 'API key',
+    scope: scope,
+    // H-5 (BUDGET-BOQ directive 2026-11-05): the two budget switches are
+    // separate from the section scope and default OFF. A key that does not
+    // carry budget_read cannot read money through any tool; a key that does
+    // not carry budget_write cannot queue a budget proposal, even when its
+    // section scope includes the budget section.
+    budgetRead: row.budget_read === 1,
+    budgetWrite: row.budget_write === 1
+  };
 }
 
 export async function cloudAdopt(env, projectId, sub, editorCodeId, role) {

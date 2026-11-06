@@ -771,6 +771,12 @@ jobs:
         env:
           QA_PORT: 8809
 
+      - name: "T2: MCP budget access (H-5: two switches, read tools, propose-only writes, decision feed)"
+        id: qa-mcp-budget
+        run: node tools/qa-mcp-budget.cjs
+        env:
+          QA_PORT: 8817
+
       - name: "T3: Project Photos browser half (panel, uploader identity, stage, upload, download, delete, view read-only)"
         id: qa-project-photos
         run: node tools/qa-project-photos.cjs

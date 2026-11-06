@@ -17,7 +17,8 @@ import {
   cloudAuthOwnerEither,
   cloudAuthEditor,
   cloudAuthAdoption,
-  readJsonBody
+  readJsonBody,
+  readCloudBody
 } from './lib/http.js';
 import { structuredLog } from './lib/observe.js';
 import { clientIp, verifyTurnstileToken } from './lib/turnstile.js';
@@ -171,7 +172,7 @@ export async function handleReviewList(request, env, projectId, mine) {
   }
   if (owner && !mine) {
     const rows = await env.DB.prepare(
-      'SELECT id, proposal_type, source_type, source_label, status, diffs_json, proposed_at, decided_at, decided_by, accepted_entry_id FROM cloud_reviews WHERE project_id = ? ORDER BY CASE WHEN status = ? THEN 0 ELSE 1 END, id DESC LIMIT 100'
+      'SELECT id, proposal_type, source_type, source_label, status, diffs_json, proposed_at, decided_at, decided_by, accepted_entry_id, decision_note, decision_edited FROM cloud_reviews WHERE project_id = ? ORDER BY CASE WHEN status = ? THEN 0 ELSE 1 END, id DESC LIMIT 100'
     )
       .bind(projectId, 'pending')
       .all();
@@ -194,6 +195,8 @@ export async function handleReviewList(request, env, projectId, mine) {
         proposedAt: r.proposed_at,
         decidedAt: r.decided_at,
         decidedBy: r.decided_by,
+        decisionNote: r.decision_note || '',
+        decisionEdited: r.decision_edited === 1,
         acceptedEntryId: r.accepted_entry_id
       };
     });
@@ -229,11 +232,31 @@ export async function handleReviewList(request, env, projectId, mine) {
 
 // cloudPushRevChangedIfCopies is still in worker.js , accept calls it
 // via a parameter to avoid circular dependency
+// H-5 (BUDGET-BOQ directive 2026-11-05): the owner's decision note and the
+// "edited before approving" flag. Both are OPTIONAL and best-effort: an accept
+// with no body (every existing caller) still works, and a malformed body must
+// never block a decision the owner already made.
+async function readDecisionBody(request) {
+  try {
+    const r = await readCloudBody(request);
+    if (!r || r.bad || r.tooLarge || !r.body || typeof r.body !== 'object') {
+      return { note: '', edited: 0 };
+    }
+    return {
+      note: r.body.note == null ? '' : String(r.body.note).trim().slice(0, 500),
+      edited: r.body.edited === true || r.body.edited === 1 ? 1 : 0
+    };
+  } catch (e) {
+    return { note: '', edited: 0 };
+  }
+}
+
 export async function handleReviewAccept(request, env, projectId, reviewId, pushRevChanged) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
   if (!auth) {
     return cloudForbidden();
   }
+  const decision = await readDecisionBody(request);
   const row = await env.DB.prepare('SELECT * FROM cloud_reviews WHERE id = ? AND project_id = ?')
     .bind(reviewId, projectId)
     .first();
@@ -394,11 +417,25 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
   }
   const acceptedEntryId = resp.entryId || (resp.changelog && resp.changelog.id) || null;
   await env.DB.prepare(
-    'UPDATE cloud_reviews SET status = ?, decided_at = ?, decided_by = ?, accepted_entry_id = ? WHERE id = ?'
+    'UPDATE cloud_reviews SET status = ?, decided_at = ?, decided_by = ?, accepted_entry_id = ?, decision_note = ?, decision_edited = ? WHERE id = ?'
   )
-    .bind('accepted', now, auth.label || 'Owner', acceptedEntryId, reviewId)
+    .bind(
+      'accepted',
+      now,
+      auth.label || 'Owner',
+      acceptedEntryId,
+      decision.note || null,
+      decision.edited,
+      reviewId
+    )
     .run();
   resp.acceptedEntryId = acceptedEntryId;
+  if (decision.note) {
+    resp.note = decision.note;
+  }
+  if (decision.edited) {
+    resp.edited = true;
+  }
   return json(resp);
 }
 
@@ -407,6 +444,7 @@ export async function handleReviewReject(request, env, projectId, reviewId) {
   if (!auth) {
     return cloudForbidden();
   }
+  const decision = await readDecisionBody(request);
   const row = await env.DB.prepare('SELECT * FROM cloud_reviews WHERE id = ? AND project_id = ?')
     .bind(reviewId, projectId)
     .first();
@@ -432,9 +470,15 @@ export async function handleReviewReject(request, env, projectId, reviewId) {
     )
     .run();
   await env.DB.prepare(
-    'UPDATE cloud_reviews SET status = ?, decided_at = ?, decided_by = ? WHERE id = ?'
+    'UPDATE cloud_reviews SET status = ?, decided_at = ?, decided_by = ?, decision_note = ? WHERE id = ?'
   )
-    .bind('rejected', now, auth.label || 'Owner', reviewId)
+    .bind('rejected', now, auth.label || 'Owner', decision.note || null, reviewId)
     .run();
-  return json({ ok: true, reviewId: reviewId, status: 'rejected', decidedAt: now });
+  return json({
+    ok: true,
+    reviewId: reviewId,
+    status: 'rejected',
+    decidedAt: now,
+    note: decision.note || ''
+  });
 }

@@ -672,7 +672,14 @@
 // the same numbers, and changing the week writes nothing. The cash-flow chart
 // can step weekly as well as fortnightly. Changed shell assets: project.html,
 // dist/bundle.js.
-const CACHE = 'mmgr-shell-v561';
+// v562 - MCP BUDGET PERMISSION (H-5, same directive). Each API key gains two
+// budget switches, both off by default and separate from its section scope:
+// read the budget, and propose budget changes (propose implies read). The
+// sharing panel shows and flips them; the MCP server refuses money without
+// them, validates every amount itself, computes a delivery's amount, and
+// reports the owner's decision and reason back to the AI client. Changed
+// shell assets: dist/bundle.js.
+const CACHE = 'mmgr-shell-v562';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

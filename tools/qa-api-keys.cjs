@@ -711,7 +711,9 @@ const j = async res => {
       mcpRisks
     );
 
-    // P14: granted section reads through MCP - budget works for a wbs+bud key.
+    // P14 (H-5 re-baseline, 2026-11-06): the Budget SECTION alone no longer
+    // opens money. A key with bud scope but neither budget switch is refused
+    // in plain words; a key minted WITH the read switch reads the same data.
     r = await fetch(mcpUrl, {
       method: 'POST',
       credentials: 'same-origin',
@@ -726,9 +728,41 @@ const j = async res => {
     const mcpBudget = await j(r);
     const budText = (((mcpBudget.result || {}).content || [])[0] || {}).text || '';
     check(
-      'P14 MCP get_budget with granted bud section -> real data',
-      r.ok && mcpBudget.result && !mcpBudget.result.isError && budText.indexOf('Concrete') !== -1,
+      'P14a MCP get_budget with bud section but NO switch -> refused, no figures',
+      r.ok &&
+        mcpBudget.result &&
+        mcpBudget.result.isError === true &&
+        budText.indexOf('may not read the budget') !== -1 &&
+        budText.indexOf('Concrete') === -1,
       mcpBudget
+    );
+    const budKeyRes = await fetch(BASE + '/api/cloud/projects/' + pid + '/api-keys', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: ownerHeaders,
+      body: JSON.stringify({ label: 'Budget reader', scope: ['bud'], budgetRead: true })
+    });
+    const budKey = await j(budKeyRes);
+    r = await fetch(mcpUrl, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': budKey.apiKey },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 31,
+        method: 'tools/call',
+        params: { name: 'get_budget', arguments: {} }
+      })
+    });
+    const mcpBudget2 = await j(r);
+    const budText2 = (((mcpBudget2.result || {}).content || [])[0] || {}).text || '';
+    check(
+      'P14b MCP get_budget with the read switch -> real data',
+      r.ok &&
+        mcpBudget2.result &&
+        !mcpBudget2.result.isError &&
+        budText2.indexOf('Concrete') !== -1,
+      mcpBudget2
     );
 
     // P15: apply_changes via MCP -> queued as a pending review proposal

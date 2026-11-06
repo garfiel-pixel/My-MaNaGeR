@@ -92,6 +92,21 @@ export async function handleCloudApiKeyCreate(request, env, projectId) {
     }
     expiresAt = new Date(t).toISOString();
   }
+  // H-5 (BUDGET-BOQ directive 2026-11-05): two budget switches, both OFF by
+  // default and independent of the section scope. A key cannot be granted the
+  // write switch without the read switch - a proposal the client cannot
+  // preview is a trap for the owner, not a convenience.
+  const budgetRead = read.body.budgetRead === true || read.body.budgetRead === 1;
+  const budgetWrite = read.body.budgetWrite === true || read.body.budgetWrite === 1;
+  if (budgetWrite && !budgetRead) {
+    return json(
+      {
+        ok: false,
+        error: 'a key that may propose budget changes must also be allowed to read the budget'
+      },
+      400
+    );
+  }
   const salt = randomSaltHex();
   // Build the key body from the same 32-char base32 alphabet (no I, L, O, 0,
   // 1 confusion) as owner codes, then wrap it in the standard sk- prefix.
@@ -111,7 +126,7 @@ export async function handleCloudApiKeyCreate(request, env, projectId) {
   const fp = await fingerprintOf(apiKey);
   const now = new Date().toISOString();
   const res = await env.DB.prepare(
-    'INSERT INTO cloud_api_keys (project_id, label, scope, key_salt, key_hash, key_fingerprint, key_prefix, expires_at, active, created_at) VALUES (?,?,?,?,?,?,?,?,1,?)'
+    'INSERT INTO cloud_api_keys (project_id, label, scope, key_salt, key_hash, key_fingerprint, key_prefix, expires_at, active, created_at, budget_read, budget_write) VALUES (?,?,?,?,?,?,?,?,1,?,?,?)'
   )
     .bind(
       projectId,
@@ -122,7 +137,9 @@ export async function handleCloudApiKeyCreate(request, env, projectId) {
       fp,
       apiKey.slice(0, API_KEY_PREFIX_LEN),
       expiresAt,
-      now
+      now,
+      budgetRead ? 1 : 0,
+      budgetWrite ? 1 : 0
     )
     .run();
   return json({
@@ -131,6 +148,8 @@ export async function handleCloudApiKeyCreate(request, env, projectId) {
     keyId: res.meta.last_row_id,
     label: label,
     scope: unique,
+    budgetRead: budgetRead,
+    budgetWrite: budgetWrite,
     expiresAt: expiresAt,
     createdAt: now
   });
@@ -142,7 +161,7 @@ export async function handleCloudApiKeyList(request, env, projectId) {
     return cloudForbidden();
   }
   const rows = await env.DB.prepare(
-    'SELECT id, label, scope, key_prefix, expires_at, active, created_at, last_used_at FROM cloud_api_keys WHERE project_id = ? ORDER BY id DESC'
+    'SELECT id, label, scope, key_prefix, expires_at, active, created_at, last_used_at, budget_read, budget_write FROM cloud_api_keys WHERE project_id = ? ORDER BY id DESC'
   )
     .bind(projectId)
     .all();
@@ -165,6 +184,8 @@ export async function handleCloudApiKeyList(request, env, projectId) {
       id: r.id,
       label: r.label,
       scope: scope,
+      budgetRead: r.budget_read === 1,
+      budgetWrite: r.budget_write === 1,
       prefix: r.key_prefix,
       expiresAt: r.expires_at,
       active: r.active === 1 && !expired,
@@ -189,4 +210,61 @@ export async function handleCloudApiKeyRevoke(request, env, projectId, keyId) {
     return json({ ok: false, error: 'API key not found' }, 404);
   }
   return json({ ok: true, revokedKeyId: Number(keyId) });
+}
+
+// H-5 (BUDGET-BOQ directive 2026-11-05): turn the two budget switches on or
+// off after a key was minted. Owner-only, same either-auth as every other key
+// operation. Only the switches move - the label, scope and expiry are set at
+// creation and never edited here.
+export async function handleCloudApiKeyPatch(request, env, projectId, keyId) {
+  const auth = await cloudAuthOwnerEither(request, env, projectId);
+  if (!auth) {
+    return cloudForbidden();
+  }
+  const read = await readCloudBody(request);
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad || !read.body || typeof read.body !== 'object') {
+    return json({ ok: false, error: 'bad request' }, 400);
+  }
+  const row = await env.DB.prepare(
+    'SELECT id, scope, budget_read, budget_write FROM cloud_api_keys WHERE id = ? AND project_id = ? AND active = 1'
+  )
+    .bind(keyId, projectId)
+    .first();
+  if (!row) {
+    return json({ ok: false, error: 'API key not found' }, 404);
+  }
+  const asBool = function (v, fallback) {
+    if (v === true || v === 1) {
+      return 1;
+    }
+    if (v === false || v === 0) {
+      return 0;
+    }
+    return fallback;
+  };
+  const nextRead = asBool(read.body.budgetRead, row.budget_read === 1 ? 1 : 0);
+  const nextWrite = asBool(read.body.budgetWrite, row.budget_write === 1 ? 1 : 0);
+  if (nextWrite && !nextRead) {
+    return json(
+      {
+        ok: false,
+        error: 'a key that may propose budget changes must also be allowed to read the budget'
+      },
+      400
+    );
+  }
+  await env.DB.prepare(
+    'UPDATE cloud_api_keys SET budget_read = ?, budget_write = ? WHERE id = ? AND project_id = ?'
+  )
+    .bind(nextRead, nextWrite, keyId, projectId)
+    .run();
+  return json({
+    ok: true,
+    keyId: Number(keyId),
+    budgetRead: nextRead === 1,
+    budgetWrite: nextWrite === 1
+  });
 }

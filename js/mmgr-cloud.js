@@ -2067,6 +2067,15 @@ var MMGR = window.MMGR || {};
       setStatus('Tick at least one section this key may touch.', 'warn');
       return;
     }
+    // H-5: the two budget switches. Both default off; propose implies read.
+    const bReadEl = $('cloud-apikey-budget-read');
+    const bWriteEl = $('cloud-apikey-budget-write');
+    const budgetRead = !!(bReadEl && bReadEl.checked);
+    const budgetWrite = !!(bWriteEl && bWriteEl.checked);
+    if (budgetWrite && !budgetRead) {
+      setStatus('To propose budget changes a key must also be allowed to read the budget.', 'warn');
+      return;
+    }
     const expiryIn = $('cloud-apikey-expiry');
     const days = expiryIn && expiryIn.value ? parseInt(expiryIn.value, 10) : 0;
     const cred = activeCredential();
@@ -2085,6 +2094,12 @@ var MMGR = window.MMGR || {};
         headers[cred.header] = cred.code;
       }
       const body = { label: label, scope: scope };
+      if (budgetRead) {
+        body.budgetRead = true;
+      }
+      if (budgetWrite) {
+        body.budgetWrite = true;
+      }
       if (Number.isFinite(days) && days > 0) {
         body.expiresAt = new Date(Date.now() + days * 86400000).toISOString();
       }
@@ -2105,12 +2120,20 @@ var MMGR = window.MMGR || {};
         return;
       }
       setPendingEditorCode(data.apiKey, data.label || 'API key', data.scope || [], 'api');
+      if (bReadEl) {
+        bReadEl.checked = false;
+      }
+      if (bWriteEl) {
+        bWriteEl.checked = false;
+      }
       await render();
       setStatus(
         'API key created for \u201C' +
           data.label +
           '\u201D (scope: ' +
           (data.scope || []).map(sectionLabel).join(', ') +
+          (data.budgetRead ? '; may read the budget' : '; no budget access') +
+          (data.budgetWrite ? ', may propose budget changes' : '') +
           '). Copy it from the banner, it is shown once.',
         'ok'
       );
@@ -2168,6 +2191,36 @@ var MMGR = window.MMGR || {};
             storedCode && storedCode.code && storedCode.label === (k.label || 'API key')
               ? storedCode.code
               : null;
+          // H-5: the two budget switches, in plain words, with a one-press
+          // change. "Propose" is only offered once "read" is on - the server
+          // refuses the pair in the other order, so the UI does not offer it.
+          const budgetTxt =
+            'Budget: ' +
+            (k.budgetRead ? 'read on' : 'read off') +
+            ' \u00b7 ' +
+            (k.budgetWrite ? 'may propose changes' : 'cannot propose changes');
+          const budgetBtns =
+            (k.active
+              ? '<button class="btn btn-n btn-s" data-action="cloudApiKeyBudget" data-id="' +
+                esc(String(k.id)) +
+                '" data-field="budgetRead" data-on="' +
+                (k.budgetRead ? '0' : '1') +
+                '">' +
+                (k.budgetRead ? 'Turn off budget read' : 'Allow budget read') +
+                '</button>' +
+                (k.budgetRead || k.budgetWrite
+                  ? '<button class="btn btn-n btn-s" data-action="cloudApiKeyBudget" data-id="' +
+                    esc(String(k.id)) +
+                    '" data-field="budgetWrite" data-on="' +
+                    (k.budgetWrite ? '0' : '1') +
+                    '">' +
+                    (k.budgetWrite ? 'Stop budget proposals' : 'Allow budget proposals') +
+                    '</button>'
+                  : '')
+              : '') +
+            '<span class="sr-hint" style="margin:0">' +
+            esc(budgetTxt) +
+            '</span>';
           return (
             '<div class="sr" style="font-size:.72rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
             '<span style="color:var(--gold)">' +
@@ -2193,12 +2246,93 @@ var MMGR = window.MMGR || {};
                 esc(String(k.id)) +
                 '">Revoke</button>'
               : '<span class="sr-hint" style="margin:0">revoked</span>') +
+            budgetBtns +
             '</div>'
           );
         })
         .join('');
     } catch (e) {
       wrap.innerHTML = '<div class="sr-hint">Cloud unavailable here.</div>';
+    }
+  }
+
+  // H-5: keep the pair sane in the create form. Ticking "propose" ticks
+  // "read"; unticking "read" clears "propose". The server enforces the same
+  // rule, so this only saves a round trip - it is not the guard.
+  function apiKeyBudgetToggle(el) {
+    if (!el || !el.id) {
+      return;
+    }
+    const read = $('cloud-apikey-budget-read');
+    const write = $('cloud-apikey-budget-write');
+    if (el.id === 'cloud-apikey-budget-write' && el.checked && read) {
+      read.checked = true;
+    }
+    if (el.id === 'cloud-apikey-budget-read' && !el.checked && write) {
+      write.checked = false;
+    }
+  }
+
+  // H-5: flip one switch on a key that already exists. Turning "propose" on
+  // also turns "read" on (a proposal the client cannot preview is a trap).
+  // Turning "read" off turns "propose" off with it.
+  async function setApiKeyBudget(id, field, on) {
+    if (!id || (field !== 'budgetRead' && field !== 'budgetWrite')) {
+      return;
+    }
+    const cred = activeCredential();
+    if (!cred || (!cred.header && !_sessOwner)) {
+      setStatus('Owner access required to change key permissions.', 'warn');
+      return;
+    }
+    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') {
+      setStatus('Viewer and client codes are read-only , they cannot manage keys.', 'warn');
+      return;
+    }
+    const body = {};
+    body[field] = !!on;
+    if (field === 'budgetWrite' && on) {
+      body.budgetRead = true;
+    }
+    if (field === 'budgetRead' && !on) {
+      body.budgetWrite = false;
+    }
+    setStatus('Updating key permissions\u2026', 'busy');
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (cred.header) {
+        headers[cred.header] = cred.code;
+      }
+      const res = await fetch(
+        '/api/cloud/projects/' + encodeURIComponent(pid()) + '/api-keys/' + encodeURIComponent(id),
+        {
+          method: 'PATCH',
+          credentials: 'same-origin',
+          headers: headers,
+          body: JSON.stringify(body)
+        }
+      );
+      const data = await res.json().catch(function () {
+        return {};
+      });
+      if (!res.ok || !data.ok) {
+        setStatus(
+          (data && data.error) || 'Could not change the key (HTTP ' + res.status + ').',
+          'err'
+        );
+        return;
+      }
+      setStatus(
+        data.budgetWrite
+          ? 'This key may read the budget and propose changes for your approval.'
+          : data.budgetRead
+            ? 'This key may read the budget. It cannot propose changes.'
+            : 'This key has no budget access.',
+        'ok'
+      );
+      listApiKeys();
+    } catch (e) {
+      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
     }
   }
 
@@ -4549,6 +4683,8 @@ var MMGR = window.MMGR || {};
     createApiKey: createApiKey,
     listApiKeys: listApiKeys,
     revokeApiKey: revokeApiKey,
+    apiKeyBudgetToggle: apiKeyBudgetToggle,
+    setApiKeyBudget: setApiKeyBudget,
     unlinkProject: unlinkProject,
     copyEditorCode: copyEditorCode,
     editorCodeDone: editorCodeDone,

@@ -16,6 +16,8 @@
 
      1. rebuild the bundles (dist/, the minified CSS)
      2. run the static gates (npm run verify)
+     2b. prove production D1 is at the migration head (a schema behind the
+        code is a live defect: 2026-11-06, migrations 0028 to 0031)
      3. stage a clean copy into os.homedir()/mmgr-deploy, with the same
         excludes the tar recipe used - never /tmp (AGENTS.md lesson 7: bash's
         /tmp and Windows' C:\tmp are different places) and never the repo root
@@ -198,6 +200,16 @@ run(process.execPath, [path.join(ROOT, 'build.js')], { cwd: ROOT });
 // ---- 2. static gates --------------------------------------------------
 step('Static gates (npm run verify)');
 run('npm run verify', null, { cwd: ROOT });
+
+// ---- 2b. schema head ---------------------------------------------------
+// wrangler deploy does not look at D1. On 2026-11-06 four migrations (0028 to
+// 0031) were still unapplied while the Worker that reads those columns was
+// live, so every Photos tab answered 500 and the cloud project list returned
+// nothing. A schema behind the code is a live defect no local gate can see.
+step('Production D1 is at the migration head');
+run(process.execPath, [path.join(ROOT, 'tools', 'check-d1-migrations.cjs'), '--strict'], {
+  cwd: ROOT
+});
 
 // ---- 3. stage ---------------------------------------------------------
 step('Staging a clean copy');

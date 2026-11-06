@@ -1339,6 +1339,10 @@
     var status = document.getElementById('ct-status');
     var copyBtn = document.getElementById('ct-copy');
     var submitBtn = form.querySelector('button[type=submit]');
+    // Cloudflare Turnstile (owner 2026-11-05): the shared widget in
+    // js/mmgr-google-auth.js. Inert until /api/turnstile-config says required.
+    var ts =
+      window.MMGR && window.MMGR.Turnstile ? window.MMGR.Turnstile.mount('ct-turnstile') : null;
     var TO = 'admin@mymanagerworkspace.com';
     function field(id) {
       var el = document.getElementById(id);
@@ -1400,6 +1404,10 @@
       if (!validate()) {
         return;
       }
+      if (ts && ts.required && !ts.token) {
+        setStatus('Please finish the check above before sending your message.', true);
+        return;
+      }
       if (submitBtn) {
         submitBtn.disabled = true;
       }
@@ -1411,7 +1419,8 @@
           name: field('ct-name'),
           email: field('ct-email'),
           topic: field('ct-topic'),
-          message: field('ct-msg')
+          message: field('ct-msg'),
+          turnstileToken: ts && ts.token ? ts.token : undefined
         })
       })
         .then(function (res) {
@@ -1452,6 +1461,11 @@
         .then(function () {
           if (submitBtn) {
             submitBtn.disabled = false;
+          }
+          // Turnstile tokens are single-use: whatever the outcome, the next
+          // attempt needs a fresh challenge.
+          if (ts) {
+            ts.reset();
           }
         });
     });

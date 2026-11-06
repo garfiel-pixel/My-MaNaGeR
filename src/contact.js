@@ -7,6 +7,8 @@
    name stays optional. Rate limited 5 per 30 min per IP.
    ============================================================ */
 import { json, cloudRateCheck, sendAuthEmail, readJsonBody } from './lib/http.js';
+import { structuredLog } from './lib/observe.js';
+import { clientIp, verifyTurnstileToken } from './lib/turnstile.js';
 
 const BODY_CAP = 16384; // T-5: a 2000-char message is up to 8 KB in UTF-8; headroom
 const CONTACT_TO = 'admin@mymanagerworkspace.com';
@@ -35,6 +37,19 @@ export async function handleContactCreate(request, env) {
   const body = read.bad ? null : read.body;
   if (!body || typeof body !== 'object') {
     return json({ ok: false, error: 'bad request' }, 400);
+  }
+  // TURNSTILE FIRST (owner 2026-11-05): the bot gate runs before any field
+  // validation or mail send, so a bot never reaches the form logic and the
+  // response cannot be used to probe which addresses are accepted.
+  const turnstile = await verifyTurnstileToken(
+    body.turnstileToken,
+    clientIp(request),
+    env,
+    'please finish the check above before sending your message'
+  );
+  if (!turnstile.ok) {
+    structuredLog(env, 'warn', 'contact-turnstile-refused');
+    return json({ ok: false, error: turnstile.error }, 403);
   }
   const name = typeof body.name === 'string' ? body.name.trim().slice(0, CONTACT_NAME_MAX) : '';
   const email = typeof body.email === 'string' ? body.email.trim().slice(0, CONTACT_EMAIL_MAX) : '';

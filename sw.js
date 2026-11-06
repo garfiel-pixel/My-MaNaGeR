@@ -532,7 +532,12 @@
 // nested-interactive on every section. It is now a sibling inside
 // .sec-btn-wrap. Changed shell assets: js/app/section-accelerator.js
 // (dist/bundle.js) and css/mmgr.css.
-const CACHE = 'mmgr-shell-v543';
+// v544 - TURNSTILE ON CONTACT AND REGISTER (owner 2026-11-05): the shared
+// widget moved into js/mmgr-google-auth.js and now mounts on the contact form
+// and on account creation as well as reviews; the server gate is the new
+// src/lib/turnstile.js. Changed shell assets: js/mmgr-google-auth.js,
+// js/marketing.js, js/reviews.js, css/mmgr.css (all dist bundles rebuilt).
+const CACHE = 'mmgr-shell-v544';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

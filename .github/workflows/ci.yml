@@ -1131,6 +1131,10 @@ jobs:
         id: qa-shell-first-load
         run: node tools/qa-shell-first-load.cjs
 
+      - name: "T4: Turnstile widget on contact + register (qa-turnstile-client)"
+        id: qa-turnstile-client
+        run: node tools/qa-turnstile-client.cjs
+
       - name: "T4: Section accelerator - side buttons + pins (qa-section-accelerator)"
         id: qa-section-accelerator
         run: node tools/qa-section-accelerator.cjs

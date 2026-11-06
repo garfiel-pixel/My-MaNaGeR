@@ -58,6 +58,18 @@
 .email-auth-name {
   flex-basis: 140px;
 }
+/* Cloudflare Turnstile on the register form (owner 2026-11-05). The div is
+   hidden in login mode; when shown it sits above the fields. An empty div
+   collapses so an unconfigured deploy reserves no blank row. */
+.email-auth-turnstile {
+  margin: 2px 0 4px;
+}
+.email-auth-turnstile:empty {
+  display: none;
+}
+.email-auth-turnstile iframe {
+  max-width: 100%;
+}
 .email-auth-alt {
   font-size: 0.66rem;
   color: var(--text-secondary);

@@ -29,6 +29,7 @@ import {
 import { cloudDeleteProjectFully, cloudPurgeAccountRows } from '../cloud/projects.js';
 import { billingCancelForDeletion } from '../billing.js';
 import { structuredLog } from '../lib/observe.js';
+import { clientIp, verifyTurnstileToken } from '../lib/turnstile.js';
 import { cloudPrefsKey } from '../cloud/sync.js';
 
 // OWNER 2026-11-05: minimum raised 8 -> 12 for NEW and CHANGED passwords
@@ -206,6 +207,19 @@ export async function handleAuthRegister(request, env) {
     return json({ ok: false, error: 'bad request' }, 400);
   }
   const body = read.body;
+  // TURNSTILE FIRST (owner 2026-11-05): the bot gate runs before email or
+  // password validation and before the HIBP lookup or any D1 read, so a bot
+  // never reaches the account path and cannot probe which addresses exist.
+  const turnstile = await verifyTurnstileToken(
+    body && body.turnstileToken,
+    clientIp(request),
+    env,
+    'please finish the check above before creating an account'
+  );
+  if (!turnstile.ok) {
+    structuredLog(env, 'warn', 'auth-register-turnstile-refused');
+    return json({ ok: false, error: turnstile.error }, 403);
+  }
   const email = authNormalizeEmail(body && body.email);
   if (!authEmailValid(email)) {
     return json({ ok: false, error: 'invalid email address' }, 400);

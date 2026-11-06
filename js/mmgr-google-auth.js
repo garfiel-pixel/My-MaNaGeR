@@ -65,6 +65,124 @@ var MMGR = window.MMGR || {};
   let _idNonce = '';
   let _idNonceAt = 0;
 
+  // ---- Cloudflare Turnstile (shared widget) -----------------------------
+  // Owner 2026-11-05: the challenge covers registration and the contact form
+  // as well as reviews. This is the ONE client implementation; the server
+  // side is src/lib/turnstile.js. A mount is inert until
+  // GET /api/turnstile-config reports required:true, so an unconfigured
+  // deploy renders nothing and every form keeps working in local dev and CI.
+  const TS_SCRIPT =
+    'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=mmgrTurnstileOnload';
+  const TS_PENDING = [];
+  let _tsLoaded = false;
+
+  function tsRender(ctl) {
+    if (!ctl || !ctl.el || ctl.widget || typeof window.turnstile === 'undefined') {
+      return;
+    }
+    const key = ctl.el.getAttribute('data-sitekey') || '';
+    if (!key) {
+      return;
+    }
+    try {
+      ctl.widget = window.turnstile.render(ctl.el, {
+        sitekey: key,
+        theme: 'auto',
+        size: ctl.size || 'normal',
+        callback: function (token) {
+          ctl.token = token;
+        },
+        'expired-callback': function () {
+          ctl.token = null;
+        },
+        'error-callback': function () {
+          ctl.token = null;
+        }
+      });
+    } catch (e) {
+      ctl.widget = null;
+    }
+  }
+
+  // Cloudflare's api.js calls this global once. The global is lowercase
+  // `turnstile` - the capital-T name does not exist (verified live
+  // 2026-10-15), and testing it made the widget never render.
+  window.mmgrTurnstileOnload = function () {
+    for (let i = 0; i < TS_PENDING.length; i++) {
+      tsRender(TS_PENDING[i]);
+    }
+  };
+
+  function tsLoadScript() {
+    if (_tsLoaded) {
+      return;
+    }
+    _tsLoaded = true;
+    const s = document.createElement('script');
+    s.src = TS_SCRIPT;
+    s.async = true;
+    s.defer = true;
+    s.onerror = function () {
+      _tsLoaded = false;
+    };
+    document.head.appendChild(s);
+  }
+
+  function mountTurnstile(divOrId, opts) {
+    const el =
+      typeof divOrId === 'string'
+        ? document.getElementById(divOrId)
+        : divOrId && divOrId.nodeType === 1
+          ? divOrId
+          : null;
+    if (!el) {
+      return null;
+    }
+    if (el.__mmgrTsCtl) {
+      return el.__mmgrTsCtl;
+    }
+    const ctl = {
+      el: el,
+      required: false,
+      token: null,
+      widget: null,
+      size: opts && opts.size === 'compact' ? 'compact' : 'normal',
+      reset: function () {
+        ctl.token = null;
+        try {
+          if (window.turnstile && ctl.widget && typeof window.turnstile.reset === 'function') {
+            window.turnstile.reset(ctl.widget);
+          }
+        } catch (e) {
+          /* widget already gone */
+        }
+      }
+    };
+    el.__mmgrTsCtl = ctl;
+    fetch('/api/turnstile-config', { credentials: 'same-origin' })
+      .then(function (r) {
+        return r.ok ? r.json() : null;
+      })
+      .then(function (d) {
+        if (!d || !d.ok || !d.sitekey) {
+          return;
+        }
+        ctl.required = true;
+        el.setAttribute('data-sitekey', d.sitekey);
+        TS_PENDING.push(ctl);
+        tsLoadScript();
+        if (typeof window.turnstile !== 'undefined') {
+          tsRender(ctl);
+        }
+      })
+      .catch(function () {
+        /* offline or no Worker: leave the form as-is */
+      });
+    return ctl;
+  }
+
+  ns.Turnstile = { mount: mountTurnstile };
+
   function freshIdNonce() {
     return _idNonce && Date.now() - _idNonceAt <= ID_NONCE_TTL_MS ? _idNonce : '';
   }
@@ -928,6 +1046,7 @@ var MMGR = window.MMGR || {};
     return (
       '<div class="email-auth" id="email-auth-block">' +
       '<form class="email-auth-form" novalidate>' +
+      '<div class="email-auth-turnstile" hidden></div>' +
       '<div class="email-auth-row">' +
       '<input type="email" class="email-auth-input" placeholder="Email" autocomplete="email" aria-label="Email" inputmode="email" enterkeyhint="next" autocapitalize="none" required>' +
       '<span class="email-auth-pwwrap">' +
@@ -1069,12 +1188,14 @@ var MMGR = window.MMGR || {};
 
   // AUTH MAINFRAME v2: register answers { user, emailSent } , emailSent tells
   // the UI whether a confirmation email was dispatched (verification flow).
-  function emailRegister(email, password, name) {
-    return emailAuthPost('/api/auth/register', {
-      email: email,
-      password: password,
-      name: name
-    }).then(function (d) {
+  // turnstileToken is appended only when the widget produced one; the server
+  // ignores it while no secret is configured and refuses without it once one is.
+  function emailRegister(email, password, name, turnstileToken) {
+    const payload = { email: email, password: password, name: name };
+    if (turnstileToken) {
+      payload.turnstileToken = turnstileToken;
+    }
+    return emailAuthPost('/api/auth/register', payload).then(function (d) {
       return { user: d.user, emailSent: d.emailSent === true };
     });
   }
@@ -1185,6 +1306,8 @@ var MMGR = window.MMGR || {};
     const checkMsg = emailAuthQ(block, '.email-auth-check-msg');
     const resendBtn = emailAuthQ(block, '.email-auth-resend');
     const checkClose = emailAuthQ(block, '.email-auth-check-close');
+    const tsDiv = emailAuthQ(block, '.email-auth-turnstile');
+    let tsCtl = null;
     if (!form || !modeBtn) {
       return;
     }
@@ -1240,6 +1363,15 @@ var MMGR = window.MMGR || {};
       const isReg = _emailMode === 'register';
       if (nameEl) {
         nameEl.hidden = !isReg;
+      }
+      // Turnstile only applies to account creation. Mount lazily on the first
+      // switch to register so a login-only visit never loads Cloudflare's
+      // script, and keep the div hidden in login mode.
+      if (tsDiv) {
+        tsDiv.hidden = !isReg;
+        if (isReg && !tsCtl && ns.Turnstile) {
+          tsCtl = ns.Turnstile.mount(tsDiv, { size: 'compact' });
+        }
       }
       const pass = emailAuthQ(form, '.email-auth-pass');
       if (pass) {
@@ -1444,6 +1576,12 @@ var MMGR = window.MMGR || {};
           focusIt(pass);
           return;
         }
+        // The server is the authority, but catching the missing token here
+        // keeps the failure next to the widget instead of a round trip.
+        if (tsCtl && tsCtl.required && !tsCtl.token) {
+          setEmailAuthError(block, 'Please finish the check above before creating an account.');
+          return;
+        }
       }
       _busy = true;
       // SIGN-IN-POLISH: visible in-flight state - the button disables and
@@ -1461,7 +1599,7 @@ var MMGR = window.MMGR || {};
       };
       const p =
         _emailMode === 'register'
-          ? emailRegister(email, password, name)
+          ? emailRegister(email, password, name, tsCtl && tsCtl.token)
           : emailLogin(email, password);
       p.then(function (result) {
         // The attempt is over and it worked - this is when the password
@@ -1503,6 +1641,11 @@ var MMGR = window.MMGR || {};
           // 2026-10-13): a failure the user can retry without retyping is the
           // whole point of the fix. It is still masked, and it still leaves on
           // success, on sign-out and on a door switch.
+          // Turnstile tokens are single-use, so a failed attempt needs a
+          // fresh challenge before the retry can pass the server gate.
+          if (_emailMode === 'register' && tsCtl) {
+            tsCtl.reset();
+          }
           setEmailAuthError(block, (err && err.message) || 'Sign-in failed.');
         })
         .finally(function () {

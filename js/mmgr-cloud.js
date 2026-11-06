@@ -811,12 +811,28 @@ var MMGR = window.MMGR || {};
       _verifyPending = false;
       setCode(data.ownerCode);
       await render();
+      // Say what actually happened, and name the project: the owner's report
+      // was that a link looked like a no-op because the message only spoke
+      // about a code. The launcher list is told to re-fetch at the same time,
+      // so the project is on screen the moment the drawer is closed.
+      const linkedName = projectName(readProjectState()) || pid();
       setStatus(
-        'Cloud project linked , owner/recovery code: ' +
+        '"' +
+          linkedName +
+          '" is now in your account. Owner/recovery code: ' +
           data.ownerCode +
           '. Store it somewhere safe: if lost, only the linked Google account can recover it.',
         'ok'
       );
+      try {
+        document.dispatchEvent(
+          new CustomEvent('mmgr:cloud-linked', {
+            detail: { projectId: pid(), name: linkedName }
+          })
+        );
+      } catch (e) {
+        /* the list also refreshes on focus and page show */
+      }
     } catch (e) {
       var _detail = (e && (e.message || e.name || String(e))) || 'unknown';
       setStatus(

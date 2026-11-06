@@ -616,7 +616,14 @@
 // failed load now names what happened, says nothing was lost, and offers Try
 // again instead of printing a status code with no next step. Changed shell
 // assets: dist/bundle.js.
-const CACHE = 'mmgr-shell-v554';
+// v555 - A CLOUD LINK SAYS WHAT HAPPENED (I-1, owner 2026-11-06: a project
+// uploaded on one device never appeared on another). The server cause was
+// migration 0030 missing, so the list query had no owner_email column to
+// filter on; that is applied now. Here the link result names the project
+// instead of only quoting a code, and it broadcasts mmgr:cloud-linked so the
+// launcher list re-fetches at the moment of linking. Changed shell assets:
+// dist/bundle.js, dist/app-bundle.js.
+const CACHE = 'mmgr-shell-v555';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

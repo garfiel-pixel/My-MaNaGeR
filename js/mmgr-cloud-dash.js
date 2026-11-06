@@ -1091,6 +1091,11 @@
   document.addEventListener('mmgr:google-signed-in', function () {
     loadList();
   });
+  // A project linked from the drawer is a new row on this list. Re-fetch on
+  // the event so the launcher never shows the pre-link answer.
+  document.addEventListener('mmgr:cloud-linked', function () {
+    loadList();
+  });
   document.addEventListener('mmgr:user-changed', function () {
     loadList();
   });

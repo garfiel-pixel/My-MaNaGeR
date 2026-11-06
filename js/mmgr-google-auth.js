@@ -2728,11 +2728,16 @@ var MMGR = window.MMGR || {};
       _autoTimer = null;
     }
     _autoInterval = getAutoInterval();
-    // Controls-gated: no timer on pages without the Drive controls
-    // (admin.html loads this module too, but auto-backup is a workspace
-    // feature). Either the app.html auth-bar button or the project.html
-    // drawer section (#drive-section) counts as a Drive-enabled page.
-    if (_autoInterval === 'off' || (!$('btn-drive-backup') && !$('drive-section'))) {
+    // Controls-gated: no timer on pages without a Drive host. Either the
+    // app.html auth-bar button, the project.html drawer section
+    // (#drive-section), or a page that declares itself a host with
+    // data-drive-host (admin.html's backup popup) counts.
+    if (
+      _autoInterval === 'off' ||
+      (!$('btn-drive-backup') &&
+        !$('drive-section') &&
+        !document.querySelector('[data-drive-host]'))
+    ) {
       return;
     }
     _autoTimer = setInterval(function () {
@@ -2746,11 +2751,17 @@ var MMGR = window.MMGR || {};
   // binds the buttons directly, matching the zero-inline-handler rule. ----
   function setDriveStatus(msg, kind) {
     const s = $('drive-sync-status');
-    if (!s) {
-      return;
+    if (s) {
+      s.textContent = msg || '';
+      s.className = 'drive-status' + (kind ? ' ds-' + kind : '');
     }
-    s.textContent = msg || '';
-    s.className = 'drive-status' + (kind ? ' ds-' + kind : '');
+    // admin.html has no Drive drawer; its backup popup carries the same
+    // feedback line, so a tick there is never silent.
+    const alt = $('escrow-auto-status');
+    if (alt) {
+      alt.textContent = msg || '';
+      alt.className = 'escrow-pop-status' + (kind ? ' ds-' + kind : '');
+    }
   }
   function setDriveBusy(busy) {
     const b = $('btn-drive-backup');

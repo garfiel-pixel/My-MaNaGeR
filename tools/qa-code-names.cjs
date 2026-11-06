@@ -21,8 +21,10 @@
      S4  the field guide carries the same story (locked rule 8)
 
    BROWSER half (serve.cjs + Playwright, real clicks only):
-     B1  signed out, the admin header reads "Not backed up: sign in
-         to back it up"
+     B1  signed out, the admin header reads "Not backed up"; the badge opens
+         the backup panel, auto-backup is off and disabled with a reason, the
+         site-wide Subscriptions card ships hidden, and the switch writes the
+         shared mmgr_drive_auto pref
      B2  the trigger on the restore field opens the popover with all
          three names, Escape closes it
      B3  the launcher's "Have a code?" trigger opens the same popover
@@ -276,10 +278,85 @@ function bareAdminCodeHits(text) {
         const el = document.getElementById('escrow-status');
         return el ? el.textContent.trim() : null;
       });
+      check('B1 signed out, the header says not backed up', status === 'Not backed up', status);
+
+      // OWNER 2026-11-05: the badge is a control. Signed out it must still
+      // open, and the auto-backup switch must be off and say why - a switch
+      // that looks usable but cannot run is the failure this pins.
+      const popup = await page.evaluate(() => {
+        const btn = document.getElementById('escrow-status');
+        const pop = document.getElementById('escrow-pop');
+        btn.click();
+        const tgl = document.getElementById('escrow-auto-tgl');
+        const st = document.getElementById('escrow-auto-status');
+        return {
+          open: !!pop && !pop.hidden,
+          expanded: btn.getAttribute('aria-expanded'),
+          disabled: !!(tgl && tgl.disabled),
+          checked: !!(tgl && tgl.checked),
+          status: (st && st.textContent) || ''
+        };
+      });
+      check('B1a the badge opens the backup panel', popup.open && popup.expanded === 'true', popup);
       check(
-        'B1 signed out, the header says not backed up',
-        status === 'Not backed up: sign in to back it up',
-        status
+        'B1b signed out, auto-backup is off, disabled and says why',
+        popup.disabled && !popup.checked && /Sign in with Google/.test(popup.status),
+        popup
+      );
+      await page.evaluate(() => document.getElementById('escrow-status').click());
+
+      // The site-wide billing card is operator-only; a normal user must never
+      // see a control that can only answer 403.
+      const billingHidden = await page.evaluate(() => {
+        const el = document.getElementById('billing-admin-section');
+        return el ? el.hidden : null;
+      });
+      check(
+        'B1c the site-wide subscriptions card ships hidden for a normal user',
+        billingHidden === true,
+        billingHidden
+      );
+
+      // B1d: the switch must write the SAME pref the workspace reads, not a
+      // lookalike. isSignedIn is the only stub - setAutoInterval is the real
+      // function, so the assertion is on real localStorage state.
+      const autoPref = await page.evaluate(() => {
+        const GA = window.MMGR && window.MMGR.GoogleAuth;
+        if (!GA) return { ok: false, why: 'no GoogleAuth module' };
+        const realSignedIn = GA.isSignedIn;
+        GA.isSignedIn = function () {
+          return true;
+        };
+        try {
+          const btn = document.getElementById('escrow-status');
+          const pop = document.getElementById('escrow-pop');
+          pop.hidden = true;
+          btn.click();
+          const tgl = document.getElementById('escrow-auto-tgl');
+          const disabled = tgl.disabled;
+          tgl.checked = true;
+          tgl.dispatchEvent(new Event('change', { bubbles: true }));
+          const on = localStorage.getItem('mmgr_drive_auto');
+          tgl.checked = false;
+          tgl.dispatchEvent(new Event('change', { bubbles: true }));
+          const off = localStorage.getItem('mmgr_drive_auto');
+          return { ok: true, disabled, on, off };
+        } finally {
+          try {
+            globalThis.escrowOpen(false);
+          } catch (e) {
+            /* older page without the popup */
+          }
+          GA.isSignedIn = realSignedIn;
+        }
+      });
+      check(
+        'B1d the auto-backup switch writes the shared mmgr_drive_auto pref',
+        autoPref.ok &&
+          autoPref.disabled === false &&
+          autoPref.on === '30' &&
+          autoPref.off === 'off',
+        autoPref
       );
 
       const revealed = await revealRestore(page);

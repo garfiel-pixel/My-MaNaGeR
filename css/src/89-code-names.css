@@ -76,24 +76,37 @@ button.code-which:focus-visible {
   line-height: 1.45;
   color: var(--text-secondary);
 }
-/* Header backup status (admin panel). Small, one line, no interaction. */
+/* Header backup control (admin panel). OWNER 2026-11-05: the badge is a
+   button now - hover (pointer devices) or tap opens the backup panel. It
+   stays a notifier line, not a pill; the popup carries the settings. */
+.escrow-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
 .escrow-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  max-width: 230px;
-  /* OWNER 2026-10-31: backup state is a notifier line, not a pill. */
-  padding: 2px 0;
+  padding: 4px 6px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 8px;
   background: transparent;
   color: var(--slate);
+  font-family: inherit;
   font-size: 0.68rem;
   font-weight: 600;
   line-height: 1.2;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.escrow-badge:hover {
+  color: var(--gold-text);
+  background: color-mix(in srgb, var(--gold) 10%, transparent);
+}
+.escrow-badge:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
 }
 .escrow-badge::before {
   content: '';
@@ -112,9 +125,85 @@ button.code-which:focus-visible {
 .escrow-badge.off::before {
   background: var(--dot-red);
 }
-@media (max-width: 760px) {
-  .escrow-badge {
+.escrow-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 120;
+  width: 300px;
+  max-width: calc(100vw - 24px);
+  padding: 14px;
+  border: var(--glass-border);
+  border-radius: var(--squircle-md);
+  background: var(--card);
+  box-shadow: var(--glass-rim), var(--glass-shadow);
+  text-align: left;
+  white-space: normal;
+}
+/* The display below outranks the UA hidden rule, so the guard is mandatory. */
+#escrow-pop[hidden] {
+  display: none;
+}
+.escrow-pop-h {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--text-heading);
+}
+.escrow-pop-p {
+  margin: 6px 0 0;
+  font-size: 0.7rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+.escrow-pop-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+}
+/* Same guard as the popup itself: display:flex outranks the UA hidden rule. */
+.escrow-pop-row[hidden] {
+  display: none;
+}
+.escrow-pop-lbl {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.escrow-pop-status {
+  margin-top: 10px;
+  font-size: 0.68rem;
+  line-height: 1.4;
+  color: var(--slate);
+}
+.escrow-pop-status.on {
+  color: var(--green);
+}
+.escrow-pop-status.ds-err {
+  color: var(--danger);
+}
+.escrow-pop-status.ds-warn {
+  color: var(--amber);
+}
+.escrow-pop-status.ds-busy {
+  color: var(--gold-text);
+}
+/* Phones: the header is crowded (back, menu, title, Password, Lock). The dot
+   stays and the whole control is still tappable; the popup names the state.
+   Tablets keep the words - 641px and up. */
+@media (max-width: 640px) {
+  .escrow-badge .escrow-txt {
     display: none;
+  }
+  .escrow-badge {
+    padding: 6px;
+  }
+  /* The dot is the first item of the wrapped header row, hard against the
+     left edge - anchoring the popup right would push it off screen. */
+  .escrow-pop {
+    left: 0;
+    right: auto;
   }
 }
 /* Post-restore recap card (admin panel, first thing after Restore access).

@@ -537,7 +537,13 @@
 // and on account creation as well as reviews; the server gate is the new
 // src/lib/turnstile.js. Changed shell assets: js/mmgr-google-auth.js,
 // js/marketing.js, js/reviews.js, css/mmgr.css (all dist bundles rebuilt).
-const CACHE = 'mmgr-shell-v544';
+// v545 - ADMIN BACKUP CONTROL (owner 2026-11-05): the header badge now reads
+// "Backed up" and opens a hover/tap panel with a real auto-backup switch on
+// the shared mmgr_drive_auto pref; the Drive timer now runs on admin.html
+// (data-drive-host). The site-wide Subscriptions card ships hidden until the
+// site admin code is accepted. Changed shell assets: admin.html (inline
+// script), js/mmgr-google-auth.js, css/mmgr.css (dist bundles rebuilt).
+const CACHE = 'mmgr-shell-v545';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

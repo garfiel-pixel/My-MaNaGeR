@@ -108,6 +108,8 @@ fails the gate.
 | `mmgr_calc_history` , `mmgr_calc_ai_chats` | Estimate history and assistant chats. | necessary |
 | `mmgr_calc_guide_open` , `mmgr_calc_tour_done` , `mmgr_calc_brand_open` | Guide and tour state. | necessary |
 | `mmgr_flag_calcUnitFlag` | Kill switch for the unit conversion feature. | necessary |
+| `mmgr_cash_step` | Cash-flow chart step preference for the Weekly/Cash view (7 = weekly, 14 = fortnightly). A view preference, not project data. | necessary |
+| `mmgr_boq_handoff` | Bill-of-quantities lines handed from the calculator to the Procurement/BOQ bridge, keyed by project id. | necessary |
 
 ## sessionStorage
 

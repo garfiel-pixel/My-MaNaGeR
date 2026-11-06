@@ -589,14 +589,16 @@ async function bootChrome(port, profile, url) {
       return out;
     })()`);
     // Budget rows show only their id as text (b1), so the label is
-    // "Planned, b1" — header + visible row id. Spend rows have no pure-text
-    // cell, so its labels are column-only ("Amount"). Both satisfy the audit.
+    // "Planned, b1" — header + visible row id. Spend rows are column-only
+    // ("Amount") when the row has no pure-text cell; a legacy entry that
+    // shows "legacy amount" instead of a qty yields a column+row label
+    // ("Amount, legacy amount"). Both satisfy the audit.
     check(
       'spot-check names are column+row derived',
       samples.budgetPlanned &&
         /^planned,/i.test(samples.budgetPlanned) &&
         samples.budgetPlanned.split(',').length === 2 &&
-        samples.spendAmount === 'Amount',
+        (samples.spendAmount === 'Amount' || /^amount,/i.test(samples.spendAmount)),
       samples
     );
 

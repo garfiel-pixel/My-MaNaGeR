@@ -68,6 +68,12 @@ const SKIP_DIRS = new Set([
   '.wrangler',
   'node_modules',
   '.agents',
+  // 2026-11-06: the agent's working directory. Nothing excluded it, so the
+  // stage (and therefore the live asset bundle) carried
+  // .codebuddy/worktrees/<id>/ - a full stale copy of the app plus src/,
+  // migrations/ and the qa harnesses. Live probe answered 200. Mirrors
+  // .gitignore and .assetsignore; keep the three in parity.
+  '.codebuddy',
   '_archive',
   'tmp',
   'screenshots',

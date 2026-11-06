@@ -136,3 +136,12 @@ tmp/
 # other 42 are still recoverable from the log.
 /_archive/
 /tools/*.png
+
+# 2026-11-06 (live probe): the agent's own working directory. Two background
+# worktrees had been left under .codebuddy/worktrees, and because neither
+# .gitignore nor .assetsignore named the folder, wrangler uploaded them -
+# https://mymanagerworkspace.com/.codebuddy/worktrees/bg-7804ca6f/js/mmgr-state.js
+# answered 200. That published a full stale copy of the app plus repo internals
+# (src/, migrations/, qa harnesses) - the same class as the 2026-10-15 leak.
+# All three files must stay in parity: here, .assetsignore and tools/deploy.cjs.
+.codebuddy/

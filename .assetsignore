@@ -107,3 +107,8 @@ css/src
 # worker.js also refuses *.pdf at the root via PRIVATE_ROOT_EXT - belt and
 # braces, because .assetsignore is what the upload honours.
 *.pdf
+# 2026-11-06: the agent's working directory (worktrees under
+# .codebuddy/worktrees) was uploaded because nothing excluded it. Live probe
+# returned 200 for a worktree's js/mmgr-state.js. Mirrors .gitignore and
+# tools/deploy.cjs SKIP_DIRS - keep all three in parity.
+.codebuddy

@@ -17,16 +17,6 @@
       "reason": "Checkout: Paddle's hosted payment page opens in its own tab by design."
     },
     {
-      "file": "js/mmgr-cloud-dash.js",
-      "contains": "window.open('about:blank'",
-      "reason": "Checkout: the synchronous pre-open that Keeps Paddle's popup from being blocked."
-    },
-    {
-      "file": "js/mmgr-cloud-dash.js",
-      "contains": "checkoutUrl",
-      "reason": "Checkout: Paddle's hosted payment page."
-    },
-    {
       "file": "js/mmgr-cloud.js",
       "contains": "window.open('about:blank'",
       "reason": "Checkout: the synchronous pre-open that keeps Paddle's popup from being blocked."

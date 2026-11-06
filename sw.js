@@ -588,7 +588,19 @@
 // are what checkout charges, and the launch offer is the discount code typed at
 // checkout. Changed shell assets: app.html, pricing.html, dist/app-bundle.js,
 // css/mmgr.css.
-const CACHE = 'mmgr-shell-v551';
+// v552 - THE PLAN BAR NO LONGER WAITS FOR A FRESH BUNDLE (owner 2026-11-06,
+// second report: an account without Premium still saw no Upgrade button). The
+// control was correct and deployed, but it lived inside dist/app-bundle.js - a
+// single cached asset that a returning browser can hold for an hour and the
+// service worker serves from its own cache - so a browser running the previous
+// deploy's bundle never executed the code that reveals the badge, and the new
+// HTML arrived with the badge hidden. It is now its OWN deferred script on
+// app.html (js/mmgr-billing-manage.js?v=552), loaded outside the bundle, and
+// the badge starts VISIBLE in the markup: the script hides it only when the
+// server says the visitor is signed out. A stale bundle can no longer remove
+// the control. Changed shell assets: app.html, sw.js, js/mmgr-billing-manage.js,
+// dist/app-bundle.js (the module left the launcher bundle), css/mmgr.css.
+const CACHE = 'mmgr-shell-v552';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated
@@ -1477,6 +1489,10 @@ const SHELL = [
   // bundle; listing it here keeps it working with no network.
   'js/mmgr-shortcuts.js',
   'js/mmgr-cloud-dash.js',
+  // OWNER 2026-11-06: app.html loads the rail plan bar as its own script
+  // (outside the launcher bundle), so it must be precached as well or the
+  // offline shell would lose the control.
+  'js/mmgr-billing-manage.js',
   // Marketing + utility JS
   'js/marketing.js',
   // S-2 CONSENT (audit 2026-10-18, 8.2): the cookie banner and the choice

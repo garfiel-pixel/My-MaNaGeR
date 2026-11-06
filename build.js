@@ -206,11 +206,12 @@ const APP_LAUNCHER_MODULES = [
   'js/app/components.js',
   'js/mmgr-google-auth.js',
   'js/mmgr-cloud-dash.js',
-  // OWNER 2026-11-06: the launcher rail's plan bar (Premium / Upgrade to
-  // Premium, plus Manage subscription and the typed-CANCEL flow) is the SAME
-  // control the admin panel uses. Self-contained: delegated clicks, no inline
-  // script, so adding it changes no CSP hash.
-  'js/mmgr-billing-manage.js',
+  // OWNER 2026-11-06 (second report): the launcher's plan bar is deliberately
+  // NOT in this bundle. It loads as its own deferred script from app.html
+  // (js/mmgr-billing-manage.js?v=...) because the bundle is a single cached
+  // asset that a returning browser can hold for an hour, so bundling the
+  // control meant a deploy could not make the Upgrade bar appear on a browser
+  // that had the previous bundle. The admin panel still bundles it below.
   // RBAC sprint 2: the launcher's own bell + "Shared with me" list. The
   // launcher has no mmgr-cloud.js, so team-ui.js is deliberately standalone.
   'js/cloud/team-ui.js',

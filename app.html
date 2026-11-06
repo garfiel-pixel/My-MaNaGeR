@@ -410,7 +410,15 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;visibility:h
          /api/billing/status; hidden only while signed out. Pinned to the rail
          bottom so the plan + identity never scroll away with the nav. -->
     <div class="plan-wrap" id="plan-wrap">
-      <button type="button" class="plan-badge" id="plan-badge" aria-expanded="false" aria-controls="plan-pop" hidden>
+      <!-- NOT hidden in the markup (owner 2026-11-06, second report: "still not
+           seeing the upgrade button"). The badge used to start hidden and wait
+           for JavaScript to reveal it, so a browser still running the previous
+           deploy's cached bundle showed NOTHING here - the new HTML and the old
+           script never met. It now starts VISIBLE and the plan script hides it
+           only after the server says the visitor is signed out (403), which is
+           the one case that must hide it. A failed or stale script leaves a
+           working Upgrade link rather than an empty space. -->
+      <button type="button" class="plan-badge" id="plan-badge" aria-expanded="false" aria-controls="plan-pop">
         <svg class="ico" aria-hidden="true"><use id="plan-badge-ico" href="css/mmgr-icons.svg#i-sparkle"></use></svg>
         <span id="plan-badge-text">Upgrade to Premium</span>
       </button>
@@ -704,6 +712,14 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;visibility:h
 <!-- Scripts: single minified bundle (7 modules). Falls back to individual
      source files for local dev when dist/app-bundle.js does not exist. -->
 <script defer src="dist/app-bundle.js"></script>
+<!-- OWNER 2026-11-06: the rail plan bar is loaded as its OWN deferred file, not
+     from the launcher bundle. The bundle is one concatenated asset that a
+     returning browser can keep for up to an hour (and the service worker keeps
+     a copy too), so a deploy that added this control reached new visitors only
+     - which is exactly why the Upgrade bar was still missing on an account
+     without Premium. A separate script has its own URL and cannot be held back
+     by the bundle, and ?v= makes each release a different URL again. -->
+<script defer src="js/mmgr-billing-manage.js?v=552"></script>
 <script>
 /* CSP (2026-10-27): an inline onerror ATTRIBUTE is blocked by our
    hash-only script-src (no unsafe-hashes), so __mmgrAppBundleMissing could never

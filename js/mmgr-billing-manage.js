@@ -16,6 +16,7 @@
   'use strict';
 
   var PLAN = 'rail-plan';
+  var UPGRADE = 'rail-upgrade';
   var busy = false;
 
   function $(id) {
@@ -61,6 +62,43 @@
     plan.innerHTML =
       badgeActive(periodEnd) +
       '<button type="button" class="btn btn-n btn-s" data-bmg="manage">Manage subscription</button>';
+    var up = $(UPGRADE);
+    if (up) {
+      up.hidden = true;
+    }
+  }
+
+  /* FREE PLAN (owner 2026-11-05): the rail shows the same simple "Upgrade to
+     Premium" control as app.html. At the project cap it also says how much of
+     the allowance is used, so the reason to upgrade is visible rather than
+     implied. Hidden entirely while billing is unconfigured. */
+  function renderUpgrade(count, cap) {
+    var plan = $(PLAN);
+    var up = $(UPGRADE);
+    if (plan) {
+      plan.hidden = true;
+    }
+    if (!up) {
+      return;
+    }
+    var atLimit = cap !== null && cap !== undefined && count >= cap;
+    up.hidden = false;
+    up.innerHTML =
+      'Upgrade to Premium' +
+      (atLimit
+        ? '<span class="db-upgrade-note">' + Number(count) + ' of ' + Number(cap) + ' used</span>'
+        : '');
+  }
+
+  function hidePlan() {
+    var plan = $(PLAN);
+    var up = $(UPGRADE);
+    if (plan) {
+      plan.hidden = true;
+    }
+    if (up) {
+      up.hidden = true;
+    }
   }
 
   /* OWNER 2026-10-09: cancelling takes TWO deliberate acts - type the word, then
@@ -138,26 +176,84 @@
     try {
       res = await fetch('/api/billing/status', { method: 'GET', credentials: 'same-origin' });
     } catch (e) {
-      plan.hidden = true;
+      hidePlan();
       return;
     }
     if (!res.ok) {
-      plan.hidden = true;
+      hidePlan();
       return;
     }
     var data = null;
     try {
       data = await res.json();
     } catch (e) {
-      plan.hidden = true;
+      hidePlan();
       return;
     }
-    if (!data || !data.ok || !data.configured || !data.active) {
-      plan.hidden = true;
+    if (!data || !data.ok || !data.configured) {
+      hidePlan();
+      return;
+    }
+    if (!data.active) {
+      // Free plan: the rail offers the upgrade, exactly like app.html.
+      renderUpgrade(data.projectCount || 0, data.projectCap);
       return;
     }
     periodEnd = data.currentPeriodEnd || null;
     renderActive(plan, periodEnd);
+  }
+
+  /* Same contract as app.html's upgradePlan(): open the tab SYNCHRONOUSLY
+     inside the click so the browser keeps the user activation, then point it
+     at the checkout URL. Opening after the await is what made the launcher's
+     button silently do nothing. */
+  async function upgradePlan() {
+    var plan = $(PLAN);
+    var tab = window.open('about:blank', '_blank');
+    try {
+      var res = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        credentials: 'same-origin'
+      });
+      var data = await res.json().catch(function () {
+        return {};
+      });
+      if (!res.ok || !data.ok || !data.checkoutUrl) {
+        if (tab) {
+          try {
+            tab.close();
+          } catch (e) {
+            /* already gone */
+          }
+        }
+        renderError(
+          plan,
+          res.status === 503
+            ? 'Billing is not configured on this server yet, so no upgrade is available.'
+            : (data && data.error) || 'Checkout failed (HTTP ' + res.status + ').'
+        );
+        return;
+      }
+      if (tab) {
+        try {
+          tab.opener = null;
+          tab.location.replace(data.checkoutUrl);
+        } catch (e) {
+          window.open(data.checkoutUrl, '_blank', 'noopener');
+        }
+      } else {
+        window.open(data.checkoutUrl, '_blank', 'noopener');
+      }
+    } catch (e) {
+      if (tab) {
+        try {
+          tab.close();
+        } catch (e2) {
+          /* already gone */
+        }
+      }
+      renderError(plan, 'Could not reach the server. Try again in a moment.');
+    }
   }
 
   async function cancelSubscription() {
@@ -200,6 +296,11 @@
     }
     var act = el.getAttribute('data-bmg');
     var plan = $(PLAN);
+    if (act === 'upgrade') {
+      e.preventDefault();
+      upgradePlan();
+      return;
+    }
     if (act === 'manage') {
       e.preventDefault();
       renderConfirm(plan, periodEnd);
@@ -243,6 +344,11 @@
     btn.disabled = !ok;
     btn.setAttribute('aria-disabled', ok ? 'false' : 'true');
   });
+
+  /* A session can start or end in another tab. Keep the rail truthful rather
+     than leaving a stale control that can only answer 403. */
+  document.addEventListener('mmgr:google-signed-in', loadPlan);
+  document.addEventListener('mmgr:google-signed-out', hidePlan);
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', loadPlan);

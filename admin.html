@@ -573,7 +573,14 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
       </div>
     </nav>
     <div class="db-foot">
+      <!-- PLAN STATUS (owner 2026-11-05): mirrors the app rail footer - a
+           Premium badge with Manage subscription on a paid plan, an Upgrade
+           to Premium button on the free plan, both hidden while billing is
+           unconfigured or the visitor is signed out. Rendered by
+           js/mmgr-billing-manage.js, the same module that owns the cancel
+           flow. -->
       <div class="db-plan" id="rail-plan" hidden></div>
+      <button type="button" id="rail-upgrade" class="db-upgrade" data-bmg="upgrade" hidden>Upgrade to Premium</button>
       <!-- OWNER 2026-09-07: sign-in lives ONLY on the app page. Admin
            shows the synced state read-only (no entry point here). -->
       <div class="db-user auth-bar" id="rail-user"></div>

@@ -552,7 +552,13 @@
 // operator cards (Cloud Projects, Subscriptions) collapse into one closed
 // "Site operator tools" line; the rail's Cloud Admin link opens it. Changed
 // shell assets: admin.html (inline script).
-const CACHE = 'mmgr-shell-v547';
+// v548 - PREMIUM RAIL ON THE ADMIN PANEL (owner 2026-11-05): the admin rail
+// footer now carries the same plan control as the launcher - a Premium badge
+// with Manage subscription on a paid plan, an Upgrade to Premium button (with
+// the "N of M used" note at the free cap) on the free plan, both hidden while
+// billing is unconfigured or the visitor is signed out. Changed shell assets:
+// admin.html, dist/admin-bundle.js.
+const CACHE = 'mmgr-shell-v548';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

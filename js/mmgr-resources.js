@@ -287,13 +287,74 @@ var MMGR = window.MMGR || {};
   // A budget line's actual $ is auto-derived from its own Spend Log entries
   // once any exist (single source of truth, no drift risk between the two);
   // otherwise the manually-typed lump value is used.
+  //
+  // H-3 (BUDGET-BOQ directive 2026-11-05): an entry recorded as ORDERED is a
+  // commitment, not money out, so it does not count as Spent (Q1). Every
+  // other status - and a legacy entry with no status at all - does.
+  function spendIsSpent(e) {
+    const st = (e && e.status) || 'received';
+    return st !== 'ordered';
+  }
+  function spendIsPaid(e) {
+    return ((e && e.status) || 'received') === 'paid';
+  }
   function budgetLineActual(line, state) {
     const s = state || (ns.State ? ns.State.getState() : null);
-    const log = ((s && s.spendLog) || []).filter(e => e.budgetLineId === line.id);
+    const log = ((s && s.spendLog) || []).filter(
+      e => e.budgetLineId === line.id && spendIsSpent(e)
+    );
     if (log.length) {
       return log.reduce((sum, e) => sum + (+e.amount || 0), 0);
     }
     return +line.actual || 0;
+  }
+
+  // H-3: what a line's deliveries add up to, so an overspend can be read as
+  // PRICE or as QUANTITY instead of one unexplained number.
+  //   qtyReceived  units recorded as received (ordered ones excluded)
+  //   qtyLeft      the BOQ quantity minus what arrived
+  //   moneyLeft    planned minus spent
+  //   priceVar     (price paid - BOQ rate) x quantity, summed
+  //   qtyVar       planned - (BOQ rate x quantity received), the quantity part
+  function deliveryRollup(line, state) {
+    const s = state || (ns.State ? ns.State.getState() : null);
+    const log = ((s && s.spendLog) || []).filter(e => e.budgetLineId === line.id);
+    const baseQty = line.qty == null ? null : +line.qty || 0;
+    const baseRate = line.rate == null ? null : +line.rate || 0;
+    let qty = 0;
+    let spent = 0;
+    let paid = 0;
+    let priceVar = 0;
+    let anyQty = false;
+    log.forEach(e => {
+      if (!spendIsSpent(e)) {
+        return;
+      }
+      spent += +e.amount || 0;
+      if (spendIsPaid(e)) {
+        paid += +e.amount || 0;
+      }
+      if (e.qty != null && e.unitPrice != null) {
+        anyQty = true;
+        const q = +e.qty || 0;
+        qty += q;
+        priceVar += (Math.round((+e.unitPrice || 0) * 1e6) / 1e6 - (baseRate || 0)) * q;
+      }
+    });
+    const planned = +line.planned || 0;
+    return {
+      hasQty: anyQty && baseQty != null,
+      qtyReceived: qty,
+      qtyLeft: baseQty == null ? null : Math.max(0, baseQty - qty),
+      qtyPct: baseQty ? Math.round((qty / baseQty) * 100) : 0,
+      moneyLeft: planned - spent,
+      planned: planned,
+      spent: spent,
+      paid: paid,
+      owed: Math.max(0, spent - paid),
+      priceVar: priceVar,
+      qtyVar: baseQty == null || baseRate == null ? null : planned - baseRate * qty
+    };
   }
 
   function addSpendEntry() {
@@ -544,6 +605,397 @@ var MMGR = window.MMGR || {};
     liveSpendTotal: liveSpendTotal
   };
 
+  // ---- H-3 (BUDGET-BOQ directive 2026-11-05): RECORD A DELIVERY ----------
+  // Extends the Spend Log entry; it does not replace it. An entry without the
+  // new fields is a legacy entry and still counts exactly as it always did.
+  // Quick path: pick the line (pre-picked from its row), type the quantity,
+  // confirm the prefilled price, Save - three taps on a phone.
+  let _dlv = { lineId: '', photo: '', override: false };
+
+  function deliveryHost() {
+    let el = document.getElementById('dlv-modal');
+    if (el) {
+      return el;
+    }
+    el = document.createElement('div');
+    el.id = 'dlv-modal';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-modal', 'true');
+    el.setAttribute('aria-labelledby', 'dlv-title');
+    el.innerHTML =
+      '<div class="mb dlv-mb">' +
+      '<div class="mh"><span class="mt" id="dlv-title">Record a delivery</span>' +
+      '<button class="dc" data-action="deliveryClose" aria-label="Close"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></div>' +
+      '<div class="mbody">' +
+      '<label class="dlv-l" for="dlv-line">Budget line</label>' +
+      '<select id="dlv-line" class="dlv-in"></select>' +
+      '<div class="dlv-row">' +
+      '<div><label class="dlv-l" for="dlv-qty">Quantity received</label><input id="dlv-qty" class="dlv-in" type="number" min="0" step="any" inputmode="decimal"></div>' +
+      '<div><label class="dlv-l" for="dlv-unit">Unit</label><input id="dlv-unit" class="dlv-in" type="text" maxlength="24"></div>' +
+      '<div><label class="dlv-l" for="dlv-price">Price paid per unit</label><input id="dlv-price" class="dlv-in" type="number" min="0" step="any" inputmode="decimal"></div>' +
+      '</div>' +
+      '<div class="dlv-row">' +
+      '<div><label class="dlv-l" for="dlv-amount">Amount</label><input id="dlv-amount" class="dlv-in" type="number" min="0" step="0.01" inputmode="decimal"></div>' +
+      '<div><label class="dlv-l" for="dlv-status">Status</label><select id="dlv-status" class="dlv-in"><option value="received">Received</option><option value="ordered">Ordered (not spent yet)</option><option value="invoiced">Invoiced</option><option value="paid">Paid</option></select></div>' +
+      '<div><label class="dlv-l" for="dlv-paid">Paid on</label><input id="dlv-paid" class="dlv-in" type="date"></div>' +
+      '</div>' +
+      '<div class="dlv-row">' +
+      '<div><label class="dlv-l" for="dlv-supplier">Supplier</label><input id="dlv-supplier" class="dlv-in" type="text" maxlength="80"></div>' +
+      '<div><label class="dlv-l" for="dlv-ref">Ticket or invoice</label><input id="dlv-ref" class="dlv-in" type="text" maxlength="40"></div>' +
+      '<div><label class="dlv-l" for="dlv-date">Date</label><input id="dlv-date" class="dlv-in" type="date"></div>' +
+      '</div>' +
+      '<label class="dlv-l" for="dlv-note">Note</label>' +
+      '<input id="dlv-note" class="dlv-in" type="text" maxlength="160">' +
+      '<div class="dlv-override is-hide" id="dlv-override-wrap">' +
+      '<label class="dlv-l" for="dlv-reason">Why does the amount differ from quantity x price?</label>' +
+      '<input id="dlv-reason" class="dlv-in" type="text" maxlength="160">' +
+      '</div>' +
+      '<div class="dlv-row dlv-foot">' +
+      '<div><label class="dlv-l" for="dlv-photo">Photo of the ticket</label><input id="dlv-photo" class="dlv-in dlv-file" type="file" accept="image/*"></div>' +
+      '<div class="dlv-who"><span class="dlv-l">Recorded by</span><span id="dlv-who"></span></div>' +
+      '</div>' +
+      '<p class="dlv-err" id="dlv-err" role="alert"></p>' +
+      '</div>' +
+      '<div class="mf"><button class="btn btn-n btn-s" data-action="deliveryClose">Cancel</button>' +
+      '<button class="btn btn-g btn-s" data-action="deliverySave">Save delivery</button></div>' +
+      '</div>';
+    document.body.appendChild(el);
+    const lineSel = el.querySelector('#dlv-line');
+    if (lineSel) {
+      lineSel.addEventListener('change', function () {
+        prefillDelivery(lineSel.value);
+      });
+    }
+    ['dlv-qty', 'dlv-price'].forEach(function (id) {
+      const inp = el.querySelector('#' + id);
+      if (inp) {
+        inp.addEventListener('input', function () {
+          if (!_dlv.override) {
+            recomputeDelivery();
+          }
+        });
+      }
+    });
+    const amt = el.querySelector('#dlv-amount');
+    if (amt) {
+      amt.addEventListener('input', function () {
+        _dlv.override = true;
+        const wrap = el.querySelector('#dlv-override-wrap');
+        if (wrap) {
+          wrap.classList.remove('is-hide');
+        }
+      });
+    }
+    const photo = el.querySelector('#dlv-photo');
+    if (photo) {
+      photo.addEventListener('change', function () {
+        readDeliveryPhoto(photo);
+      });
+    }
+    return el;
+  }
+
+  function deliveryWho() {
+    try {
+      const u = ns.GoogleAuth && ns.GoogleAuth.getUser ? ns.GoogleAuth.getUser() : null;
+      return (u && (u.email || u.name)) || 'Owner';
+    } catch (e) {
+      return 'Owner';
+    }
+  }
+
+  // A ticket photo is evidence, not a gallery item: 900 px on the long edge,
+  // JPEG, so one delivery adds tens of kilobytes to the project and still
+  // syncs inside the normal state blob.
+  function readDeliveryPhoto(input) {
+    const file = input && input.files && input.files[0];
+    if (!file) {
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = function () {
+      const img = new Image();
+      img.onload = function () {
+        const max = 900;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * scale);
+        c.height = Math.round(img.height * scale);
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        try {
+          _dlv.photo = c.toDataURL('image/jpeg', 0.7);
+        } catch (e) {
+          _dlv.photo = '';
+        }
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function prefillDelivery(lineId) {
+    const s = ns.State.getState();
+    const line = (s.budgetLines || []).find(l => l.id === lineId);
+    if (!line) {
+      return;
+    }
+    _dlv.lineId = lineId;
+    const q = document.getElementById('dlv-qty');
+    const u = document.getElementById('dlv-unit');
+    const p = document.getElementById('dlv-price');
+    if (u) {
+      u.value = line.unit || '';
+    }
+    if (p) {
+      p.value = line.rate == null || line.rate === '' ? '' : String(line.rate);
+    }
+    if (q) {
+      q.value = '';
+    }
+    recomputeDelivery();
+  }
+
+  function recomputeDelivery() {
+    const q = parseFloat((document.getElementById('dlv-qty') || {}).value);
+    const p = parseFloat((document.getElementById('dlv-price') || {}).value);
+    const a = document.getElementById('dlv-amount');
+    if (a && isFinite(q) && isFinite(p) && q > 0 && p >= 0) {
+      a.value = String(Math.round(q * p * 100) / 100);
+    }
+  }
+
+  function openDelivery(lineId) {
+    const s = ns.State.getState();
+    const lines = s.budgetLines || [];
+    if (!lines.length) {
+      ns.App.showToast('Add a budget line first.', 'err');
+      return;
+    }
+    const el = deliveryHost();
+    const sel = document.getElementById('dlv-line');
+    if (sel) {
+      sel.innerHTML = lines
+        .map(function (l) {
+          return (
+            '<option value="' +
+            U.escapeHtml(l.id) +
+            '">' +
+            U.escapeHtml(l.category || l.id) +
+            '</option>'
+          );
+        })
+        .join('');
+      sel.value = lineId || lines[0].id;
+    }
+    _dlv.photo = '';
+    _dlv.override = false;
+    const wrap = document.getElementById('dlv-override-wrap');
+    if (wrap) {
+      wrap.classList.add('is-hide');
+    }
+    ['dlv-supplier', 'dlv-ref', 'dlv-note', 'dlv-reason'].forEach(function (id) {
+      const inp = document.getElementById(id);
+      if (inp) {
+        inp.value = '';
+      }
+    });
+    const date = document.getElementById('dlv-date');
+    if (date) {
+      date.value = U.todayStr();
+    }
+    const paid = document.getElementById('dlv-paid');
+    if (paid) {
+      paid.value = '';
+    }
+    const st = document.getElementById('dlv-status');
+    if (st) {
+      st.value = 'received';
+    }
+    const whoEl = document.getElementById('dlv-who');
+    if (whoEl) {
+      whoEl.textContent = deliveryWho();
+    }
+    const err = document.getElementById('dlv-err');
+    if (err) {
+      err.textContent = '';
+    }
+    prefillDelivery(sel ? sel.value : lines[0].id);
+    el.classList.add('on');
+    const q = document.getElementById('dlv-qty');
+    if (q) {
+      q.focus();
+    }
+  }
+
+  function closeDelivery() {
+    const el = document.getElementById('dlv-modal');
+    if (el) {
+      el.classList.remove('on');
+    }
+  }
+
+  function saveDelivery() {
+    const s = ns.State.getState();
+    const err = document.getElementById('dlv-err');
+    const say = function (msg) {
+      if (err) {
+        err.textContent = msg;
+      }
+    };
+    const lineId = (document.getElementById('dlv-line') || {}).value || '';
+    const line = (s.budgetLines || []).find(l => l.id === lineId);
+    if (!line) {
+      say('Pick the budget line this delivery belongs to.');
+      return;
+    }
+    const qtyRaw = (document.getElementById('dlv-qty') || {}).value;
+    const priceRaw = (document.getElementById('dlv-price') || {}).value;
+    const qty = qtyRaw === '' || qtyRaw == null ? null : parseFloat(qtyRaw);
+    const price = priceRaw === '' || priceRaw == null ? null : parseFloat(priceRaw);
+    const amount = parseFloat((document.getElementById('dlv-amount') || {}).value);
+    if (!isFinite(amount) || amount <= 0) {
+      say('The amount has to be more than zero.');
+      return;
+    }
+    if (qty != null && (!isFinite(qty) || qty <= 0)) {
+      say('The quantity has to be more than zero.');
+      return;
+    }
+    if (price != null && (!isFinite(price) || price < 0)) {
+      say('The price has to be zero or more.');
+      return;
+    }
+    const computed = qty != null && price != null ? Math.round(qty * price * 100) / 100 : null;
+    const reason = ((document.getElementById('dlv-reason') || {}).value || '').trim();
+    if (computed != null && Math.abs(computed - amount) > 0.005 && !reason) {
+      say('The amount differs from quantity x price. Say why in the box above.');
+      const box = document.getElementById('dlv-reason');
+      if (box) {
+        box.focus();
+      }
+      return;
+    }
+    const status = (document.getElementById('dlv-status') || {}).value || 'received';
+    const paidDate = (document.getElementById('dlv-paid') || {}).value || '';
+    if (status === 'paid' && !paidDate) {
+      say('A paid delivery needs the date it was paid.');
+      return;
+    }
+    const entry = {
+      date: (document.getElementById('dlv-date') || {}).value || U.todayStr(),
+      budgetLineId: lineId,
+      amount: Math.round(amount * 100) / 100,
+      notes: ((document.getElementById('dlv-note') || {}).value || '').trim(),
+      status: status,
+      paidDate: paidDate,
+      by: deliveryWho()
+    };
+    if (qty != null) {
+      entry.qty = qty;
+      entry.unit =
+        ((document.getElementById('dlv-unit') || {}).value || '').trim() || line.unit || '';
+    }
+    if (price != null) {
+      entry.unitPrice = price;
+    }
+    if (computed != null) {
+      entry.computedAmount = computed;
+    }
+    if (reason) {
+      entry.overrideReason = reason;
+    }
+    const supplier = ((document.getElementById('dlv-supplier') || {}).value || '').trim();
+    if (supplier) {
+      entry.supplier = supplier;
+    }
+    const ref = ((document.getElementById('dlv-ref') || {}).value || '').trim();
+    if (ref) {
+      entry.ref = ref;
+    }
+    if (_dlv.photo) {
+      entry.photo = _dlv.photo;
+    }
+    ns.State.updateState(function (st) {
+      if (!st.spendLog) {
+        st.spendLog = [];
+      }
+      if (!st.nspid) {
+        st.nspid = 1;
+      }
+      entry.id = 'S' + st.nspid++;
+      st.spendLog.push(entry);
+    });
+    closeDelivery();
+    R.renderBudget();
+    ns.App.showToast('Delivery recorded against ' + (line.category || line.id) + '.', 'ok');
+  }
+
+  // The per-line quantity and price picture, under the Spend Log. Only lines
+  // that carry a quantity or have deliveries appear - a manual line has
+  // nothing to say here.
+  function renderDeliveries() {
+    const body = document.getElementById('bud-deliveries');
+    const wrap = document.getElementById('bud-deliveries-wrap');
+    if (!body || !wrap) {
+      return;
+    }
+    const s = ns.State.getState();
+    const cur = s.currency || 'USD';
+    const fmt = n => (U.fmtMoney ? U.fmtMoney(n, cur) : '$' + Math.round(+n || 0).toLocaleString()); // ok: fixed currency table + digits only
+    const rows = (s.budgetLines || [])
+      .map(l => ({ l: l, r: deliveryRollup(l, s) }))
+      .filter(x => x.r.hasQty || x.r.spent > 0);
+    if (!rows.length) {
+      wrap.classList.add('is-hide');
+      body.innerHTML = '';
+      return;
+    }
+    wrap.classList.remove('is-hide');
+    body.innerHTML = rows
+      .map(function (x) {
+        const l = x.l;
+        const r = x.r;
+        const priceCls = r.priceVar > 0.005 ? 'var-neg' : r.priceVar < -0.005 ? 'var-pos' : '';
+        const qtyTxt = r.hasQty
+          ? U.escapeHtml(r.qtyReceived) +
+            ' of ' +
+            U.escapeHtml(l.qty) +
+            ' ' +
+            U.escapeHtml(l.unit || '')
+          : '-';
+        return (
+          '<tr>' +
+          '<td>' +
+          U.escapeHtml(l.category || l.id) +
+          '</td>' +
+          '<td>' +
+          qtyTxt +
+          '</td>' +
+          '<td>' +
+          (r.hasQty ? U.escapeHtml(r.qtyLeft) + ' ' + U.escapeHtml(l.unit || '') : '-') +
+          '</td>' +
+          '<td>' +
+          fmt(r.moneyLeft) +
+          '</td>' +
+          '<td class="' +
+          priceCls +
+          '">' +
+          (r.hasQty ? (r.priceVar >= 0 ? '+' : '') + fmt(r.priceVar) : '-') +
+          '</td>' +
+          '<td>' +
+          (r.qtyVar == null ? '-' : (r.qtyVar >= 0 ? '+' : '') + fmt(r.qtyVar)) +
+          '</td>' +
+          '<td>' +
+          fmt(r.spent) +
+          (r.owed > 0.005 ? '<span class="dlv-owed">' + fmt(r.owed) + ' owed</span>' : '') +
+          '</td>' +
+          '</tr>'
+        );
+      })
+      .join('');
+  }
+
   ns.Spend = {
     curveFraction: curveFraction,
     budgetLineWindow: budgetLineWindow,
@@ -551,9 +1003,16 @@ var MMGR = window.MMGR || {};
     budgetCumulativePlannedAt: budgetCumulativePlannedAt,
     actualCumulativeAt: actualCumulativeAt,
     budgetLineActual: budgetLineActual,
+    deliveryRollup: deliveryRollup,
+    spendIsSpent: spendIsSpent,
+    spendIsPaid: spendIsPaid,
     addSpendEntry: addSpendEntry,
     delSpendEntry: delSpendEntry,
-    updSpendEntry: updSpendEntry
+    updSpendEntry: updSpendEntry,
+    openDelivery: openDelivery,
+    closeDelivery: closeDelivery,
+    saveDelivery: saveDelivery,
+    renderDeliveries: renderDeliveries
   };
 })(MMGR);
 window.MMGR = MMGR;

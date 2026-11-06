@@ -6144,6 +6144,102 @@ body.dark-mode .team-link-danger {
 #bud-baseline .bl-m {
   color: var(--slate);
 }
+
+/* ---- H-3 (BUDGET-BOQ directive 2026-11-05): Record a delivery ---- */
+#dlv-modal {
+  position: fixed;
+  inset: 0;
+  background: var(--lit-black-75);
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+#dlv-modal.on {
+  display: flex;
+}
+#dlv-modal .dlv-mb {
+  width: 640px;
+  max-width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+#dlv-modal .mbody {
+  overflow: auto;
+}
+.dlv-l {
+  display: block;
+  margin: 10px 0 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--slate);
+}
+.dlv-in {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card-bg, transparent);
+  color: inherit;
+  font: inherit;
+  font-size: 0.84rem;
+}
+.dlv-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.dlv-foot {
+  align-items: end;
+}
+.dlv-who {
+  font-size: 0.8rem;
+  color: var(--slate);
+  padding-bottom: 6px;
+}
+.dlv-file {
+  padding: 5px;
+  font-size: 0.76rem;
+}
+.dlv-err {
+  margin: 8px 0 0;
+  min-height: 1em;
+  font-size: 0.76rem;
+  color: var(--danger);
+}
+.dlv-override {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--amber);
+  background: var(--surface-2, rgba(0, 0, 0, 0.03));
+  border-radius: 0 8px 8px 0;
+}
+.sp-legacy {
+  display: block;
+  font-size: 0.66rem;
+  color: var(--slate);
+}
+.dlv-owed {
+  display: block;
+  font-size: 0.66rem;
+  color: var(--amber);
+}
+@media (max-width: 620px) {
+  .dlv-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+.bud-actions {
+  white-space: nowrap;
+}
+.bud-actions .btn + .btn {
+  margin-left: 4px;
+}
 /* ---- RBAC sprint 3: access tools ---------------------------------------- */
 .team-tools {
   display: flex;

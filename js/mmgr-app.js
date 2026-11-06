@@ -4506,6 +4506,12 @@ window.MMGR = MMGR;
     boqImport: () => window.MMGR.BoqBridge && window.MMGR.BoqBridge.open(),
     boqClose: () => window.MMGR.BoqBridge && window.MMGR.BoqBridge.close(),
     boqApply: () => window.MMGR.BoqBridge && window.MMGR.BoqBridge.applyOpen(),
+    // H-3: record a delivery against a budget line (the row button passes its
+    // id; the toolbar button opens with the first line picked).
+    deliveryOpen: el =>
+      window.MMGR.Spend && window.MMGR.Spend.openDelivery(el && el.getAttribute('data-id')),
+    deliveryClose: () => window.MMGR.Spend && window.MMGR.Spend.closeDelivery(),
+    deliverySave: () => window.MMGR.Spend && window.MMGR.Spend.saveDelivery(),
     delBudgetLine: el => window.MMGR.Budget.delBudgetLine(parseInt(el.getAttribute('data-idx'))),
     updEnvelope: (el, e) => window.MMGR.Budget.updEnvelope(el.value, e && e.type),
     addStake: () => window.MMGR.Stakeholders.addStake(),

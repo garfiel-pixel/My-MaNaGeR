@@ -656,7 +656,15 @@
 // send never duplicates. Also fixed: a bill of all-in or custom lines printed
 // "Bill total: $0" because boqTotals summed mat + lab, which are 0 on that
 // path. Changed shell assets: project.html, calculator.html, dist/bundle.js.
-const CACHE = 'mmgr-shell-v559';
+// v560 - RECORD A DELIVERY (H-3, same directive). The Spend Log entry now
+// carries quantity, unit price, supplier, ticket, status, paid date, who
+// recorded it and an optional ticket photo; an entry without them is a legacy
+// entry and still counts exactly as before. A line reads 20 of 50 received,
+// 30 remaining, money left, price variance and quantity variance, so an
+// overspend says whether it was price or amount. An ordered entry is a
+// commitment, not money out. Changed shell assets: project.html,
+// dist/bundle.js.
+const CACHE = 'mmgr-shell-v560';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

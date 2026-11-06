@@ -66,12 +66,23 @@ var MMGR = window.MMGR || {};
             `<option value="${U.escapeHtml(l.id)}" ${cur === l.id ? 'selected' : ''}>${U.escapeHtml(l.category || 'Untitled')}</option>`
         )
         .join('');
+    // H-3: a recorded delivery carries its quantity, price, supplier, ref and
+    // status; a legacy entry carries only an amount and is labelled as such so
+    // nobody reads the blank columns as lost data.
+    const statusLabel = e =>
+      ({ ordered: 'Ordered', received: 'Received', invoiced: 'Invoiced', paid: 'Paid' })[
+        e.status || 'received'
+      ] || 'Received';
     b.innerHTML = log
       .map(
         (e, i) => `<tr>
       <td><input type="date" value="${U.escapeHtml(e.date || '')}" data-action="updSpendEntry" data-idx="${i}" data-field="date"></td>
       <td><select data-action="updSpendEntry" data-idx="${i}" data-field="budgetLineId">${lineOpts(e.budgetLineId)}</select></td>
+      <td>${e.qty == null ? '<span class="sp-legacy">legacy amount</span>' : U.escapeHtml(e.qty) + ' ' + U.escapeHtml(e.unit || '')}</td>
+      <td>${e.unitPrice == null ? '-' : fmt$(e.unitPrice, s.currency || 'USD')}</td>
       <td><input type="number" value="${U.escapeHtml(e.amount || 0)}" min="0" step="10" data-action="updSpendEntry" data-idx="${i}" data-field="amount" style="width:90px"></td>
+      <td>${U.escapeHtml([e.supplier, e.ref].filter(Boolean).join(' / ') || '-')}</td>
+      <td>${U.escapeHtml(statusLabel(e))}${e.status === 'ordered' ? '<span class="sp-legacy">not spent</span>' : ''}</td>
       <td><input type="text" value="${U.escapeHtml(e.notes || '')}" data-action="updSpendEntry" data-idx="${i}" data-field="notes" placeholder="Invoice #, vendor..."></td>
       <td><button class="btn btn-s btn-d" data-action="delSpendEntry" data-idx="${i}">×</button></td>
     </tr>`
@@ -314,7 +325,7 @@ var MMGR = window.MMGR || {};
       <td><select data-action="updField" data-module="Budget" data-field="waiverStatus" data-idx="${i}" title="Lien waiver status">${['pending', 'conditional', 'unconditional', 'not_required'].map(w => `<option ${(l.waiverStatus || 'pending') === w ? 'selected' : ''}>${w}</option>`).join('')}</select></td>
       <td><input type="date" value="${U.escapeHtml(l.waiverReceivedAt || '')}" data-action="updField" data-module="Budget" data-field="waiverReceivedAt" data-idx="${i}" title="Date the waiver was received"></td>
       <td><input type="text" value="${U.escapeHtml(l.notes || '')}" data-action="updField" data-module="Budget" data-field="notes" data-idx="${i}" placeholder="-"></td>
-      <td><button class="btn btn-s btn-d" data-action="delBudgetLine" data-idx="${i}">×</button></td>
+      <td class="bud-actions"><button class="btn btn-s btn-n" data-action="deliveryOpen" data-id="${U.escapeHtml(l.id || '')}" title="Record a delivery against this line" aria-label="Record a delivery against this line"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cart"></use></svg></button><button class="btn btn-s btn-d" data-action="delBudgetLine" data-idx="${i}">×</button></td>
     </tr>`
       )
       .join('');
@@ -356,6 +367,9 @@ var MMGR = window.MMGR || {};
     // at.
     if (ns.BoqBridge && ns.BoqBridge.renderBaselineStrip) {
       ns.BoqBridge.renderBaselineStrip();
+    }
+    if (SpendMod && SpendMod.renderDeliveries) {
+      SpendMod.renderDeliveries();
     }
     renderPayApps();
   }

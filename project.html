@@ -899,10 +899,21 @@
         </tr></thead><tbody id="payapp-body"></tbody></table></div>
       </div>
       <div class="card m0a mt16">
-        <div class="card-title">Spend Log , Dated Actuals<div class="g6"><button class="btn btn-g btn-s" data-action="addSpendEntry">+ Add Spend Entry</button></div></div>
+        <div class="card-title">Spend Log , Dated Actuals<div class="g6">
+          <button class="btn btn-g btn-s" data-action="deliveryOpen"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cart"></use></svg> Record delivery</button>
+          <button class="btn btn-n btn-s" data-action="addSpendEntry">+ Add Spend Entry</button>
+        </div></div>
         <div class="ox"><table class="dt"><thead><tr>
-          <th class="w120">Date</th><th>Budget Line</th><th class="w100">Amount</th><th>Notes</th><th class="w60"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
+          <th class="w110">Date</th><th>Budget Line</th><th class="w100">Quantity</th><th class="w110">Unit price</th><th class="w110">Amount</th><th>Supplier / ref</th><th class="w100">Status</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
         </tr></thead><tbody id="spendlog-body"></tbody></table></div>
+      </div>
+      <!-- H-3 (BUDGET-BOQ directive 2026-11-05): what each line has received,
+           what is left, and whether an overspend is price or quantity. -->
+      <div class="card m0a mt16 is-hide" id="bud-deliveries-wrap">
+        <div class="card-title">Quantities and prices by line<span class="ct-sub">Received against the bill, and where the money went</span></div>
+        <div class="ox"><table class="dt"><thead><tr>
+          <th>Budget Line</th><th class="w140">Received</th><th class="w120">Remaining</th><th class="w120">Money left</th><th class="w120">Price variance</th><th class="w120">Quantity variance</th><th class="w140">Spent</th>
+        </tr></thead><tbody id="bud-deliveries"></tbody></table></div>
       </div>
     </div>
   </div>

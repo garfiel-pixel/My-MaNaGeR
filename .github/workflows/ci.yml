@@ -936,6 +936,11 @@ jobs:
       - name: "T4: BOQ to budget bridge (qa-boq-bridge)"
         id: qa-boq-bridge
         run: node tools/qa-boq-bridge.cjs
+      # H-3: 20 of 50 loads at 5 percent above the BOQ rate must read 30 left,
+      # 29,000 of money left and 1,000 of price variance, in a real browser.
+      - name: "T4: Record a delivery (qa-delivery)"
+        id: qa-delivery
+        run: node tools/qa-delivery.cjs
       # WAVE 5.5 (A3): auto-update for cloud projects. Admin gate + real
       # Chrome, /api/cloud/* stubbed at the network layer, so the save path's
       # debounce coalescing, retry-then-fail status and offline hold are all

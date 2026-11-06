@@ -76,6 +76,81 @@ button.code-which:focus-visible {
   line-height: 1.45;
   color: var(--text-secondary);
 }
+/* Header plan control (admin panel). OWNER 2026-11-06: the personal plan is
+   visible in the header, not only in the off-canvas rail. Free accounts read
+   "Upgrade to Premium" and go to pricing.html; paid accounts read "Premium"
+   and open a popover with Manage subscription and the typed-CANCEL flow. */
+.plan-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.plan-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border: 1px solid color-mix(in oklch, var(--gold) 32%, transparent);
+  border-radius: 100px;
+  background: color-mix(in oklch, var(--gold) 10%, transparent);
+  color: var(--gold-text);
+  font-family: inherit;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.plan-badge:hover {
+  background: color-mix(in oklch, var(--gold) 16%, transparent);
+}
+.plan-badge:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.plan-badge .ico {
+  width: 12px;
+  height: 12px;
+}
+/* The display:inline-flex above outranks the UA hidden rule. */
+.plan-badge[hidden] {
+  display: none;
+}
+.plan-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 120;
+  width: 300px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  padding: 14px;
+  border: var(--glass-border);
+  border-radius: var(--squircle-md);
+  background: var(--card);
+  box-shadow: var(--glass-rim), var(--glass-shadow);
+  text-align: left;
+  white-space: normal;
+}
+.plan-pop[hidden] {
+  display: none;
+}
+/* Narrow screens wrap the header actions, so the badge sits at the LEFT of
+   its row. Anchoring the popover to the badge's right edge would push most of
+   it off-screen; anchor its left edge instead and let the max-width clamp it. */
+@media (max-width: 560px) {
+  .plan-pop {
+    left: 0;
+    right: auto;
+  }
+}
+.plan-pop-h {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--text-heading);
+  margin-bottom: 8px;
+}
 /* Header backup control (admin panel). OWNER 2026-11-05: the badge is a
    button now - hover (pointer devices) or tap opens the backup panel. It
    stays a notifier line, not a pill; the popup carries the settings. */

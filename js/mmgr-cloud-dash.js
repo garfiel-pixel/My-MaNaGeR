@@ -27,6 +27,9 @@
   const RAIL_CLOUD = 'rail-cloud-list';
   const RAIL_UPGRADE = 'rail-upgrade';
   const RAIL_PLAN = 'rail-plan';
+  // Top-of-page plan control (owner 2026-11-06): Premium / Upgrade to Premium
+  // at the top of the launcher, linking to the pricing page.
+  const TOP_PLAN = 'top-plan';
 
   function $(id) {
     return document.getElementById(id);
@@ -561,52 +564,71 @@
   // unchanged on the current deploy. The button opens the checkout via
   // POST /api/billing/checkout (session-gated) and reports outcomes in the
   // existing live-region status line.
+  function hideTopPlan() {
+    const top = $(TOP_PLAN);
+    if (top) {
+      top.hidden = true;
+    }
+  }
+
+  /* Top control: the same plan state as the rail, one click to the pricing
+     page. The icon and label swap in place, so the link's href never changes. */
+  function renderTopPlan(active) {
+    const top = $(TOP_PLAN);
+    if (!top) {
+      return;
+    }
+    const ico = $('top-plan-ico');
+    if (ico) {
+      ico.setAttribute('href', 'css/mmgr-icons.svg#' + (active ? 'i-check' : 'i-sparkle'));
+    }
+    const txt = $('top-plan-text');
+    if (txt) {
+      txt.textContent = active ? 'Premium' : 'Upgrade to Premium';
+    }
+    top.setAttribute(
+      'aria-label',
+      active ? 'Premium - view plans' : 'Upgrade to Premium - view plans'
+    );
+    top.hidden = false;
+  }
+
   async function loadPlan() {
     const plan = $(RAIL_PLAN);
     const railUp = $(RAIL_UPGRADE);
-    if (!plan && !railUp) {
+    const top = $(TOP_PLAN);
+    if (!plan && !railUp && !top) {
       return;
     }
+    const hideAll = function () {
+      if (plan) {
+        plan.hidden = true;
+      }
+      if (railUp) {
+        railUp.hidden = true;
+      }
+      hideTopPlan();
+    };
     let res;
     try {
       res = await fetch('/api/billing/status', { method: 'GET', credentials: 'same-origin' });
     } catch (e) {
-      if (plan) {
-        plan.hidden = true;
-      }
-      if (railUp) {
-        railUp.hidden = true;
-      }
+      hideAll();
       return;
     }
     if (!res.ok) {
-      if (plan) {
-        plan.hidden = true;
-      }
-      if (railUp) {
-        railUp.hidden = true;
-      }
+      hideAll();
       return;
     }
     let data = null;
     try {
       data = await res.json();
     } catch (e) {
-      if (plan) {
-        plan.hidden = true;
-      }
-      if (railUp) {
-        railUp.hidden = true;
-      }
+      hideAll();
       return;
     }
     if (!data || !data.ok || !data.configured) {
-      if (plan) {
-        plan.hidden = true;
-      }
-      if (railUp) {
-        railUp.hidden = true;
-      }
+      hideAll();
       return;
     }
     // Single source of truth for the active tier: the billing status fetch.
@@ -630,6 +652,7 @@
       if (railUp) {
         railUp.hidden = true;
       }
+      renderTopPlan(true);
     } else {
       // Free plan -> a simple Upgrade to Premium button (owner: "something
       // simple like upgrade to premium"), with a small note at the cap.
@@ -648,6 +671,7 @@
               ' used</span>'
             : '');
       }
+      renderTopPlan(false);
     }
   }
 
@@ -1275,6 +1299,7 @@
       railUp.hidden = true;
       railUp.innerHTML = '';
     }
+    hideTopPlan();
     const pills = document.querySelectorAll('[data-plan-badge]');
     for (let i = 0; i < pills.length; i++) {
       pills[i].hidden = true;

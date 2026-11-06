@@ -143,9 +143,9 @@ header h1 .mark{color:var(--gold);}
   /* OWNER 2026-10-31: the admin header actions are text, not pills. No fill,
      no border and no rounded chrome at rest; the highlight appears on hover
      and the focus ring stays for keyboard users. */
-  .hdr-actions .btn{background:transparent;border:0;border-radius:6px;padding:5px 7px;color:var(--slate);box-shadow:none;}
-  .hdr-actions .btn:hover{color:var(--gold-text);background:color-mix(in srgb, var(--gold) 10%, transparent);}
-  .hdr-actions .btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+  .hdr-actions > .btn{background:transparent;border:0;border-radius:6px;padding:5px 7px;color:var(--slate);box-shadow:none;}
+  .hdr-actions > .btn:hover{color:var(--gold-text);background:color-mix(in srgb, var(--gold) 10%, transparent);}
+  .hdr-actions > .btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
 /* OWNER 2026-11-05: the admin panel is for every user, so the two site-wide
    operator cards do not sit open. One line, native details, keyboard-safe. */
 .operator-tools{margin-top:16px;}
@@ -413,6 +413,20 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
       <h1><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> <span class="mark">Admin</span> Panel</h1>
     </div>
     <div class="hdr-actions">
+      <!-- YOUR PLAN (owner 2026-11-06): visible in the header, not buried in
+           the off-canvas rail. Free -> "Upgrade to Premium" opens the pricing
+           page; paid -> "Premium" opens a popover with Manage subscription and
+           the typed-CANCEL flow. Rendered by js/mmgr-billing-manage.js. -->
+      <div class="plan-wrap" id="plan-wrap">
+        <button type="button" class="plan-badge" id="plan-badge" aria-expanded="false" aria-controls="plan-pop" hidden>
+          <svg class="ico" aria-hidden="true"><use id="plan-badge-ico" href="css/mmgr-icons.svg#i-sparkle"></use></svg>
+          <span id="plan-badge-text">Upgrade to Premium</span>
+        </button>
+        <div class="plan-pop" id="plan-pop" role="group" aria-label="Your plan" hidden>
+          <div class="plan-pop-h">Your plan</div>
+          <div class="db-plan" id="plan-body" hidden></div>
+        </div>
+      </div>
       <!-- OWNER 2026-11-05: the backup badge is a control, not a label. Hover
            (pointer devices) or tap opens the panel: what "Backed up" means,
            plus a real auto-backup switch wired to the same mmgr_drive_auto
@@ -573,16 +587,10 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
       </div>
     </nav>
     <div class="db-foot">
-      <!-- PLAN STATUS (owner 2026-11-05): mirrors the app rail footer - a
-           Premium badge with Manage subscription on a paid plan, an Upgrade
-           to Premium button on the free plan, both hidden while billing is
-           unconfigured or the visitor is signed out. Rendered by
-           js/mmgr-billing-manage.js, the same module that owns the cancel
-           flow. -->
-      <div class="db-plan" id="rail-plan" hidden></div>
-      <button type="button" id="rail-upgrade" class="db-upgrade" data-bmg="upgrade" hidden>Upgrade to Premium</button>
       <!-- OWNER 2026-09-07: sign-in lives ONLY on the app page. Admin
-           shows the synced state read-only (no entry point here). -->
+           shows the synced state read-only (no entry point here). The plan
+           control is in the header now, where it is visible without opening
+           this drawer (owner 2026-11-06). -->
       <div class="db-user auth-bar" id="rail-user"></div>
     </div>
   </aside>

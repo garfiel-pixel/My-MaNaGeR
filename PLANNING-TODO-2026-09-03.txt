@@ -2521,10 +2521,10 @@ narrower reading of §14.3).
   qa-ai-win 27/27, qa-drive-state 9/9, qa-consent 37/37, verify-controls-admin
   20/20, qa-hero-globe 16/16, qa-landing-ui 43/43, npm run verify exit 0.
   Shell v535. Uncommitted at the time of writing.
-- CI REPAIR 2026-11-06 (admin premium rail, one red run 42162617268): the
-  T-NEWTAB static gate failed on js/mmgr-billing-manage.js because the admin
-  rail's Upgrade button opens Paddle checkout in its own tab. The deliberate
-  exception is recorded in tools/newtab-allow.json (the synchronous
-  about:blank pre-open and the checkoutUrl navigation), matching the launcher
-  and marketing modules. VERIFIED: verify-newtab PASS, CI run 42163758888 all
-  six jobs success, deployed version 62b24777. Shell v548.
+- CI REPAIR 2026-11-06 (admin plan control, one red run 42162617268): the
+  T-NEWTAB static gate failed on js/mmgr-billing-manage.js while the admin
+  upgrade control briefly opened Paddle checkout in its own tab. The final
+  design puts the launcher's plan pill at the top of app.html and the admin
+  account's plan badge in the admin header; both free controls go to
+  pricing.html, so the module has no new-tab site and the temporary
+  allow-list entries were removed. VERIFIED: verify-newtab PASS. Shell v549.

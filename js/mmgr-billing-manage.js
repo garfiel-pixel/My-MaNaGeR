@@ -1,22 +1,29 @@
 /* ============================================================
-   mmgr-billing-manage.js - Admin Panel "Manage subscription"
-   (Wave 8.10, owner 2026-10-06)
+   mmgr-billing-manage.js - Admin Panel "Your plan"
+   (Wave 8.10, owner 2026-10-06; header control 2026-11-06)
    ------------------------------------------------------------
-   Renders into the admin rail's #rail-plan strip when the signed-in
-   owner has an ACTIVE subscription, and lets them cancel at the end
-   of the period they already paid for. The cancel is a session-gated
-   DELETE /api/billing/subscription; the server schedules the change
-   on Paddle and only Paddle's webhook flips the local status, so
-   access is never revoked early and the row is never deleted.
-   Self-contained: delegated clicks, no inline script, no ACTION_MAP
-   entry, so no CSP hash changes. Dormant when billing is unconfigured
-   or no plan is active, so a static host is unaffected.
+   Renders the signed-in owner's plan in the admin HEADER, where it is
+   visible without opening the off-canvas rail:
+     - free plan  -> "Upgrade to Premium", one click to pricing.html
+     - paid plan  -> "Premium", opening a popover with Manage subscription
+   Manage subscription lets the owner cancel at the end of the period they
+   already paid for. The cancel is a session-gated DELETE
+   /api/billing/subscription; the server schedules the change on Paddle and
+   only Paddle's webhook flips the local status, so access is never revoked
+   early and the row is never deleted.
+   Self-contained: delegated clicks, no inline script, no ACTION_MAP entry,
+   so no CSP hash changes. Dormant when billing is unconfigured or the
+   visitor is signed out, so a static host is unaffected.
    ============================================================ */
 (function () {
   'use strict';
 
-  var PLAN = 'rail-plan';
-  var UPGRADE = 'rail-upgrade';
+  var PLAN = 'plan-body';
+  var BADGE = 'plan-badge';
+  var BADGE_TEXT = 'plan-badge-text';
+  var BADGE_ICO = 'plan-badge-ico';
+  var POP = 'plan-pop';
+  var PRICING_PAGE = 'pricing.html';
   var busy = false;
 
   function $(id) {
@@ -57,48 +64,70 @@
     );
   }
 
+  /* The header badge is the one control: its label, icon and state class all
+     come from the same billing answer as the popover body. */
+  function setBadge(active) {
+    var badge = $(BADGE);
+    if (!badge) {
+      return;
+    }
+    var ico = $(BADGE_ICO);
+    if (ico) {
+      ico.setAttribute('href', 'css/mmgr-icons.svg#' + (active ? 'i-check' : 'i-sparkle'));
+    }
+    var txt = $(BADGE_TEXT);
+    if (txt) {
+      txt.textContent = active ? 'Premium' : 'Upgrade to Premium';
+    }
+    badge.setAttribute(
+      'aria-label',
+      active ? 'Premium - manage your subscription' : 'Upgrade to Premium - view plans'
+    );
+    badge.classList.toggle('on', active);
+    badge.hidden = false;
+  }
+
+  function closePop() {
+    var pop = $(POP);
+    var badge = $(BADGE);
+    if (pop) {
+      pop.hidden = true;
+    }
+    if (badge) {
+      badge.setAttribute('aria-expanded', 'false');
+    }
+  }
+
+  function openPop() {
+    var pop = $(POP);
+    var badge = $(BADGE);
+    if (pop) {
+      pop.hidden = false;
+    }
+    if (badge) {
+      badge.setAttribute('aria-expanded', 'true');
+    }
+  }
+
   function renderActive(plan, periodEnd) {
     plan.hidden = false;
     plan.innerHTML =
       badgeActive(periodEnd) +
       '<button type="button" class="btn btn-n btn-s" data-bmg="manage">Manage subscription</button>';
-    var up = $(UPGRADE);
-    if (up) {
-      up.hidden = true;
-    }
-  }
-
-  /* FREE PLAN (owner 2026-11-05): the rail shows the same simple "Upgrade to
-     Premium" control as app.html. At the project cap it also says how much of
-     the allowance is used, so the reason to upgrade is visible rather than
-     implied. Hidden entirely while billing is unconfigured. */
-  function renderUpgrade(count, cap) {
-    var plan = $(PLAN);
-    var up = $(UPGRADE);
-    if (plan) {
-      plan.hidden = true;
-    }
-    if (!up) {
-      return;
-    }
-    var atLimit = cap !== null && cap !== undefined && count >= cap;
-    up.hidden = false;
-    up.innerHTML =
-      'Upgrade to Premium' +
-      (atLimit
-        ? '<span class="db-upgrade-note">' + Number(count) + ' of ' + Number(cap) + ' used</span>'
-        : '');
   }
 
   function hidePlan() {
     var plan = $(PLAN);
-    var up = $(UPGRADE);
+    var badge = $(BADGE);
     if (plan) {
       plan.hidden = true;
+      plan.innerHTML = '';
     }
-    if (up) {
-      up.hidden = true;
+    if (badge) {
+      badge.hidden = true;
+      badge.classList.remove('on');
     }
+    closePop();
   }
 
   /* OWNER 2026-10-09: cancelling takes TWO deliberate acts - type the word, then
@@ -169,7 +198,8 @@
 
   async function loadPlan() {
     var plan = $(PLAN);
-    if (!plan) {
+    var badge = $(BADGE);
+    if (!plan && !badge) {
       return;
     }
     var res;
@@ -195,65 +225,18 @@
       return;
     }
     if (!data.active) {
-      // Free plan: the rail offers the upgrade, exactly like app.html.
-      renderUpgrade(data.projectCount || 0, data.projectCap);
+      // Free plan: the badge itself is the upgrade path (pricing.html).
+      setBadge(false);
+      if (plan) {
+        plan.hidden = true;
+        plan.innerHTML = '';
+      }
+      closePop();
       return;
     }
+    setBadge(true);
     periodEnd = data.currentPeriodEnd || null;
     renderActive(plan, periodEnd);
-  }
-
-  /* Same contract as app.html's upgradePlan(): open the tab SYNCHRONOUSLY
-     inside the click so the browser keeps the user activation, then point it
-     at the checkout URL. Opening after the await is what made the launcher's
-     button silently do nothing. */
-  async function upgradePlan() {
-    var plan = $(PLAN);
-    var tab = window.open('about:blank', '_blank');
-    try {
-      var res = await fetch('/api/billing/checkout', {
-        method: 'POST',
-        credentials: 'same-origin'
-      });
-      var data = await res.json().catch(function () {
-        return {};
-      });
-      if (!res.ok || !data.ok || !data.checkoutUrl) {
-        if (tab) {
-          try {
-            tab.close();
-          } catch (e) {
-            /* already gone */
-          }
-        }
-        renderError(
-          plan,
-          res.status === 503
-            ? 'Billing is not configured on this server yet, so no upgrade is available.'
-            : (data && data.error) || 'Checkout failed (HTTP ' + res.status + ').'
-        );
-        return;
-      }
-      if (tab) {
-        try {
-          tab.opener = null;
-          tab.location.replace(data.checkoutUrl);
-        } catch (e) {
-          window.open(data.checkoutUrl, '_blank', 'noopener');
-        }
-      } else {
-        window.open(data.checkoutUrl, '_blank', 'noopener');
-      }
-    } catch (e) {
-      if (tab) {
-        try {
-          tab.close();
-        } catch (e2) {
-          /* already gone */
-        }
-      }
-      renderError(plan, 'Could not reach the server. Try again in a moment.');
-    }
   }
 
   async function cancelSubscription() {
@@ -290,38 +273,58 @@
   }
 
   document.addEventListener('click', function (e) {
-    var el = e.target && e.target.closest ? e.target.closest('[data-bmg]') : null;
-    if (!el) {
-      return;
-    }
-    var act = el.getAttribute('data-bmg');
-    var plan = $(PLAN);
-    if (act === 'upgrade') {
+    var badge = e.target && e.target.closest ? e.target.closest('#' + BADGE) : null;
+    if (badge) {
       e.preventDefault();
-      upgradePlan();
-      return;
-    }
-    if (act === 'manage') {
-      e.preventDefault();
-      renderConfirm(plan, periodEnd);
-      return;
-    }
-    if (act === 'keep') {
-      e.preventDefault();
-      renderActive(plan, periodEnd);
-      return;
-    }
-    if (act === 'confirm') {
-      e.preventDefault();
-      // Belt and braces: the button is disabled until the word matches, but the
-      // typed value is re-read here too, so a programmatic click cannot fire a
-      // cancel that the user never confirmed.
-      var code = $('bmg-code');
-      if (!wordMatches(code && code.value)) {
+      if (!badge.classList.contains('on')) {
+        window.location.href = PRICING_PAGE;
         return;
       }
-      cancelSubscription();
+      var pop = $(POP);
+      if (pop && pop.hidden) {
+        openPop();
+      } else {
+        closePop();
+      }
       return;
+    }
+    var el = e.target && e.target.closest ? e.target.closest('[data-bmg]') : null;
+    if (el) {
+      var act = el.getAttribute('data-bmg');
+      var plan = $(PLAN);
+      if (act === 'manage') {
+        e.preventDefault();
+        renderConfirm(plan, periodEnd);
+        return;
+      }
+      if (act === 'keep') {
+        e.preventDefault();
+        renderActive(plan, periodEnd);
+        return;
+      }
+      if (act === 'confirm') {
+        e.preventDefault();
+        // Belt and braces: the button is disabled until the word matches, but the
+        // typed value is re-read here too, so a programmatic click cannot fire a
+        // cancel that the user never confirmed.
+        var code = $('bmg-code');
+        if (!wordMatches(code && code.value)) {
+          return;
+        }
+        cancelSubscription();
+        return;
+      }
+    }
+    // A click anywhere outside the plan control closes the popover.
+    var wrap = e.target && e.target.closest ? e.target.closest('#plan-wrap') : null;
+    if (!wrap) {
+      closePop();
+    }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      closePop();
     }
   });
 
@@ -345,7 +348,7 @@
     btn.setAttribute('aria-disabled', ok ? 'false' : 'true');
   });
 
-  /* A session can start or end in another tab. Keep the rail truthful rather
+  /* A session can start or end in another tab. Keep the header truthful rather
      than leaving a stale control that can only answer 403. */
   document.addEventListener('mmgr:google-signed-in', loadPlan);
   document.addEventListener('mmgr:google-signed-out', hidePlan);

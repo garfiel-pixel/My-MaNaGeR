@@ -473,6 +473,15 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;visibility:h
     <button type="button" id="db-theme-quick" class="db-quick" data-action="tglThemeQuick" aria-label="Appearance" title="Appearance" style="right:12px;"><svg class="ico" aria-hidden="true"><use id="db-theme-quick-ico" href="css/mmgr-icons.svg#i-palette"></use></svg></button>
     <!-- SEARCH: project search for users with many projects -->
     <button type="button" id="db-search-btn" class="db-quick" data-action="openProjectSearch" aria-label="Search projects" title="Search projects" style="right:54px;"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg></button>
+    <!-- PLAN CONTROL (owner 2026-11-06): visible after sign-in, at the top
+         where the account is shown. Free -> "Upgrade to Premium", paid ->
+         "Premium"; both open the pricing page, where a plan is chosen and
+         checkout starts. Rendered by js/mmgr-cloud-dash.js loadPlan(); hidden
+         while signed out or billing is unconfigured. -->
+    <a href="pricing.html" id="top-plan" class="top-plan" hidden aria-label="View plans">
+      <svg class="ico" aria-hidden="true"><use id="top-plan-ico" href="css/mmgr-icons.svg#i-sparkle"></use></svg>
+      <span id="top-plan-text">Upgrade to Premium</span>
+    </a>
     <!-- SIGNED-IN INDICATOR (hidden - sign-in lives in sidebar only) -->
     <button type="button" id="db-user-avatar" class="db-avatar" data-action="openSignIn" aria-label="Sign in" title="Sign in" style="display:none;">
       <span class="db-avatar-box"><span class="db-avatar-ring"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg></span><span class="db-avatar-dot" hidden></span></span>

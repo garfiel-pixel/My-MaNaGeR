@@ -558,7 +558,13 @@
 // the "N of M used" note at the free cap) on the free plan, both hidden while
 // billing is unconfigured or the visitor is signed out. Changed shell assets:
 // admin.html, dist/admin-bundle.js.
-const CACHE = 'mmgr-shell-v548';
+// v549 - PLAN CONTROLS WHERE THE OWNER LOOKS (owner 2026-11-06): the launcher
+// shows Premium / Upgrade to Premium at the top of the page, and the admin
+// header carries the account's plan badge with Manage subscription and the
+// typed-CANCEL flow, so neither is buried in the off-canvas rail. Both free
+// controls go to pricing.html. Changed shell assets: app.html, admin.html,
+// dist/app-bundle.js, dist/admin-bundle.js, css/mmgr.css.
+const CACHE = 'mmgr-shell-v549';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

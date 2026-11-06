@@ -37,6 +37,16 @@
       "reason": "Checkout: Paddle's hosted payment page."
     },
     {
+      "file": "js/mmgr-billing-manage.js",
+      "contains": "window.open('about:blank'",
+      "reason": "Checkout: the synchronous pre-open inside the click, so Chrome keeps the user activation and the Paddle tab is not blocked."
+    },
+    {
+      "file": "js/mmgr-billing-manage.js",
+      "contains": "checkoutUrl",
+      "reason": "Checkout: Paddle's hosted payment page opens in its own tab by design."
+    },
+    {
       "file": "js/mmgr-bids.js",
       "contains": "window.open(/^https?:",
       "reason": "A subcontractor's proposal lives on ANOTHER origin, so reading it is an external site by definition."

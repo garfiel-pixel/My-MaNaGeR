@@ -639,7 +639,24 @@
 // planned total otherwise, the plan notice only fires against a real envelope,
 // and every amount prints through the one currency table. Changed shell
 // assets: dist/bundle.js.
-const CACHE = 'mmgr-shell-v557';
+// v558 - THE ROW AGREES WITH THE CARD (H-1b, same directive). The per-line
+// variance and percentage columns still read the typed actual box and printed
+// a hard-coded '$' after H-1 fixed the cards, so one row could show a 10,000
+// variance while the Spent card showed 3,000 spent. Both columns now read the
+// same derived figure as the cards, the percentage is the line's own share of
+// its own plan, a line with Spend Log entries shows the derived amount in a
+// read-only box, and the risk-contingency strip and pay-app summary print in
+// the project currency. Changed shell assets: dist/bundle.js.
+// v559 - BUDGET FROM A BILL (H-2, same directive). The calculator now has
+// "Send to project", which flattens a priced bill (work, overhead, tax, site
+// costs, the discount and the contingencies) into ONE handoff record; the
+// project's Budget tab has "From BOQ", which previews every line, applies only
+// what is ticked, freezes Baseline 1 on the first apply and records a variation
+// with its reason on a later one. Matching is on a durable boqRef, so a second
+// send never duplicates. Also fixed: a bill of all-in or custom lines printed
+// "Bill total: $0" because boqTotals summed mat + lab, which are 0 on that
+// path. Changed shell assets: project.html, calculator.html, dist/bundle.js.
+const CACHE = 'mmgr-shell-v559';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

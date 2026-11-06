@@ -61,7 +61,7 @@
       clicks "Connect Google" in Settings > Controls. It is a device label,
       never a gate , offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-VI10LfQVcA0Gp+BXgRtfkutRbOktU4clN9qwD4pE5TI=' 'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4=' 'sha256-1lQZ8ZnhADNPMPnTqfYPbBDeCin0qp40ehxDc065Fmc='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-4D8rs30PyLySPxEZzIGd93S02zTiIGiLGsKyshfHmts=' 'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4=' 'sha256-1lQZ8ZnhADNPMPnTqfYPbBDeCin0qp40ehxDc065Fmc='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
@@ -816,6 +816,7 @@
       <div class="card-title">Budget , Envelope, Committed &amp; Spent
         <div class="g6">
           <button class="btn btn-g btn-s" data-action="addBudgetLine">+ Add Line</button>
+          <button class="btn btn-n btn-s" data-action="boqImport" title="Build the budget from a bill priced in the calculator"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> From BOQ</button>
           <button class="btn btn-n btn-s" data-action="cpAllPage" data-section="bud"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy All</button>
         </div>
       </div>
@@ -839,6 +840,9 @@
         <div class="card m0a" ><div class="card-title ct-sm" >Remaining</div><div class="stat-md" id="bud-remaining">$0</div><div class="stat-sm" id="bud-remaining-pct">On budget</div></div>
         <div class="card m0a" ><div class="card-title ct-sm" >Unallocated</div><div class="stat-md" id="bud-unallocated">$0</div></div>
       </div>
+      <!-- H-2 (BUDGET-BOQ directive 2026-11-05): the frozen baseline and the
+           variation total. Hidden until a bill has been applied. -->
+      <div id="bud-baseline" class="is-hide"></div>
       <!-- MARKET-FEATURE-ROADMAP A2: lien-waiver rollup , one line under the
            summary cards; hidden until at least one budget line exists. -->
       <div class="card m0a is-hide" id="bud-waivers-wrap">
@@ -860,9 +864,9 @@
         <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Planned/committed spend exceeds the envelope by <span id="bud-overrun-amt">$0</span>.
       </div>
       <div class="ox"><table class="dt"><thead><tr>
-        <th class="w38">ID</th><th>Category</th><th class="w110">Planned</th><th class="w110">Actual</th>
-        <th class="w100">Variance</th><th class="w80">% of Env</th><th class="w90">Task</th><th class="w100">Curve</th>
-        <th class="w60">Contingency</th><th class="w110">Committed</th><th class="w120">Waiver Status</th><th class="w130">Waiver Received</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
+        <th class="w38">ID</th><th>Category</th><th class="w110">Planned</th><th class="w110">Committed</th><th class="w110">Actual</th>
+        <th class="w100">Variance</th><th class="w80">% of Plan</th><th class="w90">Task</th><th class="w100">Curve</th>
+        <th class="w60">Contingency</th><th class="w120">Waiver Status</th><th class="w130">Waiver Received</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
       </tr></thead><tbody id="bud-body"></tbody></table></div>
       <!-- Cash-Flow S-Curve + Spend Log (MONOLITH-PORTING-GUIDE feature 2) -->
       <div class="card m0a mt16">
@@ -2246,7 +2250,7 @@ document.addEventListener('DOMContentLoaded', function() {
    'js/mmgr-schedule.js','js/mmgr-resources.js','js/mmgr-health.js',
    'js/mmgr-evm.js','js/mmgr-dmaic.js','js/mmgr-meetings.js',
    'js/mmgr-voice.js','js/mmgr-errors.js','js/mmgr-report.js',
-   'js/app/components.js','js/app/confirm.js','js/app/copy-text.js','js/app/sidebar.js','js/mmgr-gantt-view.js','js/mmgr-app.js','js/app/weather.js','js/app/backup.js',
+   'js/app/components.js','js/app/confirm.js','js/app/copy-text.js','js/app/sidebar.js','js/mmgr-gantt-view.js','js/mmgr-app.js','js/app/weather.js','js/app/backup.js','js/mmgr-boq-bridge.js',
    'js/app/export.js','js/app/history.js','js/app/definitions.js',
    'js/mmgr-presence.js','js/mmgr-tasks.js','js/mmgr-risks.js',
    'js/mmgr-stakeholders.js','js/mmgr-bids.js','js/mmgr-closure.js',

@@ -1063,6 +1063,32 @@ html.mmgr-tour-active .bcp-tour-nudge {
   font-size: 0.8rem;
   color: var(--slate);
 }
+/* H-2 (BUDGET-BOQ directive 2026-11-05): the bill's own handoff row. One
+   select, one button, one link - it sits directly under the bill total so the
+   number and the destination are read together. */
+.bcp-boq-send {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 6px;
+}
+.bcp-boq-send select {
+  max-width: 240px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card-bg, transparent);
+  color: inherit;
+  font: inherit;
+  font-size: 0.8rem;
+}
+@media (max-width: 520px) {
+  .bcp-boq-send select {
+    max-width: 100%;
+    width: 100%;
+  }
+}
 /* MAT-3 (REFINEMENT-DIRECTIVE-2026-10-24 section 4): a bill line whose price
    source moved after it was stamped. It sits UNDER its own row instead of
    inside it - the row is one flex line with Edit and Remove on the end, so the

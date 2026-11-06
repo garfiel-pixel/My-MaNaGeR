@@ -4501,6 +4501,11 @@ window.MMGR = MMGR;
     delResource: el => window.MMGR.Resources.delResource(parseInt(el.getAttribute('data-idx'))),
     pushResourcesToBudget: () => window.MMGR.Resources.pushResourcesToBudget(),
     addBudgetLine: () => window.MMGR.Budget.addBudgetLine(),
+    // H-2: the BOQ bridge opens its own preview; nothing is applied until the
+    // person ticks the lines and presses Apply inside it.
+    boqImport: () => window.MMGR.BoqBridge && window.MMGR.BoqBridge.open(),
+    boqClose: () => window.MMGR.BoqBridge && window.MMGR.BoqBridge.close(),
+    boqApply: () => window.MMGR.BoqBridge && window.MMGR.BoqBridge.applyOpen(),
     delBudgetLine: el => window.MMGR.Budget.delBudgetLine(parseInt(el.getAttribute('data-idx'))),
     updEnvelope: (el, e) => window.MMGR.Budget.updEnvelope(el.value, e && e.type),
     addStake: () => window.MMGR.Stakeholders.addStake(),

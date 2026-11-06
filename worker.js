@@ -26,7 +26,7 @@ export { Presence }; // wrangler requires DO classes in the entrypoint
 const INLINE_SCRIPT_HASHES = [
   "'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk='",
   "'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M='",
-  "'sha256-VI10LfQVcA0Gp+BXgRtfkutRbOktU4clN9qwD4pE5TI='",
+  "'sha256-4D8rs30PyLySPxEZzIGd93S02zTiIGiLGsKyshfHmts='",
   "'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4='",
   "'sha256-5zwY7VuJS3UrbdPmpvJBMAK1plLSvLq6uINjysG3x+I='",
   "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='",

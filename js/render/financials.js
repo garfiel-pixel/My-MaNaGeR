@@ -178,10 +178,13 @@ var MMGR = window.MMGR || {};
     // entries. This panel used to sum the typed box, so it could disagree with
     // the dashboard, earned value and pay applications about the same project.
     const SpendMod = ns.Spend;
-    const actual =
-      SpendMod && SpendMod.budgetLineActual
-        ? lines.reduce((sum, l) => sum + SpendMod.budgetLineActual(l, s), 0)
-        : lines.reduce((sum, l) => sum + (+l.actual || 0), 0);
+    // H-1b: ONE helper for the whole panel - the summary cards, the bar and
+    // every row read the same figure. The rows used to print the typed box
+    // while the cards printed the derived value, so one screen could show two
+    // different spend figures for the same line.
+    const lineActual = l =>
+      SpendMod && SpendMod.budgetLineActual ? SpendMod.budgetLineActual(l, s) : +l.actual || 0;
+    const actual = lines.reduce((sum, l) => sum + lineActual(l), 0);
     // P2: an empty envelope is valid. The baseline is the envelope when one is
     // set, otherwise the sum of the planned lines, so a project that never set
     // an envelope is never told it is over budget for spending its own money.
@@ -191,7 +194,7 @@ var MMGR = window.MMGR || {};
     const unallocated = baseline - planned;
     // P9: money prints through the one currency table, never a typed '$'.
     const cur = s.currency || 'USD';
-    const fmt = n => (U.fmtMoney ? U.fmtMoney(n, cur) : '$' + Number(n || 0).toLocaleString());
+    const fmt = n => (U.fmtMoney ? U.fmtMoney(n, cur) : '$' + Number(n || 0).toLocaleString()); // ok: fixed currency table + digits only
     const lineCommitted = l =>
       l.committed !== null && l.committed !== undefined && l.committed !== ''
         ? +l.committed || 0
@@ -208,7 +211,10 @@ var MMGR = window.MMGR || {};
     setVal('bud-committed', fmt(committed));
     setVal(
       'bud-committed-pct',
-      baseline ? Math.round((committed / baseline) * 100) + '% of envelope' : '0%'
+      baseline
+        ? Math.round((committed / baseline) * 100) +
+            (hasEnvelope ? '% of envelope' : '% of planned')
+        : '0%'
     );
     setVal(
       'bud-committed-gap',
@@ -288,16 +294,20 @@ var MMGR = window.MMGR || {};
     if (waiverEl) {
       waiverEl.classList.toggle('is-hide', !waiverTxt);
     }
+    // H-1b: a line with Spend Log entries shows the DERIVED figure in its
+    // actual box and cannot be typed over - the entries are the record, and a
+    // second editable number beside them is how the two screens drifted apart.
+    const loggedIds = new Set((s.spendLog || []).map(e => e.budgetLineId));
     body.innerHTML = lines
       .map(
         (l, i) => `<tr>
       <td>${U.escapeHtml(l.id || 'B' + (i + 1))}</td>
       <td><input type="text" value="${U.escapeHtml(l.category)}" data-action="updField" data-module="Budget" data-field="category" data-idx="${i}"></td>
       <td><input type="number" value="${U.escapeHtml(l.planned || 0)}" min="0" step="100" data-action="updField" data-module="Budget" data-field="planned" data-idx="${i}" style="width:90px"></td>
-      <td><input type="number" value="${U.escapeHtml(l.committed !== null && l.committed !== undefined && l.committed !== '' ? l.committed : '')}" min="0" step="100" data-action="updField" data-module="Budget" data-field="committed" data-idx="${i}" style="width:90px" placeholder="${U.escapeHtml(l.planned || 0)}" title="Committed $ , blank defaults to Planned (C12)"></td>
-      <td><input type="number" value="${U.escapeHtml(l.actual || 0)}" min="0" step="100" data-action="updField" data-module="Budget" data-field="actual" data-idx="${i}" style="width:90px"></td>
-      <td style="color:${(l.planned || 0) - (l.actual || 0) >= 0 ? 'var(--green)' : 'var(--danger)'}">${(l.planned || 0) - (l.actual || 0) >= 0 ? '+' : ''}$${Math.abs((l.planned || 0) - (l.actual || 0)).toLocaleString()}</td>
-      <td>${envelope ? Math.round(((l.actual || 0) / envelope) * 100) + '%' : '0%'}</td>
+      <td><input type="number" value="${U.escapeHtml(l.committed !== null && l.committed !== undefined && l.committed !== '' ? l.committed : '')}" min="0" step="100" data-action="updField" data-module="Budget" data-field="committed" data-idx="${i}" style="width:90px" placeholder="${U.escapeHtml(l.planned || 0)}" title="Committed money, blank defaults to Planned (C12)"></td>
+      <td><input type="number" value="${U.escapeHtml(loggedIds.has(l.id) ? lineActual(l) : l.actual || 0)}" min="0" step="100" data-action="updField" data-module="Budget" data-field="actual" data-idx="${i}" style="width:90px"${loggedIds.has(l.id) ? ' title="Derived from this line’s Spend Log entries" readonly' : ''}></td>
+      <td style="color:${(+l.planned || 0) - lineActual(l) >= 0 ? 'var(--green)' : 'var(--danger)'}">${(+l.planned || 0) - lineActual(l) >= 0 ? '+' : ''}${fmt(Math.abs((+l.planned || 0) - lineActual(l)))}</td>
+      <td>${+l.planned ? Math.round((lineActual(l) / (+l.planned || 1)) * 100) + '%' : '-'}</td>
       <td><select data-action="updField" data-module="Budget" data-field="taskId" data-idx="${i}"><option value="">-</option>${(s.tasks || []).map(t => `<option ${t.id === l.taskId ? 'selected' : ''}>${U.escapeHtml(t.id)}</option>`).join('')}</select></td>
       <td><select data-action="updField" data-module="Budget" data-field="curve" data-idx="${i}">${['linear', 'front-loaded', 'back-loaded', 'bell'].map(c => `<option ${l.curve === c ? 'selected' : ''}>${c}</option>`).join('')}</select></td>
       <td><input type="checkbox" ${l.isContingency ? 'checked' : ''} data-action="updField" data-module="Budget" data-field="isContingency" data-idx="${i}" title="Contingency reserve , compared against risk exposure (2.5)"></td>
@@ -322,24 +332,30 @@ var MMGR = window.MMGR || {};
           '<div class="wx-stats">' +
           '<div class="wx-stat"><div class="k">Risk Exposure (expected value)</div><div class="v ' +
           (exposure ? 'var-neg' : '') +
-          '">$' +
-          Math.round(exposure).toLocaleString() +
+          '">' +
+          fmt(exposure) +
           '</div></div>' +
-          '<div class="wx-stat"><div class="k">Contingency Reserved</div><div class="v">$' +
-          Math.round(cont).toLocaleString() +
+          '<div class="wx-stat"><div class="k">Contingency Reserved</div><div class="v">' +
+          fmt(cont) +
           '</div></div>' +
           '<div class="wx-stat"><div class="k">' +
           (gap > 0 ? 'Exposure Gap' : 'Covered') +
           '</div><div class="v ' +
           (gap > 0 ? 'var-neg' : 'var-pos') +
           '">' +
-          (gap > 0 ? '$' + Math.round(gap).toLocaleString() : 'covered') +
+          (gap > 0 ? fmt(gap) : 'covered') +
           '</div></div>' +
           '</div>';
       }
     }
     if (ns.Claim && ns.Claim.renderLdRollup) {
       ns.Claim.renderLdRollup();
+    }
+    // H-2: the frozen baseline and its variations sit under the cards, so a
+    // planned figure can always be read against the number it was handed over
+    // at.
+    if (ns.BoqBridge && ns.BoqBridge.renderBaselineStrip) {
+      ns.BoqBridge.renderBaselineStrip();
     }
     renderPayApps();
   }
@@ -360,7 +376,10 @@ var MMGR = window.MMGR || {};
       .reduce((t, a) => t + (+a.amount || 0), 0);
     if (sum) {
       sum.textContent = apps.length
-        ? apps.length + ' on file · $' + billed.toLocaleString() + ' billed'
+        ? apps.length +
+          ' on file · ' +
+          (U.fmtMoney ? U.fmtMoney(billed, s.currency || 'USD') : '$' + billed.toLocaleString()) +
+          ' billed'
         : '';
     }
     if (apps.length === 0) {

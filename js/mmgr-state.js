@@ -182,7 +182,7 @@ var MMGR = window.MMGR || {};
   'use strict';
 
   const STORAGE_KEY = 'mmgr_state';
-  const SCHEMA_VERSION = 24;
+  const SCHEMA_VERSION = 25;
 
   // ---- Default State ----
   /** @returns {AppState} */
@@ -236,6 +236,12 @@ var MMGR = window.MMGR || {};
       budgetLines: [],
       budgetEnvelope: 0,
       spendLog: [],
+      // H-2 (BUDGET-BOQ directive 2026-11-05): the frozen baselines and the
+      // variation register the BOQ bridge writes, plus the line-id counter it
+      // hands out ids from.
+      budgetBaselines: [],
+      budgetVariations: [],
+      nblid: 1,
       // Stakeholders
       stakeholders: [],
       // Risks
@@ -849,6 +855,45 @@ var MMGR = window.MMGR || {};
             it.priceHistory = [];
           }
         });
+      }
+      return state;
+    },
+    25: function (state) {
+      // V24 -> V25: BOQ bridge (H-2, BUDGET-BOQ directive 2026-11-05).
+      // Additive and lossless:
+      // - every existing line is stamped source 'manual' / kind 'manual', so
+      //   the bridge can never match or rewrite a hand-typed line;
+      // - the baseline and variation registers exist (empty until a bill is
+      //   applied);
+      // - the line-id counter starts above the highest id already in use.
+      if (Array.isArray(state.budgetLines)) {
+        state.budgetLines.forEach(function (l) {
+          if (!l || typeof l !== 'object') {
+            return;
+          }
+          if (!l.source) {
+            l.source = 'manual';
+          }
+          if (!l.kind) {
+            l.kind = 'manual';
+          }
+        });
+      }
+      if (!Array.isArray(state.budgetBaselines)) {
+        state.budgetBaselines = [];
+      }
+      if (!Array.isArray(state.budgetVariations)) {
+        state.budgetVariations = [];
+      }
+      if (!state.nblid) {
+        var maxId = 0;
+        (state.budgetLines || []).forEach(function (l) {
+          var m = /^B(\d+)$/.exec(String((l && l.id) || ''));
+          if (m) {
+            maxId = Math.max(maxId, parseInt(m[1], 10));
+          }
+        });
+        state.nblid = maxId + 1;
       }
       return state;
     },

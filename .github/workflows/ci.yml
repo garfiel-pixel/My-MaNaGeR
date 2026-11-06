@@ -930,6 +930,12 @@ jobs:
       - name: "T4: Budget truth, one money figure everywhere (qa-budget-truth)"
         id: qa-budget-truth
         run: node tools/qa-budget-truth.cjs
+      # H-2 (BUDGET-BOQ directive 2026-11-05): a bill priced in the calculator
+      # becomes budget lines whose total is the calculator's total to the cent,
+      # and a second send of the same bill changes nothing.
+      - name: "T4: BOQ to budget bridge (qa-boq-bridge)"
+        id: qa-boq-bridge
+        run: node tools/qa-boq-bridge.cjs
       # WAVE 5.5 (A3): auto-update for cloud projects. Admin gate + real
       # Chrome, /api/cloud/* stubbed at the network layer, so the save path's
       # debounce coalescing, retry-then-fail status and offline hold are all

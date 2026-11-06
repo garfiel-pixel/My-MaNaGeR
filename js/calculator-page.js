@@ -9231,11 +9231,192 @@
         unit: r.unit,
         mat: r.mat,
         lab: r.lab,
+        // The line's own subtotal, which is NOT mat + lab on an all-in or
+        // custom line - those carry the whole figure in allInCost and report
+        // mat/lab as 0 by design. Summing mat + lab made a bill of all-in
+        // lines read "Bill total: $0" while every line priced correctly.
+        sub: r.sub,
         total: r.total,
         currency: r.currency
       });
     });
-    return { perLine: perLine, mat: mat, lab: lab, sub: mat + lab };
+    const sub = perLine.reduce(function (n, p) {
+      return n + (+p.sub || 0);
+    }, 0);
+    return { perLine: perLine, mat: mat, lab: lab, sub: sub };
+  }
+
+  // ---- H-2 (BUDGET-BOQ directive 2026-11-05): BILL -> PROJECT BUDGET -------
+  // The bill is priced HERE, by computeFor, and nowhere else. This function
+  // flattens the whole estimate into budget lines and writes ONE handoff
+  // record the project page reads; the project page never re-prices anything,
+  // so the two screens cannot drift.
+  //
+  // The total is the full charge: every work line's mat + lab, then overhead
+  // and tax as their own lines, then the site costs, less the discount, then
+  // the two contingencies and escalation. That is exactly
+  //   sum(sub) + sum(oh) + sum(tax) + prelims - discount + designC + constrC + esc
+  // and the send note prints it so the number can be checked by eye.
+  function buildBudgetPayload(projectId) {
+    const lines = loadBoq();
+    if (!lines.length) {
+      return null;
+    }
+    const out = [];
+    let oh = 0;
+    let tax = 0;
+    let cur = DEFAULT_CURRENCY;
+    let assigned = false;
+    lines.forEach(function (line, i) {
+      const r = computeFor(line.st || {});
+      if (!r || r.error) {
+        return;
+      }
+      cur = r.currency || cur;
+      if (!line.boqId) {
+        // A durable ref, stamped once. Re-sends match on it, so a re-ordered
+        // bill never duplicates a line.
+        line.boqId = 'Q' + (i + 1) + '-' + Math.random().toString(36).slice(2, 6);
+        assigned = true;
+      }
+      const qty = Math.round((+r.qty || 0) * 1000) / 1000;
+      const planned = Math.round((+r.sub || 0) * 100) / 100;
+      oh += +r.oh || 0;
+      tax += +r.tax || 0;
+      out.push({
+        boqRef: line.boqId,
+        name: (line.name || r.customName || workLabel(r.key) || 'Bill line')
+          .toString()
+          .slice(0, 120),
+        description: (r.matDesc || '').toString().slice(0, 160),
+        qty: qty,
+        unit: (r.unit || '').toString().slice(0, 24),
+        rate: qty > 0 ? Math.round((planned / qty) * 1000000) / 1000000 : 0,
+        planned: planned,
+        kind: 'work'
+      });
+    });
+    if (!out.length) {
+      return null;
+    }
+    if (assigned) {
+      persistBoq(lines);
+    }
+    const works = out.reduce(function (n, l) {
+      return n + l.planned;
+    }, 0);
+    const prefs = rollupPrefs();
+    const pre = prelimsTotal(prelimItems, works);
+    const roll = rollup({
+      works: works,
+      prelims: pre.total,
+      designC: prefs.designC,
+      constrC: prefs.constrC,
+      escPct: prefs.escPct,
+      months: prefs.months,
+      discPct: prefs.discPct,
+      discAmt: prefs.discAmt
+    });
+    let n = 0;
+    function extra(name, amount, kind) {
+      const v = Math.round((+amount || 0) * 100) / 100;
+      if (!(Math.abs(v) > 0.004)) {
+        return;
+      }
+      n++;
+      out.push({
+        boqRef: 'X' + n + '-' + kind,
+        name: name,
+        description: '',
+        qty: 1,
+        unit: 'lot',
+        rate: v,
+        planned: v,
+        kind: kind
+      });
+    }
+    // Overhead and tax ride their own lines so a work line's rate stays the
+    // rate the book quotes ("1,529.00 per m2"), not a figure with statutory
+    // costs baked in that nobody can check.
+    extra('Overhead', oh, 'overhead');
+    extra('Tax', tax, 'tax');
+    pre.perItem.forEach(function (it) {
+      extra(it.name || 'Site cost', it.amount, 'site');
+    });
+    extra('Discount', -roll.discount, 'margin');
+    extra('Design contingency', roll.designC, 'contingency');
+    extra('Construction contingency', roll.constrC, 'contingency');
+    extra('Escalation', roll.esc, 'contingency');
+    const total =
+      Math.round(
+        out.reduce(function (sum, l) {
+          return sum + l.planned;
+        }, 0) * 100
+      ) / 100;
+    return {
+      v: 1,
+      at: new Date().toISOString(),
+      projectId: projectId,
+      billName: (function () {
+        try {
+          return localStorage.getItem('mmgr_calc_biz_name') || 'Bill of quantities';
+        } catch (e) {
+          return 'Bill of quantities';
+        }
+      })(),
+      currency: cur,
+      unitSystem: (function () {
+        try {
+          return localStorage.getItem('mmgr_calc_units') === 'imperial' ? 'imperial' : 'metric';
+        } catch (e) {
+          return 'metric';
+        }
+      })(),
+      lines: out,
+      totals: {
+        works: Math.round(works * 100) / 100,
+        overhead: Math.round(oh * 100) / 100,
+        tax: Math.round(tax * 100) / 100,
+        prelims: Math.round(pre.total * 100) / 100,
+        discount: Math.round(roll.discount * 100) / 100,
+        designC: Math.round(roll.designC * 100) / 100,
+        constrC: Math.round(roll.constrC * 100) / 100,
+        esc: Math.round(roll.esc * 100) / 100,
+        total: total
+      }
+    };
+  }
+
+  // The projects on this device, from the launcher's own list. A project that
+  // has not been opened on this device cannot be picked, and the note says so.
+  function renderSendTargets() {
+    const sel = $('calc-boq-project');
+    if (!sel) {
+      return;
+    }
+    let list = [];
+    try {
+      list = JSON.parse(localStorage.getItem('mmgr_projects') || '[]') || [];
+    } catch (e) {
+      list = [];
+    }
+    const keep = sel.value;
+    sel.innerHTML = list.length
+      ? list
+          .map(function (p) {
+            return (
+              '<option value="' +
+              esc(String(p.id || '')) +
+              '">' +
+              esc(String(p.title || p.id || 'Project')) +
+              '</option>'
+            );
+          })
+          .join('')
+      : '<option value="">No projects on this device yet</option>';
+    if (keep) {
+      sel.value = keep;
+    }
   }
   function renderBoq() {
     const wrap = $('calc-boq-body'),
@@ -9245,6 +9426,7 @@
       return;
     }
     const lines = loadBoq();
+    renderSendTargets();
     if (card) {
       card.hidden = lines.length === 0 && !$('calc-boq-open');
     }
@@ -12374,6 +12556,60 @@
           ' line' +
           (rfq.length === 1 ? '' : 's') +
           ' sent to Procurement. Open a project, go to Procurement, and write the quote.';
+      }
+    },
+    // ---- H-2 (BUDGET-BOQ directive 2026-11-05): SEND THE BILL TO A PROJECT --
+    // Writes the priced payload the project's Budget tab reads. Device-local
+    // handoff, same as the RFQ above - nothing leaves the browser here.
+    calcBoqSend: function () {
+      const sel = $('calc-boq-project');
+      const note = $('calc-boq-send-note');
+      const open = $('calc-boq-open');
+      const projectId = sel ? String(sel.value || '') : '';
+      if (!projectId) {
+        if (note) {
+          note.textContent =
+            'No project to send to yet. Create a project first, then send the bill to it.';
+        }
+        return;
+      }
+      const payload = buildBudgetPayload(projectId);
+      if (!payload) {
+        if (note) {
+          note.textContent = 'No priced lines yet - add work to the bill first, then send it.';
+        }
+        return;
+      }
+      let all = {};
+      try {
+        all = JSON.parse(localStorage.getItem('mmgr_boq_handoff') || '{}') || {};
+      } catch (e) {
+        all = {};
+      }
+      all[projectId] = payload;
+      try {
+        localStorage.setItem('mmgr_boq_handoff', JSON.stringify(all));
+      } catch (e) {
+        if (note) {
+          note.textContent =
+            'This browser blocked local storage, so the bill could not be handed over.';
+        }
+        return;
+      }
+      const cur = CURRENCY[payload.currency] || '$';
+      if (note) {
+        note.textContent =
+          payload.lines.length +
+          ' budget line' +
+          (payload.lines.length === 1 ? '' : 's') +
+          ' sent, total ' +
+          cur +
+          Math.round(payload.totals.total).toLocaleString() +
+          '. Open the project, go to Budget, and press From BOQ.';
+      }
+      if (open) {
+        open.href = 'project.html?id=' + encodeURIComponent(projectId);
+        open.classList.remove('is-hide');
       }
     },
     // ---- MAT-1 itemised materials ----

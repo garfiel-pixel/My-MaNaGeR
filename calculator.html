@@ -799,6 +799,13 @@
       </span>
     </div>
     <p class="bcp-boq-total" id="calc-boq-total"></p>
+    <div class="bcp-boq-send">
+      <label class="bcp-hist-note" for="calc-boq-project">Budget from this bill</label>
+      <select id="calc-boq-project" aria-label="Project to send the bill to"></select>
+      <button type="button" class="btn btn-g btn-s" data-action="calcBoqSend">Send to project</button>
+      <a class="bcp-hist-note is-hide" id="calc-boq-open" href="#">Open the project</a>
+    </div>
+    <p class="bcp-hist-note" id="calc-boq-send-note" role="status" aria-live="polite"></p>
     <p class="bcp-hist-note" id="calc-rfq-note" role="status" aria-live="polite"></p>
     <!-- X1 (plan v2): the forgotten-work check - flags rebar with no
          concrete, pours with no formwork, walls with no footing, digs with

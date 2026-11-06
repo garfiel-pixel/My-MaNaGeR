@@ -3795,3 +3795,152 @@ body.dark-mode .team-link-danger {
 .team-people[hidden] {
   display: none;
 }
+
+/* ---- H-2 (BUDGET-BOQ directive 2026-11-05): BOQ to budget preview ----
+   The same overlay shell as #cfm-modal, wider because it shows the real
+   lines. Every colour is a token so dark mode follows without a second
+   rule set. */
+#boq-modal {
+  position: fixed;
+  inset: 0;
+  background: var(--lit-black-75);
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+#boq-modal.on {
+  display: flex;
+}
+#boq-modal .boq-mb {
+  width: 900px;
+  max-width: 100%;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+}
+#boq-modal .mbody {
+  overflow: auto;
+}
+.boq-scroll {
+  max-height: 46vh;
+  overflow: auto;
+  margin-top: 8px;
+}
+.boq-table td {
+  vertical-align: top;
+}
+.boq-table .boq-tick {
+  width: 34px;
+}
+.boq-table .boq-kind {
+  color: var(--slate);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+.boq-table .boq-name {
+  font-weight: 600;
+}
+.boq-table .boq-num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.boq-row.boq-add .boq-name {
+  color: var(--green);
+}
+.boq-row.boq-rem .boq-name {
+  text-decoration: line-through;
+  color: var(--slate);
+}
+.boq-from {
+  color: var(--slate);
+  text-decoration: line-through;
+}
+.boq-arrow {
+  color: var(--slate);
+}
+.boq-to {
+  color: var(--gold-ink, var(--gold));
+  font-weight: 700;
+}
+.boq-warn {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--amber);
+}
+.boq-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  padding: 10px 12px;
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2, transparent);
+  font-size: 0.78rem;
+}
+.boq-up {
+  color: var(--danger);
+}
+.boq-down {
+  color: var(--green);
+}
+.boq-reason-lbl {
+  display: block;
+  margin-top: 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--slate);
+}
+.boq-reason {
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.82rem;
+}
+.boq-reason.is-err {
+  border-color: var(--danger);
+  outline: 2px solid color-mix(in srgb, var(--danger) 25%, transparent);
+}
+.boq-hint {
+  margin: 6px 0 0;
+  font-size: 0.72rem;
+  color: var(--slate);
+}
+
+/* Baseline strip under the Budget summary cards (H-2). One quiet line, no
+   card of its own - it qualifies the numbers above it, it is not a headline. */
+#bud-baseline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--gold);
+  background: var(--surface-2, rgba(0, 0, 0, 0.03));
+  border-radius: 0 8px 8px 0;
+  font-size: 0.76rem;
+}
+#bud-baseline .bl-k {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+  color: var(--slate);
+}
+#bud-baseline .bl-v {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+#bud-baseline .bl-m {
+  color: var(--slate);
+}

@@ -156,7 +156,14 @@ async function main() {
       const t = id => (document.getElementById(id) || {}).textContent || '';
       const bar = document.getElementById('bud-bar');
       const overrun = document.getElementById('bud-overrun-alert');
+      const row = document.querySelector('#bud-body tr');
+      const cells = row ? row.querySelectorAll('td') : [];
+      const actIn = cells[4] ? cells[4].querySelector('input') : null;
       return {
+        rowVar: cells[5] ? cells[5].textContent.trim() : '',
+        rowPct: cells[6] ? cells[6].textContent.trim() : '',
+        rowActual: actIn ? actIn.value : '',
+        rowReadonly: actIn ? actIn.readOnly : null,
         spent: t('bud-ta').trim(),
         spentPct: t('bud-spent-pct').trim(),
         remaining: t('bud-remaining').trim(),
@@ -240,6 +247,23 @@ async function main() {
       spent: ((document.getElementById('bud-ta') || {}).textContent || '').trim()
     }));
     check('B8 a JMD project prints J$, not $', /^J\$/.test(c1.spent), c1.spent);
+    // H-1b: the per-line columns used to read the typed box while the cards
+    // read the derived figure - one screen, two spend numbers.
+    check(
+      'B10 the line variance reads the derived 7,000, not 10,000',
+      a1.rowVar.replace(/[^0-9]/g, '') === '7000',
+      a1.rowVar
+    );
+    check(
+      'B11 the line percentage is its own share of its plan, 30%',
+      /^30%$/.test(a1.rowPct),
+      a1.rowPct
+    );
+    check(
+      'B12 a line with entries shows the derived actual and is read-only',
+      /^3000$/.test(String(a1.rowActual)) && a1.rowReadonly === true,
+      { v: a1.rowActual, ro: a1.rowReadonly }
+    );
     await c.ctx.close();
 
     check('B9 no page error in the whole run', errs.length === 0, errs.slice(0, 3));

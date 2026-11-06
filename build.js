@@ -116,6 +116,10 @@ const APP_MODULES = [
   // Baseline guard (owner 2026-09-19): auto-capture + nudge dot; needs
   // State + App toast at call time, wired into renderDash.
   'js/app/baseline-guard.js',
+  // H-2 (BUDGET-BOQ directive 2026-11-05): the BOQ to budget bridge. A
+  // top-level domain module (not an mmgr-app.js sub-module), so it sits here
+  // with the other domain modules and reads State/Utils/Spend at call time.
+  'js/mmgr-boq-bridge.js',
   // Entitlements seam (owner 2026-09-19): the one future door for gating AI
   // features on sign-in; premium rules land inside later, callers never change.
   'js/app/entitlements.js',

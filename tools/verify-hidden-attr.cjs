@@ -384,6 +384,119 @@ for (const f of htmlFiles) {
   }
 }
 
+// ---- 5b. JS-built markup scan (G-2, FIELD-FINDINGS 2026-10-28) ----
+// The static pass above only sees served *.html. Markup that JS builds as a
+// string — the assistant panel's `hidden` buttons live here — escaped it. We
+// pull every <tag ...> fragment out of js/*.js, keep the ones carrying the
+// `hidden` attribute, and run the SAME defeat/guard analysis as the static
+// pass, so an unguarded display-class element built in JS can never ship.
+const jsDir = path.join(ROOT, 'js');
+if (fs.existsSync(jsDir)) {
+  const jsFiles = fs
+    .readdirSync(jsDir)
+    .filter(f => /\.js$/i.test(f))
+    .sort()
+    .map(f => path.join('js', f));
+  const TAG_RE = /<([a-z][\w-]*)\b([^<>]*?)\/?>/gi;
+  for (const jf of jsFiles) {
+    const jtext = fs.readFileSync(path.join(ROOT, jf), 'utf8');
+    let tm;
+    while ((tm = TAG_RE.exec(jtext)) !== null) {
+      const tag = tm[1].toLowerCase();
+      const attrs = parseAttrs(tm[2] || '');
+      if (!('hidden' in attrs)) {
+        continue;
+      }
+      const id = attrs.id || null;
+      const classes = (attrs.class || '').trim().split(/\s+/).filter(Boolean);
+      const el = {
+        file: jf,
+        tag,
+        id,
+        classes,
+        raw:
+          '<' +
+          tag +
+          (id ? ' id="' + id + '"' : '') +
+          (classes.length ? ' class="' + classes.join(' ') + '"' : '') +
+          ' hidden>'
+      };
+      const defeat = [];
+      const guard = [];
+      for (const rule of allRules) {
+        if (/:not\(/.test(rule.selector)) {
+          continue;
+        }
+        if (/::/.test(rule.selector)) {
+          continue;
+        }
+        const matchesEl = splitSelectors(rule.selector).some(sel => canMatch(sel, el));
+        if (!matchesEl) {
+          continue;
+        }
+        for (const v of displayVals(rule.body)) {
+          const hasHidden = /\[hidden(?=[\s\]])/i.test(rule.selector);
+          if (v.value === 'none') {
+            if (hasHidden) {
+              guard.push({ selector: rule.selector, v, src: rule.src });
+            }
+          } else if (v.value && !hasHidden) {
+            defeat.push({ selector: rule.selector, v, src: rule.src });
+          }
+        }
+      }
+      if (!defeat.length) {
+        continue;
+      }
+      const guardImportant = guard.some(g => g.v.important);
+      const defeatImportant = defeat.some(d => d.v.important);
+      const bestDefeatSpec = defeat.reduce(
+        function (best, d) {
+          const s = specificity(d.selector);
+          return compareSpec(s, best) > 0 ? s : best;
+        },
+        [0, 0, 0]
+      );
+      const bestGuardSpec = guard.reduce(
+        function (best, g) {
+          const s = specificity(g.selector);
+          return compareSpec(s, best) > 0 ? s : best;
+        },
+        [0, 0, 0]
+      );
+      const noWinningGuard =
+        !guardImportant &&
+        (defeatImportant || !guard.length || compareSpec(bestGuardSpec, bestDefeatSpec) < 0);
+      if (noWinningGuard) {
+        const ruleDesc = defeat
+          .map(
+            d =>
+              "'" +
+              d.selector +
+              ' { display:' +
+              d.v.value +
+              (d.v.important ? ' !important' : '') +
+              " }' (" +
+              d.src +
+              ')'
+          )
+          .join('; ');
+        const fixSel = defeat
+          .map(d => lastCompound(d.selector))
+          .filter(function (v, i, a) {
+            return a.indexOf(v) === i;
+          });
+        findings.push({
+          file: jf,
+          el: el.raw,
+          rules: ruleDesc,
+          fix: fixSel.map(s => s + '[hidden]{display:none;}').join('  ')
+        });
+      }
+    }
+  }
+}
+
 if (findings.length) {
   console.error(
     '[verify-hidden] FAIL: ' +

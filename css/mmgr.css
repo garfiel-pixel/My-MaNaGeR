@@ -2941,6 +2941,13 @@ body.dark-mode .rm-active {
   transition: var(--tr-ui);
   line-height: 1.4;
 }
+/* G-2 (FIELD-FINDINGS 2026-10-28): `.btn{display:inline-flex}` outranks the UA
+   `[hidden]{display:none}` rule, so JS-built buttons created with the hidden
+   attribute (e.g. the assistant panel's settings / my-rate buttons) painted
+   anyway. Higher specificity than `.btn` forces display:none. */
+.btn[hidden] {
+  display: none;
+}
 .btn:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
@@ -20488,6 +20495,11 @@ body.rr-open {
   font-size: 0.76rem;
   line-height: 1.4;
   color: var(--text-secondary, var(--text));
+}
+/* G-2 follow-on: this chip uses display:flex and is created with the hidden
+   attribute in js/calc-ai.js; same [hidden] outrank bug as .btn[hidden]. */
+.bcp-ai-fileinfo[hidden] {
+  display: none;
 }
 .bcp-ai-fileinfo .ico {
   width: 14px;

@@ -511,3 +511,21 @@ Many items (I-4..I-10 photography/fonts/motion) need owner visual sign-off on de
 - [ ] **I-2** "Could not load photos HTTP 500" on empty project — needs T-PHOTO-EMPTY.
 - [ ] **I-3** Role-based access no visible UI — needs T-RBAC-UI.
 - [ ] **I-4** to **I-15** — open; several need owner visual choices (Q9 font, Q12 photos, motion language).
+
+---
+
+## 9. WAVE G (FIELD FINDINGS) — added 2026-11-06
+
+Per FIELD-FINDINGS-DIRECTIVE-2026-10-28.md. ORDER: G-1 first (money error),
+then G-2..G-9. Prerequisite for Wave I (UI audit). Each task: one commit, gate
+green before next, field-guide card, `node build.js`, bump `sw.js`, `npm run verify`.
+
+- [x] **G-2** `.btn[hidden]` / `.bcp-ai-fileinfo[hidden]` guards — `.btn{display:inline-flex}` outranked the UA `[hidden]` rule, so JS-built assistant buttons (settings / my-rate / file-info) painted when hidden. Added guards to `css/src/30-panels.css` + `css/src/90-calc-owner-wave.css` (the generated `css/mmgr.css` is restored on every build, so edits go in the layers). Extended `tools/verify-hidden-attr.cjs` to scan HTML strings inside `js/*.js`; it now fails on any unguarded display-class element built in JS. Added a defensive runtime check to `tools/qa-calc-controls.cjs` (G-2 block) asserting the JS-built hidden buttons are not rendered. Shell cache bumped `mmgr-shell-v564` -> `v565`. `verify:hidden` + `qa-calc-controls` green.
+- [ ] **G-1** Rate-unit pricing (sq-ft qty at a per-m² rate, 10.76x too high) — NEXT. Needs conversion table for every ratebook unit string, assistant row proposals with units, `b6CustomGuard` unit-family check, rate-with-unit everywhere, and `tools/qa-rate-unit.cjs` (T-RATEUNIT) wired into `ci.yml` + registry.
+- [ ] **G-3** Hide the raw `PROPOSAL:` machine line in chat.
+- [ ] **G-4** Honest populate error + `tools/repro-populate.cjs`; remove "check the quantities".
+- [ ] **G-5** Settings-unchanged wording (neutral note, no warning).
+- [ ] **G-6** Plain-words "quantity" explanation (`meaning`/`example` per WORK).
+- [ ] **G-7** Keep measurement / add `variant` to grammar.
+- [ ] **G-8** xlsx/CSV export fixes (column widths, wrap, money format, cost row qty/unit/rate).
+- [ ] **G-9** Point the user to Print / PDF.

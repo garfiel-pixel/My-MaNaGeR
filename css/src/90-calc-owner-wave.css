@@ -1180,6 +1180,11 @@ body.rr-open {
   line-height: 1.4;
   color: var(--text-secondary, var(--text));
 }
+/* G-2 follow-on: this chip uses display:flex and is created with the hidden
+   attribute in js/calc-ai.js; same [hidden] outrank bug as .btn[hidden]. */
+.bcp-ai-fileinfo[hidden] {
+  display: none;
+}
 .bcp-ai-fileinfo .ico {
   width: 14px;
   height: 14px;

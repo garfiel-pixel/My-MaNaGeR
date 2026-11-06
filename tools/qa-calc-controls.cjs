@@ -1340,6 +1340,60 @@ const CONTRAST_HELPERS = `window.__mmcbContrast = (function () {
         perf
       );
     }
+
+    // ------------------------------------------------------------------
+    // G-2 (FIELD-FINDINGS 2026-10-28): JS-built assistant buttons created with
+    // the `hidden` attribute (the "Apply these settings" / "Use my own rate"
+    // buttons) must NOT paint. The page builds them as
+    // <button class="btn ..." data-cai="settings" hidden>; .btn{display:inline-
+    // flex} used to outrank [hidden], so they showed. .btn[hidden]{display:none}
+    // (css/mmgr.css) now hides them. Assert the runtime paint, not just the CSS.
+    // ------------------------------------------------------------------
+    {
+      let g2ctx = null;
+      try {
+        const { ctx, page } = await open('light', false);
+        g2ctx = ctx;
+        await page.waitForFunction(() => !!document.querySelector('[data-cai="settings"]'), null, {
+          timeout: 15000
+        });
+        await delay(200);
+        const g2 = await page.evaluate(() => {
+          const vis = sel => {
+            const el = document.querySelector(sel);
+            if (!el) {
+              return 'missing';
+            }
+            // offsetParent is null for display:none / not-in-render-tree elements.
+            return el.offsetParent === null ? 'hidden' : 'visible';
+          };
+          return {
+            settings: vis('[data-cai="settings"]'),
+            myrate: vis('[data-cai="myrate"]'),
+            fileinfo: vis('[data-cai="fileinfo"]')
+          };
+        });
+        check(
+          'G-2 JS-built hidden assistant buttons are not rendered',
+          g2.settings === 'hidden' && g2.myrate === 'hidden' && g2.fileinfo === 'hidden',
+          g2
+        );
+      } catch (e) {
+        check(
+          'G-2 JS-built hidden assistant buttons are not rendered',
+          false,
+          String((e && e.message) || e).slice(0, 300)
+        );
+      } finally {
+        if (g2ctx) {
+          try {
+            await g2ctx.close();
+          } catch (e) {
+            /* closed */
+          }
+        }
+      }
+    }
   } catch (e) {
     check('harness ran without throwing', false, String((e && e.stack) || e));
   } finally {

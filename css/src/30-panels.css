@@ -741,6 +741,13 @@ body.dark-mode .rm-active {
   transition: var(--tr-ui);
   line-height: 1.4;
 }
+/* G-2 (FIELD-FINDINGS 2026-10-28): `.btn{display:inline-flex}` outranks the UA
+   `[hidden]{display:none}` rule, so JS-built buttons created with the hidden
+   attribute (e.g. the assistant panel's settings / my-rate buttons) painted
+   anyway. Higher specificity than `.btn` forces display:none. */
+.btn[hidden] {
+  display: none;
+}
 .btn:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;

@@ -978,9 +978,16 @@ async function pickPort(start) {
     '32 res-warn: conflict shows wrap, cleared after',
     `(function(){var mk=function(id,start,end){return {id:id,name:'Conflict '+id,level:1,indent:1,status:'inprogress',startDate:start,endDate:end,duration:'10',assignee:'Bob',critical:true,predecessors:[],isPhase:false};};MMGR.State.updateState(function(s){s.tasks.push(mk('x9','2026-08-01','2026-08-25'));s.tasks.push(mk('xa','2026-08-10','2026-08-30'));});var during=MMGR.Schedule.findResourceConflicts();MMGR.Render.renderDash();var w=document.getElementById('res-warn-wrap');var vis=w&&!w.classList.contains('is-hide')&&w.textContent.indexOf('OVER-ALLOC')>-1;MMGR.State.updateState(function(s){s.tasks=s.tasks.filter(function(t){return t.id!=='x9'&&t.id!=='xa';});});MMGR.Render.renderDash();var hid=w&&w.classList.contains('is-hide');return {val: vis&&hid,vis:vis,hid:hid,during:during.length};})()`
   );
+  // H-1 re-baseline (BUDGET-BOQ directive 2026-11-05): the old arm drove the
+  // typed actual box and expected a warning with NO envelope. That is the
+  // defect the directive names (A2/A3): the panel summed the typed box while
+  // every other screen derived the figure from the Spend Log, and an empty
+  // envelope read as over budget. The arm now proves the honest contract:
+  // a real envelope raises the plan notice, spending past it raises the bar
+  // warning, and with no envelope neither fires.
   await check(
-    '33 budget alerts: overspend bar-warn + overrun alert',
-    `(function(){MMGR.Budget.updBudgetLine(0,'actual',2000000,'change');var w=document.getElementById('bud-bar-warn');var vis=!w.classList.contains('is-hide');MMGR.Budget.updBudgetLine(0,'actual',0,'change');MMGR.Budget.updBudgetLine(0,'planned',1500000,'change');var o=document.getElementById('bud-overrun-alert');var ov=!o.classList.contains('is-hide');MMGR.Budget.updBudgetLine(0,'planned',500000,'change');return {val: vis&&ov};})()`
+    '33 budget alerts: plan notice and bar warning against a real envelope',
+    `(function(){var saved=MMGR.State.getState().spendLog||[];MMGR.State.updateState(function(st){st.spendLog=[];});MMGR.Budget.updEnvelope(400000,'change');var o=document.getElementById('bud-overrun-alert');var ov=!o.classList.contains('is-hide');MMGR.Budget.updBudgetLine(0,'actual',900000,'change');var w=document.getElementById('bud-bar-warn');var vis=!w.classList.contains('is-hide');MMGR.Budget.updBudgetLine(0,'actual',0,'change');MMGR.Budget.updEnvelope(0,'change');var quiet=document.getElementById('bud-overrun-alert').classList.contains('is-hide');var quiet2=document.getElementById('bud-bar-warn').classList.contains('is-hide');MMGR.State.updateState(function(st){st.spendLog=saved;});return {val: ov&&vis&&quiet&&quiet2,ov:ov,vis:vis,quiet:quiet,quiet2:quiet2};})()`
   );
   await check(
     '34 cfm-items: confirm list shows, then hides on cancel',

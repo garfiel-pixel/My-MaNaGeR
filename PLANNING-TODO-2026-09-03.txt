@@ -2528,3 +2528,24 @@ narrower reading of §14.3).
   account's plan badge in the admin header; both free controls go to
   pricing.html, so the module has no new-tab site and the temporary
   allow-list entries were removed. VERIFIED: verify-newtab PASS. Shell v549.
+- CI REPAIR 2026-11-06 (plan-control commit, red run 42169465965): browser-calc
+  failed on "T4: Quiet chrome, no pill boxes (qa-chrome)" at gate C5. The plan
+  badge's popover needs its own button surface, so admin.html's header reset
+  moved from the descendant selector `.hdr-actions .btn` to the direct-child
+  `.hdr-actions > .btn` - the old regex no longer matched. Harness re-baselined
+  to assert the narrower rule AND that the broad one is gone (a nested button
+  can never be stripped again). qa-chrome 105/105 locally, CI 42175561341
+  green. Commits 9c5f2f3 (fix) + e9d2edc (harness).
+- AUTOFILL SIGN-IN FIX 2026-11-06 (owner report): the email form read only the
+  value present at submit time, so a password manager fill or a Chrome autofill
+  preview left "Enter your password." over a visibly filled field. Now: stable
+  name/id attributes, a field-state sync on input/change/keyup/paste/blur/focus
+  /pageshow/visibilitychange, the animationstart hook from a new keyframes rule
+  in BOTH stylesheets, a 3s post-mount poll, stale-message clearing, an
+  actionable message for an unreadable preview, and a class-based password
+  selector (input[type=password] matched nothing once the eye switched the
+  field to type=text). Also decoupled the launcher plan control from the cloud
+  project list: it renders from mmgr:plan-changed and its own boot fetch.
+  VERIFIED: probe 9/9 (local + live), plan probes 7/7, round-trip 7/7 live,
+  qa-signin-page ALL PASS, qa-chrome 105/105, npm run verify exit 0. Shell
+  v550, deployed aa750efe-066e-40b0-9e65-d6c8fdb00cc8.

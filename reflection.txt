@@ -1,56 +1,88 @@
 # My MaNaGeR - reflection.txt (active; last session only)
 
-SESSION 2026-11-05 - WAVE 5.7 PROJECT PHOTOS (gate, wiring fix, CI wire, pre-commit)
+SESSION 2026-11-06 - SCHEMA BROUGHT TO HEAD, CODE SCANNING CLEARED, BUDGET TRUTH
 
 WHAT LANDED
-- Project Photos feature complete: server-side quota/identity/stage + the
-  browser panel a person actually uses.
-  - src/cloud/photos.js (upload/list/single/meta/delete, uploader identity +
-    stage, 500 MB quota, R2 blobs + D1 metadata)
-  - src/router.js (photo routes, rate-limit keying by code header)
-  - migrations/0031_photo_identity_and_stage.sql
-  - js/cloud/photos-ui.js (rewritten: storage bar, two uploads, per-card
-    uploader + role + stage chip, download, remove-with-confirm, view read-only)
-  - project.html photos panel + CSS, sw.js -> mmgr-shell-v536
 
-BUG FOUND AND FIXED DURING THE GATE (the important one)
-- The panel called public cloud names (C.pid, C.activeCredential,
-  C.hasCloudLink) that mmgr-cloud.js only exports with an underscore prefix.
-  Result: every panel read "not linked to the cloud" and the Add/Remove
-  controls stayed hidden. Repointed to C._pid / C._activeCredential /
-  C._hasCloudLink in js/cloud/photos-ui.js. Without this, the feature would
-  have shipped looking dead in the browser while every disk check stayed green.
+1. Production D1 was four migrations behind the code. This was the root cause of
+   two separate owner reports, and no local gate could see it.
+   - Pending: 0028_team_invitations, 0029_team_enterprise,
+     0030_cloud_owner_email, 0031_photo_identity_and_stage.
+   - Applied to my-manager-db after exporting a 2.0 MB pre-migration dump to
+     tmp/d1-backup/pre-migration-2026-11-06.sql.
+   - Why it broke the product: src/cloud/projects.js:80 filters the project list
+     on owner_email (0030); src/cloud/photos.js:781 selects uploaded_role, stage
+     and sort_order (0031); js/cloud/team-ui.js:1461 hides the team bell when
+     /api/team/invitations fails (0028).
+   - Guard added: tools/check-d1-migrations.cjs, called as step 2b from
+     tools/deploy.cjs:202. wrangler deploy does not look at D1, which is the
+     whole reason this happened.
 
-FILES TOUCHED
-- src/cloud/photos.js, src/router.js, migrations/0031_*, js/cloud/photos-ui.js,
-  project.html, css/mmgr.css, css/src/20-shell.css, sw.js (code)
-- tools/qa-project-photos.cjs (new, 695 lines, T3 browser half)
-- tools/qa-cloud-photos.cjs (extended 14 -> 19 gates: uploader identity, stage
-  round-trip, usage endpoint, ?download=1 disposition, usedBytes growth, editor
-  stamp, owner-removal quota return)
-- .github/workflows/ci.yml (qa-project-photos.cjs step in cloud-auth T3)
-- docs/CI-TEST-COVERAGE.md (qa-cloud-photos row 19/19; new qa-project-photos row)
-- CONTINUATION-DIRECTIVE.md (5.7 DONE row; removed from "still open" list)
-- PLANNING-TODO-2026-10-06.txt (5.7 completion note)
-- dist/* rebuilt via node build.js
-- this file
+2. Code scanning: 84 open alerts (25 error, 59 warning) to 0.
+   Fixed in shipped code:
+   - js/mmgr-charter.js:489-497 - '\s' inside a string is 's'; the regex
+     fallback's whitespace classes matched nothing. Label now regex-escaped.
+   - js/calculator-page.js:11472-11480 - saved-estimate rows now esc() the
+     name, date and total.
+   - js/mmgr-tasks.js:778 - all four capture groups escaped, not just the first.
+   - admin.html:3675-3680 - inline onclick replaced with the existing
+     data-action="codesCopyReveal" delegation; sections and expiry escaped.
+   - app.html:964-990 - safeProjectFile() accepts only a same-origin relative
+     .html page; goProject() is the one navigation point (was 4 raw sinks).
+   - src/auth/recovery.js:84-100 and serve.cjs:707-722 - rejection sampling
+     instead of a bare modulo.
+   - js/mmgr-utils.js:323-336 - sanitize() strips until stable.
+   - build.js:276-284 - backslashes escaped before quotes in the banner arg.
+   - serve.cjs:931-934 - error page served as text/plain.
+   - js/mmgr-app.js:3579-3582 - U.escapeHtml(type).
+   - js/app/copy-text.js:320 - removed replace(/\n/g, '\n') (a no-op).
+   Dismissed with a written reason: 54 (test harnesses, vendor bundles, the
+   untracked reference page, BYO key in sessionStorage, pending share code in
+   localStorage) plus 9 false positives (safeNext() sanitiser, escapeHtml'd
+   titles, numeric-only interpolation).
 
-VERIFICATION (local, Windows, real Chrome, own wrangler dev + D1/R2)
-- node tools/qa-project-photos.cjs  -> 13/13 PASS (G0a-G10 + documented SKIP)
-- node tools/qa-cloud-photos.cjs    -> 19/19 PASS
-- node tools/verify-test-registry.cjs -> PASS (164 harnesses registered)
-- node tools/verify-ci-coverage.cjs   -> 12/12 PASS
-- node build.js exit 0; npm run verify exit 0 (CSP, sizes, integrity, eslint)
+3. Wave I Sprint 0.
+   - I-2 client half: js/cloud/photos-ui.js loadFailureSentence() + a retry
+     button; three new arms in tools/qa-project-photos.cjs (15/15).
+   - I-1 client half: js/mmgr-cloud.js:810-832 names the project and
+     broadcasts mmgr:cloud-linked; js/mmgr-cloud-dash.js:1091 listens.
+   - I-3: project.html drawer entry "Team and roles"; js/cloud/team-ui.js
+     boot() binds [data-team-panel]; qa-chrome C9 (106/106).
 
-NOT DONE
-- Nothing committed or pushed yet. The remote Actions run is the only proof the
-  new cloud-auth T3 step holds on the Linux runner (own-wrangler spawn, Chrome
-  channel). Must commit -> push -> poll the Actions API.
+4. Wave H H-1.
+   - js/render/financials.js:165-230 - Spent from Spend.budgetLineActual,
+     baseline = envelope or planned, "Tracking against planned" instead of
+     "Over budget", plan notice only against a real envelope, fmt$() through
+     U.fmtMoney.
+   - js/mmgr-render.js:303-316 - dashboard card through U.fmtMoney.
+   - tools/qa-budget-truth.cjs - 13 arms; mutation-proven (6 red on revert,
+     Spent reading the typed $999 instead of the logged 3,000).
+   - qa-full.cjs arm 33 re-baselined (194/194).
 
-NEXT
-- Commit: plain Conventional Commit "feat(photos): project photo library with
-  uploader identity, stage and quota" - NO AI attribution footer.
-- Push to main, then poll /repos/.../actions/runs?branch=main until the run
-  finishes; re-enter the CI repair loop if a new step goes red.
-- The free-account 402 refusal stays a documented SKIP until Paddle secrets
-  exist; the upgrade sentence is pinned by test/photo-tier.test.mjs.
+VERIFICATION ACTUALLY RUN
+- npm run verify: exit 0 (CSP hashes regenerated after the app.html edit).
+- qa-chrome 106/106; qa-project-photos 15/15; qa-team-ui 23/23;
+  qa-budget-truth 13/13; qa-full 194/194; qa-signin-page all checks;
+  verify-newtab, verify-csp-hashes, verify-registry green.
+- CI: run 42193307793 on 8d824f2 success. CodeQL "Push on main" green.
+- Code scanning API: 0 open.
+
+NOT DONE, AND WHY
+- Deploy: four attempts, all 503 "no healthy upstream" from Cloudflare on
+  GET /accounts/<id>/workers/services/my-manager (YVR). The site stayed 200 and
+  wrangler whoami was healthy, so this is their endpoint, not our config. The
+  stage at $HOME/mmgr-deploy is byte-verified and waiting for one retry.
+- Wave H H-0, H-2 to H-8; Wave I I-0, I-4 to I-15. These are multi-session
+  builds (budget schema v25, BOQ bridge, delivery recording, weekly report,
+  MCP permissions, approval preview v2, landing page rework, photography,
+  first-open tour spotlight, photo bundles).
+- I-14 (sidebar hover) was not started on purpose: with the sidebar closed,
+  #app-sidebar is at translateX(-105%) and body.sidebar-on .sec-nav is
+  display:none, so there is no visible icon rail to hover. Guessing a design
+  here would have been worse than asking one question.
+
+LESSON WORTH KEEPING
+A schema behind the code is a live defect that no local gate can see. Every
+green check in this repo runs against a local D1 that is always migrated to
+head, so the one environment that mattered was the only one not measured. The
+deploy recipe now refuses to ship when the remote migration list is not empty.

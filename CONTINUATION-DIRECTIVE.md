@@ -8,6 +8,31 @@
 
 ## Status log (newest at top)
 
+- **2026-11-06** - **Production D1 was four migrations behind the code**, and that single fact
+  explains both of the owner's reports. `0028` to `0031` were never applied, so the project list
+  filtered on a missing `owner_email` (a project uploaded on one device never followed the account)
+  and every Photos tab answered HTTP 500 on a project with no photos (the SELECT names
+  `uploaded_role`, `stage`, `sort_order`). The team bell was hidden for the same reason: its
+  refresh calls `/api/team/invitations`, which needs the 0028 tables. A pre-migration dump was
+  taken and all four applied; the deploy recipe now refuses to ship when the remote list is not
+  empty (`tools/check-d1-migrations.cjs`, step 2b of `tools/deploy.cjs`). **Code scanning went 84
+  to 0**: the real defects were a charter regex whose `'\s'` in a string is just `s`, three
+  unescaped `innerHTML` sinks (calculator history, task importer, admin client-code reveal with a
+  single-quoted inline `onclick`), four raw `project.file` navigations in `app.html` (now
+  `safeProjectFile()`), and two biased modulos (recovery OTP, dev key generator). 54 alerts were
+  dismissed with a written reason and 9 as false positives. Wave I Sprint 0 shipped: a photos
+  failure now speaks in words and offers Try again, a cloud link names the project and refreshes
+  the launcher, and the settings drawer carries a named "Team and roles" entry. Wave H H-1
+  shipped: the Budget panel now reads `Spend.budgetLineActual` like every other screen, an empty
+  envelope no longer reads as over budget, and money prints through the one currency table
+  (`qa-budget-truth` 13/13, mutation-proven). Verified: `npm run verify` exit 0, `qa-chrome`
+  106/106, `qa-project-photos` 15/15, `qa-team-ui` 23/23, `qa-full` 194/194, CI `42193307793`
+  green on `8d824f2`. **Deploy blocked on Cloudflare**: four attempts all returned 503 "no healthy
+  upstream" on the workers service endpoint (YVR); the stage is byte-verified and needs one retry.
+  The schema fix needs no deploy, so both owner reports are already resolved live. Open: Wave H
+  H-0 and H-2 to H-8, Wave I I-0 and I-4 to I-15, and I-14 needs one clarifying sentence because
+  the closed sidebar has no visible icon rail to hover. Detail in `docs/history/log-2026-11.md`.
+
 - **2026-11-05** - CI repaired after the B8 tour wave went red five runs in a row
   (`41641525725`, `41644842198`, `41876327034`, `41882415836`; `9d50792` was a
   cancelled no-op trigger). Each run hid the next failure, so the first red step

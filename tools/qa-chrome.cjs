@@ -21,7 +21,8 @@
 
      C4  .escrow-badge is a notifier line: no border, no pill radius,
          and a dot drawn by ::before with a state colour
-     C5  admin.html's own stylesheet quiets .hdr-actions .btn
+     C5  admin.html's own stylesheet quiets the header's DIRECT .btn
+         children (the plan popover's buttons keep their own skin)
      C8  BACK GOES LEFT EVERYWHERE (5.5 A4): the back/dashboard control
          is the FIRST control in the header on admin, project and
          calculator; app.html carries no header because it IS the root
@@ -287,10 +288,18 @@ const PROBE = sel => {
   );
 
   const admin = fs.readFileSync(path.join(ROOT, 'admin.html'), 'utf8');
+  // RE-BASELINE 2026-11-06 (owner plan control): the quiet rule is now
+  // DIRECT-CHILD only. The header carries the account's plan badge, whose
+  // popover holds a real Manage subscription button; the old descendant
+  // selector stripped that button's surface, so "text, not pills" now means
+  // "the header's own buttons", and the nested popover keeps its own skin.
+  // The intent of C5 is unchanged and still asserted: header actions are
+  // text, and the popover is proven NOT to inherit the reset.
   check(
     'C5 the admin header actions are text, not pills',
-    /\.hdr-actions \.btn\{background:transparent;border:0;/.test(admin) &&
-      /\.hdr-actions \.btn:hover\{color:var\(--gold-text\)/.test(admin),
+    /\.hdr-actions > \.btn\{background:transparent;border:0;/.test(admin) &&
+      /\.hdr-actions > \.btn:hover\{color:var\(--gold-text\)/.test(admin) &&
+      !/\.hdr-actions \.btn\{/.test(admin),
     'admin.html inline style'
   );
 

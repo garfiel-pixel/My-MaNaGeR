@@ -548,7 +548,11 @@
 // stored as '0') and the optional Google Drive backup share the header panel,
 // and a click after hover no longer closes it. Changed shell assets:
 // admin.html (inline script), css/mmgr.css.
-const CACHE = 'mmgr-shell-v546';
+// v547 - SITE OPERATOR DISCLOSURE (owner 2026-11-05): the two site-wide
+// operator cards (Cloud Projects, Subscriptions) collapse into one closed
+// "Site operator tools" line; the rail's Cloud Admin link opens it. Changed
+// shell assets: admin.html (inline script).
+const CACHE = 'mmgr-shell-v547';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

@@ -146,6 +146,12 @@ header h1 .mark{color:var(--gold);}
   .hdr-actions .btn{background:transparent;border:0;border-radius:6px;padding:5px 7px;color:var(--slate);box-shadow:none;}
   .hdr-actions .btn:hover{color:var(--gold-text);background:color-mix(in srgb, var(--gold) 10%, transparent);}
   .hdr-actions .btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+/* OWNER 2026-11-05: the admin panel is for every user, so the two site-wide
+   operator cards do not sit open. One line, native details, keyboard-safe. */
+.operator-tools{margin-top:16px;}
+.operator-tools>summary{cursor:pointer;padding:10px 2px;font-size:.74rem;font-weight:700;color:var(--slate);list-style-position:inside;}
+.operator-tools>summary:hover{color:var(--gold-text);}
+.operator-tools>summary:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px;}
 main{max-width:1000px;margin:0 auto;padding:26px 24px 70px;}
 /* Wide monitors (owner 2026-10-19): the create/admin flow fills the screen it
    is opened on instead of a 1000px strip with empty canvas either side. Under
@@ -477,6 +483,13 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
       <input type="file" id="import-project-file" accept=".json,.js,application/json,application/javascript,text/plain" style="display:none" aria-hidden="true">
     </div>
 
+    <!-- OWNER 2026-11-05: both site-wide cards live inside one closed
+         disclosure. A normal user never needs them, and the panel is for
+         everyone - one line instead of two large bars. -->
+    <details class="operator-tools" id="operator-tools">
+      <summary>Site operator tools</summary>
+      <p class="hint" style="margin:0 0 4px">For the deployment operator. Your own panel, projects and backup work without this.</p>
+
     <!-- CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2/3 , cloud projects visibility.
          Operator-gated by the Worker's ADMIN_CODE secret (typed once per
          session here, held in sessionStorage only). Owner-code reissue reuses
@@ -519,6 +532,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
       <div id="billing-admin-list"><div class="empty">Load to list the subscriptions on this site.</div></div>
       <div class="hint"><strong>Site-wide, not your own plan.</strong> Your own subscription is the rail's Manage subscription. A row is listed here as an orphan only when nothing in the app still holds its account: no account, no project, no shared project, no team membership and no live session. Cancelling at the provider happens before the row is removed, every time.</div>
     </div>
+    </details>
 
     <div id="project-list"></div>
   </main>
@@ -538,7 +552,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
       <button type="button" class="db-link" data-action="openProjectModal"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New Project</button>
       <button type="button" class="db-link" data-action="importProject"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Import Project</button>
       <a class="db-link" href="#project-list"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Project List</a>
-      <a class="db-link" href="#cloud-admin-section"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud Admin</a>
+      <a class="db-link" href="#operator-tools" id="rail-operator"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud Admin</a>
       <div class="db-g">Export</div>
       <button type="button" class="db-link" data-action="downloadPublicData"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Static Manifest</button>
       <button type="button" class="db-link" data-action="downloadAdminBackup"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Backup CSV</button>
@@ -1965,6 +1979,15 @@ function refreshBackupStatus(){
     .catch(function(){ _escrowHasCode = false; syncEscrowPop(); });
 }
 wireEscrowPop();
+// The rail's Cloud Admin link points at the operator disclosure; a closed
+// <details> hides its children, so open it before the anchor scrolls.
+(function(){
+  var link = document.getElementById('rail-operator');
+  var box = document.getElementById('operator-tools');
+  if (link && box){
+    link.addEventListener('click', function(){ box.open = true; });
+  }
+})();
 function markRestoredNow(){
   try{ sessionStorage.setItem('mmgr_restore_recap','1'); }catch(e){}
 }

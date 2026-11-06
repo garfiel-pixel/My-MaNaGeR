@@ -25,6 +25,8 @@
          the backup panel, cloud backup is on by default and writes
          mmgr_autosave_cloud, Drive is off/disabled with a reason and writes
          mmgr_drive_auto, and the site-wide Subscriptions card ships hidden
+         while the two operator cards ship collapsed; entering the site code
+         renders Cloud Projects and reveals Subscriptions
      B2  the trigger on the restore field opens the popover with all
          three names, Escape closes it
      B3  the launcher's "Have a code?" trigger opens the same popover
@@ -219,7 +221,9 @@ function bareAdminCodeHits(text) {
         chromePath = undefined;
       }
     }
-    if (chromePath && !fs.existsSync(chromePath)) chromePath = undefined;
+    if (chromePath && !fs.existsSync(chromePath)) {
+      chromePath = undefined;
+    }
     browser = await chromium.launch({
       executablePath: chromePath,
       headless: true,
@@ -330,13 +334,24 @@ function bareAdminCodeHits(text) {
         billingHidden === true,
         billingHidden
       );
+      const operatorClosed = await page.evaluate(() => {
+        const d = document.getElementById('operator-tools');
+        return d ? !d.open : null;
+      });
+      check(
+        'B1c2 the operator cards ship collapsed to one line',
+        operatorClosed === true,
+        operatorClosed
+      );
 
       // B1d: the switch must write the SAME pref the workspace reads, not a
       // lookalike. isSignedIn is the only stub - setAutoInterval is the real
       // function, so the assertion is on real localStorage state.
       const autoPref = await page.evaluate(() => {
         const GA = window.MMGR && window.MMGR.GoogleAuth;
-        if (!GA) return { ok: false, why: 'no GoogleAuth module' };
+        if (!GA) {
+          return { ok: false, why: 'no GoogleAuth module' };
+        }
         const realSignedIn = GA.isSignedIn;
         GA.isSignedIn = function () {
           return true;
@@ -377,7 +392,9 @@ function bareAdminCodeHits(text) {
       // same mmgr_autosave_cloud pref the push engine reads, on and off.
       const cloudPref = await page.evaluate(() => {
         const GA = window.MMGR && window.MMGR.GoogleAuth;
-        if (!GA) return { ok: false, why: 'no GoogleAuth module' };
+        if (!GA) {
+          return { ok: false, why: 'no GoogleAuth module' };
+        }
         const realSignedIn = GA.isSignedIn;
         GA.isSignedIn = function () {
           return true;
@@ -564,11 +581,67 @@ function bareAdminCodeHits(text) {
       });
       check('B5b the recap is shown once, not on every entry', again === false, again);
 
+      // The operator cards live in a closed disclosure now; open it before
+      // reaching the site admin code field inside.
+      await page.evaluate(() => {
+        const box = document.getElementById('operator-tools');
+        if (box) {
+          box.open = true;
+        }
+      });
       const pop2 = await openPopover(page, '#cloud-admin-section .code-which').catch(() => null);
       check(
         'B5c the site admin code field inside the panel opens the popover',
         !!(pop2 && pop2.open),
         pop2
+      );
+
+      // B5d: the operator flow. Stub the site-wide endpoint, enter a code, and
+      // prove the list renders AND the Subscriptions card is only revealed
+      // after the code is accepted.
+      await page.route('**/api/cloud/admin/projects', route =>
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            ok: true,
+            projects: [
+              {
+                projectId: 'op-1',
+                label: 'Operator Project',
+                hasSnapshot: true,
+                createdAt: '2026-11-01T00:00:00Z',
+                updatedAt: '2026-11-01T00:00:00Z'
+              }
+            ]
+          })
+        })
+      );
+      const opBefore = await page.evaluate(() => {
+        const box = document.getElementById('operator-tools');
+        if (box) {
+          box.open = true;
+        }
+        const inp = document.getElementById('cloud-admin-code');
+        if (inp) {
+          inp.value = 'test-site-code';
+        }
+        const btn = document.querySelector('#cloud-admin-section [data-action="cloudAdminList"]');
+        if (btn) {
+          btn.click();
+        }
+        return document.getElementById('billing-admin-section').hidden;
+      });
+      await delay(500);
+      const opAfter = await page.evaluate(() => ({
+        rows: document.querySelectorAll('#cloud-admin-list .prow').length,
+        billingHidden: document.getElementById('billing-admin-section').hidden,
+        status: (document.getElementById('cloud-admin-status') || {}).textContent || ''
+      }));
+      check(
+        'B5d the site admin code unlocks Cloud Projects and reveals Subscriptions',
+        opBefore === true && opAfter.rows === 1 && opAfter.billingHidden === false,
+        { opBefore, opAfter }
       );
       await page.close();
     }

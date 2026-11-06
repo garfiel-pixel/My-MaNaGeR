@@ -575,7 +575,20 @@
 // from the project list request, so a failed cloud list can no longer hide
 // it. Changed shell assets: js/mmgr-google-auth.js, js/mmgr-cloud-dash.js,
 // dist/app-bundle.js, css/mmgr.css, dist/marketing.min.css.
-const CACHE = 'mmgr-shell-v550';
+// v551 - PLAN BAR BACK IN THE RAIL + HONEST LAUNCH PRICING (owner 2026-11-06):
+// the launcher's rail footer carries the account plan bar again, directly
+// above the signed-in row and for EVERY signed-in person: free reads "Upgrade
+// to Premium" (pricing.html), paid reads "Premium" and opens Manage
+// subscription with the typed-CANCEL flow. It is the same
+// js/mmgr-billing-manage.js control the admin header uses, so there is ONE
+// implementation. The "billing must be configured" gate that hid it is gone;
+// only a signed-out visitor hides it. The un-ordered top-of-page pill from
+// v549 is removed, so the control sits where the owner looks for it.
+// pricing.html no longer claims checkout is already zero: the published prices
+// are what checkout charges, and the launch offer is the discount code typed at
+// checkout. Changed shell assets: app.html, pricing.html, dist/app-bundle.js,
+// css/mmgr.css.
+const CACHE = 'mmgr-shell-v551';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

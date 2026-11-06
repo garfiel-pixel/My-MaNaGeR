@@ -15264,52 +15264,6 @@ body.db-page .db-quick:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
-/* ---- top-of-page plan control (owner 2026-11-06) ----
-   Sits left of the search/theme corner controls, in the 56px top row. Free
-   accounts read "Upgrade to Premium"; paid accounts read "Premium". Both are
-   the same link to pricing.html, where a plan is chosen and checkout starts.
-   Hidden until the signed-in billing status says billing is configured. */
-body.db-page .top-plan {
-  position: absolute;
-  top: 12px;
-  right: 96px;
-  z-index: 2;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 38px;
-  padding: 0 14px;
-  border: 1px solid color-mix(in oklch, var(--gold) 32%, transparent);
-  border-radius: 100px;
-  background: color-mix(in oklch, var(--gold) 10%, transparent);
-  color: var(--gold-text);
-  font-size: 0.72rem;
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: 0.02em;
-  text-decoration: none;
-  white-space: nowrap;
-}
-body.db-page .top-plan[hidden] {
-  display: none;
-}
-body.db-page .top-plan:hover {
-  background: color-mix(in oklch, var(--gold) 16%, transparent);
-}
-body.db-page .top-plan:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-body.db-page .top-plan .ico {
-  width: 14px;
-  height: 14px;
-}
-@media (max-width: 360px) {
-  body.db-page .top-plan {
-    padding: 0 10px;
-    font-size: 0.66rem;
-  }
-}
 /* desktop: */
 @media (min-width: 769px) {
   body.db-page .db-side {
@@ -15548,6 +15502,29 @@ body.db-page .db-foot {
 }
 body.db-page .db-plan {
   flex-shrink: 0;
+}
+/* OWNER 2026-11-06: the plan bar in the rail footer, directly above the
+   signed-in row, for EVERY signed-in person. The badge is full width there and
+   the popover opens UPWARD, because the control sits at the bottom of the
+   viewport. The shared .plan-wrap / .plan-badge / .plan-pop rules live in
+   89-code-names.css (same control as the admin header). */
+body.db-page .db-foot .plan-wrap {
+  display: flex;
+  width: 100%;
+  margin-bottom: 6px;
+}
+body.db-page .db-foot .plan-badge {
+  width: 100%;
+  justify-content: center;
+  padding: 8px 10px;
+  font-size: 0.72rem;
+}
+body.db-page .db-foot .plan-pop {
+  top: auto;
+  bottom: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  width: 100%;
 }
 body.db-page:not(.dark-mode) .db-foot {
   position: sticky;

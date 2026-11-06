@@ -220,7 +220,13 @@
       hidePlan();
       return;
     }
-    if (!data || !data.ok || !data.configured) {
+    /* OWNER 2026-11-06: a SIGNED-IN person always sees their plan bar. The
+       status route answers ok only for a session, so ok === signed in; the old
+       extra `configured` test hid the control on a deployment without payment
+       keys, which is what read as "the premium bar disappeared". A free
+       account now gets the Upgrade badge whether or not billing is configured.
+       Only a signed-out visitor (403 here) or a failed request hides it. */
+    if (!data || !data.ok) {
       hidePlan();
       return;
     }

@@ -402,13 +402,23 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;visibility:h
     </div>
   </nav>
   <div class="db-foot">
-    <!-- PLAN STATUS (NEW-UI-POLISH 2026-08-14): Premium badge when the
-         account is on a paid plan, Upgrade to Premium button when on the
-         free plan , rendered by js/mmgr-cloud-dash.js loadPlan(); both
-         hidden when billing is unconfigured. Pinned to the rail bottom so
-         the plan + identity never scroll away with the nav. -->
-    <div class="db-plan" id="rail-plan" hidden></div>
-    <button type="button" id="rail-upgrade" class="db-upgrade" data-cd-upgrade="1" hidden>Upgrade to Premium</button>
+    <!-- YOUR PLAN (owner 2026-11-06): the bar sits directly above the account
+         row, for EVERY signed-in person - free reads "Upgrade to Premium"
+         (pricing.html), paid reads "Premium" and opens the popover with Manage
+         subscription and the typed-CANCEL flow. Rendered by
+         js/mmgr-billing-manage.js from the session-gated
+         /api/billing/status; hidden only while signed out. Pinned to the rail
+         bottom so the plan + identity never scroll away with the nav. -->
+    <div class="plan-wrap" id="plan-wrap">
+      <button type="button" class="plan-badge" id="plan-badge" aria-expanded="false" aria-controls="plan-pop" hidden>
+        <svg class="ico" aria-hidden="true"><use id="plan-badge-ico" href="css/mmgr-icons.svg#i-sparkle"></use></svg>
+        <span id="plan-badge-text">Upgrade to Premium</span>
+      </button>
+      <div class="plan-pop" id="plan-pop" role="group" aria-label="Your plan" hidden>
+        <div class="plan-pop-h">Your plan</div>
+        <div class="db-plan" id="plan-body" hidden></div>
+      </div>
+    </div>
     <!-- RBAC sprint 2: invitations and collaborators. Lives in the rail
          because the launcher's top row is already at its width budget at
          360px - a header button there would shift the layout. Hidden until a
@@ -473,15 +483,6 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;visibility:h
     <button type="button" id="db-theme-quick" class="db-quick" data-action="tglThemeQuick" aria-label="Appearance" title="Appearance" style="right:12px;"><svg class="ico" aria-hidden="true"><use id="db-theme-quick-ico" href="css/mmgr-icons.svg#i-palette"></use></svg></button>
     <!-- SEARCH: project search for users with many projects -->
     <button type="button" id="db-search-btn" class="db-quick" data-action="openProjectSearch" aria-label="Search projects" title="Search projects" style="right:54px;"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg></button>
-    <!-- PLAN CONTROL (owner 2026-11-06): visible after sign-in, at the top
-         where the account is shown. Free -> "Upgrade to Premium", paid ->
-         "Premium"; both open the pricing page, where a plan is chosen and
-         checkout starts. Rendered by js/mmgr-cloud-dash.js loadPlan(); hidden
-         while signed out or billing is unconfigured. -->
-    <a href="pricing.html" id="top-plan" class="top-plan" hidden aria-label="View plans">
-      <svg class="ico" aria-hidden="true"><use id="top-plan-ico" href="css/mmgr-icons.svg#i-sparkle"></use></svg>
-      <span id="top-plan-text">Upgrade to Premium</span>
-    </a>
     <!-- SIGNED-IN INDICATOR (hidden - sign-in lives in sidebar only) -->
     <button type="button" id="db-user-avatar" class="db-avatar" data-action="openSignIn" aria-label="Sign in" title="Sign in" style="display:none;">
       <span class="db-avatar-box"><span class="db-avatar-ring"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg></span><span class="db-avatar-dot" hidden></span></span>

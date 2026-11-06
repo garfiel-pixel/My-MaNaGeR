@@ -25,11 +25,11 @@
   // in the rail footer , both fed by the SAME fetches as the main dashboard
   // (one network round-trip, two surfaces).
   const RAIL_CLOUD = 'rail-cloud-list';
-  const RAIL_UPGRADE = 'rail-upgrade';
-  const RAIL_PLAN = 'rail-plan';
-  // Top-of-page plan control (owner 2026-11-06): Premium / Upgrade to Premium
-  // at the top of the launcher, linking to the pricing page.
-  const TOP_PLAN = 'top-plan';
+  // The account's plan bar (Premium / Upgrade to Premium, plus Manage
+  // subscription) lives in app.html's rail footer and is owned by
+  // js/mmgr-billing-manage.js - the same module the admin panel uses. This
+  // file no longer renders or fetches it (owner 2026-11-06: one control, in
+  // the rail above the account row, for every signed-in person).
 
   function $(id) {
     return document.getElementById(id);
@@ -552,207 +552,14 @@
       .join('');
   }
 
-  // ---- BILLING-UPGRADE-UI (app.html RAIL FOOTER, 2026-08-12/14) ----
-  // Plan status lives in the rail footer where it is always visible (owner
-  // polish 2026-08-14: the main dashboard shows ONLY cloud projects , the
-  // plan/upgrade strip was removed from there). Paid plan -> a "Premium"
-  // badge; free plan -> an "Upgrade to Premium" button. Both fed by the
-  // session-gated /api/billing/status (same origin + cookie as the project
-  // list above). Dormant-when-unconfigured: with no LEMONSQUEEZY_* secrets
-  // the worker answers configured:false and both stay hidden , byte-for-byte
-  // unchanged on the current deploy. The button opens the checkout via
-  // POST /api/billing/checkout (session-gated) and reports outcomes in the
-  // existing live-region status line.
-  function hideTopPlan() {
-    const top = $(TOP_PLAN);
-    if (top) {
-      top.hidden = true;
-    }
-  }
-
-  /* Top control: the same plan state as the rail, one click to the pricing
-     page. The icon and label swap in place, so the link's href never changes. */
-  function renderTopPlan(active) {
-    const top = $(TOP_PLAN);
-    if (!top) {
-      return;
-    }
-    const ico = $('top-plan-ico');
-    if (ico) {
-      ico.setAttribute('href', 'css/mmgr-icons.svg#' + (active ? 'i-check' : 'i-sparkle'));
-    }
-    const txt = $('top-plan-text');
-    if (txt) {
-      txt.textContent = active ? 'Premium' : 'Upgrade to Premium';
-    }
-    top.setAttribute(
-      'aria-label',
-      active ? 'Premium - view plans' : 'Upgrade to Premium - view plans'
-    );
-    top.hidden = false;
-  }
-
-  // One renderer for one billing-status payload. Shared by the fetch below
-  // and by the mmgr:plan-changed event js/mmgr-google-auth.js broadcasts
-  // after its own status fetch, so the launcher's plan control never has to
-  // wait on the PROJECT LIST request to learn what plan the account is on.
-  // (Owner report 2026-11-06: the control was invisible after signing in
-  // because loadPlan() only ran from loadList()'s success path - a failed or
-  // empty project fetch silently suppressed the plan UI.)
-  function applyPlanData(data) {
-    const plan = $(RAIL_PLAN);
-    const railUp = $(RAIL_UPGRADE);
-    const top = $(TOP_PLAN);
-    if (!plan && !railUp && !top) {
-      return;
-    }
-    const hideAll = function () {
-      if (plan) {
-        plan.hidden = true;
-      }
-      if (railUp) {
-        railUp.hidden = true;
-      }
-      hideTopPlan();
-    };
-    if (!data || !data.ok || !data.configured) {
-      hideAll();
-      return;
-    }
-    // Single source of truth for the active tier: the billing status fetch.
-    if (
-      window.MMGR &&
-      MMGR.Entitlements &&
-      typeof MMGR.Entitlements.setBillingTier === 'function'
-    ) {
-      MMGR.Entitlements.setBillingTier(data.plan || 'free');
-    }
-    const count = data.projectCount || 0;
-    const cap = data.projectCap;
-    const atLimit = cap !== null && cap !== undefined && count >= cap;
-    if (data.active) {
-      // Paid plan -> Premium badge (visible whenever billing is on).
-      if (plan) {
-        plan.innerHTML =
-          '<span class="db-plan-badge"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Premium</span>';
-        plan.hidden = false;
-      }
-      if (railUp) {
-        railUp.hidden = true;
-      }
-      renderTopPlan(true);
-    } else {
-      // Free plan -> a simple Upgrade to Premium button (owner: "something
-      // simple like upgrade to premium"), with a small note at the cap.
-      if (plan) {
-        plan.hidden = true;
-      }
-      if (railUp) {
-        railUp.hidden = false;
-        railUp.innerHTML =
-          'Upgrade to Premium' +
-          (atLimit
-            ? '<span class="db-upgrade-note">' +
-              Number(count) +
-              ' of ' +
-              Number(cap) +
-              ' used</span>'
-            : '');
-      }
-      renderTopPlan(false);
-    }
-  }
-
-  // The auth module already fetches this endpoint on every signed-in render
-  // and broadcasts the payload. Listening to it means ONE request per page
-  // and a plan control that survives a broken project fetch.
-  document.addEventListener('mmgr:plan-changed', function (e) {
-    if (e && e.detail) {
-      applyPlanData(e.detail);
-    }
-  });
-
-  async function loadPlan() {
-    const plan = $(RAIL_PLAN);
-    const railUp = $(RAIL_UPGRADE);
-    const top = $(TOP_PLAN);
-    if (!plan && !railUp && !top) {
-      return;
-    }
-    let res;
-    try {
-      res = await fetch('/api/billing/status', { method: 'GET', credentials: 'same-origin' });
-    } catch (e) {
-      return;
-    }
-    if (!res.ok) {
-      return;
-    }
-    let data = null;
-    try {
-      data = await res.json();
-    } catch (e) {
-      return;
-    }
-    applyPlanData(data);
-  }
-
-  // ---- open the LemonSqueezy checkout (same contract as the drawer's
-  //      cloudUpgrade in mmgr-cloud.js , session-gated POST, open URL) ----
-  async function upgradePlan() {
-    setStatus('Opening checkout...');
-    // POPUP GESTURE (owner report2026-10-04, 'the upgrade to premium button
-    // doesn't work anymore'): window.open() used to run AFTER the await, and
-    // by then the user activation is gone, so Chrome blocks it silently -
-    // a dead button with no error. Open the tab SYNCHRONOUSLY here, inside
-    // the click, then point it at the checkout URL. Same-tab-restore trick:
-    // opener is nulled after we take the reference so the checkout page
-    // cannot reach back into this window.
-    const tab = window.open('about:blank', '_blank');
-    try {
-      const res = await fetch('/api/billing/checkout', {
-        method: 'POST',
-        credentials: 'same-origin'
-      });
-      const data = await res.json().catch(function () {
-        return {};
-      });
-      if (!res.ok || !data.ok || !data.checkoutUrl) {
-        if (tab) {
-          try {
-            tab.close();
-          } catch (e) {
-            /* already gone */
-          }
-        }
-        if (res.status === 503) {
-          setStatus(
-            'Billing isn\u2019t configured on this server yet, so no upgrade is available.',
-            true
-          );
-        } else {
-          setStatus((data && data.error) || 'Checkout failed (HTTP ' + res.status + ').', true);
-        }
-        return;
-      }
-      if (tab) {
-        try {
-          tab.opener = null;
-          tab.location.replace(data.checkoutUrl);
-        } catch (e) {
-          window.open(data.checkoutUrl, '_blank', 'noopener');
-        }
-      } else {
-        window.open(data.checkoutUrl, '_blank', 'noopener');
-      }
-      setStatus(
-        'Checkout opened in a new tab , complete the purchase there, then refresh this page.'
-      );
-    } catch (e) {
-      setStatus('Could not reach the cloud service.', true);
-    }
-  }
-
+  // ---- THE ACCOUNT PLAN BAR is NOT rendered here ----
+  // Owner 2026-11-06: the Premium / Upgrade to Premium bar belongs in the rail
+  // footer, directly above the signed-in row, and it must appear for EVERY
+  // signed-in person. app.html owns that markup and js/mmgr-billing-manage.js
+  // renders it (Premium badge, Manage subscription, typed-CANCEL), so this
+  // module stays out of it. This block used to render the same control from
+  // the project-list path behind a configured:true gate, which is exactly why
+  // the bar went missing after signing in.
   // ---- Load a project via the linked owner session ----
   async function loadProject(projectId) {
     // projectId is sanitized server-side to [A-Za-z0-9_-] at create, so the
@@ -1241,12 +1048,6 @@
       }
       return;
     }
-    const up = e.target && e.target.closest ? e.target.closest('[data-cd-upgrade]') : null;
-    if (up) {
-      e.preventDefault();
-      upgradePlan();
-      return;
-    }
     const cfm = e.target && e.target.closest ? e.target.closest('[data-cdm-confirm]') : null;
     if (cfm) {
       e.preventDefault();
@@ -1284,8 +1085,30 @@
       }
     }
   });
+  // EVERY door into a signed-in state refreshes the list: a Google or email
+  // sign-in (mmgr:google-signed-in) and the session restore, which only
+  // broadcasts mmgr:user-changed.
   document.addEventListener('mmgr:google-signed-in', function () {
     loadList();
+  });
+  document.addEventListener('mmgr:user-changed', function () {
+    loadList();
+  });
+  // OWNER 2026-11-06 (a cloud project saved on another device did not show up):
+  // the list was fetched ONCE at boot, so a tab that stayed open kept its first
+  // answer forever - empty if it was opened before signing in, stale if the
+  // project was saved elsewhere since. Re-fetch when the tab comes back to the
+  // foreground and when the page is restored from the back/forward cache, which
+  // is the moment a person looks for work they did on another device.
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') {
+      loadList();
+    }
+  });
+  window.addEventListener('pageshow', function (e) {
+    if (e && e.persisted) {
+      loadList();
+    }
   });
   document.addEventListener('mmgr:google-signed-out', function () {
     const dash = $(DASH);
@@ -1299,35 +1122,12 @@
     // Signing out is the one failure this cache must never outlive: the next
     // person on the device must not see the previous account's project names.
     dropCache();
-    // SIGN-OUT LEAVES THE PREMIUM BADGE (owner report 2026-10-04): this
-    // handler cleared the project list but never the plan strip, so signing
-    // out of a Premium account left "Premium" on screen for the next person
-    // to pick up the device. The plan belongs to the ACCOUNT, not the
-    // browser, so a sign-out has to retract it - no reload needed.
-    hidePlan();
+    // SIGN-OUT RETRACTS THE PLAN BAR (owner report 2026-10-04): the plan
+    // belongs to the ACCOUNT, not the browser, so signing out must not leave
+    // "Premium" for the next person on the device. js/mmgr-billing-manage.js
+    // owns that control and hides it on mmgr:google-signed-out; the plan pills
+    // the header mounts are cleared by the auth module's own sign-out path.
   });
-
-  // Shared by the signed-out handler and the sign-in refresh: retire the plan
-  // strip entirely. Also clears the plan pills the header mounts, so the two
-  // surfaces cannot disagree about whether anyone is signed in.
-  function hidePlan() {
-    const plan = $(RAIL_PLAN);
-    if (plan) {
-      plan.hidden = true;
-      plan.innerHTML = '';
-    }
-    const railUp = $(RAIL_UPGRADE);
-    if (railUp) {
-      railUp.hidden = true;
-      railUp.innerHTML = '';
-    }
-    hideTopPlan();
-    const pills = document.querySelectorAll('[data-plan-badge]');
-    for (let i = 0; i < pills.length; i++) {
-      pills[i].hidden = true;
-      pills[i].innerHTML = '';
-    }
-  }
 
   // ---- PROJECTS CAROUSEL (owner 2026-08-16) -----------------------------
   // The launcher #grid is paged: up to PG_PER_PAGE cards per page with
@@ -1604,15 +1404,11 @@
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
       loadList();
-      // The plan control is the ACCOUNT's, not the project list's. Fetch it
-      // on its own so a failed / empty project request can never hide it.
-      loadPlan();
       initGridPager();
       loadDeletedProjects();
     });
   } else {
     loadList();
-    loadPlan();
     initGridPager();
     loadDeletedProjects();
   }

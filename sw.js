@@ -610,7 +610,13 @@
 // CSP hashes were regenerated for the app.html inline change. Changed shell
 // assets: app.html, admin.html, dist/app-bundle.js, dist/bundle.js,
 // dist/marketing.min.css, css/mmgr.css.
-const CACHE = 'mmgr-shell-v553';
+// v554 - A PHOTOS FAILURE SPEAKS IN WORDS (owner 2026-11-06: a fresh project
+// showed "Could not load photos (HTTP 500)"). The server cause was a schema
+// four migrations behind the code, fixed at D1; the client half is here. A
+// failed load now names what happened, says nothing was lost, and offers Try
+// again instead of printing a status code with no next step. Changed shell
+// assets: dist/bundle.js.
+const CACHE = 'mmgr-shell-v554';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

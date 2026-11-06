@@ -174,6 +174,22 @@ var MMGR = window.MMGR || {};
     return raw || fallback;
   }
 
+  /* A status code is not a sentence. The owner's rule: a genuine failure says
+     what happened in words and offers the next step, and an empty project is
+     never dressed up as an error. */
+  function loadFailureSentence(status) {
+    if (status === 401 || status === 403) {
+      return 'You do not have access to this project\u2019s photos.';
+    }
+    if (status === 404) {
+      return 'This project is not on the server yet. Upload it from the launcher, then try again.';
+    }
+    if (status >= 500) {
+      return 'The server could not answer just now. Nothing was lost, try again in a moment.';
+    }
+    return 'Photos could not be loaded. Check the connection and try again.';
+  }
+
   async function fetchPhotos() {
     if (_loading) {
       return false;
@@ -198,11 +214,11 @@ var MMGR = window.MMGR || {};
       if (!res.ok || !data || !data.ok) {
         var msg = errorSentence(
           data && data.error,
-          'Could not load photos (HTTP ' + res.status + ').'
+          loadFailureSentence(res.status)
         );
         _photos = [];
         _canUpload = false;
-        _note = { text: msg, kind: 'warn' };
+        _note = { text: msg, kind: 'warn', retry: true };
         if (C._setStatus) {
           C._setStatus(msg, 'err');
         }
@@ -298,6 +314,16 @@ var MMGR = window.MMGR || {};
   }
 
   function bind() {
+    var note = $('photos-note');
+    if (note) {
+      note.addEventListener('click', function (e) {
+        var t = e.target;
+        if (t && t.closest && t.closest('[data-photo-retry]')) {
+          e.preventDefault();
+          fetchPhotos();
+        }
+      });
+    }
     var addBtn = $('photos-add-btn');
     var form = $('photos-form');
     var pick = $('photos-pick-btn');
@@ -405,7 +431,12 @@ var MMGR = window.MMGR || {};
     if (!_note.text) {
       return '';
     }
-    return esc(_note.text);
+    var out = esc(_note.text);
+    if (_note.retry) {
+      out +=
+        ' <button class="btn btn-n btn-s" type="button" data-photo-retry="1">Try again</button>';
+    }
+    return out;
   }
 
   function cardHtml(p) {
@@ -512,7 +543,7 @@ var MMGR = window.MMGR || {};
     }
     var note = $('photos-note');
     if (note) {
-      note.textContent = noteHtml();
+      note.innerHTML = noteHtml();
       note.classList.toggle('is-hide', !_note.text);
       note.classList.toggle('note-warn', _note.kind === 'warn');
     }

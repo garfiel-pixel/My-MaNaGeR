@@ -471,19 +471,85 @@ async function main() {
       g1
     );
 
-    // ---- G2: the bar reads zero ------------------------------------
-    const g2 = await page.evaluate(() => ({
-      text: (document.getElementById('photos-quota-text') || {}).textContent || '',
-      now: (document.getElementById('photos-quota-bar') || {}).getAttribute
-        ? document.getElementById('photos-quota-bar').getAttribute('aria-valuenow')
-        : null,
-      items: document.querySelectorAll('.photo-item').length,
-      empty: ((document.getElementById('photos-list') || {}).textContent || '').slice(0, 120)
-    }));
+    // ---- G2: the bar reads zero, and an empty project is not an error ----
+    const g2 = await page.evaluate(() => {
+      const note = document.getElementById('photos-note');
+      return {
+        text: (document.getElementById('photos-quota-text') || {}).textContent || '',
+        now: (document.getElementById('photos-quota-bar') || {}).getAttribute
+          ? document.getElementById('photos-quota-bar').getAttribute('aria-valuenow')
+          : null,
+        items: document.querySelectorAll('.photo-item').length,
+        empty: ((document.getElementById('photos-list') || {}).textContent || '').slice(0, 160),
+        note: note ? String(note.textContent || '') : '',
+        noteHidden: note ? note.classList.contains('is-hide') : false
+      };
+    });
     check(
-      'G2 a fresh account reads 0 B of 500.0 MB used with aria-valuenow 0',
-      /^0 B of 500\.0 MB used$/.test(g2.text.trim()) && g2.now === '0' && g2.items === 0,
+      'G2 a fresh project reads 0 B of 500.0 MB used, says No photos yet, and raises no error',
+      /^0 B of 500\.0 MB used$/.test(g2.text.trim()) &&
+        g2.now === '0' &&
+        g2.items === 0 &&
+        /No photos yet/.test(g2.empty) &&
+        g2.noteHidden === true &&
+        !/HTTP \d/.test(g2.empty + g2.note),
       g2
+    );
+
+    // ---- G2b: a real failure speaks in words and offers a retry --------
+    // The owner's report was a bare "Could not load photos (HTTP 500)" over an
+    // empty project. The cause was a schema behind the code (migrations 0028
+    // to 0031), fixed at the database; this arm pins the client half so a
+    // future failure can never surface as a status code with no next step.
+    await page.route('**/api/cloud/projects/*/photos', route =>
+      route.fulfill({ status: 500, contentType: 'application/json', body: '{"ok":false}' })
+    );
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await openPhotos(page, pid);
+    const g2b = await until(
+      page,
+      () => {
+        const note = document.getElementById('photos-note');
+        if (!note || note.classList.contains('is-hide')) return false;
+        const retry = note.querySelector('[data-photo-retry]');
+        const text = String(note.textContent || '');
+        if (!retry) return false;
+        return { text: text.trim(), hasRetry: !!retry, hidden: note.classList.contains('is-hide') };
+      },
+      null,
+      25000
+    );
+    check(
+      'G2b a failed load names the problem in words, never a bare status code, and offers Try again',
+      !!g2b &&
+        /server could not answer/i.test(g2b.text) &&
+        g2b.hasRetry === true &&
+        !/HTTP \d/.test(g2b.text) &&
+        !/\(HTTP/.test(g2b.text),
+      g2b
+    );
+    await page.unroute('**/api/cloud/projects/*/photos');
+    const g2c = await (async () => {
+      await page.click('[data-photo-retry]');
+      return until(
+        page,
+        () => {
+          const note = document.getElementById('photos-note');
+          const list = document.getElementById('photos-list');
+          if (!note || !list) return false;
+          const empty = /No photos yet/.test(String(list.textContent || ''));
+          return empty && note.classList.contains('is-hide')
+            ? { empty: true, noteHidden: true }
+            : false;
+        },
+        null,
+        25000
+      );
+    })();
+    check(
+      'G2c Try again recovers the panel to the empty state once the server answers',
+      !!g2c && g2c.empty === true && g2c.noteHidden === true,
+      g2c
     );
 
     // ---- G3: upload 1 through the real picker ----------------------

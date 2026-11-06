@@ -83,10 +83,20 @@ async function recEligible(env, session) {
 }
 
 function recNewOtp() {
-  const bytes = crypto.getRandomValues(new Uint8Array(REC_OTP_LEN));
+  // Rejection sampling rather than a bare modulo: only byte values that map
+  // evenly onto the alphabet are accepted, so no character is ever more
+  // likely than another. With the 32-letter alphabet every byte qualifies
+  // today; the guard keeps the property if the alphabet changes.
+  const alphabet = REC_OTP_ALPHABET;
+  const limit = 256 - (256 % alphabet.length);
   let code = '';
-  for (let i = 0; i < bytes.length; i++) {
-    code += REC_OTP_ALPHABET[bytes[i] % REC_OTP_ALPHABET.length];
+  while (code.length < REC_OTP_LEN) {
+    const bytes = crypto.getRandomValues(new Uint8Array(REC_OTP_LEN));
+    for (let i = 0; i < bytes.length && code.length < REC_OTP_LEN; i++) {
+      if (bytes[i] < limit) {
+        code += alphabet[bytes[i] % alphabet.length];
+      }
+    }
   }
   return code;
 }

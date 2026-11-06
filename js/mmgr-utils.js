@@ -326,9 +326,15 @@ var MMGR = window.MMGR || {};
     if (!str) {
       return '';
     }
-    return String(str)
-      .replace(/<[^>]*>/g, '')
-      .trim();
+    // Strip until stable: a single pass can leave a new tag behind when
+    // removing one tag joins its neighbours into another.
+    let out = String(str);
+    let prev;
+    do {
+      prev = out;
+      out = out.replace(/<[^>]*>/g, '');
+    } while (out !== prev);
+    return out.trim();
   }
 
   // ---- Copy to Clipboard ----

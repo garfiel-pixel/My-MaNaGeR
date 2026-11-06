@@ -770,7 +770,7 @@ var MMGR = window.MMGR || {};
         /^(.+?)\s*\(\s*(\d+)\s*d\s*\)\s*\[\s*(\d{4}-\d{2}-\d{2})\s*→\s*(\d{4}-\d{2}-\d{2})\s*\]\s*$/
       );
       if (parts) {
-        html += `<tr><td>${U.escapeHtml(parts[1].trim())}</td><td>${parts[2]}d</td><td>${parts[3]}</td><td>${parts[4]}</td></tr>`;
+        html += `<tr><td>${U.escapeHtml(parts[1].trim())}</td><td>${U.escapeHtml(parts[2])}d</td><td>${U.escapeHtml(parts[3])}</td><td>${U.escapeHtml(parts[4])}</td></tr>`;
         validCount++;
       }
     }

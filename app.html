@@ -963,6 +963,26 @@ function escapeHtml(str){
 
 function findProject(id){ return allProjects().find(p=>p.id===id); }
 
+/* A manifest entry is device-local data, but data is still data: the only
+   thing a project may navigate to is a same-origin relative page. Anything
+   with a scheme, a protocol-relative start, a leading slash or a path
+   segment is refused, so a corrupted or injected manifest entry cannot
+   redirect the launcher off-site. */
+function safeProjectFile(f){
+  if(typeof f !== 'string' || !f) return '';
+  if(/^[a-z][a-z0-9+.-]*:/i.test(f)) return '';
+  if(f.slice(0,2) === '//' || f.slice(0,2) === '\\\\') return '';
+  if(f.charAt(0) === '/' || f.charAt(0) === '\\') return '';
+  return /^[A-Za-z0-9._-]+\.html(\?[^#\s]*)?(#[^\s]*)?$/.test(f) ? f : '';
+}
+
+function goProject(project){
+  const file = project && safeProjectFile(project.file);
+  if(!file) return false;
+  window.location.href = file;
+  return true;
+}
+
 function handleCardClick(id){
   const project = findProject(id);
   if(!project) return;
@@ -972,11 +992,11 @@ function handleCardClick(id){
   if(isLocalProject(id)){
     localStorage.setItem('mmgr_unlocked_' + id, '1');
     localStorage.setItem('mmgr_scope_' + id, 'full');
-    window.location.href = project.file;
+    goProject(project);
     return;
   }
   if(isUnlocked(id)){
-    window.location.href = project.file;
+    goProject(project);
     return;
   }
   openModal(project);
@@ -1088,7 +1108,7 @@ async function attemptUnlock(){
     }else{
       localStorage.setItem('mmgr_scope_'+activeProject.id, 'full');
     }
-    setTimeout(()=>{ window.location.href = activeProject.file; }, 400);
+    setTimeout(()=>{ goProject(activeProject); }, 400);
   }else{
     // Cloud editor code probe (not in the local manifest): if the Worker
     // accepts it, the project opens with the editor's scope instead of
@@ -1097,7 +1117,7 @@ async function attemptUnlock(){
     const cloud = await tryCloudEditorUnlock(activeProject.id, val);
     if(cloud){
       btn.textContent = 'Unlocked, opening…';
-      setTimeout(()=>{ window.location.href = activeProject.file; }, 400);
+      setTimeout(()=>{ goProject(activeProject); }, 400);
       return;
     }
     btn.disabled = false; btn.textContent = 'Unlock';

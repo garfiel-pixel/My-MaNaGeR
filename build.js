@@ -271,11 +271,14 @@ function buildBundle(modules, outputFile, label) {
   const ext = path.extname(outputFile);
 
   try {
+    // Escape backslashes BEFORE quotes: a backslash left raw would consume
+    // the quote that follows it and break out of the shell argument.
+    const bannerArg = BANNER.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
     execSync(
       'npx esbuild "' +
         tmpIn +
         '" --minify --sourcemap --banner:js="' +
-        BANNER.replace(/"/g, '\\"') +
+        bannerArg +
         '" --outfile="' +
         path.join(DIST, path.basename(outputFile)) +
         '"',

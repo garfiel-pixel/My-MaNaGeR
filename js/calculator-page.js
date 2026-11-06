@@ -11474,13 +11474,13 @@
         (e, i) =>
           '<div class="calc-hist-row">' +
           '<span class="calc-hist-date">' +
-          e.at +
+          esc(e.at) +
           '</span>' +
           '<span class="calc-hist-work">' +
-          e.name +
+          esc(e.name) +
           '</span>' +
           '<span class="calc-hist-total">' +
-          e.total +
+          esc(e.total) +
           '</span>' +
           '<button type="button" class="btn btn-n btn-s" data-action="calcRestore" data-idx="' +
           i +

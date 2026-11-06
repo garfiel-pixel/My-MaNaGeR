@@ -600,7 +600,17 @@
 // server says the visitor is signed out. A stale bundle can no longer remove
 // the control. Changed shell assets: app.html, sw.js, js/mmgr-billing-manage.js,
 // dist/app-bundle.js (the module left the launcher bundle), css/mmgr.css.
-const CACHE = 'mmgr-shell-v552';
+// v553 - CODE-SCANNING DEFECTS CLOSED (2026-11-06). Shipped code only: the
+// plain-text charter fallback lost its whitespace classes to a string escape
+// ('\s' is 's'), so a blank line between label and value stopped the match;
+// the calculator's saved-estimate rows and the admin client-code reveal
+// injected stored strings into innerHTML unescaped; the launcher navigated to
+// a manifest `file` value without proving it was a same-origin page; and the
+// recovery OTP and the dev API-key generator both used a biased modulo. The
+// CSP hashes were regenerated for the app.html inline change. Changed shell
+// assets: app.html, admin.html, dist/app-bundle.js, dist/bundle.js,
+// dist/marketing.min.css, css/mmgr.css.
+const CACHE = 'mmgr-shell-v553';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

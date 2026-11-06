@@ -299,11 +299,11 @@ const INLINE_SCRIPT_HASHES = [
   "'sha256-5zwY7VuJS3UrbdPmpvJBMAK1plLSvLq6uINjysG3x+I='",
   "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='",
   "'sha256-/rn4nZmAOKw6szwtzwLGwkPTpaoXMeww0Z6xlMgFhbQ='",
-  "'sha256-YYxT7/tOr3txrZSyPB1VPidlu2Lz20I4bc5GyWCSVGg='",
+  "'sha256-D6T0dajxQNvov9wrVcQ2HXLW6mjRfkJpUpTJS2AZSOE='",
   "'sha256-7BIp3SE8LrjSq5puH0lRtmP51SnLzcmBy32sBq0Zcps='",
   "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='",
   "'sha256-hkXebphLbybaZt8yNpjkxPc3WjJNQDh0zB2AxsplVEg='",
-  "'sha256-O4M4BtPmbbIlGyUaVo5IGC01HYIGfSyXhr6/ePyC5qw='",
+  "'sha256-48azl/3AllEyJsLx4Kxp5aVo85DP4fYEtm3mYmVUWsw='",
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='",
   "'sha256-pmiUsOqQa0BPAXsieggzTCopGA0jQO863MBE2hEoBb8='",
   "'sha256-7cQZf8bzyvMY1EwebBo5YuL3PZ9T/X5CTWFRXO3Aq5E='",
@@ -705,11 +705,20 @@ const server = http.createServer((req, res) => {
         }
         const abc = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         const grp = function () {
-          return Array.from(crypto.randomBytes(6))
-            .map(function (x) {
-              return abc[x % 36];
-            })
-            .join('');
+          // Rejection sampling: 36 does not divide 256, so a bare modulo would
+          // favour the first four letters. Only bytes below the largest
+          // multiple of the alphabet length are accepted.
+          const limit = 256 - (256 % abc.length);
+          let out = '';
+          while (out.length < 6) {
+            const buf = crypto.randomBytes(6);
+            for (let i = 0; i < buf.length && out.length < 6; i++) {
+              if (buf[i] < limit) {
+                out += abc[buf[i] % abc.length];
+              }
+            }
+          }
+          return out;
         };
         const key = 'sk-mmgr-' + grp() + '-' + grp() + '-' + grp();
         const saltHex = crypto.randomBytes(16).toString('hex');
@@ -929,7 +938,7 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, headers);
     fs.createReadStream(file).pipe(res);
   } catch (e) {
-    res.writeHead(500);
+    res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end(String(e && e.message));
   }
 });

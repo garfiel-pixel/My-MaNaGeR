@@ -487,10 +487,14 @@ var MMGR = window.MMGR || {};
   // Regex fallback for plain-text charters when the AI output isn't JSON.
   function regexExtractCharter(txt) {
     const grab = label => {
+      // The label is data, not pattern: escape it before it enters the
+      // expression. The whitespace classes must be double-escaped because
+      // this is a string, not a regex literal - '\s' in a string is just 's'.
+      const safeLabel = String(label).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const re = new RegExp(
-        '(?:^|\n)\s*' +
-          label +
-          '\s*[:\--]\s*(.+?)(?=\n\s*[A-Z][A-Za-z /]{2,30}\s*[:\--]|\n\s*\n|$)',
+        '(?:^|\\n)\\s*' +
+          safeLabel +
+          '\\s*[:-]\\s*(.+?)(?=\\n\\s*[A-Z][A-Za-z /]{2,30}\\s*[:-]|\\n\\s*\\n|$)',
         'is'
       );
       const m = txt.match(re);

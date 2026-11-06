@@ -3674,8 +3674,8 @@ async function createClientCode(){
     reveal.hidden = false;
     reveal.innerHTML = '<strong style="font-size:.76rem">NEW client code. Copy it now, it is shown once:</strong> ' +
       '<code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold);font-weight:700">' + escapeHtml(data.code) + '</code> ' +
-      '<button class="btn btn-g btn-s" onclick="navigator.clipboard.writeText(\'' + escapeHtml(data.code) + '\')"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>' +
-      '<div style="font-size:.7rem;color:var(--slate);margin-top:4px">Sections: ' + sections.join(', ') + (data.expiresAt ? ' · expires ' + String(data.expiresAt).slice(0,10) : ' · never expires') + '</div>';
+      '<button class="btn btn-g btn-s" data-action="codesCopyReveal" data-code="' + escapeAttr(data.code) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>' +
+      '<div style="font-size:.7rem;color:var(--slate);margin-top:4px">Sections: ' + escapeHtml(sections.join(', ')) + (data.expiresAt ? ' · expires ' + escapeHtml(String(data.expiresAt).slice(0,10)) : ' · never expires') + '</div>';
     toast('Client code created. Copy it from the panel.');
     listClientCodes();
   }catch(e){

@@ -668,6 +668,12 @@ jobs:
         env:
           QA_PORT: 8802
 
+      - name: "T2: Approval preview (H-6)"
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: node tools/qa-approval.cjs
+        env:
+          QA_PORT: 8818
+
       - name: "T2: Calc workspace route (client-docs W5)"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-calc-workspace.cjs

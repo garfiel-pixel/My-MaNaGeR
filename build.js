@@ -123,6 +123,10 @@ const APP_MODULES = [
   // H-4 (BUDGET-BOQ directive 2026-11-05): the weekly tracking view and its
   // two exports. Reads State/Spend/Utils at call time only.
   'js/mmgr-weekly.js',
+  // H-6 (BUDGET-BOQ directive 2026-11-05): the approval preview. Renders the
+  // REAL Budget and Weekly panels from a throwaway state (State.setPreviewState)
+  // and sends only the ticked, possibly edited changes back for approval.
+  'js/mmgr-approval.js',
   // Entitlements seam (owner 2026-09-19): the one future door for gating AI
   // features on sign-in; premium rules land inside later, callers never change.
   'js/app/entitlements.js',

@@ -97,8 +97,16 @@ var MMGR = window.MMGR || {};
                 '</span>';
           let actions = '';
           if (p.status === 'pending') {
+            // H-6 (BUDGET-BOQ directive 2026-11-05): View is the front door -
+            // a full-width preview with the real panels, per-change ticks and
+            // editable values. Accept/Reject stay for the plain one-press
+            // path (and for older harnesses); the preview is where an edit
+            // or a partial approval happens.
             actions =
-              '<button class="btn btn-g btn-s" data-action="cloudReviewAccept" data-id="' +
+              '<button class="btn btn-g btn-s" data-action="cloudReviewView" data-id="' +
+              p.id +
+              '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg> View</button>' +
+              '<button class="btn btn-n btn-s" data-action="cloudReviewAccept" data-id="' +
               p.id +
               '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Accept</button>' +
               '<button class="btn btn-o btn-s" data-action="cloudReviewReject" data-id="' +
@@ -225,6 +233,14 @@ var MMGR = window.MMGR || {};
     if (btn) {
       btn.classList.toggle('open', show);
       btn.setAttribute('aria-expanded', show ? 'true' : 'false');
+    }
+  }
+
+  // H-6: open the full-width approval preview. The preview module owns the
+  // dialog; this is only the door from the review list.
+  function cloudReviewView(id) {
+    if (ns.Approval && ns.Approval.open) {
+      ns.Approval.open(id);
     }
   }
 
@@ -413,6 +429,7 @@ var MMGR = window.MMGR || {};
     cloudReviewList: cloudReviewList,
     cloudReviewMine: cloudReviewMine,
     reviewToggleDiffs: reviewToggleDiffs,
+    cloudReviewView: cloudReviewView,
     cloudReviewAccept: cloudReviewAccept,
     cloudReviewReject: cloudReviewReject,
     copyEditorCode: copyEditorCode,

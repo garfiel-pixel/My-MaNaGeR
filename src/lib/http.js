@@ -791,10 +791,15 @@ export async function cloudRateCheck(request, bucket, env, keyOverride) {
   // limit of its own (the ns is namespaced), it just does not get a stricter
   // one.
   const cfg = CLOUD_RATE[bucket] || CLOUD_RATE.general;
+  // TEST HOOK (default 1, no production effect): RATE_LIMIT_FACTOR multiplies
+  // every bucket's max so local harnesses that drive many requests from one
+  // host are not throttled mid-suite. Production never sets this variable.
+  const factor = env && env.RATE_LIMIT_FACTOR ? Math.max(1, Number(env.RATE_LIMIT_FACTOR) || 1) : 1;
+  const cfgF = factor === 1 ? cfg : Object.assign({}, cfg, { max: Math.round(cfg.max * factor) });
 
   // 1. PER-CODE bucket (unchanged). Per-tenant fairness: one owner or editor
   //    gets its own allowance.
-  const perCode = await checkRateBucket(bucket + ':' + key, cfg, env);
+  const perCode = await checkRateBucket(bucket + ':' + key, cfgF, env);
   if (perCode.limited) {
     return perCode;
   }

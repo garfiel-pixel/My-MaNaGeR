@@ -1643,7 +1643,33 @@ var MMGR = window.MMGR || {};
       });
   }
 
+  // H-6 (BUDGET-BOQ directive 2026-11-05): a THROWAWAY preview state. The
+  // approval screen renders the real Budget and Weekly panels from a copy of
+  // the project with a proposal applied, and NOTHING may be saved while it is
+  // active. Every reader goes through getState(), so one override is enough;
+  // updateState() refuses while an override is set, so a renderer that tries
+  // to write (a focus handler, a lazy default) cannot leak into real data.
+  let _previewState = null;
+  function setPreviewState(s) {
+    _previewState = s || null;
+  }
+  function getPreviewState() {
+    return _previewState;
+  }
   function getState() {
+    if (_previewState) {
+      return _previewState;
+    }
+    if (!_state) {
+      load();
+    }
+    return _state;
+  }
+  // The REAL project state, never the throwaway approval-preview copy. Cloud
+  // pushes must read this so an in-flight preview can never be persisted, and
+  // so the autosave ships the live edit rather than the 300ms-stale
+  // localStorage mirror that save() writes on its debounce.
+  function getLiveState() {
     if (!_state) {
       load();
     }
@@ -1674,6 +1700,15 @@ var MMGR = window.MMGR || {};
   }
 
   function updateState(updater) {
+    // H-6: the approval preview renders from a throwaway copy. A write while
+    // that copy is active would either be lost or, worse, be persisted over
+    // the real project. Refuse loudly in dev, quietly in production.
+    if (_previewState) {
+      if (window.console && console.warn) {
+        console.warn('updateState refused: an approval preview is active.');
+      }
+      return;
+    }
     const s = getState();
     // Snapshot top-level references BEFORE the updater to detect dirty fields.
     const refs = {};
@@ -1950,6 +1985,10 @@ var MMGR = window.MMGR || {};
     load: load,
     save: save,
     getState: getState,
+    getLiveState: getLiveState,
+    // H-6: throwaway state for the approval preview (never saved).
+    setPreviewState: setPreviewState,
+    getPreviewState: getPreviewState,
     updateState: updateState,
     isDirty: isDirty,
     onChange: onChange,

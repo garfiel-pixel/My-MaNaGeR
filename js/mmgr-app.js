@@ -397,6 +397,18 @@ var MMGR = window.MMGR || {};
         } catch (e) {}
       }, 60000);
     }
+    // H-6 (BUDGET-BOQ directive 2026-11-05): the header's person-icon notice
+    // counts proposals waiting for review. Deferred past the cloud auth probe
+    // and silent when the project is not linked.
+    setTimeout(function () {
+      try {
+        if (ns.Approval && ns.Approval.refreshBadge) {
+          ns.Approval.refreshBadge();
+        }
+      } catch (e) {
+        /* never block boot */
+      }
+    }, 1500);
 
     // ACTION-PLAN 4.1: view-only scope , reduced read-only view. The body
     // class + banner are the visible state; the delegated event guards below
@@ -5270,7 +5282,13 @@ window.MMGR = MMGR;
       if (C && C.cloudReviewList) {
         C.cloudReviewList();
       }
+      // H-6: the badge follows the queue every time the list is refreshed.
+      if (window.MMGR.Approval && window.MMGR.Approval.refreshBadge) {
+        window.MMGR.Approval.refreshBadge();
+      }
     },
+    // H-6: the header notice opens the oldest waiting proposal in the preview.
+    apvOpenLatest: () => window.MMGR.Approval && window.MMGR.Approval.openLatest(),
     cloudReviewMine: () => {
       const C = window.MMGR.Cloud;
       if (C && C.cloudReviewMine) {
@@ -5281,6 +5299,13 @@ window.MMGR = MMGR;
       const C = window.MMGR.Cloud;
       if (C && C.cloudReviewAccept) {
         C.cloudReviewAccept(el && el.getAttribute('data-id'));
+      }
+    },
+    // H-6: open the full-width approval preview for one proposal.
+    cloudReviewView: el => {
+      const C = window.MMGR.Cloud;
+      if (C && C.cloudReviewView) {
+        C.cloudReviewView(el && el.getAttribute('data-id'));
       }
     },
     cloudReviewReject: el => {
@@ -5926,6 +5951,9 @@ window.MMGR = MMGR;
     cloudReviewList: 1,
     cloudReviewMine: 1,
     cloudReviewAccept: 1,
+    // H-6: the preview is read-only over the local workspace (it renders a
+    // throwaway copy), so opening it is safe in view-only mode too.
+    cloudReviewView: 1,
     cloudReviewReject: 1,
     cloudReviewToggleDiffs: 1
   };

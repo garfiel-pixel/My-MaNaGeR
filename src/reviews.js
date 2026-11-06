@@ -22,6 +22,7 @@ import {
 } from './lib/http.js';
 import { structuredLog } from './lib/observe.js';
 import { clientIp, verifyTurnstileToken } from './lib/turnstile.js';
+import { buildBudgetProposal } from './lib/budget.js';
 
 // The public config endpoint now lives in the shared Turnstile module; this
 // re-export keeps the router's existing import path valid.
@@ -172,7 +173,7 @@ export async function handleReviewList(request, env, projectId, mine) {
   }
   if (owner && !mine) {
     const rows = await env.DB.prepare(
-      'SELECT id, proposal_type, source_type, source_label, status, diffs_json, proposed_at, decided_at, decided_by, accepted_entry_id, decision_note, decision_edited FROM cloud_reviews WHERE project_id = ? ORDER BY CASE WHEN status = ? THEN 0 ELSE 1 END, id DESC LIMIT 100'
+      'SELECT id, proposal_type, source_type, source_label, status, diffs_json, proposal_json, proposed_at, decided_at, decided_by, accepted_entry_id, decision_note, decision_edited FROM cloud_reviews WHERE project_id = ? ORDER BY CASE WHEN status = ? THEN 0 ELSE 1 END, id DESC LIMIT 100'
     )
       .bind(projectId, 'pending')
       .all();
@@ -185,6 +186,12 @@ export async function handleReviewList(request, env, projectId, mine) {
       } catch (e) {
         diffs = null;
       }
+      let proposal = null;
+      try {
+        proposal = r.proposal_json ? JSON.parse(r.proposal_json) : null;
+      } catch (e) {
+        proposal = null;
+      }
       return {
         id: r.id,
         proposalType: r.proposal_type,
@@ -192,6 +199,7 @@ export async function handleReviewList(request, env, projectId, mine) {
         sourceLabel: r.source_label,
         status: r.status,
         diffs: diffs,
+        proposal: proposal,
         proposedAt: r.proposed_at,
         decidedAt: r.decided_at,
         decidedBy: r.decided_by,
@@ -240,15 +248,65 @@ async function readDecisionBody(request) {
   try {
     const r = await readCloudBody(request);
     if (!r || r.bad || r.tooLarge || !r.body || typeof r.body !== 'object') {
-      return { note: '', edited: 0 };
+      return { note: '', edited: 0, changes: null, diffs: null };
     }
     return {
       note: r.body.note == null ? '' : String(r.body.note).trim().slice(0, 500),
-      edited: r.body.edited === true || r.body.edited === 1 ? 1 : 0
+      edited: r.body.edited === true || r.body.edited === 1 ? 1 : 0,
+      changes: Array.isArray(r.body.changes) ? r.body.changes : null,
+      diffs: Array.isArray(r.body.diffs) ? r.body.diffs : null
     };
   } catch (e) {
-    return { note: '', edited: 0 };
+    return { note: '', edited: 0, changes: null, diffs: null };
   }
+}
+
+// H-6: apply only the field diffs the owner ticked, to the CURRENT state.
+// A diff whose "before" no longer matches the live record is stale - the
+// caller refuses the whole accept and names both values.
+function applyApprovedDiffs(prev, approved) {
+  const base = JSON.parse(JSON.stringify(prev || {}));
+  const submitted = {};
+  const stale = [];
+  (approved || []).forEach(function (d) {
+    if (!d || typeof d !== 'object' || !d.path || !d.recordId || !d.field) {
+      return;
+    }
+    const arr = base[d.path];
+    if (!Array.isArray(arr)) {
+      return;
+    }
+    const item = arr.find(function (x) {
+      return x && String(x.id) === String(d.recordId);
+    });
+    if (!item) {
+      stale.push({
+        path: d.path,
+        recordId: d.recordId,
+        field: d.field,
+        expected: d.before,
+        actual: null
+      });
+      return;
+    }
+    if (
+      d.before !== undefined &&
+      String(item[d.field] == null ? '' : item[d.field]) !==
+        String(d.before == null ? '' : d.before)
+    ) {
+      stale.push({
+        path: d.path,
+        recordId: d.recordId,
+        field: d.field,
+        expected: d.before == null ? null : d.before,
+        actual: item[d.field] == null ? null : item[d.field]
+      });
+      return;
+    }
+    item[d.field] = d.after !== undefined ? d.after : null;
+    submitted[d.path] = arr;
+  });
+  return { submitted: submitted, stale: stale };
 }
 
 export async function handleReviewAccept(request, env, projectId, reviewId, pushRevChanged) {
@@ -372,6 +430,77 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
       submitted = JSON.parse(row.submitted_json);
     } catch (e) {
       submitted = {};
+    }
+    // H-6 (BUDGET-BOQ directive 2026-11-05): the approval preview sends back
+    // ONLY the changes the owner ticked, with the values the owner left in
+    // the fields. Rebuild the submission from those against the CURRENT state
+    // through the same validator the MCP server uses - so a partial approval
+    // applies a subset, an edited value wins, and a value the browser made up
+    // is refused here. A change whose "before" no longer matches the live
+    // line is STALE: refuse the whole accept and name both values, because
+    // applying half a stale proposal is worse than asking for a refresh.
+    if (Array.isArray(decision.changes)) {
+      const built = buildBudgetProposal(prev, decision.changes, prev && prev.currency);
+      if (!built.changes.length) {
+        return json(
+          {
+            ok: false,
+            error:
+              'Nothing to apply. ' +
+              (built.refused.length ? built.refused.join('; ') : 'No changes were approved.')
+          },
+          400
+        );
+      }
+      const stale = [];
+      built.changes.forEach(function (c) {
+        if (c.kind !== 'changeLine' || c.before === undefined || c.before === null) {
+          return;
+        }
+        const live = (prev && prev.budgetLines ? prev.budgetLines : []).find(function (l) {
+          return String(l.id) === String(c.lineId);
+        });
+        const liveVal = live ? live[c.field] : undefined;
+        if (String(liveVal == null ? '' : liveVal) !== String(c.before)) {
+          stale.push({
+            lineId: c.lineId,
+            field: c.field,
+            expected: c.before,
+            actual: liveVal == null ? null : liveVal
+          });
+        }
+      });
+      if (stale.length) {
+        return json(
+          {
+            ok: false,
+            error: 'stale',
+            message: 'This proposal changed since it was made. Refresh it before approving.',
+            stale: stale
+          },
+          409
+        );
+      }
+      submitted = built.submitted;
+      scope = ['bud'];
+      decision.edited = 1;
+      resp.proposalSummary = built.summary;
+    } else if (Array.isArray(decision.diffs)) {
+      // Same idea for task/risk proposals: apply only the ticked field diffs.
+      const applied = applyApprovedDiffs(prev, decision.diffs);
+      if (applied.stale.length) {
+        return json(
+          {
+            ok: false,
+            error: 'stale',
+            message: 'This proposal changed since it was made. Refresh it before approving.',
+            stale: applied.stale
+          },
+          409
+        );
+      }
+      submitted = applied.submitted;
+      decision.edited = 1;
     }
     const merged = cloudScopeMerge(prev, submitted, scope);
     resp.applied = merged.applied;

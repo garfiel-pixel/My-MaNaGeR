@@ -679,7 +679,14 @@
 // them, validates every amount itself, computes a delivery's amount, and
 // reports the owner's decision and reason back to the AI client. Changed
 // shell assets: dist/bundle.js.
-const CACHE = 'mmgr-shell-v562';
+// v563 - APPROVAL PREVIEW (H-6, same directive). A proposal opens a
+// full-width preview: a plain-words line per change with a large-change
+// warning, the REAL Budget and Weekly panels rendered from a throwaway copy
+// of the project (gold edge on a changed cell, green on an added row), an
+// editable value per change, a tick per change for partial approval, and a
+// Reject that needs a reason. The header shows how many proposals wait.
+// Changed shell assets: project.html, dist/bundle.js, dist/mmgr.min.css.
+const CACHE = 'mmgr-shell-v563';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

@@ -616,6 +616,18 @@ var MMGR = window.MMGR || {};
 
   // ---- workspace state for THIS project ----------------------------------
   function readProjectState() {
+    // Prefer the live in-memory state: localStorage is only a debounced mirror
+    // (save() writes it up to 300ms later), so an idle autosave that reads the
+    // mirror can push a stale value over a newer cloud edit. getLiveState never
+    // returns the throwaway approval-preview copy.
+    if (ns.State && ns.State.getLiveState) {
+      try {
+        const s = ns.State.getLiveState();
+        if (s && typeof s === 'object') {
+          return s;
+        }
+      } catch (e) {}
+    }
     try {
       const raw = localStorage.getItem('mmgr_state_' + pid());
       if (!raw) {
@@ -4222,6 +4234,12 @@ var MMGR = window.MMGR || {};
       ns.CloudReview.reviewToggleDiffs(id);
     }
   }
+  // H-6: the approval preview (full-width, real panels, per-change ticks).
+  function cloudReviewView(id) {
+    if (ns.CloudReview) {
+      ns.CloudReview.cloudReviewView(id);
+    }
+  }
 
   // Owner: accept a proposal , the scoped merge applies to the cloud
   // snapshot (or the MCP audit row is written), changelog 'accepted'.
@@ -4733,6 +4751,7 @@ var MMGR = window.MMGR || {};
     cloudReviewMine: cloudReviewMine,
     cloudReviewAccept: cloudReviewAccept,
     cloudReviewReject: cloudReviewReject,
+    cloudReviewView: cloudReviewView,
     reviewToggleDiffs: reviewToggleDiffs,
     // IN-PROJECT DELETE (owner 2026-08-17): Settings > Controls > Danger
     // Zone , confirm modal + password verify + the owner-only soft delete.

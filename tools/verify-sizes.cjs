@@ -24,7 +24,11 @@ const ROOT = path.resolve(__dirname, '..');
 
 /* Exact caps. Headroom is roughly 5 to 10 percent at the time of writing. */
 const EXACT = {
-  'css/mmgr.css': 512000,
+  // 2026-11-06 (H-6): raised 512000 -> 520000 in the commit that added the
+  // approval preview's stylesheet block. The old cap left 1.5 KB of headroom
+  // and the feature needs ~2.6 KB of token-only CSS; the next UI wave should
+  // split a layer rather than raise this again.
+  'css/mmgr.css': 520000,
   'css/marketing.css': 160000,
   'js/calculator-page.js': 600000,
   'project.html': 210000,

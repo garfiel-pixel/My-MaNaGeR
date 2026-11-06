@@ -58,6 +58,25 @@
 .email-auth-name {
   flex-basis: 140px;
 }
+/* AUTOFILL DETECTION (owner 2026-11-06). Chrome paints an autofilled field
+   through a CSS animation it applies itself, and `animationstart` is the
+   only event that fires when a password manager fills a field without a
+   keystroke. The animation is invisible by design - it exists purely so
+   js/mmgr-google-auth.js can re-read the field and clear a stale "Enter
+   your password." message. Never remove: without it, autofilled values are
+   invisible to the form's state until the user types. */
+@keyframes mmgr-autofill-detect {
+  from {
+    outline-offset: 0;
+  }
+  to {
+    outline-offset: 0;
+  }
+}
+.email-auth-input:-webkit-autofill {
+  animation-name: mmgr-autofill-detect;
+  animation-duration: 0.01s;
+}
 /* Cloudflare Turnstile on the register form (owner 2026-11-05). The div is
    hidden in login mode; when shown it sits above the fields. An empty div
    collapses so an unconfigured deploy reserves no blank row. */

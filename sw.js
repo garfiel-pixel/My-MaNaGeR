@@ -564,7 +564,18 @@
 // typed-CANCEL flow, so neither is buried in the off-canvas rail. Both free
 // controls go to pricing.html. Changed shell assets: app.html, admin.html,
 // dist/app-bundle.js, dist/admin-bundle.js, css/mmgr.css.
-const CACHE = 'mmgr-shell-v549';
+// v550 - AUTOFILL-PROOF SIGN-IN + PLAN CONTROL DECOUPLED (owner 2026-11-06):
+// the email form re-reads its fields on every fill signal (input, change,
+// blur, animationstart from the new autofill hook, pageshow, a short post-
+// mount poll) so a password manager or browser autofill can no longer leave
+// "Enter your password." over a filled field; the submit handler also stops
+// matching input[type=password], which missed the field whenever the show-
+// password eye had switched it to type=text. The launcher's plan control now
+// renders from the billing payload the auth module already broadcasts, not
+// from the project list request, so a failed cloud list can no longer hide
+// it. Changed shell assets: js/mmgr-google-auth.js, js/mmgr-cloud-dash.js,
+// dist/app-bundle.js, css/mmgr.css, dist/marketing.min.css.
+const CACHE = 'mmgr-shell-v550';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

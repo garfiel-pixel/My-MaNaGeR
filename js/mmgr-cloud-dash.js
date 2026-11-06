@@ -401,7 +401,6 @@
     setStatus('');
     writeCache(projects);
     paintList(projects);
-    loadPlan();
   }
 
   // A request failed AFTER boot: keep the cards on screen when the device has
@@ -593,7 +592,14 @@
     top.hidden = false;
   }
 
-  async function loadPlan() {
+  // One renderer for one billing-status payload. Shared by the fetch below
+  // and by the mmgr:plan-changed event js/mmgr-google-auth.js broadcasts
+  // after its own status fetch, so the launcher's plan control never has to
+  // wait on the PROJECT LIST request to learn what plan the account is on.
+  // (Owner report 2026-11-06: the control was invisible after signing in
+  // because loadPlan() only ran from loadList()'s success path - a failed or
+  // empty project fetch silently suppressed the plan UI.)
+  function applyPlanData(data) {
     const plan = $(RAIL_PLAN);
     const railUp = $(RAIL_UPGRADE);
     const top = $(TOP_PLAN);
@@ -609,24 +615,6 @@
       }
       hideTopPlan();
     };
-    let res;
-    try {
-      res = await fetch('/api/billing/status', { method: 'GET', credentials: 'same-origin' });
-    } catch (e) {
-      hideAll();
-      return;
-    }
-    if (!res.ok) {
-      hideAll();
-      return;
-    }
-    let data = null;
-    try {
-      data = await res.json();
-    } catch (e) {
-      hideAll();
-      return;
-    }
     if (!data || !data.ok || !data.configured) {
       hideAll();
       return;
@@ -673,6 +661,40 @@
       }
       renderTopPlan(false);
     }
+  }
+
+  // The auth module already fetches this endpoint on every signed-in render
+  // and broadcasts the payload. Listening to it means ONE request per page
+  // and a plan control that survives a broken project fetch.
+  document.addEventListener('mmgr:plan-changed', function (e) {
+    if (e && e.detail) {
+      applyPlanData(e.detail);
+    }
+  });
+
+  async function loadPlan() {
+    const plan = $(RAIL_PLAN);
+    const railUp = $(RAIL_UPGRADE);
+    const top = $(TOP_PLAN);
+    if (!plan && !railUp && !top) {
+      return;
+    }
+    let res;
+    try {
+      res = await fetch('/api/billing/status', { method: 'GET', credentials: 'same-origin' });
+    } catch (e) {
+      return;
+    }
+    if (!res.ok) {
+      return;
+    }
+    let data = null;
+    try {
+      data = await res.json();
+    } catch (e) {
+      return;
+    }
+    applyPlanData(data);
   }
 
   // ---- open the LemonSqueezy checkout (same contract as the drawer's
@@ -1582,11 +1604,15 @@
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
       loadList();
+      // The plan control is the ACCOUNT's, not the project list's. Fetch it
+      // on its own so a failed / empty project request can never hide it.
+      loadPlan();
       initGridPager();
       loadDeletedProjects();
     });
   } else {
     loadList();
+    loadPlan();
     initGridPager();
     loadDeletedProjects();
   }

@@ -1048,12 +1048,16 @@ var MMGR = window.MMGR || {};
       '<form class="email-auth-form" novalidate>' +
       '<div class="email-auth-turnstile" hidden></div>' +
       '<div class="email-auth-row">' +
-      '<input type="email" class="email-auth-input" placeholder="Email" autocomplete="email" aria-label="Email" inputmode="email" enterkeyhint="next" autocapitalize="none" required>' +
+      // OWNER 2026-11-06 (autofill report): stable name/id attributes are
+      // what browser autofill and password managers key off. Without them
+      // a manager has to guess from the placeholder, and Chrome can paint a
+      // value into the field while leaving input.value empty.
+      '<input type="email" class="email-auth-input" id="email-auth-email" name="email" placeholder="Email" autocomplete="email" aria-label="Email" inputmode="email" enterkeyhint="next" autocapitalize="none" spellcheck="false" required>' +
       '<span class="email-auth-pwwrap">' +
-      '<input type="password" class="email-auth-input email-auth-pass" placeholder="Password (8+ chars)" autocomplete="current-password" aria-label="Password" inputmode="text" enterkeyhint="done" autocapitalize="none" minlength="8" required>' +
+      '<input type="password" class="email-auth-input email-auth-pass" id="email-auth-pass" name="password" placeholder="Password (8+ chars)" autocomplete="current-password" aria-label="Password" inputmode="text" enterkeyhint="done" autocapitalize="none" spellcheck="false" minlength="8" required>' +
       '<button type="button" class="email-auth-eye" aria-label="Show password" aria-pressed="false" title="Show password"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg></button>' +
       '</span>' +
-      '<input type="text" class="email-auth-input email-auth-name" placeholder="Name (optional)" autocomplete="name" aria-label="Name" inputmode="text" enterkeyhint="next" autocapitalize="words" hidden>' +
+      '<input type="text" class="email-auth-input email-auth-name" id="email-auth-name" name="name" placeholder="Name (optional)" autocomplete="name" aria-label="Name" inputmode="text" enterkeyhint="next" autocapitalize="words" hidden>' +
       '<button type="submit" class="btn btn-g email-auth-submit">Sign in</button>' +
       // SIGN-IN-POLISH (owner 2026-09-19): trust microcopy + legal links.
       // Owner directive: Privacy/Terms live on the sign-in sheet and in the
@@ -1312,6 +1316,100 @@ var MMGR = window.MMGR || {};
       return;
     }
 
+    // AUTH FIELD STATE (owner 2026-11-06, autofill report): a password
+    // manager can paint a value into these fields without a keystroke, and
+    // Chrome's autofill PREVIEW can leave input.value empty while the field
+    // LOOKS filled. Both used to end in "Enter your password." over a field
+    // the user could see was full. Everything below therefore re-reads the
+    // LIVE DOM on every signal that could mean "the field changed", clears a
+    // stale empty-field message the moment that field has a value, and turns
+    // an unreadable preview into an instruction instead of a dead end.
+    const emEl = emailAuthQ(form, 'input[type=email]');
+    const pwEl = emailAuthQ(form, '.email-auth-pass');
+    let _attempted = false;
+    const liveVal = function (el) {
+      return el && typeof el.value === 'string' ? el.value : '';
+    };
+    // Autofilled fields match this pseudo-class even in the preview state,
+    // before the value has been committed to input.value.
+    const autofilled = function (el) {
+      try {
+        return !!(el && el.matches && el.matches(':-webkit-autofill'));
+      } catch (e) {
+        return false;
+      }
+    };
+    const syncFields = function () {
+      const em = liveVal(emEl).trim();
+      const pw = liveVal(pwEl);
+      if (emEl) {
+        emEl.setAttribute('data-filled', em ? '1' : '0');
+        if (_attempted) {
+          emEl.setAttribute('aria-invalid', em ? 'false' : 'true');
+        }
+      }
+      if (pwEl) {
+        pwEl.setAttribute('data-filled', pw ? '1' : '0');
+        if (_attempted) {
+          pwEl.setAttribute('aria-invalid', pw ? 'false' : 'true');
+        }
+      }
+      // A message that names a field the user has since filled is worse than
+      // no message: it tells them to do something they already did.
+      if (errEl) {
+        const msg = (errEl.textContent || '').trim();
+        if (msg === 'Enter your email address.' && em) {
+          errEl.textContent = '';
+        } else if (msg === 'Enter your password.' && pw) {
+          errEl.textContent = '';
+        }
+      }
+    };
+    // Every signal a fill can give. `input` covers typing and any setter that
+    // dispatches; `change`/`blur` cover pickers that commit on focus loss;
+    // `animationstart` is the ONLY event Chrome fires for autofill (see the
+    // keyframes hook in css/src/80-auth.css); pageshow covers a bfcache
+    // restore. Capture phase, because the fields are inside the form.
+    ['input', 'change', 'keyup', 'paste', 'compositionend', 'focus', 'blur'].forEach(function (t) {
+      form.addEventListener(t, syncFields, true);
+    });
+    form.addEventListener(
+      'animationstart',
+      function (e) {
+        if (e && e.animationName === 'mmgr-autofill-detect') {
+          syncFields();
+        }
+      },
+      true
+    );
+    window.addEventListener('pageshow', syncFields);
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) {
+        syncFields();
+      }
+    });
+    // Some managers write input.value with no event at all. Poll briefly
+    // after mount (and every time the block is shown), then stop - a
+    // permanent timer would be waste.
+    let _syncTicks = 0;
+    const _syncTimer = window.setInterval(function () {
+      syncFields();
+      _syncTicks += 1;
+      if (_syncTicks >= 20) {
+        window.clearInterval(_syncTimer);
+      }
+    }, 150);
+    // Re-arm the short poll whenever the form becomes visible again: the
+    // #siom sheet and the signin.html disclosure both mount hidden.
+    if (typeof MutationObserver === 'function') {
+      try {
+        const obs = new MutationObserver(syncFields);
+        obs.observe(block, { attributes: true, attributeFilter: ['hidden'] });
+      } catch (e) {
+        /* observation is a bonus, never fatal */
+      }
+    }
+
     // Show-password eye (owner 2026-09-06): flips the field type + icon.
     const eye = emailAuthQ(block, '.email-auth-eye');
     if (eye) {
@@ -1537,12 +1635,20 @@ var MMGR = window.MMGR || {};
       if (errEl) {
         errEl.textContent = '';
       }
+      // Re-read the DOM at the moment of submit. A password manager writes
+      // the value directly, so the last event this handler saw may predate
+      // the fill; syncFields also clears any message the fill just answered.
+      _attempted = true;
+      syncFields();
       const em = emailAuthQ(form, 'input[type=email]');
-      const pass = emailAuthQ(form, 'input[type=password]');
+      // CLASS, not type=password: the show-password eye flips the field to
+      // type=text, and the old type selector then matched nothing - a filled
+      // password was read as empty and answered with "Enter your password."
+      const pass = pwEl || emailAuthQ(form, '.email-auth-pass');
       const nm = emailAuthQ(form, '.email-auth-name');
-      const email = em && em.value ? em.value.trim() : '';
-      const password = pass && pass.value ? pass.value : '';
-      const name = nm && nm.value ? nm.value.trim() : '';
+      const email = liveVal(em).trim();
+      const password = liveVal(pass);
+      const name = liveVal(nm).trim();
       const focusIt = function (el) {
         if (!el) {
           return;
@@ -1554,13 +1660,25 @@ var MMGR = window.MMGR || {};
         }
       };
       if (!email) {
-        setEmailAuthError(block, 'Enter your email address.');
+        setEmailAuthError(
+          block,
+          autofilled(em)
+            ? 'Your browser filled this field. Click it once, then press Sign in.'
+            : 'Enter your email address.'
+        );
         focusIt(em);
         return;
       }
       if (!password) {
-        // Never name a field the user has just filled in.
-        setEmailAuthError(block, 'Enter your password.');
+        // Never name a field the user has just filled in. A browser-filled
+        // PREVIEW cannot be read from input.value, so it gets an instruction
+        // instead of the same dead end.
+        setEmailAuthError(
+          block,
+          autofilled(pass)
+            ? 'Your browser filled this field. Click it once, then press Sign in.'
+            : 'Enter your password.'
+        );
         focusIt(pass);
         return;
       }

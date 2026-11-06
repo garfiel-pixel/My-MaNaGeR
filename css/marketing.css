@@ -4286,6 +4286,24 @@ body.dark-mode #f-voice {
 .signin-card #marketing-email-auth .auth-legal a:hover {
   color: #e6c547;
 }
+/* AUTOFILL DETECTION (owner 2026-11-06): the sign-in page loads THIS sheet,
+   not css/mmgr.css, so the hook has to exist here too. Chrome fires an
+   animationstart for autofilled fields and for nothing else when a password
+   manager fills a field without a keystroke; js/mmgr-google-auth.js listens
+   for this name to re-read the fields. The animation is invisible on
+   purpose. */
+@keyframes mmgr-autofill-detect {
+  from {
+    outline-offset: 0;
+  }
+  to {
+    outline-offset: 0;
+  }
+}
+.email-auth-input:-webkit-autofill {
+  animation-name: mmgr-autofill-detect;
+  animation-duration: 0.01s;
+}
 .signin-card .gis-fallback-btn.is-wide {
   align-self: stretch;
   display: flex;

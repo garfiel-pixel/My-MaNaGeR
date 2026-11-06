@@ -630,7 +630,16 @@
 // now carries a named entry that opens the same panel, and a signed-out
 // visitor is told to sign in instead of meeting an empty sheet. Changed shell
 // assets: project.html, dist/bundle.js.
-const CACHE = 'mmgr-shell-v556';
+// v557 - ONE MONEY FIGURE EVERYWHERE (H-1, BUDGET-BOQ directive 2026-11-05).
+// The Budget panel summed each line's TYPED actual box while the dashboard,
+// earned value and pay applications derived the same figure from the Spend
+// Log, and Remaining was envelope minus spent - so a project with no envelope
+// read "Over budget" the moment it recorded one delivery. Spent now comes from
+// Spend.budgetLineActual, the baseline is the envelope when one is set and the
+// planned total otherwise, the plan notice only fires against a real envelope,
+// and every amount prints through the one currency table. Changed shell
+// assets: dist/bundle.js.
+const CACHE = 'mmgr-shell-v557';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

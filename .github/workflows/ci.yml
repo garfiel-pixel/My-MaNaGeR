@@ -927,6 +927,9 @@ jobs:
         id: qa-chrome
         run: node tools/qa-chrome.cjs
 
+      - name: "T4: Budget truth, one money figure everywhere (qa-budget-truth)"
+        id: qa-budget-truth
+        run: node tools/qa-budget-truth.cjs
       # WAVE 5.5 (A3): auto-update for cloud projects. Admin gate + real
       # Chrome, /api/cloud/* stubbed at the network layer, so the save path's
       # debounce coalescing, retry-then-fail status and offline hold are all

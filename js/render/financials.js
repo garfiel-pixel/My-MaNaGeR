@@ -31,9 +31,16 @@ var MMGR = window.MMGR || {};
     );
   }
 
+  // One money formatter for the whole panel. The project's currency code goes
+  // through the shared table (SW-12), so a JMD project prints J$ and a project
+  // that never chose one prints exactly the '$' it always did.
   function fmt$(n) {
-    const s = n < 0 ? '-' : '';
-    return s + '$' + Math.abs(Math.round(+n || 0)).toLocaleString();
+    const st = S();
+    const cur = (st && st.currency) || 'USD';
+    const abs = Math.abs(Math.round(+n || 0));
+    // The code is a KEY into the fixed CURRENCY table, never echoed: an unknown
+    // or hostile value falls back to '$' before it reaches the string.
+    return (n < 0 ? '-' : '') + (U.fmtMoney ? U.fmtMoney(abs, cur) : '$' + abs.toLocaleString()); // ok: fixed currency table, never interpolated
   }
 
   function renderSpendLog() {
@@ -165,9 +172,26 @@ var MMGR = window.MMGR || {};
     const lines = s.budgetLines || [];
     const envelope = s.budgetEnvelope || 0;
     const planned = lines.reduce((sum, l) => sum + (+l.planned || 0), 0);
-    const actual = lines.reduce((sum, l) => sum + (+l.actual || 0), 0);
-    const remaining = envelope - actual;
-    const unallocated = envelope - planned;
+    // H-1 (BUDGET-BOQ directive 2026-11-05): SPENT is the single source of
+    // truth, Spend.budgetLineActual, which derives a line from its own Spend
+    // Log entries and falls back to the typed lump only when the line has no
+    // entries. This panel used to sum the typed box, so it could disagree with
+    // the dashboard, earned value and pay applications about the same project.
+    const SpendMod = ns.Spend;
+    const actual =
+      SpendMod && SpendMod.budgetLineActual
+        ? lines.reduce((sum, l) => sum + SpendMod.budgetLineActual(l, s), 0)
+        : lines.reduce((sum, l) => sum + (+l.actual || 0), 0);
+    // P2: an empty envelope is valid. The baseline is the envelope when one is
+    // set, otherwise the sum of the planned lines, so a project that never set
+    // an envelope is never told it is over budget for spending its own money.
+    const hasEnvelope = envelope > 0;
+    const baseline = hasEnvelope ? envelope : planned;
+    const remaining = baseline - actual;
+    const unallocated = baseline - planned;
+    // P9: money prints through the one currency table, never a typed '$'.
+    const cur = s.currency || 'USD';
+    const fmt = n => (U.fmtMoney ? U.fmtMoney(n, cur) : '$' + Number(n || 0).toLocaleString());
     const lineCommitted = l =>
       l.committed !== null && l.committed !== undefined && l.committed !== ''
         ? +l.committed || 0
@@ -180,49 +204,62 @@ var MMGR = window.MMGR || {};
         el.textContent = val;
       }
     };
-    setVal('bud-envelope-disp', '$' + Number(envelope).toLocaleString());
-    setVal('bud-committed', '$' + committed.toLocaleString());
+    setVal('bud-envelope-disp', fmt(envelope));
+    setVal('bud-committed', fmt(committed));
     setVal(
       'bud-committed-pct',
-      envelope ? Math.round((committed / envelope) * 100) + '% of envelope' : '0%'
+      baseline ? Math.round((committed / baseline) * 100) + '% of envelope' : '0%'
     );
     setVal(
       'bud-committed-gap',
       committedGap > 0
-        ? '$' + committedGap.toLocaleString() + ' committed, not yet spent'
+        ? fmt(committedGap) + ' committed, not yet spent'
         : 'All committed spend is out'
     );
     const gapEl = $('bud-committed-gap');
     if (gapEl) {
       gapEl.style.color = committedGap > 0 ? 'var(--amber)' : 'var(--slate)';
     }
-    setVal('bud-ta', '$' + actual.toLocaleString());
+    setVal('bud-ta', fmt(actual));
     setVal(
       'bud-spent-pct',
-      envelope ? Math.round((actual / envelope) * 100) + '% of envelope' : '0%'
+      baseline
+        ? Math.round((actual / baseline) * 100) + (hasEnvelope ? '% of envelope' : '% of planned')
+        : '0%'
     );
-    setVal('bud-remaining', '$' + Math.max(0, remaining).toLocaleString());
-    setVal('bud-remaining-pct', remaining >= 0 ? 'On budget' : 'Over budget');
+    setVal('bud-remaining', fmt(Math.max(0, remaining)));
+    setVal(
+      'bud-remaining-pct',
+      !baseline
+        ? 'Nothing planned yet'
+        : remaining >= 0
+          ? hasEnvelope
+            ? 'On budget'
+            : 'Tracking against planned'
+          : 'Over budget'
+    );
     const remainingPctEl = $('bud-remaining-pct');
     if (remainingPctEl) {
       remainingPctEl.style.color = remaining >= 0 ? 'var(--slate)' : 'var(--danger)';
     }
-    setVal('bud-unallocated', '$' + Math.max(0, unallocated).toLocaleString());
-    setVal('bud-bar-pct-label', envelope ? Math.round((actual / envelope) * 100) + '%' : '0%');
+    setVal('bud-unallocated', fmt(Math.max(0, unallocated)));
+    setVal('bud-bar-pct-label', baseline ? Math.round((actual / baseline) * 100) + '%' : '0%');
     const bar = $('bud-bar');
     if (bar) {
-      bar.style.width = envelope ? Math.min(100, (actual / envelope) * 100) + '%' : '0%';
+      bar.style.width = baseline ? Math.min(100, (actual / baseline) * 100) + '%' : '0%';
     }
     const warn = $('bud-bar-warn');
     if (warn) {
-      warn.classList.toggle('is-hide', !(actual > envelope));
+      warn.classList.toggle('is-hide', !(baseline > 0 && actual > baseline));
     }
     const overrun = $('bud-overrun-alert');
     const overrunAmt = $('bud-overrun-amt');
     if (overrun && overrunAmt) {
-      if (planned > envelope) {
+      // Only a real envelope can be exceeded by the plan. With no envelope the
+      // planned total IS the baseline, so this notice would always fire.
+      if (hasEnvelope && planned > envelope) {
         overrun.classList.remove('is-hide');
-        overrunAmt.textContent = '$' + (planned - envelope).toLocaleString();
+        overrunAmt.textContent = fmt(planned - envelope);
       } else {
         overrun.classList.add('is-hide');
       }

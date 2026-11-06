@@ -300,7 +300,8 @@ var MMGR = window.MMGR || {};
           budCard.classList.add('tier3');
         }
       } else {
-        budEl.textContent = (variance >= 0 ? '+' : '') + '$' + Math.abs(variance).toLocaleString();
+        budEl.textContent =
+          (variance >= 0 ? '+' : '') + U.fmtMoney(Math.abs(variance), (s && s.currency) || 'USD');
         budEl.style.color = variance >= 0 ? 'var(--green)' : 'var(--danger)';
         if (budCard) {
           budCard.classList.remove('tier3');
@@ -312,7 +313,7 @@ var MMGR = window.MMGR || {};
       if (bud.length === 0) {
         budSub.innerHTML = 'No budget lines yet, add one in Budget';
       } else {
-        budSub.textContent = `Planned: $${planned.toLocaleString()} | Actual: $${actual.toLocaleString()}`;
+        budSub.textContent = `Planned: ${U.fmtMoney(planned, (s && s.currency) || 'USD')} | Actual: ${U.fmtMoney(actual, (s && s.currency) || 'USD')}`;
       }
     }
 

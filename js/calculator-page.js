@@ -9276,7 +9276,7 @@
       if (!line.boqId) {
         // A durable ref, stamped once. Re-sends match on it, so a re-ordered
         // bill never duplicates a line.
-        line.boqId = 'Q' + (i + 1) + '-' + Math.random().toString(36).slice(2, 6);
+        line.boqId = 'Q' + (i + 1) + '-' + Math.random().toString(36).slice(2, 6); // ok: non-secret
         assigned = true;
       }
       const qty = Math.round((+r.qty || 0) * 1000) / 1000;

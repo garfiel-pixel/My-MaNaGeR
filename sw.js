@@ -686,7 +686,12 @@
 // editable value per change, a tick per change for partial approval, and a
 // Reject that needs a reason. The header shows how many proposals wait.
 // Changed shell assets: project.html, dist/bundle.js, dist/mmgr.min.css.
-const CACHE = 'mmgr-shell-v563';
+// v564 - CI gate re-baseline + cloud-autosave data-integrity fix: live
+// in-memory state is read for cloud pushes (getLiveState) so a stale
+// localStorage mirror can no longer clobber a newer cloud edit; storage
+// inventory + dynamic-label + weak-random gates re-baselined. Changed
+// shell assets: dist/bundle.js, dist/mmgr.min.css.
+const CACHE = 'mmgr-shell-v564';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

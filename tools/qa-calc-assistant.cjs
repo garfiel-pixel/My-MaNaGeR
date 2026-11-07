@@ -2850,6 +2850,54 @@ async function ai3SettingsAndAsk(browser, errors) {
   await ctx.close();
 }
 
+/* G-3 (FIELD-FINDINGS-DIRECTIVE-2026-10-28): a reply that is ONLY the machine
+   PROPOSAL line must never print the raw JSON. The chat shows a page-built
+   summary instead; a reply that carries prose shows the prose only. */
+async function g3ProposalHidden(browser, errors) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => errors.push('calc(g3): ' + String(e).slice(0, 140)));
+  await mockAuth(page);
+  await mockRelay(page, i => {
+    if (i === 0) {
+      // machine line ONLY - no prose around it.
+      return 'PROPOSAL: {"work":"blockwall","units":"imperial","measuredQty":5000,"note":"6 inch block wall"}';
+    }
+    return (
+      'That is a six inch block wall.\n' +
+      'PROPOSAL: {"work":"blockwall","units":"imperial","measuredQty":5000,"note":"6 inch block wall"}'
+    );
+  });
+  await seedCalcFx(page);
+  await mockRatebook(page, loadBook());
+  await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
+  await page.waitForFunction(() => !!window.MMGR_CALC_AI, null, { timeout: 20000 });
+
+  await sendQ(page, 'six inch block wall, five thousand square feet');
+  const log1 = await page.evaluate(() => document.querySelector('[data-cai=log]').textContent);
+  check(
+    'G-3 a machine-only reply never shows the raw PROPOSAL line',
+    log1.indexOf('PROPOSAL') === -1,
+    log1.slice(-220)
+  );
+  check(
+    'G-3 a machine-only reply shows a page-built summary',
+    /Choose how to add it below/.test(log1) &&
+      /6 inch block wall/.test(log1) &&
+      /imperial/.test(log1),
+    log1.slice(-220)
+  );
+
+  await sendQ(page, 'yes that one');
+  const log2 = await page.evaluate(() => document.querySelector('[data-cai=log]').textContent);
+  check(
+    'G-3 a reply with prose shows the prose and never the machine line',
+    log2.indexOf('PROPOSAL') === -1 && /six inch block wall/.test(log2),
+    log2.slice(-220)
+  );
+  await ctx.close();
+}
+
 (async () => {
   let srv = null;
   const { chromium } = resolvePlaywright();
@@ -2879,6 +2927,7 @@ async function ai3SettingsAndAsk(browser, errors) {
     await partBCustomLine(browser, errors);
     await s6OwnRateAndSettings(browser, errors);
     await ai3SettingsAndAsk(browser, errors);
+    await g3ProposalHidden(browser, errors);
     await contrastGates(browser, errors);
 
     const real = errors.filter(e => !/\/api\//.test(e));

@@ -609,6 +609,52 @@
   }
 
   /* ---- the two output paths -------------------------------------------- */
+  // G-3 (FIELD-FINDINGS-DIRECTIVE-2026-10-28): a reply that is ONLY the machine
+  // line must never print the raw PROPOSAL JSON in the chat. Build a plain
+  // one-line summary from the proposal instead (the directive's example:
+  // "6 inch block wall, 5,000 sq ft, imperial. Choose how to add it below.").
+  // The page's own dry run (MMGR_CALC_CHECK) supplies the quantity and unit so
+  // the summary matches what Populate will actually do.
+  function proposalSummary(p) {
+    if (!p || typeof p !== 'object') {
+      return '';
+    }
+    var label = '';
+    if (p.custom && typeof p.custom === 'object' && p.custom.label) {
+      label = String(p.custom.label);
+    } else if (p.note) {
+      label = String(p.note);
+    } else if (p.work) {
+      label = String(p.work);
+    } else if (p.settings) {
+      return 'New settings ready. Choose how to apply them below.';
+    }
+    var qty = '';
+    var unit = '';
+    try {
+      var ck = window.MMGR_CALC_CHECK;
+      var chk = typeof ck === 'function' ? ck(p) : null;
+      if (chk && chk.preview && chk.preview.qty) {
+        qty = String(chk.preview.qty);
+        unit = chk.preview.unit || '';
+      }
+    } catch (e) {
+      qty = '';
+    }
+    if (!qty && p.measuredQty !== undefined && p.measuredQty !== null && p.measuredQty !== '') {
+      qty = String(p.measuredQty);
+      unit = (p.custom && p.custom.unit) || '';
+    }
+    var head = label;
+    if (qty) {
+      head += (head ? ', ' : '') + qty + (unit ? ' ' + unit : '');
+    }
+    if (p.units) {
+      head += (head ? ', ' : '') + String(p.units);
+    }
+    return (head ? head + '. ' : '') + 'Choose how to add it below.';
+  }
+
   function parseProposal(text) {
     var s = String(text == null ? '' : text);
     var m = s.match(/(^|\n)\s*PROPOSAL:\s*(\{[\s\S]*\})\s*$/);
@@ -622,7 +668,12 @@
       json = null;
     }
     var clean = s.slice(0, m.index).replace(/\s+$/, '');
-    return { text: json ? clean || s : s, json: json };
+    // G-3: never fall back to the whole string (which carries the machine
+    // line). When the prose is empty, substitute the page-built summary.
+    if (json && !clean) {
+      clean = proposalSummary(json);
+    }
+    return { text: json ? clean : s, json: json };
   }
 
   /* AI-3: the ASK line is a question the page must render as BUTTONS - the

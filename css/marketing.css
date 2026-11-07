@@ -2077,7 +2077,7 @@ body.dark-mode .nav-dd-col.is-platform {
 .ai-tour-badge .ico {
   width: 20px;
   height: 20px;
-  color: var(--gold);
+  color: var(--gold-text);
 }
 .hero-stats b {
   display: block;

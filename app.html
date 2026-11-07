@@ -264,6 +264,22 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;visibility:h
   body.db-page .sidebar-icons{transition:none;}
   body.db-page .sidebar-icon{transition:none;}
 }
+/* I-14 (owner 2026-11-07): the closed icon strip is a HOVER target on
+   fine-pointer desktops. Entering the rail lane slides the panel in as an
+   OVERLAY - the .wrap margin is untouched, so nothing on the page moves.
+   Content only shifts when the rail is PINNED (body.side-open, hamburger).
+   The strip hides under the panel at the same weight as the .side-closed
+   reveal rules above, so it wins on source order. */
+@media (min-width:769px){
+  body.db-page.rail-hover-open .db-side{transform:translateX(0);}
+}
+body.db-page.rail-hover-open.side-closed .sidebar-icons{opacity:0;pointer-events:none;visibility:hidden;}
+@media (prefers-reduced-motion:reduce){
+  body.db-page.rail-hover-open .db-side{transition:none;}
+}
+/* Performance Mode keeps the hover behaviour, only the slide is instant. */
+html[data-perf='on'] body.db-page .db-side,
+html[data-perf='on'] body.db-page .sidebar-icons{transition:none;}
 /* PROJECT SEARCH modal */
 #ps-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;align-items:center;justify-content:center;}
 #ps-modal.open{display:flex;}
@@ -1134,7 +1150,8 @@ document.addEventListener('keydown', e=>{
     closeModal();
     closeSignIn();
     closeProjectSearch();
-    if (document.body.classList.contains('side-open')){ document.body.classList.remove('side-open'); syncSidebarAria(); }
+    if (document.body.classList.contains('rail-hover-open')) railHoverDismiss();
+    if (document.body.classList.contains('side-open')){ document.body.classList.remove('side-open'); syncSidebarAria(); syncSidebarIcons(); }
   }
 });
 
@@ -1199,7 +1216,18 @@ document.getElementById('db-sidebar').addEventListener('click', e=>{
    .is-open class rotates the lines 90deg and the rail slides in/out, so
    open/close is always obvious and always reversible from this button. */
 function toggleSidebar(){
+  // I-14: a rail that is only showing because of hover is DISMISSED by this
+  // click, never pinned - otherwise the hamburger inside the panel would push
+  // the whole page sideways instead of closing the overlay.
+  if (document.body.classList.contains('rail-hover-open') &&
+      !document.body.classList.contains('side-open')) {
+    railHoverDismiss();
+    return;
+  }
   document.body.classList.toggle('side-open');
+  if (document.body.classList.contains('side-open')) {
+    document.body.classList.remove('rail-hover-open');
+  }
   // When sidebar closes on desktop, show the icon strip; when it opens, hide it.
   // On mobile, the icon strip is hidden via CSS media query.
   syncSidebarAria();
@@ -1230,6 +1258,147 @@ function syncSidebarIcons(){
   if (iconsStrip) {
     iconsStrip.setAttribute('aria-hidden', sidebarOpen || !isDesktop ? 'true' : 'false');
   }
+}
+
+/* ============================================================
+   I-14 (owner 2026-11-07): HOVER-OPEN RAIL
+   ------------------------------------------------------------
+   On a computer the closed icon strip is a hover target: the
+   pointer entering the rail lane slides the panel in AT ONCE as
+   an overlay (body.rail-hover-open - no .wrap margin change, so
+   no layout jump). Leaving closes it after 150 ms, so crossing
+   the gap between two icons never flickers. The panel stays open
+   while the pointer is anywhere over the panel itself.
+
+   Pinning is still the hamburger (body.side-open): that is the
+   only state that shifts the page. Clicking the hamburger INSIDE
+   a hover-only rail dismisses it instead of pinning it.
+
+   Keyboard focus on any rail control opens it; Escape closes it;
+   phones and touch tablets keep today's tap-only drawer (the
+   strip is hidden below 769px and the media query fails).
+   Performance Mode keeps the behaviour and drops the transition.
+   ============================================================ */
+var _railHoverTimer = 0;
+var _railHoverSuppress = false;
+var _railHoverLane = null;
+var _railHoverPanel = null;
+var _railHoverFine = window.matchMedia
+  ? window.matchMedia('(hover: hover) and (pointer: fine)')
+  : null;
+var _railHoverDesk = window.matchMedia ? window.matchMedia('(min-width:769px)') : null;
+
+function railHoverCapable(){
+  return !!(_railHoverFine && _railHoverFine.matches &&
+            _railHoverDesk && _railHoverDesk.matches);
+}
+function railHoverMeasure(){
+  var strip = document.getElementById('sidebar-icons');
+  var side = document.getElementById('db-sidebar');
+  _railHoverLane = null;
+  _railHoverPanel = null;
+  if (strip) {
+    var r = strip.getBoundingClientRect();
+    if (r.width || r.height) {
+      // The reserved APP-1 gutter (64px) belongs to the rail lane too, so the
+      // strip is reachable even in the gaps between icons.
+      _railHoverLane = {
+        left: 0,
+        right: Math.max(r.right + 10, 64),
+        top: r.top - 14,
+        bottom: r.bottom + 14
+      };
+    }
+  }
+  if (side) {
+    // Target geometry, not the mid-transition box: the panel is fixed to the
+    // left edge and its width does not change when it slides in.
+    _railHoverPanel = {
+      left: 0,
+      right: side.offsetWidth || 240,
+      top: 0,
+      bottom: window.innerHeight || 0
+    };
+  }
+}
+function railHoverInRect(r, x, y){
+  return !!r && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+}
+function railHoverOpen(){
+  if (!railHoverCapable()) return;
+  if (document.body.classList.contains('side-open')) return;
+  if (_railHoverTimer) { clearTimeout(_railHoverTimer); _railHoverTimer = 0; }
+  if (document.body.classList.contains('rail-hover-open')) return;
+  railHoverMeasure();
+  document.body.classList.add('rail-hover-open');
+  document.body.classList.remove('rail-nudge');
+}
+function railHoverCloseNow(){
+  if (_railHoverTimer) { clearTimeout(_railHoverTimer); _railHoverTimer = 0; }
+  if (!document.body.classList.contains('rail-hover-open')) return;
+  document.body.classList.remove('rail-hover-open');
+}
+/* Close and refuse to re-open until the pointer leaves the rail entirely -
+   used by the in-panel hamburger and by Escape, so the overlay cannot pop
+   straight back under a pointer that never moved. */
+function railHoverDismiss(){
+  _railHoverSuppress = true;
+  railHoverCloseNow();
+}
+function railHoverScheduleClose(){
+  if (_railHoverTimer) clearTimeout(_railHoverTimer);
+  _railHoverTimer = setTimeout(function(){
+    _railHoverTimer = 0;
+    if (_railHoverSuppress) return;
+    railHoverCloseNow();
+  }, 150);
+}
+function railHoverPointer(e){
+  if (!railHoverCapable()) return;
+  if (document.body.classList.contains('side-open')) {
+    railHoverCloseNow();
+    return;
+  }
+  if (!_railHoverLane) railHoverMeasure();
+  var open = document.body.classList.contains('rail-hover-open');
+  var over = railHoverInRect(_railHoverLane, e.clientX, e.clientY) ||
+             (open && railHoverInRect(_railHoverPanel, e.clientX, e.clientY));
+  if (over) {
+    if (_railHoverSuppress) return;
+    railHoverOpen();
+  } else {
+    _railHoverSuppress = false;
+    railHoverScheduleClose();
+  }
+}
+/* Icon-strip clicks need the panel visible without pinning it. On a hover
+   device the overlay is already open (or opens now); on touch the strip is
+   the bottom-edge variant, where the tap keeps opening the drawer. */
+function ensureRailVisible(){
+  if (document.body.classList.contains('side-open')) return;
+  if (railHoverCapable()) { railHoverOpen(); return; }
+  document.body.classList.add('side-open');
+  syncSidebarAria();
+  syncSidebarIcons();
+}
+if (_railHoverFine && _railHoverFine.matches) {
+  document.addEventListener('pointermove', railHoverPointer, { passive: true });
+  document.addEventListener('focusin', function(e){
+    var t = e.target;
+    if (!t || !t.closest) return;
+    if (t.closest('#sidebar-icons') || t.closest('#db-sidebar')) railHoverOpen();
+  });
+  document.addEventListener('focusout', function(){
+    setTimeout(function(){
+      var a = document.activeElement;
+      if (a && a.closest && (a.closest('#sidebar-icons') || a.closest('#db-sidebar'))) return;
+      railHoverScheduleClose();
+    }, 0);
+  });
+  window.addEventListener('resize', function(){
+    railHoverMeasure();
+    if (!railHoverCapable()) { _railHoverSuppress = false; railHoverCloseNow(); }
+  });
 }
 
 /* Quick moon/sun theme toggle (hero top-right): flips the same device-level
@@ -2074,10 +2243,9 @@ document.addEventListener('click', function(e){
       // Scroll to the projects grid section
       const grid = document.getElementById('grid');
       if (grid) {
-        // First open the sidebar to show the projects section
-        document.body.classList.add('side-open');
-        syncSidebarAria();
-        syncSidebarIcons();
+        // First open the rail to show the projects section (hover overlay on
+        // a computer, drawer on touch - I-14).
+        ensureRailVisible();
         // Then scroll to grid after a brief delay for the transition
         setTimeout(() => {
           grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2093,10 +2261,8 @@ document.addEventListener('click', function(e){
       window.location.href = 'admin.html';
       break;
     case 'cloud':
-      // Open sidebar and expand the Cloud Projects section
-      document.body.classList.add('side-open');
-      syncSidebarAria();
-      syncSidebarIcons();
+      // Open the rail and expand the Cloud Projects section
+      ensureRailVisible();
       const cloudSection = document.querySelector('[data-rail-toggle="rail-cloud-list"]');
       if (cloudSection) {
         setTimeout(() => {
@@ -2106,10 +2272,8 @@ document.addEventListener('click', function(e){
       }
       break;
     case 'backup':
-      // Open sidebar and expand the Backup section
-      document.body.classList.add('side-open');
-      syncSidebarAria();
-      syncSidebarIcons();
+      // Open the rail and expand the Backup section
+      ensureRailVisible();
       const backupSection = document.querySelector('[data-rail-toggle="rail-backup"]');
       if (backupSection) {
         setTimeout(() => {
@@ -2119,10 +2283,8 @@ document.addEventListener('click', function(e){
       }
       break;
     case 'customize':
-      // Open sidebar and expand the Customize section
-      document.body.classList.add('side-open');
-      syncSidebarAria();
-      syncSidebarIcons();
+      // Open the rail and expand the Customize section
+      ensureRailVisible();
       const customizeSection = document.querySelector('[data-rail-toggle="rail-customize"]');
       if (customizeSection) {
         setTimeout(() => {
@@ -2137,9 +2299,7 @@ document.addEventListener('click', function(e){
     case 'account':
       // Owner 2026-09-07: collapsed-rail account icon -> open the sidebar
       // (the footer below the divider holds Premium/Upgrade + account state).
-      document.body.classList.add('side-open');
-      syncSidebarAria();
-      syncSidebarIcons();
+      ensureRailVisible();
       const accountArea = document.getElementById('rail-user');
       if (accountArea) {
         setTimeout(() => { accountArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 300);

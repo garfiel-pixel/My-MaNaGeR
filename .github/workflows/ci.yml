@@ -906,6 +906,15 @@ jobs:
         id: qa-stat-tour
         run: node tools/qa-stat-tour.cjs
 
+      # I-14 (Wave I, 2026-11): T-SIDEBAR-HOVER gate for the launcher rail.
+      # Hovering the closed icon strip opens the panel as an overlay (no wrap
+      # margin change), leaving closes it, keyboard focus opens it, Escape and
+      # the in-panel hamburger dismiss it, touch keeps the tap-only drawer and
+      # Performance Mode keeps the behaviour without the slide.
+      - name: "T4: Launcher rail opens on hover (qa-sidebar-hover)"
+        id: qa-sidebar-hover
+        run: node tools/qa-sidebar-hover.cjs
+
       # G-4 (FIELD-FINDINGS-DIRECTIVE-2026-10-28): "The form did not price that
       # line: check the quantities" appeared when the quantity was fine. T-POP
       # drives the page's real MMGR_CALC_POPULATE for every trade the picker

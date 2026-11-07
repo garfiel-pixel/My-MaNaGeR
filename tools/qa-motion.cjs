@@ -46,7 +46,12 @@ async function newPage(browser, opts) {
 }
 
 (async () => {
-  const browser = await chromium.launch();
+  let launchOpts = { headless: true };
+  try {
+    const cp = require('./chrome-launcher.cjs').chromePath;
+    if (cp) launchOpts.executablePath = cp;
+  } catch (e) {}
+  const browser = await chromium.launch(launchOpts);
 
   // ---- Desktop: header hide/show + monotonic progress + canvas ----
   {

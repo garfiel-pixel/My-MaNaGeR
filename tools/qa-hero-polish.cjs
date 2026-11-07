@@ -26,7 +26,12 @@ function bad(name, detail) {
 }
 
 (async () => {
-  const browser = await chromium.launch();
+  let launchOpts = { headless: true };
+  try {
+    const cp = require('./chrome-launcher.cjs').chromePath;
+    if (cp) launchOpts.executablePath = cp;
+  } catch (e) {}
+  const browser = await chromium.launch(launchOpts);
   const ctx = await browser.newContext({
     viewport: { width: 1280, height: 896 },
     colorScheme: 'dark'

@@ -691,7 +691,7 @@
 // localStorage mirror can no longer clobber a newer cloud edit; storage
 // inventory + dynamic-label + weak-random gates re-baselined. Changed
 // shell assets: dist/bundle.js, dist/mmgr.min.css.
-const CACHE = 'mmgr-shell-v566';
+const CACHE = 'mmgr-shell-v567';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

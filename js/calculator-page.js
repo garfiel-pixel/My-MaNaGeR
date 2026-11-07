@@ -10175,7 +10175,7 @@
       });
     };
     var moneyRow = function (row) {
-      return [row[1], row[2], row[8] || '', row[6] === '' ? '' : Number(row[6])];
+      return [row[1], row[2], row[6] === '' ? '' : Number(row[6])];
     };
 
     var summary = [
@@ -10194,7 +10194,7 @@
       });
     summary.push(['Planning-grade estimate - not a quote.', '']);
 
-    var breakdown = [['Line', 'Detail', 'Rate unit', 'Amount']].concat(
+    var breakdown = [['Line', 'Detail', 'Amount']].concat(
       bySection('Cost').concat(bySection('Total')).map(moneyRow)
     );
     var assumptions = [['Setting', 'Value']].concat(
@@ -10210,7 +10210,7 @@
 
     return [
       { name: 'Summary', rows: summary, widths: [44, 22], money: [1], bold: [0] },
-      { name: 'Cost breakdown', rows: breakdown, widths: [40, 26, 16, 18], money: [3], bold: [0] },
+      { name: 'Cost breakdown', rows: breakdown, widths: [40, 26, 18], money: [2], bold: [0] },
       { name: 'Assumptions', rows: assumptions, widths: [26, 52], bold: [0] },
       { name: 'Bill of quantities', rows: bill, widths: [12, 44, 30, 18], money: [3], bold: [0] }
     ];

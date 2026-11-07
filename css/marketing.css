@@ -4187,6 +4187,58 @@ body.dark-mode #f-voice {
 .signin-card .signin-lede {
   color: rgba(244, 244, 245, 0.8);
 }
+/* I-10 (2026-11): at >=900px the sign-in card moves to the left and the freed
+   right side carries an outlined MMWRP wordmark. Below 900px the layout is
+   exactly as before (card centred) and the wordmark is not rendered. The card
+   markup itself is unchanged. */
+.signin-mmwrp {
+  display: none;
+}
+@media (min-width: 900px) {
+  .signin-page > .auth-main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    justify-items: center;
+    gap: clamp(24px, 5vw, 80px);
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+    padding-left: clamp(24px, 6vw, 96px);
+    padding-right: clamp(24px, 6vw, 96px);
+  }
+  .signin-page .signin-card {
+    grid-column: 1;
+    justify-self: start;
+  }
+  .signin-mmwrp {
+    display: block;
+    grid-column: 2;
+    font-family: var(--font-display);
+    font-size: clamp(4.5rem, 12vw, 12rem);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 0.9;
+    color: transparent;
+    -webkit-text-stroke: 2px rgba(203, 208, 218, 0.5);
+    text-stroke: 2px rgba(203, 208, 218, 0.5);
+    user-select: none;
+    white-space: nowrap;
+    transition:
+      -webkit-text-stroke-color 0.3s ease,
+      text-shadow 0.3s ease;
+  }
+  .signin-mmwrp:hover {
+    -webkit-text-stroke-color: var(--gold);
+    text-stroke: var(--gold);
+    text-shadow: 0 0 30px rgba(var(--gold-rgb), 0.35);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .signin-mmwrp {
+    transition: none;
+  }
+}
 /* The inner content layer stays readable but no longer dense (owner
    2026-10-09 softening): a lighter fill and hairline keep the fields legible
    while letting the star field breathe behind the card. */

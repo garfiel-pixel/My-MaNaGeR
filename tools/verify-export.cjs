@@ -317,7 +317,7 @@ const GOLDEN = [
       check(g.name + ': the file is named .xlsx', /\.xlsx$/.test(out.xlsxName || ''), out.xlsxName);
       check(
         g.name + ': every CSV header cell is accounted for',
-        header === 'section,item,detail,quantity,unit,rate,amount,currency',
+        header === 'section,item,detail,quantity,unit,rate,amount,currency,rate_unit',
         header
       );
     }

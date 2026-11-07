@@ -2017,3 +2017,73 @@
   }
   requestAnimationFrame(draw);
 })();
+
+/* I-9b (2026-11): one panel-count constant and a gentle count-up on first view.
+   The static HTML already carries the final value (so a no-JS page is correct);
+   this only animates to it, and is skipped under reduced motion / Performance
+   Mode. The same constant is the single source of truth for every panel-count
+   claim on the landing page (I-8). */
+(function wireStatCountUp() {
+  var PANEL_COUNT = 15;
+  window.MMGR_PANEL_COUNT = PANEL_COUNT;
+  var stats = document.querySelector('.hero-stats');
+  if (!stats) {
+    return;
+  }
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var perf = document.documentElement.getAttribute('data-perf') === 'on';
+  var panelsEl = stats.querySelector('[data-count="panels"]');
+  var percentEl = stats.querySelector('[data-count="percent"]');
+  // Always render the final value from the constant.
+  if (panelsEl) {
+    panelsEl.textContent = String(PANEL_COUNT);
+  }
+  if (percentEl) {
+    percentEl.textContent = '100%';
+  }
+  if (reduce || perf) {
+    return;
+  }
+  function run() {
+    var start = 0;
+    var dur = 900;
+    function tick(t) {
+      if (!start) {
+        start = t;
+      }
+      var p = Math.min(1, (t - start) / dur);
+      var eased = 1 - Math.pow(1 - p, 3);
+      if (panelsEl) {
+        panelsEl.textContent = String(Math.round(eased * PANEL_COUNT));
+      }
+      if (percentEl) {
+        percentEl.textContent = Math.round(eased * 100) + '%';
+      }
+      if (p < 1) {
+        requestAnimationFrame(tick);
+      } else {
+        if (panelsEl) {
+          panelsEl.textContent = String(PANEL_COUNT);
+        }
+        if (percentEl) {
+          percentEl.textContent = '100%';
+        }
+      }
+    }
+    requestAnimationFrame(tick);
+  }
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(
+      function (en) {
+        if (en[0].isIntersecting) {
+          io.disconnect();
+          run();
+        }
+      },
+      { threshold: 0.4 }
+    );
+    io.observe(stats);
+  } else {
+    run();
+  }
+})();

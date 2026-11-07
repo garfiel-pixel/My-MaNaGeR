@@ -407,8 +407,10 @@ main {
      ACTIVE dot is always solid, so the reader can still see where they are in
      one glance - the rail just stops competing with the copy. */
   /* UI pass 2026-10-30: 0.24 measured 1.27:1 on cream - not quiet, invisible.
-     0.6 clears 3:1 while staying out of the copy's way. */
-  opacity: 0.6;
+     0.6 cleared 3:1 while staying out of the copy's way. I-9a (2026-11): the
+     owner asked for another quarter quieter at rest, so 0.6 x 0.75 = 0.45;
+     hover and the active dot stay solid. */
+  opacity: 0.45;
   transition: opacity 0.18s ease;
 }
 .dot-item::before {
@@ -423,7 +425,7 @@ main {
 }
 .dot-rail-navigation:hover .dot-item,
 .dot-rail-navigation:focus-within .dot-item {
-  opacity: 0.72;
+  opacity: 0.54;
 }
 .dot-item:hover,
 .dot-item:focus-visible,
@@ -2030,13 +2032,52 @@ body.dark-mode .nav-dd-col.is-platform {
   gap: 14px;
   flex-wrap: wrap;
 }
+/* I-9b (2026-11): the strip is four clean stat tiles with a small icon each,
+   two up on a phone and four across from 720px. */
 .hero-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 40px;
+}
+@media (min-width: 720px) {
+  .hero-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+  }
+}
+.hero-stats .hstat {
   display: flex;
-  gap: 34px;
-  flex-wrap: wrap;
-  margin-top: 48px;
-  padding-top: 26px;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+}
+.hero-stats .hstat .ico {
+  width: 18px;
+  height: 18px;
+  color: var(--accent-on-navy);
+  margin-bottom: 2px;
+}
+/* I-9c (2026-11): the AI tour brand label (logo mark + name) replaces the
+   generic star the owner objected to. */
+.ai-tour-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-deep);
+}
+.ai-tour-badge .ico {
+  width: 20px;
+  height: 20px;
+  color: var(--gold);
 }
 .hero-stats b {
   display: block;

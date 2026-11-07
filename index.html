@@ -138,11 +138,23 @@
             View Field Guide
           </a>
         </div>
-        <div class="hero-stats">
-          <div><b>18</b><span>Panels</span></div>
-          <div><b>0</b><span>Servers required</span></div>
-          <div><b>Offline</b><span>First by design</span></div>
-          <div><b>100%</b><span>Your data stays yours</span></div>
+        <div class="hero-stats" aria-label="At a glance">
+          <div class="hstat">
+            <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-list"></use></svg>
+            <b data-count="panels">15</b><span>Panels</span>
+          </div>
+          <div class="hstat">
+            <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg>
+            <b>0</b><span>Servers required</span>
+          </div>
+          <div class="hstat">
+            <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cpu"></use></svg>
+            <b>Offline</b><span>First by design</span>
+          </div>
+          <div class="hstat">
+            <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg>
+            <b data-count="percent">100%</b><span>Your data stays yours</span>
+          </div>
         </div>
       </div>
 
@@ -376,6 +388,7 @@
   <section class="section slide" id="how">
     <div class="container">
       <div class="section-head">
+        <p class="ai-tour-badge"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg><span>My MaNaGeR AI Tour</span></p>
         <h2>From blank to live in four steps</h2>
         <!-- Phase 2 copy: how-it-works intro. -->
         <p>No install, no account, no training course. Most teams are productive in their first fifteen minutes.</p>

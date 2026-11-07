@@ -15,7 +15,7 @@ const PAGES = [
   ['about', '/about.html'],
   ['calculator', '/calculator.html'],
   ['app-shell', '/app.html'],
-  ['project-dashboard', '/project.html'],
+  ['project-dashboard', '/project.html']
 ];
 
 // Pages we also want a full-page capture of (to read lower sections).
@@ -31,11 +31,13 @@ const CONSENT = JSON.stringify({ v: 1, iv: 3, analytics: false, ts: new Date().t
       viewport: { width: w, height: Math.round(w * 0.7) },
       deviceScaleFactor: 1,
       colorScheme: 'dark',
-      prefersReducedMotion: 'no-preference',
+      prefersReducedMotion: 'no-preference'
     });
     // Accept cookies before any page script runs so the banner never covers UI.
-    await ctx.addInitScript((c) => {
-      try { localStorage.setItem('mmgr_consent', c); } catch (e) {}
+    await ctx.addInitScript(c => {
+      try {
+        localStorage.setItem('mmgr_consent', c);
+      } catch (e) {}
     }, CONSENT);
     const page = await ctx.newPage();
     for (const [name, url] of PAGES) {

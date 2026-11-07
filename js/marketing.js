@@ -1838,3 +1838,60 @@
   wireUpgradeButtons();
   mountContactForm();
 })();
+
+/* I-4e (2026-11): decorative typed-text. The full text is already in the DOM
+   (screen readers and search see it unchanged). The effect is a one-time clip
+   wipe + blinking caret, plus phrase rotation on the hero. It is disabled
+   under prefers-reduced-motion and Performance Mode, where the text simply
+   shows. Runs after load so the hero stays the LCP. */
+(function () {
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var perf = !!(window.MMGR && window.MMGR.Perf && window.MMGR.Perf.reduced);
+  if (reduce || perf) {
+    return;
+  }
+
+  function reveal(el) {
+    // restart the CSS reveal by toggling the attribute
+    el.removeAttribute('data-type-anim');
+    // force reflow so the animation replays
+    void el.offsetWidth;
+    el.setAttribute('data-type-anim', '');
+  }
+
+  // One-time wipe reveal on the hero line under the headline and the rotating
+  // phrase (both above the fold on load).
+  var heroSub = document.querySelector('.hero-sub');
+  var typeEl = document.querySelector('.hero-type[data-type]');
+  if (heroSub) {
+    reveal(heroSub);
+  }
+
+  if (!typeEl) {
+    return;
+  }
+  reveal(typeEl);
+
+  var raw = typeEl.getAttribute('data-phrases');
+  var phrases = raw
+    ? raw.split('|').map(function (s) {
+        return s.trim();
+      })
+    : [typeEl.textContent.trim()];
+  if (phrases.length < 2) {
+    return; // single phrase: just the reveal above, no rotation
+  }
+
+  var REVEAL_MS = 900;
+  var DWELL_MS = 2600;
+  var idx = 0;
+  function rotate() {
+    window.setTimeout(function () {
+      idx = (idx + 1) % phrases.length;
+      typeEl.textContent = phrases[idx];
+      reveal(typeEl);
+      rotate();
+    }, REVEAL_MS + DWELL_MS);
+  }
+  window.setTimeout(rotate, REVEAL_MS + DWELL_MS);
+})();

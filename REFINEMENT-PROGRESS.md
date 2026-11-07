@@ -506,7 +506,7 @@ Per BUDGET-BOQ-MCP-DIRECTIVE-2026-11-05.md section 4B. Sprint 0 (I-0 to I-3) run
 Wave G (FIELD-FINDINGS-DIRECTIVE-2026-10-28.md — also absent from the tree; blocks I-0/I-1/I-3 start).
 Many items (I-4..I-10 photography/fonts/motion) need owner visual sign-off on defaults.
 
-- [ ] **I-0** Screenshot review and map — blocked on Wave G prereq.
+- [x] **I-0** Screenshot review and map — `1102022`. `docs/UI-AUDIT-MAP-2026-11.md` written: U-A1..U-A8 verdicts + per-task I-4..I-14 element analysis; 40 screenshots at 390/768/1280/1920 dark in `tools/shots/ui-audit/` (gitignored, regenerable via `tools/ui-audit-shots.cjs`). Findings: globe gold outline (U-A1), View Field Guide glass/white (U-A2), inconsistent panel counts 18/15/10/40+ (U-A4), diamond dividers no motion (U-A5), visible dot rail (U-A6), four-steps star (U-A7), sidebar icon rail is I-14 target.
 - [ ] **I-1** Cloud projects do not show up (data bug) — needs reproduction harness T-CLOUDLIST.
 - [ ] **I-2** "Could not load photos HTTP 500" on empty project — needs T-PHOTO-EMPTY.
 - [ ] **I-3** Role-based access no visible UI — needs T-RBAC-UI.

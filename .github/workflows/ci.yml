@@ -883,6 +883,14 @@ jobs:
         id: qa-mat-items
         run: node tools/qa-mat-items.cjs
 
+      # I-4 (Wave I, 2026-11): T-HERO gate for the landing hero polish.
+      # Get Started / View Field Guide buttons, globe feature cards, the gold
+      # headline words and the typed-text element are checked at computed-style
+      # level against the shared :8765 server started above.
+      - name: "T4: Landing hero polish (qa-hero-polish)"
+        id: qa-hero-polish
+        run: node tools/qa-hero-polish.cjs
+
       # G-4 (FIELD-FINDINGS-DIRECTIVE-2026-10-28): "The form did not price that
       # line: check the quantities" appeared when the quantity was fine. T-POP
       # drives the page's real MMGR_CALC_POPULATE for every trade the picker

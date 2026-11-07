@@ -88,6 +88,15 @@
   /* accent readable on the dark band (footer, page-hero, photo overlay) */
   --accent-on-navy: #ffe082; /* premium gold on warm charcoal */
 
+  /* I-4d (2026-11) / Q9: display serif for the hero gold words so the
+     headline reads as part of the page. The owner will drop a self-hosted
+     subset woff2 and add an @font-face under --font-display; until then this
+     is a real fallback stack of open-source-available serifs (the headline
+     words compute to a serif, distinct from the sans body). */
+  --font-display:
+    'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Roman', Georgia,
+    serif;
+
   /* Amber accent for the app dashboard card/chart spec (design system spec
      token only - the live marketing identity stays warm gold, not amber). */
   --accent-primary: #e05624;
@@ -976,12 +985,14 @@ body.dark-mode .site-nav a.nav-link[aria-current='page'] {
    base rule while adding .btn-bullion next to it, so the hero's two ghost
    CTAs on index.html lost their frosted white surface and rendered as bare
    white text over the photo. Only the :hover rule survived. */
+/* I-4c (2026-11): View Field Guide flows with the page - transparent, gold
+   text, no glass, no white, no outer layer. Hover adds a soft gold fill. */
 .btn-ghost-light {
-  background: var(--lit-white-08);
-  border-color: rgba(255, 255, 255, 0.28);
-  color: var(--lit-white);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  background: transparent;
+  border-color: transparent;
+  color: var(--accent-on-navy);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 /* OWNER 2026-09-09 (P5.1): secondary glass buttons turn GOLD on hover
    (the CTA color family), matching the owner's directive. */
@@ -1959,6 +1970,12 @@ body.dark-mode .nav-dd-col.is-platform {
 }
 .hero h1 .gold {
   color: var(--gold-text-on-dark);
+  /* I-4d (2026-11) / Q9: a display serif marks the two brand words as part
+     of the page, not a stamped accent. Falls back to system serifs until the
+     owner drops the self-hosted subset woff2. */
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-style: normal;
 }
 .hero h1 .teal {
   color: var(--gold-text-on-dark);
@@ -1997,6 +2014,53 @@ body.dark-mode .nav-dd-col.is-platform {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: rgba(248, 250, 252, 0.6);
+}
+
+/* I-4e (2026-11): decorative typed-text. The full text stays in the DOM for
+   screen readers and search; the reveal is a clip wipe + blinking caret and
+   is disabled under reduced motion and Performance Mode. */
+[data-type-anim] {
+  animation: typeReveal 0.9s steps(44, end) both;
+}
+@keyframes typeReveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+.hero-type {
+  margin: 0 0 26px;
+  min-height: 1.45em;
+  font-size: clamp(1.02rem, 1.35vw, 1.12rem);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--accent-on-navy);
+}
+.hero-type::after {
+  content: '';
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  margin-left: 3px;
+  vertical-align: -0.16em;
+  background: var(--accent-on-navy);
+  animation: typeCaret 1s steps(1) infinite;
+}
+@keyframes typeCaret {
+  50% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-type-anim] {
+    animation: none;
+    clip-path: none;
+  }
+  .hero-type::after {
+    animation: none;
+  }
 }
 
 /* Hero visual (U-08, 2026-10-30). The three white mock cards are gone. The
@@ -4726,7 +4790,9 @@ body.dark-mode .pricing-card .pc-list li {
      --gold-300 on it 10.65:1. */
   background: #1a1614;
   color: #f5efe6;
-  border: 1px solid rgba(212, 175, 55, 0.45);
+  /* I-4a (2026-11): drop the gold outline - it only drew a box around the
+     pop-out. The solid fill + shadow keep it separate from the globe. */
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   padding: 13px 15px;
   box-shadow: 0 20px 44px -12px rgba(0, 0, 0, 0.55);

@@ -55,6 +55,9 @@ const APP_MODULES = [
   // Core (loaded first - defines MMGR namespace + utilities)
   'js/mmgr-state.js',
   'js/mmgr-utils.js',
+  // Unit conversion for rate-book quantities (G-1). Loads before the
+  // calculator so MMGR.RateUnits is available when the pricing guard runs.
+  'js/rateunits.js',
   // Work package relations (OpenProject-inspired). Pure model: must load
   // before the renderers and the domain modules, because both read
   // MMGR.Relations at call time.

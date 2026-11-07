@@ -6,11 +6,13 @@
        ladder reads in the order the money is built.
    C4: the spreadsheet is a real .xlsx - a valid ZIP whose Summary total
        equals ESTIMATED TOTAL - and the CSV is ONE flat schema where every
-       row carries the same eight fields.
+       row carries the same nine fields (the ninth, rate_unit, names the unit
+       the RATE is expressed in - G-1: a per-m2 rate is never mistaken for a
+       per-ft2 one when the sheet is read back).
 
    The artefact is checked the way a user's machine checks it: Python's
    zipfile.testzip() must return None, ElementTree must parse the sheet,
-   and csv.DictReader must find exactly the eight columns on every row.
+   and csv.DictReader must find exactly the nine columns on every row.
 
    Exit 0 = documents reconcile and the spreadsheet opens, 1 = drift.
    ============================================================ */
@@ -257,12 +259,8 @@ const GOLDEN = [
         .filter(Boolean);
       const header = String(lines.shift() || '').replace(/^﻿/, '');
       const cells = lines.map(l => parseCsvLine(l));
-      const badShape = cells.filter(r => r.length !== 8);
-      check(
-        g.name + ': every CSV row carries the eight fields',
-        badShape.length === 0,
-        badShape[0]
-      );
+      const badShape = cells.filter(r => r.length !== 9);
+      check(g.name + ': every CSV row carries the nine fields', badShape.length === 0, badShape[0]);
 
       const cost = cells.filter(r => r[0] === 'Cost');
       const printedTotal = cells.filter(r => r[0] === 'Total');

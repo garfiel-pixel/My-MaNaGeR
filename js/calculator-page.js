@@ -9805,7 +9805,17 @@
   // rows, so Excel opened it as a mess and no reader could sum a column. Every
   // row now carries the same eight fields, numbers are plain numerics (no
   // thousands separators, no units inside the number cell), and dates are ISO.
-  var CSV_COLS = ['section', 'item', 'detail', 'quantity', 'unit', 'rate', 'amount', 'currency'];
+  var CSV_COLS = [
+    'section',
+    'item',
+    'detail',
+    'quantity',
+    'unit',
+    'rate',
+    'amount',
+    'currency',
+    'rate_unit'
+  ];
 
   function num2(v) {
     if (v === null || v === undefined || v === '' || !isFinite(Number(v))) {
@@ -9815,11 +9825,15 @@
   }
 
   // The one source of truth for both exports. A row is
-  // [section, item, detail, quantity, unit, rate, amount, currency].
+  // [section, item, detail, quantity, unit, rate, amount, currency, rate_unit].
+  // G-1: rate_unit names the unit the RATE is expressed in (e.g. "m2" vs
+  // "sq ft") so a per-m2 rate is never mistaken for a per-ft2 one when the
+  // exported sheet is read back - the unit the rate prices is explicit, not
+  // implied by the quantity column.
   function exportRows(r) {
     var rows = [];
-    var add = function (section, item, detail, qty, unit, rate, amount) {
-      rows.push([section, item, detail, qty, unit, rate, amount, r.currency]);
+    var add = function (section, item, detail, qty, unit, rate, amount, rateUnit) {
+      rows.push([section, item, detail, qty, unit, rate, amount, r.currency, rateUnit || '']);
     };
     var qty = r.qty;
 
@@ -9851,7 +9865,8 @@
         num2(qty),
         r.unit,
         num2(r.allInRate),
-        num2(r.allInCost)
+        num2(r.allInCost),
+        r.runit || r.unit
       );
     } else {
       add(
@@ -9861,7 +9876,8 @@
         num2(qty),
         r.unit,
         num2(r.mr),
-        num2(r.mat)
+        num2(r.mat),
+        r.unit
       );
       // MAT-1: the itemised material lines ride the Cost section as their own
       // rows, carrying the same money the card and the printed sheet show, so a
@@ -9874,7 +9890,8 @@
           num2(a.qty),
           a.unit,
           a.price == null ? '' : num2(a.price),
-          a.total == null ? '' : num2(a.total)
+          a.total == null ? '' : num2(a.total),
+          a.unit
         );
       });
       add(
@@ -9884,14 +9901,24 @@
         num2(qty),
         r.unit,
         num2(r.lr),
-        num2(r.lab)
+        num2(r.lab),
+        r.unit
       );
     }
     if (r.onCost > 0) {
-      add('Cost', 'Labor statutory costs', r.onCostPct + '%', '', '', '', num2(r.onCost));
+      add('Cost', 'Labor statutory costs', r.onCostPct + '%', '', '', '', num2(r.onCost), '');
     }
     if (r.eq > 0) {
-      add('Cost', 'Equipment / plant hire', '', num2(qty), r.unit, num2(r.eqRate), num2(r.eq));
+      add(
+        'Cost',
+        'Equipment / plant hire',
+        '',
+        num2(qty),
+        r.unit,
+        num2(r.eqRate),
+        num2(r.eq),
+        r.unit
+      );
     }
     add('Cost', 'Subtotal (before overhead and margin)', '', '', '', '', num2(r.sub));
     if (r.ohPct > 0) {
@@ -10148,7 +10175,7 @@
       });
     };
     var moneyRow = function (row) {
-      return [row[1], row[2], row[6] === '' ? '' : Number(row[6])];
+      return [row[1], row[2], row[8] || '', row[6] === '' ? '' : Number(row[6])];
     };
 
     var summary = [
@@ -10167,7 +10194,7 @@
       });
     summary.push(['Planning-grade estimate - not a quote.', '']);
 
-    var breakdown = [['Line', 'Detail', 'Amount']].concat(
+    var breakdown = [['Line', 'Detail', 'Rate unit', 'Amount']].concat(
       bySection('Cost').concat(bySection('Total')).map(moneyRow)
     );
     var assumptions = [['Setting', 'Value']].concat(
@@ -10183,7 +10210,7 @@
 
     return [
       { name: 'Summary', rows: summary, widths: [44, 22], money: [1], bold: [0] },
-      { name: 'Cost breakdown', rows: breakdown, widths: [40, 26, 18], money: [2], bold: [0] },
+      { name: 'Cost breakdown', rows: breakdown, widths: [40, 26, 16, 18], money: [3], bold: [0] },
       { name: 'Assumptions', rows: assumptions, widths: [26, 52], bold: [0] },
       { name: 'Bill of quantities', rows: bill, widths: [12, 44, 30, 18], money: [3], bold: [0] }
     ];
@@ -15748,25 +15775,108 @@
     if (/[\u0000-\u001f\u007f<>]/.test(str(c.label) + str(c.unit))) {
       return 'I could not add that line because the name or the unit contained markup. Ask for it again in plain words and I will add it.';
     }
+    var RU = (typeof MMGR !== 'undefined' && MMGR.RateUnits) || null;
     var src = str(c.source);
-    if (/#\s*\d/.test(src)) {
-      // A row source arrives as "<label> <Trade> #<n>"; drop the leading
-      // label word and match the rest against the loaded book, so a legacy
-      // prefix from an older conversation still resolves.
-      var ref = src.replace(/^[A-Za-z]+\s+/, '');
-      var rows = rrRows();
-      var hit = null;
-      for (var i = 0; i < rows.length; i++) {
-        if (rows[i].ref === ref) {
-          hit = rows[i];
+    var rate = Number(c.rate);
+    // A custom line may reference a book row by "#<ref>" (legacy prefix) OR by
+    // quoting a book rate. Either way we resolve the row so we can reconcile the
+    // unit the rate actually prices in against the unit the line declares.
+    var hit = null;
+    if (/#\s*[\w.\-]+/.test(src)) {
+      var ref = src.replace(/^[A-Za-z]+\s+/, '').replace(/^#/, '');
+      var rows0 = rrRows();
+      for (var i0 = 0; i0 < rows0.length; i0++) {
+        if (rows0[i0].ref === ref) {
+          hit = rows0[i0];
           break;
         }
       }
-      var rate = Number(c.rate);
+    }
+    if (!hit && isFinite(rate) && rate > 0) {
+      var rows = rrRows();
+      for (var ri = 0; ri < rows.length; ri++) {
+        var r = rows[ri];
+        if (!r) {
+          continue;
+        }
+        var ir0 = Number(r.impRate),
+          mr0 = Number(r.metRate);
+        var within = function (b) {
+          return isFinite(b) && b > 0 && Math.abs(rate * 100 - b * 100) <= Math.max(1, b * 0.5);
+        };
+        if (within(ir0) || within(mr0)) {
+          hit = r;
+          break;
+        }
+      }
+    }
+    if (hit) {
+      // G-1: a per-square-metre book rate must never price a square-foot
+      // quantity (and vice versa). If the quoted rate matches a published side
+      // whose SYSTEM differs from the unit the line declares, refuse and show
+      // the two honest outcomes (convert, or price in the line's own unit).
+      var rowRateUnit = null;
+      if (RU && isFinite(rate) && rate > 0) {
+        var ir2 = Number(hit.impRate),
+          mr2 = Number(hit.metRate);
+        var matchesMetric =
+          isFinite(mr2) && mr2 > 0 && Math.abs(rate * 100 - mr2 * 100) <= Math.max(1, mr2 * 0.5);
+        var matchesImperial =
+          isFinite(ir2) && ir2 > 0 && Math.abs(rate * 100 - ir2 * 100) <= Math.max(1, ir2 * 0.5);
+        if (matchesMetric) {
+          rowRateUnit = hit.metUnit;
+        } else if (matchesImperial) {
+          rowRateUnit = hit.impUnit;
+        }
+      }
+      if (rowRateUnit && RU) {
+        var famRow = RU.family(rowRateUnit);
+        var famCu = RU.family(c.unit);
+        var sysRow = RU.system(rowRateUnit);
+        var sysCu = RU.system(c.unit);
+        var mismatched =
+          (famCu && famRow && famCu !== famRow) ||
+          (sysCu !== 'neutral' && sysRow !== 'neutral' && sysCu !== sysRow);
+        if (mismatched) {
+          var money2 = function (x) {
+            return Number(x).toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            });
+          };
+          var trimNum = function (x) {
+            return (Math.round(x * 100) / 100).toLocaleString();
+          };
+          var converted = RU.convertQty(Number(c.qty), c.unit, rowRateUnit);
+          var msg =
+            'That rate (' +
+            money2(rate) +
+            ') is the book’s price per ' +
+            RU.label(rowRateUnit) +
+            ', but your quantity is in ' +
+            RU.label(c.unit) +
+            '.';
+          if (converted != null && isFinite(converted)) {
+            msg +=
+              ' I can add it as ' +
+              trimNum(converted) +
+              ' ' +
+              RU.label(rowRateUnit) +
+              ' at ' +
+              money2(rate) +
+              ', or you can give me your own per-' +
+              RU.label(c.unit) +
+              ' rate.';
+          } else {
+            msg += ' Give me the rate in ' + RU.label(c.unit) + ' instead.';
+          }
+          return msg;
+        }
+      }
+      // Existing contract: a "#<ref>" source line must match the metric rate.
       if (
-        !hit ||
-        !isFinite(rate) ||
-        Math.round(rate * 100) !== Math.round(Number(hit.metRate) * 100)
+        /#\s*[\w.\-]+/.test(src) &&
+        (!isFinite(rate) || Math.round(rate * 100) !== Math.round(Number(hit.metRate) * 100))
       ) {
         return B6_RATE_NOTICE;
       }

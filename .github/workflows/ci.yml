@@ -299,6 +299,19 @@ jobs:
         id: verify-ratebook
         run: node tools/verify-ratebook-wording.cjs
 
+      # G-1 (FIELD-FINDINGS-DIRECTIVE-2026-10-28): the rate-unit gate. A
+      # per-square-metre book rate must never price a square-foot quantity
+      # (the 10.76x money bug). Pure-Node: reuses js/rateunits.js + the shipped
+      # rate book. Proves the owner's 100 ft x 100 ft / Masonry #6 fixture
+      # (imperial 1,420,000, metric within 0.1%), every row reconciled in both
+      # unit systems within 1.5% (genuine first-party outliers documented in
+      # docs/RATE-UNIT-OUTLIERS.md), and the custom-line refusal that names both
+      # units. No Chrome, no wrangler - the static job carries it.
+
+      - name: "T1: Rate-unit reconciliation (G-1 money bug)"
+        id: qa-rate-unit
+        run: node tools/qa-rate-unit.cjs
+
       # MAT-1 (REFINEMENT-DIRECTIVE-2026-10-24): the static half of the itemised
       # material table - every WORK trade carries an itemised list or a written
       # reason, every line is fully shaped, and no trade whose material

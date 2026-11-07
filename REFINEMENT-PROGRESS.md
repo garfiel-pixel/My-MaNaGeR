@@ -511,12 +511,12 @@ Many items (I-4..I-10 photography/fonts/motion) need owner visual sign-off on de
 - [ ] **I-2** "Could not load photos HTTP 500" on empty project — needs T-PHOTO-EMPTY.
 - [ ] **I-3** Role-based access no visible UI — needs T-RBAC-UI.
 - [x] **I-4** Hero polish — `6af7380`. Globe card outline removed; Get Started solid gold (no border); View Field Guide transparent gold text (no glass/white, soft gold fill on hover); `--font-display` serif on COMFORTABLY/WORKSPACE (Q9 self-hosted subset still owner-supplied); typed-text reveal + rotating hero phrase with full text in the DOM, off under reduced motion/Performance Mode. New gate `tools/qa-hero-polish.cjs` (T-HERO, 12/12) registered in `docs/CI-TEST-COVERAGE.md` and wired into `browser-calc`. Shell cache `mmgr-shell-v581`.
-- [ ] **I-5** Motion language — open.
+- [x] **I-5** Motion language — `5c37f41`. Band-seam diamond/grid replaced by a scroll-driven gold light (`--page-progress`, monotonic); the dead `.rv`/`.rv-in` reveal wired as fade-rise with `.section-alt` fade-only variety; photo band bottom-only gradient; header hides on scroll down / returns on scroll up; pointer-fine hero magnet line field (30fps, off touch/reduced-motion/perf). New gate `tools/qa-motion.cjs` (T-MOTION, 9/9) registered + wired into `browser-calc`. Shell cache `mmgr-shell-v582`.
 - [ ] **I-6** Bento "real project needs" slots — open.
 - [ ] **I-7** Real photography (Q12) — open.
 - [ ] **I-8** Content sections + honest numbers — open.
 - [ ] **I-9** Dot rail / stats strip / AI tour label — open.
-- [ ] **I-10** Sign-in MMWRP outline — open.
+- [x] **I-10** Sign-in MMWRP outline — `1bfbd27`. At >=900px the card moves left and the right side shows MMWRP as transparent-fill silver-outline text that turns gold on hover; card markup unchanged; below 900px unchanged and wordmark absent. New gate `tools/qa-signin-mmwrp.cjs` (T-SIGNIN, 9/9) registered + wired into `browser-calc`. Shell cache `mmgr-shell-v584`.
 - [ ] **I-11** First-open tour highlighting — open.
 - [ ] **I-12** Photo upload bundles + plan gate (Q13) — open.
 - [ ] **I-13** Pin / Advanced animation / delete-account visibility — open.

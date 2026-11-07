@@ -916,24 +916,30 @@ async function walkFocus(page, openDrawers) {
       // renders a chip that carries a real download link, and it must never
       // announce a download that did not happen. So the chip is asserted
       // first, then the download is proved by clicking the chip's own link.
+      // G-8: the default file is the spreadsheet (.xlsx); the CSV rides beside
+      // it as a second link.
       await ap.click('[data-cai=makefile]');
       await ap.waitForTimeout(400);
       const chip = await ap.evaluate(() => {
         const row = document.querySelector('#calc-ai-mount .bcp-ai-chip');
-        const a = row ? row.querySelector('a[download]') : null;
+        const anchors = row ? Array.from(row.querySelectorAll('a[download]')) : [];
+        const xlsx = anchors.find(a => /\.xlsx$/i.test(a.getAttribute('download') || ''));
+        const csv = anchors.find(a => /\.csv$/i.test(a.getAttribute('download') || ''));
         const log = document.querySelector('#calc-ai-mount .bcp-ai-log').textContent;
         return {
-          has: !!row,
-          name: a ? a.getAttribute('download') : '',
-          isBlob: a ? a.href.indexOf('blob:') === 0 : false,
+          has: !!row && anchors.length > 0,
+          name: xlsx ? xlsx.getAttribute('download') : '',
+          isBlob: xlsx ? xlsx.href.indexOf('blob:') === 0 : false,
+          hasCsv: !!csv,
           claimed: /has been downloaded/i.test(log)
         };
       });
       check(
         'A12 generate a file renders a download chip and claims no phantom download',
         chip.has === true &&
-          /\.csv$/.test(chip.name) &&
+          /\.xlsx$/.test(chip.name) &&
           chip.isBlob === true &&
+          chip.hasCsv === true &&
           chip.claimed === false,
         chip
       );
@@ -947,8 +953,8 @@ async function walkFocus(page, openDrawers) {
       });
       const download = await dl;
       check(
-        'A12b clicking the chip downloads that CSV',
-        !!download && /\.csv$/.test(download.suggestedFilename()),
+        'A12b clicking the chip downloads the spreadsheet',
+        !!download && /\.xlsx$/.test(download.suggestedFilename()),
         download ? download.suggestedFilename() : 'no download event'
       );
 

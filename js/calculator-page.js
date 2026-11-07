@@ -16433,6 +16433,10 @@
       }
       var changed = [];
       var refused = [];
+      // G-5: a setting that is already in force is not an error. Track what the
+      // request asked for and the page already has, so the panel can say
+      // "Already set: ..." in a neutral note instead of a warning.
+      var same = [];
       Object.keys(v)
         .sort(function (a, b) {
           return settingRank(a) - settingRank(b);
@@ -16465,6 +16469,9 @@
               el.value = want;
               el.dispatchEvent(new Event('change', { bubbles: true }));
               changed.push({ field: k, label: spec.label, from: '', to: want });
+            } else {
+              var selOpt = el.options[el.selectedIndex];
+              same.push({ field: k, label: spec.label, value: selOpt ? selOpt.text : want });
             }
             return;
           }
@@ -16483,6 +16490,8 @@
                 from: wasOn ? 'on' : 'off',
                 to: v[k] ? 'on' : 'off'
               });
+            } else {
+              same.push({ field: k, label: spec.label, value: v[k] ? 'on' : 'off' });
             }
             return;
           }
@@ -16525,18 +16534,20 @@
           el.dispatchEvent(new Event('change', { bubbles: true }));
           if (before !== String(n)) {
             changed.push({ field: k, label: spec.label, from: before, to: n + spec.unit });
+          } else {
+            same.push({ field: k, label: spec.label, value: n + (spec.unit || '') });
           }
         });
       if (!changed.length) {
-        return {
-          ok: false,
-          error: refused.length
-            ? 'I cannot change ' + refused.join(', ') + ' on this page.'
-            : 'Those settings are already what you asked for.'
-        };
+        // G-5: refused keys keep their own message; otherwise the request was
+        // already in force - a fine state, reported neutrally with the values.
+        if (refused.length) {
+          return { ok: false, error: 'I cannot change ' + refused.join(', ') + ' on this page.' };
+        }
+        return { ok: true, unchanged: true, same: same, changed: [], refused: [] };
       }
       render();
-      return { ok: true, changed: changed, refused: refused };
+      return { ok: true, changed: changed, refused: refused, same: same };
     } catch (e) {
       return { ok: false, error: 'Those settings could not be changed.' };
     }

@@ -2898,6 +2898,65 @@ async function g3ProposalHidden(browser, errors) {
   await ctx.close();
 }
 
+/* G-5 (FIELD-FINDINGS-DIRECTIVE-2026-10-28): applying settings that are already
+   in force is not an error. The page returns ok:true, unchanged:true with the
+   values it already has, and the panel shows a neutral "Already set: ..." note
+   (no warning class). Refused keys keep their own message. */
+async function g5SettingsUnchanged(browser, errors) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => errors.push('calc(g5): ' + String(e).slice(0, 140)));
+  await mockAuth(page);
+  await mockRelay(
+    page,
+    () =>
+      'Applying your overhead.\nPROPOSAL: {"settings":{"overhead":23,"designC":7},"note":"overhead"}'
+  );
+  await seedCalcFx(page);
+  await mockRatebook(page, loadBook());
+  await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
+  await page.waitForFunction(() => !!window.MMGR_CALC_SETTINGS, null, { timeout: 20000 });
+
+  // Core contract: first apply changes; the same apply again is unchanged.
+  const shapes = await page.evaluate(() => {
+    const fn = window.MMGR_CALC_SETTINGS;
+    const patch = { overhead: 23, designC: 7 };
+    const a = fn(patch);
+    const b = fn(patch);
+    return { a, b };
+  });
+  check(
+    'G-5 the first apply reports the settings it changed',
+    shapes.a && shapes.a.ok === true && (shapes.a.changed || []).length > 0,
+    shapes.a
+  );
+  check(
+    'G-5 the same apply again is unchanged:true with labels',
+    shapes.b &&
+      shapes.b.ok === true &&
+      shapes.b.unchanged === true &&
+      (shapes.b.same || []).length > 0 &&
+      (shapes.b.same || []).every(s => s && s.label),
+    shapes.b
+  );
+
+  // The panel's note for an already-in-force apply carries no warning class.
+  await sendQ(page, 'set my overhead');
+  await page.click('[data-cai=settings]');
+  await page.waitForTimeout(200);
+  const note = await page.evaluate(() => {
+    const n = document.querySelectorAll('#calc-ai-mount .bcp-ai-note');
+    const last = n[n.length - 1];
+    return { text: last ? last.textContent : '', cls: last ? last.className : '' };
+  });
+  check(
+    'G-5 the already-set note names the values with no warning class',
+    /Already set:/.test(note.text) && !/(^|\s)bad(\s|$)/.test(note.cls),
+    note
+  );
+  await ctx.close();
+}
+
 (async () => {
   let srv = null;
   const { chromium } = resolvePlaywright();
@@ -2928,6 +2987,7 @@ async function g3ProposalHidden(browser, errors) {
     await s6OwnRateAndSettings(browser, errors);
     await ai3SettingsAndAsk(browser, errors);
     await g3ProposalHidden(browser, errors);
+    await g5SettingsUnchanged(browser, errors);
     await contrastGates(browser, errors);
 
     const real = errors.filter(e => !/\/api\//.test(e));

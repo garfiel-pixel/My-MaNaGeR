@@ -984,9 +984,18 @@
       var changed = (out.changed || []).map(function (c) {
         return c.label + ' ' + c.to;
       });
-      var msg = changed.length
-        ? 'Updated: ' + changed.join(', ') + '. The estimate has been worked out again.'
-        : 'Nothing needed changing.';
+      var same = (out.same || []).map(function (s) {
+        return s.label + ' ' + s.value;
+      });
+      var msg;
+      if (changed.length) {
+        msg = 'Updated: ' + changed.join(', ') + '. The estimate has been worked out again.';
+      } else if (same.length) {
+        // G-5: already in force is not an error - name what is already set.
+        msg = 'Already set: ' + same.join(', ') + '.';
+      } else {
+        msg = 'Nothing needed changing.';
+      }
       if (out.refused && out.refused.length) {
         msg += ' Not supported: ' + out.refused.join(', ') + '.';
       }

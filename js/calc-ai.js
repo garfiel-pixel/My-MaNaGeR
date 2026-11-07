@@ -113,6 +113,10 @@
     'The page turns that line into the two ' +
     'choices the user then sees: add the line to the calculator so they can ' +
     'export it, or generate a file to download. ' +
+    'I can build a spreadsheet (.xlsx) or a CSV for you, but a PDF comes only ' +
+    'from the Print / PDF button above the estimate - after I add a line I will ' +
+    'point you to it, and the panel shows the same button so you do not have to ' +
+    'look for it. ' +
     'The five sentences below are locked - say them word for word when the ' +
     'situation calls for them. The rest of your reply stays free. ' +
     '1. When the rate book has no rate for the item you are asked about, say: ' +
@@ -1103,6 +1107,8 @@
     if (!proposal) {
       return;
     }
+    // G-9: each Populate (or the combined action) points to Print / PDF once.
+    printShown = false;
     var fn = window.MMGR_CALC_POPULATE;
     if (typeof fn !== 'function') {
       notice(
@@ -1188,6 +1194,7 @@
       );
       proposal = null;
       renderPaths();
+      printPointer();
       return true;
     }
     notice(
@@ -1282,6 +1289,43 @@
     els.log.scrollTop = els.log.scrollHeight;
   }
 
+  // G-9 (FIELD-FINDINGS-DIRECTIVE-2026-10-28): the assistant can only build a
+  // spreadsheet or CSV, so after a successful Populate or file build it points
+  // the user at the page's Print / PDF button - and shows the same button in
+  // the panel so the user does not have to hunt for it. The button runs the
+  // page's own calcPrint, the exact code path as the on-page button.
+  var printShown = false;
+  function printPointer() {
+    if (printShown) {
+      return;
+    }
+    printShown = true;
+    if (!els.log) {
+      return;
+    }
+    // G-9: the sentence lives INSIDE the chip so the last notice keeps saying
+    // "Added to the bill" (other flows assert on it); the chat still contains
+    // the words and the panel shows the same Print / PDF button as the page.
+    var row = el('div', 'bcp-ai-chip');
+    row.appendChild(plain(ico('printer')));
+    var meta = el('span', 'bcp-ai-chip-meta');
+    var nm = el('strong', 'bcp-ai-chip-name');
+    nm.textContent = 'Print / PDF';
+    var sub = el('span', 'bcp-ai-chip-sub');
+    sub.textContent =
+      'For a PDF, press Print / PDF above the estimate. For Excel, press Spreadsheet.';
+    meta.appendChild(nm);
+    meta.appendChild(sub);
+    row.appendChild(meta);
+    var b = el('button', 'btn btn-n btn-s');
+    b.type = 'button';
+    b.setAttribute('data-cai', 'print');
+    b.textContent = 'Print / PDF';
+    row.appendChild(b);
+    els.log.appendChild(row);
+    els.log.scrollTop = els.log.scrollHeight;
+  }
+
   // B1 (owner 2026-10-11): "Nothing is priced yet. Add the line to the
   // calculator first." named no cause and no next step. Say what is missing and
   // what to press; a pending proposal gets the one-click path instead.
@@ -1292,6 +1336,18 @@
         : 'Nothing is priced on this page yet, so there is no file to build. Fill the dimension boxes and press Calculate, then generate the file again.',
       'bad'
     );
+  }
+
+  // G-9: the panel's Print / PDF button runs the page's own calcPrint - the
+  // exact code path as the on-page Print / PDF button, so the same estimate
+  // prints. It always uses the page's current lastResult.
+  function onPrintPdf() {
+    var fn = window.MMGR_CALC_PRINT;
+    if (typeof fn !== 'function') {
+      notice('The Print / PDF button is above the estimate on this page.', 'bad');
+      return;
+    }
+    fn();
   }
 
   function onMakeFile() {
@@ -1321,6 +1377,7 @@
         }
       }
       fileChip(book, alt);
+      printPointer();
       return;
     }
     // The writer is missing or refused: fall back to the CSV rather than
@@ -1342,6 +1399,7 @@
       return;
     }
     fileChip(f);
+    printPointer();
   }
 
   /* ---- attachment ------------------------------------------------------ */
@@ -2063,6 +2121,10 @@
       if (els.file) {
         els.file.click();
       }
+      return;
+    }
+    if (what === 'print') {
+      onPrintPdf();
       return;
     }
     if (what === 'detach') {

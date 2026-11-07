@@ -429,8 +429,9 @@ async function assistantOutputs(browser, errors) {
   // C9 re-baseline (audit 2026-10-18): Download no longer depends on Populate
   // having run - the page prices the waiting proposal in a sandbox, so a chip
   // here is CORRECT. What must still never happen is an export that invents a
-  // file: with nothing priced and no proposal, the hook refuses.
-  check('T2 nothing priced -> no download chip', empty.chips === 1, empty);
+  // file: with nothing priced and no proposal, the hook refuses. G-9 adds a
+  // second chip (the Print / PDF pointer) after every file, so the count is 2.
+  check('T2 nothing priced -> no invented file (download + print chips)', empty.chips === 2, empty);
   check(
     'T2 the chat never claims a download that did not happen',
     !/has been downloaded/i.test(empty.text),
@@ -547,7 +548,7 @@ async function assistantOutputs(browser, errors) {
   });
   check(
     'C9 the combined action adds the line AND makes the file in one click',
-    combined.rows === combined.before.rows + 1 && combined.chips === combined.before.chips + 1,
+    combined.rows === combined.before.rows + 1 && combined.chips === combined.before.chips + 2,
     combined
   );
   await ctx.close();
@@ -3158,6 +3159,75 @@ async function g7KeepMeasurement(browser, errors) {
   await ctx.close();
 }
 
+// G-9 (FIELD-FINDINGS-DIRECTIVE-2026-10-28): after a Populate the assistant
+// points the user at the Print / PDF button (sentence) and shows the same
+// button in the panel; clicking it runs the page's own calcPrint.
+async function g9PrintPointer(browser, errors) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => errors.push('calc(g9): ' + String(e).slice(0, 140)));
+  await mockAuth(page);
+  await mockRelay(page, i => {
+    if (i === 0) {
+      return (
+        'Here is that wall.\n' +
+        'PROPOSAL: {"work":"blockwall","units":"imperial","d1":100,"d2":50,"variant":"6in-gf","note":"6 inch block wall"}'
+      );
+    }
+    return 'Tell me the height and I will price it.';
+  });
+  await seedCalcFx(page);
+  await mockRatebook(page, loadBook());
+  await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
+  await page.waitForFunction(() => !!window.MMGR_CALC_POPULATE, null, { timeout: 20000 });
+
+  await sendQ(page, 'six inch block wall, 100 ft by 50 ft');
+  await page.waitForSelector('[data-cai=pop]', { state: 'visible', timeout: 15000 });
+  await page.click('[data-cai=pop]');
+  await page.waitForTimeout(300);
+
+  const logText = await page.evaluate(() => {
+    const log = document.querySelector('.bcp-ai-log');
+    return log ? log.textContent : '';
+  });
+  check(
+    'G-9 the chat points to Print / PDF and Spreadsheet after Populate',
+    /For a PDF, press Print \/ PDF above the estimate\. For Excel, press Spreadsheet\./.test(
+      logText
+    ),
+    logText.slice(-220)
+  );
+
+  const hasBtn = await page.evaluate(() => !!document.querySelector('[data-cai=print]'));
+  check('G-9 the panel shows a Print / PDF button', hasBtn === true, hasBtn);
+
+  // Clicking it opens the print flow for the populated line - same code path
+  // as the on-page button (adds the print-estimate class and calls window.print).
+  const printed = await page.evaluate(async () => {
+    let called = false;
+    const orig = window.print;
+    window.print = function () {
+      called = true;
+    };
+    const b = document.querySelector('[data-cai=print]');
+    if (!b) {
+      window.print = orig;
+      return { called, found: false, cls: false };
+    }
+    b.click();
+    await new Promise(r => setTimeout(r, 60));
+    const cls = document.body.classList.contains('print-estimate');
+    window.print = orig;
+    return { called, found: true, cls };
+  });
+  check(
+    'G-9 the Print / PDF button runs the page print flow',
+    printed.found && printed.called && printed.cls,
+    printed
+  );
+  await ctx.close();
+}
+
 (async () => {
   let srv = null;
   const { chromium } = resolvePlaywright();
@@ -3191,6 +3261,7 @@ async function g7KeepMeasurement(browser, errors) {
     await g5SettingsUnchanged(browser, errors);
     await g6PlainWords(browser, errors);
     await g7KeepMeasurement(browser, errors);
+    await g9PrintPointer(browser, errors);
     await contrastGates(browser, errors);
 
     const real = errors.filter(e => !/\/api\//.test(e));

@@ -16820,6 +16820,9 @@
   window.MMGR_CALC_FILE = buildCsv;
   // C4: the spreadsheet export, built from the same rows as the CSV.
   window.MMGR_CALC_XLSX = buildXlsx;
+  // G-9: the Print / PDF button (the assistant's panel uses the same path as
+  // the on-page button) - prints the page's current lastResult.
+  window.MMGR_CALC_PRINT = ACTIONS.calcPrint;
 
   /* OWNER 2026-10-08: the Assistant panel (js/calc-ai.js).
      #calc-ai-mount is the SWAP POINT - a later full-page takeover calls

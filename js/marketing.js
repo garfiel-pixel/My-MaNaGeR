@@ -1290,7 +1290,8 @@
   );
   if (rvTargets.length) {
     var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
-    if (!(reduceMotion && reduceMotion.matches) && 'IntersectionObserver' in window) {
+    var perfMode = document.documentElement.getAttribute('data-perf') === 'on';
+    if (!(reduceMotion && reduceMotion.matches) && !perfMode && 'IntersectionObserver' in window) {
       rvTargets.forEach(function (el, i) {
         el.classList.add('rv');
         el.style.setProperty('--rv-i', String(i > 8 ? 8 : i));
@@ -1633,10 +1634,30 @@
       return;
     }
     var queued = false;
+    var lastY = window.pageYOffset || document.documentElement.scrollTop || 0;
+    var HIDE_AFTER = 120; // never hide in the first screen
+    var DELTA = 6; // ignore tiny jitter so the bar does not flap
     function apply() {
       queued = false;
       var y = window.pageYOffset || document.documentElement.scrollTop || 0;
       hdr.setAttribute('data-scrolled', y > 8 ? 'true' : 'false');
+      // I-5d: hide while scrolling down past the first screen, show on any
+      // upward scroll or at the top. The delta ignores trackpad jitter.
+      if (y <= HIDE_AFTER) {
+        hdr.setAttribute('data-hidden', 'false');
+      } else if (y - lastY > DELTA) {
+        hdr.setAttribute('data-hidden', 'true');
+      } else if (lastY - y > DELTA) {
+        hdr.setAttribute('data-hidden', 'false');
+      }
+      lastY = y;
+      // I-5a: page scroll progress (0..1) drives the travelling gold light on
+      // the band seams. One CSS variable, written once per frame.
+      var doc = document.documentElement;
+      var max = doc.scrollHeight - window.innerHeight;
+      var p = max > 0 ? y / max : 0;
+      p = p < 0 ? 0 : p > 1 ? 1 : p;
+      doc.style.setProperty('--page-progress', p.toFixed(4));
     }
     window.addEventListener(
       'scroll',
@@ -1894,4 +1915,105 @@
     }, REVEAL_MS + DWELL_MS);
   }
   window.setTimeout(rotate, REVEAL_MS + DWELL_MS);
+})();
+
+/* I-5e (2026-11): the hero's magnet line field. A thin gold line field that
+   bends toward the pointer, capped at 30 fps, paused when the hero is off
+   screen or the tab is hidden. Created only on fine-pointer, non-Performance,
+   non-reduced-motion devices, so touch and low-power users never load it. */
+(function wireMagnetField() {
+  var hero = document.querySelector('.hero');
+  if (!hero) {
+    return;
+  }
+  var fine = window.matchMedia && window.matchMedia('(pointer: fine) and (hover: hover)').matches;
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var perf = document.documentElement.getAttribute('data-perf') === 'on';
+  if (!fine || reduce || perf) {
+    return;
+  }
+  var canvas = document.createElement('canvas');
+  canvas.className = 'magnet-field';
+  canvas.setAttribute('aria-hidden', 'true');
+  hero.appendChild(canvas);
+  var ctx = canvas.getContext('2d');
+  if (!ctx) {
+    return;
+  }
+  var W = 0;
+  var H = 0;
+  var DPR = Math.min(window.devicePixelRatio || 1, 2);
+  function resize() {
+    var r = hero.getBoundingClientRect();
+    W = Math.round(r.width);
+    H = Math.round(r.height);
+    canvas.width = Math.max(1, W * DPR);
+    canvas.height = Math.max(1, H * DPR);
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  var mx = -9999;
+  var my = -9999;
+  var inside = false;
+  hero.addEventListener('pointermove', function (e) {
+    var r = hero.getBoundingClientRect();
+    mx = e.clientX - r.left;
+    my = e.clientY - r.top;
+    inside = true;
+  });
+  hero.addEventListener('pointerleave', function () {
+    inside = false;
+    mx = -9999;
+    my = -9999;
+  });
+  var visible = true;
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(
+      function (en) {
+        visible = en[0].isIntersecting;
+      },
+      { threshold: 0 }
+    ).observe(hero);
+  }
+  var last = 0;
+  var FRAME = 1000 / 30;
+  function draw(t) {
+    requestAnimationFrame(draw);
+    if (!visible || document.visibilityState !== 'visible') {
+      return;
+    }
+    if (t - last < FRAME) {
+      return;
+    }
+    last = t;
+    ctx.clearRect(0, 0, W, H);
+    var cols = Math.max(10, Math.floor(W / 90));
+    var step = W / cols;
+    ctx.strokeStyle = 'rgba(212, 175, 55, 0.26)';
+    ctx.lineWidth = 1;
+    var time = t * 0.0004;
+    for (var i = 0; i <= cols; i++) {
+      var x = i * step;
+      ctx.beginPath();
+      for (var y = 0; y <= H; y += 18) {
+        var dx = 0;
+        if (inside) {
+          var d = Math.hypot(x - mx, y - my);
+          dx = Math.max(0, 1 - d / 220) * (mx - x) * 0.12;
+        }
+        var sway = Math.sin(y * 0.012 + time + i * 0.3) * 3;
+        var px = x + dx + sway;
+        if (y === 0) {
+          ctx.moveTo(px, y);
+        } else {
+          ctx.lineTo(px, y);
+        }
+      }
+      ctx.stroke();
+    }
+  }
+  requestAnimationFrame(draw);
 })();

@@ -891,6 +891,11 @@ jobs:
         id: qa-hero-polish
         run: node tools/qa-hero-polish.cjs
 
+      # I-5 (Wave I, 2026-11): T-MOTION gate for the motion language.
+      - name: "T4: Landing motion language (qa-motion)"
+        id: qa-motion
+        run: node tools/qa-motion.cjs
+
       # G-4 (FIELD-FINDINGS-DIRECTIVE-2026-10-28): "The form did not price that
       # line: check the quantities" appeared when the quantity was fine. T-POP
       # drives the page's real MMGR_CALC_POPULATE for every trade the picker

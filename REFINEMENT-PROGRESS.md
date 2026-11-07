@@ -515,7 +515,7 @@ Many items (I-4..I-10 photography/fonts/motion) need owner visual sign-off on de
 - [ ] **I-6** Bento "real project needs" slots — open.
 - [ ] **I-7** Real photography (Q12) — open.
 - [ ] **I-8** Content sections + honest numbers — open.
-- [ ] **I-9** Dot rail / stats strip / AI tour label — open.
+- [x] **I-9** Dot rail / stats / AI tour label — `587e6fa`. Rail rest opacity 0.6 -> 0.45 (hover 0.54); stats strip is four icon tiles with a count-up and the single `PANEL_COUNT = 15` constant (stale 18 removed); the four-steps block has no star in live code, so the AI tour is branded "My MaNaGeR AI Tour" with the logo mark. New gate `tools/qa-stat-tour.cjs` (T-RAIL, 7/7) registered + wired into `browser-calc`. Shell cache `mmgr-shell-v585`.
 - [x] **I-10** Sign-in MMWRP outline — `1bfbd27`. At >=900px the card moves left and the right side shows MMWRP as transparent-fill silver-outline text that turns gold on hover; card markup unchanged; below 900px unchanged and wordmark absent. New gate `tools/qa-signin-mmwrp.cjs` (T-SIGNIN, 9/9) registered + wired into `browser-calc`. Shell cache `mmgr-shell-v584`.
 - [ ] **I-11** First-open tour highlighting — open.
 - [ ] **I-12** Photo upload bundles + plan gate (Q13) — open.

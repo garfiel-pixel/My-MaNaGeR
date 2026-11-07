@@ -15401,12 +15401,47 @@
     var out = [];
     try {
       var keys = Object.keys(WORK);
+      // G-7: the question decides WHICH work items carry their choice list. The
+      // catalogue is 101 variants across 13 trades - listing all of them would
+      // push the rate rows past the section's 9000-character budget - so a work
+      // item's choices travel when its key or label matches the question (the
+      // panel also passes the current line's work key).
+      var q = rateNorm(query || '');
+      var qTokens = rateExpandQuery(rateTokens(query || ''));
       out.push(
-        'Work items you may name in "work" (key = label): ' +
+        'Work items you may name in "work" (key = label; choices are listed for ' +
+          'the items matching this question): ' +
           keys
             .map(function (k) {
               var w = WORK[k] || {};
-              return k + ' = ' + (w.label || w.name || k) + (w.unit ? ' (' + w.unit + ')' : '');
+              var line = k + ' = ' + (w.label || w.name || k) + (w.unit ? ' (' + w.unit + ')' : '');
+              var vs = (w.variants || []).filter(function (x) {
+                return x && x.id;
+              });
+              if (!vs.length) {
+                return line;
+              }
+              var hit = rateScoreRow(
+                qTokens,
+                q,
+                [],
+                rateTokens(k + ' ' + (w.label || w.name || '')),
+                rateNorm(k + ' ' + (w.label || w.name || ''))
+              );
+              if (!hit) {
+                return line;
+              }
+              // The "(planning model)" tail is the page's provenance note, not
+              // part of the choice.
+              line +=
+                ' choices: ' +
+                vs
+                  .map(function (x) {
+                    var lab = String(x.label || x.id).replace(/\s*\([^)]*\)\s*$/, '');
+                    return x.id + ' = ' + lab;
+                  })
+                  .join('; ');
+              return line;
             })
             .join('; ')
       );
@@ -15451,10 +15486,8 @@
       );
       // A3 - rank every row: the full 811 (or the inline 100 while the file
       // is unavailable) plus the active imported book, top 12 by score.
-      var q = rateNorm(query || '');
       // AI GROUNDING (2026-10-16): site words widen to book words before
       // scoring, so "cement" reaches the concrete/mortar/block rows.
-      var qTokens = rateExpandQuery(rateTokens(query || ''));
       var fullLabels = {};
       if (full) {
         (full.trades || []).forEach(function (t) {
@@ -16083,6 +16116,41 @@
         syncLabels();
       }
       var w = WORK[(sel && sel.value) || ''] || {};
+      // G-7 (FIELD-FINDINGS-DIRECTIVE-2026-10-28): a proposal may name a choice
+      // (a block size, a bar size, a finish). The page sets it - and refuses a
+      // key it does not offer, naming the real choices - rather than silently
+      // keeping whatever was selected before.
+      if (v.variant !== undefined && v.variant !== null && v.variant !== '') {
+        var vsel = $('calc-variant');
+        var want = String(v.variant);
+        var offered = vsel
+          ? Array.prototype.map.call(vsel.options || [], function (o) {
+              return o.value;
+            })
+          : [];
+        if (!offered.length) {
+          offered = (w.variants || []).map(function (x) {
+            return x.id;
+          });
+        }
+        if (offered.indexOf(want) === -1) {
+          var choices = (w.variants || []).map(function (x) {
+            return x.id + ' (' + (x.label || x.id) + ')';
+          });
+          return {
+            ok: false,
+            error:
+              'That is not a choice on ' +
+              (w.label || w.name || v.work || 'this work item') +
+              '. The choices are: ' +
+              (choices.length ? choices.join('; ') : 'none - that work item has no choices') +
+              '.'
+          };
+        }
+        if (vsel) {
+          vsel.value = want;
+        }
+      }
       // B1 (F-4): a box this work does not use, or a box the proposal omitted,
       // is CLEARED rather than left holding the previous line's number - which is
       // how a second line used to price with the first line's height.

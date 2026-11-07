@@ -3041,6 +3041,117 @@ async function g6PlainWords(browser, errors) {
   await ctx.close();
 }
 
+/* G-7 (FIELD-FINDINGS-DIRECTIVE-2026-10-28): a follow-up changes ONE thing.
+   "6 inch block wall, 100 ft by 50 ft" then "make it 8 inch" must keep d1/d2
+   and set the 8 inch choice, leaving the first bill line untouched. The panel
+   sends the last proposal back as CURRENT LINE and the page sets the variant
+   control from the key (refusing a key it does not offer). */
+async function g7KeepMeasurement(browser, errors) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => errors.push('calc(g7): ' + String(e).slice(0, 140)));
+  await mockAuth(page);
+  const bodies = await mockRelay(page, i => {
+    if (i === 0) {
+      return (
+        'Here is that wall.\n' +
+        'PROPOSAL: {"work":"blockwall","units":"imperial","d1":100,"d2":50,"variant":"6in-gf","note":"6 inch block wall"}'
+      );
+    }
+    return (
+      'Changed to 8 inch, same size.\n' +
+      'PROPOSAL: {"work":"blockwall","units":"imperial","d1":100,"d2":50,"variant":"standard","note":"8 inch block wall"}'
+    );
+  });
+  await seedCalcFx(page);
+  await mockRatebook(page, loadBook());
+  await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
+  await page.waitForFunction(() => !!window.MMGR_CALC_POPULATE, null, { timeout: 20000 });
+
+  const readBill = () =>
+    page.evaluate(() => {
+      try {
+        return JSON.parse(localStorage.getItem('mmgr_calc_boq') || '[]');
+      } catch (e) {
+        return [];
+      }
+    });
+
+  await sendQ(page, 'six inch block wall, 100 ft by 50 ft');
+  await page.waitForSelector('[data-cai=pop]', { state: 'visible', timeout: 15000 });
+  await page.click('[data-cai=pop]');
+  await page.waitForTimeout(300);
+  const bill1 = await readBill();
+  const first = JSON.stringify(bill1[0] || null);
+  check(
+    'G-7 the first line is priced with its 6 inch choice',
+    bill1.length === 1 && bill1[0] && bill1[0].st && bill1[0].st.variant === '6in-gf',
+    bill1
+  );
+
+  await sendQ(page, 'make it 8 inch');
+  const sys2 = sysOf(bodies[1] || '');
+  check(
+    'G-7 the follow-up carries the last proposal as CURRENT LINE',
+    /CURRENT LINE: \{/.test(sys2) && sys2.indexOf('"variant":"6in-gf"') > -1,
+    sys2.slice(-320)
+  );
+  await page.waitForSelector('[data-cai=pop]', { state: 'visible', timeout: 15000 });
+  await page.click('[data-cai=pop]');
+  await page.waitForTimeout(300);
+
+  const bill2 = await readBill();
+  const second = bill2[1] || {};
+  check(
+    'G-7 the second line keeps d1 and d2 and sets the 8 inch choice',
+    bill2.length === 2 &&
+      second.st &&
+      Number(second.st.d1) === 100 &&
+      Number(second.st.d2) === 50 &&
+      second.st.variant === 'standard',
+    second.st
+  );
+  check(
+    'G-7 the first line is untouched by the change',
+    JSON.stringify(bill2[0] || null) === first,
+    bill2[0]
+  );
+  const sel = await page.evaluate(() => (document.getElementById('calc-variant') || {}).value);
+  check('G-7 the page control holds the 8 inch choice', sel === 'standard', sel);
+
+  // An invented key is refused, names the real choices, and adds nothing.
+  const bad = await page.evaluate(() => {
+    const before = JSON.parse(localStorage.getItem('mmgr_calc_boq') || '[]').length;
+    const r = window.MMGR_CALC_POPULATE({
+      work: 'blockwall',
+      units: 'imperial',
+      d1: 100,
+      d2: 50,
+      variant: '9in'
+    });
+    const after = JSON.parse(localStorage.getItem('mmgr_calc_boq') || '[]').length;
+    return { r, before, after };
+  });
+  check(
+    'G-7 an unknown choice is refused and names the real ones',
+    bad.r &&
+      bad.r.ok === false &&
+      /not a choice/.test(bad.r.error || '') &&
+      /6in-gf/.test(bad.r.error || '') &&
+      bad.after === bad.before,
+    bad
+  );
+
+  // The model can only name what it was shown: the choices ride the book text.
+  const rb = await page.evaluate(() => window.MMGR_CALC_RATEBOOK('block walls'));
+  check(
+    'G-7 the rate-book text lists the block wall choices',
+    /blockwall = .*choices: .*6in-gf = 6 in blocks/.test(rb) && /standard = 8 in blocks/.test(rb),
+    rb.slice(0, 400)
+  );
+  await ctx.close();
+}
+
 (async () => {
   let srv = null;
   const { chromium } = resolvePlaywright();
@@ -3073,6 +3184,7 @@ async function g6PlainWords(browser, errors) {
     await g3ProposalHidden(browser, errors);
     await g5SettingsUnchanged(browser, errors);
     await g6PlainWords(browser, errors);
+    await g7KeepMeasurement(browser, errors);
     await contrastGates(browser, errors);
 
     const real = errors.filter(e => !/\/api\//.test(e));

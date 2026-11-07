@@ -97,13 +97,20 @@
     'has the rates already on the page. ' +
     'When the conversation settles on figures to price, end your reply with ONE ' +
     'final line in exactly this form (no code fences, nothing after it): ' +
-    'PROPOSAL: {"work":"<key>","units":"metric"|"imperial","d1":<number>,"note":"<one short line>"} - ' +
+    'PROPOSAL: {"work":"<key>","units":"metric"|"imperial","d1":<number>,"variant":"<key>","note":"<one short line>"} - ' +
     'the units field is required and is the system the USER spoke in, never a ' +
     'converted guess. For a job the user states as one total, send ' +
     'PROPOSAL: {"work":"<key>","units":"...","measuredQty":<number>,"note":"..."} ' +
     'and put the user\u0027s own number there. ' +
     'Use only the work keys you were given, include d2/d3 only if that work item ' +
-    'needs them, and never guess a key. The page turns that line into the two ' +
+    'needs them, and never guess a key. ' +
+    // G-7 (FIELD-FINDINGS-DIRECTIVE-2026-10-28): a choice the page offers (a
+    // block size, a bar size, a finish) is a "variant", never free text - the
+    // page sets the control from the key and refuses one it does not offer.
+    'When the work item lists choices, set "variant" to the exact key shown for ' +
+    'the choice the user named; omit "variant" only when the user did not name ' +
+    'one. Never invent a variant key and never put a choice in "note". ' +
+    'The page turns that line into the two ' +
     'choices the user then sees: add the line to the calculator so they can ' +
     'export it, or generate a file to download. ' +
     'The five sentences below are locked - say them word for word when the ' +
@@ -188,6 +195,11 @@
   var userEmail = '';
   var remaining = null;
   var attach = null;
+  // G-7 (FIELD-FINDINGS-DIRECTIVE-2026-10-28): the last proposal the user was
+  // shown, sent back as CURRENT LINE so "make it 8 inch" repeats the whole line
+  // with only that one field changed. It survives a successful populate (that
+  // IS the current line), and is replaced by the next proposal.
+  var lastProposal = null;
   var proposal = null;
   // AI-3: the one question the last reply asked, waiting for its buttons.
   var ask = null;
@@ -576,6 +588,7 @@
     }
     els.log.textContent = '';
     proposal = null;
+    lastProposal = null;
     ask = null;
     var introDone = false;
     draft.forEach(function (m) {
@@ -587,6 +600,7 @@
       push('assistant', parsed.text);
       if (parsed.proposal) {
         proposal = parsed.proposal;
+        lastProposal = parsed.proposal;
       }
       if (parsed.ask) {
         ask = parsed.ask;
@@ -1725,13 +1739,32 @@
   function payload(question) {
     var q = String(question || '');
     var parts = [SYSTEM_PROMPT];
-    var book = rateBookText(q);
+    // G-7: the current line's work key rides the rate-book query, so a short
+    // follow-up ("make it 8 inch") still carries that work item's choices.
+    var book = rateBookText(q + (lastProposal && lastProposal.work ? ' ' + lastProposal.work : ''));
     if (book) {
       parts.push('RATE BOOK (answer from this):\n' + book);
     }
     var ctx = contextText();
     if (ctx) {
       parts.push('Estimate on screen:\n' + ctx);
+    }
+    if (lastProposal) {
+      var cur = '';
+      try {
+        cur = JSON.stringify(lastProposal);
+      } catch (e) {
+        cur = '';
+      }
+      if (cur) {
+        parts.push(
+          'CURRENT LINE: ' +
+            cur +
+            '\nWhen the user changes one thing, send the complete proposal again ' +
+            'with the same d1, d2, d3, measuredQty and units, and change only that ' +
+            'field.'
+        );
+      }
     }
     if (attach) {
       var picked = retrieve(q, CHUNK_BUDGET);
@@ -1854,6 +1887,9 @@
             draft.push({ role: 'assistant', content: r.data.text });
             push('assistant', parsed.text);
             proposal = parsed.proposal;
+            if (parsed.proposal) {
+              lastProposal = parsed.proposal;
+            }
             ask = parsed.ask;
             renderPaths();
             if (typeof r.data.remaining === 'number') {

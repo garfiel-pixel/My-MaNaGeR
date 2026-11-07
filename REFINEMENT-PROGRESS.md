@@ -520,7 +520,7 @@ Many items (I-4..I-10 photography/fonts/motion) need owner visual sign-off on de
 - [ ] **I-11** First-open tour highlighting — open.
 - [ ] **I-12** Photo upload bundles + plan gate (Q13) — open.
 - [ ] **I-13** Pin / Advanced animation / delete-account visibility — open.
-- [ ] **I-14** App sidebar opens on hover — open.
+- [x] **I-14** App sidebar opens on hover — `a670dec`. The launcher icon strip is a hover lane on fine-pointer desktops: entering it opens the panel as an overlay (`body.rail-hover-open`) with no `.wrap` margin change, leaving closes after 150 ms so crossing icon gaps does not flicker, and the panel stays open while the pointer is over it. Focus opens it; Escape and the in-panel hamburger dismiss it; `side-open` (pin) still pushes the page. Touch keeps the drawer, Performance Mode drops the slide. New gate `tools/qa-sidebar-hover.cjs` (T-SIDEBAR-HOVER, 16/16) registered + wired into `browser-calc`. Shell cache `mmgr-shell-v587`.
 - [ ] **I-15** Explicitly NOT changing (diff review) — open.
 
 ---

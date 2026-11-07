@@ -915,6 +915,14 @@ jobs:
         id: qa-sidebar-hover
         run: node tools/qa-sidebar-hover.cjs
 
+      # I-13 (Wave I, 2026-11): T-WHAT gate for the three "what is this"
+      # controls. Signed out, no Delete-my-account control is visible on any
+      # served page; both Pin controls are wired to live handlers; the
+      # unlabeled Advanced Packs animation is gone with no code left behind.
+      - name: "T4: Pin, delete-account and removed animation (qa-what-is-this)"
+        id: qa-what-is-this
+        run: node tools/qa-what-is-this.cjs
+
       # G-4 (FIELD-FINDINGS-DIRECTIVE-2026-10-28): "The form did not price that
       # line: check the quantities" appeared when the quantity was fine. T-POP
       # drives the page's real MMGR_CALC_POPULATE for every trade the picker
@@ -1236,9 +1244,7 @@ jobs:
         id: qa-gold-edge
         run: node tools/qa-gold-edge.cjs
 
-      - name: "T4: Particle line pauses offscreen + reduced-motion (qa-particle-line)"
-        id: qa-particle-line
-        run: node tools/qa-particle-line.cjs
+
 
       - name: "T4: Band-transition seam is cheap and off under reduced motion (qa-band-seam)"
         id: qa-band-seam

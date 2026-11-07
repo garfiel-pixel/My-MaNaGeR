@@ -1921,10 +1921,6 @@
          pack is a single-action toggle here. Toggling a pack on reveals its
          nav sections instantly; off hides them (never destroys data). -->
     <div class="ctl-sec" id="adv-packs-section"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Advanced Packs</div>
-    <!-- B6 (audit 2026-11-01): a quiet, theme-reactive particle line. One canvas,
-         paused while offscreen or under reduced motion, heavy work behind
-         requestIdleCallback. Decorative - aria-hidden, no focus, no input. -->
-    <canvas id="adv-particle-line" class="adv-particle-line" aria-hidden="true"></canvas>
     <div class="sr-hint">New projects open Core-only (Dashboard, Definitions, Charter, WBS, Kanban). Turn a pack on to reveal its sections , one action, nothing hidden is ever lost.</div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> Schedule Science</span><label class="tgl"><input type="checkbox" id="pk-schedule" aria-label="Schedule Science pack" data-action="tglPack" data-pack="schedule"><span class="tsl"></span></label></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dollar"></use></svg> Money</span><label class="tgl"><input type="checkbox" id="pk-money" aria-label="Money pack" data-action="tglPack" data-pack="money"><span class="tsl"></span></label></div>

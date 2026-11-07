@@ -1921,19 +1921,3 @@ body.sidebar-open .sb-close .ico {
 .panel.active {
   display: block;
 }
-
-/* B6 (audit 2026-11-01): the quiet, theme-reactive particle line lives inside
-   the Advanced Packs panel. One element, full width, short - decorative only. */
-.adv-particle-line {
-  display: block;
-  width: 100%;
-  height: 42px;
-  margin: 6px 0 2px;
-  pointer-events: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  .adv-particle-line {
-    /* a single static frame is drawn; the rAF loop never starts */
-    opacity: 0.7;
-  }
-}

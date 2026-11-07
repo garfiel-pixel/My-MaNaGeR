@@ -185,6 +185,9 @@ body.db-page:not(.dark-mode) .sidebar-icon:hover .sidebar-tooltip{
 /* OWNER 2026-09-07: hidden strip buttons (state-mirrored account/sign-in) */
 body.db-page:not(.dark-mode) .sidebar-icon[hidden],body.dark-mode.db-page .sidebar-icon[hidden]{display:none;}
 .sidebar-icon[hidden]{display:none!important;}
+/* I-13c: the .db-link display rule outranks the UA [hidden] rule, so the
+   signed-in-only rows need their own guard. */
+body.db-page .db-link[hidden]{display:none;}
 body.glass-premium .sidebar-icon{
   background:var(--card);border:1px solid var(--border);
 }
@@ -410,8 +413,11 @@ html[data-perf='on'] body.db-page .sidebar-icons{transition:none;}
         </div>
         <!-- OWNER 2026-09-17 (wave 3 W5): the accordion dropdown is gone.
              One click opens the #dam popup: it explains exactly what is
-             deleted and gates on typing CONFIRM. Simple and safe. -->
-        <button type="button" class="db-link db-danger-link" id="del-account-open" data-action="delAccountOpen">
+             deleted and gates on typing CONFIRM. Simple and safe.
+             I-13c (2026-11-07): signed-in only. The row starts hidden and
+             syncRailAccountStrip() reveals it with the session, so a visitor
+             with no account is never offered "Delete my account". -->
+        <button type="button" class="db-link db-danger-link" id="del-account-open" data-action="delAccountOpen" hidden>
           <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete my account
         </button>
       </div>
@@ -1522,6 +1528,11 @@ function syncRailAccountStrip(signedIn){
   const sin = document.getElementById('strip-signin');
   if (acc) acc.hidden = !signedIn;
   if (sin) sin.hidden = !!signedIn;
+  // I-13c: "Delete my account" is a signed-in control. It starts hidden in
+  // the markup and follows the same session flag as the account icon, so a
+  // signed-out visitor never sees an action that can only 401.
+  const del = document.getElementById('del-account-open');
+  if (del) del.hidden = !signedIn;
 }
 
 /* Hero top-right signed-in indicator (NEW-UI-POLISH 2026-08-14): a circular

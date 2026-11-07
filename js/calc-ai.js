@@ -113,7 +113,11 @@
     '2. When a rate exists in the book but the calculator cannot price it, say: ' +
     '"That figure is in the book but not in my calculator - you set the rate." ' +
     '3. When something is still missing before a line can price, say: ' +
-    '"I need one more number before that can price - your quantity or rate." ' +
+    '"I need one more number before that can price: " + the missing box name + ' +
+    '". That is " + what that number means in plain words + ", for example " + a ' +
+    'worked example + "." The page hands you the box name, meaning and example - ' +
+    'never say the bare word "quantity" on its own, and never blame the user\u0027s ' +
+    'figures for a missing box. ' +
     '4. After the user has confirmed they want the line, confirm it in one line: ' +
     '"That goes in the bill as " + name + " - " + qty + " " + unit + " at " + rate + "." ' +
     '5. When the user has not given you a rate and you cannot invent one, say: ' +
@@ -1107,16 +1111,25 @@
       chk = null;
     }
     if (chk && chk.ok === false && chk.missing && chk.missing.length) {
-      notice(
-        'I cannot enter that yet. The form still needs: ' +
-          chk.missing
-            .map(function (m) {
-              return m.label + (m.hint ? ' - ' + m.hint : '');
-            })
-            .join('  ') +
-          ' Tell me that figure and I will price it.',
-        'bad'
-      );
+      // G-6 (FIELD-FINDINGS-DIRECTIVE-2026-10-28): locked sentence 3, word for
+      // word, once per missing box. The page owns the words; the local copy is
+      // only a fallback for a stale page bundle.
+      var sent =
+        typeof window.MMGR_CALC_MISSING_SENTENCE === 'function'
+          ? window.MMGR_CALC_MISSING_SENTENCE
+          : function (m) {
+              var ex = String((m && m.example) || '100').replace(/^for example\s+/i, '');
+              return (
+                'I need one more number before that can price: ' +
+                ((m && m.label) || 'the next figure') +
+                '. That is ' +
+                ((m && m.meaning) || 'the amount of work') +
+                ', for example ' +
+                ex +
+                '.'
+              );
+            };
+      notice(chk.missing.map(sent).join(' ') + ' Tell me that figure and I will price it.', 'bad');
       return;
     }
     // B6: self-enforcing guards run BEFORE the page is asked, so a rejected

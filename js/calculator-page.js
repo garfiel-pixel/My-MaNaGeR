@@ -1134,6 +1134,52 @@
     }
   };
 
+  // G-6 (FIELD-FINDINGS-DIRECTIVE-2026-10-28): every trade gets a plain-words
+  // meaning and a worked example for its quantity, so a missing-box reply can
+  // say what the number IS ("the area, which is length times height, for
+  // example 100 ft x 50 ft = 5,000 sq ft") instead of a bare "quantity".
+  function workQuantityHint(w) {
+    var u = '';
+    try {
+      u = (w.q(1, w.d2 ? 1 : null, w.d3 ? 1 : null) || {}).unit || '';
+    } catch (e) {}
+    var key = String(u).toLowerCase();
+    if (key === 'm2') {
+      return {
+        meaning: 'the area, which is length times height',
+        example: '100 ft x 50 ft = 5,000 sq ft'
+      };
+    }
+    if (key === 'm3') {
+      return {
+        meaning: 'the volume, which is length times width times depth',
+        example: '10 m x 2 m x 0.15 m = 3 m3'
+      };
+    }
+    if (key === 'm') {
+      return { meaning: 'the length along the line', example: '12 m' };
+    }
+    if (key === 'kg') {
+      return { meaning: 'the weight', example: '50 kg' };
+    }
+    return { meaning: 'how many there are', example: '24' };
+  }
+  Object.keys(WORK).forEach(function (k) {
+    var w = WORK[k];
+    if (!w || typeof w.q !== 'function') {
+      return;
+    }
+    if (!w.meaning || !w.example) {
+      var hint = workQuantityHint(w);
+      if (!w.meaning) {
+        w.meaning = hint.meaning;
+      }
+      if (!w.example) {
+        w.example = hint.example;
+      }
+    }
+  });
+
   // ---- MAT-1 (REFINEMENT-DIRECTIVE-2026-10-24): ITEMISED MATERIALS ------
   // The owner asked the drywall question: the lump material rate for a trade
   // covers several things ("Boards, studs, tape, screws") and the user cannot
@@ -15591,6 +15637,8 @@
         field: 'label',
         label: 'Item name',
         unit: '',
+        meaning: 'the name the line will show in the bill',
+        example: 'Block wall',
         hint: 'Give the item a name of 1 to 60 characters.'
       });
     }
@@ -15599,6 +15647,8 @@
         field: 'unit',
         label: 'Unit',
         unit: '',
+        meaning: 'the unit your rate is quoted in',
+        example: 'm2',
         hint: 'Give the unit in 1 to 12 characters, for example m2 or day.'
       });
     }
@@ -15611,6 +15661,8 @@
         field: 'qty',
         label: 'Quantity',
         unit: '',
+        meaning: 'how many of that unit you are pricing',
+        example: '100',
         hint: 'Enter the quantity as a number greater than zero.'
       });
     }
@@ -15631,6 +15683,8 @@
         field: 'rate',
         label: 'Rate',
         unit: '',
+        meaning: 'the price for one unit of the work',
+        example: '1,529.00',
         hint: 'Enter your rate as a number greater than zero.'
       });
     }
@@ -15670,6 +15724,8 @@
           field: 'bookRow',
           label: 'a trade and a rate in the book picker',
           unit: '',
+          meaning: 'which published rate to price this line from',
+          example: 'Masonry, row 6',
           hint: 'Pick a trade, then one of its published rates, in the My MaNaGeR Rate Book picker.'
         });
         return out;
@@ -15684,6 +15740,8 @@
           field: 'bookRate',
           label: 'the rate for that book row',
           unit: '',
+          meaning: 'the price for one unit of that row',
+          example: '1,529.00 per m2',
           hint: 'The published rate is prefilled - type your own figure if yours is newer.'
         });
         return out;
@@ -15703,6 +15761,26 @@
     var bareOf = function (label) {
       return String(label || '').replace(/\s*\([^)]*\)\s*$/, '');
     };
+    // G-6: a plain meaning + worked example for a dimension box, so a missing
+    // box is explained rather than named bare.
+    var dimHint = function (label) {
+      var t = String(label || '').toLowerCase();
+      if (
+        /length|height|width|depth|thickness|diameter|span|run|perimeter|spacing|girth|circumference|distance/.test(
+          t
+        )
+      ) {
+        var u = unitOf(label) || 'm';
+        return { meaning: 'a distance in ' + u, example: '10 ' + u };
+      }
+      if (/number|count|qty|quantity|no\.|each|pieces|panels|blocks/.test(t)) {
+        return { meaning: 'how many there are', example: '24' };
+      }
+      return {
+        meaning: w.meaning || 'how much work there is',
+        example: w.example || '100'
+      };
+    };
     var num = function (x) {
       return x === undefined || x === null || x === '' ? null : Number(x);
     };
@@ -15717,6 +15795,8 @@
           field: 'measuredQty',
           label: 'Total quantity',
           unit: '',
+          meaning: w.meaning || 'how much work there is',
+          example: w.example || '100',
           hint: 'Enter the measured total as a number greater than zero.'
         });
       } else {
@@ -15741,10 +15821,13 @@
         var val = given[defs[i][0]];
         if (val === null || !isFinite(val) || val <= 0) {
           all = false;
+          var dh = dimHint(label);
           out.missing.push({
             field: defs[i][0],
             label: String(label),
             unit: unitOf(label),
+            meaning: dh.meaning,
+            example: dh.example,
             hint: 'Enter ' + bareOf(label) + ' as a number greater than zero.'
           });
         } else {
@@ -15758,6 +15841,24 @@
     }
     out.ok = out.missing.length === 0;
     return out;
+  }
+
+  // G-6 (FIELD-FINDINGS-DIRECTIVE-2026-10-28): locked sentence 3, word for
+  // word, built from one `calcCheck().missing` entry. The page owns the words
+  // so the panel and the page's own refusal say the same thing.
+  function missingSentence(m) {
+    var label = (m && m.label) || 'the next figure';
+    var meaning = (m && m.meaning) || 'the amount of work';
+    var example = String((m && m.example) || '100').replace(/^for example\s+/i, '');
+    return (
+      'I need one more number before that can price: ' +
+      label +
+      '. That is ' +
+      meaning +
+      ', for example ' +
+      example +
+      '.'
+    );
   }
 
   // B6 (DIRECTIVE section 3): self-enforcing guards, because the model can be
@@ -16017,14 +16118,10 @@
       // short instead of the old blanket "those figures do not price".
       var chk = calcCheck(v);
       if (!chk.ok) {
-        var words = chk.missing
-          .map(function (m) {
-            return m.label;
-          })
-          .join(', ');
+        var words = chk.missing.map(missingSentence).join(' ');
         return {
           ok: false,
-          error: 'I still need ' + words + '. Enter that and the line will price.',
+          error: words + ' Enter that and the line will price.',
           missing: chk.missing
         };
       }
@@ -16571,6 +16668,7 @@
   // B1: the dry run, so the panel can ask for ONE missing box in plain words
   // instead of being told the figures failed.
   window.MMGR_CALC_CHECK = calcCheck;
+  window.MMGR_CALC_MISSING_SENTENCE = missingSentence;
   window.MMGR_CALC_POPULATE = calcPopulate;
   // The panel hook returns the BUILD (never a download): the chip the user
   // clicks is the only thing that fetches the file. The page's own Export

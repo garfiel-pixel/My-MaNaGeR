@@ -2957,6 +2957,90 @@ async function g5SettingsUnchanged(browser, errors) {
   await ctx.close();
 }
 
+/* G-6 (FIELD-FINDINGS-DIRECTIVE-2026-10-28): "quantity" is explained, never
+   named bare. Every work item carries a plain meaning and a worked example,
+   every calcCheck() missing entry carries both, and the page's refusal says
+   locked sentence 3 word for word. */
+async function g6PlainWords(browser, errors) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => errors.push('calc(g6): ' + String(e).slice(0, 140)));
+  await mockAuth(page);
+  await mockRelay(
+    page,
+    () => 'PROPOSAL: {"work":"blockwall","units":"imperial","note":"6 inch block wall"}'
+  );
+  await seedCalcFx(page);
+  await mockRatebook(page, loadBook());
+  await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
+  await page.waitForFunction(() => !!window.__calcEngine, null, { timeout: 20000 });
+
+  const hints = await page.evaluate(() => {
+    const WORK = window.__calcEngine.work();
+    const bad = [];
+    Object.keys(WORK).forEach(k => {
+      const w = WORK[k] || {};
+      if (typeof w.q !== 'function') {
+        return;
+      }
+      if (!w.meaning || !w.example) {
+        bad.push(k);
+      }
+    });
+    return { keys: Object.keys(WORK).length, bad };
+  });
+  check(
+    'G-6 every work item carries a plain meaning and a worked example',
+    hints.bad.length === 0 && hints.keys > 0,
+    hints
+  );
+
+  const miss = await page.evaluate(() => {
+    const c = window.MMGR_CALC_CHECK({ work: 'blockwall' });
+    const list = (c && c.missing) || [];
+    const first = list[0] || null;
+    const pop = window.MMGR_CALC_POPULATE({ work: 'blockwall', units: 'imperial' });
+    return {
+      ok: c && c.ok,
+      count: list.length,
+      allHave: list.length > 0 && list.every(m => m && m.meaning && m.example),
+      sentence: first ? window.MMGR_CALC_MISSING_SENTENCE(first) : '',
+      popError: (pop && pop.error) || ''
+    };
+  });
+  check('G-6 every missing entry carries a meaning and an example', miss.allHave === true, miss);
+  check(
+    'G-6 locked sentence 3 is built word for word',
+    /^I need one more number before that can price: .+\. That is .+, for example .+\.$/.test(
+      miss.sentence
+    ),
+    miss.sentence
+  );
+  check(
+    'G-6 the page refusal explains the box instead of naming it bare',
+    /That is .+, for example .+\./.test(miss.popError) &&
+      !/^I still need [^.]+\./.test(miss.popError),
+    miss.popError
+  );
+
+  // The panel says the same thing when the proposal cannot be entered yet.
+  await sendQ(page, 'six inch block wall');
+  await page.waitForSelector('[data-cai=pop]', { state: 'visible', timeout: 15000 });
+  await page.click('[data-cai=pop]');
+  await page.waitForTimeout(300);
+  const note = await page.evaluate(() => {
+    const n = document.querySelectorAll('#calc-ai-mount .bcp-ai-note');
+    const last = n[n.length - 1];
+    return last ? last.textContent : '';
+  });
+  check(
+    'G-6 the panel refusal explains the missing box in plain words',
+    /That is .+, for example .+\./.test(note),
+    note
+  );
+  await ctx.close();
+}
+
 (async () => {
   let srv = null;
   const { chromium } = resolvePlaywright();
@@ -2988,6 +3072,7 @@ async function g5SettingsUnchanged(browser, errors) {
     await ai3SettingsAndAsk(browser, errors);
     await g3ProposalHidden(browser, errors);
     await g5SettingsUnchanged(browser, errors);
+    await g6PlainWords(browser, errors);
     await contrastGates(browser, errors);
 
     const real = errors.filter(e => !/\/api\//.test(e));

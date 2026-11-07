@@ -883,6 +883,19 @@ jobs:
         id: qa-mat-items
         run: node tools/qa-mat-items.cjs
 
+      # G-4 (FIELD-FINDINGS-DIRECTIVE-2026-10-28): "The form did not price that
+      # line: check the quantities" appeared when the quantity was fine. T-POP
+      # drives the page's real MMGR_CALC_POPULATE for every trade the picker
+      # offers, in both unit systems, on the measured-total AND dimensions
+      # paths (ok:true, positive total), plus straight after a custom line and
+      # after a different trade. It also caught the C8 qtyGuard refusing
+      # concrete trades whose waste is folded into the engine quantity, now
+      # waste-aware. The diagnostic is tools/repro-populate.cjs.
+
+      - name: "T4: Populate every trade, both units, both paths (qa-populate)"
+        id: qa-populate
+        run: node tools/qa-populate.cjs
+
       # MAT-2 (REFINEMENT-DIRECTIVE-2026-10-24): related items the user would
       # otherwise forget. The companion chips now offer the related TRADES from
       # the directive's table (paint the wall, screed the floor, gutters on the

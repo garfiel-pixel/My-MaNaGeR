@@ -15552,9 +15552,9 @@
     return out.join('\n');
   }
 
-  /* OWNER 2026-10-11 (B1 - "those figures do not price - check the quantities").
-     The panel was handed one opaque sentence with no way to fix it. This is the
-     diagnosis it was missing.
+  /* OWNER 2026-10-11 (B1 - the old opaque "those figures do not price" line).
+     The panel was handed one sentence with no way to fix it. This is the
+     diagnosis it was missing (G-4 later removed the blame-the-quantity wording).
 
      MMGR_CALC_CHECK(v) is a PURE DRY RUN. It reads the work-item metadata
      (WORK[key].d1/d2/d3 labels) and NEVER writes the form, the bill or saved
@@ -16030,11 +16030,26 @@
       }
       var r = render();
       if (!r || r.error) {
+        // G-4 (FIELD-FINDINGS-DIRECTIVE-2026-10-28): render() returns undefined
+        // on BOTH "no result" and an engine error, so the old message blamed the
+        // quantity even when the quantity was fine. Ask the engine directly for
+        // the real reason; when there is none, name the work item that could not
+        // be selected instead of guessing.
+        var why = null;
+        try {
+          var probe = computeFor(readState());
+          why = probe && probe.error ? String(probe.error) : null;
+        } catch (e) {
+          why = null;
+        }
+        var workLabel = (w && (w.name || w.label)) || (sel && sel.value) || 'that work item';
         return {
           ok: false,
-          error:
-            'The form did not price that line: ' +
-            (r && r.error ? r.error : 'check the quantities.'),
+          error: why
+            ? why
+            : 'I could not select ' +
+              workLabel +
+              ' on the calculator. Pick it from the list and press Populate again.',
           missing: chk.missing
         };
       }
@@ -16050,11 +16065,20 @@
       // re-deriving it here refused good lines. The dimension conversions keep
       // their own coverage in the page harness (U1-U3, I1) and T1.
       var guardable = v.measuredQty !== undefined && v.measuredQty !== null && v.measuredQty !== '';
-      if (guardable && !qtyGuard(expectedEngineQty(v), Number(r.qty))) {
-        return {
-          ok: false,
-          error: 'The quantity did not match what you said, so nothing was added.'
-        };
+      if (guardable) {
+        var expQty = expectedEngineQty(v);
+        // G-4: concrete trades (slab, footings, ...) fold their waste into the
+        // engine quantity (100 m3 becomes 105 m3 at 5% waste). The guard exists
+        // to catch a 10x UNIT mix-up, not a legitimate waste allowance, so
+        // accept the engine qty either before or after the work's own waste.
+        var expWithWaste =
+          r && r.hasWaste ? expQty * (1 + (Number(r.wastePct) || 0) / 100) : expQty;
+        if (!qtyGuard(expQty, Number(r.qty)) && !qtyGuard(expWithWaste, Number(r.qty))) {
+          return {
+            ok: false,
+            error: 'The quantity did not match what you said, so nothing was added.'
+          };
+        }
       }
       ACTIONS.calcBoqAdd();
       return { ok: true, name: r.name, total: r.total, currency: r.currency || '' };

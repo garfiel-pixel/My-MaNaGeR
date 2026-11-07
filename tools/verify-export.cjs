@@ -303,9 +303,13 @@ const GOLDEN = [
       const safe = g.name.replace(/[^a-z0-9]+/gi, '-');
       const xlsxPath = path.join(TMP, 'export-' + safe + '.xlsx');
       fs.writeFileSync(xlsxPath, Buffer.from(out.xlsxB64, 'base64'));
+      // G-8: the probe reads BOTH files, so a number that disagrees between
+      // them fails here rather than in the user's spreadsheet.
+      const csvPath = path.join(TMP, 'export-' + safe + '.csv');
+      fs.writeFileSync(csvPath, out.csv, 'utf8');
       const probe = spawnSync(
         'python',
-        [path.join(ROOT, 'tools', 'xlsx-probe.py'), xlsxPath, String(out.total)],
+        [path.join(ROOT, 'tools', 'xlsx-probe.py'), xlsxPath, String(out.total), csvPath],
         { encoding: 'utf8' }
       );
       const probeOut = (probe.stdout || '').trim();
@@ -319,6 +323,37 @@ const GOLDEN = [
         g.name + ': every CSV header cell is accounted for',
         header === 'section,item,detail,quantity,unit,rate,amount,currency,rate_unit',
         header
+      );
+
+      // ---- G-8: the machine file carries facts, not placeholders ----------
+      const assumptions = cells.filter(r => r[0] === 'Assumption');
+      const placeholders = assumptions.filter(r =>
+        ['', '-', 'none', 'no'].includes(
+          String(r[2] === undefined ? '' : r[2])
+            .trim()
+            .toLowerCase()
+        )
+      );
+      check(
+        g.name + ': no assumption row is a dash, blank or "none"',
+        placeholders.length === 0,
+        placeholders.map(r => r[1])
+      );
+      const strayCurrency = cells.filter(
+        r =>
+          String(r[6] === undefined ? '' : r[6]).trim() === '' && String(r[7] || '').trim() !== ''
+      );
+      check(
+        g.name + ': the currency code rides only rows that carry money',
+        strayCurrency.length === 0,
+        strayCurrency.map(r => r[1])
+      );
+      const rollRow = cells.filter(r => r[0] === 'Roll-up').pop();
+      const billRows = cells.filter(r => r[0] === 'Bill');
+      check(
+        g.name + ': an empty bill prints the roll-up on the priced line',
+        !rollRow || billRows.length > 0 || Math.abs(Number(rollRow[6]) - Number(sub)) <= 0.01,
+        { roll: rollRow && rollRow[6], sub }
       );
     }
 

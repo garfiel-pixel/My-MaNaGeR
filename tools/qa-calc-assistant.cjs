@@ -482,33 +482,34 @@ async function assistantOutputs(browser, errors) {
   await page.waitForSelector('.bcp-ai-log .bcp-ai-chip', { timeout: 5000 });
   const chip = await page.evaluate(async before => {
     const rows = document.querySelectorAll('.bcp-ai-log .bcp-ai-chip');
-    const a = rows[rows.length - 1].querySelector('a[download]');
-    const href = a ? a.getAttribute('href') : '';
-    // Byte-for-byte against the page's own export (Response.text() strips the
-    // UTF-8 BOM per spec, so compare the raw bytes instead of the decoded text).
-    let blobBytes = new Uint8Array(0);
-    try {
-      blobBytes = new Uint8Array(await fetch(href).then(r => r.arrayBuffer()));
-    } catch (e) {
-      blobBytes = new Uint8Array(0);
-    }
+    const last = rows[rows.length - 1];
+    const anchors = Array.from(last.querySelectorAll('a[download]'));
+    const a = anchors[0];
+    const csvA = anchors.find(x => /\.csv$/i.test(x.getAttribute('download') || ''));
+    const bytesOf = async el => {
+      try {
+        return new Uint8Array(await fetch(el.getAttribute('href')).then(r => r.arrayBuffer()));
+      } catch (e) {
+        return new Uint8Array(0);
+      }
+    };
+    const same = (x, y) => x.length > 0 && x.length === y.length && x.every((v, i) => v === y[i]);
+    // G-8: the default file is the spreadsheet; the CSV rides beside it.
+    const blobBytes = await bytesOf(a);
+    const csvBytes = csvA ? await bytesOf(csvA) : new Uint8Array(0);
     const built = window.MMGR_CALC_FILE();
     const want = built && built.ok ? new TextEncoder().encode(built.text) : new Uint8Array(0);
-    let sameBytes = want.length > 0 && want.length === blobBytes.length;
-    if (sameBytes) {
-      for (let i = 0; i < want.length; i++) {
-        if (want[i] !== blobBytes[i]) {
-          sameBytes = false;
-          break;
-        }
-      }
-    }
+    const book = window.MMGR_CALC_XLSX();
+    const wantBook = book && book.ok ? book.bytes : new Uint8Array(0);
     return {
       chips: rows.length - before,
       total: rows.length,
       download: a ? a.getAttribute('download') : '',
-      blob: /^blob:/.test(href),
-      sameBytes,
+      blob: /^blob:/.test(a ? a.getAttribute('href') : ''),
+      csvDownload: csvA ? csvA.getAttribute('download') : '',
+      sameBytes: same(csvBytes, want),
+      sameBook: same(blobBytes, wantBook),
+      zip: blobBytes.length > 1 && blobBytes[0] === 0x50 && blobBytes[1] === 0x4b,
       rowsReported: built ? built.rows : -1,
       blobLen: blobBytes.length,
       builtLen: want.length
@@ -516,12 +517,17 @@ async function assistantOutputs(browser, errors) {
   }, chipsBeforePriced);
   check('T2 a priced line produces exactly one chip', chip.chips === 1, chip);
   check(
-    'T2 the chip link is a real blob URL with a download name',
-    chip.blob && /\.csv$/.test(chip.download),
+    'T2 the chip download is the spreadsheet, with a CSV link beside it',
+    chip.blob && /\.xlsx$/.test(chip.download) && /\.csv$/.test(chip.csvDownload),
     chip
   );
   check(
-    "T2 the chip bytes equal the page's own MMGR_CALC_FILE output",
+    'T2 the chip bytes equal the page own MMGR_CALC_XLSX workbook (a real ZIP)',
+    chip.sameBook === true && chip.zip === true,
+    chip
+  );
+  check(
+    'T2 the CSV link bytes equal the page own MMGR_CALC_FILE output',
     chip.sameBytes === true,
     chip
   );

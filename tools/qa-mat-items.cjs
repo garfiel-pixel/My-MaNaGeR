@@ -514,9 +514,11 @@ const noneEntries = (ACC_SRC.match(/accessoriesNone: ["']/g) || []).length;
     const sum = exported.reduce((s, x) => s + Number(x[6] || 0), 0);
     const totalRow = rows.filter(x => x[0] === 'Total').pop();
     const breakdown = (sheets.find(s => s.name === 'Cost breakdown') || { rows: [] }).rows;
+    // G-8: the breakdown is Line | Detail | Quantity | Unit | Rate | Rate unit |
+    // Amount, so the money is the seventh cell (index 6).
     const bs = breakdown
       .filter(row => names.indexOf(row[0]) >= 0)
-      .reduce((s, row) => s + Number(row[2] || 0), 0);
+      .reduce((s, row) => s + Number(row[6] || 0), 0);
     // Rule N2: what is printed has to add up. The Cost rows ABOVE the first
     // subtotal row are the money that builds it, so their amount must equal that
     // subtotal to the cent - with the accessory lines included as rows.

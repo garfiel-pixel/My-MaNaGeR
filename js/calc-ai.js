@@ -1222,15 +1222,19 @@
     return Math.round((n / (1024 * 1024)) * 10) / 10 + ' MB';
   }
 
-  function fileChip(f) {
+  // G-8 (FIELD-FINDINGS-DIRECTIVE-2026-10-28): the spreadsheet is the default
+  // file; the CSV rides beside it as a second link. `f.bytes` is a binary
+  // workbook, `f.text` the CSV fallback.
+  function fileChip(f, alt) {
     if (!els.log) {
       return;
     }
+    var body = f.bytes || f.text;
     var bytes = 0;
     try {
-      bytes = new Blob([f.text]).size;
+      bytes = new Blob([body]).size;
     } catch (e) {
-      bytes = f.text ? f.text.length : 0;
+      bytes = f.text ? f.text.length : body ? body.length : 0;
     }
     var row = el('div', 'bcp-ai-chip');
     row.appendChild(plain(ico('file-text')));
@@ -1239,13 +1243,18 @@
     nm.textContent = f.name;
     var sub = el('span', 'bcp-ai-chip-sub');
     sub.textContent =
-      humanBytes(bytes) + ' - ' + (f.rows || 0) + ' row' + ((f.rows || 0) === 1 ? '' : 's');
+      humanBytes(bytes) +
+      ' - ' +
+      (f.sheets ? f.sheets + ' sheets, ' : '') +
+      (f.rows || 0) +
+      ' row' +
+      ((f.rows || 0) === 1 ? '' : 's');
     meta.appendChild(nm);
     meta.appendChild(sub);
     row.appendChild(meta);
     var url = '';
     try {
-      url = URL.createObjectURL(new Blob([f.text], { type: f.mime || 'text/plain' }));
+      url = URL.createObjectURL(new Blob([body], { type: f.mime || 'text/plain' }));
     } catch (e) {
       url = '';
     }
@@ -1255,6 +1264,20 @@
     a.href = url;
     row.appendChild(a);
     chipUrls.push(url);
+    if (alt) {
+      var altUrl = '';
+      try {
+        altUrl = URL.createObjectURL(new Blob([alt.text], { type: alt.mime || 'text/csv' }));
+      } catch (e) {
+        altUrl = '';
+      }
+      var altA = el('a', 'btn btn-n btn-s');
+      altA.textContent = 'CSV';
+      altA.setAttribute('download', alt.name);
+      altA.href = altUrl;
+      row.appendChild(altA);
+      chipUrls.push(altUrl);
+    }
     els.log.appendChild(row);
     els.log.scrollTop = els.log.scrollHeight;
   }
@@ -1272,8 +1295,37 @@
   }
 
   function onMakeFile() {
-    var fn = window.MMGR_CALC_FILE;
-    if (typeof fn !== 'function') {
+    // G-8: the default file is the spreadsheet - it carries widths, wrapping,
+    // number formats and the cost arithmetic the CSV cannot. The CSV stays one
+    // click away on the same chip.
+    var xl = window.MMGR_CALC_XLSX;
+    var csv = window.MMGR_CALC_FILE;
+    var book = null;
+    if (typeof xl === 'function') {
+      try {
+        book = xl(proposal);
+      } catch (e) {
+        book = null;
+      }
+    }
+    if (book && book.ok && book.bytes) {
+      var alt = null;
+      if (typeof csv === 'function') {
+        try {
+          var c = csv(proposal);
+          if (c && c.ok && c.text) {
+            alt = c;
+          }
+        } catch (e) {
+          alt = null;
+        }
+      }
+      fileChip(book, alt);
+      return;
+    }
+    // The writer is missing or refused: fall back to the CSV rather than
+    // leaving the user with no file at all.
+    if (typeof csv !== 'function') {
       nothingPricedNotice();
       return;
     }
@@ -1281,7 +1333,7 @@
     try {
       // C9: hand the pending proposal to the page so it can price it in a
       // sandbox - Download no longer needs Populate to have run first.
-      f = fn(proposal);
+      f = csv(proposal);
     } catch (e) {
       f = null;
     }

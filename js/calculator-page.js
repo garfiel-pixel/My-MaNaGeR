@@ -10132,26 +10132,67 @@
     // ---- roll-up (works + site costs, less discount) -----------------------
     // C3: rollup() never carried overhead, margin or tax. The maths is right
     // and stays; the row says what it is so it cannot read as a second total.
+    // G-8: with an empty bill the row carries the PRICED LINE's own subtotal -
+    // recomputing from the live form returned 0 when the export was built from
+    // a proposal, which printed "0.00" under a 17,583,500 estimate.
+    var billLines = Array.isArray(r.bill) ? r.bill : [];
+    var discPct = Number(rollupPrefs().discPct) || 0;
+    var discAmt = Number(rollupPrefs().discAmt) || 0;
     var roll = rollup({
-      works: prelimWorks(),
+      works: billLines.length ? prelimWorks() : Number(r.sub) || 0,
       prelims: prelimsTotal(prelimItems, prelimWorks()).total,
       designC: '0',
       constrC: '0',
       escPct: '0',
       months: '0',
-      discPct: rollupPrefs().discPct,
-      discAmt: rollupPrefs().discAmt
+      discPct: discPct,
+      discAmt: discAmt
     });
+    // The detail names the discount only when there is one; "discount 0% / 0"
+    // was noise a reader had to decode.
     add(
       'Roll-up',
       'Bill + site costs, less discount (before overhead and margin)',
-      'discount ' + (rollupPrefs().discPct || '0') + '% / ' + (rollupPrefs().discAmt || '0'),
+      discPct
+        ? 'Discount ' + discPct + ' percent'
+        : discAmt
+          ? 'Discount ' + discAmt
+          : 'Bill + site costs',
       '',
       '',
       '',
       num2(roll.subtotal)
     );
-    return rows;
+    // G-8: the machine file carries facts, not placeholders. A document row
+    // with no value, or an assumption whose value is a dash or "none", says
+    // nothing - so it is dropped. The currency rides only rows with money.
+    return rows
+      .filter(function (row) {
+        if (
+          row[0] === 'Document' &&
+          ['Document no', 'Client', 'Project address'].indexOf(row[1]) > -1 &&
+          String(row[2] === undefined || row[2] === null ? '' : row[2]).trim() === ''
+        ) {
+          return false;
+        }
+        if (row[0] === 'Assumption') {
+          var v = String(row[2] === undefined || row[2] === null ? '' : row[2])
+            .trim()
+            .toLowerCase();
+          if (v === '' || v === '-' || v === 'none' || v === 'no') {
+            return false;
+          }
+        }
+        return true;
+      })
+      .map(function (row) {
+        // The currency code belongs on rows that carry money, not repeated
+        // down every note.
+        if (row[6] === '') {
+          row[7] = '';
+        }
+        return row;
+      });
   }
 
   function csvCell(v) {
@@ -10220,8 +10261,8 @@
         return row[0] === name;
       });
     };
-    var moneyRow = function (row) {
-      return [row[1], row[2], row[6] === '' ? '' : Number(row[6])];
+    var numOrBlank = function (v) {
+      return v === '' || v === null || v === undefined ? '' : Number(v);
     };
 
     var summary = [
@@ -10240,12 +10281,32 @@
       });
     summary.push(['Planning-grade estimate - not a quote.', '']);
 
-    var breakdown = [['Line', 'Detail', 'Amount']].concat(
-      bySection('Cost').concat(bySection('Total')).map(moneyRow)
+    // G-8: the breakdown keeps the ARITHMETIC - a reader must see "10,000 sq ft
+    // x 1,529 per m2", not just the amount.
+    var breakdown = [['Line', 'Detail', 'Quantity', 'Unit', 'Rate', 'Rate unit', 'Amount']].concat(
+      bySection('Cost')
+        .concat(bySection('Total'))
+        .map(function (row) {
+          return [
+            row[1],
+            row[2],
+            numOrBlank(row[3]),
+            row[4] || '',
+            numOrBlank(row[5]),
+            row[8] || '',
+            numOrBlank(row[6])
+          ];
+        })
     );
     var assumptions = [['Setting', 'Value']].concat(
       bySection('Assumption').map(function (row) {
-        return [row[1], row[2] || row[3]];
+        // A zero is a fact ("material rate 0 - labour only"), so only a truly
+        // empty detail falls back to the numeric column.
+        var v = row[2];
+        if (v === '' || v === null || v === undefined) {
+          v = row[3];
+        }
+        return [row[1], v === undefined || v === null ? '' : v];
       })
     );
     var bill = [['Section', 'Item', 'Detail', 'Amount']].concat(
@@ -10254,11 +10315,21 @@
       })
     );
 
+    // G-8: widths are measured from the cells (js/xlsx-lite.js), long text
+    // wraps, the header is bold on a fill and frozen, and every sheet prints
+    // landscape fitted to one page wide with the header row repeated.
     return [
-      { name: 'Summary', rows: summary, widths: [44, 22], money: [1], bold: [0] },
-      { name: 'Cost breakdown', rows: breakdown, widths: [40, 26, 18], money: [2], bold: [0] },
-      { name: 'Assumptions', rows: assumptions, widths: [26, 52], bold: [0] },
-      { name: 'Bill of quantities', rows: bill, widths: [12, 44, 30, 18], money: [3], bold: [0] }
+      { name: 'Summary', rows: summary, money: [1], bold: [0], wrap: [0, 1] },
+      { name: 'Cost breakdown', rows: breakdown, money: [2, 4, 6], bold: [0], wrap: [1] },
+      { name: 'Assumptions', rows: assumptions, bold: [0], wrap: [1] },
+      {
+        name: 'Bill of quantities',
+        rows: bill,
+        money: [3],
+        bold: [0],
+        wrap: [1, 2],
+        autofilter: true
+      }
     ];
   }
 
@@ -10271,12 +10342,17 @@
     if (!lib || typeof lib.build !== 'function') {
       return { ok: false, reason: 'the spreadsheet writer did not load' };
     }
-    var bytes = lib.build(xlsxSheets(res));
+    var sheets = xlsxSheets(res);
+    var bytes = lib.build(sheets);
     return {
       ok: true,
       name: slug(docTitleBase()) + '-' + new Date().toISOString().slice(0, 10) + '.xlsx',
       mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      bytes: bytes
+      bytes: bytes,
+      rows: sheets.reduce(function (n, s) {
+        return n + (s.rows || []).length;
+      }, 0),
+      sheets: sheets.length
     };
   }
 

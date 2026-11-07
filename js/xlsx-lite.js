@@ -165,12 +165,47 @@
     return s;
   }
 
-  // style indexes in styles.xml: 1 = bold, 2 = money, 3 = bold + money
-  function cell(ref, value, money, bold) {
+  // style indexes in styles.xml. A sheet declares FLAGS and this table turns
+  // them into one index, so a cell never has to know the numbering.
+  //   0 normal          1 bold            2 money (#,##0.00)
+  //   3 bold + money    4 wrap            5 header (bold + fill)
+  //   6 money + wrap    7 integer (#,##0) 8 header money
+  var STYLE = {
+    normal: 0,
+    bold: 1,
+    money: 2,
+    boldMoney: 3,
+    wrap: 4,
+    header: 5,
+    moneyWrap: 6,
+    int: 7,
+    headerMoney: 8
+  };
+
+  function styleFor(f) {
+    if (f.header) {
+      return f.money ? STYLE.headerMoney : STYLE.header;
+    }
+    if (f.money) {
+      return f.wrap ? STYLE.moneyWrap : STYLE.money;
+    }
+    if (f.int) {
+      return STYLE.int;
+    }
+    if (f.wrap) {
+      return STYLE.wrap;
+    }
+    if (f.bold) {
+      return STYLE.bold;
+    }
+    return STYLE.normal;
+  }
+
+  function cell(ref, value, flags) {
     if (value === null || value === undefined || value === '') {
       return '';
     }
-    var style = bold ? (money ? 3 : 1) : money ? 2 : 0;
+    var style = styleFor(flags || {});
     var sAttr = style ? ' s="' + style + '"' : '';
     if (typeof value === 'number' && isFinite(value)) {
       return '<c r="' + ref + '"' + sAttr + '><v>' + value + '</v></c>';
@@ -186,9 +221,38 @@
     );
   }
 
+  // A figure is displayed wider than its raw digits (separators and cents), so
+  // the width is measured on the FORMATTED length - a column is never narrower
+  // than what the cell will show.
+  function displayLen(v) {
+    if (v === null || v === undefined) {
+      return 0;
+    }
+    if (typeof v === 'number' && isFinite(v)) {
+      return Math.abs(v) >= 1000 ? v.toFixed(2).length + 2 : v.toFixed(2).length;
+    }
+    return String(v).length;
+  }
+
+  // G-8 (FIELD-FINDINGS-DIRECTIVE-2026-10-28): the width comes from the data
+  // (longest cell + 2, clamped 12..60), never from a fixed number.
+  function colWidth(sheet, c) {
+    var max = 0;
+    (sheet.rows || []).forEach(function (row) {
+      var n = displayLen(row[c]);
+      if (n > max) {
+        max = n;
+      }
+    });
+    return Math.min(60, Math.max(12, max + 2));
+  }
+
   function sheetXml(sheet) {
     var moneyCols = sheet.money || [];
+    var intCols = sheet.int || [];
+    var wrapCols = sheet.wrap || [];
     var boldRows = sheet.bold || [];
+    var headerRow = typeof sheet.headerRow === 'number' ? sheet.headerRow : 0;
     var maxCols = 1;
     (sheet.rows || []).forEach(function (row) {
       if (row.length > maxCols) {
@@ -196,53 +260,90 @@
       }
     });
     var cols = '';
-    var widths = sheet.widths || [];
     for (var c = 0; c < maxCols; c++) {
-      var w = widths[c] || 18;
       cols +=
-        '<col min="' + (c + 1) + '" max="' + (c + 1) + '" width="' + w + '" customWidth="1"/>';
+        '<col min="' +
+        (c + 1) +
+        '" max="' +
+        (c + 1) +
+        '" width="' +
+        colWidth(sheet, c) +
+        '" customWidth="1"/>';
     }
     var body = '';
     (sheet.rows || []).forEach(function (row, r) {
       var cells = '';
       row.forEach(function (value, ci) {
-        cells += cell(
-          colName(ci) + (r + 1),
-          value,
-          moneyCols.indexOf(ci) > -1,
-          boldRows.indexOf(r) > -1
-        );
+        cells += cell(colName(ci) + (r + 1), value, {
+          header: r === headerRow,
+          money: moneyCols.indexOf(ci) > -1,
+          int: intCols.indexOf(ci) > -1,
+          wrap: wrapCols.indexOf(ci) > -1,
+          bold: boldRows.indexOf(r) > -1
+        });
       });
       body += '<row r="' + (r + 1) + '">' + cells + '</row>';
     });
+    var freeze = sheet.freeze === undefined ? 1 : sheet.freeze;
+    var view =
+      freeze > 0
+        ? '<sheetViews><sheetView workbookViewId="0"><pane ySplit="' +
+          freeze +
+          '" topLeftCell="A' +
+          (freeze + 1) +
+          '" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
+        : '<sheetViews><sheetView workbookViewId="0"/></sheetViews>';
+    var filter =
+      sheet.autofilter && body
+        ? '<autoFilter ref="A1:' + colName(maxCols - 1) + (sheet.rows || []).length + '"/>'
+        : '';
     return (
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
       '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
-      '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>' +
+      '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>' +
+      view +
+      '<sheetFormatPr defaultRowHeight="15"/>' +
       '<cols>' +
       cols +
       '</cols>' +
       '<sheetData>' +
       body +
-      '</sheetData></worksheet>'
+      '</sheetData>' +
+      filter +
+      '<pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.2" footer="0.2"/>' +
+      '<pageSetup orientation="' +
+      (sheet.landscape === false ? 'portrait' : 'landscape') +
+      '" fitToWidth="1" fitToHeight="0" paperSize="9"/>' +
+      '</worksheet>'
     );
   }
 
   var STYLES =
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
-    '<numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00"/></numFmts>' +
+    '<numFmts count="2"><numFmt numFmtId="164" formatCode="#,##0.00"/>' +
+    '<numFmt numFmtId="165" formatCode="#,##0"/></numFmts>' +
     '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font>' +
     '<font><b/><sz val="11"/><name val="Calibri"/></font></fonts>' +
-    '<fills count="2"><fill><patternFill patternType="none"/></fill>' +
-    '<fill><patternFill patternType="gray125"/></fill></fills>' +
+    '<fills count="3"><fill><patternFill patternType="none"/></fill>' +
+    '<fill><patternFill patternType="gray125"/></fill>' +
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFD9E1F2"/><bgColor indexed="64"/></patternFill></fill></fills>' +
     '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
     '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
-    '<cellXfs count="4">' +
+    '<cellXfs count="9">' +
     '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
     '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
     '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
     '<xf numFmtId="164" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/>' +
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1">' +
+    '<alignment wrapText="1" vertical="top"/></xf>' +
+    '<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1">' +
+    '<alignment vertical="center"/></xf>' +
+    '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyAlignment="1">' +
+    '<alignment wrapText="1" vertical="top"/></xf>' +
+    '<xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
+    '<xf numFmtId="164" fontId="1" fillId="2" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyAlignment="1">' +
+    '<alignment vertical="center"/></xf>' +
     '</cellXfs>' +
     '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
     '</styleSheet>';
@@ -261,6 +362,9 @@
     var files = [];
     var overrides = '';
     var sheetEntries = '';
+    // G-8: the header row repeats on every printed page. A print title is a
+    // workbook-level defined name scoped to the sheet's own index.
+    var printNames = '';
     list.forEach(function (sheet, i) {
       var part = 'xl/worksheets/sheet' + (i + 1) + '.xml';
       files.push({ name: part, data: utf8(sheetXml(sheet)) });
@@ -270,7 +374,16 @@
         '" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
       sheetEntries +=
         '<sheet name="' + xml(names[i]) + '" sheetId="' + (i + 1) + '" r:id="rId' + (i + 1) + '"/>';
+      if (sheet.printTitles !== false) {
+        printNames +=
+          '<definedName name="_xlnm.Print_Titles" localSheetId="' +
+          i +
+          '">' +
+          xml("'" + names[i].replace(/'/g, "''") + "'!$1:$1") +
+          '</definedName>';
+      }
     });
+    var definedNames = printNames ? '<definedNames>' + printNames + '</definedNames>' : '';
 
     files.push({
       name: '[Content_Types].xml',
@@ -302,7 +415,9 @@
           'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
           '<sheets>' +
           sheetEntries +
-          '</sheets></workbook>'
+          '</sheets>' +
+          definedNames +
+          '</workbook>'
       )
     });
     var rels =

@@ -1668,10 +1668,11 @@ async function withChrome(fn) {
       var csv = __calcEngine.estimateCsv(__calcEngine.computeFor(__calcEngine.readState()));
       var body = document.getElementById('calc-rollup-body');
       var txt = body ? body.textContent : '';
-      return { // OWNER 2026-10-02 CSV RESTRUCTURE: the discount moved into the ROLL-UP
-      // block's Detail column (the rate is a modifier of the roll-up line,
-      // not its own money row).
-      csvHasDisc: csv.indexOf('discount 10% / 0') > -1,
+      return { // G-8 (FIELD-FINDINGS-DIRECTIVE-2026-10-28 d/e): the discount
+      // moved into the ROLL-UP block's Detail column and now reads
+      // "Discount 10 percent" (the directive's wording) instead of the old
+      // "discount 10% / 0".
+      csvHasDisc: csv.indexOf('Discount 10 percent') > -1,
                discLine: txt.indexOf('Discount') > -1, pctShown: txt.indexOf('10% off') > -1, neg: txt.indexOf('-') > -1 };
     })()`);
     check(
@@ -2250,8 +2251,8 @@ async function withChrome(fn) {
       return { withLine: withCsv.indexOf('"Openings deducted","1 (1.44 m2)"') > -1, noneLine: noneCsv.indexOf('"Openings deducted","none"') > -1 };
     })()`);
     check(
-      'OP5 CSV artifacts: carries "Openings deducted","1 (1.44 m2)" with rows and "none" without',
-      op5 && op5.withLine && op5.noneLine,
+      'OP5 CSV artifacts: carries "Openings deducted","1 (1.44 m2)" with rows; the none line is dropped (G-8 d)',
+      op5 && op5.withLine && !op5.noneLine,
       op5
     );
     const op6 = await ev(`(function(){

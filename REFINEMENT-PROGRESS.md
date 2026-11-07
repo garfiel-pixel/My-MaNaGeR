@@ -510,7 +510,18 @@ Many items (I-4..I-10 photography/fonts/motion) need owner visual sign-off on de
 - [ ] **I-1** Cloud projects do not show up (data bug) — needs reproduction harness T-CLOUDLIST.
 - [ ] **I-2** "Could not load photos HTTP 500" on empty project — needs T-PHOTO-EMPTY.
 - [ ] **I-3** Role-based access no visible UI — needs T-RBAC-UI.
-- [ ] **I-4** to **I-15** — open; several need owner visual choices (Q9 font, Q12 photos, motion language).
+- [x] **I-4** Hero polish — `6af7380`. Globe card outline removed; Get Started solid gold (no border); View Field Guide transparent gold text (no glass/white, soft gold fill on hover); `--font-display` serif on COMFORTABLY/WORKSPACE (Q9 self-hosted subset still owner-supplied); typed-text reveal + rotating hero phrase with full text in the DOM, off under reduced motion/Performance Mode. New gate `tools/qa-hero-polish.cjs` (T-HERO, 12/12) registered in `docs/CI-TEST-COVERAGE.md` and wired into `browser-calc`. Shell cache `mmgr-shell-v581`.
+- [ ] **I-5** Motion language — open.
+- [ ] **I-6** Bento "real project needs" slots — open.
+- [ ] **I-7** Real photography (Q12) — open.
+- [ ] **I-8** Content sections + honest numbers — open.
+- [ ] **I-9** Dot rail / stats strip / AI tour label — open.
+- [ ] **I-10** Sign-in MMWRP outline — open.
+- [ ] **I-11** First-open tour highlighting — open.
+- [ ] **I-12** Photo upload bundles + plan gate (Q13) — open.
+- [ ] **I-13** Pin / Advanced animation / delete-account visibility — open.
+- [ ] **I-14** App sidebar opens on hover — open.
+- [ ] **I-15** Explicitly NOT changing (diff review) — open.
 
 ---
 

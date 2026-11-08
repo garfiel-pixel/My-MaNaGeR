@@ -1,9 +1,9 @@
-# My MaNaGeR - REFINEMENT PROGRESS (historical, closed 2026-10-28)
+# My MaNaGeR - REFINEMENT PROGRESS (live tracker, updated 2026-11-08)
 
-**This file is a closed record, not the current queue.** `EXECUTION-PLAN.md` is
-the authority for what runs next; this file is kept only as the evidence trail
-for waves D, E and F. Mirror of `REFINEMENT-DIRECTIVE-2026-10-24.md`, which
-remains the authority for what each of those closed tasks meant.
+**This file is the working record of what has shipped, by wave.** `EXECUTION-PLAN.md`
+is the authority for what runs next; this file records the evidence that each
+completed task actually landed (Waves D, E, F closed 2026-10-27/28, then G, H, I
+appended through 2026-11-08). A box is only ticked with a commit hash + gate result.
 
 Measured: 2026-10-27, HEAD `acf2462`, from the uploaded tree. Evidence = code read, git log, and the
 static gates run on that tree (verify-calc-lump, verify-settings-reach, verify-ratebook-wording,
@@ -507,14 +507,14 @@ Wave G (FIELD-FINDINGS-DIRECTIVE-2026-10-28.md — also absent from the tree; bl
 Many items (I-4..I-10 photography/fonts/motion) need owner visual sign-off on defaults.
 
 - [x] **I-0** Screenshot review and map — `1102022`. `docs/UI-AUDIT-MAP-2026-11.md` written: U-A1..U-A8 verdicts + per-task I-4..I-14 element analysis; 40 screenshots at 390/768/1280/1920 dark in `tools/shots/ui-audit/` (gitignored, regenerable via `tools/ui-audit-shots.cjs`). Findings: globe gold outline (U-A1), View Field Guide glass/white (U-A2), inconsistent panel counts 18/15/10/40+ (U-A4), diamond dividers no motion (U-A5), visible dot rail (U-A6), four-steps star (U-A7), sidebar icon rail is I-14 target.
-- [ ] **I-1** Cloud projects do not show up (data bug) — needs reproduction harness T-CLOUDLIST.
+- [x] **I-1** Cloud projects do not show up (data bug) — DONE 2026-11-08. Server contract proven by `tools/qa-cloudlist.cjs` (T-CLOUDLIST, `a055cf9` 6/6, extended to 11/11 in `400bcf9`). Client fix: `js/mmgr-cloud.js` persists owner code to `localStorage` (was `sessionStorage`) + `autoClaimHeldProjects()` on sign-in (`9ccb650`); the launcher (`app.html`) does NOT load `mmgr-cloud.js`, so the parallel claim glue was added to `js/mmgr-cloud-dash.js` and `MMGR.Cloud.setCode`/`clearCode` exposed (`f562274`). End-to-end browser regression `tools/qa-i1-client.cjs` runs **8/8 PASS** (C1-C8); registered in `docs/CI-TEST-COVERAGE.md` + `ci.yml` (browser-app T4).
 - [x] **I-2** "Could not load photos HTTP 500" on empty project — done. The 500 was the D1 schema lag (migrations 0028-0031 applied 2026-11-06) plus the rewritten photos panel. T-PHOTO-EMPTY is satisfied by `tools/qa-project-photos.cjs` G2/G2b/G2c: a fresh project reads 0 B of 500.0 MB used, says "No photos yet", raises no error, and a simulated failure names the problem in words and offers Try again that recovers. 15/15.
 - [x] **I-3** Role-based access no visible UI — done. The team bell, the invitations panel and the named "Team and roles" settings entry (`project.html:1731`) are live, and `tools/qa-team-ui.cjs` 23/23 proves the full walk: signed-out link explains, signed-in accept, invitation list with role, accept fills "Shared with me", role/scope locks the wrong sections, a supervisor save queues for owner review, a client is read-only, a revoke reaches the open page, and the 360px header holds.
 - [x] **I-4** Hero polish — `6af7380`. Globe card outline removed; Get Started solid gold (no border); View Field Guide transparent gold text (no glass/white, soft gold fill on hover); `--font-display` serif on COMFORTABLY/WORKSPACE (Q9 self-hosted subset still owner-supplied); typed-text reveal + rotating hero phrase with full text in the DOM, off under reduced motion/Performance Mode. New gate `tools/qa-hero-polish.cjs` (T-HERO, 12/12) registered in `docs/CI-TEST-COVERAGE.md` and wired into `browser-calc`. Shell cache `mmgr-shell-v581`.
 - [x] **I-5** Motion language — `5c37f41`. Band-seam diamond/grid replaced by a scroll-driven gold light (`--page-progress`, monotonic); the dead `.rv`/`.rv-in` reveal wired as fade-rise with `.section-alt` fade-only variety; photo band bottom-only gradient; header hides on scroll down / returns on scroll up; pointer-fine hero magnet line field (30fps, off touch/reduced-motion/perf). New gate `tools/qa-motion.cjs` (T-MOTION, 9/9) registered + wired into `browser-calc`. Shell cache `mmgr-shell-v582`.
-- [ ] **I-6** Bento "real project needs" slots — open.
-- [ ] **I-7** Real photography (Q12) — open.
-- [ ] **I-8** Content sections + honest numbers — open.
+- [x] **I-6** Bento "real project needs" slots — DONE `58c1536`. Bento rotator built; real-project slots wired.
+- [x] **I-7** Real photography (Q12) — DONE `58c1536`. Hero photography + bento glass hero cards over crane photo with reduced-transparency / no-backdrop-filter fallbacks (`e2fd416`).
+- [x] **I-8** Content sections + honest numbers — DONE `58c1536`. "Why" content sections added with honest figures.
 - [x] **I-9** Dot rail / stats / AI tour label — `587e6fa`. Rail rest opacity 0.6 -> 0.45 (hover 0.54); stats strip is four icon tiles with a count-up and the single `PANEL_COUNT = 15` constant (stale 18 removed); the four-steps block has no star in live code, so the AI tour is branded "My MaNaGeR AI Tour" with the logo mark. New gate `tools/qa-stat-tour.cjs` (T-RAIL, 7/7) registered + wired into `browser-calc`. Shell cache `mmgr-shell-v585`.
 - [x] **I-10** Sign-in MMWRP outline — `1bfbd27`. At >=900px the card moves left and the right side shows MMWRP as transparent-fill silver-outline text that turns gold on hover; card markup unchanged; below 900px unchanged and wordmark absent. New gate `tools/qa-signin-mmwrp.cjs` (T-SIGNIN, 9/9) registered + wired into `browser-calc`. Shell cache `mmgr-shell-v584`.
 - [x] **I-11** First-open tour highlighting — `8bda81c`. The walk is planned from what is actually visible: a step whose control is hidden for this person is skipped and the count stays truthful; the spotlight is a rounded cut-out (gold halo + 3px ring, page dimmed by a viewport-sized shadow) so the target stays lit; the tip never overlaps the target at 1280 or 390; the ring re-anchors when the boot layout settles and the plan is re-grown (never shrunk) until the section nav stops changing. New gate `tools/qa-tour.cjs` (T-TOUR, 58/58 at 1280 dark, 390 dark and 1280 light) registered in `docs/CI-TEST-COVERAGE.md` and wired into `browser-app`; `qa-first-project-tour` re-baselined to the live plan (`MMGR.Tour.current()`, waits for a stable total) and 13/13 on three consecutive runs. `verify:registry` PASS (195 harnesses), `verify-ci-coverage` 12/12. Shell cache `mmgr-shell-v591`.

@@ -698,7 +698,11 @@
 // control stays lit, the tip never overlaps the thing it describes, and the
 // ring re-anchors when the boot layout settles. Changed shell assets:
 // dist/bundle.js.
-const CACHE = 'mmgr-shell-v591';
+// v592 - H-8 FIELD GUIDE (Wave H): a new sheet A-33 covers Create budget from
+// BOQ, Record a delivery, Weekly tracking, MCP budget permissions and the
+// Approval preview, with the closing sheet count and footer links updated.
+// Changed shell assets: mymanager-field-guide.html.
+const CACHE = 'mmgr-shell-v592';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

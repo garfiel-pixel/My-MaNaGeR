@@ -743,6 +743,7 @@ footer{padding:70px 64px 46px;position:relative;}
         <a class="nav-link" href="#build-cost"><span class="idx">A-30</span>Build Cost Calculator</a>
         <a class="nav-link" href="#procurement"><span class="idx">A-31</span>Procurement &amp; Quotes</a>
         <a class="nav-link" href="#named-team"><span class="idx">A-32</span>Named Team Members</a>
+        <a class="nav-link" href="#budget-boq"><span class="idx">A-33</span>Budget from BOQ</a>
       </div>
     </nav>
   </aside>
@@ -2092,15 +2093,42 @@ Date: ____________  Focus: ____________</pre>
       </div>
     </section>
 
+    <!-- ============ A-33 BUDGET FROM BOQ, DELIVERIES & APPROVALS ============ -->
+    <section class="sheet reveal" id="budget-boq">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-33</span><h2>Budget from BOQ, Deliveries &amp; Approvals</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>Money in, money out</div></div>
+      </div>
+      <span class="kicker">Turn a priced bill into the project budget, record what actually arrives, and read the week without rebuilding the spreadsheet</span>
+      <p class="lede">The calculator prices the work. This sheet is what happens next: the bill becomes budget lines whose total matches the estimate to the cent, each delivery is recorded against its line, and the week is read from those records. Changes from an outside AI arrive as proposals, never as silent writes.</p>
+
+      <div class="grid grid-2">
+        <div class="card bracket"><span class="cnum">CREATE</span><h4>Create budget from BOQ</h4><p>On the Budget tab choose <strong>Create budget from BOQ</strong>, or send the bill from the calculator. Every priced line becomes a budget line with its quantity, unit, rate and rate unit; site costs, tax, overhead and margin become their own lines, so the budget total equals the estimate total to the cent. The first send freezes <strong>Baseline 1</strong>; later changes are variations with a reason and an approver.</p></div>
+        <div class="card bracket"><span class="cnum">RE-SEND</span><h4>No duplicates</h4><p>Send a changed bill again and the lines are matched on their calculator reference. You see the difference in the same preview used for approvals, and only what you accept is applied. Sending the same bill twice changes nothing, and a project that already has hand-typed lines keeps them.</p></div>
+        <div class="card bracket"><span class="cnum">DELIVERY</span><h4>Record a delivery</h4><p><strong>Record delivery</strong> opens on the line you chose: quantity received, unit (the line's unit), unit price paid (the line's rate), supplier, ticket or invoice number, status (ordered, received, invoiced, paid), paid date and an optional photo. The amount is quantity times price; an override needs a reason. The line then reads how much arrived of how much was planned, what is left, and whether an overspend came from price or from quantity.</p></div>
+        <div class="card bracket"><span class="cnum">QUICK</span><h4>Three taps on site</h4><p>The common case stays short: pick the line, type the quantity, confirm the price. An ordered entry is a commitment, not money out, and old spend entries still read as a legacy amount. Recording works offline and syncs when the connection returns.</p></div>
+        <div class="card bracket"><span class="cnum">WEEK</span><h4>Weekly tracking</h4><p>The <strong>Weekly</strong> view picks a week and shows spent this week, spent to date against plan to date, money used against work done, a status chip per line, the forecast at completion from the latest price paid, and the variance split into price and quantity. Changing the week only changes what you are looking at; it writes nothing.</p></div>
+        <div class="card bracket"><span class="cnum">EXPORT</span><h4>The same numbers on paper</h4><p>The weekly report exports to PDF and to the project spreadsheet with the same totals, currency in the header and each rate beside its unit. The cash-flow chart can step weekly as well as fortnightly.</p></div>
+        <div class="card bracket"><span class="cnum">MCP</span><h4>What an outside AI may do</h4><p>Each API key has two separate switches, <strong>Read budget</strong> and <strong>Propose budget changes</strong>, both off by default. Read exposes the budget, deliveries, the weekly summary and the status of a proposal. Propose can only queue a change; the server checks every amount, unit and price, computes a delivery amount itself, and the AI client can never approve. The key label, time and a plain summary ride every proposal.</p></div>
+        <div class="card bracket"><span class="cnum">APPROVE</span><h4>Approve what you can see</h4><p>A waiting proposal opens a full-width preview: a plain sentence per change, a live rendering of the real Budget and Weekly panels built from a throwaway copy (gold edge on a changed cell, green on an added row), and an editable value for each change. Tick only the changes you want, or reject with a reason that goes back to the AI client. If the live data moved after the proposal was made, the preview says so and asks you to refresh first.</p></div>
+        <div class="card bracket"><span class="cnum">RECORD</span><h4>Who changed what</h4><p>Approving writes the chosen values in one step and records what was proposed, what was approved and who edited it. Revert works like any other changelog entry, and a person-icon notice in the header shows how many proposals are waiting.</p></div>
+      </div>
+
+      <div class="divider-note">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h10M4 17h7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        <p><strong>The habit:</strong> send the priced bill once, record deliveries as they land, and read the week before you spend the next one. The budget then explains itself, and an overspend names its cause instead of arriving as a surprise.</p>
+      </div>
+    </section>
+
     <!-- ============ CLOSING CTA BAND ============ -->
     <!-- Local photo (completed kitchen) , the finished job. -->
     <div class="band reveal" style="min-height:420px">
       <div class="band-bg" style="background-image:url('images/completed-kitchen.webp')"></div>
       <div class="band-overlay"></div>
       <div class="band-content" style="max-width:680px">
-        <span class="kicker">Sheet A-32 and beyond</span>
+        <span class="kicker">Sheet A-33 and beyond</span>
         <h3>This index has room for what's next.</h3>
-        <p>New panels and features get their own sheet, numbered and slotted in , the guide grows the same way the app does. Thirty-three sheets so far, from Welcome (A-00) through Named Team Members (A-32). For now: open My MaNaGeR in the next tab over, start with the Charter, and keep this page bookmarked.</p>
+        <p>New panels and features get their own sheet, numbered and slotted in , the guide grows the same way the app does. Thirty-four sheets so far, from Welcome (A-00) through Budget from BOQ (A-33). For now: open My MaNaGeR in the next tab over, start with the Charter, and keep this page bookmarked.</p>
         <div class="hero-cta" style="margin-top:28px">
           <a href="#top" class="btn btn-brass">Back to the top ↑</a>
           <a href="#quickstart" class="btn btn-ghost">Revisit Quick Start</a>
@@ -2113,7 +2141,7 @@ Date: ____________  Focus: ____________</pre>
       <div class="footer-grid">
         <div class="footer-brand">
           <h4>My MaNaGeR , Field Guide</h4>
-          <p>An unofficial companion guide to the My MaNaGeR workspace , thirty-two sheets, one per panel or workflow, built to sit open in a second tab while you learn the app.</p>
+          <p>An unofficial companion guide to the My MaNaGeR workspace , thirty-four sheets, one per panel or workflow, built to sit open in a second tab while you learn the app.</p>
         </div>
         <div class="footer-cols">
           <div class="footer-col">
@@ -2149,6 +2177,7 @@ Date: ____________  Focus: ____________</pre>
             <a href="#build-cost">A-30 Build Cost Calculator</a>
             <a href="#procurement">A-31 Procurement &amp; Quotes</a>
             <a href="#named-team">A-32 Named Team Members</a>
+            <a href="#budget-boq">A-33 Budget from BOQ</a>
           </div>
           <div class="footer-col">
             <b>Site</b>

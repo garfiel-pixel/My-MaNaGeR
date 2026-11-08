@@ -308,6 +308,65 @@ async function main() {
     count: ((listC.body && listC.body.projects) || []).length
   });
 
+  // ---- "Find my projects" orphan recovery (the I-1 server contract) --------
+  // A project created WITHOUT a session (google_sub = NULL) is invisible to the
+  // account list until the owner claims it with their code. This is exactly the
+  // owner's "projects I uploaded aren't the same ones after re-sign-in" report:
+  // they created while not yet signed in, so the row has no account key.
+  const orphanId = 'i1orphan-' + Date.now().toString(36);
+  const createdAnon = await api('/api/cloud/projects', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }, // no session cookie
+    body: JSON.stringify({ projectId: orphanId, name: 'I-1 Orphan' })
+  });
+  check(
+    'T-CLOUDLIST anonymous create returns an owner code (google_sub NULL)',
+    createdAnon.status === 200 &&
+      createdAnon.body &&
+      createdAnon.body.ok === true &&
+      !!createdAnon.body.ownerCode,
+    { status: createdAnon.status, hasCode: !!(createdAnon.body && createdAnon.body.ownerCode) }
+  );
+  const orphanCode = (createdAnon.body && createdAnon.body.ownerCode) || null;
+
+  // Before claim: the account list does not show the orphan.
+  const listApre = await api('/api/cloud/projects', { method: 'GET', headers: ck(cookieA) });
+  check('T-CLOUDLIST account does NOT see the unclaimed orphan', !listHas(listApre, orphanId), {
+    count: ((listApre.body && listApre.body.projects) || []).length
+  });
+
+  // Claim it with the owner code + the signed-in account.
+  const claimed = await api('/api/cloud/projects/' + encodeURIComponent(orphanId) + '/claim', {
+    method: 'POST',
+    headers: Object.assign({ 'Content-Type': 'application/json' }, ck(cookieA)),
+    body: JSON.stringify({ ownerCode: orphanCode })
+  });
+  check(
+    'T-CLOUDLIST claim links the orphan to the signed-in account (ok:true, linked)',
+    claimed.status === 200 &&
+      claimed.body &&
+      claimed.body.ok === true &&
+      claimed.body.linked === true,
+    { status: claimed.status, body: claimed.body }
+  );
+
+  // After claim: the account list now shows it (Find my projects works).
+  const listApost = await api('/api/cloud/projects', { method: 'GET', headers: ck(cookieA) });
+  check(
+    'T-CLOUDLIST after claim the account DOES see the recovered project',
+    listHas(listApost, orphanId),
+    {
+      count: ((listApost.body && listApost.body.projects) || []).length
+    }
+  );
+  // And the second device (same sub) sees it too.
+  const listBpost = await api('/api/cloud/projects', { method: 'GET', headers: ck(cookieB) });
+  check(
+    'T-CLOUDLIST recovered project appears on the second device (same account)',
+    listHas(listBpost, orphanId),
+    { count: ((listBpost.body && listBpost.body.projects) || []).length }
+  );
+
   const passed = results.filter(r => r.val).length;
   log('');
   log('RESULT ' + passed + '/' + results.length);

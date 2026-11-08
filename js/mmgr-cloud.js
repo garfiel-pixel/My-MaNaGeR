@@ -99,7 +99,15 @@ var MMGR = window.MMGR || {};
     });
   }
 
-  // ---- session-only code stores (never localStorage) ----------------
+  // ---- owner-code store (I-1 fix 2026-11-08): persisted to localStorage
+  // so the code SURVIVES a re-auth / reload. Previously this was
+  // sessionStorage (deliberately "never localStorage"), but that was the
+  // root cause of I-1: a project created while signed OUT carried
+  // google_sub = NULL on the server, and its owner code lived only in the
+  // session - so after re-sign-in (new session) the code was gone and the
+  // unlinked project could never be claimed back. Persisting the code lets
+  // the signed-in account auto-claim it (see autoClaimHeldProjects). The
+  // 'session' link marker is still rejected (owner-gate bug, 2026-09-24).
   function codeKey() {
     return 'mmgr_cloud_code_' + cloudPid();
   }
@@ -111,7 +119,7 @@ var MMGR = window.MMGR || {};
   }
   function getCode() {
     try {
-      const v = sessionStorage.getItem(codeKey()) || '';
+      const v = localStorage.getItem(codeKey()) || '';
       // OWNER 2026-09-24 (owner-gate bug): 'session' is the admin registry's
       // link marker, never a code (codes are 16 chars). If one ever landed in
       // the slot (pre-fix adopter), treat it as absent so the session-owner
@@ -123,17 +131,41 @@ var MMGR = window.MMGR || {};
   }
   function setCode(code) {
     try {
-      sessionStorage.setItem(codeKey(), String(code || ''));
+      localStorage.setItem(codeKey(), String(code || ''));
     } catch (e) {
       /* ignore */
     }
   }
   function clearCode() {
     try {
-      sessionStorage.removeItem(codeKey());
+      localStorage.removeItem(codeKey());
     } catch (e) {
       /* ignore */
     }
+  }
+  // I-1 fix (2026-11-08): enumerate every owner code this device holds so the
+  // signed-in account can re-link projects it created while signed out (their
+  // server row has google_sub = NULL and is invisible to the account until
+  // claimed). Returns [{ pid, code }] keyed by cloud project id.
+  function collectHeldOwnerCodes() {
+    const out = [];
+    try {
+      const prefix = 'mmgr_cloud_code_';
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k || k.indexOf(prefix) !== 0) {
+          continue;
+        }
+        const v = localStorage.getItem(k);
+        if (!v || v === 'session') {
+          continue;
+        }
+        out.push({ pid: k.slice(prefix.length), code: v });
+      }
+    } catch (e) {
+      /* storage unavailable */
+    }
+    return out;
   }
   function getECode() {
     try {
@@ -1468,6 +1500,25 @@ var MMGR = window.MMGR || {};
   }
   document.addEventListener('mmgr:google-signed-in', resumePendingSignIn);
   document.addEventListener('mmgr:user-changed', resumePendingSignIn);
+  // I-1 fix (2026-11-08): after any identity change that lands the user signed
+  // IN, re-link projects this device created while signed out. Guarded so the
+  // two identity events (google-signed-in + user-changed) can't double-claim.
+  let _autoClaimRunning = false;
+  function scheduleAutoClaim() {
+    if (_autoClaimRunning) {
+      return;
+    }
+    _autoClaimRunning = true;
+    autoClaimHeldProjects()
+      .catch(function () {
+        /* never let a claim failure break the sign-in flow */
+      })
+      .then(function () {
+        _autoClaimRunning = false;
+      });
+  }
+  document.addEventListener('mmgr:google-signed-in', scheduleAutoClaim);
+  document.addEventListener('mmgr:user-changed', scheduleAutoClaim);
   // OWNER 2026-09-24 (owner-gate bug): an EMAIL sign-in only dispatches
   // mmgr:user-changed, and resumePendingSignIn above returns early when no
   // action is queued - so checkMe's cached "not signed in" and a memoized
@@ -3765,6 +3816,53 @@ var MMGR = window.MMGR || {};
       );
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
+    }
+  }
+
+  // ---- auto-claim held projects on sign-in (I-1 fix, 2026-11-08) -----------
+  // When the account signs in (Google or email), any project this device
+  // created while signed OUT is still unlinked on the server (google_sub =
+  // NULL). Re-key each held owner code onto the now-authenticated account via
+  // the existing /claim endpoint, then refresh My Cloud Projects. Idempotent:
+  // a project already linked returns alreadyLinked and is left alone. Skipped
+  // when no session is active (sign-out also fires mmgr:user-changed).
+  async function autoClaimHeldProjects() {
+    let signedIn = false;
+    try {
+      signedIn = await checkMe();
+    } catch (e) {
+      /* offline / static host */
+    }
+    if (!signedIn) {
+      return;
+    }
+    const held = collectHeldOwnerCodes();
+    if (!held.length) {
+      return;
+    }
+    let claimedAny = false;
+    for (const h of held) {
+      try {
+        const res = await fetch('/api/cloud/projects/' + encodeURIComponent(h.pid) + '/claim', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ownerCode: h.code })
+        });
+        const data = await res.json().catch(function () {
+          return {};
+        });
+        if (res.ok && data && data.ok) {
+          claimedAny = true;
+        }
+      } catch (e) {
+        /* cloud unreachable; keep the code for the next sign-in */
+      }
+    }
+    if (claimedAny) {
+      // The dashboard refreshes its list on this event; dispatch it so the
+      // freshly linked projects appear without a manual reload.
+      document.dispatchEvent(new CustomEvent('mmgr:cloud-linked'));
     }
   }
 

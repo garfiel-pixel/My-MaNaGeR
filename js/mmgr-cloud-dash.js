@@ -199,10 +199,13 @@
         localStorage.setItem('mmgr_unlocked_' + pid, '1');
         localStorage.setItem('mmgr_state_' + pid, JSON.stringify(data.state));
         localStorage.setItem('mmgr_scope_' + pid, look.role === 'view' ? 'readonly' : 'full');
-        // Seed the SAME session slots mmgr-cloud.js reads, so the opened
-        // project keeps the credential for Save/Load without re-entry.
+        // Seed the SAME slots mmgr-cloud.js reads, so the opened project keeps
+        // the credential for Save/Load without re-entry. I-1 fix (2026-11-08):
+        // the owner code now lives in localStorage (getCode reads it there), so
+        // an owner code entered here must be seeded there too - this also lets
+        // the signed-in account auto-claim the project after signing in.
         if (look.role === 'owner') {
-          sessionStorage.setItem('mmgr_cloud_code_' + pid, code);
+          localStorage.setItem('mmgr_cloud_code_' + pid, code);
         } else {
           sessionStorage.setItem('mmgr_cloud_ecode_' + pid, code);
           sessionStorage.setItem(

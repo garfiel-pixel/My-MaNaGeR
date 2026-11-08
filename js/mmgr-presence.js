@@ -39,8 +39,9 @@
     }
     var code = '';
     try {
+      // I-1 fix (2026-11-08): owner code now persists in localStorage.
       code =
-        sessionStorage.getItem('mmgr_cloud_code_' + p) ||
+        localStorage.getItem('mmgr_cloud_code_' + p) ||
         sessionStorage.getItem('mmgr_cloud_ecode_' + p) ||
         '';
     } catch (e) {

@@ -340,7 +340,7 @@ var MMGR = window.MMGR || {};
   function onPanelClick(ev) {
     var t = ev.target.closest
       ? ev.target.closest(
-          '[data-team-close],[data-team-tab],[data-team-accept],[data-team-decline],[data-team-open],[data-team-people],[data-team-resend],[data-team-revoke],[data-team-role],[data-team-access],[data-team-access-save],[data-team-extend],[data-team-bulk],[data-team-bulk-send],[data-team-tpls],[data-team-tpl-new],[data-team-tpl-save],[data-team-tpl-cancel],[data-team-tpl-apply],[data-team-tpl-del]'
+          '[data-team-close],[data-team-tab],[data-team-accept],[data-team-decline],[data-team-open],[data-team-people],[data-team-resend],[data-team-revoke],[data-team-role],[data-team-approver],[data-team-access],[data-team-access-save],[data-team-extend],[data-team-bulk],[data-team-bulk-send],[data-team-tpls],[data-team-tpl-new],[data-team-tpl-save],[data-team-tpl-cancel],[data-team-tpl-apply],[data-team-tpl-del]'
         )
       : null;
     if (!t) {
@@ -383,6 +383,14 @@ var MMGR = window.MMGR || {};
         t.getAttribute('data-team-project'),
         Number(t.getAttribute('data-team-role')),
         t.value
+      );
+      return;
+    }
+    if (t.hasAttribute('data-team-approver')) {
+      setBudgetApprover(
+        t.getAttribute('data-team-project'),
+        Number(t.getAttribute('data-team-approver')),
+        t.checked
       );
       return;
     }
@@ -741,6 +749,18 @@ var MMGR = window.MMGR || {};
         })
         .join('') +
       '</select>';
+    // H-7: one named budget approver per project. A client can never hold
+    // the flag, and the server clears it if the role changes to client.
+    var approver =
+      m.role === 'client'
+        ? ''
+        : '<label class="team-approver"><input type="checkbox" data-team-approver="' +
+          esc(m.id) +
+          '" data-team-project="' +
+          esc(pid) +
+          '"' +
+          (m.budgetApprover ? ' checked' : '') +
+          '> Budget approver</label>';
     var actions =
       m.status === 'pending'
         ? '<button type="button" class="team-link" data-team-resend="' +
@@ -813,6 +833,7 @@ var MMGR = window.MMGR || {};
       box +
       '</div>' +
       roleSelect +
+      approver +
       '<div class="team-person-actions">' +
       actions +
       extend +
@@ -1121,6 +1142,21 @@ var MMGR = window.MMGR || {};
       return;
     }
     setStatus('Role updated.', false);
+    loadPeople(pid);
+  }
+
+  async function setBudgetApprover(pid, mid, on) {
+    var r = await jfetch('/api/cloud/projects/' + encodeURIComponent(pid) + '/team/' + mid, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ budgetApprover: !!on })
+    });
+    if (!r.ok || !r.body.ok) {
+      setStatus((r.body && r.body.error) || 'Could not change the budget approver.', true);
+      loadPeople(pid);
+      return;
+    }
+    setStatus(on ? 'Budget approver set.' : 'Budget approver cleared.', false);
     loadPeople(pid);
   }
 

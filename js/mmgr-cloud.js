@@ -4660,6 +4660,21 @@ var MMGR = window.MMGR || {};
   function cloudPhotosGetPhotos() {
     return ns.CloudPhotos ? ns.CloudPhotos.cloudPhotosGetPhotos() : [];
   }
+  function cloudPhotosCanEdit() {
+    return ns.CloudPhotos ? !!ns.CloudPhotos.cloudPhotosCanEdit() : false;
+  }
+  function cloudPhotosOpenBundle(bundleId) {
+    return ns.CloudPhotos ? ns.CloudPhotos.cloudPhotosOpenBundle(bundleId) : null;
+  }
+  function cloudPhotosCloseBundle() {
+    return ns.CloudPhotos ? ns.CloudPhotos.cloudPhotosCloseBundle() : null;
+  }
+  function cloudPhotosQueuedCount() {
+    return ns.CloudPhotos ? ns.CloudPhotos.cloudPhotosQueuedCount() : 0;
+  }
+  function cloudPhotosFlushQueue() {
+    return ns.CloudPhotos ? ns.CloudPhotos.cloudPhotosFlushQueue() : null;
+  }
 
   // ---- public API ---------------------------------------------------------
   ns.Cloud = {
@@ -4816,7 +4831,12 @@ var MMGR = window.MMGR || {};
     cloudPhotosPhotoUrlFor: cloudPhotosPhotoUrlFor,
     cloudPhotosPhotosUrl: cloudPhotosPhotosUrl,
     cloudPhotosUploadUrl: cloudPhotosUploadUrl,
-    cloudPhotosGetPhotos: cloudPhotosGetPhotos
+    cloudPhotosGetPhotos: cloudPhotosGetPhotos,
+    cloudPhotosCanEdit: cloudPhotosCanEdit,
+    cloudPhotosOpenBundle: cloudPhotosOpenBundle,
+    cloudPhotosCloseBundle: cloudPhotosCloseBundle,
+    cloudPhotosQueuedCount: cloudPhotosQueuedCount,
+    cloudPhotosFlushQueue: cloudPhotosFlushQueue
   };
   // PROJECT PHOTOS (C24): render the photos panel right after the cloud
   // module paints the page, before the next render. The panel itself is

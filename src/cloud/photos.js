@@ -47,6 +47,11 @@ const MAX_PHOTOS_PER_PROJECT = 200; // soft cap, enforced at upload
 // exactly the hole the paid gate exists to close.
 const PHOTO_ACCOUNT_QUOTA_BYTES = 500 * 1024 * 1024;
 const PHOTO_STAGES = new Set(['', 'before', 'after', 'progress']);
+// I-12: a bundle is a client-generated id shared by every photo in one
+// selection. The id is scoped by project_id in every query, so a collision
+// across projects is harmless; the shape check only keeps it safe to put in a
+// URL and a D1 column.
+const BUNDLE_ID_RE = /^[A-Za-z0-9_-]{8,64}$/;
 const PHOTO_UPGRADE_SENTENCE =
   'Project photos are part of every paid plan, Estimator included. Upgrade to add photos to this project.';
 const ALLOWED_CONTENT_TYPES = new Set([
@@ -650,6 +655,19 @@ export async function handlePhotoUpload(request, env, projectId) {
     .trim()
     .toLowerCase();
   const stage = PHOTO_STAGES.has(stageRaw) ? stageRaw : '';
+  // I-12: one description for the whole selection. The UI sends the same
+  // bundleId and bundleCaption with every file in the set; an upload without
+  // them is an individual photo, exactly as before.
+  const bundleRaw = String(formData.get('bundleId') || '').trim();
+  if (bundleRaw && !BUNDLE_ID_RE.test(bundleRaw)) {
+    return json({ ok: false, error: 'that photo bundle is not valid' }, 400);
+  }
+  const bundleId = bundleRaw;
+  const bundleCaption = bundleId
+    ? String(formData.get('bundleCaption') || caption || '')
+        .slice(0, 200)
+        .trim()
+    : '';
   // Name AND role, both resolved server-side: the browser is never trusted to
   // say who uploaded a photo, and a scoped editor code's label is the only
   // name that code has.
@@ -672,7 +690,7 @@ export async function handlePhotoUpload(request, env, projectId) {
   let metaId;
   try {
     const ins = await env.DB.prepare(
-      'INSERT INTO cloud_project_photos (project_id, photo_id, filename, caption, captured_at, uploaded_by, uploaded_role, stage, content_type, size_bytes, sort_order, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
+      'INSERT INTO cloud_project_photos (project_id, photo_id, filename, caption, captured_at, uploaded_by, uploaded_role, stage, bundle_id, bundle_caption, content_type, size_bytes, sort_order, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
     )
       .bind(
         projectId,
@@ -683,6 +701,8 @@ export async function handlePhotoUpload(request, env, projectId) {
         uploadedBy,
         uploadedRole,
         stage,
+        bundleId,
+        bundleCaption,
         storedType,
         storedSize,
         sortOrder,
@@ -711,7 +731,7 @@ export async function handlePhotoUpload(request, env, projectId) {
   }
 
   const meta = await env.DB.prepare(
-    'SELECT id, photo_id, filename, caption, captured_at, uploaded_by, uploaded_role, stage, content_type, size_bytes, sort_order, created_at FROM cloud_project_photos WHERE id = ?'
+    'SELECT id, photo_id, filename, caption, captured_at, uploaded_by, uploaded_role, stage, bundle_id, bundle_caption, content_type, size_bytes, sort_order, created_at FROM cloud_project_photos WHERE id = ?'
   )
     .bind(metaId)
     .first();
@@ -726,6 +746,8 @@ export async function handlePhotoUpload(request, env, projectId) {
       uploadedBy: meta.uploaded_by,
       uploadedRole: meta.uploaded_role,
       stage: meta.stage,
+      bundleId: meta.bundle_id || '',
+      bundleCaption: meta.bundle_caption || '',
       contentType: meta.content_type,
       sizeBytes: meta.size_bytes,
       sortOrder: meta.sort_order,
@@ -779,7 +801,7 @@ export async function handlePhotoList(request, env, projectId) {
   }
 
   const rows = await env.DB.prepare(
-    'SELECT id, photo_id, filename, caption, captured_at, uploaded_by, uploaded_role, stage, content_type, size_bytes, sort_order, created_at FROM cloud_project_photos WHERE project_id = ? AND deleted_at IS NULL ORDER BY sort_order DESC, created_at DESC'
+    'SELECT id, photo_id, filename, caption, captured_at, uploaded_by, uploaded_role, stage, bundle_id, bundle_caption, content_type, size_bytes, sort_order, created_at FROM cloud_project_photos WHERE project_id = ? AND deleted_at IS NULL ORDER BY sort_order DESC, created_at DESC'
   )
     .bind(projectId)
     .all();
@@ -793,6 +815,8 @@ export async function handlePhotoList(request, env, projectId) {
       uploadedBy: r.uploaded_by,
       uploadedRole: r.uploaded_role || '',
       stage: r.stage || '',
+      bundleId: r.bundle_id || '',
+      bundleCaption: r.bundle_caption || '',
       contentType: r.content_type,
       sizeBytes: r.size_bytes,
       sortOrder: r.sort_order,
@@ -807,13 +831,20 @@ export async function handlePhotoList(request, env, projectId) {
 
   // The panel needs the quota bar on the same round trip as the list: one
   // request per render, and the bar can never disagree with the rows it sits
-  // above. canUpload mirrors the server's own role rule so the button is never
-  // offered to a role the upload path would refuse.
+  // above. roleCanUpload mirrors the server's role rule so the button is
+  // never offered to a role the upload path would refuse; canUpload adds the
+  // paid-plan rule, and upgradeRequired is the honest free-account state the
+  // panel turns into an upgrade card instead of a dead click.
+  const roleCanUpload = rolesWithUpload(access.role);
+  const paid = roleCanUpload ? await photoUploadPaid(env, proj, request) : false;
   return json({
     ok: true,
     photos: photos,
     role: access.role,
-    canUpload: rolesWithUpload(access.role),
+    roleCanUpload: roleCanUpload,
+    canUpload: roleCanUpload && paid,
+    upgradeRequired: roleCanUpload && !paid,
+    upgradeMessage: roleCanUpload && !paid ? PHOTO_UPGRADE_SENTENCE : '',
     usage: await photoUsage(env, proj, projectId)
   });
 }
@@ -844,10 +875,15 @@ export async function handlePhotoUsage(request, env, projectId) {
     return json({ ok: false, error: 'you do not have access to this project\u2019s photos' }, 403);
   }
 
+  const roleCanUpload = rolesWithUpload(access.role);
+  const paid = roleCanUpload ? await photoUploadPaid(env, proj, request) : false;
   return json({
     ok: true,
     role: access.role,
-    canUpload: rolesWithUpload(access.role),
+    roleCanUpload: roleCanUpload,
+    canUpload: roleCanUpload && paid,
+    upgradeRequired: roleCanUpload && !paid,
+    upgradeMessage: roleCanUpload && !paid ? PHOTO_UPGRADE_SENTENCE : '',
     usage: await photoUsage(env, proj, projectId)
   });
 }
@@ -1020,7 +1056,7 @@ export async function handlePhotoMeta(request, env, projectId, photoId) {
   }
 
   const meta = await env.DB.prepare(
-    'SELECT id, photo_id, filename, caption, captured_at, uploaded_by, uploaded_role, stage, content_type, size_bytes, sort_order, created_at FROM cloud_project_photos WHERE project_id = ? AND photo_id = ? AND deleted_at IS NULL'
+    'SELECT id, photo_id, filename, caption, captured_at, uploaded_by, uploaded_role, stage, bundle_id, bundle_caption, content_type, size_bytes, sort_order, created_at FROM cloud_project_photos WHERE project_id = ? AND photo_id = ? AND deleted_at IS NULL'
   )
     .bind(projectId, photoId)
     .first();
@@ -1038,10 +1074,116 @@ export async function handlePhotoMeta(request, env, projectId, photoId) {
       uploadedBy: meta.uploaded_by,
       uploadedRole: meta.uploaded_role || '',
       stage: meta.stage || '',
+      bundleId: meta.bundle_id || '',
+      bundleCaption: meta.bundle_caption || '',
       contentType: meta.content_type,
       sizeBytes: meta.size_bytes,
       sortOrder: meta.sort_order,
       createdAt: meta.created_at
     }
   });
+}
+
+// ---- bundle edit / delete (I-12) -----------------------------------------
+// A bundle has no row of its own: every photo carries the same bundle_id and
+// bundle_caption. Editing therefore updates the set in one statement, and
+// deleting soft-deletes the set first (so a retry is idempotent) then removes
+// each blob best-effort, exactly like a single-photo delete.
+
+async function resolveUploadable(request, env, projectId) {
+  const proj = await projectRow(env, projectId);
+  if (!proj) {
+    return { error: cloudForbidden() };
+  }
+  if (proj.deleted_at) {
+    return { error: cloudProjectDeleted() };
+  }
+  const access = await resolvePhotoAccess(request, env, projectId);
+  if (!access.ok) {
+    if (access.ok === 'expired') {
+      return {
+        error: json({ ok: false, error: 'code_expired', expiresAt: access.expiresAt }, 403)
+      };
+    }
+    if (access.ok === 'revoked' || access.ok === 'deleted') {
+      return { error: cloudForbidden() };
+    }
+    await cloudTimingSink();
+    return { error: cloudForbidden() };
+  }
+  if (!rolesWithUpload(access.role)) {
+    return {
+      error: json(
+        { ok: false, error: 'only the project owner or an editor can change photo bundles' },
+        403
+      )
+    };
+  }
+  return { proj: proj, access: access };
+}
+
+export async function handlePhotoBundleUpdate(request, env, projectId, bundleId) {
+  if (!BUNDLE_ID_RE.test(bundleId)) {
+    return json({ ok: false, error: 'bundle not found' }, 404);
+  }
+  const gate = await resolveUploadable(request, env, projectId);
+  if (gate.error) {
+    return gate.error;
+  }
+  let body = {};
+  try {
+    body = await request.json();
+  } catch (e) {
+    /* an empty body clears the description, which is a valid edit */
+  }
+  const caption = String((body && body.caption) || '')
+    .slice(0, 200)
+    .trim();
+  const res = await env.DB.prepare(
+    'UPDATE cloud_project_photos SET bundle_caption = ? WHERE project_id = ? AND bundle_id = ? AND deleted_at IS NULL'
+  )
+    .bind(caption, projectId, bundleId)
+    .run();
+  const changed = Number(res && res.meta && res.meta.changes) || 0;
+  if (!changed) {
+    return json({ ok: false, error: 'bundle not found' }, 404);
+  }
+  return json({ ok: true, bundleId: bundleId, caption: caption, photos: changed });
+}
+
+export async function handlePhotoBundleDelete(request, env, projectId, bundleId) {
+  if (!BUNDLE_ID_RE.test(bundleId)) {
+    return json({ ok: false, error: 'bundle not found' }, 404);
+  }
+  const gate = await resolveUploadable(request, env, projectId);
+  if (gate.error) {
+    return gate.error;
+  }
+  const rows = await env.DB.prepare(
+    'SELECT id, photo_id, content_type FROM cloud_project_photos WHERE project_id = ? AND bundle_id = ? AND deleted_at IS NULL'
+  )
+    .bind(projectId, bundleId)
+    .all();
+  const list = (rows && rows.results) || [];
+  if (!list.length) {
+    return json({ ok: false, error: 'bundle not found' }, 404);
+  }
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    'UPDATE cloud_project_photos SET deleted_at = ? WHERE project_id = ? AND bundle_id = ? AND deleted_at IS NULL'
+  )
+    .bind(now, projectId, bundleId)
+    .run();
+  for (let i = 0; i < list.length; i++) {
+    const ext = extForContentType(list[i].content_type);
+    if (!ext) {
+      continue;
+    }
+    try {
+      await env.R2.delete(photoR2Key(projectId, list[i].photo_id, ext));
+    } catch (e) {
+      /* best-effort, matching the single-photo delete */
+    }
+  }
+  return json({ ok: true, deleted: bundleId, photos: list.length, deletedAt: now });
 }

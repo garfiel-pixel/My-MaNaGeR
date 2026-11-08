@@ -15,6 +15,7 @@ import {
   cloudLogSave,
   cloudEncryptState,
   cloudAuthOwnerEither,
+  cloudAuthBudgetApprover,
   cloudAuthEditor,
   cloudAuthAdoption,
   readJsonBody,
@@ -310,10 +311,6 @@ function applyApprovedDiffs(prev, approved) {
 }
 
 export async function handleReviewAccept(request, env, projectId, reviewId, pushRevChanged) {
-  const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) {
-    return cloudForbidden();
-  }
   const decision = await readDecisionBody(request);
   const row = await env.DB.prepare('SELECT * FROM cloud_reviews WHERE id = ? AND project_id = ?')
     .bind(reviewId, projectId)
@@ -323,6 +320,39 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
   }
   if (row.status !== 'pending') {
     return json({ ok: false, error: 'proposal is not pending' }, 409);
+  }
+  // H-7: a budget-only proposal may be decided by the owner OR the one named
+  // budget approver. A mixed proposal (budget plus tasks, risks, documents)
+  // stays owner-only: the approver's authority is the money, not the rest.
+  let scopeForAuth = [];
+  try {
+    const p = JSON.parse(row.scope);
+    if (Array.isArray(p)) {
+      scopeForAuth = p;
+    }
+  } catch (e) {
+    scopeForAuth = [];
+  }
+  const budgetOnly =
+    scopeForAuth.length > 0 &&
+    scopeForAuth.every(function (s) {
+      return s === 'bud';
+    });
+  let auth = await cloudAuthOwnerEither(request, env, projectId);
+  let actorLabel = 'Owner';
+  let actorType = 'owner';
+  if (!auth && budgetOnly) {
+    const approver = await cloudAuthBudgetApprover(request, env, projectId);
+    if (approver) {
+      auth = approver;
+      actorLabel = approver.label;
+      actorType = approver.actorType;
+    }
+  } else if (auth) {
+    actorLabel = auth.label || 'Owner';
+  }
+  if (!auth) {
+    return cloudForbidden();
   }
   const now = new Date().toISOString();
   const resp = { ok: true, reviewId: reviewId, status: 'accepted', decidedAt: now };
@@ -388,14 +418,14 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
         projectId,
         prev,
         merged.next,
-        { type: 'owner', label: auth.label || 'Owner' },
+        { type: actorType, label: actorLabel },
         'accepted'
       );
       if (entry) {
         resp.changelog = entry;
       }
       if (pushRevChanged) {
-        await pushRevChanged(env, projectId, now, { type: 'owner', label: auth.label || 'Owner' });
+        await pushRevChanged(env, projectId, now, { type: actorType, label: actorLabel });
       }
       resp.savedAt = now;
     }
@@ -530,14 +560,14 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
         projectId,
         prev,
         merged.next,
-        { type: 'owner', label: auth.label || 'Owner' },
+        { type: actorType, label: actorLabel },
         'accepted'
       );
       if (entry) {
         resp.changelog = entry;
       }
       if (pushRevChanged) {
-        await pushRevChanged(env, projectId, now, { type: 'owner', label: auth.label || 'Owner' });
+        await pushRevChanged(env, projectId, now, { type: actorType, label: actorLabel });
       }
       resp.savedAt = now;
     }
@@ -551,7 +581,7 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
     .bind(
       'accepted',
       now,
-      auth.label || 'Owner',
+      actorLabel,
       acceptedEntryId,
       decision.note || null,
       decision.edited,
@@ -569,10 +599,6 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
 }
 
 export async function handleReviewReject(request, env, projectId, reviewId) {
-  const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) {
-    return cloudForbidden();
-  }
   const decision = await readDecisionBody(request);
   const row = await env.DB.prepare('SELECT * FROM cloud_reviews WHERE id = ? AND project_id = ?')
     .bind(reviewId, projectId)
@@ -583,6 +609,36 @@ export async function handleReviewReject(request, env, projectId, reviewId) {
   if (row.status !== 'pending') {
     return json({ ok: false, error: 'proposal is not pending' }, 409);
   }
+  let scopeForAuth = [];
+  try {
+    const p = JSON.parse(row.scope);
+    if (Array.isArray(p)) {
+      scopeForAuth = p;
+    }
+  } catch (e) {
+    scopeForAuth = [];
+  }
+  const budgetOnly =
+    scopeForAuth.length > 0 &&
+    scopeForAuth.every(function (s) {
+      return s === 'bud';
+    });
+  let auth = await cloudAuthOwnerEither(request, env, projectId);
+  let actorLabel = 'Owner';
+  let actorType = 'owner';
+  if (!auth && budgetOnly) {
+    const approver = await cloudAuthBudgetApprover(request, env, projectId);
+    if (approver) {
+      auth = approver;
+      actorLabel = approver.label;
+      actorType = approver.actorType;
+    }
+  } else if (auth) {
+    actorLabel = auth.label || 'Owner';
+  }
+  if (!auth) {
+    return cloudForbidden();
+  }
   const now = new Date().toISOString();
   await env.DB.prepare(
     'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at) VALUES (?,?,?,?,?,?,?,?)'
@@ -590,8 +646,8 @@ export async function handleReviewReject(request, env, projectId, reviewId) {
     .bind(
       projectId,
       'rejected',
-      'owner',
-      auth.label || 'Owner',
+      actorType,
+      actorLabel,
       row.section || null,
       row.diffs_json || null,
       null,
@@ -601,7 +657,7 @@ export async function handleReviewReject(request, env, projectId, reviewId) {
   await env.DB.prepare(
     'UPDATE cloud_reviews SET status = ?, decided_at = ?, decided_by = ?, decision_note = ? WHERE id = ?'
   )
-    .bind('rejected', now, auth.label || 'Owner', decision.note || null, reviewId)
+    .bind('rejected', now, actorLabel, decision.note || null, reviewId)
     .run();
   return json({
     ok: true,

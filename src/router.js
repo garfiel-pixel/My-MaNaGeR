@@ -64,7 +64,9 @@ import {
   handlePhotoGet,
   handlePhotoDelete,
   handlePhotoMeta,
-  handlePhotoUsage
+  handlePhotoUsage,
+  handlePhotoBundleUpdate,
+  handlePhotoBundleDelete
 } from './cloud/photos.js';
 import {
   handleCloudEditorCreate,
@@ -995,6 +997,38 @@ export async function routeApi(request, env, url) {
         return r;
       }
       return handlePhotoUsage(request, env, cloudPhotoUsageMatch[1]);
+    }
+    // I-12 photo bundles. These sit BEFORE the single-photo route so the
+    // literal "bundle" segment can never be read as a photo id.
+    const cloudPhotoBundleMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/photos\/bundle\/([A-Za-z0-9_-]{8,64})$/
+    );
+    if (cloudPhotoBundleMatch && request.method === 'PATCH') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handlePhotoBundleUpdate(
+        request,
+        env,
+        cloudPhotoBundleMatch[1],
+        cloudPhotoBundleMatch[2]
+      );
+    }
+    const cloudPhotoBundleDelMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/photos\/bundle\/([A-Za-z0-9_-]{8,64})\/delete$/
+    );
+    if (cloudPhotoBundleDelMatch && request.method === 'POST') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handlePhotoBundleDelete(
+        request,
+        env,
+        cloudPhotoBundleDelMatch[1],
+        cloudPhotoBundleDelMatch[2]
+      );
     }
     const cloudPhotoMatch = path.match(
       /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/photos\/([A-Za-z0-9_-]{1,128})$/

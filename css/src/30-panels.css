@@ -3774,6 +3774,17 @@ body.dark-mode .team-role-client {
   color: var(--text);
   font-size: 0.7rem;
 }
+.team-approver {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+.team-approver input {
+  accent-color: var(--gold-ink);
+}
 .team-person-actions {
   display: flex;
   gap: 8px;

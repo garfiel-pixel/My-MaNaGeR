@@ -1562,7 +1562,11 @@ export function cloudSectionOfDiffs(diffs) {
 // ---- Changelog log ---------------------------------------------------------
 
 export async function cloudLogSave(env, projectId, prev, next, actor, entryType) {
-  const diffs = cloudDiffState(prev, next);
+  // cloudDiffState returns null for a missing `prev`. A brand-new project has no
+  // stored state yet, so the FIRST write (including a budget approver accepting
+  // the opening proposal) must still be audited as a creation, not dropped.
+  const basePrev = prev && typeof prev === 'object' ? prev : {};
+  const diffs = cloudDiffState(basePrev, next);
   if (diffs === null || diffs.length === 0) {
     return null;
   }
@@ -1927,7 +1931,7 @@ export async function cloudAuthWithRole(request, env, projectId) {
     return null;
   }
   const member = await env.DB.prepare(
-    "SELECT id, role, scope, perm, access_expires_at FROM cloud_team_members WHERE project_id = ? AND invitee_email = ? AND status = 'active' AND (expires_at IS NULL OR expires_at > ?)"
+    "SELECT id, role, scope, perm, access_expires_at, budget_approver FROM cloud_team_members WHERE project_id = ? AND invitee_email = ? AND status = 'active' AND (expires_at IS NULL OR expires_at > ?)"
   )
     .bind(projectId, identity.email, new Date().toISOString())
     .first();
@@ -1978,9 +1982,45 @@ export async function cloudAuthWithRole(request, env, projectId) {
     matrix: matrix || teamMatrixForRole(member.role, scope),
     perm: matrix,
     accessExpiresAt: member.access_expires_at || null,
+    // H-7: the owner may name one team member as the budget approver. The
+    // column is the enforcement; every decision path reads it, never the UI.
+    budgetApprover: !!member.budget_approver,
     memberId: member.id,
     session: identity.session
   };
+}
+
+// H-7: the owner OR the one named budget approver may decide a budget-only
+// proposal. The helper deliberately returns null for a team member who is not
+// flagged, so a caller can fall back to the owner-only gate without guessing.
+// Non-budget proposals never reach this helper: a budget approver has no
+// authority over tasks, risks or documents.
+export async function cloudAuthBudgetApprover(request, env, projectId) {
+  const auth = await cloudAuthWithRole(request, env, projectId);
+  if (!auth) {
+    return null;
+  }
+  if (auth.source === 'owner') {
+    return {
+      ok: true,
+      source: 'owner',
+      role: 'owner',
+      actorType: 'owner',
+      label: 'Owner'
+    };
+  }
+  if (auth.source === 'team' && auth.budgetApprover && auth.role !== 'client') {
+    return {
+      ok: true,
+      source: 'team',
+      role: auth.role,
+      actorType: 'team',
+      label: (auth.session && auth.session.name) || auth.email || 'Budget approver',
+      email: auth.email,
+      memberId: auth.memberId
+    };
+  }
+  return null;
 }
 
 // Wave 7 read gate (owner 2026-10-06): READ access to a project data route for

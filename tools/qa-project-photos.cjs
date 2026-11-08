@@ -22,6 +22,8 @@
      G7  Download hands back the uploaded bytes under the uploaded name
      G8  Remove asks first, then drops the card and the used bytes
      G9  a view code sees the photo but gets no Add and no Remove
+     G11 three photos and one description become one editable, removable bundle
+     G12 an offline selection queues in IndexedDB and sends on reconnect
      G10 no page error and no console error for the whole run
 
    The free-account refusal (402 + the upgrade sentence) cannot be
@@ -387,6 +389,15 @@ async function main() {
     body: JSON.stringify({ label: 'QA Editor', role: 'editor', scope: ['photos'] })
   });
   const editorCode = ed.body && ed.body.editorCode;
+  // A second editor code for the bundle walk: the rate limiter buckets by
+  // code, and the first editor has already spent its 30/min on the single
+  // upload walk. Same project, same role, a fresh bucket.
+  const ed2 = await api('/api/cloud/projects/' + pid + '/editors', {
+    method: 'POST',
+    headers: jsonHeaders(owner),
+    body: JSON.stringify({ label: 'QA Bundle Editor', role: 'editor', scope: ['photos'] })
+  });
+  const bundleCode = ed2.body && ed2.body.editorCode;
   const vw = await api('/api/cloud/projects/' + pid + '/editors', {
     method: 'POST',
     headers: jsonHeaders(owner),
@@ -394,12 +405,17 @@ async function main() {
   });
   const viewCode = vw.body && vw.body.editorCode;
   check(
-    'G0b an editor code and a view code exist for the project',
-    ed.status === 200 && !!editorCode && vw.status === 200 && !!viewCode,
-    { editor: ed.status, view: vw.status, body: ed.body }
+    'G0b two editor codes and a view code exist for the project',
+    ed.status === 200 &&
+      !!editorCode &&
+      ed2.status === 200 &&
+      !!bundleCode &&
+      vw.status === 200 &&
+      !!viewCode,
+    { editor: ed.status, bundle: ed2.status, view: vw.status, body: ed.body }
   );
-  if (!editorCode || !viewCode) {
-    log('cannot drive the panel without both credentials');
+  if (!editorCode || !bundleCode || !viewCode) {
+    log('cannot drive the panel without every credential');
     return;
   }
 
@@ -430,7 +446,7 @@ async function main() {
       code: editorCode,
       escope: { role: 'editor', label: 'QA Editor', sections: ['photos'] }
     });
-    const page = await ctx.newPage();
+    let page = await ctx.newPage();
     page.on('pageerror', e => pageErrors.push(String((e && e.message) || e)));
     page.on('console', m => {
       if (m.type() === 'error') {
@@ -700,9 +716,210 @@ async function main() {
       { confirm: confirm, page: g8, usage: g8usage.body && g8usage.body.usage }
     );
 
+    // ---- G11: one bundle, one description --------------------------
+    // Fresh editor code and context: the first editor has spent its 30/min
+    // bucket on G3-G8, and the bundle walk needs its own.
     const editorErrs = pageErrors.slice();
     const editorConsole = consoleErrors.slice();
     await ctx.close();
+    const bctx = await browser.newContext({
+      viewport: { width: 1280, height: 900 },
+      acceptDownloads: true
+    });
+    await bctx.setExtraHTTPHeaders({ 'CF-Connecting-IP': '203.0.113.23' });
+    await bctx.addInitScript(seedDevice, {
+      pid: pid,
+      code: bundleCode,
+      escope: { role: 'editor', label: 'QA Bundle Editor', sections: ['photos'] }
+    });
+    page = await bctx.newPage();
+    page.on('pageerror', e => pageErrors.push(String((e && e.message) || e)));
+    page.on('console', m => {
+      if (m.type() === 'error') {
+        consoleErrors.push(m.text());
+      }
+    });
+    await openPhotos(page, pid);
+
+    async function uploadBundle(names, caption, stage) {
+      const addVisible = await page.evaluate(() => {
+        const b = document.getElementById('photos-add-btn');
+        return !!b && !b.classList.contains('is-hide');
+      });
+      if (!addVisible) {
+        await page.click('#photos-cancel-btn').catch(() => {});
+      }
+      await page.click('#photos-add-btn');
+      const [chooser] = await Promise.all([
+        page.waitForEvent('filechooser', { timeout: 15000 }),
+        page.click('#photos-pick-btn')
+      ]);
+      await chooser.setFiles(
+        names.map(function (n) {
+          return { name: n, mimeType: 'image/png', buffer: PNG };
+        })
+      );
+      await page.fill('#photos-caption-input', caption);
+      await page.fill('#photos-date-input', '2026-11-05');
+      await page.selectOption('#photos-stage-input', stage);
+      await page.click('#photos-submit-btn');
+    }
+
+    await uploadBundle(
+      ['bundle-a.png', 'bundle-b.png', 'bundle-c.png'],
+      'Steel frame, three angles',
+      'progress'
+    );
+    await delay(2500);
+    const g11debug = await page.evaluate(() => ({
+      items: document.querySelectorAll('.photo-item').length,
+      bundles: document.querySelectorAll('.photo-bundle').length,
+      note: (document.getElementById('photos-note') || {}).textContent || '',
+      photos:
+        window.MMGR && window.MMGR.CloudPhotos && window.MMGR.CloudPhotos.cloudPhotosGetPhotos
+          ? window.MMGR.CloudPhotos.cloudPhotosGetPhotos().length
+          : -1
+    }));
+    log('G11 debug ' + JSON.stringify(g11debug));
+    const g11 = await until(
+      page,
+      () => {
+        const items = document.querySelectorAll('.photo-item');
+        const bundles = document.querySelectorAll('.photo-bundle');
+        if (items.length !== 2 || bundles.length !== 1) return false;
+        const b = bundles[0];
+        return {
+          items: items.length,
+          bundles: bundles.length,
+          count: (b.querySelector('.photo-bundle-count') || {}).textContent || '',
+          text: b.textContent
+        };
+      },
+      null,
+      30000
+    );
+    check(
+      'G11 three photos and one description become one bundle card',
+      !!g11 && g11.count === '3' && /Steel frame, three angles/.test(g11.text),
+      g11
+    );
+
+    await page.click('.photo-bundle [data-bundle-open]');
+    const g11b = await until(
+      page,
+      () => {
+        const d = document.getElementById('photos-bundle-dialog');
+        if (!d || !d.open) return false;
+        return {
+          open: true,
+          caption: (document.getElementById('photos-bundle-caption') || {}).textContent || '',
+          photos: document.querySelectorAll('#photos-bundle-body .photo-dialog-item').length
+        };
+      },
+      null,
+      10000
+    );
+    check(
+      'G11b opening the bundle shows all three photos and the description',
+      !!g11b && g11b.photos === 3 && /Steel frame, three angles/.test(g11b.caption),
+      g11b
+    );
+
+    await page.fill('#photos-bundle-caption-input', 'Steel frame, revised description');
+    await page.click('[data-bundle-save]');
+    const g11c = await until(
+      page,
+      () => {
+        const c = (document.getElementById('photos-bundle-caption') || {}).textContent || '';
+        return /revised description/.test(c) ? { caption: c } : false;
+      },
+      null,
+      15000
+    );
+    check('G11c the bundle description can be edited', !!g11c, g11c);
+    await page.click('[data-bundle-close]');
+
+    await page.click('.photo-bundle [data-bundle-open]');
+    await page.click('[data-bundle-delete]');
+    await page.click('[data-bundle-delete-confirm]');
+    const g11d = await until(
+      page,
+      () => {
+        const items = document.querySelectorAll('.photo-item');
+        return items.length === 1 ? { items: 1 } : false;
+      },
+      null,
+      30000
+    );
+    check('G11d removing a bundle removes every photo in it', !!g11d, g11d);
+
+    // ---- G12: an offline selection queues and sends on reconnect ----
+    await page.context().setOffline(true);
+    await page
+      .waitForFunction(() => navigator.onLine === false, null, { timeout: 10000 })
+      .catch(() => {});
+    await uploadBundle(['offline-a.png', 'offline-b.png'], 'Poured after the rain', 'after');
+    const g12 = await until(
+      page,
+      () => {
+        const note = (document.getElementById('photos-note') || {}).textContent || '';
+        return /saved on this device/i.test(note) ? { note: note } : false;
+      },
+      null,
+      15000
+    );
+    const queued = await page.evaluate(async () => {
+      const db = await new Promise((resolve, reject) => {
+        const r = indexedDB.open('mmgr-photo-queue', 1);
+        r.onsuccess = () => resolve(r.result);
+        r.onerror = () => reject(r.error);
+      });
+      return await new Promise((resolve, reject) => {
+        const tx = db.transaction('queue', 'readonly');
+        const rq = tx.objectStore('queue').count();
+        rq.onsuccess = () => resolve(rq.result);
+        rq.onerror = () => reject(rq.error);
+      });
+    });
+    check('G12 an offline selection is queued on the device', !!g12 && queued === 2, {
+      note: g12,
+      queued: queued
+    });
+
+    await page.context().setOffline(false);
+    await page.evaluate(() => window.dispatchEvent(new Event('online')));
+    const g12b = await until(
+      page,
+      () => {
+        const bundles = document.querySelectorAll('.photo-bundle');
+        if (bundles.length !== 1) return false;
+        const b = bundles[0];
+        return {
+          count: (b.querySelector('.photo-bundle-count') || {}).textContent || '',
+          text: b.textContent
+        };
+      },
+      null,
+      45000
+    );
+    check(
+      'G12b the queued bundle uploads when the connection returns',
+      !!g12b && g12b.count === '2' && /Poured after the rain/.test(g12b.text),
+      g12b
+    );
+
+    await page.click('.photo-bundle [data-bundle-open]');
+    await page.click('[data-bundle-delete]');
+    await page.click('[data-bundle-delete-confirm]');
+    const g12c = await until(
+      page,
+      () => document.querySelectorAll('.photo-item').length === 1,
+      null,
+      30000
+    );
+    check('G12c the offline bundle can be removed after it lands', !!g12c, g12c);
+
+    await bctx.close();
 
     // ================= viewer context: read only ====================
     const vctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });

@@ -2079,7 +2079,16 @@ function renderProjects(){
     .map(function(p, i){ return { p: p, i: i }; })
     .filter(function(row){ return !row.p.isDemo && !(row.p.id && row.p.id.indexOf('demo-') === 0); });
   if(!adminRows.length){
-    list.innerHTML = '<div class="empty">No projects yet. Click "+ Add Project" to create your first one.</div>';
+    // A1 (owner 2026-11-08): proper zero-state. The list already filters demo
+    // records (above), so this only shows on a genuinely empty instance. The
+    // primary action is a real button wired to the existing Add-Project flow.
+    list.innerHTML =
+      '<div class="empty" style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:60px 20px;">' +
+        '<svg class="ico" style="width:42px;height:42px;color:var(--slate)" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg>' +
+        '<div style="font-size:1.04rem;font-weight:700;color:var(--text)">No projects yet</div>' +
+        '<div style="max-width:360px">Create your first project to start tracking tasks, budget and your team in one place.</div>' +
+        '<button type="button" class="btn btn-g" data-action="openProjectModal" style="margin-top:6px"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Create your first project</button>' +
+      '</div>';
     return;
   }
   const staleLive = deletedButLiveProjects();

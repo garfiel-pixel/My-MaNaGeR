@@ -499,11 +499,29 @@ var MMGR = window.MMGR || {};
     // gates land on both navs together; then boot the rail open and install
     // the drawer/sidebar dismiss bindings.
     buildSidebar();
-    // OWNER 2026-08-15: the sidebar IS the view on desktop , boot the pinned
-    // rail OPEN (body.sidebar-open). Mobile keeps the off-canvas drawer
-    // (sidebar-open is never set there, so the scrim can't flash at boot).
+    // B7 (owner 2026-11-08): ONE-SHOT first-load sidebar demo. On the very
+    // first desktop visit the rail opens once to reveal itself, then settles
+    // closed after a beat so the user discovers the hamburger and opens it
+    // themselves. Later visits respect the user's pinned preference instead.
+    // Overrides the old "always boot open on desktop" rule: the demo teaches
+    // the rail exists, then steps back.
     if (window.innerWidth > 768) {
-      document.body.classList.add('sidebar-open');
+      const _pin = ns.AppSidebar.readDevicePref('mmgr_sidebar');
+      if (ns.AppSidebar.readDevicePref('mmgr_sidebar_demo') !== '1' && _pin == null) {
+        document.body.classList.add('sidebar-open');
+        ns.AppSidebar.writeDevicePref('mmgr_sidebar_demo', '1');
+        setTimeout(function () {
+          // settle closed unless the user already grabbed/pinned the rail
+          if (
+            document.body.classList.contains('sidebar-open') &&
+            ns.AppSidebar.readDevicePref('mmgr_sidebar') == null
+          ) {
+            ns.AppSidebar.setSidebarOpen(false);
+          }
+        }, 2600);
+      } else if (_pin === 'on') {
+        document.body.classList.add('sidebar-open');
+      }
     }
     syncSidebarChrome();
     bindNavDismiss();

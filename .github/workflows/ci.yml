@@ -555,6 +555,17 @@ jobs:
         env:
           QA_PORT: 8812
 
+      # I-1 (BUDGET-BOQ-MCP 2026-11-05): the cross-device cloud-project list
+      # contract. Self-hosts its own wrangler on :8820 (it forges Google-shaped
+      # sessions, so it needs no shared :8787 state and runs regardless of the
+      # shared dev server). A pass proves the server keys the list on the signed
+      # account; the owner's "projects disappear after re-sign-in" report is then
+      # a client-side upload/boot defect.
+      - name: "T2: Cloud project list cross-device (T-CLOUDLIST)"
+        id: qa-cloudlist
+        if: success()
+        run: node tools/qa-cloudlist.cjs
+
       # 5.2 orphaned-subscription cleanup. Self-hosting like Team RBAC: its own
       # wrangler on QA_PORT with PADDLE_API_BASE pointed at a loopback stub, so
       # the cancel-failure path (provider refuses -> row stays) runs against the

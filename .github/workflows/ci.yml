@@ -983,6 +983,13 @@ jobs:
       - name: "T4: Work package relations (qa-relations)"
         id: qa-relations
         run: node tools/qa-relations.cjs
+      # C1 (NocoBase plan): the custom-field schema in a real browser - the
+      # Fields sheet, the schema-driven WBS header and cells, the card chips,
+      # the board filter, the required badge, field removal and the view-only
+      # refusal. Unit rules live in test/custom-fields-model.test.mjs.
+      - name: "T4: Custom task fields (qa-custom-fields)"
+        id: qa-custom-fields
+        run: node tools/qa-custom-fields.cjs
 
       # APP-4 (REFINEMENT-DIRECTIVE-2026-10-24): a click on a radio or
       # checkbox INSIDE a dialog overlay kept its default. The six overlays in

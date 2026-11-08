@@ -138,7 +138,9 @@ var MMGR = window.MMGR || {};
             ? ns.Kanban.nextPosition(s.tasks, status)
             : 0,
         // V24: the graph is empty until the user links the card.
-        relations: []
+        relations: [],
+        // V26: empty until a custom field is filled on this task.
+        custom: {}
       };
       s.tasks.push(task);
       id = task.id;

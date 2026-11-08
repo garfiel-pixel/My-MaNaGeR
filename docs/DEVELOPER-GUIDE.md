@@ -72,6 +72,7 @@ attaches (e.g. `MMGR.Cloud`).
 | `mmgr-stakeholders.js` | 198 | `Stakeholders` | Stakeholder register, change control, logs. |
 | `mmgr-bids.js` | 848 | `Bids` | Bid leveling + Go/No-Go weighted scoring (packages, leveled grid, per-sub actions). |
 | `mmgr-charter.js` | 498 | `Charter` | Project charter & KPI management. |
+| `mmgr-custom-fields.js` | ~360 | `CustomFields` | Custom task field schema: the type table, add/update/remove/reorder over `state.fields`, coercion, value reads and writes on `task.custom`, required-field detection, and the persisted board filter. Pure functions over the state object, no DOM. Loads after `mmgr-utils.js` and before the renderers. |
 | `mmgr-raci.js` | 248 | `RACI` | RACI matrix. |
 | `mmgr-closure.js` | 427 | `Closure` | Closure, comms & document management. |
 | `mmgr-defs.js` | 226 | `Defs` | Static plain-language PM glossary (data-only; adding a term touches no logic). |

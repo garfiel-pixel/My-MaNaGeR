@@ -48,6 +48,7 @@ var MMGR = window.MMGR || {};
  * @property {string} [relations[].type] - one of MMGR.Relations.TYPES
  * @property {string} [relations[].targetId] - the other task id
  * @property {number} [relations[].lag] - days of lag on precedes/follows
+ * @property {Object} [custom] - custom field values keyed by a cf_ field key
  */
 
 /**
@@ -182,7 +183,7 @@ var MMGR = window.MMGR || {};
   'use strict';
 
   const STORAGE_KEY = 'mmgr_state';
-  const SCHEMA_VERSION = 25;
+  const SCHEMA_VERSION = 26;
 
   // ---- Default State ----
   /** @returns {AppState} */
@@ -221,6 +222,13 @@ var MMGR = window.MMGR || {};
       },
       // WBS
       tasks: [],
+      // Custom task fields (schema v26, NocoBase-inspired collection model).
+      // The array is the project's field schema. Values live on each task
+      // in task.custom, keyed by the field's stable `key`. Nothing here
+      // caches a task value.
+      fields: [],
+      // Persisted board filter over one select custom field.
+      cfFilter: { key: '', value: '' },
       // Meetings (completed history + live session)
       meetings: [],
       // ACTION-PLAN 1.2: meeting-to-action closed loop , promises carried
@@ -858,6 +866,34 @@ var MMGR = window.MMGR || {};
       }
       return state;
     },
+    26: function (state) {
+      // V25 -> V26: custom task fields (NocoBase-inspired collection model).
+      // Additive and lossless:
+      // - state.fields is the project field schema, empty until the user
+      //   adds a field;
+      // - every task gets an empty custom bag, so a read never has to
+      //   guard for its absence;
+      // - the board filter starts cleared;
+      // - no task is deleted, renamed, or re-statused, and no value is
+      //   invented for a field that does not exist yet.
+      if (!Array.isArray(state.fields)) {
+        state.fields = [];
+      }
+      if (Array.isArray(state.tasks)) {
+        state.tasks.forEach(function (t) {
+          if (!t || typeof t !== 'object') {
+            return;
+          }
+          if (!t.custom || typeof t.custom !== 'object' || Array.isArray(t.custom)) {
+            t.custom = {};
+          }
+        });
+      }
+      if (!state.cfFilter || typeof state.cfFilter !== 'object') {
+        state.cfFilter = { key: '', value: '' };
+      }
+      return state;
+    },
     25: function (state) {
       // V24 -> V25: BOQ bridge (H-2, BUDGET-BOQ directive 2026-11-05).
       // Additive and lossless:
@@ -1276,6 +1312,10 @@ var MMGR = window.MMGR || {};
     'userName',
     'charter',
     'tasks',
+    // V26 custom field schema and the persisted board filter. Both are
+    // project data, so both must travel in a field-level cloud merge.
+    'fields',
+    'cfFilter',
     'kanban',
     'meetings',
     'meetingPromises',

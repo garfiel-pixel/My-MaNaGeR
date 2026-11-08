@@ -112,12 +112,12 @@ bug when it is the pin sync, and call a `saveFloatState()` that does not exist).
 
 | # | Phase | Status | Gate / evidence |
 |---|---|---|---|
-| 2.1 | **C1 NocoBase** custom task fields, schema v25 | Queued | Its DoD; write JSDoc on the new fields as they land |
+| 2.1 | **C1 NocoBase** custom task fields, schema v26 | Queued | Its DoD; write JSDoc on the new fields as they land |
 | 2.2 | **E7 `checkJs`** on state, cloud, billing | Queued - immediately after 2.1 | `npm run typecheck` in `static`; no silencer casts |
-| 2.3 | **C2 Leantime** idea intake + merged agenda, v26 | Queued - **split at its own phase boundary first** (4,634 lines, 60 tasks) | Its 16-gate harness |
-| 2.4 | **C3 AppFlowy** project book, v27 | Needs drafting pass, then build - **moved ahead of C4 2026-10-31**: "schema order is the contract" and v27 precedes v28 | Drafting pass first: anchors from code, task-level steps, gates |
-| 2.5 | **C4 Platform** guarded transitions, audit, rules, v28 | Queued after 2.3 and 2.4 | Its DoD |
-| 2.6 | **C5 Plane** cycles and modules, v29 | Needs drafting pass, then build | Same |
+| 2.3 | **C2 Leantime** idea intake + merged agenda, v27 | Queued - **split at its own phase boundary first** (4,634 lines, 60 tasks) | Its 16-gate harness |
+| 2.4 | **C3 AppFlowy** project book, v28 | Needs drafting pass, then build - **moved ahead of C4 2026-10-31**: "schema order is the contract" and v27 precedes v28 | Drafting pass first: anchors from code, task-level steps, gates |
+| 2.5 | **C4 Platform** guarded transitions, audit, rules, v29 | Queued after 2.3 and 2.4 | Its DoD |
+| 2.6 | **C5 Plane** cycles and modules, v30 | Needs drafting pass, then build | Same |
 
 ### Wave 3 - evidence, then customers
 
@@ -583,7 +583,7 @@ out as workflow-only change.
 Rules for every plan:
 
 1. **Re-derive every anchor.** The plans were written against schema v22, SW
-   v481 and old line numbers. The repo is at schema v24 and SW v504. The plan's
+   v481 and old line numbers. The repo is at schema v25 and SW v593. The plan's
    intent is the contract; quoted lines are hints. Note every drift in the log.
 2. **Take the next schema number from the ledger below.** Never paste the
    plan's claimed number.
@@ -604,7 +604,7 @@ Rules for every plan:
    second permission round unless a gate is red or an owner decision is
    missing.
 
-### C1. NocoBase - custom task fields (schema v25)
+### C1. NocoBase - custom task fields (schema v26)
 
 Code-complete with an errata section. Follow its own "Remaining work before
 this plan is implemented":
@@ -618,38 +618,38 @@ this plan is implemented":
   `FIELD_KEYS`; `js/mmgr-custom-fields.js` loads after `mmgr-utils.js`.
 - WBS cells, Kanban chips and the board filter share one field list.
 - New model tests and the browser harness, three edits, field-guide card.
-- Migration takes **schema v25**, not the plan's v23.
+- Migration takes **schema v26**, not the plan's v23.
 
-### C2. Leantime - idea intake and merged agenda (schema v26)
+### C2. Leantime - idea intake and merged agenda (schema v27)
 
 The largest plan: two pure models, two renderers, one 16-gate harness, roughly
 1,900 new lines and six new files. It adds the `Intake` nav group between
 `Plan` and `Collaborate`, and touches `addTask()` / `delTask()`. Re-derive
 those anchors against the NocoBase landing; whichever of C1 and C2 lands
 second re-derives the shared push object and the nav insertion point.
-Migration takes **schema v26**.
+Migration takes **schema v27**.
 
-### C3. AppFlowy - the project book (schema v27)
+### C3. AppFlowy - the project book (schema v28)
 
 Prose-only, four phases: page tree and body; blocks that read the project;
 templates that carry pages; the project book and handover pack. Before code,
 do a drafting pass that turns each phase into numbered tasks with files, exact
 steps, gates and commit subjects, saved in the plan file itself. No code until
-that pass is done. Migration takes **schema v27**.
+that pass is done. Migration takes **schema v28**.
 
-### C4. Platform - guarded transitions, audit, rules (schema v28)
+### C4. Platform - guarded transitions, audit, rules (schema v29)
 
 Prose-only, four phases: guarded transitions; transition history; rules; the
 approval pack and outbound summary. Same drafting pass first. Rules run after
 the triggering change, never veto it; fixed action vocabulary; imported rules
-arrive disabled. Migration takes **schema v28**.
+arrive disabled. Migration takes **schema v29**.
 
-### C5. Plane - cycles and modules (schema v29)
+### C5. Plane - cycles and modules (schema v30)
 
 Prose-only, four phases: cycles as records; backlog and cycle board; modules;
 honest cycle analytics and review. Same drafting pass first. The existing
 sprint object converts into the first cycle and stays readable for one
-release. Migration takes **schema v29**.
+release. Migration takes **schema v30**.
 
 ### Cross-plan collisions
 
@@ -699,7 +699,7 @@ incident log. No marketing number until F2 and F4 exist.
 a fully rebranded book from the owner's own site data; `pricing.html` already
 says "My MaNaGeR Rate Book", the calculator is the last place that says "JIC".
 G2 pilot contractors. G3 activation, week-4 retention, tickets, feedback
-button (queued after C1 so it does not share schema v25). G4 (added by the
+button (queued after C1 so it does not share schema v26). G4 (added by the
 second review pass): the landing and pricing copy never names the currency or
 the market - "JMD", "J$" and "Jamaica" appear zero times on `index.html`,
 `pricing.html` and `features.html`, while offline-first is already the
@@ -730,12 +730,12 @@ still parked is the type and spacing scale in `plan-ui.md`, which waits on the
 
 | Plan | Takes |
 |---|---|
-| Current | `SCHEMA_VERSION = 24` |
-| NocoBase | 25 |
-| Leantime | 26 |
-| AppFlowy | 27 |
-| Platform | 28 |
-| Plane | 29 |
+| Current | `SCHEMA_VERSION = 25` (v25 = BOQ bridge, H-2, landed 2026-11-05) |
+| NocoBase | 26 |
+| Leantime | 27 |
+| AppFlowy | 28 |
+| Platform | 29 |
+| Plane | 30 |
 
 Every plan's "migration 23" means this client migration, not a D1 SQL file.
 Move `SCHEMA_VERSION` and the `migrate()` key together. One number per landing

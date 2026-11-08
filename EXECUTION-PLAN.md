@@ -112,7 +112,7 @@ bug when it is the pin sync, and call a `saveFloatState()` that does not exist).
 
 | # | Phase | Status | Gate / evidence |
 |---|---|---|---|
-| 2.1 | **C1 NocoBase** custom task fields, schema v26 | Queued | Its DoD; write JSDoc on the new fields as they land |
+| 2.1 | **C1 NocoBase** custom task fields, schema v26 | **DONE 2026-11-08** | Schema v26 + `js/mmgr-custom-fields.js` (pure model, 19 node tests), Fields sheet on the house modal chrome, schema-driven WBS header/cells + REQ badge, Kanban chips + persisted board filter, `tools/qa-custom-fields.cjs` 9/9 (CI) |
 | 2.2 | **E7 `checkJs`** on state, cloud, billing | Queued - immediately after 2.1 | `npm run typecheck` in `static`; no silencer casts |
 | 2.3 | **C2 Leantime** idea intake + merged agenda, v27 | Queued - **split at its own phase boundary first** (4,634 lines, 60 tasks) | Its 16-gate harness |
 | 2.4 | **C3 AppFlowy** project book, v28 | Needs drafting pass, then build - **moved ahead of C4 2026-10-31**: "schema order is the contract" and v27 precedes v28 | Drafting pass first: anchors from code, task-level steps, gates |

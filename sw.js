@@ -595,7 +595,7 @@
 // service worker serves from its own cache - so a browser running the previous
 // deploy's bundle never executed the code that reveals the badge, and the new
 // HTML arrived with the badge hidden. It is now its OWN deferred script on
-// app.html (js/mmgr-billing-manage.js?v=552), loaded outside the bundle, and
+// app.html (js/mmgr-billing-manage.js?v=553), loaded outside the bundle, and
 // the badge starts VISIBLE in the markup: the script hides it only when the
 // server says the visitor is signed out. A stale bundle can no longer remove
 // the control. Changed shell assets: app.html, sw.js, js/mmgr-billing-manage.js,

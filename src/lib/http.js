@@ -173,6 +173,7 @@ export async function provenEmail(session, env) {
 
 export async function readSession(request, env) {
   const cookieHeader = request.headers.get('Cookie') || '';
+  /** @type {string|null} */
   let raw = null;
   cookieHeader.split(';').forEach(function (part) {
     const idx = part.indexOf('=');

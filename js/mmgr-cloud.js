@@ -1607,7 +1607,7 @@ var MMGR = window.MMGR || {};
   // then editor. On success the credential is kept for this session so
   // subsequent saves work without re-entering it.
   async function loadWithCode() {
-    const inp = $('cloud-code-in');
+    const inp = /** @type {HTMLInputElement|null} */ ($('cloud-code-in'));
     const code = normalizeCode((inp && inp.value) || '');
     if (!isCodeShape(code)) {
       setStatus('Enter the full 16-character code (XXXX-XXXX-XXXX-XXXX).', 'warn');
@@ -1716,16 +1716,18 @@ var MMGR = window.MMGR || {};
   // label , editor = can edit the granted sections, view = read-only everywhere
   // with only the granted sections visible/enabled.
   async function createEditor() {
-    const labelIn = $('cloud-editor-label-in');
+    const labelIn = /** @type {HTMLInputElement|null} */ ($('cloud-editor-label-in'));
     const label = ((labelIn && labelIn.value) || '').trim().slice(0, 60);
     if (!label) {
       setStatus('Give this code a label first (e.g. \u201CSite Super , Riverside\u201D).', 'warn');
       return;
     }
-    const roleIn = $('cloud-editor-role');
+    const roleIn = /** @type {HTMLSelectElement|null} */ ($('cloud-editor-role'));
     const role = roleIn && roleIn.value === 'view' ? 'view' : 'editor';
     const scope = [];
-    const boxes = document.querySelectorAll('#cloud-editor-scope-box input[type=checkbox]:checked');
+    const boxes = /** @type {NodeListOf<HTMLInputElement>} */ (
+      document.querySelectorAll('#cloud-editor-scope-box input[type=checkbox]:checked')
+    );
     for (let i = 0; i < boxes.length; i++) {
       scope.push(boxes[i].value);
     }
@@ -1812,7 +1814,7 @@ var MMGR = window.MMGR || {};
       return;
     }
     try {
-      const headers = {};
+      const headers = /** @type {Record<string,string>} */ ({});
       if (cred.header) {
         headers[cred.header] = cred.code;
       }
@@ -1890,7 +1892,7 @@ var MMGR = window.MMGR || {};
     }
     setStatus('Revoking code…', 'busy');
     try {
-      const headers = {};
+      const headers = /** @type {Record<string,string>} */ ({});
       if (cred.header) {
         headers[cred.header] = cred.code;
       }
@@ -1925,7 +1927,9 @@ var MMGR = window.MMGR || {};
   // =========================================================================
   async function createClientCode() {
     const scope = [];
-    const boxes = document.querySelectorAll('#cloud-client-scope-box input[type=checkbox]:checked');
+    const boxes = /** @type {NodeListOf<HTMLInputElement>} */ (
+      document.querySelectorAll('#cloud-client-scope-box input[type=checkbox]:checked')
+    );
     for (let i = 0; i < boxes.length; i++) {
       scope.push(boxes[i].value);
     }
@@ -1933,7 +1937,7 @@ var MMGR = window.MMGR || {};
       setStatus('Tick at least one section the client may see.', 'warn');
       return;
     }
-    const expiryIn = $('cloud-client-expiry');
+    const expiryIn = /** @type {HTMLInputElement|null} */ ($('cloud-client-expiry'));
     const days = expiryIn ? parseInt(expiryIn.value, 10) : 0;
     const cred = activeCredential();
     if (!cred || (!cred.header && !_sessOwner)) {
@@ -2002,7 +2006,7 @@ var MMGR = window.MMGR || {};
       return;
     }
     try {
-      const headers = {};
+      const headers = /** @type {Record<string,string>} */ ({});
       if (cred.header) {
         headers[cred.header] = cred.code;
       }
@@ -2077,7 +2081,7 @@ var MMGR = window.MMGR || {};
     }
     setStatus('Revoking client code…', 'busy');
     try {
-      const headers = {};
+      const headers = /** @type {Record<string,string>} */ ({});
       if (cred.header) {
         headers[cred.header] = cred.code;
       }
@@ -2115,14 +2119,16 @@ var MMGR = window.MMGR || {};
   // the owner's review queue (never applied directly).
   // =========================================================================
   async function createApiKey() {
-    const labelIn = $('cloud-apikey-label-in');
+    const labelIn = /** @type {HTMLInputElement|null} */ ($('cloud-apikey-label-in'));
     const label = ((labelIn && labelIn.value) || '').trim().slice(0, 60);
     if (!label) {
       setStatus('Give this key a label first (e.g. \u201CSite assistant\u201D).', 'warn');
       return;
     }
     const scope = [];
-    const boxes = document.querySelectorAll('#cloud-apikey-scope-box input[type=checkbox]:checked');
+    const boxes = /** @type {NodeListOf<HTMLInputElement>} */ (
+      document.querySelectorAll('#cloud-apikey-scope-box input[type=checkbox]:checked')
+    );
     for (let i = 0; i < boxes.length; i++) {
       scope.push(boxes[i].value);
     }
@@ -2131,15 +2137,15 @@ var MMGR = window.MMGR || {};
       return;
     }
     // H-5: the two budget switches. Both default off; propose implies read.
-    const bReadEl = $('cloud-apikey-budget-read');
-    const bWriteEl = $('cloud-apikey-budget-write');
+    const bReadEl = /** @type {HTMLInputElement|null} */ ($('cloud-apikey-budget-read'));
+    const bWriteEl = /** @type {HTMLInputElement|null} */ ($('cloud-apikey-budget-write'));
     const budgetRead = !!(bReadEl && bReadEl.checked);
     const budgetWrite = !!(bWriteEl && bWriteEl.checked);
     if (budgetWrite && !budgetRead) {
       setStatus('To propose budget changes a key must also be allowed to read the budget.', 'warn');
       return;
     }
-    const expiryIn = $('cloud-apikey-expiry');
+    const expiryIn = /** @type {HTMLInputElement|null} */ ($('cloud-apikey-expiry'));
     const days = expiryIn && expiryIn.value ? parseInt(expiryIn.value, 10) : 0;
     const cred = activeCredential();
     if (!cred || (!cred.header && !_sessOwner)) {
@@ -2221,7 +2227,7 @@ var MMGR = window.MMGR || {};
       return;
     }
     try {
-      const headers = {};
+      const headers = /** @type {Record<string,string>} */ ({});
       if (cred.header) {
         headers[cred.header] = cred.code;
       }
@@ -2326,8 +2332,8 @@ var MMGR = window.MMGR || {};
     if (!el || !el.id) {
       return;
     }
-    const read = $('cloud-apikey-budget-read');
-    const write = $('cloud-apikey-budget-write');
+    const read = /** @type {HTMLInputElement|null} */ ($('cloud-apikey-budget-read'));
+    const write = /** @type {HTMLInputElement|null} */ ($('cloud-apikey-budget-write'));
     if (el.id === 'cloud-apikey-budget-write' && el.checked && read) {
       read.checked = true;
     }
@@ -2421,7 +2427,7 @@ var MMGR = window.MMGR || {};
     }
     setStatus('Revoking API key\u2026', 'busy');
     try {
-      const headers = {};
+      const headers = /** @type {Record<string,string>} */ ({});
       if (cred.header) {
         headers[cred.header] = cred.code;
       }
@@ -2774,7 +2780,7 @@ var MMGR = window.MMGR || {};
       return '';
     }
     try {
-      const headers = {};
+      const headers = /** @type {Record<string,string>} */ ({});
       if (cred.header) {
         headers[cred.header] = cred.code;
       }
@@ -2879,7 +2885,7 @@ var MMGR = window.MMGR || {};
         })()
       : '<div class="sr-hint">This project is not linked to the cloud , the MCP server is not available until a cloud link exists (Controls ▸ Share &amp; Access).</div>';
     if (linked) {
-      var mcpUrlInput = $('mcp-url');
+      var mcpUrlInput = /** @type {HTMLInputElement|null} */ ($('mcp-url'));
       if (mcpUrlInput) {
         mcpUrlInput.value = window.location.origin + '/api/mcp/' + encodeURIComponent(pid());
       }
@@ -2976,7 +2982,7 @@ var MMGR = window.MMGR || {};
     if (!fields) {
       return null;
     }
-    let inp = $('del-pw');
+    let inp = /** @type {HTMLInputElement|null} */ ($('del-pw'));
     if (inp) {
       return inp;
     }
@@ -2991,7 +2997,7 @@ var MMGR = window.MMGR || {};
     return inp;
   }
   function _removeDelPwField() {
-    const inp = $('del-pw');
+    const inp = /** @type {HTMLInputElement|null} */ ($('del-pw'));
     if (inp && inp.parentNode) {
       inp.parentNode.removeChild(inp);
     }
@@ -3030,7 +3036,7 @@ var MMGR = window.MMGR || {};
     // Reopen must show the resting label (an Escape mid-hold can leave a
     // countdown label behind; cancel() only restores it while the modal is
     // still on, by design, so the reopen reset lives here).
-    const okBtn = $('del-ok');
+    const okBtn = /** @type {HTMLButtonElement|null} */ ($('del-ok'));
     if (okBtn) {
       okBtn.textContent = 'Delete project';
       okBtn.disabled = false;
@@ -3052,7 +3058,7 @@ var MMGR = window.MMGR || {};
     }
     _delBusy = false;
     _holdDelete.cancel();
-    const ok = $('del-ok');
+    const ok = /** @type {HTMLButtonElement|null} */ ($('del-ok'));
     if (ok) {
       ok.disabled = false;
       ok.textContent = 'Delete project';
@@ -3078,7 +3084,7 @@ var MMGR = window.MMGR || {};
     const TOTAL = 10;
     const LABEL = 'Delete project';
     function label(t) {
-      const ok = $('del-ok');
+      const ok = /** @type {HTMLButtonElement|null} */ ($('del-ok'));
       if (ok) {
         ok.textContent = t;
       }
@@ -3155,10 +3161,10 @@ var MMGR = window.MMGR || {};
     }
     const wrap = $('del-pw-wrap');
     const needsPw = !!(wrap && !wrap.hidden);
-    const pwInp = $('del-pw');
+    const pwInp = /** @type {HTMLInputElement|null} */ ($('del-pw'));
     const pw = needsPw && pwInp ? pwInp.value : '';
     _delBusy = true;
-    const ok = $('del-ok');
+    const ok = /** @type {HTMLButtonElement|null} */ ($('del-ok'));
     if (ok) {
       ok.disabled = true;
       ok.textContent = 'Deleting…';
@@ -4145,7 +4151,7 @@ var MMGR = window.MMGR || {};
         return;
       }
       const copies = data.copies || [];
-      const toggle = $('cloud-auto-broadcast');
+      const toggle = /** @type {HTMLInputElement|null} */ ($('cloud-auto-broadcast'));
       if (toggle) {
         toggle.checked = !!data.autoBroadcast;
       }
@@ -4229,7 +4235,7 @@ var MMGR = window.MMGR || {};
       setStatus('Owner code required.', 'warn');
       return;
     }
-    const toggle = $('cloud-auto-broadcast');
+    const toggle = /** @type {HTMLInputElement|null} */ ($('cloud-auto-broadcast'));
     const enabled = !!(toggle && toggle.checked);
     try {
       const res = await fetch(
@@ -4459,7 +4465,7 @@ var MMGR = window.MMGR || {};
       return null;
     }
     try {
-      const headers = {};
+      const headers = /** @type {Record<string,string>} */ ({});
       if (cred.header) {
         headers[cred.header] = cred.code;
       }
@@ -4481,7 +4487,7 @@ var MMGR = window.MMGR || {};
       return null;
     }
     try {
-      const headers = {};
+      const headers = /** @type {Record<string,string>} */ ({});
       if (cred.header) {
         headers[cred.header] = cred.code;
       }
@@ -4588,7 +4594,7 @@ var MMGR = window.MMGR || {};
   }
   function userMidEdit() {
     try {
-      const a = document.activeElement;
+      const a = /** @type {HTMLElement|null} */ (document.activeElement);
       if (!a) {
         return false;
       }
@@ -4611,7 +4617,7 @@ var MMGR = window.MMGR || {};
     }
     _syncBusy = true;
     try {
-      const headers = {};
+      const headers = /** @type {Record<string,string>} */ ({});
       if (cred.header) {
         headers[cred.header] = cred.code;
       }

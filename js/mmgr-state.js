@@ -158,6 +158,82 @@ var MMGR = window.MMGR || {};
  * @property {string} projectId
  * @property {string} projectName
  * @property {string} methodology    - 'waterfall'|'agile'|'hybrid'
+ * @property {boolean} [methodologyLocked] - set once the method is chosen
+ * @property {boolean} [crosshairOn]
+ * @property {Array<Object>} [fields] - custom field schema (v26)
+ * @property {{key:string, value:string}} [cfFilter] - board filter (v26)
+ * @property {Object} [meetingPromises] - promises carried between meetings of a kind
+ * @property {Object|null} [activeMeeting]
+ * @property {number} [nmeetid]
+ * @property {number} [nspid]
+ * @property {Array<Object>} [budgetBaselines]
+ * @property {Array<Object>} [budgetVariations]
+ * @property {number} [nblid]
+ * @property {Array<Object>} [logEntries]
+ * @property {Array<Object>} [commsEntries]
+ * @property {Array<Object>} [documents]
+ * @property {{name:string, start:string, end:string}} [sprint]
+ * @property {Array<Object>} [dailySnapshots]
+ * @property {Object} [defExpanded] - WBS collapse state by task id
+ * @property {Object} [dmaic]
+ * @property {Object|null} [baseline]
+ * @property {string|null} [baselineAutoAt]
+ * @property {Array<Object>} [fieldReportNotes]
+ * @property {Array<Object>} [aiInbox]
+ * @property {string} [weatherRegion]
+ * @property {string} [projectDeadline]
+ * @property {number|null} [siteLat]
+ * @property {number|null} [siteLon]
+ * @property {string} [sitePlace]
+ * @property {Object|null} [wxCache]
+ * @property {Array<Object>} [weatherLog]
+ * @property {number} [ldRate]
+ * @property {number} [wxViewDays]
+ * @property {{start:string, end:string, bufferDays:number}} [wxWindow]
+ * @property {boolean} [kbShowLeadtime]
+ * @property {string} [relLens]
+ * @property {Object} [kanban]
+ * @property {boolean} [hlCritical]
+ * @property {Object|null} [dailySnapshot]
+ * @property {boolean} [focusMode]
+ * @property {{count:number, lastDate:string|null}} [streak]
+ * @property {Array<Object>} [sentimentHistory]
+ * @property {string|null} [lastBackedUpAt]
+ * @property {Object} [flags] - feature flags
+ * @property {boolean} [calcUnitFlag]
+ * @property {boolean} [calcAiUnits]
+ * @property {boolean} [calcStickyPanel]
+ * @property {boolean} [calcSwitches]
+ * @property {boolean} [calcRenderScheduler]
+ * @property {boolean} [ganttExportV2]
+ * @property {boolean} [procPo]
+ * @property {boolean} [consentBanner]
+ * @property {boolean} [ratebookApi]
+ * @property {boolean} [dialogClickFix]
+ * @property {boolean} [comboboxPicker]
+ * @property {boolean} [settingRows]
+ * @property {boolean} [itemisedMaterials]
+ * @property {boolean} [goldBullion]
+ * @property {boolean} [perfBoot]
+ * @property {boolean} [sidebarGutter]
+ * @property {boolean} [sameTabNav]
+ * @property {boolean} [expiryWatcher]
+ * @property {boolean} [finishWatcher]
+ * @property {boolean} [ganttTidy]
+ * @property {boolean} [aiDock]
+ * @property {boolean} [localModel]
+ * @property {boolean} [globeContinuous]
+ * @property {boolean} [dotRailGhost]
+ * @property {boolean} [packsCalloutDismissed]
+ * @property {boolean} [packsEverEnabled]
+ * @property {Array<Object>} [errorLog]
+ * @property {Object} [slipCauses]
+ * @property {Object|null} [digestSnapshot]
+ * @property {Object} [aiOutputs]
+ * @property {Array<Object>} [aiChats]
+ * @property {Object} [packs]
+ * @property {Object} [supplierBook]
+ * @property {string} [updatedAt]
  * @property {number} workWeek       - hours per work week
  * @property {string} theme          - 'light'|'dark'
  * @property {string} userName
@@ -1731,7 +1807,7 @@ var MMGR = window.MMGR || {};
       } // already counted today
       const last = s.streak.lastDate ? new Date(s.streak.lastDate + 'T00:00:00Z') : null;
       const todayD = new Date(today + 'T00:00:00Z');
-      const gap = last ? Math.round((todayD - last) / 86400000) : 999;
+      const gap = last ? Math.round((todayD.getTime() - last.getTime()) / 86400000) : 999;
       s.streak.count = gap === 1 ? (s.streak.count || 0) + 1 : 1;
       s.streak.lastDate = today;
     } catch (e) {

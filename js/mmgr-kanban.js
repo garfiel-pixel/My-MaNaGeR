@@ -48,7 +48,7 @@ var MMGR = window.MMGR || {};
     if (isNaN(da.getTime()) || isNaN(db.getTime())) {
       return null;
     }
-    return Math.round((da - db) / DAY);
+    return Math.round((da.getTime() - db.getTime()) / DAY);
   }
 
   function defaultSettings() {

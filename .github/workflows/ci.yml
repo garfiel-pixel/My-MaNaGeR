@@ -1378,6 +1378,15 @@ jobs:
         id: qa-landing-ui
         run: node tools/qa-landing-ui.cjs
 
+      # I-1 CLIENT regression (forged-cookie Playwright): boots its OWN local
+      # wrangler dev with a forged Google session and drives the real app.html to
+      # prove the owner code persists to localStorage and the signed-in account
+      # auto-claims the orphan on re-sign-in. Needs the chromium binary the
+      # browser jobs install above (npx playwright install chromium).
+      - name: "T4: I-1 client recovery (qa-i1-client)"
+        id: qa-i1-client
+        run: node tools/qa-i1-client.cjs
+
       - name: "T4: Stop static QA server"
         if: always()
         run: pkill -f "node serve.cjs" || true

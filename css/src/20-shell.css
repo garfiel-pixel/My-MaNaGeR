@@ -1405,6 +1405,37 @@ body.sidebar-open .sb-close .ico {
   body.sidebar-on #nav-scrim {
     display: none;
   }
+  /* I-14 (2026-11-08): collapsed "peek" rail. When the sidebar is on but not
+     pinned-open, show a narrow 56px icon-only rail (no labels) so a hover/focus
+     can expand it. The same #app-sidebar rail serves app.html home AND the
+     in-project UI, so one rule covers both surfaces. */
+  body.sidebar-on:not(.sidebar-open) #app-sidebar {
+    transform: translateX(0);
+    visibility: visible;
+    width: 56px;
+    font-size: 0;
+  }
+  body.sidebar-on:not(.sidebar-open) #app-main {
+    margin-left: 56px;
+  }
+  body.sidebar-on:not(.sidebar-open) #app-sidebar .sb-head,
+  body.sidebar-on:not(.sidebar-open) #app-sidebar .rail-ctl-row,
+  body.sidebar-on:not(.sidebar-open) #app-sidebar .sb-user {
+    display: none;
+  }
+  body.sidebar-on:not(.sidebar-open) #app-sidebar .nav-group {
+    padding: 0 6px;
+  }
+  body.sidebar-on:not(.sidebar-open) #app-sidebar .sec-btn,
+  body.sidebar-on:not(.sidebar-open) #app-sidebar .rail-link {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  body.sidebar-on:not(.sidebar-open) #app-sidebar .sec-btn .ico,
+  body.sidebar-on:not(.sidebar-open) #app-sidebar .rail-link .ico {
+    font-size: 1rem;
+  }
 }
 
 /* ---- Section Navigation ---- */

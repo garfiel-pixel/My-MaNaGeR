@@ -4840,6 +4840,12 @@ var MMGR = window.MMGR || {};
       return !(es && Array.isArray(es.sections) && es.sections.indexOf(section) > -1);
     },
     getCode: getCode,
+    // I-1 client harness (qa-i1-client.cjs) + symmetry with getCode: expose
+    // the persistence path so a test can simulate the anonymous-create step
+    // (persist owner code to localStorage keyed by pid) exactly as the real
+    // create handler does, then verify auto-claim on sign-in.
+    setCode: setCode,
+    clearCode: clearCode,
     getECode: getECode,
     getEScope: getEScope,
     // CLOUD-FIRST SYNC (PART 3, approved 2026-08-17): offline copies +

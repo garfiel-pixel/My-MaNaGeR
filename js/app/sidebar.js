@@ -13,6 +13,11 @@ var MMGR = window.MMGR || {};
   const U = ns.Utils;
   const SIDEBAR_KEY = 'mmgr_sidebar';
   let _sidebarUserTouched = false;
+  // I-14 (owner 2026-11-08): when the hamburger pins the rail fully open the
+  // hover-to-peek behaviour must NOT auto-collapse it. Tracks that explicit
+  // pin; hover/focus only open/close while this is false.
+  let _userPinned = false;
+  let _wired = false;
 
   function readDevicePref(key) {
     try {
@@ -65,8 +70,48 @@ var MMGR = window.MMGR || {};
     const on = !sidebarEnabled();
     writeDevicePref(SIDEBAR_KEY, on ? 'on' : 'off');
     document.body.classList.toggle('sidebar-open', on);
+    // I-14: an explicit hamburger toggle pins (or un-pins) the rail. While
+    // pinned the hover-to-peek handlers leave it alone.
+    _userPinned = on;
     syncSidebarChrome();
     pushSidebarBackend(on);
+  }
+
+  // I-14 (owner 2026-11-08): hover / keyboard focus peeks the collapsed icon
+  // rail open; leaving collapses it back. Desktop + fine pointer only - touch
+  // and mobile keep the tap/hamburger drawer pattern untouched.
+  function wireInteractions() {
+    if (_wired) {
+      return;
+    }
+    _wired = true;
+    const sb = U.$('app-sidebar');
+    if (!sb) {
+      return;
+    }
+    const desktop =
+      window.matchMedia && window.matchMedia('(min-width: 769px) and (pointer: fine)');
+    if (!desktop || !desktop.matches) {
+      return;
+    }
+    const openPeek = function () {
+      if (!_userPinned) {
+        setSidebarOpen(true);
+      }
+    };
+    const closePeek = function () {
+      if (!_userPinned) {
+        setSidebarOpen(false);
+      }
+    };
+    sb.addEventListener('mouseenter', openPeek);
+    sb.addEventListener('mouseleave', closePeek);
+    sb.addEventListener('focusin', openPeek);
+    sb.addEventListener('focusout', function (e) {
+      if (!_userPinned && !(e.relatedTarget && sb.contains(e.relatedTarget))) {
+        setSidebarOpen(false);
+      }
+    });
   }
 
   function pushSidebarBackend(on) {
@@ -162,6 +207,7 @@ var MMGR = window.MMGR || {};
       }
     });
     mo.observe(nav, { subtree: true, attributes: true, attributeFilter: ['class'] });
+    wireInteractions();
   }
 
   // ---- Export on ns.AppSidebar ----

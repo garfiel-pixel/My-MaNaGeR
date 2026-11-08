@@ -1091,8 +1091,64 @@
   // EVERY door into a signed-in state refreshes the list: a Google or email
   // sign-in (mmgr:google-signed-in) and the session restore, which only
   // broadcasts mmgr:user-changed.
+  // ---- I-1 fix (2026-11-08): auto-claim held owner codes on sign-in ----
+  // mmgr-cloud.js (loaded on project.html) owns the canonical autoClaimHeldProjects,
+  // but the launcher (app.html) never loads that module - and "My Cloud Projects"
+  // lives here. So the claim glue must also run on this page. On sign-in, scan any
+  // owner code this device persisted (mmgr_cloud_code_<pid>) and re-key each
+  // NULL-sub project onto the signed-in account via POST /claim, then the caller
+  // refreshes the list. Mirrors mmgr-cloud.js autoClaimHeldProjects().
+  function collectHeldOwnerCodes() {
+    const out = [];
+    try {
+      const prefix = 'mmgr_cloud_code_';
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k || k.indexOf(prefix) !== 0) continue;
+        const code = localStorage.getItem(k);
+        if (!code || code === 'session') continue;
+        const pidv = k.slice(prefix.length);
+        if (pidv) out.push({ pid: pidv, code: code });
+      }
+    } catch (e) {}
+    return out;
+  }
+
+  async function autoClaimHeldProjects() {
+    let signedIn = false;
+    try {
+      const me = await fetch('/api/auth/me', { credentials: 'same-origin' });
+      const body = await me.json().catch(function () {
+        return {};
+      });
+      signedIn = !!(body && body.ok);
+    } catch (e) {
+      /* offline / static host */
+    }
+    if (!signedIn) return;
+    const held = collectHeldOwnerCodes();
+    if (!held.length) return;
+    for (const h of held) {
+      try {
+        const res = await fetch('/api/cloud/projects/' + encodeURIComponent(h.pid) + '/claim', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ownerCode: h.code })
+        });
+        await res.json().catch(function () {
+          return {};
+        });
+      } catch (e) {
+        /* cloud unreachable; keep the code for the next sign-in */
+      }
+    }
+  }
+
   document.addEventListener('mmgr:google-signed-in', function () {
-    loadList();
+    // Claim any locally-held owner code first, then refresh so the freshly
+    // linked project appears in My Cloud Projects without a manual reload.
+    autoClaimHeldProjects().then(loadList);
   });
   // A project linked from the drawer is a new row on this list. Re-fetch on
   // the event so the launcher never shows the pre-link answer.
@@ -1100,7 +1156,7 @@
     loadList();
   });
   document.addEventListener('mmgr:user-changed', function () {
-    loadList();
+    autoClaimHeldProjects().then(loadList);
   });
   // OWNER 2026-11-06 (a cloud project saved on another device did not show up):
   // the list was fetched ONCE at boot, so a tab that stayed open kept its first

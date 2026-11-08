@@ -99,3 +99,28 @@ Server: local `serve.cjs` on `:8799`, disk state at this commit.
 - [x] Every U-A1…U-A8 has a verdict above.
 - [x] Every task I-4…I-14 annotated "as written" or "adapted as follows".
 - [x] Proposed improvements listed under (C), marked owner-to-approve.
+
+---
+
+## D. Claims table — every landing claim backed by a real module (I-8)
+
+Owner directive: no invented testimonials, numbers or competitor comparisons; every
+stated claim must map to a module that actually produces it. Counts come from the
+single constant (`window.MMGR_PANEL_COUNT` / `MMGR_MODULE_COUNT`).
+
+| # | Claim on landing page | Backing module / behaviour | Honest wording check |
+|---|----------------------|---------------------------|---------------------|
+| 1 | "15 panels, wired together" | The 15 `.fcard` feature panels (WBS+Gantt, Kanban, Budget/EVM, Risk+Monte Carlo, RACI, Voice→Claims, Weather, Offline, Health/Portfolio, Meetings, Claims, Registers, Bid Leveling, Lookahead, AI) | Count sourced from `MMGR_PANEL_COUNT`; matches the feature grid. |
+| 2 | "Enter a number once… shows up everywhere" | Shared `CLOUD_SECTIONS` state + `cloudScopeMerge` — one state object feeds every panel | True: single project state. |
+| 3 | "0 servers required" / "Offline first by design" | `sw.js` service worker + localStorage/IndexedDB persistence; no server needed to run | True: PWA offline-first. |
+| 4 | "100% your data stays yours" | Local-first; optional Google Drive sync is opt-in; cloud + AI are optional | Worded to match: cloud/AI optional, not "never leaves device" (AI relay sends prompt). |
+| 5 | "Account is optional. Your data is not." | Works with zero sign-in; sign-in only unlocks backup/sync | True. |
+| 6 | "4 solution areas" (project execution, cost management, resource management, lifecycle) | WBS/Gantt/Kanban/Lookahead; Budget/EVM/Spend; People/RACI; Charter→Bid Leveling→Closeout/Registers/Claims | Count from `MMGR_MODULE_COUNT`; each maps to real panels. |
+| 7 | "Who we serve" (GCs, public sector, subs, QS, estimators, anyone) | No licence gating by trade; open workspace | True: no trade restriction. |
+| 8 | "Monte Carlo — 1,000-trial simulations, P50, hit probability" | `risk.js` Monte Carlo engine | True (engine present). |
+| 9 | "Earned-value: SPI, CPI, EAC, TCPI" | Budget/EVM panel computes from budget lines + spend log | True. |
+| 10 | "Voice → Notes & Claims, Whisper in your browser, no cloud" | `mmgr-voice.js` WebGPU/WebAssembly Whisper, offline | True for the transcription path; claims pack built locally. |
+| 11 | "Field-level merge" (newest write wins per field) | `cloudClampToWriteScope` + field-level merge on sync | True. |
+
+No "Request a demo", no sales-hungry CTA, no customer stories, no competitor names.
+The only CTAs are **Get Started** and **View Field Guide**.

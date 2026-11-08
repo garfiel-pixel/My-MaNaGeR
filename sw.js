@@ -702,7 +702,7 @@
 // BOQ, Record a delivery, Weekly tracking, MCP budget permissions and the
 // Approval preview, with the closing sheet count and footer links updated.
 // Changed shell assets: mymanager-field-guide.html.
-const CACHE = 'mmgr-shell-v592';
+const CACHE = 'mmgr-shell-v593';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

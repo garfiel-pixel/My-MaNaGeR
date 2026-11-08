@@ -379,6 +379,21 @@ jobs:
         id: verify-auth-worker
         run: node tools/verify-auth-worker.mjs
 
+      # I-6/I-7/I-8 landing-page gates (BUDGET-BOQ-MCP 2026-11-05). Pure-static
+      # (no Chrome): copy/CTA discipline, photography provenance + size, and the
+      # bento rotator flip contract. Each is registered in docs/CI-TEST-COVERAGE.md.
+      - name: "T1: Landing copy + CTA gate (T-COPY)"
+        id: qa-copy
+        run: node tools/qa-copy-gate.cjs
+
+      - name: "T1: Landing photography provenance + size (T-PHOTOS)"
+        id: qa-photos
+        run: node tools/qa-photos-gate.cjs
+
+      - name: "T1: Landing bento rotator flip contract (T-BENTO)"
+        id: qa-bento
+        run: node tools/qa-bento-gate.cjs
+
 
       # Chrome is needed from here on: the page-health sweep in T2 drives it
       # against wrangler dev, and the T3 batteries drive it directly.

@@ -5716,3 +5716,181 @@ html body.dark-mode .btn-gold:disabled {
     max-width: 100%;
   }
 }
+
+/* ===================== WHY MY MANAGER (I-8, 2026-11) ===================== */
+.why-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin: 8px 0 36px;
+}
+.why-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 22px 20px;
+}
+.why-card h3 {
+  margin: 0 0 8px;
+  font-size: 1.08rem;
+  color: var(--ink);
+}
+.why-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.96rem;
+  line-height: 1.55;
+}
+.section-sub {
+  margin: 26px 0 14px;
+}
+.section-sub h3 {
+  margin: 0 0 6px;
+  font-size: 1.22rem;
+  color: var(--ink);
+}
+.section-sub h3 [data-count] {
+  color: var(--gold-ink);
+}
+.section-sub p {
+  margin: 0;
+  color: var(--muted);
+  max-width: 64ch;
+}
+.solutions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  margin: 6px 0 30px;
+}
+.sol-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 20px 18px;
+}
+.sol-card h4 {
+  margin: 6px 0 8px;
+  font-size: 1.02rem;
+  color: var(--ink);
+}
+.sol-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+.sol-ico {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: rgba(197, 160, 86, 0.14);
+  color: var(--gold-ink);
+}
+.sol-ico .ico {
+  width: 20px;
+  height: 20px;
+}
+.why-cta {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+@media (max-width: 980px) {
+  .why-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .solutions {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 560px) {
+  .why-grid,
+  .solutions {
+    grid-template-columns: 1fr;
+  }
+  .section-sub p {
+    max-width: none;
+  }
+}
+
+/* ===================== BENTO (I-6, 2026-11) ===================== */
+/* 1 + 2 + 1: one big card, two small, one wide. The cards are moved into the
+   slots by js/marketing.js; the pool is hidden once the bento is active so only
+   the four slots show (never a tall stack of every panel). */
+.features[data-bento-pool] {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+#features.bento-on .features[data-bento-pool] {
+  display: none;
+}
+.bento {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  grid-template-areas:
+    'big col'
+    'wide wide';
+  gap: 18px;
+  margin-bottom: 18px;
+}
+.bento-big {
+  grid-area: big;
+}
+.bento-col {
+  grid-area: col;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 18px;
+}
+.bento-wide {
+  grid-area: wide;
+}
+.bento-slot {
+  display: flex;
+}
+.bento-slot > .fcard {
+  width: 100%;
+  margin: 0;
+}
+.bento-seeall {
+  margin: 4px 0 0;
+}
+/* The slot only ever holds one card; force the slotted card to fill its slot. */
+.bento-sm > .fcard {
+  min-height: 0;
+}
+@media (max-width: 720px) {
+  .bento {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'big'
+      'col'
+      'wide';
+  }
+  .bento-col {
+    grid-template-rows: none;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 460px) {
+  .bento,
+  .bento-col {
+    grid-template-columns: 1fr;
+    grid-template-areas: none;
+  }
+  .bento-col {
+    display: contents;
+  }
+  /* Phone: exactly four slots stacked, never more. */
+  .bento-big,
+  .bento-sm,
+  .bento-wide {
+    grid-area: auto;
+  }
+}

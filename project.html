@@ -1940,6 +1940,11 @@
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-flag"></use></svg> Report Issue</span><span class="g6"><button class="btn btn-n btn-s" data-action="reportIssueCopy" title="Copy a sanitized diagnostic package to the clipboard"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy report</button><button class="btn btn-n btn-s" data-action="reportIssueDownload" title="Download the diagnostic package as a .txt file"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Download</button></span></div>
     <div class="sr"><span class="sl">Include project context</span><label class="tgl"><input type="checkbox" id="report-ctx-tgl" aria-label="Include project context in the report" data-action="tglReportContext"><span class="tsl"></span></label></div>
     <div class="sr-hint">Packages a sanitized snapshot: active panel, packs, non-sensitive counts, and the client error log. Budget figures, risk descriptions, and names are NEVER included unless you check <strong>Include project context</strong> (adds project name, task/risk/issue lists, and budget totals). Nothing is sent anywhere , you copy or download it yourself.</div>
+    <!-- G3 (owner 2026-11-08): in-app feedback entry. Routes to the contact
+         form's Feedback topic (one moderated channel, Turnstile already there,
+         no new endpoint or schema). -->
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg> Send Feedback</span><span class="g6"><button class="btn btn-n btn-s" data-action="openFeedback" title="Open the feedback form with the Feedback topic pre-selected"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg> Give feedback</button></span></div>
+    <div class="sr-hint">Tell us what to build next, what confused you, or what broke. Opens the contact form with the Feedback topic already selected.</div>
     <!-- DIR-1b: opt-in remote error reporting , OFF by default, device-level
          slot (never project state), POSTs routed through MMGR.Net's
          circuit-breaker. Zero network activity while off. -->

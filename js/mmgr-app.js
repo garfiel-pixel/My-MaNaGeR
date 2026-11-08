@@ -1201,6 +1201,18 @@ var MMGR = window.MMGR || {};
     );
   }
 
+  // G3 (owner 2026-11-08): in-app feedback entry. Routes to the existing
+  // contact form with the Feedback topic pre-selected - one moderated channel,
+  // Turnstile already on that page, no new endpoint and no new schema.
+  function openFeedback() {
+    try {
+      window.open('contact.html?topic=Feedback', '_blank', 'noopener');
+      showToast('Opening the feedback form in a new tab.', 'ok');
+    } catch (e) {
+      showToast('Could not open the feedback form.', 'err');
+    }
+  }
+
   // ---- DIR-1b: opt-in remote error reporting ----
   // Device-level preference (localStorage, never project state), off by
   // default. The actual POST lives in mmgr-errors.js (routed through
@@ -4136,6 +4148,7 @@ var MMGR = window.MMGR || {};
     // MASTER-ACTION-PLAN Rank 6.1
     reportIssueCopy: reportIssueCopy,
     reportIssueDownload: reportIssueDownload,
+    openFeedback: openFeedback,
     tglReportContext: tglReportContext,
     clearMlcTimer: clearMlcTimer,
     cpAllPage: cpAllPage,
@@ -5498,6 +5511,7 @@ window.MMGR = MMGR;
     // MASTER-ACTION-PLAN Rank 6.1 , sanitized report package (read-only).
     reportIssueCopy: () => window.MMGR.App.reportIssueCopy(),
     reportIssueDownload: () => window.MMGR.App.reportIssueDownload(),
+    openFeedback: () => window.MMGR.App.openFeedback(),
     tglReportContext: () => window.MMGR.App.tglReportContext(),
     setErrWebhook: el => window.MMGR.App.setErrWebhook(el),
     // Rank 3.1: Core Mode vs Advanced Packs , toggling a pack mutates
@@ -5883,6 +5897,7 @@ window.MMGR = MMGR;
     // is read-only; the context toggle is a session-only UI pref.
     reportIssueCopy: 1,
     reportIssueDownload: 1,
+    openFeedback: 1,
     tglReportContext: 1,
     // Rank 4.5: Google identity is a device-level label, never a gate to
     // project data , signing in/out/dismissing never mutates project state.

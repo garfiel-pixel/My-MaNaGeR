@@ -1349,6 +1349,21 @@
       var el = document.getElementById(id);
       return el ? el.value.trim() : '';
     }
+    // G3 (owner 2026-11-08): the in-app "Send feedback" button opens this page
+    // with ?topic=Feedback so the feedback channel is one tap away. Match the
+    // option case-insensitively; an unknown value leaves the default alone.
+    try {
+      var _tp = new URLSearchParams(window.location.search).get('topic');
+      var _sel = document.getElementById('ct-topic');
+      if (_tp && _sel && _sel.options) {
+        for (var _i = 0; _i < _sel.options.length; _i++) {
+          if (String(_sel.options[_i].value).toLowerCase() === _tp.toLowerCase()) {
+            _sel.selectedIndex = _i;
+            break;
+          }
+        }
+      }
+    } catch (e) { /* no URLSearchParams: keep the default topic */ }
     function setStatus(msg, isErr) {
       if (!status) {
         return;

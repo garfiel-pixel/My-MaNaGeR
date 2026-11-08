@@ -3175,6 +3175,245 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // ---- Custom task fields (NocoBase-inspired collection schema) ----
+  // The sheet reuses the house modal chrome (.kb-sheet + .open, .mb/.mh/
+  // .mbody/.mf), so it inherits the layering, the focus restore and the
+  // shortcut-layer stand-down without a second visibility mechanism.
+  let _cfLastFocus = null;
+
+  function renderFieldList() {
+    const box = U.$('cf-list');
+    if (!box) {
+      return;
+    }
+    const C = ns.CustomFields;
+    const s = S();
+    if (!C || !s) {
+      return;
+    }
+    const fields = C.list(s);
+    const readOnly = typeof isReadonly === 'function' && isReadonly();
+    if (!fields.length) {
+      box.innerHTML =
+        '<div class="es" style="padding:10px;font-size:.78rem">No custom fields yet. The WBS and the board work as before, add a field only when the project needs one.</div>';
+      return;
+    }
+    box.innerHTML = fields
+      .map(function (f, i) {
+        const key = U.escapeHtml(f.key);
+        const typeLabel = C.TYPES[f.type].label;
+        const options = f.type === 'select' ? f.options.join(', ') : typeLabel;
+        return (
+          '<div class="cf-row" data-key="' +
+          key +
+          '">' +
+          '<input type="text" class="ctl-in cf-label" value="' +
+          U.escapeHtml(f.label) +
+          '" maxlength="40" data-action="updCustomField" data-key="' +
+          key +
+          '" data-prop="label" aria-label="Field label"' +
+          (readOnly ? ' disabled' : '') +
+          '>' +
+          '<span class="cf-type" title="' +
+          U.escapeHtml(options) +
+          '">' +
+          U.escapeHtml(typeLabel) +
+          '</span>' +
+          '<label class="cf-flag"><input type="checkbox" data-action="tglCustomProp" data-key="' +
+          key +
+          '" data-prop="showInWbs"' +
+          (f.showInWbs !== false ? ' checked' : '') +
+          (readOnly ? ' disabled' : '') +
+          '> WBS</label>' +
+          '<label class="cf-flag"><input type="checkbox" data-action="tglCustomProp" data-key="' +
+          key +
+          '" data-prop="showInCard"' +
+          (f.showInCard ? ' checked' : '') +
+          (readOnly ? ' disabled' : '') +
+          '> Card</label>' +
+          '<label class="cf-flag"><input type="checkbox" data-action="tglCustomProp" data-key="' +
+          key +
+          '" data-prop="required"' +
+          (f.required ? ' checked' : '') +
+          (readOnly ? ' disabled' : '') +
+          '> Required</label>' +
+          '<button class="btn btn-s btn-n" data-action="moveCustomField" data-key="' +
+          key +
+          '" data-dir="-1" aria-label="Move field up"' +
+          (readOnly || i === 0 ? ' disabled' : '') +
+          '>&#8593;</button>' +
+          '<button class="btn btn-s btn-n" data-action="moveCustomField" data-key="' +
+          key +
+          '" data-dir="1" aria-label="Move field down"' +
+          (readOnly || i === fields.length - 1 ? ' disabled' : '') +
+          '>&#8595;</button>' +
+          '<button class="btn btn-s btn-d" data-action="delCustomField" data-key="' +
+          key +
+          '" aria-label="Remove field"' +
+          (readOnly ? ' disabled' : '') +
+          '>Remove</button>' +
+          '</div>'
+        );
+      })
+      .join('');
+  }
+
+  function openFields() {
+    const modal = U.$('cf-modal');
+    if (!modal) {
+      return;
+    }
+    renderFieldList();
+    _cfLastFocus = document.activeElement;
+    modal.classList.add('open');
+    const first = U.$('cf-label');
+    if (first && first.focus) {
+      first.focus();
+    }
+  }
+
+  function closeFields() {
+    const modal = U.$('cf-modal');
+    if (modal) {
+      modal.classList.remove('open');
+    }
+    if (_cfLastFocus && _cfLastFocus.focus) {
+      _cfLastFocus.focus();
+    }
+    _cfLastFocus = null;
+  }
+
+  function addCustomField() {
+    const label = U.$('cf-label');
+    const type = U.$('cf-type');
+    const options = U.$('cf-options');
+    const wbs = U.$('cf-wbs');
+    const card = U.$('cf-card');
+    const req = U.$('cf-req');
+    if (!label || !type) {
+      return;
+    }
+    let result = null;
+    ns.State.updateState(function (st) {
+      result = ns.CustomFields.add(st, {
+        label: label.value,
+        type: type.value,
+        options: options ? options.value : '',
+        showInWbs: !wbs || wbs.checked,
+        showInCard: !!(card && card.checked),
+        required: !!(req && req.checked)
+      });
+    });
+    if (!result || !result.ok) {
+      showToast(result ? result.reason : 'Could not add that field.', 'warn');
+      return;
+    }
+    label.value = '';
+    if (options) {
+      options.value = '';
+    }
+    showToast('Field added.', 'ok');
+    renderFieldList();
+    R.renderWbs();
+    R.renderKanban();
+  }
+
+  function updCustomField(el) {
+    const key = el && el.getAttribute('data-key');
+    if (!key) {
+      return;
+    }
+    const prop = el.getAttribute('data-prop');
+    let result = null;
+    ns.State.updateState(function (st) {
+      const patch = {};
+      patch[prop] = el.value;
+      result = ns.CustomFields.update(st, key, patch);
+    });
+    if (result && !result.ok) {
+      showToast(result.reason, 'warn');
+      el.value = ns.CustomFields.find(S(), key) ? ns.CustomFields.find(S(), key).label : '';
+      return;
+    }
+    renderFieldList();
+    R.renderWbs();
+    R.renderKanban();
+  }
+
+  function tglCustomProp(el) {
+    const key = el && el.getAttribute('data-key');
+    const prop = el && el.getAttribute('data-prop');
+    if (!key || !prop) {
+      return;
+    }
+    ns.State.updateState(function (st) {
+      const patch = {};
+      patch[prop] = el.checked;
+      ns.CustomFields.update(st, key, patch);
+    });
+    renderFieldList();
+    R.renderWbs();
+    R.renderKanban();
+  }
+
+  function moveCustomField(el) {
+    const key = el && el.getAttribute('data-key');
+    const dir = parseInt(el && el.getAttribute('data-dir'), 10);
+    if (!key || isNaN(dir)) {
+      return;
+    }
+    ns.State.updateState(function (st) {
+      ns.CustomFields.move(st, key, dir);
+    });
+    renderFieldList();
+    R.renderWbs();
+    R.renderKanban();
+  }
+
+  function delCustomField(el) {
+    const key = el && el.getAttribute('data-key');
+    const field = key && ns.CustomFields ? ns.CustomFields.find(S(), key) : null;
+    if (!field) {
+      return;
+    }
+    askConfirm({
+      title: 'Remove field?',
+      message:
+        'Remove "' +
+        field.label +
+        '" and every value stored for it on every task. This cannot be undone from here.',
+      confirmLabel: 'Remove',
+      danger: true,
+      onOk: function () {
+        ns.State.updateState(function (st) {
+          ns.CustomFields.remove(st, key);
+        });
+        showToast('Field removed.', 'ok');
+        renderFieldList();
+        R.renderWbs();
+        R.renderKanban();
+      }
+    });
+  }
+
+  function setCfFilter(el) {
+    const role = el && el.getAttribute('data-role');
+    const C = ns.CustomFields;
+    const s = S();
+    if (!C || !s || !role) {
+      return;
+    }
+    const raw = (s && s.cfFilter) || { key: '', value: '' };
+    ns.State.updateState(function (st) {
+      if (role === 'key') {
+        C.setFilter(st, el.value, '');
+      } else {
+        C.setFilter(st, raw.key, el.value);
+      }
+    });
+    R.renderKanban();
+  }
+
   // ---- Kanban column limits (soft) ----
   // Kanboard semantics: task_limit = 0 means unlimited, and exceeding a
   // limit is a warning, never a hard block. A site manager must still be
@@ -4180,6 +4419,14 @@ var MMGR = window.MMGR || {};
     setGanttWindow: setGanttWindow,
     setGanttWindowDate: setGanttWindowDate,
     tglLeadtimeLane: tglLeadtimeLane,
+    openFields: openFields,
+    closeFields: closeFields,
+    addCustomField: addCustomField,
+    updCustomField: updCustomField,
+    tglCustomProp: tglCustomProp,
+    moveCustomField: moveCustomField,
+    delCustomField: delCustomField,
+    setCfFilter: setCfFilter,
     openRel: openRel,
     closeRel: closeRel,
     addRel: addRel,
@@ -5360,6 +5607,20 @@ window.MMGR = MMGR;
     setGanttWindow: el => window.MMGR.App.setGanttWindow(el),
     setGanttWindowDate: el => window.MMGR.App.setGanttWindowDate(el),
     tglLeadtimeLane: el => window.MMGR.App.tglLeadtimeLane(el),
+    openFields: () => window.MMGR.App.openFields(),
+    closeFields: () => window.MMGR.App.closeFields(),
+    addCustomField: () => window.MMGR.App.addCustomField(),
+    updCustomField: el => window.MMGR.App.updCustomField(el),
+    tglCustomProp: el => window.MMGR.App.tglCustomProp(el),
+    moveCustomField: el => window.MMGR.App.moveCustomField(el),
+    delCustomField: el => window.MMGR.App.delCustomField(el),
+    setCfFilter: el => window.MMGR.App.setCfFilter(el),
+    tglTaskCustom: el =>
+      window.MMGR.Tasks.tglTaskCustom(
+        el.getAttribute('data-id'),
+        el.getAttribute('data-field'),
+        el.checked
+      ),
     openRel: el => window.MMGR.App.openRel(el),
     closeRel: () => window.MMGR.App.closeRel(),
     addRel: () => window.MMGR.App.addRel(),
@@ -5716,6 +5977,11 @@ window.MMGR = MMGR;
     // themselves stay blocked by saveKbWip's own guard.
     kbWip: 1,
     kbWipClose: 1,
+    // Reading or closing the custom-fields sheet mutates nothing. Every
+    // control that writes the schema or a value is deliberately absent, so
+    // guardReadonly refuses it with the standard view-only toast.
+    openFields: 1,
+    closeFields: 1,
     // Work package relations: opening / closing the task-links sheet is a
     // pure read (view-only sessions can inspect the graph). addRel / delRel
     // mutate task.relations and setRelLens persists state.relLens - all
@@ -6131,6 +6397,8 @@ window.MMGR = MMGR;
         action === 'addRaciPersonFromPicker' ||
         action === 'updField' ||
         action === 'updTaskField' ||
+        action === 'updCustomField' ||
+        action === 'setCfFilter' ||
         action === 'saveKbWip' ||
         action === 'setRelLens' ||
         action === 'updKPI' ||

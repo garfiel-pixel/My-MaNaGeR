@@ -1921,6 +1921,133 @@ var MMGR = window.MMGR || {};
     );
   }
 
+  // The WBS header is the first block that reads the field schema. The
+  // eight fixed columns are the built-in task fields; every column after
+  // Status comes from state.fields, in array order.
+  function renderWbsHead() {
+    const row = $('wbs-head-row');
+    if (!row) {
+      return;
+    }
+    const C = ns.CustomFields;
+    const cols = C ? C.visible(S(), 'wbs') : [];
+    let html =
+      '<th class="w38">ID</th><th>Task Name</th><th class="w130">Assignee</th>' +
+      '<th class="w70">Duration</th><th class="w120">Start</th>' +
+      '<th class="w120">End</th><th class="w120">Status</th>';
+    cols.forEach(function (f) {
+      const width = Math.max(60, Math.min(300, parseInt(f.width, 10) || 120));
+      html +=
+        '<th style="width:' +
+        width +
+        'px" title="' +
+        U.escapeHtml(C.TYPES[f.type].label) +
+        ' field">' +
+        U.escapeHtml(f.label) +
+        '</th>';
+    });
+    html += '<th class="w96">Actions</th>';
+    row.innerHTML = html;
+  }
+
+  // One editor cell per visible field. Every editor uses the existing
+  // updTaskField action, except a checkbox, which needs the checked flag
+  // rather than the value string.
+  function customFieldCells(t) {
+    const C = ns.CustomFields;
+    if (!C) {
+      return '';
+    }
+    const s = S();
+    return C.visible(s, 'wbs')
+      .map(function (f) {
+        const value = C.valueOf(t, f);
+        const id = U.escapeHtml(t.id);
+        const key = U.escapeHtml(f.key);
+        const label = U.escapeHtml(f.label);
+        let control;
+        if (f.type === 'checkbox') {
+          control =
+            '<input type="checkbox" data-action="tglTaskCustom" data-id="' +
+            id +
+            '" data-field="' +
+            key +
+            '" aria-label="' +
+            label +
+            '"' +
+            (value === true ? ' checked' : '') +
+            '>';
+        } else if (f.type === 'select') {
+          const options = ['<option value="">--</option>']
+            .concat(
+              f.options.map(function (option) {
+                const selected = String(value) === option ? ' selected' : '';
+                return (
+                  '<option value="' +
+                  U.escapeHtml(option) +
+                  '"' +
+                  selected +
+                  '>' +
+                  U.escapeHtml(option) +
+                  '</option>'
+                );
+              })
+            )
+            .join('');
+          control =
+            '<select data-action="updTaskField" data-id="' +
+            id +
+            '" data-field="' +
+            key +
+            '" aria-label="' +
+            label +
+            '">' +
+            options +
+            '</select>';
+        } else {
+          const type = f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text';
+          control =
+            '<input type="' +
+            type +
+            '" value="' +
+            U.escapeHtml(value) +
+            '" data-action="updTaskField" data-id="' +
+            id +
+            '" data-field="' +
+            key +
+            '" aria-label="' +
+            label +
+            '"' +
+            (f.type === 'number' ? ' step="any"' : '') +
+            (f.type === 'text' ? ' maxlength="200"' : '') +
+            '>';
+        }
+        return '<td class="wbs-cf">' + control + '</td>';
+      })
+      .join('');
+  }
+
+  function requiredBadge(t) {
+    const C = ns.CustomFields;
+    if (!C) {
+      return '';
+    }
+    const missing = C.missing(S(), t);
+    if (!missing.length) {
+      return '';
+    }
+    const names = missing
+      .map(function (f) {
+        return U.escapeHtml(f.label);
+      })
+      .join(', ');
+    return (
+      '<span class="badge br" style="font-size:.6rem;padding:1px 4px;margin-left:4px" title="Missing required: ' +
+      names +
+      '">REQ</span>'
+    );
+  }
+
   function renderWbs() {
     const s = S();
     if (!s) {
@@ -1930,13 +2057,19 @@ var MMGR = window.MMGR || {};
     if (!body) {
       return;
     }
+    // The schema can change while the panel is open, so the header is
+    // rebuilt on every WBS render, not only on section entry.
+    renderWbsHead();
     // RESTORE-7: keep the schedule-issues banner in sync with the rows below.
     renderWbsAlerts();
     const tasks = s.tasks || [];
     const defExpanded = s.defExpanded || {};
     if (tasks.length === 0) {
+      const cfCols = ns.CustomFields ? ns.CustomFields.visible(s, 'wbs').length : 0;
       body.innerHTML =
-        '<tr><td colspan="8" class="wbs-empty"><div>No tasks yet.</div><div style="display:flex;gap:6px;justify-content:center"><button class="btn btn-g btn-s" data-action="addTask">+ Add Task</button><button class="btn btn-n btn-s" data-action="openWbsImport">Import from text</button></div></td></tr>';
+        '<tr><td colspan="' +
+        (8 + cfCols) +
+        '" class="wbs-empty"><div>No tasks yet.</div><div style="display:flex;gap:6px;justify-content:center"><button class="btn btn-g btn-s" data-action="addTask">+ Add Task</button><button class="btn btn-n btn-s" data-action="openWbsImport">Import from text</button></div></td></tr>';
       return;
     }
     // Skip rows whose phase ancestor is collapsed.
@@ -1993,6 +2126,7 @@ var MMGR = window.MMGR || {};
           <label class="wb-milestone" title="Mark as Milestone"><input type="checkbox" ${t.milestone ? 'checked' : ''} data-action="tglMilestone" data-id="${U.escapeHtml(t.id)}"> <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-flag"></use></svg></label>
           ${t.critical ? '<span class="badge bo" style="font-size:.6rem;padding:1px 4px;margin-left:4px">CP</span>' : ''}
           ${chainRisk ? '<span class="badge br" style="font-size:.6rem;padding:1px 4px;margin-left:4px" title="A predecessor is overdue, this downstream chain is at risk (2.1)">CHAIN</span>' : ''}
+          ${requiredBadge(t)}
           ${relationBadge(t)}
           ${
             parGroups && parGroups.has(t.id)
@@ -2045,6 +2179,7 @@ var MMGR = window.MMGR || {};
             <option value="completed" ${t.status === 'completed' ? 'selected' : ''}>Done</option>
           </select>
         </td>
+        ${customFieldCells(t)}
         <td style="white-space:nowrap">
           <button class="btn btn-s ${t.weatherSensitive ? 'btn-wx' : 'btn-n'}" data-action="tglWeather" data-id="${U.escapeHtml(t.id)}" title="${t.weatherSensitive ? 'Weather-sensitive, buffer added for regional windows during cascade' : 'Mark weather-sensitive, adds selective buffer for regional windows during cascade'}" style="padding:5px 8px"><svg class="ico" aria-hidden="true" style="font-size:.62rem"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg></button>
           <button class="btn btn-s ${t.leadTime ? 'btn-lt' : 'btn-n'}" data-action="tglLeadTime" data-id="${U.escapeHtml(t.id)}" title="${t.leadTime ? 'Lead-Time, tracked by Submitted/Expected dates (click to unmark)' : 'Mark as Lead-Time, vendor/third-party wait tracked by Submitted/Expected dates (procurement, permits, deliveries)'}" style="padding:5px 8px"><svg class="ico" aria-hidden="true" style="font-size:.62rem"><use href="css/mmgr-icons.svg#i-clock"></use></svg></button>

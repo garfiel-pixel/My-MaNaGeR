@@ -156,6 +156,19 @@ var MMGR = window.MMGR || {};
     R.renderWbs();
   }
 
+  // A checkbox has no meaningful `value` string, so it gets its own action.
+  // The click delegation reverts the box when guardReadonly refuses it.
+  function tglTaskCustom(id, key, checked) {
+    ns.State.updateState(function (s) {
+      const task = (s.tasks || []).find(t => t.id === id);
+      if (task && ns.CustomFields) {
+        ns.CustomFields.setValue(s, task, key, !!checked);
+      }
+    });
+    R.renderWbs();
+    R.renderKanban();
+  }
+
   // ---- Milestone flag (feature 11) ----
   function tglMilestone(id) {
     ns.State.updateState(function (s) {
@@ -222,6 +235,13 @@ var MMGR = window.MMGR || {};
     ns.State.updateState(function (s) {
       const task = (s.tasks || []).find(t => t.id === id);
       if (task) {
+        // Custom fields never become a top-level task property. The model
+        // owns coercion, so a number cannot land as "12abc" and a select
+        // cannot hold a value outside its options.
+        if (ns.CustomFields && ns.CustomFields.isCustomKey(field)) {
+          ns.CustomFields.setValue(s, task, field, value);
+          return;
+        }
         if (field === 'status') {
           // One transition helper for drag, keyboard, select, and WBS edits.
           // It also records startedDate and statusSince.
@@ -1148,6 +1168,7 @@ var MMGR = window.MMGR || {};
     createTask: createTask,
     durationFromDates: durationFromDates,
     updTaskField: updTaskField,
+    tglTaskCustom: tglTaskCustom,
     tglMilestone: tglMilestone,
     tglWeather: tglWeather,
     tglLeadTime: tglLeadTime,

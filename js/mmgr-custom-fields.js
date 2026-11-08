@@ -374,10 +374,13 @@ var MMGR = window.MMGR || {};
 
   function setFilter(state, key, value) {
     const field = find(state, key);
-    if (!field || field.type !== 'select' || !value) {
+    if (!field || field.type !== 'select') {
       state.cfFilter = { key: '', value: '' };
     } else {
-      state.cfFilter = { key: field.key, value: String(value) };
+      // A chosen field with no value yet is a valid intermediate state: the
+      // header keeps the field selected and `filter()` reports no narrowing
+      // until a value arrives.
+      state.cfFilter = { key: field.key, value: value ? String(value) : '' };
     }
     return state.cfFilter;
   }

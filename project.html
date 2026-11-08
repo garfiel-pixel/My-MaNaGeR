@@ -598,13 +598,14 @@
           <button class="btn btn-o btn-s" data-action="openImportDates"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Import Dates</button>
           <button class="btn btn-n btn-s" data-action="collapseAll">Collapse All</button>
           <button class="btn btn-n btn-s" data-action="expandAll">Expand All</button>
+          <button class="btn btn-o btn-s" data-action="openFields"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-list"></use></svg> Fields</button>
           <button class="btn btn-n btn-s" data-action="cpAllPage" data-section="wbs"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy All</button>
           <button class="btn btn-d btn-s" data-action="startHold" data-section="wbs"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Clear All</button>
         </div>
       </div>
       <div id="wbs-alerts" class="wbs-alerts"></div>
       <div class="ox">
-        <table class="dt"><thead><tr>
+        <table class="dt"><thead><tr id="wbs-head-row">
           <th class="w38">ID</th><th>Task Name</th><th class="w130">Assignee</th>
           <th class="w70">Duration</th><th class="w120">Start</th>
           <th class="w120">End</th><th class="w120">Status</th><th class="w96">Actions</th>
@@ -677,6 +678,13 @@
           <button class="btn btn-n btn-s" data-action="cpAllPage" data-section="kan"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy All</button>
           <button class="btn btn-n btn-s" data-action="kbWip"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-target"></use></svg> Column Limits</button>
           <button class="btn btn-o btn-s toggle-chip is-off" data-action="tglLeadtimeLane" id="kb-lt-tgl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clock"></use></svg> Show Lead-Time Lane</button>
+          <button class="btn btn-o btn-s" data-action="openFields"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-list"></use></svg> Fields</button>
+          <select id="kb-cf-key" class="ctl-in" data-action="setCfFilter" data-role="key" aria-label="Filter field" title="Filter the board by a select custom field">
+            <option value="">No field filter</option>
+          </select>
+          <select id="kb-cf-val" class="ctl-in" data-action="setCfFilter" data-role="value" aria-label="Filter value" title="Show only cards with this value" disabled>
+            <option value="">Any</option>
+          </select>
           <select id="kb-lens" class="ctl-in" data-action="setRelLens" aria-label="Board lens" title="Show all cards, only blocked cards, or only ready cards">
             <option value="all">All cards</option>
             <option value="blocked">Blocked only</option>
@@ -714,6 +722,41 @@
       </div>
     </div>
   </div>
+
+<!-- ═══ CUSTOM FIELDS SHEET (NocoBase-inspired collection schema) ═══
+     House modal chrome (.kb-sheet + .open, .mb/.mh/.mbody/.mf), so it
+     inherits the existing layering, focus restore and the shortcut-layer
+     stand-down. No bespoke overlay. -->
+<div id="cf-modal" class="kb-sheet cf-sheet" role="dialog" aria-modal="true" aria-labelledby="cf-title">
+  <div class="mb cf-box">
+    <div class="mh">
+      <span class="mt" id="cf-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-list"></use></svg> Custom fields</span>
+      <button type="button" class="dc" data-action="closeFields" aria-label="Close custom fields"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button>
+    </div>
+    <div class="mbody">
+      <p class="modal-txt mb8">A field belongs to this project, not to one task. Every task keeps its own value. A field removed here is removed from every task.</p>
+      <div id="cf-list" class="cf-list"></div>
+      <div class="cf-add">
+        <input type="text" id="cf-label" class="ctl-in" maxlength="40" placeholder="Field label" aria-label="Field label">
+        <select id="cf-type" class="ctl-in" aria-label="Field type">
+          <option value="text">Text</option>
+          <option value="number">Number</option>
+          <option value="date">Date</option>
+          <option value="select">Select</option>
+          <option value="checkbox">Checkbox</option>
+        </select>
+        <input type="text" id="cf-options" class="ctl-in" placeholder="Options, comma separated" aria-label="Select options">
+        <label class="cf-flag"><input type="checkbox" id="cf-wbs" checked> WBS</label>
+        <label class="cf-flag"><input type="checkbox" id="cf-card"> Card</label>
+        <label class="cf-flag"><input type="checkbox" id="cf-req"> Required</label>
+        <button class="btn btn-g btn-s" data-action="addCustomField">Add field</button>
+      </div>
+    </div>
+    <div class="mf">
+      <button type="button" class="btn btn-n btn-s" data-action="closeFields">Done</button>
+    </div>
+  </div>
+</div>
 
 <!-- Kanban column limits. Soft targets only: a limit warns, never blocks. -->
 <div id="kbwip-modal">

@@ -11,6 +11,53 @@ var MMGR = window.MMGR || {};
   const S = () => (ns.State ? ns.State.getState() : null);
   const U = ns.Utils;
   const $ = U.$;
+  // The card is the second block that reads the field schema. It shows a
+  // different projection than the WBS: at most three chips, then a count,
+  // so a field-rich card cannot push the board into a wall of text.
+  function customChips(t) {
+    const C = ns.CustomFields;
+    if (!C) {
+      return '';
+    }
+    const s = S();
+    const fields = C.visible(s, 'card').filter(function (f) {
+      return C.hasValue(t, f);
+    });
+    if (!fields.length) {
+      return '';
+    }
+    const shown = fields.slice(0, 3);
+    const rest = fields.length - shown.length;
+    const chips = shown
+      .map(function (f) {
+        return (
+          '<span class="kcf-chip" title="' +
+          U.escapeHtml(f.label) +
+          '">' +
+          '<span class="kcf-k">' +
+          U.escapeHtml(f.label) +
+          '</span>' +
+          U.escapeHtml(C.TYPES[f.type].display(C.valueOf(t, f))) +
+          '</span>'
+        );
+      })
+      .join('');
+    const more = rest
+      ? '<span class="kcf-chip kcf-more" title="' +
+        U.escapeHtml(
+          fields
+            .slice(3)
+            .map(function (f) {
+              return f.label;
+            })
+            .join(', ')
+        ) +
+        '">+' +
+        rest +
+        '</span>'
+      : '';
+    return '<div class="kcf">' + chips + more + '</div>';
+  }
 
   // The card's relation badge: same words as the WBS badge, but a plain
   // span - the card itself is the interactive element here (drag, focus,
@@ -80,6 +127,7 @@ var MMGR = window.MMGR || {};
       relationBadge(t) +
       U.escapeHtml(t.name) +
       '</div>' +
+      customChips(t) +
       '<div class="cm">' +
       '<span>' +
       U.escapeHtml(t.assignee || '-') +
@@ -127,6 +175,7 @@ var MMGR = window.MMGR || {};
       '<div class="cn">' +
       U.escapeHtml(t.name) +
       '</div>' +
+      customChips(t) +
       '<div class="cm">' +
       '<span>ID ' +
       U.escapeHtml(t.id) +
@@ -168,6 +217,51 @@ var MMGR = window.MMGR || {};
     if (lensSelect && lensSelect.value !== lens) {
       lensSelect.value = lens;
     }
+    // Custom-field filter: one select field, one value. It narrows what is
+    // DRAWN, exactly like the lens, and never writes to a task. The two
+    // selects are rebuilt here so a re-render or a reload always shows the
+    // filter that is actually applied.
+    const C = ns.CustomFields;
+    const activeFilter = C ? C.filter(s) : { key: '', value: '' };
+    const filterKey = $('kb-cf-key');
+    const filterVal = $('kb-cf-val');
+    if (C && filterKey && filterVal) {
+      const readOnly = !!(ns.App && ns.App.isReadonly && ns.App.isReadonly());
+      const raw = (s && s.cfFilter) || { key: '', value: '' };
+      const selectFields = C.filterFields(s);
+      filterKey.innerHTML =
+        '<option value="">No field filter</option>' +
+        selectFields
+          .map(function (f) {
+            return (
+              '<option value="' + U.escapeHtml(f.key) + '">' + U.escapeHtml(f.label) + '</option>'
+            );
+          })
+          .join('');
+      filterKey.value = raw.key || '';
+      const activeField = raw.key ? C.find(s, raw.key) : null;
+      filterVal.innerHTML =
+        '<option value="">Any</option>' +
+        (activeField
+          ? activeField.options
+              .map(function (option) {
+                return (
+                  '<option value="' +
+                  U.escapeHtml(option) +
+                  '">' +
+                  U.escapeHtml(option) +
+                  '</option>'
+                );
+              })
+              .join('')
+          : '');
+      filterVal.value = activeFilter.value;
+      filterVal.disabled = readOnly || !activeField;
+      filterKey.disabled = readOnly || !selectFields.length;
+    }
+    const matchesCf = function (t) {
+      return !activeFilter.key || !C || C.matchesFilter(s, t);
+    };
     const kbShow = !!s.kbShowLeadtime;
     const ltFlagOff = !!(s.flags && s.flags.leadtimeLane === false);
     const ltLane = $('col-leadtime');
@@ -202,7 +296,9 @@ var MMGR = window.MMGR || {};
         continue;
       }
       // Order and filtering are model concerns. The renderer only draws.
-      const tasks = K.columnTasks(s, status).filter(t => !lensIds || lensIds.has(String(t.id)));
+      const tasks = K.columnTasks(s, status)
+        .filter(t => !lensIds || lensIds.has(String(t.id)))
+        .filter(matchesCf);
       const info = K.wip(s, status);
       const wip = $(col[2]);
       if (wip) {
@@ -247,6 +343,7 @@ var MMGR = window.MMGR || {};
     if (ltEl) {
       const ltTasks = K.workItems(s)
         .filter(t => t.leadTime && (!lensIds || lensIds.has(String(t.id))))
+        .filter(matchesCf)
         .sort((a, b) => K.positionOf(a) - K.positionOf(b));
       const wlt = $('w-lt');
       if (wlt) {

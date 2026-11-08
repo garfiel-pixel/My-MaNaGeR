@@ -2193,6 +2193,87 @@ body.dark-mode .dmaic-chip {
   line-height: 1.55;
   color: var(--slate);
 }
+/* ---- Custom fields: sheet, WBS cells, Kanban chips, board filter (C1) ---- */
+.cf-sheet .mb {
+  width: 760px;
+}
+.cf-list {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+.cf-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.78rem;
+}
+.cf-row .cf-label {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+.cf-type {
+  color: var(--gold-ink);
+}
+.cf-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.7rem;
+  color: var(--slate);
+}
+.cf-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.cf-add .ctl-in {
+  min-width: 0;
+  flex: 1 1 130px;
+}
+.wbs-cf input,
+.wbs-cf select {
+  font-size: 0.72rem;
+}
+.kcf {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0 0 6px;
+}
+.kcf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 0.64rem;
+  color: var(--text);
+  background: rgba(var(--gold-rgb), 0.06);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kcf-k {
+  color: var(--slate);
+}
+#kb-cf-key,
+#kb-cf-val {
+  min-width: 128px;
+  font-size: 0.72rem;
+}
+@media (max-width: 640px) {
+  .cf-add .ctl-in,
+  .cf-row .cf-label {
+    flex-basis: 100%;
+  }
+}
 .meet-empty {
   font-size: 0.78rem;
   color: var(--slate);

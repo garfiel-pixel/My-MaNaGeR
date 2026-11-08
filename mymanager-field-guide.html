@@ -1030,6 +1030,9 @@ footer{padding:70px 64px 46px;position:relative;}
         <div class="card"><span class="cnum">TYPE</span><h4>Recurring</h4><p>For work that runs the whole project , weekly safety talks, ongoing QC. It carries a refresh badge in the WBS and Kanban and is tagged [RECURRING] in AI prompts so it reads differently from one-off tasks. It schedules like any other row: give it dates and it cascades with the rest.</p></div>
       </div>
 
+      <h3 class="h-sub">Custom fields</h3>
+      <p class="prose"><strong>Custom fields.</strong> Open <em>Fields</em> in the WBS or the board to add an attribute this project needs, such as a permit number, an inspection result, a zone, or a procurement batch. Pick a label and a type, then choose whether the field shows as a WBS column, on the Kanban card, or both. Every task keeps its own value. A field with <em>Required</em> ticked shows a REQ badge on any task that has no value yet. Removing a field removes its values from every task.</p>
+
       <h3 class="h-sub">How dates cascade</h3>
       <p class="prose">Enter a Task ID in the Pred. column. When that predecessor's end date changes, every downstream task recalculates automatically , with a cycle guard, so a circular dependency (A depends on B depends on A) can't lock up the math.</p>
 
@@ -1100,6 +1103,7 @@ footer{padding:70px 64px 46px;position:relative;}
         <p class="prose">Your WBS tasks, viewed as cards across To Do / In Progress / Blocked / Completed.</p>
         <p class="prose"><strong>Task links.</strong> Open a task's <em>Links</em> badge in the WBS to relate it to another task. A link can block, precede, duplicate, include, or require the other task. Blocked tasks show how many open blockers they have, on the row and on the card. A link is stored on both tasks, so removing it from either side removes both.</p>
         <p class="prose"><strong>Board lens.</strong> The lens in the Kanban header shows all cards, only blocked cards, or only ready cards. The lens is remembered per project. Moving a blocked card into In Progress or Completed shows a warning with the blocker names, but still allows the move.</p>
+        <p class="prose"><strong>Board filter.</strong> A select custom field can narrow the board. Pick the field and a value in the Kanban header, and every column plus the lead-time lane shows only the cards that match. The filter is remembered per project. A view-only session sees the filter but cannot change it.</p>
         <div class="grid grid-2" style="margin-top:16px">
           <div class="card"><span class="cnum">TOGGLE</span><h4>Show Lead-Time Lane</h4><p>Adds a dedicated swimlane for Lead-Time tasks so procurement and permit items don't clutter the normal columns.</p></div>
           <div class="card"><span class="cnum">TOOL</span><h4>Populate Sprint</h4><p>Set a Sprint Start/End date and every "In Progress" task's dates clamp to fall inside that window , a fast way to timebox your current push.</p></div>

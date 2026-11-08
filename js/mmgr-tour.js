@@ -42,7 +42,14 @@
       // themselves report no box while their children do. The desktop rail is
       // an ID (`<aside id="app-sidebar">`), not a class: a class selector
       // matches nothing and the step loses its spotlight.
-      sel: ['#app-sidebar .nav-group', '#sec-nav .nav-group', '.sec-btn[data-section="dash"]'],
+      // The hamburger is the last fallback: on a phone the rail is the
+      // off-canvas drawer and the button is the one control that names it.
+      sel: [
+        '#app-sidebar .nav-group',
+        '#sec-nav .nav-group',
+        '.sec-btn[data-section="dash"]',
+        '#nav-btn'
+      ],
       title: 'Your project, in sections',
       text: 'Everything lives in one project. This rail switches between the sections - the tour walks the ones you will use most, then gets out of your way.'
     },
@@ -96,6 +103,7 @@
   ];
 
   let idx = -1;
+  let plan = [];
   let root = null;
   let card = null;
   let ring = null;
@@ -150,9 +158,21 @@
       for (let i = 0; i < list.length; i++) {
         const el = list[i];
         const r = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
-        if (r && r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden') {
-          return el;
+        if (!r || r.width <= 0 || r.height <= 0 || getComputedStyle(el).visibility === 'hidden') {
+          continue;
         }
+        // I-11: an off-canvas element (the phone drawer parked at -105%) has
+        // a real box but is not something the person can see. A spotlight
+        // there would ring empty space, so it does not count as a target.
+        if (
+          r.bottom <= 0 ||
+          r.right <= 0 ||
+          r.top >= window.innerHeight ||
+          r.left >= window.innerWidth
+        ) {
+          continue;
+        }
+        return el;
       }
     }
     return null;
@@ -175,7 +195,10 @@
       // card takes its own clicks, everything else passes through and simply
       // dismisses the tour.
       'pointer-events:none',
-      'background:rgba(8,9,11,.72)'
+      // I-11: the dim is drawn by the ring's huge outer shadow so the target
+      // stays LIT through a rounded cut-out. Only a target-less step (the
+      // closing card) dims the whole viewport from here.
+      'background:transparent'
     ].join(';');
 
     ring = document.createElement('div');
@@ -184,8 +207,12 @@
     ring.style.cssText = [
       'position:absolute',
       'pointer-events:none',
-      'border-radius:10px',
-      'box-shadow:0 0 0 2px var(--gold,#D4AF37)',
+      'border-radius:14px',
+      // First shadow paints on top: a gold halo, then the 3px gold ring, then
+      // the 9999px dim. The border box itself is the hole, so the control
+      // under the spotlight keeps its full colour while everything outside
+      // is covered.
+      'box-shadow:0 0 26px 4px rgba(212,175,55,.35),0 0 0 3px var(--gold,#D4AF37),0 0 0 9999px rgba(8,9,11,.72)',
       'transition:none'
     ].join(';');
 
@@ -257,55 +284,119 @@
     );
   }
 
+  // Does a card at (left, top, cw, ch) touch the target box (inflated by
+  // `pad`)? The tip must never sit on the thing it is describing.
+  function overlaps(left, top, cw, ch, r, pad) {
+    pad = pad || 0;
+    return !(
+      left + cw + pad <= r.left ||
+      left - pad >= r.right ||
+      top + ch + pad <= r.top ||
+      top - pad >= r.bottom
+    );
+  }
+
   function place(el) {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const cw = card.offsetWidth || 340;
     const ch = card.offsetHeight || 180;
-    // Narrow screens: the card becomes a bottom sheet. A floating card there
-    // is nearly as wide as the phone, and anchoring it beside a header control
-    // covers the very controls the person is being told about.
-    if (vw < 700) {
+    if (!el) {
+      // Target-less step: dim the whole viewport and centre the card.
+      root.style.background = 'rgba(8,9,11,.72)';
+      ring.style.display = 'none';
       card.style.left = '12px';
       card.style.right = '12px';
       card.style.width = 'auto';
       card.style.maxWidth = 'none';
-      card.style.top = 'auto';
-      card.style.bottom = '12px';
-    } else {
-      card.style.right = 'auto';
       card.style.bottom = 'auto';
-      card.style.width = '';
-      card.style.maxWidth = '340px';
-    }
-    if (!el) {
-      ring.style.display = 'none';
-      card.style.left = Math.max(12, (vw - cw) / 2) + 'px';
       card.style.top = Math.max(12, (vh - ch) / 2) + 'px';
+      if (vw >= 700) {
+        card.style.left = Math.max(12, (vw - cw) / 2) + 'px';
+        card.style.width = '';
+        card.style.maxWidth = '340px';
+      }
       return;
     }
+    root.style.background = 'transparent';
     const r = el.getBoundingClientRect();
     ring.style.display = 'block';
     ring.style.left = Math.round(r.left - 6) + 'px';
     ring.style.top = Math.round(r.top - 6) + 'px';
     ring.style.width = Math.round(r.width + 12) + 'px';
     ring.style.height = Math.round(r.height + 12) + 'px';
+
+    // Narrow screens: the card is a full-width sheet. Put it on the OPPOSITE
+    // half from the target (top half target -> sheet at the bottom, and the
+    // reverse), so a phone-sized sheet never covers the control it describes.
     if (vw < 700) {
+      card.style.left = '12px';
+      card.style.right = '12px';
+      card.style.width = 'auto';
+      card.style.maxWidth = 'none';
+      const mid = r.top + r.height / 2;
+      if (mid < vh / 2) {
+        card.style.top = 'auto';
+        card.style.bottom = '12px';
+      } else {
+        card.style.bottom = 'auto';
+        card.style.top = '12px';
+      }
       return;
     }
-    // Prefer right of the target, fall back to left, then below/above; keep
-    // the card on screen whatever the viewport is doing.
-    let left = r.right + 14;
-    if (left + cw > vw - 12) {
-      left = r.left - cw - 14;
+
+    card.style.right = 'auto';
+    card.style.bottom = 'auto';
+    card.style.width = '';
+    card.style.maxWidth = '340px';
+
+    // Prefer right of the target, then left, then below, then above. A
+    // candidate must fit the viewport AND clear the target; only when none
+    // does both do we fall back to a clamped position.
+    const gap = 14;
+    const cx = r.left + r.width / 2 - cw / 2;
+    const below = r.bottom + gap;
+    const above = r.top - ch - gap;
+    // Side placement first, then centred below/above, then the same two
+    // edge-aligned. Header controls live in the top-right corner and the AI
+    // button in the bottom-right: without the edge-aligned variants the card
+    // had nowhere to go but on top of the control it describes.
+    const cands = [
+      { left: r.right + gap, top: r.top + r.height / 2 - ch / 2 },
+      { left: r.left - cw - gap, top: r.top + r.height / 2 - ch / 2 },
+      { left: cx, top: below },
+      { left: cx, top: above },
+      { left: r.left, top: below },
+      { left: r.right - cw, top: below },
+      { left: r.left, top: above },
+      { left: r.right - cw, top: above }
+    ];
+    const fits = function (c) {
+      return c.left >= 12 && c.top >= 12 && c.left + cw <= vw - 12 && c.top + ch <= vh - 12;
+    };
+    let spot = null;
+    for (let i = 0; i < cands.length; i++) {
+      if (fits(cands[i]) && !overlaps(cands[i].left, cands[i].top, cw, ch, r, 8)) {
+        spot = cands[i];
+        break;
+      }
     }
-    if (left < 12) {
-      left = Math.max(12, Math.min(vw - cw - 12, r.left));
+    if (!spot) {
+      for (let i = 0; i < cands.length; i++) {
+        if (fits(cands[i])) {
+          spot = cands[i];
+          break;
+        }
+      }
     }
-    let top = r.top + r.height / 2 - ch / 2;
-    top = Math.max(12, Math.min(vh - ch - 12, top));
-    card.style.left = Math.round(left) + 'px';
-    card.style.top = Math.round(top) + 'px';
+    if (!spot) {
+      spot = {
+        left: Math.max(12, Math.min(vw - cw - 12, r.left)),
+        top: Math.max(12, Math.min(vh - ch - 12, r.top + r.height / 2 - ch / 2))
+      };
+    }
+    card.style.left = Math.round(spot.left) + 'px';
+    card.style.top = Math.round(spot.top) + 'px';
   }
 
   function render() {
@@ -314,7 +405,7 @@
       clearTimeout(placeTimer);
       placeTimer = null;
     }
-    const st = STEPS[idx];
+    const st = plan[idx];
     if (!st) {
       return end();
     }
@@ -325,7 +416,7 @@
     const back = document.getElementById('tour-back');
     const next = document.getElementById('tour-next');
     if (count) {
-      count.textContent = 'Step ' + (idx + 1) + ' of ' + STEPS.length;
+      count.textContent = 'Step ' + (idx + 1) + ' of ' + plan.length;
     }
     if (title) {
       title.textContent = st.title;
@@ -337,7 +428,7 @@
       back.hidden = idx === 0;
     }
     if (next) {
-      next.textContent = idx === STEPS.length - 1 ? 'Done' : 'Next';
+      next.textContent = idx === plan.length - 1 ? 'Done' : 'Next';
     }
     root.style.display = 'block';
     if (el) {
@@ -356,13 +447,24 @@
     // has no box yet is retried briefly instead of being left unringed: the
     // first card used to point at nothing for the whole step.
     let tries = 0;
+    let lastKey = '';
     const flush = function () {
-      if (idx < 0 || STEPS[idx] !== st) {
+      if (idx < 0 || plan[idx] !== st) {
         return;
       }
       const target = pick(st.sel);
-      place(target);
-      if (st.sel && !target && tries++ < 10) {
+      const r = target ? target.getBoundingClientRect() : null;
+      // Re-place whenever the resolved target (or its box) CHANGES, not only
+      // when it is missing: at boot the first pick can be the hamburger
+      // fallback while the rail is still laying out, and the real target
+      // appears a few frames later. Retrying only on a miss left the ring
+      // parked on the fallback for the whole step.
+      const key = r ? [r.left, r.top, r.width, r.height].map(Math.round).join(',') : '';
+      if (key !== lastKey) {
+        lastKey = key;
+        place(target);
+      }
+      if (st.sel && tries++ < 10) {
         placeTimer = setTimeout(flush, 150);
       }
     };
@@ -387,14 +489,51 @@
     }
   }
 
+  // I-11: a step whose target is not on screen for this person (a section
+  // hidden by a pack, the phone drawer parked off-canvas) is SKIPPED, so the
+  // walk only ever rings something real. The plan is built when the tour
+  // opens; the count then matches what will actually be shown.
+  function buildPlan() {
+    plan = STEPS.filter(function (s) {
+      return !s.sel || !!pick(s.sel);
+    });
+  }
+
   function start(fromUser) {
     if (isOpen()) {
       return;
     }
     prevFocus = document.activeElement;
     build();
+    buildPlan();
     idx = 0;
+    if (!plan.length) {
+      return end();
+    }
     render();
+    // The shell can still be laying out when the tour auto-opens, so a step
+    // whose section button has not been rendered YET must not be dropped from
+    // the walk. While the person is still on the first card, re-plan a few
+    // times as the shell settles; only re-render when the plan actually grew.
+    if (plan.length < STEPS.length) {
+      let settleTries = 0;
+      (function settle() {
+        if (!isOpen() || idx !== 0 || settleTries++ > 30) {
+          return;
+        }
+        const before = plan.slice();
+        buildPlan();
+        if (plan.length < before.length) {
+          // A transient layout (the rail mid-transition) must never SHRINK the
+          // walk: keep the steps already found and try again next tick.
+          plan = before;
+        } else if (plan.length > before.length) {
+          render();
+          return;
+        }
+        setTimeout(settle, 150);
+      })();
+    }
     if (fromUser) {
       // Started from the help surface: the flag is already set, and a manual
       // replay must not clear it, so nothing to write here.
@@ -406,7 +545,7 @@
     if (!isOpen()) {
       return;
     }
-    if (idx >= STEPS.length - 1) {
+    if (idx >= plan.length - 1) {
       return end();
     }
     idx++;
@@ -426,6 +565,7 @@
       return;
     }
     idx = -1;
+    plan = [];
     if (placeTimer) {
       clearTimeout(placeTimer);
       placeTimer = null;
@@ -509,7 +649,7 @@
     if (!isOpen()) {
       return;
     }
-    const st = STEPS[idx];
+    const st = plan[idx];
     place(st && st.sel ? pick(st.sel) : null);
   }
   window.addEventListener('resize', replaceNow);
@@ -549,6 +689,19 @@
     start(false);
   }
 
+  function box(r) {
+    return r
+      ? {
+          left: Math.round(r.left),
+          top: Math.round(r.top),
+          right: Math.round(r.right),
+          bottom: Math.round(r.bottom),
+          width: Math.round(r.width),
+          height: Math.round(r.height)
+        }
+      : null;
+  }
+
   ns.Tour = {
     start: function () {
       start(true);
@@ -556,6 +709,23 @@
     end: end,
     isDone: done,
     isOpen: isOpen,
+    // Live geometry for the T-TOUR gate: the resolved target, the spotlight
+    // cut-out and the tip, all in viewport pixels.
+    current: function () {
+      if (!isOpen()) {
+        return null;
+      }
+      const st = plan[idx];
+      const el = st && st.sel ? pick(st.sel) : null;
+      return {
+        title: st ? st.title : null,
+        index: idx,
+        total: plan.length,
+        target: el ? box(el.getBoundingClientRect()) : null,
+        ring: ring && ring.style.display !== 'none' ? box(ring.getBoundingClientRect()) : null,
+        card: card ? box(card.getBoundingClientRect()) : null
+      };
+    },
     steps: STEPS.map(function (s) {
       return { sel: s.sel, title: s.title };
     })
@@ -566,12 +736,31 @@
   // guessing at a delay.
   function arm() {
     let tries = 0;
+    let lastCount = -1;
+    let stable = 0;
     (function poll() {
-      if (done() || document.querySelector('#sec-nav .sec-btn')) {
+      if (done()) {
         return maybeAutoStart();
       }
-      if (tries++ < 100) {
-        setTimeout(poll, 50);
+      // Wait for the section nav to STOP changing, not merely to exist: the
+      // workspace renders its section buttons over several frames and the
+      // rail may still be sliding. A plan built mid-render drops a section
+      // (the tour then walks 9 of its 10 cards) or rings the hamburger
+      // fallback. Three unchanged polls at 100 ms is the settle signal.
+      const count = document.querySelectorAll('.sec-btn[data-section]').length;
+      if (count > 0 && count === lastCount) {
+        stable++;
+      } else {
+        stable = 0;
+        lastCount = count;
+      }
+      if (count > 0 && stable >= 3) {
+        return maybeAutoStart();
+      }
+      if (tries++ < 60) {
+        setTimeout(poll, 100);
+      } else if (count > 0) {
+        maybeAutoStart();
       }
     })();
   }

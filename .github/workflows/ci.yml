@@ -1039,6 +1039,13 @@ jobs:
         id: qa-first-project-tour
         run: node tools/qa-first-project-tour.cjs
 
+      # WAVE I (I-11): the first-open tour must ring the control it describes,
+      # dim everything else through a rounded cut-out, skip a step whose target
+      # is hidden for this person, and never park the tip on the target.
+      - name: "T4: Tour spotlight geometry (qa-tour)"
+        id: qa-tour
+        run: node tools/qa-tour.cjs
+
       # OWNER AUDIT 2026-10-31 (S3): card-head button rows keep an 8px gap, and
       # the schedule/backup states are 8px dots rather than bordered pills.
       - name: "T4: Toolbar spacing and dot states (qa-toolbar-spacing)"

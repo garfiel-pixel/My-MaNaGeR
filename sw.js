@@ -691,7 +691,14 @@
 // localStorage mirror can no longer clobber a newer cloud edit; storage
 // inventory + dynamic-label + weak-random gates re-baselined. Changed
 // shell assets: dist/bundle.js, dist/mmgr.min.css.
-const CACHE = 'mmgr-shell-v590';
+// v591 - I-11 TOUR HIGHLIGHTING (Wave I): the first-open tour plans its walk
+// from what is actually visible, skipping a step whose control is hidden for
+// this person and keeping the count truthful. The spotlight is a rounded
+// cut-out (gold halo + ring, page dimmed by a viewport-sized shadow) so the
+// control stays lit, the tip never overlaps the thing it describes, and the
+// ring re-anchors when the boot layout settles. Changed shell assets:
+// dist/bundle.js.
+const CACHE = 'mmgr-shell-v591';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

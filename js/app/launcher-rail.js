@@ -17,14 +17,15 @@
 (function (ns) {
   'use strict';
 
-  var LANE_W = 64;   // --rail-closed-w
+  var LANE_W = 64; // --rail-closed-w
   var PANEL_W = 340; // close only after the pointer clears the opened panel
 
-  function body() { return document.body; }
+  function body() {
+    return document.body;
+  }
 
   function desktopFine() {
-    return window.matchMedia &&
-      window.matchMedia('(min-width: 769px) and (pointer: fine)').matches;
+    return window.matchMedia && window.matchMedia('(min-width: 769px) and (pointer: fine)').matches;
   }
 
   function openPeek() {
@@ -42,7 +43,10 @@
 
     document.addEventListener('mousemove', function (e) {
       if (!desktopFine()) return;
-      if (body().classList.contains('side-open')) { closePeek(); return; }
+      if (body().classList.contains('side-open')) {
+        closePeek();
+        return;
+      }
       if (e.clientX <= LANE_W) openPeek();
       else if (e.clientX > PANEL_W) closePeek();
     });
@@ -55,7 +59,6 @@
         if (!(e.relatedTarget && rail.contains(e.relatedTarget))) closePeek();
       });
     }
-
   }
 
   if (document.readyState === 'loading') {
@@ -65,4 +68,4 @@
   }
 
   ns.LauncherRail = { wire: wire, openPeek: openPeek, closePeek: closePeek };
-})(window.MMGR = window.MMGR || {});
+})((window.MMGR = window.MMGR || {}));

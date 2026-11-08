@@ -1363,7 +1363,9 @@
           }
         }
       }
-    } catch (e) { /* no URLSearchParams: keep the default topic */ }
+    } catch (e) {
+      /* no URLSearchParams: keep the default topic */
+    }
     function setStatus(msg, isErr) {
       if (!status) {
         return;

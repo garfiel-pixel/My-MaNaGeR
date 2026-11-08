@@ -230,6 +230,8 @@ const APP_LAUNCHER_MODULES = [
   'js/cloud/team-ui.js',
   'js/mmgr-viewport.js',
   'js/mmgr-glass.js',
+  // Launcher rail: hover-peek (I-14) + one-shot first-load reveal (B7 parity).
+  'js/app/launcher-rail.js',
   // bfcache sprite restore (2026-09-30): same module as the project
   // bundle - load-order independent, DOM-only, sits last.
   'js/mmgr-icon-restore.js'

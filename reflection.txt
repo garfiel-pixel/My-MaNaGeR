@@ -1,88 +1,69 @@
 # My MaNaGeR - reflection.txt (active; last session only)
 
-SESSION 2026-11-06 - SCHEMA BROUGHT TO HEAD, CODE SCANNING CLEARED, BUDGET TRUTH
+SESSION 2026-11-08 - I-1 ROOT-CAUSE FIX: PERSIST OWNER CODE + AUTO-CLAIM
 
-WHAT LANDED
+WHAT LANDED (commit 9ccb650 on feature/complete-backlog)
 
-1. Production D1 was four migrations behind the code. This was the root cause of
-   two separate owner reports, and no local gate could see it.
-   - Pending: 0028_team_invitations, 0029_team_enterprise,
-     0030_cloud_owner_email, 0031_photo_identity_and_stage.
-   - Applied to my-manager-db after exporting a 2.0 MB pre-migration dump to
-     tmp/d1-backup/pre-migration-2026-11-06.sql.
-   - Why it broke the product: src/cloud/projects.js:80 filters the project list
-     on owner_email (0030); src/cloud/photos.js:781 selects uploaded_role, stage
-     and sort_order (0031); js/cloud/team-ui.js:1461 hides the team bell when
-     /api/team/invitations fails (0028).
-   - Guard added: tools/check-d1-migrations.cjs, called as step 2b from
-     tools/deploy.cjs:202. wrangler deploy does not look at D1, which is the
-     whole reason this happened.
+1. I-1 root cause confirmed and fixed. A cloud project created while signed OUT
+   is stored with google_sub = NULL on the server. Its only recovery key - the
+   owner code - lived in sessionStorage (js/mmgr-cloud.js:124 setCode), which is
+   wiped on re-auth. After re-sign-in the code was gone, the project never
+   appeared under "My Cloud Projects", and the recovery path (claim) could never
+   fire. That is exactly the owner's "my cloud projects are not the ones I
+   uploaded" report.
+   - Fix (owner decision: "Persist code + auto-claim"): getCode/setCode/
+     clearCode now read/write localStorage instead of sessionStorage, so the code
+     survives re-auth and reload.
+   - Added collectHeldOwnerCodes() (scans every mmgr_cloud_code_<pid> key) and
+     autoClaimHeldProjects(): on mmgr:google-signed-in and mmgr:user-changed it
+     checks checkMe(), then POSTs /api/cloud/projects/<pid>/claim for each held
+     code, then dispatches mmgr:cloud-linked so the dashboard re-fetches. The
+     claim is idempotent (already-linked rows return alreadyLinked) and is
+     skipped when no session is active.
 
-2. Code scanning: 84 open alerts (25 error, 59 warning) to 0.
-   Fixed in shipped code:
-   - js/mmgr-charter.js:489-497 - '\s' inside a string is 's'; the regex
-     fallback's whitespace classes matched nothing. Label now regex-escaped.
-   - js/calculator-page.js:11472-11480 - saved-estimate rows now esc() the
-     name, date and total.
-   - js/mmgr-tasks.js:778 - all four capture groups escaped, not just the first.
-   - admin.html:3675-3680 - inline onclick replaced with the existing
-     data-action="codesCopyReveal" delegation; sections and expiry escaped.
-   - app.html:964-990 - safeProjectFile() accepts only a same-origin relative
-     .html page; goProject() is the one navigation point (was 4 raw sinks).
-   - src/auth/recovery.js:84-100 and serve.cjs:707-722 - rejection sampling
-     instead of a bare modulo.
-   - js/mmgr-utils.js:323-336 - sanitize() strips until stable.
-   - build.js:276-284 - backslashes escaped before quotes in the banner arg.
-   - serve.cjs:931-934 - error page served as text/plain.
-   - js/mmgr-app.js:3579-3582 - U.escapeHtml(type).
-   - js/app/copy-text.js:320 - removed replace(/\n/g, '\n') (a no-op).
-   Dismissed with a written reason: 54 (test harnesses, vendor bundles, the
-   untracked reference page, BYO key in sessionStorage, pending share code in
-   localStorage) plus 9 false positives (safeNext() sanitiser, escapeHtml'd
-   titles, numeric-only interpolation).
+2. Mirrored the localStorage move to the three direct readers that bypassed
+   getCode()/setCode():
+   - js/mmgr-cloud-dash.js:205 - open-by-code "owner" seed now writes
+     localStorage (was sessionStorage). Editor code seed left as sessionStorage.
+   - js/mmgr-ai.js:2069 - MCP project owner code read from localStorage.
+   - js/mmgr-presence.js:43 - access-evidence owner code read from localStorage.
 
-3. Wave I Sprint 0.
-   - I-2 client half: js/cloud/photos-ui.js loadFailureSentence() + a retry
-     button; three new arms in tools/qa-project-photos.cjs (15/15).
-   - I-1 client half: js/mmgr-cloud.js:810-832 names the project and
-     broadcasts mmgr:cloud-linked; js/mmgr-cloud-dash.js:1091 listens.
-   - I-3: project.html drawer entry "Team and roles"; js/cloud/team-ui.js
-     boot() binds [data-team-panel]; qa-chrome C9 (106/106).
-
-4. Wave H H-1.
-   - js/render/financials.js:165-230 - Spent from Spend.budgetLineActual,
-     baseline = envelope or planned, "Tracking against planned" instead of
-     "Over budget", plan notice only against a real envelope, fmt$() through
-     U.fmtMoney.
-   - js/mmgr-render.js:303-316 - dashboard card through U.fmtMoney.
-   - tools/qa-budget-truth.cjs - 13 arms; mutation-proven (6 red on revert,
-     Spent reading the typed $999 instead of the logged 3,000).
-   - qa-full.cjs arm 33 re-baselined (194/194).
+3. Server contract for I-1 already proven sound by T-CLOUDLIST (tools/
+   qa-cloudlist.cjs, 11/11): anonymous create -> owner code + google_sub NULL;
+   account list does NOT see it; claim with code+session links it and it appears
+   in the account list AND on a second device (same sub). No server change was
+   needed; the gap was purely client glue + the session-only code store.
 
 VERIFICATION ACTUALLY RUN
-- npm run verify: exit 0 (CSP hashes regenerated after the app.html edit).
-- qa-chrome 106/106; qa-project-photos 15/15; qa-team-ui 23/23;
-  qa-budget-truth 13/13; qa-full 194/194; qa-signin-page all checks;
-  verify-newtab, verify-csp-hashes, verify-registry green.
-- CI: run 42193307793 on 8d824f2 success. CodeQL "Push on main" green.
-- Code scanning API: 0 open.
+- node build.js - rebuilt dist/bundle.js; confirmed the new logic is in the
+  minified bundle (the cloud-linked dispatch and the mmgr_cloud_code_ read are
+  present; function names are renamed by esbuild minify, so grep on the literal
+  name returns 0 by design).
+- npm run verify: exit 0. 205/205 tests, sizes gate pass, test-registry 199/199.
+- node tools/qa-cloudlist.cjs: 11/11 PASS (T-CLOUDLIST unchanged, server contract
+  intact after the client edit).
+- T-COPY / T-PHOTOS / T-BENTO gates (from the landing wave) remain 9/9, 5/5,
+  10/10 and are registered in ci.yml + docs/CI-TEST-COVERAGE.md.
 
 NOT DONE, AND WHY
-- Deploy: four attempts, all 503 "no healthy upstream" from Cloudflare on
-  GET /accounts/<id>/workers/services/my-manager (YVR). The site stayed 200 and
-  wrangler whoami was healthy, so this is their endpoint, not our config. The
-  stage at $HOME/mmgr-deploy is byte-verified and waiting for one retry.
-- Wave H H-0, H-2 to H-8; Wave I I-0, I-4 to I-15. These are multi-session
-  builds (budget schema v25, BOQ bridge, delivery recording, weekly report,
-  MCP permissions, approval preview v2, landing page rework, photography,
-  first-open tour spotlight, photo bundles).
-- I-14 (sidebar hover) was not started on purpose: with the sidebar closed,
-  #app-sidebar is at translateX(-105%) and body.sidebar-on .sec-nav is
-  display:none, so there is no visible icon rail to hover. Guessing a design
-  here would have been worse than asking one question.
+- Playwright client harness for I-1 (true end-to-end UI regression with a forged
+  Google cookie, same technique as qa-team-rbac/qa-cloudlist). Deferred to
+  "harden later": Playwright is installed but no chromium binary is cached
+  (npx playwright install chromium, ~150MB, needs network). Server contract +
+  client glue are done and gated without it.
+- Final merge to main: held until a clean full battery plus the owner's sign-off
+  on the production deploy (owner hard order: do NOT delete/remove anything from
+  Cloudflare - all wrangler use this session was local/--local and non-
+  destructive).
+
+BRANCH STATE
+- feature/complete-backlog is green: I-1 client fix (9ccb650), I-6/I-7/I-8
+  landing + gates (58c1536), T-CLOUDLIST (a055cf9, 400bcf9). All wrangler usage
+  was local and non-destructive per the standing order.
 
 LESSON WORTH KEEPING
-A schema behind the code is a live defect that no local gate can see. Every
-green check in this repo runs against a local D1 that is always migrated to
-head, so the one environment that mattered was the only one not measured. The
-deploy recipe now refuses to ship when the remote migration list is not empty.
+When the same value is read from storage in five places, centralizing it in one
+getter/setter is not optional - three of those reads bypassed getCode() and had
+to be moved in lockstep, or the persisted code would have stayed invisible to
+the parts that needed it. The session-only choice that "protected" the code was
+the exact thing that made I-1 unrecoverable.

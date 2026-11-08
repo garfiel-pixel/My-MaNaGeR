@@ -8,14 +8,15 @@
    would flicker (the strip vanishes the moment it opens). Instead we watch
    the pointer position with hysteresis: open at the lane, keep open across
    the panel, close only once the pointer clears the panel to the right.
-   A one-shot reveal on first visit teaches the rail exists, then settles.
-   The pinned-open state (body.side-open, hamburger) is left to app.html's
-   own rail script and is ignored here.
+   The one-shot first-load reveal already lives in app.html's inline
+   rail-nudge block (mmgr_rail_nudge, harnessed by qa-shell-first-load.cjs),
+   so this module deliberately does NOT duplicate it - it only adds the
+   hover-peek the CSS was missing a JS toggle for. The pinned-open state
+   (body.side-open, hamburger) is left to app.html's own rail script.
    ============================================================ */
 (function (ns) {
   'use strict';
 
-  var DEMO_KEY = 'mmgr_launcher_rail_demo';
   var LANE_W = 64;   // --rail-closed-w
   var PANEL_W = 340; // close only after the pointer clears the opened panel
 
@@ -55,16 +56,6 @@
       });
     }
 
-    // One-shot first-load reveal: show the rail once, then settle closed.
-    try {
-      if (localStorage.getItem(DEMO_KEY) !== '1') {
-        openPeek();
-        localStorage.setItem(DEMO_KEY, '1');
-        setTimeout(function () {
-          if (!body().classList.contains('side-open')) closePeek();
-        }, 2600);
-      }
-    } catch (e) { /* private mode: no demo, hover still works */ }
   }
 
   if (document.readyState === 'loading') {

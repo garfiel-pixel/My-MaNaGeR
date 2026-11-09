@@ -61,7 +61,7 @@
       clicks "Connect Google" in Settings > Controls. It is a device label,
       never a gate , offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-Aujr99uL/W+In/lnqrnOX1XcfBud8Z2HloBSErxpdR4=' 'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4=' 'sha256-1lQZ8ZnhADNPMPnTqfYPbBDeCin0qp40ehxDc065Fmc='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-lJtjCtusWWa2tP+HGQgxB6UvY9HeSC0+3KVsjsYBguw=' 'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4=' 'sha256-1lQZ8ZnhADNPMPnTqfYPbBDeCin0qp40ehxDc065Fmc='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
@@ -251,6 +251,7 @@
     </div>
     <div class="nav-group"><span class="nav-group-label">Intake</span>
     <button class="sec-btn" data-action="showSec" data-section="ideas" id="ideas-nav"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M9 18h6M10 21h4" stroke="#D4AF37" stroke-width="2" stroke-linecap="round"/><path d="M12 3a6.5 6.5 0 0 0-3.6 11.9c.6.4 1 1.1 1 1.9v.2h5.2v-.2c0-.8.4-1.5 1-1.9A6.5 6.5 0 0 0 12 3z" stroke="#D4AF37" stroke-width="2" stroke-linejoin="round"/></svg>Intake</button>
+    <button class="sec-btn" data-action="showSec" data-section="agenda" id="agenda-nav"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><rect x="4" y="5.5" width="16" height="15" rx="2" stroke="#D4AF37" stroke-width="2"/><path d="M4 10h16M8 3v4M16 3v4" stroke="#D4AF37" stroke-width="2" stroke-linecap="round"/></svg>Agenda</button>
     </div>
     <div class="nav-group"><span class="nav-group-label">Collaborate</span>
     <button class="sec-btn" data-action="showSec" data-section="kan" id="knav"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="2" stroke="#D4AF37" stroke-width="2"/><path d="M9 4V20M15 4V20" stroke="#D4AF37" stroke-width="2"/></svg>Kanban</button>
@@ -693,6 +694,25 @@
         <div class="idboard" id="ideas-board"></div>
         <div id="ideas-list" class="is-hide"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- ═══ AGENDA (Leantime-inspired merged date feed) ═══ -->
+  <div class="panel" id="panel-agenda">
+    <div class="card mb0">
+      <div class="card-title">Agenda
+        <div class="g6">
+          <div class="idseg" role="group" aria-label="Agenda window">
+            <button class="idseg-b" data-action="setAgendaDays" data-days="7" aria-pressed="false">7 days</button>
+            <button class="idseg-b is-on" data-action="setAgendaDays" data-days="30" aria-pressed="true">30 days</button>
+            <button class="idseg-b" data-action="setAgendaDays" data-days="0" aria-pressed="false">All dated</button>
+          </div>
+          <button class="btn btn-o btn-s" data-action="exportAgendaIcs"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Export .ics</button>
+        </div>
+      </div>
+      <p class="t-xs mb14">Every dated record in one list: task end dates, milestones, meetings, open issues, open change requests and live ideas. Each entry opens the panel that owns it. Nothing is editable from here.</p>
+      <div class="agmeta" id="agenda-summary" aria-live="polite">Nothing dated in this window</div>
+      <div id="agenda-body"></div>
     </div>
   </div>
 
@@ -2421,10 +2441,11 @@ document.addEventListener('error', function (e) {
 document.addEventListener('DOMContentLoaded', function() {
   if (!window.__mmgrBundleMissing) return;
   var MMGR = window.MMGR || {};
-  ['js/mmgr-state.js','js/mmgr-utils.js','js/mmgr-ideas.js','js/mmgr-custom-fields.js','js/mmgr-relations.js','js/mmgr-kanban.js','js/mmgr-net.js','js/consent.js',
+  ['js/mmgr-state.js','js/mmgr-utils.js','js/mmgr-ideas.js','js/mmgr-agenda.js','js/mmgr-custom-fields.js','js/mmgr-relations.js','js/mmgr-kanban.js','js/mmgr-net.js','js/consent.js',
    'js/render/financials.js','js/render/people.js','js/render/closure.js',
    'js/render/documents.js','js/render/weather.js','js/render/kanban.js',
    'js/render/ideas.js',
+   'js/render/agenda.js',
    'js/render/risks.js','js/render/resources.js','js/mmgr-render.js',
    'js/mmgr-prompts.js','js/mmgr-weather.js','js/mmgr-field.js',
    'js/mmgr-schedule.js','js/mmgr-resources.js','js/mmgr-health.js',

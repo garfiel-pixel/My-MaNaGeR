@@ -4101,6 +4101,94 @@ var MMGR = window.MMGR || {};
     focusIdea(id);
   }
 
+  // ---- Agenda (read-only lens over the dated records) ----
+  function setAgendaDays(raw) {
+    const n = parseInt(raw, 10);
+    const days = n === 7 || n === 0 ? n : 30;
+    if (S().agendaDays === days) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      s.agendaDays = days;
+    });
+    R.renderAgenda();
+  }
+
+  // Jumping to the record is the whole point of the feed. The target panel
+  // renders first (showSec calls its SECTION_RENDERERS entry), then the
+  // record is found inside it and flashed. The scan is by attribute value,
+  // never by building a selector from the id: an id from an import can
+  // carry a quote or a bracket, and a string-built selector would throw.
+  function agendaJump(section, id) {
+    if (!section) {
+      return;
+    }
+    showSec(section, document.querySelector('.sec-btn[data-section="' + section + '"]'));
+    if (!id) {
+      return;
+    }
+    const wanted = String(id);
+    window.requestAnimationFrame(function () {
+      const nodes = document.querySelectorAll('[data-id], [data-idea-id]');
+      let hit = null;
+      for (let i = 0; i < nodes.length; i += 1) {
+        const el = nodes[i];
+        if (el.getAttribute('data-id') === wanted || el.getAttribute('data-idea-id') === wanted) {
+          hit = el;
+          break;
+        }
+      }
+      if (!hit) {
+        return;
+      }
+      hit.classList.add('ag-hit');
+      if (typeof hit.scrollIntoView === 'function') {
+        hit.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
+      // A table row is not focusable on its own. The temporary tabindex is
+      // removed by the browser when the element is re-rendered, so it never
+      // enters the tab order.
+      if (!hit.hasAttribute('tabindex')) {
+        hit.setAttribute('tabindex', '-1');
+      }
+      if (typeof hit.focus === 'function') {
+        hit.focus({ preventScroll: true });
+      }
+      setTimeout(function () {
+        hit.classList.remove('ag-hit');
+      }, 1600);
+    });
+  }
+
+  // Same download pattern as downloadErrorLog() at js/mmgr-app.js:1088-1107:
+  // Blob, object URL, a synthetic anchor click, revoke after the click lands.
+  function exportAgendaIcs() {
+    if (!ns.Agenda || typeof ns.Agenda.ics !== 'function') {
+      return;
+    }
+    const s = S();
+    const days = s.agendaDays === 7 || s.agendaDays === 0 ? s.agendaDays : 30;
+    const text = ns.Agenda.ics(s, {
+      days: days,
+      calendarName: 'My MaNaGeR agenda'
+    });
+    try {
+      const blob = new Blob([text], { type: 'text/calendar;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'mymanager-agenda-' + new Date().toISOString().slice(0, 10) + '.ics';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () {
+        URL.revokeObjectURL(a.href);
+      }, 400);
+      showToast('Agenda downloaded as a calendar file.', 'ok');
+    } catch (e) {
+      showToast('Could not create the calendar file.', 'err');
+    }
+  }
+
   // ---- Idea board drag and drop ----
   // Separate attributes from the Kanban board: [data-idea-drag] and
   // [data-idea-drop]. The Kanban listeners ignore them and these ignore the
@@ -4948,6 +5036,9 @@ var MMGR = window.MMGR || {};
     setIdeaTag: setIdeaTag,
     setIdeaStage: setIdeaStage,
     ideaKeyMove: ideaKeyMove,
+    setAgendaDays: setAgendaDays,
+    agendaJump: agendaJump,
+    exportAgendaIcs: exportAgendaIcs,
     dragIdea: dragIdea,
     dropIdea: dropIdea,
     populateSprint: populateSprint,
@@ -5029,6 +5120,10 @@ window.MMGR = MMGR;
     setIdeaView: el => window.MMGR.App.setIdeaView(el.getAttribute('data-view')),
     setIdeaTag: el => window.MMGR.App.setIdeaTag(el.value),
     setIdeaStage: el => window.MMGR.App.setIdeaStage(el.getAttribute('data-id'), el.value),
+    setAgendaDays: el => window.MMGR.App.setAgendaDays(el.getAttribute('data-days')),
+    agendaJump: el =>
+      window.MMGR.App.agendaJump(el.getAttribute('data-section'), el.getAttribute('data-id')),
+    exportAgendaIcs: () => window.MMGR.App.exportAgendaIcs(),
     setTaskFollowUp: el => {
       const taskId = el.getAttribute('data-id');
       const assignee = prompt('Follow-up assignee:');
@@ -6494,6 +6589,11 @@ window.MMGR = MMGR;
     closeIdea: 1,
     setIdeaView: 1,
     setIdeaTag: 1,
+    // Agenda: the window is a device preference, the jump changes the visible
+    // panel, and the export reads. None of them writes a project record.
+    setAgendaDays: 1,
+    agendaJump: 1,
+    exportAgendaIcs: 1,
     cpAllPage: 1,
     print: 1,
     // Reading or closing the column-limit sheet mutates nothing. The inputs

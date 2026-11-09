@@ -1738,6 +1738,7 @@ var MMGR = window.MMGR || {};
     gantt: renderGantt,
     kan: renderKanban,
     ideas: renderIdeas,
+    agenda: renderAgenda,
     risk: renderRisks,
     res: renderResources,
     bud: renderBudget,
@@ -3053,6 +3054,13 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // ---- Agenda ---- (extracted to js/render/agenda.js)
+  function renderAgenda() {
+    if (ns.RenderAgenda) {
+      ns.RenderAgenda.renderAgenda();
+    }
+  }
+
   // ---- Risks ---- (extracted to js/render/risks.js)
   function parseImpactDays(text) {
     return ns.RenderRisks ? ns.RenderRisks.parseImpactDays(text) : 0;
@@ -4126,6 +4134,7 @@ var MMGR = window.MMGR || {};
     renderGantt: renderGantt,
     renderKanban: renderKanban,
     renderIdeas: renderIdeas,
+    renderAgenda: renderAgenda,
     toggleTaskComments: toggleTaskComments,
     renderTaskComments: renderTaskComments,
     // RESTORE-1: risk matrix click-to-filter actions (view-only).

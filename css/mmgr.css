@@ -7032,6 +7032,138 @@ body.dark-mode .team-link-danger {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---- Agenda (Leantime-inspired merged feed) ----
+   A day heading, then one button per record. Colour is carried by the kind
+   chip only; the row itself stays a plain surface so a long list reads as a
+   list, not as six competing accents. */
+.agmeta {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  padding: 0 0 10px;
+}
+.ag-day {
+  margin-bottom: 14px;
+}
+.ag-dh {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 2px 6px;
+  border-bottom: 1px solid var(--border);
+}
+.ag-dl {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.ag-dc {
+  min-width: 18px;
+  padding: 0 5px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  text-align: center;
+  font-size: 0.64rem;
+  color: var(--text-muted);
+}
+.ag-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 7px;
+}
+.ag-ev {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr) auto;
+  grid-template-areas: 'k t late' 'k d late';
+  gap: 1px 10px;
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+}
+.ag-ev:hover,
+.ag-ev:focus-visible {
+  border-color: var(--gold);
+  outline: none;
+}
+.ag-k {
+  grid-area: k;
+  align-self: start;
+  justify-self: start;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+}
+.ag-t {
+  grid-area: t;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.ag-d {
+  grid-area: d;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.ag-late {
+  grid-area: late;
+  align-self: center;
+  padding: 0 6px;
+  border: 1px solid var(--danger);
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--danger-ink);
+}
+.ag-ev.ag-over {
+  border-left-color: var(--danger);
+}
+/* The kind chip is the only coloured part. Gold marks an idea because the
+   intake is the new surface; everything else stays neutral so an overdue
+   task is the loudest row on the page. */
+.ag-ev.ag-idea .ag-k {
+  border-color: rgba(var(--gold-rgb), 0.45);
+  color: var(--gold-ink);
+}
+.ag-ev.ag-milestone .ag-k {
+  border-color: var(--border);
+  color: var(--text);
+  font-weight: 700;
+}
+.ag-hit {
+  animation: ag-flash 1.6s ease-out;
+}
+@keyframes ag-flash {
+  0% {
+    box-shadow: 0 0 0 3px rgba(var(--gold-rgb), 0.55);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--gold-rgb), 0);
+  }
+}
+@media (max-width: 720px) {
+  .ag-ev {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'k late' 't t' 'd d';
+    gap: 3px 8px;
+  }
+}
 /* ---- RBAC sprint 3: access tools ---------------------------------------- */
 .team-tools {
   display: flex;

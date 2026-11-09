@@ -59,6 +59,7 @@ const APP_MODULES = [
   // renderers and the domain modules, because both read MMGR.Ideas at call
   // time.
   'js/mmgr-ideas.js',
+  'js/mmgr-agenda.js',
   // Custom task fields. Must load before the renderers and the domain
   // modules, because both read MMGR.CustomFields at call time.
   'js/mmgr-custom-fields.js',
@@ -89,6 +90,7 @@ const APP_MODULES = [
   'js/render/weather.js',
   'js/render/kanban.js',
   'js/render/ideas.js',
+  'js/render/agenda.js',
   'js/render/risks.js',
   'js/render/resources.js',
   'js/mmgr-render.js',

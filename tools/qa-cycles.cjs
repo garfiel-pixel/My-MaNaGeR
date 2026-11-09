@@ -19,7 +19,10 @@
     14. a module groups tasks across phases and reports weighted progress
     15. a module and its membership survive a reload
     16. deleting a module leaves its tasks untouched
-    17. no page or console error during the run
+    17. a closed cycle reports commitment, scope movement and velocity
+    18. a cycle with no snapshots says so instead of drawing
+    19. the review is written to the log once and is not recomputed
+    20. no page or console error during the run
 
    Usage:  node tools/qa-cycles.cjs
    Env:    QA_BASE (default http://127.0.0.1:8765), CHROME_PATH
@@ -312,6 +315,15 @@ async function reachable(url) {
     { beforeAssign, assigned }
   );
 
+  // Activation takes the commitment, so activating the cycle again after the
+  // work was assigned records the real commitment (3 tasks, 10 days).
+  await page.evaluate(() => {
+    const s = window.MMGR.State.getState();
+    const a = s.cycles.find(c => c.name === 'Sprint A');
+    window.MMGR.App.cycActivate(a.id);
+  });
+  await page.waitForTimeout(350);
+
   // ---- 7. the membership survives a reload -----------------------------
   await page.evaluate(() => window.MMGR.State.save(true));
   await boot();
@@ -398,6 +410,7 @@ async function reachable(url) {
     window.MMGR.App.cycAdd();
     const s = window.MMGR.State.getState();
     const b = s.cycles.find(c => c.name === 'Sprint B');
+    const bState0 = b.state;
     window.MMGR.App.cycActivate(b.id);
     const toast = document.querySelector('.toast, #toast, [data-toast]');
     window.MMGR.scope = 'full';
@@ -405,14 +418,26 @@ async function reachable(url) {
       cycles: s.cycles.length,
       before,
       bState: b.state,
+      bState0: bState0,
       toast: toast ? toast.textContent : ''
     };
   });
   check(
     'a viewer cannot add, activate or close a cycle',
-    viewer.cycles === viewer.before && viewer.bState === 'active' && /View-only/.test(viewer.toast),
+    viewer.cycles === viewer.before &&
+      viewer.bState === viewer.bState0 &&
+      /View-only/.test(viewer.toast),
     viewer
   );
+
+  // Put the carried work under an active cycle again: the board scope below
+  // asks what "the active cycle" means, and the project needs one.
+  await page.evaluate(() => {
+    const s = window.MMGR.State.getState();
+    const b = s.cycles.find(c => c.name === 'Sprint B');
+    window.MMGR.App.cycActivate(b.id);
+  });
+  await page.waitForTimeout(350);
 
   // ---- 12. the board scope --------------------------------------------
   await page.evaluate(() => {
@@ -531,7 +556,62 @@ async function reachable(url) {
     modGone
   );
 
-  // ---- 17. no runtime errors -------------------------------------------
+  // ---- 17. analytics ----------------------------------------------------
+  await page.evaluate(() => {
+    window.MMGR.Render.showSection('plan', document.querySelector('.sec-btn[data-section="plan"]'));
+    const s = window.MMGR.State.getState();
+    const a = s.cycles.find(c => c.name === 'Sprint A');
+    window.MMGR.App.cycSelect(a.id);
+  });
+  await page.waitForTimeout(400);
+  const an = await page.evaluate(() => {
+    const box = document.querySelector('#cyc-detail .cyc-an');
+    return { text: box ? box.textContent : '' };
+  });
+  check(
+    'a closed cycle reports commitment, scope movement and velocity',
+    /Committed 3 task\(s\), 10 d/.test(an.text) &&
+      /now 1 task\(s\), 2 d/.test(an.text) &&
+      /scope \+0 \(0 d\), -2 \(8 d\)/.test(an.text) &&
+      /velocity 2 d/.test(an.text) &&
+      /carried 2 task\(s\), 8 d/.test(an.text),
+    an
+  );
+
+  // ---- 18. no snapshots, no line ----------------------------------------
+  check(
+    'a cycle with no snapshots says so instead of drawing',
+    /No daily snapshot was taken inside this window/.test(an.text),
+    an
+  );
+
+  // ---- 19. the review ---------------------------------------------------
+  await page.evaluate(() =>
+    document.querySelector('#cyc-detail button[data-action="cycReview"]').click()
+  );
+  await page.waitForTimeout(450);
+  const review = await page.evaluate(() => {
+    const s = window.MMGR.State.getState();
+    const a = s.cycles.find(c => c.name === 'Sprint A');
+    const rows = (s.logEntries || []).filter(e => /Cycle review: Sprint A/.test(e.decision || ''));
+    return {
+      logged: a.reviewLogged === true,
+      rows: rows.length,
+      text: rows.length ? rows[0].decision : '',
+      button: !!document.querySelector('#cyc-detail button[data-action="cycReview"]')
+    };
+  });
+  check(
+    'the review is written to the log once and is not recomputed',
+    review.logged === true &&
+      review.rows === 1 &&
+      /Cycle review: Sprint A/.test(review.text) &&
+      /velocity 2 working days/.test(review.text) &&
+      review.button === false,
+    review
+  );
+
+  // ---- 20. no runtime errors -------------------------------------------
   check('no page or console error during the run', errors.length === 0, errors.slice(0, 5));
 
   await browser.close();

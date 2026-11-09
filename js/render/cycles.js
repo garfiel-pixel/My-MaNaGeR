@@ -131,6 +131,93 @@ var MMGR = window.MMGR || {};
     );
   }
 
+  // Analytics: the numbers first, then the burn-down as recorded points with
+  // the gaps named. There is no curve drawn between two endpoints, because a
+  // line that invents a Tuesday is a line that will be quoted in a meeting.
+  function analyticsBox(s, cycle) {
+    const a = ns.Cycles.analytics(s, cycle);
+    const b = ns.Cycles.burndown(s, cycle);
+    if (!a.ok) {
+      return '';
+    }
+    const bits = [];
+    if (a.hasCommitment) {
+      bits.push(
+        'Committed ' + esc(String(a.committed)) + ' task(s), ' + esc(String(a.committedDays)) + ' d'
+      );
+      bits.push('now ' + esc(String(a.current)) + ' task(s), ' + esc(String(a.currentDays)) + ' d');
+      if (a.added !== null) {
+        bits.push(
+          'scope +' +
+            esc(String(a.added)) +
+            ' (' +
+            esc(String(a.addedDays)) +
+            ' d), -' +
+            esc(String(a.removed)) +
+            ' (' +
+            esc(String(a.removedDays)) +
+            ' d)'
+        );
+      }
+    } else {
+      bits.push(esc(a.reason));
+    }
+    if (a.canVelocity) {
+      bits.push('velocity ' + esc(String(a.velocityDays)) + ' d');
+    }
+    if (a.carry) {
+      bits.push(
+        'carried ' + esc(String(a.carry.tasks)) + ' task(s), ' + esc(String(a.carry.days)) + ' d'
+      );
+    }
+    const rows = b.points
+      .map(function (p) {
+        return (
+          '<tr><td class="t-xs">' +
+          esc(p.date) +
+          '</td><td class="t-xs">' +
+          esc(String(p.remainingDays)) +
+          ' d</td></tr>'
+        );
+      })
+      .join('');
+    const gaps = b.gaps.length
+      ? '<div class="sr-hint">No snapshot on ' +
+        b.gaps
+          .slice(0, 8)
+          .map(function (d) {
+            return esc(d);
+          })
+          .join(', ') +
+        (b.gaps.length > 8 ? ' and ' + esc(String(b.gaps.length - 8)) + ' more' : '') +
+        '. Those days are gaps, not zero.</div>'
+      : '';
+    return (
+      '<div class="cyc-an" role="region" aria-label="Cycle analytics">' +
+      '<div class="cyc-at">' +
+      bits.join(' \u00b7 ') +
+      '</div>' +
+      (b.excluded
+        ? '<div class="sr-hint">' +
+          esc(String(b.excluded)) +
+          ' task(s) have no duration and are counted as zero days.</div>'
+        : '') +
+      (b.canDraw
+        ? '<table class="dt cyc-bt"><thead><tr><th class="w120">Snapshot day</th><th class="w90">Remaining</th></tr></thead><tbody>' +
+          rows +
+          '</tbody></table>' +
+          gaps
+        : '<div class="sr-hint">' + esc(b.reason || 'No burn-down is available.') + '</div>') +
+      (cycle.close && !cycle.reviewLogged
+        ? '<div class="sr"><span class="sl"></span><button class="btn btn-g btn-s" data-action="cycReview" data-id="' +
+          esc(cycle.id) +
+          '">Write the review to the log</button></div>'
+        : '') +
+      (cycle.reviewLogged ? '<div class="sr-hint">The review was written to the log.</div>' : '') +
+      '</div>'
+    );
+  }
+
   function renderCycles() {
     const host = $('cyc-body');
     if (!host) {
@@ -227,7 +314,8 @@ var MMGR = window.MMGR || {};
                 })
                 .join('')
             : '<tr><td colspan="4"><div class="es es-row">Nothing is committed to this cycle yet.</div></td></tr>') +
-          '</tbody></table></div>';
+          '</tbody></table></div>' +
+          analyticsBox(s, sel);
       }
     }
 

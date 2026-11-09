@@ -222,3 +222,95 @@ test('removing a module leaves its tasks untouched', () => {
   assert.equal(s.tasks.length, 1);
   assert.equal(s.tasks[0].cycleId, '');
 });
+
+const snap = (date, doneIds) => ({
+  date: date,
+  tasks: [
+    {
+      id: 'T1',
+      name: 'Pour slab',
+      status: doneIds.indexOf('T1') > -1 ? 'completed' : 'todo',
+      completed: doneIds.indexOf('T1') > -1,
+      duration: '5'
+    },
+    {
+      id: 'T2',
+      name: 'Set out',
+      status: doneIds.indexOf('T2') > -1 ? 'completed' : 'todo',
+      completed: doneIds.indexOf('T2') > -1,
+      duration: '3'
+    }
+  ]
+});
+
+test('the burn-down draws only recorded days and names the gaps', () => {
+  const s = base();
+  s.tasks.push(task({ id: 'T2', duration: '3' }));
+  const id = C.newCycle(s, { name: 'One', start: '2026-11-01', end: '2026-11-07' }).id;
+  C.assign(s, 0, id);
+  C.assign(s, 1, id);
+  C.activate(s, id);
+  s.dailySnapshots = [
+    snap('2026-11-01', []),
+    snap('2026-11-02', ['T1']),
+    snap('2026-11-04', ['T1', 'T2'])
+  ];
+  const b = C.burndown(s, C.find(s, id));
+  assert.equal(b.points.length, 3);
+  assert.deepEqual(plain(b.points.map(p => p.date)), ['2026-11-01', '2026-11-02', '2026-11-04']);
+  assert.deepEqual(plain(b.points.map(p => p.remainingDays)), [8, 3, 0]);
+  assert.equal(b.gaps.length, 4);
+  assert.equal(b.canDraw, true);
+});
+
+test('a cycle with no snapshots says so instead of drawing from two endpoints', () => {
+  const s = base();
+  const id = C.newCycle(s, { name: 'One', start: '2026-11-01', end: '2026-11-07' }).id;
+  C.assign(s, 0, id);
+  C.activate(s, id);
+  const b = C.burndown(s, C.find(s, id));
+  assert.equal(b.points.length, 0);
+  assert.equal(b.canDraw, false);
+  assert.match(b.reason, /No daily snapshot/);
+  const noCommit = C.burndown(
+    s,
+    C.find(s, C.newCycle(s, { name: 'Two', start: '2026-12-01', end: '2026-12-07' }).id)
+  );
+  assert.match(noCommit.reason, /no commitment/);
+});
+
+test('scope change splits what was added from what was removed', () => {
+  const s = base();
+  const id = C.newCycle(s, { name: 'One', start: '2026-11-01', end: '2026-11-14' }).id;
+  C.assign(s, 0, id);
+  C.activate(s, id);
+  s.tasks.push(task({ id: 'T2', duration: '4' }));
+  C.assign(s, 1, id);
+  C.assign(s, 0, '');
+  const a = C.analytics(s, C.find(s, id));
+  assert.equal(a.committed, 1);
+  assert.equal(a.added, 1);
+  assert.equal(a.addedDays, 4);
+  assert.equal(a.removed, 1);
+  assert.equal(a.removedDays, 5);
+  assert.equal(a.canVelocity, false);
+  assert.match(a.reason, /closed cycle/);
+});
+
+test('velocity and the review come only from a closed cycle record', () => {
+  const s = base();
+  s.tasks.push(task({ id: 'T2', status: 'completed', duration: '3' }));
+  const id = C.newCycle(s, { name: 'One', start: '2026-11-01', end: '2026-11-14' }).id;
+  C.assign(s, 0, id);
+  C.assign(s, 1, id);
+  C.activate(s, id);
+  C.close(s, id, 'backlog');
+  const a = C.analytics(s, C.find(s, id));
+  assert.equal(a.canVelocity, true);
+  assert.equal(a.velocityDays, 3);
+  const text = C.reviewText(s, C.find(s, id));
+  assert.match(text, /Cycle review: One/);
+  assert.match(text, /Committed 2 task\(s\), 8 working days/);
+  assert.match(text, /velocity 3 working days/);
+  assert.match(text, /Returned to the backlog: 1 task\(s\), 5 working days/);
+});

@@ -5467,3 +5467,16 @@ body.dark-mode .team-link-danger {
     flex-wrap: wrap;
   }
 }
+.cyc-an {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.cyc-at {
+  font-size: 0.72rem;
+  color: var(--slate);
+  margin-bottom: 6px;
+}
+.cyc-bt {
+  max-width: 320px;
+}

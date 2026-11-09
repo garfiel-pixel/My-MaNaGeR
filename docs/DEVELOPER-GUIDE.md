@@ -184,6 +184,8 @@ The sprint bar above the board is a **view** of the active cycle, not a second s
 
 Migration 30 converts the old sprint into the first cycle and clears a `cycleId` that points at a cycle that no longer exists. `state.cycles` is in `FIELD_KEYS`; `cycSel`/`cycClosing` are view preferences and deliberately are not.
 
+**Analytics restate records, never extrapolate.** `burndown(state, cycle)` walks the cycle window day by day, reads the daily snapshot for each day, and sums the committed durations of the tasks the snapshot still shows unfinished. A day with no snapshot is a **gap**, not a zero, and fewer than two points refuses to draw with a reason. The commitment stores `ids` and `daysById`, so scope change is `current − committed` split into added and removed, and a later duration edit cannot rewrite what was committed. Velocity exists only on a closed cycle with a commitment (`close.doneDays`). `reviewText` is generated once at close and appended to the Decision Log; `reviewLogged` stops a second copy. Snapshots carry `duration` for exactly this purpose.
+
 ### The approval pack and the outbound summary
 
 `Process.buildApprovalPack(state,{from,to,statuses})` assembles — never stores — the dated header, every matching change with its impacts, approver and reason, and that change's full history. `App.printApprovalPack` paints it into the shared `#pg-pack` container (same print surface as the handover pack) and prints; the footer states included/excluded and the local-time caveat. Printing is a read, so a viewer may print it.

@@ -131,9 +131,18 @@ var MMGR = window.MMGR || {};
     }, 0);
   }
 
+  // The commitment records the ids as well as the totals: without them a
+  // scope-change number is an opinion. daysById keeps the size each task had
+  // at activation, so a later duration edit cannot rewrite history.
   function commitment(state, cycle) {
     const rows = cycle ? tasksOf(state, cycle.id) : [];
-    return { at: nowIso(), tasks: rows.length, days: sumDays(rows) };
+    const ids = [];
+    const daysById = {};
+    rows.forEach(function (t) {
+      ids.push(t.id);
+      daysById[t.id] = taskDays(t);
+    });
+    return { at: nowIso(), tasks: rows.length, days: sumDays(rows), ids: ids, daysById: daysById };
   }
 
   // ---- writes -----------------------------------------------------------
@@ -403,6 +412,204 @@ var MMGR = window.MMGR || {};
     };
   }
 
+  // ---- Analytics --------------------------------------------------------
+  // Every number here restates a record: the commitment taken at activation,
+  // the close record, and the daily snapshots. Nothing is extrapolated, and
+  // where the records do not exist the answer says so.
+  function snapshotList(state) {
+    return state && Array.isArray(state.dailySnapshots) ? state.dailySnapshots : [];
+  }
+
+  function dayList(from, to) {
+    const out = [];
+    if (!from || !to) {
+      return out;
+    }
+    const d = new Date(from + 'T00:00:00');
+    const end = new Date(to + 'T00:00:00');
+    if (isNaN(d.getTime()) || isNaN(end.getTime())) {
+      return out;
+    }
+    let guard = 0;
+    while (d <= end && guard < 400) {
+      const p = n => String(n).padStart(2, '0');
+      out.push(d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()));
+      d.setDate(d.getDate() + 1);
+      guard += 1;
+    }
+    return out;
+  }
+
+  function burndown(state, cycle) {
+    const noCommit = {
+      points: [],
+      gaps: [],
+      excluded: 0,
+      canDraw: false,
+      reason: 'This cycle has no commitment, so there is nothing to burn down.'
+    };
+    if (!cycle || !cycle.commitment) {
+      return noCommit;
+    }
+    const ids = Array.isArray(cycle.commitment.ids) ? cycle.commitment.ids : [];
+    const daysById = cycle.commitment.daysById || {};
+    if (!ids.length) {
+      return Object.assign({}, noCommit, {
+        reason: 'The commitment holds no tasks, so there is nothing to burn down.'
+      });
+    }
+    const snaps = {};
+    snapshotList(state).forEach(function (sn) {
+      if (sn && sn.date) {
+        snaps[String(sn.date).slice(0, 10)] = sn;
+      }
+    });
+    const points = [];
+    const gaps = [];
+    dayList(cycle.start, cycle.end).forEach(function (dayKey) {
+      const sn = snaps[dayKey];
+      if (!sn) {
+        gaps.push(dayKey);
+        return;
+      }
+      const byId = {};
+      (sn.tasks || []).forEach(function (t) {
+        if (t && t.id) {
+          byId[t.id] = t;
+        }
+      });
+      let remaining = 0;
+      ids.forEach(function (id) {
+        const row = byId[id];
+        if (row && row.completed) {
+          return;
+        }
+        remaining += +daysById[id] || 0;
+      });
+      points.push({ date: dayKey, remainingDays: remaining });
+    });
+    const excluded = ids.filter(function (id) {
+      return !(+daysById[id] > 0);
+    }).length;
+    let reason = '';
+    if (!points.length) {
+      reason = 'No daily snapshot was taken inside this window, so there is no line to draw.';
+    } else if (points.length === 1) {
+      reason = 'Only one daily snapshot was taken inside this window, so there is no line to draw.';
+    }
+    return {
+      points: points,
+      gaps: gaps,
+      excluded: excluded,
+      canDraw: points.length > 1,
+      reason: reason
+    };
+  }
+
+  function analytics(state, cycle) {
+    if (!cycle) {
+      return { ok: false, reason: 'Select a cycle.' };
+    }
+    const c = cycle.commitment;
+    const live = tasksOf(state, cycle.id);
+    const liveIds = {};
+    live.forEach(function (t) {
+      liveIds[t.id] = 1;
+    });
+    const committedIds = c && Array.isArray(c.ids) ? c.ids : null;
+    const daysById = (c && c.daysById) || {};
+    let added = 0;
+    let addedDays = 0;
+    let removed = 0;
+    let removedDays = 0;
+    if (committedIds) {
+      live.forEach(function (t) {
+        if (committedIds.indexOf(t.id) < 0) {
+          added += 1;
+          addedDays += taskDays(t);
+        }
+      });
+      committedIds.forEach(function (id) {
+        if (!liveIds[id]) {
+          removed += 1;
+          removedDays += +daysById[id] || 0;
+        }
+      });
+    }
+    const closed = stateOf(cycle) === 'closed';
+    const close = cycle.close || null;
+    return {
+      ok: true,
+      hasCommitment: !!c,
+      committed: c ? c.tasks : null,
+      committedDays: c ? c.days : null,
+      current: live.length,
+      currentDays: sumDays(live),
+      added: committedIds ? added : null,
+      addedDays: committedIds ? addedDays : null,
+      removed: committedIds ? removed : null,
+      removedDays: committedIds ? removedDays : null,
+      velocityDays: closed && c && close ? close.doneDays : null,
+      canVelocity: !!(closed && c && close),
+      carry: close ? { tasks: close.carried, days: close.carriedDays } : null,
+      reason: closed
+        ? c
+          ? ''
+          : 'This cycle was never activated, so it has no commitment and no velocity.'
+        : 'Velocity is reported only for a closed cycle.'
+    };
+  }
+
+  // The review is generated once, at close, and it is text a person can edit
+  // afterwards. Nothing here recomputes: the close record is the source.
+  function reviewText(state, cycle) {
+    if (!cycle || !cycle.close) {
+      return '';
+    }
+    const a = analytics(state, cycle);
+    const k = cycle.close;
+    const lines = [];
+    lines.push('Cycle review: ' + cycle.name + ' (' + cycle.start + ' to ' + cycle.end + ')');
+    lines.push(
+      'Committed ' +
+        (cycle.commitment
+          ? cycle.commitment.tasks + ' task(s), ' + cycle.commitment.days + ' working days'
+          : 'nothing') +
+        '.'
+    );
+    lines.push(
+      'Finished ' +
+        k.done +
+        ' task(s), ' +
+        k.doneDays +
+        ' working days' +
+        (a.canVelocity ? ' (velocity ' + a.velocityDays + ' working days).' : '.')
+    );
+    if (a.added !== null) {
+      lines.push(
+        'Scope moved: ' +
+          a.added +
+          ' added (' +
+          a.addedDays +
+          ' d), ' +
+          a.removed +
+          ' removed (' +
+          a.removedDays +
+          ' d).'
+      );
+    }
+    lines.push(
+      k.choice === 'forward'
+        ? 'Carried forward: ' + k.carried + ' task(s), ' + k.carriedDays + ' working days.'
+        : 'Returned to the backlog: ' +
+            k.returned +
+            ' task(s), ' +
+            k.returnedDays +
+            ' working days.'
+    );
+    return lines.join('\n');
+  }
+
   // ---- Modules ----------------------------------------------------------
   // A module groups work by outcome across phases and cycles. It holds task
   // ids, because a package has contents; a task can sit in several modules,
@@ -592,7 +799,10 @@ var MMGR = window.MMGR || {};
     close: close,
     assign: assign,
     fromSprint: fromSprint,
-    todayStr: todayStr
+    todayStr: todayStr,
+    burndown: burndown,
+    analytics: analytics,
+    reviewText: reviewText
   };
 })(MMGR);
 window.MMGR = MMGR;

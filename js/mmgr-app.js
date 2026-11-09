@@ -5569,6 +5569,51 @@ var MMGR = window.MMGR || {};
     R.renderCycles();
   }
 
+  // The review is written once, from the close record, into the project log.
+  // Nothing about the cycle is recomputed after that: a historical record that
+  // rewrites its own summary is not a record.
+  function cycReview(id) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Cycles) {
+      return;
+    }
+    let res = { ok: true };
+    ns.State.updateState(function (s) {
+      const c = ns.Cycles.find(s, id);
+      if (!c || !c.close) {
+        res = { ok: false, message: 'That cycle has not closed yet.' };
+        return;
+      }
+      if (c.reviewLogged) {
+        res = { ok: false, message: 'The review is already in the log.', noop: true };
+        return;
+      }
+      const text = ns.Cycles.reviewText(s, c);
+      if (!Array.isArray(s.logEntries)) {
+        s.logEntries = [];
+      }
+      s.logEntries.push({
+        date: new Date().toLocaleString(),
+        decision: text,
+        by: String(s.userName || ''),
+        actionItems: ''
+      });
+      c.reviewLogged = true;
+    });
+    if (!res.ok) {
+      if (!res.noop) {
+        showToast(res.message, 'err');
+      }
+      return;
+    }
+    R.renderCycles();
+    R.renderLog();
+    showToast('Cycle review written to the log.', 'ok');
+  }
+
   // ---- Planning: modules ------------------------------------------------
   function modAdd() {
     if (isReadonly()) {
@@ -5980,6 +6025,7 @@ var MMGR = window.MMGR || {};
     cycDel: cycDel,
     cycAssign: cycAssign,
     cycUnassign: cycUnassign,
+    cycReview: cycReview,
     modAdd: modAdd,
     modDel: modDel,
     modClear: modClear,
@@ -6130,6 +6176,7 @@ window.MMGR = MMGR;
     cycDel: el => window.MMGR.App.cycDel(el.getAttribute('data-id')),
     cycAssign: el => window.MMGR.App.cycAssign(el.getAttribute('data-idx')),
     cycUnassign: el => window.MMGR.App.cycUnassign(el.getAttribute('data-idx')),
+    cycReview: el => window.MMGR.App.cycReview(el.getAttribute('data-id')),
     modAdd: () => window.MMGR.App.modAdd(),
     modDel: el => window.MMGR.App.modDel(el.getAttribute('data-id')),
     modClear: el => window.MMGR.App.modClear(el.getAttribute('data-id')),

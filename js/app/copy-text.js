@@ -377,19 +377,19 @@ var MMGR = window.MMGR || {};
   }
 
   function renderCtrlPreviews() {
-    var set = function (id, txt) {
+    var setPreviewText = function (id, txt) {
       var el = U.$(id);
       if (el) {
         el.textContent = txt || '';
       }
     };
-    set('pv-slack', copyAsText('slack'));
-    set('pv-email', copyAsText('email'));
-    set('pv-client', copyAsText('client'));
-    set('pv-tpl-status', emailTplText('status'));
-    set('pv-tpl-change', emailTplText('change'));
-    set('pv-tpl-risk', emailTplText('risk'));
-    set('pv-tpl-closure', emailTplText('closure'));
+    setPreviewText('pv-slack', copyAsText('slack'));
+    setPreviewText('pv-email', copyAsText('email'));
+    setPreviewText('pv-client', copyAsText('client'));
+    setPreviewText('pv-tpl-status', emailTplText('status'));
+    setPreviewText('pv-tpl-change', emailTplText('change'));
+    setPreviewText('pv-tpl-risk', emailTplText('risk'));
+    setPreviewText('pv-tpl-closure', emailTplText('closure'));
   }
 
   function cpFormats(kind) {

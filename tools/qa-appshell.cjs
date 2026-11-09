@@ -351,22 +351,37 @@ function overlaps(a, b) {
           });
 
         const pjClosed = await readRail();
+        // I-14 (2026-11-07): on a computer the project page keeps the icon
+        // strip visible as the hover lane, so the closed rail is a fixed
+        // 56 px strip with a reserved gutter rather than an off-canvas panel.
+        // A phone still hides the strip entirely.
+        const desktopStrip = width >= 769;
         check(
-          'APP-1 [' + tag + '] the project page keeps its closed rail off-canvas and invisible',
-          !pjClosed.missing &&
-            pjClosed.open === false &&
-            pjClosed.right <= 1 &&
-            pjClosed.visibility === 'hidden' &&
-            pjClosed.position === 'fixed',
+          'APP-1 [' +
+            tag +
+            '] the project page closed rail is a strip on desktop, off-canvas on a phone',
+          desktopStrip
+            ? !pjClosed.missing &&
+                pjClosed.open === false &&
+                pjClosed.position === 'fixed' &&
+                pjClosed.width > 0 &&
+                pjClosed.width <= 64
+            : !pjClosed.missing &&
+                pjClosed.open === false &&
+                pjClosed.right <= 1 &&
+                pjClosed.visibility === 'hidden' &&
+                pjClosed.position === 'fixed',
           pjClosed
         );
         check(
           'APP-1 [' +
             tag +
-            '] no content sits under the project page closed rail, and the column starts at 0',
+            '] no content sits under the project page closed rail, and the column clears it',
           !overlaps(pjClosed.railBox, pjClosed.probe) &&
             pjClosed.mainLeft !== null &&
-            pjClosed.mainLeft <= 1 &&
+            (desktopStrip
+              ? Math.abs(pjClosed.mainLeft - (pjClosed.railBox ? pjClosed.railBox.width : 0)) <= 1
+              : pjClosed.mainLeft <= 1) &&
             pjClosed.scrollW <= pjClosed.clientW + 1,
           { railBox: pjClosed.railBox, probe: pjClosed.probe, mainLeft: pjClosed.mainLeft }
         );

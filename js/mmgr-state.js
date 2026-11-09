@@ -274,6 +274,7 @@ var MMGR = window.MMGR || {};
  * @property {Change[]} changes
  * @property {Array<Object>} transitions - append-only status moves (v29)
  * @property {Array<Object>} cycles - planning windows; tasks point at one (v30)
+ * @property {Array<Object>} modules - outcome packages across phases (v30)
  * @property {Array<Object>} rules       - declared rules (v29)
  * @property {Array<Object>} ruleLog     - capped rule execution log (v29)
  * @property {string} trFilter           - recorded-moves feed filter (per device)
@@ -371,6 +372,8 @@ var MMGR = window.MMGR || {};
       transitions: [],
       // Cycles are windows; a task points at one through task.cycleId.
       cycles: [],
+      // Modules group work by outcome across phases and cycles.
+      modules: [],
       rules: [],
       ruleLog: [],
       // Which record type the recorded-moves feed shows. Per-device, so it is
@@ -1217,6 +1220,32 @@ var MMGR = window.MMGR || {};
           }
         });
       }
+      // Modules hold task ids, so a task deleted by an older build must not
+      // leave a phantom. The renderer prunes on read as well; this keeps the
+      // stored list honest for the cloud merge.
+      if (!Array.isArray(state.modules)) {
+        state.modules = [];
+      }
+      const taskIds = {};
+      (state.tasks || []).forEach(function (t) {
+        if (t && t.id) {
+          taskIds[t.id] = 1;
+        }
+      });
+      state.modules = state.modules
+        .filter(function (m) {
+          return m && typeof m === 'object' && m.id;
+        })
+        .map(function (m) {
+          m.name = String(m.name || 'Module').slice(0, 80);
+          m.lead = String(m.lead || '').slice(0, 120);
+          m.target = String(m.target || '').slice(0, 10);
+          m.status = ['planned', 'active', 'done'].indexOf(m.status) > -1 ? m.status : 'planned';
+          m.taskIds = (Array.isArray(m.taskIds) ? m.taskIds : []).filter(function (id) {
+            return !!taskIds[id];
+          });
+          return m;
+        });
       return state;
     },
     25: function (state) {
@@ -1665,6 +1694,7 @@ var MMGR = window.MMGR || {};
     // Cycles are project data: a cycle is a window with a commitment, and the
     // commitment is only honest if the whole team sees the same one.
     'cycles',
+    'modules',
     'rules',
     'ruleLog',
     'logEntries',

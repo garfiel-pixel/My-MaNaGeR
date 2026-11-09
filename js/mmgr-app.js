@@ -5569,6 +5569,84 @@ var MMGR = window.MMGR || {};
     R.renderCycles();
   }
 
+  // ---- Planning: modules ------------------------------------------------
+  function modAdd() {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Modules) {
+      return;
+    }
+    let res = { ok: true };
+    ns.State.updateState(function (s) {
+      res = ns.Modules.newModule(s, {
+        name: cycValue('mod-name'),
+        lead: cycValue('mod-lead'),
+        target: cycValue('mod-target')
+      });
+    });
+    if (!res.ok) {
+      showToast(res.message, 'err');
+      return;
+    }
+    ['mod-name', 'mod-lead', 'mod-target'].forEach(function (id) {
+      const el = U.$(id);
+      if (el) {
+        el.value = '';
+      }
+    });
+    R.renderModules();
+  }
+
+  function modDel(id) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    let res = { ok: true };
+    ns.State.updateState(function (s) {
+      res = ns.Modules.removeModule(s, id);
+    });
+    if (!res.ok) {
+      showToast(res.message, 'err');
+      return;
+    }
+    R.renderModules();
+  }
+
+  function modClear(id) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    ns.State.updateState(function (s) {
+      const m = ns.Modules.find(s, id);
+      if (m) {
+        m.taskIds = [];
+      }
+    });
+    R.renderModules();
+  }
+
+  function modAddTask(id, idx) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (idx === '' || idx === null || idx === undefined) {
+      return;
+    }
+    let res = { ok: true };
+    ns.State.updateState(function (s) {
+      res = ns.Modules.addTask(s, id, +idx);
+    });
+    if (!res.ok && !res.noop) {
+      showToast(res.message, 'err');
+    }
+    R.renderModules();
+  }
+
   // ---- Register link and handover pack ---------------------------------
   function linkDoc(docId, pageId) {
     if (isReadonly()) {
@@ -5902,6 +5980,10 @@ var MMGR = window.MMGR || {};
     cycDel: cycDel,
     cycAssign: cycAssign,
     cycUnassign: cycUnassign,
+    modAdd: modAdd,
+    modDel: modDel,
+    modClear: modClear,
+    modAddTask: modAddTask,
     populateSprint: populateSprint,
     openPrompt: openPrompt,
     openDrwToSave: openDrwToSave,
@@ -6048,6 +6130,10 @@ window.MMGR = MMGR;
     cycDel: el => window.MMGR.App.cycDel(el.getAttribute('data-id')),
     cycAssign: el => window.MMGR.App.cycAssign(el.getAttribute('data-idx')),
     cycUnassign: el => window.MMGR.App.cycUnassign(el.getAttribute('data-idx')),
+    modAdd: () => window.MMGR.App.modAdd(),
+    modDel: el => window.MMGR.App.modDel(el.getAttribute('data-id')),
+    modClear: el => window.MMGR.App.modClear(el.getAttribute('data-id')),
+    modAddTask: el => window.MMGR.App.modAddTask(el.getAttribute('data-id'), el.value),
     setTaskFollowUp: el => {
       const taskId = el.getAttribute('data-id');
       const assignee = prompt('Follow-up assignee:');
@@ -7974,6 +8060,7 @@ window.MMGR = MMGR;
         action === 'saveKbWip' ||
         action === 'setRelLens' ||
         action === 'setKanScope' ||
+        action === 'modAddTask' ||
         action === 'updKPI' ||
         action === 'updKPILink' ||
         action === 'updKPIDir' ||

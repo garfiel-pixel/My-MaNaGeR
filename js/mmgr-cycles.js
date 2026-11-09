@@ -403,6 +403,173 @@ var MMGR = window.MMGR || {};
     };
   }
 
+  // ---- Modules ----------------------------------------------------------
+  // A module groups work by outcome across phases and cycles. It holds task
+  // ids, because a package has contents; a task can sit in several modules,
+  // which is the point. Membership is validated on every read, so a deleted
+  // task cannot leave a phantom.
+  const MODULE_STATUSES = ['planned', 'active', 'done'];
+  const MODULE_LABEL = { planned: 'Planned', active: 'Active', done: 'Done' };
+
+  function modules(state) {
+    return state && Array.isArray(state.modules) ? state.modules : [];
+  }
+
+  function findModule(state, id) {
+    return (
+      modules(state).find(function (m) {
+        return m && m.id === id;
+      }) || null
+    );
+  }
+
+  function moduleTasks(state, module) {
+    if (!module || !Array.isArray(module.taskIds)) {
+      return [];
+    }
+    const byId = {};
+    tasks(state).forEach(function (t) {
+      if (t && t.id) {
+        byId[t.id] = t;
+      }
+    });
+    return module.taskIds
+      .map(function (id) {
+        return byId[id];
+      })
+      .filter(Boolean);
+  }
+
+  function moduleProgress(state, module) {
+    const rows = moduleTasks(state, module);
+    if (!rows.length) {
+      return null;
+    }
+    const days = sumDays(rows);
+    const done = rows.filter(function (t) {
+      return t.status === 'completed';
+    });
+    const doneDays = sumDays(done);
+    return {
+      tasks: rows.length,
+      done: done.length,
+      days: days,
+      doneDays: doneDays,
+      pct:
+        days > 0
+          ? Math.round((doneDays / days) * 100)
+          : Math.round((done.length / rows.length) * 100),
+      weighted: days > 0
+    };
+  }
+
+  function newModule(state, opts) {
+    const o = opts || {};
+    const name = text(o.name).trim();
+    if (!name) {
+      return { ok: false, message: 'Give the module a name.' };
+    }
+    if (!Array.isArray(state.modules)) {
+      state.modules = [];
+    }
+    const module = {
+      id: 'md' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      name: name,
+      lead: text(o.lead, 120),
+      target: day(o.target),
+      status: 'planned',
+      taskIds: []
+    };
+    state.modules.push(module);
+    return { ok: true, id: module.id, module: module };
+  }
+
+  function updateModule(state, id, field, value) {
+    const module = findModule(state, id);
+    if (!module) {
+      return { ok: false, message: 'That module no longer exists.' };
+    }
+    if (field === 'name') {
+      const name = text(value).trim();
+      if (!name) {
+        return { ok: false, message: 'Give the module a name.' };
+      }
+      module.name = name;
+      return { ok: true };
+    }
+    if (field === 'lead') {
+      module.lead = text(value, 120);
+      return { ok: true };
+    }
+    if (field === 'target') {
+      module.target = day(value);
+      return { ok: true };
+    }
+    if (field === 'status') {
+      if (MODULE_STATUSES.indexOf(value) < 0) {
+        return { ok: false, message: 'Unknown module status.' };
+      }
+      module.status = value;
+      return { ok: true };
+    }
+    return { ok: false, message: 'That field is not open to edit here.' };
+  }
+
+  function removeModule(state, id) {
+    const module = findModule(state, id);
+    if (!module) {
+      return { ok: false, message: 'That module no longer exists.' };
+    }
+    state.modules = modules(state).filter(function (m) {
+      return !m || m.id !== id;
+    });
+    return { ok: true };
+  }
+
+  function addTask(state, moduleId, taskIndex) {
+    const module = findModule(state, moduleId);
+    if (!module) {
+      return { ok: false, message: 'That module no longer exists.' };
+    }
+    const t = tasks(state)[taskIndex];
+    if (!t || !t.id) {
+      return { ok: false, message: 'That task no longer exists.' };
+    }
+    if (!Array.isArray(module.taskIds)) {
+      module.taskIds = [];
+    }
+    if (module.taskIds.indexOf(t.id) > -1) {
+      return { ok: false, message: 'That task is already in the module.', noop: true };
+    }
+    module.taskIds.push(t.id);
+    return { ok: true };
+  }
+
+  function removeTask(state, moduleId, taskId) {
+    const module = findModule(state, moduleId);
+    if (!module) {
+      return { ok: false, message: 'That module no longer exists.' };
+    }
+    module.taskIds = (module.taskIds || []).filter(function (id) {
+      return id !== taskId;
+    });
+    return { ok: true };
+  }
+
+  ns.Modules = {
+    MODULE_STATUSES: MODULE_STATUSES,
+    MODULE_LABEL: MODULE_LABEL,
+    list: modules,
+    find: findModule,
+    tasks: moduleTasks,
+    progress: moduleProgress,
+    newModule: newModule,
+    updateModule: updateModule,
+    removeModule: removeModule,
+    addTask: addTask,
+    removeTask: removeTask
+  };
+
   ns.Cycles = {
     CYCLE_STATES: CYCLE_STATES,
     CYCLE_LABEL: CYCLE_LABEL,

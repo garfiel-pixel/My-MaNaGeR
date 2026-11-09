@@ -873,7 +873,7 @@
   <!-- ═══ RESOURCES ═══ -->
   <!-- ═══ PLANNING (Plane-inspired cycles) ═══ -->
   <div class="panel" id="panel-plan">
-    <div class="card m0a mb16">
+    <div class="card m0a mb16" id="cyc-card">
       <div class="card-title" data-def="Cycles">Cycles
         <span class="ct-sub">A window with a commitment inside it</span>
       </div>
@@ -885,15 +885,27 @@
       </div>
       <div class="ox"><table class="dt"><thead><tr><th>Cycle</th><th class="w160">Window</th><th class="w90">State</th><th class="w110">Work</th><th class="w70">Days</th><th class="w170"></th></tr></thead><tbody id="cyc-body"></tbody></table></div>
     </div>
-    <div class="card m0a mb16">
+    <div class="card m0a mb16" id="cyc-detail-card">
       <div class="card-title">Inside the cycle</div>
       <div id="cyc-detail"></div>
     </div>
-    <div class="card m0a">
+    <div class="card m0a mb16" id="cyc-backlog-card">
       <div class="card-title">Backlog
         <span class="ct-sub">Tasks with no cycle</span>
       </div>
       <div id="cyc-backlog" class="cyc-back"></div>
+    </div>
+    <div class="card m0a">
+      <div class="card-title" data-def="Modules">Modules
+        <span class="ct-sub">Outcome packages across phases and cycles</span>
+      </div>
+      <div class="cyc-form">
+        <input id="mod-name" class="ctl-in" type="text" placeholder="Module name" aria-label="Module name">
+        <input id="mod-lead" class="ctl-in" type="text" placeholder="Lead" aria-label="Module lead">
+        <input id="mod-target" class="ctl-in" type="date" aria-label="Module target date">
+        <button class="btn btn-g btn-s" data-action="modAdd">Add module</button>
+      </div>
+      <div class="ox"><table class="dt"><thead><tr><th>Module</th><th class="w110">Lead</th><th class="w110">Target</th><th class="w120">Work</th><th class="w120">Progress</th><th class="w220"></th></tr></thead><tbody id="mod-body"></tbody></table></div>
     </div>
   </div>
   <div class="panel" id="panel-res">

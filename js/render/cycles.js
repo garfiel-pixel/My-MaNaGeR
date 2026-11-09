@@ -140,6 +140,16 @@ var MMGR = window.MMGR || {};
     if (!s) {
       return;
     }
+    // Cycles are an agile tool and follow the sprint bar's rule; modules are
+    // not, so the section itself stays reachable on a waterfall project and
+    // only the three cycle cards step aside.
+    const agile = (s.methodology || 'waterfall') === 'agile';
+    ['cyc-card', 'cyc-detail-card', 'cyc-backlog-card'].forEach(function (id) {
+      const el = $(id);
+      if (el) {
+        el.classList.toggle('is-hide', !agile);
+      }
+    });
     const all = ns.Cycles.list(s);
     const sel = ns.Cycles.find(s, s.cycSel) || ns.Cycles.active(s) || all[0] || null;
     host.innerHTML = all.length
@@ -245,6 +255,77 @@ var MMGR = window.MMGR || {};
     }
   }
 
-  ns.RenderCycles = { renderCycles: renderCycles };
+  // Modules: the cross-cutting packages. Progress is duration-weighted and
+  // only shown when the module has work; an empty module says so rather than
+  // showing a confident zero.
+  function moduleRow(s, m) {
+    const p = ns.Modules.progress(s, m);
+    const inModule = {};
+    (m.taskIds || []).forEach(function (id) {
+      inModule[id] = 1;
+    });
+    // ok: only the task index and the escaped name reach the markup below
+    const list = (s.tasks || [])
+      .filter(function (t) {
+        return t && t.id && !inModule[t.id];
+      })
+      .slice(0, 120);
+    const idxOf = t => (s.tasks || []).indexOf(t);
+    const options = list
+      .map(function (t) {
+        return (
+          '<option value="' +
+          esc(String(idxOf(t))) +
+          '">' +
+          esc(t.name || 'Untitled task') +
+          '</option>'
+        );
+      })
+      .join('');
+    return (
+      '<tr><td>' +
+      esc(m.name) +
+      '</td><td class="t-xs">' +
+      esc(m.lead || '-') +
+      '</td><td class="t-xs">' +
+      esc(m.target || '-') +
+      '</td><td class="t-xs">' +
+      (p ? p.tasks + ' task' + (p.tasks === 1 ? '' : 's') + ' · ' + p.days + ' d' : 'No work yet') +
+      '</td><td class="t-xs">' +
+      (p ? p.pct + '%' + (p.weighted ? ' (by days)' : ' (by tasks)') : '-') +
+      '</td><td class="cyc-act"><select class="ctl-in" data-action="modAddTask" data-id="' +
+      esc(m.id) +
+      '" aria-label="Add a task to ' +
+      esc(m.name) +
+      '"><option value="">Add task</option>' +
+      options +
+      '</select> <button class="btn btn-o btn-s" data-action="modClear" data-id="' +
+      esc(m.id) +
+      '">Clear</button> <button class="btn btn-d btn-s" data-action="modDel" data-id="' +
+      esc(m.id) +
+      '">&times;</button></td></tr>'
+    );
+  }
+
+  function renderModules() {
+    const host = $('mod-body');
+    if (!host) {
+      return;
+    }
+    const s = S();
+    if (!s) {
+      return;
+    }
+    const all = ns.Modules.list(s);
+    host.innerHTML = all.length
+      ? all
+          .map(function (m) {
+            return moduleRow(s, m);
+          })
+          .join('')
+      : '<tr><td colspan="6"><div class="es es-row">No modules yet. A module groups work by outcome across phases and cycles.</div></td></tr>';
+  }
+
+  ns.RenderCycles = { renderCycles: renderCycles, renderModules: renderModules };
 })(MMGR);
 window.MMGR = MMGR;

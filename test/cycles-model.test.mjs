@@ -181,3 +181,44 @@ test('a task with no duration counts as a task and as zero days', () => {
   assert.equal(C.sumDays(C.tasksOf(s, id)), 0);
   assert.equal(C.tasksOf(s, id).length, 1);
 });
+
+const M = sandbox.window.MMGR.Modules;
+
+test('a module groups tasks and weights its progress by duration', () => {
+  const s = base();
+  s.tasks.push(task({ id: 'T2', status: 'completed', duration: '3' }));
+  const id = M.newModule(s, { name: 'Facade', lead: 'Ana', target: '2026-12-01' }).id;
+  assert.equal(M.addTask(s, id, 0).ok, true);
+  assert.equal(M.addTask(s, id, 1).ok, true);
+  assert.equal(M.addTask(s, id, 1).ok, false);
+  const p = M.progress(s, M.find(s, id));
+  assert.equal(p.tasks, 2);
+  assert.equal(p.days, 8);
+  assert.equal(p.doneDays, 3);
+  assert.equal(p.pct, 38);
+  assert.equal(p.weighted, true);
+});
+
+test('an empty module has no progress rather than a confident zero', () => {
+  const s = base();
+  const id = M.newModule(s, { name: 'Facade' }).id;
+  assert.equal(M.progress(s, M.find(s, id)), null);
+});
+
+test('a deleted task disappears from a module on the next read', () => {
+  const s = base();
+  const id = M.newModule(s, { name: 'Facade' }).id;
+  M.addTask(s, id, 0);
+  assert.equal(M.tasks(s, M.find(s, id)).length, 1);
+  s.tasks.splice(0, 1);
+  assert.equal(M.tasks(s, M.find(s, id)).length, 0);
+});
+
+test('removing a module leaves its tasks untouched', () => {
+  const s = base();
+  const id = M.newModule(s, { name: 'Facade' }).id;
+  M.addTask(s, id, 0);
+  assert.equal(M.removeModule(s, id).ok, true);
+  assert.equal(s.tasks.length, 1);
+  assert.equal(s.tasks[0].cycleId, '');
+});

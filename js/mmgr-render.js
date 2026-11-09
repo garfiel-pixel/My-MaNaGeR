@@ -106,13 +106,10 @@ var MMGR = window.MMGR || {};
     if (sprintPanel) {
       sprintPanel.classList.toggle('is-hide', meth !== 'agile');
     }
-    // Planning follows the SAME rule as the sprint bar rather than inventing a
-    // second one: a waterfall project is not shown an agile tool it did not
-    // ask for. Modules inside the section are not agile, but they live here.
-    const planNav = $('plan-nav');
-    if (planNav) {
-      planNav.classList.toggle('is-hide', meth !== 'agile');
-    }
+    // Planning stays reachable on every methodology: modules are not an agile
+    // concept. The renderer hides the three cycle cards on a waterfall project
+    // under the same rule as the sprint bar, so the section never shows an
+    // agile tool a project did not ask for.
     // SIDEBAR-HAMBURGER-TOGGLE-PLAN: the gate targets EVERY .sec-btn for the
     // section (top pill nav + desktop sidebar clones), not just #dmaic-nav by
     // id, the sidebar mirrors the same visibility by construction.
@@ -3204,6 +3201,11 @@ var MMGR = window.MMGR || {};
       ns.RenderCycles.renderCycles();
     }
   }
+  function renderModules() {
+    if (ns.RenderCycles) {
+      ns.RenderCycles.renderModules();
+    }
+  }
 
   // ---- Closure ---- (extracted to js/render/closure.js)
   function renderPunchList() {
@@ -3668,6 +3670,7 @@ var MMGR = window.MMGR || {};
     // Planning: cycles and the backlog read the task array, so any task change
     // is reflected the next time the section is drawn.
     renderCycles();
+    renderModules();
   }
 
   // ==================================================================
@@ -4199,6 +4202,7 @@ var MMGR = window.MMGR || {};
     renderProcessFeed: renderProcessFeed,
     renderApprovalPack: renderApprovalPack,
     renderCycles: renderCycles,
+    renderModules: renderModules,
     renderRules: renderRules,
     renderClosure: renderClosure,
     renderPunchList: renderPunchList,

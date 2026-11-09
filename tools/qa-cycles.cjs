@@ -16,7 +16,10 @@
     11. a viewer cannot add, activate or close a cycle
     12. the board scope narrows to the active cycle and to the backlog
     13. the scope is remembered on this device after a reload
-    14. no page or console error during the run
+    14. a module groups tasks across phases and reports weighted progress
+    15. a module and its membership survive a reload
+    16. deleting a module leaves its tasks untouched
+    17. no page or console error during the run
 
    Usage:  node tools/qa-cycles.cjs
    Env:    QA_BASE (default http://127.0.0.1:8765), CHROME_PATH
@@ -454,7 +457,81 @@ async function reachable(url) {
     remembered
   );
 
-  // ---- 14. no runtime errors -------------------------------------------
+  // ---- 14. modules ------------------------------------------------------
+  await page.evaluate(() => {
+    window.MMGR.Render.showSection('plan', document.querySelector('.sec-btn[data-section="plan"]'));
+    window.MMGR.Render.renderCycles();
+    window.MMGR.Render.renderModules();
+  });
+  await page.waitForTimeout(350);
+  await page.fill('#mod-name', 'Facade');
+  await page.fill('#mod-lead', 'Ana');
+  await page.fill('#mod-target', '2026-12-01');
+  await page.locator('button[data-action="modAdd"]').click();
+  await page.waitForTimeout(350);
+  // Two tasks from different parts of the plan, one of them finished.
+  await page.evaluate(() => {
+    const s = window.MMGR.State.getState();
+    const id = s.modules[0].id;
+    window.MMGR.State.updateState(st => {
+      const m = window.MMGR.Modules.find(st, id);
+      window.MMGR.Modules.addTask(st, id, 0);
+      window.MMGR.Modules.addTask(st, id, 2);
+      void m;
+    });
+    window.MMGR.Render.renderModules();
+  });
+  await page.waitForTimeout(300);
+  const mod = await page.evaluate(() => {
+    const s = window.MMGR.State.getState();
+    const m = s.modules[0];
+    const p = window.MMGR.Modules.progress(s, m);
+    const row = (document.querySelector('#mod-body tr') || {}).textContent || '';
+    return { name: m.name, tasks: m.taskIds.length, pct: p && p.pct, row };
+  });
+  check(
+    'a module groups tasks across phases and reports weighted progress',
+    mod.name === 'Facade' && mod.tasks === 2 && mod.pct === 29 && /29%/.test(mod.row),
+    mod
+  );
+
+  // ---- 15. the module survives a reload ---------------------------------
+  await page.evaluate(() => window.MMGR.State.save(true));
+  await boot();
+  await page.evaluate(() => {
+    window.MMGR.Render.showSection('plan', document.querySelector('.sec-btn[data-section="plan"]'));
+    window.MMGR.Render.renderCycles();
+    window.MMGR.Render.renderModules();
+  });
+  await page.waitForTimeout(400);
+  const modKept = await page.evaluate(() => {
+    const s = window.MMGR.State.getState();
+    return { n: s.modules.length, tasks: (s.modules[0] || {}).taskIds.length };
+  });
+  check(
+    'a module and its membership survive a reload',
+    modKept.n === 1 && modKept.tasks === 2,
+    modKept
+  );
+
+  // ---- 16. deleting a module leaves its tasks ---------------------------
+  // The floating AI button sits over the bottom-right of the table, so the
+  // delete is dispatched on the element itself rather than through a hit test.
+  await page.evaluate(() =>
+    document.querySelector('#mod-body button[data-action="modDel"]').click()
+  );
+  await page.waitForTimeout(350);
+  const modGone = await page.evaluate(() => {
+    const s = window.MMGR.State.getState();
+    return { n: s.modules.length, tasks: s.tasks.length };
+  });
+  check(
+    'deleting a module leaves its tasks untouched',
+    modGone.n === 0 && modGone.tasks === 3,
+    modGone
+  );
+
+  // ---- 17. no runtime errors -------------------------------------------
   check('no page or console error during the run', errors.length === 0, errors.slice(0, 5));
 
   await browser.close();

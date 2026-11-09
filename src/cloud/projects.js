@@ -77,18 +77,28 @@ export async function handleCloudProjectList(request, env) {
   // returns null for an unverified password account, and '' matches no row, so
   // the fence is never wider than the create route's own rule.
   const email = await provenEmail(session, env);
-  const owned = await env.DB.prepare(
+  // G2 (2026-11-09): the two reads are independent and both run AFTER the
+  // session and verified-email checks, so one D1 batch carries them without
+  // moving a single auth decision. A driver without batch (a unit-test mock)
+  // still takes the sequential path.
+  const ownedStmt = env.DB.prepare(
     'SELECT project_id, owner_label, google_name, latest_r2_key, created_at, updated_at, last_owner_seen_at FROM cloud_projects WHERE (google_sub = ? OR owner_email = ?) AND deleted_at IS NULL'
-  )
-    .bind(session.sub, email || '')
-    .all();
-  const adopted = await env.DB.prepare(
+  ).bind(session.sub, email || '');
+  const adoptedStmt = env.DB.prepare(
     'SELECT p.project_id, p.owner_label, p.google_name, p.latest_r2_key, p.created_at, p.updated_at, p.last_owner_seen_at, p.deleted_at, a.role AS adopted_role, a.created_at AS adopted_at ' +
       'FROM cloud_adoptions a JOIN cloud_projects p ON p.project_id = a.project_id ' +
       'WHERE a.recipient_sub = ?'
-  )
-    .bind(session.sub)
-    .all();
+  ).bind(session.sub);
+  let owned;
+  let adopted;
+  if (typeof env.DB.batch === 'function') {
+    const both = await env.DB.batch([ownedStmt, adoptedStmt]);
+    owned = both[0];
+    adopted = both[1];
+  } else {
+    owned = await ownedStmt.all();
+    adopted = await adoptedStmt.all();
+  }
   const seen = {};
   const projects = [];
   ((owned && owned.results) || []).forEach(function (r) {

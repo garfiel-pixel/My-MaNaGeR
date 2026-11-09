@@ -4,6 +4,7 @@ import { purgeStaleCloudProjects } from './src/cloud/projects.js';
 import { sweepExpiredInvitations, sweepExpiredAccess } from './src/cloud/team.js';
 import { evaluateWebhooks } from './src/webhooks.js';
 import { fxRefresh } from './src/fx.js';
+import { bindRequestContext } from './src/lib/http.js';
 
 export { Presence }; // wrangler requires DO classes in the entrypoint
 
@@ -629,8 +630,13 @@ export default {
     }
   },
 
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     try {
+      // G (2026-11-09): the session-cache KV fill rides waitUntil instead of
+      // being awaited before the response. Auth order is untouched: the D1
+      // revocation read and the cache read still happen exactly where they
+      // did; only the write-back became fire-and-forget.
+      bindRequestContext(request, ctx);
       const url = new URL(request.url);
       let normalized = normalizePathname(url.pathname);
 

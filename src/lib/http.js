@@ -98,6 +98,30 @@ export function codesEqual(a, b) {
 // ---- Session handling (Google + email auth) --------------------------------
 
 export const SESSION_COOKIE = 'mmgr_session';
+
+// G (2026-11-09): the session-cache write is a cache fill, not part of the
+// answer. A WeakMap keeps the request's execution context off the Request
+// object itself (no expando) and out of module scope (no cross-request race).
+const REQUEST_WAIT_UNTIL = new WeakMap();
+
+export function bindRequestContext(request, ctx) {
+  if (request && ctx && typeof ctx.waitUntil === 'function') {
+    REQUEST_WAIT_UNTIL.set(request, ctx.waitUntil.bind(ctx));
+  }
+}
+
+function cacheWrite(request, promise) {
+  const wait = request ? REQUEST_WAIT_UNTIL.get(request) : null;
+  if (wait) {
+    try {
+      wait(promise);
+      return null;
+    } catch (e) {
+      /* fall back to awaiting */
+    }
+  }
+  return promise;
+}
 export const SESSION_MAX_AGE = 604800; // 7 days, seconds
 
 let _fallbackSessionKeyPromise = null;
@@ -258,14 +282,22 @@ export async function readSession(request, env) {
     if (!sessRow || sessRow.revoked_at) {
       try {
         if (env.KV) {
-          await env.KV.put(kvKey, 'revoked', { expirationTtl: 300 });
+          const put = env.KV.put(kvKey, 'revoked', { expirationTtl: 300 }).catch(function () {});
+          const pending = cacheWrite(request, put);
+          if (pending) {
+            await pending;
+          }
         }
       } catch (e) {}
       return null;
     }
     try {
       if (env.KV) {
-        await env.KV.put(kvKey, 'valid', { expirationTtl: 60 });
+        const put = env.KV.put(kvKey, 'valid', { expirationTtl: 60 }).catch(function () {});
+        const pending = cacheWrite(request, put);
+        if (pending) {
+          await pending;
+        }
       }
     } catch (e) {}
   }

@@ -153,12 +153,16 @@ const aiIconBody = bodyOf(AIICON_FILE, /function aiIcon\([^)]*\)\s*\{[\s\S]{0,30
 // its own ico(name) helper (DOM-built SVG, not innerHTML). Verified below.
 const MKT_ICO_FILE = 'js/marketing-ai.js';
 const mktIcoBody = bodyOf(MKT_ICO_FILE, /function ico\([^)]*\)\s*\{[\s\S]{0,500}?\}/);
+// Idea intake board (2026-11-08) draws from its own ic(name) helper.
+const IDEAS_ICO_FILE = 'js/render/ideas.js';
+const ideasIcoBody = bodyOf(IDEAS_ICO_FILE, /function ic\([^)]*\)\s*\{[\s\S]{0,400}?\}/);
 // True when index lands inside a verified helper's own body in file f.
 const inVerifiedHelper = (f, idx) =>
   [
     { file: ICO_FILE, body: icoBody },
     { file: AIICON_FILE, body: aiIconBody },
-    { file: MKT_ICO_FILE, body: mktIcoBody }
+    { file: MKT_ICO_FILE, body: mktIcoBody },
+    { file: IDEAS_ICO_FILE, body: ideasIcoBody }
   ].some(h => h.file === f && h.body && idx >= h.body.from && idx <= h.body.to);
 
 // ---- ARM 1: literal references ---------------------------------------------
@@ -411,6 +415,67 @@ const ternaryRe = /^(.+?)\s*\?\s*['"]([^'"]*)['"]\s*:\s*['"]([^'"]*)['"]$/;
     if (ok)
       pass(
         'ico() in ' +
+          rel +
+          ': ' +
+          calls.length +
+          ' call sites, ' +
+          ok +
+          ' literal icon names all exist'
+      );
+  }
+}
+
+// ic(name) in js/render/ideas.js (idea intake board, 2026-11-08) - same
+// '#i-' prefix contract as ico(). Same rule: only literal (or
+// literal-ternary) names can be verified.
+{
+  const rel = IDEAS_ICO_FILE;
+  const t = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+  const body = /function ic\([^)]*\)\s*\{[\s\S]{0,400}?\}/.exec(t);
+  if (!body) {
+    fail(rel + ': ic() helper not found - pattern drifted, update verify-icons.cjs');
+  } else if (!body[0].includes('#i-')) {
+    fail(rel + ': ic() no longer prefixes "#i-" - update the prefix assumption in this gate');
+  } else {
+    const calls = extractCalls(t, 'ic');
+    if (calls.length < 5) {
+      fail(rel + ': only ' + calls.length + ' ic() call sites extracted (expected >= 5)');
+    }
+    let ok = 0;
+    for (const c of calls) {
+      const arg = c.args[0] === undefined ? '' : c.args[0];
+      let names = null;
+      if (isSingleLiteral(arg)) {
+        names = quoted(arg);
+      } else {
+        const tm = ternaryRe.exec(arg);
+        if (tm && !/[$()[\]{}]/.test(tm[1])) names = [tm[2], tm[3]];
+      }
+      if (!names) {
+        fail(
+          rel +
+            ' @' +
+            c.line +
+            ': non-literal ic() argument (' +
+            arg.trim().slice(0, 60) +
+            ') - the gate can only verify literals; make the icon name a literal or extend verify-icons.cjs'
+        );
+        continue;
+      }
+      for (const n of names) {
+        const id = 'i-' + n;
+        if (!spriteSymbols.has(id)) {
+          fail(
+            rel + ' @' + c.line + ": ic('" + n + "') -> #" + id + ' has no <symbol> in ' + SPRITE
+          );
+        } else {
+          ok++;
+        }
+      }
+    }
+    if (ok)
+      pass(
+        'ic() in ' +
           rel +
           ': ' +
           calls.length +

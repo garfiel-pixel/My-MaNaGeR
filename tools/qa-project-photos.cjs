@@ -349,10 +349,19 @@ async function openPhotos(page, pid) {
     log('nav diagnose: ' + JSON.stringify(diag).slice(0, 2000));
     return nav;
   }
-  await page
-    .locator(sel + ':visible')
-    .first()
-    .click();
+  // Click the copy the wait above proved visible. The page carries the nav
+  // more than once (desktop rail, compact drawer, sidebar clones); a plain
+  // ':visible' locator can resolve to a copy a re-render then hides.
+  await page.evaluate(s => {
+    const all = Array.prototype.slice.call(document.querySelectorAll(s));
+    const b = all.find(x => {
+      const r = x.getBoundingClientRect();
+      return r.width > 0 && r.height > 0;
+    });
+    if (b) {
+      b.click();
+    }
+  }, sel);
   return nav;
 }
 

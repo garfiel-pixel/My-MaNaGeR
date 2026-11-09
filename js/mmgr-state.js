@@ -188,6 +188,10 @@ var MMGR = window.MMGR || {};
  * @property {Array<Object>} [logEntries]
  * @property {Array<Object>} [commsEntries]
  * @property {Array<Object>} [documents]
+ * @property {Array<Object>} [pages] - project book: flat page tree (v28)
+ * @property {string} [docsView] - per-device Documents view (v28)
+ * @property {string} [pageSel] - per-device selected page id (v28)
+ * @property {boolean} [pageUnfiled] - per-device unfiled filter (v28)
  * @property {{name:string, start:string, end:string}} [sprint]
  * @property {Array<Object>} [dailySnapshots]
  * @property {Object} [defExpanded] - WBS collapse state by task id
@@ -279,7 +283,7 @@ var MMGR = window.MMGR || {};
   'use strict';
 
   const STORAGE_KEY = 'mmgr_state';
-  const SCHEMA_VERSION = 27;
+  const SCHEMA_VERSION = 28;
 
   // ---- Default State ----
   /** @returns {AppState} */
@@ -363,6 +367,12 @@ var MMGR = window.MMGR || {};
       commsEntries: [],
       // Documents
       documents: [],
+      // Project book (AppFlowy-inspired). Pages are project data and travel
+      // with a cloud merge; the two view keys below are per-device only.
+      pages: [],
+      docsView: 'register',
+      pageSel: '',
+      pageUnfiled: false,
       // Closure
       closure: { items: [], well: '', imp: '', rec: '' },
       // RACI
@@ -1018,6 +1028,77 @@ var MMGR = window.MMGR || {};
       }
       return state;
     },
+    28: function (state) {
+      // V27 -> V28: project book (AppFlowy-inspired). Additive and lossless:
+      // - the page array starts empty;
+      // - an imported page is repaired in place (missing id/fields, an
+      //   orphan parent lifted to the root, an unknown block type becomes a
+      //   paragraph) - the state module loads before the page model, so this
+      //   repair is deliberately inline and does not call MMGR.Pages;
+      // - the two view keys are per-device and default to Register.
+      if (!Array.isArray(state.pages)) {
+        state.pages = [];
+      }
+      state.pages = state.pages.filter(function (p) {
+        return p && typeof p === 'object' && !Array.isArray(p);
+      });
+      const pageIds = {};
+      state.pages.forEach(function (p) {
+        if (typeof p.id === 'string' && p.id) {
+          pageIds[p.id] = 1;
+        }
+      });
+      const blockTypes = ['paragraph', 'heading', 'bullet', 'checklist', 'callout', 'divider'];
+      state.pages.forEach(function (p) {
+        if (typeof p.id !== 'string' || !p.id) {
+          p.id = 'pg' + Math.random().toString(36).slice(2, 10);
+        }
+        if (typeof p.title !== 'string') {
+          p.title = '';
+        }
+        if (typeof p.parentId !== 'string') {
+          p.parentId = '';
+        }
+        if (p.parentId && !pageIds[p.parentId]) {
+          p.parentId = '';
+        }
+        if (typeof p.sort !== 'number' || !isFinite(p.sort)) {
+          p.sort = 0;
+        }
+        if (!Array.isArray(p.blocks)) {
+          p.blocks = [];
+        }
+        p.blocks.forEach(function (b) {
+          if (!b || typeof b !== 'object' || Array.isArray(b)) {
+            return;
+          }
+          if (typeof b.id !== 'string' || !b.id) {
+            b.id = 'b' + Math.random().toString(36).slice(2, 10);
+          }
+          if (blockTypes.indexOf(b.type) < 0) {
+            b.type = 'paragraph';
+          }
+          if (typeof b.text !== 'string') {
+            b.text = '';
+          }
+          b.done = b.done === true;
+        });
+        if (typeof p.createdAt !== 'string') {
+          p.createdAt = '';
+        }
+        if (typeof p.updatedAt !== 'string') {
+          p.updatedAt = '';
+        }
+      });
+      if (state.docsView !== 'pages') {
+        state.docsView = 'register';
+      }
+      if (typeof state.pageSel !== 'string') {
+        state.pageSel = '';
+      }
+      state.pageUnfiled = state.pageUnfiled === true;
+      return state;
+    },
     25: function (state) {
       // V24 -> V25: BOQ bridge (H-2, BUDGET-BOQ directive 2026-11-05).
       // Additive and lossless:
@@ -1459,6 +1540,10 @@ var MMGR = window.MMGR || {};
     'logEntries',
     'commsEntries',
     'documents',
+    // Project book pages are project data: they travel with a cloud merge.
+    // docsView / pageSel / pageUnfiled are deliberately absent - a view
+    // preference describes what this device shows, a page is the project.
+    'pages',
     'closure',
     'raci',
     'sprint',

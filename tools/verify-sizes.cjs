@@ -35,7 +35,9 @@ const EXACT = {
   'js/calculator-page.js': 600000,
   // 2026-11-08 (C2 Task 2): raised 210000 -> 215000 for the intake panel,
   // nav group and idea sheet markup in project.html.
-  'project.html': 215000,
+  // 2026-11-08 (C3 Phase 1): raised 215000 -> 220000 for the Documents view
+  // switcher and the Pages view container (~0.6 KB).
+  'project.html': 220000,
   'calculator.html': 80000,
   'app.html': 140000,
   'index.html': 50000

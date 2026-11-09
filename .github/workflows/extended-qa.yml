@@ -150,6 +150,9 @@ jobs:
       - name: "Idea intake and agenda"
         run: node tools/qa-ideas-agenda.cjs
 
+      - name: "Project book pages"
+        run: node tools/qa-pages.cjs
+
       - name: "E-T4: standalone sign-in page and open-redirect defence"
         run: node tools/qa-signin-page.cjs
 

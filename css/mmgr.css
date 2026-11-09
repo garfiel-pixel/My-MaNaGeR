@@ -7164,6 +7164,221 @@ body.dark-mode .team-link-danger {
     gap: 3px 8px;
   }
 }
+
+/* ---- Project book: page tree + block body (AppFlowy-inspired) ----
+   Pages are a flat array rendered as an indented tree; a body is a list of
+   typed blocks. Formatting is the block type, never tags inside the text. */
+.pg-switch {
+  margin-bottom: 12px;
+}
+.pg-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 14px;
+}
+.pg-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px 3px calc(6px + var(--pg-depth, 0) * 16px);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+}
+.pg-row:hover {
+  background: var(--surface-raised);
+}
+.pg-row.is-on {
+  border-color: var(--gold);
+  background: rgba(var(--gold-rgb), 0.06);
+}
+.pg-row.dov {
+  border-color: var(--gold);
+  background: rgba(var(--gold-rgb), 0.12);
+}
+.pg-row.drag {
+  opacity: 0.55;
+}
+.pg-tw {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-tw:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+.pg-rowacts {
+  display: flex;
+  gap: 1px;
+  opacity: 0.55;
+}
+.pg-row:hover .pg-rowacts,
+.pg-row.is-on .pg-rowacts {
+  opacity: 1;
+}
+.pg-ib {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.pg-ib:hover,
+.pg-ib:focus-visible {
+  border-color: var(--border);
+  color: var(--text);
+  outline: none;
+}
+.pg-ib .ico {
+  width: 14px;
+  height: 14px;
+}
+.pg-body {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.pg-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+}
+.pg-pl {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+.pg-title {
+  flex: 1 1 260px;
+  min-width: 180px;
+  font-weight: 600;
+}
+.pg-parent {
+  max-width: 240px;
+}
+.pg-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pg-b {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 4px 6px 6px;
+}
+.pg-b:focus-within {
+  border-color: var(--gold);
+}
+.pg-bbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 2px;
+}
+.pg-bt {
+  flex: 1;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+.pg-in {
+  width: 100%;
+  padding: 2px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  line-height: 1.5;
+  resize: vertical;
+}
+.pg-in:focus {
+  outline: none;
+}
+.pg-in-h {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+.pg-b-bullet {
+  border-left: 3px solid var(--gold);
+}
+.pg-bul {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.pg-bul-dot {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  margin-top: 10px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+.pg-b-callout {
+  border-left: 3px solid var(--gold);
+  background: rgba(var(--gold-rgb), 0.05);
+}
+.pg-b-checklist {
+  border-left: 3px solid var(--gold);
+}
+.pg-chk {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.pg-cb {
+  margin-top: 9px;
+}
+.pg-hr {
+  margin: 4px 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+.pg-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+.pg-add-l {
+  margin-right: 4px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+@media (max-width: 720px) {
+  .pg-row {
+    padding-left: calc(2px + var(--pg-depth, 0) * 10px);
+  }
+  .pg-rowacts {
+    opacity: 1;
+  }
+  .pg-parent {
+    max-width: 100%;
+  }
+}
 /* ---- RBAC sprint 3: access tools ---------------------------------------- */
 .team-tools {
   display: flex;

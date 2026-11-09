@@ -4902,6 +4902,313 @@ var MMGR = window.MMGR || {};
     renderDataAccount();
   });
 
+  // ---- Project book (AppFlowy-inspired) ----
+  // Pages are a third surface: they may reference work and documents but
+  // never create, edit, or delete either. Every write below goes through
+  // State.updateState, so the read-only fence and the cloud merge both apply
+  // with no extra logic. The view key and the selected page are per-device.
+  const PAGE_READONLY = 'View-only access: the project book can be read but not changed.';
+
+  function findRow(attr, id) {
+    const rows = document.querySelectorAll('[' + attr + ']');
+    for (let i = 0; i < rows.length; i++) {
+      if (rows[i].getAttribute(attr) === id) {
+        return rows[i];
+      }
+    }
+    return null;
+  }
+
+  function setDocsView(view) {
+    ns.State.updateState(function (s) {
+      s.docsView = view === 'pages' ? 'pages' : 'register';
+    });
+    R.renderDocuments();
+  }
+
+  function selectPage(id) {
+    ns.State.updateState(function (s) {
+      s.pageSel = typeof id === 'string' ? id : '';
+    });
+    R.renderPages();
+  }
+
+  function addPage(parentId) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Pages) {
+      return;
+    }
+    let created = null;
+    ns.State.updateState(function (s) {
+      created = ns.Pages.newPage(s, { parentId: parentId || '' });
+      if (created) {
+        s.pageSel = created.id;
+        s.docsView = 'pages';
+      }
+    });
+    R.renderDocuments();
+    if (created) {
+      const input = U.$('pg-title');
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }
+  }
+
+  function renamePage(id, title) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Pages) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      ns.Pages.rename(s, id, title);
+    });
+    // Update the tree label in place: a full redraw on every keystroke would
+    // take the caret out of the title field.
+    const row = findRow('data-page-row', id);
+    const label = row ? row.querySelector('.pg-tw') : null;
+    if (label) {
+      label.textContent = String(title || '').trim() || 'Untitled page';
+    }
+  }
+
+  function delPage(id) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Pages) {
+      return;
+    }
+    const s = S();
+    const page = ns.Pages.find(s, id);
+    if (!page) {
+      return;
+    }
+    const n = ns.Pages.descendantCount(s, id);
+    const msg = n
+      ? 'Delete "' +
+        page.title +
+        '" and its ' +
+        n +
+        ' child page' +
+        (n === 1 ? '' : 's') +
+        '? This cannot be undone.'
+      : 'Delete "' + page.title + '"? This cannot be undone.';
+    if (!window.confirm(msg)) {
+      return;
+    }
+    ns.State.updateState(function (st) {
+      ns.Pages.remove(st, id);
+      if (st.pageSel === id) {
+        st.pageSel = '';
+      }
+    });
+    R.renderDocuments();
+    showToast(
+      n ? 'Page and ' + n + ' child page' + (n === 1 ? '' : 's') + ' deleted.' : 'Page deleted.',
+      'ok'
+    );
+  }
+
+  function movePage(id, parentId) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return { ok: false, reason: 'readonly' };
+    }
+    if (!ns.Pages) {
+      return { ok: false, reason: 'missing' };
+    }
+    let res = { ok: false };
+    ns.State.updateState(function (s) {
+      res = ns.Pages.move(s, id, parentId || '', null);
+    });
+    R.renderDocuments();
+    if (!res.ok) {
+      showToast(
+        res.reason === 'descendant'
+          ? 'A page cannot be moved inside one of its own child pages.'
+          : 'That page could not be moved.',
+        'err'
+      );
+    }
+    return res;
+  }
+
+  function movePageSibling(id, dir) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Pages) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      ns.Pages.moveSibling(s, id, dir);
+    });
+    R.renderDocuments();
+  }
+
+  function addBlock(pageId, type, afterId) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Pages) {
+      return;
+    }
+    let block = null;
+    ns.State.updateState(function (s) {
+      block = ns.Pages.addBlock(s, pageId, type, afterId || '');
+    });
+    R.renderPages();
+    if (block && block.type !== 'divider') {
+      const row = findRow('data-block-row', block.id);
+      const input = row ? row.querySelector('textarea') : null;
+      if (input) {
+        input.focus();
+      }
+    }
+  }
+
+  function setBlockText(pageId, blockId, value) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Pages) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      ns.Pages.setBlockText(s, pageId, blockId, value);
+    });
+    // No redraw: the textarea is the source of the caret.
+  }
+
+  function toggleBlock(pageId, blockId) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Pages) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      ns.Pages.toggleBlock(s, pageId, blockId);
+    });
+  }
+
+  function delBlock(pageId, blockId) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Pages) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      ns.Pages.removeBlock(s, pageId, blockId);
+    });
+    R.renderPages();
+  }
+
+  function moveBlock(pageId, blockId, dir) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Pages) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      ns.Pages.moveBlock(s, pageId, blockId, dir);
+    });
+    R.renderPages();
+    const row = findRow('data-block-row', blockId);
+    const input = row ? row.querySelector('textarea') : null;
+    if (input) {
+      input.focus();
+    }
+  }
+
+  // Tree drag: a drop lands the dragged page as the last child of the row it
+  // is dropped on. The model refuses a drop into the page's own descendant.
+  let dragPageId = null;
+  document.addEventListener('dragstart', function (e) {
+    if (e.target.closest && e.target.closest('button, input, select, textarea')) {
+      return;
+    }
+    const row = e.target.closest ? e.target.closest('[data-page-row]') : null;
+    if (!row) {
+      return;
+    }
+    if (isReadonly()) {
+      if (e.preventDefault) {
+        e.preventDefault();
+      }
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    dragPageId = row.getAttribute('data-page-row');
+    if (e.dataTransfer) {
+      try {
+        e.dataTransfer.setData('text/plain', dragPageId);
+        e.dataTransfer.effectAllowed = 'move';
+      } catch (err) {
+        /* a locked-down dataTransfer must not break the tree */
+      }
+    }
+    row.classList.add('drag');
+  });
+
+  document.addEventListener('dragend', function (e) {
+    const row = e.target.closest ? e.target.closest('[data-page-row]') : null;
+    if (row) {
+      row.classList.remove('drag');
+    }
+    document.querySelectorAll('[data-page-row].dov').forEach(function (r) {
+      r.classList.remove('dov');
+    });
+    dragPageId = null;
+  });
+
+  document.addEventListener('dragover', function (e) {
+    const row = e.target.closest ? e.target.closest('[data-page-row]') : null;
+    if (row && dragPageId && row.getAttribute('data-page-row') !== dragPageId) {
+      e.preventDefault();
+      row.classList.add('dov');
+    }
+  });
+
+  document.addEventListener('dragleave', function (e) {
+    const row = e.target.closest ? e.target.closest('[data-page-row]') : null;
+    if (row) {
+      row.classList.remove('dov');
+    }
+  });
+
+  document.addEventListener('drop', function (e) {
+    const row = e.target.closest ? e.target.closest('[data-page-row]') : null;
+    if (!row) {
+      return;
+    }
+    const targetId = row.getAttribute('data-page-row');
+    const sourceId =
+      dragPageId || (e.dataTransfer ? String(e.dataTransfer.getData('text/plain') || '') : '');
+    if (!sourceId || sourceId === targetId) {
+      return;
+    }
+    e.preventDefault();
+    window.MMGR.App.movePage(sourceId, targetId);
+  });
+
   // ---- API ----
   ns.App = {
     exportMyData: exportMyData,
@@ -5041,6 +5348,19 @@ var MMGR = window.MMGR || {};
     exportAgendaIcs: exportAgendaIcs,
     dragIdea: dragIdea,
     dropIdea: dropIdea,
+    // Project book (AppFlowy-inspired)
+    setDocsView: setDocsView,
+    selectPage: selectPage,
+    addPage: addPage,
+    renamePage: renamePage,
+    delPage: delPage,
+    movePage: movePage,
+    movePageSibling: movePageSibling,
+    addBlock: addBlock,
+    setBlockText: setBlockText,
+    toggleBlock: toggleBlock,
+    delBlock: delBlock,
+    moveBlock: moveBlock,
     populateSprint: populateSprint,
     openPrompt: openPrompt,
     openDrwToSave: openDrwToSave,
@@ -5124,6 +5444,37 @@ window.MMGR = MMGR;
     agendaJump: el =>
       window.MMGR.App.agendaJump(el.getAttribute('data-section'), el.getAttribute('data-id')),
     exportAgendaIcs: () => window.MMGR.App.exportAgendaIcs(),
+    // Project book (AppFlowy-inspired)
+    setDocsView: el => window.MMGR.App.setDocsView(el.getAttribute('data-view')),
+    selectPage: el => window.MMGR.App.selectPage(el.getAttribute('data-id')),
+    addPage: el => window.MMGR.App.addPage(el.getAttribute('data-parent') || ''),
+    renamePage: el => window.MMGR.App.renamePage(el.getAttribute('data-id'), el.value),
+    delPage: el => window.MMGR.App.delPage(el.getAttribute('data-id')),
+    movePage: el => window.MMGR.App.movePage(el.getAttribute('data-id'), el.value),
+    movePageSibling: el =>
+      window.MMGR.App.movePageSibling(el.getAttribute('data-id'), el.getAttribute('data-dir')),
+    addBlock: el =>
+      window.MMGR.App.addBlock(
+        el.getAttribute('data-page'),
+        el.getAttribute('data-type'),
+        el.getAttribute('data-after') || ''
+      ),
+    setBlockText: el =>
+      window.MMGR.App.setBlockText(
+        el.getAttribute('data-page'),
+        el.getAttribute('data-block'),
+        el.value
+      ),
+    toggleBlock: el =>
+      window.MMGR.App.toggleBlock(el.getAttribute('data-page'), el.getAttribute('data-block')),
+    delBlock: el =>
+      window.MMGR.App.delBlock(el.getAttribute('data-page'), el.getAttribute('data-block')),
+    moveBlock: el =>
+      window.MMGR.App.moveBlock(
+        el.getAttribute('data-page'),
+        el.getAttribute('data-block'),
+        el.getAttribute('data-dir')
+      ),
     setTaskFollowUp: el => {
       const taskId = el.getAttribute('data-id');
       const assignee = prompt('Follow-up assignee:');
@@ -6594,6 +6945,11 @@ window.MMGR = MMGR;
     setAgendaDays: 1,
     agendaJump: 1,
     exportAgendaIcs: 1,
+    // Project book: switching Register/Pages and selecting a page change
+    // only what this device is looking at. Every action that writes a page,
+    // a block, or a register link is deliberately absent.
+    setDocsView: 1,
+    selectPage: 1,
     cpAllPage: 1,
     print: 1,
     // Reading or closing the column-limit sheet mutates nothing. The inputs
@@ -7024,6 +7380,7 @@ window.MMGR = MMGR;
         action === 'setCfFilter' ||
         action === 'setIdeaTag' ||
         action === 'setIdeaStage' ||
+        action === 'movePage' ||
         action === 'saveKbWip' ||
         action === 'setRelLens' ||
         action === 'updKPI' ||
@@ -7098,6 +7455,8 @@ window.MMGR = MMGR;
         action === 'updMeetItemNote' ||
         action === 'setIdeaTag' ||
         action === 'setIdeaStage' ||
+        action === 'renamePage' ||
+        action === 'setBlockText' ||
         action === 'updMeetField' ||
         action === 'handleCharterUpload' ||
         action === 'setErrWebhook' ||

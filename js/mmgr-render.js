@@ -3260,6 +3260,16 @@ var MMGR = window.MMGR || {};
     if (ns.RenderDocs) {
       ns.RenderDocs.renderDocuments();
     }
+    // The Documents panel also carries the Pages view (project book). The
+    // renderer draws the switcher state even while Register is showing.
+    renderPages();
+  }
+
+  // ---- Project book pages ---- (extracted to js/render/pages.js)
+  function renderPages() {
+    if (ns.RenderPages) {
+      ns.RenderPages.renderPages();
+    }
   }
 
   // ---- DMAIC ----
@@ -4157,6 +4167,7 @@ var MMGR = window.MMGR || {};
     renderRaciHeatmap: renderRaciHeatmap,
     renderComms: renderComms,
     renderDocuments: renderDocuments,
+    renderPages: renderPages,
     renderDmaic: renderDmaic,
     renderDefs: renderDefs,
     renderMeetingsPanel: renderMeetingsPanel,

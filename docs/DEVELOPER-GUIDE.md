@@ -62,12 +62,13 @@ attaches (e.g. `MMGR.Cloud`).
 | `mmgr-perf.js` | 95 | `Perf` | Device-level Performance Mode. ON/OFF gates WebGL starfield, 3D tilt, heavy CSS blur layers. Must load before viewport/dock read it. |
 | `mmgr-theme.js` | 183 | `Theme` | Light/Dark/System helper, early-load so theme applies before first paint. Shared by every page. |
 | `mmgr-render.js` | 2,390 | `Render` | Rendering engine: `renderDash()` (dashboard), `renderWbs()`, `renderGantt()`, `drawDependencyArrows()`, plus RAF-wrapped dispatch of the `js/render/*` sub-renderers. |
-| `js/render/*.js` | — | `Render` | Render sub-modules extracted from mmgr-render.js: `financials`, `people`, `closure`, `documents`, `weather`, `kanban`, `ideas`, `risks`, `resources`, `agenda`. Each exports exactly one renderer object (`RenderIdeas` -> `renderIdeas`, `RenderAgenda` -> `renderAgenda`); mmgr-render.js owns the thin wrapper and the `ns.Render` key. Loaded *before* mmgr-render.js which wraps them. |
+| `js/render/*.js` | — | `Render` | Render sub-modules extracted from mmgr-render.js: `financials`, `people`, `closure`, `documents`, `weather`, `kanban`, `ideas`, `risks`, `resources`, `agenda`, `pages`. Each exports exactly one renderer object (`RenderIdeas` -> `renderIdeas`, `RenderAgenda` -> `renderAgenda`, `RenderPages` -> `renderPages`); mmgr-render.js owns the thin wrapper and the `ns.Render` key. Loaded *before* mmgr-render.js which wraps them. |
 | `mmgr-app.js` | 2,578 | `App` | Application controller: `init()` boot, access gate, delegated `data-action` dispatch (`ACTION_MAP`), drawers/modals/toast, keyboard shortcuts, mention dropdown, Gantt PNG export. |
 | `js/app/*.js` | — | `App` | App sub-modules extracted from mmgr-app.js: `components`, `confirm`, `copy-text`, `sidebar`, `weather`, `backup`, `export`, `history`, `definitions`, `baseline-guard` (Task 2: auto-captures the first baseline + red-dot nudge), `entitlements` (Task 9: the ONE gating seam — `aiAssistant()` reads sign-in; premium flags land inside later, callers never change). |
 | `mmgr-tasks.js` | 623 | `Tasks` | WBS/task CRUD: add/edit/indent, `updTaskField` (endDate edits + Gantt drags back-compute duration via `durationFromDates`, Task 1), `validateImportLines` + AI-assisted Import Dates mismatch panel (Task 3). Split-candidate note: `updTaskField` grew — keep an eye. |
 | `mmgr-ideas.js` | 575 | `Ideas` | Idea intake model (Leantime-inspired): six canvas stages, record normalisation, add/update/remove, the atomic `applyDrop`, the impact x2 minus effort score, the one-way promote link, `unlink` for a deleted task, and `repair` for imported rows. Pure: no DOM, no storage. |
 | `mmgr-agenda.js` | 416 | `Agenda` | Merged date feed over tasks, milestones, meetings, open issues, open changes and live ideas. One window rule, overdue handling, day grouping, and the RFC 5545 `.ics` writer. Pure: no DOM, no storage. |
+| `mmgr-pages.js` | 402 | `Pages` | Project book model (AppFlowy-inspired): a flat page tree (`parentId` + `sort`, never nested), typed plain-text blocks, create/rename/remove-with-descendants, a descendant-safe move, block add/edit/toggle/reorder/remove, and read-time repair. Pure: no DOM, no storage. |
 | `mmgr-schedule.js` | 849 | `Schedule` | CPM engine: topological sort, forward/backward pass, float, critical path, weather padding, resource conflicts, `audit()`. **Purity contract**: pass functions are pure — they never mutate live tasks. |
 | `mmgr-risks.js` | 215 | `Risks` | Risk & issue CRUD. |
 | `mmgr-resources.js` | 428 | `Resources` | Resource & budget management (rates, allocation, utilization, budget lines). |
@@ -127,6 +128,18 @@ Four rules are load-bearing:
 4. **The agenda adds no editable control.** Every row jumps to the panel that owns the record. A second editing surface is how two sources of truth start to disagree.
 
 Per-device preferences (`ideaView`, `ideaTag`, `agendaDays`) live in state but are deliberately **not** in `FIELD_KEYS`, so a cloud merge never carries one user's view choice onto another machine.
+
+### The project book (pages)
+
+`mmgr-pages.js` is a **pure model**: no DOM, no storage, no timers, tested in `test/pages-model.test.mjs` under a `vm` sandbox. `js/render/pages.js` draws the Documents panel's Pages view. The Register is untouched and still owns controlled documents.
+
+Three rules are load-bearing:
+
+1. **Pages are a flat array with a `parentId`, never nested.** A move is one write, "find by id" is a scan not a recursive walk, and a partial cloud merge cannot duplicate a subtree. `Pages.flatten` is the only tree view; `Pages.move` refuses a drop into the page's own descendant.
+2. **A block holds plain text and a type, never HTML.** Formatting *is* the block type (heading, bullet, callout, divider). An unknown type from a newer build repairs to a paragraph on read. No sanitiser exists because no HTML is ever stored.
+3. **A page is a lens, not a second surface.** Pages may reference tasks and register rows but never create, edit, or delete either. Every write is a `data-action` through `State.updateState`, so the read-only fence covers the surface with no new logic.
+
+`pages` is project data and **is** in `FIELD_KEYS`; `docsView`, `pageSel` and `pageUnfiled` are per-device and deliberately are not. The migration repairs an imported page inline (the state module loads before the model); the model repairs again on read.
 
 ## 3. Split candidates — largest functions
 

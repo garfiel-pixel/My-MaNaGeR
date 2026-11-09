@@ -61,7 +61,7 @@
       clicks "Connect Google" in Settings > Controls. It is a device label,
       never a gate , offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-lJtjCtusWWa2tP+HGQgxB6UvY9HeSC0+3KVsjsYBguw=' 'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4=' 'sha256-1lQZ8ZnhADNPMPnTqfYPbBDeCin0qp40ehxDc065Fmc='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-Itl6txRex7s55yY4ZQCLUuCbeMaaU5p25106ILmxzcc=' 'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4=' 'sha256-1lQZ8ZnhADNPMPnTqfYPbBDeCin0qp40ehxDc065Fmc='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
@@ -1402,6 +1402,14 @@
 
   <!-- ═══ DOCUMENTS ═══ -->
   <div class="panel" id="panel-docs">
+    <!-- AppFlowy-inspired project book: the Documents panel carries two views.
+         Register is the controlled-document log that already existed; Pages is
+         the page tree + block body. The choice is per device (state.docsView). -->
+    <div class="idseg pg-switch" role="group" aria-label="Documents view">
+      <button class="idseg-b is-on" data-action="setDocsView" data-view="register" aria-pressed="true">Register</button>
+      <button class="idseg-b" data-action="setDocsView" data-view="pages" aria-pressed="false">Pages</button>
+    </div>
+    <div id="docs-register">
     <div class="card">
       <div class="card-title">Document Register
         <div class="g6">
@@ -1474,6 +1482,19 @@
         <th class="w50">ID</th><th>Material</th><th>Vendor</th><th class="w60">Qty</th><th class="w50">Unit</th>
         <th class="w110">Ordered</th><th class="w110">Expected</th><th class="w110">Received</th><th class="w100">Status</th><th class="w80">Cost</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
       </tr></thead><tbody id="proc-body"></tbody></table></div>
+    </div>
+    </div>
+    <!-- Pages view. Rendered entirely by js/render/pages.js from the flat
+         state.pages array; the block body is plain text, never HTML. -->
+    <div id="docs-pages" hidden>
+      <div class="card">
+        <div class="card-title">Project book
+          <div class="g6">
+            <button class="btn btn-g btn-s" data-action="addPage"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New page</button>
+          </div>
+        </div>
+        <div id="pages-body"></div>
+      </div>
     </div>
   </div>
 
@@ -2441,11 +2462,12 @@ document.addEventListener('error', function (e) {
 document.addEventListener('DOMContentLoaded', function() {
   if (!window.__mmgrBundleMissing) return;
   var MMGR = window.MMGR || {};
-  ['js/mmgr-state.js','js/mmgr-utils.js','js/mmgr-ideas.js','js/mmgr-agenda.js','js/mmgr-custom-fields.js','js/mmgr-relations.js','js/mmgr-kanban.js','js/mmgr-net.js','js/consent.js',
+  ['js/mmgr-state.js','js/mmgr-utils.js','js/mmgr-ideas.js','js/mmgr-agenda.js','js/mmgr-pages.js','js/mmgr-custom-fields.js','js/mmgr-relations.js','js/mmgr-kanban.js','js/mmgr-net.js','js/consent.js',
    'js/render/financials.js','js/render/people.js','js/render/closure.js',
    'js/render/documents.js','js/render/weather.js','js/render/kanban.js',
    'js/render/ideas.js',
    'js/render/agenda.js',
+   'js/render/pages.js',
    'js/render/risks.js','js/render/resources.js','js/mmgr-render.js',
    'js/mmgr-prompts.js','js/mmgr-weather.js','js/mmgr-field.js',
    'js/mmgr-schedule.js','js/mmgr-resources.js','js/mmgr-health.js',

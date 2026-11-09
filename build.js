@@ -88,6 +88,7 @@ const APP_MODULES = [
   'js/render/documents.js',
   'js/render/weather.js',
   'js/render/kanban.js',
+  'js/render/ideas.js',
   'js/render/risks.js',
   'js/render/resources.js',
   'js/mmgr-render.js',

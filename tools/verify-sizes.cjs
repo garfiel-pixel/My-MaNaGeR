@@ -28,10 +28,14 @@ const EXACT = {
   // approval preview's stylesheet block. The old cap left 1.5 KB of headroom
   // and the feature needs ~2.6 KB of token-only CSS; the next UI wave should
   // split a layer rather than raise this again.
-  'css/mmgr.css': 520000,
+  // 2026-11-08 (C2 Task 2): raised 520000 -> 535000 for the Idea Intake board,
+  // list and sheet CSS (~5 KB of token-only surface in css/src/30-panels.css).
+  'css/mmgr.css': 535000,
   'css/marketing.css': 160000,
   'js/calculator-page.js': 600000,
-  'project.html': 210000,
+  // 2026-11-08 (C2 Task 2): raised 210000 -> 215000 for the intake panel,
+  // nav group and idea sheet markup in project.html.
+  'project.html': 215000,
   'calculator.html': 80000,
   'app.html': 140000,
   'index.html': 50000

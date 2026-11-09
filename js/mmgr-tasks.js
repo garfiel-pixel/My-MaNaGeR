@@ -156,6 +156,55 @@ var MMGR = window.MMGR || {};
     R.renderWbs();
   }
 
+  // Leantime-style promote: an idea becomes a task once. The link lives on
+  // the idea, not on the task, so the WBS payload keeps exactly the shape
+  // every other surface already understands. The idea's stage is untouched:
+  // promotion is not delivery.
+  //
+  // The task is built through the canonical createTask factory so it carries
+  // every field the WBS, Kanban, relations graph and the custom-field bag
+  // expect (createdDate, boardPosition, relations, custom). A hand-built
+  // object would render inconsistently and break custom-field reads.
+  function addTaskFromIdea(ideaId) {
+    const state = ns.State.getState();
+    const idea =
+      state && ns.Ideas && typeof ns.Ideas.find === 'function'
+        ? ns.Ideas.find(state, ideaId)
+        : null;
+    if (!idea || idea.promotedTaskId) {
+      return '';
+    }
+    const id = createTask({
+      name: idea.title,
+      assignee: idea.author || '',
+      notes: idea.summary || '',
+      status: 'todo'
+    });
+    if (!id) {
+      return '';
+    }
+    let ok = false;
+    ns.State.updateState(function (s) {
+      ok = ns.Ideas.promote(s, ideaId, id);
+    });
+    if (!ok) {
+      // The link could not be written, so the task must not stay: a task
+      // with no idea behind it is worse than no task at all.
+      ns.State.updateState(function (s) {
+        s.tasks = (s.tasks || []).filter(function (t) {
+          return t.id !== id;
+        });
+      });
+      return '';
+    }
+    R.renderWbs();
+    R.renderGantt();
+    R.renderKanban();
+    R.renderDash();
+    R.renderIdeas();
+    return id;
+  }
+
   // A checkbox has no meaningful `value` string, so it gets its own action.
   // The click delegation reverts the box when guardReadonly refuses it.
   function tglTaskCustom(id, key, checked) {
@@ -415,6 +464,11 @@ var MMGR = window.MMGR || {};
       if (s.tasks) {
         s.tasks = s.tasks.filter(t => t.id !== id);
       }
+      // An idea that pointed at this task is unlinked in the SAME update, so
+      // no surface can read a link to a task that has just gone.
+      if (ns.Ideas && typeof ns.Ideas.unlink === 'function') {
+        ns.Ideas.unlink(s, id);
+      }
     });
     // Keep the RACI matrix consistent: drop the deleted task's row + cells.
     if (ns.Raci && ns.Raci.pruneDeleted) {
@@ -424,6 +478,7 @@ var MMGR = window.MMGR || {};
     R.renderGantt();
     R.renderKanban();
     R.renderDash();
+    R.renderIdeas();
   }
 
   function indentTask(id) {
@@ -1165,6 +1220,7 @@ var MMGR = window.MMGR || {};
   // ---- API ----
   ns.Tasks = {
     addTask: addTask,
+    addTaskFromIdea: addTaskFromIdea,
     createTask: createTask,
     durationFromDates: durationFromDates,
     updTaskField: updTaskField,

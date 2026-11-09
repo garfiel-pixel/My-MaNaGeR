@@ -3798,12 +3798,506 @@ var MMGR = window.MMGR || {};
       R.renderWbs();
       R.renderDash();
     }
+
     dragTaskId = null;
     // Symmetry with dropCard: clear any lingering drop-highlight styling on
     // the columns after a lead-time drop.
     endBoardDrag();
     document.querySelectorAll('.kcol').forEach(c => c.classList.remove('dov'));
   }
+
+  // ---- Idea intake (Leantime-inspired) ----
+  // The sheet is static markup in project.html. These handlers fill it, read
+  // it once on Save, and close it. Every write goes through MMGR.Ideas, so
+  // the stage table, the score and the field allow-list live in one place.
+  let ideaLastFocus = null;
+  let dragIdeaId = null;
+
+  function focusIdea(id, preferSelect) {
+    if (preferSelect) {
+      const selects = document.querySelectorAll('select[data-action="setIdeaStage"]');
+      for (let s = 0; s < selects.length; s += 1) {
+        if (selects[s].getAttribute('data-id') === id) {
+          selects[s].focus();
+          return;
+        }
+      }
+    }
+    const cards = document.querySelectorAll('[data-idea-drag]');
+    for (let i = 0; i < cards.length; i += 1) {
+      if (cards[i].getAttribute('data-idea-drag') === id) {
+        cards[i].focus();
+        return;
+      }
+    }
+    const rows = document.querySelectorAll('#ideas-list [data-idea-id]');
+    for (let j = 0; j < rows.length; j += 1) {
+      if (rows[j].getAttribute('data-idea-id') === id) {
+        const btn = rows[j].querySelector('button');
+        if (btn) {
+          btn.focus();
+        }
+        return;
+      }
+    }
+  }
+
+  function openIdeaSheet(idea) {
+    const sheet = U.$('idea-sheet');
+    if (!sheet) {
+      return;
+    }
+    const set = function (id, value) {
+      const el = U.$(id);
+      if (el) {
+        el.value = value;
+      }
+    };
+    sheet.setAttribute('data-idea-id', idea ? idea.id : '');
+    set('idea-title', idea ? idea.title : '');
+    set('idea-summary', idea ? idea.summary : '');
+    set('idea-author', idea ? idea.author : '');
+    set('idea-tags', idea ? (idea.tags || []).join(', ') : '');
+    set('idea-impact', String(idea ? idea.impact : 3));
+    set('idea-effort', String(idea ? idea.effort : 3));
+    set('idea-stage', idea ? idea.stage : 'idea');
+    const heading = U.$('idea-sheet-title');
+    if (heading) {
+      heading.textContent = idea ? 'Edit idea' : 'New idea';
+    }
+    const del = U.$('idea-del');
+    if (del) {
+      del.classList.toggle('is-hide', !idea);
+      del.setAttribute('data-id', idea ? idea.id : '');
+    }
+    // Remember where focus came from so closing the sheet puts it back. The
+    // button that opened it may be gone after a save (the card is redrawn),
+    // so the restore is guarded by document.contains().
+    ideaLastFocus = document.activeElement;
+    sheet.classList.add('open');
+    const first = U.$('idea-title');
+    if (first && first.focus) {
+      first.focus();
+    }
+  }
+
+  function closeIdeaSheet() {
+    const sheet = U.$('idea-sheet');
+    if (sheet) {
+      sheet.classList.remove('open');
+    }
+  }
+
+  function restoreIdeaFocus() {
+    if (ideaLastFocus && document.contains(ideaLastFocus) && ideaLastFocus.focus) {
+      ideaLastFocus.focus();
+    }
+    ideaLastFocus = null;
+  }
+
+  function openIdea() {
+    openIdeaSheet(null);
+  }
+
+  function editIdea(id) {
+    const idea = ns.Ideas.find(S(), id);
+    if (idea) {
+      openIdeaSheet(idea);
+    }
+  }
+
+  function closeIdea() {
+    closeIdeaSheet();
+    restoreIdeaFocus();
+  }
+
+  function saveIdea() {
+    const sheet = U.$('idea-sheet');
+    const titleEl = U.$('idea-title');
+    const title = titleEl ? titleEl.value.trim() : '';
+    if (!title) {
+      showToast('An idea needs a title.', 'err');
+      if (titleEl && titleEl.focus) {
+        titleEl.focus();
+      }
+      return;
+    }
+    const value = function (id) {
+      const el = U.$(id);
+      return el ? el.value : '';
+    };
+    const patch = {
+      title: title,
+      summary: value('idea-summary'),
+      author: value('idea-author'),
+      tags: value('idea-tags').split(','),
+      impact: value('idea-impact'),
+      effort: value('idea-effort'),
+      stage: value('idea-stage')
+    };
+    const id = sheet ? sheet.getAttribute('data-idea-id') || '' : '';
+    let savedId = id;
+    let ok = false;
+    ns.State.updateState(function (s) {
+      if (id) {
+        ok = !!ns.Ideas.find(s, id);
+        if (ok) {
+          ns.Ideas.update(s, id, patch);
+        }
+      } else {
+        const made = ns.Ideas.add(s, patch);
+        if (made) {
+          savedId = made.id;
+          ok = true;
+        }
+      }
+    });
+    if (!ok) {
+      showToast('That idea is no longer on the board.', 'err');
+      return;
+    }
+    closeIdeaSheet();
+    R.renderIdeas();
+    focusIdea(savedId);
+    ideaLastFocus = null;
+    showToast(id ? 'Idea updated.' : 'Idea added.', 'ok');
+  }
+
+  function delIdea(id) {
+    const idea = ns.Ideas.find(S(), id);
+    if (!idea) {
+      return;
+    }
+    // Deleting a card is one click away from a mis-click, so it asks. The
+    // promoted task, if there is one, stays: removing a candidate is not a
+    // reason to destroy delivered work.
+    askConfirm({
+      title: 'Delete idea',
+      message:
+        'Remove "' +
+        idea.title +
+        '" from the intake? A task already promoted from it stays in the WBS.',
+      confirmLabel: 'Delete idea',
+      danger: true,
+      onOk: function () {
+        ns.State.updateState(function (s) {
+          ns.Ideas.remove(s, id);
+        });
+        closeIdeaSheet();
+        R.renderIdeas();
+        showToast('Idea deleted.', 'ok');
+      }
+    });
+  }
+
+  function setIdeaView(view) {
+    const next = view === 'list' ? 'list' : 'board';
+    if (S().ideaView === next) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      s.ideaView = next;
+    });
+    R.renderIdeas();
+  }
+
+  function setIdeaTag(value) {
+    const tag = String(value || '');
+    if (S().ideaTag === tag) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      s.ideaTag = tag;
+    });
+    R.renderIdeas();
+  }
+
+  function setIdeaStage(id, stage) {
+    let changed = false;
+    ns.State.updateState(function (s) {
+      changed = ns.Ideas.update(s, id, { stage: stage });
+    });
+    if (changed) {
+      R.renderIdeas();
+      focusIdea(id, true);
+    }
+  }
+
+  function promoteIdea(id) {
+    const idea = ns.Ideas.find(S(), id);
+    if (!idea) {
+      return;
+    }
+    if (idea.promotedTaskId) {
+      showToast('This idea already has a task.', 'warn');
+      return;
+    }
+    const taskId = ns.Tasks.addTaskFromIdea(id);
+    if (!taskId) {
+      showToast('Could not create a task from that idea.', 'err');
+      return;
+    }
+    // The Promote button is replaced by the Linked chip on the redraw, so the
+    // element that had focus is gone. Put focus back on the card.
+    focusIdea(id);
+    showToast('Task created from the idea.', 'ok', {
+      label: 'Open WBS',
+      fn: function () {
+        showSec('wbs', document.querySelector('.sec-btn[data-section="wbs"]'));
+      }
+    });
+  }
+
+  // Arrow keys are the keyboard's drag. Left/right crosses a stage boundary
+  // and lands at the end of the target column; up/down swaps with the
+  // neighbour. Both are expressed as one applyDrop() move, so they inherit
+  // the model's all-or-nothing validation and its renumbering.
+  function ideaKeyMove(id, dir) {
+    if (isReadonly()) {
+      showToast('View-only access: the intake can be read but not changed.', 'err');
+      return;
+    }
+    const state = S();
+    const idea = ns.Ideas.find(state, id);
+    if (!idea) {
+      return;
+    }
+    const keys = ns.Ideas.STAGES.map(function (st) {
+      return st.key;
+    });
+    const stageAt = keys.indexOf(idea.stage);
+    let moved = false;
+    ns.State.updateState(function (s) {
+      if (dir === 'left' || dir === 'right') {
+        const to = dir === 'left' ? stageAt - 1 : stageAt + 1;
+        if (to < 0 || to >= keys.length) {
+          return;
+        }
+        moved = ns.Ideas.applyDrop(s, [{ id: id, stage: keys[to], order: 1000000 }]);
+        return;
+      }
+      const group = ns.Ideas.byStage(s).find(function (g) {
+        return g.key === idea.stage;
+      });
+      if (!group) {
+        return;
+      }
+      const pos = group.ideas.findIndex(function (x) {
+        return x.id === id;
+      });
+      if (pos < 0) {
+        return;
+      }
+      const to = dir === 'up' ? pos - 1 : pos + 1;
+      if (to < 0 || to >= group.ideas.length) {
+        return;
+      }
+      moved = ns.Ideas.applyDrop(s, [{ id: id, stage: idea.stage, order: to }]);
+    });
+    if (!moved) {
+      return;
+    }
+    R.renderIdeas();
+    focusIdea(id);
+  }
+
+  // ---- Idea board drag and drop ----
+  // Separate attributes from the Kanban board: [data-idea-drag] and
+  // [data-idea-drop]. The Kanban listeners ignore them and these ignore the
+  // Kanban ones, so a future change to either board cannot move a card on
+  // the other.
+  function ideaDropIndex(col, clientY) {
+    if (!col) {
+      return 0;
+    }
+    const cards = Array.prototype.slice.call(col.querySelectorAll('.idc'));
+    for (let i = 0; i < cards.length; i += 1) {
+      const box = cards[i].getBoundingClientRect();
+      if (clientY < box.top + box.height / 2) {
+        return i;
+      }
+    }
+    return cards.length;
+  }
+
+  function dragIdea(ev, id) {
+    if (isReadonly()) {
+      if (ev && ev.dataTransfer) {
+        try {
+          ev.dataTransfer.effectAllowed = 'none';
+        } catch (e) {
+          /* a locked-down dataTransfer must not break the read */
+        }
+      }
+      if (ev && ev.preventDefault) {
+        ev.preventDefault();
+      }
+      showToast('View-only access: the intake can be read but not changed.', 'err');
+      dragIdeaId = null;
+      return;
+    }
+    dragIdeaId = id;
+    if (ev && ev.dataTransfer) {
+      ev.dataTransfer.effectAllowed = 'move';
+    }
+  }
+
+  function dropIdea(ev, col) {
+    if (ev && ev.preventDefault) {
+      ev.preventDefault();
+    }
+    const id = dragIdeaId;
+    dragIdeaId = null;
+    document.querySelectorAll('[data-idea-drop]').forEach(function (c) {
+      c.classList.remove('dov');
+    });
+    const board = document.querySelector('.idboard');
+    if (board) {
+      board.classList.remove('is-dragging');
+    }
+    if (isReadonly()) {
+      showToast('View-only access: the intake can be read but not changed.', 'err');
+      return;
+    }
+    if (!id || !col) {
+      return;
+    }
+    const stage = col.getAttribute('data-idea-drop');
+    const order = ideaDropIndex(col, ev ? ev.clientY : 0);
+    let ok = false;
+    ns.State.updateState(function (s) {
+      ok = ns.Ideas.applyDrop(s, [{ id: id, stage: stage, order: order }]);
+    });
+    if (!ok) {
+      showToast('That move could not be applied. The board is unchanged.', 'err');
+      R.renderIdeas();
+      return;
+    }
+    R.renderIdeas();
+    focusIdea(id);
+  }
+
+  document.addEventListener('dragstart', function (e) {
+    if (e.target.closest && e.target.closest('button')) {
+      // A control inside a draggable card keeps its click. Without this the
+      // first pixel of movement on Edit or Delete starts a drag instead.
+      return;
+    }
+    const card = e.target.closest ? e.target.closest('[data-idea-drag]') : null;
+    if (!card) {
+      return;
+    }
+    window.MMGR.App.dragIdea(e, card.getAttribute('data-idea-drag'));
+    const board = document.querySelector('.idboard');
+    if (board) {
+      board.classList.add('is-dragging');
+    }
+    card.classList.add('drag');
+  });
+
+  document.addEventListener('dragend', function (e) {
+    const card = e.target.closest ? e.target.closest('[data-idea-drag]') : null;
+    if (!card) {
+      return;
+    }
+    dragIdeaId = null;
+    card.classList.remove('drag');
+    const board = document.querySelector('.idboard');
+    if (board) {
+      board.classList.remove('is-dragging');
+    }
+    document.querySelectorAll('[data-idea-drop]').forEach(function (c) {
+      c.classList.remove('dov');
+    });
+  });
+
+  document.addEventListener('dragover', function (e) {
+    const col = e.target.closest ? e.target.closest('[data-idea-drop]') : null;
+    if (col) {
+      e.preventDefault();
+      col.classList.add('dov');
+    }
+  });
+
+  document.addEventListener('dragleave', function (e) {
+    const col = e.target.closest ? e.target.closest('[data-idea-drop]') : null;
+    if (col) {
+      col.classList.remove('dov');
+    }
+  });
+
+  document.addEventListener('drop', function (e) {
+    const col = e.target.closest ? e.target.closest('[data-idea-drop]') : null;
+    if (col) {
+      window.MMGR.App.dropIdea(e, col);
+    }
+  });
+
+  // ---- Idea board keyboard ----
+  document.addEventListener('keydown', function (e) {
+    const card = e.target.closest ? e.target.closest('[data-idea-drag]') : null;
+    if (!card) {
+      return;
+    }
+    if (e.ctrlKey || e.metaKey || e.altKey) {
+      return;
+    }
+    const id = card.getAttribute('data-idea-drag');
+    const dirs = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
+    if (dirs[e.key]) {
+      e.preventDefault();
+      window.MMGR.App.ideaKeyMove(id, dirs[e.key]);
+      return;
+    }
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+      // A button or select inside the card keeps its own activation.
+      if (e.target.closest && e.target.closest('button, select, a, input, textarea')) {
+        return;
+      }
+      e.preventDefault();
+      window.MMGR.App.editIdea(id);
+    }
+  });
+
+  // ---- Idea sheet: Escape closes, Tab stays inside ----
+  document.addEventListener('keydown', function (e) {
+    const sheet = U.$('idea-sheet');
+    if (!sheet || !sheet.classList.contains('open')) {
+      return;
+    }
+    // A confirm dialog can sit on top of this sheet (deleting a card asks
+    // first). While it does, it owns Escape and Tab.
+    if (document.querySelector('#cfm-modal.on, #conflict-modal.on')) {
+      return;
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeIdeaSheet();
+      restoreIdeaFocus();
+      return;
+    }
+    if (e.key !== 'Tab') {
+      return;
+    }
+    const nodes = sheet.querySelectorAll(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    const list = Array.prototype.filter.call(nodes, function (el) {
+      return el.offsetParent !== null;
+    });
+    if (!list.length) {
+      return;
+    }
+    const first = list[0];
+    const last = list[list.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  });
 
   function populateSprint() {
     // Pull the sprint's date span from the unstarted (todo) tasks.
@@ -4444,6 +4938,18 @@ var MMGR = window.MMGR || {};
     dropCard: dropCard,
     endBoardDrag: endBoardDrag,
     dropCardLeadtime: dropCardLeadtime,
+    openIdea: openIdea,
+    editIdea: editIdea,
+    closeIdea: closeIdea,
+    saveIdea: saveIdea,
+    delIdea: delIdea,
+    promoteIdea: promoteIdea,
+    setIdeaView: setIdeaView,
+    setIdeaTag: setIdeaTag,
+    setIdeaStage: setIdeaStage,
+    ideaKeyMove: ideaKeyMove,
+    dragIdea: dragIdea,
+    dropIdea: dropIdea,
     populateSprint: populateSprint,
     openPrompt: openPrompt,
     openDrwToSave: openDrwToSave,
@@ -4514,6 +5020,15 @@ window.MMGR = MMGR;
         el.getAttribute('data-task-id'),
         el.getAttribute('data-comment-id')
       ),
+    openIdea: () => window.MMGR.App.openIdea(),
+    editIdea: el => window.MMGR.App.editIdea(el.getAttribute('data-id')),
+    closeIdea: () => window.MMGR.App.closeIdea(),
+    saveIdea: () => window.MMGR.App.saveIdea(),
+    delIdea: el => window.MMGR.App.delIdea(el.getAttribute('data-id')),
+    promoteIdea: el => window.MMGR.App.promoteIdea(el.getAttribute('data-id')),
+    setIdeaView: el => window.MMGR.App.setIdeaView(el.getAttribute('data-view')),
+    setIdeaTag: el => window.MMGR.App.setIdeaTag(el.value),
+    setIdeaStage: el => window.MMGR.App.setIdeaStage(el.getAttribute('data-id'), el.value),
     setTaskFollowUp: el => {
       const taskId = el.getAttribute('data-id');
       const assignee = prompt('Follow-up assignee:');
@@ -5971,6 +6486,14 @@ window.MMGR = MMGR;
   // views, report generation). Everything else is refused with a toast.
   const READONLY_SAFE_ACTIONS = {
     showSec: 1,
+    // Idea intake: opening the sheet, closing it, and switching the board /
+    // list or the tag filter write no project record. Every action that
+    // touches state.ideas or state.tasks is deliberately absent.
+    openIdea: 1,
+    editIdea: 1,
+    closeIdea: 1,
+    setIdeaView: 1,
+    setIdeaTag: 1,
     cpAllPage: 1,
     print: 1,
     // Reading or closing the column-limit sheet mutates nothing. The inputs
@@ -6399,6 +6922,8 @@ window.MMGR = MMGR;
         action === 'updTaskField' ||
         action === 'updCustomField' ||
         action === 'setCfFilter' ||
+        action === 'setIdeaTag' ||
+        action === 'setIdeaStage' ||
         action === 'saveKbWip' ||
         action === 'setRelLens' ||
         action === 'updKPI' ||
@@ -6471,6 +6996,8 @@ window.MMGR = MMGR;
         action === 'updRaciPerson' ||
         action === 'updDMAIC' ||
         action === 'updMeetItemNote' ||
+        action === 'setIdeaTag' ||
+        action === 'setIdeaStage' ||
         action === 'updMeetField' ||
         action === 'handleCharterUpload' ||
         action === 'setErrWebhook' ||

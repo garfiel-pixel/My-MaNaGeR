@@ -6771,6 +6771,267 @@ body.dark-mode .team-link-danger {
 .apv-tbl tr[data-apv-add] td {
   box-shadow: inset 0 0 0 1px var(--green);
 }
+
+/* ---- Idea intake (Leantime-inspired) ----
+   A six-column board, a table view of the same rows, and the fields inside
+   the idea sheet. Colour comes from the existing tokens only: --card,
+   --surface, --surface-raised, --border, --text, --text-muted, --slate,
+   --gold and --gold-rgb. No new palette entry. */
+.idmeta {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  padding: 0 0 10px;
+}
+.idboard {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(158px, 1fr));
+  gap: 12px;
+  align-items: stretch;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+.idcol {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  min-height: 340px;
+}
+.idch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.idcn {
+  min-width: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  text-align: center;
+  font-size: 0.66rem;
+  color: var(--text-muted);
+}
+.idcc {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 9px;
+  min-height: 90px;
+}
+.idcc.dov {
+  background: rgba(var(--gold-rgb), 0.08);
+  outline: 2px dashed var(--gold);
+  outline-offset: -3px;
+}
+.idboard.is-dragging .idcol {
+  border-color: var(--gold);
+  border-style: dashed;
+}
+.idc {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 9px;
+  cursor: grab;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.idc:hover,
+.idc:focus-visible {
+  border-color: var(--gold);
+  outline: none;
+}
+.idc.drag {
+  opacity: 0.45;
+}
+.idc-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.idc-sc {
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.idc-sc.idc-hi {
+  border-color: rgba(var(--gold-rgb), 0.45);
+  color: var(--gold-ink);
+}
+.idc-sc.idc-lo {
+  color: var(--text-muted);
+}
+.idc-act,
+.idrow-act {
+  display: flex;
+  gap: 2px;
+}
+.idc-act .dc,
+.idrow-act .dc {
+  font-size: 0.74rem;
+  line-height: 1;
+  padding: 1px;
+}
+.idc-t {
+  margin-top: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.idc-s {
+  margin-top: 3px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.idc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 7px;
+}
+.idchip,
+.idtag {
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  font-size: 0.62rem;
+  color: var(--text-secondary);
+}
+.idtag {
+  border-color: rgba(var(--gold-rgb), 0.4);
+  color: var(--gold-ink);
+}
+.idc-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 7px;
+}
+.idc-ln {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.66rem;
+  color: var(--text-muted);
+}
+.ides {
+  padding: 12px 8px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+.idseg {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.idseg-b {
+  border: 0;
+  border-radius: 0;
+  padding: 4px 10px;
+  background: var(--surface);
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+.idseg-b.is-on {
+  background: var(--gold);
+  color: #ffffff;
+}
+.idtable .idt-t {
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.idtable .ids {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+.idnum {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.idrow-act {
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+.idc-sel {
+  padding: 2px 4px;
+  font-size: 0.7rem;
+}
+/* The idea sheet reuses .kb-sheet for the scrim and .mb for the card; only
+   the width and the field grid are new. */
+#idea-sheet .mb {
+  width: 620px;
+}
+.idf-hint {
+  margin: 0 0 10px;
+  font-size: 0.66rem;
+  color: var(--text-muted);
+}
+.idf {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 14px;
+}
+.idf .idf-full {
+  grid-column: 1 / -1;
+}
+.idf label {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.idf input,
+.idf select,
+.idf textarea {
+  width: 100%;
+  padding: 5px 7px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--card);
+  font-size: 0.78rem;
+  color: var(--text);
+}
+.idf textarea {
+  min-height: 76px;
+  resize: vertical;
+}
+@media (max-width: 900px) {
+  .idboard {
+    grid-template-columns: repeat(6, 190px);
+  }
+}
+@media (max-width: 720px) {
+  .idf {
+    grid-template-columns: 1fr;
+  }
+}
 /* ---- RBAC sprint 3: access tools ---------------------------------------- */
 .team-tools {
   display: flex;

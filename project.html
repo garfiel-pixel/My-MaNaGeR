@@ -61,7 +61,7 @@
       clicks "Connect Google" in Settings > Controls. It is a device label,
       never a gate , offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-2Rhq3mZXdctKitWAa8Xe8JqCVhhnKzTCe4niNvd45f8=' 'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4=' 'sha256-1lQZ8ZnhADNPMPnTqfYPbBDeCin0qp40ehxDc065Fmc='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-Aujr99uL/W+In/lnqrnOX1XcfBud8Z2HloBSErxpdR4=' 'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4=' 'sha256-1lQZ8ZnhADNPMPnTqfYPbBDeCin0qp40ehxDc065Fmc='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
@@ -248,6 +248,9 @@
     <button class="sec-btn" data-action="showSec" data-section="charter"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M12 3L19 6V11C19 15.5 16 19.5 12 21C8 19.5 5 15.5 5 11V6L12 3Z" stroke="#D4AF37" stroke-width="2" stroke-linejoin="round"/><path d="M9 12L11 14L15 9" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Charter</button>
     <button class="sec-btn" data-action="showSec" data-section="wbs"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><rect x="4" y="6" width="16" height="13" rx="2" stroke="#D4AF37" stroke-width="2"/><path d="M8 10H16M8 14H12" stroke="#D4AF37" stroke-width="2"/></svg>WBS</button>
     <button class="sec-btn" data-action="showSec" data-section="gantt" data-pack="schedule" id="gnav"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M4 6H14M4 12H18M4 18H10" stroke="#D4AF37" stroke-width="2" stroke-linecap="round"/></svg>Gantt</button>
+    </div>
+    <div class="nav-group"><span class="nav-group-label">Intake</span>
+    <button class="sec-btn" data-action="showSec" data-section="ideas" id="ideas-nav"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M9 18h6M10 21h4" stroke="#D4AF37" stroke-width="2" stroke-linecap="round"/><path d="M12 3a6.5 6.5 0 0 0-3.6 11.9c.6.4 1 1.1 1 1.9v.2h5.2v-.2c0-.8.4-1.5 1-1.9A6.5 6.5 0 0 0 12 3z" stroke="#D4AF37" stroke-width="2" stroke-linejoin="round"/></svg>Intake</button>
     </div>
     <div class="nav-group"><span class="nav-group-label">Collaborate</span>
     <button class="sec-btn" data-action="showSec" data-section="kan" id="knav"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="2" stroke="#D4AF37" stroke-width="2"/><path d="M9 4V20M15 4V20" stroke="#D4AF37" stroke-width="2"/></svg>Kanban</button>
@@ -666,6 +669,30 @@
         <div id="mc-percentiles"></div>
       </div>
       <div id="mc-error" class="is-hide"></div>
+    </div>
+  </div>
+
+  <!-- ═══ INTAKE (Leantime-inspired idea board) ═══ -->
+  <div class="panel" id="panel-ideas">
+    <div class="card mb0">
+      <div class="card-title">Intake
+        <div class="g6">
+          <div class="idseg" role="group" aria-label="Intake view">
+            <button class="idseg-b is-on" data-action="setIdeaView" data-view="board" aria-pressed="true">Board</button>
+            <button class="idseg-b" data-action="setIdeaView" data-view="list" aria-pressed="false">List</button>
+          </div>
+          <div>
+            <label class="slb" for="ideas-tag">Tag</label>
+            <select id="ideas-tag" data-action="setIdeaTag"><option value="">All tags</option></select>
+          </div>
+          <button class="btn btn-g btn-s" data-action="openIdea"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New Idea</button>
+        </div>
+      </div>
+      <div class="idmeta" id="ideas-stats" aria-live="polite">No ideas yet</div>
+      <div id="ideas-body">
+        <div class="idboard" id="ideas-board"></div>
+        <div id="ideas-list" class="is-hide"></div>
+      </div>
     </div>
   </div>
 
@@ -2299,6 +2326,75 @@
   </div>
 </div>
 
+<!-- Idea sheet. Reuses the keyboard-sheet scrim (.kb-sheet/.mb) so it needs
+     no new modal chrome; #idea-sheet is not #kb-sheet, so the keyboard
+     shortcut sheet's own open-state check never sees it. -->
+<div id="idea-sheet" class="kb-sheet" role="dialog" aria-modal="true" aria-labelledby="idea-sheet-title">
+  <div class="mb">
+    <div class="mh">
+      <span class="mt" id="idea-sheet-title">New idea</span>
+      <button type="button" class="dc" data-action="closeIdea" aria-label="Close the idea sheet"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button>
+    </div>
+    <div class="mbody">
+      <p class="idf-hint">An idea is a candidate, not a task. It reaches the Gantt, the critical path and the resource levelling only after you promote it.</p>
+      <div class="idf">
+        <div class="idf-full">
+          <label for="idea-title">Title</label>
+          <input type="text" id="idea-title" maxlength="120" autocomplete="off">
+        </div>
+        <div class="idf-full">
+          <label for="idea-summary">What it is, in one or two sentences</label>
+          <textarea id="idea-summary" maxlength="2000"></textarea>
+        </div>
+        <div>
+          <label for="idea-author">Author</label>
+          <input type="text" id="idea-author" maxlength="120" autocomplete="off">
+        </div>
+        <div>
+          <label for="idea-tags">Tags, comma separated</label>
+          <input type="text" id="idea-tags" maxlength="200" autocomplete="off">
+        </div>
+        <div>
+          <label for="idea-impact">Impact, 1 to 5</label>
+          <select id="idea-impact">
+            <option value="1">1, marginal</option>
+            <option value="2">2, small</option>
+            <option value="3" selected>3, moderate</option>
+            <option value="4">4, large</option>
+            <option value="5">5, decisive</option>
+          </select>
+        </div>
+        <div>
+          <label for="idea-effort">Effort, 1 to 5</label>
+          <select id="idea-effort">
+            <option value="1">1, a morning</option>
+            <option value="2">2, a day</option>
+            <option value="3" selected>3, a few days</option>
+            <option value="4">4, a week or more</option>
+            <option value="5">5, a small project</option>
+          </select>
+        </div>
+        <div class="idf-full">
+          <label for="idea-stage">Stage</label>
+          <select id="idea-stage">
+            <option value="idea" selected>Idea</option>
+            <option value="research">Research</option>
+            <option value="prototype">Prototype</option>
+            <option value="validation">Validation</option>
+            <option value="implemented">Implemented</option>
+            <option value="deferred">Deferred</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="mf">
+      <button type="button" class="btn btn-d btn-s is-hide" data-action="delIdea" id="idea-del">Delete</button>
+      <button type="button" class="btn btn-n btn-s" data-action="closeIdea">Cancel</button>
+      <button type="button" class="btn btn-g btn-s" data-action="saveIdea">Save idea</button>
+    </div>
+  </div>
+</div>
+
 <!-- Scripts: single minified bundle (55 modules concatenated by build.js).
      In production the bundle is the only script request (1 HTTP round-trip
      vs 55). For local dev without a prior build, the fallback detects the
@@ -2328,6 +2424,7 @@ document.addEventListener('DOMContentLoaded', function() {
   ['js/mmgr-state.js','js/mmgr-utils.js','js/mmgr-ideas.js','js/mmgr-custom-fields.js','js/mmgr-relations.js','js/mmgr-kanban.js','js/mmgr-net.js','js/consent.js',
    'js/render/financials.js','js/render/people.js','js/render/closure.js',
    'js/render/documents.js','js/render/weather.js','js/render/kanban.js',
+   'js/render/ideas.js',
    'js/render/risks.js','js/render/resources.js','js/mmgr-render.js',
    'js/mmgr-prompts.js','js/mmgr-weather.js','js/mmgr-field.js',
    'js/mmgr-schedule.js','js/mmgr-resources.js','js/mmgr-health.js',

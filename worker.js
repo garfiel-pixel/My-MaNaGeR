@@ -450,8 +450,11 @@ const PRIVATE_FILES = new Set([
 ]);
 // Root-level only: a single-segment path carrying a file extension that is
 // never a runtime asset. Nested paths are left alone so real assets such as
-// /dist/*.json are never caught by accident.
-const PRIVATE_ROOT_EXT = /\.(md|txt|json|jsonc|ya?ml|lock|cjs|mjs|ts|pdf)$/i;
+// /dist/*.json are never caught by accident. F2 (2026-11-09) added the
+// scanner favourites (sql/env/bak/pem/key/pfx/zip/tar/log) so the cheap
+// pre-asset guard answers them without a request to the asset layer.
+const PRIVATE_ROOT_EXT =
+  /\.(md|txt|json|jsonc|ya?ml|lock|cjs|mjs|ts|pdf|sql|env|bak|pem|key|pfx|zip|tar|log)$/i;
 // The two root text files that ARE meant to be public. They are already served
 // by the SEO_FILES branch ABOVE this guard; listing them here too keeps the
 // predicate correct on its own, so it cannot 404 them if that branch ever
@@ -463,6 +466,24 @@ const PUBLIC_ROOT_FILES = new Set(['/robots.txt', '/sitemap.xml']);
 export function isPrivatePath(normalized) {
   if (PUBLIC_ROOT_FILES.has(normalized)) {
     return false;
+  }
+  // F2 (2026-11-09): /.well-known/ is the one dotfile tree that must stay
+  // public (security.txt, ACME challenges). Everything else that starts a
+  // segment with a dot is internals, wherever it sits.
+  if (normalized.indexOf('/.well-known/') === 0) {
+    return false;
+  }
+  const segments = normalized.split('/').filter(Boolean);
+  for (const seg of segments) {
+    // '.' and '..' are traversal syntax, not dotfiles; the request path is
+    // normalised before this runs, and the raw form is covered elsewhere.
+    if (seg !== '.' && seg !== '..' && seg.charAt(0) === '.') {
+      return true;
+    }
+  }
+  // F2: a WordPress/Drupal/Git probe path is never an app route.
+  if (/^\/(wp-admin|wp-content|wp-includes)(\/|$)/i.test(normalized)) {
+    return true;
   }
   for (const prefix of PRIVATE_PREFIXES) {
     if (normalized.indexOf(prefix) === 0) {
@@ -722,6 +743,18 @@ export default {
         ['js', 'mjs', 'css', 'json', 'map', 'webmanifest', 'wasm'].indexOf(reqExt) !== -1 &&
         (response.headers.get('Content-Type') || '').toLowerCase().indexOf('text/html') === 0
       ) {
+        return privateNotFound();
+      }
+      // F2 (2026-11-09): the SPA fallback is for PAGES, never for a path that
+      // claims to be a file. Any last segment with an extension that is not a
+      // real HTML page and came back as HTML is a miss, not a document. This
+      // is what turns /.env, /dump.sql, /database.sql and /wp-admin/*.php
+      // into a real 404 instead of a 200 carrying the app shell.
+      const lastSegForExt = normalized.slice(normalized.lastIndexOf('/') + 1);
+      const claimsFile = lastSegForExt.lastIndexOf('.') > 0;
+      const servedHtml =
+        (response.headers.get('Content-Type') || '').toLowerCase().indexOf('text/html') === 0;
+      if (claimsFile && !/\.html?$/i.test(lastSegForExt) && servedHtml) {
         return privateNotFound();
       }
       const decorated = new Response(response.body, response);

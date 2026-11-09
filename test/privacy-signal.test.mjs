@@ -54,13 +54,16 @@ function countingEnv() {
 
 test('trackEvent writes analytics without a signal', () => {
   const env = countingEnv();
-  trackEvent(env, 'cloud-save', { projectId: 'p1' }, req({}));
+  // B (2026-11-09): trackEvent now enforces the product-event allowlist, so
+  // this contract test uses an allowlisted name. The subject under test is
+  // the DNT/GPC skip, not the event name.
+  trackEvent(env, 'project_created', { first: true }, req({}));
   assert.equal(env.points.length, 1);
 });
 
 test('trackEvent writes NOTHING when DNT is set', () => {
   const env = countingEnv();
-  trackEvent(env, 'cloud-save', { projectId: 'p1' }, req({ DNT: '1' }));
+  trackEvent(env, 'project_created', { first: true }, req({ DNT: '1' }));
   assert.equal(env.points.length, 0, 'the privacy.html promise was not kept');
 });
 

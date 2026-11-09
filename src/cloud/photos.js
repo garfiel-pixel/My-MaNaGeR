@@ -31,6 +31,7 @@ import {
   readSession
 } from '../lib/http.js';
 import { billingConfigured, billingStatusActive } from '../billing.js';
+import { trackEvent } from '../lib/observe.js';
 
 // Shared access gate used by upload / list / single / delete. Kept in one
 // place so the timing-safe auth path is not duplicated across handlers.
@@ -736,6 +737,9 @@ export async function handlePhotoUpload(request, env, projectId) {
     .bind(metaId)
     .first();
 
+  // B (2026-11-09): one identifier-free product event per stored photo. The
+  // project id, photo id and filename never reach the data point.
+  trackEvent(env, 'photo_uploaded', {}, request);
   return json({
     ok: true,
     photo: {

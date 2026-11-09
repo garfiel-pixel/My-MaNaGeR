@@ -37,6 +37,7 @@ import {
 } from './lib/http.js';
 import { trackError, structuredLog, privacySignalRequested } from './lib/observe.js';
 import { handleFx } from './fx.js';
+import { handleProductEvent } from './events.js';
 import {
   handleBillingWebhook,
   handleBillingStatus,
@@ -337,6 +338,20 @@ export async function routeApi(request, env, url) {
     // report carries no credentials and must never be able to touch one.
     if (path === '/api/csp-report' && request.method === 'POST') {
       return handleCspReport(request, env);
+    }
+
+    // B (2026-11-09): the one client-emitted product event (calculator
+    // export). Same-origin, rate-limited on the general bucket, and the
+    // handler accepts a single allowlisted name.
+    if (path === '/api/event' && request.method === 'POST') {
+      if (!sameOriginOnly(request)) {
+        return cloudForbidden();
+      }
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handleProductEvent(request, env);
     }
 
     // 4. CLOUD PROJECT ROUTES (/api/cloud/projects)

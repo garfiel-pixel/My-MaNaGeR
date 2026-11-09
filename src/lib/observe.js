@@ -227,24 +227,50 @@ export function trackError(env, event, error, context = {}, request = null) {
  * Same DNT/GPC rule as trackError: the structured log always runs, the
  * Analytics Engine write is skipped when the caller asked not to be
  * tracked (W6).
+ *
+ * B (2026-11-09): product events are a FIXED allowlist and carry no
+ * identifier of any kind. The only context key that survives into the data
+ * point is `first` (a boolean), because "the first project" is a product
+ * fact and an account id is not. An event outside the allowlist is logged
+ * for diagnostics but never written to Analytics Engine.
  */
-export function trackEvent(env, event, context = {}, request = null) {
-  structuredLog(env, 'info', event, context);
+export const PRODUCT_EVENTS = Object.freeze([
+  'signup',
+  'project_created',
+  'calculator_export',
+  'mcp_key_created',
+  'photo_uploaded'
+]);
 
+const PRODUCT_EVENT_SAFE_KEYS = ['first'];
+
+export function trackEvent(env, event, context = {}, request = null) {
+  const safe = {};
+  if (context && typeof context === 'object') {
+    for (let i = 0; i < PRODUCT_EVENT_SAFE_KEYS.length; i++) {
+      const key = PRODUCT_EVENT_SAFE_KEYS[i];
+      if (typeof context[key] === 'boolean') {
+        safe[key] = context[key];
+      }
+    }
+  }
+  structuredLog(env, 'info', event, safe);
+
+  if (PRODUCT_EVENTS.indexOf(event) === -1) {
+    return false;
+  }
   if (env && env.ANALYTICS && !privacySignalRequested(request)) {
     try {
       env.ANALYTICS.writeDataPoint({
-        indexes: ['info', event],
-        blobs: [
-          JSON.stringify(redactSensitive(context)).slice(0, 512),
-          '',
-          new Date().toISOString()
-        ]
+        indexes: ['event', event],
+        blobs: [JSON.stringify(safe), '', new Date().toISOString()]
       });
+      return true;
     } catch (e) {
       /* telemetry must never block */
     }
   }
+  return false;
 }
 
 /* ============================================================

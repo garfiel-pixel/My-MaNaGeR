@@ -20,6 +20,7 @@ import {
   CLOUD_SECTIONS,
   CLOUD_CODE_ALPHABET as CLOUD_KEY_ALPHABET
 } from '../lib/http.js';
+import { trackEvent } from '../lib/observe.js';
 
 const CLOUD_MAX_API_KEYS = 10;
 const API_KEY_PREFIX_LEN = 8;
@@ -142,6 +143,9 @@ export async function handleCloudApiKeyCreate(request, env, projectId) {
       budgetWrite ? 1 : 0
     )
     .run();
+  // B (2026-11-09): identifier-free product event. The project id, key id and
+  // label stay out of the data point; only the event name is written.
+  trackEvent(env, 'mcp_key_created', {}, request);
   return json({
     ok: true,
     apiKey: apiKey,

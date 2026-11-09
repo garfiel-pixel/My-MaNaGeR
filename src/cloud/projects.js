@@ -46,6 +46,7 @@ import {
   cloudScopeState
 } from '../lib/http.js';
 import { billingConfigured, billingFreeCap, billingStatusActive } from '../billing.js';
+import { trackEvent } from '../lib/observe.js';
 
 // ROLE-VIEW (Wave 7, owner 2026-10-06): the role->sections matrix now lives in
 // src/lib/http.js (teamScopeForRole) so every project-data route narrows by the
@@ -215,6 +216,22 @@ export async function handleCloudCreate(request, env) {
   const ownerFp = await fingerprintOf(ownerCode);
   const now = new Date().toISOString();
   const ownerEmail = session ? await provenEmail(session, env) : null;
+  // B (2026-11-09): isFirst is computed HERE, from the account's own rows,
+  // never trusted from the client. An anonymous create has no account to
+  // count, so it reports first:false rather than a meaningless true.
+  let firstProject = false;
+  if (session && session.sub) {
+    try {
+      const prior = await env.DB.prepare(
+        'SELECT COUNT(*) AS c FROM cloud_projects WHERE google_sub = ? AND deleted_at IS NULL'
+      )
+        .bind(session.sub)
+        .first();
+      firstProject = !(prior && Number(prior.c) > 0);
+    } catch (e) {
+      /* the event is not worth failing a create for */
+    }
+  }
   try {
     await env.DB.prepare(
       'INSERT INTO cloud_projects (project_id, owner_code_salt, owner_code_hash, owner_code_fingerprint, owner_label, google_sub, google_name, owner_email, latest_r2_key, created_at, updated_at, last_owner_seen_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
@@ -243,6 +260,7 @@ export async function handleCloudCreate(request, env) {
     }
     throw e;
   }
+  trackEvent(env, 'project_created', { first: firstProject }, request);
   return json({ ok: true, projectId: projectId, ownerCode: ownerCode, linked: !!session });
 }
 

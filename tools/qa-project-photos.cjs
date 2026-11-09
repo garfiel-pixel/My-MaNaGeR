@@ -351,8 +351,10 @@ async function openPhotos(page, pid) {
   }
   // Click the copy the wait above proved visible. The page carries the nav
   // more than once (desktop rail, compact drawer, sidebar clones); a plain
-  // ':visible' locator can resolve to a copy a re-render then hides.
-  await page.evaluate(s => {
+  // ':visible' locator can resolve to a copy a re-render then hides. The
+  // button is static HTML, so it is visible before the app binds its click
+  // handler; an early click is dropped, so retry until the panel paints.
+  const clickVisible = s => {
     const all = Array.prototype.slice.call(document.querySelectorAll(s));
     const b = all.find(x => {
       const r = x.getBoundingClientRect();
@@ -361,7 +363,23 @@ async function openPhotos(page, pid) {
     if (b) {
       b.click();
     }
-  }, sel);
+  };
+  for (let attempt = 0; attempt < 4; attempt++) {
+    await page.evaluate(clickVisible, sel);
+    const painted = await until(
+      page,
+      () => {
+        const body = document.getElementById('photos-body');
+        return !!(body && body.children && body.children.length);
+      },
+      null,
+      8000
+    );
+    if (painted) {
+      return nav;
+    }
+  }
+  log('the Photos panel did not paint after the nav click');
   return nav;
 }
 

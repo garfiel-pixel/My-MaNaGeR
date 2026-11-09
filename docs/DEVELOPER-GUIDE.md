@@ -139,6 +139,8 @@ Three rules are load-bearing:
 2. **A block holds plain text and a type, never HTML.** Formatting *is* the block type (heading, bullet, callout, divider). An unknown type from a newer build repairs to a paragraph on read. No sanitiser exists because no HTML is ever stored.
 3. **A page is a lens, not a second surface.** Pages may reference tasks and register rows but never create, edit, or delete either. Every write is a `data-action` through `State.updateState`, so the read-only fence covers the surface with no new logic.
 
+**Live blocks read, never write.** A `taskList` or `docList` block stores only its `filter`; the rows are resolved at draw time by `Pages.resolveTasks` / `Pages.resolveDocs` and every row is a `pageJump` link to the owning panel. Nothing is copied into the page, so a task completed in the WBS or a register row removed in Documents is gone the next time the panel draws. A filter edit is a page write (`setBlockFilter`) and is fenced; a viewer gets the same rows and a sentence naming the filter instead of the selects. `emptyFilterText` names the filter — "No data" reads like a bug.
+
 `pages` is project data and **is** in `FIELD_KEYS`; `docsView`, `pageSel` and `pageUnfiled` are per-device and deliberately are not. The migration repairs an imported page inline (the state module loads before the model); the model repairs again on read.
 
 ## 3. Split candidates — largest functions

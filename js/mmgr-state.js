@@ -1048,7 +1048,16 @@ var MMGR = window.MMGR || {};
           pageIds[p.id] = 1;
         }
       });
-      const blockTypes = ['paragraph', 'heading', 'bullet', 'checklist', 'callout', 'divider'];
+      const blockTypes = [
+        'paragraph',
+        'heading',
+        'bullet',
+        'checklist',
+        'callout',
+        'divider',
+        'taskList',
+        'docList'
+      ];
       state.pages.forEach(function (p) {
         if (typeof p.id !== 'string' || !p.id) {
           p.id = 'pg' + Math.random().toString(36).slice(2, 10);

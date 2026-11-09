@@ -7379,6 +7379,91 @@ body.dark-mode .team-link-danger {
     max-width: 100%;
   }
 }
+
+/* Live blocks: a filter bar and a read-only list. The list is a lens on the
+   owning panel; every row is a jump link, never an editor. */
+.pg-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-bottom: 6px;
+}
+.pg-fl {
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+.pg-f {
+  max-width: 160px;
+  padding: 3px 6px;
+  font-size: 0.76rem;
+}
+.pg-fnote {
+  padding: 2px 0 4px;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+.pg-live {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pg-lr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 7px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pg-lr:hover,
+.pg-lr:focus-visible {
+  border-color: var(--border);
+  background: var(--surface-raised);
+  outline: none;
+}
+.pg-lt {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-lm,
+.pg-le {
+  flex: 0 0 auto;
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+}
+.pg-le {
+  min-width: 72px;
+  text-align: right;
+}
+.pg-empty {
+  padding: 6px 2px;
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+}
+@media (max-width: 720px) {
+  .pg-f {
+    max-width: 100%;
+  }
+  .pg-lr {
+    flex-wrap: wrap;
+    gap: 2px 8px;
+  }
+  .pg-lt {
+    flex-basis: 100%;
+  }
+}
 /* ---- RBAC sprint 3: access tools ---------------------------------------- */
 .team-tools {
   display: flex;

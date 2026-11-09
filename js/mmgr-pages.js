@@ -22,15 +22,40 @@ var MMGR = window.MMGR || {};
     { key: 'bullet', label: 'Bullet' },
     { key: 'checklist', label: 'Checklist item' },
     { key: 'callout', label: 'Callout' },
-    { key: 'divider', label: 'Divider' }
+    { key: 'divider', label: 'Divider' },
+    // Live blocks store a FILTER, never data. They read the same task array
+    // and register the panels own; nothing is copied at insert time, so a
+    // page cannot hold a snapshot that is wrong by Friday.
+    { key: 'taskList', label: 'Task list', live: true },
+    { key: 'docList', label: 'Document list', live: true }
   ];
   const BLOCK_KEYS = BLOCK_TYPES.map(function (b) {
     return b.key;
   });
   const BLOCK_LABEL = {};
+  const LIVE_TYPES = {};
   BLOCK_TYPES.forEach(function (b) {
     BLOCK_LABEL[b.key] = b.label;
+    if (b.live) {
+      LIVE_TYPES[b.key] = 1;
+    }
   });
+
+  const TASK_STATUSES = ['todo', 'inprogress', 'blocked', 'completed'];
+  const TASK_STATUS_LABEL = {
+    todo: 'To do',
+    inprogress: 'In progress',
+    blocked: 'Blocked',
+    completed: 'Completed'
+  };
+  const DOC_TYPES = ['Drawing', 'Contract', 'Permit', 'Specification', 'Report', 'Other'];
+  const DOC_STATUSES = ['current', 'pending-review', 'superseded', 'outstanding'];
+  const TASK_WINDOWS = [
+    { days: 0, label: 'Any date' },
+    { days: 7, label: 'Next 7 days' },
+    { days: 30, label: 'Next 30 days' },
+    { days: 90, label: 'Next 90 days' }
+  ];
 
   const MAX_TITLE = 200;
   const MAX_TEXT = 20000;
@@ -63,15 +88,43 @@ var MMGR = window.MMGR || {};
     return isNaN(n) ? fallback : n;
   }
 
+  function oneOf(v, list, fallback) {
+    return list.indexOf(v) > -1 ? v : fallback;
+  }
+
+  function normalizeFilter(type, raw) {
+    const src = raw && typeof raw === 'object' ? raw : {};
+    if (type === 'taskList') {
+      const w = parseInt(src.window, 10);
+      return {
+        phase: typeof src.phase === 'string' ? src.phase : '',
+        status: oneOf(src.status, TASK_STATUSES, ''),
+        assignee: typeof src.assignee === 'string' ? src.assignee : '',
+        window: w === 7 || w === 30 || w === 90 ? w : 0
+      };
+    }
+    if (type === 'docList') {
+      return {
+        type: oneOf(src.type, DOC_TYPES, ''),
+        status: oneOf(src.status, DOC_STATUSES, '')
+      };
+    }
+    return null;
+  }
+
   function normalizeBlock(raw) {
     const src = raw && typeof raw === 'object' ? raw : {};
     const type = isBlockType(src.type) ? src.type : 'paragraph';
-    return {
+    const out = {
       id: typeof src.id === 'string' && src.id ? src.id : genId('b'),
       type: type,
       text: text(src.text, MAX_TEXT),
       done: src.done === true
     };
+    if (LIVE_TYPES[type]) {
+      out.filter = normalizeFilter(type, src.filter);
+    }
+    return out;
   }
 
   // One page, repaired on read. Missing fields get safe defaults; an
@@ -334,12 +387,16 @@ var MMGR = window.MMGR || {};
     if (!blocks) {
       return null;
     }
+    const key = isBlockType(type) ? type : 'paragraph';
     const block = {
       id: genId('b'),
-      type: isBlockType(type) ? type : 'paragraph',
+      type: key,
       text: '',
       done: false
     };
+    if (LIVE_TYPES[key]) {
+      block.filter = normalizeFilter(key, {});
+    }
     const at = afterId
       ? blocks.findIndex(function (b) {
           return b && b.id === afterId;
@@ -436,6 +493,209 @@ var MMGR = window.MMGR || {};
     return true;
   }
 
+  // ---- live blocks: read-only projections -------------------------------
+  // A page is a lens, not a second surface: these functions only READ the
+  // task array and the register. Nothing here writes, and no result is
+  // stored - the block keeps its filter and re-resolves on every draw.
+
+  function todayStr() {
+    if (ns.Utils && typeof ns.Utils.todayStr === 'function') {
+      return ns.Utils.todayStr();
+    }
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function addDays(iso, n) {
+    const d = new Date(iso + 'T12:00:00');
+    if (isNaN(d.getTime())) {
+      return iso;
+    }
+    d.setDate(d.getDate() + n);
+    return d.toISOString().slice(0, 10);
+  }
+
+  function isPhaseTask(t) {
+    return !!t && (t.isPhase === true || (t.level || 0) === 0);
+  }
+
+  // The nearest preceding phase row owns each task, matching how the WBS
+  // indents the outline.
+  function taskPhaseMap(state) {
+    const map = {};
+    let current = '';
+    const tasks = state && Array.isArray(state.tasks) ? state.tasks : [];
+    tasks.forEach(function (t) {
+      if (!t) {
+        return;
+      }
+      if (isPhaseTask(t)) {
+        current = t.id;
+      }
+      map[t.id] = current;
+    });
+    return map;
+  }
+
+  function resolveTasks(state, filter) {
+    const f = normalizeFilter('taskList', filter);
+    const tasks = state && Array.isArray(state.tasks) ? state.tasks : [];
+    const phases = taskPhaseMap(state);
+    const limit = f.window ? addDays(todayStr(), f.window) : '';
+    return tasks
+      .filter(function (t) {
+        if (!t || isPhaseTask(t)) {
+          return false;
+        }
+        if (f.phase && phases[t.id] !== f.phase) {
+          return false;
+        }
+        if (f.status && t.status !== f.status) {
+          return false;
+        }
+        if (f.assignee && String(t.assignee || '').trim() !== f.assignee) {
+          return false;
+        }
+        if (limit) {
+          const due = t.endDate || t.startDate || '';
+          if (!due || due > limit) {
+            return false;
+          }
+        }
+        return true;
+      })
+      .map(function (t) {
+        return {
+          id: t.id,
+          name: t.name || 'Untitled task',
+          status: t.status || 'todo',
+          assignee: String(t.assignee || '').trim(),
+          endDate: t.endDate || ''
+        };
+      });
+  }
+
+  // Writes one filter key on a live block. The filter is the only thing a
+  // live block stores; the rows are resolved at draw time and never saved.
+  function setFilter(state, pageId, blockId, key, value) {
+    const blocks = blockList(state, pageId);
+    if (!blocks) {
+      return false;
+    }
+    const block = blocks.find(function (b) {
+      return b && b.id === blockId;
+    });
+    if (!block || !LIVE_TYPES[block.type]) {
+      return false;
+    }
+    const current = normalizeFilter(block.type, block.filter);
+    const next = {};
+    Object.keys(current).forEach(function (k) {
+      next[k] = current[k];
+    });
+    if (!Object.prototype.hasOwnProperty.call(next, key)) {
+      return false;
+    }
+    next[key] = typeof next[key] === 'number' ? parseInt(value, 10) || 0 : String(value || '');
+    block.filter = normalizeFilter(block.type, next);
+    const page = rawFind(state, pageId);
+    if (page) {
+      touch(page);
+    }
+    return true;
+  }
+
+  function resolveDocs(state, filter) {
+    const f = normalizeFilter('docList', filter);
+    const docs = state && Array.isArray(state.documents) ? state.documents : [];
+    return docs
+      .filter(function (d) {
+        if (!d) {
+          return false;
+        }
+        if (f.type && d.type !== f.type) {
+          return false;
+        }
+        if (f.status && d.status !== f.status) {
+          return false;
+        }
+        return true;
+      })
+      .map(function (d, i) {
+        return {
+          id: d.id || 'D' + (i + 1),
+          docNo: d.docNo || '',
+          title: d.title || 'Untitled document',
+          type: d.type || '',
+          status: d.status || ''
+        };
+      });
+  }
+
+  function filterOptions(state) {
+    const tasks = state && Array.isArray(state.tasks) ? state.tasks : [];
+    const phases = [];
+    const seenP = {};
+    const assignees = [];
+    const seenA = {};
+    tasks.forEach(function (t) {
+      if (!t) {
+        return;
+      }
+      if (isPhaseTask(t) && !seenP[t.id]) {
+        seenP[t.id] = 1;
+        phases.push({ id: t.id, name: t.name || 'Untitled phase' });
+      }
+      const a = String(t.assignee || '').trim();
+      if (a && !seenA[a]) {
+        seenA[a] = 1;
+        assignees.push(a);
+      }
+    });
+    assignees.sort();
+    return {
+      phases: phases,
+      assignees: assignees,
+      statuses: TASK_STATUSES.map(function (s) {
+        return { key: s, label: TASK_STATUS_LABEL[s] };
+      }),
+      windows: TASK_WINDOWS.slice(),
+      docTypes: DOC_TYPES.slice(),
+      docStatuses: DOC_STATUSES.slice()
+    };
+  }
+
+  // An empty result names the filter: "No data" reads like a bug.
+  function emptyFilterText(state, type, filter) {
+    const f = normalizeFilter(type, filter);
+    const bits = [];
+    if (type === 'taskList') {
+      if (f.phase) {
+        const phases = filterOptions(state).phases;
+        const hit = phases.find(function (p) {
+          return p.id === f.phase;
+        });
+        bits.push('phase ' + (hit ? hit.name : f.phase));
+      }
+      if (f.status) {
+        bits.push(TASK_STATUS_LABEL[f.status] || f.status);
+      }
+      if (f.assignee) {
+        bits.push('assigned to ' + f.assignee);
+      }
+      if (f.window) {
+        bits.push('in the next ' + f.window + ' days');
+      }
+      return 'No tasks match' + (bits.length ? ': ' + bits.join(', ') : ' this filter') + '.';
+    }
+    if (f.type) {
+      bits.push(f.type);
+    }
+    if (f.status) {
+      bits.push(f.status);
+    }
+    return 'No documents match' + (bits.length ? ': ' + bits.join(', ') : ' this filter') + '.';
+  }
+
   // Empty trailing blocks are invisible weight. Collapse them when the
   // last block is blank and at least one earlier block exists.
   function collapseTrailing(page) {
@@ -461,9 +721,21 @@ var MMGR = window.MMGR || {};
 
   ns.Pages = {
     BLOCK_TYPES: BLOCK_TYPES,
+    LIVE_TYPES: LIVE_TYPES,
+    TASK_STATUSES: TASK_STATUSES,
+    TASK_STATUS_LABEL: TASK_STATUS_LABEL,
+    DOC_TYPES: DOC_TYPES,
+    DOC_STATUSES: DOC_STATUSES,
+    TASK_WINDOWS: TASK_WINDOWS,
     MAX_TITLE: MAX_TITLE,
     MAX_TEXT: MAX_TEXT,
     isBlockType: isBlockType,
+    normalizeFilter: normalizeFilter,
+    setFilter: setFilter,
+    resolveTasks: resolveTasks,
+    resolveDocs: resolveDocs,
+    filterOptions: filterOptions,
+    emptyFilterText: emptyFilterText,
     blockLabel: blockLabel,
     normalizeBlock: normalizeBlock,
     normalizePage: normalizePage,

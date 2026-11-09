@@ -17,9 +17,14 @@
     12. a block moves up
     13. a block is removed
     14. deleting a parent reports the child count and removes the descendants
-    15. read-only refuses a write with the standard toast
-    16. read-only still lets a viewer open and select pages
-    17. no page or console error during the run
+    15. a task block lists the tasks the WBS holds
+    16. a filter narrows a live block without touching the WBS
+    17. completing a task in the WBS empties the filtered block
+    18. removing a register row drops it from the document block
+    19. read-only refuses a write with the standard toast
+    20. read-only still lets a viewer open and select pages
+    21. a viewer sees the live lists and no filter controls
+    22. no page or console error during the run
 
    Usage:  node tools/qa-pages.cjs
    Env:    QA_BASE (default http://127.0.0.1:8765), CHROME_PATH
@@ -435,7 +440,146 @@ async function reachable(url) {
     { confirmMsg, deleteResult }
   );
 
-  // ---- 15-16. read-only -------------------------------------------------
+  // ---- 15-18. live blocks ----------------------------------------------
+  // A live block reads the owning panel at draw time: nothing is copied into
+  // the page, so a change in the WBS or the register shows up on return.
+  const liveIds = await page.evaluate(() => {
+    let pageId = '';
+    const ids = {};
+    window.MMGR.State.updateState(s => {
+      const row = (id, name, level, isPhase, status, assignee, endDate) => ({
+        id,
+        name,
+        level,
+        indent: level,
+        isPhase,
+        status,
+        startDate: '2026-11-02',
+        endDate,
+        duration: '5',
+        assignee,
+        critical: false,
+        leadTime: false,
+        recurring: false,
+        weatherExposed: false,
+        confidence: 'high',
+        predecessors: [],
+        notes: '',
+        weatherSensitive: false
+      });
+      s.tasks = [
+        row('T-phase', 'Structure', 0, true, 'todo', '', ''),
+        row('T-setup', 'Site setup', 1, false, 'inprogress', 'Ana', '2026-11-20'),
+        row('T-pour', 'Blast and pour', 1, false, 'todo', 'Ben', '2026-12-04')
+      ];
+      s.documents = [
+        {
+          id: 'D-1',
+          docNo: 'A-101',
+          title: 'Foundation drawing',
+          type: 'Drawing',
+          status: 'current'
+        },
+        {
+          id: 'D-2',
+          docNo: 'C-200',
+          title: 'Main contract',
+          type: 'Contract',
+          status: 'pending-review'
+        }
+      ];
+      const p = window.MMGR.Pages.newPage(s, { title: 'Live lens' });
+      pageId = p.id;
+      ids.task = window.MMGR.Pages.addBlock(s, p.id, 'taskList').id;
+      ids.doc = window.MMGR.Pages.addBlock(s, p.id, 'docList').id;
+      s.pageSel = p.id;
+      s.docsView = 'pages';
+    });
+    window.MMGR.State.save(true);
+    window.MMGR.Render.showSection('docs', document.querySelector('.sec-btn[data-section="docs"]'));
+    window.MMGR.Render.renderPages();
+    return { pageId, task: ids.task, doc: ids.doc };
+  });
+  await page.waitForTimeout(400);
+
+  const taskRows = await page.$$eval('.pg-b-taskList .pg-lr .pg-lt', els =>
+    els.map(e => e.textContent)
+  );
+  check(
+    'a task block lists the tasks the WBS holds',
+    JSON.stringify(taskRows) === JSON.stringify(['Site setup', 'Blast and pour']),
+    taskRows
+  );
+
+  await page.selectOption('.pg-b-taskList .pg-f[data-key="status"]', 'todo');
+  await page.waitForTimeout(400);
+  const narrowed = await page.$$eval('.pg-b-taskList .pg-lr .pg-lt', els =>
+    els.map(e => e.textContent)
+  );
+  const wbsIntact = await page.evaluate(
+    () => window.MMGR.State.getState().tasks.filter(t => !t.isPhase).length
+  );
+  check(
+    'a filter narrows a live block without touching the WBS',
+    JSON.stringify(narrowed) === JSON.stringify(['Blast and pour']) && wbsIntact === 2,
+    { narrowed, wbsIntact }
+  );
+
+  await page.evaluate(() => {
+    window.MMGR.State.updateState(s => {
+      const t = s.tasks.find(x => x.id === 'T-pour');
+      if (t) {
+        t.status = 'completed';
+      }
+    });
+    window.MMGR.State.save(true);
+  });
+  // The block is a lens: it re-reads the WBS when the reader comes back.
+  await page.evaluate(() => {
+    window.MMGR.Render.showSection('wbs', document.querySelector('.sec-btn[data-section="wbs"]'));
+  });
+  await page.waitForTimeout(200);
+  await page.evaluate(() => {
+    window.MMGR.Render.showSection('docs', document.querySelector('.sec-btn[data-section="docs"]'));
+  });
+  await page.waitForTimeout(400);
+  const afterComplete = await page.$$eval('.pg-b-taskList .pg-lr .pg-lt', els =>
+    els.map(e => e.textContent)
+  );
+  const taskEmpty = await page
+    .$eval('.pg-b-taskList .pg-empty', e => e.textContent)
+    .catch(() => '');
+  check(
+    'completing a task in the WBS empties the filtered block',
+    afterComplete.length === 0 && /To do/.test(taskEmpty),
+    { afterComplete, taskEmpty }
+  );
+
+  const docBefore = await page.$$eval('.pg-b-docList .pg-lr .pg-lt', els =>
+    els.map(e => e.textContent)
+  );
+  await page.evaluate(() => {
+    window.MMGR.State.updateState(s => {
+      s.documents = s.documents.filter(d => d.docNo !== 'C-200');
+    });
+    window.MMGR.State.save(true);
+    window.MMGR.Render.showSection('wbs', document.querySelector('.sec-btn[data-section="wbs"]'));
+  });
+  await page.waitForTimeout(200);
+  await page.evaluate(() => {
+    window.MMGR.Render.showSection('docs', document.querySelector('.sec-btn[data-section="docs"]'));
+  });
+  await page.waitForTimeout(400);
+  const docAfter = await page.$$eval('.pg-b-docList .pg-lr .pg-lt', els =>
+    els.map(e => e.textContent)
+  );
+  check(
+    'removing a register row drops it from the document block',
+    docBefore.length === 2 && docAfter.indexOf('Main contract') < 0,
+    { docBefore, docAfter }
+  );
+
+  // ---- 19-21. read-only -------------------------------------------------
   await page.evaluate(() => {
     window.MMGR.scope = 'readonly';
   });
@@ -452,6 +596,18 @@ async function reachable(url) {
     countAfter === countBefore && /View-only/.test(toast),
     { countBefore, countAfter, toast }
   );
+  await page.evaluate(id => window.MMGR.App.selectPage(id), liveIds.pageId);
+  await page.waitForTimeout(350);
+  const viewer = await page.evaluate(() => ({
+    selects: document.querySelectorAll('.pg-b-taskList .pg-f, .pg-b-docList .pg-f').length,
+    notes: document.querySelectorAll('.pg-fnote').length,
+    rows: document.querySelectorAll('.pg-b-taskList .pg-lr').length
+  }));
+  check(
+    'a viewer sees the live lists and no filter controls',
+    viewer.selects === 0 && viewer.notes === 2,
+    viewer
+  );
   const selected = await page.evaluate(id => {
     window.MMGR.App.selectPage(id);
     return window.MMGR.State.getState().pageSel === id;
@@ -461,7 +617,7 @@ async function reachable(url) {
     window.MMGR.scope = 'full';
   });
 
-  // ---- 17. no runtime errors -------------------------------------------
+  // ---- 22. no runtime errors -------------------------------------------
   check('no page or console error during the run', errors.length === 0, errors.slice(0, 5));
 
   await browser.close();

@@ -11,7 +11,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const source = fs.readFileSync(path.join(here, '..', 'js', 'mmgr-pages.js'), 'utf8');
 
 const sandbox = { window: {}, console };
-sandbox.window.MMGR = { Utils: {} };
+sandbox.window.MMGR = { Utils: { todayStr: () => '2026-10-26' } };
 vm.createContext(sandbox);
 vm.runInContext(source, sandbox);
 
@@ -156,4 +156,91 @@ test('the model never stores HTML', () => {
   assert.equal(raw.title, '<img onerror=alert(1)>', 'title is text, escaped at render time');
   assert.equal(raw.blocks[0].text, '<script>alert(1)</script>');
   assert.equal(Object.keys(raw.blocks[0]).sort().join(','), 'done,id,text,type');
+});
+
+// ---- Phase 2: live blocks -------------------------------------------------
+
+const taskBase = () => ({
+  pages: [],
+  tasks: [
+    { id: 'p1', name: 'Groundworks', isPhase: true, level: 0, status: 'todo' },
+    {
+      id: 't1',
+      name: 'Excavate',
+      level: 1,
+      status: 'todo',
+      assignee: 'Ana',
+      endDate: '2026-10-28'
+    },
+    {
+      id: 't2',
+      name: 'Pour',
+      level: 1,
+      status: 'completed',
+      assignee: 'Bo',
+      endDate: '2026-10-30'
+    },
+    { id: 'p2', name: 'Frame', isPhase: true, level: 0, status: 'todo' },
+    { id: 't3', name: 'Studs', level: 1, status: 'todo', assignee: 'Ana', endDate: '2026-12-01' }
+  ],
+  documents: [
+    { id: 'D1', docNo: 'A-101', title: 'Plan', type: 'Drawing', status: 'current' },
+    { id: 'D2', docNo: 'C-001', title: 'Contract', type: 'Contract', status: 'outstanding' }
+  ]
+});
+
+test('resolveTasks filters by phase, status, assignee and window', () => {
+  const s = taskBase();
+  assert.deepEqual(plain(P.resolveTasks(s, { phase: 'p1' }).map(t => t.id)), ['t1', 't2']);
+  assert.deepEqual(plain(P.resolveTasks(s, { status: 'completed' }).map(t => t.id)), ['t2']);
+  assert.deepEqual(plain(P.resolveTasks(s, { assignee: 'Ana' }).map(t => t.id)), ['t1', 't3']);
+  assert.deepEqual(plain(P.resolveTasks(s, { window: 7 }).map(t => t.id)), ['t1', 't2']);
+  // Phases are headings, never rows.
+  assert.equal(
+    P.resolveTasks(s, {}).some(t => t.id === 'p1'),
+    false
+  );
+});
+
+test('resolveDocs filters by type and status', () => {
+  const s = taskBase();
+  assert.deepEqual(plain(P.resolveDocs(s, { type: 'Drawing' }).map(d => d.id)), ['D1']);
+  assert.deepEqual(plain(P.resolveDocs(s, { status: 'outstanding' }).map(d => d.id)), ['D2']);
+  assert.equal(P.resolveDocs(s, {}).length, 2);
+});
+
+test('a live block stores a filter, never resolved rows', () => {
+  const s = taskBase();
+  const page = P.newPage(s, { title: 'Live' });
+  const block = P.addBlock(s, page.id, 'taskList', '');
+  assert.deepEqual(plain(block.filter), {
+    phase: '',
+    status: '',
+    assignee: '',
+    window: 0
+  });
+  assert.equal('rows' in block, false);
+  assert.equal('data' in block, false);
+  P.setFilter(s, page.id, block.id, 'status', 'todo');
+  P.setFilter(s, page.id, block.id, 'window', '7');
+  const saved = P.find(s, page.id).blocks.find(b => b.type === 'taskList');
+  assert.equal(saved.filter.status, 'todo');
+  assert.equal(saved.filter.window, 7);
+  // An unknown key is refused, not invented.
+  assert.equal(P.setFilter(s, page.id, block.id, 'nope', 'x'), false);
+});
+
+test('an empty live result names the filter', () => {
+  const s = taskBase();
+  const page = P.newPage(s, { title: 'Live' });
+  const block = P.addBlock(s, page.id, 'docList', '');
+  P.setFilter(s, page.id, block.id, 'type', 'Permit');
+  const text = P.emptyFilterText(
+    s,
+    'docList',
+    P.find(s, page.id).blocks.find(b => b.type === 'docList').filter
+  );
+  assert.match(text, /No documents match/);
+  assert.match(text, /Permit/);
+  assert.doesNotMatch(text, /No data/);
 });

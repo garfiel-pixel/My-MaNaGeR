@@ -5138,6 +5138,55 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  function setBlockFilter(pageId, blockId, key, value) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Pages) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      ns.Pages.setFilter(s, pageId, blockId, key, value);
+    });
+    R.renderPages();
+  }
+
+  // A live row opens the panel that OWNS the record. The task jump reuses
+  // agendaJump (it already scans [data-id]); the register rows carry no id,
+  // so a document is matched by its doc number or title.
+  function pageJump(section, id) {
+    if (!section) {
+      return;
+    }
+    if (section === 'docs') {
+      showSec('docs', document.querySelector('.sec-btn[data-section="docs"]'));
+      if (!id) {
+        return;
+      }
+      const wanted = String(id);
+      window.requestAnimationFrame(function () {
+        const rows = document.querySelectorAll('#doc-body tr');
+        for (let i = 0; i < rows.length; i += 1) {
+          const no = rows[i].querySelector('input[data-field="docNo"]');
+          const title = rows[i].querySelector('input[data-field="title"]');
+          if ((no && no.value === wanted) || (title && title.value === wanted)) {
+            rows[i].classList.add('ag-hit');
+            if (typeof rows[i].scrollIntoView === 'function') {
+              rows[i].scrollIntoView({ block: 'center', behavior: 'smooth' });
+            }
+            setTimeout(function () {
+              rows[i].classList.remove('ag-hit');
+            }, 1600);
+            return;
+          }
+        }
+      });
+      return;
+    }
+    agendaJump(section, id);
+  }
+
   // Tree drag: a drop lands the dragged page as the last child of the row it
   // is dropped on. The model refuses a drop into the page's own descendant.
   let dragPageId = null;
@@ -5361,6 +5410,8 @@ var MMGR = window.MMGR || {};
     toggleBlock: toggleBlock,
     delBlock: delBlock,
     moveBlock: moveBlock,
+    setBlockFilter: setBlockFilter,
+    pageJump: pageJump,
     populateSprint: populateSprint,
     openPrompt: openPrompt,
     openDrwToSave: openDrwToSave,
@@ -5475,6 +5526,15 @@ window.MMGR = MMGR;
         el.getAttribute('data-block'),
         el.getAttribute('data-dir')
       ),
+    setBlockFilter: el =>
+      window.MMGR.App.setBlockFilter(
+        el.getAttribute('data-page'),
+        el.getAttribute('data-block'),
+        el.getAttribute('data-key'),
+        el.value
+      ),
+    pageJump: el =>
+      window.MMGR.App.pageJump(el.getAttribute('data-section'), el.getAttribute('data-id')),
     setTaskFollowUp: el => {
       const taskId = el.getAttribute('data-id');
       const assignee = prompt('Follow-up assignee:');
@@ -6950,6 +7010,7 @@ window.MMGR = MMGR;
     // a block, or a register link is deliberately absent.
     setDocsView: 1,
     selectPage: 1,
+    pageJump: 1,
     cpAllPage: 1,
     print: 1,
     // Reading or closing the column-limit sheet mutates nothing. The inputs
@@ -7381,6 +7442,7 @@ window.MMGR = MMGR;
         action === 'setIdeaTag' ||
         action === 'setIdeaStage' ||
         action === 'movePage' ||
+        action === 'setBlockFilter' ||
         action === 'saveKbWip' ||
         action === 'setRelLens' ||
         action === 'updKPI' ||

@@ -1102,6 +1102,22 @@
 
   <!-- ═══ DECISION LOG ═══ -->
   <div class="panel" id="panel-log">
+    <!-- Recorded moves: the app's own record of status changes. The written
+         Decision Log below stays a person's narrative; the two are labelled
+         differently on purpose. -->
+    <div class="card m0a mb16">
+      <div class="card-title">Recorded moves
+        <span class="ct-sub">Written by the app when a status changes, never by a person</span>
+        <div class="g6">
+          <select class="ctl-in" id="tr-filter" data-action="setTrFilter" aria-label="Filter recorded moves">
+            <option value="all">All records</option>
+            <option value="change">Changes</option>
+            <option value="issue">Issues</option>
+          </select>
+        </div>
+      </div>
+      <div id="tr-feed" class="tr-feed"></div>
+    </div>
     <div class="card">
       <div class="card-title">Decision Log
         <div class="g6">

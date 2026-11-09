@@ -275,6 +275,7 @@ var MMGR = window.MMGR || {};
  * @property {Array<Object>} transitions - append-only status moves (v29)
  * @property {Array<Object>} rules       - declared rules (v29)
  * @property {Array<Object>} ruleLog     - capped rule execution log (v29)
+ * @property {string} trFilter           - recorded-moves feed filter (per device)
  * @property {ScheduleSlip[]} scheduleSlips
  * @property {Object} raci           - { tasks: string[], persons: string[], matrix: Object }
  * @property {Object} closure        - { items: Object[], well: string, imp: string, rec: string }
@@ -369,6 +370,9 @@ var MMGR = window.MMGR || {};
       transitions: [],
       rules: [],
       ruleLog: [],
+      // Which record type the recorded-moves feed shows. Per-device, so it is
+      // deliberately absent from FIELD_KEYS.
+      trFilter: 'all',
       // Log
       logEntries: [],
       // Comms
@@ -1135,6 +1139,9 @@ var MMGR = window.MMGR || {};
       }
       if (!Array.isArray(state.ruleLog)) {
         state.ruleLog = [];
+      }
+      if (state.trFilter !== 'change' && state.trFilter !== 'issue') {
+        state.trFilter = 'all';
       }
       return state;
     },

@@ -5229,6 +5229,24 @@ var MMGR = window.MMGR || {};
     R.renderDash();
   }
 
+  // ---- Process: the history views --------------------------------------
+  // Opening a record's history and filtering the feed are view changes: both
+  // are safe on a read-only link.
+  function chgHistory(idx) {
+    const row = document.querySelector('tr.chg-hist[data-hist="' + idx + '"]');
+    if (!row) {
+      return;
+    }
+    row.hidden = !row.hidden;
+  }
+
+  function setTrFilter(value) {
+    ns.State.updateState(function (s) {
+      s.trFilter = value === 'change' || value === 'issue' ? value : 'all';
+    });
+    R.renderLog();
+  }
+
   // ---- Register link and handover pack ---------------------------------
   function linkDoc(docId, pageId) {
     if (isReadonly()) {
@@ -5527,6 +5545,8 @@ var MMGR = window.MMGR || {};
     setPageUnfiled: setPageUnfiled,
     printPack: printPack,
     resolveIssue: resolveIssue,
+    chgHistory: chgHistory,
+    setTrFilter: setTrFilter,
     populateSprint: populateSprint,
     openPrompt: openPrompt,
     openDrwToSave: openDrwToSave,
@@ -5656,6 +5676,8 @@ window.MMGR = MMGR;
     setPageUnfiled: el => window.MMGR.App.setPageUnfiled(el.checked),
     printPack: el => window.MMGR.App.printPack(el.getAttribute('data-id')),
     resolveIssue: el => window.MMGR.App.resolveIssue(el.getAttribute('data-id')),
+    chgHistory: el => window.MMGR.App.chgHistory(el.getAttribute('data-idx')),
+    setTrFilter: el => window.MMGR.App.setTrFilter(el.value),
     setTaskFollowUp: el => {
       const taskId = el.getAttribute('data-id');
       const assignee = prompt('Follow-up assignee:');
@@ -7135,6 +7157,8 @@ window.MMGR = MMGR;
     docPageJump: 1,
     setPageUnfiled: 1,
     printPack: 1,
+    chgHistory: 1,
+    setTrFilter: 1,
     cpAllPage: 1,
     print: 1,
     // Reading or closing the column-limit sheet mutates nothing. The inputs
@@ -7568,6 +7592,7 @@ window.MMGR = MMGR;
         action === 'movePage' ||
         action === 'setBlockFilter' ||
         action === 'linkDoc' ||
+        action === 'setTrFilter' ||
         action === 'saveKbWip' ||
         action === 'setRelLens' ||
         action === 'updKPI' ||

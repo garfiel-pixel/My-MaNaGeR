@@ -174,8 +174,10 @@ var MMGR = window.MMGR || {};
         const rippleHtml = hasRipple
           ? `<span style="color:${c.status === 'approved' ? 'var(--green)' : 'var(--amber)'}">~${U.escapeHtml(days)}d · ${exposedLines} lines${cost ? ' · $' + cost.toLocaleString() : ''}${downstreamTasks ? ' · ' + downstreamTasks + ' tasks' : ''}</span>`
           : '-';
+        const hist =
+          ns.Process && ns.Process.historyFor ? ns.Process.historyFor(s, 'change', c.id) : [];
         return `<tr>
-      <td>${U.escapeHtml(c.id || 'C' + (i + 1))}</td>
+      <td><button class="lnk" data-action="chgHistory" data-idx="${i}" title="Show the status history of this change">${U.escapeHtml(c.id || 'C' + (i + 1))}</button></td>
       <td><input type="date" value="${U.escapeHtml(c.date || '')}" data-action="updField" data-module="Changes" data-field="date" data-idx="${i}"></td>
       <td><input type="text" value="${U.escapeHtml(c.title)}" data-action="updField" data-module="Changes" data-field="title" data-idx="${i}"></td>
       <td><input type="text" value="${U.escapeHtml(c.requester || '')}" data-action="updField" data-module="Changes" data-field="requester" data-idx="${i}"></td>
@@ -186,17 +188,76 @@ var MMGR = window.MMGR || {};
       <td><input type="text" value="${U.escapeHtml(c.approvedBy || '')}" data-action="updField" data-module="Changes" data-field="approvedBy" data-idx="${i}"></td>
       <td><input type="text" value="${U.escapeHtml(c.notes || '')}" data-action="updField" data-module="Changes" data-field="notes" data-idx="${i}"></td>
       <td><button class="btn btn-s btn-d" data-action="delChange" data-idx="${i}">×</button></td>
-    </tr>`;
+    </tr>${histRow(hist, i)}`;
       })
       .join('');
   }
 
+  // The per-record history: oldest first, newest emphasised. A move made by
+  // a rule or a repair says so; only a person is left unlabelled.
+  function histRow(hist, idx) {
+    const rows = hist.length
+      ? hist
+          .map(
+            (r, k) =>
+              `<div class="th-row${k === hist.length - 1 ? ' is-new' : ''}">` +
+              `<span class="th-mv">${U.escapeHtml(ns.Process.label('change', r.from))} &rarr; ${U.escapeHtml(ns.Process.label('change', r.to))}</span>` +
+              `<span class="th-by">${U.escapeHtml(r.by || 'Unnamed')}</span>` +
+              `<span class="th-at">${U.escapeHtml(new Date(r.at).toLocaleString())}</span>` +
+              (r.via && r.via !== 'user'
+                ? `<span class="th-tag">${U.escapeHtml(r.via)}</span>`
+                : '') +
+              (r.reason ? `<span class="th-rs">${U.escapeHtml(r.reason)}</span>` : '') +
+              `</div>`
+          )
+          .join('')
+      : '<div class="th-none">No status moves recorded yet.</div>';
+    return `<tr class="chg-hist" data-hist="${idx}" hidden><td colspan="11"><div class="th">${rows}</div></td></tr>`; // ok: rows is built from escaped values and literals only
+  }
+
   // ---- Log ----
+  // The feed is the app's own record of status moves; the table below is the
+  // written decision log. Both live here, labelled differently on purpose.
+  function renderProcessFeed() {
+    const host = $('tr-feed');
+    if (!host) {
+      return;
+    }
+    const s = S();
+    const sel = $('tr-filter');
+    const want = s && (s.trFilter === 'change' || s.trFilter === 'issue') ? s.trFilter : '';
+    if (sel) {
+      sel.value = want || 'all';
+    }
+    if (!ns.Process) {
+      host.innerHTML = '';
+      return;
+    }
+    const rows = ns.Process.feed(s, want).slice(0, 200);
+    if (!rows.length) {
+      host.innerHTML = '<div class="es es-row">No status moves recorded yet.</div>';
+      return;
+    }
+    host.innerHTML = rows
+      .map(
+        r =>
+          `<div class="tr-row">` +
+          `<span class="tr-ref">${U.escapeHtml((r.kind === 'issue' ? 'Issue ' : 'Change ') + r.ref)}</span>` +
+          `<span class="tr-mv">${U.escapeHtml(ns.Process.label(r.kind, r.from))} &rarr; ${U.escapeHtml(ns.Process.label(r.kind, r.to))}</span>` +
+          `<span class="tr-by">${U.escapeHtml(r.by || 'Unnamed')}</span>` +
+          `<span class="tr-at">${U.escapeHtml(new Date(r.at).toLocaleString())}</span>` +
+          (r.via && r.via !== 'user' ? `<span class="tr-tag">${U.escapeHtml(r.via)}</span>` : '') +
+          `</div>`
+      )
+      .join('');
+  }
+
   function renderLog() {
     const s = S();
     if (!s) {
       return;
     }
+    renderProcessFeed();
     const body = $('log-body');
     if (!body) {
       return;
@@ -431,6 +492,7 @@ var MMGR = window.MMGR || {};
     syncStakeComplianceBadges: syncStakeComplianceBadges,
     renderChanges: renderChanges,
     renderLog: renderLog,
+    renderProcessFeed: renderProcessFeed,
     renderRaci: renderRaci,
     renderRaciHeatmap: renderRaciHeatmap,
     renderRaciAlerts: renderRaciAlerts,

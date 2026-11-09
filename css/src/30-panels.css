@@ -5199,3 +5199,106 @@ body.dark-mode .team-link-danger {
 @page {
   margin: 14mm;
 }
+
+/* A link-shaped button: the change id opens its history, a linked document
+   opens its page. No box, accent text, underline on hover. */
+.lnk {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.lnk:hover,
+.lnk:focus-visible {
+  text-decoration: underline;
+}
+
+/* Per-record status history, one detail row under the change it describes. */
+.chg-hist td {
+  padding: 0 8px 8px;
+  background: var(--surface-raised);
+}
+.th {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 10px;
+  border-left: 2px solid var(--border);
+}
+.th-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+}
+.th-row.is-new {
+  color: var(--text);
+  font-weight: 600;
+}
+.th-mv {
+  color: var(--text);
+}
+.th-at {
+  font-variant-numeric: tabular-nums;
+}
+.th-tag {
+  padding: 0 5px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.th-rs {
+  flex-basis: 100%;
+  font-style: italic;
+}
+.th-none {
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+}
+
+/* The project-wide feed in the Log panel. */
+.tr-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 12px 10px;
+}
+.tr-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.76rem;
+}
+.tr-ref {
+  min-width: 96px;
+  color: var(--text);
+  font-weight: 600;
+}
+.tr-mv {
+  color: var(--text);
+}
+.tr-by,
+.tr-at {
+  color: var(--text-secondary);
+}
+.tr-at {
+  font-variant-numeric: tabular-nums;
+}
+.tr-tag {
+  padding: 0 5px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}

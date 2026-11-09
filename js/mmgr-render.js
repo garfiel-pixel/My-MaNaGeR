@@ -3179,6 +3179,11 @@ var MMGR = window.MMGR || {};
       ns.RenderPeople.renderLog();
     }
   }
+  function renderProcessFeed() {
+    if (ns.RenderPeople) {
+      ns.RenderPeople.renderProcessFeed();
+    }
+  }
 
   // ---- Closure ---- (extracted to js/render/closure.js)
   function renderPunchList() {
@@ -4165,6 +4170,7 @@ var MMGR = window.MMGR || {};
     renderStakeholders: renderStakeholders,
     renderChanges: renderChanges,
     renderLog: renderLog,
+    renderProcessFeed: renderProcessFeed,
     renderClosure: renderClosure,
     renderPunchList: renderPunchList,
     renderRfis: renderRfis,

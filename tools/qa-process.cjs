@@ -7,11 +7,15 @@
      2. approving a submitted change is refused, naming the missing step
      3. review without a name is refused and says where to set it
      4. with a name, review succeeds and the row shows it
-     5. rejecting without a reason is refused; with one it succeeds
-     6. the happy path writes one history entry per move
-     7. a viewer's move is refused by the read-only fence
+     5. rejecting without a reason is refused
+     6. with a reason, the rejection is accepted
+     7. the happy path writes one history entry per move
      8. an impossible imported status is repaired on the next boot
-     9. no page or console error during the run
+     9. a viewer's move is refused by the read-only fence
+    10. the change id opens its own history, newest last
+    11. the project feed lists every move and filters by record type
+    12. history survives a reload and the deletion of its record
+    13. no page or console error during the run
 
    Usage:  node tools/qa-process.cjs
    Env:    QA_BASE (default http://127.0.0.1:8765), CHROME_PATH
@@ -346,7 +350,85 @@ async function reachable(url) {
     window.MMGR.scope = 'full';
   });
 
-  // ---- 9. no runtime errors --------------------------------------------
+  // ---- 9. the record's own history -------------------------------------
+  await page.evaluate(() => {
+    window.MMGR.Render.showSection('chg', document.querySelector('.sec-btn[data-section="chg"]'));
+  });
+  await page.waitForTimeout(300);
+  await page.locator('#chg-body button[data-action="chgHistory"]').first().click();
+  await page.waitForTimeout(250);
+  const detail = await page.evaluate(() => {
+    const row = document.querySelector('tr.chg-hist[data-hist="0"]');
+    if (!row) {
+      return { hidden: true, moves: [], newest: '' };
+    }
+    const rows = Array.from(row.querySelectorAll('.th-row'));
+    return {
+      hidden: row.hidden,
+      moves: rows.map(r => r.querySelector('.th-mv').textContent),
+      newest: rows.length ? rows[rows.length - 1].className : ''
+    };
+  });
+  check(
+    'the change id opens its own history, newest last',
+    detail.hidden === false &&
+      JSON.stringify(detail.moves) ===
+        JSON.stringify(['Submitted \u2192 In review', 'In review \u2192 Rejected']) &&
+      /is-new/.test(detail.newest),
+    detail
+  );
+
+  // ---- 10. the project feed --------------------------------------------
+  await page.evaluate(() => {
+    window.MMGR.State.updateState(s => {
+      s.issues = [{ id: 'I-1', description: 'Crack in slab', status: 'open', resolution: '' }];
+      window.MMGR.Process.applyMove(s, 'issue', 0, 'resolved', { reason: 'Grouted.' });
+    });
+    window.MMGR.State.save(true);
+    window.MMGR.Render.showSection('log', document.querySelector('.sec-btn[data-section="log"]'));
+  });
+  await page.waitForTimeout(400);
+  const feedAll = await page.$$eval('#tr-feed .tr-row', els => els.length);
+  await page.selectOption('#tr-filter', 'issue');
+  await page.waitForTimeout(300);
+  const feedIssue = await page.$$eval('#tr-feed .tr-row .tr-ref', els =>
+    els.map(e => e.textContent)
+  );
+  await page.selectOption('#tr-filter', 'change');
+  await page.waitForTimeout(300);
+  const feedChange = await page.$$eval('#tr-feed .tr-row .tr-ref', els =>
+    els.map(e => e.textContent)
+  );
+  check(
+    'the project feed lists every move and filters by record type',
+    feedAll === 6 &&
+      feedIssue.length === 1 &&
+      /^Issue /.test(feedIssue[0]) &&
+      feedChange.length === 5 &&
+      feedChange.every(t => /^Change /.test(t)),
+    { feedAll, feedIssue, feedChange }
+  );
+
+  // ---- 11. history survives a reload and a deletion --------------------
+  await page.evaluate(() => window.MMGR.State.save(true));
+  await boot();
+  const kept = await page.evaluate(() => {
+    const before = window.MMGR.State.getState().transitions.filter(r => r.ref === 'C-1').length;
+    window.MMGR.Changes.delChange(0);
+    const s = window.MMGR.State.getState();
+    return {
+      before,
+      gone: !s.changes.some(c => c.id === 'C-1'),
+      after: s.transitions.filter(r => r.ref === 'C-1').length
+    };
+  });
+  check(
+    'history survives a reload and the deletion of its record',
+    kept.before === 2 && kept.gone && kept.after === 2,
+    kept
+  );
+
+  // ---- 12. no runtime errors -------------------------------------------
   check('no page or console error during the run', errors.length === 0, errors.slice(0, 5));
 
   await browser.close();

@@ -329,6 +329,8 @@ const WHISPER_CSP = [
 //
 // public.profitwell.com is intentionally NOT allowed. Paddle requests it for
 // revenue analytics; it is not required for checkout, so it stays blocked.
+// If ProfitWell is ever enabled, its connect-src origins must be added
+// together with its script-src entry - never one without the other.
 const PADDLE_CSP = [
   "default-src 'self'",
   "script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com%%ANALYTICS%% https://challenges.cloudflare.com https://cdn.paddle.com " +

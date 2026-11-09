@@ -81,6 +81,23 @@ function safeUrl(value) {
   }
 }
 
+// One line per violation with every field labelled. An unlabelled line put the
+// page path immediately after the blocked URL, which reads as one concatenated
+// value ("/pricinghttps://..."). The labels make that impossible to misread -
+// and this is a print-only concern: the Worker's log fields are separate keys.
+function formatViolation(v) {
+  return (
+    (v.directive || '?') +
+    ' | blocked=' +
+    safeUrl(v.blocked) +
+    ' | page=' +
+    (v.page || '?') +
+    ' | disposition=' +
+    (v.disposition || '?') +
+    (v.document ? ' | doc=' + safeUrl(v.document) : '')
+  );
+}
+
 function startWrangler() {
   return new Promise(function (resolve, reject) {
     const wrangler = globalWranglerJs();
@@ -197,17 +214,7 @@ async function main() {
   if (violations.length) {
     log('violations:');
     violations.forEach(function (v) {
-      log(
-        '  ' +
-          (v.directive || '?') +
-          ' | ' +
-          safeUrl(v.blocked) +
-          ' | ' +
-          (v.page || '?') +
-          ' | ' +
-          (v.disposition || '?') +
-          (v.document ? ' | doc ' + safeUrl(v.document) : '')
-      );
+      log('  ' + formatViolation(v));
     });
   } else {
     log('no violations recorded');
@@ -239,11 +246,15 @@ async function main() {
   return 0;
 }
 
-main()
-  .then(function (code) {
-    process.exit(code);
-  })
-  .catch(function (e) {
-    console.error('[csp-sweep] ERROR: ' + (e && e.message));
-    process.exit(1);
-  });
+module.exports = { formatViolation: formatViolation, safeUrl: safeUrl };
+
+if (require.main === module) {
+  main()
+    .then(function (code) {
+      process.exit(code);
+    })
+    .catch(function (e) {
+      console.error('[csp-sweep] ERROR: ' + (e && e.message));
+      process.exit(1);
+    });
+}

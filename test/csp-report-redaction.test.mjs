@@ -11,7 +11,11 @@
    ============================================================ */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
 import { cspStripQuery, handleCspReport } from '../src/csp-report.js';
+
+const require = createRequire(import.meta.url);
+const { formatViolation } = require('../tools/qa-csp-sweep.cjs');
 
 test('query string and fragment are removed, origin and path kept', () => {
   assert.equal(
@@ -89,4 +93,72 @@ test('the Reporting API array shape is stripped too', async () => {
   assert.match(line, /"blocked":"inline"/);
   assert.match(line, /https:\/\/mymanagerworkspace\.com\/app/);
   assert.equal(line.indexOf('session=abc'), -1);
+});
+
+test('the logged blocked and document fields are exactly origin + path', async () => {
+  const lines = await captureLines({
+    'csp-report': {
+      'document-uri':
+        'https://mymanagerworkspace.com/pricing?checkout_id=ch_01HXYZ&token=pdl_ct_123#pay',
+      'blocked-uri': 'https://public.profitwell.com/js/profitwell.js?auth=paddletoken_live_x#frag',
+      'effective-directive': 'script-src-elem',
+      disposition: 'enforce'
+    }
+  });
+  const entry = JSON.parse(lines[0]);
+  assert.equal(entry.blocked, 'https://public.profitwell.com/js/profitwell.js');
+  assert.equal(entry.document, 'https://mymanagerworkspace.com/pricing');
+  assert.equal(entry.blocked.indexOf('/pricing'), -1, 'the page path leaked into blocked');
+  assert.equal(entry.document.indexOf('?'), -1, 'a query string survived in document');
+  assert.equal(entry.document.indexOf('#'), -1, 'a fragment survived in document');
+});
+
+test('inline stays exactly inline in both report shapes', async () => {
+  const legacy = JSON.parse(
+    (
+      await captureLines({
+        'csp-report': {
+          'blocked-uri': 'inline',
+          'document-uri': 'https://mymanagerworkspace.com/app?session=abc#x',
+          'effective-directive': 'script-src-elem'
+        }
+      })
+    )[0]
+  );
+  assert.equal(legacy.blocked, 'inline');
+  assert.equal(legacy.document, 'https://mymanagerworkspace.com/app');
+
+  const modern = JSON.parse(
+    (
+      await captureLines([
+        {
+          type: 'csp-violation',
+          body: {
+            effectiveDirective: 'script-src-elem',
+            blockedURL: 'inline',
+            documentURL: 'https://mymanagerworkspace.com/app#x',
+            disposition: 'report'
+          }
+        }
+      ])
+    )[0]
+  );
+  assert.equal(modern.blocked, 'inline');
+});
+
+test('the sweep print keeps the page path out of the blocked value', () => {
+  const line = formatViolation({
+    directive: 'script-src-elem',
+    blocked: 'https://public.profitwell.com/js/profitwell.js?auth=tok#frag',
+    page: '/pricing',
+    document: 'http://127.0.0.1:8794/pricing?checkout=1',
+    disposition: 'enforce'
+  });
+  assert.match(
+    line,
+    /blocked=https:\/\/public\.profitwell\.com\/js\/profitwell\.js \| page=\/pricing \| disposition=enforce/
+  );
+  assert.match(line, /doc=http:\/\/127\.0\.0\.1:8794\/pricing$/);
+  assert.equal(line.indexOf('/pricinghttps://'), -1, 'page path ran into the blocked URL');
+  assert.equal(line.indexOf('?'), -1, 'a query string reached the printed line');
 });

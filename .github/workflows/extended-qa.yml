@@ -147,6 +147,9 @@ jobs:
       - name: "E-T4: scroll-spy connector, sub-dots and label lock-in"
         run: node tools/qa-spy-nav.cjs
 
+      - name: "Idea intake and agenda"
+        run: node tools/qa-ideas-agenda.cjs
+
       - name: "E-T4: standalone sign-in page and open-redirect defence"
         run: node tools/qa-signin-page.cjs
 

@@ -186,12 +186,46 @@ function cspReportOnlyFor(request, normalized, isDocument, env) {
   if (!isDocument || (env && env.CSP_REPORT_ONLY === 'off')) {
     return null;
   }
-  const parts = [withConnectSrc(cspFor(request, normalized, true), CONNECT_SRC_CANDIDATE)];
+  const parts = [
+    withScriptExtras(
+      withConnectSrc(cspFor(request, normalized, true), CONNECT_SRC_CANDIDATE),
+      REPORT_ONLY_SCRIPT_EXTRA
+    )
+  ];
   if (env && env.CSP_TT_REPORT === '1') {
     parts.push("require-trusted-types-for 'script'");
   }
   parts.push('report-uri /api/csp-report');
   return parts.join('; ');
+}
+
+// E2 (2026-11-09): two scripts are injected into documents by parties we do
+// not control - Cloudflare's Web Analytics beacon and Paddle Retain. They were
+// the only script-src-elem reports in the owner's log. Adding them to the
+// REPORT-ONLY policy stops the observation window re-reporting known scripts;
+// the enforced policy is untouched, so this is not a relaxation of what a
+// browser actually enforces.
+const REPORT_ONLY_SCRIPT_EXTRA = [
+  'https://static.cloudflareinsights.com',
+  'https://public.profitwell.com'
+];
+
+// Appends origins to script-src only, skipping ones the policy already names.
+function withScriptExtras(policy, origins) {
+  const m = /(^|;\s*)script-src ([^;]*)/.exec(policy);
+  if (!m) {
+    return policy;
+  }
+  const existing = m[2].split(/\s+/).filter(Boolean);
+  const add = origins.filter(function (o) {
+    return existing.indexOf(o) === -1;
+  });
+  if (!add.length) {
+    return policy;
+  }
+  return policy.replace(/(^|;\s*)script-src ([^;]*)/, function (match, lead, body) {
+    return lead + 'script-src ' + body.trim() + ' ' + add.join(' ');
+  });
 }
 
 // The one switch that promotes the candidate to enforced. Off by default: the
@@ -202,6 +236,17 @@ function enforcedCspFor(request, normalized, isDocument, env) {
     return policy;
   }
   return withConnectSrc(policy, CONNECT_SRC_CANDIDATE);
+}
+
+// E3 (2026-11-09): tooling seam. tools/qa-csp-origins.cjs compares scanned
+// origins against the REAL policy strings rather than a copy that can drift.
+// Not used by the request path.
+export function cspPoliciesForTooling(request, env) {
+  const e = env || {};
+  return {
+    enforced: enforcedCspFor(request, '/', true, e),
+    reportOnly: cspReportOnlyFor(request, '/', true, e)
+  };
 }
 
 const CSP = [

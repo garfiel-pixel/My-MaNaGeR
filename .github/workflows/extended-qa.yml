@@ -39,6 +39,15 @@ jobs:
       - name: Static verification battery
         run: npm run verify
 
+      # E4 (2026-11-09): the browser sweep needs the real Worker (the
+      # report-only policy is emitted by worker.js, not serve.cjs) and a
+      # Chromium binary. It boots its own wrangler dev on :8794.
+      - name: Install Chromium for the CSP sweep
+        run: npx playwright install chromium
+
+      - name: "E-T3: CSP report-only browser sweep"
+        run: npm run qa:csp
+
       - name: Wrangler deploy dry-run
         run: npx wrangler deploy --dry-run
 

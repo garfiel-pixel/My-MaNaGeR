@@ -32,6 +32,27 @@ function short(v) {
   return s.length > MAX_FIELD ? s.slice(0, MAX_FIELD) : s;
 }
 
+// E6 (2026-11-09): a CSP report can carry a full URL - and a Paddle checkout
+// URL carries a checkout id and a client token in its query string. Neither
+// belongs in a log tail. Keep the origin and the path, drop the query and the
+// fragment. The literal keywords the spec uses ('inline', 'eval') survive
+// untouched because they are not URLs.
+export function cspStripQuery(v) {
+  const s = short(v);
+  if (!s || s === 'inline' || s === 'eval') {
+    return s;
+  }
+  if (/^https?:\/\//i.test(s)) {
+    try {
+      const u = new URL(s);
+      return u.origin + u.pathname;
+    } catch (e) {
+      /* fall through to the textual strip */
+    }
+  }
+  return s.split('?')[0].split('#')[0];
+}
+
 function noContent() {
   return new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });
 }
@@ -44,8 +65,8 @@ function reportFrom(entry) {
   if (entry.body && typeof entry.body === 'object') {
     return {
       directive: short(entry.body.effectiveDirective || entry.body.violatedDirective),
-      blocked: short(entry.body.blockedURL),
-      document: short(entry.body.documentURL),
+      blocked: cspStripQuery(entry.body.blockedURL),
+      document: cspStripQuery(entry.body.documentURL),
       disposition: short(entry.body.disposition)
     };
   }
@@ -58,8 +79,8 @@ function reportFromLegacy(entry) {
   }
   return {
     directive: short(entry['effective-directive'] || entry['violated-directive']),
-    blocked: short(entry['blocked-uri']),
-    document: short(entry['document-uri']),
+    blocked: cspStripQuery(entry['blocked-uri']),
+    document: cspStripQuery(entry['document-uri']),
     disposition: short(entry.disposition)
   };
 }

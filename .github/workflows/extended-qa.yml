@@ -153,6 +153,9 @@ jobs:
       - name: "Project book pages"
         run: node tools/qa-pages.cjs
 
+      - name: "Guarded status transitions"
+        run: node tools/qa-process.cjs
+
       - name: "E-T4: standalone sign-in page and open-redirect defence"
         run: node tools/qa-signin-page.cjs
 

@@ -157,6 +157,7 @@ const APP_MODULES = [
   'js/mmgr-tasks.js',
   'js/mmgr-risks.js',
   'js/mmgr-stakeholders.js',
+  'js/mmgr-process.js',
   'js/mmgr-bids.js',
   'js/mmgr-closure.js',
   // PART H (owner 2026-10-16): Procurement tab - supplier price book +

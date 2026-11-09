@@ -147,6 +147,23 @@ var MMGR = window.MMGR || {};
   }
 
   function updChange(index, field, value) {
+    // The guard sits on the write, not the select: an import, a paste, a rule
+    // and a programmatic call all pass through here.
+    if (field === 'status' && ns.Process) {
+      let res = { ok: true };
+      ns.State.updateState(function (s) {
+        res = ns.Process.applyMove(s, 'change', index, value, { via: 'user' });
+      });
+      if (!res.ok) {
+        if (ns.App && ns.App.showToast) {
+          ns.App.showToast(res.message, 'err');
+        }
+        R.renderChanges();
+      } else if (!res.noop) {
+        R.renderChanges();
+      }
+      return;
+    }
     ns.State.updateState(function (s) {
       if (s.changes && s.changes[index]) {
         s.changes[index][field] = value;
@@ -155,6 +172,17 @@ var MMGR = window.MMGR || {};
   }
 
   function delChange(index) {
+    const s0 = ns.State.getState();
+    const c = s0 && s0.changes ? s0.changes[index] : null;
+    if (c && c.status === 'approved') {
+      if (ns.App && ns.App.showToast) {
+        ns.App.showToast(
+          'An approved change cannot be deleted. Raise a superseding change.',
+          'err'
+        );
+      }
+      return;
+    }
     ns.State.updateState(function (s) {
       if (s.changes) {
         s.changes.splice(index, 1);

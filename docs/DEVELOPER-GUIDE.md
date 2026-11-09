@@ -70,9 +70,10 @@ attaches (e.g. `MMGR.Cloud`).
 | `mmgr-agenda.js` | 416 | `Agenda` | Merged date feed over tasks, milestones, meetings, open issues, open changes and live ideas. One window rule, overdue handling, day grouping, and the RFC 5545 `.ics` writer. Pure: no DOM, no storage. |
 | `mmgr-pages.js` | 887 | `Pages` | Project book model (AppFlowy-inspired): a flat page tree (`parentId` + `sort`, never nested), typed plain-text blocks, create/rename/remove-with-descendants, a descendant-safe move, block add/edit/toggle/reorder/remove, live task/document blocks resolved at draw time, and template capture/apply. Pure: no DOM, no storage. |
 | `mmgr-schedule.js` | 849 | `Schedule` | CPM engine: topological sort, forward/backward pass, float, critical path, weather padding, resource conflicts, `audit()`. **Purity contract**: pass functions are pure — they never mutate live tasks. |
-| `mmgr-risks.js` | 215 | `Risks` | Risk & issue CRUD. |
+| `mmgr-risks.js` | 298 | `Risks` | Risk & issue CRUD; the issue status write is guarded by `Process`. |
 | `mmgr-resources.js` | 428 | `Resources` | Resource & budget management (rates, allocation, utilization, budget lines). |
-| `mmgr-stakeholders.js` | 198 | `Stakeholders` | Stakeholder register, change control, logs. |
+| `mmgr-stakeholders.js` | 328 | `Stakeholders` | Stakeholder register, change control, logs; the change status write is guarded by `Process`. |
+| `mmgr-process.js` | 325 | `Process` | Guarded status edges for changes and issues, the append-only transition history, repair-on-boot, and (from Phase 3) the declared rule engine. Pure: every function takes the state. |
 | `mmgr-bids.js` | 848 | `Bids` | Bid leveling + Go/No-Go weighted scoring (packages, leveled grid, per-sub actions). |
 | `mmgr-charter.js` | 498 | `Charter` | Project charter & KPI management. |
 | `mmgr-custom-fields.js` | ~360 | `CustomFields` | Custom task field schema: the type table, add/update/remove/reorder over `state.fields`, coercion, value reads and writes on `task.custom`, required-field detection, and the persisted board filter. Pure functions over the state object, no DOM. Loads after `mmgr-utils.js` and before the renderers. |
@@ -146,6 +147,16 @@ Three rules are load-bearing:
 **The register link and the handover pack.** A register row may carry one optional `pageId`; the link lives on the document, so deleting the page leaves the row and the cell reads as unlinked again. The Pages view's unfiled lens keeps unlinked pages plus the ancestors that hold them (`context: true`), so the tree still reads. `Pages.buildPack(state, rootId)` assembles — never stores — the branch in order, each block, live rows resolved as they stand that moment, and the register rows linked from the branch grouped by type. `printPack` paints it into `#pg-pack` (a direct child of `body`) and adds `body.pg-printing`; the `@media print` rules in `30-panels.css` are the only thing that shows the pack and hides the app. The pack is paper: black on white regardless of theme.
 
 `pages` is project data and **is** in `FIELD_KEYS`; `docsView`, `pageSel` and `pageUnfiled` are per-device and deliberately are not. The migration repairs an imported page inline (the state module loads before the model); the model repairs again on read.
+
+### Guarded status moves (process)
+
+`mmgr-process.js` is a **pure model**: `canMove` judges an edge, `applyMove` writes the status and the history entry together, `repairAll` steps an impossible status back. Three rules:
+
+1. **The guard sits on the write, not the widget.** `Changes.updChange` and `Risks.updIssue` route a `status` field through `Process.applyMove`; the select is only a control. An import, a paste, a rule and a programmatic call all pass through the same judgement.
+2. **The history is a flat, append-only collection** (`state.transitions`), not an array on the record. A cloud merge rewrites arrays wholesale, so a nested history could lose an entry; a flat collection keyed by `{kind, ref}` survives, and it survives the deletion of its record on purpose.
+3. **A move and its entry land in one `updateState`.** There is no window in which a status is new and unrecorded. A refusal never half-writes: `canMove` is checked before anything is touched.
+
+Repair runs on boot (`App.init`) only when `Process.needsRepair(state)` is true, and each step is recorded with `via:'repair'` — never silently. `secondApproverRequired`/`secondApprover` are the Phase 3 seam for the `requireApproval` rule action.
 
 ## 3. Split candidates — largest functions
 

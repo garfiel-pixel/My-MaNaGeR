@@ -640,7 +640,7 @@ var MMGR = window.MMGR || {};
         issEl.innerHTML = activeIssues
           .map(
             i =>
-              `<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">${U.escapeHtml(i.description)} <span class="badge br" style="font-size:.65rem">${U.escapeHtml(i.status || 'open')}</span></div>`
+              `<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">${U.escapeHtml(i.description)} <span class="badge br" style="font-size:.65rem">${U.escapeHtml(i.status || 'open')}</span> <button class="btn btn-s btn-n" data-action="resolveIssue" data-id="${U.escapeHtml(i.id || '')}" title="Resolve this issue">Resolve</button></div>`
           )
           .join('');
       }

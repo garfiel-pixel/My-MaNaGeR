@@ -70,6 +70,21 @@ var MMGR = window.MMGR || {};
   }
 
   function updIssue(index, field, value) {
+    if (field === 'status' && ns.Process) {
+      let res = { ok: true };
+      ns.State.updateState(function (s) {
+        res = ns.Process.applyMove(s, 'issue', index, value, { via: 'user' });
+      });
+      if (!res.ok) {
+        if (ns.App && ns.App.showToast) {
+          ns.App.showToast(res.message, 'err');
+        }
+      }
+      if (R.renderDash) {
+        R.renderDash();
+      }
+      return;
+    }
     ns.State.updateState(function (s) {
       if (s.issues && s.issues[index]) {
         s.issues[index][field] = value;

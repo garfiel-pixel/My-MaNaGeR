@@ -379,6 +379,16 @@ var MMGR = window.MMGR || {};
 
     ns.State.load();
 
+    // Process repair: an imported or legacy status that its edge could not
+    // have produced is stepped back once, with the step recorded in the
+    // history rather than done silently. Idempotent, so it costs a scan.
+    if (ns.Process && ns.Process.needsRepair(ns.State.getState())) {
+      ns.State.updateState(function (st) {
+        ns.Process.repairAll(st);
+      });
+      ns.State.save(true);
+    }
+
     const s = S();
 
     // Task 6 (owner 2026-09-19): background assistant. One immediate pass,
@@ -5187,6 +5197,38 @@ var MMGR = window.MMGR || {};
     agendaJump(section, id);
   }
 
+  // ---- Process: guarded issue moves ------------------------------------
+  // The issue register has no status column; this is the one path a person
+  // uses to resolve one, and it asks for the note the guard requires.
+  function resolveIssue(id) {
+    if (!ns.Process) {
+      return;
+    }
+    const s = ns.State.getState();
+    const idx = (s.issues || []).findIndex(function (i) {
+      return i && i.id === id;
+    });
+    if (idx < 0) {
+      return;
+    }
+    const note = window.prompt('What was done to resolve this issue?');
+    if (note === null) {
+      return;
+    }
+    if (!String(note).trim()) {
+      showToast('Say what was done before resolving this issue.', 'err');
+      return;
+    }
+    let res = { ok: true };
+    ns.State.updateState(function (st) {
+      res = ns.Process.applyMove(st, 'issue', idx, 'resolved', { reason: note, via: 'user' });
+    });
+    if (!res.ok) {
+      showToast(res.message, 'err');
+    }
+    R.renderDash();
+  }
+
   // ---- Register link and handover pack ---------------------------------
   function linkDoc(docId, pageId) {
     if (isReadonly()) {
@@ -5484,6 +5526,7 @@ var MMGR = window.MMGR || {};
     docPageJump: docPageJump,
     setPageUnfiled: setPageUnfiled,
     printPack: printPack,
+    resolveIssue: resolveIssue,
     populateSprint: populateSprint,
     openPrompt: openPrompt,
     openDrwToSave: openDrwToSave,
@@ -5612,6 +5655,7 @@ window.MMGR = MMGR;
     docPageJump: el => window.MMGR.App.docPageJump(el.getAttribute('data-id')),
     setPageUnfiled: el => window.MMGR.App.setPageUnfiled(el.checked),
     printPack: el => window.MMGR.App.printPack(el.getAttribute('data-id')),
+    resolveIssue: el => window.MMGR.App.resolveIssue(el.getAttribute('data-id')),
     setTaskFollowUp: el => {
       const taskId = el.getAttribute('data-id');
       const assignee = prompt('Follow-up assignee:');

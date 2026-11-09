@@ -272,6 +272,9 @@ var MMGR = window.MMGR || {};
  * @property {Risk[]} risks
  * @property {Issue[]} issues
  * @property {Change[]} changes
+ * @property {Array<Object>} transitions - append-only status moves (v29)
+ * @property {Array<Object>} rules       - declared rules (v29)
+ * @property {Array<Object>} ruleLog     - capped rule execution log (v29)
  * @property {ScheduleSlip[]} scheduleSlips
  * @property {Object} raci           - { tasks: string[], persons: string[], matrix: Object }
  * @property {Object} closure        - { items: Object[], well: string, imp: string, rec: string }
@@ -283,7 +286,7 @@ var MMGR = window.MMGR || {};
   'use strict';
 
   const STORAGE_KEY = 'mmgr_state';
-  const SCHEMA_VERSION = 28;
+  const SCHEMA_VERSION = 29;
 
   // ---- Default State ----
   /** @returns {AppState} */
@@ -361,6 +364,11 @@ var MMGR = window.MMGR || {};
       issues: [],
       // Changes
       changes: [],
+      // Process model (Huly-inspired). Transitions are append-only evidence;
+      // rules are declared configuration; ruleLog is the capped execution log.
+      transitions: [],
+      rules: [],
+      ruleLog: [],
       // Log
       logEntries: [],
       // Comms
@@ -1108,6 +1116,28 @@ var MMGR = window.MMGR || {};
       state.pageUnfiled = state.pageUnfiled === true;
       return state;
     },
+    29: function (state) {
+      // V28 -> V29: the process model (Huly-inspired, 2026-11-08).
+      // - transitions is a FLAT, append-only collection. A nested array on
+      //   the record would be rewritten wholesale by a cloud merge and could
+      //   lose an entry; the history is the evidence, so it lives on its own.
+      // - rules are declared configuration (trigger, conditions, one action
+      //   from a fixed list) and travel with the project; a rule that exists
+      //   on one machine only would silently stop applying.
+      // - ruleLog is the capped execution log, also project data.
+      // Status repair is NOT here: the process model owns the edges and it
+      // loads after this module, so repairAll runs on boot (idempotent).
+      if (!Array.isArray(state.transitions)) {
+        state.transitions = [];
+      }
+      if (!Array.isArray(state.rules)) {
+        state.rules = [];
+      }
+      if (!Array.isArray(state.ruleLog)) {
+        state.ruleLog = [];
+      }
+      return state;
+    },
     25: function (state) {
       // V24 -> V25: BOQ bridge (H-2, BUDGET-BOQ directive 2026-11-05).
       // Additive and lossless:
@@ -1546,6 +1576,13 @@ var MMGR = window.MMGR || {};
     'risks',
     'issues',
     'changes',
+    // Process model (Huly-inspired): the transition history is append-only
+    // evidence and must travel with the project; rules are configuration the
+    // whole team must run, so they travel too. The execution log is capped
+    // and travels with them so a colleague can read what fired.
+    'transitions',
+    'rules',
+    'ruleLog',
     'logEntries',
     'commsEntries',
     'documents',

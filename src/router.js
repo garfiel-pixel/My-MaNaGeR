@@ -36,6 +36,7 @@ import {
   readJsonBody
 } from './lib/http.js';
 import { trackError, structuredLog, privacySignalRequested } from './lib/observe.js';
+import { handleFx } from './fx.js';
 import {
   handleBillingWebhook,
   handleBillingStatus,
@@ -1094,6 +1095,16 @@ export async function routeApi(request, env, url) {
     // 10b. HEALTH PROBE
     if (path === '/api/health' && request.method === 'GET') {
       return json({ ok: true, status: 'ok', app: 'my-manager', time: new Date().toISOString() });
+    }
+
+    // 10c. FX ESTIMATE (A3): the J$ figures on pricing.html are estimates at
+    // this rate. Public and cacheable for an hour; same-origin only so a
+    // third-party page cannot quietly read the number as an oracle.
+    if (path === '/api/fx' && request.method === 'GET') {
+      if (!sameOriginOnly(request)) {
+        return cloudForbidden();
+      }
+      return handleFx(env);
     }
 
     // 11. PUBLIC REVIEWS

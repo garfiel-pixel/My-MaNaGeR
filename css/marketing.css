@@ -4700,6 +4700,25 @@ body.dark-mode .signin-card {
   color: var(--text-secondary);
   margin: 0 0 14px;
 }
+/* A4: the J$ line is an estimate beside a USD charge, so it is quieter than
+   the price it follows and never competes with the USD figure. */
+.pricing-card .pc-jmd {
+  font-size: var(--fs-small);
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin: -2px 0 6px;
+}
+.pc-jmd-note {
+  font-size: var(--fs-small);
+  color: var(--text-secondary);
+  margin: 14px 0 0;
+  max-width: 62ch;
+}
+.market-note {
+  border-left: 3px solid var(--gold, #b45309);
+  padding-left: 14px;
+  margin: 18px 0;
+}
 .pricing-card .pc-list {
   list-style: none;
   padding: 0;
@@ -4836,6 +4855,10 @@ body.dark-mode .pricing-card:hover {
 body.dark-mode .pricing-card .pc-name,
 body.dark-mode .pricing-card .pc-price {
   color: var(--on-navy);
+}
+body.dark-mode .pricing-card .pc-jmd,
+body.dark-mode .pc-jmd-note {
+  color: var(--on-navy-70, rgba(255, 255, 255, 0.72));
 }
 body.dark-mode .pricing-card .pc-list li {
   color: var(--on-navy);

@@ -3,6 +3,7 @@ import { Presence } from './src/cloud/presence.js';
 import { purgeStaleCloudProjects } from './src/cloud/projects.js';
 import { sweepExpiredInvitations, sweepExpiredAccess } from './src/cloud/team.js';
 import { evaluateWebhooks } from './src/webhooks.js';
+import { fxRefresh } from './src/fx.js';
 
 export { Presence }; // wrangler requires DO classes in the entrypoint
 
@@ -464,6 +465,16 @@ export default {
       console.log('rank9 webhooks: checked=' + w.checked + ' fired=' + w.fired.length);
     } catch (e) {
       console.error('rank9 webhook evaluation failed:', e && e.message);
+    }
+    // A2 (2026-11-09): refresh the USD to JMD estimate once a day. A failed
+    // refresh keeps the stored value; it never blanks the pricing page.
+    try {
+      const fx = await fxRefresh(env);
+      if (!fx.ok) {
+        console.log('fx refresh skipped: ' + fx.reason);
+      }
+    } catch (e) {
+      console.error('fx refresh failed:', e && e.message);
     }
     try {
       const s7 = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();

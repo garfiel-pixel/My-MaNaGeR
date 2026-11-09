@@ -4504,7 +4504,7 @@ body.dark-mode .team-link-danger {
 }
 .idseg-b.is-on {
   background: var(--gold);
-  color: #ffffff;
+  color: var(--bullion-ink);
 }
 .idtable .idt-t {
   display: block;

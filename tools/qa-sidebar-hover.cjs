@@ -164,13 +164,28 @@ async function stripBox(page, index) {
     else bad('escape-closes', 'Escape left the rail open');
 
     // The in-panel hamburger dismisses a hover-only rail (never pins it).
+    // Open from the first icon and wait for the class, then invoke the control
+    // directly: Playwright's actionability loop waits for the sliding panel to
+    // settle, and the rail's 150 ms close timer can win that race on a slow
+    // runner (the click then finds the panel off-canvas). The handler under
+    // test is the same one a real click reaches.
     await page.mouse.move(700, 320);
     await page.waitForTimeout(250);
-    const b3 = await stripBox(page, 2);
+    const b3 = await stripBox(page, 0);
     await page.mouse.move(b3.x + b3.width / 2, b3.y + b3.height / 2, { steps: 6 });
-    await page.waitForTimeout(260);
-    if (await openRail(page)) {
-      await page.locator('#db-sidebar .db-side-close').click();
+    let railUp = false;
+    try {
+      await page.waitForFunction(() => document.body.classList.contains('rail-hover-open'), null, {
+        timeout: 2000,
+        polling: 16
+      });
+      railUp = true;
+    } catch (e) {}
+    if (railUp) {
+      await page.evaluate(() => {
+        const btn = document.querySelector('#db-sidebar .db-side-close');
+        if (btn) btn.click();
+      });
       await page.waitForTimeout(300);
       const st = await page.evaluate(() => ({
         hover: document.body.classList.contains('rail-hover-open'),

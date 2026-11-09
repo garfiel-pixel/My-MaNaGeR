@@ -536,7 +536,7 @@ const snapshot = () => ({
 
         const b2 = await ev(`(async function(){
           try {
-            sessionStorage.setItem('mmgr_cloud_code_${PID}', ${JSON.stringify(OC)});
+            localStorage.setItem('mmgr_cloud_code_${PID}', ${JSON.stringify(OC)});
             await window.MMGR.Cloud.render();
             return { has: !!document.getElementById('cloud-review-list') };
           } catch (e) { return { threw: String(e && e.message || e) }; }

@@ -114,15 +114,26 @@ function directives(header) {
     !!roConnect && !BARE_SCHEME.test(roConnect),
     { connectSrc: roConnect }
   );
+  // connect-src is the candidate under test and script-src carries the two
+  // report-only script extras (E2, 2026-11-09). Every other directive must be
+  // byte-identical; the report-only script-src may only ADD sources.
+  const enforcedDir = directives(ro.enforced);
   check(
     'ARM 1 the report-only policy still names every non-connect directive of the enforced one',
-    Object.keys(directives(ro.enforced)).every(k => {
-      if (k === 'connect-src') {
+    Object.keys(enforcedDir).every(k => {
+      if (k === 'connect-src' || k === 'script-src') {
         return true;
       }
-      return roDir[k] === directives(ro.enforced)[k];
+      return roDir[k] === enforcedDir[k];
     }),
-    { enforcedKeys: Object.keys(directives(ro.enforced)), roKeys: Object.keys(roDir) }
+    { enforcedKeys: Object.keys(enforcedDir), roKeys: Object.keys(roDir) }
+  );
+  const roScript = new Set((roDir['script-src'] || '').split(/\s+/).filter(Boolean));
+  const enforcedScript = (enforcedDir['script-src'] || '').split(/\s+/).filter(Boolean);
+  check(
+    'ARM 1 the report-only script-src only ADDS sources (every enforced one survives)',
+    enforcedScript.length > 0 && enforcedScript.every(src => roScript.has(src)),
+    { enforcedScript: enforcedScript, reportOnlyScript: Array.from(roScript) }
   );
   check(
     'ARM 1 the report-only policy points at the sink',

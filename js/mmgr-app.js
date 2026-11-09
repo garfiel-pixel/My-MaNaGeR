@@ -5275,6 +5275,15 @@ var MMGR = window.MMGR || {};
     row.hidden = !row.hidden;
   }
 
+  // The board's cycle scope is a view: it narrows what is DRAWN and never
+  // writes to a task, so it is safe on a read-only link.
+  function setKanScope(value) {
+    ns.State.updateState(function (s) {
+      s.kanScope = value === 'active' || value === 'backlog' ? value : 'all';
+    });
+    R.renderKanban();
+  }
+
   function setTrFilter(value) {
     ns.State.updateState(function (s) {
       s.trFilter = value === 'change' || value === 'issue' ? value : 'all';
@@ -5879,6 +5888,7 @@ var MMGR = window.MMGR || {};
     dispatchHooks: dispatchHooks,
     chgHistory: chgHistory,
     setTrFilter: setTrFilter,
+    setKanScope: setKanScope,
     addRule: addRule,
     tglRule: tglRule,
     delRule: delRule,
@@ -6024,6 +6034,7 @@ window.MMGR = MMGR;
     resolveIssue: el => window.MMGR.App.resolveIssue(el.getAttribute('data-id')),
     chgHistory: el => window.MMGR.App.chgHistory(el.getAttribute('data-idx')),
     setTrFilter: el => window.MMGR.App.setTrFilter(el.value),
+    setKanScope: el => window.MMGR.App.setKanScope(el.value),
     addRule: () => window.MMGR.App.addRule(),
     tglRule: el => window.MMGR.App.tglRule(el.getAttribute('data-id'), el.checked),
     delRule: el => window.MMGR.App.delRule(el.getAttribute('data-id')),
@@ -7522,6 +7533,7 @@ window.MMGR = MMGR;
     // membership or its close is deliberately absent.
     cycSelect: 1,
     cycClose: 1,
+    setKanScope: 1,
     cycCloseCancel: 1,
     chgHistory: 1,
     setTrFilter: 1,
@@ -7961,6 +7973,7 @@ window.MMGR = MMGR;
         action === 'setTrFilter' ||
         action === 'saveKbWip' ||
         action === 'setRelLens' ||
+        action === 'setKanScope' ||
         action === 'updKPI' ||
         action === 'updKPILink' ||
         action === 'updKPIDir' ||

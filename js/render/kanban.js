@@ -217,6 +217,23 @@ var MMGR = window.MMGR || {};
     if (lensSelect && lensSelect.value !== lens) {
       lensSelect.value = lens;
     }
+    // Cycle scope: the same board, narrowed to the active cycle or to the
+    // backlog. It is a view preference kept on this device, never project data.
+    const scope = s.kanScope === 'active' || s.kanScope === 'backlog' ? s.kanScope : 'all';
+    const activeCycle = ns.Cycles ? ns.Cycles.active(s) : null;
+    const scopeSelect = $('kb-scope');
+    if (scopeSelect && scopeSelect.value !== scope) {
+      scopeSelect.value = scope;
+    }
+    const scopeOk = function (t) {
+      if (scope === 'active') {
+        return !!activeCycle && t.cycleId === activeCycle.id;
+      }
+      if (scope === 'backlog') {
+        return !t.cycleId;
+      }
+      return true;
+    };
     // Custom-field filter: one select field, one value. It narrows what is
     // DRAWN, exactly like the lens, and never writes to a task. The two
     // selects are rebuilt here so a re-render or a reload always shows the
@@ -298,7 +315,8 @@ var MMGR = window.MMGR || {};
       // Order and filtering are model concerns. The renderer only draws.
       const tasks = K.columnTasks(s, status)
         .filter(t => !lensIds || lensIds.has(String(t.id)))
-        .filter(matchesCf);
+        .filter(matchesCf)
+        .filter(scopeOk);
       const info = K.wip(s, status);
       const wip = $(col[2]);
       if (wip) {

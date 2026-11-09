@@ -14,7 +14,9 @@
      9. carry forward moves the unfinished work into the next planned cycle
     10. the closed cycle keeps its own membership and its close record
     11. a viewer cannot add, activate or close a cycle
-    12. no page or console error during the run
+    12. the board scope narrows to the active cycle and to the backlog
+    13. the scope is remembered on this device after a reload
+    14. no page or console error during the run
 
    Usage:  node tools/qa-cycles.cjs
    Env:    QA_BASE (default http://127.0.0.1:8765), CHROME_PATH
@@ -409,7 +411,50 @@ async function reachable(url) {
     viewer
   );
 
-  // ---- 12. no runtime errors -------------------------------------------
+  // ---- 12. the board scope --------------------------------------------
+  await page.evaluate(() => {
+    window.MMGR.Render.showSection('kan', document.querySelector('.sec-btn[data-section="kan"]'));
+    window.MMGR.Render.renderKanban();
+  });
+  await page.waitForTimeout(400);
+  const countCards = () => page.$$eval('.kcc .kc', els => els.length);
+  const allCards = await countCards();
+  await page.selectOption('#kb-scope', 'active');
+  await page.waitForTimeout(350);
+  const activeCards = await countCards();
+  await page.selectOption('#kb-scope', 'backlog');
+  await page.waitForTimeout(350);
+  const backlogCards = await countCards();
+  await page.selectOption('#kb-scope', 'all');
+  await page.waitForTimeout(350);
+  check(
+    'the board scope narrows to the active cycle and to the backlog',
+    allCards === 3 && activeCards === 2 && backlogCards === 0,
+    { allCards, activeCards, backlogCards }
+  );
+
+  // ---- 13. the scope is a device preference ----------------------------
+  await page.selectOption('#kb-scope', 'active');
+  await page.waitForTimeout(300);
+  await page.evaluate(() => window.MMGR.State.save(true));
+  await boot();
+  await page.evaluate(() => {
+    window.MMGR.Render.showSection('kan', document.querySelector('.sec-btn[data-section="kan"]'));
+    window.MMGR.Render.renderKanban();
+  });
+  await page.waitForTimeout(400);
+  const remembered = await page.evaluate(() => ({
+    value: (document.getElementById('kb-scope') || {}).value,
+    cards: document.querySelectorAll('.kcc .kc').length,
+    inState: window.MMGR.State.getState().kanScope
+  }));
+  check(
+    'the scope is remembered on this device after a reload',
+    remembered.value === 'active' && remembered.cards === 2 && remembered.inState === 'active',
+    remembered
+  );
+
+  // ---- 14. no runtime errors -------------------------------------------
   check('no page or console error during the run', errors.length === 0, errors.slice(0, 5));
 
   await browser.close();

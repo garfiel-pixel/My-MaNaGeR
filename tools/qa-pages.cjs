@@ -24,7 +24,9 @@
     19. read-only refuses a write with the standard toast
     20. read-only still lets a viewer open and select pages
     21. a viewer sees the live lists and no filter controls
-    22. no page or console error during the run
+    22. applying a built-in template brings its pages and outline
+    23. applying the same template twice creates two independent branches
+    24. no page or console error during the run
 
    Usage:  node tools/qa-pages.cjs
    Env:    QA_BASE (default http://127.0.0.1:8765), CHROME_PATH
@@ -617,7 +619,57 @@ async function reachable(url) {
     window.MMGR.scope = 'full';
   });
 
-  // ---- 22. no runtime errors -------------------------------------------
+  // ---- 22-23. templates carry a page tree -------------------------------
+  await page.evaluate(() => {
+    window.MMGR.State.updateState(s => {
+      s.pages = [];
+      s.pageSel = '';
+      s.docsView = 'pages';
+    });
+    window.MMGR.State.save(true);
+    window.MMGR.Templates.applyTemplate('tpl-residential');
+  });
+  await page.waitForTimeout(700);
+  const applied = await page.evaluate(() => {
+    const s = window.MMGR.State.getState();
+    const rows = window.MMGR.Pages.flatten(s);
+    const insp = rows.find(r => r.page.title === 'Inspection register');
+    return {
+      titles: rows.map(r => r.page.title),
+      depths: rows.map(r => r.depth),
+      inspBlocks: insp ? insp.page.blocks.map(b => b.type) : [],
+      outline: document.querySelectorAll('.pg-tree .pg-tw').length
+    };
+  });
+  check(
+    'applying a built-in template brings its pages and outline',
+    JSON.stringify(applied.titles) ===
+      JSON.stringify(['Scope', 'Method statements', 'Inspection register', 'Handover index']) &&
+      applied.depths.every(d => d === 0) &&
+      applied.inspBlocks.indexOf('taskList') > -1 &&
+      applied.outline === 4,
+    applied
+  );
+
+  await page.evaluate(() => window.MMGR.Templates.applyTemplate('tpl-residential'));
+  await page.waitForTimeout(700);
+  const twice = await page.evaluate(() => {
+    const rows = window.MMGR.Pages.flatten(window.MMGR.State.getState());
+    const ids = rows.map(r => r.page.id);
+    return {
+      titles: rows.map(r => r.page.title),
+      unique: new Set(ids).size
+    };
+  });
+  check(
+    'applying the same template twice creates two independent branches',
+    twice.titles.length === 8 &&
+      twice.titles.slice(0, 4).join('|') === twice.titles.slice(4).join('|') &&
+      twice.unique === 8,
+    twice
+  );
+
+  // ---- 24. no runtime errors -------------------------------------------
   check('no page or console error during the run', errors.length === 0, errors.slice(0, 5));
 
   await browser.close();

@@ -719,6 +719,125 @@ var MMGR = window.MMGR || {};
     return BLOCK_LABEL[key] || BLOCK_LABEL.paragraph;
   }
 
+  // ---- Templates carry a page tree -------------------------------------
+  // A template stores a page as a shape: a local `key`, the `parent` key, a
+  // title and its blocks. Ids are stripped, so applying the same template
+  // twice yields two independent branches.
+  function blockShape(block) {
+    const type = isBlockType(block && block.type) ? block.type : 'paragraph';
+    if (LIVE_TYPES[type]) {
+      return { type: type, filter: normalizeFilter(type, block && block.filter) };
+    }
+    return {
+      type: type,
+      text: text(block && block.text, MAX_TEXT),
+      done: !!(block && block.done === true)
+    };
+  }
+
+  function pageShape(page, parentKey, key) {
+    const blocks = page && Array.isArray(page.blocks) ? page.blocks : [];
+    return {
+      key: String(key || (page && page.id) || ''),
+      parent: String(parentKey || ''),
+      title: text(page && page.title, MAX_TITLE),
+      blocks: blocks.map(blockShape)
+    };
+  }
+
+  function captureTree(state) {
+    const rows = flatten(state);
+    const keys = {};
+    return rows.map(function (r, i) {
+      const key = 'k' + (i + 1);
+      keys[r.page.id] = key;
+      return pageShape(r.page, r.page.parentId ? keys[r.page.parentId] || '' : '', key);
+    });
+  }
+
+  // Parents first, source order otherwise. A cycle or a dangling parent
+  // lifts the remaining pages to the root instead of dropping them.
+  function orderShapes(list) {
+    const out = [];
+    const seen = {};
+    let progress = true;
+    while (out.length < list.length && progress) {
+      progress = false;
+      list.forEach(function (s) {
+        if (seen[s.key]) {
+          return;
+        }
+        if (!s.parent || seen[s.parent]) {
+          seen[s.key] = 1;
+          out.push(s);
+          progress = true;
+        }
+      });
+    }
+    list.forEach(function (s) {
+      if (!seen[s.key]) {
+        seen[s.key] = 1;
+        out.push(s);
+      }
+    });
+    return out;
+  }
+
+  function applyTree(state, shapes) {
+    const list = Array.isArray(shapes) ? shapes : [];
+    if (!state || !list.length) {
+      return 0;
+    }
+    if (!Array.isArray(state.pages)) {
+      state.pages = [];
+    }
+    const used = {};
+    const shapes2 = list.map(function (raw, i) {
+      const shape = pageShape(raw, raw && raw.parent, raw && raw.key ? raw.key : 'k' + (i + 1));
+      let key = shape.key;
+      let n = 1;
+      while (used[key]) {
+        n += 1;
+        key = shape.key + '~' + n;
+      }
+      shape.key = key;
+      used[key] = 1;
+      return shape;
+    });
+    const ids = {};
+    let made = 0;
+    orderShapes(shapes2).forEach(function (shape) {
+      const parentId = shape.parent ? ids[shape.parent] || '' : '';
+      const page = newPage(state, { parentId: parentId, title: shape.title });
+      if (!page) {
+        return;
+      }
+      ids[shape.key] = page.id;
+      made += 1;
+      if (!shape.blocks.length) {
+        return;
+      }
+      page.blocks.length = 0;
+      shape.blocks.forEach(function (b) {
+        const block = addBlock(state, page.id, b.type);
+        if (!block) {
+          return;
+        }
+        if (LIVE_TYPES[block.type]) {
+          Object.keys(b.filter || {}).forEach(function (k) {
+            setFilter(state, page.id, block.id, k, b.filter[k]);
+          });
+        } else if (b.text) {
+          setBlockText(state, page.id, block.id, b.text);
+        }
+        if (b.done === true && block.type === 'checklist') {
+          toggleBlock(state, page.id, block.id);
+        }
+      });
+    });
+    return made;
+  }
+
   ns.Pages = {
     BLOCK_TYPES: BLOCK_TYPES,
     LIVE_TYPES: LIVE_TYPES,
@@ -755,7 +874,10 @@ var MMGR = window.MMGR || {};
     toggleBlock: toggleBlock,
     removeBlock: removeBlock,
     moveBlock: moveBlock,
-    collapseTrailing: collapseTrailing
+    collapseTrailing: collapseTrailing,
+    pageShape: pageShape,
+    captureTree: captureTree,
+    applyTree: applyTree
   };
 })(MMGR);
 window.MMGR = MMGR;

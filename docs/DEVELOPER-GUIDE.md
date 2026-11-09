@@ -68,7 +68,7 @@ attaches (e.g. `MMGR.Cloud`).
 | `mmgr-tasks.js` | 623 | `Tasks` | WBS/task CRUD: add/edit/indent, `updTaskField` (endDate edits + Gantt drags back-compute duration via `durationFromDates`, Task 1), `validateImportLines` + AI-assisted Import Dates mismatch panel (Task 3). Split-candidate note: `updTaskField` grew — keep an eye. |
 | `mmgr-ideas.js` | 575 | `Ideas` | Idea intake model (Leantime-inspired): six canvas stages, record normalisation, add/update/remove, the atomic `applyDrop`, the impact x2 minus effort score, the one-way promote link, `unlink` for a deleted task, and `repair` for imported rows. Pure: no DOM, no storage. |
 | `mmgr-agenda.js` | 416 | `Agenda` | Merged date feed over tasks, milestones, meetings, open issues, open changes and live ideas. One window rule, overdue handling, day grouping, and the RFC 5545 `.ics` writer. Pure: no DOM, no storage. |
-| `mmgr-pages.js` | 402 | `Pages` | Project book model (AppFlowy-inspired): a flat page tree (`parentId` + `sort`, never nested), typed plain-text blocks, create/rename/remove-with-descendants, a descendant-safe move, block add/edit/toggle/reorder/remove, and read-time repair. Pure: no DOM, no storage. |
+| `mmgr-pages.js` | 887 | `Pages` | Project book model (AppFlowy-inspired): a flat page tree (`parentId` + `sort`, never nested), typed plain-text blocks, create/rename/remove-with-descendants, a descendant-safe move, block add/edit/toggle/reorder/remove, live task/document blocks resolved at draw time, and template capture/apply. Pure: no DOM, no storage. |
 | `mmgr-schedule.js` | 849 | `Schedule` | CPM engine: topological sort, forward/backward pass, float, critical path, weather padding, resource conflicts, `audit()`. **Purity contract**: pass functions are pure — they never mutate live tasks. |
 | `mmgr-risks.js` | 215 | `Risks` | Risk & issue CRUD. |
 | `mmgr-resources.js` | 428 | `Resources` | Resource & budget management (rates, allocation, utilization, budget lines). |
@@ -107,7 +107,7 @@ attaches (e.g. `MMGR.Cloud`).
 | `mmgr-cloud-dash.js` | 724 | `CloudDash` | "My Cloud Projects" launcher dashboard (app.html). Self-contained on purpose — loads before mmgr-utils; degrades silently without the Worker. |
 | `mmgr-pool.js` | 237 | `Pool` | Cloud shared resource pool client (C23): list/link/unlink pool rows, owner-gated server-side. |
 | `mmgr-presence.js` | — | `Presence` | Real-time presence WebSocket (project.html only, opt-in): quiet "N online" chip; hides entirely on any failure. Shares `{name, since}` only. |
-| `mmgr-templates.js` | 217 | `Templates` | Save current state as template / apply template to a project (C24). |
+| `mmgr-templates.js` | 309 | `Templates` | Save current state as template / apply template to a project (C24). Carries the page tree too: `Pages.captureTree` on save, `Pages.applyTree` on apply. |
 | `marketing.js` | 704 | — | Marketing pages (index/features/about/contact): nav dropdowns, contact form, etc. |
 | `reviews.js` / `verify.js` / `reset.js` | — | — | Marketing-bundle helpers (reviews wall, code verify, reset flows). |
 | `demo-data.js` / `projects-data.js` | — | — | Launcher seed data. |
@@ -140,6 +140,8 @@ Three rules are load-bearing:
 3. **A page is a lens, not a second surface.** Pages may reference tasks and register rows but never create, edit, or delete either. Every write is a `data-action` through `State.updateState`, so the read-only fence covers the surface with no new logic.
 
 **Live blocks read, never write.** A `taskList` or `docList` block stores only its `filter`; the rows are resolved at draw time by `Pages.resolveTasks` / `Pages.resolveDocs` and every row is a `pageJump` link to the owning panel. Nothing is copied into the page, so a task completed in the WBS or a register row removed in Documents is gone the next time the panel draws. A filter edit is a page write (`setBlockFilter`) and is fenced; a viewer gets the same rows and a sentence naming the filter instead of the selects. `emptyFilterText` names the filter — "No data" reads like a bug.
+
+**Templates carry the page tree.** `saveAsTemplate` stores `Pages.captureTree(state)` — ids stripped, each page keeping a local `key` and its parent's `key` — and `applyTemplate` runs `Pages.applyTree` *after* the tasks and budget lines, so a live block resolves against the tasks that just arrived. Fresh ids are minted on apply and parents are remapped in tree order, so applying the same template twice yields two independent branches. A template with no `pages` applies exactly as before.
 
 `pages` is project data and **is** in `FIELD_KEYS`; `docsView`, `pageSel` and `pageUnfiled` are per-device and deliberately are not. The migration repairs an imported page inline (the state module loads before the model); the model repairs again on read.
 

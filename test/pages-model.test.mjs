@@ -244,3 +244,90 @@ test('an empty live result names the filter', () => {
   assert.match(text, /Permit/);
   assert.doesNotMatch(text, /No data/);
 });
+
+test('capturing a template strips ids and keeps the tree', () => {
+  const s = base();
+  const a = P.newPage(s, { title: 'Scope' });
+  const b = P.newPage(s, { parentId: a.id, title: 'Method' });
+  P.setBlockText(s, b.id, b.blocks[0].id, 'Sequence');
+  const tree = P.captureTree(s);
+  assert.deepEqual(plain(tree.map(t => [t.title, t.parent])), [
+    ['Scope', ''],
+    ['Method', 'k1']
+  ]);
+  assert.equal(JSON.stringify(tree).indexOf(a.id), -1);
+  assert.equal(JSON.stringify(tree).indexOf(b.id), -1);
+  assert.equal(tree[1].blocks[0].text, 'Sequence');
+});
+
+test('capture, apply and capture again is the same tree', () => {
+  const s = base();
+  const a = P.newPage(s, { title: 'Scope' });
+  P.setBlockText(s, a.id, a.blocks[0].id, 'What this covers.');
+  P.addBlock(s, a.id, 'checklist');
+  const first = P.captureTree(s);
+  const s2 = base();
+  P.applyTree(s2, first);
+  assert.deepEqual(plain(P.captureTree(s2)), plain(first));
+});
+
+test('applying a template twice creates two independent branches', () => {
+  const s = base();
+  const a = P.newPage(s, { title: 'Scope' });
+  P.newPage(s, { parentId: a.id, title: 'Method' });
+  const tree = P.captureTree(s);
+  s.pages = [];
+  assert.equal(P.applyTree(s, tree), 2);
+  assert.equal(P.applyTree(s, tree), 2);
+  const rows = P.flatten(s);
+  assert.deepEqual(plain(rows.map(r => [r.page.title, r.depth])), [
+    ['Scope', 0],
+    ['Method', 1],
+    ['Scope', 0],
+    ['Method', 1]
+  ]);
+  assert.equal(new Set(rows.map(r => r.page.id)).size, 4);
+  assert.notEqual(rows[0].page.id, rows[2].page.id);
+  assert.equal(rows[3].page.parentId, rows[2].page.id);
+});
+
+test('a template page carries live filters, never rows', () => {
+  const s = base();
+  const p = P.newPage(s, { title: 'Inspections' });
+  p.blocks.length = 0;
+  const blk = P.addBlock(s, p.id, 'taskList');
+  P.setFilter(s, p.id, blk.id, 'status', 'completed');
+  const tree = P.captureTree(s);
+  assert.deepEqual(plain(tree[0].blocks[0]), {
+    type: 'taskList',
+    filter: { phase: '', status: 'completed', assignee: '', window: 0 }
+  });
+  const s2 = taskBase();
+  P.applyTree(s2, tree);
+  const live = P.flatten(s2)[0].page.blocks.find(b => b.type === 'taskList');
+  assert.equal(live.filter.status, 'completed');
+  assert.equal('rows' in live, false);
+  assert.deepEqual(plain(P.resolveTasks(s2, live.filter).map(t => t.id)), ['t2']);
+});
+
+test('an out-of-order template still attaches children to their parent', () => {
+  const s = base();
+  assert.equal(
+    P.applyTree(s, [
+      { key: 'child', parent: 'root', title: 'Child', blocks: [] },
+      { key: 'root', parent: '', title: 'Root', blocks: [] }
+    ]),
+    2
+  );
+  assert.deepEqual(plain(P.flatten(s).map(r => [r.page.title, r.depth])), [
+    ['Root', 0],
+    ['Child', 1]
+  ]);
+});
+
+test('a template with no pages applies nothing', () => {
+  const s = base();
+  assert.equal(P.applyTree(s, []), 0);
+  assert.equal(P.applyTree(s, null), 0);
+  assert.deepEqual(plain(s.pages), []);
+});

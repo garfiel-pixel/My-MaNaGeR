@@ -8,7 +8,7 @@
    had no caller.
 
    What the panel shows:
-     - the account's storage bar (500 MB per account, server-owned numbers)
+     - the account's storage bar (per-plan allowance, server-owned numbers)
      - an upload form: file, description, date taken, stage (before / after /
        in progress)
      - each photo with a real thumbnail, description, stage, size, date, the

@@ -40,13 +40,51 @@ const PHOTO_R2_PREFIX = 'photos/';
 const MAX_PHOTO_BYTES = 8 * 1024 * 1024; // 8 MB per photo
 const MAX_PHOTOS_PER_PROJECT = 200; // soft cap, enforced at upload
 
-// B11 (5.7): 500 MB per ACCOUNT, not per project. The account is the paying
-// identity the photos are billed against: the project owner's google_sub when
-// the project came from a signed-in account, and the project itself when it
-// did not (a code-created project has no account to sum). Summing per project
-// would let one account fill R2 through project after project, which is
-// exactly the hole the paid gate exists to close.
-const PHOTO_ACCOUNT_QUOTA_BYTES = 500 * 1024 * 1024;
+// B11 (5.7): the quota is per ACCOUNT, not per project. The account is the
+// paying identity the photos are billed against: the project owner's
+// google_sub when the project came from a signed-in account, and the project
+// itself when it did not (a code-created project has no account to sum).
+// Summing per project would let one account fill R2 through project after
+// project, which is exactly the hole the paid gate exists to close.
+//
+// C (2026-11-09): the flat 500 MB constant became a per-plan table so the
+// allowance is an upsell lever rather than a later customer conversation.
+// The plan identifiers are the ones billing.js already writes to
+// cloud_subscriptions.tier: contractor, estimator, company, enterprise.
+// Estimator and Company share the middle step; Enterprise is the top.
+const MB = 1024 * 1024;
+const GB = 1024 * MB;
+const PHOTO_QUOTA_BY_PLAN = {
+  free: 0,
+  contractor: 500 * MB,
+  estimator: 2 * GB,
+  company: 2 * GB,
+  enterprise: 10 * GB
+};
+// An ACTIVE subscription whose tier string we do not recognise still gets
+// the base paid allowance. Returning zero here would silently take a paying
+// customer's photos away because of a rename.
+const PHOTO_QUOTA_DEFAULT_PAID = PHOTO_QUOTA_BY_PLAN.contractor;
+
+export function photoQuotaForPlan(plan) {
+  const key = String(plan || '')
+    .trim()
+    .toLowerCase();
+  if (Object.prototype.hasOwnProperty.call(PHOTO_QUOTA_BY_PLAN, key)) {
+    return PHOTO_QUOTA_BY_PLAN[key];
+  }
+  return PHOTO_QUOTA_DEFAULT_PAID;
+}
+
+function photoQuotaLabel(bytes) {
+  if (bytes >= GB && bytes % GB === 0) {
+    return bytes / GB + ' GB';
+  }
+  if (bytes >= MB && bytes % MB === 0) {
+    return bytes / MB + ' MB';
+  }
+  return Math.round(bytes / MB) + ' MB';
+}
 const PHOTO_STAGES = new Set(['', 'before', 'after', 'progress']);
 // I-12: a bundle is a client-generated id shared by every photo in one
 // selection. The id is scoped by project_id in every query, so a collision
@@ -298,10 +336,7 @@ function rolesWithView(role) {
 // Fail-closed on a database error, matching poolIsPaid in src/ai-proxy.js:
 // the whole point of the check is to protect a finite paid resource, so an
 // unreadable ledger must never read as "paid".
-async function photoUploadPaid(env, proj, request) {
-  if (!billingConfigured(env)) {
-    return true;
-  }
+async function photoSubjects(env, proj, request) {
   const subjects = [];
   if (proj && proj.google_sub) {
     subjects.push(String(proj.google_sub));
@@ -316,22 +351,54 @@ async function photoUploadPaid(env, proj, request) {
       /* no readable session - the owner's own account alone decides */
     }
   }
-  if (!subjects.length) {
-    return false;
-  }
+  return subjects;
+}
+
+// The active subscription row for whichever identity pays for this project's
+// photos, or null. One query per subject; both photoUploadPaid and photoPlan
+// read the same row so the gate and the allowance can never disagree.
+async function photoSubscription(env, proj, request) {
+  const subjects = await photoSubjects(env, proj, request);
   for (let i = 0; i < subjects.length; i++) {
     try {
-      const row = await env.DB.prepare('SELECT status FROM cloud_subscriptions WHERE owner_sub = ?')
+      const row = await env.DB.prepare(
+        'SELECT status, plan, tier FROM cloud_subscriptions WHERE owner_sub = ?'
+      )
         .bind(subjects[i])
         .first();
       if (row && billingStatusActive(row.status)) {
-        return true;
+        return row;
       }
     } catch (e) {
       /* try the next subject before giving up */
     }
   }
-  return false;
+  return null;
+}
+
+async function photoUploadPaid(env, proj, request) {
+  if (!billingConfigured(env)) {
+    return true;
+  }
+  return !!(await photoSubscription(env, proj, request));
+}
+
+// The plan string that sets this account's photo allowance. Billing dormant
+// behaves like the base paid plan, exactly as the upload gate does: a
+// deployment without Paddle secrets must not start refusing uploads it never
+// used to. A configured deployment with no active subscription is 'free'.
+async function photoPlan(env, proj, request) {
+  if (!billingConfigured(env)) {
+    return 'contractor';
+  }
+  const row = await photoSubscription(env, proj, request);
+  if (!row) {
+    return 'free';
+  }
+  const tier = String(row.tier || row.plan || 'contractor')
+    .trim()
+    .toLowerCase();
+  return tier === 'free' ? 'contractor' : tier;
 }
 
 // ---- quota ---------------------------------------------------------------
@@ -339,7 +406,7 @@ async function photoUploadPaid(env, proj, request) {
 // either way: joined on google_sub when the project has one, scoped to the
 // project when it does not. Deleted photos stop counting the moment they are
 // soft-deleted, because the row is what the bar and the cap read.
-async function photoUsage(env, proj, projectId) {
+async function photoUsage(env, proj, projectId, request) {
   const subject = proj && proj.google_sub ? String(proj.google_sub) : '';
   let row = null;
   if (subject) {
@@ -357,13 +424,15 @@ async function photoUsage(env, proj, projectId) {
   }
   const usedBytes = Number(row && row.used) || 0;
   const photos = Number(row && row.photos) || 0;
-  const limitBytes = PHOTO_ACCOUNT_QUOTA_BYTES;
+  const plan = await photoPlan(env, proj, request);
+  const limitBytes = photoQuotaForPlan(plan);
   return {
     usedBytes: usedBytes,
     limitBytes: limitBytes,
     remainingBytes: Math.max(0, limitBytes - usedBytes),
     photos: photos,
-    accountScoped: !!subject
+    accountScoped: !!subject,
+    plan: plan
   };
 }
 
@@ -626,10 +695,11 @@ export async function handlePhotoUpload(request, env, projectId) {
     );
   }
 
-  // B11 quota: 500 MB per account. Checked BEFORE the metadata row and the R2
-  // write, so a refused upload leaves neither behind. The numbers travel with
-  // the refusal so the panel can paint the bar it already shows at the truth.
-  const usage = await photoUsage(env, proj, projectId);
+  // B11 quota, now per plan (C, 2026-11-09). Checked BEFORE the metadata row
+  // and the R2 write, so a refused upload leaves neither behind. The numbers
+  // travel with the refusal so the panel can paint the bar it already shows
+  // at the truth.
+  const usage = await photoUsage(env, proj, projectId, request);
   if (usage.usedBytes + storedSize > usage.limitBytes) {
     return json(
       {
@@ -637,7 +707,9 @@ export async function handlePhotoUpload(request, env, projectId) {
         code: 'quota_exceeded',
         upgrade: true,
         error:
-          'this account has used its 500 MB of photo storage , delete a photo to free space, or upgrade for more',
+          'this account has used its ' +
+          photoQuotaLabel(usage.limitBytes) +
+          ' of photo storage , delete a photo to free space, or upgrade for more',
         usage: usage
       },
       413
@@ -757,7 +829,7 @@ export async function handlePhotoUpload(request, env, projectId) {
       sortOrder: meta.sort_order,
       createdAt: meta.created_at
     },
-    usage: await photoUsage(env, proj, projectId)
+    usage: await photoUsage(env, proj, projectId, request)
   });
 }
 
@@ -849,7 +921,7 @@ export async function handlePhotoList(request, env, projectId) {
     canUpload: roleCanUpload && paid,
     upgradeRequired: roleCanUpload && !paid,
     upgradeMessage: roleCanUpload && !paid ? PHOTO_UPGRADE_SENTENCE : '',
-    usage: await photoUsage(env, proj, projectId)
+    usage: await photoUsage(env, proj, projectId, request)
   });
 }
 
@@ -888,7 +960,7 @@ export async function handlePhotoUsage(request, env, projectId) {
     canUpload: roleCanUpload && paid,
     upgradeRequired: roleCanUpload && !paid,
     upgradeMessage: roleCanUpload && !paid ? PHOTO_UPGRADE_SENTENCE : '',
-    usage: await photoUsage(env, proj, projectId)
+    usage: await photoUsage(env, proj, projectId, request)
   });
 }
 

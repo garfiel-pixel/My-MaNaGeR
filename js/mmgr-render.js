@@ -3184,6 +3184,11 @@ var MMGR = window.MMGR || {};
       ns.RenderPeople.renderProcessFeed();
     }
   }
+  function renderRules() {
+    if (ns.RenderProcess) {
+      ns.RenderProcess.renderRules();
+    }
+  }
 
   // ---- Closure ---- (extracted to js/render/closure.js)
   function renderPunchList() {
@@ -3642,6 +3647,9 @@ var MMGR = window.MMGR || {};
     }
     // C24: Template Library list
     renderTemplates();
+    // Declared rules: the Controls panel reads state, so an import or a
+    // project switch refreshes the list and the execution log.
+    renderRules();
   }
 
   // ==================================================================
@@ -4171,6 +4179,7 @@ var MMGR = window.MMGR || {};
     renderChanges: renderChanges,
     renderLog: renderLog,
     renderProcessFeed: renderProcessFeed,
+    renderRules: renderRules,
     renderClosure: renderClosure,
     renderPunchList: renderPunchList,
     renderRfis: renderRfis,

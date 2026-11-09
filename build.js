@@ -95,6 +95,7 @@ const APP_MODULES = [
   'js/render/ideas.js',
   'js/render/agenda.js',
   'js/render/pages.js',
+  'js/render/process.js',
   'js/render/risks.js',
   'js/render/resources.js',
   'js/mmgr-render.js',

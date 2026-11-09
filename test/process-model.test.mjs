@@ -170,3 +170,164 @@ test('the feed is newest first and filters by kind', () => {
   assert.equal(changes.length, 1);
   assert.equal(changes[0].kind, 'change');
 });
+
+const ruleBase = () => ({
+  userName: 'Ana',
+  changes: [
+    { id: 'C-1', title: 'Extra drainage', requester: 'Client', notes: '', status: 'submitted' }
+  ],
+  issues: [],
+  risks: [{ id: 'R-1', description: 'Groundwater', probability: 'High', impact: 'High' }],
+  transitions: [],
+  rules: [],
+  ruleLog: [],
+  logEntries: []
+});
+
+test('a rule raises an issue when a risk score passes a threshold', () => {
+  const s = ruleBase();
+  s.rules.push({
+    id: 'r1',
+    name: 'High risk raises an issue',
+    enabled: true,
+    trigger: { kind: 'risk', event: 'field' },
+    conditions: [{ field: 'score', op: 'gt', value: '6' }],
+    action: { type: 'raiseIssue', text: 'Treat {title}' }
+  });
+  const ctx = P.runRules(s, 'field', 'risk', 0);
+  assert.equal(ctx.fired, 1);
+  assert.equal(s.issues.length, 1);
+  assert.equal(s.issues[0].status, 'open');
+  assert.equal(s.issues[0].sourceRiskId, 'R-1');
+  assert.equal(s.risks[0].issueId, s.issues[0].id);
+  assert.equal(s.ruleLog.length, 1);
+  assert.equal(s.ruleLog[0].result, 'done');
+});
+
+test('a disabled rule does nothing', () => {
+  const s = ruleBase();
+  s.rules.push({
+    id: 'r1',
+    name: 'Off',
+    enabled: false,
+    trigger: { kind: 'risk', event: 'field' },
+    conditions: [],
+    action: { type: 'raiseIssue' }
+  });
+  assert.equal(P.runRules(s, 'field', 'risk', 0).fired, 0);
+  assert.equal(s.issues.length, 0);
+  assert.equal(s.ruleLog.length, 0);
+});
+
+test('a rule cannot fire on another rule action: the chain stops and says so', () => {
+  const s = ruleBase();
+  s.risks[0].probability = 'Low';
+  s.rules.push({
+    id: 'r1',
+    name: 'Lift probability',
+    enabled: true,
+    trigger: { kind: 'risk', event: 'field' },
+    conditions: [{ field: 'probability', op: 'is', value: 'Low' }],
+    action: { type: 'setField', field: 'probability', value: 'High' }
+  });
+  s.rules.push({
+    id: 'r2',
+    name: 'Tell someone',
+    enabled: true,
+    trigger: { kind: 'risk', event: 'field' },
+    conditions: [{ field: 'probability', op: 'is', value: 'High' }],
+    action: { type: 'notify', text: 'High risk' }
+  });
+  const ctx = P.runRules(s, 'field', 'risk', 0);
+  assert.equal(ctx.fired, 1);
+  assert.equal(ctx.messages.length, 0);
+  assert.equal(s.risks[0].probability, 'High');
+  const stopped = s.ruleLog.find(r => r.rule === 'r2');
+  assert.ok(stopped);
+  assert.equal(stopped.result, 'refused');
+  assert.match(stopped.note, /Chain stopped/);
+});
+
+test('a rule fires only on the event it declares', () => {
+  const s = ruleBase();
+  s.rules.push({
+    id: 'r1',
+    name: 'Only on a status move',
+    enabled: true,
+    trigger: { kind: 'change', event: 'status' },
+    conditions: [],
+    action: { type: 'appendLog', text: 'Moved {ref}' }
+  });
+  assert.equal(P.runRules(s, 'created', 'change', 0).fired, 0);
+  assert.equal(P.runRules(s, 'field', 'change', 0).fired, 0);
+  assert.equal(s.logEntries.length, 0);
+  assert.equal(P.runRules(s, 'status', 'change', 0).fired, 1);
+  assert.equal(s.logEntries.length, 1);
+});
+
+test('a rule cannot bypass the change guard', () => {
+  const s = ruleBase();
+  s.rules.push({
+    id: 'r1',
+    name: 'Auto approve',
+    enabled: true,
+    trigger: { kind: 'change', event: 'created' },
+    conditions: [],
+    action: { type: 'setField', field: 'status', value: 'approved' }
+  });
+  P.runRules(s, 'created', 'change', 0);
+  assert.equal(s.changes[0].status, 'submitted');
+  assert.equal(s.transitions.length, 0);
+  assert.equal(s.ruleLog[0].result, 'refused');
+  assert.match(s.ruleLog[0].note, /Review it first/);
+});
+
+test('raiseIssue is refused for anything but a risk', () => {
+  const s = ruleBase();
+  s.rules.push({
+    id: 'r1',
+    name: 'Wrong kind',
+    enabled: true,
+    trigger: { kind: 'change', event: 'created' },
+    conditions: [],
+    action: { type: 'raiseIssue' }
+  });
+  P.runRules(s, 'created', 'change', 0);
+  assert.equal(s.issues.length, 0);
+  assert.equal(s.ruleLog[0].result, 'refused');
+});
+
+test('appendLog fills the record placeholders', () => {
+  const s = ruleBase();
+  s.rules.push({
+    id: 'r1',
+    name: 'Note the change',
+    enabled: true,
+    trigger: { kind: 'change', event: 'created' },
+    conditions: [],
+    action: { type: 'appendLog', text: 'Change {ref} raised: {title}' }
+  });
+  P.runRules(s, 'created', 'change', 0);
+  assert.equal(s.logEntries.length, 1);
+  assert.match(s.logEntries[0].decision, /Change C-1 raised: Extra drainage/);
+  assert.match(s.logEntries[0].by, /Rule: Note the change/);
+});
+
+test('requireApproval sets the flag the change guard then honours', () => {
+  const s = ruleBase();
+  s.changes[0].status = 'review';
+  s.rules.push({
+    id: 'r1',
+    name: 'Second pair of eyes',
+    enabled: true,
+    trigger: { kind: 'change', event: 'field' },
+    conditions: [{ field: 'costImpact', op: 'gt', value: '10000' }],
+    action: { type: 'requireApproval' }
+  });
+  s.changes[0].costImpact = '12000';
+  P.runRules(s, 'field', 'change', 0);
+  assert.equal(s.changes[0].secondApproverRequired, true);
+  const refused = P.canMove(s, 'change', 0, 'approved');
+  assert.equal(refused.ok, false);
+  assert.equal(refused.reason, 'second-approver');
+});

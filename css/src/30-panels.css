@@ -5302,3 +5302,78 @@ body.dark-mode .team-link-danger {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+
+/* Rules: the declared list, the fixed-vocabulary editor and the log. */
+.ru-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+.ru-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.78rem;
+}
+.ru-row.is-off {
+  opacity: 0.55;
+}
+.ru-on {
+  display: inline-flex;
+}
+.ru-name {
+  min-width: 140px;
+  font-weight: 600;
+}
+.ru-trig,
+.ru-act {
+  color: var(--text-secondary);
+}
+.ru-form {
+  padding: 4px 0 8px;
+}
+.ru-log {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.ru-log-h {
+  margin-bottom: 4px;
+  color: var(--text-secondary);
+  font-size: 0.64rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.ru-lr {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.72rem;
+}
+.ru-lr.is-refused .ru-lr-res {
+  color: var(--amber);
+}
+.ru-lt,
+.ru-lk,
+.ru-lr-res {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.ru-ln {
+  font-weight: 600;
+}
+.ru-lnote {
+  flex-basis: 100%;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+.ru-none {
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+}

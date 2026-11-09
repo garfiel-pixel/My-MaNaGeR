@@ -310,6 +310,242 @@ var MMGR = window.MMGR || {};
     return made;
   }
 
+  // ---- Rules ------------------------------------------------------------
+  // A rule is declared data: a trigger, conditions joined with "all of", and
+  // one action from a fixed list. There is no expression language and no
+  // arbitrary code: a rule that needs something outside this vocabulary is a
+  // feature request, not a rule.
+  const RULE_KINDS = ['change', 'issue', 'risk'];
+  const RULE_EVENTS = ['created', 'status', 'field', 'deleted'];
+  const RULE_ACTIONS = ['setField', 'appendLog', 'raiseIssue', 'requireApproval', 'notify'];
+  const RULE_FIELDS = {
+    change: ['status', 'title', 'requester', 'costImpact', 'schedImpact', 'notes', 'approvedBy'],
+    issue: ['status', 'description', 'owner', 'targetDate'],
+    risk: ['probability', 'impact', 'score', 'description', 'mitigation']
+  };
+  const CONDITION_OPS = ['is', 'isNot', 'gt', 'lt', 'contains'];
+  const MAX_RULE_LOG = 300;
+  const MAX_FIRINGS = 20;
+
+  function riskScore(record) {
+    const scale = { Low: 1, low: 1, Medium: 2, medium: 2, High: 3, high: 3 };
+    return (
+      (scale[(record && record.probability) || ''] || 1) *
+      (scale[(record && record.impact) || ''] || 1)
+    );
+  }
+
+  function fieldValue(kind, record, field) {
+    if (!record) {
+      return '';
+    }
+    if (kind === 'risk' && field === 'score') {
+      return riskScore(record);
+    }
+    const v = record[field];
+    return v === undefined || v === null ? '' : v;
+  }
+
+  function conditionHolds(kind, record, cond) {
+    if (!cond || !cond.field) {
+      return true;
+    }
+    const raw = fieldValue(kind, record, cond.field);
+    const want = cond.value;
+    if (cond.op === 'gt') {
+      return Number(raw) > Number(want);
+    }
+    if (cond.op === 'lt') {
+      return Number(raw) < Number(want);
+    }
+    if (cond.op === 'is') {
+      return String(raw) === String(want);
+    }
+    if (cond.op === 'isNot') {
+      return String(raw) !== String(want);
+    }
+    if (cond.op === 'contains') {
+      return String(raw).toLowerCase().indexOf(String(want).toLowerCase()) > -1;
+    }
+    return false;
+  }
+
+  function ruleMatches(kind, record, rule, event) {
+    if (!rule || rule.enabled !== true) {
+      return false;
+    }
+    const trig = rule.trigger || {};
+    if (trig.kind !== kind) {
+      return false;
+    }
+    // The declared event is part of the trigger: a rule written for a status
+    // move must not fire because the same record was created or edited.
+    if (event && trig.event !== event) {
+      return false;
+    }
+    const conds = Array.isArray(rule.conditions) ? rule.conditions : [];
+    return conds.every(function (c) {
+      return conditionHolds(kind, record, c);
+    });
+  }
+
+  function recordFor(state, kind, index) {
+    if (kind === 'risk') {
+      return state && Array.isArray(state.risks) ? state.risks[index] || null : null;
+    }
+    return recordAt(state, kind, index);
+  }
+
+  function logRule(state, entry) {
+    if (!Array.isArray(state.ruleLog)) {
+      state.ruleLog = [];
+    }
+    state.ruleLog.push({
+      id: genId(),
+      at: nowIso(),
+      rule: String(entry.rule || ''),
+      name: String(entry.name || ''),
+      kind: String(entry.kind || ''),
+      ref: String(entry.ref || ''),
+      event: String(entry.event || ''),
+      action: String(entry.action || ''),
+      result: entry.result || 'done',
+      note: String(entry.note || '').slice(0, 400)
+    });
+    while (state.ruleLog.length > MAX_RULE_LOG) {
+      state.ruleLog.shift();
+    }
+  }
+
+  function applyAction(state, kind, index, rule, record, ctx) {
+    const action = rule.action || {};
+    const type = action.type;
+    if (type === 'setField') {
+      const field = String(action.field || '');
+      if ((RULE_FIELDS[kind] || []).indexOf(field) < 0) {
+        return { result: 'refused', note: 'That field is not open to a rule: ' + field };
+      }
+      if (field === 'status' && (kind === 'change' || kind === 'issue')) {
+        const move = applyMove(state, kind, index, String(action.value || ''), { via: 'rule' });
+        return move.ok
+          ? { result: 'done', note: 'Status moved to ' + move.to }
+          : { result: 'refused', note: move.message };
+      }
+      record[field] = action.value;
+      return { result: 'done', note: 'Set ' + field };
+    }
+    if (type === 'appendLog') {
+      if (!Array.isArray(state.logEntries)) {
+        state.logEntries = [];
+      }
+      state.logEntries.push({
+        date: new Date().toLocaleString(),
+        decision: String(action.text || '')
+          .replace(/\{ref\}/g, record.id || '')
+          .replace(/\{title\}/g, record.title || record.description || ''),
+        by: 'Rule: ' + (rule.name || 'unnamed'),
+        actionItems: ''
+      });
+      return { result: 'done', note: 'Log entry added' };
+    }
+    if (type === 'raiseIssue') {
+      if (kind !== 'risk') {
+        return { result: 'refused', note: 'Only a risk can raise an issue' };
+      }
+      if (record.issueId) {
+        return { result: 'refused', note: 'That risk already has an issue' };
+      }
+      if (!Array.isArray(state.issues)) {
+        state.issues = [];
+      }
+      const issue = {
+        id: 'I' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        description: String(action.text || record.description || 'Raised by a rule'),
+        owner: '',
+        targetDate: '',
+        status: 'open',
+        sourceRiskId: record.id
+      };
+      state.issues.push(issue);
+      record.issueId = issue.id;
+      return { result: 'done', note: 'Issue ' + issue.id + ' raised' };
+    }
+    if (type === 'requireApproval') {
+      if (kind !== 'change') {
+        return { result: 'refused', note: 'Only a change can require a second approver' };
+      }
+      record.secondApproverRequired = true;
+      record.secondApprover = '';
+      return { result: 'done', note: 'A second approver is now required' };
+    }
+    if (type === 'notify') {
+      const msg = String(action.text || rule.name || 'A rule fired.');
+      ctx.messages.push(msg);
+      return { result: 'notified', note: msg };
+    }
+    return { result: 'refused', note: 'Unknown action' };
+  }
+
+  // Two passes at most: the triggering pass, then one follow-on pass over
+  // field triggers. A rule that would fire on another rule's action is
+  // stopped and logged instead of looping.
+  function runRules(state, event, kind, index) {
+    const ctx = { messages: [], fired: 0 };
+    if (!state || !Array.isArray(state.rules) || !state.rules.length) {
+      return ctx;
+    }
+    const record = recordFor(state, kind, index);
+    if (!record) {
+      return ctx;
+    }
+    const firedIds = {};
+    // Pass one judges every rule against the record AS IT WAS when the event
+    // fired: a rule that writes a field must not change the verdict for a
+    // later rule in the same pass. The follow-on pass is where a chain shows
+    // up, and it is stopped rather than run.
+    const snapshot = Object.assign({}, record);
+    state.rules.forEach(function (rule) {
+      if (ctx.fired >= MAX_FIRINGS || !ruleMatches(kind, snapshot, rule, event)) {
+        return;
+      }
+      const out = applyAction(state, kind, index, rule, record, ctx);
+      ctx.fired += 1;
+      firedIds[rule.id] = 1;
+      logRule(state, {
+        rule: rule.id,
+        name: rule.name,
+        kind: kind,
+        ref: record.id,
+        event: event,
+        action: (rule.action || {}).type,
+        result: out.result,
+        note: out.note
+      });
+    });
+    if (!ctx.fired) {
+      return ctx;
+    }
+    state.rules.forEach(function (rule) {
+      if (!rule || firedIds[rule.id]) {
+        return;
+      }
+      if (!ruleMatches(kind, record, rule, 'field')) {
+        return;
+      }
+      logRule(state, {
+        rule: rule.id,
+        name: rule.name,
+        kind: kind,
+        ref: record.id,
+        event: 'field',
+        action: (rule.action || {}).type,
+        result: 'refused',
+        note: "Chain stopped: a rule cannot fire on another rule's action."
+      });
+    });
+    return ctx;
+  }
+
   ns.Process = {
     CHANGE_STATUSES: CHANGE_STATUSES,
     ISSUE_STATUSES: ISSUE_STATUSES,
@@ -325,7 +561,14 @@ var MMGR = window.MMGR || {};
     historyFor: historyFor,
     feed: feed,
     needsRepair: needsRepair,
-    repairAll: repairAll
+    repairAll: repairAll,
+    RULE_KINDS: RULE_KINDS,
+    RULE_EVENTS: RULE_EVENTS,
+    RULE_ACTIONS: RULE_ACTIONS,
+    RULE_FIELDS: RULE_FIELDS,
+    CONDITION_OPS: CONDITION_OPS,
+    riskScore: riskScore,
+    runRules: runRules
   };
 })(MMGR);
 window.MMGR = MMGR;

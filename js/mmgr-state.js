@@ -2170,6 +2170,16 @@ var MMGR = window.MMGR || {};
         /* bond detection is best-effort - import never fails for it */
       }
       const migrated = migrate(parsed);
+      // Imported rules arrive disabled: a file cannot start acting on the
+      // project the moment it is opened. The list is kept, not dropped, so a
+      // person can read what the file carried and enable what they trust.
+      if (Array.isArray(migrated.rules)) {
+        migrated.rules.forEach(function (r) {
+          if (r && typeof r === 'object') {
+            r.enabled = false;
+          }
+        });
+      }
       _state = migrated;
       markAllDirty();
       save(true);

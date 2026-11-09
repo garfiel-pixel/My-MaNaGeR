@@ -5247,6 +5247,104 @@ var MMGR = window.MMGR || {};
     R.renderLog();
   }
 
+  // ---- Process: declared rules -----------------------------------------
+  // The editor is fixed-vocabulary: selects, two optional conditions joined
+  // with "all of", and one action. Nothing here evaluates text.
+  function addRule() {
+    if (!ns.Process) {
+      return;
+    }
+    const read = function (id) {
+      const el = U.$(id);
+      return el ? el.value : '';
+    };
+    const name = String(read('rule-name') || '').trim();
+    const kind = read('rule-kind');
+    const event = read('rule-event');
+    const actType = read('rule-act');
+    const actField = read('rule-act-field');
+    if (!name) {
+      showToast('Give the rule a name.', 'err');
+      return;
+    }
+    if (ns.Process.RULE_KINDS.indexOf(kind) < 0 || ns.Process.RULE_EVENTS.indexOf(event) < 0) {
+      showToast('Pick a record type and an event.', 'err');
+      return;
+    }
+    if (ns.Process.RULE_ACTIONS.indexOf(actType) < 0) {
+      showToast('Pick an action from the list.', 'err');
+      return;
+    }
+    if (actType === 'setField' && ns.Process.RULE_FIELDS[kind].indexOf(actField) < 0) {
+      showToast('That action field does not belong to a ' + kind + '.', 'err');
+      return;
+    }
+    const conditions = [];
+    let badField = '';
+    [1, 2].forEach(function (n) {
+      const field = read('rule-c' + n + '-field');
+      if (!field) {
+        return;
+      }
+      if (ns.Process.RULE_FIELDS[kind].indexOf(field) < 0) {
+        badField = field;
+        return;
+      }
+      const op = read('rule-c' + n + '-op');
+      conditions.push({
+        field: field,
+        op: ns.Process.CONDITION_OPS.indexOf(op) > -1 ? op : 'is',
+        value: read('rule-c' + n + '-val')
+      });
+    });
+    if (badField) {
+      showToast('A ' + kind + ' has no field called "' + badField + '".', 'err');
+      return;
+    }
+    ns.State.updateState(function (s) {
+      if (!Array.isArray(s.rules)) {
+        s.rules = [];
+      }
+      s.rules.push({
+        id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        name: name,
+        enabled: true,
+        trigger: { kind: kind, event: event },
+        conditions: conditions,
+        action: {
+          type: actType,
+          field: actField,
+          value: read('rule-act-val'),
+          text: read('rule-act-text')
+        },
+        hook: false
+      });
+    });
+    R.renderRules();
+    showToast('Rule added.', 'ok');
+  }
+
+  function tglRule(id, on) {
+    ns.State.updateState(function (s) {
+      const r = (s.rules || []).find(function (x) {
+        return x && x.id === id;
+      });
+      if (r) {
+        r.enabled = !!on;
+      }
+    });
+    R.renderRules();
+  }
+
+  function delRule(id) {
+    ns.State.updateState(function (s) {
+      s.rules = (s.rules || []).filter(function (x) {
+        return !x || x.id !== id;
+      });
+    });
+    R.renderRules();
+  }
+
   // ---- Register link and handover pack ---------------------------------
   function linkDoc(docId, pageId) {
     if (isReadonly()) {
@@ -5547,6 +5645,9 @@ var MMGR = window.MMGR || {};
     resolveIssue: resolveIssue,
     chgHistory: chgHistory,
     setTrFilter: setTrFilter,
+    addRule: addRule,
+    tglRule: tglRule,
+    delRule: delRule,
     populateSprint: populateSprint,
     openPrompt: openPrompt,
     openDrwToSave: openDrwToSave,
@@ -5678,6 +5779,9 @@ window.MMGR = MMGR;
     resolveIssue: el => window.MMGR.App.resolveIssue(el.getAttribute('data-id')),
     chgHistory: el => window.MMGR.App.chgHistory(el.getAttribute('data-idx')),
     setTrFilter: el => window.MMGR.App.setTrFilter(el.value),
+    addRule: () => window.MMGR.App.addRule(),
+    tglRule: el => window.MMGR.App.tglRule(el.getAttribute('data-id'), el.checked),
+    delRule: el => window.MMGR.App.delRule(el.getAttribute('data-id')),
     setTaskFollowUp: el => {
       const taskId = el.getAttribute('data-id');
       const assignee = prompt('Follow-up assignee:');

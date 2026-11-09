@@ -127,6 +127,7 @@ var MMGR = window.MMGR || {};
 
   // ---- Changes ----
   function addChange() {
+    let messages = [];
     ns.State.updateState(function (s) {
       if (!s.changes) {
         s.changes = [];
@@ -142,6 +143,14 @@ var MMGR = window.MMGR || {};
         approvedBy: '',
         notes: ''
       });
+      if (ns.Process) {
+        messages = ns.Process.runRules(s, 'created', 'change', s.changes.length - 1).messages;
+      }
+    });
+    messages.forEach(function (m) {
+      if (ns.App && ns.App.showToast) {
+        ns.App.showToast(m, 'ok');
+      }
     });
     R.renderChanges();
   }
@@ -151,8 +160,17 @@ var MMGR = window.MMGR || {};
     // and a programmatic call all pass through here.
     if (field === 'status' && ns.Process) {
       let res = { ok: true };
+      let messages = [];
       ns.State.updateState(function (s) {
         res = ns.Process.applyMove(s, 'change', index, value, { via: 'user' });
+        if (res.ok && !res.noop) {
+          messages = ns.Process.runRules(s, 'status', 'change', index).messages;
+        }
+      });
+      messages.forEach(function (m) {
+        if (ns.App && ns.App.showToast) {
+          ns.App.showToast(m, 'ok');
+        }
       });
       if (!res.ok) {
         if (ns.App && ns.App.showToast) {
@@ -164,9 +182,18 @@ var MMGR = window.MMGR || {};
       }
       return;
     }
+    let messages = [];
     ns.State.updateState(function (s) {
       if (s.changes && s.changes[index]) {
         s.changes[index][field] = value;
+        if (ns.Process) {
+          messages = ns.Process.runRules(s, 'field', 'change', index).messages;
+        }
+      }
+    });
+    messages.forEach(function (m) {
+      if (ns.App && ns.App.showToast) {
+        ns.App.showToast(m, 'ok');
       }
     });
   }
@@ -184,6 +211,9 @@ var MMGR = window.MMGR || {};
       return;
     }
     ns.State.updateState(function (s) {
+      if (ns.Process && s.changes && s.changes[index]) {
+        ns.Process.runRules(s, 'deleted', 'change', index);
+      }
       if (s.changes) {
         s.changes.splice(index, 1);
       }

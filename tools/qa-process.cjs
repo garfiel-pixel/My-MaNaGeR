@@ -15,7 +15,12 @@
     10. the change id opens its own history, newest last
     11. the project feed lists every move and filters by record type
     12. history survives a reload and the deletion of its record
-    13. no page or console error during the run
+    13. the Controls form declares a rule and the list reads it back
+    14. the rule fires on its own event and the execution log says done
+    15. a disabled rule does nothing
+    16. a rule that would fire on another rule's action stops and says so
+    17. a rule arriving in an imported file lands disabled
+    18. no page or console error during the run
 
    Usage:  node tools/qa-process.cjs
    Env:    QA_BASE (default http://127.0.0.1:8765), CHROME_PATH
@@ -428,7 +433,198 @@ async function reachable(url) {
     kept
   );
 
-  // ---- 12. no runtime errors -------------------------------------------
+  // ---- 13. the Controls form declares a rule ---------------------------
+  await page.evaluate(() => {
+    window.MMGR.App.openDrw();
+    window.MMGR.App.swDtab('ctrl', document.querySelector('.dtab[data-tab="ctrl"]'));
+    window.MMGR.Render.renderRules();
+  });
+  await page.waitForTimeout(500);
+  // The Controls accordion starts every section collapsed; the Rules group has
+  // to be opened the way a person opens it before its form can be used.
+  await page.evaluate(() => {
+    const sec = Array.from(document.querySelectorAll('#db-ctrl .ctl-sec')).find(s =>
+      /^Rules/.test((s.textContent || '').trim())
+    );
+    if (sec && !sec.classList.contains('open')) {
+      sec.click();
+    }
+  });
+  await page.waitForTimeout(500);
+  await page.fill('#rule-name', 'High risk raises an issue');
+  await page.selectOption('#rule-kind', 'risk');
+  await page.selectOption('#rule-event', 'field');
+  await page.selectOption('#rule-c1-field', 'score');
+  await page.selectOption('#rule-c1-op', 'gt');
+  await page.fill('#rule-c1-val', '6');
+  await page.selectOption('#rule-act', 'raiseIssue');
+  await page.fill('#rule-act-text', 'Treat the groundwater');
+  await page.locator('#rules-body button[data-action="addRule"]').click();
+  await page.waitForTimeout(400);
+  const declared = await page.evaluate(() => {
+    const s = window.MMGR.State.getState();
+    const r = (s.rules || [])[0] || {};
+    const row = document.querySelector('#rules-body .ru-row');
+    return {
+      count: (s.rules || []).length,
+      trigger: r.trigger,
+      enabled: r.enabled,
+      cond: (r.conditions || [])[0],
+      action: r.action,
+      rowText: row ? row.textContent : ''
+    };
+  });
+  check(
+    'the Controls form declares a rule and the list reads it back',
+    declared.count === 1 &&
+      declared.enabled === true &&
+      declared.trigger.kind === 'risk' &&
+      declared.trigger.event === 'field' &&
+      declared.cond.field === 'score' &&
+      declared.cond.op === 'gt' &&
+      declared.action.type === 'raiseIssue' &&
+      /High risk raises an issue/.test(declared.rowText) &&
+      /Risk changed a field/.test(declared.rowText) &&
+      /Raise an issue/.test(declared.rowText),
+    declared
+  );
+
+  // ---- 14. the rule fires and the log records it -----------------------
+  const fired = await page.evaluate(() => {
+    window.MMGR.State.updateState(s => {
+      s.risks = [{ id: 'R-1', description: 'Groundwater', probability: 'Low', impact: 'High' }];
+      s.issues = [];
+      s.ruleLog = [];
+    });
+    window.MMGR.Risks.updRisk(0, 'probability', 'High');
+    window.MMGR.Render.renderRules();
+    const s = window.MMGR.State.getState();
+    const row = document.querySelector('#rule-log-body .ru-lr');
+    return {
+      issues: s.issues.map(i => i.status + ':' + (i.sourceRiskId || '')),
+      linked: s.risks[0].issueId === s.issues[0].id,
+      log: s.ruleLog.map(r => r.event + '/' + r.action + '/' + r.result),
+      rowText: row ? row.textContent : ''
+    };
+  });
+  check(
+    'the rule fires on its own event and the execution log says done',
+    JSON.stringify(fired.issues) === JSON.stringify(['open:R-1']) &&
+      fired.linked === true &&
+      JSON.stringify(fired.log) === JSON.stringify(['field/raiseIssue/done']) &&
+      /High risk raises an issue/.test(fired.rowText) &&
+      /done/.test(fired.rowText),
+    fired
+  );
+
+  // ---- 15. a disabled rule does nothing --------------------------------
+  await page.locator('#rules-body input[data-action="tglRule"]').first().click();
+  await page.waitForTimeout(350);
+  const off = await page.evaluate(() => {
+    const before = window.MMGR.State.getState().ruleLog.length;
+    window.MMGR.State.updateState(s => {
+      s.risks.push({ id: 'R-2', description: 'Rock', probability: 'Low', impact: 'High' });
+    });
+    window.MMGR.Risks.updRisk(1, 'probability', 'High');
+    const s = window.MMGR.State.getState();
+    return {
+      enabled: s.rules[0].enabled,
+      offRow: !!document.querySelector('#rules-body .ru-row.is-off'),
+      issues: s.issues.length,
+      logBefore: before,
+      logAfter: s.ruleLog.length
+    };
+  });
+  check(
+    'a disabled rule does nothing',
+    off.enabled === false &&
+      off.offRow === true &&
+      off.issues === 1 &&
+      off.logAfter === off.logBefore,
+    off
+  );
+
+  // ---- 16. a self-triggering rule stops and says so --------------------
+  const chained = await page.evaluate(() => {
+    window.MMGR.State.updateState(s => {
+      s.ruleLog = [];
+      s.issues = [];
+      s.rules = [
+        {
+          id: 'r-lift',
+          name: 'Lift probability',
+          enabled: true,
+          trigger: { kind: 'risk', event: 'field' },
+          conditions: [{ field: 'probability', op: 'is', value: 'Low' }],
+          action: { type: 'setField', field: 'probability', value: 'High' }
+        },
+        {
+          id: 'r-tell',
+          name: 'Tell someone',
+          enabled: true,
+          trigger: { kind: 'risk', event: 'field' },
+          conditions: [{ field: 'probability', op: 'is', value: 'High' }],
+          action: { type: 'notify', text: 'High risk' }
+        }
+      ];
+      s.risks = [{ id: 'R-3', description: 'Silt', probability: 'Low', impact: 'Low' }];
+    });
+    window.MMGR.Risks.updRisk(0, 'probability', 'Low');
+    window.MMGR.Render.renderRules();
+    const s = window.MMGR.State.getState();
+    const refused = s.ruleLog.filter(r => r.result === 'refused');
+    const row = document.querySelector('#rule-log-body .ru-lr.is-refused');
+    return {
+      probability: s.risks[0].probability,
+      fired: s.ruleLog.filter(r => r.result === 'done').length,
+      refused: refused.map(r => r.rule + ':' + r.note),
+      rowText: row ? row.textContent : ''
+    };
+  });
+  check(
+    "a rule that would fire on another rule's action stops and says so",
+    chained.probability === 'High' &&
+      chained.fired === 1 &&
+      chained.refused.length === 1 &&
+      /^r-tell:Chain stopped/.test(chained.refused[0]) &&
+      /Chain stopped/.test(chained.rowText),
+    chained
+  );
+
+  // ---- 17. imported rules land disabled --------------------------------
+  const imported = await page.evaluate(() => {
+    const copy = JSON.parse(window.MMGR.State.exportState());
+    copy.rules = [
+      {
+        id: 'r-file',
+        name: 'From a file',
+        enabled: true,
+        trigger: { kind: 'risk', event: 'field' },
+        conditions: [],
+        action: { type: 'raiseIssue', text: 'Raised from a file' }
+      }
+    ];
+    copy.ruleLog = [];
+    window.MMGR.State.importState(JSON.stringify(copy));
+    window.MMGR.State.updateState(s => {
+      s.risks = [{ id: 'R-4', description: 'Wind', probability: 'Low', impact: 'Low' }];
+      s.issues = [];
+    });
+    window.MMGR.Risks.updRisk(0, 'probability', 'High');
+    const s = window.MMGR.State.getState();
+    return {
+      enabled: (s.rules[0] || {}).enabled,
+      issues: s.issues.length,
+      log: s.ruleLog.length
+    };
+  });
+  check(
+    'a rule arriving in an imported file lands disabled',
+    imported.enabled === false && imported.issues === 0 && imported.log === 0,
+    imported
+  );
+
+  // ---- 18. no runtime errors -------------------------------------------
   check('no page or console error during the run', errors.length === 0, errors.slice(0, 5));
 
   await browser.close();

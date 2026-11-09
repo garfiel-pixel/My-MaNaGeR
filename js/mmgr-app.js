@@ -1199,11 +1199,13 @@ var MMGR = window.MMGR || {};
   // contact form with the Feedback topic pre-selected - one moderated channel,
   // Turnstile already on that page, no new endpoint and no new schema.
   function openFeedback() {
+    // Same-tab by the T-NEWTAB rule: a new tab is allowed only for an
+    // external site, checkout, the Field Guide and the explicit project
+    // popout. The contact form is one of our own pages.
     try {
-      window.open('contact.html?topic=Feedback', '_blank', 'noopener');
-      showToast('Opening the feedback form in a new tab.', 'ok');
+      ns.Nav.go('contact.html?topic=Feedback');
     } catch (e) {
-      showToast('Could not open the feedback form.', 'err');
+      window.location.assign('contact.html?topic=Feedback');
     }
   }
 

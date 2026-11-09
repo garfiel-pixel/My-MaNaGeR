@@ -331,3 +331,141 @@ test('requireApproval sets the flag the change guard then honours', () => {
   assert.equal(refused.ok, false);
   assert.equal(refused.reason, 'second-approver');
 });
+
+const packBase = () => ({
+  projectName: 'Harbour works',
+  changes: [
+    {
+      id: 'C-3',
+      date: '2026-11-20',
+      title: 'Third',
+      requester: 'Client',
+      costImpact: '$1,000',
+      schedImpact: '+1 day',
+      status: 'approved',
+      approvedBy: 'Ana',
+      notes: 'Within budget.'
+    },
+    {
+      id: 'C-1',
+      date: '2026-11-02',
+      title: 'First',
+      requester: 'Architect',
+      costImpact: '$2,000',
+      schedImpact: '',
+      status: 'approved',
+      approvedBy: 'Ana',
+      notes: ''
+    },
+    {
+      id: 'C-2',
+      date: '2026-11-10',
+      title: 'Second',
+      requester: 'Client',
+      costImpact: '',
+      schedImpact: '',
+      status: 'review',
+      approvedBy: '',
+      notes: ''
+    },
+    {
+      id: 'C-4',
+      date: '2026-11-12',
+      title: 'Fourth',
+      requester: 'Engineer',
+      costImpact: '$40',
+      schedImpact: '',
+      status: 'approved',
+      approvedBy: 'Bo',
+      notes: 'Agreed on site.'
+    }
+  ],
+  transitions: [
+    {
+      id: 't1',
+      kind: 'change',
+      ref: 'C-1',
+      field: 'status',
+      from: 'submitted',
+      to: 'review',
+      by: 'Ana',
+      at: '2026-11-02T09:00:00.000Z',
+      reason: '',
+      via: 'user'
+    },
+    {
+      id: 't2',
+      kind: 'change',
+      ref: 'C-1',
+      field: 'status',
+      from: 'review',
+      to: 'approved',
+      by: 'Ana',
+      at: '2026-11-03T09:00:00.000Z',
+      reason: '',
+      via: 'user'
+    }
+  ]
+});
+
+test('the approval pack lists approved changes in date order and counts the rest', () => {
+  const pack = P.buildApprovalPack(packBase());
+  assert.deepEqual(plain(pack.rows.map(r => r.id)), ['C-1', 'C-4', 'C-3']);
+  assert.equal(pack.included, 3);
+  assert.equal(pack.excluded, 1);
+  assert.equal(pack.project, 'Harbour works');
+  assert.deepEqual(plain(pack.statuses), ['approved']);
+  assert.match(pack.caveat, /local time/);
+  assert.equal(pack.rows[0].history.length, 2);
+  assert.equal(pack.rows[0].history[1].to, 'approved');
+  assert.equal(pack.rows[0].approvedBy, 'Ana');
+  assert.equal(pack.rows[1].reason, 'Agreed on site.');
+  assert.equal(pack.rows[2].statusLabel, 'Approved');
+});
+
+test('the pack honours a date range and an explicit status list', () => {
+  const s = packBase();
+  const ranged = P.buildApprovalPack(s, { from: '2026-11-05', to: '2026-11-30' });
+  assert.deepEqual(plain(ranged.rows.map(r => r.id)), ['C-4', 'C-3']);
+  assert.equal(ranged.included, 2);
+  assert.equal(ranged.excluded, 2);
+  assert.equal(ranged.range.from, '2026-11-05');
+  const both = P.buildApprovalPack(s, { statuses: ['approved', 'review'] });
+  assert.equal(both.included, 4);
+  assert.equal(both.excluded, 0);
+  const none = P.buildApprovalPack(s, { statuses: ['nonsense'] });
+  assert.deepEqual(plain(none.statuses), []);
+  assert.equal(none.included, 0);
+});
+
+test('the transition summary carries exactly the fields a receiver needs', () => {
+  const entry = {
+    kind: 'change',
+    ref: 'C-1',
+    from: 'review',
+    to: 'approved',
+    by: 'Ana',
+    at: '2026-11-03T09:00:00.000Z',
+    reason: 'A private note that must not leave the device',
+    via: 'user'
+  };
+  const doc = P.buildTransitionSummary({ projectName: 'Harbour works' }, entry);
+  assert.deepEqual(Object.keys(doc).sort(), [
+    'at',
+    'by',
+    'event',
+    'from',
+    'kind',
+    'project',
+    'ref',
+    'to'
+  ]);
+  assert.equal(doc.event, 'transition_recorded');
+  assert.equal(doc.project, 'Harbour works');
+  assert.equal(doc.ref, 'C-1');
+  assert.equal(doc.from, 'review');
+  assert.equal(doc.to, 'approved');
+  assert.equal(doc.by, 'Ana');
+  assert.equal(doc.reason, undefined);
+  assert.equal(doc.via, undefined);
+});

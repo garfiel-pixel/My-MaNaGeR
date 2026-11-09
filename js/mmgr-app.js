@@ -5200,6 +5200,22 @@ var MMGR = window.MMGR || {};
   // ---- Process: guarded issue moves ------------------------------------
   // The issue register has no status column; this is the one path a person
   // uses to resolve one, and it asks for the note the guard requires.
+  // A rule flagged "hook" asks for the small transition document to leave the
+  // device after a successful move. The history entry is already written; a
+  // failed send toasts and leaves it exactly as it is.
+  function dispatchHooks(hooks) {
+    if (!Array.isArray(hooks) || !hooks.length || !ns.CloudWebhooks) {
+      return;
+    }
+    const s = ns.State.getState();
+    hooks.forEach(function (h) {
+      if (!h || !h.entry) {
+        return;
+      }
+      ns.CloudWebhooks.sendTransitionSummary(ns.Process.buildTransitionSummary(s, h.entry), h.rule);
+    });
+  }
+
   function resolveIssue(id) {
     if (!ns.Process) {
       return;
@@ -5220,9 +5236,14 @@ var MMGR = window.MMGR || {};
       return;
     }
     let res = { ok: true };
+    let hooks = [];
     ns.State.updateState(function (st) {
       res = ns.Process.applyMove(st, 'issue', idx, 'resolved', { reason: note, via: 'user' });
+      if (res.ok && !res.noop) {
+        hooks = ns.Process.runRules(st, 'status', 'issue', idx, { entry: res.entry }).hooks;
+      }
     });
+    dispatchHooks(hooks);
     if (!res.ok) {
       showToast(res.message, 'err');
     }
@@ -5317,7 +5338,7 @@ var MMGR = window.MMGR || {};
           value: read('rule-act-val'),
           text: read('rule-act-text')
         },
-        hook: false
+        hook: !!(U.$('rule-hook') && U.$('rule-hook').checked)
       });
     });
     R.renderRules();
@@ -5392,6 +5413,23 @@ var MMGR = window.MMGR || {};
   // The pack is assembled from live state at print time, painted into the
   // print-only container, and the body class hides everything else. Nothing
   // is stored, so the next print reflects the project as it stands.
+  // The approval pack is assembled from the register and the history at the
+  // moment it is printed, so it can never disagree with either. Printing is a
+  // read: a viewer may print the pack for their own review.
+  function printApprovalPack() {
+    if (!ns.Process) {
+      return;
+    }
+    const pack = ns.Process.buildApprovalPack(ns.State.getState(), { statuses: ['approved'] });
+    if (!R.renderApprovalPack(pack)) {
+      showToast('There is no approval pack to print.', 'err');
+      return;
+    }
+    document.body.classList.add('pg-printing');
+    window.print();
+    document.body.classList.remove('pg-printing');
+  }
+
   function printPack(pageId) {
     if (!ns.Pages || !R.renderPack) {
       return;
@@ -5642,7 +5680,9 @@ var MMGR = window.MMGR || {};
     docPageJump: docPageJump,
     setPageUnfiled: setPageUnfiled,
     printPack: printPack,
+    printApprovalPack: printApprovalPack,
     resolveIssue: resolveIssue,
+    dispatchHooks: dispatchHooks,
     chgHistory: chgHistory,
     setTrFilter: setTrFilter,
     addRule: addRule,
@@ -5776,6 +5816,7 @@ window.MMGR = MMGR;
     docPageJump: el => window.MMGR.App.docPageJump(el.getAttribute('data-id')),
     setPageUnfiled: el => window.MMGR.App.setPageUnfiled(el.checked),
     printPack: el => window.MMGR.App.printPack(el.getAttribute('data-id')),
+    printApprovalPack: () => window.MMGR.App.printApprovalPack(),
     resolveIssue: el => window.MMGR.App.resolveIssue(el.getAttribute('data-id')),
     chgHistory: el => window.MMGR.App.chgHistory(el.getAttribute('data-idx')),
     setTrFilter: el => window.MMGR.App.setTrFilter(el.value),
@@ -7261,6 +7302,7 @@ window.MMGR = MMGR;
     docPageJump: 1,
     setPageUnfiled: 1,
     printPack: 1,
+    printApprovalPack: 1,
     chgHistory: 1,
     setTrFilter: 1,
     cpAllPage: 1,

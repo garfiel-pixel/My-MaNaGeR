@@ -487,12 +487,104 @@ var MMGR = window.MMGR || {};
       .join('');
   }
 
+  // ---- Approval pack ---------------------------------------------------
+  // The printed record of every approved change in a date range, each with
+  // the moves that produced it. Reads the model's assembled pack; stores
+  // nothing. Shares the #pg-pack container and .pk-* print surface with the
+  // handover pack.
+  function renderApprovalPack(pack) {
+    const host = $('pg-pack');
+    if (!host) {
+      return false;
+    }
+    if (!pack) {
+      host.innerHTML = '';
+      return false;
+    }
+    const esc = U.escapeHtml;
+    const day = h => String(h.at || '').slice(0, 10);
+    const rows = pack.rows.length
+      ? pack.rows
+          .map(function (r) {
+            const hist = r.history.length
+              ? r.history
+                  .map(function (h) {
+                    return (
+                      '<div class="pk-hrow"><span class="pk-hd">' +
+                      esc(day(h)) +
+                      '</span> ' +
+                      esc(ns.Process.label('change', h.from)) +
+                      ' \u2192 ' +
+                      esc(ns.Process.label('change', h.to)) +
+                      (h.by ? ' \u00b7 ' + esc(h.by) : '') +
+                      (h.reason ? ' \u00b7 ' + esc(h.reason) : '') +
+                      '</div>'
+                    );
+                  })
+                  .join('')
+              : '<div class="pk-hrow pk-mute">No recorded moves.</div>';
+            return (
+              '<section class="pk-page pk-appr"><h2 class="pk-h2">' +
+              esc(r.id || 'Change') +
+              ' \u00b7 ' +
+              esc(r.title || 'Untitled change') +
+              '</h2><table class="pk-t"><tr><th>Date</th><th>Requester</th><th>Status</th><th>Cost impact</th><th>Schedule impact</th><th>Approved by</th></tr>' +
+              '<tr><td>' +
+              esc(r.date || '-') +
+              '</td><td>' +
+              esc(r.requester || '-') +
+              '</td><td>' +
+              esc(r.statusLabel) +
+              '</td><td>' +
+              esc(r.costImpact || '-') +
+              '</td><td>' +
+              esc(r.schedImpact || '-') +
+              '</td><td>' +
+              esc(r.approvedBy || '-') +
+              '</td></tr></table>' +
+              (r.reason
+                ? '<p class="pk-p"><strong>Reason:</strong> ' + esc(r.reason) + '</p>'
+                : '') +
+              '<h3 class="pk-h3">History</h3>' +
+              hist +
+              '</section>'
+            );
+          })
+          .join('')
+      : '<p class="pk-p pk-mute">No change matches this selection.</p>';
+    const range =
+      pack.range.from || pack.range.to
+        ? ' \u00b7 ' + (pack.range.from || 'start') + ' to ' + (pack.range.to || 'today')
+        : '';
+    // ok: rows are built from escaped values and literals only
+    host.innerHTML =
+      '<div class="pk"><header class="pk-head">' +
+      '<div class="pk-kicker">Approval pack</div>' +
+      '<h1 class="pk-title">' +
+      esc(pack.project) +
+      '</h1><div class="pk-sub">' +
+      esc(pack.statuses.join(', ')) +
+      ' changes' +
+      esc(range) +
+      ' \u00b7 assembled ' +
+      esc(String(pack.generatedAt).slice(0, 10)) +
+      '</div></header><div class="pk-body">' +
+      rows +
+      '</div><footer class="pk-foot">' +
+      esc(pack.included + ' included, ' + pack.excluded + ' excluded.') +
+      ' ' +
+      esc(pack.caveat) +
+      '</footer></div>';
+    return true;
+  }
+
   ns.RenderPeople = {
     renderStakeholders: renderStakeholders,
     syncStakeComplianceBadges: syncStakeComplianceBadges,
     renderChanges: renderChanges,
     renderLog: renderLog,
     renderProcessFeed: renderProcessFeed,
+    renderApprovalPack: renderApprovalPack,
     renderRaci: renderRaci,
     renderRaciHeatmap: renderRaciHeatmap,
     renderRaciAlerts: renderRaciAlerts,

@@ -20,7 +20,11 @@
     15. a disabled rule does nothing
     16. a rule that would fire on another rule's action stops and says so
     17. a rule arriving in an imported file lands disabled
-    18. no page or console error during the run
+    18. the approval pack prints approved changes in date order with the counts
+    19. the pack carries the local-time caveat in one plain sentence
+    20. a rule's hook posts the small document, owner-gated, no extra fields
+    21. a viewer can print the pack (printing is a read, not a write)
+    22. no page or console error during the run
 
    Usage:  node tools/qa-process.cjs
    Env:    QA_BASE (default http://127.0.0.1:8765), CHROME_PATH
@@ -624,7 +628,157 @@ async function reachable(url) {
     imported
   );
 
-  // ---- 18. no runtime errors -------------------------------------------
+  // ---- 18. the approval pack ------------------------------------------
+  const pack = await page.evaluate(() => {
+    window.print = function () {
+      /* headless: the print dialog is the only thing this replaces */
+    };
+    window.MMGR.State.updateState(s => {
+      s.projectName = 'Harbour works';
+      s.transitions = [];
+      s.changes = [
+        {
+          id: 'C-3',
+          date: '2026-11-20',
+          title: 'Third',
+          requester: 'Client',
+          costImpact: '$1,000',
+          schedImpact: '+1 day',
+          status: 'approved',
+          approvedBy: 'Ana',
+          notes: 'Within budget.'
+        },
+        {
+          id: 'C-1',
+          date: '2026-11-02',
+          title: 'First',
+          requester: 'Architect',
+          costImpact: '$2,000',
+          schedImpact: '',
+          status: 'approved',
+          approvedBy: 'Ana',
+          notes: ''
+        },
+        {
+          id: 'C-2',
+          date: '2026-11-10',
+          title: 'Second',
+          requester: 'Client',
+          costImpact: '',
+          schedImpact: '',
+          status: 'review',
+          approvedBy: '',
+          notes: ''
+        }
+      ];
+    });
+    window.MMGR.App.printApprovalPack();
+    const host = document.getElementById('pg-pack');
+    return {
+      titles: Array.from(host.querySelectorAll('.pk-appr .pk-h2')).map(e =>
+        (e.textContent || '').trim()
+      ),
+      foot: (host.querySelector('.pk-foot') || {}).textContent || '',
+      printing: document.body.classList.contains('pg-printing')
+    };
+  });
+  check(
+    'the approval pack prints approved changes in date order with the counts',
+    JSON.stringify(pack.titles) === JSON.stringify(['C-1 \u00b7 First', 'C-3 \u00b7 Third']) &&
+      /2 included, 1 excluded/.test(pack.foot) &&
+      pack.printing === false,
+    pack
+  );
+
+  // ---- 19. the caveat --------------------------------------------------
+  check(
+    'the pack carries the local-time caveat in one plain sentence',
+    /Times are shown in this device\u2019s local time\.$/.test(pack.foot),
+    pack.foot
+  );
+
+  // ---- 20. a rule's hook ----------------------------------------------
+  const hook = await page.evaluate(async () => {
+    const calls = [];
+    const realFetch = window.fetch;
+    const realCode = window.MMGR.Cloud.getCode;
+    const realPid = window.MMGR.Cloud._pid;
+    window.fetch = function (url, opts) {
+      calls.push({
+        url: String(url),
+        method: (opts || {}).method,
+        headers: (opts || {}).headers || {},
+        body: (opts || {}).body
+      });
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: function () {
+          return Promise.resolve({ ok: true, delivered: 1 });
+        }
+      });
+    };
+    window.MMGR.Cloud.getCode = function () {
+      return 'OWNER1';
+    };
+    window.MMGR.Cloud._pid = function () {
+      return 'qa-proc';
+    };
+    const entry = {
+      kind: 'change',
+      ref: 'C-1',
+      from: 'review',
+      to: 'approved',
+      by: 'Ana',
+      at: '2026-11-05T10:00:00.000Z',
+      reason: 'a private note'
+    };
+    window.MMGR.App.dispatchHooks([{ rule: 'Tell the client', entry }]);
+    await new Promise(function (r) {
+      setTimeout(r, 150);
+    });
+    window.fetch = realFetch;
+    window.MMGR.Cloud.getCode = realCode;
+    window.MMGR.Cloud._pid = realPid;
+    return calls;
+  });
+  let sent = null;
+  try {
+    sent = hook.length ? JSON.parse(hook[0].body) : null;
+  } catch (e) {
+    sent = null;
+  }
+  check(
+    "a rule's hook posts the small document, owner-gated, no extra fields",
+    hook.length === 1 &&
+      hook[0].url === '/api/cloud/projects/qa-proc/webhooks/notify' &&
+      hook[0].method === 'POST' &&
+      hook[0].headers['X-Owner-Code'] === 'OWNER1' &&
+      sent &&
+      JSON.stringify(Object.keys(sent.payload).sort()) ===
+        JSON.stringify(['at', 'by', 'event', 'from', 'kind', 'project', 'ref', 'to']) &&
+      sent.payload.reason === undefined &&
+      sent.payload.ref === 'C-1',
+    { hook, sent }
+  );
+
+  // ---- 21. a viewer can print ------------------------------------------
+  const viewerPack = await page.evaluate(() => {
+    window.MMGR.scope = 'readonly';
+    window.print = function () {};
+    window.MMGR.App.printApprovalPack();
+    const n = document.querySelectorAll('#pg-pack .pk-appr').length;
+    const toast = document.querySelector('.toast, #toast, [data-toast]');
+    window.MMGR.scope = 'full';
+    return { rows: n, toast: toast ? toast.textContent : '' };
+  });
+  check(
+    'a viewer can print the pack (printing is a read, not a write)',
+    viewerPack.rows === 2 && !/View-only/.test(viewerPack.toast),
+    viewerPack
+  );
+
+  // ---- 22. no runtime errors -------------------------------------------
   check('no page or console error during the run', errors.length === 0, errors.slice(0, 5));
 
   await browser.close();

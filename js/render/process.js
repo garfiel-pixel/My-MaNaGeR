@@ -100,6 +100,7 @@ var MMGR = window.MMGR || {};
       '<span class="ru-act">' +
       esc(ACTION_LABEL[act.type] || act.type || '?') +
       '</span>' +
+      (rule.hook === true ? '<span class="ru-hook-tag">hook</span>' : '') +
       '<button class="btn btn-s btn-d" data-action="delRule" data-id="' +
       esc(rule.id) +
       '" title="Delete this rule" aria-label="Delete ' +
@@ -178,6 +179,8 @@ var MMGR = window.MMGR || {};
       '<input id="rule-act-val" class="ctl-in w150" type="text" placeholder="value to set" aria-label="Action value">' +
       '<input id="rule-act-text" class="ctl-in" type="text" placeholder="text for a log entry, issue or message" aria-label="Action text"></div>' +
       '<div class="sr-hint">No scripting and no outside calls. {ref} and {title} in the text are filled from the record.</div>' +
+      '<div class="sr"><span class="sl">Send</span>' +
+      '<label class="ru-hook"><input type="checkbox" id="rule-hook"> Also POST each status move this rule judges to the project\u2019s transition webhook (owner code required)</label></div>' +
       '<div class="sr"><span class="sl"></span>' +
       '<button class="btn btn-g btn-s" data-action="addRule">Add rule</button></div>' +
       '</div>' +

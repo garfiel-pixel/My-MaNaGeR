@@ -161,12 +161,18 @@ var MMGR = window.MMGR || {};
     if (field === 'status' && ns.Process) {
       let res = { ok: true };
       let messages = [];
+      let hooks = [];
       ns.State.updateState(function (s) {
         res = ns.Process.applyMove(s, 'change', index, value, { via: 'user' });
         if (res.ok && !res.noop) {
-          messages = ns.Process.runRules(s, 'status', 'change', index).messages;
+          const ctx = ns.Process.runRules(s, 'status', 'change', index, { entry: res.entry });
+          messages = ctx.messages;
+          hooks = ctx.hooks;
         }
       });
+      if (ns.App && ns.App.dispatchHooks) {
+        ns.App.dispatchHooks(hooks);
+      }
       messages.forEach(function (m) {
         if (ns.App && ns.App.showToast) {
           ns.App.showToast(m, 'ok');

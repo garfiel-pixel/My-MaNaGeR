@@ -117,7 +117,12 @@ import {
 import { handleCspReport } from './csp-report.js';
 import { handleCalcWorkspaceGet, handleCalcWorkspacePut } from './cloud/calc-workspace.js';
 import { API_SHAPES, handleApiShape } from './api/shapes.js';
-import { handleWebhookCreate, handleWebhookList, handleWebhookDelete } from './webhooks.js';
+import {
+  handleWebhookCreate,
+  handleWebhookList,
+  handleWebhookDelete,
+  handleWebhookNotify
+} from './webhooks.js';
 import {
   handleTeamInvite,
   handleTeamList,
@@ -486,6 +491,16 @@ export async function routeApi(request, env, url) {
       if (request.method === 'GET') {
         return handleWebhookList(request, env, webhookListMatch[1]);
       }
+    }
+    const webhookNotifyMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/webhooks\/notify$/
+    );
+    if (webhookNotifyMatch && request.method === 'POST') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handleWebhookNotify(request, env, webhookNotifyMatch[1]);
     }
     const webhookDelMatch = path.match(
       /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/webhooks\/(\d+)$/

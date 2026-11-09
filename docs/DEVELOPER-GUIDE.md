@@ -156,9 +156,26 @@ Three rules are load-bearing:
 2. **The history is a flat, append-only collection** (`state.transitions`), not an array on the record. A cloud merge rewrites arrays wholesale, so a nested history could lose an entry; a flat collection keyed by `{kind, ref}` survives, and it survives the deletion of its record on purpose.
 3. **A move and its entry land in one `updateState`.** There is no window in which a status is new and unrecorded. A refusal never half-writes: `canMove` is checked before anything is touched.
 
-Repair runs on boot (`App.init`) only when `Process.needsRepair(state)` is true, and each step is recorded with `via:'repair'` — never silently. `secondApproverRequired`/`secondApprover` are the Phase 3 seam for the `requireApproval` rule action.
+Repair runs on boot (`App.init`) only when `Process.needsRepair(state)` is true, and each step is recorded with `via:'repair'` — never silently. `requireApproval` sets `secondApproverRequired`; the guard then refuses `review→approved` until a second name is filled.
 
 The history has two views and one source. The change id in the register opens a detail row under the record (oldest first, newest emphasised, `rule`/`repair` tagged); the Log panel's "Recorded moves" card shows the project-wide feed newest first, filtered by record type through `state.trFilter` (per-device, not in `FIELD_KEYS`). Both read `Process.feed`/`Process.historyFor`; neither writes. The written Decision Log stays below the feed, labelled as a person's narrative.
+
+### Declared rules
+
+A rule is **data, not code**: `{trigger:{kind,event}, conditions:[{field,op,value}] (all-of, max two), action:{type,...}}`, one action from `RULE_ACTIONS`. There is no expression language and no outside call — a rule that needs more is a feature request. Four rules:
+
+1. **One pass judges the record as it was.** `runRules` snapshots the record before pass one, so a rule that writes a field cannot change the verdict for a later rule in the same pass. Pass two only detects a rule that *would* now match on a field trigger, logs `Chain stopped`, and stops.
+2. **The declared event is part of the trigger.** A rule written for `status` does not fire on `created` or a field edit.
+3. **A rule cannot bypass the guard.** `setField` on `status` goes through `applyMove`, so its refusals still apply and the move is recorded `via:'rule'`.
+4. **Imported rules arrive disabled.** `importState` sets `enabled:false` on every rule in the file; opening a project cannot start acting on it.
+
+`state.ruleLog` is capped at 300 entries (the UI shows the newest 20). Rules live in `FIELD_KEYS` as flat append-only collections, like `transitions`.
+
+### The approval pack and the outbound summary
+
+`Process.buildApprovalPack(state,{from,to,statuses})` assembles — never stores — the dated header, every matching change with its impacts, approver and reason, and that change's full history. `App.printApprovalPack` paints it into the shared `#pg-pack` container (same print surface as the handover pack) and prints; the footer states included/excluded and the local-time caveat. Printing is a read, so a viewer may print it.
+
+A rule with `hook:true` asks for the move to leave the device. `Process.buildTransitionSummary` returns exactly eight fields (`event, project, kind, ref, from, to, by, at`) — the record's reason and notes stay on the device. `App.dispatchHooks` posts it to `POST /api/cloud/projects/:id/webhooks/notify`, which rebuilds the document from that fixed key list and relays it to the project's enabled `transition_recorded` subscriptions, signing each delivery with the subscription secret. Owner code required; the checkbox is off by default; a failed send toasts and leaves the history entry untouched.
 
 ## 3. Split candidates — largest functions
 

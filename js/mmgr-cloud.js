@@ -3522,6 +3522,7 @@ var MMGR = window.MMGR || {};
         '<select id="cloud-webhook-event" class="ctl-in" aria-label="Webhook event">' +
         '<option value="health_dropped">Health score dropped</option>' +
         '<option value="weather_risk_tomorrow">Weather-risk day tomorrow</option>' +
+        '<option value="transition_recorded">Status move recorded (sent by a rule)</option>' +
         '</select>' +
         '<input type="url" id="cloud-webhook-url" class="ctl-in" placeholder="https://hooks.example.com/mmgr" style="min-width:220px" autocomplete="off" spellcheck="false">' +
         '<button class="btn btn-g btn-s" data-action="cloudWebhookAdd"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Add Webhook</button>' +
@@ -4393,6 +4394,12 @@ var MMGR = window.MMGR || {};
       ns.CloudWebhooks.webhookDel(id);
     }
   }
+  function sendTransitionSummary(summary, ruleName) {
+    if (ns.CloudWebhooks) {
+      return ns.CloudWebhooks.sendTransitionSummary(summary, ruleName);
+    }
+    return Promise.resolve(false);
+  }
 
   // ---- keep the sign-in state fresh after sign-in/sign-out ----------------
   // P1-6 (2026-09-12): sign-in/out changes the session credential, so the
@@ -4809,6 +4816,7 @@ var MMGR = window.MMGR || {};
     webhookList: webhookList,
     webhookAdd: webhookAdd,
     webhookDel: webhookDel,
+    sendTransitionSummary: sendTransitionSummary,
     revertLog: revertLog,
     toggleDiffs: toggleDiffs,
     _renderDiffPanel: _renderDiffPanelImpl, // test hook (pure string builder, no DOM)

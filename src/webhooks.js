@@ -16,7 +16,7 @@ import { apiPortfolio } from './api/shapes.js';
 
 // ---- events + crypto -----------------------------------------------------
 
-export const WEBHOOK_EVENTS = ['health_dropped', 'weather_risk_tomorrow'];
+export const WEBHOOK_EVENTS = ['health_dropped', 'weather_risk_tomorrow', 'transition_recorded'];
 
 async function webhookCryptoSecret() {
   const bytes = new Uint8Array(24);
@@ -44,7 +44,10 @@ export async function handleWebhookCreate(request, env, projectId) {
   const targetUrl = String(read.body.targetUrl || '').trim();
   if (WEBHOOK_EVENTS.indexOf(event) === -1) {
     return json(
-      { ok: false, error: 'unknown event , use health_dropped or weather_risk_tomorrow' },
+      {
+        ok: false,
+        error: 'unknown event , use health_dropped, weather_risk_tomorrow or transition_recorded'
+      },
       400
     );
   }
@@ -114,6 +117,63 @@ export async function handleWebhookDelete(request, env, projectId, subId) {
   return json({ ok: true, deleted: true });
 }
 
+// A rule that was flagged to send posts the move here; the Worker relays the
+// small document to every enabled "transition_recorded" subscription, signing
+// each delivery with that subscription's own secret. The document is rebuilt
+// from a fixed key list, so the endpoint cannot be used to relay arbitrary
+// content to a target.
+export async function handleWebhookNotify(request, env, projectId) {
+  const auth = await cloudAuthOwnerEither(request, env, projectId);
+  if (!auth) {
+    return cloudForbidden();
+  }
+  const read = await readCloudBody(request);
+  if (read.tooLarge) {
+    return json({ ok: false, error: 'body too large' }, 413);
+  }
+  if (read.bad || !read.body || typeof read.body !== 'object') {
+    return json({ ok: false, error: 'bad request' }, 400);
+  }
+  const p = read.body.payload;
+  if (!p || typeof p !== 'object' || Array.isArray(p)) {
+    return json({ ok: false, error: 'payload must be an object' }, 400);
+  }
+  const doc = {
+    event: 'transition_recorded',
+    project: String(p.project || '').slice(0, 200),
+    kind: p.kind === 'issue' ? 'issue' : 'change',
+    ref: String(p.ref || '').slice(0, 80),
+    from: String(p.from || '').slice(0, 40),
+    to: String(p.to || '').slice(0, 40),
+    by: String(p.by || '').slice(0, 120),
+    at: String(p.at || new Date().toISOString()).slice(0, 40)
+  };
+  const rows = await env.DB.prepare(
+    "SELECT * FROM webhook_subscriptions WHERE project_id = ? AND event = 'transition_recorded' AND enabled = 1 ORDER BY id"
+  )
+    .bind(projectId)
+    .all();
+  const subs = rows.results || [];
+  let delivered = 0;
+  let failed = 0;
+  for (let i = 0; i < subs.length; i++) {
+    const outcome = await webhookDeliver(env, subs[i], doc);
+    if (outcome.delivered) {
+      delivered += 1;
+    } else {
+      failed += 1;
+    }
+  }
+  if (subs.length) {
+    await env.DB.prepare(
+      'UPDATE webhook_subscriptions SET last_fired_at = ? WHERE project_id = ? AND event = ? AND enabled = 1'
+    )
+      .bind(new Date().toISOString(), projectId, 'transition_recorded')
+      .run();
+  }
+  return json({ ok: true, delivered: delivered, failed: failed });
+}
+
 // ---- delivery: HMAC-SHA256 signature + POST -------------------------------
 
 async function webhookDeliver(env, sub, payload) {
@@ -161,6 +221,11 @@ export async function evaluateWebhooks(env) {
   const seen = {};
   for (let i = 0; i < subs.length; i++) {
     const sub = subs[i];
+    // A transition summary is sent by the app when the move happens, never by
+    // the cron: there is nothing for this evaluator to decide.
+    if (sub.event === 'transition_recorded') {
+      continue;
+    }
     try {
       const row = await env.DB.prepare(
         'SELECT latest_r2_key, owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?'

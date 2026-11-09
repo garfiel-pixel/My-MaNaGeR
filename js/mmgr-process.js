@@ -227,7 +227,7 @@ var MMGR = window.MMGR || {};
       reason: reason,
       via: (opts && opts.via) || 'user'
     });
-    return { ok: true, from: from, to: to };
+    return { ok: true, from: from, to: to, entry: state.transitions[state.transitions.length - 1] };
   }
 
   function historyFor(state, kind, ref) {
@@ -428,7 +428,7 @@ var MMGR = window.MMGR || {};
       if (field === 'status' && (kind === 'change' || kind === 'issue')) {
         const move = applyMove(state, kind, index, String(action.value || ''), { via: 'rule' });
         return move.ok
-          ? { result: 'done', note: 'Status moved to ' + move.to }
+          ? { result: 'done', note: 'Status moved to ' + move.to, entry: move.entry }
           : { result: 'refused', note: move.message };
       }
       record[field] = action.value;
@@ -489,8 +489,8 @@ var MMGR = window.MMGR || {};
   // Two passes at most: the triggering pass, then one follow-on pass over
   // field triggers. A rule that would fire on another rule's action is
   // stopped and logged instead of looping.
-  function runRules(state, event, kind, index) {
-    const ctx = { messages: [], fired: 0 };
+  function runRules(state, event, kind, index, opts) {
+    const ctx = { messages: [], fired: 0, hooks: [] };
     if (!state || !Array.isArray(state.rules) || !state.rules.length) {
       return ctx;
     }
@@ -511,6 +511,14 @@ var MMGR = window.MMGR || {};
       const out = applyAction(state, kind, index, rule, record, ctx);
       ctx.fired += 1;
       firedIds[rule.id] = 1;
+      // A rule flagged "hook" sends the move it just judged. The caller's own
+      // entry is used unless the rule made a second move itself.
+      if (event === 'status' && rule.hook === true) {
+        const moved = out.entry || (opts && opts.entry);
+        if (moved) {
+          ctx.hooks.push({ rule: rule.name || rule.id || '', entry: moved });
+        }
+      }
       logRule(state, {
         rule: rule.id,
         name: rule.name,
@@ -546,6 +554,88 @@ var MMGR = window.MMGR || {};
     return ctx;
   }
 
+  // ---- The approval pack ------------------------------------------------
+  // Assembled on demand from the register and the history. Nothing here is
+  // stored: a pack can never disagree with the records it prints.
+  const PACK_STATUSES = ['approved'];
+  const PACK_CAVEAT = 'Times are shown in this device\u2019s local time.';
+
+  function isoDay(v) {
+    return String(v || '').slice(0, 10);
+  }
+
+  function buildApprovalPack(state, opts) {
+    const o = opts || {};
+    const from = isoDay(o.from);
+    const to = isoDay(o.to);
+    const wanted = (
+      Array.isArray(o.statuses) && o.statuses.length ? o.statuses : PACK_STATUSES
+    ).filter(function (s) {
+      return CHANGE_STATUSES.indexOf(s) > -1;
+    });
+    const all = Array.isArray(state && state.changes) ? state.changes : [];
+    const rows = all
+      .filter(function (c) {
+        if (!c) {
+          return false;
+        }
+        const day = isoDay(c.date);
+        if (from && day && day < from) {
+          return false;
+        }
+        if (to && day && day > to) {
+          return false;
+        }
+        return wanted.indexOf(statusOf('change', c)) > -1;
+      })
+      .map(function (c) {
+        const st = statusOf('change', c);
+        return {
+          id: String(c.id || ''),
+          date: isoDay(c.date),
+          title: String(c.title || ''),
+          requester: String(c.requester || ''),
+          costImpact: String(c.costImpact || ''),
+          schedImpact: String(c.schedImpact || ''),
+          status: st,
+          statusLabel: label('change', st),
+          approvedBy: String(c.approvedBy || ''),
+          reason: String(c.notes || ''),
+          history: historyFor(state, 'change', c.id)
+        };
+      })
+      .sort(function (a, b) {
+        return a.date.localeCompare(b.date) || a.id.localeCompare(b.id);
+      });
+    return {
+      project: String((state && state.projectName) || '').trim() || 'Untitled project',
+      generatedAt: nowIso(),
+      range: { from: from, to: to },
+      statuses: wanted,
+      rows: rows,
+      included: rows.length,
+      excluded: all.length - rows.length,
+      caveat: PACK_CAVEAT
+    };
+  }
+
+  // The outbound document is deliberately small: a receiver needs to know
+  // which record moved, from where to where, by whom and when. Anything
+  // else is the project's data leaving the device for no reason.
+  function buildTransitionSummary(state, entry) {
+    const e = entry || {};
+    return {
+      event: 'transition_recorded',
+      project: String((state && state.projectName) || '').trim() || 'Untitled project',
+      kind: e.kind === 'issue' ? 'issue' : 'change',
+      ref: String(e.ref || ''),
+      from: String(e.from || ''),
+      to: String(e.to || ''),
+      by: String(e.by || ''),
+      at: e.at || nowIso()
+    };
+  }
+
   ns.Process = {
     CHANGE_STATUSES: CHANGE_STATUSES,
     ISSUE_STATUSES: ISSUE_STATUSES,
@@ -568,7 +658,9 @@ var MMGR = window.MMGR || {};
     RULE_FIELDS: RULE_FIELDS,
     CONDITION_OPS: CONDITION_OPS,
     riskScore: riskScore,
-    runRules: runRules
+    runRules: runRules,
+    buildApprovalPack: buildApprovalPack,
+    buildTransitionSummary: buildTransitionSummary
   };
 })(MMGR);
 window.MMGR = MMGR;

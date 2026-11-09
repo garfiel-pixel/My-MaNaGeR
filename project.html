@@ -61,7 +61,7 @@
       clicks "Connect Google" in Settings > Controls. It is a device label,
       never a gate , offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-1HtahnnUbjFrBrm4JfpFb7Ebv5kOON/kP/emNWGITqc=' 'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4=' 'sha256-1lQZ8ZnhADNPMPnTqfYPbBDeCin0qp40ehxDc065Fmc='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-Q/nDW21rfkVgwvwjhKwtQQBoHYc4MyDlFfgSLvJxTk8=' 'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4=' 'sha256-1lQZ8ZnhADNPMPnTqfYPbBDeCin0qp40ehxDc065Fmc='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
@@ -255,6 +255,7 @@
     </div>
     <div class="nav-group"><span class="nav-group-label">Collaborate</span>
     <button class="sec-btn" data-action="showSec" data-section="kan" id="knav"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="2" stroke="#D4AF37" stroke-width="2"/><path d="M9 4V20M15 4V20" stroke="#D4AF37" stroke-width="2"/></svg>Kanban</button>
+    <button class="sec-btn" data-action="showSec" data-section="plan" id="plan-nav"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M4 7H20M4 12H20M4 17H14" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round"/><circle cx="18" cy="17" r="2.2" stroke="#8B5CF6" stroke-width="2"/></svg>Planning</button>
     <button class="sec-btn" data-action="showSec" data-section="res" data-pack="money"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M5 18H19" stroke="#22C55E" stroke-width="2"/><path d="M12 4C8.5 4 5.5 7 5.5 11V18H18.5V11C18.5 7 15.5 4 12 4Z" stroke="#22C55E" stroke-width="2"/></svg>Resources</button>
     <button class="sec-btn" data-action="showSec" data-section="bud" data-pack="money"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M21 7H3V17H21V7Z" stroke="#D4AF37" stroke-width="2" stroke-linejoin="round"/><path d="M17 10H7" stroke="#D4AF37" stroke-width="2"/><path d="M3 7L12 12L21 7" stroke="#D4AF37" stroke-width="2"/></svg>Budget</button>
     <button class="sec-btn" data-action="showSec" data-section="proc" data-pack="procurement"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M3 5H5.4L7.3 15.5H17.7L19.6 7.5H6.3" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7.3 15.5L6.9 18H18.4" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="20.4" r="1.5" stroke="#D4AF37" stroke-width="2"/><circle cx="17" cy="20.4" r="1.5" stroke="#D4AF37" stroke-width="2"/></svg>Procurement</button>
@@ -865,6 +866,31 @@
 </div>
 
   <!-- ═══ RESOURCES ═══ -->
+  <!-- ═══ PLANNING (Plane-inspired cycles) ═══ -->
+  <div class="panel" id="panel-plan">
+    <div class="card m0a mb16">
+      <div class="card-title" data-def="Cycles">Cycles
+        <span class="ct-sub">A window with a commitment inside it</span>
+      </div>
+      <div class="cyc-form">
+        <input id="cyc-name" class="ctl-in" type="text" placeholder="Cycle name" aria-label="Cycle name">
+        <input id="cyc-start" class="ctl-in" type="date" aria-label="Cycle start">
+        <input id="cyc-end" class="ctl-in" type="date" aria-label="Cycle end">
+        <button class="btn btn-g btn-s" data-action="cycAdd">Add cycle</button>
+      </div>
+      <div class="ox"><table class="dt"><thead><tr><th>Cycle</th><th class="w160">Window</th><th class="w90">State</th><th class="w110">Work</th><th class="w70">Days</th><th class="w170"></th></tr></thead><tbody id="cyc-body"></tbody></table></div>
+    </div>
+    <div class="card m0a mb16">
+      <div class="card-title">Inside the cycle</div>
+      <div id="cyc-detail"></div>
+    </div>
+    <div class="card m0a">
+      <div class="card-title">Backlog
+        <span class="ct-sub">Tasks with no cycle</span>
+      </div>
+      <div id="cyc-backlog" class="cyc-back"></div>
+    </div>
+  </div>
   <div class="panel" id="panel-res">
     <div class="card">
       <div class="card-title">Resources , Team, Equipment & Materials
@@ -2483,12 +2509,13 @@ document.addEventListener('error', function (e) {
 document.addEventListener('DOMContentLoaded', function() {
   if (!window.__mmgrBundleMissing) return;
   var MMGR = window.MMGR || {};
-  ['js/mmgr-state.js','js/mmgr-utils.js','js/mmgr-ideas.js','js/mmgr-agenda.js','js/mmgr-pages.js','js/mmgr-custom-fields.js','js/mmgr-relations.js','js/mmgr-kanban.js','js/mmgr-net.js','js/consent.js',
+  ['js/mmgr-state.js','js/mmgr-utils.js','js/mmgr-ideas.js','js/mmgr-agenda.js','js/mmgr-pages.js','js/mmgr-cycles.js','js/mmgr-custom-fields.js','js/mmgr-relations.js','js/mmgr-kanban.js','js/mmgr-net.js','js/consent.js',
    'js/render/financials.js','js/render/people.js','js/render/closure.js',
    'js/render/documents.js','js/render/weather.js','js/render/kanban.js',
    'js/render/ideas.js',
    'js/render/agenda.js',
    'js/render/pages.js',
+   'js/render/cycles.js',
    'js/render/process.js',
    'js/render/risks.js','js/render/resources.js','js/mmgr-render.js',
    'js/mmgr-prompts.js','js/mmgr-weather.js','js/mmgr-field.js',

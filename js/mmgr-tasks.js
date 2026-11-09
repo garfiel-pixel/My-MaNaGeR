@@ -555,9 +555,14 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- Sprint ----
+  // The bar is a view of the ACTIVE cycle, not a second source. It reads the
+  // cycle when one is active and falls back to the old singleton only so a
+  // project that has never opened Planning still shows something; it never
+  // writes the old object.
   function loadSprintData() {
     const s = S();
-    const spr = s.sprint || {};
+    const cyc = ns.Cycles ? ns.Cycles.active(s) : null;
+    const spr = cyc || s.sprint || {};
     const setVal = (id, val) => {
       const el = U.$(id);
       if (el) {
@@ -570,14 +575,61 @@ var MMGR = window.MMGR || {};
   }
 
   function saveSprint() {
+    if (!ns.Cycles) {
+      return;
+    }
+    const name = ((U.$('sp-nm') || {}).value || '').trim();
+    const start = (U.$('sp-st') || {}).value || '';
+    const end = (U.$('sp-en') || {}).value || '';
+    let message = '';
+    let ok = true;
     ns.State.updateState(function (s) {
-      if (!s.sprint) {
-        s.sprint = {};
+      const active = ns.Cycles.active(s);
+      if (active) {
+        if (!ns.Cycles.updateCycle(s, active.id, 'name', name).ok) {
+          ok = false;
+          message = 'Give the cycle a name.';
+          return;
+        }
+        const a = ns.Cycles.updateCycle(s, active.id, 'start', start);
+        const b = ns.Cycles.updateCycle(s, active.id, 'end', end);
+        if (!a.ok || !b.ok) {
+          ok = false;
+          message = a.ok ? b.message : a.message;
+        }
+        return;
       }
-      s.sprint.name = (U.$('sp-nm') || {}).value || 'Sprint 1';
-      s.sprint.start = (U.$('sp-st') || {}).value || '';
-      s.sprint.end = (U.$('sp-en') || {}).value || '';
+      // No active cycle yet: the first complete edit creates and activates one
+      // through the model. Nothing is written to the old object.
+      if (!name || !start || !end) {
+        ok = false;
+        message = 'Open Planning and add a cycle first.';
+        return;
+      }
+      const made = ns.Cycles.newCycle(s, { name: name, start: start, end: end });
+      if (!made.ok) {
+        ok = false;
+        message = made.message;
+        return;
+      }
+      const act = ns.Cycles.activate(s, made.id);
+      if (!act.ok) {
+        ok = false;
+        message = act.message;
+        return;
+      }
+      s.cycSel = made.id;
     });
+    if (!ok) {
+      if (ns.App && ns.App.showToast) {
+        ns.App.showToast(message, 'err');
+      }
+      loadSprintData();
+      return;
+    }
+    if (R.renderCycles) {
+      R.renderCycles();
+    }
   }
 
   // ---- WBS Import ----

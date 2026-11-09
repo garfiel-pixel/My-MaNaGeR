@@ -4413,18 +4413,32 @@ var MMGR = window.MMGR || {};
       .map(t => t.endDate)
       .filter(Boolean)
       .sort();
+    const active = ns.Cycles ? ns.Cycles.active(s) : null;
+    if (!active) {
+      showToast('Activate a cycle in Planning first.', 'err');
+      return;
+    }
+    let res = { ok: true };
     ns.State.updateState(function (state) {
-      if (!state.sprint) {
-        state.sprint = { name: 'Sprint 1', start: '', end: '' };
-      }
-      state.sprint.start = starts.length ? starts[0] : '';
-      state.sprint.end = ends.length ? ends[ends.length - 1] : '';
+      const a = ns.Cycles.updateCycle(state, active.id, 'start', starts.length ? starts[0] : '');
+      const b = ns.Cycles.updateCycle(
+        state,
+        active.id,
+        'end',
+        ends.length ? ends[ends.length - 1] : ''
+      );
+      res = a.ok ? b : a;
     });
+    if (!res.ok) {
+      showToast(res.message, 'err');
+      return;
+    }
     // Refresh the sprint panel inputs
     if (ns.Tasks && ns.Tasks.loadSprintData) {
       ns.Tasks.loadSprintData();
     }
-    showToast('Sprint populated with ' + unstarted.length + ' unstarted task(s).', 'ok');
+    R.renderCycles();
+    showToast('Cycle populated with ' + unstarted.length + ' unstarted task(s).', 'ok');
   }
 
   // ---- Prompts ----
@@ -5366,6 +5380,186 @@ var MMGR = window.MMGR || {};
     R.renderRules();
   }
 
+  // ---- Planning: cycles ------------------------------------------------
+  // Every write goes through the model, so the read-only fence and the save
+  // path are the same whether the caller is this section, a task row or a
+  // board card.
+  function cycValue(id) {
+    const el = U.$(id);
+    return el ? el.value : '';
+  }
+
+  function cycAdd() {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Cycles) {
+      return;
+    }
+    let res = { ok: true };
+    ns.State.updateState(function (s) {
+      res = ns.Cycles.newCycle(s, {
+        name: cycValue('cyc-name'),
+        start: cycValue('cyc-start'),
+        end: cycValue('cyc-end')
+      });
+    });
+    if (!res.ok) {
+      showToast(res.message, 'err');
+      return;
+    }
+    ['cyc-name', 'cyc-start', 'cyc-end'].forEach(function (id) {
+      const el = U.$(id);
+      if (el) {
+        el.value = '';
+      }
+    });
+    R.renderCycles();
+    showToast('Cycle added.', 'ok');
+  }
+
+  function cycSelect(id) {
+    ns.State.updateState(function (s) {
+      s.cycSel = id || '';
+      s.cycClosing = '';
+    });
+    R.renderCycles();
+  }
+
+  function cycActivate(id) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    let res = { ok: true };
+    ns.State.updateState(function (s) {
+      res = ns.Cycles.activate(s, id);
+      if (res.ok) {
+        s.cycSel = id;
+      }
+    });
+    if (!res.ok) {
+      showToast(res.message, 'err');
+      return;
+    }
+    R.renderCycles();
+    if (ns.Tasks && ns.Tasks.loadSprintData) {
+      ns.Tasks.loadSprintData();
+    }
+    showToast(
+      'Active: ' +
+        res.commitment.tasks +
+        ' task' +
+        (res.commitment.tasks === 1 ? '' : 's') +
+        ', ' +
+        res.commitment.days +
+        ' working days committed.',
+      'ok'
+    );
+  }
+
+  function cycClose(id) {
+    ns.State.updateState(function (s) {
+      s.cycClosing = id || '';
+      // The question belongs to the cycle that was asked about, so selecting
+      // it here means the numbers and the two answers appear together.
+      if (id) {
+        s.cycSel = id;
+      }
+    });
+    R.renderCycles();
+  }
+
+  function cycCloseCancel() {
+    ns.State.updateState(function (s) {
+      s.cycClosing = '';
+    });
+    R.renderCycles();
+  }
+
+  function cycDoClose(id, choice) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    let res = { ok: true };
+    ns.State.updateState(function (s) {
+      res = ns.Cycles.close(s, id, choice);
+      if (res.ok) {
+        s.cycClosing = '';
+      }
+    });
+    if (!res.ok) {
+      showToast(res.message, 'err');
+      return;
+    }
+    R.renderCycles();
+    if (ns.Tasks && ns.Tasks.loadSprintData) {
+      ns.Tasks.loadSprintData();
+    }
+    showToast(
+      choice === 'forward'
+        ? 'Closed. ' + res.close.carried + ' task(s) carried forward.'
+        : 'Closed. ' + res.close.returned + ' task(s) returned to the backlog.',
+      'ok'
+    );
+  }
+
+  function cycDel(id) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    let res = { ok: true };
+    ns.State.updateState(function (s) {
+      res = ns.Cycles.removeCycle(s, id);
+    });
+    if (!res.ok) {
+      showToast(res.message, 'err');
+      return;
+    }
+    R.renderCycles();
+  }
+
+  function cycAssign(idx) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    const s0 = ns.State.getState();
+    const target = ns.Cycles.find(s0, s0.cycSel) || ns.Cycles.active(s0);
+    if (!target) {
+      showToast('Open or activate a cycle first.', 'err');
+      return;
+    }
+    let res = { ok: true };
+    ns.State.updateState(function (s) {
+      res = ns.Cycles.assign(s, +idx, target.id);
+    });
+    if (!res.ok) {
+      showToast(res.message, 'err');
+      return;
+    }
+    R.renderCycles();
+  }
+
+  function cycUnassign(idx) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    let res = { ok: true };
+    ns.State.updateState(function (s) {
+      res = ns.Cycles.assign(s, +idx, '');
+    });
+    if (!res.ok) {
+      showToast(res.message, 'err');
+      return;
+    }
+    R.renderCycles();
+  }
+
   // ---- Register link and handover pack ---------------------------------
   function linkDoc(docId, pageId) {
     if (isReadonly()) {
@@ -5688,6 +5882,16 @@ var MMGR = window.MMGR || {};
     addRule: addRule,
     tglRule: tglRule,
     delRule: delRule,
+    cycAdd: cycAdd,
+    cycSelect: cycSelect,
+    cycActivate: cycActivate,
+    cycClose: cycClose,
+    cycCloseCancel: cycCloseCancel,
+    cycCloseForward: id => cycDoClose(id, 'forward'),
+    cycCloseBacklog: id => cycDoClose(id, 'backlog'),
+    cycDel: cycDel,
+    cycAssign: cycAssign,
+    cycUnassign: cycUnassign,
     populateSprint: populateSprint,
     openPrompt: openPrompt,
     openDrwToSave: openDrwToSave,
@@ -5823,6 +6027,16 @@ window.MMGR = MMGR;
     addRule: () => window.MMGR.App.addRule(),
     tglRule: el => window.MMGR.App.tglRule(el.getAttribute('data-id'), el.checked),
     delRule: el => window.MMGR.App.delRule(el.getAttribute('data-id')),
+    cycAdd: () => window.MMGR.App.cycAdd(),
+    cycSelect: el => window.MMGR.App.cycSelect(el.getAttribute('data-id')),
+    cycActivate: el => window.MMGR.App.cycActivate(el.getAttribute('data-id')),
+    cycClose: el => window.MMGR.App.cycClose(el.getAttribute('data-id')),
+    cycCloseCancel: () => window.MMGR.App.cycCloseCancel(),
+    cycCloseForward: el => window.MMGR.App.cycCloseForward(el.getAttribute('data-id')),
+    cycCloseBacklog: el => window.MMGR.App.cycCloseBacklog(el.getAttribute('data-id')),
+    cycDel: el => window.MMGR.App.cycDel(el.getAttribute('data-id')),
+    cycAssign: el => window.MMGR.App.cycAssign(el.getAttribute('data-idx')),
+    cycUnassign: el => window.MMGR.App.cycUnassign(el.getAttribute('data-idx')),
     setTaskFollowUp: el => {
       const taskId = el.getAttribute('data-id');
       const assignee = prompt('Follow-up assignee:');
@@ -7303,6 +7517,12 @@ window.MMGR = MMGR;
     setPageUnfiled: 1,
     printPack: 1,
     printApprovalPack: 1,
+    // Planning views: selecting a cycle and opening the close question change
+    // only what this device shows. Every action that writes a cycle, its
+    // membership or its close is deliberately absent.
+    cycSelect: 1,
+    cycClose: 1,
+    cycCloseCancel: 1,
     chgHistory: 1,
     setTrFilter: 1,
     cpAllPage: 1,

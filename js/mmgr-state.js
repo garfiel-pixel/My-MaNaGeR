@@ -273,6 +273,7 @@ var MMGR = window.MMGR || {};
  * @property {Issue[]} issues
  * @property {Change[]} changes
  * @property {Array<Object>} transitions - append-only status moves (v29)
+ * @property {Array<Object>} cycles - planning windows; tasks point at one (v30)
  * @property {Array<Object>} rules       - declared rules (v29)
  * @property {Array<Object>} ruleLog     - capped rule execution log (v29)
  * @property {string} trFilter           - recorded-moves feed filter (per device)
@@ -287,7 +288,7 @@ var MMGR = window.MMGR || {};
   'use strict';
 
   const STORAGE_KEY = 'mmgr_state';
-  const SCHEMA_VERSION = 29;
+  const SCHEMA_VERSION = 30;
 
   // ---- Default State ----
   /** @returns {AppState} */
@@ -368,6 +369,8 @@ var MMGR = window.MMGR || {};
       // Process model (Huly-inspired). Transitions are append-only evidence;
       // rules are declared configuration; ruleLog is the capped execution log.
       transitions: [],
+      // Cycles are windows; a task points at one through task.cycleId.
+      cycles: [],
       rules: [],
       ruleLog: [],
       // Which record type the recorded-moves feed shows. Per-device, so it is
@@ -1145,6 +1148,77 @@ var MMGR = window.MMGR || {};
       }
       return state;
     },
+    30: function (state) {
+      // V29 -> V30: cycles as records (Plane-inspired, 2026-11-08).
+      // - The singleton sprint becomes the first cycle, preserving its name
+      //   and dates. The old object stays readable for one release so an
+      //   older build still shows something; nothing reads it after this.
+      // - A task points at a cycle through task.cycleId. A pointer on the task
+      //   is one write to move a task and cannot duplicate membership in a
+      //   merge.
+      // - A dangling pointer is cleared here: a task in a cycle that does not
+      //   exist would make every total wrong.
+      if (!Array.isArray(state.cycles)) {
+        state.cycles = [];
+      }
+      state.cycles = state.cycles
+        .filter(function (c) {
+          return c && typeof c === 'object';
+        })
+        .map(function (c) {
+          c.id = String(c.id || '');
+          c.name = String(c.name || 'Cycle').slice(0, 80);
+          c.start = String(c.start || '').slice(0, 10);
+          c.end = String(c.end || '').slice(0, 10);
+          c.state = ['planned', 'active', 'closed'].indexOf(c.state) > -1 ? c.state : 'planned';
+          c.notes = String(c.notes || '').slice(0, 2000);
+          c.commitment = c.commitment && typeof c.commitment === 'object' ? c.commitment : null;
+          c.close = c.close && typeof c.close === 'object' ? c.close : null;
+          return c;
+        })
+        .filter(function (c) {
+          return !!c.id;
+        });
+      if (!state.cycles.length && state.sprint) {
+        const sp = state.sprint;
+        const start = String(sp.start || '').slice(0, 10);
+        const end = String(sp.end || '').slice(0, 10);
+        if (start && end) {
+          state.cycles.push({
+            id: 'cy-sprint-1',
+            name: String(sp.name || 'Sprint 1').trim() || 'Sprint 1',
+            start: start,
+            end: end,
+            state: 'planned',
+            notes: '',
+            commitment: null,
+            close: null
+          });
+        }
+      }
+      // One active at most. A second active is demoted, not dropped.
+      let seenActive = false;
+      state.cycles.forEach(function (c) {
+        if (c.state === 'active') {
+          if (seenActive) {
+            c.state = 'planned';
+          }
+          seenActive = true;
+        }
+      });
+      const ids = {};
+      state.cycles.forEach(function (c) {
+        ids[c.id] = 1;
+      });
+      if (Array.isArray(state.tasks)) {
+        state.tasks.forEach(function (t) {
+          if (t && t.cycleId && !ids[t.cycleId]) {
+            t.cycleId = '';
+          }
+        });
+      }
+      return state;
+    },
     25: function (state) {
       // V24 -> V25: BOQ bridge (H-2, BUDGET-BOQ directive 2026-11-05).
       // Additive and lossless:
@@ -1588,6 +1662,9 @@ var MMGR = window.MMGR || {};
     // whole team must run, so they travel too. The execution log is capped
     // and travels with them so a colleague can read what fired.
     'transitions',
+    // Cycles are project data: a cycle is a window with a commitment, and the
+    // commitment is only honest if the whole team sees the same one.
+    'cycles',
     'rules',
     'ruleLog',
     'logEntries',

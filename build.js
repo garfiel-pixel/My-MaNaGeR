@@ -63,6 +63,7 @@ const APP_MODULES = [
   // Project book model (AppFlowy-inspired). Pure model: the pages renderer
   // and the template capture both read MMGR.Pages at call time.
   'js/mmgr-pages.js',
+  'js/mmgr-cycles.js',
   // Custom task fields. Must load before the renderers and the domain
   // modules, because both read MMGR.CustomFields at call time.
   'js/mmgr-custom-fields.js',
@@ -95,6 +96,7 @@ const APP_MODULES = [
   'js/render/ideas.js',
   'js/render/agenda.js',
   'js/render/pages.js',
+  'js/render/cycles.js',
   'js/render/process.js',
   'js/render/risks.js',
   'js/render/resources.js',

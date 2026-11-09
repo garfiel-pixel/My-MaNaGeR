@@ -7842,6 +7842,83 @@ body.dark-mode .team-link-danger {
   color: var(--text-secondary);
   font-size: 0.74rem;
 }
+
+/* ---- Planning: cycles --------------------------------------------------- */
+.cyc-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.cyc-form .ctl-in {
+  flex: 0 1 auto;
+  min-width: 140px;
+}
+.cyc-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--slate);
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.cyc-badge.is-active {
+  border-color: #22c55e;
+  color: #22c55e;
+}
+.cyc-badge.is-closed {
+  opacity: 0.7;
+}
+.cyc-act {
+  text-align: right;
+  white-space: nowrap;
+}
+.cyc-dh {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 6px;
+}
+.cyc-dn {
+  font-weight: 600;
+}
+.cyc-close {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--tile-bg);
+}
+.cyc-ct {
+  font-weight: 600;
+}
+.cyc-bl {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.cyc-bl:last-child {
+  border-bottom: 0;
+}
+.cyc-bt {
+  flex: 1 1 auto;
+}
+@media (max-width: 720px) {
+  .cyc-form .ctl-in {
+    min-width: 100%;
+  }
+  .cyc-bl {
+    flex-wrap: wrap;
+  }
+}
 /* ---- RBAC sprint 3: access tools ---------------------------------------- */
 .team-tools {
   display: flex;

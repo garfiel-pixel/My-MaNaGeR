@@ -171,6 +171,19 @@ A rule is **data, not code**: `{trigger:{kind,event}, conditions:[{field,op,valu
 
 `state.ruleLog` is capped at 300 entries (the UI shows the newest 20). Rules live in `FIELD_KEYS` as flat append-only collections, like `transitions`.
 
+### Cycles (planning)
+
+`mmgr-cycles.js` is a **pure model**. A cycle is a window with a commitment inside it, and it owns no tasks: `task.cycleId` is the pointer, so moving a task is one write and a merge cannot duplicate membership. Four rules:
+
+1. **One active cycle, always.** `activate` demotes the previous active cycle in the same write, so no render can catch two.
+2. **The commitment is taken once.** `activate` records `{at, tasks, days}` and nothing recalculates it; the difference between that and the cycle's contents at close is real scope movement, not a reinterpretation.
+3. **Closing is a decision.** `close(state, id, 'forward'|'backlog')` refuses an empty choice and refuses while any task has no status. `forward` requires a next open cycle that starts after this one ends; there is no silent third answer.
+4. **A closed cycle is history.** Its dates and membership are frozen (`assign` and `updateCycle` refuse), while its name and notes stay editable.
+
+The sprint bar above the board is a **view** of the active cycle, not a second source: `Tasks.loadSprintData` reads the active cycle and falls back to the old singleton only so a project that never opened Planning still shows something. `saveSprint` writes through `Cycles.updateCycle` and never touches `state.sprint`; with no active cycle, a complete name/date edit creates and activates one through the model. `Populate Sprint` writes the active cycle's dates. The Planning section is hidden on a non-agile project by the same rule as the sprint bar (`#plan-nav`).
+
+Migration 30 converts the old sprint into the first cycle and clears a `cycleId` that points at a cycle that no longer exists. `state.cycles` is in `FIELD_KEYS`; `cycSel`/`cycClosing` are view preferences and deliberately are not.
+
 ### The approval pack and the outbound summary
 
 `Process.buildApprovalPack(state,{from,to,statuses})` assembles — never stores — the dated header, every matching change with its impacts, approver and reason, and that change's full history. `App.printApprovalPack` paints it into the shared `#pg-pack` container (same print surface as the handover pack) and prints; the footer states included/excluded and the local-time caveat. Printing is a read, so a viewer may print it.

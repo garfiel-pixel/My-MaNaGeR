@@ -106,6 +106,13 @@ var MMGR = window.MMGR || {};
     if (sprintPanel) {
       sprintPanel.classList.toggle('is-hide', meth !== 'agile');
     }
+    // Planning follows the SAME rule as the sprint bar rather than inventing a
+    // second one: a waterfall project is not shown an agile tool it did not
+    // ask for. Modules inside the section are not agile, but they live here.
+    const planNav = $('plan-nav');
+    if (planNav) {
+      planNav.classList.toggle('is-hide', meth !== 'agile');
+    }
     // SIDEBAR-HAMBURGER-TOGGLE-PLAN: the gate targets EVERY .sec-btn for the
     // section (top pill nav + desktop sidebar clones), not just #dmaic-nav by
     // id, the sidebar mirrors the same visibility by construction.
@@ -3192,6 +3199,11 @@ var MMGR = window.MMGR || {};
   function renderApprovalPack(pack) {
     return ns.RenderPeople ? ns.RenderPeople.renderApprovalPack(pack) : false;
   }
+  function renderCycles() {
+    if (ns.RenderCycles) {
+      ns.RenderCycles.renderCycles();
+    }
+  }
 
   // ---- Closure ---- (extracted to js/render/closure.js)
   function renderPunchList() {
@@ -3653,6 +3665,9 @@ var MMGR = window.MMGR || {};
     // Declared rules: the Controls panel reads state, so an import or a
     // project switch refreshes the list and the execution log.
     renderRules();
+    // Planning: cycles and the backlog read the task array, so any task change
+    // is reflected the next time the section is drawn.
+    renderCycles();
   }
 
   // ==================================================================
@@ -4183,6 +4198,7 @@ var MMGR = window.MMGR || {};
     renderLog: renderLog,
     renderProcessFeed: renderProcessFeed,
     renderApprovalPack: renderApprovalPack,
+    renderCycles: renderCycles,
     renderRules: renderRules,
     renderClosure: renderClosure,
     renderPunchList: renderPunchList,

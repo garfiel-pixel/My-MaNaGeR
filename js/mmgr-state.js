@@ -1078,7 +1078,7 @@ var MMGR = window.MMGR || {};
       ];
       state.pages.forEach(function (p) {
         if (typeof p.id !== 'string' || !p.id) {
-          p.id = 'pg' + Math.random().toString(36).slice(2, 10);
+          p.id = 'pg' + Math.random().toString(36).slice(2, 10); // ok: non-secret
         }
         if (typeof p.title !== 'string') {
           p.title = '';
@@ -1100,7 +1100,7 @@ var MMGR = window.MMGR || {};
             return;
           }
           if (typeof b.id !== 'string' || !b.id) {
-            b.id = 'b' + Math.random().toString(36).slice(2, 10);
+            b.id = 'b' + Math.random().toString(36).slice(2, 10); // ok: non-secret
           }
           if (blockTypes.indexOf(b.type) < 0) {
             b.type = 'paragraph';

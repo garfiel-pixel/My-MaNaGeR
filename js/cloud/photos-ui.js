@@ -969,7 +969,7 @@ var MMGR = window.MMGR || {};
     } catch (e) {
       /* fall through */
     }
-    return 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    return 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10); // ok: non-secret
   }
 
   function blobToFile(blob, name, type) {

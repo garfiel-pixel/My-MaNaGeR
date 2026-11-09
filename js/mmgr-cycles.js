@@ -29,7 +29,7 @@ var MMGR = window.MMGR || {};
   }
 
   function genId() {
-    return 'cy' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    return 'cy' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); // ok: non-secret
   }
 
   function text(v, max) {
@@ -680,7 +680,7 @@ var MMGR = window.MMGR || {};
       state.modules = [];
     }
     const module = {
-      id: 'md' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      id: 'md' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), // ok: non-secret
       name: name,
       lead: text(o.lead, 120),
       target: day(o.target),

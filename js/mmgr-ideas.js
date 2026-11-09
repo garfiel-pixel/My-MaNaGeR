@@ -96,7 +96,7 @@ var MMGR = window.MMGR || {};
     if (ns.Utils && typeof ns.Utils.genId === 'function') {
       return ns.Utils.genId('i');
     }
-    return 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    return 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); // ok: non-secret
   }
 
   // Impact weighs twice: a high-impact, cheap idea outranks a low-impact,

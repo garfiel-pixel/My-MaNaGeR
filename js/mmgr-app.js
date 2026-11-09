@@ -5352,7 +5352,7 @@ var MMGR = window.MMGR || {};
         s.rules = [];
       }
       s.rules.push({
-        id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), // ok: non-secret
         name: name,
         enabled: true,
         trigger: { kind: kind, event: event },

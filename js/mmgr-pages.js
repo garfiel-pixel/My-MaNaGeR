@@ -76,7 +76,7 @@ var MMGR = window.MMGR || {};
     if (ns.Utils && typeof ns.Utils.genId === 'function') {
       return ns.Utils.genId(prefix);
     }
-    return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); // ok: non-secret
   }
 
   function isBlockType(key) {

@@ -53,7 +53,7 @@ var MMGR = window.MMGR || {};
   }
 
   function genId() {
-    return 'tr' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    return 'tr' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); // ok: non-secret
   }
 
   function labels(kind) {
@@ -459,7 +459,7 @@ var MMGR = window.MMGR || {};
         state.issues = [];
       }
       const issue = {
-        id: 'I' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        id: 'I' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), // ok: non-secret
         description: String(action.text || record.description || 'Raised by a rule'),
         owner: '',
         targetDate: '',

@@ -2066,7 +2066,8 @@ var MMGR = window.MMGR || {};
           var pid = MMGR.App.projectId;
           var ocode = '';
           try {
-            ocode = sessionStorage.getItem('mmgr_cloud_code_' + pid) || '';
+            // I-1 fix (2026-11-08): owner code now lives in localStorage.
+            ocode = localStorage.getItem('mmgr_cloud_code_' + pid) || '';
           } catch (e) {}
           var ecode = '';
           try {

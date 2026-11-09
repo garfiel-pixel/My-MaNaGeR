@@ -174,8 +174,10 @@ var MMGR = window.MMGR || {};
         const rippleHtml = hasRipple
           ? `<span style="color:${c.status === 'approved' ? 'var(--green)' : 'var(--amber)'}">~${U.escapeHtml(days)}d · ${exposedLines} lines${cost ? ' · $' + cost.toLocaleString() : ''}${downstreamTasks ? ' · ' + downstreamTasks + ' tasks' : ''}</span>`
           : '-';
+        const hist =
+          ns.Process && ns.Process.historyFor ? ns.Process.historyFor(s, 'change', c.id) : [];
         return `<tr>
-      <td>${U.escapeHtml(c.id || 'C' + (i + 1))}</td>
+      <td><button class="lnk" data-action="chgHistory" data-idx="${i}" title="Show the status history of this change">${U.escapeHtml(c.id || 'C' + (i + 1))}</button></td>
       <td><input type="date" value="${U.escapeHtml(c.date || '')}" data-action="updField" data-module="Changes" data-field="date" data-idx="${i}"></td>
       <td><input type="text" value="${U.escapeHtml(c.title)}" data-action="updField" data-module="Changes" data-field="title" data-idx="${i}"></td>
       <td><input type="text" value="${U.escapeHtml(c.requester || '')}" data-action="updField" data-module="Changes" data-field="requester" data-idx="${i}"></td>
@@ -186,17 +188,76 @@ var MMGR = window.MMGR || {};
       <td><input type="text" value="${U.escapeHtml(c.approvedBy || '')}" data-action="updField" data-module="Changes" data-field="approvedBy" data-idx="${i}"></td>
       <td><input type="text" value="${U.escapeHtml(c.notes || '')}" data-action="updField" data-module="Changes" data-field="notes" data-idx="${i}"></td>
       <td><button class="btn btn-s btn-d" data-action="delChange" data-idx="${i}">×</button></td>
-    </tr>`;
+    </tr>${histRow(hist, i)}`;
       })
       .join('');
   }
 
+  // The per-record history: oldest first, newest emphasised. A move made by
+  // a rule or a repair says so; only a person is left unlabelled.
+  function histRow(hist, idx) {
+    const rows = hist.length
+      ? hist
+          .map(
+            (r, k) =>
+              `<div class="th-row${k === hist.length - 1 ? ' is-new' : ''}">` +
+              `<span class="th-mv">${U.escapeHtml(ns.Process.label('change', r.from))} &rarr; ${U.escapeHtml(ns.Process.label('change', r.to))}</span>` +
+              `<span class="th-by">${U.escapeHtml(r.by || 'Unnamed')}</span>` +
+              `<span class="th-at">${U.escapeHtml(new Date(r.at).toLocaleString())}</span>` +
+              (r.via && r.via !== 'user'
+                ? `<span class="th-tag">${U.escapeHtml(r.via)}</span>`
+                : '') +
+              (r.reason ? `<span class="th-rs">${U.escapeHtml(r.reason)}</span>` : '') +
+              `</div>`
+          )
+          .join('')
+      : '<div class="th-none">No status moves recorded yet.</div>';
+    return `<tr class="chg-hist" data-hist="${idx}" hidden><td colspan="11"><div class="th">${rows}</div></td></tr>`; // ok: rows is built from escaped values and literals only
+  }
+
   // ---- Log ----
+  // The feed is the app's own record of status moves; the table below is the
+  // written decision log. Both live here, labelled differently on purpose.
+  function renderProcessFeed() {
+    const host = $('tr-feed');
+    if (!host) {
+      return;
+    }
+    const s = S();
+    const sel = $('tr-filter');
+    const want = s && (s.trFilter === 'change' || s.trFilter === 'issue') ? s.trFilter : '';
+    if (sel) {
+      sel.value = want || 'all';
+    }
+    if (!ns.Process) {
+      host.innerHTML = '';
+      return;
+    }
+    const rows = ns.Process.feed(s, want).slice(0, 200);
+    if (!rows.length) {
+      host.innerHTML = '<div class="es es-row">No status moves recorded yet.</div>';
+      return;
+    }
+    host.innerHTML = rows
+      .map(
+        r =>
+          `<div class="tr-row">` +
+          `<span class="tr-ref">${U.escapeHtml((r.kind === 'issue' ? 'Issue ' : 'Change ') + r.ref)}</span>` +
+          `<span class="tr-mv">${U.escapeHtml(ns.Process.label(r.kind, r.from))} &rarr; ${U.escapeHtml(ns.Process.label(r.kind, r.to))}</span>` +
+          `<span class="tr-by">${U.escapeHtml(r.by || 'Unnamed')}</span>` +
+          `<span class="tr-at">${U.escapeHtml(new Date(r.at).toLocaleString())}</span>` +
+          (r.via && r.via !== 'user' ? `<span class="tr-tag">${U.escapeHtml(r.via)}</span>` : '') +
+          `</div>`
+      )
+      .join('');
+  }
+
   function renderLog() {
     const s = S();
     if (!s) {
       return;
     }
+    renderProcessFeed();
     const body = $('log-body');
     if (!body) {
       return;
@@ -426,11 +487,104 @@ var MMGR = window.MMGR || {};
       .join('');
   }
 
+  // ---- Approval pack ---------------------------------------------------
+  // The printed record of every approved change in a date range, each with
+  // the moves that produced it. Reads the model's assembled pack; stores
+  // nothing. Shares the #pg-pack container and .pk-* print surface with the
+  // handover pack.
+  function renderApprovalPack(pack) {
+    const host = $('pg-pack');
+    if (!host) {
+      return false;
+    }
+    if (!pack) {
+      host.innerHTML = '';
+      return false;
+    }
+    const esc = U.escapeHtml;
+    const day = h => String(h.at || '').slice(0, 10);
+    const rows = pack.rows.length
+      ? pack.rows
+          .map(function (r) {
+            const hist = r.history.length
+              ? r.history
+                  .map(function (h) {
+                    return (
+                      '<div class="pk-hrow"><span class="pk-hd">' +
+                      esc(day(h)) +
+                      '</span> ' +
+                      esc(ns.Process.label('change', h.from)) +
+                      ' \u2192 ' +
+                      esc(ns.Process.label('change', h.to)) +
+                      (h.by ? ' \u00b7 ' + esc(h.by) : '') +
+                      (h.reason ? ' \u00b7 ' + esc(h.reason) : '') +
+                      '</div>'
+                    );
+                  })
+                  .join('')
+              : '<div class="pk-hrow pk-mute">No recorded moves.</div>';
+            return (
+              '<section class="pk-page pk-appr"><h2 class="pk-h2">' +
+              esc(r.id || 'Change') +
+              ' \u00b7 ' +
+              esc(r.title || 'Untitled change') +
+              '</h2><table class="pk-t"><tr><th>Date</th><th>Requester</th><th>Status</th><th>Cost impact</th><th>Schedule impact</th><th>Approved by</th></tr>' +
+              '<tr><td>' +
+              esc(r.date || '-') +
+              '</td><td>' +
+              esc(r.requester || '-') +
+              '</td><td>' +
+              esc(r.statusLabel) +
+              '</td><td>' +
+              esc(r.costImpact || '-') +
+              '</td><td>' +
+              esc(r.schedImpact || '-') +
+              '</td><td>' +
+              esc(r.approvedBy || '-') +
+              '</td></tr></table>' +
+              (r.reason
+                ? '<p class="pk-p"><strong>Reason:</strong> ' + esc(r.reason) + '</p>'
+                : '') +
+              '<h3 class="pk-h3">History</h3>' +
+              hist +
+              '</section>'
+            );
+          })
+          .join('')
+      : '<p class="pk-p pk-mute">No change matches this selection.</p>';
+    const range =
+      pack.range.from || pack.range.to
+        ? ' \u00b7 ' + (pack.range.from || 'start') + ' to ' + (pack.range.to || 'today')
+        : '';
+    // ok: rows are built from escaped values and literals only
+    host.innerHTML =
+      '<div class="pk"><header class="pk-head">' +
+      '<div class="pk-kicker">Approval pack</div>' +
+      '<h1 class="pk-title">' +
+      esc(pack.project) +
+      '</h1><div class="pk-sub">' +
+      esc(pack.statuses.join(', ')) +
+      ' changes' +
+      esc(range) +
+      ' \u00b7 assembled ' +
+      esc(String(pack.generatedAt).slice(0, 10)) +
+      '</div></header><div class="pk-body">' +
+      rows +
+      '</div><footer class="pk-foot">' +
+      esc(pack.included + ' included, ' + pack.excluded + ' excluded.') +
+      ' ' +
+      esc(pack.caveat) +
+      '</footer></div>';
+    return true;
+  }
+
   ns.RenderPeople = {
     renderStakeholders: renderStakeholders,
     syncStakeComplianceBadges: syncStakeComplianceBadges,
     renderChanges: renderChanges,
     renderLog: renderLog,
+    renderProcessFeed: renderProcessFeed,
+    renderApprovalPack: renderApprovalPack,
     renderRaci: renderRaci,
     renderRaciHeatmap: renderRaciHeatmap,
     renderRaciAlerts: renderRaciAlerts,

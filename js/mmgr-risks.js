@@ -22,6 +22,9 @@ var MMGR = window.MMGR || {};
         mitigation: '',
         issueId: null
       });
+      if (ns.Process) {
+        ns.Process.runRules(s, 'created', 'risk', s.risks.length - 1);
+      }
     });
     R.renderRisks();
   }
@@ -30,12 +33,18 @@ var MMGR = window.MMGR || {};
     ns.State.updateState(function (s) {
       if (s.risks && s.risks[index]) {
         s.risks[index][field] = value;
+        if (ns.Process) {
+          ns.Process.runRules(s, 'field', 'risk', index);
+        }
       }
     });
   }
 
   function delRisk(index) {
     ns.State.updateState(function (s) {
+      if (ns.Process && s.risks && s.risks[index]) {
+        ns.Process.runRules(s, 'deleted', 'risk', index);
+      }
       if (s.risks) {
         s.risks.splice(index, 1);
       }
@@ -64,15 +73,57 @@ var MMGR = window.MMGR || {};
           sourceRiskId: risk.id
         });
         risk.issueId = s.issues[s.issues.length - 1].id;
+        if (ns.Process) {
+          ns.Process.runRules(s, 'created', 'issue', s.issues.length - 1);
+        }
       }
     });
     R.renderRisks();
   }
 
   function updIssue(index, field, value) {
+    if (field === 'status' && ns.Process) {
+      let res = { ok: true };
+      let messages = [];
+      let hooks = [];
+      ns.State.updateState(function (s) {
+        res = ns.Process.applyMove(s, 'issue', index, value, { via: 'user' });
+        if (res.ok && !res.noop) {
+          const ctx = ns.Process.runRules(s, 'status', 'issue', index, { entry: res.entry });
+          messages = ctx.messages;
+          hooks = ctx.hooks;
+        }
+      });
+      if (ns.App && ns.App.dispatchHooks) {
+        ns.App.dispatchHooks(hooks);
+      }
+      messages.forEach(function (m) {
+        if (ns.App && ns.App.showToast) {
+          ns.App.showToast(m, 'ok');
+        }
+      });
+      if (!res.ok) {
+        if (ns.App && ns.App.showToast) {
+          ns.App.showToast(res.message, 'err');
+        }
+      }
+      if (R.renderDash) {
+        R.renderDash();
+      }
+      return;
+    }
+    let messages = [];
     ns.State.updateState(function (s) {
       if (s.issues && s.issues[index]) {
         s.issues[index][field] = value;
+        if (ns.Process) {
+          messages = ns.Process.runRules(s, 'field', 'issue', index).messages;
+        }
+      }
+    });
+    messages.forEach(function (m) {
+      if (ns.App && ns.App.showToast) {
+        ns.App.showToast(m, 'ok');
       }
     });
   }

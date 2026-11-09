@@ -106,6 +106,10 @@ var MMGR = window.MMGR || {};
     if (sprintPanel) {
       sprintPanel.classList.toggle('is-hide', meth !== 'agile');
     }
+    // Planning stays reachable on every methodology: modules are not an agile
+    // concept. The renderer hides the three cycle cards on a waterfall project
+    // under the same rule as the sprint bar, so the section never shows an
+    // agile tool a project did not ask for.
     // SIDEBAR-HAMBURGER-TOGGLE-PLAN: the gate targets EVERY .sec-btn for the
     // section (top pill nav + desktop sidebar clones), not just #dmaic-nav by
     // id, the sidebar mirrors the same visibility by construction.
@@ -640,7 +644,7 @@ var MMGR = window.MMGR || {};
         issEl.innerHTML = activeIssues
           .map(
             i =>
-              `<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">${U.escapeHtml(i.description)} <span class="badge br" style="font-size:.65rem">${U.escapeHtml(i.status || 'open')}</span></div>`
+              `<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">${U.escapeHtml(i.description)} <span class="badge br" style="font-size:.65rem">${U.escapeHtml(i.status || 'open')}</span> <button class="btn btn-s btn-n" data-action="resolveIssue" data-id="${U.escapeHtml(i.id || '')}" title="Resolve this issue">Resolve</button></div>`
           )
           .join('');
       }
@@ -1737,6 +1741,8 @@ var MMGR = window.MMGR || {};
     wbs: renderWbs,
     gantt: renderGantt,
     kan: renderKanban,
+    ideas: renderIdeas,
+    agenda: renderAgenda,
     risk: renderRisks,
     res: renderResources,
     bud: renderBudget,
@@ -1921,6 +1927,133 @@ var MMGR = window.MMGR || {};
     );
   }
 
+  // The WBS header is the first block that reads the field schema. The
+  // eight fixed columns are the built-in task fields; every column after
+  // Status comes from state.fields, in array order.
+  function renderWbsHead() {
+    const row = $('wbs-head-row');
+    if (!row) {
+      return;
+    }
+    const C = ns.CustomFields;
+    const cols = C ? C.visible(S(), 'wbs') : [];
+    let html =
+      '<th class="w38">ID</th><th>Task Name</th><th class="w130">Assignee</th>' +
+      '<th class="w70">Duration</th><th class="w120">Start</th>' +
+      '<th class="w120">End</th><th class="w120">Status</th>';
+    cols.forEach(function (f) {
+      const width = Math.max(60, Math.min(300, parseInt(f.width, 10) || 120));
+      html +=
+        '<th style="width:' +
+        width +
+        'px" title="' +
+        U.escapeHtml(C.TYPES[f.type].label) +
+        ' field">' +
+        U.escapeHtml(f.label) +
+        '</th>';
+    });
+    html += '<th class="w96">Actions</th>';
+    row.innerHTML = html;
+  }
+
+  // One editor cell per visible field. Every editor uses the existing
+  // updTaskField action, except a checkbox, which needs the checked flag
+  // rather than the value string.
+  function customFieldCells(t) {
+    const C = ns.CustomFields;
+    if (!C) {
+      return '';
+    }
+    const s = S();
+    return C.visible(s, 'wbs')
+      .map(function (f) {
+        const value = C.valueOf(t, f);
+        const id = U.escapeHtml(t.id);
+        const key = U.escapeHtml(f.key);
+        const label = U.escapeHtml(f.label);
+        let control;
+        if (f.type === 'checkbox') {
+          control =
+            '<input type="checkbox" data-action="tglTaskCustom" data-id="' +
+            id +
+            '" data-field="' +
+            key +
+            '" aria-label="' +
+            label +
+            '"' +
+            (value === true ? ' checked' : '') +
+            '>';
+        } else if (f.type === 'select') {
+          const options = ['<option value="">--</option>']
+            .concat(
+              f.options.map(function (option) {
+                const selected = String(value) === option ? ' selected' : '';
+                return (
+                  '<option value="' +
+                  U.escapeHtml(option) +
+                  '"' +
+                  selected +
+                  '>' +
+                  U.escapeHtml(option) +
+                  '</option>'
+                );
+              })
+            )
+            .join('');
+          control =
+            '<select data-action="updTaskField" data-id="' +
+            id +
+            '" data-field="' +
+            key +
+            '" aria-label="' +
+            label +
+            '">' +
+            options +
+            '</select>';
+        } else {
+          const type = f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text';
+          control =
+            '<input type="' +
+            type +
+            '" value="' +
+            U.escapeHtml(value) +
+            '" data-action="updTaskField" data-id="' +
+            id +
+            '" data-field="' +
+            key +
+            '" aria-label="' +
+            label +
+            '"' +
+            (f.type === 'number' ? ' step="any"' : '') +
+            (f.type === 'text' ? ' maxlength="200"' : '') +
+            '>';
+        }
+        return '<td class="wbs-cf">' + control + '</td>';
+      })
+      .join('');
+  }
+
+  function requiredBadge(t) {
+    const C = ns.CustomFields;
+    if (!C) {
+      return '';
+    }
+    const missing = C.missing(S(), t);
+    if (!missing.length) {
+      return '';
+    }
+    const names = missing
+      .map(function (f) {
+        return U.escapeHtml(f.label);
+      })
+      .join(', ');
+    return (
+      '<span class="badge br" style="font-size:.6rem;padding:1px 4px;margin-left:4px" title="Missing required: ' +
+      names +
+      '">REQ</span>'
+    );
+  }
+
   function renderWbs() {
     const s = S();
     if (!s) {
@@ -1930,13 +2063,19 @@ var MMGR = window.MMGR || {};
     if (!body) {
       return;
     }
+    // The schema can change while the panel is open, so the header is
+    // rebuilt on every WBS render, not only on section entry.
+    renderWbsHead();
     // RESTORE-7: keep the schedule-issues banner in sync with the rows below.
     renderWbsAlerts();
     const tasks = s.tasks || [];
     const defExpanded = s.defExpanded || {};
     if (tasks.length === 0) {
+      const cfCols = ns.CustomFields ? ns.CustomFields.visible(s, 'wbs').length : 0;
       body.innerHTML =
-        '<tr><td colspan="8" class="wbs-empty"><div>No tasks yet.</div><div style="display:flex;gap:6px;justify-content:center"><button class="btn btn-g btn-s" data-action="addTask">+ Add Task</button><button class="btn btn-n btn-s" data-action="openWbsImport">Import from text</button></div></td></tr>';
+        '<tr><td colspan="' +
+        (8 + cfCols) +
+        '" class="wbs-empty"><div>No tasks yet.</div><div style="display:flex;gap:6px;justify-content:center"><button class="btn btn-g btn-s" data-action="addTask">+ Add Task</button><button class="btn btn-n btn-s" data-action="openWbsImport">Import from text</button></div></td></tr>';
       return;
     }
     // Skip rows whose phase ancestor is collapsed.
@@ -1993,6 +2132,7 @@ var MMGR = window.MMGR || {};
           <label class="wb-milestone" title="Mark as Milestone"><input type="checkbox" ${t.milestone ? 'checked' : ''} data-action="tglMilestone" data-id="${U.escapeHtml(t.id)}"> <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-flag"></use></svg></label>
           ${t.critical ? '<span class="badge bo" style="font-size:.6rem;padding:1px 4px;margin-left:4px">CP</span>' : ''}
           ${chainRisk ? '<span class="badge br" style="font-size:.6rem;padding:1px 4px;margin-left:4px" title="A predecessor is overdue, this downstream chain is at risk (2.1)">CHAIN</span>' : ''}
+          ${requiredBadge(t)}
           ${relationBadge(t)}
           ${
             parGroups && parGroups.has(t.id)
@@ -2045,6 +2185,7 @@ var MMGR = window.MMGR || {};
             <option value="completed" ${t.status === 'completed' ? 'selected' : ''}>Done</option>
           </select>
         </td>
+        ${customFieldCells(t)}
         <td style="white-space:nowrap">
           <button class="btn btn-s ${t.weatherSensitive ? 'btn-wx' : 'btn-n'}" data-action="tglWeather" data-id="${U.escapeHtml(t.id)}" title="${t.weatherSensitive ? 'Weather-sensitive, buffer added for regional windows during cascade' : 'Mark weather-sensitive, adds selective buffer for regional windows during cascade'}" style="padding:5px 8px"><svg class="ico" aria-hidden="true" style="font-size:.62rem"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg></button>
           <button class="btn btn-s ${t.leadTime ? 'btn-lt' : 'btn-n'}" data-action="tglLeadTime" data-id="${U.escapeHtml(t.id)}" title="${t.leadTime ? 'Lead-Time, tracked by Submitted/Expected dates (click to unmark)' : 'Mark as Lead-Time, vendor/third-party wait tracked by Submitted/Expected dates (procurement, permits, deliveries)'}" style="padding:5px 8px"><svg class="ico" aria-hidden="true" style="font-size:.62rem"><use href="css/mmgr-icons.svg#i-clock"></use></svg></button>
@@ -2910,6 +3051,20 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // ---- Idea intake ---- (extracted to js/render/ideas.js)
+  function renderIdeas() {
+    if (ns.RenderIdeas) {
+      ns.RenderIdeas.renderIdeas();
+    }
+  }
+
+  // ---- Agenda ---- (extracted to js/render/agenda.js)
+  function renderAgenda() {
+    if (ns.RenderAgenda) {
+      ns.RenderAgenda.renderAgenda();
+    }
+  }
+
   // ---- Risks ---- (extracted to js/render/risks.js)
   function parseImpactDays(text) {
     return ns.RenderRisks ? ns.RenderRisks.parseImpactDays(text) : 0;
@@ -3028,6 +3183,29 @@ var MMGR = window.MMGR || {};
       ns.RenderPeople.renderLog();
     }
   }
+  function renderProcessFeed() {
+    if (ns.RenderPeople) {
+      ns.RenderPeople.renderProcessFeed();
+    }
+  }
+  function renderRules() {
+    if (ns.RenderProcess) {
+      ns.RenderProcess.renderRules();
+    }
+  }
+  function renderApprovalPack(pack) {
+    return ns.RenderPeople ? ns.RenderPeople.renderApprovalPack(pack) : false;
+  }
+  function renderCycles() {
+    if (ns.RenderCycles) {
+      ns.RenderCycles.renderCycles();
+    }
+  }
+  function renderModules() {
+    if (ns.RenderCycles) {
+      ns.RenderCycles.renderModules();
+    }
+  }
 
   // ---- Closure ---- (extracted to js/render/closure.js)
   function renderPunchList() {
@@ -3108,6 +3286,22 @@ var MMGR = window.MMGR || {};
   function renderDocuments() {
     if (ns.RenderDocs) {
       ns.RenderDocs.renderDocuments();
+    }
+    // The Documents panel also carries the Pages view (project book). The
+    // renderer draws the switcher state even while Register is showing.
+    renderPages();
+  }
+
+  // ---- Project book pages ---- (extracted to js/render/pages.js)
+  function renderPages() {
+    if (ns.RenderPages) {
+      ns.RenderPages.renderPages();
+    }
+  }
+
+  function renderPack(pack) {
+    if (ns.RenderPages) {
+      ns.RenderPages.renderPack(pack);
     }
   }
 
@@ -3470,6 +3664,13 @@ var MMGR = window.MMGR || {};
     }
     // C24: Template Library list
     renderTemplates();
+    // Declared rules: the Controls panel reads state, so an import or a
+    // project switch refreshes the list and the execution log.
+    renderRules();
+    // Planning: cycles and the backlog read the task array, so any task change
+    // is reflected the next time the section is drawn.
+    renderCycles();
+    renderModules();
   }
 
   // ==================================================================
@@ -3982,6 +4183,8 @@ var MMGR = window.MMGR || {};
     renderWbs: renderWbs,
     renderGantt: renderGantt,
     renderKanban: renderKanban,
+    renderIdeas: renderIdeas,
+    renderAgenda: renderAgenda,
     toggleTaskComments: toggleTaskComments,
     renderTaskComments: renderTaskComments,
     // RESTORE-1: risk matrix click-to-filter actions (view-only).
@@ -3996,6 +4199,11 @@ var MMGR = window.MMGR || {};
     renderStakeholders: renderStakeholders,
     renderChanges: renderChanges,
     renderLog: renderLog,
+    renderProcessFeed: renderProcessFeed,
+    renderApprovalPack: renderApprovalPack,
+    renderCycles: renderCycles,
+    renderModules: renderModules,
+    renderRules: renderRules,
     renderClosure: renderClosure,
     renderPunchList: renderPunchList,
     renderRfis: renderRfis,
@@ -4004,6 +4212,8 @@ var MMGR = window.MMGR || {};
     renderRaciHeatmap: renderRaciHeatmap,
     renderComms: renderComms,
     renderDocuments: renderDocuments,
+    renderPages: renderPages,
+    renderPack: renderPack,
     renderDmaic: renderDmaic,
     renderDefs: renderDefs,
     renderMeetingsPanel: renderMeetingsPanel,

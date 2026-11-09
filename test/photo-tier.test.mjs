@@ -35,7 +35,7 @@
    ============================================================ */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { handlePhotoUpload } from '../src/cloud/photos.js';
+import { handlePhotoUpload, handlePhotoUsage, photoQuotaForPlan } from '../src/cloud/photos.js';
 import { hashOwnerCode } from '../src/lib/http.js';
 
 // A real 1x1 PNG, so the content-type and size paths run on real bytes.
@@ -98,8 +98,18 @@ async function makeEnv(opts = {}) {
           return args[0] === PROJECT_ID ? project : null;
         }
         if (statement.indexOf('FROM cloud_subscriptions') !== -1) {
-          const status = o.subs[args[0]];
-          return status ? { status: status } : null;
+          const sub = o.subs[args[0]];
+          if (!sub) {
+            return null;
+          }
+          if (typeof sub === 'string') {
+            return { status: sub, plan: 'contractor', tier: 'contractor' };
+          }
+          return {
+            status: sub.status,
+            plan: sub.tier || sub.plan || 'contractor',
+            tier: sub.tier || sub.plan || 'contractor'
+          };
         }
         if (statement.indexOf('COUNT(*)') !== -1) {
           return { c: 0 };
@@ -265,4 +275,78 @@ test('a project with no cloud row is still 403 before any billing question', asy
   const res = await handlePhotoUpload(uploadRequest(), f.env, 'local-only-project');
   assert.equal(res.status, 403);
   assert.equal(f.r2Put.length, 0);
+});
+
+// ---- C (2026-11-09): the quota is per plan, not one flat number ----
+
+const MB = 1024 * 1024;
+const GB = 1024 * MB;
+
+test('the plan table pins each tier', () => {
+  assert.equal(photoQuotaForPlan('free'), 0);
+  assert.equal(photoQuotaForPlan('contractor'), 500 * MB);
+  assert.equal(photoQuotaForPlan('estimator'), 2 * GB);
+  assert.equal(photoQuotaForPlan('company'), 2 * GB);
+  assert.equal(photoQuotaForPlan('enterprise'), 10 * GB);
+  // An active subscription whose tier string we do not recognise keeps the
+  // base paid allowance; it must never fall to zero.
+  assert.equal(photoQuotaForPlan('mystery-plan'), 500 * MB);
+  assert.equal(photoQuotaForPlan(''), 500 * MB);
+});
+
+test('usage reports the limit that belongs to the active plan', async () => {
+  const tiers = [
+    ['contractor', 500 * MB],
+    ['estimator', 2 * GB],
+    ['company', 2 * GB],
+    ['enterprise', 10 * GB]
+  ];
+  for (const [tier, expected] of tiers) {
+    const f = await makeEnv({
+      billing: true,
+      googleSub: OWNER_SUB,
+      subs: { [OWNER_SUB]: { status: 'active', tier: tier } }
+    });
+    const req = new Request(
+      'https://example.test/api/cloud/projects/' + PROJECT_ID + '/photos/usage',
+      {
+        headers: { 'X-Owner-Code': OWNER_CODE }
+      }
+    );
+    const res = await handlePhotoUsage(req, f.env, PROJECT_ID);
+    const body = await res.json();
+    assert.equal(res.status, 200, tier + ' -> ' + JSON.stringify(body));
+    assert.equal(body.usage.plan, tier, tier);
+    assert.equal(body.usage.limitBytes, expected, tier);
+  }
+});
+
+test('a free account reports zero bytes and still cannot upload', async () => {
+  const f = await makeEnv({ billing: true, googleSub: OWNER_SUB, subs: {} });
+  const req = new Request(
+    'https://example.test/api/cloud/projects/' + PROJECT_ID + '/photos/usage',
+    {
+      headers: { 'X-Owner-Code': OWNER_CODE }
+    }
+  );
+  const res = await handlePhotoUsage(req, f.env, PROJECT_ID);
+  const body = await res.json();
+  assert.equal(body.usage.plan, 'free');
+  assert.equal(body.usage.limitBytes, 0);
+  assert.equal(body.upgradeRequired, true);
+  assert.match(String(body.upgradeMessage), /paid plan/);
+});
+
+test('billing dormant still reports the base paid allowance', async () => {
+  const f = await makeEnv({ billing: false, googleSub: OWNER_SUB, subs: {} });
+  const req = new Request(
+    'https://example.test/api/cloud/projects/' + PROJECT_ID + '/photos/usage',
+    {
+      headers: { 'X-Owner-Code': OWNER_CODE }
+    }
+  );
+  const res = await handlePhotoUsage(req, f.env, PROJECT_ID);
+  const body = await res.json();
+  assert.equal(body.usage.plan, 'contractor');
+  assert.equal(body.usage.limitBytes, 500 * MB);
 });

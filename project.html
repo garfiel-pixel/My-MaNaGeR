@@ -61,7 +61,7 @@
       clicks "Connect Google" in Settings > Controls. It is a device label,
       never a gate , offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-bNgcoc7tfeRDht6Q1VyFRJijrVzJfaHivL8FxmPia0c=' 'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4=' 'sha256-1lQZ8ZnhADNPMPnTqfYPbBDeCin0qp40ehxDc065Fmc='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-Q/nDW21rfkVgwvwjhKwtQQBoHYc4MyDlFfgSLvJxTk8=' 'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4=' 'sha256-1lQZ8ZnhADNPMPnTqfYPbBDeCin0qp40ehxDc065Fmc='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
@@ -249,8 +249,13 @@
     <button class="sec-btn" data-action="showSec" data-section="wbs"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><rect x="4" y="6" width="16" height="13" rx="2" stroke="#D4AF37" stroke-width="2"/><path d="M8 10H16M8 14H12" stroke="#D4AF37" stroke-width="2"/></svg>WBS</button>
     <button class="sec-btn" data-action="showSec" data-section="gantt" data-pack="schedule" id="gnav"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M4 6H14M4 12H18M4 18H10" stroke="#D4AF37" stroke-width="2" stroke-linecap="round"/></svg>Gantt</button>
     </div>
+    <div class="nav-group"><span class="nav-group-label">Intake</span>
+    <button class="sec-btn" data-action="showSec" data-section="ideas" id="ideas-nav"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M9 18h6M10 21h4" stroke="#D4AF37" stroke-width="2" stroke-linecap="round"/><path d="M12 3a6.5 6.5 0 0 0-3.6 11.9c.6.4 1 1.1 1 1.9v.2h5.2v-.2c0-.8.4-1.5 1-1.9A6.5 6.5 0 0 0 12 3z" stroke="#D4AF37" stroke-width="2" stroke-linejoin="round"/></svg>Intake</button>
+    <button class="sec-btn" data-action="showSec" data-section="agenda" id="agenda-nav"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><rect x="4" y="5.5" width="16" height="15" rx="2" stroke="#D4AF37" stroke-width="2"/><path d="M4 10h16M8 3v4M16 3v4" stroke="#D4AF37" stroke-width="2" stroke-linecap="round"/></svg>Agenda</button>
+    </div>
     <div class="nav-group"><span class="nav-group-label">Collaborate</span>
     <button class="sec-btn" data-action="showSec" data-section="kan" id="knav"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="2" stroke="#D4AF37" stroke-width="2"/><path d="M9 4V20M15 4V20" stroke="#D4AF37" stroke-width="2"/></svg>Kanban</button>
+    <button class="sec-btn" data-action="showSec" data-section="plan" id="plan-nav"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M4 7H20M4 12H20M4 17H14" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round"/><circle cx="18" cy="17" r="2.2" stroke="#8B5CF6" stroke-width="2"/></svg>Planning</button>
     <button class="sec-btn" data-action="showSec" data-section="res" data-pack="money"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M5 18H19" stroke="#22C55E" stroke-width="2"/><path d="M12 4C8.5 4 5.5 7 5.5 11V18H18.5V11C18.5 7 15.5 4 12 4Z" stroke="#22C55E" stroke-width="2"/></svg>Resources</button>
     <button class="sec-btn" data-action="showSec" data-section="bud" data-pack="money"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M21 7H3V17H21V7Z" stroke="#D4AF37" stroke-width="2" stroke-linejoin="round"/><path d="M17 10H7" stroke="#D4AF37" stroke-width="2"/><path d="M3 7L12 12L21 7" stroke="#D4AF37" stroke-width="2"/></svg>Budget</button>
     <button class="sec-btn" data-action="showSec" data-section="proc" data-pack="procurement"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M3 5H5.4L7.3 15.5H17.7L19.6 7.5H6.3" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7.3 15.5L6.9 18H18.4" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="20.4" r="1.5" stroke="#D4AF37" stroke-width="2"/><circle cx="17" cy="20.4" r="1.5" stroke="#D4AF37" stroke-width="2"/></svg>Procurement</button>
@@ -598,13 +603,14 @@
           <button class="btn btn-o btn-s" data-action="openImportDates"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Import Dates</button>
           <button class="btn btn-n btn-s" data-action="collapseAll">Collapse All</button>
           <button class="btn btn-n btn-s" data-action="expandAll">Expand All</button>
+          <button class="btn btn-o btn-s" data-action="openFields"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-list"></use></svg> Fields</button>
           <button class="btn btn-n btn-s" data-action="cpAllPage" data-section="wbs"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy All</button>
           <button class="btn btn-d btn-s" data-action="startHold" data-section="wbs"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Clear All</button>
         </div>
       </div>
       <div id="wbs-alerts" class="wbs-alerts"></div>
       <div class="ox">
-        <table class="dt"><thead><tr>
+        <table class="dt"><thead><tr id="wbs-head-row">
           <th class="w38">ID</th><th>Task Name</th><th class="w130">Assignee</th>
           <th class="w70">Duration</th><th class="w120">Start</th>
           <th class="w120">End</th><th class="w120">Status</th><th class="w96">Actions</th>
@@ -668,6 +674,49 @@
     </div>
   </div>
 
+  <!-- ═══ INTAKE (Leantime-inspired idea board) ═══ -->
+  <div class="panel" id="panel-ideas">
+    <div class="card mb0">
+      <div class="card-title">Intake
+        <div class="g6">
+          <div class="idseg" role="group" aria-label="Intake view">
+            <button class="idseg-b is-on" data-action="setIdeaView" data-view="board" aria-pressed="true">Board</button>
+            <button class="idseg-b" data-action="setIdeaView" data-view="list" aria-pressed="false">List</button>
+          </div>
+          <div>
+            <label class="slb" for="ideas-tag">Tag</label>
+            <select id="ideas-tag" data-action="setIdeaTag"><option value="">All tags</option></select>
+          </div>
+          <button class="btn btn-g btn-s" data-action="openIdea"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New Idea</button>
+        </div>
+      </div>
+      <div class="idmeta" id="ideas-stats" aria-live="polite">No ideas yet</div>
+      <div id="ideas-body">
+        <div class="idboard" id="ideas-board"></div>
+        <div id="ideas-list" class="is-hide"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ AGENDA (Leantime-inspired merged date feed) ═══ -->
+  <div class="panel" id="panel-agenda">
+    <div class="card mb0">
+      <div class="card-title">Agenda
+        <div class="g6">
+          <div class="idseg" role="group" aria-label="Agenda window">
+            <button class="idseg-b" data-action="setAgendaDays" data-days="7" aria-pressed="false">7 days</button>
+            <button class="idseg-b is-on" data-action="setAgendaDays" data-days="30" aria-pressed="true">30 days</button>
+            <button class="idseg-b" data-action="setAgendaDays" data-days="0" aria-pressed="false">All dated</button>
+          </div>
+          <button class="btn btn-o btn-s" data-action="exportAgendaIcs"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Export .ics</button>
+        </div>
+      </div>
+      <p class="t-xs mb14">Every dated record in one list: task end dates, milestones, meetings, open issues, open change requests and live ideas. Each entry opens the panel that owns it. Nothing is editable from here.</p>
+      <div class="agmeta" id="agenda-summary" aria-live="polite">Nothing dated in this window</div>
+      <div id="agenda-body"></div>
+    </div>
+  </div>
+
   <!-- ═══ KANBAN ═══ -->
   <div class="panel" id="panel-kan">
     <div class="card mb0" >
@@ -677,10 +726,22 @@
           <button class="btn btn-n btn-s" data-action="cpAllPage" data-section="kan"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy All</button>
           <button class="btn btn-n btn-s" data-action="kbWip"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-target"></use></svg> Column Limits</button>
           <button class="btn btn-o btn-s toggle-chip is-off" data-action="tglLeadtimeLane" id="kb-lt-tgl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clock"></use></svg> Show Lead-Time Lane</button>
+          <button class="btn btn-o btn-s" data-action="openFields"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-list"></use></svg> Fields</button>
+          <select id="kb-cf-key" class="ctl-in" data-action="setCfFilter" data-role="key" aria-label="Filter field" title="Filter the board by a select custom field">
+            <option value="">No field filter</option>
+          </select>
+          <select id="kb-cf-val" class="ctl-in" data-action="setCfFilter" data-role="value" aria-label="Filter value" title="Show only cards with this value" disabled>
+            <option value="">Any</option>
+          </select>
           <select id="kb-lens" class="ctl-in" data-action="setRelLens" aria-label="Board lens" title="Show all cards, only blocked cards, or only ready cards">
             <option value="all">All cards</option>
             <option value="blocked">Blocked only</option>
             <option value="ready">Ready only</option>
+          </select>
+          <select id="kb-scope" class="ctl-in" data-action="setKanScope" aria-label="Cycle scope" title="Show every card, only the active cycle, or only the backlog">
+            <option value="all">All cards</option>
+            <option value="active">Active cycle</option>
+            <option value="backlog">Backlog</option>
           </select>
           <button class="btn btn-d btn-s" data-action="startHold" data-section="kan"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Clear All</button>
         </div>
@@ -714,6 +775,41 @@
       </div>
     </div>
   </div>
+
+<!-- ═══ CUSTOM FIELDS SHEET (NocoBase-inspired collection schema) ═══
+     House modal chrome (.kb-sheet + .open, .mb/.mh/.mbody/.mf), so it
+     inherits the existing layering, focus restore and the shortcut-layer
+     stand-down. No bespoke overlay. -->
+<div id="cf-modal" class="kb-sheet cf-sheet" role="dialog" aria-modal="true" aria-labelledby="cf-title">
+  <div class="mb cf-box">
+    <div class="mh">
+      <span class="mt" id="cf-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-list"></use></svg> Custom fields</span>
+      <button type="button" class="dc" data-action="closeFields" aria-label="Close custom fields"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button>
+    </div>
+    <div class="mbody">
+      <p class="modal-txt mb8">A field belongs to this project, not to one task. Every task keeps its own value. A field removed here is removed from every task.</p>
+      <div id="cf-list" class="cf-list"></div>
+      <div class="cf-add">
+        <input type="text" id="cf-label" class="ctl-in" maxlength="40" placeholder="Field label" aria-label="Field label">
+        <select id="cf-type" class="ctl-in" aria-label="Field type">
+          <option value="text">Text</option>
+          <option value="number">Number</option>
+          <option value="date">Date</option>
+          <option value="select">Select</option>
+          <option value="checkbox">Checkbox</option>
+        </select>
+        <input type="text" id="cf-options" class="ctl-in" placeholder="Options, comma separated" aria-label="Select options">
+        <label class="cf-flag"><input type="checkbox" id="cf-wbs" checked> WBS</label>
+        <label class="cf-flag"><input type="checkbox" id="cf-card"> Card</label>
+        <label class="cf-flag"><input type="checkbox" id="cf-req"> Required</label>
+        <button class="btn btn-g btn-s" data-action="addCustomField">Add field</button>
+      </div>
+    </div>
+    <div class="mf">
+      <button type="button" class="btn btn-n btn-s" data-action="closeFields">Done</button>
+    </div>
+  </div>
+</div>
 
 <!-- Kanban column limits. Soft targets only: a limit warns, never blocks. -->
 <div id="kbwip-modal">
@@ -775,6 +871,43 @@
 </div>
 
   <!-- ═══ RESOURCES ═══ -->
+  <!-- ═══ PLANNING (Plane-inspired cycles) ═══ -->
+  <div class="panel" id="panel-plan">
+    <div class="card m0a mb16" id="cyc-card">
+      <div class="card-title" data-def="Cycles">Cycles
+        <span class="ct-sub">A window with a commitment inside it</span>
+      </div>
+      <div class="cyc-form">
+        <input id="cyc-name" class="ctl-in" type="text" placeholder="Cycle name" aria-label="Cycle name">
+        <input id="cyc-start" class="ctl-in" type="date" aria-label="Cycle start">
+        <input id="cyc-end" class="ctl-in" type="date" aria-label="Cycle end">
+        <button class="btn btn-g btn-s" data-action="cycAdd">Add cycle</button>
+      </div>
+      <div class="ox"><table class="dt"><thead><tr><th>Cycle</th><th class="w160">Window</th><th class="w90">State</th><th class="w110">Work</th><th class="w70">Days</th><th class="w170"></th></tr></thead><tbody id="cyc-body"></tbody></table></div>
+    </div>
+    <div class="card m0a mb16" id="cyc-detail-card">
+      <div class="card-title">Inside the cycle</div>
+      <div id="cyc-detail"></div>
+    </div>
+    <div class="card m0a mb16" id="cyc-backlog-card">
+      <div class="card-title">Backlog
+        <span class="ct-sub">Tasks with no cycle</span>
+      </div>
+      <div id="cyc-backlog" class="cyc-back"></div>
+    </div>
+    <div class="card m0a">
+      <div class="card-title" data-def="Modules">Modules
+        <span class="ct-sub">Outcome packages across phases and cycles</span>
+      </div>
+      <div class="cyc-form">
+        <input id="mod-name" class="ctl-in" type="text" placeholder="Module name" aria-label="Module name">
+        <input id="mod-lead" class="ctl-in" type="text" placeholder="Lead" aria-label="Module lead">
+        <input id="mod-target" class="ctl-in" type="date" aria-label="Module target date">
+        <button class="btn btn-g btn-s" data-action="modAdd">Add module</button>
+      </div>
+      <div class="ox"><table class="dt"><thead><tr><th>Module</th><th class="w110">Lead</th><th class="w110">Target</th><th class="w120">Work</th><th class="w120">Progress</th><th class="w220"></th></tr></thead><tbody id="mod-body"></tbody></table></div>
+    </div>
+  </div>
   <div class="panel" id="panel-res">
     <div class="card">
       <div class="card-title">Resources , Team, Equipment & Materials
@@ -998,6 +1131,7 @@
       <div class="card-title" data-def="Change Control">Change Control Register
         <div class="g6">
           <button class="btn btn-g btn-s" data-action="addChange">+ Add Change Request</button>
+          <button class="btn btn-n btn-s" data-action="printApprovalPack"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Print approval pack</button>
           <button class="btn btn-n btn-s" data-action="cpAllPage" data-section="chg"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy All</button>
         </div>
       </div>
@@ -1012,6 +1146,22 @@
 
   <!-- ═══ DECISION LOG ═══ -->
   <div class="panel" id="panel-log">
+    <!-- Recorded moves: the app's own record of status changes. The written
+         Decision Log below stays a person's narrative; the two are labelled
+         differently on purpose. -->
+    <div class="card m0a mb16">
+      <div class="card-title">Recorded moves
+        <span class="ct-sub">Written by the app when a status changes, never by a person</span>
+        <div class="g6">
+          <select class="ctl-in" id="tr-filter" data-action="setTrFilter" aria-label="Filter recorded moves">
+            <option value="all">All records</option>
+            <option value="change">Changes</option>
+            <option value="issue">Issues</option>
+          </select>
+        </div>
+      </div>
+      <div id="tr-feed" class="tr-feed"></div>
+    </div>
     <div class="card">
       <div class="card-title">Decision Log
         <div class="g6">
@@ -1312,6 +1462,14 @@
 
   <!-- ═══ DOCUMENTS ═══ -->
   <div class="panel" id="panel-docs">
+    <!-- AppFlowy-inspired project book: the Documents panel carries two views.
+         Register is the controlled-document log that already existed; Pages is
+         the page tree + block body. The choice is per device (state.docsView). -->
+    <div class="idseg pg-switch" role="group" aria-label="Documents view">
+      <button class="idseg-b is-on" data-action="setDocsView" data-view="register" aria-pressed="true">Register</button>
+      <button class="idseg-b" data-action="setDocsView" data-view="pages" aria-pressed="false">Pages</button>
+    </div>
+    <div id="docs-register">
     <div class="card">
       <div class="card-title">Document Register
         <div class="g6">
@@ -1322,7 +1480,7 @@
       <div class="ox"><table class="dt"><thead><tr>
         <th class="w38">ID</th><th class="w110">Doc No.</th><th>Title</th>
         <th class="w130">Type</th><th class="w70">Ver</th><th class="w130">Status</th>
-        <th>Responsible</th><th>Notes</th><th class="w60"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
+        <th>Responsible</th><th class="w120">Issued</th><th>Notes</th><th class="w150">Page</th><th class="w60"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
       </tr></thead><tbody id="doc-body"></tbody></table></div>
     </div>
     <!-- RFI Register (MARKET-FEATURE-ROADMAP C1) , question → routing →
@@ -1384,6 +1542,19 @@
         <th class="w50">ID</th><th>Material</th><th>Vendor</th><th class="w60">Qty</th><th class="w50">Unit</th>
         <th class="w110">Ordered</th><th class="w110">Expected</th><th class="w110">Received</th><th class="w100">Status</th><th class="w80">Cost</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
       </tr></thead><tbody id="proc-body"></tbody></table></div>
+    </div>
+    </div>
+    <!-- Pages view. Rendered entirely by js/render/pages.js from the flat
+         state.pages array; the block body is plain text, never HTML. -->
+    <div id="docs-pages" hidden>
+      <div class="card">
+        <div class="card-title">Project book
+          <div class="g6">
+            <button class="btn btn-g btn-s" data-action="addPage"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New page</button>
+          </div>
+        </div>
+        <div id="pages-body"></div>
+      </div>
     </div>
   </div>
 
@@ -1775,7 +1946,11 @@
     <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Share &amp; Access</div>
     <div id="ctrl-share" role="region" aria-label="Sharing and access codes"></div>
 
-    <!-- C24 Template Library -->
+    <!-- Rules (Huly-inspired): declared triggers, conditions and one action
+         from a fixed list. No scripting, no outside calls. Rendered by
+         js/render/process.js into #rules-body. -->
+    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Rules</div>
+    <div id="rules-body" role="region" aria-label="Declared rules"></div>    <!-- C24 Template Library -->
     <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Templates</div>
     <div class="sr-hint ctl-lead">Save your current schedule and budget as a reusable template, or apply a built-in template to get started quickly.</div>
     <div class="ctl-actions">
@@ -1940,6 +2115,11 @@
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-flag"></use></svg> Report Issue</span><span class="g6"><button class="btn btn-n btn-s" data-action="reportIssueCopy" title="Copy a sanitized diagnostic package to the clipboard"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy report</button><button class="btn btn-n btn-s" data-action="reportIssueDownload" title="Download the diagnostic package as a .txt file"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Download</button></span></div>
     <div class="sr"><span class="sl">Include project context</span><label class="tgl"><input type="checkbox" id="report-ctx-tgl" aria-label="Include project context in the report" data-action="tglReportContext"><span class="tsl"></span></label></div>
     <div class="sr-hint">Packages a sanitized snapshot: active panel, packs, non-sensitive counts, and the client error log. Budget figures, risk descriptions, and names are NEVER included unless you check <strong>Include project context</strong> (adds project name, task/risk/issue lists, and budget totals). Nothing is sent anywhere , you copy or download it yourself.</div>
+    <!-- G3 (owner 2026-11-08): in-app feedback entry. Routes to the contact
+         form's Feedback topic (one moderated channel, Turnstile already there,
+         no new endpoint or schema). -->
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg> Send Feedback</span><span class="g6"><button class="btn btn-n btn-s" data-action="openFeedback" title="Open the feedback form with the Feedback topic pre-selected"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg> Give feedback</button></span></div>
+    <div class="sr-hint">Tell us what to build next, what confused you, or what broke. Opens the contact form with the Feedback topic already selected.</div>
     <!-- DIR-1b: opt-in remote error reporting , OFF by default, device-level
          slot (never project state), POSTs routed through MMGR.Net's
          circuit-breaker. Zero network activity while off. -->
@@ -2251,6 +2431,75 @@
   </div>
 </div>
 
+<!-- Idea sheet. Reuses the keyboard-sheet scrim (.kb-sheet/.mb) so it needs
+     no new modal chrome; #idea-sheet is not #kb-sheet, so the keyboard
+     shortcut sheet's own open-state check never sees it. -->
+<div id="idea-sheet" class="kb-sheet" role="dialog" aria-modal="true" aria-labelledby="idea-sheet-title">
+  <div class="mb">
+    <div class="mh">
+      <span class="mt" id="idea-sheet-title">New idea</span>
+      <button type="button" class="dc" data-action="closeIdea" aria-label="Close the idea sheet"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button>
+    </div>
+    <div class="mbody">
+      <p class="idf-hint">An idea is a candidate, not a task. It reaches the Gantt, the critical path and the resource levelling only after you promote it.</p>
+      <div class="idf">
+        <div class="idf-full">
+          <label for="idea-title">Title</label>
+          <input type="text" id="idea-title" maxlength="120" autocomplete="off">
+        </div>
+        <div class="idf-full">
+          <label for="idea-summary">What it is, in one or two sentences</label>
+          <textarea id="idea-summary" maxlength="2000"></textarea>
+        </div>
+        <div>
+          <label for="idea-author">Author</label>
+          <input type="text" id="idea-author" maxlength="120" autocomplete="off">
+        </div>
+        <div>
+          <label for="idea-tags">Tags, comma separated</label>
+          <input type="text" id="idea-tags" maxlength="200" autocomplete="off">
+        </div>
+        <div>
+          <label for="idea-impact">Impact, 1 to 5</label>
+          <select id="idea-impact">
+            <option value="1">1, marginal</option>
+            <option value="2">2, small</option>
+            <option value="3" selected>3, moderate</option>
+            <option value="4">4, large</option>
+            <option value="5">5, decisive</option>
+          </select>
+        </div>
+        <div>
+          <label for="idea-effort">Effort, 1 to 5</label>
+          <select id="idea-effort">
+            <option value="1">1, a morning</option>
+            <option value="2">2, a day</option>
+            <option value="3" selected>3, a few days</option>
+            <option value="4">4, a week or more</option>
+            <option value="5">5, a small project</option>
+          </select>
+        </div>
+        <div class="idf-full">
+          <label for="idea-stage">Stage</label>
+          <select id="idea-stage">
+            <option value="idea" selected>Idea</option>
+            <option value="research">Research</option>
+            <option value="prototype">Prototype</option>
+            <option value="validation">Validation</option>
+            <option value="implemented">Implemented</option>
+            <option value="deferred">Deferred</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="mf">
+      <button type="button" class="btn btn-d btn-s is-hide" data-action="delIdea" id="idea-del">Delete</button>
+      <button type="button" class="btn btn-n btn-s" data-action="closeIdea">Cancel</button>
+      <button type="button" class="btn btn-g btn-s" data-action="saveIdea">Save idea</button>
+    </div>
+  </div>
+</div>
+
 <!-- Scripts: single minified bundle (55 modules concatenated by build.js).
      In production the bundle is the only script request (1 HTTP round-trip
      vs 55). For local dev without a prior build, the fallback detects the
@@ -2277,9 +2526,14 @@ document.addEventListener('error', function (e) {
 document.addEventListener('DOMContentLoaded', function() {
   if (!window.__mmgrBundleMissing) return;
   var MMGR = window.MMGR || {};
-  ['js/mmgr-state.js','js/mmgr-utils.js','js/mmgr-relations.js','js/mmgr-kanban.js','js/mmgr-net.js','js/consent.js',
+  ['js/mmgr-state.js','js/mmgr-utils.js','js/mmgr-ideas.js','js/mmgr-agenda.js','js/mmgr-pages.js','js/mmgr-cycles.js','js/mmgr-custom-fields.js','js/mmgr-relations.js','js/mmgr-kanban.js','js/mmgr-net.js','js/consent.js',
    'js/render/financials.js','js/render/people.js','js/render/closure.js',
    'js/render/documents.js','js/render/weather.js','js/render/kanban.js',
+   'js/render/ideas.js',
+   'js/render/agenda.js',
+   'js/render/pages.js',
+   'js/render/cycles.js',
+   'js/render/process.js',
    'js/render/risks.js','js/render/resources.js','js/mmgr-render.js',
    'js/mmgr-prompts.js','js/mmgr-weather.js','js/mmgr-field.js',
    'js/mmgr-schedule.js','js/mmgr-resources.js','js/mmgr-health.js',
@@ -2288,7 +2542,7 @@ document.addEventListener('DOMContentLoaded', function() {
    'js/app/components.js','js/app/confirm.js','js/app/copy-text.js','js/app/sidebar.js','js/mmgr-gantt-view.js','js/mmgr-app.js','js/app/weather.js','js/app/backup.js','js/mmgr-boq-bridge.js','js/mmgr-weekly.js','js/mmgr-approval.js',
    'js/app/export.js','js/app/history.js','js/app/definitions.js',
    'js/mmgr-presence.js','js/mmgr-tasks.js','js/mmgr-risks.js',
-   'js/mmgr-stakeholders.js','js/mmgr-bids.js','js/mmgr-closure.js',
+   'js/mmgr-stakeholders.js','js/mmgr-process.js','js/mmgr-bids.js','js/mmgr-closure.js',
    'js/mmgr-procurement.js',
    'js/mmgr-raci.js','js/mmgr-charter.js','js/mmgr-defs.js',
    'js/mmgr-forecast.js','js/mmgr-decisions.js',
@@ -2417,5 +2671,8 @@ if ('serviceWorker' in navigator &&
   </dl>
   <button type="button" class="btn btn-n btn-s" popovertarget="which-code-pop" popovertargetaction="hide">Close</button>
 </div>
+<!-- Handover pack. Assembled on demand, painted by js/render/pages.js, shown
+     only by the @media print rules in css/src/30-panels.css. -->
+<div id="pg-pack" aria-hidden="true"></div>
 </body>
 </html>

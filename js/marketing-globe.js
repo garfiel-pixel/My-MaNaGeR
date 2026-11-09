@@ -116,8 +116,10 @@
     {
       id: 'workspace',
       title: 'Project workspace',
-      blurb: 'Eighteen panels that share one project, so one change updates every view.',
-      // The features page IS the eighteen-panels tour; it carries no #features
+      blurb:
+        (window.MMGR_PANEL_COUNT || 15) +
+        ' panels that share one project, so one change updates every view.',
+      // The features page IS the panels tour; it carries no #features
       // anchor (that id only exists on index.html), so the card links to the
       // page itself rather than to an anchor that would not scroll.
       href: 'features.html',

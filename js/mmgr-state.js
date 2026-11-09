@@ -48,6 +48,23 @@ var MMGR = window.MMGR || {};
  * @property {string} [relations[].type] - one of MMGR.Relations.TYPES
  * @property {string} [relations[].targetId] - the other task id
  * @property {number} [relations[].lag] - days of lag on precedes/follows
+ * @property {Object} [custom] - custom field values keyed by a cf_ field key
+ */
+
+/**
+ * @typedef {Object} Idea
+ * @property {string} id             - stable record id (`i` prefix)
+ * @property {string} title
+ * @property {string} [summary]
+ * @property {string} stage          - one of MMGR.Ideas.STAGES
+ * @property {string} [author]
+ * @property {string[]} [tags]
+ * @property {number} impact         - 1..5
+ * @property {number} effort         - 1..5
+ * @property {number} order          - position inside the stage column
+ * @property {string} createdAt      - ISO timestamp
+ * @property {string} updatedAt      - ISO timestamp
+ * @property {string} [promotedTaskId] - task created by Promote, one way
  */
 
 /**
@@ -157,11 +174,95 @@ var MMGR = window.MMGR || {};
  * @property {string} projectId
  * @property {string} projectName
  * @property {string} methodology    - 'waterfall'|'agile'|'hybrid'
+ * @property {boolean} [methodologyLocked] - set once the method is chosen
+ * @property {boolean} [crosshairOn]
+ * @property {Array<Object>} [fields] - custom field schema (v26)
+ * @property {{key:string, value:string}} [cfFilter] - board filter (v26)
+ * @property {Object} [meetingPromises] - promises carried between meetings of a kind
+ * @property {Object|null} [activeMeeting]
+ * @property {number} [nmeetid]
+ * @property {number} [nspid]
+ * @property {Array<Object>} [budgetBaselines]
+ * @property {Array<Object>} [budgetVariations]
+ * @property {number} [nblid]
+ * @property {Array<Object>} [logEntries]
+ * @property {Array<Object>} [commsEntries]
+ * @property {Array<Object>} [documents]
+ * @property {Array<Object>} [pages] - project book: flat page tree (v28)
+ * @property {string} [docsView] - per-device Documents view (v28)
+ * @property {string} [pageSel] - per-device selected page id (v28)
+ * @property {boolean} [pageUnfiled] - per-device unfiled filter (v28)
+ * @property {{name:string, start:string, end:string}} [sprint]
+ * @property {Array<Object>} [dailySnapshots]
+ * @property {Object} [defExpanded] - WBS collapse state by task id
+ * @property {Object} [dmaic]
+ * @property {Object|null} [baseline]
+ * @property {string|null} [baselineAutoAt]
+ * @property {Array<Object>} [fieldReportNotes]
+ * @property {Array<Object>} [aiInbox]
+ * @property {string} [weatherRegion]
+ * @property {string} [projectDeadline]
+ * @property {number|null} [siteLat]
+ * @property {number|null} [siteLon]
+ * @property {string} [sitePlace]
+ * @property {Object|null} [wxCache]
+ * @property {Array<Object>} [weatherLog]
+ * @property {number} [ldRate]
+ * @property {number} [wxViewDays]
+ * @property {{start:string, end:string, bufferDays:number}} [wxWindow]
+ * @property {boolean} [kbShowLeadtime]
+ * @property {string} [relLens]
+ * @property {Object} [kanban]
+ * @property {boolean} [hlCritical]
+ * @property {Object|null} [dailySnapshot]
+ * @property {boolean} [focusMode]
+ * @property {{count:number, lastDate:string|null}} [streak]
+ * @property {Array<Object>} [sentimentHistory]
+ * @property {string|null} [lastBackedUpAt]
+ * @property {Object} [flags] - feature flags
+ * @property {boolean} [calcUnitFlag]
+ * @property {boolean} [calcAiUnits]
+ * @property {boolean} [calcStickyPanel]
+ * @property {boolean} [calcSwitches]
+ * @property {boolean} [calcRenderScheduler]
+ * @property {boolean} [ganttExportV2]
+ * @property {boolean} [procPo]
+ * @property {boolean} [consentBanner]
+ * @property {boolean} [ratebookApi]
+ * @property {boolean} [dialogClickFix]
+ * @property {boolean} [comboboxPicker]
+ * @property {boolean} [settingRows]
+ * @property {boolean} [itemisedMaterials]
+ * @property {boolean} [goldBullion]
+ * @property {boolean} [perfBoot]
+ * @property {boolean} [sidebarGutter]
+ * @property {boolean} [sameTabNav]
+ * @property {boolean} [expiryWatcher]
+ * @property {boolean} [finishWatcher]
+ * @property {boolean} [ganttTidy]
+ * @property {boolean} [aiDock]
+ * @property {boolean} [localModel]
+ * @property {boolean} [globeContinuous]
+ * @property {boolean} [dotRailGhost]
+ * @property {boolean} [packsCalloutDismissed]
+ * @property {boolean} [packsEverEnabled]
+ * @property {Array<Object>} [errorLog]
+ * @property {Object} [slipCauses]
+ * @property {Object|null} [digestSnapshot]
+ * @property {Object} [aiOutputs]
+ * @property {Array<Object>} [aiChats]
+ * @property {Object} [packs]
+ * @property {Object} [supplierBook]
+ * @property {string} [updatedAt]
  * @property {number} workWeek       - hours per work week
  * @property {string} theme          - 'light'|'dark'
  * @property {string} userName
  * @property {Charter} charter
  * @property {Task[]} tasks
+ * @property {Idea[]} ideas       - idea intake records (schema v27)
+ * @property {string} [ideaView]  - 'board'|'list' per-device view preference
+ * @property {string} [ideaTag]   - active tag filter (per-device)
+ * @property {number} [agendaDays] - merged-agenda horizon (per-device)
  * @property {Meeting[]} meetings
  * @property {Resource[]} resources
  * @property {BudgetLine[]} budgetLines
@@ -171,6 +272,12 @@ var MMGR = window.MMGR || {};
  * @property {Risk[]} risks
  * @property {Issue[]} issues
  * @property {Change[]} changes
+ * @property {Array<Object>} transitions - append-only status moves (v29)
+ * @property {Array<Object>} cycles - planning windows; tasks point at one (v30)
+ * @property {Array<Object>} modules - outcome packages across phases (v30)
+ * @property {Array<Object>} rules       - declared rules (v29)
+ * @property {Array<Object>} ruleLog     - capped rule execution log (v29)
+ * @property {string} trFilter           - recorded-moves feed filter (per device)
  * @property {ScheduleSlip[]} scheduleSlips
  * @property {Object} raci           - { tasks: string[], persons: string[], matrix: Object }
  * @property {Object} closure        - { items: Object[], well: string, imp: string, rec: string }
@@ -182,7 +289,7 @@ var MMGR = window.MMGR || {};
   'use strict';
 
   const STORAGE_KEY = 'mmgr_state';
-  const SCHEMA_VERSION = 25;
+  const SCHEMA_VERSION = 30;
 
   // ---- Default State ----
   /** @returns {AppState} */
@@ -221,6 +328,16 @@ var MMGR = window.MMGR || {};
       },
       // WBS
       tasks: [],
+      // Idea intake records (schema v27, Leantime-inspired). One array, two
+      // projections (board and list). Values are owned by mmgr-ideas.js.
+      ideas: [],
+      // Custom task fields (schema v26, NocoBase-inspired collection model).
+      // The array is the project's field schema. Values live on each task
+      // in task.custom, keyed by the field's stable `key`. Nothing here
+      // caches a task value.
+      fields: [],
+      // Persisted board filter over one select custom field.
+      cfFilter: { key: '', value: '' },
       // Meetings (completed history + live session)
       meetings: [],
       // ACTION-PLAN 1.2: meeting-to-action closed loop , promises carried
@@ -250,12 +367,30 @@ var MMGR = window.MMGR || {};
       issues: [],
       // Changes
       changes: [],
+      // Process model (Huly-inspired). Transitions are append-only evidence;
+      // rules are declared configuration; ruleLog is the capped execution log.
+      transitions: [],
+      // Cycles are windows; a task points at one through task.cycleId.
+      cycles: [],
+      // Modules group work by outcome across phases and cycles.
+      modules: [],
+      rules: [],
+      ruleLog: [],
+      // Which record type the recorded-moves feed shows. Per-device, so it is
+      // deliberately absent from FIELD_KEYS.
+      trFilter: 'all',
       // Log
       logEntries: [],
       // Comms
       commsEntries: [],
       // Documents
       documents: [],
+      // Project book (AppFlowy-inspired). Pages are project data and travel
+      // with a cloud merge; the two view keys below are per-device only.
+      pages: [],
+      docsView: 'register',
+      pageSel: '',
+      pageUnfiled: false,
       // Closure
       closure: { items: [], well: '', imp: '', rec: '' },
       // RACI
@@ -317,6 +452,12 @@ var MMGR = window.MMGR || {};
       wxWindow: { start: '', end: '', bufferDays: 0 },
       // V3.3 port: dedicated Kanban lead-time swimlane toggle
       kbShowLeadtime: false,
+      // Idea intake view prefs (schema v27, Leantime-inspired). These three
+      // are per-device, so they are deliberately absent from FIELD_KEYS: a
+      // field-level cloud merge must never overwrite the view on this device.
+      ideaView: 'board',
+      ideaTag: '',
+      agendaDays: 30,
       // Work package relations (schema v24, OpenProject-inspired).
       // `relLens` is the persisted Kanban lens. The graph itself lives on
       // task.relations, never in a second table.
@@ -858,6 +999,255 @@ var MMGR = window.MMGR || {};
       }
       return state;
     },
+    26: function (state) {
+      // V25 -> V26: custom task fields (NocoBase-inspired collection model).
+      // Additive and lossless:
+      // - state.fields is the project field schema, empty until the user
+      //   adds a field;
+      // - every task gets an empty custom bag, so a read never has to
+      //   guard for its absence;
+      // - the board filter starts cleared;
+      // - no task is deleted, renamed, or re-statused, and no value is
+      //   invented for a field that does not exist yet.
+      if (!Array.isArray(state.fields)) {
+        state.fields = [];
+      }
+      if (Array.isArray(state.tasks)) {
+        state.tasks.forEach(function (t) {
+          if (!t || typeof t !== 'object') {
+            return;
+          }
+          if (!t.custom || typeof t.custom !== 'object' || Array.isArray(t.custom)) {
+            t.custom = {};
+          }
+        });
+      }
+      if (!state.cfFilter || typeof state.cfFilter !== 'object') {
+        state.cfFilter = { key: '', value: '' };
+      }
+      return state;
+    },
+    27: function (state) {
+      // V26 -> V27: idea intake (Leantime-inspired). Additive and lossless:
+      // - the idea array starts empty;
+      // - the three view preferences get their defaults;
+      // - no task, meeting, issue, change or register is touched.
+      if (!Array.isArray(state.ideas)) {
+        state.ideas = [];
+      }
+      if (state.ideaView !== 'list') {
+        state.ideaView = 'board';
+      }
+      if (typeof state.ideaTag !== 'string') {
+        state.ideaTag = '';
+      }
+      if (state.agendaDays !== 7 && state.agendaDays !== 0) {
+        state.agendaDays = 30;
+      }
+      return state;
+    },
+    28: function (state) {
+      // V27 -> V28: project book (AppFlowy-inspired). Additive and lossless:
+      // - the page array starts empty;
+      // - an imported page is repaired in place (missing id/fields, an
+      //   orphan parent lifted to the root, an unknown block type becomes a
+      //   paragraph) - the state module loads before the page model, so this
+      //   repair is deliberately inline and does not call MMGR.Pages;
+      // - the two view keys are per-device and default to Register.
+      if (!Array.isArray(state.pages)) {
+        state.pages = [];
+      }
+      state.pages = state.pages.filter(function (p) {
+        return p && typeof p === 'object' && !Array.isArray(p);
+      });
+      const pageIds = {};
+      state.pages.forEach(function (p) {
+        if (typeof p.id === 'string' && p.id) {
+          pageIds[p.id] = 1;
+        }
+      });
+      const blockTypes = [
+        'paragraph',
+        'heading',
+        'bullet',
+        'checklist',
+        'callout',
+        'divider',
+        'taskList',
+        'docList'
+      ];
+      state.pages.forEach(function (p) {
+        if (typeof p.id !== 'string' || !p.id) {
+          p.id = 'pg' + Math.random().toString(36).slice(2, 10); // ok: non-secret
+        }
+        if (typeof p.title !== 'string') {
+          p.title = '';
+        }
+        if (typeof p.parentId !== 'string') {
+          p.parentId = '';
+        }
+        if (p.parentId && !pageIds[p.parentId]) {
+          p.parentId = '';
+        }
+        if (typeof p.sort !== 'number' || !isFinite(p.sort)) {
+          p.sort = 0;
+        }
+        if (!Array.isArray(p.blocks)) {
+          p.blocks = [];
+        }
+        p.blocks.forEach(function (b) {
+          if (!b || typeof b !== 'object' || Array.isArray(b)) {
+            return;
+          }
+          if (typeof b.id !== 'string' || !b.id) {
+            b.id = 'b' + Math.random().toString(36).slice(2, 10); // ok: non-secret
+          }
+          if (blockTypes.indexOf(b.type) < 0) {
+            b.type = 'paragraph';
+          }
+          if (typeof b.text !== 'string') {
+            b.text = '';
+          }
+          b.done = b.done === true;
+        });
+        if (typeof p.createdAt !== 'string') {
+          p.createdAt = '';
+        }
+        if (typeof p.updatedAt !== 'string') {
+          p.updatedAt = '';
+        }
+      });
+      if (state.docsView !== 'pages') {
+        state.docsView = 'register';
+      }
+      if (typeof state.pageSel !== 'string') {
+        state.pageSel = '';
+      }
+      state.pageUnfiled = state.pageUnfiled === true;
+      return state;
+    },
+    29: function (state) {
+      // V28 -> V29: the process model (Huly-inspired, 2026-11-08).
+      // - transitions is a FLAT, append-only collection. A nested array on
+      //   the record would be rewritten wholesale by a cloud merge and could
+      //   lose an entry; the history is the evidence, so it lives on its own.
+      // - rules are declared configuration (trigger, conditions, one action
+      //   from a fixed list) and travel with the project; a rule that exists
+      //   on one machine only would silently stop applying.
+      // - ruleLog is the capped execution log, also project data.
+      // Status repair is NOT here: the process model owns the edges and it
+      // loads after this module, so repairAll runs on boot (idempotent).
+      if (!Array.isArray(state.transitions)) {
+        state.transitions = [];
+      }
+      if (!Array.isArray(state.rules)) {
+        state.rules = [];
+      }
+      if (!Array.isArray(state.ruleLog)) {
+        state.ruleLog = [];
+      }
+      if (state.trFilter !== 'change' && state.trFilter !== 'issue') {
+        state.trFilter = 'all';
+      }
+      return state;
+    },
+    30: function (state) {
+      // V29 -> V30: cycles as records (Plane-inspired, 2026-11-08).
+      // - The singleton sprint becomes the first cycle, preserving its name
+      //   and dates. The old object stays readable for one release so an
+      //   older build still shows something; nothing reads it after this.
+      // - A task points at a cycle through task.cycleId. A pointer on the task
+      //   is one write to move a task and cannot duplicate membership in a
+      //   merge.
+      // - A dangling pointer is cleared here: a task in a cycle that does not
+      //   exist would make every total wrong.
+      if (!Array.isArray(state.cycles)) {
+        state.cycles = [];
+      }
+      state.cycles = state.cycles
+        .filter(function (c) {
+          return c && typeof c === 'object';
+        })
+        .map(function (c) {
+          c.id = String(c.id || '');
+          c.name = String(c.name || 'Cycle').slice(0, 80);
+          c.start = String(c.start || '').slice(0, 10);
+          c.end = String(c.end || '').slice(0, 10);
+          c.state = ['planned', 'active', 'closed'].indexOf(c.state) > -1 ? c.state : 'planned';
+          c.notes = String(c.notes || '').slice(0, 2000);
+          c.commitment = c.commitment && typeof c.commitment === 'object' ? c.commitment : null;
+          c.close = c.close && typeof c.close === 'object' ? c.close : null;
+          return c;
+        })
+        .filter(function (c) {
+          return !!c.id;
+        });
+      if (!state.cycles.length && state.sprint) {
+        const sp = state.sprint;
+        const start = String(sp.start || '').slice(0, 10);
+        const end = String(sp.end || '').slice(0, 10);
+        if (start && end) {
+          state.cycles.push({
+            id: 'cy-sprint-1',
+            name: String(sp.name || 'Sprint 1').trim() || 'Sprint 1',
+            start: start,
+            end: end,
+            state: 'planned',
+            notes: '',
+            commitment: null,
+            close: null
+          });
+        }
+      }
+      // One active at most. A second active is demoted, not dropped.
+      let seenActive = false;
+      state.cycles.forEach(function (c) {
+        if (c.state === 'active') {
+          if (seenActive) {
+            c.state = 'planned';
+          }
+          seenActive = true;
+        }
+      });
+      const ids = {};
+      state.cycles.forEach(function (c) {
+        ids[c.id] = 1;
+      });
+      if (Array.isArray(state.tasks)) {
+        state.tasks.forEach(function (t) {
+          if (t && t.cycleId && !ids[t.cycleId]) {
+            t.cycleId = '';
+          }
+        });
+      }
+      // Modules hold task ids, so a task deleted by an older build must not
+      // leave a phantom. The renderer prunes on read as well; this keeps the
+      // stored list honest for the cloud merge.
+      if (!Array.isArray(state.modules)) {
+        state.modules = [];
+      }
+      const taskIds = {};
+      (state.tasks || []).forEach(function (t) {
+        if (t && t.id) {
+          taskIds[t.id] = 1;
+        }
+      });
+      state.modules = state.modules
+        .filter(function (m) {
+          return m && typeof m === 'object' && m.id;
+        })
+        .map(function (m) {
+          m.name = String(m.name || 'Module').slice(0, 80);
+          m.lead = String(m.lead || '').slice(0, 120);
+          m.target = String(m.target || '').slice(0, 10);
+          m.status = ['planned', 'active', 'done'].indexOf(m.status) > -1 ? m.status : 'planned';
+          m.taskIds = (Array.isArray(m.taskIds) ? m.taskIds : []).filter(function (id) {
+            return !!taskIds[id];
+          });
+          return m;
+        });
+      return state;
+    },
     25: function (state) {
       // V24 -> V25: BOQ bridge (H-2, BUDGET-BOQ directive 2026-11-05).
       // Additive and lossless:
@@ -1276,6 +1666,14 @@ var MMGR = window.MMGR || {};
     'userName',
     'charter',
     'tasks',
+    // V27 idea intake records. Project data, so it must travel in a
+    // field-level cloud merge like tasks do. The three view prefs stay out
+    // on purpose (see the note at `kbShowLeadtime` in getDefaultState).
+    'ideas',
+    // V26 custom field schema and the persisted board filter. Both are
+    // project data, so both must travel in a field-level cloud merge.
+    'fields',
+    'cfFilter',
     'kanban',
     'meetings',
     'meetingPromises',
@@ -1288,9 +1686,24 @@ var MMGR = window.MMGR || {};
     'risks',
     'issues',
     'changes',
+    // Process model (Huly-inspired): the transition history is append-only
+    // evidence and must travel with the project; rules are configuration the
+    // whole team must run, so they travel too. The execution log is capped
+    // and travels with them so a colleague can read what fired.
+    'transitions',
+    // Cycles are project data: a cycle is a window with a commitment, and the
+    // commitment is only honest if the whole team sees the same one.
+    'cycles',
+    'modules',
+    'rules',
+    'ruleLog',
     'logEntries',
     'commsEntries',
     'documents',
+    // Project book pages are project data: they travel with a cloud merge.
+    // docsView / pageSel / pageUnfiled are deliberately absent - a view
+    // preference describes what this device shows, a page is the project.
+    'pages',
     'closure',
     'raci',
     'sprint',
@@ -1691,7 +2104,7 @@ var MMGR = window.MMGR || {};
       } // already counted today
       const last = s.streak.lastDate ? new Date(s.streak.lastDate + 'T00:00:00Z') : null;
       const todayD = new Date(today + 'T00:00:00Z');
-      const gap = last ? Math.round((todayD - last) / 86400000) : 999;
+      const gap = last ? Math.round((todayD.getTime() - last.getTime()) / 86400000) : 999;
       s.streak.count = gap === 1 ? (s.streak.count || 0) + 1 : 1;
       s.streak.lastDate = today;
     } catch (e) {
@@ -1864,6 +2277,16 @@ var MMGR = window.MMGR || {};
         /* bond detection is best-effort - import never fails for it */
       }
       const migrated = migrate(parsed);
+      // Imported rules arrive disabled: a file cannot start acting on the
+      // project the moment it is opened. The list is kept, not dropped, so a
+      // person can read what the file carried and enable what they trust.
+      if (Array.isArray(migrated.rules)) {
+        migrated.rules.forEach(function (r) {
+          if (r && typeof r === 'object') {
+            r.enabled = false;
+          }
+        });
+      }
       _state = migrated;
       markAllDirty();
       save(true);

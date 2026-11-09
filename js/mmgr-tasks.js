@@ -138,7 +138,9 @@ var MMGR = window.MMGR || {};
             ? ns.Kanban.nextPosition(s.tasks, status)
             : 0,
         // V24: the graph is empty until the user links the card.
-        relations: []
+        relations: [],
+        // V26: empty until a custom field is filled on this task.
+        custom: {}
       };
       s.tasks.push(task);
       id = task.id;
@@ -152,6 +154,68 @@ var MMGR = window.MMGR || {};
   function addTask() {
     createTask({});
     R.renderWbs();
+  }
+
+  // Leantime-style promote: an idea becomes a task once. The link lives on
+  // the idea, not on the task, so the WBS payload keeps exactly the shape
+  // every other surface already understands. The idea's stage is untouched:
+  // promotion is not delivery.
+  //
+  // The task is built through the canonical createTask factory so it carries
+  // every field the WBS, Kanban, relations graph and the custom-field bag
+  // expect (createdDate, boardPosition, relations, custom). A hand-built
+  // object would render inconsistently and break custom-field reads.
+  function addTaskFromIdea(ideaId) {
+    const state = ns.State.getState();
+    const idea =
+      state && ns.Ideas && typeof ns.Ideas.find === 'function'
+        ? ns.Ideas.find(state, ideaId)
+        : null;
+    if (!idea || idea.promotedTaskId) {
+      return '';
+    }
+    const id = createTask({
+      name: idea.title,
+      assignee: idea.author || '',
+      notes: idea.summary || '',
+      status: 'todo'
+    });
+    if (!id) {
+      return '';
+    }
+    let ok = false;
+    ns.State.updateState(function (s) {
+      ok = ns.Ideas.promote(s, ideaId, id);
+    });
+    if (!ok) {
+      // The link could not be written, so the task must not stay: a task
+      // with no idea behind it is worse than no task at all.
+      ns.State.updateState(function (s) {
+        s.tasks = (s.tasks || []).filter(function (t) {
+          return t.id !== id;
+        });
+      });
+      return '';
+    }
+    R.renderWbs();
+    R.renderGantt();
+    R.renderKanban();
+    R.renderDash();
+    R.renderIdeas();
+    return id;
+  }
+
+  // A checkbox has no meaningful `value` string, so it gets its own action.
+  // The click delegation reverts the box when guardReadonly refuses it.
+  function tglTaskCustom(id, key, checked) {
+    ns.State.updateState(function (s) {
+      const task = (s.tasks || []).find(t => t.id === id);
+      if (task && ns.CustomFields) {
+        ns.CustomFields.setValue(s, task, key, !!checked);
+      }
+    });
+    R.renderWbs();
+    R.renderKanban();
   }
 
   // ---- Milestone flag (feature 11) ----
@@ -220,6 +284,13 @@ var MMGR = window.MMGR || {};
     ns.State.updateState(function (s) {
       const task = (s.tasks || []).find(t => t.id === id);
       if (task) {
+        // Custom fields never become a top-level task property. The model
+        // owns coercion, so a number cannot land as "12abc" and a select
+        // cannot hold a value outside its options.
+        if (ns.CustomFields && ns.CustomFields.isCustomKey(field)) {
+          ns.CustomFields.setValue(s, task, field, value);
+          return;
+        }
         if (field === 'status') {
           // One transition helper for drag, keyboard, select, and WBS edits.
           // It also records startedDate and statusSince.
@@ -393,6 +464,11 @@ var MMGR = window.MMGR || {};
       if (s.tasks) {
         s.tasks = s.tasks.filter(t => t.id !== id);
       }
+      // An idea that pointed at this task is unlinked in the SAME update, so
+      // no surface can read a link to a task that has just gone.
+      if (ns.Ideas && typeof ns.Ideas.unlink === 'function') {
+        ns.Ideas.unlink(s, id);
+      }
     });
     // Keep the RACI matrix consistent: drop the deleted task's row + cells.
     if (ns.Raci && ns.Raci.pruneDeleted) {
@@ -402,6 +478,7 @@ var MMGR = window.MMGR || {};
     R.renderGantt();
     R.renderKanban();
     R.renderDash();
+    R.renderIdeas();
   }
 
   function indentTask(id) {
@@ -478,9 +555,14 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- Sprint ----
+  // The bar is a view of the ACTIVE cycle, not a second source. It reads the
+  // cycle when one is active and falls back to the old singleton only so a
+  // project that has never opened Planning still shows something; it never
+  // writes the old object.
   function loadSprintData() {
     const s = S();
-    const spr = s.sprint || {};
+    const cyc = ns.Cycles ? ns.Cycles.active(s) : null;
+    const spr = cyc || s.sprint || {};
     const setVal = (id, val) => {
       const el = U.$(id);
       if (el) {
@@ -493,14 +575,61 @@ var MMGR = window.MMGR || {};
   }
 
   function saveSprint() {
+    if (!ns.Cycles) {
+      return;
+    }
+    const name = ((U.$('sp-nm') || {}).value || '').trim();
+    const start = (U.$('sp-st') || {}).value || '';
+    const end = (U.$('sp-en') || {}).value || '';
+    let message = '';
+    let ok = true;
     ns.State.updateState(function (s) {
-      if (!s.sprint) {
-        s.sprint = {};
+      const active = ns.Cycles.active(s);
+      if (active) {
+        if (!ns.Cycles.updateCycle(s, active.id, 'name', name).ok) {
+          ok = false;
+          message = 'Give the cycle a name.';
+          return;
+        }
+        const a = ns.Cycles.updateCycle(s, active.id, 'start', start);
+        const b = ns.Cycles.updateCycle(s, active.id, 'end', end);
+        if (!a.ok || !b.ok) {
+          ok = false;
+          message = a.ok ? b.message : a.message;
+        }
+        return;
       }
-      s.sprint.name = (U.$('sp-nm') || {}).value || 'Sprint 1';
-      s.sprint.start = (U.$('sp-st') || {}).value || '';
-      s.sprint.end = (U.$('sp-en') || {}).value || '';
+      // No active cycle yet: the first complete edit creates and activates one
+      // through the model. Nothing is written to the old object.
+      if (!name || !start || !end) {
+        ok = false;
+        message = 'Open Planning and add a cycle first.';
+        return;
+      }
+      const made = ns.Cycles.newCycle(s, { name: name, start: start, end: end });
+      if (!made.ok) {
+        ok = false;
+        message = made.message;
+        return;
+      }
+      const act = ns.Cycles.activate(s, made.id);
+      if (!act.ok) {
+        ok = false;
+        message = act.message;
+        return;
+      }
+      s.cycSel = made.id;
     });
+    if (!ok) {
+      if (ns.App && ns.App.showToast) {
+        ns.App.showToast(message, 'err');
+      }
+      loadSprintData();
+      return;
+    }
+    if (R.renderCycles) {
+      R.renderCycles();
+    }
   }
 
   // ---- WBS Import ----
@@ -1143,9 +1272,11 @@ var MMGR = window.MMGR || {};
   // ---- API ----
   ns.Tasks = {
     addTask: addTask,
+    addTaskFromIdea: addTaskFromIdea,
     createTask: createTask,
     durationFromDates: durationFromDates,
     updTaskField: updTaskField,
+    tglTaskCustom: tglTaskCustom,
     tglMilestone: tglMilestone,
     tglWeather: tglWeather,
     tglLeadTime: tglLeadTime,

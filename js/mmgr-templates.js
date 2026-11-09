@@ -13,11 +13,61 @@ var MMGR = window.MMGR || {};
   const R = ns.Render;
 
   // ---- Built-in templates ----
+  // Placeholder-shaped pages, not finished prose: a template gives the
+  // project book a spine to fill in. Every built-in build type can reuse it.
+  function pageSkeleton() {
+    return [
+      {
+        key: 'scope',
+        parent: '',
+        title: 'Scope',
+        blocks: [
+          { type: 'paragraph', text: 'What this project covers, and what it does not.' },
+          { type: 'bullet', text: 'In scope:' },
+          { type: 'bullet', text: 'Out of scope:' }
+        ]
+      },
+      {
+        key: 'method',
+        parent: '',
+        title: 'Method statements',
+        blocks: [
+          { type: 'heading', text: 'Sequence' },
+          { type: 'paragraph', text: 'How the work is staged, in the order it happens.' },
+          { type: 'checklist', text: 'Method statement issued and accepted' }
+        ]
+      },
+      {
+        key: 'inspections',
+        parent: '',
+        title: 'Inspection register',
+        blocks: [
+          {
+            type: 'paragraph',
+            text: 'Every task the WBS holds, so an inspection can be raised against one.'
+          },
+          { type: 'taskList', filter: { phase: '', status: '', assignee: '', window: 0 } }
+        ]
+      },
+      {
+        key: 'handover',
+        parent: '',
+        title: 'Handover index',
+        blocks: [
+          { type: 'heading', text: 'What the client receives' },
+          { type: 'docList', filter: { type: '', status: '' } },
+          { type: 'paragraph', text: 'Sign-off, keys and the operating pack.' }
+        ]
+      }
+    ];
+  }
+
   const BUILT_IN = [
     {
       id: 'tpl-residential',
       name: 'Residential Construction',
       builtin: true,
+      pages: pageSkeleton(),
       tasks: [
         { name: 'Site Preparation', indent: 0, isPhase: true },
         { name: 'Excavation & Grading', indent: 1, duration: '5' },
@@ -57,6 +107,7 @@ var MMGR = window.MMGR || {};
       id: 'tpl-commercial',
       name: 'Commercial Build',
       builtin: true,
+      pages: pageSkeleton(),
       tasks: [
         { name: 'Pre-Construction', indent: 0, isPhase: true },
         { name: 'Permitting', indent: 1, duration: '20' },
@@ -93,6 +144,7 @@ var MMGR = window.MMGR || {};
       id: 'tpl-renovation',
       name: 'Renovation',
       builtin: true,
+      pages: pageSkeleton(),
       tasks: [
         { name: 'Assessment & Planning', indent: 0, isPhase: true },
         { name: 'Existing Conditions Survey', indent: 1, duration: '3' },
@@ -138,7 +190,8 @@ var MMGR = window.MMGR || {};
         createdAt: new Date().toISOString(),
         tasks: JSON.parse(JSON.stringify(s.tasks || [])),
         budgetLines: JSON.parse(JSON.stringify(s.budgetLines || [])),
-        resources: JSON.parse(JSON.stringify(s.resources || []))
+        resources: JSON.parse(JSON.stringify(s.resources || [])),
+        pages: ns.Pages ? ns.Pages.captureTree(s) : []
       });
     });
   }
@@ -168,11 +221,14 @@ var MMGR = window.MMGR || {};
     }
     // Confirm before overwriting
     if (s.tasks && s.tasks.length > 0) {
+      const carriesPages = !!(tpl.pages && tpl.pages.length);
       if (
         !confirm(
           'Apply "' +
             tpl.name +
-            '"? This will add template tasks and budget lines to your current project.'
+            '"? This will add template tasks' +
+            (carriesPages ? ', pages' : '') +
+            ' and budget lines to your current project.'
         )
       ) {
         return;
@@ -223,10 +279,17 @@ var MMGR = window.MMGR || {};
           });
         });
       }
+      // Pages last: a live block resolves against the tasks just added.
+      if (tpl.pages && tpl.pages.length && ns.Pages) {
+        ns.Pages.applyTree(st, tpl.pages);
+      }
     });
     R.renderWbs();
     R.renderBudget();
     R.renderDash();
+    if (R.renderPages) {
+      R.renderPages();
+    }
   }
 
   function getAllTemplates() {

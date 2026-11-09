@@ -112,12 +112,12 @@ bug when it is the pin sync, and call a `saveFloatState()` that does not exist).
 
 | # | Phase | Status | Gate / evidence |
 |---|---|---|---|
-| 2.1 | **C1 NocoBase** custom task fields, schema v25 | Queued | Its DoD; write JSDoc on the new fields as they land |
-| 2.2 | **E7 `checkJs`** on state, cloud, billing | Queued - immediately after 2.1 | `npm run typecheck` in `static`; no silencer casts |
-| 2.3 | **C2 Leantime** idea intake + merged agenda, v26 | Queued - **split at its own phase boundary first** (4,634 lines, 60 tasks) | Its 16-gate harness |
-| 2.4 | **C3 AppFlowy** project book, v27 | Needs drafting pass, then build - **moved ahead of C4 2026-10-31**: "schema order is the contract" and v27 precedes v28 | Drafting pass first: anchors from code, task-level steps, gates |
-| 2.5 | **C4 Platform** guarded transitions, audit, rules, v28 | Queued after 2.3 and 2.4 | Its DoD |
-| 2.6 | **C5 Plane** cycles and modules, v29 | Needs drafting pass, then build | Same |
+| 2.1 | **C1 NocoBase** custom task fields, schema v26 | **DONE 2026-11-08** | Schema v26 + `js/mmgr-custom-fields.js` (pure model, 19 node tests), Fields sheet on the house modal chrome, schema-driven WBS header/cells + REQ badge, Kanban chips + persisted board filter, `tools/qa-custom-fields.cjs` 9/9 (CI) |
+| 2.2 | **E7 `checkJs`** on state, cloud, billing | **DONE 2026-11-08** | `npm run typecheck` (tsc) is part of `npm run verify`, so the static CI job enforces it. Checks state, custom-fields, relations, kanban, cloud and billing (+ `src/lib/http.js`): 0 errors. No silencer casts - DOM lookups are narrowed to the control type they use and the two third-party globals are declared in `types/mmgr-globals.d.ts`. The gate also completed the AppState typedef (~40 persisted keys were undocumented). |
+| 2.3 | **C2 Leantime** idea intake + merged agenda, v27 | Queued - **split at its own phase boundary first** (4,634 lines, 60 tasks) | Its 16-gate harness |
+| 2.4 | **C3 AppFlowy** project book, v28 | Needs drafting pass, then build - **moved ahead of C4 2026-10-31**: "schema order is the contract" and v27 precedes v28 | Drafting pass first: anchors from code, task-level steps, gates |
+| 2.5 | **C4 Platform** guarded transitions, audit, rules, v29 | Queued after 2.3 and 2.4 | Its DoD |
+| 2.6 | **C5 Plane** cycles and modules, v30 | Needs drafting pass, then build | Same |
 
 ### Wave 3 - evidence, then customers
 
@@ -125,8 +125,8 @@ bug when it is the pin sync, and call a `saveFloatState()` that does not exist).
 |---|---|---|---|
 | 3.1 | **F2 load test** (local wrangler + D1 first, staging later) | **DONE (3.1, local)** - staging run still to do | `tools/qa-load-test.cjs` boots its own wrangler (local D1 + R2), seeds 20 throwaway projects and rotates their owner codes so the per-code bucket (30/min) never becomes the thing being measured, then publishes p50/p95/p99 to `load/results/`. First run `2026-11-05T22-24-47Z-2151d86.json`: health 57/79/114 ms, shell 269/320/332 ms, cloud load 784/796/806 ms, cloud save 314/1287/1337 ms, 0 5xx, 0 429, 200 samples each for the cloud arms. The cloud figures are dev-server bound - every request pays the 100k-round owner-code KDF and the local isolate serialises it - so they are evidence for the internal targets, not a production claim. Registered MANUAL with that reason. |
 | 3.2 | **F4 D1 backup restore drill** | **PARTIAL (3.2, local)** - the local rehearsal is green; the production restore is owner-gated | `tools/qa-d1-restore-drill.cjs` migrates a throwaway D1, seeds it, exports with `wrangler d1 export`, deletes the D1 storage directory, re-imports the dump and verifies counts + a project row's exact hash + the indexes + no orphaned changelog rows (9/9). `docs/RESTORE-DRILL-2026-11-05.md`: export 1184 ms, import **1354 ms**, dump 19 KB. That is the floor, not the production RTO - the remote path adds the dump download, the network and Time Travel, and needs the owner |
-| 3.3 | **F5 targets + incident log** | Queued (targets may be written now; no published number before 3.1/3.2) | `docs/RELIABILITY-TARGETS.md`, `docs/INCIDENTS.md` |
-| 3.4 | **G3 activation/retention/tickets + feedback button** | Queued after 2.1 (schema collision) | In-app surface reusing the notice pattern |
+| 3.3 | **F5 targets + incident log** | **DONE 2026-11-05** (verified 2026-11-08) | `docs/RELIABILITY-TARGETS.md` (SLO table, RTO/RPO, measurement gaps, review policy; cites the F2 load run + local restore drill) and `docs/INCIDENTS.md` (severity ladder, log, detect/contain/communicate/fix/post-mortem process, runbook links). Both complete; no public number published, as required until 3.1 staging + 3.2 production drill land. |
+| 3.4 | **G3 activation/retention/tickets + feedback button** | **Feedback button DONE 2026-11-08; activation/retention/tickets still queued after 2.1** (schema collision) | In-app "Send feedback" row in project Controls -> `contact.html?topic=Feedback` (contact form pre-selects the topic from `?topic=`), reusing the one moderated channel (Turnstile already there), no new endpoint/schema. Commit `9767fb5`. The analytics/tickets half needs the schema slot after 2.1. |
 | 3.5 | **G1 provenance decision, then G4 currency/market copy** | **Owner** | G4 currently blocked: `JMD`, `J$`, `Jamaica` appear zero times on index/pricing/features |
 | 3.6 | **G2 pilots** (5-10 contractors) | **Owner**, last | Only after 1.3, 3.2 and the deploy |
 
@@ -142,10 +142,10 @@ exist before the item can be called done.
 |---|---|---|---|
 | 5.1 | **Cloud identity** (D1): `owner_email` on `cloud_projects`, list by verified email as well as sub, owner-code claim path for rows created before the column existed | **DONE 2026-11-02** | Migration `0030_cloud_owner_email.sql` (column, index, exact backfill of `email:` subs only - a Google sub is opaque and is never guessed). `provenEmail()` in `src/lib/http.js` is the one rule: a Google session is verified by construction, a password session only after `auth_users.email_verified = 1` (the exact gate the create route already applied). Applied to the list, `cloudAuthOwnerSession` (so a project you can SEE is one you can SAVE - listing without write access would be worse than not listing), create, claim, the free-cap count and `/api/billing/status`, and account deletion (a sweep that only matched the sub would leave rows the deleted address could still reach). `qa-tenant-isolation` **19 -> 26 gates**: I19a/I19b with the row's `google_sub` set to NULL the verified email alone lists it and B still cannot see it, I19c a session-only save through that identity, I20a/I20b the row is hidden the moment the address is unverified and returns when it is verified (the fence cannot be widened by registering an address you do not own), I21 the email identity opens nothing for B. Teeth proven: with the list reverted to sub-only, I19a and I20b fail (24/26). |
 | 5.2 | **Orphaned subscription cleanup** (D2): operator path that cancels at Paddle before clearing the row | **DONE 2026-11-03** | `tools/qa-billing-orphan.cjs` **21/21** against a real wrangler with Paddle stubbed at the loopback `paddleApiBase()` seam: the admin list names each ghost and its five-proof evidence, a row anything still holds is untouchable (409 stage `orphan`, provider never called), the clear route cancels AT PADDLE FIRST - a refusal answers 409 `keptRow:true` with the provider's reason AND THE ROW STAYS, 404 counts as already-gone, wrong admin code 403, validation before any provider call. Teeth proven: deleting the row despite a refusal turns G8b red (20/21, exit 1). Registered in `docs/CI-TEST-COVERAGE.md` and wired into `cloud-core` (QA_PORT 8816); `npm run verify` green (registry 161/161), `verify-ci-coverage` 12/12 (139 run blocks, new step allowed). Unit test pins the new `always-alreadyGone` success shape. Commit `6d5e930`, SW v532, CSP hashes regenerated. Not yet deployed. |
-| 5.3 | **Collaboration + session truth** (B1, B2): the team and notification controls are always present and gated by state (dimmed plus an upgrade sentence), never absent; a pending session reads as loading, never as "sign in" | **B1 DONE 2026-11-01, B2 QUEUED** | B1: the workspace restores the session from the Worker cookie at boot instead of waiting for the Google script, and `Entitlements.ensureSession()` asks the Worker once, so a slow session reads as "checking" and then opens the assistant while a genuinely signed-out visitor still gets the prompt. Two arms added to `qa-ai-win` (`AIWIN_PROBE`); the standalone `qa-auth-ready.cjs` was not created, the existing gate carries the contract. B2 is untouched and `qa-team-tier` still holds the old "suppress the control" reading |
-| 5.4 | **Admin panel credibility** (A1, A2, A5): a fresh instance is empty, no access-code bounce, credential kinds named correctly, a cloud project's own owner code can load it, the control panel always closes | **A5 DONE, A1 PARTIAL, A2 QUEUED** | A5 (`ad0b712`): the drawer closes by X, Escape, a click on the workspace behind a docked drawer, and a Focus Mode exit before the jump; four exits pinned in `verify-controls-admin`. A1 (`c59cdf9`): the admin seed is persisted with the real hash of its code, so the project gate recognises the device's own starter project instead of asking for a code. Still open in A1: a brand-new instance renders zero rows with "create your first project" as the first action, and the demo projects stay off the admin list. A2 untouched; `qa-admin-credentials.cjs` does not exist |
+| 5.3 | **Collaboration + session truth** (B1, B2): the team and notification controls are always present and gated by state (dimmed plus an upgrade sentence), never absent; a pending session reads as loading, never as "sign in" | **B1 DONE 2026-11-01, B2 DONE 2026-11-08** | B1: the workspace restores the session from the Worker cookie at boot instead of waiting for the Google script, and `Entitlements.ensureSession()` asks the Worker once, so a slow session reads as "checking" and then opens the assistant while a genuinely signed-out visitor still gets the prompt. Two arms added to `qa-ai-win` (`AIWIN_PROBE`); the standalone `qa-auth-ready.cjs` was not created, the existing gate carries the contract. B2 delivered via I-3 (team bell + invitations + "Team and roles" entry live, `qa-team-ui` 23/23) and Wave 5.6 (top-bar bell/gear/collaborators are bare glyphs, gold ring only on hover/focus/open - always present, never suppressed). CAVEAT: the verifying gate `qa-team-tier` still holds the old "suppress the control" reading and must be re-baselined to the present-by-default contract before B2 can be CI-closed; the underlying feature is shipped. |
+| 5.4 | **Admin panel credibility** (A1, A2, A5): a fresh instance is empty, no access-code bounce, credential kinds named correctly, a cloud project's own owner code can load it, the control panel always closes | **A5 DONE, A1 DONE, A2 DONE** | A5 (`ad0b712`): the drawer closes by X, Escape, a click on the workspace behind a docked drawer, and a Focus Mode exit before the jump; four exits pinned in `verify-controls-admin`. A1 (`c59cdf9`): the admin seed is persisted with the real hash of its code, so the project gate recognises the device's own starter project instead of asking for a code. A1/A2 verified 2026-11-08: `tools/qa-admin-credentials.cjs` EXISTS and is green **9/9** - the user-grid empty state leads with a "Create your first project" CTA routing to the Admin panel (A1a-c), demo projects are excluded from both the user grid and the admin list (A1d/A2e), and admin.html names all four credential kinds (Access code, View-only, Owner code, Client code; A2a-d). The admin list's own empty state was additionally upgraded to the same CTA (commit `5b8f5e2`). |
 | 5.5 | **Admin ergonomics** (A3, A4): auto-update cloud projects toggle with visible status; back control first on every shell | Done 2026-11-03 | autosave coalescing/retry arm, `qa-chrome` header-order arm |
-| 5.6 | **Small visible fixes** (B10 whisper on send, B5 pulsing gold Calculate in dark, B4 completion ring size, B3 no resting rings, B7 no auto-opened sidebar plus one-shot demo) | **B3, B4, B5, B10 DONE; B7 PARTIAL** | `85a6cc8`: the top-bar bell, gear and collaborators are bare glyphs with the gold ring only on hover/focus/open (`qa-chrome` 101/101, C1/C6/C7 new arms), the completion ring grows 96 to 120px at the same stroke weight, dark-theme Calculate pulses gold while light keeps its green run button (`qa-theme-perf` 17/17), sending stops dictation so the next utterance starts empty (`qa-ai-dictation` 17/17), and the calculator's per-row remove and edit controls lose their boxes (the owner's chrome-strip note). B7 (`018c706`): the sidebar no longer opens itself on load (`qa-dashboard-spec`); the one-shot first-load demo and `qa-shell-first-load.cjs` are still open |
+| 5.6 | **Small visible fixes** (B10 whisper on send, B5 pulsing gold Calculate in dark, B4 completion ring size, B3 no resting rings, B7 no auto-opened sidebar plus one-shot demo) | **B3, B4, B5, B10 DONE; B7 DONE** | `85a6cc8`: the top-bar bell, gear and collaborators are bare glyphs with the gold ring only on hover/focus/open (`qa-chrome` 101/101, C1/C6/C7 new arms), the completion ring grows 96 to 120px at the same stroke weight, dark-theme Calculate pulses gold while light keeps its green run button (`qa-theme-perf` 17/17), sending stops dictation so the next utterance starts empty (`qa-ai-dictation` 17/17), and the calculator's per-row remove and edit controls lose their boxes (the owner's chrome-strip note). B7 (`018c706` + the 2026-11-01 rail-nudge): the LAUNCHER sidebar no longer opens itself on load (`qa-dashboard-spec`), the one-shot first-load reveal (`mmgr_rail_nudge` -> `body.side-open rail-nudge`, pops out then back) ships in app.html's inline block, and `tools/qa-shell-first-load.cjs` is green **9/9** (fresh/warm/reduced-motion/project-flat). Hover-peek added 2026-11-08 (`js/app/launcher-rail.js`, toggles `body.rail-hover-open` with pointer hysteresis; the CSS was already keyed on it). NOTE: the project workspace rail intentionally boots open (OWNER 2026-08-15) and is not part of B7. |
 | 5.7 | **Project photos** (B11): paid tiers only, 500 MB quota with a usage bar, description/date/uploader, download and delete | **DONE (5.7)** | 500 MB per ACCOUNT in `src/cloud/photos.js` (checked before the metadata row and the R2 put, so a refusal costs no bytes), signature-sniffed uploads with EXIF stripped (SEC-04), usage endpoint + storage bar, uploader/role/stage on every card, download under the original name, delete with confirmation, view codes read but cannot write. `tools/qa-project-photos.cjs` (13/13) drives the panel in Chrome against its own wrangler; `tools/qa-cloud-photos.cjs` (19/19) covers the server half; `test/photo-tier.test.mjs` pins the free-account 402 and the upgrade sentence |
 | 5.8 | **Guidance** (B8 first-project tour, B9 section accelerator via the existing navigation and mouse side buttons, capped at 5 pins) | **DONE (5.8)** | B8: the first-project tour is in and gated by `tools/qa-first-project-tour.cjs`. B9: `db21158` completed the scope the earlier partial left out - OFF by default and switched on in the control panel, up to five pins persisted in `mmgr_sec_pins`, a visible reset, stop-at-the-ends, and no keyboard arrows (the owner ruled 2026-11-03: side buttons 3/4 only, because they navigate without scrolling; `qa-shortcuts` A7b pins the arrow binding as ABSENT). `tools/qa-section-accelerator.cjs` (12 checks) is the gate and runs in `browser-app` |
 | 5.9 | **Craft** (B12 skeleton mirrors the workspace, B6 theme-reactive particle line, C1 band transition, C2 landing AI, C3 gold outline judged on measurement) | **DONE (5.9)** | B12 `3011ea6` (boot skeleton mirrors the real workspace; `qa-shell-skeleton`), B6 `3b3bc2c` (theme-reactive decoration; REMOVED 2026-11-07 under I-13 - it carried no label and served no functional purpose, so the canvas, module and its harness are gone), C1 `cecc193` (`qa-band-seam`), C2 `fca9290` (`qa-landing-ai`), C3 `982daef` + `0decfff` (`verify-gold` now judges the hover gradient; the icon-only send control left the gold-button sweep) |
@@ -583,7 +583,7 @@ out as workflow-only change.
 Rules for every plan:
 
 1. **Re-derive every anchor.** The plans were written against schema v22, SW
-   v481 and old line numbers. The repo is at schema v24 and SW v504. The plan's
+   v481 and old line numbers. The repo is at schema v25 and SW v593. The plan's
    intent is the contract; quoted lines are hints. Note every drift in the log.
 2. **Take the next schema number from the ledger below.** Never paste the
    plan's claimed number.
@@ -604,7 +604,7 @@ Rules for every plan:
    second permission round unless a gate is red or an owner decision is
    missing.
 
-### C1. NocoBase - custom task fields (schema v25)
+### C1. NocoBase - custom task fields (schema v26)
 
 Code-complete with an errata section. Follow its own "Remaining work before
 this plan is implemented":
@@ -618,38 +618,38 @@ this plan is implemented":
   `FIELD_KEYS`; `js/mmgr-custom-fields.js` loads after `mmgr-utils.js`.
 - WBS cells, Kanban chips and the board filter share one field list.
 - New model tests and the browser harness, three edits, field-guide card.
-- Migration takes **schema v25**, not the plan's v23.
+- Migration takes **schema v26**, not the plan's v23.
 
-### C2. Leantime - idea intake and merged agenda (schema v26)
+### C2. Leantime - idea intake and merged agenda (schema v27)
 
 The largest plan: two pure models, two renderers, one 16-gate harness, roughly
 1,900 new lines and six new files. It adds the `Intake` nav group between
 `Plan` and `Collaborate`, and touches `addTask()` / `delTask()`. Re-derive
 those anchors against the NocoBase landing; whichever of C1 and C2 lands
 second re-derives the shared push object and the nav insertion point.
-Migration takes **schema v26**.
+Migration takes **schema v27**.
 
-### C3. AppFlowy - the project book (schema v27)
+### C3. AppFlowy - the project book (schema v28)
 
 Prose-only, four phases: page tree and body; blocks that read the project;
 templates that carry pages; the project book and handover pack. Before code,
 do a drafting pass that turns each phase into numbered tasks with files, exact
 steps, gates and commit subjects, saved in the plan file itself. No code until
-that pass is done. Migration takes **schema v27**.
+that pass is done. Migration takes **schema v28**.
 
-### C4. Platform - guarded transitions, audit, rules (schema v28)
+### C4. Platform - guarded transitions, audit, rules (schema v29)
 
 Prose-only, four phases: guarded transitions; transition history; rules; the
 approval pack and outbound summary. Same drafting pass first. Rules run after
 the triggering change, never veto it; fixed action vocabulary; imported rules
-arrive disabled. Migration takes **schema v28**.
+arrive disabled. Migration takes **schema v29**.
 
-### C5. Plane - cycles and modules (schema v29)
+### C5. Plane - cycles and modules (schema v30)
 
 Prose-only, four phases: cycles as records; backlog and cycle board; modules;
 honest cycle analytics and review. Same drafting pass first. The existing
 sprint object converts into the first cycle and stays readable for one
-release. Migration takes **schema v29**.
+release. Migration takes **schema v30**.
 
 ### Cross-plan collisions
 
@@ -699,7 +699,7 @@ incident log. No marketing number until F2 and F4 exist.
 a fully rebranded book from the owner's own site data; `pricing.html` already
 says "My MaNaGeR Rate Book", the calculator is the last place that says "JIC".
 G2 pilot contractors. G3 activation, week-4 retention, tickets, feedback
-button (queued after C1 so it does not share schema v25). G4 (added by the
+button (queued after C1 so it does not share schema v26). G4 (added by the
 second review pass): the landing and pricing copy never names the currency or
 the market - "JMD", "J$" and "Jamaica" appear zero times on `index.html`,
 `pricing.html` and `features.html`, while offline-first is already the
@@ -730,12 +730,12 @@ still parked is the type and spacing scale in `plan-ui.md`, which waits on the
 
 | Plan | Takes |
 |---|---|
-| Current | `SCHEMA_VERSION = 24` |
-| NocoBase | 25 |
-| Leantime | 26 |
-| AppFlowy | 27 |
-| Platform | 28 |
-| Plane | 29 |
+| Current | `SCHEMA_VERSION = 25` (v25 = BOQ bridge, H-2, landed 2026-11-05) |
+| NocoBase | 26 |
+| Leantime | 27 |
+| AppFlowy | 28 |
+| Platform | 29 |
+| Plane | 30 |
 
 Every plan's "migration 23" means this client migration, not a D1 SQL file.
 Move `SCHEMA_VERSION` and the `migrate()` key together. One number per landing

@@ -10901,12 +10901,38 @@
     };
   }
 
+  // B (2026-11-09): the export happens here, so the one client-emitted
+  // product event is sent from here. It fires at most once per page load,
+  // carries no estimate, no name and no id, and a failed send is ignored.
+  var _exportNoted = false;
+  function noteExportEvent() {
+    if (_exportNoted) {
+      return;
+    }
+    _exportNoted = true;
+    try {
+      if (typeof fetch !== 'function') {
+        return;
+      }
+      fetch('/api/event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event: 'calculator_export' }),
+        credentials: 'same-origin',
+        keepalive: true
+      }).catch(function () {});
+    } catch (e) {
+      /* the export itself must never depend on telemetry */
+    }
+  }
+
   function downloadXlsx() {
     flushHeavy();
     const f = buildXlsx();
     if (!f.ok) {
       return f;
     }
+    noteExportEvent();
     const blob = new Blob([f.bytes], { type: f.mime });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -10926,6 +10952,7 @@
     if (!f.ok) {
       return f;
     }
+    noteExportEvent();
     const blob = new Blob([f.text], { type: f.mime });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);

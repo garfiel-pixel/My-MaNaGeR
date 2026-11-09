@@ -3,6 +3,8 @@ import { Presence } from './src/cloud/presence.js';
 import { purgeStaleCloudProjects } from './src/cloud/projects.js';
 import { sweepExpiredInvitations, sweepExpiredAccess } from './src/cloud/team.js';
 import { evaluateWebhooks } from './src/webhooks.js';
+import { fxRefresh } from './src/fx.js';
+import { bindRequestContext } from './src/lib/http.js';
 
 export { Presence }; // wrangler requires DO classes in the entrypoint
 
@@ -26,7 +28,7 @@ export { Presence }; // wrangler requires DO classes in the entrypoint
 const INLINE_SCRIPT_HASHES = [
   "'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk='",
   "'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M='",
-  "'sha256-bNgcoc7tfeRDht6Q1VyFRJijrVzJfaHivL8FxmPia0c='",
+  "'sha256-Q/nDW21rfkVgwvwjhKwtQQBoHYc4MyDlFfgSLvJxTk8='",
   "'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4='",
   "'sha256-5zwY7VuJS3UrbdPmpvJBMAK1plLSvLq6uINjysG3x+I='",
   "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='",
@@ -35,7 +37,7 @@ const INLINE_SCRIPT_HASHES = [
   "'sha256-7BIp3SE8LrjSq5puH0lRtmP51SnLzcmBy32sBq0Zcps='",
   "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='",
   "'sha256-hkXebphLbybaZt8yNpjkxPc3WjJNQDh0zB2AxsplVEg='",
-  "'sha256-48azl/3AllEyJsLx4Kxp5aVo85DP4fYEtm3mYmVUWsw='",
+  "'sha256-HNgCveQhR3P8yk5ayumiJPy8VQFoYWVOvSnKjwBsx44='",
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='",
   "'sha256-pmiUsOqQa0BPAXsieggzTCopGA0jQO863MBE2hEoBb8='",
   "'sha256-7cQZf8bzyvMY1EwebBo5YuL3PZ9T/X5CTWFRXO3Aq5E='",
@@ -185,12 +187,46 @@ function cspReportOnlyFor(request, normalized, isDocument, env) {
   if (!isDocument || (env && env.CSP_REPORT_ONLY === 'off')) {
     return null;
   }
-  const parts = [withConnectSrc(cspFor(request, normalized, true), CONNECT_SRC_CANDIDATE)];
+  const parts = [
+    withScriptExtras(
+      withConnectSrc(cspFor(request, normalized, true), CONNECT_SRC_CANDIDATE),
+      REPORT_ONLY_SCRIPT_EXTRA
+    )
+  ];
   if (env && env.CSP_TT_REPORT === '1') {
     parts.push("require-trusted-types-for 'script'");
   }
   parts.push('report-uri /api/csp-report');
   return parts.join('; ');
+}
+
+// E2 (2026-11-09): two scripts are injected into documents by parties we do
+// not control - Cloudflare's Web Analytics beacon and Paddle Retain. They were
+// the only script-src-elem reports in the owner's log. Adding them to the
+// REPORT-ONLY policy stops the observation window re-reporting known scripts;
+// the enforced policy is untouched, so this is not a relaxation of what a
+// browser actually enforces.
+const REPORT_ONLY_SCRIPT_EXTRA = [
+  'https://static.cloudflareinsights.com',
+  'https://public.profitwell.com'
+];
+
+// Appends origins to script-src only, skipping ones the policy already names.
+function withScriptExtras(policy, origins) {
+  const m = /(^|;\s*)script-src ([^;]*)/.exec(policy);
+  if (!m) {
+    return policy;
+  }
+  const existing = m[2].split(/\s+/).filter(Boolean);
+  const add = origins.filter(function (o) {
+    return existing.indexOf(o) === -1;
+  });
+  if (!add.length) {
+    return policy;
+  }
+  return policy.replace(/(^|;\s*)script-src ([^;]*)/, function (match, lead, body) {
+    return lead + 'script-src ' + body.trim() + ' ' + add.join(' ');
+  });
 }
 
 // The one switch that promotes the candidate to enforced. Off by default: the
@@ -201,6 +237,17 @@ function enforcedCspFor(request, normalized, isDocument, env) {
     return policy;
   }
   return withConnectSrc(policy, CONNECT_SRC_CANDIDATE);
+}
+
+// E3 (2026-11-09): tooling seam. tools/qa-csp-origins.cjs compares scanned
+// origins against the REAL policy strings rather than a copy that can drift.
+// Not used by the request path.
+export function cspPoliciesForTooling(request, env) {
+  const e = env || {};
+  return {
+    enforced: enforcedCspFor(request, '/', true, e),
+    reportOnly: cspReportOnlyFor(request, '/', true, e)
+  };
 }
 
 const CSP = [
@@ -282,6 +329,8 @@ const WHISPER_CSP = [
 //
 // public.profitwell.com is intentionally NOT allowed. Paddle requests it for
 // revenue analytics; it is not required for checkout, so it stays blocked.
+// If ProfitWell is ever enabled, its connect-src origins must be added
+// together with its script-src entry - never one without the other.
 const PADDLE_CSP = [
   "default-src 'self'",
   "script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com%%ANALYTICS%% https://challenges.cloudflare.com https://cdn.paddle.com " +
@@ -404,8 +453,11 @@ const PRIVATE_FILES = new Set([
 ]);
 // Root-level only: a single-segment path carrying a file extension that is
 // never a runtime asset. Nested paths are left alone so real assets such as
-// /dist/*.json are never caught by accident.
-const PRIVATE_ROOT_EXT = /\.(md|txt|json|jsonc|ya?ml|lock|cjs|mjs|ts|pdf)$/i;
+// /dist/*.json are never caught by accident. F2 (2026-11-09) added the
+// scanner favourites (sql/env/bak/pem/key/pfx/zip/tar/log) so the cheap
+// pre-asset guard answers them without a request to the asset layer.
+const PRIVATE_ROOT_EXT =
+  /\.(md|txt|json|jsonc|ya?ml|lock|cjs|mjs|ts|pdf|sql|env|bak|pem|key|pfx|zip|tar|log)$/i;
 // The two root text files that ARE meant to be public. They are already served
 // by the SEO_FILES branch ABOVE this guard; listing them here too keeps the
 // predicate correct on its own, so it cannot 404 them if that branch ever
@@ -417,6 +469,24 @@ const PUBLIC_ROOT_FILES = new Set(['/robots.txt', '/sitemap.xml']);
 export function isPrivatePath(normalized) {
   if (PUBLIC_ROOT_FILES.has(normalized)) {
     return false;
+  }
+  // F2 (2026-11-09): /.well-known/ is the one dotfile tree that must stay
+  // public (security.txt, ACME challenges). Everything else that starts a
+  // segment with a dot is internals, wherever it sits.
+  if (normalized.indexOf('/.well-known/') === 0) {
+    return false;
+  }
+  const segments = normalized.split('/').filter(Boolean);
+  for (const seg of segments) {
+    // '.' and '..' are traversal syntax, not dotfiles; the request path is
+    // normalised before this runs, and the raw form is covered elsewhere.
+    if (seg !== '.' && seg !== '..' && seg.charAt(0) === '.') {
+      return true;
+    }
+  }
+  // F2: a WordPress/Drupal/Git probe path is never an app route.
+  if (/^\/(wp-admin|wp-content|wp-includes)(\/|$)/i.test(normalized)) {
+    return true;
   }
   for (const prefix of PRIVATE_PREFIXES) {
     if (normalized.indexOf(prefix) === 0) {
@@ -464,6 +534,16 @@ export default {
       console.log('rank9 webhooks: checked=' + w.checked + ' fired=' + w.fired.length);
     } catch (e) {
       console.error('rank9 webhook evaluation failed:', e && e.message);
+    }
+    // A2 (2026-11-09): refresh the USD to JMD estimate once a day. A failed
+    // refresh keeps the stored value; it never blanks the pricing page.
+    try {
+      const fx = await fxRefresh(env);
+      if (!fx.ok) {
+        console.log('fx refresh skipped: ' + fx.reason);
+      }
+    } catch (e) {
+      console.error('fx refresh failed:', e && e.message);
     }
     try {
       const s7 = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -552,8 +632,13 @@ export default {
     }
   },
 
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     try {
+      // G (2026-11-09): the session-cache KV fill rides waitUntil instead of
+      // being awaited before the response. Auth order is untouched: the D1
+      // revocation read and the cache read still happen exactly where they
+      // did; only the write-back became fire-and-forget.
+      bindRequestContext(request, ctx);
       const url = new URL(request.url);
       let normalized = normalizePathname(url.pathname);
 
@@ -666,6 +751,18 @@ export default {
         ['js', 'mjs', 'css', 'json', 'map', 'webmanifest', 'wasm'].indexOf(reqExt) !== -1 &&
         (response.headers.get('Content-Type') || '').toLowerCase().indexOf('text/html') === 0
       ) {
+        return privateNotFound();
+      }
+      // F2 (2026-11-09): the SPA fallback is for PAGES, never for a path that
+      // claims to be a file. Any last segment with an extension that is not a
+      // real HTML page and came back as HTML is a miss, not a document. This
+      // is what turns /.env, /dump.sql, /database.sql and /wp-admin/*.php
+      // into a real 404 instead of a 200 carrying the app shell.
+      const lastSegForExt = normalized.slice(normalized.lastIndexOf('/') + 1);
+      const claimsFile = lastSegForExt.lastIndexOf('.') > 0;
+      const servedHtml =
+        (response.headers.get('Content-Type') || '').toLowerCase().indexOf('text/html') === 0;
+      if (claimsFile && !/\.html?$/i.test(lastSegForExt) && servedHtml) {
         return privateNotFound();
       }
       const decorated = new Response(response.body, response);

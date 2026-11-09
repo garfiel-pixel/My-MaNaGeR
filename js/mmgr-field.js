@@ -23,6 +23,9 @@ var MMGR = window.MMGR || {};
         id: t.id,
         name: t.name,
         status: t.status || 'todo',
+        // The duration is recorded with the status so a cycle burn-down can
+        // restate what was remaining on that day without reading today's task.
+        duration: t.duration || '',
         completed: t.status === 'completed'
       })),
       totalTasks: tasks.length,

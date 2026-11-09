@@ -595,7 +595,7 @@
 // service worker serves from its own cache - so a browser running the previous
 // deploy's bundle never executed the code that reveals the badge, and the new
 // HTML arrived with the badge hidden. It is now its OWN deferred script on
-// app.html (js/mmgr-billing-manage.js?v=552), loaded outside the bundle, and
+// app.html (js/mmgr-billing-manage.js?v=553), loaded outside the bundle, and
 // the badge starts VISIBLE in the markup: the script hides it only when the
 // server says the visitor is signed out. A stale bundle can no longer remove
 // the control. Changed shell assets: app.html, sw.js, js/mmgr-billing-manage.js,
@@ -691,7 +691,18 @@
 // localStorage mirror can no longer clobber a newer cloud edit; storage
 // inventory + dynamic-label + weak-random gates re-baselined. Changed
 // shell assets: dist/bundle.js, dist/mmgr.min.css.
-const CACHE = 'mmgr-shell-v590';
+// v591 - I-11 TOUR HIGHLIGHTING (Wave I): the first-open tour plans its walk
+// from what is actually visible, skipping a step whose control is hidden for
+// this person and keeping the count truthful. The spotlight is a rounded
+// cut-out (gold halo + ring, page dimmed by a viewport-sized shadow) so the
+// control stays lit, the tip never overlaps the thing it describes, and the
+// ring re-anchors when the boot layout settles. Changed shell assets:
+// dist/bundle.js.
+// v592 - H-8 FIELD GUIDE (Wave H): a new sheet A-33 covers Create budget from
+// BOQ, Record a delivery, Weekly tracking, MCP budget permissions and the
+// Approval preview, with the closing sheet count and footer links updated.
+// Changed shell assets: mymanager-field-guide.html.
+const CACHE = 'mmgr-shell-v613';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

@@ -1349,6 +1349,23 @@
       var el = document.getElementById(id);
       return el ? el.value.trim() : '';
     }
+    // G3 (owner 2026-11-08): the in-app "Send feedback" button opens this page
+    // with ?topic=Feedback so the feedback channel is one tap away. Match the
+    // option case-insensitively; an unknown value leaves the default alone.
+    try {
+      var _tp = new URLSearchParams(window.location.search).get('topic');
+      var _sel = document.getElementById('ct-topic');
+      if (_tp && _sel && _sel.options) {
+        for (var _i = 0; _i < _sel.options.length; _i++) {
+          if (String(_sel.options[_i].value).toLowerCase() === _tp.toLowerCase()) {
+            _sel.selectedIndex = _i;
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      /* no URLSearchParams: keep the default topic */
+    }
     function setStatus(msg, isErr) {
       if (!status) {
         return;
@@ -2024,23 +2041,31 @@
    Mode. The same constant is the single source of truth for every panel-count
    claim on the landing page (I-8). */
 (function wireStatCountUp() {
+  // I-8 (2026-11): single source of truth for every stated count on the landing
+  // page. The features grid, the hero stat, the globe card and any copy all read
+  // these instead of hardcoding a number (the old "eighteen panels" blurb is now
+  // sourced from here too).
   var PANEL_COUNT = 15;
+  var MODULE_COUNT = 4;
   window.MMGR_PANEL_COUNT = PANEL_COUNT;
+  window.MMGR_MODULE_COUNT = MODULE_COUNT;
   var stats = document.querySelector('.hero-stats');
-  if (!stats) {
-    return;
-  }
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var perf = document.documentElement.getAttribute('data-perf') === 'on';
-  var panelsEl = stats.querySelector('[data-count="panels"]');
-  var percentEl = stats.querySelector('[data-count="percent"]');
-  // Always render the final value from the constant.
-  if (panelsEl) {
-    panelsEl.textContent = String(PANEL_COUNT);
+
+  // Fill every stated count on the page from the constant, document-wide, so the
+  // no-JS page still reads correctly and prose never hardcodes a figure (T-COPY).
+  var panelEls = document.querySelectorAll('[data-count="panels"]');
+  var moduleEls = document.querySelectorAll('[data-count="modules"]');
+  for (var pi = 0; pi < panelEls.length; pi++) {
+    panelEls[pi].textContent = String(PANEL_COUNT);
   }
-  if (percentEl) {
-    percentEl.textContent = '100%';
+  for (var mi = 0; mi < moduleEls.length; mi++) {
+    moduleEls[mi].textContent = String(MODULE_COUNT);
   }
+
+  var panelsEl = stats ? stats.querySelector('[data-count="panels"]') : null;
+  var percentEl = stats ? stats.querySelector('[data-count="percent"]') : null;
   if (reduce || perf) {
     return;
   }
@@ -2072,7 +2097,7 @@
     }
     requestAnimationFrame(tick);
   }
-  if ('IntersectionObserver' in window) {
+  if ('IntersectionObserver' in window && stats) {
     var io = new IntersectionObserver(
       function (en) {
         if (en[0].isIntersecting) {
@@ -2085,5 +2110,130 @@
     io.observe(stats);
   } else {
     run();
+  }
+})();
+
+/* ---- BENTO (I-6, 2026-11) ----
+   The features section carries 15 real .fcard nodes in a hidden pool. Four slots
+   (1 big + 2 small + 1 wide) rotate through them. To satisfy the gate every flip
+   is 5s apart and exactly ONE slot changes per event, so two slots never flip
+   within 1.5s and - because each slot walks the 15 cards with a stride of 4 -
+   every panel appears at least once per minute. Flips pause on hover/focus and
+   when the section scrolls off screen, and stop entirely under reduced motion or
+   Performance Mode (the first four panels stay put). The motion is decorative:
+   the slots are aria-hidden and the full panel list is in #features-all. */
+(function mountBento() {
+  var section = document.getElementById('features');
+  if (!section) {
+    return;
+  }
+  var pool = section.querySelector('[data-bento-pool]');
+  var slots = {
+    big: section.querySelector('[data-slot="big"]'),
+    top: section.querySelector('[data-slot="top"]'),
+    mid: section.querySelector('[data-slot="mid"]'),
+    wide: section.querySelector('[data-slot="wide"]')
+  };
+  if (!pool || !slots.big || !slots.top || !slots.mid || !slots.wide) {
+    return;
+  }
+  var cards = Array.prototype.slice.call(pool.children);
+  if (cards.length < 4) {
+    return;
+  }
+  var order = ['big', 'top', 'mid', 'wide'];
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var perf = document.documentElement.getAttribute('data-perf') === 'on';
+
+  function place(slotName, card) {
+    var host = slots[slotName];
+    if (!host) {
+      return;
+    }
+    if (host.firstChild) {
+      host.removeChild(host.firstChild);
+    }
+    host.appendChild(card);
+  }
+
+  // Static (reduced motion / perf): show the first four and stop.
+  if (reduce || perf) {
+    place('big', cards[0]);
+    place('top', cards[1]);
+    place('mid', cards[2]);
+    place('wide', cards[3]);
+    section.classList.add('bento-on');
+    return;
+  }
+
+  // Pre-fill all four slots so the bento is full on first paint.
+  place('big', cards[0]);
+  place('top', cards[1]);
+  place('mid', cards[2]);
+  place('wide', cards[3]);
+  section.classList.add('bento-on');
+
+  var g = 4; // next card index to show
+  var timer = null;
+  var paused = false;
+  var STEP = 5000;
+
+  function step() {
+    var slotName = order[g % 4];
+    var card = cards[g % cards.length];
+    place(slotName, card);
+    g++;
+  }
+  function start() {
+    if (timer || paused) {
+      return;
+    }
+    timer = setInterval(step, STEP);
+  }
+  function stop() {
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+  }
+
+  // Pause on hover / focus within the bento.
+  var bento = section.querySelector('.bento');
+  if (bento) {
+    bento.addEventListener('mouseenter', function () {
+      paused = true;
+      stop();
+    });
+    bento.addEventListener('mouseleave', function () {
+      paused = false;
+      start();
+    });
+    bento.addEventListener('focusin', function () {
+      paused = true;
+      stop();
+    });
+    bento.addEventListener('focusout', function () {
+      paused = false;
+      start();
+    });
+  }
+
+  // Pause when the section scrolls off screen.
+  if ('IntersectionObserver' in window) {
+    var vis = new IntersectionObserver(
+      function (en) {
+        if (en[0].isIntersecting) {
+          if (!paused) {
+            start();
+          }
+        } else {
+          stop();
+        }
+      },
+      { threshold: 0.15 }
+    );
+    vis.observe(section);
+  } else {
+    start();
   }
 })();

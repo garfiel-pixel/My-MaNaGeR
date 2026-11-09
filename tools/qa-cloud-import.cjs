@@ -967,9 +967,11 @@ const ISO = new Date().toISOString();
         cliPid.replace(/'/g, "''") +
         "'"
     );
+    // 9e94392 (2026-11-08): the first write is audited too, so the CLI project
+    // carries two import rows plus one creation entry.
     check(
-      'Q10e cloud rows exist for the CLI-imported entries (2)',
-      cliRows && Number(cliRows[0].n) === 2,
+      'Q10e cloud rows exist for the CLI-imported entries (2 imports + 1 creation)',
+      cliRows && Number(cliRows[0].n) === 3,
       cliRows
     );
     const cliLedgerRow = queryD1(
@@ -979,10 +981,11 @@ const ISO = new Date().toISOString();
         "'" +
         ' ORDER BY id'
     );
+    const cliImported = (cliLedgerRow || []).filter(r => r.import_key != null);
     check(
       'Q10f import_keys are scoped to the CLI project id',
-      cliLedgerRow &&
-        cliLedgerRow.every(r => String(r.import_key).indexOf('mcp:' + cliPid + ':') === 0),
+      cliImported.length === 2 &&
+        cliImported.every(r => String(r.import_key).indexOf('mcp:' + cliPid + ':') === 0),
       cliLedgerRow
     );
   } catch (e) {

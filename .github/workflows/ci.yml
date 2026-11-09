@@ -379,6 +379,21 @@ jobs:
         id: verify-auth-worker
         run: node tools/verify-auth-worker.mjs
 
+      # I-6/I-7/I-8 landing-page gates (BUDGET-BOQ-MCP 2026-11-05). Pure-static
+      # (no Chrome): copy/CTA discipline, photography provenance + size, and the
+      # bento rotator flip contract. Each is registered in docs/CI-TEST-COVERAGE.md.
+      - name: "T1: Landing copy + CTA gate (T-COPY)"
+        id: qa-copy
+        run: node tools/qa-copy-gate.cjs
+
+      - name: "T1: Landing photography provenance + size (T-PHOTOS)"
+        id: qa-photos
+        run: node tools/qa-photos-gate.cjs
+
+      - name: "T1: Landing bento rotator flip contract (T-BENTO)"
+        id: qa-bento
+        run: node tools/qa-bento-gate.cjs
+
 
       # Chrome is needed from here on: the page-health sweep in T2 drives it
       # against wrangler dev, and the T3 batteries drive it directly.
@@ -539,6 +554,17 @@ jobs:
         run: node tools/qa-team-rbac.cjs
         env:
           QA_PORT: 8812
+
+      # I-1 (BUDGET-BOQ-MCP 2026-11-05): the cross-device cloud-project list
+      # contract. Self-hosts its own wrangler on :8820 (it forges Google-shaped
+      # sessions, so it needs no shared :8787 state and runs regardless of the
+      # shared dev server). A pass proves the server keys the list on the signed
+      # account; the owner's "projects disappear after re-sign-in" report is then
+      # a client-side upload/boot defect.
+      - name: "T2: Cloud project list cross-device (T-CLOUDLIST)"
+        id: qa-cloudlist
+        if: success()
+        run: node tools/qa-cloudlist.cjs
 
       # 5.2 orphaned-subscription cleanup. Self-hosting like Team RBAC: its own
       # wrangler on QA_PORT with PADDLE_API_BASE pointed at a loopback stub, so
@@ -957,6 +983,13 @@ jobs:
       - name: "T4: Work package relations (qa-relations)"
         id: qa-relations
         run: node tools/qa-relations.cjs
+      # C1 (NocoBase plan): the custom-field schema in a real browser - the
+      # Fields sheet, the schema-driven WBS header and cells, the card chips,
+      # the board filter, the required badge, field removal and the view-only
+      # refusal. Unit rules live in test/custom-fields-model.test.mjs.
+      - name: "T4: Custom task fields (qa-custom-fields)"
+        id: qa-custom-fields
+        run: node tools/qa-custom-fields.cjs
 
       # APP-4 (REFINEMENT-DIRECTIVE-2026-10-24): a click on a radio or
       # checkbox INSIDE a dialog overlay kept its default. The six overlays in
@@ -1038,6 +1071,13 @@ jobs:
       - name: "T4: First-project tour (qa-first-project-tour)"
         id: qa-first-project-tour
         run: node tools/qa-first-project-tour.cjs
+
+      # WAVE I (I-11): the first-open tour must ring the control it describes,
+      # dim everything else through a rounded cut-out, skip a step whose target
+      # is hidden for this person, and never park the tip on the target.
+      - name: "T4: Tour spotlight geometry (qa-tour)"
+        id: qa-tour
+        run: node tools/qa-tour.cjs
 
       # OWNER AUDIT 2026-10-31 (S3): card-head button rows keep an 8px gap, and
       # the schedule/backup states are 8px dots rather than bordered pills.
@@ -1344,6 +1384,15 @@ jobs:
       - name: "T4: Landing UI spec (qa-landing-ui)"
         id: qa-landing-ui
         run: node tools/qa-landing-ui.cjs
+
+      # I-1 CLIENT regression (forged-cookie Playwright): boots its OWN local
+      # wrangler dev with a forged Google session and drives the real app.html to
+      # prove the owner code persists to localStorage and the signed-in account
+      # auto-claims the orphan on re-sign-in. Needs the chromium binary the
+      # browser jobs install above (npx playwright install chromium).
+      - name: "T4: I-1 client recovery (qa-i1-client)"
+        id: qa-i1-client
+        run: node tools/qa-i1-client.cjs
 
       - name: "T4: Stop static QA server"
         if: always()

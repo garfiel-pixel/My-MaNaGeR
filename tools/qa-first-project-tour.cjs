@@ -185,6 +185,22 @@ const tourState = page =>
     { declared: declared.map(s => ({ t: s.title, s: s.sel })), missing }
   );
 
+  // I-11: the walk is planned from what is visible, and the shell may still be
+  // rendering its section buttons when the tour auto-opens. Wait for the live
+  // plan total to hold steady before walking, so a late-rendered section is
+  // not mistaken for a permanently hidden one.
+  let lastTotal = -1;
+  let steady = 0;
+  for (let i = 0; i < 60 && steady < 3; i++) {
+    const total = await a.evaluate(() =>
+      window.MMGR && MMGR.Tour && MMGR.Tour.current ? MMGR.Tour.current().total : -1
+    );
+    if (total === lastTotal && total > 0) steady++;
+    else steady = 0;
+    lastTotal = total;
+    if (steady < 3) await a.waitForTimeout(150);
+  }
+
   // Walk every step with the keyboard and confirm the spotlight actually sits
   // on the control the step describes. Hit-testing is no good here (the tour's
   // own overlay is what elementFromPoint returns), so the ring's box is
@@ -207,48 +223,37 @@ const tourState = page =>
       await a.waitForTimeout(100);
     }
     const live = await a.evaluate(() => {
-      const steps = (window.MMGR.Tour && window.MMGR.Tour.steps) || [];
-      const count = (document.getElementById('tour-count') || {}).textContent || '';
-      const m = count.match(/Step (\d+) of/);
-      const i = m ? Number(m[1]) - 1 : -1;
-      const st = i >= 0 ? steps[i] : null;
-      const ring = document.getElementById('tour-ring');
-      const rr =
-        ring && getComputedStyle(ring).display !== 'none' ? ring.getBoundingClientRect() : null;
-      // The visible match, not querySelector's first hit: the workspace
-      // renders each section button twice (compact rail + desktop rail) and
-      // the first is hidden at this width. A step may name candidates.
-      let tr = null;
-      const sels = st && st.sel ? (Array.isArray(st.sel) ? st.sel : [st.sel]) : [];
-      for (let s = 0; s < sels.length && !tr; s++) {
-        const list = document.querySelectorAll(sels[s]);
-        for (let k = 0; k < list.length; k++) {
-          const el = list[k];
-          // Mirror the app's own target picker (js/mmgr-tour.js pick()): a
-          // visibility:hidden duplicate rail keeps a layout box (width/height
-          // > 0) but is not the control the person sees, so the spotlight must
-          // never be measured against it. Without this the harness can lock onto
-          // the hidden copy while the app highlights the visible one, a mismatch
-          // the runner image change (Ubuntu 26) began to trigger.
-          if (getComputedStyle(el).visibility === 'hidden') {
-            continue;
-          }
-          const r = el.getBoundingClientRect();
-          if (r.width > 0 && r.height > 0) {
-            tr = r;
-            break;
-          }
-        }
+      // I-11 re-baseline: the tour now walks a FILTERED plan (a step whose
+      // target is hidden for this person is skipped), so the static STEPS
+      // array no longer lines up with the live "Step N of M" counter. Read
+      // the live plan from the module instead: current() reports the step's
+      // own target and ring boxes, which is exactly what this gate measures.
+      const cur =
+        window.MMGR && window.MMGR.Tour && window.MMGR.Tour.current
+          ? window.MMGR.Tour.current()
+          : null;
+      if (!cur) {
+        return {
+          i: -1,
+          title: '',
+          sel: null,
+          centred: true,
+          overlap: false,
+          sized: false,
+          onScreen: false
+        };
       }
+      const rr = cur.ring;
+      const tr = cur.target;
       const overlap =
         rr && tr
           ? !(rr.right < tr.left || rr.left > tr.right || rr.bottom < tr.top || rr.top > tr.bottom)
           : false;
       return {
-        i,
-        title: (document.getElementById('tour-title') || {}).textContent || '',
-        sel: st ? st.sel : null,
-        centred: !st || !st.sel,
+        i: cur.index,
+        title: cur.title || '',
+        sel: tr ? 'live' : null,
+        centred: !tr,
         overlap,
         sized: tr ? tr.width > 0 && tr.height > 0 : false,
         onScreen: tr ? tr.top >= -4 && tr.bottom <= window.innerHeight + 4 : false

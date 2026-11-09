@@ -206,28 +206,61 @@
     try {
       res = await fetch('/api/billing/status', { method: 'GET', credentials: 'same-origin' });
     } catch (e) {
+      /* OWNER 2026-11-08 fix: a network error, offline state, or a static host
+         with no billing route must NOT blank the control. We cannot know the
+         visitor is signed out, so the safe default is the free "Upgrade to
+         Premium" badge - it links to pricing.html, which works everywhere.
+         Only a definitive 403 (signed out) hides the badge. */
+      setBadge(false);
+      if (plan) {
+        plan.hidden = true;
+        plan.innerHTML = '';
+      }
+      closePop();
+      return;
+    }
+    /* 403 means the visitor is signed out - the ONLY case that must hide the
+       control (no session to manage, and pricing.html is irrelevant to them). */
+    if (res.status === 403) {
       hidePlan();
       return;
     }
     if (!res.ok) {
-      hidePlan();
+      /* Any other non-OK (404 on a static host, 500, etc.): we do not know the
+         plan, but we must not erase the control. Default to the free Upgrade
+         badge so the link is always reachable. */
+      setBadge(false);
+      if (plan) {
+        plan.hidden = true;
+        plan.innerHTML = '';
+      }
+      closePop();
       return;
     }
     var data = null;
     try {
       data = await res.json();
     } catch (e) {
-      hidePlan();
+      setBadge(false);
+      if (plan) {
+        plan.hidden = true;
+        plan.innerHTML = '';
+      }
+      closePop();
       return;
     }
     /* OWNER 2026-11-06: a SIGNED-IN person always sees their plan bar. The
-       status route answers ok only for a session, so ok === signed in; the old
-       extra `configured` test hid the control on a deployment without payment
-       keys, which is what read as "the premium bar disappeared". A free
-       account now gets the Upgrade badge whether or not billing is configured.
-       Only a signed-out visitor (403 here) or a failed request hides it. */
+       status route answers ok only for a session, so ok === signed in. A free
+       account gets the Upgrade badge whether or not billing is configured;
+       a paid account gets the Premium badge + Manage subscription. */
     if (!data || !data.ok) {
-      hidePlan();
+      // Session answered but reports no plan: free account -> Upgrade badge.
+      setBadge(false);
+      if (plan) {
+        plan.hidden = true;
+        plan.innerHTML = '';
+      }
+      closePop();
       return;
     }
     if (!data.active) {

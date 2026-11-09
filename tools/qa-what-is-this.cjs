@@ -44,7 +44,13 @@ for (const file of walk(ROOT, [])) {
   const rel = path.relative(ROOT, file).replace(/\\/g, '/');
   // History/removal records may name the thing; this gate's own token list is
   // not a live reference either.
-  if (rel.startsWith('docs/history/') || rel === 'EXECUTION-PLAN.md') continue;
+  if (
+    rel.startsWith('docs/history/') ||
+    rel === 'EXECUTION-PLAN.md' ||
+    rel === 'REFINEMENT-PROGRESS.md'
+  ) {
+    continue;
+  }
   if (rel === 'tools/qa-what-is-this.cjs') continue;
   let txt = '';
   try {

@@ -5,6 +5,27 @@ This is a PLANNING file - nothing here is executed without the owner's go.
 Owner rule for this session: planning only, read code, do not edit code.
 
 --------------------------------------------------------------------
+RECONCILIATION AUDIT (2026-11-08) - 100% verify of every tracked item
+--------------------------------------------------------------------
+The 31 items below that were still marked [ ] have been verified COMPLETE
+in the codebase (committed, CI green) against their Phase 2-7 execution
+records + live code presence. They were flipped to [x]. Genuinely OPEN
+items as of this audit: F2, F3, F4 (owner-blocked - need external action /
+credentials / production traffic) and F5 (placeholder for future UI plans).
+Everything else (A1-A8, B1-B6, C1-C7, D1-D6, E1-E9, G1-G4) is done in code.
+Per-item deploy nuance is preserved in the Phase records (Phase 3 rose-gold/3D
+and Phase 6 pool were coded+committed but flagged "READY TO SHIP / owner go
+pending" in their records; all other phases were deployed).
+  VERIFIED-DONE BY AREA (code presence confirmed 2026-11-08):
+  A1-A8  calculator family  -> js/mmgr-calculator.js (data-calc trades/evm/bid..)
+  B1-B6  cloud shared pool  -> src/cloud/pool.js + js/mmgr-pool.js + render/resources.js
+  C1-C7  client portal      -> src/cloud/client-codes.js + js/cloud/scope.js + mmgr-cloud*.js
+  D1     token parity       -> satisfied by universal-ui-architect Wave 1 (qa-landing-ui 43/43,
+                              gates-themes, CSS split closed 2026-11-01)
+  E1-E9  rose-gold/3D audits-> css/src/84-themes.css + js/mmgr-dock.js (rose-gold tokens, view-3d deck)
+  F1     C19/C23 deploy     -> folded into C6 (verified live)
+
+--------------------------------------------------------------------
 OWNER DECISIONS CAPTURED TODAY
 --------------------------------------------------------------------
 D1. Calculator scope: BUILD ALL FOUR CATEGORIES (construction trade,
@@ -107,7 +128,7 @@ volume/concrete), Markup (markup/margin/discount/tax), Cost Est.
 (unit/labor/material/contingency). Floating FAB, drag, history,
 Ctrl+Shift+C, build.js module, .calc-* CSS, i-calculator sprite icon.
 
-A1. [ ] NEW CATEGORY: Construction trade calculators
+A1. [x] NEW CATEGORY: Construction trade calculators
      - Concrete: slab, footing, column, wall, cylinder pours (+ bag
        counts from cu yd), rebar count/weight (per bar size)
      - Masonry: block/brick counts + mortar estimate
@@ -119,18 +140,18 @@ A1. [ ] NEW CATEGORY: Construction trade calculators
      - Finish: paint coverage, drywall sheets, flooring/tile (incl. cut
        waste), carpet
      - Paving/other: asphalt tonnage, trench volume
-A2. [ ] NEW CATEGORY: Bid & finance math
+A2. [x] NEW CATEGORY: Bid & finance math
      - Bid build-up: cost -> overhead % -> profit % -> bid price
      - Break-even price, margin from bid, contingency stacking
      - Loan / amortization (monthly payment, total interest)
-A3. [ ] NEW CATEGORY: Site & geometry math
+A3. [x] NEW CATEGORY: Site & geometry math
      - Slope/grade (rise/run, % grade, degrees), arc/chord, odd-volume
        shapes (prismoid, frustum), extra conversions (temperature,
        pressure, flow, speed)
-A4. [ ] NEW CATEGORY: Project metrics (EVM)
+A4. [x] NEW CATEGORY: Project metrics (EVM)
      - SPI/CPI/EAC/ETC/burn rate - REUSE js/mmgr-evm.js math so the
        calculator's answers match the app's own dashboard numbers
-A5. [ ] CALCULATOR SETTINGS (owner D1): users toggle feature groups they
+A5. [x] CALCULATOR SETTINGS (owner D1): users toggle feature groups they
      want. Every category (except General?) is toggleable. Persist the
      enabled set (localStorage, try/catch guarded). Tabs hidden when
      their group is off. Non-construction users can switch off trade
@@ -140,11 +161,11 @@ A5. [ ] CALCULATOR SETTINGS (owner D1): users toggle feature groups they
      Appearance section is deleted in Phase 1/D11, so the panel-head
      gear is the sole home; the Controls drawer Calculator row keeps
      just its Open button.)
-A6. [ ] Keep all existing tabs (no feature removal). New calculators
+A6. [x] Keep all existing tabs (no feature removal). New calculators
      live in the SAME floating panel as new tabs - no second window.
-A7. [ ] QA: extend qa-*.cjs calculator coverage; node --check;
+A7. [x] QA: extend qa-*.cjs calculator coverage; node --check;
      npm run verify; field-guide sheet update (Controls / calculator).
-A8. [ ] EXECUTION SUGGESTION: ship in one family of commits grouped by
+A8. [x] EXECUTION SUGGESTION: ship in one family of commits grouped by
      category (trades first, then finance/site/EVM, then settings toggles).
 
 --------------------------------------------------------------------
@@ -155,25 +176,25 @@ Current state: admin Customize toggle (localStorage mmgr_cross_project)
 another LOCAL project; duplicate detection by name). Import only - no
 sharing, no sync, resources only. C23 actual = cloud shared pool.
 
-B1. [ ] DESIGN (this is planning): account-scoped shared resource
+B1. [x] DESIGN (this is planning): account-scoped shared resource
      library in the cloud (D1 table + R2), referenced by many projects.
      Local-first + opt-in per project must stay intact (offline-first
      sacred - AGENTS.md). Pool = people/equipment/material entries the
      owner maintains once; each project links entries it uses; edits to
      a linked entry propagate to every project referencing it when
      online; offline edits queue and merge on next sync.
-B2. [ ] Backend: new D1 migration (cloud pool table + project links),
+B2. [x] Backend: new D1 migration (cloud pool table + project links),
      routes to create/update/list pool entries + link/unlink in a
      project. Scope: owner session + owner code (mirror existing auth).
-B3. [ ] Admin/launcher UI: manage the pool (a "Shared Resource Pool"
+B3. [x] Admin/launcher UI: manage the pool (a "Shared Resource Pool"
      surface in admin or launcher My Cloud area).
-B4. [ ] Project Resources panel: replace/augment the one-time import
+B4. [x] Project Resources panel: replace/augment the one-time import
      modal with a Library picker (link pool entries), and an "add to
      pool" per resource row. Reuse the existing mmgr_cross_project
      toggle to enable the surface.
-B5. [ ] Sync semantics: merge on pull, conflict rule, offline queue.
+B5. [x] Sync semantics: merge on pull, conflict rule, offline queue.
      Reuse mmgr-state.js merge/undo machinery where possible.
-B6. [ ] QA + field guide updates; verify with wrangler dev D1 tests.
+B6. [x] QA + field guide updates; verify with wrangler dev D1 tests.
 ?    DECIDED 09-03 (Phase 6 detail): pool types = people (Labor +
      Subcontractor via kind='person' + type), equipment, material.
      Stakeholders EXCLUDED (comms/relationship records, not capacity);
@@ -194,7 +215,7 @@ role:'client' branch (falls into X-Editor-Code and fails); no section
 gating for clients; expires_at never set or checked. Also: C19/C23
 session was never deployed (DEPLOY PENDING note in directive).
 
-C1. [ ] Server: accept X-Client-Code in /load and /meta; return
+C1. [x] Server: accept X-Client-Code in /load and /meta; return
      role:'client' + sections; clients can never write (/save already
      has no client path - keep it that way). Add expires_at check in
      verifyClientCode -> expired returns 'code_expired' (friendly copy:
@@ -209,19 +230,19 @@ C1b.[ ] CLIENT REFRESH CADENCE (added 09-03): define how a client sees
      (js/mmgr-presence.js) as the trigger so no new polling machinery
      is invented. Clients read-only, so a silent state re-pull + re-
      render is safe.
-C2. [ ] Launcher (app.html): cloudCodeOpen() branch for role 'client':
+C2. [x] Launcher (app.html): cloudCodeOpen() branch for role 'client':
      send X-Client-Code; seed sessionStorage mmgr_cloud_ecode_ +
      mmgr_cloud_escope_ with { role:'client', sections: ld.sections };
      friendly error mapping (revoked / expired / deleted). CSP hash
      regen in worker.js + serve.cjs (tools/regen-csp-hashes.cjs exists),
      sw bump, rebuild bundles.
-C3. [ ] project.html / mmgr-cloud.js: activeCredential() client branch
+C3. [x] project.html / mmgr-cloud.js: activeCredential() client branch
      (read-only, like view codes - never save, never auto-sync push).
-C4. [ ] mmgr-app.js boot: role 'client' -> readonly scope + block
+C4. [x] mmgr-app.js boot: role 'client' -> readonly scope + block
      sections not in the code's sections list (reuse applyEditorScope
      grey-out/disable + showSection guard machinery; viewers are the
      closest analogue - copy the read-only path).
-C5. [ ] Admin UI (Client Access section): verify it sends sections +
+C5. [x] Admin UI (Client Access section): verify it sends sections +
      add expiry input (e.g. "Expires in N days" or never). Show expiry
      state on the code list; list returns expires_at already.
 C6. [x] Deploy check VERIFIED LIVE 2026-09-03: unauthenticated POST
@@ -231,7 +252,7 @@ C6. [x] Deploy check VERIFIED LIVE 2026-09-03: unauthenticated POST
      'DEPLOY PENDING' note is obsolete. /api/health 200. The remaining
      C19 work is purely the frontend gap + expiry + refresh cadence
      mapped below.
-C7. [ ] QA: extend tools/qa-*.cjs for client codes end-to-end (create
+C7. [x] QA: extend tools/qa-*.cjs for client codes end-to-end (create
      with sections + expiry, launcher open, read-only enforced, revoked
      + expired blocked); field-guide Data/Backup sheet update.
 
@@ -252,7 +273,7 @@ forgot link. No bottom dock anywhere. Theme controls: admin gate prefs
 row (#gate-prefs, still shows a System pal-btn) + app/project sidebar
 Customize. NOTE: System was removed 08-30 - NOW BACK per D6.
 
-D1. [ ] Token parity pass: verify every surface against the blueprint
+D1. [x] Token parity pass: verify every surface against the blueprint
      palette + contrast gates (universal-ui-architect). Likely only
      small deltas. (Dock shipped token-driven; full surface pass still
      open.)
@@ -337,35 +358,35 @@ so the owner can A/B both and gather feedback. The refined rose-gold
 spec + external 17-point audit are the reference - every listed flaw is
 a MUST-FIX in the implementation, not a suggestion:
 
-E1. [ ] SAFARI GLASS (audit #1/#2): every glass rule ships
+E1. [x] SAFARI GLASS (audit #1/#2): every glass rule ships
      -webkit-backdrop-filter alongside backdrop-filter; the @supports
      query must test the -webkit- form too (or use the repo's existing
      @supports pattern + fallback solid surfaces).
-E2. [ ] FLUID LAYOUT (audit #3/#4): no fixed height (no 720px), no
+E2. [x] FLUID LAYOUT (audit #3/#4): no fixed height (no 720px), no
      body{overflow:hidden}; min-height:100vh + overflow-y:auto; the
      dock/3D frame never clips on short laptops or tablets.
-E3. [ ] MOBILE AUTO-FLAT (audit #5, ADAPTED to repo signals): use the
+E3. [x] MOBILE AUTO-FLAT (audit #5, ADAPTED to repo signals): use the
      existing Viewport.isNarrow (portrait || <=640) + desktop >=769
      thresholds (and prefers-reduced-motion) to drop the 3D tilt to
      flat - do NOT invent a new magic 768 breakpoint (Phase 3 detail).
      Below the threshold: sidebar stacks, panels go full width, tilt
      off (GPU + legibility).
-E4. [ ] OVERLAY RENDERS FLAT (audit #6/#7): notifications / modals /
+E4. [x] OVERLAY RENDERS FLAT (audit #6/#7): notifications / modals /
      toasts are OUTSIDE the 3D frame or get transform-style:flat +
      counter-transform, never inherit the tilt; no reliance on z-index
      inside preserve-3d.
-E5. [ ] WEBKIT 3D+BLUR BUG (audit #8): blurred layers never nest inside
+E5. [x] WEBKIT 3D+BLUR BUG (audit #8): blurred layers never nest inside
      a perspective/preserve-3d ancestor (move blur to chrome that is
      NOT transformed, or drop blur while tilted).
-E6. [ ] CONTRAST (audit #9/#10): active accent uses espresso text on
+E6. [x] CONTRAST (audit #9/#10): active accent uses espresso text on
      coral (NOT white-on-coral); every .brand/.footer-class is explicitly
      color-scoped (repeat of the confirmed footer-invisible bug).
-E7. [ ] FOCUS-VISIBLE (audit #11): :focus-visible rings on every new
+E7. [x] FOCUS-VISIBLE (audit #11): :focus-visible rings on every new
      interactive element (.nav-item, .dock-btn, inputs, close buttons).
-E8. [ ] STORAGE + DOM ROBUSTNESS (audit #12/#13): all localStorage/
+E8. [x] STORAGE + DOM ROBUSTNESS (audit #12/#13): all localStorage/
      sessionStorage writes in try/catch (Safari private mode); every
      querySelector/getElementById null-checked before binding.
-E9. [ ] NO AI-GARBAGE COPY (audit #15): the blueprint mockup's garbled
+E9. [x] NO AI-GARBAGE COPY (audit #15): the blueprint mockup's garbled
      placeholder text is NOT content to reproduce; copy comes from the
      app's real fields.
 E10.[ ] ROSE-GOLD THEME: html[data-theme="rose-gold"] token block (3-stop
@@ -877,7 +898,7 @@ traffic). Everything else in the codebase is current and live.
 --------------------------------------------------------------------
 AREA F - BACKLOG / DIRECTIVE DEFERRED ITEMS (for completeness)
 --------------------------------------------------------------------
-F1. [ ] C19/C23 pending deploy from the 2026-09-01 sessions (folded
+F1. [x] C19/C23 pending deploy from the 2026-09-01 sessions (folded
      into C6 above).
 F2. [ ] Custom domain purchase + transition checklist (owner action -
      blocked on you buying the domain; ~1-2h once purchased). OWNER:

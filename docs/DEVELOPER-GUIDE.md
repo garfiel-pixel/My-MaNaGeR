@@ -62,16 +62,21 @@ attaches (e.g. `MMGR.Cloud`).
 | `mmgr-perf.js` | 95 | `Perf` | Device-level Performance Mode. ON/OFF gates WebGL starfield, 3D tilt, heavy CSS blur layers. Must load before viewport/dock read it. |
 | `mmgr-theme.js` | 183 | `Theme` | Light/Dark/System helper, early-load so theme applies before first paint. Shared by every page. |
 | `mmgr-render.js` | 2,390 | `Render` | Rendering engine: `renderDash()` (dashboard), `renderWbs()`, `renderGantt()`, `drawDependencyArrows()`, plus RAF-wrapped dispatch of the `js/render/*` sub-renderers. |
-| `js/render/*.js` | — | `Render` | Render sub-modules extracted from mmgr-render.js: `financials`, `people`, `closure`, `documents`, `weather`, `kanban`, `risks`, `resources`. Loaded *before* mmgr-render.js which wraps them. |
+| `js/render/*.js` | — | `Render` | Render sub-modules extracted from mmgr-render.js: `financials`, `people`, `closure`, `documents`, `weather`, `kanban`, `ideas`, `risks`, `resources`, `agenda`, `pages`. Each exports exactly one renderer object (`RenderIdeas` -> `renderIdeas`, `RenderAgenda` -> `renderAgenda`, `RenderPages` -> `renderPages`); mmgr-render.js owns the thin wrapper and the `ns.Render` key. Loaded *before* mmgr-render.js which wraps them. |
 | `mmgr-app.js` | 2,578 | `App` | Application controller: `init()` boot, access gate, delegated `data-action` dispatch (`ACTION_MAP`), drawers/modals/toast, keyboard shortcuts, mention dropdown, Gantt PNG export. |
 | `js/app/*.js` | — | `App` | App sub-modules extracted from mmgr-app.js: `components`, `confirm`, `copy-text`, `sidebar`, `weather`, `backup`, `export`, `history`, `definitions`, `baseline-guard` (Task 2: auto-captures the first baseline + red-dot nudge), `entitlements` (Task 9: the ONE gating seam — `aiAssistant()` reads sign-in; premium flags land inside later, callers never change). |
 | `mmgr-tasks.js` | 623 | `Tasks` | WBS/task CRUD: add/edit/indent, `updTaskField` (endDate edits + Gantt drags back-compute duration via `durationFromDates`, Task 1), `validateImportLines` + AI-assisted Import Dates mismatch panel (Task 3). Split-candidate note: `updTaskField` grew — keep an eye. |
+| `mmgr-ideas.js` | 575 | `Ideas` | Idea intake model (Leantime-inspired): six canvas stages, record normalisation, add/update/remove, the atomic `applyDrop`, the impact x2 minus effort score, the one-way promote link, `unlink` for a deleted task, and `repair` for imported rows. Pure: no DOM, no storage. |
+| `mmgr-agenda.js` | 416 | `Agenda` | Merged date feed over tasks, milestones, meetings, open issues, open changes and live ideas. One window rule, overdue handling, day grouping, and the RFC 5545 `.ics` writer. Pure: no DOM, no storage. |
+| `mmgr-pages.js` | 887 | `Pages` | Project book model (AppFlowy-inspired): a flat page tree (`parentId` + `sort`, never nested), typed plain-text blocks, create/rename/remove-with-descendants, a descendant-safe move, block add/edit/toggle/reorder/remove, live task/document blocks resolved at draw time, and template capture/apply. Pure: no DOM, no storage. |
 | `mmgr-schedule.js` | 849 | `Schedule` | CPM engine: topological sort, forward/backward pass, float, critical path, weather padding, resource conflicts, `audit()`. **Purity contract**: pass functions are pure — they never mutate live tasks. |
-| `mmgr-risks.js` | 215 | `Risks` | Risk & issue CRUD. |
+| `mmgr-risks.js` | 298 | `Risks` | Risk & issue CRUD; the issue status write is guarded by `Process`. |
 | `mmgr-resources.js` | 428 | `Resources` | Resource & budget management (rates, allocation, utilization, budget lines). |
-| `mmgr-stakeholders.js` | 198 | `Stakeholders` | Stakeholder register, change control, logs. |
+| `mmgr-stakeholders.js` | 328 | `Stakeholders` | Stakeholder register, change control, logs; the change status write is guarded by `Process`. |
+| `mmgr-process.js` | 325 | `Process` | Guarded status edges for changes and issues, the append-only transition history, repair-on-boot, and (from Phase 3) the declared rule engine. Pure: every function takes the state. |
 | `mmgr-bids.js` | 848 | `Bids` | Bid leveling + Go/No-Go weighted scoring (packages, leveled grid, per-sub actions). |
 | `mmgr-charter.js` | 498 | `Charter` | Project charter & KPI management. |
+| `mmgr-custom-fields.js` | ~360 | `CustomFields` | Custom task field schema: the type table, add/update/remove/reorder over `state.fields`, coercion, value reads and writes on `task.custom`, required-field detection, and the persisted board filter. Pure functions over the state object, no DOM. Loads after `mmgr-utils.js` and before the renderers. |
 | `mmgr-raci.js` | 248 | `RACI` | RACI matrix. |
 | `mmgr-closure.js` | 427 | `Closure` | Closure, comms & document management. |
 | `mmgr-defs.js` | 226 | `Defs` | Static plain-language PM glossary (data-only; adding a term touches no logic). |
@@ -103,7 +108,7 @@ attaches (e.g. `MMGR.Cloud`).
 | `mmgr-cloud-dash.js` | 724 | `CloudDash` | "My Cloud Projects" launcher dashboard (app.html). Self-contained on purpose — loads before mmgr-utils; degrades silently without the Worker. |
 | `mmgr-pool.js` | 237 | `Pool` | Cloud shared resource pool client (C23): list/link/unlink pool rows, owner-gated server-side. |
 | `mmgr-presence.js` | — | `Presence` | Real-time presence WebSocket (project.html only, opt-in): quiet "N online" chip; hides entirely on any failure. Shares `{name, since}` only. |
-| `mmgr-templates.js` | 217 | `Templates` | Save current state as template / apply template to a project (C24). |
+| `mmgr-templates.js` | 309 | `Templates` | Save current state as template / apply template to a project (C24). Carries the page tree too: `Pages.captureTree` on save, `Pages.applyTree` on apply. |
 | `marketing.js` | 704 | — | Marketing pages (index/features/about/contact): nav dropdowns, contact form, etc. |
 | `reviews.js` / `verify.js` / `reset.js` | — | — | Marketing-bundle helpers (reviews wall, code verify, reset flows). |
 | `demo-data.js` / `projects-data.js` | — | — | Launcher seed data. |
@@ -111,6 +116,81 @@ attaches (e.g. `MMGR.Cloud`).
 *(~Lines marked "—" were minor at analysis time; see `wc -l js/*.js` for current numbers.)*
 
 ---
+
+### Idea intake and the agenda
+
+`mmgr-ideas.js` and `mmgr-agenda.js` are **pure models**: no DOM, no storage, no timers. Both are tested directly in `test/*.test.mjs` under a `vm` sandbox. The board and the list in `js/render/ideas.js` are two projections of `state.ideas`; they must never hold a copy. The agenda in `js/render/agenda.js` is a read-only projection of six existing record types and owns no record of its own.
+
+Four rules are load-bearing:
+
+1. **One write path per record.** Stage moves go through `Ideas.applyDrop` (drag and arrow keys) or `Ideas.update` (the list select and the sheet). Do not add a third.
+2. **Repair saves through `State.save()`, never `State.updateState()`.** A renderer runs inside a change notification; `updateState` there re-enters the listeners. `save()` debounces and stamps `updatedAt`, which is all a repair needs.
+3. **Promotion is one-way and does not change the stage.** `Ideas.promote` writes `promotedTaskId`; `Tasks.delTask` calls `Ideas.unlink` in the same update, so a card can never point at a deleted task.
+4. **The agenda adds no editable control.** Every row jumps to the panel that owns the record. A second editing surface is how two sources of truth start to disagree.
+
+Per-device preferences (`ideaView`, `ideaTag`, `agendaDays`) live in state but are deliberately **not** in `FIELD_KEYS`, so a cloud merge never carries one user's view choice onto another machine.
+
+### The project book (pages)
+
+`mmgr-pages.js` is a **pure model**: no DOM, no storage, no timers, tested in `test/pages-model.test.mjs` under a `vm` sandbox. `js/render/pages.js` draws the Documents panel's Pages view. The Register is untouched and still owns controlled documents.
+
+Three rules are load-bearing:
+
+1. **Pages are a flat array with a `parentId`, never nested.** A move is one write, "find by id" is a scan not a recursive walk, and a partial cloud merge cannot duplicate a subtree. `Pages.flatten` is the only tree view; `Pages.move` refuses a drop into the page's own descendant.
+2. **A block holds plain text and a type, never HTML.** Formatting *is* the block type (heading, bullet, callout, divider). An unknown type from a newer build repairs to a paragraph on read. No sanitiser exists because no HTML is ever stored.
+3. **A page is a lens, not a second surface.** Pages may reference tasks and register rows but never create, edit, or delete either. Every write is a `data-action` through `State.updateState`, so the read-only fence covers the surface with no new logic.
+
+**Live blocks read, never write.** A `taskList` or `docList` block stores only its `filter`; the rows are resolved at draw time by `Pages.resolveTasks` / `Pages.resolveDocs` and every row is a `pageJump` link to the owning panel. Nothing is copied into the page, so a task completed in the WBS or a register row removed in Documents is gone the next time the panel draws. A filter edit is a page write (`setBlockFilter`) and is fenced; a viewer gets the same rows and a sentence naming the filter instead of the selects. `emptyFilterText` names the filter — "No data" reads like a bug.
+
+**Templates carry the page tree.** `saveAsTemplate` stores `Pages.captureTree(state)` — ids stripped, each page keeping a local `key` and its parent's `key` — and `applyTemplate` runs `Pages.applyTree` *after* the tasks and budget lines, so a live block resolves against the tasks that just arrived. Fresh ids are minted on apply and parents are remapped in tree order, so applying the same template twice yields two independent branches. A template with no `pages` applies exactly as before.
+
+**The register link and the handover pack.** A register row may carry one optional `pageId`; the link lives on the document, so deleting the page leaves the row and the cell reads as unlinked again. The Pages view's unfiled lens keeps unlinked pages plus the ancestors that hold them (`context: true`), so the tree still reads. `Pages.buildPack(state, rootId)` assembles — never stores — the branch in order, each block, live rows resolved as they stand that moment, and the register rows linked from the branch grouped by type. `printPack` paints it into `#pg-pack` (a direct child of `body`) and adds `body.pg-printing`; the `@media print` rules in `30-panels.css` are the only thing that shows the pack and hides the app. The pack is paper: black on white regardless of theme.
+
+`pages` is project data and **is** in `FIELD_KEYS`; `docsView`, `pageSel` and `pageUnfiled` are per-device and deliberately are not. The migration repairs an imported page inline (the state module loads before the model); the model repairs again on read.
+
+### Guarded status moves (process)
+
+`mmgr-process.js` is a **pure model**: `canMove` judges an edge, `applyMove` writes the status and the history entry together, `repairAll` steps an impossible status back. Three rules:
+
+1. **The guard sits on the write, not the widget.** `Changes.updChange` and `Risks.updIssue` route a `status` field through `Process.applyMove`; the select is only a control. An import, a paste, a rule and a programmatic call all pass through the same judgement.
+2. **The history is a flat, append-only collection** (`state.transitions`), not an array on the record. A cloud merge rewrites arrays wholesale, so a nested history could lose an entry; a flat collection keyed by `{kind, ref}` survives, and it survives the deletion of its record on purpose.
+3. **A move and its entry land in one `updateState`.** There is no window in which a status is new and unrecorded. A refusal never half-writes: `canMove` is checked before anything is touched.
+
+Repair runs on boot (`App.init`) only when `Process.needsRepair(state)` is true, and each step is recorded with `via:'repair'` — never silently. `requireApproval` sets `secondApproverRequired`; the guard then refuses `review→approved` until a second name is filled.
+
+The history has two views and one source. The change id in the register opens a detail row under the record (oldest first, newest emphasised, `rule`/`repair` tagged); the Log panel's "Recorded moves" card shows the project-wide feed newest first, filtered by record type through `state.trFilter` (per-device, not in `FIELD_KEYS`). Both read `Process.feed`/`Process.historyFor`; neither writes. The written Decision Log stays below the feed, labelled as a person's narrative.
+
+### Declared rules
+
+A rule is **data, not code**: `{trigger:{kind,event}, conditions:[{field,op,value}] (all-of, max two), action:{type,...}}`, one action from `RULE_ACTIONS`. There is no expression language and no outside call — a rule that needs more is a feature request. Four rules:
+
+1. **One pass judges the record as it was.** `runRules` snapshots the record before pass one, so a rule that writes a field cannot change the verdict for a later rule in the same pass. Pass two only detects a rule that *would* now match on a field trigger, logs `Chain stopped`, and stops.
+2. **The declared event is part of the trigger.** A rule written for `status` does not fire on `created` or a field edit.
+3. **A rule cannot bypass the guard.** `setField` on `status` goes through `applyMove`, so its refusals still apply and the move is recorded `via:'rule'`.
+4. **Imported rules arrive disabled.** `importState` sets `enabled:false` on every rule in the file; opening a project cannot start acting on it.
+
+`state.ruleLog` is capped at 300 entries (the UI shows the newest 20). Rules live in `FIELD_KEYS` as flat append-only collections, like `transitions`.
+
+### Cycles (planning)
+
+`mmgr-cycles.js` is a **pure model**. A cycle is a window with a commitment inside it, and it owns no tasks: `task.cycleId` is the pointer, so moving a task is one write and a merge cannot duplicate membership. Four rules:
+
+1. **One active cycle, always.** `activate` demotes the previous active cycle in the same write, so no render can catch two.
+2. **The commitment is taken once.** `activate` records `{at, tasks, days}` and nothing recalculates it; the difference between that and the cycle's contents at close is real scope movement, not a reinterpretation.
+3. **Closing is a decision.** `close(state, id, 'forward'|'backlog')` refuses an empty choice and refuses while any task has no status. `forward` requires a next open cycle that starts after this one ends; there is no silent third answer.
+4. **A closed cycle is history.** Its dates and membership are frozen (`assign` and `updateCycle` refuse), while its name and notes stay editable.
+
+The sprint bar above the board is a **view** of the active cycle, not a second source: `Tasks.loadSprintData` reads the active cycle and falls back to the old singleton only so a project that never opened Planning still shows something. `saveSprint` writes through `Cycles.updateCycle` and never touches `state.sprint`; with no active cycle, a complete name/date edit creates and activates one through the model. `Populate Sprint` writes the active cycle's dates. The Planning section is hidden on a non-agile project by the same rule as the sprint bar (`#plan-nav`).
+
+Migration 30 converts the old sprint into the first cycle and clears a `cycleId` that points at a cycle that no longer exists. `state.cycles` is in `FIELD_KEYS`; `cycSel`/`cycClosing` are view preferences and deliberately are not.
+
+**Analytics restate records, never extrapolate.** `burndown(state, cycle)` walks the cycle window day by day, reads the daily snapshot for each day, and sums the committed durations of the tasks the snapshot still shows unfinished. A day with no snapshot is a **gap**, not a zero, and fewer than two points refuses to draw with a reason. The commitment stores `ids` and `daysById`, so scope change is `current − committed` split into added and removed, and a later duration edit cannot rewrite what was committed. Velocity exists only on a closed cycle with a commitment (`close.doneDays`). `reviewText` is generated once at close and appended to the Decision Log; `reviewLogged` stops a second copy. Snapshots carry `duration` for exactly this purpose.
+
+### The approval pack and the outbound summary
+
+`Process.buildApprovalPack(state,{from,to,statuses})` assembles — never stores — the dated header, every matching change with its impacts, approver and reason, and that change's full history. `App.printApprovalPack` paints it into the shared `#pg-pack` container (same print surface as the handover pack) and prints; the footer states included/excluded and the local-time caveat. Printing is a read, so a viewer may print it.
+
+A rule with `hook:true` asks for the move to leave the device. `Process.buildTransitionSummary` returns exactly eight fields (`event, project, kind, ref, from, to, by, at`) — the record's reason and notes stay on the device. `App.dispatchHooks` posts it to `POST /api/cloud/projects/:id/webhooks/notify`, which rebuilds the document from that fixed key list and relays it to the project's enabled `transition_recorded` subscriptions, signing each delivery with the subscription secret. Owner code required; the checkbox is off by default; a failed send toasts and leaves the history entry untouched.
 
 ## 3. Split candidates — largest functions
 

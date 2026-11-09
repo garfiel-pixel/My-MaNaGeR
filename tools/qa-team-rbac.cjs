@@ -1028,6 +1028,284 @@ async function runRbacSprint1Gates() {
     last: last.text.slice(0, 200)
   });
 }
+
+// ============================================================
+// H-7 BUDGET APPROVER RBAC GATE (BUDGET-BOQ-MCP directive 2026-11-05)
+// ------------------------------------------------------------
+// A budget-only proposal (scope === ['bud']) may be decided by the OWNER or
+// the one named budget approver. A viewer (client) cannot record or approve;
+// an editor (here a scoped supervisor) can record and propose but NOT approve;
+// the budget approver CAN approve; only one approver may exist per project; a
+// client may never be the approver. Tests the real HTTP endpoints so the UI
+// and a direct caller fail the same way.
+// ============================================================
+async function runBudRbacGates(pid) {
+  const OWNER = 'mallory.bud.h7@example.com';
+  const EDITOR = 'erin.editor.h7@example.com';
+  const APPROVER = 'abe.approver.h7@example.com';
+  const VIEWER = 'victor.viewer.h7@example.com';
+  const teamBase = '/api/cloud/projects/' + pid + '/team';
+
+  // Bud-only matrix: every section 'none' except 'bud' = 'edit'. A supervisor
+  // (non-manager) with this matrix WRITES a budget-only proposal, which is what
+  // the H-7 approver path keys on (a manager would write directly, never queue).
+  const BUD_ONLY = {
+    charter: 'none',
+    wbs: 'none',
+    res: 'none',
+    bud: 'edit',
+    stk: 'none',
+    chg: 'none',
+    log: 'none',
+    risk: 'none',
+    close: 'none',
+    raci: 'none',
+    comms: 'none',
+    docs: 'none',
+    dmaic: 'none',
+    proc: 'none',
+    meet: 'none',
+    photos: 'none'
+  };
+
+  // ---- accounts + owner project ----------------------------------------
+  const owner = await registerAndVerify(OWNER, 'Mallory Owner');
+  if (!owner.cookie) {
+    check('H-7 setup owner account', false, { reg: owner.reg && owner.reg.text });
+    return;
+  }
+  // Company tier: a custom (bud-only) matrix is an enterprise feature gated to
+  // company/enterprise, and the member_limit on lower tiers would block the
+  // multiple invitations this gate needs.
+  await fireSubscription('email:' + OWNER, PADDLE_COMPANY_PRICE, 'active');
+  const proj = await createProject(owner.cookie, pid, 'H-7 Budget Approver');
+  check('H-7 owner links a project', proj.status === 200 && proj.body && proj.body.ok, proj.text);
+
+  // ---- invite the three members ----------------------------------------
+  const invEditor = await api(teamBase, {
+    method: 'POST',
+    headers: Object.assign({ 'Content-Type': 'application/json' }, ck(owner.cookie)),
+    body: JSON.stringify({ email: EDITOR, role: 'supervisor', perm: BUD_ONLY })
+  });
+  check(
+    'H-7 invite scoped editor (supervisor, bud-only) -> 200',
+    invEditor.status === 200 && invEditor.body && invEditor.body.ok,
+    invEditor.text
+  );
+  const invApprover = await invite(owner.cookie, pid, APPROVER, 'manager');
+  check(
+    'H-7 invite approver (manager) -> 200',
+    invApprover.status === 200 && invApprover.body && invApprover.body.ok,
+    invApprover.text
+  );
+  const invViewer = await invite(owner.cookie, pid, VIEWER, 'client');
+  check(
+    'H-7 invite viewer (client) -> 200',
+    invViewer.status === 200 && invViewer.body && invViewer.body.ok,
+    invViewer.text
+  );
+
+  const editorMid = await memberIdByEmail(pid, EDITOR);
+  const approverMid = await memberIdByEmail(pid, APPROVER);
+  const viewerMid = await memberIdByEmail(pid, VIEWER);
+  check('H-7 member ids resolved', editorMid && approverMid && viewerMid, {
+    editorMid,
+    approverMid,
+    viewerMid
+  });
+
+  // accept each invitation with its own minted session
+  const editorCookie = mintGoogleCookie(EDITOR, 'Erin Editor');
+  const approverCookie = mintGoogleCookie(APPROVER, 'Abe Approver');
+  const viewerCookie = mintGoogleCookie(VIEWER, 'Victor Viewer');
+  const accE = await api('/api/team/invitations/' + editorMid + '/accept', {
+    method: 'POST',
+    headers: ck(editorCookie)
+  });
+  const accA = await api('/api/team/invitations/' + approverMid + '/accept', {
+    method: 'POST',
+    headers: ck(approverCookie)
+  });
+  const accV = await api('/api/team/invitations/' + viewerMid + '/accept', {
+    method: 'POST',
+    headers: ck(viewerCookie)
+  });
+  check(
+    'H-7 all three invitations accepted',
+    accE.status === 200 && accA.status === 200 && accV.status === 200,
+    { accE: accE.status, accA: accA.status, accV: accV.status }
+  );
+
+  // ---- one-approver enforcement ----------------------------------------
+  const setAppr = (mid, val) =>
+    api(teamBase + '/' + mid, {
+      method: 'PUT',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, ck(owner.cookie)),
+      body: JSON.stringify({ budgetApprover: val })
+    });
+  const flagOf = async mid => {
+    const rows = await d1QueryRetry(
+      'SELECT budget_approver FROM cloud_team_members WHERE id = ' + mid,
+      'flag'
+    );
+    return rows && rows[0] ? rows[0].budget_approver : -1;
+  };
+
+  const setA = await setAppr(approverMid, true);
+  check('H-7 name approver -> 200', setA.status === 200, setA.text);
+  check(
+    'H-7 exactly one approver (approver=1, editor=0)',
+    (await flagOf(approverMid)) === 1 && (await flagOf(editorMid)) === 0,
+    {
+      approver: await flagOf(approverMid),
+      editor: await flagOf(editorMid)
+    }
+  );
+
+  const setE = await setAppr(editorMid, true);
+  check('H-7 second approver clears the first -> 200', setE.status === 200, setE.text);
+  check(
+    'H-7 now editor=1 and approver=0',
+    (await flagOf(editorMid)) === 1 && (await flagOf(approverMid)) === 0,
+    {
+      editor: await flagOf(editorMid),
+      approver: await flagOf(approverMid)
+    }
+  );
+
+  const setA2 = await setAppr(approverMid, true);
+  check(
+    'H-7 re-naming approver restores the single-approver rule -> 200',
+    setA2.status === 200,
+    setA2.text
+  );
+  check(
+    'H-7 approver=1 and editor=0 again',
+    (await flagOf(approverMid)) === 1 && (await flagOf(editorMid)) === 0,
+    {
+      approver: await flagOf(approverMid),
+      editor: await flagOf(editorMid)
+    }
+  );
+
+  // ---- a client can never be the approver ------------------------------
+  const setV = await setAppr(viewerMid, true);
+  check('H-7 client cannot be budget approver -> 400', setV.status === 400, setV.text);
+  check('H-7 client flag stays 0', (await flagOf(viewerMid)) === 0, {
+    viewer: await flagOf(viewerMid)
+  });
+  // re-assert approver after the 400 (no state change expected)
+  check('H-7 approver still 1 after client refusal', (await flagOf(approverMid)) === 1, {
+    approver: await flagOf(approverMid)
+  });
+
+  // ---- a viewer cannot record budget -----------------------------------
+  const viewerSave = await api('/api/cloud/projects/' + pid + '/save', {
+    method: 'POST',
+    headers: Object.assign({ 'Content-Type': 'application/json' }, ck(viewerCookie)),
+    body: JSON.stringify({ state: { budgetLines: [{ id: 'b1', name: 'Viewer line' }] } })
+  });
+  check('H-7 viewer cannot record budget -> 403', viewerSave.status === 403, viewerSave.text);
+
+  // ---- editor records a budget-only proposal ---------------------------
+  const editorSave = await api('/api/cloud/projects/' + pid + '/save', {
+    method: 'POST',
+    headers: Object.assign({ 'Content-Type': 'application/json' }, ck(editorCookie)),
+    body: JSON.stringify({ state: { budgetLines: [{ id: 'b1', name: 'Proposed line' }] } })
+  });
+  check(
+    'H-7 editor records a budget-only proposal -> pending',
+    editorSave.status === 200 &&
+      editorSave.body &&
+      editorSave.body.review === 'pending' &&
+      editorSave.body.reviewId,
+    editorSave.text
+  );
+  const reviewId = editorSave.body && editorSave.body.reviewId;
+
+  // confirm the queued proposal is genuinely budget-only. The review list does
+  // not serialize `scope`, so read the stored row directly.
+  const revRow = await d1QueryRetry(
+    'SELECT scope, proposal_type, status FROM cloud_reviews WHERE id = ' + reviewId,
+    'review scope'
+  );
+  const revScope = revRow && revRow[0] ? revRow[0].scope : null;
+  let revScopeArr = [];
+  try {
+    revScopeArr = JSON.parse(revScope || '[]');
+  } catch (e) {
+    revScopeArr = [];
+  }
+  check(
+    'H-7 queued proposal is budget-only (scope ["bud"], type save, pending)',
+    !!revRow &&
+      revRow[0].status === 'pending' &&
+      revRow[0].proposal_type === 'save' &&
+      JSON.stringify(revScopeArr) === JSON.stringify(['bud']),
+    revRow && revRow[0]
+  );
+
+  // ---- a non-approver editor cannot approve ----------------------------
+  const accByEditor = await api('/api/cloud/projects/' + pid + '/reviews/' + reviewId + '/accept', {
+    method: 'POST',
+    headers: ck(editorCookie)
+  });
+  check(
+    'H-7 editor (non-approver) cannot approve -> 403',
+    accByEditor.status === 403,
+    accByEditor.text
+  );
+
+  // ---- a client cannot approve -----------------------------------------
+  const accByViewer = await api('/api/cloud/projects/' + pid + '/reviews/' + reviewId + '/accept', {
+    method: 'POST',
+    headers: ck(viewerCookie)
+  });
+  check('H-7 viewer cannot approve -> 403', accByViewer.status === 403, accByViewer.text);
+
+  // ---- the named budget approver can approve ---------------------------
+  const accByApprover = await api(
+    '/api/cloud/projects/' + pid + '/reviews/' + reviewId + '/accept',
+    {
+      method: 'POST',
+      headers: ck(approverCookie)
+    }
+  );
+  check(
+    'H-7 budget approver approves -> 200',
+    accByApprover.status === 200 && accByApprover.body && accByApprover.body.ok,
+    accByApprover.text
+  );
+
+  // the changelog records the decision under actor_type 'team'
+  const logRows = await d1Query(
+    'SELECT id, actor_type, actor_label, entry_type FROM cloud_changelog WHERE project_id = ' +
+      qd(pid) +
+      ' ORDER BY id DESC'
+  );
+  check(
+    'H-7 changelog records the approver as actor_type "team"',
+    !!logRows &&
+      logRows.some(r => r.actor_type === 'team' && String(r.actor_label).indexOf('Abe') >= 0),
+    logRows
+  );
+
+  // the proposal is now accepted
+  const revList2 = await api('/api/cloud/projects/' + pid + '/reviews', {
+    method: 'GET',
+    headers: ck(owner.cookie)
+  });
+  const budProp2 =
+    revList2.body && Array.isArray(revList2.body.proposals)
+      ? revList2.body.proposals.filter(p => p.id === reviewId)[0]
+      : null;
+  check(
+    'H-7 proposal flipped to accepted',
+    !!budProp2 && budProp2.status === 'accepted',
+    budProp2 && budProp2.status
+  );
+}
+
 async function main() {
   await startEmailStub();
   await startWrangler();
@@ -1365,6 +1643,9 @@ async function main() {
 
   // ---- RBAC sprint 1 (directive 2026-10-25, section 3) -------------------
   await runRbacSprint1Gates();
+
+  // ---- H-7 budget approver RBAC (BUDGET-BOQ-MCP directive 2026-11-05) ----
+  await runBudRbacGates('bud-rbac-' + Date.now().toString(36));
 
   const passed = results.filter(r => r.val).length;
   log('----------------------------------------');

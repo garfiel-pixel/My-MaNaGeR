@@ -697,6 +697,10 @@ footer{padding:70px 64px 46px;position:relative;}
         <a class="nav-link" href="#kanban"><span class="idx">A-05</span>Kanban &amp; RACI</a>
       </div>
       <div class="nav-group">
+        <div class="nav-group-label">Intake</div>
+        <a class="nav-link" href="#ideas"><span class="idx">A-34</span>Intake &amp; Agenda</a>
+      </div>
+      <div class="nav-group">
         <div class="nav-group-label">People &amp; Money</div>
         <a class="nav-link" href="#resources"><span class="idx">A-06</span>Resources &amp; Budget</a>
       </div>
@@ -743,6 +747,7 @@ footer{padding:70px 64px 46px;position:relative;}
         <a class="nav-link" href="#build-cost"><span class="idx">A-30</span>Build Cost Calculator</a>
         <a class="nav-link" href="#procurement"><span class="idx">A-31</span>Procurement &amp; Quotes</a>
         <a class="nav-link" href="#named-team"><span class="idx">A-32</span>Named Team Members</a>
+        <a class="nav-link" href="#budget-boq"><span class="idx">A-33</span>Budget from BOQ</a>
       </div>
     </nav>
   </aside>
@@ -1029,6 +1034,9 @@ footer{padding:70px 64px 46px;position:relative;}
         <div class="card"><span class="cnum">TYPE</span><h4>Recurring</h4><p>For work that runs the whole project , weekly safety talks, ongoing QC. It carries a refresh badge in the WBS and Kanban and is tagged [RECURRING] in AI prompts so it reads differently from one-off tasks. It schedules like any other row: give it dates and it cascades with the rest.</p></div>
       </div>
 
+      <h3 class="h-sub">Custom fields</h3>
+      <p class="prose"><strong>Custom fields.</strong> Open <em>Fields</em> in the WBS or the board to add an attribute this project needs, such as a permit number, an inspection result, a zone, or a procurement batch. Pick a label and a type, then choose whether the field shows as a WBS column, on the Kanban card, or both. Every task keeps its own value. A field with <em>Required</em> ticked shows a REQ badge on any task that has no value yet. Removing a field removes its values from every task.</p>
+
       <h3 class="h-sub">How dates cascade</h3>
       <p class="prose">Enter a Task ID in the Pred. column. When that predecessor's end date changes, every downstream task recalculates automatically , with a cycle guard, so a circular dependency (A depends on B depends on A) can't lock up the math.</p>
 
@@ -1099,6 +1107,7 @@ footer{padding:70px 64px 46px;position:relative;}
         <p class="prose">Your WBS tasks, viewed as cards across To Do / In Progress / Blocked / Completed.</p>
         <p class="prose"><strong>Task links.</strong> Open a task's <em>Links</em> badge in the WBS to relate it to another task. A link can block, precede, duplicate, include, or require the other task. Blocked tasks show how many open blockers they have, on the row and on the card. A link is stored on both tasks, so removing it from either side removes both.</p>
         <p class="prose"><strong>Board lens.</strong> The lens in the Kanban header shows all cards, only blocked cards, or only ready cards. The lens is remembered per project. Moving a blocked card into In Progress or Completed shows a warning with the blocker names, but still allows the move.</p>
+        <p class="prose"><strong>Board filter.</strong> A select custom field can narrow the board. Pick the field and a value in the Kanban header, and every column plus the lead-time lane shows only the cards that match. The filter is remembered per project. A view-only session sees the filter but cannot change it.</p>
         <div class="grid grid-2" style="margin-top:16px">
           <div class="card"><span class="cnum">TOGGLE</span><h4>Show Lead-Time Lane</h4><p>Adds a dedicated swimlane for Lead-Time tasks so procurement and permit items don't clutter the normal columns.</p></div>
           <div class="card"><span class="cnum">TOOL</span><h4>Populate Sprint</h4><p>Set a Sprint Start/End date and every "In Progress" task's dates clamp to fall inside that window , a fast way to timebox your current push.</p></div>
@@ -1116,6 +1125,52 @@ footer{padding:70px 64px 46px;position:relative;}
         </div>
       </div>
     </section>
+    <!-- ============ A-34 IDEA INTAKE ============ -->
+    <section class="sheet sheet-alt reveal" id="ideas">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-34</span><h2>Intake &amp; Agenda</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>Panel detail</div></div>
+      </div>
+      <span class="kicker">An idea is a candidate, not a task</span>
+      <p class="lede">The Intake tab is where work that is not committed yet lives. An idea does not reach the Gantt, the critical path, the resource levelling or the dashboard, because none of those can price a maybe. It sits on a board until you decide it is worth promoting, and then one click gives it a WBS task and keeps the line back to where it came from.</p>
+      <div class="grid grid-2">
+        <div class="card bracket"><span class="cnum">CAPTURE</span><h4>New Idea</h4><p>Open <strong>Intake</strong> from the sidebar and press <strong>New Idea</strong>. Give it a title, a sentence of context, your name, and any tags you like. Impact and effort are each scored 1 to 5. Nothing is added to your schedule by saving it.</p></div>
+        <div class="card bracket"><span class="cnum">STAGES</span><h4>Six stages, left to right</h4><p><strong>Idea</strong>, <strong>Research</strong>, <strong>Prototype</strong>, <strong>Validation</strong>, <strong>Implemented</strong> and <strong>Deferred</strong>. The first four are live work; the last two are history, so they stay off the agenda and out of the open count.</p></div>
+        <div class="card bracket"><span class="cnum">SCORE</span><h4>The number on the card</h4><p>The small badge is <strong>impact times two, minus effort</strong>. It runs from -3 to 9. Impact weighs twice because a cheap idea with no effect is still worth nothing, while an expensive idea with a large effect is worth discussing. The score orders nothing automatically; it is a reading, not a rule.</p></div>
+        <div class="card bracket"><span class="cnum">MOVE</span><h4>Drag a card, or use the arrow keys</h4><p>Drag a card onto another column to change its stage, and drop it between two cards to choose where it sits. With a card focused, the left and right arrows move it one stage and the up and down arrows move it within its column. Enter opens it for editing.</p></div>
+        <div class="card bracket"><span class="cnum">VIEWS</span><h4>Board and list</h4><p><strong>Board</strong> shows the six columns. <strong>List</strong> shows the same records as one table, with the stage as a dropdown on each row. Both read one array, so a change made in one view is already true in the other.</p></div>
+        <div class="card bracket"><span class="cnum">PROMOTE</span><h4>From idea to task</h4><p><strong>Promote</strong> creates a WBS task from the idea, copies the title and the summary into the task name and notes, and marks the card <strong>Linked</strong>. It does not change the stage: promoting is a decision to do the work, and delivery is a separate one you record by moving the card.</p></div>
+      </div>
+      <h3 class="h-sub">Filtering, and what happens when a task is deleted</h3>
+      <div class="grid grid-2">
+        <div class="card bracket"><span class="cnum">TAGS</span><h4>One tag at a time</h4><p>The <strong>Tag</strong> dropdown lists every tag in use and filters both views to that tag. The count above the board still describes the whole intake, and names the active tag so the number is never mistaken for a filtered total.</p></div>
+        <div class="card bracket"><span class="cnum">DELETE</span><h4>Deleting an idea never deletes work</h4><p>Deleting a card asks first. If the idea was already promoted, the task it created stays in the WBS. Deleting the <em>task</em> instead clears the link on the idea, so a card can never claim a task that no longer exists.</p></div>
+      </div>
+      <details class="roadmap">
+        <summary><span class="rm-caret">▶</span><span class="rm-lbl">ROADMAP</span>From a scribbled note to a scheduled task</summary>
+        <div class="roadmap-body">
+          <div class="roadmap-step"><span class="roadmap-num">1</span><p>Open <strong>Intake</strong> and press <strong>New Idea</strong>. Type the note, score the impact and the effort, and save.</p></div>
+          <div class="roadmap-step"><span class="roadmap-num">2</span><p>Move the card to <strong>Research</strong> when someone starts looking into it. Add a tag so related ideas can be found together.</p></div>
+          <div class="roadmap-step"><span class="roadmap-num">3</span><p>If it survives research, press <strong>Promote</strong>. The task appears in the WBS ready for dates, an owner and predecessors.</p></div>
+          <div class="roadmap-step"><span class="roadmap-num">4</span><p>Move the card to <strong>Implemented</strong> when the task is delivered, or to <strong>Deferred</strong> with a note saying why it is parked.</p></div>
+        </div>
+      </details>
+      <div class="divider-note">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <p><strong>The habit:</strong> when a good idea arrives on site, put it on the board before you put it in the schedule. The board can hold a maybe; the Gantt cannot.</p>
+      </div>
+      <h3 class="h-sub">The agenda: one list of everything that has a date</h3>
+      <p class="lede">Open <strong>Agenda</strong> from the same sidebar group and the whole project collapses into one chronological list. A task's end date, a milestone, a meeting, an open issue's target date, an open change request and a live idea all appear in date order, grouped by day. It is a reading surface: every row is a button that takes you to the panel that owns the record, where you can change it.</p>
+      <div class="grid grid-2">
+        <div class="card bracket"><span class="cnum">INCLUDED</span><h4>What earns a place</h4><p>Open tasks (by end date), milestones, meetings, issues that are not resolved or closed, change requests that are not approved or rejected, and ideas that are not implemented or deferred. Completed and closed records are history, not agenda.</p></div>
+        <div class="card bracket"><span class="cnum">WINDOW</span><h4>7 days, 30 days, or everything</h4><p><strong>7 days</strong> is the week ahead. <strong>30 days</strong> is the default month view. <strong>All dated</strong> drops the horizon and shows every record that still has a date. The choice is remembered on this device, not in the shared project.</p></div>
+        <div class="card bracket"><span class="cnum">OVERDUE</span><h4>Late work never falls off</h4><p>A task whose end date has passed stays in the list, marked <strong>Overdue</strong>, until it is completed or its date is changed. Past meetings and past ideas do drop out: they are history, and a feed that keeps them buries the work that still matters.</p></div>
+        <div class="card bracket"><span class="cnum">JUMP</span><h4>Every row is a door</h4><p>Press a row and the matching panel opens with that record flashed. A task lands in the WBS, a milestone in the Gantt, a meeting in Meetings, an issue in Risk / Issues, a change in Changes, and an idea on the intake board.</p></div>
+        <div class="card bracket"><span class="cnum">EXPORT</span><h4>Take the week with you</h4><p><strong>Export .ics</strong> downloads the current window as a calendar file that Outlook, Apple Calendar and Google Calendar all import. Each entry is an all-day event on its own date, named after the record and tagged with its kind. It is a snapshot, not a live feed: export again after the plan changes.</p></div>
+        <div class="card bracket"><span class="cnum">NOT HERE</span><h4>No second place to edit</h4><p>The agenda adds no fields and stores no records. If a date is wrong, open the record and fix it there. That is deliberate: two editing surfaces eventually disagree, and the one you did not open is the one that loses.</p></div>
+      </div>
+    </section>
+
     <!-- ============ A-06 RESOURCES & BUDGET ============ -->
     <section class="sheet reveal" id="resources">
       <div class="tblock">
@@ -2092,15 +2147,42 @@ Date: ____________  Focus: ____________</pre>
       </div>
     </section>
 
+    <!-- ============ A-33 BUDGET FROM BOQ, DELIVERIES & APPROVALS ============ -->
+    <section class="sheet reveal" id="budget-boq">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-33</span><h2>Budget from BOQ, Deliveries &amp; Approvals</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>Money in, money out</div></div>
+      </div>
+      <span class="kicker">Turn a priced bill into the project budget, record what actually arrives, and read the week without rebuilding the spreadsheet</span>
+      <p class="lede">The calculator prices the work. This sheet is what happens next: the bill becomes budget lines whose total matches the estimate to the cent, each delivery is recorded against its line, and the week is read from those records. Changes from an outside AI arrive as proposals, never as silent writes.</p>
+
+      <div class="grid grid-2">
+        <div class="card bracket"><span class="cnum">CREATE</span><h4>Create budget from BOQ</h4><p>On the Budget tab choose <strong>Create budget from BOQ</strong>, or send the bill from the calculator. Every priced line becomes a budget line with its quantity, unit, rate and rate unit; site costs, tax, overhead and margin become their own lines, so the budget total equals the estimate total to the cent. The first send freezes <strong>Baseline 1</strong>; later changes are variations with a reason and an approver.</p></div>
+        <div class="card bracket"><span class="cnum">RE-SEND</span><h4>No duplicates</h4><p>Send a changed bill again and the lines are matched on their calculator reference. You see the difference in the same preview used for approvals, and only what you accept is applied. Sending the same bill twice changes nothing, and a project that already has hand-typed lines keeps them.</p></div>
+        <div class="card bracket"><span class="cnum">DELIVERY</span><h4>Record a delivery</h4><p><strong>Record delivery</strong> opens on the line you chose: quantity received, unit (the line's unit), unit price paid (the line's rate), supplier, ticket or invoice number, status (ordered, received, invoiced, paid), paid date and an optional photo. The amount is quantity times price; an override needs a reason. The line then reads how much arrived of how much was planned, what is left, and whether an overspend came from price or from quantity.</p></div>
+        <div class="card bracket"><span class="cnum">QUICK</span><h4>Three taps on site</h4><p>The common case stays short: pick the line, type the quantity, confirm the price. An ordered entry is a commitment, not money out, and old spend entries still read as a legacy amount. Recording works offline and syncs when the connection returns.</p></div>
+        <div class="card bracket"><span class="cnum">WEEK</span><h4>Weekly tracking</h4><p>The <strong>Weekly</strong> view picks a week and shows spent this week, spent to date against plan to date, money used against work done, a status chip per line, the forecast at completion from the latest price paid, and the variance split into price and quantity. Changing the week only changes what you are looking at; it writes nothing.</p></div>
+        <div class="card bracket"><span class="cnum">EXPORT</span><h4>The same numbers on paper</h4><p>The weekly report exports to PDF and to the project spreadsheet with the same totals, currency in the header and each rate beside its unit. The cash-flow chart can step weekly as well as fortnightly.</p></div>
+        <div class="card bracket"><span class="cnum">MCP</span><h4>What an outside AI may do</h4><p>Each API key has two separate switches, <strong>Read budget</strong> and <strong>Propose budget changes</strong>, both off by default. Read exposes the budget, deliveries, the weekly summary and the status of a proposal. Propose can only queue a change; the server checks every amount, unit and price, computes a delivery amount itself, and the AI client can never approve. The key label, time and a plain summary ride every proposal.</p></div>
+        <div class="card bracket"><span class="cnum">APPROVE</span><h4>Approve what you can see</h4><p>A waiting proposal opens a full-width preview: a plain sentence per change, a live rendering of the real Budget and Weekly panels built from a throwaway copy (gold edge on a changed cell, green on an added row), and an editable value for each change. Tick only the changes you want, or reject with a reason that goes back to the AI client. If the live data moved after the proposal was made, the preview says so and asks you to refresh first.</p></div>
+        <div class="card bracket"><span class="cnum">RECORD</span><h4>Who changed what</h4><p>Approving writes the chosen values in one step and records what was proposed, what was approved and who edited it. Revert works like any other changelog entry, and a person-icon notice in the header shows how many proposals are waiting.</p></div>
+      </div>
+
+      <div class="divider-note">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h10M4 17h7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        <p><strong>The habit:</strong> send the priced bill once, record deliveries as they land, and read the week before you spend the next one. The budget then explains itself, and an overspend names its cause instead of arriving as a surprise.</p>
+      </div>
+    </section>
+
     <!-- ============ CLOSING CTA BAND ============ -->
     <!-- Local photo (completed kitchen) , the finished job. -->
     <div class="band reveal" style="min-height:420px">
       <div class="band-bg" style="background-image:url('images/completed-kitchen.webp')"></div>
       <div class="band-overlay"></div>
       <div class="band-content" style="max-width:680px">
-        <span class="kicker">Sheet A-32 and beyond</span>
+        <span class="kicker">Sheet A-33 and beyond</span>
         <h3>This index has room for what's next.</h3>
-        <p>New panels and features get their own sheet, numbered and slotted in , the guide grows the same way the app does. Thirty-three sheets so far, from Welcome (A-00) through Named Team Members (A-32). For now: open My MaNaGeR in the next tab over, start with the Charter, and keep this page bookmarked.</p>
+        <p>New panels and features get their own sheet, numbered and slotted in , the guide grows the same way the app does. Thirty-five sheets so far, from Welcome (A-00) through Intake &amp; Agenda (A-34). For now: open My MaNaGeR in the next tab over, start with the Charter, and keep this page bookmarked.</p>
         <div class="hero-cta" style="margin-top:28px">
           <a href="#top" class="btn btn-brass">Back to the top ↑</a>
           <a href="#quickstart" class="btn btn-ghost">Revisit Quick Start</a>
@@ -2113,7 +2195,7 @@ Date: ____________  Focus: ____________</pre>
       <div class="footer-grid">
         <div class="footer-brand">
           <h4>My MaNaGeR , Field Guide</h4>
-          <p>An unofficial companion guide to the My MaNaGeR workspace , thirty-two sheets, one per panel or workflow, built to sit open in a second tab while you learn the app.</p>
+          <p>An unofficial companion guide to the My MaNaGeR workspace , thirty-four sheets, one per panel or workflow, built to sit open in a second tab while you learn the app.</p>
         </div>
         <div class="footer-cols">
           <div class="footer-col">
@@ -2149,6 +2231,8 @@ Date: ____________  Focus: ____________</pre>
             <a href="#build-cost">A-30 Build Cost Calculator</a>
             <a href="#procurement">A-31 Procurement &amp; Quotes</a>
             <a href="#named-team">A-32 Named Team Members</a>
+            <a href="#budget-boq">A-33 Budget from BOQ</a>
+            <a href="#ideas">A-34 Intake &amp; Agenda</a>
           </div>
           <div class="footer-col">
             <b>Site</b>

@@ -925,7 +925,9 @@ function baseState(pid, name) {
       edListWrong.status
     );
 
-    // A6: owner first save (no changelog row — first blob has nothing to diff)
+    // A6: owner first save. Since 9e94392 (2026-11-08) a first write is
+    // audited too - the diff runs against an empty object - so the response
+    // carries an edit entry instead of nothing.
     const save1 = await api('/api/cloud/projects/' + PID + '/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC },
@@ -937,7 +939,9 @@ function baseState(pid, name) {
         save1.body &&
         save1.body.ok === true &&
         save1.body.actor === 'owner' &&
-        save1.body.changelog === undefined,
+        !!save1.body.changelog &&
+        save1.body.changelog.type === 'edit' &&
+        typeof save1.body.changelog.id === 'number',
       save1.text
     );
 

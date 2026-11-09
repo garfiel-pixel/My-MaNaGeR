@@ -100,6 +100,7 @@
       <h2 id="the-short-version">The short version</h2>
       <p>My MaNaGeR works fully offline and always will. The free plan is not a trial and does not run out. Offline projects are unlimited on every plan, including Free.</p>
       <p>Paid plans add scale for teams: more cloud-linked projects, a full AI assistant, and named team members with role-based access. Code sharing stays free at every tier.</p>
+      <p class="market-note"><strong>Built for Jamaican contractors.</strong> The My MaNaGeR Rate Book is quoted in <span class="gold">J$</span>. Plans are billed in USD by Paddle; a J$ estimate sits beside every paid price.</p>
       <p class="pricing-cta-status" data-pricing-status role="status" hidden></p>
 
       <h2 id="plans">Plans</h2>
@@ -117,7 +118,7 @@
         <div class="pricing-card">
           <p class="pc-tier">Free</p>
           <p class="pc-name">Starter</p>
-          <p class="pc-price">$0</p>
+          <p class="pc-price">$0 USD</p>
           <p class="pc-note">No expiry. No card.</p>
           <ul class="pc-list">
             <li>1 cloud-linked project</li>
@@ -140,8 +141,8 @@
         <div class="pricing-card is-featured">
           <p class="pc-tier">Contractor</p>
           <p class="pc-name">Solo &amp; small crews</p>
-          <p class="pc-price">$18.99 <small>/ month</small></p>
-          <p class="pc-note">First month free, then $18.99 monthly. Cancel any time.</p>
+          <p class="pc-price" data-usd="18.99" data-period="month">$18.99 USD <small>/ month</small></p>
+          <p class="pc-note">First month free, then $18.99 USD monthly. Cancel any time.</p>
           <ul class="pc-list">
             <li>Everything in Free</li>
             <li>Unlimited cloud-linked projects</li>
@@ -164,7 +165,7 @@
                is affected). -->
           <p class="pc-tier">Estimator</p>
           <p class="pc-name">Homeowners &amp; clients</p>
-          <p class="pc-price">$49.99 <small>/ 6 months</small></p>
+          <p class="pc-price" data-usd="49.99" data-period="6 months">$49.99 USD <small>/ 6 months</small></p>
           <p class="pc-note">Billed every 6 months. Cancel any time.</p>
           <ul class="pc-list">
             <li>Everything in Free</li>
@@ -182,7 +183,7 @@
         <div class="pricing-card" id="company">
           <p class="pc-tier">Company</p>
           <p class="pc-name">Growing teams</p>
-          <p class="pc-price">$49.99 <small>/ month</small></p>
+          <p class="pc-price" data-usd="49.99" data-period="month">$49.99 USD <small>/ month</small></p>
           <p class="pc-note">Billed monthly. Cancel any time.</p>
           <ul class="pc-list">
             <li>Everything in Contractor</li>
@@ -200,7 +201,7 @@
         <div class="pricing-card">
           <p class="pc-tier">Enterprise</p>
           <p class="pc-name">Organisations</p>
-          <p class="pc-price">$200.00 <small>/ month</small></p>
+          <p class="pc-price" data-usd="200" data-period="month">$200.00 USD <small>/ month</small></p>
           <p class="pc-note">Billed monthly. Volume pricing on request.</p>
           <ul class="pc-list">
             <li>Everything in Company</li>
@@ -243,9 +244,9 @@
       <h2 id="billing">How billing works</h2>
       <ul>
         <li><strong>Payments are handled by Paddle.</strong> Paddle is the merchant of record: they process your card, calculate and remit any sales tax, and handle billing support. Your card details never touch our servers.</li>
-        <li><strong>Contractor's first month is free,</strong> as a trial. The trial is the only free month; Contractor is $18.99 a month from then on.</li>
-        <li><strong>Contractor is billed monthly.</strong> There is no annual plan and no long contract. Estimator is the one exception: it is billed once every 6 months at $49.99.</li>
-        <li><strong>The Estimator plan is not a monthly plan.</strong> Six months are paid at a time, so the price you pay per period is $49.99 and the next payment is six months later unless you cancel.</li>
+        <li><strong>Contractor's first month is free,</strong> as a trial. The trial is the only free month; Contractor is $18.99 USD a month from then on.</li>
+        <li><strong>Contractor is billed monthly.</strong> There is no annual plan and no long contract. Estimator is the one exception: it is billed once every 6 months at $49.99 USD.</li>
+        <li><strong>The Estimator plan is not a monthly plan.</strong> Six months are paid at a time, so the price you pay per period is $49.99 USD and the next payment is six months later unless you cancel.</li>
         <li><strong>Cancel any time.</strong> Cancelling stops the next payment. Your Premium access runs to the end of the period you already paid for, and the free plan takes over after that.</li>
         <li><strong>Cancelling does not delete anything.</strong> Your projects stay in your account and stay readable. Premium only controls how many of them you may link.</li>
         <li><strong>Taxes are handled for you.</strong> Any tax due is calculated by Paddle at checkout from your location.</li>
@@ -308,6 +309,7 @@
 
 <script src="https://cdn.paddle.com/paddle/v2/paddle.js" defer></script>
 <script src="js/consent.js" defer></script>
+<script src="js/pricing-fx.js" defer></script>
 <script src="js/mmgr-google-auth.js"></script>
 <script defer src="dist/marketing-bundle.js?v=371"></script>
 <script>

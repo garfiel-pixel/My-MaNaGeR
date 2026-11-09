@@ -99,7 +99,15 @@ var MMGR = window.MMGR || {};
     });
   }
 
-  // ---- session-only code stores (never localStorage) ----------------
+  // ---- owner-code store (I-1 fix 2026-11-08): persisted to localStorage
+  // so the code SURVIVES a re-auth / reload. Previously this was
+  // sessionStorage (deliberately "never localStorage"), but that was the
+  // root cause of I-1: a project created while signed OUT carried
+  // google_sub = NULL on the server, and its owner code lived only in the
+  // session - so after re-sign-in (new session) the code was gone and the
+  // unlinked project could never be claimed back. Persisting the code lets
+  // the signed-in account auto-claim it (see autoClaimHeldProjects). The
+  // 'session' link marker is still rejected (owner-gate bug, 2026-09-24).
   function codeKey() {
     return 'mmgr_cloud_code_' + cloudPid();
   }
@@ -111,7 +119,7 @@ var MMGR = window.MMGR || {};
   }
   function getCode() {
     try {
-      const v = sessionStorage.getItem(codeKey()) || '';
+      const v = localStorage.getItem(codeKey()) || '';
       // OWNER 2026-09-24 (owner-gate bug): 'session' is the admin registry's
       // link marker, never a code (codes are 16 chars). If one ever landed in
       // the slot (pre-fix adopter), treat it as absent so the session-owner
@@ -123,17 +131,41 @@ var MMGR = window.MMGR || {};
   }
   function setCode(code) {
     try {
-      sessionStorage.setItem(codeKey(), String(code || ''));
+      localStorage.setItem(codeKey(), String(code || ''));
     } catch (e) {
       /* ignore */
     }
   }
   function clearCode() {
     try {
-      sessionStorage.removeItem(codeKey());
+      localStorage.removeItem(codeKey());
     } catch (e) {
       /* ignore */
     }
+  }
+  // I-1 fix (2026-11-08): enumerate every owner code this device holds so the
+  // signed-in account can re-link projects it created while signed out (their
+  // server row has google_sub = NULL and is invisible to the account until
+  // claimed). Returns [{ pid, code }] keyed by cloud project id.
+  function collectHeldOwnerCodes() {
+    const out = [];
+    try {
+      const prefix = 'mmgr_cloud_code_';
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k || k.indexOf(prefix) !== 0) {
+          continue;
+        }
+        const v = localStorage.getItem(k);
+        if (!v || v === 'session') {
+          continue;
+        }
+        out.push({ pid: k.slice(prefix.length), code: v });
+      }
+    } catch (e) {
+      /* storage unavailable */
+    }
+    return out;
   }
   function getECode() {
     try {
@@ -1468,6 +1500,25 @@ var MMGR = window.MMGR || {};
   }
   document.addEventListener('mmgr:google-signed-in', resumePendingSignIn);
   document.addEventListener('mmgr:user-changed', resumePendingSignIn);
+  // I-1 fix (2026-11-08): after any identity change that lands the user signed
+  // IN, re-link projects this device created while signed out. Guarded so the
+  // two identity events (google-signed-in + user-changed) can't double-claim.
+  let _autoClaimRunning = false;
+  function scheduleAutoClaim() {
+    if (_autoClaimRunning) {
+      return;
+    }
+    _autoClaimRunning = true;
+    autoClaimHeldProjects()
+      .catch(function () {
+        /* never let a claim failure break the sign-in flow */
+      })
+      .then(function () {
+        _autoClaimRunning = false;
+      });
+  }
+  document.addEventListener('mmgr:google-signed-in', scheduleAutoClaim);
+  document.addEventListener('mmgr:user-changed', scheduleAutoClaim);
   // OWNER 2026-09-24 (owner-gate bug): an EMAIL sign-in only dispatches
   // mmgr:user-changed, and resumePendingSignIn above returns early when no
   // action is queued - so checkMe's cached "not signed in" and a memoized
@@ -1556,7 +1607,7 @@ var MMGR = window.MMGR || {};
   // then editor. On success the credential is kept for this session so
   // subsequent saves work without re-entering it.
   async function loadWithCode() {
-    const inp = $('cloud-code-in');
+    const inp = /** @type {HTMLInputElement|null} */ ($('cloud-code-in'));
     const code = normalizeCode((inp && inp.value) || '');
     if (!isCodeShape(code)) {
       setStatus('Enter the full 16-character code (XXXX-XXXX-XXXX-XXXX).', 'warn');
@@ -1665,16 +1716,18 @@ var MMGR = window.MMGR || {};
   // label , editor = can edit the granted sections, view = read-only everywhere
   // with only the granted sections visible/enabled.
   async function createEditor() {
-    const labelIn = $('cloud-editor-label-in');
+    const labelIn = /** @type {HTMLInputElement|null} */ ($('cloud-editor-label-in'));
     const label = ((labelIn && labelIn.value) || '').trim().slice(0, 60);
     if (!label) {
       setStatus('Give this code a label first (e.g. \u201CSite Super , Riverside\u201D).', 'warn');
       return;
     }
-    const roleIn = $('cloud-editor-role');
+    const roleIn = /** @type {HTMLSelectElement|null} */ ($('cloud-editor-role'));
     const role = roleIn && roleIn.value === 'view' ? 'view' : 'editor';
     const scope = [];
-    const boxes = document.querySelectorAll('#cloud-editor-scope-box input[type=checkbox]:checked');
+    const boxes = /** @type {NodeListOf<HTMLInputElement>} */ (
+      document.querySelectorAll('#cloud-editor-scope-box input[type=checkbox]:checked')
+    );
     for (let i = 0; i < boxes.length; i++) {
       scope.push(boxes[i].value);
     }
@@ -1761,7 +1814,7 @@ var MMGR = window.MMGR || {};
       return;
     }
     try {
-      const headers = {};
+      const headers = /** @type {Record<string,string>} */ ({});
       if (cred.header) {
         headers[cred.header] = cred.code;
       }
@@ -1839,7 +1892,7 @@ var MMGR = window.MMGR || {};
     }
     setStatus('Revoking code…', 'busy');
     try {
-      const headers = {};
+      const headers = /** @type {Record<string,string>} */ ({});
       if (cred.header) {
         headers[cred.header] = cred.code;
       }
@@ -1874,7 +1927,9 @@ var MMGR = window.MMGR || {};
   // =========================================================================
   async function createClientCode() {
     const scope = [];
-    const boxes = document.querySelectorAll('#cloud-client-scope-box input[type=checkbox]:checked');
+    const boxes = /** @type {NodeListOf<HTMLInputElement>} */ (
+      document.querySelectorAll('#cloud-client-scope-box input[type=checkbox]:checked')
+    );
     for (let i = 0; i < boxes.length; i++) {
       scope.push(boxes[i].value);
     }
@@ -1882,7 +1937,7 @@ var MMGR = window.MMGR || {};
       setStatus('Tick at least one section the client may see.', 'warn');
       return;
     }
-    const expiryIn = $('cloud-client-expiry');
+    const expiryIn = /** @type {HTMLInputElement|null} */ ($('cloud-client-expiry'));
     const days = expiryIn ? parseInt(expiryIn.value, 10) : 0;
     const cred = activeCredential();
     if (!cred || (!cred.header && !_sessOwner)) {
@@ -1951,7 +2006,7 @@ var MMGR = window.MMGR || {};
       return;
     }
     try {
-      const headers = {};
+      const headers = /** @type {Record<string,string>} */ ({});
       if (cred.header) {
         headers[cred.header] = cred.code;
       }
@@ -2026,7 +2081,7 @@ var MMGR = window.MMGR || {};
     }
     setStatus('Revoking client code…', 'busy');
     try {
-      const headers = {};
+      const headers = /** @type {Record<string,string>} */ ({});
       if (cred.header) {
         headers[cred.header] = cred.code;
       }
@@ -2064,14 +2119,16 @@ var MMGR = window.MMGR || {};
   // the owner's review queue (never applied directly).
   // =========================================================================
   async function createApiKey() {
-    const labelIn = $('cloud-apikey-label-in');
+    const labelIn = /** @type {HTMLInputElement|null} */ ($('cloud-apikey-label-in'));
     const label = ((labelIn && labelIn.value) || '').trim().slice(0, 60);
     if (!label) {
       setStatus('Give this key a label first (e.g. \u201CSite assistant\u201D).', 'warn');
       return;
     }
     const scope = [];
-    const boxes = document.querySelectorAll('#cloud-apikey-scope-box input[type=checkbox]:checked');
+    const boxes = /** @type {NodeListOf<HTMLInputElement>} */ (
+      document.querySelectorAll('#cloud-apikey-scope-box input[type=checkbox]:checked')
+    );
     for (let i = 0; i < boxes.length; i++) {
       scope.push(boxes[i].value);
     }
@@ -2080,15 +2137,15 @@ var MMGR = window.MMGR || {};
       return;
     }
     // H-5: the two budget switches. Both default off; propose implies read.
-    const bReadEl = $('cloud-apikey-budget-read');
-    const bWriteEl = $('cloud-apikey-budget-write');
+    const bReadEl = /** @type {HTMLInputElement|null} */ ($('cloud-apikey-budget-read'));
+    const bWriteEl = /** @type {HTMLInputElement|null} */ ($('cloud-apikey-budget-write'));
     const budgetRead = !!(bReadEl && bReadEl.checked);
     const budgetWrite = !!(bWriteEl && bWriteEl.checked);
     if (budgetWrite && !budgetRead) {
       setStatus('To propose budget changes a key must also be allowed to read the budget.', 'warn');
       return;
     }
-    const expiryIn = $('cloud-apikey-expiry');
+    const expiryIn = /** @type {HTMLInputElement|null} */ ($('cloud-apikey-expiry'));
     const days = expiryIn && expiryIn.value ? parseInt(expiryIn.value, 10) : 0;
     const cred = activeCredential();
     if (!cred || (!cred.header && !_sessOwner)) {
@@ -2170,7 +2227,7 @@ var MMGR = window.MMGR || {};
       return;
     }
     try {
-      const headers = {};
+      const headers = /** @type {Record<string,string>} */ ({});
       if (cred.header) {
         headers[cred.header] = cred.code;
       }
@@ -2275,8 +2332,8 @@ var MMGR = window.MMGR || {};
     if (!el || !el.id) {
       return;
     }
-    const read = $('cloud-apikey-budget-read');
-    const write = $('cloud-apikey-budget-write');
+    const read = /** @type {HTMLInputElement|null} */ ($('cloud-apikey-budget-read'));
+    const write = /** @type {HTMLInputElement|null} */ ($('cloud-apikey-budget-write'));
     if (el.id === 'cloud-apikey-budget-write' && el.checked && read) {
       read.checked = true;
     }
@@ -2370,7 +2427,7 @@ var MMGR = window.MMGR || {};
     }
     setStatus('Revoking API key\u2026', 'busy');
     try {
-      const headers = {};
+      const headers = /** @type {Record<string,string>} */ ({});
       if (cred.header) {
         headers[cred.header] = cred.code;
       }
@@ -2723,7 +2780,7 @@ var MMGR = window.MMGR || {};
       return '';
     }
     try {
-      const headers = {};
+      const headers = /** @type {Record<string,string>} */ ({});
       if (cred.header) {
         headers[cred.header] = cred.code;
       }
@@ -2828,7 +2885,7 @@ var MMGR = window.MMGR || {};
         })()
       : '<div class="sr-hint">This project is not linked to the cloud , the MCP server is not available until a cloud link exists (Controls ▸ Share &amp; Access).</div>';
     if (linked) {
-      var mcpUrlInput = $('mcp-url');
+      var mcpUrlInput = /** @type {HTMLInputElement|null} */ ($('mcp-url'));
       if (mcpUrlInput) {
         mcpUrlInput.value = window.location.origin + '/api/mcp/' + encodeURIComponent(pid());
       }
@@ -2925,7 +2982,7 @@ var MMGR = window.MMGR || {};
     if (!fields) {
       return null;
     }
-    let inp = $('del-pw');
+    let inp = /** @type {HTMLInputElement|null} */ ($('del-pw'));
     if (inp) {
       return inp;
     }
@@ -2940,7 +2997,7 @@ var MMGR = window.MMGR || {};
     return inp;
   }
   function _removeDelPwField() {
-    const inp = $('del-pw');
+    const inp = /** @type {HTMLInputElement|null} */ ($('del-pw'));
     if (inp && inp.parentNode) {
       inp.parentNode.removeChild(inp);
     }
@@ -2979,7 +3036,7 @@ var MMGR = window.MMGR || {};
     // Reopen must show the resting label (an Escape mid-hold can leave a
     // countdown label behind; cancel() only restores it while the modal is
     // still on, by design, so the reopen reset lives here).
-    const okBtn = $('del-ok');
+    const okBtn = /** @type {HTMLButtonElement|null} */ ($('del-ok'));
     if (okBtn) {
       okBtn.textContent = 'Delete project';
       okBtn.disabled = false;
@@ -3001,7 +3058,7 @@ var MMGR = window.MMGR || {};
     }
     _delBusy = false;
     _holdDelete.cancel();
-    const ok = $('del-ok');
+    const ok = /** @type {HTMLButtonElement|null} */ ($('del-ok'));
     if (ok) {
       ok.disabled = false;
       ok.textContent = 'Delete project';
@@ -3027,7 +3084,7 @@ var MMGR = window.MMGR || {};
     const TOTAL = 10;
     const LABEL = 'Delete project';
     function label(t) {
-      const ok = $('del-ok');
+      const ok = /** @type {HTMLButtonElement|null} */ ($('del-ok'));
       if (ok) {
         ok.textContent = t;
       }
@@ -3104,10 +3161,10 @@ var MMGR = window.MMGR || {};
     }
     const wrap = $('del-pw-wrap');
     const needsPw = !!(wrap && !wrap.hidden);
-    const pwInp = $('del-pw');
+    const pwInp = /** @type {HTMLInputElement|null} */ ($('del-pw'));
     const pw = needsPw && pwInp ? pwInp.value : '';
     _delBusy = true;
-    const ok = $('del-ok');
+    const ok = /** @type {HTMLButtonElement|null} */ ($('del-ok'));
     if (ok) {
       ok.disabled = true;
       ok.textContent = 'Deleting…';
@@ -3465,6 +3522,7 @@ var MMGR = window.MMGR || {};
         '<select id="cloud-webhook-event" class="ctl-in" aria-label="Webhook event">' +
         '<option value="health_dropped">Health score dropped</option>' +
         '<option value="weather_risk_tomorrow">Weather-risk day tomorrow</option>' +
+        '<option value="transition_recorded">Status move recorded (sent by a rule)</option>' +
         '</select>' +
         '<input type="url" id="cloud-webhook-url" class="ctl-in" placeholder="https://hooks.example.com/mmgr" style="min-width:220px" autocomplete="off" spellcheck="false">' +
         '<button class="btn btn-g btn-s" data-action="cloudWebhookAdd"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Add Webhook</button>' +
@@ -3768,6 +3826,53 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // ---- auto-claim held projects on sign-in (I-1 fix, 2026-11-08) -----------
+  // When the account signs in (Google or email), any project this device
+  // created while signed OUT is still unlinked on the server (google_sub =
+  // NULL). Re-key each held owner code onto the now-authenticated account via
+  // the existing /claim endpoint, then refresh My Cloud Projects. Idempotent:
+  // a project already linked returns alreadyLinked and is left alone. Skipped
+  // when no session is active (sign-out also fires mmgr:user-changed).
+  async function autoClaimHeldProjects() {
+    let signedIn = false;
+    try {
+      signedIn = await checkMe();
+    } catch (e) {
+      /* offline / static host */
+    }
+    if (!signedIn) {
+      return;
+    }
+    const held = collectHeldOwnerCodes();
+    if (!held.length) {
+      return;
+    }
+    let claimedAny = false;
+    for (const h of held) {
+      try {
+        const res = await fetch('/api/cloud/projects/' + encodeURIComponent(h.pid) + '/claim', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ownerCode: h.code })
+        });
+        const data = await res.json().catch(function () {
+          return {};
+        });
+        if (res.ok && data && data.ok) {
+          claimedAny = true;
+        }
+      } catch (e) {
+        /* cloud unreachable; keep the code for the next sign-in */
+      }
+    }
+    if (claimedAny) {
+      // The dashboard refreshes its list on this event; dispatch it so the
+      // freshly linked projects appear without a manual reload.
+      document.dispatchEvent(new CustomEvent('mmgr:cloud-linked'));
+    }
+  }
+
   // ---- unlink from cloud (gap-audit B10) ---------------------------------
   // Deletes the CLOUD copy (D1 row, editor codes, changelog, R2 objects).
   // This device's local project stays untouched , "keep local copy, stop
@@ -4047,7 +4152,7 @@ var MMGR = window.MMGR || {};
         return;
       }
       const copies = data.copies || [];
-      const toggle = $('cloud-auto-broadcast');
+      const toggle = /** @type {HTMLInputElement|null} */ ($('cloud-auto-broadcast'));
       if (toggle) {
         toggle.checked = !!data.autoBroadcast;
       }
@@ -4131,7 +4236,7 @@ var MMGR = window.MMGR || {};
       setStatus('Owner code required.', 'warn');
       return;
     }
-    const toggle = $('cloud-auto-broadcast');
+    const toggle = /** @type {HTMLInputElement|null} */ ($('cloud-auto-broadcast'));
     const enabled = !!(toggle && toggle.checked);
     try {
       const res = await fetch(
@@ -4289,6 +4394,12 @@ var MMGR = window.MMGR || {};
       ns.CloudWebhooks.webhookDel(id);
     }
   }
+  function sendTransitionSummary(summary, ruleName) {
+    if (ns.CloudWebhooks) {
+      return ns.CloudWebhooks.sendTransitionSummary(summary, ruleName);
+    }
+    return Promise.resolve(false);
+  }
 
   // ---- keep the sign-in state fresh after sign-in/sign-out ----------------
   // P1-6 (2026-09-12): sign-in/out changes the session credential, so the
@@ -4361,7 +4472,7 @@ var MMGR = window.MMGR || {};
       return null;
     }
     try {
-      const headers = {};
+      const headers = /** @type {Record<string,string>} */ ({});
       if (cred.header) {
         headers[cred.header] = cred.code;
       }
@@ -4383,7 +4494,7 @@ var MMGR = window.MMGR || {};
       return null;
     }
     try {
-      const headers = {};
+      const headers = /** @type {Record<string,string>} */ ({});
       if (cred.header) {
         headers[cred.header] = cred.code;
       }
@@ -4490,7 +4601,7 @@ var MMGR = window.MMGR || {};
   }
   function userMidEdit() {
     try {
-      const a = document.activeElement;
+      const a = /** @type {HTMLElement|null} */ (document.activeElement);
       if (!a) {
         return false;
       }
@@ -4513,7 +4624,7 @@ var MMGR = window.MMGR || {};
     }
     _syncBusy = true;
     try {
-      const headers = {};
+      const headers = /** @type {Record<string,string>} */ ({});
       if (cred.header) {
         headers[cred.header] = cred.code;
       }
@@ -4660,6 +4771,21 @@ var MMGR = window.MMGR || {};
   function cloudPhotosGetPhotos() {
     return ns.CloudPhotos ? ns.CloudPhotos.cloudPhotosGetPhotos() : [];
   }
+  function cloudPhotosCanEdit() {
+    return ns.CloudPhotos ? !!ns.CloudPhotos.cloudPhotosCanEdit() : false;
+  }
+  function cloudPhotosOpenBundle(bundleId) {
+    return ns.CloudPhotos ? ns.CloudPhotos.cloudPhotosOpenBundle(bundleId) : null;
+  }
+  function cloudPhotosCloseBundle() {
+    return ns.CloudPhotos ? ns.CloudPhotos.cloudPhotosCloseBundle() : null;
+  }
+  function cloudPhotosQueuedCount() {
+    return ns.CloudPhotos ? ns.CloudPhotos.cloudPhotosQueuedCount() : 0;
+  }
+  function cloudPhotosFlushQueue() {
+    return ns.CloudPhotos ? ns.CloudPhotos.cloudPhotosFlushQueue() : null;
+  }
 
   // ---- public API ---------------------------------------------------------
   ns.Cloud = {
@@ -4690,6 +4816,7 @@ var MMGR = window.MMGR || {};
     webhookList: webhookList,
     webhookAdd: webhookAdd,
     webhookDel: webhookDel,
+    sendTransitionSummary: sendTransitionSummary,
     revertLog: revertLog,
     toggleDiffs: toggleDiffs,
     _renderDiffPanel: _renderDiffPanelImpl, // test hook (pure string builder, no DOM)
@@ -4727,6 +4854,12 @@ var MMGR = window.MMGR || {};
       return !(es && Array.isArray(es.sections) && es.sections.indexOf(section) > -1);
     },
     getCode: getCode,
+    // I-1 client harness (qa-i1-client.cjs) + symmetry with getCode: expose
+    // the persistence path so a test can simulate the anonymous-create step
+    // (persist owner code to localStorage keyed by pid) exactly as the real
+    // create handler does, then verify auto-claim on sign-in.
+    setCode: setCode,
+    clearCode: clearCode,
     getECode: getECode,
     getEScope: getEScope,
     // CLOUD-FIRST SYNC (PART 3, approved 2026-08-17): offline copies +
@@ -4816,7 +4949,12 @@ var MMGR = window.MMGR || {};
     cloudPhotosPhotoUrlFor: cloudPhotosPhotoUrlFor,
     cloudPhotosPhotosUrl: cloudPhotosPhotosUrl,
     cloudPhotosUploadUrl: cloudPhotosUploadUrl,
-    cloudPhotosGetPhotos: cloudPhotosGetPhotos
+    cloudPhotosGetPhotos: cloudPhotosGetPhotos,
+    cloudPhotosCanEdit: cloudPhotosCanEdit,
+    cloudPhotosOpenBundle: cloudPhotosOpenBundle,
+    cloudPhotosCloseBundle: cloudPhotosCloseBundle,
+    cloudPhotosQueuedCount: cloudPhotosQueuedCount,
+    cloudPhotosFlushQueue: cloudPhotosFlushQueue
   };
   // PROJECT PHOTOS (C24): render the photos panel right after the cloud
   // module paints the page, before the next render. The panel itself is

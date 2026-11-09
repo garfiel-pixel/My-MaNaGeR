@@ -402,7 +402,7 @@ async function main() {
   // Hold the credential exactly like the real owner path (code + session
   // unused here - the code is the credential that travels with this device).
   await ev(
-    '(function(){try{sessionStorage.setItem("mmgr_cloud_code_' +
+    '(function(){try{localStorage.setItem("mmgr_cloud_code_' +
       PID +
       '","' +
       CODE +
@@ -507,7 +507,7 @@ async function main() {
   // file carries NO credential by design, so the user enters the code here
   // (the same "On another device?" box the offer sits next to).
   await ev(
-    '(function(){try{sessionStorage.setItem("mmgr_cloud_code_' +
+    '(function(){try{localStorage.setItem("mmgr_cloud_code_' +
       PID +
       '","' +
       CODE +
@@ -567,7 +567,7 @@ async function main() {
   });
   await openCloudSection();
   await ev(
-    '(function(){try{sessionStorage.setItem("mmgr_cloud_code_' +
+    '(function(){try{localStorage.setItem("mmgr_cloud_code_' +
       PID +
       '","' +
       CODE +

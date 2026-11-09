@@ -180,6 +180,8 @@ function serializeMember(row) {
     perm: matrix,
     // What this member may actually change. A client always answers [].
     writeScope: teamWriteScopeForRole(row.role, parseScope(row.scope), parseTeamMatrix(row.perm)),
+    // H-7: at most one member per project carries this flag.
+    budgetApprover: !!row.budget_approver,
     accessExpiresAt: row.access_expires_at || null,
     // The owner's 7-day notice: true only while the row is still usable.
     accessExpiringSoon: !!(
@@ -604,7 +606,7 @@ export async function handleTeamList(request, env, projectId) {
     return cloudForbidden();
   }
   const rows = await env.DB.prepare(
-    "SELECT id, invitee_email, role, status, scope, perm, access_expires_at, invited_by_name, expires_at, created_at, accepted_at, revoked_at FROM cloud_team_members WHERE project_id = ? AND status != 'revoked' ORDER BY created_at ASC"
+    "SELECT id, invitee_email, role, status, scope, perm, budget_approver, access_expires_at, invited_by_name, expires_at, created_at, accepted_at, revoked_at FROM cloud_team_members WHERE project_id = ? AND status != 'revoked' ORDER BY created_at ASC"
   )
     .bind(projectId)
     .all();
@@ -627,7 +629,7 @@ export async function handleTeamUpdate(request, env, projectId, memberId) {
   }
   const body = read.body || {};
   const row = await env.DB.prepare(
-    'SELECT id, invitee_email, role, scope, perm, access_expires_at, status FROM cloud_team_members WHERE id = ? AND project_id = ?'
+    'SELECT id, invitee_email, role, scope, perm, access_expires_at, budget_approver, status FROM cloud_team_members WHERE id = ? AND project_id = ?'
   )
     .bind(memberId, projectId)
     .first();
@@ -641,6 +643,26 @@ export async function handleTeamUpdate(request, env, projectId, memberId) {
   const role = body.role !== undefined ? String(body.role) : row.role;
   if (TEAM_ROLES.indexOf(role) === -1) {
     return json({ ok: false, error: 'unknown role' }, 400);
+  }
+  // H-7: the owner names at most ONE budget approver. A client can never
+  // hold the flag, and demoting a member to client clears it in the same
+  // write, so a stale flag cannot survive a role change.
+  let budgetApprover = row.budget_approver ? 1 : 0;
+  if (body.budgetApprover !== undefined) {
+    if (role === 'client') {
+      return json({ ok: false, error: 'a client cannot approve the budget' }, 400);
+    }
+    budgetApprover = body.budgetApprover ? 1 : 0;
+    if (budgetApprover) {
+      await env.DB.prepare(
+        'UPDATE cloud_team_members SET budget_approver = 0 WHERE project_id = ? AND id != ?'
+      )
+        .bind(projectId, memberId)
+        .run();
+    }
+  }
+  if (role === 'client') {
+    budgetApprover = 0;
   }
   // Sprint 3: a custom matrix or an access end date is an enterprise feature.
   const wantsMatrix = body.perm !== undefined || body.templateId !== undefined;
@@ -701,13 +723,15 @@ export async function handleTeamUpdate(request, env, projectId, memberId) {
   }
   const scope = body.scope !== undefined ? cleanScope(role, body.scope) : row.scope;
   await env.DB.prepare(
-    'UPDATE cloud_team_members SET role = ?, scope = ?, perm = ?, access_expires_at = ? WHERE id = ? AND project_id = ?'
+    'UPDATE cloud_team_members SET role = ?, scope = ?, perm = ?, access_expires_at = ?, budget_approver = ? WHERE id = ? AND project_id = ?'
   )
-    .bind(role, scope, permJson, accessExpiry, memberId, projectId)
+    .bind(role, scope, permJson, accessExpiry, budgetApprover, memberId, projectId)
     .run();
   const actor = await actorFromRequest(request, env, auth);
-  const event =
-    wantsMatrix || role !== row.role
+  const approverChanged = budgetApprover !== (row.budget_approver ? 1 : 0);
+  const event = approverChanged
+    ? 'update_budget_approver'
+    : wantsMatrix || role !== row.role
       ? 'update_access'
       : wantsExpiry
         ? 'update_expiry'
@@ -723,6 +747,7 @@ export async function handleTeamUpdate(request, env, projectId, memberId) {
       toRole: role,
       scope: parseScope(scope),
       perm: matrix,
+      budgetApprover: !!budgetApprover,
       accessExpiresAt: accessExpiry
     }
   });
@@ -731,6 +756,7 @@ export async function handleTeamUpdate(request, env, projectId, memberId) {
     memberId: Number(memberId),
     role: role,
     perm: matrix,
+    budgetApprover: !!budgetApprover,
     accessExpiresAt: accessExpiry
   });
 }

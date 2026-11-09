@@ -73,8 +73,22 @@ function pdfBoxProblems(problems, css) {
     return;
   }
 
-  // One measurement, two surfaces: the print sheet's own @page block.
-  const pageRule = /@page\s*\{[^}]*?margin:\s*([^;]+);/i.exec(css);
+  // One measurement, two surfaces: the print sheet's own @page block. The
+  // stylesheet also carries a generic @page for the print pack, so pick the
+  // block that declares its paper size - that is the estimate sheet.
+  const pageBlocks = [];
+  const pageRe = /@page\s*\{([^}]*)\}/gi;
+  let pageMatch;
+  while ((pageMatch = pageRe.exec(css))) {
+    pageBlocks.push(pageMatch[1]);
+  }
+  const pageBody =
+    pageBlocks.find(function (b) {
+      return /size\s*:/i.test(b);
+    }) ||
+    pageBlocks[0] ||
+    '';
+  const pageRule = /margin:\s*([^;]+);/i.exec(pageBody);
   if (!pageRule) {
     problems.push('css/mmgr.css has no @page margin block - the printable box is undefined');
   } else {

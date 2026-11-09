@@ -36,6 +36,8 @@ import {
   readJsonBody
 } from './lib/http.js';
 import { trackError, structuredLog, privacySignalRequested } from './lib/observe.js';
+import { handleFx } from './fx.js';
+import { handleProductEvent } from './events.js';
 import {
   handleBillingWebhook,
   handleBillingStatus,
@@ -64,7 +66,9 @@ import {
   handlePhotoGet,
   handlePhotoDelete,
   handlePhotoMeta,
-  handlePhotoUsage
+  handlePhotoUsage,
+  handlePhotoBundleUpdate,
+  handlePhotoBundleDelete
 } from './cloud/photos.js';
 import {
   handleCloudEditorCreate,
@@ -115,7 +119,12 @@ import {
 import { handleCspReport } from './csp-report.js';
 import { handleCalcWorkspaceGet, handleCalcWorkspacePut } from './cloud/calc-workspace.js';
 import { API_SHAPES, handleApiShape } from './api/shapes.js';
-import { handleWebhookCreate, handleWebhookList, handleWebhookDelete } from './webhooks.js';
+import {
+  handleWebhookCreate,
+  handleWebhookList,
+  handleWebhookDelete,
+  handleWebhookNotify
+} from './webhooks.js';
 import {
   handleTeamInvite,
   handleTeamList,
@@ -331,6 +340,20 @@ export async function routeApi(request, env, url) {
       return handleCspReport(request, env);
     }
 
+    // B (2026-11-09): the one client-emitted product event (calculator
+    // export). Same-origin, rate-limited on the general bucket, and the
+    // handler accepts a single allowlisted name.
+    if (path === '/api/event' && request.method === 'POST') {
+      if (!sameOriginOnly(request)) {
+        return cloudForbidden();
+      }
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handleProductEvent(request, env);
+    }
+
     // 4. CLOUD PROJECT ROUTES (/api/cloud/projects)
     if (path === '/api/cloud/projects') {
       const r = await rl(request, 'general', env);
@@ -484,6 +507,16 @@ export async function routeApi(request, env, url) {
       if (request.method === 'GET') {
         return handleWebhookList(request, env, webhookListMatch[1]);
       }
+    }
+    const webhookNotifyMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/webhooks\/notify$/
+    );
+    if (webhookNotifyMatch && request.method === 'POST') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handleWebhookNotify(request, env, webhookNotifyMatch[1]);
     }
     const webhookDelMatch = path.match(
       /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/webhooks\/(\d+)$/
@@ -996,6 +1029,38 @@ export async function routeApi(request, env, url) {
       }
       return handlePhotoUsage(request, env, cloudPhotoUsageMatch[1]);
     }
+    // I-12 photo bundles. These sit BEFORE the single-photo route so the
+    // literal "bundle" segment can never be read as a photo id.
+    const cloudPhotoBundleMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/photos\/bundle\/([A-Za-z0-9_-]{8,64})$/
+    );
+    if (cloudPhotoBundleMatch && request.method === 'PATCH') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handlePhotoBundleUpdate(
+        request,
+        env,
+        cloudPhotoBundleMatch[1],
+        cloudPhotoBundleMatch[2]
+      );
+    }
+    const cloudPhotoBundleDelMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/photos\/bundle\/([A-Za-z0-9_-]{8,64})\/delete$/
+    );
+    if (cloudPhotoBundleDelMatch && request.method === 'POST') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handlePhotoBundleDelete(
+        request,
+        env,
+        cloudPhotoBundleDelMatch[1],
+        cloudPhotoBundleDelMatch[2]
+      );
+    }
     const cloudPhotoMatch = path.match(
       /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/photos\/([A-Za-z0-9_-]{1,128})$/
     );
@@ -1045,6 +1110,16 @@ export async function routeApi(request, env, url) {
     // 10b. HEALTH PROBE
     if (path === '/api/health' && request.method === 'GET') {
       return json({ ok: true, status: 'ok', app: 'my-manager', time: new Date().toISOString() });
+    }
+
+    // 10c. FX ESTIMATE (A3): the J$ figures on pricing.html are estimates at
+    // this rate. Public and cacheable for an hour; same-origin only so a
+    // third-party page cannot quietly read the number as an oracle.
+    if (path === '/api/fx' && request.method === 'GET') {
+      if (!sameOriginOnly(request)) {
+        return cloudForbidden();
+      }
+      return handleFx(env);
     }
 
     // 11. PUBLIC REVIEWS

@@ -28,7 +28,7 @@ import {
 } from '../lib/http.js';
 import { cloudDeleteProjectFully, cloudPurgeAccountRows } from '../cloud/projects.js';
 import { billingCancelForDeletion } from '../billing.js';
-import { structuredLog } from '../lib/observe.js';
+import { structuredLog, trackEvent } from '../lib/observe.js';
 import { clientIp, verifyTurnstileToken } from '../lib/turnstile.js';
 import { cloudPrefsKey } from '../cloud/sync.js';
 
@@ -280,6 +280,9 @@ export async function handleAuthRegister(request, env) {
       /* mail failure must never break signup */
     }
   }
+  // B (2026-11-09): one identifier-free product event. No email, no sub, no
+  // account id - the allowlist and the write are enforced in observe.js.
+  trackEvent(env, 'signup', {}, request);
   return authSessionResponse({ sub: 'email:' + email, email: email, name: name }, env, emailSent);
 }
 

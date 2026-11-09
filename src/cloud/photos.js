@@ -31,6 +31,7 @@ import {
   readSession
 } from '../lib/http.js';
 import { billingConfigured, billingStatusActive } from '../billing.js';
+import { trackEvent } from '../lib/observe.js';
 
 // Shared access gate used by upload / list / single / delete. Kept in one
 // place so the timing-safe auth path is not duplicated across handlers.
@@ -39,14 +40,57 @@ const PHOTO_R2_PREFIX = 'photos/';
 const MAX_PHOTO_BYTES = 8 * 1024 * 1024; // 8 MB per photo
 const MAX_PHOTOS_PER_PROJECT = 200; // soft cap, enforced at upload
 
-// B11 (5.7): 500 MB per ACCOUNT, not per project. The account is the paying
-// identity the photos are billed against: the project owner's google_sub when
-// the project came from a signed-in account, and the project itself when it
-// did not (a code-created project has no account to sum). Summing per project
-// would let one account fill R2 through project after project, which is
-// exactly the hole the paid gate exists to close.
-const PHOTO_ACCOUNT_QUOTA_BYTES = 500 * 1024 * 1024;
+// B11 (5.7): the quota is per ACCOUNT, not per project. The account is the
+// paying identity the photos are billed against: the project owner's
+// google_sub when the project came from a signed-in account, and the project
+// itself when it did not (a code-created project has no account to sum).
+// Summing per project would let one account fill R2 through project after
+// project, which is exactly the hole the paid gate exists to close.
+//
+// C (2026-11-09): the flat 500 MB constant became a per-plan table so the
+// allowance is an upsell lever rather than a later customer conversation.
+// The plan identifiers are the ones billing.js already writes to
+// cloud_subscriptions.tier: contractor, estimator, company, enterprise.
+// Estimator and Company share the middle step; Enterprise is the top.
+const MB = 1024 * 1024;
+const GB = 1024 * MB;
+const PHOTO_QUOTA_BY_PLAN = {
+  free: 0,
+  contractor: 500 * MB,
+  estimator: 2 * GB,
+  company: 2 * GB,
+  enterprise: 10 * GB
+};
+// An ACTIVE subscription whose tier string we do not recognise still gets
+// the base paid allowance. Returning zero here would silently take a paying
+// customer's photos away because of a rename.
+const PHOTO_QUOTA_DEFAULT_PAID = PHOTO_QUOTA_BY_PLAN.contractor;
+
+export function photoQuotaForPlan(plan) {
+  const key = String(plan || '')
+    .trim()
+    .toLowerCase();
+  if (Object.prototype.hasOwnProperty.call(PHOTO_QUOTA_BY_PLAN, key)) {
+    return PHOTO_QUOTA_BY_PLAN[key];
+  }
+  return PHOTO_QUOTA_DEFAULT_PAID;
+}
+
+function photoQuotaLabel(bytes) {
+  if (bytes >= GB && bytes % GB === 0) {
+    return bytes / GB + ' GB';
+  }
+  if (bytes >= MB && bytes % MB === 0) {
+    return bytes / MB + ' MB';
+  }
+  return Math.round(bytes / MB) + ' MB';
+}
 const PHOTO_STAGES = new Set(['', 'before', 'after', 'progress']);
+// I-12: a bundle is a client-generated id shared by every photo in one
+// selection. The id is scoped by project_id in every query, so a collision
+// across projects is harmless; the shape check only keeps it safe to put in a
+// URL and a D1 column.
+const BUNDLE_ID_RE = /^[A-Za-z0-9_-]{8,64}$/;
 const PHOTO_UPGRADE_SENTENCE =
   'Project photos are part of every paid plan, Estimator included. Upgrade to add photos to this project.';
 const ALLOWED_CONTENT_TYPES = new Set([
@@ -292,10 +336,7 @@ function rolesWithView(role) {
 // Fail-closed on a database error, matching poolIsPaid in src/ai-proxy.js:
 // the whole point of the check is to protect a finite paid resource, so an
 // unreadable ledger must never read as "paid".
-async function photoUploadPaid(env, proj, request) {
-  if (!billingConfigured(env)) {
-    return true;
-  }
+async function photoSubjects(env, proj, request) {
   const subjects = [];
   if (proj && proj.google_sub) {
     subjects.push(String(proj.google_sub));
@@ -310,22 +351,54 @@ async function photoUploadPaid(env, proj, request) {
       /* no readable session - the owner's own account alone decides */
     }
   }
-  if (!subjects.length) {
-    return false;
-  }
+  return subjects;
+}
+
+// The active subscription row for whichever identity pays for this project's
+// photos, or null. One query per subject; both photoUploadPaid and photoPlan
+// read the same row so the gate and the allowance can never disagree.
+async function photoSubscription(env, proj, request) {
+  const subjects = await photoSubjects(env, proj, request);
   for (let i = 0; i < subjects.length; i++) {
     try {
-      const row = await env.DB.prepare('SELECT status FROM cloud_subscriptions WHERE owner_sub = ?')
+      const row = await env.DB.prepare(
+        'SELECT status, plan, tier FROM cloud_subscriptions WHERE owner_sub = ?'
+      )
         .bind(subjects[i])
         .first();
       if (row && billingStatusActive(row.status)) {
-        return true;
+        return row;
       }
     } catch (e) {
       /* try the next subject before giving up */
     }
   }
-  return false;
+  return null;
+}
+
+async function photoUploadPaid(env, proj, request) {
+  if (!billingConfigured(env)) {
+    return true;
+  }
+  return !!(await photoSubscription(env, proj, request));
+}
+
+// The plan string that sets this account's photo allowance. Billing dormant
+// behaves like the base paid plan, exactly as the upload gate does: a
+// deployment without Paddle secrets must not start refusing uploads it never
+// used to. A configured deployment with no active subscription is 'free'.
+async function photoPlan(env, proj, request) {
+  if (!billingConfigured(env)) {
+    return 'contractor';
+  }
+  const row = await photoSubscription(env, proj, request);
+  if (!row) {
+    return 'free';
+  }
+  const tier = String(row.tier || row.plan || 'contractor')
+    .trim()
+    .toLowerCase();
+  return tier === 'free' ? 'contractor' : tier;
 }
 
 // ---- quota ---------------------------------------------------------------
@@ -333,7 +406,7 @@ async function photoUploadPaid(env, proj, request) {
 // either way: joined on google_sub when the project has one, scoped to the
 // project when it does not. Deleted photos stop counting the moment they are
 // soft-deleted, because the row is what the bar and the cap read.
-async function photoUsage(env, proj, projectId) {
+async function photoUsage(env, proj, projectId, request) {
   const subject = proj && proj.google_sub ? String(proj.google_sub) : '';
   let row = null;
   if (subject) {
@@ -351,13 +424,15 @@ async function photoUsage(env, proj, projectId) {
   }
   const usedBytes = Number(row && row.used) || 0;
   const photos = Number(row && row.photos) || 0;
-  const limitBytes = PHOTO_ACCOUNT_QUOTA_BYTES;
+  const plan = await photoPlan(env, proj, request);
+  const limitBytes = photoQuotaForPlan(plan);
   return {
     usedBytes: usedBytes,
     limitBytes: limitBytes,
     remainingBytes: Math.max(0, limitBytes - usedBytes),
     photos: photos,
-    accountScoped: !!subject
+    accountScoped: !!subject,
+    plan: plan
   };
 }
 
@@ -620,10 +695,11 @@ export async function handlePhotoUpload(request, env, projectId) {
     );
   }
 
-  // B11 quota: 500 MB per account. Checked BEFORE the metadata row and the R2
-  // write, so a refused upload leaves neither behind. The numbers travel with
-  // the refusal so the panel can paint the bar it already shows at the truth.
-  const usage = await photoUsage(env, proj, projectId);
+  // B11 quota, now per plan (C, 2026-11-09). Checked BEFORE the metadata row
+  // and the R2 write, so a refused upload leaves neither behind. The numbers
+  // travel with the refusal so the panel can paint the bar it already shows
+  // at the truth.
+  const usage = await photoUsage(env, proj, projectId, request);
   if (usage.usedBytes + storedSize > usage.limitBytes) {
     return json(
       {
@@ -631,7 +707,9 @@ export async function handlePhotoUpload(request, env, projectId) {
         code: 'quota_exceeded',
         upgrade: true,
         error:
-          'this account has used its 500 MB of photo storage , delete a photo to free space, or upgrade for more',
+          'this account has used its ' +
+          photoQuotaLabel(usage.limitBytes) +
+          ' of photo storage , delete a photo to free space, or upgrade for more',
         usage: usage
       },
       413
@@ -650,6 +728,19 @@ export async function handlePhotoUpload(request, env, projectId) {
     .trim()
     .toLowerCase();
   const stage = PHOTO_STAGES.has(stageRaw) ? stageRaw : '';
+  // I-12: one description for the whole selection. The UI sends the same
+  // bundleId and bundleCaption with every file in the set; an upload without
+  // them is an individual photo, exactly as before.
+  const bundleRaw = String(formData.get('bundleId') || '').trim();
+  if (bundleRaw && !BUNDLE_ID_RE.test(bundleRaw)) {
+    return json({ ok: false, error: 'that photo bundle is not valid' }, 400);
+  }
+  const bundleId = bundleRaw;
+  const bundleCaption = bundleId
+    ? String(formData.get('bundleCaption') || caption || '')
+        .slice(0, 200)
+        .trim()
+    : '';
   // Name AND role, both resolved server-side: the browser is never trusted to
   // say who uploaded a photo, and a scoped editor code's label is the only
   // name that code has.
@@ -672,7 +763,7 @@ export async function handlePhotoUpload(request, env, projectId) {
   let metaId;
   try {
     const ins = await env.DB.prepare(
-      'INSERT INTO cloud_project_photos (project_id, photo_id, filename, caption, captured_at, uploaded_by, uploaded_role, stage, content_type, size_bytes, sort_order, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
+      'INSERT INTO cloud_project_photos (project_id, photo_id, filename, caption, captured_at, uploaded_by, uploaded_role, stage, bundle_id, bundle_caption, content_type, size_bytes, sort_order, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
     )
       .bind(
         projectId,
@@ -683,6 +774,8 @@ export async function handlePhotoUpload(request, env, projectId) {
         uploadedBy,
         uploadedRole,
         stage,
+        bundleId,
+        bundleCaption,
         storedType,
         storedSize,
         sortOrder,
@@ -711,11 +804,14 @@ export async function handlePhotoUpload(request, env, projectId) {
   }
 
   const meta = await env.DB.prepare(
-    'SELECT id, photo_id, filename, caption, captured_at, uploaded_by, uploaded_role, stage, content_type, size_bytes, sort_order, created_at FROM cloud_project_photos WHERE id = ?'
+    'SELECT id, photo_id, filename, caption, captured_at, uploaded_by, uploaded_role, stage, bundle_id, bundle_caption, content_type, size_bytes, sort_order, created_at FROM cloud_project_photos WHERE id = ?'
   )
     .bind(metaId)
     .first();
 
+  // B (2026-11-09): one identifier-free product event per stored photo. The
+  // project id, photo id and filename never reach the data point.
+  trackEvent(env, 'photo_uploaded', {}, request);
   return json({
     ok: true,
     photo: {
@@ -726,12 +822,14 @@ export async function handlePhotoUpload(request, env, projectId) {
       uploadedBy: meta.uploaded_by,
       uploadedRole: meta.uploaded_role,
       stage: meta.stage,
+      bundleId: meta.bundle_id || '',
+      bundleCaption: meta.bundle_caption || '',
       contentType: meta.content_type,
       sizeBytes: meta.size_bytes,
       sortOrder: meta.sort_order,
       createdAt: meta.created_at
     },
-    usage: await photoUsage(env, proj, projectId)
+    usage: await photoUsage(env, proj, projectId, request)
   });
 }
 
@@ -779,7 +877,7 @@ export async function handlePhotoList(request, env, projectId) {
   }
 
   const rows = await env.DB.prepare(
-    'SELECT id, photo_id, filename, caption, captured_at, uploaded_by, uploaded_role, stage, content_type, size_bytes, sort_order, created_at FROM cloud_project_photos WHERE project_id = ? AND deleted_at IS NULL ORDER BY sort_order DESC, created_at DESC'
+    'SELECT id, photo_id, filename, caption, captured_at, uploaded_by, uploaded_role, stage, bundle_id, bundle_caption, content_type, size_bytes, sort_order, created_at FROM cloud_project_photos WHERE project_id = ? AND deleted_at IS NULL ORDER BY sort_order DESC, created_at DESC'
   )
     .bind(projectId)
     .all();
@@ -793,6 +891,8 @@ export async function handlePhotoList(request, env, projectId) {
       uploadedBy: r.uploaded_by,
       uploadedRole: r.uploaded_role || '',
       stage: r.stage || '',
+      bundleId: r.bundle_id || '',
+      bundleCaption: r.bundle_caption || '',
       contentType: r.content_type,
       sizeBytes: r.size_bytes,
       sortOrder: r.sort_order,
@@ -807,14 +907,21 @@ export async function handlePhotoList(request, env, projectId) {
 
   // The panel needs the quota bar on the same round trip as the list: one
   // request per render, and the bar can never disagree with the rows it sits
-  // above. canUpload mirrors the server's own role rule so the button is never
-  // offered to a role the upload path would refuse.
+  // above. roleCanUpload mirrors the server's role rule so the button is
+  // never offered to a role the upload path would refuse; canUpload adds the
+  // paid-plan rule, and upgradeRequired is the honest free-account state the
+  // panel turns into an upgrade card instead of a dead click.
+  const roleCanUpload = rolesWithUpload(access.role);
+  const paid = roleCanUpload ? await photoUploadPaid(env, proj, request) : false;
   return json({
     ok: true,
     photos: photos,
     role: access.role,
-    canUpload: rolesWithUpload(access.role),
-    usage: await photoUsage(env, proj, projectId)
+    roleCanUpload: roleCanUpload,
+    canUpload: roleCanUpload && paid,
+    upgradeRequired: roleCanUpload && !paid,
+    upgradeMessage: roleCanUpload && !paid ? PHOTO_UPGRADE_SENTENCE : '',
+    usage: await photoUsage(env, proj, projectId, request)
   });
 }
 
@@ -844,11 +951,16 @@ export async function handlePhotoUsage(request, env, projectId) {
     return json({ ok: false, error: 'you do not have access to this project\u2019s photos' }, 403);
   }
 
+  const roleCanUpload = rolesWithUpload(access.role);
+  const paid = roleCanUpload ? await photoUploadPaid(env, proj, request) : false;
   return json({
     ok: true,
     role: access.role,
-    canUpload: rolesWithUpload(access.role),
-    usage: await photoUsage(env, proj, projectId)
+    roleCanUpload: roleCanUpload,
+    canUpload: roleCanUpload && paid,
+    upgradeRequired: roleCanUpload && !paid,
+    upgradeMessage: roleCanUpload && !paid ? PHOTO_UPGRADE_SENTENCE : '',
+    usage: await photoUsage(env, proj, projectId, request)
   });
 }
 
@@ -1020,7 +1132,7 @@ export async function handlePhotoMeta(request, env, projectId, photoId) {
   }
 
   const meta = await env.DB.prepare(
-    'SELECT id, photo_id, filename, caption, captured_at, uploaded_by, uploaded_role, stage, content_type, size_bytes, sort_order, created_at FROM cloud_project_photos WHERE project_id = ? AND photo_id = ? AND deleted_at IS NULL'
+    'SELECT id, photo_id, filename, caption, captured_at, uploaded_by, uploaded_role, stage, bundle_id, bundle_caption, content_type, size_bytes, sort_order, created_at FROM cloud_project_photos WHERE project_id = ? AND photo_id = ? AND deleted_at IS NULL'
   )
     .bind(projectId, photoId)
     .first();
@@ -1038,10 +1150,116 @@ export async function handlePhotoMeta(request, env, projectId, photoId) {
       uploadedBy: meta.uploaded_by,
       uploadedRole: meta.uploaded_role || '',
       stage: meta.stage || '',
+      bundleId: meta.bundle_id || '',
+      bundleCaption: meta.bundle_caption || '',
       contentType: meta.content_type,
       sizeBytes: meta.size_bytes,
       sortOrder: meta.sort_order,
       createdAt: meta.created_at
     }
   });
+}
+
+// ---- bundle edit / delete (I-12) -----------------------------------------
+// A bundle has no row of its own: every photo carries the same bundle_id and
+// bundle_caption. Editing therefore updates the set in one statement, and
+// deleting soft-deletes the set first (so a retry is idempotent) then removes
+// each blob best-effort, exactly like a single-photo delete.
+
+async function resolveUploadable(request, env, projectId) {
+  const proj = await projectRow(env, projectId);
+  if (!proj) {
+    return { error: cloudForbidden() };
+  }
+  if (proj.deleted_at) {
+    return { error: cloudProjectDeleted() };
+  }
+  const access = await resolvePhotoAccess(request, env, projectId);
+  if (!access.ok) {
+    if (access.ok === 'expired') {
+      return {
+        error: json({ ok: false, error: 'code_expired', expiresAt: access.expiresAt }, 403)
+      };
+    }
+    if (access.ok === 'revoked' || access.ok === 'deleted') {
+      return { error: cloudForbidden() };
+    }
+    await cloudTimingSink();
+    return { error: cloudForbidden() };
+  }
+  if (!rolesWithUpload(access.role)) {
+    return {
+      error: json(
+        { ok: false, error: 'only the project owner or an editor can change photo bundles' },
+        403
+      )
+    };
+  }
+  return { proj: proj, access: access };
+}
+
+export async function handlePhotoBundleUpdate(request, env, projectId, bundleId) {
+  if (!BUNDLE_ID_RE.test(bundleId)) {
+    return json({ ok: false, error: 'bundle not found' }, 404);
+  }
+  const gate = await resolveUploadable(request, env, projectId);
+  if (gate.error) {
+    return gate.error;
+  }
+  let body = {};
+  try {
+    body = await request.json();
+  } catch (e) {
+    /* an empty body clears the description, which is a valid edit */
+  }
+  const caption = String((body && body.caption) || '')
+    .slice(0, 200)
+    .trim();
+  const res = await env.DB.prepare(
+    'UPDATE cloud_project_photos SET bundle_caption = ? WHERE project_id = ? AND bundle_id = ? AND deleted_at IS NULL'
+  )
+    .bind(caption, projectId, bundleId)
+    .run();
+  const changed = Number(res && res.meta && res.meta.changes) || 0;
+  if (!changed) {
+    return json({ ok: false, error: 'bundle not found' }, 404);
+  }
+  return json({ ok: true, bundleId: bundleId, caption: caption, photos: changed });
+}
+
+export async function handlePhotoBundleDelete(request, env, projectId, bundleId) {
+  if (!BUNDLE_ID_RE.test(bundleId)) {
+    return json({ ok: false, error: 'bundle not found' }, 404);
+  }
+  const gate = await resolveUploadable(request, env, projectId);
+  if (gate.error) {
+    return gate.error;
+  }
+  const rows = await env.DB.prepare(
+    'SELECT id, photo_id, content_type FROM cloud_project_photos WHERE project_id = ? AND bundle_id = ? AND deleted_at IS NULL'
+  )
+    .bind(projectId, bundleId)
+    .all();
+  const list = (rows && rows.results) || [];
+  if (!list.length) {
+    return json({ ok: false, error: 'bundle not found' }, 404);
+  }
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    'UPDATE cloud_project_photos SET deleted_at = ? WHERE project_id = ? AND bundle_id = ? AND deleted_at IS NULL'
+  )
+    .bind(now, projectId, bundleId)
+    .run();
+  for (let i = 0; i < list.length; i++) {
+    const ext = extForContentType(list[i].content_type);
+    if (!ext) {
+      continue;
+    }
+    try {
+      await env.R2.delete(photoR2Key(projectId, list[i].photo_id, ext));
+    } catch (e) {
+      /* best-effort, matching the single-photo delete */
+    }
+  }
+  return json({ ok: true, deleted: bundleId, photos: list.length, deletedAt: now });
 }

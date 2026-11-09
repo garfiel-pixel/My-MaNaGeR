@@ -45,6 +45,9 @@
       { keys: 'Esc', what: 'Close drawer / modals' },
       { keys: 'Enter / Space', what: 'Change the RACI letter in the cell you are on' },
       { keys: '← / →', what: 'Go back or forward through the RACI letters' },
+      { keys: '← / →', what: 'On an idea card: move it one stage to the left or right' },
+      { keys: '↑ / ↓', what: 'On an idea card: move it up or down its column' },
+      { keys: 'Enter', what: 'Open the idea card you are on for editing' },
       { keys: 'Alt + Left/Right', what: 'Move the focused Kanban card to another column' },
       { keys: 'Alt + Up/Down', what: 'Reorder the focused Kanban card inside its column' }
     ],
@@ -324,6 +327,13 @@
       return;
     }
     if (e.ctrlKey || e.metaKey || e.altKey) {
+      return;
+    }
+
+    // Another modal (the idea sheet) is open: its own Escape and Tab handler
+    // owns the keys. A global shortcut firing behind a scrim is how a typed
+    // "?" opens a second dialog on top of the first.
+    if (!isOpen() && document.querySelector('.kb-sheet.open')) {
       return;
     }
 

@@ -379,6 +379,16 @@ var MMGR = window.MMGR || {};
 
     ns.State.load();
 
+    // Process repair: an imported or legacy status that its edge could not
+    // have produced is stepped back once, with the step recorded in the
+    // history rather than done silently. Idempotent, so it costs a scan.
+    if (ns.Process && ns.Process.needsRepair(ns.State.getState())) {
+      ns.State.updateState(function (st) {
+        ns.Process.repairAll(st);
+      });
+      ns.State.save(true);
+    }
+
     const s = S();
 
     // Task 6 (owner 2026-09-19): background assistant. One immediate pass,
@@ -502,6 +512,8 @@ var MMGR = window.MMGR || {};
     // OWNER 2026-08-15: the sidebar IS the view on desktop , boot the pinned
     // rail OPEN (body.sidebar-open). Mobile keeps the off-canvas drawer
     // (sidebar-open is never set there, so the scrim can't flash at boot).
+    // B7 (2026-11-01) is the LAUNCHER's one-shot rail-nudge (app.html inline),
+    // not this workspace rail; the workspace intentionally boots open.
     if (window.innerWidth > 768) {
       document.body.classList.add('sidebar-open');
     }
@@ -1181,6 +1193,20 @@ var MMGR = window.MMGR || {};
         : 'Could not download the report.',
       'ok'
     );
+  }
+
+  // G3 (owner 2026-11-08): in-app feedback entry. Routes to the existing
+  // contact form with the Feedback topic pre-selected - one moderated channel,
+  // Turnstile already on that page, no new endpoint and no new schema.
+  function openFeedback() {
+    // Same-tab by the T-NEWTAB rule: a new tab is allowed only for an
+    // external site, checkout, the Field Guide and the explicit project
+    // popout. The contact form is one of our own pages.
+    try {
+      ns.Nav.go('contact.html?topic=Feedback');
+    } catch (e) {
+      window.location.assign('contact.html?topic=Feedback');
+    }
   }
 
   // ---- DIR-1b: opt-in remote error reporting ----
@@ -3161,6 +3187,245 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // ---- Custom task fields (NocoBase-inspired collection schema) ----
+  // The sheet reuses the house modal chrome (.kb-sheet + .open, .mb/.mh/
+  // .mbody/.mf), so it inherits the layering, the focus restore and the
+  // shortcut-layer stand-down without a second visibility mechanism.
+  let _cfLastFocus = null;
+
+  function renderFieldList() {
+    const box = U.$('cf-list');
+    if (!box) {
+      return;
+    }
+    const C = ns.CustomFields;
+    const s = S();
+    if (!C || !s) {
+      return;
+    }
+    const fields = C.list(s);
+    const readOnly = typeof isReadonly === 'function' && isReadonly();
+    if (!fields.length) {
+      box.innerHTML =
+        '<div class="es" style="padding:10px;font-size:.78rem">No custom fields yet. The WBS and the board work as before, add a field only when the project needs one.</div>';
+      return;
+    }
+    box.innerHTML = fields
+      .map(function (f, i) {
+        const key = U.escapeHtml(f.key);
+        const typeLabel = C.TYPES[f.type].label;
+        const options = f.type === 'select' ? f.options.join(', ') : typeLabel;
+        return (
+          '<div class="cf-row" data-key="' +
+          key +
+          '">' +
+          '<input type="text" class="ctl-in cf-label" value="' +
+          U.escapeHtml(f.label) +
+          '" maxlength="40" data-action="updCustomField" data-key="' +
+          key +
+          '" data-prop="label" aria-label="Field label"' +
+          (readOnly ? ' disabled' : '') +
+          '>' +
+          '<span class="cf-type" title="' +
+          U.escapeHtml(options) +
+          '">' +
+          U.escapeHtml(typeLabel) +
+          '</span>' +
+          '<label class="cf-flag"><input type="checkbox" data-action="tglCustomProp" data-key="' +
+          key +
+          '" data-prop="showInWbs"' +
+          (f.showInWbs !== false ? ' checked' : '') +
+          (readOnly ? ' disabled' : '') +
+          '> WBS</label>' +
+          '<label class="cf-flag"><input type="checkbox" data-action="tglCustomProp" data-key="' +
+          key +
+          '" data-prop="showInCard"' +
+          (f.showInCard ? ' checked' : '') +
+          (readOnly ? ' disabled' : '') +
+          '> Card</label>' +
+          '<label class="cf-flag"><input type="checkbox" data-action="tglCustomProp" data-key="' +
+          key +
+          '" data-prop="required"' +
+          (f.required ? ' checked' : '') +
+          (readOnly ? ' disabled' : '') +
+          '> Required</label>' +
+          '<button class="btn btn-s btn-n" data-action="moveCustomField" data-key="' +
+          key +
+          '" data-dir="-1" aria-label="Move field up"' +
+          (readOnly || i === 0 ? ' disabled' : '') +
+          '>&#8593;</button>' +
+          '<button class="btn btn-s btn-n" data-action="moveCustomField" data-key="' +
+          key +
+          '" data-dir="1" aria-label="Move field down"' +
+          (readOnly || i === fields.length - 1 ? ' disabled' : '') +
+          '>&#8595;</button>' +
+          '<button class="btn btn-s btn-d" data-action="delCustomField" data-key="' +
+          key +
+          '" aria-label="Remove field"' +
+          (readOnly ? ' disabled' : '') +
+          '>Remove</button>' +
+          '</div>'
+        );
+      })
+      .join('');
+  }
+
+  function openFields() {
+    const modal = U.$('cf-modal');
+    if (!modal) {
+      return;
+    }
+    renderFieldList();
+    _cfLastFocus = document.activeElement;
+    modal.classList.add('open');
+    const first = U.$('cf-label');
+    if (first && first.focus) {
+      first.focus();
+    }
+  }
+
+  function closeFields() {
+    const modal = U.$('cf-modal');
+    if (modal) {
+      modal.classList.remove('open');
+    }
+    if (_cfLastFocus && _cfLastFocus.focus) {
+      _cfLastFocus.focus();
+    }
+    _cfLastFocus = null;
+  }
+
+  function addCustomField() {
+    const label = U.$('cf-label');
+    const type = U.$('cf-type');
+    const options = U.$('cf-options');
+    const wbs = U.$('cf-wbs');
+    const card = U.$('cf-card');
+    const req = U.$('cf-req');
+    if (!label || !type) {
+      return;
+    }
+    let result = null;
+    ns.State.updateState(function (st) {
+      result = ns.CustomFields.add(st, {
+        label: label.value,
+        type: type.value,
+        options: options ? options.value : '',
+        showInWbs: !wbs || wbs.checked,
+        showInCard: !!(card && card.checked),
+        required: !!(req && req.checked)
+      });
+    });
+    if (!result || !result.ok) {
+      showToast(result ? result.reason : 'Could not add that field.', 'warn');
+      return;
+    }
+    label.value = '';
+    if (options) {
+      options.value = '';
+    }
+    showToast('Field added.', 'ok');
+    renderFieldList();
+    R.renderWbs();
+    R.renderKanban();
+  }
+
+  function updCustomField(el) {
+    const key = el && el.getAttribute('data-key');
+    if (!key) {
+      return;
+    }
+    const prop = el.getAttribute('data-prop');
+    let result = null;
+    ns.State.updateState(function (st) {
+      const patch = {};
+      patch[prop] = el.value;
+      result = ns.CustomFields.update(st, key, patch);
+    });
+    if (result && !result.ok) {
+      showToast(result.reason, 'warn');
+      el.value = ns.CustomFields.find(S(), key) ? ns.CustomFields.find(S(), key).label : '';
+      return;
+    }
+    renderFieldList();
+    R.renderWbs();
+    R.renderKanban();
+  }
+
+  function tglCustomProp(el) {
+    const key = el && el.getAttribute('data-key');
+    const prop = el && el.getAttribute('data-prop');
+    if (!key || !prop) {
+      return;
+    }
+    ns.State.updateState(function (st) {
+      const patch = {};
+      patch[prop] = el.checked;
+      ns.CustomFields.update(st, key, patch);
+    });
+    renderFieldList();
+    R.renderWbs();
+    R.renderKanban();
+  }
+
+  function moveCustomField(el) {
+    const key = el && el.getAttribute('data-key');
+    const dir = parseInt(el && el.getAttribute('data-dir'), 10);
+    if (!key || isNaN(dir)) {
+      return;
+    }
+    ns.State.updateState(function (st) {
+      ns.CustomFields.move(st, key, dir);
+    });
+    renderFieldList();
+    R.renderWbs();
+    R.renderKanban();
+  }
+
+  function delCustomField(el) {
+    const key = el && el.getAttribute('data-key');
+    const field = key && ns.CustomFields ? ns.CustomFields.find(S(), key) : null;
+    if (!field) {
+      return;
+    }
+    askConfirm({
+      title: 'Remove field?',
+      message:
+        'Remove "' +
+        field.label +
+        '" and every value stored for it on every task. This cannot be undone from here.',
+      confirmLabel: 'Remove',
+      danger: true,
+      onOk: function () {
+        ns.State.updateState(function (st) {
+          ns.CustomFields.remove(st, key);
+        });
+        showToast('Field removed.', 'ok');
+        renderFieldList();
+        R.renderWbs();
+        R.renderKanban();
+      }
+    });
+  }
+
+  function setCfFilter(el) {
+    const role = el && el.getAttribute('data-role');
+    const C = ns.CustomFields;
+    const s = S();
+    if (!C || !s || !role) {
+      return;
+    }
+    const raw = (s && s.cfFilter) || { key: '', value: '' };
+    ns.State.updateState(function (st) {
+      if (role === 'key') {
+        C.setFilter(st, el.value, '');
+      } else {
+        C.setFilter(st, raw.key, el.value);
+      }
+    });
+    R.renderKanban();
+  }
+
   // ---- Kanban column limits (soft) ----
   // Kanboard semantics: task_limit = 0 means unlimited, and exceeding a
   // limit is a warning, never a hard block. A site manager must still be
@@ -3545,12 +3810,594 @@ var MMGR = window.MMGR || {};
       R.renderWbs();
       R.renderDash();
     }
+
     dragTaskId = null;
     // Symmetry with dropCard: clear any lingering drop-highlight styling on
     // the columns after a lead-time drop.
     endBoardDrag();
     document.querySelectorAll('.kcol').forEach(c => c.classList.remove('dov'));
   }
+
+  // ---- Idea intake (Leantime-inspired) ----
+  // The sheet is static markup in project.html. These handlers fill it, read
+  // it once on Save, and close it. Every write goes through MMGR.Ideas, so
+  // the stage table, the score and the field allow-list live in one place.
+  let ideaLastFocus = null;
+  let dragIdeaId = null;
+
+  function focusIdea(id, preferSelect) {
+    if (preferSelect) {
+      const selects = document.querySelectorAll('select[data-action="setIdeaStage"]');
+      for (let s = 0; s < selects.length; s += 1) {
+        if (selects[s].getAttribute('data-id') === id) {
+          selects[s].focus();
+          return;
+        }
+      }
+    }
+    const cards = document.querySelectorAll('[data-idea-drag]');
+    for (let i = 0; i < cards.length; i += 1) {
+      if (cards[i].getAttribute('data-idea-drag') === id) {
+        cards[i].focus();
+        return;
+      }
+    }
+    const rows = document.querySelectorAll('#ideas-list [data-idea-id]');
+    for (let j = 0; j < rows.length; j += 1) {
+      if (rows[j].getAttribute('data-idea-id') === id) {
+        const btn = rows[j].querySelector('button');
+        if (btn) {
+          btn.focus();
+        }
+        return;
+      }
+    }
+  }
+
+  function openIdeaSheet(idea) {
+    const sheet = U.$('idea-sheet');
+    if (!sheet) {
+      return;
+    }
+    const set = function (id, value) {
+      const el = U.$(id);
+      if (el) {
+        el.value = value;
+      }
+    };
+    sheet.setAttribute('data-idea-id', idea ? idea.id : '');
+    set('idea-title', idea ? idea.title : '');
+    set('idea-summary', idea ? idea.summary : '');
+    set('idea-author', idea ? idea.author : '');
+    set('idea-tags', idea ? (idea.tags || []).join(', ') : '');
+    set('idea-impact', String(idea ? idea.impact : 3));
+    set('idea-effort', String(idea ? idea.effort : 3));
+    set('idea-stage', idea ? idea.stage : 'idea');
+    const heading = U.$('idea-sheet-title');
+    if (heading) {
+      heading.textContent = idea ? 'Edit idea' : 'New idea';
+    }
+    const del = U.$('idea-del');
+    if (del) {
+      del.classList.toggle('is-hide', !idea);
+      del.setAttribute('data-id', idea ? idea.id : '');
+    }
+    // Remember where focus came from so closing the sheet puts it back. The
+    // button that opened it may be gone after a save (the card is redrawn),
+    // so the restore is guarded by document.contains().
+    ideaLastFocus = document.activeElement;
+    sheet.classList.add('open');
+    const first = U.$('idea-title');
+    if (first && first.focus) {
+      first.focus();
+    }
+  }
+
+  function closeIdeaSheet() {
+    const sheet = U.$('idea-sheet');
+    if (sheet) {
+      sheet.classList.remove('open');
+    }
+  }
+
+  function restoreIdeaFocus() {
+    if (ideaLastFocus && document.contains(ideaLastFocus) && ideaLastFocus.focus) {
+      ideaLastFocus.focus();
+    }
+    ideaLastFocus = null;
+  }
+
+  function openIdea() {
+    openIdeaSheet(null);
+  }
+
+  function editIdea(id) {
+    const idea = ns.Ideas.find(S(), id);
+    if (idea) {
+      openIdeaSheet(idea);
+    }
+  }
+
+  function closeIdea() {
+    closeIdeaSheet();
+    restoreIdeaFocus();
+  }
+
+  function saveIdea() {
+    const sheet = U.$('idea-sheet');
+    const titleEl = U.$('idea-title');
+    const title = titleEl ? titleEl.value.trim() : '';
+    if (!title) {
+      showToast('An idea needs a title.', 'err');
+      if (titleEl && titleEl.focus) {
+        titleEl.focus();
+      }
+      return;
+    }
+    const value = function (id) {
+      const el = U.$(id);
+      return el ? el.value : '';
+    };
+    const patch = {
+      title: title,
+      summary: value('idea-summary'),
+      author: value('idea-author'),
+      tags: value('idea-tags').split(','),
+      impact: value('idea-impact'),
+      effort: value('idea-effort'),
+      stage: value('idea-stage')
+    };
+    const id = sheet ? sheet.getAttribute('data-idea-id') || '' : '';
+    let savedId = id;
+    let ok = false;
+    ns.State.updateState(function (s) {
+      if (id) {
+        ok = !!ns.Ideas.find(s, id);
+        if (ok) {
+          ns.Ideas.update(s, id, patch);
+        }
+      } else {
+        const made = ns.Ideas.add(s, patch);
+        if (made) {
+          savedId = made.id;
+          ok = true;
+        }
+      }
+    });
+    if (!ok) {
+      showToast('That idea is no longer on the board.', 'err');
+      return;
+    }
+    closeIdeaSheet();
+    R.renderIdeas();
+    focusIdea(savedId);
+    ideaLastFocus = null;
+    showToast(id ? 'Idea updated.' : 'Idea added.', 'ok');
+  }
+
+  function delIdea(id) {
+    const idea = ns.Ideas.find(S(), id);
+    if (!idea) {
+      return;
+    }
+    // Deleting a card is one click away from a mis-click, so it asks. The
+    // promoted task, if there is one, stays: removing a candidate is not a
+    // reason to destroy delivered work.
+    askConfirm({
+      title: 'Delete idea',
+      message:
+        'Remove "' +
+        idea.title +
+        '" from the intake? A task already promoted from it stays in the WBS.',
+      confirmLabel: 'Delete idea',
+      danger: true,
+      onOk: function () {
+        ns.State.updateState(function (s) {
+          ns.Ideas.remove(s, id);
+        });
+        closeIdeaSheet();
+        R.renderIdeas();
+        showToast('Idea deleted.', 'ok');
+      }
+    });
+  }
+
+  function setIdeaView(view) {
+    const next = view === 'list' ? 'list' : 'board';
+    if (S().ideaView === next) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      s.ideaView = next;
+    });
+    R.renderIdeas();
+  }
+
+  function setIdeaTag(value) {
+    const tag = String(value || '');
+    if (S().ideaTag === tag) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      s.ideaTag = tag;
+    });
+    R.renderIdeas();
+  }
+
+  function setIdeaStage(id, stage) {
+    let changed = false;
+    ns.State.updateState(function (s) {
+      changed = ns.Ideas.update(s, id, { stage: stage });
+    });
+    if (changed) {
+      R.renderIdeas();
+      focusIdea(id, true);
+    }
+  }
+
+  function promoteIdea(id) {
+    const idea = ns.Ideas.find(S(), id);
+    if (!idea) {
+      return;
+    }
+    if (idea.promotedTaskId) {
+      showToast('This idea already has a task.', 'warn');
+      return;
+    }
+    const taskId = ns.Tasks.addTaskFromIdea(id);
+    if (!taskId) {
+      showToast('Could not create a task from that idea.', 'err');
+      return;
+    }
+    // The Promote button is replaced by the Linked chip on the redraw, so the
+    // element that had focus is gone. Put focus back on the card.
+    focusIdea(id);
+    showToast('Task created from the idea.', 'ok', {
+      label: 'Open WBS',
+      fn: function () {
+        showSec('wbs', document.querySelector('.sec-btn[data-section="wbs"]'));
+      }
+    });
+  }
+
+  // Arrow keys are the keyboard's drag. Left/right crosses a stage boundary
+  // and lands at the end of the target column; up/down swaps with the
+  // neighbour. Both are expressed as one applyDrop() move, so they inherit
+  // the model's all-or-nothing validation and its renumbering.
+  function ideaKeyMove(id, dir) {
+    if (isReadonly()) {
+      showToast('View-only access: the intake can be read but not changed.', 'err');
+      return;
+    }
+    const state = S();
+    const idea = ns.Ideas.find(state, id);
+    if (!idea) {
+      return;
+    }
+    const keys = ns.Ideas.STAGES.map(function (st) {
+      return st.key;
+    });
+    const stageAt = keys.indexOf(idea.stage);
+    let moved = false;
+    ns.State.updateState(function (s) {
+      if (dir === 'left' || dir === 'right') {
+        const to = dir === 'left' ? stageAt - 1 : stageAt + 1;
+        if (to < 0 || to >= keys.length) {
+          return;
+        }
+        moved = ns.Ideas.applyDrop(s, [{ id: id, stage: keys[to], order: 1000000 }]);
+        return;
+      }
+      const group = ns.Ideas.byStage(s).find(function (g) {
+        return g.key === idea.stage;
+      });
+      if (!group) {
+        return;
+      }
+      const pos = group.ideas.findIndex(function (x) {
+        return x.id === id;
+      });
+      if (pos < 0) {
+        return;
+      }
+      const to = dir === 'up' ? pos - 1 : pos + 1;
+      if (to < 0 || to >= group.ideas.length) {
+        return;
+      }
+      moved = ns.Ideas.applyDrop(s, [{ id: id, stage: idea.stage, order: to }]);
+    });
+    if (!moved) {
+      return;
+    }
+    R.renderIdeas();
+    focusIdea(id);
+  }
+
+  // ---- Agenda (read-only lens over the dated records) ----
+  function setAgendaDays(raw) {
+    const n = parseInt(raw, 10);
+    const days = n === 7 || n === 0 ? n : 30;
+    if (S().agendaDays === days) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      s.agendaDays = days;
+    });
+    R.renderAgenda();
+  }
+
+  // Jumping to the record is the whole point of the feed. The target panel
+  // renders first (showSec calls its SECTION_RENDERERS entry), then the
+  // record is found inside it and flashed. The scan is by attribute value,
+  // never by building a selector from the id: an id from an import can
+  // carry a quote or a bracket, and a string-built selector would throw.
+  function agendaJump(section, id) {
+    if (!section) {
+      return;
+    }
+    showSec(section, document.querySelector('.sec-btn[data-section="' + section + '"]'));
+    if (!id) {
+      return;
+    }
+    const wanted = String(id);
+    window.requestAnimationFrame(function () {
+      const nodes = document.querySelectorAll('[data-id], [data-idea-id]');
+      let hit = null;
+      for (let i = 0; i < nodes.length; i += 1) {
+        const el = nodes[i];
+        if (el.getAttribute('data-id') === wanted || el.getAttribute('data-idea-id') === wanted) {
+          hit = el;
+          break;
+        }
+      }
+      if (!hit) {
+        return;
+      }
+      hit.classList.add('ag-hit');
+      if (typeof hit.scrollIntoView === 'function') {
+        hit.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
+      // A table row is not focusable on its own. The temporary tabindex is
+      // removed by the browser when the element is re-rendered, so it never
+      // enters the tab order.
+      if (!hit.hasAttribute('tabindex')) {
+        hit.setAttribute('tabindex', '-1');
+      }
+      if (typeof hit.focus === 'function') {
+        hit.focus({ preventScroll: true });
+      }
+      setTimeout(function () {
+        hit.classList.remove('ag-hit');
+      }, 1600);
+    });
+  }
+
+  // Same download pattern as downloadErrorLog() at js/mmgr-app.js:1088-1107:
+  // Blob, object URL, a synthetic anchor click, revoke after the click lands.
+  function exportAgendaIcs() {
+    if (!ns.Agenda || typeof ns.Agenda.ics !== 'function') {
+      return;
+    }
+    const s = S();
+    const days = s.agendaDays === 7 || s.agendaDays === 0 ? s.agendaDays : 30;
+    const text = ns.Agenda.ics(s, {
+      days: days,
+      calendarName: 'My MaNaGeR agenda'
+    });
+    try {
+      const blob = new Blob([text], { type: 'text/calendar;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'mymanager-agenda-' + new Date().toISOString().slice(0, 10) + '.ics';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () {
+        URL.revokeObjectURL(a.href);
+      }, 400);
+      showToast('Agenda downloaded as a calendar file.', 'ok');
+    } catch (e) {
+      showToast('Could not create the calendar file.', 'err');
+    }
+  }
+
+  // ---- Idea board drag and drop ----
+  // Separate attributes from the Kanban board: [data-idea-drag] and
+  // [data-idea-drop]. The Kanban listeners ignore them and these ignore the
+  // Kanban ones, so a future change to either board cannot move a card on
+  // the other.
+  function ideaDropIndex(col, clientY) {
+    if (!col) {
+      return 0;
+    }
+    const cards = Array.prototype.slice.call(col.querySelectorAll('.idc'));
+    for (let i = 0; i < cards.length; i += 1) {
+      const box = cards[i].getBoundingClientRect();
+      if (clientY < box.top + box.height / 2) {
+        return i;
+      }
+    }
+    return cards.length;
+  }
+
+  function dragIdea(ev, id) {
+    if (isReadonly()) {
+      if (ev && ev.dataTransfer) {
+        try {
+          ev.dataTransfer.effectAllowed = 'none';
+        } catch (e) {
+          /* a locked-down dataTransfer must not break the read */
+        }
+      }
+      if (ev && ev.preventDefault) {
+        ev.preventDefault();
+      }
+      showToast('View-only access: the intake can be read but not changed.', 'err');
+      dragIdeaId = null;
+      return;
+    }
+    dragIdeaId = id;
+    if (ev && ev.dataTransfer) {
+      ev.dataTransfer.effectAllowed = 'move';
+    }
+  }
+
+  function dropIdea(ev, col) {
+    if (ev && ev.preventDefault) {
+      ev.preventDefault();
+    }
+    const id = dragIdeaId;
+    dragIdeaId = null;
+    document.querySelectorAll('[data-idea-drop]').forEach(function (c) {
+      c.classList.remove('dov');
+    });
+    const board = document.querySelector('.idboard');
+    if (board) {
+      board.classList.remove('is-dragging');
+    }
+    if (isReadonly()) {
+      showToast('View-only access: the intake can be read but not changed.', 'err');
+      return;
+    }
+    if (!id || !col) {
+      return;
+    }
+    const stage = col.getAttribute('data-idea-drop');
+    const order = ideaDropIndex(col, ev ? ev.clientY : 0);
+    let ok = false;
+    ns.State.updateState(function (s) {
+      ok = ns.Ideas.applyDrop(s, [{ id: id, stage: stage, order: order }]);
+    });
+    if (!ok) {
+      showToast('That move could not be applied. The board is unchanged.', 'err');
+      R.renderIdeas();
+      return;
+    }
+    R.renderIdeas();
+    focusIdea(id);
+  }
+
+  document.addEventListener('dragstart', function (e) {
+    if (e.target.closest && e.target.closest('button')) {
+      // A control inside a draggable card keeps its click. Without this the
+      // first pixel of movement on Edit or Delete starts a drag instead.
+      return;
+    }
+    const card = e.target.closest ? e.target.closest('[data-idea-drag]') : null;
+    if (!card) {
+      return;
+    }
+    window.MMGR.App.dragIdea(e, card.getAttribute('data-idea-drag'));
+    const board = document.querySelector('.idboard');
+    if (board) {
+      board.classList.add('is-dragging');
+    }
+    card.classList.add('drag');
+  });
+
+  document.addEventListener('dragend', function (e) {
+    const card = e.target.closest ? e.target.closest('[data-idea-drag]') : null;
+    if (!card) {
+      return;
+    }
+    dragIdeaId = null;
+    card.classList.remove('drag');
+    const board = document.querySelector('.idboard');
+    if (board) {
+      board.classList.remove('is-dragging');
+    }
+    document.querySelectorAll('[data-idea-drop]').forEach(function (c) {
+      c.classList.remove('dov');
+    });
+  });
+
+  document.addEventListener('dragover', function (e) {
+    const col = e.target.closest ? e.target.closest('[data-idea-drop]') : null;
+    if (col) {
+      e.preventDefault();
+      col.classList.add('dov');
+    }
+  });
+
+  document.addEventListener('dragleave', function (e) {
+    const col = e.target.closest ? e.target.closest('[data-idea-drop]') : null;
+    if (col) {
+      col.classList.remove('dov');
+    }
+  });
+
+  document.addEventListener('drop', function (e) {
+    const col = e.target.closest ? e.target.closest('[data-idea-drop]') : null;
+    if (col) {
+      window.MMGR.App.dropIdea(e, col);
+    }
+  });
+
+  // ---- Idea board keyboard ----
+  document.addEventListener('keydown', function (e) {
+    const card = e.target.closest ? e.target.closest('[data-idea-drag]') : null;
+    if (!card) {
+      return;
+    }
+    if (e.ctrlKey || e.metaKey || e.altKey) {
+      return;
+    }
+    const id = card.getAttribute('data-idea-drag');
+    const dirs = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
+    if (dirs[e.key]) {
+      e.preventDefault();
+      window.MMGR.App.ideaKeyMove(id, dirs[e.key]);
+      return;
+    }
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+      // A button or select inside the card keeps its own activation.
+      if (e.target.closest && e.target.closest('button, select, a, input, textarea')) {
+        return;
+      }
+      e.preventDefault();
+      window.MMGR.App.editIdea(id);
+    }
+  });
+
+  // ---- Idea sheet: Escape closes, Tab stays inside ----
+  document.addEventListener('keydown', function (e) {
+    const sheet = U.$('idea-sheet');
+    if (!sheet || !sheet.classList.contains('open')) {
+      return;
+    }
+    // A confirm dialog can sit on top of this sheet (deleting a card asks
+    // first). While it does, it owns Escape and Tab.
+    if (document.querySelector('#cfm-modal.on, #conflict-modal.on')) {
+      return;
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeIdeaSheet();
+      restoreIdeaFocus();
+      return;
+    }
+    if (e.key !== 'Tab') {
+      return;
+    }
+    const nodes = sheet.querySelectorAll(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    const list = Array.prototype.filter.call(nodes, function (el) {
+      return el.offsetParent !== null;
+    });
+    if (!list.length) {
+      return;
+    }
+    const first = list[0];
+    const last = list[list.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  });
 
   function populateSprint() {
     // Pull the sprint's date span from the unstarted (todo) tasks.
@@ -3568,18 +4415,32 @@ var MMGR = window.MMGR || {};
       .map(t => t.endDate)
       .filter(Boolean)
       .sort();
+    const active = ns.Cycles ? ns.Cycles.active(s) : null;
+    if (!active) {
+      showToast('Activate a cycle in Planning first.', 'err');
+      return;
+    }
+    let res = { ok: true };
     ns.State.updateState(function (state) {
-      if (!state.sprint) {
-        state.sprint = { name: 'Sprint 1', start: '', end: '' };
-      }
-      state.sprint.start = starts.length ? starts[0] : '';
-      state.sprint.end = ends.length ? ends[ends.length - 1] : '';
+      const a = ns.Cycles.updateCycle(state, active.id, 'start', starts.length ? starts[0] : '');
+      const b = ns.Cycles.updateCycle(
+        state,
+        active.id,
+        'end',
+        ends.length ? ends[ends.length - 1] : ''
+      );
+      res = a.ok ? b : a;
     });
+    if (!res.ok) {
+      showToast(res.message, 'err');
+      return;
+    }
     // Refresh the sprint panel inputs
     if (ns.Tasks && ns.Tasks.loadSprintData) {
       ns.Tasks.loadSprintData();
     }
-    showToast('Sprint populated with ' + unstarted.length + ' unstarted task(s).', 'ok');
+    R.renderCycles();
+    showToast('Cycle populated with ' + unstarted.length + ' unstarted task(s).', 'ok');
   }
 
   // ---- Prompts ----
@@ -4067,6 +4928,927 @@ var MMGR = window.MMGR || {};
     renderDataAccount();
   });
 
+  // ---- Project book (AppFlowy-inspired) ----
+  // Pages are a third surface: they may reference work and documents but
+  // never create, edit, or delete either. Every write below goes through
+  // State.updateState, so the read-only fence and the cloud merge both apply
+  // with no extra logic. The view key and the selected page are per-device.
+  const PAGE_READONLY = 'View-only access: the project book can be read but not changed.';
+
+  function findRow(attr, id) {
+    const rows = document.querySelectorAll('[' + attr + ']');
+    for (let i = 0; i < rows.length; i++) {
+      if (rows[i].getAttribute(attr) === id) {
+        return rows[i];
+      }
+    }
+    return null;
+  }
+
+  function setDocsView(view) {
+    ns.State.updateState(function (s) {
+      s.docsView = view === 'pages' ? 'pages' : 'register';
+    });
+    R.renderDocuments();
+  }
+
+  function selectPage(id) {
+    ns.State.updateState(function (s) {
+      s.pageSel = typeof id === 'string' ? id : '';
+    });
+    R.renderPages();
+  }
+
+  function addPage(parentId) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Pages) {
+      return;
+    }
+    let created = null;
+    ns.State.updateState(function (s) {
+      created = ns.Pages.newPage(s, { parentId: parentId || '' });
+      if (created) {
+        s.pageSel = created.id;
+        s.docsView = 'pages';
+      }
+    });
+    R.renderDocuments();
+    if (created) {
+      const input = U.$('pg-title');
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }
+  }
+
+  function renamePage(id, title) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Pages) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      ns.Pages.rename(s, id, title);
+    });
+    // Update the tree label in place: a full redraw on every keystroke would
+    // take the caret out of the title field.
+    const row = findRow('data-page-row', id);
+    const label = row ? row.querySelector('.pg-tw') : null;
+    if (label) {
+      label.textContent = String(title || '').trim() || 'Untitled page';
+    }
+  }
+
+  function delPage(id) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Pages) {
+      return;
+    }
+    const s = S();
+    const page = ns.Pages.find(s, id);
+    if (!page) {
+      return;
+    }
+    const n = ns.Pages.descendantCount(s, id);
+    const msg = n
+      ? 'Delete "' +
+        page.title +
+        '" and its ' +
+        n +
+        ' child page' +
+        (n === 1 ? '' : 's') +
+        '? This cannot be undone.'
+      : 'Delete "' + page.title + '"? This cannot be undone.';
+    if (!window.confirm(msg)) {
+      return;
+    }
+    ns.State.updateState(function (st) {
+      ns.Pages.remove(st, id);
+      if (st.pageSel === id) {
+        st.pageSel = '';
+      }
+    });
+    R.renderDocuments();
+    showToast(
+      n ? 'Page and ' + n + ' child page' + (n === 1 ? '' : 's') + ' deleted.' : 'Page deleted.',
+      'ok'
+    );
+  }
+
+  function movePage(id, parentId) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return { ok: false, reason: 'readonly' };
+    }
+    if (!ns.Pages) {
+      return { ok: false, reason: 'missing' };
+    }
+    let res = { ok: false };
+    ns.State.updateState(function (s) {
+      res = ns.Pages.move(s, id, parentId || '', null);
+    });
+    R.renderDocuments();
+    if (!res.ok) {
+      showToast(
+        res.reason === 'descendant'
+          ? 'A page cannot be moved inside one of its own child pages.'
+          : 'That page could not be moved.',
+        'err'
+      );
+    }
+    return res;
+  }
+
+  function movePageSibling(id, dir) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Pages) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      ns.Pages.moveSibling(s, id, dir);
+    });
+    R.renderDocuments();
+  }
+
+  function addBlock(pageId, type, afterId) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Pages) {
+      return;
+    }
+    let block = null;
+    ns.State.updateState(function (s) {
+      block = ns.Pages.addBlock(s, pageId, type, afterId || '');
+    });
+    R.renderPages();
+    if (block && block.type !== 'divider') {
+      const row = findRow('data-block-row', block.id);
+      const input = row ? row.querySelector('textarea') : null;
+      if (input) {
+        input.focus();
+      }
+    }
+  }
+
+  function setBlockText(pageId, blockId, value) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Pages) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      ns.Pages.setBlockText(s, pageId, blockId, value);
+    });
+    // No redraw: the textarea is the source of the caret.
+  }
+
+  function toggleBlock(pageId, blockId) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Pages) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      ns.Pages.toggleBlock(s, pageId, blockId);
+    });
+  }
+
+  function delBlock(pageId, blockId) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Pages) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      ns.Pages.removeBlock(s, pageId, blockId);
+    });
+    R.renderPages();
+  }
+
+  function moveBlock(pageId, blockId, dir) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Pages) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      ns.Pages.moveBlock(s, pageId, blockId, dir);
+    });
+    R.renderPages();
+    const row = findRow('data-block-row', blockId);
+    const input = row ? row.querySelector('textarea') : null;
+    if (input) {
+      input.focus();
+    }
+  }
+
+  function setBlockFilter(pageId, blockId, key, value) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Pages) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      ns.Pages.setFilter(s, pageId, blockId, key, value);
+    });
+    R.renderPages();
+  }
+
+  // A live row opens the panel that OWNS the record. The task jump reuses
+  // agendaJump (it already scans [data-id]); the register rows carry no id,
+  // so a document is matched by its doc number or title.
+  function pageJump(section, id) {
+    if (!section) {
+      return;
+    }
+    if (section === 'docs') {
+      showSec('docs', document.querySelector('.sec-btn[data-section="docs"]'));
+      if (!id) {
+        return;
+      }
+      const wanted = String(id);
+      window.requestAnimationFrame(function () {
+        const rows = document.querySelectorAll('#doc-body tr');
+        for (let i = 0; i < rows.length; i += 1) {
+          const no = rows[i].querySelector('input[data-field="docNo"]');
+          const title = rows[i].querySelector('input[data-field="title"]');
+          if ((no && no.value === wanted) || (title && title.value === wanted)) {
+            rows[i].classList.add('ag-hit');
+            if (typeof rows[i].scrollIntoView === 'function') {
+              rows[i].scrollIntoView({ block: 'center', behavior: 'smooth' });
+            }
+            setTimeout(function () {
+              rows[i].classList.remove('ag-hit');
+            }, 1600);
+            return;
+          }
+        }
+      });
+      return;
+    }
+    agendaJump(section, id);
+  }
+
+  // ---- Process: guarded issue moves ------------------------------------
+  // The issue register has no status column; this is the one path a person
+  // uses to resolve one, and it asks for the note the guard requires.
+  // A rule flagged "hook" asks for the small transition document to leave the
+  // device after a successful move. The history entry is already written; a
+  // failed send toasts and leaves it exactly as it is.
+  function dispatchHooks(hooks) {
+    if (!Array.isArray(hooks) || !hooks.length || !ns.CloudWebhooks) {
+      return;
+    }
+    const s = ns.State.getState();
+    hooks.forEach(function (h) {
+      if (!h || !h.entry) {
+        return;
+      }
+      ns.CloudWebhooks.sendTransitionSummary(ns.Process.buildTransitionSummary(s, h.entry), h.rule);
+    });
+  }
+
+  function resolveIssue(id) {
+    if (!ns.Process) {
+      return;
+    }
+    const s = ns.State.getState();
+    const idx = (s.issues || []).findIndex(function (i) {
+      return i && i.id === id;
+    });
+    if (idx < 0) {
+      return;
+    }
+    const note = window.prompt('What was done to resolve this issue?');
+    if (note === null) {
+      return;
+    }
+    if (!String(note).trim()) {
+      showToast('Say what was done before resolving this issue.', 'err');
+      return;
+    }
+    let res = { ok: true };
+    let hooks = [];
+    ns.State.updateState(function (st) {
+      res = ns.Process.applyMove(st, 'issue', idx, 'resolved', { reason: note, via: 'user' });
+      if (res.ok && !res.noop) {
+        hooks = ns.Process.runRules(st, 'status', 'issue', idx, { entry: res.entry }).hooks;
+      }
+    });
+    dispatchHooks(hooks);
+    if (!res.ok) {
+      showToast(res.message, 'err');
+    }
+    R.renderDash();
+  }
+
+  // ---- Process: the history views --------------------------------------
+  // Opening a record's history and filtering the feed are view changes: both
+  // are safe on a read-only link.
+  function chgHistory(idx) {
+    const row = document.querySelector('tr.chg-hist[data-hist="' + idx + '"]');
+    if (!row) {
+      return;
+    }
+    row.hidden = !row.hidden;
+  }
+
+  // The board's cycle scope is a view: it narrows what is DRAWN and never
+  // writes to a task, so it is safe on a read-only link.
+  function setKanScope(value) {
+    ns.State.updateState(function (s) {
+      s.kanScope = value === 'active' || value === 'backlog' ? value : 'all';
+    });
+    R.renderKanban();
+  }
+
+  function setTrFilter(value) {
+    ns.State.updateState(function (s) {
+      s.trFilter = value === 'change' || value === 'issue' ? value : 'all';
+    });
+    R.renderLog();
+  }
+
+  // ---- Process: declared rules -----------------------------------------
+  // The editor is fixed-vocabulary: selects, two optional conditions joined
+  // with "all of", and one action. Nothing here evaluates text.
+  function addRule() {
+    if (!ns.Process) {
+      return;
+    }
+    const read = function (id) {
+      const el = U.$(id);
+      return el ? el.value : '';
+    };
+    const name = String(read('rule-name') || '').trim();
+    const kind = read('rule-kind');
+    const event = read('rule-event');
+    const actType = read('rule-act');
+    const actField = read('rule-act-field');
+    if (!name) {
+      showToast('Give the rule a name.', 'err');
+      return;
+    }
+    if (ns.Process.RULE_KINDS.indexOf(kind) < 0 || ns.Process.RULE_EVENTS.indexOf(event) < 0) {
+      showToast('Pick a record type and an event.', 'err');
+      return;
+    }
+    if (ns.Process.RULE_ACTIONS.indexOf(actType) < 0) {
+      showToast('Pick an action from the list.', 'err');
+      return;
+    }
+    if (actType === 'setField' && ns.Process.RULE_FIELDS[kind].indexOf(actField) < 0) {
+      showToast('That action field does not belong to a ' + kind + '.', 'err');
+      return;
+    }
+    const conditions = [];
+    let badField = '';
+    [1, 2].forEach(function (n) {
+      const field = read('rule-c' + n + '-field');
+      if (!field) {
+        return;
+      }
+      if (ns.Process.RULE_FIELDS[kind].indexOf(field) < 0) {
+        badField = field;
+        return;
+      }
+      const op = read('rule-c' + n + '-op');
+      conditions.push({
+        field: field,
+        op: ns.Process.CONDITION_OPS.indexOf(op) > -1 ? op : 'is',
+        value: read('rule-c' + n + '-val')
+      });
+    });
+    if (badField) {
+      showToast('A ' + kind + ' has no field called "' + badField + '".', 'err');
+      return;
+    }
+    ns.State.updateState(function (s) {
+      if (!Array.isArray(s.rules)) {
+        s.rules = [];
+      }
+      s.rules.push({
+        id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), // ok: non-secret
+        name: name,
+        enabled: true,
+        trigger: { kind: kind, event: event },
+        conditions: conditions,
+        action: {
+          type: actType,
+          field: actField,
+          value: read('rule-act-val'),
+          text: read('rule-act-text')
+        },
+        hook: !!(U.$('rule-hook') && U.$('rule-hook').checked)
+      });
+    });
+    R.renderRules();
+    showToast('Rule added.', 'ok');
+  }
+
+  function tglRule(id, on) {
+    ns.State.updateState(function (s) {
+      const r = (s.rules || []).find(function (x) {
+        return x && x.id === id;
+      });
+      if (r) {
+        r.enabled = !!on;
+      }
+    });
+    R.renderRules();
+  }
+
+  function delRule(id) {
+    ns.State.updateState(function (s) {
+      s.rules = (s.rules || []).filter(function (x) {
+        return !x || x.id !== id;
+      });
+    });
+    R.renderRules();
+  }
+
+  // ---- Planning: cycles ------------------------------------------------
+  // Every write goes through the model, so the read-only fence and the save
+  // path are the same whether the caller is this section, a task row or a
+  // board card.
+  function cycValue(id) {
+    const el = U.$(id);
+    return el ? el.value : '';
+  }
+
+  function cycAdd() {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Cycles) {
+      return;
+    }
+    let res = { ok: true };
+    ns.State.updateState(function (s) {
+      res = ns.Cycles.newCycle(s, {
+        name: cycValue('cyc-name'),
+        start: cycValue('cyc-start'),
+        end: cycValue('cyc-end')
+      });
+    });
+    if (!res.ok) {
+      showToast(res.message, 'err');
+      return;
+    }
+    ['cyc-name', 'cyc-start', 'cyc-end'].forEach(function (id) {
+      const el = U.$(id);
+      if (el) {
+        el.value = '';
+      }
+    });
+    R.renderCycles();
+    showToast('Cycle added.', 'ok');
+  }
+
+  function cycSelect(id) {
+    ns.State.updateState(function (s) {
+      s.cycSel = id || '';
+      s.cycClosing = '';
+    });
+    R.renderCycles();
+  }
+
+  function cycActivate(id) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    let res = { ok: true };
+    ns.State.updateState(function (s) {
+      res = ns.Cycles.activate(s, id);
+      if (res.ok) {
+        s.cycSel = id;
+      }
+    });
+    if (!res.ok) {
+      showToast(res.message, 'err');
+      return;
+    }
+    R.renderCycles();
+    if (ns.Tasks && ns.Tasks.loadSprintData) {
+      ns.Tasks.loadSprintData();
+    }
+    showToast(
+      'Active: ' +
+        res.commitment.tasks +
+        ' task' +
+        (res.commitment.tasks === 1 ? '' : 's') +
+        ', ' +
+        res.commitment.days +
+        ' working days committed.',
+      'ok'
+    );
+  }
+
+  function cycClose(id) {
+    ns.State.updateState(function (s) {
+      s.cycClosing = id || '';
+      // The question belongs to the cycle that was asked about, so selecting
+      // it here means the numbers and the two answers appear together.
+      if (id) {
+        s.cycSel = id;
+      }
+    });
+    R.renderCycles();
+  }
+
+  function cycCloseCancel() {
+    ns.State.updateState(function (s) {
+      s.cycClosing = '';
+    });
+    R.renderCycles();
+  }
+
+  function cycDoClose(id, choice) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    let res = { ok: true };
+    ns.State.updateState(function (s) {
+      res = ns.Cycles.close(s, id, choice);
+      if (res.ok) {
+        s.cycClosing = '';
+      }
+    });
+    if (!res.ok) {
+      showToast(res.message, 'err');
+      return;
+    }
+    R.renderCycles();
+    if (ns.Tasks && ns.Tasks.loadSprintData) {
+      ns.Tasks.loadSprintData();
+    }
+    showToast(
+      choice === 'forward'
+        ? 'Closed. ' + res.close.carried + ' task(s) carried forward.'
+        : 'Closed. ' + res.close.returned + ' task(s) returned to the backlog.',
+      'ok'
+    );
+  }
+
+  function cycDel(id) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    let res = { ok: true };
+    ns.State.updateState(function (s) {
+      res = ns.Cycles.removeCycle(s, id);
+    });
+    if (!res.ok) {
+      showToast(res.message, 'err');
+      return;
+    }
+    R.renderCycles();
+  }
+
+  function cycAssign(idx) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    const s0 = ns.State.getState();
+    const target = ns.Cycles.find(s0, s0.cycSel) || ns.Cycles.active(s0);
+    if (!target) {
+      showToast('Open or activate a cycle first.', 'err');
+      return;
+    }
+    let res = { ok: true };
+    ns.State.updateState(function (s) {
+      res = ns.Cycles.assign(s, +idx, target.id);
+    });
+    if (!res.ok) {
+      showToast(res.message, 'err');
+      return;
+    }
+    R.renderCycles();
+  }
+
+  function cycUnassign(idx) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    let res = { ok: true };
+    ns.State.updateState(function (s) {
+      res = ns.Cycles.assign(s, +idx, '');
+    });
+    if (!res.ok) {
+      showToast(res.message, 'err');
+      return;
+    }
+    R.renderCycles();
+  }
+
+  // The review is written once, from the close record, into the project log.
+  // Nothing about the cycle is recomputed after that: a historical record that
+  // rewrites its own summary is not a record.
+  function cycReview(id) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Cycles) {
+      return;
+    }
+    let res = { ok: true };
+    ns.State.updateState(function (s) {
+      const c = ns.Cycles.find(s, id);
+      if (!c || !c.close) {
+        res = { ok: false, message: 'That cycle has not closed yet.' };
+        return;
+      }
+      if (c.reviewLogged) {
+        res = { ok: false, message: 'The review is already in the log.', noop: true };
+        return;
+      }
+      const text = ns.Cycles.reviewText(s, c);
+      if (!Array.isArray(s.logEntries)) {
+        s.logEntries = [];
+      }
+      s.logEntries.push({
+        date: new Date().toLocaleString(),
+        decision: text,
+        by: String(s.userName || ''),
+        actionItems: ''
+      });
+      c.reviewLogged = true;
+    });
+    if (!res.ok) {
+      if (!res.noop) {
+        showToast(res.message, 'err');
+      }
+      return;
+    }
+    R.renderCycles();
+    R.renderLog();
+    showToast('Cycle review written to the log.', 'ok');
+  }
+
+  // ---- Planning: modules ------------------------------------------------
+  function modAdd() {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Modules) {
+      return;
+    }
+    let res = { ok: true };
+    ns.State.updateState(function (s) {
+      res = ns.Modules.newModule(s, {
+        name: cycValue('mod-name'),
+        lead: cycValue('mod-lead'),
+        target: cycValue('mod-target')
+      });
+    });
+    if (!res.ok) {
+      showToast(res.message, 'err');
+      return;
+    }
+    ['mod-name', 'mod-lead', 'mod-target'].forEach(function (id) {
+      const el = U.$(id);
+      if (el) {
+        el.value = '';
+      }
+    });
+    R.renderModules();
+  }
+
+  function modDel(id) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    let res = { ok: true };
+    ns.State.updateState(function (s) {
+      res = ns.Modules.removeModule(s, id);
+    });
+    if (!res.ok) {
+      showToast(res.message, 'err');
+      return;
+    }
+    R.renderModules();
+  }
+
+  function modClear(id) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    ns.State.updateState(function (s) {
+      const m = ns.Modules.find(s, id);
+      if (m) {
+        m.taskIds = [];
+      }
+    });
+    R.renderModules();
+  }
+
+  function modAddTask(id, idx) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (idx === '' || idx === null || idx === undefined) {
+      return;
+    }
+    let res = { ok: true };
+    ns.State.updateState(function (s) {
+      res = ns.Modules.addTask(s, id, +idx);
+    });
+    if (!res.ok && !res.noop) {
+      showToast(res.message, 'err');
+    }
+    R.renderModules();
+  }
+
+  // ---- Register link and handover pack ---------------------------------
+  function linkDoc(docId, pageId) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Pages) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      ns.Pages.linkDoc(s, docId, pageId);
+    });
+    R.renderDocuments();
+  }
+
+  function unlinkDoc(docId) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Pages) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      ns.Pages.unlinkDoc(s, docId);
+    });
+    R.renderDocuments();
+  }
+
+  function docPageJump(pageId) {
+    if (!pageId) {
+      return;
+    }
+    setDocsView('pages');
+    selectPage(pageId);
+  }
+
+  function setPageUnfiled(on) {
+    ns.State.updateState(function (s) {
+      s.pageUnfiled = !!on;
+    });
+    R.renderPages();
+  }
+
+  // The pack is assembled from live state at print time, painted into the
+  // print-only container, and the body class hides everything else. Nothing
+  // is stored, so the next print reflects the project as it stands.
+  // The approval pack is assembled from the register and the history at the
+  // moment it is printed, so it can never disagree with either. Printing is a
+  // read: a viewer may print the pack for their own review.
+  function printApprovalPack() {
+    if (!ns.Process) {
+      return;
+    }
+    const pack = ns.Process.buildApprovalPack(ns.State.getState(), { statuses: ['approved'] });
+    if (!R.renderApprovalPack(pack)) {
+      showToast('There is no approval pack to print.', 'err');
+      return;
+    }
+    document.body.classList.add('pg-printing');
+    window.print();
+    document.body.classList.remove('pg-printing');
+  }
+
+  function printPack(pageId) {
+    if (!ns.Pages || !R.renderPack) {
+      return;
+    }
+    const s = ns.State.getState();
+    const pack = ns.Pages.buildPack(s, pageId || s.pageSel);
+    if (!pack) {
+      showToast('There is no page to print.', 'err');
+      return;
+    }
+    R.renderPack(pack);
+    document.body.classList.add('pg-printing');
+    window.print();
+    document.body.classList.remove('pg-printing');
+  }
+
+  window.addEventListener('afterprint', function () {
+    document.body.classList.remove('pg-printing');
+  });
+
+  // Tree drag: a drop lands the dragged page as the last child of the row it
+  // is dropped on. The model refuses a drop into the page's own descendant.
+  let dragPageId = null;
+  document.addEventListener('dragstart', function (e) {
+    if (e.target.closest && e.target.closest('button, input, select, textarea')) {
+      return;
+    }
+    const row = e.target.closest ? e.target.closest('[data-page-row]') : null;
+    if (!row) {
+      return;
+    }
+    if (isReadonly()) {
+      if (e.preventDefault) {
+        e.preventDefault();
+      }
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    dragPageId = row.getAttribute('data-page-row');
+    if (e.dataTransfer) {
+      try {
+        e.dataTransfer.setData('text/plain', dragPageId);
+        e.dataTransfer.effectAllowed = 'move';
+      } catch (err) {
+        /* a locked-down dataTransfer must not break the tree */
+      }
+    }
+    row.classList.add('drag');
+  });
+
+  document.addEventListener('dragend', function (e) {
+    const row = e.target.closest ? e.target.closest('[data-page-row]') : null;
+    if (row) {
+      row.classList.remove('drag');
+    }
+    document.querySelectorAll('[data-page-row].dov').forEach(function (r) {
+      r.classList.remove('dov');
+    });
+    dragPageId = null;
+  });
+
+  document.addEventListener('dragover', function (e) {
+    const row = e.target.closest ? e.target.closest('[data-page-row]') : null;
+    if (row && dragPageId && row.getAttribute('data-page-row') !== dragPageId) {
+      e.preventDefault();
+      row.classList.add('dov');
+    }
+  });
+
+  document.addEventListener('dragleave', function (e) {
+    const row = e.target.closest ? e.target.closest('[data-page-row]') : null;
+    if (row) {
+      row.classList.remove('dov');
+    }
+  });
+
+  document.addEventListener('drop', function (e) {
+    const row = e.target.closest ? e.target.closest('[data-page-row]') : null;
+    if (!row) {
+      return;
+    }
+    const targetId = row.getAttribute('data-page-row');
+    const sourceId =
+      dragPageId || (e.dataTransfer ? String(e.dataTransfer.getData('text/plain') || '') : '');
+    if (!sourceId || sourceId === targetId) {
+      return;
+    }
+    e.preventDefault();
+    window.MMGR.App.movePage(sourceId, targetId);
+  });
+
   // ---- API ----
   ns.App = {
     exportMyData: exportMyData,
@@ -4118,6 +5900,7 @@ var MMGR = window.MMGR || {};
     // MASTER-ACTION-PLAN Rank 6.1
     reportIssueCopy: reportIssueCopy,
     reportIssueDownload: reportIssueDownload,
+    openFeedback: openFeedback,
     tglReportContext: tglReportContext,
     clearMlcTimer: clearMlcTimer,
     cpAllPage: cpAllPage,
@@ -4165,6 +5948,14 @@ var MMGR = window.MMGR || {};
     setGanttWindow: setGanttWindow,
     setGanttWindowDate: setGanttWindowDate,
     tglLeadtimeLane: tglLeadtimeLane,
+    openFields: openFields,
+    closeFields: closeFields,
+    addCustomField: addCustomField,
+    updCustomField: updCustomField,
+    tglCustomProp: tglCustomProp,
+    moveCustomField: moveCustomField,
+    delCustomField: delCustomField,
+    setCfFilter: setCfFilter,
     openRel: openRel,
     closeRel: closeRel,
     addRel: addRel,
@@ -4182,6 +5973,65 @@ var MMGR = window.MMGR || {};
     dropCard: dropCard,
     endBoardDrag: endBoardDrag,
     dropCardLeadtime: dropCardLeadtime,
+    openIdea: openIdea,
+    editIdea: editIdea,
+    closeIdea: closeIdea,
+    saveIdea: saveIdea,
+    delIdea: delIdea,
+    promoteIdea: promoteIdea,
+    setIdeaView: setIdeaView,
+    setIdeaTag: setIdeaTag,
+    setIdeaStage: setIdeaStage,
+    ideaKeyMove: ideaKeyMove,
+    setAgendaDays: setAgendaDays,
+    agendaJump: agendaJump,
+    exportAgendaIcs: exportAgendaIcs,
+    dragIdea: dragIdea,
+    dropIdea: dropIdea,
+    // Project book (AppFlowy-inspired)
+    setDocsView: setDocsView,
+    selectPage: selectPage,
+    addPage: addPage,
+    renamePage: renamePage,
+    delPage: delPage,
+    movePage: movePage,
+    movePageSibling: movePageSibling,
+    addBlock: addBlock,
+    setBlockText: setBlockText,
+    toggleBlock: toggleBlock,
+    delBlock: delBlock,
+    moveBlock: moveBlock,
+    setBlockFilter: setBlockFilter,
+    pageJump: pageJump,
+    linkDoc: linkDoc,
+    unlinkDoc: unlinkDoc,
+    docPageJump: docPageJump,
+    setPageUnfiled: setPageUnfiled,
+    printPack: printPack,
+    printApprovalPack: printApprovalPack,
+    resolveIssue: resolveIssue,
+    dispatchHooks: dispatchHooks,
+    chgHistory: chgHistory,
+    setTrFilter: setTrFilter,
+    setKanScope: setKanScope,
+    addRule: addRule,
+    tglRule: tglRule,
+    delRule: delRule,
+    cycAdd: cycAdd,
+    cycSelect: cycSelect,
+    cycActivate: cycActivate,
+    cycClose: cycClose,
+    cycCloseCancel: cycCloseCancel,
+    cycCloseForward: id => cycDoClose(id, 'forward'),
+    cycCloseBacklog: id => cycDoClose(id, 'backlog'),
+    cycDel: cycDel,
+    cycAssign: cycAssign,
+    cycUnassign: cycUnassign,
+    cycReview: cycReview,
+    modAdd: modAdd,
+    modDel: modDel,
+    modClear: modClear,
+    modAddTask: modAddTask,
     populateSprint: populateSprint,
     openPrompt: openPrompt,
     openDrwToSave: openDrwToSave,
@@ -4252,6 +6102,87 @@ window.MMGR = MMGR;
         el.getAttribute('data-task-id'),
         el.getAttribute('data-comment-id')
       ),
+    openIdea: () => window.MMGR.App.openIdea(),
+    editIdea: el => window.MMGR.App.editIdea(el.getAttribute('data-id')),
+    closeIdea: () => window.MMGR.App.closeIdea(),
+    saveIdea: () => window.MMGR.App.saveIdea(),
+    delIdea: el => window.MMGR.App.delIdea(el.getAttribute('data-id')),
+    promoteIdea: el => window.MMGR.App.promoteIdea(el.getAttribute('data-id')),
+    setIdeaView: el => window.MMGR.App.setIdeaView(el.getAttribute('data-view')),
+    setIdeaTag: el => window.MMGR.App.setIdeaTag(el.value),
+    setIdeaStage: el => window.MMGR.App.setIdeaStage(el.getAttribute('data-id'), el.value),
+    setAgendaDays: el => window.MMGR.App.setAgendaDays(el.getAttribute('data-days')),
+    agendaJump: el =>
+      window.MMGR.App.agendaJump(el.getAttribute('data-section'), el.getAttribute('data-id')),
+    exportAgendaIcs: () => window.MMGR.App.exportAgendaIcs(),
+    // Project book (AppFlowy-inspired)
+    setDocsView: el => window.MMGR.App.setDocsView(el.getAttribute('data-view')),
+    selectPage: el => window.MMGR.App.selectPage(el.getAttribute('data-id')),
+    addPage: el => window.MMGR.App.addPage(el.getAttribute('data-parent') || ''),
+    renamePage: el => window.MMGR.App.renamePage(el.getAttribute('data-id'), el.value),
+    delPage: el => window.MMGR.App.delPage(el.getAttribute('data-id')),
+    movePage: el => window.MMGR.App.movePage(el.getAttribute('data-id'), el.value),
+    movePageSibling: el =>
+      window.MMGR.App.movePageSibling(el.getAttribute('data-id'), el.getAttribute('data-dir')),
+    addBlock: el =>
+      window.MMGR.App.addBlock(
+        el.getAttribute('data-page'),
+        el.getAttribute('data-type'),
+        el.getAttribute('data-after') || ''
+      ),
+    setBlockText: el =>
+      window.MMGR.App.setBlockText(
+        el.getAttribute('data-page'),
+        el.getAttribute('data-block'),
+        el.value
+      ),
+    toggleBlock: el =>
+      window.MMGR.App.toggleBlock(el.getAttribute('data-page'), el.getAttribute('data-block')),
+    delBlock: el =>
+      window.MMGR.App.delBlock(el.getAttribute('data-page'), el.getAttribute('data-block')),
+    moveBlock: el =>
+      window.MMGR.App.moveBlock(
+        el.getAttribute('data-page'),
+        el.getAttribute('data-block'),
+        el.getAttribute('data-dir')
+      ),
+    setBlockFilter: el =>
+      window.MMGR.App.setBlockFilter(
+        el.getAttribute('data-page'),
+        el.getAttribute('data-block'),
+        el.getAttribute('data-key'),
+        el.value
+      ),
+    pageJump: el =>
+      window.MMGR.App.pageJump(el.getAttribute('data-section'), el.getAttribute('data-id')),
+    linkDoc: el => window.MMGR.App.linkDoc(el.getAttribute('data-id'), el.value),
+    unlinkDoc: el => window.MMGR.App.unlinkDoc(el.getAttribute('data-id')),
+    docPageJump: el => window.MMGR.App.docPageJump(el.getAttribute('data-id')),
+    setPageUnfiled: el => window.MMGR.App.setPageUnfiled(el.checked),
+    printPack: el => window.MMGR.App.printPack(el.getAttribute('data-id')),
+    printApprovalPack: () => window.MMGR.App.printApprovalPack(),
+    resolveIssue: el => window.MMGR.App.resolveIssue(el.getAttribute('data-id')),
+    chgHistory: el => window.MMGR.App.chgHistory(el.getAttribute('data-idx')),
+    setTrFilter: el => window.MMGR.App.setTrFilter(el.value),
+    setKanScope: el => window.MMGR.App.setKanScope(el.value),
+    addRule: () => window.MMGR.App.addRule(),
+    tglRule: el => window.MMGR.App.tglRule(el.getAttribute('data-id'), el.checked),
+    delRule: el => window.MMGR.App.delRule(el.getAttribute('data-id')),
+    cycAdd: () => window.MMGR.App.cycAdd(),
+    cycSelect: el => window.MMGR.App.cycSelect(el.getAttribute('data-id')),
+    cycActivate: el => window.MMGR.App.cycActivate(el.getAttribute('data-id')),
+    cycClose: el => window.MMGR.App.cycClose(el.getAttribute('data-id')),
+    cycCloseCancel: () => window.MMGR.App.cycCloseCancel(),
+    cycCloseForward: el => window.MMGR.App.cycCloseForward(el.getAttribute('data-id')),
+    cycCloseBacklog: el => window.MMGR.App.cycCloseBacklog(el.getAttribute('data-id')),
+    cycDel: el => window.MMGR.App.cycDel(el.getAttribute('data-id')),
+    cycAssign: el => window.MMGR.App.cycAssign(el.getAttribute('data-idx')),
+    cycUnassign: el => window.MMGR.App.cycUnassign(el.getAttribute('data-idx')),
+    cycReview: el => window.MMGR.App.cycReview(el.getAttribute('data-id')),
+    modAdd: () => window.MMGR.App.modAdd(),
+    modDel: el => window.MMGR.App.modDel(el.getAttribute('data-id')),
+    modClear: el => window.MMGR.App.modClear(el.getAttribute('data-id')),
+    modAddTask: el => window.MMGR.App.modAddTask(el.getAttribute('data-id'), el.value),
     setTaskFollowUp: el => {
       const taskId = el.getAttribute('data-id');
       const assignee = prompt('Follow-up assignee:');
@@ -5345,6 +7276,20 @@ window.MMGR = MMGR;
     setGanttWindow: el => window.MMGR.App.setGanttWindow(el),
     setGanttWindowDate: el => window.MMGR.App.setGanttWindowDate(el),
     tglLeadtimeLane: el => window.MMGR.App.tglLeadtimeLane(el),
+    openFields: () => window.MMGR.App.openFields(),
+    closeFields: () => window.MMGR.App.closeFields(),
+    addCustomField: () => window.MMGR.App.addCustomField(),
+    updCustomField: el => window.MMGR.App.updCustomField(el),
+    tglCustomProp: el => window.MMGR.App.tglCustomProp(el),
+    moveCustomField: el => window.MMGR.App.moveCustomField(el),
+    delCustomField: el => window.MMGR.App.delCustomField(el),
+    setCfFilter: el => window.MMGR.App.setCfFilter(el),
+    tglTaskCustom: el =>
+      window.MMGR.Tasks.tglTaskCustom(
+        el.getAttribute('data-id'),
+        el.getAttribute('data-field'),
+        el.checked
+      ),
     openRel: el => window.MMGR.App.openRel(el),
     closeRel: () => window.MMGR.App.closeRel(),
     addRel: () => window.MMGR.App.addRel(),
@@ -5480,6 +7425,7 @@ window.MMGR = MMGR;
     // MASTER-ACTION-PLAN Rank 6.1 , sanitized report package (read-only).
     reportIssueCopy: () => window.MMGR.App.reportIssueCopy(),
     reportIssueDownload: () => window.MMGR.App.reportIssueDownload(),
+    openFeedback: () => window.MMGR.App.openFeedback(),
     tglReportContext: () => window.MMGR.App.tglReportContext(),
     setErrWebhook: el => window.MMGR.App.setErrWebhook(el),
     // Rank 3.1: Core Mode vs Advanced Packs , toggling a pack mutates
@@ -5694,12 +7640,49 @@ window.MMGR = MMGR;
   // views, report generation). Everything else is refused with a toast.
   const READONLY_SAFE_ACTIONS = {
     showSec: 1,
+    // Idea intake: opening the sheet, closing it, and switching the board /
+    // list or the tag filter write no project record. Every action that
+    // touches state.ideas or state.tasks is deliberately absent.
+    openIdea: 1,
+    editIdea: 1,
+    closeIdea: 1,
+    setIdeaView: 1,
+    setIdeaTag: 1,
+    // Agenda: the window is a device preference, the jump changes the visible
+    // panel, and the export reads. None of them writes a project record.
+    setAgendaDays: 1,
+    agendaJump: 1,
+    exportAgendaIcs: 1,
+    // Project book: switching Register/Pages and selecting a page change
+    // only what this device is looking at. Every action that writes a page,
+    // a block, or a register link is deliberately absent.
+    setDocsView: 1,
+    selectPage: 1,
+    pageJump: 1,
+    docPageJump: 1,
+    setPageUnfiled: 1,
+    printPack: 1,
+    printApprovalPack: 1,
+    // Planning views: selecting a cycle and opening the close question change
+    // only what this device shows. Every action that writes a cycle, its
+    // membership or its close is deliberately absent.
+    cycSelect: 1,
+    cycClose: 1,
+    setKanScope: 1,
+    cycCloseCancel: 1,
+    chgHistory: 1,
+    setTrFilter: 1,
     cpAllPage: 1,
     print: 1,
     // Reading or closing the column-limit sheet mutates nothing. The inputs
     // themselves stay blocked by saveKbWip's own guard.
     kbWip: 1,
     kbWipClose: 1,
+    // Reading or closing the custom-fields sheet mutates nothing. Every
+    // control that writes the schema or a value is deliberately absent, so
+    // guardReadonly refuses it with the standard view-only toast.
+    openFields: 1,
+    closeFields: 1,
     // Work package relations: opening / closing the task-links sheet is a
     // pure read (view-only sessions can inspect the graph). addRel / delRel
     // mutate task.relations and setRelLens persists state.relLens - all
@@ -5865,6 +7848,7 @@ window.MMGR = MMGR;
     // is read-only; the context toggle is a session-only UI pref.
     reportIssueCopy: 1,
     reportIssueDownload: 1,
+    openFeedback: 1,
     tglReportContext: 1,
     // Rank 4.5: Google identity is a device-level label, never a gate to
     // project data , signing in/out/dismissing never mutates project state.
@@ -6114,8 +8098,18 @@ window.MMGR = MMGR;
         action === 'addRaciPersonFromPicker' ||
         action === 'updField' ||
         action === 'updTaskField' ||
+        action === 'updCustomField' ||
+        action === 'setCfFilter' ||
+        action === 'setIdeaTag' ||
+        action === 'setIdeaStage' ||
+        action === 'movePage' ||
+        action === 'setBlockFilter' ||
+        action === 'linkDoc' ||
+        action === 'setTrFilter' ||
         action === 'saveKbWip' ||
         action === 'setRelLens' ||
+        action === 'setKanScope' ||
+        action === 'modAddTask' ||
         action === 'updKPI' ||
         action === 'updKPILink' ||
         action === 'updKPIDir' ||
@@ -6186,6 +8180,10 @@ window.MMGR = MMGR;
         action === 'updRaciPerson' ||
         action === 'updDMAIC' ||
         action === 'updMeetItemNote' ||
+        action === 'setIdeaTag' ||
+        action === 'setIdeaStage' ||
+        action === 'renamePage' ||
+        action === 'setBlockText' ||
         action === 'updMeetField' ||
         action === 'handleCharterUpload' ||
         action === 'setErrWebhook' ||

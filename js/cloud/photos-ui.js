@@ -8,7 +8,7 @@
    had no caller.
 
    What the panel shows:
-     - the account's storage bar (500 MB per account, server-owned numbers)
+     - the account's storage bar (per-plan allowance, server-owned numbers)
      - an upload form: file, description, date taken, stage (before / after /
        in progress)
      - each photo with a real thumbnail, description, stage, size, date, the
@@ -56,6 +56,19 @@ var MMGR = window.MMGR || {};
   var _note = { text: '', kind: '' };
   var _thumbs = {}; // photoId -> object URL (revoked when the photo goes)
   var _built = false;
+  // I-12 bundle / multi-select state.
+  var _roleCanUpload = false; // the role may add and remove
+  var _upgradeRequired = false; // the role may upload, the plan may not
+  var _upgradeMessage = '';
+  var _upgradeOpen = false; // the upgrade card is showing
+  var _selected = []; // File[] from the current picker
+  var _previews = []; // object URLs for the preview strip
+  var _progress = null; // { done, total, name, pct }
+  var _bundleOpen = ''; // bundle id in the dialog
+  var _bundleEdit = ''; // draft description in the dialog
+  var _bundleConfirm = false; // two-step bundle delete
+  var _queueCount = 0;
+  var _flushing = false;
 
   function pid() {
     return C._pid ? C._pid() : 'default';
@@ -87,9 +100,16 @@ var MMGR = window.MMGR || {};
     return !!C._hasCloudLink();
   }
 
-  function canUpload() {
-    if (_canUpload !== null) {
-      return _canUpload;
+  // The ROLE decides whether the controls exist; the PLAN decides whether an
+  // upload can actually land. Keeping them apart matters: a free owner must
+  // still be able to remove a photo to free quota, while the Add button stays
+  // visible and explains the upgrade instead of disappearing.
+  function roleCanEdit() {
+    if (_roleCanUpload) {
+      return true;
+    }
+    if (_canUpload === false) {
+      return false;
     }
     var cred = C._activeCredential ? C._activeCredential() : null;
     if (!cred) {
@@ -99,6 +119,10 @@ var MMGR = window.MMGR || {};
       return false;
     }
     return true;
+  }
+
+  function canUpload() {
+    return roleCanEdit() && !_upgradeRequired;
   }
 
   function uploadGateMessage() {
@@ -114,6 +138,12 @@ var MMGR = window.MMGR || {};
     }
     if (cred.header === 'X-Client-Code') {
       return 'Client codes are read-only: they can see photos but not add them.';
+    }
+    if (_upgradeRequired) {
+      return (
+        _upgradeMessage ||
+        'Project photos are part of every paid plan. Upgrade to add photos to this project.'
+      );
     }
     return 'Only the project owner or an editor can add photos.';
   }
@@ -224,9 +254,15 @@ var MMGR = window.MMGR || {};
       _photos = Array.isArray(data.photos) ? data.photos : [];
       _usage = data.usage || null;
       _role = data.role || '';
-      _canUpload = data.canUpload !== false;
-      if (!canUpload()) {
+      _roleCanUpload = data.roleCanUpload === true || data.canUpload === true;
+      _upgradeRequired = !!data.upgradeRequired;
+      _upgradeMessage = data.upgradeMessage || '';
+      _canUpload = data.canUpload !== false && !_upgradeRequired;
+      queuedCount();
+      if (!roleCanEdit()) {
         _note = { text: uploadGateMessage(), kind: '' };
+      } else if (_upgradeRequired) {
+        _note = { text: '', kind: '' };
       } else if (_note.text && _note.kind === 'warn') {
         _note = { text: '', kind: '' };
       }
@@ -282,15 +318,20 @@ var MMGR = window.MMGR || {};
       '</div>' +
       '<div class="photo-meta" id="photos-quota-text">Checking storage\u2026</div>' +
       '</div>' +
-      '<button class="btn btn-g btn-s is-hide" id="photos-add-btn" type="button">Add photo</button>' +
+      '<button class="btn btn-g btn-s is-hide" id="photos-add-btn" type="button">Add photos</button>' +
+      '</div>' +
+      '<div class="photos-upgrade is-hide" id="photos-upgrade" role="note">' +
+      '<p class="photos-upgrade-text" id="photos-upgrade-text"></p>' +
+      '<a class="btn btn-g btn-s" href="pricing.html">See plans</a>' +
       '</div>' +
       '<form class="photos-form is-hide" id="photos-form" novalidate>' +
-      '<input type="file" id="photos-upload-input" accept="image/jpeg,image/png,image/webp,image/gif,image/avif">' +
+      '<input type="file" id="photos-upload-input" accept="image/*" multiple>' +
       '<div class="photos-form-actions">' +
-      '<button class="btn btn-n btn-s" id="photos-pick-btn" type="button">Choose photo</button>' +
-      '<span class="photo-meta" id="photos-file-name">No photo chosen</span>' +
+      '<button class="btn btn-n btn-s" id="photos-pick-btn" type="button">Choose photos</button>' +
+      '<span class="photo-meta" id="photos-file-name">No photos chosen</span>' +
       '</div>' +
-      '<input class="in" type="text" id="photos-caption-input" maxlength="200" placeholder="Description (what and where)" aria-label="Photo description">' +
+      '<div class="photos-preview" id="photos-preview" aria-live="polite"></div>' +
+      '<input class="in" type="text" id="photos-caption-input" maxlength="200" placeholder="Description for this set (what and where)" aria-label="Description for this set of photos">' +
       '<input class="in" type="date" id="photos-date-input" aria-label="Date taken">' +
       '<select class="in" id="photos-stage-input" aria-label="Stage">' +
       '<option value="">Stage (optional)</option>' +
@@ -298,13 +339,30 @@ var MMGR = window.MMGR || {};
       '<option value="after">After</option>' +
       '<option value="progress">In progress</option>' +
       '</select>' +
+      '<div class="photos-progress is-hide" id="photos-progress">' +
+      '<div class="photos-progress-track"><span class="photos-progress-fill" id="photos-progress-fill"></span></div>' +
+      '<div class="photo-meta" id="photos-progress-text"></div>' +
+      '</div>' +
       '<div class="photos-form-actions">' +
       '<button class="btn btn-g btn-s" id="photos-submit-btn" type="submit">Upload</button>' +
       '<button class="btn btn-n btn-s" id="photos-cancel-btn" type="button">Cancel</button>' +
       '</div>' +
       '</form>' +
       '<div class="txt-sl t-xs is-hide" id="photos-note" role="status"></div>' +
-      '<div id="photos-list"></div>';
+      '<div id="photos-list"></div>' +
+      '<dialog class="photo-dialog" id="photos-bundle-dialog" aria-labelledby="photos-bundle-title">' +
+      '<div class="photo-dialog-head">' +
+      '<h3 id="photos-bundle-title">Photo bundle</h3>' +
+      '<button class="btn btn-n btn-s" type="button" data-bundle-close="1">Close</button>' +
+      '</div>' +
+      '<p class="photo-meta" id="photos-bundle-caption"></p>' +
+      '<div class="photo-dialog-edit is-hide" id="photos-bundle-edit">' +
+      '<input class="in" type="text" id="photos-bundle-caption-input" maxlength="200" placeholder="Description for this bundle" aria-label="Bundle description">' +
+      '<button class="btn btn-g btn-s" type="button" data-bundle-save="1">Save description</button>' +
+      '</div>' +
+      '<div class="photo-dialog-body" id="photos-bundle-body"></div>' +
+      '<div class="photo-dialog-actions" id="photos-bundle-actions"></div>' +
+      '</dialog>';
     bind();
     _built = true;
     return body;
@@ -328,14 +386,40 @@ var MMGR = window.MMGR || {};
     var cancel = $('photos-cancel-btn');
     var list = $('photos-list');
 
-    if (addBtn && form) {
-      addBtn.addEventListener('click', function () {
-        form.classList.remove('is-hide');
-        addBtn.classList.add('is-hide');
-        if (input) {
-          input.focus();
+    var upgrade = $('photos-upgrade');
+    var dialog = $('photos-bundle-dialog');
+
+    function openComposer() {
+      if (!roleCanEdit()) {
+        return;
+      }
+      if (_upgradeRequired) {
+        _upgradeOpen = true;
+        if (upgrade) {
+          var txt = $('photos-upgrade-text');
+          if (txt) {
+            txt.textContent = uploadGateMessage();
+          }
+          upgrade.classList.remove('is-hide');
         }
-      });
+        if (form) {
+          form.classList.add('is-hide');
+        }
+        return;
+      }
+      if (upgrade) {
+        upgrade.classList.add('is-hide');
+      }
+      if (form) {
+        form.classList.remove('is-hide');
+      }
+      if (input) {
+        input.focus();
+      }
+    }
+
+    if (addBtn) {
+      addBtn.addEventListener('click', openComposer);
     }
     // File inputs cannot be styled, so the visible button opens the hidden one.
     if (pick && input) {
@@ -343,19 +427,17 @@ var MMGR = window.MMGR || {};
         input.click();
       });
       input.addEventListener('change', function () {
-        var file = input.files && input.files[0];
-        var name = $('photos-file-name');
-        if (name) {
-          name.textContent = file
-            ? file.name + ' (' + humanSize(file.size) + ')'
-            : 'No photo chosen';
-        }
+        setSelection(input.files);
       });
     }
     if (cancel && form) {
       cancel.addEventListener('click', function () {
         resetForm();
+        _upgradeOpen = false;
         form.classList.add('is-hide');
+        if (upgrade) {
+          upgrade.classList.add('is-hide');
+        }
         if (addBtn) {
           addBtn.classList.remove('is-hide');
           addBtn.focus();
@@ -372,6 +454,11 @@ var MMGR = window.MMGR || {};
       list.addEventListener('click', function (e) {
         var t = e.target;
         if (!t || !t.closest) {
+          return;
+        }
+        var open = t.closest('[data-bundle-open]');
+        if (open) {
+          openBundle(open.getAttribute('data-bundle-open'));
           return;
         }
         var dl = t.closest('[data-photo-download]');
@@ -399,6 +486,107 @@ var MMGR = window.MMGR || {};
         }
       });
     }
+    if (dialog) {
+      dialog.addEventListener('click', function (e) {
+        var t = e.target;
+        if (!t || !t.closest) {
+          return;
+        }
+        if (t.closest('[data-bundle-close]')) {
+          closeBundle();
+          return;
+        }
+        if (t.closest('[data-bundle-save]')) {
+          saveBundleCaption();
+          return;
+        }
+        if (t.closest('[data-bundle-delete]')) {
+          _bundleConfirm = true;
+          renderBundleDialog();
+          return;
+        }
+        if (t.closest('[data-bundle-delete-confirm]')) {
+          removeBundle(_bundleOpen);
+          return;
+        }
+        if (t.closest('[data-bundle-delete-cancel]')) {
+          _bundleConfirm = false;
+          renderBundleDialog();
+          return;
+        }
+        var dl = t.closest('[data-photo-download]');
+        if (dl) {
+          downloadPhoto(dl.getAttribute('data-photo-download'));
+          return;
+        }
+        var rm = t.closest('[data-photo-remove]');
+        if (rm) {
+          var photoId = rm.getAttribute('data-photo-remove');
+          removePhoto(photoId).then(function (r) {
+            if (r && r.ok && _bundleOpen) {
+              refreshBundleDialog(_bundleOpen);
+            }
+          });
+        }
+      });
+    }
+    window.addEventListener('online', function () {
+      flushQueue();
+    });
+  }
+
+  function clearPreviews() {
+    for (var i = 0; i < _previews.length; i++) {
+      if (_previews[i]) {
+        try {
+          URL.revokeObjectURL(_previews[i]);
+        } catch (e) {
+          /* ignore */
+        }
+      }
+    }
+    _previews = [];
+  }
+
+  function renderPreview() {
+    var box = $('photos-preview');
+    if (!box) {
+      return;
+    }
+    var html = '';
+    for (var i = 0; i < _previews.length; i++) {
+      html +=
+        '<span class="photos-preview-item">' +
+        (_previews[i] ? '<img src="' + esc(_previews[i]) + '" alt="" loading="lazy">' : '') +
+        '</span>';
+    }
+    box.innerHTML = html;
+    box.classList.toggle('is-hide', !_previews.length);
+  }
+
+  function setSelection(fileList) {
+    clearPreviews();
+    _selected = [];
+    var files = fileList ? Array.prototype.slice.call(fileList) : [];
+    for (var i = 0; i < files.length; i++) {
+      _selected.push(files[i]);
+      try {
+        _previews.push(URL.createObjectURL(files[i]));
+      } catch (e) {
+        _previews.push('');
+      }
+    }
+    var name = $('photos-file-name');
+    if (name) {
+      if (!files.length) {
+        name.textContent = 'No photos chosen';
+      } else if (files.length === 1) {
+        name.textContent = files[0].name + ' (' + humanSize(files[0].size) + ')';
+      } else {
+        name.textContent = files.length + ' photos selected';
+      }
+    }
+    renderPreview();
   }
 
   function resetForm() {
@@ -420,7 +608,19 @@ var MMGR = window.MMGR || {};
       stage.value = '';
     }
     if (name) {
-      name.textContent = 'No photo chosen';
+      name.textContent = 'No photos chosen';
+    }
+    clearPreviews();
+    _selected = [];
+    _progress = null;
+    var preview = $('photos-preview');
+    if (preview) {
+      preview.innerHTML = '';
+      preview.classList.add('is-hide');
+    }
+    var progress = $('photos-progress');
+    if (progress) {
+      progress.classList.add('is-hide');
     }
   }
 
@@ -464,7 +664,7 @@ var MMGR = window.MMGR || {};
         : '<button class="btn btn-n btn-s" type="button" data-photo-download="' +
           esc(p.id) +
           '">Download</button>' +
-          (canUpload()
+          (roleCanEdit()
             ? '<button class="btn btn-n btn-s" type="button" data-photo-remove="' +
               esc(p.id) +
               '">Remove</button>'
@@ -492,6 +692,88 @@ var MMGR = window.MMGR || {};
     );
   }
 
+  // Photos that share a bundleId are one card. A bundle keeps its own
+  // description on every row, so the card survives a single-photo delete.
+  function groupsOf(photos) {
+    var groups = [];
+    var by = {};
+    for (var i = 0; i < photos.length; i++) {
+      var p = photos[i];
+      var key = p.bundleId || '';
+      if (!key) {
+        groups.push({ type: 'photo', key: '', photos: [p] });
+        continue;
+      }
+      if (!by[key]) {
+        by[key] = { type: 'bundle', key: key, photos: [] };
+        groups.push(by[key]);
+      }
+      by[key].photos.push(p);
+    }
+    return groups;
+  }
+
+  function bundleCardHtml(b) {
+    var n = b.photos.length;
+    var first = b.photos[0];
+    var caption = first.bundleCaption || first.caption || 'Photo bundle';
+    var layers = '';
+    var shown = Math.min(3, n);
+    for (var i = 0; i < shown; i++) {
+      layers +=
+        '<span class="photo-bundle-layer l' +
+        (i + 1) +
+        '" data-photo-thumb="' +
+        esc(b.photos[i].id) +
+        '">' +
+        ICON +
+        '</span>';
+    }
+    var meta = [n + (n === 1 ? ' photo' : ' photos')];
+    var stage = stageLabel(first.stage);
+    if (stage) {
+      meta.push('<span class="photo-stage">' + esc(stage) + '</span>');
+    }
+    if (dayOf(first)) {
+      meta.push(esc(dayOf(first)));
+    }
+    var who = first.uploadedBy || '';
+    var role = first.uploadedRole || '';
+    var by = who ? esc(who) + (role ? ' (' + esc(role) + ')' : '') : '';
+    return (
+      '<figure class="photo-item photo-bundle" data-photo-bundle="' +
+      esc(b.key) +
+      '">' +
+      '<button class="photo-bundle-open" type="button" data-bundle-open="' +
+      esc(b.key) +
+      '" aria-label="Open bundle of ' +
+      n +
+      ' photos">' +
+      '<span class="photo-bundle-stack">' +
+      layers +
+      '<span class="photo-bundle-count">' +
+      n +
+      '</span>' +
+      '</span>' +
+      '</button>' +
+      '<figcaption class="photo-info">' +
+      '<div class="photo-caption">' +
+      esc(caption) +
+      '</div>' +
+      '<div class="photo-meta">' +
+      meta.join(' \u00b7 ') +
+      '</div>' +
+      (by ? '<div class="photo-meta">Uploaded by ' + by + '</div>' : '') +
+      '<div class="photo-actions">' +
+      '<button class="btn btn-n btn-s" type="button" data-bundle-open="' +
+      esc(b.key) +
+      '">Open bundle</button>' +
+      '</div>' +
+      '</figcaption>' +
+      '</figure>'
+    );
+  }
+
   function listHtml() {
     if (_loading && _photos === null) {
       return '<div class="photo-empty">Loading photos\u2026</div>';
@@ -502,9 +784,11 @@ var MMGR = window.MMGR || {};
       }
       return '<div class="photo-empty">No photos yet. Add before and after shots so the record shows how the work changed.</div>';
     }
+    var groups = groupsOf(_photos);
     var html = '';
-    for (var i = 0; i < _photos.length; i++) {
-      html += cardHtml(_photos[i]);
+    for (var g = 0; g < groups.length; g++) {
+      html +=
+        groups[g].type === 'bundle' ? bundleCardHtml(groups[g]) : cardHtml(groups[g].photos[0]);
     }
     return html;
   }
@@ -515,14 +799,21 @@ var MMGR = window.MMGR || {};
       return;
     }
     var addBtn = $('photos-add-btn');
-    var can = canUpload() && isCloudProject();
+    var canEdit = roleCanEdit() && isCloudProject();
     if (addBtn) {
-      addBtn.classList.toggle('is-hide', !can);
+      addBtn.classList.toggle('is-hide', !canEdit);
+      addBtn.textContent = _queueCount ? 'Add photos (' + _queueCount + ' waiting)' : 'Add photos';
     }
-    if (!can) {
-      var form = $('photos-form');
-      if (form) {
-        form.classList.add('is-hide');
+    var form = $('photos-form');
+    if (form && (!canEdit || _upgradeRequired)) {
+      form.classList.add('is-hide');
+    }
+    var upgrade = $('photos-upgrade');
+    if (upgrade) {
+      upgrade.classList.toggle('is-hide', !(_upgradeRequired && _upgradeOpen));
+      var upgradeText = $('photos-upgrade-text');
+      if (upgradeText && _upgradeRequired) {
+        upgradeText.textContent = uploadGateMessage();
       }
     }
     var bar = $('photos-quota-bar');
@@ -540,9 +831,24 @@ var MMGR = window.MMGR || {};
     }
     var note = $('photos-note');
     if (note) {
-      note.innerHTML = noteHtml();
-      note.classList.toggle('is-hide', !_note.text);
-      note.classList.toggle('note-warn', _note.kind === 'warn');
+      var noteText = _note.text;
+      var noteKind = _note.kind;
+      if (!noteText && _queueCount) {
+        noteText =
+          _queueCount +
+          ' photo' +
+          (_queueCount === 1 ? '' : 's') +
+          ' saved on this device, waiting to upload.';
+        noteKind = '';
+      }
+      var noteOut = noteText ? esc(noteText) : '';
+      if (noteOut && _note.retry) {
+        noteOut +=
+          ' <button class="btn btn-n btn-s" type="button" data-photo-retry="1">Try again</button>';
+      }
+      note.innerHTML = noteOut;
+      note.classList.toggle('is-hide', !noteOut);
+      note.classList.toggle('note-warn', noteKind === 'warn');
     }
     var list = $('photos-list');
     if (list) {
@@ -551,10 +857,42 @@ var MMGR = window.MMGR || {};
         loadThumb(_photos[i]);
       }
     }
+    paintProgress();
     var submit = $('photos-submit-btn');
     if (submit) {
       submit.disabled = !!_uploading;
       submit.textContent = _uploading ? 'Uploading\u2026' : 'Upload';
+    }
+  }
+
+  // Progress repaints only the bar, never the list: XHR fires this many times
+  // per photo, and re-rendering every card on each tick would fight the
+  // thumbnails and the scroll position.
+  function paintProgress() {
+    var progress = $('photos-progress');
+    if (!progress) {
+      return;
+    }
+    var showProgress = !!(_progress && _progress.total);
+    progress.classList.toggle('is-hide', !showProgress);
+    if (!showProgress) {
+      return;
+    }
+    var done = Number(_progress.done) || 0;
+    var fraction = Number(_progress.pct) || 0;
+    var pctDone = Math.round(((done + fraction) / _progress.total) * 100);
+    var progressFill = $('photos-progress-fill');
+    if (progressFill) {
+      progressFill.style.width = Math.min(100, Math.max(0, pctDone)) + '%';
+    }
+    var progressText = $('photos-progress-text');
+    if (progressText) {
+      progressText.textContent =
+        'Uploading ' +
+        Math.min(done + 1, _progress.total) +
+        ' of ' +
+        _progress.total +
+        (_progress.name ? ' \u00b7 ' + _progress.name : '');
     }
   }
 
@@ -573,13 +911,20 @@ var MMGR = window.MMGR || {};
     slot.appendChild(img);
   }
 
+  function fillThumbs(id, src) {
+    var slots = document.querySelectorAll('[data-photo-thumb="' + id + '"]');
+    for (var i = 0; i < slots.length; i++) {
+      showThumb(slots[i], src);
+    }
+  }
+
   function loadThumb(photo) {
-    var slot = document.querySelector('[data-photo-thumb="' + photo.id + '"]');
-    if (!slot) {
+    var slots = document.querySelectorAll('[data-photo-thumb="' + photo.id + '"]');
+    if (!slots.length) {
       return;
     }
     if (_thumbs[photo.id]) {
-      showThumb(slot, _thumbs[photo.id]);
+      fillThumbs(photo.id, _thumbs[photo.id]);
       return;
     }
     var url = photoUrlFor(photo);
@@ -596,10 +941,7 @@ var MMGR = window.MMGR || {};
       .then(function (blob) {
         var obj = URL.createObjectURL(blob);
         _thumbs[photo.id] = obj;
-        var again = document.querySelector('[data-photo-thumb="' + photo.id + '"]');
-        if (again) {
-          showThumb(again, obj);
-        }
+        fillThumbs(photo.id, obj);
       })
       .catch(function () {
         /* the sprite placeholder stays, which is the honest state */
@@ -617,20 +959,315 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // ---- device compression, progress and the offline queue (I-12) ---------
+
+  function newBundleId() {
+    try {
+      if (window.crypto && crypto.randomUUID) {
+        return crypto.randomUUID().replace(/-/g, '').slice(0, 32);
+      }
+    } catch (e) {
+      /* fall through */
+    }
+    return 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10); // ok: non-secret
+  }
+
+  function blobToFile(blob, name, type) {
+    try {
+      return new File([blob], name, { type: type });
+    } catch (e) {
+      blob.name = name;
+      return blob;
+    }
+  }
+
+  function canvasBlob(canvas, type, quality) {
+    return new Promise(function (resolve) {
+      try {
+        canvas.toBlob(
+          function (b) {
+            resolve(b);
+          },
+          type,
+          quality
+        );
+      } catch (e) {
+        resolve(null);
+      }
+    });
+  }
+
+  // Long edge about 1600 px, WebP where the browser can encode it, JPEG
+  // otherwise. A small file and an animated GIF are left alone: re-encoding
+  // either costs quality or kills the animation for no useful saving.
+  async function compressPhoto(file) {
+    if (!file || !/^image\//.test(file.type || '')) {
+      return file;
+    }
+    if (file.type === 'image/gif') {
+      return file;
+    }
+    if (file.size <= 350 * 1024) {
+      return file;
+    }
+    if (!window.createImageBitmap || !document.createElement('canvas').getContext) {
+      return file;
+    }
+    try {
+      var bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+      var max = 1600;
+      var scale = Math.min(1, max / Math.max(bmp.width || 1, bmp.height || 1));
+      var w = Math.max(1, Math.round((bmp.width || 1) * scale));
+      var h = Math.max(1, Math.round((bmp.height || 1) * scale));
+      var canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(bmp, 0, 0, w, h);
+      if (bmp.close) {
+        bmp.close();
+      }
+      var blob = await canvasBlob(canvas, 'image/webp', 0.82);
+      var type = 'image/webp';
+      if (!blob) {
+        blob = await canvasBlob(canvas, 'image/jpeg', 0.85);
+        type = 'image/jpeg';
+      }
+      if (!blob) {
+        return file;
+      }
+      var base = String(file.name || 'photo').replace(/\.[^.]+$/, '');
+      return blobToFile(blob, base + (type === 'image/webp' ? '.webp' : '.jpg'), type);
+    } catch (e) {
+      return file;
+    }
+  }
+
+  // XHR, not fetch, because only XHR reports upload progress per photo.
+  function uploadOne(file, meta, onProgress) {
+    return new Promise(function (resolve, reject) {
+      var form = new FormData();
+      form.append('file', file);
+      if (meta.caption) {
+        form.append('caption', meta.caption);
+      }
+      if (meta.bundleId) {
+        form.append('bundleId', meta.bundleId);
+      }
+      if (meta.bundleCaption) {
+        form.append('bundleCaption', meta.bundleCaption);
+      }
+      if (meta.capturedAt) {
+        form.append('capturedAt', meta.capturedAt);
+      }
+      if (meta.stage) {
+        form.append('stage', meta.stage);
+      }
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', apiUrl(''), true);
+      xhr.withCredentials = true;
+      var cred = C._activeCredential ? C._activeCredential() : null;
+      if (cred && cred.header && cred.code) {
+        xhr.setRequestHeader(cred.header, cred.code);
+      }
+      if (xhr.upload && onProgress) {
+        xhr.upload.onprogress = function (ev) {
+          if (ev.lengthComputable) {
+            onProgress(ev.loaded / ev.total);
+          }
+        };
+      }
+      xhr.onload = function () {
+        var data = {};
+        try {
+          data = JSON.parse(xhr.responseText || '{}');
+        } catch (e) {
+          /* an empty or non-JSON refusal still has a status */
+        }
+        resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, data: data });
+      };
+      xhr.onerror = function () {
+        reject(new Error('network'));
+      };
+      xhr.onabort = function () {
+        reject(new Error('aborted'));
+      };
+      xhr.send(form);
+    });
+  }
+
+  // IndexedDB, not localStorage: a phone photo is far past the 5 MB string
+  // limit. The record keeps the credential the upload was made with so a
+  // queued photo can still authenticate after a reload.
+  var QDB = 'mmgr-photo-queue';
+  function qOpen() {
+    return new Promise(function (resolve, reject) {
+      if (!window.indexedDB) {
+        reject(new Error('no-indexeddb'));
+        return;
+      }
+      var req = indexedDB.open(QDB, 1);
+      req.onupgradeneeded = function () {
+        var db = req.result;
+        if (!db.objectStoreNames.contains('queue')) {
+          db.createObjectStore('queue', { keyPath: 'id', autoIncrement: true });
+        }
+      };
+      req.onsuccess = function () {
+        resolve(req.result);
+      };
+      req.onerror = function () {
+        reject(req.error);
+      };
+    });
+  }
+  function qAdd(record) {
+    return qOpen().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction('queue', 'readwrite');
+        tx.objectStore('queue').add(record);
+        tx.oncomplete = function () {
+          resolve();
+        };
+        tx.onerror = function () {
+          reject(tx.error);
+        };
+      });
+    });
+  }
+  function qAll() {
+    return qOpen().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction('queue', 'readonly');
+        var req = tx.objectStore('queue').getAll();
+        req.onsuccess = function () {
+          resolve(req.result || []);
+        };
+        req.onerror = function () {
+          reject(req.error);
+        };
+      });
+    });
+  }
+  function qDelete(id) {
+    return qOpen().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction('queue', 'readwrite');
+        tx.objectStore('queue').delete(id);
+        tx.oncomplete = function () {
+          resolve();
+        };
+        tx.onerror = function () {
+          reject(tx.error);
+        };
+      });
+    });
+  }
+
+  async function queueFiles(files, meta) {
+    var cred = C._activeCredential ? C._activeCredential() : null;
+    for (var i = 0; i < files.length; i++) {
+      await qAdd({
+        projectId: pid(),
+        file: files[i],
+        name: files[i].name || 'photo',
+        bundleId: meta.bundleId || '',
+        bundleCaption: meta.bundleCaption || '',
+        caption: meta.caption || '',
+        capturedAt: meta.capturedAt || '',
+        stage: meta.stage || '',
+        header: cred && cred.header ? cred.header : '',
+        code: cred && cred.code ? cred.code : '',
+        createdAt: new Date().toISOString()
+      });
+    }
+  }
+
+  async function queuedCount() {
+    try {
+      var all = await qAll();
+      var n = 0;
+      for (var i = 0; i < all.length; i++) {
+        if (all[i].projectId === pid()) {
+          n++;
+        }
+      }
+      _queueCount = n;
+    } catch (e) {
+      _queueCount = 0;
+    }
+    return _queueCount;
+  }
+
+  async function flushQueue() {
+    if (_flushing || !navigator.onLine || !window.indexedDB) {
+      return;
+    }
+    _flushing = true;
+    try {
+      var all = await qAll();
+      var mine = all.filter(function (r) {
+        return r.projectId === pid();
+      });
+      if (!mine.length) {
+        _queueCount = 0;
+        return;
+      }
+      for (var i = 0; i < mine.length; i++) {
+        var item = mine[i];
+        try {
+          var r = await uploadOne(item.file, item, null);
+          if (r.ok) {
+            await qDelete(item.id);
+            _queueCount = Math.max(0, _queueCount - 1);
+          } else if (r.status === 402 || r.status === 403 || r.status === 413) {
+            // A refusal that will not change by waiting: drop it and say why.
+            await qDelete(item.id);
+            _queueCount = Math.max(0, _queueCount - 1);
+            _note = {
+              text: errorSentence(r.data && r.data.error, 'A queued photo was refused.'),
+              kind: 'warn'
+            };
+            if (r.status === 402) {
+              _upgradeRequired = true;
+              _upgradeMessage = (r.data && r.data.error) || '';
+            }
+          } else {
+            break; // server or network trouble: keep the rest for the next try
+          }
+        } catch (e) {
+          break;
+        }
+      }
+      if (_queueCount === 0 && !_note.text) {
+        _note = { text: 'Queued photos uploaded.', kind: '' };
+      }
+      paint();
+      if (_photos !== null) {
+        await fetchPhotos();
+      }
+    } finally {
+      _flushing = false;
+    }
+  }
+
   // ---- actions -------------------------------------------------------------
 
   async function submitUpload() {
     var input = $('photos-upload-input');
-    var file = input && input.files && input.files[0];
-    if (!file) {
-      _note = { text: 'Choose a photo first.', kind: 'warn' };
+    var files = _selected.length
+      ? _selected.slice()
+      : input && input.files
+        ? Array.prototype.slice.call(input.files)
+        : [];
+    if (!files.length) {
+      _note = { text: 'Choose at least one photo first.', kind: 'warn' };
       paint();
       return { ok: false, error: 'No photo selected.' };
     }
-    if (file.size > 8 * 1024 * 1024) {
-      _note = { text: 'This photo is larger than 8 MB. Resize it, then try again.', kind: 'warn' };
+    if (files.length > 30) {
+      _note = { text: 'Choose up to 30 photos in one bundle.', kind: 'warn' };
       paint();
-      return { ok: false, error: 'too large' };
+      return { ok: false, error: 'too many photos' };
     }
     var cap = $('photos-caption-input');
     var date = $('photos-date-input');
@@ -638,58 +1275,131 @@ var MMGR = window.MMGR || {};
     var caption = cap ? String(cap.value || '').slice(0, 200) : '';
     var capturedAt = date ? String(date.value || '') : '';
     var stageValue = stage ? String(stage.value || '') : '';
+    // One file stays an individual photo (the old behaviour); two or more
+    // become one bundle with one description.
+    var bundleId = files.length > 1 ? newBundleId() : '';
+    var bundleCaption = files.length > 1 ? caption : '';
+    var meta = {
+      caption: files.length > 1 ? '' : caption,
+      bundleId: bundleId,
+      bundleCaption: bundleCaption,
+      capturedAt: capturedAt,
+      stage: stageValue
+    };
 
     _uploading = true;
     _note = { text: '', kind: '' };
+    _progress = { done: 0, total: files.length, name: '', pct: 0 };
     paint();
-    try {
-      var form = new FormData();
-      form.append('file', file);
-      if (caption) {
-        form.append('caption', caption);
+
+    // No connection: park the selection in IndexedDB and say so plainly.
+    if (!navigator.onLine) {
+      try {
+        await queueFiles(files, meta);
+        _queueCount += files.length;
+        _note = {
+          text:
+            files.length +
+            ' photo' +
+            (files.length === 1 ? '' : 's') +
+            ' saved on this device. They will upload when you are back online.',
+          kind: ''
+        };
+        resetForm();
+        var offlineForm = $('photos-form');
+        if (offlineForm) {
+          offlineForm.classList.add('is-hide');
+        }
+        _uploading = false;
+        _progress = null;
+        paint();
+        return { ok: true, queued: true, total: files.length };
+      } catch (e) {
+        _uploading = false;
+        _progress = null;
+        _note = { text: 'This device could not save the photos for later.', kind: 'warn' };
+        paint();
+        return { ok: false, error: 'queue unavailable' };
       }
-      if (capturedAt) {
-        form.append('capturedAt', capturedAt);
+    }
+
+    var uploaded = 0;
+    for (var i = 0; i < files.length; i++) {
+      var original = files[i];
+      _progress.done = i;
+      _progress.name = original.name || '';
+      _progress.pct = 0;
+      paintProgress();
+      var file = await compressPhoto(original);
+      if (file.size > 8 * 1024 * 1024) {
+        _note = {
+          text: 'This photo is still larger than 8 MB after resizing. Try a smaller one.',
+          kind: 'warn'
+        };
+        break;
       }
-      if (stageValue) {
-        form.append('stage', stageValue);
+      var r;
+      try {
+        r = await uploadOne(file, meta, function (p) {
+          _progress.pct = p;
+          paintProgress();
+        });
+      } catch (e) {
+        // A network failure is what the queue is for: keep this photo and
+        // every one after it, and send them when the connection returns.
+        var rest = files.slice(i);
+        try {
+          await queueFiles(rest, meta);
+          _queueCount += rest.length;
+          _note = {
+            text:
+              rest.length +
+              ' photo' +
+              (rest.length === 1 ? '' : 's') +
+              ' saved on this device. They will upload when you are back online.',
+            kind: ''
+          };
+        } catch (qe) {
+          _note = {
+            text: 'The upload failed and could not be saved on this device.',
+            kind: 'warn'
+          };
+        }
+        break;
       }
-      var res = await fetch(apiUrl(''), {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: credHeaders(false),
-        body: form
-      });
-      var data = await res.json().catch(function () {
-        return {};
-      });
-      if (!res.ok || !data || !data.ok) {
+      if (!r.ok) {
         // The server owns the refusal sentence (paid plan, quota, role), and
         // it is shown verbatim: rewriting it here is how upgrade copy drifts.
-        var msg = errorSentence(data && data.error, 'Upload failed (HTTP ' + res.status + ').');
+        var msg = errorSentence(r.data && r.data.error, 'Upload failed (HTTP ' + r.status + ').');
         _note = { text: msg, kind: 'warn' };
-        paint();
-        return { ok: false, error: msg };
+        if (r.status === 402) {
+          _upgradeRequired = true;
+          _upgradeMessage = (r.data && r.data.error) || '';
+          _upgradeOpen = true;
+        }
+        break;
       }
-      resetForm();
-      var f = $('photos-form');
-      if (f) {
-        f.classList.add('is-hide');
-      }
-      _note = { text: 'Photo added.', kind: '' };
-      await fetchPhotos();
-      return { ok: true, photo: data.photo };
-    } catch (e) {
-      var detail = (e && (e.message || e.name || String(e))) || 'unknown';
-      var errMsg =
-        'Cloud is unavailable on this host, so the photo was not uploaded. [' + detail + ']';
-      _note = { text: errMsg, kind: 'warn' };
-      paint();
-      return { ok: false, error: errMsg };
-    } finally {
-      _uploading = false;
-      paint();
+      uploaded++;
     }
+
+    _uploading = false;
+    _progress = null;
+    if (uploaded) {
+      resetForm();
+      var form = $('photos-form');
+      if (form) {
+        form.classList.add('is-hide');
+      }
+      _note = {
+        text:
+          files.length > 1 ? uploaded + ' of ' + files.length + ' photos added.' : 'Photo added.',
+        kind: ''
+      };
+      await fetchPhotos();
+      return { ok: uploaded === files.length, uploaded: uploaded, total: files.length };
+    }
+    paint();
+    return { ok: false, error: _note.text };
   }
 
   async function removePhoto(photoId) {
@@ -771,6 +1481,218 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // ---- bundle dialog -------------------------------------------------------
+
+  function findBundle(id) {
+    var groups = groupsOf(_photos || []);
+    for (var i = 0; i < groups.length; i++) {
+      if (groups[i].type === 'bundle' && groups[i].key === id) {
+        return groups[i];
+      }
+    }
+    return null;
+  }
+
+  function openBundle(id) {
+    var b = findBundle(id);
+    if (!b) {
+      return;
+    }
+    _bundleOpen = id;
+    _bundleConfirm = false;
+    renderBundleDialog();
+    var dialog = $('photos-bundle-dialog');
+    if (dialog && dialog.showModal && !dialog.open) {
+      dialog.showModal();
+    }
+  }
+
+  function closeBundle() {
+    _bundleOpen = '';
+    _bundleConfirm = false;
+    var dialog = $('photos-bundle-dialog');
+    if (dialog && dialog.open) {
+      dialog.close();
+    }
+  }
+
+  function renderBundleDialog() {
+    var b = findBundle(_bundleOpen);
+    if (!b) {
+      closeBundle();
+      return;
+    }
+    var n = b.photos.length;
+    var first = b.photos[0];
+    var description = first.bundleCaption || first.caption || '';
+    var title = $('photos-bundle-title');
+    if (title) {
+      title.textContent = n + (n === 1 ? ' photo' : ' photos');
+    }
+    var caption = $('photos-bundle-caption');
+    if (caption) {
+      caption.textContent = description || 'No description yet.';
+    }
+    var edit = $('photos-bundle-edit');
+    if (edit) {
+      edit.classList.toggle('is-hide', !roleCanEdit());
+    }
+    var input = $('photos-bundle-caption-input');
+    if (input) {
+      input.value = description;
+    }
+    var body = $('photos-bundle-body');
+    if (body) {
+      var html = '';
+      for (var i = 0; i < b.photos.length; i++) {
+        var p = b.photos[i];
+        var meta = [];
+        if (p.sizeBytes != null) {
+          meta.push(esc(humanSize(p.sizeBytes)));
+        }
+        if (dayOf(p)) {
+          meta.push(esc(dayOf(p)));
+        }
+        html +=
+          '<figure class="photo-dialog-item">' +
+          '<div class="photo-dialog-thumb" data-photo-thumb="' +
+          esc(p.id) +
+          '">' +
+          ICON +
+          '</div>' +
+          '<figcaption class="photo-info">' +
+          '<div class="photo-caption">' +
+          esc(p.caption || p.filename || 'Photo') +
+          '</div>' +
+          '<div class="photo-meta">' +
+          meta.join(' \u00b7 ') +
+          '</div>' +
+          '<div class="photo-actions">' +
+          '<button class="btn btn-n btn-s" type="button" data-photo-download="' +
+          esc(p.id) +
+          '">Download</button>' +
+          (roleCanEdit()
+            ? '<button class="btn btn-n btn-s" type="button" data-photo-remove="' +
+              esc(p.id) +
+              '">Remove</button>'
+            : '') +
+          '</div>' +
+          '</figcaption>' +
+          '</figure>';
+      }
+      body.innerHTML = html;
+      for (var j = 0; j < b.photos.length; j++) {
+        loadThumb(b.photos[j]);
+      }
+    }
+    var actions = $('photos-bundle-actions');
+    if (actions) {
+      if (!roleCanEdit()) {
+        actions.innerHTML = '';
+      } else if (_bundleConfirm) {
+        actions.innerHTML =
+          '<span class="photo-confirm">Remove all ' +
+          n +
+          ' photos in this bundle?</span>' +
+          '<button class="btn btn-n btn-s" type="button" data-bundle-delete-confirm="1">Yes, remove bundle</button>' +
+          '<button class="btn btn-n btn-s" type="button" data-bundle-delete-cancel="1">Keep</button>';
+      } else {
+        actions.innerHTML =
+          '<button class="btn btn-n btn-s" type="button" data-bundle-delete="1">Remove bundle</button>';
+      }
+    }
+  }
+
+  function refreshBundleDialog(id) {
+    var b = findBundle(id);
+    if (!b) {
+      closeBundle();
+      return;
+    }
+    _bundleOpen = id;
+    renderBundleDialog();
+  }
+
+  async function saveBundleCaption() {
+    if (!_bundleOpen) {
+      return;
+    }
+    var input = $('photos-bundle-caption-input');
+    var caption = input ? String(input.value || '').slice(0, 200) : '';
+    try {
+      var res = await fetch(apiUrl('/bundle/' + encodeURIComponent(_bundleOpen)), {
+        method: 'PATCH',
+        credentials: 'same-origin',
+        headers: credHeaders(true),
+        body: JSON.stringify({ caption: caption })
+      });
+      var data = await res.json().catch(function () {
+        return {};
+      });
+      if (!res.ok || !data || !data.ok) {
+        _note = {
+          text: errorSentence(data && data.error, 'The description was not saved.'),
+          kind: 'warn'
+        };
+        paint();
+        return;
+      }
+      for (var i = 0; i < (_photos || []).length; i++) {
+        if (_photos[i].bundleId === _bundleOpen) {
+          _photos[i].bundleCaption = caption;
+        }
+      }
+      _note = { text: 'Bundle description saved.', kind: '' };
+      renderBundleDialog();
+      paint();
+    } catch (e) {
+      _note = {
+        text: 'The description was not saved. Check the connection and try again.',
+        kind: 'warn'
+      };
+      paint();
+    }
+  }
+
+  async function removeBundle(id) {
+    if (!id) {
+      return;
+    }
+    try {
+      var res = await fetch(apiUrl('/bundle/' + encodeURIComponent(id) + '/delete'), {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: credHeaders(true)
+      });
+      var data = await res.json().catch(function () {
+        return {};
+      });
+      if (!res.ok || !data || !data.ok) {
+        _note = {
+          text: errorSentence(data && data.error, 'The bundle was not removed.'),
+          kind: 'warn'
+        };
+        paint();
+        return;
+      }
+      var b = findBundle(id);
+      if (b) {
+        for (var i = 0; i < b.photos.length; i++) {
+          forgetThumb(b.photos[i].id);
+        }
+      }
+      closeBundle();
+      _note = { text: 'Photo bundle removed.', kind: '' };
+      await fetchPhotos();
+    } catch (e) {
+      _note = {
+        text: 'The bundle was not removed. Check the connection and try again.',
+        kind: 'warn'
+      };
+      paint();
+    }
+  }
+
   // ---- section entry -------------------------------------------------------
 
   function renderPhotosPanel() {
@@ -779,6 +1701,14 @@ var MMGR = window.MMGR || {};
       return;
     }
     scaffold();
+    // A queued photo from an earlier offline session is sent as soon as the
+    // panel opens with a connection. The count paints immediately either way.
+    queuedCount().then(function () {
+      paint();
+    });
+    if (navigator.onLine) {
+      flushQueue();
+    }
     // The cloud module also calls this at boot. Painting then is harmless and
     // keeps the section ready, but fetching is not: no network for a panel
     // nobody opened. Only an active Photos panel (or an explicit refresh)
@@ -811,8 +1741,13 @@ var MMGR = window.MMGR || {};
   ns.CloudPhotos = {
     cloudPhotosIsCloudProject: isCloudProject,
     cloudPhotosCanUpload: canUpload,
+    cloudPhotosCanEdit: roleCanEdit,
     cloudPhotosUploadGateMessage: uploadGateMessage,
     cloudPhotosFetchPhotos: fetchPhotos,
+    cloudPhotosOpenBundle: openBundle,
+    cloudPhotosCloseBundle: closeBundle,
+    cloudPhotosQueuedCount: queuedCount,
+    cloudPhotosFlushQueue: flushQueue,
     cloudPhotosRenderPhotoList: function (container, opts) {
       if (!container) {
         return null;
@@ -833,9 +1768,10 @@ var MMGR = window.MMGR || {};
           dt.items.add(file);
           input.files = dt.files;
         } catch (e) {
-          /* older browsers: caller must use the form */
+          /* older browsers: the _selected fallback below still works */
         }
       }
+      _selected = file ? [file] : [];
       return submitUpload();
     },
     cloudPhotosDoDelete: removePhoto,

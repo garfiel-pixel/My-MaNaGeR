@@ -55,6 +55,18 @@ const APP_MODULES = [
   // Core (loaded first - defines MMGR namespace + utilities)
   'js/mmgr-state.js',
   'js/mmgr-utils.js',
+  // Idea intake model (Leantime-inspired). Pure model: must load before the
+  // renderers and the domain modules, because both read MMGR.Ideas at call
+  // time.
+  'js/mmgr-ideas.js',
+  'js/mmgr-agenda.js',
+  // Project book model (AppFlowy-inspired). Pure model: the pages renderer
+  // and the template capture both read MMGR.Pages at call time.
+  'js/mmgr-pages.js',
+  'js/mmgr-cycles.js',
+  // Custom task fields. Must load before the renderers and the domain
+  // modules, because both read MMGR.CustomFields at call time.
+  'js/mmgr-custom-fields.js',
   // Unit conversion for rate-book quantities (G-1). Loads before the
   // calculator so MMGR.RateUnits is available when the pricing guard runs.
   'js/rateunits.js',
@@ -81,6 +93,11 @@ const APP_MODULES = [
   'js/render/documents.js',
   'js/render/weather.js',
   'js/render/kanban.js',
+  'js/render/ideas.js',
+  'js/render/agenda.js',
+  'js/render/pages.js',
+  'js/render/cycles.js',
+  'js/render/process.js',
   'js/render/risks.js',
   'js/render/resources.js',
   'js/mmgr-render.js',
@@ -143,6 +160,7 @@ const APP_MODULES = [
   'js/mmgr-tasks.js',
   'js/mmgr-risks.js',
   'js/mmgr-stakeholders.js',
+  'js/mmgr-process.js',
   'js/mmgr-bids.js',
   'js/mmgr-closure.js',
   // PART H (owner 2026-10-16): Procurement tab - supplier price book +
@@ -230,6 +248,8 @@ const APP_LAUNCHER_MODULES = [
   'js/cloud/team-ui.js',
   'js/mmgr-viewport.js',
   'js/mmgr-glass.js',
+  // Launcher rail: hover-peek (I-14) + one-shot first-load reveal (B7 parity).
+  'js/app/launcher-rail.js',
   // bfcache sprite restore (2026-09-30): same module as the project
   // bundle - load-order independent, DOM-only, sits last.
   'js/mmgr-icon-restore.js'

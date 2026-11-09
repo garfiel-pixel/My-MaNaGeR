@@ -118,16 +118,15 @@
 
   <!-- ===================== HERO (solid content layer) ===================== -->
   <section class="hero slide" id="top" data-tone="dark">
-    <img class="hero-photo" src="images/hero-landing.webp" alt="A project manager at a laptop with a glowing golden schedule plan floating above the keyboard" width="1264" height="843" draggable="false">
+    <img class="hero-photo" src="images/hero-crane-sky.webp" alt="Steel construction cranes against a bright sky above a live build site" width="1600" height="900" fetchpriority="high" decoding="async" draggable="false">
     <div class="hero-overlay" aria-hidden="true"></div>
     <div class="container hero-inner">
       <div>
-        <!-- OWNER 2026-08-17: no tagline tangles , the eyebrow that repeated the
-             headline was removed. The hero is one clean sentence. -->
         <h1>BUILD <span class="gold">COMFORTABLY</span> ALL IN ONE <span class="gold">WORKSPACE</span>.</h1>
         <!-- OWNER 2026-10-13 (second pass): all caps, no dash anywhere in the
              hero copy, COMFORTABLY and WORKSPACE stay gold. -->
         <p class="hero-sub">One tool for the whole job, from the project trailer to the field. Track schedules, budget lines, and field reality on one screen, without the software headache. Local-first, offline-ready, and 100% your data.</p>
+        <p class="market-note">Built for Jamaican contractors. Rates quote in <span class="gold">J$</span> (69 m2 x J$120 = J$8,280); plans show a J$ estimate.</p>
         <p class="hero-type" data-type data-phrases="One tool, every trade.|Built for the field, not the boardroom.|Your numbers, your device, your call.">One tool, every trade.</p>
         <div class="hero-cta">
           <a class="btn btn-gold btn-lg" href="app.html">
@@ -246,9 +245,46 @@
       <div class="section-head">
         <h2>Everything a real project needs</h2>
         <!-- Phase 2 copy: features intro. -->
-        <p>Fifteen panels, wired together. Enter a number once and it shows up everywhere it matters. No re-entry, no drift.</p>
+        <p><span data-count="panels">15</span> panels, wired together. Enter a number once and it shows up everywhere it matters. No re-entry, no drift.</p>
       </div>
-      <div class="features" role="list" aria-label="Feature panels">
+
+      <!-- BENTO (I-6, 2026-11): one big card, two small, one wide. The four slots
+           rotate through all 15 panels on their own staggered offsets so the page
+           feels alive without ever flipping two at once. aria-hidden because the
+           rotating cards are decorative motion; the real, reachable content is the
+           full panel list below (and the field guide). -->
+      <div class="bento" aria-hidden="true">
+        <div class="bento-slot bento-big" data-slot="big"></div>
+        <div class="bento-col">
+          <div class="bento-slot bento-sm" data-slot="top"></div>
+          <div class="bento-slot bento-sm" data-slot="mid"></div>
+        </div>
+        <div class="bento-slot bento-wide" data-slot="wide"></div>
+      </div>
+      <a class="btn btn-ghost-dark bento-seeall" href="mymanager-field-guide.html">See all features</a>
+
+      <!-- Full, motion-free panel list: every panel reachable without the flips. -->
+      <ul class="sr-only" id="features-all">
+        <li>My MaNaGeR AI, Not a Middleman</li>
+        <li>WBS + Gantt</li>
+        <li>Kanban Board</li>
+        <li>Budget / EVM</li>
+        <li>Risk + Monte Carlo</li>
+        <li>RACI Matrix</li>
+        <li>Voice to Notes and Claims</li>
+        <li>Weather-Aware</li>
+        <li>Offline-First</li>
+        <li>Health and Portfolio</li>
+        <li>Meetings and Decisions</li>
+        <li>Claims and Digests</li>
+        <li>Registers and Compliance</li>
+        <li>Bid Leveling and Go/No-Go</li>
+        <li>Lookahead and Field Metrics</li>
+      </ul>
+
+      <!-- Pool: the real cards. Moved into the slots by js/marketing.js; hidden
+           here so the four slots are the only visible feature layer. -->
+      <div class="features" data-bento-pool role="list" aria-label="Feature panels">
         <article class="fcard" role="listitem" id="f-ai">
           <span class="fc-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/></svg></span>
           <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg></div>
@@ -354,7 +390,7 @@
 
   <!-- ===================== SITE PHOTO BAND (solid layer , never glass) ===================== -->
   <section class="photo-band slide" data-tone="dark">
-    <img class="pb-img" src="images/site-blueprint.webp" alt="Architectural blueprint drawings of a building project" loading="lazy" width="1600" height="900" draggable="false">
+    <img class="pb-img" src="images/site-overview-clean.webp" alt="An aerial view of a construction site with structures, cranes and access roads" loading="lazy" width="1600" height="900" draggable="false">
     <div class="pb-overlay" aria-hidden="true"></div>
     <div class="container pb-content">
       <h2>See the <span class="hl">whole job</span> from above.</h2>
@@ -499,6 +535,75 @@
           Read the Field Guide
           <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>
         </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== WHY MY MANAGER (I-8, 2026-11) ===================== -->
+  <!-- OWNER voice, plain words, no corporate filler. No "request a demo", no
+       sales-hungry CTA, no invented testimonials or numbers. Counts come from
+       the one constant (window.MMGR_PANEL_COUNT / MMGR_MODULE_COUNT) so copy
+       and code never drift. -->
+  <section class="section slide" id="why">
+    <div class="container">
+      <div class="section-head">
+        <h2>Why My MaNaGeR</h2>
+        <p>Modern software is bloated and oversaturated. Half its features are never touched across a whole project, the prices are high, and the value for the money is poor. My MaNaGeR is the simple alternative.</p>
+      </div>
+
+      <div class="why-grid">
+        <div class="why-card">
+          <h3>One job, one screen</h3>
+          <p>Charter, schedule, budget, risk, field reality and reports live in a single workspace. Enter a number once and it shows up everywhere it matters. No re-entry, no drift.</p>
+        </div>
+        <div class="why-card">
+          <h3>Yours, on your device</h3>
+          <p>Local-first and offline-ready. It runs with zero sign-in, forever. Signing in only unlocks backup and moving between devices, never a feature.</p>
+        </div>
+        <div class="why-card">
+          <h3>Honest about cost</h3>
+          <p>One price, the features you actually use, and the data stays yours. No per-seat tax for a team that only needs to look.</p>
+        </div>
+      </div>
+
+      <div class="section-sub">
+        <h3>Who we serve</h3>
+        <p>General contractors, the public sector, subcontractors, quantity surveyors, estimators, and anyone who produces work on a project.</p>
+      </div>
+
+      <div class="section-sub">
+        <h3><span data-count="modules">4</span> solution areas</h3>
+        <p>Each maps to real modules in the workspace, not a slide.</p>
+      </div>
+      <div class="solutions" role="list" aria-label="Solution areas">
+        <article class="sol-card" role="listitem">
+          <span class="sol-ico" aria-hidden="true"><svg class="ico"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg></span>
+          <h4>Project execution</h4>
+          <p>WBS, Gantt, Kanban and lookaheads turn a plan into daily work that stays in sync with the field.</p>
+        </article>
+        <article class="sol-card" role="listitem">
+          <span class="sol-ico" aria-hidden="true"><svg class="ico"><use href="css/mmgr-icons.svg#i-dollar"></use></svg></span>
+          <h4>Cost management</h4>
+          <p>Budget lines, a spend log and earned-value metrics (SPI, CPI, EAC, TCPI) computed from your live numbers.</p>
+        </article>
+        <article class="sol-card" role="listitem">
+          <span class="sol-ico" aria-hidden="true"><svg class="ico"><use href="css/mmgr-icons.svg#i-users"></use></svg></span>
+          <h4>Resource management</h4>
+          <p>People, crews and equipment, scheduled against the work, with a RACI that builds itself from the plan.</p>
+        </article>
+        <article class="sol-card" role="listitem">
+          <span class="sol-ico" aria-hidden="true"><svg class="ico"><use href="css/mmgr-icons.svg#i-flag"></use></svg></span>
+          <h4>Project lifecycle management</h4>
+          <p>From charter and bid leveling through closeout, registers and claim packs, captured in one continuous record.</p>
+        </article>
+      </div>
+
+      <div class="why-cta">
+        <a class="btn btn-gold btn-lg" href="app.html">
+          Get Started
+          <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>
+        </a>
+        <a class="btn btn-ghost-dark" href="mymanager-field-guide.html">View Field Guide</a>
       </div>
     </div>
   </section>

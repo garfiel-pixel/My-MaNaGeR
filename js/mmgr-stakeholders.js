@@ -127,6 +127,7 @@ var MMGR = window.MMGR || {};
 
   // ---- Changes ----
   function addChange() {
+    let messages = [];
     ns.State.updateState(function (s) {
       if (!s.changes) {
         s.changes = [];
@@ -142,20 +143,83 @@ var MMGR = window.MMGR || {};
         approvedBy: '',
         notes: ''
       });
+      if (ns.Process) {
+        messages = ns.Process.runRules(s, 'created', 'change', s.changes.length - 1).messages;
+      }
+    });
+    messages.forEach(function (m) {
+      if (ns.App && ns.App.showToast) {
+        ns.App.showToast(m, 'ok');
+      }
     });
     R.renderChanges();
   }
 
   function updChange(index, field, value) {
+    // The guard sits on the write, not the select: an import, a paste, a rule
+    // and a programmatic call all pass through here.
+    if (field === 'status' && ns.Process) {
+      let res = { ok: true };
+      let messages = [];
+      let hooks = [];
+      ns.State.updateState(function (s) {
+        res = ns.Process.applyMove(s, 'change', index, value, { via: 'user' });
+        if (res.ok && !res.noop) {
+          const ctx = ns.Process.runRules(s, 'status', 'change', index, { entry: res.entry });
+          messages = ctx.messages;
+          hooks = ctx.hooks;
+        }
+      });
+      if (ns.App && ns.App.dispatchHooks) {
+        ns.App.dispatchHooks(hooks);
+      }
+      messages.forEach(function (m) {
+        if (ns.App && ns.App.showToast) {
+          ns.App.showToast(m, 'ok');
+        }
+      });
+      if (!res.ok) {
+        if (ns.App && ns.App.showToast) {
+          ns.App.showToast(res.message, 'err');
+        }
+        R.renderChanges();
+      } else if (!res.noop) {
+        R.renderChanges();
+      }
+      return;
+    }
+    let messages = [];
     ns.State.updateState(function (s) {
       if (s.changes && s.changes[index]) {
         s.changes[index][field] = value;
+        if (ns.Process) {
+          messages = ns.Process.runRules(s, 'field', 'change', index).messages;
+        }
+      }
+    });
+    messages.forEach(function (m) {
+      if (ns.App && ns.App.showToast) {
+        ns.App.showToast(m, 'ok');
       }
     });
   }
 
   function delChange(index) {
+    const s0 = ns.State.getState();
+    const c = s0 && s0.changes ? s0.changes[index] : null;
+    if (c && c.status === 'approved') {
+      if (ns.App && ns.App.showToast) {
+        ns.App.showToast(
+          'An approved change cannot be deleted. Raise a superseding change.',
+          'err'
+        );
+      }
+      return;
+    }
     ns.State.updateState(function (s) {
+      if (ns.Process && s.changes && s.changes[index]) {
+        ns.Process.runRules(s, 'deleted', 'change', index);
+      }
       if (s.changes) {
         s.changes.splice(index, 1);
       }

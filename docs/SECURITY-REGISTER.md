@@ -23,6 +23,7 @@ Statuses: DONE | PARTIAL | QUEUED | OWNER-CHECK (needs owner, not AI) | N-A
 | SEC-14 | MCP owner-code deprecation | **PARTIAL (4.6)** | Phase 1: every owner-code Bearer use logs `mcp-owner-code-deprecated {result:accepted}`; `MCP_REQUIRE_API_KEY=1` switches the same branch to a JSON-RPC `-32001` refusal (HTTP 200, PATH-A preserved) that names a project API key. The settings card tells users now that owner codes stop working as an MCP credential on 5 December 2026 (shell cache v541). Proven by `test/mcp-owner-code-gate.test.mjs` (5/5), including "the gate decides before D1 is queried". Phase 2 (flip the flag) waits on 30 days of counter data. |
 | SEC-15 | (merged → F3) | N-A | |
 | SEC-16 | Register skeleton | **DONE (4.1)** | this file |
+| SEC-17 | Vendored three.js r160 | **ACCEPTED 2026-11-09 (owner sign-off pending)** | `vendor/three/three.module.js` carries `REVISION = '160'` (1,272,972 bytes). Two advisories exist for the npm package and neither applies: `GHSA-7vvq-7r29-5vg3` (XSS) affects `< 0.137.0`, `GHSA-fq6p-x6j3-cmmq` (DoS) affects `< 0.125.0`. `npm audit` cannot see a vendored file, so `tools/verify-three-revision.cjs` pins the revision and fails the build if it changes without this entry being updated. Re-check quarterly. |
 
 ## Accepted risks
 
@@ -30,6 +31,7 @@ Statuses: DONE | PARTIAL | QUEUED | OWNER-CHECK (needs owner, not AI) | N-A
 |---|---|---|
 | `style-src 'unsafe-inline'` in every page policy | **Accepted (owner, SEC-06 step 4)** | The app builds a large share of its UI by assigning `style` attributes and writing `<style>` blocks from JS (dashboards, Gantt, calculator). Removing it would mean a style-token rewrite across the render layer with no matching security gain: `script-src` is hash-only and carries no `'unsafe-inline'`, so an injected style can restyle a page but cannot execute code, and CSS alone cannot read a cookie or a token. Revisit only as part of a deliberate inline-style refactor - not as a CSP tweak. |
 | `require-trusted-types-for 'script'` kept opt-in (`CSP_TT_REPORT=1`) | **Accepted (4.3)** | Report-only is still a report per violation, and this app writes `innerHTML` by the hundred per render. Left on permanently it would be a self-inflicted firehose on both the visitor's connection and the report sink. It stays a deliberate mapping tool for SEC-12, not part of the standing observation window. |
+| Vendored three.js r160, not upgraded | **Accepted (2026-11-09)** | The library is a single vendored module (`vendor/three/three.module.js`), not an npm dependency, so `npm audit` never sees it. The two published advisories both stop below r160 (`< 0.137.0` and `< 0.125.0`), so the vendored copy is not affected. The current release is 0.187.0 - a 27-revision jump with breaking changes - and the app's use of three.js is narrow. The revision is pinned by a build gate and re-checked quarterly; upgrade only when a new advisory covers r160. |
 
 ## Re-scored posture (§1 table, after 4.1)
 - Supply chain: 5 → 7 (audit gate + provenance + CodeQL)

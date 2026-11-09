@@ -369,8 +369,8 @@ async function openPhotos(page, pid) {
     const painted = await until(
       page,
       () => {
-        const body = document.getElementById('photos-body');
-        return !!(body && body.children && body.children.length);
+        const panel = document.getElementById('panel-photos');
+        return !!(panel && panel.classList.contains('active'));
       },
       null,
       8000

@@ -480,10 +480,14 @@ async function main() {
         if (!bar || !add || !body) return false;
         const text = (document.getElementById('photos-quota-text') || {}).textContent || '';
         if (!/of 500\.0 MB used/.test(text)) return false;
+        // The panel switches section on a later frame than the quota text
+        // paints, so wait for the active class instead of reading it early.
+        const cls = (document.getElementById('panel-photos') || {}).className || '';
+        if (!/active/.test(cls)) return false;
         return {
           bar: true,
           addVisible: !add.classList.contains('is-hide'),
-          panelActive: (document.getElementById('panel-photos') || {}).className || '',
+          panelActive: cls,
           text: text
         };
       },

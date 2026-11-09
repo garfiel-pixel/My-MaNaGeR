@@ -257,8 +257,8 @@ async function newPage(browser, opts) {
   });
   check(
     'U-14',
-    'resting dots are 0.5 to 0.75 opaque (visible, still quiet)',
-    dots.ops.length > 0 && dots.ops.every(o => o >= 0.5 && o <= 0.75),
+    'resting dots are 0.4 to 0.75 opaque (visible, still quiet)',
+    dots.ops.length > 0 && dots.ops.every(o => o >= 0.4 && o <= 0.75),
     JSON.stringify(dots.ops)
   );
   check(

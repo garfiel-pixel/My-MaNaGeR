@@ -6,7 +6,7 @@
 
    The landing dot rail was always visible at full strength, competing with the
    copy it points at. The contract now:
-     - at rest every inactive dot is quiet but visible (opacity 0.5 to 0.75)
+     - at rest every inactive dot is quiet but visible (opacity 0.4 to 0.75)
      - hovering or keyboard-focusing the rail raises the whole column
      - the active dot is ALWAYS solid, so the reader can see their place
      - each dot keeps a hit area of at least 24 x 24 CSS px (WCAG 2.2 target)

@@ -55,6 +55,10 @@ const APP_MODULES = [
   // Core (loaded first - defines MMGR namespace + utilities)
   'js/mmgr-state.js',
   'js/mmgr-utils.js',
+  // Idea intake model (Leantime-inspired). Pure model: must load before the
+  // renderers and the domain modules, because both read MMGR.Ideas at call
+  // time.
+  'js/mmgr-ideas.js',
   // Custom task fields. Must load before the renderers and the domain
   // modules, because both read MMGR.CustomFields at call time.
   'js/mmgr-custom-fields.js',

@@ -52,6 +52,22 @@ var MMGR = window.MMGR || {};
  */
 
 /**
+ * @typedef {Object} Idea
+ * @property {string} id             - stable record id (`i` prefix)
+ * @property {string} title
+ * @property {string} [summary]
+ * @property {string} stage          - one of MMGR.Ideas.STAGES
+ * @property {string} [author]
+ * @property {string[]} [tags]
+ * @property {number} impact         - 1..5
+ * @property {number} effort         - 1..5
+ * @property {number} order          - position inside the stage column
+ * @property {string} createdAt      - ISO timestamp
+ * @property {string} updatedAt      - ISO timestamp
+ * @property {string} [promotedTaskId] - task created by Promote, one way
+ */
+
+/**
  * @typedef {Object} Risk
  * @property {string|number} id
  * @property {string} description
@@ -239,6 +255,10 @@ var MMGR = window.MMGR || {};
  * @property {string} userName
  * @property {Charter} charter
  * @property {Task[]} tasks
+ * @property {Idea[]} ideas       - idea intake records (schema v27)
+ * @property {string} [ideaView]  - 'board'|'list' per-device view preference
+ * @property {string} [ideaTag]   - active tag filter (per-device)
+ * @property {number} [agendaDays] - merged-agenda horizon (per-device)
  * @property {Meeting[]} meetings
  * @property {Resource[]} resources
  * @property {BudgetLine[]} budgetLines
@@ -259,7 +279,7 @@ var MMGR = window.MMGR || {};
   'use strict';
 
   const STORAGE_KEY = 'mmgr_state';
-  const SCHEMA_VERSION = 26;
+  const SCHEMA_VERSION = 27;
 
   // ---- Default State ----
   /** @returns {AppState} */
@@ -298,6 +318,9 @@ var MMGR = window.MMGR || {};
       },
       // WBS
       tasks: [],
+      // Idea intake records (schema v27, Leantime-inspired). One array, two
+      // projections (board and list). Values are owned by mmgr-ideas.js.
+      ideas: [],
       // Custom task fields (schema v26, NocoBase-inspired collection model).
       // The array is the project's field schema. Values live on each task
       // in task.custom, keyed by the field's stable `key`. Nothing here
@@ -401,6 +424,12 @@ var MMGR = window.MMGR || {};
       wxWindow: { start: '', end: '', bufferDays: 0 },
       // V3.3 port: dedicated Kanban lead-time swimlane toggle
       kbShowLeadtime: false,
+      // Idea intake view prefs (schema v27, Leantime-inspired). These three
+      // are per-device, so they are deliberately absent from FIELD_KEYS: a
+      // field-level cloud merge must never overwrite the view on this device.
+      ideaView: 'board',
+      ideaTag: '',
+      agendaDays: 30,
       // Work package relations (schema v24, OpenProject-inspired).
       // `relLens` is the persisted Kanban lens. The graph itself lives on
       // task.relations, never in a second table.
@@ -970,6 +999,25 @@ var MMGR = window.MMGR || {};
       }
       return state;
     },
+    27: function (state) {
+      // V26 -> V27: idea intake (Leantime-inspired). Additive and lossless:
+      // - the idea array starts empty;
+      // - the three view preferences get their defaults;
+      // - no task, meeting, issue, change or register is touched.
+      if (!Array.isArray(state.ideas)) {
+        state.ideas = [];
+      }
+      if (state.ideaView !== 'list') {
+        state.ideaView = 'board';
+      }
+      if (typeof state.ideaTag !== 'string') {
+        state.ideaTag = '';
+      }
+      if (state.agendaDays !== 7 && state.agendaDays !== 0) {
+        state.agendaDays = 30;
+      }
+      return state;
+    },
     25: function (state) {
       // V24 -> V25: BOQ bridge (H-2, BUDGET-BOQ directive 2026-11-05).
       // Additive and lossless:
@@ -1388,6 +1436,10 @@ var MMGR = window.MMGR || {};
     'userName',
     'charter',
     'tasks',
+    // V27 idea intake records. Project data, so it must travel in a
+    // field-level cloud merge like tasks do. The three view prefs stay out
+    // on purpose (see the note at `kbShowLeadtime` in getDefaultState).
+    'ideas',
     // V26 custom field schema and the persisted board filter. Both are
     // project data, so both must travel in a field-level cloud merge.
     'fields',

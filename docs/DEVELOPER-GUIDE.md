@@ -143,6 +143,8 @@ Three rules are load-bearing:
 
 **Templates carry the page tree.** `saveAsTemplate` stores `Pages.captureTree(state)` — ids stripped, each page keeping a local `key` and its parent's `key` — and `applyTemplate` runs `Pages.applyTree` *after* the tasks and budget lines, so a live block resolves against the tasks that just arrived. Fresh ids are minted on apply and parents are remapped in tree order, so applying the same template twice yields two independent branches. A template with no `pages` applies exactly as before.
 
+**The register link and the handover pack.** A register row may carry one optional `pageId`; the link lives on the document, so deleting the page leaves the row and the cell reads as unlinked again. The Pages view's unfiled lens keeps unlinked pages plus the ancestors that hold them (`context: true`), so the tree still reads. `Pages.buildPack(state, rootId)` assembles — never stores — the branch in order, each block, live rows resolved as they stand that moment, and the register rows linked from the branch grouped by type. `printPack` paints it into `#pg-pack` (a direct child of `body`) and adds `body.pg-printing`; the `@media print` rules in `30-panels.css` are the only thing that shows the pack and hides the app. The pack is paper: black on white regardless of theme.
+
 `pages` is project data and **is** in `FIELD_KEYS`; `docsView`, `pageSel` and `pageUnfiled` are per-device and deliberately are not. The migration repairs an imported page inline (the state module loads before the model); the model repairs again on read.
 
 ## 3. Split candidates — largest functions

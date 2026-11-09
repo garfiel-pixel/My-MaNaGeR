@@ -5012,3 +5012,190 @@ body.dark-mode .team-link-danger {
     flex-basis: 100%;
   }
 }
+
+/* Register link: one cell per row, either the linked page title or a picker.
+   A deleted page leaves the row intact and the cell reads as unlinked. */
+.doc-pg {
+  white-space: nowrap;
+}
+.doc-pglink {
+  max-width: 120px;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  cursor: pointer;
+}
+.doc-pglink:hover,
+.doc-pglink:focus-visible {
+  text-decoration: underline;
+}
+.doc-unlink {
+  margin-left: 2px;
+  padding: 1px 4px;
+}
+
+/* The unfiled lens: unlinked pages plus the ancestors that hold them. */
+.pg-tbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.pg-tgl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.pg-row.is-ctx .pg-tw {
+  color: var(--text-secondary);
+}
+.pg-print {
+  margin-left: auto;
+}
+
+/* Handover pack: assembled on demand and painted into #pg-pack, which only
+   the print rules below reveal. The pack is paper: black on white, never a
+   theme colour, so a dark-mode screen still prints a readable sheet. */
+#pg-pack {
+  display: none;
+}
+.pk {
+  background: #fff;
+  color: #000;
+  font-size: 11pt;
+  line-height: 1.45;
+}
+.pk-head {
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #000;
+}
+.pk-kicker {
+  font-size: 9pt;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.pk-title {
+  margin: 2px 0 4px;
+  font-size: 20pt;
+}
+.pk-sub {
+  color: #333;
+  font-size: 10pt;
+}
+.pk-page {
+  margin: 0 0 14px calc(var(--pk-depth, 0) * 6mm);
+  page-break-inside: avoid;
+}
+.pk-h2 {
+  margin: 10px 0 4px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid #999;
+  font-size: 14pt;
+}
+.pk-h3 {
+  margin: 8px 0 3px;
+  font-size: 11.5pt;
+}
+.pk-p {
+  margin: 3px 0;
+}
+.pk-li {
+  display: flex;
+  gap: 6px;
+  margin: 2px 0;
+}
+.pk-dot {
+  flex: 0 0 auto;
+  width: 4px;
+  height: 4px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: #000;
+}
+.pk-ck {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  margin-top: 2px;
+}
+.pk-box {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  margin-top: 3px;
+  border: 1px solid #000;
+}
+.pk-call {
+  margin: 6px 0;
+  padding: 3px 8px;
+  border-left: 3px solid #000;
+  background: #f2f2f2;
+}
+.pk-hr {
+  margin: 8px 0;
+  border: 0;
+  border-top: 1px solid #999;
+}
+.pk-live {
+  margin: 6px 0;
+}
+.pk-lt {
+  margin-bottom: 2px;
+  font-size: 10pt;
+  font-weight: 600;
+}
+.pk-t {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9.5pt;
+}
+.pk-t th,
+.pk-t td {
+  padding: 2px 5px;
+  border: 1px solid #999;
+  text-align: left;
+  vertical-align: top;
+}
+.pk-t th {
+  background: #eee;
+}
+.pk-group {
+  margin-bottom: 8px;
+  page-break-inside: avoid;
+}
+.pk-mute {
+  color: #555;
+}
+.pk-foot {
+  margin-top: 16px;
+  padding-top: 4px;
+  border-top: 1px solid #999;
+  color: #333;
+  font-size: 8.5pt;
+}
+
+/* Print: the pack is the only thing on the sheet. */
+@media print {
+  body.pg-printing > *:not(#pg-pack) {
+    display: none !important;
+  }
+  body.pg-printing #pg-pack {
+    display: block !important;
+  }
+  body.pg-printing {
+    background: #fff !important;
+  }
+}
+@page {
+  margin: 14mm;
+}

@@ -26,7 +26,12 @@
     21. a viewer sees the live lists and no filter controls
     22. applying a built-in template brings its pages and outline
     23. applying the same template twice creates two independent branches
-    24. no page or console error during the run
+    24. every unlinked register row offers a page picker
+    25. three register rows link to pages and the cell shows the page title
+    26. the pack assembles the branch in order with rows grouped by type
+    27. printing paints the pack and leaves the screen as it was
+    28. reprinting after completing a task drops the row
+    29. no page or console error during the run
 
    Usage:  node tools/qa-pages.cjs
    Env:    QA_BASE (default http://127.0.0.1:8765), CHROME_PATH
@@ -669,7 +674,160 @@ async function reachable(url) {
     twice
   );
 
-  // ---- 24. no runtime errors -------------------------------------------
+  // ---- 25-28. register link and handover pack --------------------------
+  const packIds = await page.evaluate(() => {
+    let ids = {};
+    const task = (id, name, level, isPhase, status, startDate, endDate) => ({
+      id,
+      name,
+      level,
+      indent: level,
+      isPhase,
+      status,
+      startDate,
+      endDate,
+      duration: '5',
+      assignee: '',
+      critical: false,
+      leadTime: false,
+      recurring: false,
+      weatherExposed: false,
+      confidence: 'high',
+      predecessors: [],
+      notes: '',
+      weatherSensitive: false
+    });
+    window.MMGR.State.updateState(s => {
+      s.projectName = 'Harbour House';
+      s.tasks = [
+        task('T-phase', 'Structure', 0, true, 'todo', '', ''),
+        task('T-a', 'Pour slab', 1, false, 'todo', '2026-11-02', '2026-11-20'),
+        task('T-b', 'Strip formwork', 1, false, 'todo', '2026-11-21', '2026-12-01')
+      ];
+      s.documents = [
+        {
+          id: 'D-1',
+          docNo: 'C-001',
+          title: 'Main contract',
+          type: 'Contract',
+          status: 'current'
+        },
+        {
+          id: 'D-2',
+          docNo: 'A-101',
+          title: 'Foundation drawing',
+          type: 'Drawing',
+          status: 'current'
+        },
+        {
+          id: 'D-3',
+          docNo: 'C-002',
+          title: 'Variation 1',
+          type: 'Contract',
+          status: 'pending-review'
+        }
+      ];
+      s.pages = [];
+      const root = window.MMGR.Pages.newPage(s, { title: 'Handover pack' });
+      const method = window.MMGR.Pages.newPage(s, { parentId: root.id, title: 'Method' });
+      window.MMGR.Pages.newPage(s, { parentId: root.id, title: 'Scope' });
+      const blk = window.MMGR.Pages.addBlock(s, method.id, 'taskList');
+      window.MMGR.Pages.setFilter(s, method.id, blk.id, 'status', 'todo');
+      s.pageSel = root.id;
+      s.docsView = 'register';
+      ids = { root: root.id, method: method.id };
+    });
+    window.MMGR.State.save(true);
+    window.MMGR.Render.showSection('docs', document.querySelector('.sec-btn[data-section="docs"]'));
+    return ids;
+  });
+  await page.waitForTimeout(450);
+
+  const pickers = await page.$$('#doc-body select[data-action="linkDoc"]');
+  check('every unlinked register row offers a page picker', pickers.length === 3, pickers.length);
+  const rowPicker = n => '#doc-body tr:nth-child(' + n + ') select[data-action="linkDoc"]';
+  await page.selectOption(rowPicker(1), packIds.root);
+  await page.waitForTimeout(250);
+  await page.selectOption(rowPicker(2), packIds.root);
+  await page.waitForTimeout(250);
+  await page.selectOption(rowPicker(3), packIds.method);
+  await page.waitForTimeout(350);
+  const links = await page.evaluate(() =>
+    window.MMGR.State.getState().documents.map(d => d.pageId)
+  );
+  const linkedCell = await page.$eval('#doc-body tr:nth-child(1) .doc-pglink', e => e.textContent);
+  check(
+    'three register rows link to pages and the cell shows the page title',
+    links[0] === packIds.root &&
+      links[1] === packIds.root &&
+      links[2] === packIds.method &&
+      linkedCell === 'Handover pack',
+    { links, linkedCell, packIds }
+  );
+
+  await page.evaluate(() => {
+    window.__printed = 0;
+    window.print = () => {
+      window.__printed += 1;
+    };
+    window.MMGR.App.setDocsView('pages');
+  });
+  await page.waitForTimeout(350);
+  await page.locator('.pg-print').filter({ visible: true }).first().click();
+  await page.waitForTimeout(300);
+  const pack = await page.evaluate(() => ({
+    title: (document.querySelector('#pg-pack .pk-title') || {}).textContent || '',
+    sub: (document.querySelector('#pg-pack .pk-sub') || {}).textContent || '',
+    pages: Array.from(document.querySelectorAll('#pg-pack .pk-page .pk-h2')).map(
+      e => e.textContent
+    ),
+    groups: Array.from(document.querySelectorAll('#pg-pack .pk-group .pk-h3')).map(
+      e => e.textContent
+    ),
+    docRows: Array.from(document.querySelectorAll('#pg-pack .pk-group .pk-t td:first-child')).map(
+      e => e.textContent
+    ),
+    printed: window.__printed,
+    printing: document.body.classList.contains('pg-printing')
+  }));
+  check(
+    'the pack assembles the branch in order with the register rows grouped by type',
+    pack.title === 'Harbour House' &&
+      /assembled \d{4}-\d{2}-\d{2}/.test(pack.sub) &&
+      JSON.stringify(pack.pages) === JSON.stringify(['Handover pack', 'Method', 'Scope']) &&
+      JSON.stringify(pack.groups) === JSON.stringify(['Contract', 'Drawing']) &&
+      pack.docRows.join('|') === 'C-001|C-002|A-101',
+    pack
+  );
+  check(
+    'printing paints the pack and leaves the screen as it was',
+    pack.printed === 1 && pack.printing === false,
+    { printed: pack.printed, printing: pack.printing }
+  );
+
+  await page.evaluate(() => {
+    window.MMGR.State.updateState(s => {
+      const t = s.tasks.find(x => x.id === 'T-a');
+      if (t) {
+        t.status = 'completed';
+      }
+    });
+    window.MMGR.State.save(true);
+  });
+  await page.locator('.pg-print').filter({ visible: true }).first().click();
+  await page.waitForTimeout(300);
+  const reprint = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('#pg-pack .pk-live .pk-t td:first-child')).map(
+      e => e.textContent
+    )
+  );
+  check(
+    'reprinting after completing a task drops the row',
+    reprint.indexOf('Pour slab') < 0 && reprint.indexOf('Strip formwork') > -1,
+    reprint
+  );
+
+  // ---- 29. no runtime errors -------------------------------------------
   check('no page or console error during the run', errors.length === 0, errors.slice(0, 5));
 
   await browser.close();

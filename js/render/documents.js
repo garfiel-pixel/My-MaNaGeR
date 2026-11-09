@@ -350,6 +350,55 @@ var MMGR = window.MMGR || {};
       .join('');
   }
 
+  // A register row may point at one page in the project book. The link is
+  // optional and lives on the document; a deleted page reads as unlinked.
+  function docPageCell(s, d) {
+    const esc = U.escapeHtml;
+    if (!d.id) {
+      return '<td class="doc-pg"><span class="t-sm">-</span></td>';
+    }
+    const pages = ns.Pages ? ns.Pages.flatten(s) : [];
+    const linked = d.pageId
+      ? pages.find(function (r) {
+          return r.page.id === d.pageId;
+        })
+      : null;
+    if (linked) {
+      return (
+        '<td class="doc-pg">' +
+        '<button class="lnk doc-pglink" data-action="docPageJump" data-id="' +
+        esc(linked.page.id) +
+        '" title="Open this page">' +
+        esc(linked.page.title) +
+        '</button>' +
+        '<button class="btn btn-s btn-n doc-unlink" data-action="unlinkDoc" data-id="' +
+        esc(d.id) +
+        '" title="Remove the page link" aria-label="Remove the page link">' +
+        '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg>' +
+        '</button></td>'
+      );
+    }
+    const opts = pages
+      .map(function (r) {
+        return (
+          '<option value="' +
+          esc(r.page.id) +
+          '">' +
+          esc(new Array(r.depth + 1).join('\u00a0\u00a0') + r.page.title) +
+          '</option>'
+        );
+      })
+      .join('');
+    return (
+      '<td class="doc-pg"><select data-action="linkDoc" data-id="' +
+      esc(d.id) +
+      '" aria-label="Link this document to a page">' +
+      '<option value="">Link a page</option>' +
+      opts +
+      '</select></td>'
+    );
+  }
+
   function renderDocuments() {
     const s = S();
     if (!s) {
@@ -368,7 +417,7 @@ var MMGR = window.MMGR || {};
     const docs = s.documents || [];
     if (docs.length === 0) {
       body.innerHTML = emptyStateRow(
-        10,
+        11,
         'No documents registered yet.',
         '<button class="btn btn-g btn-s" data-action="addDoc">+ Add Document</button>'
       );
@@ -386,6 +435,7 @@ var MMGR = window.MMGR || {};
       <td><input type="text" value="${U.escapeHtml(d.responsible || '')}" data-action="updField" data-module="Documents" data-field="responsible" data-idx="${i}"></td>
       <td><input type="date" value="${U.escapeHtml(d.dateIssued || '')}" data-action="updField" data-module="Documents" data-field="dateIssued" data-idx="${i}"></td>
       <td><input type="text" value="${U.escapeHtml(d.notes || '')}" data-action="updField" data-module="Documents" data-field="notes" data-idx="${i}"></td>
+      ${docPageCell(s, d)}
       <td><button class="btn btn-s btn-d" data-action="delDoc" data-idx="${i}">×</button></td>
     </tr>`
       )

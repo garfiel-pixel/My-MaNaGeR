@@ -59,12 +59,13 @@ var MMGR = window.MMGR || {};
     }
   }
 
-  function treeRow(row, selected) {
+  function treeRow(row, selected, context) {
     const p = row.page;
     const title = p.title || 'Untitled page';
     return (
       '<div class="pg-row' +
       (selected ? ' is-on' : '') +
+      (context ? ' is-ctx' : '') +
       '" data-page-row="' +
       esc(p.id) +
       '" draggable="true" style="--pg-depth:' +
@@ -391,6 +392,11 @@ var MMGR = window.MMGR || {};
       esc(page.title) +
       '" aria-label="Page title">' +
       parentSelect(s, page) +
+      '<button class="btn btn-n btn-s pg-print" data-action="printPack" data-id="' +
+      esc(page.id) +
+      '" title="Print this branch as a handover pack">' +
+      ICON('i-printer') +
+      ' Print pack</button>' +
       '</div>' +
       '<div class="pg-blocks">' +
       (blocks.length
@@ -402,6 +408,16 @@ var MMGR = window.MMGR || {};
         : '<div class="es es-row">This page has no blocks yet. Add one below.</div>') +
       '</div>' +
       addRow
+    );
+  }
+
+  function treeBar(s) {
+    return (
+      '<div class="pg-tbar">' +
+      '<label class="pg-tgl"><input type="checkbox" data-action="setPageUnfiled"' +
+      (s.pageUnfiled ? ' checked' : '') +
+      '> Only pages with no register link</label>' +
+      '</div>'
     );
   }
 
@@ -418,30 +434,181 @@ var MMGR = window.MMGR || {};
     if (!body) {
       return;
     }
-    const rows = ns.Pages.flatten(s);
+    const rows = s.pageUnfiled ? ns.Pages.unfiledRows(s) : ns.Pages.flatten(s);
     if (!rows.length) {
       body.innerHTML =
-        '<div class="es es-row"><div>No pages yet. A page can hold the reasoning, ' +
-        'method statements and handover notes that do not belong in a task row.</div>' +
-        '<div class="es-actions"><button class="btn btn-g btn-s" data-action="addPage">' +
-        'Create the first page</button></div></div>';
+        treeBar(s) +
+        '<div class="es es-row"><div>' +
+        (s.pageUnfiled
+          ? 'Every page is linked to a register row.'
+          : 'No pages yet. A page can hold the reasoning, method statements and ' +
+            'handover notes that do not belong in a task row.') +
+        '</div><div class="es-actions">' +
+        (s.pageUnfiled
+          ? ''
+          : '<button class="btn btn-g btn-s" data-action="addPage">Create the first page</button>') +
+        '</div></div>';
       return;
     }
     let page = s.pageSel ? ns.Pages.find(s, s.pageSel) : null;
-    if (!page) {
+    const visible = rows.some(function (r) {
+      return page && r.page.id === page.id;
+    });
+    if (!page || !visible) {
       page = rows[0].page;
     }
     body.innerHTML =
+      treeBar(s) +
       '<div class="pg-tree" role="tree" aria-label="Page tree">' +
       rows
         .map(function (r) {
-          return treeRow(r, page && r.page.id === page.id);
+          return treeRow(r, page && r.page.id === page.id, r.context);
         })
         .join('') +
       '</div>' +
       (page ? '<div class="pg-body">' + bodyMarkup(s, page) + '</div>' : '');
   }
 
-  ns.RenderPages = { renderPages: renderPages };
+  // ---- The handover pack -------------------------------------------------
+  // Assembled at print time from the model, painted here. Nothing on the
+  // screen changes: the pack lives in #pg-pack, which print CSS alone shows.
+  function packBlockMarkup(b) {
+    if (b.live) {
+      const head =
+        b.type === 'taskList'
+          ? '<tr><th>Task</th><th>Status</th><th>Due</th></tr>'
+          : '<tr><th>Doc No.</th><th>Title</th><th>Status</th></tr>';
+      const rows = b.rows.length
+        ? b.rows
+            .map(function (r) {
+              return b.type === 'taskList'
+                ? '<tr><td>' +
+                    esc(r.name) +
+                    '</td><td>' +
+                    esc(ns.Pages.TASK_STATUS_LABEL[r.status] || r.status) +
+                    '</td><td>' +
+                    esc(r.endDate || '-') +
+                    '</td></tr>'
+                : '<tr><td>' +
+                    esc(r.docNo || '-') +
+                    '</td><td>' +
+                    esc(r.title) +
+                    '</td><td>' +
+                    esc(r.status || '-') +
+                    '</td></tr>';
+            })
+            .join('')
+        : '<tr><td colspan="3" class="pk-mute">Nothing matches this filter.</td></tr>';
+      return (
+        '<div class="pk-live"><div class="pk-lt">' +
+        esc(b.label) +
+        '</div><table class="pk-t">' +
+        head +
+        rows +
+        '</table></div>'
+      );
+    }
+    if (b.type === 'divider') {
+      return '<hr class="pk-hr">';
+    }
+    if (b.type === 'heading') {
+      return b.text ? '<h3 class="pk-h3">' + esc(b.text) + '</h3>' : '';
+    }
+    if (b.type === 'bullet') {
+      return b.text
+        ? '<div class="pk-li"><span class="pk-dot" aria-hidden="true"></span>' +
+            esc(b.text) +
+            '</div>'
+        : '';
+    }
+    if (b.type === 'checklist') {
+      return (
+        '<div class="pk-li pk-chk">' +
+        (b.done
+          ? '<svg class="ico pk-ck" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg>'
+          : '<span class="pk-box" aria-hidden="true"></span>') +
+        esc(b.text) +
+        '</div>'
+      );
+    }
+    if (b.type === 'callout') {
+      return b.text ? '<div class="pk-call">' + esc(b.text) + '</div>' : '';
+    }
+    return b.text ? '<p class="pk-p">' + esc(b.text) + '</p>' : '';
+  }
+
+  function renderPack(pack) {
+    const host = $('pg-pack');
+    if (!host) {
+      return false;
+    }
+    if (!pack) {
+      host.innerHTML = '';
+      return false;
+    }
+    const pages = pack.pages
+      .map(function (p) {
+        return (
+          '<section class="pk-page" style="--pk-depth:' +
+          p.depth +
+          '"><h2 class="pk-h2">' +
+          esc(p.title) +
+          '</h2>' +
+          p.blocks.map(packBlockMarkup).join('') +
+          '</section>'
+        );
+      })
+      .join('');
+    const groups = pack.docs.length
+      ? pack.docs
+          .map(function (g) {
+            return (
+              '<div class="pk-group"><h3 class="pk-h3">' +
+              esc(g.type) +
+              '</h3><table class="pk-t"><tr><th>Doc No.</th><th>Title</th><th>Status</th></tr>' +
+              g.rows
+                .map(function (r) {
+                  return (
+                    '<tr><td>' +
+                    esc(r.docNo || '-') +
+                    '</td><td>' +
+                    esc(r.title) +
+                    '</td><td>' +
+                    esc(r.status || '-') +
+                    '</td></tr>'
+                  );
+                })
+                .join('') +
+              '</table></div>'
+            );
+          })
+          .join('')
+      : '<p class="pk-p pk-mute">No register rows are linked from this branch.</p>';
+    host.innerHTML =
+      '<div class="pk"><header class="pk-head">' +
+      '<div class="pk-kicker">Handover pack</div>' +
+      '<h1 class="pk-title">' +
+      esc(pack.project) +
+      '</h1>' +
+      '<div class="pk-sub">' +
+      esc(pack.rootTitle) +
+      ' &middot; assembled ' +
+      esc(pack.assembled) +
+      '</div></header>' +
+      '<div class="pk-body">' +
+      pages +
+      '</div>' +
+      '<section class="pk-docs"><h2 class="pk-h2">Register documents</h2>' +
+      groups +
+      '</section>' +
+      '<footer class="pk-foot">' +
+      esc(pack.project) +
+      ' &middot; assembled ' +
+      esc(pack.assembled) +
+      '</footer></div>';
+    return true;
+  }
+
+  ns.RenderPages = { renderPages: renderPages, renderPack: renderPack };
 })(MMGR);
 window.MMGR = MMGR;

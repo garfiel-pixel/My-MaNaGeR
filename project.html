@@ -1420,7 +1420,7 @@
       <div class="ox"><table class="dt"><thead><tr>
         <th class="w38">ID</th><th class="w110">Doc No.</th><th>Title</th>
         <th class="w130">Type</th><th class="w70">Ver</th><th class="w130">Status</th>
-        <th>Responsible</th><th>Notes</th><th class="w60"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
+        <th>Responsible</th><th class="w120">Issued</th><th>Notes</th><th class="w150">Page</th><th class="w60"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
       </tr></thead><tbody id="doc-body"></tbody></table></div>
     </div>
     <!-- RFI Register (MARKET-FEATURE-ROADMAP C1) , question → routing →
@@ -2605,5 +2605,8 @@ if ('serviceWorker' in navigator &&
   </dl>
   <button type="button" class="btn btn-n btn-s" popovertarget="which-code-pop" popovertargetaction="hide">Close</button>
 </div>
+<!-- Handover pack. Assembled on demand, painted by js/render/pages.js, shown
+     only by the @media print rules in css/src/30-panels.css. -->
+<div id="pg-pack" aria-hidden="true"></div>
 </body>
 </html>

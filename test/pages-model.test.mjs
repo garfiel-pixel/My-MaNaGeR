@@ -331,3 +331,97 @@ test('a template with no pages applies nothing', () => {
   assert.equal(P.applyTree(s, null), 0);
   assert.deepEqual(plain(s.pages), []);
 });
+
+function linkBase() {
+  const s = {
+    projectName: 'Harbour House',
+    pages: [],
+    documents: [
+      { id: 'D1', docNo: 'C-001', title: 'Contract', type: 'Contract', status: 'current' },
+      { id: 'D2', docNo: 'A-101', title: 'Plan', type: 'Drawing', status: 'current' },
+      { id: 'D3', docNo: 'C-002', title: 'Variation', type: 'Contract', status: 'pending-review' },
+      { id: 'D4', docNo: 'C-003', title: 'Elsewhere', type: 'Contract', status: 'current' }
+    ],
+    tasks: [
+      { id: 'p1', name: 'Structure', isPhase: true, level: 0, status: 'todo' },
+      { id: 't1', name: 'Pour slab', level: 1, status: 'todo', endDate: '2026-11-01' },
+      { id: 't2', name: 'Strip formwork', level: 1, status: 'inprogress', endDate: '2026-11-05' }
+    ]
+  };
+  const a = P.newPage(s, { title: 'Scope' });
+  const b = P.newPage(s, { parentId: a.id, title: 'Method' });
+  const c = P.newPage(s, { parentId: a.id, title: 'Handover' });
+  P.newPage(s, { title: 'Elsewhere' });
+  return { s, a, b, c };
+}
+
+test('linkDoc and unlinkDoc move the link on the document, not the page', () => {
+  const { s, b } = linkBase();
+  assert.equal(P.linkDoc(s, 'D1', b.id), true);
+  assert.equal(s.documents[0].pageId, b.id);
+  assert.equal(P.linkDoc(s, 'D1', 'missing'), false);
+  assert.equal(s.documents[0].pageId, b.id);
+  assert.equal(P.unlinkDoc(s, 'D1'), true);
+  assert.equal(s.documents[0].pageId, '');
+  assert.equal(P.linkDoc(s, 'nope', b.id), false);
+});
+
+test('unfiledRows keeps unlinked pages and marks the ancestors that hold them', () => {
+  const { s, a, b } = linkBase();
+  P.linkDoc(s, 'D1', a.id);
+  P.linkDoc(s, 'D2', b.id);
+  const rows = P.unfiledRows(s);
+  const byTitle = {};
+  rows.forEach(r => {
+    byTitle[r.page.title] = r;
+  });
+  // Scope is linked, but it holds an unlinked child, so it stays as context.
+  assert.equal(byTitle.Scope.context, true);
+  // Method is linked and holds nothing unlinked, so it is not in the lens.
+  assert.equal(byTitle.Method, undefined);
+  assert.equal(byTitle.Handover.context, false);
+  assert.equal(byTitle.Elsewhere.context, false);
+  assert.equal(byTitle.Handover.depth, 1);
+});
+
+test('buildPack walks the branch in order with relative depth', () => {
+  const { s, a } = linkBase();
+  const pack = P.buildPack(s, a.id);
+  assert.deepEqual(plain(pack.pages.map(p => [p.title, p.depth])), [
+    ['Scope', 0],
+    ['Method', 1],
+    ['Handover', 1]
+  ]);
+  assert.equal(pack.project, 'Harbour House');
+  assert.equal(pack.assembled, '2026-10-26');
+  assert.equal(pack.rootTitle, 'Scope');
+  assert.equal(P.buildPack(s, 'missing'), null);
+});
+
+test('buildPack groups the register rows linked from the branch by type', () => {
+  const { s, a, b, c } = linkBase();
+  P.linkDoc(s, 'D1', b.id);
+  P.linkDoc(s, 'D2', b.id);
+  P.linkDoc(s, 'D3', c.id);
+  P.linkDoc(s, 'D4', P.flatten(s).find(r => r.page.title === 'Elsewhere').page.id);
+  const pack = P.buildPack(s, a.id);
+  assert.deepEqual(plain(pack.docs.map(g => g.type)), ['Contract', 'Drawing']);
+  assert.deepEqual(plain(pack.docs[0].rows.map(r => r.id)), ['D1', 'D3']);
+  assert.deepEqual(plain(pack.docs[1].rows.map(r => r.id)), ['D2']);
+});
+
+test('buildPack resolves live blocks at assembly time', () => {
+  const { s, a, b } = linkBase();
+  const blk = P.addBlock(s, b.id, 'taskList');
+  P.setFilter(s, b.id, blk.id, 'status', 'todo');
+  const first = P.buildPack(s, a.id);
+  const method = first.pages.find(p => p.title === 'Method');
+  const live = method.blocks.find(x => x.live);
+  assert.deepEqual(plain(live.rows.map(r => r.id)), ['t1']);
+  s.tasks.find(t => t.id === 't1').status = 'completed';
+  const second = P.buildPack(s, a.id);
+  assert.deepEqual(
+    plain(second.pages.find(p => p.title === 'Method').blocks.find(x => x.live).rows),
+    []
+  );
+});

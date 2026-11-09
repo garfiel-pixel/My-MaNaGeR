@@ -5187,6 +5187,73 @@ var MMGR = window.MMGR || {};
     agendaJump(section, id);
   }
 
+  // ---- Register link and handover pack ---------------------------------
+  function linkDoc(docId, pageId) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Pages) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      ns.Pages.linkDoc(s, docId, pageId);
+    });
+    R.renderDocuments();
+  }
+
+  function unlinkDoc(docId) {
+    if (isReadonly()) {
+      showToast(PAGE_READONLY, 'err');
+      return;
+    }
+    if (!ns.Pages) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      ns.Pages.unlinkDoc(s, docId);
+    });
+    R.renderDocuments();
+  }
+
+  function docPageJump(pageId) {
+    if (!pageId) {
+      return;
+    }
+    setDocsView('pages');
+    selectPage(pageId);
+  }
+
+  function setPageUnfiled(on) {
+    ns.State.updateState(function (s) {
+      s.pageUnfiled = !!on;
+    });
+    R.renderPages();
+  }
+
+  // The pack is assembled from live state at print time, painted into the
+  // print-only container, and the body class hides everything else. Nothing
+  // is stored, so the next print reflects the project as it stands.
+  function printPack(pageId) {
+    if (!ns.Pages || !R.renderPack) {
+      return;
+    }
+    const s = ns.State.getState();
+    const pack = ns.Pages.buildPack(s, pageId || s.pageSel);
+    if (!pack) {
+      showToast('There is no page to print.', 'err');
+      return;
+    }
+    R.renderPack(pack);
+    document.body.classList.add('pg-printing');
+    window.print();
+    document.body.classList.remove('pg-printing');
+  }
+
+  window.addEventListener('afterprint', function () {
+    document.body.classList.remove('pg-printing');
+  });
+
   // Tree drag: a drop lands the dragged page as the last child of the row it
   // is dropped on. The model refuses a drop into the page's own descendant.
   let dragPageId = null;
@@ -5412,6 +5479,11 @@ var MMGR = window.MMGR || {};
     moveBlock: moveBlock,
     setBlockFilter: setBlockFilter,
     pageJump: pageJump,
+    linkDoc: linkDoc,
+    unlinkDoc: unlinkDoc,
+    docPageJump: docPageJump,
+    setPageUnfiled: setPageUnfiled,
+    printPack: printPack,
     populateSprint: populateSprint,
     openPrompt: openPrompt,
     openDrwToSave: openDrwToSave,
@@ -5535,6 +5607,11 @@ window.MMGR = MMGR;
       ),
     pageJump: el =>
       window.MMGR.App.pageJump(el.getAttribute('data-section'), el.getAttribute('data-id')),
+    linkDoc: el => window.MMGR.App.linkDoc(el.getAttribute('data-id'), el.value),
+    unlinkDoc: el => window.MMGR.App.unlinkDoc(el.getAttribute('data-id')),
+    docPageJump: el => window.MMGR.App.docPageJump(el.getAttribute('data-id')),
+    setPageUnfiled: el => window.MMGR.App.setPageUnfiled(el.checked),
+    printPack: el => window.MMGR.App.printPack(el.getAttribute('data-id')),
     setTaskFollowUp: el => {
       const taskId = el.getAttribute('data-id');
       const assignee = prompt('Follow-up assignee:');
@@ -7011,6 +7088,9 @@ window.MMGR = MMGR;
     setDocsView: 1,
     selectPage: 1,
     pageJump: 1,
+    docPageJump: 1,
+    setPageUnfiled: 1,
+    printPack: 1,
     cpAllPage: 1,
     print: 1,
     // Reading or closing the column-limit sheet mutates nothing. The inputs
@@ -7443,6 +7523,7 @@ window.MMGR = MMGR;
         action === 'setIdeaStage' ||
         action === 'movePage' ||
         action === 'setBlockFilter' ||
+        action === 'linkDoc' ||
         action === 'saveKbWip' ||
         action === 'setRelLens' ||
         action === 'updKPI' ||

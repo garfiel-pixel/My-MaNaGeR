@@ -3272,6 +3272,12 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  function renderPack(pack) {
+    if (ns.RenderPages) {
+      ns.RenderPages.renderPack(pack);
+    }
+  }
+
   // ---- DMAIC ----
   // Full interactive renderer lives in js/mmgr-dmaic.js (feature 8); this
   // Charter is data-filled from live state on every entry (no event binding),
@@ -4168,6 +4174,7 @@ var MMGR = window.MMGR || {};
     renderComms: renderComms,
     renderDocuments: renderDocuments,
     renderPages: renderPages,
+    renderPack: renderPack,
     renderDmaic: renderDmaic,
     renderDefs: renderDefs,
     renderMeetingsPanel: renderMeetingsPanel,

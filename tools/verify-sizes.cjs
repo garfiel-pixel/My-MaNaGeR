@@ -30,7 +30,12 @@ const EXACT = {
   // split a layer rather than raise this again.
   // 2026-11-08 (C2 Task 2): raised 520000 -> 535000 for the Idea Intake board,
   // list and sheet CSS (~5 KB of token-only surface in css/src/30-panels.css).
-  'css/mmgr.css': 535000,
+  // 2026-11-08 (C3 Phase 4): raised 535000 -> 545000 for the register page
+  // cell and the handover pack (~1.5 KB on screen plus ~5 KB of print-only
+  // rules). The pack is the first print surface in the app; if the next wave
+  // adds more print CSS, split the print rules into their own stylesheet
+  // rather than raising this again.
+  'css/mmgr.css': 545000,
   'css/marketing.css': 160000,
   'js/calculator-page.js': 600000,
   // 2026-11-08 (C2 Task 2): raised 210000 -> 215000 for the intake panel,

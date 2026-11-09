@@ -838,6 +838,157 @@ var MMGR = window.MMGR || {};
     return made;
   }
 
+  // ---- The register link ------------------------------------------------
+  // A register row may point at one page. The link lives on the document,
+  // never on the page: deleting a page leaves the row, and the renderer
+  // shows it as unlinked again.
+  function docList(state) {
+    return state && Array.isArray(state.documents) ? state.documents : [];
+  }
+
+  function linkDoc(state, docId, pageId) {
+    const doc = docList(state).find(function (d) {
+      return d && d.id === docId;
+    });
+    if (!doc) {
+      return false;
+    }
+    const target = pageId || '';
+    if (target && !find(state, target)) {
+      return false;
+    }
+    doc.pageId = target;
+    return true;
+  }
+
+  function unlinkDoc(state, docId) {
+    return linkDoc(state, docId, '');
+  }
+
+  function linkedPageIds(state) {
+    const out = {};
+    docList(state).forEach(function (d) {
+      if (d && d.pageId) {
+        out[d.pageId] = 1;
+      }
+    });
+    return out;
+  }
+
+  // The unfiled view keeps unlinked pages and the ancestors that hold them,
+  // so the tree still reads; `context` marks the ancestor-only rows.
+  function unfiledRows(state) {
+    const rows = flatten(state);
+    const linked = linkedPageIds(state);
+    const unlinked = {};
+    const byId = {};
+    rows.forEach(function (r) {
+      byId[r.page.id] = r.page;
+      if (!linked[r.page.id]) {
+        unlinked[r.page.id] = 1;
+      }
+    });
+    const keep = {};
+    Object.keys(unlinked).forEach(function (id) {
+      keep[id] = 1;
+    });
+    Object.keys(unlinked).forEach(function (id) {
+      let p = byId[id];
+      while (p && p.parentId && !keep[p.parentId]) {
+        keep[p.parentId] = 1;
+        p = byId[p.parentId];
+      }
+    });
+    return rows
+      .filter(function (r) {
+        return keep[r.page.id];
+      })
+      .map(function (r) {
+        return { page: r.page, depth: r.depth, context: !unlinked[r.page.id] };
+      });
+  }
+
+  // ---- The handover pack -------------------------------------------------
+  // A pack is assembled, never stored: the branch order, every block, the
+  // live rows as they stand today, and the register rows linked from this
+  // branch grouped by type.
+  function packBlock(state, block) {
+    const type = block.type;
+    if (LIVE_TYPES[type]) {
+      return {
+        type: type,
+        label: blockLabel(type),
+        live: true,
+        filter: normalizeFilter(type, block.filter),
+        rows:
+          type === 'taskList' ? resolveTasks(state, block.filter) : resolveDocs(state, block.filter)
+      };
+    }
+    return {
+      type: type,
+      label: blockLabel(type),
+      text: text(block.text, MAX_TEXT),
+      done: block.done === true
+    };
+  }
+
+  function buildPack(state, rootId) {
+    const root = find(state, rootId);
+    if (!root) {
+      return null;
+    }
+    const all = flatten(state);
+    const rootDepth = all.reduce(function (depth, r) {
+      return r.page.id === rootId ? r.depth : depth;
+    }, 0);
+    const branch = descendantIds(state, rootId);
+    const rows = all.filter(function (r) {
+      return r.page.id === rootId || branch.indexOf(r.page.id) > -1;
+    });
+    const inBranch = {};
+    rows.forEach(function (r) {
+      inBranch[r.page.id] = 1;
+    });
+    const groups = [];
+    const byType = {};
+    docList(state).forEach(function (d) {
+      if (!d || !d.pageId || !inBranch[d.pageId]) {
+        return;
+      }
+      const key = d.type || 'Other';
+      if (!byType[key]) {
+        byType[key] = { type: key, rows: [] };
+        groups.push(byType[key]);
+      }
+      byType[key].rows.push({
+        id: d.id || '',
+        docNo: d.docNo || '',
+        title: d.title || 'Untitled document',
+        status: d.status || ''
+      });
+    });
+    groups.sort(function (a, b) {
+      return a.type.localeCompare(b.type);
+    });
+    return {
+      project: text(state.projectName, MAX_TITLE) || 'Untitled project',
+      assembled: todayStr(),
+      rootId: root.id,
+      rootTitle: root.title,
+      pages: rows.map(function (r) {
+        return {
+          id: r.page.id,
+          title: r.page.title,
+          depth: r.depth - rootDepth,
+          blocks: (r.page.blocks || []).map(function (b) {
+            return packBlock(state, b);
+          })
+        };
+      }),
+      docs: groups
+    };
+  }
+
   ns.Pages = {
     BLOCK_TYPES: BLOCK_TYPES,
     LIVE_TYPES: LIVE_TYPES,
@@ -877,7 +1028,12 @@ var MMGR = window.MMGR || {};
     collapseTrailing: collapseTrailing,
     pageShape: pageShape,
     captureTree: captureTree,
-    applyTree: applyTree
+    applyTree: applyTree,
+    linkDoc: linkDoc,
+    unlinkDoc: unlinkDoc,
+    linkedPageIds: linkedPageIds,
+    unfiledRows: unfiledRows,
+    buildPack: buildPack
   };
 })(MMGR);
 window.MMGR = MMGR;

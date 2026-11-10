@@ -67,7 +67,8 @@ async function open(browser, viewport) {
       if (disp !== 'none') ok('wordmark-visible-desktop');
       else bad('wordmark-visible-desktop', 'display=' + disp);
       const txt = await word.evaluate(el => el.textContent.trim());
-      if (txt === 'MMWRP') ok('wordmark-text');
+      // Owner 2026-11-10: the wordmark is MMGRWP (six letters, one span each).
+      if (txt === 'MMGRWP') ok('wordmark-text');
       else bad('wordmark-text', 'text=' + txt);
 
       const cs = await word.evaluate(el => {
@@ -85,9 +86,16 @@ async function open(browser, viewport) {
       if (isSilver) ok('wordmark-silver-stroke');
       else bad('wordmark-silver-stroke', 'stroke=' + cs.stroke);
 
-      await word.hover();
+      // Owner 2026-11-10: hovering a LETTER lights only that letter, so hover a
+      // span (not the container centre, which can land in the gap between
+      // letters and never trigger span:hover). Read the SPAN's stroke, not the
+      // container's (the container keeps its rest stroke; only the hovered
+      // letter turns gold).
+      const firstLetter = await word.$('span');
+      if (firstLetter) await firstLetter.hover();
+      else await word.hover();
       await page.waitForTimeout(350);
-      const hoverStroke = await word.evaluate(el =>
+      const hoverStroke = await (firstLetter || word).evaluate(el =>
         getComputedStyle(el).getPropertyValue('-webkit-text-stroke-color').trim()
       );
       // gold ~ rgb(212, 175, 55) or the resolved --gold
@@ -117,13 +125,14 @@ async function open(browser, viewport) {
   // ---- Phone 390 ----
   {
     const { ctx, page } = await open(browser, { width: 390, height: 844 });
+    // Owner 2026-11-10: on a narrow screen the column centres and the MMGRWP
+    // mark sits BELOW the card, smaller - it is visible, not absent.
     const word = await page.$('.signin-mmwrp');
-    if (!word)
-      ok('wordmark-absent-phone'); // absent from flow entirely is fine
+    if (!word) bad('wordmark-visible-phone', 'wordmark missing on phone');
     else {
       const disp = await word.evaluate(el => getComputedStyle(el).display);
-      if (disp === 'none') ok('wordmark-absent-phone');
-      else bad('wordmark-absent-phone', 'display=' + disp);
+      if (disp !== 'none') ok('wordmark-visible-phone');
+      else bad('wordmark-visible-phone', 'display=' + disp);
     }
     const card = await page.$('.signin-card');
     if (card) {

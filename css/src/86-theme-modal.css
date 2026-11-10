@@ -32,9 +32,23 @@
   max-height: min(86vh, 760px);
   display: flex;
   flex-direction: column;
-  background: var(--surface, #fff);
-  color: var(--text, #1d2733);
-  border: 1px solid var(--border, #d7dce3);
+  /* The Customize dialog must stay a clean, readable light surface
+     regardless of the launcher's dark mode or the applied skin - the
+     modal is a control surface, not part of the theme preview. The
+     per-card mini-mocks re-theme themselves via .theme-preview[data-skin]. */
+  --surface: #ffffff;
+  --text: #1d2733;
+  --text-muted: #6a717b;
+  --border: #e3e7ec;
+  --tile-bg: #f1f3f6;
+  --gold: #c79a2e;
+  --on-gold: #1d2733;
+  --brand: #1d3557;
+  --brand-on: #ffffff;
+  --font-head: system-ui, sans-serif;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
   border-radius: 16px;
   box-shadow: 0 24px 70px rgba(12, 18, 28, 0.34);
   overflow: hidden;
@@ -63,14 +77,15 @@
   justify-content: center;
   width: 34px;
   height: 34px;
-  border: 1px solid var(--border, #d7dce3);
+  border: none;
   border-radius: 10px;
   background: transparent;
-  color: var(--text, #1d2733);
+  color: var(--text-muted, #6a717b);
   cursor: pointer;
 }
 .cm-close:hover {
   background: var(--tile-bg, #f1f3f6);
+  color: var(--text, #1d2733);
 }
 .cm-body {
   padding: 18px 20px;
@@ -155,32 +170,57 @@
   font: 600 0.82rem/1.2 var(--font-head, inherit);
 }
 
-/* The mini mock inside each preview. Themes restyle this via
-   .theme-preview[data-skin="<slug>"] so the preview shows the real skin. */
+/* The mini mock inside each preview. Each .theme-preview carries its own
+   static data-skin="<slug>", so .theme-preview[data-skin="<slug>"] restyles
+   this mock with that skin's own tokens - the card previews the real skin
+   even before it is applied. */
 .tp-card {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 10px;
+  gap: 5px;
   border-radius: 8px;
   background: var(--tile-bg, #f1f3f6);
   border: 1px solid var(--border, #d7dce3);
+  overflow: hidden;
+}
+.tp-bar {
+  height: 6px;
+  background: var(--gold, #d4af37);
 }
 .tp-ttl {
   font: 600 0.78rem/1.2 var(--font-head, inherit);
+  padding: 4px 8px 0;
 }
-.tp-st {
+.tp-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
   font-size: 0.66rem;
   color: var(--text-muted, #6a717b);
 }
+.tp-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent, #3aa657);
+}
 .tp-cta {
   align-self: flex-start;
-  margin-top: 2px;
-  font-size: 0.66rem;
+  margin: 1px 8px 8px;
+  font-size: 0.64rem;
   padding: 2px 8px;
   border-radius: 999px;
-  background: var(--gold, #d4af37);
-  color: var(--on-gold, #1d2733);
+  background: var(--brand, #1d3557);
+  color: var(--brand-on, #fff);
+}
+
+/* Visible appearance-mode chips (cyan / magenta / light / dark / system)
+   surfaced at the top of the Themes section, beside the skin grid. */
+.pal-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -200,6 +240,9 @@
   --text-muted: #6a717b;
   --gold: #d4af37;
   --on-gold: #1d2733;
+  --brand: #1d3557;
+  --brand-on: #ffffff;
+  --accent: #3aa657;
   --surface: #fff;
   --font-head: system-ui, sans-serif;
 }

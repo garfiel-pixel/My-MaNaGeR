@@ -40,10 +40,23 @@
 
   function applySkin(v) {
     var de = document.documentElement;
+    var b = document.body;
+    // The skin CSS is scoped to body.db-page[data-skin="<slug>"] (plus
+    // .theme-preview[data-skin=...] for the in-modal mini-mocks), so the
+    // attribute MUST live on <body class="db-page"> for the launcher to
+    // actually take the skin. We also mirror it on <html> as a harmless
+    // fallback; no skin selector targets <html>, but it keeps any future
+    // html-scoped rule and the head-time paint consistent.
     if (v) {
       de.setAttribute('data-skin', v);
+      if (b) {
+        b.setAttribute('data-skin', v);
+      }
     } else {
       de.removeAttribute('data-skin');
+      if (b) {
+        b.removeAttribute('data-skin');
+      }
     }
   }
 
@@ -140,6 +153,10 @@
     if (!m) {
       return;
     }
+    // Ensure the saved skin is applied to <body> now that it exists (the
+    // head-time applySkin() ran before body was parsed, so it only reached
+    // <html>). Without this the launcher would stay on the default skin.
+    applySkin(read());
 
     // Delegated clicks for open / close / apply.
     document.addEventListener('click', function (e) {

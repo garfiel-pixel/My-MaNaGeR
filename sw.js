@@ -734,7 +734,7 @@
 // drops the off-canvas rail from the boot splash. Changed shell assets:
 // project.html, calculator.html, app.html, admin.html, css/mmgr.css,
 // dist/mmgr.min.css, dist/bundle.js, dist/app-bundle.js, dist/admin-bundle.js.
-const CACHE = 'mmgr-shell-v619';
+const CACHE = 'mmgr-shell-v620';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

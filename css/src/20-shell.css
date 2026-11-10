@@ -1289,6 +1289,13 @@ body.nav-open #nav-scrim {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
+/* The first-project tour pins the rail open for its section cards and plans
+   the walk in the same tick, so the rail has to land in that frame instead of
+   sliding in - otherwise the section buttons are still off-canvas and the
+   walk drops them. The tour removes this class on the next frame. */
+body.tour-rail-instant #app-sidebar {
+  transition: none !important;
+}
 /* Rail head: same hamburger as the header button, bare icon (no box),    rotated 90deg while the rail is open - one smooth spring (doctrine 3). */
 .sb-head {
   display: flex;

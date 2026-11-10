@@ -108,15 +108,21 @@ var MMGR = window.MMGR || {};
       return;
     }
     const zone = document.querySelector('.sb-peek');
+    // The first-project tour pins the rail open for its section cards; the
+    // pointer then rests on the tour card, not the rail, so the peek's
+    // pointerleave must not collapse it mid-walk.
+    const tourHoldsRail = function () {
+      return document.body.classList.contains('tour-open');
+    };
     const openPeek = function () {
-      if (_userPinned) {
+      if (_userPinned || tourHoldsRail()) {
         return;
       }
       clearPeekTimer();
       setSidebarOpen(true);
     };
     const closePeekSoon = function () {
-      if (_userPinned) {
+      if (_userPinned || tourHoldsRail()) {
         return;
       }
       clearPeekTimer();

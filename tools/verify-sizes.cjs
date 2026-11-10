@@ -35,7 +35,9 @@ const EXACT = {
   // rules). The pack is the first print surface in the app; if the next wave
   // adds more print CSS, split the print rules into their own stylesheet
   // rather than raising this again.
-  'css/mmgr.css': 545000,
+  // 2026-11-10 (Wave 4): raised 545000 -> 550000 for the calculator input
+  // outline changes, the AI actions preview card and the BOQ waiting chip.
+  'css/mmgr.css': 550000,
   'css/marketing.css': 160000,
   'js/calculator-page.js': 600000,
   // 2026-11-08 (C2 Task 2): raised 210000 -> 215000 for the intake panel,

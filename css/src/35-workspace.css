@@ -2498,6 +2498,21 @@ body.dark-mode .wbs-alert-item {
   gap: 6px;
   flex-wrap: wrap;
 }
+/* Wave 4a: a bill sent from the calculator is waiting until applied. One quiet
+   line in the budget toolbar, gold-tinted so it reads as "ready to import". */
+.boq-wait {
+  align-self: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--gold-ink, #6b4a12);
+  background: color-mix(in srgb, var(--gold, #c9a227) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--gold, #c9a227) 38%, transparent);
+}
+.boq-wait[hidden] {
+  display: none;
+}
 .g6c {
   display: flex;
   align-items: center;

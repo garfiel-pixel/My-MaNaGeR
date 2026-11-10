@@ -358,7 +358,7 @@ body.dark-mode .bcp-ico-moon {
 }
 .bcp-field select,
 .bcp-field input {
-  background: var(--tile-bg);
+  background: transparent;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--text);
@@ -493,7 +493,7 @@ body.dark-mode .bcp-ico-moon {
 .bcp-sheets-bar input {
   flex: 1;
   min-width: 160px;
-  background: var(--tile-bg);
+  background: transparent;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--text);
@@ -648,7 +648,7 @@ body.dark-mode .bcp-run:focus-visible {
 .bcp-save input {
   flex: 1;
   min-width: 0;
-  background: var(--tile-bg);
+  background: transparent;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--text);
@@ -1826,7 +1826,7 @@ html.mmgr-tour-active .bcp-tour-nudge {
     input:not([type]),
     textarea
   ) {
-  background: var(--tile-bg);
+  background: transparent;
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: var(--radius);

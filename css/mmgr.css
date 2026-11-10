@@ -10489,6 +10489,21 @@ body.dark-mode .wbs-alert-item {
   gap: 6px;
   flex-wrap: wrap;
 }
+/* Wave 4a: a bill sent from the calculator is waiting until applied. One quiet
+   line in the budget toolbar, gold-tinted so it reads as "ready to import". */
+.boq-wait {
+  align-self: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--gold-ink, #6b4a12);
+  background: color-mix(in srgb, var(--gold, #c9a227) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--gold, #c9a227) 38%, transparent);
+}
+.boq-wait[hidden] {
+  display: none;
+}
 .g6c {
   display: flex;
   align-items: center;
@@ -12398,6 +12413,57 @@ body.dark-mode .ai-seg-btn.is-on {
   justify-content: center;
   box-shadow: 0 2px 10px rgba(245, 158, 11, 0.35);
 }
+/* Wave 4d: the AI actions review card. A quiet surface that sits in the thread
+   like any bot bubble; the preview table and the report are built with
+   textContent so a model string can never inject markup. */
+.ai-actions-card .ai-bot-body {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  max-width: min(86%, 640px);
+}
+.ai-actions-preview-title {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--text-secondary, #555);
+}
+.ai-actions-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+.ai-actions-table th,
+.ai-actions-table td {
+  text-align: left;
+  padding: 5px 8px;
+  border-bottom: 1px dashed var(--border);
+  color: var(--text);
+}
+.ai-actions-table th {
+  font-weight: 700;
+  color: var(--text-secondary, #555);
+}
+.ai-actions-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.ai-actions-refused .ai-bot-body {
+  background: color-mix(in srgb, var(--warn, #b8860b) 10%, var(--surface, #fff));
+  border: 1px solid color-mix(in srgb, var(--warn, #b8860b) 35%, transparent);
+  border-radius: 14px;
+  padding: 12px 14px;
+  max-width: min(86%, 640px);
+}
+.ai-actions-report {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 0.8rem;
+  color: var(--text-secondary, #555);
+}
 .ai-bot-avatar .ico {
   width: 18px;
   height: 18px;
@@ -13499,7 +13565,7 @@ body.dark-mode .bcp-ico-moon {
 }
 .bcp-field select,
 .bcp-field input {
-  background: var(--tile-bg);
+  background: transparent;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--text);
@@ -13634,7 +13700,7 @@ body.dark-mode .bcp-ico-moon {
 .bcp-sheets-bar input {
   flex: 1;
   min-width: 160px;
-  background: var(--tile-bg);
+  background: transparent;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--text);
@@ -13789,7 +13855,7 @@ body.dark-mode .bcp-run:focus-visible {
 .bcp-save input {
   flex: 1;
   min-width: 0;
-  background: var(--tile-bg);
+  background: transparent;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--text);
@@ -14967,7 +15033,7 @@ html.mmgr-tour-active .bcp-tour-nudge {
     input:not([type]),
     textarea
   ) {
-  background: var(--tile-bg);
+  background: transparent;
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -22030,6 +22096,28 @@ body.rr-open {
   margin: 0 0 8px;
   font-size: 0.82rem;
   line-height: 1.45;
+}
+/* Wave 4c: the reviewable takeoff list. Built with textContent so a model
+   string can never inject markup; sits above the action row for a quick check. */
+.bcp-ai-breakdown {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius, 8px);
+  background: var(--surface, #fff);
+  border: 1px solid var(--border);
+  max-height: 220px;
+  overflow: auto;
+}
+.bcp-ai-breakdown li {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  padding: 2px 0;
+  color: var(--text);
+  border-bottom: 1px dashed var(--border);
+}
+.bcp-ai-breakdown li:last-child {
+  border-bottom: 0;
 }
 .bcp-ai-pathrow {
   display: flex;

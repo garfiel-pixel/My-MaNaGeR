@@ -1414,6 +1414,14 @@ jobs:
         id: qa-team-invite
         run: node tools/qa-team-invite.cjs
 
+      # WAVE 4d BOUNDED AI ACTIONS (owner 2026-11-10): the project assistant may
+      # make single-record, reversible changes after review, and must refuse a
+      # complex re-plan as an action. This gate pins parse/validate/preview/apply/
+      # undo plus the no-injection rule.
+      - name: "T4: AI actions (qa-ai-actions)"
+        id: qa-ai-actions
+        run: node tools/qa-ai-actions.cjs
+
       # I-1 CLIENT regression (forged-cookie Playwright): boots its OWN local
       # wrangler dev with a forged Google session and drives the real app.html to
       # prove the owner code persists to localStorage and the signed-in account

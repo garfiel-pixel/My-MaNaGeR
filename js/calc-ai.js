@@ -186,7 +186,20 @@
     'the ASK in that same reply or in the next reply once they have clicked. ' +
     'Never compute money: never add up costs, totals, tax or margins yourself ' +
     '- copy the figures the user or the book gave and let the page do every ' +
-    'calculation, because only the page can show its working.';
+    'calculation, because only the page can show its working. ' +
+    // Wave 4c: the interview-then-takeoff contract. The assistant keeps a job
+    // sheet (work type, dimensions, quantity, unit, rate source, overhead, tax,
+    // contingency, exclusions). It asks ONE ASK: at a time until every blank is
+    // answered or the user skips it ("leave tax out"), then sends the whole bill
+    // as one PROPOSALS: array of the same line shapes above - never one PROPOSAL
+    // per line. A CHECKLIST: line (one short sentence per still-open blank) may
+    // appear in the same reply so the user sees what is outstanding before the
+    // takeoff lands. When the checklist is empty after the last answer, send the
+    // PROPOSALS: array as the final line:
+    'When you have interviewed for a whole bill, end with ONE line: ' +
+    'PROPOSALS: [{"work":"blockwork","units":"metric","qty":10,"unit":"m2","note":"<one short line>"},{"custom":{"label":"<name>","unit":"<unit>","qty":<number>,"rate":<number>,"source":"user"},"units":"metric","note":"<one short line>"}] - ' +
+    'the page shows every line for review, then adds them all at once when the ' +
+    'user clicks Do the takeoff. Ask, do not assume, anything still blank.';
 
   var root = null;
   var els = {};
@@ -252,7 +265,7 @@
     '<p class="bcp-ai-pathq" data-cai="pathq">Populate the calculator so you can export, or generate a file to download?</p>' +
     '<div class="bcp-ai-chip" data-cai="chip"></div>' +
     '<div class="bcp-ai-pathrow">' +
-    '<button type="button" class="btn btn-g btn-s" data-cai="pop">' +
+    '<button type="button" class="btn btn-n btn-s" data-cai="pop">' +
     ico('check-circle') +
     '<span>Populate the calculator</span>' +
     '<span class="bcp-ai-badge">recommended</span>' +
@@ -283,6 +296,12 @@
     ico('check-circle') +
     '<span>Add and download</span>' +
     '</button>' +
+    // Wave 4c: a full takeoff (PROPOSALS: array) gets its own primary action so
+    // the whole bill lands at once, with the breakdown shown above for review.
+    '<button type="button" class="btn btn-o btn-s" data-cai="takeoff" hidden>' +
+    ico('check-circle') +
+    '<span data-cai="takeoff-label">Do the takeoff</span>' +
+    '</button>' +
     '</div>' +
     '</div>' +
     // AI-3: the one question the last reply asked, as BUTTONS - the words of
@@ -300,7 +319,7 @@
     '<label class="sr-only" for="calc-ai-input">Ask about this estimate</label>' +
     '<textarea id="calc-ai-input" class="bcp-ai-input" rows="3" data-cai="input" ' +
     'placeholder="Ask about this estimate..." aria-describedby="calc-ai-status"></textarea>' +
-    '<button type="submit" class="btn btn-g bcp-ai-send" data-cai="send" aria-label="Send question">' +
+    '<button type="submit" class="btn btn-n bcp-ai-send" data-cai="send" aria-label="Send question">' +
     ico('arrow-right') +
     '</button>' +
     '</form>' +
@@ -404,7 +423,7 @@
       els.status.appendChild(span);
     }
     if (withSignIn) {
-      var a = el('a', 'btn btn-g btn-s bcp-ai-signin');
+      var a = el('a', 'btn btn-n btn-s bcp-ai-signin');
       a.href = SIGNIN_URL;
       a.textContent = 'Sign in';
       els.status.appendChild(a);
@@ -736,13 +755,45 @@
     return { text: clean, ask: a };
   }
 
+  // Wave 4c: a full takeoff arrives as PROPOSALS: a JSON array of one line each
+  // (the same shape a single PROPOSAL uses, repeated). The interview loop asks
+  // one ASK: at a time and the model keeps the blanks it still needs on its
+  // CHECKLIST:, so by the time PROPOSALS: appears every line is priced. The
+  // page does the same dry-run guard per line and reports back which lines
+  // landed, which is exactly what the "reviewable breakdown" calls for.
+  function parseProposals(text) {
+    var s = String(text == null ? '' : text);
+    var m = s.match(/(^|\n)\s*PROPOSALS:\s*(\[[\s\S]*\])\s*$/);
+    if (!m) {
+      return { text: s, lines: null };
+    }
+    var arr = null;
+    try {
+      arr = JSON.parse(m[2]);
+    } catch (e) {
+      arr = null;
+    }
+    if (!Array.isArray(arr)) {
+      return { text: s, lines: null };
+    }
+    var clean = s.slice(0, m.index).replace(/\s+$/, '');
+    return { text: clean, lines: arr };
+  }
+
   // One reply can carry both: the ASK line (stripped first, wherever it sits)
   // and the PROPOSAL line (anchored to the end). Parsing ASK before PROPOSAL
   // is what keeps the proposal's end-anchor true when the ASK follows it.
   function parseReply(text) {
     var a = parseAsk(text);
     var p = parseProposal(a.text);
-    return { text: p.text, proposal: p.json, ask: a.ask };
+    var multi = parseProposals(p.text);
+    var proposal = p.json;
+    if (multi.lines) {
+      // A multi-line takeoff wins over a single line when both are present;
+      // the interview produced a whole bill, not one proposal.
+      proposal = { lines: multi.lines };
+    }
+    return { text: multi.text, proposal: proposal, ask: a.ask };
   }
 
   // B5: one chip under the two choices that reads "name - qty unit x cur rate".
@@ -807,7 +858,42 @@
     if (!els.paths) {
       return;
     }
-    els.paths.hidden = !proposal;
+    if (!proposal) {
+      els.paths.hidden = true;
+      clearBreakdown();
+      // An ASK can arrive without a proposal - the interview is asking for one
+      // blank at a time. The question box must still render its buttons.
+      renderAsk();
+      return;
+    }
+    els.paths.hidden = false;
+    var isTakeoff = Array.isArray(proposal.lines);
+    // Wave 4c: a whole takeoff renders its line list for review, and the only
+    // sensible primary is "Do the takeoff". The single-line choices (own rate,
+    // file, both) do not apply to a batch, so they hide.
+    if (els.takeoff) {
+      els.takeoff.hidden = !isTakeoff;
+    }
+    if (els.pop) {
+      els.pop.hidden = isTakeoff;
+    }
+    if (els.myrate) {
+      els.myrate.hidden = true;
+    }
+    if (els.settings) {
+      els.settings.hidden = true;
+    }
+    if (isTakeoff) {
+      renderBreakdown(proposal.lines);
+      if (els.pathq) {
+        els.pathq.textContent = 'Review the takeoff below, then add the whole bill at once.';
+      }
+      if (els.takeoffLabel) {
+        els.takeoffLabel.textContent = 'Do the takeoff (' + proposal.lines.length + ' lines)';
+      }
+      renderAsk();
+      return;
+    }
     // S-6.1: a work proposal has TWO ways to price it - the rate book, or the
     // user's own figure - so the question says both and the second button
     // appears. A custom proposal is already the user's own rate, so it keeps
@@ -829,6 +915,35 @@
     renderProposalChip();
     renderSettingsChip();
     renderAsk();
+  }
+
+  // Wave 4c: the reviewable breakdown the owner asked for - one line per takeoff
+  // entry, built with textContent so a model string can never inject markup.
+  function clearBreakdown() {
+    if (!els.paths) {
+      return;
+    }
+    var old = els.paths.querySelector('.bcp-ai-breakdown');
+    if (old) {
+      old.remove();
+    }
+  }
+  function renderBreakdown(lines) {
+    clearBreakdown();
+    if (!els.paths || !Array.isArray(lines)) {
+      return;
+    }
+    var ul = document.createElement('ul');
+    ul.className = 'bcp-ai-breakdown';
+    lines.slice(0, 60).forEach(function (l) {
+      var li = document.createElement('li');
+      var label = (l.custom && (l.custom.label || l.custom.name)) || l.work || 'line';
+      var qty = l.custom && l.custom.qty != null ? ' ' + l.custom.qty : '';
+      var unit = l.custom && l.custom.unit ? ' ' + l.custom.unit : '';
+      li.textContent = label + qty + unit;
+      ul.appendChild(li);
+    });
+    els.paths.insertBefore(ul, els.paths.firstChild.nextSibling || null);
   }
 
   // AI-3: the question and its options are model text, so every word reaches
@@ -855,7 +970,7 @@
     ask.options.forEach(function (opt, i) {
       var b = document.createElement('button');
       b.type = 'button';
-      b.className = i === 0 ? 'btn btn-g btn-s' : 'btn btn-n btn-s';
+      b.className = i === 0 ? 'btn btn-n btn-s' : 'btn btn-n btn-s';
       b.setAttribute('data-cai', 'askopt');
       b.setAttribute('data-i', String(i));
       b.textContent = opt;
@@ -1103,6 +1218,68 @@
     return false;
   }
 
+  // Wave 4c: apply a whole takeoff at once. Each line reuses the SAME single-line
+  // guard path through MMGR_CALC_POPULATE_MANY, so the page's own dry run, unit
+  // conversion and the 60-line cap all still apply. The report names every line
+  // that landed and every one that did not, so the owner reviews the breakdown
+  // instead of trusting a silent partial bill.
+  function onTakeoff() {
+    if (!proposal || !Array.isArray(proposal.lines) || !proposal.lines.length) {
+      return;
+    }
+    var fn = window.MMGR_CALC_POPULATE_MANY;
+    if (typeof fn !== 'function') {
+      notice('This page cannot add to the bill right now.', 'bad');
+      return;
+    }
+    var out = null;
+    try {
+      out = fn(proposal.lines);
+    } catch (e) {
+      out = { ok: false, added: 0, skipped: proposal.lines.length, report: [] };
+    }
+    if (!out || out.added === 0) {
+      notice(
+        (out && out.error) ||
+          'None of those lines could be added. Check the bill is not full and the figures are greater than zero, then try again.',
+        'bad'
+      );
+      return;
+    }
+    var added = out.added;
+    var skipped = out.skipped || 0;
+    var detail = '';
+    if (Array.isArray(out.report)) {
+      var failed = out.report.filter(function (r) {
+        return !r.ok;
+      });
+      if (failed.length) {
+        detail =
+          ' ' +
+          failed
+            .map(function (r) {
+              return (r.name || 'a line') + (r.error ? ' (' + r.error + ')' : '');
+            })
+            .join('; ');
+      }
+    }
+    notice(
+      'Added ' +
+        added +
+        ' line' +
+        (added === 1 ? '' : 's') +
+        (skipped ? ', ' + skipped + ' skipped' : '') +
+        ' to the bill.' +
+        detail +
+        ' Open the bill of quantities to review or export it.',
+      ''
+    );
+    proposal = null;
+    clearBreakdown();
+    renderPaths();
+    printPointer();
+  }
+
   function onPopulate() {
     if (!proposal) {
       return;
@@ -1265,7 +1442,7 @@
     } catch (e) {
       url = '';
     }
-    var a = el('a', 'btn btn-g btn-s');
+    var a = el('a', 'btn btn-n btn-s');
     a.textContent = 'Download';
     a.setAttribute('download', f.name);
     a.href = url;
@@ -2101,6 +2278,10 @@
       onPopulate();
       return;
     }
+    if (what === 'takeoff') {
+      onTakeoff();
+      return;
+    }
     if (what === 'myrate') {
       onMyRate();
       return;
@@ -2188,6 +2369,9 @@
     els.histempty = root.querySelector('[data-cai=histempty]');
     els.paths = root.querySelector('[data-cai=paths]');
     els.pathq = root.querySelector('[data-cai=pathq]');
+    els.pop = root.querySelector('[data-cai=pop]');
+    els.takeoff = root.querySelector('[data-cai=takeoff]');
+    els.takeoffLabel = root.querySelector('[data-cai=takeoff-label]');
     els.myrate = root.querySelector('[data-cai=myrate]');
     els.settings = root.querySelector('[data-cai=settings]');
     els.askbox = root.querySelector('[data-cai=askbox]');

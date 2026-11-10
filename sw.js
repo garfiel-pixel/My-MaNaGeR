@@ -727,10 +727,13 @@
 // while the NAME stays, and a per-project auto/manual sync choice with a
 // "Close snapshot" row in the backup popover. Wave 3 adds the single-email
 // invite row in the team panel and lets the admin invite form run on the
-// session alone. Changed shell assets:
-// project.html, app.html, admin.html, css/mmgr.css, dist/mmgr.min.css,
-// dist/bundle.js, dist/app-bundle.js, dist/admin-bundle.js.
-const CACHE = 'mmgr-shell-v617';
+// session alone. Wave 4 (2026-11-10) changes project.html, calculator.html,
+// css/mmgr.css, dist/mmgr.min.css, dist/bundle.js (BOQ handoff, calculator
+// chrome, AI interview + bounded actions) and a header-button rim on the
+// landing page. Changed shell assets:
+// project.html, calculator.html, app.html, admin.html, css/mmgr.css,
+// dist/mmgr.min.css, dist/bundle.js, dist/app-bundle.js, dist/admin-bundle.js.
+const CACHE = 'mmgr-shell-v618';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

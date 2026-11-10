@@ -1007,6 +1007,21 @@ body.dark-mode .site-nav a.nav-link[aria-current='page'] {
   transform: translateY(0) scale(0.97);
 }
 
+/* OWNER 2026-11-10 (landing top band): the white outer rim is kept ONLY on the
+   header "Get Started" button. It sits on the white header band, where the rim
+   reads as a clean lift; every other gold button (hero, bands) stays rimless
+   per the Wave L ruling. Scoped so the change cannot leak onto the hero CTA. */
+.site-header .btn-gold,
+.header-cta-desktop .btn-gold {
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+.site-header .btn-gold:hover,
+.header-cta-desktop .btn-gold:hover {
+  border-color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+}
+
 .btn-bullion {
   display: inline-flex;
   align-items: center;

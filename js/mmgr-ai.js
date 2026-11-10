@@ -2704,8 +2704,100 @@ var MMGR = window.MMGR || {};
     }
     th.appendChild(b);
     scrollThread();
+    // Wave 4d: a bot reply may carry an ACTIONS: block - surface its review card.
+    if (role === 'bot' && copyText !== undefined && copyText !== null) {
+      try {
+        surfaceActions(String(copyText));
+      } catch (e) {
+        /* a malformed block must never break the chat */
+      }
+    }
     // S-6.5: a new bubble must not take the caret out of the question box.
     restoreAiFocus();
+  }
+  // Wave 4d: after a bot reply, look for an ACTIONS: block. A bounded set is
+  // shown for review with an Apply button (one click, reversible); a request the
+  // model flagged as complex is refused as an action and answered with steps.
+  function surfaceActions(text) {
+    var A = ns.AiActions;
+    if (!A || typeof A.parseActions !== 'function') {
+      return;
+    }
+    var th = U.$('ai-thread');
+    if (!th) {
+      return;
+    }
+    if (A.isComplex(text)) {
+      var ref = document.createElement('div');
+      ref.className = 'ai-bubble ai-bot ai-actions-refused';
+      var rbody = document.createElement('div');
+      rbody.className = 'ai-bot-body';
+      rbody.textContent =
+        'That is a larger change than I should make for you in one step. Here is how to do it: open the schedule or budget, make the edits record by record, and I can help with each one (for example, "move task 4 to start Monday"). I will not rewrite the whole plan automatically.';
+      ref.appendChild(rbody);
+      th.appendChild(ref);
+      scrollThread();
+      return;
+    }
+    var actions = A.parseActions(text);
+    if (!actions || !actions.length) {
+      return;
+    }
+    var card = document.createElement('div');
+    card.className = 'ai-bubble ai-bot ai-actions-card';
+    var body = document.createElement('div');
+    body.className = 'ai-bot-body';
+    var preview = A.buildPreview(actions);
+    body.appendChild(preview);
+    var row = document.createElement('div');
+    row.className = 'ai-actions-row';
+    var applyBtn = document.createElement('button');
+    applyBtn.type = 'button';
+    applyBtn.className = 'btn btn-o btn-s';
+    applyBtn.textContent = 'Apply these changes';
+    var rejectBtn = document.createElement('button');
+    rejectBtn.type = 'button';
+    rejectBtn.className = 'btn btn-n btn-s';
+    rejectBtn.textContent = 'Dismiss';
+    row.appendChild(applyBtn);
+    row.appendChild(rejectBtn);
+    body.appendChild(row);
+    card.appendChild(body);
+    applyBtn.addEventListener('click', function () {
+      var out = A.apply(actions);
+      renderActionReport(card, out);
+    });
+    rejectBtn.addEventListener('click', function () {
+      card.remove();
+    });
+    th.appendChild(card);
+    scrollThread();
+  }
+  function renderActionReport(card, out) {
+    if (!card) {
+      return;
+    }
+    card.innerHTML = '';
+    var body = document.createElement('div');
+    body.className = 'ai-bot-body';
+    var p = document.createElement('p');
+    p.textContent =
+      out && out.applied
+        ? 'Applied ' + out.applied + ' change' + (out.applied === 1 ? '' : 's') + '.'
+        : 'No changes were applied.';
+    body.appendChild(p);
+    if (out && Array.isArray(out.report)) {
+      var ul = document.createElement('ul');
+      ul.className = 'ai-actions-report';
+      out.report.forEach(function (r) {
+        var li = document.createElement('li');
+        li.textContent =
+          (r.name || '') + ': ' + (r.ok ? 'done' : 'skipped') + (r.detail ? ' - ' + r.detail : '');
+        ul.appendChild(li);
+      });
+      body.appendChild(ul);
+    }
+    card.appendChild(body);
   }
   function botAvatar() {
     return '<div class="ai-bot-avatar"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg></div>';

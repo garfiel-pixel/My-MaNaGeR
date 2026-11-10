@@ -340,6 +340,57 @@ async function buildMcpContext(env, projectId, code) {
   }
 }
 
+// Wave 4d: stronger model for paid tiers. Only the relevant provider gains a
+// step-up, and only from a weaker model, so a free caller cannot request pro and
+// a paid caller is never demoted. Returns the upgraded model id or null.
+const TIER_STEP_UP = {
+  'google-gemini': {
+    // weaker -> stronger, in order
+    'gemini-flash-lite-latest': 'gemini-flash-latest',
+    'gemini-flash-latest': 'gemini-pro-latest',
+    'gemini-2.0-flash-lite': 'gemini-2.0-flash',
+    'gemini-2.0-flash': 'gemini-2.5-pro'
+  }
+};
+async function resolveTierModel(request, env, provider, requested) {
+  try {
+    const ladder = TIER_STEP_UP[provider];
+    if (!ladder) {
+      return null;
+    }
+    // The requested model, if any, is already validated upstream; if it is itself
+    // strong we leave it alone.
+    if (requested && ladder[requested] === undefined && !isStrongGemini(requested)) {
+      // not a known weak model and not already strong - respect caller intent
+      return null;
+    }
+    const session = await readSession(request, env);
+    if (!session || !session.sub) {
+      return null;
+    }
+    const sub = await env.DB.prepare(
+      'SELECT status, tier FROM cloud_subscriptions WHERE owner_sub = ?'
+    )
+      .bind(session.sub)
+      .first();
+    if (!sub || !billingStatusActive(sub.status)) {
+      return null;
+    }
+    const tier = String(sub.tier || '').toLowerCase();
+    if (tier !== 'company' && tier !== 'enterprise') {
+      return null;
+    }
+    const base =
+      requested && ladder[requested] !== undefined ? requested : AI_PROVIDERS[provider].model;
+    return ladder[base] || base;
+  } catch (e) {
+    return null;
+  }
+}
+function isStrongGemini(model) {
+  return /pro|2\.5/.test(String(model || ''));
+}
+
 export async function handleAiChat(request, env) {
   const read = await readJsonBody(request, AI_BODY_LIMIT_BYTES);
   if (read.tooLarge) {
@@ -358,7 +409,15 @@ export async function handleAiChat(request, env) {
   }
   const reqModel =
     typeof body.model === 'string' && GEMINI_MODEL_RE.test(body.model) ? body.model : null;
-  const model = reqModel || AI_PROVIDERS[provider].model;
+  // Wave 4d (owner 2026-11-10): paid tiers get the stronger model. The client
+  // MAY send a model, but the SERVER decides - a free caller cannot pin pro by
+  // asking nicely, and a paid caller is never stuck on the lite rung. We only
+  // ever step UP from a weaker model, never down, so an explicit strong request
+  // is respected.
+  const model =
+    (await resolveTierModel(request, env, provider, reqModel)) ||
+    reqModel ||
+    AI_PROVIDERS[provider].model;
   const key =
     String(request.headers.get('X-User-Api-Key') || '').trim() ||
     (typeof body.apiKey === 'string' ? String(body.apiKey).trim() : '');

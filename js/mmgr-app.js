@@ -769,6 +769,18 @@ var MMGR = window.MMGR || {};
       console.warn('State validation issues:', issues);
     }
 
+    // Wave 4a: a bill sent from the calculator links here with ?boq=1 so the
+    // person lands on the bill they just priced instead of hunting for Budget.
+    // Open the BOQ preview (the same panel From BOQ uses) when a handoff waits.
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('boq') === '1' && ns.BoqBridge && ns.BoqBridge.open) {
+        ns.BoqBridge.open();
+      }
+    } catch (e) {
+      /* no-op: a malformed query must never break boot */
+    }
+
     console.log(
       'My MaNaGeR initialized. Project:',
       ns.projectId,

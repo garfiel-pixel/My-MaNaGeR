@@ -9433,19 +9433,82 @@
     };
   }
 
-  // The projects on this device, from the launcher's own list. A project that
-  // has not been opened on this device cannot be picked, and the note says so.
+  // Wave 4a (owner 2026-11-10): the picker used to read ONLY mmgr_projects, so
+  // a project created in the admin panel (mmgr_admin_projects) or opened only
+  // from the cloud never appeared and "Send to project" had nowhere to go.
+  // Read both device registries, then merge the cloud list when it answers. A
+  // project that has not been opened on this device cannot be picked, and the
+  // note says so.
+  let _cloudSendTargets = [];
+  let _cloudTargetsAsked = false;
+  function localSendTargets() {
+    const out = [];
+    const seen = {};
+    ['mmgr_admin_projects', 'mmgr_projects'].forEach(function (key) {
+      let list = [];
+      try {
+        list = JSON.parse(localStorage.getItem(key) || '[]') || [];
+      } catch (e) {
+        list = [];
+      }
+      if (!Array.isArray(list)) {
+        return;
+      }
+      list.forEach(function (p) {
+        if (!p || !p.id || seen[p.id]) {
+          return;
+        }
+        seen[p.id] = 1;
+        out.push({ id: String(p.id), title: String(p.title || p.id), cloud: false });
+      });
+    });
+    return out;
+  }
+  function sendTargets() {
+    const seen = {};
+    const out = [];
+    localSendTargets().forEach(function (t) {
+      seen[t.id] = 1;
+      out.push(t);
+    });
+    _cloudSendTargets.forEach(function (t) {
+      if (!seen[t.id]) {
+        seen[t.id] = 1;
+        out.push(t);
+      }
+    });
+    return out;
+  }
+  async function refreshCloudSendTargets() {
+    if (_cloudTargetsAsked) {
+      return;
+    }
+    _cloudTargetsAsked = true;
+    try {
+      const res = await fetch('/api/cloud/projects', { credentials: 'same-origin' });
+      const data = await res.json().catch(function () {
+        return {};
+      });
+      const rows = (data && data.projects) || [];
+      _cloudSendTargets = rows
+        .filter(function (p) {
+          return p && p.projectId;
+        })
+        .map(function (p) {
+          return { id: String(p.projectId), title: String(p.label || p.projectId), cloud: true };
+        });
+    } catch (e) {
+      _cloudSendTargets = [];
+    }
+    renderSendTargets();
+  }
   function renderSendTargets() {
     const sel = $('calc-boq-project');
     if (!sel) {
       return;
     }
-    let list = [];
-    try {
-      list = JSON.parse(localStorage.getItem('mmgr_projects') || '[]') || [];
-    } catch (e) {
-      list = [];
-    }
+    refreshCloudSendTargets();
+    const list = sendTargets();
     const keep = sel.value;
     sel.innerHTML = list.length
       ? list
@@ -9455,6 +9518,7 @@
               esc(String(p.id || '')) +
               '">' +
               esc(String(p.title || p.id || 'Project')) +
+              (p.cloud ? ' (cloud)' : '') +
               '</option>'
             );
           })
@@ -12784,7 +12848,9 @@
           '. Open the project, go to Budget, and press From BOQ.';
       }
       if (open) {
-        open.href = 'project.html?id=' + encodeURIComponent(projectId);
+        // Wave 4a: the link carries &boq=1 so the project opens the bill the
+        // person just sent instead of leaving them to find Budget ▸ From BOQ.
+        open.href = 'project.html?id=' + encodeURIComponent(projectId) + '&boq=1';
         open.classList.remove('is-hide');
       }
     },
@@ -16355,6 +16421,71 @@
     }
   }
 
+  /* Wave 4c (owner 2026-11-10): the calculator AI interviews until every blank
+     is answered or skipped, then offers to "do the takeoff" - applying a whole
+     list of lines at once. This is the multi-line companion to calcPopulate:
+     it loops the SAME single-line path (so the B6 guard, unit conversion and
+     the 60-line bill cap all still apply), and reports per line so the panel
+     can show a reviewable breakdown instead of a silent partial bill. The cap
+     is checked up front: if N lines would push past 60, the whole batch is
+     refused with a clear count rather than leaving 40 lines and dropping 20. */
+  function calcPopulateMany(lines) {
+    if (!Array.isArray(lines)) {
+      return { ok: false, error: 'no lines to add', added: 0, skipped: 0, report: [] };
+    }
+    var current = 0;
+    try {
+      if (typeof loadBoq === 'function') {
+        current = (loadBoq() || []).length;
+      }
+    } catch (e) {
+      current = 0;
+    }
+    if (current + lines.length > 60) {
+      return {
+        ok: false,
+        error:
+          'The bill holds ' +
+          current +
+          ' line' +
+          (current === 1 ? '' : 's') +
+          ' and this takeoff adds ' +
+          lines.length +
+          '. The bill caps at 60, so nothing was added. Send fewer lines or clear the bill first.',
+        added: 0,
+        skipped: lines.length,
+        report: lines.map(function (l) {
+          return {
+            ok: false,
+            error: 'bill full',
+            name: (l && ((l.custom && l.custom.label) || l.work)) || ''
+          };
+        })
+      };
+    }
+    var report = [];
+    var added = 0;
+    for (var i = 0; i < lines.length; i++) {
+      var res = calcPopulate(lines[i]);
+      if (res && res.ok) {
+        added++;
+        report.push({ ok: true, name: res.name, total: res.total, currency: res.currency || '' });
+      } else {
+        report.push({
+          ok: false,
+          error: (res && res.error) || 'could not add that line',
+          name: (lines[i] && ((lines[i].custom && lines[i].custom.label) || lines[i].work)) || ''
+        });
+      }
+    }
+    return {
+      ok: added > 0,
+      added: added,
+      skipped: lines.length - added,
+      report: report
+    };
+  }
+
   /* S-6.1 (owner 2026-10-22) - "or would you like to use your own rate?".
      The second of the two options the assistant offers. It moves the page to a
      CUSTOM line carrying the SAME job - name, unit and the quantity the dry
@@ -16841,6 +16972,7 @@
   window.MMGR_CALC_CHECK = calcCheck;
   window.MMGR_CALC_MISSING_SENTENCE = missingSentence;
   window.MMGR_CALC_POPULATE = calcPopulate;
+  window.MMGR_CALC_POPULATE_MANY = calcPopulateMany;
   // The panel hook returns the BUILD (never a download): the chip the user
   // clicks is the only thing that fetches the file. The page's own Export
   // button keeps calling downloadCsv through its action.

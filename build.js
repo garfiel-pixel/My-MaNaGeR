@@ -176,6 +176,9 @@ const APP_MODULES = [
   // AI
   'js/mmgr-ai-key.js',
   'js/mmgr-ai.js',
+  // Wave 4d (owner 2026-11-10): bounded, reviewable AI actions. Loads after
+  // mmgr-ai.js so the assistant can hand it a parsed ACTIONS: block.
+  'js/ai-actions.js',
   // Visual + viewport
   'js/mmgr-viewport.js',
   'js/mmgr-glass.js',

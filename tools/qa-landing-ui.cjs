@@ -702,6 +702,22 @@ async function newPage(browser, opts) {
       !!aud.ring && aud.ring !== 'none',
       aud.ring
     );
+    // OWNER 2026-11-10: the ring must glide between cards, not snap. The reveal's
+    // .rv rule otherwise wipes the transition and leaves border/box-shadow static.
+    const audTrans = await p3.evaluate(() => {
+      const it = document.querySelector('.aud-item.is-live');
+      if (!it) {
+        return null;
+      }
+      const cs = getComputedStyle(it);
+      return cs.transitionProperty + ' | ' + cs.transitionDuration;
+    });
+    check(
+      'L-07',
+      'the audience ring cross-fades (border/box-shadow transition present)',
+      !!audTrans && /border-color|box-shadow/.test(audTrans) && /[0-9.]+\s*s/.test(audTrans),
+      audTrans
+    );
 
     await p3.evaluate(() => document.getElementById('features').scrollIntoView());
     const bento = await p3.evaluate(async () => {

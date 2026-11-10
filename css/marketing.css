@@ -2271,11 +2271,27 @@ body.dark-mode .nav-dd-col.is-platform {
 .aud-item.is-live .aud-art {
   opacity: 0.2;
 }
+/* OWNER 2026-11-10: the ring must GLIDE from one card to the next, not snap.
+   The reveal's .rv rule sets transition: opacity, transform only, which wipes
+   the .aud-item transition and leaves border-color/box-shadow (the ring)
+   without a transition. This rule outranks .rv, so the ring eases in both
+   directions while the entrance reveal keeps its 0.5s glide. */
+.aud-item.rv-in {
+  transition:
+    transform 0.5s var(--ease-out),
+    opacity 0.5s var(--ease-out),
+    border-color 0.45s var(--ease-out),
+    box-shadow 0.45s var(--ease-out);
+}
 .aud-item .ico {
   width: 28px;
   height: 28px;
   color: var(--gold-deep);
   margin: 0 auto 10px;
+  transition: color var(--tr);
+}
+.aud-item .aud-art {
+  transition: opacity var(--tr);
 }
 .aud-item b {
   display: block;

@@ -1385,6 +1385,57 @@ jobs:
         id: qa-landing-ui
         run: node tools/qa-landing-ui.cjs
 
+      # WAVE 1 CARD PARITY (owner 2026-11-10): a project card must look and
+      # open the same way whether it is local, a demo or a cloud project - one
+      # gold top band, one status dot and label, and the whole card as the open
+      # target (no separate Load button). The cloud list is served from a route
+      # fixture, so no Worker or D1 is involved; admin.html?new=1 is driven in
+      # the same gate to prove a project can be born in the cloud.
+      - name: "T4: Card parity (qa-card-parity)"
+        id: qa-card-parity
+        run: node tools/qa-card-parity.cjs
+
+      # WAVE 2 CLOUD IDENTITY (owner 2026-11-10): the header status chip writes
+      # state.status and mirrors it into the launcher registry; manual sync
+      # reveals the Close snapshot row; a taken cloud id is retried with -2
+      # while the project NAME never changes; an id that is already mine is
+      # never suffixed. Route fixtures only - the server contract lives in
+      # qa-tenant-isolation I22-I29.
+      - name: "T4: Cloud identity (qa-cloud-identity)"
+        id: qa-cloud-identity
+        run: node tools/qa-cloud-identity.cjs
+
+      # WAVE 3 TEAM INVITE (owner 2026-11-10): the owner reported no way to
+      # invite on an enterprise plan. Spawns its own wrangler dev: the owner
+      # invites with the SESSION only (no owner code), the guest accepts, loads
+      # the project, is revoked, and is then refused and dropped from
+      # "Shared with me".
+      - name: "T2: Team invite (qa-team-invite)"
+        id: qa-team-invite
+        run: node tools/qa-team-invite.cjs
+
+      # WAVE 4d BOUNDED AI ACTIONS (owner 2026-11-10): the project assistant may
+      # make single-record, reversible changes after review, and must refuse a
+      # complex re-plan as an action. This gate pins parse/validate/preview/apply/
+      # undo plus the no-injection rule.
+      - name: "T4: AI actions (qa-ai-actions)"
+        id: qa-ai-actions
+        run: node tools/qa-ai-actions.cjs
+
+      # WAVE 5 SKELETONS (owner 2026-11-10): every loading state mirrors the
+      # shape it will reveal, and the boot splash no longer draws the off-canvas
+      # rail. One shape assertion per section plus the mobile collapse.
+      - name: "T4: Skeletons (qa-skeletons)"
+        id: qa-skeletons
+        run: node tools/qa-skeletons.cjs
+
+      # WAVE 6 SIGN-IN LAYOUT (owner 2026-11-10): two columns, the card + links
+      # on the left, the six-letter MMGRWP mark on the right with per-letter
+      # hover, and a mobile stack with wrapping links.
+      - name: "T4: Sign-in layout (qa-signin-layout)"
+        id: qa-signin-layout
+        run: node tools/qa-signin-layout.cjs
+
       # I-1 CLIENT regression (forged-cookie Playwright): boots its OWN local
       # wrangler dev with a forged Google session and drives the real app.html to
       # prove the owner code persists to localStorage and the signed-in account

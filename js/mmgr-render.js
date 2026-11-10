@@ -1628,6 +1628,76 @@ var MMGR = window.MMGR || {};
   //      softened copy: autosave already keeps changes safe in this browser;
   //      a file backup is optional, save one whenever you're ready.
   //   3. Not linked + file-backed-up -> indicator hidden (clean).
+  // ---- Project status chip (Wave 2, owner 2026-11-10) ---------------------
+  // state.status is the workspace truth. The launcher card reads the registry
+  // record, so this render mirrors the value into mmgr_admin_projects /
+  // mmgr_projects whenever they disagree - state wins, exactly as a cloud
+  // snapshot arriving with a different status must win over a stale row.
+  const PROJ_STATUS_LABELS = {
+    active: 'Active',
+    planning: 'Planning',
+    'on-hold': 'On hold',
+    completed: 'Completed'
+  };
+  const PROJ_STATUS_DOTS = { active: 'g', planning: 'b', 'on-hold': 'a', completed: 'g' };
+
+  function mirrorStatusToRegistry(status) {
+    const localId = ns.projectId || 'default';
+    ['mmgr_admin_projects', 'mmgr_projects'].forEach(function (key) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) {
+          return;
+        }
+        const list = JSON.parse(raw);
+        if (!Array.isArray(list)) {
+          return;
+        }
+        let changed = false;
+        list.forEach(function (p) {
+          if (p && p.id === localId && p.status !== status) {
+            p.status = status;
+            changed = true;
+          }
+        });
+        if (changed) {
+          localStorage.setItem(key, JSON.stringify(list));
+        }
+      } catch (e) {
+        /* a malformed registry is the admin panel's to repair */
+      }
+    });
+  }
+
+  function renderStatusChip() {
+    const chip = $('status-chip');
+    if (!chip) {
+      return;
+    }
+    const s = S();
+    const st = (s && s.status) || 'active';
+    const known = PROJ_STATUS_LABELS[st] ? st : 'active';
+    const lbl = $('status-chip-lbl');
+    if (lbl) {
+      lbl.textContent = PROJ_STATUS_LABELS[known];
+    }
+    const dot = $('status-chip-dot');
+    if (dot) {
+      dot.className = 'sdot ' + PROJ_STATUS_DOTS[known];
+    }
+    chip.setAttribute(
+      'title',
+      'Project status: ' + PROJ_STATUS_LABELS[known] + '. Click to change it.'
+    );
+    const pop = $('status-pop');
+    if (pop) {
+      pop.querySelectorAll('[data-status]').forEach(function (b) {
+        b.setAttribute('aria-checked', b.getAttribute('data-status') === known ? 'true' : 'false');
+      });
+    }
+    mirrorStatusToRegistry(known);
+  }
+
   function renderDirtyIndicator() {
     const ind = $('dirty-ind');
     if (!ind) {
@@ -1661,7 +1731,33 @@ var MMGR = window.MMGR || {};
       bkSi.hidden = linked || signedIn;
     }
     let backedUp = false;
-    if (linked) {
+    // Wave 2 (owner 2026-11-10): a MANUAL project is linked but deliberately
+    // not live - the chip must not claim "Synced to cloud" while changes sit
+    // unpublished on this device. The snapshot row in the popover publishes
+    // them on demand.
+    const manualSync = !!(linked && C.getSyncMode && C.getSyncMode() === 'manual');
+    const lastSeen = C && C._lastSeen ? String(C._lastSeen() || '') : '';
+    const waiting = !!(manualSync && s.updatedAt && (!lastSeen || s.updatedAt > lastSeen));
+    const snapRow = $('bk-snapshot');
+    if (snapRow) {
+      snapRow.hidden = !manualSync;
+      const hint = $('bk-snapshot-hint');
+      if (hint) {
+        hint.textContent = waiting
+          ? 'Manual: changes are waiting on this device. Closing the snapshot publishes them.'
+          : 'Manual: the cloud copy updates only when you close a snapshot.';
+      }
+    }
+    if (linked && manualSync) {
+      ind.classList.add('on', 'ci-cloud');
+      ind.innerHTML = waiting ? 'Changes waiting' : 'Manual sync';
+      ind.setAttribute(
+        'title',
+        waiting
+          ? 'Manual cloud sync: the changes you made here are not published yet. Click to close a snapshot.'
+          : 'Manual cloud sync: nothing is published until you close a snapshot. Click for backup options.'
+      );
+    } else if (linked) {
       // B3 (owner 2026-09-17): dot + word, no icon - the CSS ::before draws
       // the green dot (same .sdot convention as the dashboard stats).
       // OWNER 2026-09-19 (two-way sync): the link is a live SYNC, not a one
@@ -1705,7 +1801,9 @@ var MMGR = window.MMGR || {};
     const foot = $('bk-foot');
     if (foot) {
       foot.textContent = linked
-        ? 'Synced with the cloud copy: edits here and edits saved elsewhere reconcile automatically. A .json file copy is optional.'
+        ? manualSync
+          ? 'Manual cloud sync: changes stay on this device until you close a snapshot. A .json file copy is optional.'
+          : 'Synced with the cloud copy: edits here and edits saved elsewhere reconcile automatically. A .json file copy is optional.'
         : backedUp && s.lastBackedUpAt
           ? 'Last file backup: ' +
             new Date(s.lastBackedUpAt).toLocaleDateString(undefined, {
@@ -3635,6 +3733,7 @@ var MMGR = window.MMGR || {};
     renderGreeting();
     renderMethodology();
     renderLock();
+    renderStatusChip();
     renderDash();
     renderTimelineIndicator();
     renderDirtyIndicator();
@@ -4229,6 +4328,7 @@ var MMGR = window.MMGR || {};
     renderLock: renderLock,
     renderTimelineIndicator: renderTimelineIndicator,
     renderDirtyIndicator: renderDirtyIndicator,
+    renderStatusChip: renderStatusChip,
     computeAgingActions: computeAgingActions,
     renderActionAging: renderActionAging,
     renderStreak: renderStreak,

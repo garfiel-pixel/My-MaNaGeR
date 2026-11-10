@@ -431,7 +431,16 @@ function annotateFailure() {
       // the session codes). Then REMOVE #cloud-status: every C4 message must
       // therefore arrive via the missing-node toast fallback - one probe
       // asserts both the message contract AND the fallback at once.
-      sessionStorage.setItem('mmgr_cloud_code_qa-edit', 'AAAA-BBBB-CCCC-DDDD');
+      // I-1 migration (2026-11-08): the owner code now lives in localStorage
+      // (getCode reads localStorage, not sessionStorage). The cloud module also
+      // maps the page id (the ?id= query) to a resolved cloud id via
+      // localStorage['mmgr_cloud_id_<pageId>'], so the code slot getCode reads
+      // is keyed by THAT resolved pid, not the raw ?id. Seed it for whichever
+      // pid the module will actually resolve.
+      try { sessionStorage.removeItem('mmgr_cloud_code_qa-edit'); } catch (e) {}
+      var _pageId = 'qa-edit';
+      var _pid = localStorage.getItem('mmgr_cloud_id_' + _pageId) || _pageId;
+      localStorage.setItem('mmgr_cloud_code_' + _pid, 'AAAA-BBBB-CCCC-DDDD');
       try { const n = document.getElementById('cloud-status'); if (n) n.remove(); } catch (e) {}
       window.MMGR.App.showToast = function(msg, kind){ toasts.push({ msg: String(msg), kind: String(kind || '') }); };
       const ok = (body, status) => Promise.resolve(new Response(JSON.stringify(body), { status: status || 200, headers: { 'Content-Type': 'application/json' } }));

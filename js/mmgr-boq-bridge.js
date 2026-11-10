@@ -572,6 +572,31 @@ var MMGR = window.MMGR || {};
         : '<span class="bl-m">No variations</span>');
   }
 
+  // Wave 4a (owner 2026-11-10): a bill sent from the calculator used to be
+  // invisible until the person found Budget and pressed From BOQ. This chip
+  // says one is waiting, and disappears once the budget already matches it.
+  function renderWaitChip() {
+    const el = document.getElementById('boq-wait');
+    if (!el) {
+      return;
+    }
+    const payload = handoffFor(ns.projectId || pid());
+    let waiting = false;
+    let count = 0;
+    if (payload) {
+      count = (payload.lines || []).length;
+      try {
+        waiting = !planFor(payload).same;
+      } catch (e) {
+        waiting = true;
+      }
+    }
+    el.hidden = !waiting;
+    if (waiting) {
+      el.textContent = '1 bill waiting: ' + count + ' line' + (count === 1 ? '' : 's');
+    }
+  }
+
   ns.BoqBridge = {
     readHandoff: handoffFor,
     planFor: planFor,
@@ -579,7 +604,8 @@ var MMGR = window.MMGR || {};
     open: open,
     close: close,
     applyOpen: applyOpen,
-    renderBaselineStrip: renderBaselineStrip
+    renderBaselineStrip: renderBaselineStrip,
+    renderWaitChip: renderWaitChip
   };
 })(MMGR);
 window.MMGR = MMGR;

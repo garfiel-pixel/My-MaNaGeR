@@ -160,6 +160,10 @@ const seedTasks = () => ({
   await page.goto(BASE + '/app.html', { waitUntil: 'domcontentloaded' });
   await page.evaluate(id => {
     localStorage.setItem('mmgr_admin_projects', JSON.stringify([{ id: id }]));
+    // This suite drives the WBS custom-field sheet. The first-run tour
+    // auto-opens on a clean profile and re-scrolls the page to its current
+    // target while it settles, which moves the layout under a forced click.
+    localStorage.setItem('mmgr_first_project_tour_v1', '1');
   }, PID);
   await page.goto(url, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => !!(window.MMGR && window.MMGR.State), null, { timeout: 15000 });

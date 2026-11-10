@@ -104,6 +104,11 @@
 
   let idx = -1;
   let plan = [];
+  // OWNER 2026-11-10 made the rail collapsed by default, so the four section
+  // steps lost their targets and a first-run walk silently skipped them. The
+  // tour is the introduction to that rail, so it pins the rail open for the
+  // walk and puts it back when the walk ends.
+  let _railOpenedByTour = false;
   let root = null;
   let card = null;
   let ring = null;
@@ -493,6 +498,42 @@
   // hidden by a pack, the phone drawer parked off-canvas) is SKIPPED, so the
   // walk only ever rings something real. The plan is built when the tour
   // opens; the count then matches what will actually be shown.
+  function openRailForTour() {
+    if (window.innerWidth <= 768) {
+      return;
+    }
+    if (document.body.classList.contains('sidebar-open')) {
+      return;
+    }
+    const S = window.MMGR && window.MMGR.AppSidebar;
+    if (!S || typeof S.setSidebarOpen !== 'function') {
+      return;
+    }
+    // tour-open keeps the hover-peek from collapsing the rail while the
+    // pointer sits on the card instead of the rail. tour-rail-instant makes
+    // the rail land in this frame: the walk is planned immediately after, and
+    // a sliding rail would still be off-canvas when the plan is built.
+    document.body.classList.add('tour-open', 'tour-rail-instant');
+    S.setSidebarOpen(true);
+    void document.body.offsetWidth;
+    requestAnimationFrame(function () {
+      document.body.classList.remove('tour-rail-instant');
+    });
+    _railOpenedByTour = true;
+  }
+
+  function closeRailAfterTour() {
+    if (!_railOpenedByTour) {
+      return;
+    }
+    _railOpenedByTour = false;
+    document.body.classList.remove('tour-open');
+    const S = window.MMGR && window.MMGR.AppSidebar;
+    if (S && typeof S.setSidebarOpen === 'function') {
+      S.setSidebarOpen(false);
+    }
+  }
+
   function buildPlan() {
     plan = STEPS.filter(function (s) {
       return !s.sel || !!pick(s.sel);
@@ -504,6 +545,7 @@
       return;
     }
     prevFocus = document.activeElement;
+    openRailForTour();
     build();
     buildPlan();
     idx = 0;
@@ -566,6 +608,7 @@
     }
     idx = -1;
     plan = [];
+    closeRailAfterTour();
     if (placeTimer) {
       clearTimeout(placeTimer);
       placeTimer = null;

@@ -21,10 +21,24 @@ var MMGR = window.MMGR || {};
   let _cloudAutoTimer = null;
   const CLOUD_AUTO_IDLE_MS = 25000;
 
+  // Wave 2 (owner 2026-11-10): a session-owner project holds NO local code -
+  // the Google session is the credential. The old check looked only at codes,
+  // so a cloud project opened from the launcher (signed in, no code) never
+  // scheduled a background push and "should naturally update" was false.
+  // activeCredential() answers for every credential shape the save path uses.
   function cloudLinked() {
     const C = window.MMGR.Cloud;
     if (!C) {
       return false;
+    }
+    if (C.activeCredential) {
+      try {
+        if (C.activeCredential()) {
+          return true;
+        }
+      } catch (e) {
+        /* fall through to the code checks */
+      }
     }
     if (C.getCode && C.getCode()) {
       return true;
@@ -36,9 +50,30 @@ var MMGR = window.MMGR || {};
   }
 
   function scheduleCloudAutoSave() {
-    if (!cloudLinked()) {
+    if (cloudLinked()) {
+      armCloudAutoSave();
       return;
     }
+    // The session probe has not settled yet (first seconds of a boot). Ask
+    // the module to settle it once, then arm only if the project really is
+    // linked - an unlinked project must not start a probe on every edit.
+    const C = window.MMGR.Cloud;
+    if (!C || !C.ensureLinked) {
+      return;
+    }
+    Promise.resolve(C.ensureLinked()).then(
+      function (ok) {
+        if (ok) {
+          armCloudAutoSave();
+        }
+      },
+      function () {
+        /* offline - nothing to schedule */
+      }
+    );
+  }
+
+  function armCloudAutoSave() {
     if (_cloudAutoTimer) {
       clearTimeout(_cloudAutoTimer);
     }
@@ -112,6 +147,18 @@ var MMGR = window.MMGR || {};
       return;
     }
     const C = window.MMGR.Cloud;
+    // Wave 2: say which contract this project is on before anything else.
+    const hasCred = !!(
+      C &&
+      ((C.getCode && C.getCode()) ||
+        (C.getECode && C.getECode()) ||
+        (C._isSessionOwner && C._isSessionOwner()))
+    );
+    if (hasCred && C.getSyncMode && C.getSyncMode() === 'manual') {
+      el.textContent =
+        'Manual cloud sync , changes stay on this device until you close a snapshot.';
+      return;
+    }
     el.textContent =
       C && C.getCode && C.getCode()
         ? 'Cloud-backed project , snapshots auto-sync to the cloud as you work.'
@@ -130,6 +177,12 @@ var MMGR = window.MMGR || {};
       }
     } else if (C && C.getECode && C.getECode()) {
       // Editor code held , save flows through the owner-review path.
+      if (C.saveToCloud) {
+        C.saveToCloud();
+      }
+    } else if (C && C._isSessionOwner && C._isSessionOwner()) {
+      // Wave 2: a signed-in account owner holds no code; the session is the
+      // credential, so this is a normal save - not a create.
       if (C.saveToCloud) {
         C.saveToCloud();
       }
@@ -212,6 +265,29 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // Wave 2 (owner 2026-11-10): a MANUAL project publishes only on demand.
+  // The popover row is hidden unless this project's sync mode is manual (see
+  // Render.renderDirtyIndicator); this is the click that pushes the waiting
+  // snapshot. `force` bypasses autoSaveToCloud's own manual guard.
+  function bkCloseSnapshot() {
+    const C = window.MMGR.Cloud;
+    bkClose();
+    if (!C || !C.autoSaveToCloud) {
+      return;
+    }
+    Promise.resolve(C.autoSaveToCloud({ force: true })).then(
+      function (ok) {
+        _toast(
+          ok ? 'Snapshot closed. The cloud copy is up to date.' : 'Could not publish the snapshot.',
+          ok ? 'ok' : 'error'
+        );
+      },
+      function () {
+        _toast('Could not publish the snapshot.', 'error');
+      }
+    );
+  }
+
   ns.AppBackup = {
     cloudLinked: cloudLinked,
     scheduleCloudAutoSave: scheduleCloudAutoSave,
@@ -219,7 +295,8 @@ var MMGR = window.MMGR || {};
     bkToggle: bkToggle,
     bkClose: bkClose,
     bkSyncHint: bkSyncHint,
-    bkCloud: bkCloud
+    bkCloud: bkCloud,
+    bkCloseSnapshot: bkCloseSnapshot
   };
 })(MMGR);
 window.MMGR = MMGR;

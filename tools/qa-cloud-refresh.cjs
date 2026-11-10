@@ -96,7 +96,12 @@ const SNAP = () => {
   const list = document.getElementById('cloud-dash-list');
   const dash = document.getElementById('cloud-dash');
   const rail = document.getElementById('rail-cloud-list');
-  const names = list ? [...list.querySelectorAll('.cd-title')].map(n => n.textContent.trim()) : [];
+  // Wave 1 (2026-11-10): the cloud card now uses the shared .pcard head, so
+  // the name lives in .pc-title. .cd-title is kept in the selector because the
+  // rail's recent rows still use it.
+  const names = list
+    ? [...list.querySelectorAll('.pc-title, .cd-title')].map(n => n.textContent.trim())
+    : [];
   return {
     cards: names,
     dashHidden: !dash || dash.hidden,
@@ -185,7 +190,7 @@ const SNAP = () => {
     await page.waitForFunction(
       () => {
         const l = document.getElementById('cloud-dash-list');
-        return l && l.querySelectorAll('.cd-title').length > 0;
+        return l && l.querySelectorAll('.pc-title, .cd-title').length > 0;
       },
       null,
       { timeout: 20000 }

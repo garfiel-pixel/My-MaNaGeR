@@ -23,6 +23,10 @@
 *.css   text eol=lf
 *.svg   text eol=lf
 *.txt   text eol=lf
+# 2026-11-10: types/mmgr-globals.d.ts is checked by the Prettier gate; with
+# core.autocrlf=true a checkout wrote CRLF and the gate failed on an unmodified
+# file. Same root cause as the rules above.
+*.ts    text eol=lf
 .nvmrc text eol=lf
 .assetsignore text eol=lf
 *.sh    text eol=lf

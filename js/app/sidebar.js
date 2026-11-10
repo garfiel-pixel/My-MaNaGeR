@@ -15,9 +15,12 @@ var MMGR = window.MMGR || {};
   let _sidebarUserTouched = false;
   // I-14 (owner 2026-11-08): when the hamburger pins the rail fully open the
   // hover-to-peek behaviour must NOT auto-collapse it. Tracks that explicit
-  // pin; hover/focus only open/close while this is false.
-  let _userPinned = false;
+  // pin; hover/focus only open/close while this is false. OWNER 2026-11-10:
+  // the pin is restored from the stored pref on boot, so a pinned rail stays
+  // pinned instead of collapsing on the first pointerleave.
+  let _userPinned = readDevicePref(SIDEBAR_KEY) === 'on';
   let _wired = false;
+  let _peekTimer = null;
 
   function readDevicePref(key) {
     try {
@@ -77,9 +80,19 @@ var MMGR = window.MMGR || {};
     pushSidebarBackend(on);
   }
 
-  // I-14 (owner 2026-11-08): hover / keyboard focus peeks the collapsed icon
-  // rail open; leaving collapses it back. Desktop + fine pointer only - touch
+  // I-14 (owner 2026-11-08): hover / keyboard focus peeks the collapsed rail
+  // open; leaving collapses it back. Desktop + fine pointer only - touch
   // and mobile keep the tap/hamburger drawer pattern untouched.
+  // OWNER 2026-11-10: the rail is now fully off-canvas when collapsed, so the
+  // hover target is the transparent 12px .sb-peek edge zone, not a 56px icon
+  // strip. A 120ms grace lets the pointer cross the gap between the zone and
+  // the sliding rail without flicker.
+  function clearPeekTimer() {
+    if (_peekTimer) {
+      clearTimeout(_peekTimer);
+      _peekTimer = null;
+    }
+  }
   function wireInteractions() {
     if (_wired) {
       return;
@@ -94,23 +107,54 @@ var MMGR = window.MMGR || {};
     if (!desktop || !desktop.matches) {
       return;
     }
+    const zone = document.querySelector('.sb-peek');
+    // The first-project tour pins the rail open for its section cards; the
+    // pointer then rests on the tour card, not the rail, so the peek's
+    // pointerleave must not collapse it mid-walk.
+    const tourHoldsRail = function () {
+      return document.body.classList.contains('tour-open');
+    };
     const openPeek = function () {
-      if (!_userPinned) {
-        setSidebarOpen(true);
+      if (_userPinned || tourHoldsRail()) {
+        return;
       }
+      clearPeekTimer();
+      setSidebarOpen(true);
     };
-    const closePeek = function () {
-      if (!_userPinned) {
-        setSidebarOpen(false);
+    const closePeekSoon = function () {
+      if (_userPinned || tourHoldsRail()) {
+        return;
       }
+      clearPeekTimer();
+      _peekTimer = setTimeout(function () {
+        _peekTimer = null;
+        if (!_userPinned) {
+          setSidebarOpen(false);
+        }
+      }, 120);
     };
-    sb.addEventListener('mouseenter', openPeek);
-    sb.addEventListener('mouseleave', closePeek);
+    if (zone) {
+      zone.addEventListener('pointerenter', openPeek);
+      zone.addEventListener('pointerleave', closePeekSoon);
+    }
+    sb.addEventListener('pointerenter', openPeek);
+    sb.addEventListener('pointerleave', closePeekSoon);
     sb.addEventListener('focusin', openPeek);
     sb.addEventListener('focusout', function (e) {
       if (!_userPinned && !(e.relatedTarget && sb.contains(e.relatedTarget))) {
         setSidebarOpen(false);
       }
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') {
+        return;
+      }
+      if (!document.body.classList.contains('sidebar-open')) {
+        return;
+      }
+      _userPinned = false;
+      clearPeekTimer();
+      setSidebarOpen(false);
     });
   }
 
@@ -161,6 +205,7 @@ var MMGR = window.MMGR || {};
             return;
           }
           writeDevicePref(SIDEBAR_KEY, v);
+          _userPinned = v === 'on';
           document.body.classList.toggle('sidebar-open', v === 'on');
           syncSidebarChrome();
         })
@@ -207,6 +252,11 @@ var MMGR = window.MMGR || {};
       }
     });
     mo.observe(nav, { subtree: true, attributes: true, attributeFilter: ['class'] });
+    // OWNER 2026-11-10: restore the pinned choice on boot. The rail no longer
+    // opens itself; only a stored 'on' pins it.
+    if (_userPinned) {
+      document.body.classList.add('sidebar-open');
+    }
     wireInteractions();
   }
 

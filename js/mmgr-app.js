@@ -509,14 +509,9 @@ var MMGR = window.MMGR || {};
     // gates land on both navs together; then boot the rail open and install
     // the drawer/sidebar dismiss bindings.
     buildSidebar();
-    // OWNER 2026-08-15: the sidebar IS the view on desktop , boot the pinned
-    // rail OPEN (body.sidebar-open). Mobile keeps the off-canvas drawer
-    // (sidebar-open is never set there, so the scrim can't flash at boot).
-    // B7 (2026-11-01) is the LAUNCHER's one-shot rail-nudge (app.html inline),
-    // not this workspace rail; the workspace intentionally boots open.
-    if (window.innerWidth > 768) {
-      document.body.classList.add('sidebar-open');
-    }
+    // OWNER 2026-11-10: the rail no longer boots pinned open. buildSidebar()
+    // restores a pinned choice from mmgr_sidebar; otherwise the rail stays
+    // off-canvas until the pointer reaches the left edge or the hamburger.
     syncSidebarChrome();
     bindNavDismiss();
 
@@ -772,6 +767,18 @@ var MMGR = window.MMGR || {};
     const issues = ns.State.validate();
     if (issues.length > 0) {
       console.warn('State validation issues:', issues);
+    }
+
+    // Wave 4a: a bill sent from the calculator links here with ?boq=1 so the
+    // person lands on the bill they just priced instead of hunting for Budget.
+    // Open the BOQ preview (the same panel From BOQ uses) when a handoff waits.
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('boq') === '1' && ns.BoqBridge && ns.BoqBridge.open) {
+        ns.BoqBridge.open();
+      }
+    } catch (e) {
+      /* no-op: a malformed query must never break boot */
     }
 
     console.log(
@@ -4570,6 +4577,22 @@ var MMGR = window.MMGR || {};
       ns.AppBackup.bkCloud();
     }
   }
+  // Wave 2: publish a MANUAL project's waiting changes on demand.
+  function bkCloseSnapshot() {
+    if (ns.AppBackup) {
+      ns.AppBackup.bkCloseSnapshot();
+    }
+  }
+  // ---- Wave 5: skeletons ---- (extracted to js/app/skeleton.js)
+  function skeletonHtml(section) {
+    return ns.Skeleton && ns.Skeleton.html ? ns.Skeleton.html(section) : '';
+  }
+  function skeletonPaint(section, target) {
+    return ns.Skeleton && ns.Skeleton.paint ? ns.Skeleton.paint(section, target) : function () {};
+  }
+  function skeletonSections() {
+    return ns.Skeleton && ns.Skeleton.sections ? ns.Skeleton.sections : [];
+  }
 
   function openDrwToPrompts(type) {
     swDtab('prompt', null);
@@ -4578,6 +4601,35 @@ var MMGR = window.MMGR || {};
 
   function jumpToDashTimeline() {
     showSec('dash', document.querySelector('.sec-btn'));
+  }
+
+  // Wave 2 (owner 2026-11-10): the header status chip writes state.status.
+  // The cloud card and the launcher card read the same value, so this is the
+  // one control that gives a cloud-only project a lifecycle state at all.
+  function setProjStatus(el) {
+    const st = el && el.getAttribute ? String(el.getAttribute('data-status') || '') : '';
+    if (['active', 'planning', 'on-hold', 'completed'].indexOf(st) === -1) {
+      return;
+    }
+    if (!ns.State || !ns.State.updateState) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      s.status = st;
+    });
+    const pop = document.getElementById('status-pop');
+    if (pop && pop.hidePopover) {
+      try {
+        pop.hidePopover();
+      } catch (e) {
+        /* already closed */
+      }
+    }
+    if (ns.Render && ns.Render.renderStatusChip) {
+      ns.Render.renderStatusChip();
+    }
+    const label = st === 'on-hold' ? 'On hold' : st.charAt(0).toUpperCase() + st.slice(1);
+    showToast('Project status: ' + label + '.', 'ok');
   }
 
   // ---- Export & File I/O ---- (extracted to js/app/export.js)
@@ -6039,6 +6091,11 @@ var MMGR = window.MMGR || {};
     bkToggle: bkToggle,
     bkClose: bkClose,
     bkCloud: bkCloud,
+    bkCloseSnapshot: bkCloseSnapshot,
+    skeletonHtml: skeletonHtml,
+    skeletonPaint: skeletonPaint,
+    skeletonSections: skeletonSections,
+    setProjStatus: setProjStatus,
     jumpToDashTimeline: jumpToDashTimeline,
     openOM: openOM,
     closeOM: closeOM,
@@ -7305,6 +7362,8 @@ window.MMGR = MMGR;
     openDrwToPrompts: el => window.MMGR.App.openDrwToPrompts(el.getAttribute('data-type')),
     bkToggle: () => window.MMGR.App.bkToggle(),
     bkCloud: () => window.MMGR.App.bkCloud(),
+    bkCloseSnapshot: () => window.MMGR.App.bkCloseSnapshot(),
+    setProjStatus: el => window.MMGR.App.setProjStatus(el),
     // PART F T9 (no-offline-copy): export/download are refused while a cloud
     // share code is held , the recipient must not leave with the project file.
     saveProjectFile: () => {

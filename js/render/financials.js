@@ -391,6 +391,11 @@ var MMGR = window.MMGR || {};
       ns.Weekly.render();
     }
     renderPayApps();
+    // Wave 4a: a bill sent from the calculator is waiting until the person
+    // applies it. Keep the waiting chip honest whenever the budget repaints.
+    if (ns.BoqBridge && ns.BoqBridge.renderWaitChip) {
+      ns.BoqBridge.renderWaitChip();
+    }
   }
 
   function renderPayApps() {

@@ -702,7 +702,39 @@
 // BOQ, Record a delivery, Weekly tracking, MCP budget permissions and the
 // Approval preview, with the closing sheet count and footer links updated.
 // Changed shell assets: mymanager-field-guide.html.
-const CACHE = 'mmgr-shell-v613';
+// v614 - OWNER 2026-11-10: the in-project rail is fully off-canvas when
+// collapsed (no 56px icon strip, no 56px gutter); a transparent 12px edge
+// zone opens it on hover and the hamburger pins it. Changed shell assets:
+// project.html, css/mmgr.css, dist/mmgr.min.css, dist/bundle.js.
+// v615 - OWNER 2026-11-10 (landing motion pass): the reveal system finally has
+// an easing curve (--ease-out was never declared, so every .rv transition was
+// invalid and the page snapped), the why/who cards got their missing border and
+// muted-copy tokens, the lifecycle rail lights one phase at a time, the audience
+// cards take turns, bento cards push forward on arrival, the gold CTA lost its
+// white sticker rim, and the launcher icon strip sits at half strength.
+// Changed shell assets: index.html, app.html, css/marketing.css,
+// dist/marketing.min.css, dist/marketing-bundle.js.
+// v616 - OWNER 2026-11-10 (Wave 1, one card language): every project card
+// carries the gold top band (local, demo, cloud), the cloud card is a .pcard
+// with a status dot and the whole card as its open target (the Load button is
+// gone), its 3-dot menu is always reachable, and the New Project door opens the
+// create modal with a This device / Cloud choice that links and pushes in one
+// save. Changed shell assets: app.html, admin.html, css/mmgr.css,
+// dist/mmgr.min.css, dist/app-bundle.js, dist/admin-bundle.js.
+// v617 - OWNER 2026-11-10 (Wave 2, cloud lifecycle): a project carries a
+// lifecycle status (state.status, schema v31) with a header chip, the cloud
+// card and launcher card read it, cloud creates retry a taken id with -2..-6
+// while the NAME stays, and a per-project auto/manual sync choice with a
+// "Close snapshot" row in the backup popover. Wave 3 adds the single-email
+// invite row in the team panel and lets the admin invite form run on the
+// session alone. Wave 4 (2026-11-10) changes project.html, calculator.html,
+// css/mmgr.css, dist/mmgr.min.css, dist/bundle.js (BOQ handoff, calculator
+// chrome, AI interview + bounded actions) and a header-button rim on the
+// landing page. Wave 5 (2026-11-10) adds the per-section skeleton module and
+// drops the off-canvas rail from the boot splash. Changed shell assets:
+// project.html, calculator.html, app.html, admin.html, css/mmgr.css,
+// dist/mmgr.min.css, dist/bundle.js, dist/app-bundle.js, dist/admin-bundle.js.
+const CACHE = 'mmgr-shell-v619';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

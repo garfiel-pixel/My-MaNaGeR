@@ -1230,6 +1230,72 @@ body:not(.crosshair-on) #cy {
   letter-spacing: -0.01em;
   white-space: nowrap;
 }
+/* Wave 2 (owner 2026-11-10): the project's lifecycle status. One chip beside
+   the greeting, outline only (no pill, no fill), opening a native popover.
+   The value lives in state.status and is mirrored into the launcher registry
+   and the cloud row so every card names the same state. */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color var(--tr),
+    color var(--tr);
+}
+.status-chip:hover {
+  border-color: var(--gold);
+  color: var(--text);
+}
+.status-chip:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.status-chip .ico {
+  width: 12px;
+  height: 12px;
+  opacity: 0.7;
+}
+.status-pop {
+  margin: 0;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--glass-shadow);
+  min-width: 172px;
+}
+.status-pop button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+}
+.status-pop button:hover {
+  background: var(--tile-bg);
+}
+.status-pop button[aria-checked='true'] {
+  color: var(--brand-hover);
+  font-weight: 700;
+}
 .tab-ctrl {
   display: flex;
   background: var(--track-bg);
@@ -1364,6 +1430,7 @@ body.focus-mode #wbsimport-modal,
 body.focus-mode #importdates-modal,
 body.focus-mode #nav-scrim,
 body.focus-mode #app-sidebar,
+body.focus-mode .sb-peek,
 body.focus-mode .hp {
   display: none !important;
 }
@@ -1482,6 +1549,13 @@ body.nav-open #nav-scrim {
      the page beside it - scroll chaining is contained at this boundary. */
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+}
+/* The first-project tour pins the rail open for its section cards and plans
+   the walk in the same tick, so the rail has to land in that frame instead of
+   sliding in - otherwise the section buttons are still off-canvas and the
+   walk drops them. The tour removes this class on the next frame. */
+body.tour-rail-instant #app-sidebar {
+  transition: none !important;
 }
 /* Rail head: same hamburger as the header button, bare icon (no box),    rotated 90deg while the rail is open - one smooth spring (doctrine 3). */
 .sb-head {
@@ -1666,36 +1740,26 @@ body.sidebar-open .sb-close .ico {
   body.sidebar-on #nav-scrim {
     display: none;
   }
-  /* I-14 (2026-11-08): collapsed "peek" rail. When the sidebar is on but not
-     pinned-open, show a narrow 56px icon-only rail (no labels) so a hover/focus
-     can expand it. The same #app-sidebar rail serves app.html home AND the
-     in-project UI, so one rule covers both surfaces. */
-  body.sidebar-on:not(.sidebar-open) #app-sidebar {
-    transform: translateX(0);
-    visibility: visible;
-    width: 56px;
-    font-size: 0;
-  }
-  body.sidebar-on:not(.sidebar-open) #app-main {
-    margin-left: 56px;
-  }
-  body.sidebar-on:not(.sidebar-open) #app-sidebar .sb-head,
-  body.sidebar-on:not(.sidebar-open) #app-sidebar .rail-ctl-row,
-  body.sidebar-on:not(.sidebar-open) #app-sidebar .sb-user {
+  /* OWNER 2026-11-10: collapsed means ABSENT. The old 56px icon strip and its
+     56px content gutter are gone: the rail slides fully off-canvas (the base
+     #app-sidebar transform above) and #app-main keeps its normal full-width
+     margin. A transparent 12px edge zone is the only hover target; the
+     hamburger pins the rail. */
+  .sb-peek {
     display: none;
   }
-  body.sidebar-on:not(.sidebar-open) #app-sidebar .nav-group {
-    padding: 0 6px;
+  body.sidebar-on:not(.sidebar-open) .sb-peek {
+    display: block;
+    position: fixed;
+    left: 0;
+    top: var(--hdr-h, 64px);
+    bottom: 0;
+    width: 12px;
+    z-index: 95;
+    background: transparent;
   }
-  body.sidebar-on:not(.sidebar-open) #app-sidebar .sec-btn,
-  body.sidebar-on:not(.sidebar-open) #app-sidebar .rail-link {
-    justify-content: center;
-    padding-left: 0;
-    padding-right: 0;
-  }
-  body.sidebar-on:not(.sidebar-open) #app-sidebar .sec-btn .ico,
-  body.sidebar-on:not(.sidebar-open) #app-sidebar .rail-link .ico {
-    font-size: 1rem;
+  body.sidebar-open .sb-peek {
+    display: none;
   }
 }
 
@@ -5855,6 +5919,95 @@ button.rel-badge {
   height: 14px;
   background: var(--gold-ink, rgba(212, 175, 55, 0.55));
 }
+/* Wave 5: layout classes for the per-section skeleton templates. Shape only -
+   the .skel-box sheen carries the motion, and reduced motion stays static. */
+.skel-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.skel-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 16px);
+}
+.skel-panel {
+  margin-top: 14px;
+}
+.skel-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.skel-tr {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 8px);
+}
+.skel-tr-head {
+  background: var(--skel-base);
+}
+.skel-board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.skel-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 16px);
+}
+.skel-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+.skel-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.skel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.skel-li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 8px);
+}
+.skel-tall {
+  height: 140px;
+}
+.skel-w-60 {
+  width: 60%;
+}
+@media (max-width: 820px) {
+  .skel-metrics,
+  .skel-board {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .skel-metrics,
+  .skel-board,
+  .skel-grid {
+    grid-template-columns: 1fr;
+  }
+}
 @media (max-width: 600px) {
   .bs-skel-rail {
     display: none;
@@ -7933,6 +8086,29 @@ body.dark-mode .team-link-danger {
   max-width: 320px;
 }
 /* ---- RBAC sprint 3: access tools ---------------------------------------- */
+/* Wave 3 (owner 2026-11-10): one email, one role, one Invite - the row every
+   paid tier gets, above the enterprise bulk tool. */
+.team-invite-one {
+  padding: 0 0 10px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.team-inv-email {
+  flex: 1;
+  min-width: 170px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.78rem;
+}
+.team-inv-email:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+  border-color: var(--gold);
+}
 .team-tools {
   display: flex;
   flex-wrap: wrap;
@@ -10071,7 +10247,8 @@ body.dark-mode .wbs-alert-item {
   #boot-splash,
   #snap-daily-btn,
   .core-callout,
-  #app-sidebar {
+  #app-sidebar,
+  .sb-peek {
     display: none !important;
   }
   /* OWNER 2026-10-22: THE STAR FIELD NEVER PRINTS. With performance mode off
@@ -10407,6 +10584,21 @@ body.dark-mode .wbs-alert-item {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+}
+/* Wave 4a: a bill sent from the calculator is waiting until applied. One quiet
+   line in the budget toolbar, gold-tinted so it reads as "ready to import". */
+.boq-wait {
+  align-self: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--gold-ink, #6b4a12);
+  background: color-mix(in srgb, var(--gold, #c9a227) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--gold, #c9a227) 38%, transparent);
+}
+.boq-wait[hidden] {
+  display: none;
 }
 .g6c {
   display: flex;
@@ -11092,10 +11284,15 @@ body.dark-mode .btn-warn:hover {
 } /* §6.4 dashboard project cards - glass + hover lift & brighten */
 .pcard {
   /* X-2: dashboard project cards are content - solid surface, no frost. */
+  /* OWNER 2026-11-10 (Wave 1): the gold top band is the card's identity, not
+     an unlock reward. It used to live on .unlocked only, so a new project and
+     every demo card looked like a different component. It now sits on .pcard
+     and every variant inherits it; .unlocked keeps a stronger edge instead. */
+  --pc-band: inset 0 3px 0 var(--gold);
   background: var(--card);
   border: var(--glass-border);
   border-radius: var(--squircle-md);
-  box-shadow: var(--glass-rim), var(--glass-shadow);
+  box-shadow: var(--pc-band), var(--glass-rim), var(--glass-shadow);
   transition:
     transform var(--release-duration) var(--spring-press),
     background var(--tr),
@@ -11107,12 +11304,16 @@ body.dark-mode .btn-warn:hover {
   border-color: var(--gold);
   background: var(--glass-fill-dark-hover);
   box-shadow:
+    var(--pc-band),
     var(--glass-rim),
     0 12px 30px rgba(15, 23, 42, 0.14);
-} /* Unlocked card: §5 ON-state cue - solid gold top edge instead of full inversion */
+}
+/* Unlocked card: the band is shared now, so the ON-state cue is the border
+   plus a taller band - still a top edge, never a side rail. */
 .pcard.unlocked {
+  border-color: color-mix(in srgb, var(--gold) 55%, transparent);
   box-shadow:
-    inset 0 3px 0 var(--gold),
+    inset 0 4px 0 var(--gold),
     var(--glass-rim),
     var(--glass-shadow);
 } /* §6.3 access-code input - recessed glass well with gold focus ring */
@@ -11401,6 +11602,7 @@ body.dark-mode #drw {
 }
 body.dark-mode .pcard:hover {
   box-shadow:
+    var(--pc-band),
     var(--glass-rim),
     0 12px 30px var(--lit-black-35);
 }
@@ -12306,6 +12508,57 @@ body.dark-mode .ai-seg-btn.is-on {
   align-items: center;
   justify-content: center;
   box-shadow: 0 2px 10px rgba(245, 158, 11, 0.35);
+}
+/* Wave 4d: the AI actions review card. A quiet surface that sits in the thread
+   like any bot bubble; the preview table and the report are built with
+   textContent so a model string can never inject markup. */
+.ai-actions-card .ai-bot-body {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  max-width: min(86%, 640px);
+}
+.ai-actions-preview-title {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--text-secondary, #555);
+}
+.ai-actions-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+.ai-actions-table th,
+.ai-actions-table td {
+  text-align: left;
+  padding: 5px 8px;
+  border-bottom: 1px dashed var(--border);
+  color: var(--text);
+}
+.ai-actions-table th {
+  font-weight: 700;
+  color: var(--text-secondary, #555);
+}
+.ai-actions-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.ai-actions-refused .ai-bot-body {
+  background: color-mix(in srgb, var(--warn, #b8860b) 10%, var(--surface, #fff));
+  border: 1px solid color-mix(in srgb, var(--warn, #b8860b) 35%, transparent);
+  border-radius: 14px;
+  padding: 12px 14px;
+  max-width: min(86%, 640px);
+}
+.ai-actions-report {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 0.8rem;
+  color: var(--text-secondary, #555);
 }
 .ai-bot-avatar .ico {
   width: 18px;
@@ -13408,7 +13661,7 @@ body.dark-mode .bcp-ico-moon {
 }
 .bcp-field select,
 .bcp-field input {
-  background: var(--tile-bg);
+  background: transparent;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--text);
@@ -13543,7 +13796,7 @@ body.dark-mode .bcp-ico-moon {
 .bcp-sheets-bar input {
   flex: 1;
   min-width: 160px;
-  background: var(--tile-bg);
+  background: transparent;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--text);
@@ -13698,7 +13951,7 @@ body.dark-mode .bcp-run:focus-visible {
 .bcp-save input {
   flex: 1;
   min-width: 0;
-  background: var(--tile-bg);
+  background: transparent;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--text);
@@ -14876,7 +15129,7 @@ html.mmgr-tour-active .bcp-tour-nudge {
     input:not([type]),
     textarea
   ) {
-  background: var(--tile-bg);
+  background: transparent;
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -16406,7 +16659,12 @@ body.dark-mode.db-page .cd-card {
   border: 1px solid var(--db-border);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  box-shadow: 0 4px 16px var(--lit-black-35);
+  /* Wave 1 (2026-11-10): the gold top band is the card identity in both
+     themes, so the dark surface keeps it instead of dropping to a plain
+     shadow. */
+  box-shadow:
+    var(--pc-band),
+    0 4px 16px var(--lit-black-35);
 }
 body.dark-mode.db-page .pcard:hover {
   border-color: var(--db-accent);
@@ -16414,7 +16672,7 @@ body.dark-mode.db-page .pcard:hover {
 }
 body.dark-mode.db-page .pcard.unlocked {
   box-shadow:
-    inset 0 3px 0 var(--db-accent),
+    inset 0 4px 0 var(--db-accent),
     0 4px 16px var(--lit-black-35);
 }
 body.dark-mode.db-page .pc-title,
@@ -18665,6 +18923,9 @@ body.dark-mode .ps-item:hover {
   background: var(--card-elev, var(--lit-white-04));
 }
 /* ---- cloud cards share the grid card language ---- */
+/* OWNER 2026-11-10 (Wave 1): a cloud card is a .pcard now - same surface, same
+   gold top band, same status foot - and the whole card opens the project
+   through an overlay button, so there is no separate Load control. */
 body.db-page .cd-card {
   padding: var(--pad-card);
   transition:
@@ -18678,10 +18939,41 @@ body.db-page .cd-card:hover {
   border-color: var(--gold);
   background: var(--glass-fill-dark-hover);
   box-shadow:
+    var(--pc-band),
     var(--glass-rim),
     0 12px 30px rgba(16, 24, 40, 0.14);
 }
-body.db-page .cd-card .cd-title {
+body.db-page .cd-card.is-opening {
+  opacity: 0.65;
+}
+/* The whole-card hit layer. A real button, so Enter/Space and screen readers
+   get one obvious target; the static copy underneath never needs pointer
+   events because the layer covers it. The 3-dot menu sits at z-index 3. */
+body.db-page .cd-hit {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+body.db-page .cd-hit:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+body.db-page .cd-hit:disabled {
+  cursor: progress;
+}
+body.db-page .cd-card .pc-title {
+  padding-right: 32px; /* clear the 3-dot button */
+}
+body.db-page .cd-card .pc-title {
   color: var(--text);
 }
 /* ---- recently-opened code cards: relocated here from app.html's inline
@@ -18726,7 +19018,7 @@ body.db-page .cd-card .cd-title {
    Adopted projects render a role chip (Viewer read-only / Editor) + an
    Unpin action so a recipient can drop a pinned project from their own
    list. Token-driven; dark-mode overrides below. */
-body.db-page .cd-card .cd-title {
+body.db-page .cd-card .pc-title {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -18753,69 +19045,9 @@ body.db-page .cd-actions {
   margin-top: 14px;
   flex-wrap: wrap;
 }
-/* ---- PART W11 (2026-10-10, owner R11): the card Load button stops
-   carrying a saturated green block on every card. The default state is a
-   quiet outline (transparent fill, hairline border, primary text); the
-   green arrives on hover / focus / press only. Scoped to the dashboard
-   card action row, so the rail rows (.db-project) and every other green
-   button keep their current treatment. Gold stays the identity - only this
-   one control is neutral until it is touched. */
-body.db-page .cd-actions .btn[data-cd-load] {
-  background: transparent;
-  color: var(--text);
-  border: 1px solid var(--border);
-  box-shadow: none;
-  transition:
-    background var(--tr),
-    border-color var(--tr),
-    color var(--tr);
-}
-body.db-page .cd-actions .btn[data-cd-load]:hover,
-body.db-page .cd-actions .btn[data-cd-load]:focus-visible,
-body.db-page .cd-actions .btn[data-cd-load]:active {
-  /* white on #2e7d32 = 5.13:1 (AA) */
-  background: var(--green);
-  border-color: var(--green);
-  color: var(--lit-white);
-}
-body.dark-mode.db-page .cd-actions .btn[data-cd-load] {
-  color: var(--text);
-  border-color: var(--db-border);
-  background: transparent;
-}
-body.dark-mode.db-page .cd-actions .btn[data-cd-load]:hover,
-body.dark-mode.db-page .cd-actions .btn[data-cd-load]:focus-visible,
-body.dark-mode.db-page .cd-actions .btn[data-cd-load]:active {
-  /* the green token collapses to white in dark mode, so pin the usable
-     green here: white on #2e7d32 = 5.13:1 (AA) */
-  background: #2e7d32;
-  border-color: #2e7d32;
-  color: var(--lit-white);
-}
-/* Touch devices have no hover: the default stays neutral and the green
-   shows only while the finger is down. */
-@media (hover: none) {
-  body.db-page .cd-actions .btn[data-cd-load]:hover {
-    background: transparent;
-    border-color: var(--border);
-    color: var(--text);
-  }
-  body.db-page .cd-actions .btn[data-cd-load]:active {
-    background: var(--green);
-    border-color: var(--green);
-    color: var(--lit-white);
-  }
-  body.dark-mode.db-page .cd-actions .btn[data-cd-load]:hover {
-    background: transparent;
-    border-color: var(--db-border);
-    color: var(--text);
-  }
-  body.dark-mode.db-page .cd-actions .btn[data-cd-load]:active {
-    background: #2e7d32;
-    border-color: #2e7d32;
-    color: var(--lit-white);
-  }
-}
+/* PART W11 (2026-10-10) styled the card's Load button green-on-hover. Wave 1
+   (2026-11-10) retired that button: the whole card opens the project through
+   .cd-hit, so the rules went with it rather than lingering as dead selectors. */
 body.db-page .cd-unpin {
   font: inherit;
   font-size: 0.76rem;
@@ -18866,8 +19098,12 @@ body.db-page .cd-menu {
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-secondary);
-  opacity: 0;
-  pointer-events: none;
+  /* OWNER 2026-11-10 (Wave 1): the menu used to be opacity 0 with
+     pointer-events none until the card was hovered. That made it unreachable
+     on touch (no hover) and it sat under the new whole-card hit layer until
+     the pointer had already landed, so a click could never be routed to it.
+     It now rests visible at 55% and comes to full on hover or focus. */
+  opacity: 0.55;
   transition:
     opacity var(--tr),
     border-color var(--tr),
@@ -18878,7 +19114,6 @@ body.db-page .cd-card:hover .cd-menu,
 body.db-page .cd-card:focus-within .cd-menu,
 body.db-page .cd-menu:focus-visible {
   opacity: 1;
-  pointer-events: auto;
 }
 body.db-page .cd-menu .ico {
   width: 16px;
@@ -21958,6 +22193,28 @@ body.rr-open {
   font-size: 0.82rem;
   line-height: 1.45;
 }
+/* Wave 4c: the reviewable takeoff list. Built with textContent so a model
+   string can never inject markup; sits above the action row for a quick check. */
+.bcp-ai-breakdown {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius, 8px);
+  background: var(--surface, #fff);
+  border: 1px solid var(--border);
+  max-height: 220px;
+  overflow: auto;
+}
+.bcp-ai-breakdown li {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  padding: 2px 0;
+  color: var(--text);
+  border-bottom: 1px dashed var(--border);
+}
+.bcp-ai-breakdown li:last-child {
+  border-bottom: 0;
+}
 .bcp-ai-pathrow {
   display: flex;
   align-items: center;
@@ -22570,10 +22827,12 @@ body.dark-mode:not(.db-page) .btn-o,
 body.dark-mode:not(.db-page) .btn-bullion {
   background: var(--gold-grad);
   color: var(--bullion-ink);
-  border: 1px solid var(--bullion-edge);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    0 4px 6px var(--lit-black-20);
+  /* OWNER 2026-11-10: the pale cream border plus the white inset highlight
+     made every gold CTA look like a sticker pasted onto the page. The edge is
+     now the gradient's own deep stop and the only shadow left is the cast one,
+     so the button reads as part of the surface. */
+  border: 1px solid rgba(133, 88, 17, 0.55);
+  box-shadow: 0 4px 6px var(--lit-black-20);
   font-weight: 600;
   text-shadow: 0 1px 0 var(--lit-white-35);
 }
@@ -22584,9 +22843,7 @@ body.dark-mode .btn-bullion:hover,
 body.dark-mode:not(.db-page) .btn-o:hover,
 body.dark-mode:not(.db-page) .btn-bullion:hover {
   background: var(--gold-grad-hover);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.6),
-    0 6px 10px var(--lit-black-30);
+  box-shadow: 0 6px 10px var(--lit-black-30);
   color: var(--bullion-ink);
 }
 .btn-o:focus-visible,

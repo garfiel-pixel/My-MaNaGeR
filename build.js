@@ -126,6 +126,9 @@ const APP_MODULES = [
   'js/app/copy-text.js',
   'js/app/sidebar.js',
   'js/app/section-accelerator.js',
+  // Wave 5 (owner 2026-11-10): per-section skeleton templates and the paint
+  // seam. Layout-only markup over the existing .skel-box sheen.
+  'js/app/skeleton.js',
   // GANTT-1: pure view builder (rows/spans/links/scale) - the export in
   // mmgr-app.js calls it at runtime; needs Utils + Schedule at call time.
   'js/mmgr-gantt-view.js',
@@ -176,6 +179,9 @@ const APP_MODULES = [
   // AI
   'js/mmgr-ai-key.js',
   'js/mmgr-ai.js',
+  // Wave 4d (owner 2026-11-10): bounded, reviewable AI actions. Loads after
+  // mmgr-ai.js so the assistant can hand it a parsed ACTIONS: block.
+  'js/ai-actions.js',
   // Visual + viewport
   'js/mmgr-viewport.js',
   'js/mmgr-glass.js',

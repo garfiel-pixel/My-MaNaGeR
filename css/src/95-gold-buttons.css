@@ -21,10 +21,12 @@ body.dark-mode:not(.db-page) .btn-o,
 body.dark-mode:not(.db-page) .btn-bullion {
   background: var(--gold-grad);
   color: var(--bullion-ink);
-  border: 1px solid var(--bullion-edge);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    0 4px 6px var(--lit-black-20);
+  /* OWNER 2026-11-10: the pale cream border plus the white inset highlight
+     made every gold CTA look like a sticker pasted onto the page. The edge is
+     now the gradient's own deep stop and the only shadow left is the cast one,
+     so the button reads as part of the surface. */
+  border: 1px solid rgba(133, 88, 17, 0.55);
+  box-shadow: 0 4px 6px var(--lit-black-20);
   font-weight: 600;
   text-shadow: 0 1px 0 var(--lit-white-35);
 }
@@ -35,9 +37,7 @@ body.dark-mode .btn-bullion:hover,
 body.dark-mode:not(.db-page) .btn-o:hover,
 body.dark-mode:not(.db-page) .btn-bullion:hover {
   background: var(--gold-grad-hover);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.6),
-    0 6px 10px var(--lit-black-30);
+  box-shadow: 0 6px 10px var(--lit-black-30);
   color: var(--bullion-ink);
 }
 .btn-o:focus-visible,

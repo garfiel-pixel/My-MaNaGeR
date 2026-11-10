@@ -54,6 +54,18 @@ import { trackEvent } from '../lib/observe.js';
 
 const CLOUD_STATE_SECRET_PATHS = ['config.ai.apiKey', 'config.ai.azureKey', 'config.api.keys'];
 
+/* Wave 2 (owner 2026-11-10): one status vocabulary for the workspace, the
+   launcher card, the cloud card and the D1 row. An unknown value never fails a
+   write - it falls back to 'active' so a stale client cannot wedge a save. */
+const PROJECT_STATUSES = ['active', 'planning', 'on-hold', 'completed'];
+function normaliseProjectStatus(v) {
+  const s = String(v || '').toLowerCase();
+  return PROJECT_STATUSES.indexOf(s) > -1 ? s : 'active';
+}
+function normaliseSyncMode(v) {
+  return String(v || '').toLowerCase() === 'manual' ? 'manual' : 'auto';
+}
+
 function stripStateSecrets(obj) {
   if (!obj || typeof obj !== 'object') {
     return obj;
@@ -82,10 +94,10 @@ export async function handleCloudProjectList(request, env) {
   // moving a single auth decision. A driver without batch (a unit-test mock)
   // still takes the sequential path.
   const ownedStmt = env.DB.prepare(
-    'SELECT project_id, owner_label, google_name, latest_r2_key, created_at, updated_at, last_owner_seen_at FROM cloud_projects WHERE (google_sub = ? OR owner_email = ?) AND deleted_at IS NULL'
+    'SELECT project_id, owner_label, google_name, latest_r2_key, created_at, updated_at, last_owner_seen_at, status, sync_mode FROM cloud_projects WHERE (google_sub = ? OR owner_email = ?) AND deleted_at IS NULL'
   ).bind(session.sub, email || '');
   const adoptedStmt = env.DB.prepare(
-    'SELECT p.project_id, p.owner_label, p.google_name, p.latest_r2_key, p.created_at, p.updated_at, p.last_owner_seen_at, p.deleted_at, a.role AS adopted_role, a.created_at AS adopted_at ' +
+    'SELECT p.project_id, p.owner_label, p.google_name, p.latest_r2_key, p.created_at, p.updated_at, p.last_owner_seen_at, p.deleted_at, p.status, p.sync_mode, a.role AS adopted_role, a.created_at AS adopted_at ' +
       'FROM cloud_adoptions a JOIN cloud_projects p ON p.project_id = a.project_id ' +
       'WHERE a.recipient_sub = ?'
   ).bind(session.sub);
@@ -111,6 +123,8 @@ export async function handleCloudProjectList(request, env) {
       createdAt: r.created_at,
       updatedAt: r.updated_at,
       lastOwnerSeenAt: r.last_owner_seen_at || null,
+      status: normaliseProjectStatus(r.status),
+      syncMode: normaliseSyncMode(r.sync_mode),
       accessRole: 'owner',
       adoptedAt: null
     });
@@ -128,6 +142,8 @@ export async function handleCloudProjectList(request, env) {
       createdAt: r.created_at,
       updatedAt: r.updated_at,
       lastOwnerSeenAt: r.last_owner_seen_at || null,
+      status: normaliseProjectStatus(r.status),
+      syncMode: normaliseSyncMode(r.sync_mode),
       accessRole: r.adopted_role === 'view' ? 'view' : 'editor',
       adoptedAt: r.adopted_at || null,
       discontinued: discontinued,
@@ -169,15 +185,33 @@ export async function handleCloudCreate(request, env) {
     return json({ ok: false, error: 'bad project id' }, 400);
   }
   const name = typeof read.body.name === 'string' ? read.body.name.slice(0, 120) : '';
+  // Wave 2 (owner 2026-11-10): the existence check used to run BEFORE the
+  // session was read, so a taken id always answered a bare 409 "project
+  // already linked". Two accounts may now use the same project name, and the
+  // clients must tell "this is already mine" from "someone else has this id"
+  // so they suffix only in the second case. Read the session first, then
+  // compare. `code` is the contract; the bare 409 is never enough.
+  const session = await readSession(request, env);
   const existing = await env.DB.prepare(
-    'SELECT project_id FROM cloud_projects WHERE project_id = ?'
+    'SELECT project_id, google_sub, owner_email FROM cloud_projects WHERE project_id = ?'
   )
     .bind(projectId)
     .first();
   if (existing) {
-    return json({ ok: false, error: 'project already linked' }, 409);
+    const mine =
+      !!session &&
+      session.sub &&
+      ((existing.google_sub && existing.google_sub === session.sub) ||
+        (existing.owner_email &&
+          session.sub.indexOf('email:') === 0 &&
+          existing.owner_email === session.sub.slice('email:'.length)));
+    return json(
+      mine
+        ? { ok: false, code: 'already_linked', error: 'project already linked' }
+        : { ok: false, code: 'id_taken', error: 'that project id is taken' },
+      409
+    );
   }
-  const session = await readSession(request, env);
   if (session && session.sub && session.sub.indexOf('email:') === 0 && authEmailConfigured(env)) {
     const userRow = await env.DB.prepare('SELECT email_verified FROM auth_users WHERE email = ?')
       .bind(session.sub.slice('email:'.length))
@@ -242,9 +276,13 @@ export async function handleCloudCreate(request, env) {
       /* the event is not worth failing a create for */
     }
   }
+  // Wave 2: the lifecycle status and the sync choice are set at create time.
+  // Unknown values fall back to the defaults rather than failing the create.
+  const createStatus = normaliseProjectStatus(read.body.status);
+  const createSyncMode = normaliseSyncMode(read.body.syncMode);
   try {
     await env.DB.prepare(
-      'INSERT INTO cloud_projects (project_id, owner_code_salt, owner_code_hash, owner_code_fingerprint, owner_label, google_sub, google_name, owner_email, latest_r2_key, created_at, updated_at, last_owner_seen_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
+      'INSERT INTO cloud_projects (project_id, owner_code_salt, owner_code_hash, owner_code_fingerprint, owner_label, google_sub, google_name, owner_email, latest_r2_key, created_at, updated_at, last_owner_seen_at, status, sync_mode) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
     )
       .bind(
         projectId,
@@ -258,7 +296,9 @@ export async function handleCloudCreate(request, env) {
         null,
         now,
         now,
-        now
+        now,
+        createStatus,
+        createSyncMode
       )
       .run();
   } catch (e) {
@@ -266,12 +306,19 @@ export async function handleCloudCreate(request, env) {
       .bind(projectId)
       .first();
     if (raced) {
-      return json({ ok: false, error: 'project already linked' }, 409);
+      return json({ ok: false, code: 'id_taken', error: 'that project id is taken' }, 409);
     }
     throw e;
   }
   trackEvent(env, 'project_created', { first: firstProject }, request);
-  return json({ ok: true, projectId: projectId, ownerCode: ownerCode, linked: !!session });
+  return json({
+    ok: true,
+    projectId: projectId,
+    ownerCode: ownerCode,
+    linked: !!session,
+    status: createStatus,
+    syncMode: createSyncMode
+  });
 }
 
 export async function queueEditorProposal(env, projectId, a, submitted, prev, now) {
@@ -383,6 +430,12 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
   }
   if (read.body.state === undefined || read.body.state === null) {
     return json({ ok: false, error: 'missing state' }, 400);
+  }
+  // Wave 2: a snapshot written by a pre-v31 client carries no status. Normalise
+  // it here so the D1 column (and every list card) always reads a known value
+  // instead of relying on the INSERT default alone.
+  if (typeof read.body.state === 'object') {
+    read.body.state.status = normaliseProjectStatus(read.body.state.status);
   }
   // PROJECT API KEY SAVE (owner directive 2026-09-15): an X-API-Key save
   // NEVER writes directly. It is merged against the stored state under the
@@ -583,10 +636,17 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
       }
     }
     await env.R2.put(key, r2Payload, { httpMetadata: { contentType: 'application/json' } });
+    // Wave 2 (owner 2026-11-10): the lifecycle status travels INSIDE the
+    // snapshot (state.status, normalised above); the sync choice rides on the
+    // save body. COALESCE keeps the stored value when a field is absent, so an
+    // older client can never reset a project to the defaults.
+    const saveStatus = normaliseProjectStatus(read.body.state.status);
+    const saveSyncMode =
+      read.body.syncMode === undefined ? null : normaliseSyncMode(read.body.syncMode);
     await env.DB.prepare(
-      'UPDATE cloud_projects SET latest_r2_key = ?, updated_at = ? WHERE project_id = ?'
+      'UPDATE cloud_projects SET latest_r2_key = ?, updated_at = ?, status = COALESCE(?, status), sync_mode = COALESCE(?, sync_mode) WHERE project_id = ?'
     )
-      .bind(key, now, projectId)
+      .bind(key, now, saveStatus, saveSyncMode, projectId)
       .run();
     const entry = await cloudLogSave(env, projectId, prev, next, actor);
     const resp = {
@@ -1054,7 +1114,7 @@ export async function handleCloudMeta(request, env, projectId) {
   const ccode = String(request.headers.get('X-Client-Code') || '').trim();
   const session = await readSession(request, env);
   const row = await env.DB.prepare(
-    'SELECT owner_code_salt, owner_code_hash, google_sub, google_name, owner_label, latest_r2_key, updated_at, deleted_at FROM cloud_projects WHERE project_id = ?'
+    'SELECT owner_code_salt, owner_code_hash, google_sub, google_name, owner_label, latest_r2_key, updated_at, deleted_at, status, sync_mode FROM cloud_projects WHERE project_id = ?'
   )
     .bind(projectId)
     .first();
@@ -1154,7 +1214,9 @@ export async function handleCloudMeta(request, env, projectId) {
     linkedName: row.google_name || null,
     label: row.owner_label || null,
     hasSnapshot: !!row.latest_r2_key,
-    updatedAt: row.updated_at
+    updatedAt: row.updated_at,
+    status: normaliseProjectStatus(row.status),
+    syncMode: normaliseSyncMode(row.sync_mode)
   };
   if (isEditor && !viewer) {
     resp.role = 'editor';

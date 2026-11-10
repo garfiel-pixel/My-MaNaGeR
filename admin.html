@@ -223,6 +223,18 @@ main{max-width:1000px;margin:0 auto;padding:26px 24px 70px;}
 .field .hint{font-size:.68rem;color:var(--slate);margin-top:4px;}
 .code-row{display:flex;gap:8px;}
 .code-row input{font-family:ui-monospace,monospace;letter-spacing:.1em;}
+/* "Where does it live?" choice (owner 2026-11-10): two bordered radio cards,
+   not pills, so the option that is chosen reads from its border and tint. */
+.where-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.field .where-opt{display:flex;align-items:flex-start;gap:10px;margin:0;padding:10px 12px;
+  border:1px solid var(--border);border-radius:10px;background:var(--tile-bg);cursor:pointer;
+  font-weight:400;color:var(--text);transition:border-color var(--tr),box-shadow var(--tr);}
+.field .where-opt input{width:auto;margin:3px 0 0;flex:0 0 auto;accent-color:var(--gold);}
+.where-opt b{display:block;font-size:.8rem;font-weight:700;color:var(--text);}
+.where-opt .t-mut{display:block;font-size:.68rem;line-height:1.4;margin-top:2px;color:var(--slate);}
+.where-opt:has(input:checked){border-color:var(--gold);box-shadow:0 0 0 3px rgba(245,158,11,.12);}
+.where-opt:focus-within{border-color:var(--gold);}
+@media(max-width:560px){.where-row{grid-template-columns:1fr;}}
 pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radius:6px;padding:14px;font-size:.72rem;
   line-height:1.6;white-space:pre-wrap;word-break:break-all;color:var(--text);font-family:ui-monospace,monospace;}
 
@@ -633,6 +645,25 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
           <option value="planning">Planning</option>
           <option value="completed">Completed</option>
         </select>
+      </div>
+      <!-- OWNER 2026-11-10 (Wave 1): a project can be born in the cloud. The
+           record is still written to this device first (offline-first), then
+           the existing publish path links it and pushes the first snapshot, so
+           the launcher card arrives with a band and a status like every other
+           card instead of appearing only after a second, separate step. -->
+      <div class="field" id="pf-where-field">
+        <label>Where does it live?</label>
+        <div class="where-row" role="radiogroup" aria-label="Where does it live?">
+          <label class="where-opt">
+            <input type="radio" name="pf-where" id="pf-where-device" value="device" checked>
+            <span><b>This device</b><span class="t-mut">Offline first. You can publish it to the cloud later.</span></span>
+          </label>
+          <label class="where-opt">
+            <input type="radio" name="pf-where" id="pf-where-cloud" value="cloud">
+            <span><b>Cloud</b><span class="t-mut">Saved here and in your account, available on every device.</span></span>
+          </label>
+        </div>
+        <div class="hint">Choosing Cloud links the project and pushes its first snapshot as part of this save.</div>
       </div>
       <div class="field">
         <label for="pf-id">Project ID <span class="t-mut">(url-safe, unique; auto-filled from title)</span></label>
@@ -2060,6 +2091,18 @@ function enterAdmin(){
       } catch(err){ /* unparseable write from elsewhere , ignore */ }
     });
   }
+  // OWNER 2026-11-10 (Wave 1): the launcher's New Project door lands here with
+  // ?new=1, so the create modal is already open instead of the user landing on
+  // a panel and having to find the button. The flag is stripped afterwards so
+  // a refresh or a re-login does not reopen it.
+  if (/[?&]new=1\b/.test(location.search)) {
+    try {
+      openProjectModal();
+      const u = new URL(location.href);
+      u.searchParams.delete('new');
+      history.replaceState(null, '', u.pathname + (u.search ? u.search : '') + u.hash);
+    } catch (e) { /* modal unavailable: the panel itself still works */ }
+  }
 }
 
 /* ============================================================
@@ -2302,6 +2345,14 @@ function openProjectModal(index){
   document.getElementById('pf-file').value = p.file;
   document.getElementById('pf-code').value = p.code || '';
   document.getElementById('pf-rocode').value = p.roCode || '';
+  // "Where does it live?" is a create-time choice only: an edit must never
+  // re-home an existing project, so the field is hidden and reset to device.
+  const whereField = document.getElementById('pf-where-field');
+  if (whereField) {
+    whereField.hidden = isEdit;
+    const dev = document.getElementById('pf-where-device');
+    if (dev) dev.checked = true;
+  }
   // Manual slug edit flag is now driven by the pfIdManual data-action handler
   document.getElementById('om').classList.add('show');
   setTimeout(()=>document.getElementById('pf-title').focus(), 50);
@@ -2389,6 +2440,10 @@ async function saveProjectForm(){
   // share ONE code path (updateCloudSnapshot), so the always-available
   // Update button and the automatic push can never disagree.
   const editedIdx = editingIndex !== null ? editingIndex : projects.length - 1;
+  const wasEditing = editingIndex !== null;
+  const bornInCloud =
+    !wasEditing && !!document.getElementById('pf-where-cloud') &&
+    document.getElementById('pf-where-cloud').checked;
   const cloudLinked = !!(projects[editedIdx] && projects[editedIdx].cloudId);
   closeProjectModal();
   if (cloudLinked){
@@ -2402,6 +2457,11 @@ async function saveProjectForm(){
       toast('Project saved. Syncing your changes to the cloud…');
       updateCloudSnapshot(editedIdx);
     }
+  } else if (bornInCloud){
+    // Wave 1: "Cloud" at create time runs the SAME publish path the row button
+    // uses (link + first snapshot), so there is one implementation, not two.
+    toast('Project saved. Creating the cloud copy…');
+    publishToCloud(editedIdx);
   } else {
     toast('Project saved. Download the static manifest (toolbar) to publish this change.');
   }
@@ -2816,6 +2876,16 @@ async function autoPushWithRetry(i, attempt){
   return false;
 }
 
+// Wave 2 (owner 2026-11-10): the workspace addresses its cloud copy through
+// cloudPid(), which honours mmgr_cloud_id_<localId>. A project whose cloud id
+// had to be suffixed must record that override here, or the workspace would
+// keep asking the cloud for an id that belongs to someone else.
+function setCloudIdOverride(localId, cloudId){
+  try{
+    if (!cloudId || cloudId === localId){ localStorage.removeItem('mmgr_cloud_id_' + localId); }
+    else { localStorage.setItem('mmgr_cloud_id_' + localId, cloudId); }
+  }catch(e){ /* storage unavailable */ }
+}
 async function publishToCloud(i){
   const p = projects[i];
   if (!p){ return; }
@@ -2828,13 +2898,27 @@ async function publishToCloud(i){
   const btn = document.querySelector('#project-list [data-action="publishToCloud"][data-idx="' + i + '"]');
   if (btn){ btn.disabled = true; btn.textContent = 'Publishing…'; }
   try{
-    const res = await fetch('/api/cloud/projects', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ projectId: p.id, name: p.title })
-    });
-    const data = await res.json().catch(()=>({}));
+    // Wave 2: two accounts may use the same project NAME. Only the cloud id is
+    // global, so a 409 id_taken retries with -2 … -6 and the winning id becomes
+    // this row's cloudId (the title never changes).
+    const baseId = p.id;
+    let usedId = baseId;
+    let res = null;
+    let data = {};
+    for (let attempt = 0; attempt < 6; attempt++){
+      usedId = attempt === 0 ? baseId : baseId + '-' + (attempt + 1);
+      res = await fetch('/api/cloud/projects', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: usedId, name: p.title })
+      });
+      data = await res.json().catch(()=>({}));
+      if (res.ok && data && data.ok){ break; }
+      const code = data && data.code;
+      const taken = res.status === 409 && (code === 'id_taken' || (!code && !/already linked/.test((data && data.error) || '')));
+      if (!taken || attempt === 5){ break; }
+    }
     if (!res.ok || !data.ok){
       // OWNER 2026-09-17 (status-mismatch fix): 409 'project already linked'
       // means this project ALREADY exists in the signed-in account's cloud -
@@ -2844,7 +2928,11 @@ async function publishToCloud(i){
       // adopt the link instead of failing. The session auth covers every
       // later call (save/load/codes/api-keys are all either-auth), so the
       // recorded code is a marker, not a credential.
-      if (res.status === 409 && /already linked/.test((data && data.error) || '')){
+      // Wave 2: the server now names the case. `already_linked` is this
+      // account's own id; `id_taken` was retried above and only lands here
+      // when every suffix is gone too.
+      const alreadyLinked = res.status === 409 && (data.code === 'already_linked' || (!data.code && /already linked/.test((data && data.error) || '')));
+      if (alreadyLinked){
         try{
           const lr = await fetch('/api/cloud/projects', { credentials: 'same-origin' });
           const ld = await lr.json().catch(()=>({}));
@@ -2864,11 +2952,16 @@ async function publishToCloud(i){
           return;
         }
       }
+      if (res.status === 409 && data.code === 'id_taken'){
+        toast('Every ID from "' + baseId + '" to "' + usedId + '" is taken by another account. Rename the project and publish again.', 'warn');
+        return;
+      }
       toast(((data && data.error) || 'Publish failed (HTTP ' + res.status + ').') + (res.status === 402 ? '. Upgrade needed.' : ''), 'error');
       return;
     }
     p.cloudId = data.projectId;
     p.cloudOwnerCode = data.ownerCode;
+    setCloudIdOverride(p.id, p.cloudId);
     // OWNER 2026-09-21 (wholehearted link): publish = link + PUSH in the
     // same click. The old flow stopped at link, so "Published to cloud" was
     // true while the cloud copy had no snapshot - visitors got nothing and
@@ -3224,6 +3317,22 @@ function closeCodesModal(){
 function teamOwnerCode(){
   return codesOwnerCode();
 }
+/* Wave 3 (owner 2026-11-10): a fresh device may hold NO owner code while the
+   signed-in account is the project's owner - the admin panel's invite form
+   used to stop there. Every team route is cloudAuthOwnerEither, so the code
+   header is sent only when a code exists and the session cookie carries the
+   rest. */
+function teamHeaders(json){
+  const h = json ? { 'Content-Type': 'application/json' } : {};
+  const code = teamOwnerCode();
+  if (code) h['X-Owner-Code'] = code;
+  return h;
+}
+function teamCanAct(){
+  if (teamOwnerCode()) return true;
+  const GA = window.MMGR && window.MMGR.GoogleAuth;
+  return !!(GA && GA.isSignedIn && GA.isSignedIn());
+}
 function teamCurrentProject(){
   return (_codesIdx !== null) && projects[_codesIdx];
 }
@@ -3234,11 +3343,10 @@ async function teamList(){
   const wrap = document.getElementById('team-list');
   if (!wrap) return;
   const p = teamCurrentProject();
-  const code = teamOwnerCode();
-  if (!p || !code){ wrap.textContent = 'No owner code recorded on this device for this project.'; return; }
+  if (!p || !teamCanAct()){ wrap.textContent = 'Open this project signed in as its owner, or enter its owner code, to manage the team.'; return; }
   try{
     const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/team', {
-      method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
+      method: 'GET', credentials: 'same-origin', headers: teamHeaders(false)
     });
     const data = await res.json().catch(()=>({}));
     if (!res.ok || !data.ok){ wrap.textContent = 'Could not load team members.'; return; }
@@ -3289,8 +3397,7 @@ function teamShowUpsell(msg){
 }
 async function teamInvite(){
   const p = teamCurrentProject();
-  const code = teamOwnerCode();
-  if (!p || !code){ toast('No owner code recorded for this project on this device.', 'error'); return; }
+  if (!p || !teamCanAct()){ toast('Open this project signed in as its owner, or enter its owner code.', 'error'); return; }
   const email = (document.getElementById('team-invite-email').value || '').trim().toLowerCase();
   if (!email || email.indexOf('@') < 0){ toast('Enter the person\u2019s email address first.', 'warn'); return; }    const role = document.getElementById('team-invite-role').value || 'manager';
   const payload = { email: email, role: role };
@@ -3302,7 +3409,7 @@ async function teamInvite(){
   try{
     const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/team', {
       method: 'POST', credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
+      headers: teamHeaders(true),
       body: JSON.stringify(payload)
     });
     const data = await res.json().catch(()=>({}));
@@ -3327,13 +3434,12 @@ async function teamInvite(){
 }
 async function teamCurrentMemberById(id){
   const p = teamCurrentProject();
-  const code = teamOwnerCode();
-  if (!p || !code || !id) return null;
+  if (!p || !teamCanAct() || !id) return null;
   const wrap = document.getElementById('team-list');
   if (!wrap) return null;
   try{
     const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/team', {
-      method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
+      method: 'GET', credentials: 'same-origin', headers: teamHeaders(false)
     });
     const data = await res.json().catch(()=>({}));
     const members = (data && data.ok && Array.isArray(data.members)) ? data.members : [];
@@ -3342,8 +3448,7 @@ async function teamCurrentMemberById(id){
 }
 async function teamUpdate(id){
   const p = teamCurrentProject();
-  const code = teamOwnerCode();
-  if (!p || !code || !id){ toast('No valid project or owner code for this edit.', 'error'); return; }
+  if (!p || !teamCanAct() || !id){ toast('No valid project or owner credential for this edit.', 'error'); return; }
   const m = await teamCurrentMemberById(id);
   if (!m){ toast('Member not found.', 'error'); return; }
   document.getElementById('adm-cfm-title').textContent = 'Edit Team Member';
@@ -3368,7 +3473,7 @@ async function teamUpdate(id){
     (async function(){
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/team/' + encodeURIComponent(id), {
         method: 'PUT', credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
+        headers: teamHeaders(true),
         body: JSON.stringify({ role: newRole, scope: newScope })
       });
       const data = await res.json().catch(()=>({}));
@@ -3382,11 +3487,10 @@ async function teamUpdate(id){
 }
 async function teamRevoke(id){
   const p = teamCurrentProject();
-  const code = teamOwnerCode();
-  if (!p || !code || !id){ toast('No valid project or owner code for this revoke.', 'error'); return; }
+  if (!p || !teamCanAct() || !id){ toast('No valid project or owner credential for this revoke.', 'error'); return; }
   try{
     const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/team/' + encodeURIComponent(id), {
-      method: 'DELETE', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
+      method: 'DELETE', credentials: 'same-origin', headers: teamHeaders(false)
     });
     const data = await res.json().catch(()=>({}));
     if (!res.ok || !data.ok){ toast((data && data.error) || 'Revoke failed.', 'error'); return; }
@@ -3401,11 +3505,10 @@ async function teamRevoke(id){
 // is refreshed either way.
 async function teamResend(id){
   const p = teamCurrentProject();
-  const code = teamOwnerCode();
-  if (!p || !code || !id){ toast('No valid project or owner code for this resend.', 'error'); return; }
+  if (!p || !teamCanAct() || !id){ toast('No valid project or owner credential for this resend.', 'error'); return; }
   try{
     const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/team/' + encodeURIComponent(id) + '/resend', {
-      method: 'POST', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
+      method: 'POST', credentials: 'same-origin', headers: teamHeaders(false)
     });
     const data = await res.json().catch(()=>({}));
     if (!res.ok || !data.ok){ toast((data && data.error) || 'Resend failed.', 'error'); return; }

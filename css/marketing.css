@@ -161,6 +161,22 @@
   --fs-body: 1rem;
   --fs-small: 0.86rem;
   --fs-tiny: 0.74rem;
+
+  /* ---- Aliases the I-8 blocks and the reveal system always assumed ----
+     OWNER 2026-11-10: these names were referenced but never declared in THIS
+     sheet (marketing pages load only marketing.min.css), and an undefined
+     custom property invalidates the whole declaration that uses it. So the
+     reveal had no easing at all (it snapped), the "why" cards shipped with no
+     border, and their body copy fell back to the inherited colour. Declared
+     here against tokens that do exist; the dark block repeats the three that
+     follow the theme. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --tr-menu: 0.2s;
+  --line: var(--border);
+  --muted: var(--text-secondary);
+  --text: var(--text-primary);
+  --gold-ink: var(--bullion-ink);
 }
 
 /* DARK MODE - follows OS preference when mode = 'system' */
@@ -205,6 +221,12 @@ body.dark-mode {
   --glass-edge: 1px solid rgba(255, 255, 255, 0.12);
   --shadow-card: 0 20px 25px -5px var(--lit-black-70), 0 8px 10px -6px rgba(0, 0, 0, 0.55);
   --border-subtle: var(--lit-white-16);
+  /* Re-declared, not inherited: an alias written once on :root substitutes
+     the LIGHT --border before inheritance, so dark mode has to resolve these
+     against its own palette. */
+  --line: var(--border);
+  --muted: var(--text-secondary);
+  --text: var(--text-primary);
 }
 
 /* Color-theme palette picker (header, next to the CTA) */
@@ -467,9 +489,14 @@ main {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  /* Must beat the global reduced-motion rule's `transition-duration: 0.2s
+     !important` (marketing.css ~3699), which keeps a short colour/opacity
+     cross-fade page-wide. The rail contract (qa-dot-rail) is explicit: under
+     reduced motion the rail does NOT animate at all, so it needs !important
+     here too. */
   .dot-item,
   .dot-item::after {
-    transition: none;
+    transition: none !important;
   }
 }
 [data-perf='on'] .dot-item,
@@ -543,7 +570,7 @@ main {
 /* Reduced motion: the marker still moves, it just stops animating the move. */
 @media (prefers-reduced-motion: reduce) {
   .dot {
-    transition: none;
+    transition: none !important;
   }
 }
 /* The rail needs >= 16px of clear space left of the reading column. The column
@@ -637,11 +664,13 @@ main {
    fade only (no rise), so the same movement does not repeat back to back. */
 .rv {
   opacity: 0;
-  transform: translateY(14px);
+  transform: translateY(18px);
+  /* OWNER 2026-11-10: slower and sequenced, not a snap. 0.8s with a 90ms
+     stagger lets one element finish before the next begins. */
   transition:
-    opacity 0.55s var(--ease-out),
-    transform 0.55s var(--ease-out);
-  transition-delay: calc(var(--rv-i, 0) * 55ms);
+    opacity 0.8s var(--ease-out),
+    transform 0.8s var(--ease-out);
+  transition-delay: calc(var(--rv-i, 0) * 90ms);
 }
 .rv-in {
   opacity: 1;
@@ -983,6 +1012,21 @@ body.dark-mode .site-nav a.nav-link[aria-current='page'] {
 }
 .btn-gold:active {
   transform: translateY(0) scale(0.97);
+}
+
+/* OWNER 2026-11-10 (landing top band): the white outer rim is kept ONLY on the
+   header "Get Started" button. It sits on the white header band, where the rim
+   reads as a clean lift; every other gold button (hero, bands) stays rimless
+   per the Wave L ruling. Scoped so the change cannot leak onto the hero CTA. */
+.site-header .btn-gold,
+.header-cta-desktop .btn-gold {
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+.site-header .btn-gold:hover,
+.header-cta-desktop .btn-gold:hover {
+  border-color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
 }
 
 .btn-bullion {
@@ -2215,11 +2259,46 @@ body.dark-mode .nav-dd-col.is-platform {
   border-color: rgba(var(--gold-rgb), 0.6);
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
 }
+/* OWNER 2026-11-10 (roles ring): the four audience cards take turns in the
+   light, one every 2.5s (js/marketing.js). No transform here - these cards are
+   also reveal targets, and their entry transform owns that property - so the
+   lit card is marked with a gold ring, a warmer icon and a stronger watermark
+   instead. Hover still wins visually because it raises the same border. */
+.aud-item.is-live {
+  border-color: rgba(var(--gold-rgb), 0.6);
+  box-shadow:
+    0 0 0 3px rgba(var(--gold-rgb), 0.14),
+    0 10px 26px rgba(15, 23, 42, 0.1);
+}
+/* --gold-deep, not --gold: this is the ICON tone the ranked mark already uses
+   for "gold as words" (the fill token fails verify-gold's ARM 4 contrast). */
+.aud-item.is-live .ico {
+  color: var(--gold-deep);
+}
+.aud-item.is-live .aud-art {
+  opacity: 0.2;
+}
+/* OWNER 2026-11-10: the ring must GLIDE from one card to the next, not snap.
+   The reveal's .rv rule sets transition: opacity, transform only, which wipes
+   the .aud-item transition and leaves border-color/box-shadow (the ring)
+   without a transition. This rule outranks .rv, so the ring eases in both
+   directions while the entrance reveal keeps its 0.5s glide. */
+.aud-item.rv-in {
+  transition:
+    transform 0.5s var(--ease-out),
+    opacity 0.5s var(--ease-out),
+    border-color 0.7s var(--ease-out),
+    box-shadow 0.7s var(--ease-out);
+}
 .aud-item .ico {
   width: 28px;
   height: 28px;
   color: var(--gold-deep);
   margin: 0 auto 10px;
+  transition: color 0.7s var(--ease-out);
+}
+.aud-item .aud-art {
+  transition: opacity 0.7s var(--ease-out);
 }
 .aud-item b {
   display: block;
@@ -2377,17 +2456,9 @@ body.dark-mode #f-voice {
   position: relative;
   overflow: hidden;
 }
-/* The hero's content rotation (js/marketing.js, owner 2026-11-01): the panel
-   keeps its tile and its type scale; only the words, icon and watermark
-   crossfade, so the 4x6 map never acquires a hole. */
-#features .fcard.is-swapping {
-  opacity: 0.35;
-}
-@media (prefers-reduced-motion: reduce) {
-  #features .fcard.is-swapping {
-    opacity: 1;
-  }
-}
+/* The hero content rotation was retired on 2026-11-10: the bento moves a real
+   card into the big slot instead, and its arrival motion lives in .bento-in
+   (see the BENTO block). No rule here: #f-ai carries no animation of its own. */
 /* OWNER 2026-09-15 (card SVG backgrounds): each feature card carries a
    faint topical watermark (inline <svg class="fc-art"> in the markup) that
    gives a visual cue per feature. Positioned behind the content, very low
@@ -2746,8 +2817,60 @@ body.dark-mode #f-voice {
   width: 11px;
   height: 11px;
   border-radius: 3px;
-  background: var(--gold);
-  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.2);
+  background: rgba(212, 175, 55, 0.35);
+  transition:
+    background 0.45s var(--ease-out),
+    box-shadow 0.45s var(--ease-out),
+    transform 0.45s var(--ease-out);
+}
+/* OWNER 2026-11-10: the travelling light. One cursor slides along the rail to
+   the next phase instead of the highlight teleporting; the node underneath
+   pops as it arrives. Reduced motion never creates this element. */
+.phase-cursor {
+  position: absolute;
+  top: 9px;
+  left: 0;
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  background: var(--gold-300);
+  box-shadow:
+    0 0 0 4px rgba(212, 175, 55, 0.22),
+    0 0 18px rgba(212, 175, 55, 0.5);
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+}
+.phase-cursor.is-live {
+  opacity: 1;
+  transition:
+    transform 0.78s cubic-bezier(0.34, 1.12, 0.4, 1),
+    opacity 0.3s var(--ease-out);
+}
+/* OWNER 2026-11-10: the lifecycle strip lights one phase at a time
+   (js/marketing.js, 2.4s, pauses on hover and off screen). The lit node grows
+   a halo, its number steps to white and its label to the light gold; the copy
+   brightens without moving, so the strip never jitters while it cycles. */
+.phase-rail li.is-phase::before {
+  background: var(--gold-300);
+  box-shadow:
+    0 0 0 5px rgba(212, 175, 55, 0.3),
+    0 0 20px rgba(212, 175, 55, 0.55);
+  transform: scale(1.3);
+}
+.phase-rail li.is-phase b {
+  color: #fff;
+}
+.phase-rail li.is-phase h3 {
+  color: var(--gold-300);
+}
+.phase-rail li.is-phase p {
+  color: #fff;
+}
+.phase-rail b,
+.phase-rail h3,
+.phase-rail p {
+  transition: color 0.3s var(--ease-out);
 }
 .phase-rail b {
   display: block;
@@ -2788,6 +2911,23 @@ body.dark-mode #f-voice {
   }
   .phase-rail li::before {
     top: 4px;
+  }
+}
+/* OWNER 2026-11-10: with Reduce Motion on the strip still walks (that walk is
+   the meaning of the graphic), but the light CROSS-FADES in place instead of
+   travelling: no cursor element, no scale on the node, only the fill, halo and
+   copy colour easing over 420ms. Freezing it on phase one made the strip look
+   broken rather than calm. */
+@media (prefers-reduced-motion: reduce) {
+  .phase-rail li::before,
+  .phase-rail li.is-phase::before {
+    transform: none;
+  }
+  .phase-rail li::before,
+  .phase-rail b,
+  .phase-rail h3,
+  .phase-rail p {
+    transition-duration: 0.42s !important;
   }
 }
 .pb-cta {
@@ -3157,6 +3297,7 @@ body.dark-mode #f-voice {
   font-weight: 500;
 }
 .rv-field input[type='text'],
+.rv-field input[type='email'],
 .rv-field textarea {
   width: 100%;
   padding: 11px 13px;
@@ -3172,11 +3313,13 @@ body.dark-mode #f-voice {
     box-shadow var(--tr);
 }
 .rv-field input[type='text']::placeholder,
+.rv-field input[type='email']::placeholder,
 .rv-field textarea::placeholder {
   color: var(--text-secondary);
   opacity: 0.8;
 }
 .rv-field input[type='text']:focus-visible,
+.rv-field input[type='email']:focus-visible,
 .rv-field textarea:focus-visible {
   outline: none;
   border-color: var(--gold);
@@ -3550,7 +3693,14 @@ body.dark-mode #f-voice {
   }
 }
 
-/* ---------- 15. Reduced motion + reduced transparency ---------- */
+/* ---------- 15. Reduced motion + reduced transparency ----------
+   OWNER 2026-11-10: Reduce Motion asks us to remove MOTION - travel, scale,
+   spin, parallax - not to remove every state change. The old blanket cut every
+   transition to 0.01ms, so every hover, focus ring and state change on the
+   page snapped, which is what read as "jumpy" rather than calm. Movement
+   properties are still cut off (transform is deliberately NOT in the list
+   below, so anything that travels simply arrives); colour, opacity and shadow
+   keep a short cross-fade so a change still reads as a change. */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -3561,7 +3711,11 @@ body.dark-mode #f-voice {
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-property:
+      color, background-color, border-color, box-shadow, opacity, fill, stroke, text-shadow,
+      outline-color, visibility !important;
+    transition-duration: 0.2s !important;
+    transition-timing-function: linear !important;
     scroll-behavior: auto !important;
   }
 }
@@ -3805,13 +3959,29 @@ body.dark-mode #f-voice {
   transform: none;
 }
 .rv {
-  transition-delay: calc(var(--rv-i, 0) * 55ms);
+  transition-delay: calc(var(--rv-i, 0) * 90ms);
+}
+/* OWNER 2026-11-10: scrolling back up used to snap the revealed element away.
+   The exit now mirrors the entry - a shorter glide, the same curve, 550ms, no
+   stagger - so leaving the viewport is as smooth as arriving in it. */
+.rv.rv-out {
+  opacity: 0;
+  transform: translateY(-12px);
+  transition-duration: 0.55s;
+  transition-delay: 0ms;
+}
+.section-alt .rv.rv-out {
+  transform: none; /* alternate bands fade only, in both directions */
 }
 @media (prefers-reduced-motion: reduce) {
   .rv {
     opacity: 1;
     transform: none;
     transition: none;
+  }
+  .rv.rv-out {
+    opacity: 1;
+    transform: none;
   }
 } /* ---------- AUTH PAGES (verify.html / reset.html - AUTH MAINFRAME v2, 2026-08-17) ---------- */ /* Transactional email-link pages: */
 .sr-only {
@@ -4228,12 +4398,27 @@ body.dark-mode #f-voice {
 .signin-card .signin-lede {
   color: rgba(244, 244, 245, 0.8);
 }
-/* I-10 (2026-11): at >=900px the sign-in card moves to the left and the freed
-   right side carries an outlined MMWRP wordmark. Below 900px the layout is
-   exactly as before (card centred) and the wordmark is not rendered. The card
-   markup itself is unchanged. */
-.signin-mmwrp {
-  display: none;
+/* OWNER 2026-11-10: the card and the links share one left column, aligned to
+   each other. On a narrow screen the column centres and the MMGRWP mark sits
+   below the card, smaller. */
+/* Below 900px .auth-main is a flex row by default; the sign-in page needs a
+   column so the mark sits BELOW the card, not beside it. */
+.signin-page > .auth-main {
+  flex-direction: column;
+  align-items: center;
+}
+.signin-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+}
+.signin-left .signin-foot {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  padding: 0;
+  gap: 10px 18px;
 }
 @media (min-width: 900px) {
   .signin-page > .auth-main {
@@ -4248,36 +4433,63 @@ body.dark-mode #f-voice {
     padding-left: clamp(24px, 6vw, 96px);
     padding-right: clamp(24px, 6vw, 96px);
   }
-  .signin-page .signin-card {
+  .signin-left {
     grid-column: 1;
     justify-self: start;
+    align-items: flex-start;
+    max-width: 432px;
   }
+}
+/* The decorative mark: six letters, each its own span. Outline only, no fill;
+   hovering a letter lights ONLY that letter (owner 2026-11-10). */
+.signin-mmwrp {
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 11vw, 3.4rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 0.9;
+  color: transparent;
+  -webkit-text-stroke: 2px rgba(203, 208, 218, 0.5);
+  text-stroke: 2px rgba(203, 208, 218, 0.5);
+  user-select: none;
+  white-space: nowrap;
+  text-align: center;
+  margin-top: 6px;
+}
+.signin-mmwrp span {
+  display: inline-block;
+  transition:
+    -webkit-text-stroke-color 0.28s ease,
+    text-shadow 0.28s ease,
+    transform 0.28s ease;
+}
+.signin-mmwrp span:hover {
+  -webkit-text-stroke-color: var(--gold);
+  text-stroke: var(--gold);
+  text-shadow: 0 0 26px rgba(var(--gold-rgb), 0.4);
+  transform: translateY(-2px);
+}
+@media (min-width: 900px) {
   .signin-mmwrp {
-    display: block;
     grid-column: 2;
-    font-family: var(--font-display);
     font-size: clamp(4.5rem, 12vw, 12rem);
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    line-height: 0.9;
-    color: transparent;
-    -webkit-text-stroke: 2px rgba(203, 208, 218, 0.5);
-    text-stroke: 2px rgba(203, 208, 218, 0.5);
-    user-select: none;
-    white-space: nowrap;
-    transition:
-      -webkit-text-stroke-color 0.3s ease,
-      text-shadow 0.3s ease;
-  }
-  .signin-mmwrp:hover {
-    -webkit-text-stroke-color: var(--gold);
-    text-stroke: var(--gold);
-    text-shadow: 0 0 30px rgba(var(--gold-rgb), 0.35);
+    text-align: left;
+    margin-top: 0;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .signin-mmwrp {
-    transition: none;
+  /* The gold hover is a STATE change, not motion - it must persist under
+     reduced motion. Only the lift (transform) and the glow (text-shadow) are
+     dropped. The global reduced-motion rule forces a 0.2s cross-fade on every
+     element with !important, so the stroke colour must settle instantly here
+     (transition: none !important beats that rule on specificity), otherwise
+     the hover reads as a half-faded gold. We must NOT re-force the silver rest
+     stroke on :hover, or the feedback disappears. */
+  .signin-mmwrp span,
+  .signin-mmwrp span:hover {
+    transition: none !important;
+    transform: none;
+    text-shadow: none;
   }
 }
 /* The inner content layer stays readable but no longer dense (owner
@@ -5392,10 +5604,12 @@ html body.dark-mode .btn-gold,
 body.dark-mode .btn-bullion {
   background: var(--gold-grad);
   color: var(--bullion-ink);
-  border: 1px solid var(--bullion-edge);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    0 4px 6px var(--lit-black-20);
+  /* OWNER 2026-11-10: the pale cream border plus the white inset highlight
+     made every gold CTA look like a sticker pasted onto the page. The edge is
+     now the gradient's own deep stop and the only shadow left is the cast one,
+     so the button reads as part of the surface. */
+  border: 1px solid rgba(133, 88, 17, 0.55);
+  box-shadow: 0 4px 6px var(--lit-black-20);
   font-weight: 600;
   text-shadow: 0 1px 0 var(--lit-white-35);
 }
@@ -5405,9 +5619,7 @@ body.dark-mode .btn-gold:hover,
 html body.dark-mode .btn-gold:hover,
 body.dark-mode .btn-bullion:hover {
   background: var(--gold-grad-hover);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.6),
-    0 6px 10px var(--lit-black-30);
+  box-shadow: 0 6px 10px var(--lit-black-30);
 }
 .btn-gold:focus-visible,
 .btn-bullion:focus-visible,
@@ -5752,6 +5964,18 @@ html body.dark-mode .btn-gold:disabled {
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 22px 20px;
+  transition:
+    border-color var(--tr),
+    transform var(--tr),
+    box-shadow var(--tr);
+}
+.why-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--gold) 45%, var(--line));
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
+}
+.why-card .sol-ico {
+  margin-bottom: 12px;
 }
 .why-card h3 {
   margin: 0 0 8px;
@@ -5762,6 +5986,72 @@ html body.dark-mode .btn-gold:disabled {
   margin: 0;
   color: var(--muted);
   font-size: 0.96rem;
+  line-height: 1.55;
+}
+/* OWNER 2026-11-10: "Who we are" is its own band inside #why so the dot rail
+   keeps its seven major stops. Gold-tinted panel, three identity cards, the
+   same icon language as the solution cards below. */
+.who-band {
+  position: relative;
+  margin: 8px 0 42px;
+  padding: 28px 26px 26px;
+  border: 1px solid color-mix(in srgb, var(--gold) 26%, var(--line));
+  border-radius: 20px;
+  background:
+    radial-gradient(120% 150% at 6% 0%, rgba(var(--gold-rgb), 0.12), transparent 58%), var(--card);
+}
+.who-head {
+  max-width: 72ch;
+  margin-bottom: 20px;
+}
+.who-eyebrow {
+  margin: 0 0 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-ink);
+}
+.who-head h3 {
+  margin: 0 0 8px;
+  font-size: 1.42rem;
+  line-height: 1.2;
+  color: var(--ink);
+}
+.who-head p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.who-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.who-card {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--card) 86%, transparent);
+  transition:
+    border-color var(--tr),
+    transform var(--tr),
+    box-shadow var(--tr);
+}
+.who-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--gold) 45%, var(--line));
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
+}
+.who-card h4 {
+  margin: 10px 0 6px;
+  font-size: 1rem;
+  color: var(--ink);
+}
+.who-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
   line-height: 1.55;
 }
 .section-sub {
@@ -5827,14 +6117,21 @@ html body.dark-mode .btn-gold:disabled {
   .why-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+  .who-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
   .solutions {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 @media (max-width: 560px) {
   .why-grid,
+  .who-grid,
   .solutions {
     grid-template-columns: 1fr;
+  }
+  .who-band {
+    padding: 22px 18px;
   }
   .section-sub p {
     max-width: none;
@@ -5880,6 +6177,27 @@ html body.dark-mode .btn-gold:disabled {
 .bento-slot > .fcard {
   width: 100%;
   margin: 0;
+}
+/* OWNER 2026-11-10: a card that moves into a bento slot is pushed forward
+   instead of popping. 600ms with a soft scale so the arrival is a glide, and
+   the class is removed by the next step so a re-used card can animate again. */
+.bento .fcard.bento-in {
+  animation: bento-push 0.6s var(--ease-out) both;
+}
+@keyframes bento-push {
+  from {
+    opacity: 0.2;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bento .fcard.bento-in {
+    animation: none;
+  }
 }
 .bento-seeall {
   margin: 4px 0 0;

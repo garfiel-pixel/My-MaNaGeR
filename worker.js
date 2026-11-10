@@ -28,7 +28,7 @@ export { Presence }; // wrangler requires DO classes in the entrypoint
 const INLINE_SCRIPT_HASHES = [
   "'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk='",
   "'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M='",
-  "'sha256-Q/nDW21rfkVgwvwjhKwtQQBoHYc4MyDlFfgSLvJxTk8='",
+  "'sha256-vby4vU8oNmo4MQP8BTS1QaAYSrFF4xGuGJNIh+1yCi8='",
   "'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4='",
   "'sha256-5zwY7VuJS3UrbdPmpvJBMAK1plLSvLq6uINjysG3x+I='",
   "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='",
@@ -37,7 +37,7 @@ const INLINE_SCRIPT_HASHES = [
   "'sha256-7BIp3SE8LrjSq5puH0lRtmP51SnLzcmBy32sBq0Zcps='",
   "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='",
   "'sha256-hkXebphLbybaZt8yNpjkxPc3WjJNQDh0zB2AxsplVEg='",
-  "'sha256-HNgCveQhR3P8yk5ayumiJPy8VQFoYWVOvSnKjwBsx44='",
+  "'sha256-Aq+8yLJoJxV9idFD/gxx4YiAcB2XRjD1tbkzQmeOnJo='",
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='",
   "'sha256-pmiUsOqQa0BPAXsieggzTCopGA0jQO863MBE2hEoBb8='",
   "'sha256-7cQZf8bzyvMY1EwebBo5YuL3PZ9T/X5CTWFRXO3Aq5E='",

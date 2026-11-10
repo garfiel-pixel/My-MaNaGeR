@@ -164,6 +164,10 @@ async function main() {
         );
         localStorage.setItem('mmgr_unlocked_wk', '1');
         localStorage.setItem('mmgr_scope_wk', 'full');
+        // This suite drives the weekly card. The first-run tour auto-opens on
+        // a clean profile and re-scrolls the page to its current target while
+        // it settles, moving the layout under a click.
+        localStorage.setItem('mmgr_first_project_tour_v1', '1');
         localStorage.setItem('mmgr_state_wk', JSON.stringify(state));
       } catch (e) {
         /* ignore */
@@ -280,7 +284,13 @@ async function main() {
 
     // W7: the PDF carries the same week and total.
     const pdfWait = page.waitForEvent('download', { timeout: 15000 });
-    await page.click('[data-action="weekPdf"]');
+    await page.evaluate(() => {
+      const b = document.querySelector('[data-action="weekPdf"]');
+      if (b) {
+        b.scrollIntoView({ block: 'center' });
+        b.click();
+      }
+    });
     const pdfDl = await pdfWait;
     const pdfPath = path.join(OUT, 'weekly.pdf');
     await pdfDl.saveAs(pdfPath);
@@ -295,7 +305,13 @@ async function main() {
     );
     // W8: the spreadsheet carries the same rows.
     const xlsWait = page.waitForEvent('download', { timeout: 15000 });
-    await page.click('[data-action="weekXlsx"]');
+    await page.evaluate(() => {
+      const b = document.querySelector('[data-action="weekXlsx"]');
+      if (b) {
+        b.scrollIntoView({ block: 'center' });
+        b.click();
+      }
+    });
     const xlsDl = await xlsWait;
     const xlsPath = path.join(OUT, 'weekly.xlsx');
     await xlsDl.saveAs(xlsPath);

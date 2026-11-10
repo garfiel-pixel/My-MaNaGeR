@@ -224,6 +224,11 @@ function quoteFromBody(body) {
       try {
         localStorage.setItem('mmgr_unlocked_demo-project', '1');
         localStorage.setItem('mmgr_scope_demo-project', 'full');
+        // This suite drives the Procurement tab, not the first-run tour. The
+        // tour auto-opens on a clean profile and scrolls the page to its
+        // current target every 150ms while it settles, which moves the layout
+        // under a click and makes it land on whatever is at those coordinates.
+        localStorage.setItem('mmgr_first_project_tour_v1', '1');
         // Theme is armed per navigation (A2 boots the page in dark rather
         // than toggling body.dark-mode after load - see the A1/A2 block).
         let theme = 'light';
@@ -317,7 +322,27 @@ function quoteFromBody(body) {
     // NOTE (2026-10-17 probe): the rail original lives inside NAV.sec-nav
     // (display:none at this viewport); the VISIBLE button is the topbar
     // clone. Always target the :visible instance.
+    // OWNER 2026-11-10: the rail is collapsed by default and the topbar
+    // section clone is hidden while the sidebar is on, so the section button
+    // only exists once the rail is open. Open it the way a person would, with
+    // the hamburger, when no instance is on screen.
     const openProc = async () => {
+      // Playwright's own :visible predicate, not offsetParent: a child of the
+      // fixed, off-canvas rail still reports an offsetParent while the rail is
+      // collapsed, so offsetParent says "visible" for a button nobody can see.
+      const visCount = await page.locator('.sec-btn[data-section="proc"]:visible').count();
+      if (visCount === 0) {
+        await page.evaluate(() => {
+          const btn = document.querySelector('[data-action="tglSidebarOpen"]');
+          if (btn) {
+            btn.click();
+          } else if (window.MMGR && MMGR.AppSidebar) {
+            MMGR.AppSidebar.setSidebarOpen(true);
+          }
+        });
+        await page.waitForSelector('.sec-btn[data-section="proc"]:visible', { timeout: 6000 });
+        await page.waitForTimeout(250);
+      }
       await page.click('.sec-btn[data-section="proc"]:visible');
       await page.waitForSelector('#panel-proc.active', { timeout: 6000 });
       await page.waitForTimeout(250);
@@ -679,7 +704,15 @@ function quoteFromBody(body) {
     await page.reload({ waitUntil: 'load' });
     await booted();
     await openProc();
-    await page.click('#pv-disc-0');
+    // The vendor row toggles the disclosure; the panel may already be open
+    // when the section is entered, so assert the state instead of clicking it
+    // shut.
+    await page.evaluate(() => {
+      const b = document.getElementById('pv-disc-0');
+      if (b && b.getAttribute('aria-expanded') !== 'true') {
+        b.click();
+      }
+    });
     await page.waitForTimeout(300);
     const r1 = await page.evaluate(() => ({
       vendors: document.querySelectorAll('#proc-vendors .pv-disc').length,
@@ -786,7 +819,17 @@ function quoteFromBody(body) {
     const outText = () =>
       page.evaluate(() => (document.getElementById('proc-quote-out') || {}).textContent || '');
     const runQuote = async prev => {
-      await page.click('[data-action="procQuote"]');
+      // Dispatch in-page: the quote card sits deep in a panel that re-renders
+      // and resets its scroll, so a coordinate click can land on whatever
+      // moved under the pointer (observed: the panel's card title). The gate
+      // is the quote flow, not pointer hit-testing.
+      await page.evaluate(() => {
+        const b = document.querySelector('[data-action="procQuote"]');
+        if (b) {
+          b.scrollIntoView({ block: 'center' });
+          b.click();
+        }
+      });
       await page.waitForFunction(
         p => {
           const t = (document.getElementById('proc-quote-out') || {}).textContent || '';
@@ -1009,7 +1052,10 @@ function quoteFromBody(body) {
       });
       window.MMGR.Proc.render();
     });
-    await page.click('#pv-disc-0');
+    // The panel may already be open after the render; assert the state instead
+    // of toggling it shut (the price rows live inside it).
+    await ensureVendorOpen();
+    await page.waitForTimeout(250);
 
     // ---- P2: price history + sparkline ----
     const editPrice = async val => {
@@ -1710,7 +1756,18 @@ function quoteFromBody(body) {
     // Select v1 in the ITEM table first (its disclosure carries data-id="v1")
     // - renderItems only draws rows for the selected supplier, and _selId is
     // ephemeral (the R1 reload cleared it; P9 set only the quote-vendor select).
-    await page.click('[data-action="selVendor"][data-id="v1"]');
+    // selVendor TOGGLES, so only click it when the rows are not already up.
+    if (!(await page.locator('#proc-item-body input[data-field="name"]').first().isVisible())) {
+      // Dispatch in-page: the panel re-renders and resets its scroll, so a
+      // coordinate click can land on whatever moved under the pointer.
+      await page.evaluate(() => {
+        const b = document.querySelector('[data-action="selVendor"][data-id="v1"]');
+        if (b) {
+          b.click();
+        }
+      });
+      await page.waitForTimeout(300);
+    }
     await page.waitForSelector('#proc-item-body input[data-field="name"]', { timeout: 4000 });
     // Seed two tasks (fixture has none): one starting TODAY (linking a 14-day
     // lead lands after it = the late warning), one starting in 90 days (on

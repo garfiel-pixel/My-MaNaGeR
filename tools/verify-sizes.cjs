@@ -35,22 +35,43 @@ const EXACT = {
   // rules). The pack is the first print surface in the app; if the next wave
   // adds more print CSS, split the print rules into their own stylesheet
   // rather than raising this again.
-  'css/mmgr.css': 545000,
-  'css/marketing.css': 160000,
+  // 2026-11-10 (Wave 4): raised 545000 -> 550000 for the calculator input
+  // outline changes, the AI actions preview card and the BOQ waiting chip.
+  'css/mmgr.css': 550000,
+  // 2026-11-10 (Wave 6): raised 160000 -> 163000 for the sign-in two-column
+  // layout, the per-letter MMGRWP hover and the mobile stack.
+  // 2026-11-10 (Wave L closeout): raised 163000 -> 166000 for the audience ring
+  // continuous-loop transition (border/box-shadow/colour eased at 0.7s), the
+  // softer band-seam glow and the reduced-motion cross-fade rules.
+  'css/marketing.css': 166000,
   'js/calculator-page.js': 600000,
   // 2026-11-08 (C2 Task 2): raised 210000 -> 215000 for the intake panel,
   // nav group and idea sheet markup in project.html.
   // 2026-11-08 (C3 Phase 1): raised 215000 -> 220000 for the Documents view
   // switcher and the Pages view container (~0.6 KB).
-  'project.html': 220000,
+  // 2026-11-10 (Wave 2): raised 220000 -> 226000 for the header status chip,
+  // its four-item popover and the "Close snapshot" row in the backup popover
+  // (~1.6 KB). The chip is the only new header control; the next markup wave
+  // should move a panel out of this file rather than raise it again.
+  'project.html': 226000,
   'calculator.html': 80000,
   'app.html': 140000,
-  'index.html': 50000
+  // 2026-11-10 (Wave L): raised 50000 -> 54000 for the "Who we are" band
+  // (eyebrow, heading, lede, three identity cards with sprite icons), the
+  // top-level Who we are nav item with its two-row dropdown, the two mobile
+  // menu entries and the two footer links (~3.4 KB). The band is the only
+  // new marketing section this year; if the next wave grows index.html again,
+  // move a band to its own page rather than raising this.
+  'index.html': 54000
 };
 
 /* Per-directory defaults for everything else. */
 const DIRS = {
-  js: 300000,
+  // 2026-11-10 (Wave 2): 300000 -> 305000. mmgr-app.js crossed the old cap by
+  // 32 bytes with the status-chip action (setProjStatus) and the backup row
+  // delegate. It is the next split candidate - the action map alone is a few
+  // hundred lines - so this bump buys one wave, not a habit.
+  js: 305000,
   css: 160000,
   src: 300000
 };

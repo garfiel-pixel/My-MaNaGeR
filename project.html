@@ -61,7 +61,7 @@
       clicks "Connect Google" in Settings > Controls. It is a device label,
       never a gate , offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-Q/nDW21rfkVgwvwjhKwtQQBoHYc4MyDlFfgSLvJxTk8=' 'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4=' 'sha256-1lQZ8ZnhADNPMPnTqfYPbBDeCin0qp40ehxDc065Fmc='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-Q/nDW21rfkVgwvwjhKwtQQBoHYc4MyDlFfgSLvJxTk8=' 'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4=' 'sha256-1lQZ8ZnhADNPMPnTqfYPbBDeCin0qp40ehxDc065Fmc=' 'sha256-vby4vU8oNmo4MQP8BTS1QaAYSrFF4xGuGJNIh+1yCi8='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
@@ -109,14 +109,16 @@
       <span class="skel-box skel-sec skel-sec-on"></span>
       <span class="skel-box skel-sec"></span>
     </div>
-    <!-- body: rail + panel grid, mirrors #app-sidebar + .panel grid -->
+    <!-- body: the panel grid beside the rail. The real workspace shell keeps
+         its #app-sidebar rail, so the boot splash mirrors it (B12 audit
+         2026-11-01: the skeleton must read as the same app it reveals). -->
     <div class="bs-skel-body">
       <div class="bs-skel-rail" aria-hidden="true">
-        <span class="skel-dot skel-dot-on"></span>
-        <span class="skel-dot"></span>
-        <span class="skel-dot"></span>
-        <span class="skel-dot"></span>
-        <span class="skel-dot"></span>
+        <span class="skel-box skel-dot"></span>
+        <span class="skel-box skel-dot"></span>
+        <span class="skel-box skel-dot"></span>
+        <span class="skel-box skel-dot skel-dot-on"></span>
+        <span class="skel-box skel-dot"></span>
       </div>
       <div class="skel-boot-grid">
         <div class="skel-boot-col"><div class="skel-box skel-card"></div></div>
@@ -171,6 +173,16 @@
     <a class="hdr-back" href="app.html" title="Back to projects list"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-left"></use></svg> Projects</a>
     <button class="nav-btn" id="nav-btn" data-action="tglNav" aria-label="Open navigation menu" aria-expanded="false" aria-controls="sec-nav"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
     <div class="greeting" id="greeting"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> <span id="greeting-text">Welcome</span></div>
+    <!-- Wave 2 (owner 2026-11-10): the project's lifecycle status. One value,
+         written to state.status, mirrored into the launcher registry and the
+         cloud row so every card names the same state. -->
+    <button type="button" class="status-chip" id="status-chip" popovertarget="status-pop" aria-haspopup="menu"><span class="sdot g" id="status-chip-dot"></span><span id="status-chip-lbl">Active</span><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-down"></use></svg></button>
+    <div class="status-pop" id="status-pop" popover role="menu" aria-label="Project status">
+      <button type="button" role="menuitemradio" aria-checked="true" data-action="setProjStatus" data-status="active"><span class="sdot g"></span> Active</button>
+      <button type="button" role="menuitemradio" aria-checked="false" data-action="setProjStatus" data-status="planning"><span class="sdot b"></span> Planning</button>
+      <button type="button" role="menuitemradio" aria-checked="false" data-action="setProjStatus" data-status="on-hold"><span class="sdot a"></span> On hold</button>
+      <button type="button" role="menuitemradio" aria-checked="false" data-action="setProjStatus" data-status="completed"><span class="sdot g"></span> Completed</button>
+    </div>
     <div class="tab-ctrl">
       <button class="tab-btn active" data-action="swMeth" data-meth="waterfall" data-mlc="waterfall">Waterfall</button>
       <button class="tab-btn" data-action="swMeth" data-meth="agile" data-mlc="agile">Agile</button>
@@ -207,6 +219,13 @@
       <button type="button" class="bk-opt" data-action="saveProjectFile">
         <span class="bk-opt-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg></span>
         <span class="bk-opt-txt"><b>Backup to local (.json)</b><small>Download a portable backup file to this device (e.g. to keep in your file manager).</small></span>
+        <svg class="ico bk-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>
+      </button>
+      <!-- Wave 2 (owner 2026-11-10): a manual project publishes on demand.
+           Hidden unless this project's sync mode is manual. -->
+      <button type="button" class="bk-opt" id="bk-snapshot" data-action="bkCloseSnapshot" hidden>
+        <span class="bk-opt-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg></span>
+        <span class="bk-opt-txt"><b>Close snapshot</b><small id="bk-snapshot-hint">Manual: the cloud copy updates only when you close a snapshot.</small></span>
         <svg class="ico bk-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>
       </button>
       <!-- OWNER 2026-09-09: sign-in affordance in the backup popover (not
@@ -954,6 +973,7 @@
         <div class="g6">
           <button class="btn btn-g btn-s" data-action="addBudgetLine">+ Add Line</button>
           <button class="btn btn-n btn-s" data-action="boqImport" title="Build the budget from a bill priced in the calculator"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> From BOQ</button>
+          <span class="boq-wait" id="boq-wait" hidden role="status"></span>
           <button class="btn btn-n btn-s" data-action="cpAllPage" data-section="bud"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy All</button>
         </div>
       </div>
@@ -1617,6 +1637,7 @@
      Placed after <main> so document.querySelector first-matches stay on the
      ORIGINAL top nav (programmatic showSection highlights the top pill, as
      before). Focus Mode hides it with the rest of the chrome. -->
+<div class="sb-peek" aria-hidden="true"></div>
 <aside id="app-sidebar" aria-label="Section navigation">
   <div class="sb-head">
     <span class="sb-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg> Sections</span>
@@ -2539,7 +2560,7 @@ document.addEventListener('DOMContentLoaded', function() {
    'js/mmgr-schedule.js','js/mmgr-resources.js','js/mmgr-health.js',
    'js/mmgr-evm.js','js/mmgr-dmaic.js','js/mmgr-meetings.js',
    'js/mmgr-voice.js','js/mmgr-errors.js','js/mmgr-report.js',
-   'js/app/components.js','js/app/confirm.js','js/app/copy-text.js','js/app/sidebar.js','js/mmgr-gantt-view.js','js/mmgr-app.js','js/app/weather.js','js/app/backup.js','js/mmgr-boq-bridge.js','js/mmgr-weekly.js','js/mmgr-approval.js',
+   'js/app/components.js','js/app/confirm.js','js/app/copy-text.js','js/app/sidebar.js','js/app/skeleton.js','js/mmgr-gantt-view.js','js/mmgr-app.js','js/app/weather.js','js/app/backup.js','js/mmgr-boq-bridge.js','js/mmgr-weekly.js','js/mmgr-approval.js',
    'js/app/export.js','js/app/history.js','js/app/definitions.js',
    'js/mmgr-presence.js','js/mmgr-tasks.js','js/mmgr-risks.js',
    'js/mmgr-stakeholders.js','js/mmgr-process.js','js/mmgr-bids.js','js/mmgr-closure.js',
@@ -2547,7 +2568,7 @@ document.addEventListener('DOMContentLoaded', function() {
    'js/mmgr-raci.js','js/mmgr-charter.js','js/mmgr-defs.js',
    'js/mmgr-forecast.js','js/mmgr-decisions.js',
    'js/mmgr-claim.js','js/mmgr-digest.js','js/mmgr-ai-key.js',
-   'js/mmgr-ai.js','js/mmgr-viewport.js','js/mmgr-glass.js',
+   'js/mmgr-ai.js','js/ai-actions.js','js/mmgr-viewport.js','js/mmgr-glass.js',
    'js/mmgr-sync.js','js/mmgr-google-auth.js','js/mmgr-cloud.js',
    'js/cloud/diffs.js','js/cloud/scope.js','js/cloud/share.js',
    'js/cloud/review.js','js/cloud/webhooks.js'

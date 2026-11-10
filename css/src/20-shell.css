@@ -969,6 +969,72 @@ body:not(.crosshair-on) #cy {
   letter-spacing: -0.01em;
   white-space: nowrap;
 }
+/* Wave 2 (owner 2026-11-10): the project's lifecycle status. One chip beside
+   the greeting, outline only (no pill, no fill), opening a native popover.
+   The value lives in state.status and is mirrored into the launcher registry
+   and the cloud row so every card names the same state. */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color var(--tr),
+    color var(--tr);
+}
+.status-chip:hover {
+  border-color: var(--gold);
+  color: var(--text);
+}
+.status-chip:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.status-chip .ico {
+  width: 12px;
+  height: 12px;
+  opacity: 0.7;
+}
+.status-pop {
+  margin: 0;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--glass-shadow);
+  min-width: 172px;
+}
+.status-pop button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+}
+.status-pop button:hover {
+  background: var(--tile-bg);
+}
+.status-pop button[aria-checked='true'] {
+  color: var(--brand-hover);
+  font-weight: 700;
+}
 .tab-ctrl {
   display: flex;
   background: var(--track-bg);
@@ -1103,6 +1169,7 @@ body.focus-mode #wbsimport-modal,
 body.focus-mode #importdates-modal,
 body.focus-mode #nav-scrim,
 body.focus-mode #app-sidebar,
+body.focus-mode .sb-peek,
 body.focus-mode .hp {
   display: none !important;
 }
@@ -1221,6 +1288,13 @@ body.nav-open #nav-scrim {
      the page beside it - scroll chaining is contained at this boundary. */
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+}
+/* The first-project tour pins the rail open for its section cards and plans
+   the walk in the same tick, so the rail has to land in that frame instead of
+   sliding in - otherwise the section buttons are still off-canvas and the
+   walk drops them. The tour removes this class on the next frame. */
+body.tour-rail-instant #app-sidebar {
+  transition: none !important;
 }
 /* Rail head: same hamburger as the header button, bare icon (no box),    rotated 90deg while the rail is open - one smooth spring (doctrine 3). */
 .sb-head {
@@ -1405,36 +1479,26 @@ body.sidebar-open .sb-close .ico {
   body.sidebar-on #nav-scrim {
     display: none;
   }
-  /* I-14 (2026-11-08): collapsed "peek" rail. When the sidebar is on but not
-     pinned-open, show a narrow 56px icon-only rail (no labels) so a hover/focus
-     can expand it. The same #app-sidebar rail serves app.html home AND the
-     in-project UI, so one rule covers both surfaces. */
-  body.sidebar-on:not(.sidebar-open) #app-sidebar {
-    transform: translateX(0);
-    visibility: visible;
-    width: 56px;
-    font-size: 0;
-  }
-  body.sidebar-on:not(.sidebar-open) #app-main {
-    margin-left: 56px;
-  }
-  body.sidebar-on:not(.sidebar-open) #app-sidebar .sb-head,
-  body.sidebar-on:not(.sidebar-open) #app-sidebar .rail-ctl-row,
-  body.sidebar-on:not(.sidebar-open) #app-sidebar .sb-user {
+  /* OWNER 2026-11-10: collapsed means ABSENT. The old 56px icon strip and its
+     56px content gutter are gone: the rail slides fully off-canvas (the base
+     #app-sidebar transform above) and #app-main keeps its normal full-width
+     margin. A transparent 12px edge zone is the only hover target; the
+     hamburger pins the rail. */
+  .sb-peek {
     display: none;
   }
-  body.sidebar-on:not(.sidebar-open) #app-sidebar .nav-group {
-    padding: 0 6px;
+  body.sidebar-on:not(.sidebar-open) .sb-peek {
+    display: block;
+    position: fixed;
+    left: 0;
+    top: var(--hdr-h, 64px);
+    bottom: 0;
+    width: 12px;
+    z-index: 95;
+    background: transparent;
   }
-  body.sidebar-on:not(.sidebar-open) #app-sidebar .sec-btn,
-  body.sidebar-on:not(.sidebar-open) #app-sidebar .rail-link {
-    justify-content: center;
-    padding-left: 0;
-    padding-right: 0;
-  }
-  body.sidebar-on:not(.sidebar-open) #app-sidebar .sec-btn .ico,
-  body.sidebar-on:not(.sidebar-open) #app-sidebar .rail-link .ico {
-    font-size: 1rem;
+  body.sidebar-open .sb-peek {
+    display: none;
   }
 }
 

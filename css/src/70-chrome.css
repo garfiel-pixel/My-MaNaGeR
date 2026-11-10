@@ -166,7 +166,12 @@ body.dark-mode.db-page .cd-card {
   border: 1px solid var(--db-border);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  box-shadow: 0 4px 16px var(--lit-black-35);
+  /* Wave 1 (2026-11-10): the gold top band is the card identity in both
+     themes, so the dark surface keeps it instead of dropping to a plain
+     shadow. */
+  box-shadow:
+    var(--pc-band),
+    0 4px 16px var(--lit-black-35);
 }
 body.dark-mode.db-page .pcard:hover {
   border-color: var(--db-accent);
@@ -174,7 +179,7 @@ body.dark-mode.db-page .pcard:hover {
 }
 body.dark-mode.db-page .pcard.unlocked {
   box-shadow:
-    inset 0 3px 0 var(--db-accent),
+    inset 0 4px 0 var(--db-accent),
     0 4px 16px var(--lit-black-35);
 }
 body.dark-mode.db-page .pc-title,

@@ -936,6 +936,27 @@
         }
       ]
     },
+    'index.html#who': {
+      groups: [
+        {
+          name: 'Who we are',
+          items: [
+            {
+              id: 'who',
+              label: 'Who we are',
+              desc: 'The people and the promise',
+              icon: 'i-users'
+            },
+            {
+              id: 'why',
+              label: 'Why My MaNaGeR',
+              desc: 'The simple alternative',
+              icon: 'i-flag'
+            }
+          ]
+        }
+      ]
+    },
     'contact.html': {
       groups: [
         {
@@ -1299,9 +1320,19 @@
       var rvIO = new IntersectionObserver(
         function (entries) {
           entries.forEach(function (en) {
+            var el = en.target;
             if (en.isIntersecting) {
-              en.target.classList.add('rv-in');
-              rvIO.unobserve(en.target);
+              el.classList.remove('rv-out');
+              el.classList.add('rv-in');
+            } else if (en.boundingClientRect.top < 0) {
+              // OWNER 2026-11-10: scrolling back up used to snap the element
+              // away. A 400ms exit keeps the same movement in reverse.
+              el.classList.remove('rv-in');
+              el.classList.add('rv-out');
+            } else {
+              // Still below the viewport: reset to the entry state.
+              el.classList.remove('rv-in');
+              el.classList.remove('rv-out');
             }
           });
         },
@@ -1654,6 +1685,39 @@
     var lastY = window.pageYOffset || document.documentElement.scrollTop || 0;
     var HIDE_AFTER = 120; // never hide in the first screen
     var DELTA = 6; // ignore tiny jitter so the bar does not flap
+    // I-5a: each band seam carries its own travelling gold light. The glow must
+    // track the SEAM'S position in the viewport, not the whole-document scroll
+    // fraction - otherwise the light sits at the far left while the seam is on
+    // screen and only moves once the seam has scrolled away. Per-seam progress:
+    // 0 as the seam enters the bottom, 1 as it exits the top.
+    var seams = Array.prototype.slice.call(document.querySelectorAll('.band-seam'));
+    var seamState = seams.map(function (s) {
+      return { el: s, shown: 0 };
+    });
+    function seamTarget(s) {
+      var rect = s.getBoundingClientRect();
+      var vh = window.innerHeight || 1;
+      var p = (vh - rect.top) / (vh + rect.height);
+      return p < 0 ? 0 : p > 1 ? 1 : p;
+    }
+    var progressRaf = 0;
+    function paintSeams() {
+      progressRaf = 0;
+      var moving = false;
+      seamState.forEach(function (st) {
+        var target = seamTarget(st.el);
+        st.shown += (target - st.shown) * 0.18;
+        if (Math.abs(target - st.shown) < 0.0006) {
+          st.shown = target;
+        } else {
+          moving = true;
+        }
+        st.el.style.setProperty('--page-progress', st.shown.toFixed(4));
+      });
+      if (moving) {
+        progressRaf = requestAnimationFrame(paintSeams);
+      }
+    }
     function apply() {
       queued = false;
       var y = window.pageYOffset || document.documentElement.scrollTop || 0;
@@ -1668,13 +1732,9 @@
         hdr.setAttribute('data-hidden', 'false');
       }
       lastY = y;
-      // I-5a: page scroll progress (0..1) drives the travelling gold light on
-      // the band seams. One CSS variable, written once per frame.
-      var doc = document.documentElement;
-      var max = doc.scrollHeight - window.innerHeight;
-      var p = max > 0 ? y / max : 0;
-      p = p < 0 ? 0 : p > 1 ? 1 : p;
-      doc.style.setProperty('--page-progress', p.toFixed(4));
+      if (!progressRaf) {
+        progressRaf = requestAnimationFrame(paintSeams);
+      }
     }
     window.addEventListener(
       'scroll',
@@ -1689,139 +1749,12 @@
     apply();
   })();
 
-  /* HERO ROTATION (owner 2026-11-01): "the big bar says My MaNaGeR AI ... we have
-     a lot of smaller bars below. Periodically a smaller bar should slide into
-     that position and become the big bar, and they cycle through the others."
-
-     The bento is a FIXED 4x6 tile map with no holes (see the map in
-     css/marketing.css: 24 cells, exactly filled). A 1x1 card cannot take the
-     2x2 hero slot without leaving three empty cells behind, and releasing every
-     card's grid-area to let dense flow backfill would rebuild the composition
-     the owner called excellent. So the big bar keeps its tile and rotates its
-     CONTENT instead: title, copy, icon and watermark crossfade to the next
-     feature, in the hero's own type scale. The movement is the same, the
-     composition is unchanged. */
-  (function wireHeroRotation() {
-    var grid = document.querySelector('#features .features');
-    var hero = document.getElementById('f-ai');
-    if (!grid || !hero) {
-      return;
-    }
-    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      return;
-    }
-    var others = Array.prototype.slice.call(grid.querySelectorAll('.fcard')).filter(function (c) {
-      return c !== hero;
-    });
-    if (others.length < 2) {
-      return;
-    }
-
-    function snapshot(card) {
-      var h = card.querySelector('h3');
-      var p = card.querySelector('p');
-      var icon = card.querySelector('.fc-icon');
-      var art = card.querySelector('.fc-art');
-      return {
-        title: h ? h.innerHTML : '',
-        body: p ? p.innerHTML : '',
-        icon: icon ? icon.innerHTML : '',
-        art: art ? art.innerHTML : ''
-      };
-    }
-
-    var own = snapshot(hero);
-    var frames = others.map(snapshot);
-    var at = -1;
-    var timer = 0;
-    var paused = false;
-    var swapping = false;
-    var heroH3 = hero.querySelector('h3');
-    var heroP = hero.querySelector('p');
-    var heroIcon = hero.querySelector('.fc-icon');
-    var heroArt = hero.querySelector('.fc-art');
-
-    function paint(frame) {
-      if (!heroH3 || !heroP) {
-        return;
-      }
-      swapping = true;
-      hero.classList.add('is-swapping');
-      window.setTimeout(function () {
-        // ok: every value here was READ off another .fcard in this same static
-        // document a moment ago (snapshot()); nothing user-supplied and nothing
-        // from the network reaches this line, so re-inserting it cannot inject.
-        heroH3.innerHTML = frame.title; // ok: static markup copied from a sibling card
-        heroP.innerHTML = frame.body; // ok: static markup copied from a sibling card
-        if (heroIcon && frame.icon) {
-          heroIcon.innerHTML = frame.icon; // ok: static markup copied from a sibling card
-        }
-        if (heroArt && frame.art) {
-          heroArt.innerHTML = frame.art; // ok: static markup copied from a sibling card
-        }
-        hero.classList.remove('is-swapping');
-        swapping = false;
-      }, 380);
-    }
-
-    function step() {
-      if (paused || swapping || document.visibilityState !== 'visible') {
-        return;
-      }
-      at = (at + 1) % frames.length;
-      paint(frames[at]);
-    }
-
-    function start() {
-      if (!timer) {
-        timer = window.setInterval(step, 7000);
-      }
-    }
-
-    function stop(restore) {
-      if (timer) {
-        window.clearInterval(timer);
-        timer = 0;
-      }
-      if (restore) {
-        at = -1;
-        paint(own);
-      }
-    }
-
-    /* Only while the grid is on screen, and only while nobody is reading it:
-       hover, keyboard focus and a hidden tab all pause it, which is also what
-       keeps auto-updating copy on the right side of WCAG 2.2.2. */
-    grid.addEventListener('pointerenter', function () {
-      paused = true;
-    });
-    grid.addEventListener('pointerleave', function () {
-      paused = false;
-    });
-    grid.addEventListener('focusin', function () {
-      paused = true;
-    });
-    grid.addEventListener('focusout', function () {
-      paused = false;
-    });
-
-    if ('IntersectionObserver' in window) {
-      new IntersectionObserver(
-        function (entries) {
-          entries.forEach(function (entry) {
-            if (entry.isIntersecting) {
-              start();
-            } else {
-              stop(true);
-            }
-          });
-        },
-        { threshold: 0.2 }
-      ).observe(grid);
-    } else {
-      start();
-    }
-  })();
+  /* RETIRED 2026-11-10: the hero CONTENT rotation (owner 2026-11-01) used to
+     rewrite #f-ai copy every 5s. It is superseded by the bento above, which
+     moves a real card into the big slot and now pushes it forward on arrival,
+     and it had become a silent no-op: mountBento() takes #f-ai out of the DOM
+     at the first step, so the timer was painting into a detached node while
+     the visible tile never changed. One rotation engine, one 5s beat. */
 
   /* ORDER MATTERS: Paddle must initialise (and read ?_ptxn=) before anything else touches the URL. */
   /* ---- C2 landing assistant: lazy loader ----
@@ -2182,6 +2115,12 @@
     var slotName = order[g % 4];
     var card = cards[g % cards.length];
     place(slotName, card);
+    // OWNER 2026-11-10: the incoming card is pushed forward instead of
+    // popping in. One class, one 420ms ease; the outgoing card is removed by
+    // place() above, so there is no layout gap.
+    card.classList.remove('bento-in');
+    void card.offsetWidth;
+    card.classList.add('bento-in');
     g++;
   }
   function start() {
@@ -2234,6 +2173,165 @@
     );
     vis.observe(section);
   } else {
+    start();
+  }
+})();
+
+/* ---- PROCESS RAIL (owner 2026-11-10) ----
+   Initiate, Plan, Execute, Monitor, Close light in order, one at a time, so
+   the strip reads as a moving project lifecycle instead of five static
+   labels. 2.4s per step; pauses on hover and when off screen. Reduced motion
+   keeps the walk but cross-fades each step in place - no cursor, no scale. */
+(function wirePhaseRail() {
+  var rail = document.querySelector('.phase-rail');
+  if (!rail) {
+    return;
+  }
+  var phases = Array.prototype.slice.call(rail.querySelectorAll('.phase'));
+  if (phases.length < 2) {
+    return;
+  }
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // OWNER 2026-11-10: the light must TRAVEL, not teleport. One cursor element
+  // slides along the rail to the next node, and the node pops as it arrives;
+  // the phase-off is the cursor leaving, the phase-on is it settling.
+  //
+  // With Reduce Motion on there is no cursor and no scale, but the walk still
+  // runs: each node cross-fades in place (CSS), so the strip reads as a
+  // lifecycle instead of freezing on phase one.
+  var cursor = null;
+  if (!reduce) {
+    cursor = document.createElement('span');
+    cursor.className = 'phase-cursor';
+    cursor.setAttribute('aria-hidden', 'true');
+    rail.appendChild(cursor);
+  }
+  function place(i) {
+    if (!cursor) {
+      return;
+    }
+    var li = phases[i % phases.length];
+    if (!li) {
+      return;
+    }
+    cursor.style.transform = 'translateX(' + li.offsetLeft + 'px)';
+  }
+  // The first placement is instant; every later one animates via CSS.
+  place(0);
+  if (cursor) {
+    requestAnimationFrame(function () {
+      cursor.classList.add('is-live');
+    });
+    window.addEventListener('resize', function () {
+      var cur = phases.filter(function (p) {
+        return p.classList.contains('is-phase');
+      })[0];
+      if (cur) {
+        cursor.style.transform = 'translateX(' + cur.offsetLeft + 'px)';
+      }
+    });
+  }
+  var at = 0;
+  var timer = null;
+  var paused = false;
+  function tick() {
+    if (paused || document.visibilityState !== 'visible') {
+      return;
+    }
+    var next = at % phases.length;
+    phases.forEach(function (p) {
+      p.classList.remove('is-phase');
+    });
+    phases[next].classList.add('is-phase');
+    place(next);
+    at++;
+  }
+  function start() {
+    if (!timer) {
+      tick();
+      timer = setInterval(tick, 2400);
+    }
+  }
+  function stop() {
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+  }
+  rail.addEventListener('pointerenter', function () {
+    paused = true;
+  });
+  rail.addEventListener('pointerleave', function () {
+    paused = false;
+  });
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(
+      function (en) {
+        if (en[0].isIntersecting) {
+          start();
+        } else {
+          stop();
+        }
+      },
+      { threshold: 0.3 }
+    ).observe(rail);
+  } else {
+    start();
+  }
+})();
+
+/* ---- AUDIENCE RING (owner 2026-11-10) ----
+   The four audience cards take turns in the light, one every 2.5s. This is
+   the restrained version of the "roles in a ring" idea: no layout rebuild,
+   no canvas, and it stops on hover, off screen, or reduced motion. */
+(function wireAudienceRing() {
+  var grid = document.querySelector('.audience');
+  if (!grid) {
+    return;
+  }
+  var items = Array.prototype.slice.call(grid.querySelectorAll('.aud-item'));
+  if (items.length < 2) {
+    return;
+  }
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) {
+    return;
+  }
+  var at = 0;
+  var timer = null;
+  function tick() {
+    items.forEach(function (it) {
+      it.classList.remove('is-live');
+    });
+    items[at % items.length].classList.add('is-live');
+    at++;
+  }
+  function start() {
+    if (timer) {
+      return;
+    }
+    tick();
+    timer = setInterval(tick, 2500);
+  }
+  function stop() {
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+  }
+  // OWNER 2026-11-10: the ring loops CONTINUOUSLY so the highlight never freezes
+  // mid-set. The old build stopped it whenever the section fell below 30% on
+  // screen and often never restarted - it looked dead. Now it only pauses when
+  // the tab is hidden (perf) and stops entirely under reduced motion. No hover
+  // or off-screen pause.
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      stop();
+    } else {
+      start();
+    }
+  });
+  if (!document.hidden) {
     start();
   }
 })();

@@ -173,6 +173,7 @@ var MMGR = window.MMGR || {};
  * @property {number} schemaVersion
  * @property {string} projectId
  * @property {string} projectName
+ * @property {string} [status]       - lifecycle: active|planning|on-hold|completed (v31)
  * @property {string} methodology    - 'waterfall'|'agile'|'hybrid'
  * @property {boolean} [methodologyLocked] - set once the method is chosen
  * @property {boolean} [crosshairOn]
@@ -289,7 +290,7 @@ var MMGR = window.MMGR || {};
   'use strict';
 
   const STORAGE_KEY = 'mmgr_state';
-  const SCHEMA_VERSION = 30;
+  const SCHEMA_VERSION = 31;
 
   // ---- Default State ----
   /** @returns {AppState} */
@@ -298,6 +299,7 @@ var MMGR = window.MMGR || {};
       schemaVersion: SCHEMA_VERSION,
       projectId: ns.projectId || 'default',
       projectName: '',
+      status: 'active',
       methodology: 'waterfall',
       methodologyLocked: false,
       workWeek: 5,
@@ -1246,6 +1248,17 @@ var MMGR = window.MMGR || {};
           });
           return m;
         });
+      return state;
+    },
+    31: function (state) {
+      // V30 -> V31: a project carries a lifecycle status (Wave 2, owner
+      // 2026-11-10). The cloud card, the launcher card and the workspace
+      // header all read this one field, so a cloud-only project can show
+      // Planning / On hold / Completed instead of defaulting to Active.
+      // Additive: an older state simply becomes Active.
+      const allowed = ['active', 'planning', 'on-hold', 'completed'];
+      const s = String(state.status || '').toLowerCase();
+      state.status = allowed.indexOf(s) > -1 ? s : 'active';
       return state;
     },
     25: function (state) {

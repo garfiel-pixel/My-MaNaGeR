@@ -489,9 +489,14 @@ main {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  /* Must beat the global reduced-motion rule's `transition-duration: 0.2s
+     !important` (marketing.css ~3699), which keeps a short colour/opacity
+     cross-fade page-wide. The rail contract (qa-dot-rail) is explicit: under
+     reduced motion the rail does NOT animate at all, so it needs !important
+     here too. */
   .dot-item,
   .dot-item::after {
-    transition: none;
+    transition: none !important;
   }
 }
 [data-perf='on'] .dot-item,
@@ -565,7 +570,7 @@ main {
 /* Reduced motion: the marker still moves, it just stops animating the move. */
 @media (prefers-reduced-motion: reduce) {
   .dot {
-    transition: none;
+    transition: none !important;
   }
 }
 /* The rail needs >= 16px of clear space left of the reading column. The column
@@ -4473,13 +4478,15 @@ body.dark-mode #f-voice {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  /* The gold hover is a STATE change, not motion - it must persist under
+     reduced motion. Only the lift (transform) and the glow (text-shadow) are
+     dropped. The global reduced-motion rule already makes the stroke cross-fade
+     instant; we must NOT re-force the silver rest stroke on :hover here, or the
+     feedback disappears. */
   .signin-mmwrp span,
   .signin-mmwrp span:hover {
-    transition: none;
-    -webkit-text-stroke-color: rgba(203, 208, 218, 0.5);
-    text-stroke: rgba(203, 208, 218, 0.5);
-    text-shadow: none;
     transform: none;
+    text-shadow: none;
   }
 }
 /* The inner content layer stays readable but no longer dense (owner

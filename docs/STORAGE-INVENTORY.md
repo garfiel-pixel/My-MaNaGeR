@@ -63,6 +63,7 @@ fails the gate.
 | `mmgr_cloud_last_seen_<id>` | Last time a cloud project was seen on this device. | necessary |
 | `mmgr_cloud_dash_cache` | The launcher's last good cloud project list, so a refresh or an offline boot shows real cards instead of an empty section. Removed on sign-out. | necessary |
 | `mmgr_cloud_pending_ecode_<id>` | An editor code waiting to be confirmed. | necessary |
+| `mmgr_cloud_sync_<id>` | Per-project sync mode: `auto` keeps the cloud snapshot current as you work, `manual` holds changes on this device until you publish. | necessary |
 | `mmgr_offline_copy_<id>` | Marks an offline copy of a cloud project. | necessary |
 | `mmgr_pool_pending_<id>` | Cloud writes waiting for the connection to return. | necessary |
 | `mmgr_team_cache` | Your pending invitations and your "Shared with me" projects, kept on this device so the bell count and the panel open straight away instead of waiting on a fresh load. Refreshed about once a minute while the app is open. | necessary |

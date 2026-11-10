@@ -138,8 +138,28 @@ async function main() {
 
   // L6: per-letter hover. Hover the third letter (G) and read all strokes.
   const markSel = '.signin-mmwrp span';
+  const isGoldStroke = s => {
+    const m = /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/.exec(s || '');
+    if (!m) return false;
+    const r = +m[1];
+    const g = +m[2];
+    const b = +m[3];
+    return r >= 200 && g >= 140 && g <= 210 && b <= 110;
+  };
   await page.hover(markSel + ':nth-child(3)');
-  await page.waitForTimeout(350);
+  // The stroke cross-fades over 0.28s and a loaded runner can still be
+  // mid-fade at any fixed wait, so poll until the gold lands.
+  let goldStroke = '';
+  for (let i = 0; i < 25; i++) {
+    await page.waitForTimeout(100);
+    goldStroke = await page.evaluate(sel => {
+      const s = document.querySelectorAll(sel)[2];
+      if (!s) return '';
+      const cs = getComputedStyle(s);
+      return cs.webkitTextStrokeColor || cs.getPropertyValue('-webkit-text-stroke-color');
+    }, markSel);
+    if (isGoldStroke(goldStroke)) break;
+  }
   const strokes = await page.evaluate(sel => {
     return Array.prototype.map.call(document.querySelectorAll(sel), s => {
       const cs = getComputedStyle(s);
@@ -153,13 +173,10 @@ async function main() {
   const gold = strokes[2];
   const others = strokes.filter((_, i) => i !== 2);
   check('L6 the hovered letter is the only one lit', gold.hover === true, strokes);
-  check(
-    'L6 the hovered letter stroke is gold',
-    /rgb\(201, 162, 39\)|rgb\(212, 175, 55\)|rgb\(21[0-9], 1[0-9][0-9], [0-9]+\)|gold/i.test(
-      gold.stroke || ''
-    ),
-    gold.stroke
-  );
+  check('L6 the hovered letter stroke is gold', isGoldStroke(gold.stroke || ''), {
+    stroke: gold.stroke,
+    settled: goldStroke
+  });
   check(
     'L6 every other letter stays silver',
     others.every(s => /203, 208, 218/.test(s.stroke || '')),

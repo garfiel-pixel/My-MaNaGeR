@@ -1429,6 +1429,13 @@ jobs:
         id: qa-skeletons
         run: node tools/qa-skeletons.cjs
 
+      # WAVE 6 SIGN-IN LAYOUT (owner 2026-11-10): two columns, the card + links
+      # on the left, the six-letter MMGRWP mark on the right with per-letter
+      # hover, and a mobile stack with wrapping links.
+      - name: "T4: Sign-in layout (qa-signin-layout)"
+        id: qa-signin-layout
+        run: node tools/qa-signin-layout.cjs
+
       # I-1 CLIENT regression (forged-cookie Playwright): boots its OWN local
       # wrangler dev with a forged Google session and drives the real app.html to
       # prove the owner code persists to localStorage and the signed-in account

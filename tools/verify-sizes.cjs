@@ -38,7 +38,9 @@ const EXACT = {
   // 2026-11-10 (Wave 4): raised 545000 -> 550000 for the calculator input
   // outline changes, the AI actions preview card and the BOQ waiting chip.
   'css/mmgr.css': 550000,
-  'css/marketing.css': 160000,
+  // 2026-11-10 (Wave 6): raised 160000 -> 163000 for the sign-in two-column
+  // layout, the per-letter MMGRWP hover and the mobile stack.
+  'css/marketing.css': 163000,
   'js/calculator-page.js': 600000,
   // 2026-11-08 (C2 Task 2): raised 210000 -> 215000 for the intake panel,
   // nav group and idea sheet markup in project.html.

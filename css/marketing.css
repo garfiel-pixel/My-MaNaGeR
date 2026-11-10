@@ -4319,12 +4319,27 @@ body.dark-mode #f-voice {
 .signin-card .signin-lede {
   color: rgba(244, 244, 245, 0.8);
 }
-/* I-10 (2026-11): at >=900px the sign-in card moves to the left and the freed
-   right side carries an outlined MMWRP wordmark. Below 900px the layout is
-   exactly as before (card centred) and the wordmark is not rendered. The card
-   markup itself is unchanged. */
-.signin-mmwrp {
-  display: none;
+/* OWNER 2026-11-10: the card and the links share one left column, aligned to
+   each other. On a narrow screen the column centres and the MMGRWP mark sits
+   below the card, smaller. */
+/* Below 900px .auth-main is a flex row by default; the sign-in page needs a
+   column so the mark sits BELOW the card, not beside it. */
+.signin-page > .auth-main {
+  flex-direction: column;
+  align-items: center;
+}
+.signin-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+}
+.signin-left .signin-foot {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  padding: 0;
+  gap: 10px 18px;
 }
 @media (min-width: 900px) {
   .signin-page > .auth-main {
@@ -4339,36 +4354,58 @@ body.dark-mode #f-voice {
     padding-left: clamp(24px, 6vw, 96px);
     padding-right: clamp(24px, 6vw, 96px);
   }
-  .signin-page .signin-card {
+  .signin-left {
     grid-column: 1;
     justify-self: start;
+    align-items: flex-start;
+    max-width: 432px;
   }
+}
+/* The decorative mark: six letters, each its own span. Outline only, no fill;
+   hovering a letter lights ONLY that letter (owner 2026-11-10). */
+.signin-mmwrp {
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 11vw, 3.4rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 0.9;
+  color: transparent;
+  -webkit-text-stroke: 2px rgba(203, 208, 218, 0.5);
+  text-stroke: 2px rgba(203, 208, 218, 0.5);
+  user-select: none;
+  white-space: nowrap;
+  text-align: center;
+  margin-top: 6px;
+}
+.signin-mmwrp span {
+  display: inline-block;
+  transition:
+    -webkit-text-stroke-color 0.28s ease,
+    text-shadow 0.28s ease,
+    transform 0.28s ease;
+}
+.signin-mmwrp span:hover {
+  -webkit-text-stroke-color: var(--gold);
+  text-stroke: var(--gold);
+  text-shadow: 0 0 26px rgba(var(--gold-rgb), 0.4);
+  transform: translateY(-2px);
+}
+@media (min-width: 900px) {
   .signin-mmwrp {
-    display: block;
     grid-column: 2;
-    font-family: var(--font-display);
     font-size: clamp(4.5rem, 12vw, 12rem);
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    line-height: 0.9;
-    color: transparent;
-    -webkit-text-stroke: 2px rgba(203, 208, 218, 0.5);
-    text-stroke: 2px rgba(203, 208, 218, 0.5);
-    user-select: none;
-    white-space: nowrap;
-    transition:
-      -webkit-text-stroke-color 0.3s ease,
-      text-shadow 0.3s ease;
-  }
-  .signin-mmwrp:hover {
-    -webkit-text-stroke-color: var(--gold);
-    text-stroke: var(--gold);
-    text-shadow: 0 0 30px rgba(var(--gold-rgb), 0.35);
+    text-align: left;
+    margin-top: 0;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .signin-mmwrp {
+  .signin-mmwrp span,
+  .signin-mmwrp span:hover {
     transition: none;
+    -webkit-text-stroke-color: rgba(203, 208, 218, 0.5);
+    text-stroke: rgba(203, 208, 218, 0.5);
+    text-shadow: none;
+    transform: none;
   }
 }
 /* The inner content layer stays readable but no longer dense (owner

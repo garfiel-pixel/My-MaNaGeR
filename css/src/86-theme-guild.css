@@ -16,13 +16,13 @@ body.db-page[data-skin='guild'],
   --text: #2a2118;
   --text-heading: #1c140c;
   --text-muted: #6f6757;
-  --brand: #b08d57;
-  --brand-hover: #c79f6a;
+  --brand: #b68b3b;
+  --brand-hover: #c79a4e;
   --brand-on: #2a1d12;
-  --gold: #b08d57; /* brass accent (directive) */
-  --gold-rgb: 176, 141, 87;
+  --gold: #b68b3b; /* brass accent (reference art) */
+  --gold-rgb: 182, 139, 59;
   --on-gold: #2a1d12;
-  --gold-ink: #b08d57;
+  --gold-ink: #b68b3b;
   --tile-bg: #d8c193;
   --track-bg: #4a3322;
   --glass-fill-dark: #e8d5a8;
@@ -33,7 +33,7 @@ body.db-page[data-skin='guild'],
   --glass-shadow: 0 6px 14px rgba(0, 0, 0, 0.4);
   --glass-blur: 0px;
   --glass-saturate: 1;
-  --focus-ring: 2px solid #b08d57;
+  --focus-ring: 2px solid #b68b3b;
   --radius: 6px;
   --squircle-md: 6px;
   --squircle-lg: 6px;

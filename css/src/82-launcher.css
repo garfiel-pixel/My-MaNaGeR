@@ -35,6 +35,12 @@ body.db-page .db-hamb:focus-visible {
 /* Moon/sun quick toggle (owner 2026-08-15): the square box around the icon
    is gone - it is just the icon now, keeping a generous 38px tap target
    (Fitts) with a transparent hit area, hover/focus color + ring only. */
+/* WS5 (theme pack): the collaboration bell starts hidden (signed-out) and is
+   revealed only on a verified session. The display rule below would otherwise
+   override the UA [hidden] => display:none, so guard it explicitly. */
+body.db-page .db-quick[hidden] {
+  display: none !important;
+}
 body.db-page .db-quick {
   display: inline-flex;
   align-items: center;

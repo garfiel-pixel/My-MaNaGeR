@@ -51,6 +51,22 @@ var MMGR = window.MMGR || {};
   }
   let _state = freshState();
 
+  // WS4 (theme pack): per-skin starfield palette. Each entry maps a launcher
+  // skin slug to a base sky colour and an accent colour (derived from each
+  // skin's reference art), plus a `dark` flag that controls star brightness.
+  // Values are kept in 0..1 RGB to feed the vec3 uniforms directly. This mirrors
+  // the hard-coded rose-gold handling but is keyed by data-skin instead.
+  const SKIN_SHADER = {
+    vellum: { base: [0.866, 0.898, 0.918], accent: [0.478, 0.188, 0.224], dark: false }, // paper / burgundy
+    obsidian: { base: [0.02, 0.035, 0.043], accent: [0.949, 0.71, 0.267], dark: true }, // near-black / gold
+    permit: { base: [0.98, 0.969, 0.941], accent: [0.122, 0.435, 0.29], dark: false }, // ivory / green
+    bento: { base: [0.914, 0.925, 0.937], accent: [0.173, 0.29, 0.486], dark: false }, // sage / navy
+    pegboard: { base: [0.682, 0.722, 0.678], accent: [0.176, 0.357, 0.561], dark: false }, // board / steel blue
+    editorial: { base: [0.984, 0.98, 0.965], accent: [0.478, 0.122, 0.169], dark: false }, // paper / oxblood
+    departure: { base: [0.063, 0.071, 0.078], accent: [0.961, 0.765, 0.267], dark: true }, // charcoal / amber
+    guild: { base: [0.122, 0.227, 0.18], accent: [0.714, 0.545, 0.231], dark: true } // wood / brass
+  };
+
   function active() {
     return _state.active;
   }
@@ -92,6 +108,13 @@ var MMGR = window.MMGR || {};
     'uniform float uDark;',
     'uniform float uCyan;',
     'uniform float uRose;',
+    // Launcher-skin hook: when a skin is active (uSkin>0.5) the starfield
+    // tints toward the skin's own base + accent so the canvas matches the
+    // chosen theme (WS4 of the theme-pack plan).
+    'uniform float uSkin;',
+    'uniform vec3  uSkinBase;',
+    'uniform vec3  uSkinAccent;',
+    'uniform float uSkinDark;',
     // Cheap high-quality hash (no transcendentals) , the backdrop stays fast even
     // at high pixel ratios.
     'float hash(vec2 p){',
@@ -139,6 +162,9 @@ var MMGR = window.MMGR || {};
     '  vec3 accent = mix(gold, cyan, uCyan);',
     '  accent = mix(accent, coral, uRose);',
     '  float w = 0.5 + 0.5 * sin(6.2831 * t - 1.2);',
+    "  // When a launcher skin is active, bend the accent toward the skin's",
+    '  // own accent so the starfield matches the chosen theme (WS4).',
+    '  accent = mix(accent, uSkinAccent, uSkin);',
     '  return mix(slate, accent, 0.35 * w);',
     '}',
     // Star field: hash-placed points on a slowly drifting grid, each with its
@@ -180,11 +206,19 @@ var MMGR = window.MMGR || {};
     '  // they never break off into a different color.',
     '  vec3 baseDark = mix(vec3(0.012, 0.018, 0.048), vec3(0.035, 0.045, 0.090), smoothstep(0.0, 1.0, uv.y));',
     '  vec3 baseLight = vec3(0.968, 0.970, 0.976);',
-    '  vec3 base = uDark > 0.5 ? baseDark : baseLight;',
-    '  float glowW = uDark > 0.5 ? 0.16 : 0.05;',
+    '  // A launcher skin overrides the default sky: a dark skin keeps a deep',
+    '  // base, a light skin gets its paper base - both independent of app',
+    '  // dark-mode (skins are their own identity).',
+    '  vec3 skinBase = uSkinBase;',
+    '  vec3 base = uSkin > 0.5 ? skinBase : (uDark > 0.5 ? baseDark : baseLight);',
+    '  float glowW = uSkin > 0.5 ? 0.10 : (uDark > 0.5 ? 0.16 : 0.05);',
     '  vec3 col = mix(base, irid, glowW);',
-    '  // Stars ride on top: full effect on the dark sky, a whisper in daylight.',
-    '  col += vec3(0.90, 0.93, 1.0) * stars * (uDark > 0.5 ? 0.85 : 0.10);',
+    '  // Stars ride on top: full effect on a dark sky (default dark or a dark',
+    '  // skin); a light skin keeps only a faint whisper so the paper still',
+    '  // reads as paper.',
+    '  float starAmt = uSkin > 0.5 ? (uSkinDark > 0.5 ? 0.70 : 0.06)',
+    '                             : (uDark > 0.5 ? 0.85 : 0.10);',
+    '  col += vec3(0.90, 0.93, 1.0) * stars * starAmt;',
     '  // Specular sheen: light glides across the surface like glass.',
     '  float sheen = 0.09 * pow(1.0 - abs(p.y + 0.30 * sin(uv.x * 4.0 + t * 0.5)), 3.0);',
     '  sheen += 0.045 * pow(1.0 - abs(p.x - 0.30 * cos(t * 0.4)), 6.0);',
@@ -398,7 +432,11 @@ var MMGR = window.MMGR || {};
         uCyan: { value: document.documentElement.getAttribute('data-theme') === 'cyan' ? 1 : 0 },
         uRose: {
           value: document.documentElement.getAttribute('data-theme') === 'rose-gold' ? 1 : 0
-        }
+        },
+        uSkin: { value: 0 },
+        uSkinBase: { value: new THREE.Vector3(0, 0, 0) },
+        uSkinAccent: { value: new THREE.Vector3(0, 0, 0) },
+        uSkinDark: { value: 0 }
       };
       const mat = new THREE.ShaderMaterial({
         uniforms: uniforms,
@@ -434,6 +472,7 @@ var MMGR = window.MMGR || {};
       window.addEventListener('resize', _onResize);
       document.addEventListener('visibilitychange', _onVisibility);
       document.body.classList.add('glass-premium');
+      refreshTheme();
       _frame();
       // OWNER 2026-09-06: no toast - premium glass is mandatory app identity,
       // never announced (same silence rule as the retired palette toggles).
@@ -515,12 +554,24 @@ var MMGR = window.MMGR || {};
   // reload (uCyan follows <html data-theme> so premium glass respects the
   // active palette, exactly like uDark follows body.dark-mode).
   function refreshTheme() {
-    if (_state.active && _state.uniforms) {
-      _state.uniforms.uDark.value = document.body.classList.contains('dark-mode') ? 1 : 0;
-      _state.uniforms.uCyan.value =
-        document.documentElement.getAttribute('data-theme') === 'cyan' ? 1 : 0;
-      _state.uniforms.uRose.value =
-        document.documentElement.getAttribute('data-theme') === 'rose-gold' ? 1 : 0;
+    if (!(_state.active && _state.uniforms)) {
+      return;
+    }
+    _state.uniforms.uDark.value = document.body.classList.contains('dark-mode') ? 1 : 0;
+    _state.uniforms.uCyan.value =
+      document.documentElement.getAttribute('data-theme') === 'cyan' ? 1 : 0;
+    _state.uniforms.uRose.value =
+      document.documentElement.getAttribute('data-theme') === 'rose-gold' ? 1 : 0;
+    // Launcher skin: tint the starfield toward the skin's base/accent.
+    const skin = document.body.getAttribute('data-skin') || '';
+    const s = SKIN_SHADER[skin];
+    if (s) {
+      _state.uniforms.uSkin.value = 1;
+      _state.uniforms.uSkinBase.value.set(s.base[0], s.base[1], s.base[2]);
+      _state.uniforms.uSkinAccent.value.set(s.accent[0], s.accent[1], s.accent[2]);
+      _state.uniforms.uSkinDark.value = s.dark ? 1 : 0;
+    } else {
+      _state.uniforms.uSkin.value = 0;
     }
   }
 
@@ -540,6 +591,11 @@ var MMGR = window.MMGR || {};
      msg from mmgr-perf.js's set(), one listener, no second code path. */
   document.addEventListener('mmgr:perf', function () {
     sync();
+  });
+  /* WS4 (theme pack): a live skin swap (the Customize modal preview or apply)
+     fires mmgr:skin - re-tint the starfield without a reload. */
+  document.addEventListener('mmgr:skin', function () {
+    refreshTheme();
   });
 })(MMGR);
 window.MMGR = MMGR;

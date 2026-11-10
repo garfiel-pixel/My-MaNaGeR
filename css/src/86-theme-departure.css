@@ -17,13 +17,13 @@ body.db-page[data-skin='departure'],
   --text: #e9e7e1;
   --text-heading: #f4f2ec;
   --text-muted: #7d8186;
-  --brand: #f0b429;
-  --brand-hover: #ffc94d;
+  --brand: #f5c344;
+  --brand-hover: #ffd45c;
   --brand-on: #1a1405;
-  --gold: #f0b429; /* amber accent (directive) */
-  --gold-rgb: 240, 180, 41;
+  --gold: #f5c344; /* amber accent (reference art) */
+  --gold-rgb: 245, 195, 68;
   --on-gold: #1a1405;
-  --gold-ink: #f0b429;
+  --gold-ink: #f5c344;
   --tile-bg: #15181b;
   --track-bg: #23282c;
   --glass-fill-dark: #181b1e;

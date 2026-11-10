@@ -3,7 +3,7 @@
    ------------------------------------------------------------
    Municipal permit aesthetic: ink left band on cards, 2px border,
    hanging clip-path status tag carrying the real word (the dot
-   colour is preserved per the owner rule). Green primary.
+   colour is preserved per the owner rule). Navy primary (navy blueprint reference art).
    ============================================================ */
 body.db-page[data-skin='permit'],
 .theme-preview[data-skin='permit'] {
@@ -15,13 +15,13 @@ body.db-page[data-skin='permit'],
   --text: #1b1e1c;
   --text-heading: #121614;
   --text-muted: #6a706b;
-  --brand: #1f6f4a;
-  --brand-hover: #185c3d;
+  --brand: #21374f;
+  --brand-hover: #1a2c3e;
   --brand-on: #ffffff;
-  --gold: #1f6f4a; /* green accent (directive) */
-  --gold-rgb: 31, 111, 74;
+  --gold: #21374f; /* navy accent (reference art) */
+  --gold-rgb: 33, 55, 79;
   --on-gold: #ffffff;
-  --gold-ink: #1f6f4a;
+  --gold-ink: #21374f;
   --tile-bg: #eef1ec;
   --track-bg: #dfe4dd;
   --glass-fill-dark: #ffffff;
@@ -32,7 +32,7 @@ body.db-page[data-skin='permit'],
   --glass-shadow: 0 1px 2px rgba(20, 30, 24, 0.08);
   --glass-blur: 2px;
   --glass-saturate: 1;
-  --focus-ring: 2px solid #1f6f4a;
+  --focus-ring: 2px solid #21374f;
   --radius: 2px;
   --squircle-md: 2px;
   --squircle-lg: 2px;

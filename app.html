@@ -431,12 +431,6 @@ html[data-perf='on'] body.db-page .sidebar-icons{transition:none;}
         <div class="db-plan" id="plan-body" hidden></div>
       </div>
     </div>
-    <!-- RBAC sprint 2: invitations and collaborators. Lives in the rail
-         because the launcher's top row is already at its width budget at
-         360px - a header button there would shift the layout. Hidden until a
-         verified session answers, so a signed-out visitor never sees a control
-         that can only 403. -->
-    <button type="button" class="db-team-bell" data-team-bell aria-label="Invitations and collaborators" aria-haspopup="dialog" aria-expanded="false" aria-controls="team-pop" hidden><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> <span>Invitations</span><span class="team-badge" id="team-bell-count" hidden>0</span></button>
     <div class="db-user" id="rail-user">
       <button type="button" class="db-signin" data-action="openSignIn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Sign in</button>
     </div>
@@ -493,8 +487,12 @@ html[data-perf='on'] body.db-page .sidebar-icons{transition:none;}
   <div class="top" id="top">
     <button type="button" id="db-nav-btn" class="db-hamb" data-action="toggleSidebar" aria-label="Open menu" aria-expanded="false" aria-controls="db-sidebar"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
     <button type="button" id="db-theme-quick" class="db-quick" data-action="tglThemeQuick" aria-label="Appearance" title="Appearance" style="right:12px;"><svg class="ico" aria-hidden="true"><use id="db-theme-quick-ico" href="css/mmgr-icons.svg#i-palette"></use></svg></button>
+    <!-- WS5 (theme pack): collaboration bell in the top bar, between Appearance
+         and Search. Hidden until a verified session answers, so a signed-out
+         visitor never sees a control that can only 403. -->
+    <button type="button" id="db-team-bell" class="db-quick" data-team-bell aria-label="Invitations and collaborators" aria-haspopup="dialog" aria-expanded="false" aria-controls="team-pop" hidden style="right:50px;"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg><span class="team-badge" id="team-bell-count" hidden>0</span></button>
     <!-- SEARCH: project search for users with many projects -->
-    <button type="button" id="db-search-btn" class="db-quick" data-action="openProjectSearch" aria-label="Search projects" title="Search projects" style="right:54px;"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg></button>
+    <button type="button" id="db-search-btn" class="db-quick" data-action="openProjectSearch" aria-label="Search projects" title="Search projects" style="right:88px;"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg></button>
     <!-- SIGNED-IN INDICATOR (hidden - sign-in lives in sidebar only) -->
     <button type="button" id="db-user-avatar" class="db-avatar" data-action="openSignIn" aria-label="Sign in" title="Sign in" style="display:none;">
       <span class="db-avatar-box"><span class="db-avatar-ring"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg></span><span class="db-avatar-dot" hidden></span></span>

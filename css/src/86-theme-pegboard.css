@@ -15,13 +15,13 @@ body.db-page[data-skin='pegboard'],
   --text: #232623;
   --text-heading: #1a1c1a;
   --text-muted: #5f6860;
-  --brand: #2d5b8f;
-  --brand-hover: #244a76;
+  --brand: #075aa7;
+  --brand-hover: #064c8c;
   --brand-on: #ffffff;
-  --gold: #2d5b8f; /* blue accent (directive) */
-  --gold-rgb: 45, 91, 143;
+  --gold: #075aa7; /* steel-blue accent (reference art) */
+  --gold-rgb: 7, 90, 167;
   --on-gold: #ffffff;
-  --gold-ink: #2d5b8f;
+  --gold-ink: #075aa7;
   --tile-bg: #eef0ea;
   --track-bg: #dfe3da;
   --glass-fill-dark: #fbfaf5;
@@ -32,7 +32,7 @@ body.db-page[data-skin='pegboard'],
   --glass-shadow: 0 4px 10px rgba(20, 30, 24, 0.14);
   --glass-blur: 0px;
   --glass-saturate: 1;
-  --focus-ring: 2px solid #2d5b8f;
+  --focus-ring: 2px solid #075aa7;
   --radius: 4px;
   --squircle-md: 4px;
   --squircle-lg: 4px;

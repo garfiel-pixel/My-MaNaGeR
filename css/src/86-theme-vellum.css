@@ -18,13 +18,13 @@ body.db-page[data-skin='vellum'],
   --text: #1d3557;
   --text-heading: #16263f;
   --text-muted: #5d6f8a;
-  --brand: #1d3557;
-  --brand-hover: #14304f;
+  --brand: #7a3039;
+  --brand-hover: #642231;
   --brand-on: #fdfcf8;
-  --gold: #1d3557; /* navy accent (directive) */
-  --gold-rgb: 29, 53, 87;
+  --gold: #7a3039; /* burgundy accent (reference art) */
+  --gold-rgb: 122, 48, 57;
   --on-gold: #fdfcf8;
-  --gold-ink: #1d3557;
+  --gold-ink: #7a3039;
   --tile-bg: #f1eee6;
   --track-bg: #e7e3d8;
   --glass-fill-dark: #fdfcf8;
@@ -35,7 +35,7 @@ body.db-page[data-skin='vellum'],
   --glass-shadow: none;
   --glass-blur: 0px;
   --glass-saturate: 1;
-  --focus-ring: 2px solid #a8323e;
+  --focus-ring: 2px solid #7a3039;
   --radius: 0px;
   --squircle-md: 0px;
   --squircle-lg: 0px;

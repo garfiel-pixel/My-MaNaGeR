@@ -940,6 +940,13 @@ body:not(.crosshair-on) #cy {
   justify-content: space-between;
   gap: 20px;
 }
+/* WS3 (theme pack): the active skin's signature top rule shows on the project
+   header the moment a project opens, so the theme is visible everywhere it
+   should be. Uses var(--brand) so every skin supplies its own accent. Scoped to
+   body.db-page so it never touches the launcher (.top) or marketing pages. */
+body.db-page[data-skin] #app-header {
+  box-shadow: inset 0 3px 0 var(--brand);
+}
 /* E1 (owner 2026-09-29 header-balance review): navigation clusters LEFT,
    utility toggles strictly right. .hdr-left carries the back link, section
    hamburger, greeting and methodology pills; margin-left:auto pins

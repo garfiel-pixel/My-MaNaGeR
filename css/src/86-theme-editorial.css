@@ -16,13 +16,13 @@ body.db-page[data-skin='editorial'],
   --text: #161513;
   --text-heading: #0f0e0c;
   --text-muted: #6e6a62;
-  --brand: #7a1f2b;
-  --brand-hover: #641822;
+  --brand: #6f2025;
+  --brand-hover: #581a1e;
   --brand-on: #ffffff;
-  --gold: #7a1f2b; /* oxblood accent (directive) */
-  --gold-rgb: 122, 31, 43;
+  --gold: #6f2025; /* oxblood accent (reference art) */
+  --gold-rgb: 111, 32, 37;
   --on-gold: #ffffff;
-  --gold-ink: #7a1f2b;
+  --gold-ink: #6f2025;
   --tile-bg: #f4f1e9;
   --track-bg: #e7e2d6;
   --glass-fill-dark: #ffffff;
@@ -33,7 +33,7 @@ body.db-page[data-skin='editorial'],
   --glass-shadow: none;
   --glass-blur: 0px;
   --glass-saturate: 1;
-  --focus-ring: 2px solid #7a1f2b;
+  --focus-ring: 2px solid #6f2025;
   --radius: 0px;
   --squircle-md: 0px;
   --squircle-lg: 0px;

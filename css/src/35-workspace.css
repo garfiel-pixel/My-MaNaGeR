@@ -22,6 +22,25 @@
   outline-offset: 1px;
   border-color: var(--gold);
 }
+/* WS5 (theme pack): the optional display name sits on its own line above the
+   email/role/Invite row; it inherits the same skin tokens as the email field. */
+.team-inv-name {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.78rem;
+}
+.team-inv-name:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+  border-color: var(--gold);
+}
 .team-tools {
   display: flex;
   flex-wrap: wrap;

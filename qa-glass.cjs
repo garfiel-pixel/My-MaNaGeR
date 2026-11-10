@@ -168,6 +168,7 @@ async function ev(expr) {
           ShaderMaterial: function() { return {}; },
           Mesh: function() { return {}; },
           Vector2: function() { this.set = function() {}; return this; },
+        Vector3: function() { this.set = function() {}; return this; },
           Clock: function() { this.getElapsedTime = function() { return 0.5; }; return this; }
         });
       };
@@ -342,6 +343,7 @@ async function ev(expr) {
         ShaderMaterial: function(){ return {}; },
         Mesh: function(){ return {}; },
         Vector2: function(){ this.set = function(){}; return this; },
+        Vector3: function(){ this.set = function(){}; return this; },
         Clock: function(){ this.getElapsedTime = function(){ return 0.5; }; return this; }
       });
     };

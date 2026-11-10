@@ -15,13 +15,13 @@ body.db-page[data-skin='obsidian'],
   --text: #f0e6d2;
   --text-heading: #fbf2dd;
   --text-muted: #9a8f78;
-  --brand: #d4a24c;
-  --brand-hover: #e6b85f;
+  --brand: #e6b85f;
+  --brand-hover: #f0c878;
   --brand-on: #1a1305;
-  --gold: #d4a24c;
-  --gold-rgb: 212, 162, 76;
+  --gold: #e6b85f;
+  --gold-rgb: 230, 184, 95;
   --on-gold: #1a1305;
-  --gold-ink: #d4a24c;
+  --gold-ink: #e6b85f;
   --tile-bg: rgba(28, 36, 46, 0.7);
   --track-bg: rgba(212, 162, 76, 0.18);
   --glass-fill-dark: rgba(22, 29, 37, 0.9);
@@ -46,13 +46,13 @@ body.db-page[data-skin='obsidian'],
 body.db-page[data-skin='obsidian'] .pcard {
   border: 1px solid transparent;
   background-image:
-    linear-gradient(var(--card), var(--card)), linear-gradient(135deg, #d4a24c, #8a6a2e);
+    linear-gradient(var(--card), var(--card)), linear-gradient(135deg, #e6b85f, #8a6a2e);
   background-origin: border-box;
   background-clip: padding-box, border-box;
   border-radius: 16px;
 }
 body.db-page[data-skin='obsidian'] .pcard.unlocked {
-  box-shadow: inset 0 3px 0 #d4a24c;
+  box-shadow: inset 0 3px 0 #e6b85f;
 }
 
 /* Gold text links with the existing arrow. */

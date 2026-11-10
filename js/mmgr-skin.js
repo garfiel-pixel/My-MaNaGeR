@@ -38,12 +38,30 @@
     }
   }
 
+  // Thin event channel so other subsystems (the WebGL starfield, the
+  // collaboration popover, etc.) can re-skin without a full reload. Listeners
+  // receive CustomEvent('mmgr:skin', { detail: { skin } }) where skin is the
+  // slug or '' for the default. We de-dupe so hover-preview flicker doesn't
+  // spam consumers.
+  var lastEmitted;
+  function emit(v) {
+    if (lastEmitted === v) {
+      return;
+    }
+    lastEmitted = v;
+    try {
+      window.dispatchEvent(new CustomEvent('mmgr:skin', { detail: { skin: v || '' } }));
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
   function applySkin(v) {
     var de = document.documentElement;
     var b = document.body;
     // The skin CSS is scoped to body.db-page[data-skin="<slug>"] (plus
     // .theme-preview[data-skin=...] for the in-modal mini-mocks), so the
-    // attribute MUST live on <body class="db-page"> for the launcher to
+    // attribute MUST live on <body class="db-page"> for a surface to
     // actually take the skin. We also mirror it on <html> as a harmless
     // fallback; no skin selector targets <html>, but it keeps any future
     // html-scoped rule and the head-time paint consistent.
@@ -58,6 +76,7 @@
         b.removeAttribute('data-skin');
       }
     }
+    emit(v);
   }
 
   // Apply saved skin as early as possible (head script, before paint).

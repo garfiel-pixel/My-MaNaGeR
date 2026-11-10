@@ -828,8 +828,10 @@ var MMGR = window.MMGR || {};
     var row =
       '<div class="team-person team-person-row">' +
       '<div class="team-person-id"><b>' +
-      esc(m.inviteeEmail) +
+      esc(m.name || m.inviteeEmail) +
       '</b><span class="team-person-sub">' +
+      esc(m.inviteeEmail) +
+      ' &middot; ' +
       esc(m.status) +
       ' &middot; ' +
       when +
@@ -905,6 +907,9 @@ var MMGR = window.MMGR || {};
       '<label class="team-sub-label" for="team-inv-email-' +
       esc(pid) +
       '">Invite one person</label>' +
+      '<input type="text" class="team-inv-name" id="team-inv-name-' +
+      esc(pid) +
+      '" maxlength="120" autocomplete="name" spellcheck="false" placeholder="Name (optional)" aria-label="Name of the person you invite">' +
       '<div class="team-sub-row">' +
       '<input type="email" class="team-inv-email" id="team-inv-email-' +
       esc(pid) +
@@ -1308,9 +1313,11 @@ var MMGR = window.MMGR || {};
 
   async function sendOne(pid, btn) {
     var inp = $('team-inv-email-' + pid);
+    var nameInp = $('team-inv-name-' + pid);
     var out = $('team-inv-out-' + pid);
     var roleSel = $('team-inv-role-' + pid);
     var email = (inp ? inp.value : '').trim();
+    var nameVal = (nameInp ? nameInp.value : '').trim();
     if (!email || email.indexOf('@') < 1) {
       if (out) {
         out.textContent = 'Type the email address to invite.';
@@ -1324,10 +1331,14 @@ var MMGR = window.MMGR || {};
     if (out) {
       out.textContent = 'Sending the invitation.';
     }
-    var r = await jpost('/api/cloud/projects/' + encodeURIComponent(pid) + '/team', {
+    var payload = {
       email: email,
       role: roleSel ? roleSel.value : 'contractor'
-    });
+    };
+    if (nameVal) {
+      payload.name = nameVal;
+    }
+    var r = await jpost('/api/cloud/projects/' + encodeURIComponent(pid) + '/team', payload);
     btn.disabled = false;
     if (!r.ok || !r.body.ok) {
       var code = (r.body && r.body.error) || '';
@@ -1346,12 +1357,16 @@ var MMGR = window.MMGR || {};
     if (inp) {
       inp.value = '';
     }
+    if (nameInp) {
+      nameInp.value = '';
+    }
     // loadPeople rewrites the list this row lives in, so the confirmation is
     // re-stamped on the fresh node afterwards.
     await loadPeople(pid);
     var again = $('team-inv-out-' + pid);
     if (again) {
-      again.textContent = 'Invitation sent to ' + email + '.';
+      again.textContent =
+        'Invitation sent to ' + email + (nameVal ? ' (' + nameVal + ')' : '') + '.';
     }
   }
 

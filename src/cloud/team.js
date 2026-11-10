@@ -158,6 +158,17 @@ function parseAccessExpiry(raw) {
   return { ok: true, iso: new Date(t).toISOString() };
 }
 
+// WS5 (theme pack): a display name for the invitee. Optional, so an empty or
+// whitespace-only value collapses to null. Strips control characters and caps
+// length so the stored field can never break the row or the UI.
+function cleanName(v) {
+  if (v == null) return null;
+  const s = String(v)
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .trim();
+  return s.length ? s.slice(0, 120) : null;
+}
+
 // The member's matrix: the stored one when present, otherwise the role
 // template. Returned in full so the owner's UI can show every level.
 function serializePerm(row) {
@@ -174,6 +185,7 @@ function serializeMember(row) {
     // authorisation path reads it.
     userSub: 'email:' + row.invitee_email,
     inviteeEmail: row.invitee_email,
+    name: row.name || null,
     role: row.role,
     status: row.status,
     scope: parseScope(row.scope),
@@ -330,6 +342,7 @@ async function inviteOne(request, env, projectId, auth, body) {
   if (TEAM_ROLES.indexOf(role) === -1) {
     return { status: 400, body: { ok: false, error: 'unknown role' } };
   }
+  const name = cleanName(body.name);
 
   // The owner's own address is the one case where "already a member" is both
   // true and safe to say: the caller is authenticated as that project's owner.
@@ -429,12 +442,13 @@ async function inviteOne(request, env, projectId, auth, body) {
   if (existing) {
     // Re-invite keeps the row (and its history) and issues a fresh token.
     await env.DB.prepare(
-      "UPDATE cloud_team_members SET role = ?, invited_by = ?, invited_by_name = ?, status = 'pending', scope = ?, perm = ?, access_expires_at = ?, token_hash = ?, expires_at = ?, created_at = ?, accepted_at = NULL, revoked_at = NULL, revoked_by = NULL WHERE id = ? AND project_id = ?"
+      "UPDATE cloud_team_members SET role = ?, invited_by = ?, invited_by_name = ?, name = ?, status = 'pending', scope = ?, perm = ?, access_expires_at = ?, token_hash = ?, expires_at = ?, created_at = ?, accepted_at = NULL, revoked_at = NULL, revoked_by = NULL WHERE id = ? AND project_id = ?"
     )
       .bind(
         role,
         actor.sub,
         actor.name,
+        name,
         scope,
         permJson,
         accessExpiry,
@@ -448,11 +462,12 @@ async function inviteOne(request, env, projectId, auth, body) {
     memberId = existing.id;
   } else {
     const res = await env.DB.prepare(
-      "INSERT INTO cloud_team_members (project_id, invitee_email, role, invited_by, invited_by_name, status, scope, perm, access_expires_at, token_hash, expires_at, created_at) VALUES (?,?,?,?,?,'pending',?,?,?,?,?,?)"
+      "INSERT INTO cloud_team_members (project_id, invitee_email, name, role, invited_by, invited_by_name, status, scope, perm, access_expires_at, token_hash, expires_at, created_at) VALUES (?,?,?,?,?,?,'pending',?,?,?,?,?,?)"
     )
       .bind(
         projectId,
         email,
+        name,
         role,
         actor.sub,
         actor.name,
@@ -606,7 +621,7 @@ export async function handleTeamList(request, env, projectId) {
     return cloudForbidden();
   }
   const rows = await env.DB.prepare(
-    "SELECT id, invitee_email, role, status, scope, perm, budget_approver, access_expires_at, invited_by_name, expires_at, created_at, accepted_at, revoked_at FROM cloud_team_members WHERE project_id = ? AND status != 'revoked' ORDER BY created_at ASC"
+    "SELECT id, invitee_email, name, role, status, scope, perm, budget_approver, access_expires_at, invited_by_name, expires_at, created_at, accepted_at, revoked_at FROM cloud_team_members WHERE project_id = ? AND status != 'revoked' ORDER BY created_at ASC"
   )
     .bind(projectId)
     .all();

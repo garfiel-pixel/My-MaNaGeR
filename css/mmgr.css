@@ -1201,6 +1201,13 @@ body:not(.crosshair-on) #cy {
   justify-content: space-between;
   gap: 20px;
 }
+/* WS3 (theme pack): the active skin's signature top rule shows on the project
+   header the moment a project opens, so the theme is visible everywhere it
+   should be. Uses var(--brand) so every skin supplies its own accent. Scoped to
+   body.db-page so it never touches the launcher (.top) or marketing pages. */
+body.db-page[data-skin] #app-header {
+  box-shadow: inset 0 3px 0 var(--brand);
+}
 /* E1 (owner 2026-09-29 header-balance review): navigation clusters LEFT,
    utility toggles strictly right. .hdr-left carries the back link, section
    hamburger, greeting and methodology pills; margin-left:auto pins
@@ -8109,6 +8116,25 @@ body.dark-mode .team-link-danger {
   outline-offset: 1px;
   border-color: var(--gold);
 }
+/* WS5 (theme pack): the optional display name sits on its own line above the
+   email/role/Invite row; it inherits the same skin tokens as the email field. */
+.team-inv-name {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.78rem;
+}
+.team-inv-name:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+  border-color: var(--gold);
+}
 .team-tools {
   display: flex;
   flex-wrap: wrap;
@@ -13979,28 +14005,47 @@ body.dark-mode .bcp-run:focus-visible {
 /* F4-3 named estimates list (mirrors .calc-hist-row's shape). */
 .bcp-est-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   flex-wrap: wrap;
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 8px 12px;
+  padding: 10px 12px;
   font-size: 0.82rem;
   min-width: 0;
   margin-bottom: 8px;
 }
+/* Owner 2026-11-10: the tick/checkbox must sit on the first line (not float
+   mid-row) and the name must wrap as a readable sentence instead of being
+   truncated with an ellipsis. */
+.bcp-cmp-check {
+  flex: none;
+  align-self: flex-start;
+  margin-top: 2px;
+}
 .bcp-est-name {
   color: var(--text);
   font-weight: 700;
-  flex: 1;
-  min-width: 160px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  flex: 1 1 200px;
+  min-width: 0;
+  /* CHANGED: allow the full label to wrap instead of clipping it. */
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.35;
 }
 .bcp-est-meta {
   color: var(--slate);
   font-size: 0.72rem;
+  /* own line, full width, beneath the name so long "qty - money - priced"
+     strings read as a sentence rather than jumbling beside the tick. */
+  flex: 1 1 100%;
+  order: 3;
+}
+.bcp-x,
+.bcp-link {
+  align-self: center;
 }
 @media (max-width: 600px) {
   .bcp-save {
@@ -17456,6 +17501,12 @@ body.db-page .db-hamb:focus-visible {
 /* Moon/sun quick toggle (owner 2026-08-15): the square box around the icon
    is gone - it is just the icon now, keeping a generous 38px tap target
    (Fitts) with a transparent hit area, hover/focus color + ring only. */
+/* WS5 (theme pack): the collaboration bell starts hidden (signed-out) and is
+   revealed only on a verified session. The display rule below would otherwise
+   override the UA [hidden] => display:none, so guard it explicitly. */
+body.db-page .db-quick[hidden] {
+  display: none !important;
+}
 body.db-page .db-quick {
   display: inline-flex;
   align-items: center;
@@ -20451,13 +20502,13 @@ body.db-page[data-skin='bento'],
   --text: #16181d;
   --text-heading: #0f1115;
   --text-muted: #6a717b;
-  --brand: #2c4a7c;
-  --brand-hover: #24406c;
+  --brand: #17633f;
+  --brand-hover: #125032;
   --brand-on: #ffffff;
-  --gold: #2c4a7c; /* navy-blue accent (directive) */
-  --gold-rgb: 44, 74, 124;
+  --gold: #17633f; /* forest-green accent (reference art) */
+  --gold-rgb: 23, 99, 63;
   --on-gold: #ffffff;
-  --gold-ink: #2c4a7c;
+  --gold-ink: #17633f;
   --tile-bg: #f1f3f6;
   --track-bg: #e2e7ec;
   --glass-fill-dark: #ffffff;
@@ -20468,7 +20519,7 @@ body.db-page[data-skin='bento'],
   --glass-shadow: 0 1px 2px rgba(20, 24, 30, 0.06);
   --glass-blur: 0px;
   --glass-saturate: 1;
-  --focus-ring: 2px solid #2c4a7c;
+  --focus-ring: 2px solid #17633f;
   --radius: 22px;
   --squircle-md: 22px;
   --squircle-lg: 22px;
@@ -20565,13 +20616,13 @@ body.db-page[data-skin='departure'],
   --text: #e9e7e1;
   --text-heading: #f4f2ec;
   --text-muted: #7d8186;
-  --brand: #f0b429;
-  --brand-hover: #ffc94d;
+  --brand: #f5c344;
+  --brand-hover: #ffd45c;
   --brand-on: #1a1405;
-  --gold: #f0b429; /* amber accent (directive) */
-  --gold-rgb: 240, 180, 41;
+  --gold: #f5c344; /* amber accent (reference art) */
+  --gold-rgb: 245, 195, 68;
   --on-gold: #1a1405;
-  --gold-ink: #f0b429;
+  --gold-ink: #f5c344;
   --tile-bg: #15181b;
   --track-bg: #23282c;
   --glass-fill-dark: #181b1e;
@@ -20684,13 +20735,13 @@ body.db-page[data-skin='editorial'],
   --text: #161513;
   --text-heading: #0f0e0c;
   --text-muted: #6e6a62;
-  --brand: #7a1f2b;
-  --brand-hover: #641822;
+  --brand: #6f2025;
+  --brand-hover: #581a1e;
   --brand-on: #ffffff;
-  --gold: #7a1f2b; /* oxblood accent (directive) */
-  --gold-rgb: 122, 31, 43;
+  --gold: #6f2025; /* oxblood accent (reference art) */
+  --gold-rgb: 111, 32, 37;
   --on-gold: #ffffff;
-  --gold-ink: #7a1f2b;
+  --gold-ink: #6f2025;
   --tile-bg: #f4f1e9;
   --track-bg: #e7e2d6;
   --glass-fill-dark: #ffffff;
@@ -20701,7 +20752,7 @@ body.db-page[data-skin='editorial'],
   --glass-shadow: none;
   --glass-blur: 0px;
   --glass-saturate: 1;
-  --focus-ring: 2px solid #7a1f2b;
+  --focus-ring: 2px solid #6f2025;
   --radius: 0px;
   --squircle-md: 0px;
   --squircle-lg: 0px;
@@ -20817,13 +20868,13 @@ body.db-page[data-skin='guild'],
   --text: #2a2118;
   --text-heading: #1c140c;
   --text-muted: #6f6757;
-  --brand: #b08d57;
-  --brand-hover: #c79f6a;
+  --brand: #b68b3b;
+  --brand-hover: #c79a4e;
   --brand-on: #2a1d12;
-  --gold: #b08d57; /* brass accent (directive) */
-  --gold-rgb: 176, 141, 87;
+  --gold: #b68b3b; /* brass accent (reference art) */
+  --gold-rgb: 182, 139, 59;
   --on-gold: #2a1d12;
-  --gold-ink: #b08d57;
+  --gold-ink: #b68b3b;
   --tile-bg: #d8c193;
   --track-bg: #4a3322;
   --glass-fill-dark: #e8d5a8;
@@ -20834,7 +20885,7 @@ body.db-page[data-skin='guild'],
   --glass-shadow: 0 6px 14px rgba(0, 0, 0, 0.4);
   --glass-blur: 0px;
   --glass-saturate: 1;
-  --focus-ring: 2px solid #b08d57;
+  --focus-ring: 2px solid #b68b3b;
   --radius: 6px;
   --squircle-md: 6px;
   --squircle-lg: 6px;
@@ -21167,13 +21218,13 @@ body.db-page[data-skin='obsidian'],
   --text: #f0e6d2;
   --text-heading: #fbf2dd;
   --text-muted: #9a8f78;
-  --brand: #d4a24c;
-  --brand-hover: #e6b85f;
+  --brand: #e6b85f;
+  --brand-hover: #f0c878;
   --brand-on: #1a1305;
-  --gold: #d4a24c;
-  --gold-rgb: 212, 162, 76;
+  --gold: #e6b85f;
+  --gold-rgb: 230, 184, 95;
   --on-gold: #1a1305;
-  --gold-ink: #d4a24c;
+  --gold-ink: #e6b85f;
   --tile-bg: rgba(28, 36, 46, 0.7);
   --track-bg: rgba(212, 162, 76, 0.18);
   --glass-fill-dark: rgba(22, 29, 37, 0.9);
@@ -21198,13 +21249,13 @@ body.db-page[data-skin='obsidian'],
 body.db-page[data-skin='obsidian'] .pcard {
   border: 1px solid transparent;
   background-image:
-    linear-gradient(var(--card), var(--card)), linear-gradient(135deg, #d4a24c, #8a6a2e);
+    linear-gradient(var(--card), var(--card)), linear-gradient(135deg, #e6b85f, #8a6a2e);
   background-origin: border-box;
   background-clip: padding-box, border-box;
   border-radius: 16px;
 }
 body.db-page[data-skin='obsidian'] .pcard.unlocked {
-  box-shadow: inset 0 3px 0 #d4a24c;
+  box-shadow: inset 0 3px 0 #e6b85f;
 }
 
 /* Gold text links with the existing arrow. */
@@ -21262,13 +21313,13 @@ body.db-page[data-skin='pegboard'],
   --text: #232623;
   --text-heading: #1a1c1a;
   --text-muted: #5f6860;
-  --brand: #2d5b8f;
-  --brand-hover: #244a76;
+  --brand: #075aa7;
+  --brand-hover: #064c8c;
   --brand-on: #ffffff;
-  --gold: #2d5b8f; /* blue accent (directive) */
-  --gold-rgb: 45, 91, 143;
+  --gold: #075aa7; /* steel-blue accent (reference art) */
+  --gold-rgb: 7, 90, 167;
   --on-gold: #ffffff;
-  --gold-ink: #2d5b8f;
+  --gold-ink: #075aa7;
   --tile-bg: #eef0ea;
   --track-bg: #dfe3da;
   --glass-fill-dark: #fbfaf5;
@@ -21279,7 +21330,7 @@ body.db-page[data-skin='pegboard'],
   --glass-shadow: 0 4px 10px rgba(20, 30, 24, 0.14);
   --glass-blur: 0px;
   --glass-saturate: 1;
-  --focus-ring: 2px solid #2d5b8f;
+  --focus-ring: 2px solid #075aa7;
   --radius: 4px;
   --squircle-md: 4px;
   --squircle-lg: 4px;
@@ -21377,7 +21428,7 @@ body.db-page[data-skin='pegboard'] .sidebar-icon[aria-current='true'] .ico {
    ------------------------------------------------------------
    Municipal permit aesthetic: ink left band on cards, 2px border,
    hanging clip-path status tag carrying the real word (the dot
-   colour is preserved per the owner rule). Green primary.
+   colour is preserved per the owner rule). Navy primary (navy blueprint reference art).
    ============================================================ */
 body.db-page[data-skin='permit'],
 .theme-preview[data-skin='permit'] {
@@ -21389,13 +21440,13 @@ body.db-page[data-skin='permit'],
   --text: #1b1e1c;
   --text-heading: #121614;
   --text-muted: #6a706b;
-  --brand: #1f6f4a;
-  --brand-hover: #185c3d;
+  --brand: #21374f;
+  --brand-hover: #1a2c3e;
   --brand-on: #ffffff;
-  --gold: #1f6f4a; /* green accent (directive) */
-  --gold-rgb: 31, 111, 74;
+  --gold: #21374f; /* navy accent (reference art) */
+  --gold-rgb: 33, 55, 79;
   --on-gold: #ffffff;
-  --gold-ink: #1f6f4a;
+  --gold-ink: #21374f;
   --tile-bg: #eef1ec;
   --track-bg: #dfe4dd;
   --glass-fill-dark: #ffffff;
@@ -21406,7 +21457,7 @@ body.db-page[data-skin='permit'],
   --glass-shadow: 0 1px 2px rgba(20, 30, 24, 0.08);
   --glass-blur: 2px;
   --glass-saturate: 1;
-  --focus-ring: 2px solid #1f6f4a;
+  --focus-ring: 2px solid #21374f;
   --radius: 2px;
   --squircle-md: 2px;
   --squircle-lg: 2px;
@@ -21491,13 +21542,13 @@ body.db-page[data-skin='vellum'],
   --text: #1d3557;
   --text-heading: #16263f;
   --text-muted: #5d6f8a;
-  --brand: #1d3557;
-  --brand-hover: #14304f;
+  --brand: #7a3039;
+  --brand-hover: #642231;
   --brand-on: #fdfcf8;
-  --gold: #1d3557; /* navy accent (directive) */
-  --gold-rgb: 29, 53, 87;
+  --gold: #7a3039; /* burgundy accent (reference art) */
+  --gold-rgb: 122, 48, 57;
   --on-gold: #fdfcf8;
-  --gold-ink: #1d3557;
+  --gold-ink: #7a3039;
   --tile-bg: #f1eee6;
   --track-bg: #e7e3d8;
   --glass-fill-dark: #fdfcf8;
@@ -21508,7 +21559,7 @@ body.db-page[data-skin='vellum'],
   --glass-shadow: none;
   --glass-blur: 0px;
   --glass-saturate: 1;
-  --focus-ring: 2px solid #a8323e;
+  --focus-ring: 2px solid #7a3039;
   --radius: 0px;
   --squircle-md: 0px;
   --squircle-lg: 0px;

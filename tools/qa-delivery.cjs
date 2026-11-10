@@ -139,6 +139,10 @@ async function main() {
         );
         localStorage.setItem('mmgr_unlocked_dlv', '1');
         localStorage.setItem('mmgr_scope_dlv', 'full');
+        // This suite drives the BOQ delivery dialog. The first-run tour
+        // auto-opens on a clean profile and re-scrolls the page to its
+        // current target while it settles, moving the layout under a click.
+        localStorage.setItem('mmgr_first_project_tour_v1', '1');
         localStorage.setItem('mmgr_state_dlv', JSON.stringify(state));
       } catch (e) {
         /* ignore */
@@ -160,7 +164,14 @@ async function main() {
   try {
     const a = await open(projectState());
     // D1: the row's own button opens on that line, price prefilled.
-    await a.page.click('#bud-body tr [data-action="deliveryOpen"]');
+    // Dispatch in-page: the BOQ panel re-renders as the shell settles, so a
+    // coordinate click can land on whatever moved under the pointer.
+    await a.page.evaluate(() => {
+      const b = document.querySelector('#bud-body tr [data-action="deliveryOpen"]');
+      if (b) {
+        b.click();
+      }
+    });
     await a.page.waitForTimeout(300);
     const opened = await a.page.evaluate(() => {
       const box = document.getElementById('dlv-modal');
@@ -275,7 +286,12 @@ async function main() {
       (vis[0] || all[0]).click();
     });
     await a.page.waitForTimeout(400);
-    await a.page.click('[data-action="deliveryOpen"]');
+    await a.page.evaluate(() => {
+      const b = document.querySelector('#bud-body tr [data-action="deliveryOpen"]');
+      if (b) {
+        b.click();
+      }
+    });
     await a.page.waitForTimeout(250);
     await a.page.fill('#dlv-qty', '2');
     await a.page.fill('#dlv-price', '1000');

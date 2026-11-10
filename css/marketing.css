@@ -659,11 +659,13 @@ main {
    fade only (no rise), so the same movement does not repeat back to back. */
 .rv {
   opacity: 0;
-  transform: translateY(14px);
+  transform: translateY(18px);
+  /* OWNER 2026-11-10: slower and sequenced, not a snap. 0.8s with a 90ms
+     stagger lets one element finish before the next begins. */
   transition:
-    opacity 0.55s var(--ease-out),
-    transform 0.55s var(--ease-out);
-  transition-delay: calc(var(--rv-i, 0) * 55ms);
+    opacity 0.8s var(--ease-out),
+    transform 0.8s var(--ease-out);
+  transition-delay: calc(var(--rv-i, 0) * 90ms);
 }
 .rv-in {
   opacity: 1;
@@ -2792,12 +2794,35 @@ body.dark-mode #f-voice {
   width: 11px;
   height: 11px;
   border-radius: 3px;
-  background: var(--gold);
-  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.2);
+  background: rgba(212, 175, 55, 0.35);
   transition:
-    background 0.3s var(--ease-out),
-    box-shadow 0.3s var(--ease-out),
-    transform 0.3s var(--ease-out);
+    background 0.45s var(--ease-out),
+    box-shadow 0.45s var(--ease-out),
+    transform 0.45s var(--ease-out);
+}
+/* OWNER 2026-11-10: the travelling light. One cursor slides along the rail to
+   the next phase instead of the highlight teleporting; the node underneath
+   pops as it arrives. Reduced motion never creates this element. */
+.phase-cursor {
+  position: absolute;
+  top: 9px;
+  left: 0;
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  background: var(--gold-300);
+  box-shadow:
+    0 0 0 4px rgba(212, 175, 55, 0.22),
+    0 0 18px rgba(212, 175, 55, 0.5);
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+}
+.phase-cursor.is-live {
+  opacity: 1;
+  transition:
+    transform 0.78s cubic-bezier(0.34, 1.12, 0.4, 1),
+    opacity 0.3s var(--ease-out);
 }
 /* OWNER 2026-11-10: the lifecycle strip lights one phase at a time
    (js/marketing.js, 2.4s, pauses on hover and off screen). The lit node grows
@@ -3880,15 +3905,15 @@ body.dark-mode #f-voice {
   transform: none;
 }
 .rv {
-  transition-delay: calc(var(--rv-i, 0) * 55ms);
+  transition-delay: calc(var(--rv-i, 0) * 90ms);
 }
 /* OWNER 2026-11-10: scrolling back up used to snap the revealed element away.
-   The exit now mirrors the entry - same distance, same curve, 400ms, no
+   The exit now mirrors the entry - a shorter glide, the same curve, 550ms, no
    stagger - so leaving the viewport is as smooth as arriving in it. */
 .rv.rv-out {
   opacity: 0;
-  transform: translateY(-18px);
-  transition-duration: 0.4s;
+  transform: translateY(-12px);
+  transition-duration: 0.55s;
   transition-delay: 0ms;
 }
 .section-alt .rv.rv-out {
@@ -6095,15 +6120,15 @@ html body.dark-mode .btn-gold:disabled {
   margin: 0;
 }
 /* OWNER 2026-11-10: a card that moves into a bento slot is pushed forward
-   instead of popping. 420ms, one property set, and the class is removed by
-   the next step so a re-used card can animate again. */
+   instead of popping. 600ms with a soft scale so the arrival is a glide, and
+   the class is removed by the next step so a re-used card can animate again. */
 .bento .fcard.bento-in {
-  animation: bento-push 0.42s var(--ease-out) both;
+  animation: bento-push 0.6s var(--ease-out) both;
 }
 @keyframes bento-push {
   from {
-    opacity: 0.35;
-    transform: translateY(10px) scale(0.97);
+    opacity: 0.2;
+    transform: translateY(14px) scale(0.985);
   }
   to {
     opacity: 1;

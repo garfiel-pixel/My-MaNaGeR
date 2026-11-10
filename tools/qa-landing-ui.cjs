@@ -605,6 +605,32 @@ async function newPage(browser, opts) {
       phase.nodeScale && phase.nodeScale !== 'none' && !/matrix\(1, 0, 0, 1/.test(phase.nodeScale),
       phase.nodeScale
     );
+    // OWNER 2026-11-10: the light must TRAVEL to the next phase, not teleport.
+    const cursorAt = () =>
+      p3.evaluate(() => {
+        const c = document.querySelector('.phase-rail .phase-cursor');
+        if (!c) return null;
+        return {
+          transform: getComputedStyle(c).transform,
+          transition: getComputedStyle(c).transitionProperty
+        };
+      });
+    const cur1 = await cursorAt();
+    await p3.waitForTimeout(2700);
+    const cur2 = await cursorAt();
+    check('L-01', 'a travelling phase cursor exists', !!cur1, cur1);
+    check(
+      'L-01',
+      'the phase light travels (the cursor transform changes between steps)',
+      !!cur1 && !!cur2 && cur1.transform !== cur2.transform,
+      { before: cur1 && cur1.transform, after: cur2 && cur2.transform }
+    );
+    check(
+      'L-01',
+      'the cursor animates its transform rather than jumping',
+      !!cur1 && /transform/.test(cur1.transition || ''),
+      cur1 && cur1.transition
+    );
 
     await p3.evaluate(() =>
       document.querySelector('.audience').scrollIntoView({ block: 'center' })
@@ -644,10 +670,13 @@ async function newPage(browser, opts) {
       !!bento && bento.name === 'bento-push',
       JSON.stringify(bento)
     );
+    // OWNER 2026-11-10: the swap is deliberately slower and softer now
+    // (600ms), so the ceiling moved from 500ms to 800ms - still a settle, not
+    // a snap, and never an infinite animation.
     check(
       'L-03',
-      'the push settles in under half a second',
-      !!bento && parseFloat(bento.dur) <= 0.5,
+      'the push settles within 0.8s (a glide, not a snap)',
+      !!bento && parseFloat(bento.dur) <= 0.8,
       bento && bento.dur
     );
     await p3.waitForTimeout(1200);
@@ -711,6 +740,62 @@ async function newPage(browser, opts) {
       errs.join(' | ')
     );
     await c3.close();
+
+    // OWNER 2026-11-10: the landing page must also hold up at 390px. Check
+    // that nothing pushes the page sideways and that the key blocks render.
+    const { ctx: c4, page: p4 } = await newPage(browser, {
+      viewport: { width: 390, height: 844 }
+    });
+    const merrs = [];
+    p4.on('pageerror', e => merrs.push(String(e)));
+    await p4.goto(BASE + '/index.html', { waitUntil: 'load' });
+    await p4.waitForTimeout(900);
+    const mobile = await p4.evaluate(() => {
+      const vw = document.documentElement.clientWidth;
+      const over = [...document.querySelectorAll('body *')]
+        .filter(el => {
+          const r = el.getBoundingClientRect();
+          return r.width > 0 && (r.right > vw + 2 || r.left < -2);
+        })
+        .slice(0, 5)
+        .map(el => (el.className && String(el.className).slice(0, 40)) || el.tagName);
+      const cta = document.querySelector('.hero .btn-gold, .btn-gold.btn-lg');
+      const cr = cta && cta.getBoundingClientRect();
+      const phases = [...document.querySelectorAll('.phase-rail > li')];
+      return {
+        vw,
+        scrollW: document.documentElement.scrollWidth,
+        overflow: over,
+        ctaVisible: !!cr && cr.width > 80 && cr.right <= vw + 2,
+        phases: phases.length,
+        phaseWidths: phases.map(li => Math.round(li.getBoundingClientRect().width))
+      };
+    });
+    check(
+      'M-01',
+      'no element pushes the landing page sideways at 390',
+      mobile.scrollW <= mobile.vw + 1,
+      mobile
+    );
+    check(
+      'M-02',
+      'the hero call to action fits inside the 390 viewport',
+      mobile.ctaVisible === true,
+      mobile.ctaVisible
+    );
+    check(
+      'M-03',
+      'all five phase steps render with a real width at 390',
+      mobile.phases === 5 && mobile.phaseWidths.every(w => w > 0),
+      mobile.phaseWidths
+    );
+    check(
+      'M-00',
+      'no uncaught page errors on the mobile pass',
+      merrs.length === 0,
+      merrs.join(' | ')
+    );
+    await c4.close();
   }
 
   await browser.close();

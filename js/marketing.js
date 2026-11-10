@@ -2186,6 +2186,33 @@
     phases[0].classList.add('is-phase');
     return;
   }
+  // OWNER 2026-11-10: the light must TRAVEL, not teleport. One cursor element
+  // slides along the rail to the next node, and the node pops as it arrives;
+  // the phase-off is the cursor leaving, the phase-on is it settling.
+  var cursor = document.createElement('span');
+  cursor.className = 'phase-cursor';
+  cursor.setAttribute('aria-hidden', 'true');
+  rail.appendChild(cursor);
+  function place(i) {
+    var li = phases[i % phases.length];
+    if (!li) {
+      return;
+    }
+    cursor.style.transform = 'translateX(' + li.offsetLeft + 'px)';
+  }
+  // The first placement is instant; every later one animates via CSS.
+  place(0);
+  requestAnimationFrame(function () {
+    cursor.classList.add('is-live');
+  });
+  window.addEventListener('resize', function () {
+    var cur = phases.filter(function (p) {
+      return p.classList.contains('is-phase');
+    })[0];
+    if (cur) {
+      cursor.style.transform = 'translateX(' + cur.offsetLeft + 'px)';
+    }
+  });
   var at = 0;
   var timer = null;
   var paused = false;
@@ -2193,10 +2220,12 @@
     if (paused || document.visibilityState !== 'visible') {
       return;
     }
+    var next = at % phases.length;
     phases.forEach(function (p) {
       p.classList.remove('is-phase');
     });
-    phases[at % phases.length].classList.add('is-phase');
+    phases[next].classList.add('is-phase');
+    place(next);
     at++;
   }
   function start() {

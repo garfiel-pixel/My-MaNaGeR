@@ -4583,6 +4583,16 @@ var MMGR = window.MMGR || {};
       ns.AppBackup.bkCloseSnapshot();
     }
   }
+  // ---- Wave 5: skeletons ---- (extracted to js/app/skeleton.js)
+  function skeletonHtml(section) {
+    return ns.Skeleton && ns.Skeleton.html ? ns.Skeleton.html(section) : '';
+  }
+  function skeletonPaint(section, target) {
+    return ns.Skeleton && ns.Skeleton.paint ? ns.Skeleton.paint(section, target) : function () {};
+  }
+  function skeletonSections() {
+    return ns.Skeleton && ns.Skeleton.sections ? ns.Skeleton.sections : [];
+  }
 
   function openDrwToPrompts(type) {
     swDtab('prompt', null);
@@ -6082,6 +6092,9 @@ var MMGR = window.MMGR || {};
     bkClose: bkClose,
     bkCloud: bkCloud,
     bkCloseSnapshot: bkCloseSnapshot,
+    skeletonHtml: skeletonHtml,
+    skeletonPaint: skeletonPaint,
+    skeletonSections: skeletonSections,
     setProjStatus: setProjStatus,
     jumpToDashTimeline: jumpToDashTimeline,
     openOM: openOM,

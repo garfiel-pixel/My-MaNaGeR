@@ -1422,6 +1422,13 @@ jobs:
         id: qa-ai-actions
         run: node tools/qa-ai-actions.cjs
 
+      # WAVE 5 SKELETONS (owner 2026-11-10): every loading state mirrors the
+      # shape it will reveal, and the boot splash no longer draws the off-canvas
+      # rail. One shape assertion per section plus the mobile collapse.
+      - name: "T4: Skeletons (qa-skeletons)"
+        id: qa-skeletons
+        run: node tools/qa-skeletons.cjs
+
       # I-1 CLIENT regression (forged-cookie Playwright): boots its OWN local
       # wrangler dev with a forged Google session and drives the real app.html to
       # prove the owner code persists to localStorage and the signed-in account

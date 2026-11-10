@@ -5912,6 +5912,95 @@ button.rel-badge {
   height: 14px;
   background: var(--gold-ink, rgba(212, 175, 55, 0.55));
 }
+/* Wave 5: layout classes for the per-section skeleton templates. Shape only -
+   the .skel-box sheen carries the motion, and reduced motion stays static. */
+.skel-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.skel-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 16px);
+}
+.skel-panel {
+  margin-top: 14px;
+}
+.skel-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.skel-tr {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 8px);
+}
+.skel-tr-head {
+  background: var(--skel-base);
+}
+.skel-board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.skel-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 16px);
+}
+.skel-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+.skel-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.skel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.skel-li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 8px);
+}
+.skel-tall {
+  height: 140px;
+}
+.skel-w-60 {
+  width: 60%;
+}
+@media (max-width: 820px) {
+  .skel-metrics,
+  .skel-board {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .skel-metrics,
+  .skel-board,
+  .skel-grid {
+    grid-template-columns: 1fr;
+  }
+}
 @media (max-width: 600px) {
   .bs-skel-rail {
     display: none;

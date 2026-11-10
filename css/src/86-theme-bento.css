@@ -1,0 +1,113 @@
+/* ============================================================
+   My MaNaGeR — Skin: Bento Dock (light)
+   ------------------------------------------------------------
+   Soft rounded tiles, no borders, gentle shadow, 6-col grid.
+   Status as a CSS ring (solid = active, dashed = planning,
+   amber/green inherit the app dot colours). Rail relocates to a
+   floating pill dock at bottom-centre. Pill action buttons.
+   ============================================================ */
+body.db-page[data-skin='bento'],
+.theme-preview[data-skin='bento'] {
+  --canvas: #e9ecef;
+  --surface: #ffffff;
+  --card: #ffffff;
+  --surface-raised: #f4f6f8;
+  --border: #d8dde2;
+  --text: #16181d;
+  --text-heading: #0f1115;
+  --text-muted: #6a717b;
+  --brand: #2c4a7c;
+  --brand-hover: #24406c;
+  --brand-on: #ffffff;
+  --gold: #2c4a7c; /* navy-blue accent (directive) */
+  --gold-rgb: 44, 74, 124;
+  --on-gold: #ffffff;
+  --gold-ink: #2c4a7c;
+  --tile-bg: #f1f3f6;
+  --track-bg: #e2e7ec;
+  --glass-fill-dark: #ffffff;
+  --glass-fill-dark-hover: #f6f8fa;
+  --glass-fill-dark-active: #eef1f5;
+  --glass-border: 1px solid transparent;
+  --glass-rim: none;
+  --glass-shadow: 0 1px 2px rgba(20, 24, 30, 0.06);
+  --glass-blur: 0px;
+  --glass-saturate: 1;
+  --focus-ring: 2px solid #2c4a7c;
+  --radius: 22px;
+  --squircle-md: 22px;
+  --squircle-lg: 22px;
+  --font-head: 'Figtree', 'Segoe UI', system-ui, sans-serif;
+  --font-body: 'Figtree', 'Segoe UI', system-ui, sans-serif;
+}
+
+/* Cards: no border, rounded, soft shadow. */
+body.db-page[data-skin='bento'] .pcard {
+  border: none;
+  border-radius: 22px;
+  box-shadow: 0 1px 3px rgba(20, 24, 30, 0.08);
+}
+body.db-page[data-skin='bento'] .pcard.unlocked {
+  box-shadow: inset 0 3px 0 var(--brand);
+}
+body.db-page[data-skin='bento'] .pcard:hover {
+  transform: translateY(-3px);
+}
+
+/* Status ring: 14px circle, solid for active/completed, dashed for planning. */
+body.db-page[data-skin='bento'] .pc-status .sdot {
+  width: 14px;
+  height: 14px;
+  background: transparent !important;
+  border: 3px solid currentColor;
+}
+body.db-page[data-skin='bento'] .pc-status .sdot.g {
+  color: var(--dot-green);
+}
+body.db-page[data-skin='bento'] .pc-status .sdot.b {
+  color: var(--dot-blue);
+  border-style: dashed;
+}
+body.db-page[data-skin='bento'] .pc-status .sdot.a {
+  color: var(--dot-amber);
+}
+
+/* Pill action button with arrow in a circle. */
+body.db-page[data-skin='bento'] .pc-cta,
+body.db-page[data-skin='bento'] .btn,
+body.db-page[data-skin='bento'] .db-new-project {
+  border-radius: 999px;
+  background: var(--brand);
+  color: #fff;
+  border: none;
+}
+
+/* Rail -> floating pill dock, bottom-centre, horizontal. */
+body.db-page[data-skin='bento'] .sidebar-icons {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  top: auto;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(20, 24, 30, 0.18);
+  z-index: 96;
+}
+body.db-page[data-skin='bento'] .sidebar-icon {
+  border-radius: 50%;
+  border: 1px solid var(--border);
+}
+body.db-page[data-skin='bento'] .sidebar-icon.is-active,
+body.db-page[data-skin='bento'] .sidebar-icon[aria-current='true'] {
+  background: var(--brand);
+  border-color: var(--brand);
+}
+body.db-page[data-skin='bento'] .sidebar-icon.is-active .ico,
+body.db-page[data-skin='bento'] .sidebar-icon[aria-current='true'] .ico {
+  color: #fff;
+}

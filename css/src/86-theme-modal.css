@@ -1,0 +1,205 @@
+/* ============================================================
+   My MaNaGeR — Customize modal + theme-preview grid
+   ------------------------------------------------------------
+   Neutral chrome for the Customize dialog (OWNER 2026-11-10
+   theme pack). Scoped to #customize-modal so it cannot leak
+   into project/admin/marketing pages. Each theme's own skin
+   lives in its own 86-theme-<slug>.css.
+   ============================================================ */
+
+#customize-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+#customize-modal[hidden] {
+  display: none;
+}
+
+.cm-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 22, 33, 0.46);
+  backdrop-filter: blur(2px);
+}
+.cm-dialog {
+  position: relative;
+  width: min(760px, 100%);
+  max-height: min(86vh, 760px);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface, #fff);
+  color: var(--text, #1d2733);
+  border: 1px solid var(--border, #d7dce3);
+  border-radius: 16px;
+  box-shadow: 0 24px 70px rgba(12, 18, 28, 0.34);
+  overflow: hidden;
+}
+.cm-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border, #e6e9ee);
+}
+.cm-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 1.05rem/1.2 var(--font-head, inherit);
+}
+.cm-title .ico {
+  width: 18px;
+  height: 18px;
+}
+.cm-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border, #d7dce3);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text, #1d2733);
+  cursor: pointer;
+}
+.cm-close:hover {
+  background: var(--tile-bg, #f1f3f6);
+}
+.cm-body {
+  padding: 18px 20px;
+  overflow-y: auto;
+}
+.cm-sec {
+  margin-bottom: 22px;
+}
+.cm-sec:last-child {
+  margin-bottom: 0;
+}
+.cm-h {
+  margin: 0 0 4px;
+  font: 600 0.95rem/1.3 var(--font-head, inherit);
+}
+.cm-sub {
+  margin: 0 0 12px;
+  font-size: 0.82rem;
+  color: var(--text-muted, #6a717b);
+}
+.cm-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border, #eef1f4);
+}
+.cm-row .ico {
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted, #6a717b);
+}
+.cm-row-label {
+  font-size: 0.9rem;
+}
+.cm-row .theme-select {
+  margin-left: auto;
+}
+.cm-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border, #e6e9ee);
+}
+
+/* ---- theme preview grid ---- */
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+.theme-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 2px solid var(--border, #d7dce3);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition:
+    border-color 0.15s,
+    transform 0.15s,
+    box-shadow 0.15s;
+}
+.theme-preview:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(12, 18, 28, 0.12);
+}
+.theme-preview.is-selected {
+  border-color: var(--gold, #d4af37);
+}
+.theme-preview:focus-visible {
+  outline: 2px solid var(--gold, #d4af37);
+  outline-offset: 2px;
+}
+.tp-name {
+  font: 600 0.82rem/1.2 var(--font-head, inherit);
+}
+
+/* The mini mock inside each preview. Themes restyle this via
+   .theme-preview[data-skin="<slug>"] so the preview shows the real skin. */
+.tp-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--tile-bg, #f1f3f6);
+  border: 1px solid var(--border, #d7dce3);
+}
+.tp-ttl {
+  font: 600 0.78rem/1.2 var(--font-head, inherit);
+}
+.tp-st {
+  font-size: 0.66rem;
+  color: var(--text-muted, #6a717b);
+}
+.tp-cta {
+  align-self: flex-start;
+  margin-top: 2px;
+  font-size: 0.66rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--gold, #d4af37);
+  color: var(--on-gold, #1d2733);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-preview {
+    transition: none;
+  }
+  .theme-preview:hover {
+    transform: none;
+  }
+}
+
+/* The preview cards must be drawn even before a skin is chosen, so give
+   the mock a neutral base here; each skin file overrides the tokens. */
+.theme-preview {
+  --tile-bg: #f1f3f6;
+  --border: #d7dce3;
+  --text-muted: #6a717b;
+  --gold: #d4af37;
+  --on-gold: #1d2733;
+  --surface: #fff;
+  --font-head: system-ui, sans-serif;
+}

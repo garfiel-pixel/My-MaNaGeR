@@ -1,0 +1,133 @@
+/* ============================================================
+   My MaNaGeR — Skin: Editorial Masthead (light)
+   ------------------------------------------------------------
+   Serif masthead with thick-over-thin rule, centred top rail
+   (icons only), single-column list rows separated by hairlines.
+   Status italic + accent period. Buttons are text with a growing
+   underline (no boxes). Status dot colour preserved.
+   ============================================================ */
+body.db-page[data-skin='editorial'],
+.theme-preview[data-skin='editorial'] {
+  --canvas: #fbfaf6;
+  --surface: #ffffff;
+  --card: #ffffff;
+  --surface-raised: #f5f3ec;
+  --border: #d9d4c8;
+  --text: #161513;
+  --text-heading: #0f0e0c;
+  --text-muted: #6e6a62;
+  --brand: #7a1f2b;
+  --brand-hover: #641822;
+  --brand-on: #ffffff;
+  --gold: #7a1f2b; /* oxblood accent (directive) */
+  --gold-rgb: 122, 31, 43;
+  --on-gold: #ffffff;
+  --gold-ink: #7a1f2b;
+  --tile-bg: #f4f1e9;
+  --track-bg: #e7e2d6;
+  --glass-fill-dark: #ffffff;
+  --glass-fill-dark-hover: #f7f5ef;
+  --glass-fill-dark-active: #efebe2;
+  --glass-border: 1px solid #d9d4c8;
+  --glass-rim: none;
+  --glass-shadow: none;
+  --glass-blur: 0px;
+  --glass-saturate: 1;
+  --focus-ring: 2px solid #7a1f2b;
+  --radius: 0px;
+  --squircle-md: 0px;
+  --squircle-lg: 0px;
+  --font-head: 'Playfair Display', 'Iowan Old Style', Georgia, serif;
+  --font-body: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+}
+
+/* Masthead: thick-over-thin rule under the hero title. */
+body.db-page[data-skin='editorial'] .db-hero-title {
+  font-family: var(--font-head);
+  font-weight: 800;
+  font-size: 2rem;
+  border-bottom: 4px solid var(--text);
+  box-shadow: 0 2px 0 -1px var(--text);
+  padding-bottom: 8px;
+}
+
+/* Cards become single-column list rows, no box, hairline divider. */
+body.db-page[data-skin='editorial'] .pcard {
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: 14px 4px;
+}
+body.db-page[data-skin='editorial'] .pcard.unlocked {
+  box-shadow: none;
+}
+body.db-page[data-skin='editorial'] .pcard:hover {
+  transform: none;
+  background: var(--tile-bg);
+}
+
+/* Status: italic word followed by an accent period. */
+body.db-page[data-skin='editorial'] .pc-status {
+  font-style: italic;
+  font-family: var(--font-body);
+}
+body.db-page[data-skin='editorial'] .pc-status::after {
+  content: '.';
+  color: var(--brand);
+  font-style: normal;
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+/* Buttons: text + 2px accent underline that grows on hover (no boxes). */
+body.db-page[data-skin='editorial'] .btn,
+body.db-page[data-skin='editorial'] .db-new-project,
+body.db-page[data-skin='editorial'] .pc-cta {
+  background: transparent;
+  color: var(--brand);
+  border: none;
+  border-bottom: 2px solid var(--brand);
+  border-radius: 0;
+  padding: 2px 2px 3px;
+  transition:
+    border-bottom-width 0.18s,
+    letter-spacing 0.18s;
+}
+body.db-page[data-skin='editorial'] .btn:hover,
+body.db-page[data-skin='editorial'] .db-new-project:hover,
+body.db-page[data-skin='editorial'] .pc-cta:hover {
+  border-bottom-width: 4px;
+}
+
+/* Rail -> centred top row, icons only. */
+body.db-page[data-skin='editorial'] .sidebar-icons {
+  position: fixed;
+  left: 50%;
+  top: 8px;
+  bottom: auto;
+  transform: translateX(-50%);
+  flex-direction: row;
+  gap: 6px;
+  background: transparent;
+  z-index: 96;
+}
+body.db-page[data-skin='editorial'] .sidebar-icon {
+  border-radius: 0;
+  border: none;
+}
+body.db-page[data-skin='editorial'] .sidebar-icon.is-active .ico,
+body.db-page[data-skin='editorial'] .sidebar-icon[aria-current='true'] .ico {
+  color: var(--brand);
+}
+
+/* Inputs: large serif field, bottom rule only. */
+body.db-page[data-skin='editorial'] input,
+body.db-page[data-skin='editorial'] select,
+body.db-page[data-skin='editorial'] textarea {
+  border: none;
+  border-bottom: 2px solid var(--text);
+  border-radius: 0;
+  font-family: var(--font-body);
+}

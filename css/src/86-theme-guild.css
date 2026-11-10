@@ -1,0 +1,103 @@
+/* ============================================================
+   My MaNaGeR — Skin: Carved Timber (dark)
+   ------------------------------------------------------------
+   CSS-only restrained interpretation (no painted illustration).
+   Deep-green wood-grain canvas, parchment cards on timber frames
+   with a curled corner, faceted gem status, brass-bordered
+   timber buttons. Status dot colour preserved (tints the gem).
+   ============================================================ */
+body.db-page[data-skin='guild'],
+.theme-preview[data-skin='guild'] {
+  --canvas: #1f3a2e;
+  --surface: #3a2818;
+  --card: #e8d5a8;
+  --surface-raised: #4a3322;
+  --border: #2a1d12;
+  --text: #2a2118;
+  --text-heading: #1c140c;
+  --text-muted: #6f6757;
+  --brand: #b08d57;
+  --brand-hover: #c79f6a;
+  --brand-on: #2a1d12;
+  --gold: #b08d57; /* brass accent (directive) */
+  --gold-rgb: 176, 141, 87;
+  --on-gold: #2a1d12;
+  --gold-ink: #b08d57;
+  --tile-bg: #d8c193;
+  --track-bg: #4a3322;
+  --glass-fill-dark: #e8d5a8;
+  --glass-fill-dark-hover: #efe0bc;
+  --glass-fill-dark-active: #e0cda0;
+  --glass-border: 1px solid #2a1d12;
+  --glass-rim: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  --glass-shadow: 0 6px 14px rgba(0, 0, 0, 0.4);
+  --glass-blur: 0px;
+  --glass-saturate: 1;
+  --focus-ring: 2px solid #b08d57;
+  --radius: 6px;
+  --squircle-md: 6px;
+  --squircle-lg: 6px;
+  --font-head: 'Cinzel', 'Trajan Pro', Georgia, serif;
+  --font-body: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  background-color: #1f3a2e;
+  background-image:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.1) 0 2px, transparent 2px 7px),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 9px);
+  background-attachment: fixed;
+}
+
+/* Parchment card on a timber frame, one corner curled. */
+body.db-page[data-skin='guild'] .pcard {
+  border: 6px solid #4a3322;
+  border-radius: 6px;
+  box-shadow: var(--glass-shadow);
+  clip-path: polygon(0 0, 100% 0, 100% 86%, 92% 100%, 0 100%);
+}
+body.db-page[data-skin='guild'] .pcard.unlocked {
+  box-shadow: inset 0 3px 0 var(--brand);
+}
+
+/* Status: faceted gem (clip-path) beside the real word; dot colour tints it. */
+body.db-page[data-skin='guild'] .pc-status .sdot {
+  width: 12px;
+  height: 12px;
+  background: currentColor !important;
+  border: none;
+  clip-path: polygon(50% 0, 100% 38%, 82% 100%, 18% 100%, 0 38%);
+}
+body.db-page[data-skin='guild'] .pc-status .sdot.g {
+  color: var(--dot-green);
+}
+body.db-page[data-skin='guild'] .pc-status .sdot.b {
+  color: var(--dot-blue);
+}
+body.db-page[data-skin='guild'] .pc-status .sdot.a {
+  color: var(--dot-amber);
+}
+
+/* Buttons: timber plate, brass border, cream text. */
+body.db-page[data-skin='guild'] .btn,
+body.db-page[data-skin='guild'] .db-new-project,
+body.db-page[data-skin='guild'] .pc-cta {
+  background: #4a3322;
+  color: #f3e6c8;
+  border: 1px solid var(--brand);
+  border-radius: 4px;
+}
+body.db-page[data-skin='guild'] .btn:hover,
+body.db-page[data-skin='guild'] .db-new-project:hover,
+body.db-page[data-skin='guild'] .pc-cta:hover {
+  background: #5a4029;
+}
+
+/* Rail: timber panels with brass inset border. */
+body.db-page[data-skin='guild'] .sidebar-icons {
+  background: #3a2818;
+  border: 1px solid var(--brand);
+  border-radius: 10px;
+}
+body.db-page[data-skin='guild'] .sidebar-icon.is-active,
+body.db-page[data-skin='guild'] .sidebar-icon[aria-current='true'] {
+  background: #4a3322;
+  border: 1px solid var(--brand);
+}

@@ -20433,6 +20433,1104 @@ body.view-3d .view-deck {
   border-left-color: var(--border);
   color: var(--slate);
 }
+/* ============================================================
+   My MaNaGeR — Skin: Bento Dock (light)
+   ------------------------------------------------------------
+   Soft rounded tiles, no borders, gentle shadow, 6-col grid.
+   Status as a CSS ring (solid = active, dashed = planning,
+   amber/green inherit the app dot colours). Rail relocates to a
+   floating pill dock at bottom-centre. Pill action buttons.
+   ============================================================ */
+body.db-page[data-skin='bento'],
+.theme-preview[data-skin='bento'] {
+  --canvas: #e9ecef;
+  --surface: #ffffff;
+  --card: #ffffff;
+  --surface-raised: #f4f6f8;
+  --border: #d8dde2;
+  --text: #16181d;
+  --text-heading: #0f1115;
+  --text-muted: #6a717b;
+  --brand: #2c4a7c;
+  --brand-hover: #24406c;
+  --brand-on: #ffffff;
+  --gold: #2c4a7c; /* navy-blue accent (directive) */
+  --gold-rgb: 44, 74, 124;
+  --on-gold: #ffffff;
+  --gold-ink: #2c4a7c;
+  --tile-bg: #f1f3f6;
+  --track-bg: #e2e7ec;
+  --glass-fill-dark: #ffffff;
+  --glass-fill-dark-hover: #f6f8fa;
+  --glass-fill-dark-active: #eef1f5;
+  --glass-border: 1px solid transparent;
+  --glass-rim: none;
+  --glass-shadow: 0 1px 2px rgba(20, 24, 30, 0.06);
+  --glass-blur: 0px;
+  --glass-saturate: 1;
+  --focus-ring: 2px solid #2c4a7c;
+  --radius: 22px;
+  --squircle-md: 22px;
+  --squircle-lg: 22px;
+  --font-head: 'Figtree', 'Segoe UI', system-ui, sans-serif;
+  --font-body: 'Figtree', 'Segoe UI', system-ui, sans-serif;
+}
+
+/* Cards: no border, rounded, soft shadow. */
+body.db-page[data-skin='bento'] .pcard {
+  border: none;
+  border-radius: 22px;
+  box-shadow: 0 1px 3px rgba(20, 24, 30, 0.08);
+}
+body.db-page[data-skin='bento'] .pcard.unlocked {
+  box-shadow: inset 0 3px 0 var(--brand);
+}
+body.db-page[data-skin='bento'] .pcard:hover {
+  transform: translateY(-3px);
+}
+
+/* Status ring: 14px circle, solid for active/completed, dashed for planning. */
+body.db-page[data-skin='bento'] .pc-status .sdot {
+  width: 14px;
+  height: 14px;
+  background: transparent !important;
+  border: 3px solid currentColor;
+}
+body.db-page[data-skin='bento'] .pc-status .sdot.g {
+  color: var(--dot-green);
+}
+body.db-page[data-skin='bento'] .pc-status .sdot.b {
+  color: var(--dot-blue);
+  border-style: dashed;
+}
+body.db-page[data-skin='bento'] .pc-status .sdot.a {
+  color: var(--dot-amber);
+}
+
+/* Pill action button with arrow in a circle. */
+body.db-page[data-skin='bento'] .pc-cta,
+body.db-page[data-skin='bento'] .btn,
+body.db-page[data-skin='bento'] .db-new-project {
+  border-radius: 999px;
+  background: var(--brand);
+  color: #fff;
+  border: none;
+}
+
+/* Rail -> floating pill dock, bottom-centre, horizontal. */
+body.db-page[data-skin='bento'] .sidebar-icons {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  top: auto;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(20, 24, 30, 0.18);
+  z-index: 96;
+}
+body.db-page[data-skin='bento'] .sidebar-icon {
+  border-radius: 50%;
+  border: 1px solid var(--border);
+}
+body.db-page[data-skin='bento'] .sidebar-icon.is-active,
+body.db-page[data-skin='bento'] .sidebar-icon[aria-current='true'] {
+  background: var(--brand);
+  border-color: var(--brand);
+}
+body.db-page[data-skin='bento'] .sidebar-icon.is-active .ico,
+body.db-page[data-skin='bento'] .sidebar-icon[aria-current='true'] .ico {
+  color: #fff;
+}
+/* ============================================================
+   My MaNaGeR — Skin: Departure Board (dark)
+   ------------------------------------------------------------
+   No cards: each project is a full-width board row (number |
+   project | status | action). Mono type, amber accent. Status
+   shown as tiles (real word kept accessible). Rail icons stay
+   icons; active icon sits on a solid amber block. Status dot
+   colour preserved (used to tint the status tile text).
+   ============================================================ */
+body.db-page[data-skin='departure'],
+.theme-preview[data-skin='departure'] {
+  --canvas: #101214;
+  --surface: #181b1e;
+  --card: #181b1e;
+  --surface-raised: #1d2124;
+  --border: #2a2f33;
+  --text: #e9e7e1;
+  --text-heading: #f4f2ec;
+  --text-muted: #7d8186;
+  --brand: #f0b429;
+  --brand-hover: #ffc94d;
+  --brand-on: #1a1405;
+  --gold: #f0b429; /* amber accent (directive) */
+  --gold-rgb: 240, 180, 41;
+  --on-gold: #1a1405;
+  --gold-ink: #f0b429;
+  --tile-bg: #15181b;
+  --track-bg: #23282c;
+  --glass-fill-dark: #181b1e;
+  --glass-fill-dark-hover: #1f2428;
+  --glass-fill-dark-active: #23282c;
+  --glass-border: 1px solid #2a2f33;
+  --glass-rim: none;
+  --glass-shadow: none;
+  --glass-blur: 0px;
+  --glass-saturate: 1;
+  --focus-ring: 2px solid #f0b429;
+  --radius: 0px;
+  --squircle-md: 0px;
+  --squircle-lg: 0px;
+  --font-head: 'DM Mono', 'SFMono-Regular', ui-monospace, monospace;
+  --font-body: 'DM Mono', 'SFMono-Regular', ui-monospace, monospace;
+}
+
+/* Cards -> alternating full-width board rows, no box. */
+body.db-page[data-skin='departure'] .pcard {
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--card);
+  padding: 14px 16px;
+}
+body.db-page[data-skin='departure'] .pcard:nth-child(even) {
+  background: #15181b;
+}
+body.db-page[data-skin='departure'] .pcard.unlocked {
+  box-shadow: none;
+}
+body.db-page[data-skin='departure'] .pcard:hover {
+  transform: none;
+  background: var(--glass-fill-dark-hover);
+}
+
+/* Status tiles: real word, amber (active) / muted (planning). Dot kept. */
+body.db-page[data-skin='departure'] .pc-status {
+  font-family: var(--font-body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  padding: 2px 10px;
+}
+body.db-page[data-skin='departure'] .pc-status .sdot.g {
+  color: var(--brand);
+}
+body.db-page[data-skin='departure'] .pc-status .sdot.b {
+  color: var(--text-muted);
+}
+
+/* Action: outlined amber with the arrow; hover fills. */
+body.db-page[data-skin='departure'] .pc-cta,
+body.db-page[data-skin='departure'] .btn,
+body.db-page[data-skin='departure'] .db-new-project {
+  background: transparent;
+  color: var(--brand);
+  border: 1px solid var(--brand);
+  border-radius: 0;
+}
+body.db-page[data-skin='departure'] .pc-cta:hover,
+body.db-page[data-skin='departure'] .btn:hover,
+body.db-page[data-skin='departure'] .db-new-project:hover {
+  background: var(--brand);
+  color: var(--brand-on);
+}
+
+/* Rail: 8 icons stay icons; active icon on a solid amber block. */
+body.db-page[data-skin='departure'] .sidebar-icon.is-active,
+body.db-page[data-skin='departure'] .sidebar-icon[aria-current='true'] {
+  background: var(--brand);
+  border-radius: 4px;
+}
+body.db-page[data-skin='departure'] .sidebar-icon.is-active .ico,
+body.db-page[data-skin='departure'] .sidebar-icon[aria-current='true'] .ico {
+  color: var(--brand-on);
+}
+
+/* Inputs: one mono line with a blinking amber caret. */
+body.db-page[data-skin='departure'] input,
+body.db-page[data-skin='departure'] select,
+body.db-page[data-skin='departure'] textarea {
+  border: 1px solid var(--border);
+  border-radius: 0;
+  background: #0d0f11;
+  color: var(--text);
+  font-family: var(--font-body);
+  caret-color: var(--brand);
+}
+/* ============================================================
+   My MaNaGeR — Skin: Editorial Masthead (light)
+   ------------------------------------------------------------
+   Serif masthead with thick-over-thin rule, centred top rail
+   (icons only), single-column list rows separated by hairlines.
+   Status italic + accent period. Buttons are text with a growing
+   underline (no boxes). Status dot colour preserved.
+   ============================================================ */
+body.db-page[data-skin='editorial'],
+.theme-preview[data-skin='editorial'] {
+  --canvas: #fbfaf6;
+  --surface: #ffffff;
+  --card: #ffffff;
+  --surface-raised: #f5f3ec;
+  --border: #d9d4c8;
+  --text: #161513;
+  --text-heading: #0f0e0c;
+  --text-muted: #6e6a62;
+  --brand: #7a1f2b;
+  --brand-hover: #641822;
+  --brand-on: #ffffff;
+  --gold: #7a1f2b; /* oxblood accent (directive) */
+  --gold-rgb: 122, 31, 43;
+  --on-gold: #ffffff;
+  --gold-ink: #7a1f2b;
+  --tile-bg: #f4f1e9;
+  --track-bg: #e7e2d6;
+  --glass-fill-dark: #ffffff;
+  --glass-fill-dark-hover: #f7f5ef;
+  --glass-fill-dark-active: #efebe2;
+  --glass-border: 1px solid #d9d4c8;
+  --glass-rim: none;
+  --glass-shadow: none;
+  --glass-blur: 0px;
+  --glass-saturate: 1;
+  --focus-ring: 2px solid #7a1f2b;
+  --radius: 0px;
+  --squircle-md: 0px;
+  --squircle-lg: 0px;
+  --font-head: 'Playfair Display', 'Iowan Old Style', Georgia, serif;
+  --font-body: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+}
+
+/* Masthead: thick-over-thin rule under the hero title. */
+body.db-page[data-skin='editorial'] .db-hero-title {
+  font-family: var(--font-head);
+  font-weight: 800;
+  font-size: 2rem;
+  border-bottom: 4px solid var(--text);
+  box-shadow: 0 2px 0 -1px var(--text);
+  padding-bottom: 8px;
+}
+
+/* Cards become single-column list rows, no box, hairline divider. */
+body.db-page[data-skin='editorial'] .pcard {
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: 14px 4px;
+}
+body.db-page[data-skin='editorial'] .pcard.unlocked {
+  box-shadow: none;
+}
+body.db-page[data-skin='editorial'] .pcard:hover {
+  transform: none;
+  background: var(--tile-bg);
+}
+
+/* Status: italic word followed by an accent period. */
+body.db-page[data-skin='editorial'] .pc-status {
+  font-style: italic;
+  font-family: var(--font-body);
+}
+body.db-page[data-skin='editorial'] .pc-status::after {
+  content: '.';
+  color: var(--brand);
+  font-style: normal;
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+/* Buttons: text + 2px accent underline that grows on hover (no boxes). */
+body.db-page[data-skin='editorial'] .btn,
+body.db-page[data-skin='editorial'] .db-new-project,
+body.db-page[data-skin='editorial'] .pc-cta {
+  background: transparent;
+  color: var(--brand);
+  border: none;
+  border-bottom: 2px solid var(--brand);
+  border-radius: 0;
+  padding: 2px 2px 3px;
+  transition:
+    border-bottom-width 0.18s,
+    letter-spacing 0.18s;
+}
+body.db-page[data-skin='editorial'] .btn:hover,
+body.db-page[data-skin='editorial'] .db-new-project:hover,
+body.db-page[data-skin='editorial'] .pc-cta:hover {
+  border-bottom-width: 4px;
+}
+
+/* Rail -> centred top row, icons only. */
+body.db-page[data-skin='editorial'] .sidebar-icons {
+  position: fixed;
+  left: 50%;
+  top: 8px;
+  bottom: auto;
+  transform: translateX(-50%);
+  flex-direction: row;
+  gap: 6px;
+  background: transparent;
+  z-index: 96;
+}
+body.db-page[data-skin='editorial'] .sidebar-icon {
+  border-radius: 0;
+  border: none;
+}
+body.db-page[data-skin='editorial'] .sidebar-icon.is-active .ico,
+body.db-page[data-skin='editorial'] .sidebar-icon[aria-current='true'] .ico {
+  color: var(--brand);
+}
+
+/* Inputs: large serif field, bottom rule only. */
+body.db-page[data-skin='editorial'] input,
+body.db-page[data-skin='editorial'] select,
+body.db-page[data-skin='editorial'] textarea {
+  border: none;
+  border-bottom: 2px solid var(--text);
+  border-radius: 0;
+  font-family: var(--font-body);
+}
+/* ============================================================
+   My MaNaGeR — Skin: Carved Timber (dark)
+   ------------------------------------------------------------
+   CSS-only restrained interpretation (no painted illustration).
+   Deep-green wood-grain canvas, parchment cards on timber frames
+   with a curled corner, faceted gem status, brass-bordered
+   timber buttons. Status dot colour preserved (tints the gem).
+   ============================================================ */
+body.db-page[data-skin='guild'],
+.theme-preview[data-skin='guild'] {
+  --canvas: #1f3a2e;
+  --surface: #3a2818;
+  --card: #e8d5a8;
+  --surface-raised: #4a3322;
+  --border: #2a1d12;
+  --text: #2a2118;
+  --text-heading: #1c140c;
+  --text-muted: #6f6757;
+  --brand: #b08d57;
+  --brand-hover: #c79f6a;
+  --brand-on: #2a1d12;
+  --gold: #b08d57; /* brass accent (directive) */
+  --gold-rgb: 176, 141, 87;
+  --on-gold: #2a1d12;
+  --gold-ink: #b08d57;
+  --tile-bg: #d8c193;
+  --track-bg: #4a3322;
+  --glass-fill-dark: #e8d5a8;
+  --glass-fill-dark-hover: #efe0bc;
+  --glass-fill-dark-active: #e0cda0;
+  --glass-border: 1px solid #2a1d12;
+  --glass-rim: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  --glass-shadow: 0 6px 14px rgba(0, 0, 0, 0.4);
+  --glass-blur: 0px;
+  --glass-saturate: 1;
+  --focus-ring: 2px solid #b08d57;
+  --radius: 6px;
+  --squircle-md: 6px;
+  --squircle-lg: 6px;
+  --font-head: 'Cinzel', 'Trajan Pro', Georgia, serif;
+  --font-body: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  background-color: #1f3a2e;
+  background-image:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.1) 0 2px, transparent 2px 7px),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 9px);
+  background-attachment: fixed;
+}
+
+/* Parchment card on a timber frame, one corner curled. */
+body.db-page[data-skin='guild'] .pcard {
+  border: 6px solid #4a3322;
+  border-radius: 6px;
+  box-shadow: var(--glass-shadow);
+  clip-path: polygon(0 0, 100% 0, 100% 86%, 92% 100%, 0 100%);
+}
+body.db-page[data-skin='guild'] .pcard.unlocked {
+  box-shadow: inset 0 3px 0 var(--brand);
+}
+
+/* Status: faceted gem (clip-path) beside the real word; dot colour tints it. */
+body.db-page[data-skin='guild'] .pc-status .sdot {
+  width: 12px;
+  height: 12px;
+  background: currentColor !important;
+  border: none;
+  clip-path: polygon(50% 0, 100% 38%, 82% 100%, 18% 100%, 0 38%);
+}
+body.db-page[data-skin='guild'] .pc-status .sdot.g {
+  color: var(--dot-green);
+}
+body.db-page[data-skin='guild'] .pc-status .sdot.b {
+  color: var(--dot-blue);
+}
+body.db-page[data-skin='guild'] .pc-status .sdot.a {
+  color: var(--dot-amber);
+}
+
+/* Buttons: timber plate, brass border, cream text. */
+body.db-page[data-skin='guild'] .btn,
+body.db-page[data-skin='guild'] .db-new-project,
+body.db-page[data-skin='guild'] .pc-cta {
+  background: #4a3322;
+  color: #f3e6c8;
+  border: 1px solid var(--brand);
+  border-radius: 4px;
+}
+body.db-page[data-skin='guild'] .btn:hover,
+body.db-page[data-skin='guild'] .db-new-project:hover,
+body.db-page[data-skin='guild'] .pc-cta:hover {
+  background: #5a4029;
+}
+
+/* Rail: timber panels with brass inset border. */
+body.db-page[data-skin='guild'] .sidebar-icons {
+  background: #3a2818;
+  border: 1px solid var(--brand);
+  border-radius: 10px;
+}
+body.db-page[data-skin='guild'] .sidebar-icon.is-active,
+body.db-page[data-skin='guild'] .sidebar-icon[aria-current='true'] {
+  background: #4a3322;
+  border: 1px solid var(--brand);
+}
+/* ============================================================
+   My MaNaGeR — Customize modal + theme-preview grid
+   ------------------------------------------------------------
+   Neutral chrome for the Customize dialog (OWNER 2026-11-10
+   theme pack). Scoped to #customize-modal so it cannot leak
+   into project/admin/marketing pages. Each theme's own skin
+   lives in its own 86-theme-<slug>.css.
+   ============================================================ */
+
+#customize-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+#customize-modal[hidden] {
+  display: none;
+}
+
+.cm-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 22, 33, 0.46);
+  backdrop-filter: blur(2px);
+}
+.cm-dialog {
+  position: relative;
+  width: min(760px, 100%);
+  max-height: min(86vh, 760px);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface, #fff);
+  color: var(--text, #1d2733);
+  border: 1px solid var(--border, #d7dce3);
+  border-radius: 16px;
+  box-shadow: 0 24px 70px rgba(12, 18, 28, 0.34);
+  overflow: hidden;
+}
+.cm-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border, #e6e9ee);
+}
+.cm-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 1.05rem/1.2 var(--font-head, inherit);
+}
+.cm-title .ico {
+  width: 18px;
+  height: 18px;
+}
+.cm-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border, #d7dce3);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text, #1d2733);
+  cursor: pointer;
+}
+.cm-close:hover {
+  background: var(--tile-bg, #f1f3f6);
+}
+.cm-body {
+  padding: 18px 20px;
+  overflow-y: auto;
+}
+.cm-sec {
+  margin-bottom: 22px;
+}
+.cm-sec:last-child {
+  margin-bottom: 0;
+}
+.cm-h {
+  margin: 0 0 4px;
+  font: 600 0.95rem/1.3 var(--font-head, inherit);
+}
+.cm-sub {
+  margin: 0 0 12px;
+  font-size: 0.82rem;
+  color: var(--text-muted, #6a717b);
+}
+.cm-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border, #eef1f4);
+}
+.cm-row .ico {
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted, #6a717b);
+}
+.cm-row-label {
+  font-size: 0.9rem;
+}
+.cm-row .theme-select {
+  margin-left: auto;
+}
+.cm-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border, #e6e9ee);
+}
+
+/* ---- theme preview grid ---- */
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+.theme-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 2px solid var(--border, #d7dce3);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition:
+    border-color 0.15s,
+    transform 0.15s,
+    box-shadow 0.15s;
+}
+.theme-preview:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(12, 18, 28, 0.12);
+}
+.theme-preview.is-selected {
+  border-color: var(--gold, #d4af37);
+}
+.theme-preview:focus-visible {
+  outline: 2px solid var(--gold, #d4af37);
+  outline-offset: 2px;
+}
+.tp-name {
+  font: 600 0.82rem/1.2 var(--font-head, inherit);
+}
+
+/* The mini mock inside each preview. Themes restyle this via
+   .theme-preview[data-skin="<slug>"] so the preview shows the real skin. */
+.tp-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--tile-bg, #f1f3f6);
+  border: 1px solid var(--border, #d7dce3);
+}
+.tp-ttl {
+  font: 600 0.78rem/1.2 var(--font-head, inherit);
+}
+.tp-st {
+  font-size: 0.66rem;
+  color: var(--text-muted, #6a717b);
+}
+.tp-cta {
+  align-self: flex-start;
+  margin-top: 2px;
+  font-size: 0.66rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--gold, #d4af37);
+  color: var(--on-gold, #1d2733);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-preview {
+    transition: none;
+  }
+  .theme-preview:hover {
+    transform: none;
+  }
+}
+
+/* The preview cards must be drawn even before a skin is chosen, so give
+   the mock a neutral base here; each skin file overrides the tokens. */
+.theme-preview {
+  --tile-bg: #f1f3f6;
+  --border: #d7dce3;
+  --text-muted: #6a717b;
+  --gold: #d4af37;
+  --on-gold: #1d2733;
+  --surface: #fff;
+  --font-head: system-ui, sans-serif;
+}
+/* ============================================================
+   My MaNaGeR — Skin: Obsidian Gold (dark)
+   ------------------------------------------------------------
+   Closest to the default structure: change the skin only.
+   Flat near-black canvas, soft radial vignette, thin gold
+   borders, gold text links. Status dot colours unchanged.
+   ============================================================ */
+body.db-page[data-skin='obsidian'],
+.theme-preview[data-skin='obsidian'] {
+  --canvas: #0c1015;
+  --surface: rgba(18, 24, 31, 0.82);
+  --card: rgba(22, 29, 37, 0.9);
+  --surface-raised: rgba(28, 36, 46, 0.9);
+  --border: rgba(212, 162, 76, 0.45);
+  --text: #f0e6d2;
+  --text-heading: #fbf2dd;
+  --text-muted: #9a8f78;
+  --brand: #d4a24c;
+  --brand-hover: #e6b85f;
+  --brand-on: #1a1305;
+  --gold: #d4a24c;
+  --gold-rgb: 212, 162, 76;
+  --on-gold: #1a1305;
+  --gold-ink: #d4a24c;
+  --tile-bg: rgba(28, 36, 46, 0.7);
+  --track-bg: rgba(212, 162, 76, 0.18);
+  --glass-fill-dark: rgba(22, 29, 37, 0.9);
+  --glass-fill-dark-hover: rgba(30, 39, 50, 0.94);
+  --glass-fill-dark-active: rgba(36, 46, 58, 0.96);
+  --glass-border: 1px solid rgba(212, 162, 76, 0.45);
+  --glass-rim: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  --glass-blur: 8px;
+  --glass-saturate: 1.1;
+  --focus-ring: 2px solid #e6b85f;
+  --radius: 16px;
+  --squircle-md: 16px;
+  --squircle-lg: 16px;
+  --font-head: 'Inter Tight', 'Inter', system-ui, sans-serif;
+  --font-body: 'Inter Tight', 'Inter', system-ui, sans-serif;
+  background-image: radial-gradient(120% 80% at 50% 0%, rgba(212, 162, 76, 0.06), transparent 60%);
+  background-attachment: fixed;
+}
+
+/* Thin gold border on cards (gradient border in two gold tones). */
+body.db-page[data-skin='obsidian'] .pcard {
+  border: 1px solid transparent;
+  background-image:
+    linear-gradient(var(--card), var(--card)), linear-gradient(135deg, #d4a24c, #8a6a2e);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  border-radius: 16px;
+}
+body.db-page[data-skin='obsidian'] .pcard.unlocked {
+  box-shadow: inset 0 3px 0 #d4a24c;
+}
+
+/* Gold text links with the existing arrow. */
+body.db-page[data-skin='obsidian'] .pc-cta,
+body.db-page[data-skin='obsidian'] .db-link {
+  color: var(--gold);
+}
+
+/* Primary button: gold fill, dark text, restrained shadow (no neon). */
+body.db-page[data-skin='obsidian'] .btn,
+body.db-page[data-skin='obsidian'] .db-new-project {
+  background: linear-gradient(180deg, #e6b85f, #d4a24c);
+  color: #1a1305;
+  border: 1px solid #b8893a;
+  box-shadow: 0 2px 10px rgba(212, 162, 76, 0.25);
+}
+body.db-page[data-skin='obsidian'] .btn:hover,
+body.db-page[data-skin='obsidian'] .db-new-project:hover {
+  background: linear-gradient(180deg, #f0c46e, #e0ad57);
+}
+
+/* Rail: circular buttons with gold hairline borders. */
+body.db-page[data-skin='obsidian'] .sidebar-icon {
+  border: 1px solid rgba(212, 162, 76, 0.45);
+  border-radius: 50%;
+}
+body.db-page[data-skin='obsidian'] .sidebar-icon.is-active,
+body.db-page[data-skin='obsidian'] .sidebar-icon[aria-current='true'] {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px rgba(212, 162, 76, 0.4);
+}
+
+/* Inputs: dark field, gold hairline. */
+body.db-page[data-skin='obsidian'] input,
+body.db-page[data-skin='obsidian'] select,
+body.db-page[data-skin='obsidian'] textarea {
+  border: 1px solid rgba(212, 162, 76, 0.45);
+  background: rgba(12, 16, 21, 0.7);
+  color: var(--text);
+}
+/* ============================================================
+   My MaNaGeR — Skin: Workshop Pegboard (light)
+   ------------------------------------------------------------
+   Pegboard background (tiled radial-gradient holes), label cards
+   with corner hooks, tape-style status and action, bottom row of
+   round rail plates. Status dot colour preserved.
+   ============================================================ */
+body.db-page[data-skin='pegboard'],
+.theme-preview[data-skin='pegboard'] {
+  --canvas: #aeb8ad;
+  --surface: #fbfaf5;
+  --card: #fbfaf5;
+  --surface-raised: #f1efe6;
+  --border: #8b958a;
+  --text: #232623;
+  --text-heading: #1a1c1a;
+  --text-muted: #5f6860;
+  --brand: #2d5b8f;
+  --brand-hover: #244a76;
+  --brand-on: #ffffff;
+  --gold: #2d5b8f; /* blue accent (directive) */
+  --gold-rgb: 45, 91, 143;
+  --on-gold: #ffffff;
+  --gold-ink: #2d5b8f;
+  --tile-bg: #eef0ea;
+  --track-bg: #dfe3da;
+  --glass-fill-dark: #fbfaf5;
+  --glass-fill-dark-hover: #f4f3ea;
+  --glass-fill-dark-active: #ebeae0;
+  --glass-border: 1px solid #8b958a;
+  --glass-rim: none;
+  --glass-shadow: 0 4px 10px rgba(20, 30, 24, 0.14);
+  --glass-blur: 0px;
+  --glass-saturate: 1;
+  --focus-ring: 2px solid #2d5b8f;
+  --radius: 4px;
+  --squircle-md: 4px;
+  --squircle-lg: 4px;
+  --font-head: 'Chivo', 'Segoe UI', system-ui, sans-serif;
+  --font-body: 'Chivo', 'Segoe UI', system-ui, sans-serif;
+  background-color: #aeb8ad;
+  background-image: radial-gradient(rgba(125, 136, 124, 0.55) 1.4px, transparent 1.6px);
+  background-size: 18px 18px;
+  background-attachment: fixed;
+}
+
+/* Label card with two corner hooks. */
+body.db-page[data-skin='pegboard'] .pcard {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: var(--glass-shadow);
+}
+body.db-page[data-skin='pegboard'] .pcard::before,
+body.db-page[data-skin='pegboard'] .pcard::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #8b958a;
+}
+body.db-page[data-skin='pegboard'] .pcard::before {
+  left: 8px;
+}
+body.db-page[data-skin='pegboard'] .pcard::after {
+  right: 8px;
+}
+body.db-page[data-skin='pegboard'] .pcard.unlocked {
+  box-shadow: inset 0 3px 0 var(--brand);
+}
+
+/* Status: label-maker tape (real word, dot colour preserved). */
+body.db-page[data-skin='pegboard'] .pc-status {
+  background: #151515;
+  color: #fff;
+  padding: 2px 10px;
+  border-radius: 2px;
+  font: 700 0.7rem/1.3 var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+body.db-page[data-skin='pegboard'] .pc-status .sdot {
+  background: #fff !important;
+}
+
+/* Action: blue tape strip, right end cut at an angle. */
+body.db-page[data-skin='pegboard'] .pc-cta,
+body.db-page[data-skin='pegboard'] .btn,
+body.db-page[data-skin='pegboard'] .db-new-project {
+  background: var(--brand);
+  color: #fff;
+  border: none;
+  clip-path: polygon(0 0, 100% 0, 92% 100%, 0 100%);
+  padding-right: 18px;
+}
+
+/* Rail -> bottom row of 40px round plates. */
+body.db-page[data-skin='pegboard'] .sidebar-icons {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  top: auto;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  background: transparent;
+  z-index: 96;
+}
+body.db-page[data-skin='pegboard'] .sidebar-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  background: var(--surface);
+  box-shadow: 0 2px 6px rgba(20, 30, 24, 0.2);
+}
+body.db-page[data-skin='pegboard'] .sidebar-icon.is-active,
+body.db-page[data-skin='pegboard'] .sidebar-icon[aria-current='true'] {
+  background: var(--brand);
+  border-color: var(--brand);
+}
+body.db-page[data-skin='pegboard'] .sidebar-icon.is-active .ico,
+body.db-page[data-skin='pegboard'] .sidebar-icon[aria-current='true'] .ico {
+  color: #fff;
+}
+/* ============================================================
+   My MaNaGeR — Skin: Permit Tags (light)
+   ------------------------------------------------------------
+   Municipal permit aesthetic: ink left band on cards, 2px border,
+   hanging clip-path status tag carrying the real word (the dot
+   colour is preserved per the owner rule). Green primary.
+   ============================================================ */
+body.db-page[data-skin='permit'],
+.theme-preview[data-skin='permit'] {
+  --canvas: #e6e8e4;
+  --surface: #ffffff;
+  --card: #ffffff;
+  --surface-raised: #f3f5f2;
+  --border: #c7ccc4;
+  --text: #1b1e1c;
+  --text-heading: #121614;
+  --text-muted: #6a706b;
+  --brand: #1f6f4a;
+  --brand-hover: #185c3d;
+  --brand-on: #ffffff;
+  --gold: #1f6f4a; /* green accent (directive) */
+  --gold-rgb: 31, 111, 74;
+  --on-gold: #ffffff;
+  --gold-ink: #1f6f4a;
+  --tile-bg: #eef1ec;
+  --track-bg: #dfe4dd;
+  --glass-fill-dark: #ffffff;
+  --glass-fill-dark-hover: #f4f7f4;
+  --glass-fill-dark-active: #e9eee9;
+  --glass-border: 1px solid #c7ccc4;
+  --glass-rim: none;
+  --glass-shadow: 0 1px 2px rgba(20, 30, 24, 0.08);
+  --glass-blur: 2px;
+  --glass-saturate: 1;
+  --focus-ring: 2px solid #1f6f4a;
+  --radius: 2px;
+  --squircle-md: 2px;
+  --squircle-lg: 2px;
+  --font-head: 'Public Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-body: 'Public Sans', 'Segoe UI', system-ui, sans-serif;
+}
+
+/* Card: 6px ink left band, 2px border, 2px radius, same size for all. */
+body.db-page[data-skin='permit'] .pcard {
+  border: 2px solid var(--border);
+  border-left: 6px solid var(--text);
+  border-radius: 2px;
+  box-shadow: var(--glass-shadow);
+}
+body.db-page[data-skin='permit'] .pcard.unlocked {
+  box-shadow: inset 0 3px 0 var(--brand);
+  border-left-color: var(--brand);
+}
+
+/* Status: hanging tag (clip-path) carrying the real word. Dot colour kept. */
+body.db-page[data-skin='permit'] .pc-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 12px 2px 10px;
+  background: var(--surface);
+  border: 1.5px solid var(--text);
+  border-radius: 3px 3px 3px 3px;
+  clip-path: polygon(8px 0, 100% 0, 100% 100%, 8px 100%, 0 50%);
+  font: 600 0.72rem/1.3 var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Buttons: green square block + label; action buttons share the family. */
+body.db-page[data-skin='permit'] .btn,
+body.db-page[data-skin='permit'] .db-new-project {
+  background: var(--brand);
+  color: #fff;
+  border: 2px solid var(--brand);
+  border-radius: 2px;
+}
+body.db-page[data-skin='permit'] .btn:hover,
+body.db-page[data-skin='permit'] .db-new-project:hover {
+  background: var(--brand-hover);
+  border-color: var(--brand-hover);
+}
+
+/* Rail: 44px squares, 2px borders; active filled ink. */
+body.db-page[data-skin='permit'] .sidebar-icon {
+  width: 44px;
+  height: 44px;
+  border: 2px solid var(--border);
+  border-radius: 2px;
+}
+body.db-page[data-skin='permit'] .sidebar-icon.is-active,
+body.db-page[data-skin='permit'] .sidebar-icon[aria-current='true'] {
+  background: var(--text);
+  border-color: var(--text);
+}
+body.db-page[data-skin='permit'] .sidebar-icon.is-active .ico,
+body.db-page[data-skin='permit'] .sidebar-icon[aria-current='true'] .ico {
+  color: #fff;
+}
+/* ============================================================
+   My MaNaGeR — Skin: Vellum (Drafting Vellum, light)
+   ------------------------------------------------------------
+   Flat drafting-sheet look: warm paper, navy ink, hairlines,
+   no shadows, no radius. Tokens first, then component skins.
+   Status dot colours are LEFT AS THE APP DEFAULTS (owner rule).
+   Fonts: named family first with a system serif fallback so the
+   look holds even before web fonts load (no external fetch -> no
+   CSP churn).
+   ============================================================ */
+body.db-page[data-skin='vellum'],
+.theme-preview[data-skin='vellum'] {
+  --canvas: #f7f6f1;
+  --surface: #fdfcf8;
+  --card: #fdfcf8;
+  --surface-raised: #f3f1ea;
+  --border: #c8cfdb;
+  --text: #1d3557;
+  --text-heading: #16263f;
+  --text-muted: #5d6f8a;
+  --brand: #1d3557;
+  --brand-hover: #14304f;
+  --brand-on: #fdfcf8;
+  --gold: #1d3557; /* navy accent (directive) */
+  --gold-rgb: 29, 53, 87;
+  --on-gold: #fdfcf8;
+  --gold-ink: #1d3557;
+  --tile-bg: #f1eee6;
+  --track-bg: #e7e3d8;
+  --glass-fill-dark: #fdfcf8;
+  --glass-fill-dark-hover: #f4f1e9;
+  --glass-fill-dark-active: #ece8dd;
+  --glass-border: 1px solid #c8cfdb;
+  --glass-rim: none;
+  --glass-shadow: none;
+  --glass-blur: 0px;
+  --glass-saturate: 1;
+  --focus-ring: 2px solid #a8323e;
+  --radius: 0px;
+  --squircle-md: 0px;
+  --squircle-lg: 0px;
+  --font-head: 'Newsreader', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+  --font-body: 'Newsreader', Georgia, 'Times New Roman', serif;
+}
+
+/* Drawing-sheet title block: double rule under the hero title. */
+body.db-page[data-skin='vellum'] .db-hero-title {
+  font-family: var(--font-head);
+  letter-spacing: 0.01em;
+  border-bottom: 3px double var(--border);
+  padding-bottom: 6px;
+}
+
+/* Flat square cards, 1px hairline. */
+body.db-page[data-skin='vellum'] .pcard {
+  border-radius: 0;
+  box-shadow: none;
+  border: 1px solid var(--border);
+}
+body.db-page[data-skin='vellum'] .pcard:hover {
+  transform: none;
+  border-width: 2px;
+}
+body.db-page[data-skin='vellum'] .pcard.unlocked {
+  border: 1px solid var(--border);
+  box-shadow: inset 0 3px 0 var(--brand);
+}
+
+/* Status: small-caps word beside the (unchanged) dot. */
+body.db-page[data-skin='vellum'] .pc-status {
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+}
+
+/* Buttons: solid navy rectangle, uppercase, tracked; hover inverts. */
+body.db-page[data-skin='vellum'] .btn,
+body.db-page[data-skin='vellum'] .db-new-project {
+  border-radius: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: var(--brand);
+  color: var(--brand-on);
+  border: 1px solid var(--brand);
+}
+body.db-page[data-skin='vellum'] .btn:hover,
+body.db-page[data-skin='vellum'] .db-new-project:hover {
+  background: transparent;
+  color: var(--brand);
+}
+
+/* Rail: bare icons; active item gets a 2px red-pencil bar on the left. */
+body.db-page[data-skin='vellum'] .sidebar-icon.is-active,
+body.db-page[data-skin='vellum'] .sidebar-icon[aria-current='true'] {
+  box-shadow: inset 2px 0 0 #a8323e;
+}
+
+/* Inputs: fully boxed 1px, label tab above (kept simple). */
+body.db-page[data-skin='vellum'] input,
+body.db-page[data-skin='vellum'] select,
+body.db-page[data-skin='vellum'] textarea {
+  border-radius: 0;
+  border: 1px solid var(--border);
+}
 /* ---- SIGN-IN-POLISH (owner 2026-09-19): trust line + legal links ---- */
 .email-auth-trust {
   font-size: 0.72rem;

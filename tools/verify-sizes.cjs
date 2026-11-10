@@ -37,7 +37,12 @@ const EXACT = {
   // rather than raising this again.
   // 2026-11-10 (Wave 4): raised 545000 -> 550000 for the calculator input
   // outline changes, the AI actions preview card and the BOQ waiting chip.
-  'css/mmgr.css': 550000,
+  // 2026-11-10 (Theme pack): raised 550000 -> 590000 for the eight launcher
+  // skin stylesheets (css/src/86-theme-*.css) plus the Customize-modal CSS
+  // (css/src/86-theme-modal.css) - ~31 KB of token + component skin rules
+  // scoped to body.db-page[data-skin=...]. Skins are additive and isolated, so
+  // the next wave should not need another raise.
+  'css/mmgr.css': 590000,
   // 2026-11-10 (Wave 6): raised 160000 -> 163000 for the sign-in two-column
   // layout, the per-letter MMGRWP hover and the mobile stack.
   // 2026-11-10 (Wave L closeout): raised 163000 -> 166000 for the audience ring
@@ -55,7 +60,10 @@ const EXACT = {
   // should move a panel out of this file rather than raise it again.
   'project.html': 226000,
   'calculator.html': 80000,
-  'app.html': 140000,
+  // 2026-11-10 (Theme pack): raised 140000 -> 143000 for the Customize modal
+  // markup (themes grid, appearance/performance rows, account section) added to
+  // app.html. The modal is static HTML only (~0.3 KB).
+  'app.html': 143000,
   // 2026-11-10 (Wave L): raised 50000 -> 54000 for the "Who we are" band
   // (eyebrow, heading, lede, three identity cards with sprite icons), the
   // top-level Who we are nav item with its two-row dropdown, the two mobile

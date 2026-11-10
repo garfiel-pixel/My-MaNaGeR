@@ -1,0 +1,120 @@
+/* ============================================================
+   My MaNaGeR — Skin: Departure Board (dark)
+   ------------------------------------------------------------
+   No cards: each project is a full-width board row (number |
+   project | status | action). Mono type, amber accent. Status
+   shown as tiles (real word kept accessible). Rail icons stay
+   icons; active icon sits on a solid amber block. Status dot
+   colour preserved (used to tint the status tile text).
+   ============================================================ */
+body.db-page[data-skin='departure'],
+.theme-preview[data-skin='departure'] {
+  --canvas: #101214;
+  --surface: #181b1e;
+  --card: #181b1e;
+  --surface-raised: #1d2124;
+  --border: #2a2f33;
+  --text: #e9e7e1;
+  --text-heading: #f4f2ec;
+  --text-muted: #7d8186;
+  --brand: #f0b429;
+  --brand-hover: #ffc94d;
+  --brand-on: #1a1405;
+  --gold: #f0b429; /* amber accent (directive) */
+  --gold-rgb: 240, 180, 41;
+  --on-gold: #1a1405;
+  --gold-ink: #f0b429;
+  --tile-bg: #15181b;
+  --track-bg: #23282c;
+  --glass-fill-dark: #181b1e;
+  --glass-fill-dark-hover: #1f2428;
+  --glass-fill-dark-active: #23282c;
+  --glass-border: 1px solid #2a2f33;
+  --glass-rim: none;
+  --glass-shadow: none;
+  --glass-blur: 0px;
+  --glass-saturate: 1;
+  --focus-ring: 2px solid #f0b429;
+  --radius: 0px;
+  --squircle-md: 0px;
+  --squircle-lg: 0px;
+  --font-head: 'DM Mono', 'SFMono-Regular', ui-monospace, monospace;
+  --font-body: 'DM Mono', 'SFMono-Regular', ui-monospace, monospace;
+}
+
+/* Cards -> alternating full-width board rows, no box. */
+body.db-page[data-skin='departure'] .pcard {
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--card);
+  padding: 14px 16px;
+}
+body.db-page[data-skin='departure'] .pcard:nth-child(even) {
+  background: #15181b;
+}
+body.db-page[data-skin='departure'] .pcard.unlocked {
+  box-shadow: none;
+}
+body.db-page[data-skin='departure'] .pcard:hover {
+  transform: none;
+  background: var(--glass-fill-dark-hover);
+}
+
+/* Status tiles: real word, amber (active) / muted (planning). Dot kept. */
+body.db-page[data-skin='departure'] .pc-status {
+  font-family: var(--font-body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  padding: 2px 10px;
+}
+body.db-page[data-skin='departure'] .pc-status .sdot.g {
+  color: var(--brand);
+}
+body.db-page[data-skin='departure'] .pc-status .sdot.b {
+  color: var(--text-muted);
+}
+
+/* Action: outlined amber with the arrow; hover fills. */
+body.db-page[data-skin='departure'] .pc-cta,
+body.db-page[data-skin='departure'] .btn,
+body.db-page[data-skin='departure'] .db-new-project {
+  background: transparent;
+  color: var(--brand);
+  border: 1px solid var(--brand);
+  border-radius: 0;
+}
+body.db-page[data-skin='departure'] .pc-cta:hover,
+body.db-page[data-skin='departure'] .btn:hover,
+body.db-page[data-skin='departure'] .db-new-project:hover {
+  background: var(--brand);
+  color: var(--brand-on);
+}
+
+/* Rail: 8 icons stay icons; active icon on a solid amber block. */
+body.db-page[data-skin='departure'] .sidebar-icon.is-active,
+body.db-page[data-skin='departure'] .sidebar-icon[aria-current='true'] {
+  background: var(--brand);
+  border-radius: 4px;
+}
+body.db-page[data-skin='departure'] .sidebar-icon.is-active .ico,
+body.db-page[data-skin='departure'] .sidebar-icon[aria-current='true'] .ico {
+  color: var(--brand-on);
+}
+
+/* Inputs: one mono line with a blinking amber caret. */
+body.db-page[data-skin='departure'] input,
+body.db-page[data-skin='departure'] select,
+body.db-page[data-skin='departure'] textarea {
+  border: 1px solid var(--border);
+  border-radius: 0;
+  background: #0d0f11;
+  color: var(--text);
+  font-family: var(--font-body);
+  caret-color: var(--brand);
+}

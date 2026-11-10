@@ -1,0 +1,127 @@
+/* ============================================================
+   My MaNaGeR — Skin: Workshop Pegboard (light)
+   ------------------------------------------------------------
+   Pegboard background (tiled radial-gradient holes), label cards
+   with corner hooks, tape-style status and action, bottom row of
+   round rail plates. Status dot colour preserved.
+   ============================================================ */
+body.db-page[data-skin='pegboard'],
+.theme-preview[data-skin='pegboard'] {
+  --canvas: #aeb8ad;
+  --surface: #fbfaf5;
+  --card: #fbfaf5;
+  --surface-raised: #f1efe6;
+  --border: #8b958a;
+  --text: #232623;
+  --text-heading: #1a1c1a;
+  --text-muted: #5f6860;
+  --brand: #2d5b8f;
+  --brand-hover: #244a76;
+  --brand-on: #ffffff;
+  --gold: #2d5b8f; /* blue accent (directive) */
+  --gold-rgb: 45, 91, 143;
+  --on-gold: #ffffff;
+  --gold-ink: #2d5b8f;
+  --tile-bg: #eef0ea;
+  --track-bg: #dfe3da;
+  --glass-fill-dark: #fbfaf5;
+  --glass-fill-dark-hover: #f4f3ea;
+  --glass-fill-dark-active: #ebeae0;
+  --glass-border: 1px solid #8b958a;
+  --glass-rim: none;
+  --glass-shadow: 0 4px 10px rgba(20, 30, 24, 0.14);
+  --glass-blur: 0px;
+  --glass-saturate: 1;
+  --focus-ring: 2px solid #2d5b8f;
+  --radius: 4px;
+  --squircle-md: 4px;
+  --squircle-lg: 4px;
+  --font-head: 'Chivo', 'Segoe UI', system-ui, sans-serif;
+  --font-body: 'Chivo', 'Segoe UI', system-ui, sans-serif;
+  background-color: #aeb8ad;
+  background-image: radial-gradient(rgba(125, 136, 124, 0.55) 1.4px, transparent 1.6px);
+  background-size: 18px 18px;
+  background-attachment: fixed;
+}
+
+/* Label card with two corner hooks. */
+body.db-page[data-skin='pegboard'] .pcard {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: var(--glass-shadow);
+}
+body.db-page[data-skin='pegboard'] .pcard::before,
+body.db-page[data-skin='pegboard'] .pcard::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #8b958a;
+}
+body.db-page[data-skin='pegboard'] .pcard::before {
+  left: 8px;
+}
+body.db-page[data-skin='pegboard'] .pcard::after {
+  right: 8px;
+}
+body.db-page[data-skin='pegboard'] .pcard.unlocked {
+  box-shadow: inset 0 3px 0 var(--brand);
+}
+
+/* Status: label-maker tape (real word, dot colour preserved). */
+body.db-page[data-skin='pegboard'] .pc-status {
+  background: #151515;
+  color: #fff;
+  padding: 2px 10px;
+  border-radius: 2px;
+  font: 700 0.7rem/1.3 var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+body.db-page[data-skin='pegboard'] .pc-status .sdot {
+  background: #fff !important;
+}
+
+/* Action: blue tape strip, right end cut at an angle. */
+body.db-page[data-skin='pegboard'] .pc-cta,
+body.db-page[data-skin='pegboard'] .btn,
+body.db-page[data-skin='pegboard'] .db-new-project {
+  background: var(--brand);
+  color: #fff;
+  border: none;
+  clip-path: polygon(0 0, 100% 0, 92% 100%, 0 100%);
+  padding-right: 18px;
+}
+
+/* Rail -> bottom row of 40px round plates. */
+body.db-page[data-skin='pegboard'] .sidebar-icons {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  top: auto;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  background: transparent;
+  z-index: 96;
+}
+body.db-page[data-skin='pegboard'] .sidebar-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  background: var(--surface);
+  box-shadow: 0 2px 6px rgba(20, 30, 24, 0.2);
+}
+body.db-page[data-skin='pegboard'] .sidebar-icon.is-active,
+body.db-page[data-skin='pegboard'] .sidebar-icon[aria-current='true'] {
+  background: var(--brand);
+  border-color: var(--brand);
+}
+body.db-page[data-skin='pegboard'] .sidebar-icon.is-active .ico,
+body.db-page[data-skin='pegboard'] .sidebar-icon[aria-current='true'] .ico {
+  color: #fff;
+}

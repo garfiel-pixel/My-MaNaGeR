@@ -310,6 +310,32 @@ async function openPhotos(page, pid) {
   // of the two is on screen at a given width. Wait for a VISIBLE one rather
   // than the first match, which is the hidden copy at 1280px.
   const sel = '.sec-btn[data-section="photos"]';
+  // OWNER 2026-11-10: the rail is collapsed by default, so the section
+  // buttons can sit off-canvas. Open it the way a person would before waiting
+  // for an on-screen copy.
+  const onScreen = await page.evaluate(s => {
+    return Array.prototype.some.call(document.querySelectorAll(s), b => {
+      const r = b.getBoundingClientRect();
+      return (
+        r.width > 0 &&
+        r.height > 0 &&
+        r.right > 0 &&
+        r.left < window.innerWidth &&
+        getComputedStyle(b).visibility !== 'hidden'
+      );
+    });
+  }, sel);
+  if (!onScreen) {
+    await page.evaluate(() => {
+      const b = document.querySelector('[data-action="tglSidebarOpen"]');
+      if (b) {
+        b.click();
+      } else if (window.MMGR && window.MMGR.AppSidebar) {
+        window.MMGR.AppSidebar.setSidebarOpen(true);
+      }
+    });
+    await delay(500);
+  }
   const nav = await until(
     page,
     s => {
@@ -779,13 +805,33 @@ async function main() {
     await openPhotos(page, pid);
 
     async function uploadBundle(names, caption, stage) {
-      const addVisible = await page.evaluate(() => {
-        const b = document.getElementById('photos-add-btn');
-        return !!b && !b.classList.contains('is-hide');
-      });
-      if (!addVisible) {
-        await page.click('#photos-cancel-btn').catch(() => {});
+      // The panel may still be painting, and the add button is hidden while
+      // the uploader form is open, so wait for the real state before clicking.
+      await until(
+        page,
+        () => {
+          const panel = document.getElementById('panel-photos');
+          const add = document.getElementById('photos-add-btn');
+          return !!(
+            panel &&
+            panel.classList.contains('active') &&
+            add &&
+            add.offsetParent !== null
+          );
+        },
+        null,
+        15000
+      );
+      if (!(await page.locator('#photos-add-btn').isVisible())) {
+        await page.evaluate(() => {
+          const c = document.getElementById('photos-cancel-btn');
+          if (c && c.offsetParent !== null) {
+            c.click();
+          }
+        });
+        await page.waitForTimeout(250);
       }
+      await page.waitForSelector('#photos-add-btn', { state: 'visible', timeout: 15000 });
       await page.click('#photos-add-btn');
       const [chooser] = await Promise.all([
         page.waitForEvent('filechooser', { timeout: 15000 }),

@@ -509,14 +509,9 @@ var MMGR = window.MMGR || {};
     // gates land on both navs together; then boot the rail open and install
     // the drawer/sidebar dismiss bindings.
     buildSidebar();
-    // OWNER 2026-08-15: the sidebar IS the view on desktop , boot the pinned
-    // rail OPEN (body.sidebar-open). Mobile keeps the off-canvas drawer
-    // (sidebar-open is never set there, so the scrim can't flash at boot).
-    // B7 (2026-11-01) is the LAUNCHER's one-shot rail-nudge (app.html inline),
-    // not this workspace rail; the workspace intentionally boots open.
-    if (window.innerWidth > 768) {
-      document.body.classList.add('sidebar-open');
-    }
+    // OWNER 2026-11-10: the rail no longer boots pinned open. buildSidebar()
+    // restores a pinned choice from mmgr_sidebar; otherwise the rail stays
+    // off-canvas until the pointer reaches the left edge or the hamburger.
     syncSidebarChrome();
     bindNavDismiss();
 

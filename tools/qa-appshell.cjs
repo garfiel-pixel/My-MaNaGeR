@@ -285,9 +285,9 @@ function overlaps(a, b) {
           timeout: 45000
         });
         await delay(500);
-        // project.html pins its rail OPEN on desktop (mmgr-app.js adds
-        // body.sidebar-open at boot). Close it through the real rail-head
-        // control so the CLOSED state is what gets measured.
+        // OWNER 2026-11-10: the project rail no longer boots pinned open. The
+        // close below stays as a safety net for a device whose stored pref
+        // still pins it.
         await page.evaluate(() => {
           if (document.body.classList.contains('sidebar-open')) {
             const btn = document.querySelector('[data-action="tglSidebarOpen"]');
@@ -351,26 +351,16 @@ function overlaps(a, b) {
           });
 
         const pjClosed = await readRail();
-        // I-14 (2026-11-07): on a computer the project page keeps the icon
-        // strip visible as the hover lane, so the closed rail is a fixed
-        // 56 px strip with a reserved gutter rather than an off-canvas panel.
-        // A phone still hides the strip entirely.
-        const desktopStrip = width >= 769;
+        // OWNER 2026-11-10: collapsed is fully off-canvas on every width. The
+        // old 56px icon strip is gone, so the closed rail sits off-screen and
+        // the content column starts at 0.
         check(
-          'APP-1 [' +
-            tag +
-            '] the project page closed rail is a strip on desktop, off-canvas on a phone',
-          desktopStrip
-            ? !pjClosed.missing &&
-                pjClosed.open === false &&
-                pjClosed.position === 'fixed' &&
-                pjClosed.width > 0 &&
-                pjClosed.width <= 64
-            : !pjClosed.missing &&
-                pjClosed.open === false &&
-                pjClosed.right <= 1 &&
-                pjClosed.visibility === 'hidden' &&
-                pjClosed.position === 'fixed',
+          'APP-1 [' + tag + '] the project page closed rail is off-canvas and reserves no gutter',
+          !pjClosed.missing &&
+            pjClosed.open === false &&
+            pjClosed.right <= 1 &&
+            pjClosed.visibility === 'hidden' &&
+            pjClosed.position === 'fixed',
           pjClosed
         );
         check(
@@ -379,12 +369,55 @@ function overlaps(a, b) {
             '] no content sits under the project page closed rail, and the column clears it',
           !overlaps(pjClosed.railBox, pjClosed.probe) &&
             pjClosed.mainLeft !== null &&
-            (desktopStrip
-              ? Math.abs(pjClosed.mainLeft - (pjClosed.railBox ? pjClosed.railBox.width : 0)) <= 1
-              : pjClosed.mainLeft <= 1) &&
+            pjClosed.mainLeft <= 1 &&
             pjClosed.scrollW <= pjClosed.clientW + 1,
           { railBox: pjClosed.railBox, probe: pjClosed.probe, mainLeft: pjClosed.mainLeft }
         );
+
+        // OWNER 2026-11-10: the collapsed rail is off-canvas; the transparent
+        // 12px edge zone must open it on hover and close it after the grace.
+        // Phones have no zone (the drawer is the mobile nav).
+        if (width >= 769) {
+          const peek = await page.evaluate(() => {
+            const zone = document.querySelector('.sb-peek');
+            if (!zone) {
+              return { missing: true };
+            }
+            const cs = getComputedStyle(zone);
+            const r = zone.getBoundingClientRect();
+            return {
+              missing: false,
+              display: cs.display,
+              width: r.width,
+              height: r.height,
+              open: document.body.classList.contains('sidebar-open')
+            };
+          });
+          check(
+            'APP-1 [' + tag + '] the edge peek zone is present, transparent and 12px wide',
+            !peek.missing &&
+              peek.display === 'block' &&
+              Math.abs(peek.width - 12) <= 1 &&
+              peek.height > 0,
+            peek
+          );
+          await page.mouse.move(6, 320);
+          await delay(150);
+          const peekOpen = await page.evaluate(() =>
+            document.body.classList.contains('sidebar-open')
+          );
+          check('APP-1 [' + tag + '] hovering the edge zone opens the rail', peekOpen === true, {
+            peekOpen
+          });
+          await page.mouse.move(width / 2, 320);
+          await delay(320);
+          const peekClosed = await page.evaluate(() =>
+            document.body.classList.contains('sidebar-open')
+          );
+          check('APP-1 [' + tag + '] leaving the rail closes it again', peekClosed === false, {
+            peekClosed
+          });
+        }
 
         // And the OPEN state is the other half of the claim: the rail becomes a
         // real column and the page moves over for it, so the two never overlap.

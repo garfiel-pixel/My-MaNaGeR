@@ -1364,6 +1364,7 @@ body.focus-mode #wbsimport-modal,
 body.focus-mode #importdates-modal,
 body.focus-mode #nav-scrim,
 body.focus-mode #app-sidebar,
+body.focus-mode .sb-peek,
 body.focus-mode .hp {
   display: none !important;
 }
@@ -1666,36 +1667,26 @@ body.sidebar-open .sb-close .ico {
   body.sidebar-on #nav-scrim {
     display: none;
   }
-  /* I-14 (2026-11-08): collapsed "peek" rail. When the sidebar is on but not
-     pinned-open, show a narrow 56px icon-only rail (no labels) so a hover/focus
-     can expand it. The same #app-sidebar rail serves app.html home AND the
-     in-project UI, so one rule covers both surfaces. */
-  body.sidebar-on:not(.sidebar-open) #app-sidebar {
-    transform: translateX(0);
-    visibility: visible;
-    width: 56px;
-    font-size: 0;
-  }
-  body.sidebar-on:not(.sidebar-open) #app-main {
-    margin-left: 56px;
-  }
-  body.sidebar-on:not(.sidebar-open) #app-sidebar .sb-head,
-  body.sidebar-on:not(.sidebar-open) #app-sidebar .rail-ctl-row,
-  body.sidebar-on:not(.sidebar-open) #app-sidebar .sb-user {
+  /* OWNER 2026-11-10: collapsed means ABSENT. The old 56px icon strip and its
+     56px content gutter are gone: the rail slides fully off-canvas (the base
+     #app-sidebar transform above) and #app-main keeps its normal full-width
+     margin. A transparent 12px edge zone is the only hover target; the
+     hamburger pins the rail. */
+  .sb-peek {
     display: none;
   }
-  body.sidebar-on:not(.sidebar-open) #app-sidebar .nav-group {
-    padding: 0 6px;
+  body.sidebar-on:not(.sidebar-open) .sb-peek {
+    display: block;
+    position: fixed;
+    left: 0;
+    top: var(--hdr-h, 64px);
+    bottom: 0;
+    width: 12px;
+    z-index: 95;
+    background: transparent;
   }
-  body.sidebar-on:not(.sidebar-open) #app-sidebar .sec-btn,
-  body.sidebar-on:not(.sidebar-open) #app-sidebar .rail-link {
-    justify-content: center;
-    padding-left: 0;
-    padding-right: 0;
-  }
-  body.sidebar-on:not(.sidebar-open) #app-sidebar .sec-btn .ico,
-  body.sidebar-on:not(.sidebar-open) #app-sidebar .rail-link .ico {
-    font-size: 1rem;
+  body.sidebar-open .sb-peek {
+    display: none;
   }
 }
 
@@ -10071,7 +10062,8 @@ body.dark-mode .wbs-alert-item {
   #boot-splash,
   #snap-daily-btn,
   .core-callout,
-  #app-sidebar {
+  #app-sidebar,
+  .sb-peek {
     display: none !important;
   }
   /* OWNER 2026-10-22: THE STAR FIELD NEVER PRINTS. With performance mode off

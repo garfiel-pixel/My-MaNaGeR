@@ -2137,7 +2137,8 @@ body.dark-mode .wbs-alert-item {
   #boot-splash,
   #snap-daily-btn,
   .core-callout,
-  #app-sidebar {
+  #app-sidebar,
+  .sb-peek {
     display: none !important;
   }
   /* OWNER 2026-10-22: THE STAR FIELD NEVER PRINTS. With performance mode off

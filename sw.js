@@ -702,7 +702,11 @@
 // BOQ, Record a delivery, Weekly tracking, MCP budget permissions and the
 // Approval preview, with the closing sheet count and footer links updated.
 // Changed shell assets: mymanager-field-guide.html.
-const CACHE = 'mmgr-shell-v613';
+// v614 - OWNER 2026-11-10: the in-project rail is fully off-canvas when
+// collapsed (no 56px icon strip, no 56px gutter); a transparent 12px edge
+// zone opens it on hover and the hamburger pins it. Changed shell assets:
+// project.html, css/mmgr.css, dist/mmgr.min.css, dist/bundle.js.
+const CACHE = 'mmgr-shell-v614';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

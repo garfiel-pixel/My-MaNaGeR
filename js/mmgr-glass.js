@@ -597,5 +597,23 @@ var MMGR = window.MMGR || {};
   document.addEventListener('mmgr:skin', function () {
     refreshTheme();
   });
+  /* THEME-POLISH (owner 2026-11-10): the dark/light toggle (mmgr-app.js
+     tglTheme) flips body.dark-mode but never told the shader, so a skinned
+     page whose starfield was tuned for light kept the light base when the
+     owner switched to dark (and vice-versa). Refresh the dark + palette
+     uniforms on either signal - mmgr:theme is the app's own mode event; a
+     MutationObserver on the dark-mode class is the safety net for any other
+     path that toggles it. */
+  function onModeChange() {
+    refreshTheme();
+  }
+  document.addEventListener('mmgr:theme', onModeChange);
+  if (typeof MutationObserver !== 'undefined') {
+    var _dmObserver = new MutationObserver(onModeChange);
+    _dmObserver.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+  }
 })(MMGR);
 window.MMGR = MMGR;

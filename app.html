@@ -2276,6 +2276,23 @@ document.addEventListener('click', function(e){
     case 'customize':
       // OWNER 2026-11-10 theme pack: open the Customize modal (themes,
       // performance, appearance) instead of the old rail dropdown.
+      // THEME-POLISH (owner 2026-11-10): a signed-out visitor has no themes to
+      // apply, so instead of opening an empty sheet we say why and send them to
+      // sign in, returning to this page afterwards.
+      if (
+        window.MMGR &&
+        MMGR.Entitlements &&
+        typeof MMGR.Entitlements.signedIn === 'function' &&
+        !MMGR.Entitlements.signedIn()
+      ) {
+        if (ns.App && ns.App.showToast) {
+          ns.App.showToast('Sign in to use themes and appearance.', 'warn');
+        }
+        window.location.href =
+          'signin.html?next=' +
+          encodeURIComponent((location.pathname || '/app') + (location.search || ''));
+        return;
+      }
       if (window.MMGR_SKIN && typeof MMGR_SKIN.openModal === 'function') {
         MMGR_SKIN.openModal();
       }

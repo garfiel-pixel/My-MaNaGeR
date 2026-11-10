@@ -18,6 +18,13 @@ var MMGR = window.MMGR || {};
 
   var REFRESH_MS = 60000;
   var CACHE_KEY = 'mmgr_team_cache';
+  // THEME-POLISH (owner 2026-11-10): the bell starts hidden and was only shown
+  // after a successful /api/team/invitations fetch resolved signed-in. On a hard
+  // refresh that fetch can fail (offline, slow edge) and the bell - and the whole
+  // collaboration UI - silently vanished until the next poll. We remember the
+  // last signed-in answer so the bell reappears immediately on reload; the fetch
+  // still corrects it if the session actually ended.
+  var SIGNIN_KEY = 'mmgr_team_signedin';
   var ROLE_LABEL = {
     owner: 'Owner',
     manager: 'Manager',
@@ -507,7 +514,7 @@ var MMGR = window.MMGR || {};
     var r = bell.getBoundingClientRect();
     var vw = window.innerWidth || 360;
     var vh = window.innerHeight || 640;
-    var w = Math.min(380, vw - 16);
+    var w = Math.min(420, vw - 16);
     els.pop.style.width = w + 'px';
     var left = r.left;
     if (left + w > vw - 8) {
@@ -603,6 +610,15 @@ var MMGR = window.MMGR || {};
 
   function setSignedIn(yes) {
     state.signedIn = !!yes;
+    try {
+      if (yes) {
+        localStorage.setItem(SIGNIN_KEY, '1');
+      } else {
+        localStorage.removeItem(SIGNIN_KEY);
+      }
+    } catch (e) {
+      /* storage may be blocked */
+    }
     var bell = document.querySelector('[data-team-bell]');
     if (bell) {
       bell.hidden = !yes;
@@ -610,6 +626,29 @@ var MMGR = window.MMGR || {};
     var shared = $('shared-dash');
     if (shared && !yes) {
       shared.hidden = true;
+    }
+  }
+
+  // THEME-POLISH: restore the last known signed-in state before the first fetch
+  // so the bell (and the Shared-with-me list) is present the instant the page
+  // reloads instead of waiting on the network.
+  function restoreSignedIn() {
+    var wasIn = false;
+    try {
+      wasIn = localStorage.getItem(SIGNIN_KEY) === '1';
+    } catch (e) {
+      wasIn = false;
+    }
+    if (wasIn) {
+      var bell = document.querySelector('[data-team-bell]');
+      if (bell) {
+        bell.hidden = false;
+      }
+      var shared = $('shared-dash');
+      if (shared) {
+        shared.hidden = false;
+      }
+      state.signedIn = true;
     }
   }
 
@@ -1759,7 +1798,7 @@ var MMGR = window.MMGR || {};
     if (!bell) {
       if ($('shared-dash')) {
         buildPanel();
-        setSignedIn(false);
+        restoreSignedIn();
         refresh().then(markReady, markReady);
       } else {
         markReady();
@@ -1767,7 +1806,7 @@ var MMGR = window.MMGR || {};
       return;
     }
     buildPanel();
-    setSignedIn(false);
+    restoreSignedIn();
     bell.addEventListener('click', function (ev) {
       ev.preventDefault();
       togglePanel();

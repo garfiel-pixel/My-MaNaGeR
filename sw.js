@@ -16,6 +16,9 @@
 
    v382 - full-bleed marketing canvas, 7-big-dot rail with generated
            small dots, contact tile phone overflow, guide sidebar spacing
+   v621 - THEME-POLISH cache bump: return visitors re-fetch the theme-pack
+           assets (skin CSS + mmgr-skin.js) so a saved skin paints on a plain
+           refresh, not only after a hard refresh.
    ============================================================ */
 // v433 - PART H build (working tree, owner-directed): new Procurement tab
 // (suppliers + their hand-entered prices + AI quote panel). New module
@@ -734,7 +737,13 @@
 // drops the off-canvas rail from the boot splash. Changed shell assets:
 // project.html, calculator.html, app.html, admin.html, css/mmgr.css,
 // dist/mmgr.min.css, dist/bundle.js, dist/app-bundle.js, dist/admin-bundle.js.
-const CACHE = 'mmgr-shell-v620';
+// v621 - THEME-POLISH (owner 2026-11-10): the theme-pack deploy (v620) shipped
+// new skin CSS + mmgr-skin.js under a cache name that return visitors already
+// held, so a normal refresh served the OLD skin script/CSS and the applied
+// skin only appeared after a hard refresh (the old cache was bypassed). Bumping
+// the cache name deletes the stale shell on activate() and re-fetches every
+// shell asset, so the saved skin now paints on a plain refresh.
+const CACHE = 'mmgr-shell-v621';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

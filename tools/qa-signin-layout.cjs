@@ -166,7 +166,9 @@ async function main() {
     others.map(s => s.stroke)
   );
 
-  // L7: reduced motion keeps every letter static silver even on hover.
+  // L7: reduced motion still lights ONLY the hovered letter (a colour change is
+  // state feedback, not motion - qa-signin-mmwrp requires the gold hover), but
+  // it drops the lift so the mark itself stays still.
   const rctx = await browser.newContext({
     viewport: { width: 1440, height: 1000 },
     reducedMotion: 'reduce'
@@ -175,17 +177,31 @@ async function main() {
   await rpage.goto(BASE + '/signin.html', { waitUntil: 'domcontentloaded' });
   await rpage.waitForTimeout(700);
   await rpage.hover(markSel + ':nth-child(3)');
-  await rpage.waitForTimeout(150);
-  const rstrokes = await rpage.evaluate(sel => {
+  await rpage.waitForTimeout(250);
+  const rletters = await rpage.evaluate(sel => {
     return Array.prototype.map.call(document.querySelectorAll(sel), s => {
       const cs = getComputedStyle(s);
-      return cs.webkitTextStrokeColor || cs.getPropertyValue('-webkit-text-stroke-color');
+      return {
+        stroke: cs.webkitTextStrokeColor || cs.getPropertyValue('-webkit-text-stroke-color'),
+        transform: cs.transform
+      };
     });
   }, markSel);
+  const rGold = rletters[2];
+  const rOthers = rletters.filter((_, i) => i !== 2);
   check(
-    'L7 reduced motion keeps every letter static silver',
-    rstrokes.every(s => /203, 208, 218/.test(s || '')),
-    rstrokes
+    'L7 reduced motion lights only the hovered letter',
+    !!rGold &&
+      /rgb\(201, 162, 39\)|rgb\(212, 175, 55\)|rgb\(21[0-9], 1[0-9][0-9], [0-9]+\)|gold/i.test(
+        rGold.stroke || ''
+      ) &&
+      rOthers.every(s => /203, 208, 218/.test(s.stroke || '')),
+    rletters.map(s => s.stroke)
+  );
+  check(
+    'L7 reduced motion drops the lift (the mark stays still)',
+    !!rGold && (rGold.transform === 'none' || rGold.transform === 'matrix(1, 0, 0, 1, 0, 0)'),
+    rGold && rGold.transform
   );
   await rctx.close();
 

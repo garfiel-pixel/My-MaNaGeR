@@ -2890,6 +2890,23 @@ body.dark-mode #f-voice {
     top: 4px;
   }
 }
+/* OWNER 2026-11-10: with Reduce Motion on the strip still walks (that walk is
+   the meaning of the graphic), but the light CROSS-FADES in place instead of
+   travelling: no cursor element, no scale on the node, only the fill, halo and
+   copy colour easing over 420ms. Freezing it on phase one made the strip look
+   broken rather than calm. */
+@media (prefers-reduced-motion: reduce) {
+  .phase-rail li::before,
+  .phase-rail li.is-phase::before {
+    transform: none;
+  }
+  .phase-rail li::before,
+  .phase-rail b,
+  .phase-rail h3,
+  .phase-rail p {
+    transition-duration: 0.42s !important;
+  }
+}
 .pb-cta {
   display: flex;
   gap: 12px;
@@ -3257,6 +3274,7 @@ body.dark-mode #f-voice {
   font-weight: 500;
 }
 .rv-field input[type='text'],
+.rv-field input[type='email'],
 .rv-field textarea {
   width: 100%;
   padding: 11px 13px;
@@ -3272,11 +3290,13 @@ body.dark-mode #f-voice {
     box-shadow var(--tr);
 }
 .rv-field input[type='text']::placeholder,
+.rv-field input[type='email']::placeholder,
 .rv-field textarea::placeholder {
   color: var(--text-secondary);
   opacity: 0.8;
 }
 .rv-field input[type='text']:focus-visible,
+.rv-field input[type='email']:focus-visible,
 .rv-field textarea:focus-visible {
   outline: none;
   border-color: var(--gold);
@@ -3650,7 +3670,14 @@ body.dark-mode #f-voice {
   }
 }
 
-/* ---------- 15. Reduced motion + reduced transparency ---------- */
+/* ---------- 15. Reduced motion + reduced transparency ----------
+   OWNER 2026-11-10: Reduce Motion asks us to remove MOTION - travel, scale,
+   spin, parallax - not to remove every state change. The old blanket cut every
+   transition to 0.01ms, so every hover, focus ring and state change on the
+   page snapped, which is what read as "jumpy" rather than calm. Movement
+   properties are still cut off (transform is deliberately NOT in the list
+   below, so anything that travels simply arrives); colour, opacity and shadow
+   keep a short cross-fade so a change still reads as a change. */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -3661,7 +3688,11 @@ body.dark-mode #f-voice {
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-property:
+      color, background-color, border-color, box-shadow, opacity, fill, stroke, text-shadow,
+      outline-color, visibility !important;
+    transition-duration: 0.2s !important;
+    transition-timing-function: linear !important;
     scroll-behavior: auto !important;
   }
 }

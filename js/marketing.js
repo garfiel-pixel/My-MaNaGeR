@@ -2170,8 +2170,8 @@
 /* ---- PROCESS RAIL (owner 2026-11-10) ----
    Initiate, Plan, Execute, Monitor, Close light in order, one at a time, so
    the strip reads as a moving project lifecycle instead of five static
-   labels. 2.4s per step; pauses on hover and when off screen; reduced motion
-   lights the first step only. */
+   labels. 2.4s per step; pauses on hover and when off screen. Reduced motion
+   keeps the walk but cross-fades each step in place - no cursor, no scale. */
 (function wirePhaseRail() {
   var rail = document.querySelector('.phase-rail');
   if (!rail) {
@@ -2182,18 +2182,24 @@
     return;
   }
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (reduce) {
-    phases[0].classList.add('is-phase');
-    return;
-  }
   // OWNER 2026-11-10: the light must TRAVEL, not teleport. One cursor element
   // slides along the rail to the next node, and the node pops as it arrives;
   // the phase-off is the cursor leaving, the phase-on is it settling.
-  var cursor = document.createElement('span');
-  cursor.className = 'phase-cursor';
-  cursor.setAttribute('aria-hidden', 'true');
-  rail.appendChild(cursor);
+  //
+  // With Reduce Motion on there is no cursor and no scale, but the walk still
+  // runs: each node cross-fades in place (CSS), so the strip reads as a
+  // lifecycle instead of freezing on phase one.
+  var cursor = null;
+  if (!reduce) {
+    cursor = document.createElement('span');
+    cursor.className = 'phase-cursor';
+    cursor.setAttribute('aria-hidden', 'true');
+    rail.appendChild(cursor);
+  }
   function place(i) {
+    if (!cursor) {
+      return;
+    }
     var li = phases[i % phases.length];
     if (!li) {
       return;
@@ -2202,17 +2208,19 @@
   }
   // The first placement is instant; every later one animates via CSS.
   place(0);
-  requestAnimationFrame(function () {
-    cursor.classList.add('is-live');
-  });
-  window.addEventListener('resize', function () {
-    var cur = phases.filter(function (p) {
-      return p.classList.contains('is-phase');
-    })[0];
-    if (cur) {
-      cursor.style.transform = 'translateX(' + cur.offsetLeft + 'px)';
-    }
-  });
+  if (cursor) {
+    requestAnimationFrame(function () {
+      cursor.classList.add('is-live');
+    });
+    window.addEventListener('resize', function () {
+      var cur = phases.filter(function (p) {
+        return p.classList.contains('is-phase');
+      })[0];
+      if (cur) {
+        cursor.style.transform = 'translateX(' + cur.offsetLeft + 'px)';
+      }
+    });
+  }
   var at = 0;
   var timer = null;
   var paused = false;

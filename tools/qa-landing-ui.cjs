@@ -563,6 +563,58 @@ async function newPage(browser, opts) {
       rm.lon0 === null || Math.abs(lon1 - rm.lon0) < 0.01,
       rm.lon0 + ' -> ' + lon1
     );
+
+    /* OWNER 2026-11-10: Reduce Motion removes MOVEMENT, not state changes.
+       The strip must still walk, but as a cross-fade in place: no travelling
+       cursor and no scaled node. And a plain state change (a card's hover /
+       focus) must still ease instead of being cut to 0.01ms - that cut is
+       what made the page feel jumpy. */
+    await p2.mouse.move(2, 2);
+    await p2.evaluate(() =>
+      document.querySelector('.phase-rail').scrollIntoView({ block: 'center' })
+    );
+    await p2.waitForTimeout(900);
+    const rmRail = () =>
+      p2.evaluate(() => {
+        const lis = [...document.querySelectorAll('.phase-rail li')];
+        const lit = document.querySelector('.phase-rail li.is-phase');
+        return {
+          index: lit ? lis.indexOf(lit) : -1,
+          cursors: document.querySelectorAll('.phase-rail .phase-cursor').length,
+          scale: lit ? getComputedStyle(lit, '::before').transform : null
+        };
+      });
+    const rr1 = await rmRail();
+    await p2.waitForTimeout(2700);
+    const rr2 = await rmRail();
+    check(
+      'U-10',
+      'reduced motion: the lifecycle strip still walks',
+      rr1.index > -1 && rr2.index > -1 && rr1.index !== rr2.index,
+      { before: rr1.index, after: rr2.index }
+    );
+    check(
+      'U-11',
+      'reduced motion: no travelling cursor is created',
+      rr2.cursors === 0,
+      rr2.cursors
+    );
+    check(
+      'U-12',
+      'reduced motion: the lit node cross-fades instead of scaling',
+      rr2.scale === 'none' || /matrix\(1, 0, 0, 1/.test(rr2.scale || ''),
+      rr2.scale
+    );
+    const rmCardT = await p2.evaluate(() => {
+      const c = document.querySelector('.fcard');
+      return c ? getComputedStyle(c).transitionDuration : null;
+    });
+    check(
+      'U-13',
+      'reduced motion: state changes still ease (not cut to 0.01ms)',
+      !!rmCardT && parseFloat(rmCardT) >= 0.1,
+      rmCardT
+    );
     await c2.close();
   }
 

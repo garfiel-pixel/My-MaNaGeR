@@ -46,10 +46,10 @@ body.glass-premium .wrap{position:relative;z-index:1;}
    was removed (the page notice + #om-desc already carry it). */
 #om .btn{border-radius:100px;padding:9px 22px;}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px;}
-.pcard{background:var(--glass-fill-dark);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));border:var(--glass-border);border-radius:var(--squircle-md);padding:20px;text-align:left;cursor:pointer;transition:transform var(--release-duration) var(--spring-press),background var(--tr),border-color var(--tr),box-shadow var(--tr);display:flex;flex-direction:column;gap:12px;font:inherit;color:inherit;box-shadow:var(--glass-rim),var(--glass-shadow);}
-.pcard:hover{transform:translateY(-3px);border-color:var(--gold);background:var(--glass-fill-dark-hover);box-shadow:var(--glass-rim),0 12px 30px rgba(16,24,40,.14);}
+.pcard{--pc-band:inset 0 3px 0 var(--gold);background:var(--glass-fill-dark);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));border:var(--glass-border);border-radius:var(--squircle-md);padding:20px;text-align:left;cursor:pointer;transition:transform var(--release-duration) var(--spring-press),background var(--tr),border-color var(--tr),box-shadow var(--tr);display:flex;flex-direction:column;gap:12px;font:inherit;color:inherit;box-shadow:var(--pc-band),var(--glass-rim),var(--glass-shadow);}
+.pcard:hover{transform:translateY(-3px);border-color:var(--gold);background:var(--glass-fill-dark-hover);box-shadow:var(--pc-band),var(--glass-rim),0 12px 30px rgba(16,24,40,.14);}
 .pcard:active{transform:scale(var(--press-scale));background:var(--glass-fill-dark-active);transition:transform var(--press-duration) var(--spring-in),background var(--tr);}
-.pcard.unlocked{box-shadow:inset 0 3px 0 var(--gold),var(--glass-rim),var(--glass-shadow);}
+.pcard.unlocked{border-color:color-mix(in srgb,var(--gold) 55%,transparent);box-shadow:inset 0 4px 0 var(--gold),var(--glass-rim),var(--glass-shadow);}
 .pcard:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
 .pc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
 .pc-title{font-size:.95rem;font-weight:800;line-height:1.35;}
@@ -123,7 +123,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 .cloud-dash .cd-head h2{font-size:.85rem;font-weight:700;margin:0;}
 .cloud-dash .cd-head .cd-sub{font-size:.66rem;color:var(--slate);}
 .cloud-dash .cd-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;}
-.cd-card{display:flex;flex-direction:column;gap:8px;background:var(--glass-fill-dark);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));border:var(--glass-border);border-radius:var(--squircle-md);padding:14px 16px;box-shadow:var(--glass-rim),var(--glass-shadow);}
+.cd-card{display:flex;flex-direction:column;gap:8px;background:var(--glass-fill-dark);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));border:var(--glass-border);border-radius:var(--squircle-md);padding:14px 16px;box-shadow:var(--pc-band),var(--glass-rim),var(--glass-shadow);}
 .cd-title{font-size:.82rem;font-weight:800;line-height:1.35;word-break:break-word;}
 .cd-meta{font-size:.66rem;color:var(--slate);line-height:1.5;}
 .cd-empty{grid-column:1/-1;text-align:center;color:var(--slate);font-size:.76rem;padding:18px 10px;}
@@ -534,7 +534,7 @@ html[data-perf='on'] body.db-page .sidebar-icons{transition:none;}
     <!-- BIG NEW-PROJECT DOOR (owner 2026-09-05): the New Project action moves
          into the hero beside the title, large and visible (was a small pill
          link in the section header row). admin.html remains the create flow. -->
-    <a href="admin.html" class="db-new-project" title="Create a new project"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New Project</a>
+    <a href="admin.html?new=1" class="db-new-project" title="Create a new project"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New Project</a>
     </div>
   </div>
 
@@ -593,7 +593,7 @@ html[data-perf='on'] body.db-page .sidebar-icons{transition:none;}
   <div class="cloud-dash" id="cloud-dash" hidden>
     <div class="cd-head">
       <h2><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> My Cloud Projects</h2>
-      <span class="cd-sub">Linked to your account. Click Load to open one</span>
+      <span class="cd-sub">Linked to your account. Click a card to open one</span>
     </div>
     <div class="cd-list" id="cloud-dash-list" role="list"></div>
     <div class="cd-status" id="cloud-dash-status" role="status" aria-live="polite"></div>

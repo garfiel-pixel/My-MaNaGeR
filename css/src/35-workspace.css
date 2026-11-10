@@ -3159,10 +3159,15 @@ body.dark-mode .btn-warn:hover {
 } /* §6.4 dashboard project cards - glass + hover lift & brighten */
 .pcard {
   /* X-2: dashboard project cards are content - solid surface, no frost. */
+  /* OWNER 2026-11-10 (Wave 1): the gold top band is the card's identity, not
+     an unlock reward. It used to live on .unlocked only, so a new project and
+     every demo card looked like a different component. It now sits on .pcard
+     and every variant inherits it; .unlocked keeps a stronger edge instead. */
+  --pc-band: inset 0 3px 0 var(--gold);
   background: var(--card);
   border: var(--glass-border);
   border-radius: var(--squircle-md);
-  box-shadow: var(--glass-rim), var(--glass-shadow);
+  box-shadow: var(--pc-band), var(--glass-rim), var(--glass-shadow);
   transition:
     transform var(--release-duration) var(--spring-press),
     background var(--tr),
@@ -3174,12 +3179,16 @@ body.dark-mode .btn-warn:hover {
   border-color: var(--gold);
   background: var(--glass-fill-dark-hover);
   box-shadow:
+    var(--pc-band),
     var(--glass-rim),
     0 12px 30px rgba(15, 23, 42, 0.14);
-} /* Unlocked card: §5 ON-state cue - solid gold top edge instead of full inversion */
+}
+/* Unlocked card: the band is shared now, so the ON-state cue is the border
+   plus a taller band - still a top edge, never a side rail. */
 .pcard.unlocked {
+  border-color: color-mix(in srgb, var(--gold) 55%, transparent);
   box-shadow:
-    inset 0 3px 0 var(--gold),
+    inset 0 4px 0 var(--gold),
     var(--glass-rim),
     var(--glass-shadow);
 } /* §6.3 access-code input - recessed glass well with gold focus ring */
@@ -3468,6 +3477,7 @@ body.dark-mode #drw {
 }
 body.dark-mode .pcard:hover {
   box-shadow:
+    var(--pc-band),
     var(--glass-rim),
     0 12px 30px var(--lit-black-35);
 }

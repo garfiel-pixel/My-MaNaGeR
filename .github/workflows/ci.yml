@@ -1385,6 +1385,16 @@ jobs:
         id: qa-landing-ui
         run: node tools/qa-landing-ui.cjs
 
+      # WAVE 1 CARD PARITY (owner 2026-11-10): a project card must look and
+      # open the same way whether it is local, a demo or a cloud project - one
+      # gold top band, one status dot and label, and the whole card as the open
+      # target (no separate Load button). The cloud list is served from a route
+      # fixture, so no Worker or D1 is involved; admin.html?new=1 is driven in
+      # the same gate to prove a project can be born in the cloud.
+      - name: "T4: Card parity (qa-card-parity)"
+        id: qa-card-parity
+        run: node tools/qa-card-parity.cjs
+
       # I-1 CLIENT regression (forged-cookie Playwright): boots its OWN local
       # wrangler dev with a forged Google session and drives the real app.html to
       # prove the owner code persists to localStorage and the signed-in account

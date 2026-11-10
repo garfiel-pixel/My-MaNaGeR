@@ -498,21 +498,36 @@
         const discBanner = disc
           ? '<div class="cd-disc" role="note"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Discontinued , the admin deleted this project. It can no longer be opened or updated. Remove it from your list.</div>'
           : '';
-        const loadBtn = disc
-          ? ''
-          : '<button type="button" class="btn btn-g btn-s" data-cd-load="' +
-            escapeHtml(p.projectId) +
-            '" title="Open this project from the cloud snapshot">Load</button>';
         const discRemove = disc
           ? '<button type="button" class="btn btn-n btn-s" data-cd-unpin="' +
             escapeHtml(p.projectId) +
             '" data-cd-disc="1" title="Remove this discontinued project from your list">Remove</button>'
           : '';
         const hasMenu = !!menuItem;
+        /* OWNER 2026-11-10 (Wave 1): one card language. A cloud card is a
+           .pcard with the same gold top band, the same status dot and label,
+           and the same foot; the whole card is the open target, so the Load
+           button is gone. The overlay .cd-hit is a real button (keyboard and
+           screen readers get one obvious target) and the 3-dot menu stays
+           above it at z-index 3, so no button is nested in another. */
+        const status = (p.status || 'active').toLowerCase();
+        const statusLabel = status.replace('-', ' ');
+        const statusDot =
+          { active: 'g', completed: 'g', planning: 'b', 'on-hold': 'a' }[status] || '';
+        const who = p.linkedName
+          ? (shared ? 'Shared by ' : 'Created by ') + escapeHtml(p.linkedName) + '. '
+          : '';
         return (
-          '<div class="cd-card' +
+          '<div class="cd-card pcard' +
           (disc ? ' cd-disc-card' : '') +
           '" role="listitem">' +
+          (disc
+            ? ''
+            : '<button type="button" class="cd-hit" data-cd-load="' +
+              escapeHtml(p.projectId) +
+              '" aria-label="Open ' +
+              escapeHtml(title) +
+              '"></button>') +
           (hasMenu
             ? '<button type="button" class="cd-menu" data-cd-menu="' +
               escapeHtml(p.projectId) +
@@ -527,28 +542,26 @@
               menuItem +
               '</div>'
             : '') +
-          '<div class="cd-title">' +
+          '<div class="pc-head"><div class="pc-title">' +
           escapeHtml(title) +
           chip +
-          '</div>' +
-          /* OWNER 2026-09-21 (declutter): the raw projectId under the title
-           repeated the heading and read as noise. The meta line now speaks
-           people + time: owned cards say "Created by <account name>" and
-           shared cards "Shared by <account name>" (the list API's linkedName
-           is the OWNER's account name on both paths), followed by the
-           existing Last saved / Created stamp. */
-          '<div class="cd-meta">' +
-          (p.linkedName
-            ? (shared ? 'Shared by ' : 'Created by ') + escapeHtml(p.linkedName) + '<br>'
-            : '') +
+          '</div></div>' +
+          '<div class="pc-desc">' +
+          who +
           escapeHtml(when) +
-          '</div>' +
+          '.</div>' +
           discBanner +
           snap +
-          '<div class="cd-actions">' +
-          loadBtn +
-          discRemove +
+          '<div class="pc-foot"><span class="pc-status"><span class="sdot ' +
+          statusDot +
+          '"></span>' +
+          escapeHtml(statusLabel) +
+          '</span>' +
+          (disc
+            ? ''
+            : '<span class="pc-cta"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> Open</span>') +
           '</div>' +
+          (disc ? '<div class="cd-actions">' + discRemove + '</div>' : '') +
           '</div>'
         );
       })
@@ -578,10 +591,16 @@
         }
       }
     }
-    const target = card ? card.querySelector('.btn') : null;
+    // Wave 1 (2026-11-10): the card opens through its overlay .cd-hit button,
+    // so the loading state dims the whole card instead of relabelling a Load
+    // control that no longer exists.
+    const target = card ? card.querySelector('.cd-hit') : null;
     if (target) {
       target.disabled = true;
-      target.textContent = 'Loading…';
+      target.setAttribute('aria-busy', 'true');
+    }
+    if (card) {
+      card.classList.add('is-opening');
     }
     setStatus('');
     try {
@@ -692,7 +711,10 @@
     } finally {
       if (target) {
         target.disabled = false;
-        target.textContent = 'Load';
+        target.removeAttribute('aria-busy');
+      }
+      if (card) {
+        card.classList.remove('is-opening');
       }
     }
   }

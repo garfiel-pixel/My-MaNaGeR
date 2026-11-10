@@ -1502,6 +1502,9 @@ body.dark-mode .ps-item:hover {
   background: var(--card-elev, var(--lit-white-04));
 }
 /* ---- cloud cards share the grid card language ---- */
+/* OWNER 2026-11-10 (Wave 1): a cloud card is a .pcard now - same surface, same
+   gold top band, same status foot - and the whole card opens the project
+   through an overlay button, so there is no separate Load control. */
 body.db-page .cd-card {
   padding: var(--pad-card);
   transition:
@@ -1515,10 +1518,41 @@ body.db-page .cd-card:hover {
   border-color: var(--gold);
   background: var(--glass-fill-dark-hover);
   box-shadow:
+    var(--pc-band),
     var(--glass-rim),
     0 12px 30px rgba(16, 24, 40, 0.14);
 }
-body.db-page .cd-card .cd-title {
+body.db-page .cd-card.is-opening {
+  opacity: 0.65;
+}
+/* The whole-card hit layer. A real button, so Enter/Space and screen readers
+   get one obvious target; the static copy underneath never needs pointer
+   events because the layer covers it. The 3-dot menu sits at z-index 3. */
+body.db-page .cd-hit {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+body.db-page .cd-hit:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+body.db-page .cd-hit:disabled {
+  cursor: progress;
+}
+body.db-page .cd-card .pc-title {
+  padding-right: 32px; /* clear the 3-dot button */
+}
+body.db-page .cd-card .pc-title {
   color: var(--text);
 }
 /* ---- recently-opened code cards: relocated here from app.html's inline
@@ -1563,7 +1597,7 @@ body.db-page .cd-card .cd-title {
    Adopted projects render a role chip (Viewer read-only / Editor) + an
    Unpin action so a recipient can drop a pinned project from their own
    list. Token-driven; dark-mode overrides below. */
-body.db-page .cd-card .cd-title {
+body.db-page .cd-card .pc-title {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1590,69 +1624,9 @@ body.db-page .cd-actions {
   margin-top: 14px;
   flex-wrap: wrap;
 }
-/* ---- PART W11 (2026-10-10, owner R11): the card Load button stops
-   carrying a saturated green block on every card. The default state is a
-   quiet outline (transparent fill, hairline border, primary text); the
-   green arrives on hover / focus / press only. Scoped to the dashboard
-   card action row, so the rail rows (.db-project) and every other green
-   button keep their current treatment. Gold stays the identity - only this
-   one control is neutral until it is touched. */
-body.db-page .cd-actions .btn[data-cd-load] {
-  background: transparent;
-  color: var(--text);
-  border: 1px solid var(--border);
-  box-shadow: none;
-  transition:
-    background var(--tr),
-    border-color var(--tr),
-    color var(--tr);
-}
-body.db-page .cd-actions .btn[data-cd-load]:hover,
-body.db-page .cd-actions .btn[data-cd-load]:focus-visible,
-body.db-page .cd-actions .btn[data-cd-load]:active {
-  /* white on #2e7d32 = 5.13:1 (AA) */
-  background: var(--green);
-  border-color: var(--green);
-  color: var(--lit-white);
-}
-body.dark-mode.db-page .cd-actions .btn[data-cd-load] {
-  color: var(--text);
-  border-color: var(--db-border);
-  background: transparent;
-}
-body.dark-mode.db-page .cd-actions .btn[data-cd-load]:hover,
-body.dark-mode.db-page .cd-actions .btn[data-cd-load]:focus-visible,
-body.dark-mode.db-page .cd-actions .btn[data-cd-load]:active {
-  /* the green token collapses to white in dark mode, so pin the usable
-     green here: white on #2e7d32 = 5.13:1 (AA) */
-  background: #2e7d32;
-  border-color: #2e7d32;
-  color: var(--lit-white);
-}
-/* Touch devices have no hover: the default stays neutral and the green
-   shows only while the finger is down. */
-@media (hover: none) {
-  body.db-page .cd-actions .btn[data-cd-load]:hover {
-    background: transparent;
-    border-color: var(--border);
-    color: var(--text);
-  }
-  body.db-page .cd-actions .btn[data-cd-load]:active {
-    background: var(--green);
-    border-color: var(--green);
-    color: var(--lit-white);
-  }
-  body.dark-mode.db-page .cd-actions .btn[data-cd-load]:hover {
-    background: transparent;
-    border-color: var(--db-border);
-    color: var(--text);
-  }
-  body.dark-mode.db-page .cd-actions .btn[data-cd-load]:active {
-    background: #2e7d32;
-    border-color: #2e7d32;
-    color: var(--lit-white);
-  }
-}
+/* PART W11 (2026-10-10) styled the card's Load button green-on-hover. Wave 1
+   (2026-11-10) retired that button: the whole card opens the project through
+   .cd-hit, so the rules went with it rather than lingering as dead selectors. */
 body.db-page .cd-unpin {
   font: inherit;
   font-size: 0.76rem;
@@ -1703,8 +1677,12 @@ body.db-page .cd-menu {
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-secondary);
-  opacity: 0;
-  pointer-events: none;
+  /* OWNER 2026-11-10 (Wave 1): the menu used to be opacity 0 with
+     pointer-events none until the card was hovered. That made it unreachable
+     on touch (no hover) and it sat under the new whole-card hit layer until
+     the pointer had already landed, so a click could never be routed to it.
+     It now rests visible at 55% and comes to full on hover or focus. */
+  opacity: 0.55;
   transition:
     opacity var(--tr),
     border-color var(--tr),
@@ -1715,7 +1693,6 @@ body.db-page .cd-card:hover .cd-menu,
 body.db-page .cd-card:focus-within .cd-menu,
 body.db-page .cd-menu:focus-visible {
   opacity: 1;
-  pointer-events: auto;
 }
 body.db-page .cd-menu .ico {
   width: 16px;

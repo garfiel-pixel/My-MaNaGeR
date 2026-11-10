@@ -223,6 +223,18 @@ main{max-width:1000px;margin:0 auto;padding:26px 24px 70px;}
 .field .hint{font-size:.68rem;color:var(--slate);margin-top:4px;}
 .code-row{display:flex;gap:8px;}
 .code-row input{font-family:ui-monospace,monospace;letter-spacing:.1em;}
+/* "Where does it live?" choice (owner 2026-11-10): two bordered radio cards,
+   not pills, so the option that is chosen reads from its border and tint. */
+.where-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.field .where-opt{display:flex;align-items:flex-start;gap:10px;margin:0;padding:10px 12px;
+  border:1px solid var(--border);border-radius:10px;background:var(--tile-bg);cursor:pointer;
+  font-weight:400;color:var(--text);transition:border-color var(--tr),box-shadow var(--tr);}
+.field .where-opt input{width:auto;margin:3px 0 0;flex:0 0 auto;accent-color:var(--gold);}
+.where-opt b{display:block;font-size:.8rem;font-weight:700;color:var(--text);}
+.where-opt .t-mut{display:block;font-size:.68rem;line-height:1.4;margin-top:2px;color:var(--slate);}
+.where-opt:has(input:checked){border-color:var(--gold);box-shadow:0 0 0 3px rgba(245,158,11,.12);}
+.where-opt:focus-within{border-color:var(--gold);}
+@media(max-width:560px){.where-row{grid-template-columns:1fr;}}
 pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radius:6px;padding:14px;font-size:.72rem;
   line-height:1.6;white-space:pre-wrap;word-break:break-all;color:var(--text);font-family:ui-monospace,monospace;}
 
@@ -633,6 +645,25 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
           <option value="planning">Planning</option>
           <option value="completed">Completed</option>
         </select>
+      </div>
+      <!-- OWNER 2026-11-10 (Wave 1): a project can be born in the cloud. The
+           record is still written to this device first (offline-first), then
+           the existing publish path links it and pushes the first snapshot, so
+           the launcher card arrives with a band and a status like every other
+           card instead of appearing only after a second, separate step. -->
+      <div class="field" id="pf-where-field">
+        <label>Where does it live?</label>
+        <div class="where-row" role="radiogroup" aria-label="Where does it live?">
+          <label class="where-opt">
+            <input type="radio" name="pf-where" id="pf-where-device" value="device" checked>
+            <span><b>This device</b><span class="t-mut">Offline first. You can publish it to the cloud later.</span></span>
+          </label>
+          <label class="where-opt">
+            <input type="radio" name="pf-where" id="pf-where-cloud" value="cloud">
+            <span><b>Cloud</b><span class="t-mut">Saved here and in your account, available on every device.</span></span>
+          </label>
+        </div>
+        <div class="hint">Choosing Cloud links the project and pushes its first snapshot as part of this save.</div>
       </div>
       <div class="field">
         <label for="pf-id">Project ID <span class="t-mut">(url-safe, unique; auto-filled from title)</span></label>
@@ -2060,6 +2091,18 @@ function enterAdmin(){
       } catch(err){ /* unparseable write from elsewhere , ignore */ }
     });
   }
+  // OWNER 2026-11-10 (Wave 1): the launcher's New Project door lands here with
+  // ?new=1, so the create modal is already open instead of the user landing on
+  // a panel and having to find the button. The flag is stripped afterwards so
+  // a refresh or a re-login does not reopen it.
+  if (/[?&]new=1\b/.test(location.search)) {
+    try {
+      openProjectModal();
+      const u = new URL(location.href);
+      u.searchParams.delete('new');
+      history.replaceState(null, '', u.pathname + (u.search ? u.search : '') + u.hash);
+    } catch (e) { /* modal unavailable: the panel itself still works */ }
+  }
 }
 
 /* ============================================================
@@ -2302,6 +2345,14 @@ function openProjectModal(index){
   document.getElementById('pf-file').value = p.file;
   document.getElementById('pf-code').value = p.code || '';
   document.getElementById('pf-rocode').value = p.roCode || '';
+  // "Where does it live?" is a create-time choice only: an edit must never
+  // re-home an existing project, so the field is hidden and reset to device.
+  const whereField = document.getElementById('pf-where-field');
+  if (whereField) {
+    whereField.hidden = isEdit;
+    const dev = document.getElementById('pf-where-device');
+    if (dev) dev.checked = true;
+  }
   // Manual slug edit flag is now driven by the pfIdManual data-action handler
   document.getElementById('om').classList.add('show');
   setTimeout(()=>document.getElementById('pf-title').focus(), 50);
@@ -2389,6 +2440,10 @@ async function saveProjectForm(){
   // share ONE code path (updateCloudSnapshot), so the always-available
   // Update button and the automatic push can never disagree.
   const editedIdx = editingIndex !== null ? editingIndex : projects.length - 1;
+  const wasEditing = editingIndex !== null;
+  const bornInCloud =
+    !wasEditing && !!document.getElementById('pf-where-cloud') &&
+    document.getElementById('pf-where-cloud').checked;
   const cloudLinked = !!(projects[editedIdx] && projects[editedIdx].cloudId);
   closeProjectModal();
   if (cloudLinked){
@@ -2402,6 +2457,11 @@ async function saveProjectForm(){
       toast('Project saved. Syncing your changes to the cloud…');
       updateCloudSnapshot(editedIdx);
     }
+  } else if (bornInCloud){
+    // Wave 1: "Cloud" at create time runs the SAME publish path the row button
+    // uses (link + first snapshot), so there is one implementation, not two.
+    toast('Project saved. Creating the cloud copy…');
+    publishToCloud(editedIdx);
   } else {
     toast('Project saved. Download the static manifest (toolbar) to publish this change.');
   }

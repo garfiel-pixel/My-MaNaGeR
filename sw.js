@@ -714,7 +714,14 @@
 // white sticker rim, and the launcher icon strip sits at half strength.
 // Changed shell assets: index.html, app.html, css/marketing.css,
 // dist/marketing.min.css, dist/marketing-bundle.js.
-const CACHE = 'mmgr-shell-v615';
+// v616 - OWNER 2026-11-10 (Wave 1, one card language): every project card
+// carries the gold top band (local, demo, cloud), the cloud card is a .pcard
+// with a status dot and the whole card as its open target (the Load button is
+// gone), its 3-dot menu is always reachable, and the New Project door opens the
+// create modal with a This device / Cloud choice that links and pushes in one
+// save. Changed shell assets: app.html, admin.html, css/mmgr.css,
+// dist/mmgr.min.css, dist/app-bundle.js, dist/admin-bundle.js.
+const CACHE = 'mmgr-shell-v616';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

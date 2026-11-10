@@ -123,6 +123,11 @@ function overlaps(a, b) {
         await page.addInitScript(t => {
           try {
             localStorage.setItem('mmgr_theme', t);
+            // This arm measures the RESTING shell. The first-project tour
+            // auto-opens on a clean profile and pins the rail open for its
+            // section cards, so keep it shut here; qa-first-project-tour owns
+            // the walk itself.
+            localStorage.setItem('mmgr_first_project_tour_v1', '1');
           } catch (e) {}
         }, theme);
 
@@ -401,20 +406,35 @@ function overlaps(a, b) {
               peek.height > 0,
             peek
           );
+          // The pointer event lands on the next frame the main thread gets;
+          // on a loaded CI runner the first project's tour is still settling
+          // (it re-plans every 150ms), so a single short wait can read the
+          // class before the handler has run. Poll the state, do not assume a
+          // fixed latency.
           await page.mouse.move(6, 320);
-          await delay(150);
-          const peekOpen = await page.evaluate(() =>
-            document.body.classList.contains('sidebar-open')
-          );
+          let peekOpen = false;
+          for (let i = 0; i < 20; i++) {
+            await delay(100);
+            peekOpen = await page.evaluate(() => document.body.classList.contains('sidebar-open'));
+            if (peekOpen) {
+              break;
+            }
+          }
           check('APP-1 [' + tag + '] hovering the edge zone opens the rail', peekOpen === true, {
             peekOpen
           });
           await page.mouse.move(width / 2, 320);
-          await delay(320);
-          const peekClosed = await page.evaluate(() =>
-            document.body.classList.contains('sidebar-open')
-          );
-          check('APP-1 [' + tag + '] leaving the rail closes it again', peekClosed === false, {
+          let peekClosed = true;
+          for (let i = 0; i < 20; i++) {
+            await delay(100);
+            peekClosed = !(await page.evaluate(() =>
+              document.body.classList.contains('sidebar-open')
+            ));
+            if (peekClosed) {
+              break;
+            }
+          }
+          check('APP-1 [' + tag + '] leaving the rail closes it again', peekClosed === true, {
             peekClosed
           });
         }

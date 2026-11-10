@@ -85,12 +85,15 @@ async function stripBox(page, index) {
   await page.goto(URL, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(400);
 
-  // The closed strip is the hover affordance and must be on screen.
+  // The closed strip is the hover affordance and must be on screen. OWNER
+  // 2026-11-10 set its resting strength to exactly half (no hover restore:
+  // pointing at it opens the rail, which hides the strip), so "visible" is
+  // opacity >= 0.5, not a strictly brighter value.
   const stripVisible = await page.evaluate(() => {
     const s = document.getElementById('sidebar-icons');
     if (!s) return false;
     const cs = getComputedStyle(s);
-    return cs.visibility === 'visible' && parseFloat(cs.opacity) > 0.5;
+    return cs.visibility === 'visible' && parseFloat(cs.opacity) >= 0.5;
   });
   if (stripVisible) ok('strip-visible-closed');
   else bad('strip-visible-closed', 'icon strip is not visible while the rail is closed');

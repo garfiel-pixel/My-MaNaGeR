@@ -94,15 +94,27 @@ async function open(browser, viewport) {
       const firstLetter = await word.$('span');
       if (firstLetter) await firstLetter.hover();
       else await word.hover();
-      await page.waitForTimeout(350);
-      const hoverStroke = await (firstLetter || word).evaluate(el =>
-        getComputedStyle(el).getPropertyValue('-webkit-text-stroke-color').trim()
-      );
-      // gold ~ rgb(212, 175, 55) or the resolved --gold
-      const isGold = /rgb\(212,\s*175,\s*55\)|rgb\(2[0-9][0-9],\s*1[0-9][0-9],\s*[0-9]/.test(
-        hoverStroke
-      );
-      if (isGold) ok('wordmark-gold-stroke-on-hover');
+      // The stroke cross-fades over 0.28s, and a loaded CI runner can still be
+      // mid-fade at any fixed wait, so poll until the gold lands. Read the
+      // resolved numbers rather than one literal: the computed value can come
+      // back as rgb() or rgba() depending on the alpha channel.
+      const isGoldStroke = s => {
+        const m = /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/.exec(s || '');
+        if (!m) return false;
+        const r = +m[1];
+        const g = +m[2];
+        const b = +m[3];
+        return r >= 200 && g >= 140 && g <= 210 && b <= 110;
+      };
+      let hoverStroke = '';
+      for (let i = 0; i < 25; i++) {
+        await page.waitForTimeout(100);
+        hoverStroke = await (firstLetter || word).evaluate(el =>
+          getComputedStyle(el).getPropertyValue('-webkit-text-stroke-color').trim()
+        );
+        if (isGoldStroke(hoverStroke)) break;
+      }
+      if (isGoldStroke(hoverStroke)) ok('wordmark-gold-stroke-on-hover');
       else bad('wordmark-gold-stroke-on-hover', 'stroke=' + hoverStroke);
     }
 

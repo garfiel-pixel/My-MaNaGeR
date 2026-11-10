@@ -4480,11 +4480,14 @@ body.dark-mode #f-voice {
 @media (prefers-reduced-motion: reduce) {
   /* The gold hover is a STATE change, not motion - it must persist under
      reduced motion. Only the lift (transform) and the glow (text-shadow) are
-     dropped. The global reduced-motion rule already makes the stroke cross-fade
-     instant; we must NOT re-force the silver rest stroke on :hover here, or the
-     feedback disappears. */
+     dropped. The global reduced-motion rule forces a 0.2s cross-fade on every
+     element with !important, so the stroke colour must settle instantly here
+     (transition: none !important beats that rule on specificity), otherwise
+     the hover reads as a half-faded gold. We must NOT re-force the silver rest
+     stroke on :hover, or the feedback disappears. */
   .signin-mmwrp span,
   .signin-mmwrp span:hover {
+    transition: none !important;
     transform: none;
     text-shadow: none;
   }

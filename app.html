@@ -341,6 +341,7 @@ html[data-perf='on'] body.db-page .sidebar-icons{transition:none;}
 </script>
 <script src="js/mmgr-theme.js" data-sync="1"></script>
 <script src="js/mmgr-perf-boot.js" data-sync="1"></script>
+<script src="js/mmgr-skin.js" data-sync="1"></script>
 
 <!-- DASHBOARD-UI-REFRESH-SPEC: dark-dashboard nav rail (app.html only , 
      visible in dark mode; ≤768px it becomes an off-canvas drawer opened by
@@ -402,37 +403,7 @@ html[data-perf='on'] body.db-page .sidebar-icons{transition:none;}
          carries the icon-only twin below). -->
     <a class="db-link" href="calculator.html" title="Build Cost Calculator - estimate quantities, labor and tax before the project starts"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calculator"></use></svg> Build Cost Calculator</a>
     <div class="db-g">Customize</div>
-    <button type="button" class="db-link" data-rail-toggle="rail-customize" aria-expanded="false" aria-controls="rail-customize"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Customize <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
-    <div class="db-sub db-customize" id="rail-customize" hidden>
-      <!-- OWNER 2026-09-07: no boxes/isolation - rows are bare, the theme
-           choice is a plain text dropdown (Light / Dark / System). -->
-      <div class="dock dock-inline dock-bare" role="group" aria-label="Appearance controls">
-        <div class="db-ctl-row">
-          <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg>
-          <label class="sr-only" for="theme-select">Theme</label>
-          <select id="theme-select" class="theme-select" aria-label="Theme mode">
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-            <option value="system">System</option>
-            <option value="cyan">Cyan</option>
-            <option value="magenta">Magenta</option>
-          </select>
-        </div>
-        <div class="db-ctl-row">
-          Performance Mode
-          <label class="tgl"><input type="checkbox" id="perf-tgl" data-action="tglPerfMode" aria-label="Performance Mode: lighter UI effects" checked><span class="tsl"></span></label>
-        </div>
-        <!-- OWNER 2026-09-17 (wave 3 W5): the accordion dropdown is gone.
-             One click opens the #dam popup: it explains exactly what is
-             deleted and gates on typing CONFIRM. Simple and safe.
-             I-13c (2026-11-07): signed-in only. The row starts hidden and
-             syncRailAccountStrip() reveals it with the session, so a visitor
-             with no account is never offered "Delete my account". -->
-        <button type="button" class="db-link db-danger-link" id="del-account-open" data-action="delAccountOpen" hidden>
-          <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete my account
-        </button>
-      </div>
-    </div>
+    <button type="button" class="db-link" data-nav="customize"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Customize <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
   </nav>
   <div class="db-foot">
     <!-- YOUR PLAN (owner 2026-11-06): the bar sits directly above the account
@@ -2305,14 +2276,10 @@ document.addEventListener('click', function(e){
       }
       break;
     case 'customize':
-      // Open the rail and expand the Customize section
-      ensureRailVisible();
-      const customizeSection = document.querySelector('[data-rail-toggle="rail-customize"]');
-      if (customizeSection) {
-        setTimeout(() => {
-          customizeSection.click();
-          customizeSection.focus();
-        }, 300);
+      // OWNER 2026-11-10 theme pack: open the Customize modal (themes,
+      // performance, appearance) instead of the old rail dropdown.
+      if (window.MMGR_SKIN && typeof MMGR_SKIN.openModal === 'function') {
+        MMGR_SKIN.openModal();
       }
       break;
     case 'signin':
@@ -2366,6 +2333,93 @@ if ('serviceWorker' in navigator &&
   </div>
 </div>
 
+<!-- CUSTOMIZE modal (OWNER 2026-11-10 theme pack): the single home for
+     customization - theme previews, performance mode, appearance, account.
+     Opened by the Appearance strip icon / rail "Customize" link
+     (data-nav="customize" -> MMGR_SKIN.openModal). Static HTML only, so no
+     inline-script CSP hash churn. Themes apply live via data-skin on <html>. -->
+<div id="customize-modal" class="cm" role="dialog" aria-modal="true" aria-labelledby="cm-title" hidden>
+  <div class="cm-backdrop" data-customize-close></div>
+  <div class="cm-dialog" role="document">
+    <div class="cm-head">
+      <span class="cm-title" id="cm-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Customize</span>
+      <button type="button" class="cm-close" data-customize-close aria-label="Close customize">
+        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg>
+      </button>
+    </div>
+    <div class="cm-body">
+      <section class="cm-sec" aria-labelledby="cm-themes-h">
+        <h3 class="cm-h" id="cm-themes-h">Themes</h3>
+        <p class="cm-sub">Hover a theme to preview it live. Click to apply.</p>
+        <div class="theme-grid" id="theme-grid">
+          <button type="button" class="theme-preview" data-skin-preview="vellum" data-skin-set="vellum" aria-pressed="false" aria-label="Vellum - preview and apply">
+            <span class="tp-name">Vellum</span>
+            <span class="tp-card"><span class="tp-ttl">Site Trailer</span><span class="tp-st">Active</span><span class="tp-cta">Open</span></span>
+          </button>
+          <button type="button" class="theme-preview" data-skin-preview="obsidian" data-skin-set="obsidian" aria-pressed="false" aria-label="Obsidian Gold - preview and apply">
+            <span class="tp-name">Obsidian Gold</span>
+            <span class="tp-card"><span class="tp-ttl">Site Trailer</span><span class="tp-st">Active</span><span class="tp-cta">Open</span></span>
+          </button>
+          <button type="button" class="theme-preview" data-skin-preview="permit" data-skin-set="permit" aria-pressed="false" aria-label="Permit Tags - preview and apply">
+            <span class="tp-name">Permit Tags</span>
+            <span class="tp-card"><span class="tp-ttl">Site Trailer</span><span class="tp-st">Active</span><span class="tp-cta">Open</span></span>
+          </button>
+          <button type="button" class="theme-preview" data-skin-preview="bento" data-skin-set="bento" aria-pressed="false" aria-label="Bento Dock - preview and apply">
+            <span class="tp-name">Bento Dock</span>
+            <span class="tp-card"><span class="tp-ttl">Site Trailer</span><span class="tp-st">Active</span><span class="tp-cta">Open</span></span>
+          </button>
+          <button type="button" class="theme-preview" data-skin-preview="pegboard" data-skin-set="pegboard" aria-pressed="false" aria-label="Workshop Pegboard - preview and apply">
+            <span class="tp-name">Pegboard</span>
+            <span class="tp-card"><span class="tp-ttl">Site Trailer</span><span class="tp-st">Active</span><span class="tp-cta">Open</span></span>
+          </button>
+          <button type="button" class="theme-preview" data-skin-preview="editorial" data-skin-set="editorial" aria-pressed="false" aria-label="Editorial Masthead - preview and apply">
+            <span class="tp-name">Editorial</span>
+            <span class="tp-card"><span class="tp-ttl">Site Trailer</span><span class="tp-st">Active</span><span class="tp-cta">Open</span></span>
+          </button>
+          <button type="button" class="theme-preview" data-skin-preview="departure" data-skin-set="departure" aria-pressed="false" aria-label="Departure Board - preview and apply">
+            <span class="tp-name">Departure Board</span>
+            <span class="tp-card"><span class="tp-ttl">Site Trailer</span><span class="tp-st">Active</span><span class="tp-cta">Open</span></span>
+          </button>
+          <button type="button" class="theme-preview" data-skin-preview="guild" data-skin-set="guild" aria-pressed="false" aria-label="Carved Timber - preview and apply">
+            <span class="tp-name">Carved Timber</span>
+            <span class="tp-card"><span class="tp-ttl">Site Trailer</span><span class="tp-st">Active</span><span class="tp-cta">Open</span></span>
+          </button>
+          <button type="button" class="theme-preview theme-preview-default" data-skin-set="" aria-pressed="false" aria-label="Default theme - preview and apply">
+            <span class="tp-name">Default</span>
+            <span class="tp-card"><span class="tp-ttl">Site Trailer</span><span class="tp-st">Active</span><span class="tp-cta">Open</span></span>
+          </button>
+        </div>
+      </section>
+      <section class="cm-sec" aria-labelledby="cm-appear-h">
+        <h3 class="cm-h" id="cm-appear-h">Appearance &amp; Performance</h3>
+        <div class="cm-row">
+          <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg>
+          <label class="sr-only" for="theme-select">Theme mode</label>
+          <select id="theme-select" class="theme-select" aria-label="Theme mode">
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+            <option value="system">System</option>
+            <option value="cyan">Cyan</option>
+            <option value="magenta">Magenta</option>
+          </select>
+        </div>
+        <div class="cm-row">
+          <span class="cm-row-label">Performance Mode</span>
+          <label class="tgl"><input type="checkbox" id="perf-tgl" data-action="tglPerfMode" aria-label="Performance Mode: lighter UI effects" checked><span class="tsl"></span></label>
+        </div>
+      </section>
+      <section class="cm-sec" aria-labelledby="cm-acct-h">
+        <h3 class="cm-h" id="cm-acct-h">Account</h3>
+        <button type="button" class="db-link db-danger-link" id="del-account-open" data-action="delAccountOpen" hidden>
+          <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete my account
+        </button>
+      </section>
+    </div>
+    <div class="cm-foot">
+      <button type="button" class="btn btn-n" data-customize-close data-customize-focus>Done</button>
+    </div>
+  </div>
+</div>
 
 <script defer src="js/mmgr-dock.js"></script>
 <!-- APP-3 (REFINEMENT-DIRECTIVE 2026-10-24, section 7): ONE shared

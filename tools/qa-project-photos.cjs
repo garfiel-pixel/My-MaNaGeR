@@ -577,7 +577,13 @@ async function main() {
     );
     await page.unroute('**/api/cloud/projects/*/photos');
     const g2c = await (async () => {
-      await page.click('[data-photo-retry]');
+      // The retry handler calls fetchPhotos(), whose entry paint() rebuilds
+      // #photos-note (detaching the button we clicked) and, once the server
+      // answers, moves the panel to the empty state (note hidden, no retry
+      // button). A strict Playwright click keeps re-checking the now-detached
+      // node and times out. Dispatch the click in-page so the harness only
+      // has to wait for the recovery the app already performs.
+      await page.$eval('[data-photo-retry]', el => el.click());
       return until(
         page,
         () => {

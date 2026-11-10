@@ -40,6 +40,16 @@
          comes back when it is verified again
      I21 after every identity arm, B still cannot save into it
 
+   Wave 2 (owner 2026-11-10): names, ids and the lifecycle fields.
+     I22 two accounts may use the same project NAME
+     I23 a taken id owned by another account -> 409 { code: 'id_taken' }
+     I24 the owner retrying its own id -> 409 { code: 'already_linked' }
+     I25 create accepts status/syncMode; a plain create defaults to active/auto
+     I26 the list returns both fields for the card
+     I27 a save moves the stored status and sync choice
+     I28 meta returns both (a fresh device can reconcile)
+     I29 an unknown status or sync mode falls back to the defaults
+
    Usage:  node tools/qa-tenant-isolation.cjs
    Env:    QA_PORT (default 8799), QA_KEEP=1 keeps the persist dir.
    ============================================================ */
@@ -585,6 +595,153 @@ async function main() {
     body: JSON.stringify({ state: { projectName: 'pwned-through-email', tasks: [] } })
   });
   check('I21 the email identity opens nothing for B', saveBEmail.status === 403, saveBEmail.status);
+
+  // ---- Wave 2: names, ids and the lifecycle fields (owner 2026-11-10) ----
+  // I22: two accounts may use the same project NAME. The name is a label; the
+  // id is the only global key, and the clients suffix it on a collision.
+  const pidSame = 'iso-b-same-' + Date.now().toString(36);
+  const createdSame = await api('/api/cloud/projects', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: b.cookie },
+    body: JSON.stringify({ projectId: pidSame, name: 'Tenant A site' })
+  });
+  check(
+    'I22 two accounts may use the same project name',
+    createdSame.status === 200 && !!(createdSame.body && createdSame.body.ownerCode),
+    createdSame.status + ' ' + JSON.stringify(createdSame.body)
+  );
+
+  // I23: a taken id owned by ANOTHER account answers id_taken, so the client
+  // knows to suffix instead of trying to reconnect to someone else's project.
+  const dupB = await api('/api/cloud/projects', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: b.cookie },
+    body: JSON.stringify({ projectId: pid, name: 'Tenant A site' })
+  });
+  check(
+    'I23 a taken id owned by another account answers 409 id_taken',
+    dupB.status === 409 && !!dupB.body && dupB.body.code === 'id_taken',
+    dupB.status + ' ' + JSON.stringify(dupB.body)
+  );
+
+  // I24: the owner retrying its OWN id is already_linked - never suffixed.
+  // The row has google_sub NULL at this point (I19), so this also proves the
+  // verified-address half of the ownership test carries the distinction.
+  const dupA = await api('/api/cloud/projects', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: a.cookie },
+    body: JSON.stringify({ projectId: pid, name: 'Tenant A site' })
+  });
+  check(
+    'I24 the owner retrying its own id answers 409 already_linked',
+    dupA.status === 409 && !!dupA.body && dupA.body.code === 'already_linked',
+    dupA.status + ' ' + JSON.stringify(dupA.body)
+  );
+
+  // I25: status + sync mode are set at create and read back by the list. An
+  // older client that sends neither gets the documented defaults.
+  const pidStatus = 'iso-status-' + Date.now().toString(36);
+  const createdStatus = await api('/api/cloud/projects', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: a.cookie },
+    body: JSON.stringify({
+      projectId: pidStatus,
+      name: 'Status probe',
+      status: 'planning',
+      syncMode: 'manual'
+    })
+  });
+  check(
+    'I25a create accepts a lifecycle status and a manual sync choice',
+    createdStatus.status === 200 &&
+      createdStatus.body.status === 'planning' &&
+      createdStatus.body.syncMode === 'manual',
+    createdStatus.status + ' ' + JSON.stringify(createdStatus.body)
+  );
+  const pidPlain = 'iso-plain-' + Date.now().toString(36);
+  const createdPlain = await api('/api/cloud/projects', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: a.cookie },
+    body: JSON.stringify({ projectId: pidPlain, name: 'Plain probe' })
+  });
+  check(
+    'I25b a create with no status defaults to active + auto',
+    createdPlain.status === 200 &&
+      createdPlain.body.status === 'active' &&
+      createdPlain.body.syncMode === 'auto',
+    createdPlain.status + ' ' + JSON.stringify(createdPlain.body)
+  );
+
+  const listStatus = await api('/api/cloud/projects', {
+    method: 'GET',
+    headers: { Cookie: a.cookie }
+  });
+  const rowStatus = ((listStatus.body && listStatus.body.projects) || []).find(
+    p => p.projectId === pidStatus
+  );
+  check(
+    'I26 the list returns both fields for the card',
+    !!rowStatus && rowStatus.status === 'planning' && rowStatus.syncMode === 'manual',
+    JSON.stringify(rowStatus)
+  );
+
+  // I27: a save writes the snapshot's status and the body's sync choice.
+  const savedStatus = await api('/api/cloud/projects/' + pidStatus + '/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: a.cookie },
+    body: JSON.stringify({
+      state: { projectName: 'Status probe', status: 'completed' },
+      syncMode: 'auto'
+    })
+  });
+  const listAfterSave = await api('/api/cloud/projects', {
+    method: 'GET',
+    headers: { Cookie: a.cookie }
+  });
+  const rowAfter = ((listAfterSave.body && listAfterSave.body.projects) || []).find(
+    p => p.projectId === pidStatus
+  );
+  check(
+    'I27 a save moves the stored status and sync choice',
+    savedStatus.status === 200 &&
+      !!rowAfter &&
+      rowAfter.status === 'completed' &&
+      rowAfter.syncMode === 'auto',
+    savedStatus.status + ' ' + JSON.stringify(rowAfter)
+  );
+
+  // I28: meta answers both, so the workspace can reconcile a fresh device.
+  const metaStatus = await api('/api/cloud/projects/' + pidStatus + '/meta', {
+    method: 'GET',
+    headers: { Cookie: a.cookie }
+  });
+  check(
+    'I28 meta returns the lifecycle status and the sync choice',
+    metaStatus.status === 200 &&
+      metaStatus.body.status === 'completed' &&
+      metaStatus.body.syncMode === 'auto',
+    metaStatus.status + ' ' + JSON.stringify(metaStatus.body)
+  );
+
+  // I29: an unknown status never wedges a create - it falls back to active.
+  const pidJunk = 'iso-junk-' + Date.now().toString(36);
+  const createdJunk = await api('/api/cloud/projects', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: a.cookie },
+    body: JSON.stringify({
+      projectId: pidJunk,
+      name: 'Junk probe',
+      status: 'banana',
+      syncMode: 'x'
+    })
+  });
+  check(
+    'I29 an unknown status or sync mode falls back to the defaults',
+    createdJunk.status === 200 &&
+      createdJunk.body.status === 'active' &&
+      createdJunk.body.syncMode === 'auto',
+    createdJunk.status + ' ' + JSON.stringify(createdJunk.body)
+  );
 
   const passed = results.filter(r => r.ok).length;
   log('');

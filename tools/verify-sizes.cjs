@@ -42,7 +42,11 @@ const EXACT = {
   // nav group and idea sheet markup in project.html.
   // 2026-11-08 (C3 Phase 1): raised 215000 -> 220000 for the Documents view
   // switcher and the Pages view container (~0.6 KB).
-  'project.html': 220000,
+  // 2026-11-10 (Wave 2): raised 220000 -> 226000 for the header status chip,
+  // its four-item popover and the "Close snapshot" row in the backup popover
+  // (~1.6 KB). The chip is the only new header control; the next markup wave
+  // should move a panel out of this file rather than raise it again.
+  'project.html': 226000,
   'calculator.html': 80000,
   'app.html': 140000,
   // 2026-11-10 (Wave L): raised 50000 -> 54000 for the "Who we are" band
@@ -56,7 +60,11 @@ const EXACT = {
 
 /* Per-directory defaults for everything else. */
 const DIRS = {
-  js: 300000,
+  // 2026-11-10 (Wave 2): 300000 -> 305000. mmgr-app.js crossed the old cap by
+  // 32 bytes with the status-chip action (setProjStatus) and the backup row
+  // delegate. It is the next split candidate - the action map alone is a few
+  // hundred lines - so this bump buys one wave, not a habit.
+  js: 305000,
   css: 160000,
   src: 300000
 };

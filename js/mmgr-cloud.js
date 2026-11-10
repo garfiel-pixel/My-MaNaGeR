@@ -90,6 +90,24 @@ var MMGR = window.MMGR || {};
   function pid() {
     return cloudPid();
   }
+  // Wave 2 (owner 2026-11-10): two accounts may keep the same project NAME,
+  // but the cloud id is a global key. When a create comes back 409 id_taken,
+  // the client retries with -2 … -6 and records the winning id here, so every
+  // cloud URL builder (and the owner-code slot, which is keyed by cloudPid())
+  // addresses the project the server actually created.
+  function setCloudId(id) {
+    const local = ns.projectId || 'default';
+    try {
+      if (!id || id === local) {
+        localStorage.removeItem('mmgr_cloud_id_' + local);
+      } else {
+        localStorage.setItem('mmgr_cloud_id_' + local, id);
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
   // Local escape , the module cannot depend on mmgr-utils.js being loaded
   // first, and the owner code / name interpolations into innerHTML must be
   // escaped regardless (XSS hygiene, same rule as mmgr-render.js).
@@ -141,6 +159,59 @@ var MMGR = window.MMGR || {};
       localStorage.removeItem(codeKey());
     } catch (e) {
       /* ignore */
+    }
+  }
+  // ---- per-project sync mode (Wave 2, owner 2026-11-10) -------------------
+  // 'auto' keeps the cloud snapshot current as the person works; 'manual'
+  // holds every change on the device until they publish ("Close snapshot").
+  // Stored twice on purpose: this device-local key is what offline-first
+  // needs, and the D1 row's sync_mode is the cross-device truth. The local
+  // value wins while offline; a meta answer only seeds it when this device
+  // has never chosen.
+  function syncModeKey() {
+    return 'mmgr_cloud_sync_' + cloudPid();
+  }
+  function getSyncMode() {
+    try {
+      return localStorage.getItem(syncModeKey()) === 'manual' ? 'manual' : 'auto';
+    } catch (e) {
+      return 'auto';
+    }
+  }
+  function setSyncMode(mode, opts) {
+    const m = String(mode) === 'manual' ? 'manual' : 'auto';
+    try {
+      localStorage.setItem(syncModeKey(), m);
+    } catch (e) {
+      /* ignore */
+    }
+    try {
+      document.dispatchEvent(
+        new CustomEvent('mmgr:cloud-sync-mode', {
+          detail: { mode: m, projectId: cloudPid() }
+        })
+      );
+    } catch (e) {
+      /* no listeners */
+    }
+    // Push the choice to D1 so another device reads the same answer. The
+    // save path is the only writer that carries syncMode, and a toggle is
+    // rare, so one full save here is the cheapest honest write.
+    if (opts && opts.push) {
+      autoSaveToCloud({ force: true });
+    }
+    return m;
+  }
+  function reconcileSyncMode(data) {
+    if (!data || !data.syncMode) {
+      return;
+    }
+    try {
+      if (localStorage.getItem(syncModeKey()) === null) {
+        localStorage.setItem(syncModeKey(), data.syncMode === 'manual' ? 'manual' : 'auto');
+      }
+    } catch (e) {
+      /* storage unavailable */
     }
   }
   // I-1 fix (2026-11-08): enumerate every owner code this device holds so the
@@ -390,12 +461,7 @@ var MMGR = window.MMGR || {};
     if (b.cloudProjectId === (ns.projectId || 'default')) {
       return false;
     }
-    try {
-      localStorage.setItem('mmgr_cloud_id_' + (ns.projectId || 'default'), b.cloudProjectId);
-      return true;
-    } catch (e) {
-      return false;
-    }
+    return setCloudId(b.cloudProjectId);
   }
   // Re-sync now: bonded projects pull the twin's snapshot through the same
   // load+merge path cloud-first sync uses (per-field newest-wins, never a
@@ -794,15 +860,36 @@ var MMGR = window.MMGR || {};
     _createInFlight = true;
     setStatus('Creating cloud project…', 'busy');
     try {
-      const res = await fetch('/api/cloud/projects', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId: pid(), name: projectName(readProjectState()) || pid() })
-      });
-      const data = await res.json().catch(function () {
-        return {};
-      });
+      // Wave 2: the create is retried on 409 id_taken. The NAME never changes
+      // (two accounts may both own "Feature testing"); only the cloud id gains
+      // a -2 … -6 suffix, and the winning id is recorded before the owner code
+      // so the code lands in the right slot.
+      const baseId = pid();
+      const createName = projectName(readProjectState()) || baseId;
+      let usedId = baseId;
+      let res = null;
+      let data = {};
+      for (let attempt = 0; attempt < 6; attempt++) {
+        usedId = attempt === 0 ? baseId : baseId + '-' + (attempt + 1);
+        res = await fetch('/api/cloud/projects', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ projectId: usedId, name: createName })
+        });
+        data = await res.json().catch(function () {
+          return {};
+        });
+        if (res.ok && data && data.ok && data.ownerCode) {
+          break;
+        }
+        // Only "someone else owns this id" is retryable. `already_linked`
+        // means the id is THIS account's own project and must fall through to
+        // the reconnect path below, never be suffixed.
+        if (!(res.status === 409 && data && data.code === 'id_taken') || attempt === 5) {
+          break;
+        }
+      }
       if (!res.ok || !data.ok || !data.ownerCode) {
         if (res.status === 402 && data && data.upgrade) {
           // Over the free linked-project cap: surface the upgrade affordance
@@ -822,6 +909,15 @@ var MMGR = window.MMGR || {};
           setStatus(
             (data && data.error) ||
               'Verify your email to enable cloud projects , check your inbox for the confirmation link.',
+            'err'
+          );
+        } else if (res.status === 409 && data && data.code === 'id_taken') {
+          setStatus(
+            'Every id from "' +
+              baseId +
+              '" to "' +
+              usedId +
+              '" is taken by another account. Rename this project, or re-import it with a different name, then try again.',
             'err'
           );
         } else if (res.status === 409) {
@@ -853,6 +949,10 @@ var MMGR = window.MMGR || {};
       }
       _upgradePending = false;
       _verifyPending = false;
+      const suffixed = usedId !== baseId;
+      if (suffixed) {
+        setCloudId(usedId);
+      }
       setCode(data.ownerCode);
       await render();
       // Say what actually happened, and name the project: the owner's report
@@ -861,7 +961,8 @@ var MMGR = window.MMGR || {};
       // so the project is on screen the moment the drawer is closed.
       const linkedName = projectName(readProjectState()) || pid();
       setStatus(
-        '"' +
+        (suffixed ? 'Saved as ' + usedId + '. The name stays ' + linkedName + '. ' : '') +
+          '"' +
           linkedName +
           '" is now in your account. Owner/recovery code: ' +
           data.ownerCode +
@@ -1038,6 +1139,7 @@ var MMGR = window.MMGR || {};
           return {};
         });
         _sessOwner = !!(data && data.ok && data.linked);
+        reconcileSyncMode(data);
       }
     } catch (e) {
       /* offline / static host - stays false */
@@ -1092,6 +1194,22 @@ var MMGR = window.MMGR || {};
       return { code: '', header: null };
     } // signed-in account owner: no code header, the cookie authenticates
     return null;
+  }
+
+  // Wave 2: the background scheduler needs a truthful answer before the drawer
+  // has ever rendered. A held code answers immediately; otherwise settle the
+  // session probe once (memoized) and answer from the same credential source
+  // the save path uses. Never throws, never blocks a caller that cannot wait.
+  async function ensureLinked() {
+    if (activeCredential()) {
+      return true;
+    }
+    try {
+      await probeOwnerSession(false);
+    } catch (e) {
+      /* offline - no link is the safe answer */
+    }
+    return !!activeCredential();
   }
 
   // ---- save ---------------------------------------------------------------
@@ -1150,7 +1268,7 @@ var MMGR = window.MMGR || {};
         method: 'POST',
         credentials: 'same-origin',
         headers: headers,
-        body: JSON.stringify({ state: state })
+        body: JSON.stringify({ state: state, syncMode: getSyncMode() })
       });
       const data = await res.json().catch(function () {
         return {};
@@ -1299,6 +1417,12 @@ var MMGR = window.MMGR || {};
     if (cred.header === 'X-Client-Code') {
       return false;
     } // C19: clients never push
+    // Wave 2: a MANUAL project publishes only when the person closes the
+    // snapshot (force) - the whole point of the choice is that work in
+    // progress never leaves the device on its own.
+    if (!(opts && opts.force) && getSyncMode() === 'manual') {
+      return false;
+    }
     if (_autoBusy) {
       return false;
     }
@@ -1312,7 +1436,7 @@ var MMGR = window.MMGR || {};
       if (cred.header) {
         headers[cred.header] = cred.code;
       }
-      const body = JSON.stringify({ state: state });
+      const body = JSON.stringify({ state: state, syncMode: getSyncMode() });
       // keepalive:true lets a pagehide flush survive tab close, but keepalive
       // requests are size-capped (~64 KiB), so only use it for small states;
       // large states rely on the idle debounce (which normally already fired).
@@ -2794,6 +2918,7 @@ var MMGR = window.MMGR || {};
       if (!res.ok || !data.ok) {
         return '';
       }
+      reconcileSyncMode(data);
       if (data.updatedAt) {
         setLastSeen(data.updatedAt);
       }
@@ -4800,6 +4925,14 @@ var MMGR = window.MMGR || {};
     cloudResendVerify: cloudResendVerify,
     saveToCloud: saveToCloud,
     autoSaveToCloud: autoSaveToCloud,
+    // Wave 2: the per-project sync choice and the "is this project linked at
+    // all" question a background scheduler must ask. activeCredential() is
+    // null for a session owner until the probe has run, so ensureLinked()
+    // settles that once and answers from the same source.
+    getSyncMode: getSyncMode,
+    setSyncMode: setSyncMode,
+    ensureLinked: ensureLinked,
+    _lastSeen: getLastSeen,
     loadFromCloud: loadFromCloud,
     // TWO-WAY SYNC (owner 2026-09-19): watcher controls + tick hook for QA.
     _startSyncWatcher: startSyncWatcher,

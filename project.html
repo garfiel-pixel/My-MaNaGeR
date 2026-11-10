@@ -171,6 +171,16 @@
     <a class="hdr-back" href="app.html" title="Back to projects list"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-left"></use></svg> Projects</a>
     <button class="nav-btn" id="nav-btn" data-action="tglNav" aria-label="Open navigation menu" aria-expanded="false" aria-controls="sec-nav"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
     <div class="greeting" id="greeting"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> <span id="greeting-text">Welcome</span></div>
+    <!-- Wave 2 (owner 2026-11-10): the project's lifecycle status. One value,
+         written to state.status, mirrored into the launcher registry and the
+         cloud row so every card names the same state. -->
+    <button type="button" class="status-chip" id="status-chip" popovertarget="status-pop" aria-haspopup="menu"><span class="sdot g" id="status-chip-dot"></span><span id="status-chip-lbl">Active</span><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-down"></use></svg></button>
+    <div class="status-pop" id="status-pop" popover role="menu" aria-label="Project status">
+      <button type="button" role="menuitemradio" aria-checked="true" data-action="setProjStatus" data-status="active"><span class="sdot g"></span> Active</button>
+      <button type="button" role="menuitemradio" aria-checked="false" data-action="setProjStatus" data-status="planning"><span class="sdot b"></span> Planning</button>
+      <button type="button" role="menuitemradio" aria-checked="false" data-action="setProjStatus" data-status="on-hold"><span class="sdot a"></span> On hold</button>
+      <button type="button" role="menuitemradio" aria-checked="false" data-action="setProjStatus" data-status="completed"><span class="sdot g"></span> Completed</button>
+    </div>
     <div class="tab-ctrl">
       <button class="tab-btn active" data-action="swMeth" data-meth="waterfall" data-mlc="waterfall">Waterfall</button>
       <button class="tab-btn" data-action="swMeth" data-meth="agile" data-mlc="agile">Agile</button>
@@ -207,6 +217,13 @@
       <button type="button" class="bk-opt" data-action="saveProjectFile">
         <span class="bk-opt-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg></span>
         <span class="bk-opt-txt"><b>Backup to local (.json)</b><small>Download a portable backup file to this device (e.g. to keep in your file manager).</small></span>
+        <svg class="ico bk-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>
+      </button>
+      <!-- Wave 2 (owner 2026-11-10): a manual project publishes on demand.
+           Hidden unless this project's sync mode is manual. -->
+      <button type="button" class="bk-opt" id="bk-snapshot" data-action="bkCloseSnapshot" hidden>
+        <span class="bk-opt-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg></span>
+        <span class="bk-opt-txt"><b>Close snapshot</b><small id="bk-snapshot-hint">Manual: the cloud copy updates only when you close a snapshot.</small></span>
         <svg class="ico bk-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>
       </button>
       <!-- OWNER 2026-09-09: sign-in affordance in the backup popover (not

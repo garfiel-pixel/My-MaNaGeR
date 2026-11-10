@@ -2876,6 +2876,16 @@ async function autoPushWithRetry(i, attempt){
   return false;
 }
 
+// Wave 2 (owner 2026-11-10): the workspace addresses its cloud copy through
+// cloudPid(), which honours mmgr_cloud_id_<localId>. A project whose cloud id
+// had to be suffixed must record that override here, or the workspace would
+// keep asking the cloud for an id that belongs to someone else.
+function setCloudIdOverride(localId, cloudId){
+  try{
+    if (!cloudId || cloudId === localId){ localStorage.removeItem('mmgr_cloud_id_' + localId); }
+    else { localStorage.setItem('mmgr_cloud_id_' + localId, cloudId); }
+  }catch(e){ /* storage unavailable */ }
+}
 async function publishToCloud(i){
   const p = projects[i];
   if (!p){ return; }
@@ -2888,13 +2898,27 @@ async function publishToCloud(i){
   const btn = document.querySelector('#project-list [data-action="publishToCloud"][data-idx="' + i + '"]');
   if (btn){ btn.disabled = true; btn.textContent = 'Publishing…'; }
   try{
-    const res = await fetch('/api/cloud/projects', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ projectId: p.id, name: p.title })
-    });
-    const data = await res.json().catch(()=>({}));
+    // Wave 2: two accounts may use the same project NAME. Only the cloud id is
+    // global, so a 409 id_taken retries with -2 … -6 and the winning id becomes
+    // this row's cloudId (the title never changes).
+    const baseId = p.id;
+    let usedId = baseId;
+    let res = null;
+    let data = {};
+    for (let attempt = 0; attempt < 6; attempt++){
+      usedId = attempt === 0 ? baseId : baseId + '-' + (attempt + 1);
+      res = await fetch('/api/cloud/projects', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: usedId, name: p.title })
+      });
+      data = await res.json().catch(()=>({}));
+      if (res.ok && data && data.ok){ break; }
+      const code = data && data.code;
+      const taken = res.status === 409 && (code === 'id_taken' || (!code && !/already linked/.test((data && data.error) || '')));
+      if (!taken || attempt === 5){ break; }
+    }
     if (!res.ok || !data.ok){
       // OWNER 2026-09-17 (status-mismatch fix): 409 'project already linked'
       // means this project ALREADY exists in the signed-in account's cloud -
@@ -2904,7 +2928,11 @@ async function publishToCloud(i){
       // adopt the link instead of failing. The session auth covers every
       // later call (save/load/codes/api-keys are all either-auth), so the
       // recorded code is a marker, not a credential.
-      if (res.status === 409 && /already linked/.test((data && data.error) || '')){
+      // Wave 2: the server now names the case. `already_linked` is this
+      // account's own id; `id_taken` was retried above and only lands here
+      // when every suffix is gone too.
+      const alreadyLinked = res.status === 409 && (data.code === 'already_linked' || (!data.code && /already linked/.test((data && data.error) || '')));
+      if (alreadyLinked){
         try{
           const lr = await fetch('/api/cloud/projects', { credentials: 'same-origin' });
           const ld = await lr.json().catch(()=>({}));
@@ -2924,11 +2952,16 @@ async function publishToCloud(i){
           return;
         }
       }
+      if (res.status === 409 && data.code === 'id_taken'){
+        toast('Every ID from "' + baseId + '" to "' + usedId + '" is taken by another account. Rename the project and publish again.', 'warn');
+        return;
+      }
       toast(((data && data.error) || 'Publish failed (HTTP ' + res.status + ').') + (res.status === 402 ? '. Upgrade needed.' : ''), 'error');
       return;
     }
     p.cloudId = data.projectId;
     p.cloudOwnerCode = data.ownerCode;
+    setCloudIdOverride(p.id, p.cloudId);
     // OWNER 2026-09-21 (wholehearted link): publish = link + PUSH in the
     // same click. The old flow stopped at link, so "Published to cloud" was
     // true while the cloud copy had no snapshot - visitors got nothing and

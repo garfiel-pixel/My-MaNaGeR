@@ -1230,6 +1230,72 @@ body:not(.crosshair-on) #cy {
   letter-spacing: -0.01em;
   white-space: nowrap;
 }
+/* Wave 2 (owner 2026-11-10): the project's lifecycle status. One chip beside
+   the greeting, outline only (no pill, no fill), opening a native popover.
+   The value lives in state.status and is mirrored into the launcher registry
+   and the cloud row so every card names the same state. */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color var(--tr),
+    color var(--tr);
+}
+.status-chip:hover {
+  border-color: var(--gold);
+  color: var(--text);
+}
+.status-chip:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.status-chip .ico {
+  width: 12px;
+  height: 12px;
+  opacity: 0.7;
+}
+.status-pop {
+  margin: 0;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--glass-shadow);
+  min-width: 172px;
+}
+.status-pop button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+}
+.status-pop button:hover {
+  background: var(--tile-bg);
+}
+.status-pop button[aria-checked='true'] {
+  color: var(--brand-hover);
+  font-weight: 700;
+}
 .tab-ctrl {
   display: flex;
   background: var(--track-bg);

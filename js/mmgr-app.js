@@ -4565,6 +4565,12 @@ var MMGR = window.MMGR || {};
       ns.AppBackup.bkCloud();
     }
   }
+  // Wave 2: publish a MANUAL project's waiting changes on demand.
+  function bkCloseSnapshot() {
+    if (ns.AppBackup) {
+      ns.AppBackup.bkCloseSnapshot();
+    }
+  }
 
   function openDrwToPrompts(type) {
     swDtab('prompt', null);
@@ -4573,6 +4579,35 @@ var MMGR = window.MMGR || {};
 
   function jumpToDashTimeline() {
     showSec('dash', document.querySelector('.sec-btn'));
+  }
+
+  // Wave 2 (owner 2026-11-10): the header status chip writes state.status.
+  // The cloud card and the launcher card read the same value, so this is the
+  // one control that gives a cloud-only project a lifecycle state at all.
+  function setProjStatus(el) {
+    const st = el && el.getAttribute ? String(el.getAttribute('data-status') || '') : '';
+    if (['active', 'planning', 'on-hold', 'completed'].indexOf(st) === -1) {
+      return;
+    }
+    if (!ns.State || !ns.State.updateState) {
+      return;
+    }
+    ns.State.updateState(function (s) {
+      s.status = st;
+    });
+    const pop = document.getElementById('status-pop');
+    if (pop && pop.hidePopover) {
+      try {
+        pop.hidePopover();
+      } catch (e) {
+        /* already closed */
+      }
+    }
+    if (ns.Render && ns.Render.renderStatusChip) {
+      ns.Render.renderStatusChip();
+    }
+    const label = st === 'on-hold' ? 'On hold' : st.charAt(0).toUpperCase() + st.slice(1);
+    showToast('Project status: ' + label + '.', 'ok');
   }
 
   // ---- Export & File I/O ---- (extracted to js/app/export.js)
@@ -6034,6 +6069,8 @@ var MMGR = window.MMGR || {};
     bkToggle: bkToggle,
     bkClose: bkClose,
     bkCloud: bkCloud,
+    bkCloseSnapshot: bkCloseSnapshot,
+    setProjStatus: setProjStatus,
     jumpToDashTimeline: jumpToDashTimeline,
     openOM: openOM,
     closeOM: closeOM,
@@ -7300,6 +7337,8 @@ window.MMGR = MMGR;
     openDrwToPrompts: el => window.MMGR.App.openDrwToPrompts(el.getAttribute('data-type')),
     bkToggle: () => window.MMGR.App.bkToggle(),
     bkCloud: () => window.MMGR.App.bkCloud(),
+    bkCloseSnapshot: () => window.MMGR.App.bkCloseSnapshot(),
+    setProjStatus: el => window.MMGR.App.setProjStatus(el),
     // PART F T9 (no-offline-copy): export/download are refused while a cloud
     // share code is held , the recipient must not leave with the project file.
     saveProjectFile: () => {

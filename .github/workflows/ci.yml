@@ -1395,6 +1395,16 @@ jobs:
         id: qa-card-parity
         run: node tools/qa-card-parity.cjs
 
+      # WAVE 2 CLOUD IDENTITY (owner 2026-11-10): the header status chip writes
+      # state.status and mirrors it into the launcher registry; manual sync
+      # reveals the Close snapshot row; a taken cloud id is retried with -2
+      # while the project NAME never changes; an id that is already mine is
+      # never suffixed. Route fixtures only - the server contract lives in
+      # qa-tenant-isolation I22-I29.
+      - name: "T4: Cloud identity (qa-cloud-identity)"
+        id: qa-cloud-identity
+        run: node tools/qa-cloud-identity.cjs
+
       # I-1 CLIENT regression (forged-cookie Playwright): boots its OWN local
       # wrangler dev with a forged Google session and drives the real app.html to
       # prove the owner code persists to localStorage and the signed-in account

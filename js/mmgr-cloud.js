@@ -586,26 +586,26 @@ var MMGR = window.MMGR || {};
       s.textContent = msg || '';
       s.className = 'drive-status' + (base ? ' ds-' + base : '');
     }
-    if ((kind === 'err' || kind === 'warn') && msg) {
-      const A = window.MMGR && window.MMGR.App;
-      if (A && typeof A.showToast === 'function') {
-        A.showToast(msg, kind);
-      }
-    }
     // FAILURE-SURFACE AUDIT 2026-09-25 (owner directive): with the cloud
     // section half-rendered (the v316/v317 boot race) #cloud-status did not
     // exist and messages were written into a node that was not there - only
-    // the err/warn toast fired, easy to miss. Fall back to the shared toast
-    // whenever the status node is missing: err/warn as usual, plus 'ok'
-    // confirmations the user just triggered. Transient 'busy' never toasts,
-    // and the explicit err:quiet / warn:quiet suppression (background
-    // auto-backup reports via the dirty indicator) is honored exactly as
-    // when the node exists.
-    if (!s && msg && !quiet && (base === 'err' || base === 'warn' || base === 'ok')) {
-      const A = window.MMGR && window.MMGR.App;
-      if (A && typeof A.showToast === 'function') {
-        A.showToast(msg, base);
-      }
+    // the err/warn toast fired, easy to miss. Toast rules, consolidated so a
+    // message fires exactly ONCE:
+    //  - node present: err/warn surface prominently (easy to miss on a busy
+    //    panel); 'ok'/'busy' stay in the node only.
+    //  - node missing: fall back to the shared toast for err/warn/ok so no
+    //    message is ever dropped (this is why the old split fired TWICE when
+    //    the node was absent - err/warn hit both branches).
+    // Transient 'busy' never toasts, and the explicit err:quiet / warn:quiet
+    // suppression (background auto-backup reports via the dirty indicator) is
+    // honored exactly as when the node exists.
+    if (quiet || !msg) return;
+    const A = window.MMGR && window.MMGR.App;
+    if (!A || typeof A.showToast !== 'function') return;
+    if (s) {
+      if (base === 'err' || base === 'warn') A.showToast(msg, kind);
+    } else if (base === 'err' || base === 'warn' || base === 'ok') {
+      A.showToast(msg, base);
     }
   }
 

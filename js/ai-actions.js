@@ -188,7 +188,7 @@
             applied++;
           } else if (a.op === 'addRisk') {
             var r = {
-              id: 'ai-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+              id: 'ai-' + Date.now().toString(36) + '-' + crypto.randomUUID().slice(0, 8),
               title: String(a.title || 'Risk from assistant'),
               category: a.category || 'schedule',
               likelihood: a.likelihood || 'medium',
@@ -201,7 +201,7 @@
             applied++;
           } else if (a.op === 'addDecision') {
             var d = {
-              id: 'ai-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+              id: 'ai-' + Date.now().toString(36) + '-' + crypto.randomUUID().slice(0, 8),
               title: String(a.title || 'Decision from assistant'),
               body: String(a.body || ''),
               date: new Date().toISOString().slice(0, 10),

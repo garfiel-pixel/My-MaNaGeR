@@ -5,8 +5,10 @@
    A loading state must mirror the shape it is about to reveal, not generic
    grey blocks. This gate pins:
      S1  the boot splash still mirrors the header, section nav and panel grid
-     S2  the boot splash no longer draws a sidebar rail (Wave 0 made it
-         off-canvas, so a rail in the skeleton would be a lie)
+     S2  the boot splash mirrors the sidebar rail too: the real shell keeps
+         #app-sidebar (qa-shell-skeleton B12 reads it live), so the skeleton
+         must draw .bs-skel-rail or it would show a shape it is about to
+         replace
      S3  MMGR.Skeleton is exposed with every section template
      S4  every section template carries at least one .skel-box
      S5  each section template uses its own shape class (dash metrics, wbs
@@ -125,7 +127,9 @@ async function main() {
     !!boot && boot.header && boot.nav && boot.grid,
     boot
   );
-  check('S2 the boot splash draws no sidebar rail', !!boot && boot.rail === false, boot);
+  // The real workspace shell keeps #app-sidebar (qa-shell-skeleton B12 reads it
+  // live), so the boot splash must mirror it rather than drop it.
+  check('S2 the boot splash mirrors the sidebar rail', !!boot && boot.rail === true, boot);
 
   // S3: the module is exposed with every section.
   const sections = await page.evaluate(() =>

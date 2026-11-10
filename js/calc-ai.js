@@ -265,7 +265,7 @@
     '<p class="bcp-ai-pathq" data-cai="pathq">Populate the calculator so you can export, or generate a file to download?</p>' +
     '<div class="bcp-ai-chip" data-cai="chip"></div>' +
     '<div class="bcp-ai-pathrow">' +
-    '<button type="button" class="btn btn-n btn-s" data-cai="pop">' +
+    '<button type="button" class="btn btn-g btn-s" data-cai="pop">' +
     ico('check-circle') +
     '<span>Populate the calculator</span>' +
     '<span class="bcp-ai-badge">recommended</span>' +
@@ -319,7 +319,7 @@
     '<label class="sr-only" for="calc-ai-input">Ask about this estimate</label>' +
     '<textarea id="calc-ai-input" class="bcp-ai-input" rows="3" data-cai="input" ' +
     'placeholder="Ask about this estimate..." aria-describedby="calc-ai-status"></textarea>' +
-    '<button type="submit" class="btn btn-n bcp-ai-send" data-cai="send" aria-label="Send question">' +
+    '<button type="submit" class="btn btn-g bcp-ai-send" data-cai="send" aria-label="Send question">' +
     ico('arrow-right') +
     '</button>' +
     '</form>' +
@@ -423,7 +423,7 @@
       els.status.appendChild(span);
     }
     if (withSignIn) {
-      var a = el('a', 'btn btn-n btn-s bcp-ai-signin');
+      var a = el('a', 'btn btn-g btn-s bcp-ai-signin');
       a.href = SIGNIN_URL;
       a.textContent = 'Sign in';
       els.status.appendChild(a);
@@ -970,7 +970,7 @@
     ask.options.forEach(function (opt, i) {
       var b = document.createElement('button');
       b.type = 'button';
-      b.className = i === 0 ? 'btn btn-n btn-s' : 'btn btn-n btn-s';
+      b.className = i === 0 ? 'btn btn-g btn-s' : 'btn btn-n btn-s';
       b.setAttribute('data-cai', 'askopt');
       b.setAttribute('data-i', String(i));
       b.textContent = opt;
@@ -1442,7 +1442,7 @@
     } catch (e) {
       url = '';
     }
-    var a = el('a', 'btn btn-n btn-s');
+    var a = el('a', 'btn btn-g btn-s');
     a.textContent = 'Download';
     a.setAttribute('download', f.name);
     a.href = url;

@@ -40,7 +40,10 @@ const EXACT = {
   'css/mmgr.css': 550000,
   // 2026-11-10 (Wave 6): raised 160000 -> 163000 for the sign-in two-column
   // layout, the per-letter MMGRWP hover and the mobile stack.
-  'css/marketing.css': 163000,
+  // 2026-11-10 (Wave L closeout): raised 163000 -> 166000 for the audience ring
+  // continuous-loop transition (border/box-shadow/colour eased at 0.7s), the
+  // softer band-seam glow and the reduced-motion cross-fade rules.
+  'css/marketing.css': 166000,
   'js/calculator-page.js': 600000,
   // 2026-11-08 (C2 Task 2): raised 210000 -> 215000 for the intake panel,
   // nav group and idea sheet markup in project.html.

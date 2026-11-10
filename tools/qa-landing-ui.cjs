@@ -727,6 +727,23 @@ async function newPage(browser, opts) {
       })(),
       audTrans
     );
+    // OWNER 2026-11-10: the ring must loop CONTINUOUSLY and never freeze. Sample
+    // the lit card, wait one step, sample again - it must have advanced.
+    const audIx = () =>
+      p3.evaluate(() => {
+        const lis = Array.prototype.slice.call(document.querySelectorAll('.aud-item'));
+        const lit = document.querySelector('.aud-item.is-live');
+        return lit ? lis.indexOf(lit) : -1;
+      });
+    const a0 = await audIx();
+    await p3.waitForTimeout(2700);
+    const a1 = await audIx();
+    check(
+      'L-09',
+      'the audience ring loops continuously (lit card advances on its own)',
+      a0 > -1 && a1 > -1 && a0 !== a1,
+      a0 + ' -> ' + a1
+    );
 
     await p3.evaluate(() => document.getElementById('features').scrollIntoView());
     const bento = await p3.evaluate(async () => {
@@ -756,7 +773,21 @@ async function newPage(browser, opts) {
       !!bento && parseFloat(bento.dur) <= 0.8,
       bento && bento.dur
     );
-    await p3.waitForTimeout(1200);
+    // Wait for the bento to settle (every slot back to full opacity) before
+    // asserting no card is transparent - a swap is mid-flight for ~600ms.
+    await p3.evaluate(async () => {
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      for (let i = 0; i < 60; i++) {
+        const slots = Array.prototype.slice.call(document.querySelectorAll('.bento-slot > .fcard'));
+        if (
+          slots.length === 4 &&
+          slots.every(s => parseFloat(getComputedStyle(s).opacity) >= 0.99)
+        ) {
+          return;
+        }
+        await wait(100);
+      }
+    });
     const slots = await p3.evaluate(() =>
       Array.prototype.map.call(document.querySelectorAll('.bento-slot > .fcard'), c => ({
         id: c.id,

@@ -2299,11 +2299,7 @@
   }
   var at = 0;
   var timer = null;
-  var paused = false;
   function tick() {
-    if (paused || document.visibilityState !== 'visible') {
-      return;
-    }
     items.forEach(function (it) {
       it.classList.remove('is-live');
     });
@@ -2311,10 +2307,11 @@
     at++;
   }
   function start() {
-    if (!timer) {
-      tick();
-      timer = setInterval(tick, 2500);
+    if (timer) {
+      return;
     }
+    tick();
+    timer = setInterval(tick, 2500);
   }
   function stop() {
     if (timer) {
@@ -2322,24 +2319,19 @@
       timer = null;
     }
   }
-  grid.addEventListener('pointerenter', function () {
-    paused = true;
+  // OWNER 2026-11-10: the ring loops CONTINUOUSLY so the highlight never freezes
+  // mid-set. The old build stopped it whenever the section fell below 30% on
+  // screen and often never restarted - it looked dead. Now it only pauses when
+  // the tab is hidden (perf) and stops entirely under reduced motion. No hover
+  // or off-screen pause.
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      stop();
+    } else {
+      start();
+    }
   });
-  grid.addEventListener('pointerleave', function () {
-    paused = false;
-  });
-  if ('IntersectionObserver' in window) {
-    new IntersectionObserver(
-      function (en) {
-        if (en[0].isIntersecting) {
-          start();
-        } else {
-          stop();
-        }
-      },
-      { threshold: 0.3 }
-    ).observe(grid);
-  } else {
+  if (!document.hidden) {
     start();
   }
 })();

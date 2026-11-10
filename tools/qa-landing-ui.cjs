@@ -566,6 +566,153 @@ async function newPage(browser, opts) {
     await c2.close();
   }
 
+  /* ---- WAVE L (owner 2026-11-10): the motion pass ----
+     The lifecycle strip lights one phase at a time, the audience cards take
+     turns, the bento pushes the incoming card forward, the reveal reverses
+     smoothly when you scroll back up, and the gold CTA no longer carries the
+     pale sticker rim. Each check measures the rendered page. */
+  {
+    const { ctx: c3, page: p3 } = await newPage(browser, {
+      viewport: { width: 1440, height: 900 }
+    });
+    const errs = [];
+    p3.on('pageerror', e => errs.push(String(e)));
+    await p3.goto(BASE + '/index.html', { waitUntil: 'load' });
+    await p3.waitForTimeout(800);
+
+    await p3.evaluate(() =>
+      document.querySelector('.phase-rail').scrollIntoView({ block: 'center' })
+    );
+    await p3.waitForTimeout(1200);
+    const phase = await p3.evaluate(() => ({
+      phases: document.querySelectorAll('.phase-rail li.phase').length,
+      lit: document.querySelectorAll('.phase-rail li.is-phase').length,
+      nodeScale: (() => {
+        const li = document.querySelector('.phase-rail li.is-phase');
+        return li ? getComputedStyle(li, '::before').transform : null;
+      })()
+    }));
+    check(
+      'L-01',
+      'the lifecycle rail marks all five phases as steps',
+      phase.phases === 5,
+      phase.phases
+    );
+    check('L-01', 'exactly one phase is lit', phase.lit === 1, phase.lit);
+    check(
+      'L-01',
+      'the lit phase node is scaled up (not just recoloured)',
+      phase.nodeScale && phase.nodeScale !== 'none' && !/matrix\(1, 0, 0, 1/.test(phase.nodeScale),
+      phase.nodeScale
+    );
+
+    await p3.evaluate(() =>
+      document.querySelector('.audience').scrollIntoView({ block: 'center' })
+    );
+    await p3.waitForTimeout(3000);
+    const aud = await p3.evaluate(() => ({
+      live: document.querySelectorAll('.aud-item.is-live').length,
+      ring: (() => {
+        const it = document.querySelector('.aud-item.is-live');
+        return it ? getComputedStyle(it).boxShadow : null;
+      })()
+    }));
+    check('L-02', 'exactly one audience card is lit at a time', aud.live === 1, aud.live);
+    check(
+      'L-02',
+      'the lit audience card carries a gold ring',
+      !!aud.ring && aud.ring !== 'none',
+      aud.ring
+    );
+
+    await p3.evaluate(() => document.getElementById('features').scrollIntoView());
+    const bento = await p3.evaluate(async () => {
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      for (let i = 0; i < 70; i++) {
+        const c = document.querySelector('.bento .fcard.bento-in');
+        if (c) {
+          const cs = getComputedStyle(c);
+          return { name: cs.animationName, dur: cs.animationDuration, id: c.id };
+        }
+        await wait(100);
+      }
+      return null;
+    });
+    check(
+      'L-03',
+      'a card moving into a bento slot runs the push-forward animation',
+      !!bento && bento.name === 'bento-push',
+      JSON.stringify(bento)
+    );
+    check(
+      'L-03',
+      'the push settles in under half a second',
+      !!bento && parseFloat(bento.dur) <= 0.5,
+      bento && bento.dur
+    );
+    await p3.waitForTimeout(1200);
+    const slots = await p3.evaluate(() =>
+      Array.prototype.map.call(document.querySelectorAll('.bento-slot > .fcard'), c => ({
+        id: c.id,
+        opacity: getComputedStyle(c).opacity,
+        bg: getComputedStyle(c).backgroundColor
+      }))
+    );
+    check(
+      'L-03',
+      'all four bento slots hold a card after a swap',
+      slots.length === 4,
+      slots.length
+    );
+    check(
+      'L-04',
+      'no bento card is left transparent (the tile never becomes a hole)',
+      slots.every(s => parseFloat(s.opacity) >= 0.95 && !/rgba\([^)]*,\s*0(\.\d+)?\)/.test(s.bg)),
+      JSON.stringify(slots.map(s => s.opacity))
+    );
+
+    const gold = await p3.evaluate(() => {
+      const b = document.querySelector('.btn-gold');
+      return b
+        ? { shadow: getComputedStyle(b).boxShadow, border: getComputedStyle(b).borderTopColor }
+        : null;
+    });
+    check(
+      'L-05',
+      'the gold CTA has no white inset rim (not a sticker on the page)',
+      !!gold && !/inset/.test(gold.shadow),
+      gold && gold.shadow
+    );
+
+    // Reveal exit: scroll past a revealed head, then back up and confirm the
+    // exit class really ran (the old build snapped it away).
+    await p3.evaluate(() => document.getElementById('how').scrollIntoView());
+    await p3.waitForTimeout(1000);
+    await p3.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await p3.waitForTimeout(1000);
+    const out = await p3.evaluate(() => {
+      const el = document.querySelector('.rv.rv-out');
+      if (!el) return null;
+      const cs = getComputedStyle(el);
+      return { opacity: cs.opacity, transform: cs.transform };
+    });
+    check('L-06', 'elements leaving upward carry the exit class', !!out, JSON.stringify(out));
+    check(
+      'L-06',
+      'the exit is a fade with an upward move, not a snap',
+      !!out && parseFloat(out.opacity) < 0.5 && out.transform !== 'none',
+      JSON.stringify(out)
+    );
+
+    check(
+      'L-00',
+      'no uncaught page errors during the motion pass',
+      errs.length === 0,
+      errs.join(' | ')
+    );
+    await c3.close();
+  }
+
   await browser.close();
   const failed = results.filter(r => !r.ok);
   console.log(

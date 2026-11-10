@@ -45,7 +45,13 @@ const EXACT = {
   'project.html': 220000,
   'calculator.html': 80000,
   'app.html': 140000,
-  'index.html': 50000
+  // 2026-11-10 (Wave L): raised 50000 -> 54000 for the "Who we are" band
+  // (eyebrow, heading, lede, three identity cards with sprite icons), the
+  // top-level Who we are nav item with its two-row dropdown, the two mobile
+  // menu entries and the two footer links (~3.4 KB). The band is the only
+  // new marketing section this year; if the next wave grows index.html again,
+  // move a band to its own page rather than raising this.
+  'index.html': 54000
 };
 
 /* Per-directory defaults for everything else. */

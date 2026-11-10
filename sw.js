@@ -706,7 +706,15 @@
 // collapsed (no 56px icon strip, no 56px gutter); a transparent 12px edge
 // zone opens it on hover and the hamburger pins it. Changed shell assets:
 // project.html, css/mmgr.css, dist/mmgr.min.css, dist/bundle.js.
-const CACHE = 'mmgr-shell-v614';
+// v615 - OWNER 2026-11-10 (landing motion pass): the reveal system finally has
+// an easing curve (--ease-out was never declared, so every .rv transition was
+// invalid and the page snapped), the why/who cards got their missing border and
+// muted-copy tokens, the lifecycle rail lights one phase at a time, the audience
+// cards take turns, bento cards push forward on arrival, the gold CTA lost its
+// white sticker rim, and the launcher icon strip sits at half strength.
+// Changed shell assets: index.html, app.html, css/marketing.css,
+// dist/marketing.min.css, dist/marketing-bundle.js.
+const CACHE = 'mmgr-shell-v615';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

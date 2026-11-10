@@ -161,6 +161,22 @@
   --fs-body: 1rem;
   --fs-small: 0.86rem;
   --fs-tiny: 0.74rem;
+
+  /* ---- Aliases the I-8 blocks and the reveal system always assumed ----
+     OWNER 2026-11-10: these names were referenced but never declared in THIS
+     sheet (marketing pages load only marketing.min.css), and an undefined
+     custom property invalidates the whole declaration that uses it. So the
+     reveal had no easing at all (it snapped), the "why" cards shipped with no
+     border, and their body copy fell back to the inherited colour. Declared
+     here against tokens that do exist; the dark block repeats the three that
+     follow the theme. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --tr-menu: 0.2s;
+  --line: var(--border);
+  --muted: var(--text-secondary);
+  --text: var(--text-primary);
+  --gold-ink: var(--bullion-ink);
 }
 
 /* DARK MODE - follows OS preference when mode = 'system' */
@@ -205,6 +221,12 @@ body.dark-mode {
   --glass-edge: 1px solid rgba(255, 255, 255, 0.12);
   --shadow-card: 0 20px 25px -5px var(--lit-black-70), 0 8px 10px -6px rgba(0, 0, 0, 0.55);
   --border-subtle: var(--lit-white-16);
+  /* Re-declared, not inherited: an alias written once on :root substitutes
+     the LIGHT --border before inheritance, so dark mode has to resolve these
+     against its own palette. */
+  --line: var(--border);
+  --muted: var(--text-secondary);
+  --text: var(--text-primary);
 }
 
 /* Color-theme palette picker (header, next to the CTA) */
@@ -2215,6 +2237,23 @@ body.dark-mode .nav-dd-col.is-platform {
   border-color: rgba(var(--gold-rgb), 0.6);
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
 }
+/* OWNER 2026-11-10 (roles ring): the four audience cards take turns in the
+   light, one every 2.5s (js/marketing.js). No transform here - these cards are
+   also reveal targets, and their entry transform owns that property - so the
+   lit card is marked with a gold ring, a warmer icon and a stronger watermark
+   instead. Hover still wins visually because it raises the same border. */
+.aud-item.is-live {
+  border-color: rgba(var(--gold-rgb), 0.6);
+  box-shadow:
+    0 0 0 3px rgba(var(--gold-rgb), 0.14),
+    0 10px 26px rgba(15, 23, 42, 0.1);
+}
+.aud-item.is-live .ico {
+  color: var(--gold);
+}
+.aud-item.is-live .aud-art {
+  opacity: 0.2;
+}
 .aud-item .ico {
   width: 28px;
   height: 28px;
@@ -2377,17 +2416,9 @@ body.dark-mode #f-voice {
   position: relative;
   overflow: hidden;
 }
-/* The hero's content rotation (js/marketing.js, owner 2026-11-01): the panel
-   keeps its tile and its type scale; only the words, icon and watermark
-   crossfade, so the 4x6 map never acquires a hole. */
-#features .fcard.is-swapping {
-  opacity: 0.35;
-}
-@media (prefers-reduced-motion: reduce) {
-  #features .fcard.is-swapping {
-    opacity: 1;
-  }
-}
+/* The hero content rotation was retired on 2026-11-10: the bento moves a real
+   card into the big slot instead, and its arrival motion lives in .bento-in
+   (see the BENTO block). No rule here: #f-ai carries no animation of its own. */
 /* OWNER 2026-09-15 (card SVG backgrounds): each feature card carries a
    faint topical watermark (inline <svg class="fc-art"> in the markup) that
    gives a visual cue per feature. Positioned behind the content, very low
@@ -2748,6 +2779,35 @@ body.dark-mode #f-voice {
   border-radius: 3px;
   background: var(--gold);
   box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.2);
+  transition:
+    background 0.3s var(--ease-out),
+    box-shadow 0.3s var(--ease-out),
+    transform 0.3s var(--ease-out);
+}
+/* OWNER 2026-11-10: the lifecycle strip lights one phase at a time
+   (js/marketing.js, 2.4s, pauses on hover and off screen). The lit node grows
+   a halo, its number steps to white and its label to the light gold; the copy
+   brightens without moving, so the strip never jitters while it cycles. */
+.phase-rail li.is-phase::before {
+  background: var(--gold-300);
+  box-shadow:
+    0 0 0 5px rgba(212, 175, 55, 0.3),
+    0 0 20px rgba(212, 175, 55, 0.55);
+  transform: scale(1.3);
+}
+.phase-rail li.is-phase b {
+  color: #fff;
+}
+.phase-rail li.is-phase h3 {
+  color: var(--gold-300);
+}
+.phase-rail li.is-phase p {
+  color: #fff;
+}
+.phase-rail b,
+.phase-rail h3,
+.phase-rail p {
+  transition: color 0.3s var(--ease-out);
 }
 .phase-rail b {
   display: block;
@@ -3807,11 +3867,27 @@ body.dark-mode #f-voice {
 .rv {
   transition-delay: calc(var(--rv-i, 0) * 55ms);
 }
+/* OWNER 2026-11-10: scrolling back up used to snap the revealed element away.
+   The exit now mirrors the entry - same distance, same curve, 400ms, no
+   stagger - so leaving the viewport is as smooth as arriving in it. */
+.rv.rv-out {
+  opacity: 0;
+  transform: translateY(-18px);
+  transition-duration: 0.4s;
+  transition-delay: 0ms;
+}
+.section-alt .rv.rv-out {
+  transform: none; /* alternate bands fade only, in both directions */
+}
 @media (prefers-reduced-motion: reduce) {
   .rv {
     opacity: 1;
     transform: none;
     transition: none;
+  }
+  .rv.rv-out {
+    opacity: 1;
+    transform: none;
   }
 } /* ---------- AUTH PAGES (verify.html / reset.html - AUTH MAINFRAME v2, 2026-08-17) ---------- */ /* Transactional email-link pages: */
 .sr-only {
@@ -5392,10 +5468,12 @@ html body.dark-mode .btn-gold,
 body.dark-mode .btn-bullion {
   background: var(--gold-grad);
   color: var(--bullion-ink);
-  border: 1px solid var(--bullion-edge);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    0 4px 6px var(--lit-black-20);
+  /* OWNER 2026-11-10: the pale cream border plus the white inset highlight
+     made every gold CTA look like a sticker pasted onto the page. The edge is
+     now the gradient's own deep stop and the only shadow left is the cast one,
+     so the button reads as part of the surface. */
+  border: 1px solid rgba(133, 88, 17, 0.55);
+  box-shadow: 0 4px 6px var(--lit-black-20);
   font-weight: 600;
   text-shadow: 0 1px 0 var(--lit-white-35);
 }
@@ -5405,9 +5483,7 @@ body.dark-mode .btn-gold:hover,
 html body.dark-mode .btn-gold:hover,
 body.dark-mode .btn-bullion:hover {
   background: var(--gold-grad-hover);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.6),
-    0 6px 10px var(--lit-black-30);
+  box-shadow: 0 6px 10px var(--lit-black-30);
 }
 .btn-gold:focus-visible,
 .btn-bullion:focus-visible,
@@ -5752,6 +5828,18 @@ html body.dark-mode .btn-gold:disabled {
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 22px 20px;
+  transition:
+    border-color var(--tr),
+    transform var(--tr),
+    box-shadow var(--tr);
+}
+.why-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--gold) 45%, var(--line));
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
+}
+.why-card .sol-ico {
+  margin-bottom: 12px;
 }
 .why-card h3 {
   margin: 0 0 8px;
@@ -5762,6 +5850,72 @@ html body.dark-mode .btn-gold:disabled {
   margin: 0;
   color: var(--muted);
   font-size: 0.96rem;
+  line-height: 1.55;
+}
+/* OWNER 2026-11-10: "Who we are" is its own band inside #why so the dot rail
+   keeps its seven major stops. Gold-tinted panel, three identity cards, the
+   same icon language as the solution cards below. */
+.who-band {
+  position: relative;
+  margin: 8px 0 42px;
+  padding: 28px 26px 26px;
+  border: 1px solid color-mix(in srgb, var(--gold) 26%, var(--line));
+  border-radius: 20px;
+  background:
+    radial-gradient(120% 150% at 6% 0%, rgba(var(--gold-rgb), 0.12), transparent 58%), var(--card);
+}
+.who-head {
+  max-width: 72ch;
+  margin-bottom: 20px;
+}
+.who-eyebrow {
+  margin: 0 0 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-ink);
+}
+.who-head h3 {
+  margin: 0 0 8px;
+  font-size: 1.42rem;
+  line-height: 1.2;
+  color: var(--ink);
+}
+.who-head p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.who-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.who-card {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--card) 86%, transparent);
+  transition:
+    border-color var(--tr),
+    transform var(--tr),
+    box-shadow var(--tr);
+}
+.who-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--gold) 45%, var(--line));
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
+}
+.who-card h4 {
+  margin: 10px 0 6px;
+  font-size: 1rem;
+  color: var(--ink);
+}
+.who-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
   line-height: 1.55;
 }
 .section-sub {
@@ -5827,14 +5981,21 @@ html body.dark-mode .btn-gold:disabled {
   .why-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+  .who-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
   .solutions {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 @media (max-width: 560px) {
   .why-grid,
+  .who-grid,
   .solutions {
     grid-template-columns: 1fr;
+  }
+  .who-band {
+    padding: 22px 18px;
   }
   .section-sub p {
     max-width: none;
@@ -5880,6 +6041,27 @@ html body.dark-mode .btn-gold:disabled {
 .bento-slot > .fcard {
   width: 100%;
   margin: 0;
+}
+/* OWNER 2026-11-10: a card that moves into a bento slot is pushed forward
+   instead of popping. 420ms, one property set, and the class is removed by
+   the next step so a re-used card can animate again. */
+.bento .fcard.bento-in {
+  animation: bento-push 0.42s var(--ease-out) both;
+}
+@keyframes bento-push {
+  from {
+    opacity: 0.35;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bento .fcard.bento-in {
+    animation: none;
+  }
 }
 .bento-seeall {
   margin: 4px 0 0;

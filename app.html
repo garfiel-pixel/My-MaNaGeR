@@ -235,6 +235,17 @@ body.dark-mode.db-page .sidebar-icon:hover .sidebar-tooltip{
 /* Hide icon strip when sidebar is open (desktop) */
 body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;visibility:hidden;}
 
+/* OWNER 2026-11-10: the closed-rail strip read as a column of bright chips
+   competing with the dashboard behind it. At rest it now sits at half
+   strength. No hover restore: pointing at the strip opens the rail panel,
+   which hides the strip, so a hover bump would only flash. Keyboard focus
+   still brings it back to full, because focus is the one way to reach it
+   without the pointer. */
+body.db-page:not(.dark-mode).side-closed .sidebar-icons,
+body.dark-mode.db-page.side-closed .sidebar-icons{opacity:.5;transition-duration:.18s;}
+body.db-page:not(.dark-mode).side-closed .sidebar-icons:focus-within,
+body.dark-mode.db-page.side-closed .sidebar-icons:focus-within{opacity:1;}
+
 @media(max-width:768px){
   body.db-page .sidebar-icons{display:none;}
 }

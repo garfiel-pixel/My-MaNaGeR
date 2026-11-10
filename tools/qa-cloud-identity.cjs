@@ -146,12 +146,8 @@ async function newPage(browser, projectId, routes, opts) {
   const afterClick = await a.evaluate(() => ({
     state: window.MMGR.State.getState().status,
     label: (document.getElementById('status-chip-lbl') || {}).textContent,
-    checked: (
-      document.querySelector('#status-pop [data-status="planning"]') || {}
-    ).getAttribute
-      ? document
-          .querySelector('#status-pop [data-status="planning"]')
-          .getAttribute('aria-checked')
+    checked: (document.querySelector('#status-pop [data-status="planning"]') || {}).getAttribute
+      ? document.querySelector('#status-pop [data-status="planning"]').getAttribute('aria-checked')
       : null,
     popOpen: (document.getElementById('status-pop') || {}).matches
       ? document.getElementById('status-pop').matches(':popover-open')
@@ -164,7 +160,11 @@ async function newPage(browser, projectId, routes, opts) {
       afterClick.checked === 'true',
     JSON.stringify(afterClick)
   );
-  check('S6 the menu closes after a choice', afterClick.popOpen === false, String(afterClick.popOpen));
+  check(
+    'S6 the menu closes after a choice',
+    afterClick.popOpen === false,
+    String(afterClick.popOpen)
+  );
 
   const mirror = await a.evaluate(() => {
     const list = JSON.parse(localStorage.getItem('mmgr_admin_projects') || '[]');
@@ -197,9 +197,7 @@ async function newPage(browser, projectId, routes, opts) {
   });
   check(
     'S9 manual mode reveals Close snapshot with the manual copy',
-    manualRow.hidden === false &&
-      manualRow.mode === 'manual' &&
-      /Manual/i.test(manualRow.hint),
+    manualRow.hidden === false && manualRow.mode === 'manual' && /Manual/i.test(manualRow.hint),
     JSON.stringify(manualRow)
   );
 
@@ -257,7 +255,9 @@ async function newPage(browser, projectId, routes, opts) {
   );
   check(
     'S12 the retry keeps the project NAME unchanged',
-    posts.length === 2 && posts[0].name === posts[1].name && posts[1].projectId === 'qa-identity-c-2',
+    posts.length === 2 &&
+      posts[0].name === posts[1].name &&
+      posts[1].projectId === 'qa-identity-c-2',
     JSON.stringify(posts)
   );
   const stored = await c.evaluate(() => ({
@@ -314,11 +314,7 @@ async function newPage(browser, projectId, routes, opts) {
   await D.ctx.close();
 
   const errs = A.errs.concat(C.errs, D.errs);
-  check(
-    'S16 no page errors during any arm',
-    errs.length === 0,
-    errs.slice(0, 2).join(' | ')
-  );
+  check('S16 no page errors during any arm', errs.length === 0, errs.slice(0, 2).join(' | '));
 
   await browser.close();
   const passed = results.filter(r => r.ok).length;

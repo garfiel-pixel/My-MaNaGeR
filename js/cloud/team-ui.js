@@ -340,7 +340,7 @@ var MMGR = window.MMGR || {};
   function onPanelClick(ev) {
     var t = ev.target.closest
       ? ev.target.closest(
-          '[data-team-close],[data-team-tab],[data-team-accept],[data-team-decline],[data-team-open],[data-team-people],[data-team-resend],[data-team-revoke],[data-team-role],[data-team-approver],[data-team-access],[data-team-access-save],[data-team-extend],[data-team-bulk],[data-team-bulk-send],[data-team-tpls],[data-team-tpl-new],[data-team-tpl-save],[data-team-tpl-cancel],[data-team-tpl-apply],[data-team-tpl-del]'
+          '[data-team-close],[data-team-tab],[data-team-accept],[data-team-decline],[data-team-open],[data-team-people],[data-team-resend],[data-team-revoke],[data-team-role],[data-team-approver],[data-team-access],[data-team-access-save],[data-team-extend],[data-team-invite],[data-team-bulk],[data-team-bulk-send],[data-team-tpls],[data-team-tpl-new],[data-team-tpl-save],[data-team-tpl-cancel],[data-team-tpl-apply],[data-team-tpl-del]'
         )
       : null;
     if (!t) {
@@ -409,6 +409,10 @@ var MMGR = window.MMGR || {};
     }
     if (t.hasAttribute('data-team-extend')) {
       extendAccess(t.getAttribute('data-team-project'), Number(t.getAttribute('data-team-extend')));
+      return;
+    }
+    if (t.hasAttribute('data-team-invite')) {
+      sendOne(t.getAttribute('data-team-invite'), t);
       return;
     }
     if (t.hasAttribute('data-team-bulk')) {
@@ -890,6 +894,41 @@ var MMGR = window.MMGR || {};
     );
   }
 
+  // Wave 3 (owner 2026-11-10): the owner asked for the obvious thing - type an
+  // address, pick a role, press Invite. The bulk textarea is an enterprise
+  // tool; this row is what every paid tier gets, and it is the only invite
+  // surface a Company owner ever needs for one person.
+  function singleInviteHtml(pid) {
+    var roles = ['manager', 'supervisor', 'contractor', 'client'];
+    return (
+      '<div class="team-invite-one">' +
+      '<label class="team-sub-label" for="team-inv-email-' +
+      esc(pid) +
+      '">Invite one person</label>' +
+      '<div class="team-sub-row">' +
+      '<input type="email" class="team-inv-email" id="team-inv-email-' +
+      esc(pid) +
+      '" maxlength="254" autocomplete="off" spellcheck="false" placeholder="name@example.com" aria-label="Email address to invite">' +
+      '<select class="team-role-select" id="team-inv-role-' +
+      esc(pid) +
+      '" aria-label="Role for the person you invite">' +
+      roles
+        .map(function (r) {
+          return '<option value="' + r + '">' + roleLabel(r) + '</option>';
+        })
+        .join('') +
+      '</select>' +
+      '<button type="button" class="btn btn-g btn-s" data-team-invite="' +
+      esc(pid) +
+      '">Invite</button>' +
+      '</div>' +
+      '<p class="team-note" id="team-inv-out-' +
+      esc(pid) +
+      '" role="status"></p>' +
+      '</div>'
+    );
+  }
+
   function toolsHtml(pid) {
     var base = '/api/cloud/projects/' + encodeURIComponent(pid) + '/team';
     // B2 (2026-11-05): the bulk-invite, templates and audit tools stay on the
@@ -899,6 +938,7 @@ var MMGR = window.MMGR || {};
     // endpoint that would answer "upgrade required".
     if (!enterprise()) {
       return (
+        singleInviteHtml(pid) +
         '<div class="team-tools team-tools-locked">' +
         '<button type="button" class="team-link" data-team-bulk="' +
         esc(pid) +
@@ -912,6 +952,7 @@ var MMGR = window.MMGR || {};
       );
     }
     return (
+      singleInviteHtml(pid) +
       '<div class="team-tools">' +
       '<button type="button" class="team-link" data-team-bulk="' +
       esc(pid) +
@@ -1264,6 +1305,55 @@ var MMGR = window.MMGR || {};
     enterprise_feature: 'not included in the plan',
     template_not_found: 'the template was deleted'
   };
+
+  async function sendOne(pid, btn) {
+    var inp = $('team-inv-email-' + pid);
+    var out = $('team-inv-out-' + pid);
+    var roleSel = $('team-inv-role-' + pid);
+    var email = (inp ? inp.value : '').trim();
+    if (!email || email.indexOf('@') < 1) {
+      if (out) {
+        out.textContent = 'Type the email address to invite.';
+      }
+      if (inp) {
+        inp.focus();
+      }
+      return;
+    }
+    btn.disabled = true;
+    if (out) {
+      out.textContent = 'Sending the invitation.';
+    }
+    var r = await jpost('/api/cloud/projects/' + encodeURIComponent(pid) + '/team', {
+      email: email,
+      role: roleSel ? roleSel.value : 'contractor'
+    });
+    btn.disabled = false;
+    if (!r.ok || !r.body.ok) {
+      var code = (r.body && r.body.error) || '';
+      if (out) {
+        out.textContent =
+          code === 'already_member'
+            ? 'That address is already on this project.'
+            : code === 'member_limit'
+              ? 'Inviting collaborators is part of the paid plans.'
+              : code === 'enterprise_feature'
+                ? 'That option is part of the Company or Enterprise plan.'
+                : code || 'Could not send the invitation.';
+      }
+      return;
+    }
+    if (inp) {
+      inp.value = '';
+    }
+    // loadPeople rewrites the list this row lives in, so the confirmation is
+    // re-stamped on the fresh node afterwards.
+    await loadPeople(pid);
+    var again = $('team-inv-out-' + pid);
+    if (again) {
+      again.textContent = 'Invitation sent to ' + email + '.';
+    }
+  }
 
   async function sendBulk(pid, btn) {
     var ta = $('team-bulk-emails-' + pid);

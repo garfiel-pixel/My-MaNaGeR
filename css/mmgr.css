@@ -7990,6 +7990,29 @@ body.dark-mode .team-link-danger {
   max-width: 320px;
 }
 /* ---- RBAC sprint 3: access tools ---------------------------------------- */
+/* Wave 3 (owner 2026-11-10): one email, one role, one Invite - the row every
+   paid tier gets, above the enterprise bulk tool. */
+.team-invite-one {
+  padding: 0 0 10px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.team-inv-email {
+  flex: 1;
+  min-width: 170px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.78rem;
+}
+.team-inv-email:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+  border-color: var(--gold);
+}
 .team-tools {
   display: flex;
   flex-wrap: wrap;

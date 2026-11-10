@@ -725,7 +725,9 @@
 // lifecycle status (state.status, schema v31) with a header chip, the cloud
 // card and launcher card read it, cloud creates retry a taken id with -2..-6
 // while the NAME stays, and a per-project auto/manual sync choice with a
-// "Close snapshot" row in the backup popover. Changed shell assets:
+// "Close snapshot" row in the backup popover. Wave 3 adds the single-email
+// invite row in the team panel and lets the admin invite form run on the
+// session alone. Changed shell assets:
 // project.html, app.html, admin.html, css/mmgr.css, dist/mmgr.min.css,
 // dist/bundle.js, dist/app-bundle.js, dist/admin-bundle.js.
 const CACHE = 'mmgr-shell-v617';

@@ -3317,6 +3317,22 @@ function closeCodesModal(){
 function teamOwnerCode(){
   return codesOwnerCode();
 }
+/* Wave 3 (owner 2026-11-10): a fresh device may hold NO owner code while the
+   signed-in account is the project's owner - the admin panel's invite form
+   used to stop there. Every team route is cloudAuthOwnerEither, so the code
+   header is sent only when a code exists and the session cookie carries the
+   rest. */
+function teamHeaders(json){
+  const h = json ? { 'Content-Type': 'application/json' } : {};
+  const code = teamOwnerCode();
+  if (code) h['X-Owner-Code'] = code;
+  return h;
+}
+function teamCanAct(){
+  if (teamOwnerCode()) return true;
+  const GA = window.MMGR && window.MMGR.GoogleAuth;
+  return !!(GA && GA.isSignedIn && GA.isSignedIn());
+}
 function teamCurrentProject(){
   return (_codesIdx !== null) && projects[_codesIdx];
 }
@@ -3327,11 +3343,10 @@ async function teamList(){
   const wrap = document.getElementById('team-list');
   if (!wrap) return;
   const p = teamCurrentProject();
-  const code = teamOwnerCode();
-  if (!p || !code){ wrap.textContent = 'No owner code recorded on this device for this project.'; return; }
+  if (!p || !teamCanAct()){ wrap.textContent = 'Open this project signed in as its owner, or enter its owner code, to manage the team.'; return; }
   try{
     const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/team', {
-      method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
+      method: 'GET', credentials: 'same-origin', headers: teamHeaders(false)
     });
     const data = await res.json().catch(()=>({}));
     if (!res.ok || !data.ok){ wrap.textContent = 'Could not load team members.'; return; }
@@ -3382,8 +3397,7 @@ function teamShowUpsell(msg){
 }
 async function teamInvite(){
   const p = teamCurrentProject();
-  const code = teamOwnerCode();
-  if (!p || !code){ toast('No owner code recorded for this project on this device.', 'error'); return; }
+  if (!p || !teamCanAct()){ toast('Open this project signed in as its owner, or enter its owner code.', 'error'); return; }
   const email = (document.getElementById('team-invite-email').value || '').trim().toLowerCase();
   if (!email || email.indexOf('@') < 0){ toast('Enter the person\u2019s email address first.', 'warn'); return; }    const role = document.getElementById('team-invite-role').value || 'manager';
   const payload = { email: email, role: role };
@@ -3395,7 +3409,7 @@ async function teamInvite(){
   try{
     const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/team', {
       method: 'POST', credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
+      headers: teamHeaders(true),
       body: JSON.stringify(payload)
     });
     const data = await res.json().catch(()=>({}));
@@ -3420,13 +3434,12 @@ async function teamInvite(){
 }
 async function teamCurrentMemberById(id){
   const p = teamCurrentProject();
-  const code = teamOwnerCode();
-  if (!p || !code || !id) return null;
+  if (!p || !teamCanAct() || !id) return null;
   const wrap = document.getElementById('team-list');
   if (!wrap) return null;
   try{
     const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/team', {
-      method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
+      method: 'GET', credentials: 'same-origin', headers: teamHeaders(false)
     });
     const data = await res.json().catch(()=>({}));
     const members = (data && data.ok && Array.isArray(data.members)) ? data.members : [];
@@ -3435,8 +3448,7 @@ async function teamCurrentMemberById(id){
 }
 async function teamUpdate(id){
   const p = teamCurrentProject();
-  const code = teamOwnerCode();
-  if (!p || !code || !id){ toast('No valid project or owner code for this edit.', 'error'); return; }
+  if (!p || !teamCanAct() || !id){ toast('No valid project or owner credential for this edit.', 'error'); return; }
   const m = await teamCurrentMemberById(id);
   if (!m){ toast('Member not found.', 'error'); return; }
   document.getElementById('adm-cfm-title').textContent = 'Edit Team Member';
@@ -3461,7 +3473,7 @@ async function teamUpdate(id){
     (async function(){
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/team/' + encodeURIComponent(id), {
         method: 'PUT', credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
+        headers: teamHeaders(true),
         body: JSON.stringify({ role: newRole, scope: newScope })
       });
       const data = await res.json().catch(()=>({}));
@@ -3475,11 +3487,10 @@ async function teamUpdate(id){
 }
 async function teamRevoke(id){
   const p = teamCurrentProject();
-  const code = teamOwnerCode();
-  if (!p || !code || !id){ toast('No valid project or owner code for this revoke.', 'error'); return; }
+  if (!p || !teamCanAct() || !id){ toast('No valid project or owner credential for this revoke.', 'error'); return; }
   try{
     const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/team/' + encodeURIComponent(id), {
-      method: 'DELETE', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
+      method: 'DELETE', credentials: 'same-origin', headers: teamHeaders(false)
     });
     const data = await res.json().catch(()=>({}));
     if (!res.ok || !data.ok){ toast((data && data.error) || 'Revoke failed.', 'error'); return; }
@@ -3494,11 +3505,10 @@ async function teamRevoke(id){
 // is refreshed either way.
 async function teamResend(id){
   const p = teamCurrentProject();
-  const code = teamOwnerCode();
-  if (!p || !code || !id){ toast('No valid project or owner code for this resend.', 'error'); return; }
+  if (!p || !teamCanAct() || !id){ toast('No valid project or owner credential for this resend.', 'error'); return; }
   try{
     const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/team/' + encodeURIComponent(id) + '/resend', {
-      method: 'POST', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
+      method: 'POST', credentials: 'same-origin', headers: teamHeaders(false)
     });
     const data = await res.json().catch(()=>({}));
     if (!res.ok || !data.ok){ toast((data && data.error) || 'Resend failed.', 'error'); return; }

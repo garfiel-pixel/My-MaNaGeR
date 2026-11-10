@@ -1405,6 +1405,15 @@ jobs:
         id: qa-cloud-identity
         run: node tools/qa-cloud-identity.cjs
 
+      # WAVE 3 TEAM INVITE (owner 2026-11-10): the owner reported no way to
+      # invite on an enterprise plan. Spawns its own wrangler dev: the owner
+      # invites with the SESSION only (no owner code), the guest accepts, loads
+      # the project, is revoked, and is then refused and dropped from
+      # "Shared with me".
+      - name: "T2: Team invite (qa-team-invite)"
+        id: qa-team-invite
+        run: node tools/qa-team-invite.cjs
+
       # I-1 CLIENT regression (forged-cookie Playwright): boots its OWN local
       # wrangler dev with a forged Google session and drives the real app.html to
       # prove the owner code persists to localStorage and the signed-in account

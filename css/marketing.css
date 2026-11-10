@@ -2265,8 +2265,10 @@ body.dark-mode .nav-dd-col.is-platform {
     0 0 0 3px rgba(var(--gold-rgb), 0.14),
     0 10px 26px rgba(15, 23, 42, 0.1);
 }
+/* --gold-deep, not --gold: this is the ICON tone the ranked mark already uses
+   for "gold as words" (the fill token fails verify-gold's ARM 4 contrast). */
 .aud-item.is-live .ico {
-  color: var(--gold);
+  color: var(--gold-deep);
 }
 .aud-item.is-live .aud-art {
   opacity: 0.2;

@@ -781,6 +781,28 @@ async function newPage(browser, opts) {
       gold && gold.shadow
     );
 
+    // OWNER 2026-11-10: the gold light on the band seam must track the seam's
+    // own position (so it travels while the seam is on screen), not the whole
+    // document scroll fraction (which leaves it pinned at the left until the
+    // seam has scrolled away).
+    const seamP = await p3.evaluate(async () => {
+      const s = document.querySelector('.band-seam');
+      if (!s) {
+        return null;
+      }
+      s.scrollIntoView({ block: 'center' });
+      await new Promise(r => setTimeout(r, 450));
+      return getComputedStyle(s).getPropertyValue('--page-progress').trim();
+    });
+    check(
+      'L-08',
+      'the seam gold light tracks the seam position (not whole-page progress)',
+      !!seamP && parseFloat(seamP) > 0.2 && parseFloat(seamP) < 0.8,
+      seamP
+    );
+
+    await p3.evaluate(() => window.scrollTo(0, 0));
+    await p3.waitForTimeout(300);
     // Reveal exit: scroll past a revealed head, then back up and confirm the
     // exit class really ran (the old build snapped it away).
     await p3.evaluate(() => document.getElementById('how').scrollIntoView());

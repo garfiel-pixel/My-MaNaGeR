@@ -1685,22 +1685,38 @@
     var lastY = window.pageYOffset || document.documentElement.scrollTop || 0;
     var HIDE_AFTER = 120; // never hide in the first screen
     var DELTA = 6; // ignore tiny jitter so the bar does not flap
-    var doc = document.documentElement;
-    var targetP = 0;
-    var shownP = 0;
+    // I-5a: each band seam carries its own travelling gold light. The glow must
+    // track the SEAM'S position in the viewport, not the whole-document scroll
+    // fraction - otherwise the light sits at the far left while the seam is on
+    // screen and only moves once the seam has scrolled away. Per-seam progress:
+    // 0 as the seam enters the bottom, 1 as it exits the top.
+    var seams = Array.prototype.slice.call(document.querySelectorAll('.band-seam'));
+    var seamState = seams.map(function (s) {
+      return { el: s, shown: 0 };
+    });
+    function seamTarget(s) {
+      var rect = s.getBoundingClientRect();
+      var vh = window.innerHeight || 1;
+      var p = (vh - rect.top) / (vh + rect.height);
+      return p < 0 ? 0 : p > 1 ? 1 : p;
+    }
     var progressRaf = 0;
-    // OWNER 2026-11-10: the seam light used to step with the raw scroll
-    // position. A short lerp lets it glide, while still settling exactly on
-    // the target when the scroll stops.
-    function paintProgress() {
+    function paintSeams() {
       progressRaf = 0;
-      shownP += (targetP - shownP) * 0.18;
-      if (Math.abs(targetP - shownP) < 0.0004) {
-        shownP = targetP;
-      } else {
-        progressRaf = requestAnimationFrame(paintProgress);
+      var moving = false;
+      seamState.forEach(function (st) {
+        var target = seamTarget(st.el);
+        st.shown += (target - st.shown) * 0.18;
+        if (Math.abs(target - st.shown) < 0.0006) {
+          st.shown = target;
+        } else {
+          moving = true;
+        }
+        st.el.style.setProperty('--page-progress', st.shown.toFixed(4));
+      });
+      if (moving) {
+        progressRaf = requestAnimationFrame(paintSeams);
       }
-      doc.style.setProperty('--page-progress', shownP.toFixed(4));
     }
     function apply() {
       queued = false;
@@ -1716,14 +1732,8 @@
         hdr.setAttribute('data-hidden', 'false');
       }
       lastY = y;
-      // I-5a: page scroll progress (0..1) drives the travelling gold light on
-      // the band seams. One CSS variable, lerped once per frame.
-      var max = doc.scrollHeight - window.innerHeight;
-      var p = max > 0 ? y / max : 0;
-      p = p < 0 ? 0 : p > 1 ? 1 : p;
-      targetP = p;
       if (!progressRaf) {
-        progressRaf = requestAnimationFrame(paintProgress);
+        progressRaf = requestAnimationFrame(paintSeams);
       }
     }
     window.addEventListener(

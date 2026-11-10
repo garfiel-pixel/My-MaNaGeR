@@ -2280,18 +2280,18 @@ body.dark-mode .nav-dd-col.is-platform {
   transition:
     transform 0.5s var(--ease-out),
     opacity 0.5s var(--ease-out),
-    border-color 0.45s var(--ease-out),
-    box-shadow 0.45s var(--ease-out);
+    border-color 0.7s var(--ease-out),
+    box-shadow 0.7s var(--ease-out);
 }
 .aud-item .ico {
   width: 28px;
   height: 28px;
   color: var(--gold-deep);
   margin: 0 auto 10px;
-  transition: color var(--tr);
+  transition: color 0.7s var(--ease-out);
 }
 .aud-item .aud-art {
-  transition: opacity var(--tr);
+  transition: opacity 0.7s var(--ease-out);
 }
 .aud-item b {
   display: block;

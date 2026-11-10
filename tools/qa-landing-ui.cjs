@@ -714,8 +714,17 @@ async function newPage(browser, opts) {
     });
     check(
       'L-07',
-      'the audience ring cross-fades (border/box-shadow transition present)',
-      !!audTrans && /border-color|box-shadow/.test(audTrans) && /[0-9.]+\s*s/.test(audTrans),
+      'the audience ring cross-fades softly (border/box-shadow eased, >= 0.45s)',
+      (() => {
+        if (!audTrans || !/border-color|box-shadow/.test(audTrans)) return false;
+        const dur = Math.max(
+          ...audTrans
+            .split('|')[1]
+            .split(',')
+            .map(s => parseFloat(s) || 0)
+        );
+        return dur >= 0.45;
+      })(),
       audTrans
     );
 

@@ -111,11 +111,10 @@
     if (ns.App && ns.App.showSec) ns.App.showSec(sec, btnFor(sec));
   }
 
-  function pinCurrent() {
-    const cur = currentSection();
-    if (!cur) return;
+  function pinOne(sec) {
+    if (!sec) return;
     const pins = getPins();
-    if (pins.indexOf(cur) >= 0) {
+    if (pins.indexOf(sec) >= 0) {
       if (ns.App && ns.App.showToast) ns.App.showToast('That section is already pinned.', 'warn');
       return;
     }
@@ -124,10 +123,14 @@
         ns.App.showToast('At most ' + MAX_PINS + ' pinned sections. Reset to add more.', 'warn');
       return;
     }
-    pins.push(cur);
+    pins.push(sec);
     setPins(pins);
     paintPins();
-    if (ns.App && ns.App.showToast) ns.App.showToast('Pinned ' + sectionLabel(cur) + '.', 'ok');
+    if (ns.App && ns.App.showToast) ns.App.showToast('Pinned ' + sectionLabel(sec) + '.', 'ok');
+  }
+
+  function pinCurrent() {
+    pinOne(currentSection());
   }
 
   function unpin(sec) {
@@ -194,6 +197,15 @@
     setEnabled(on);
     const tgl = U.$('sec-accel-toggle');
     if (tgl) tgl.checked = on;
+    // B9 is OFF by default: the pin dots only exist while it is on. Install /
+    // remove them with the switch so a disabled accelerator leaves the section
+    // buttons clean (no corner dot intercepting a normal section click).
+    if (on) {
+      installPinDots();
+      paintPins();
+    } else {
+      removePinDots();
+    }
     if (ns.App && ns.App.showToast)
       ns.App.showToast(on ? 'Section accelerator on.' : 'Section accelerator off.', 'ok');
   }
@@ -205,6 +217,16 @@
   // fails on every section (48 nodes, 2026-11-05). The wrapper is what the
   // dot positions itself against.
   function installPinDots() {
+    // OWNER BUG 2026-11-10: the accelerator is OFF by default, but these dots
+    // were installed on EVERY section button regardless. A dot sits on the
+    // button's top-right corner and is the topmost hit target there, so a
+    // normal click near that corner hit the dot (which pins the CURRENT
+    // section and stops propagation) instead of switching sections - the
+    // owner's "I click it and what I wanted to click was not clicked".
+    // Install them only when the owner has actually switched B9 on.
+    if (!enabled()) {
+      return;
+    }
     const nav = U.$('sec-nav');
     if (!nav) return;
     const btns = nav.querySelectorAll('.sec-btn[data-section]');
@@ -229,10 +251,33 @@
         e.stopPropagation();
         const sec = b.getAttribute('data-section');
         if (getPins().indexOf(sec) >= 0) unpin(sec);
-        else pinCurrent();
+        else pinOne(sec);
       });
       wrap.appendChild(dot);
     }
+  }
+
+  // Remove the pin dots (and unwrap the buttons) when B9 is switched off, so
+  // the default, accelerator-off state has plain section buttons with no
+  // corner control that can intercept a section click.
+  function removePinDots() {
+    ['sec-nav', 'app-sidebar'].forEach(function (id) {
+      const nav = U.$(id);
+      if (!nav) return;
+      const dots = nav.querySelectorAll('.sec-pin-dot');
+      for (let i = 0; i < dots.length; i++) {
+        dots[i].remove();
+      }
+      const wraps = nav.querySelectorAll('.sec-btn-wrap');
+      for (let i = 0; i < wraps.length; i++) {
+        const w = wraps[i];
+        const b = w.querySelector('.sec-btn');
+        if (b && w.parentNode) {
+          w.parentNode.insertBefore(b, w);
+          w.remove();
+        }
+      }
+    });
   }
 
   function bootSectionAccelerator() {
@@ -287,7 +332,7 @@
       const sec = el && el.getAttribute ? el.getAttribute('data-section') : null;
       if (sec) {
         if (getPins().indexOf(sec) >= 0) unpin(sec);
-        else pinCurrent();
+        else pinOne(sec);
       } else {
         pinCurrent();
       }

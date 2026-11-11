@@ -1693,10 +1693,16 @@ body.sidebar-open .sb-close .ico {
 }
 .sec-pin-dot {
   position: absolute;
-  top: -5px;
-  right: -5px;
-  width: 14px;
-  height: 14px;
+  /* OWNER BUG 2026-11-10: the dot used to sit at top:-5/right:-5, overlapping
+     the section button's top-right corner and stealing that corner's click
+     (it pinned the CURRENT section and stopped propagation, so the section
+     never switched). Place it FULLY OUTSIDE the button (right edge starts at
+     the button's right edge) so every click on the button - including the
+     corner - switches sections. */
+  top: -4px;
+  right: -13px;
+  width: 12px;
+  height: 12px;
   padding: 0;
   border: 1px solid var(--card);
   border-radius: 999px;

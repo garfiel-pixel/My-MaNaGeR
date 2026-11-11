@@ -19,6 +19,8 @@
    v621 - THEME-POLISH cache bump: return visitors re-fetch the theme-pack
            assets (skin CSS + mmgr-skin.js) so a saved skin paints on a plain
            refresh, not only after a hard refresh.
+   v622 - NAV CLICK FIX cache bump: re-fetch the unhashed dist/bundle.js so
+           project section buttons stop losing corner clicks to the pin dot.
    ============================================================ */
 // v433 - PART H build (working tree, owner-directed): new Procurement tab
 // (suppliers + their hand-entered prices + AI quote panel). New module
@@ -743,7 +745,11 @@
 // skin only appeared after a hard refresh (the old cache was bypassed). Bumping
 // the cache name deletes the stale shell on activate() and re-fetches every
 // shell asset, so the saved skin now paints on a plain refresh.
-const CACHE = 'mmgr-shell-v621';
+// v622 - NAV CLICK FIX: project.html loads the UNHASHED dist/bundle.js, so a
+// cache-first shell would keep serving the pre-fix bundle to return visitors.
+// Bumping the cache name re-fetches the bundle and the section buttons stop
+// losing clicks to the pin dot.
+const CACHE = 'mmgr-shell-v622';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

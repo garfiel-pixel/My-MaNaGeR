@@ -531,6 +531,187 @@
   padding: 4px 0 0;
 }
 
+/* ---- Review queue: grouped proposal cards (owner 2026-11-12) --------------
+   Each proposal names the records it touches, lists only those records' field
+   changes, and states which screens the change reaches. Type is deliberately
+   at body size - the old 0.66rem rows were unreadable in the drawer. */
+.rv-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--tile-bg);
+  padding: 10px 12px;
+  margin-top: 8px;
+  min-width: 0;
+}
+.rv-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.rv-src {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+  font-size: 0.84rem;
+}
+.rv-meta {
+  margin: 4px 0 8px;
+  color: var(--slate);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+.rv-groups {
+  border-top: 1px solid var(--border);
+}
+.rv-g {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.rv-g:last-child {
+  border-bottom: none;
+}
+.rv-g-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+  min-width: 0;
+}
+.rv-kind {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--gold-text);
+  background: rgba(var(--gold-rgb), 0.12);
+  border: 1px solid rgba(var(--gold-rgb), 0.28);
+  border-radius: 4px;
+  padding: 1px 6px;
+  flex-shrink: 0;
+}
+.rv-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.rv-rows {
+  display: block;
+}
+.rv-row {
+  display: grid;
+  grid-template-columns: minmax(108px, 0.9fr) minmax(90px, 1fr) 16px minmax(90px, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 4px 0;
+}
+.rv-f {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--slate);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.rv-b,
+.rv-a {
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.rv-b {
+  color: var(--slate);
+}
+.rv-a {
+  color: var(--ink);
+  font-weight: 600;
+}
+.rv-arrow {
+  color: var(--gold-text);
+  text-align: center;
+  font-size: 0.8rem;
+}
+.rv-surf {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.rv-surf-k {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--slate);
+}
+.rv-surf em,
+.apv-surf em {
+  font-style: normal;
+  font-size: 0.72rem;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--gold-text);
+  background: rgba(var(--gold-rgb), 0.1);
+  border: 1px solid rgba(var(--gold-rgb), 0.24);
+  border-radius: 999px;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+.rv-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.rv-toggle {
+  width: auto;
+  height: auto;
+  padding: 3px 9px;
+  gap: 4px;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+@media (max-width: 520px) {
+  .rv-row {
+    grid-template-columns: 1fr;
+    gap: 2px;
+    padding: 6px 0;
+  }
+  .rv-arrow {
+    display: none;
+  }
+  .rv-b::before {
+    content: 'was ';
+    color: var(--slate);
+    font-weight: 400;
+  }
+  .rv-a::before {
+    content: 'now ';
+    color: var(--slate);
+    font-weight: 400;
+  }
+}
+.apv-surf {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--slate);
+}
+
 /* ---- RACI ---- */
 .raci-cell {
   width: 46px;

@@ -50,7 +50,11 @@ const EXACT = {
   // css/src/36-search.css layer (overlay, combobox rows, group headings and
   // the reduced-motion search-hit outline, ~2.9 KB). One additive layer; the
   // next CSS wave should split a layer rather than raise this again.
-  'css/mmgr.css': 598000,
+  // 2026-11-12 (proposal review UI): raised 598000 -> 602000 for the grouped
+  // review card (record name + field rows + affected-surface chips) and the
+  // approval modal's surface line, ~2.6 KB in css/src/30-panels.css. The old
+  // 0.66rem flat diff grid was unreadable; this is the replacement surface.
+  'css/mmgr.css': 602000,
   // 2026-11-10 (Wave 6): raised 160000 -> 163000 for the sign-in two-column
   // layout, the per-letter MMGRWP hover and the mobile stack.
   // 2026-11-10 (Wave L closeout): raised 163000 -> 166000 for the audience ring

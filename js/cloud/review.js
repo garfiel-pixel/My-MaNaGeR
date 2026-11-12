@@ -27,9 +27,131 @@ var MMGR = window.MMGR || {};
   function setStatus(msg, kind) {
     C._setStatus(msg, kind);
   }
-  function renderDiffPanel(en) {
-    return C._renderDiffPanel(en);
+  function fieldLabel(f) {
+    return ns.Approval && ns.Approval.fieldLabel ? ns.Approval.fieldLabel(f) : String(f || '');
   }
+  function pathLabel(p) {
+    return ns.Approval && ns.Approval.pathLabel ? ns.Approval.pathLabel(p) : String(p || '');
+  }
+  function diffKey(d) {
+    const rec = d.recordId || (d.index === null || d.index === undefined ? '' : '#' + d.index);
+    return d.path + '|' + rec + '|' + d.field;
+  }
+  function valText(v, absent, absentWord) {
+    if (absent) {
+      return absentWord;
+    }
+    if (v === null || v === undefined || v === '') {
+      return 'blank';
+    }
+    if (typeof v === 'object') {
+      try {
+        return JSON.stringify(v);
+      } catch (e) {
+        return String(v);
+      }
+    }
+    return String(v);
+  }
+  // One group per record (or per scalar key): the owner asked to see WHICH
+  // task changes, how many of its fields move, and which screens those fields
+  // reach - not a flat list of "tasks[0].status".
+  function groupDiffs(diffs) {
+    const groups = [];
+    const index = {};
+    (Array.isArray(diffs) ? diffs : []).forEach(function (d) {
+      const key = diffKey(d).split('|').slice(0, 2).join('|');
+      let g = index[key];
+      if (!g) {
+        g = {
+          key: key,
+          path: d.path,
+          recordId: d.recordId || '',
+          recordName: d.recordName || '',
+          index: d.index === undefined ? null : d.index,
+          rows: [],
+          surfaces: []
+        };
+        index[key] = g;
+        groups.push(g);
+      }
+      if (!g.recordName && d.recordName) {
+        g.recordName = d.recordName;
+      }
+      g.rows.push(d);
+      (Array.isArray(d.surfaces) ? d.surfaces : []).forEach(function (s) {
+        if (g.surfaces.indexOf(s) === -1) {
+          g.surfaces.push(s);
+        }
+      });
+    });
+    return groups;
+  }
+  function groupTitle(g) {
+    if (!g.recordId && (g.index === null || g.index === undefined)) {
+      return pathLabel(g.path);
+    }
+    if (g.recordName) {
+      return g.recordName;
+    }
+    if (g.recordId) {
+      return g.recordId;
+    }
+    return 'Item ' + (g.index + 1);
+  }
+  function renderGroups(groups) {
+    return groups
+      .map(function (g) {
+        const scalar = !g.recordId && (g.index === null || g.index === undefined);
+        const rows = g.rows
+          .map(function (d) {
+            const label = d.field ? fieldLabel(d.field) : 'Value';
+            return (
+              '<div class="rv-row">' +
+              '<span class="rv-f">' +
+              esc(label) +
+              '</span>' +
+              '<span class="rv-b">' +
+              esc(valText(d.before, d.beforeAbsent === true, 'not set')) +
+              '</span>' +
+              '<span class="rv-arrow" aria-hidden="true">&rarr;</span>' +
+              '<span class="rv-a">' +
+              esc(valText(d.after, d.afterAbsent === true, 'removed')) +
+              '</span>' +
+              '</div>'
+            );
+          })
+          .join('');
+        const surf = g.surfaces.length
+          ? '<div class="rv-surf"><span class="rv-surf-k">Affects</span>' +
+            g.surfaces
+              .map(function (s) {
+                return '<em>' + esc(s) + '</em>';
+              })
+              .join('') +
+            '</div>'
+          : '';
+        return (
+          '<div class="rv-g">' +
+          '<div class="rv-g-head">' +
+          (scalar
+            ? '<span class="rv-name">' + esc(pathLabel(g.path)) + '</span>'
+            : '<span class="rv-kind">' +
+              esc(pathLabel(g.path)) +
+              '</span><span class="rv-name">' +
+              esc(groupTitle(g)) +
+              '</span>') +
+          '</div>' +
+          '<div class="rv-rows">' +
+          rows +
+          '</div>' +
+          surf +
+          '</div>'
+        );
+      })
+      .join('');
+  }
+
   // OWNER FIX 2026-09-24 (session-owner review gate): owner identity is
   // either-auth (code OR session). A signed-in owner with no code held on the
   // device used to get "Owner code required." and never saw their own review
@@ -124,37 +246,60 @@ var MMGR = window.MMGR || {};
               (p.decidedBy ? ' by ' + esc(p.decidedBy) : '') +
               '</span>';
           }
-          const nDiffs = Array.isArray(p.diffs) ? p.diffs.length : 0;
-          const diffsToggle = nDiffs
-            ? '<button type="button" class="cl-toggle" data-action="cloudReviewToggleDiffs" data-id="' +
+          const diffs = Array.isArray(p.diffs) ? p.diffs : [];
+          const nDiffs = diffs.length;
+          const groups = groupDiffs(diffs);
+          const nRecords = groups.length;
+          // Long proposals start collapsed; the summary line still states the
+          // full scope, so the owner knows what Accept will apply.
+          const collapsed = nDiffs > 8;
+          const diffsToggle = collapsed
+            ? '<button type="button" class="cl-toggle rv-toggle" data-action="cloudReviewToggleDiffs" data-id="' +
               p.id +
+              '" data-count="' +
+              nDiffs +
               '" aria-expanded="false" aria-controls="rv-diffs-' +
               p.id +
-              '" aria-label="Show field diffs for proposal ' +
-              p.id +
-              '" title="Show field-level before/after values"></button>'
+              '" title="Show every field change">Show all ' +
+              nDiffs +
+              ' changes</button>'
             : '';
           const diffsPanel = nDiffs
-            ? '<div class="cl-diffs is-hide" id="rv-diffs-' +
+            ? '<div class="rv-groups' +
+              (collapsed ? ' is-hide' : '') +
+              '" id="rv-diffs-' +
               p.id +
               '">' +
-              renderDiffPanel({ diffs: p.diffs }) +
+              renderGroups(groups) +
               '</div>'
-            : '';
+            : '<div class="sr-hint">This proposal carries no field changes.</div>';
+          const meta =
+            nDiffs +
+            ' field change' +
+            (nDiffs === 1 ? '' : 's') +
+            ' across ' +
+            nRecords +
+            ' record' +
+            (nRecords === 1 ? '' : 's') +
+            (p.diffTruncated ? ' (showing the first ' + nDiffs + ')' : '');
           return (
-            '<div class="sr" style="border:1px solid var(--border);border-radius:var(--radius);padding:6px 8px;margin-top:6px">' +
-            '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+            '<div class="rv-card">' +
+            '<div class="rv-head">' +
+            '<span class="rv-src">' +
             src +
+            '</span>' +
             badge +
             diffsToggle +
-            '<span class="sr-hint" style="margin:0">proposed ' +
+            '</div>' +
+            '<div class="rv-meta">' +
+            esc(meta) +
+            ' &middot; proposed ' +
             esc(when) +
-            '</span>' +
-            '<span style="margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
-            actions +
-            '</span>' +
             '</div>' +
             diffsPanel +
+            '<div class="rv-actions">' +
+            actions +
+            '</div>' +
             '</div>'
           );
         })
@@ -233,6 +378,8 @@ var MMGR = window.MMGR || {};
     if (btn) {
       btn.classList.toggle('open', show);
       btn.setAttribute('aria-expanded', show ? 'true' : 'false');
+      const n = btn.getAttribute('data-count') || '';
+      btn.textContent = show ? 'Hide changes' : 'Show all ' + n + ' changes';
     }
   }
 
@@ -291,10 +438,26 @@ var MMGR = window.MMGR || {};
         cloudReviewList();
         return;
       }
+      // OWNER 2026-11-12: accepting must SHOW the change. Pull the cloud
+      // snapshot into the open workspace (per-field merge, no reload) and say
+      // how many updates landed.
+      setStatus('Accepted - refreshing this project\u2026', 'busy');
+      let pull = null;
+      try {
+        pull = C.cloudPullMerge ? await C.cloudPullMerge() : null;
+      } catch (e) {
+        pull = null;
+      }
       setStatus(
-        'Accepted - the change is now in the cloud project (' +
-          String(data.savedAt).slice(0, 19).replace('T', ' ') +
-          '). Load from Cloud to pull it into this workspace.',
+        'Accepted - the change is now in the cloud project' +
+          (pull && pull.ok && pull.adopted
+            ? ' and ' +
+              pull.adopted +
+              ' update' +
+              (pull.adopted === 1 ? '' : 's') +
+              ' were pulled into this workspace'
+            : '') +
+          '.',
         'ok'
       );
       cloudReviewList();

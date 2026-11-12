@@ -323,6 +323,29 @@ async function rl(request, bucket, env) {
   return null; // not limited
 }
 
+// MCP-shaped 429 (MCP-DIRECTIVE 2026-11-11 #9): a plain transport 429 with a
+// non-JSON-RPC body makes compliant MCP clients treat the session as dead.
+// The MCP routes carry their own HTTP status + Retry-After, but wrap the body
+// in a JSON-RPC error so the client can back off and reconnect cleanly.
+function mcpRateLimitedResponse(r) {
+  const retryAfter = (r && r.headers && r.headers.get('Retry-After')) || '60';
+  return new Response(
+    JSON.stringify({
+      jsonrpc: '2.0',
+      id: null,
+      error: { code: -32000, message: 'Rate limited. Retry after ' + retryAfter + ' seconds.' }
+    }),
+    {
+      status: 429,
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'Retry-After': String(retryAfter)
+      }
+    }
+  );
+}
+
 /* ============================================================
    MAIN ROUTER
    ============================================================ */
@@ -369,7 +392,7 @@ export async function routeApi(request, env, url) {
     if ((path === '/api/mcp' || path === '/api/mcp/') && request.method === 'POST') {
       const r = await rl(request, 'general', env);
       if (r) {
-        return r;
+        return mcpRateLimitedResponse(r);
       }
       return handleAppwideMcp(request, env);
     }
@@ -1410,7 +1433,7 @@ export async function routeApi(request, env, url) {
       // general bucket as every sibling route.
       const r = await rl(request, 'general', env);
       if (r) {
-        return r;
+        return mcpRateLimitedResponse(r);
       }
       return handleMcpServer(request, env, mcpMatch[1]);
     }

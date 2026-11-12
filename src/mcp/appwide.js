@@ -45,6 +45,7 @@ import {
   TOOLS,
   executeTool,
   queueMcpProposal,
+  validateProposalEnvelope,
   MCP_AUTH_REFUSAL,
   MCP_PREMIUM_REFUSAL
 } from './server.js';
@@ -71,6 +72,7 @@ function buildAppwideTools() {
     'get_tasks',
     'get_budget',
     'get_deliveries',
+    'get_weekly_summary',
     'get_risks',
     'get_weather',
     'get_meetings',
@@ -194,14 +196,31 @@ async function resolveProjectAccess(env, accountSub, projectId) {
     return { role: 'owner', mcpEnabled: owned.mcp_enabled !== 0, row: owned };
   }
   const adopted = await env.DB.prepare(
-    'SELECT p.project_id, p.owner_code_hash, p.owner_code_salt, p.latest_r2_key, p.mcp_enabled, p.deleted_at, a.role AS adopted_role FROM cloud_adoptions a JOIN cloud_projects p ON p.project_id = a.project_id WHERE a.recipient_sub = ? AND a.project_id = ? AND p.deleted_at IS NULL'
+    'SELECT p.project_id, p.owner_code_hash, p.owner_code_salt, p.latest_r2_key, p.mcp_enabled, p.deleted_at, a.role AS adopted_role, e.scope AS editor_scope FROM cloud_adoptions a JOIN cloud_projects p ON p.project_id = a.project_id LEFT JOIN cloud_editor_codes e ON e.id = a.editor_code_id WHERE a.recipient_sub = ? AND a.project_id = ? AND p.deleted_at IS NULL'
   )
     .bind(accountSub, projectId)
     .first();
   if (adopted) {
+    // The adopted member's real section scope lives on the editor code, not on
+    // a role template. Parsing it here gives the app-wide server the SAME
+    // visible sections the app itself would hand that member, and makes a
+    // diff outside those sections a genuine "outside the granted sections"
+    // refusal instead of silently widening access.
+    let scope = [];
+    try {
+      const p = adopted.editor_scope ? JSON.parse(adopted.editor_scope) : null;
+      if (Array.isArray(p)) {
+        scope = p.filter(function (x) {
+          return !!CLOUD_SECTIONS[x];
+        });
+      }
+    } catch (e) {
+      scope = [];
+    }
     return {
       role: adopted.adopted_role === 'view' ? 'view' : 'editor',
       mcpEnabled: adopted.mcp_enabled !== 0,
+      scope: scope,
       row: adopted
     };
   }
@@ -396,6 +415,42 @@ export async function handleAppwideMcp(request, env) {
     }
 
     const row = access.row;
+    let auth;
+    if (access.role === 'owner') {
+      auth = { role: 'owner', label: 'MCP AI' };
+    } else {
+      // Prefer the adopted member's own section scope (from the editor code).
+      // Only fall back to a role template when the row carries none - and map
+      // the adoption roles ('editor' | 'view') to real templates, because
+      // teamScopeForRole knows manager/supervisor/contractor/client, not
+      // 'editor'. Passing an unknown role yields an empty scope, which would
+      // refuse every read.
+      let scope = Array.isArray(access.scope) ? access.scope : [];
+      if (!scope.length) {
+        scope =
+          access.role === 'view'
+            ? teamScopeForRole('client', Object.keys(CLOUD_SECTIONS))
+            : teamScopeForRole('manager');
+      }
+      auth = {
+        role: 'api',
+        label: 'MCP AI',
+        scope: scope,
+        budgetRead: scope.indexOf('bud') > -1,
+        budgetWrite: access.role !== 'view' && scope.indexOf('bud') > -1
+      };
+    }
+
+    // P0 (MCP-DIRECTIVE 2026-11-11): reject an empty/oversized/invalid
+    // apply_changes envelope BEFORE loading the snapshot. Same shared
+    // validator as the project endpoint, so refusal text cannot drift.
+    if (toolName === 'apply_changes') {
+      const precheck = validateProposalEnvelope(toolArgs, auth);
+      if (precheck) {
+        return rpcResult(id, precheck);
+      }
+    }
+
     const state = row.latest_r2_key
       ? await cloudReadState(
           env,
@@ -404,20 +459,6 @@ export async function handleAppwideMcp(request, env) {
           row.owner_code_salt
         )
       : null;
-
-    let auth;
-    if (access.role === 'owner') {
-      auth = { role: 'owner', label: 'MCP AI' };
-    } else {
-      const scope = teamScopeForRole(access.role);
-      auth = {
-        role: 'api',
-        label: 'MCP AI',
-        scope: scope,
-        budgetRead: scope.indexOf('bud') > -1,
-        budgetWrite: scope.indexOf('bud') > -1
-      };
-    }
 
     if (toolName === 'apply_changes') {
       const result = executeTool(
@@ -431,7 +472,11 @@ export async function handleAppwideMcp(request, env) {
         state
       );
       if (result.pendingApply) {
-        return await queueMcpProposal(env, projectId, auth, toolArgs, id, state);
+        // queueMcpProposal returns a JSON-RPC envelope object; the router
+        // expects a Response from this handler, so wrap it here (the project
+        // endpoint wraps it in handleMcpServer - same envelope either way).
+        const proposal = await queueMcpProposal(env, projectId, auth, toolArgs, id, state);
+        return json(proposal, 200);
       }
       return rpcResult(id, result);
     }

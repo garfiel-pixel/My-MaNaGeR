@@ -242,7 +242,10 @@ function makeEnv(world) {
           latest_r2_key: a.latest_r2_key,
           mcp_enabled: a.mcp_enabled,
           deleted_at: a.deleted_at || null,
-          adopted_role: a.role
+          adopted_role: a.role,
+          // The handler reads the adopted member's real section scope from the
+          // joined editor code. Mirror that here.
+          editor_scope: a.editor_scope !== undefined ? a.editor_scope : null
         };
       }
       const sub = args[0];
@@ -289,7 +292,23 @@ function makeEnv(world) {
       );
     }
   };
-  return { DB: db, KV: {}, R2: {} };
+  // R2 mock: serve a plaintext state blob per project id so the write-path
+  // arms exercise the REAL state load + scope merge + proposal pipeline.
+  const r2 = {
+    async get(key) {
+      const m = /^projects\/([^/]+)\/latest\.json$/.exec(String(key || ''));
+      if (m && world.states && world.states[m[1]]) {
+        const blob = JSON.stringify(world.states[m[1]]);
+        return {
+          async text() {
+            return blob;
+          }
+        };
+      }
+      return null;
+    }
+  };
+  return { DB: db, KV: {}, R2: r2, __store: store };
 }
 
 // ---- request helper -------------------------------------------------------
@@ -866,6 +885,301 @@ async function metaCall(env, pathname) {
       pids.indexOf('p2') > -1 &&
       listedJson.projects.find(p => p.projectId === 'p2').accessRole === 'editor',
     listedJson
+  );
+
+  // ---- WAVE 2 WRITE PATH (MCP-DIRECTIVE 2026-11-11) -----------------------
+  // These drive the REAL proposal pipeline (state load -> scope merge ->
+  // cloud_reviews insert) against an in-memory R2 blob, so they prove the
+  // app-wide write path queues exactly ONE proposal and never forks the
+  // project executor.
+  const wTasks = [];
+  for (let i = 1; i <= 30; i++) {
+    wTasks.push({
+      id: 't' + i,
+      name: 'Task ' + i,
+      status: 'todo',
+      startDate: '2026-10-01',
+      endDate: '2026-10-05'
+    });
+  }
+  const wState = {
+    schemaVersion: 19,
+    projectId: 'p1',
+    currency: 'USD',
+    tasks: wTasks,
+    risks: [],
+    budgetLines: []
+  };
+
+  section('APP-WIDE MCP W1 — empty apply_changes is a structured error');
+  const envW = makeEnv({
+    config: { account_sub: 'sub-abc', enabled: 1, policy: 'allow_all', tool_subset: null },
+    subscription: { owner_sub: 'sub-abc', status: 'active', tier: 'premium' },
+    projects: [
+      {
+        project_id: 'p1',
+        google_sub: 'sub-abc',
+        owner_email: null,
+        mcp_enabled: 1,
+        owner_code_hash: 'h',
+        owner_code_salt: 's',
+        latest_r2_key: 'projects/p1/latest.json'
+      }
+    ],
+    adoptions: [],
+    states: { p1: wState }
+  });
+  const bearerW = await tok(envW, 'sub-abc');
+  const wEmpty = await mcpCall(
+    envW,
+    {
+      jsonrpc: '2.0',
+      id: 20,
+      method: 'tools/call',
+      params: { name: 'apply_changes', arguments: { projectId: 'p1' } }
+    },
+    bearerW
+  );
+  check(
+    'empty apply_changes returns isError "Nothing provided"',
+    wEmpty &&
+      wEmpty.result &&
+      wEmpty.result.isError === true &&
+      /Nothing provided/.test(wEmpty.result.content[0].text),
+    wEmpty
+  );
+  check(
+    'empty apply_changes queued NO review row',
+    envW.__store.cloud_reviews.length === 0,
+    envW.__store.cloud_reviews.length
+  );
+
+  section('APP-WIDE MCP W2 — one diff queues one proposal');
+  const w1 = await mcpCall(
+    envW,
+    {
+      jsonrpc: '2.0',
+      id: 21,
+      method: 'tools/call',
+      params: {
+        name: 'apply_changes',
+        arguments: {
+          projectId: 'p1',
+          diffs: [{ path: 'tasks', recordId: 't1', field: 'status', after: 'completed' }]
+        }
+      }
+    },
+    bearerW
+  );
+  check(
+    'one diff is accepted and queued',
+    w1 &&
+      w1.result &&
+      !w1.result.isError &&
+      /Queued 1 field change/.test(w1.result.content[0].text),
+    w1
+  );
+  check(
+    'one diff created exactly one cloud_reviews row',
+    envW.__store.cloud_reviews.length === 1 &&
+      envW.__store.cloud_reviews[0].proposal_type === 'mcp',
+    envW.__store.cloud_reviews
+  );
+
+  section('APP-WIDE MCP W3 — 30 diffs queue ONE proposal');
+  const wDiffs = [];
+  for (let i = 1; i <= 30; i++) {
+    wDiffs.push({ path: 'tasks', recordId: 't' + i, field: 'status', after: 'completed' });
+  }
+  const w30 = await mcpCall(
+    envW,
+    {
+      jsonrpc: '2.0',
+      id: 22,
+      method: 'tools/call',
+      params: { name: 'apply_changes', arguments: { projectId: 'p1', diffs: wDiffs } }
+    },
+    bearerW
+  );
+  check(
+    '30 diffs are accepted and queued',
+    w30 &&
+      w30.result &&
+      !w30.result.isError &&
+      /Queued 30 field change/.test(w30.result.content[0].text),
+    w30
+  );
+  check(
+    '30 diffs still created exactly ONE review row',
+    envW.__store.cloud_reviews.length === 2,
+    envW.__store.cloud_reviews.length
+  );
+
+  section('APP-WIDE MCP W3b — over-cap envelope is refused before state load');
+  const tooMany = [];
+  for (let i = 0; i < 501; i++) {
+    tooMany.push({ path: 'tasks', recordId: 't' + i, field: 'status', after: 'completed' });
+  }
+  const wCap = await mcpCall(
+    envW,
+    {
+      jsonrpc: '2.0',
+      id: 23,
+      method: 'tools/call',
+      params: { name: 'apply_changes', arguments: { projectId: 'p1', diffs: tooMany } }
+    },
+    bearerW
+  );
+  check(
+    'more than 500 diffs is refused with a cap message',
+    wCap &&
+      wCap.result &&
+      wCap.result.isError === true &&
+      /at most 500 diffs/.test(wCap.result.content[0].text),
+    wCap
+  );
+
+  section('APP-WIDE MCP W4 — view role cannot propose writes');
+  const envViewW = makeEnv({
+    config: { account_sub: 'sub-abc', enabled: 1, policy: 'allow_all', tool_subset: null },
+    subscription: { owner_sub: 'sub-abc', status: 'active', tier: 'premium' },
+    projects: [],
+    adoptions: [
+      {
+        recipient_sub: 'sub-abc',
+        project_id: 'p2',
+        role: 'view',
+        mcp_enabled: 1,
+        owner_code_hash: 'h',
+        owner_code_salt: 's',
+        latest_r2_key: 'projects/p2/latest.json',
+        editor_scope: JSON.stringify(['wbs'])
+      }
+    ],
+    states: { p2: wState }
+  });
+  const bearerViewW = await tok(envViewW, 'sub-abc');
+  const wView = await mcpCall(
+    envViewW,
+    {
+      jsonrpc: '2.0',
+      id: 24,
+      method: 'tools/call',
+      params: {
+        name: 'apply_changes',
+        arguments: {
+          projectId: 'p2',
+          diffs: [{ path: 'tasks', recordId: 't1', field: 'status', after: 'completed' }]
+        }
+      }
+    },
+    bearerViewW
+  );
+  check(
+    'view role write is refused',
+    wView &&
+      wView.result &&
+      wView.result.isError === true &&
+      /view-only/.test(wView.result.content[0].text),
+    wView
+  );
+
+  section('APP-WIDE MCP W5 — out-of-scope diff is refused');
+  const envScopeW = makeEnv({
+    config: { account_sub: 'sub-abc', enabled: 1, policy: 'allow_all', tool_subset: null },
+    subscription: { owner_sub: 'sub-abc', status: 'active', tier: 'premium' },
+    projects: [],
+    adoptions: [
+      {
+        recipient_sub: 'sub-abc',
+        project_id: 'p3',
+        role: 'editor',
+        mcp_enabled: 1,
+        owner_code_hash: 'h',
+        owner_code_salt: 's',
+        latest_r2_key: 'projects/p3/latest.json',
+        editor_scope: JSON.stringify(['wbs'])
+      }
+    ],
+    states: {
+      p3: {
+        schemaVersion: 19,
+        projectId: 'p3',
+        currency: 'USD',
+        tasks: wTasks,
+        risks: [],
+        budgetLines: [{ id: 'b1', description: 'Concrete', planned: 100 }]
+      }
+    }
+  });
+  const bearerScopeW = await tok(envScopeW, 'sub-abc');
+  const wScope = await mcpCall(
+    envScopeW,
+    {
+      jsonrpc: '2.0',
+      id: 25,
+      method: 'tools/call',
+      params: {
+        name: 'apply_changes',
+        arguments: {
+          projectId: 'p3',
+          diffs: [{ path: 'budgetLines', recordId: 'b1', field: 'planned', after: 200 }]
+        }
+      }
+    },
+    bearerScopeW
+  );
+  check(
+    'diff outside the granted sections is refused',
+    wScope &&
+      wScope.result &&
+      wScope.result.isError === true &&
+      /outside the granted sections/.test(wScope.result.content[0].text),
+    wScope
+  );
+
+  section('APP-WIDE MCP W6 — mcp_enabled=0 blocks writes before the pipeline');
+  const envOffW = makeEnv({
+    config: { account_sub: 'sub-abc', enabled: 1, policy: 'allow_all', tool_subset: null },
+    subscription: { owner_sub: 'sub-abc', status: 'active', tier: 'premium' },
+    projects: [
+      {
+        project_id: 'p4',
+        google_sub: 'sub-abc',
+        owner_email: null,
+        mcp_enabled: 0,
+        owner_code_hash: 'h',
+        owner_code_salt: 's',
+        latest_r2_key: 'projects/p4/latest.json'
+      }
+    ],
+    adoptions: [],
+    states: { p4: wState }
+  });
+  const bearerOffW = await tok(envOffW, 'sub-abc');
+  const wOff = await mcpCall(
+    envOffW,
+    {
+      jsonrpc: '2.0',
+      id: 26,
+      method: 'tools/call',
+      params: {
+        name: 'apply_changes',
+        arguments: {
+          projectId: 'p4',
+          diffs: [{ path: 'tasks', recordId: 't1', field: 'status', after: 'completed' }]
+        }
+      }
+    },
+    bearerOffW
+  );
+  check(
+    'mcp_enabled=0 blocks a write',
+    wOff &&
+      wOff.result &&
+      wOff.result.isError === true &&
+      /turned off for that project/.test(wOff.result.content[0].text),
+    wOff
   );
 
   console.log(

@@ -1133,28 +1133,57 @@ export async function cloudTouchOwner(env, projectId) {
 const R2_ENC_KDF_ITERS = 100000;
 const R2_ENC_VERSION = 2;
 
+// MCP-DIRECTIVE 2026-11-11 P0: deriving the AES key costs 100,000 PBKDF2
+// iterations. Doing that on EVERY state read pushed the heavier tools
+// (get_budget, get_weekly_summary, get_table, apply_changes) over the Worker
+// CPU budget and produced Cloudflare 1102. The derivation is deterministic
+// for a given (owner_code_hash, salt), so cache the CryptoKey per isolate:
+// the first read of a project pays the KDF, every later read reuses the key.
+// Bounded so a shared isolate cannot grow without limit; a failed derivation
+// is evicted so the next request retries instead of caching a rejection.
+const R2_KEY_CACHE_MAX = 64;
+const _r2KeyCache = new Map();
+
 async function r2DeriveKey(ownerCodeHash, saltHex) {
-  // The owner_code_hash is a hex string derived from PBKDF2. Use it as
-  // key material for a second PBKDF2 derivation with a fresh salt.
-  const material = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(ownerCodeHash),
-    'PBKDF2',
-    false,
-    ['deriveKey']
-  );
-  return crypto.subtle.deriveKey(
-    {
-      name: 'PBKDF2',
-      salt: new TextEncoder().encode(saltHex),
-      iterations: R2_ENC_KDF_ITERS,
-      hash: 'SHA-256'
-    },
-    material,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  );
+  const cacheKey = String(ownerCodeHash) + ':' + String(saltHex);
+  const hit = _r2KeyCache.get(cacheKey);
+  if (hit) {
+    return hit;
+  }
+  const pending = (async function () {
+    // The owner_code_hash is a hex string derived from PBKDF2. Use it as
+    // key material for a second PBKDF2 derivation with a fresh salt.
+    const material = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(ownerCodeHash),
+      'PBKDF2',
+      false,
+      ['deriveKey']
+    );
+    return crypto.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt: new TextEncoder().encode(saltHex),
+        iterations: R2_ENC_KDF_ITERS,
+        hash: 'SHA-256'
+      },
+      material,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    );
+  })();
+  if (_r2KeyCache.size >= R2_KEY_CACHE_MAX) {
+    const oldest = _r2KeyCache.keys().next().value;
+    _r2KeyCache.delete(oldest);
+  }
+  _r2KeyCache.set(cacheKey, pending);
+  try {
+    return await pending;
+  } catch (e) {
+    _r2KeyCache.delete(cacheKey);
+    throw e;
+  }
 }
 
 function r2BytesToBase64(bytes) {
@@ -2160,22 +2189,31 @@ export async function cloudAuthApiKey(request, env, projectId, apiKey) {
   }
   const fp = await fingerprintOf(key);
   const row = await env.DB.prepare(
-    'SELECT k.id, k.key_salt, k.key_hash, k.label, k.scope, k.expires_at, k.budget_read, k.budget_write, p.deleted_at ' +
+    'SELECT k.id, k.key_fingerprint, k.key_salt, k.key_hash, k.label, k.scope, k.expires_at, k.budget_read, k.budget_write, p.deleted_at ' +
       'FROM cloud_api_keys k JOIN cloud_projects p ON p.project_id = k.project_id ' +
       'WHERE k.key_fingerprint = ? AND k.project_id = ? AND k.active = 1'
   )
     .bind(fp, projectId)
     .first();
   if (!row) {
-    // Unknown fingerprint: burn the same PBKDF2 work so timing cannot
-    // distinguish a wrong key from a right one.
+    // Unknown fingerprint. No expensive work: the candidate token is
+    // high-entropy, so the fingerprint lookup itself is the (preimage-
+    // resistant) possession proof. Burning a 100k-iteration PBKDF2 here is
+    // what tripped Cloudflare's CPU limit (MCP-DIRECTIVE P0, 2026-11-11) -
+    // an authenticated (real-key) MCP call then exceeded the Worker CPU
+    // budget and died with 1102. The 15ms floor keeps the rejection cost
+    // close to the accepted path.
     cloudAuthFail(request, projectId);
-    await hashOwnerCode(key, CLOUD_DUMMY_SALT);
     await cloudTimingSink();
     return null;
   }
-  const hash = await hashOwnerCode(key, row.key_salt);
-  if (!codesEqual(hash, row.key_hash)) {
+  // Possession proof for a HIGH-ENTROPY token: the caller must present a key
+  // whose SHA-256 fingerprint equals the stored one. For a 160-bit random
+  // token this is a real proof of possession (SHA-256 preimage resistance)
+  // and replaces the per-request 100k-iteration PBKDF2 that caused the P0
+  // outage. This shortcut is safe ONLY for high-entropy tokens - owner codes
+  // and passwords keep their KDF verification (cloudAuthOwnerEither etc.).
+  if (!codesEqual(fp, row.key_fingerprint || '')) {
     cloudAuthFail(request, projectId);
     await cloudTimingSink();
     return null;

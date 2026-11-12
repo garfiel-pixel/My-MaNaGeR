@@ -1322,6 +1322,13 @@ jobs:
         id: qa-dot-rail
         run: node tools/qa-dot-rail.cjs
 
+      # T-24 (UI-IA-AND-MCP directive 2026-11-11, F1): a collaboration-panel
+      # project name must stay on one line. Real page + real stylesheet, the
+      # same markup team-ui emits, measured at desktop and 390px.
+      - name: "T4: Collaboration panel single-line names (qa-team-collaboration)"
+        id: qa-team-collaboration
+        run: node tools/qa-team-collaboration.cjs
+
       - name: "T4: Hero globe continuous spin (qa-globe-spin)"
         id: qa-globe-spin
         run: node tools/qa-globe-spin.cjs

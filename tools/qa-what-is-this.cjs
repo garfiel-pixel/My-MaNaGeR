@@ -131,6 +131,15 @@ const launchOpts = {
     document.dispatchEvent(
       new CustomEvent('mmgr:user-changed', { detail: { email: 'qa@example.com' } })
     );
+    // OWNER 2026-11-11 (7bb9ae7 + theme pack): the row lives in the Customize
+    // modal, and that modal only opens from a `data-nav="customize"` control,
+    // which the closed-by-default rail no longer exposes to a click. Open the
+    // modal through its public API so this check still measures the thing it
+    // owns: the auth module un-hides the row and the row lays out. The
+    // signed-out path is covered by the two checks above.
+    if (window.MMGR_SKIN && typeof window.MMGR_SKIN.openModal === 'function') {
+      window.MMGR_SKIN.openModal();
+    }
     const b = document.getElementById('del-account-open');
     return {
       hidden: b.hidden,

@@ -20809,7 +20809,7 @@ body.db-page[data-skin='bento'] .btn,
 body.db-page[data-skin='bento'] .db-new-project {
   border-radius: 999px;
   background: var(--brand);
-  color: #fff;
+  color: var(--brand-on);
   border: none;
 }
 
@@ -21468,6 +21468,9 @@ body.db-page[data-skin='obsidian'],
   --brand-on: #1a1305;
   --gold: #e6b85f;
   --gold-rgb: 230, 184, 95;
+  /* gold as WORDS on this near-black canvas: the light-page bronze
+     (#7a5a0b) is unreadable here, so the skin's own accent is the ink. */
+  --gold-text: #e6b85f;
   --on-gold: #1a1305;
   --gold-ink: #e6b85f;
   --tile-bg: rgba(28, 36, 46, 0.7);
@@ -21506,7 +21509,7 @@ body.db-page[data-skin='obsidian'] .pcard.unlocked {
 /* Gold text links with the existing arrow. */
 body.db-page[data-skin='obsidian'] .pc-cta,
 body.db-page[data-skin='obsidian'] .db-link {
-  color: var(--gold);
+  color: var(--gold-text);
 }
 
 /* Primary button: gold fill, dark text, restrained shadow (no neon). */
@@ -21632,7 +21635,7 @@ body.db-page[data-skin='pegboard'] .pc-cta,
 body.db-page[data-skin='pegboard'] .btn,
 body.db-page[data-skin='pegboard'] .db-new-project {
   background: var(--brand);
-  color: #fff;
+  color: var(--brand-on);
   border: none;
   clip-path: polygon(0 0, 100% 0, 92% 100%, 0 100%);
   padding-right: 18px;
@@ -21741,7 +21744,7 @@ body.db-page[data-skin='permit'] .pc-status {
 body.db-page[data-skin='permit'] .btn,
 body.db-page[data-skin='permit'] .db-new-project {
   background: var(--brand);
-  color: #fff;
+  color: var(--brand-on);
   border: 2px solid var(--brand);
   border-radius: 2px;
 }

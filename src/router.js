@@ -165,6 +165,19 @@ import { handleAiChat } from './ai-proxy.js';
 import { handleRatebook } from './ratebook.js';
 import { handleMcpServer } from './mcp/server.js';
 import {
+  handleAppwideMcp,
+  handleMcpAdminConfig,
+  handleMcpAdminClientsList,
+  handleMcpAdminClientRevoke,
+  handleMcpAdminProjectEnabled
+} from './mcp/appwide.js';
+import {
+  handleOauthMetadata,
+  handleOauthAuthorize,
+  handleOauthToken,
+  handleOauthRegister
+} from './mcp/oauth.js';
+import {
   handleAuthGoogle,
   handleAuthNonce,
   handleAuthMe,
@@ -310,6 +323,29 @@ async function rl(request, bucket, env) {
   return null; // not limited
 }
 
+// MCP-shaped 429 (MCP-DIRECTIVE 2026-11-11 #9): a plain transport 429 with a
+// non-JSON-RPC body makes compliant MCP clients treat the session as dead.
+// The MCP routes carry their own HTTP status + Retry-After, but wrap the body
+// in a JSON-RPC error so the client can back off and reconnect cleanly.
+function mcpRateLimitedResponse(r) {
+  const retryAfter = (r && r.headers && r.headers.get('Retry-After')) || '60';
+  return new Response(
+    JSON.stringify({
+      jsonrpc: '2.0',
+      id: null,
+      error: { code: -32000, message: 'Rate limited. Retry after ' + retryAfter + ' seconds.' }
+    }),
+    {
+      status: 429,
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'Retry-After': String(retryAfter)
+      }
+    }
+  );
+}
+
 /* ============================================================
    MAIN ROUTER
    ============================================================ */
@@ -325,6 +361,40 @@ export async function routeApi(request, env, url) {
     // 2. INTERNAL PRESENCE AUTH
     if (path === '/api/internal/presence-auth' && request.method === 'POST') {
       return handlePresenceAuth(request, env);
+    }
+
+    // 2b. OAUTH 2.1 + APP-WIDE MCP — external / remote clients (Claude,
+    // ChatGPT, terminals). These are deliberately exempt from the same-origin
+    // gate (step 3): they are called by programmatic or cross-origin clients
+    // and authenticate via OAuth bearer tokens (app-wide) or per-project API
+    // keys, never the browser session. The consent page (authorize GET) is a
+    // public same-origin page that checks the session itself.
+    if (path.indexOf('/.well-known/oauth') === 0) {
+      return handleOauthMetadata(request, env, url);
+    }
+    if (path === '/api/oauth/authorize') {
+      return handleOauthAuthorize(request, env, url);
+    }
+    if (path === '/api/oauth/token') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handleOauthToken(request, env);
+    }
+    if (path === '/api/oauth/register') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handleOauthRegister(request, env);
+    }
+    if ((path === '/api/mcp' || path === '/api/mcp/') && request.method === 'POST') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return mcpRateLimitedResponse(r);
+      }
+      return handleAppwideMcp(request, env);
     }
 
     // 3. SAME-ORIGIN GATE
@@ -820,6 +890,40 @@ export async function routeApi(request, env, url) {
         return r;
       }
       return handleAdminSubscriptionClear(request, env);
+    }
+
+    // 8c. APP-WIDE MCP ADMIN (Wave 2) - the admin panel's "MCP Server" section
+    // manages the signed-in account's own MCP server. Same-origin only (the
+    // admin panel is the only caller) and scoped to the Google session in each
+    // handler, so a person can only touch their own account's config.
+    if (path === '/api/mcp/config' && (request.method === 'GET' || request.method === 'PUT')) {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handleMcpAdminConfig(request, env);
+    }
+    if (path === '/api/mcp/clients' && request.method === 'GET') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handleMcpAdminClientsList(request, env);
+    }
+    if (path === '/api/mcp/clients/revoke' && request.method === 'POST') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handleMcpAdminClientRevoke(request, env);
+    }
+    const mcpProjEnabled = path.match(/^\/api\/mcp\/projects\/([A-Za-z0-9_-]{1,64})\/enabled$/);
+    if (mcpProjEnabled && request.method === 'PUT') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handleMcpAdminProjectEnabled(request, env, mcpProjEnabled[1]);
     }
 
     // 9. CLOUD EDITORS / CHANGELOG
@@ -1329,7 +1433,7 @@ export async function routeApi(request, env, url) {
       // general bucket as every sibling route.
       const r = await rl(request, 'general', env);
       if (r) {
-        return r;
+        return mcpRateLimitedResponse(r);
       }
       return handleMcpServer(request, env, mcpMatch[1]);
     }

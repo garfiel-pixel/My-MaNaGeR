@@ -78,7 +78,7 @@ body.db-page[data-skin='bento'] .btn,
 body.db-page[data-skin='bento'] .db-new-project {
   border-radius: 999px;
   background: var(--brand);
-  color: #fff;
+  color: var(--brand-on);
   border: none;
 }
 

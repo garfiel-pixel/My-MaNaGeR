@@ -42,7 +42,11 @@ const EXACT = {
   // (css/src/86-theme-modal.css) - ~31 KB of token + component skin rules
   // scoped to body.db-page[data-skin=...]. Skins are additive and isolated, so
   // the next wave should not need another raise.
-  'css/mmgr.css': 590000,
+  // 2026-11-12 (MCP branch gate-fix): raised 590000 -> 591000 for the obsidian
+  // skin's own --gold-text token (3 lines) so gold-as-words is readable on the
+  // near-black canvas and the T-GOLD gate passes (the light-page bronze is
+  // unreadable there). Needed, not bloat; the delta is 83 bytes.
+  'css/mmgr.css': 591000,
   // 2026-11-10 (Wave 6): raised 160000 -> 163000 for the sign-in two-column
   // layout, the per-letter MMGRWP hover and the mobile stack.
   // 2026-11-10 (Wave L closeout): raised 163000 -> 166000 for the audience ring

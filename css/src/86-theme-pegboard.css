@@ -89,7 +89,7 @@ body.db-page[data-skin='pegboard'] .pc-cta,
 body.db-page[data-skin='pegboard'] .btn,
 body.db-page[data-skin='pegboard'] .db-new-project {
   background: var(--brand);
-  color: #fff;
+  color: var(--brand-on);
   border: none;
   clip-path: polygon(0 0, 100% 0, 92% 100%, 0 100%);
   padding-right: 18px;

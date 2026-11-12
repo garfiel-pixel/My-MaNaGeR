@@ -166,15 +166,16 @@
         if (!r || r.width <= 0 || r.height <= 0 || getComputedStyle(el).visibility === 'hidden') {
           continue;
         }
-        // I-11: an off-canvas element (the phone drawer parked at -105%) has
-        // a real box but is not something the person can see. A spotlight
-        // there would ring empty space, so it does not count as a target.
-        if (
-          r.bottom <= 0 ||
-          r.right <= 0 ||
-          r.top >= window.innerHeight ||
-          r.left >= window.innerWidth
-        ) {
+        // I-11: reject only a target parked OFF-CANVAS HORIZONTALLY (the phone
+        // drawer slid to -105% can never be scrolled into view, so a spotlight
+        // there would ring empty space). A target that is merely BELOW THE FOLD
+        // inside the open, scrollable rail is still reachable: render() calls
+        // scrollIntoView() on it before placing the ring, so it must not be
+        // dropped from the plan just because the rail has not scrolled to it
+        // yet. (This is what used to drop "Collaborate" and the lower rail
+        // sections: their real-box buttons sat below the fold at plan-build
+        // time and were mistaken for unreachable ones.)
+        if (r.right <= 0 || r.left >= window.innerWidth) {
           continue;
         }
         return el;
@@ -534,10 +535,84 @@
     }
   }
 
+  // I-11: a step whose target is not on screen for this person (a section
+  // hidden by a pack, the phone drawer parked off-canvas) is SKIPPED, so the
+  // walk only ever rings something real. The plan is built after the shell
+  // has settled, so a section that is merely late to render is not mistaken
+  // for a permanently hidden one.
   function buildPlan() {
     plan = STEPS.filter(function (s) {
       return !s.sel || !!pick(s.sel);
     });
+  }
+
+  // The rail's section buttons are rendered by the shell and can still be
+  // 0x0 (present in the DOM, display:flex, but no box yet) for a moment after
+  // the rail opens - on a real device this is immediate, in a cold headless
+  // boot it can take a couple of seconds. A step whose target has no box must
+  // not be dropped as "hidden" while the rail is still populating. Re-plan
+  // until the plan stops CHANGING (three unchanged polls) AND, when the rail
+  // is open, at least one section button has a real box - then render. The
+  // walker never meets a partial plan. A transient layout that momentarily
+  // hides a target must never SHRINK the walk: keep the steps already found
+  // and try again next tick.
+  function sectionsSized() {
+    if (
+      !document.body.classList.contains('sidebar-open') &&
+      !document.body.classList.contains('tour-open')
+    ) {
+      // The rail is not open, so there is nothing to wait for - render.
+      return true;
+    }
+    const list = document.querySelectorAll('.sec-btn[data-section]');
+    for (let i = 0; i < list.length; i++) {
+      const r = list[i].getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function settlePlan() {
+    let stable = 0;
+    let lastKeys = '';
+    let tries = 0;
+    (function poll() {
+      if (idx < 0) {
+        // The person closed (or the app took the screen) while we settled.
+        return;
+      }
+      const before = plan.slice();
+      buildPlan();
+      if (before.length && plan.length < before.length) {
+        // A transient layout (the rail mid-transition) must never SHRINK the
+        // walk: keep the steps already found and try again next tick.
+        plan = before;
+      }
+      const keys = plan
+        .map(function (s) {
+          return s.title;
+        })
+        .join('|');
+      if (keys === lastKeys && plan.length > 0) {
+        stable++;
+      } else {
+        stable = 0;
+        lastKeys = keys;
+      }
+      // Render only once the plan is stable AND the rail's section buttons
+      // have a real box (when the rail is open). This is what keeps a late-
+      // rendering section from being dropped. A hard try cap bounds the wait.
+      if ((stable >= 3 && sectionsSized()) || tries++ >= 50) {
+        if (!plan.length) {
+          return end();
+        }
+        render();
+        return;
+      }
+      setTimeout(poll, 120);
+    })();
   }
 
   function start(fromUser) {
@@ -547,40 +622,12 @@
     prevFocus = document.activeElement;
     openRailForTour();
     build();
-    buildPlan();
+    plan = [];
     idx = 0;
-    if (!plan.length) {
-      return end();
-    }
-    render();
-    // The shell can still be laying out when the tour auto-opens, so a step
-    // whose section button has not been rendered YET must not be dropped from
-    // the walk. While the person is still on the first card, re-plan a few
-    // times as the shell settles; only re-render when the plan actually grew.
-    if (plan.length < STEPS.length) {
-      let settleTries = 0;
-      (function settle() {
-        if (!isOpen() || idx !== 0 || settleTries++ > 30) {
-          return;
-        }
-        const before = plan.slice();
-        buildPlan();
-        if (plan.length < before.length) {
-          // A transient layout (the rail mid-transition) must never SHRINK the
-          // walk: keep the steps already found and try again next tick.
-          plan = before;
-        } else if (plan.length > before.length) {
-          render();
-          return;
-        }
-        setTimeout(settle, 150);
-      })();
-    }
-    if (fromUser) {
-      // Started from the help surface: the flag is already set, and a manual
-      // replay must not clear it, so nothing to write here.
-      return;
-    }
+    // Settle the plan (re-plan until the shell stops laying out its rail and
+    // section targets) before the first card appears, so a late-rendered
+    // section is never dropped from the walk.
+    settlePlan();
   }
 
   function next() {

@@ -71,7 +71,7 @@ body.db-page[data-skin='permit'] .pc-status {
 body.db-page[data-skin='permit'] .btn,
 body.db-page[data-skin='permit'] .db-new-project {
   background: var(--brand);
-  color: #fff;
+  color: var(--brand-on);
   border: 2px solid var(--brand);
   border-radius: 2px;
 }

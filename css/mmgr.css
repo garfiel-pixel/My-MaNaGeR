@@ -6915,6 +6915,9 @@ body.dark-mode .team-link-danger {
   align-items: center;
   flex-wrap: wrap;
 }
+.apv-ft {
+  margin-top: 10px;
+}
 .apv-grid {
   display: grid;
   grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.35fr);
@@ -6923,11 +6926,12 @@ body.dark-mode .team-link-danger {
 }
 .apv-chg {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 8px;
+  padding: 10px 12px;
   margin-bottom: 8px;
+  background: var(--card);
 }
 .apv-chg.is-large {
   border-color: var(--amber);
@@ -6937,25 +6941,216 @@ body.dark-mode .team-link-danger {
   min-width: 0;
   font-size: 0.78rem;
 }
+/* One row per change: a type pill, the record's own name, then the value
+   it moves from and to. No raw field names or ids on the surface. */
+.apv-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: var(--text);
+}
+.apv-pill {
+  padding: 1px 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  color: var(--text-muted);
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.apv-delta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-raised);
+}
+.apv-k {
+  color: var(--text-muted);
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.apv-was {
+  color: var(--text-muted);
+  text-decoration: line-through;
+  font-variant-numeric: tabular-nums;
+}
+.apv-now {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.apv-arrow {
+  width: 14px;
+  height: 14px;
+  opacity: 0.55;
+}
+.apv-diff {
+  margin-left: auto;
+  color: var(--green);
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.apv-diff.is-down {
+  color: var(--amber);
+}
 .apv-warn {
   color: var(--amber);
   font-size: 0.72rem;
+  margin-top: 6px;
+}
+.apv-flag {
+  color: var(--danger);
+  font-size: 0.72rem;
+  margin-top: 4px;
 }
 .apv-fields {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 6px;
+  margin-top: 8px;
 }
 .apv-f {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   font-size: 0.66rem;
+  color: var(--text-muted);
+}
+.apv-sect {
+  margin-bottom: 12px;
+}
+.apv-sect-h {
+  padding: 2px 0 6px;
+  color: var(--text-muted);
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.apv-col {
+  min-width: 0;
+}
+.apv-h {
+  margin-bottom: 6px;
+  color: var(--text);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.apv-h2 {
+  margin-top: 12px;
+}
+.apv-sub {
+  margin: 0;
+}
+.apv-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.apv-card {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-raised);
+}
+.apv-card > span {
+  flex-basis: 100%;
+  color: var(--text-muted);
+  font-size: 0.64rem;
+  text-transform: uppercase;
+}
+.apv-card > b {
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+.apv-card-d {
+  margin-left: auto;
+  color: var(--green);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 700;
+}
+.apv-mini {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+}
+.apv-mini th {
+  text-align: left;
+  color: var(--text-muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.apv-mini td,
+.apv-mini th {
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.apv-more {
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+.apv-more > summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.72rem;
 }
 .apv-prev {
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 8px;
-  max-height: 60vh;
+  margin-top: 8px;
+  max-height: 55vh;
   overflow: auto;
+}
+.apv-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+.apv-impact {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--gold);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+}
+.apv-stale {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--amber);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.74rem;
+}
+.apv-stale ul {
+  margin: 4px 0 8px;
+  padding-left: 18px;
 }
 .apv-tbl {
   overflow: auto;
@@ -20614,7 +20809,7 @@ body.db-page[data-skin='bento'] .btn,
 body.db-page[data-skin='bento'] .db-new-project {
   border-radius: 999px;
   background: var(--brand);
-  color: #fff;
+  color: var(--brand-on);
   border: none;
 }
 
@@ -21273,6 +21468,9 @@ body.db-page[data-skin='obsidian'],
   --brand-on: #1a1305;
   --gold: #e6b85f;
   --gold-rgb: 230, 184, 95;
+  /* gold as WORDS on this near-black canvas: the light-page bronze
+     (#7a5a0b) is unreadable here, so the skin's own accent is the ink. */
+  --gold-text: #e6b85f;
   --on-gold: #1a1305;
   --gold-ink: #e6b85f;
   --tile-bg: rgba(28, 36, 46, 0.7);
@@ -21311,7 +21509,7 @@ body.db-page[data-skin='obsidian'] .pcard.unlocked {
 /* Gold text links with the existing arrow. */
 body.db-page[data-skin='obsidian'] .pc-cta,
 body.db-page[data-skin='obsidian'] .db-link {
-  color: var(--gold);
+  color: var(--gold-text);
 }
 
 /* Primary button: gold fill, dark text, restrained shadow (no neon). */
@@ -21437,7 +21635,7 @@ body.db-page[data-skin='pegboard'] .pc-cta,
 body.db-page[data-skin='pegboard'] .btn,
 body.db-page[data-skin='pegboard'] .db-new-project {
   background: var(--brand);
-  color: #fff;
+  color: var(--brand-on);
   border: none;
   clip-path: polygon(0 0, 100% 0, 92% 100%, 0 100%);
   padding-right: 18px;
@@ -21546,7 +21744,7 @@ body.db-page[data-skin='permit'] .pc-status {
 body.db-page[data-skin='permit'] .btn,
 body.db-page[data-skin='permit'] .db-new-project {
   background: var(--brand);
-  color: #fff;
+  color: var(--brand-on);
   border: 2px solid var(--brand);
   border-radius: 2px;
 }

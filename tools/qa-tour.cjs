@@ -76,14 +76,37 @@ const overlap = (a, b, pad) => {
   );
 };
 
+// The tour settles its plan before showing the first card (a section whose
+// target is still rendering is not dropped), so it is briefly display:none
+// after start(). Wait for the overlay to be visible AND open before reading
+// geometry or clicking through it.
+async function waitTourOpen(page) {
+  await page.waitForFunction(
+    () => {
+      const r = document.getElementById('tour-root');
+      return (
+        !!r &&
+        getComputedStyle(r).display !== 'none' &&
+        window.MMGR &&
+        MMGR.Tour &&
+        MMGR.Tour.isOpen()
+      );
+    },
+    null,
+    { timeout: 8000 }
+  );
+  await page.waitForTimeout(60);
+}
+
 async function startTour(page) {
   await page.evaluate(() => {
     if (window.MMGR && window.MMGR.Tour) window.MMGR.Tour.start();
   });
-  await page.waitForTimeout(120);
+  await waitTourOpen(page);
 }
 
 async function walk(page, label, shots) {
+  await waitTourOpen(page);
   const seen = [];
   for (let i = 0; i < 20; i++) {
     const cur = await page.evaluate(() =>

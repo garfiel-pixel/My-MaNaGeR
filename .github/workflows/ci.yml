@@ -510,6 +510,10 @@ jobs:
         env:
           WRANGLER_DEV_URL: http://127.0.0.1:8787
 
+      - name: "T2: Project MCP write path (empty/1/30/200 diffs, cap, scope, P1/P2 semantics)"
+        id: qa-mcp-write-path
+        run: node tools/qa-mcp-write-path.cjs
+
       # The cancel contract against the REAL Worker. With no session cookie this
       # exercises the session gate (a bare DELETE must be refused with the
       # generic 403 body before any subscription row is read) and marks the
@@ -821,6 +825,18 @@ jobs:
         run: node tools/qa-mcp-budget.cjs
         env:
           QA_PORT: 8817
+
+      - name: "T2: MCP parity (project vs app-wide catalog, schema, refusals, projected output)"
+        id: qa-mcp-parity
+        run: node tools/qa-mcp-parity.cjs
+
+      - name: "T2: App-wide MCP (OAuth AS, PKCE, gates, write-path proposals)"
+        id: qa-appwide-mcp
+        run: node tools/qa-appwide-mcp.cjs
+
+      - name: "T2: MCP admin API (account config, client revoke, project opt-out)"
+        id: qa-mcp-admin
+        run: node tools/qa-mcp-admin.cjs
 
       - name: "T3: Project Photos browser half (panel, uploader identity, stage, upload, download, delete, view read-only)"
         id: qa-project-photos

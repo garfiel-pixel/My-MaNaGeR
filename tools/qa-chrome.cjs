@@ -274,7 +274,13 @@ const PROBE = sel => {
   const xRule = (css.match(/\.bcp-x\s*\{[^}]*\}/) || [''])[0];
   const linkRule = (css.match(/\.bcp-link\s*\{[^}]*\}/) || [''])[0];
   // border / fill live in the shared base rule both classes open with.
-  const bareBase = (css.match(/\.bcp-x,\s*\.bcp-link\s*\{[^}]*\}/) || [''])[0];
+  // Two .bcp-x, .bcp-link rules exist in the stylesheet: an align-self-only
+  // one (layout) and the bare one (appearance: none; border: 0; background:
+  // none). The first-match assumption broke when the align-self rule was
+  // added ABOVE the bare rule, so match the rule that actually declares the
+  // border - that is the one the C7 intent guards (re-baseline 2026-11-12,
+  // the intent is unchanged: the row controls are still borderless/no-fill).
+  const bareBase = (css.match(/\.bcp-x,\s*\.bcp-link\s*\{[^}]*border:\s*0[^}]*\}/) || [''])[0];
   check(
     'C7 .bcp-x and .bcp-link are borderless with no fill',
     xRule !== '' &&

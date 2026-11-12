@@ -20,6 +20,9 @@ body.db-page[data-skin='obsidian'],
   --brand-on: #1a1305;
   --gold: #e6b85f;
   --gold-rgb: 230, 184, 95;
+  /* gold as WORDS on this near-black canvas: the light-page bronze
+     (#7a5a0b) is unreadable here, so the skin's own accent is the ink. */
+  --gold-text: #e6b85f;
   --on-gold: #1a1305;
   --gold-ink: #e6b85f;
   --tile-bg: rgba(28, 36, 46, 0.7);
@@ -58,7 +61,7 @@ body.db-page[data-skin='obsidian'] .pcard.unlocked {
 /* Gold text links with the existing arrow. */
 body.db-page[data-skin='obsidian'] .pc-cta,
 body.db-page[data-skin='obsidian'] .db-link {
-  color: var(--gold);
+  color: var(--gold-text);
 }
 
 /* Primary button: gold fill, dark text, restrained shadow (no neon). */

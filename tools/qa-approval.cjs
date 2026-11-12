@@ -559,8 +559,11 @@ const snapshot = () => ({
               warn: (ov && ov.querySelector('.apv-warn') ? ov.querySelector('.apv-warn').textContent : '').trim(),
               impact: imp ? imp.textContent : '',
               cardText: ov ? (ov.querySelector('.apv-chg') ? ov.querySelector('.apv-chg').textContent : '') : '',
+
               marked: prev ? prev.querySelectorAll('tr[data-apv-chg]').length : 0,
-              hasTable: !!(prev && prev.querySelector('tbody tr'))
+              hasTable: !!(prev && prev.querySelector('tbody tr')),
+              groups: ov ? Array.from(ov.querySelectorAll('.apv-sect-h')).map(g => g.textContent) : [],
+              totals: (document.getElementById('apv-cards') || {}).textContent || ''
             };
           } catch (e) { return { threw: String(e && e.message || e) }; }
         })()`);
@@ -573,6 +576,14 @@ const snapshot = () => ({
           'V2 the changed row is marked and the card shows 120,000 to 220,000',
           v1 && v1.marked >= 1 && /120,000/.test(v1.cardText) && /220,000/.test(v1.cardText),
           v1
+        );
+        check(
+          'V2b changes are grouped and the money is shown before -> after',
+          v1 &&
+            (v1.groups || []).indexOf('Budget lines updated') > -1 &&
+            /200,000/.test(v1.totals || '') &&
+            /300,000/.test(v1.totals || ''),
+          { groups: v1 && v1.groups, totals: v1 && v1.totals }
         );
         check(
           'V3 the large-change warning is visible',

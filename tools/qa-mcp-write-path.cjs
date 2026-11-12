@@ -370,6 +370,33 @@ function textOf(res) {
   );
   check('the rest of the read tools are still listed', names.indexOf('get_tasks') > -1, names);
 
+  section('M1 — 30 mixed calls, zero failures (1102 regression guard)');
+  const lat = [];
+  let bad = 0;
+  for (let i = 0; i < 30; i++) {
+    const t0 = Date.now();
+    let res;
+    if (i % 3 === 0) {
+      res = await tool(env, 100 + i, 'get_project_summary', {});
+    } else if (i % 3 === 1) {
+      res = await tool(env, 100 + i, 'get_budget', {});
+    } else {
+      res = await tool(env, 100 + i, 'apply_changes', {
+        diffs: [{ path: 'tasks', recordId: 't1', field: 'status', after: 'completed' }]
+      });
+    }
+    lat.push(Date.now() - t0);
+    if (!res || res.jsonrpc !== '2.0' || !res.result) {
+      bad++;
+    }
+  }
+  lat.sort(function (a, b) {
+    return a - b;
+  });
+  const p95 = lat[Math.floor(lat.length * 0.95)] || lat[lat.length - 1];
+  check('30 mixed read/budget/write calls all answered', bad === 0, { bad });
+  console.log('      p95 latency: ' + p95 + ' ms (in-process, mock D1/R2)');
+
   console.log(
     '\n========== QA-MCP-WRITE-PATH RESULT: ' + pass + ' passed, ' + fail + ' failed =========='
   );

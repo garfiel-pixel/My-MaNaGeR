@@ -898,7 +898,7 @@
       desc: 'One score across every project',
       icon: 'i-activity',
       panel: true,
-      detail: false,
+      detail: true,
       cardId: 'f-health'
     },
     {
@@ -908,7 +908,7 @@
       desc: 'Minutes, actions, decision log',
       icon: 'i-list',
       panel: true,
-      detail: false,
+      detail: true,
       cardId: 'f-meetings'
     },
     {
@@ -918,7 +918,7 @@
       desc: 'Evidence-backed claims, digests',
       icon: 'i-receipt',
       panel: true,
-      detail: false,
+      detail: true,
       cardId: 'f-claims'
     },
     {
@@ -928,7 +928,7 @@
       desc: 'RFIs, submittals, permits',
       icon: 'i-folder',
       panel: true,
-      detail: false,
+      detail: true,
       cardId: 'f-registers'
     },
     {
@@ -938,7 +938,7 @@
       desc: 'Compare bids, decide by score',
       icon: 'i-target',
       panel: true,
-      detail: false,
+      detail: true,
       cardId: 'f-gonogo'
     },
     {
@@ -948,7 +948,7 @@
       desc: 'Two-week lookaheads and PPC',
       icon: 'i-clock',
       panel: true,
-      detail: false,
+      detail: true,
       cardId: 'f-lookahead'
     },
     /* The four blocks that live ONLY on features.html (no landing bento card).
@@ -966,7 +966,7 @@
       icon: 'i-key',
       panel: false,
       detail: true,
-      cardId: null
+      cardId: 'f-mcp'
     },
     {
       id: 'f-glass',
@@ -2186,14 +2186,15 @@
 })();
 
 /* ---- BENTO (I-6, 2026-11) ----
-   The features section carries 15 real .fcard nodes in a hidden pool. Four slots
-   (1 big + 2 small + 1 wide) rotate through them. To satisfy the gate every flip
-   is 5s apart and exactly ONE slot changes per event, so two slots never flip
-   within 1.5s and - because each slot walks the 15 cards with a stride of 4 -
-   every panel appears at least once per minute. Flips pause on hover/focus and
-   when the section scrolls off screen, and stop entirely under reduced motion or
-   Performance Mode (the first four panels stay put). The motion is decorative:
-   the slots are aria-hidden and the full panel list is in #features-all. */
+   16 feature cards (15 panels + the MCP connector) live in a hidden pool. Four
+   slots (1 big + 2 small + 1 wide) rotate through them. To satisfy the gate
+   every flip is 5s apart and exactly ONE slot changes per event, so two slots
+   never flip within 1.5s and - because each slot walks the 16 cards with a
+   stride of 4 - every panel appears at least once per minute. Flips pause on
+   hover/focus and when the section scrolls off screen, and stop entirely under
+   reduced motion or Performance Mode (the first four panels stay put). The
+   motion is decorative: the slots are aria-hidden and the full panel list is in
+   #features-all. */
 (function mountBento() {
   var section = document.getElementById('features');
   if (!section) {

@@ -3,13 +3,13 @@
    ------------------------------------------------------------
    The flip timing is hard to observe without a browser, so the gate replays
    the EXACT mountBento algorithm (STEP=5000ms, order [big,top,mid,wide],
-   15 cards, g starts at 4) and asserts the contract deterministically:
+   16 cards, g starts at 4) and asserts the contract deterministically:
      - over a 60s run, no two logged flips fall within 1.5s of each other;
-     - every one of the 15 panels appears at least once;
+     - every one of the 16 panels appears at least once;
      - exactly four slots exist and at most four cards are ever visible
        (mobile = four stacked slots, never a taller stack).
    Plus structural checks on index.html / js/marketing.js: the four slots, the
-   15-card pool, the sr-only full list, the "See all features" link, and the
+   16-card pool, the sr-only full list, the "See all features" link, and the
    reduced-motion path that pins the first four panels.
    Exit non-zero on any failure.
    ============================================================ */
@@ -35,14 +35,14 @@ const slotCount = (indexHtml.match(/data-slot="(big|top|mid|wide)"/g) || []).len
 check('T-BENTO four bento slots (big/top/mid/wide)', slotCount === 4, slotCount);
 
 const poolCards = (indexHtml.match(/<article class="fcard"/g) || []).length;
-check('T-BENTO pool holds 15 feature cards', poolCards === 15, poolCards);
+check('T-BENTO pool holds 16 feature cards', poolCards === 16, poolCards);
 
 const srList = (indexHtml.match(/<li>[^<]+<\/li>/g) || []).filter(s =>
-  /My MaNaGeR AI|WBS|Kanban|Budget|Risk|RACI|Voice|Weather|Offline|Health|Meetings|Claims|Registers|Bid Leveling|Lookahead/i.test(
+  /My MaNaGeR AI|WBS|Kanban|Budget|Risk|RACI|Voice|Weather|Offline|Health|Meetings|Claims|Registers|Bid Leveling|Lookahead|MCP/i.test(
     s
   )
 );
-check('T-BENTO sr-only full panel list has 15 entries', srList.length === 15, srList.length);
+check('T-BENTO sr-only full panel list has 16 entries', srList.length === 16, srList.length);
 
 check(
   'T-BENTO "See all features" link present',
@@ -64,7 +64,7 @@ check(
 );
 
 // ---- deterministic replay of the flip algorithm -------------------------
-const CARDS = 15;
+const CARDS = 16;
 const ORDER = ['big', 'top', 'mid', 'wide'];
 const STEP = 5000;
 const flips = []; // {t, slot, card}
@@ -89,7 +89,7 @@ check('T-BENTO exactly one slot flips per 5s tick', onePerTick, flips.length);
 // 3. Every panel appears at least once across the initial fill + rotation.
 const seen = new Set([0, 1, 2, 3]); // initial fill
 flips.forEach(f => seen.add(f.card));
-check('T-BENTO every one of the 15 panels appears within 60s', seen.size === 15, seen.size);
+check('T-BENTO every one of the 16 panels appears within 60s', seen.size === 16, seen.size);
 
 // 4. At most four cards are ever visible (four slots).
 check('T-BENTO at most four slots visible (no taller stack)', slotCount === 4, slotCount);

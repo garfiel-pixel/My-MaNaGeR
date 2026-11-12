@@ -407,8 +407,8 @@ async function newPage(browser, opts) {
   );
   check(
     'U-12',
-    'exactly the 15 real cards exist (no clones)',
-    feat.cards === 15,
+    'exactly the 16 real cards exist (no clones)',
+    feat.cards === 16,
     'cards=' + feat.cards
   );
   const slide = await page.evaluate(

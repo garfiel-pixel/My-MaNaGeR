@@ -108,6 +108,9 @@
   ];
 
   // ---- Field-guide sheets (36 rows, kept honest by T-18) ----------------
+  // Ascending, A-00 through A-35. Signing In is A-35 (T-18): it used to share
+  // A-26 with the Shared Resource Pool, which made both sheets unfindable by
+  // number.
   var SHEETS = [
     { no: 'A-00', id: 'welcome', title: 'Welcome & Orientation' },
     { no: 'A-01', id: 'quickstart', title: 'Your First 15 Minutes' },
@@ -115,7 +118,6 @@
     { no: 'A-03', id: 'charter', title: 'Charter & Definitions' },
     { no: 'A-04', id: 'wbs', title: 'WBS, Gantt & Critical Path' },
     { no: 'A-05', id: 'kanban', title: 'Kanban & RACI' },
-    { no: 'A-34', id: 'ideas', title: 'Intake & Agenda' },
     { no: 'A-06', id: 'resources', title: 'Resources & Budget' },
     { no: 'A-07', id: 'risk', title: 'Risk, Issues & Simulation' },
     { no: 'A-08', id: 'records', title: 'Stakeholders, Changes & Closure' },
@@ -125,7 +127,6 @@
     { no: 'A-12', id: 'comms', title: 'Comms Log & Documents' },
     { no: 'A-13', id: 'ai', title: 'AI Assistant' },
     { no: 'A-14', id: 'dmaic', title: 'DMAIC (Six Sigma Mode)' },
-    { no: 'A-26', id: 'signin', title: 'Signing In' },
     { no: 'A-15', id: 'data', title: 'Data, Backup & Access' },
     { no: 'A-16', id: 'weather', title: 'Weather & Forecast' },
     { no: 'A-17', id: 'interface', title: 'Interface & Shortcuts' },
@@ -144,7 +145,9 @@
     { no: 'A-30', id: 'build-cost', title: 'Build Cost Calculator' },
     { no: 'A-31', id: 'procurement', title: 'Procurement & Quotes' },
     { no: 'A-32', id: 'named-team', title: 'Named Team Members' },
-    { no: 'A-33', id: 'budget-boq', title: 'Budget from BOQ, Deliveries & Approvals' }
+    { no: 'A-33', id: 'budget-boq', title: 'Budget from BOQ, Deliveries & Approvals' },
+    { no: 'A-34', id: 'ideas', title: 'Intake & Agenda' },
+    { no: 'A-35', id: 'signin', title: 'Signing In' }
   ];
 
   // ---- Action allow-list ------------------------------------------------

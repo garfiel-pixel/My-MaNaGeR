@@ -2681,3 +2681,22 @@ narrower reading of §14.3).
   (app-wide uses the 401 challenge, not MCP_AUTH_REFUSAL), qa-appshell
   (field-guide link stays same-tab), CodeQL (no response object in the
   harness log).
+
+- T-02 PROJECT CORRECTION SUBMITTED 2026-11-12 (owner supplied the premium
+  section-scoped key sk-mmgr-...-YYF5JV): the write path is now proven in
+  production with real data. apply_changes {} returns the validation error
+  ("Nothing provided...") and no 1102. The 30-diff payload was rebuilt from
+  LIVE state (the old file was a deleted test fixture): 12 tasks overdue and
+  still todo (the directive counted 11 on 2026-11-11; t_muigeuw3_10 ended
+  that day and crossed midnight), 8 risks with an empty description, 11 risks
+  with an empty mitigation - 31 diffs, one apply_changes call, ONE row.
+  Proposal #43, status pending, changeCount 31. Live state re-read after the
+  submit: every task still todo, risk descriptions and mitigations still
+  empty - nothing applies until the owner accepts it in Review incoming
+  changes. Rules used: overdue tasks move todo -> inprogress (late, not
+  untouched; no dates invented); each description is derived from the risk
+  name and its own note; each mitigation copies the record note (risk #20
+  gets an authored mitigation because its note is a status line). Recorded
+  finding, outside T-02 scope: mcp_muga445f_18/19/20 already carry
+  descriptions that belong to different risks - propose replacements
+  separately. Still open after this: owner acceptance of #43.

@@ -477,7 +477,18 @@ async function main() {
   );
 
   const verifierD = 'd-verifier-' + Math.random().toString(36).slice(2);
-  const challengeD = require('crypto').createHash('sha256').update(verifierD).digest('hex');
+  const challengeD = require('crypto').createHash('sha256').update(verifierD).digest('base64url');
+  // RFC 7636 appendix B: a real client computes base64url, so a hex-only
+  // server passes its own fixture and fails every connector.
+  const rfcVector = require('crypto')
+    .createHash('sha256')
+    .update('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk')
+    .digest('base64url');
+  check(
+    'D0 RFC 7636 S256 test vector is base64url',
+    rfcVector === 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
+    rfcVector
+  );
   const redirectD = 'https://claude.ai/api/mcp/auth_callback';
   const regD = await api('POST', '/api/oauth/register', {
     client_name: 'Claude',
@@ -506,6 +517,17 @@ async function main() {
       consentHtml.indexOf('Claude') > -1 &&
       consentHtml.indexOf('claude.ai') > -1,
     { status: consentRes.status }
+  );
+  check(
+    'D4b consent page is branded, shows the signed-in account and both decisions',
+    consentHtml.indexOf('mmgr-icons.svg#i-mpw') > -1 &&
+      consentHtml.indexOf(E2E_EMAIL) > -1 &&
+      consentHtml.indexOf('name="decision" value="approve"') > -1 &&
+      consentHtml.indexOf('name="decision" value="deny"') > -1,
+    {
+      mark: consentHtml.indexOf('mmgr-icons.svg#i-mpw') > -1,
+      email: consentHtml.indexOf(E2E_EMAIL) > -1
+    }
   );
 
   const approveRes = await fetch(BASE + '/api/oauth/authorize', {

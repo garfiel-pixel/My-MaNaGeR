@@ -397,8 +397,18 @@ async function sessionCookie(env, sub) {
   section('OAUTH O1 — PKCE S256 challenge');
   const verifier = 'test-verifier-0123456789abcdef';
   const challenge = await oauth.pkceChallenge(verifier);
-  const expected = crypto.createHash('sha256').update(verifier).digest('hex');
-  check('challenge equals SHA-256(verifier)', challenge === expected, { challenge, expected });
+  // RFC 7636 section 4.2: BASE64URL(SHA256(ASCII(verifier))), never hex.
+  const expected = crypto.createHash('sha256').update(verifier).digest('base64url');
+  check('challenge equals base64url SHA-256(verifier)', challenge === expected, {
+    challenge,
+    expected
+  });
+  const rfcChallenge = await oauth.pkceChallenge('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk');
+  check(
+    'RFC 7636 appendix B test vector',
+    rfcChallenge === 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
+    rfcChallenge
+  );
 
   section('OAUTH O2/O3 — token issue + verify + rejection');
   const envT = makeEnv({ config: null, subscription: null, projects: [], adoptions: [] });

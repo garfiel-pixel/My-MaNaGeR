@@ -619,7 +619,10 @@ async function main() {
       // Hold the owner code + local state, render the real drawer.
       const b2 = await ev(`(async function(){
         try {
-          sessionStorage.setItem('mmgr_cloud_code_${PID}', ${JSON.stringify(OC)});
+          // I-1 fix (2026-11-08): getCode() now reads the owner code from
+          // localStorage (was sessionStorage). Seed it there so render() lands
+          // in the held-code branch that creates #cloud-review-list.
+          localStorage.setItem('mmgr_cloud_code_${PID}', ${JSON.stringify(OC)});
           localStorage.setItem('mmgr_state_${PID}', JSON.stringify({ projectName: 'E2E MCP Probe', schemaVersion: 19, projectId: '${PID}', tasks: [{ id: 't1', name: 'Pour slab', status: 'inprogress' }] }));
           await window.MMGR.Cloud.render();
           return { hasList: !!document.getElementById('cloud-review-list') };

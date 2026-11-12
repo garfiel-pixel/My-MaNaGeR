@@ -2570,3 +2570,15 @@ narrower reading of §14.3).
   VERIFIED: probe 9/9 (local + live), plan probes 7/7, round-trip 7/7 live,
   qa-signin-page ALL PASS, qa-chrome 105/105, npm run verify exit 0. Shell
   v550, deployed aa750efe-066e-40b0-9e65-d6c8fdb00cc8.
+- CI REPAIR 2026-11-12 (nightly T3, red run 43005426937): qa-mcp-live-e2e
+  failed B2/B3/B4/B5/C1/C2 while A1-A7 stayed green. The I-1 fix (2026-11-08)
+  moved getCode() from sessionStorage to localStorage (js/mmgr-cloud.js:140),
+  but the harness's B2 still seeded sessionStorage. render() saw no code, took
+  the no-code create/link branch that never creates #cloud-review-list, so the
+  review list, Accept click, zero-diff warning and post-accept state/changelog
+  checks all failed in a cascade. Fix: seed localStorage in B2
+  (tools/qa-mcp-live-e2e.cjs); assertions unchanged (v318 Accept / zero-diff
+  contract intact). VERIFIED: qa-mcp-live-e2e 22/22 locally, npm run verify
+  exit 0, nightly 43179026640 green (T3 22/22). Commit a84fc23. Skill guard
+  added: skeptical-code-audit checklist item 10 (harness contract drift) and a
+  no-slacking failure pattern.

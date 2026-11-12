@@ -3,8 +3,10 @@ name: skeptical-code-audit
 description: >-
   Systematic, skeptical methodology for auditing a codebase for broken wiring —
   mismatched CSS classes toggled by JS, data-action/event handlers with no matching
-  map entry, DOM ids referenced in JS but missing from HTML, dead code paths, and
-  features that silently no-op instead of crashing. Use this whenever the user asks
+  map entry, DOM ids referenced in JS but missing from HTML, dead code paths,
+  features that silently no-op instead of crashing, and test harnesses that
+  silently drift from an app contract (storage key/type, DOM id, selector,
+  action name). Use this whenever the user asks
   to "audit", "check for bugs", "verify everything works", "find what's broken",
   "double check the code", or asks you to confirm a codebase is consistent/complete
   before shipping — even if they don't name a specific bug. Especially useful for
@@ -51,6 +53,22 @@ New features must register their state key in FIELD_KEYS (mmgr-state.js). Withou
 ### Render shim pattern
 Render functions extracted to js/render/*.js are accessed via mmgr-render.js shims. The shims must be called from renderDash()/renderAll() or the relevant render function, otherwise the feature's UI never initializes.
 
+### Test-harness ↔ app contract drift
+Harnesses seed state and assert on app contracts: storage keys AND storage type (localStorage vs sessionStorage), DOM ids/classes, `data-action` names, selectors, API field names. When a contract moves, every harness that seeds or asserts the OLD contract now exercises a DIFFERENT branch than the one you changed — usually the empty/fallback branch — while its own gates can still report green on everything unrelated. The feature assertions silently stop testing the feature.
+
+Reference case (nightly T3, 2026-11-12): the I-1 fix moved the owner code from `sessionStorage` to `localStorage` in `getCode()` (`js/mmgr-cloud.js`), but `tools/qa-mcp-live-e2e.cjs` B2 still seeded `sessionStorage`. `Cloud.render()` read no code, took the no-code create/link branch that never creates `#cloud-review-list`, and B2/B3/B4/B5/C1/C2 failed in a cascade. The API phase (A1–A7) stayed green because it used the server credential directly; `npm run verify` stayed green because it does not run browser harnesses.
+
+Prevention rule: **after changing a contract, grep the harness tree for the OLD contract before calling the change done**, then run the affected harness end-to-end:
+
+```bash
+# old storage key/type, old selector, old action name — one grep per contract
+grep -rn "sessionStorage.*mmgr_cloud_code\|mmgr_cloud_code" tools/ qa-*.cjs
+grep -rn "cloud-review-list" tools/ qa-*.cjs
+node tools/qa-mcp-live-e2e.cjs   # the harness itself, not just npm run verify
+```
+
+Re-baseline the harness to the NEW contract. Never delete or weaken the assertion to make it pass: the assertion encodes the user-facing contract (here, Accept applies the change; a zero-diff accept warns "nothing left to apply").
+
 ## Audit checklist
 
 Run these checks systematically across every relevant file, not just the one currently open. Adapt names/patterns to the actual codebase.
@@ -75,6 +93,8 @@ Run these checks systematically across every relevant file, not just the one cur
 
 9. **Non-source-file sanity check** — If auditing a zip/upload, check for accidental inclusion of local tool state that shouldn't ship (FTP client caches, `.git`, credentials, OS metadata like `.DS_Store`). Flag and exclude these from any deliverable; call out explicitly if anything looks like it could contain cached credentials.
 
+10. **Test-harness contract consistency** — After any change to a contract a harness depends on (storage key or storage type, DOM id/class, `data-action` name, API field, selector), grep every `qa-*.cjs` / `verify-*.cjs` / `audit-*.cjs` for the OLD contract and re-baseline each hit. A harness that seeds the old contract silently exercises the fallback branch: its own gates can still pass while the feature assertions no longer run. `npm run verify` does NOT run browser harnesses — run the affected harness itself and keep its assertions intact.
+
 ## Reporting findings
 
 Structure the final report as:
@@ -92,7 +112,8 @@ Don't report a "finding" that turned out to be a false positive after the manual
 4. Fix confirmed bugs, matching existing code style/theme
 5. Re-run the affected checks to confirm the fix resolved them and didn't break anything else
 6. Run the project's existing automated tests if present
-7. Report using the structure above
+7. If the fix changed an app contract (storage key/type, DOM id, selector, action name), grep the harness tree for the old contract, re-baseline every hit, and run the affected harness end-to-end
+8. Report using the structure above
 
 ## Quick Audit Commands for This Project
 

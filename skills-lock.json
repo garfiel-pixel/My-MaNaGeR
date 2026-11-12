@@ -47,7 +47,7 @@
       "source": "./local",
       "sourceType": "local",
       "skillPath": ".agents/skills/no-slacking/SKILL.md",
-      "computedHash": "4e7cde54956480e111baf4db42244f2a1a448adba1591199462bdfbad9fe5d41"
+      "computedHash": "31524b13002875c237890cfb82ad133d5e7d0a3a18f4b4c691bee9a34d4c92fe"
     },
     "oauth": {
       "source": "vercel-labs/portless",
@@ -111,7 +111,7 @@
       "source": "./local",
       "sourceType": "local",
       "skillPath": ".agents/skills/skeptical-code-audit/SKILL.md",
-      "computedHash": "c60c5d7dffbebf705cebae1ad1c5f525f50614053565f3e6f855f8677dd96f5b"
+      "computedHash": "2e0eea24629d995bcdc3558177df4da13ecb7539863917481d4df53e960d8d96"
     },
     "sleek-design-mobile-apps": {
       "source": "sleekdotdesign/agent-skills",

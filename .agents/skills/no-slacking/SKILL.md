@@ -80,4 +80,8 @@ discipline, not advice.
   comment.
 - Skipping the rebuild (`node build.js`) so the edit never shipped,
   then reporting success.
+- Moving an app contract (a storage key or storage type, DOM id,
+  `data-action`, selector) without grepping the harnesses that seed or
+  assert it, so the suite keeps exercising the old path and only the
+  nightly catches it.
 - Marking a checkbox complete because the session was ending.

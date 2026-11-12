@@ -34,20 +34,44 @@
   function api(path, opts) {
     var init = {
       credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
       cache: 'no-store'
     };
     if (opts) {
       init.method = opts.method || 'GET';
       if (opts.body) {
+        // Only a request WITH a body carries Content-Type; a bare GET stays a
+        // simple same-origin request.
+        init.headers = { 'Content-Type': 'application/json' };
         init.body = opts.body;
       }
     }
     return fetch(path, init).then(function (res) {
-      return res.json().then(function (data) {
-        return { ok: res.ok, status: res.status, data: data || {} };
+      // Read the text first: a Worker 500 or a Cloudflare edge page is HTML,
+      // and res.json() would throw away the status that explains it.
+      return res.text().then(function (text) {
+        var data = null;
+        if (text) {
+          try {
+            data = JSON.parse(text);
+          } catch (e) {
+            data = null;
+          }
+        }
+        if (!data || typeof data !== 'object') {
+          data = {
+            error: 'The service answered with an unexpected page (HTTP ' + res.status + ').'
+          };
+        }
+        return { ok: res.ok, status: res.status, data: data };
       });
     });
+  }
+  function errorText(r) {
+    var msg = r && r.data && r.data.error;
+    if (msg) {
+      return String(msg);
+    }
+    return 'The MCP settings service answered HTTP ' + (r ? r.status : '?') + '.';
   }
   function fmtDate(iso) {
     if (!iso) {
@@ -199,11 +223,19 @@
     if (!card) {
       return;
     }
+    // The URL is origin-relative so the panel stays truthful on any host.
+    var urlInput = document.getElementById('mcp-connect-url');
+    if (urlInput) {
+      urlInput.value = location.origin + '/api/mcp';
+    }
     setStatus('Loading MCP settings...');
     api('/api/mcp/config')
       .then(function (r) {
         if (r.status === 403 || r.status === 401) {
-          setStatus('Sign in to your account to manage the MCP server.', 'muted');
+          setStatus(
+            'Sign in to your account to manage the MCP server: open the app, use Sign in, then press Retry. The connection URL above still works: Claude sends you here to sign in.',
+            'muted'
+          );
           var body = $('#mcp-admin-body');
           if (body) {
             body.hidden = true;
@@ -211,26 +243,80 @@
           return null;
         }
         if (!r.ok || !r.data.ok) {
-          setStatus((r.data && r.data.error) || 'Could not load MCP settings.', 'err');
+          setStatus(errorText(r), 'err');
           return null;
         }
         applyConfig(r.data);
         setStatus('');
-        return api('/api/mcp/clients');
-      })
-      .then(function (r) {
-        if (!r) {
-          return;
-        }
-        if (!r.ok || !r.data.ok) {
-          renderClients([]);
-          return;
-        }
-        renderClients(r.data.clients);
+        return api('/api/mcp/clients').then(
+          function (c) {
+            if (c.ok && c.data.ok) {
+              renderClients(c.data.clients);
+            } else {
+              renderClients([]);
+            }
+          },
+          function () {
+            renderClients([]);
+          }
+        );
       })
       .catch(function () {
-        setStatus('Could not reach the MCP settings service.', 'err');
+        var offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+        setStatus(
+          offline
+            ? 'You are offline. Reconnect, then press Retry.'
+            : 'Could not reach the MCP settings service. Press Retry.',
+          'err'
+        );
       });
+  }
+
+  function copyUrl() {
+    var input = document.getElementById('mcp-connect-url');
+    if (!input) {
+      return;
+    }
+    var url = input.value;
+    var settled = false;
+    function finish(fn) {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      fn();
+    }
+    function done() {
+      setStatus('Connection URL copied. Paste it into your connector.', 'ok');
+    }
+    function fallback() {
+      input.removeAttribute('readonly');
+      input.select();
+      try {
+        document.execCommand('copy');
+        done();
+      } catch (e) {
+        setStatus('Select the URL and copy it.', 'muted');
+      }
+      input.setAttribute('readonly', 'readonly');
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(
+        function () {
+          finish(done);
+        },
+        function () {
+          finish(fallback);
+        }
+      );
+      // A clipboard promise can stay pending when the document is not focused;
+      // never leave the button looking dead.
+      setTimeout(function () {
+        finish(fallback);
+      }, 1200);
+      return;
+    }
+    fallback();
   }
 
   function save() {
@@ -256,7 +342,7 @@
     })
       .then(function (r) {
         if (!r.ok || !r.data.ok) {
-          setStatus((r.data && r.data.error) || 'Could not save MCP settings.', 'err');
+          setStatus(errorText(r), 'err');
           return;
         }
         applyConfig({
@@ -285,7 +371,7 @@
     })
       .then(function (r) {
         if (!r.ok || !r.data.ok) {
-          setStatus((r.data && r.data.error) || 'Could not revoke the client.', 'err');
+          setStatus(errorText(r), 'err');
           if (btn) {
             btn.disabled = false;
           }
@@ -319,7 +405,7 @@
       .then(function (r) {
         if (!r.ok || !r.data.ok) {
           box.checked = !want;
-          setStatus((r.data && r.data.error) || 'Could not change project access.', 'err');
+          setStatus(errorText(r), 'err');
           return;
         }
         setStatus((want ? 'MCP allowed on ' : 'MCP blocked on ') + projectId + '.', 'ok');
@@ -343,6 +429,12 @@
     } else if (act === 'revoke') {
       e.preventDefault();
       revoke(t.getAttribute('data-client-id'), t);
+    } else if (act === 'reload') {
+      e.preventDefault();
+      load();
+    } else if (act === 'copy-url') {
+      e.preventDefault();
+      copyUrl();
     }
   });
   document.addEventListener('change', function (e) {

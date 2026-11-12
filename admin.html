@@ -572,7 +572,29 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
     <div class="card" id="mcp-admin-card">
       <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> MCP server</div>
       <p class="hint">Connect Claude, Cursor or your own scripts to your projects. They read only the sections you grant, and every change they propose waits for your approval. This panel is scoped to your account.</p>
-      <div class="t-xs mb8" id="mcp-admin-status" role="status"></div>
+      <div class="mcp-admin-connect">
+        <div class="sr" style="padding:0;border:0;margin:0 0 6px">
+          <span class="sl">Connection URL</span>
+          <button type="button" class="btn btn-n btn-s" data-mcp-act="copy-url" style="margin-left:auto"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>
+        </div>
+        <input type="text" id="mcp-connect-url" class="ctl-in mcp-admin-url" readonly value="https://mymanagerworkspace.com/api/mcp" aria-label="MCP connection URL">
+        <p class="hint" style="margin:8px 0 0">Paste this into Claude, Cursor or any MCP connector that supports OAuth. The connector sends you here to sign in, you press Allow, and it is connected.</p>
+        <details class="mcp-admin-how" open>
+          <summary>How to add it in Claude</summary>
+          <ol class="mcp-admin-steps">
+            <li>Open Claude, then <b>Customize &gt; Connectors</b>.</li>
+            <li>Click <b>+ Add</b>, then <b>Add custom connector</b>.</li>
+            <li>Name it <b>My MaNaGeR</b>, paste the URL above, then click <b>Continue</b>.</li>
+            <li>Under Authentication choose <b>Sign in now</b>. Under OAuth client choose <b>Register automatically</b>.</li>
+            <li>Click <b>Add</b>, then <b>Connect</b>. Sign in to My MaNaGeR and press <b>Allow</b>.</li>
+          </ol>
+          <p class="hint">Claude reaches this URL from its own servers, so the site must be online while you connect. The full walkthrough is in the <a href="mymanager-field-guide.html#connect-ai">field guide, sheet A-27</a>.</p>
+        </details>
+      </div>
+      <div class="sr" style="padding:0;border:0;margin:14px 0 8px">
+        <span class="t-xs" id="mcp-admin-status" role="status"></span>
+        <button type="button" class="btn btn-n btn-s" data-mcp-act="reload" style="margin-left:auto">Retry</button>
+      </div>
       <div id="mcp-admin-body" hidden>
         <div class="sr">
           <span class="sl">Enable the MCP server</span>

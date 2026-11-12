@@ -14,6 +14,7 @@
      M7  a project toggle sends PUT .../enabled; Revoke sends POST .../revoke
      M8  no console errors during any of it
      M9  no horizontal overflow at 390
+    M10  the connection URL is origin + /api/mcp, Copy reports, Retry reloads
 
    Run: node tools/qa-mcp-admin-panel.cjs   (needs serve.cjs on :8765)
    ============================================================ */
@@ -121,6 +122,39 @@ function check(name, val, detail) {
     m1
   );
 
+  // ---- M10: the connection URL is the app-wide MCP endpoint ----------------
+  const m10 = await ev(`(function(){
+    const input = document.getElementById('mcp-connect-url');
+    const copy = document.querySelector('[data-mcp-act="copy-url"]');
+    const retry = document.querySelector('[data-mcp-act="reload"]');
+    return {
+      value: input ? input.value : '',
+      origin: location.origin,
+      copy: !!copy,
+      retry: !!retry,
+      steps: document.querySelectorAll('.mcp-admin-steps li').length
+    };
+  })()`);
+  check(
+    'M10 connection URL is origin + /api/mcp, with Copy, Retry and the Claude steps',
+    m10.value === m10.origin + '/api/mcp' && m10.copy && m10.retry && m10.steps >= 5,
+    m10
+  );
+
+  await ev(`document.querySelector('[data-mcp-act="copy-url"]').click();`);
+  await delay(700);
+  const copyState = await ev(`(function(){
+    return {
+      status: (document.getElementById('mcp-admin-status').textContent || '').trim(),
+      value: document.getElementById('mcp-connect-url').value
+    };
+  })()`);
+  check(
+    'M10b Copy reports success (or asks for a manual copy) and never clears the URL',
+    copyState.value.indexOf('/api/mcp') > -1 && /copied|Select the URL/i.test(copyState.status),
+    copyState
+  );
+
   // ---- unlock the admin gate (fresh profile -> setup flow) -----------------
   await ev(`(function(){
     const setup = document.getElementById('setup-screen');
@@ -178,7 +212,16 @@ function check(name, val, detail) {
       } else if (u.indexOf('/api/mcp/clients') > -1) {
         body = CLIENTS;
       }
-      return Promise.resolve({ ok: true, status: 200, json: function(){ return Promise.resolve(body); } });
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        text: function () {
+          return Promise.resolve(JSON.stringify(body));
+        },
+        json: function () {
+          return Promise.resolve(body);
+        }
+      });
     };
     MMGR.McpAdmin.load();
   })()`);
@@ -229,6 +272,16 @@ function check(name, val, detail) {
       m2.shared === true,
     m2
   );
+
+  // ---- M10c: Retry re-runs the load ---------------------------------------
+  const beforeReload = (await ev('window.__calls.length')) || 0;
+  await ev(`document.querySelector('[data-mcp-act="reload"]').click();`);
+  await delay(800);
+  const afterReload = (await ev('window.__calls.length')) || 0;
+  check('M10c Retry re-runs the config load', afterReload > beforeReload, {
+    beforeReload,
+    afterReload
+  });
 
   // ---- M3: the tool picker follows the policy ------------------------------
   const m3 = await ev(`(function(){

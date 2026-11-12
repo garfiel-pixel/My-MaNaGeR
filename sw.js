@@ -757,7 +757,7 @@
 // so the T-15 search button no longer rides over the wordmark.
 // v641 - T-25 ADMIN MCP PANEL (2026-11-12): admin.html is a shell asset and
 // js/app/mcp-admin.js joins the shell. The account-scoped MCP panel is new UI.
-const CACHE = 'mmgr-shell-v641';
+const CACHE = 'mmgr-shell-v645';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

@@ -12339,6 +12339,39 @@ body.dark-mode .ltr-roll td {
   font-size: 0.84rem;
   padding: 6px 0;
 }
+
+/* T-26: the connection block is the part a person needs before any config.
+   The URL is selectable in one click and never truncated on a phone. */
+.mcp-admin-connect {
+  margin: 4px 0 2px;
+  padding: 12px 13px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--glass-fill-dark);
+}
+.mcp-admin-url {
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+}
+.mcp-admin-how {
+  margin-top: 10px;
+}
+.mcp-admin-how summary {
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.mcp-admin-steps {
+  margin: 8px 0 8px 18px;
+  padding: 0;
+  color: var(--slate);
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+.mcp-admin-steps li {
+  margin: 0 0 4px;
+}
 /* ---- AI Assistant window (chat-style) ---- */
 /* TRACK B3: distinct visual presence - the AI is the strongest
    differentiator and its entry point should feel like one.  A persistent

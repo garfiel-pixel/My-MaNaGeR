@@ -19,6 +19,10 @@
      C1-C6   Cloud state carries the change, changelog logged, key
              revoked (refuses calls, no data leak), project deleted,
              meta refuses afterwards.
+     D1-D8   External connector (T-26): the 401 metadata challenge,
+             PRM, open DCR with no cookie, consent for the signed-in
+             owner, approval -> code -> token, the token on /api/mcp,
+             and GET /api/mcp/config for the admin panel.
 
    SELF-CONTAINED (T3 pattern, like verify-cloud-autosave-signin):
    spawns its own wrangler dev (own port + persist dir OUTSIDE the
@@ -436,6 +440,144 @@ async function main() {
     'A7 review queue lists the pending MCP proposal',
     rl.status === 200 && pending.length === 1 && pending[0].sourceType === 'api',
     pending
+  );
+
+  // ---------- PHASE D: external connector (DCR -> consent -> token) ----------
+  // T-26: this is the exact path Claude takes. It runs against the real Worker
+  // and D1, with no cookie on registration and a real session on consent.
+  const noTok = await fetch(BASE + '/api/mcp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 90,
+      method: 'initialize',
+      params: { protocolVersion: '2024-11-05' }
+    })
+  });
+  const noTokWww = noTok.headers.get('www-authenticate') || '';
+  check(
+    'D1 /api/mcp without a token answers 401 + resource_metadata',
+    noTok.status === 401 &&
+      /resource_metadata="[^"]+\.well-known\/oauth-protected-resource"/.test(noTokWww),
+    { status: noTok.status, www: noTokWww }
+  );
+
+  const prm = await api('GET', '/.well-known/oauth-protected-resource');
+  check(
+    'D2 protected-resource metadata advertises the MCP resource',
+    prm.status === 200 && prm.data.resource === BASE + '/api/mcp',
+    prm
+  );
+  const prmPath = await api('GET', '/.well-known/oauth-protected-resource/api/mcp');
+  check(
+    'D2b path-suffixed PRM (RFC 9728 form) also answers',
+    prmPath.status === 200 && prmPath.data.resource === BASE + '/api/mcp',
+    prmPath
+  );
+
+  const verifierD = 'd-verifier-' + Math.random().toString(36).slice(2);
+  const challengeD = require('crypto').createHash('sha256').update(verifierD).digest('hex');
+  const redirectD = 'https://claude.ai/api/mcp/auth_callback';
+  const regD = await api('POST', '/api/oauth/register', {
+    client_name: 'Claude',
+    redirect_uris: [redirectD]
+  });
+  check(
+    'D3 open DCR (no cookie) returns a client id',
+    regD.status === 201 && /^mmgr_mc_/.test(regD.data.client_id || ''),
+    regD
+  );
+  const cidD = regD.data.client_id;
+
+  const authQ =
+    '/api/oauth/authorize?response_type=code&client_id=' +
+    encodeURIComponent(cidD) +
+    '&redirect_uri=' +
+    encodeURIComponent(redirectD) +
+    '&code_challenge=' +
+    challengeD +
+    '&code_challenge_method=S256&state=qa';
+  const consentRes = await fetch(BASE + authQ, { headers: sessH });
+  const consentHtml = await consentRes.text();
+  check(
+    'D4 consent page renders for the signed-in owner and names the client',
+    consentRes.status === 200 &&
+      consentHtml.indexOf('Claude') > -1 &&
+      consentHtml.indexOf('claude.ai') > -1,
+    { status: consentRes.status }
+  );
+
+  const approveRes = await fetch(BASE + '/api/oauth/authorize', {
+    method: 'POST',
+    headers: Object.assign({ 'Content-Type': 'application/x-www-form-urlencoded' }, sessH),
+    body: new URLSearchParams({
+      decision: 'approve',
+      response_type: 'code',
+      client_id: cidD,
+      redirect_uri: redirectD,
+      code_challenge: challengeD,
+      code_challenge_method: 'S256',
+      state: 'qa'
+    }),
+    redirect: 'manual'
+  });
+  const locD = approveRes.headers.get('location') || '';
+  const codeD = decodeURIComponent((/[?&]code=([^&]+)/.exec(locD) || [])[1] || '');
+  check('D5 approval redirects back with a code', approveRes.status === 302 && !!codeD, {
+    status: approveRes.status,
+    loc: locD.slice(0, 120)
+  });
+
+  const tokenRes = await fetch(BASE + '/api/oauth/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code: codeD,
+      client_id: cidD,
+      redirect_uri: redirectD,
+      code_verifier: verifierD
+    })
+  });
+  const tokenData = await tokenRes.json().catch(() => ({}));
+  check(
+    'D6 the code exchanges for an access token',
+    tokenRes.status === 200 && /^mmgr_at_/.test(tokenData.access_token || ''),
+    { status: tokenRes.status }
+  );
+
+  const appInit = await fetch(BASE + '/api/mcp', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer ' + tokenData.access_token
+    },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 91,
+      method: 'initialize',
+      params: { protocolVersion: '2024-11-05' }
+    })
+  });
+  const appInitData = await appInit.json().catch(() => ({}));
+  check(
+    'D7 the app-wide MCP accepts the token (initialize -> serverInfo)',
+    appInit.status === 200 &&
+      !!(appInitData.result && appInitData.result.serverInfo) &&
+      appInitData.result.serverInfo.name === 'my-manager-mcp-appwide',
+    { status: appInit.status, appInitData }
+  );
+
+  const cfg = await api('GET', '/api/mcp/config', undefined, sessH);
+  check(
+    'D8 GET /api/mcp/config answers the admin panel for the signed-in owner',
+    cfg.status === 200 && cfg.data.ok === true && Array.isArray(cfg.data.projects),
+    {
+      status: cfg.status,
+      ok: cfg.data && cfg.data.ok,
+      projects: cfg.data && cfg.data.projects && cfg.data.projects.length
+    }
   );
 
   // ---------- PHASE B: real browser (skippable for API-only runs) ----------

@@ -773,6 +773,14 @@ async function newPage(browser, opts) {
       !!bento && parseFloat(bento.dur) <= 0.8,
       bento && bento.dur
     );
+    // T-22 CI repair 2026-11-12: the reveal observer only adds .rv-in to a
+    // card once 12% of it is on screen. The motion pass had scrolled to the
+    // phase rail, which can leave the 4th (wide) bento slot below the fold in
+    // CI, so that card legitimately stayed at opacity 0 forever. Bring the
+    // bento itself into view first; the assertion is about a swap leaving a
+    // hole, not about off-screen reveal state.
+    await p3.evaluate(() => document.querySelector('.bento').scrollIntoView({ block: 'center' }));
+    await p3.waitForTimeout(500);
     // Wait for the bento to settle (every slot back to full opacity) before
     // asserting no card is transparent - a swap is mid-flight for ~600ms.
     // T-22 CI repair 2026-11-12: the settle poll used to RETURN, then a
@@ -809,7 +817,7 @@ async function newPage(browser, opts) {
       'L-04',
       'no bento card is left transparent (the tile never becomes a hole)',
       slots.every(s => parseFloat(s.opacity) >= 0.95 && !/rgba\([^)]*,\s*0(\.\d+)?\)/.test(s.bg)),
-      JSON.stringify(slots.map(s => s.opacity))
+      JSON.stringify(slots.map(s => [s.id, s.opacity]))
     );
 
     const gold = await p3.evaluate(() => {

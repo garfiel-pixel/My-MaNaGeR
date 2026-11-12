@@ -18,6 +18,7 @@
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const { stripComments, stripScripts } = require('./lib/html-strip.cjs');
 
 const ROOT = path.resolve(__dirname, '..');
 const results = [];

@@ -15,6 +15,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { stripComments } = require('./lib/html-strip.cjs');
 const ROOT = path.resolve(__dirname, '..');
 
 const results = [];
@@ -147,7 +148,7 @@ const registrySheets = Number((marketingJs.match(/var SHEET_COUNT\s*=\s*(\d+)/) 
 const hardcodedCounts = [];
 const countMismatches = [];
 for (const page of SERVED_PAGES) {
-  const html = fs.readFileSync(path.join(ROOT, page), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+  const html = stripComments(fs.readFileSync(path.join(ROOT, page), 'utf8'));
   const re = /(\b\d{1,3}\b)\s*(panels?|sheets?)/gi;
   let mm;
   while ((mm = re.exec(html))) {

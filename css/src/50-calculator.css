@@ -794,6 +794,13 @@ body.dark-mode .bcp-run:focus-visible {
   font-weight: 400;
   font-size: 0.78rem;
 }
+/* T-17: the second-level row inside a Saved estimates tab (the hint + the
+   tab's own action). Same flex row, quieter, separated from the list. */
+.bcp-hist-sub {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
 /* D2 (owner review 2026-09-29): estimate comparison table. Wraps in a
    horizontal scroll on phones; cheapest total highlights in brand gold. */
 .bcp-cmp-wrap {

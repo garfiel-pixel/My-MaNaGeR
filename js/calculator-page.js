@@ -9906,6 +9906,7 @@
         .join('') +
       '</tbody></table></div>';
     card.hidden = false;
+    setSavedTab('compare');
     card.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
@@ -11999,6 +12000,27 @@
     });
   }
 
+  /* T-17 (UI-IA-AND-MCP 2026-11-11): the Saved estimates card's three tabs.
+     Same roving-tabindex contract as the How to use tabs above. The Compare
+     panel IS #calc-compare-card, so calcCompare / calcCompareClose keep their
+     ids and their behaviour; they also move the tab to match the panel. */
+  function setSavedTab(name) {
+    const want = name === 'named' || name === 'compare' ? name : 'history';
+    ['history', 'named', 'compare'].forEach(function (k) {
+      const tab = $('calc-saved-tab-' + k);
+      const panel = k === 'compare' ? $('calc-compare-card') : $('calc-saved-panel-' + k);
+      const on = k === want;
+      if (tab) {
+        tab.classList.toggle('is-on', on);
+        tab.setAttribute('aria-selected', on ? 'true' : 'false');
+        tab.tabIndex = on ? 0 : -1;
+      }
+      if (panel) {
+        panel.hidden = !on;
+      }
+    });
+  }
+
   // ---- First-visit tutorial (owner 2026-09-30) ----------------------------
   // Click-to-start spotlight walkthrough in the guide's field order. One
   // flag (mmgr_calc_tour_done) gates the nudge; clearing browser data
@@ -12293,6 +12315,10 @@
     // UI-3: switch the guide between its slider and its notes.
     calcGuideTab: function (el) {
       setGuideTab(el && el.getAttribute('data-tab'));
+    },
+    // T-17: the Saved estimates tabs (History / Named / Compare).
+    calcSavedTab: function (el) {
+      setSavedTab(el && el.getAttribute('data-tab'));
     },
     // ---- Jamaica rate book card (owner 2026-10-02) ----
     // Owner 2026-10-13: gated behind SIGN IN (not premium).
@@ -13335,6 +13361,9 @@
       if (card) {
         card.hidden = true;
       }
+      // T-17: the Compare panel is now a tab, so closing it returns the card
+      // to the tab the comparison was launched from.
+      setSavedTab('named');
       document.querySelectorAll('.bcp-cmp-check:checked').forEach(function (c) {
         c.checked = false;
       });

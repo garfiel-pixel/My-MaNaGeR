@@ -749,12 +749,10 @@
 // cache-first shell would keep serving the pre-fix bundle to return visitors.
 // Bumping the cache name re-fetches the bundle and the section buttons stop
 // losing clicks to the pin dot.
-// v635 - T-15 SEARCH SURFACES (UI-IA-AND-MCP 2026-11-11): the search palette
-// now rides the project, launcher, admin and calculator pages. project.html,
-// app.html, admin.html and calculator.html are shell assets, and the three
-// bundles plus css/mmgr.css carry the new surface collectors and button
-// styles, so the cache name must move or return visitors keep the old pages.
-const CACHE = 'mmgr-shell-v635';
+// v636 - T-17 SAVED ESTIMATES (UI-IA-AND-MCP 2026-11-11): calculator.html,
+// js/calculator-page.js and css/mmgr.css are shell assets and all three
+// changed when History / Named / Compare became one tabbed card.
+const CACHE = 'mmgr-shell-v636';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

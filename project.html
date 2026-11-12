@@ -2059,20 +2059,60 @@
          Worker's Content-Security-Policy reads to decide whether the
          analytics script may load at all. A device-level choice, like the
          theme: it is not part of the project and is never uploaded. -->
-    <div class="ctl-sec" data-ctl-group="privacy"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Privacy</div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> Usage statistics</span><label class="tgl"><input type="checkbox" id="consent-stat-tgl" aria-label="Usage statistics: count visits to the public pages" data-action="tglConsentStat"><span class="tsl"></span></label></div>
-    <div class="sr-hint">Counts visits to the public pages so we can see which parts get used. Never used for advertising. Your project data stays on this device.</div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> What we store</span><a class="btn btn-n btn-s" href="privacy.html">Open</a></div>
-
-    <!-- M-2 PRIVACY (audit 2026-10-18, 8.5): your data, in plain reach.
-         Export is a client-side JSON of every mmgr_* key this browser holds
-         (offline-first: the device IS the source). Account delete renders only
-         when signed in, and mirrors the Worker contract: an email account
-         confirms with its password, a Google account types DELETE. -->
-    <div class="ctl-sec" data-ctl-group="yourdata"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Your data</div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Download all my data</span><button class="btn btn-n btn-s" data-action="exportMyData">Download</button></div>
-    <div class="sr-hint">One JSON file of every project and setting this browser holds. Keep it as a backup, or move it to another device.</div>
-    <div id="data-account" aria-live="polite"></div>
+    <!-- T-09 (UI-IA-AND-MCP 2026-11-11): Your Data is one group with three
+         tabs - Privacy, Export, Backup & Transfer - answering "what happens to
+         my data" from a single place (closes F6). The consent toggle, the
+         export download, and the backup/save/load tools all live here now.
+         The S-2 / M-2 privacy comment above still describes the consent row. -->
+    <div class="ctl-sec" data-ctl-group="yourdata"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Your Data</div>
+    <div class="dtabs">
+      <button class="dtab active" data-action="ctlTab" data-ctl-tab="privacy">Privacy</button>
+      <button class="dtab" data-action="ctlTab" data-ctl-tab="export">Export</button>
+      <button class="dtab" data-action="ctlTab" data-ctl-tab="backup">Backup &amp; Transfer</button>
+    </div>
+    <div class="ctl-panel" data-ctl-panel="privacy">
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> Usage statistics</span><label class="tgl"><input type="checkbox" id="consent-stat-tgl" aria-label="Usage statistics: count visits to the public pages" data-action="tglConsentStat"><span class="tsl"></span></label></div>
+      <div class="sr-hint">Counts visits to the public pages so we can see which parts get used. Never used for advertising. Your project data stays on this device.</div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> What we store</span><a class="btn btn-n btn-s" href="privacy.html">Open</a></div>
+    </div>
+    <div class="ctl-panel is-hide" data-ctl-panel="export">
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Download all my data</span><button class="btn btn-n btn-s" data-action="exportMyData">Download</button></div>
+      <div class="sr-hint">One JSON file of every project and setting this browser holds. Keep it as a backup, or move it to another device.</div>
+      <div id="data-account" aria-live="polite"></div>
+    </div>
+    <div class="ctl-panel is-hide" data-ctl-panel="backup">
+      <!-- OWNER 2026-10-18 (audit M-5): the shortcut list. The rows are
+           rendered from js/mmgr-shortcuts.js (the same table that fills the
+           shortcut sheet), so the list in the drawer and the list in the
+           sheet can never disagree. The button opens the sheet, which is
+           the same list in a modal you can open from anywhere. -->
+      <div class="sr-kbd">
+        <div class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lightbulb"></use></svg> Keyboard Shortcuts<button type="button" class="btn btn-n btn-s sl-open" data-mmks="open" aria-haspopup="dialog" title="Open the keyboard shortcut list">Show list</button></div>
+        <div class="kbd-grid" id="kb-drawer-grid">
+          <span class="kbd">?</span> Show this list of shortcuts
+          <span class="kbd">/</span> Open the assistant and start typing your question
+          <span class="kbd">F</span> Focus Mode , isolate the active panel
+          <span class="kbd">Ctrl/⌘ + Z</span> Undo (outside text fields)
+          <span class="kbd">Ctrl/⌘ + Shift + Z</span> Redo
+          <span class="kbd">Esc</span> Close drawer / modals
+          <span class="kbd">Enter / Space</span> Change the RACI letter in the cell you are on
+          <span class="kbd">← / →</span> Go back or forward through the RACI letters
+        </div>
+      </div>
+      <hr class="div">
+      <button class="btn btn-g full mb7"  data-action="saveProjectFile"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-save"></use></svg> Save Project (.json)</button>
+      <button class="btn btn-n full mb7"  data-action="loadProjectFileClick"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder-open"></use></svg> Load Project</button>
+      <input type="file" id="load-file" accept=".json,application/json" class="hide" data-action="loadProjectFile">
+      <button class="btn btn-o full mb7" data-action="mergeProjectFileClick" title="Merge a project file into the current plan field-by-field (newest edit wins per field). Your local fields are never lost on a tie."><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Merge Project (.json)</button>
+      <input type="file" id="merge-file" accept=".json,application/json" class="hide" data-action="mergeProjectFile">
+      <button class="btn btn-o full mb7"  data-action="saveBaseline" title="Saves today's schedule as the reference point for tracking delays and cost."><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-pin"></use></svg> Save Baseline (Snapshot)<span class="nudge-dot" data-baseline-dot hidden></span></button>
+      <button class="btn btn-n full mb7"  data-action="restoreBaseline"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-corner-down-left"></use></svg> Restore Baseline</button>
+      <div class="sr " ><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-corner-down-left"></use></svg> Undo / Redo</span><span class="g6"><button class="btn btn-n btn-s" data-action="undo" id="undo-btn">Undo</button><button class="btn btn-n btn-s" data-action="redo" id="redo-btn">Redo</button></span></div>
+      <hr class="div">
+      <button class="btn btn-o full mb7"  data-action="openOM"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Generate Full Output (JSON)</button>
+      <button class="btn btn-n full"  data-action="loadClip"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Load from Clipboard</button>
+      <button class="btn btn-n full mt7"  data-action="print"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Print / PDF</button>
+    </div>
 
     <!-- T-08 (UI-IA-AND-MCP 2026-11-11): Connect & Sync is one group with
          four tabs. Drive and Cloud backup used to render under the Terminal
@@ -2159,38 +2199,6 @@
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Remote Error Reporting</span><label class="tgl"><input type="checkbox" id="err-report-tgl" aria-label="Remote Error Reporting" data-action="tglErrReport"><span class="tsl"></span></label></div>
     <div class="sr-hint">Optional and off by default. When enabled with a webhook URL, new client errors are posted to your own endpoint , never to a third-party service. A failed send stays logged locally only.</div>
     <input type="url" id="err-webhook" class="ctl-in" data-action="setErrWebhook" placeholder="https://your-webhook.example.com/hook (optional)" aria-label="Error reporting webhook URL (optional)" autocomplete="off">
-    <div class="ctl-sec" data-ctl-group="backup"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-save"></use></svg> Backup &amp; Transfer</div>
-    <!-- OWNER 2026-10-18 (audit M-5): the shortcut list. The rows are
-         rendered from js/mmgr-shortcuts.js (the same table that fills the
-         shortcut sheet), so the list in the drawer and the list in the
-         sheet can never disagree. The button opens the sheet, which is
-         the same list in a modal you can open from anywhere. -->
-    <div class="sr-kbd">
-      <div class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lightbulb"></use></svg> Keyboard Shortcuts<button type="button" class="btn btn-n btn-s sl-open" data-mmks="open" aria-haspopup="dialog" title="Open the keyboard shortcut list">Show list</button></div>
-      <div class="kbd-grid" id="kb-drawer-grid">
-        <span class="kbd">?</span> Show this list of shortcuts
-        <span class="kbd">/</span> Open the assistant and start typing your question
-        <span class="kbd">F</span> Focus Mode , isolate the active panel
-        <span class="kbd">Ctrl/⌘ + Z</span> Undo (outside text fields)
-        <span class="kbd">Ctrl/⌘ + Shift + Z</span> Redo
-        <span class="kbd">Esc</span> Close drawer / modals
-        <span class="kbd">Enter / Space</span> Change the RACI letter in the cell you are on
-        <span class="kbd">← / →</span> Go back or forward through the RACI letters
-      </div>
-    </div>
-    <hr class="div">
-    <button class="btn btn-g full mb7"  data-action="saveProjectFile"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-save"></use></svg> Save Project (.json)</button>
-    <button class="btn btn-n full mb7"  data-action="loadProjectFileClick"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder-open"></use></svg> Load Project</button>
-    <input type="file" id="load-file" accept=".json,application/json" class="hide" data-action="loadProjectFile">
-    <button class="btn btn-o full mb7" data-action="mergeProjectFileClick" title="Merge a project file into the current plan field-by-field (newest edit wins per field). Your local fields are never lost on a tie."><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Merge Project (.json)</button>
-    <input type="file" id="merge-file" accept=".json,application/json" class="hide" data-action="mergeProjectFile">
-    <button class="btn btn-o full mb7"  data-action="saveBaseline" title="Saves today's schedule as the reference point for tracking delays and cost."><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-pin"></use></svg> Save Baseline (Snapshot)<span class="nudge-dot" data-baseline-dot hidden></span></button>
-    <button class="btn btn-n full mb7"  data-action="restoreBaseline"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-corner-down-left"></use></svg> Restore Baseline</button>
-    <div class="sr " ><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-corner-down-left"></use></svg> Undo / Redo</span><span class="g6"><button class="btn btn-n btn-s" data-action="undo" id="undo-btn">Undo</button><button class="btn btn-n btn-s" data-action="redo" id="redo-btn">Redo</button></span></div>
-    <hr class="div">
-    <button class="btn btn-o full mb7"  data-action="openOM"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Generate Full Output (JSON)</button>
-    <button class="btn btn-n full"  data-action="loadClip"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Load from Clipboard</button>
-    <button class="btn btn-n full mt7"  data-action="print"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Print / PDF</button>
 
     <!-- OWNER 2026-08-17: Danger Zone , in-project Delete Project at the
          BOTTOM of the Controls tab (owner: "go inside of the project...

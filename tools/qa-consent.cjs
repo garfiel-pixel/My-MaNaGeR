@@ -855,15 +855,24 @@ async function phaseBrowser() {
   // switch to it the way a user does.
   await page.click('[data-action="swDtab"][data-tab="ctrl"]');
   await delay(500);
-  // The Controls drawer is an accordion: Privacy is a collapsed section by
-  // default, so open it the way a user does - click its heading.
-  const privacySec = await page.evaluateHandle(() => {
+  // T-09 (UI-IA-AND-MCP 2026-11-11): Your Data is now one group with a
+  // Privacy tab; the consent toggle lives inside that tab. Open the group,
+  // then click the Privacy tab the way a user would.
+  const yourDataSec = await page.evaluateHandle(() => {
     const secs = Array.from(document.querySelectorAll('#db-ctrl .ctl-sec'));
-    return secs.find(s => (s.textContent || '').trim().indexOf('Privacy') === 0) || null;
+    return secs.find(s => (s.textContent || '').trim().indexOf('Your Data') === 0) || null;
   });
-  const privacySecEl = privacySec.asElement();
-  if (privacySecEl) {
-    await privacySecEl.click();
+  const yourDataSecEl = yourDataSec.asElement();
+  if (yourDataSecEl) {
+    await yourDataSecEl.click();
+    await delay(400);
+  }
+  const privacyTab = await page.evaluateHandle(() => {
+    return document.querySelector('#db-ctrl .dtab[data-ctl-tab="privacy"]') || null;
+  });
+  const privacyTabEl = privacyTab.asElement();
+  if (privacyTabEl) {
+    await privacyTabEl.click();
     await delay(400);
   }
   const privacyRow = await page.evaluate(() => {

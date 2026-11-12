@@ -394,6 +394,18 @@ jobs:
         id: qa-bento
         run: node tools/qa-bento-gate.cjs
 
+      # T-05 / T-21 (UI-IA-AND-MCP 2026-11-11): every static href="#id" on
+      # every served page resolves to a real element, and the FEATURES
+      # registry agrees across index.html, features.html and js/marketing.js.
+      # Pure static (no Chrome), so they live in this job.
+      - name: "T1: Navigation anchors resolve (verify-navigation-anchors)"
+        id: verify-navigation-anchors
+        run: node tools/verify-navigation-anchors.cjs
+
+      - name: "T1: Feature registry parity (verify-feature-registry)"
+        id: verify-feature-registry
+        run: node tools/verify-feature-registry.cjs
+
 
       # Chrome is needed from here on: the page-health sweep in T2 drives it
       # against wrangler dev, and the T3 batteries drive it directly.

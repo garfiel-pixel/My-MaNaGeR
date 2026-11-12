@@ -792,121 +792,249 @@
      group it belongs to, a one-line description and an existing sprite icon
      (never an invented glyph, never an emoji). Order is the reading order the
      owner sees on the page: plan, control, field, then platform. */
+  /* T-03 (UI-IA-AND-MCP directive 2026-11-11): ONE feature registry. The
+     landing bento cards, the features page, the nav dropdown and every stated
+     panel count read this array. `panel` is what the product calls a panel;
+     `detail` means features.html has a block for it; `cardId` is the landing
+     card id and defaults to `id` (MCP is the one feature whose two anchors
+     differ - f-connect on features.html, f-mcp on the landing page, added in
+     T-06). Order here is the DOM order of the landing cards, so the registry
+     gate can compare it to index.html directly. */
+  var FEATURES = [
+    {
+      id: 'f-ai',
+      label: 'My MaNaGeR AI, Not a Middleman',
+      group: 'Platform',
+      desc: 'Ask your project questions',
+      icon: 'i-sparkle',
+      panel: true,
+      detail: true,
+      cardId: 'f-ai'
+    },
+    {
+      id: 'f-wbs',
+      label: 'WBS + Gantt',
+      group: 'Plan and schedule',
+      desc: 'Outline in, live schedule out',
+      icon: 'i-calendar',
+      panel: true,
+      detail: true,
+      cardId: 'f-wbs'
+    },
+    {
+      id: 'f-kanban',
+      label: 'Kanban Board',
+      group: 'Plan and schedule',
+      desc: 'Lead-time lanes for permits',
+      icon: 'i-clipboard',
+      panel: true,
+      detail: true,
+      cardId: 'f-kanban'
+    },
+    {
+      id: 'f-budget',
+      label: 'Budget / EVM',
+      group: 'Control and forecast',
+      desc: 'S-curve, SPI, CPI, EAC, TCPI',
+      icon: 'i-dollar',
+      panel: true,
+      detail: true,
+      cardId: 'f-budget'
+    },
+    {
+      id: 'f-risk',
+      label: 'Risk + Monte Carlo',
+      group: 'Control and forecast',
+      desc: 'Monte Carlo on your finish date',
+      icon: 'i-dice',
+      panel: true,
+      detail: true,
+      cardId: 'f-risk'
+    },
+    {
+      id: 'f-raci',
+      label: 'RACI Matrix',
+      group: 'Plan and schedule',
+      desc: 'Roles built live from your WBS',
+      icon: 'i-users',
+      panel: true,
+      detail: true,
+      cardId: 'f-raci'
+    },
+    {
+      id: 'f-voice',
+      label: 'Voice \u2192 Notes & Claims',
+      group: 'Field and records',
+      desc: 'Dictate on site, even offline',
+      icon: 'i-mic',
+      panel: true,
+      detail: true,
+      cardId: 'f-voice'
+    },
+    {
+      id: 'f-weather',
+      label: 'Weather-Aware',
+      group: 'Field and records',
+      desc: 'Flags tasks the rain will hit',
+      icon: 'i-cloud-rain',
+      panel: true,
+      detail: true,
+      cardId: 'f-weather'
+    },
+    {
+      id: 'f-offline',
+      label: 'Offline-First',
+      group: 'Platform',
+      desc: 'No signal, no account needed',
+      icon: 'i-download',
+      panel: true,
+      detail: true,
+      cardId: 'f-offline'
+    },
+    {
+      id: 'f-health',
+      label: 'Health & Portfolio',
+      group: 'Control and forecast',
+      desc: 'One score across every project',
+      icon: 'i-activity',
+      panel: true,
+      detail: false,
+      cardId: 'f-health'
+    },
+    {
+      id: 'f-meetings',
+      label: 'Meetings & Decisions',
+      group: 'Field and records',
+      desc: 'Minutes, actions, decision log',
+      icon: 'i-list',
+      panel: true,
+      detail: false,
+      cardId: 'f-meetings'
+    },
+    {
+      id: 'f-claims',
+      label: 'Claims & Digests',
+      group: 'Field and records',
+      desc: 'Evidence-backed claims, digests',
+      icon: 'i-receipt',
+      panel: true,
+      detail: false,
+      cardId: 'f-claims'
+    },
+    {
+      id: 'f-registers',
+      label: 'Registers & Compliance',
+      group: 'Field and records',
+      desc: 'RFIs, submittals, permits',
+      icon: 'i-folder',
+      panel: true,
+      detail: false,
+      cardId: 'f-registers'
+    },
+    {
+      id: 'f-gonogo',
+      label: 'Bid Leveling & Go/No-Go',
+      group: 'Control and forecast',
+      desc: 'Compare bids, decide by score',
+      icon: 'i-target',
+      panel: true,
+      detail: false,
+      cardId: 'f-gonogo'
+    },
+    {
+      id: 'f-lookahead',
+      label: 'Lookahead & Field Metrics',
+      group: 'Plan and schedule',
+      desc: 'Two-week lookaheads and PPC',
+      icon: 'i-clock',
+      panel: true,
+      detail: false,
+      cardId: 'f-lookahead'
+    },
+    /* The four blocks that live ONLY on features.html (no landing bento card).
+       T-06 adds the six landing-only ids as features.html blocks too; until
+       then these four carry detail:true so the registry parity gate asserts
+       real parity instead of passing over a gap. They are excluded from the
+       landing nav dropdown because they have no cardId. f-connect is the MCP
+       connector's features.html anchor (its landing card id becomes 'f-mcp' in
+       T-06); see the header note on the cardId/defaults contract. */
+    {
+      id: 'f-connect',
+      label: 'Open API & MCP Server',
+      group: 'Platform',
+      desc: 'Outside AIs read and propose changes',
+      icon: 'i-key',
+      panel: false,
+      detail: true,
+      cardId: null
+    },
+    {
+      id: 'f-glass',
+      label: 'Liquid Glass Interface',
+      group: 'Platform',
+      desc: 'A calm, glassy surface that reads in any light',
+      icon: 'i-sparkle',
+      panel: false,
+      detail: true,
+      cardId: null
+    },
+    {
+      id: 'f-backup',
+      label: 'Backup & Export',
+      group: 'Platform',
+      desc: 'Take your whole project with you',
+      icon: 'i-download',
+      panel: false,
+      detail: true,
+      cardId: null
+    },
+    {
+      id: 'f-teams',
+      label: 'Teams & Roles',
+      group: 'Platform',
+      desc: 'Share a project with the people on it',
+      icon: 'i-users',
+      panel: false,
+      detail: true,
+      cardId: null
+    }
+  ];
+  // The group order the nav reads; first-seen order would put Platform first
+  // because f-ai is the first landing card, which is not the reading order.
+  var FEATURE_GROUPS = [
+    'Plan and schedule',
+    'Control and forecast',
+    'Field and records',
+    'Platform'
+  ];
+  var PANEL_COUNT = FEATURES.filter(function (f) {
+    return f.panel;
+  }).length;
+  // T-04: the field guide's sheet count. T-13's SHEETS table becomes the
+  // source; until then this is the one stated number every page reads.
+  var SHEET_COUNT = 36;
+  // Exposed for the count-up IIFE below and for the T-05 registry gate.
+  window.MMGR_FEATURES = FEATURES;
+  window.MMGR_PANEL_COUNT = PANEL_COUNT;
+  window.MMGR_SHEET_COUNT = SHEET_COUNT;
+
   var NAV_DD = {
     'index.html#features': {
-      groups: [
-        {
-          name: 'Plan and schedule',
-          items: [
-            {
-              id: 'f-wbs',
-              label: 'WBS + Gantt',
-              desc: 'Outline in, live schedule out',
-              icon: 'i-calendar'
-            },
-            {
-              id: 'f-kanban',
-              label: 'Kanban Board',
-              desc: 'Lead-time lanes for permits',
-              icon: 'i-clipboard'
-            },
-            {
-              id: 'f-raci',
-              label: 'RACI Matrix',
-              desc: 'Roles built live from your WBS',
-              icon: 'i-users'
-            },
-            {
-              id: 'f-lookahead',
-              label: 'Lookahead and Field Metrics',
-              desc: 'Two-week lookaheads and PPC',
-              icon: 'i-clock'
-            }
-          ]
-        },
-        {
-          name: 'Control and forecast',
-          items: [
-            {
-              id: 'f-budget',
-              label: 'Budget and EVM',
-              desc: 'S-curve, SPI, CPI, EAC, TCPI',
-              icon: 'i-dollar'
-            },
-            {
-              id: 'f-risk',
-              label: 'Risk and Monte Carlo',
-              desc: 'Monte Carlo on your finish date',
-              icon: 'i-dice'
-            },
-            {
-              id: 'f-health',
-              label: 'Health and Portfolio',
-              desc: 'One score across every project',
-              icon: 'i-activity'
-            },
-            {
-              id: 'f-gonogo',
-              label: 'Bid Leveling and Go/No-Go',
-              desc: 'Compare bids, decide by score',
-              icon: 'i-target'
-            }
-          ]
-        },
-        {
-          name: 'Field and records',
-          items: [
-            {
-              id: 'f-voice',
-              label: 'Voice to Notes and Claims',
-              desc: 'Dictate on site, even offline',
-              icon: 'i-mic'
-            },
-            {
-              id: 'f-weather',
-              label: 'Weather-Aware',
-              desc: 'Flags tasks the rain will hit',
-              icon: 'i-cloud-rain'
-            },
-            {
-              id: 'f-meetings',
-              label: 'Meetings and Decisions',
-              desc: 'Minutes, actions, decision log',
-              icon: 'i-list'
-            },
-            {
-              id: 'f-claims',
-              label: 'Claims and Digests',
-              desc: 'Evidence-backed claims, digests',
-              icon: 'i-receipt'
-            },
-            {
-              id: 'f-registers',
-              label: 'Registers and Compliance',
-              desc: 'RFIs, submittals, permits',
-              icon: 'i-folder'
-            }
-          ]
-        },
-        {
-          name: 'Platform',
-          platform: true,
-          items: [
-            {
-              id: 'f-ai',
-              label: 'Built-In AI',
-              desc: 'Ask your project questions',
-              icon: 'i-sparkle'
-            },
-            {
-              id: 'f-offline',
-              label: 'Offline-First',
-              desc: 'No signal, no account needed',
-              icon: 'i-download'
-            }
-          ]
-        }
-      ],
+      groups: FEATURE_GROUPS.map(function (name) {
+        return {
+          name: name,
+          platform: name === 'Platform',
+          items: FEATURES.filter(function (f) {
+            return f.group === name && f.cardId;
+          }).map(function (f) {
+            // cardId is the landing anchor; it differs from id only for the
+            // MCP connector (f-connect on features.html, f-mcp on index.html,
+            // wired in T-06). Blocks without a landing card (cardId:null) are
+            // features.html-only and stay out of this dropdown.
+            return { id: f.cardId || f.id, label: f.label, desc: f.desc, icon: f.icon };
+          })
+        };
+      }),
       foot: { href: 'features.html', label: 'See every feature in detail' }
     },
     'about.html': {
@@ -1978,10 +2106,17 @@
   // page. The features grid, the hero stat, the globe card and any copy all read
   // these instead of hardcoding a number (the old "eighteen panels" blurb is now
   // sourced from here too).
-  var PANEL_COUNT = 15;
+  // T-03: derived from the one registry (set in the chrome IIFE above).
+  var FEATURES = window.MMGR_FEATURES || [];
+  var PANEL_COUNT =
+    FEATURES.filter(function (f) {
+      return f.panel;
+    }).length || 15;
   var MODULE_COUNT = 4;
+  var SHEET_COUNT = window.MMGR_SHEET_COUNT || 36;
   window.MMGR_PANEL_COUNT = PANEL_COUNT;
   window.MMGR_MODULE_COUNT = MODULE_COUNT;
+  window.MMGR_SHEET_COUNT = SHEET_COUNT;
   var stats = document.querySelector('.hero-stats');
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var perf = document.documentElement.getAttribute('data-perf') === 'on';
@@ -1990,11 +2125,15 @@
   // no-JS page still reads correctly and prose never hardcodes a figure (T-COPY).
   var panelEls = document.querySelectorAll('[data-count="panels"]');
   var moduleEls = document.querySelectorAll('[data-count="modules"]');
+  var sheetEls = document.querySelectorAll('[data-count="sheets"]');
   for (var pi = 0; pi < panelEls.length; pi++) {
     panelEls[pi].textContent = String(PANEL_COUNT);
   }
   for (var mi = 0; mi < moduleEls.length; mi++) {
     moduleEls[mi].textContent = String(MODULE_COUNT);
+  }
+  for (var si = 0; si < sheetEls.length; si++) {
+    sheetEls[si].textContent = String(SHEET_COUNT);
   }
 
   var panelsEl = stats ? stats.querySelector('[data-count="panels"]') : null;

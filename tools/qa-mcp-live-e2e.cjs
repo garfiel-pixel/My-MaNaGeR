@@ -469,6 +469,12 @@ async function main() {
     prm.status === 200 && prm.data.resource === BASE + '/api/mcp',
     prm
   );
+  const prmPath = await api('GET', '/.well-known/oauth-protected-resource/api/mcp');
+  check(
+    'D2b path-suffixed PRM (RFC 9728 form) also answers',
+    prmPath.status === 200 && prmPath.data.resource === BASE + '/api/mcp',
+    prmPath
+  );
 
   const verifierD = 'd-verifier-' + Math.random().toString(36).slice(2);
   const challengeD = require('crypto').createHash('sha256').update(verifierD).digest('hex');

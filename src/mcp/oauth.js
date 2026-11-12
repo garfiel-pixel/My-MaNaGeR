@@ -398,6 +398,11 @@ export async function handleOauthMetadata(request, env, url) {
   if (path === '/.well-known/oauth-protected-resource') {
     return json(protectedResourceMetadata(origin), 200);
   }
+  // RFC 9728 path-insertion form: some clients probe the resource path rather
+  // than the bare well-known URL the 401 challenge advertises.
+  if (path === '/.well-known/oauth-protected-resource/api/mcp') {
+    return json(protectedResourceMetadata(origin), 200);
+  }
   return json({ error: 'not found' }, 404);
 }
 

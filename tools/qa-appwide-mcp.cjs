@@ -685,7 +685,10 @@ async function sessionCookie(env, sub) {
       ),
     { status: noAuth.__status, www: noAuth.__www }
   );
-  check('the 401 body carries no tool result', !noAuth.result, noAuth);
+  check('the 401 body carries no tool result', !noAuth.result, {
+    status: noAuth.__status,
+    hasResult: !!noAuth.result
+  });
   const initNoAuth = await mcpCall(
     envA,
     { jsonrpc: '2.0', id: 30, method: 'initialize', params: { protocolVersion: '2024-11-05' } },

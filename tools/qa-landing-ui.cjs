@@ -775,26 +775,30 @@ async function newPage(browser, opts) {
     );
     // Wait for the bento to settle (every slot back to full opacity) before
     // asserting no card is transparent - a swap is mid-flight for ~600ms.
-    await p3.evaluate(async () => {
+    // T-22 CI repair 2026-11-12: the settle poll used to RETURN, then a
+    // SEPARATE evaluate read the slots. The rotation can swap a card in the
+    // gap between the two calls, so CI read opacity 0 on a card that had just
+    // entered (local runs read 0.990778 and passed). The snapshot now comes
+    // from the same tick that saw the settled state, so an in-flight swap can
+    // never be mistaken for a hole.
+    const slots = await p3.evaluate(async () => {
       const wait = ms => new Promise(r => setTimeout(r, ms));
+      const read = () =>
+        Array.prototype.map.call(document.querySelectorAll('.bento-slot > .fcard'), c => ({
+          id: c.id,
+          opacity: getComputedStyle(c).opacity,
+          bg: getComputedStyle(c).backgroundColor
+        }));
+      let last = [];
       for (let i = 0; i < 60; i++) {
-        const slots = Array.prototype.slice.call(document.querySelectorAll('.bento-slot > .fcard'));
-        if (
-          slots.length === 4 &&
-          slots.every(s => parseFloat(getComputedStyle(s).opacity) >= 0.99)
-        ) {
-          return;
+        last = read();
+        if (last.length === 4 && last.every(s => parseFloat(s.opacity) >= 0.95)) {
+          return last;
         }
         await wait(100);
       }
+      return last;
     });
-    const slots = await p3.evaluate(() =>
-      Array.prototype.map.call(document.querySelectorAll('.bento-slot > .fcard'), c => ({
-        id: c.id,
-        opacity: getComputedStyle(c).opacity,
-        bg: getComputedStyle(c).backgroundColor
-      }))
-    );
     check(
       'L-03',
       'all four bento slots hold a card after a swap',

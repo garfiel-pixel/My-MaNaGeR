@@ -38,7 +38,7 @@
     return ctrl ? ctrl.querySelector('.ctl-sec-group[data-ctl-group-body="' + key + '"]') : null;
   }
 
-  function init() {
+  function initControls() {
     ctrl = document.getElementById('db-ctrl');
     if (!ctrl) {
       return;
@@ -213,7 +213,7 @@
   }
 
   var api = {
-    init: init,
+    init: initControls,
     toggle: toggle,
     setOpen: setOpen,
     switchTab: switchTab,
@@ -227,8 +227,8 @@
   // Auto-boot: the bundle is deferred, so the document is parsed; guard for
   // the rare case it is not.
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', initControls);
   } else {
-    init();
+    initControls();
   }
 })(window.MMGR || (window.MMGR = {}));

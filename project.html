@@ -1893,7 +1893,7 @@
   <div class="drw-sheet">
   <div class="dh"><span class="dt2"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> Settings</span><button class="dc" data-action="closeDrw" aria-label="Close settings"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
   <div class="dtabs">
-    <button class="dtab active" data-action="swDtab" data-tab="feat">Features</button>
+    <button class="dtab active" data-action="swDtab" data-tab="feat">Guide</button>
     <button class="dtab" data-action="swDtab" data-tab="qa">Q &amp; A</button>
     <button class="dtab" data-action="swDtab" data-tab="prompt">Prompts</button>
     <button class="dtab" data-action="swDtab" data-tab="ctrl">Controls</button>
@@ -1952,21 +1952,28 @@
     <button class="btn btn-o full mb7"  data-action="openPrompt" data-type="daily"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sun"></use></svg> Daily Field Report Prompt</button>
   </div>
   <div class="db is-hide" id="db-ctrl">
-    <!-- OWNER 2026-08-15: Controls tab grouped into labelled sections with
-         breathing room. Profile first, then Share & Access (rendered by
-         mmgr-cloud.js into #ctrl-share), then the explain-before-copy cards. -->
-    <div class="ctl-sec" data-ctl-group="profile" data-ctl-open="1"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Profile</div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Your Name</span><input type="text" id="user-name-in" placeholder="Your name" aria-label="Your name (shown in the header greeting)" data-action="setUserName" class="ctl-in w150"></div>
-    <div class="sr-hint">Shown in the header greeting. Leave blank for a generic welcome.</div>
-    <!-- AUTH MAINFRAME 2026-08-17: password change for email accounts , 
-         the shared control mounts here from js/mmgr-google-auth.js; the
-         trigger stays hidden unless the signed-in account has a password. -->
-    <div class="pw-host" data-pw-host></div>
-
-    <!-- Share & Access , rendered by js/mmgr-cloud.js: owner code, editor
-         codes with section-scope toggles (view-only / edit-budget / etc). -->
-    <div class="ctl-sec" data-ctl-group="share-access" data-ctl-open="1"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Share &amp; Access</div>
-    <div id="ctrl-share" role="region" aria-label="Sharing and access codes"></div>
+    <!-- T-12 (UI-IA-AND-MCP 2026-11-11): You & Access merges Profile and Share
+         & Access into one group with two tabs - Profile, Access - so a new
+         person's identity and their sharing codes answer "who am I / who can
+         see this" from one place (closes F1). -->
+    <div class="ctl-sec" data-ctl-group="you-access" data-ctl-open="1"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> You &amp; Access</div>
+    <div class="dtabs">
+      <button class="dtab active" data-action="ctlTab" data-ctl-tab="profile">Profile</button>
+      <button class="dtab" data-action="ctlTab" data-ctl-tab="access">Access</button>
+    </div>
+    <div class="ctl-panel" data-ctl-panel="profile">
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Your Name</span><input type="text" id="user-name-in" placeholder="Your name" aria-label="Your name (shown in the header greeting)" data-action="setUserName" class="ctl-in w150"></div>
+      <div class="sr-hint">Shown in the header greeting. Leave blank for a generic welcome.</div>
+      <!-- AUTH MAINFRAME 2026-08-17: password change for email accounts , 
+           the shared control mounts here from js/mmgr-google-auth.js; the
+           trigger stays hidden unless the signed-in account has a password. -->
+      <div class="pw-host" data-pw-host></div>
+    </div>
+    <div class="ctl-panel is-hide" data-ctl-panel="access">
+      <!-- Share & Access , rendered by js/mmgr-cloud.js: owner code, editor
+           codes with section-scope toggles (view-only / edit-budget / etc). -->
+      <div id="ctrl-share" role="region" aria-label="Sharing and access codes"></div>
+    </div>
 
     <!-- T-10 (UI-IA-AND-MCP 2026-11-11): Share & Send is one group with three
          tabs - Digests, Emails, Templates - so the seven format cards and the
@@ -2208,7 +2215,19 @@
       <div id="cloud-section"></div>
     </div>
 
-    <div class="ctl-sec" data-ctl-group="support"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-tool"></use></svg> Support &amp; Diagnostics</div>
+    <!-- T-12 (UI-IA-AND-MCP 2026-11-11): Help merges Support & Diagnostics and
+         the conditional Danger Zone into one group with two tabs - Diagnostics,
+         Danger Zone - so "where do I get help / where do I delete" answers from
+         one place (closes F2). The Danger Zone tab stays owner-conditional:
+         #del-zone keeps [hidden] and renderDangerZone() (mmgr-cloud.js) toggles
+         it, so editors/viewers never see the tab, and the server enforces
+         owner-only on the delete route regardless. -->
+    <div class="ctl-sec" data-ctl-group="help"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-tool"></use></svg> Help</div>
+    <div class="dtabs">
+      <button class="dtab active" data-action="ctlTab" data-ctl-tab="diagnostics">Diagnostics</button>
+      <button class="dtab" data-action="ctlTab" data-ctl-tab="danger" id="del-zone">Danger Zone</button>
+    </div>
+    <div class="ctl-panel" data-ctl-panel="diagnostics">
     <!-- Phase 2: client-side error surface (last 20 errors, timestamp + action) -->
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Client Error Log</span><span class="g6"><button class="btn btn-n btn-s" data-action="copyErrorLog" title="Copy the error log to the clipboard as plain text"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button><button class="btn btn-n btn-s" data-action="downloadErrorLog" title="Download the error log as a .txt file"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Download</button><button class="btn btn-n btn-s" data-action="clearErrorLog">Clear</button></span></div>
     <div class="sr-hint">Last 20 client-side errors with timestamp and source action , for debugging on static hosting where no server log exists. Copy or download the log to share it.</div>
@@ -2232,20 +2251,22 @@
     <div class="sr-hint">Optional and off by default. When enabled with a webhook URL, new client errors are posted to your own endpoint , never to a third-party service. A failed send stays logged locally only.</div>
     <input type="url" id="err-webhook" class="ctl-in" data-action="setErrWebhook" placeholder="https://your-webhook.example.com/hook (optional)" aria-label="Error reporting webhook URL (optional)" autocomplete="off">
 
-    <!-- OWNER 2026-08-17: Danger Zone , in-project Delete Project at the
-         BOTTOM of the Controls tab (owner: "go inside of the project...
-         click the settings. Scroll onto the bottom. And you click delete
-         project"). Shown only while an OWNER code is held (renderDangerZone
-         in mmgr-cloud.js toggles hidden , editors/viewers never see it, and
-         the server enforces owner-only on the delete route regardless). -->
-    <div class="ctl-sec" id="del-zone" data-ctl-group="danger" data-ctl-static="1" hidden><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Danger Zone</div>
-    <div class="danger-zone" id="del-zone-body" hidden>
-      <div class="danger-zone-copy">
-        <b>Delete this project</b>
-        <p>Removes it from the cloud backend for everyone. Every editor/viewer code stops working, every shared copy becomes <strong>discontinued</strong>, and offline copies keep their last snapshot but receive no more updates. Only you, the admin, can do this.</p>
+    </div><!-- /.ctl-panel diagnostics -->
+    <div class="ctl-panel is-hide" data-ctl-panel="danger">
+      <!-- OWNER 2026-08-17: Danger Zone , in-project Delete Project at the
+           BOTTOM of the Controls tab (owner: "go inside of the project...
+           click the settings. Scroll onto the bottom. And you click delete
+           project"). Shown only while an OWNER code is held (renderDangerZone
+           in mmgr-cloud.js toggles hidden , editors/viewers never see it, and
+           the server enforces owner-only on the delete route regardless). -->
+      <div class="danger-zone" id="del-zone-body" hidden>
+        <div class="danger-zone-copy">
+          <b>Delete this project</b>
+          <p>Removes it from the cloud backend for everyone. Every editor/viewer code stops working, every shared copy becomes <strong>discontinued</strong>, and offline copies keep their last snapshot but receive no more updates. Only you, the admin, can do this.</p>
+        </div>
+        <button class="btn btn-d btn-s" data-action="cloudDeleteOpen"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete project</button>
       </div>
-      <button class="btn btn-d btn-s" data-action="cloudDeleteOpen"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete project</button>
-    </div>
+    </div><!-- /.ctl-panel danger -->
   </div>
   </div>
 </div>

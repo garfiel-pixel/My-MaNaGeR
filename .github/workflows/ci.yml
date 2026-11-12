@@ -1361,6 +1361,15 @@ jobs:
         id: qa-consent
         run: node tools/qa-consent.cjs
 
+      # T-12 (UI-IA-AND-MCP-DIRECTIVE 2026-11-11, Do #6): the final 6-group
+      # tabbed Controls drawer shape + keyboard operation of the headings.
+      # Reuses the serve.cjs server started above; spawns its own only if
+      # :8765 is down.
+
+      - name: "T4: Controls drawer IA gate (qa-controls-ia)"
+        id: qa-controls-ia
+        run: node tools/qa-controls-ia.cjs
+
       # M-5 keyboard shortcuts + the shortcut help sheet (audit 2026-10-18):
       # "?" opens the sheet, "/" reaches the assistant, Enter works out the
       # estimate on the calculator, and neither one eats what the user is

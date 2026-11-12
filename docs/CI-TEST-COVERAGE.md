@@ -27,7 +27,7 @@ for the slowest job after.
 | `cloud-core` | The shared `wrangler dev` on :8787: cloud phases 1 and 2, photos, codes, billing cancel, import, page-health sweep, AI badge E2E, market features, Team RBAC, then stop. 7.6 min. |
 | `cloud-auth` | Its own :8787: email auth, Team UI, Team Enterprise, Reviews, calc workspace, rate book, rank 9, T9, presence, prefs, offline copies, autosave + signin, the restart, Controls admin, then the self-contained Client codes and API keys suites. 6.3 min. |
 | `browser-calc` | Its own `serve.cjs`: calculator page, audit, trade coverage, golden cases, assistant, mat items, related items, relations, calc controls, fixed containment, Calc S2, Sync bond E2E. 6.4 min. |
-| `browser-app` | Its own `serve.cjs`: qa-full, Drive, Paddle CSP, auth limits, the AI battery and its window layout gates, v11, p1, theme, modals, gold, appshell, notices, dot rail, globes, code names, procurement, consent, shortcuts, widescreen, axe, hero globe. 7.3 min. |
+| `browser-app` | Its own `serve.cjs`: qa-full, Drive, Paddle CSP, auth limits, the AI battery and its window layout gates, v11, p1, theme, modals, gold, appshell, notices, dot rail, globes, code names, procurement, consent, shortcuts, widescreen, axe, hero globe, controls-IA. 7.3 min. |
 | `summary` | `needs` all five, `if: always()`, one row per job from `needs.<job>.result`. |
 
 Tier vocabulary (unchanged): **Static** and **T1** need no browser or server,
@@ -139,6 +139,7 @@ headless Chrome against `serve.cjs` on :8765.
 | `tools/qa-cloud-import.cjs` | CI | CLI import ledger + id mapping (35/35) |
 | `tools/qa-market-features.cjs` | CI | dashboard/market feature aggregations (61/61) |
 | `tools/verify-controls-admin.cjs` | CI | Controls drawer surfaces + admin copy/labels (11/11) |
+| `tools/qa-controls-ia.cjs` | CI | T-12 Controls drawer IA gate (UI-IA-AND-MCP-DIRECTIVE 2026-11-11, Do #6): the final 6-group tabbed shape - 6 `[data-ctl-group]` nodes each with >= 2 `[data-ctl-tab]`, exactly one visible `[data-ctl-panel]` per group, every preserved slot id inside `#db-ctrl` exactly once, no `.sr`/`.fmt-card`/`#errlog-body`/`#data-account`/`#template-list` orphaned outside a panel, no nested accordion inside a panel, and Esc/Enter/Space all still operate the headings; plus no horizontal overflow at 390/768/1440. Drives real headless Chrome over serve.cjs (spawns its own if :8765 is down). 10/10 |
 | `tools/qa-health-sweep.cjs` | CI | every served page: console errors, exceptions, 4xx/5xx, CSP violations, live-vs-disk CSP hash drift, emoji, leaked raw values, and browser-verified CSS rule coverage |
 | `tools/qa-ai-badge-e2e.cjs` | CI | AI badge end-to-end (API phase) |
 | `tools/qa-offline-copies.cjs` | CI | offline-copy records + countdown (23/23) |

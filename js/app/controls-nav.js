@@ -188,11 +188,22 @@
       }
     });
   }
-  function focus(group, _tab) {
+  // Open a group and (optionally) select one of its tabs. Used by the deep link
+  // (?ctl=<group>.<tab>), search (T-13) and openPacks(). The tab lives inside
+  // the group body; switchTab shows its panel and marks it active.
+  function focus(group, tab) {
     var sec = secByKey(group);
-    if (sec) {
-      setOpen(group, true);
-      sec.focus();
+    if (!sec) {
+      return;
+    }
+    setOpen(group, true);
+    sec.focus();
+    if (tab) {
+      var body = groupOf(group);
+      var tabEl = body ? body.querySelector('.dtab[data-ctl-tab="' + tab + '"]') : null;
+      if (tabEl) {
+        switchTab(tabEl);
+      }
     }
   }
   function current() {

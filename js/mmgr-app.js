@@ -1314,6 +1314,40 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // T-12 (UI-IA-AND-MCP 2026-11-11): deep link ?ctl=<group>.<tab> opens the
+  // Controls drawer and focuses the named group/tab. Used by search (T-13) and
+  // surfaced as a shareable URL. No-op when the param is absent, and it never
+  // blocks boot if anything downstream is missing.
+  function applyCtlDeepLink() {
+    try {
+      const raw = new URLSearchParams(window.location.search || '').get('ctl');
+      if (!raw) {
+        return;
+      }
+      const dot = raw.indexOf('.');
+      const group = dot > -1 ? raw.slice(0, dot) : raw;
+      const tab = dot > -1 ? raw.slice(dot + 1) : null;
+      if (!group) {
+        return;
+      }
+      setTimeout(function () {
+        try {
+          const ac = window.MMGR && window.MMGR.AppControls;
+          if (!ac || typeof ac.focus !== 'function') {
+            return;
+          }
+          openDrw();
+          swDtab('ctrl', document.querySelector('.dtab[data-tab="ctrl"]'));
+          ac.focus(group, tab);
+        } catch (e) {
+          /* never block boot */
+        }
+      }, 0);
+    } catch (e) {
+      /* never block boot */
+    }
+  }
+
   // OWNER 2026-11-01: the settings drawer had a close button but no way out
   // by gesture - a click on the workspace behind it left it parked over the
   // page. Docked only: a floated drawer is a moveable window and a stray click
@@ -1371,15 +1405,12 @@ var MMGR = window.MMGR || {};
     }
     openDrw();
     swDtab('ctrl', document.querySelector('.dtab[data-tab="ctrl"]'));
-    // T-11: the packs now live in the Workspace group's Packs tab. Open the
-    // group and switch to that tab so the (hidden by default) panel is shown
-    // before we scroll it into view.
-    if (window.MMGR && window.MMGR.AppControls) {
+    // T-12: openPacks routes through AppControls.focus so the Workspace group
+    // opens and the Packs tab is selected the way a person would reach it.
+    if (window.MMGR && window.MMGR.AppControls && window.MMGR.AppControls.focus) {
+      window.MMGR.AppControls.focus('workspace', 'packs');
+    } else if (window.MMGR && window.MMGR.AppControls) {
       window.MMGR.AppControls.setOpen('workspace', true);
-      const packsTab = document.querySelector('.dtab[data-ctl-tab="packs"]');
-      if (packsTab && window.MMGR.AppControls.switchTab) {
-        window.MMGR.AppControls.switchTab(packsTab);
-      }
     }
     const el = U.$('adv-packs-section');
     if (el) {
@@ -4861,6 +4892,8 @@ var MMGR = window.MMGR || {};
         return;
       }
       init();
+      // T-12: honour ?ctl=<group>.<tab> once the drawer and accordion are ready.
+      applyCtlDeepLink();
     }
     tryInit();
   }

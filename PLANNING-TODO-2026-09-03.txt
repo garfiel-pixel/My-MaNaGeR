@@ -2650,3 +2650,25 @@ narrower reading of §14.3).
   verify-controls-admin, qa-copy-gate 11/11, verify-navigation-anchors 2/2,
   verify-a11y-labels, qa-code-names 34/34, verify-ci-coverage 12/12.
 
+
+- T-26 EXTERNAL MCP CONNECTOR 2026-11-12 (owner report: the admin panel said
+  "Could not reach the MCP settings service", and Claude could not be added):
+  two real defects. (1) Dynamic Client Registration required a browser
+  session, but Claude registers from Anthropic's servers with no cookie, so
+  every connector got 401 before the consent screen. Registration is now open
+  (RFC 7591) with 1 to 5 redirect URIs validated (https, or http only for
+  loopback, no fragment) and stored in the new mcp_clients.redirect_uris
+  column (migration 0038); authorize refuses any redirect_uri that is not an
+  exact member and binds the client to the account on first approval.
+  (2) /api/mcp answered the handshake 200 without a token (PATH-A), so Claude
+  detected "no sign in" and never started OAuth; it now answers 401 with
+  WWW-Authenticate: Bearer resource_metadata="...". The admin panel now shows
+  the connection URL with Copy, the five Claude steps, a Retry button, and
+  error text that names the HTTP status instead of a generic message. Field
+  guide A-27 rewritten: the old "claude.ai has no key field" caveat is gone;
+  Claude uses the app-wide OAuth URL.
+  VERIFIED: npm run verify exit 0, qa-appwide-mcp 54/54 (O9-O12 + 401 gates),
+  qa-mcp-admin-panel 14/14, qa-mcp-live-e2e 23/23 including D1-D8 against a
+  real wrangler dev + D1, qa-controls-ia 10/10, qa-search 29/29, qa-copy-gate
+  11/11, verify-navigation-anchors 2/2, verify-icons, verify-actions,
+  qa-code-names 34/34. Shell v643.

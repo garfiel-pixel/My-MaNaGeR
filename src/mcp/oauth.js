@@ -17,7 +17,7 @@
      - PKCE (RFC 7636), S256
      - Dynamic Client Registration (RFC 7591)
    ============================================================ */
-import { json, cloudForbidden, readSession } from '../lib/http.js';
+import { json, readSession } from '../lib/http.js';
 
 const ACCESS_TTL_MS = 60 * 60 * 1000; // 1 hour
 const REFRESH_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -190,14 +190,87 @@ export async function refreshTokens(env, refreshToken, clientId) {
 }
 
 // ---- Dynamic Client Registration (RFC 7591) -----------------------------
+// T-26 (2026-11-12): registration is OPEN. External connectors (Claude,
+// Cursor, ChatGPT) register from their own servers, where there is no browser
+// session, so requiring a session made every connector fail with 401 before
+// the user ever saw a consent screen. The account is bound at AUTHORIZE time
+// instead, when a signed-in human approves. The redirect URI list registered
+// here is enforced byte-for-byte at authorize, which is what keeps open
+// registration from becoming an open redirect.
 
-export async function registerClient(env, accountSub, name) {
+const MAX_REDIRECT_URIS = 5;
+
+export function isAllowedRedirectUri(raw) {
+  if (typeof raw !== 'string' || !raw || raw.length > 2048) {
+    return false;
+  }
+  let u;
+  try {
+    u = new URL(raw);
+  } catch (e) {
+    return false;
+  }
+  if (u.hash) {
+    return false;
+  }
+  if (u.protocol === 'https:') {
+    return true;
+  }
+  if (u.protocol !== 'http:') {
+    return false;
+  }
+  // Plain HTTP is only for a loopback development client.
+  return u.hostname === 'localhost' || u.hostname === '127.0.0.1' || u.hostname === '[::1]';
+}
+
+// Returns the clean list, or null when any entry is invalid / none supplied.
+export function cleanRedirectUris(body) {
+  const raw = Array.isArray(body && body.redirect_uris)
+    ? body.redirect_uris
+    : body && typeof body.redirect_uri === 'string'
+      ? [body.redirect_uri]
+      : [];
+  if (!raw.length || raw.length > MAX_REDIRECT_URIS) {
+    return null;
+  }
+  const out = [];
+  for (let i = 0; i < raw.length; i++) {
+    const u = raw[i];
+    if (!isAllowedRedirectUri(u)) {
+      return null;
+    }
+    if (out.indexOf(u) === -1) {
+      out.push(u);
+    }
+  }
+  return out.length ? out : null;
+}
+
+function parseStoredRedirects(value) {
+  if (!value) {
+    return [];
+  }
+  try {
+    const p = JSON.parse(value);
+    return Array.isArray(p) ? p.filter(isAllowedRedirectUri) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+export async function registerClient(env, accountSub, name, redirectUris) {
   const clientId = 'mmgr_mc_' + randomHex(12);
   const now = new Date().toISOString();
   await env.DB.prepare(
-    'INSERT INTO mcp_clients (client_id, account_sub, name, created_at, revoked) VALUES (?,?,?,?,0)'
+    'INSERT INTO mcp_clients (client_id, account_sub, name, redirect_uris, created_at, revoked) VALUES (?,?,?,?,?,0)'
   )
-    .bind(clientId, accountSub, (name || 'MCP client').slice(0, 120), now)
+    .bind(
+      clientId,
+      accountSub || '',
+      (name || 'MCP client').slice(0, 120),
+      JSON.stringify(redirectUris || []),
+      now
+    )
     .run();
   return { clientId, name: name || 'MCP client', token_endpoint_auth_method: 'none' };
 }
@@ -265,6 +338,14 @@ export function protectedResourceMetadata(origin) {
 
 // ---- Consent page (no inline script, CSP-safe form) ----------------------
 
+function escapeHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 export function renderConsentHtml(params) {
   const hidden = [
     'response_type',
@@ -276,11 +357,11 @@ export function renderConsentHtml(params) {
     'code_challenge_method'
   ]
     .map(function (k) {
-      const v = params[k] || '';
-      return '<input type="hidden" name="' + k + '" value="' + v.replace(/"/g, '&quot;') + '">';
+      return '<input type="hidden" name="' + k + '" value="' + escapeHtml(params[k] || '') + '">';
     })
     .join('');
-  const clientName = (params.client_id || 'this application').replace(/</g, '&lt;');
+  const clientName = escapeHtml(params.client_name || params.client_id || 'this application');
+  const redirectHost = escapeHtml(params.redirect_host || '');
   return (
     '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
@@ -295,6 +376,9 @@ export function renderConsentHtml(params) {
     clientName +
     '</h1>' +
     '<p>This application is asking to connect to your My MaNaGeR account through MCP. It will be able to read and act on the projects you choose, under the controls you set in the admin panel. It cannot open the admin panel.</p>' +
+    (redirectHost
+      ? '<p>After you press Allow you will return to <strong>' + redirectHost + '</strong>.</p>'
+      : '') +
     '<form method="post" action="/api/oauth/authorize">' +
     hidden +
     '<button type="submit" class="btn allow" name="decision" value="approve">Allow</button>' +
@@ -339,6 +423,21 @@ async function readForm(request) {
   return {};
 }
 
+async function loadClient(env, clientId) {
+  if (!clientId) {
+    return null;
+  }
+  const row = await env.DB.prepare(
+    'SELECT client_id, name, account_sub, redirect_uris, revoked FROM mcp_clients WHERE client_id = ?'
+  )
+    .bind(clientId)
+    .first();
+  if (!row || row.revoked === 1) {
+    return null;
+  }
+  return row;
+}
+
 export async function handleOauthAuthorize(request, env, url) {
   const session = await readSession(request, env);
   if (!session || !session.sub) {
@@ -360,27 +459,40 @@ export async function handleOauthAuthorize(request, env, url) {
     const params = url.searchParams;
     const clientId = params.get('client_id') || '';
     const redirectUri = params.get('redirect_uri') || '';
+    const responseType = params.get('response_type') || 'code';
     const codeChallenge = params.get('code_challenge') || '';
     const codeChallengeMethod = params.get('code_challenge_method') || 'S256';
     const scope = params.get('scope') || 'account';
     const state = params.get('state') || '';
+    if (responseType !== 'code') {
+      return new Response('Only the authorization code flow is supported.', { status: 400 });
+    }
     if (!clientId || !redirectUri || !codeChallenge) {
       return new Response('Missing required OAuth parameters.', { status: 400 });
     }
-    // Surface the client name if we know it (best effort, non-fatal).
-    let clientName = clientId;
+    if (codeChallengeMethod !== 'S256') {
+      return new Response('PKCE S256 is required.', { status: 400 });
+    }
+    const client = await loadClient(env, clientId);
+    if (!client) {
+      return new Response('Unknown or revoked client. Add the connector again.', { status: 400 });
+    }
+    // Open registration means anyone can create a client; the registered
+    // redirect URI list is what stops a code being sent to another host.
+    const allowed = parseStoredRedirects(client.redirect_uris);
+    if (allowed.indexOf(redirectUri) === -1) {
+      return new Response('redirect_uri is not registered for this client.', { status: 400 });
+    }
+    let host = '';
     try {
-      const c = await env.DB.prepare('SELECT name FROM mcp_clients WHERE client_id = ?')
-        .bind(clientId)
-        .first();
-      if (c && c.name) {
-        clientName = c.name;
-      }
+      host = new URL(redirectUri).host;
     } catch (e) {
-      /* non-fatal */
+      host = '';
     }
     return new Response(
       renderConsentHtml({
+        client_name: client.name || clientId,
+        redirect_host: host,
         response_type: 'code',
         client_id: clientId,
         redirect_uri: redirectUri,
@@ -388,16 +500,28 @@ export async function handleOauthAuthorize(request, env, url) {
         state: state,
         code_challenge: codeChallenge,
         code_challenge_method: codeChallengeMethod
-      }).replace('this application', clientName),
+      }),
       { status: 200, headers: { 'content-type': 'text/html; charset=utf-8' } }
     );
   }
 
   if (request.method === 'POST') {
     const form = await readForm(request);
-    const decision = form.decision;
+    const clientId = form.client_id || '';
     const redirectUri = form.redirect_uri || '';
+    const decision = form.decision;
     const state = form.state || '';
+    const client = await loadClient(env, clientId);
+    if (!client) {
+      return new Response('Unknown or revoked client.', { status: 400 });
+    }
+    const allowed = parseStoredRedirects(client.redirect_uris);
+    if (allowed.indexOf(redirectUri) === -1) {
+      return new Response('redirect_uri is not registered for this client.', { status: 400 });
+    }
+    if (client.account_sub && client.account_sub !== session.sub) {
+      return new Response('This connector is linked to another account.', { status: 403 });
+    }
     if (decision !== 'approve') {
       const denyUrl =
         redirectUri +
@@ -406,10 +530,20 @@ export async function handleOauthAuthorize(request, env, url) {
         (state ? '&state=' + encodeURIComponent(state) : '');
       return Response.redirect(denyUrl, 302);
     }
+    if (!form.code_challenge) {
+      return new Response('Missing PKCE challenge.', { status: 400 });
+    }
+    // First approval binds the client to this account, which is what puts it
+    // in the admin panel's "Connected clients" list.
+    await env.DB.prepare(
+      "UPDATE mcp_clients SET account_sub = ? WHERE client_id = ? AND (account_sub = '' OR account_sub = ?)"
+    )
+      .bind(session.sub, clientId, session.sub)
+      .run();
     const code = await issueAuthCode(
       env,
       session.sub,
-      form.client_id || '',
+      clientId,
       form.code_challenge || '',
       form.code_challenge_method || 'S256',
       redirectUri
@@ -473,23 +607,48 @@ export async function handleOauthToken(request, env) {
 }
 
 // ---- Dynamic Client Registration (RFC 7591) -------------------------------
-// Account-bound: the admin panel calls this while signed in, so the new client
-// is tied to the connecting account from the start. Open DCR without an account
-// is intentionally not offered.
+// Open by design (T-26): the client is created here with NO account, and the
+// account is bound when a signed-in human approves the consent screen. The
+// registered redirect URIs are the security boundary - authorize refuses any
+// URI that is not an exact member of this list.
 
 export async function handleOauthRegister(request, env) {
-  const session = await readSession(request, env);
-  if (!session || !session.sub) {
-    return json({ error: 'unauthorized', error_description: 'sign in to register a client' }, 401);
-  }
   const body = await readForm(request);
-  const name = typeof body.client_name === 'string' ? body.client_name : null;
-  const client = await registerClient(env, session.sub, name);
+  const authMethod = body.token_endpoint_auth_method;
+  if (authMethod && authMethod !== 'none') {
+    return json(
+      {
+        error: 'invalid_client_metadata',
+        error_description: 'only public clients (token_endpoint_auth_method none) are supported'
+      },
+      400
+    );
+  }
+  const redirectUris = cleanRedirectUris(body);
+  if (!redirectUris) {
+    return json(
+      {
+        error: 'invalid_redirect_uri',
+        error_description:
+          'redirect_uris must list 1 to ' +
+          MAX_REDIRECT_URIS +
+          ' https URLs (http is allowed only for localhost)'
+      },
+      400
+    );
+  }
+  const name =
+    typeof body.client_name === 'string' && body.client_name.trim()
+      ? body.client_name.trim().slice(0, 120)
+      : 'MCP client';
+  const client = await registerClient(env, '', name, redirectUris);
   return json(
     {
       client_id: client.clientId,
+      client_id_issued_at: Math.floor(Date.now() / 1000),
       client_name: client.name,
-      token_endpoint_auth_method: client.token_endpoint_auth_method,
+      redirect_uris: redirectUris,
+      token_endpoint_auth_method: 'none',
       grant_types: ['authorization_code', 'refresh_token'],
       response_types: ['code'],
       scope: 'account'

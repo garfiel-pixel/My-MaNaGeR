@@ -46,7 +46,6 @@ import {
   executeTool,
   queueMcpProposal,
   validateProposalEnvelope,
-  MCP_AUTH_REFUSAL,
   MCP_PREMIUM_REFUSAL
 } from './server.js';
 import {
@@ -295,9 +294,49 @@ function rpcError(id, code, message) {
 
 /* ---- Main handler -------------------------------------------------------- */
 
+// T-26 (2026-11-12): a remote connector only starts OAuth when the MCP
+// endpoint answers 401 with the protected-resource metadata URL. The old
+// PATH-A behaviour (handshake 200, refusal inside tools/call) meant Claude
+// detected "no sign in" and never offered the consent screen.
+function unauthorized(origin, message, invalidToken) {
+  const prm = origin + '/.well-known/oauth-protected-resource';
+  const challenge = invalidToken
+    ? 'Bearer error="invalid_token", resource_metadata="' + prm + '"'
+    : 'Bearer resource_metadata="' + prm + '"';
+  return new Response(
+    JSON.stringify({
+      jsonrpc: '2.0',
+      id: null,
+      error: { code: -32001, message: message }
+    }),
+    {
+      status: 401,
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'X-Content-Type-Options': 'nosniff',
+        'WWW-Authenticate': challenge
+      }
+    }
+  );
+}
+
 export async function handleAppwideMcp(request, env) {
   if (request.method !== 'POST') {
     return json({ ok: false, error: 'MCP server requires POST' }, 405);
+  }
+  const origin = new URL(request.url).origin;
+  const authHeader = request.headers.get('Authorization') || '';
+  const bearer = authHeader.indexOf('Bearer ') === 0 ? authHeader.slice(7).trim() : '';
+  const acct = await verifyAccessToken(env, bearer);
+  if (!acct) {
+    return unauthorized(
+      origin,
+      bearer
+        ? 'The access token is invalid or expired. Reconnect the connector.'
+        : 'Connect with OAuth to use this MCP server.',
+      !!bearer
+    );
   }
   let body;
   try {
@@ -319,9 +358,6 @@ export async function handleAppwideMcp(request, env) {
     return new Response(null, { status: 204 });
   }
   if (method === 'tools/list') {
-    // Handshake answers unauthenticated by design (PATH-A law, same as the
-    // per-project server) so clients can discover the catalog. Every tools/call
-    // below is gated on the OAuth bearer + the account config + premium.
     return rpcResult(id, { tools: APPWIDE_TOOLS });
   }
   if (method === 'tools/call') {
@@ -332,14 +368,8 @@ export async function handleAppwideMcp(request, env) {
       return rpcError(id, -32602, 'Missing tool name');
     }
 
-    // OAuth bearer -> account. No token, no data, no writes (same law as
-    // MCP_AUTH_REFUSAL on the per-project surface).
-    const authHeader = request.headers.get('Authorization') || '';
-    const bearer = authHeader.indexOf('Bearer ') === 0 ? authHeader.slice(7).trim() : '';
-    const acct = await verifyAccessToken(env, bearer);
-    if (!acct) {
-      return rpcResult(id, { content: [{ type: 'text', text: MCP_AUTH_REFUSAL }], isError: true });
-    }
+    // The bearer was verified at the transport gate above, so every tool call
+    // below runs with a real account. No token, no data, no writes.
     const accountSub = acct.accountSub;
 
     const cfg = await getMcpConfig(env, accountSub);

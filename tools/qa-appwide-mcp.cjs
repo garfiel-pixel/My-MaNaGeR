@@ -77,7 +77,13 @@ function handleUpdate(s, args, store) {
   }
   if (s.includes('mcp_clients')) {
     let row = null;
-    if (s.includes('last_used_at')) {
+    if (s.includes('account_sub = ?')) {
+      // T-26: first approval binds an openly registered client to the account.
+      row = store.mcp_clients.find(c => c.client_id === args[1]);
+      if (row && (row.account_sub === '' || row.account_sub === args[2])) {
+        row.account_sub = args[0];
+      }
+    } else if (s.includes('last_used_at')) {
       const clientId = args[args.length - 1];
       row = store.mcp_clients.find(c => c.client_id === clientId);
       if (row) {
@@ -186,6 +192,10 @@ function makeEnv(world) {
     if (s.includes('from mcp_clients') && s.includes('client_id')) {
       const row = store.mcp_clients.find(c => c.client_id === args[0]);
       return row || null;
+    }
+    if (s.includes('from auth_sessions')) {
+      // readSession asks whether the jti was revoked; a null answer means no.
+      return { revoked_at: null };
     }
     if (s.includes('from mcp_server_config')) {
       return store.mcp_server_config[0] || null;
@@ -308,7 +318,15 @@ function makeEnv(world) {
       return null;
     }
   };
-  return { DB: db, KV: {}, R2: r2, __store: store };
+  return {
+    DB: db,
+    KV: {},
+    R2: r2,
+    // A fixed secret lets the harness mint a real session cookie for the
+    // authorize tests; readSession signs with the same value.
+    GOOGLE_CLIENT_SECRET: 'qa-appwide-session-secret',
+    __store: store
+  };
 }
 
 // ---- request helper -------------------------------------------------------
@@ -325,16 +343,46 @@ async function mcpCall(env, body, bearer) {
   });
   const res = await APPWIDE.handleAppwideMcp(req, env);
   const text = await res.text();
+  let out;
   try {
-    return JSON.parse(text);
+    out = JSON.parse(text);
   } catch (e) {
-    return { __raw: text };
+    out = { __raw: text };
   }
+  out.__status = res.status;
+  out.__www = res.headers.get('WWW-Authenticate') || '';
+  return out;
 }
 async function metaCall(env, pathname) {
   const req = new Request('http://localhost' + pathname, { method: 'GET' });
   const res = await OAUTH.handleOauthMetadata(req, env, new URL('http://localhost' + pathname));
   return { status: res.status, body: await res.json().catch(() => null) };
+}
+
+// A real session cookie for the authorize tests, signed with the same secret
+// readSession uses (env.GOOGLE_CLIENT_SECRET).
+async function sessionCookie(env, sub) {
+  const payload = JSON.stringify({
+    sub: sub,
+    email: '',
+    name: '',
+    jti: 'jti-' + sub,
+    exp: Math.floor(Date.now() / 1000) + 3600
+  });
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(env.GOOGLE_CLIENT_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+  return (
+    'mmgr_session=' +
+    Buffer.from(payload, 'utf8').toString('base64url') +
+    '.' +
+    Buffer.from(new Uint8Array(sig)).toString('base64url')
+  );
 }
 
 // ---- main -----------------------------------------------------------------
@@ -446,6 +494,115 @@ async function metaCall(env, pathname) {
     ''
   );
 
+  section('OAUTH O9 — open dynamic client registration');
+  const envD = makeEnv({ config: null, subscription: null, projects: [], adoptions: [] });
+  const redirectUri = 'https://claude.ai/api/mcp/auth_callback';
+  const regRes = await oauth.handleOauthRegister(
+    new Request('http://localhost/api/oauth/register', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ client_name: 'Claude', redirect_uris: [redirectUri] })
+    }),
+    envD
+  );
+  const regBody = await regRes.json();
+  check(
+    'registration without a browser session returns 201 + client_id',
+    regRes.status === 201 && /^mmgr_mc_/.test(regBody.client_id || ''),
+    { status: regRes.status, regBody }
+  );
+  check(
+    'registration echoes the redirect URI',
+    Array.isArray(regBody.redirect_uris) && regBody.redirect_uris[0] === redirectUri,
+    regBody.redirect_uris
+  );
+  check(
+    'registration stores no account binding yet',
+    envD.__store.mcp_clients[0] && envD.__store.mcp_clients[0].account_sub === '',
+    envD.__store.mcp_clients[0]
+  );
+
+  section('OAUTH O10 — registration refuses a non-HTTPS redirect');
+  const badReg = await oauth.handleOauthRegister(
+    new Request('http://localhost/api/oauth/register', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ client_name: 'Bad', redirect_uris: ['http://evil.example/cb'] })
+    }),
+    envD
+  );
+  check('http redirect outside localhost is refused', badReg.status === 400, badReg.status);
+
+  section('OAUTH O11 — authorize enforces the registered redirect');
+  const cookie = await sessionCookie(envD, 'sub-abc');
+  const clientId = regBody.client_id;
+  function authUrl(uri) {
+    return new URL(
+      'http://localhost/api/oauth/authorize?response_type=code&client_id=' +
+        encodeURIComponent(clientId) +
+        '&redirect_uri=' +
+        encodeURIComponent(uri) +
+        '&code_challenge=' +
+        challenge +
+        '&code_challenge_method=S256&state=xyz'
+    );
+  }
+  const badUrl = authUrl('https://evil.example/cb');
+  const badAuth = await oauth.handleOauthAuthorize(
+    new Request(badUrl, { headers: { cookie: cookie } }),
+    envD,
+    badUrl
+  );
+  check('authorize refuses an unregistered redirect_uri', badAuth.status === 400, badAuth.status);
+
+  const goodUrl = authUrl(redirectUri);
+  const goodAuth = await oauth.handleOauthAuthorize(
+    new Request(goodUrl, { headers: { cookie: cookie } }),
+    envD,
+    goodUrl
+  );
+  const consent = await goodAuth.text();
+  check('consent page names the client', consent.indexOf('Claude') > -1, '');
+  check('consent page names the redirect host', consent.indexOf('claude.ai') > -1, '');
+
+  section('OAUTH O12 — approval binds the client and issues a code');
+  const approveRes = await oauth.handleOauthAuthorize(
+    new Request('http://localhost/api/oauth/authorize', {
+      method: 'POST',
+      headers: { cookie: cookie, 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        decision: 'approve',
+        response_type: 'code',
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        code_challenge: challenge,
+        code_challenge_method: 'S256',
+        state: 'xyz'
+      })
+    }),
+    envD,
+    new URL('http://localhost/api/oauth/authorize')
+  );
+  const location = approveRes.headers.get('location') || '';
+  const codeMatch = /[?&]code=([^&]+)/.exec(location);
+  check('approve redirects back with a code', approveRes.status === 302 && !!codeMatch, {
+    status: approveRes.status,
+    location
+  });
+  check(
+    'approval binds the client to the signed-in account',
+    envD.__store.mcp_clients[0].account_sub === 'sub-abc',
+    envD.__store.mcp_clients[0].account_sub
+  );
+  const flow = await oauth.exchangeCode(
+    envD,
+    codeMatch ? decodeURIComponent(codeMatch[1]) : '',
+    verifier,
+    clientId,
+    redirectUri
+  );
+  check('the issued code exchanges for a token', flow.ok === true && !!flow.accessToken, flow);
+
   // Each env keeps its OWN in-memory D1 store, so a bearer must be issued
   // against the SAME env that the MCP call is dispatched to (verifyAccessToken
   // only sees that env's stored token hashes).
@@ -509,7 +666,7 @@ async function metaCall(env, pathname) {
     projScoped.map(t => t.name)
   );
 
-  section('APP-WIDE MCP M3 — auth refusal');
+  section('APP-WIDE MCP M3 — 401 metadata challenge');
   const noAuth = await mcpCall(
     envA,
     {
@@ -521,12 +678,33 @@ async function metaCall(env, pathname) {
     null
   );
   check(
-    'tools/call without bearer is refused with MCP_AUTH_REFUSAL',
-    noAuth &&
-      noAuth.result &&
-      noAuth.result.isError === true &&
-      /credential/.test(noAuth.result.content[0].text),
-    noAuth
+    'tools/call without a bearer answers 401 + resource_metadata',
+    noAuth.__status === 401 &&
+      /resource_metadata="http:\/\/localhost\/\.well-known\/oauth-protected-resource"/.test(
+        noAuth.__www
+      ),
+    { status: noAuth.__status, www: noAuth.__www }
+  );
+  check('the 401 body carries no tool result', !noAuth.result, noAuth);
+  const initNoAuth = await mcpCall(
+    envA,
+    { jsonrpc: '2.0', id: 30, method: 'initialize', params: { protocolVersion: '2024-11-05' } },
+    null
+  );
+  check(
+    'initialize without a bearer also answers 401 (the OAuth trigger)',
+    initNoAuth.__status === 401,
+    initNoAuth.__status
+  );
+  const badBearer = await mcpCall(
+    envA,
+    { jsonrpc: '2.0', id: 31, method: 'tools/list' },
+    'mmgr_at_deadbeef'
+  );
+  check(
+    'an invalid bearer answers 401 with error="invalid_token"',
+    badBearer.__status === 401 && /error="invalid_token"/.test(badBearer.__www),
+    { status: badBearer.__status, www: badBearer.__www }
   );
 
   section('APP-WIDE MCP M4 — premium refusal');

@@ -2582,6 +2582,48 @@ narrower reading of §14.3).
   exit 0, nightly 43179026640 green (T3 22/22). Commit a84fc23. Skill guard
   added: skeptical-code-audit checklist item 10 (harness contract drift) and a
   no-slacking failure pattern.
+- UI-IA AND MCP WAVE 2026-11-12 (UI-IA-AND-MCP-DIRECTIVE-2026-11-11, T-00 to
+  T-24): branch feat/ui-ia-mcp, 24 commits, PR #5 merged as f0574b1 after all
+  six CI jobs and CodeQL went green. Shipped: one feature registry with
+  PANEL_COUNT derived (15 panels, 16 bento cards); count truth on every served
+  page with the copy gate scanning all 14; anchor + registry gates; the landing
+  MCP card; Controls reduced to six tabbed groups (You & Access, Share,
+  Workspace, Your Data, Connect & Sync, Help) with one visible panel each; the
+  Ctrl+K palette on project, launcher, admin and calculator; one Saved
+  estimates card on the calculator; the field guide renumbered to 36 sheets;
+  the project nav relabelled into six groups; and the collaboration
+  project-name single-line fix.
+  MCP ROOT CAUSE (PR #4, d21dc45): /api/mcp/:projectId answered Cloudflare 1102
+  because r2DeriveKey ran a 100,000-iteration PBKDF2 on EVERY R2 state read.
+  The derived AES key is now cached per (owner_code_hash, salt); API keys
+  verify by SHA-256 fingerprint instead of a second 100k PBKDF2; apply_changes
+  validates the envelope (empty, caps, budget switch) before loading state,
+  carries a 4s write-budget guard, and queues exactly one cloud_reviews row per
+  proposal.
+  HARNESS CONTRACTS CHANGED: qa-bento-gate now expects 16 cards with
+  PANEL_COUNT still 15; qa-copy-gate scans all 14 served pages (9 -> 11
+  checks); qa-landing-ui reads the registry count and settles the bento in
+  view; verify-controls-admin S1 expects 4 rail nodes, no Premium label and
+  the header #plan-badge (T-19 moved it); qa-calc-playwright-audit dismisses
+  the first-visit nudge and centres Recall above the fixed total bar;
+  verify-delegate-gate needed the controls module's private boot renamed
+  initControls; qa-search S12 re-baselined to the real row label "Theme".
+  NEW GATES: verify-navigation-anchors, verify-feature-registry,
+  qa-controls-ia, qa-search-core, qa-search, plus tools/lib/html-strip.cjs
+  (regex-free HTML stripping so CodeQL stays clean). All registered in
+  docs/CI-TEST-COVERAGE.md and wired into ci.yml (static / browser-app).
+  DEPLOY (T-22): D1 migration 0037_mcp_server.sql was pending and the deploy
+  gate refused to ship until it was applied; it is additive (four MCP tables,
+  indexes, cloud_projects.mcp_enabled). Deployed version
+  77337f01-c809-4289-aa58-ec382bc4b197; rollback target
+  f2a68452-7bf1-4879-8bd9-9c9199f468ef. Live acceptance 16/16: MCP initialize/
+  tools-list/no-cred isError, Ctrl+K palette, mcp -> Connect an AI, six
+  Controls groups with no dead tab, pack-off Budget gone + Money pack result,
+  client scope hides a section, offline shell + palette, 15-panel count parity
+  across landing/features/guide. OWNER-GATED still open: accepting the T-02
+  correction proposal and the two credential-bound MCP write checks ({} on the
+  real project, one 1-diff receipt on a premium throwaway).
+
 
 - T-25 ADMIN MCP PANEL 2026-11-12 (owner report: "i still cant see the apwide
   mcp ui in the admin panel"): the app-wide MCP server had API routes but no
@@ -2607,3 +2649,4 @@ narrower reading of §14.3).
   verify-icons, verify-actions, qa-controls-ia 10/10, qa-search 29/29,
   verify-controls-admin, qa-copy-gate 11/11, verify-navigation-anchors 2/2,
   verify-a11y-labels, qa-code-names 34/34, verify-ci-coverage 12/12.
+

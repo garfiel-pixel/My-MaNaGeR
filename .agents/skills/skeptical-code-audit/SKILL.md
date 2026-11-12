@@ -95,6 +95,12 @@ Run these checks systematically across every relevant file, not just the one cur
 
 10. **Test-harness contract consistency** — After any change to a contract a harness depends on (storage key or storage type, DOM id/class, `data-action` name, API field, selector), grep every `qa-*.cjs` / `verify-*.cjs` / `audit-*.cjs` for the OLD contract and re-baseline each hit. A harness that seeds the old contract silently exercises the fallback branch: its own gates can still pass while the feature assertions no longer run. `npm run verify` does NOT run browser harnesses — run the affected harness itself and keep its assertions intact.
 
+11. **Browser-harness geometry, gate syntax and split names** — Four failure classes that each cost the 2026-11-12 wave a CI cycle:
+    - A visibility check must first scroll ITS container into view. Reveal animations only fire at a visibility threshold; a harness parked on a neighbouring section can leave a card at opacity 0 forever and call it a hole.
+    - A Playwright click near a viewport edge can be intercepted by a fixed bar, nudge or toast. Dismiss the overlay at load and centre the target before clicking; never `force: true` past a real overlay.
+    - Static gates that strip HTML for scanning must not one-pass `replace()` multi-character sequences: CodeQL's "incomplete multi-character sanitization" gate fails the PR. Use a regex-free indexOf helper (`tools/lib/html-strip.cjs`) that also handles spaced end tags such as `</script >`.
+    - A split module's private function must not reuse a monolith function name (`init` collided with the app boot); the delegate gate matches by name only.
+
 ## Reporting findings
 
 Structure the final report as:

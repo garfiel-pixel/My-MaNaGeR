@@ -1973,59 +1973,71 @@
          js/render/process.js into #rules-body. -->
     <div class="ctl-sec" data-ctl-group="rules"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Rules</div>
     <div id="rules-body" role="region" aria-label="Declared rules"></div>    <!-- C24 Template Library -->
-    <div class="ctl-sec" data-ctl-group="templates"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Templates</div>
-    <div class="sr-hint ctl-lead">Save your current schedule and budget as a reusable template, or apply a built-in template to get started quickly.</div>
-    <div class="ctl-actions">
-      <button class="btn btn-g btn-s" data-action="saveAsTemplate">+ Save as Template</button>
+    <!-- T-10 (UI-IA-AND-MCP 2026-11-11): Share & Send is one group with three
+         tabs - Digests, Emails, Templates - so the seven format cards and the
+         template library answer "how do I send this out" from one place
+         (closes F5). The "Copy As." heading with its trailing period no longer
+         survives as a heading; its cards live under Digests. -->
+    <div class="ctl-sec" data-ctl-group="share"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg> Share &amp; Send</div>
+    <div class="dtabs">
+      <button class="dtab active" data-action="ctlTab" data-ctl-tab="digests">Digests</button>
+      <button class="dtab" data-action="ctlTab" data-ctl-tab="emails">Emails</button>
+      <button class="dtab" data-action="ctlTab" data-ctl-tab="templates">Templates</button>
     </div>
-    <div id="template-list"></div>
-
-    <!-- ACTION-PLAN 5.1: multi-format Copy All (Slack / email / client) , 
-         rebuilt as explain-before-copy cards: what each format is for, a
-         live preview of what will be copied, then the Copy button. -->
-    <div class="ctl-sec" data-ctl-group="copy-as"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy As…</div>
-    <div class="sr-hint ctl-lead">The same live project state, in three share formats. Read what each one is for , then copy it.</div>
-    <div class="fmt-card">
-      <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Slack Digest</span><button class="btn btn-g btn-s" data-action="cpFormats" data-kind="slack" title="Copy the Slack-formatted digest"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
-      <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">Slack is the team chat app many crews use for quick updates. This format uses Slack's bold <code>*asterisks*</code> markup so headings and warnings stand out when pasted into a channel.</p></details>
-      <pre class="fmt-preview" id="pv-slack" aria-label="Slack digest preview (live)"></pre>
+    <div class="ctl-panel" data-ctl-panel="digests">
+      <!-- ACTION-PLAN 5.1: multi-format Copy All (Slack / email / client) ,
+           rebuilt as explain-before-copy cards: what each format is for, a
+           live preview of what will be copied, then the Copy button. -->
+      <div class="sr-hint ctl-lead">The same live project state, in three share formats. Read what each one is for , then copy it.</div>
+      <div class="fmt-card">
+        <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Slack Digest</span><button class="btn btn-g btn-s" data-action="cpFormats" data-kind="slack" title="Copy the Slack-formatted digest"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
+        <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">Slack is the team chat app many crews use for quick updates. This format uses Slack's bold <code>*asterisks*</code> markup so headings and warnings stand out when pasted into a channel.</p></details>
+        <pre class="fmt-preview" id="pv-slack" aria-label="Slack digest preview (live)"></pre>
+      </div>
+      <div class="fmt-card">
+        <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg> Email Digest</span><button class="btn btn-g btn-s" data-action="cpFormats" data-kind="email" title="Copy the email digest"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
+        <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">A ready-to-paste email for your sponsor or team: subject line included, plain text, no chat markup. Paste it straight into your mail client.</p></details>
+        <pre class="fmt-preview" id="pv-email" aria-label="Email digest preview (live)"></pre>
+      </div>
+      <div class="fmt-card">
+        <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Client Summary</span><button class="btn btn-g btn-s" data-action="cpFormats" data-kind="client" title="Copy the printable client summary"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
+        <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">A clean, printable one-page summary for a client or stakeholder: progress, key metrics, open issues. No internal risk detail , just what a client needs to know.</p></details>
+        <pre class="fmt-preview" id="pv-client" aria-label="Client summary preview (live)"></pre>
+      </div>
     </div>
-    <div class="fmt-card">
-      <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg> Email Digest</span><button class="btn btn-g btn-s" data-action="cpFormats" data-kind="email" title="Copy the email digest"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
-      <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">A ready-to-paste email for your sponsor or team: subject line included, plain text, no chat markup. Paste it straight into your mail client.</p></details>
-      <pre class="fmt-preview" id="pv-email" aria-label="Email digest preview (live)"></pre>
+    <div class="ctl-panel is-hide" data-ctl-panel="emails">
+      <!-- MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-3: one-click email templates
+           (static, zero-AI baseline restored from the monolith , the guaranteed
+           fallback). AI-upgrade path tracked separately in BACKLOG.md. Each
+           template is its own full card: what it is, a live preview, copy. -->
+      <div class="sr-hint ctl-lead">Ready-to-send drafts built from live project data , each is a full email with subject line. Read the preview, then copy and paste into your mail client.</div>
+      <div class="fmt-card">
+        <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Status Update</span><button class="btn btn-n btn-s" data-action="emailTpl" data-kind="status" title="Copy the weekly status update email"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
+        <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">The regular weekly update to your sponsor: overall progress, tasks in progress, blockers, live issues, and next priorities.</p></details>
+        <pre class="fmt-preview" id="pv-tpl-status" aria-label="Status update email preview (live)"></pre>
+      </div>
+      <div class="fmt-card">
+        <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Change Request</span><button class="btn btn-n btn-s" data-action="emailTpl" data-kind="change" title="Copy the change request approval email"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
+        <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">Asks for approval on pending change requests, with the schedule and cost impact of each one so the decision is informed.</p></details>
+        <pre class="fmt-preview" id="pv-tpl-change" aria-label="Change request email preview (live)"></pre>
+      </div>
+      <div class="fmt-card">
+        <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Risk Escalation</span><button class="btn btn-n btn-s" data-action="emailTpl" data-kind="risk" title="Copy the risk / issue escalation email"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
+        <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">Escalates open issues and high risks that need attention, each with its owner and target date so nothing slips through.</p></details>
+        <pre class="fmt-preview" id="pv-tpl-risk" aria-label="Risk escalation email preview (live)"></pre>
+      </div>
+      <div class="fmt-card">
+        <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Closure Sign-Off</span><button class="btn btn-n btn-s" data-action="emailTpl" data-kind="closure" title="Copy the closure sign-off email"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
+        <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">Formally asks the sponsor to sign off the project: overall completion and the deliverables checklist status.</p></details>
+        <pre class="fmt-preview" id="pv-tpl-closure" aria-label="Closure sign-off email preview (live)"></pre>
+      </div>
     </div>
-    <div class="fmt-card">
-      <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Client Summary</span><button class="btn btn-g btn-s" data-action="cpFormats" data-kind="client" title="Copy the printable client summary"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
-      <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">A clean, printable one-page summary for a client or stakeholder: progress, key metrics, open issues. No internal risk detail , just what a client needs to know.</p></details>
-      <pre class="fmt-preview" id="pv-client" aria-label="Client summary preview (live)"></pre>
-    </div>
-
-    <!-- MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-3: one-click email templates
-         (static, zero-AI baseline restored from the monolith , the guaranteed
-         fallback). AI-upgrade path tracked separately in BACKLOG.md. Each
-         template is its own full card: what it is, a live preview, copy. -->
-    <div class="ctl-sec" data-ctl-group="email-tpl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg> Email Templates</div>
-    <div class="sr-hint ctl-lead">Ready-to-send drafts built from live project data , each is a full email with subject line. Read the preview, then copy and paste into your mail client.</div>
-    <div class="fmt-card">
-      <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Status Update</span><button class="btn btn-n btn-s" data-action="emailTpl" data-kind="status" title="Copy the weekly status update email"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
-      <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">The regular weekly update to your sponsor: overall progress, tasks in progress, blockers, live issues, and next priorities.</p></details>
-      <pre class="fmt-preview" id="pv-tpl-status" aria-label="Status update email preview (live)"></pre>
-    </div>
-    <div class="fmt-card">
-      <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Change Request</span><button class="btn btn-n btn-s" data-action="emailTpl" data-kind="change" title="Copy the change request approval email"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
-      <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">Asks for approval on pending change requests, with the schedule and cost impact of each one so the decision is informed.</p></details>
-      <pre class="fmt-preview" id="pv-tpl-change" aria-label="Change request email preview (live)"></pre>
-    </div>
-    <div class="fmt-card">
-      <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Risk Escalation</span><button class="btn btn-n btn-s" data-action="emailTpl" data-kind="risk" title="Copy the risk / issue escalation email"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
-      <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">Escalates open issues and high risks that need attention, each with its owner and target date so nothing slips through.</p></details>
-      <pre class="fmt-preview" id="pv-tpl-risk" aria-label="Risk escalation email preview (live)"></pre>
-    </div>
-    <div class="fmt-card">
-      <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Closure Sign-Off</span><button class="btn btn-n btn-s" data-action="emailTpl" data-kind="closure" title="Copy the closure sign-off email"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
-      <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">Formally asks the sponsor to sign off the project: overall completion and the deliverables checklist status.</p></details>
-      <pre class="fmt-preview" id="pv-tpl-closure" aria-label="Closure sign-off email preview (live)"></pre>
+    <div class="ctl-panel is-hide" data-ctl-panel="templates">
+      <div class="sr-hint ctl-lead">Save your current schedule and budget as a reusable template, or apply a built-in template to get started quickly.</div>
+      <div class="ctl-actions">
+        <button class="btn btn-g btn-s" data-action="saveAsTemplate">+ Save as Template</button>
+      </div>
+      <div id="template-list"></div>
     </div>
 
     <div class="ctl-sec" data-ctl-group="appearance"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Appearance</div>
